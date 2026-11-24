@@ -3,9 +3,9 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 
 type Plain:
-	n: Int
+	n Int
 
-fn smallest[T: Comparable & Clonable](values: List[T]) T?:
+fn smallest[T Comparable & Clonable](values List[T]) T?:
 	return values.min()
 
 test "List operations written in Manuscript apply without an import":

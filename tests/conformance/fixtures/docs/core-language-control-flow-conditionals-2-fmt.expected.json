@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn status(active: Bool) String:\n\tif active: return \"Active\"\n\telse: return \"Inactive\"\n"
+    "fmt": "fn status(active Bool) String:\n\tif active: return \"Active\"\n\telse: return \"Inactive\"\n"
   }
 }

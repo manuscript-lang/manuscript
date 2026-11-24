@@ -31,7 +31,7 @@ test "module dirname and basename_without follow the host dialect":
     expect_equal(basename_without("dir/file.txt", ".md"), "file.txt")?
 
 test "glob matching rejects NUL in the path as it does in the pattern":
-    invalid: Bool! := error(Error("path: invalid input", kind: "EINVAL"))
+    invalid Bool! := error(Error("path: invalid input", kind: "EINVAL"))
     expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)?
     expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)?
 
@@ -48,7 +48,7 @@ test "POSIX resolution preserves resets separators and all input validation":
 	expect_equal((paths.resolve("/base/", ["/reset/", "", ""])?), "/reset")?
 	expect_equal((paths.resolve("/base", ["a\\b"])?), "/base/a\\b")?
 
-	invalid: String! := error(Error("path: invalid input", kind: "EINVAL"))
+	invalid String! := error(Error("path: invalid input", kind: "EINVAL"))
 	expect_equal(paths.resolve("relative", ["/absolute"]), invalid)?
 	expect_equal(paths.resolve("/bad\u{0}", ["/absolute"]), invalid)?
 	expect_equal(paths.resolve("/base", ["bad\u{0}", "/absolute"]), invalid)?
@@ -56,14 +56,14 @@ test "POSIX resolution preserves resets separators and all input validation":
 
 test "POSIX resolution handles long relative tails and absolute resets":
 	paths := posix()
-	var parts: List[String] = []
+	var parts List[String] = []
 	for unused in 0..512:
 		parts.append("segment")
 	expect_equal((paths.resolve("/base/", parts)?), f"/base/{parts.join("/")}")?
 	parts.append("/reset/")
 	expect_equal((paths.resolve("/base/", parts)?), "/reset")?
 
-	var parents: List[String] = []
+	var parents List[String] = []
 	for unused in 0..512:
 		parents.append("a/..")
 	expect_equal((paths.resolve("/base/", parents)?), "/base")?

@@ -8,13 +8,13 @@ import (
 // Raw field values reach the arithmetic because Timestamp's fields are public; each
 // result matches exact wide arithmetic (computed outside Manuscript) or is ERANGE,
 // shown as E.
-fn show(r: Timestamp!) String:
+fn show(r Timestamp!) String:
 	if r.is_error(): return "E"
 
 	t := r.get()
 	return f"{t.seconds}.{t.nanos}"
 
-fn show_diff(r: Duration!) String:
+fn show_diff(r Duration!) String:
 	if r.is_error(): return "E"
 	return f"{r.get().nanos}"
 

@@ -4,15 +4,15 @@
 // trim, upper, lower and replace of a String that is never used again edit its allocation in
 // place; every shape must produce exactly what the copying call produces.
 
-fn edit_last(s: String) String:
+fn edit_last(s String) String:
 	return s.trim().upper().replace("WORLD", "there")
 
-fn borrowed_twice(s: String) Int:
+fn borrowed_twice(s String) Int:
 	a := s.trim()
 	b := s.upper()
 	return a.length() + b.length()
 
-fn shrink_to_short(s: String) String:
+fn shrink_to_short(s String) String:
 	return s.replace("a long run of text", "x")
 
 export fn main() Int:

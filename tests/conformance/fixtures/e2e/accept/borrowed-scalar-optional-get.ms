@@ -6,16 +6,16 @@ import (
 )
 
 type Marker:
-	id: Int
+	id Int
 
 fn move Marker.close() Void!: error(Error("scalar marker closed"))
 
-fn inspect(value: Marker?) Void:
+fn inspect(value Marker?) Void:
 	_id := (value or panic("called Optional.get() on null")).id
 	_still_present := value != null
 	panic("borrowed owner remains alive")
 
-fn collection(values: List[Marker]) Void:
+fn collection(values List[Marker]) Void:
 	_id := (values.first() or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 	panic("collection owner remains alive")
@@ -33,7 +33,7 @@ test "a scalar collection lend leaves its owner alive":
 	)
 
 fn owned_result() Void:
-	value: Marker!Int := ok(Marker(3))
+	value Marker!Int := ok(Marker(3))
 	_id := value.get().id
 
 fn scalar_optional() Marker?: Marker(4)
@@ -46,11 +46,11 @@ test "owned scalar getter results still close their temporary":
 	(expect_fault(owned_optional)?) | expect_contains("resource could not be closed")?
 
 type HeapMarker:
-	text: String
+	text String
 
 fn move HeapMarker.close() Void!: error(Error("heap marker closed"))
 
-fn inspect_heap(value: HeapMarker?) Void:
+fn inspect_heap(value HeapMarker?) Void:
 	_length := (value or panic("called Optional.get() on null")).text.length()
 	_still_present := value != null
 	panic("heap owner remains alive")
@@ -61,12 +61,12 @@ test "heap resource Optional getters retain their existing borrow":
 		| expect_contains("heap owner remains alive")?
 	)
 
-fn collection_last(values: List[Marker]) Void:
+fn collection_last(values List[Marker]) Void:
 	_id := (values.last() or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 	panic("last owner remains alive")
 
-fn map_entry(values: Map[String, Marker]) Void:
+fn map_entry(values Map[String, Marker]) Void:
 	_id := (values.get("present") or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 	panic("map owner remains alive")
@@ -76,24 +76,24 @@ fn make_map() Map[String, Marker]:
 	values.add("present", Marker(8))
 	return values
 
-fn collection_named(values: List[Marker]) Void:
+fn collection_named(values List[Marker]) Void:
 	entry := values.first()
 	_id := (entry or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 	panic("named owner remains alive")
 
-fn collection_missing(values: List[Marker]) Void:
+fn collection_missing(values List[Marker]) Void:
 	_id := (values.first() or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 
-fn map_missing(values: Map[String, Marker]) Void:
+fn map_missing(values Map[String, Marker]) Void:
 	_id := (values.get("absent") or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 
-fn read_generic[T](values: List[T], read: fn(T) Int) Int:
+fn read_generic[T](values List[T], read fn(T) Int) Int:
 	return read(values.first() or panic("called Optional.get() on null"))
 
-fn generic_collection(values: List[Marker]) Void:
+fn generic_collection(values List[Marker]) Void:
 	_id := read_generic(values, fn value: value.id)
 	_still_present := values.length()
 	panic("generic owner remains alive")
@@ -141,18 +141,18 @@ test "Clonable results survive their temporary collection":
 	expect_equal(text, "temporary payload")?
 	expect_equal(text.length(), 17)?
 
-fn labeled_map_entry(values: Map[String, Marker]) Void:
+fn labeled_map_entry(values Map[String, Marker]) Void:
 	_id := (values.get(key: "present") or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 	panic("labeled map owner remains alive")
 
-fn labeled_map_binding(values: Map[String, Marker]) Void:
+fn labeled_map_binding(values Map[String, Marker]) Void:
 	entry := values.get(key: "present")
 	_id := (entry or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 	panic("labeled binding owner remains alive")
 
-fn labeled_map_missing(values: Map[String, Marker]) Void:
+fn labeled_map_missing(values Map[String, Marker]) Void:
 	_id := (values.get(key: "absent") or panic("called Optional.get() on null")).id
 	_still_present := values.length()
 
@@ -174,11 +174,11 @@ test "a missing labeled map lend still reports the Optional fault":
 		| expect_contains("called Optional.get() on null")?
 	)
 
-fn map_index(var events: List[Int]) Int:
+fn map_index(var events List[Int]) Int:
 	events.append(1)
 	return 0
 
-fn map_key(var events: List[Int]) String:
+fn map_key(var events List[Int]) String:
 	events.append(2)
 	return "present"
 
@@ -187,7 +187,7 @@ test "labeled map lends evaluate receiver and key once in order":
 	values.add("present", "payload")
 
 	maps := [values]
-	var events: List[Int] = []
+	var events List[Int] = []
 	length := (
 		maps[map_index(events)].get(key: map_key(events))
 		or panic("called Optional.get() on null")

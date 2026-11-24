@@ -17,7 +17,7 @@ import (
 // A fault the promise runtime raises returns through the frames of the work: the waiter
 // reads it as EIO with the report, and the thread goes on. The work runs on this
 // thread, so a promise made by the test is the work's own too.
-fn report_of(move work: fn() Int!) String!:
+fn report_of(move work fn() Int!) String!:
 	here := PromiseOptions(placement: Placement.Here)
 	reason := promise[Int](fn: work(), options: here).wait() | expect_error?
 	expect_equal(reason.kind, "EIO")?
@@ -36,7 +36,7 @@ fn free_of_no_group() Int!:
 	msrt_group_free(999)
 	return ok(0)
 
-fn wait_twice_on(id: Int) Int!:
+fn wait_twice_on(id Int) Int!:
 	return ok(msrt_promise_wait_any([id, id], -1))
 
 test "a call on a wait group that does not exist faults the work":

@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 // café 🦀
-fn use(value: Envelope) Int:
+fn use(value Envelope) Int:
     match value:
         Pair(
             _,

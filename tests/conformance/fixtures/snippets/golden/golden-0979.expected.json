@@ -9,6 +9,38 @@
       {
         "code": "MS1000",
         "phase": "parse",
+        "message": "remove the ':' between 'first' and its type; write first Type",
+        "position": {
+          "file": "golden-0979.ms",
+          "line": 4,
+          "column": 15,
+          "offset": 78
+        },
+        "end": {
+          "file": "golden-0979.ms",
+          "line": 4,
+          "column": 16,
+          "offset": 79
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0979.ms",
+            "line": 4,
+            "column": 15,
+            "offset": 78
+          },
+          "end": {
+            "file": "golden-0979.ms",
+            "line": 4,
+            "column": 16,
+            "offset": 79
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
         "message": "unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the file",
         "position": {
           "file": "golden-0979.ms",
@@ -21,7 +53,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0979.ms:6:1: parse: unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the file\n   |\n 6 | \n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0979.ms:4:15: parse: remove the ':' between 'first' and its type; write first Type\n   |\n 4 | fn later(first: Int = 3, second: Int = first + 1) Int:\n   |               ^\n<DIR>/golden-0979.ms:6:1: parse: unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the file\n   |\n 6 | \n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

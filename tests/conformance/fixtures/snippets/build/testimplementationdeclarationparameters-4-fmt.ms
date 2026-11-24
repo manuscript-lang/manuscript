@@ -5,8 +5,8 @@ interface Read[V]:
     fn get() V
 
 type Pair[A, B]:
-    left: A
-    right: B
+    left A
+    right B
 
 fn Pair[Int, B].get() B:
     return self.right

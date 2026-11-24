@@ -4,13 +4,13 @@
 import panic from "@std/core.ms"
 
 type Counter:
-    value: Int
+    value Int
 
-fn advance(var counter: Counter) Int:
+fn advance(var counter Counter) Int:
     counter.value += 1
     return counter.value
 
-fn mixed(var counter: Counter) List[Int]:
+fn mixed(var counter Counter) List[Int]:
     var value = 1
     return [
         value,
@@ -49,5 +49,5 @@ test "pending captures grow beyond the small buffer":
     if separate != [1, 2, 2]: return panic("copy lost its own mutations")
     if counter.value != 1: return panic("copy changed the original")
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
     return value

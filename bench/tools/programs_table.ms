@@ -3,8 +3,8 @@
 import fixed, invalid, median from "./lib.ms"
 
 export type Op:
-	name: String
-	count: Int
+	name String
+	count Int
 
 export fn ops() List[Op]:
 	return [
@@ -26,21 +26,21 @@ export SINK := [
 ]
 VERSIONS := ["ms", "go", "rust", "rust-checked"]
 
-fn title(version: String) String:
+fn title(version String) String:
 	if version == "ms": return "Manuscript"
 	if version == "go": return "Go"
 	if version == "rust": return "Rust"
 
 	return "Rust, overflow checks"
 
-fn ops_of(name: String) Int?:
+fn ops_of(name String) Int?:
 	for op in ops():
 		if op.name == name: return op.count
 	return null
 
 // One sample line: `<version> <operation> <count> <ns>` or
 // `<version> # sink <checksums>`.
-export fn summarize(lines: List[String], repeats: Int) String!:
+export fn summarize(lines List[String], repeats Int) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 
 	var samples = Map[String, List[Float]]()

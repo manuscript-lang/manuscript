@@ -12,21 +12,21 @@ import (
 	Duration, monotonic, nanoseconds, sleep from "@std/time.ms",
 )
 
-fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
+fn within(var input ReadStream[Bytes], timeout Duration) Bytes?!:
 	return promise(fn: input.next()).with(
 		options: PromiseOptions(timeout: timeout.clone())
 	).wait()
 
-fn send(var conn: Connection, text: String) Void!:
+fn send(var conn Connection, text String) Void!:
 	conn.output.write(text.to_bytes())?
 	return conn.output.flush()
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	if request.path == "/slow":
 		void sleep(nanoseconds(200000000)).wait()
 	return HttpResponse(200, f"ok {request.path}\n".to_bytes())
 
-fn exchange(address: String) String:
+fn exchange(address String) String:
 	if var conn = connect(address).wait():
 		_first := send(conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 

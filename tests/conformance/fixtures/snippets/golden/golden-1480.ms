@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Counter:
-    value: Int
+    value Int
 
 impl Counter:
     fn overflow() Int:

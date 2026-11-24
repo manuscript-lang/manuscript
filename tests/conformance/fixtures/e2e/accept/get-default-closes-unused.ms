@@ -7,30 +7,30 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
-fn present(log: String) Int:
-	held: Door? := Door(1, log.clone())
+fn present(log String) Int:
+	held Door? := Door(1, log.clone())
 	door := held or Door(2, log.clone())
 	return door.id
 
-fn absent(log: String) Int:
-	held: Door? := null
+fn absent(log String) Int:
+	held Door? := null
 	door := held or Door(3, log.clone())
 	return door.id
 
-fn named(log: String) Int:
-	held: Door? := Door(4, log.clone())
+fn named(log String) Int:
+	held Door? := Door(4, log.clone())
 	spare := Door(5, log.clone())
 	door := held or spare
 	return door.id + 8

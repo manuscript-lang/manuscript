@@ -138,7 +138,9 @@ MS_NODISCARD bool parse_result_type(Parser *p, MsTypeRef **out, bool *moves);
 MS_NODISCARD bool parse_typ(Parser *p, MsTypeRef **out);
 MsExpr *parse_implicit_none(Parser *p, const MsTypeRef *t);
 MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out);
-MS_NODISCARD bool parse_need_name_colon(Parser *p, MsToken name);
+bool parse_type_starts(MsTok kind);
+MS_NODISCARD bool parse_member_name(Parser *p, MsToken *out);
+MS_NODISCARD bool parse_name_type(Parser *p, MsToken name, MsTypeRef **out);
 MS_NODISCARD bool parse_parameters(Parser *p, bool defaults, bool inferred, MsParams *out);
 
 /* parse_decl_item.c */

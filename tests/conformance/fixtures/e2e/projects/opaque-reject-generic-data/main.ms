@@ -4,7 +4,7 @@ import (
 	Approved, Mode, approve, safe from "./gate.ms",
 )
 
-fn wrap[T](v: T) String:
+fn wrap[T](v T) String:
 	return stringify(v).get_or("")
 
 export fn main() Int:

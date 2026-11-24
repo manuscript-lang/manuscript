@@ -14,7 +14,7 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn ok_route(request: HttpRequest) HttpResponse:
+fn ok_route(request HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
 test "serve caps the request header block":

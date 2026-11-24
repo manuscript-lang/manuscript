@@ -14,7 +14,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
           "column": 21,
-          "offset": 444
+          "offset": 435
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
           "column": 33,
-          "offset": 456
+          "offset": 447
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
           "column": 13,
-          "offset": 436
+          "offset": 427
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
           "column": 13,
-          "offset": 436
+          "offset": 427
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 17,
           "column": 14,
-          "offset": 482
+          "offset": 473
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 18,
           "column": 23,
-          "offset": 517
+          "offset": 508
         }
       },
       {
@@ -80,7 +80,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 18,
           "column": 15,
-          "offset": 509
+          "offset": 500
         }
       },
       {
@@ -91,7 +91,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 19,
           "column": 23,
-          "offset": 549
+          "offset": 540
         }
       },
       {
@@ -102,7 +102,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 19,
           "column": 14,
-          "offset": 540
+          "offset": 531
         }
       },
       {
@@ -113,7 +113,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 19,
           "column": 14,
-          "offset": 540
+          "offset": 531
         }
       },
       {
@@ -124,7 +124,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 20,
           "column": 14,
-          "offset": 572
+          "offset": 563
         }
       },
       {
@@ -135,7 +135,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 22,
           "column": 20,
-          "offset": 628
+          "offset": 619
         }
       },
       {
@@ -146,7 +146,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 24,
           "column": 22,
-          "offset": 690
+          "offset": 681
         }
       },
       {
@@ -157,7 +157,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 24,
           "column": 12,
-          "offset": 680
+          "offset": 671
         }
       }
     ],

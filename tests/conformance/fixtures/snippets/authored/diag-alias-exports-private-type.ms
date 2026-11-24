@@ -2,6 +2,6 @@
 // conform: phase=check
 // conform: origin=type-aliases
 type Row:
-    id: Int
+    id Int
 
 export type Rows = List[Row]

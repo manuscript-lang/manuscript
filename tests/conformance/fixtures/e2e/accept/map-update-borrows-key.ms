@@ -5,7 +5,7 @@ import expect_equal from "@std/test/test.ms"
 // `Map.update` borrows its key: the caller keeps using it, and the map copies it only when the entry is new.
 // The keys are longer than an inline String so a copy is a heap allocation.
 test "a key stays usable after update, new or existing":
-	var counts: Map[String, Int] = {}
+	var counts Map[String, Int] = {}
 	key := "a key that is longer than fifteen bytes"
 
 	counts.update(key, 0, fn n: n + 1)
@@ -17,7 +17,7 @@ test "a key stays usable after update, new or existing":
 	expect_equal(key.length(), 39)?
 
 test "distinct long keys each get their own copy":
-	var counts: Map[String, Int] = {}
+	var counts Map[String, Int] = {}
 	for round in 0..3:
 		for n in 0..4:
 			label := f"a label that is longer than inline {n}"

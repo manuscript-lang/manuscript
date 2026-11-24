@@ -31,7 +31,7 @@
           "file": "golden-1416.ms",
           "line": 8,
           "column": 20,
-          "offset": 235
+          "offset": 234
         }
       },
       {
@@ -42,7 +42,7 @@
           "file": "golden-1416.ms",
           "line": 8,
           "column": 14,
-          "offset": 229
+          "offset": 228
         }
       },
       {
@@ -53,7 +53,7 @@
           "file": "golden-1416.ms",
           "line": 11,
           "column": 13,
-          "offset": 302
+          "offset": 301
         },
         "fix": {
           "position": {
@@ -79,7 +79,7 @@
           "file": "golden-1416.ms",
           "line": 22,
           "column": 48,
-          "offset": 589
+          "offset": 588
         }
       },
       {
@@ -90,7 +90,7 @@
           "file": "golden-1416.ms",
           "line": 29,
           "column": 5,
-          "offset": 699
+          "offset": 698
         }
       }
     ],

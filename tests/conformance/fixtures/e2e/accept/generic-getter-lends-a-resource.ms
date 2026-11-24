@@ -4,18 +4,18 @@ import expect_equal from "@std/test/test.ms"
 
 
 type Res:
-	name: String
+	name String
 
 fn move Res.close() Void!:
 	return ok(void)
 
 type Cell[T]:
-	v: T
+	v T
 
 fn Cell[T].get() T:
 	return self.v
 
-fn size(cell: Cell[Res]) Int:
+fn size(cell Cell[Res]) Int:
 	return cell.get().name.length()
 
 test "a generic getter lends a resource: the receiver stays the owner":

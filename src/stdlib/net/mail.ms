@@ -10,7 +10,7 @@ Internet mail messages (RFC 5322): addresses, address lists, and message parsing
 `parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
 message into `Headers` and body; `decode_words` decodes RFC 2047 encoded words in header text.
 
-<!-- manuscript-example: {"mode":"fragment","given":["raw: String"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["raw String"]} -->
 ```manuscript
 import parse_address, parse_message from "@std/net/mail.ms"
 sender := parse_address("Ada Lovelace <ada@example.com>")?
@@ -23,9 +23,9 @@ print(mail.headers.get("Subject").get_or(""))
 // A mailbox: optional display name and the `local@domain` address.
 export type Address:
 	// The `local@domain` address without angle brackets.
-	address: String
+	address String
 	// Display name with quotes removed; empty when none was given.
-	name: String = ""
+	name String = ""
 
 // Formats as `Name <addr>`, quoting the name when it contains special characters, or as
 // the bare address when there is no name.
@@ -43,14 +43,14 @@ fn Address.to_string() String:
 // A parsed message: header fields and the body after the first blank line.
 export type Message:
 	// Header block with folded lines joined.
-	headers: Headers
+	headers Headers
 	// Body text exactly as written after the blank line, with line endings kept.
-	body: String
+	body String
 
 // Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`.
 // Encoded words in the name are decoded. Comments are not supported. Text that is not
 // a valid mailbox returns `EBADMSG`.
-export fn parse_address(text: String) Address!:
+export fn parse_address(text String) Address!:
 	trimmed := text.trim()
 	if trimmed.is_empty(): return error(Error("mail: invalid address", kind: "EBADMSG"))
 
@@ -84,7 +84,7 @@ export fn parse_address(text: String) Address!:
 
 	return ok(Address(name: decode_words(name), address: address))
 
-fn valid_address(address: String) Bool:
+fn valid_address(address String) Bool:
 	at := address.last_index_of("@")
 	if at == null: return false
 
@@ -97,7 +97,7 @@ fn valid_address(address: String) Bool:
 // Parses a comma-separated address list, honoring quoted names and angle brackets.
 // Empty items (a trailing comma) are skipped, and empty text gives an empty list. An
 // invalid item returns `EBADMSG`.
-export fn parse_address_list(text: String) List[Address]!:
+export fn parse_address_list(text String) List[Address]!:
 	var out = List[Address]()
 	var current = ""
 	var quoted = false
@@ -138,7 +138,7 @@ export fn parse_address_list(text: String) List[Address]!:
 // Splits a raw message at the first blank line into headers and body. Both CRLF and LF
 // line endings are accepted; a message without a blank line has an empty body. Empty
 // text or an invalid header block returns `EBADMSG`.
-export fn parse_message(raw: String) Message!:
+export fn parse_message(raw String) Message!:
 	if raw.trim().is_empty(): return error(
 		Error("mail: invalid message", kind: "EBADMSG")
 	)
@@ -183,7 +183,7 @@ export fn parse_message(raw: String) Message!:
 // Decodes RFC 2047 encoded words (`=?utf-8?B?...?=` and `=?utf-8?Q?...?=`) in header
 // text. Only UTF-8, US-ASCII and ISO-8859-1 charsets are decoded; any other word is
 // left as written.
-export fn decode_words(text: String) String:
+export fn decode_words(text String) String:
 	if not text.contains("=?"): return text.clone()
 
 	// Splitting at `?` once keeps decoding linear. A word starts where a field ends in
@@ -211,7 +211,7 @@ export fn decode_words(text: String) String:
 		literal := head
 		head = ""
 
-		var decoded: String? = null
+		var decoded String? = null
 		if index + 4 < fields.length() and fields[index + 4].starts_with("="):
 			decoded = decode_word(
 				fields[index + 1],
@@ -237,7 +237,7 @@ export fn decode_words(text: String) String:
 	out += head
 	return out
 
-fn decode_word(charset: String, encoding: String, payload: String) String?:
+fn decode_word(charset String, encoding String, payload String) String?:
 	set := charset.lower()
 	kind := encoding.upper()
 	var bytes = "".to_bytes()
@@ -257,7 +257,7 @@ fn decode_word(charset: String, encoding: String, payload: String) String?:
 
 	return null
 
-fn q_decode(payload: String) Bytes:
+fn q_decode(payload String) Bytes:
 	var out = BytesBuilder()
 	chars := payload.chars()
 	var i = 0

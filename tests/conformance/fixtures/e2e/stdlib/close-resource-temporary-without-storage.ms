@@ -5,7 +5,7 @@ import Closeable from "@std/core.ms"
 
 // A resource with only scalar fields has no storage to free, but a temporary of it is still closed.
 type Counter:
-    id: Int
+    id Int
 
 fn move Counter.close() Void!:
     print(f"closed {self.id}")
@@ -13,7 +13,7 @@ fn move Counter.close() Void!:
 fn Counter.value() Int:
     return self.id
 
-fn open_counter(id: Int) Counter:
+fn open_counter(id Int) Counter:
     return Counter(id)
 
 fn main() Void:

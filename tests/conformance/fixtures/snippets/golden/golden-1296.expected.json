@@ -13,21 +13,21 @@
         "position": {
           "file": "golden-1296.ms",
           "line": 3,
-          "column": 31,
-          "offset": 83
+          "column": 30,
+          "offset": 82
         },
         "end": {
           "file": "golden-1296.ms",
           "line": 3,
-          "column": 32,
-          "offset": 84
+          "column": 31,
+          "offset": 83
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1296.ms:3:31: parse: expected ')', found '|'; close the parenthesis, separating items with commas\n   |\n 3 | fn use[ListEntry](value: ListE|) Void:\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1296.ms:3:30: parse: expected ')', found '|'; close the parenthesis, separating items with commas\n   |\n 3 | fn use[ListEntry](value ListE|) Void:\n   |                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -12,26 +12,26 @@
           "file": "foreign-case-arm.ms",
           "line": 9,
           "column": 9,
-          "offset": 168
+          "offset": 167
         },
         "end": {
           "file": "foreign-case-arm.ms",
           "line": 9,
           "column": 14,
-          "offset": 173
+          "offset": 172
         },
         "fix": {
           "position": {
             "file": "foreign-case-arm.ms",
             "line": 9,
             "column": 9,
-            "offset": 168
+            "offset": 167
           },
           "end": {
             "file": "foreign-case-arm.ms",
             "line": 9,
             "column": 14,
-            "offset": 173
+            "offset": 172
           },
           "replacement": ""
         }

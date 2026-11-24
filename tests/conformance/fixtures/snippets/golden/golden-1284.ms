@@ -2,4 +2,4 @@
 // conform: phase=check
 fn run() Void:
     number := 10
-    pair := 
+    pair = 

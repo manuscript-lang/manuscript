@@ -5,31 +5,31 @@ import expect_true, fail from "@std/test/test.ms"
 
 interface Shape:
     fn area() Int
-    fn scaled(by: Int) Int
-    fn checked(limit: Int) Int!Error
-    fn grow(depth: Int) Int
+    fn scaled(by Int) Int
+    fn checked(limit Int) Int!Error
+    fn grow(depth Int) Int
 
 type Rect:
-    w: Int
-    h: Int
+    w Int
+    h Int
 
 enum Sign:
-    Plus(n: Int)
-    Minus(n: Int)
+    Plus(n Int)
+    Minus(n Int)
 
 fn Rect.area() Int:
     return self.w * self.h
 
-fn Rect.scaled(by: Int) Int:
+fn Rect.scaled(by Int) Int:
     return self.area() * by
 
-fn Rect.checked(limit: Int) Int!Error:
+fn Rect.checked(limit Int) Int!Error:
     if self.area() > limit:
         return error(cause: Error("too big"))
 
     return ok(value: self.area())
 
-fn Rect.grow(depth: Int) Int:
+fn Rect.grow(depth Int) Int:
     if depth == 0:
         return self.w
 
@@ -40,27 +40,27 @@ fn Sign.area() Int:
         Plus(n): return n
         Minus(n): return 0 - n
 
-fn Sign.scaled(by: Int) Int:
+fn Sign.scaled(by Int) Int:
     return self.area() * by
 
-fn Sign.checked(limit: Int) Int!Error:
+fn Sign.checked(limit Int) Int!Error:
     return ok(value: self.area())
 
-fn Sign.grow(depth: Int) Int:
+fn Sign.grow(depth Int) Int:
     return depth
 
-fn through(shape: Shape) Int:
+fn through(shape Shape) Int:
     return shape.scaled(by: 2)
 
-fn tried(rect: Rect, limit: Int) Int!Error:
+fn tried(rect Rect, limit Int) Int!Error:
     first := rect.checked(limit: limit)?
     return ok(value: first + (rect.checked(limit: limit + 100)?))
 
-fn order(rect: Rect, var log: List[String]) Int:
+fn order(rect Rect, var log List[String]) Int:
     log.append(value: "receiver")
     return rect.scaled(by: id(log: log))
 
-fn id(var log: List[String]) Int:
+fn id(var log List[String]) Int:
     log.append(value: "argument")
     return 1
 

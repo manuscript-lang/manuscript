@@ -30,15 +30,15 @@
         "position": {
           "file": "golden-1374.ms",
           "line": 4,
-          "column": 36,
-          "offset": 127
+          "column": 35,
+          "offset": 126
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1374.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1374.ms:4:36: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 4 | export fn load(n: Int) Result[Int, TextError]:\n   |                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1374.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1374.ms:4:35: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 4 | export fn load(n Int) Result[Int, TextError]:\n   |                                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

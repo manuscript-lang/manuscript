@@ -15,10 +15,10 @@ import Arg, Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import arguments from "@std/os/env.ms"
 
 type Greeting:
-    name: String
-    shout: Bool
+    name String
+    shout Bool
 
-fn greet(options: Greeting) Int!:
+fn greet(options Greeting) Int!:
     return ok(0)
 
 fn main() Int:
@@ -56,40 +56,40 @@ export enum FlagKind:
 // A named option such as `--port 8080` or `-p 8080`.
 export type Flag:
 	// The long name without dashes; also the key `Matches` reads it by.
-	name: String
+	name String
 	// What the flag accepts, and so the type of the record field; defaults to String.
-	kind: FlagKind = FlagKind.String
+	kind FlagKind = FlagKind.String
 	// One-letter alias used as `-p`; empty for null. A value follows as `-p 8080` or
 	// `-p=8080`; short flags do not combine (`-vd`) or attach a value (`-p8080`).
-	short: String = ""
+	short String = ""
 	// Text used when the flag is absent; null for no default. A Bool defaults to false.
-	default: String?
+	default String?
 	// One line shown in help.
-	help: String = ""
+	help String = ""
 	// Absence is an error when there is no default. A Bool or List flag is never absent
 	// (false or empty), so `required` has no effect on it.
-	required: Bool = false
+	required Bool = false
 	// Also accepted by every subcommand below the command that declares it.
-	persistent: Bool = false
+	persistent Bool = false
 	// When not empty, every value must be one of these texts; use with String and List
 	// flags.
-	choices: List[String] = []
+	choices List[String] = []
 
 // A positional argument, bound in declaration order.
 export type Arg:
 	// The key `Matches` reads it by.
-	name: String
+	name String
 	// One line shown in help.
-	help: String = ""
+	help String = ""
 	// Absence is an error. A required argument may not follow an optional one.
-	required: Bool = true
+	required Bool = true
 	// Takes every remaining word as a list; only the last argument may be rest.
-	rest: Bool = false
+	rest Bool = false
 	// What the argument accepts: `String` (the default), `Int` or `Float`. An `Int` or
 	// `Float` argument fills a record field of that type and fails the run when the word
 	// does not parse. `Bool` and `List` are not positional kinds, and a `rest` argument
 	// is always `List[String]`.
-	kind: FlagKind = FlagKind.String
+	kind FlagKind = FlagKind.String
 
 /*
 The values one invocation produced.
@@ -99,49 +99,49 @@ A flag with a default or `required`, and a required argument, always has a value
 */
 export type Matches:
 	// Text values by flag or argument name; a List flag or rest argument holds several.
-	values: Map[String, List[String]] = Map[String, List[String]]()
+	values Map[String, List[String]] = Map[String, List[String]]()
 	// The command names walked from the root, root included.
-	path: List[String] = []
+	path List[String] = []
 	// The JSON literal for each supplied value by field name (dashes in names become
 	// underscores); decoded by `command`.
-	fields: Map[String, String] = Map[String, String]()
+	fields Map[String, String] = Map[String, String]()
 
 // Returns the text of a flag or argument.
-fn Matches.string(name: String) String:
+fn Matches.string(name String) String:
 	return (self.values.get(name) or panic("called Optional.get() on null"))[0].clone()
 
 // Returns an Int flag or argument value.
-fn Matches.int(name: String) Int:
+fn Matches.int(name String) Int:
 	return self.string(name).parse_int() or panic("called Optional.get() on null")
 
 // Returns a Float flag or argument value.
-fn Matches.float(name: String) Float:
+fn Matches.float(name String) Float:
 	return self.string(name).parse_float() or panic("called Optional.get() on null")
 
 // Returns a Bool flag value; absent is false.
-fn Matches.bool(name: String) Bool:
+fn Matches.bool(name String) Bool:
 	return self.string(name) == "true"
 
 // Returns every value of a List flag or rest argument, in order; empty when absent.
-fn Matches.list(name: String) List[String]:
+fn Matches.list(name String) List[String]:
 	return self.values.get_or(name, []).clone()
 
 // Returns the text, or null for an optional argument or flag that was not supplied.
-fn Matches.string_or_none(name: String) String?:
+fn Matches.string_or_none(name String) String?:
 	items := self.values.get(name)
 	if items != null:
 		if not items.is_empty(): return items[0].clone()
 	return null
 
 // Returns an Int value, or null when absent.
-fn Matches.int_or_none(name: String) Int?:
+fn Matches.int_or_none(name String) Int?:
 	text := self.string_or_none(name)
 	if text != null: return text.parse_int()
 
 	return null
 
 // Returns a Float value, or null when absent.
-fn Matches.float_or_none(name: String) Float?:
+fn Matches.float_or_none(name String) Float?:
 	text := self.string_or_none(name)
 	if text != null: return text.parse_float()
 
@@ -154,29 +154,29 @@ A group is a Command with `children`. Build a leaf with `command[T]`, then call 
 */
 export type Command:
 	// The word that selects this node; the program name for the root.
-	name: String
+	name String
 	// One line shown in help.
-	about: String = ""
+	about String = ""
 	// Flags declared here; persistent ones also apply below.
-	flags: List[Flag] = []
+	flags List[Flag] = []
 	// Positional arguments in order.
-	args: List[Arg] = []
+	args List[Arg] = []
 	// Subcommands in help order; their names must be unique, nonempty and not `help`.
-	children: List[Command] = []
+	children List[Command] = []
 	// Runs after a successful parse; the returned Int is the exit status.
-	exec: fn(Matches) Int! = fn m: ok(0)
+	exec fn(Matches) Int! = fn m: ok(0)
 
 // Checks the command tree, resolves the subcommand chain, and validates flags and
 // arguments. Returns `Help` for `-h`, `--help`, a leading `help` word, or a group
 // invoked without a subcommand; an invalid schema or usage error returns `EINVAL`.
-fn Command.parse(argv: List[String]) Parsed!:
+fn Command.parse(argv List[String]) Parsed!:
 	check_schema(self, [], [self.name.clone()])?
 	return walk(self, argv)
 
 // Parses `argv`, writes help to stdout or the error plus a usage hint to stderr,
 // and runs the handler. Returns the handler's status, 0 after help, 1 when the
 // handler fails and 2 for a usage error.
-fn Command.execute(argv: List[String]) Int:
+fn Command.execute(argv List[String]) Int:
 	parsed := self.parse(argv)
 
 	if parsed.is_error():
@@ -201,7 +201,7 @@ fn Command.execute(argv: List[String]) Int:
 // Runs the handler of the command `matches.path` names, as `parse` resolved it, and
 // returns its exit status. The path starts at this node's name; an unknown path is
 // an `EINVAL` error.
-fn Command.run(matches: Matches) Int!:
+fn Command.run(matches Matches) Int!:
 	if matches.path.length() > 0 and matches.path[0] == self.name:
 		node := node_at(self, matches.path, 1)
 		if node != null: return node.exec(matches)
@@ -210,14 +210,14 @@ fn Command.run(matches: Matches) Int!:
 
 // Returns the help text for the command reached by following `path` from this node,
 // or null for an unknown path.
-fn Command.help(path: List[String] = []) String?:
+fn Command.help(path List[String] = []) String?:
 	rendered := help_at(self, path, 0, [self.name.clone()], [])
 	if rendered.is_error(): return null
 
 	return rendered.get()
 
 // Returns the child named `word`, or null; the result reads the child in place.
-fn Command.child(word: String) Command?:
+fn Command.child(word String) Command?:
 	for candidate in self.children:
 		if candidate.name == word: return candidate
 	return null
@@ -227,17 +227,17 @@ export enum Parsed:
 	// `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
 	Help(
 		// The rendered help ending in a newline, ready to write to stdout.
-		text: String
+		text String
 	)
 	// A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
 	Run(
 		// The values to pass the handler; `path` names the command reached from the
 		// root.
-		matches: Matches
+		matches Matches
 	)
 
 // The command reached by following `path` from `from` on, or null for an unknown word.
-fn node_at(node: Command, path: List[String], from: Int) Command?:
+fn node_at(node Command, path List[String], from Int) Command?:
 	if from >= path.length(): return node
 
 	next := node.child(path[from])
@@ -249,11 +249,11 @@ fn node_at(node: Command, path: List[String], from: Int) Command?:
 // and the persistent flags `inherited` so far; an unknown word is an error naming the
 // path reached.
 fn help_at(
-	node: Command,
-	words: List[String],
-	from: Int,
-	names: List[String],
-	inherited: List[Flag],
+	node Command,
+	words List[String],
+	from Int,
+	names List[String],
+	inherited List[Flag],
 ) String!:
 	if from >= words.length(): return ok(render_help(node, names, inherited))
 
@@ -289,12 +289,12 @@ A flag with neither a default nor `required`, and an optional `Arg`, needs an `.
 when absent. A field with no matching value, or of the wrong type, fails the run with an `Error` with kind `"EINVAL"`. The
 handler returns the exit status.
 */
-export fn command[T: Data](
-	move name: String,
-	move run: fn(T) Int!,
-	move about: String = "",
-	move flags: List[Flag] = [],
-	move args: List[Arg] = []
+export fn command[T Data](
+	move name String,
+	move run fn(T) Int!,
+	move about String = "",
+	move flags List[Flag] = [],
+	move args List[Arg] = []
 ) Command:
 	return Command(
 		name: name,
@@ -305,7 +305,7 @@ export fn command[T: Data](
 	)
 
 // Builds `T` from the JSON literals of the supplied values.
-fn decode[T: Data](matches: Matches) T!:
+fn decode[T Data](matches Matches) T!:
 	var members = matches.fields.entries().map(
 		fn entry: (stringify(entry.key.clone()).get() + ":" + entry.value)
 	)
@@ -317,7 +317,7 @@ fn decode[T: Data](matches: Matches) T!:
 	)
 
 // Renders one supplied value as the JSON literal for its kind.
-fn literal(kind: FlagKind, text: String) String:
+fn literal(kind FlagKind, text String) String:
 	match kind:
 		Bool: return text.clone()
 		Int: return f"{(text.parse_int() or 0)}"
@@ -326,9 +326,9 @@ fn literal(kind: FlagKind, text: String) String:
 
 // Collects the JSON literal of every supplied flag and argument for `command`.
 fn collect_fields(
-	values: Map[String, List[String]],
-	flags: List[Flag],
-	args: List[Arg],
+	values Map[String, List[String]],
+	flags List[Flag],
+	args List[Arg],
 ) Map[String, String]:
 	var fields = Map[String, String]()
 
@@ -351,15 +351,15 @@ fn collect_fields(
 	return fields
 
 // Maps a flag or argument name to its record field name.
-fn field_name(name: String) String:
+fn field_name(name String) String:
 	return name.replace("-", "_")
 
 // Keeps the flags that descendants also accept.
-fn persistent_flags(flags: List[Flag]) List[Flag]:
+fn persistent_flags(flags List[Flag]) List[Flag]:
 	return flags.filter(fn flag: flag.persistent)
 
 // Describes what a flag accepts, for errors.
-fn expected_text(kind: FlagKind, choices: List[String]) String:
+fn expected_text(kind FlagKind, choices List[String]) String:
 	if not choices.is_empty(): return "one of " + choices.join(", ")
 
 	match kind:
@@ -369,7 +369,7 @@ fn expected_text(kind: FlagKind, choices: List[String]) String:
 		_: return "text"
 
 // Names the value a flag takes in help, such as `int` or `dev|prod`.
-fn value_hint(flag: Flag) String:
+fn value_hint(flag Flag) String:
 	if not flag.choices.is_empty(): return flag.choices.join("|")
 
 	match flag.kind:
@@ -378,19 +378,19 @@ fn value_hint(flag: Flag) String:
 		_: return "text"
 
 // Returns whether the kind is Bool.
-fn is_bool(kind: FlagKind) Bool:
+fn is_bool(kind FlagKind) Bool:
 	match kind:
 		Bool: return true
 		_: return false
 
 // Returns whether the kind is List.
-fn is_list(kind: FlagKind) Bool:
+fn is_list(kind FlagKind) Bool:
 	match kind:
 		List: return true
 		_: return false
 
 // Returns whether `value` fits the flag's kind and choices.
-fn fits(kind: FlagKind, choices: List[String], value: String) Bool:
+fn fits(kind FlagKind, choices List[String], value String) Bool:
 	if not choices.is_empty() and not choices.contains(value): return false
 
 	match kind:
@@ -404,17 +404,17 @@ fn fits(kind: FlagKind, choices: List[String], value: String) Bool:
 		_: return true
 
 // Checks one flag name or short against names already seen.
-fn claim(var seen: List[String], key: String, label: String) Void!:
+fn claim(var seen List[String], key String, label String) Void!:
 	if seen.contains(key): return error(cli_invalid_schema(f"duplicate {label}"))
 
 	seen.append(key.clone())
 
 // Validates a node and everything below it; `inherited` holds ancestors' persistent
 // flags.
-fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
+fn check_schema(node Command, inherited List[Flag], path List[String]) Void!:
 	where := path.join(" ")
-	var names: List[String] = []
-	var shorts: List[String] = []
+	var names List[String] = []
+	var shorts List[String] = []
 	all := inherited.concat(node.flags)
 
 	for flag in all:
@@ -476,7 +476,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 		if not arg.required: optional_seen = true
 		index += 1
 
-	var words: List[String] = []
+	var words List[String] = []
 
 	for child in node.children:
 		if child.name == "help" or child.name.is_empty():
@@ -493,7 +493,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 		check_schema(child, below, path.concat([child.name.clone()]))?
 
 // Finds a flag by long name or one-letter alias.
-fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
+fn find_flag(flags List[Flag], key String, long Bool) Flag?:
 	for flag in flags:
 		if long and flag.name == key: return flag.clone()
 		if not long and not flag.short.is_empty() and flag.short == key: return flag.clone()
@@ -501,7 +501,7 @@ fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
 	return null
 
 // Stores one flag occurrence after checking it against the kind.
-fn store(var values: Map[String, List[String]], flag: Flag, value: String) Result[
+fn store(var values Map[String, List[String]], flag Flag, value String) Result[
 	Void,
 	Error,
 ]:
@@ -525,7 +525,7 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 	return ok()
 
 // Resolves subcommands, flags and positionals from `argv`.
-fn walk(root: Command, argv: List[String]) Parsed!:
+fn walk(root Command, argv List[String]) Parsed!:
 	return walk_from(
 		root,
 		argv,
@@ -540,15 +540,15 @@ fn walk(root: Command, argv: List[String]) Parsed!:
 // `inherited` and the flag values `given` so far. A subcommand word continues at the
 // child.
 fn walk_from(
-	node: Command,
-	argv: List[String],
-	start: Int,
-	path: List[String],
-	inherited: List[Flag],
-	given: Map[String, List[String]],
+	node Command,
+	argv List[String],
+	start Int,
+	path List[String],
+	inherited List[Flag],
+	given Map[String, List[String]],
 ) Parsed!:
 	var values = given.clone()
-	var words: List[String] = []
+	var words List[String] = []
 	var literal = false
 	var index = start
 
@@ -637,10 +637,10 @@ fn walk_from(
 
 // Assigns positional words to the node's arguments.
 fn bind(
-	node: Command,
-	words: List[String],
-	var values: Map[String, List[String]],
-	path: List[String],
+	node Command,
+	words List[String],
+	var values Map[String, List[String]],
+	path List[String],
 ) Void!:
 	var next = 0
 
@@ -681,7 +681,7 @@ fn bind(
 	return ok()
 
 // Applies the default of an absent flag or reports a missing required one.
-fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
+fn fill(var values Map[String, List[String]], flag Flag) Void!:
 	if values.contains(flag.name): return ok()
 
 	text := flag.default
@@ -701,7 +701,7 @@ fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
 	if flag.required: return error(cli_missing_required(f"--{flag.name}"))
 
 // Renders usage, commands, arguments and flags for one node.
-fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
+fn render_help(node Command, path List[String], inherited List[Flag]) String:
 	var out = ""
 	if not node.about.is_empty(): out += f"{node.about}\n\n"
 
@@ -737,7 +737,7 @@ fn help_flag() Flag:
 	return Flag(name: "help", kind: FlagKind.Bool, short: "h", help: "Show help")
 
 // Renders a titled flag list, aligned; empty for no flags.
-fn flag_section(title: String, flags: List[Flag]) String:
+fn flag_section(title String, flags List[Flag]) String:
 	if flags.is_empty(): return ""
 
 	var table = Table(columns: [Align.Left, Align.Left], indent: 2)
@@ -757,27 +757,27 @@ fn flag_section(title: String, flags: List[Flag]) String:
 
 // Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row
 // with other controls is omitted.
-fn help_row(var table: Table, row: List[String]) Void:
+fn help_row(var table Table, row List[String]) Void:
 	var cells = row.map(fn cell: cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
 	if table.add(cells).is_error(): return
 
-fn cli_unknown_flag(name: String) Error:
+fn cli_unknown_flag(name String) Error:
 	return Error(f"cli: unknown flag {name}", kind: "EINVAL")
 
-fn cli_unknown_command(name: String, path: String) Error:
+fn cli_unknown_command(name String, path String) Error:
 	return Error(f"cli: unknown command {name} for {path}", kind: "EINVAL")
 
-fn cli_missing_value(name: String) Error:
+fn cli_missing_value(name String) Error:
 	return Error(f"cli: flag {name} needs a value", kind: "EINVAL")
 
-fn cli_invalid_value(what: String, name: String, value: String, expected: String) Error:
+fn cli_invalid_value(what String, name String, value String, expected String) Error:
 	return Error(f"cli: {what} {name}: {value} is not {expected}", kind: "EINVAL")
 
-fn cli_missing_required(name: String) Error:
+fn cli_missing_required(name String) Error:
 	return Error(f"cli: missing required {name}", kind: "EINVAL")
 
-fn cli_too_many_arguments(value: String) Error:
+fn cli_too_many_arguments(value String) Error:
 	return Error(f"cli: unexpected argument {value}", kind: "EINVAL")
 
-fn cli_invalid_schema(reason: String) Error:
+fn cli_invalid_schema(reason String) Error:
 	return Error(f"cli: invalid command schema: {reason}", kind: "EINVAL")

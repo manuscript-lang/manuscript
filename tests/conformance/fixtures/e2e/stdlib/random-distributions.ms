@@ -39,7 +39,7 @@ test "exponential samples are non-negative with mean one":
 test "permutation contains each index once":
 	var rng = seeded(3)
 	order := rng.permutation(50)
-	var expected: List[Int] = []
+	var expected List[Int] = []
 	for index in 0..50:
 		expected.append(index)
 	expect_equal(order.length(), 50)?

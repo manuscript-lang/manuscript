@@ -2,11 +2,11 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn check(n: Int) Void!:
+fn check(n Int) Void!:
 	if n < 0: return
 	return ok()
 
-fn forward(n: Int) Void!:
+fn forward(n Int) Void!:
 	check(n)?
 	return ok()
 

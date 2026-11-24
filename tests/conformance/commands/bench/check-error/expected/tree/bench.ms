@@ -1,2 +1,2 @@
 bench "x":
-	y: Int := "no"
+	y Int := "no"

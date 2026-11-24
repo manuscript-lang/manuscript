@@ -10,7 +10,7 @@ import (
 	microseconds, sleep from "@std/time.ms",
 )
 
-fn route(request: HttpRequest) HttpResponse:
+fn route(request HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: request.path.to_bytes())
 
 fn start() Void!:

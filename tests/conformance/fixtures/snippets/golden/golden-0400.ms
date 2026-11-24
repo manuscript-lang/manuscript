@@ -2,4 +2,4 @@
 // conform: phase=check
 
 fn run() Void:
-    ignored := 
+    ignored = 

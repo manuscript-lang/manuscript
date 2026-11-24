@@ -13,11 +13,11 @@ interface Priced:
     fn cents() Int
 
 type Book:
-    title: String
-    pages: Int
+    title String
+    pages Int
 
 type Subscription:
-    months: Int
+    months Int
 
 fn Book.cents() Int:
     return 500 + self.pages * 2
@@ -25,14 +25,14 @@ fn Book.cents() Int:
 fn Subscription.cents() Int:
     return self.months * 900
 
-fn total(items: List[Priced]) Int:
+fn total(items List[Priced]) Int:
     var sum = 0
     for item in items:
         sum += item.cents()
     return sum
 
-fn largest[T: Clonable](items: List[T], score: fn(T) Int) T?:
-    var best: T? = null
+fn largest[T Clonable](items List[T], score fn(T) Int) T?:
+    var best T? = null
     var best_score = 0
     for item in items:
         value := score(item)
@@ -42,7 +42,7 @@ fn largest[T: Clonable](items: List[T], score: fn(T) Int) T?:
     return best
 
 fn main() Void:
-    items: List[Priced] := [Book("Manuscript", 120), Subscription(6)]
+    items List[Priced] := [Book("Manuscript", 120), Subscription(6)]
     print(f"Cart: {total(items)} cents")
     top := largest([3, 9, 4], fn n: n)
     print(f"Largest: {top or 0}")

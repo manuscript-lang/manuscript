@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Data:\n\tvalue: Int\n\nfn record[T: Data](value: T) Void: return\n"
+    "fmt": "type Data:\n\tvalue Int\n\nfn record[T Data](value T) Void: return\n"
   }
 }

@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=tests/e2e/testdata/projects/same_type_names/other.ms
 export type Point:
-    x: Int
+    x Int
 
 export enum Mode:
     Off

@@ -14,21 +14,21 @@ import (
 // renders the tree as `D[..]` documents, `E<name>,<namespace>{attributes}[..]`
 // elements, and `T`, `C` and `Y` text, comment and doctype nodes, all hex-encoded.
 
-fn hx(text: String) String:
+fn hx(text String) String:
 	return hex_encode(text.to_bytes())
 
-fn unhex(token: String) String:
+fn unhex(token String) String:
 	h := token.view(1, token.length()).clone()
 	if h == "": return ""
 	if bytes := hex_decode(h, null): return bytes.decode_utf8() or ""
 
 	return ""
 
-fn limit(token: String) Int?:
+fn limit(token String) Int?:
 	if token == "-": return null
 	return token.parse_int()
 
-fn dump(node: HtmlNode, var out: String) Void:
+fn dump(node HtmlNode, var out String) Void:
 	match node:
 		Document(children):
 			out += "D["
@@ -45,7 +45,7 @@ fn dump(node: HtmlNode, var out: String) Void:
 		Doctype(name, public_id, system_id):
 			out += f"Y{hx(name)},{hx(public_id)},{hx(system_id)};"
 
-fn render(result: HtmlNode!) String:
+fn render(result HtmlNode!) String:
 	if value := result:
 		var sb = ""
 		dump(value, sb)
@@ -103,5 +103,5 @@ test "parse trees keep their size and checksum for the recorded large documents"
 
 	expect_equal(cases, 4)?
 
-fn checksum_hex(text: String) String:
+fn checksum_hex(text String) String:
 	return crc32(text.to_bytes()).to_hex()

@@ -2,6 +2,6 @@
 // conform: phase=check
 // conform: origin=tests/e2e/inherent_methods_test.go:38 TestInherentImplRejections
 type B:
-    x: Int
+    x Int
 
 fn B.m() Int: ...

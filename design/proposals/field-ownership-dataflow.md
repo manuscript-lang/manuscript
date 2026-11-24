@@ -20,10 +20,10 @@ Verified on `083edc8e` with `ms check`:
 
 ```manuscript
 type Big:
-    name: String
-    items: List[Int]
+    name String
+    items List[Int]
 
-fn take(b: Big) List[Int]:
+fn take(b Big) List[Int]:
     xs := b.items
     return xs
 ```
@@ -119,17 +119,17 @@ MIR already flattens records to leaves with `rec.get`, `move.out` and `drop.if` 
 
 ```manuscript
 type Big:
-    name: String
-    items: List[Int]
+    name String
+    items List[Int]
 
-fn take(b: Big) List[Int]:      // accepted: moves b.items; b.name is dropped at return
+fn take(b Big) List[Int]:      // accepted: moves b.items; b.name is dropped at return
     return b.items
 
-fn both(b: Big) Int:
+fn both(b Big) Int:
     xs := b.items            // moves items
     return xs.length() + b.name.length()   // accepted: name is still init
 
-fn bad(b: Big) Int:
+fn bad(b Big) Int:
     xs := b.items
     return b.items.length()     // rejected: use of moved field `b.items`
 ```

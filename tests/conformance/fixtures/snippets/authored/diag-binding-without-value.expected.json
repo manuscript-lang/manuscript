@@ -9,25 +9,25 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected ':=', found end of line; a binding needs a value: write name := value, or name: Type := value; closure parameters with a type go in parentheses, as in fn(n: Int): n + 1",
+        "message": "only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function",
         "position": {
           "file": "diag-binding-without-value.ms",
           "line": 4,
-          "column": 11,
-          "offset": 95
+          "column": 5,
+          "offset": 89
         },
         "end": {
           "file": "diag-binding-without-value.ms",
           "line": 4,
-          "column": 11,
-          "offset": 95
+          "column": 6,
+          "offset": 90
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-binding-without-value.ms:4:11: parse: expected ':=', found end of line; a binding needs a value: write name := value, or name: Type := value; closure parameters with a type go in parentheses, as in fn(n: Int): n + 1\n   |\n 4 |     y: Int\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-binding-without-value.ms:4:5: parse: only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function\n   |\n 4 |     y Int\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -7,9 +7,9 @@ import (
 )
 
 type TextOwner:
-	text: String
-	log: String
-	id: Int
+	text String
+	log String
+	id Int
 
 fn move TextOwner.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
@@ -17,30 +17,30 @@ fn move TextOwner.close() Void!:
 
 fn TextOwner.read() String: self.text
 
-fn TextOwner.read_default(_tag: Int = 0) String: self.text
+fn TextOwner.read_default(_tag Int = 0) String: self.text
 
-fn owner(id: Int, log: String) TextOwner:
+fn owner(id Int, log String) TextOwner:
 	return TextOwner(f"payload-{id}", log.clone(), id)
 
-fn ordinary(log: String) String:
+fn ordinary(log String) String:
 	read := owner(1, log).read
 	return read()
 
-fn defaulted(log: String) String:
+fn defaulted(log String) String:
 	read := owner(2, log).read_default
 	return read()
 
-fn explicit_default(log: String) String:
+fn explicit_default(log String) String:
 	read := owner(3, log).read_default
 	return read(9)
 
-fn repeated(log: String) List[String]:
+fn repeated(log String) List[String]:
 	read := owner(4, log).read
 	first := read()
 	second := read()
 	return [first, second]
 
-fn repeated_default(log: String) List[String]:
+fn repeated_default(log String) List[String]:
 	read := owner(5, log).read_default
 	first := read()
 	second := read(7)

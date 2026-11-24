@@ -14,7 +14,7 @@
           "file": "lent-collection-keep-rejected.ms",
           "line": 9,
           "column": 32,
-          "offset": 279
+          "offset": 277
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "lent-collection-keep-rejected.ms",
           "line": 12,
           "column": 14,
-          "offset": 345
+          "offset": 342
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "lent-collection-keep-rejected.ms",
           "line": 15,
           "column": 14,
-          "offset": 410
+          "offset": 406
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "lent-collection-keep-rejected.ms",
           "line": 20,
           "column": 5,
-          "offset": 514
+          "offset": 509
         }
       }
     ],

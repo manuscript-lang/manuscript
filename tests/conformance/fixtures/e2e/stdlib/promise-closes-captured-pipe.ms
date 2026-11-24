@@ -7,7 +7,7 @@ import (
 	Pipe, pipe from "@std/io/io.ms",
 )
 
-fn drain(input: Pipe[Int]) Void!:
+fn drain(input Pipe[Int]) Void!:
 	while true:
 		item := input.receive()
 		if item.is_error(): break
@@ -19,7 +19,7 @@ fn drain(input: Pipe[Int]) Void!:
 		else:
 			break
 
-fn start(move input: Pipe[Int]) Promise[Void]:
+fn start(move input Pipe[Int]) Promise[Void]:
 	return promise(fn: drain(input))
 
 export fn main() Int:

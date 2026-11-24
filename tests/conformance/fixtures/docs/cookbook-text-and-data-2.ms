@@ -6,8 +6,8 @@ import parse, stringify from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 type Config:
-    name: String
-    enabled: Bool = true
+    name String
+    enabled Bool = true
 
 fn run() Result[Void, Error]:
     text := arguments().get_or(0, "{\"name\":\"Sam\"}")

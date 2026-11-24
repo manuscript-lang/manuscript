@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/prelude_test.go:72 TestCollectionPreludeAndShadowing
 type Map[K, V]:
-    value: V
+    value V
 
-fn f(m: Map[String, Int]) Void:
+fn f(m Map[String, Int]) Void:
     m.add("a", 1)

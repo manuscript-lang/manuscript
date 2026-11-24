@@ -1,8 +1,8 @@
 // conform: tags=diagnostics,closures,generics,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-fn source(_0: Int) Int: _0
+fn source(_0 Int) Int: _0
 
-fn apply[T](callback: fn(String) T) Void: return
+fn apply[T](callback fn(String) T) Void: return
 
 fn exercise() Void: apply(source)

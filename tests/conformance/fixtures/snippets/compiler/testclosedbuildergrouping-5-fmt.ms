@@ -4,5 +4,5 @@
 
 fn fragment() String: return "x"
 
-fn probe(flag: Bool) String:
+fn probe(flag Bool) String:
     b := ""

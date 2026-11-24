@@ -5,46 +5,46 @@ import (
 )
 
 type Event:
-	id: Int
-	kind: Int
-	name: String
-	score: Int
+	id Int
+	kind Int
+	name String
+	score Int
 
 enum Shape:
-	Circle(r: Int)
-	Rect(w: Int, h: Int)
+	Circle(r Int)
+	Rect(w Int, h Int)
 	Dot
 
 type Pair[A, B]:
-	first: A
-	second: B
+	first A
+	second B
 
 type Job:
-	pri: Int
-	id: Int
+	pri Int
+	id Int
 
-fn Job.compare(other: Job) Int:
+fn Job.compare(other Job) Int:
 	return self.pri - other.pri
 
 type Pt:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
-fn Pt.equals(other: Pt) Bool:
+fn Pt.equals(other Pt) Bool:
 	return self.x == other.x and self.y == other.y
 
 fn Pt.hash() Int:
 	return self.x * 1000003 + self.y
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn us(a: Int, b: Int) Int:
+fn us(a Int, b Int) Int:
 	return (b - a) / 1000
 
 // 1. List of records with a String field: append, field scan.
 fn list_records() Int:
-	var xs: List[Event] = []
+	var xs List[Event] = []
 	for i in 0..1000000:
 		xs.append(
 			Event(
@@ -63,7 +63,7 @@ fn list_records() Int:
 
 // 2. List of payload enums: build, match.
 fn list_enums() Int:
-	var xs: List[Shape] = []
+	var xs List[Shape] = []
 
 	for i in 0..2000000:
 		k := i % 3
@@ -85,7 +85,7 @@ fn list_enums() Int:
 
 // 3. Map[Int, record]: insert and update in place.
 fn map_records() Int:
-	var m: Map[Int, Event] = {}
+	var m Map[Int, Event] = {}
 	var x = 1
 
 	for i in 0..1000000:
@@ -102,7 +102,7 @@ fn map_records() Int:
 
 // 4. Map[String, List[Int]]: group.
 fn map_groups() Int:
-	var m: Map[String, List[Int]] = {}
+	var m Map[String, List[Int]] = {}
 	var x = 1
 
 	for i in 0..1000000:
@@ -118,12 +118,12 @@ fn map_groups() Int:
 	return t
 
 // 5. Optional[record]: return an optional record from a lookup, 10M times.
-fn find(xs: List[Event], i: Int) Event?:
+fn find(xs List[Event], i Int) Event?:
 	if i % 4 == 0: return null
 	return xs[i % xs.length()].clone()
 
 fn optional_records() Int:
-	var xs: List[Event] = []
+	var xs List[Event] = []
 	for i in 0..1000:
 		xs.append(Event(i, i % 7, "an-event-name-over-sixteen-bytes", i % 13))
 
@@ -166,14 +166,14 @@ fn pq_records() Int:
 	return t
 
 // 8. Generic Pair[Int, String] list and a generic helper.
-fn first_of[A: Clonable, B](xs: List[Pair[A, B]]) List[A]:
-	var out: List[A] = []
+fn first_of[A Clonable, B](xs List[Pair[A, B]]) List[A]:
+	var out List[A] = []
 	for p in xs:
 		out.append(p.first.clone())
 	return out
 
 fn generic_pairs() Int:
-	var xs: List[Pair[Int, String]] = []
+	var xs List[Pair[Int, String]] = []
 	for i in 0..1000000:
 		xs.append(Pair[Int, String](i, f"v{i % 10}"))
 
@@ -184,7 +184,7 @@ fn generic_pairs() Int:
 	return t
 
 // 9. Result of a record in a hot call.
-fn make(i: Int) Event!:
+fn make(i Int) Event!:
 	if i % 10 == 0: return error(Error("bad", kind: "EINVAL"))
 	return ok(Event(i, i % 7, "an-event-name-over-sixteen-bytes", i % 13))
 
@@ -215,7 +215,7 @@ fn set_records() Int:
 
 // 11. Sorting records by a comparator.
 fn sort_records() Int:
-	var xs: List[Event] = []
+	var xs List[Event] = []
 	var x = 1
 
 	for i in 0..500000:
@@ -226,16 +226,16 @@ fn sort_records() Int:
 	return ys[0].kind + ys[ys.length() - 1].kind + ys[1000].id % 7
 
 type Order:
-	id: Int
-	tags: List[String]
-	lines: List[Pair[Int, Int]]
+	id Int
+	tags List[String]
+	lines List[Pair[Int, Int]]
 
 // 12. Records holding lists: build, move into a list, scan.
 fn records_of_lists() Int:
-	var orders: List[Order] = []
+	var orders List[Order] = []
 
 	for i in 0..200000:
-		var lines: List[Pair[Int, Int]] = []
+		var lines List[Pair[Int, Int]] = []
 		for k in 0..4:
 			lines.append(Pair[Int, Int](k, i % 7))
 		orders.append(Order(i, [f"a{i % 3}", "b"], lines))
@@ -249,14 +249,14 @@ fn records_of_lists() Int:
 
 // 13. Nested generics: Map[Int, List[Pair[Int, String]]] and List[List[Int]].
 fn nested_generics() Int:
-	var m: Map[Int, List[Pair[Int, String]]] = {}
+	var m Map[Int, List[Pair[Int, String]]] = {}
 
 	for i in 0..500000:
 		k := i % 2000
 		if not m.contains(k): m[k] = []
 		m[k].append(Pair[Int, String](i, "p"))
 
-	var grid: List[List[Int]] = []
+	var grid List[List[Int]] = []
 	for y in 0..1000:
 		grid.append([0].repeated(1000))
 
@@ -273,9 +273,9 @@ fn nested_generics() Int:
 
 // 14. A user generic Stack[T] of records with Optional pops.
 type Stack[T]:
-	items: List[T] = []
+	items List[T] = []
 
-fn var Stack[T].push(v: T) Void:
+fn var Stack[T].push(v T) Void:
 	self.items.append(v)
 
 fn var Stack[T].pop() T?:
@@ -296,7 +296,7 @@ fn generic_stack() Int:
 
 // 15. Map with enum-payload values: insert, look up, match.
 fn map_enums() Int:
-	var m: Map[Int, Shape] = {}
+	var m Map[Int, Shape] = {}
 
 	for i in 0..200000:
 		k := i % 3
@@ -321,11 +321,11 @@ fn map_enums() Int:
 
 // 16. String and Optional chains: split, trim, parse, accumulate in a Map.
 fn string_chains() Int:
-	var lines: List[String] = []
+	var lines List[String] = []
 	for i in 0..200000:
 		lines.append(f"  key{i % 500} = {i % 97}  ")
 
-	var m: Map[String, Int] = {}
+	var m Map[String, Int] = {}
 	var bad = 0
 
 	for r in 0..3:

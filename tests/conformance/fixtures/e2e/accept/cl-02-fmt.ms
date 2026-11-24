@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/cl-02.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn invalid_division(zero: Int) Bool:
+fn invalid_division(zero Int) Bool:
     return 1 / zero == 0
 
 test "grouping and short circuit":

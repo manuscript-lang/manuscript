@@ -14,10 +14,10 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn echo(request: HttpRequest) HttpResponse:
+fn echo(request HttpRequest) HttpResponse:
 	return text(201, f"{request.path}:{(request.body.decode_utf8() or "")}")
 
-fn exchange_echo(var exchange: HttpExchange) Void!:
+fn exchange_echo(var exchange HttpExchange) Void!:
 	body := read_body(exchange, 8)?
 	return reply(exchange, text(200, f"{body.length()}"))
 
@@ -56,7 +56,7 @@ test "read_body bounds the body by its limit":
 	)?
 	expect_equal(large.metadata.status, 500)?
 
-fn bare(request: HttpRequest) HttpResponse:
+fn bare(request HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, body: "bare".to_bytes())
 
 test "serve, the client and a response take their defaults":

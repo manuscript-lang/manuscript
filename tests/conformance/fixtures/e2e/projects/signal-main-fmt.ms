@@ -6,8 +6,8 @@ import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Resource:
-    label: String
-    output: WriteStream
+    label String
+    output WriteStream
 
 fn Resource.close() Void!:
     _ignored := self.output.write(f"close {self.label}\n")

@@ -6,29 +6,29 @@ import (
 )
 
 type Item:
-	sku: String
-	qty: Int
+	sku String
+	qty Int
 
 type Order:
-	items: List[Item]
-	status: String
-	total: Int
+	items List[Item]
+	status String
+	total Int
 
 type Warehouse:
-	stock: Map[String, Int]
-	price: Map[String, Int]
-	orders: Map[String, Order]
+	stock Map[String, Int]
+	price Map[String, Int]
+	orders Map[String, Order]
 
-fn money(c: Int) String: return f"{c / 100}.{if c % 100 < 10: "0" else: ""}{c % 100}"
+fn money(c Int) String: return f"{c / 100}.{if c % 100 < 10: "0" else: ""}{c % 100}"
 
-fn valid_sku(s: String) Bool: return (
+fn valid_sku(s String) Bool: return (
 	not s.is_empty()
 	and s.scalar_values().all(
 		fn c: ((c >= 65 and c <= 90) or (c >= 48 and c <= 57) or c == 45)
 	)
 )
 
-fn valid_oid(s: String) Bool: return (
+fn valid_oid(s String) Bool: return (
 	not s.is_empty()
 	and s.scalar_values().all(
 		fn c: ((c >= 97 and c <= 122) or (c >= 48 and c <= 57) or c == 45)
@@ -36,7 +36,7 @@ fn valid_oid(s: String) Bool: return (
 )
 
 // 1 to 7 ASCII digits within lo..hi.
-fn number(s: String, lo: Int, hi: Int) Int?:
+fn number(s String, lo Int, hi Int) Int?:
 	if (
 		s.length() < 1
 		or s.length() > 7
@@ -46,7 +46,7 @@ fn number(s: String, lo: Int, hi: Int) Int?:
 	n := s.parse_int() or panic("called Optional.get() on null")
 	return if n >= lo and n <= hi: n else: null
 
-fn place_order(var w: Warehouse, t: List[String]) String:
+fn place_order(var w Warehouse, t List[String]) String:
 	id := t[1]
 	if not valid_oid(id): return "error: bad order id"
 	if w.orders.contains(id): return f"error: order {id} already exists"
@@ -104,7 +104,7 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 	w.orders[id.clone()] = Order(items, "placed", total)
 	return f"ok {id} total={money(total)}"
 
-fn report(w: Warehouse) String:
+fn report(w Warehouse) String:
 	var reserved = Map[String, Int]()
 	orders := w.orders.values()
 	for o in orders.filter(fn o: o.status == "placed"):
@@ -113,14 +113,14 @@ fn report(w: Warehouse) String:
 			+ it.qty
 		)
 
-	count := fn(s: String) Int: orders.count(fn o: o.status == s)
+	count := fn(s String) Int: orders.count(fn o: o.status == s)
 	rows := w.stock.keys().sorted(fn a, b: a.compare(b)).map(
 		fn k: f"{k} stock={(w.stock.get(k) or panic("called Optional.get() on null"))} price={money(w.price.get(k) or panic("called Optional.get() on null"))} reserved={reserved.get_or(k, 0)}"
 	)
 	revenue := orders.filter(fn o: o.status == "shipped").map(fn o: o.total).sum()
 	return f"{rows.join("\n")}{if rows.is_empty(): "" else: "\n"}orders placed={count("placed")} shipped={count("shipped")} cancelled={count("cancelled")}\nrevenue={money(revenue)}"
 
-fn run_command(var w: Warehouse, line: String) String:
+fn run_command(var w Warehouse, line String) String:
 	t := line.split(" ")
 	name := t[0]
 	arity := (

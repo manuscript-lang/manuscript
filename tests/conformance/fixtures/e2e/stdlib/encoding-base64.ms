@@ -45,7 +45,7 @@ test "Base64 encodes every byte and empty views":
 	expect_equal(base64_decode(base64_encode(data))?, data)?
 	expect_equal(base64_decode(base64_encode(data, true), true)?, data)?
 
-fn padded_input(length: Int) Bytes:
+fn padded_input(length Int) Bytes:
 	var out = BytesBuilder()
 	out.append(42)
 

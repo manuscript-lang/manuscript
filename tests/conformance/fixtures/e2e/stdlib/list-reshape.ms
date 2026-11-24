@@ -6,8 +6,8 @@ import (
 )
 
 type Person:
-	name: String
-	age: Int
+	name String
+	age Int
 
 test "retain keeps matching elements in order":
 	var xs = [1, 2, 3, 4, 5, 6]

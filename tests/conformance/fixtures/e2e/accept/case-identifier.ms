@@ -3,17 +3,17 @@
 import expect_equal from "@std/test/test.ms"
 
 type Item:
-	case: Int
+	case Int
 
 enum PayloadKeyword:
-	case(value: Int)
+	case(value Int)
 
 enum NullaryKeyword:
 	case
 
-fn case(value: Int) Int: value + 1
+fn case(value Int) Int: value + 1
 
-fn present(value: Int?) Int:
+fn present(value Int?) Int:
 	match value:
 		case: return case
 		null: return 0

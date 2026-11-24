@@ -26,33 +26,33 @@ import (
 	hostile, slugify, sorted_unique, tags_for from "./tags.ms",
 )
 
-SKIP_DIRS: List[String] := [
+SKIP_DIRS List[String] := [
 	"vendor", "toolchain", "target", "node_modules", "website", "dist"
 ]
 
 // What can be fixtured: a single source, or a project directory (has `ms.toml`).
 type Candidate:
 	// Where it came from, recorded in the fixture header.
-	origin: String
+	origin String
 	// Directory (`snippets`, `e2e`, ...) and slug that make the fixture id.
-	category: String
-	slug: String
-	is_project: Bool
-	text: String
-	dir: String
+	category String
+	slug String
+	is_project Bool
+	text String
+	dir String
 
 // What `ms check` said about a candidate.
 type Verdict:
-	parse_errors: Bool
-	type_errors: Bool
-	unusable: String
+	parse_errors Bool
+	type_errors Bool
+	unusable String
 
-fn skipped(path: String) Bool:
+fn skipped(path String) Bool:
 	for part in path.split("/"):
 		if part.starts_with(".") or SKIP_DIRS.contains(part): return true
 	return false
 
-fn category_of(relative: String) List[String]:
+fn category_of(relative String) List[String]:
 	var rel = relative.clone()
 	if rel.ends_with(".ms"): rel = rel.slice(0, rel.length() - 3).clone()
 	if rel.starts_with("tests/e2e/testdata/"): rel = rel.slice(
@@ -79,7 +79,7 @@ fn category_of(relative: String) List[String]:
 	return [category, slugify(rest)]
 
 // Candidates found by walking the repository.
-fn scan_tree(repo: String) List[Candidate]:
+fn scan_tree(repo String) List[Candidate]:
 	var projects = List[String]()
 
 	for entry in glob(repo, GlobOptions(patterns: ["**/ms.toml"])).get_or([]):
@@ -136,7 +136,7 @@ fn scan_tree(repo: String) List[Candidate]:
 	return found
 
 // Candidates from ```manuscript fences under `documentation/`.
-fn scan_docs(repo: String) List[Candidate]:
+fn scan_docs(repo String) List[Candidate]:
 	var found = List[Candidate]()
 	var files = List[String]()
 	for entry in glob(f"{repo}/documentation", GlobOptions(patterns: ["**/*.md"])).get_or(
@@ -182,12 +182,12 @@ fn scan_docs(repo: String) List[Candidate]:
 
 	return found
 
-fn unusable(reason: String) Verdict:
+fn unusable(reason String) Verdict:
 	return Verdict(parse_errors: false, type_errors: false, unusable: reason.clone())
 
 // Copies the project at `from` into `to` without hidden or build directories and
 // without harness files.
-fn copy_project(from: String, to: String) Void:
+fn copy_project(from String, to String) Void:
 	create_directory(to.slice(0, parent_length(to)).clone(), recursive: true).get()
 	copy(from, to, CopyOptions(recursive: true, replace: true)).get()
 	for pattern in [
@@ -197,12 +197,7 @@ fn copy_project(from: String, to: String) Void:
 		for entry in glob(to, GlobOptions(patterns: [pattern])).get_or([]):
 			void remove(f"{to}/{entry.path}", recursive: true)
 
-fn check_candidate(
-	ms: String,
-	scratch: String,
-	index: Int,
-	candidate: Candidate,
-) Verdict:
+fn check_candidate(ms String, scratch String, index Int, candidate Candidate) Verdict:
 	work := f"{scratch}/c{index}"
 	void remove(work, recursive: true)
 
@@ -240,26 +235,21 @@ fn check_candidate(
 
 	return verdict
 
-fn check_chunk(
-	ms: String,
-	scratch: String,
-	base: Int,
-	chunk: List[Candidate],
-) List[Verdict]:
+fn check_chunk(ms String, scratch String, base Int, chunk List[Candidate]) List[Verdict]:
 	var verdicts = List[Verdict]()
 	for offset in 0..chunk.length(): verdicts.append(
 		check_candidate(ms, scratch, base + offset, chunk[offset])
 	)
 	return verdicts
 
-fn has_test_blocks(text: String) Bool:
+fn has_test_blocks(text String) Bool:
 	return text.contains("\ntest \"") or text.starts_with("test \"")
 
-fn has_main(text: String) Bool:
+fn has_main(text String) Bool:
 	return text.contains("export fn main(")
 
 // The text of a project directory's sources, to classify and tag it.
-fn project_text(dir: String) String:
+fn project_text(dir String) String:
 	var text = ""
 
 	for entry in glob(dir, GlobOptions(patterns: ["**/*.ms", "ms.toml"])).get_or([]):
@@ -269,7 +259,7 @@ fn project_text(dir: String) String:
 
 	return text
 
-fn header(origin: String, phase: String, text: String, extra: List[String]) Meta:
+fn header(origin String, phase String, text String, extra List[String]) Meta:
 	var tags = tags_for(text, phase)
 	for tag in extra: tags.append(tag.clone())
 	return Meta(
@@ -282,7 +272,7 @@ fn header(origin: String, phase: String, text: String, extra: List[String]) Meta
 		deterministic: false,
 	)
 
-fn strip_headers(source: String) String:
+fn strip_headers(source String) String:
 	var lines = source.split("\n")
 	var skipped_lines = 0
 	while (
@@ -292,12 +282,12 @@ fn strip_headers(source: String) String:
 	return lines.slice(skipped_lines, lines.length()).get_or([]).join("\n")
 
 fn write_source(
-	corpus: String,
-	id: String,
-	origin: String,
-	phase: String,
-	body: String,
-	extra: List[String],
+	corpus String,
+	id String,
+	origin String,
+	phase String,
+	body String,
+	extra List[String],
 ) Bool:
 	path := f"{corpus}/{id}.ms"
 	create_directory(path.slice(0, parent_length(path)).clone(), recursive: true).get()
@@ -307,11 +297,11 @@ fn write_source(
 	return write_file(path, text, replace: true).wait().is_ok()
 
 fn write_single(
-	corpus: String,
-	id: String,
-	candidate: Candidate,
-	verdict: Verdict,
-	twins: Bool,
+	corpus String,
+	id String,
+	candidate Candidate,
+	verdict Verdict,
+	twins Bool,
 ) List[String]:
 	body := strip_headers(candidate.text)
 	var phase = "check"
@@ -343,10 +333,10 @@ fn write_single(
 	return written
 
 fn write_project(
-	corpus: String,
-	id: String,
-	candidate: Candidate,
-	verdict: Verdict,
+	corpus String,
+	id String,
+	candidate Candidate,
+	verdict Verdict,
 ) List[String]:
 	text := project_text(candidate.dir)
 	var phase = "check"
@@ -372,7 +362,7 @@ fn write_project(
 
 	return written
 
-export fn harvest(root: String, corpus: String, args: Args) Int:
+export fn harvest(root String, corpus String, args Args) Int:
 	repo := one(args, "repo", root)
 	ms := one(args, "ms", tool_ms(root))
 	var candidates = List[Candidate]()

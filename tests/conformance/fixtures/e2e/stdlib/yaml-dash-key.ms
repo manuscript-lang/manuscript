@@ -4,7 +4,7 @@ import YamlValue, parse from "@std/data/yaml.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
 // `-` and `?` followed directly by the mapping colon are plain keys, not indicators.
-fn number_at(doc: YamlValue, key: String) String:
+fn number_at(doc YamlValue, key String) String:
     match doc:
         ObjectValue(m):
             value := m.get_or(key, YamlValue.Null)

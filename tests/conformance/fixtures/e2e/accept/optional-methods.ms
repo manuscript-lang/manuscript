@@ -7,38 +7,38 @@ import (
 )
 
 type Counter:
-	calls: Int
+	calls Int
 
-fn fallback(var counter: Counter) Int:
+fn fallback(var counter Counter) Int:
 	counter.calls += 1
 	return 42
 
-fn value_or[T](fallback: T, value: T?) T:
+fn value_or[T](fallback T, value T?) T:
 	inner := value
 	if inner != null: return inner
 
 	return fallback
 
-fn increment(value: Int) Int: value + 1
+fn increment(value Int) Int: value + 1
 
 test "Optional presence and extraction preserve false and zero":
-	present: Int? := 0
-	missing: Int? := null
+	present Int? := 0
+	missing Int? := null
 	expect_false(not (present != null))?
 	expect_false(present == null)?
 	expect_false(missing != null)?
 	expect_false(not (missing == null))?
 	expect_equal(present or panic("called Optional.get() on null"), 0)?
 
-	flag: Bool? := false
+	flag Bool? := false
 	expect_false(flag or panic("called Optional.get() on null"))?
 	expect_equal(value_or(7, missing), 7)?
 	expect_equal(value_or(7, present), 0)?
 	expect_false(missing != null)?
 
 test "the fallback of or runs only when the value is null":
-	present: Int? := 0
-	missing: Int? := null
+	present Int? := 0
+	missing Int? := null
 	var counter = Counter(0)
 	expect_equal(present or fallback(counter), 0)?
 	expect_equal(counter.calls, 0)?
@@ -50,15 +50,15 @@ test "the fallback of or runs only when the value is null":
 	expect_equal((missing or create()) or panic("called Optional.get() on null"), 42)?
 
 test "Optional methods retain generic payload and receiver identity":
-	inner: Int? := null
-	outer: Int?? := inner
+	inner Int? := null
+	outer Int?? := inner
 	expect_true(outer == null)?  // `Int??` is `Int?`: a nullable of a nullable has no second layer
 
 	counter := Counter(3)
-	record: Counter? := counter.clone()
+	record Counter? := counter.clone()
 	expect_equal((record or panic("called Optional.get() on null")).calls, 3)?
 
-	callback: (fn(Int) Int)? := increment
+	callback (fn(Int) Int)? := increment
 	expect_equal((callback or panic("called Optional.get() on null"))(2), 3)?
 
 	snapshot := outer.clone()
@@ -66,7 +66,7 @@ test "Optional methods retain generic payload and receiver identity":
 
 test "Optional fallbacks preserve standard option records":
 	limits := JsonOptions(max_bytes: -1)
-	missing: JsonOptions? := null
+	missing JsonOptions? := null
 	var extracted = (missing or limits).clone()
 	expect_equal(extracted.max_bytes or panic("called Optional.get() on null"), -1)?
 	expect_false(not (extracted.max_depth == null))?

@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn choose(value: Choice) Int:
+fn choose(value Choice) Int:
     match value:
         long_variant(
             first_payload_name,

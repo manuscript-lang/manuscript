@@ -1,6 +1,6 @@
 import expect_equal from "@std/test/test.ms"
 
-fn double(n: Int) Int:
+fn double(n Int) Int:
 	return n * 2
 
 test "double":

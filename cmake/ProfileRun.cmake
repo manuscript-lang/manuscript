@@ -7,7 +7,7 @@ file(MAKE_DIRECTORY "${WORK}")
 # A recursive function, which the compiler cannot inline into `main`, so it shows as a frame of its own. It runs for
 # about half a second: the sampler ticks no faster than the kernel timer (about 100 Hz on macOS), so a run of tens of
 # milliseconds can get one sample, in the runtime, and no frame of its own.
-file(WRITE "${WORK}/busy.ms" "fn fib(n: Int) Int:
+file(WRITE "${WORK}/busy.ms" "fn fib(n Int) Int:
     if n < 2:
         return n
     return fib(n - 1) + fib(n - 2)
@@ -90,10 +90,10 @@ expect_contains("${out}" "\"reason\": \"program_exit\"" "json")
 expect_contains("${out}" "\"profile\": {" "json")
 
 # --allocs: a recursive function that allocates on every call is named in the allocation report, text and JSON.
-file(WRITE "${WORK}/alloc.ms" "fn grow(n: Int) Int:
+file(WRITE "${WORK}/alloc.ms" "fn grow(n Int) Int:
     if n == 0:
         return 0
-    var xs: List[Int] = []
+    var xs List[Int] = []
     xs.append(n)
     xs.append(n)
     return xs.length() + grow(n - 1)
@@ -123,7 +123,7 @@ expect_contains("${out}" "\"allocs\": {" "json")
 expect_contains("${out}" "\"function\": \"grow\"" "json")
 
 # A program that does not compile leaves no directory behind.
-file(WRITE "${WORK}/bad.ms" "fn main() Int:\n    x: Int := \"no\"\n    return 0\n")
+file(WRITE "${WORK}/bad.ms" "fn main() Int:\n    x Int := \"no\"\n    return 0\n")
 execute_process(COMMAND "${MS_C}" profile bad.ms --out-dir bad-bundle WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status ERROR_VARIABLE err)
 if(NOT status EQUAL 1 OR EXISTS "${WORK}/bad-bundle")

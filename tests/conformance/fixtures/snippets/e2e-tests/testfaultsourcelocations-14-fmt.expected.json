@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn crash(value: Int) Int:\n\treturn 1 / value\n\nexport fn main() Int:\n\tvar value = Set[Int]()\n\tvalue.add(0)\n\treturn value.map(crash).length()\n"
+    "fmt": "fn crash(value Int) Int:\n\treturn 1 / value\n\nexport fn main() Int:\n\tvar value = Set[Int]()\n\tvalue.add(0)\n\treturn value.map(crash).length()\n"
   }
 }

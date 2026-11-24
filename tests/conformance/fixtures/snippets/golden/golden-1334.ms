@@ -2,7 +2,7 @@
 // conform: phase=check
 enum Failure:
     NotFound
-    Denied(reason: String)
+    Denied(reason String)
 impl Error for Failure:
     fn message() String: "f"
 fn classify(result: Result[Int, Failure]) Int:

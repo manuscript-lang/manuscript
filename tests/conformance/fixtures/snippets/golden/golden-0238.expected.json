@@ -14,7 +14,7 @@
           "file": "golden-0238.ms",
           "line": 6,
           "column": 13,
-          "offset": 164
+          "offset": 161
         },
         "fix": {
           "position": {
@@ -40,20 +40,20 @@
           "file": "golden-0238.ms",
           "line": 8,
           "column": 13,
-          "offset": 221
+          "offset": 218
         },
         "fix": {
           "position": {
             "file": "golden-0238.ms",
             "line": 3,
-            "column": 32,
-            "offset": 84
+            "column": 31,
+            "offset": 83
           },
           "end": {
             "file": "golden-0238.ms",
             "line": 3,
-            "column": 32,
-            "offset": 84
+            "column": 31,
+            "offset": 83
           },
           "replacement": "var "
         }

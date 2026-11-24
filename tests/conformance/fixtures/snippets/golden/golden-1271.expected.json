@@ -14,20 +14,20 @@
           "file": "golden-1271.ms",
           "line": 7,
           "column": 15,
-          "offset": 143
+          "offset": 141
         },
         "fix": {
           "position": {
             "file": "golden-1271.ms",
             "line": 5,
             "column": 9,
-            "offset": 84
+            "offset": 83
           },
           "end": {
             "file": "golden-1271.ms",
             "line": 5,
             "column": 9,
-            "offset": 84
+            "offset": 83
           },
           "replacement": "var "
         }
@@ -40,20 +40,20 @@
           "file": "golden-1271.ms",
           "line": 6,
           "column": 17,
-          "offset": 118
+          "offset": 116
         },
         "fix": {
           "position": {
             "file": "golden-1271.ms",
             "line": 5,
             "column": 9,
-            "offset": 84
+            "offset": 83
           },
           "end": {
             "file": "golden-1271.ms",
             "line": 5,
             "column": 9,
-            "offset": 84
+            "offset": 83
           },
           "replacement": "var "
         }

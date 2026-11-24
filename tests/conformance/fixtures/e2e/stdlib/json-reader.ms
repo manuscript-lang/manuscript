@@ -9,9 +9,9 @@ import (
 
 // Hands out the chunks in order, then ends.
 type Chunks:
-	data: Bytes
-	size: Int
-	at: Int
+	data Bytes
+	size Int
+	at Int
 
 fn var Chunks.next() Bytes?!:
 	if self.at >= self.data.length(): return ok(null)
@@ -26,17 +26,17 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
+fn chunked(move data Bytes, size Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 // Reads every value as text, or the first error.
 fn decode(
-	move input: Bytes,
-	size: Int,
-	limits: JsonOptions = JsonOptions(),
+	move input Bytes,
+	size Int,
+	limits JsonOptions = JsonOptions(),
 ) List[String]!:
 	var values = json_reader[JsonValue](chunked(input, size), limits)
-	var out: List[String] = []
+	var out List[String] = []
 
 	while true:
 		next := values.next()?

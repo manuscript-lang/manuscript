@@ -2,13 +2,13 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn apply(f: fn(Int) Int, n: Int) Int:
+fn apply(f fn(Int) Int, n Int) Int:
 	var acc = 0
 	for i in 0..n:
 		acc += f(i)
 	return acc
 
-fn keep(f: fn(Int) Int) fn(Int) Int:
+fn keep(f fn(Int) Int) fn(Int) Int:
 	return f
 
 test "a closure passed only to calls is released with its captures":

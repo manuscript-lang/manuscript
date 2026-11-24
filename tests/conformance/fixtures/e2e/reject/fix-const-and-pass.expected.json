@@ -9,12 +9,12 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant",
+        "message": "an immutable binding uses ':=' after its type: write 'x Type := value'; '=' binds only after 'var'",
         "position": {
           "file": "fix-const-and-pass.ms",
           "line": 3,
-          "column": 1,
-          "offset": 63
+          "column": 13,
+          "offset": 75
         },
         "end": {
           "file": "fix-const-and-pass.ms",
@@ -26,8 +26,8 @@
           "position": {
             "file": "fix-const-and-pass.ms",
             "line": 3,
-            "column": 1,
-            "offset": 63
+            "column": 13,
+            "offset": 75
           },
           "end": {
             "file": "fix-const-and-pass.ms",
@@ -35,7 +35,7 @@
             "column": 14,
             "offset": 76
           },
-          "replacement": "LIMIT :="
+          "replacement": ":="
         }
       },
       {
@@ -106,7 +106,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-const-and-pass.ms:3:1: parse: 'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 3 | const LIMIT = 3\n   | ^^^^^^^^^^^^^\n<DIR>/fix-const-and-pass.ms:4:1: parse: 'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 4 | const NAME: String = \"a\"\n   | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/fix-const-and-pass.ms:8:9: parse: 'pass' is not a keyword; write 'void' for an empty block or match arm\n   |\n 8 |         pass\n   |         ^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-const-and-pass.ms:3:13: parse: an immutable binding uses ':=' after its type: write 'x Type := value'; '=' binds only after 'var'\n   |\n 3 | const LIMIT = 3\n   |             ^\n<DIR>/fix-const-and-pass.ms:4:1: parse: 'const' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 4 | const NAME: String = \"a\"\n   | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/fix-const-and-pass.ms:8:9: parse: 'pass' is not a keyword; write 'void' for an empty block or match arm\n   |\n 8 |         pass\n   |         ^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

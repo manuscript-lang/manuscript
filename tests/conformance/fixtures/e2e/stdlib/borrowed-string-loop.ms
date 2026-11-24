@@ -2,11 +2,11 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn first(words: List[String]) String:
+fn first(words List[String]) String:
 	return words[0]
 
 type Text:
-	value: String
+	value String
 
 fn Text.read() String:
 	return self.value
@@ -20,12 +20,12 @@ fn dynamic_text() String:
 		text += part
 	return text
 
-fn initial(words: List[String]) String:
+fn initial(words List[String]) String:
 	for c in first(words).chars():
 		return c.clone()
 	return ""
 
-fn failed_scan(words: List[String]) Void!:
+fn failed_scan(words List[String]) Void!:
 	for c in first(words).chars():
 		expect_equal(c, "not the first character")?
 

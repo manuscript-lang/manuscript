@@ -18,8 +18,8 @@ A model writes Manuscript well because there is little to get wrong. The concept
 <!-- manuscript-example: {"mode":"run","stdout":"1650 cents\n"} -->
 ```manuscript {filename="shop.ms"}
 enum Item:
-    Book(pages: Int)
-    Coffee(grams: Int)
+    Book(pages Int)
+    Coffee(grams Int)
 
 interface Priced:
     fn cents() Int
@@ -29,7 +29,7 @@ fn Item.cents() Int:
         Book(pages): return 500 + pages * 2
         Coffee(grams): return grams * 3
 
-fn sum_by[T](items: List[T], price: fn(T) Int) Int:
+fn sum_by[T](items List[T], price fn(T) Int) Int:
     var total = 0
     for item in items:
         total += price(item)

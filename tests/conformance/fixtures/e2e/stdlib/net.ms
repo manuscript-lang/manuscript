@@ -63,7 +63,7 @@ test "a read cancelled by its timeout leaves the stream closable":
 	expect_true(within(client.input, 50.milliseconds()).is_error())?
 	client.close()?
 
-fn accept_all(listener: Listener) Void!:
+fn accept_all(listener Listener) Void!:
 	while true:
 		_connection := listener.accept().wait()?
 
@@ -163,13 +163,13 @@ test "typed addresses preserve normalization and reject zones":
 	expect_ip_error("fe80::1%eth0")?
 	expect_false((contains_ip(parse_cidr("::ffff:192.0.2.0/120")?, ip)?))?
 
-fn expect_ip_error(input: String) Void!:
+fn expect_ip_error(input String) Void!:
 	expect_equal(
 		(expect_error(parse_ip(input))?),
 		Error("network: invalid data", kind: "EBADMSG"),
 	)?
 
-fn accept_one(l: Listener) Int:
+fn accept_one(l Listener) Int:
 	r := l.accept(2.seconds()).wait()
 
 	if r.is_ok():
@@ -188,7 +188,7 @@ test "a promise accepts on a listener it owns":
 
 // Accepts one connection and reads from it, all inside the promise that owns the
 // connection.
-fn accept_and_read(listener: Listener) Int:
+fn accept_and_read(listener Listener) Int:
 	var conn = listener.accept(2.seconds()).wait().get()
 	r := within(conn.input, 2.seconds())
 	if r.is_ok() and (r.get() != null): return 1
@@ -207,7 +207,7 @@ test "a promise reads a connection it owns":
 
 // Answers one DNS query with a single MX record: preference 10, exchange
 // mail.example.test.
-fn answer_mx(var served: DatagramSocket) Int!:
+fn answer_mx(var served DatagramSocket) Int!:
 	query := (
 		(within(served.input, 2.seconds())?)
 		or panic("called Optional.get() on null")

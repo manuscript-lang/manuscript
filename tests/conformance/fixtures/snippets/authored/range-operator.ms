@@ -3,7 +3,7 @@
 // conform: origin=range operator a..b
 import stdout from "@std/io/io.ms"
 
-fn total(n: Int) Int:
+fn total(n Int) Int:
     var sum = 0
     for i in 0..n + 1:
         sum += i

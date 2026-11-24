@@ -7,10 +7,10 @@ import (
 
 // One line of an edit script: a mark (space, `-` or `+`) and the text.
 type Op:
-	mark: String
-	text: String
+	mark String
+	text String
 
-fn script(a: List[String], b: List[String]) List[Op]:
+fn script(a List[String], b List[String]) List[Op]:
 	n := a.length()
 	m := b.length()
 	var table = List[List[Int]]()
@@ -57,11 +57,11 @@ fn script(a: List[String], b: List[String]) List[Op]:
 
 	return ops
 
-fn rng(start: Int, ln: Int) String:
+fn rng(start Int, ln Int) String:
 	s := start + (if ln > 0: 1 else: 0)
 	return if ln == 1: f"{s}" else: f"{s},{ln}"
 
-fn solve(s: String) String:
+fn solve(s String) String:
 	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
@@ -105,13 +105,13 @@ fn solve(s: String) String:
 
 	return out.map(fn x: x + "\n").join("")
 
-fn mk(a: List[String], b: List[String], c: Int, na: String, nb: String) String:
+fn mk(a List[String], b List[String], c Int, na String, nb String) String:
 	return (
 		f"{na} {nb} {c} {a.length()} {b.length()}\n"
 		+ a.concat(b).map(fn x: x + "\n").join("")
 	)
 
-fn case3(name: String, a: List[String], b: List[String], c: Int) GenCase:
+fn case3(name String, a List[String], b List[String], c Int) GenCase:
 	s := mk(a, b, c, "a.txt", "b.txt")
 	return make_case(name, s, solve(s))
 
@@ -122,13 +122,13 @@ fn words_pool() List[String]:
 		"--- x", " ", "a b  c"
 	]
 
-fn doc(var rnd: Random, n: Int) List[String]:
+fn doc(var rnd Random, n Int) List[String]:
 	var out = List[String]()
 	pool := words_pool()
 	for _i in 0..n: out.append(rnd.choice(pool))
 	return out
 
-fn edit(var rnd: Random, a: List[String], k: Int) List[String]:
+fn edit(var rnd Random, a List[String], k Int) List[String]:
 	var b = a.clone()
 	pool := words_pool()
 
@@ -147,7 +147,7 @@ fn edit(var rnd: Random, a: List[String], k: Int) List[String]:
 	return b
 
 // `base` with the lines at `changes[k].0` replaced by `changes[k].1`.
-fn at(base: List[String], places: List[Int], values: List[String]) List[String]:
+fn at(base List[String], places List[Int], values List[String]) List[String]:
 	var out = base.clone()
 	for k in 0..places.length(): out[places[k]] = values[k].clone()
 	return out

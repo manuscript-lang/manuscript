@@ -14,13 +14,13 @@
           "file": "golden-1066.ms",
           "line": 5,
           "column": 9,
-          "offset": 110
+          "offset": 109
         },
         "end": {
           "file": "golden-1066.ms",
           "line": 5,
           "column": 12,
-          "offset": 113
+          "offset": 112
         }
       }
     ],

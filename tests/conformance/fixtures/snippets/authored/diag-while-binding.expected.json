@@ -14,13 +14,13 @@
           "file": "diag-while-binding.ms",
           "line": 5,
           "column": 13,
-          "offset": 137
+          "offset": 136
         },
         "end": {
           "file": "diag-while-binding.ms",
           "line": 5,
           "column": 15,
-          "offset": 139
+          "offset": 138
         }
       }
     ],

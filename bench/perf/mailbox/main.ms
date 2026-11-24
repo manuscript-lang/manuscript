@@ -11,7 +11,7 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn work(a: Int) Int!:
+fn work(a Int) Int!:
 	return ok(a * 2 + 1)
 
 fn main() Void:
@@ -29,7 +29,7 @@ fn main() Void:
 		var done = 0
 
 		while done < n:
-			var promises: List[Promise[Int]] = []
+			var promises List[Promise[Int]] = []
 
 			for i in 0..window:
 				value := done + i

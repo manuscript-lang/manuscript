@@ -10,7 +10,7 @@ import (
 	microseconds, sleep from "@std/time.ms",
 )
 
-fn depth(n: Int) Int:
+fn depth(n Int) Int:
 	if n == 0: return 0
 	return depth(n - 1) + 1
 
@@ -55,15 +55,15 @@ fn catch_in_task() Int:
 
 	return depth(10000)
 
-fn faulting_depth(n: Int) Void:
+fn faulting_depth(n Int) Void:
 	if n == 0:
-		empty: List[Int] := []
+		empty List[Int] := []
 		print(empty[1])
 		return
 
 	faulting_depth(n - 1)
 
-fn parked_depth(n: Int) Int:
+fn parked_depth(n Int) Int:
 	if n == 0:
 		void sleep(microseconds(10)).wait()
 		return 0
@@ -75,7 +75,7 @@ fn parked_depth(n: Int) Int:
 // their segments into a cycle that frame capture at the next promise start followed
 // forever.
 test "many tasks recurse past their first slot and park on several threads":
-	var tasks: List[Promise[Int]] = []
+	var tasks List[Promise[Int]] = []
 	for i in 0..64:
 		tasks.append(promise(fn: ok(parked_depth(20000 + i))))
 

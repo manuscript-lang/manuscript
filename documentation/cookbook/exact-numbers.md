@@ -16,7 +16,7 @@ Save as `big.ms`. `BigInt` never overflows. Both operands of an operator must be
 import BigInt, big_int_of_int from "@std/math/math.ms"
 import parse_rat from "@std/math/big.ms"
 
-fn factorial(n: Int) BigInt:
+fn factorial(n Int) BigInt:
     var total = big_int_of_int(1)
     for i in 2..n + 1:
         total = total * big_int_of_int(i)

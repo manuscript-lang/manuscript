@@ -3,9 +3,9 @@
 import expect_equal from "@std/test/test.ms"
 
 type Loader:
-	load: fn(Int) Int
+	load fn(Int) Int
 
-fn run(l: Loader) Int:
+fn run(l Loader) Int:
 	load := l.load
 	return load(2)
 

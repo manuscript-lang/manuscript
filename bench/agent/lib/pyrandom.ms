@@ -10,12 +10,12 @@ N := 624
 MASK := 0xFFFFFFFF
 
 export type Random:
-	state: List[Int]
-	index: Int
+	state List[Int]
+	index Int
 
-fn u32(value: Int) Int: bit_and(value, MASK)
+fn u32(value Int) Int: bit_and(value, MASK)
 
-fn init_genrand(seed: Int) List[Int]:
+fn init_genrand(seed Int) List[Int]:
 	var mt = List[Int](reserve: N)
 	mt.append(u32(seed))
 
@@ -26,7 +26,7 @@ fn init_genrand(seed: Int) List[Int]:
 	return mt
 
 // Seeds like `random.Random(seed)` for a non-negative `seed` below 2**32.
-export fn seeded(seed: Int) Random:
+export fn seeded(seed Int) Random:
 	var mt = init_genrand(19650218)
 	var i = 1
 	var j = 0
@@ -71,7 +71,7 @@ export fn seeded(seed: Int) Random:
 	mt[0] = 0x80000000
 	return Random(mt, N)
 
-fn twist(var mt: List[Int]) Void:
+fn twist(var mt List[Int]) Void:
 	for kk in 0..N:
 		y := bit_and(mt[kk], 0x80000000) + bit_and(mt[(kk + 1) % N], 0x7FFFFFFF)
 		var next = bit_xor(mt[(kk + 397) % N], shift_right(y, 1))
@@ -92,7 +92,7 @@ fn var Random.next_u32() Int:
 	return bit_xor(y3, shift_right(y3, 18))
 
 // A uniform integer in `0..n` by rejection, as CPython's `_randbelow`.
-fn var Random.below(n: Int) Int:
+fn var Random.below(n Int) Int:
 	if n <= 0: return 0
 
 	var bits = 0
@@ -107,10 +107,10 @@ fn var Random.below(n: Int) Int:
 	return r
 
 // A uniform integer in `low..=high`.
-fn var Random.randint(low: Int, high: Int) Int: low + self.below(high - low + 1)
+fn var Random.randint(low Int, high Int) Int: low + self.below(high - low + 1)
 
 // A uniform integer in `low..high`.
-fn var Random.randrange(low: Int, high: Int) Int: low + self.below(high - low)
+fn var Random.randrange(low Int, high Int) Int: low + self.below(high - low)
 
 // A uniform float in `0.0..1.0` from 53 random bits.
 fn var Random.random() Float:
@@ -121,14 +121,14 @@ fn var Random.random() Float:
 // A uniformly chosen item, as `random.choice`. The index is bound before the
 // element is cloned because
 // `items[f()].clone()` evaluates `f()` twice (https://github.com/manuscript-lang/manuscript/issues/2161).
-fn var Random.choice(items: List[String]) String:
+fn var Random.choice(items List[String]) String:
 	at := self.below(items.length())
 	return items[at].clone()
 
 // `k` distinct items in random order, as `random.sample` picks them from a population of at most 21 items
 // (CPython's pool method; larger populations use a different algorithm that is not
 // implemented here).
-fn var Random.sample(items: List[String], k: Int) List[String]:
+fn var Random.sample(items List[String], k Int) List[String]:
 	n := items.length()
 	if n > 21: panic("sample: only the pool method is implemented")
 

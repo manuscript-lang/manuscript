@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn consume(values: Map[Int, Int]) Void: void\n\nfn probe() Int: ...\n"
+    "fmt": "fn consume(values Map[Int, Int]) Void: void\n\nfn probe() Int: ...\n"
   }
 }

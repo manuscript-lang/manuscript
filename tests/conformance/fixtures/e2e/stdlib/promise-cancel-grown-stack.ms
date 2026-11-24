@@ -6,7 +6,7 @@ import milliseconds, seconds, sleep from "@std/time.ms"
 // Parks at the bottom of a recursion deep enough to leave the task's first stack slot, with a
 // heap value in every frame, so cancelling it unwinds across grown segments (`make leak-check`
 // reports any block the unwind leaves behind).
-fn descend(n: Int) Int!:
+fn descend(n Int) Int!:
     label := f"frame {n}"
     parts := [label.clone(), "x"]
     if n == 0:

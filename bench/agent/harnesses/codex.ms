@@ -6,11 +6,11 @@ import (
 
 // UNTESTED: written from the documented `codex exec --json` event stream.
 export type Codex:
-	placeholder: Bool = true
+	placeholder Bool = true
 
 fn Codex.name() String: "codex"
 
-fn Codex.command(prompt: String, workspace: String, model: String?) List[String]:
+fn Codex.command(prompt String, workspace String, model String?) List[String]:
 	var cmd = [
 		"codex",
 		"exec",
@@ -25,7 +25,7 @@ fn Codex.command(prompt: String, workspace: String, model: String?) List[String]
 	return cmd.concat([prompt.clone()])
 
 // Codex reports no cost; the runner estimates it from pricing.json.
-fn Codex.parse(transcript: String) Usage:
+fn Codex.parse(transcript String) Usage:
 	var u = Usage()
 
 	for ev in events(transcript):

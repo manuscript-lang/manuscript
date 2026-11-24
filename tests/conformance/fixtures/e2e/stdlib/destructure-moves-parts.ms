@@ -9,7 +9,7 @@ import (
 // bound by a record pattern keeps its cell (#2430), and the parts the pattern leaves
 // out are dropped.
 type Count:
-	n: Int
+	n Int
 
 fn var Count.next() Int?!:
 	self.n += 1
@@ -21,9 +21,9 @@ fn move Count.close() Void!:
 	return ok()
 
 type Box:
-	label: Int
-	body: ReadStream[Int]
-	spare: ReadStream[Int]
+	label Int
+	body ReadStream[Int]
+	spare ReadStream[Int]
 
 test "a record pattern moves a stream field out of its record":
 	b := Box(

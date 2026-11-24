@@ -13,7 +13,7 @@ The programs below read PEM files as text. Each one carries the same small helpe
 ```manuscript
 import read_file from "@std/os/fs.ms"
 
-fn read_text(path: String) String!:
+fn read_text(path String) String!:
     bytes := read_file(path).wait()?
     return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 ```
@@ -32,11 +32,11 @@ import HttpExchange, HttpServerOptions, reply, text from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 import TlsOptions from "@std/net/tls.ms"
 
-fn read_text(path: String) String!:
+fn read_text(path String) String!:
     bytes := read_file(path).wait()?
     return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 
-fn hello(var exchange: HttpExchange) Void!:
+fn hello(var exchange HttpExchange) Void!:
     return reply(exchange, text(200, "hello over TLS"))
 
 fn main() Void!:
@@ -61,7 +61,7 @@ import HttpClientOptions, HttpMethod, headers from "@std/net/http.ms"
 import http_client from "@std/net/net.ms"
 import TlsOptions from "@std/net/tls.ms"
 
-fn read_text(path: String) String!:
+fn read_text(path String) String!:
     bytes := read_file(path).wait()?
     return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 
@@ -83,7 +83,7 @@ import read_file from "@std/os/fs.ms"
 import parse_certificates from "@std/net/tls.ms"
 import now from "@std/time.ms"
 
-fn read_text(path: String) String!:
+fn read_text(path String) String!:
     bytes := read_file(path).wait()?
     return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 

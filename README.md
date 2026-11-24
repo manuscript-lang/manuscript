@@ -22,7 +22,7 @@ A simple HTTP server:
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
     return HttpResponse(200, f"hello {request.path}".to_bytes())
 
 fn main() Void!:
@@ -56,7 +56,7 @@ Use-after-move is a compile error, and there are no lifetime annotations to writ
 ```rust
 import promise, wait_all from "@std/concurrency/promise.ms"
 
-fn fib(n: Int) Int:
+fn fib(n Int) Int:
     return if n < 2: n else: fib(n - 1) + fib(n - 2)
 
 fn main() Void:
@@ -73,10 +73,10 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order: String) Void!:
+fn save(order String) Void!:
     return write_file("orders.log", order).wait()
 
-fn audit(total: Int) Void!:
+fn audit(total Int) Void!:
     return save(f"audit {total}")
 ```
 
@@ -99,10 +99,10 @@ Every diagnostic gives the cause and the remedy, `ms check --fix` applies the me
 import parse, stringify, StringifyOptions from "@std/data/json.ms"
 
 type Config:
-    name: String
-    enabled: Bool = true
+    name String
+    enabled Bool = true
 
-fn roundtrip(text: String) Result[String, Error]:
+fn roundtrip(text String) Result[String, Error]:
     config := parse[Config](text)?
     return stringify(config, StringifyOptions(strict: true))
 ```

@@ -4,11 +4,11 @@ import (
 )
 
 type Found:
-	files: Int
-	matches: Int
+	files Int
+	matches Int
 
 // Counts the lines containing a pattern in every file under a directory.
-fn scan(dir: String) Found:
+fn scan(dir String) Found:
 	var found = Found(0, 0)
 
 	for entry in list(dir).get():

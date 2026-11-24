@@ -28,7 +28,7 @@ elif kind=="nestclosure":
         s+=cur+f"return g{i}() + 1\n" if False else ""
     s+="\tprint(\"ok\")\n"
 elif kind=="rec":
-    s=f"fn f(n: Int) Int:\n\tif n == 0: return 0\n\treturn 1 + f(n - 1)\n\nfn main() Void:\n\tprint(f\"{{f({n})}}\")\n"
+    s=f"fn f(n Int) Int:\n\tif n == 0: return 0\n\treturn 1 + f(n - 1)\n\nfn main() Void:\n\tprint(f\"{{f({n})}}\")\n"
 elif kind=="nestmatch":
     s="fn main() Void:\n\tx := 1\n"
     for i in range(n): s+=T*(i+1)+"match x:\n"+T*(i+2)+"1:\n"

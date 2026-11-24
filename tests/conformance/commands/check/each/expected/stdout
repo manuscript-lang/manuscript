@@ -14,14 +14,14 @@
             "position": {
               "file": "main.ms",
               "line": 2,
-              "column": 15,
-              "offset": 27
+              "column": 14,
+              "offset": 26
             }
           }
         ],
         "text": {
           "stdout": "",
-          "stderr": "<DIR>/main.ms:2:15: type: expected Int, found String (in the initializer of 'x')\n   |\n 2 |     x: Int := \"no\"\n   |               ^\n1 error; fix them and re-run (ms check \u003cfile\u003e --json gives the same diagnostics as structured data)\n"
+          "stderr": "<DIR>/main.ms:2:14: type: expected Int, found String (in the initializer of 'x')\n   |\n 2 |     x Int := \"no\"\n   |              ^\n1 error; fix them and re-run (ms check \u003cfile\u003e --json gives the same diagnostics as structured data)\n"
         }
       },
       "stderr": ""

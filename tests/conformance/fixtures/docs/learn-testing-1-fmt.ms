@@ -3,7 +3,7 @@
 // conform: origin=documentation/learn/testing.md:13
 import expect_equal from "@std/test/test.ms"
 
-fn add(a: Int, b: Int) Int:
+fn add(a Int, b Int) Int:
     return a + b
 
 test "addition":

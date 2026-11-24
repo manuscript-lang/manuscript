@@ -2,9 +2,9 @@
 // conform: phase=run
 // conform: origin=tests/e2e/fault_locations_test.go:104 TestFaultSourceLocations
 
-fn crash(value: Int) Int:
+fn crash(value Int) Int:
     return 1 / value
 
 export fn main() Int:
-    value: Int!Error := ok(0)
+    value Int!Error := ok(0)
     return value.map(crash).get()

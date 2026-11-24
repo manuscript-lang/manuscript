@@ -15,22 +15,22 @@ import (
 )
 
 type LogRow:
-	phase: String
-	ok: Bool
-	codes: String = ""
-	msg: String = ""
-	fixed: String = ""
+	phase String
+	ok Bool
+	codes String = ""
+	msg String = ""
+	fixed String = ""
 
 type Detail:
-	built: Bool
-	passed: Int
-	total: Int
-	failed: List[String]
-	builds: Int
-	first_build_ok: Bool
-	checks: Int
-	code_tokens: Int?
-	error: String?
+	built Bool
+	passed Int
+	total Int
+	failed List[String]
+	builds Int
+	first_build_ok Bool
+	checks Int
+	code_tokens Int?
+	error String?
 
 fn main() Void:
 	args := arguments()
@@ -48,7 +48,7 @@ fn main() Void:
 		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
-	var tokens: Int? = null
+	var tokens Int? = null
 	if suffix != "": tokens = count_workspace(app, suffix)
 
 	var first_ok = false

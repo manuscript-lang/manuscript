@@ -8,8 +8,8 @@ test "HTML unescape has an explicit text counterpart":
     expect_equal(unescape("&lt;é&gt;&amp;"), "<é>&")?
 
 type EntityCase:
-    encoded: String
-    decoded: String
+    encoded String
+    decoded String
 
 test "HTML unescape recognizes named numeric and multi-scalar references":
     cases := [
@@ -39,12 +39,12 @@ test "HTML numeric references use replacement rules":
     expect_equal(unescape("&#128;&#x80;"), "€€")?
     expect_equal(unescape("&#x10FFFF;"), "\u{10ffff}")?
 
-fn apply[T, U](text: T, operation: fn(T) U) U:
+fn apply[T, U](text T, operation fn(T) U) U:
     return operation(text)
 
 test "HTML unescape stored and generic calls preserve labels":
     convert := unescape
-    typed: fn(String) String := unescape
+    typed fn(String) String := unescape
     expect_false(convert("&lt;") != "<" or typed("&gt;") != ">")?
     expect_equal(apply[String, String]("&amp;", unescape), "&")?
 

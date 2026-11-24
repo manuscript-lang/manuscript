@@ -1,9 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
 interface Add:
-    fn add(value: Int) Int
+    fn add(value Int) Int
 type Offset:
-    value: Int
+    value Int
 impl Add for Offset:
     fn add(value: Int = self.value) Int:
         return value

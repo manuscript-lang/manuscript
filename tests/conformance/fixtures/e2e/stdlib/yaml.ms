@@ -12,24 +12,24 @@ import (
 	fail from "@std/test/test.ms",
 )
 
-fn entries(value: YamlValue) Map[String, YamlValue]!:
+fn entries(value YamlValue) Map[String, YamlValue]!:
 	match value:
 		ObjectValue(values): return ok(values.clone())
 		_: return error(Error("expected YAML mapping"))
 
-fn items(value: YamlValue) List[YamlValue]!:
+fn items(value YamlValue) List[YamlValue]!:
 	match value:
 		ArrayValue(values): return ok(values.clone())
 		_: return error(Error("expected YAML sequence"))
 
-fn limits(bytes: Int?, depth: Int?, values: Int?) YamlOptions:
+fn limits(bytes Int?, depth Int?, values Int?) YamlOptions:
 	return YamlOptions(max_bytes: bytes, max_depth: depth, max_values: values)
 
 type ScalarCase:
-	text: String
-	expected: String
+	text String
+	expected String
 
-fn scalar(text: String, move expected: String) Void!:
+fn scalar(text String, move expected String) Void!:
 	root := (
 		parse(text: text)
 		| expect_ok?
@@ -194,7 +194,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 		)
 	)?
 
-	limited: YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	limited YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
 	expect_false(
 		(
 			parse(
@@ -505,8 +505,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 		cause.kind | expect_equal("ENOTSUP")?
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-	limited: YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
-	invalid: YamlValue! := error(Error("invalid YAML input", kind: "EINVAL"))
+	limited YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	invalid YamlValue! := error(Error("invalid YAML input", kind: "EINVAL"))
 	expect_false(
 		(
 			parse(
@@ -591,7 +591,7 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
 			f"plain scalar resolved incorrectly: {text}"
 		)
 
-fn failure(text: String) String:
+fn failure(text String) String:
 	match parse(text: text):
 		ok(_): return "accepted"
 		error(cause): return cause.message
@@ -607,7 +607,7 @@ test "YAML merge and block header errors name their own line":
 	)
 
 test "YAML option fields default to none or the depth and value guards":
-	limited: YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	limited YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
 	parse(text: "a: 1", options: YamlOptions(max_bytes: 2)) | expect_equal(limited)?
 	parse(text: "a: 1", options: YamlOptions()) | expect_equal(parse(text: "a: 1"))?
 
@@ -623,14 +623,14 @@ test "YAML stringify round trips scalars sequences and mappings":
 	)
 
 test "YAML stringify validates numbers and honors max_bytes":
-	invalid: String! := error(Error("invalid YAML input", kind: "EINVAL"))
-	limited: String! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	invalid String! := error(Error("invalid YAML input", kind: "EINVAL"))
+	limited String! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
 	stringify(value: YamlValue.NumberValue("not a number")) | expect_equal(invalid)?
 
 	root := (parse(text: "a: 1") | expect_ok?)
 	stringify(value: root, max_bytes: 3) | expect_equal(limited)?
 
-	exact: String! := ok("a: 1\n")
+	exact String! := ok("a: 1\n")
 	stringify(value: root, max_bytes: 5) | expect_equal(exact)?
 	stringify(value: root, max_bytes: -1) | expect_equal(invalid)?
 
@@ -805,7 +805,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
 		| expect_equal(YamlValue.NumberValue("4"))?
 	)
 
-fn repeated(text: String, count: Int) String:
+fn repeated(text String, count Int) String:
 	if count <= 0: return ""
 	if count == 1: return text.clone()
 

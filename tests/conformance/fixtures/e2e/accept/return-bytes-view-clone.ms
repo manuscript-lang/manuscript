@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn middle(bytes: Bytes) Bytes:
+fn middle(bytes Bytes) Bytes:
 	return bytes.view(1, 3).clone()
 
 fn local_middle() Bytes:

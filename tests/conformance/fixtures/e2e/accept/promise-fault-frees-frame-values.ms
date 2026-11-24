@@ -6,7 +6,7 @@ import expect_ok, expect_true from "@std/test/test.ms"
 
 fn faulting() Int!:
 	big := "x".repeat(1000000)
-	xs: List[Int] := []
+	xs List[Int] := []
 	n := xs[big.length()]
 	return ok(big.length() + n)
 

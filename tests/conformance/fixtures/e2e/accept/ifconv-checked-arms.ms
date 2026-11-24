@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 // Arms that differ in checked index arithmetic become selects with a predicated overflow guard.
-fn spread(values: List[Int], base: Int, last: Int) Int:
+fn spread(values List[Int], base Int, last Int) Int:
 	var front = 0
 	var back = 0
 	var total = 0

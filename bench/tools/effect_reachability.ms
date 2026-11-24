@@ -29,18 +29,18 @@ import (
 )
 
 type Diagnostic:
-	code: String
-	severity: String
+	code String
+	severity String
 
 type Document:
-	diagnostics: List[Diagnostic]
+	diagnostics List[Diagnostic]
 
 type Sample:
-	label: String
-	trial: Int
-	wall_ns: Int
+	label String
+	trial Int
+	wall_ns Int
 
-fn report(out: String, name: String) Void!:
+fn report(out String, name String) Void!:
 	rows := parse[List[Sample]](read_text(f"{out}/{name}-samples.json"))?
 	var baseline = Map[Int, Float]()
 	var candidate = Map[Int, Float]()
@@ -78,11 +78,11 @@ fn report(out: String, name: String) Void!:
 	write_text(f"{out}/{name}-summary.json", dump(result))
 	print(stringify(result).get())
 
-fn padded(i: Int) String:
+fn padded(i Int) String:
 	return f"{i}".pad_start(6, "0")
 
 // A shared wide graph and the neighboring shapes that must not regress.
-export fn probe(size: Int, mode: String) String:
+export fn probe(size Int, mode String) String:
 	var lines = List[String]()
 
 	if mode == "many" or mode == "cyclic":
@@ -131,7 +131,7 @@ export fn probe(size: Int, mode: String) String:
 	lines.append("fn main() Int:\n    return root_000000() - 1\n")
 	return lines.join("\n")
 
-fn expected_count(size: Int, mode: String, action: String) Int:
+fn expected_count(size Int, mode String, action String) Int:
 	if action != "lint": return 0
 	if mode == "none" or mode == "direct": return 2 * size + 1
 	if mode == "sparse": return 1
@@ -141,13 +141,13 @@ fn expected_count(size: Int, mode: String, action: String) Int:
 	return 0
 
 fn measure(
-	out: String,
-	binaries: List[String],
-	repeats: Int,
-	name: String,
-	input: String,
-	action: String,
-	wanted: Int,
+	out String,
+	binaries List[String],
+	repeats Int,
+	name String,
+	input String,
+	action String,
+	wanted Int,
 ) Void!:
 	var samples = List[JsonValue]()
 	var expected_stdout = ""
@@ -263,7 +263,7 @@ fn measure(
 	print(f"{name}: {repeats} exact-output pairs passed")
 	report(out, name)?
 
-fn run(args: List[String]) String!:
+fn run(args List[String]) String!:
 	if args.length() != 7: return invalid(
 		"expected OUT BASE CANDIDATE REPEATS SIZES MODES ACTION"
 	)

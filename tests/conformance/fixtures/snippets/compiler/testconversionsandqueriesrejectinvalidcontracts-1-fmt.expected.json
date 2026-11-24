@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn cause(value: Int) String: \"cause\"\n\nfn wrong(value: Int?) Int!String: value.ok_or_else(cause)\n"
+    "fmt": "fn cause(value Int) String: \"cause\"\n\nfn wrong(value Int?) Int!String: value.ok_or_else(cause)\n"
   }
 }

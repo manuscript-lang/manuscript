@@ -8,11 +8,11 @@ import (
 )
 
 type Person:
-	name: String
-	age: Int
+	name String
+	age Int
 
 enum Outcome:
-	Ready(value: Person)
+	Ready(value Person)
 	Waiting
 
 interface Named:
@@ -21,25 +21,25 @@ interface Named:
 fn Person.title() String:
 	return self.name.clone()
 
-fn stringify[T](value: T) String:
+fn stringify[T](value T) String:
 	return value.to_string()
 
-fn interpolate[T](value: T) String:
+fn interpolate[T](value T) String:
 	return f"{value}"
 
-fn bound_stringify[T: Named](value: T) String:
+fn bound_stringify[T Named](value T) String:
 	return value.to_string()
 
-fn check(value: String, expected: String) Void!:
+fn check(value String, expected String) Void!:
 	if value != expected: return fail(message: f"expected {expected}, received {value}")
 
 fn answer() Int:
 	return 42
 
 type Counter:
-	value: Int
+	value Int
 
-fn next(var state: Counter) Person:
+fn next(var state Counter) Person:
 	value := state.value
 	state.value = value + 1
 	return Person(name: "Ada", age: value)
@@ -69,9 +69,9 @@ test "records alternatives and collections convert":
 	)
 	(check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting")?)
 
-	absent: Int? := null
-	present: Int? := 3
-	result: Int!Error := error(Error("failed"))
+	absent Int? := null
+	present Int? := 3
+	result Int!Error := error(Error("failed"))
 	(check(value: absent.to_string(), expected: "none")?)
 	(check(value: present.to_string(), expected: "some(3)")?)
 	(
@@ -83,7 +83,7 @@ test "records alternatives and collections convert":
 	(check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]")?)
 	(check(value: [[1], [2, 3]].to_string(), expected: "[[1], [2, 3]]")?)
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	(check(value: empty.to_string(), expected: "[]")?)
 
 	var map = Map[String, Int]()
@@ -109,11 +109,11 @@ test "generics views bound methods functions and resources":
 	(check(value: interpolate(person), expected: person.to_string())?)
 	(check(value: bound_stringify(person), expected: person.to_string())?)
 
-	view: Named := person.clone()
+	view Named := person.clone()
 	(check(value: view.to_string(), expected: person.to_string())?)
 	(check(value: f"{view}", expected: person.to_string())?)
 
-	convert: fn() String := view.to_string
+	convert fn() String := view.to_string
 	(check(value: convert(), expected: person.to_string())?)
 	(check(value: answer.to_string(), expected: "[function]")?)
 	(check(value: f"{answer}", expected: "[function]")?)

@@ -14,20 +14,20 @@
           "file": "diag-error-needs-error-value.ms",
           "line": 5,
           "column": 22,
-          "offset": 117
+          "offset": 116
         },
         "fix": {
           "position": {
             "file": "diag-error-needs-error-value.ms",
             "line": 5,
             "column": 22,
-            "offset": 117
+            "offset": 116
           },
           "end": {
             "file": "diag-error-needs-error-value.ms",
             "line": 5,
             "column": 32,
-            "offset": 127
+            "offset": 126
           },
           "replacement": "Error(\"negative\")"
         }

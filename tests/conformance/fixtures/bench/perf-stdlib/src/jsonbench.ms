@@ -1,7 +1,7 @@
 import bench from "./harness.ms"
 import parse, stringify, JsonValue from "@std/data/json.ms"
 
-fn json_doc(count: Int) String:
+fn json_doc(count Int) String:
     var sb = ""
     sb += "["
 
@@ -12,7 +12,7 @@ fn json_doc(count: Int) String:
     sb += "]"
     return sb
 
-fn encoded_length(value: JsonValue) Int:
+fn encoded_length(value JsonValue) Int:
     if text := stringify(value):
         return text.length()
 

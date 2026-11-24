@@ -4,9 +4,9 @@
 interface Read[V]:
     fn get() V
 
-type Pair[A, B: Clonable]:
-    left: A
-    right: B
+type Pair[A, B Clonable]:
+    left A
+    right B
 
 fn Pair[Int, B].get() B:
     return self.right.clone()

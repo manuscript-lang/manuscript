@@ -10,7 +10,7 @@ enum State:
 
 fn State.describe() String: "state"
 
-fn use(value: Describe) Int:
+fn use(value Describe) Int:
     match value:
         State(Ready): return 1
         _: return 0

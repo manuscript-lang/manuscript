@@ -4,18 +4,18 @@ import expect_equal, expect_error from "@std/test/test.ms"
 import parse, stringify from "@std/data/json.ms"
 
 type Sized:
-    small: UInt8
-    signed: Int8
-    wide: UInt64
-    single: Float32
-    items: List[Int32]
-    maybe: UInt16?
+    small UInt8
+    signed Int8
+    wide UInt64
+    single Float32
+    items List[Int32]
+    maybe UInt16?
 
 fn sample() Sized:
-    maybe: UInt16 := 7
-    single: Float32 := 0.1
-    low: Int32 := -1
-    high: Int32 := 2
+    maybe UInt16 := 7
+    single Float32 := 0.1
+    low Int32 := -1
+    high Int32 := 2
     return Sized(255, -128, 18446744073709551615, single, [low, high], maybe)
 
 test "JSON writes sized numbers like Int and Float":

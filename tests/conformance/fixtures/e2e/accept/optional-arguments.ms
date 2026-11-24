@@ -7,87 +7,87 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn number(value: Int?) Int: value or (-1)
+fn number(value Int?) Int: value or (-1)
 
-fn present[T](value: T?) T?: value
+fn present[T](value T?) T?: value
 
-fn nested(value: Int??) Bool: value == null
+fn nested(value Int??) Bool: value == null
 
-fn list_size(value: List[Int]?) Int: (value or panic("called Optional.get() on null")).length()
+fn list_size(value List[Int]?) Int: (value or panic("called Optional.get() on null")).length()
 
-fn flag(value: Bool?) Bool: value or panic("called Optional.get() on null")
+fn flag(value Bool?) Bool: value or panic("called Optional.get() on null")
 
-fn success(value: Int!Error?) Int:
+fn success(value Int!Error?) Int:
 	return (value or panic("called Optional.get() on null")).get_or(-1)
 
-fn context[T](fallback: T, value: T?) T:
+fn context[T](fallback T, value T?) T:
 	inner := value
 	if inner != null: return inner
 
 	return fallback
 
 type Notice:
-	failure: Error?
+	failure Error?
 
 type Box[T]:
-	value: T?
+	value T?
 
 type DefaultBox:
-	value: Int?
+	value Int?
 
 enum Choice[T]:
-	chosen(value: T?)
+	chosen(value T?)
 
 interface Read:
-	fn read(value: Int?) Int
+	fn read(value Int?) Int
 
 type Reader:
-	offset: Int
+	offset Int
 
-fn Reader.read(value: Int?) Int: (value or 0) + self.offset
+fn Reader.read(value Int?) Int: (value or 0) + self.offset
 
 type Counter:
-	calls: Int
+	calls Int
 
-fn next(var counter: Counter) Int:
+fn next(var counter Counter) Int:
 	counter.calls += 1
 	return counter.calls
 
-fn ordered(first: Int?, second: Int?) Int:
+fn ordered(first Int?, second Int?) Int:
 	return (
 		(first or panic("called Optional.get() on null")) * 10
 		+ (second or panic("called Optional.get() on null"))
 	)
 
-fn invoke(value: (fn(Int) Int)?) Int: (value or panic("called Optional.get() on null"))(
+fn invoke(value (fn(Int) Int)?) Int: (value or panic("called Optional.get() on null"))(
 	4
 )
 
-fn increment(value: Int) Int: value + 1
+fn increment(value Int) Int: value + 1
 
-fn calls_of(value: Counter?) Int: (value or panic("called Optional.get() on null")).calls
+fn calls_of(value Counter?) Int: (value or panic("called Optional.get() on null")).calls
 
 test "plain values and explicit optionals share the call contract":
 	expect_equal(number(4), 4)?
 	expect_equal(number(value: 0), 0)?
 
-	supplied: Int? := 4
+	supplied Int? := 4
 	expect_equal(number(supplied), 4)?
 	expect_equal(number(), -1)?
 	expect_equal(number(), -1)?
 
-	stored: fn(Int?) Int := number
+	stored fn(Int?) Int := number
 	expect_equal(stored(5), 5)?
 	expect_equal(present(6) or panic("called Optional.get() on null"), 6)?
 	expect_equal(present[Int](7) or panic("called Optional.get() on null"), 7)?
 
-	generic_supplied: Int? := 8
+	generic_supplied Int? := 8
 	expect_equal(present(generic_supplied) or panic("called Optional.get() on null"), 8)?
 
-	missing: Int? := null
+	missing Int? := null
 	expect_false(not (nested(missing)))?
 
-	outer: Int?? := missing
+	outer Int?? := missing
 	expect_false(not (nested(outer)))?
 	expect_equal(list_size([]), 0)?
 	expect_equal(list_size([1, 2]), 2)?
@@ -121,7 +121,7 @@ test "constructor fields and methods use optional arguments":
 	read := reader.read
 	expect_equal(read(4), 6)?
 
-	view: Read := reader
+	view Read := reader
 	expect_equal(view.read(5), 7)?
 
 	counter := Counter(9)
@@ -148,7 +148,7 @@ test "queue capacity accepts a plain value or omission":
 
 	var unbounded = Queue[Int]()
 	var absent = Queue[Int]()
-	capacity: Int? := 4
+	capacity Int? := 4
 	var explicit = Queue[Int](capacity)
 
 	for value in [1, 2, 3, 4, 5]:

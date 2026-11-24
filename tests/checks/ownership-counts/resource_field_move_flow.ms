@@ -37,41 +37,41 @@ import (
 )
 
 type Door:
-	name: String
+	name String
 
 fn move Door.close() Void!:
 	stdout().write(f"close {self.name}\n").get()
 
 type Room:
-	first: Door
-	second: Door
+	first Door
+	second Door
 
 type Oops:
-	why: String
+	why String
 
-fn say(s: String) Void:
+fn say(s String) Void:
 	stdout().write(f"{s}\n").get()
 
-fn check(fail: Bool) Int!Oops:
+fn check(fail Bool) Int!Oops:
 	if fail: return error(Oops("no"))
 	return ok(1)
 
-fn after_move(r: Room, fail: Bool) List[Door]!Oops:
-	var xs: List[Door] = []
+fn after_move(r Room, fail Bool) List[Door]!Oops:
+	var xs List[Door] = []
 	xs.append(r.first)
 
 	_n := check(fail)?
 	say("after_move: ok")
 	return ok(xs)
 
-fn before_move(r: Room, fail: Bool) List[Door]!Oops:
+fn before_move(r Room, fail Bool) List[Door]!Oops:
 	_n := check(fail)?
-	var xs: List[Door] = []
+	var xs List[Door] = []
 	xs.append(r.second)
 	return ok(xs)
 
-fn both_cond(r: Room, a: Bool, b: Bool) List[Door]:
-	var xs: List[Door] = []
+fn both_cond(r Room, a Bool, b Bool) List[Door]:
+	var xs List[Door] = []
 	if a:
 		xs.append(r.first)
 	if b:
@@ -79,8 +79,8 @@ fn both_cond(r: Room, a: Bool, b: Bool) List[Door]:
 	say("both_cond: end")
 	return xs
 
-fn whole_or_part(r: Room, flag: Bool) List[Door]:
-	var xs: List[Door] = []
+fn whole_or_part(r Room, flag Bool) List[Door]:
+	var xs List[Door] = []
 
 	if flag:
 		xs.append(r.second)

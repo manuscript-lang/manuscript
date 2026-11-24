@@ -12,7 +12,7 @@ test "join concatenates parts in order":
 	)?
 
 test "join of nothing is empty":
-	none_at_all: List[Bytes] := []
+	none_at_all List[Bytes] := []
 	expect_equal(join(none_at_all), Bytes([]))?
 	expect_equal(join([Bytes([]), Bytes([])]), Bytes([]))?
 

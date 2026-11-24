@@ -4,7 +4,7 @@
 import ListEntry from "@std/collections/collections.ms"
 import system_info from "@std/os/system.ms"
 
-fn length(values: List[Int]) Int:
+fn length(values List[Int]) Int:
     return values.length()
 
 fn os_name() String:

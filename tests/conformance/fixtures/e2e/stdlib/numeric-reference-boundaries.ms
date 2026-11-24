@@ -56,7 +56,7 @@ import (
 )
 
 // The two's-complement 64-bit wrap of an exact integer.
-fn wrap64(value: BigInt) BigInt!:
+fn wrap64(value BigInt) BigInt!:
 	modulus := big_int_of_int(1).shift_left(64)?
 	var reduced = value.remainder(modulus)?
 	if reduced.sign() < 0:
@@ -67,7 +67,7 @@ fn wrap64(value: BigInt) BigInt!:
 		reduced -= modulus
 	return ok(reduced)
 
-fn same_float(actual: Float, expected: Float) Bool:
+fn same_float(actual Float, expected Float) Bool:
 	if actual.is_nan() or expected.is_nan():
 		return actual.is_nan() and expected.is_nan()
 	return (
@@ -85,7 +85,7 @@ test "wrapping arithmetic matches exact arithmetic reduced mod 2^64":
 			expect_equal(big_int_of_int(wrapping_subtract(a, b)), difference)?
 			expect_equal(big_int_of_int(wrapping_multiply(a, b)), product)?
 
-fn big_of_word(word: UInt64) BigInt:
+fn big_of_word(word UInt64) BigInt:
 	small := word.to_int()
 	if small != null: return big_int_of_int(small)
 
@@ -93,7 +93,7 @@ fn big_of_word(word: UInt64) BigInt:
 	return big_int_of_int(low) + big_int_of_int(max_int) + big_int_of_int(1)
 
 test "multiply_wide matches the exact 128-bit product":
-	words: List[UInt64] := [
+	words List[UInt64] := [
 		0, 1, 2, 4294967295, 4294967296, 9223372036854775807, 9223372036854775808,
 		18446744073709551615
 	]
@@ -235,7 +235,7 @@ fn word_boundaries() List[UInt64]:
 		18446744073709551614, 18446744073709551615
 	]
 
-fn two_pow(count: Int) BigInt:
+fn two_pow(count Int) BigInt:
 	return big_int_of_int(1).shift_left(count).get_or(big_int_of_int(0))
 
 test "add_with_carry and subtract_with_borrow match exact words":
@@ -524,7 +524,7 @@ test "extreme exponents do not wrap or hang":
 	expect_true(same_float(ldexp(1.0, -1075), 0.0))?
 	expect_true(same_float(ldexp(1.5, -1075), 5e-324))?
 
-fn ten_pow(exponent: Int) BigRat:
+fn ten_pow(exponent Int) BigRat:
 	var power = rat_of_int(1)
 	var step = 0
 

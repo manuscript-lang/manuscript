@@ -15,7 +15,7 @@ import (
 // `ms doc` with piped output. On Linux and macOS it ignores SIGPIPE, as a program under a shell with `trap '' PIPE` does,
 // so the closed pipe fails the write instead of killing it; Windows has no signal and
 // fails the write anyway.
-fn start(ms: String) Result[Subprocess, Error]:
+fn start(ms String) Result[Subprocess, Error]:
 	if host() == "windows": return spawn(ms, ["doc"])
 	return spawn("sh", ["-c", "trap '' PIPE; exec \"$0\" doc", ms.clone()])
 

@@ -11,14 +11,14 @@
         "position": {
           "file": "foreign-callable.ms",
           "line": 4,
-          "column": 17,
-          "offset": 132
+          "column": 16,
+          "offset": 131
         },
         "end": {
           "file": "foreign-callable.ms",
           "line": 4,
-          "column": 18,
-          "offset": 133
+          "column": 17,
+          "offset": 132
         }
       }
     ],

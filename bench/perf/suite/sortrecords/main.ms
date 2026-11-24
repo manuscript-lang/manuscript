@@ -4,8 +4,8 @@ import (
 )
 
 type Rec:
-	name: String
-	score: Int
+	name String
+	score Int
 
 fn main() Void:
 	data := read_all(stdin(), null).get().decode_utf8() or ""

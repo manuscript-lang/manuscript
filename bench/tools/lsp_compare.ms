@@ -13,11 +13,11 @@ import (
 )
 
 type Case:
-	mode: String
-	count: Int
-	shape: String
+	mode String
+	count Int
+	shape String
 
-fn add(cases: List[Case], mode: String, count: Int, shape: String) List[Case]:
+fn add(cases List[Case], mode String, count Int, shape String) List[Case]:
 	var out = cases.clone()
 	out.append(Case(mode.clone(), count, shape.clone()))
 	return out
@@ -85,12 +85,12 @@ fn semantic_cases() List[Case]:
 	return cases
 
 type Run:
-	elapsed: Int
-	checksum: Int
-	size: Int
-	rss: Int
+	elapsed Int
+	checksum Int
+	size Int
+	rss Int
 
-fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
+fn run_harness(binary String, c Case, rounds Int, cpu String) Run!:
 	var program = binary.clone()
 	var args = [c.mode.clone(), f"{c.count}", f"{rounds}", c.shape.clone()]
 
@@ -120,12 +120,12 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
 	return ok(Run(n[0], n[1], n[2], n[3]))
 
 fn compare(
-	suite: String,
-	before: String,
-	after: String,
-	out: String,
-	samples: Int,
-	cpu: String,
+	suite String,
+	before String,
+	after String,
+	out String,
+	samples Int,
+	cpu String,
 ) Result[Void, Error]:
 	cases := if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
 	var paths = Map[String, String]()

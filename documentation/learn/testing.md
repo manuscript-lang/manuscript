@@ -13,7 +13,7 @@ Save this complete file as `test.ms`:
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn add(a: Int, b: Int) Int:
+fn add(a Int, b Int) Int:
     return a + b
 
 test "addition":
@@ -189,7 +189,7 @@ A `bench "name":` block works like a `test` block, but `ms bench` times it inste
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn sum_to(n: Int) Int:
+fn sum_to(n Int) Int:
     var total = 0
     for i in 0..n:
         total += i
@@ -238,7 +238,7 @@ Without `make_fixture`, no hooks run. Define `fn make_fixture() T` for a record 
 import expect_equal from "@std/test/test.ms"
 
 type Counter:
-    count: Int
+    count Int
 
 fn make_fixture() Counter:
     return Counter(0)
@@ -295,7 +295,7 @@ import skip from "@std/test/test.ms"
 import os, Os from "@std/os/system.ms"
 
 type WindowsOnly:
-    ok: Bool
+    ok Bool
 
 fn make_fixture() WindowsOnly:
     return WindowsOnly(os() == Os.Windows)

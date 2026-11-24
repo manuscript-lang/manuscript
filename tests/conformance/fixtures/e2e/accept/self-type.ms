@@ -6,33 +6,33 @@ import (
 )
 
 type CustomerKey:
-	id: Int
-	label: String
+	id Int
+	label String
 
-fn CustomerKey.equals(other: CustomerKey) Bool:
+fn CustomerKey.equals(other CustomerKey) Bool:
 	return self.id == other.id
 
 fn CustomerKey.hash() Int: self.id
 
 type Version:
-	major: Int
+	major Int
 
-fn Version.compare(other: Version) Int:
+fn Version.compare(other Version) Int:
 	return self.major - other.major
 
 interface Merge:
-	fn merge(other: Self) Int
+	fn merge(other Self) Int
 
-fn Version.merge(other: Version) Int:
+fn Version.merge(other Version) Int:
 	return self.major + other.major
 
-fn same[T: Equal](left: T, right: T) Bool:
+fn same[T Equal](left T, right T) Bool:
 	return left.equals(right)
 
-fn lower[T: Comparable](left: T, right: T) Bool:
+fn lower[T Comparable](left T, right T) Bool:
 	return left.compare(right) < 0
 
-fn total[T: Merge](left: T, right: T) Int:
+fn total[T Merge](left T, right T) Int:
 	return left.merge(right)
 
 test "implementations take their own type":
@@ -50,12 +50,12 @@ test "bounds take two values of the bounded type":
 	expect_equal(total(Version(2), Version(3)), 5)?
 
 test "interface values of different types are unequal":
-	a: Equal := CustomerKey(1, "a")
-	b: Equal := CustomerKey(1, "z")
+	a Equal := CustomerKey(1, "a")
+	b Equal := CustomerKey(1, "z")
 	expect_true(a.equals(b))?
 	expect_false(a.equals(1))?
 
-	order: Comparable := Version(1)
+	order Comparable := Version(1)
 	expect_true(order.compare(Version(3)) < 0)?
 
 test "keys use the custom equality":

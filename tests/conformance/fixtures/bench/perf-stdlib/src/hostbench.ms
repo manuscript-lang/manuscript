@@ -9,8 +9,8 @@ import (
 	bench from "./harness.ms",
 )
 
-fn entries(count: Int) List[ArchiveEntry]:
-	var out: List[ArchiveEntry] = []
+fn entries(count Int) List[ArchiveEntry]:
+	var out List[ArchiveEntry] = []
 	for i in 0..count:
 		out.append(
 			ArchiveEntry(
@@ -21,8 +21,8 @@ fn entries(count: Int) List[ArchiveEntry]:
 		)
 	return out
 
-fn sse_stream(count: Int) Bytes:
-	var parts: List[String] = []
+fn sse_stream(count Int) Bytes:
+	var parts List[String] = []
 	for i in 0..count:
 		parts.append(f"event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
 	return parts.join("").to_bytes()
@@ -49,7 +49,7 @@ fn bench_archive() Void:
 	if packed := pack(list, "zip"):
 		bench_unpack(packed)
 
-fn bench_unpack(packed: Bytes) Void:
+fn bench_unpack(packed Bytes) Void:
 	bench(
 		"archive.zip_unpack",
 		2000,
@@ -64,8 +64,8 @@ fn bench_sse() Void:
 
 // Hands out its bytes as one chunk.
 type Whole:
-	data: Bytes
-	done: Bool
+	data Bytes
+	done Bool
 
 fn var Whole.next() Bytes?!:
 	if self.done: return ok(null)
@@ -76,7 +76,7 @@ fn var Whole.next() Bytes?!:
 fn move Whole.close() Void!:
 	return ok()
 
-fn count_events(data: Bytes) Int:
+fn count_events(data Bytes) Int:
 	var events = sse_events(ReadStream[Bytes](Whole(data, false)))
 	var count = 0
 

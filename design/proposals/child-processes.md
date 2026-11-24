@@ -55,9 +55,9 @@ import ProcessGroup from "@std/os/processes.ms"
 import Channel from "@std/concurrency/tasks.ms"
 
 type HashConfig:
-    algorithm: String
+    algorithm String
 
-fn hasher(parent: Channel[String, Bytes], argument: HashConfig):
+fn hasher(parent Channel[String, Bytes], argument HashConfig):
     while true:
         if chunk := parent.receive():
             parent.send(digest(argument.algorithm, chunk))

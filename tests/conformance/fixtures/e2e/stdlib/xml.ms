@@ -8,14 +8,14 @@ import (
 )
 
 // A malformed document is EBADMSG with a position and a reason.
-fn expect_malformed(result: XmlNode!) Void!:
+fn expect_malformed(result XmlNode!) Void!:
 	cause := result | expect_error?
 	expect_equal(cause.kind, "EBADMSG")?
 	expect_true(cause.details.contains("line") and cause.details.contains("column"))?
 	expect_true(cause.details.contains("reason"))?
 
 // A malformed document fails at this line and column with this reason.
-fn expect_error_at(text: String, line: Int, column: Int, reason: String) Void!:
+fn expect_error_at(text String, line Int, column Int, reason String) Void!:
 	cause := parse(text) | expect_error?
 	expect_equal(cause.kind, "EBADMSG")?
 	expect_equal(cause.details["line"], line.to_string())?

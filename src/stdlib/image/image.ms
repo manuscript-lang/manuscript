@@ -61,13 +61,13 @@ export enum ImageFormat:
 // `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
 export type Image:
 	// Columns, at least 1.
-	width: Int
+	width Int
 	// Rows, at least 1.
-	height: Int
+	height Int
 	// The channel layout of `pixels`.
-	mode: ColorMode
+	mode ColorMode
 	// `width * height * channels` bytes, row-major.
-	pixels: List[UInt8]
+	pixels List[UInt8]
 
 // Returns the number of byte channels per pixel.
 fn Image.channel_count() Int:
@@ -75,7 +75,7 @@ fn Image.channel_count() Int:
 
 // Returns the pixel at `(x, y)` as RGBA, or null outside the image. Gray modes repeat
 // the luminance in red, green and blue, and modes without alpha report 255.
-fn Image.pixel(x: Int, y: Int) Rgba?:
+fn Image.pixel(x Int, y Int) Rgba?:
 	if x < 0 or y < 0 or x >= self.width or y >= self.height: return null
 
 	n := color_channels(self.mode)
@@ -100,7 +100,7 @@ fn Image.pixel(x: Int, y: Int) Rgba?:
 
 // Writes `color` at `(x, y)`, converting to the image's mode (gray modes store Rec. 601
 // luma of the color). Returns false, and changes nothing, outside the image.
-fn var Image.set_pixel(x: Int, y: Int, color: Rgba) Bool:
+fn var Image.set_pixel(x Int, y Int, color Rgba) Bool:
 	if x < 0 or y < 0 or x >= self.width or y >= self.height: return false
 
 	n := color_channels(self.mode)
@@ -127,7 +127,7 @@ fn var Image.set_pixel(x: Int, y: Int, color: Rgba) Bool:
 
 // Returns a copy of the pixels inside `area`. An `area` that is empty, has a negative
 // corner or leaves the image returns ERANGE.
-fn Image.crop(area: Rect) Image!:
+fn Image.crop(area Rect) Image!:
 	if area.width < 1 or area.height < 1 or area.x < 0 or area.y < 0:
 		return error(Error("image: crop area is empty or negative", kind: "ERANGE"))
 	if area.x > self.width - area.width or area.y > self.height - area.height:
@@ -222,7 +222,7 @@ fn Image.rotate270() Image:
 // Returns the image converted to `target`. Gray from color uses Rec. 601 luma, gray
 // expands by repeating its value into red, green and blue, and missing alpha becomes
 // opaque. Dropping alpha keeps the stored color and does not composite it.
-fn Image.convert(target: ColorMode) Image:
+fn Image.convert(target ColorMode) Image:
 	if target == self.mode: return Image(
 		self.width,
 		self.height,
@@ -260,10 +260,10 @@ fn Image.convert(target: ColorMode) Image:
 // size returns EINVAL, as `new_image` does, and a pixel count past `max_pixels` or the
 // 2^30 hard ceiling returns EOVERFLOW.
 fn Image.resize(
-	width: Int,
-	height: Int,
-	method: Resampling = Resampling.Bilinear,
-	max_pixels: Int? = null,
+	width Int,
+	height Int,
+	method Resampling = Resampling.Bilinear,
+	max_pixels Int? = null,
 ) Image!:
 	if width < 1 or height < 1:
 		return error(Error("image: dimensions must be positive", kind: "EINVAL"))
@@ -313,7 +313,7 @@ fn Image.resize(
 
 // Reports whether `image` has consistent dimensions for a rotation. Public fields allow
 // malformed images, so the check divides instead of multiplying unchecked sizes.
-fn rotation_shape(image: Image, channels: Int) Bool:
+fn rotation_shape(image Image, channels Int) Bool:
 	if image.width < 1 or image.height < 1: return false
 	if image.pixels.length() % channels != 0: return false
 
@@ -323,13 +323,13 @@ fn rotation_shape(image: Image, channels: Int) Bool:
 // One RGBA sample, each channel 0 to 255.
 export type Rgba:
 	// Red level, 0 to 255; writes clamp.
-	red: Int
+	red Int
 	// Green level, 0 to 255; writes clamp.
-	green: Int
+	green Int
 	// Blue level, 0 to 255; writes clamp.
-	blue: Int
+	blue Int
 	// Opacity, 0 transparent to 255 opaque (the default).
-	alpha: Int = 255
+	alpha Int = 255
 
 // Chroma resolution of an encoded JPEG.
 export enum Chroma:
@@ -340,24 +340,24 @@ export enum Chroma:
 export type JpegOptions:
 	// 1 (smallest file) to 100 (best quality); outside that range `encode_jpeg` returns
 	// EINVAL.
-	quality: Int = 85
+	quality Int = 85
 	// Chroma resolution for color images; gray images ignore it.
-	chroma: Chroma = Chroma.Quarter
+	chroma Chroma = Chroma.Quarter
 	// MCUs (minimum coded units, the blocks the encoder processes together) between
 	// restart markers, 0 through 65535, or 0 for null. Markers let readers recover from
 	// damage.
-	restart_interval: Int = 0
+	restart_interval Int = 0
 
 // A rectangle in pixels: top-left corner and size.
 export type Rect:
 	// Column of the left edge, counted from 0.
-	x: Int
+	x Int
 	// Row of the top edge, counted from 0.
-	y: Int
+	y Int
 	// Columns covered; at least 1.
-	width: Int
+	width Int
 	// Rows covered; at least 1.
-	height: Int
+	height Int
 
 // How `resize` samples the source.
 export enum Resampling:
@@ -365,7 +365,7 @@ export enum Resampling:
 	Bilinear  // Weighted average of the four nearest pixels.
 
 // Number of byte channels in `mode`.
-export fn color_channels(mode: ColorMode) Int:
+export fn color_channels(mode ColorMode) Int:
 	match mode:
 		Gray: return 1
 		GrayAlpha: return 2
@@ -376,10 +376,10 @@ export fn color_channels(mode: ColorMode) Int:
 // returns EINVAL, and a pixel count past `max_pixels` or the 2^30 hard ceiling returns
 // EOVERFLOW.
 export fn new_image(
-	width: Int,
-	height: Int,
-	mode: ColorMode,
-	max_pixels: Int? = null,
+	width Int,
+	height Int,
+	mode ColorMode,
+	max_pixels Int? = null,
 ) Image!:
 	if width < 1 or height < 1: return error(
 		Error("image: dimensions must be positive", kind: "EINVAL")
@@ -397,7 +397,7 @@ export fn new_image(
 
 // Names the format of `data` from its leading bytes, or null when it is not JPEG, PNG,
 // BMP or binary PPM/PGM (P5 or P6).
-export fn detect_image_format(data: Bytes) ImageFormat?:
+export fn detect_image_format(data Bytes) ImageFormat?:
 	if data.length() >= 2:
 		a := data.get(0).to_int()
 		b := data.get(1).to_int()
@@ -408,14 +408,14 @@ export fn detect_image_format(data: Bytes) ImageFormat?:
 
 	return null
 
-fn color_mode(channels: Int) ColorMode:
+fn color_mode(channels Int) ColorMode:
 	if channels == 1: return ColorMode.Gray
 	if channels == 2: return ColorMode.GrayAlpha
 	if channels == 3: return ColorMode.Rgb
 
 	return ColorMode.Rgba
 
-fn image_of(move raster: Raster) Image:
+fn image_of(move raster Raster) Image:
 	return Image(
 		raster.width,
 		raster.height,
@@ -426,7 +426,7 @@ fn image_of(move raster: Raster) Image:
 // Decodes any supported format, detected from the leading bytes with
 // `detect_image_format`; an unrecognized format returns ENOTSUP. `max_pixels` rejects
 // larger images with EOVERFLOW before any allocation.
-export fn decode_image(data: Bytes, max_pixels: Int? = null) Image!:
+export fn decode_image(data Bytes, max_pixels Int? = null) Image!:
 	format := detect_image_format(data)
 	f := format
 
@@ -442,7 +442,7 @@ export fn decode_image(data: Bytes, max_pixels: Int? = null) Image!:
 // Encodes `image` as `format`. JPEG uses the default `JpegOptions`; call `encode_jpeg`
 // to set quality or chroma. JPEG and PPM cannot store alpha and return EINVAL for
 // `GrayAlpha` and `Rgba` images; convert them first.
-export fn encode_image(image: Image, format: ImageFormat) Bytes!:
+export fn encode_image(image Image, format ImageFormat) Bytes!:
 	match format:
 		Jpeg: return encode_jpeg(image, JpegOptions())
 		Png: return encode_png(
@@ -468,7 +468,7 @@ export fn encode_image(image: Image, format: ImageFormat) Bytes!:
 // resolution. Alpha images, a `quality` outside 1 through 100, and a
 // `restart_interval` outside 0 through 65535 return EINVAL; convert or composite alpha
 // images first. A width or height above 65535 returns EOVERFLOW.
-export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!:
+export fn encode_jpeg(image Image, options JpegOptions = JpegOptions()) Bytes!:
 	return jpeg_encode(
 		image.width,
 		image.height,

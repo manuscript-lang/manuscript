@@ -5,28 +5,28 @@ import (
 )
 
 type Acc:
-	name: String
-	balance: Int
-	history: List[Int]
+	name String
+	balance Int
+	history List[Int]
 
 type Pt:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
 enum Shape:
-	Circle(r: Int)
-	Rect(w: Int, h: Int)
-	Tri(a: Int, b: Int, c: Int)
+	Circle(r Int)
+	Rect(w Int, h Int)
+	Tri(a Int, b Int, c Int)
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Void:
+fn stop(name String, t0 Int, chk Int) Void:
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn m_struct_values() Int:
-	var m: Map[String, Acc] = {}
+	var m Map[String, Acc] = {}
 	var x = 1
 
 	for i in 0..1000000:
@@ -43,7 +43,7 @@ fn m_struct_values() Int:
 	return t
 
 fn m_memo() Int:
-	var memo: Map[Int, Int] = {}
+	var memo Map[Int, Int] = {}
 	var t = 0
 
 	for s in 1..300000:
@@ -63,7 +63,7 @@ fn m_memo() Int:
 	return t
 
 fn m_struct_keys() Int:
-	var m: Map[Pt, Int] = {}
+	var m Map[Pt, Int] = {}
 	for i in 0..300000:
 		m[Pt(i % 700, i / 700)] = i
 
@@ -73,7 +73,7 @@ fn m_struct_keys() Int:
 	return t
 
 fn m_enum_list() Int:
-	var xs: List[Shape] = []
+	var xs List[Shape] = []
 
 	for i in 0..1000000:
 		if i % 3 == 0: xs.append(Shape.Circle(i % 10))
@@ -92,7 +92,7 @@ fn m_enum_list() Int:
 
 fn m_bfs_grid() Int:
 	n := 1000
-	var dist: List[Int] = []
+	var dist List[Int] = []
 	for i in 0..n * n:
 		dist.append(-1)
 
@@ -125,7 +125,7 @@ fn m_bfs_grid() Int:
 	return dist[n * n - 1]
 
 fn m_sort_keyed() Int:
-	var xs: List[Pt] = []
+	var xs List[Pt] = []
 	var x = 1
 
 	for i in 0..1000000:
@@ -136,7 +136,7 @@ fn m_sort_keyed() Int:
 	return ys[0].y + ys[999999].y
 
 fn m_group_by() Int:
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..1000000:
 		xs.append(i * 7 % 1000)
 
@@ -144,7 +144,7 @@ fn m_group_by() Int:
 	return g.length() + g[5].length()
 
 fn m_fold_sum() Int:
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..3000000:
 		xs.append(i)
 
@@ -153,7 +153,7 @@ fn m_fold_sum() Int:
 	return a + b
 
 fn m_list_of_strings() Int:
-	var xs: List[String] = []
+	var xs List[String] = []
 	for i in 0..500000:
 		xs.append(f"line {i} of text")
 
@@ -175,7 +175,7 @@ fn m_set_of_pts() Int:
 	return t + s.length()
 
 fn m_nested_maps() Int:
-	var m: Map[Int, Map[Int, Int]] = {}
+	var m Map[Int, Map[Int, Int]] = {}
 
 	for i in 0..500000:
 		a := i % 1000
@@ -188,7 +188,7 @@ fn m_nested_maps() Int:
 	return t
 
 fn m_str_build_map() Int:
-	var m: Map[String, String] = {}
+	var m Map[String, String] = {}
 	for i in 0..200000:
 		m[f"k{i}"] = f"value-{i}-{i * 2}"
 

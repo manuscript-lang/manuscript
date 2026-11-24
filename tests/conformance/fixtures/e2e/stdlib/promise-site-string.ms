@@ -5,14 +5,14 @@ import (
 	expect_equal, expect_error from "@std/test/test.ms",
 )
 
-fn boom(n: Int) Int!:
-	xs: List[Int] := []
+fn boom(n Int) Int!:
+	xs List[Int] := []
 	return ok(xs[n])
 
-fn fine(n: Int) Int!:
+fn fine(n Int) Int!:
 	return ok(n)
 
-fn label(n: Int) String:
+fn label(n Int) String:
 	return f"a-long-made-up-place-{n}.ms:{n} in somewhere"
 
 test "a built site string is copied and freed when the work ends":

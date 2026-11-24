@@ -4,8 +4,8 @@
 import Iterator from "@std/core.ms"
 
 type Counter:
-	at: Int
-	end: Int
+	at Int
+	end Int
 
 fn var Counter.next() Int?:
 	if self.at >= self.end: return null
@@ -14,7 +14,7 @@ fn var Counter.next() Int?:
 	return self.at - 1
 
 type Evens:
-	inner: Iterator[Int]
+	inner Iterator[Int]
 
 fn var Evens.next() Int?:
 	while true:

@@ -13,38 +13,38 @@ import (
 // `make copy-check` sweeps this fixture for implicit copies.
 
 type Counter:
-	values: List[Int]
+	values List[Int]
 
 fn Counter.read() Int:
 	return self.values[0]
 
-fn counter(n: Int) Counter:
+fn counter(n Int) Counter:
 	return Counter(values: [n])
 
 type Ring:
-	slots: List[Counter?]
-	size: Int
+	slots List[Counter?]
+	size Int
 
-fn Ring.at(index: Int) Counter?:
+fn Ring.at(index Int) Counter?:
 	if index < 0 or index >= self.size: return null
 	return self.slots.get(index)
 
-fn maybe(n: Int) Counter?:
+fn maybe(n Int) Counter?:
 	if n < 0: return null
 	return counter(n)
 
-fn make(n: Int) Counter!:
+fn make(n Int) Counter!:
 	if n < 0: return error(Error("negative"))
 	return ok(counter(n))
 
-fn total(counters: List[Counter], scale: Int = 1) Int:
+fn total(counters List[Counter], scale Int = 1) Int:
 	var sum = 0
 	for c in counters: sum += c.read() * scale
 	return sum
 
 test "pop moves the element out of the list":
 	var counters = [counter(1), counter(2), counter(3)]
-	var seen: List[Int] = []
+	var seen List[Int] = []
 
 	while not counters.is_empty():
 		c := counters.pop()
@@ -66,7 +66,7 @@ test "get on a borrowed result lends the payload":
 	r.get().read() | expect_equal(7)?
 
 test "a native lend beside a none path still lends":
-	slots: List[Counter?] := [counter(8), null]
+	slots List[Counter?] := [counter(8), null]
 	ring := Ring(slots: slots, size: 2)
 	c := ring.at(0)
 	if c != null: c.read() | expect_equal(8)?

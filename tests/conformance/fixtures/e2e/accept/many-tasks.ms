@@ -13,14 +13,14 @@ import (
 	milliseconds, seconds, sleep from "@std/time.ms",
 )
 
-fn park(a: Int) Int!:
+fn park(a Int) Int!:
 	sleep(seconds(600)).wait()?
 	return ok(a)
 
 // Fifty thousand promise tasks park at once: each costs a few kilobytes, so this takes
 // a few hundred megabytes, and cancelling them all is linear.
 test "fifty thousand parked promise tasks fit and cancel in bounded time":
-	var promises: List[Promise[Int]] = []
+	var promises List[Promise[Int]] = []
 	for i in 0..50000:
 		promises.append(
 			promise(
@@ -53,7 +53,7 @@ test "forty thousand concurrent file reads complete":
 	path := dir + "/read.txt"
 	write_file(path, "hello").wait()?
 
-	var reads: List[Promise[Bytes]] = []
+	var reads List[Promise[Bytes]] = []
 	for unused in 0..40000:
 		reads.append(read_file(path, null))
 

@@ -7,14 +7,14 @@ import (
 )
 
 type Point:
-	x: Int
-	label: String
+	x Int
+	label String
 
 // Prints the bytes it is given, so the output shows what the format writers produced.
 type Echo:
-	out: WriteStream[String]
+	out WriteStream[String]
 
-fn var Echo.write(move value: Bytes) Void!:
+fn var Echo.write(move value Bytes) Void!:
 	return self.out.write(value.decode_utf8() or "")
 
 fn var Echo.flush() Void!:

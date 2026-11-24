@@ -14,16 +14,16 @@ import (
 )
 
 type SearchEnvironment:
-	directory: String
-	path: String?
-	extensions: String?
+	directory String
+	path String?
+	extensions String?
 
 fn move SearchEnvironment.close() Void!:
 	set_environment("PATH", self.path.clone())?
 	set_environment("PATHEXT", self.extensions.clone())?
 	change_directory(self.directory)?
 
-fn saved_variable(values: Map[String, String], name: String) String?:
+fn saved_variable(values Map[String, String], name String) String?:
 	windows := os() == Os.Windows
 
 	for entry in values.entries():
@@ -42,7 +42,7 @@ fn save_search_environment() SearchEnvironment!:
 		)
 	)
 
-fn make_program(path: String) Void!:
+fn make_program(path String) Void!:
 	write_file(path, "#!/bin/sh\nexit 0\n", false).wait()?
 	chmod(path, 493)?
 

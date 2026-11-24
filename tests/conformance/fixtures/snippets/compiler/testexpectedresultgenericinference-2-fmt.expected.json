@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn first() Void:\n\tcallback: fn() Int? := fn: absent()\n"
+    "fmt": "fn first() Void:\n\tcallback fn() Int? := fn: absent()\n"
   }
 }

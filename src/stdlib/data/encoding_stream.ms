@@ -12,10 +12,10 @@ import (
 
 // Encodes bytes in groups of three, so a chunk boundary never splits a Base64 group.
 type Base64Encoding:
-	url_safe: Bool
-	tail: Bytes
+	url_safe Bool
+	tail Bytes
 
-fn var Base64Encoding.step(move value: Bytes, var out: List[String]) Void!:
+fn var Base64Encoding.step(move value Bytes, var out List[String]) Void!:
 	data := self.tail.concat(value)
 	whole := data.length() - data.length() % 3
 	self.tail = data.slice(whole, data.length())?
@@ -23,7 +23,7 @@ fn var Base64Encoding.step(move value: Bytes, var out: List[String]) Void!:
 
 	out.append(base64_encode(data.slice(0, whole)?, self.url_safe))
 
-fn var Base64Encoding.finish(var out: List[String]) Void!:
+fn var Base64Encoding.finish(var out List[String]) Void!:
 	if self.tail.is_empty(): return ok()
 
 	last := self.tail.clone()
@@ -34,8 +34,8 @@ fn var Base64Encoding.finish(var out: List[String]) Void!:
 // with padding at the end. Set `url_safe: true` for the URL-safe alphabet. Closing the
 // result closes `input`.
 export fn base64_encoded(
-	move input: ReadStream[Bytes],
-	url_safe: Bool = false,
+	move input ReadStream[Bytes],
+	url_safe Bool = false,
 ) ReadStream[String]:
 	return through[Bytes, String](
 		input,
@@ -45,11 +45,11 @@ export fn base64_encoded(
 // Decodes Base64 text in groups of four characters, so a chunk boundary never splits a
 // group.
 type Base64Decoding:
-	url_safe: Bool
-	tail: String
-	ended: Bool = false
+	url_safe Bool
+	tail String
+	ended Bool = false
 
-fn var Base64Decoding.step(move value: String, var out: List[Bytes]) Void!:
+fn var Base64Decoding.step(move value String, var out List[Bytes]) Void!:
 	if self.ended and not value.is_empty(): return error(
 		Error("encoding: invalid data", kind: "EBADMSG")
 	)
@@ -73,7 +73,7 @@ fn var Base64Decoding.step(move value: String, var out: List[Bytes]) Void!:
 
 	out.append(decoded)
 
-fn var Base64Decoding.finish(var out: List[Bytes]) Void!:
+fn var Base64Decoding.finish(var out List[Bytes]) Void!:
 	last := self.tail.clone()
 	self.tail = ""
 	if last == "": return ok()
@@ -84,30 +84,30 @@ fn var Base64Decoding.finish(var out: List[Bytes]) Void!:
 // text that ends inside a group fails at the end of the stream. Closing the result
 // closes `input`.
 export fn base64_decoded(
-	move input: ReadStream[String],
-	url_safe: Bool = false,
+	move input ReadStream[String],
+	url_safe Bool = false,
 ) ReadStream[Bytes]:
 	return through[String, Bytes](input, Base64Decoding(url_safe: url_safe, tail: ""))
 
 type HexEncoding:
-	unused: Int
+	unused Int
 
-fn var HexEncoding.step(move value: Bytes, var out: List[String]) Void!:
+fn var HexEncoding.step(move value Bytes, var out List[String]) Void!:
 	out.append(hex_encode(value))
 
-fn var HexEncoding.finish(var out: List[String]) Void!:
+fn var HexEncoding.finish(var out List[String]) Void!:
 	return ok()
 
 // Encodes a byte stream as lowercase hexadecimal text chunks. Closing the result closes
 // `input`.
-export fn hex_encoded(move input: ReadStream[Bytes]) ReadStream[String]:
+export fn hex_encoded(move input ReadStream[Bytes]) ReadStream[String]:
 	return through[Bytes, String](input, HexEncoding(0))
 
 // Decodes hexadecimal text in pairs, so a chunk boundary never splits a byte.
 type HexDecoding:
-	tail: String
+	tail String
 
-fn var HexDecoding.step(move value: String, var out: List[Bytes]) Void!:
+fn var HexDecoding.step(move value String, var out List[Bytes]) Void!:
 	text := self.tail.concat(value)
 	whole := text.length() - text.length() % 2
 	self.tail = text.slice(whole, text.length())
@@ -115,7 +115,7 @@ fn var HexDecoding.step(move value: String, var out: List[Bytes]) Void!:
 
 	out.append(hex_decode(text.slice(0, whole))?)
 
-fn var HexDecoding.finish(var out: List[Bytes]) Void!:
+fn var HexDecoding.finish(var out List[Bytes]) Void!:
 	last := self.tail.clone()
 	self.tail = ""
 	if last == "": return ok()
@@ -124,5 +124,5 @@ fn var HexDecoding.finish(var out: List[Bytes]) Void!:
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside
 // a pair, fails the read with `EBADMSG`. Closing the result closes `input`.
-export fn hex_decoded(move input: ReadStream[String]) ReadStream[Bytes]:
+export fn hex_decoded(move input ReadStream[String]) ReadStream[Bytes]:
 	return through[String, Bytes](input, HexDecoding(tail: ""))

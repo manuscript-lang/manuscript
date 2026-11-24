@@ -7,18 +7,18 @@ import (
 
 test "List count calls the predicate once per element":
 	values := [1, 2, 3, 4]
-	var seen: List[Int] = []
+	var seen List[Int] = []
 
 	even := values.count(
-		fn(value: Int) Bool:
+		fn(value Int) Bool:
 			seen.append(value)
 			return value % 2 == 0
 	)
 
 	expect_false(even != 2 or seen != values)?
 
-	empty: List[Int] := []
-	expect_equal(empty.count(fn(value: Int) Bool: true), 0)?
+	empty List[Int] := []
+	expect_equal(empty.count(fn(value Int) Bool: true), 0)?
 
 test "List insert mutates in place":
 	var values = [1, 3]
@@ -34,7 +34,7 @@ test "List insert mutates in place":
 	values.insert(-7, 8)
 	expect_equal(values, [8, 0, 1, 2, 3, 4, 9, 5])?
 
-	var empty: List[String] = []
+	var empty List[String] = []
 	empty.insert(0, "a")
 	expect_equal(empty, ["a"])?
 
@@ -47,7 +47,7 @@ test "List pop removes and returns the last element":
 	expect_false((values.pop() != null) or not (values.is_empty()))?
 
 type Box:
-	value: Int
+	value Int
 
 test "List pop and distinct copy payloads":
 	shared := Box(1)
@@ -74,12 +74,12 @@ test "List distinct keeps the first equal element in order":
 	words := ["b", "a", "b"]
 	expect_equal(words.distinct(), ["b", "a"])?
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	var copy = empty.distinct()
 	copy.append(1)
 	expect_false(not (empty.is_empty()))?
 
-fn unique_count[T: Equal & Clonable](values: List[T]) Int:
+fn unique_count[T Equal & Clonable](values List[T]) Int:
 	return values.distinct().length()
 
 test "List parity operations support generic and bound use":
@@ -89,14 +89,14 @@ test "List parity operations support generic and bound use":
 	insert := values.insert
 	insert(2, 3)
 
-	pop: fn() Int? := values.pop
+	pop fn() Int? := values.pop
 	popped := pop()
 	count := values.count
-	expect_false(popped != 3 or count(fn(value: Int) Bool: value > 0) != 2)?
+	expect_false(popped != 3 or count(fn(value Int) Bool: value > 0) != 2)?
 
 test "List distinct handles large Int and String lists":
-	var numbers: List[Int] = []
-	var words: List[String] = []
+	var numbers List[Int] = []
+	var words List[String] = []
 
 	for index in 0..60000:
 		numbers.append(index % 30000)

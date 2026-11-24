@@ -1,7 +1,7 @@
 // Wraps text in double quotes and escapes it the way JSON does. A control character
 // below U+0020 gets its short JSON escape where one exists, otherwise \uXXXX. U+007F is
 // always escaped as \uXXXX. Pass `escape_c1: true` to escape U+0080 to U+009F too.
-export fn quote_text(text: String, escape_c1: Bool) String:
+export fn quote_text(text String, escape_c1 Bool) String:
 	var clean = true
 
 	for code in text.scalar_values():
@@ -39,5 +39,5 @@ export fn quote_text(text: String, escape_c1: Bool) String:
 	return result
 
 // Four lowercase hex digits for a code unit, zero padded.
-fn hex4(code: Int) String:
+fn hex4(code Int) String:
 	return code.to_hex().pad_start(4, "0")

@@ -2,11 +2,11 @@
 // conform: phase=test
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn ascending(xs: List[Int]) List[Int]:
-	return xs.sorted(compare: fn(left: Int, right: Int) Int: return left - right)
+fn ascending(xs List[Int]) List[Int]:
+	return xs.sorted(compare: fn(left Int, right Int) Int: return left - right)
 
-fn descending(xs: List[Int]) List[Int]:
-	return xs.sorted(compare: fn(left: Int, right: Int) Int: return right - left)
+fn descending(xs List[Int]) List[Int]:
+	return xs.sorted(compare: fn(left Int, right Int) Int: return right - left)
 
 test "a difference comparator sorts by value":
 	ascending([5, -3, 9, 0, -3, 7]) | expect_equal([-3, -3, 0, 5, 7, 9])?

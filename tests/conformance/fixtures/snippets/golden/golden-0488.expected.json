@@ -13,8 +13,8 @@
         "position": {
           "file": "golden-0488.ms",
           "line": 5,
-          "column": 33,
-          "offset": 137
+          "column": 32,
+          "offset": 135
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "golden-0488.ms",
           "line": 7,
           "column": 5,
-          "offset": 210
+          "offset": 207
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0488.ms:5:33: resolution: unknown binding from_callback; declare it with 'from_callback := ...' before use, define 'fn from_callback(...) T:', or import it from a module\n   |\n 5 |     var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)\n   |                                 ^\n<DIR>/golden-0488.ms:7:5: type: missing argument 1: Int in call to callback; pass it positionally, without a label\n   |\n 7 |     callback()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0488.ms:5:32: resolution: unknown binding from_callback; declare it with 'from_callback := ...' before use, define 'fn from_callback(...) T:', or import it from a module\n   |\n 5 |     var callback fn(Int) Int = from_callback(fn: fn(value Int = 4): value)\n   |                                ^\n<DIR>/golden-0488.ms:7:5: type: missing argument 1: Int in call to callback; pass it positionally, without a label\n   |\n 7 |     callback()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

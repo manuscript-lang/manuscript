@@ -3,8 +3,8 @@
 import expect_equal from "@std/test/test.ms"
 
 type Item:
-	name: String
-	tags: List[String]
+	name String
+	tags List[String]
 
 fn nested() List[List[String]]:
 	return [["tmp", "b"]]
@@ -28,6 +28,6 @@ test "a part two levels into a temporary record":
 test "a list literal and append own copies of nested elements of a temporary":
 	a := [nested()[0][0].clone(), nested()[0][1].clone()]
 	expect_equal(a.length(), 2)?
-	var b: List[String] = []
+	var b List[String] = []
 	b.append(nested()[0][1].clone())
 	expect_equal(b[0], "b")?

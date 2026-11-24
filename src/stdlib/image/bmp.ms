@@ -12,23 +12,23 @@ import (
 
 // ---- BMP ----
 
-fn le16(data: Bytes, at: Int) Int:
+fn le16(data Bytes, at Int) Int:
 	return data.get(at).to_int() + data.get(at + 1).to_int() * 256
 
-fn le32(data: Bytes, at: Int) Int:
+fn le32(data Bytes, at Int) Int:
 	return le16(data, at) + le16(data, at + 2) * 65536
 
-fn signed32(value: Int) Int:
+fn signed32(value Int) Int:
 	return if value >= 2147483648: value - 4294967296 else: value
 
-fn mask_shift(mask: Int) Int:
+fn mask_shift(mask Int) Int:
 	var shift = 0
 	while bit_and(shift_right_unsigned(mask, shift), 1) == 0: shift += 1
 	return shift
 
 // Extracts a bit-field channel at `shift` with maximum value `peak` and scales it to
 // eight bits.
-fn mask_channel(value: Int, shift: Int, peak: Int) Int:
+fn mask_channel(value Int, shift Int, peak Int) Int:
 	return (bit_and(shift_right_unsigned(value, shift), peak) * 255 + peak / 2) / peak
 
 // Decodes an uncompressed BMP, or a 32-bit BMP with bit-field masks, into a raster of 3
@@ -36,7 +36,7 @@ fn mask_channel(value: Int, shift: Int, peak: Int) Int:
 // RGB. Malformed data returns EBADMSG, an unsupported feature such as RLE compression
 // returns ENOTSUP, and dimensions past `max_pixels` or the hard ceiling return
 // EOVERFLOW.
-export fn decode_bmp(data: Bytes, max_pixels: Int?) Raster!:
+export fn decode_bmp(data Bytes, max_pixels Int?) Raster!:
 	if data.length() < 26: return error(bad("truncated BMP header"))
 
 	offset := le32(data, 10)
@@ -209,18 +209,18 @@ export fn decode_bmp(data: Bytes, max_pixels: Int?) Raster!:
 			pixels[i * 4 + 3] = byte(255)
 	return ok(Raster(width, height, m, pixels))
 
-fn put16(var out: BytesBuilder, value: Int) Void:
+fn put16(var out BytesBuilder, value Int) Void:
 	out.append(byte(bit_and(value, 255)))
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 
-fn put32(var out: BytesBuilder, value: Int) Void:
+fn put32(var out BytesBuilder, value Int) Void:
 	put16(out, bit_and(value, 65535))
 	put16(out, bit_and(shift_right_unsigned(value, 16), 65535))
 
 // Encodes pixels as a 24-bit BMP, or as a 32-bit BMP when `channels` is 2 or 4 (alpha).
 // Gray pixels are stored as RGB. A size past the BMP limits (2^31 - 1 per dimension, or
 // 4 GiB in total) returns EOVERFLOW.
-export fn encode_bmp(width: Int, height: Int, channels: Int, pixels: List[UInt8]) Bytes!:
+export fn encode_bmp(width Int, height Int, channels Int, pixels List[UInt8]) Bytes!:
 	if width > 2147483647 or height > 2147483647:
 		return error(too_big("BMP dimensions too large"))
 

@@ -27,10 +27,10 @@ test "decimal arithmetic is exact and conversion truncates":
 	expect_equal(123.to_decimal(), 123d)?
 
 test "decimal integer conversions normalize boundary values":
-	minimum: Int := -9223372036854775808
-	maximum: Int := 9223372036854775807
-	unsigned: UInt64 := 18446744073709551615
-	power: UInt64 := 10000000000000000000
+	minimum Int := -9223372036854775808
+	maximum Int := 9223372036854775807
+	unsigned UInt64 := 18446744073709551615
+	power UInt64 := 10000000000000000000
 	expect_equal(minimum.to_decimal(), -9223372036854775808d)?
 	expect_equal(maximum.to_decimal(), 9223372036854775807d)?
 	expect_equal(unsigned.to_decimal(), 18446744073709551615d)?

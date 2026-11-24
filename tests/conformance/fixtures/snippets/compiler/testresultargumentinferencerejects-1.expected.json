@@ -13,15 +13,15 @@
         "position": {
           "file": "testresultargumentinferencerejects-1.ms",
           "line": 6,
-          "column": 19,
-          "offset": 248
+          "column": 18,
+          "offset": 245
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresultargumentinferencerejects-1.ms:6:19: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 6 | fn first(r: Error!E1) Void: bounded(r)\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresultargumentinferencerejects-1.ms:6:18: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 6 | fn first(r Error!E1) Void: bounded(r)\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

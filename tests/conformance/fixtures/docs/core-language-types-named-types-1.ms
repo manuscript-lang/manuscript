@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/types/named-types.md:10
 type Customer:
-    name: String
-    email: String?
+    name String
+    email String?

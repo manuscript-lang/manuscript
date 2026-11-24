@@ -15,12 +15,12 @@ import (
 )
 
 fn measure(
-	before: String,
-	after: String,
-	inputs: String,
-	directory: String,
-	rounds: Int,
-	filter: String,
+	before String,
+	after String,
+	inputs String,
+	directory String,
+	rounds Int,
+	filter String,
 ) Void!:
 	ensure_directory(directory)
 	set_environment("MS_CACHE", "off")?

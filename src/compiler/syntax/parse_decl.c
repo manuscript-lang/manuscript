@@ -47,7 +47,7 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
 /* The type parameters that stand for the receiver's own arguments in `fn Type[T: Bound].m()`. */
 MS_NODISCARD static bool receiver_arguments(Parser *p, MsTypeParams *bounds, MsTypeRefs *args) {
   bool bounded = parse_kind(p) == MS_T_LBracket && parse_ahead(p, 1).kind == MS_T_Name &&
-                 parse_ahead(p, 2).kind == MS_T_Colon;
+                 (parse_ahead(p, 2).kind == MS_T_Name || parse_ahead(p, 2).kind == MS_T_Colon);
   if (!bounded) {
     return !parse_take(p, MS_T_LBracket) || parse_type_args(p, args);
   }
@@ -107,8 +107,8 @@ MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) 
   if (parse_kind(p) == MS_T_Var && parse_ahead(p, 1).kind == MS_T_Name) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text("'fn var' marks a method that changes its receiver, as in 'fn var "
-                               "Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter "
-                               "instead: 'fn add(var counter: Counter, n: Int) Void:'"));
+                               "Counter.add(n Int) Void:'; a free function takes 'var' on the parameter "
+                               "instead: 'fn add(var counter Counter, n Int) Void:'"));
     return false;
   }
   MsToken name = {0};
@@ -211,10 +211,8 @@ MS_NODISCARD static bool constant_declaration(Parser *p, MsToken token, MsDecl *
   if (!parse_need_token(p, MS_T_Name, &name))
     return false;
   MsTypeRef *ty = NULL;
-  if (parse_take(p, MS_T_Colon)) {
-    if (!parse_typ(p, &ty))
-      return false;
-  }
+  if (parse_kind(p) != MS_T_ColonAssign && !parse_name_type(p, name, &ty))
+    return false;
   if (!parse_need_immutable_bind(p))
     return false;
   MsPos init_pos = {0};
@@ -339,9 +337,6 @@ MS_NODISCARD bool parse_declaration(Parser *p, MsDecl **out) {
     return next_kind == MS_T_Type ? extern_type_declaration(p, token, out)
                                   : extern_fn_declaration(p, token, out);
   }
-  if (k == MS_T_Name && (next_kind == MS_T_ColonAssign || next_kind == MS_T_Colon)) {
-    return constant_declaration(p, token, out);
-  }
   if (k == MS_T_Test) {
     return test_declaration(p, token, false, out);
   }
@@ -354,6 +349,9 @@ MS_NODISCARD bool parse_declaration(Parser *p, MsDecl **out) {
   if (k == MS_T_Name && parse_text_is(p, token, "opaque") &&
       (next_kind == MS_T_Type || next_kind == MS_T_Enum)) {
     return opaque_declaration(p, token, out);
+  }
+  if (k == MS_T_Name && parse_binding_ahead(p)) {
+    return constant_declaration(p, token, out);
   }
   report_bad_declaration(p, token);
   return false;

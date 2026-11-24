@@ -7,14 +7,14 @@ import (
 	expect_equal, expect_ok, expect_true from "@std/test/test.ms",
 )
 
-fn linear_search[T: Comparable](values: List[T], target: T) SearchResult:
+fn linear_search[T Comparable](values List[T], target T) SearchResult:
 	for i in 0..values.length():
 		order := values[i].compare(target)
 		if order >= 0: return SearchResult(i, order == 0)
 
 	return SearchResult(values.length(), false)
 
-fn check_search[T: Comparable](values: List[T], target: T) Void!:
+fn check_search[T Comparable](values List[T], target T) Void!:
 	expected := linear_search(values, target)
 	actual := values.binary_search(target)
 	expect_equal(actual.index, expected.index)?
@@ -22,17 +22,17 @@ fn check_search[T: Comparable](values: List[T], target: T) Void!:
 
 // Equality is by key, so equal keys can have different payloads.
 type Key:
-	value: Int
-	label: String
+	value Int
+	label String
 
-fn Key.compare(other: Key) Int:
+fn Key.compare(other Key) Int:
 	return self.value.compare(other.value)
 
 type Counted:
-	value: Int
-	comparisons: String
+	value Int
+	comparisons String
 
-fn Counted.compare(other: Counted) Int:
+fn Counted.compare(other Counted) Int:
 	void append_file(self.comparisons, "x").wait()
 	return self.value.compare(other.value)
 
@@ -61,12 +61,12 @@ test "binary search handles full-width extrema and sized numbers":
 	for target in [minimum, minimum + 1, -1, 0, 1, maximum - 1, maximum]:
 		check_search(values, target)?
 
-	narrow: List[Int8] := [-128, -1, 0, 127]
-	target: Int8 := -1
+	narrow List[Int8] := [-128, -1, 0, 127]
+	target Int8 := -1
 	check_search(narrow, target)?
 
-	unsigned: List[UInt64] := [0, 9223372036854775808, 18446744073709551615]
-	large: UInt64 := 18446744073709551615
+	unsigned List[UInt64] := [0, 9223372036854775808, 18446744073709551615]
+	large UInt64 := 18446744073709551615
 	check_search(unsigned, large)?
 	check_search(["", "apple", "apple", "pear"], "apple")?
 	check_search(["", "apple", "pear"], "fig")?
@@ -102,15 +102,15 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
 	expect_equal([0.0, infinity].binary_search(nan).index, 2)?
 	expect_true(not [0.0, infinity].binary_search(nan).found)?
 
-	narrow: List[Float32] := [
+	narrow List[Float32] := [
 		0.0,
 		1.0,
 		(nan.to_float32() or panic("called Optional.get() on null")),
 	]
-	narrow_nan: Float32 := nan.to_float32() or panic("called Optional.get() on null")
+	narrow_nan Float32 := nan.to_float32() or panic("called Optional.get() on null")
 	check_search(narrow, narrow_nan)?
 
-fn count(path: String) Int:
+fn count(path String) Int:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.length()
 

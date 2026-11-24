@@ -1,14 +1,14 @@
 // conform: tags=generics,scope-cleanup,tier-core
 // conform: phase=run
 type Res:
-	name: String
+	name String
 
 fn move Res.close() Void!:
 	print(f"close {self.name}")
 	return ok(void)
 
 type Cell[T]:
-	v: T
+	v T
 
 fn Cell[T].get() T:
 	return self.v

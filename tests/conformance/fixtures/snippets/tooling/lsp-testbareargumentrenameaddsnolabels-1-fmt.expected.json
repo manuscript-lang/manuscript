@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn subtract(amount: Int, deduction: Int) Int: return amount - deduction\n\nfn call() Int:\n\tamount := 10\n\tdeduction := 3\n\treturn subtract(deduction, amount)\n"
+    "fmt": "fn subtract(amount Int, deduction Int) Int: return amount - deduction\n\nfn call() Int:\n\tamount := 10\n\tdeduction := 3\n\treturn subtract(deduction, amount)\n"
   }
 }

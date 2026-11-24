@@ -16,10 +16,10 @@ import (
 	summarize from "./programs_table.ms",
 )
 
-fn lines_of(version: String, content: String) List[String]:
+fn lines_of(version String, content String) List[String]:
 	return content.split("\n").filter(fn l: l != "").map(fn l: f"{version} {l}")
 
-fn run(opts: Map[String, String], n: Int) Result[String, Error]:
+fn run(opts Map[String, String], n Int) Result[String, Error]:
 	names := ["go", "before", "after"]
 	var programs = Map[String, String]()
 	for name in names:

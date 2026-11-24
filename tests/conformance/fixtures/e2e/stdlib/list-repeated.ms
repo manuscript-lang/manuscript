@@ -9,7 +9,7 @@ test "repeated repeats scalars and short blocks in order":
 	expect_equal([1].repeated(0), [])?
 
 test "repeated of an empty list is empty":
-	empty: List[Int] := []
+	empty List[Int] := []
 	expect_equal(empty.repeated(5), [])?
 
 test "repeated clones strings and nested lists independently":

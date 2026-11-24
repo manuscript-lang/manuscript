@@ -5,7 +5,7 @@ import expect_equal from "@std/test/test.ms"
 fn failed_value() Int!:
 	return error(Error("expected-default-error"))
 
-fn stopped(var values: List[Int], extra: Int = failed_value()?) Int!:
+fn stopped(var values List[Int], extra Int = failed_value()?) Int!:
 	return ok(values.length() + extra)
 
 fn call_default() Int!:
@@ -15,11 +15,11 @@ fn call_default() Int!:
 test "a failed default releases its earlier var copy":
 	expect_equal(call_default().is_error(), true)?
 
-fn default_count(values: List[Int]) Int!:
+fn default_count(values List[Int]) Int!:
 	if values.length() > 1: return error(Error("default-error"))
 	return ok(values.length())
 
-fn recursive(var values: List[Int], remaining: Int = default_count(values)?) Int!:
+fn recursive(var values List[Int], remaining Int = default_count(values)?) Int!:
 	if remaining == 0: return ok(values.length())
 
 	values.append(2)
@@ -32,11 +32,11 @@ fn invoke() Int!:
 test "recursive omitted default retains caller var binding":
 	expect_equal(invoke().is_error(), true)?
 
-fn grow(var values: List[Int]) Int:
+fn grow(var values List[Int]) Int:
 	values.append(9)
 	return values.length()
 
-fn changed(var values: List[Int], extra: Int = grow(values)) Int:
+fn changed(var values List[Int], extra Int = grow(values)) Int:
 	return values.length() * 10 + extra
 
 test "a default that changes an earlier var keeps its change":

@@ -22,7 +22,7 @@ void var while
 ```
 
 - Most keywords are reserved only where they mean something. After `.`, and as a `name:` label that starts a line or follows `(` or `,` (a record or enum field, a parameter, an argument label), these are ordinary names: `break continue enum export extern fixture for if import in interface match return test type while`.
-- So `type Options:` can declare `continue: Bool` and `if: Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words. `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `void`, `true` and `false` stay reserved everywhere.
+- So `type Options:` can declare `continue Bool` and `if Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words. `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `void`, `true` and `false` stay reserved everywhere.
 - `try` is reserved only to report that it was replaced: write a postfix `?` (`f(x)?`) to propagate a Result error.
 - `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `opaque := 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `from := 2` and `bench := 3` are valid.
@@ -73,13 +73,13 @@ Inside a call, list, or grouping, a function expression may have an inline suite
 
 A delimiter opened outside the body cannot close at body indentation. Group the function when a following comma belongs to the enclosing arguments:
 
-<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value Int, transform fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
 fn offset() Int:
     return apply(
         value: 3,
         transform: (
-            fn(value: Int) Int:
+            fn(value Int) Int:
                 return value - 1
         ),
     )
@@ -87,23 +87,23 @@ fn offset() Int:
 
 The grouping close (eight spaces) ends the function suite before the comma. An ungrouped suite-bodied function can be the final argument:
 
-<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value Int, transform fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
 fn offset() Int:
     return apply(
         value: 3,
-        transform: fn(value: Int) Int:
+        transform: fn(value Int) Int:
             return value - 1
     )
 ```
 
 Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value (it can be a conditional expression: `fn value: if value > 0: value else: 0`), while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
-<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"fn apply(value Int, transform fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
 fn offset() Int:
     return apply(
-        transform: fn(value: Int) Int:
+        transform: fn(value Int) Int:
             return value - 1
         ,
         value: 3,
@@ -123,7 +123,7 @@ ImportNames   = Name, { ",", Name } ;
 Declaration   = [ "export" ], (TypeDeclaration | AliasDeclaration | EnumDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration | BenchDeclaration ;
-ConstantDeclaration = Name, ( ":=", Expression | ":", Type, ":=", Expression ), NEWLINE ;
+ConstantDeclaration = Name, ( ":=", Expression | Type, ":=", Expression ), NEWLINE ;
 
 TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":",
                   ("...", NEWLINE | NEWLINE, INDENT, RecordBody, DEDENT) ;
@@ -131,7 +131,7 @@ AliasDeclaration = "type", Name, [ TypeParameters ], "=", Type, { "|", Type }, N
 EnumDeclaration = [ "opaque" ], "enum", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, AlternativeBody, DEDENT ;
 RecordBody    = { Field } ;
-Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;
+Field         = Name, Type, [ "=", Expression ], NEWLINE ;
 AlternativeBody = VariantDeclaration, { VariantDeclaration } ;
 VariantDeclaration = Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":",
@@ -144,7 +144,7 @@ ResultType    = Type ;
 MethodDeclaration = "fn", [ "var" ], Receiver, ".", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                     ResultType, FunctionSuite ;
 Receiver      = Name, [ "[", ReceiverArgument, { ",", ReceiverArgument }, "]" ] ;
-ReceiverArgument = Name, [ ":", Bound ] | Type ;
+ReceiverArgument = Name, [ Bound ] | Type ;
 (* The receiver names the declared type, with one argument per type parameter: its name, optionally bounded, or a concrete type. *)
 ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
@@ -155,13 +155,13 @@ TestDeclaration = "test", PlainStringLiteral, Suite ;
 BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suite ;
 (* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration (`per N` says it performs N operations, and `ms bench` then reports per operation), with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
-Parameter     = Name, ":", Type ;
+Parameter     = Name, Type ;
 FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;
 FunctionParameter = [ "var" ], Parameter, [ "=", Expression ] ;
 CallbackParameters = CallbackParameter, { ",", CallbackParameter }, [ "," ] ;
-CallbackParameter = [ "var" ], Name, [ ":", Type ], [ "=", Expression ] ;
+CallbackParameter = [ "var" ], Name, [ Type ], [ "=", Expression ] ;
 TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
-TypeParameter = Name, [ ":", Bounds ], [ "=", Type ] ;
+TypeParameter = Name, [ Bounds ], [ "=", Type ] ;
 Bounds        = NamedType, { "&", NamedType } ;
 
 Type          = ( NamedType | FunctionType | "(", Type, ")" ), { "?" | "!", [ NamedType ] } ;
@@ -173,13 +173,13 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
 - A `type Name = Type` declares an [alias](../types/named-types.md#aliases): another name for the same type, or with `|` a [type set](../types/generics.md#type-sets) that bounds a type parameter. A `type Name:` declares record fields; an `enum` declares one or more variants. Their methods are receiver methods, `fn Type.name(...)`, written beside the type; a type satisfies an interface by having methods that match it. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
-- A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
+- A result type follows the parameter list with no arrow (`fn double(value Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/named-types.md#construction), and `= null` on Optional interface parameters. Function types and enum payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
-- A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. In the standard library, a property interface uses `interface Name: ...`; an empty implementation may supply a marker interface. Test, bench, and control-flow suites are nonempty.
+- A named function or method body may be `...` (`fn read_bytes(count Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. In the standard library, a property interface uses `interface Name: ...`; an empty implementation may supply a marker interface. Test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed; plain `"..."` text, never `f"..."`).
 - `export` applies to records, aliases, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or methods.
-- A receiver method is accepted only in the module that declares its type, and repeats the type's parameters (`fn Box[T].get() T`), optionally bounded (`fn Box[T: Equal].same(...)`) or fixed (`fn List[Int].sum()`). Methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Methods of one name on one receiver form are rejected as [contracts](../types/contracts.md#methods) describe.
+- A receiver method is accepted only in the module that declares its type, and repeats the type's parameters (`fn Box[T].get() T`), optionally bounded (`fn Box[T Equal].same(...)`) or fixed (`fn List[Int].sum()`). Methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Methods of one name on one receiver form are rejected as [contracts](../types/contracts.md#methods) describe.
 - `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
 - No module-level statements or `var`; a top-level `:=` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).
 
@@ -194,8 +194,8 @@ SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | 
 Binding       = ImmutableBinding | "var", ( VarEntry
               | "(", NEWLINE, { VarEntry, NEWLINE }, ")" ) ;
 ImmutableBinding = ( Name | PositionalPattern | RecordPattern ), ":=", Expression
-              | Name, ":", Type, ":=", Expression ;
-VarEntry      = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
+              | Name, Type, ":=", Expression ;
+VarEntry      = (Name, [ Type ] | PositionalPattern | RecordPattern), "=", Expression ;
 Assignment    = AssignmentTarget, "=", Expression ;
 AssignmentTarget = Name, { ".", Name | "[", Expression, "]" } ;
 CompoundAssignment = AssignmentTarget, ( "+=" | "-=" | "*=" | "/=" | "%=" ), Expression ;
@@ -229,8 +229,8 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn double(value: Int) Int: value * 2
-fn positive(value: Int) Bool:
+fn double(value Int) Int: value * 2
+fn positive(value Int) Bool:
     if value > 0: return true
     else: return false
 ```

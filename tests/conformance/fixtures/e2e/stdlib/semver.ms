@@ -5,7 +5,7 @@ import (
 	expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
 )
 
-fn failure(result: Version!) Error!:
+fn failure(result Version!) Error!:
 	match result:
 		ok(_): return error(Error("accepted"))
 		error(cause): return ok(cause.clone())

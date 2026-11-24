@@ -1,10 +1,10 @@
 // conform: tags=diagnostics
 // conform: phase=check
 interface I[T]:
-    fn f(x: I[List[T]]) Int
+    fn f(x I[List[T]]) Int
 
 type Box[T]:
-    v: T
+    v T
 impl I[T] for Box[T]:
     fn f(x: I[List[T]]) Int:
         return 1

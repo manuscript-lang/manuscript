@@ -9,9 +9,9 @@ A postfix `expression?` unwraps `ok`; on `error` it returns that error from the 
 
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason String\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+fn discounted_label(price Decimal, percent Decimal) Result[String, DiscountError]:
     value := discount(price, percent)?
     return ok(f"Discounted price: {value}")
 ```
@@ -56,11 +56,11 @@ Omitting `?` discards the Result, which the checker rejects. To ignore it delibe
 
 ## Propagation in a pipe flow
 
-A trailing `?` on a pipe step in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `value := discount(...)?` then `label(value)`:
+A trailing `?` on a pipe step in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value Decimal) String`, this equals `value := discount(...)?` then `label(value)`:
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)\n\nfn label(value: Decimal) String:\n    return value.to_string()","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason String\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError]:\n    return ok(price)\n\nfn label(value Decimal) String:\n    return value.to_string()","given":[]} -->
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+fn discounted_label(price Decimal, percent Decimal) Result[String, DiscountError]:
     return ok(discount(price, percent)? | label)
 ```
 

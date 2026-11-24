@@ -4,20 +4,20 @@
 import Closeable from "@std/core.ms"
 
 type Count:
-    total: Int
+    total Int
 
 type Watch:
-    count: Count
+    count Count
 
 fn move Watch.close() Void!:
     self.count.total += 10
 
-fn next(count: Count) Int:
+fn next(count Count) Int:
     _watch := Watch(count)
     count.total += 1
     return 0
 
-fn unknown(s: Shape) Int: return area(s)
+fn unknown(s Shape) Int: return area(s)
 
 export fn main() Int:
     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]

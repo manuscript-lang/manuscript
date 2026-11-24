@@ -6,7 +6,7 @@
 // 20 closures and 13 blocks of the runtime's tables).
 import promise from "@std/concurrency/promise.ms"
 
-fn double(value: Int) Int!:
+fn double(value Int) Int!:
 	return ok(value * 2)
 
 export fn main() Int:

@@ -3,21 +3,21 @@
 import expect_equal from "@std/test/test.ms"
 
 type Box:
-	n: Int
+	n Int
 
-fn describe(n: Int) String:
+fn describe(n Int) String:
 	return match n:
 		0: "zero"
 		-1: "minus"
 		_: "other"
 
-fn pick(flag: Bool) Int:
+fn pick(flag Bool) Int:
 	return (if flag: 1 else: 2)
 
-fn maybe(n: Int) Int?:
+fn maybe(n Int) Int?:
 	return n
 
-fn first_or(m: Int?) Int:
+fn first_or(m Int?) Int:
 	v := m
 	if v != null: return v
 
@@ -39,7 +39,7 @@ test "indexed assignment":
 	expect_equal(xs, [1, 9, 4])?
 
 test "optional wrap":
-	m: Int? := 5
+	m Int? := 5
 	expect_equal(first_or(m), 5)?
 	expect_equal(first_or(maybe(3)), 3)?
 
@@ -47,7 +47,7 @@ test "closure mutates capture":
 	var total = 0
 	var box = Box(n: 1)
 
-	add := fn(x: Int) Void:
+	add := fn(x Int) Void:
 		total += x
 		box.n += x
 

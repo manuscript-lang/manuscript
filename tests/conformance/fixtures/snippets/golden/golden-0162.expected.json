@@ -14,7 +14,7 @@
           "file": "golden-0162.ms",
           "line": 6,
           "column": 9,
-          "offset": 151
+          "offset": 149
         },
         "fix": {
           "position": {
@@ -40,20 +40,20 @@
           "file": "golden-0162.ms",
           "line": 12,
           "column": 9,
-          "offset": 277
+          "offset": 273
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 9,
             "column": 22,
-            "offset": 202
+            "offset": 200
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 9,
             "column": 22,
-            "offset": 202
+            "offset": 200
           },
           "replacement": "var "
         }
@@ -66,20 +66,20 @@
           "file": "golden-0162.ms",
           "line": 20,
           "column": 13,
-          "offset": 455
+          "offset": 449
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 15,
             "column": 24,
-            "offset": 330
+            "offset": 326
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 15,
             "column": 24,
-            "offset": 330
+            "offset": 326
           },
           "replacement": "var "
         }
@@ -92,20 +92,20 @@
           "file": "golden-0162.ms",
           "line": 27,
           "column": 9,
-          "offset": 599
+          "offset": 591
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 24,
             "column": 12,
-            "offset": 519
+            "offset": 513
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 24,
             "column": 12,
-            "offset": 519
+            "offset": 513
           },
           "replacement": "var "
         }
@@ -118,20 +118,20 @@
           "file": "golden-0162.ms",
           "line": 33,
           "column": 9,
-          "offset": 719
+          "offset": 709
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 30,
             "column": 14,
-            "offset": 642
+            "offset": 634
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 30,
             "column": 14,
-            "offset": 642
+            "offset": 634
           },
           "replacement": "var "
         }
@@ -144,20 +144,20 @@
           "file": "golden-0162.ms",
           "line": 43,
           "column": 9,
-          "offset": 930
+          "offset": 918
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 36,
             "column": 18,
-            "offset": 766
+            "offset": 756
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 36,
             "column": 18,
-            "offset": 766
+            "offset": 756
           },
           "replacement": "var "
         }
@@ -170,20 +170,20 @@
           "file": "golden-0162.ms",
           "line": 49,
           "column": 9,
-          "offset": 1054
+          "offset": 1040
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 46,
             "column": 15,
-            "offset": 974
+            "offset": 962
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 46,
             "column": 15,
-            "offset": 974
+            "offset": 962
           },
           "replacement": "var "
         }
@@ -196,20 +196,20 @@
           "file": "golden-0162.ms",
           "line": 59,
           "column": 13,
-          "offset": 1265
+          "offset": 1249
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 54,
             "column": 16,
-            "offset": 1136
+            "offset": 1122
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 54,
             "column": 16,
-            "offset": 1136
+            "offset": 1122
           },
           "replacement": "var "
         }

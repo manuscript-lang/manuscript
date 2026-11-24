@@ -17,7 +17,7 @@ export interface Source[T]:                  // implement to make a stream; wrap
     var fn next() T?!                        // may wait inside; none at the end
     var fn close() Unit!
 export interface Sink[T]:                    // implement to make a writer; wrap with writer(...)
-    var fn write(value: T) Unit!             // waits while the sink is full: back pressure
+    var fn write(value T) Unit!             // waits while the sink is full: back pressure
     var fn flush() Unit!                     // returns once everything written has drained
     var fn close() Unit!
 

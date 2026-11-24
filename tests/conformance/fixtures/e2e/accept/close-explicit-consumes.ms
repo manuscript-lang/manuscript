@@ -4,7 +4,7 @@ import expect_equal from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 
 type Gate:
-    closes: Int
+    closes Int
 
 fn move Gate.close() Void!:
     self.closes += 1
@@ -16,12 +16,12 @@ fn handled() Void!:
     if _ok := r:
         return error(Error("close should have failed"))
 
-fn branchy(explicit: Bool) Void!:
+fn branchy(explicit Bool) Void!:
     var g = Gate(0)
     if explicit:
         void g.close()
 
-fn relocked(second_fails: Bool) Void!:
+fn relocked(second_fails Bool) Void!:
     var g = Gate(0)
     void g.close()
     g = Gate(0)
@@ -30,7 +30,7 @@ fn relocked(second_fails: Bool) Void!:
 
     void g.close()
 
-fn ok_of(r: Void!) Bool:
+fn ok_of(r Void!) Bool:
     if _ok := r:
         return true
 

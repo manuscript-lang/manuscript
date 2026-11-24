@@ -5,33 +5,33 @@ import (
 	from_scalars from "@std/string.ms",
 )
 
-fn wrap(x: Int) Int:
+fn wrap(x Int) Int:
 	m := ((x % 4294967296) + 4294967296) % 4294967296
 	if m >= 2147483648: return m - 4294967296
 
 	return m
 
-fn cat(s: String, i: Int) Int:
+fn cat(s String, i Int) Int:
 	if i < 0 or i >= s.length(): return -1
 	return s.scalar_at(i, default: -1)
 
-fn sub(s: String, a: Int, b: Int) String:
+fn sub(s String, a Int, b Int) String:
 	if b <= a: return ""
 	return s.view(a, b).clone()
 
-fn is_digit(c: Int) Bool: c >= 48 and c <= 57
+fn is_digit(c Int) Bool: c >= 48 and c <= 57
 
-fn is_ident_start(c: Int) Bool: (
+fn is_ident_start(c Int) Bool: (
 	(c >= 65 and c <= 90)
 	or (c >= 97 and c <= 122)
 	or c == 95
 )
 
-fn is_word(c: Int) Bool: is_ident_start(c) or is_digit(c) or c == 46
+fn is_word(c Int) Bool: is_ident_start(c) or is_digit(c) or c == 46
 
-fn is_ws(c: Int) Bool: c == 32 or c == 9 or c == 13
+fn is_ws(c Int) Bool: c == 32 or c == 9 or c == 13
 
-fn is_ident(t: String) Bool:
+fn is_ident(t String) Bool:
 	if t.length() == 0: return false
 	if not is_ident_start(cat(t, 0)): return false
 
@@ -39,7 +39,7 @@ fn is_ident(t: String) Bool:
 		if not (is_ident_start(cat(t, i)) or is_digit(cat(t, i))): return false
 	return true
 
-fn reg_index(t: String) Int:
+fn reg_index(t String) Int:
 	if t == "sp": return 8
 	if t == "bp": return 9
 
@@ -49,14 +49,14 @@ fn reg_index(t: String) Int:
 
 	return -1
 
-fn char_lit_len(s: String, i: Int) Int:
+fn char_lit_len(s String, i Int) Int:
 	c1 := cat(s, i + 1)
 	if c1 == 92 and cat(s, i + 3) == 39: return 4
 	if c1 != -1 and c1 != 92 and c1 != 39 and cat(s, i + 2) == 39: return 3
 
 	return 1
 
-fn strip_comment(s: String) String:
+fn strip_comment(s String) String:
 	n := s.length()
 	var i = 0
 
@@ -89,7 +89,7 @@ fn strip_comment(s: String) String:
 
 	return s.clone()
 
-fn split_ops(args: String) List[String]:
+fn split_ops(args String) List[String]:
 	var out = List[String]()
 	if args == "": return out
 
@@ -118,37 +118,37 @@ fn split_ops(args: String) List[String]:
 	return out
 
 type Term:
-	neg: Bool
-	text: String
+	neg Bool
+	text String
 
 type Opnd:
-	kind: Int
-	reg: Int
-	text: String
-	terms: List[Term]
+	kind Int
+	reg Int
+	text String
+	terms List[Term]
 
 type Instr:
-	op: Int
-	line: Int
-	a: Opnd
-	b: Opnd
+	op Int
+	line Int
+	a Opnd
+	b Opnd
 
 type Stmt:
-	kind: Int
-	line: Int
-	idx: Int
-	texts: List[String]
+	kind Int
+	line Int
+	idx Int
+	texts List[String]
 
 type Sym:
-	is_equ: Bool
-	text_sec: Bool
-	value: Int
-	text: String
-	state: Int
+	is_equ Bool
+	text_sec Bool
+	value Int
+	text String
+	state Int
 
-fn bad_op(t: String) Error: Error(f"invalid operand '{t}'")
+fn bad_op(t String) Error: Error(f"invalid operand '{t}'")
 
-fn split_terms(inner: String) List[Term]:
+fn split_terms(inner String) List[Term]:
 	var out = List[Term]()
 	n := inner.length()
 	var start = 0
@@ -172,7 +172,7 @@ fn split_terms(inner: String) List[Term]:
 	out.append(Term(neg: neg, text: sub(inner, start, n).trim()))
 	return out
 
-fn parse_operand(t: String) Opnd!:
+fn parse_operand(t String) Opnd!:
 	if t == "": return error(bad_op(t))
 
 	r := reg_index(t)
@@ -207,7 +207,7 @@ fn parse_operand(t: String) Opnd!:
 
 	return ok(Opnd(kind: 1, reg: -1, text: t.clone(), terms: List[Term]()))
 
-fn mnemonic(name: String) Int:
+fn mnemonic(name String) Int:
 	names := [
 		"mov", "add", "sub", "mul", "div", "mod", "and", "or", "xor", "shl", "shr",
 		"sar", "cmp", "neg", "not", "inc", "dec", "lea", "push", "pop", "jmp", "je",
@@ -221,13 +221,13 @@ fn mnemonic(name: String) Int:
 
 	return -1
 
-fn expected_count(op: Int) Int:
+fn expected_count(op Int) Int:
 	if op == 0 or (op >= 1 and op <= 12) or op == 17: return 2
 	if op == 28 or op == 32 or op == 33: return 0
 
 	return 1
 
-fn classes_ok(op: Int, a: Opnd, b: Opnd) Bool:
+fn classes_ok(op Int, a Opnd, b Opnd) Bool:
 	if op == 0:
 		if a.kind == 0: return true
 		if a.kind == 2: return b.kind != 2
@@ -244,7 +244,7 @@ fn classes_ok(op: Int, a: Opnd, b: Opnd) Bool:
 
 	return true
 
-fn parse_digits(t: String) Int:
+fn parse_digits(t String) Int:
 	if t == "": return -1
 
 	var v = 0
@@ -259,23 +259,23 @@ fn parse_digits(t: String) Int:
 	return v
 
 type Asm:
-	syms: Map[String, Sym] = Map[String, Sym]()
-	instrs: List[Instr] = List[Instr]()
-	stmts: List[Stmt] = List[Stmt]()
-	data: List[Int] = List[Int]()
-	in_data: Bool = false
-	budget: Int = 100000
-	cur_line: Int = 0
+	syms Map[String, Sym] = Map[String, Sym]()
+	instrs List[Instr] = List[Instr]()
+	stmts List[Stmt] = List[Stmt]()
+	data List[Int] = List[Int]()
+	in_data Bool = false
+	budget Int = 100000
+	cur_line Int = 0
 
-fn var Asm.define(name: String, sym: Sym) Void!:
+fn var Asm.define(name String, sym Sym) Void!:
 	if reg_index(name) >= 0: return error(Error(f"reserved name '{name}'"))
 	if self.syms.get(name) != null: return error(Error(f"duplicate symbol '{name}'"))
 
 	self.syms[name.clone()] = sym.clone()
 
-fn inval(disp: String) Error: Error(f"invalid expression '{disp}'")
+fn inval(disp String) Error: Error(f"invalid expression '{disp}'")
 
-fn var Asm.sym_value(name: String) Int!:
+fn var Asm.sym_value(name String) Int!:
 	var found = false
 	var is_equ = false
 	var state = 0
@@ -313,7 +313,7 @@ fn var Asm.sym_value(name: String) Int!:
 	)
 	return ok(v)
 
-fn var Asm.word_value(word: String, disp: String) Int!:
+fn var Asm.word_value(word String, disp String) Int!:
 	c := cat(word, 0)
 
 	if is_digit(c):
@@ -352,7 +352,7 @@ fn var Asm.word_value(word: String, disp: String) Int!:
 
 	return error(inval(disp))
 
-fn var Asm.eval(text0: String, disp: String) Int!:
+fn var Asm.eval(text0 String, disp String) Int!:
 	text := text0.trim()
 	n := text.length()
 	var i = 0
@@ -415,7 +415,7 @@ fn var Asm.eval(text0: String, disp: String) Int!:
 
 	return ok(acc)
 
-fn var Asm.eval_mem(o: Opnd) Int!:
+fn var Asm.eval_mem(o Opnd) Int!:
 	var sum = 0
 
 	for t in o.terms:
@@ -426,7 +426,7 @@ fn var Asm.eval_mem(o: Opnd) Int!:
 
 	return ok(sum)
 
-fn parse_string(t: String) List[Int]!:
+fn parse_string(t String) List[Int]!:
 	n := t.length()
 	if n < 2 or cat(t, 0) != 34 or cat(t, n - 1) != 34: return error(
 		Error("invalid string")
@@ -458,14 +458,14 @@ fn parse_string(t: String) List[Int]!:
 
 	return ok(out)
 
-fn var Asm.add_data(count: Int, value: Int) Void!:
+fn var Asm.add_data(count Int, value Int) Void!:
 	if self.data.length() + count > 4096: return error(Error("data section too large"))
 
 	for _k in 0..count:
 		self.data.append(value)
 	return ok()
 
-fn var Asm.directive(line: Int, word: String, args: String) Void!:
+fn var Asm.directive(line Int, word String, args String) Void!:
 	if word == ".text" or word == ".data":
 		if args != "": return error(bad_op(args))
 
@@ -546,7 +546,7 @@ fn var Asm.directive(line: Int, word: String, args: String) Void!:
 
 	return error(Error(f"unknown directive '{word}'"))
 
-fn var Asm.line(line: Int, raw: String) Void!:
+fn var Asm.line(line Int, raw String) Void!:
 	s := strip_comment(raw)
 	n := s.length()
 	var pos = 0
@@ -622,7 +622,7 @@ fn var Asm.line(line: Int, raw: String) Void!:
 	self.instrs.append(Instr(op: op, line: line, a: a, b: b))
 	return ok()
 
-fn var Asm.pass2(var av: List[Int], var bv: List[Int]) Void!:
+fn var Asm.pass2(var av List[Int], var bv List[Int]) Void!:
 	for st in self.stmts.clone():
 		self.cur_line = st.line
 
@@ -653,56 +653,56 @@ fn var Asm.pass2(var av: List[Int], var bv: List[Int]) Void!:
 	return ok()
 
 type Vm:
-	op: List[Int]
-	ak: List[Int]
-	ar: List[Int]
-	av: List[Int]
-	bk: List[Int]
-	br: List[Int]
-	bv: List[Int]
-	regs: List[Int]
-	mem: List[Int]
-	input: List[Int]
-	pow2: List[Int]
-	out: String
-	chars: List[String]
-	in_pos: Int = 0
-	pc: Int = 0
-	trap: String = ""
-	halted: Bool = false
-	zf: Bool = false
-	lf: Bool = false
-	last: Int = 10
-	wrote: Bool = false
+	op List[Int]
+	ak List[Int]
+	ar List[Int]
+	av List[Int]
+	bk List[Int]
+	br List[Int]
+	bv List[Int]
+	regs List[Int]
+	mem List[Int]
+	input List[Int]
+	pow2 List[Int]
+	out String
+	chars List[String]
+	in_pos Int = 0
+	pc Int = 0
+	trap String = ""
+	halted Bool = false
+	zf Bool = false
+	lf Bool = false
+	last Int = 10
+	wrote Bool = false
 
-fn var Vm.fail(msg: String) Void:
+fn var Vm.fail(msg String) Void:
 	if self.trap == "": self.trap = msg
 
-fn var Vm.eff(r: Int, v: Int) Int:
+fn var Vm.eff(r Int, v Int) Int:
 	base := if r >= 0: self.regs[r] else: 0
 	return wrap(base + v)
 
-fn var Vm.load(addr: Int) Int:
+fn var Vm.load(addr Int) Int:
 	if addr < 0 or addr >= 4096:
 		self.fail(f"memory access out of range: {addr}")
 		return 0
 
 	return self.mem[addr]
 
-fn var Vm.store(addr: Int, v: Int) Void:
+fn var Vm.store(addr Int, v Int) Void:
 	if addr < 0 or addr >= 4096:
 		self.fail(f"memory access out of range: {addr}")
 		return
 
 	self.mem[addr] = v
 
-fn var Vm.rd(k: Int, r: Int, v: Int) Int:
+fn var Vm.rd(k Int, r Int, v Int) Int:
 	if k == 0: return self.regs[r]
 	if k == 1: return v
 
 	return self.load(self.eff(r, v))
 
-fn var Vm.push(v: Int) Void:
+fn var Vm.push(v Int) Void:
 	if self.regs[8] <= 0:
 		self.fail("stack overflow")
 		return
@@ -721,18 +721,18 @@ fn var Vm.pop() Int:
 	self.regs[8] += 1
 	return v
 
-fn var Vm.emit(s: String, lastc: Int) Void:
+fn var Vm.emit(s String, lastc Int) Void:
 	self.out += s
 	self.last = lastc
 	self.wrote = true
 
-fn tdiv(d: Int, s: Int) Int:
+fn tdiv(d Int, s Int) Int:
 	q := d.abs() / s.abs()
 	if (d < 0) != (s < 0): return -q
 
 	return q
 
-fn var Vm.alu(op: Int, d: Int, s: Int) Int:
+fn var Vm.alu(op Int, d Int, s Int) Int:
 	if op == 1: return wrap(d + s)
 	if op == 2: return wrap(d - s)
 	if op == 3: return wrap(d * s)
@@ -858,7 +858,7 @@ fn var Vm.step() Void:
 
 	self.pc = next
 
-fn parse_input(lines: List[String]) List[Int]:
+fn parse_input(lines List[String]) List[Int]:
 	var out = List[Int]()
 
 	for ln in lines:

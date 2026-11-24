@@ -64,7 +64,7 @@ test "replace_each scans bytes with map order, multibyte keys and unmatched runs
 	"tail a".replace_each({"a": "b"}) | expect_equal("tbil b")?
 
 // The reference walks every scalar, so it shares nothing with the windowed scans.
-fn reference_start(text: String, set: String) Int:
+fn reference_start(text String, set String) Int:
 	var count = 0
 
 	for c in text.chars():
@@ -74,7 +74,7 @@ fn reference_start(text: String, set: String) Int:
 
 	return count
 
-fn reference_end(text: String, set: String) Int:
+fn reference_end(text String, set String) Int:
 	cs := text.chars()
 	var n = text.length()
 	var i = cs.length()

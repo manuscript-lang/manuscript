@@ -7,20 +7,20 @@ import (
 )
 
 type Item:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Item.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
-fn fill(log: String) Void:
-	var items: Map[String, Item] = {}
+fn fill(log String) Void:
+	var items Map[String, Item] = {}
 	items.add("a", Item(id: 1, log: log.clone()))
 	items.add("b", Item(id: 2, log: log.clone()))
 	items.add("c", Item(id: 3, log: log.clone()))

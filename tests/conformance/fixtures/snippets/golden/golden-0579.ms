@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Key:
-    value: Int
+    value Int
 impl Equal for Key:
     fn equals(other: Equal) Bool: true
 impl Hashable for Key:

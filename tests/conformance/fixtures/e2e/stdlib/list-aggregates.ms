@@ -6,16 +6,16 @@ import (
 )
 
 type Version:
-	major: Int
-	label: String
+	major Int
+	label String
 
-fn Version.compare(other: Version) Int:
+fn Version.compare(other Version) Int:
 	if self.major < other.major: return -1
 	if self.major > other.major: return 1
 
 	return 0
 
-fn ordered[T: Comparable & Clonable](values: List[T]) List[T]:
+fn ordered[T Comparable & Clonable](values List[T]) List[T]:
 	return values.sorted()
 
 test "sorted orders Int, Float and String ascending without a comparator":
@@ -26,8 +26,8 @@ test "sorted orders Int, Float and String ascending without a comparator":
 	expect_equal(["pear", "apple", "fig"].sorted(), ["apple", "fig", "pear"])?
 	expect_equal(List[Int]().sorted(), List[Int]())?
 
-	small: List[Int8] := [3, 1, 2]
-	expected: List[Int8] := [1, 2, 3]
+	small List[Int8] := [3, 1, 2]
+	expected List[Int8] := [1, 2, 3]
 	expect_equal(small.sorted(), expected)?
 
 test "sorted puts Float NaN last":
@@ -69,12 +69,12 @@ test "sum adds Int, Float and sized numerics":
 	expect_equal([0.5, 1.5].sum(), 2.0)?
 	expect_equal(List[Float]().sum(), 0.0)?
 
-	small: List[Int8] := [100, 20, -3]
-	total: Int8 := 117
+	small List[Int8] := [100, 20, -3]
+	total Int8 := 117
 	expect_equal(small.sum(), total)?
 
-	narrow: List[Float32] := [1.5, 2.5]
-	narrow_total: Float32 := 4.0
+	narrow List[Float32] := [1.5, 2.5]
+	narrow_total Float32 := 4.0
 	expect_equal(narrow.sum(), narrow_total)?
 
 test "min and max return the first of equal elements and none when empty":

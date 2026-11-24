@@ -3,13 +3,13 @@
 import expect_equal from "@std/test/test.ms"
 import panic from "@std/faults.ms"
 
-fn positive(value: Int) Int:
+fn positive(value Int) Int:
     if value > 0:
         return value
     else:
         panic(message: "positive value required")
 
-fn discard(value: Int) Void:
+fn discard(value Int) Void:
     return
 
 test "return contracts":

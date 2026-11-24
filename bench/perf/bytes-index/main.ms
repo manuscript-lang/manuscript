@@ -4,7 +4,7 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int) Int:
+fn measure(name String, data Bytes, start Int, expected Int, iterations Int) Int:
 	checked := data.index_of_byte(255, start)
 
 	if expected == data.length():

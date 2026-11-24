@@ -5,7 +5,7 @@ import expect_equal from "@std/test/test.ms"
 // A list moved out of one variable into another and back, then into a binding made inside a
 // branch: the branch binding owns the list and releases it where the branch ends, and the
 // path that skips the branch releases what the outer variable still holds.
-fn rebound(c: Int) Int:
+fn rebound(c Int) Int:
 	var outer = ["a"]
 	var carried = outer
 	var seen = 0
@@ -15,7 +15,7 @@ fn rebound(c: Int) Int:
 		seen = kept.length()
 	return seen
 
-fn rebound_nested(c: Int) Int:
+fn rebound_nested(c Int) Int:
 	var outer = ["a", "b"]
 	var carried = outer
 	var seen = 0

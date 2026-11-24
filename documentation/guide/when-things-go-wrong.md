@@ -10,11 +10,11 @@ Order lines arrive as text such as `pen,2,150`. Some will be wrong: a missing fi
 <!-- manuscript-example: {"mode":"run","stdout":"good: 1199\nbad: quantity must be positive: ink,0,899\nbroken: quantity is not a number: pen,two,150\n"} -->
 ```manuscript {filename="lines.ms"}
 type Line:
-    name: String
-    quantity: Int
-    cents: Int
+    name String
+    quantity Int
+    cents Int
 
-fn parse_line(text: String) Line!:
+fn parse_line(text String) Line!:
     parts := text.split(",")
     if parts.length() != 3:
         return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
@@ -24,7 +24,7 @@ fn parse_line(text: String) Line!:
     cents := ok_or(parts[2].parse_int(), Error(f"price is not a number: {text}", kind: "EINVAL"))?
     return ok(Line(parts[0].clone(), quantity, cents))
 
-fn total(lines: List[String]) Int!:
+fn total(lines List[String]) Int!:
     var sum = 0
     for text in lines:
         line := parse_line(text)?

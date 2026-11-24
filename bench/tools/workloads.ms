@@ -36,10 +36,10 @@ import (
 )
 
 type Case:
-	name: String
-	stdin: String
+	name String
+	stdin String
 
-fn largest_input(path: String) String!:
+fn largest_input(path String) String!:
 	cases := parse[List[Case]](read_text(path))
 	if cases.is_error(): return invalid(f"cannot read {path}")
 
@@ -51,7 +51,7 @@ fn largest_input(path: String) String!:
 	copies := if 3000000 / size > 1: 3000000 / size else: 1
 	return ok(best.repeat(copies))
 
-fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured) Void:
+fn evidence(dir String, name String, n Int, input String, measured Measured) Void:
 	var samples = List[JsonValue]()
 
 	for s in measured.samples:
@@ -74,7 +74,7 @@ fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured
 	doc.add("binaries_sha256", jobject(binaries))
 	write_text(f"{dir}/samples.json", dump(jobject(doc)))
 
-fn run(work: String, n: Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error]:
 	var rows = [header()]
 	root := "bench/agent/challenges"
 

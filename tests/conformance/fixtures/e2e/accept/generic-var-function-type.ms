@@ -2,13 +2,13 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn identity[T](value: T) T:
+fn identity[T](value T) T:
 	return value
 
-fn increment(var value: Int) Void:
+fn increment(var value Int) Void:
 	value += 1
 
-fn peek(value: Int) Int:
+fn peek(value Int) Int:
 	return value
 
 test "an explicit generic argument can be a function type with a var parameter":
@@ -18,7 +18,7 @@ test "an explicit generic argument can be a function type with a var parameter":
 	expect_equal(value, 2)?
 
 test "a var function type nests inside another generic argument":
-	boxed: List[fn(var Int) Void] := identity[List[fn(var Int) Void]]([increment])
+	boxed List[fn(var Int) Void] := identity[List[fn(var Int) Void]]([increment])
 	var value = 1
 	boxed[0](value)
 	expect_equal(value, 2)?

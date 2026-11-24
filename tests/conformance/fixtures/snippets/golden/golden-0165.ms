@@ -5,4 +5,4 @@ import parse, CsvOptions from "@std/data/csv.ms"
 import commands, Commands, CommandOutput, CommandError from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
-fn forward[T](item: T) T: item
+fn forward[T](item T) T: item

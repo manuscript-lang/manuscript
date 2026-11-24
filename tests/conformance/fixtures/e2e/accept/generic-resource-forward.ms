@@ -8,15 +8,15 @@ import (
 )
 
 type Token:
-	log: String
-	id: Int
+	log String
+	id Int
 
 fn move Token.close() Void!:
 	append_file(self.log, f"close {self.id}\n").wait()?
 
 type Tokens:
-	log: String
-	at: Int = 0
+	log String
+	at Int = 0
 
 fn var Tokens.next() Token?!:
 	self.at += 1
@@ -28,7 +28,7 @@ fn move Tokens.close() Void!:
 	return ok()
 
 type Forward[T]:
-	source: Source[T]
+	source Source[T]
 
 fn var Forward[T].next() T!?:
 	result := self.source.next()
@@ -38,13 +38,13 @@ fn var Forward[T].next() T!?:
 
 	return ok(result.get() or panic("called Optional.get() on null"))
 
-fn first_body(log: String) Void!:
+fn first_body(log String) Void!:
 	for item in Forward[Token](Tokens(log.clone())):
 		token := item?
 		append_file(log, f"body {token.id}\n").wait()?
 		break
 
-fn events(log: String) String:
+fn events(log String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 

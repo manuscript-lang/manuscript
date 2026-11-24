@@ -6,15 +6,15 @@ import (
 )
 
 type Lanes:
-	left: List[FileHandle] = []
-	right: List[FileHandle] = []
-	counts: List[Int] = []
+	left List[FileHandle] = []
+	right List[FileHandle] = []
+	counts List[Int] = []
 
 // Moves the last handle of one list onto another, changing both lists and a third.
 fn hand_over(
-	var from: List[FileHandle],
-	var to: List[FileHandle],
-	var counts: List[Int],
+	var from List[FileHandle],
+	var to List[FileHandle],
+	var counts List[Int],
 ) Void:
 	handle := from.pop()
 

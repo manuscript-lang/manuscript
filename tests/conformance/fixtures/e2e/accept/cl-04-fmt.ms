@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/cl-04.ms
 import expect_equal from "@std/test/test.ms"
 
-fn difference(values: List[Int]) Int:
+fn difference(values List[Int]) Int:
     [first, second] := values
     return first - second
 
@@ -14,4 +14,4 @@ test "list binding":
     expect_equal(label, "ready")?
 
 type Label:
-    value: String
+    value String

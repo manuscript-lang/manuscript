@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum First:\n\tReady(value: Int)\n\nenum Second:\n\tReady(value: Int)\n\nfn wrong() First:\n\treturn Ready(value: 1)\n"
+    "fmt": "enum First:\n\tReady(value Int)\n\nenum Second:\n\tReady(value Int)\n\nfn wrong() First:\n\treturn Ready(value: 1)\n"
   }
 }

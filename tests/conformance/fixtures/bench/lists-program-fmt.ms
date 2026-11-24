@@ -2,26 +2,26 @@
 // conform: phase=parse
 // conform: origin=bench/lists/program.ms
 
-fn build(count: Int) List[Int]:
-    var values: List[Int] = []
+fn build(count Int) List[Int]:
+    var values List[Int] = []
     for i in 0..count:
         values.append(i * 7919 % 100003)
     return values
 
-fn index(values: List[Int], count: Int) Int:
+fn index(values List[Int], count Int) Int:
     var total = 0
     for i in 0..count:
         total += values.get(i % values.length())
     return total
 
-fn iterate(values: List[Int]) Int:
+fn iterate(values List[Int]) Int:
     var total = values.sum()
     return total
 
 type Total:
-    value: Int
+    value Int
 
-fn callbacks(values: List[Int]) Int:
+fn callbacks(values List[Int]) Int:
     var total = Total(0)
     values.for_each(
         fn value:
@@ -29,10 +29,10 @@ fn callbacks(values: List[Int]) Int:
     )
     return total.value
 
-fn sorted(values: List[Int]) List[Int]:
+fn sorted(values List[Int]) List[Int]:
     return values.sorted(compare)
 
-fn compare(left: Int, right: Int) Int:
+fn compare(left Int, right Int) Int:
     if left < right: return -1
     if left > right: return 1
 
@@ -40,7 +40,7 @@ fn compare(left: Int, right: Int) Int:
 
 export fn main() Int: return 0
 
-fn callback_write(var values: List[Int]) Int:
+fn callback_write(var values List[Int]) Int:
     var total = Total(0)
 
     (

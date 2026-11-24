@@ -4,7 +4,7 @@
 import Closeable from "@std/core.ms"
 
 type Door:
-    name: String
+    name String
 
 fn move Door.close() Void!:
     print(f"closed {self.name}")
@@ -13,30 +13,30 @@ fn Door.id() Int:
     return 1
 
 type Pair:
-    left: Door
-    n: Int
+    left Door
+    n Int
 
-fn open_handle(name: String) Door:
+fn open_handle(name String) Door:
     return Door(name.clone())
 
-fn consume(d: Door) Int:
+fn consume(d Door) Int:
     owned := d
     return owned.id()
 
-fn ret_or_fall(c: Bool) Int:
+fn ret_or_fall(c Bool) Int:
     h := open_handle("ret-or-fall")
     if c:
         return consume(h)
 
     return 0
 
-fn arg_in_branch(c: Bool) Int:
+fn arg_in_branch(c Bool) Int:
     h := open_handle("arg-branch")
     if c:
         consume(h)
     return 0
 
-fn into_record(c: Bool) Int:
+fn into_record(c Bool) Int:
     h := open_handle("into-record")
 
     if c:
@@ -45,7 +45,7 @@ fn into_record(c: Bool) Int:
 
     return 0
 
-fn in_loop(n: Int) Int:
+fn in_loop(n Int) Int:
     var total = 0
 
     for i in 0..n:
@@ -59,14 +59,14 @@ fn moved_always() Int:
     h := open_handle("always")
     return consume(h)
 
-fn returned(c: Bool) Door:
+fn returned(c Bool) Door:
     h := open_handle("returned")
     if c:
         return h
 
     return open_handle("other")
 
-fn else_branch(c: Bool) Int:
+fn else_branch(c Bool) Int:
     h := open_handle("else")
 
     if c:

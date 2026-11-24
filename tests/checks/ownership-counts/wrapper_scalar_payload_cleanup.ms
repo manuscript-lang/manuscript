@@ -11,16 +11,16 @@
 import Closeable, print from "@std/core.ms"
 
 type Marker:
-	id: Int
+	id Int
 
 fn move Marker.close() Void!:
 	print(f"close {self.id}")
 
-fn present(id: Int) Marker?: Marker(id)
+fn present(id Int) Marker?: Marker(id)
 
-fn success(id: Int) Marker!Int: ok(Marker(id))
+fn success(id Int) Marker!Int: ok(Marker(id))
 
-fn failure(id: Int) Int!Marker: error(Marker(id))
+fn failure(id Int) Int!Marker: error(Marker(id))
 
 fn optional_cause() Void:
 	_kept := ok_or(present(1), 0)
@@ -44,7 +44,7 @@ fn transformed_error() Void:
 	_mapped := failure(8).map_error(fn item: item.id)
 
 fn transformed_then() Void:
-	_mapped: Int!Int := success(9).and_then(fn item: ok(item.id))
+	_mapped Int!Int := success(9).and_then(fn item: ok(item.id))
 
 fn optional_or_else() Void:
 	_kept := present(13) or null

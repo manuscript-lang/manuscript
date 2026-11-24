@@ -1,5 +1,5 @@
 export type Point:
-	x: Int
+	x Int
 
 export enum Mode:
 	Off

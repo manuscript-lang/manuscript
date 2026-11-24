@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn run(n: Int) Int:\n\ta := n | .size() | .m()? | .k\n\treturn a\n"
+    "fmt": "fn run(n Int) Int:\n\ta := n | .size() | .m()? | .k\n\treturn a\n"
   }
 }

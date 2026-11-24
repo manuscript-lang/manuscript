@@ -3,18 +3,18 @@
 import expect_equal, expect_fault from "@std/test/test.ms"
 
 type Plain:
-	key: Int
-	id: Int
+	key Int
+	id Int
 
 type Entry:
-	key: Int
-	id: Int
-	name: String
+	key Int
+	id Int
+	name String
 
 // Keys of one input shape: sorted and reversed runs, ties, a pipe organ, a sawtooth, a
 // sorted prefix with a random tail, and plain random keys of a few sizes.
-fn keys(shape: Int, count: Int) List[Int]:
-	var out: List[Int] = []
+fn keys(shape Int, count Int) List[Int]:
+	var out List[Int] = []
 	var x = 12345
 
 	for i in 0..count:
@@ -51,14 +51,14 @@ fn keys(shape: Int, count: Int) List[Int]:
 
 	return out
 
-fn plains(shape: Int, count: Int) List[Plain]:
-	var out: List[Plain] = []
+fn plains(shape Int, count Int) List[Plain]:
+	var out List[Plain] = []
 	for key in keys(shape, count):
 		out.append(Plain(key: key, id: out.length()))
 	return out
 
-fn entries(shape: Int, count: Int) List[Entry]:
-	var out: List[Entry] = []
+fn entries(shape Int, count Int) List[Entry]:
+	var out List[Entry] = []
 	for key in keys(shape, count):
 		out.append(
 			Entry(
@@ -69,7 +69,7 @@ fn entries(shape: Int, count: Int) List[Entry]:
 		)
 	return out
 
-fn plain_ok(list: List[Plain], count: Int) Bool:
+fn plain_ok(list List[Plain], count Int) Bool:
 	if list.length() != count: return false
 
 	var seen = 0
@@ -88,7 +88,7 @@ fn plain_ok(list: List[Plain], count: Int) Bool:
 
 	return seen == count * (count - 1) / 2
 
-fn entry_ok(list: List[Entry], count: Int) Bool:
+fn entry_ok(list List[Entry], count Int) Bool:
 	if list.length() != count: return false
 
 	var seen = 0
@@ -111,7 +111,7 @@ test "plain records of every shape sort stably at sizes around the small-sort an
 	]:
 		for shape in 0..10:
 			sorted := plains(shape, count).sorted(
-				compare: fn(a: Plain, b: Plain) Int: (a.key - b.key)
+				compare: fn(a Plain, b Plain) Int: (a.key - b.key)
 			)
 			expect_equal(plain_ok(sorted, count), true)?
 
@@ -120,18 +120,18 @@ test "records that own strings of every shape sort stably, sorted and in place":
 		for shape in 0..10:
 			original := entries(shape, count)
 			sorted := original.sorted(
-				compare: fn(a: Entry, b: Entry) Int: a.key - b.key
+				compare: fn(a Entry, b Entry) Int: a.key - b.key
 			)
 			expect_equal(entry_ok(sorted, count), true)?
 			expect_equal(original.length(), count)?
 
 			var list = entries(shape, count)
-			list.sort(compare: fn(a: Entry, b: Entry) Int: a.key - b.key)
+			list.sort(compare: fn(a Entry, b Entry) Int: a.key - b.key)
 			expect_equal(entry_ok(list, count), true)?
 
 test "a descending comparator sorts ties in input order":
 	sorted := plains(7, 20000).sorted(
-		compare: fn(a: Plain, b: Plain) Int: b.key - a.key
+		compare: fn(a Plain, b Plain) Int: b.key - a.key
 	)
 	var ok = true
 
@@ -143,7 +143,7 @@ test "a descending comparator sorts ties in input order":
 
 	expect_equal(ok, true)?
 
-fn faulting(a: Entry, b: Entry) Int:
+fn faulting(a Entry, b Entry) Int:
 	if a.id == 777 and b.id != 777: return 1 / (a.id - 777)
 	return a.key - b.key
 

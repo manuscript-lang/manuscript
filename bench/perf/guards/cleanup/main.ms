@@ -3,12 +3,12 @@
 import Closeable from "@std/core.ms"
 
 type Res:
-	id: Int
+	id Int
 
 fn move Res.close() Void!:
 	return ok(void)
 
-fn use(i: Int) Int!:
+fn use(i Int) Int!:
 	r := Res(i)
 	if i < 0: return error(Error("negative", kind: "EINVAL"))
 

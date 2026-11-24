@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn display_name(create: fn() String, name: String?) String:\n\treturn name or create()\n"
+    "fmt": "fn display_name(create fn() String, name String?) String:\n\treturn name or create()\n"
   }
 }

@@ -3,9 +3,9 @@
 // conform: origin=pkg/tooling/pattern_lint_test.go:28 TestPatternBindingAdvisory
 enum Failure[T]:
     NotFound
-    Denied(reason: T)
+    Denied(reason T)
 
-fn use[T](value: Result[Int, Failure[T]]) Int:
+fn use[T](value Result[Int, Failure[T]]) Int:
     match value:
         error(_): return 1
         ok(inner): return inner

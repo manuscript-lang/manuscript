@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn joined_until(stop: String) String:
+fn joined_until(stop String) String:
 	words := ["a".clone(), "bb".clone(), "stop".clone(), "ccc".clone()]
 	var out = ""
 	for w in words:

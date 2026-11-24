@@ -6,7 +6,7 @@ import (
 	nanoseconds from "@std/time.ms",
 )
 
-fn read_one(address: String) Int:
+fn read_one(address String) Int:
 	var client = connect(address, timeout: nanoseconds(2000000000)).wait().get()
 	got := client.input.next()
 

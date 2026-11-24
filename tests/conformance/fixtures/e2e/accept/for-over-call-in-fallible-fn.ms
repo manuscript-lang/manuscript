@@ -6,7 +6,7 @@ import (
 )
 
 type Src:
-	at: Int
+	at Int
 
 fn var Src.next() String?!:
 	if self.at >= 3: return ok(null)
@@ -21,7 +21,7 @@ fn make() ReadStream[String]:
 	return ReadStream[String](Src(0))
 
 fn read_all() List[String]!:
-	var out: List[String] = []
+	var out List[String] = []
 	for s in make():
 		out.append(s)
 	return ok(out)

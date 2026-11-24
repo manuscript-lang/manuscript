@@ -5,18 +5,18 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
+fn subtract(amount Int, deduction Int = 1) Int: amount - deduction
 
-fn first[T](left: T, right: T) T: left
+fn first[T](left T, right T) T: left
 
-fn size(values: Map[String, Int]) Int: values.length()
+fn size(values Map[String, Int]) Int: values.length()
 
-fn optional_size(values: Map[String, Int]?) Int: (
+fn optional_size(values Map[String, Int]?) Int: (
 	values
 	or panic("called Optional.get() on null")
 ).length()
 
-fn mark(var log: List[Int], value: Int) Int:
+fn mark(var log List[Int], value Int) Int:
 	log.append(value)
 	return value
 
@@ -31,7 +31,7 @@ test "map literals and positional identifier arguments":
 	right := 8
 	expect_equal(first(left, right), 4)?
 
-	stored: fn(Int, Int) Int := subtract
+	stored fn(Int, Int) Int := subtract
 	expect_equal(stored(amount, deduction), 7)?
 
 	var values = {"a": 1, "b": 2, "a": 3}
@@ -40,13 +40,13 @@ test "map literals and positional identifier arguments":
 	keys := values.keys()
 	expect_false(keys.get(0) != "a" or keys.get(1) != "b")?
 
-	empty: Map[String, Int] := {}
+	empty Map[String, Int] := {}
 	expect_false((not empty.is_empty() or size({}) != 0 or optional_size({}) != 0))?
 
-	nested: Map[String, Map[String, Int]] := {"a": {}, "b": {"c": 1}}
+	nested Map[String, Map[String, Int]] := {"a": {}, "b": {"c": 1}}
 	expect_equal(nested["b"]["c"], 1)?
 
-	optional: Map[String, Int?] := {"a": null, "b": 2}
+	optional Map[String, Int?] := {"a": null, "b": 2}
 	expect_false(not (optional["a"] == null))?
 
 	key := "c"
@@ -54,7 +54,7 @@ test "map literals and positional identifier arguments":
 	values.add(key.clone(), value)
 	expect_equal(values[key], value)?
 
-	var log: List[Int] = []
+	var log List[Int] = []
 	ordered := {mark(log, 1): mark(log, 2), mark(log, 1): mark(log, 3)}
 	expect_false(log != [1, 2, 1, 3] or ordered[1] != 3)?
 
@@ -64,10 +64,10 @@ test "map literals and positional identifier arguments":
 	expect_equal(values["d"], 6)?
 
 type Key:
-	id: Int
-	label: String
+	id Int
+	label String
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
 fn Key.hash() Int: self.id

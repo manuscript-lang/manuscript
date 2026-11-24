@@ -14,13 +14,13 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-fn widened_sign(key: Bytes) Bytes!:
+fn widened_sign(key Bytes) Bytes!:
 	return rsa_sign(key, HashAlgorithm.Sha256, "message".to_bytes())
 
-fn widened_decrypt(key: Bytes, data: Bytes) Bytes!:
+fn widened_decrypt(key Bytes, data Bytes) Bytes!:
 	return rsa_decrypt(key, HashAlgorithm.Sha256, data)
 
-fn marked(var calls: List[Int], marker: Int, data: Bytes) Bytes:
+fn marked(var calls List[Int], marker Int, data Bytes) Bytes:
 	calls.append(marker)
 	return data
 
@@ -141,7 +141,7 @@ test "RSA native function values preserve argument order and borrowed bytes":
 	verify_pss := rsa_verify_pss
 	encrypt := rsa_encrypt
 	decrypt := rsa_decrypt
-	var calls: List[Int] = []
+	var calls List[Int] = []
 	direct := rsa_sign(
 		data: marked(calls, 1, data.clone()),
 		hash: HashAlgorithm.Sha256,

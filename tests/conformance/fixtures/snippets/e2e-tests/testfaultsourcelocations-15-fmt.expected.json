@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn crash(value: Int) Int?:\n\treturn (1 / value)\n\nexport fn main() Int:\n\tvalue: Int? := 0\n\tif value != null: return crash(value) or 1\n\n\treturn 0\n"
+    "fmt": "fn crash(value Int) Int?:\n\treturn (1 / value)\n\nexport fn main() Int:\n\tvalue Int? := 0\n\tif value != null: return crash(value) or 1\n\n\treturn 0\n"
   }
 }

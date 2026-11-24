@@ -1,7 +1,7 @@
 // conform: tags=scope-cleanup,diagnostics,tier-core
 // conform: phase=check
 type Gate:
-	name: String
+	name String
 
 fn move Gate.close() Void!:
 	return ok()

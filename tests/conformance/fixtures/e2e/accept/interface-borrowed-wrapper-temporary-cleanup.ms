@@ -7,8 +7,8 @@ import (
 )
 
 type Resource:
-	id: Int
-	path: String
+	id Int
+	path String
 
 fn move Resource.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
@@ -17,41 +17,41 @@ fn move Resource.close() Void!:
 	self.path = "closed"
 
 interface Observer:
-	fn observe(first: Resource?, second: Resource?, tail: Int? = null) Bool
-	fn reject(value: Resource?) Void!
-	fn broken(value: Resource?) Void
-	fn create(path: String, value: Resource?) Resource
-	fn change(var value: Resource) Void
-	fn fault_with_var(var value: Resource) Void
-	fn result(value: Result[Resource, String]) Bool
+	fn observe(first Resource?, second Resource?, tail Int? = null) Bool
+	fn reject(value Resource?) Void!
+	fn broken(value Resource?) Void
+	fn create(path String, value Resource?) Resource
+	fn change(var value Resource) Void
+	fn fault_with_var(var value Resource) Void
+	fn result(value Result[Resource, String]) Bool
 
 type Reader:
-	tag: Int
+	tag Int
 
-fn Reader.observe(first: Resource?, second: Resource?, tail: Int? = null) Bool:
+fn Reader.observe(first Resource?, second Resource?, tail Int? = null) Bool:
 	return (first != null) or (second != null) or (tail or 0) > 0
 
-fn Reader.reject(value: Resource?) Void!:
+fn Reader.reject(value Resource?) Void!:
 	if value != null: return error(Error("expected"))
 
-fn Reader.broken(value: Resource?) Void:
+fn Reader.broken(value Resource?) Void:
 	if value != null: _bad := [1].get(3)
 
-fn Reader.create(path: String, value: Resource?) Resource:
+fn Reader.create(path String, value Resource?) Resource:
 	if value != null: return Resource(50, path.clone())
 	return Resource(51, path.clone())
 
-fn Reader.change(var value: Resource) Void:
+fn Reader.change(var value Resource) Void:
 	value.id += 1
 
-fn Reader.fault_with_var(var value: Resource) Void:
+fn Reader.fault_with_var(var value Resource) Void:
 	_bad := [value.id].get(3)
 
-fn Reader.result(value: Result[Resource, String]) Bool: value.is_ok()
+fn Reader.result(value Result[Resource, String]) Bool: value.is_ok()
 
-fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
+fn present(path String, id Int) Resource?: Resource(id, path.clone())
 
-fn log_text(path: String) String!:
+fn log_text(path String) String!:
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
 
@@ -61,20 +61,20 @@ fn accepted() Int!: ok(1)
 
 fn faulted() Int: [1].get(3)
 
-fn later_error(reader: Observer, path: String) Void!:
+fn later_error(reader Observer, path String) Void!:
 	_used := reader.observe(present(path, 10), present(path, 11), rejected()?)
 
-fn later_success(reader: Observer, path: String) Void!:
+fn later_success(reader Observer, path String) Void!:
 	_used := reader.observe(present(path, 12), present(path, 13), accepted()?)
 
-fn later_fault(reader: Observer, path: String) Void:
+fn later_fault(reader Observer, path String) Void:
 	_used := reader.observe(present(path, 14), present(path, 15), faulted())
 
-fn new_owner_fault(reader: Observer, path: String) Void:
+fn new_owner_fault(reader Observer, path String) Void:
 	owner := reader.create(path, present(path, 49))
 	_used := owner.id + faulted()
 
-fn failed_close(reader: Observer, path: String) Void:
+fn failed_close(reader Observer, path String) Void:
 	owner := Resource(99, path.clone())
 	_used := reader.observe(present(path, 98), null)
 	_id := owner.id
@@ -84,7 +84,7 @@ test "interface borrows intact temporary wrappers in written order":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader: Observer := Reader(1)
+	reader Observer := Reader(1)
 	expect_equal(reader.observe(Resource(1, path.clone()), present(path, 2)), true)?
 	expect_equal(log_text(path)?, "2,1,")?
 	expect_equal(
@@ -103,7 +103,7 @@ test "interface arguments retain cleanup through later try and faults":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader: Observer := Reader(1)
+	reader Observer := Reader(1)
 	expect_equal(later_error(reader, path).is_error(), true)?
 	later_success(reader, path)?
 
@@ -115,7 +115,7 @@ test "interface callee errors faults and new owners preserve cleanup":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader: Observer := Reader(1)
+	reader Observer := Reader(1)
 	expect_equal(reader.reject(present(path, 20)).is_error(), true)?
 
 	_fault := expect_fault(fn: reader.broken(present(path, 21)))?
@@ -127,7 +127,7 @@ test "interface resource var arguments preserve their owners":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader: Observer := Reader(1)
+	reader Observer := Reader(1)
 	var named = Resource(30, path.clone())
 	reader.change(named)
 	expect_equal(named.id, 31)?
@@ -138,15 +138,15 @@ test "interface failed temporary close leaves older owner registered":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader: Observer := Reader(1)
+	reader Observer := Reader(1)
 	_fault := expect_fault(fn: failed_close(reader, path))?
 	expect_equal(log_text(path)?, "98,99,")?
 
-fn named_var_fault(reader: Observer, path: String) Void:
+fn named_var_fault(reader Observer, path String) Void:
 	var value = Resource(60, path.clone())
 	reader.fault_with_var(value)
 
-fn wrapped_result(path: String) Result[Resource, String]:
+fn wrapped_result(path String) Result[Resource, String]:
 	return ok(Resource(70, path.clone()))
 
 test "interface var fault retains the caller cleanup":
@@ -154,7 +154,7 @@ test "interface var fault retains the caller cleanup":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader: Observer := Reader(1)
+	reader Observer := Reader(1)
 	_fault := expect_fault(fn: named_var_fault(reader, path))?
 	expect_equal(log_text(path)?, "60,")?
 
@@ -163,7 +163,7 @@ test "interface Result temporaries and loop conditions keep cleanup bounded":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader: Observer := Reader(1)
+	reader Observer := Reader(1)
 	expect_equal(reader.result(wrapped_result(path)), true)?
 	expect_equal(reader.result(error("absent")), false)?
 

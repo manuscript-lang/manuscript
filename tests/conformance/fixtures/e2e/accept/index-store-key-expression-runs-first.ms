@@ -8,12 +8,12 @@ import (
 // A key that is not a plain variable runs before the value, so each reads the optional
 // in order and the last read takes it.
 type Person:
-	id: Int
-	name: String
+	id Int
+	name String
 
 test "a key and a value both read an owned optional":
-	var queue: List[Person] = [Person(id: 1, name: "ada")]
-	var by_id: Map[Int, Person] = {}
+	var queue List[Person] = [Person(id: 1, name: "ada")]
+	var by_id Map[Int, Person] = {}
 
 	while queue.length() > 0:
 		p := queue.pop()

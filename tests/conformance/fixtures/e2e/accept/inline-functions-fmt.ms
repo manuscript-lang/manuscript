@@ -4,9 +4,9 @@
 import expect_equal from "@std/test/test.ms"
 
 type Transform:
-    operation: fn(Int) Int
+    operation fn(Int) Int
 
-fn apply[T](operation: fn(T) T, value: T) T:
+fn apply[T](operation fn(T) T, value T) T:
     return operation(value)
 
 test "inline callbacks survive contextual rechecking":

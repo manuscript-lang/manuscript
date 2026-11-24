@@ -3,12 +3,12 @@
 import expect_equal from "@std/test/test.ms"
 
 type Titled:
-	title: String
+	title String
 
 type Holder:
-	text: String
+	text String
 
-fn quoted(t: Titled) String:
+fn quoted(t Titled) String:
 	return f"{t.title}"
 
 test "a lone interpolation of a borrowed string is a new string wherever it is owned":

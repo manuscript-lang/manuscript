@@ -2,12 +2,12 @@
 // conform: phase=check
 // conform: origin=design/proposals/reference-ownership.md
 type User:
-    name: String
+    name String
 
-fn display(u: User, anonymous: Bool) String:
+fn display(u User, anonymous Bool) String:
     if anonymous: return "anonymous"
 
     return u.name
 
-fn keep(u: User) List[String]:
+fn keep(u User) List[String]:
     return [display(u, false)]

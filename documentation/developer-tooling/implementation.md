@@ -107,7 +107,7 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 - `--format html` includes all views in one page and accepts `--diff`; omit `--view` and `--entity`. Type hints are capped at 200,000 identifiers. Individual views bound their display (about 40 overview nodes, 60 call nodes and 14 sequence lifelines); the map shows omitted counts and lets you navigate to a different part of the program.
 - `--json` emits a versioned document with `view`, `entity` and `tree` (the default view is `calls`).
   - Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted` and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap.
-  - Unless `--diff` is given, `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o: Order, i: Item) Order`), not the generic tree. `var` may change the argument; use JSON or Mermaid for the checked ownership modes.
+  - Unless `--diff` is given, `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o Order, i Item) Order`), not the generic tree. `var` may change the argument; use JSON or Mermaid for the checked ownership modes.
   - `--format mermaid` renders a view for people: `types` becomes a class diagram with composition arrows, and `ownership` a flow colored by borrow mode (unless `--diff` is given). `--json` and `--format` cannot be combined.
 
 ## Review report

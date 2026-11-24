@@ -4,4 +4,4 @@
 import MapEntry from "@std/collections/collections.ms"
 
 type MapEntry:
-    value: Int
+    value Int

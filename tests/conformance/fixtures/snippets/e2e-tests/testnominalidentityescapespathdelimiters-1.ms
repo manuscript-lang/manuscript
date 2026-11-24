@@ -7,13 +7,13 @@ interface Read:
     fn get() Int
 
 type Box[T]:
-    value: T
+    value T
 
 fn Box[T].get() Int:
     return 3
 
 test "encoded nominal identity":
     box := Box(value: 1)
-    view: Read := box
+    view Read := box
     if not (view.get() == 3):
         return fail("check failed")

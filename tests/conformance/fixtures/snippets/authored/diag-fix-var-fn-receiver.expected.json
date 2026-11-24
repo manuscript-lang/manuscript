@@ -14,20 +14,20 @@
           "file": "diag-fix-var-fn-receiver.ms",
           "line": 7,
           "column": 10,
-          "offset": 125
+          "offset": 124
         },
         "fix": {
           "position": {
             "file": "diag-fix-var-fn-receiver.ms",
             "line": 6,
             "column": 4,
-            "offset": 95
+            "offset": 94
           },
           "end": {
             "file": "diag-fix-var-fn-receiver.ms",
             "line": 6,
             "column": 4,
-            "offset": 95
+            "offset": 94
           },
           "replacement": "var "
         }

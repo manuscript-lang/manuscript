@@ -5,12 +5,12 @@ import (
 
 // ---- PPM / PGM ----
 
-fn is_space(b: Int) Bool:
+fn is_space(b Int) Bool:
 	return b == 32 or b == 9 or b == 10 or b == 13 or b == 11 or b == 12
 
 // Reads one header integer at `start`, skipping whitespace and `#` comments; returns
 // `[value, next offset]`.
-fn ppm_number(data: Bytes, start: Int) List[Int]!:
+fn ppm_number(data Bytes, start Int) List[Int]!:
 	var at = start
 
 	while at < data.length():
@@ -45,7 +45,7 @@ fn ppm_number(data: Bytes, start: Int) List[Int]!:
 // is accepted, and samples are scaled to 8 bits. Malformed data returns EBADMSG, and
 // dimensions past `max_pixels` or the hard ceiling return EOVERFLOW. Data that does not
 // start with `P5` or `P6` returns EBADMSG.
-export fn decode_ppm(data: Bytes, max_pixels: Int?) Raster!:
+export fn decode_ppm(data Bytes, max_pixels Int?) Raster!:
 	if data.length() < 2: return error(bad("truncated PNM header"))
 
 	kind := data.get(1).to_int()
@@ -95,7 +95,7 @@ export fn decode_ppm(data: Bytes, max_pixels: Int?) Raster!:
 
 // Encodes gray or RGB pixels as 8-bit binary P5 or P6. Pixels with alpha (an even
 // `channels`) return EINVAL.
-export fn encode_ppm(width: Int, height: Int, channels: Int, pixels: List[UInt8]) Bytes!:
+export fn encode_ppm(width Int, height Int, channels Int, pixels List[UInt8]) Bytes!:
 	if channels % 2 == 0:
 		return error(
 			Error(

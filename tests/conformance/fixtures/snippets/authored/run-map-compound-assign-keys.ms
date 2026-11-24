@@ -3,11 +3,11 @@
 // conform: origin=compound assignment on a Map with a name or field key borrows the key for the read
 
 type Stock:
-    levels: Map[String, Int]
+    levels Map[String, Int]
 
 type Line:
-    sku: String
-    qty: Int
+    sku String
+    qty Int
 
 export fn main() Int:
     var stock = Stock(levels: {"a": 10, "b": 1})

@@ -1,14 +1,14 @@
 // LZ77 compress and decompress round trip over generated text-like bytes: flat tables,
 // byte lists, match copies.
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn make_input(n: Int) List[Int]:
-	var vocab: List[List[Int]] = []
+fn make_input(n Int) List[Int]:
+	var vocab List[List[Int]] = []
 	var x = 17
 
 	for w in 0..200:
-		var word: List[Int] = []
+		var word List[Int] = []
 		x = lcg(x)
 
 		for k in 0..(3 + x / 11 % 8):
@@ -17,7 +17,7 @@ fn make_input(n: Int) List[Int]:
 
 		vocab.append(word)
 
-	var out: List[Int] = []
+	var out List[Int] = []
 
 	while out.length() < n:
 		x = lcg(x)
@@ -28,12 +28,12 @@ fn make_input(n: Int) List[Int]:
 
 // Tokens: a literal is one byte (0..255); a match is two entries, 256 + length then
 // distance.
-fn compress(data: List[Int]) List[Int]:
-	var head: List[Int] = []
+fn compress(data List[Int]) List[Int]:
+	var head List[Int] = []
 	for i in 0..65536:
 		head.append(-1)
 
-	var out: List[Int] = []
+	var out List[Int] = []
 	n := data.length()
 	var i = 0
 
@@ -65,8 +65,8 @@ fn compress(data: List[Int]) List[Int]:
 
 	return out
 
-fn decompress(tokens: List[Int]) List[Int]:
-	var out: List[Int] = []
+fn decompress(tokens List[Int]) List[Int]:
+	var out List[Int] = []
 	var i = 0
 
 	while i < tokens.length():

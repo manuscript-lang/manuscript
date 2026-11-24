@@ -8,9 +8,9 @@ import (
 
 // Median-of-runs timing; mirrors node.js: warm-up, then at least `runs` runs and
 // `budget` ns.
-fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
+fn median_ns(body fn() Int, budget Int, runs Int) Int:
 	_warm := body()
-	var samples: List[Int] = []
+	var samples List[Int] = []
 	var total = 0
 
 	while total < budget or samples.length() < runs:
@@ -20,23 +20,23 @@ fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
 		samples.append(elapsed)
 		total += elapsed
 
-	sorted := samples.sorted(fn(a: Int, b: Int) Int: a.compare(b))
+	sorted := samples.sorted(fn(a Int, b Int) Int: a.compare(b))
 	return sorted.get(sorted.length() / 2)
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text.clone())
 
 // The typed case: a list of records, written without building a `JsonValue` first. The
 // size is the text produced, the same 10,000 rows in `node.js` and `rust/`.
 type Row:
-	id: Int
-	name: String
-	tags: List[String]
-	score: Float
-	ok: Bool
+	id Int
+	name String
+	tags List[String]
+	score Float
+	ok Bool
 
 fn row_list() List[Row]:
-	var rows: List[Row] = []
+	var rows List[Row] = []
 	for i in 0..10000:
 		rows.append(
 			Row(
@@ -49,18 +49,18 @@ fn row_list() List[Row]:
 		)
 	return rows
 
-fn records_body(rows: List[Row]) fn() Int:
+fn records_body(rows List[Row]) fn() Int:
 	return fn() Int:
 		if out := stringify(rows): return out.length()
 		return 0
 
-fn bench_records(budget: Int, runs: Int) Void:
+fn bench_records(budget Int, runs Int) Void:
 	rows := row_list()
 	size := records_body(rows.clone())()
 	s := median_ns(records_body(rows), budget, runs)
 	say(f"records\tstringify\t{s}\t{size}\n")
 
-fn bench_one(name: String, op: String, budget: Int, runs: Int) Void:
+fn bench_one(name String, op String, budget Int, runs Int) Void:
 	if name == "records":
 		bench_records(budget, runs)
 		return
@@ -77,14 +77,7 @@ fn bench_one(name: String, op: String, budget: Int, runs: Int) Void:
 	else:
 		say(f"{name}\tunreadable\n")
 
-fn bench_text(
-	name: String,
-	op: String,
-	text: String,
-	size: Int,
-	budget: Int,
-	runs: Int,
-) Void:
+fn bench_text(name String, op String, text String, size Int, budget Int, runs Int) Void:
 	if tree := parse(text):
 		if op == "doc":
 			d := median_ns(doc_body(text.clone()), budget, runs)
@@ -103,19 +96,19 @@ fn bench_text(
 // Decodes to a record with no fields, so only the document build and its release are
 // timed.
 type Nothing:
-	placeholder: Int? = null
+	placeholder Int? = null
 
-fn doc_body(text: String) fn() Int:
+fn doc_body(text String) fn() Int:
 	return fn() Int:
 		if _v := parse[Nothing](text): return 1
 		return 0
 
-fn parse_body(text: String) fn() Int:
+fn parse_body(text String) fn() Int:
 	return fn() Int:
 		if _v := parse(text): return 1
 		return 0
 
-fn stringify_body(tree: JsonValue) fn() Int:
+fn stringify_body(tree JsonValue) fn() Int:
 	return fn() Int:
 		if out := stringify(tree): return out.length()
 		return 0

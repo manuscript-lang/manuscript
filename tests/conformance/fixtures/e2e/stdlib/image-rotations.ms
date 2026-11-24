@@ -5,7 +5,7 @@ import (
 	ColorMode, Image, new_image from "@std/image/image.ms",
 )
 
-fn sample(width: Int, height: Int, mode: ColorMode) Image:
+fn sample(width Int, height Int, mode ColorMode) Image:
 	var image = new_image(width, height, mode).get()
 	for i in 0..image.pixels.length():
 		image.pixels[i] = (
@@ -14,7 +14,7 @@ fn sample(width: Int, height: Int, mode: ColorMode) Image:
 		)
 	return image
 
-fn check_equal(a: Image, b: Image) Void!:
+fn check_equal(a Image, b Image) Void!:
 	if (
 		a.width != b.width
 		or a.height != b.height

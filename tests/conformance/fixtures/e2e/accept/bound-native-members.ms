@@ -5,15 +5,15 @@ import (
 )
 
 type Folded:
-	name: String
+	name String
 
-fn Folded.equals(other: Folded) Bool:
+fn Folded.equals(other Folded) Bool:
 	return true
 
 fn Folded.hash() Int:
 	return 1
 
-fn replace_first[T: Clonable](var xs: List[T], value: T) List[T]:
+fn replace_first[T Clonable](var xs List[T], value T) List[T]:
 	xs.set(index: 0, value: value)
 	return xs.clone()
 
@@ -34,11 +34,11 @@ test "custom equality is kept for bound members":
 	a.add(value: Folded(name: "y"))
 	(a.length() == 1) | expect_true?
 
-	mapped := a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
+	mapped := a.map(transform: fn(value Folded) Folded: return Folded(name: "z"))
 	(mapped.length() == 1) | expect_true?
 
 test "list append":
-	var names: List[String] = []
+	var names List[String] = []
 	append := names.append
 	append("a")
 	append("é")
@@ -82,13 +82,13 @@ test "size and shape methods as values":
 	(set_is_empty() == false) | expect_true?
 
 interface IntList:
-	fn sorted(compare: fn(Int, Int) Int) List[Int]
-	fn take(count: Int) List[Int]
+	fn sorted(compare fn(Int, Int) Int) List[Int]
+	fn take(count Int) List[Int]
 	fn reversed() List[Int]
 	fn clone() List[Int]
 
 test "sorted as a value":
-	view: IntList := [3, 1, 2]
+	view IntList := [3, 1, 2]
 	sort := view.sorted
 	ordered := sort(compare: fn a, b: a - b)
 	(ordered.get(index: 0) == 1) | expect_true?
@@ -101,9 +101,9 @@ test "take as a value":
 	(first.get(index: 0) == 3) | expect_true?
 
 type EqualProbe:
-	n: Int
+	n Int
 
-fn same(a: Equal, b: Equal) Bool:
+fn same(a Equal, b Equal) Bool:
 	return a.equals(b)
 
 test "equals on built-in data":
@@ -164,7 +164,7 @@ test "native calls pass as Equal":
 	("a".to_bytes().equals("a".to_bytes())) | expect_true?
 
 test "native contract methods through an interface value":
-	view: IntList := [3, 1, 2]
+	view IntList := [3, 1, 2]
 	(view.take(2).length() == 2) | expect_true?
 	(view.reversed().get(index: 0) == 2) | expect_true?
 	(view.clone().length() == 3) | expect_true?

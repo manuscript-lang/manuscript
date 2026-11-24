@@ -14,7 +14,7 @@
           "file": "golden-1342.ms",
           "line": 7,
           "column": 25,
-          "offset": 149
+          "offset": 147
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "golden-1342.ms",
           "line": 8,
           "column": 22,
-          "offset": 176
+          "offset": 174
         },
         "fix": {
           "position": {

@@ -24,7 +24,7 @@ import (
 	tool_ms from "./lib.ms",
 )
 
-USAGE: String := """
+USAGE String := """
 conform: corpus commands (the replay is tools/conform-run.ms)
 
 usage: ms run tools/conform.ms -- <command> [options]
@@ -52,17 +52,17 @@ selection (list, stats, diff):
   --jobs N   parallel fixtures (default: every processor, at most 8)
 """
 
-fn corpus_of(root: String, args: Args) String:
+fn corpus_of(root String, args Args) String:
 	return one(args, "corpus", f"{root}/tests/conformance/fixtures")
 
-fn list_command(corpus: String, filter: Filter) Int:
+fn list_command(corpus String, filter Filter) Int:
 	for fx in select(corpus, filter): print(f"{fx.id}\t{fx.phase}\t{fx.tags.join(",")}")
 	return 0
 
-fn count_of(counts: Map[String, Int], key: String) Int:
+fn count_of(counts Map[String, Int], key String) Int:
 	return counts.get(key) or 0
 
-fn stats_command(corpus: String, filter: Filter) Int:
+fn stats_command(corpus String, filter Filter) Int:
 	chosen := select(corpus, filter)
 	phases := ["parse", "check", "run", "test"]
 	var by_phase = Map[String, Int]()
@@ -101,7 +101,7 @@ fn stats_command(corpus: String, filter: Filter) Int:
 	return 0
 
 // Problems with fixture metadata and expectation files, one per line.
-fn lint_command(corpus: String) Int:
+fn lint_command(corpus String) Int:
 	var problems = List[String]()
 	var known_ids = List[String]()
 	var sidecars = List[String]()
@@ -169,13 +169,13 @@ fn lint_command(corpus: String) Int:
 	return 1
 
 // The text of a project directory's sources, for its import tier.
-fn project_text(dir: String) String:
+fn project_text(dir String) String:
 	var text = ""
 	for entry in glob(dir, GlobOptions(patterns: ["**/*.ms", "ms.toml"])).get_or([]):
 		text += read_text(f"{dir}/{entry.path}") + "\n"
 	return text
 
-fn retag_command(corpus: String) Int:
+fn retag_command(corpus String) Int:
 	var changed = 0
 
 	for fx in select(corpus, filter_of(parse_args([]))):

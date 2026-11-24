@@ -26,10 +26,10 @@ import (
 
 // One document as `{case: operations}` and `{case: median ns/op}`.
 export type Sample:
-	operations: Map[String, Int]
-	medians: Map[String, Float]
+	operations Map[String, Int]
+	medians Map[String, Float]
 
-export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
+export fn parse_sample(output String, expected Map[String, Int]?) Sample!:
 	cases := read_cases(output)?
 	var operations = Map[String, Int]()
 	var medians = Map[String, Float]()
@@ -56,7 +56,7 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 		if want != operations: return invalid("cases or operation counts changed")
 	return ok(Sample(operations, medians))
 
-fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Error]:
+fn run(opts Map[String, String], repeats Int, samples Int) Result[String, Error]:
 	filter := opts.get_or("filter", "")
 	var binaries = Map[String, String]()
 	var raw = Map[String, List[String]]()
@@ -67,7 +67,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		raw.add(name.clone(), List[String]())
 		values.add(name.clone(), Map[String, List[Float]]())
 
-	var expected: Map[String, Int]? = null
+	var expected Map[String, Int]? = null
 	var names = List[String]()
 
 	for i in 0..repeats:
@@ -114,7 +114,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 				[],
 			)
 		)
-		var ratio: Float? = null
+		var ratio Float? = null
 		if before != 0.0: ratio = after / before
 
 		label := labels.get_or(name, name)

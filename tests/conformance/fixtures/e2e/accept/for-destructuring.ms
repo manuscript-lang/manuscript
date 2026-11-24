@@ -3,8 +3,8 @@
 import expect_equal from "@std/test/test.ms"
 
 type Point:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
 test "for destructures list and record elements":
 	pairs := [[1, 2], [3, 4]]

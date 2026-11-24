@@ -15,4 +15,4 @@ fn bytes() Bytes: Bytes([1])
 
 fn build() List[Int]: List[Int]()
 
-fn text_error(message: String) Error: Error(message)
+fn text_error(message String) Error: Error(message)

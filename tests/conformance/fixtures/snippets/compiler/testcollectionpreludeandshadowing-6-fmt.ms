@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/prelude_test.go:68 TestCollectionPreludeAndShadowing
 type List[T]:
-    value: T
+    value T
 
 fn f() Void:
     xs := [1]

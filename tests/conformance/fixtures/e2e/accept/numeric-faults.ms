@@ -3,19 +3,19 @@
 // conform: origin=tests/e2e/testdata/accept/numeric-faults.ms
 import expect_contains, expect_equal, expect_fault, expect_true from "@std/test/test.ms"
 
-fn add(a: Int, b: Int) Int: return a + b
+fn add(a Int, b Int) Int: return a + b
 
-fn subtract(a: Int, b: Int) Int: return a - b
+fn subtract(a Int, b Int) Int: return a - b
 
-fn multiply(a: Int, b: Int) Int: return a * b
+fn multiply(a Int, b Int) Int: return a * b
 
-fn divide(a: Int, b: Int) Int: return a / b
+fn divide(a Int, b Int) Int: return a / b
 
-fn remainder(a: Int, b: Int) Int: return a % b
+fn remainder(a Int, b Int) Int: return a % b
 
-fn negate(a: Int) Int: return -a
+fn negate(a Int) Int: return -a
 
-fn flip(a: Float) Float: return -a
+fn flip(a Float) Float: return -a
 
 test "add high overflows":
     message := expect_fault(

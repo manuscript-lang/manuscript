@@ -3,7 +3,7 @@
 interface Read:
     fn read() Int
 type Reader:
-    operation: fn() Int
+    operation fn() Int
 impl Read for Reader:
     fn read() Int:
         return self.operation()

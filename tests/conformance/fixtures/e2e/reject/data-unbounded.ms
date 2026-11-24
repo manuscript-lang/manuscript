@@ -2,7 +2,7 @@
 // conform: phase=check
 import stringify from "@std/data/json.ms"
 
-fn show[T](value: T) String:
+fn show[T](value T) String:
 	return stringify(value).get_or("")
 
 export fn main() Int:

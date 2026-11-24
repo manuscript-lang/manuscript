@@ -9,10 +9,10 @@ import (
 
 // Counts up to `stop`, fails once at `fail_at`, and reports where it was when closed.
 type Counter:
-	at: Int
-	stop: Int
-	fail_at: Int
-	closes: WriteStream[Int]
+	at Int
+	stop Int
+	fail_at Int
+	closes WriteStream[Int]
 
 fn var Counter.next() Int?!:
 	if self.at == self.fail_at:
@@ -30,7 +30,7 @@ fn move Counter.close() Void!:
 test "a loop that breaks hands the source back to its stream":
 	var closes = pipe[Int](capacity: 8)
 	var s = ReadStream[Int](Counter(0, 5, -1, closes.writer()))
-	var seen: List[Int] = []
+	var seen List[Int] = []
 
 	for x in s:
 		seen.append(x)

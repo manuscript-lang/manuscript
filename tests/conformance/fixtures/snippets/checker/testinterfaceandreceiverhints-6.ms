@@ -4,8 +4,8 @@
 interface Read[T]:
     fn get() T
 
-type Box[T: Clonable]:
-    item: T
+type Box[T Clonable]:
+    item T
 
 fn Box[T].get() T: self.item.clone()
 

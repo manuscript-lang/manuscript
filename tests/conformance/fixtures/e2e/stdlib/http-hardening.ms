@@ -18,10 +18,10 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn ok_route(request: HttpRequest) HttpResponse:
+fn ok_route(request HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
-fn slow_route(request: HttpRequest) HttpResponse:
+fn slow_route(request HttpRequest) HttpResponse:
 	void sleep(30.seconds()).wait()
 	return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
@@ -106,7 +106,7 @@ test "close cancels a handler parked on a request body and releases its stream":
 			Error("handler finished instead of being cancelled")
 		)
 
-fn expect_file_reply(var conn: Connection) Void!:
+fn expect_file_reply(var conn Connection) Void!:
 	reply := recv(conn, 10.seconds()) | expect_ok?
 	text := (reply or Bytes([])).decode_utf8() or ""
 	if not text.starts_with("HTTP/1.1 200"): return error(
@@ -118,7 +118,7 @@ test "serve answers requests while handlers read and write files":
 	root := dir.path()
 	payload := ("0123456789abcdef".repeat(262144)).to_bytes()
 
-	fn io_route(request: HttpRequest) HttpResponse:
+	fn io_route(request HttpRequest) HttpResponse:
 		path := f"{root}/slot{request.query}.bin"
 		wrote := write_file(path, payload.clone(), replace: true).wait()
 		if wrote.is_error(): return HttpResponse(500, "write".to_bytes())
@@ -148,7 +148,7 @@ test "serve answers requests while handlers read and write files":
 	server.close()?
 	dir.close()?
 
-fn oversized(var exchange: HttpExchange) Void!:
+fn oversized(var exchange HttpExchange) Void!:
 	return reply(exchange, text(200, "z".repeat(5000)))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
@@ -173,7 +173,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
 		Error(f"expected a 500 reply, got: {head}")
 	)
 
-fn raw_status(address: String, request: String) String!:
+fn raw_status(address String, request String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait() | expect_ok?
 	send(client, request) | expect_ok?
 

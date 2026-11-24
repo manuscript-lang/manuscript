@@ -1,8 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Val:
-    val: Int
-fn work(value: Val) Void:
+    val Int
+fn work(value Val) Void:
     callback := fn() Void:
         value.val = value.val + 1
     callback()

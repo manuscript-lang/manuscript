@@ -78,7 +78,7 @@ Save as `port.ms` and run `ms run port.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
 ```manuscript
-fn port_number(text: String) Int!:
+fn port_number(text String) Int!:
     port := text.trim()
         | .parse_int()
         | ok_or(Error("expected a port number"))?
@@ -135,7 +135,7 @@ The operand types, not the expected result type, select the operator row.
 - Two Never operands cannot select a numeric, ordering, or equality row; unary signs and `?` need an independently known operand.
 - `not`, `and`, and `or` take Bool, so Never is fine.
 
-The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `x: Int := -panic(message: "stop")` is rejected.
+The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `x Int := -panic(message: "stop")` is rejected.
 
 See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `?`.
 
@@ -162,7 +162,7 @@ fn main() Void:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn calculated(value: Int, active: Bool) Int:
+fn calculated(value Int, active Bool) Int:
     product := 1 + 2 * 3             // 7
     same := not value == product     // not (value == product)
     if active and same:
@@ -172,7 +172,7 @@ fn calculated(value: Int, active: Bool) Int:
 
 <!-- manuscript-example: {"mode":"error","contains":"comparison operators cannot chain","given":[]} -->
 ```manuscript
-fn invalid(value: Int, ratio: Float) Bool:
+fn invalid(value Int, ratio Float) Bool:
     mixed := value + ratio           // Type error: exact numeric types differ.
     return 0 < value < 10               // Syntax error: comparison chain.
 ```

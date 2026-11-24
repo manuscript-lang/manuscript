@@ -64,14 +64,14 @@ To close one part of a holder that stays in use (a connection's output side), ta
 import Closeable from "@std/core.ms"
 
 type Gate:
-    fails: Bool
+    fails Bool
 
 fn move Gate.close() Void!:
     if self.fails:
         self.fails = false
         return error(Error("gate stuck"))
 
-fn use_gate(fails: Bool) Void!:
+fn use_gate(fails Bool) Void!:
     _gate := Gate(fails)
 ```
 

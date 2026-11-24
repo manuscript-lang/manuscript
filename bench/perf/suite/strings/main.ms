@@ -1,12 +1,12 @@
 // String manipulation: interpolation, case, trim, replace, split and join, search,
 // padding, and sorting strings.
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
 fn main() Void:
 	var x = 21
-	var words: List[String] = []
+	var words List[String] = []
 
 	for i in 0..300000:
 		x = lcg(x)

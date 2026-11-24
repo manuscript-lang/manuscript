@@ -1,7 +1,7 @@
 import bench, words from "./harness.ms"
 import compile, Regex from "@std/regex.ms"
 
-fn run(re: Regex) Void:
+fn run(re Regex) Void:
     text := words(2000).join(" ")
 
     bench(

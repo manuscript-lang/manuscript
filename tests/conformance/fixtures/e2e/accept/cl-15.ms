@@ -5,18 +5,18 @@ import expect_equal, expect_not_equal from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
 
 type Callback:
-    handler: fn(Int) Int
+    handler fn(Int) Int
 
-fn increment(value: Int) Int:
+fn increment(value Int) Int:
     return value + 1
 
-fn preserve_key[K: Hashable](value: K) K:
+fn preserve_key[K Hashable](value K) K:
     return value
 
 test "derived value equality":
-    present: Int? := 1
-    same: Int? := 1
-    missing: Int? := null
+    present Int? := 1
+    same Int? := 1
+    missing Int? := null
     expect_equal(present, same)?
     expect_not_equal(present, missing)?
     expect_equal(1.00d, 1d)?

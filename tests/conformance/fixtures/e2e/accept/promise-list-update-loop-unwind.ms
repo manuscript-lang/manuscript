@@ -5,8 +5,8 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn histogram(seed: Int) Int!:
-	var hist: List[Int] = []
+fn histogram(seed Int) Int!:
+	var hist List[Int] = []
 	for b in 0..16: hist.append(0)
 	var x = seed
 	for i in 0..1000:
@@ -16,8 +16,8 @@ fn histogram(seed: Int) Int!:
 	for b in 0..16: total += hist[b] * (b + 1)
 	return ok(total)
 
-fn overflows_late(width: Int) Int!:
-	var hist: List[Int] = []
+fn overflows_late(width Int) Int!:
+	var hist List[Int] = []
 	for b in 0..8: hist.append(0)
 	for i in 0..100:
 		hist[i % width] = hist[i % width] + 1

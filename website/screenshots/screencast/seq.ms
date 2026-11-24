@@ -1,4 +1,4 @@
-fn fib(n: Int) Int:
+fn fib(n Int) Int:
 	return if n < 2: n else: fib(n - 1) + fib(n - 2)
 
 fn main() Void:

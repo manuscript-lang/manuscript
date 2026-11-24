@@ -5,20 +5,20 @@ import Closeable from "@std/core.ms"
 
 // A generic wrapper closes the resource its instance holds; a plain instance closes nothing.
 type Door:
-    name: String
+    name String
 
 fn move Door.close() Void!:
     print(f"closed {self.name}")
 
 type Wrap[T]:
-    value: T
+    value T
 
-fn keep[T](move v: T) Int:
+fn keep[T](move v T) Int:
     _w := Wrap(v)
     return 0
 
-fn keep_optional[T](move v: T) Int:
-    _o: T? := v
+fn keep_optional[T](move v T) Int:
+    _o T? := v
     return 1
 
 fn main() Void:

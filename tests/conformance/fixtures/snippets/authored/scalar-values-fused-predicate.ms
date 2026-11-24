@@ -4,7 +4,7 @@
 // all, any and count over scalar_values() with a reading lambda run as one decoding loop; the
 // answers must match the list-building form, including non-ASCII text and empty text.
 
-fn digits(s: String) Bool:
+fn digits(s String) Bool:
 	return not s.is_empty() and s.scalar_values().all(fn c: c >= 48 and c <= 57)
 
 export fn main() Int:

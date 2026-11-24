@@ -6,10 +6,10 @@
 
 <!-- complete: errors.ms -->
 ```manuscript
-fn parse(text: String) Int!:
+fn parse(text String) Int!:
 	return text.parse_int().ok_or(Error("expected an integer"))
 
-fn twice(text: String) Int!:
+fn twice(text String) Int!:
 	value := parse(text)?
 	return ok(value * 2)
 
@@ -30,7 +30,7 @@ fn main() Int:
 
 Optional `.map(f)` preserves Result returns as `(T!)?`; handle both layers. Never accidentally drop a Result. Panic and failed no-default `.get()` fault; they are not catchable Results.
 
-A custom error type is any enum: `enum LibraryError:` with cases such as `NotFound(id: Int)`; a function returns `Void!LibraryError`, fails with `return error(LibraryError.NotFound(id))` and succeeds with `return ok(void)`. `?` needs the same error type in the enclosing function, and a `test` block's error type is `Error`, so in a test check the outcome with `expect_true(r.is_ok())?` or `expect_true(r.is_error())?` (also `expect_error`, `expect_none`, `expect_contains` from `@std/test/test.ms`). `Error.kind` is `String?` and any string works as a kind (`"EINVAL"`, `"ENOENT"`, `"ETIMEDOUT"`, `"ECANCELED"`): compare with `e.kind.get_or("")`.
+A custom error type is any enum: `enum LibraryError:` with cases such as `NotFound(id Int)`; a function returns `Void!LibraryError`, fails with `return error(LibraryError.NotFound(id))` and succeeds with `return ok(void)`. `?` needs the same error type in the enclosing function, and a `test` block's error type is `Error`, so in a test check the outcome with `expect_true(r.is_ok())?` or `expect_true(r.is_error())?` (also `expect_error`, `expect_none`, `expect_contains` from `@std/test/test.ms`). `Error.kind` is `String?` and any string works as a kind (`"EINVAL"`, `"ENOENT"`, `"ETIMEDOUT"`, `"ECANCELED"`): compare with `e.kind.get_or("")`.
 
 `expect_error(r)` returns the cause, so write `cause := expect_error(r)?`. A `List[String]` error type cannot use `?` inside a test: convert with `.map_error(fn e: Error(e.join("; ")))` or check `.is_error()`.
 

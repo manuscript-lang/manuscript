@@ -11,8 +11,8 @@ A type groups related data into named fields. Use it when a function should rece
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Customer:
-    name: String
-    email: String?
+    name String
+    email String?
 ```
 
 Field types are explicit and field names are unique. An empty type is `type Marker:`. A field may have a default expression, which is checked against the field's type.
@@ -23,7 +23,7 @@ Supply each required field exactly once, by position or label; fields with defau
 
 Supplied expressions evaluate in written order, then omitted defaults evaluate in declaration order. Each is checked against its field type, so `null` and `[]` get their expected type.
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    email: String?","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name String\n    email String?","given":[]} -->
 ```manuscript
 customer := Customer(name: "Ada", email: null)
 name := customer.name
@@ -31,7 +31,7 @@ name := customer.name
 
 Positional arguments follow declaration order, and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Customer("Ada", null)` equals `Customer(name: "Ada", email: null)`. To handle an optional field such as `email`, see [optional values](optionals.md).
 
-<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer:\n    name: String\n    email: String? = null","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer:\n    name String\n    email String? = null","given":[]} -->
 ```manuscript
 // An omitted optional field is null.
 without_email := Customer(name: "Ada")
@@ -44,8 +44,8 @@ Generic types declare parameters (`type Box[T]:`) and construct as `Box[Int](val
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 type Options:
-    count: Int = 3
-    total: Int = count + 1
+    count Int = 3
+    total Int = count + 1
 
 options := Options(count: 5)  // total defaults to 6
 ```
@@ -63,8 +63,8 @@ Save as `customers.ms` and run `ms run customers.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"Ada\nGrace\n"} -->
 ```manuscript
 type Customer:
-    name: String
-    email: String?
+    name String
+    email String?
 
 fn main() Void:
     original := Customer("Ada")
@@ -87,7 +87,7 @@ interface Counter:
     var fn increment() Void
 
 type Val:
-    val: Int
+    val Int
 
 fn var Val.increment() Void:
     self.val = self.val + 1
@@ -108,8 +108,8 @@ Save as `batches.ms` and run `ms run batches.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"scores\n[3, 4]\n"} -->
 ```manuscript
 type Report:
-    title: String
-    rows: List[Int]
+    title String
+    rows List[Int]
 
 fn main() Void:
     report := Report("scores", [3, 4])
@@ -129,9 +129,9 @@ scores
 
 Reading a field is different from moving it: `rows := report.rows` borrows the field. A function that returns the field also returns an inferred borrow:
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Report:\n    rows: List[Int]","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Report:\n    rows List[Int]","given":[]} -->
 ```manuscript
-fn rows_of(report: Report) List[Int]:
+fn rows_of(report Report) List[Int]:
     return report.rows
 ```
 
@@ -144,17 +144,17 @@ A resource field moves without a copy, and the new owner closes it. The type clo
 import Closeable from "@std/core.ms"
 
 type Door:
-    id: Int
+    id Int
 
 fn move Door.close() Void!:
     return ok()
 
 type Room:
-    door: Door
-    spare: Door
+    door Door
+    spare Door
 
-fn open_door(r: Room) List[Door]:
-    var doors: List[Door] = []
+fn open_door(r Room) List[Door]:
+    var doors List[Door] = []
     doors.append(r.door)
     return doors
 ```
@@ -168,17 +168,17 @@ Wrap identifiers in their own types so they cannot be mixed up.
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type CustomerId:
-    value: String
+    value String
 
 type OrderId:
-    value: String
+    value String
 ```
 
-<!-- manuscript-example: {"mode":"error","contains":"","context":"type CustomerId:\n    value: String\n\ntype OrderId:\n    value: String","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type CustomerId:\n    value String\n\ntype OrderId:\n    value String","given":[]} -->
 ```manuscript
 customer_id := CustomerId("42")
 // Rejected: equal field shapes do not make nominal types interchangeable.
-order_id: OrderId := customer_id
+order_id OrderId := customer_id
 ```
 
 A type's identity is its module, its declaration, and its type arguments. Importing one module by different paths does not create different types. Type applications are [invariant](compatibility.md).
@@ -198,10 +198,10 @@ Types and enums may refer to themselves or each other directly, with no box. Giv
 import panic from "@std/core.ms"
 
 enum Expr:
-    Num(value: Int)
-    Add(left: Expr, right: Expr)
+    Num(value Int)
+    Add(left Expr, right Expr)
 
-fn evaluate(expr: Expr) Int:
+fn evaluate(expr Expr) Int:
     match expr:
         Num(value): return value
         Add(left, right): return evaluate(left) + evaluate(right)
@@ -219,8 +219,8 @@ A linked type ends with an absent successor; a link owns its successor, so a clo
 import panic from "@std/core.ms"
 
 type Node:
-    value: Int
-    next: Node?
+    value Int
+    next Node?
 
 test "recursive links":
     var node = Node(value: 1, next: null)
@@ -242,10 +242,10 @@ Generic recursion must preserve type parameters along every cycle; see [finite r
 ```text
 # gate.ms
 export opaque type Approved:
-    entity: String
-    nonce: String
+    entity String
+    nonce String
 
-export fn approve(entity: String) Approved: Approved(entity: entity, nonce: "n1")
+export fn approve(entity String) Approved: Approved(entity: entity, nonce: "n1")
 
 # agent.ms
 a := Approved(entity: "u2", nonce: "x")   # error: Approved is opaque outside gate.ms
@@ -275,15 +275,15 @@ type Rows = List[Int]
 type Handler = fn(Int) Int
 type Maybe[T] = T?
 
-fn total(rows: Rows) Int:
+fn total(rows Rows) Int:
     return rows.fold(0, fn sum, x: sum + x)
 
-numbers: List[Int] := [1, 2, 3]
+numbers List[Int] := [1, 2, 3]
 sum := total(numbers)
 ```
 
 - The target is any type expression, including function types, `T?`, `T!E` and applications such as `List[Row]`.
-- An alias may take type parameters, written like a generic type's: `type Pairs[A: Hashable, B] = List[Map[A, B]]`. Every parameter is supplied, or defaulted, where the alias is used. Bounds apply to the expansion.
+- An alias may take type parameters, written like a generic type's: `type Pairs[A Hashable, B] = List[Map[A, B]]`. Every parameter is supplied, or defaulted, where the alias is used. Bounds apply to the expansion.
 - An alias may name a type declared later in the module. A cycle (`type A = B` with `type B = A`) is rejected.
 - An exported alias must not expose a private type, as with any exported signature.
 
@@ -296,11 +296,11 @@ A tree grows through a `fn var` method that calls itself on the child with `?.`,
 import panic from "@std/core.ms"
 
 type Branch:
-    key: Int
-    left: Branch?
-    right: Branch?
+    key Int
+    left Branch?
+    right Branch?
 
-fn var Branch.insert(key: Int) Void:
+fn var Branch.insert(key Int) Void:
     if key < self.key:
         if self.left == null:
             self.left = Branch(key, null, null)
@@ -312,7 +312,7 @@ fn var Branch.insert(key: Int) Void:
         else:
             self.right?.insert(key)
 
-fn count(node: Branch?) Int:
+fn count(node Branch?) Int:
     if n := node:
         return 1 + count(n.left) + count(n.right)
     return 0

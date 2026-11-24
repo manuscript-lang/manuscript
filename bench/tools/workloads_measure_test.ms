@@ -8,12 +8,12 @@ import (
 // A producer for `version` that prints "correct" unless `mode` says otherwise for
 // `bad`. Calls are counted per version.
 type Producer:
-	bad: String
-	mode: String
-	counts: Map[String, Int]
-	order: List[String]
+	bad String
+	mode String
+	counts Map[String, Int]
+	order List[String]
 
-fn var Producer.run(version: String) String!:
+fn var Producer.run(version String) String!:
 	count := self.counts.get_or(version, 0)
 	self.counts.add(version.clone(), count + 1)
 	self.order.append(version.clone())
@@ -28,7 +28,7 @@ fn var Producer.run(version: String) String!:
 
 	return ok("correct")
 
-fn producer(bad: String, mode: String) Producer:
+fn producer(bad String, mode String) Producer:
 	return Producer(bad.clone(), mode.clone(), Map[String, Int](), List[String]())
 
 test "every trial rotates and retains samples":

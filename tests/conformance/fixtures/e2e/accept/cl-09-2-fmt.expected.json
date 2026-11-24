@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn absent[T]() T?:\n\treturn null\n\ntest \"result context infers function arguments\":\n\t_value: Int? := absent()\n"
+    "fmt": "fn absent[T]() T?:\n\treturn null\n\ntest \"result context infers function arguments\":\n\t_value Int? := absent()\n"
   }
 }

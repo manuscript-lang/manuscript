@@ -14,7 +14,7 @@ import (
 )
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
-fn stream_events(var exchange: HttpExchange) Void!:
+fn stream_events(var exchange HttpExchange) Void!:
 	var sent = headers()
 	sent.append("Content-Type", "text/event-stream")?
 	exchange.send_headers(200, sent)?

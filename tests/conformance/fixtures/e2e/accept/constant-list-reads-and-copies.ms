@@ -10,15 +10,15 @@ flags := [true, false]
 small := [-1, 2]
 
 type Box:
-	items: List[Int]
+	items List[Int]
 
 fn give() List[Int]:
 	return table.clone()
 
-fn bump(var l: List[Int]) Void:
+fn bump(var l List[Int]) Void:
 	l[0] = 99
 
-fn total(l: List[Int]) Int:
+fn total(l List[Int]) Int:
 	var s = 0
 	for x in l:
 		s += x

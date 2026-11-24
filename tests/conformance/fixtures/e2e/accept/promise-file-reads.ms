@@ -6,7 +6,7 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-fn size(path: String) Int!:
+fn size(path String) Int!:
 	data := read_file(path).wait()?
 	return ok(data.length())
 

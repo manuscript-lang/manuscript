@@ -2,7 +2,7 @@
 // escape-time count.
 import sqrt from "@std/math/math.ms"
 
-fn heat(n: Int, steps: Int) Int:
+fn heat(n Int, steps Int) Int:
 	var a = List[Float]()
 	var b = List[Float]()
 
@@ -33,7 +33,7 @@ fn heat(n: Int, steps: Int) Int:
 		total += v
 	return (total * 1000.0).truncate_to_int() or 0
 
-fn mandelbrot(size: Int, limit: Int) Int:
+fn mandelbrot(size Int, limit Int) Int:
 	var inside = 0
 	var work = 0
 
@@ -56,7 +56,7 @@ fn mandelbrot(size: Int, limit: Int) Int:
 
 	return inside * 1000003 + work % 1000003
 
-fn norms(count: Int) Int:
+fn norms(count Int) Int:
 	var total = 0.0
 
 	for i in 1..count:

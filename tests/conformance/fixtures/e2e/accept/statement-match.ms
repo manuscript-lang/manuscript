@@ -3,11 +3,11 @@
 import expect_equal from "@std/test/test.ms"
 
 enum Shape:
-	Circle(r: Int)
-	Rect(w: Int, h: Int)
+	Circle(r Int)
+	Rect(w Int, h Int)
 	Dot
 
-fn area(shape: Shape) Int:
+fn area(shape Shape) Int:
 	match shape:
 		Circle(r): return 3 * r * r
 		Rect(w, h): return w * h
@@ -15,7 +15,7 @@ fn area(shape: Shape) Int:
 
 	return -1
 
-fn first_positive(values: List[Int?]) Int:
+fn first_positive(values List[Int?]) Int:
 	var index = 0
 
 	while index < values.length():
@@ -29,7 +29,7 @@ fn first_positive(values: List[Int?]) Int:
 
 	return -1
 
-fn nested(rows: List[List[Int?]]) Int:
+fn nested(rows List[List[Int?]]) Int:
 	var total = 0
 
 	for row in rows:
@@ -42,7 +42,7 @@ fn nested(rows: List[List[Int?]]) Int:
 
 	return total
 
-fn side_effects(shape: Shape) Int:
+fn side_effects(shape Shape) Int:
 	var count = 0
 
 	match shape:
@@ -59,11 +59,11 @@ test "statement match returns from the enclosing function":
 	expect_equal(area(Shape.Dot), 0)?
 
 test "statement match controls the nearest loop":
-	values: List[Int?] := [null, 0, 5, 9]
+	values List[Int?] := [null, 0, 5, 9]
 	expect_equal(first_positive(values), 5)?
 	expect_equal(first_positive([null, -1]), -1)?
 
-	rows: List[List[Int?]] := [[1, null, 100], [2, 3]]
+	rows List[List[Int?]] := [[1, null, 100], [2, 3]]
 	expect_equal(nested(rows), 2006)?
 
 test "statement match arms assign enclosing locals":

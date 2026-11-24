@@ -14,7 +14,7 @@
           "file": "try-borrowed-result-needs-clone.ms",
           "line": 6,
           "column": 13,
-          "offset": 288
+          "offset": 287
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "try-borrowed-result-needs-clone.ms",
           "line": 13,
           "column": 13,
-          "offset": 434
+          "offset": 431
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "try-borrowed-result-needs-clone.ms",
           "line": 22,
           "column": 13,
-          "offset": 633
+          "offset": 628
         }
       }
     ],

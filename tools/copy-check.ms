@@ -17,7 +17,7 @@ import (
 )
 
 // The probe lines the compiler printed on standard error, without their prefix.
-fn copies(text: String) List[String]:
+fn copies(text String) List[String]:
 	var sites = List[String]()
 	for line in text.split("\n"):
 		if line.starts_with("copy-probe\t"): sites.append(

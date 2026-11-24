@@ -21,7 +21,7 @@ import (
 	certificate, private_key from "./support/certificates.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	if request.path == "/hold":
 		started := monotonic()
 		while monotonic().difference(started).to_milliseconds() < 400:
@@ -36,28 +36,28 @@ fn client_for() Fetcher!:
 		)
 	)
 
-fn ask(c: Fetcher, base: String, path: String) Promise[FetchResponse]:
+fn ask(c Fetcher, base String, path String) Promise[FetchResponse]:
 	return c.fetch(f"{base}{path}", FetchOptions(timeout: 10.seconds()))
 
-fn answered(promise: Promise[FetchResponse]) Bool:
+fn answered(promise Promise[FetchResponse]) Bool:
 	match promise.wait():
 		ok(response): return finished(response)
 		error(_): return false
 
-fn finished(response: FetchResponse) Bool:
+fn finished(response FetchResponse) Bool:
 	text := response.text().get_or("")
 	return response.head.protocol == "HTTP/2.0" and text.ends_with("done\n")
 
 // Holds the thread of `held` and answers whether the others were served meanwhile. `pair`
 // is the connection the server dealt to the same thread as `held`.
 fn round(
-	base: String,
-	held: Fetcher,
-	pair: Fetcher,
-	w: Fetcher,
-	x: Fetcher,
-	y: Fetcher,
-	z: Fetcher,
+	base String,
+	held Fetcher,
+	pair Fetcher,
+	w Fetcher,
+	x Fetcher,
+	y Fetcher,
+	z Fetcher,
 ) Bool:
 	started := monotonic()
 	slow := ask(held, base, "/hold")

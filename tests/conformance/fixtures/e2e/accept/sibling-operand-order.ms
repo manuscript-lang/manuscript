@@ -53,8 +53,8 @@ test "generic binary operands read before a later match assigns them":
     expect_equal(sum, 4d)?
 
 type Cell:
-    n: Int
-    s: String
+    n Int
+    s String
 
 test "field assignment keeps sibling field writes made while evaluating the value":
     var cell = Cell(n: 1, s: "a")
@@ -68,5 +68,5 @@ test "field assignment keeps sibling field writes made while evaluating the valu
     expect_equal(cell.n, 2)?
     expect_equal(cell.s, "changed")?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
     return value

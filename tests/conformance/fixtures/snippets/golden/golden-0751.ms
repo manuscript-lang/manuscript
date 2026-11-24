@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn probe(found: Int) Int:
+fn probe(found Int) Int:
     var sum = 0
     var i = 0
     while i < 1000:

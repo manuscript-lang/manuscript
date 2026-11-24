@@ -20,7 +20,7 @@ import (
 	milliseconds from "@std/time.ms",
 )
 
-fn text_of(path: String) String!:
+fn text_of(path String) String!:
 	data := read_file(path).wait()?
 	return ok(data.decode_utf8() or "")
 

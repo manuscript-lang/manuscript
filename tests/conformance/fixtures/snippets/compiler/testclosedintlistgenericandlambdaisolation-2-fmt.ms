@@ -1,7 +1,7 @@
 // conform: tags=closures,control-flow,formatter,mutation,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/compiler/list_bounds_test.go:74 TestClosedIntListGenericAndLambdaIsolation
-fn probe(value: Int) Int:
+fn probe(value Int) Int:
     values := [1, 2, 3]
 
     callback := fn() Int:

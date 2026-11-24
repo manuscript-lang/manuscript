@@ -8,7 +8,7 @@ import (
 )
 
 // A bit-at-a-time oracle deliberately independent of the production byte table.
-fn reference(data: Bytes) UInt32:
+fn reference(data Bytes) UInt32:
 	var crc = 4294967295
 
 	for index in 0..data.length():

@@ -21,69 +21,69 @@ character references back.
 // returns `EOVERFLOW`.
 export type HtmlOptions:
 	// Maximum UTF-8 input bytes before parsing; null adds no input-size budget.
-	max_bytes: Int? = null
+	max_bytes Int? = null
 	// Maximum normalized node depth; the document is depth zero and direct children
 	// depth one.
-	max_depth: Int? = 10000
+	max_depth Int? = 10000
 	// Maximum returned nodes, including document/text/comment/doctype and implied
 	// element nodes.
-	max_nodes: Int? = 1000000
+	max_nodes Int? = 1000000
 
 // An HTML attribute with its name, namespace and decoded value.
 export type HtmlAttribute:
 	// Attribute name after HTML parsing and normalization.
-	name: String
+	name String
 	// Attribute namespace prefix, or empty text for an unqualified attribute.
-	namespace: String
+	namespace String
 	// Decoded attribute contents, with character references resolved.
-	value: String
+	value String
 
 // A parsed HTML document tree with document, element, text, comment, and doctype nodes.
 export enum HtmlNode:
 	// Root document node, including any elements implied by HTML tree normalization.
 	Document(
 		// Direct child nodes in normalized document order.
-		children: List[HtmlNode]
+		children List[HtmlNode]
 	)
 	// An element with normalized attributes and its ordered child nodes.
 	Element(
 		// Local element tag name produced by the HTML parser.
-		tag: String,
+		tag String,
 		// Element namespace, `svg` or `math`, or empty text for ordinary HTML.
-		namespace: String,
+		namespace String,
 		// Attributes in parser order, with decoded values and namespace information.
-		attributes: List[HtmlAttribute],
+		attributes List[HtmlAttribute],
 		// Direct child nodes in normalized tree order.
-		children: List[HtmlNode]
+		children List[HtmlNode]
 	)
 	// Text node contents after HTML entity decoding and tree normalization.
 	Text(
 		// Unicode text belonging to this node, without surrounding markup.
-		text: String
+		text String
 	)
 	// An HTML comment retained as a node rather than element text.
 	Comment(
 		// Comment contents without the opening and closing comment delimiters.
-		text: String
+		text String
 	)
 	// A document-type declaration retained from the parsed HTML.
 	Doctype(
 		// Doctype name as normalized by the parser.
-		name: String,
+		name String,
 		// Public identifier, or empty text when no public identifier is present.
-		public_id: String,
+		public_id String,
 		// System identifier, or empty text when no system identifier is present.
-		system_id: String
+		system_id String
 	)
 
 // Escapes text for insertion into an HTML text or quoted attribute context.
-export fn escape(text: String) String:
+export fn escape(text String) String:
 	return msstd_html_escape(text)
 
 // Decodes HTML5 named and numeric character references in text context, once. A
 // recognized reference may omit its semicolon; unrecognized text stays literal. Invalid
 // numeric references become U+FFFD. It does not parse markup or normalize text.
-export fn unescape(text: String) String:
+export fn unescape(text String) String:
 	return msstd_html_unescape(text)
 
 // ---- parser state ----
@@ -221,71 +221,71 @@ E_TEMPLATE := 12
 // elements (`afe`) are lists of node ids. An element's name is its atom (see the
 // generated tables), or its `data` text when the tag is not a known atom.
 type Parser:
-	src: Bytes
-	size: Int
-	max_open: Int
-	exceeded: Bool = false
+	src Bytes
+	size Int
+	max_open Int
+	exceeded Bool = false
 	// Tokenizer state.
-	eof: Bool = false
-	raw_start: Int = 0
-	raw_end: Int = 0
-	data_start: Int = 0
-	data_end: Int = 0
-	tt: Int = 0
-	pk_s: Int = 0
-	pk_e: Int = 0
-	pv_s: Int = 0
-	pv_e: Int = 0
-	attr_n: Int = 0
-	attr_ks: List[Int] = []
-	attr_ke: List[Int] = []
-	attr_vs: List[Int] = []
-	attr_ve: List[Int] = []
-	raw_tag: Int = 0
-	raw_name: Bytes = Bytes(values: [])
-	text_is_raw: Bool = false
-	convert_nul: Bool = false
-	allow_cdata: Bool = false
+	eof Bool = false
+	raw_start Int = 0
+	raw_end Int = 0
+	data_start Int = 0
+	data_end Int = 0
+	tt Int = 0
+	pk_s Int = 0
+	pk_e Int = 0
+	pv_s Int = 0
+	pv_e Int = 0
+	attr_n Int = 0
+	attr_ks List[Int] = []
+	attr_ke List[Int] = []
+	attr_vs List[Int] = []
+	attr_ve List[Int] = []
+	raw_tag Int = 0
+	raw_name Bytes = Bytes(values: [])
+	text_is_raw Bool = false
+	convert_nul Bool = false
+	allow_cdata Bool = false
 	// The current token. A tag's name is `tok_atom`, or `tok_data` when it has no atom;
 	// attributes are the first `tok_n` entries of the three lists.
-	tok_ty: Int = 0
-	tok_atom: Int = 0
-	tok_data: String = ""
-	tok_n: Int = 0
-	tok_keys: List[String] = []
-	tok_vals: List[String] = []
-	tok_nss: List[String] = []
-	has_self_closing: Bool = false
+	tok_ty Int = 0
+	tok_atom Int = 0
+	tok_data String = ""
+	tok_n Int = 0
+	tok_keys List[String] = []
+	tok_vals List[String] = []
+	tok_nss List[String] = []
+	has_self_closing Bool = false
 	// The tree.
-	kind: List[Int] = [K_MARKER, K_DOCUMENT]
-	atom: List[Int] = [0, 0]
-	data: List[String] = ["", ""]
-	ns: List[Int] = [0, 0]
-	parent: List[Int] = [-1, -1]
-	first: List[Int] = [-1, -1]
-	last: List[Int] = [-1, -1]
-	prev: List[Int] = [-1, -1]
-	next: List[Int] = [-1, -1]
-	attr_start: List[Int] = [0, 0]
-	attr_count: List[Int] = [0, 0]
-	akey: List[String] = []
-	aval: List[String] = []
-	ans: List[String] = []
+	kind List[Int] = [K_MARKER, K_DOCUMENT]
+	atom List[Int] = [0, 0]
+	data List[String] = ["", ""]
+	ns List[Int] = [0, 0]
+	parent List[Int] = [-1, -1]
+	first List[Int] = [-1, -1]
+	last List[Int] = [-1, -1]
+	prev List[Int] = [-1, -1]
+	next List[Int] = [-1, -1]
+	attr_start List[Int] = [0, 0]
+	attr_count List[Int] = [0, 0]
+	akey List[String] = []
+	aval List[String] = []
+	ans List[String] = []
 	// Open elements. For each entry, `oe_p` and `oe_stop` hold the index plus one of
 	// the nearest open `p` and of the nearest button-scope boundary at or below that
 	// entry (0 for null), so "is a `p` open in button scope" needs no stack walk.
-	oe: List[Int] = []
-	oe_p: List[Int] = []
-	oe_stop: List[Int] = []
-	afe: List[Int] = []
-	head: Int = -1
-	form: Int = -1
-	frameset_ok: Bool = true
-	template_stack: List[Int] = []
-	im: Int = 0
-	original_im: Int = -1
-	foster_parenting: Bool = false
-	quirks: Bool = false
+	oe List[Int] = []
+	oe_p List[Int] = []
+	oe_stop List[Int] = []
+	afe List[Int] = []
+	head Int = -1
+	form Int = -1
+	frameset_ok Bool = true
+	template_stack List[Int] = []
+	im Int = 0
+	original_im Int = -1
+	foster_parenting Bool = false
+	quirks Bool = false
 
 fn var Parser.read_byte() Int:
 	if self.raw_end >= self.size:
@@ -307,7 +307,7 @@ fn var Parser.skip_white_space() Void:
 			self.raw_end -= 1
 			return
 
-fn var Parser.set_raw_tag(tag: Int) Void:
+fn var Parser.set_raw_tag(tag Int) Void:
 	self.raw_tag = tag
 
 	match tag:
@@ -602,7 +602,7 @@ fn Parser.abrupt_comment_data_end() Int:
 
 	return self.raw_end
 
-fn Parser.byte_at(pos: Int) Int:
+fn Parser.byte_at(pos Int) Int:
 	if pos < 0 or pos >= self.size: return -1
 	return self.src.get(pos).to_int()
 
@@ -743,7 +743,7 @@ fn Parser.raw_text_tag() Int:
 
 // Whether the `length` bytes at `start` equal the lower-case `word`, ignoring ASCII
 // case.
-fn Parser.name_is(start: Int, length: Int, word: String) Bool:
+fn Parser.name_is(start Int, length Int, word String) Bool:
 	if length != word.length(): return false
 	return bytes_equal_fold(self.src, start, word.to_bytes())
 
@@ -776,7 +776,7 @@ fn var Parser.push_attr() Void:
 
 	self.attr_n = n + 1
 
-fn var Parser.read_tag(save_attr: Bool) Void:
+fn var Parser.read_tag(save_attr Bool) Void:
 	self.attr_n = 0
 	self.read_tag_name()
 	self.skip_white_space()
@@ -854,7 +854,7 @@ fn var Parser.read_tag_attr_val() Void:
 	else if quote == 39 or quote == 34:
 		self.pv_s = self.raw_end
 
-		var idx: Int? = null
+		var idx Int? = null
 
 		if quote == 39:
 			idx = self.src.index_of_byte(39, self.raw_end)
@@ -1051,7 +1051,7 @@ fn var Parser.load_token() Void:
 // ---- node tree ----
 
 // The name of an element node.
-fn Parser.tag_name(n: Int) String:
+fn Parser.tag_name(n Int) String:
 	a := self.atom[n]
 	if a != 0: return atom_name(a)
 
@@ -1062,7 +1062,7 @@ fn Parser.tok_name() String:
 	if self.tok_atom != 0: return atom_name(self.tok_atom)
 	return self.tok_data.clone()
 
-fn var Parser.alloc(kind: Int, atom: Int, data: String) Int:
+fn var Parser.alloc(kind Int, atom Int, data String) Int:
 	id := self.kind.length()
 	self.kind.append(kind)
 	self.atom.append(atom)
@@ -1078,7 +1078,7 @@ fn var Parser.alloc(kind: Int, atom: Int, data: String) Int:
 	return id
 
 // Links `child` before `old` under `parent`; `old` of -1 appends.
-fn var Parser.insert_before(parent: Int, child: Int, old: Int) Void:
+fn var Parser.insert_before(parent Int, child Int, old Int) Void:
 	var before = self.last[parent]
 	var after = -1
 
@@ -1100,10 +1100,10 @@ fn var Parser.insert_before(parent: Int, child: Int, old: Int) Void:
 	self.prev[child] = before
 	self.next[child] = after
 
-fn var Parser.append_child(parent: Int, child: Int) Void:
+fn var Parser.append_child(parent Int, child Int) Void:
 	self.insert_before(parent, child, -1)
 
-fn var Parser.remove_child(parent: Int, child: Int) Void:
+fn var Parser.remove_child(parent Int, child Int) Void:
 	before := self.prev[child]
 	after := self.next[child]
 	if self.first[parent] == child: self.first[parent] = after
@@ -1114,18 +1114,18 @@ fn var Parser.remove_child(parent: Int, child: Int) Void:
 	self.prev[child] = -1
 	self.next[child] = -1
 
-fn var Parser.detach(child: Int) Void:
+fn var Parser.detach(child Int) Void:
 	p := self.parent[child]
 	if p >= 0: self.remove_child(p, child)
 
-fn var Parser.reparent_children(dst: Int, src: Int) Void:
+fn var Parser.reparent_children(dst Int, src Int) Void:
 	while self.first[src] >= 0:
 		child := self.first[src]
 		self.remove_child(src, child)
 		self.append_child(dst, child)
 
 // A copy of the node's type, atom, name and attributes (not its namespace).
-fn var Parser.clone_node(n: Int) Int:
+fn var Parser.clone_node(n Int) Int:
 	id := self.alloc(self.kind[n], self.atom[n], self.data[n].clone())
 	start := self.attr_start[n]
 	count := self.attr_count[n]
@@ -1162,7 +1162,7 @@ fn Parser.oe_top_atom() Int:
 	return self.atom[self.oe[n - 1]]
 
 // Computes the scope marks of open element `i` from the entry below it.
-fn var Parser.mark(i: Int) Void:
+fn var Parser.mark(i Int) Void:
 	n := self.oe[i]
 	html := self.ns[n] == NS_HTML
 	a := self.atom[n]
@@ -1185,7 +1185,7 @@ fn var Parser.mark(i: Int) Void:
 		self.oe_p.append(p)
 		self.oe_stop.append(stop)
 
-fn var Parser.oe_remark(start: Int) Void:
+fn var Parser.oe_remark(start Int) Void:
 	while self.oe_p.length() > start:
 		self.oe_p.pop()
 		self.oe_stop.pop()
@@ -1193,7 +1193,7 @@ fn var Parser.oe_remark(start: Int) Void:
 	for i in start..self.oe.length():
 		self.mark(i)
 
-fn var Parser.oe_push(n: Int) Void:
+fn var Parser.oe_push(n Int) Void:
 	self.oe.append(n)
 	self.mark(self.oe.length() - 1)
 
@@ -1204,21 +1204,21 @@ fn var Parser.oe_pop() Int:
 	self.oe_stop.pop()
 	return self.oe.pop() or (-1)
 
-fn var Parser.oe_truncate(len: Int) Void:
+fn var Parser.oe_truncate(len Int) Void:
 	while self.oe.length() > len:
 		self.oe.pop()
 		self.oe_p.pop()
 		self.oe_stop.pop()
 
-fn var Parser.oe_insert(at: Int, n: Int) Void:
+fn var Parser.oe_insert(at Int, n Int) Void:
 	self.oe.insert(at, n)
 	self.oe_remark(at)
 
-fn var Parser.oe_set(i: Int, n: Int) Void:
+fn var Parser.oe_set(i Int, n Int) Void:
 	self.oe[i] = n
 	self.oe_remark(i)
 
-fn var Parser.oe_remove(n: Int) Void:
+fn var Parser.oe_remove(n Int) Void:
 	i := self.oe_index(n)
 
 	if i >= 0:
@@ -1226,7 +1226,7 @@ fn var Parser.oe_remove(n: Int) Void:
 		self.oe_remark(i)
 
 // The position of the last occurrence of `n` in the open elements, or -1.
-fn Parser.oe_index(n: Int) Int:
+fn Parser.oe_index(n Int) Int:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1236,7 +1236,7 @@ fn Parser.oe_index(n: Int) Int:
 
 	return -1
 
-fn Parser.afe_index(n: Int) Int:
+fn Parser.afe_index(n Int) Int:
 	var i = self.afe.length() - 1
 
 	while i >= 0:
@@ -1246,7 +1246,7 @@ fn Parser.afe_index(n: Int) Int:
 
 	return -1
 
-fn var Parser.afe_remove(n: Int) Void:
+fn var Parser.afe_remove(n Int) Void:
 	i := self.afe_index(n)
 	if i >= 0: self.afe.remove(i)
 
@@ -1255,12 +1255,12 @@ fn var Parser.afe_truncate_pop() Int:
 	return r or (-1)
 
 // Whether an HTML element with the atom is open.
-fn Parser.oe_contains(atom: Int) Bool:
+fn Parser.oe_contains(atom Int) Bool:
 	for n in self.oe:
 		if self.atom[n] == atom and self.ns[n] == NS_HTML: return true
 	return false
 
-fn Parser.is_special_element(n: Int) Bool:
+fn Parser.is_special_element(n Int) Bool:
 	a := self.atom[n]
 	v := self.ns[n]
 	if v == NS_HTML: return is_special_atom(a)
@@ -1272,7 +1272,7 @@ fn Parser.is_special_element(n: Int) Bool:
 
 // The index of the nearest open element matching one of the atoms (-2 as the first atom
 // matches any heading) before a boundary of the scope, or -1.
-fn Parser.scope_index(s: Int, m1: Int, m2: Int, m3: Int) Int:
+fn Parser.scope_index(s Int, m1 Int, m2 Int, m3 Int) Int:
 	if s == SCOPE_BUTTON and m1 == A_P and m2 == -1:
 		mark_p := self.oe_p.get_or(self.oe.length() - 1, 0)
 		mark_stop := self.oe_stop.get_or(self.oe.length() - 1, 0)
@@ -1305,17 +1305,17 @@ fn Parser.scope_index(s: Int, m1: Int, m2: Int, m3: Int) Int:
 
 	return -1
 
-fn var Parser.pop_until(s: Int, m1: Int, m2: Int, m3: Int) Bool:
+fn var Parser.pop_until(s Int, m1 Int, m2 Int, m3 Int) Bool:
 	i := self.scope_index(s, m1, m2, m3)
 	if i < 0: return false
 
 	self.oe_truncate(i)
 	return true
 
-fn Parser.element_in_scope(s: Int, m1: Int, m2: Int, m3: Int) Bool:
+fn Parser.element_in_scope(s Int, m1 Int, m2 Int, m3 Int) Bool:
 	return self.scope_index(s, m1, m2, m3) >= 0
 
-fn var Parser.clear_stack_to_context(s: Int) Void:
+fn var Parser.clear_stack_to_context(s Int) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1348,7 +1348,7 @@ fn var Parser.parse_generic_raw_text_element() Void:
 
 // Pops elements whose end tags are implied, stopping before an element with atom
 // `skip_atom` (-1 for null).
-fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
+fn var Parser.generate_implied_end_tags(skip_atom Int) Void:
 	var i = self.oe.length()
 
 	while i > 0:
@@ -1363,7 +1363,7 @@ fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
 
 	self.oe_truncate(i)
 
-fn var Parser.add_child(n: Int) Void:
+fn var Parser.add_child(n Int) Void:
 	if self.should_foster_parent():
 		self.foster_parent(n)
 	else:
@@ -1374,7 +1374,7 @@ fn var Parser.add_child(n: Int) Void:
 fn Parser.should_foster_parent() Bool:
 	return self.foster_parenting and is_table_context(self.top_atom())
 
-fn Parser.oe_last_atom(atom: Int) Int:
+fn Parser.oe_last_atom(atom Int) Int:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1384,7 +1384,7 @@ fn Parser.oe_last_atom(atom: Int) Int:
 
 	return -1
 
-fn var Parser.foster_parent(n: Int) Void:
+fn var Parser.foster_parent(n Int) Void:
 	table_i := self.oe_last_atom(A_TABLE)
 	template_j := self.oe_last_atom(A_TEMPLATE)
 
@@ -1412,7 +1412,7 @@ fn var Parser.foster_parent(n: Int) Void:
 
 	self.insert_before(parent, n, table)
 
-fn var Parser.add_text(text: String) Void:
+fn var Parser.add_text(text String) Void:
 	if text == "": return
 
 	if self.should_foster_parent():
@@ -1439,7 +1439,7 @@ fn var Parser.append_doc_comment() Void:
 	self.append_child(1, n)
 
 // Copies the current token's attributes onto node `id`, which has null yet.
-fn var Parser.set_token_attributes(id: Int) Void:
+fn var Parser.set_token_attributes(id Int) Void:
 	self.attr_start[id] = self.akey.length()
 
 	for i in 0..self.tok_n:
@@ -1459,7 +1459,7 @@ fn var Parser.add_element() Void:
 
 // Whether node `n` and the current token have the same attributes (name, namespace and
 // value), in any order.
-fn Parser.same_attributes(n: Int) Bool:
+fn Parser.same_attributes(n Int) Bool:
 	count := self.attr_count[n]
 	if count != self.tok_n: return false
 
@@ -1630,14 +1630,14 @@ fn var Parser.reset_insertion_mode() Void:
 		i -= 1
 
 // Adds the current token's attributes that node `dst` lacks, after its own.
-fn var Parser.copy_attributes(dst: Int) Void:
+fn var Parser.copy_attributes(dst Int) Void:
 	if self.tok_n == 0: return
 
 	count := self.attr_count[dst]
 	start := self.attr_start[dst]
-	var keys: List[String] = []
-	var vals: List[String] = []
-	var nss: List[String] = []
+	var keys List[String] = []
+	var vals List[String] = []
+	var nss List[String] = []
 
 	for i in 0..count:
 		keys.append(self.akey[start + i].clone())
@@ -1671,7 +1671,7 @@ fn Parser.tok_attr_is_hidden_input() Bool:
 	return false
 
 // Whether an attribute named `key` is in the current token.
-fn Parser.tok_has_attr(key: String) Bool:
+fn Parser.tok_has_attr(key String) Bool:
 	for i in 0..self.tok_n:
 		if self.tok_keys[i] == key: return true
 	return false
@@ -1701,7 +1701,7 @@ fn var Parser.trim_tok_left() Bool:
 	if cut > 0: self.tok_data = self.tok_data.view(cut, self.tok_data.length()).clone()
 	return self.tok_data == ""
 
-fn var Parser.run_im(im: Int) Bool:
+fn var Parser.run_im(im Int) Bool:
 	if im == IM_IN_BODY: return self.in_body_im()
 	if im == IM_INITIAL: return self.initial_im()
 	if im == IM_BEFORE_HTML: return self.before_html_im()
@@ -2167,7 +2167,7 @@ fn var Parser.in_body_start_tag() Bool:
 
 // The `li` / `dd` / `dt` loop of the start-tag rules: closes an open item of the same
 // kind.
-fn var Parser.close_list_item(a1: Int, a2: Int) Void:
+fn var Parser.close_list_item(a1 Int, a2 Int) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -2244,7 +2244,7 @@ fn var Parser.in_body_end_tag() Bool:
 	return true
 
 // The adoption agency algorithm.
-fn var Parser.in_body_end_tag_formatting(tag_atom: Int, tag_name: String) Void:
+fn var Parser.in_body_end_tag_formatting(tag_atom Int, tag_name String) Void:
 	current := self.oe_top()
 
 	if (
@@ -2357,7 +2357,7 @@ fn var Parser.in_body_end_tag_formatting(tag_atom: Int, tag_name: String) Void:
 		if fi >= 0: place = fi + 1
 		self.oe_insert(place, clone)
 
-fn var Parser.in_body_end_tag_other(tag_atom: Int, tag_name: String) Void:
+fn var Parser.in_body_end_tag_other(tag_atom Int, tag_name String) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -2871,7 +2871,7 @@ fn var Parser.in_select_in_table_im() Bool:
 
 	return self.in_select_im()
 
-fn var Parser.set_template_top(im: Int) Void:
+fn var Parser.set_template_top(im Int) Void:
 	_popped := self.template_stack.pop()
 	self.template_stack.append(im)
 	self.im = im
@@ -3073,7 +3073,7 @@ fn var Parser.adjust_foreign_attributes() Void:
 			self.tok_nss[i] = key.view(0, at).clone()
 			self.tok_keys[i] = key.view(at + 1, key.length()).clone()
 
-fn Parser.html_integration_point(n: Int) Bool:
+fn Parser.html_integration_point(n Int) Bool:
 	if self.kind[n] != K_ELEMENT: return false
 
 	if self.ns[n] == NS_MATH:
@@ -3097,7 +3097,7 @@ fn Parser.html_integration_point(n: Int) Bool:
 
 	return false
 
-fn Parser.math_text_integration_point(n: Int) Bool:
+fn Parser.math_text_integration_point(n Int) Bool:
 	return self.ns[n] == NS_MATH and is_math_text_atom(self.atom[n])
 
 fn Parser.tok_font_has_style_attribute() Bool:
@@ -3210,7 +3210,7 @@ fn Parser.in_foreign_content() Bool:
 
 // Parses a token the document implies, such as the `html` start tag, then restores the
 // real one.
-fn var Parser.parse_implied_token(ty: Int, atom: Int) Void:
+fn var Parser.parse_implied_token(ty Int, atom Int) Void:
 	real_ty := self.tok_ty
 	real_atom := self.tok_atom
 	real_data := self.tok_data.clone()
@@ -3264,7 +3264,7 @@ fn var Parser.run() Void:
 
 // Parses the contents of a doctype token into a doctype node under the document,
 // returning whether it puts the document in quirks mode.
-fn var Parser.add_doctype(text: String) Bool:
+fn var Parser.add_doctype(text String) Bool:
 	b := text.to_bytes()
 	size := b.length()
 	var quirks = false
@@ -3288,8 +3288,8 @@ fn var Parser.add_doctype(text: String) Bool:
 	if not valid_boundary(b, pos): pos = size
 	if key == "": key = "?"
 
-	var keys: List[String] = []
-	var values: List[String] = []
+	var keys List[String] = []
+	var values List[String] = []
 
 	while key == "public" or key == "system":
 		while pos < size and is_html_whitespace(b.get(pos).to_int()):
@@ -3373,22 +3373,22 @@ fn var Parser.add_doctype(text: String) Bool:
 
 	return quirks
 
-fn is_space(c: Int) Bool:
+fn is_space(c Int) Bool:
 	return c == 32 or c == 10 or c == 13 or c == 9 or c == 12
 
-fn is_alpha(c: Int) Bool:
+fn is_alpha(c Int) Bool:
 	return (c >= 97 and c <= 122) or (c >= 65 and c <= 90)
 
-fn is_heading(atom: Int) Bool:
+fn is_heading(atom Int) Bool:
 	return atom >= A_H1 and atom <= A_H6
 
 // The numeric value of `c` lower-cased when it is an ASCII capital.
-fn lower_byte(c: Int) Int:
+fn lower_byte(c Int) Int:
 	if c >= 65 and c <= 90: return c + 32
 	return c
 
 // Whether the bytes of `data` at `at` equal the lower-case `name`, ignoring ASCII case.
-fn bytes_equal_fold(data: Bytes, at: Int, name: Bytes) Bool:
+fn bytes_equal_fold(data Bytes, at Int, name Bytes) Bool:
 	for i in 0..name.length():
 		if lower_byte(data.get(at + i).to_int()) != name.get(i).to_int(): return false
 	return true
@@ -3396,7 +3396,7 @@ fn bytes_equal_fold(data: Bytes, at: Int, name: Bytes) Bool:
 // ---- tokenizer ----
 
 // Whether `src[start, end)` has a byte that is an ASCII capital or at least 128.
-fn needs_ascii_lowering(src: Bytes, start: Int, end: Int) Bool:
+fn needs_ascii_lowering(src Bytes, start Int, end Int) Bool:
 	for i in start..end:
 		b := src.get(i).to_int()
 		if (b >= 65 and b <= 90) or b >= 128: return true
@@ -3405,7 +3405,7 @@ fn needs_ascii_lowering(src: Bytes, start: Int, end: Int) Bool:
 
 // The text of `src[start, end)` with ASCII capitals lower-cased (other scalars
 // unchanged).
-fn lowered_text(src: Bytes, start: Int, end: Int) String:
+fn lowered_text(src Bytes, start Int, end Int) String:
 	text := src.decode_utf8_range(start, end) or ""
 	if not needs_ascii_lowering(src, start, end): return text
 
@@ -3423,7 +3423,7 @@ fn lowered_text(src: Bytes, start: Int, end: Int) String:
 
 // The atom of the lower-cased name `src[start, end)`, or 0 when it is not a known tag
 // name.
-fn atom_of_range(src: Bytes, start: Int, end: Int) Int:
+fn atom_of_range(src Bytes, start Int, end Int) Int:
 	length := end - start
 	if length <= 0: return 0
 
@@ -3448,27 +3448,27 @@ fn atom_of_range(src: Bytes, start: Int, end: Int) Int:
 	return 0
 
 // The atom of a name that is already a string; only a few mixed-case names matter.
-fn atom_of_text(name: String) Int:
+fn atom_of_text(name String) Int:
 	if name == "foreignObject": return A_FOREIGNOBJECT
 	return 0
 
 // Line breaks are normalized to LF.
-fn convert_newlines(text: String) String:
+fn convert_newlines(text String) String:
 	if not text.contains("\r"): return text.clone()
 	return text.replace("\r\n", "\n").replace("\r", "\n")
 
-fn stop_atom(ns: Int, atom: Int) Bool:
+fn stop_atom(ns Int, atom Int) Bool:
 	if ns == NS_HTML: return is_scope_stop(atom)
 	if ns == NS_MATH: return is_math_stop(atom)
 
 	return is_svg_stop(atom)
 
-fn tag_matches(a: Int, m1: Int, m2: Int, m3: Int) Bool:
+fn tag_matches(a Int, m1 Int, m2 Int, m3 Int) Bool:
 	if a == m1 or a == m2 or a == m3: return true
 	return m1 == -2 and is_heading(a)
 
 // Equality ignoring ASCII case.
-fn ascii_equal_fold(a: String, b: String) Bool:
+fn ascii_equal_fold(a String, b String) Bool:
 	ab := a.to_bytes()
 	bb := b.to_bytes()
 	if ab.length() != bb.length(): return false
@@ -3478,7 +3478,7 @@ fn ascii_equal_fold(a: String, b: String) Bool:
 	return true
 
 // The first byte that is not HTML whitespace, or the length of the text.
-fn trim_left_len(text: String) Int:
+fn trim_left_len(text String) Int:
 	b := text.to_bytes()
 	var i = 0
 	while i < b.length() and is_space(b.get(i).to_int()):
@@ -3488,17 +3488,17 @@ fn trim_left_len(text: String) Int:
 // ---- tree-construction helpers ----
 
 // Removes a leading CR, then a leading LF, from `text` (each only if present).
-fn strip_leading_newline(text: String) String:
+fn strip_leading_newline(text String) String:
 	var d = text.clone()
 	if d.starts_with("\r"): d = d.view(1, d.length()).clone()
 	if d.starts_with("\n"): d = d.view(1, d.length()).clone()
 	return d
 
 // Whether the text has no scalar other than HTML whitespace.
-fn is_blank(text: String) Bool:
+fn is_blank(text String) Bool:
 	return trim_left_len(text) == text.length()
 
-fn is_foreign_attribute(key: String) Bool:
+fn is_foreign_attribute(key String) Bool:
 	match key:
 		"xlink:actuate": return true
 		"xlink:arcrole": return true
@@ -3554,7 +3554,7 @@ QUIRKY_IDS := [
 
 // Lower-cases each scalar with its single-scalar mapping, as Go's `strings.ToLower`
 // does.
-fn go_lower(text: String) String:
+fn go_lower(text String) String:
 	var out = ""
 
 	for c in text.chars():
@@ -3569,11 +3569,11 @@ fn go_lower(text: String) String:
 
 	return out
 
-fn is_html_whitespace(b: Int) Bool:
+fn is_html_whitespace(b Int) Bool:
 	return is_space(b)
 
 // Whether `pos` is the start of a UTF-8 scalar (or the end) in `b`.
-fn valid_boundary(b: Bytes, pos: Int) Bool:
+fn valid_boundary(b Bytes, pos Int) Bool:
 	if pos >= b.length(): return true
 	return b.get(pos).to_int() < 128 or b.get(pos).to_int() >= 192
 
@@ -3699,7 +3699,7 @@ A_WBR := 365
 A_XMP := 369
 
 // Atom for a lower-case name packed as length then up to six bytes, or 0.
-fn atom_short(key: Int) Int:
+fn atom_short(key Int) Int:
 	match key:
 		353: return 1
 		18813706866: return 2
@@ -3893,7 +3893,7 @@ fn atom_short(key: Int) Int:
 		_: return 0
 
 // Atom for a longer lower-case name from its hash; the caller verifies the name.
-fn atom_long(hash: Int) Int:
+fn atom_long(hash Int) Int:
 	match hash:
 		75709808377100: return 4
 		212666035018592: return 5
@@ -4077,7 +4077,7 @@ fn atom_long(hash: Int) Int:
 		_: return 0
 
 // The name of an atom.
-fn atom_name(atom: Int) String:
+fn atom_name(atom Int) String:
 	match atom:
 		1: return "a"
 		2: return "abbr"
@@ -4451,7 +4451,7 @@ fn atom_name(atom: Int) String:
 		_: return ""
 
 // HTML special elements (by atom).
-fn is_special_atom(atom: Int) Bool:
+fn is_special_atom(atom Int) Bool:
 	match atom:
 		8: return true
 		16: return true
@@ -4538,7 +4538,7 @@ fn is_special_atom(atom: Int) Bool:
 		_: return false
 
 // Elements whose end tags are implied.
-fn is_implied_end(atom: Int) Bool:
+fn is_implied_end(atom Int) Bool:
 	match atom:
 		62: return true
 		78: return true
@@ -4553,7 +4553,7 @@ fn is_implied_end(atom: Int) Bool:
 		_: return false
 
 // HTML default-scope boundaries.
-fn is_scope_stop(atom: Int) Bool:
+fn is_scope_stop(atom Int) Bool:
 	match atom:
 		16: return true
 		39: return true
@@ -4567,7 +4567,7 @@ fn is_scope_stop(atom: Int) Bool:
 		_: return false
 
 // MathML default-scope boundaries.
-fn is_math_stop(atom: Int) Bool:
+fn is_math_stop(atom Int) Bool:
 	match atom:
 		15: return true
 		165: return true
@@ -4578,7 +4578,7 @@ fn is_math_stop(atom: Int) Bool:
 		_: return false
 
 // SVG default-scope boundaries.
-fn is_svg_stop(atom: Int) Bool:
+fn is_svg_stop(atom Int) Bool:
 	match atom:
 		66: return true
 		89: return true
@@ -4586,7 +4586,7 @@ fn is_svg_stop(atom: Int) Bool:
 		_: return false
 
 // Table, section and row elements.
-fn is_table_context(atom: Int) Bool:
+fn is_table_context(atom Int) Bool:
 	match atom:
 		341: return true
 		343: return true
@@ -4596,7 +4596,7 @@ fn is_table_context(atom: Int) Bool:
 		_: return false
 
 // Tags that leave foreign content.
-fn is_breakout_atom(atom: Int) Bool:
+fn is_breakout_atom(atom Int) Bool:
 	match atom:
 		26: return true
 		32: return true
@@ -4645,7 +4645,7 @@ fn is_breakout_atom(atom: Int) Bool:
 		_: return false
 
 // MathML text integration points.
-fn is_math_text_atom(atom: Int) Bool:
+fn is_math_text_atom(atom Int) Bool:
 	match atom:
 		165: return true
 		169: return true
@@ -4655,7 +4655,7 @@ fn is_math_text_atom(atom: Int) Bool:
 		_: return false
 
 // Open elements allowed at end of input.
-fn is_end_ok_in_body(atom: Int) Bool:
+fn is_end_ok_in_body(atom Int) Bool:
 	match atom:
 		62: return true
 		78: return true
@@ -4678,7 +4678,7 @@ fn is_end_ok_in_body(atom: Int) Bool:
 		_: return false
 
 // In-body start-tag rule for an atom, as one of the `S_*` constants (0 for null).
-fn body_start_class(atom: Int) Int:
+fn body_start_class(atom Int) Int:
 	match atom:
 		115: return 1  // html
 		27: return 2  // base
@@ -4790,7 +4790,7 @@ fn body_start_class(atom: Int) Int:
 		_: return 0
 
 // In-body end-tag rule for an atom, as one of the `E_*` constants (0 for null).
-fn body_end_class(atom: Int) Int:
+fn body_end_class(atom Int) Int:
 	match atom:
 		35: return 1  // body
 		115: return 2  // html
@@ -4853,7 +4853,7 @@ fn body_end_class(atom: Int) Int:
 		345: return 12  // template
 		_: return 0
 
-fn svg_tag(name: String) String:
+fn svg_tag(name String) String:
 	match name:
 		"altglyph": return "altGlyph"
 		"altglyphdef": return "altGlyphDef"
@@ -4893,7 +4893,7 @@ fn svg_tag(name: String) String:
 		"textpath": return "textPath"
 		_: return ""
 
-fn svg_attribute(name: String) String:
+fn svg_attribute(name String) String:
 	match name:
 		"attributename": return "attributeName"
 		"attributetype": return "attributeType"
@@ -4961,7 +4961,7 @@ fn limit_error() Error:
 	return Error("HTML: limit exceeded", kind: "EOVERFLOW")
 
 // A limit as a count: null is unlimited and a negative limit is an `EINVAL` error.
-fn budget(limit: Int?) Int!:
+fn budget(limit Int?) Int!:
 	if limit == null: return ok(9223372036854775807)
 
 	n := limit
@@ -4971,9 +4971,9 @@ fn budget(limit: Int?) Int!:
 
 // Whether the tree under the document has at most `max_nodes` reachable nodes and nests
 // at most `max_depth` levels (the document is level zero).
-fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
-	var stack: List[Int] = [1]
-	var depths: List[Int] = [0]
+fn within_limits(p Parser, max_depth Int, max_nodes Int) Bool:
+	var stack List[Int] = [1]
+	var depths List[Int] = [0]
 	var count = 0
 
 	while stack.length() > 0:
@@ -4993,7 +4993,7 @@ fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 
 // Parses HTML into a normalized tree and applies the limits in `options`. The result is
 // the `Document` node.
-export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
+export fn parse(text String, options HtmlOptions = HtmlOptions()) HtmlNode!:
 	max_bytes := budget(options.max_bytes)?
 	max_depth := budget(options.max_depth)?
 	max_nodes := budget(options.max_nodes)?
@@ -5011,7 +5011,7 @@ export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 	return ok(node(p, 1))
 
 // Copies node `id`, and everything under it, into an `HtmlNode`.
-fn node(p: Parser, id: Int) HtmlNode:
+fn node(p Parser, id Int) HtmlNode:
 	kind := p.kind[id]
 
 	if kind == K_ELEMENT:
@@ -5041,8 +5041,8 @@ fn node(p: Parser, id: Int) HtmlNode:
 
 	return HtmlNode.Document(children(p, id))
 
-fn children(p: Parser, id: Int) List[HtmlNode]:
-	var out: List[HtmlNode] = []
+fn children(p Parser, id Int) List[HtmlNode]:
+	var out List[HtmlNode] = []
 	var at = p.first[id]
 
 	while at >= 0:
@@ -5051,8 +5051,8 @@ fn children(p: Parser, id: Int) List[HtmlNode]:
 
 	return out
 
-fn attributes(p: Parser, id: Int) List[HtmlAttribute]:
-	var out: List[HtmlAttribute] = []
+fn attributes(p Parser, id Int) List[HtmlAttribute]:
+	var out List[HtmlAttribute] = []
 	start := p.attr_start[id]
 	for i in 0..p.attr_count[id]:
 		out.append(

@@ -8,7 +8,7 @@ After the final edit, run `ms check app.ms`, then `ms run app.ms` and verify beh
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn twice(value: Int) Int: value * 2
+fn twice(value Int) Int: value * 2
 
 test "twice":
 	expect_equal(twice(21), 42)?
@@ -38,7 +38,7 @@ Each row is a shape agents wrote that fails; the right column compiles.
 | `const X = 1`, `# note`, `pass` | `X := 1`, `// note`, `void` |
 | `a if c else b`, `-> T` | `if c: a else: b`, `fn f() T:` |
 | `if c: f() else: g()` as a statement | `if c:` and `else:` on their own lines, bodies indented |
-| `fn f(out: var T)`, `x: T = e` | `fn f(var out: T)`, `x: T := e` |
+| `fn f(out: var T)`, `x T = e` | `fn f(var out T)`, `x T := e` |
 | `"total {n}"` (plain text never interpolates) | `f"total {n}"` |
 | `"""text"""` on one line | `"""` ends its line; the text starts on the next line and the closing `"""` stands alone (`r"""` the same, braces literal) |
 | `for _ in xs` | `for _i in xs`; a bare `_` is not a name |
@@ -57,10 +57,10 @@ The right-hand forms of this table, in one compiling program:
 import values from "@std/bytes.ms"
 
 type Pair:
-	name: String
-	count: Int
+	name String
+	count Int
 
-fn parse_line(line: String) Pair?:
+fn parse_line(line String) Pair?:
 	parts := line.split(" ")
 	if parts.length() != 2: return null
 	n := parts.get_or(1, "").parse_int()
@@ -68,11 +68,11 @@ fn parse_line(line: String) Pair?:
 		return Pair(name: parts.get_or(0, ""), count: count)
 	return null
 
-fn bump(var seen: Set[String], word: String) Int:
+fn bump(var seen Set[String], word String) Int:
 	seen.add(word)
 	return seen.length()
 
-fn total(var counts: Map[String, Int], items: List[Pair]) Int:
+fn total(var counts Map[String, Int], items List[Pair]) Int:
 	var sum = 0
 	for pair in items:
 		if counts.contains(pair.name.clone()): sum += 1
@@ -80,7 +80,7 @@ fn total(var counts: Map[String, Int], items: List[Pair]) Int:
 	return sum
 
 fn main() Void!:
-	flag: List[Bool] := []
+	flag List[Bool] := []
 	brace := r"{}"
 	esc := "\u{1}"
 	var stack = [2, 1]
@@ -92,8 +92,8 @@ fn main() Void!:
 		var seen = Set[String]()
 		void bump(seen, "a")
 	parsed := "7".parse_int().ok_or(Error("bad number"))?
-	grid: List[List[Int]] := [[parsed]]
-	r: Int! := ok(3)
+	grid List[List[Int]] := [[parsed]]
+	r Int! := ok(3)
 	_checked := r?
 	if r.is_error(): return error(Error("bad"))
 	print(f"{brace}{esc}{flag.length()}{grid.length()}")

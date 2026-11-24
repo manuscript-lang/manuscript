@@ -12,19 +12,19 @@ import (
 	sleep from "@std/time.ms",
 )
 
-fn spin(n: Int) Int:
+fn spin(n Int) Int:
 	var s = 0
 	for i in 0..n:
 		s += i % 7
 	return s
 
-fn work(k: Int) Int!:
+fn work(k Int) Int!:
 	return ok(spin(2000000) + k)
 
-fn after(first: Promise[Int]) Int!:
+fn after(first Promise[Int]) Int!:
 	return ok(first.wait()? + 1)
 
-fn make(k: Int) Promise[Int]!:
+fn make(k Int) Promise[Int]!:
 	return ok(promise(fn: work(k)))
 
 // An idle thread may take a promise while the promises it uses belong to another

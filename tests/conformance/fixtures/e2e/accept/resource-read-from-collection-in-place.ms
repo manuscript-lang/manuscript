@@ -5,12 +5,12 @@
 import panic from "@std/core.ms"
 
 type Handle:
-	id: Int
+	id Int
 
 fn move Handle.close() Void!:
 	print(f"close {self.id}")
 
-fn id_of(handle: Handle) Int:
+fn id_of(handle Handle) Int:
 	return handle.id
 
 export fn main() Int:

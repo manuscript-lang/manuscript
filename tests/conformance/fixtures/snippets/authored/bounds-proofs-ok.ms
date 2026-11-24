@@ -3,13 +3,13 @@
 // conform: origin=range pass: relational bounds proofs
 import stdout from "@std/io/io.ms"
 
-fn next_sum(a: List[Int]) Int:
+fn next_sum(a List[Int]) Int:
     var t = 0
     for i in 0..a.length() - 1:
         t = t + a[i + 1]
     return t
 
-fn mirror(a: List[Int]) Int:
+fn mirror(a List[Int]) Int:
     var b = a.clone()
 
     for i in 0..b.length() / 2:
@@ -20,13 +20,13 @@ fn mirror(a: List[Int]) Int:
 
     return b[0] * 100 + b[b.length() - 1]
 
-fn stride(a: List[Int]) Int:
+fn stride(a List[Int]) Int:
     var t = 0
     for i in 0..a.length() / 3:
         t = t + a[i * 3] + a[i * 3 + 2]
     return t
 
-fn search(a: List[Int], want: Int) Int:
+fn search(a List[Int], want Int) Int:
     var lo = 0
     var hi = a.length() - 1
 
@@ -42,14 +42,14 @@ fn search(a: List[Int], want: Int) Int:
 
     return -1
 
-fn nested(g: List[List[Int]]) Int:
+fn nested(g List[List[Int]]) Int:
     var t = 0
     for i in 0..g.length():
         for j in 0..g[i].length():
             t = t + g[i][j]
     return t
 
-fn checked(a: List[Int], i: Int) Int:
+fn checked(a List[Int], i Int) Int:
     return a.get_or(index: i, -1)
 
 fn main() Void:

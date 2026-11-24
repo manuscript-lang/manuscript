@@ -10,7 +10,7 @@ import (
 DIGITS := "0123456789"
 LETTERS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) String:
+fn shift(text String, keys List[Int], fixed Int, use_keys Bool, sign Int) String:
 	var out = List[Int]()
 	var i = 0
 
@@ -28,7 +28,7 @@ fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) S
 	return from_scalars(out).get_or("")
 
 // A caesar key: an optional minus sign and one to seven digits.
-fn caesar_key(key: String) Bool:
+fn caesar_key(key String) Bool:
 	digits := if key.starts_with("-"): key.slice(1, key.length()) else: key.clone()
 	return (
 		digits.length() >= 1
@@ -36,7 +36,7 @@ fn caesar_key(key: String) Bool:
 		and digits.chars().all(fn c: DIGITS.contains(c))
 	)
 
-fn solve_line(line: String) String:
+fn solve_line(line String) String:
 	parts := split_max(line, " ", 3)
 	if parts.length() < 4 or parts[3].is_empty(): return "error: bad command"
 
@@ -58,14 +58,14 @@ fn solve_line(line: String) String:
 	ks := key.lower().scalar_values().map(fn c: c - 97)
 	return shift(text, ks, 0, true, sign)
 
-fn solve(s: String) String:
+fn solve(s String) String:
 	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 	return lines.filter(fn l: l.replace(" ", "") != "").map(
 		fn l: solve_line(l) + "\n"
 	).join("")
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
 
 export fn gen_c09() Void:
 	var rnd = seeded(9)

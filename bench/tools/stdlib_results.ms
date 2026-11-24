@@ -7,39 +7,39 @@ import (
 )
 
 export type Stats:
-	operations: Int
-	median_ns: Float
-	iterations: Int?
-	samples: Int?
-	min_ns: Float?
-	max_ns: Float?
-	mean_ns: Float?
-	stddev_ns: Float?
+	operations Int
+	median_ns Float
+	iterations Int?
+	samples Int?
+	min_ns Float?
+	max_ns Float?
+	mean_ns Float?
+	stddev_ns Float?
 
 export type Bench:
-	name: String
-	status: String
-	failure: String?
-	stats: Stats?
+	name String
+	status String
+	failure String?
+	stats Stats?
 
 type Diagnostic:
-	message: String
+	message String
 
 type Document:
-	benches: List[Bench]
-	diagnostics: List[Diagnostic]?
+	benches List[Bench]
+	diagnostics List[Diagnostic]?
 
-fn finite(value: Float) Bool:
+fn finite(value Float) Bool:
 	return value >= 0.0 and value < 1.0e300
 
-fn valid_optional(value: Float?) Bool:
+fn valid_optional(value Float?) Bool:
 	v := value
 	if v != null: return finite(v)
 
 	return true
 
 // The passed cases of one `ms bench --json` document, in order.
-export fn read_cases(output: String) List[Bench]!:
+export fn read_cases(output String) List[Bench]!:
 	parsed := parse[Document](output)
 	if parsed.is_error(): return invalid("invalid benchmark document")
 
@@ -98,7 +98,7 @@ export fn read_cases(output: String) List[Bench]!:
 	return ok(doc.benches)
 
 // Display labels: the part after `::`, or the whole name when two cases would collide.
-export fn case_labels(names: List[String]) Map[String, String]:
+export fn case_labels(names List[String]) Map[String, String]:
 	var counts = Map[String, Int]()
 	var short = Map[String, String]()
 

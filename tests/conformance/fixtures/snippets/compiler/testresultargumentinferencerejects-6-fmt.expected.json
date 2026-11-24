@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn nested[T](r: T!!) Void: return\n\nfn first(r: Int!E1!E2) Void: nested(r)\n"
+    "fmt": "fn nested[T](r T!!) Void: return\n\nfn first(r Int!E1!E2) Void: nested(r)\n"
   }
 }

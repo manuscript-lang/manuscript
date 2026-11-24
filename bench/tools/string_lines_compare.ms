@@ -20,16 +20,16 @@ import (
 )
 
 export type Identity:
-	input_bytes: Int
-	iterations: Int
-	checksum: Int
+	input_bytes Int
+	iterations Int
+	checksum Int
 
 // One validated row of a program's CSV.
 export type Row:
-	name: String
-	iterations: Int
-	elapsed_ns: Int
-	line: String
+	name String
+	iterations Int
+	elapsed_ns Int
+	line String
 
 export fn builtin_identities() Map[String, Identity]:
 	var rows = Map[String, Identity]()
@@ -52,9 +52,9 @@ export fn builtin_identities() Map[String, Identity]:
 // Runs `executable` and validates its CSV against `expected`; returns the rows in the
 // program's order.
 export fn run_rows(
-	executable: String,
-	expected: Map[String, Identity],
-	cpu: String,
+	executable String,
+	expected Map[String, Identity],
+	cpu String,
 ) List[Row]!:
 	text := run_pinned(executable, [], cpu)?
 	lines := text.split("\n").filter(fn l: l.trim() != "")
@@ -93,7 +93,7 @@ export fn run_rows(
 
 	return ok(rows)
 
-fn read_identities(path: String) Map[String, Identity]!:
+fn read_identities(path String) Map[String, Identity]!:
 	doc := parse[JsonValue](read_text(path))
 	if doc.is_error(): return invalid("identity file is not JSON")
 
@@ -129,11 +129,11 @@ fn read_identities(path: String) Map[String, Identity]!:
 	return ok(out)
 
 fn compare(
-	before: String,
-	after: String,
-	output: String,
-	pairs: Int,
-	expected: Map[String, Identity],
+	before String,
+	after String,
+	output String,
+	pairs Int,
+	expected Map[String, Identity],
 ) Result[String, Error]:
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())

@@ -7,7 +7,7 @@ import (
 // Parses 5000 rows 200 times, then writes them back 200 times, and prints each best
 // run in microseconds.
 // The "quoted" shape has quoted and escaped cells; "plain" has none.
-fn rows_of(shape: String) String:
+fn rows_of(shape String) String:
 	var text = ""
 
 	for i in 0..5000:

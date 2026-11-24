@@ -2,26 +2,26 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn arity(name: String) Int:
+fn arity(name String) Int:
 	return {"stock": 3, "price": 3, "cancel": 2, "ship": 2, "report": 1, "stock": 9}.get_or(
 		name,
 		0,
 	)
 
-fn has(k: Int) Bool:
+fn has(k Int) Bool:
 	return {1: "a", 2: "b"}.contains(k)
 
-fn label(k: Int) String:
+fn label(k Int) String:
 	return {1: "one", 2: "two"}.get_or(k, "none")
 
-fn found(k: Int) Bool:
+fn found(k Int) Bool:
 	return {1: "one", 2: "two"}.get(k) != null
 
-fn bump(var calls: Int, k: Int) Int:
+fn bump(var calls Int, k Int) Int:
 	calls += 1
 	return k
 
-fn many(k: Int) Int:
+fn many(k Int) Int:
 	return {
 		1: 1,
 		2: 2,

@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/cl-08.ms
 import expect_equal from "@std/test/test.ms"
 
-fn selected_sum(values: List[Int]) Int:
+fn selected_sum(values List[Int]) Int:
     var total = 0
 
     for value in values:

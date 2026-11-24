@@ -14,7 +14,7 @@ import (
 
 // The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed
 // by `%N`.
-fn block_params(line: String, defs: Map[String, String]) Map[String, String]:
+fn block_params(line String, defs Map[String, String]) Map[String, String]:
 	var out = defs.clone()
 	open := line.index_of("(") or (-1)
 	close := line.last_index_of(")") or (-1)
@@ -26,7 +26,7 @@ fn block_params(line: String, defs: Map[String, String]) Map[String, String]:
 
 	return out
 
-fn report(mir: String) List[String]:
+fn report(mir String) List[String]:
 	var counts = Map[String, Int]()
 	var defs = Map[String, String]()
 
@@ -53,15 +53,15 @@ fn report(mir: String) List[String]:
 	// uniq -c | sort -rn: count descending, ties in descending text order.
 	var rows = counts.keys().map(fn k: Row(counts.get_or(k, 0), k.clone()))
 	rows = rows.sorted(
-		fn(a: Row, b: Row) Int: if a.count != b.count: b.count - a.count else: b.text.compare(
+		fn(a Row, b Row) Int: if a.count != b.count: b.count - a.count else: b.text.compare(
 			a.text
 		)
 	)
 	return rows.map(fn r: right(f"{r.count}", 7) + " " + r.text)
 
 type Row:
-	count: Int
-	text: String
+	count Int
+	text String
 
 fn main() Int:
 	targets := arguments()

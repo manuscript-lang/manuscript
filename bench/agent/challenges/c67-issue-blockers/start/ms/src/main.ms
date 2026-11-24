@@ -4,96 +4,96 @@ import (
 )
 
 type Comment:
-	t: Int
-	actor: String
-	text: String
+	t Int
+	actor String
+	text String
 
 type Fields:
-	title: String
-	priority: Int = 1
-	assignee: String? = null
-	points: Int? = null
-	due: String? = null
-	labels: List[String] = []
-	reporter: String? = null
+	title String
+	priority Int = 1
+	assignee String? = null
+	points Int? = null
+	due String? = null
+	labels List[String] = []
+	reporter String? = null
 
 type Issue:
-	id: Int
-	f: Fields
-	state: Int
-	created: Int
-	updated: Int
-	comments: List[Comment] = []
-	hist_t: List[Int] = []
-	hist_s: List[Int] = []
+	id Int
+	f Fields
+	state Int
+	created Int
+	updated Int
+	comments List[Comment] = []
+	hist_t List[Int] = []
+	hist_s List[Int] = []
 
 type Trans:
-	src: Int
-	dst: Int
-	guards: List[String]
+	src Int
+	dst Int
+	guards List[String]
 
 type Wf:
-	states: List[String] = []
-	finals: List[Bool] = []
-	initial: Int = -1
-	trans: List[Trans] = []
+	states List[String] = []
+	finals List[Bool] = []
+	initial Int = -1
+	trans List[Trans] = []
 
 type Entry:
-	t: Int
-	actor: String
-	id: Int
-	detail: String
+	t Int
+	actor String
+	id Int
+	detail String
 
 type State:
-	wf: Wf = Wf()
-	issues: List[Issue] = []
-	next_id: Int = 1
-	clock: Int = 0
-	actor: String = "system"
-	today: String = "1970-01-01"
-	views: Map[String, String] = Map[String, String]()
-	log: List[Entry] = []
-	out: List[String] = []
+	wf Wf = Wf()
+	issues List[Issue] = []
+	next_id Int = 1
+	clock Int = 0
+	actor String = "system"
+	today String = "1970-01-01"
+	views Map[String, String] = Map[String, String]()
+	log List[Entry] = []
+	out List[String] = []
 
 type Node:
-	kind: Int
-	a: Int = -1
-	b: Int = -1
-	field: Int = 0
-	op: Int = 0
-	vals: List[String] = []
+	kind Int
+	a Int = -1
+	b Int = -1
+	field Int = 0
+	op Int = 0
+	vals List[String] = []
 
 type Parser:
-	cs: List[String]
-	pos: Int = 0
-	kind: Int = 7
-	field: String = ""
-	opt: String = ""
-	op: Int = 0
-	value: String = ""
-	quoted: Bool = false
-	text: String = ""
+	cs List[String]
+	pos Int = 0
+	kind Int = 7
+	field String = ""
+	opt String = ""
+	op Int = 0
+	value String = ""
+	quoted Bool = false
+	text String = ""
 
 type QSpec:
-	filter: String
-	sort: String? = null
-	limit: Int? = null
+	filter String
+	sort String? = null
+	limit Int? = null
 
 type SortKey:
-	field: Int
-	desc: Bool
+	field Int
+	desc Bool
 
 // ---------- string helpers ----------
 
-fn is_ws(c: String) Bool: c == " " or c == "\t" or c == "\r" or c == "\n"
+fn is_ws(c String) Bool: c == " " or c == "\t" or c == "\r" or c == "\n"
 
-fn digit(c: String) Int:
+fn digit(c String) Int:
 	if c.length() != 1: return -1
 	return "0123456789".index_of(c) or (-1)
 
-fn is_lower(c: String) Bool: c.length() == 1 and c >= "a" and c <= "z"
+fn is_lower(c String) Bool: c.length() == 1 and c >= "a" and c <= "z"
 
-fn join_range(cs: List[String], a: Int, b: Int) String:
+fn join_range(cs List[String], a Int, b Int) String:
 	var r = ""
 	var i = a
 
@@ -103,7 +103,7 @@ fn join_range(cs: List[String], a: Int, b: Int) String:
 
 	return r
 
-fn rest_after(s: String, k: Int) String:
+fn rest_after(s String, k Int) String:
 	cs := s.chars()
 	n := cs.length()
 	var i = 0
@@ -122,7 +122,7 @@ fn rest_after(s: String, k: Int) String:
 		i += 1
 	return join_range(cs, i, n)
 
-fn valid_int(s: String) Bool:
+fn valid_int(s String) Bool:
 	if s.length() == 0 or s.length() > 7: return false
 
 	for c in s.chars():
@@ -131,9 +131,9 @@ fn valid_int(s: String) Bool:
 
 	return (s.parse_int() or 2000000) <= 1000000
 
-fn to_int(s: String) Int: s.parse_int() or 0
+fn to_int(s String) Int: s.parse_int() or 0
 
-fn valid_date(s: String) Bool:
+fn valid_date(s String) Bool:
 	cs := s.chars()
 	if cs.length() != 10: return false
 
@@ -157,14 +157,14 @@ fn valid_date(s: String) Bool:
 
 	return d <= dim
 
-fn valid_label(s: String) Bool:
+fn valid_label(s String) Bool:
 	if s.length() == 0: return false
 
 	for c in s.chars():
 		if not (is_lower(c) or digit(c) >= 0 or c == "_" or c == "-"): return false
 	return true
 
-fn valid_state_name(s: String) Bool:
+fn valid_state_name(s String) Bool:
 	cs := s.chars()
 	if cs.length() == 0: return false
 	if not is_lower(cs[0]): return false
@@ -173,7 +173,7 @@ fn valid_state_name(s: String) Bool:
 		if not (is_lower(c) or digit(c) >= 0 or c == "_"): return false
 	return true
 
-fn tokenize(s: String) List[String]!:
+fn tokenize(s String) List[String]!:
 	var out = List[String]()
 	var cur = ""
 	var has = false
@@ -224,14 +224,14 @@ fn tokenize(s: String) List[String]!:
 	if has: out.append(cur.clone())
 	return ok(out)
 
-fn prio_name(p: Int) String:
+fn prio_name(p Int) String:
 	if p == 0: return "low"
 	if p == 1: return "medium"
 	if p == 2: return "high"
 
 	return "critical"
 
-fn prio_rank(s: String) Int:
+fn prio_rank(s String) Int:
 	if s == "low": return 0
 	if s == "medium": return 1
 	if s == "high": return 2
@@ -239,19 +239,19 @@ fn prio_rank(s: String) Int:
 
 	return -1
 
-fn opt_s(x: String?) String: x.clone() or "-"
+fn opt_s(x String?) String: x.clone() or "-"
 
-fn opt_i(x: Int?) String:
+fn opt_i(x Int?) String:
 	v := x
 	if v != null: return f"{v}"
 
 	return "-"
 
-fn labels_s(l: List[String]) String:
+fn labels_s(l List[String]) String:
 	if l.length() == 0: return "-"
 	return l.join(",")
 
-fn parse_id_syntax(arg: String) Int!:
+fn parse_id_syntax(arg String) Int!:
 	var a = arg.clone()
 	if a.starts_with("#"): a = rest_after_hash(arg)
 	if a.length() == 0: return error(Error(f"bad issue id '{arg}'"))
@@ -268,13 +268,13 @@ fn parse_id_syntax(arg: String) Int!:
 
 	return ok(v)
 
-fn rest_after_hash(s: String) String:
+fn rest_after_hash(s String) String:
 	cs := s.chars()
 	return join_range(cs, 1, cs.length())
 
 // ---------- fields ----------
 
-fn apply_token(var f: Fields, tok: String) Void!:
+fn apply_token(var f Fields, tok String) Void!:
 	cs := tok.chars()
 	var eq = -1
 
@@ -344,7 +344,7 @@ fn apply_token(var f: Fields, tok: String) Void!:
 
 	return error(Error(f"unknown field '{name}'"))
 
-fn norm_labels(parts: List[String]) List[String]!:
+fn norm_labels(parts List[String]) List[String]!:
 	var out = List[String]()
 
 	for p in parts:
@@ -355,7 +355,7 @@ fn norm_labels(parts: List[String]) List[String]!:
 
 	return ok(sort_unique(out))
 
-fn sort_unique(xs: List[String]) List[String]:
+fn sort_unique(xs List[String]) List[String]:
 	var s = xs.sorted(fn a, b: a.compare(b))
 	var out = List[String]()
 	for x in s:
@@ -363,7 +363,7 @@ fn sort_unique(xs: List[String]) List[String]:
 			out.append(x.clone())
 	return out
 
-fn copy_fields(f: Fields) Fields:
+fn copy_fields(f Fields) Fields:
 	return Fields(
 		title: f.title.clone(),
 		priority: f.priority,
@@ -374,7 +374,7 @@ fn copy_fields(f: Fields) Fields:
 		reporter: f.reporter.clone(),
 	)
 
-fn diff_fields(a: Fields, b: Fields) List[String]:
+fn diff_fields(a Fields, b Fields) List[String]:
 	var out = List[String]()
 	if a.title != b.title: out.append(f"title: {a.title} -> {b.title}")
 	if a.priority != b.priority: out.append(
@@ -403,12 +403,12 @@ fn diff_fields(a: Fields, b: Fields) List[String]:
 
 // ---------- query ----------
 
-fn split_query(text: String) QSpec!:
+fn split_query(text String) QSpec!:
 	cs := text.chars()
 	n := cs.length()
 	var filter_end = n
-	var limit: Int? = null
-	var sort: String? = null
+	var limit Int? = null
+	var sort String? = null
 
 	// limit
 	var e = n
@@ -453,7 +453,7 @@ fn split_query(text: String) QSpec!:
 
 	return ok(QSpec(filter: join_range(cs, 0, filter_end), sort: sort, limit: limit))
 
-fn parse_sort(text: String) List[SortKey]!:
+fn parse_sort(text String) List[SortKey]!:
 	var keys = List[SortKey]()
 	t := text.replace(",", " ")
 
@@ -472,14 +472,14 @@ fn parse_sort(text: String) List[SortKey]!:
 
 	return ok(keys)
 
-fn sort_field(s: String) Int:
+fn sort_field(s String) Int:
 	names := [
 		"id", "created", "updated", "priority", "points", "state", "title", "assignee",
 		"reporter", "due"
 	]
 	return names.find_index(fn x: x == s) or (-1)
 
-fn field_code(s: String) Int:
+fn field_code(s String) Int:
 	names := [
 		"id", "created", "updated", "points", "title", "assignee", "reporter", "text",
 		"state", "priority", "due", "label", "is", "has", "view"
@@ -488,7 +488,7 @@ fn field_code(s: String) Int:
 
 	return names.find_index(fn x: x == s) or (-1)
 
-fn op_ok(field: Int, op: Int) Bool:
+fn op_ok(field Int, op Int) Bool:
 	if field <= 3 or field == 9 or field == 10: return op <= 5
 	if field == 4 or field == 5 or field == 6 or field == 11: return (
 		op == 0
@@ -629,14 +629,9 @@ fn var Parser.advance() Void!:
 
 	return ok()
 
-fn is_lower_or_us(c: String) Bool: is_lower(c) or c == "_"
+fn is_lower_or_us(c String) Bool: is_lower(c) or c == "_"
 
-fn parse_filter(
-	st: State,
-	text: String,
-	var nodes: List[Node],
-	var refs: List[String],
-) Int!:
+fn parse_filter(st State, text String, var nodes List[Node], var refs List[String]) Int!:
 	if text.trim() == "": return ok(-1)
 
 	var p = Parser(cs: text.chars().clone())
@@ -647,11 +642,11 @@ fn parse_filter(
 
 	return ok(root)
 
-fn add_node(var nodes: List[Node], n: Node) Int:
+fn add_node(var nodes List[Node], n Node) Int:
 	nodes.append(n.clone())
 	return nodes.length() - 1
 
-fn var Parser.parse_or(st: State, var nodes: List[Node], var refs: List[String]) Int!:
+fn var Parser.parse_or(st State, var nodes List[Node], var refs List[String]) Int!:
 	var left = self.parse_and(st, nodes, refs)?
 
 	while self.kind == 3:
@@ -662,7 +657,7 @@ fn var Parser.parse_or(st: State, var nodes: List[Node], var refs: List[String])
 
 	return ok(left)
 
-fn var Parser.parse_and(st: State, var nodes: List[Node], var refs: List[String]) Int!:
+fn var Parser.parse_and(st State, var nodes List[Node], var refs List[String]) Int!:
 	var left = self.parse_not(st, nodes, refs)?
 
 	while true:
@@ -679,7 +674,7 @@ fn var Parser.parse_and(st: State, var nodes: List[Node], var refs: List[String]
 
 	return ok(left)
 
-fn var Parser.parse_not(st: State, var nodes: List[Node], var refs: List[String]) Int!:
+fn var Parser.parse_not(st State, var nodes List[Node], var refs List[String]) Int!:
 	if self.kind == 4:
 		self.advance()?
 
@@ -715,14 +710,14 @@ fn var Parser.parse_not(st: State, var nodes: List[Node], var refs: List[String]
 	return error(Error(f"query: unexpected token '{self.text}'"))
 
 fn build_term(
-	st: State,
-	fname: String,
-	opt: String,
-	op: Int,
-	value: String,
-	quoted: Bool,
-	var nodes: List[Node],
-	var refs: List[String],
+	st State,
+	fname String,
+	opt String,
+	op Int,
+	value String,
+	quoted Bool,
+	var nodes List[Node],
+	var refs List[String],
 ) Int!:
 	fc := field_code(fname)
 	if fc < 0: return error(Error(f"query: unknown field '{fname}'"))
@@ -802,13 +797,13 @@ fn build_term(
 
 	return ok(add_node(nodes, Node(kind: 0, field: fc, op: op, vals: vals)))
 
-fn cmp_int(a: Int, b: Int) Int:
+fn cmp_int(a Int, b Int) Int:
 	if a < b: return -1
 	if a > b: return 1
 
 	return 0
 
-fn cmp_op(op: Int, a: Int, b: Int) Bool:
+fn cmp_op(op Int, a Int, b Int) Bool:
 	if op == 0: return a == b
 	if op == 2: return a < b
 	if op == 3: return a <= b
@@ -817,9 +812,9 @@ fn cmp_op(op: Int, a: Int, b: Int) Bool:
 
 	return false
 
-fn is_open(st: State, iss: Issue) Bool: not st.wf.finals[iss.state]
+fn is_open(st State, iss Issue) Bool: not st.wf.finals[iss.state]
 
-fn opt_match(x: String?, op: Int, v: String) Bool:
+fn opt_match(x String?, op Int, v String) Bool:
 	s := x
 
 	if s != null:
@@ -828,7 +823,7 @@ fn opt_match(x: String?, op: Int, v: String) Bool:
 
 	return op == 0 and v == "none"
 
-fn match_one(st: State, fc: Int, op: Int, v: String, iss: Issue) Bool:
+fn match_one(st State, fc Int, op Int, v String, iss Issue) Bool:
 	if fc <= 2:
 		x := if fc == 0: iss.id else: if fc == 1: iss.created else: iss.updated
 		return cmp_op(op, x, to_int(v))
@@ -900,7 +895,7 @@ fn match_one(st: State, fc: Int, op: Int, v: String, iss: Issue) Bool:
 
 	return iss.f.reporter != null
 
-fn eval_node(st: State, nodes: List[Node], i: Int, iss: Issue) Bool:
+fn eval_node(st State, nodes List[Node], i Int, iss Issue) Bool:
 	if i < 0: return true
 
 	n := nodes[i]
@@ -925,7 +920,7 @@ fn eval_node(st: State, nodes: List[Node], i: Int, iss: Issue) Bool:
 
 	return if n.op == 1: not r else: r
 
-fn cmp_opt_int(a: Int?, b: Int?) Int:
+fn cmp_opt_int(a Int?, b Int?) Int:
 	x := a
 
 	if x != null:
@@ -938,7 +933,7 @@ fn cmp_opt_int(a: Int?, b: Int?) Int:
 
 	return 0
 
-fn cmp_opt_str(a: String?, b: String?, ci: Bool) Int:
+fn cmp_opt_str(a String?, b String?, ci Bool) Int:
 	x := a
 
 	if x != null:
@@ -954,7 +949,7 @@ fn cmp_opt_str(a: String?, b: String?, ci: Bool) Int:
 
 	return 0
 
-fn cmp_issue(keys: List[SortKey], a: Issue, b: Issue) Int:
+fn cmp_issue(keys List[SortKey], a Issue, b Issue) Int:
 	for k in keys:
 		var c = 0
 
@@ -974,10 +969,10 @@ fn cmp_issue(keys: List[SortKey], a: Issue, b: Issue) Int:
 
 	return cmp_int(a.id, b.id)
 
-fn issue_line(st: State, iss: Issue) String:
+fn issue_line(st State, iss Issue) String:
 	return f"#{iss.id} | {st.wf.states[iss.state]} | {prio_name(iss.f.priority)} | {opt_s(iss.f.assignee)} | {opt_i(iss.f.points)} | {opt_s(iss.f.due)} | {labels_s(iss.f.labels)} | {iss.f.title}"
 
-fn State.select(filter: String) List[Int]!:
+fn State.select(filter String) List[Int]!:
 	var nodes = List[Node]()
 	var refs = List[String]()
 	root := parse_filter(self, filter, nodes, refs)?
@@ -987,14 +982,14 @@ fn State.select(filter: String) List[Int]!:
 	return ok(out)
 
 fn State.run_list(
-	spec: QSpec,
-	sort_override: String?,
-	limit_override: Int?,
-	use_override: Bool,
+	spec QSpec,
+	sort_override String?,
+	limit_override Int?,
+	use_override Bool,
 ) String!:
 	var idxs = self.select(spec.filter)?
-	var sort_text: String? = spec.sort.clone()
-	var limit: Int? = spec.limit
+	var sort_text String? = spec.sort.clone()
+	var limit Int? = spec.limit
 
 	if use_override:
 		sort_text = sort_override.clone()
@@ -1018,22 +1013,22 @@ fn State.run_list(
 
 // ---------- state ops ----------
 
-fn var State.emit(s: String) Void:
+fn var State.emit(s String) Void:
 	self.out.append(s.clone())
 
-fn State.find(id: Int) Int:
+fn State.find(id Int) Int:
 	return self.issues.find_index(fn i: i.id == id) or (-1)
 
-fn State.id_arg(arg: String) Int!:
+fn State.id_arg(arg String) Int!:
 	id := parse_id_syntax(arg)?
 	if self.find(id) < 0: return error(Error(f"no such issue #{id}"))
 
 	return ok(id)
 
-fn var State.add_log(id: Int, detail: String) Void:
+fn var State.add_log(id Int, detail String) Void:
 	self.log.append(Entry(self.clock, self.actor.clone(), id, detail.clone()))
 
-fn State.final_check(idx: Int) Void!:
+fn State.final_check(idx Int) Void!:
 	iss := self.issues[idx]
 	if self.wf.finals[iss.state]:
 		return error(
@@ -1044,7 +1039,7 @@ fn State.final_check(idx: Int) Void!:
 
 	return ok()
 
-fn var State.commit_edit(idx: Int, nf: Fields) String:
+fn var State.commit_edit(idx Int, nf Fields) String:
 	changes := diff_fields(self.issues[idx].f, nf)
 	id := self.issues[idx].id
 	if changes.length() == 0: return f"#{id} unchanged"
@@ -1056,7 +1051,7 @@ fn var State.commit_edit(idx: Int, nf: Fields) String:
 		self.add_log(id, c)
 	return f"updated #{id}"
 
-fn var State.do_edit(id: Int, toks: List[String]) String!:
+fn var State.do_edit(id Int, toks List[String]) String!:
 	idx := self.find(id)
 	self.final_check(idx)?
 	if toks.length() == 0: return error(Error("usage: edit ID field=value..."))
@@ -1066,7 +1061,7 @@ fn var State.do_edit(id: Int, toks: List[String]) String!:
 		apply_token(nf, t)?
 	return ok(self.commit_edit(idx, nf))
 
-fn var State.do_label(id: Int, items: List[String]) String!:
+fn var State.do_label(id Int, items List[String]) String!:
 	idx := self.find(id)
 	self.final_check(idx)?
 
@@ -1095,7 +1090,7 @@ fn var State.do_label(id: Int, items: List[String]) String!:
 	nf.labels = sort_unique(labels)
 	return ok(self.commit_edit(idx, nf))
 
-fn var State.do_move(id: Int, target: String, comment: String) String!:
+fn var State.do_move(id Int, target String, comment String) String!:
 	idx := self.find(id)
 	self.final_check(idx)?
 
@@ -1155,7 +1150,7 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 
 // ---------- commands ----------
 
-fn var State.cmd_create(rest: String) String!:
+fn var State.cmd_create(rest String) String!:
 	if self.wf.initial < 0: return error(Error("no workflow defined"))
 
 	toks := tokenize(rest)?
@@ -1188,35 +1183,35 @@ fn var State.cmd_create(rest: String) String!:
 		self.add_log(id, c)
 	return ok(f"created #{id}")
 
-fn var State.cmd_edit(rest: String) String!:
+fn var State.cmd_edit(rest String) String!:
 	toks := tokenize(rest)?
 	if toks.length() == 0: return error(Error("usage: edit ID field=value..."))
 
 	id := self.id_arg(toks[0].clone())?
 	return self.do_edit(id, toks.slice(1, toks.length())?)
 
-fn var State.cmd_label(rest: String) String!:
+fn var State.cmd_label(rest String) String!:
 	toks := tokenize(rest)?
 	if toks.length() < 2: return error(Error("usage: label ID +label -label..."))
 
 	id := self.id_arg(toks[0].clone())?
 	return self.do_label(id, toks.slice(1, toks.length())?)
 
-fn var State.cmd_assign(rest: String) String!:
+fn var State.cmd_assign(rest String) String!:
 	toks := tokenize(rest)?
 	if toks.length() != 2: return error(Error("usage: assign ID NAME"))
 
 	id := self.id_arg(toks[0].clone())?
 	return self.do_edit(id, [f"assignee={toks[1]}"])
 
-fn var State.cmd_move(rest: String) String!:
+fn var State.cmd_move(rest String) String!:
 	ws := rest.fields()
 	if ws.length() < 2: return error(Error("usage: move ID STATE [comment...]"))
 
 	id := self.id_arg(ws[0].clone())?
 	return self.do_move(id, ws[1], rest_after(rest, 2))
 
-fn var State.cmd_comment(rest: String) String!:
+fn var State.cmd_comment(rest String) String!:
 	ws := rest.fields()
 	if ws.length() < 2: return error(Error("usage: comment ID TEXT"))
 
@@ -1231,7 +1226,7 @@ fn var State.cmd_comment(rest: String) String!:
 	self.add_log(id, f"comment: {text}")
 	return ok(f"commented #{id}")
 
-fn var State.cmd_delete(rest: String) String!:
+fn var State.cmd_delete(rest String) String!:
 	ws := rest.fields()
 	if ws.length() != 1: return error(Error("usage: delete ID"))
 
@@ -1242,7 +1237,7 @@ fn var State.cmd_delete(rest: String) String!:
 	self.issues.remove(idx)
 	return ok(f"deleted #{id}")
 
-fn State.cmd_show(rest: String) String!:
+fn State.cmd_show(rest String) String!:
 	ws := rest.fields()
 	if ws.length() != 1: return error(Error("usage: show ID"))
 
@@ -1266,11 +1261,11 @@ fn State.cmd_show(rest: String) String!:
 		lines.append(f"    [t={c.t} {c.actor}] {c.text}")
 	return ok(lines.join("\n"))
 
-fn State.cmd_list(rest: String) String!:
+fn State.cmd_list(rest String) String!:
 	spec := split_query(rest)?
 	return self.run_list(spec, null, null, false)
 
-fn var State.cmd_log(rest: String) String!:
+fn var State.cmd_log(rest String) String!:
 	ws := rest.fields()
 	var id = -1
 	var tail = -1
@@ -1305,7 +1300,7 @@ fn var State.cmd_log(rest: String) String!:
 
 	return ok(lines.join("\n"))
 
-fn view_refs(st: State, name: String, q: String) List[String]:
+fn view_refs(st State, name String, q String) List[String]:
 	var nodes = List[Node]()
 	var refs = List[String]()
 	qs := split_query(q)
@@ -1321,7 +1316,7 @@ fn State.sorted_views() List[String]:
 	names.sort()
 	return names
 
-fn var State.cmd_view(rest: String) String!:
+fn var State.cmd_view(rest String) String!:
 	ws := rest.fields()
 	usage := "usage: view save|run|list|show|delete"
 	if ws.length() == 0: return error(Error(usage))
@@ -1377,8 +1372,8 @@ fn var State.cmd_view(rest: String) String!:
 			Error(f"unexpected '{extra.filter.trim()}'")
 		)
 
-		var sort_t: String? = spec.sort.clone()
-		var lim: Int? = spec.limit
+		var sort_t String? = spec.sort.clone()
+		var lim Int? = spec.limit
 		if extra.sort != null: sort_t = extra.sort.clone()
 		if extra.limit != null: lim = extra.limit
 		return self.run_list(QSpec(filter: spec.filter.clone()), sort_t, lim, true)
@@ -1406,7 +1401,7 @@ fn var State.cmd_view(rest: String) String!:
 
 	return error(Error(usage))
 
-fn valid_view_name(s: String) Bool:
+fn valid_view_name(s String) Bool:
 	cs := s.chars()
 	if cs.length() == 0 or not is_lower(cs[0]): return false
 
@@ -1414,7 +1409,7 @@ fn valid_view_name(s: String) Bool:
 		if not (is_lower(c) or digit(c) >= 0 or c == "_" or c == "-"): return false
 	return true
 
-fn find_word(cs: List[String], w: String) Int:
+fn find_word(cs List[String], w String) Int:
 	n := cs.length()
 	var i = 0
 
@@ -1431,7 +1426,7 @@ fn find_word(cs: List[String], w: String) Int:
 
 	return -1
 
-fn var State.cmd_bulk(rest: String) String!:
+fn var State.cmd_bulk(rest String) String!:
 	cs := rest.chars()
 	wi := find_word(cs, "where")
 	usage := "usage: bulk ACTION... where QUERY"
@@ -1472,7 +1467,7 @@ fn var State.cmd_bulk(rest: String) String!:
 	rest_toks := toks.slice(1, toks.length())?
 
 	for id in ids:
-		var r: String! = ok("")
+		var r String! = ok("")
 
 		if act == "move": r = self.do_move(id, toks[1], "")
 		else if act == "assign": r = self.do_edit(id, [f"assignee={toks[1]}"])
@@ -1492,18 +1487,18 @@ fn var State.cmd_bulk(rest: String) String!:
 // ---------- reports ----------
 
 type Grp:
-	name: String
-	key: String
-	n: Int = 0
-	pts: Int = 0
+	name String
+	key String
+	n Int = 0
+	pts Int = 0
 
 type LC:
-	name: String
-	n: Int
+	name String
+	n Int
 
-fn issues_word(n: Int) String: if n == 1: "issue" else: "issues"
+fn issues_word(n Int) String: if n == 1: "issue" else: "issues"
 
-fn State.cmd_report(rest: String) String!:
+fn State.cmd_report(rest String) String!:
 	ws := rest.fields()
 	usage := "usage: report summary|workload|labels|timeline"
 	if ws.length() == 0: return error(Error(usage))
@@ -1633,26 +1628,26 @@ fn State.cmd_report(rest: String) String!:
 
 	return error(Error(usage))
 
-fn grp_cmp(a: Grp, b: Grp) Int:
+fn grp_cmp(a Grp, b Grp) Int:
 	if a.pts != b.pts: return cmp_int(b.pts, a.pts)
 	if a.n != b.n: return cmp_int(b.n, a.n)
 
 	return a.key.compare(b.key)
 
-fn lc_cmp(a: LC, b: LC) Int:
+fn lc_cmp(a LC, b LC) Int:
 	if a.n != b.n: return cmp_int(b.n, a.n)
 	return a.name.compare(b.name)
 
 // ---------- workflow ----------
 
-fn reg(var states: List[String], name: String) Int:
+fn reg(var states List[String], name String) Int:
 	gi := states.find_index(fn x: x == name) or (-1)
 	if gi >= 0: return gi
 
 	states.append(name.clone())
 	return states.length() - 1
 
-fn parse_workflow(block: List[String]) Wf!:
+fn parse_workflow(block List[String]) Wf!:
 	var states = List[String]()
 	var finals = List[Int]()
 	var initial = -1
@@ -1738,19 +1733,19 @@ fn parse_workflow(block: List[String]) Wf!:
 		)
 	return ok(Wf(states, fl, initial, trans))
 
-fn rest_after_hash_n(s: String, n: Int) String:
+fn rest_after_hash_n(s String, n Int) String:
 	cs := s.chars()
 	return join_range(cs, n, cs.length())
 
 // ---------- dispatch ----------
 
-fn var State.finish(r: String!) Void:
+fn var State.finish(r String!) Void:
 	if v := r:
 		self.emit(v)
 	else:
 		self.emit(f"error: {r.err().message}")
 
-fn var State.run_workflow(lines: List[String], start: Int) Int:
+fn var State.run_workflow(lines List[String], start Int) Int:
 	var i = start
 	var block = List[String]()
 
@@ -1777,7 +1772,7 @@ fn var State.run_workflow(lines: List[String], start: Int) Int:
 
 	return i
 
-fn var State.exec(line: String) Void:
+fn var State.exec(line String) Void:
 	t := line.trim()
 	ws := t.fields()
 	cmd := ws[0]

@@ -11,7 +11,7 @@ import (
 	summarize from "./strappend_table.ms",
 )
 
-fn run(work: String, n: Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error]:
 	copy(
 		"bench/perf/strappend/ms",
 		f"{work}/ms",

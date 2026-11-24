@@ -3,15 +3,15 @@
 import expect_equal from "@std/test/test.ms"
 
 type Counter:
-	value: Int
+	value Int
 
-fn Counter.next(amount: Int = 1) Counter: Counter(self.value + amount)
+fn Counter.next(amount Int = 1) Counter: Counter(self.value + amount)
 
-fn Counter.identity[T](value: T) T: value
+fn Counter.identity[T](value T) T: value
 
-fn Counter.to_string(prefix: String) String: f"{prefix}{self.value}"
+fn Counter.to_string(prefix String) String: f"{prefix}{self.value}"
 
-fn make(create: fn() Int) Counter: Counter(create())
+fn make(create fn() Int) Counter: Counter(create())
 
 test "source chains keep callbacks, defaults and bound methods":
 	start := 3

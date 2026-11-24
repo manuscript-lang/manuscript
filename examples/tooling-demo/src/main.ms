@@ -6,14 +6,14 @@ import (
 )
 
 type Package:
-	title: String
-	count: Int
+	title String
+	count Int
 
 // A real entry point: records, generics, a local queue, and a native workload.
 fn main() Int:
 	package := Package("Manuscript", 42)
 	values := [10, 20, 30]
-	optional: Int? := 5
+	optional Int? := 5
 	value := optional
 
 	if value != null:

@@ -11,13 +11,13 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn children(node: HtmlNode) List[HtmlNode]:
+fn children(node HtmlNode) List[HtmlNode]:
 	match node:
 		Document(items): return items.clone()
 		Element(_, _, _, items): return items.clone()
 		_: return []
 
-fn text_content(node: HtmlNode) String:
+fn text_content(node HtmlNode) String:
 	match node:
 		Text(text): return text.clone()
 		Document(items):
@@ -30,7 +30,7 @@ fn text_content(node: HtmlNode) String:
 			return text
 		_: return ""
 
-fn body_nodes(node: HtmlNode) List[HtmlNode]:
+fn body_nodes(node HtmlNode) List[HtmlNode]:
 	html := children(node).get(0).clone()
 	return children(children(html).get(1))
 
@@ -148,12 +148,12 @@ test "HTML honors optional byte depth and node limits":
 	)?
 	expect_equal((parse("é", HtmlOptions())?), (parse("é")?))?
 
-	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+	limited HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse("é", HtmlOptions(max_bytes: 1)), limited)?
 	expect_equal(parse("", HtmlOptions(max_depth: 1)), limited)?
 	expect_equal(parse("", HtmlOptions(max_nodes: 3)), limited)?
 
-	invalid: HtmlNode! := error(Error("HTML: invalid input", kind: "EINVAL"))
+	invalid HtmlNode! := error(Error("HTML: invalid input", kind: "EINVAL"))
 	expect_equal(parse("", HtmlOptions(max_nodes: -1)), invalid)?
 	expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")?
 
@@ -162,7 +162,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 	// afterwards.
 	nested := "<div>".repeat(60000)
 	started := monotonic()
-	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+	limited HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse(nested, HtmlOptions(max_depth: 100)), limited)?
 
 	elapsed := monotonic().difference(started).to_milliseconds()
@@ -170,7 +170,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 
 test "HTML parse applies default limits and none lifts them":
 	nested := "<div>".repeat(20000)
-	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+	limited HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse(nested), limited)?
 
 	lifted := parse(nested, HtmlOptions(max_depth: null, max_nodes: null))

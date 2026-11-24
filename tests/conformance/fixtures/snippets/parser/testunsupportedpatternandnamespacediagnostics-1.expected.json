@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(command: String) Int:\n\tmatch command:\n\t\t\"réport\": return 1\n\n\treturn 0\n"
+    "fmt": "fn f(command String) Int:\n\tmatch command:\n\t\t\"réport\": return 1\n\n\treturn 0\n"
   }
 }

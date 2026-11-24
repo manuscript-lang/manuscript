@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn classify(text: String) Int:
+fn classify(text String) Int:
 	var n = 0
 
 	for c in text.chars():
@@ -15,21 +15,21 @@ fn classify(text: String) Int:
 
 	return n
 
-fn echo(text: String) String:
+fn echo(text String) String:
 	c := text.chars()[0].clone()
 	if c == "x": return c
 
 	return c + "!"
 
-fn not_a(text: String) Int:
+fn not_a(text String) Int:
 	var n = 0
 	for c in text.chars():
 		if c != "a":
 			n += 1
 	return n
 
-fn keep(text: String) List[String]:
-	var out: List[String] = []
+fn keep(text String) List[String]:
+	var out List[String] = []
 	for c in text.chars():
 		if c == "b":
 			out.append(c.clone())
@@ -49,13 +49,13 @@ test "chars elements compared and kept":
 	not_a("aéb") | expect_equal(2)?
 	keep("abcb") | expect_equal(["b", "b"])?
 
-fn digits(text: String) Int:
+fn digits(text String) Int:
 	var n = 0
 	for c in text.chars():
 		n = n * 10 + (c.parse_int() or 0)
 	return n
 
-fn both(text: String) Int:
+fn both(text String) Int:
 	c := text.chars()[0].clone()
 	if c == "7": return (c.parse_int() or (-1)) + c.length()
 

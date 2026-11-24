@@ -2,10 +2,10 @@
 // split.
 import compile from "@std/regex.ms"
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn make_text(lines: Int) String:
+fn make_text(lines Int) String:
 	var sb = ""
 	var x = 9
 

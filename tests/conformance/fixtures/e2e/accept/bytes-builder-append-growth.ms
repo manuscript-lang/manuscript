@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn build(n: Int) Bytes:
+fn build(n Int) Bytes:
 	var b = BytesBuilder()
 	var i = 0
 

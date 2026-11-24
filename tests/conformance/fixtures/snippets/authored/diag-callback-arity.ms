@@ -1,6 +1,6 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
-fn apply(f: fn(Int) Int, x: Int) Int:
+fn apply(f fn(Int) Int, x Int) Int:
     return f(x)
 
 export fn main() Int:

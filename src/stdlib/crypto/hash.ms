@@ -20,7 +20,7 @@ Hashes `data` with 32-bit FNV-1a (offset 2166136261, prime 16777619).
 These hashes spread keys over buckets; they detect nothing adversarial and authenticate nothing.
 `fnv1a32("a".to_bytes())` returns 3826002220 (0xE40C292C).
 */
-export fn fnv1a32(data: Bytes) UInt32:
+export fn fnv1a32(data Bytes) UInt32:
 	var hash = 2166136261
 	for index in 0..data.length():
 		hash = bit_and(
@@ -34,7 +34,7 @@ export fn fnv1a32(data: Bytes) UInt32:
 
 // Hashes `data` with 32-bit FNV-1, which multiplies before it XORs in each byte.
 // `fnv1_32("a".to_bytes())` returns 84696446 (0x050C5D7E).
-export fn fnv1_32(data: Bytes) UInt32:
+export fn fnv1_32(data Bytes) UInt32:
 	var hash = 2166136261
 	for index in 0..data.length():
 		hash = bit_xor(
@@ -45,7 +45,7 @@ export fn fnv1_32(data: Bytes) UInt32:
 
 // Hashes `data` with 64-bit FNV-1a (offset 14695981039346656037, prime 1099511628211).
 // `fnv1a64("a".to_bytes())` returns 12638187200555641996 (0xAF63DC4C8601EC8C).
-export fn fnv1a64(data: Bytes) UInt64:
+export fn fnv1a64(data Bytes) UInt64:
 	var hash = -3750763034362895579
 	for index in 0..data.length():
 		hash = wrapping_multiply(bit_xor(hash, data.get(index).to_int()), 1099511628211)
@@ -53,7 +53,7 @@ export fn fnv1a64(data: Bytes) UInt64:
 
 // Hashes `data` with 64-bit FNV-1, which multiplies before it XORs in each byte.
 // `fnv1_64("a".to_bytes())` returns 12638153115695167422 (0xAF63BD4C8601B7BE).
-export fn fnv1_64(data: Bytes) UInt64:
+export fn fnv1_64(data Bytes) UInt64:
 	var hash = -3750763034362895579
 	for index in 0..data.length():
 		hash = bit_xor(wrapping_multiply(hash, 1099511628211), data.get(index).to_int())
@@ -76,7 +76,7 @@ fn Crc64Polynomial.reflected() Int:
 // Slicing tables for a reflected CRC-64: `tables[k * 256 + b]` is the register after
 // byte `b` followed by `k` zero bytes. Building one table costs about as much as
 // hashing 256 bytes bit by bit, so `count` is 1 for mid-size inputs.
-fn crc64_tables(poly: Int, count: Int) List[Int]:
+fn crc64_tables(poly Int, count Int) List[Int]:
 	var tables = [0].repeated(count * 256)
 
 	for b in 0..256:
@@ -107,12 +107,12 @@ Reading the value does not reset it. It detects accidental corruption; it does n
 */
 export type Crc64:
 	// The polynomial this checksum uses.
-	polynomial: Crc64Polynomial
+	polynomial Crc64Polynomial
 	// Register state, stored complemented so the empty checksum is zero.
-	state: Int = 0
+	state Int = 0
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-fn var Crc64.update(data: Bytes) Void:
+fn var Crc64.update(data Bytes) Void:
 	poly := self.polynomial.reflected()
 	length := data.length()
 	var crc = bit_xor(self.state, -1)
@@ -182,7 +182,7 @@ fn Crc64.value() UInt64:
 
 // Computes the CRC-64 of `data` for `polynomial`.
 // `crc64(Crc64Polynomial.Ecma, "123456789".to_bytes())` returns 11051210869376104954 (0x995DC9BBDF1939FA).
-export fn crc64(polynomial: Crc64Polynomial, data: Bytes) UInt64:
+export fn crc64(polynomial Crc64Polynomial, data Bytes) UInt64:
 	var sum = Crc64(polynomial: polynomial)
 	sum.update(data)
 	return sum.value()
@@ -195,11 +195,11 @@ so hash values are not stable across runs. Do not use it to authenticate data or
 */
 export type MapHash:
 	// The seed mixed into every hash.
-	seed: Int
+	seed Int
 
 // Hashes the bytes with this seed. A final 64-bit avalanche step makes every output
 // bit depend on all input bits.
-fn MapHash.hash(data: Bytes) UInt64:
+fn MapHash.hash(data Bytes) UInt64:
 	var state = bit_xor(self.seed, -3750763034362895579)
 
 	for index in 0..data.length():
@@ -220,7 +220,7 @@ fn MapHash.hash(data: Bytes) UInt64:
 	return unsigned(bit_xor(state, shift_right_unsigned(state, 33)))
 
 // Hashes a string's UTF-8 bytes with this seed.
-fn MapHash.hash_string(text: String) UInt64:
+fn MapHash.hash_string(text String) UInt64:
 	return self.hash(text.to_bytes())
 
 // Returns an unpredictable seed from the operating system.
@@ -231,7 +231,7 @@ export fn random_seed() Int:
 Reads `input` to the end and returns the CRC-64 of all its bytes with the given polynomial, as `crc64` does for
 bytes in hand. Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
-export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64!:
+export fn crc64_of(input ReadStream[Bytes], polynomial Crc64Polynomial) UInt64!:
 	var sum = Crc64(polynomial: polynomial)
 	var source = input
 	for chunk in source:
@@ -240,7 +240,7 @@ export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64
 	return ok(sum.value())
 
 // 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
-fn unsigned(raw: Int) UInt64:
+fn unsigned(raw Int) UInt64:
 	high := shift_right_unsigned(raw, 32).to_uint64() or 0
 	low := bit_and(raw, 4294967295).to_uint64() or 0
 	return high * 4294967296 + low

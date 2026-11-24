@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn identity[T](value: T) T: return value
+fn identity[T](value T) T: return value
 
 fn bounded_sum() Int:
 	var sum = 0
@@ -57,7 +57,7 @@ fn after_step_overflow() Int:
 
 	return sum
 
-fn optional_overflow(flag: Bool) Int:
+fn optional_overflow(flag Bool) Int:
 	var sum = 9223372036854775807
 	var i = 0
 
@@ -149,7 +149,7 @@ fn product_sum() Int:
 
 	return sum
 
-fn zero_effect(var visits: List[Int]) Int:
+fn zero_effect(var visits List[Int]) Int:
 	visits.append(1)
 	return 9223372036854775807
 
@@ -158,9 +158,9 @@ test "bounded multiplication keeps its operator and operand effects":
 	(left * -7) | expect_equal(84)?
 	product_sum() | expect_equal(0)?
 
-	var visits: List[Int] = []
+	var visits List[Int] = []
 	(zero_effect(visits) * 0) | expect_equal(0)?
 	visits | expect_equal([1])?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
 	return value

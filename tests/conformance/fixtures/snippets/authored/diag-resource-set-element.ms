@@ -3,7 +3,7 @@
 import Closeable from "@std/core.ms"
 
 type Door:
-    name: String
+    name String
 
 fn move Door.close() Void!: return ok()
 

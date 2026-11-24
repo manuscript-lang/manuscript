@@ -1,14 +1,14 @@
 // Allocation-heavy object graphs: a binary search tree of boxed nodes, binary-tree
 // churn, and a linked list.
 type Node:
-	key: Int
-	left: Node?
-	right: Node?
+	key Int
+	left Node?
+	right Node?
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn var Node.insert(key: Int) Void:
+fn var Node.insert(key Int) Void:
 	if key == self.key: return
 
 	if key < self.key:
@@ -55,22 +55,22 @@ fn Node.sum() Int:
 
 enum Tree:
 	Leaf
-	Branch(left: Tree, right: Tree)
+	Branch(left Tree, right Tree)
 
-fn make(depth: Int) Tree:
+fn make(depth Int) Tree:
 	if depth == 0: return Tree.Leaf
 	return Tree.Branch(make(depth - 1), make(depth - 1))
 
-fn count(t: Tree) Int:
+fn count(t Tree) Int:
 	match t:
 		Leaf: return 1
 		Branch(l, r): return 1 + count(l) + count(r)
 
 type Link:
-	value: Int
-	next: Link?
+	value Int
+	next Link?
 
-fn sum(l: Link?) Int:
+fn sum(l Link?) Int:
 	x := l
 	if x != null: return x.value + sum(x.next)
 
@@ -91,7 +91,7 @@ fn main() Void:
 		nodes += count(make(16))
 	print(f"trees {nodes}")
 
-	var head: Link? = null
+	var head Link? = null
 	for i in 0..1000000:
 		head = Link(i, head)
 	print(f"list {sum(head)}")

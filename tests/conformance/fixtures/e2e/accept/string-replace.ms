@@ -34,14 +34,14 @@ test "replace_first handles early and late matches across output sizes":
 	expect_equal("abcdefghijklmno".replace_first("o", "世界"), "abcdefghijklmn世界")?
 	expect_equal("abcdefghijklmno".replace_first("missing", "世界"), "abcdefghijklmno")?
 
-fn forward[T](value: T) T: value
+fn forward[T](value T) T: value
 
 test "bound typed and generic calls keep the all-versus-first split":
 	text := "aaaa"
 	replace := text.replace
 	expect_equal(replace("a", "b"), "bbbb")?
 
-	typed: fn(String, String) String := text.replace_first
+	typed fn(String, String) String := text.replace_first
 	expect_equal(typed("a", "b"), "baaa")?
 
 	generic := forward(text.replace)
@@ -64,7 +64,7 @@ test "replacing long text with a shorter or equal string trims, shares or inline
 	expect_equal(wide.replace("-", "").length(), 40)?
 
 test "join sizes its result exactly across the inline and heap boundary":
-	empty: List[String] := []
+	empty List[String] := []
 	expect_equal(empty.join(","), "")?
 	expect_equal(["a"].join(","), "a")?
 	expect_equal(["", ""].join(""), "")?

@@ -1,7 +1,7 @@
 // conform: tags=match,tier-core
 // conform: phase=run
 // A match that ends an arm reads the locals the arm declared before it.
-fn pick(code: Int) String:
+fn pick(code Int) String:
     match code:
         1:
             word := "one"

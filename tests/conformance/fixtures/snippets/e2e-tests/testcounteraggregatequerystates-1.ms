@@ -4,24 +4,24 @@
 import Closeable from "@std/core.ms"
 
 type AggregateResource:
-    visits: List[Int]
+    visits List[Int]
 
 fn move AggregateResource.close() Void!:
     self.visits.append(1)
 
 interface AggregateCounter:
-    var fn bump(by: Int) Int
-    var fn lower(by: Int) Int
+    var fn bump(by Int) Int
+    var fn lower(by Int) Int
 
 type AggregateCell:
-    total: Int
+    total Int
 
-fn var AggregateCell.bump(by: Int) Int:
+fn var AggregateCell.bump(by Int) Int:
     self.total += by
     return self.total
 
-fn var AggregateCell.lower(by: Int) Int:
+fn var AggregateCell.lower(by Int) Int:
     self.total -= by
     return self.total
 
-fn identity[T](value: T) T: return value
+fn identity[T](value T) T: return value

@@ -15,7 +15,7 @@ Returns the BLAKE2b digest (RFC 7693) of `data`, `length` bytes long (default 64
 `length` must be 1 through 64 and `key` at most 64 bytes, or the call faults.
 `blake2b("abc".to_bytes())` begins with the bytes ba80a53f981c4d0d.
 */
-export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
+export fn blake2b(data Bytes, key Bytes = Bytes([]), length Int = 64) Bytes:
 	check(length, key, 64)
 
 	iv := [
@@ -48,7 +48,7 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 		else:
 			counted = (block + 1) * 128
 
-		var m: List[Int] = []
+		var m List[Int] = []
 		for index in 0..16:
 			m.append(word(message, block * 128 + index * 8, 8))
 
@@ -114,7 +114,7 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 	return out.build()
 
 // Rotates a 32-bit word toward the low end.
-fn rotr32(value: Int, count: Int) Int:
+fn rotr32(value Int, count Int) Int:
 	return bit_and(
 		bit_or(
 			shift_right_unsigned(value, count),
@@ -128,7 +128,7 @@ Returns the BLAKE2s digest (RFC 7693) of `data`, `length` bytes long (default 32
 `length` must be 1 through 32 and `key` at most 32 bytes, or the call faults.
 `blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
 */
-export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
+export fn blake2s(data Bytes, key Bytes = Bytes([]), length Int = 32) Bytes:
 	check(length, key, 32)
 
 	iv := [
@@ -148,7 +148,7 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
 	for block in 0..blocks:
 		last := block == blocks - 1
 		counted := if last: total else: (block + 1) * 64
-		var m: List[Int] = []
+		var m List[Int] = []
 		for index in 0..16:
 			m.append(word(message, block * 64 + index * 4, 4))
 
@@ -227,7 +227,7 @@ fn sigma() List[List[Int]]:
 
 // Reads a little-endian word of `width` bytes at `at`, zero padding past the end of
 // `data`.
-fn word(data: Bytes, at: Int, width: Int) Int:
+fn word(data Bytes, at Int, width Int) Int:
 	var value = 0
 
 	for offset in 0..width:
@@ -239,7 +239,7 @@ fn word(data: Bytes, at: Int, width: Int) Int:
 
 // The padded input: the key block (if any) followed by the data, zero filled to a whole
 // number of blocks (at least one).
-fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
+fn padded(key Bytes, data Bytes, block Int) Bytes:
 	var out = BytesBuilder()
 
 	if not key.is_empty():
@@ -257,7 +257,7 @@ fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
 		out.append(0)
 	return out.build()
 
-fn check(length: Int, key: Bytes, max: Int) Void:
+fn check(length Int, key Bytes, max Int) Void:
 	if length < 1 or length > max:
 		panic(f"blake2: digest length must be 1 through {max}")
 	if key.length() > max:

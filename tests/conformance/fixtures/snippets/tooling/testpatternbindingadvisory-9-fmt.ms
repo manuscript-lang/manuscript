@@ -4,7 +4,7 @@
 enum Flag:
     Ready
 
-fn use(value: Int?) Int:
+fn use(value Int?) Int:
     _Flag := 2
 
     match value:

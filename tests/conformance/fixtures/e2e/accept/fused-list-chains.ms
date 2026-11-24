@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn weighted(xs: List[Int], k: Int) Int:
+fn weighted(xs List[Int], k Int) Int:
 	return xs.filter(fn x: x % 3 == 0).map(fn x: x * k).sum()
 
 test "filter, map and sum agree with the stages run one at a time":
@@ -26,7 +26,7 @@ test "chains that build a list":
 	)?
 
 test "empty and fully filtered inputs":
-	null: List[Int] := []
+	null List[Int] := []
 	expect_equal(null.filter(fn x: x > 0).map(fn x: x + 1).sum(), 0)?
 	expect_equal([1, 2].filter(fn x: x > 5).map(fn x: x + 1), [])?
 	expect_equal([1, 2].filter(fn x: x > 5).sum(), 0)?
@@ -44,16 +44,16 @@ test "a lambda that calls a function runs the stages one at a time":
 	expect_equal(xs.filter(fn x: x.min(3) == 3).map(fn x: x * 2).sum(), 24)?
 	expect_equal(xs.map(fn x: x * 2).filter(fn x: x.max(4) == x), [4, 6, 8, 10])?
 
-fn odd(x: Int) Bool:
+fn odd(x Int) Bool:
 	return x % 2 == 1
 
-fn square(x: Int) Int:
+fn square(x Int) Int:
 	return x * x
 
-fn cube(x: Int) Int:
+fn cube(x Int) Int:
 	return square(x) * x
 
-fn clamp(x: Int) Int:
+fn clamp(x Int) Int:
 	var out = x
 	if out > 4: out = 4
 	return out
@@ -78,15 +78,15 @@ test "zipped numbers feed a chain without building the pairs":
 		1573,
 	)?
 
-	null: List[Int] := []
+	null List[Int] := []
 	expect_equal(null.zip(b).map(fn p: p.first).sum(), 0)?
 	expect_equal(a.zip(null).map(fn p: p.first).sum(), 0)?
 	expect_equal(a.zip(b).map(fn p: p.first + p.second).map(square), [121, 484, 1089])?
 
 type Order:
-	status: String
-	total: Int
-	tags: List[String]
+	status String
+	total Int
+	tags List[String]
 
 test "chains over records and strings read each element in place":
 	orders := [

@@ -4,8 +4,8 @@
 import panic from "@std/core.ms"
 
 fn use() Int:
-	nested: List[List[Int]] := [[], [1]]
-	_empty: Map[String, Int] := {}
+	nested List[List[Int]] := [[], [1]]
+	_empty Map[String, Int] := {}
 	var chain_1 = Map[String, Int]()
 	chain_1.add("a", nested[1][0])
 	return chain_1.get("a") or panic("called Optional.get() on null")

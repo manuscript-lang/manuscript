@@ -6,7 +6,7 @@ import (
 	arguments from "@std/os/env.ms",
 )
 
-fn show(number: Int) Result[Void, Error]:
+fn show(number Int) Result[Void, Error]:
 	stdout().write(f"{number}\n")?
 	return stdout().flush()
 

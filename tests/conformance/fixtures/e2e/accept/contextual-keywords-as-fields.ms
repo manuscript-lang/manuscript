@@ -3,9 +3,9 @@
 import expect_equal from "@std/test/test.ms"
 
 type Options:
-	continue: Bool
-	type: String = "x"
-	return: Int = 1
+	continue Bool
+	type String = "x"
+	return Int = 1
 
 test "keywords are ordinary field names and members":
 	options := Options(continue: true, return: 2)

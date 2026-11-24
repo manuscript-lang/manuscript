@@ -22,12 +22,12 @@ One recursive record, `Command`, is both leaf and group. A leaf is built with th
 
 ```manuscript
 type ServeOptions:
-    port: Int
-    mode: String
-    root: String
-    verbose: Bool
+    port Int
+    mode String
+    root String
+    verbose Bool
 
-fn serve(options: ServeOptions) Result[Int, Error]:
+fn serve(options ServeOptions) Result[Int, Error]:
     ...
 
 fn main() Int:

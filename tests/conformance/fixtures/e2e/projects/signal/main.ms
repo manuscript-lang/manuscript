@@ -4,8 +4,8 @@ import (
 )
 
 type Resource:
-	label: String
-	output: WriteStream[String]
+	label String
+	output WriteStream[String]
 
 fn move Resource.close() Void!:
 	_ignored := self.output.write(f"close {self.label}\n")

@@ -13,15 +13,15 @@
         "position": {
           "file": "checkinvalidbounds-6.ms",
           "line": 4,
-          "column": 15,
-          "offset": 162
+          "column": 14,
+          "offset": 161
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/checkinvalidbounds-6.ms:4:15: resolution: unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 4 | fn unknown[T: Missing](value: T) Void: return\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/checkinvalidbounds-6.ms:4:14: resolution: unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 4 | fn unknown[T Missing](value T) Void: return\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

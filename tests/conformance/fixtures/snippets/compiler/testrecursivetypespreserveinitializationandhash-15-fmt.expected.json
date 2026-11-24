@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Pair:\n\tleft: Int\n\tright: Int\n\nfn hash(pair: Pair) Int: return pair.hash()\n"
+    "fmt": "type Pair:\n\tleft Int\n\tright Int\n\nfn hash(pair Pair) Int: return pair.hash()\n"
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use() Set[Int]:\n\tvar values: Set[Int] = Set()\n\tvalues.add(1)\n\treturn values\n"
+    "fmt": "fn use() Set[Int]:\n\tvar values Set[Int] = Set()\n\tvalues.add(1)\n\treturn values\n"
   }
 }

@@ -43,7 +43,7 @@ import (
 // so concurrent code never changes a shared value. To change shared state, give it one
 // owner and send it values over a `pipe`.
 //
-// <!-- manuscript-example: {"mode":"fragment","given":["text: String"]} -->
+// <!-- manuscript-example: {"mode":"fragment","given":["text String"]} -->
 // ```manuscript
 // import PromiseOptions, promise from "@std/concurrency/promise.ms"
 // import read_file from "@std/os/fs.ms"
@@ -66,7 +66,7 @@ import (
 export opaque type Promise[T]:
 	// The runtime slot of this promise: a generation and an index, never reused while
 	// this id is live.
-	id: Int
+	id Int
 
 // Waits for the result and moves it out. It can return:
 //
@@ -87,7 +87,7 @@ fn Promise[T].wait() move T!:
 // `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds
 // the read. The timeout counts from now. A provided cancel signal replaces the previous
 // one.
-fn Promise[T].with(options: PromiseOptions = PromiseOptions()) Promise[T]:
+fn Promise[T].with(options PromiseOptions = PromiseOptions()) Promise[T]:
 	limit(self.id, options)
 	return self
 
@@ -125,20 +125,20 @@ export enum Placement:
 // `wait` reports `ETIMEDOUT`. A negative timeout means no time at all.
 export type PromiseOptions:
 	// How long the work may run, counted from construction; `null` means no limit.
-	timeout: Duration? = null
+	timeout Duration? = null
 	// When this signal's `Cancel` fires, the work is cancelled and `wait` reports
 	// `ECANCELED`. Applying a signal to an existing promise replaces its previous
 	// signal; null leaves it unchanged.
-	cancel: Signal? = null
+	cancel Signal? = null
 	// Which thread runs the work.
-	placement: Placement = Placement.Any
+	placement Placement = Placement.Any
 
 // A switch that cancels every promise made with its `signal()`. `cancel()` never
 // waits; the work stops at its next wait and `wait` reports `ECANCELED`. Dropping the
 // switch does not cancel anything: promises made with its signals keep running.
 export opaque type Cancel:
 	// The runtime slot of this switch: a generation and an index.
-	id: Int
+	id Int
 
 // Returns a handle for `PromiseOptions(cancel: ...)`. Make as many as you need.
 fn Cancel.signal() Signal:
@@ -163,7 +163,7 @@ export fn cancel_switch() Cancel:
 // A `Cancel` that never fired reads as not cancelled once it is gone.
 export opaque type Signal:
 	// The slot of the `Cancel` it belongs to; a freed slot never matches.
-	id: Int
+	id Int
 
 // Reports whether the switch has fired. Use it in work that loops without waiting.
 fn Signal.cancelled() Bool:
@@ -171,7 +171,7 @@ fn Signal.cancelled() Bool:
 
 // Internal: a limit in nanoseconds, or -1 for null. A negative duration means no time
 // at all, not "null".
-fn nanos(limit: Duration?) Int:
+fn nanos(limit Duration?) Int:
 	own := limit
 
 	if own != null:
@@ -184,7 +184,7 @@ fn nanos(limit: Duration?) Int:
 
 // Internal: the error that a `wait` reports when it produced no result, from the
 // runtime outcome code of the promise `id`.
-fn outcome(id: Int, code: Int) Error:
+fn outcome(id Int, code Int) Error:
 	if code == 2: return Error("promise: timed out", kind: "ETIMEDOUT")
 	if code == 3: return Error("promise: cancelled", kind: "ECANCELED")
 	if code == 4: return Error("promise: the result was already taken", kind: "EBADF")
@@ -197,7 +197,7 @@ fn outcome(id: Int, code: Int) Error:
 	)
 
 // Internal: applies `options` to the promise `id`.
-fn limit(id: Int, options: PromiseOptions) Void:
+fn limit(id Int, options PromiseOptions) Void:
 	if options.timeout != null:
 		msrt_promise_limit(id, nanos(options.timeout))
 
@@ -209,13 +209,13 @@ fn limit(id: Int, options: PromiseOptions) Void:
 // as a server's accept loop). The timeout counts from now, and a provided cancel
 // signal replaces the previous one. `with` is the chaining form.
 export fn set_options[T](
-	target: Promise[T],
-	options: PromiseOptions = PromiseOptions(),
+	target Promise[T],
+	options PromiseOptions = PromiseOptions(),
 ) Void:
 	limit(target.id, options)
 
 // Internal: the error in the slot of `id`, moved out.
-fn taken_error(id: Int) Error:
+fn taken_error(id Int) Error:
 	cause := msrt_promise_take[Error](id)
 	if cause != null: return cause
 
@@ -225,19 +225,19 @@ fn taken_error(id: Int) Error:
 // operation's own error for code 1, otherwise the outcome's. One function for every
 // failure keeps the error construction out of `wait`, whose frame stays on the stack
 // while a task parks.
-fn failure(id: Int, code: Int) Error:
+fn failure(id Int, code Int) Error:
 	if code == 1: return taken_error(id)
 	return outcome(id, code)
 
 // Internal: why a finished wait on `id` had no value to take.
-fn no_result(id: Int) Error:
+fn no_result(id Int) Error:
 	code := msrt_promise_wait(id, -1)
 	if code == 0: return outcome(id, 4)
 
 	return failure(id, code)
 
 // Stores how the work ended (its result or error) in the promise `id`.
-export fn complete[U](id: Int, move result: U!) Void:
+export fn complete[U](id Int, move result U!) Void:
 	match result:
 		ok(value): msrt_promise_put(id, value, 0)
 		error(cause): msrt_promise_put(id, cause, 1)
@@ -246,7 +246,7 @@ export fn complete[U](id: Int, move result: U!) Void:
 // running it runs in the task that first waits on it, which saves the cost of a task
 // of its own. Use it for operations that do not block for long, such as reading a
 // file. The work follows the capture rules of `promise`.
-export fn promise_when_idle[U](entry: fn() U!, site: String = caller_frame()) Promise[U]:
+export fn promise_when_idle[U](entry fn() U!, site String = caller_frame()) Promise[U]:
 	id := msrt_promise_start_idle(fn id: complete(id, entry()), site)
 	return Promise[U](id: id)
 
@@ -267,9 +267,9 @@ export fn caller_frame() String:
 // leave it out and it is the line of this call. A helper that starts a promise for its
 // caller takes `site: String = caller_frame()` itself and passes it on.
 export fn promise[U](
-	entry: fn() U!,
-	options: PromiseOptions = PromiseOptions(),
-	site: String = caller_frame()
+	entry fn() U!,
+	options PromiseOptions = PromiseOptions(),
+	site String = caller_frame()
 ) Promise[U]:
 	id := match options.placement:
 		Placement.Any: msrt_promise_start(fn id: complete(id, entry()), site)
@@ -283,19 +283,14 @@ export fn promise[U](
 // each once.
 opaque type WaitSet:
 	// The runtime group.
-	id: Int
+	id Int
 
 fn move WaitSet.close() Void!:
 	msrt_group_free(self.id)
 
 // Internal: the error `wait_all` reports when the run of the promise at `head` ended
 // in a failure: the error of the first promise of the set to fail.
-fn first_failure[T](
-	set: Int,
-	pending: List[Promise[T]],
-	taken: List[Bool],
-	head: Int,
-) Error:
+fn first_failure[T](set Int, pending List[Promise[T]], taken List[Bool], head Int) Error:
 	var at = msrt_group_poll(set)
 
 	while at >= 0:
@@ -312,23 +307,23 @@ fn first_failure[T](
 
 // Internal: the results of `msrt_promise_run_watched`: nothing ran, a promise ran, or
 // a failure ended the run.
-fn ran_nothing(result: Int) Bool: result == 0
+fn ran_nothing(result Int) Bool: result == 0
 
-fn run_interrupted(result: Int) Bool: result == 2
+fn run_interrupted(result Int) Bool: result == 2
 
 // Internal: the result of `msrt_group_join` when some promises belong to another
 // thread and are polled.
-fn joined_partly(result: Int) Bool: result == 2
+fn joined_partly(result Int) Bool: result == 2
 
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are
 // cancelled and waited for before `wait_all` returns that error.
-export fn wait_all[T](move promises: List[Promise[T]]) move List[T]!:
+export fn wait_all[T](move promises List[Promise[T]]) move List[T]!:
 	var pending = promises
 	count := pending.length()
-	var slots: List[T!] = []
-	var taken: List[Bool] = []
-	var members: List[Int] = []
+	var slots List[T!] = []
+	var taken List[Bool] = []
+	var members List[Int] = []
 	set := WaitSet(id: msrt_group_new())
 
 	for at in 0..count:
@@ -380,7 +375,7 @@ export fn wait_all[T](move promises: List[Promise[T]]) move List[T]!:
 					slots[at] = ok(value)
 					taken[at] = true
 		else:
-			var ids: List[Int] = []
+			var ids List[Int] = []
 			for at in head..count:
 				if not taken[at]:
 					ids.append(pending[at].id)
@@ -392,14 +387,14 @@ export fn wait_all[T](move promises: List[Promise[T]]) move List[T]!:
 					slots[at] = ok(value)
 					taken[at] = true
 
-	var reversed: List[T] = []
+	var reversed List[T] = []
 
 	for at in 0..count:
 		slot := slots.pop()
 		if slot != null:
 			reversed.append(slot?)
 
-	var results: List[T] = []
+	var results List[T] = []
 
 	for at in 0..count:
 		value := reversed.pop()
@@ -411,7 +406,7 @@ export fn wait_all[T](move promises: List[Promise[T]]) move List[T]!:
 // Waits for the first promise to finish and returns its result; the others are
 // cancelled and waited for. Errors are those of `wait`, and an empty list is an
 // error.
-export fn wait_first[T](promises: List[Promise[T]]) T!:
+export fn wait_first[T](promises List[Promise[T]]) T!:
 	var pending = promises
 	if pending.is_empty(): return error(Error("promise: nothing to wait for"))
 
@@ -423,11 +418,11 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
 // stack, with no task of its own. The work may wait itself. `work` receives the new
 // promise's id and must finish with `complete(id, ...)`. This is for stream
 // implementations. Dropping the promise before any wait discards the work unrun.
-export fn deferred[U](work: fn(Int) Void) Promise[U]:
+export fn deferred[U](work fn(Int) Void) Promise[U]:
 	id := msrt_promise_defer(fn id: work(id))
 	return Promise[U](id: id)
 
 // Wraps the runtime promise `id`, which a native operation completes (a stream read
 // or flush), as a `Promise`.
-export fn adopt[U](id: Int) Promise[U]:
+export fn adopt[U](id Int) Promise[U]:
 	return Promise[U](id: id)

@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/build/library_test.go:150 TestCommonErrorRejectsInvalidContractPatterns
 type Box[T]:
-    item: T
+    item T
 
 interface Named:
     fn name() String
@@ -10,7 +10,7 @@ interface Named:
 fn Box[T].name() String:
     return "box"
 
-fn wrong(item: Named) String:
+fn wrong(item Named) String:
     match item:
         Box(value):
             return value.name()

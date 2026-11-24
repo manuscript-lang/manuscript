@@ -6,11 +6,11 @@ Use `Queue` for plain first-in, first-out work, and `Deque` when either end is p
 export type Deque[T]:
 	// Ring-buffer storage; `null` marks unused slots. Internal state: use the
 	// operations, not this field.
-	slots: List[T?] = []
+	slots List[T?] = []
 	// Index in `slots` of the front value. Internal state.
-	start: Int = 0
+	start Int = 0
 	// Number of values held. Internal state; read it with `length()`.
-	size: Int = 0
+	size Int = 0
 
 // Reports whether the deque holds no values.
 fn Deque[T].is_empty() Bool:
@@ -42,7 +42,7 @@ fn var Deque[T].grow() Void:
 
 // Internal: returns the ring-buffer index of the value `offset` places after the
 // front. `offset` is at most the capacity.
-fn Deque[T].slot_of(offset: Int) Int:
+fn Deque[T].slot_of(offset Int) Int:
 	at := self.start + offset
 	capacity := self.slots.length()
 	if at >= capacity: return at - capacity
@@ -50,14 +50,14 @@ fn Deque[T].slot_of(offset: Int) Int:
 	return at
 
 // Adds a value after the last one.
-fn var Deque[T].push_back(move value: T) Void:
+fn var Deque[T].push_back(move value T) Void:
 	if self.size == self.slots.length():
 		self.grow()
 	self.slots.set(self.slot_of(self.size), value)
 	self.size += 1
 
 // Adds a value before the first one.
-fn var Deque[T].push_front(move value: T) Void:
+fn var Deque[T].push_front(move value T) Void:
 	if self.size == self.slots.length():
 		self.grow()
 	if self.start == 0:
@@ -107,7 +107,7 @@ Turns the deque like a ring buffer. Moves `by` values from the front to the back
 a negative `by` moves values from the back to the front. Any magnitude is reduced modulo the length, and an empty deque is unchanged.
 Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
 */
-fn var Deque[T].rotate(by: Int) Void:
+fn var Deque[T].rotate(by Int) Void:
 	if self.size < 2: return
 
 	var steps = by % self.size
@@ -132,8 +132,8 @@ fn var Deque[T].rotate(by: Int) Void:
 		steps += 1
 
 // Returns a new list of copies of the values from front to back.
-fn Deque[T: Clonable].to_list() List[T]:
-	var out: List[T] = []
+fn Deque[T Clonable].to_list() List[T]:
+	var out List[T] = []
 
 	for index in 0..self.size:
 		value := self.slots.get(self.slot_of(index))
@@ -148,7 +148,7 @@ fn Deque[T].length() Int:
 
 // Returns the value at `index` counted from the front, or `null` when out of range;
 // negative indexes count from the back, as `List.get` does.
-fn Deque[T].get(index: Int) T?:
+fn Deque[T].get(index Int) T?:
 	at := if index < 0: index + self.size else: index
 	if at < 0 or at >= self.size: return null
 

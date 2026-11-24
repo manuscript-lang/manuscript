@@ -7,9 +7,9 @@ import (
 )
 
 type Marker:
-	id: Int
-	log: String
-	closed: Bool = false
+	id Int
+	log String
+	closed Bool = false
 
 fn move Marker.close() Void!:
 	if not self.closed:
@@ -18,48 +18,48 @@ fn move Marker.close() Void!:
 
 fn Marker.status() Int: self.id
 
-fn Marker.with_default(offset: Int = 10) Int: self.id + offset
+fn Marker.with_default(offset Int = 10) Int: self.id + offset
 
-fn Marker.generic[T](_value: T) Int: self.id
+fn Marker.generic[T](_value T) Int: self.id
 
-fn var Marker.bump(delta: Int = 1) Int:
+fn var Marker.bump(delta Int = 1) Int:
 	self.id += delta
 	return self.id
 
-fn marker(id: Int, log: String) Marker: Marker(id, log.clone())
+fn marker(id Int, log String) Marker: Marker(id, log.clone())
 
-fn ordinary(log: String) Void!:
+fn ordinary(log String) Void!:
 	status := marker(1, log).status
 	expect_equal(status(), 1)?
 	expect_equal(status(), 1)?
 
-fn defaulted(log: String) Void!:
+fn defaulted(log String) Void!:
 	status := marker(2, log).with_default
 	expect_equal(status(), 12)?
 	expect_equal(status(20), 22)?
 
-fn generic(log: String) Void!:
+fn generic(log String) Void!:
 	status := marker(3, log).generic[Int]
 	expect_equal(status(10), 3)?
 	expect_equal(status(20), 3)?
 
-fn escaped(log: String) fn() Int:
+fn escaped(log String) fn() Int:
 	value := marker(4, log)
 	return value.status
 
-fn escaping(log: String) Void!:
+fn escaping(log String) Void!:
 	status := escaped(log.clone())
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,")?
 	expect_equal(status(), 4)?
 	expect_equal(status(), 4)?
 
-fn borrow(value: Marker) Void!:
+fn borrow(value Marker) Void!:
 	status := value.status
 	with_default := value.with_default
 	expect_equal(status(), 5)?
 	expect_equal(with_default(), 15)?
 
-fn borrowed(log: String) Void!:
+fn borrowed(log String) Void!:
 	value := marker(5, log.clone())
 	borrow(value)?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,")?
@@ -76,12 +76,12 @@ test "nonmutating source default and generic method captures close their owners"
 	borrowed(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,5,")?
 
-fn shared_default(var value: Marker) Void!:
+fn shared_default(var value Marker) Void!:
 	bump := value.bump
 	expect_equal(bump(), 8)?
 	expect_equal(bump(2), 10)?
 
-fn shared_owner(log: String) Void!:
+fn shared_owner(log String) Void!:
 	var value = marker(7, log.clone())
 	shared_default(value)?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "")?

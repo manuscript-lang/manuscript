@@ -30,8 +30,8 @@
         "position": {
           "file": "golden-0688.ms",
           "line": 4,
-          "column": 17,
-          "offset": 119
+          "column": 16,
+          "offset": 118
         }
       },
       {
@@ -42,14 +42,14 @@
           "file": "golden-0688.ms",
           "line": 5,
           "column": 13,
-          "offset": 149
+          "offset": 148
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0688.ms:3:8: resolution: module does not export read_line; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'\n   |\n 3 | import read_line, ReadStream from \"@std/io/io.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0688.ms:4:17: type: ReadStream requires 1 type arguments, found 0; write ReadStream[T1]\n   |\n 4 | fn probe(input: ReadStream) Bool:\n   |                 ^\n<DIR>/golden-0688.ms:5:13: resolution: unknown binding read_line; declare it with 'read_line := ...' before use, define 'fn read_line(...) T:', or import it from a module\n   |\n 5 |     next := read_line\n   |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0688.ms:3:8: resolution: module does not export read_line; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'\n   |\n 3 | import read_line, ReadStream from \"@std/io/io.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0688.ms:4:16: type: ReadStream requires 1 type arguments, found 0; write ReadStream[T1]\n   |\n 4 | fn probe(input ReadStream) Bool:\n   |                ^\n<DIR>/golden-0688.ms:5:13: resolution: unknown binding read_line; declare it with 'read_line := ...' before use, define 'fn read_line(...) T:', or import it from a module\n   |\n 5 |     next := read_line\n   |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

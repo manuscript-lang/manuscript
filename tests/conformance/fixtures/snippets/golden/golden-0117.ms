@@ -2,13 +2,13 @@
 // conform: phase=check
 import panic from "@std/faults.ms"
 
-fn positive(value: Int) Int:
+fn positive(value Int) Int:
     if value > 0:
         return value
     else:
         panic("positive value required")
 
-fn discard(value: Int) Void:
+fn discard(value Int) Void:
     if not (value > 0):
         return panic("check failed")
 

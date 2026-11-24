@@ -16,7 +16,7 @@ static const char kMain[] =
     "import arguments from \"@std/os/env.ms\"\n\nfn main() Void:\n\tprint(f\"Arguments: {arguments().length()}\")\n";
 static const char kTest[] =
     "import expect_equal from \"@std/test/test.ms\"\n\ntest \"arithmetic\":\n\texpect_equal(2 + 3, 5)?\n";
-static const char kLib[] = "export fn greeting(name: String) String: f\"Hello, {name}\"\n";
+static const char kLib[] = "export fn greeting(name String) String: f\"Hello, {name}\"\n";
 static const char kLibTest[] = "import (\n\texpect_equal from \"@std/test/test.ms\",\n\n\tgreeting from \"./src/lib.ms\",\n)\n\n"
                                "test \"greeting\":\n\texpect_equal(greeting(\"ms\"), \"Hello, ms\")?\n";
 static const char kWorkspaceMain[] =

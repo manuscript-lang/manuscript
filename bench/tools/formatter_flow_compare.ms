@@ -11,8 +11,8 @@ import (
 )
 
 type Case:
-	count: Int
-	shape: String
+	count Int
+	shape String
 
 fn cases() List[Case]:
 	var out = List[Case]()
@@ -30,7 +30,7 @@ fn cases() List[Case]:
 	return out
 
 // elapsed_ns, checksum, source_bytes, output_bytes, rss
-fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
+fn run_one(binary String, c Case, rounds Int, cpu String) List[Int]!:
 	out := run_pinned(binary, [f"{c.count}", f"{rounds}", c.shape.clone()], cpu)?
 	fields := out.trim().split(",")
 	if (
@@ -44,11 +44,11 @@ fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
 	return all_ints(fields.slice(3, 8).get_or([]))
 
 fn compare(
-	before: String,
-	after: String,
-	out: String,
-	samples: Int,
-	cpu: String,
+	before String,
+	after String,
+	out String,
+	samples Int,
+	cpu String,
 ) Result[Void, Error]:
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())

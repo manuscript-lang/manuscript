@@ -133,7 +133,7 @@ test "unified_diff joins overlapping context without losing earlier changes":
 	)?
 
 test "unified_diff handles dense changes with full-file context":
-	var lines: List[String] = []
+	var lines List[String] = []
 	for i in 0..4000:
 		lines.append(f"line {i}")
 

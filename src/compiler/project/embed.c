@@ -269,7 +269,7 @@ static void emit_load(MsStrBuild *out, size_t first, size_t last) {
     emit_load(out, first, middle);
     emit_load(out, middle, last);
   }
-  ms_strbuild_printf(out, "fn load_%zu_%zu(index: Int) Bytes:\n", first, last);
+  ms_strbuild_printf(out, "fn load_%zu_%zu(index Int) Bytes:\n", first, last);
   if (last - first > DISPATCH_LEAF) {
     ms_strbuild_printf(out, "    if index < %zu:\n        return load_%zu_%zu(index)\n    return load_%zu_%zu(index)\n\n",
                        middle, first, middle, middle, last);
@@ -293,9 +293,9 @@ bool ms_project_embed_generate(MsArena *arena, MsSpan name, MsSpan directory, Ms
     ms_strbuild_append(&text, ms_strbuild_span(&emit.loads));
     if (emit.files > 0) {
       emit_load(&text, 0, emit.files);
-      ms_strbuild_printf(&text, "fn load(index: Int) Bytes:\n    return load_0_%zu(index)\n", emit.files);
+      ms_strbuild_printf(&text, "fn load(index Int) Bytes:\n    return load_0_%zu(index)\n", emit.files);
     } else {
-      ms_strbuild_append_text(&text, "fn load(index: Int) Bytes:\n    return msstd_embed_bytes(\"\")\n");
+      ms_strbuild_append_text(&text, "fn load(index Int) Bytes:\n    return msstd_embed_bytes(\"\")\n");
     }
     ms_strbuild_append_text(&text, "\nexport fn files() EmbeddedTree:\n"
                                    "    var indexes = Map[String, Int]()\n    var directories = Set[String]()\n"

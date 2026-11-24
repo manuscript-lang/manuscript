@@ -7,28 +7,28 @@ import (
 
 extern type Native
 
-extern fn native_call(value: Int) Int
+extern fn native_call(value Int) Int
 
-export type Box[T: Equal & Hashable = Int]:
-	value: T
+export type Box[T Equal & Hashable = Int]:
+	value T
 
 enum State:
 	Ready
-	Data(value: Int)
+	Data(value Int)
 
 interface Reader:
 	fn text() String
 
 type Document:
-	value: String
+	value String
 
 fn Document.text() String:
 	return self.value
 
-fn var Document.replace(value: String) Void:
+fn var Document.replace(value String) Void:
 	self.value = value
 
-export fn identity[T](value: T) T:
+export fn identity[T](value T) T:
 	return value
 
 MASK := 0xFF_FF
@@ -37,7 +37,7 @@ COUNT := 1_000_000
 RATIO := 3.141_592e-2
 PRICE := 1_000.50_25E+2d
 
-fn syntax(var items: List[Int], doc: Document, state: State) Int:
+fn syntax(var items List[Int], doc Document, state State) Int:
 	from := 1
 	as := from
 	borrowed := doc.value
@@ -45,7 +45,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 	[first, second] := [1, 2]
 	{value: label} := doc
 	callback := fn value: value + 1
-	typed: fn(Int) Int := fn(value: Int) Int: value * 2
+	typed fn(Int) Int := fn(value Int) Int: value * 2
 	specialized := identity[List[Int]](items)
 	mapping := {"count": COUNT, "ratio": RATIO}
 	plain := "Literal {braces}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"

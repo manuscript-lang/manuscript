@@ -3,14 +3,14 @@
 // A method's receiver is read in place while the arguments run, so an argument cannot
 // reassign the variable that holds it.
 interface Subtract:
-	fn subtract(amount: Int) Int
+	fn subtract(amount Int) Int
 
 type Offset:
-	value: Int
+	value Int
 
-fn Offset.subtract(amount: Int) Int: amount - self.value
+fn Offset.subtract(amount Int) Int: amount - self.value
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
 	return value
 
 export fn main() Int:

@@ -30,13 +30,13 @@ import (
 	tool_ms from "./lib.ms",
 )
 
-fn text_of(data: Bytes) String:
+fn text_of(data Bytes) String:
 	return (data.decode_utf8() or "").clone()
 
 // Replaces the working directory, spelled as the runtime names it or with
 // forward slashes as ms prints it on Windows, with <DIR> and the digits after
 // `"duration_ns": ` with 0, the only value that varies between runs.
-fn normalize(text: String, dir: String) String:
+fn normalize(text String, dir String) String:
 	marker := "\"duration_ns\": "
 	slashed := dir.replace("\\", "/")
 	parts := text.replace(dir, "<DIR>").replace(slashed, "<DIR>").split(marker)
@@ -55,7 +55,7 @@ fn normalize(text: String, dir: String) String:
 	return out
 
 // Every file under `root` as relative path then normalized content.
-fn tree_of(root: String, dir: String, ignored: List[String]) Map[String, String]:
+fn tree_of(root String, dir String, ignored List[String]) Map[String, String]:
 	var files = Map[String, String]()
 
 	for found in glob(root, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
@@ -76,17 +76,17 @@ fn tree_of(root: String, dir: String, ignored: List[String]) Map[String, String]
 
 	return files
 
-fn write_text(path: String, text: String) Void:
+fn write_text(path String, text String) Void:
 	write_file(path, text, replace: true).wait().get()
 
 // The outcome of one case_dir run in a fresh working directory.
 type Outcome:
-	stdout: String
-	stderr: String
-	status: Int
-	files: Map[String, String]
+	stdout String
+	stderr String
+	status Int
+	files Map[String, String]
 
-fn execute(ms: String, case_dir: String) Outcome:
+fn execute(ms String, case_dir String) Outcome:
 	scratch := temporary("ms-cmd-").get()
 	work := f"{scratch.path()}/work"
 	create_directory(work.clone()).get()
@@ -125,7 +125,7 @@ fn execute(ms: String, case_dir: String) Outcome:
 		files: tree_of(work, work, ignored),
 	)
 
-fn record(case_dir: String, outcome: Outcome) Void:
+fn record(case_dir String, outcome Outcome) Void:
 	expected := f"{case_dir}/expected"
 	create_directory(f"{expected}/tree", recursive: true).get()
 	write_text(f"{expected}/stdout", outcome.stdout)
@@ -143,24 +143,24 @@ fn record(case_dir: String, outcome: Outcome) Void:
 			).get()
 		write_text(f"{expected}/tree/{path}", content.clone())
 
-fn expected_text(case_dir: String, name: String) String:
+fn expected_text(case_dir String, name String) String:
 	return text_of(
 		read_file(f"{case_dir}/expected/{name}").wait().get_or("".to_bytes())
 	)
 
 // `text` on one line, cut to 400 bytes, for a failure message.
-fn brief(text: String) String:
+fn brief(text String) String:
 	flat := text.replace("\n", "\\n").replace("\r", "\\r")
 	if flat.length() <= 400: return flat
 
 	return flat.slice(0, 400) + "..."
 
 // A failure message naming the stream and showing both texts.
-fn stream_difference(stream: String, expected: String, observed: String) String:
+fn stream_difference(stream String, expected String, observed String) String:
 	return f"{stream} differs\n  expected: {brief(expected)}\n  observed: {brief(observed)}"
 
 // The first difference between the recorded and the observed outcome, or "".
-fn difference(case_dir: String, outcome: Outcome) String:
+fn difference(case_dir String, outcome Outcome) String:
 	stdout := expected_text(case_dir, "stdout")
 	if stdout != outcome.stdout:
 		return (
@@ -200,7 +200,7 @@ fn difference(case_dir: String, outcome: Outcome) String:
 
 	return ""
 
-fn selected(case_dir: String, prefixes: List[String]) Bool:
+fn selected(case_dir String, prefixes List[String]) Bool:
 	if prefixes.is_empty(): return true
 
 	for prefix in prefixes:

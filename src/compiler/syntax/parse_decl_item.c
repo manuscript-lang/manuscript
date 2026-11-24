@@ -207,7 +207,7 @@ MS_NODISCARD bool parse_constant_value(Parser *p, MsPos *init_pos, MsExpr **out)
 MS_NODISCARD bool parse_need_immutable_bind(Parser *p) {
   if (parse_kind(p) == MS_T_Assign) {
     parse_fail_fix(p, parse_peek(p),
-                   ms_span_of_text("an immutable binding uses ':=' after its type: write 'x: Type := value'; "
+                   ms_span_of_text("an immutable binding uses ':=' after its type: write 'x Type := value'; "
                                    "'=' binds only after 'var'"),
                    ms_span_of_text(":="));
     return false;
@@ -278,15 +278,18 @@ static bool at_move_fn(const Parser *p) {
 }
 
 static bool at_enum_variant_start(const Parser *p) {
-  MsTok next_kind = (MsTok)parse_ahead(p, 1).kind;
-  return parse_kind(p) == MS_T_Name && (next_kind == MS_T_LParen || next_kind == MS_T_Newline ||
-                                        next_kind == MS_T_Dedent || next_kind == MS_T_Eof);
+  MsToken next = parse_ahead(p, 1);
+  /* A payload's `(` touches the variant name; a field's parenthesized type follows a space. */
+  bool payload = next.kind == MS_T_LParen && next.lo == parse_peek(p).hi;
+  return parse_kind(p) == MS_T_Name &&
+         (payload || next.kind == MS_T_Newline || next.kind == MS_T_Dedent || next.kind == MS_T_Eof);
 }
 
 /* Rejects a member that does not belong in the body of this kind of declaration. */
 static bool report_misplaced_member(Parser *p, MsToken token) {
   MsToken prefix;
-  if (token.kind == MS_T_Type && (parse_legacy_case_prefix(p, &prefix) || at_enum_variant_start(p))) {
+  /* `case Int` in a type body is a field named `case`; only an enum body can carry the old prefix. */
+  if (token.kind == MS_T_Type && at_enum_variant_start(p)) {
     parse_fail(p, token,
                ms_span_of_text("a type declared with 'type' cannot contain enum variants; replace 'type' "
                                "with 'enum' and remove any legacy 'case' prefixes"));
@@ -296,12 +299,12 @@ static bool report_misplaced_member(Parser *p, MsToken token) {
     parse_fail(
         p, prefix,
         ms_span_of_text(
-            "enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field: Type)'"));
+            "enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field Type)'"));
     return true;
   }
   if (token.kind == MS_T_Enum && parse_kind(p) != MS_T_Name) {
     parse_fail(p, parse_peek(p),
-               ms_span_of_text("an enum contains only variants; write 'Name' or 'Name(field: Type)', use "
+               ms_span_of_text("an enum contains only variants; write 'Name' or 'Name(field Type)', use "
                                "'type' for type fields, and write methods after the enum as 'fn Name.method(...)'"));
     return true;
   }
@@ -353,7 +356,7 @@ MS_NODISCARD static bool enum_variant(Parser *p) {
   }
   if (parse_kind(p) == MS_T_Assign) {
     parse_fail(p, parse_peek(p),
-               ms_span_of_text("enum variants cannot have defaults; write 'Name' or 'Name(field: Type)' and "
+               ms_span_of_text("enum variants cannot have defaults; write 'Name' or 'Name(field Type)' and "
                                "supply payload values when constructing a variant"));
     return false;
   }
@@ -400,12 +403,10 @@ MS_NODISCARD static bool member_signature(Parser *p, MsToken token, MsName name,
 /* One `name: Type [= default]` field of a type, pushed on the scratch stack. */
 MS_NODISCARD static bool type_field(Parser *p) {
   MsToken fname = {0};
-  if (!parse_need_token(p, MS_T_Name, &fname))
-    return false;
-  if (!parse_need_name_colon(p, fname))
+  if (!parse_member_name(p, &fname))
     return false;
   MsTypeRef *ty = NULL;
-  if (!parse_typ(p, &ty))
+  if (!parse_name_type(p, fname, &ty))
     return false;
   MsExpr *def = NULL;
   if (parse_take(p, MS_T_Assign)) {
@@ -443,7 +444,7 @@ MS_NODISCARD bool parse_finish_declaration(Parser *p, MsToken token, MsName name
   if (token.kind == MS_T_Enum && count == 0) {
     parse_fail(
         p, token,
-        ms_span_of_text("an enum must declare at least one variant; add 'Name' or 'Name(field: Type)'"));
+        ms_span_of_text("an enum must declare at least one variant; add 'Name' or 'Name(field Type)'"));
     return false;
   }
   MsDecl *d = NULL;
@@ -476,7 +477,7 @@ MS_NODISCARD bool parse_declaration_body_start(Parser *p, MsToken token) {
     parse_fail(
         p, parse_peek(p),
         ms_span_of_text(
-            "an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'"));
+            "an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field Type)'"));
     return false;
   }
   if (!parse_need(p, MS_T_Newline))

@@ -2,9 +2,9 @@
 // conform: phase=check
 // A borrowed parameter handed to a record constructor is copied unless the source says `.clone()` or the parameter is `move`.
 type Box:
-    items: List[Int]
+    items List[Int]
 
-fn wrap(xs: List[Int]) Box:
+fn wrap(xs List[Int]) Box:
     return Box(xs)
 
 fn main() Void:

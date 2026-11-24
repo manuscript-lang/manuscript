@@ -16,39 +16,39 @@ import (
 // A recorded fixture: a single .ms file (with an optional support/ directory beside it)
 // or a project directory.
 export type Fixture:
-	id: String
-	phase: String
-	path: String
-	is_dir: Bool
-	entry: String
-	args: List[String]
-	stdin: Bytes
-	timeout: Int
-	tags: List[String]
-	deterministic: Bool
-	sidecar: String
-	expected: JsonValue
+	id String
+	phase String
+	path String
+	is_dir Bool
+	entry String
+	args List[String]
+	stdin Bytes
+	timeout Int
+	tags List[String]
+	deterministic Bool
+	sidecar String
+	expected JsonValue
 
 // The `// conform:` header of a fixture.
 export type Meta:
-	tags: List[String]
-	phase: String
-	args: List[String]
-	timeout: Int
-	entry: String
-	origin: String
-	deterministic: Bool
+	tags List[String]
+	phase String
+	args List[String]
+	timeout Int
+	entry String
+	origin String
+	deterministic Bool
 
-export fn text_of(data: Bytes) String:
+export fn text_of(data Bytes) String:
 	return (data.decode_utf8() or "").clone()
 
-export fn string_member(value: JsonValue, key: String) String:
+export fn string_member(value JsonValue, key String) String:
 	found := value.get(key)
 	if found != null: return found.as_string() or ""
 
 	return ""
 
-export fn parent_length(path: String) Int:
+export fn parent_length(path String) Int:
 	var at = path.length()
 
 	while at > 0:
@@ -61,7 +61,7 @@ export fn parent_length(path: String) Int:
 
 // The header lines of `text`: `// conform: key=value`, up to the first line that is not
 // a comment or blank.
-export fn parse_meta(text: String) Meta:
+export fn parse_meta(text String) Meta:
 	var meta = Meta(
 		tags: [],
 		phase: "",
@@ -103,20 +103,20 @@ export fn parse_meta(text: String) Meta:
 
 	return meta
 
-export fn selected(id: String, filters: List[String]) Bool:
+export fn selected(id String, filters List[String]) Bool:
 	if filters.is_empty(): return true
 
 	for filter in filters:
 		if id.contains(filter): return true
 	return false
 
-export fn read_text(path: String) String:
+export fn read_text(path String) String:
 	return text_of(read_file(path).wait().get_or("".to_bytes()))
 
 // The recorded fixtures of `phase` under `root`, in id order. A directory named
 // `support` holds shared files, not fixtures, and nothing below a project directory is
 // a fixture.
-export fn fixtures(root: String, phase: String, filters: List[String]) List[Fixture]:
+export fn fixtures(root String, phase String, filters List[String]) List[Fixture]:
 	var found = List[Fixture]()
 	var projects = List[String]()
 	for entry in glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]):
@@ -195,14 +195,14 @@ export fn fixtures(root: String, phase: String, filters: List[String]) List[Fixt
 
 // True when `id` names something below a project directory (ids and `projects` entries
 // are `/`-separated, each project ending in `/`).
-export fn under_project(id: String, projects: List[String]) Bool:
+export fn under_project(id String, projects List[String]) Bool:
 	for project in projects:
 		if project != "" and id.starts_with(project): return true
 	return false
 
 // Copies the fixture's inputs into `work`: a project directory without its harness
 // files, or a single file with the support/ directory beside it.
-export fn materialize(fx: Fixture, work: String) Void:
+export fn materialize(fx Fixture, work String) Void:
 	if fx.is_dir:
 		copy(fx.path.clone(), work.clone(), CopyOptions(recursive: true, replace: true)).get()
 		for name in ["conform.meta", "expected.json", "conform.stdin"]:
@@ -216,7 +216,7 @@ export fn materialize(fx: Fixture, work: String) Void:
 		copy(support, f"{work}/support", CopyOptions(recursive: true, replace: true)).get()
 
 // The `// conform:` header lines of `meta`, as `parse_meta` reads them.
-export fn render_meta(meta: Meta) String:
+export fn render_meta(meta Meta) String:
 	var out = f"// conform: tags={meta.tags.join(",")}\n"
 	if meta.phase != "": out += f"// conform: phase={meta.phase}\n"
 	if meta.origin != "": out += f"// conform: origin={meta.origin}\n"
@@ -234,7 +234,7 @@ export fn render_meta(meta: Meta) String:
 // The ids of every fixture under `root`, whatever its phase header says: a `.ms` file
 // outside
 // `support/` directories and outside project directories, or a project directory.
-export fn candidate_ids(root: String) List[String]:
+export fn candidate_ids(root String) List[String]:
 	var projects = List[String]()
 	for entry in glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]):
 		projects.append(

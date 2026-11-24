@@ -3,25 +3,25 @@
 // conform: origin=perf: sorting with a named comparator is compiled with the program; results must match the runtime sort, including for inconsistent comparators
 import stdout from "@std/io/io.ms"
 
-fn up(left: Int, right: Int) Int:
+fn up(left Int, right Int) Int:
 	if left < right: return -1
 	if left > right: return 1
 
 	return 0
 
-fn down(left: Int, right: Int) Int:
+fn down(left Int, right Int) Int:
 	return right - left
 
-fn fup(left: Float, right: Float) Int:
+fn fup(left Float, right Float) Int:
 	if left < right: return -1
 	if left > right: return 1
 
 	return 0
 
-fn bad(left: Int, right: Int) Int:
+fn bad(left Int, right Int) Int:
 	return 1
 
-fn mod3(left: Int, right: Int) Int:
+fn mod3(left Int, right Int) Int:
 	return left % 3 - right % 3
 
 fn main_run() Int:
@@ -30,8 +30,8 @@ fn main_run() Int:
 	var n = 0
 
 	while n < 200:
-		var v: List[Int] = []
-		var f: List[Float] = []
+		var v List[Int] = []
+		var f List[Float] = []
 		var i = 0
 
 		while i < n:

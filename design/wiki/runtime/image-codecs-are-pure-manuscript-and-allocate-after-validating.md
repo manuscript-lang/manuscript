@@ -2,7 +2,7 @@
 
 # Image codecs are pure Manuscript and allocate only after validating the header
 
-Decision: `@std/image/image.ms` (types, transforms, format dispatch) and the codec modules `ppm.ms`, `bmp.ms`, `png.ms`, `jpeg.ms`, `jpeg_encode.ms` implement PNG, JPEG, BMP and PPM in Manuscript on top of `Bytes`, `BytesBuilder`, `archive.ms` zlib and `checksum.ms` crc32; no Rust and no crate. Limits stay optional (`max_pixels: Int? = none`).
+Decision: `@std/image/image.ms` (types, transforms, format dispatch) and the codec modules `ppm.ms`, `bmp.ms`, `png.ms`, `jpeg.ms`, `jpeg_encode.ms` implement PNG, JPEG, BMP and PPM in Manuscript on top of `Bytes`, `BytesBuilder`, `archive.ms` zlib and `checksum.ms` crc32; no Rust and no crate. Limits stay optional (`max_pixels Int? = none`).
 
 Verified: a decoder compares the header's implied size with the real input before it allocates (PPM/BMP raster length, PNG inflate budget equal to the header-implied size, JPEG blocks per scan at most 8 bits of remaining data), rejects oversized dimensions at the header (PNG at IHDR), and returns `EBADMSG`, `ENOTSUP` or `EOVERFLOW`. Mutation fuzzing (`image-fuzz.ms`, 15k inputs, PNG CRCs repaired so mutations get past the gate) found no faults; hostile-header cases are fixed tests. JPEG output stays within 2 levels of libjpeg, which needs libjpeg's triangle ("fancy") chroma upsampling, not replication (error 29 without it).
 

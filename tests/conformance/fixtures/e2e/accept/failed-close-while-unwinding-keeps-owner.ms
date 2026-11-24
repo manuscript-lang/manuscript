@@ -12,26 +12,26 @@ import (
 // part exactly
 // once: the optional that holds the failing resource is whole again when the fault starts.
 type Item:
-	id: Int
-	log: String
-	fail: Bool
+	id Int
+	log String
+	fail Bool
 
 fn move Item.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("close failed"))
 
-fn events(log: String) String!:
+fn events(log String) String!:
 	bytes := read_file(log).wait()?
 	return ok(bytes.decode_utf8() or "")
 
-fn deque_then_fault(log: String) Void:
+fn deque_then_fault(log String) Void:
 	var queue = Deque[Item]()
 	queue.push_back(Item(1, log.clone(), true))
 	queue.push_back(Item(2, log.clone(), false))
 	panic("body fault")
 
-fn list_then_fault(move log: String) Void:
-	var items: List[Item?] = [
+fn list_then_fault(move log String) Void:
+	var items List[Item?] = [
 		Item(1, log.clone(), true),
 		null,
 		Item(2, log.clone(), false),

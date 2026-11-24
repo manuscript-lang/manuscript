@@ -5,7 +5,7 @@ import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 import stderr from "@std/io/io.ms"
 
-fn write_line(text: String) Void!:
+fn write_line(text String) Void!:
     stdout().write(f"{text}\n")?
 
 fn exercise() Int!:

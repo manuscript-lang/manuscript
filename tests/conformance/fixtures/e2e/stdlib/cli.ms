@@ -11,13 +11,13 @@ import (
 )
 
 type ServeOptions:
-	port: Int
-	mode: String
-	root: String
-	verbose: Bool
-	tags: List[String]
+	port Int
+	mode String
+	root String
+	verbose Bool
+	tags List[String]
 
-fn serve(options: ServeOptions) Int!:
+fn serve(options ServeOptions) Int!:
 	return ok(options.port)
 
 fn common_flags() List[Flag]:
@@ -50,10 +50,10 @@ fn serve_command() Command:
 	)
 
 type AddOptions:
-	name: String
-	extra: List[String]
-	dry_run: Bool
-	url: String?
+	name String
+	extra List[String]
+	dry_run Bool
+	url String?
 
 fn remote_group() Command:
 	add := command[AddOptions](
@@ -80,7 +80,7 @@ fn app() Command:
 		children: [serve_command(), remote_group()],
 	)
 
-fn run(argv: List[String]) Matches!:
+fn run(argv List[String]) Matches!:
 	parsed := app().parse(argv)
 	if parsed.is_error(): return error(parsed.err().clone())
 
@@ -88,7 +88,7 @@ fn run(argv: List[String]) Matches!:
 		Run(matches): return ok(matches.clone())
 		Help(text): return ok(Matches(path: [text.clone()]))
 
-fn failure(argv: List[String]) String!:
+fn failure(argv List[String]) String!:
 	result := app().parse(argv)
 	if result.is_ok(): return error(Error("accepted", kind: "EIO"))
 
@@ -242,7 +242,7 @@ test "schema mistakes are reported before parsing":
 		)?
 	)
 
-fn handled(argv: List[String]) Int!:
+fn handled(argv List[String]) Int!:
 	tool := app()
 	parsed := tool.parse(argv)
 	if parsed.is_error(): return error(parsed.err().clone())

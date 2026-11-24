@@ -19,7 +19,7 @@ Making `slice` itself return a borrow would reject every program that stores its
 ## Design
 
 ```manuscript
-fn count_a(text: String) Int:
+fn count_a(text String) Int:
     head := text.view(0, 4)      // borrows `text`, nothing allocated
     var n = 0
     for c in head.scalar_values():

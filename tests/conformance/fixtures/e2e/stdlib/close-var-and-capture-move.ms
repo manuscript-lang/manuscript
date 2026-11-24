@@ -4,7 +4,7 @@
 import Closeable from "@std/core.ms"
 
 type Door:
-    name: String
+    name String
 
 fn move Door.close() Void!:
     print(f"closed {self.name}")
@@ -12,10 +12,10 @@ fn move Door.close() Void!:
 fn Door.id() Int:
     return 1
 
-fn open_handle(name: String) Door:
+fn open_handle(name String) Door:
     return Door(name.clone())
 
-fn consume(d: Door) Int:
+fn consume(d Door) Int:
     owned := d
     return owned.id()
 
@@ -23,7 +23,7 @@ fn var_unmoved() Int:
     var h = open_handle("var-unmoved")
     return h.id()
 
-fn var_moved(c: Bool) Int:
+fn var_moved(c Bool) Int:
     var h = open_handle("var-moved")
     if c:
         return consume(h)
@@ -35,7 +35,7 @@ fn var_reassign() Int:
     h = open_handle("var-new")
     return h.id()
 
-fn var_move_reassign(c: Bool) Int:
+fn var_move_reassign(c Bool) Int:
     var h = open_handle("var-first")
 
     if c:
@@ -44,7 +44,7 @@ fn var_move_reassign(c: Bool) Int:
 
     return h.id()
 
-fn captured(c: Bool) fn() Int:
+fn captured(c Bool) fn() Int:
     h := open_handle("captured")
     if c:
         return fn: h.id()

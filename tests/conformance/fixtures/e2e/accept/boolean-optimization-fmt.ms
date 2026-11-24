@@ -4,17 +4,17 @@
 import expect_false from "@std/test/test.ms"
 
 type Counter:
-    calls: Int
+    calls Int
 
-fn touch(var counter: Counter) Bool:
+fn touch(var counter Counter) Bool:
     counter.calls = counter.calls + 1
     return true
 
-fn unexpected(var counter: Counter) Bool:
+fn unexpected(var counter Counter) Bool:
     counter.calls = counter.calls + 1
     return false
 
-fn defaulted(flag: Bool = not (false or false)) Bool:
+fn defaulted(flag Bool = not (false or false)) Bool:
     return flag
 
 test "boolean optimization preserves source evaluation order":

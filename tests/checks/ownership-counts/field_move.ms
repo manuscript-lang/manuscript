@@ -10,35 +10,35 @@
 import stdout from "@std/io/io.ms"
 
 type Big:
-	name: String
-	items: List[Int]
+	name String
+	items List[Int]
 
 type Wrap:
-	inner: Big
-	tag: Int
+	inner Big
+	tag Int
 
-fn items_of(b: Big) List[Int]:
+fn items_of(b Big) List[Int]:
 	return b.items
 
-fn size(xs: List[Int]) Int:
+fn size(xs List[Int]) Int:
 	ys := xs
 	return ys.length()
 
-fn both(b: Big) Int:
+fn both(b Big) Int:
 	n := size(b.items)
 	return n + b.name.length()
 
-fn branch(b: Big, flag: Bool) Int:
+fn branch(b Big, flag Bool) Int:
 	if flag: return size(b.items)
 	return b.name.length() + b.items.length()
 
-fn reinit(b: Big) Int:
+fn reinit(b Big) Int:
 	var c = b
 	n := size(c.items)
 	c.items = [n, n]
 	return c.items.length()
 
-fn nested(w: Wrap) List[Int]:
+fn nested(w Wrap) List[Int]:
 	return w.inner.items
 
 fn main() Void:

@@ -3,19 +3,19 @@
 import expect_equal from "@std/test/test.ms"
 
 type Pt:
-	ok: Bool
-	tiny: Int8
-	wide: UInt16
+	ok Bool
+	tiny Int8
+	wide UInt16
 
 // A self-containing enum keeps its payload in a heap block whose slots are as wide as
 // their values, so a read must sign- or zero-extend exactly its own slot and a release
 // build must accept narrow integers and Float32.
 enum Chain:
 	End
-	Link(next: Chain, small: Int8, mid: Int32, flag: UInt8, half: Float32)
-	At(next: Chain, point: Pt)
+	Link(next Chain, small Int8, mid Int32, flag UInt8, half Float32)
+	At(next Chain, point Pt)
 
-fn total(c: Chain) Int:
+fn total(c Chain) Int:
 	match c:
 		End:
 			return 0

@@ -3,20 +3,20 @@
 import expect_equal from "@std/test/test.ms"
 
 type Log:
-	lines: List[String]
+	lines List[String]
 
 type Gate:
-	name: String
-	log: Log
+	name String
+	log Log
 
 fn move Gate.close() Void!:
 	print(f"close {self.name}")
 
 type Pair:
-	first: Gate
-	second: Gate
+	first Gate
+	second Gate
 
-fn shut(move gate: Gate) Void!:
+fn shut(move gate Gate) Void!:
 	return gate.close()
 
 fn once() Void!:

@@ -24,7 +24,7 @@ test "sorted output is ordered":
         fn xs: expect_true(is_ordered(insertion_sort(xs)))
     )?
 
-fn is_ordered(xs: List[Int]) Bool:
+fn is_ordered(xs List[Int]) Bool:
     for i in 1..xs.length():
         if xs[i - 1] > xs[i]:
             return false

@@ -4,10 +4,10 @@
 import expect_equal, expect_not_equal from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
 
-fn quotient(value: Int, divisor: Int) Int:
+fn quotient(value Int, divisor Int) Int:
     return value / divisor
 
-fn remainder(value: Int, divisor: Int) Int:
+fn remainder(value Int, divisor Int) Int:
     return value % divisor
 
 test "numeric boundary rules":
@@ -23,6 +23,6 @@ test "numeric boundary rules":
     third := 1d / 3d
     expect_equal(f"{third}", "0.3333333333333333333333333333333333")?
 
-    absent: Int? := null
+    absent Int? := null
     expect_equal(1e300.truncate_to_int(), absent)?
     expect_equal(2.seconds().add(1.seconds()), 3.seconds())?

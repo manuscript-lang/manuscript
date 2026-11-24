@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 // A recursive function that passes its closure parameter on gets a private copy for a known closure.
-fn count_matches(items: List[Int], lo: Int, hi: Int, keep: fn(Int) Bool) Int:
+fn count_matches(items List[Int], lo Int, hi Int, keep fn(Int) Bool) Int:
 	if hi - lo == 0: return 0
 	if hi - lo == 1:
 		if keep(items.get(lo)): return 1

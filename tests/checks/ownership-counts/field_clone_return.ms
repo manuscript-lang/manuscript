@@ -3,10 +3,10 @@
 // Today a field of an owned record leaves only by a deep copy. The partial-move stage
 // should lower both counts.
 type Big:
-	name: String
-	items: List[Int]
+	name String
+	items List[Int]
 
-fn take(b: Big) List[Int]:
+fn take(b Big) List[Int]:
 	return b.items.clone()
 
 export fn main() Int:

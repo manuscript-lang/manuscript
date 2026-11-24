@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f[T](a: T) T:\n\treturn a.foo()\n"
+    "fmt": "fn f[T](a T) T:\n\treturn a.foo()\n"
   }
 }

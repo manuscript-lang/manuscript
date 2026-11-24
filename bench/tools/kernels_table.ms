@@ -5,7 +5,7 @@
 // rather than used in ratios.
 import invalid, minimum from "./lib.ms"
 
-export fn suite_names(suite: String) List[String]:
+export fn suite_names(suite String) List[String]:
 	if suite == "kernels": return [
 		"sieve_5M", "nbody_200k", "life_128x128_50", "matmul_200", "trees_d16_x20",
 		"collatz_1M", "map_count_2M", "mandel_400", "particles_1k_5k", "vm_5M",
@@ -26,27 +26,27 @@ export fn c_versions() List[String]:
 // Kernels a version does not implement. Plain C has no map_count: a hand-rolled int64
 // open-addressing table is not a like-for-like comparison with the general
 // insertion-ordered `Map`.
-export fn omitted(version: String) List[String]:
+export fn omitted(version String) List[String]:
 	if version == "c": return ["map_count_2M"]
 	return []
 
 export fn ablations() List[String]:
 	return ["c-ms-no-poll", "c-ms-no-overflow", "c-ms-no-bounds", "c-ms-unchecked"]
 
-fn ratio(num: Float, den: Float) String:
+fn ratio(num Float, den Float) String:
 	low := if num < den: num else: den
 	if low < 2.0: return "folded"
 
 	return (num / den).to_fixed(2) + "x"
 
-fn same(a: List[String], b: List[String]) Bool:
+fn same(a List[String], b List[String]) Bool:
 	return a == b
 
 export fn summarize(
-	lines: List[String],
-	suite: String,
-	repeats: Int,
-	versions: List[String],
+	lines List[String],
+	suite String,
+	repeats Int,
+	versions List[String],
 ) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 

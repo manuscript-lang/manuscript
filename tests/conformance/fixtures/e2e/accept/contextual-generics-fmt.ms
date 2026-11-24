@@ -3,22 +3,22 @@
 // conform: origin=tests/e2e/testdata/accept/contextual-generics.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn fail[T](move message: String) T!Error: error(Error(message))
+fn fail[T](move message String) T!Error: error(Error(message))
 
-fn fail_cause[T, E](cause: E) T!E: error(cause)
+fn fail_cause[T, E](cause E) T!E: error(cause)
 
 fn absent[T]() T?: null
 
-fn identity[T](value: T) T: value
+fn identity[T](value T) T: value
 
-fn from_callback[T](factory: fn() T) T: factory()
+fn from_callback[T](factory fn() T) T: factory()
 
-fn transform[T, U](callback: fn(T) U) fn(T) U: callback
+fn transform[T, U](callback fn(T) U) fn(T) U: callback
 
 type Failure:
-	detail: String
+	detail String
 
-fn failure_error(cause: Failure) Error: Error(cause.detail.clone())
+fn failure_error(cause Failure) Error: Error(cause.detail.clone())
 
 fn first() List[Int]!Error: fail("empty")
 
@@ -26,21 +26,21 @@ fn failed() Int!: fail_cause(failure_error(Failure("domain")))
 
 fn forward[T]() T?: absent()
 
-fn consume(value: Int?) Int: value or 0
+fn consume(value Int?) Int: value or 0
 
 type Events:
-	values: List[Int]
+	values List[Int]
 
-fn record[T](var events: Events, value: Int) T?:
+fn record[T](var events Events, value Int) T?:
 	events.values.append(value)
 	return null
 
-fn combine[T](var events: Events, first: T?, second: T?) T?:
+fn combine[T](var events Events, first T?, second T?) T?:
 	events.values.append(3)
 	return first
 
 test "expected generic results preserve behavior and call order":
-	result: List[Int]!Error := first()
+	result List[Int]!Error := first()
 	expect_false(result.is_ok())?
 	expect_equal(result.err().message, "empty")?
 
@@ -48,22 +48,22 @@ test "expected generic results preserve behavior and call order":
 	expect_false(domain.is_ok())?
 	expect_equal(domain.err().message, "domain")?
 
-	empty: Int? := forward()
+	empty Int? := forward()
 	expect_false(not (empty == null))?
 
-	values: List[Int?] := [1, 2].map(fn item: absent())
+	values List[Int?] := [1, 2].map(fn item: absent())
 	expect_equal(values.length(), 2)?
 	expect_false(not (values.get(0) == null))?
 
-	callback: fn(Int) String := transform(fn item: item.to_string())
+	callback fn(Int) String := transform(fn item: item.to_string())
 	expect_equal(callback(7), "7")?
 
-	defaulted: fn(Int) Int := from_callback(fn: fn(value: Int = 4): (value + 1))
+	defaulted fn(Int) Int := from_callback(fn: fn(value Int = 4): (value + 1))
 	expect_equal(defaulted(8), 9)?
 	expect_equal(consume(identity(5)), 5)?
 
 	var events = Events([])
-	combined: Int? := combine(
+	combined Int? := combine(
 		events,
 		second: record(events, 2),
 		first: record(events, 1),

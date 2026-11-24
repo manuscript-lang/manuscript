@@ -5,16 +5,16 @@
 import panic from "@std/core.ms"
 
 type Handle:
-	id: Int
-	note: String
+	id Int
+	note String
 
 fn move Handle.close() Void!:
 	print(f"close {self.id}")
 
-fn take(move o: Handle?) Handle:
+fn take(move o Handle?) Handle:
 	return o or panic("called Optional.get() on null")
 
-fn first[T](move value: T?) T:
+fn first[T](move value T?) T:
 	return value or panic("called Optional.get() on null")
 
 fn main() Void:

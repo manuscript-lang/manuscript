@@ -6,22 +6,22 @@ import (
 )
 
 type Gate:
-	name: String
-	fails: Bool
+	name String
+	fails Bool
 
 fn move Gate.close() Void!:
 	if self.fails: return error(Error(f"close {self.name}"))
 
-fn use_gate(fails: Bool) Result[Int, Error]:
+fn use_gate(fails Bool) Result[Int, Error]:
 	_gate := Gate("a", fails)
 	return ok(7)
 
-fn nested(outer: Bool, inner: Bool) Result[Int, Error]:
+fn nested(outer Bool, inner Bool) Result[Int, Error]:
 	_first := Gate("first", outer)
 	_second := Gate("second", inner)
 	return ok(1)
 
-fn explicit(fails: Bool) Result[Int, Error]:
+fn explicit(fails Bool) Result[Int, Error]:
 	var gate = Gate("explicit", fails)
 	gate.close()?
 	return ok(3)
@@ -63,13 +63,13 @@ test "leaving a loop with break closes and returns the error":
 	expect_equal(failure.message, "close loop")?
 
 type Holder:
-	gate: Gate
+	gate Gate
 
-fn plain(fails: Bool) Int:
+fn plain(fails Bool) Int:
 	_gate := Gate("plain", fails)
 	return 1
 
-fn hold(fails: Bool) Int:
+fn hold(fails Bool) Int:
 	_holder := Holder(Gate("held", fails))
 	return 2
 

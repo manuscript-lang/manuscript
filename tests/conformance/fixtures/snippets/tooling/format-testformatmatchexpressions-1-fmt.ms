@@ -1,7 +1,7 @@
 // conform: tags=formatter,lists,match,optional,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/format/format_match_test.go:11 TestFormatMatchExpressions
-fn read(values: List[Int]) Int:
+fn read(values List[Int]) Int:
     result := match values.first():
         number:
             doubled := number * 2

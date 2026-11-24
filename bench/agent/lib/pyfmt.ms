@@ -4,7 +4,7 @@ import round from "@std/math/math.ms"
 
 // Drops trailing zeros after a decimal point, and the point itself when nothing follows
 // it.
-fn strip_zeros(text: String) String:
+fn strip_zeros(text String) String:
 	if not text.contains("."): return text.clone()
 
 	var out = text.clone()
@@ -14,7 +14,7 @@ fn strip_zeros(text: String) String:
 
 // `format(x, ".{places}f")`. CPython rounds the exact binary value, and an exact tie goes to the even digit,
 // where `to_fixed` rounds it up.
-export fn fixed(x: Float, places: Int) String:
+export fn fixed(x Float, places Int) String:
 	wide := x.abs().to_fixed(places + 30)
 	at := wide.index_of(".") or wide.length()
 	cut := at + 1 + places
@@ -34,7 +34,7 @@ export fn fixed(x: Float, places: Int) String:
 	return if x < 0.0: "-" + kept else: kept
 
 // `format(x, ".{digits}g")`.
-export fn fmt_g(x: Float, digits: Int) String:
+export fn fmt_g(x Float, digits Int) String:
 	if x == 0.0: return "0"
 
 	sci := x.abs().to_exponential(digits - 1)
@@ -49,11 +49,11 @@ export fn fmt_g(x: Float, digits: Int) String:
 	return strip_zeros(fixed(x, digits - 1 - exp))
 
 // `format(x, ".0%")`.
-export fn pct0(x: Float) String: fixed(x * 100.0, 0) + "%"
+export fn pct0(x Float) String: fixed(x * 100.0, 0) + "%"
 
 // The mean of values that carry at most `scale`-ths of precision (wall times to 0.1 s
 // use 10.0), computed from exact integer sums so the result is the correctly rounded
 // quotient, as CPython's `statistics.mean` gives.
-export fn mean_scaled(values: List[Float], scale: Float) Float:
+export fn mean_scaled(values List[Float], scale Float) Float:
 	total := values.map(fn v: round(v * scale).truncate_to_int() or 0).sum()
 	return total.to_float() / (values.length().to_float() * scale)

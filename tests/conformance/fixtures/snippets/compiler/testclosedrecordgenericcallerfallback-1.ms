@@ -1,7 +1,7 @@
 // conform: tags=control-flow,diagnostics,generics,mutation,strings,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/record_bounds_test.go:102 TestClosedRecordGenericCallerFallback
-fn count[T](value: T) Int:
+fn count[T](value T) Int:
     cell := Cell(0)
     var i = 0
 

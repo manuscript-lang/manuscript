@@ -15,7 +15,7 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn route(request: HttpRequest) HttpResponse:
+fn route(request HttpRequest) HttpResponse:
 	if request.path == "/big":
 		return HttpResponse(
 			status: 200,
@@ -24,7 +24,7 @@ fn route(request: HttpRequest) HttpResponse:
 		)
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
-fn get(address: String, path: String) String!:
+fn get(address String, path String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	send(client, f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")?
 
@@ -49,7 +49,7 @@ test "a response over the limit fails its request and the server answers the nex
 		small := get(server.address(), "/small")?
 		if not small.starts_with("HTTP/1.1 200"): return error(Error(f"after: {small}"))
 
-fn hanging(var exchange: HttpExchange) Void!:
+fn hanging(var exchange HttpExchange) Void!:
 	sleep(30.seconds()).wait()?
 
 test "closing in the turn a request task was started ends it and returns":

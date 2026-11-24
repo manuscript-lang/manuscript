@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-Usage: ms <command> [arguments] [options]
+Usage ms <command> [arguments] [options]
        ms help [command]
 
 Manuscript checks, builds, and runs .ms source and ms.toml projects.

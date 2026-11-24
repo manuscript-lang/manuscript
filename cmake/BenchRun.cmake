@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
 file(WRITE "${WORK}/sum_bench.ms" "type Input:
-    count: Int
+    count Int
 
 fn make_fixture() Input:
     return Input(count: 1000)

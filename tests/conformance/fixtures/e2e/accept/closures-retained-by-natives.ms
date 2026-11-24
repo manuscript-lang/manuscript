@@ -3,9 +3,9 @@
 import expect_equal from "@std/test/test.ms"
 
 type Box:
-	f: fn() String
+	f fn() String
 
-fn churn(n: Int) Int:
+fn churn(n Int) Int:
 	var t = 0
 
 	for i in 0..n:
@@ -14,21 +14,21 @@ fn churn(n: Int) Int:
 
 	return t
 
-fn dflt(move s: String, move o: (fn() String)?) fn() String:
+fn dflt(move s String, move o (fn() String)?) fn() String:
 	return o or (fn: s + "d")
 
-fn mk(move s: String, move o: (fn() String)?) Box:
+fn mk(move s String, move o (fn() String)?) Box:
 	h := o or (fn: s + "x")
 	return Box(f: h)
 
-fn mk2(m: Map[Int, fn() String], move s: String) List[fn() String]:
+fn mk2(m Map[Int, fn() String], move s String) List[fn() String]:
 	var out = List[fn() String]()
 	if m.get(7) == null: out.append(fn: s + "y")
 	return out
 
-fn inc(x: Int) Int: x + 1
+fn inc(x Int) Int: x + 1
 
-fn build(move r: fn(Int) Int) List[fn(Int) Int]:
+fn build(move r fn(Int) Int) List[fn(Int) Int]:
 	var out = List[fn(Int) Int]()
 
 	// A stored function value has one owner: each closure a callback appends is its
@@ -52,7 +52,7 @@ test "closures kept by natives own their captures":
 	expect_equal(fs.length(), 3)?
 	expect_equal(fs[2](1), 2)?
 
-fn keep(move r: fn(Int) Int) List[fn(Int) Int]:
+fn keep(move r fn(Int) Int) List[fn(Int) Int]:
 	var out = List[fn(Int) Int]()
 	out.append(r)
 	return out

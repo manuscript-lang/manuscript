@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 type Named:
-	name: String
+	name String
 
 test "optional string keys hash and compare":
 	var m = Map[String?, Int]()

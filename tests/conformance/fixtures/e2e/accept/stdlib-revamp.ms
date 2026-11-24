@@ -8,15 +8,15 @@ import (
 )
 
 type Key:
-	id: Int
-	label: String
+	id Int
+	label String
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
 fn Key.hash() Int: self.id
 
-fn Key.compare(other: Key) Int:
+fn Key.compare(other Key) Int:
 	return self.id - other.id
 
 test "domain equality and hashing select interfaces":
@@ -32,7 +32,7 @@ test "domain equality and hashing select interfaces":
 	expect_equal(values.get(a), "b")?
 	expect_false(not ([a.clone()].contains(b)))?
 
-	view: Equal := a
+	view Equal := a
 	expect_false(not (view.equals(b)))?
 
 test "stable priority queue and optional capacity":

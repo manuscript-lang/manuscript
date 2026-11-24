@@ -7,13 +7,13 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
@@ -25,9 +25,9 @@ test "a list moved on one path closes on the path that keeps it":
 	block(log.clone(), 1)
 	logged(log.clone()) | expect_equal("1,")?
 
-fn block(log: String, id: Int) Void:
+fn block(log String, id Int) Void:
 	doors := [Door(id, log.clone())]
-	var moved: List[Door]? = null
+	var moved List[Door]? = null
 	if doors.is_empty():
 		moved = doors
 	if moved != null: return
@@ -38,15 +38,15 @@ test "an optional resource reassigned after a conditional move closes the new va
 	reassign(log.clone())
 	logged(log.clone()) | expect_equal("1,2,")?
 
-fn reassign(log: String) Void:
-	var held: Door? = Door(1, log.clone())
+fn reassign(log String) Void:
+	var held Door? = Door(1, log.clone())
 	door := held
 	if door != null:
 		if door.id == 0: return
 	held = Door(2, log.clone())
 	if held == null: return
 
-fn walk(log: String, stop: Int) Void:
+fn walk(log String, stop Int) Void:
 	doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
 	var kept = List[Door]()
 
@@ -68,7 +68,7 @@ test "a break closes the elements the loop never reached":
 	walk(log.clone(), 1)
 	logged(log.clone()) | expect_equal("1,2,3,")?
 
-fn wrap(move door: Door, log: String) List[Door]:
+fn wrap(move door Door, log String) List[Door]:
 	var doors = [Door(9, log.clone())]
 	doors.append(door)
 	return doors
@@ -79,15 +79,15 @@ test "a binding built from a call that consumes a resource closes it":
 	block_wrap(log.clone())
 	logged(log.clone()) | expect_equal("1,9,")?
 
-fn block_wrap(log: String) Void:
+fn block_wrap(log String) Void:
 	made := wrap(Door(1, log.clone()), log.clone())
 	if made.is_empty(): return
 
 enum Shape:
-	Circle(door: Door)
+	Circle(door Door)
 	Empty
 
-fn shape(log: String) Shape:
+fn shape(log String) Shape:
 	return Shape.Circle(Door(5, log.clone()))
 
 test "a match on a temporary resource closes it when the match ends":

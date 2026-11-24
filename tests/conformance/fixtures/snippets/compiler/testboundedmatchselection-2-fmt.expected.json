@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn unknown(s: Shape) Int: return area(s)\n"
+    "fmt": "fn unknown(s Shape) Int: return area(s)\n"
   }
 }

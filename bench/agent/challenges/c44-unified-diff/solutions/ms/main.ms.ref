@@ -2,12 +2,12 @@ import stdin from "@std/io/io.ms"
 import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
-fn range_text(start: Int, len: Int) String:
+fn range_text(start Int, len Int) String:
     s := if len > 0: start + 1 else: start
     return if len == 1: f"{s}" else: f"{s},{len}"
 
 // Counts script lines in lo..hi that are not marked `skip`.
-fn count(script: List[String], lo: Int, hi: Int, skip: String) Int:
+fn count(script List[String], lo Int, hi Int, skip String) Int:
     return script.slice(lo, hi).get().count(fn l: not l.starts_with(skip))
 
 export fn main() Int:

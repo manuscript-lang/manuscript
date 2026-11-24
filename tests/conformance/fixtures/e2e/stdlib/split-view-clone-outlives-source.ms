@@ -10,7 +10,7 @@ import (
 // a
 // `for` loop must stay a copy even though the loop drops the piece right after, because the
 // source is freed when the function returns.
-fn identifiers(version: String) List[String]:
+fn identifiers(version String) List[String]:
 	parts := [version.view(0, 6).clone(), version.view(6, version.length()).clone()]
 	var found = List[String]()
 	for identifier in parts[1].split("."):
@@ -23,7 +23,7 @@ fn churn() Int:
 		total += f"scratch-{i}-allocation-that-reuses-freed-blocks".length()
 	return total
 
-fn check(rounds: Int) Int!:
+fn check(rounds Int) Int!:
 	var bad = 0
 
 	for i in 0..rounds:
@@ -42,7 +42,7 @@ fn check(rounds: Int) Int!:
 
 	return ok(bad)
 
-fn spread(lo: Int, hi: Int) Int!:
+fn spread(lo Int, hi Int) Int!:
 	if hi - lo == 1: return check(50)
 
 	mid := (lo + hi) / 2

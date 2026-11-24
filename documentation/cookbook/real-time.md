@@ -17,7 +17,7 @@ import HttpExchange, upgrade from "@std/net/http.ms"
 import serve, web_socket from "@std/net/net.ms"
 import WebSocketKind, WebSocketMessage from "@std/net/websocket.ms"
 
-fn echo(var exchange: HttpExchange) Void!:
+fn echo(var exchange HttpExchange) Void!:
     var socket = upgrade(exchange)?
     message := socket.input.next()?
     if message == null: return ok()
@@ -51,7 +51,7 @@ import HttpExchange, HttpMethod, headers from "@std/net/http.ms"
 import http_client, serve from "@std/net/net.ms"
 import sse_events from "@std/net/sse.ms"
 
-fn ticker(var exchange: HttpExchange) Void!:
+fn ticker(var exchange HttpExchange) Void!:
     var sent = headers()
     sent.append("Content-Type", "text/event-stream")?
     exchange.send_headers(200, sent)?

@@ -31,6 +31,6 @@ test "module dirname and basename_without follow the host dialect":
     expect_equal(basename_without("dir/file.txt", ".md"), "file.txt")?
 
 test "glob matching rejects NUL in the path as it does in the pattern":
-    invalid: Bool! := error(Error("path: invalid input", kind: "EINVAL"))
+    invalid Bool! := error(Error("path: invalid input", kind: "EINVAL"))
     expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)?
     expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)?

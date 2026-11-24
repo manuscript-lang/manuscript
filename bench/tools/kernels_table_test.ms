@@ -10,13 +10,13 @@ import (
 	Ran, must from "./lib.ms",
 )
 
-fn trial(version: String, suite: String, micros: Int) List[String]:
+fn trial(version String, suite String, micros Int) List[String]:
 	names := suite_names(suite).filter(fn n: not omitted(version).contains(n))
 	var lines = names.map(fn name: f"{version} {name} {micros} 1")
 	lines.append(f"{version} # end")
 	return lines
 
-fn trials(versions: List[String], suite: String, micros: Int) List[String]:
+fn trials(versions List[String], suite String, micros Int) List[String]:
 	var lines = List[String]()
 	for v in versions:
 		lines = lines.concat(trial(v, suite, micros))

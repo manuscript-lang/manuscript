@@ -19,9 +19,9 @@ import (
 	now, parse_timestamp from "@std/time.ms",
 )
 
-fn common_result[T](result: T!) T!: result
+fn common_result[T](result T!) T!: result
 
-fn exercise(path: String) Void!:
+fn exercise(path String) Void!:
 	_written := common_result(
 		result: write_file(path: path, data: "hello", replace: false).wait()
 	)?

@@ -30,22 +30,22 @@ export enum FetchBody:
 	// UTF-8 text, sent as `text/plain; charset=utf-8` unless a `Content-Type` is given.
 	Text(
 		// The text, sent as UTF-8 bytes.
-		value: String
+		value String
 	)
 	// Raw bytes, sent as `application/octet-stream` unless a `Content-Type` is given.
 	Raw(
 		// The bytes, sent unchanged; the value is cloned per request.
-		value: Bytes
+		value Bytes
 	)
 	// JSON text produced by `json_body`.
 	JsonText(
 		// The encoded JSON text, sent as UTF-8 bytes.
-		value: String
+		value String
 	)
 
 // Encodes `value` as a JSON request body, sent as `application/json` unless a
 // `Content-Type` is given.
-export fn json_body[T: Data](value: T) FetchBody!:
+export fn json_body[T Data](value T) FetchBody!:
 	text := stringify(value)?
 	return ok(FetchBody.JsonText(text))
 
@@ -54,30 +54,30 @@ export fn json_body[T: Data](value: T) FetchBody!:
 // that differ, as in `FetchOptions(method: HttpMethod.Post)`.
 export type FetchOptions:
 	// The request method; defaults to Get. Extension tokens use the Custom case.
-	method: HttpMethod = HttpMethod.Get
+	method HttpMethod = HttpMethod.Get
 	// Extra request headers; null sends no extra fields. The caller's headers are never
 	// modified.
-	headers: HttpHeaders?
+	headers HttpHeaders?
 	// The request body; defaults to Empty. A Text, Raw, or JSON body adds a
 	// `Content-Type` only when `headers` lacks one.
-	body: FetchBody = FetchBody.Empty
+	body FetchBody = FetchBody.Empty
 	// Whole-exchange deadline; null waits without limit.
-	timeout: Duration? = seconds(30)
+	timeout Duration? = seconds(30)
 	// Largest accepted response body in bytes; null sets no cap. Larger bodies return
 	// `EOVERFLOW`.
-	max_response_bytes: Int? = 16777216
+	max_response_bytes Int? = 16777216
 
 // Settings fixed when a `Fetcher` is created.
 export type FetcherOptions:
 	// Most redirects followed per request; 0 returns the redirect itself and null sets
 	// no cap.
-	max_redirects: Int? = 20
+	max_redirects Int? = 20
 	// Decode gzip responses, bounded by `max_response_bytes`.
-	decompress: Bool = true
+	decompress Bool = true
 	// Keep an in-memory cookie jar for the fetcher's lifetime.
-	cookies: Bool = false
+	cookies Bool = false
 	// TLS trust and client-certificate settings; add `h2` to `alpn` to allow HTTP/2.
-	tls: TlsOptions = TlsOptions(
+	tls TlsOptions = TlsOptions(
 		server_name: "",
 		roots_pem: "",
 		certificate_pem: "",
@@ -90,9 +90,9 @@ export type FetcherOptions:
 // reject them.
 export type FetchResponse:
 	// Status, headers, and protocol.
-	head: HttpResponseMetadata
+	head HttpResponseMetadata
 	// The complete body, within the request's `max_response_bytes`.
-	body: Bytes
+	body Bytes
 
 // Returns whether the status is 200 through 299.
 fn FetchResponse.ok() Bool:
@@ -107,7 +107,7 @@ fn FetchResponse.text() String!:
 
 // Decodes the body as JSON into `T`, as in `response.json[User]()?`; use
 // `JsonValue` for untyped data.
-fn FetchResponse.json[T: Data](ignore_unknown_fields: Bool = true) T!:
+fn FetchResponse.json[T Data](ignore_unknown_fields Bool = true) T!:
 	text := self.text()?
 	return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
 
@@ -128,14 +128,14 @@ fn FetchResponse.check_status() Void!:
 // it, or call `close` yourself.
 export type Fetcher:
 	// Internal state: the pooled HTTP client every request goes through.
-	client: HttpClient
+	client HttpClient
 
 // Starts the request and returns a promise of the response, whose body is buffered.
 // A `Raw` or `Text` body is resent on redirects that keep it. Requests started
 // together are in flight together.
 fn Fetcher.fetch(
-	url: String,
-	options: FetchOptions = FetchOptions(),
+	url String,
+	options FetchOptions = FetchOptions(),
 ) Promise[FetchResponse]:
 	native := msstd_http_client_share(self.client.native)
 	owned_url := url.clone()
@@ -147,10 +147,7 @@ fn Fetcher.fetch(
 
 // Sends the request and returns the response with its body as a stream. The default
 // `options.timeout` is a whole-exchange deadline, so set it to null for long streams.
-fn Fetcher.stream(
-	url: String,
-	options: FetchOptions = FetchOptions(),
-) StreamingResponse!:
+fn Fetcher.stream(url String, options FetchOptions = FetchOptions()) StreamingResponse!:
 	sent := outgoing(options)
 	return self.client.request(
 		options.method.clone(),
@@ -167,7 +164,7 @@ fn move Fetcher.close() Void!:
 	return self.client.close()
 
 // Reads the body to its end within the options' size limit, then closes it.
-fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchResponse!:
+fn drain(body RawResponse, options FetchOptions, started Instant) FetchResponse!:
 	open := body
 	metadata := open.metadata()
 	whole := (
@@ -182,29 +179,29 @@ fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchRespon
 
 // Maps a body read failure to a fetch error, reporting ETIMEDOUT once the deadline has
 // passed.
-fn read_failure(cause: Error, options: FetchOptions, started: Instant) Error:
+fn read_failure(cause Error, options FetchOptions, started Instant) Error:
 	if expired(started, options.timeout):
 		return Error("HTTP: operation timed out", kind: "ETIMEDOUT")
 	return cause.clone()
 
 type Outgoing:
-	headers: HttpHeaders
-	body: Bytes
+	headers HttpHeaders
+	body Bytes
 
-fn limit_exceeded(total: Int, limit: Int?) Bool:
+fn limit_exceeded(total Int, limit Int?) Bool:
 	max := limit
 	if max != null: return total > max
 
 	return false
 
-fn expired(started: Instant, timeout: Duration?) Bool:
+fn expired(started Instant, timeout Duration?) Bool:
 	limit := timeout
 	if limit != null: return monotonic().difference(started).compare(limit) >= 0
 
 	return false
 
 // Copies the caller's headers and adds a default `Content-Type` for the body.
-fn outgoing(options: FetchOptions) Outgoing:
+fn outgoing(options FetchOptions) Outgoing:
 	var fields = headers()
 	given := options.headers
 	if given != null:
@@ -233,8 +230,8 @@ fn outgoing(options: FetchOptions) Outgoing:
 // redirect; null uses the host network.
 // ms: effect std.net.connect
 export fn fetcher(
-	options: FetcherOptions = FetcherOptions(),
-	net: Network? = null,
+	options FetcherOptions = FetcherOptions(),
+	net Network? = null,
 ) Fetcher!:
 	settings := HttpClientOptions(
 		max_redirects: options.max_redirects,
@@ -258,8 +255,8 @@ export fn fetcher(
 // and other client settings, use a `Fetcher`.
 // ms: effect std.net.connect
 export fn fetch(
-	url: String,
-	options: FetchOptions = FetchOptions(),
+	url String,
+	options FetchOptions = FetchOptions(),
 ) Promise[FetchResponse]:
 	owned_url := url.clone()
 	owned_options := options.clone()
@@ -268,12 +265,12 @@ export fn fetch(
 		options: PromiseOptions(placement: Placement.Here)
 	)
 
-fn fetched(url: String, options: FetchOptions) FetchResponse!:
+fn fetched(url String, options FetchOptions) FetchResponse!:
 	client := fetcher()?
 	return sent(client.client.native, url, options)
 
 // Sends the request on the pooled client behind `native` and buffers the response body.
-fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:
+fn sent(native NativeHttpClient, url String, options FetchOptions) FetchResponse!:
 	started := monotonic()
 	outbound := outgoing(options.clone())
 	body := msstd_http_client_request_bytes(

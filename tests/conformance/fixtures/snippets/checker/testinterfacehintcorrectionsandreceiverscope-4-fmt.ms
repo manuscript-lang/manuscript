@@ -5,7 +5,7 @@ interface Named:
     fn name() String
 
 type E:
-    text: String
+    text String
 
 fn E.name() String: self.text.clone()
 

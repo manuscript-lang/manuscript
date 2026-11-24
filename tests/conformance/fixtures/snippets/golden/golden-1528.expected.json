@@ -14,7 +14,7 @@
           "file": "golden-1528.ms",
           "line": 20,
           "column": 27,
-          "offset": 416
+          "offset": 414
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "golden-1528.ms",
           "line": 22,
           "column": 33,
-          "offset": 472
+          "offset": 470
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "golden-1528.ms",
           "line": 25,
           "column": 21,
-          "offset": 549
+          "offset": 547
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "golden-1528.ms",
           "line": 27,
           "column": 29,
-          "offset": 599
+          "offset": 597
         }
       }
     ],

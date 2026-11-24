@@ -30,8 +30,8 @@
         "position": {
           "file": "golden-0118.ms",
           "line": 6,
-          "column": 25,
-          "offset": 144
+          "column": 24,
+          "offset": 143
         },
         "fix": {
           "position": {
@@ -68,7 +68,7 @@
           "file": "golden-0118.ms",
           "line": 9,
           "column": 12,
-          "offset": 218
+          "offset": 217
         },
         "fix": {
           "position": {
@@ -90,7 +90,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0118.ms:3:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0118.ms:6:25: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 6 |     _impossible: Int := panic(\"initializer cannot return\")\n   |                         ^\n<DIR>/golden-0118.ms:5:1: type: reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)\n   |\n 5 | fn failed_initializer() Never:\n   | ^\n<DIR>/golden-0118.ms:9:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 9 |     return panic(\"result cannot return\")\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0118.ms:3:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0118.ms:6:24: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 6 |     _impossible Int := panic(\"initializer cannot return\")\n   |                        ^\n<DIR>/golden-0118.ms:5:1: type: reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)\n   |\n 5 | fn failed_initializer() Never:\n   | ^\n<DIR>/golden-0118.ms:9:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 9 |     return panic(\"result cannot return\")\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

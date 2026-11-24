@@ -21,12 +21,12 @@ Proposal, 2026-11-23, written from issue #5404 (Chinmay, 2026-11-21: "nullabilit
 **`T?` means "a `T`, or `null`". There is one empty value and no layer to peel.**
 
 ```manuscript
-fn first_or_null(xs: List[Int?]) Int?:
+fn first_or_null(xs List[Int?]) Int?:
     return xs.first() or null
 
 fn main() Void:
-    a: Int? := 3
-    b: Int? := null
+    a Int? := 3
+    b Int? := null
     print(a != null)
     print(b == null)
 ```

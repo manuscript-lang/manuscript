@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn ring(slots: List[Int], start: Int, count: Int) Int:
+fn ring(slots List[Int], start Int, count Int) Int:
 	cap := slots.length()
 
 	if cap == 0 or start < 0:
@@ -15,7 +15,7 @@ fn ring(slots: List[Int], start: Int, count: Int) Int:
 
 	return total
 
-fn unguarded_ring(slots: List[Int], start: Int) Int:
+fn unguarded_ring(slots List[Int], start Int) Int:
 	cap := slots.length()
 
 	if cap == 0:
@@ -23,7 +23,7 @@ fn unguarded_ring(slots: List[Int], start: Int) Int:
 
 	return slots[start % cap]
 
-fn dot(a: List[Int], b: List[Int]) Int:
+fn dot(a List[Int], b List[Int]) Int:
 	n := a.length().min(b.length())
 	var total = 0
 
@@ -32,7 +32,7 @@ fn dot(a: List[Int], b: List[Int]) Int:
 
 	return total
 
-fn scan(values: List[Int]) Int:
+fn scan(values List[Int]) Int:
 	n := values.length()
 	var i = 0
 	var total = 0
@@ -59,7 +59,7 @@ test "a scan stops at a sentinel or the end":
 	expect_equal(scan([1, 2, 10, 4]), 3)?
 	expect_equal(scan([1, 2]), 3)?
 
-fn largest(values: List[Int]) Int:
+fn largest(values List[Int]) Int:
 	var best = 0
 
 	for i in 1..values.length():
@@ -72,8 +72,8 @@ test "an argmax index stays inside the list":
 	expect_equal(largest([3, 9, 2, 9]), 9)?
 	expect_equal(largest([7]), 7)?
 
-fn built_then_read(n: Int) Int:
-	var values: List[Int] = []
+fn built_then_read(n Int) Int:
+	var values List[Int] = []
 
 	for i in 0..n:
 		values.append(i * 2)
@@ -85,8 +85,8 @@ fn built_then_read(n: Int) Int:
 
 	return total
 
-fn filtered_then_read(n: Int) Int:
-	var values: List[Int] = []
+fn filtered_then_read(n Int) Int:
+	var values List[Int] = []
 
 	for i in 0..n:
 		if i % 2 == 0:

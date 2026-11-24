@@ -32,48 +32,48 @@ export enum Color:
 	// One of the 16 ANSI colors; values outside 0 to 15 are clamped.
 	Ansi(
 		// 0 to 7 normal colors, 8 to 15 bright colors.
-		index: Int
+		index Int
 	)
 	// An entry of the 256-color palette; values outside 0 to 255 are clamped, and
 	// terminals below 256 colors get the nearest of 16.
 	Indexed(
 		// 0 to 255 in the 256-color palette.
-		index: Int
+		index Int
 	)
 	// A 24-bit color; terminals with fewer than 16777216 colors get the nearest color
 	// they support.
 	Rgb(
 		// Red, 0 to 255.
-		red: Int,
+		red Int,
 		// Green, 0 to 255.
-		green: Int,
+		green Int,
 		// Blue, 0 to 255.
-		blue: Int
+		blue Int
 	)
 
 // Colors and attributes of a run of text.
 export type Style:
 	// Text color; `Color.Default` leaves the terminal's own foreground.
-	foreground: Color = Color.Default
+	foreground Color = Color.Default
 	// Background color; `Color.Default` leaves the terminal's own background.
-	background: Color = Color.Default
+	background Color = Color.Default
 	// Heavier weight when true; defaults to false.
-	bold: Bool = false
+	bold Bool = false
 	// Reduced intensity when true; defaults to false.
-	dim: Bool = false
+	dim Bool = false
 	// Slanted text when true; defaults to false.
-	italic: Bool = false
+	italic Bool = false
 	// Underlined text when true; defaults to false.
-	underline: Bool = false
+	underline Bool = false
 	// Swaps foreground and background when true; defaults to false.
-	reverse: Bool = false
+	reverse Bool = false
 	// Struck-through text when true; defaults to false.
-	strikethrough: Bool = false
+	strikethrough Bool = false
 
 esc := "\u{1b}"
 csi_final := "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 
-fn clamp(value: Int, low: Int, high: Int) Int:
+fn clamp(value Int, low Int, high Int) Int:
 	if value < low: return low
 	if value > high: return high
 
@@ -81,10 +81,10 @@ fn clamp(value: Int, low: Int, high: Int) Int:
 
 // The 256-color index nearest to an RGB color: the 6x6x6 cube or the gray ramp,
 // whichever is closer.
-fn rgb_to_indexed(red: Int, green: Int, blue: Int) Int:
+fn rgb_to_indexed(red Int, green Int, blue Int) Int:
 	levels := [0, 95, 135, 175, 215, 255]
 
-	fn nearest(value: Int) Int:
+	fn nearest(value Int) Int:
 		var best = 0
 		var i = 1
 
@@ -116,7 +116,7 @@ fn rgb_to_indexed(red: Int, green: Int, blue: Int) Int:
 	return cube
 
 // The 16-color index nearest to a 256-color palette index.
-fn indexed_to_ansi(index: Int) Int:
+fn indexed_to_ansi(index Int) Int:
 	if index < 16: return index
 
 	var red = 0
@@ -145,7 +145,7 @@ fn indexed_to_ansi(index: Int) Int:
 
 // The SGR parameters selecting `color`, `base` being 30 for foreground and 40 for
 // background.
-fn color_codes(color: Color, base: Int, colors: Int) String:
+fn color_codes(color Color, base Int, colors Int) String:
 	match color:
 		Default: return ""
 		Ansi(index):
@@ -168,7 +168,7 @@ fn color_codes(color: Color, base: Int, colors: Int) String:
 
 // The escape sequence that starts `style` for a terminal with `colors` colors, or ""
 // when it changes nothing.
-export fn style_start(style: Style, colors: Int) String:
+export fn style_start(style Style, colors Int) String:
 	if colors <= 0: return ""
 
 	var codes = List[String]()
@@ -189,7 +189,7 @@ export fn style_start(style: Style, colors: Int) String:
 
 // Wraps `text` in `style` and a reset. Returns `text` unchanged when `colors` is 0 or
 // the style is plain.
-export fn paint(text: String, style: Style, colors: Int) String:
+export fn paint(text String, style Style, colors Int) String:
 	start := style_start(style, colors)
 	if start.is_empty() or text.is_empty(): return text.clone()
 
@@ -197,7 +197,7 @@ export fn paint(text: String, style: Style, colors: Int) String:
 
 // Like `paint`, using the color count of the current terminal.
 // ms: effect std.console.read
-export fn styled(text: String, style: Style) String:
+export fn styled(text String, style Style) String:
 	return paint(text, style, terminal_capabilities().colors)
 
 fn escape_pattern() Regex:
@@ -207,22 +207,22 @@ fn escape_pattern() Regex:
 	return compile(pattern).get_or(null)
 
 // Removes escape sequences from `text`.
-export fn strip_ansi(text: String) String:
+export fn strip_ansi(text String) String:
 	if not text.contains(esc): return text.clone()
 	return escape_pattern().replace_all(text, "").get_or(text.clone())
 
 // The number of terminal columns `text` occupies, ignoring escape sequences. Any other
 // control character returns EBADMSG.
-export fn visible_width(text: String) Int!:
+export fn visible_width(text String) Int!:
 	return strip_ansi(text).display_width()
 
-fn char_width(c: String) Int:
+fn char_width(c String) Int:
 	return c.display_width().clone().get_or(1)
 
 // The index just past the escape sequence that starts at `at` in `cs`, or `at` when
 // what follows the escape character is not a complete sequence. The grammar is the one
 // `strip_ansi` removes: CSI, OSC ending in BEL or ST, and two-byte escapes.
-fn escape_end(cs: List[String], at: Int) Int:
+fn escape_end(cs List[String], at Int) Int:
 	count := cs.length()
 	if at + 1 >= count: return at
 
@@ -264,7 +264,7 @@ characters. Escape sequences stay with the text they style: a row that breaks in
 reset and the next row repeats the active color and style sequences. Other sequences, such as window titles
 and hyperlinks, are kept whole and count for no columns. A `width` below 1 is treated as 1.
 */
-export fn wrap_text(text: String, width: Int) List[String]:
+export fn wrap_text(text String, width Int) List[String]:
 	room := if width < 1: 1 else: width
 	var out = List[String]()
 
@@ -311,7 +311,7 @@ export fn wrap_text(text: String, width: Int) List[String]:
 
 // Cuts the single line `text` to at most `width` visible columns, keeping escape
 // sequences and ending a styled cut with a reset.
-export fn truncate_text(text: String, width: Int) String:
+export fn truncate_text(text String, width Int) String:
 	rows := wrap_text(text, width)
 	if rows.is_empty(): return ""
 

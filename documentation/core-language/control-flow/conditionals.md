@@ -11,7 +11,7 @@ Save this as `status.ms` and run `ms run status.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Active\nInactive\n"} -->
 ```manuscript
-fn status(active: Bool) String:
+fn status(active Bool) String:
     if active:
         return "Active"
     else:
@@ -31,7 +31,7 @@ A short branch can be one simple statement on the same line:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn status(active: Bool) String:
+fn status(active Bool) String:
     if active: return "Active"
     else: return "Inactive"
 ```
@@ -47,7 +47,7 @@ See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing i
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn classify(value: Int) String:
+fn classify(value Int) String:
     if value < 0:
         return "negative"
     else if value == 0:
@@ -64,7 +64,7 @@ fn classify(value: Int) String:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn sign(value: Int) Int:
+fn sign(value Int) Int:
     return if value < 0: -1 else if value == 0: 0 else: 1
 ```
 
@@ -76,7 +76,7 @@ The branches are one-line expressions on the same line. For statements in a bran
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn greeting(name: String?) String:
+fn greeting(name String?) String:
     if value := name:
         return "Hello, " + value
     else:
@@ -85,7 +85,7 @@ fn greeting(name: String?) String:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn port(lookup: Result[Int, Error]) Int:
+fn port(lookup Result[Int, Error]) Int:
     if value := lookup:
         return value
     return 8080
@@ -120,7 +120,7 @@ Validate with an early return:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn nonnegative(value: Int) Bool:
+fn nonnegative(value Int) Bool:
     if value < 0:
         return false
 

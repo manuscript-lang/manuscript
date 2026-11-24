@@ -3,7 +3,7 @@
 interface Reader:
     fn read() String
 type Box:
-    label: String
+    label String
 impl Reader for Box:
     fn read() String:
         return self.label

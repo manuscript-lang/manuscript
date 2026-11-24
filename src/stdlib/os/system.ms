@@ -35,17 +35,17 @@ export enum Os:
 // Memory statistics for the current process; every field is bytes.
 export type MemoryUsage:
 	// Bytes of heap memory occupied by live objects and objects not yet collected.
-	heap_used: Int
+	heap_used Int
 	// Bytes of heap spans currently in use, which is at least `heap_used`.
-	heap_total: Int
+	heap_total Int
 	// Bytes of heap memory obtained from the operating system, including idle spans.
-	heap_system: Int
+	heap_system Int
 	// Bytes the runtime obtained from the operating system outside the heap, such as
 	// stacks and internal tables.
-	external: Int
+	external Int
 	// Bytes of physical memory the operating system reports as resident for the
 	// process.
-	resident: Int
+	resident Int
 
 // Work the runtime has done since the program started. Counts only grow, so a benchmark
 // reads them before and after a run and subtracts. They do not depend on machine load
@@ -53,66 +53,66 @@ export type MemoryUsage:
 export type RuntimeCounts:
 	// Allocations the runtime made. Covers the calling thread and every thread that has
 	// finished; a thread still running is not included.
-	allocations: Int
+	allocations Int
 	// Bytes those allocations asked for.
-	allocated_bytes: Int
+	allocated_bytes Int
 	// Lists copied element by element, from the calling isolate.
-	list_copies: Int
+	list_copies Int
 	// Bytes those list copies moved.
-	list_copy_bytes: Int
+	list_copy_bytes Int
 	// Strings cloned, from the calling isolate.
-	string_clones: Int
+	string_clones Int
 	// Bytes those string clones moved.
-	string_clone_bytes: Int
+	string_clone_bytes Int
 	// MIR operations the program executed: its own code, not the runtime beneath it.
 	// Counted only in a build made for it (`ms bench --ops`); zero otherwise.
-	operations: Int
+	operations Int
 
 // Operating system and processor architecture for the current host.
 export type SystemInfo:
 	// Operating system name, such as linux, darwin, or windows. Hosts outside those
 	// families report their own name; `os()` returns the three named families as an
 	// enum.
-	os: String
+	os String
 	// The processor architecture in common naming, such as `amd64`, `arm64`, or `386`.
-	architecture: String
+	architecture String
 	// Number of logical CPUs the operating system reports as present for this process.
-	cpu_count: Int
+	cpu_count Int
 
 // User name, numeric identity, home directory, and login shell.
 export type UserInfo:
 	// Login name of the current user.
-	username: String
+	username String
 	// Numeric user id of the current user; -1 on Windows, where ids are not numeric.
-	uid: Int
+	uid Int
 	// Numeric primary group id of the current user; -1 on Windows, where ids are not
 	// numeric.
-	gid: Int
+	gid Int
 	// Absolute path of the user's home directory from the account database.
-	home: String
+	home String
 	// Path of the user's login shell, or an empty string when the host records null.
-	shell: String
+	shell String
 
 // Address and link metadata for one host network interface.
 export type NetworkInterface:
 	// Host name of the interface, such as `eth0` or `lo0`. Interfaces with several
 	// addresses appear once per address.
-	name: String
+	name String
 	// The interface's IP address in textual form, such as `192.168.1.5` or `fe80::1`.
-	address: String
+	address String
 	// The address's network mask in the same textual form as `address`, such as
 	// `255.255.255.0`.
-	netmask: String
+	netmask String
 	// Whether `address` is IPv4 or IPv6.
-	family: IpFamily
+	family IpFamily
 	// Hardware address as colon-separated lowercase hexadecimal, or an empty string for
 	// interfaces without one such as loopback.
-	mac: String
+	mac String
 	// True for a loopback interface, which only reaches the local host.
-	internal: Bool
+	internal Bool
 	// The operating system's numeric index for the interface, as used to select an
 	// interface for link-local IPv6 addresses.
-	scope_id: Int
+	scope_id Int
 
 // Model, integer MHz speed (fractional MHz truncated), and cumulative integer
 // millisecond counters for one logical CPU. irq includes hardware and software
@@ -120,43 +120,43 @@ export type NetworkInterface:
 export type CpuInfo:
 	// Marketing name of the processor, such as `Intel(R) Core(TM) i7`; it can be empty
 	// where the host does not report one.
-	model: String
+	model String
 	// Integer megahertz, not a time interval.
-	speed_mhz: Int
+	speed_mhz Int
 	// Cumulative milliseconds this logical CPU spent running normal-priority user
 	// processes.
-	user: Int
+	user Int
 	// Cumulative milliseconds this logical CPU spent running low-priority (niced) user
 	// processes.
-	nice: Int
+	nice Int
 	// Cumulative milliseconds this logical CPU spent running kernel code.
-	system: Int
+	system Int
 	// Cumulative milliseconds this logical CPU spent idle.
-	idle: Int
+	idle Int
 	// Cumulative milliseconds this logical CPU spent servicing hardware and software
 	// interrupts.
-	irq: Int
+	irq Int
 
 // Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
 // (three zeros on Windows); available_parallelism is a usable logical-processor count.
 export type SystemMetrics:
 	// Installed physical memory in bytes.
-	total_memory: Int
+	total_memory Int
 	// Physical memory in bytes that is completely unused; caches count as used, so it
 	// is usually smaller than `available_memory`.
-	free_memory: Int
+	free_memory Int
 	// Estimated physical memory in bytes that new work can use without swapping,
 	// including reclaimable caches.
-	available_memory: Int
+	available_memory Int
 	// Host boot uptime as a Duration with whole-second native resolution; not process
 	// uptime.
-	uptime: Duration
+	uptime Duration
 	// Three Floats for the 1, 5, and 15 minute system load averages; all 0.0 on
 	// Windows.
-	load_average: List[Float]
+	load_average List[Float]
 	// Logical processors this process may run on, which can be fewer than
 	// `SystemInfo.cpu_count` under CPU affinity limits.
-	available_parallelism: Int
+	available_parallelism Int
 
 // The byte order of the host's native integers.
 export enum Endianness:

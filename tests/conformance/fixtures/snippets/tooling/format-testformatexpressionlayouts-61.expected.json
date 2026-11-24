@@ -13,8 +13,8 @@
         "position": {
           "file": "format-testformatexpressionlayouts-61.ms",
           "line": 4,
-          "column": 23,
-          "offset": 177
+          "column": 22,
+          "offset": 176
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "format-testformatexpressionlayouts-61.ms",
           "line": 4,
-          "column": 34,
-          "offset": 188
+          "column": 33,
+          "offset": 187
         }
       },
       {
@@ -35,15 +35,15 @@
         "position": {
           "file": "format-testformatexpressionlayouts-61.ms",
           "line": 4,
-          "column": 46,
-          "offset": 200
+          "column": 45,
+          "offset": 199
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatexpressionlayouts-61.ms:4:23: resolution: unknown binding active; declare it with 'active := ...' before use, define 'fn active(...) T:', or import it from a module\n   |\n 4 | fn work(value: Bool = active and allowed and remaining > 0) Bool: return value\n   |                       ^\n<DIR>/format-testformatexpressionlayouts-61.ms:4:34: resolution: unknown binding allowed; declare it with 'allowed := ...' before use, define 'fn allowed(...) T:', or import it from a module\n   |\n 4 | fn work(value: Bool = active and allowed and remaining > 0) Bool: return value\n   |                                  ^\n<DIR>/format-testformatexpressionlayouts-61.ms:4:46: resolution: unknown binding remaining; declare it with 'remaining := ...' before use, define 'fn remaining(...) T:', or import it from a module\n   |\n 4 | fn work(value: Bool = active and allowed and remaining > 0) Bool: return value\n   |                                              ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatexpressionlayouts-61.ms:4:22: resolution: unknown binding active; declare it with 'active := ...' before use, define 'fn active(...) T:', or import it from a module\n   |\n 4 | fn work(value Bool = active and allowed and remaining > 0) Bool: return value\n   |                      ^\n<DIR>/format-testformatexpressionlayouts-61.ms:4:33: resolution: unknown binding allowed; declare it with 'allowed := ...' before use, define 'fn allowed(...) T:', or import it from a module\n   |\n 4 | fn work(value Bool = active and allowed and remaining > 0) Bool: return value\n   |                                 ^\n<DIR>/format-testformatexpressionlayouts-61.ms:4:45: resolution: unknown binding remaining; declare it with 'remaining := ...' before use, define 'fn remaining(...) T:', or import it from a module\n   |\n 4 | fn work(value Bool = active and allowed and remaining > 0) Bool: return value\n   |                                             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -5,10 +5,10 @@
 // decode exactly as the copying call does.
 import Bytes from "@std/bytes.ms"
 
-fn decode_last(b: Bytes) String?:
+fn decode_last(b Bytes) String?:
 	return b.decode_utf8()
 
-fn decode_twice(b: Bytes) Int:
+fn decode_twice(b Bytes) Int:
 	first := b.decode_utf8() or ""
 	second := b.decode_utf8() or ""
 	return first.length() + second.length()

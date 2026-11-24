@@ -6,13 +6,13 @@ import expect_equal from "@std/test/test.ms"
 // argument makes the loop quadratic, so these sizes finish only when the argument
 // moves.
 type Node:
-	val: Int
-	kids: List[Node]
+	val Int
+	kids List[Node]
 
-fn wrap(move n: Node, i: Int) Node:
+fn wrap(move n Node, i Int) Node:
 	return Node(i, [n])
 
-fn Node.up(i: Int) Node:
+fn Node.up(i Int) Node:
 	return Node(i, [self.clone()])
 
 test "a consumed function argument moves":

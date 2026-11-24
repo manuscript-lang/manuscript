@@ -6,10 +6,10 @@ import (
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 
-fn near(left: Complex, right: Complex) Bool:
+fn near(left Complex, right Complex) Bool:
 	return left.subtract(right).abs() < 1e-12
 
-fn component_close(actual: Float, expected: Float) Void!:
+fn component_close(actual Float, expected Float) Void!:
 	if expected.is_finite(): return expect_true((actual / expected - 1.0).abs() < 1e-12)
 	return expect_equal(actual, expected)
 

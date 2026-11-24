@@ -15,7 +15,7 @@ Save as `batch.ms`. `map_concurrent` applies a function to every item with at mo
 ```manuscript
 import map_concurrent from "@std/concurrency/resilience.ms"
 
-fn square(n: Int) Int:
+fn square(n Int) Int:
     return n * n
 
 fn main() Void!:
@@ -33,10 +33,10 @@ import promise from "@std/concurrency/promise.ms"
 import ReadStream, pipe from "@std/io/io.ms"
 
 type Summary:
-    jobs: Int
-    total: Int
+    jobs Int
+    total Int
 
-fn work(var jobs: ReadStream[Int]) Summary!:
+fn work(var jobs ReadStream[Int]) Summary!:
     var summary = Summary(jobs: 0, total: 0)
     for job in jobs:
         summary.jobs += 1
@@ -68,7 +68,7 @@ Save as `tick.ms`. A promise can loop and `sleep` between rounds. `sleep` return
 import promise from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
-fn ticker(rounds: Int) Void!:
+fn ticker(rounds Int) Void!:
     for n in 1..rounds + 1:
         print(f"tick {n}")
         sleep(milliseconds(20)).wait()?

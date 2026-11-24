@@ -7,7 +7,7 @@ export fn bench_list() Void:
         "list.append",
         200000,
         fn() Int:
-            var xs: List[Int] = []
+            var xs List[Int] = []
             for i in 0..200000:
                 xs.append(i)
             return xs.length()
@@ -35,25 +35,25 @@ export fn bench_list() Void:
         "list.map",
         100000,
         fn() Int:
-            return data.map(fn(x: Int) Int: x * 2).length()
+            return data.map(fn(x Int) Int: x * 2).length()
     )
     bench(
         "list.filter",
         100000,
         fn() Int:
-            return data.filter(fn(x: Int) Bool: x % 2 == 0).length()
+            return data.filter(fn(x Int) Bool: x % 2 == 0).length()
     )
     bench(
         "list.fold",
         100000,
         fn() Int:
-            return data.fold(0, fn(acc: Int, x: Int) Int: acc + x)
+            return data.fold(0, fn(acc Int, x Int) Int: acc + x)
     )
     bench(
         "list.sorted",
         100000,
         fn() Int:
-            return (data.sorted(fn(left: Int, right: Int) Int: left - right).length())
+            return (data.sorted(fn(left Int, right Int) Int: left - right).length())
     )
 
     bench(
@@ -76,6 +76,6 @@ export fn bench_list() Void:
         "list.records_map",
         100000,
         fn() Int:
-            points := data.map(fn(x: Int) Point: Point(x, x + 1))
-            return points.fold(0, fn(acc: Int, p: Point) Int: acc + p.y)
+            points := data.map(fn(x Int) Point: Point(x, x + 1))
+            return points.fold(0, fn(acc Int, p Point) Int: acc + p.y)
     )

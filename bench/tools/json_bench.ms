@@ -66,11 +66,11 @@ fn fetch_corpora() Void!:
 	if not exists(f"{DATA}/small.json"): write_text(f"{DATA}/small.json", small())
 
 type Rate:
-	nanos: Int
-	bytes: Int
+	nanos Int
+	bytes Int
 
 // Maps `<doc>\t<op>\t<ns>\t<bytes>` lines to rates.
-fn load(text: String) Map[String, Rate]:
+fn load(text String) Map[String, Rate]:
 	var rows = Map[String, Rate]()
 
 	for line in text.split("\n"):
@@ -81,10 +81,10 @@ fn load(text: String) Map[String, Rate]:
 
 	return rows
 
-fn mbps(r: Rate) Float:
+fn mbps(r Rate) Float:
 	return r.bytes.to_float() / r.nanos.to_float() * 1000.0
 
-fn run(names: List[String]) Result[String, Error]:
+fn run(names List[String]) Result[String, Error]:
 	fetch_corpora()?
 
 	node := must("node", capture("node", ["bench/perf/json/node.js"].concat(names)))?

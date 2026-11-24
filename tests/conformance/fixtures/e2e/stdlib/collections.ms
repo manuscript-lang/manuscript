@@ -10,15 +10,15 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-fn positive(value: Int) Bool: value > 0
+fn positive(value Int) Bool: value > 0
 
-fn twice(value: Int) Int: value * 2
+fn twice(value Int) Int: value * 2
 
-fn duplicate(value: Int) List[Int]: [value, value]
+fn duplicate(value Int) List[Int]: [value, value]
 
-fn sum(accumulator: Int, value: Int) Int: accumulator + value
+fn sum(accumulator Int, value Int) Int: accumulator + value
 
-fn parity(value: Int) Int: value % 2
+fn parity(value Int) Int: value % 2
 
 test "list search callbacks empty identities and folding":
 	list := [-1, 2, 0, 3]
@@ -30,7 +30,7 @@ test "list search callbacks empty identities and folding":
 	expect_equal(([1, 2]).flat_map(duplicate), [1, 1, 2, 2])?
 	expect_false((list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4))?
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	expect_false(empty.any(positive) or not empty.all(positive))?
 	expect_false((empty.first() != null) or (empty.last() != null))?
 
@@ -39,7 +39,7 @@ test "list search callbacks empty identities and folding":
 
 test "group_by keeps first-seen key order and element order across few and many buckets":
 	values := 0..600
-	few := values.group_by(fn(x: Int) Int: x % 3)
+	few := values.group_by(fn(x Int) Int: x % 3)
 	expect_equal(few.keys(), [0, 1, 2])?
 
 	var total = 0
@@ -54,12 +54,12 @@ test "group_by keeps first-seen key order and element order across few and many 
 
 	expect_equal(total, 599 * 600 / 2)?
 
-	words := ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w.clone())
+	words := ["b", "a", "b", "c", "a", "b"].group_by(fn(w String) String: w.clone())
 	expect_equal(words.keys(), ["b", "a", "c"])?
 	expect_equal(words.get("b"), ["b", "b", "b"])?
 	expect_equal(words.get("c"), ["c"])?
 
-	unique := values.group_by(fn(x: Int) Int: x)
+	unique := values.group_by(fn(x Int) Int: x)
 	expect_equal(unique.length(), 600)?
 	expect_equal(unique.get(599), [599])?
 
@@ -118,10 +118,10 @@ test "collection constructors validate bounds and exact limits":
 	expect_equal((range_by(3, -1, -1, RangeOptions(max_items: 4))?), [3, 2, 1, 0])?
 	expect_equal((filled("x", 2)?), ["x", "x"])?
 
-	invalid: List[Int]! := error(Error("collection: invalid input", kind: "EINVAL"))
+	invalid List[Int]! := error(Error("collection: invalid input", kind: "EINVAL"))
 	expect_equal(range_by(0, 1, 0), invalid)?
 
-	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
+	limited List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(range_by(0, 3, 1, RangeOptions(max_items: 2)), limited)?
 
 test "stepped ranges handle full-width spans and minimum negative steps":
@@ -137,7 +137,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 	)?
 	expect_equal((range_by(0, minimum, minimum, RangeOptions(max_items: 1))?), [0])?
 
-	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
+	limited List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(
 		range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)),
 		limited,
@@ -146,7 +146,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 test "range counts up by one":
 	expect_equal((0..4), [0, 1, 2, 3])?
 
-	none_between: List[Int] := []
+	none_between List[Int] := []
 	expect_false((2..2) != none_between or (5..1) != none_between)?
 	expect_equal((-2..1), [-2, -1, 0])?
 
@@ -186,13 +186,13 @@ test "for over range counts without a list":
 
 	expect_equal(skipped, 16)?
 
-	var callbacks: List[fn() Int] = []
+	var callbacks List[fn() Int] = []
 	for index in 0..3:
 		callbacks.append(fn: index)
 	expect_equal(callbacks.map(fn call: call()), [0, 1, 2])?
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
-	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
+	limited List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(filled(1, 9223372036854775807), limited)?
 	expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)?
 	expect_equal(range_by(0, 9223372036854775807, 1), limited)?
@@ -212,7 +212,7 @@ test "flatten concatenates lists":
 	expect_equal(flatten(List[List[Int]]()), List[Int]())?
 
 type JoinPoint:
-	x: Int
+	x Int
 
 test "List join renders any element type":
 	expect_equal([1.5, 2.5].join(","), "1.5,2.5")?
@@ -223,10 +223,10 @@ test "List join renders any element type":
 	)?
 	expect_equal(List[Int]().join(","), "")?
 
-fn repeat_copy[T: Clonable](value: T) List[T]!:
+fn repeat_copy[T Clonable](value T) List[T]!:
 	return filled(value, 2)
 
-fn flatten_copy[T: Clonable](values: List[List[T]]) List[T]:
+fn flatten_copy[T Clonable](values List[List[T]]) List[T]:
 	return flatten(values)
 
 test "filled copies nested values independently through generic and function calls":

@@ -31,7 +31,7 @@ test "float is below one and reproducible":
 test "shuffle keeps the items and choice picks one":
     var rng = seeded(5)
     shuffled := rng.shuffle([1, 2, 3, 4, 5, 6])
-    expect_equal(shuffled.sorted(fn(a: Int, b: Int) Int: a - b), [1, 2, 3, 4, 5, 6])?
+    expect_equal(shuffled.sorted(fn(a Int, b Int) Int: a - b), [1, 2, 3, 4, 5, 6])?
     expect_equal(seeded(5).shuffle([1, 2, 3, 4, 5, 6]), shuffled)?
     expect_equal(rng.choice(List[Int]()), null)?
     expect_equal(seeded(2).choice([7]), 7)?

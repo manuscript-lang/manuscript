@@ -17,7 +17,7 @@ Implemented in the same PR (checker, lowering, MIR verifier, stdlib, docs); the 
 
 ```manuscript
 var a = [1, 2]
-b := a                         // error: `a` is moved here but used again at 8:5
+b = a                         // error: `a` is moved here but used again at 8:5
 a.append(3)                       // (OWNERSHIP.md "Borrows are lexical" says `y := x` borrows)
 
 impl Row:
@@ -67,10 +67,10 @@ Lost changes:
 Proposed behavior (unchecked: rejected at `a0f61d32`):
 
 ```manuscript
-fn label(r: Row) String:
+fn label(r Row) String:
     return r.name                 // lends from `r`
 
-fn grow(var b: Box) Int:
+fn grow(var b Box) Int:
     var xs = b.items()            // exclusive borrow of b.items (one field path)
     xs.append(1)                  // b.items changes
     n := label(b.row)          // shared borrow; b.row cannot change until n's last use

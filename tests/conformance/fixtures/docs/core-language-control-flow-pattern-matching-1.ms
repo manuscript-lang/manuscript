@@ -1,7 +1,7 @@
 // conform: tags=diagnostics,interpolation,match,strings,tier-core
 // conform: phase=check
 // conform: origin=documentation/core-language/control-flow/pattern-matching.md:12
-fn describe(payment: Payment) String:
+fn describe(payment Payment) String:
     match payment:
         Paid(receipt):
             return f"Paid: {receipt}"

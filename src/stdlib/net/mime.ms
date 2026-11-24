@@ -24,32 +24,32 @@ print(charset.get_or(""))                           // "utf-8"
 // name.
 export type MediaType:
 	// Lower-cased `type/subtype`, such as `text/html`.
-	essence: String
+	essence String
 	// Parameters such as `charset` or `boundary`; quoted values are unquoted.
-	params: Map[String, String] = Map[String, String]()
+	params Map[String, String] = Map[String, String]()
 
 // One header field. `name` keeps the sender's spelling; `value` has folding removed.
 export type HeaderField:
 	// Field name as written, without the colon.
-	name: String
+	name String
 	// Field value with leading and trailing space trimmed and folded lines joined by
 	// one space.
-	value: String
+	value String
 
 // A parsed header block that can be looked up by name regardless of case.
 export type Headers:
 	// Fields in the order they appeared; repeated names stay separate entries.
-	fields: List[HeaderField] = List[HeaderField]()
+	fields List[HeaderField] = List[HeaderField]()
 
 // Returns the first value for `name`, ignoring case, or null.
-fn Headers.get(name: String) String?:
+fn Headers.get(name String) String?:
 	wanted := name.lower()
 	for field in self.fields:
 		if field.name.lower() == wanted: return field.value.clone()
 	return null
 
 // Returns every value for `name`, ignoring case, in order.
-fn Headers.get_all(name: String) List[String]:
+fn Headers.get_all(name String) List[String]:
 	wanted := name.lower()
 	var values = List[String]()
 	for field in self.fields:
@@ -67,13 +67,13 @@ fn Headers.to_string() String:
 // Content-Disposition, and body bytes.
 export type Part:
 	// Part body without the delimiter line breaks.
-	data: Bytes
+	data Bytes
 	// Part header fields; `Content-Disposition` and `Content-Type` live here.
-	headers: Headers = Headers()
+	headers Headers = Headers()
 	// Form field name from `Content-Disposition`, or empty text.
-	name: String = ""
+	name String = ""
 	// Uploaded file name from `Content-Disposition`, or empty text.
-	filename: String = ""
+	filename String = ""
 
 // Extension table behind `media_type_for_extension`.
 TYPES := {
@@ -114,13 +114,13 @@ TYPES := {
 // Returns the media type for a file extension, with or without the leading dot and in
 // any case, or null when unknown. Text types include `charset=utf-8`, as in
 // `text/html; charset=utf-8`.
-export fn media_type_for_extension(extension: String) String?:
+export fn media_type_for_extension(extension String) String?:
 	key := extension.lower().cut_prefix(".") or extension.lower()
 	return TYPES.get(key)
 
 // Returns the first extension, with its dot, registered for a media type (parameters
 // ignored), or null.
-export fn extension_for_media_type(media_type: String) String?:
+export fn extension_for_media_type(media_type String) String?:
 	wanted := media_type.split(";")[0].trim().lower()
 	for entry in TYPES.entries():
 		if entry.value.split(";")[0] == wanted: return f".{entry.key}"
@@ -129,7 +129,7 @@ export fn extension_for_media_type(media_type: String) String?:
 // Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are
 // lower-cased. A missing slash, an empty part, a parameter without `=`, or an
 // unterminated quote returns `EBADMSG`.
-export fn parse_media_type(text: String) MediaType!:
+export fn parse_media_type(text String) MediaType!:
 	pieces := split_params(text)
 	essence := pieces[0].trim().lower()
 	parts := essence.split("/")
@@ -167,14 +167,14 @@ export fn parse_media_type(text: String) MediaType!:
 
 // Formats a media type as `essence; name=value`, quoting values that are not simple
 // tokens.
-export fn format_media_type(media_type: MediaType) String:
+export fn format_media_type(media_type MediaType) String:
 	var out = media_type.essence.clone()
 	for entry in media_type.params.entries():
 		out = f"{out}; {entry.key}={quote_value(entry.value)}"
 	return out
 
 // Splits on `;` outside double quotes.
-fn split_params(text: String) List[String]:
+fn split_params(text String) List[String]:
 	var pieces = List[String]()
 	var current = ""
 	var quoted = false
@@ -201,7 +201,7 @@ fn split_params(text: String) List[String]:
 
 // Returns the unquoted value, or null unless an unescaped quote closes it at the very
 // end.
-fn unquote(raw: String) String?:
+fn unquote(raw String) String?:
 	if not raw.starts_with("\""): return raw.clone()
 
 	var out = ""
@@ -225,14 +225,14 @@ fn unquote(raw: String) String?:
 
 	return out
 
-fn is_token(value: String) Bool:
+fn is_token(value String) Bool:
 	if value.is_empty(): return false
 	return not value.contains_any(" \t\"(),/:;<=>?@[\\]{}")
 
 // Line breaks cannot appear in a header value, so they are written as `%0D` and `%0A`,
 // as browsers do for form field and file names. Without this a name carrying a line
 // break would inject header lines into the part.
-fn quote_value(value: String) String:
+fn quote_value(value String) String:
 	safe := value.replace("\r", "%0D").replace("\n", "%0A")
 	if is_token(safe): return safe
 
@@ -242,7 +242,7 @@ fn quote_value(value: String) String:
 // Parses a header block (up to the first blank line). Continuation lines starting with
 // space or tab join the previous value with one space. A line without a colon, or a
 // fold before any field, returns `EBADMSG`.
-export fn parse_headers(text: String) Headers!:
+export fn parse_headers(text String) Headers!:
 	var fields = List[HeaderField]()
 
 	for raw in text.lines():
@@ -276,7 +276,7 @@ export fn parse_headers(text: String) Headers!:
 	return ok(Headers(fields: fields))
 
 // Returns the boundary parameter of a `multipart/*` Content-Type value, or null.
-export fn multipart_boundary(content_type: String) String?:
+export fn multipart_boundary(content_type String) String?:
 	parsed := parse_media_type(content_type)
 	if not parsed.is_ok(): return null
 
@@ -287,7 +287,7 @@ export fn multipart_boundary(content_type: String) String?:
 
 // Builds one part from the bytes after a delimiter line's boundary: optional SP/HT, a
 // CRLF, headers, a blank line and the body.
-fn make_part(section: Bytes) Part!:
+fn make_part(section Bytes) Part!:
 	crlf := "\r\n".to_bytes()
 
 	// RFC 2046 permits transport-added SP/HT before this delimiter line's CRLF.
@@ -347,7 +347,7 @@ Splits a multipart body into parts using `boundary`. Text before the first delim
 closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
 A part may be only headers, or empty. A body without a closing delimiter returns `EBADMSG`.
 */
-export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
+export fn parse_multipart(body Bytes, boundary String) List[Part]!:
 	if boundary.is_empty(): return error(
 		Error("MIME: invalid multipart body", kind: "EBADMSG")
 	)
@@ -369,15 +369,15 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 // go into `pending`; only a delimiter-overlap suffix stays in `buffer` between chunks.
 // `in_part` is false until the first delimiter has passed; `done` after the closing delimiter.
 type MultipartParts:
-	delimiter: Bytes
-	buffer: Bytes
-	pending: BytesBuilder
-	pending_size: Int
-	in_part: Bool
-	done: Bool
-	max_part_bytes: Int?
+	delimiter Bytes
+	buffer Bytes
+	pending BytesBuilder
+	pending_size Int
+	in_part Bool
+	done Bool
+	max_part_bytes Int?
 
-fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
+fn var MultipartParts.step(move value Bytes, var out List[Part]) Void!:
 	if self.done: return ok()
 
 	self.buffer = self.buffer.concat(value)
@@ -456,7 +456,7 @@ fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 		)?
 		self.in_part = true
 
-fn var MultipartParts.finish(var out: List[Part]) Void!:
+fn var MultipartParts.finish(var out List[Part]) Void!:
 	if self.done: return ok()
 	return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
@@ -467,9 +467,9 @@ bounds one part's headers and body and fails the read with `EOVERFLOW`. A body t
 delimiter fails with `EBADMSG`. Closing the result closes `body`.
 */
 export fn multipart_parts(
-	move body: ReadStream[Bytes],
-	boundary: String,
-	max_part_bytes: Int?,
+	move body ReadStream[Bytes],
+	boundary String,
+	max_part_bytes Int?,
 ) ReadStream[Part]:
 	return through[Bytes, Part](
 		body,
@@ -486,7 +486,7 @@ export fn multipart_parts(
 
 // Encodes parts as a multipart body closed with the final delimiter. Each part's
 // headers are written as given, then a blank line and the data.
-export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
+export fn encode_multipart(parts List[Part], boundary String) Bytes:
 	var out = BytesBuilder()
 
 	for part in parts:
@@ -499,10 +499,10 @@ export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
 
 // Builds a form-data part for a field; pass `filename` to mark an upload.
 export fn form_part(
-	name: String,
-	move data: Bytes,
-	filename: String = "",
-	content_type: String = "",
+	name String,
+	move data Bytes,
+	filename String = "",
+	content_type String = "",
 ) Part:
 	var disposition = f"form-data; name={quote_value(name)}"
 	if not filename.is_empty(): disposition = f"{disposition}; filename={quote_value(filename)}"

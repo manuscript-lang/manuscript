@@ -2,12 +2,12 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn remainder_first(x: Int, y: Int) Int:
+fn remainder_first(x Int, y Int) Int:
 	r := x % y
 	q := x / y
 	return q * 1000 + r
 
-fn quotient_first(x: Int, y: Int) Int:
+fn quotient_first(x Int, y Int) Int:
 	q := x / y
 	r := x % y
 	return q * 1000 + r

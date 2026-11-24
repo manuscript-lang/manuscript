@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Cause[T]:
-    detail: T
+    detail T
 impl Error for Cause[T]:
     fn message() String: self.detail.to_string()
 fn identity[T](value: T) T: value

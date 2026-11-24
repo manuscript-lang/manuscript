@@ -1,7 +1,7 @@
 import bench from "./harness.ms"
 import parse from "@std/data/toml.ms"
 
-fn toml_doc(count: Int) String:
+fn toml_doc(count Int) String:
     var sb = ""
     for i in 0..count:
         sb += f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n"

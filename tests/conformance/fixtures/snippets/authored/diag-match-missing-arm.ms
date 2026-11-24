@@ -3,9 +3,9 @@
 // conform: origin=ms-check/tests/messages.rs
 enum S:
     A
-    B(x: Int)
+    B(x Int)
 
-fn f(s: S) Int:
+fn f(s S) Int:
     match s:
         A:
             return 1

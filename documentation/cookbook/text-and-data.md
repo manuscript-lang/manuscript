@@ -16,7 +16,7 @@ Save as `number.ms`. `parse_int()` returns an `Int?`.
 import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
-fn show(number: Int) Result[Void, Error]:
+fn show(number Int) Result[Void, Error]:
     stdout().write(f"{number}\n")?
     return stdout().flush()
 
@@ -80,8 +80,8 @@ import parse, stringify, StringifyOptions from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 type Config:
-    name: String
-    enabled: Bool = true
+    name String
+    enabled Bool = true
 
 fn run() Result[Void, Error]:
     text := arguments().get_or(0, "{\"name\":\"Sam\"}")

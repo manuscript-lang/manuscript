@@ -3,23 +3,23 @@
 import stdout from "@std/io/io.ms"
 
 type Point:
-    x: Int
-    y: Int
+    x Int
+    y Int
 
-type Box[T: Clonable]:
-    items: List[T]
+type Box[T Clonable]:
+    items List[T]
 
-fn Point.with_x(x: Int) Self:
+fn Point.with_x(x Int) Self:
     return Point(x: x, y: self.y)
 
-fn Box[T].added(item: T) Self:
+fn Box[T].added(item T) Self:
     var xs = self.items.clone()
     xs.append(item.clone())
 
-    b: Self := Box[T](items: xs)
+    b Self := Box[T](items: xs)
     return b
 
-fn Box[T].pair(other: Self) List[Self]:
+fn Box[T].pair(other Self) List[Self]:
     return [self.clone(), other.clone()]
 
 fn main() Void:

@@ -9,13 +9,13 @@ enum Color:
     Green
 
 type Swatch:
-    color: Color
-    shade: Color?
+    color Color
+    shade Color?
 
 type Endpoint:
-    host: IpAddress
-    network: Cidr
-    fallback: IpAddress?
+    host IpAddress
+    network Cidr
+    fallback IpAddress?
 
 test "JSON payloadless cases are their names and round-trip":
     swatch := Swatch(Color.Green, Color.Red)

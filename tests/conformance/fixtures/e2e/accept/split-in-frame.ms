@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn describe(text: String, sep: String) String:
+fn describe(text String, sep String) String:
 	f := text.split(sep)
 	var out = f"{f.length()}:"
 	for p in f: out += f"[{p}]"

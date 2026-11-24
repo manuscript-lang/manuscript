@@ -4,7 +4,7 @@
 import Cause, make from "./domain.ms"
 import erase, forward from "./helper.ms"
 
-fn second_error(cause: Cause[Int]) Error: Error(f"second {cause.value}")
+fn second_error(cause Cause[Int]) Error: Error(f"second {cause.value}")
 
 export fn second() Int!: erase(
     Result[Int, Cause[Int]].error(make()).map_error(second_error)

@@ -2,8 +2,8 @@
 // conform: phase=run
 // conform: origin=print is a prelude function: no import, any value as text, then a newline
 type Point:
-    x: Int
-    y: Int
+    x Int
+    y Int
 
 fn main() Void:
     print("hello")

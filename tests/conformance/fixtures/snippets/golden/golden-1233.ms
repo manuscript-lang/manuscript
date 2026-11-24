@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn answer(value: Int = (fn() Int:
+fn answer(value Int = (fn() Int:
     var current = 0
     current = current + 1
     return current

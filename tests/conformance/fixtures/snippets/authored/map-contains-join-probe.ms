@@ -3,14 +3,14 @@
 import expect_equal from "@std/test/test.ms"
 
 type Stat:
-	count: Int
-	sum: Int
+	count Int
+	sum Int
 
-fn name_of(i: Int) String:
+fn name_of(i Int) String:
 	return f"key-{i % 300}"
 
 test "a probe after a contains-guarded insert reads the entry of either path":
-	var stats: Map[String, Stat] = {}
+	var stats Map[String, Stat] = {}
 	for i in 0..3000:
 		name := name_of(i)
 		if not stats.contains(name): stats[name.clone()] = Stat(0, 0)
@@ -26,7 +26,7 @@ test "a probe after a contains-guarded insert reads the entry of either path":
 	sum | expect_equal(4498500)?
 
 test "a growing insert on the absent path does not leave a stale entry":
-	var m: Map[Int, Stat] = {}
+	var m Map[Int, Stat] = {}
 	for i in 0..2000:
 		k := i % 1500
 		if not m.contains(k): m[k] = Stat(0, 0)
@@ -37,7 +37,7 @@ test "a growing insert on the absent path does not leave a stale entry":
 	m.length() | expect_equal(1500)?
 
 test "a key that is present on one path and inserted on the other is found":
-	var m: Map[String, Int] = {}
+	var m Map[String, Int] = {}
 	m["a"] = 1
 	for k in ["a", "b", "a", "c", "b"]:
 		if not m.contains(k): m[k.clone()] = 0

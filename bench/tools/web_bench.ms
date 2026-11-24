@@ -28,24 +28,24 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	print(text)
 
-fn tail(text: String) String:
+fn tail(text String) String:
 	return text.trim()
 
 // The command line with CPU pinning when `cpus` is set.
-fn pinned(cpus: String, argv: List[String]) List[String]:
+fn pinned(cpus String, argv List[String]) List[String]:
 	if cpus == "": return argv.clone()
 	return ["taskset", "-c", cpus.clone()].concat(argv)
 
 // Runs `argv` after raising the open-file limit, as the shell scripts did.
-fn raised(argv: List[String]) Ran:
+fn raised(argv List[String]) Ran:
 	script := "ulimit -n 20000 2>/dev/null; exec \"$@\""
 	return capture("sh", ["-c", script, "sh"].concat(argv))
 
 // Starts `argv` with standard output in `out` and the open-file limit raised.
-fn background(argv: List[String], out: String) Subprocess!:
+fn background(argv List[String], out String) Subprocess!:
 	script := "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
 	args := ["-c", script, "sh", out.clone()].concat(argv)
 	if child := spawn(
@@ -58,11 +58,11 @@ fn background(argv: List[String], out: String) Subprocess!:
 	return invalid(f"cannot start {argv[0]}")
 
 type Plan:
-	w: String
-	server_cpus: String
-	load_cpus: String
+	w String
+	server_cpus String
+	load_cpus String
 
-fn plan(w: String) Plan:
+fn plan(w String) Plan:
 	var server = env("SERVER_CPUS", "0,1")
 	var load = env("LOAD_CPUS", "2,3")
 	cpus := capture("nproc", []).stdout.trim().parse_int() or 1
@@ -75,14 +75,14 @@ fn plan(w: String) Plan:
 
 	return Plan(w.clone(), server, load)
 
-fn load_cmd(p: Plan, port: Int, args: List[String]) List[String]:
+fn load_cmd(p Plan, port Int, args List[String]) List[String]:
 	return pinned(p.load_cpus.clone(), [f"{p.w}/load/load", f"{port}"].concat(args))
 
-fn load(p: Plan, port: Int, args: List[String]) String:
+fn load(p Plan, port Int, args List[String]) String:
 	return tail(raised(load_cmd(p, port, args)).stdout)
 
 // Whether the server answers `/health` within five seconds of starting.
-fn wait_started(p: Plan, port: Int) Bool:
+fn wait_started(p Plan, port Int) Bool:
 	for attempt in 0..50:
 		ran := raised(load_cmd(p, port, ["1", "1", "/health"]))
 		if ran.ok and ran.code == 0: return true
@@ -91,11 +91,11 @@ fn wait_started(p: Plan, port: Int) Bool:
 
 	return false
 
-fn first_pid(pattern: String) String:
+fn first_pid(pattern String) String:
 	return capture("pgrep", ["-f", pattern.clone()]).stdout.split("\n")[0].trim()
 
 // Total system calls of all threads while strace is attached for `seconds`.
-fn syscalls(pid: String, seconds: Int, file: String) Int:
+fn syscalls(pid String, seconds Int, file String) Int:
 	void capture(
 		"timeout",
 		[
@@ -117,19 +117,13 @@ fn syscalls(pid: String, seconds: Int, file: String) Int:
 
 	return 0
 
-fn rss_kb(pid: String) String:
+fn rss_kb(pid String) String:
 	return capture("ps", ["-o", "rss=", "-p", pid.clone()]).stdout.trim()
 
-fn threads(pid: String) Int:
+fn threads(pid String) Int:
 	return list(f"/proc/{pid}/task").get_or([]).length()
 
-fn measure_server(
-	p: Plan,
-	name: String,
-	port: Int,
-	seconds: Int,
-	ms_threads: String,
-) Void!:
+fn measure_server(p Plan, name String, port Int, seconds Int, ms_threads String) Void!:
 	data := f"{p.w}/data"
 	var argv = pinned(
 		p.server_cpus.clone(),
@@ -238,7 +232,7 @@ fn measure_server(
 	void server.close()
 	return ok()
 
-fn prepare_run(here: String, w: String) List[String]!:
+fn prepare_run(here String, w String) List[String]!:
 	for dir in ["go", "ms", "load", "c"]:
 		copy(f"{here}/{dir}", f"{w}/{dir}", CopyOptions(recursive: true, replace: true)).get()
 	create_directory(f"{w}/rust", recursive: true).get()
@@ -278,7 +272,7 @@ fn prepare_run(here: String, w: String) List[String]!:
 	build_ms(f"{w}/ms", f"{w}/ms/server")?
 	return ok(names)
 
-fn run_all(here: String, seconds: Int) Void!:
+fn run_all(here String, seconds Int) Void!:
 	var tmp = temporary("web-bench-").get()
 	w := tmp.path()
 	names := prepare_run(here, w)?
@@ -291,10 +285,10 @@ fn run_all(here: String, seconds: Int) Void!:
 
 	void tmp.close()
 
-fn cell(p: Plan, argv: List[String]) String:
+fn cell(p Plan, argv List[String]) String:
 	return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
 
-fn fetch_all(here: String, seconds: Int) Void!:
+fn fetch_all(here String, seconds Int) Void!:
 	var tmp = temporary("web-fetch-").get()
 	w := tmp.path()
 	copy(f"{here}/fetch/go", f"{w}/go", CopyOptions(recursive: true, replace: true)).get()

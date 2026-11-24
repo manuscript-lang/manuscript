@@ -4,7 +4,7 @@ import (
 	case_names, checksum, summarize from "./strappend_table.ms",
 )
 
-fn sample(trial: Int, version: String, elapsed: Int) List[String]:
+fn sample(trial Int, version String, elapsed Int) List[String]:
 	return case_names().map(
 		fn name: f"{trial} {version} {name} {elapsed} # {checksum(name)}"
 	)

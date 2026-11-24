@@ -28,28 +28,28 @@
 import Closeable from "@std/core.ms"
 
 type Token:
-	id: Int
+	id Int
 
 fn move Token.close() Void!:
 	print(f"close {self.id}")
 
 type NamedToken:
-	id: Int
-	name: String
+	id Int
+	name String
 
 fn move NamedToken.close() Void!:
 	print(f"close {self.id}")
 
 enum Choice:
-	Full(first: Token, second: Token, third: Token, code: Int)
+	Full(first Token, second Token, third Token, code Int)
 	Empty
 
 enum NamedChoice:
-	NamedFull(first: NamedToken, second: NamedToken, third: NamedToken, code: Int)
+	NamedFull(first NamedToken, second NamedToken, third NamedToken, code Int)
 	NamedEmpty
 
 enum GenericChoice[T]:
-	GenericFull(first: T, second: T, code: Int)
+	GenericFull(first T, second T, code Int)
 	GenericEmpty
 
 fn scalar_omitted() Void:
@@ -118,7 +118,7 @@ fn generic() Void:
 	print(f"generic {code}")
 
 fn empty() Void:
-	value: Choice := Empty
+	value Choice := Empty
 
 	code := match value:
 		Full(_, _, _, code): code

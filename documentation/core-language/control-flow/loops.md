@@ -11,7 +11,7 @@ weight = 2
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn sum(values: List[Int]) Int:
+fn sum(values List[Int]) Int:
     var total = 0
     for value in values:
         total += value
@@ -85,13 +85,13 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
 
-`MapEntry[K, V]` is a record with `key: K` and `value: V`. Iterating needs no import; only constructing one does (`@std/collections/collections.ms`). It is not a positional pair, so destructure it in the body. The entry is borrowed from the map, not copied.
+`MapEntry[K, V]` is a record with `key K` and `value V`. Iterating needs no import; only constructing one does (`@std/collections/collections.ms`). It is not a positional pair, so destructure it in the body. The entry is borrowed from the map, not copied.
 
 `for e in m.entries()`, `m.values()` and `m.keys()` visit the map directly, without building a list, when the body does not change the map. When the body does change the map, the list is built first, so the loop sees the entries as they were.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn total(values: Map[String, Int]) Int:
+fn total(values Map[String, Int]) Int:
     var sum = 0
     for entry in values:
         {key: _key, value} := entry
@@ -134,7 +134,7 @@ A variable or field path is advanced in place and must be declared `var`; any ot
 import Iterator from "@std/core.ms"
 
 type Countdown:
-    left: Int
+    left Int
 
 fn var Countdown.next() Int?:
     if self.left == 0:
@@ -183,7 +183,7 @@ Output:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn count_down(start: Int) Int:
+fn count_down(start Int) Int:
     var remaining = start
     while remaining > 0:
         remaining -= 1

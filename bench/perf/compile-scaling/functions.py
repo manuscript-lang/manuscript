@@ -1,11 +1,11 @@
 import sys
 n=int(sys.argv[1])
-ms=['type P:\n\tx: Int\n\tname: String\n']
+ms=['type P:\n\tx Int\n\tname String\n']
 rs=['use std::collections::HashMap;\nstruct P { x: i64, name: String }\n']
 go=['package main\nimport ("fmt")\ntype P struct { x int; name string }\n']
 for i in range(n):
-    ms.append(f'''fn f{i}(a: Int) Int:
-	var m: Map[Int, Int] = {{}}
+    ms.append(f'''fn f{i}(a Int) Int:
+	var m Map[Int, Int] = {{}}
 	var t = 0
 	for k in 0..(a % 7 + 3):
 		m[k * {i+1}] = k + a
@@ -15,7 +15,7 @@ for i in range(n):
 		t += p.x
 	else:
 		t -= p.name.length()
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for j in 0..4:
 		xs.append(j * {i%5+1} + t)
 	return t + xs[a % 4]

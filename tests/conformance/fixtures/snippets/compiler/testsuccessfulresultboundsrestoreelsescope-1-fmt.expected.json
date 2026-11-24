@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe(found: Int) Int:\n\tvar sum = 0\n\tvar i = 0\n\n\twhile i < 1000:\n\t\tif fresh := affine(i):\n\t\t\tsum += fresh\n\t\telse:\n\t\t\tsum += found\n\n\t\ti += 1\n\n\treturn sum\n"
+    "fmt": "fn probe(found Int) Int:\n\tvar sum = 0\n\tvar i = 0\n\n\twhile i < 1000:\n\t\tif fresh := affine(i):\n\t\t\tsum += fresh\n\t\telse:\n\t\t\tsum += found\n\n\t\ti += 1\n\n\treturn sum\n"
   }
 }

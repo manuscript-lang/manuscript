@@ -4,7 +4,7 @@ import (
 	SINK, ops, summarize from "./programs_table.ms",
 )
 
-fn sample(version: String) List[String]:
+fn sample(version String) List[String]:
 	var lines = ops().map(fn op: f"{version} {op.name} {op.count} {op.count * 2}")
 	lines.append(f"{version} # sink " + SINK.map(fn n: f"{n}").join(" "))
 	return lines

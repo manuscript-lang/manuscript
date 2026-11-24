@@ -6,19 +6,19 @@ interface Named:
 	fn label() String
 
 type Tag:
-	name: String
-	n: Int
+	name String
+	n Int
 
 fn Tag.label() String:
 	return f"{self.name}-{self.n}"
 
-fn describe(x: Named) String:
+fn describe(x Named) String:
 	return x.label()
 
-fn twice(x: Named) String:
+fn twice(x Named) String:
 	return f"{x.label()}{x.label()}"
 
-fn keep(x: Named) Named:
+fn keep(x Named) Named:
 	return x
 
 test "a borrowed value passed as an interface is read in place":
@@ -33,5 +33,5 @@ test "an interface that outlives the call keeps its own copy":
 	tag := Tag("short", 1)
 	kept := keep(tag)
 	expect_equal(kept.label(), "short-1")?
-	items: List[Named] := [tag, Tag("b", 2)]
+	items List[Named] := [tag, Tag("b", 2)]
 	expect_equal(items.map(fn n: n.label()), ["short-1", "b-2"])?

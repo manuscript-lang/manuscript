@@ -17,7 +17,7 @@ SKIP_DIRS := [
 ]
 
 // Lexical tokens in `text` once `//` and `/* */` comments are removed.
-export fn count_text(text: String) Int:
+export fn count_text(text String) Int:
 	comments := compile("//[^\n]*|(?s)/\\*.*?\\*/").get()
 	token := compile(
 		"\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|`[^`]*`|[A-Za-z_]\\w*|\\d[\\w.]*|[^\\s\\w]"
@@ -27,7 +27,7 @@ export fn count_text(text: String) Int:
 
 // Tokens over every `*suffix` file under `root`, skipping build output and the bundled
 // docs.
-export fn count_workspace(root: String, suffix: String) Int:
+export fn count_workspace(root String, suffix String) Int:
 	var total = 0
 
 	for entry in glob(root, GlobOptions(patterns: [f"**/*{suffix}"])).get_or([]):

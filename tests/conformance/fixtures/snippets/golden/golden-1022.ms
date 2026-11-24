@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 interface Starter:
-    fn start(operation: fn() Void) Void
+    fn start(operation fn() Void) Void
 type Sequential: ...
 impl Starter for Sequential:
     fn start(operation: fn() Void) Void:

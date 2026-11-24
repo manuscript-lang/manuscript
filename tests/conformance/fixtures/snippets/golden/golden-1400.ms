@@ -2,7 +2,7 @@
 // conform: phase=check
 import Closeable from "@std/cleanup.ms"
 type Resource:
-    visits: List[Int]
+    visits List[Int]
 impl Closeable for Resource:
     fn close() Void:
         self.visits.append(1)

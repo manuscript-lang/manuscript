@@ -20,7 +20,7 @@ CHUNK_TRNS := 1951551059
 CHUNK_IDAT := 1229209940
 CHUNK_IEND := 1229278788
 
-fn be32(data: Bytes, at: Int) Int:
+fn be32(data Bytes, at Int) Int:
 	return (
 		data.get(at).to_int() * 16777216
 		+ data.get(at + 1).to_int() * 65536
@@ -30,7 +30,7 @@ fn be32(data: Bytes, at: Int) Int:
 
 // The seven Adam7 passes as [x start, y start, x step, y step]; non-interlaced is one
 // pass.
-fn png_passes(interlaced: Bool) List[List[Int]]:
+fn png_passes(interlaced Bool) List[List[Int]]:
 	if not interlaced: return [[0, 0, 1, 1]]
 	return [
 		[0, 0, 8, 8],
@@ -42,7 +42,7 @@ fn png_passes(interlaced: Bool) List[List[Int]]:
 		[0, 1, 1, 2],
 	]
 
-fn png_channels(color: Int) Int:
+fn png_channels(color Int) Int:
 	if color == 0 or color == 3: return 1
 	if color == 2: return 3
 	if color == 4: return 2
@@ -51,7 +51,7 @@ fn png_channels(color: Int) Int:
 
 // The total filtered byte count of the image, summed over its passes: each row adds
 // one filter byte to its packed pixel bytes.
-fn png_raw_size(width: Int, height: Int, bits_per_pixel: Int, interlaced: Bool) Int:
+fn png_raw_size(width Int, height Int, bits_per_pixel Int, interlaced Bool) Int:
 	var total = 0
 
 	for pass in png_passes(interlaced):
@@ -62,7 +62,7 @@ fn png_raw_size(width: Int, height: Int, bits_per_pixel: Int, interlaced: Bool) 
 
 	return total
 
-fn paeth(a: Int, b: Int, c: Int) Int:
+fn paeth(a Int, b Int, c Int) Int:
 	p := a + b - c
 	pa := abs_of(p - a)
 	pb := abs_of(p - b)
@@ -72,7 +72,7 @@ fn paeth(a: Int, b: Int, c: Int) Int:
 
 	return c
 
-fn abs_of(value: Int) Int:
+fn abs_of(value Int) Int:
 	return if value < 0: 0 - value else: value
 
 // Decodes any PNG color type, bit depth and interlacing into an 8-bit raster; 16-bit
@@ -81,7 +81,7 @@ fn abs_of(value: Int) Int:
 // checksum, returns EBADMSG. An unsupported feature, such as an unknown critical chunk,
 // returns ENOTSUP, and dimensions past `max_pixels` or the hard ceiling return
 // EOVERFLOW.
-export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
+export fn decode_png(data Bytes, max_pixels Int?) Raster!:
 	if data.length() < 33: return error(bad("truncated PNG"))
 
 	magic := [137, 80, 78, 71, 13, 10, 26, 10]
@@ -336,13 +336,13 @@ export fn decode_png(data: Bytes, max_pixels: Int?) Raster!:
 
 	return ok(Raster(width, height, m, pixels))
 
-fn put_be32(var out: BytesBuilder, value: Int) Void:
+fn put_be32(var out BytesBuilder, value Int) Void:
 	out.append(byte(bit_and(shift_right_unsigned(value, 24), 255)))
 	out.append(byte(bit_and(shift_right_unsigned(value, 16), 255)))
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 	out.append(byte(bit_and(value, 255)))
 
-fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Void:
+fn png_chunk(var out BytesBuilder, kind String, body Bytes) Void:
 	put_be32(out, body.length())
 
 	tag := kind.to_bytes()
@@ -351,18 +351,18 @@ fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Void:
 	put_be32(out, crc32(tag.concat(body)).to_int())
 
 // The cost of a residual in the filter choice: its distance from zero modulo 256.
-fn residual_cost(residual: Int) Int:
+fn residual_cost(residual Int) Int:
 	return if residual < 128: residual else: 256 - residual
 
 // Appends the row filtered with type `filter` to `out` and returns the sum of its
 // residuals' costs. Each type has its own loops: the first `step` bytes have no left
 // neighbour.
 fn filter_with(
-	row: List[Int],
-	prev: List[Int],
-	step: Int,
-	filter: Int,
-	var out: List[Int],
+	row List[Int],
+	prev List[Int],
+	step Int,
+	filter Int,
+	var out List[Int],
 ) Int:
 	n := row.length()
 	first := if step < n: step else: n
@@ -424,7 +424,7 @@ fn filter_with(
 
 // Filters one row with the type whose residuals have the smallest absolute sum (the
 // usual heuristic).
-fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
+fn filter_row(row List[Int], prev List[Int], step Int) List[Int]:
 	var best = List[Int]()
 	var best_cost = -1
 
@@ -443,7 +443,7 @@ fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
 // Encodes pixels as an 8-bit PNG, choosing a filter for each row. `channels` 1, 2, 3
 // and 4 write gray, gray with alpha, RGB and RGBA. A dimension past 2^31 - 1 returns
 // EOVERFLOW.
-export fn encode_png(width: Int, height: Int, channels: Int, pixels: List[UInt8]) Bytes!:
+export fn encode_png(width Int, height Int, channels Int, pixels List[UInt8]) Bytes!:
 	if width > 2147483647 or height > 2147483647:
 		return error(too_big("PNG dimensions too large"))
 

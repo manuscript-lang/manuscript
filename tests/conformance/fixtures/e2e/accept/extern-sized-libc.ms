@@ -2,13 +2,13 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-extern fn abs(value: Int32) Int32
+extern fn abs(value Int32) Int32
 
-extern fn toupper(value: Int32) Int32
+extern fn toupper(value Int32) Int32
 
-extern fn htons(value: UInt16) UInt16
+extern fn htons(value UInt16) UInt16
 
-extern fn sqrtf(value: Float32) Float32
+extern fn sqrtf(value Float32) Float32
 
 test "sized integers cross a C call as their own width":
 	expect_equal(abs(-5), 5)?

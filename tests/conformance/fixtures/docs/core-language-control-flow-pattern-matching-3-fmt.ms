@@ -2,10 +2,10 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/control-flow/pattern-matching.md:59
 enum Position:
-    Point(x: Int, y: Int)
+    Point(x Int, y Int)
     Unknown
 
-fn horizontal(position: Position) Int:
+fn horizontal(position Position) Int:
     match position:
         Position.Point(horizontal_value, _):
             return horizontal_value

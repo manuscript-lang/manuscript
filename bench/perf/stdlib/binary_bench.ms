@@ -15,9 +15,9 @@ fn build_packed() Bytes:
 // The size of `words(20000).join(",")`, which the encodings below report their time per
 // byte of.
 type BenchData:
-	blob: Bytes
-	b64: String
-	packed: Bytes
+	blob Bytes
+	b64 String
+	packed Bytes
 
 fn make_fixture() BenchData:
 	blob := words(20000).join(",").to_bytes()

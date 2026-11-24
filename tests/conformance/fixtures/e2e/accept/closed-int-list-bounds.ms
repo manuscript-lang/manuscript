@@ -3,7 +3,7 @@
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 fn filled_sum() Int:
-	var values: List[Int] = []
+	var values List[Int] = []
 	var i = 0
 
 	while i < 100:
@@ -13,8 +13,8 @@ fn filled_sum() Int:
 	var sum = values.sum()
 	return sum
 
-fn conditional_length(flag: Bool) Int:
-	var values: List[Int] = []
+fn conditional_length(flag Bool) Int:
+	var values List[Int] = []
 	var i = 0
 
 	while i < 100:
@@ -51,14 +51,14 @@ fn prefix_overflow() Int:
 	var sum = values.sum()
 	return sum
 
-fn optional_overflow(default: Int?) Int:
+fn optional_overflow(default Int?) Int:
 	values := [9223372036854775807]
 	var sum = 0
 	for value in values:
 		sum += values.get_or(0, default)
 	return sum + 1
 
-fn effect(var visits: List[Int], value: Int) Int:
+fn effect(var visits List[Int], value Int) Int:
 	visits.append(value)
 	return value
 
@@ -75,14 +75,14 @@ test "closed list scalar summaries preserve sums and lengths":
 	conditional_length(flag: true) | expect_equal(100)?
 	conditional_length(flag: false) | expect_equal(0)?
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	var sum = empty.sum()
 	sum | expect_equal(0)?
 	empty.length() | expect_equal(0)?
 
 test "closed list reads preserve defaults and evaluation order":
 	values := [10, 20]
-	var visits: List[Int] = []
+	var visits List[Int] = []
 	(
 		values.get_or(
 			default: effect(visits, 7),
@@ -135,7 +135,7 @@ fn reordered_default_overflow() Int:
 	return sum + 1
 
 fn scalar_append_overflow() Int:
-	var values: List[Int] = []
+	var values List[Int] = []
 	var carry = 0
 	var i = 0
 
@@ -148,7 +148,7 @@ fn scalar_append_overflow() Int:
 	return sum + 1
 
 fn match_length() Int:
-	var values: List[Int] = []
+	var values List[Int] = []
 
 	_ignored := match present(1):
 		n:
@@ -158,13 +158,13 @@ fn match_length() Int:
 
 	return values.length()
 
-fn singleton(var values: List[Int]) List[Int]:
+fn singleton(var values List[Int]) List[Int]:
 	values.append(1)
 	return values.clone()
 
 fn default_length() Int:
-	var values: List[Int] = []
-	callback := fn(value: List[Int] = singleton(values)) Int: value.length()
+	var values List[Int] = []
+	callback := fn(value List[Int] = singleton(values)) Int: value.length()
 	_ignored := callback()
 	return values.length()
 
@@ -197,5 +197,5 @@ fn literal_length_sum() Int:
 test "constant length keeps its local valid through partial polling chunks":
 	literal_length_sum() | expect_equal(963)?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
 	return value

@@ -1,4 +1,4 @@
-fn work(n: Int) Int:
+fn work(n Int) Int:
 	var total = 0
 	for i in 0..n:
 		total += i

@@ -4,23 +4,23 @@
 import expect_equal from "@std/test/test.ms"
 
 type Entry:
-    key: Int
-    label: String
+    key Int
+    label String
 
-fn by_key(left: Entry, right: Entry) Int:
+fn by_key(left Entry, right Entry) Int:
     return left.key - right.key
 
-fn ascending(left: Int, right: Int) Int:
+fn ascending(left Int, right Int) Int:
     return left - right
 
-fn alphabetical(left: String, right: String) Int:
+fn alphabetical(left String, right String) Int:
     if left < right: return -1
     if left > right: return 1
 
     return 0
 
 test "sorting a large list is ordered and leaves the source unchanged":
-    var values: List[Int] = []
+    var values List[Int] = []
     for i in 0..20000:
         values.append((i * 7919) % 20011)
 
@@ -31,7 +31,7 @@ test "sorting a large list is ordered and leaves the source unchanged":
     expect_equal(values.get(1), 7919)?
 
 test "sorting is stable for equal keys":
-    var entries: List[Entry] = []
+    var entries List[Entry] = []
     for i in 0..1000:
         entries.append(Entry(i % 7, f"e{i}"))
 
@@ -53,6 +53,6 @@ test "strings, empty and single element lists sort":
         words.sorted(alphabetical), ["apple", "apple", "banana", "fig", "pear"]
     )?
 
-    null: List[Int] := []
+    null List[Int] := []
     expect_equal(null.sorted(ascending), null)?
     expect_equal([5].sorted(ascending), [5])?

@@ -4,20 +4,20 @@
 import expect_equal from "@std/test/test.ms"
 
 type Pt:
-    x: Int
-    y: Int
+    x Int
+    y Int
 
 type Row:
-    cells: List[Int]
-    pt: Pt
+    cells List[Int]
+    pt Pt
 
-fn shift(var p: Pt, dx: Int) Void:
+fn shift(var p Pt, dx Int) Void:
     p.x += dx
 
-fn shift_at(var pts: List[Pt], i: Int, dx: Int) Void:
+fn shift_at(var pts List[Pt], i Int, dx Int) Void:
     shift(pts[i], dx)
 
-fn grow(var rows: List[Row], i: Int, j: Int) Void:
+fn grow(var rows List[Row], i Int, j Int) Void:
     rows[i].cells.append(j)
     rows[i].pt.y = j
 
@@ -68,6 +68,6 @@ test "an eager list get default is released on every path":
 
 test "find over owned elements keeps the hit":
     rows := [[1], [2], [3, 3]]
-    expect_equal(rows.find(fn(value: List[Int]): value[0] == 2), [2])?
-    expect_equal(rows.find(fn(value: List[Int]): value[0] == 9), null)?
-    expect_equal(rows.find_last(fn(value: List[Int]): value[0] > 1), [3, 3])?
+    expect_equal(rows.find(fn(value List[Int]): value[0] == 2), [2])?
+    expect_equal(rows.find(fn(value List[Int]): value[0] == 9), null)?
+    expect_equal(rows.find_last(fn(value List[Int]): value[0] > 1), [3, 3])?

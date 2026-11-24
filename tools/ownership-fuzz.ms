@@ -83,26 +83,26 @@ TEMPORARIES := [
 
 // The names in scope, by kind, and the owned ones already moved away.
 type Gen:
-	rng: SeededRandom
-	lines: List[String]
-	strings: List[String]
-	lists: List[String]
-	records: List[String]
-	wrappers: List[String]
-	optionals: List[String]
-	dead: List[String]
-	serial: Int
+	rng SeededRandom
+	lines List[String]
+	strings List[String]
+	lists List[String]
+	records List[String]
+	wrappers List[String]
+	optionals List[String]
+	dead List[String]
+	serial Int
 
 // Adds one statement.
-fn var Gen.emit(move line: String) Void:
+fn var Gen.emit(move line String) Void:
 	self.lines.append(line)
 
-fn var Gen.fresh(prefix: String) String:
+fn var Gen.fresh(prefix String) String:
 	self.serial += 1
 	return f"{prefix}{self.serial}"
 
 // The names of one kind: 0 strings, 1 lists, 2 records, 3 wrappers, 4 optionals.
-fn Gen.names(kind: Int) List[String]:
+fn Gen.names(kind Int) List[String]:
 	if kind == 0: return self.strings.clone()
 	if kind == 1: return self.lists.clone()
 	if kind == 2: return self.records.clone()
@@ -111,7 +111,7 @@ fn Gen.names(kind: Int) List[String]:
 	return self.optionals.clone()
 
 // A random name of a kind, or "" when there is none. A moved name is skipped.
-fn var Gen.any(kind: Int) String:
+fn var Gen.any(kind Int) String:
 	var live = List[String]()
 	for n in self.names(kind):
 		if not self.dead.contains(n): live.append(n.clone())
@@ -135,7 +135,7 @@ fn var Gen.moved() String:
 	self.dead.append(name.clone())
 	return name
 
-fn var Gen.text(prefix: String, letters: String) String:
+fn var Gen.text(prefix String, letters String) String:
 	self.serial += 1
 	return f"f\"{prefix}\{{self.serial}\}-{letters.repeat(30)}\""
 
@@ -254,7 +254,7 @@ fn var Gen.step() Void:
 		self.emit(f"print({s})")
 
 // One use of the temporary expression `body`: printed, bound, cloned, listed or passed.
-fn var Gen.temporary(body: String) Void:
+fn var Gen.temporary(body String) Void:
 	use := self.rng.int(0, 5)
 	l := self.any(1)
 
@@ -282,7 +282,7 @@ fn var Gen.finish() Void:
 	for w in self.wrappers: self.lines.append(f"print({w}.p.name)")
 	for o in self.optionals: self.lines.append(f"if q := {o}:\n\t\tprint(q)")
 
-fn program(seed: Int) String:
+fn program(seed Int) String:
 	var g = Gen(seeded(seed), [], [], [], [], [], [], [], 0)
 	for i in 0..g.rng.int(8, 18): g.step()
 	g.finish()
@@ -291,7 +291,7 @@ fn program(seed: Int) String:
 	return f"{HEADER}fn main() Void:\n{body}\n"
 
 // Whether `line` has the shape every value prints with.
-fn well_formed(line: String) Bool:
+fn well_formed(line String) Bool:
 	if line == "": return true
 	if line.parse_int() != null: return true
 

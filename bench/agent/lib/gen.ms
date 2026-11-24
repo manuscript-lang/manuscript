@@ -11,19 +11,19 @@ import (
 
 // One input and the exact output expected for it.
 export type GenCase:
-	name: String
-	stdin: String
-	stdout: String
+	name String
+	stdin String
+	stdout String
 
-export fn make_case(name: String, stdin: String, stdout: String) GenCase:
+export fn make_case(name String, stdin String, stdout String) GenCase:
 	return GenCase(name.clone(), stdin.clone(), stdout.clone())
 
 // The directory of challenge `id`.
-export fn dir(id: String) String: f"{root()}/challenges/{id}"
+export fn dir(id String) String: f"{root()}/challenges/{id}"
 
 // Writes examples/cases.json and hidden/cases.json for challenge `id` as
 // `json.dumps(cases, indent=1)` does.
-export fn write_cases(id: String, examples: List[GenCase], hidden: List[GenCase]) Void:
+export fn write_cases(id String, examples List[GenCase], hidden List[GenCase]) Void:
 	names := hidden.map(fn c: c.name.clone())
 	if names.distinct().length() != names.length(): panic("duplicate case names")
 	write_text(f"{dir(id)}/examples/cases.json", dumps_data(examples, 1) + "\n")
@@ -31,7 +31,7 @@ export fn write_cases(id: String, examples: List[GenCase], hidden: List[GenCase]
 
 // The Go oracle of a large challenge, built from `oracle/*.ref`; returns the path of
 // the executable.
-export fn build_oracle(id: String) String:
+export fn build_oracle(id String) String:
 	tmp := temporary_directory("msbench-oracle-").get()
 	sources := bash("ls oracle/*.ref", dir(id), 10, "").out.trim().split("\n")
 
@@ -50,7 +50,7 @@ export fn build_oracle(id: String) String:
 	return f"{tmp}/oracle"
 
 // The oracle's output for `stdin`.
-export fn solve_with(oracle: String, stdin: String) String:
+export fn solve_with(oracle String, stdin String) String:
 	ran := bash(f"\"{oracle}\"", ".", 120, stdin)
 	if ran.code != 0: panic(f"oracle failed (exit {ran.code}): {ran.err.slice(0, 500)}")
 	return ran.out
@@ -58,13 +58,13 @@ export fn solve_with(oracle: String, stdin: String) String:
 // The cases of a large challenge: inputs supplied by the generator, outputs from its Go
 // oracle.
 export type Cases:
-	oracle: String
-	list: List[GenCase] = []
+	oracle String
+	list List[GenCase] = []
 
 // Appends a case whose expected output is the oracle's answer for `stdin`.
-fn var Cases.push(name: String, stdin: String) Void:
+fn var Cases.push(name String, stdin String) Void:
 	self.list.append(make_case(name, stdin, solve_with(self.oracle, stdin)))
 
 // The case made from `stdin` without recording it, for the example lists.
-fn Cases.make(name: String, stdin: String) GenCase:
+fn Cases.make(name String, stdin String) GenCase:
 	return make_case(name, stdin, solve_with(self.oracle, stdin))

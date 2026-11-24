@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/list-items-cache.ms
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn grow(var values: List[Int]) Void:
+fn grow(var values List[Int]) Void:
     values.append(values.length())
 
 test "indexed loops over a list read and write through the shared storage":

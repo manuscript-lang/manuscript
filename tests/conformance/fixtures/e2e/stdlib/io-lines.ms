@@ -11,7 +11,7 @@ import (
 	closed_reader, memory from "./support/streams.ms",
 )
 
-fn gather(move input: ReadStream[Bytes], max_bytes: Int? = null) List[String]!:
+fn gather(move input ReadStream[Bytes], max_bytes Int? = null) List[String]!:
 	return collect(lines(input, max_bytes), null)
 
 test "an empty stream has no lines":
@@ -25,8 +25,8 @@ test "a final newline adds no empty line":
 
 test "an over-budget line fails the read after the lines before it":
 	var input = lines(memory("ok\ntoo long line\nnever"), 5)
-	var seen: List[String] = []
-	var failure: Error? = null
+	var seen List[String] = []
+	var failure Error? = null
 
 	while true:
 		step := input.next()
@@ -51,7 +51,7 @@ test "a closed stream fails the first read with its error":
 	expect_equal(step, error(Error("I/O: resource is closed", kind: "EBADF")))?
 
 test "break and continue work in a stream loop":
-	var seen: List[String] = []
+	var seen List[String] = []
 
 	for line in lines(memory("1\nskip\n3\n4\n")):
 		text := line
@@ -63,7 +63,7 @@ test "break and continue work in a stream loop":
 	expect_equal(seen, ["1", "3"])?
 
 type Countdown:
-	left: Int
+	left Int
 
 fn var Countdown.next() Int?:
 	if self.left == 0: return null
@@ -78,8 +78,8 @@ test "any Iterator implementation works, including a temporary":
 	expect_equal(total, 6)?
 
 test "an iterator behind the Iterator interface works":
-	var source: Iterator[Int] = Countdown(2)
-	var seen: List[Int] = []
+	var source Iterator[Int] = Countdown(2)
+	var seen List[Int] = []
 	for n in source:
 		seen.append(n)
 	expect_equal(seen, [2, 1])?

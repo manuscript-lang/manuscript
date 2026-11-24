@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn build(move columns: List[Align], rows: List[List[String]]) Table!:
+fn build(move columns List[Align], rows List[List[String]]) Table!:
 	var table = Table(columns: columns)
 	for row in rows:
 		table.add(row.clone())?
@@ -48,7 +48,7 @@ test "table renders empty tables and zero column rows":
 	expect_equal(null.render(), "\n")?
 
 test "table add rejects wrong cell counts and controls":
-	malformed: Void! := error(
+	malformed Void! := error(
 		Error("table: row has 1 cells, expected 2", kind: "EBADMSG")
 	)
 	var table = Table(columns: [Align.Left, Align.Right])

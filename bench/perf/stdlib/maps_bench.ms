@@ -1,8 +1,8 @@
 import words from "./src/harness.ms"
 
 type Cell:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
 bench "map.int_put_get" per 200000:
 	var m = Map[Int, Int]()

@@ -6,7 +6,7 @@ enum S:
     B
     C
 
-fn f(s: S) Int:
+fn f(s S) Int:
     match s:
         A:
             return 1

@@ -310,7 +310,7 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
     if (params[i].flags & MS_PARAM_VAR) ms_strbuild_append_text(&one, "var ");
     if (ast != NULL || ms_ty_kind(&program->types, callee->ty) != MS_TY_FUNCTION) {
       ms_strbuild_append(&one, ms_names_span(program->names, ast != NULL ? ast->ptr[i]->name : params[i].name));
-      ms_strbuild_append_text(&one, ": ");
+      ms_strbuild_append_text(&one, " ");
     }
     ms_ty_show_plain(&one, program->names, &program->types, params[i].ty);
     if (defaults != NULL && defaults->ptr[i]->def != NULL) ms_strbuild_append_text(&one, " = ...");
