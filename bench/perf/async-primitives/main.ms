@@ -74,8 +74,8 @@ fn echo_pipe(requests: Pipe[Int], replies: Pipe[Int]) Void!:
 	while true:
 		next := requests.receive()?
 
-		if value := next:
-			out.write(value + 1)?
+		if next != null:
+			out.write(next + 1)?
 		else:
 			return out.close()
 
@@ -92,8 +92,9 @@ fn run_pingpong(n: Int) Int:
 
 	for i in 0..n:
 		out.write(i).get()
-		if value := replies.receive().get():
-			total += value
+
+		value := replies.receive().get()
+		if value != null: total += value
 
 	out.close().get()
 	gate.close().get()
@@ -116,9 +117,11 @@ fn run_stream(n: Int) Int:
 		options: PromiseOptions(placement: Placement.Here)
 	)
 	var total = 0
+
 	for i in 0..n:
-		if value := values.receive().get():
-			total += value
+		value := values.receive().get()
+		if value != null: total += value
+
 	gate.close().get()
 	writer.wait().get()
 	return total
@@ -134,8 +137,8 @@ fn echo_tcp(var listener: Listener) Void!:
 	while true:
 		chunk := conn.input.next()?
 
-		if data := chunk:
-			conn.output.write(data)?
+		if chunk != null:
+			conn.output.write(chunk)?
 			conn.output.flush()?
 		else:
 			return conn.close()
@@ -154,8 +157,9 @@ fn run_echo(n: Int) Int:
 	for i in 0..n:
 		client.output.write(message.clone()).get()
 		client.output.flush().get()
-		if data := client.input.next().get():
-			total += data.length()
+
+		data := client.input.next().get()
+		if data != null: total += data.length()
 
 	client.close().get()
 	server.wait().get()
@@ -164,7 +168,7 @@ fn run_echo(n: Int) Int:
 fn main() Void:
 	args := arguments()
 	mode := args[0].clone()
-	n := args[1].parse_int().get()
+	n := args[1].parse_int() or 0
 	before := monotonic()
 	var total = 0
 

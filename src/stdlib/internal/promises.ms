@@ -15,6 +15,10 @@ export extern fn msrt_promise_take[T](id: Int) move T?
 export type Slot[T]:
 	value: T
 
+// Waits for the promise without a limit and takes its value. `null` when it ended any
+// other way; `msrt_promise_wait` then says which.
+export extern fn msrt_promise_result[T](id: Int) move T?
+
 export extern fn msrt_promise_done(id: Int) Bool
 
 // Starts `work` as a new promise and returns its id. The work is called with that id

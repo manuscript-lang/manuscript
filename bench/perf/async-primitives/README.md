@@ -146,3 +146,34 @@ Instructions for `inline` at one thread: 1,750 to 1,626. `bench/perf/promise-tre
 Correction before merging: both sections above were measured with one more cut, a guarded inline run that registered no cleanup for its closure. That cut is not in the change. The closure's entry is also what puts the guard's base above the promises the waiting frame started, so a fault or cancel inside the run does not end them; without it `yaml` and `http-fault-leak` timed out on windows-amd64 (3 of 3 runs, 0 of 5 with the entry). With the entry back `inline` is 1,706 instructions, not 1,626, and the times above are a few nanoseconds optimistic.
 
 Not done. `inline` is 1,706 instructions against the C port's 270. The profile is flat: no function is above 80. About 900 are the promise and queue functions (five runtime calls per promise: start, wait, put, take, close), about 250 are cleanup registrations and the shield in compiled code, 90 the guard.
+
+### Later the same day, another machine: no locked instruction where one thread writes
+
+The sandbox moved to a slower host (Xeon 2.1 GHz, 4 cores): the same binaries read 35 ns for the C port and 168 ns for the section above. Locked instructions cost about 9 ns each here, which is why Manuscript lost more than C did. Before is `main` at 0e7a6010; minimum / median of 15 interleaved runs.
+
+- The shield depth and the `unwinding` flag are written only by the task's own thread, so they change with a load and a store. They were an atomic add, an atomic subtract and an exchange: three locked instructions per promise, and two per shielded close anywhere. This is 27 of the 53 ns.
+- The owner pushes to its queue without the lock: it writes the slot and publishes it by storing `tail`. `head` moves only under the lock, past entries taken or removed; the owner takes the lock when the ring looks full.
+- `Promise.wait` is one runtime call, `msrt_promise_result`, which waits and moves the value out of the row the wait found. Taking the result frees the row, so the drop of the promise finds nothing to do.
+- The calls between the promise, task and queue files that the unit build left as calls are forced inline (46 calls per promise to 27), a wait looks the row up once, and the task's deadline is written only when a wait has one.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline`, 1 thread | 168 / 172 | 115 / 119 | 35 |
+| `inline`, 4 threads | 169 / 192 | 117 / 136 | 35 |
+| `batch`, 4 threads | 140 / 148 | 103 / 111 | |
+
+Instructions for `inline` at one thread: 1,706 to 1,323. On the first machine of this page that count was 121 ns at 1,626, so this should read under 100 ns there; it was not rerun there.
+
+### 2026-11-24: opening a shield is one store, not a store and a fence
+
+Same host and method. Before is the section above. Leaving a shield stored the depth and then ran a full fence (`mfence`) so a concurrent stop request is not lost; now the store that brings the depth to zero is itself sequentially consistent, as is the read of the stop request after it. One barrier does what two instructions did.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline`, 1 thread | 115 / 127 | 107 / 113 | 35 |
+| `inline`, 4 threads | 117 / 123 | 108 / 117 | 35 |
+| `batch`, 4 threads | 104 / 116 | 106 / 120 | |
+
+`batch` is within noise. Instructions for `inline` at one thread: 1,364; the merge of `main` at 38464d46 added about 40 in compiled code (`run_inline` and the work closure), the change itself removes one.
+
+Not done. About 240 instructions are three cleanup registrations (two in compiled code, one around the inline run), which go away when cancel exits replace the cleanup stack: about 15 ns here, which is what takes this under 100. 90 are the guard and 110 the shielded close of a promise whose result was already taken. Three barriers are left, about 9 ns each: the store that publishes a push, ordered against a looker's last look; the compare-and-swap that decides between the owner and a thief; and the store that opens the shield.
