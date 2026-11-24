@@ -248,13 +248,7 @@ static bool function_blocks(ElCx *cx, MirFunc *func, ElEm *em) {
 }
 
 static bool elaborate_function(ElCx *cx, MirModule *module, MirFunc *func) {
-  MsString implicit = ms_string_empty();
-  const bool own_all = ms_env_get("MS_UNWIND_EXITS", &implicit) && ms_string_span(&implicit).len != 0;
-  ms_string_release(&implicit);
-  MsString off = ms_string_empty();
-  const bool skip = ms_env_get("MS_NO_IMPLICIT", &off);
-  ms_string_release(&off);
-  if (own_all && !skip && !el_own_implicit(module, func, cx->ma)) {
+  if (!el_own_implicit(module, func, cx->ma)) {
     return false;
   }
   cx->f = func;

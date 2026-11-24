@@ -107,7 +107,6 @@ typedef struct Lower {
   MsCheckProgram *program;
   MirModule *module;
   MsStrBuild *error;
-  bool unwind_exits;  /* a call that may park or fault is followed by a test of the unwinding byte and an exit (fn_unwind_site) */
   uint32_t unwinding; /* the extern `msrt_unwinding`, once made */
   bool failed; /* a type with no MIR form reached lowering: the program does not compile, whatever else lowers */
   LowerTyMap types;            /* type (after substitution) -> MIR type */

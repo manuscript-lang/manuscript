@@ -7,23 +7,6 @@
 #include "compiler/mir/mir_pass.h"
 #include "compiler/mir/mir_analysis.h"
 
-/* A value other than 1 in MS_UNWIND_EXITS names the functions that get exits (a substring of the name): a way to
- * find which function's exits change a program's behavior. */
-static bool exits_in(const LowerFn *fn) {
-  MsString filter = ms_string_empty();
-  bool all = true;
-  if (ms_env_get("MS_UNWIND_EXITS", &filter) && !(ms_string_span(&filter).len == 1 && ms_string_span(&filter).ptr[0] == '1')) {
-    const MsSpan name = ms_names_span(&fn->cx->module->names, fn->b.func.name);
-    const MsSpan want = ms_string_span(&filter);
-    all = false;
-    for (size_t at = 0; at + want.len <= name.len && !all; at++) {
-      all = __builtin_memcmp(name.ptr + at, want.ptr, want.len) == 0;
-    }
-  }
-  ms_string_release(&filter);
-  return all;
-}
-
 const MirInst *fn_just_made(const LowerFn *fn, MirValue value) {
   if (value == MIR_NONE) {
     return NULL;
@@ -63,7 +46,7 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
     dead_result = (call->op == MOP_Call || call->op == MOP_CallInd || call->op == MOP_CallMethod) &&
                   mir_result_mode(fn->cx->module, &fn->b.func, call, &mode) && mode == MM_MOVE;
   }
-  if (!fn->cx->unwind_exits || !exits_in(fn) || fn->terminated || fn->failed || fn->b.func.unwind_only ||
+  if (fn->terminated || fn->failed || fn->b.func.unwind_only ||
       fn->b.func.closer) {
     return;
   }

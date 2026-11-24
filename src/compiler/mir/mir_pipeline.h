@@ -17,7 +17,6 @@
 typedef struct MirPipelineOptions {
   bool verify;       /* verify after every pass */
   bool count_ops;    /* profile builds */
-  bool cancel_edges; /* programs that start tasks */
   bool checks;       /* keep list bounds checks */
 } MirPipelineOptions;
 

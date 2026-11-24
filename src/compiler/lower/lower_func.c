@@ -698,9 +698,6 @@ void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuil
     ms_fatal(MS_FATAL_INVARIANT, "a program checked for analysis only was lowered");
   }
   *cx = (Lower){.program = program, .module = module, .error = error, .unwinding = MIR_NONE};
-  MsString exits = ms_string_empty();
-  cx->unwind_exits = ms_env_get("MS_UNWIND_EXITS", &exits) && ms_string_span(&exits).len != 0;
-  ms_string_release(&exits);
   ms_names_init(&cx->instance_keys);
   ms_names_init(&cx->vtable_keys);
   (void)ms_names_intern(&cx->vtable_keys, ms_span_of_text(""));

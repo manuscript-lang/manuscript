@@ -44,8 +44,8 @@ bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, M
   if (mir_shed(module) && options->verify && !verified(module, "shed", error)) {
     return false;
   }
-  /* The hybrid cancel exits run the cleanups unwind registered, so they go in after it. */
-  if (options->cancel_edges && mir_cancel_edges(module) && options->verify && !verified(module, "cancel_edges", error)) {
+  /* Every function exits on a delivered cancel by returning: a program that starts tasks says so at its entry. */
+  if (mir_cancel_edges(module) && options->verify && !verified(module, "cancel_edges", error)) {
     return false;
   }
   /* The checks and list growth the emitter prints are explicit MIR from here on. */
