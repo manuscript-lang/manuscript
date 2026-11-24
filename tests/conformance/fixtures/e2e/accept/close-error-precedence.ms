@@ -145,7 +145,7 @@ test "a close error still faults when the function cannot return Error":
 
 fn borrowed_ok(log: String, payload: String, fail: Bool) String!:
 	_resource := Failing(log.clone(), 1, fail: fail)
-	return ok(payload)
+	return ok(payload.clone())
 
 fn forward_ok(log: String, payload: String, fail: Bool) String!:
 	return borrowed_ok(log, payload, fail)
@@ -174,12 +174,12 @@ fn custom(log: String, fail: Bool) Int!Domain:
 
 fn borrowed_custom(log: String, cause: Domain) Int!Domain:
 	_resource := Failing(log.clone(), 1)
-	return error(cause)
+	return error(cause.clone())
 
 fn inner_close(log: String, cause: Error) Int!:
 	if true:
 		_resource := Failing(log.clone(), 1)
-	return error(cause)
+	return error(cause.clone())
 
 fn consume(value: Failing) Int:
 	_values := [value.clone()]
@@ -188,7 +188,7 @@ fn consume(value: Failing) Int:
 fn consumed_parameter(move value: Failing, payload: String, take: Bool) String!:
 	if take:
 		_number := consume(value)
-	return ok(payload)
+	return ok(payload.clone())
 
 test "a borrowed success survives a successful close through forwarding":
 	dir := temporary("close-borrowed-ok-") | expect_ok?
@@ -288,9 +288,9 @@ fn holder_result[T](log: String, source: T!) T!:
 
 fn overlapping(log: String, value: String, cause: Error, fail: Bool) String!:
 	_resource := Failing(log.clone(), 1, fail: false)
-	if fail: return error(cause)
+	if fail: return error(cause.clone())
 
-	return ok(value)
+	return ok(value.clone())
 
 test "whole Result forwarding preserves the body error and caller source":
 	dir := temporary("close-whole-error-") | expect_ok?

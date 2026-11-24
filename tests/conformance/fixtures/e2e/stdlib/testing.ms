@@ -35,7 +35,7 @@ test "testing assertions":
 
 	success: Int!Error := ok(9)
 	failure: Int!Error := error(Error("bad"))
-	((success | expect_ok?)) | expect_equal(9)?
+	((success.clone() | expect_ok?)) | expect_equal(9)?
 	((failure | expect_error?)) | expect_equal(Error("bad"))?
 
 	mismatch := expect_equal(1, 2)

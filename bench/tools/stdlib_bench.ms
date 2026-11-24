@@ -36,7 +36,7 @@ export fn stdlib_table(output: String) String!:
 
 	for c in cases:
 		s := (
-			c.stats
+			c.stats.clone()
 			or Stats(
 				operations: 0,
 				iterations: null,

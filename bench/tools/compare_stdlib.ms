@@ -36,7 +36,7 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 
 	for c in cases:
 		stats := (
-			c.stats
+			c.stats.clone()
 			or Stats(
 				operations: 0,
 				iterations: null,

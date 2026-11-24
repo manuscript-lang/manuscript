@@ -25,7 +25,7 @@ test "UTF8 validity checks the complete buffer without replacement":
 		is_valid(data) | expect_equal(false)?
 
 fn expect_scalar(actual: Utf8Scalar!Utf8Error, value: Int, width: Int) Void!:
-	decoded := actual | expect_ok?
+	decoded := actual.clone() | expect_ok?
 	decoded.scalar | expect_equal(value)?
 	return decoded.width | expect_equal(width)
 

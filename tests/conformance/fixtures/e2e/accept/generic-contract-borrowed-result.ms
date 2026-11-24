@@ -23,7 +23,7 @@ fn Pet.nick() String?:
 	return self.alias
 
 fn Pet.checked() String!:
-	return ok(self.name)
+	return ok(self.name.clone())
 
 fn text_of[T: Label](item: T) String:
 	return item.text()

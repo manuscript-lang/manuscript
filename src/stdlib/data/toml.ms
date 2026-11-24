@@ -809,7 +809,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 
 		node := Node.TableNode(result)
 		seal(reader, node.clone())
-		return ok(node)
+		return ok(node.clone())
 
 	start := cursor(reader)
 	var end = start

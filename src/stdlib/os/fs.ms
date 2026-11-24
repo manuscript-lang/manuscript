@@ -1043,7 +1043,7 @@ export fn move(source: String, destination: String) Void!:
 
 fn move_by_copy(source: String, destination: String, cause: Error) Void!:
 	info := stat(source, follow_links: false)
-	if info.is_error(): return error(cause)
+	if info.is_error(): return error(cause.clone())
 	if stat(destination, follow_links: false).is_ok(): return error(already_exists())
 
 	copied := copy(
@@ -1106,7 +1106,7 @@ export fn watch(
 				recursive,
 				options.max_entries,
 				options.max_events,
-				options.overflow or "error",
+				options.overflow.clone() or "error",
 			)?
 		)
 	)

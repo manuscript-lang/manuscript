@@ -86,7 +86,7 @@ fn reference_for(ch: Challenge, lang: Lang) String:
 // grading build mentions an internal error or a Rust panic.
 fn keep_ice(said: String, ws: String, g: Grade) Bool:
 	last := read_text(f"{ws}/.bench/build.out")
-	text := f"{said}\n{last}\n{(g.error or "")}"
+	text := f"{said}\n{last}\n{(g.error.clone() or "")}"
 	return (
 		text.contains("internal error")
 		or text.contains("internal compiler error")

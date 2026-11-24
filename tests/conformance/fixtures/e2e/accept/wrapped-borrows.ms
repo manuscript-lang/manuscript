@@ -16,7 +16,7 @@ fn first_tag(r: Row) String?:
 	return r.tags[0]
 
 fn named(r: Row) String!Bad:
-	return ok(r.name)
+	return ok(r.name.clone())
 
 fn relay(result: Row!Bad, var visits: List[Int]) Row!Bad:
 	visits.append(1)

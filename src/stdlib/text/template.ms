@@ -147,7 +147,7 @@ fn Template.render(
 		html: self.html,
 	)
 	run.nodes(self.nodes, 0)?
-	return ok(run.out)
+	return ok(run.out.clone())
 
 type Token:
 	action: Bool
