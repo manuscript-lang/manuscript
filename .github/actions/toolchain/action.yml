@@ -19,7 +19,8 @@ runs:
     - if: runner.os == 'macOS'
       shell: bash
       run: brew install ninja ccache llvm lld
-    # Homebrew's llvm is keg-only: release builds run its opt and llc from PATH.
+    # Homebrew's llvm is keg-only: release builds run its opt and llc from PATH. The lld formula installs llvm anyway, and
+    # a darwin-amd64 build with it off PATH failed to link ms (undefined OpenSSL ENGINE symbols from curl), so macOS keeps it.
     - if: runner.os == 'macOS'
       shell: bash
       run: cmake -P cmake/CiMacosEnv.cmake
@@ -27,10 +28,17 @@ runs:
       shell: bash
       run: |
         mkdir -p .artifacts/apt/partial
-        sudo apt-get install -y -o Dir::Cache::archives="$PWD/.artifacts/apt" ninja-build ccache llvm lld gdb
+        sudo apt-get install -y -o Dir::Cache::archives="$PWD/.artifacts/apt" ninja-build ccache lld gdb
         # apt wrote the archives as root; the cache action's tar runs as the runner user.
         sudo chown -R "$(id -u):$(id -g)" .artifacts/apt
         rm -f .artifacts/apt/lock
+    # The pinned LLVM library (cmake/toolchain/llvm-lib.lock): ms compiles through it in-process and exports MS_LLVM to the
+    # steps after it. The same release's llc is fetched too (MS_LLC, with MS_OPT): the linker's glibc stubs still run it
+    # as a child process. A runner then needs no system LLVM, only lld. Windows takes LLVM from its MSYS2 packages.
+    - if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        cmake "-DROOT=$PWD" "-DARCH=${{ runner.arch == 'ARM64' && 'arm64' || 'amd64' }}" -DTOOLS=OFF -P cmake/FetchLlvmLib.cmake
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2, which brings the perl and make
     # pair OpenSSL's Configure needs.
     - if: runner.os == 'Windows'

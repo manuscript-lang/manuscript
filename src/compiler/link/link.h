@@ -12,7 +12,8 @@
 
 typedef struct LinkOptions {
   MsSpan lld;   /* the `lld` executable */
-  MsSpan llc;   /* the `llc` executable, which makes the glibc stubs */
+  MsSpan llc;   /* the `llc` executable, which makes the glibc stubs when `llvm` is empty */
+  MsSpan llvm;  /* the shared LLVM library that makes the glibc stubs in this process; empty to run `llc` */
   MsSpan files; /* the directory with the startup files, runtime libraries and the glibc export table */
   bool strip;   /* drop the symbol table */
   bool musl;    /* static musl instead of the glibc 2.28 stubs; the inputs must be the musl runtime */

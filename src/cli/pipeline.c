@@ -326,7 +326,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
     ok = make_objects(request, &program, ir, units, ms_string_span(&scratch), opt, llc, llvm, object, error);
   }
   if (ok) {
-    const LinkOptions link = {.lld = lld, .llc = llc, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
+    const LinkOptions link = {.lld = lld, .llc = llc, .llvm = llvm, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
                               .musl = request->static_libc};
     const LinkRequest job = {.object = ms_strbuild_span(&object[0]), .inputs = inputs, .input_count = count,
                              .output = request->output};
