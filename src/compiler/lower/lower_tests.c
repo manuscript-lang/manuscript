@@ -115,6 +115,7 @@ static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *de
     return MIR_NONE;
   }
   /* A fault trace names the block as it is written: `test adds two numbers`, `bench sort`. */
+  cx->module->funcs.ptr[slot].runs_once = !decl->u.test.bench;
   cx->module->funcs.ptr[slot].display = mir_name(
       cx->module, ms_message_format(&cx->module->arena, decl->u.test.bench ? "bench %S" : "test %S", decl->u.test.name, (MsSpan){0}));
   return slot;
