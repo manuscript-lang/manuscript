@@ -107,6 +107,26 @@ void emit_leaves_at(EmitCx *cx, MirValue value, const char *base, bool load) {
   ms_free(offsets);
 }
 
+/* Writes the leaves of `value` to memory at `base`: a held value is its cell, which has the
+ * layout of that memory, so it is copied as one block. */
+void emit_store_value(EmitCx *cx, MirValue value, const char *base) {
+  char cell[24];
+  MsSpan leaves = emit_value_leaves(cx, value);
+  if (leaves.len >= 4 && emit_wide_address(cx, value, cell, sizeof cell)) {
+    ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", base, cell,
+                       mir_mem_layout(leaves, NULL).size);
+    return;
+  }
+  emit_leaves_at(cx, value, base, false);
+}
+
+/* Reads the leaves of `value` from memory at `base`; see emit_wide_fill. */
+void emit_load_value(EmitCx *cx, MirValue value, const char *base) {
+  if (!emit_wide_fill(cx, value, base, NULL)) {
+    emit_leaves_at(cx, value, base, true);
+  }
+}
+
 void emit_pointer(EmitCx *cx, MirValue value, char *name, size_t capacity) {
   uint32_t number = cx->next++;
   ms_strbuild_printf(cx->out, "  %%p%u = inttoptr i64 %%v%u to ptr\n", number, value);
@@ -183,7 +203,7 @@ static void emit_load(EmitCx *cx, const MirInst *inst) {
     return;
   }
   cx->tbaa = header_tbaa(cx, inst->res);
-  emit_leaves_at(cx, inst->res, base, true);
+  emit_load_value(cx, inst->res, base);
   cx->tbaa = NULL;
 }
 
@@ -198,7 +218,7 @@ static void emit_store(EmitCx *cx, const MirInst *inst) {
     return;
   }
   cx->tbaa = header_tbaa(cx, inst->args[1]);
-  emit_leaves_at(cx, inst->args[1], base, false);
+  emit_store_value(cx, inst->args[1], base);
   cx->tbaa = NULL;
 }
 

@@ -47,7 +47,7 @@ static bool iface_new(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
     emit_pointer(cx, inst->res, object, sizeof object);
   }
   if (emit_leaves(cx, type).len > 0) {
-    emit_leaves_at(cx, inst->args[0], object, false);
+    emit_store_value(cx, inst->args[0], object);
   }
   ms_strbuild_printf(cx->out, "  %%v%u.1 = add i64 %s, %u\n", inst->res, table, tag);
   return true;
