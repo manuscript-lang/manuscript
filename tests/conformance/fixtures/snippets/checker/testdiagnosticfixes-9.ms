@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:29 TestDiagnosticFixes
 type Point:
-    x: Int
+    x Int
 
 fn f() Int:
     Point = 2

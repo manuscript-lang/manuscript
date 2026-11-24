@@ -14,9 +14,9 @@ import (
 
 // Hands out the chunks in order, then ends.
 type Chunks:
-	data: Bytes
-	size: Int
-	at: Int
+	data Bytes
+	size Int
+	at Int
 
 fn var Chunks.next() Bytes?!:
 	if self.at >= self.data.length(): return ok(null)
@@ -31,12 +31,12 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
+fn chunked(move data Bytes, size Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 type Texts:
-	parts: List[String]
-	at: Int
+	parts List[String]
+	at Int
 
 fn var Texts.next() String?!:
 	if self.at >= self.parts.length(): return ok(null)
@@ -49,8 +49,8 @@ fn move Texts.close() Void!:
 	return ok()
 
 // Splits text into pieces of `size` characters.
-fn pieces(text: String, size: Int) List[String]:
-	var out: List[String] = []
+fn pieces(text String, size Int) List[String]:
+	var out List[String] = []
 	var at = 0
 
 	while at < text.length():
@@ -61,7 +61,7 @@ fn pieces(text: String, size: Int) List[String]:
 
 	return out
 
-fn join_text(input: ReadStream[String]) String!:
+fn join_text(move input ReadStream[String]) String!:
 	var source = input
 	var out = ""
 
@@ -76,9 +76,9 @@ fn join_text(input: ReadStream[String]) String!:
 
 	return ok(out)
 
-fn join_bytes(input: ReadStream[Bytes]) Bytes!:
+fn join_bytes(move input ReadStream[Bytes]) Bytes!:
 	var source = input
-	var out: List[Bytes] = []
+	var out List[Bytes] = []
 
 	while true:
 		next := source.next()?

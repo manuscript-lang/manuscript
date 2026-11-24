@@ -4,23 +4,23 @@
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 
 type Point:
-    x: Int
-    y: Int
+    x Int
+    y Int
 
 type Shape:
-    name: String
-    weight: Float
-    solid: Bool
-    corner: Point
-    tags: List[String]
+    name String
+    weight Float
+    solid Bool
+    corner Point
+    tags List[String]
 
 type Sized:
-    width: Int
-    height: Int = 2
+    width Int
+    height Int = 2
 
-fn area(shape: Sized) Int: shape.width * shape.height
+fn area(shape Sized) Int => shape.width * shape.height
 
-fn shifted(point: Point, by: Int) Point:
+fn shifted(point Point, by Int) Point:
     return Point(point.x + by, point.y + by)
 
 test "struct records read write compare format and clone":
@@ -53,7 +53,7 @@ test "struct records with mixed field types":
     )?
 
 test "struct records as keys and defaults":
-    var set: Set[Point] = Set[Point]()
+    var set Set[Point] = Set[Point]()
     set.add(Point(1, 1))
     set.add(Point(1, 1))
     set.add(Point(2, 1))

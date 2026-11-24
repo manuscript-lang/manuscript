@@ -13,15 +13,15 @@
         "position": {
           "file": "testinterfaceandreceiverhints-10.ms",
           "line": 4,
-          "column": 31,
-          "offset": 181
+          "column": 33,
+          "offset": 183
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinterfaceandreceiverhints-10.ms:4:31: resolution: Error has no cases or static members, so `Error.message(...)` does not exist; if message is a module function, import it and call message(...); if it is a method, call it on a value\n   |\n 4 | fn error_value() Error: Error.message(\"bad input\")\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinterfaceandreceiverhints-10.ms:4:33: resolution: Error has no cases or static members, so `Error.message(...)` does not exist; if message is a module function, import it and call message(...); if it is a method, call it on a value\n   |\n 4 | fn error_value() Error => Error.message(\"bad input\")\n   |                                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

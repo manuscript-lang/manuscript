@@ -1,18 +1,18 @@
 import parse, stringify from "@std/data/csv.ms"
 
 type BenchData:
-	rows: List[List[String]]
-	rows_2: List[List[String]]
-	csv_text: String
-	value: String
-	text: String
+	rows List[List[String]]
+	rows_2 List[List[String]]
+	csv_text String
+	value String
+	text String
 
 fn make_fixture() BenchData:
-	var rows: List[List[String]] = []
+	var rows List[List[String]] = []
 	for i in 0..5000:
 		rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
-	var rows_2: List[List[String]] = []
+	var rows_2 List[List[String]] = []
 	for i in 0..5000:
 		rows_2.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
@@ -22,7 +22,7 @@ fn make_fixture() BenchData:
 	return BenchData(
 		rows: rows,
 		rows_2: rows_2,
-		csv_text: csv_text,
+		csv_text: csv_text.clone(),
 		value: value,
 		text: text,
 	)

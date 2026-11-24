@@ -6,13 +6,13 @@ import expect_equal from "@std/test/test.ms"
 enum Tree:
     Leaf
     Gap
-    Node(left: Tree, right: Tree)
+    Node(left Tree, right Tree)
 
 enum Chain:
     End
-    Link(value: Int, rest: Chain)
+    Link(value Int, rest Chain)
 
-fn build(depth: Int) Tree:
+fn build(depth Int) Tree:
     if depth == 0:
         return Leaf
     if depth == 1:
@@ -20,16 +20,16 @@ fn build(depth: Int) Tree:
 
     return Node(build(depth - 1), build(depth - 2))
 
-fn count(tree: Tree) Int:
+fn count(tree Tree) Int:
     match tree:
-        Leaf: return 1
-        Gap: return 0
-        Node(left, right): return count(left) + count(right)
+        Leaf => return 1
+        Gap => return 0
+        Node(left, right) => return count(left) + count(right)
 
-fn sum(move chain: Chain) Int:
+fn sum(move chain Chain) Int:
     match chain:
-        End: return 0
-        Link(value, rest): return value + sum(rest)
+        End => return 0
+        Link(value, rest) => return value + sum(rest)
 
 test "payloadless cases survive clone, equality and drop":
     tree := build(10)

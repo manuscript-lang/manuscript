@@ -1,16 +1,16 @@
 import Instant, monotonic from "@std/time.ms"
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn report(name: String, t0: Instant, sum: Int) Void:
+fn report(name String, t0 Instant, sum Int) Void:
 	ns := monotonic().difference(t0).to_nanoseconds()
 	print(f"{name} {ns / 1000000} ms {sum}")
 
 fn main() Void:
 	n := 1000000
 	var x = 7
-	var words: List[String] = []
+	var words List[String] = []
 
 	for i in 0..n:
 		x = lcg(x)
@@ -75,7 +75,7 @@ fn main() Void:
 	report("pad", t, s)
 	t = monotonic()
 
-	sorted := words.sorted(fn a, b: a.compare(b))
+	sorted := words.sorted((a, b) => a.compare(b))
 	report("sort_strings", t, sorted[0].length())
 	t = monotonic()
 	s = 0
@@ -84,7 +84,7 @@ fn main() Void:
 	report("less_than", t, s)
 	t = monotonic()
 
-	var nums: List[Int] = []
+	var nums List[Int] = []
 	for k in 0..n: nums.append(k * 7)
-	s = nums.map(fn v: v.to_string()).join(",").length()
+	s = nums.map(v => v.to_string()).join(",").length()
 	report("join_ints", t, s)

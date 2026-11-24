@@ -13,8 +13,8 @@ helpers in `@std/io/streams.ms`, so `from_bytes(data) | one_byte` is a reader th
 `check_reader` checks that a `ReadStream[Bytes]` you wrote behaves like a well-formed stream.
 */
 type OneByte:
-	input: ReadStream[Bytes]
-	held: Bytes?
+	input ReadStream[Bytes]
+	held Bytes?
 
 fn var OneByte.next() move Bytes?!:
 	var data = "".to_bytes()
@@ -41,13 +41,13 @@ fn move OneByte.close() Void!:
 
 // Returns `input` limited to one byte per read. This exposes code that assumes a read
 // fills its buffer.
-export fn one_byte(move input: ReadStream[Bytes]) ReadStream[Bytes]:
+export fn one_byte(move input ReadStream[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](OneByte(input, null))
 
 type FailAfter:
-	input: ReadStream[Bytes]
-	remaining: Int
-	cause: Error
+	input ReadStream[Bytes]
+	remaining Int
+	cause Error
 
 fn var FailAfter.next() move Bytes?!:
 	if self.remaining <= 0: return error(self.cause.clone())
@@ -72,18 +72,18 @@ fn move FailAfter.close() Void!:
 // with `cause`, even if `input` has ended. Use it to check that a parser reports a
 // truncated or broken source instead of treating it as a clean end of input.
 export fn fail_after(
-	move input: ReadStream[Bytes],
-	after: Int,
-	move cause: Error,
+	move input ReadStream[Bytes],
+	after Int,
+	move cause Error,
 ) ReadStream[Bytes]:
 	return ReadStream[Bytes](FailAfter(input, after, cause))
 
 type FailingSink:
-	output: WriteStream[Bytes]
-	remaining: Int
-	cause: Error
+	output WriteStream[Bytes]
+	remaining Int
+	cause Error
 
-fn var FailingSink.write(move value: Bytes) Void!:
+fn var FailingSink.write(move value Bytes) Void!:
 	size := value.length()
 
 	if size <= self.remaining:
@@ -107,9 +107,9 @@ fn move FailingSink.close() Void!:
 // the write that fits under the limit, and then fails that write and every later one
 // with `cause`. Use it to check error handling on a full disk or closed pipe.
 export fn fail_writer_after(
-	move output: WriteStream[Bytes],
-	after: Int,
-	move cause: Error,
+	move output WriteStream[Bytes],
+	after Int,
+	move cause Error,
 ) WriteStream[Bytes]:
 	return WriteStream[Bytes](FailingSink(output, after, cause))
 
@@ -117,7 +117,7 @@ export fn fail_writer_after(
 // `expected`: whole reads, one-byte reads, and an end of input that stays ended.
 // `make` is called once per check, so each check starts from the beginning. Fails the
 // test if any check does not hold.
-export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
+export fn check_reader(make fn() ReadStream[Bytes], expected Bytes) Void!:
 	all := read_all(make())
 	if all.is_error(): return fail("check_reader: reading everything failed")
 	if all.get() != expected:

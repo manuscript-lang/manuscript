@@ -4,7 +4,7 @@
 // not when the maker returns; a resource that holds only plain memory counts the same
 // as one with parts.
 type Marker:
-	id: Int
+	id Int
 
 fn move Marker.close() Void!:
 	print(f"close {self.id}")
@@ -12,15 +12,15 @@ fn move Marker.close() Void!:
 fn Marker.status() Int:
 	return self.id
 
-fn use_it(marker: Marker) Void:
+fn use_it(marker Marker) Void:
 	return
 
-fn make_from_parameter(move marker: Marker) fn() Void:
-	return fn(): use_it(marker)
+fn make_from_parameter(move marker Marker) fn() Void:
+	return () => use_it(marker)
 
 fn make_from_local() fn() Void:
 	marker := Marker(id: 2)
-	return fn(): use_it(marker)
+	return () => use_it(marker)
 
 fn bound_temporary() Int:
 	read := Marker(id: 3).status

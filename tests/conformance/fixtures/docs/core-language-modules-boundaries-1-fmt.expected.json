@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export type Item:\n\tprice: Int\n\tquantity: Int\n\nexport fn total(items: List[Item]) Int:\n\tvar result = 0\n\tfor item in items:\n\t\tresult += item.price * item.quantity\n\treturn result\n"
+    "fmt": "export type Item:\n\tprice Int\n\tquantity Int\n\nexport fn total(items List[Item]) Int:\n\tvar result = 0\n\tfor item in items:\n\t\tresult += item.price * item.quantity\n\treturn result\n"
   }
 }

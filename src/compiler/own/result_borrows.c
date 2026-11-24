@@ -513,13 +513,17 @@ bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint
   if (kind == MS_REF_OPERATION) {
     return false; /* an interface operation answers the clone its implementation writes */
   }
+  if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE) {
+    return kind == MS_REF_CASE;
+  }
+  const MsFunc *declared = ms_own_find_func(program, &call->callee);
+  if (declared != NULL && declared->result_moves) {
+    return false; /* the declaration says the result is new memory, whatever the arguments */
+  }
   if (kind == MS_REF_NATIVE) {
     return !native_result_is_fresh(program, call);
   }
-  if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
-    return kind == MS_REF_CASE;
-  }
-  const MsFunc *func = ms_own_find_func(program, &call->callee);
+  const MsFunc *func = declared;
   if (func == NULL || func->bodiless || func->external) {
     /* the runtime provides it: its result may be any part of its arguments unless the table says it builds a new one */
     return !native_result_is_fresh(program, call);

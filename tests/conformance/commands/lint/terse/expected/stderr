@@ -34,9 +34,9 @@
     |
  39 |     for j in 0..xs.length():
     |     ^
-<DIR>/main.ms:42:5: warning MSL124: Build the list with `xs.map(fn x: ...)` or `xs.filter(fn x: ...)` instead of a loop that appends
+<DIR>/main.ms:42:5: warning MSL124: Build the list with `xs.map(x => ...)` or `xs.filter(x => ...)` instead of a loop that appends
     |
- 42 |     var out: List[Int] = []
+ 42 |     var out List[Int] = []
     |     ^
 <DIR>/main.ms:43:5: warning MSL125: Append every element with `out.extend(xs)` instead of a loop
     |

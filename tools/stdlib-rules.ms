@@ -18,14 +18,14 @@ stream_modules := [
 banned_methods := ["next", "receive", "feed", "write_bytes"]
 type_words := ["type", "enum", "interface", "namespace"]
 
-fn text_of(path: String) String:
+fn text_of(path String) String:
 	if bytes := read_file(path).wait(): return (bytes.decode_utf8() or "").replace(
 		"\r\n",
 		"\n",
 	)
 	return ""
 
-fn is_identifier(c: String) Bool:
+fn is_identifier(c String) Bool:
 	return (
 		(c >= "a" and c <= "z")
 		or (c >= "A" and c <= "Z")
@@ -34,7 +34,7 @@ fn is_identifier(c: String) Bool:
 	)
 
 // `text` without a leading word of `words` and the space after it, repeated.
-fn without_words(text: String, words: List[String]) String:
+fn without_words(text String, words List[String]) String:
 	var rest = text.clone()
 	var again = true
 
@@ -49,7 +49,7 @@ fn without_words(text: String, words: List[String]) String:
 	return rest
 
 // The identifier at the start of `text`.
-fn leading_name(text: String) String:
+fn leading_name(text String) String:
 	var end = 0
 
 	for c in text.chars():
@@ -61,14 +61,14 @@ fn leading_name(text: String) String:
 
 // One declared function: where it sits, who owns it and the text of its parameters.
 type Declared:
-	line: Int
-	exported: Bool
-	owner: String
-	name: String
-	params: List[String]
+	line Int
+	exported Bool
+	owner String
+	name String
+	params List[String]
 
 // The parameters between the parentheses of `header`, split at top-level commas.
-fn parameters(header: String) List[String]:
+fn parameters(header String) List[String]:
 	var found = List[String]()
 	open := header.index_of("(") or (-1)
 	if open < 0: return found
@@ -101,7 +101,7 @@ fn parameters(header: String) List[String]:
 
 // A function header from the line at `start`, continued over following lines until its
 // parentheses close.
-fn header_from(lines: List[String], start: Int) String:
+fn header_from(lines List[String], start Int) String:
 	var text = ""
 	var depth = 0
 	var opened = false
@@ -125,11 +125,11 @@ fn header_from(lines: List[String], start: Int) String:
 
 // The declared name `Type.method` or `name` of a header that starts after `fn `.
 fn declared_of(
-	line: Int,
-	exported: Bool,
-	after_fn: String,
-	owner_override: String,
-	params_from: String,
+	line Int,
+	exported Bool,
+	after_fn String,
+	owner_override String,
+	params_from String,
 ) Declared:
 	qualified := leading_name(after_fn)
 	var owner = owner_override.clone()
@@ -150,7 +150,7 @@ fn declared_of(
 
 // Every function a file declares: free and `fn Type.method` at column 0, and the
 // methods of its interfaces.
-fn declarations(text: String) List[Declared]:
+fn declarations(text String) List[Declared]:
 	lines := text.split("\n")
 	var found = List[Declared]()
 	var interface_name = ""
@@ -212,7 +212,7 @@ fn declarations(text: String) List[Declared]:
 
 // The names a file declares as types, interfaces or enums, and which of them it
 // exports.
-fn type_names(text: String, only_exported: Bool) List[String]:
+fn type_names(text String, only_exported Bool) List[String]:
 	var found = List[String]()
 
 	for line in text.split("\n"):
@@ -233,7 +233,7 @@ fn type_names(text: String, only_exported: Bool) List[String]:
 
 // ---- allow lists that only shrink ----
 
-fn allow_list(path: String) List[String]:
+fn allow_list(path String) List[String]:
 	var entries = List[String]()
 	for line in text_of(path).split("\n"):
 		if line != "" and not line.starts_with("//"): entries.append(line.trim())
@@ -241,10 +241,10 @@ fn allow_list(path: String) List[String]:
 
 // Findings not on the allow list, and allow-list lines that no longer match anything.
 fn shrinking(
-	allowed: List[String],
-	found: List[String],
-	list_path: String,
-	describe: String,
+	allowed List[String],
+	found List[String],
+	list_path String,
+	describe String,
 ) List[String]:
 	var issues = List[String]()
 	for entry in found:
@@ -257,20 +257,20 @@ fn shrinking(
 
 // ---- the four rules ----
 
-fn param_name(param: String) String:
-	colon := param.index_of(":") or (-1)
-	if colon < 0: return param.trim()
+fn param_name(param String) String:
+	for word in param.trim().split(" "):
+		if word == "var" or word == "move": continue
+		return word.clone()
 
-	words := param.slice(0, colon).trim().split(" ")
-	return (words.last() or "").clone()
+	return ""
 
-fn has_default(param: String) Bool:
+fn has_default(param String) Bool:
 	return param.contains(" = ")
 
 fn optional_defaults(
-	path: String,
-	declared: List[Declared],
-	exported_types: List[String],
+	path String,
+	declared List[Declared],
+	exported_types List[String],
 ) List[String]:
 	var found = List[String]()
 
@@ -291,9 +291,9 @@ fn optional_defaults(
 	return found
 
 fn stream_names(
-	path: String,
-	declared: List[Declared],
-	exported_types: List[String],
+	path String,
+	declared List[Declared],
+	exported_types List[String],
 ) List[String]:
 	var found = List[String]()
 
@@ -306,7 +306,7 @@ fn stream_names(
 	return found
 
 // Methods that do not follow their type or another method of it.
-fn adjacency(path: String, text: String) List[String]:
+fn adjacency(path String, text String) List[String]:
 	var issues = List[String]()
 	local := type_names(text, false)
 	var previous = ""
@@ -353,7 +353,7 @@ fn adjacency(path: String, text: String) List[String]:
 
 	return issues
 
-fn contains_word(text: String, word: String) Bool:
+fn contains_word(text String, word String) Bool:
 	var from = 0
 
 	while from <= text.length():
@@ -373,7 +373,7 @@ fn contains_word(text: String, word: String) Bool:
 
 	return false
 
-fn internal_externs(sources: Map[String, String]) List[String]:
+fn internal_externs(sources Map[String, String]) List[String]:
 	var issues = List[String]()
 
 	for path in sources.keys():
@@ -400,7 +400,7 @@ fn internal_externs(sources: Map[String, String]) List[String]:
 	return issues
 
 // Every problem the four rules find in the tracked standard-library declaration files.
-export fn stdlib_issues(files: List[String]) List[String]:
+export fn stdlib_issues(files List[String]) List[String]:
 	var sources = Map[String, String]()
 	for path in files:
 		if path.starts_with("src/stdlib/") and path.ends_with(".ms"): sources[

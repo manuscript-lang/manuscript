@@ -14,14 +14,14 @@
           "file": "golden-0527.ms",
           "line": 5,
           "column": 1,
-          "offset": 138
+          "offset": 140
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0527.ms:5:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n   |\n 5 | fn probe(start: Int, flag: Bool) Int: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0527.ms:5:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n   |\n 5 | fn probe(start Int, flag Bool) Int: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

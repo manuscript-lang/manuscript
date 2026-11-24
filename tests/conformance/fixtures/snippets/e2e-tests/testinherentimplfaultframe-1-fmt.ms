@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/inherent_methods_test.go:14 TestInherentImplFaultFrame
 type Counter:
-    value: Int
+    value Int
 
 fn Counter.overflow() Int:
     return self.value * self.value

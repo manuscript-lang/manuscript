@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=tests/e2e/testdata/projects/same_type_names/other.ms
 export type Point:
-    x: Int
+    x Int
 
 export enum Mode:
     Off
@@ -13,5 +13,5 @@ export fn shifted() Int:
 
 export fn flip() Int:
     match Mode.Off:
-        Mode.Off: return 2
-        _: return 0
+        Mode.Off => return 2
+        _ => return 0

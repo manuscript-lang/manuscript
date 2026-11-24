@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 type Door:
-	name: String
+	name String
 
 fn move Door.close() Void!:
 	stdout().write(f"close {self.name}\n").get()
 
 type Room:
-	first: Door
-	second: Door
+	first Door
+	second Door
 
-fn both(r: Room) List[Door]:
-	var xs: List[Door] = []
+fn both(move r Room) List[Door]:
+	var xs List[Door] = []
 	xs.append(r.second)
 	return xs
 
-fn branch(r: Room, flag: Bool) List[Door]:
-	var xs: List[Door] = []
+fn branch(move r Room, flag Bool) List[Door]:
+	var xs List[Door] = []
 	if flag:
 		xs.append(r.first)
 	return xs

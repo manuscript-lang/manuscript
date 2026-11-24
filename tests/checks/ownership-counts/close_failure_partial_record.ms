@@ -9,15 +9,15 @@ import (
 )
 
 type Gate:
-	name: String
+	name String
 
 fn move Gate.close() Void!:
 	stdout().write("close gate\n").get()
 	return error(Error("gate"))
 
 type Message:
-	data: Bytes
-	kind: Int
+	data Bytes
+	kind Int
 
 fn make() Message:
 	return Message(data: Bytes(), kind: 1)
@@ -25,7 +25,7 @@ fn make() Message:
 fn leaves() Void!:
 	var _gate = Gate("g")
 	message := make()
-	forwarded := Message(data: message.data, kind: message.kind)
+	forwarded := Message(data: message.data.clone(), kind: message.kind)
 	if forwarded.kind == 0: return ok()
 
 	return ok()

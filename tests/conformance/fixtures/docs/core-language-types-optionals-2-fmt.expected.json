@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "inferred := 1  // Int?\nexplicit: String? := null\n// Rejected: no type determines the absent payload.\nunknown := null\n// Rejected: bindings still require explicit wrapping.\nwrong: String? := \"Ada\"\n"
+    "fmt": "inferred := 1  // Int?\nexplicit String? := null\n// Rejected: no type determines the absent payload.\nunknown := null\n// Rejected: bindings still require explicit wrapping.\nwrong String? := \"Ada\"\n"
   }
 }

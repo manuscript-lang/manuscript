@@ -4,20 +4,20 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Point:
-    x: Int
+    x Int
 
-fn ident[T](x: T) T:
+fn ident[T](x T) T:
     return x
 
-fn pick[T](first: Bool, move left: T, move right: T) T:
+fn pick[T](first Bool, move left T, move right T) T:
     chosen := if not first: right else: left
     return chosen
 
-fn keep[T](value: T) T:
+fn keep[T](value T) T:
     copy := value
     return copy
 
-fn count(value: Int) Int:
+fn count(value Int) Int:
     return value + 1
 
 test "parametric generics keep each instantiation's values":

@@ -21,10 +21,10 @@ import (
 )
 
 fn timed(
-	label: String,
-	dir: String,
-	program: String,
-	args: List[String],
+	label String,
+	dir String,
+	program String,
+	args List[String],
 ) Result[Void, Error]:
 	start := now_ns()
 	void must(label, run_in(dir, program, args))?
@@ -33,10 +33,10 @@ fn timed(
 	print(f"{label} {seconds.to_fixed(2)} s")
 	return ok()
 
-fn drop_cache(dir: String) Void:
+fn drop_cache(dir String) Void:
 	void remove(f"{dir}/.ms-cache", recursive: true)
 
-fn run(out: String, p: Int, f: Int, k: Int) Result[Void, Error]:
+fn run(out String, p Int, f Int, k Int) Result[Void, Error]:
 	generate(out, p, f, k)
 
 	ms := ms_binary()
@@ -69,10 +69,10 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Void, Error]:
 
 // Times one cargo build from a cold target directory.
 fn rust_timed(
-	label: String,
-	out: String,
-	cargo: String,
-	args: List[String],
+	label String,
+	out String,
+	cargo String,
+	args List[String],
 ) Result[Void, Error]:
 	void remove(f"{out}/rs/target", recursive: true)
 	return timed(label, f"{out}/rs", cargo, args)

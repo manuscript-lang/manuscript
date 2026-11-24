@@ -3,7 +3,7 @@
 # -DTOOL_DIR=<llvm tools> -P cmake/DebugInfoCheck.cmake`. Uses lldb when found, otherwise gdb; with neither the test fails.
 cmake_minimum_required(VERSION 3.25)
 file(MAKE_DIRECTORY "${WORK}")
-file(WRITE "${WORK}/probe.ms" "fn work(a: Int, b: Int) Int:
+file(WRITE "${WORK}/probe.ms" "fn work(a Int, b Int) Int:
     var t = 0
     for i in 0..a:
         t += i * b + a

@@ -8,9 +8,9 @@ enum State:
     Ready
     Waiting
 
-fn State.describe() String: "state"
+fn State.describe() String => "state"
 
-fn use(value: Describe) Int:
+fn use(value Describe) Int:
     match value:
-        State(Ready): return 1
-        _: return 0
+        State(Ready) => return 1
+        _ => return 0

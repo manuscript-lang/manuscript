@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn remove_generic[K: Hashable, V](var values: Map[K, V], key: K) Void:\n\tvalues.remove(key)\n"
+    "fmt": "export fn remove_generic[K Hashable, V](var values Map[K, V], key K) Void:\n\tvalues.remove(key)\n"
   }
 }

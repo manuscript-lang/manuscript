@@ -18,35 +18,35 @@ import (
 )
 
 type Member:
-	name: String
-	kind: String
-	signature: String
-	doc: String = ""
-	contract: String = ""
+	name String
+	kind String
+	signature String
+	doc String = ""
+	contract String = ""
 
 type Declaration:
-	name: String
-	kind: String
-	declaration: String
-	doc: String = ""
-	opaque: Bool = false
-	members: List[Member] = []
+	name String
+	kind String
+	declaration String
+	doc String = ""
+	opaque Bool = false
+	members List[Member] = []
 
 type Module:
-	path: String
-	declarations: List[Declaration]
+	path String
+	declarations List[Declaration]
 
 type Snapshot:
-	format: Int
-	modules: List[Module]
+	format Int
+	modules List[Module]
 
 type Policy:
-	format: Int
-	backlog: List[String] = []
+	format Int
+	backlog List[String] = []
 
 // ---- rendering ----
 
-fn kind_label(d: Declaration) String:
+fn kind_label(d Declaration) String:
 	// A native type with receiver signatures keeps its source kind, a type.
 	if d.kind == "interface" and d.declaration.starts_with("type "): return "Native type"
 	if d.kind == "fn": return "Function"
@@ -58,10 +58,10 @@ fn kind_label(d: Declaration) String:
 
 	return d.kind.clone()
 
-fn quote(text: String) String:
+fn quote(text String) String:
 	return stringify(text).get_or("\"\"")
 
-fn introduction(path: String) String:
+fn introduction(path String) String:
 	if path == "prelude": return "Names available in every module; no import required.\n\n"
 
 	import_line := f"Import other names with `import Name from {quote(path.clone())}`.\n\n"
@@ -71,12 +71,12 @@ fn introduction(path: String) String:
 
 	return ""
 
-fn member_title(d: Declaration, m: Member) String:
+fn member_title(d Declaration, m Member) String:
 	if m.contract == "": return f"{d.name}.{m.name}"
 	return f"{d.name}.{m.contract}.{m.name}"
 
 // One module as Markdown; `site` tags each heading with its kind for the book.
-fn render(module: Module, site: Bool) String:
+fn render(module Module, site Bool) String:
 	var b = f"# {module.path}\n\n{introduction(module.path.clone())}"
 
 	for d in module.declarations:
@@ -99,7 +99,7 @@ fn render(module: Module, site: Bool) String:
 
 	return b
 
-fn full_markdown(modules: List[Module]) String:
+fn full_markdown(modules List[Module]) String:
 	var b = "# Manuscript implemented standard library\n\nGenerated from the bundled standard-library declarations.\n\n"
 	for module in modules:
 		b += render(module.clone(), false)
@@ -108,7 +108,7 @@ fn full_markdown(modules: List[Module]) String:
 // ---- the book's tree ----
 
 // `core.ms` and its siblings live in src/stdlib/core; everything else mirrors its import path.
-fn source_of(path: String, source_path: String) String:
+fn source_of(path String, source_path String) String:
 	if path == "prelude": return "src/stdlib/core/core.ms"
 	if (
 		source_path == "core.ms"
@@ -122,7 +122,7 @@ packages := ["collections", "concurrency", "data", "io", "math", "net", "os"]
 
 // The dashed name the page had before the reference mirrored source paths, for its
 // redirect.
-fn old_stem(module_path: String) String:
+fn old_stem(module_path String) String:
 	var path = module_path.clone()
 	if path.starts_with("@std/"): path = path.slice(5, path.length()).clone()
 	if path.ends_with(".ms"): path = path.slice(0, path.length() - 3).clone()
@@ -134,22 +134,22 @@ fn old_stem(module_path: String) String:
 		if packages.contains(cut.before): return cut.after.replace("/", "-")
 	return path.replace("/", "-")
 
-fn last_part(path: String) String:
+fn last_part(path String) String:
 	return (path.split("/").last() or "").clone()
 
 type Tree:
-	files: Map[String, String]
-	order: List[String]
+	files Map[String, String]
+	order List[String]
 	// The directory index pages, keyed by directory, in creation order.
-	directories: Map[String, String]
-	directory_order: List[String]
-	index: String
+	directories Map[String, String]
+	directory_order List[String]
+	index String
 
-fn var Tree.put(path: String, body: String) Void:
+fn var Tree.put(path String, body String) Void:
 	if not self.files.contains(path): self.order.append(path.clone())
 	self.files[path.clone()] = body.clone()
 
-fn var Tree.link(parent: String, line: String) Void:
+fn var Tree.link(parent String, line String) Void:
 	if parent == "":
 		self.index += line
 		return
@@ -157,7 +157,7 @@ fn var Tree.link(parent: String, line: String) Void:
 	existing := self.directories.get_or(parent, "").clone()
 	self.directories[parent.clone()] = f"{existing}{line}"
 
-fn site_tree(modules: List[Module]) Tree:
+fn site_tree(modules List[Module]) Tree:
 	var tree = Tree(
 		files: Map[String, String](),
 		order: [],
@@ -214,14 +214,14 @@ fn site_tree(modules: List[Module]) Tree:
 // ---- descriptions ----
 
 type Entry:
-	module: String
-	declaration: String
-	kind: String
-	name: String
-	contract: String
-	described: Bool
-	qualified: Bool
-	problem: String
+	module String
+	declaration String
+	kind String
+	name String
+	contract String
+	described Bool
+	qualified Bool
+	problem String
 
 placeholders := [
 	"todo", "tbd", "fixme", "placeholder", "undocumented", "description goes here",
@@ -229,13 +229,13 @@ placeholders := [
 ]
 ignored_words := "a an the this that these those it its s of for to from with without and or in on at by as is are be can may will field member method function operation case type declaration public exported native standard api value data object property describes describing represents returns holds provides gets sets has about information description documentation named called contains containing stores stored storing reports whether behavior behaviour contract fn record interface int int64 float float64 bool void never string bytes optional result list map set payload"
 
-fn is_upper(c: String) Bool:
+fn is_upper(c String) Bool:
 	return c >= "A" and c <= "Z"
 
-fn is_lower(c: String) Bool:
+fn is_lower(c String) Bool:
 	return c >= "a" and c <= "z"
 
-fn is_word(c: String) Bool:
+fn is_word(c String) Bool:
 	return (
 		is_upper(c.clone())
 		or is_lower(c.clone())
@@ -244,7 +244,7 @@ fn is_word(c: String) Bool:
 	)
 
 // Lowercase words of prose, camel-case names and snake_case names.
-fn description_words(text: String) List[String]:
+fn description_words(text String) List[String]:
 	var words = List[String]()
 	var current = ""
 	var previous = ""
@@ -264,7 +264,7 @@ fn description_words(text: String) List[String]:
 	if current != "": words.append(current.clone())
 	return words
 
-fn description_problem(entry: Entry, doc: String) String:
+fn description_problem(entry Entry, doc String) String:
 	raw := doc.trim()
 	text := raw.lower()
 	if text == "": return "missing description"
@@ -293,19 +293,19 @@ fn description_problem(entry: Entry, doc: String) String:
 	return "description only restates the API name or kind"
 
 fn entry_of(
-	module: String,
-	declaration: String,
-	kind: String,
-	name: String,
-	contract: String,
-	doc: String,
+	module String,
+	declaration String,
+	kind String,
+	name String,
+	contract String,
+	doc String,
 ) Entry:
 	draft := Entry(
-		module: module,
-		declaration: declaration,
-		kind: kind,
-		name: name,
-		contract: contract,
+		module: module.clone(),
+		declaration: declaration.clone(),
+		kind: kind.clone(),
+		name: name.clone(),
+		contract: contract.clone(),
 		described: doc.trim() != "",
 		qualified: false,
 		problem: "",
@@ -322,7 +322,7 @@ fn entry_of(
 		problem: problem,
 	)
 
-fn inventory(modules: List[Module]) List[Entry]:
+fn inventory(modules List[Module]) List[Entry]:
 	var entries = List[Entry]()
 
 	for module in modules:
@@ -351,7 +351,7 @@ fn inventory(modules: List[Module]) List[Entry]:
 
 	return entries
 
-fn description_key(e: Entry) String:
+fn description_key(e Entry) String:
 	return [
 		e.module.clone(),
 		e.declaration.clone(),
@@ -362,7 +362,7 @@ fn description_key(e: Entry) String:
 
 // Problems of the entries against the recorded backlog: a new gap fails, a described or
 // removed entry must leave the backlog.
-fn check_descriptions(entries: List[Entry], backlog: List[String]) List[String]:
+fn check_descriptions(entries List[Entry], backlog List[String]) List[String]:
 	var problems = List[String]()
 	var listed = Set[String]()
 
@@ -395,11 +395,11 @@ fn check_descriptions(entries: List[Entry], backlog: List[String]) List[String]:
 
 // ---- coverage JSON ----
 
-fn flag(value: Bool) String:
+fn flag(value Bool) String:
 	if value: return "true"
 	return "false"
 
-fn coverage_json(entries: List[Entry]) String:
+fn coverage_json(entries List[Entry]) String:
 	var declarations = 0
 	var described_declarations = 0
 	var qualified_declarations = 0
@@ -432,26 +432,26 @@ fn coverage_json(entries: List[Entry]) String:
 
 // ---- files ----
 
-fn parent_of(path: String) String:
+fn parent_of(path String) String:
 	parts := path.split("/")
 	if parts.length() < 2: return ""
 
 	return parts.slice(0, parts.length() - 1).get().join("/")
 
-fn write_text(path: String, text: String) Void!:
+fn write_text(path String, text String) Void!:
 	folder := parent_of(path.clone())
 	if folder != "": create_directory(folder, recursive: true)?
 	write_file(path, text, replace: true).wait()?
 	return ok(void)
 
 type Options:
-	check: Bool = false
-	downloads: Bool = false
-	coverage: String = ""
-	artifacts: String = ".artifacts/docs"
-	static_dir: String = "website/static"
+	check Bool = false
+	downloads Bool = false
+	coverage String = ""
+	artifacts String = ".artifacts/docs"
+	static_dir String = "website/static"
 
-fn options_of(words: List[String]) Options!:
+fn options_of(words List[String]) Options!:
 	var o = Options()
 	var at = 0
 
@@ -475,10 +475,10 @@ fn options_of(words: List[String]) Options!:
 
 	return ok(o)
 
-fn text_of(path: String) String!:
+fn text_of(path String) String!:
 	return ok((read_file(path).wait()?.decode_utf8() or "").clone())
 
-fn generate(ms: String, o: Options) Void!:
+fn generate(ms String, o Options) Void!:
 	ran := run(ms.clone(), ["doc"]).wait()?
 	if ran.exit_code != 0: return error(Error(f"{ms} doc failed"))
 

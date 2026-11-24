@@ -13,21 +13,21 @@
         "position": {
           "file": "golden-1238.ms",
           "line": 5,
-          "column": 23,
-          "offset": 108
+          "column": 22,
+          "offset": 106
         },
         "end": {
           "file": "golden-1238.ms",
           "line": 5,
-          "column": 23,
-          "offset": 108
+          "column": 22,
+          "offset": 106
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1238.ms:5:23: parse: a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'\n   |\n 5 |     second: Int = fir|\n   |                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1238.ms:5:22: parse: a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'\n   |\n 5 |     second Int = fir|\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

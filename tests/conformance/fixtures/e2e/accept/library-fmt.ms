@@ -24,16 +24,16 @@ import unpack from "@std/io/archive.ms"
 import ArchiveEntry from "@std/io/archive.ms"
 import ArchiveOptions from "@std/io/archive.ms"
 
-fn twice(value: Int) Int:
+fn twice(value Int) Int:
     return value * 2
 
-fn positive(value: Int) Bool:
+fn positive(value Int) Bool:
     return value > 0
 
-fn sum(accumulator: Int, value: Int) Int:
+fn sum(accumulator Int, value Int) Int:
     return accumulator + value
 
-fn compare(left: Int, right: Int) Int:
+fn compare(left Int, right Int) Int:
     if left < right:
         return -1
     if left > right:
@@ -147,7 +147,7 @@ test "expanded packages run through compiler":
     ("é🙂").scalar_length() | expect_equal(2)?
     ("é").scalar_values() | expect_equal([233])?
 
-    text_success: String! := ok("é")
+    text_success String! := ok("é")
     from_scalars(values: [233]) | expect_equal(text_success)?
     sqrt(value: 9.0) | expect_equal(3.0)?
     round(value: 2.5) | expect_equal(3.0)?
@@ -161,12 +161,12 @@ test "expanded packages run through compiler":
     flipped | expect_equal([2, 1])?
 
 test "malformed and bounded inputs return errors":
-    failure1: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+    failure1 Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
     base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) | expect_equal(
         failure1
     )?
 
-    failure2: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+    failure2 Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
     hex_decode(text: "abcd", max_bytes: 1) | expect_equal(failure2)?
 
     limits := JsonOptions(max_bytes: 100, max_depth: 2, max_values: 10)
@@ -177,5 +177,5 @@ test "malformed and bounded inputs return errors":
         )?
     )
 
-    failure4: JsonValue! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+    failure4 JsonValue! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
     parse(text: "[[[]]]", limits: limits) | expect_equal(failure4)?

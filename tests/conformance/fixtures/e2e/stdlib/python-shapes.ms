@@ -100,9 +100,9 @@ test "exists is false below a file, as it is below a missing directory":
 
 test "take_while and drop_while split at the first failing element":
 	values := [1, 2, 5, 1]
-	expect_equal(values.take_while(fn x: x < 3), [1, 2])?
-	expect_equal(values.drop_while(fn x: x < 3), [5, 1])?
-	expect_equal(values.take_while(fn x: x < 0), List[Int]())?
-	expect_equal(values.drop_while(fn x: x < 9), List[Int]())?
-	expect_equal(values.take_while(fn x: x < 9), values)?
-	expect_equal(List[Int]().take_while(fn x: x < 3), List[Int]())?
+	expect_equal(values.take_while(x => x < 3), [1, 2])?
+	expect_equal(values.drop_while(x => x < 3), [5, 1])?
+	expect_equal(values.take_while(x => x < 0), List[Int]())?
+	expect_equal(values.drop_while(x => x < 9), List[Int]())?
+	expect_equal(values.take_while(x => x < 9), values)?
+	expect_equal(List[Int]().take_while(x => x < 3), List[Int]())?

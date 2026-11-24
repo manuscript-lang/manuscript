@@ -36,25 +36,25 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     var first = Map[Int?, Int]()
     first.add(1, 10)
 
-    trigger: Int? := 1
+    trigger Int? := 1
     first.remove(
         match trigger:
-            key: key
-            null: 0
+            key => key
+            null => 0
     )
     expect_false(not first.is_empty())?
 
 interface MapRemoval:
-    var fn remove(key: Int) Void
+    var fn remove(key Int) Void
     fn keys() List[Int]
 
 type MapAdapter:
-    values: Map[Int, String]
+    values Map[Int, String]
 
-fn var MapAdapter.remove(key: Int) Void:
+fn var MapAdapter.remove(key Int) Void:
     self.values.remove(key)
 
-fn MapAdapter.keys() List[Int]: self.values.keys().clone()
+fn MapAdapter.keys() List[Int] => self.values.keys().clone()
 
 test "Map explicit and bound interface views remove through the adapter":
     var values = Map[Int, String]()
@@ -66,7 +66,7 @@ test "Map explicit and bound interface views remove through the adapter":
     adapter.remove(1)
     expect_equal(adapter.values.keys(), [2, 3])?
 
-    var view: MapRemoval = adapter
+    var view MapRemoval = adapter
     view.remove(2)
     expect_equal(view.keys(), [3])?
     view.remove(3)
@@ -93,41 +93,41 @@ test "List splice direct and bound stage a copy of the receiver as replacement":
     values.append(8)
     expect_equal(values, [8])?
 
-    var empty: List[Int] = []
+    var empty List[Int] = []
     empty.splice(0, 0, [])
     empty.append(3)
     expect_equal(empty, [3])?
 
 type Item:
-    value: Int
+    value Int
 
 test "List splice moves replacement elements and handles Optional elements":
     var values = [Item(2)]
     values.splice(0, 1, [Item(1)])
     expect_equal(values[0].value, 1)?
 
-    var optional: List[Int?] = [1]
+    var optional List[Int?] = [1]
     optional.splice(0, 1, [2])
     expect_equal(optional[0], 2)?
 
 interface ListSplicing:
-    var fn splice(start: Int, delete_count: Int, move replacement: List[Int]) Void
+    var fn splice(start Int, delete_count Int, move replacement List[Int]) Void
     fn contents() List[Int]
 
 type ListAdapter:
-    values: List[Int]
+    values List[Int]
 
-fn var ListAdapter.splice(start: Int, delete_count: Int, move replacement: List[Int]) Void:
+fn var ListAdapter.splice(start Int, delete_count Int, move replacement List[Int]) Void:
     self.values.splice(start, delete_count, replacement)
 
-fn ListAdapter.contents() List[Int]: self.values.clone()
+fn ListAdapter.contents() List[Int] => self.values.clone()
 
 test "List explicit and bound interface views splice through the adapter":
     var adapter = ListAdapter([1, 2, 3])
     adapter.splice(0, 1, [7])
     expect_equal(adapter.values, [7, 2, 3])?
 
-    var view: ListSplicing = adapter
+    var view ListSplicing = adapter
     view.splice(0, 1, [7])
     expect_equal(view.contents(), [7, 2, 3])?
     view.splice(1, 2, [8])

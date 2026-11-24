@@ -7,13 +7,13 @@ import (
 )
 
 export type Timed:
-	result: Ran
-	user_ns: Float
-	system_ns: Float
+	result Ran
+	user_ns Float
+	system_ns Float
 	// Executable followed by one exact argument per line.
-	command: String
+	command String
 
-export fn timed(program: String, arguments: List[String]) Timed!:
+export fn timed(program String, arguments List[String]) Timed!:
 	command := [
 		"-c",
 		"export LC_ALL=C; TIMEFORMAT='CALL_CPU %U %S'; time \"$@\"",

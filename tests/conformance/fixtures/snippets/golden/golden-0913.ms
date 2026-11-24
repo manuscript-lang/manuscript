@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Mixed:
-    value: Int
+    value Int
     case Ready

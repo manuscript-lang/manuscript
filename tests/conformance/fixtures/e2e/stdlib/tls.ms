@@ -29,7 +29,7 @@ import (
 	http_result, list_headers, text_headers from "./support/http.ms",
 )
 
-fn hello(var exchange: HttpExchange) Void!:
+fn hello(var exchange HttpExchange) Void!:
 	_started := exchange.send_headers(
 		status: 200,
 		headers: (list_headers(Map[String, List[String]]())?),
@@ -56,7 +56,7 @@ test "TLS certificate parsing verification hostname and expiration":
 			now: now,
 		) | expect_ok?
 	)
-	failed: Void! := error(Error("TLS: authentication failed", kind: "EAUTH"))
+	failed Void! := error(Error("TLS: authentication failed", kind: "EAUTH"))
 	expect_false(
 		(
 			verify_certificates(
@@ -81,12 +81,12 @@ test "TLS certificate parsing verification hostname and expiration":
 	)?
 
 test "TLS rejects malformed PEM and certificate budgets":
-	invalid: List[CertificateInfo]! := error(
+	invalid List[CertificateInfo]! := error(
 		Error("TLS: invalid data", kind: "EBADMSG")
 	)
 	parse_certificates(pem: "not PEM") | expect_equal(invalid)?
 
-	limited: List[CertificateInfo]! := error(
+	limited List[CertificateInfo]! := error(
 		Error("TLS: limit exceeded", kind: "EOVERFLOW")
 	)
 	parse_certificates(pem: certificate(), max_certificates: 0) | expect_equal(limited)?
@@ -148,7 +148,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
 		)
 	)?
 
-fn report_protocol(var exchange: HttpExchange) Void!:
+fn report_protocol(var exchange HttpExchange) Void!:
 	_started := exchange.send_headers(
 		status: 200,
 		headers: (list_headers(Map[String, List[String]]())?),
@@ -205,7 +205,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 	expect_equal(response.metadata.protocol, "HTTP/2.0")?
 	expect_equal(read_to_end(response.body)?, "HTTP/2.0".to_bytes())?
 
-fn answer_ping(move connection: Connection) Int:
+fn answer_ping(move connection Connection) Int:
 	ping := recv(connection, 3.seconds())
 	pong := send(connection, "pong")
 	void connection.close()
@@ -213,12 +213,12 @@ fn answer_ping(move connection: Connection) Int:
 
 	return 1
 
-fn serve_one_tls(listener: Listener) Int:
+fn serve_one_tls(listener Listener) Int:
 	match listener.accept(3.seconds()).wait():
 		ok(accepted):
 			var connection = accepted
 			return answer_ping(connection)
-		error(_): return 0
+		error(_) => return 0
 
 test "raw TLS listeners and clients handshake and report negotiated details":
 	server_tls := TlsOptions(
@@ -239,7 +239,7 @@ test "raw TLS listeners and clients handshake and report negotiated details":
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
-	served := promise(fn: ok(serve_one_tls(listener)))
+	served := promise(() => ok(serve_one_tls(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 3.seconds()).wait()?
 	send(client, "ping")?
 	expect_equal(
@@ -272,7 +272,7 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
-	served := promise(fn: ok(serve_one_tls(listener)))
+	served := promise(() => ok(serve_one_tls(listener)))
 	_failure := expect_error(
 		connect(
 			address.clone(),
@@ -285,7 +285,7 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
 	var client = connect(plain.address(), timeout: 2.seconds()).wait()?
 	expect_false(client.info.tls_info().is_ok())?
 
-fn count_until_eof(listener: Listener) Int:
+fn count_until_eof(listener Listener) Int:
 	var accepted = listener.accept(5.seconds()).wait()
 	if accepted.is_error(): return -1
 
@@ -324,7 +324,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 5.seconds())?
 	address := listener.address()
-	served := promise(fn: ok(count_until_eof(listener)))
+	served := promise(() => ok(count_until_eof(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 5.seconds()).wait()?
 	send(client, "y".repeat(20000000))?
 
@@ -332,7 +332,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 	client.close()?
 	expect_equal((wait_all([served])?)[0], 20000000)?
 
-fn starttls_server(listener: Listener, options: TlsOptions) Int:
+fn starttls_server(listener Listener, options TlsOptions) Int:
 	var plain = listener.accept(3.seconds()).wait().get()
 	hello := recv(plain, 3.seconds())
 	if hello.is_error(): return 0
@@ -353,7 +353,7 @@ test "start_tls upgrades a plain connection in place on both sides":
 	client_tls := TlsOptions(server_name: "stdlib.test", roots_pem: certificate())
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	served := promise(fn: ok(starttls_server(listener, server_tls)))
+	served := promise(() => ok(starttls_server(listener, server_tls)))
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
 	expect_false(plain.info.tls_info().is_ok())?
 	send(plain, "STARTTLS")?
@@ -389,7 +389,7 @@ test "start_tls rejects an untrusted server and an empty server name":
 	)
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	served := promise(fn: ok(starttls_server(listener, server_tls)))
+	served := promise(() => ok(starttls_server(listener, server_tls)))
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
 	_unnamed := expect_error(start_tls(plain, TlsOptions(), 3.seconds()))?
 	send(plain, "STARTTLS")?

@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn both(var a: Int, var b: Int) Void:
+fn both(var a Int, var b Int) Void:
 	a += 1
 	b += 2
 

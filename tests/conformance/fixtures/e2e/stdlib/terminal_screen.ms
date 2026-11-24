@@ -9,7 +9,7 @@ esc := "\u{1b}"
 begin := f"{esc}[?2026h"
 end := f"{esc}[?2026l"
 
-fn screen(height: Int) Screen:
+fn screen(height Int) Screen:
 	var s = new_screen()
 	s.resize(height)
 	return s

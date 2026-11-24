@@ -1,16 +1,16 @@
 // conform: tags=ownership,var-parameters
 // conform: phase=run
 type Index:
-	hits: Int
-	names: Map[String, Int]
-	order: List[String]
+	hits Int
+	names Map[String, Int]
+	order List[String]
 
-fn remember(var index: Index, name: String) Void:
+fn remember(var index Index, name String) Void:
 	index.hits += 1
 	index.names[name.clone()] = index.hits
-	index.order.append(name)
+	index.order.append(name.clone())
 
-fn copy_from(var index: Index, other: Index) Void:
+fn copy_from(var index Index, other Index) Void:
 	index.hits = other.hits
 	index.names = other.names.clone()
 	index.order = other.order.clone()

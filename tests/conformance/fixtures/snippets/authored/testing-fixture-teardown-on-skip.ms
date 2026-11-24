@@ -5,7 +5,7 @@ import stdout from "@std/io/io.ms"
 import TestHooks, fail, skip from "@std/test/test.ms"
 
 type Hooks:
-    runs: Int
+    runs Int
 
 fn make_fixture() Hooks:
     return Hooks(runs: 0)
@@ -30,5 +30,5 @@ test "a failed assertion still tears down":
     fail("expected failure")?
 
 test "a fault still tears down":
-    numbers: List[Int] := []
+    numbers List[Int] := []
     void numbers[1]

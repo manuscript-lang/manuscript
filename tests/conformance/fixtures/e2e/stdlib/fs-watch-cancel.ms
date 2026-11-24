@@ -11,7 +11,7 @@ import (
 // every level of a new directory (Windows), so the queue is sized for it. Tells the
 // test the watch is registered, reads events until `last` shows up, tells the test
 // again, then waits for more inside the native watcher.
-fn follow(root: String, last: String, seen: WriteStream[Int]) Void!:
+fn follow(root String, last String, move seen WriteStream[Int]) Void!:
 	var events = watch(root, recursive: true, options: WatchOptions(max_events: 4096))?
 	var out = seen
 	out.write(0)?
@@ -37,7 +37,7 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 	var reader = ready.reader()
 	switch := cancel_switch()
 	last := f"{path}/d19"
-	work := promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
+	work := promise(() => follow(path.clone(), last.clone(), ready.writer())).with(
 		options: PromiseOptions(cancel: switch.signal())
 	)
 	_registered := reader.next()?

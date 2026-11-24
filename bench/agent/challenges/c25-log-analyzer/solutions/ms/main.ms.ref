@@ -1,11 +1,11 @@
 import stdin from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 
-fn digits(s: String) Bool: return not s.is_empty() and s.scalar_values().all(fn c: c >= 48 and c <= 57)
+fn digits(s String) Bool: return not s.is_empty() and s.scalar_values().all(fn c: c >= 48 and c <= 57)
 
 type Stat:
-    count: Int
-    total: Int
+    count Int
+    total Int
 
 fn main() Void:
     data := read_all(stdin(), none).get()

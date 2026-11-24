@@ -1,4 +1,4 @@
-fn pick(a: Int?, b: Int?) Int:
+fn pick(a Int?, b Int?) Int:
 	match a:
 		x:
 			match b:

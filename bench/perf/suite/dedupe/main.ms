@@ -13,10 +13,10 @@ fn main() Void:
 		if line.is_empty(): continue
 
 		total += 1
-		lines.update(line.clone(), 0, fn v: v + 1)
+		lines.update(line, 0, v => v + 1)
 
 		name := line.split(" ")[0].clone()
-		names.update(name.clone(), 0, fn v: v + 1)
+		names.update(name, 0, v => v + 1)
 
 	var most = ""
 	var most_count = 0

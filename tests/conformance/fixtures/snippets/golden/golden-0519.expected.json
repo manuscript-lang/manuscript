@@ -13,7 +13,7 @@
         "position": {
           "file": "golden-0519.ms",
           "line": 6,
-          "column": 24,
+          "column": 26,
           "offset": 127
         }
       }
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0519.ms:6:24: type: missing argument required: Int in call to Options; add 'required: <Int>'\n   |\n 6 | fn f() Options: return Options()\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0519.ms:6:26: type: missing argument required: Int in call to Options; add 'required: <Int>'\n   |\n 6 | fn f() Options => return Options()\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

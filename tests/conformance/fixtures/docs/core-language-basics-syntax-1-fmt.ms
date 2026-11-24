@@ -2,10 +2,10 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/basics/syntax.md:12
 export type Customer:
-    name: String
-    active: Bool
+    name String
+    active Bool
 
-export fn welcome(customer: Customer) String:
+export fn welcome(customer Customer) String:
     if customer.active:
         return f"Welcome, {customer.name}!"
 

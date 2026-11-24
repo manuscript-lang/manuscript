@@ -21,9 +21,9 @@ import (
 )
 
 type Greeting:
-	name: String
+	name String
 
-fn route(request: HttpRequest) HttpResponse:
+fn route(request HttpRequest) HttpResponse:
 	if request.path == "/missing":
 		return HttpResponse(status: 404, headers: headers(), body: "nope".to_bytes())
 
@@ -62,7 +62,7 @@ fn route(request: HttpRequest) HttpResponse:
 		),
 	)
 
-fn try_append(var fields: HttpHeaders, name: String, value: String) Void:
+fn try_append(var fields HttpHeaders, name String, value String) Void:
 	_ignored := fields.append(name, value)
 
 test "fetch returns a buffered text response":
@@ -90,7 +90,7 @@ test "fetch decodes JSON":
 	greeting := response.json[Greeting]()?
 	expect_equal(greeting.name, "ada")?
 
-fn json_route(request: HttpRequest) HttpResponse:
+fn json_route(request HttpRequest) HttpResponse:
 	return HttpResponse(
 		status: 200,
 		headers: headers(),

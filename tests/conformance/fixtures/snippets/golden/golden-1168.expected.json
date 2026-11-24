@@ -9,6 +9,38 @@
       {
         "code": "MS1000",
         "phase": "parse",
+        "message": "remove the ':' between 'input' and its type; write input Type",
+        "position": {
+          "file": "golden-1168.ms",
+          "line": 6,
+          "column": 10,
+          "offset": 109
+        },
+        "end": {
+          "file": "golden-1168.ms",
+          "line": 6,
+          "column": 11,
+          "offset": 110
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1168.ms",
+            "line": 6,
+            "column": 10,
+            "offset": 109
+          },
+          "end": {
+            "file": "golden-1168.ms",
+            "line": 6,
+            "column": 11,
+            "offset": 110
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
         "message": "unterminated delimiter '(' opened at line 9:10; add the matching ')' before the end of the file",
         "position": {
           "file": "golden-1168.ms",
@@ -21,7 +53,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1168.ms:10:1: parse: unterminated delimiter '(' opened at line 9:10; add the matching ')' before the end of the file\n    |\n 10 | \n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1168.ms:6:10: parse: remove the ':' between 'input' and its type; write input Type\n   |\n 6 |     input: Int,\n   |          ^\n<DIR>/golden-1168.ms:10:1: parse: unterminated delimiter '(' opened at line 9:10; add the matching ')' before the end of the file\n    |\n 10 | \n    | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -36,11 +36,11 @@ export fn dist_arch() String:
 	return "amd64"
 
 // Prints `message` and a newline to standard error.
-export fn note(message: String) Void:
+export fn note(message String) Void:
 	stderr().write(f"{message}\n").get()
 
 // The value of environment variable `name`, or `fallback`.
-export fn env(name: String, fallback: String) String:
+export fn env(name String, fallback String) String:
 	all := environment().get_or(Map[String, String]())
 	value := all.get(name)
 	if value != null: return value.clone()
@@ -48,20 +48,20 @@ export fn env(name: String, fallback: String) String:
 	return fallback.clone()
 
 // A process exit status limited to what `main` may return.
-export fn status(code: Int) Int:
+export fn status(code Int) Int:
 	if code < 0 or code > 125: return 125
 	return code
 
 // Runs `program` with the parent's streams and returns its exit status; the PATH is
 // searched. A program that cannot start, or one that ends with a status above 125,
 // reports 125.
-export fn run_program(program: String, arguments: List[String]) Int:
+export fn run_program(program String, arguments List[String]) Int:
 	return run_program_in(program, arguments, null)
 
 // `run_program` in the directory `cwd` (the caller's when none). A path with a drive
 // letter in an argument reads as `host:file` to GNU tar, so a caller on Windows names
 // files relative to `cwd` instead.
-export fn run_program_in(program: String, arguments: List[String], cwd: String?) Int:
+export fn run_program_in(program String, arguments List[String], cwd String?) Int:
 	if child := spawn(
 		program,
 		arguments,
@@ -69,7 +69,7 @@ export fn run_program_in(program: String, arguments: List[String], cwd: String?)
 			stdin: Stdio.Null,
 			stdout: Stdio.Inherit,
 			stderr: Stdio.Inherit,
-			cwd: cwd,
+			cwd: cwd.clone(),
 		),
 	):
 		return status(child.wait().clone().get_or(125))
@@ -78,18 +78,18 @@ export fn run_program_in(program: String, arguments: List[String], cwd: String?)
 	return 125
 
 // Runs `program` and returns its standard output; empty when it cannot run or fails.
-export fn capture(program: String, arguments: List[String]) String:
+export fn capture(program String, arguments List[String]) String:
 	if out := run(program, arguments).wait():
 		if out.exit_code == 0: return (out.stdout.decode_utf8() or "").clone()
 	return ""
 
 // Whether `program` runs and exits zero with `arguments`.
-export fn works(program: String, arguments: List[String]) Bool:
+export fn works(program String, arguments List[String]) Bool:
 	if out := run(program, arguments).wait(): return out.exit_code == 0
 	return false
 
 // The SHA-256 of the file at `path` as lowercase hex.
-export fn file_sha256(path: String) String:
+export fn file_sha256(path String) String:
 	data := read_file(path).wait().get()
 	return hex_encode(sha256(data))
 
@@ -133,7 +133,8 @@ export fn use_stats_runtime() Int:
 		prefix := "#define MS_BUILD_RUNTIME \""
 		if not line.starts_with(prefix): continue
 
-		list := line.slice(prefix.length(), line.length() - 1)
+		// Up to the closing quote: a Windows header may end the line with CR LF.
+		list := line.slice(prefix.length(), line.last_index_of("\"") or line.length())
 
 		for archive in list.split(separator):
 			name := archive.slice(
@@ -152,7 +153,7 @@ export fn use_stats_runtime() Int:
 // The ms that runs the programs under test: `MS` (resolved against `root` when
 // relative), else the CMake build's ms (`cmake --preset ci`), which the Makefile also
 // names.
-export fn tool_ms(root: String) String:
+export fn tool_ms(root String) String:
 	named := env("MS", "")
 	if named == "": return f"{root}/.artifacts/build/ci/src/cli/ms{exe()}"
 	if named.starts_with("/") or named.contains(":"): return named

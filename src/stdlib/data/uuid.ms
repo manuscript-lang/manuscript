@@ -30,7 +30,7 @@ The same namespace and name always give the same lowercase UUID, so it makes a s
 `namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns an `Error` with kind `EBADMSG`.
 Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
 */
-export fn uuid_v5(namespace: String, name: String) String!:
+export fn uuid_v5(namespace String, name String) String!:
 	space := uuid_to_bytes(namespace)?
 	var input = BytesBuilder()
 	input.append_bytes(space)
@@ -71,7 +71,7 @@ export fn uuid_v7() String!:
 // Returns the version digit (1 through 8) of a UUID text, or null when `text` is not an
 // RFC 9562 UUID (including malformed text). Case does not matter. Example:
 // `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
-export fn uuid_version(text: String) Int?:
+export fn uuid_version(text String) Int?:
 	raw := uuid_to_bytes(text)
 
 	if bytes := raw:
@@ -82,7 +82,7 @@ export fn uuid_version(text: String) Int?:
 	return null
 
 // Parses the 16 bytes of a UUID text of any version.
-fn uuid_to_bytes(text: String) Bytes!:
+fn uuid_to_bytes(text String) Bytes!:
 	if text.length() != 36: return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
 	groups := text.split("-")
@@ -99,7 +99,7 @@ fn uuid_to_bytes(text: String) Bytes!:
 
 // Stamps the version and RFC 9562 variant onto the first 16 bytes and renders them as
 // lowercase `8-4-4-4-12` text.
-fn format_uuid(source: Bytes, version: Int) String:
+fn format_uuid(source Bytes, version Int) String:
 	var raw = BytesBuilder()
 
 	for place in 0..16:

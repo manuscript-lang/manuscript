@@ -4,17 +4,17 @@ import expect_equal from "@std/test/test.ms"
 
 // A split whose list is only read in place makes no heap list: element 0 is found without the list, and a short
 // text with few pieces splits into the frame. Every other shape keeps the list and must agree with it.
-fn first_of(line: String) String:
+fn first_of(line String) String:
 	return line.split(" ")[0].clone()
 
-fn fields(line: String) Int:
+fn fields(line String) Int:
 	parts := line.split(" ")
 	var total = 0
 	for i in 0..parts.length():
 		total += parts[i].length()
 	return total
 
-fn kept(line: String) List[String]:
+fn kept(line String) List[String]:
 	parts := line.split(" ")
 	return parts.clone()
 

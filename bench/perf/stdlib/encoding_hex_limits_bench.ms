@@ -9,21 +9,21 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn zeros(count: Int) Bytes:
+fn zeros(count Int) Bytes:
 	var out = BytesBuilder()
 	for unused in 0..count: out.append(0)
 	return out.build()
 
 // One prepared case: the input, the limit and the answer the run must reproduce.
 type Case:
-	text: String
-	data: Bytes
-	scalar: Bytes
-	expected: Bytes!
-	expected_text: String!
-	weight: Int
-	which: Int
-	limit: Int?
+	text String
+	data Bytes
+	scalar Bytes
+	expected Bytes!
+	expected_text String!
+	weight Int
+	which Int
+	limit Int?
 
 fn plain() Case:
 	return Case(
@@ -36,13 +36,13 @@ fn plain() Case:
 		which: 0,
 	)
 
-fn prep_decode(length: Int, limit: Int?, bad: Int = 0) Case:
+fn prep_decode(length Int, limit Int?, bad Int = 0) Case:
 	var text = "0".repeat(length)
 	if bad == 1: text = "z" + text.view(1, text.length())
 	if bad == 2: text = text.view(0, length - 1) + "z"
 
 	maximum := limit or 9223372036854775807
-	var expected: Bytes! = ok(Bytes([]))
+	var expected Bytes! = ok(Bytes([]))
 
 	if maximum < 0:
 		expected = error(Error("encoding: invalid input", kind: "EINVAL"))
@@ -60,7 +60,7 @@ fn prep_decode(length: Int, limit: Int?, bad: Int = 0) Case:
 	c.weight = length
 	return c
 
-fn prep_unicode(limit: Int) Case:
+fn prep_unicode(limit Int) Case:
 	var c = plain()
 	c.text = "é"
 	c.limit = limit
@@ -73,7 +73,7 @@ fn prep_unicode(limit: Int) Case:
 	c.weight = 2
 	return c
 
-fn prep_neighbor(which: Int) Case:
+fn prep_neighbor(which Int) Case:
 	text := "\u{0}".repeat(4096)
 	var c = plain()
 	c.data = zeros(if which == 3 or which == 4: 8192 else: 4096)
@@ -84,11 +84,11 @@ fn prep_neighbor(which: Int) Case:
 	c.weight = 4096
 	return c
 
-fn run_decode(c: Case) Int!:
+fn run_decode(c Case) Int!:
 	expect_equal(hex_decode(c.text, c.limit), c.expected)?
 	return ok(c.weight)
 
-fn run_neighbor(c: Case) Int!:
+fn run_neighbor(c Case) Int!:
 	which := c.which
 
 	if which == 0: expect_equal(hex_encode(c.data), c.text)?
@@ -102,10 +102,10 @@ fn run_neighbor(c: Case) Int!:
 	return ok(c.weight)
 
 type BenchData:
-	cases: List[Case]
+	cases List[Case]
 
 fn make_fixture() BenchData:
-	var cases: List[Case] = []
+	var cases List[Case] = []
 	cases.append(prep_decode(0, null, 0))
 	cases.append(prep_decode(0, 0, 0))
 	cases.append(prep_decode(0, -1, 0))

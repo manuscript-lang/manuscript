@@ -15,7 +15,7 @@ import (
     truncate
 ) from "@std/math/math.ms"
 
-fn viaValue(f: fn(Float) Float, x: Float) Float: f(x)
+fn viaValue(f fn(Float) Float, x Float) Float => f(x)
 
 test "typed math":
     expect_true((sqrt(value: 9.0) == 3.0))?

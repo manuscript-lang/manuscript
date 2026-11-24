@@ -3,17 +3,17 @@
 import expect_equal from "@std/test/test.ms"
 
 type Meters:
-	value: Int
+	value Int
 
 type Feet:
-	value: Int
+	value Int
 
 type Length = Meters | Feet
 
 fn Length.double() Self:
 	return Self(value: self.value * 2)
 
-fn Length.longer(other: Self) Self:
+fn Length.longer(other Self) Self:
 	if other.value > self.value: return other
 	return self
 

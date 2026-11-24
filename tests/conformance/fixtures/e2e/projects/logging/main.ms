@@ -8,9 +8,9 @@ import (
 )
 
 type Service:
-	service: String
+	service String
 
-fn exercise(mode: String, path: String) Void!:
+fn exercise(mode String, path String) Void!:
 	if (mode == "file" or mode == "missing"):
 		var root = create(file_transport(path)?, LoggerOptions(timestamp: false))?
 		logger := root.child(Service("api"))?

@@ -3,4 +3,4 @@
 type Key%d:
     value: Int
 impl Tag for Key%d:
-    fn tag() Int: self.value
+    fn tag() Int => self.value

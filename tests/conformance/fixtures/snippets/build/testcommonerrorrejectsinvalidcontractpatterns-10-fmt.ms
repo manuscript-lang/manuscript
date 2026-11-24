@@ -4,7 +4,7 @@
 interface Named:
     fn name() String
 
-fn wrong(item: Named) String:
+fn wrong(item Named) String:
     match item:
         Circle.Big(value):
             return "invalid"

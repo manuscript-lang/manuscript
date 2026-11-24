@@ -2,9 +2,9 @@
 // conform: phase=parse
 // conform: origin=pkg/build/compiler_test.go:562 TestGroupedLocalImports
 export type Value:
-    value: Int
+    value Int
 
-export fn read(value: Value) Int:
+export fn read(value Value) Int:
     return value.value
 
 fn hidden() Int:

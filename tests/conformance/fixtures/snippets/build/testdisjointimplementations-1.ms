@@ -5,8 +5,8 @@ interface Read[T]:
     fn get() Int
 
 type Pair[A, B]:
-    left: A
-    right: B
+    left A
+    right B
 
 fn Pair[A, A].get() Int:
     return 1

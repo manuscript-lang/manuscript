@@ -2,6 +2,7 @@
  * and where each scope ends (`scope.end`); drop elaboration (mir_elab) turns the markers into drops, closes and
  * drop flags on the paths that still hold the value. */
 #include "compiler/lower/lower_fn.h"
+#include <stdio.h>
 #include "compiler/mir/mir_analysis.h"
 
 /* Doubles `*items` (arena memory, so the old block is simply left) until it holds one more element than `used`. */
@@ -293,6 +294,10 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   if (!mir_needs_drop(fn->cx->module, ty)) {
     return value; /* a plain value is its own copy */
+  }
+  if (fn->cx->copy_probe && mir_ty_data(fn->cx->module, ty)->kind != MK_FN) {
+    const MsSpan file = fn->b.loc.file < fn->cx->module->files.len ? fn->cx->module->files.ptr[fn->b.loc.file] : ms_span_of_text("?");
+    (void)fprintf(stderr, "copy-probe\t%.*s:%u:%u\n", (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
   }
   return own ? fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty) : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
 }

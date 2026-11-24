@@ -10,7 +10,7 @@ import (
 )
 
 export fn bench_numbers() Void:
-	rate: Decimal := 1.12345d
+	rate Decimal := 1.12345d
 
 	bench(
 		"bigint.factorial_1000",
@@ -90,6 +90,6 @@ export fn bench_numbers() Void:
 			return n
 	)
 
-fn unpacked_length(data: Bytes) Int:
+fn unpacked_length(data Bytes) Int:
 	if b := decompress(data, "gzip"): return b.length()
 	return 0

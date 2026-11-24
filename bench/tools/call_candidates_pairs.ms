@@ -7,7 +7,7 @@ import (
 )
 
 // At least95% binomial coverage for the median, assuming independent pairs.
-export fn median_interval(values: List[Float]) List[Float]!:
+export fn median_interval(values List[Float]) List[Float]!:
 	n := values.length()
 	if n < 6 or n > 1000: return invalid(
 		"median interval requires 6..1000 observations"
@@ -32,13 +32,13 @@ export fn median_interval(values: List[Float]) List[Float]!:
 
 	return ok([sorted[rank - 1], sorted[n - rank]])
 
-fn finite_counter(text: String) Float!:
+fn finite_counter(text String) Float!:
 	value := text.parse_float()
 	if value != null:
 		if value.is_finite() and value >= 0.0: return ok(value)
 	return invalid("expected a finite nonnegative measurement")
 
-export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!:
+export fn summarize(text String, swap Bool = false, cpu Bool = false) String!:
 	lines := text.split("\n")
 	header := "round\tlabel\tinput\twall_ns\tmax_resident_bytes\tinput_sha256"
 	cpu_header := header + "\tuser_ns\tsystem_ns"
@@ -122,7 +122,7 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 	for key in groups.keys().sorted():
 		values := groups[key]
 		interval := median_interval(values)?
-		slower := values.filter(fn value: value > 1.0).length()
+		slower := values.filter(value => value > 1.0).length()
 		report += f"{key} n={values.length()} median_candidate_ratio={median(values)} median95_lower={interval[0]} median95_upper={interval[1]} min_ratio={(values.min() or panic("called Optional.get() on null"))} max_ratio={(values.max() or panic("called Optional.get() on null"))} candidate_slower={slower}\n"
 
 	return ok(report)

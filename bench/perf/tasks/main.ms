@@ -12,7 +12,7 @@ import (
 	monotonic, seconds, sleep from "@std/time.ms",
 )
 
-fn status(label: String) Void:
+fn status(label String) Void:
 	text := (
 		read_file("/proc/self/status", null).wait().get().decode_utf8()
 		or panic("called Optional.get() on null")
@@ -21,23 +21,23 @@ fn status(label: String) Void:
 		if line.contains("VmRSS") or line.contains("VmHWM") or line.contains("VmPTE"):
 			print(label + " " + line)
 
-fn park_sleep(a: Int) Int!:
+fn park_sleep(a Int) Int!:
 	sleep(seconds(1000)).wait()?
 	return ok(a)
 
-fn descend(depth: Int, acc: Int) Int:
+fn descend(depth Int, acc Int) Int:
 	if depth == 0: return acc
 
-	scratch: List[Int] := [acc, depth, acc + depth]
+	scratch List[Int] := [acc, depth, acc + depth]
 	below := descend(depth - 1, acc + scratch[1])
 	return below + scratch.length()
 
-fn park_deep(a: Int) Int!:
+fn park_deep(a Int) Int!:
 	sum := descend(256, a)
 	sleep(seconds(1000)).wait()?
 	return ok(sum)
 
-fn park_read(a: Int) Int!:
+fn park_read(a Int) Int!:
 	data := read_file("/proc/self/stat", null).wait()?
 	sleep(seconds(1000)).wait()?
 	return ok(data.length() + a)
@@ -49,34 +49,34 @@ fn main() Void:
 	status("before")
 
 	t0 := monotonic()
-	var promises: List[Promise[Int]] = []
+	var promises List[Promise[Int]] = []
 
 	for i in 0..n:
 		if mode == "sleep":
 			promises.append(
 				promise(
-					fn: park_sleep(i),
+					() => park_sleep(i),
 					options: PromiseOptions(
 						placement: Placement.Here
-					)
+					),
 				)
 			)
 		else if mode == "deep":
 			promises.append(
 				promise(
-					fn: park_deep(i),
+					() => park_deep(i),
 					options: PromiseOptions(
 						placement: Placement.Here
-					)
+					),
 				)
 			)
 		else:
 			promises.append(
 				promise(
-					fn: park_read(i),
+					() => park_read(i),
 					options: PromiseOptions(
 						placement: Placement.Here
-					)
+					),
 				)
 			)
 

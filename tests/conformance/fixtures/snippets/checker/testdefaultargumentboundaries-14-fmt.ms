@@ -2,13 +2,13 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/defaults_test.go:27 TestDefaultArgumentBoundaries
 interface Add:
-    fn add(value: Int) Int
+    fn add(value Int) Int
 
 type Offset:
-    value: Int
+    value Int
 
-fn Offset.add(value: Int = self.value) Int:
+fn Offset.add(value Int = self.value) Int:
     return value
 
-fn call(value: Add) Int:
+fn call(value Add) Int:
     return value.add()

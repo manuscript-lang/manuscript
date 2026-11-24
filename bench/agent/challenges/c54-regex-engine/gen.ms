@@ -3,32 +3,32 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c54
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-fn rep(text: String, count: Int) String:
+fn rep(text String, count Int) String:
 	return text.repeat(count)
 
-fn line(cmd: String, pat: String, subj: String = "", repl: String? = null) String:
-	var fields = [cmd, pat, subj]
+fn line(cmd String, pat String, subj String = "", repl String? = null) String:
+	var fields = [cmd.clone(), pat.clone(), subj.clone()]
 	r := repl
 	if r != null:
 		fields.append(r)
 	return fields.join("\t") + "\n"
 
-fn M(pat: String, subj: String) String:
+fn M(pat String, subj String) String:
 	return line("match", pat, subj)
 
-fn T(pat: String, subj: String) String:
+fn T(pat String, subj String) String:
 	return line("test", pat, subj)
 
-fn F(pat: String, subj: String) String:
+fn F(pat String, subj String) String:
 	return line("full", pat, subj)
 
-fn A(pat: String, subj: String) String:
+fn A(pat String, subj String) String:
 	return line("find-all", pat, subj)
 
-fn R(pat: String, subj: String, repl: String) String:
+fn R(pat String, subj String, repl String) String:
 	return line("replace", pat, subj, repl)
 
-fn S(pat: String, subj: String) String:
+fn S(pat String, subj String) String:
 	return line("split", pat, subj)
 
 export fn gen_c54() Void:

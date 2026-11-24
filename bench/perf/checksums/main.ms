@@ -8,7 +8,7 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-fn lap(name: String, t: Instant) Void:
+fn lap(name String, t Instant) Void:
 	print(f"{name} {monotonic().difference(t).to_milliseconds()}")
 
 fn main() Void!:

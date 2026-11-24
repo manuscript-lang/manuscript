@@ -11,9 +11,9 @@ import (
 
 // Hands out the chunks in order, then ends.
 type Chunks:
-	data: Bytes
-	size: Int
-	at: Int
+	data Bytes
+	size Int
+	at Int
 
 fn var Chunks.next() Bytes?!:
 	if self.at >= self.data.length(): return ok(null)
@@ -28,25 +28,25 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
+fn chunked(move data Bytes, size Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 fn read_rows(
-	text: String,
-	size: Int,
-	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = null,
+	text String,
+	size Int,
+	options CsvOptions = CsvOptions(),
+	max_record_bytes Int? = null,
 ) List[List[String]]!:
 	return read_raw(text.to_bytes(), size, options, max_record_bytes)
 
 fn read_raw(
-	data: Bytes,
-	size: Int,
-	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = null,
+	data Bytes,
+	size Int,
+	options CsvOptions = CsvOptions(),
+	max_record_bytes Int? = null,
 ) List[List[String]]!:
-	var rows = csv_rows(chunked(data, size), options, max_record_bytes)
-	var out: List[List[String]] = []
+	var rows = csv_rows(chunked(data.clone(), size), options, max_record_bytes)
+	var out List[List[String]] = []
 
 	while true:
 		next := rows.next()?
@@ -82,7 +82,7 @@ test "large fragmented records preserve rows and exact record budgets":
 			"EOVERFLOW",
 		)?
 
-	var chunks: List[Bytes] = ["".to_bytes()]
+	var chunks List[Bytes] = ["".to_bytes()]
 
 	for byte in "a,\"é\"\r\nb,c\nlast,row".to_bytes().values():
 		var chunk = BytesBuilder()
@@ -104,7 +104,7 @@ test "options apply":
 	)?
 
 test "empty CSV streams reject invalid options":
-	invalid: List[List[String]]! := error(Error("CSV: invalid input", kind: "EINVAL"))
+	invalid List[List[String]]! := error(Error("CSV: invalid input", kind: "EINVAL"))
 
 	for options in [
 		CsvOptions(delimiter: ""),
@@ -120,7 +120,7 @@ test "empty CSV streams reject invalid options":
 		empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
 		expect_equal(empty_chunks | csv_rows(options.clone()) | collect(null), invalid)?
 
-	no_rows: List[List[String]] := []
+	no_rows List[List[String]] := []
 	expect_equal(read_rows("", 1)?, no_rows)?
 	expect_equal(
 		read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n"))?,
@@ -152,7 +152,7 @@ test "continued reads after a record limit error keep only the consumed tail":
 		["ab", "cd\nx", "\n"],
 		["ab", "cd\n\"", "x\"\n"],
 	]:
-		var data: List[Bytes] = []
+		var data List[Bytes] = []
 		for chunk in chunks:
 			data.append(chunk.to_bytes())
 
@@ -219,7 +219,7 @@ test "row and cell budgets bound parse only, never depending on chunk size":
 	expect_equal(parse("a\nb\n", limits).is_error(), true)?
 
 // The rows joined for comparison, or the error kind.
-fn csv_outcome(result: List[List[String]]!) String:
+fn csv_outcome(result List[List[String]]!) String:
 	if result.is_error(): return result.err().kind.clone() or "none"
 
 	var text = "ok"

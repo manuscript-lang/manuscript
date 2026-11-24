@@ -2,11 +2,11 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/generics.md:74
 type Pair[A, B = A]:
-    first: A
-    second: B
+    first A
+    second B
 
-fn parse[T = String](text: String) T?:
+fn parse[T = String](text String) T?:
     return null
 
-same: Pair[Int] := Pair[Int](1, 2)  // Pair[Int, Int]
+same Pair[Int] := Pair[Int](1, 2)  // Pair[Int, Int]
 mixed := Pair[Int, String](1, "x")

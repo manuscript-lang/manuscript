@@ -10,9 +10,9 @@ import (
 
 // Hands out the chunks in order, then fails with `failure` if set, else ends.
 type Chunks:
-	parts: List[Bytes]
-	index: Int
-	failure: Error?
+	parts List[Bytes]
+	index Int
+	failure Error?
 
 fn var Chunks.next() Bytes?!:
 	if self.index < self.parts.length():
@@ -28,11 +28,11 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunks(move parts: List[Bytes]) ReadStream[Bytes]:
+fn chunks(move parts List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, null))
 
 // Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
-fn splits(source: Bytes) List[List[Bytes]]:
+fn splits(source Bytes) List[List[Bytes]]:
 	var all = List[List[Bytes]]()
 	size := source.length()
 	for cut in 0..size + 1:
@@ -45,7 +45,7 @@ fn splits(source: Bytes) List[List[Bytes]]:
 	return all
 
 // Reads every event, or the first error.
-fn decode(move parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
+fn decode(move parts List[Bytes], limits SseLimits = SseLimits()) List[SseEvent]!:
 	var events = sse_events(chunks(parts), limits)
 	var out = List[SseEvent]()
 
@@ -60,12 +60,12 @@ fn decode(move parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEven
 
 	return ok(out)
 
-fn summary(events: List[SseEvent]) String:
+fn summary(events List[SseEvent]) String:
 	return events.map(
-		fn event: f"{event.event}|{event.data}|{(event.id or "-")}"
+		event => f"{event.event}|{event.data}|{(event.id or "-")}"
 	).join(";")
 
-fn expect(source: String, want: String) Void!:
+fn expect(source String, want String) Void!:
 	for parts in splits(source.to_bytes()):
 		got := summary(decode(parts)?)
 		if got != want: return fail(

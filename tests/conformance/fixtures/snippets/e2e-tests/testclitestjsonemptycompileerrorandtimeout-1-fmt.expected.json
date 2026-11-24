@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn helper() Int: return 0\n"
+    "fmt": "export fn helper() Int => return 0\n"
   }
 }

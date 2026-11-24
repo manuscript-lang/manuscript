@@ -3,6 +3,6 @@
 export fn later[
 T,
 ](
-value: T,
+value T,
 ) T:
     return value

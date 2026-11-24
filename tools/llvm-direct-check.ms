@@ -32,15 +32,15 @@ fn ms_path() String:
 
 // One release build: what it took, what it emitted and what the program printed.
 type Built:
-	seconds: Float
-	lines: Int
-	functions: Int
-	direct: Int
-	exe: String
+	seconds Float
+	lines Int
+	functions Int
+	direct Int
+	exe String
 
 // The verifier runs only in its own build: it slows `opt`, and the timed builds must
 // not carry it.
-fn build_env(cranelift: Bool, verify: Bool) Map[String, String]:
+fn build_env(cranelift Bool, verify Bool) Map[String, String]:
 	var vars = Map[String, String]()
 	vars.add("MS_KEEP_LL", "1")
 	if cranelift: vars.add("MS_BACKEND", "cranelift")
@@ -48,7 +48,7 @@ fn build_env(cranelift: Bool, verify: Bool) Map[String, String]:
 	return vars
 
 // The text of `ms-keep.ll`, then `ms-keep-1.ll`, ... in `dir`.
-fn kept_ir(dir: String) String:
+fn kept_ir(dir String) String:
 	var text = ""
 	var part = 0
 
@@ -67,7 +67,7 @@ fn kept_ir(dir: String) String:
 
 // Functions in `ir` and how many hold a value the direct emitter named (`%vN`). A
 // function with no value is not counted, so the share is a lower bound.
-fn count_functions(ir: String) List[Int]:
+fn count_functions(ir String) List[Int]:
 	var functions = 0
 	var direct = 0
 	var in_direct = false
@@ -86,7 +86,7 @@ fn count_functions(ir: String) List[Int]:
 
 	return [functions, direct]
 
-fn build(source: String, dir: String, cranelift: Bool, verify: Bool) Built!:
+fn build(source String, dir String, cranelift Bool, verify Bool) Built!:
 	ms := absolute_ms()?
 	path := canonicalize(source)?
 	started := monotonic()
@@ -119,7 +119,7 @@ fn absolute_ms() String!:
 	return canonicalize(ms_path())
 
 // Standard output of one run.
-fn output(exe_path: String) String!:
+fn output(exe_path String) String!:
 	ran := run(exe_path, [], RunOptions()).wait()?
 	if ran.exit_code != 0:
 		return error(
@@ -131,7 +131,7 @@ fn output(exe_path: String) String!:
 	return ok((ran.stdout.decode_utf8() or "").clone())
 
 // `name micros checksum` lines of a kernel program as `name checksum` and the times.
-fn parse_kernels(text: String) List[List[String]]:
+fn parse_kernels(text String) List[List[String]]:
 	var rows = List[List[String]]()
 
 	for line in text.split("\n"):
@@ -142,23 +142,23 @@ fn parse_kernels(text: String) List[List[String]]:
 
 	return rows
 
-fn checksums(rows: List[List[String]]) String:
-	return rows.map(fn r: f"{r[0]} {r[2]}").join("\n")
+fn checksums(rows List[List[String]]) String:
+	return rows.map(r => f"{r[0]} {r[2]}").join("\n")
 
-fn row(name: String, old: Built, new: Built) String:
+fn row(name String, old Built, new Built) String:
 	share := if new.functions == 0: 0.0 else: new.direct.to_float() * 100.0 / new.functions.to_float()
 	return f"| {name} | {old.seconds.to_fixed(2)} s | {new.seconds.to_fixed(2)} s | {new.lines} | {new.direct} of {new.functions} ({share.to_fixed(1)}%) |"
 
 fn runs_wanted() Int:
 	return env("RUNS", "5").parse_int() or 5
 
-fn keep_min(var best: Map[String, Int], name: String, micros: Int) Void:
+fn keep_min(var best Map[String, Int], name String, micros Int) Void:
 	if not best.contains(name) or micros < best.get_or(name, micros):
 		best.add(name.clone(), micros)
 
 // Smallest time of each kernel over `runs` interleaved runs of both builds, in input
 // order.
-fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
+fn kernel_times(old String, new String, runs Int) List[List[String]]!:
 	var names = List[String]()
 	var best_old = Map[String, Int]()
 	var best_new = Map[String, Int]()
@@ -166,7 +166,7 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 	for n in 0..runs:
 		old_rows := parse_kernels(output(old)?)
 		new_rows := parse_kernels(output(new)?)
-		if n == 0: names = old_rows.map(fn r: r[0].clone())
+		if n == 0: names = old_rows.map(r => r[0].clone())
 		for r in old_rows:
 			keep_min(best_old, r[0].clone(), r[1].parse_int() or 0)
 		for r in new_rows:
@@ -174,7 +174,7 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 
 	return ok(
 		names.map(
-			fn k: [
+			k => [
 				k.clone(),
 				f"{best_old.get_or(k, 0)}",
 				f"{best_new.get_or(k, 0)}",
@@ -185,10 +185,10 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 // Builds `source` with both backends and appends its table row; `false` when the two
 // programs print different results.
 fn report_program(
-	source: String,
-	kernels: Bool,
-	var lines: List[String],
-	var slow: List[String],
+	source String,
+	kernels Bool,
+	var lines List[String],
+	var slow List[String],
 ) Bool!:
 	root := temporary_directory("ms-llvm-direct-")?
 	create_directory(f"{root}/old")?
@@ -222,7 +222,7 @@ fn report_program(
 	remove(root, recursive: true)?
 	return ok(same)
 
-fn report(programs: List[String]) Int:
+fn report(programs List[String]) Int:
 	var lines = [
 		"| program | build (Cranelift) | build (LLVM) | IR lines (LLVM) | functions emitted directly |",
 		"| --- | ---: | ---: | ---: | --- |"

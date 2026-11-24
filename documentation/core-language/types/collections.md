@@ -22,7 +22,7 @@ Brackets construct mutable lists of values:
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 values := [1, 2, 3]
-empty: List[Int] := []
+empty List[Int] := []
 also_empty := List[Int]()
 sized := List[Int](reserve: 1000)
 print(values)
@@ -41,7 +41,7 @@ Braces construct mutable maps:
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 scores := {"Ada": 3, "Lin": 5}
-empty: Map[String, Int] := {}
+empty Map[String, Int] := {}
 ```
 
 Entries are `key: value`, and trailing commas are allowed. Keys are expressions: `{name: score}` uses the value of `name`, while `{"name": score}` uses the String `"name"`. A map literal never constructs a type.
@@ -59,7 +59,7 @@ Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit 
 
 <!-- manuscript-example: {"mode":"error","contains":"expected Int","given":[]} -->
 ```manuscript
-nested: List[List[Int]] := [[], [1, 2]]
+nested List[List[Int]] := [[], [1, 2]]
 // Rejected: incompatible Int and Float elements.
 mixed := [1, 2.0]
 // Rejected: no element type can be inferred.
@@ -68,7 +68,7 @@ unknown := []
 
 An expected type propagates into inner literals. Without one, elements must agree on one type.
 
-`null` needs context to fix its payload type, and neither `[null, 1]` nor `[null]` supplies it, so annotate the binding: `values: List[Int?] := [null, 1]`.
+`null` needs context to fix its payload type, and neither `[null, 1]` nor `[null]` supplies it, so annotate the binding: `values List[Int?] := [null, 1]`.
 
 Collections can hold [recursive data](named-types.md#recursive-data) but get no automatic hashing.
 
@@ -173,35 +173,35 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
-| `List[T](reserve: Int?)` | Empty `List[T]` with room for `reserve` items |
-| `List[T]` | `length() Int`; `get(index: Int) T`; `get_or(index: Int, default: T?) T`; `[index] T` |
-| `List[T]` | `append(value: T) Void`; `concat(values: List[T]) List[T]` |
-| `List[T]` | `set(index: Int, value: T) Void` (also `xs[index] = value`); `remove(index: Int) Void` |
-| `List[T]` | `insert(index: Int, value: T) Void`; `pop() T?` |
+| `List[T](reserve Int?)` | Empty `List[T]` with room for `reserve` items |
+| `List[T]` | `length() Int`; `get(index Int) T`; `get_or(index Int, default T?) T`; `[index] T` |
+| `List[T]` | `append(value T) Void`; `concat(values List[T]) List[T]` |
+| `List[T]` | `set(index Int, value T) Void` (also `xs[index] = value`); `remove(index Int) Void` |
+| `List[T]` | `insert(index Int, value T) Void`; `pop() T?` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
-| `Map[K, V]` | `length() Int`; `get(key: K) V?`; `contains(key: K) Bool`; `[key] V` faults with `map key not found: <key>` when absent |
-| `Map[K, V]` | `is_empty() Bool`; `get_or(key: K, fallback: V) V` |
-| `Map[K, V]` | `filter(predicate: fn(K, V) Bool) Map[K, V]` |
-| `Map[K, V]` | `map[W](transform: fn(K, V) W) Map[K, W]` |
-| `Map[K, V]` | `map_keys[W: Hashable](transform: fn(K, V) W) Map[W, V]` |
-| `Map[K, V]` | `fold[A](initial: A, step: fn(A, K, V) A) A` |
+| `Map[K, V]` | `length() Int`; `get(key K) V?`; `contains(key K) Bool`; `[key] V` faults with `map key not found: <key>` when absent |
+| `Map[K, V]` | `is_empty() Bool`; `get_or(key K, fallback V) V` |
+| `Map[K, V]` | `filter(predicate fn(K, V) Bool) Map[K, V]` |
+| `Map[K, V]` | `map[W](transform fn(K, V) W) Map[K, W]` |
+| `Map[K, V]` | `map_keys[W Hashable](transform fn(K, V) W) Map[W, V]` |
+| `Map[K, V]` | `fold[A](initial A, step fn(A, K, V) A) A` |
 | `Map[K, V]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Map[K, V]` | `find(predicate: fn(K, V) Bool) MapEntry[K, V]?` |
+| `Map[K, V]` | `find(predicate fn(K, V) Bool) MapEntry[K, V]?` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
-| `Map[K, V]` | `any(predicate: fn(K, V) Bool) Bool`; `all` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) Void`; `remove(key: K) Void`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
-| `Map[K, V]` | `update(key: K, initial: V, change: fn(V) V) Void` stores `change` applied to the stored value, or to `initial` when absent, with one lookup (`counts.update(word, 0, fn n: n + 1)`); needs `var m` and a cloneable key. A `change` that reads or changes `m` is rejected |
+| `Map[K, V]` | `any(predicate fn(K, V) Bool) Bool`; `all` uses the same predicate |
+| `Map[K, V]` | `add(key K, value V) Void`; `remove(key K) Void`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
+| `Map[K, V]` | `update(key K, initial V, change fn(V) V) Void` stores `change` applied to the stored value, or to `initial` when absent, with one lookup (`counts.update(word, 0, n => n + 1)`); needs `var m` and a cloneable key. A `change` that reads or changes `m` is rejected |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
-| `Set[T]` | `length() Int`; `contains(value: T) Bool` |
-| `Set[T]` | `is_empty() Bool`; `filter(predicate: fn(T) Bool) Set[T]` |
-| `Set[T]` | `map[U: Hashable](transform: fn(T) U) Set[U]` |
-| `Set[T]` | `add(value: T) Void`; `remove(value: T) Void` |
-| `Set[T]` | `fold[A](initial: A, step: fn(A, T) A) A` |
+| `Set[T]` | `length() Int`; `contains(value T) Bool` |
+| `Set[T]` | `is_empty() Bool`; `filter(predicate fn(T) Bool) Set[T]` |
+| `Set[T]` | `map[U Hashable](transform fn(T) U) Set[U]` |
+| `Set[T]` | `add(value T) Void`; `remove(value T) Void` |
+| `Set[T]` | `fold[A](initial A, step fn(A, T) A) A` |
 | `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Set[T]` | `find(predicate: fn(T) Bool) T?` |
+| `Set[T]` | `find(predicate fn(T) Bool) T?` |
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
-| `Set[T]` | `any(predicate: fn(T) Bool) Bool`; `all` uses the same predicate |
+| `Set[T]` | `any(predicate fn(T) Bool) Bool`; `all` uses the same predicate |
 
 An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get_or(0, 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
@@ -234,7 +234,7 @@ Enumeration returns owned results. Callbacks borrow the receiver for the travers
 List `sorted()` returns a new list in ascending natural order, and `sort()` orders the list in place. Both are stable.
 
 - Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with its own `compare`). Float orders NaN above every other value.
-- Pass `compare: fn a, b: ...` to order by anything else. A negative result puts the first argument first.
+- Pass `compare: (a, b) => ...` to order by anything else. A negative result puts the first argument first.
 - `sum()` adds Int, Float, or sized numeric elements with `+`. Int overflow faults, and an empty list sums to zero.
 - `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list: the first of equal elements, or `null` for an empty list.
 
@@ -246,7 +246,7 @@ test "sorting and aggregates":
     var scores = [3, 1, 2]
     if scores.sorted() != [1, 2, 3]:
         return panic("check failed")
-    scores.sort(fn a, b: b - a)
+    scores.sort((a, b) => b - a)
     if scores != [3, 2, 1]:
         return panic("check failed")
     if scores.sum() != 6 or scores.max() != 3 or List[Int]().min() != null:
@@ -260,8 +260,8 @@ Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in
 import panic from "@std/core.ms"
 
 
-fn positives(values: List[Int]) List[Int]:
-    result := values.filter(fn value: value > 0)
+fn positives(values List[Int]) List[Int]:
+    result := values.filter(value => value > 0)
     return result
 
 test "dynamic mutable data and explicit copies":
@@ -292,8 +292,8 @@ Callbacks run sequentially in the caller's context, and faults and cancellation 
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
-    return scores.map(fn name, score: score + 1)
+fn increment_scores(scores Map[String, Int]) Map[String, Int]:
+    return scores.map((name, score) => score + 1)
 ```
 
 ## Reducing and querying

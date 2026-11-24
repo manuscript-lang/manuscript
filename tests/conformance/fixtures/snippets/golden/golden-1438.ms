@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn add(a: Int, b: Int) Int:
+fn add(a Int, b Int) Int:
     sum := a + b
     return sum
 

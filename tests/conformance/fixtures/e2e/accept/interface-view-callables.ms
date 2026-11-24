@@ -7,47 +7,47 @@ interface Read[T]:
     fn read() T
 
 type Reader[T]:
-    operation: fn() T
+    operation fn() T
 
 fn Reader[T].read() T:
     return self.operation()
 
 type Log:
-    events: String
+    events String
 
-fn mark(var log: Log, event: String, value: Int) Int:
+fn mark(var log Log, event String, value Int) Int:
     log.events += event
     return value
 
-fn prepare(var log: Log, value: Int) fn() Int:
+fn prepare(var log Log, value Int) fn() Int:
     mark(log, "prepare;", 0)
     return fn() Int:
         return value
 
-fn wrap[T](operation: fn() T) Read[T]:
+fn wrap[T](operation fn() T) Read[T]:
     return Reader[T](operation)
 
-fn invoke[T: Read[Int]](value: T) Int:
+fn invoke[T Read[Int]](value T) Int:
     return value.read()
 
 type OrderedReader:
-    first: Int
-    operation: fn() Int
-    last: Int
+    first Int
+    operation fn() Int
+    last Int
 
 fn OrderedReader.read() Int:
     return self.first + self.operation() + self.last
 
 type DefaultReader:
-    base: Int
-    operation: fn() Int = fn() Int: base
+    base Int
+    operation fn() Int = fn() Int => base
 
 fn DefaultReader.read() Int:
     return self.operation()
 
 test "nested view receiver prepares once and calls later":
     var log = Log("")
-    view: Read[Int] := Reader(prepare(log, 7))
+    view Read[Int] := Reader(prepare(log, 7))
     expect_equal(log.events, "prepare;")?
     expect_equal(view.read(), 7)?
 
@@ -56,18 +56,18 @@ test "constructor arguments retain written order and capture snapshots":
     var value = 4
     snapshot := value
 
-    view: Read[Int] := OrderedReader(
+    view Read[Int] := OrderedReader(
         last: mark(log, "last;", 3),
         operation: (
             fn() Int:
-                nested := fn() Int: snapshot
+                nested := fn() Int => snapshot
                 return nested()
         ),
         match present(2):
             number:
                 value = 70
                 mark(log, "first;", number)
-            null: 0
+            null => 0
     )
 
     value = 90
@@ -80,7 +80,7 @@ test "explicit nested views and bound methods retain generic dispatch":
 
     view := wrap(
         fn() Int:
-            nested := fn() Int: snapshot
+            nested := fn() Int => snapshot
             return nested()
     )
 
@@ -89,29 +89,29 @@ test "explicit nested views and bound methods retain generic dispatch":
     bound := view.read
     expect_equal(bound(), 5)?
     expect_equal(invoke(view), 5)?
-    expect_equal(Reader(fn() Int: 6).read(), 6)?
-    expect_equal(Reader(fn() Int: 8).read(), 8)?
-    expect_equal(wrap(fn() String: "text").read(), "text")?
+    expect_equal(Reader(fn() Int => 6).read(), 6)?
+    expect_equal(Reader(fn() Int => 8).read(), 8)?
+    expect_equal(wrap(fn() String => "text").read(), "text")?
 
 test "source constructors with callable defaults prepare once":
     var log = Log("")
-    view: Read[Int] := DefaultReader(mark(log, "base;", 12))
+    view Read[Int] := DefaultReader(mark(log, "base;", 12))
     expect_equal(log.events, "base;")?
     expect_equal(view.read(), 12)?
 
 test "match receiver side effects and callable body remain ordered":
     var log = Log("")
 
-    view: Read[Int] := match present(mark(log, "select;", 1)):
+    view Read[Int] := match present(mark(log, "select;", 1)):
         _value:
             mark(log, "chosen;", 0)
-            Reader(fn() Int: 9)
+            Reader(fn() Int => 9)
         null:
             mark(log, "wrong;", 0)
-            Reader(fn() Int: 0)
+            Reader(fn() Int => 0)
 
     expect_equal(log.events, "select;chosen;")?
     expect_equal(view.read(), 9)?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
     return value

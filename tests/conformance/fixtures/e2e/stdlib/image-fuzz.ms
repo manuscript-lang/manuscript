@@ -19,15 +19,15 @@ import (
 // Deterministic generator (Numerical Recipes LCG); the fuzz is reproducible from the
 // seed.
 type Rng:
-	state: Int
+	state Int
 
-fn var Rng.next(limit: Int) Int:
+fn var Rng.next(limit Int) Int:
 	self.state = (self.state * 1103515245 + 12345) % 2147483648
 	return (self.state / 65536) % limit
 
 // One random mutation of `data`: byte flips, truncation, extreme field values, or a
 // spliced range.
-fn mutate(data: Bytes, var rng: Rng) Bytes:
+fn mutate(data Bytes, var rng Rng) Bytes:
 	n := data.length()
 	if n == 0: return data.clone()
 
@@ -71,7 +71,7 @@ fn mutate(data: Bytes, var rng: Rng) Bytes:
 
 	return Bytes(values)
 
-fn be32_at(values: List[UInt8], at: Int) Int:
+fn be32_at(values List[UInt8], at Int) Int:
 	return (
 		values[at].to_int() * 16777216
 		+ values[at + 1].to_int() * 65536
@@ -80,7 +80,7 @@ fn be32_at(values: List[UInt8], at: Int) Int:
 	)
 
 // Rewrites every PNG chunk checksum so mutations reach the decoder past the CRC gate.
-fn fix_png_crcs(data: Bytes) Bytes:
+fn fix_png_crcs(data Bytes) Bytes:
 	var values = data.values()
 	var at = 8
 
@@ -98,7 +98,7 @@ fn fix_png_crcs(data: Bytes) Bytes:
 
 	return Bytes(values)
 
-fn min_int(a: Int, b: Int) Int:
+fn min_int(a Int, b Int) Int:
 	return if a < b: a else: b
 
 fn seeds() List[Bytes]:
@@ -150,7 +150,7 @@ test "decoders never fault on mutated input":
 	expect_equal(accepted + rejected, 300 * corpus.length())?
 	print(f"fuzz: {accepted} accepted, {rejected} rejected")
 
-fn expect_error(data: Bytes, kind: String) Void!:
+fn expect_error(data Bytes, kind String) Void!:
 	result := decode_image(data)
 	if result.is_ok(): return fail(f"expected {kind}, decoded an image")
 

@@ -27,7 +27,7 @@ Positions bind left to right. A `List[T]` binds each position as `T`, and its le
 
 ## Type bindings
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    email: String","given":["customer: Customer"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name String\n    email String","given":["customer Customer"]} -->
 ```manuscript
 {name, email} := customer
 {name: customer_name, email: customer_email} := customer
@@ -37,7 +37,7 @@ Shorthand binds a field to a local of the same name; `field: local` renames it. 
 
 ## Nested patterns
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n\ntype Address:\n    city: String\n\ntype Order:\n    customer: Customer\n    shipping: Address","given":["order: Order","customers: List[Customer]"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name String\n\ntype Address:\n    city String\n\ntype Order:\n    customer Customer\n    shipping Address","given":["order Order","customers List[Customer]"]} -->
 ```manuscript
 {customer: {name}, shipping: {city: destination}} := order
 [{name: first_name}, {name: second_name}] := customers

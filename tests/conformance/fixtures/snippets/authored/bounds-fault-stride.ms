@@ -3,7 +3,7 @@
 // conform: origin=range pass: relational bounds proofs
 import stdout from "@std/io/io.ms"
 
-fn stride(a: List[Int]) Int:
+fn stride(a List[Int]) Int:
     var t = 0
     for i in 0..a.length() / 3 + 1:
         t = t + a[i * 3 + 2]

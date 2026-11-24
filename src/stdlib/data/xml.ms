@@ -33,54 +33,54 @@ print(item.text())                  // "Hi & bye"
 // An XML attribute with its decoded value.
 export type XmlAttribute:
 	// Attribute name as written, including any prefix.
-	name: String
+	name String
 	// Attribute value with references decoded.
-	value: String
+	value String
 
 // A node of a parsed XML tree.
 export enum XmlNode:
 	// An element with its attributes in source order and its child nodes.
 	XmlElement(
 		// Tag name as written, including any prefix.
-		name: String,
+		name String,
 		// Attributes in source order.
-		attributes: List[XmlAttribute],
+		attributes List[XmlAttribute],
 		// Child elements, text and comments in document order.
-		children: List[XmlNode]
+		children List[XmlNode]
 	)
 	// Character data with references decoded; CDATA sections become text.
 	XmlText(
 		// Text with entity and character references decoded.
-		text: String
+		text String
 	)
 	// A comment, without the delimiters.
 	XmlComment(
 		// Comment contents exactly as written between the delimiters.
-		text: String
+		text String
 	)
 
 // The tag name of an element, or empty text for text and comments.
 fn XmlNode.tag() String:
 	match self:
-		XmlElement(name, _, _): return name.clone()
-		_: return ""
+		XmlElement(name, _, _) => return name.clone()
+		_ => return ""
 
 // Returns the value of the attribute `name`, or null when it is absent or the node is
 // not an element.
-fn XmlNode.attribute(name: String) String?:
+fn XmlNode.attribute(name String) String?:
 	match self:
 		XmlElement(_, attributes, _):
 			for attribute in attributes:
 				if attribute.name == name: return attribute.value.clone()
 			return null
-		_: return null
+		_ => return null
 
 // Returns the child nodes of an element, or an empty list. The result is an owned
 // copy.
 fn XmlNode.children() List[XmlNode]:
 	match self:
-		XmlElement(_, _, children): return children.clone()
-		_: return List[XmlNode]()
+		XmlElement(_, _, children) => return children.clone()
+		_ => return List[XmlNode]()
 
 // Returns all descendant text joined in document order, without comments.
 fn XmlNode.text() String:
@@ -90,36 +90,36 @@ fn XmlNode.text() String:
 
 // Returns the first direct child element named `name`, or null. The result is an
 // owned copy.
-fn XmlNode.find(name: String) XmlNode?:
+fn XmlNode.find(name String) XmlNode?:
 	match self:
 		XmlElement(_, _, children):
 			for child in children:
 				if child.tag() == name: return child.clone()
 			return null
-		_: return null
+		_ => return null
 
 // Returns every direct child element named `name`, in order.
-fn XmlNode.find_all(name: String) List[XmlNode]:
+fn XmlNode.find_all(name String) List[XmlNode]:
 	var found = List[XmlNode]()
 
 	match self:
 		XmlElement(_, _, children):
 			for child in children:
 				if child.tag() == name: found.append(child.clone())
-		_: return found
+		_ => return found
 
 	return found
 
-fn collect_text(node: XmlNode, var out: String) Void:
+fn collect_text(node XmlNode, var out String) Void:
 	match node:
-		XmlText(text): out += text
+		XmlText(text) => out += text
 		XmlElement(_, _, children):
 			for child in children:
 				collect_text(child, out)
-		_: return
+		_ => return
 
 // A malformed-input error at scalar index `at`, with its line, column and reason.
-fn invalid_at(chars: List[String], at: Int, reason: String) Error:
+fn invalid_at(chars List[String], at Int, reason String) Error:
 	var line = 1
 	var column = 1
 
@@ -142,21 +142,21 @@ fn invalid_at(chars: List[String], at: Int, reason: String) Error:
 
 // A cursor over the document's scalars.
 type Reader:
-	chars: List[String]
+	chars List[String]
 	// The scalar values of `chars`, so literals are matched without building strings.
-	codes: List[Int]
+	codes List[Int]
 	// The normalized document and whether it is all ASCII; then a scalar index is a
 	// byte offset and a span of the document is one slice, not a string built scalar by
 	// scalar.
-	text: String
-	ascii: Bool
-	at: Int
-	max_depth: Int
+	text String
+	ascii Bool
+	at Int
+	max_depth Int
 
-fn Reader.peek(offset: Int = 0) String:
+fn Reader.peek(offset Int = 0) String:
 	return self.chars.get_or(self.at + offset, "")
 
-fn Reader.looking_at(literal: String) Bool:
+fn Reader.looking_at(literal String) Bool:
 	var k = 0
 
 	for code in literal.scalar_values():
@@ -167,7 +167,7 @@ fn Reader.looking_at(literal: String) Bool:
 	return true
 
 // The document text from scalar `start` up to `end`.
-fn Reader.span(start: Int, end: Int) String:
+fn Reader.span(start Int, end Int) String:
 	if self.ascii: return self.text.view(start, end).clone()
 
 	var out = ""
@@ -178,7 +178,7 @@ fn Reader.done() Bool:
 	return self.at >= self.chars.length()
 
 // A malformed-input error at the cursor.
-fn Reader.invalid(reason: String) Error:
+fn Reader.invalid(reason String) Error:
 	return invalid_at(self.chars, self.at, reason)
 
 fn var Reader.skip_space() Void:
@@ -186,7 +186,7 @@ fn var Reader.skip_space() Void:
 		self.at += 1
 
 // Consumes `literal` or fails.
-fn var Reader.expect(literal: String) Void!:
+fn var Reader.expect(literal String) Void!:
 	if not self.looking_at(literal): return error(self.invalid(f"expected `{literal}`"))
 
 	// Every literal passed here is ASCII, so its byte length is its scalar count.
@@ -194,8 +194,8 @@ fn var Reader.expect(literal: String) Void!:
 
 // Returns the text up to `stop` and consumes it, or fails when `stop` never appears;
 // `what` names the construct in that error, which points at `opened`, where it began.
-fn var Reader.take_until(stop: String, what: String, opened: Int) String!:
-	var wanted: List[Int] = []
+fn var Reader.take_until(stop String, what String, opened Int) String!:
+	var wanted List[Int] = []
 	for code in stop.scalar_values(): wanted.append(code)
 
 	start := self.at
@@ -341,7 +341,7 @@ fn var Reader.declaration() Void!:
 			)
 
 // Skips a quoted literal; its contents never delimit markup.
-fn var Reader.quoted(public_id: Bool = false) Void!:
+fn var Reader.quoted(public_id Bool = false) Void!:
 	quote := self.peek().clone()
 	if quote != "\"" and quote != "'": return error(
 		self.invalid("expected a quoted literal")
@@ -447,8 +447,8 @@ fn var Reader.doctype() Void!:
 // Only the prolog may have a declaration, before any whitespace or other markup.
 // The prolog may also hold one DOCTYPE; it is skipped, never expanded.
 fn var Reader.skip_misc(
-	declaration_allowed: Bool = false,
-	doctype_allowed: Bool = false,
+	declaration_allowed Bool = false,
+	doctype_allowed Bool = false,
 ) Void!:
 	start := self.at
 	var doctype_open = doctype_allowed
@@ -476,7 +476,7 @@ fn var Reader.skip_misc(
 
 	return ok()
 
-fn var Reader.element(depth: Int) XmlNode!:
+fn var Reader.element(depth Int) XmlNode!:
 	if depth > self.max_depth: return error(
 		Error("XML: limit exceeded", kind: "EOVERFLOW")
 	)
@@ -627,18 +627,18 @@ fn var Reader.element(depth: Int) XmlNode!:
 
 			children.append(XmlText(decode(raw, self.chars, text_at)?))
 
-fn is_space(c: String) Bool:
+fn is_space(c String) Bool:
 	return c == " " or c == "\t" or c == "\n" or c == "\r"
 
 // XML 1.0 processes other 1.x versions using the same grammar (section 2.8).
-fn is_version(text: String) Bool:
+fn is_version(text String) Bool:
 	if not text.starts_with("1.") or text.length() <= 2: return false
 
 	for code in text.view(2, text.length()).scalar_values():
 		if code < 0x30 or code > 0x39: return false
 	return true
 
-fn is_encoding_name(text: String) Bool:
+fn is_encoding_name(text String) Bool:
 	var first = true
 
 	for code in text.scalar_values():
@@ -656,7 +656,7 @@ fn is_encoding_name(text: String) Bool:
 	return not first
 
 // XML 1.0 (Fifth Edition), productions [4] NameStartChar and [4a] NameChar.
-fn is_name_char(code: Int, first: Bool) Bool:
+fn is_name_char(code Int, first Bool) Bool:
 	// ASCII first: letters, `_` and `:` start a name, digits, `-` and `.` continue it.
 	if code < 0x80:
 		if (code >= 0x61 and code <= 0x7a) or (code >= 0x41 and code <= 0x5a): return true
@@ -677,7 +677,7 @@ fn is_name_char(code: Int, first: Bool) Bool:
 		or (code >= 0x203f and code <= 0x2040)
 	)
 
-fn is_name_start(code: Int) Bool:
+fn is_name_start(code Int) Bool:
 	return (
 		code == 0x3a
 		or (code >= 0x41 and code <= 0x5a)
@@ -699,7 +699,7 @@ fn is_name_start(code: Int) Bool:
 
 // Decodes the five predefined entities and numeric references; any other `&name;` is
 // invalid.
-fn decode(text: String, chars: List[String], start: Int) String!:
+fn decode(text String, chars List[String], start Int) String!:
 	if not text.contains("&"): return ok(text.clone())
 
 	var out = ""
@@ -745,7 +745,7 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 
 // The value of a character reference's digits, or null for an empty run, a sign, or any
 // non-digit.
-fn digits(text: String, radix: Int) Int?:
+fn digits(text String, radix Int) Int?:
 	if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return null
 
 	value := parse_int(text, radix)
@@ -755,7 +755,7 @@ fn digits(text: String, radix: Int) Int?:
 
 // Whether a code point is in XML 1.0's Char production, which excludes NUL, most
 // controls, and U+FFFE and U+FFFF.
-fn is_xml_char(code: Int) Bool:
+fn is_xml_char(code Int) Bool:
 	if code == 9 or code == 10 or code == 13: return true
 	return (
 		(code >= 32 and code <= 55295)
@@ -763,7 +763,7 @@ fn is_xml_char(code: Int) Bool:
 		or (code >= 65536 and code <= 1114111)
 	)
 
-fn scalar(chars: List[String], at: Int, value: Int?) String!:
+fn scalar(chars List[String], at Int, value Int?) String!:
 	if (value == null) or not is_xml_char(value): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)
@@ -785,7 +785,7 @@ Its message reads `XML <line>:<column>: <reason>`, and `details` holds `line`, `
 An XML declaration is allowed only at the start, after an optional BOM. Its encoding
 name is checked for valid syntax; the String input has already been decoded.
 */
-export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
+export fn parse(text String, max_depth Int = 1000) XmlNode!:
 	if max_depth <= 0: return error(Error("XML: invalid input", kind: "EINVAL"))
 
 	// XML 1.0 section 2.11: `\r\n` and a lone `\r` reach the parser as `\n`; `&#13;` is
@@ -795,7 +795,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 		"\n",
 	) else: text.clone()
 	var chars = normalized.chars().clone()
-	var codes: List[Int] = []
+	var codes List[Int] = []
 	var ascii = true
 
 	for code in normalized.scalar_values():
@@ -840,14 +840,14 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 
 // Escapes `&`, `<`, `>` and carriage return for text content; a raw `\r` would read
 // back as `\n`.
-export fn escape_text(text: String) String:
+export fn escape_text(text String) String:
 	return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
 		"\r",
 		"&#13;",
 	)
 
 // Escapes text for a double-quoted attribute value.
-export fn escape_attribute(text: String) String:
+export fn escape_attribute(text String) String:
 	return escape_text(text).replace("\"", "&quot;").replace("\n", "&#10;").replace(
 		"\t",
 		"&#9;",
@@ -856,18 +856,18 @@ export fn escape_attribute(text: String) String:
 // Writes a node as XML. A non-empty `indent` (such as two spaces) puts each element on
 // its own line, except elements holding text, which stay on one line. An element with
 // no children is self-closing.
-export fn stringify(node: XmlNode, indent: String = "") String:
+export fn stringify(node XmlNode, indent String = "") String:
 	var out = ""
 	write(node, indent, 0, out)
 	return out
 
-fn write(node: XmlNode, indent: String, level: Int, var out: String) Void:
+fn write(node XmlNode, indent String, level Int, var out String) Void:
 	pad := if indent.is_empty(): "" else: indent.repeat(level)
 	newline := if indent.is_empty(): "" else: "\n"
 
 	match node:
-		XmlText(text): out += escape_text(text)
-		XmlComment(text): out += f"{pad}<!--{text}-->{newline}"
+		XmlText(text) => out += escape_text(text)
+		XmlComment(text) => out += f"{pad}<!--{text}-->{newline}"
 		XmlElement(name, attributes, children):
 			out += f"{pad}<{name}"
 			for attribute in attributes:

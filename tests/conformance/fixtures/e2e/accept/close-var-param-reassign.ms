@@ -4,23 +4,23 @@
 import Closeable from "@std/core.ms"
 
 type R:
-    name: String
+    name String
 
 fn move R.close() Void!:
     print(f"close {self.name}")
 
-fn replace(var r: R) Void:
+fn replace(var r R) Void:
     r = R("new")
 
 fn replace_local() Void:
     var _r = R("local-old")
     _r = R("local-new")
 
-fn replace_field(var w: W) Void:
+fn replace_field(var w W) Void:
     w.r = R("field-new")
 
 type W:
-    r: R
+    r R
 
 fn main() Void:
     var v = R("old")

@@ -5,14 +5,14 @@ import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
 
 type P:
-    x: Int
-    name: String
+    x Int
+    name String
 
 enum Shape:
-    Dot(x: Int)
-    Line(a: Int, b: Int?)
+    Dot(x Int)
+    Line(a Int, b Int?)
 
-fn code[T: Hashable](value: T) Int:
+fn code[T Hashable](value T) Int:
     return value.hash()
 
 test "derived hashes agree for equal values and are stable":

@@ -3,7 +3,7 @@
 interface TestHooks:
     fn after_all() Void
 type State:
-    value: Int
+    value Int
 impl TestHooks for State:
     fn after_all() Void:
         return

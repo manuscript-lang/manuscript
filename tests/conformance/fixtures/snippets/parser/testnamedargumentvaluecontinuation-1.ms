@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=test
 // conform: origin=pkg/parser/parser_test.go:72 TestNamedArgumentValueContinuation
-fn use(value: Int) Void:
+fn use(value Int) Void:
     return
 
 test "continued argument":

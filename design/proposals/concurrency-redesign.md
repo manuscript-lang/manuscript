@@ -43,7 +43,7 @@ export interface ReadStream[T]:
     var fn read() Promise[T?]          // one step; none at the end
     var fn wait() Waiting[T]           // for item in input.wait(): each step waits, the end included
 export interface WriteStream[T]:
-    var fn write(value: T) Unit!           // moves value into the stream's buffer and returns at once; never waits; Closed after the reader is gone
+    var fn write(value T) Unit!           // moves value into the stream's buffer and returns at once; never waits; Closed after the reader is gone
     var fn flush() Promise[Unit]           // waits until the buffer is drained: the backpressure point
     fn buffered() Int                      // values or bytes not yet drained, to decide when to flush
 // Waiting[T] is an Iterator[T!]. A ReadStream is not an Iterator itself, so every stream loop says wait.
@@ -66,7 +66,7 @@ Every other waiting call returns a promise: `read(path)`, `write(path, ...)`, `f
 ## Example
 
 ```manuscript
-fn summarize(urls: List[String], log: ReadStream[Bytes]) Summary!:
+fn summarize(urls List[String], log ReadStream[Bytes]) Summary!:
     config := read("config.json")                 // Promise[Bytes], already running
     pages := urls.map(fn u: fetch(u))             // all in flight together
     stats := promise(fn: count_words(urls))       // may run on another core
@@ -95,9 +95,9 @@ fn summarize(urls: List[String], log: ReadStream[Bytes]) Summary!:
 
 ```manuscript
 export fn serve(
-    address: String,
-    handler: fn(HttpExchange) Unit!,   // built once, read by every thread
-    options: HttpServerOptions = HttpServerOptions()   // adds cores: Int?, where none means every core
+    address String,
+    handler fn(HttpExchange) Unit!,   // built once, read by every thread
+    options HttpServerOptions = HttpServerOptions()   // adds cores: Int?, where none means every core
 ) HttpServer!
 
 impl HttpServer:

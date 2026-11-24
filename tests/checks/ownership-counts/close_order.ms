@@ -8,14 +8,14 @@ import (
 )
 
 type Res:
-	id: Int
+	id Int
 
 fn move Res.close() Void!:
 	stdout().write(f"close {self.id}\n").get()
 
 type Pair:
-	a: Res
-	b: Res
+	a Res
+	b Res
 
 export fn main() Int:
 	p := Pair(a: Res(1), b: Res(2))

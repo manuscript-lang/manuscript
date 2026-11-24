@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Options:\n\tcount: Int = 3\n\ttotal: Int = count + 1\n"
+    "fmt": "type Options:\n\tcount Int = 3\n\ttotal Int = count + 1\n"
   }
 }

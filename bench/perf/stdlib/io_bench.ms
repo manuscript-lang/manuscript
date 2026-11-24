@@ -6,8 +6,8 @@ import (
 )
 
 type MemorySource:
-	data: Bytes
-	offset: Int
+	data Bytes
+	offset Int
 
 fn var MemorySource.next() Bytes?!:
 	if self.offset == self.data.length(): return ok(null)
@@ -24,16 +24,16 @@ fn move MemorySource.close() Void!:
 	self.offset = self.data.length()
 
 fn source_text() String:
-	var parts: List[String] = []
+	var parts List[String] = []
 	for i in 0..100000:
 		parts.append(f"line number {i} with some padding text\n")
 	return parts.join("")
 
 type BenchData:
-	bytes: Bytes
-	xs: List[Int]
-	text: String
-	data: Bytes
+	bytes Bytes
+	xs List[Int]
+	text String
+	data Bytes
 
 fn make_fixture() BenchData:
 	bytes := source_text().to_bytes()
@@ -53,18 +53,18 @@ bench "io.lines" per 10:
 
 	count
 
-fn counted(n: Int) List[Int]:
-	var xs: List[Int] = []
+fn counted(n Int) List[Int]:
+	var xs List[Int] = []
 	for i in 0..n:
 		xs.append(i)
 	return xs
 
-fn plus(x: Int) Int:
+fn plus(x Int) Int:
 	return x + 1
 
 bench "io.stages.map3_fold" per 10:
 	stream := map(map(map(from_list(fixture.xs.clone()), plus), plus), plus)
-	total := fold(stream, 0, fn(a: Int, b: Int) Int: return a + b)?
+	total := fold(stream, 0, fn(a Int, b Int) Int => return a + b)?
 	total
 
 bench "io.lines long fragmented":

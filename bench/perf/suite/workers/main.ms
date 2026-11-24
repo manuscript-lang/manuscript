@@ -4,8 +4,8 @@
 // every task does real CPU work and shares nothing.
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 
-fn chunk_checksum(chunk: Int) Int!:
-	var hist: List[Int] = []
+fn chunk_checksum(chunk Int) Int!:
+	var hist List[Int] = []
 	for b in 0..256:
 		hist.append(0)
 
@@ -22,11 +22,11 @@ fn chunk_checksum(chunk: Int) Int!:
 	return ok(h)
 
 // A promise a function returns owns the values it captured.
-fn start_chunk(chunk: Int) Promise[Int]:
-	return promise[Int](fn: chunk_checksum(chunk))
+fn start_chunk(chunk Int) Promise[Int]:
+	return promise[Int](() => chunk_checksum(chunk))
 
 fn main() Void:
-	var ps: List[Promise[Int]] = []
+	var ps List[Promise[Int]] = []
 	for chunk in 0..128:
 		ps.append(start_chunk(chunk))
 

@@ -14,13 +14,13 @@
           "file": "golden-1226.ms",
           "line": 8,
           "column": 1,
-          "offset": 167
+          "offset": 166
         },
         "end": {
           "file": "golden-1226.ms",
           "line": 8,
           "column": 5,
-          "offset": 171
+          "offset": 170
         }
       },
       {
@@ -31,13 +31,13 @@
           "file": "golden-1226.ms",
           "line": 10,
           "column": 13,
-          "offset": 217
+          "offset": 216
         },
         "end": {
           "file": "golden-1226.ms",
           "line": 10,
           "column": 14,
-          "offset": 218
+          "offset": 217
         }
       }
     ],

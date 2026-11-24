@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn unique_copy[T: Equal & Clonable](values: List[T]) List[T]:
+fn unique_copy[T Equal & Clonable](values List[T]) List[T]:
 	copy_unique := values.distinct
 	return copy_unique()
 
@@ -14,17 +14,17 @@ test "generic distinct method values copy nested elements independently":
 	expect_equal(source, [[1], [1], [2]])?
 
 type Key:
-	id: Int
-	payload: List[Int]
+	id Int
+	payload List[Int]
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
 fn Key.hash() Int:
 	return 0
 
 test "hash collisions keep the first representative and copy nested payloads":
-	var source: List[Key] = []
+	var source List[Key] = []
 	for i in 0..40:
 		source.append(Key(i % 4, [i]))
 
@@ -40,7 +40,7 @@ test "hash collisions keep the first representative and copy nested payloads":
 	expect_equal(result[0].payload, [0, 99])?
 
 test "distinct keeps first-seen order above the hashing threshold":
-	var source: List[Int] = []
+	var source List[Int] = []
 	for i in 0..64:
 		source.append(31 - i % 32)
 
@@ -57,18 +57,18 @@ test "set algebra preserves collision order and first representatives":
 	expect_equal(intersection[0].payload, [10])?
 
 	difference := left.difference(right).values()
-	expect_equal(difference.map(fn(k: Key) Int: k.id), [2, 0])?
+	expect_equal(difference.map(fn(k Key) Int => k.id), [2, 0])?
 	expect_equal(difference[0].payload, [20])?
 
 	symmetric := left.symmetric_difference(right).values()
-	expect_equal(symmetric.map(fn(k: Key) Int: k.id), [2, 0, 3])?
+	expect_equal(symmetric.map(fn(k Key) Int => k.id), [2, 0, 3])?
 	expect_equal(symmetric[0].payload, [20])?
 	expect_equal(symmetric[2].payload, [30])?
 	expect_equal(left.values()[0].payload, [20])?
 	expect_equal(right.values()[0].payload, [999])?
 
 test "distinct copies nested values into independent output storage":
-	var source: List[List[Int]] = []
+	var source List[List[Int]] = []
 	for i in 0..32:
 		source.append([i % 4])
 
@@ -79,11 +79,11 @@ test "distinct copies nested values into independent output storage":
 	expect_equal(result[0], [0, 99])?
 
 test "distinct preserves owned strings, empty and small lists":
-	empty: List[String] := []
+	empty List[String] := []
 	expect_equal(empty.distinct(), [])?
 	expect_equal(["b", "a", "b"].distinct(), ["b", "a"])?
 
-	var source: List[String] = []
+	var source List[String] = []
 	for i in 0..40:
 		source.append(f"heap-backed-distinct-key-{i % 3}")
 	expect_equal(

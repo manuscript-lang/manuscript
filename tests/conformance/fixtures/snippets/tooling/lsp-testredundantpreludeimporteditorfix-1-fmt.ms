@@ -3,4 +3,4 @@
 // conform: origin=pkg/tooling/lsp/prelude_imports_test.go:43 TestRedundantPreludeImportEditorFix
 import Error from "@std/core.ms"  // keep
 
-fn first(values: List[Int]) Int!: values.first().ok_or()
+fn first(values List[Int]) Int! => values.first().ok_or()

@@ -23,7 +23,7 @@ import (
 )
 
 // The text after `prefix` on every line that starts with it.
-fn after(text: String, prefix: String) List[String]:
+fn after(text String, prefix String) List[String]:
 	var found = List[String]()
 	for line in text.split("\n"):
 		if line.starts_with(prefix): found.append(
@@ -38,6 +38,11 @@ fn main() Int:
 	// LLVM would delete blocks nothing reads; the gate counts every block the compiler
 	// asks for.
 	set_environment("MS_HEAP_FACTS", "off").get()
+
+	// The runtime keeps per-worker tables, so its block count grows with the worker
+	// count, which defaults to the core count (26 blocks at 1, 28 at 2, 32 at 4 for
+	// promise_wrapper_closure). Pin it so every machine reports the same counts.
+	set_environment("MS_THREADS", "4").get()
 
 	root := working_directory().get()
 	var files = List[String]()

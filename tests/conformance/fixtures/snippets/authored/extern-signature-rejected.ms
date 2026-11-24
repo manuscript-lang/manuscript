@@ -4,15 +4,15 @@
 extern type Handle
 
 enum Wrong:
-    Detail(reason: String)
+    Detail(reason String)
 
 enum Fine:
-    Failed(code: Int, message: String)
+    Failed(code Int, message String)
 
-extern fn takes_map(values: Map[String, Int]) Void
+extern fn takes_map(values Map[String, Int]) Void
 extern fn returns_optional() Int?
-extern fn nested_list(values: List[List[Int]]) Void
+extern fn nested_list(values List[List[Int]]) Void
 extern fn wrong_error() Handle!Wrong
-extern fn takes_closure(f: fn(Map[String, Int]) Int) Void
-extern fn returns_handle(f: fn() Handle) Void
-extern fn fine(h: Handle, data: List[Handle], each: fn(Handle, Int8) String) Handle!Fine
+extern fn takes_closure(f fn(Map[String, Int]) Int) Void
+extern fn returns_handle(f fn() Handle) Void
+extern fn fine(h Handle, data List[Handle], each fn(Handle, Int8) String) Handle!Fine

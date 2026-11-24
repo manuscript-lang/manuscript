@@ -1,8 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Item:
-    value: Int
-fn use(value: Item?) Int:
+    value Int
+fn use(value Item?) Int:
     match value:
-        item: return Item.value
-        null: return 0
+        item => return Item.value
+        null => return 0

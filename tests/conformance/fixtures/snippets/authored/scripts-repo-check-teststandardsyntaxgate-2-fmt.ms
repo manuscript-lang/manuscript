@@ -2,6 +2,6 @@
 // conform: phase=parse
 // conform: origin=scripts/repo-check/main_test.go:43 TestStandardSyntaxGate
 type Data:
-    count: Int = 3
+    count Int = 3
 
 fn Data.read() Int: ...

@@ -14,20 +14,20 @@
           "file": "diag-field-needs-self.ms",
           "line": 7,
           "column": 20,
-          "offset": 129
+          "offset": 128
         },
         "fix": {
           "position": {
             "file": "diag-field-needs-self.ms",
             "line": 7,
             "column": 20,
-            "offset": 129
+            "offset": 128
           },
           "end": {
             "file": "diag-field-needs-self.ms",
             "line": 7,
             "column": 24,
-            "offset": 133
+            "offset": 132
           },
           "replacement": "self.name"
         }

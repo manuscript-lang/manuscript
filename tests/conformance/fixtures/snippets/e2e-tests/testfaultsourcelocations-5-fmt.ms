@@ -9,7 +9,7 @@ import (
 fn limit() Int:
 	return 1 / "".length()
 
-fn probe(input: ReadStream[Bytes]) Bool:
+fn probe(input ReadStream[Bytes]) Bool:
 	line := read_line(input, limit())
 	if line != null: return not line.is_empty()
 
@@ -19,5 +19,5 @@ export fn main() Int:
 	if probe(stdin()): return 1
 	return 0
 
-fn read_line(input: ReadStream[Bytes], max_bytes: Int) String?:
+fn read_line(input ReadStream[Bytes], max_bytes Int) String?:
 	return null

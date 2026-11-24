@@ -6,18 +6,18 @@
 import panic from "@std/core.ms"
 
 type Handle:
-	id: Int
+	id Int
 
 fn move Handle.close() Void!:
 	print("closed")
 
 type Holder:
-	handle: Handle
+	handle Handle
 
-fn returned(handles: List[Handle], i: Int) Handle?:
+fn returned(handles List[Handle], i Int) Handle?:
 	return handles.get(i)
 
-fn from_map(handles: Map[Int, Handle], key: Int) Handle?:
+fn from_map(handles Map[Int, Handle], key Int) Handle?:
 	return handles.get(key)
 
 export fn main() Int:
@@ -40,7 +40,7 @@ export fn main() Int:
 
 // A plain value read with `get` is rejected the same way; `.clone()` gives the new
 // owner a copy.
-fn copied(names: List[String]) List[String]:
+fn copied(names List[String]) List[String]:
 	var out = List[String]()
 	out.append(names.get(0))
 	return out

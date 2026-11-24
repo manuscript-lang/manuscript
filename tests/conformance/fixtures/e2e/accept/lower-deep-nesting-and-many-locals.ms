@@ -1,7 +1,7 @@
 // conform: tags=control-flow,lowering
 // conform: phase=run
 // Past 64 open scopes, 32 loops, 256 mutable locals and 8 `var` arguments the lowerer used to stop with an internal error.
-fn pick(n: Int) String:
+fn pick(n Int) String:
 	if n == 0: return "v0"
 	else if n == 1:
 		return "v1"
@@ -143,7 +143,7 @@ fn pick(n: Int) String:
 		return "v69"
 	else: return "none"
 
-fn bump(var a0: Int, var a1: Int, var a2: Int, var a3: Int, var a4: Int, var a5: Int, var a6: Int, var a7: Int, var a8: Int, var a9: Int, var a10: Int, var a11: Int) Void:
+fn bump(var a0 Int, var a1 Int, var a2 Int, var a3 Int, var a4 Int, var a5 Int, var a6 Int, var a7 Int, var a8 Int, var a9 Int, var a10 Int, var a11 Int) Void:
 	a0 += 1
 	a1 += 2
 	a2 += 3

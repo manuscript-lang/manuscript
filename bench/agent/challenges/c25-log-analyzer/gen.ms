@@ -7,20 +7,20 @@ import (
 LEVELS := ["DEBUG", "INFO", "WARN", "ERROR"]
 METHODS := ["DELETE", "GET", "POST", "PUT"]
 
-fn digits(s: String) Bool: (
+fn digits(s String) Bool => (
 	not s.is_empty()
-	and s.chars().all(fn c: "0123456789".contains(c))
+	and s.chars().all(c => "0123456789".contains(c))
 )
 
 type Entry:
-	level: String
-	path: String
-	status: Int
-	latency: Int
-	method: String
-	ts: String
+	level String
+	path String
+	status Int
+	latency Int
+	method String
+	ts String
 
-fn parse(line: String) Entry?:
+fn parse(line String) Entry?:
 	f := line.split(" ")
 	if f.length() != 6: return null
 	if f[0].is_empty() or not LEVELS.contains(f[1]) or not METHODS.contains(f[2]): return null
@@ -36,12 +36,12 @@ fn parse(line: String) Entry?:
 		f[0].clone(),
 	)
 
-fn solve(s: String) String:
+fn solve(s String) String:
 	var valid = 0
 	var bad = 0
 	var classes = [0, 0, 0, 0, 0]
 	var lats = List[Int]()
-	var slow: Entry? = null
+	var slow Entry? = null
 	var levels = Map[String, Int]()
 	var counts = Map[String, Int]()
 	var totals = Map[String, Int]()
@@ -83,8 +83,7 @@ fn solve(s: String) String:
 	out.append("top:")
 
 	order := counts.keys().sorted(
-		fn a,
-		b: if counts.get_or(a, 0) != counts.get_or(b, 0): counts.get_or(
+		(a, b) => if counts.get_or(a, 0) != counts.get_or(b, 0): counts.get_or(
 			b,
 			0,
 		) - counts.get_or(a, 0) else: a.compare(b)
@@ -93,11 +92,11 @@ fn solve(s: String) String:
 		out.append(
 			f"{p} {counts.get_or(p, 0)} avg={totals.get_or(p, 0) / counts.get_or(p, 0)}"
 		)
-	return out.map(fn o: o + "\n").join("")
+	return out.map(o => o + "\n").join("")
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
-fn good(var rnd: Random, i: Int) String:
+fn good(var rnd Random, i Int) String:
 	level := rnd.choice(LEVELS)
 	method := rnd.choice(METHODS)
 	path := rnd.choice(
@@ -111,7 +110,7 @@ fn good(var rnd: Random, i: Int) String:
 	lat := rnd.randint(0, 900)
 	return f"2024-05-01T10:{f"{i / 60 % 60}".pad_start(2, "0")}:{f"{i % 60}".pad_start(2, "0")} {level} {method} {path} {statuses[pick]} {lat}"
 
-fn mangle(var rnd: Random, l: String) String:
+fn mangle(var rnd Random, l String) String:
 	var f = l.split(" ").clone()
 	k := rnd.randrange(0, 9)
 
@@ -137,7 +136,7 @@ fn mangle(var rnd: Random, l: String) String:
 
 	return f.join(" ")
 
-fn rand_log(var rnd: Random, n: Int, bad: Float) String:
+fn rand_log(var rnd Random, n Int, bad Float) String:
 	var ls = List[String]()
 
 	for i in 0..n:

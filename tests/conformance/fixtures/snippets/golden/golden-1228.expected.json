@@ -14,13 +14,13 @@
           "file": "golden-1228.ms",
           "line": 5,
           "column": 10,
-          "offset": 98
+          "offset": 97
         },
         "end": {
           "file": "golden-1228.ms",
           "line": 5,
           "column": 11,
-          "offset": 99
+          "offset": 98
         }
       }
     ],

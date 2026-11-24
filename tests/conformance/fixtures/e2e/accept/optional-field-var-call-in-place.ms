@@ -6,11 +6,11 @@ import (
 )
 
 type Node:
-	key: Int
-	left: Node?
-	right: Node?
+	key Int
+	left Node?
+	right Node?
 
-fn var Node.insert(key: Int) Void:
+fn var Node.insert(key Int) Void:
 	if key < self.key:
 		if self.left == null:
 			self.left = Node(key, null, null)
@@ -25,16 +25,16 @@ fn var Node.insert(key: Int) Void:
 
 	self.right?.insert(key)
 
-fn var Node.rename(delta: Int) Void:
+fn var Node.rename(delta Int) Void:
 	self.key += delta
 
-fn count(node: Node?) Int:
+fn count(node Node?) Int:
 	if node == null: return 0
 
 	n := node
 	return 1 + count(n.left) + count(n.right)
 
-fn keys(var out: List[Int], node: Node?) Void:
+fn keys(var out List[Int], node Node?) Void:
 	if node == null: return
 
 	n := node
@@ -43,17 +43,17 @@ fn keys(var out: List[Int], node: Node?) Void:
 	keys(out, n.right)
 
 type Tag:
-	label: String
-	next: Tag?
+	label String
+	next Tag?
 
-fn var Tag.append_label(s: String) Void:
+fn var Tag.append_label(s String) Void:
 	self.label += s
 
-fn var Node.rename_left(delta: Int) Void:
+fn var Node.rename_left(delta Int) Void:
 	self.left?.rename(delta)
 	self.key += 1000
 
-fn var Tag.label_next(s: String) Void:
+fn var Tag.label_next(s String) Void:
 	self.next?.append_label(s)
 
 test "inserts through boxed optional fields":
@@ -61,7 +61,7 @@ test "inserts through boxed optional fields":
 	for k in [30, 70, 20, 40, 60, 80, 35, 45]:
 		root.insert(k)
 
-	var out: List[Int] = []
+	var out List[Int] = []
 	keys(out, root)
 	expect_equal(out, [20, 30, 35, 40, 45, 50, 60, 70, 80])?
 	expect_equal(count(root), 9)?

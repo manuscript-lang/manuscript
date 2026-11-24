@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
 enum ReadError:
-	Failed(reason: String)
+	Failed(reason String)
 
 extern fn read_value() Int!ReadError
 

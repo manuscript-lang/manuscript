@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a name, found '='",
+        "message": "a closure without parameter types is written without 'fn': x => x + 1, (a, b) => a + b or () => 1",
         "position": {
           "file": "golden-0884.ms",
           "line": 4,
@@ -19,15 +19,15 @@
         "end": {
           "file": "golden-0884.ms",
           "line": 4,
-          "column": 25,
-          "offset": 89
+          "column": 26,
+          "offset": 90
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0884.ms:4:24: parse: expected a name, found '='\n   |\n 4 |     n := [1].map(fn(x) => x + 1)\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0884.ms:4:24: parse: a closure without parameter types is written without 'fn': x => x + 1, (a, b) => a + b or () => 1\n   |\n 4 |     n := [1].map(fn(x) => x + 1)\n   |                        ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

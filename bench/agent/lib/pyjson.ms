@@ -7,11 +7,11 @@ import (
 	from_scalars from "@std/string.ms",
 )
 
-fn hex4(code: Int) String:
+fn hex4(code Int) String:
 	digits := "0123456789abcdef"
 	return f"\\u{digits.view(code / 4096, code / 4096 + 1)}{digits.view(code / 256 % 16, code / 256 % 16 + 1)}{digits.view(code / 16 % 16, code / 16 % 16 + 1)}{digits.view(code % 16, code % 16 + 1)}"
 
-fn quote(text: String) String:
+fn quote(text String) String:
 	var out = "\""
 
 	for code in text.scalar_values():
@@ -39,18 +39,18 @@ fn quote(text: String) String:
 
 	return out + "\""
 
-fn emit(value: JsonValue, indent: Int, level: Int) String:
+fn emit(value JsonValue, indent Int, level Int) String:
 	match value:
-		Null: return "null"
-		BoolValue(flag): return if flag: "true" else: "false"
-		NumberValue(text): return text.clone()
-		StringValue(text): return quote(text)
+		Null => return "null"
+		BoolValue(flag) => return if flag: "true" else: "false"
+		NumberValue(text) => return text.clone()
+		StringValue(text) => return quote(text)
 		ArrayValue(items):
 			if items.is_empty(): return "[]"
 
 			pad := " ".repeat((level + 1) * indent)
 			end := " ".repeat(level * indent)
-			parts := items.map(fn item: emit(item, indent, level + 1))
+			parts := items.map(item => emit(item, indent, level + 1))
 			if indent == 0: return "[" + parts.join(", ") + "]"
 
 			return "[\n" + pad + parts.join(",\n" + pad) + "\n" + end + "]"
@@ -74,11 +74,11 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 
 // Lays `value` out as `json.dumps(value, indent=indent)` does; `indent` 0 means the
 // single-line form.
-export fn dumps(value: JsonValue, indent: Int) String:
+export fn dumps(value JsonValue, indent Int) String:
 	return emit(value, indent, 0)
 
 // Encodes any `Data` value, then lays it out as `dumps` does.
-export fn dumps_data[T: Data](value: T, indent: Int) String:
+export fn dumps_data[T Data](value T, indent Int) String:
 	text := stringify(value).get_or("null")
 	tree := parse(text).get_or(JsonValue.Null)
 	return emit(tree, indent, 0)

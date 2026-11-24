@@ -38,7 +38,7 @@ Each repro below was run with `ms run` on a release build of `02ea1a1c`, and eac
 
 ```manuscript
 type View:
-    items: ref List[Int]
+    items ref List[Int]
 
 export fn main() Int:
     var xs = [1, 2, 3]
@@ -79,7 +79,7 @@ export fn main() Int:
 
 ```manuscript
 type Res:
-    id: Int
+    id Int
 
 impl Closeable for Res:
     var fn close() Unit:
@@ -97,10 +97,10 @@ export fn main() Int:
 ### P4. A generic wrapper drops its resource's cleanup
 
 ```manuscript
-type Wrap[T]:
-    value: T
+type Wrap[T]
+    value T
 
-fn keep[T](v: T) Int:
+fn keep[T](v T) Int:
     _w := Wrap(v)
     return 0
 

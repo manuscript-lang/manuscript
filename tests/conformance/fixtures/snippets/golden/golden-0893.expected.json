@@ -14,26 +14,26 @@
           "file": "golden-0893.ms",
           "line": 5,
           "column": 9,
-          "offset": 95
+          "offset": 94
         },
         "end": {
           "file": "golden-0893.ms",
           "line": 5,
           "column": 13,
-          "offset": 99
+          "offset": 98
         },
         "fix": {
           "position": {
             "file": "golden-0893.ms",
             "line": 5,
             "column": 9,
-            "offset": 95
+            "offset": 94
           },
           "end": {
             "file": "golden-0893.ms",
             "line": 5,
             "column": 13,
-            "offset": 99
+            "offset": 98
           },
           "replacement": "void"
         }

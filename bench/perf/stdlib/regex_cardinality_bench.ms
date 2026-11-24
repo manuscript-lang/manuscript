@@ -3,13 +3,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn rows_run(
-	re: Regex,
-	text: String,
-	expected: List[String],
-	count: Int,
-	width: Int,
-) Int!:
+fn rows_run(re Regex, text String, expected List[String], count Int, width Int) Int!:
 	rows := re.capture_all(text)?
 	expect_equal(rows.length(), count)?
 
@@ -23,53 +17,53 @@ fn rows_run(
 	expect_equal(checksum, count * width)?
 	return ok(checksum)
 
-fn first_run(re: Regex, text: String, expected: List[String]) Int!:
+fn first_run(re Regex, text String, expected List[String]) Int!:
 	out := re.capture(text)
 	expect_equal(out, expected)?
 	return ok(out.length())
 
-fn names_run(re: Regex, text: String, expected: Map[String, String]) Int!:
+fn names_run(re Regex, text String, expected Map[String, String]) Int!:
 	out := re.capture_named(text)
 	expect_equal(out, expected)?
 	return ok(out.length())
 
-fn id_map(present: Bool) Map[String, String]:
+fn id_map(present Bool) Map[String, String]:
 	var expected = Map[String, String]()
 	if present: expected.add("id", "123")
 	return expected
 
-fn last_map(present: Bool) Map[String, String]:
+fn last_map(present Bool) Map[String, String]:
 	var expected = Map[String, String]()
 	if present: expected.add("last", "x")
 	return expected
 
 type BenchData:
-	re: Regex
-	text: String
-	expected: List[List[String]]
-	re_8: Regex
-	re_9: Regex
-	text_9: String
-	re_13: Regex
-	text_13: String
-	expected_13: List[String]
-	plain_re: Regex
-	grouped_re: Regex
-	whole_expected: List[String]
-	grouped_expected: List[String]
-	none_expected: List[String]
-	text_0: String
-	text_1: String
-	text_128: String
-	text_2000: String
-	text_1000g: String
-	named_re: Regex
-	anon_re: Regex
-	late_re: Regex
-	long_miss: String
-	id_hit: Map[String, String]
-	no_names: Map[String, String]
-	late_hit: Map[String, String]
+	re Regex
+	text String
+	expected List[List[String]]
+	re_8 Regex
+	re_9 Regex
+	text_9 String
+	re_13 Regex
+	text_13 String
+	expected_13 List[String]
+	plain_re Regex
+	grouped_re Regex
+	whole_expected List[String]
+	grouped_expected List[String]
+	none_expected List[String]
+	text_0 String
+	text_1 String
+	text_128 String
+	text_2000 String
+	text_1000g String
+	named_re Regex
+	anon_re Regex
+	late_re Regex
+	long_miss String
+	id_hit Map[String, String]
+	no_names Map[String, String]
+	late_hit Map[String, String]
 
 fn make_fixture() BenchData:
 	re := compile("a+").get()
@@ -85,7 +79,7 @@ fn make_fixture() BenchData:
 	grouped_re := compile("(word)([0-9]+)").get()
 	whole_expected := ["word123"]
 	grouped_expected := ["word123", "word", "123"]
-	none_expected: List[String] := []
+	none_expected List[String] := []
 	text_0 := "word123 ".repeat(0)
 	text_1 := "word123 ".repeat(1)
 	text_128 := "word123 ".repeat(128)
@@ -99,17 +93,17 @@ fn make_fixture() BenchData:
 	no_names := id_map(false)
 	late_hit := last_map(true)
 	return BenchData(
-		re: re,
+		re: re.clone(),
 		text: text,
 		expected: expected,
-		re_8: re_8,
-		re_9: re_9,
+		re_8: re_8.clone(),
+		re_9: re_9.clone(),
 		text_9: text_9,
-		re_13: re_13,
+		re_13: re_13.clone(),
 		text_13: text_13,
 		expected_13: expected_13,
-		plain_re: plain_re,
-		grouped_re: grouped_re,
+		plain_re: plain_re.clone(),
+		grouped_re: grouped_re.clone(),
 		whole_expected: whole_expected,
 		grouped_expected: grouped_expected,
 		none_expected: none_expected,
@@ -118,9 +112,9 @@ fn make_fixture() BenchData:
 		text_128: text_128,
 		text_2000: text_2000,
 		text_1000g: text_1000g,
-		named_re: named_re,
-		anon_re: anon_re,
-		late_re: late_re,
+		named_re: named_re.clone(),
+		anon_re: anon_re.clone(),
+		late_re: late_re.clone(),
 		long_miss: long_miss,
 		id_hit: id_hit,
 		no_names: no_names,
@@ -157,7 +151,7 @@ bench "regex.cardinality.whole.empty_matches":
 
 bench "regex.cardinality.whole.over_limit":
 	out := fixture.re_9.capture_all(fixture.text_9, 1)
-	expected: Result[List[List[String]], Error] := error(
+	expected Result[List[List[String]], Error] := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(out, expected)?

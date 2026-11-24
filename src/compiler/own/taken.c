@@ -132,3 +132,42 @@ bool ms_own_call_takes(const MsCheckProgram *program, const MsCall *call, uint32
   const uint32_t position = method ? index - 1 : index;
   return (ms_own_taken_mask(program, call->callee.decl.module, call->callee.decl.node) >> position & 1u) != 0;
 }
+
+/* ---- report ---- */
+
+static void report_params(MsCheckProgram *program, uint32_t module, MsNode node, MsParams params) {
+  const uint32_t mask = ms_own_taken_mask(program, module, node);
+  for (uint32_t index = 0; mask != 0 && index < params.len && index < 32; index++) {
+    const MsParam *param = params.ptr[index];
+    const MsTy ty = ms_facts_type(&program->modules.ptr[module].facts, param->id);
+    /* A `var` parameter is the caller's own value and cannot move out; what a function-typed parameter's closure
+     * holds is a separate fact (see escapes.c). */
+    if (param->moving || param->is_mutable || (mask >> index & 1u) == 0 || ty == MS_TY_NONE ||
+        ms_ty_kind(&program->types, ty) == MS_TY_FUNCTION) {
+      continue;
+    }
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "the body keeps `");
+    ms_strbuild_append(&text, ms_names_span(program->names, param->name));
+    ms_strbuild_append_text(&text, "`, so the signature must say so: write `move ");
+    ms_strbuild_append(&text, ms_names_span(program->names, param->name));
+    ms_strbuild_append_text(&text, " Type`, or keep `.clone()` of it");
+    ms_check_report(program, module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+}
+
+void ms_own_taken_report(MsCheckProgram *program) {
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    const MsModule *tree = program->modules.ptr[module].tree;
+    for (uint32_t index = 0; index < tree->ndecls; index++) {
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN) {
+        report_params(program, module, decl->id, decl->u.fn.params);
+      }
+      for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
+        const MsMethod *method = decl->u.impl.methods.ptr[at];
+        report_params(program, module, method->id, method->func.params);
+      }
+    }
+  }
+}

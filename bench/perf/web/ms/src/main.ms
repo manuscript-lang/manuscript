@@ -14,14 +14,14 @@ import (
 	read_file, write_file from "@std/os/fs.ms",
 )
 
-fn score(id: Int) Int:
+fn score(id Int) Int:
 	return id * 7919 % 1000
 
-fn reply(status: Int, text: String) HttpResponse:
+fn reply(status Int, text String) HttpResponse:
 	return HttpResponse(status, text.to_bytes())
 
 // Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
-fn pick_after(prev_id: Int, prev_score: Int) Int:
+fn pick_after(prev_id Int, prev_score Int) Int:
 	var best = -1
 	var best_score = -1
 	var id = 0
@@ -38,7 +38,7 @@ fn pick_after(prev_id: Int, prev_score: Int) Int:
 
 	return best
 
-fn top(k: Int) String:
+fn top(k Int) String:
 	var out = "["
 	var n = 0
 	var prev_id = -1
@@ -55,7 +55,7 @@ fn top(k: Int) String:
 
 	return f"{out}]\n"
 
-fn top_reply(query: String) HttpResponse:
+fn top_reply(query String) HttpResponse:
 	parts := query.split("=")
 	if parts.length() != 2 or parts.get(0) != "n": return reply(400, "bad n\n")
 
@@ -64,7 +64,7 @@ fn top_reply(query: String) HttpResponse:
 		if k >= 1 and k <= 50: return reply(200, top(k))
 	return reply(400, "bad n\n")
 
-fn user_reply(path: String) HttpResponse:
+fn user_reply(path String) HttpResponse:
 	parts := path.split("/")
 	if parts.length() != 3: return reply(404, "not found\n")
 
@@ -78,7 +78,7 @@ fn user_reply(path: String) HttpResponse:
 	return reply(404, "not found\n")
 
 // Resolve localhost, write 1 MiB to the connection's own file, read it back.
-fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
+fn io_reply(dir String, slot String, payload Bytes) HttpResponse:
 	if addresses := lookup("localhost"):
 		path := f"{dir}/m{slot}.bin"
 		if got := write_and_read(path, payload):
@@ -88,12 +88,12 @@ fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
 
 	return reply(500, "lookup failed\n")
 
-fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
+fn write_and_read(path String, payload Bytes) Result[Bytes, Error]:
 	write_file(path, payload, replace: true).wait()?
 	return ok(read_file(path).wait()?)
 
 // The benchmark endpoints.
-fn make_handler(dir: String) fn(var HttpExchange) Result[Void, Error]:
+fn make_handler(dir String) fn(var HttpExchange) Result[Void, Error]:
 	var text = "0123456789abcdef"
 	var i = 0
 
@@ -104,7 +104,7 @@ fn make_handler(dir: String) fn(var HttpExchange) Result[Void, Error]:
 	payload := text.to_bytes()
 	dir_copy := dir.clone()
 
-	handler := fn(request: HttpRequest) HttpResponse:
+	handler := fn(request HttpRequest) HttpResponse:
 		if request.path == "/health": return reply(200, "ok\n")
 		if request.path == "/top": return top_reply(request.query)
 		if request.path == "/io": return io_reply(dir_copy, request.query, payload)
@@ -116,7 +116,7 @@ fn make_handler(dir: String) fn(var HttpExchange) Result[Void, Error]:
 
 // Serves the benchmark endpoints on 127.0.0.1:<port> on `threads` scheduler threads
 // until the server stops.
-fn serve_here(port: String, dir: String, threads: Int) Int:
+fn serve_here(port String, dir String, threads Int) Int:
 	options := HttpServerOptions(cores: threads)
 
 	if acquired := serve(

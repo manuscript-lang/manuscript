@@ -37,7 +37,7 @@ Apply when: adding ops to the direct emitter, or changing how it passes records 
 
 - An indirect record is one `ptr` to a heap block named `ms.type.<Name>.block`: its fields' leaves in order, with a map or set field as one nullable `ptr` to a seven-word header (null is the empty value, exactly as `Layouts::type_block` and the Cranelift path write it; both paths share live `Error` values, so the layout must not drift). Field reads are typed GEPs plus loads (`records.rs`).
 - Branching inside an instruction (a null header) needs `Area.splits`, which now sees the instruction: `TypeNew` splits once per boxed field, a boxed `TypeGet` and `PtrField` once.
-- Done: type, `TypeNew`, `TypeGet`, `PtrField`. `TypeSet`, `TypeFill` and `TypeRelease` still fall back: they need the glue area's `drop_value` for the old fields. `TypeNew` and the boxed paths are checked only by reading and by `opt` verify on a hacked build; they cannot run end to end until the maps area and the optionals area (an `Error` is built with `kind: String?` and a `Map`) land, so rerun the `Error` programs under `MS_LLVM_DIRECT=0/1` when they do.
+- Done: type, `TypeNew`, `TypeGet`, `PtrField`. `TypeSet`, `TypeFill` and `TypeRelease` still fall back: they need the glue area's `drop_value` for the old fields. `TypeNew` and the boxed paths are checked only by reading and by `opt` verify on a hacked build; they cannot run end to end until the maps area and the optionals area (an `Error` is built with `kind String?` and a `Map`) land, so rerun the `Error` programs under `MS_LLVM_DIRECT=0/1` when they do.
 
 ## Sized integers in MIR
 

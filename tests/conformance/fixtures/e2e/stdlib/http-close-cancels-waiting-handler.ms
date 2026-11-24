@@ -14,11 +14,11 @@ import (
 	milliseconds, seconds, sleep from "@std/time.ms",
 )
 
-fn route(request: HttpRequest) HttpResponse:
+fn route(request HttpRequest) HttpResponse:
 	void sleep(seconds(30)).wait()
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
-fn once(requests: Int) Void!:
+fn once(requests Int) Void!:
 	var server = serve(
 		"127.0.0.1:0",
 		buffered(route),

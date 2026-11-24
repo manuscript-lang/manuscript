@@ -4,14 +4,14 @@
 // released, never the field.
 enum Item:
 	Null
-	Num(n: Int)
+	Num(n Int)
 
 type Frame:
-	items: List[Item] = []
+	items List[Item] = []
 
 export fn main() Void:
-	var frames: List[Frame] = []
-	var items: List[Item] = [Item.Num(5)]
+	var frames List[Frame] = []
+	var items List[Item] = [Item.Num(5)]
 	frames.append(Frame(items: items))
 	items = []
 
@@ -21,5 +21,5 @@ export fn main() Void:
 	print(items.length())
 
 	match items[0]:
-		Num(n): print(n)
-		_: print("not a number")
+		Num(n) => print(n)
+		_ => print("not a number")

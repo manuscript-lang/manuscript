@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal, expect_true from "@std/test/test.ms"
 
-fn pad(n: Int) String:
+fn pad(n Int) String:
 	return "x".repeat(n)
 
 test "trim keeps text with no outer whitespace in every string form":

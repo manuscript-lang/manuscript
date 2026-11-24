@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/result_lint_test.go:29 TestDiscardedResultLint
 type Outcome:
-    value: Int
+    value Int
 
 fn caller() Void:
     Outcome(1)

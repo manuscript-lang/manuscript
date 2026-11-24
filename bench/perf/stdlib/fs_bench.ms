@@ -10,19 +10,19 @@ fn block() Bytes:
 // The directory holds the 200 files that the read, stat, and list cases use; `scratch`
 // is a second directory that the write case overwrites into.
 type BenchData:
-	root: String
-	scratch: String
-	data: Bytes
-	logger: Logger
-	scratch_files: List[String]
-	files: List[String]
+	root String
+	scratch String
+	data Bytes
+	logger Logger
+	scratch_files List[String]
+	files List[String]
 
 fn make_fixture() BenchData:
 	root := temporary_directory("ms-bench-").get()
 	scratch := temporary_directory("ms-bench-").get()
 	data := block()
-	var files: List[String] = []
-	var scratch_files: List[String] = []
+	var files List[String] = []
+	var scratch_files List[String] = []
 
 	for i in 0..200:
 		path := f"{root}/f{i}.bin"
@@ -35,8 +35,8 @@ fn make_fixture() BenchData:
 			file_transport(f"{root}/log.txt").get(),
 			LoggerOptions(timestamp: false),
 		).get(),
-		root: root,
-		scratch: scratch,
+		root: root.clone(),
+		scratch: scratch.clone(),
 		data: data,
 		scratch_files: scratch_files,
 		files: files,

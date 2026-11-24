@@ -15,25 +15,25 @@ import (
 )
 
 type Kind:
-	name: String
-	dir: String
-	phase: String
+	name String
+	dir String
+	phase String
 
-fn kind_of(args: Args) Kind:
+fn kind_of(args Args) Kind:
 	name := one(args, "kind", "run")
 	if name == "type": return Kind(name: "type", dir: "fuzz/types", phase: "check")
 	if name == "syntax": return Kind(name: "syntax", dir: "fuzz/syntax", phase: "parse")
 
 	return Kind(name: name.clone(), dir: "fuzz/run", phase: "run")
 
-fn generate(kind: Kind, seed: Int) Generated:
+fn generate(kind Kind, seed Int) Generated:
 	if kind.name == "type": return type_error(seed)
 	if kind.name == "syntax": return syntax_error(seed)
 
 	return program(seed)
 
 // `A..B` as the half-open seed range; (0, 0) with a problem when it does not parse.
-fn seed_range(args: Args) List[Int]:
+fn seed_range(args Args) List[Int]:
 	text := one(args, "seeds", "0..100")
 	at := text.index_of("..") or (-1)
 	if at < 0: return [-1, -1]
@@ -42,14 +42,14 @@ fn seed_range(args: Args) List[Int]:
 	high := text.slice(at + 2, text.length()).parse_int() or (-1)
 	return [low, high]
 
-fn padded(seed: Int) String:
+fn padded(seed Int) String:
 	text := f"{seed}"
 	if text.length() >= 4: return text
 
 	return "0".repeat(4 - text.length()) + text
 
 // Writes `seed-NNNN.ms` for each seed into `dir`; returns how many.
-fn write_generated(dir: String, kind: Kind, low: Int, high: Int) Int:
+fn write_generated(dir String, kind Kind, low Int, high Int) Int:
 	create_directory(dir.clone(), recursive: true).get()
 
 	var written = 0
@@ -79,7 +79,7 @@ fn write_generated(dir: String, kind: Kind, low: Int, high: Int) Int:
 
 	return written
 
-export fn fuzz_gen(root: String, corpus: String, args: Args) Int:
+export fn fuzz_gen(root String, corpus String, args Args) Int:
 	kind := kind_of(args)
 	range := seed_range(args)
 
@@ -94,7 +94,7 @@ export fn fuzz_gen(root: String, corpus: String, args: Args) Int:
 	)
 	return 0
 
-export fn fuzz(root: String, args: Args) Int:
+export fn fuzz(root String, args Args) Int:
 	kind := kind_of(args)
 	range := seed_range(args)
 

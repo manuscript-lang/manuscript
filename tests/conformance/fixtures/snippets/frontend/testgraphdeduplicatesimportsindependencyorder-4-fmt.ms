@@ -4,4 +4,4 @@
 import left from "./left.ms"
 import right from "./right.ms"
 
-fn result() Int: return left() + right()
+fn result() Int => return left() + right()

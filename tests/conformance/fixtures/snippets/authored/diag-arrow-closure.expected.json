@@ -9,40 +9,25 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "there is no '=>' closure; write fn x: body, with the parameter after fn and a colon before the body",
+        "message": "there is no '->' closure; write 'x => x + 1', or 'fn(x Int) Int => x + 1' with explicit types",
         "position": {
           "file": "diag-arrow-closure.ms",
           "line": 4,
-          "column": 27,
-          "offset": 111
+          "column": 29,
+          "offset": 113
         },
         "end": {
           "file": "diag-arrow-closure.ms",
           "line": 4,
           "column": 31,
           "offset": 115
-        },
-        "fix": {
-          "position": {
-            "file": "diag-arrow-closure.ms",
-            "line": 4,
-            "column": 27,
-            "offset": 111
-          },
-          "end": {
-            "file": "diag-arrow-closure.ms",
-            "line": 4,
-            "column": 31,
-            "offset": 115
-          },
-          "replacement": "fn x:"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-arrow-closure.ms:4:27: parse: there is no '=>' closure; write fn x: body, with the parameter after fn and a colon before the body\n   |\n 4 |     doubled := [1, 2].map(x => x * 2)\n   |                           ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-arrow-closure.ms:4:29: parse: there is no '->' closure; write 'x => x + 1', or 'fn(x Int) Int => x + 1' with explicit types\n   |\n 4 |     doubled := [1, 2].map(x -> x * 2)\n   |                             ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

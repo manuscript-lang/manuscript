@@ -9,18 +9,18 @@ import (
 // for `parse`. Invalid values return an `Error` with kind `EINVAL`.
 export type CsvOptions:
 	// One ASCII delimiter other than NUL, quote, CR or LF; defaults to comma.
-	delimiter: String = ","
+	delimiter String = ","
 	// Row terminator when writing, either LF or CRLF; defaults to LF. Parsing accepts
 	// both.
-	line_ending: String = "\n"
+	line_ending String = "\n"
 	// Maximum rows `parse` returns; null adds no row budget.
-	max_rows: Int? = null
+	max_rows Int? = null
 	// Maximum cells `parse` returns across all rows; null adds no cell budget.
-	max_cells: Int? = null
+	max_cells Int? = null
 
 // A malformed-input error at the one-based line and character column of byte offset
 // `at`.
-fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
+fn invalid_at(bytes Bytes, at Int, reason String) Error:
 	var line = 1
 	var start = 0
 
@@ -42,7 +42,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 	)
 
 // A reader over `text`, or the error of invalid options.
-fn open_reader(text: String, options: CsvOptions) Reader!:
+fn open_reader(text String, options CsvOptions) Reader!:
 	valid := check_options(options)
 	if valid.is_error(): return error(valid.err().clone())
 
@@ -68,7 +68,7 @@ fn open_reader(text: String, options: CsvOptions) Reader!:
 // input returns an `Error` with kind `EBADMSG`, the line and column in `details`.
 // A CRLF inside a quoted cell reads as LF, so a cell holds one newline spelling
 // whatever the file's line ending was.
-export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[String]]!:
+export fn parse(text String, options CsvOptions = CsvOptions()) List[List[String]]!:
 	rows_budget := budget(options.max_rows)
 	cells_budget := budget(options.max_cells)
 	if rows_budget < 0 or cells_budget < 0: return error(
@@ -85,9 +85,7 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 
 		record := reader.read_record(
 			rows.length(),
-			fn r,
-			c,
-			cell: row.append(cell.clone())
+			(r, c, cell) => row.append(cell.clone()),
 		)
 		if record.is_error(): return error(record.err().clone())
 
@@ -108,9 +106,9 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 // fresh text. `options` and errors are as for `parse`; malformed input fails after the
 // cells before it were visited.
 export fn each_cell(
-	text: String,
-	f: fn(Int, Int, String) Void,
-	options: CsvOptions = CsvOptions()
+	text String,
+	f fn(Int, Int, String) Void,
+	options CsvOptions = CsvOptions()
 ) Void!:
 	rows_budget := budget(options.max_rows)
 	cells_budget := budget(options.max_cells)
@@ -141,14 +139,14 @@ export fn each_cell(
 
 // The budget as a count: no budget is the largest `Int`, and a negative budget stays
 // negative.
-fn budget(limit: Int?) Int:
+fn budget(limit Int?) Int:
 	value := limit
 	if value != null: return value
 
 	return 9223372036854775807
 
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
-fn check_options(options: CsvOptions) Void!:
+fn check_options(options CsvOptions) Void!:
 	scalars := options.delimiter.scalar_values()
 	if scalars.length() != 1: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
@@ -168,28 +166,28 @@ fn check_options(options: CsvOptions) Void!:
 // and LF at or after the cursor, or total when there is null; they are searched again
 // only once passed.
 type Reader:
-	text: String
-	bytes: Bytes
-	total: Int
-	delimiter: UInt8
-	delimiter_text: String
-	at: Int
-	quote: Int
-	delimiter_at: Int
-	line_at: Int
+	text String
+	bytes Bytes
+	total Int
+	delimiter UInt8
+	delimiter_text String
+	at Int
+	quote Int
+	delimiter_at Int
+	line_at Int
 
-fn var Reader.next_quote(from: Int) Int:
+fn var Reader.next_quote(from Int) Int:
 	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from) or self.total
 	return self.quote
 
-fn var Reader.next_delimiter(from: Int) Int:
+fn var Reader.next_delimiter(from Int) Int:
 	if self.delimiter_at < from: self.delimiter_at = (
 		self.bytes.index_of_byte(self.delimiter, from)
 		or self.total
 	)
 	return self.delimiter_at
 
-fn var Reader.next_line(from: Int) Int:
+fn var Reader.next_line(from Int) Int:
 	if self.line_at < from: self.line_at = (
 		self.bytes.index_of_byte(10, from)
 		or self.total
@@ -198,7 +196,7 @@ fn var Reader.next_line(from: Int) Int:
 
 // The offset just past the line ending at the cursor, or the cursor when the cursor
 // is not at one.
-fn Reader.line_end_after(at: Int) Int:
+fn Reader.line_end_after(at Int) Int:
 	if at >= self.total: return at
 
 	byte := self.bytes[at]
@@ -210,7 +208,7 @@ fn Reader.line_end_after(at: Int) Int:
 
 // The cells of a line without quotes: the delimiter-separated pieces, with the one call
 // of `f` the whole line shares.
-fn var Reader.read_plain_record(row: Int, line: Int, f: fn(Int, Int, String) Void) Int:
+fn var Reader.read_plain_record(row Int, line Int, f fn(Int, Int, String) Void) Int:
 	var col = 0
 	var last = line
 	if last > self.at and self.bytes[last - 1] == 13: last -= 1
@@ -233,7 +231,7 @@ fn var Reader.read_plain_record(row: Int, line: Int, f: fn(Int, Int, String) Voi
 // Reads the next record, skipping empty lines, and hands each cell to `f` as (row,
 // column, cell): a view of the input where the cell is plain, an owned text where
 // quotes were unescaped. Returns the cell count, or null at end of input.
-fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
+fn var Reader.read_record(row Int, f fn(Int, Int, String) Void) Int?!:
 	while true:
 		skipped := self.line_end_after(self.at)
 		if skipped == self.at: break
@@ -337,18 +335,18 @@ fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 // that scan ended inside a quoted cell. Fragments are joined only at a record boundary
 // or EOF.
 type CsvRows:
-	options: CsvOptions
-	pending: List[Bytes]
-	pending_size: Int
-	quoted: Bool
+	options CsvOptions
+	pending List[Bytes]
+	pending_size Int
+	quoted Bool
 	// The longest complete record the last `boundary` call passed, without its line
 	// feed.
-	longest: Int
-	max_record_bytes: Int?
+	longest Int
+	max_record_bytes Int?
 
 // Offset just past the last line end outside quotes in `data`, or 0 when the block
 // holds null.
-fn var CsvRows.boundary(data: Bytes) Int:
+fn var CsvRows.boundary(data Bytes) Int:
 	total := data.length()
 	var pos = 0
 	var cut = 0
@@ -386,12 +384,12 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 	return cut
 
-fn CsvRows.check_size(size: Int) Void!:
+fn CsvRows.check_size(size Int) Void!:
 	limit := self.max_record_bytes
 	if limit != null:
 		if size > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
-fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
+fn var CsvRows.step(move value Bytes, var out List[List[String]]) Void!:
 	cut := self.boundary(value)
 	rest := value.length() - cut
 	size := if cut == 0: self.pending_size + rest else: rest
@@ -422,7 +420,7 @@ fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
 	text := decoded
 	return write_rows(parse(text, self.options)?, out)
 
-fn var CsvRows.finish(var out: List[List[String]]) Void!:
+fn var CsvRows.finish(var out List[List[String]]) Void!:
 	data := join(self.pending)
 	self.pending = []
 	self.pending_size = 0
@@ -439,7 +437,7 @@ fn var CsvRows.finish(var out: List[List[String]]) Void!:
 fn invalid_text() Void!:
 	return error(Error("CSV: invalid UTF-8", kind: "EBADMSG"))
 
-fn write_rows(rows: List[List[String]], var out: List[List[String]]) Void!:
+fn write_rows(rows List[List[String]], var out List[List[String]]) Void!:
 	for row in rows: out.append(row)
 
 /*
@@ -452,16 +450,16 @@ record; exceeding it fails the read with `EOVERFLOW`. A malformed record fails t
 `EBADMSG`, and invalid `options` with `EINVAL`. Closing the result closes `input`.
 */
 export fn csv_rows(
-	move input: ReadStream[Bytes],
-	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = null,
+	move input ReadStream[Bytes],
+	options CsvOptions = CsvOptions(),
+	max_record_bytes Int? = null,
 ) ReadStream[List[String]]:
 	return through[Bytes, List[String]](
 		input,
 		CsvRows(
 			options: CsvOptions(
-				delimiter: options.delimiter,
-				line_ending: options.line_ending,
+				delimiter: options.delimiter.clone(),
+				line_ending: options.line_ending.clone(),
 			),
 			max_record_bytes: max_record_bytes,
 			pending: [],
@@ -476,9 +474,9 @@ export fn csv_rows(
 // line break. Every row, including the last, ends with the line ending. `max_bytes`
 // bounds the output and returns `EOVERFLOW` when exceeded.
 export fn stringify(
-	rows: List[List[String]],
-	options: CsvOptions = CsvOptions(),
-	max_bytes: Int? = null,
+	rows List[List[String]],
+	options CsvOptions = CsvOptions(),
+	max_bytes Int? = null,
 ) String!:
 	limit := budget(max_bytes)
 	if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))
@@ -521,7 +519,7 @@ export fn stringify(
 
 	return ok(out)
 
-fn needs_quotes(field: String, delimiter: String) Bool:
+fn needs_quotes(field String, delimiter String) Bool:
 	if field.is_empty(): return false
 	if (
 		field.contains("\"")
@@ -535,20 +533,20 @@ fn needs_quotes(field: String, delimiter: String) Bool:
 
 	return field == "\\."
 
-fn replaced(text: String, old: String, new: String) String:
+fn replaced(text String, old String, new String) String:
 	return text.replace(old, new)
 
-fn quote_field(field: String, crlf: Bool) String:
+fn quote_field(field String, crlf Bool) String:
 	var quoted = replaced(field, "\"", "\"\"")
 	if crlf: quoted = replaced(replaced(quoted, "\r\n", "\n"), "\n", "\r\n")
 	return f"\"{quoted}\""
 
 // A sink that encodes each row as `stringify` does and puts the bytes into `output`.
 type CsvRowsSink:
-	output: WriteStream[Bytes]
-	options: CsvOptions
+	output WriteStream[Bytes]
+	options CsvOptions
 
-fn var CsvRowsSink.write(move value: List[String]) Void!:
+fn var CsvRowsSink.write(move value List[String]) Void!:
 	text := stringify([value], self.options)?
 	return self.output.write(text.to_bytes())
 
@@ -564,7 +562,9 @@ options' line ending). Invalid `options` fail the first write with `EINVAL`. Wri
 `flush().wait()` uses that sink's completion condition; a pipe may retain up to its capacity of unread values. Closing the result closes `output`.
 */
 export fn csv_writer(
-	move output: WriteStream[Bytes],
-	options: CsvOptions = CsvOptions(),
+	move output WriteStream[Bytes],
+	options CsvOptions = CsvOptions(),
 ) WriteStream[List[String]]:
-	return WriteStream[List[String]](CsvRowsSink(output: output, options: options))
+	return WriteStream[List[String]](
+		CsvRowsSink(output: output, options: options.clone())
+	)

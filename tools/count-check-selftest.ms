@@ -12,16 +12,16 @@ import (
 
 // The exit status and combined output of the gate on `fixture`, run by `compiler`.
 type Gate:
-	code: Int
-	output: String
+	code Int
+	output String
 
-fn gate(root: String, compiler: String, fixture: String) Gate:
+fn gate(root String, compiler String, case_name String) Gate:
 	var settings = Map[String, String]()
 	settings["MS"] = compiler.clone()
 
 	arguments := [
 		"run", f"{root}/tools/count-check.ms", "--build-type", "Debug", "--",
-		f"tools/count-check-selftest/{fixture}"
+		f"tools/count-check-selftest/{case_name}"
 	]
 
 	if out := run(
@@ -34,7 +34,7 @@ fn gate(root: String, compiler: String, fixture: String) Gate:
 
 	return Gate(125, "cannot start the gate\n")
 
-fn expect(var failures: List[String], what: String, held: Bool, shown: Gate) Void:
+fn expect(var failures List[String], what String, held Bool, shown Gate) Void:
 	if not held: failures.append(f"{what}\n{shown.output}")
 
 fn main() Int:

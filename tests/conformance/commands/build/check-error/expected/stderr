@@ -1,5 +1,5 @@
-<DIR>/main.ms:2:15: type: expected Int, found String (in the initializer of 'x')
+<DIR>/main.ms:2:14: type: expected Int, found String (in the initializer of 'x')
    |
- 2 |     x: Int := "no"
-   |               ^
+ 2 |     x Int := "no"
+   |              ^
 1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

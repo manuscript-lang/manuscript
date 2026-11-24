@@ -12,7 +12,7 @@ export fn main() Int:
                 value:
                     number += 1
                     value
-                null: 0
+                null => 0
         )
     )
     if total != 2:
@@ -23,5 +23,5 @@ export fn main() Int:
 test "operands retain evaluation order":
     main() | expect_equal(0)?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
     return value

@@ -91,7 +91,7 @@ test "many random operations agree with Map":
 	for key in 0..2000:
 		expect_equal(sorted.contains(key), plain.contains(key))?
 
-		var expected: Int? = null
+		var expected Int? = null
 		for candidate in sorted.keys():
 			if candidate <= key:
 				expected = candidate
@@ -99,7 +99,7 @@ test "many random operations agree with Map":
 		found := sorted.floor(key)
 
 		if found != null:
-			got: Int? := found.key
+			got Int? := found.key
 			expect_equal(got, expected)?
 		else:
 			expect_equal(expected, null)?

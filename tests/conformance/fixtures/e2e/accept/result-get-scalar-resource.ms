@@ -11,22 +11,22 @@ import (
 // closes it. Its id names the file the close appends to, since it has nowhere to keep a
 // log path.
 type Tag:
-	id: Int
+	id Int
 
 // The host temp root, since a hard-coded /tmp does not exist on Windows.
-fn tag_log(id: Int) String!:
+fn tag_log(id Int) String!:
 	return ok(f"{ temporary_root()?}/ms-result-get-tag-{id}")
 
 fn move Tag.close() Void!:
 	append_file(tag_log(self.id)?, "closed,").wait()?
 
-fn success(id: Int) Tag!Int:
+fn success(id Int) Tag!Int:
 	return ok(Tag(id))
 
-fn events(log: String) String:
+fn events(log String) String:
 	return read_file(log).wait().get().decode_utf8() or ""
 
-fn project(id: Int) Int:
+fn project(id Int) Int:
 	return success(id).get().id
 
 test "a projection of a scalar resource taken from a Result closes it once":

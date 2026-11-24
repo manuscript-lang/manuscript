@@ -30,8 +30,8 @@
         "position": {
           "file": "golden-1502.ms",
           "line": 6,
-          "column": 33,
-          "offset": 135
+          "column": 34,
+          "offset": 136
         },
         "fix": {
           "position": {
@@ -53,7 +53,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1502.ms:3:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1502.ms:6:33: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 6 |     boom := fn(value: Int) Int: panic(message: \"closure failed\")\n   |                                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1502.ms:3:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1502.ms:6:34: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 6 |     boom := fn(value Int) Int => panic(message: \"closure failed\")\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

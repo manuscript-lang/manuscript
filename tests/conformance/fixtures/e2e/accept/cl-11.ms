@@ -4,8 +4,8 @@
 import expect_equal from "@std/test/test.ms"
 
 type Tree[T]:
-    value: T
-    children: List[Tree[T]]
+    value T
+    children List[Tree[T]]
 
 test "recursive immutable collection":
     leaf := Tree[Int](1, [])

@@ -27,14 +27,14 @@ fixtures := "tests/conformance/fixtures/e2e/stdlib"
 
 // Whether `ms test` is the fixture's own phase: a file declaring another phase (parse,
 // check, run) is not meant to pass `ms test`.
-fn has_tests(source: String) Bool:
+fn has_tests(source String) Bool:
 	if source.contains("// conform: phase="): return source.contains(
 		"// conform: phase=test\n"
 	)
 	return source.starts_with("test \"") or source.contains("\ntest \"")
 
 // One `ms test` run of `file`: its exit status and the last lines of its output.
-fn test_run(ms: String, file: String, stress: Bool) Int:
+fn test_run(ms String, file String, stress Bool) Int:
 	var settings = Map[String, String]()
 	if stress: settings["MS_SCHED_STRESS"] = "1"
 
@@ -48,7 +48,7 @@ fn test_run(ms: String, file: String, stress: Bool) Int:
 	return 1
 
 // Runs each file under stress; answers one report line per failure.
-fn sweep(ms: String, files: List[String]) List[String]:
+fn sweep(ms String, files List[String]) List[String]:
 	var lines = List[String]()
 
 	for f in files:
@@ -65,7 +65,7 @@ fn sweep(ms: String, files: List[String]) List[String]:
 	return lines
 
 // The e2e stdlib test files changed since `since`.
-fn changed(since: String) List[String]:
+fn changed(since String) List[String]:
 	var found = List[String]()
 	text := capture(
 		"git",
@@ -122,7 +122,7 @@ fn main() Int:
 	for worker in 0..jobs:
 		ms_copy := ms.clone()
 		chunk := chunks[worker].clone()
-		tasks.append(promise(fn: ok(sweep(ms_copy, chunk))))
+		tasks.append(promise(() => ok(sweep(ms_copy, chunk))))
 
 	var ran = 0
 	var broken = 0

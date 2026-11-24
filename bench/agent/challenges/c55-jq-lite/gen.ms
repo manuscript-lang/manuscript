@@ -7,11 +7,11 @@ PEOPLE := "[{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":{\"ci
 ORDERS := "{\"orders\":[{\"id\":1,\"items\":[{\"sku\":\"a\",\"qty\":2,\"price\":3.5},{\"sku\":\"b\",\"qty\":1,\"price\":10}],\"status\":\"paid\"},{\"id\":2,\"items\":[{\"sku\":\"a\",\"qty\":5,\"price\":3.5}],\"status\":\"open\"},{\"id\":3,\"items\":[],\"status\":\"paid\"}]}"
 
 fn add(
-	var cs: Cases,
-	name: String,
-	prog: String,
-	inputs: String = "null",
-	opts: String = "",
+	var cs Cases,
+	name String,
+	prog String,
+	inputs String = "null",
+	opts String = "",
 ) Void:
 	head := if opts.is_empty(): "" else: opts + " "
 	tail := if inputs.ends_with("\n"): "" else: "\n"

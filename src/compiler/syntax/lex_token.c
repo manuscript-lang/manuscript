@@ -54,7 +54,7 @@ static int two_char_kind(uint8_t first, int second) {
   case ':':
     return second == '=' ? MS_T_ColonAssign : -1;
   case '=':
-    return second == '=' ? MS_T_EqEq : -1;
+    return second == '=' ? MS_T_EqEq : second == '>' ? MS_T_FatArrow : -1;
   case '!':
     return second == '=' ? MS_T_NotEq : -1;
   case '<':

@@ -4,19 +4,19 @@
 import expect_equal from "@std/test/test.ms"
 
 interface Increment:
-    fn apply(value: Int) Int
+    fn apply(value Int) Int
 
 type Offset:
-    delta: Int
+    delta Int
 
-fn Offset.apply(value: Int) Int:
+fn Offset.apply(value Int) Int:
     return value + self.delta
 
-fn use_increment(operation: Increment) Int:
+fn use_increment(operation Increment) Int:
     return operation.apply(4)
 
 test "explicit contract conversion":
     offset := Offset(1)
-    operation: Increment := offset
-    same_view: Increment := operation
+    operation Increment := offset
+    same_view Increment := operation
     expect_equal(use_increment(same_view), 5)?

@@ -9,18 +9,67 @@
       {
         "code": "MS1000",
         "phase": "parse",
+        "message": "expected ':', found number 1; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body",
+        "position": {
+          "file": "golden-1040.ms",
+          "line": 3,
+          "column": 17,
+          "offset": 69
+        },
+        "end": {
+          "file": "golden-1040.ms",
+          "line": 3,
+          "column": 18,
+          "offset": 70
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
         "message": "'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant",
         "position": {
           "file": "golden-1040.ms",
           "line": 5,
           "column": 1,
-          "offset": 73
+          "offset": 72
         },
         "end": {
           "file": "golden-1040.ms",
           "line": 5,
           "column": 4,
-          "offset": 76
+          "offset": 75
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'x' and its type; write x Type",
+        "position": {
+          "file": "golden-1040.ms",
+          "line": 14,
+          "column": 17,
+          "offset": 178
+        },
+        "end": {
+          "file": "golden-1040.ms",
+          "line": 14,
+          "column": 18,
+          "offset": 179
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1040.ms",
+            "line": 14,
+            "column": 17,
+            "offset": 178
+          },
+          "end": {
+            "file": "golden-1040.ms",
+            "line": 14,
+            "column": 18,
+            "offset": 179
+          },
+          "replacement": ""
         }
       },
       {
@@ -31,13 +80,13 @@
           "file": "golden-1040.ms",
           "line": 18,
           "column": 11,
-          "offset": 242
+          "offset": 241
         },
         "end": {
           "file": "golden-1040.ms",
           "line": 18,
           "column": 12,
-          "offset": 243
+          "offset": 242
         }
       },
       {
@@ -48,20 +97,20 @@
           "file": "golden-1040.ms",
           "line": 19,
           "column": 11,
-          "offset": 257
+          "offset": 256
         },
         "end": {
           "file": "golden-1040.ms",
           "line": 19,
           "column": 12,
-          "offset": 258
+          "offset": 257
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1040.ms:5:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 5 | let (\n   | ^^^\n<DIR>/golden-1040.ms:18:11: parse: argument labels use a colon; write c: value\n    |\n 18 |         c = 11\n    |           ^\n<DIR>/golden-1040.ms:19:11: parse: argument labels use a colon; write d: value\n    |\n 19 |         d = \"Hi\"\n    |           ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1040.ms:3:17: parse: expected ':', found number 1; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body\n   |\n 3 | fn helper() Int 1\n   |                 ^\n<DIR>/golden-1040.ms:5:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 5 | let (\n   | ^^^\n<DIR>/golden-1040.ms:14:17: parse: remove the ':' between 'x' and its type; write x Type\n    |\n 14 |         b = fn(x: Int) Int:\n    |                 ^\n<DIR>/golden-1040.ms:18:11: parse: argument labels use a colon; write c: value\n    |\n 18 |         c = 11\n    |           ^\n<DIR>/golden-1040.ms:19:11: parse: argument labels use a colon; write d: value\n    |\n 19 |         d = \"Hi\"\n    |           ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -3,7 +3,7 @@
 interface Diagnostic:
     fn message() String
 type LocalError:
-    detail: String
+    detail String
 impl Diagnostic for LocalError:
     fn message() String:
         return self.detail

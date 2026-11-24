@@ -2,10 +2,10 @@
 // conform: phase=run
 // `var x = map[key]` borrows the entry: changes through x reach the map, whatever happens to the key.
 type Cell:
-    hits: Int
-    names: List[String]
+    hits Int
+    names List[String]
 
-fn bump(var c: Cell, who: String) Void:
+fn bump(var c Cell, who String) Void:
     c.hits += 1
     c.names.append(who.clone())
 

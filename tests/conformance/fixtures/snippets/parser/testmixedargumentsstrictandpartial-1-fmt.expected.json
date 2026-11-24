@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn run() Int:\n\treturn select[Int](1, last: 3, fn value: value + 1)\n"
+    "fmt": "fn run() Int:\n\treturn select[Int](1, last: 3, value => value + 1)\n"
   }
 }

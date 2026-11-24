@@ -35,7 +35,7 @@ fn tls_options() TlsOptions:
 		require_client_certificate: false,
 	)
 
-fn echo(var exchange: HttpExchange) Void!:
+fn echo(var exchange HttpExchange) Void!:
 	if exchange.path() == "/ws":
 		var socket = (
 			http_result(
@@ -55,7 +55,7 @@ fn echo(var exchange: HttpExchange) Void!:
 			http_result(
 				socket.output.write(
 					WebSocketMessage(
-						data: message.data,
+						data: message.data.clone(),
 						kind: message.kind,
 					)
 				)
@@ -132,7 +132,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 	((body.body.next() | expect_ok?) == null) | expect_true?
 	client.close()?
 
-	_limited: Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+	_limited Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
 	match request(
 		method: HttpMethod.Get,
@@ -143,7 +143,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 			timeout: 2.seconds(),
 		),
 	):
-		ok(_): return fail("HTTP output budget ignored")
+		ok(_) => return fail("HTTP output budget ignored")
 		error(cause):
 			expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))?
 
@@ -192,7 +192,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 		) | expect_false?
 	)
 
-fn upgrade_status(address: String, version: String, extra: String) String!:
+fn upgrade_status(address String, version String, extra String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	key := "dGhlIHNhbXBsZSBub25jZQ=="
 	request := (
@@ -269,7 +269,7 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
 		"HTTP/1.1 400 Bad Request",
 	)?
 
-fn report_host(var exchange: HttpExchange) Void!:
+fn report_host(var exchange HttpExchange) Void!:
 	hosts := exchange.headers().get_all("Host")
 	_started := exchange.send_headers(status: 200, headers: headers())?
 	_written := (http_result(exchange.write(hosts.join(",")))?)
@@ -309,13 +309,13 @@ test "HTTP requests reject an empty method":
 			timeout: 1.seconds(),
 		),
 	):
-		ok(_): return fail("empty method accepted")
+		ok(_) => return fail("empty method accepted")
 		error(cause):
 			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
 
 // The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep
 // instead of waiting it out.
-fn silent(var exchange: HttpExchange) Void!:
+fn silent(var exchange HttpExchange) Void!:
 	var _socket = (
 		http_result(
 			upgrade(
@@ -352,12 +352,12 @@ test "a promise cancelled while it owns a WebSocket closes it without ending the
 
 	// The closure takes the socket; its close at the end of the cancelled task parks,
 	// which a cancel still pending on that task used to turn into a process exit.
-	read := promise(fn: socket.input.next()).with(
+	read := promise(() => socket.input.next()).with(
 		options: PromiseOptions(timeout: 50.milliseconds())
 	).wait()
 	expect_true(read.is_error())?
 
-fn direct(var exchange: HttpExchange) Void!:
+fn direct(var exchange HttpExchange) Void!:
 	var socket = http_result(
 		exchange.upgrade(
 			allowed_origins: [],

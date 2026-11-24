@@ -10,48 +10,48 @@ import (
 // copying it out of the container. Every shape must still read the same values, and the
 // container must be changeable again after the borrow's last use.
 type Item:
-	sku: String
-	qty: Int
+	sku String
+	qty Int
 
 type Order:
-	id: String
-	items: List[Item]
-	status: String
+	id String
+	items List[Item]
+	status String
 
 type Node:
-	name: String
-	next: Node?
+	name String
+	next Node?
 
-fn order(move id: String, n: Int) Order:
+fn order(move id String, n Int) Order:
 	var items = List[Item]()
 	for i in 0..n:
 		items.append(Item(sku: f"{id}-{i}", qty: i + 1))
 	return Order(id: id, items: items, status: "placed")
 
-fn by_binding(orders: Map[String, Order], id: String) Int:
+fn by_binding(orders Map[String, Order], id String) Int:
 	found := orders.get(id)
 	if found == null: return 0
 
 	o := found
 	return o.items.length() + o.status.length()
 
-fn by_if_let(orders: Map[String, Order], id: String) Int:
+fn by_if_let(orders Map[String, Order], id String) Int:
 	o := orders.get(id)
 	if o != null: return o.items.length() + o.status.length()
 
 	return 0
 
-fn by_chain(orders: Map[String, Order], id: String) Int:
+fn by_chain(orders Map[String, Order], id String) Int:
 	if orders.get(id) == null: return 0
 
 	o := orders[id]
 	return o.items.length() + o.status.length()
 
-fn returned(orders: Map[String, Order], id: String) Order?:
+fn returned(orders Map[String, Order], id String) Order?:
 	found := orders.get(id)
 	return found.clone()
 
-fn take_optional(o: Order?) Int:
+fn take_optional(o Order?) Int:
 	v := o
 	if v != null: return v.items.length()
 
@@ -173,7 +173,7 @@ test "if let over a borrowed optional lends its payload":
 
 	expect_equal(maybe != null, true)?
 
-	text: String? := "hello"
+	text String? := "hello"
 	t := text
 	if t != null:
 		expect_equal(t.length(), 5)?
@@ -183,7 +183,7 @@ test "an entry read from a temporary map is an owned copy":
 	var kept = Map[String, Order]()
 	o := build().get("b")
 	if o != null:
-		kept.add("b", o)
+		kept.add("b", o.clone())
 	expect_equal((kept.get("b") or panic("called Optional.get() on null")).id, "b")?
 	expect_equal(
 		(

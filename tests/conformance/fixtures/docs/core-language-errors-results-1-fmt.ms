@@ -7,7 +7,7 @@ enum DiscountError:
     InvalidPrice
     InvalidPercent
 
-fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
+fn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError]:
     if price < 0d:
         return error(InvalidPrice)
     if percent < 0d or percent > 100d:

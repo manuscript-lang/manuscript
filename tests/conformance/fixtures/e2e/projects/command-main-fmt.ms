@@ -26,7 +26,7 @@ fn exercise() Int!:
 
 export fn main() Int:
 	match exercise():
-		ok(status): return status
+		ok(status) => return status
 		error(cause):
 			_written := stderr().write(f"{cause.message}\n")
 			return 1

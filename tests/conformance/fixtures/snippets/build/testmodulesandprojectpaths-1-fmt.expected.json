@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export type Identity:\n\tvalue: Int\n\nexport fn read(value: Identity) Int:\n\treturn value.value\n"
+    "fmt": "export type Identity:\n\tvalue Int\n\nexport fn read(value Identity) Int:\n\treturn value.value\n"
   }
 }

@@ -21,69 +21,69 @@ character references back.
 // returns `EOVERFLOW`.
 export type HtmlOptions:
 	// Maximum UTF-8 input bytes before parsing; null adds no input-size budget.
-	max_bytes: Int? = null
+	max_bytes Int? = null
 	// Maximum normalized node depth; the document is depth zero and direct children
 	// depth one.
-	max_depth: Int? = 10000
+	max_depth Int? = 10000
 	// Maximum returned nodes, including document/text/comment/doctype and implied
 	// element nodes.
-	max_nodes: Int? = 1000000
+	max_nodes Int? = 1000000
 
 // An HTML attribute with its name, namespace and decoded value.
 export type HtmlAttribute:
 	// Attribute name after HTML parsing and normalization.
-	name: String
+	name String
 	// Attribute namespace prefix, or empty text for an unqualified attribute.
-	namespace: String
+	namespace String
 	// Decoded attribute contents, with character references resolved.
-	value: String
+	value String
 
 // A parsed HTML document tree with document, element, text, comment, and doctype nodes.
 export enum HtmlNode:
 	// Root document node, including any elements implied by HTML tree normalization.
 	Document(
 		// Direct child nodes in normalized document order.
-		children: List[HtmlNode]
+		children List[HtmlNode]
 	)
 	// An element with normalized attributes and its ordered child nodes.
 	Element(
 		// Local element tag name produced by the HTML parser.
-		tag: String,
+		tag String,
 		// Element namespace, `svg` or `math`, or empty text for ordinary HTML.
-		namespace: String,
+		namespace String,
 		// Attributes in parser order, with decoded values and namespace information.
-		attributes: List[HtmlAttribute],
+		attributes List[HtmlAttribute],
 		// Direct child nodes in normalized tree order.
-		children: List[HtmlNode]
+		children List[HtmlNode]
 	)
 	// Text node contents after HTML entity decoding and tree normalization.
 	Text(
 		// Unicode text belonging to this node, without surrounding markup.
-		text: String
+		text String
 	)
 	// An HTML comment retained as a node rather than element text.
 	Comment(
 		// Comment contents without the opening and closing comment delimiters.
-		text: String
+		text String
 	)
 	// A document-type declaration retained from the parsed HTML.
 	Doctype(
 		// Doctype name as normalized by the parser.
-		name: String,
+		name String,
 		// Public identifier, or empty text when no public identifier is present.
-		public_id: String,
+		public_id String,
 		// System identifier, or empty text when no system identifier is present.
-		system_id: String
+		system_id String
 	)
 
 // Escapes text for insertion into an HTML text or quoted attribute context.
-export fn escape(text: String) String:
+export fn escape(text String) String:
 	return msstd_html_escape(text)
 
 // Decodes HTML5 named and numeric character references in text context, once. A
 // recognized reference may omit its semicolon; unrecognized text stays literal. Invalid
 // numeric references become U+FFFD. It does not parse markup or normalize text.
-export fn unescape(text: String) String:
+export fn unescape(text String) String:
 	return msstd_html_unescape(text)
 
 // ---- parser state ----
@@ -221,71 +221,71 @@ E_TEMPLATE := 12
 // elements (`afe`) are lists of node ids. An element's name is its atom (see the
 // generated tables), or its `data` text when the tag is not a known atom.
 type Parser:
-	src: Bytes
-	size: Int
-	max_open: Int
-	exceeded: Bool = false
+	src Bytes
+	size Int
+	max_open Int
+	exceeded Bool = false
 	// Tokenizer state.
-	eof: Bool = false
-	raw_start: Int = 0
-	raw_end: Int = 0
-	data_start: Int = 0
-	data_end: Int = 0
-	tt: Int = 0
-	pk_s: Int = 0
-	pk_e: Int = 0
-	pv_s: Int = 0
-	pv_e: Int = 0
-	attr_n: Int = 0
-	attr_ks: List[Int] = []
-	attr_ke: List[Int] = []
-	attr_vs: List[Int] = []
-	attr_ve: List[Int] = []
-	raw_tag: Int = 0
-	raw_name: Bytes = Bytes(values: [])
-	text_is_raw: Bool = false
-	convert_nul: Bool = false
-	allow_cdata: Bool = false
+	eof Bool = false
+	raw_start Int = 0
+	raw_end Int = 0
+	data_start Int = 0
+	data_end Int = 0
+	tt Int = 0
+	pk_s Int = 0
+	pk_e Int = 0
+	pv_s Int = 0
+	pv_e Int = 0
+	attr_n Int = 0
+	attr_ks List[Int] = []
+	attr_ke List[Int] = []
+	attr_vs List[Int] = []
+	attr_ve List[Int] = []
+	raw_tag Int = 0
+	raw_name Bytes = Bytes(values: [])
+	text_is_raw Bool = false
+	convert_nul Bool = false
+	allow_cdata Bool = false
 	// The current token. A tag's name is `tok_atom`, or `tok_data` when it has no atom;
 	// attributes are the first `tok_n` entries of the three lists.
-	tok_ty: Int = 0
-	tok_atom: Int = 0
-	tok_data: String = ""
-	tok_n: Int = 0
-	tok_keys: List[String] = []
-	tok_vals: List[String] = []
-	tok_nss: List[String] = []
-	has_self_closing: Bool = false
+	tok_ty Int = 0
+	tok_atom Int = 0
+	tok_data String = ""
+	tok_n Int = 0
+	tok_keys List[String] = []
+	tok_vals List[String] = []
+	tok_nss List[String] = []
+	has_self_closing Bool = false
 	// The tree.
-	kind: List[Int] = [K_MARKER, K_DOCUMENT]
-	atom: List[Int] = [0, 0]
-	data: List[String] = ["", ""]
-	ns: List[Int] = [0, 0]
-	parent: List[Int] = [-1, -1]
-	first: List[Int] = [-1, -1]
-	last: List[Int] = [-1, -1]
-	prev: List[Int] = [-1, -1]
-	next: List[Int] = [-1, -1]
-	attr_start: List[Int] = [0, 0]
-	attr_count: List[Int] = [0, 0]
-	akey: List[String] = []
-	aval: List[String] = []
-	ans: List[String] = []
+	kind List[Int] = [K_MARKER, K_DOCUMENT]
+	atom List[Int] = [0, 0]
+	data List[String] = ["", ""]
+	ns List[Int] = [0, 0]
+	parent List[Int] = [-1, -1]
+	first List[Int] = [-1, -1]
+	last List[Int] = [-1, -1]
+	prev List[Int] = [-1, -1]
+	next List[Int] = [-1, -1]
+	attr_start List[Int] = [0, 0]
+	attr_count List[Int] = [0, 0]
+	akey List[String] = []
+	aval List[String] = []
+	ans List[String] = []
 	// Open elements. For each entry, `oe_p` and `oe_stop` hold the index plus one of
 	// the nearest open `p` and of the nearest button-scope boundary at or below that
 	// entry (0 for null), so "is a `p` open in button scope" needs no stack walk.
-	oe: List[Int] = []
-	oe_p: List[Int] = []
-	oe_stop: List[Int] = []
-	afe: List[Int] = []
-	head: Int = -1
-	form: Int = -1
-	frameset_ok: Bool = true
-	template_stack: List[Int] = []
-	im: Int = 0
-	original_im: Int = -1
-	foster_parenting: Bool = false
-	quirks: Bool = false
+	oe List[Int] = []
+	oe_p List[Int] = []
+	oe_stop List[Int] = []
+	afe List[Int] = []
+	head Int = -1
+	form Int = -1
+	frameset_ok Bool = true
+	template_stack List[Int] = []
+	im Int = 0
+	original_im Int = -1
+	foster_parenting Bool = false
+	quirks Bool = false
 
 fn var Parser.read_byte() Int:
 	if self.raw_end >= self.size:
@@ -307,21 +307,21 @@ fn var Parser.skip_white_space() Void:
 			self.raw_end -= 1
 			return
 
-fn var Parser.set_raw_tag(tag: Int) Void:
+fn var Parser.set_raw_tag(tag Int) Void:
 	self.raw_tag = tag
 
 	match tag:
-		1: self.raw_name = "iframe".to_bytes()
-		2: self.raw_name = "noembed".to_bytes()
-		3: self.raw_name = "noframes".to_bytes()
-		4: self.raw_name = "noscript".to_bytes()
-		5: self.raw_name = "plaintext".to_bytes()
-		6: self.raw_name = "script".to_bytes()
-		7: self.raw_name = "style".to_bytes()
-		8: self.raw_name = "textarea".to_bytes()
-		9: self.raw_name = "title".to_bytes()
-		10: self.raw_name = "xmp".to_bytes()
-		_: self.raw_name = Bytes(values: [])
+		1 => self.raw_name = "iframe".to_bytes()
+		2 => self.raw_name = "noembed".to_bytes()
+		3 => self.raw_name = "noframes".to_bytes()
+		4 => self.raw_name = "noscript".to_bytes()
+		5 => self.raw_name = "plaintext".to_bytes()
+		6 => self.raw_name = "script".to_bytes()
+		7 => self.raw_name = "style".to_bytes()
+		8 => self.raw_name = "textarea".to_bytes()
+		9 => self.raw_name = "title".to_bytes()
+		10 => self.raw_name = "xmp".to_bytes()
+		_ => self.raw_name = Bytes(values: [])
 
 fn var Parser.read_raw_or_rcdata() Void:
 	if self.raw_tag == RAW_SCRIPT:
@@ -602,7 +602,7 @@ fn Parser.abrupt_comment_data_end() Int:
 
 	return self.raw_end
 
-fn Parser.byte_at(pos: Int) Int:
+fn Parser.byte_at(pos Int) Int:
 	if pos < 0 or pos >= self.size: return -1
 	return self.src.get(pos).to_int()
 
@@ -743,7 +743,7 @@ fn Parser.raw_text_tag() Int:
 
 // Whether the `length` bytes at `start` equal the lower-case `word`, ignoring ASCII
 // case.
-fn Parser.name_is(start: Int, length: Int, word: String) Bool:
+fn Parser.name_is(start Int, length Int, word String) Bool:
 	if length != word.length(): return false
 	return bytes_equal_fold(self.src, start, word.to_bytes())
 
@@ -776,7 +776,7 @@ fn var Parser.push_attr() Void:
 
 	self.attr_n = n + 1
 
-fn var Parser.read_tag(save_attr: Bool) Void:
+fn var Parser.read_tag(save_attr Bool) Void:
 	self.attr_n = 0
 	self.read_tag_name()
 	self.skip_white_space()
@@ -854,7 +854,7 @@ fn var Parser.read_tag_attr_val() Void:
 	else if quote == 39 or quote == 34:
 		self.pv_s = self.raw_end
 
-		var idx: Int? = null
+		var idx Int? = null
 
 		if quote == 39:
 			idx = self.src.index_of_byte(39, self.raw_end)
@@ -1051,7 +1051,7 @@ fn var Parser.load_token() Void:
 // ---- node tree ----
 
 // The name of an element node.
-fn Parser.tag_name(n: Int) String:
+fn Parser.tag_name(n Int) String:
 	a := self.atom[n]
 	if a != 0: return atom_name(a)
 
@@ -1062,7 +1062,7 @@ fn Parser.tok_name() String:
 	if self.tok_atom != 0: return atom_name(self.tok_atom)
 	return self.tok_data.clone()
 
-fn var Parser.alloc(kind: Int, atom: Int, data: String) Int:
+fn var Parser.alloc(kind Int, atom Int, data String) Int:
 	id := self.kind.length()
 	self.kind.append(kind)
 	self.atom.append(atom)
@@ -1078,7 +1078,7 @@ fn var Parser.alloc(kind: Int, atom: Int, data: String) Int:
 	return id
 
 // Links `child` before `old` under `parent`; `old` of -1 appends.
-fn var Parser.insert_before(parent: Int, child: Int, old: Int) Void:
+fn var Parser.insert_before(parent Int, child Int, old Int) Void:
 	var before = self.last[parent]
 	var after = -1
 
@@ -1100,10 +1100,10 @@ fn var Parser.insert_before(parent: Int, child: Int, old: Int) Void:
 	self.prev[child] = before
 	self.next[child] = after
 
-fn var Parser.append_child(parent: Int, child: Int) Void:
+fn var Parser.append_child(parent Int, child Int) Void:
 	self.insert_before(parent, child, -1)
 
-fn var Parser.remove_child(parent: Int, child: Int) Void:
+fn var Parser.remove_child(parent Int, child Int) Void:
 	before := self.prev[child]
 	after := self.next[child]
 	if self.first[parent] == child: self.first[parent] = after
@@ -1114,18 +1114,18 @@ fn var Parser.remove_child(parent: Int, child: Int) Void:
 	self.prev[child] = -1
 	self.next[child] = -1
 
-fn var Parser.detach(child: Int) Void:
+fn var Parser.detach(child Int) Void:
 	p := self.parent[child]
 	if p >= 0: self.remove_child(p, child)
 
-fn var Parser.reparent_children(dst: Int, src: Int) Void:
+fn var Parser.reparent_children(dst Int, src Int) Void:
 	while self.first[src] >= 0:
 		child := self.first[src]
 		self.remove_child(src, child)
 		self.append_child(dst, child)
 
 // A copy of the node's type, atom, name and attributes (not its namespace).
-fn var Parser.clone_node(n: Int) Int:
+fn var Parser.clone_node(n Int) Int:
 	id := self.alloc(self.kind[n], self.atom[n], self.data[n].clone())
 	start := self.attr_start[n]
 	count := self.attr_count[n]
@@ -1162,7 +1162,7 @@ fn Parser.oe_top_atom() Int:
 	return self.atom[self.oe[n - 1]]
 
 // Computes the scope marks of open element `i` from the entry below it.
-fn var Parser.mark(i: Int) Void:
+fn var Parser.mark(i Int) Void:
 	n := self.oe[i]
 	html := self.ns[n] == NS_HTML
 	a := self.atom[n]
@@ -1185,7 +1185,7 @@ fn var Parser.mark(i: Int) Void:
 		self.oe_p.append(p)
 		self.oe_stop.append(stop)
 
-fn var Parser.oe_remark(start: Int) Void:
+fn var Parser.oe_remark(start Int) Void:
 	while self.oe_p.length() > start:
 		self.oe_p.pop()
 		self.oe_stop.pop()
@@ -1193,7 +1193,7 @@ fn var Parser.oe_remark(start: Int) Void:
 	for i in start..self.oe.length():
 		self.mark(i)
 
-fn var Parser.oe_push(n: Int) Void:
+fn var Parser.oe_push(n Int) Void:
 	self.oe.append(n)
 	self.mark(self.oe.length() - 1)
 
@@ -1204,21 +1204,21 @@ fn var Parser.oe_pop() Int:
 	self.oe_stop.pop()
 	return self.oe.pop() or (-1)
 
-fn var Parser.oe_truncate(len: Int) Void:
+fn var Parser.oe_truncate(len Int) Void:
 	while self.oe.length() > len:
 		self.oe.pop()
 		self.oe_p.pop()
 		self.oe_stop.pop()
 
-fn var Parser.oe_insert(at: Int, n: Int) Void:
+fn var Parser.oe_insert(at Int, n Int) Void:
 	self.oe.insert(at, n)
 	self.oe_remark(at)
 
-fn var Parser.oe_set(i: Int, n: Int) Void:
+fn var Parser.oe_set(i Int, n Int) Void:
 	self.oe[i] = n
 	self.oe_remark(i)
 
-fn var Parser.oe_remove(n: Int) Void:
+fn var Parser.oe_remove(n Int) Void:
 	i := self.oe_index(n)
 
 	if i >= 0:
@@ -1226,7 +1226,7 @@ fn var Parser.oe_remove(n: Int) Void:
 		self.oe_remark(i)
 
 // The position of the last occurrence of `n` in the open elements, or -1.
-fn Parser.oe_index(n: Int) Int:
+fn Parser.oe_index(n Int) Int:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1236,7 +1236,7 @@ fn Parser.oe_index(n: Int) Int:
 
 	return -1
 
-fn Parser.afe_index(n: Int) Int:
+fn Parser.afe_index(n Int) Int:
 	var i = self.afe.length() - 1
 
 	while i >= 0:
@@ -1246,7 +1246,7 @@ fn Parser.afe_index(n: Int) Int:
 
 	return -1
 
-fn var Parser.afe_remove(n: Int) Void:
+fn var Parser.afe_remove(n Int) Void:
 	i := self.afe_index(n)
 	if i >= 0: self.afe.remove(i)
 
@@ -1255,12 +1255,12 @@ fn var Parser.afe_truncate_pop() Int:
 	return r or (-1)
 
 // Whether an HTML element with the atom is open.
-fn Parser.oe_contains(atom: Int) Bool:
+fn Parser.oe_contains(atom Int) Bool:
 	for n in self.oe:
 		if self.atom[n] == atom and self.ns[n] == NS_HTML: return true
 	return false
 
-fn Parser.is_special_element(n: Int) Bool:
+fn Parser.is_special_element(n Int) Bool:
 	a := self.atom[n]
 	v := self.ns[n]
 	if v == NS_HTML: return is_special_atom(a)
@@ -1272,7 +1272,7 @@ fn Parser.is_special_element(n: Int) Bool:
 
 // The index of the nearest open element matching one of the atoms (-2 as the first atom
 // matches any heading) before a boundary of the scope, or -1.
-fn Parser.scope_index(s: Int, m1: Int, m2: Int, m3: Int) Int:
+fn Parser.scope_index(s Int, m1 Int, m2 Int, m3 Int) Int:
 	if s == SCOPE_BUTTON and m1 == A_P and m2 == -1:
 		mark_p := self.oe_p.get_or(self.oe.length() - 1, 0)
 		mark_stop := self.oe_stop.get_or(self.oe.length() - 1, 0)
@@ -1305,17 +1305,17 @@ fn Parser.scope_index(s: Int, m1: Int, m2: Int, m3: Int) Int:
 
 	return -1
 
-fn var Parser.pop_until(s: Int, m1: Int, m2: Int, m3: Int) Bool:
+fn var Parser.pop_until(s Int, m1 Int, m2 Int, m3 Int) Bool:
 	i := self.scope_index(s, m1, m2, m3)
 	if i < 0: return false
 
 	self.oe_truncate(i)
 	return true
 
-fn Parser.element_in_scope(s: Int, m1: Int, m2: Int, m3: Int) Bool:
+fn Parser.element_in_scope(s Int, m1 Int, m2 Int, m3 Int) Bool:
 	return self.scope_index(s, m1, m2, m3) >= 0
 
-fn var Parser.clear_stack_to_context(s: Int) Void:
+fn var Parser.clear_stack_to_context(s Int) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1348,7 +1348,7 @@ fn var Parser.parse_generic_raw_text_element() Void:
 
 // Pops elements whose end tags are implied, stopping before an element with atom
 // `skip_atom` (-1 for null).
-fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
+fn var Parser.generate_implied_end_tags(skip_atom Int) Void:
 	var i = self.oe.length()
 
 	while i > 0:
@@ -1363,7 +1363,7 @@ fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
 
 	self.oe_truncate(i)
 
-fn var Parser.add_child(n: Int) Void:
+fn var Parser.add_child(n Int) Void:
 	if self.should_foster_parent():
 		self.foster_parent(n)
 	else:
@@ -1374,7 +1374,7 @@ fn var Parser.add_child(n: Int) Void:
 fn Parser.should_foster_parent() Bool:
 	return self.foster_parenting and is_table_context(self.top_atom())
 
-fn Parser.oe_last_atom(atom: Int) Int:
+fn Parser.oe_last_atom(atom Int) Int:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -1384,7 +1384,7 @@ fn Parser.oe_last_atom(atom: Int) Int:
 
 	return -1
 
-fn var Parser.foster_parent(n: Int) Void:
+fn var Parser.foster_parent(n Int) Void:
 	table_i := self.oe_last_atom(A_TABLE)
 	template_j := self.oe_last_atom(A_TEMPLATE)
 
@@ -1412,7 +1412,7 @@ fn var Parser.foster_parent(n: Int) Void:
 
 	self.insert_before(parent, n, table)
 
-fn var Parser.add_text(text: String) Void:
+fn var Parser.add_text(text String) Void:
 	if text == "": return
 
 	if self.should_foster_parent():
@@ -1439,7 +1439,7 @@ fn var Parser.append_doc_comment() Void:
 	self.append_child(1, n)
 
 // Copies the current token's attributes onto node `id`, which has null yet.
-fn var Parser.set_token_attributes(id: Int) Void:
+fn var Parser.set_token_attributes(id Int) Void:
 	self.attr_start[id] = self.akey.length()
 
 	for i in 0..self.tok_n:
@@ -1459,7 +1459,7 @@ fn var Parser.add_element() Void:
 
 // Whether node `n` and the current token have the same attributes (name, namespace and
 // value), in any order.
-fn Parser.same_attributes(n: Int) Bool:
+fn Parser.same_attributes(n Int) Bool:
 	count := self.attr_count[n]
 	if count != self.tok_n: return false
 
@@ -1630,14 +1630,14 @@ fn var Parser.reset_insertion_mode() Void:
 		i -= 1
 
 // Adds the current token's attributes that node `dst` lacks, after its own.
-fn var Parser.copy_attributes(dst: Int) Void:
+fn var Parser.copy_attributes(dst Int) Void:
 	if self.tok_n == 0: return
 
 	count := self.attr_count[dst]
 	start := self.attr_start[dst]
-	var keys: List[String] = []
-	var vals: List[String] = []
-	var nss: List[String] = []
+	var keys List[String] = []
+	var vals List[String] = []
+	var nss List[String] = []
 
 	for i in 0..count:
 		keys.append(self.akey[start + i].clone())
@@ -1671,7 +1671,7 @@ fn Parser.tok_attr_is_hidden_input() Bool:
 	return false
 
 // Whether an attribute named `key` is in the current token.
-fn Parser.tok_has_attr(key: String) Bool:
+fn Parser.tok_has_attr(key String) Bool:
 	for i in 0..self.tok_n:
 		if self.tok_keys[i] == key: return true
 	return false
@@ -1701,7 +1701,7 @@ fn var Parser.trim_tok_left() Bool:
 	if cut > 0: self.tok_data = self.tok_data.view(cut, self.tok_data.length()).clone()
 	return self.tok_data == ""
 
-fn var Parser.run_im(im: Int) Bool:
+fn var Parser.run_im(im Int) Bool:
 	if im == IM_IN_BODY: return self.in_body_im()
 	if im == IM_INITIAL: return self.initial_im()
 	if im == IM_BEFORE_HTML: return self.before_html_im()
@@ -2167,7 +2167,7 @@ fn var Parser.in_body_start_tag() Bool:
 
 // The `li` / `dd` / `dt` loop of the start-tag rules: closes an open item of the same
 // kind.
-fn var Parser.close_list_item(a1: Int, a2: Int) Void:
+fn var Parser.close_list_item(a1 Int, a2 Int) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -2244,7 +2244,7 @@ fn var Parser.in_body_end_tag() Bool:
 	return true
 
 // The adoption agency algorithm.
-fn var Parser.in_body_end_tag_formatting(tag_atom: Int, tag_name: String) Void:
+fn var Parser.in_body_end_tag_formatting(tag_atom Int, tag_name String) Void:
 	current := self.oe_top()
 
 	if (
@@ -2357,7 +2357,7 @@ fn var Parser.in_body_end_tag_formatting(tag_atom: Int, tag_name: String) Void:
 		if fi >= 0: place = fi + 1
 		self.oe_insert(place, clone)
 
-fn var Parser.in_body_end_tag_other(tag_atom: Int, tag_name: String) Void:
+fn var Parser.in_body_end_tag_other(tag_atom Int, tag_name String) Void:
 	var i = self.oe.length() - 1
 
 	while i >= 0:
@@ -2871,7 +2871,7 @@ fn var Parser.in_select_in_table_im() Bool:
 
 	return self.in_select_im()
 
-fn var Parser.set_template_top(im: Int) Void:
+fn var Parser.set_template_top(im Int) Void:
 	_popped := self.template_stack.pop()
 	self.template_stack.append(im)
 	self.im = im
@@ -3073,7 +3073,7 @@ fn var Parser.adjust_foreign_attributes() Void:
 			self.tok_nss[i] = key.view(0, at).clone()
 			self.tok_keys[i] = key.view(at + 1, key.length()).clone()
 
-fn Parser.html_integration_point(n: Int) Bool:
+fn Parser.html_integration_point(n Int) Bool:
 	if self.kind[n] != K_ELEMENT: return false
 
 	if self.ns[n] == NS_MATH:
@@ -3097,7 +3097,7 @@ fn Parser.html_integration_point(n: Int) Bool:
 
 	return false
 
-fn Parser.math_text_integration_point(n: Int) Bool:
+fn Parser.math_text_integration_point(n Int) Bool:
 	return self.ns[n] == NS_MATH and is_math_text_atom(self.atom[n])
 
 fn Parser.tok_font_has_style_attribute() Bool:
@@ -3210,7 +3210,7 @@ fn Parser.in_foreign_content() Bool:
 
 // Parses a token the document implies, such as the `html` start tag, then restores the
 // real one.
-fn var Parser.parse_implied_token(ty: Int, atom: Int) Void:
+fn var Parser.parse_implied_token(ty Int, atom Int) Void:
 	real_ty := self.tok_ty
 	real_atom := self.tok_atom
 	real_data := self.tok_data.clone()
@@ -3264,7 +3264,7 @@ fn var Parser.run() Void:
 
 // Parses the contents of a doctype token into a doctype node under the document,
 // returning whether it puts the document in quirks mode.
-fn var Parser.add_doctype(text: String) Bool:
+fn var Parser.add_doctype(text String) Bool:
 	b := text.to_bytes()
 	size := b.length()
 	var quirks = false
@@ -3288,8 +3288,8 @@ fn var Parser.add_doctype(text: String) Bool:
 	if not valid_boundary(b, pos): pos = size
 	if key == "": key = "?"
 
-	var keys: List[String] = []
-	var values: List[String] = []
+	var keys List[String] = []
+	var values List[String] = []
 
 	while key == "public" or key == "system":
 		while pos < size and is_html_whitespace(b.get(pos).to_int()):
@@ -3373,22 +3373,22 @@ fn var Parser.add_doctype(text: String) Bool:
 
 	return quirks
 
-fn is_space(c: Int) Bool:
+fn is_space(c Int) Bool:
 	return c == 32 or c == 10 or c == 13 or c == 9 or c == 12
 
-fn is_alpha(c: Int) Bool:
+fn is_alpha(c Int) Bool:
 	return (c >= 97 and c <= 122) or (c >= 65 and c <= 90)
 
-fn is_heading(atom: Int) Bool:
+fn is_heading(atom Int) Bool:
 	return atom >= A_H1 and atom <= A_H6
 
 // The numeric value of `c` lower-cased when it is an ASCII capital.
-fn lower_byte(c: Int) Int:
+fn lower_byte(c Int) Int:
 	if c >= 65 and c <= 90: return c + 32
 	return c
 
 // Whether the bytes of `data` at `at` equal the lower-case `name`, ignoring ASCII case.
-fn bytes_equal_fold(data: Bytes, at: Int, name: Bytes) Bool:
+fn bytes_equal_fold(data Bytes, at Int, name Bytes) Bool:
 	for i in 0..name.length():
 		if lower_byte(data.get(at + i).to_int()) != name.get(i).to_int(): return false
 	return true
@@ -3396,7 +3396,7 @@ fn bytes_equal_fold(data: Bytes, at: Int, name: Bytes) Bool:
 // ---- tokenizer ----
 
 // Whether `src[start, end)` has a byte that is an ASCII capital or at least 128.
-fn needs_ascii_lowering(src: Bytes, start: Int, end: Int) Bool:
+fn needs_ascii_lowering(src Bytes, start Int, end Int) Bool:
 	for i in start..end:
 		b := src.get(i).to_int()
 		if (b >= 65 and b <= 90) or b >= 128: return true
@@ -3405,7 +3405,7 @@ fn needs_ascii_lowering(src: Bytes, start: Int, end: Int) Bool:
 
 // The text of `src[start, end)` with ASCII capitals lower-cased (other scalars
 // unchanged).
-fn lowered_text(src: Bytes, start: Int, end: Int) String:
+fn lowered_text(src Bytes, start Int, end Int) String:
 	text := src.decode_utf8_range(start, end) or ""
 	if not needs_ascii_lowering(src, start, end): return text
 
@@ -3423,7 +3423,7 @@ fn lowered_text(src: Bytes, start: Int, end: Int) String:
 
 // The atom of the lower-cased name `src[start, end)`, or 0 when it is not a known tag
 // name.
-fn atom_of_range(src: Bytes, start: Int, end: Int) Int:
+fn atom_of_range(src Bytes, start Int, end Int) Int:
 	length := end - start
 	if length <= 0: return 0
 
@@ -3448,27 +3448,27 @@ fn atom_of_range(src: Bytes, start: Int, end: Int) Int:
 	return 0
 
 // The atom of a name that is already a string; only a few mixed-case names matter.
-fn atom_of_text(name: String) Int:
+fn atom_of_text(name String) Int:
 	if name == "foreignObject": return A_FOREIGNOBJECT
 	return 0
 
 // Line breaks are normalized to LF.
-fn convert_newlines(text: String) String:
+fn convert_newlines(text String) String:
 	if not text.contains("\r"): return text.clone()
 	return text.replace("\r\n", "\n").replace("\r", "\n")
 
-fn stop_atom(ns: Int, atom: Int) Bool:
+fn stop_atom(ns Int, atom Int) Bool:
 	if ns == NS_HTML: return is_scope_stop(atom)
 	if ns == NS_MATH: return is_math_stop(atom)
 
 	return is_svg_stop(atom)
 
-fn tag_matches(a: Int, m1: Int, m2: Int, m3: Int) Bool:
+fn tag_matches(a Int, m1 Int, m2 Int, m3 Int) Bool:
 	if a == m1 or a == m2 or a == m3: return true
 	return m1 == -2 and is_heading(a)
 
 // Equality ignoring ASCII case.
-fn ascii_equal_fold(a: String, b: String) Bool:
+fn ascii_equal_fold(a String, b String) Bool:
 	ab := a.to_bytes()
 	bb := b.to_bytes()
 	if ab.length() != bb.length(): return false
@@ -3478,7 +3478,7 @@ fn ascii_equal_fold(a: String, b: String) Bool:
 	return true
 
 // The first byte that is not HTML whitespace, or the length of the text.
-fn trim_left_len(text: String) Int:
+fn trim_left_len(text String) Int:
 	b := text.to_bytes()
 	var i = 0
 	while i < b.length() and is_space(b.get(i).to_int()):
@@ -3488,30 +3488,30 @@ fn trim_left_len(text: String) Int:
 // ---- tree-construction helpers ----
 
 // Removes a leading CR, then a leading LF, from `text` (each only if present).
-fn strip_leading_newline(text: String) String:
+fn strip_leading_newline(text String) String:
 	var d = text.clone()
 	if d.starts_with("\r"): d = d.view(1, d.length()).clone()
 	if d.starts_with("\n"): d = d.view(1, d.length()).clone()
 	return d
 
 // Whether the text has no scalar other than HTML whitespace.
-fn is_blank(text: String) Bool:
+fn is_blank(text String) Bool:
 	return trim_left_len(text) == text.length()
 
-fn is_foreign_attribute(key: String) Bool:
+fn is_foreign_attribute(key String) Bool:
 	match key:
-		"xlink:actuate": return true
-		"xlink:arcrole": return true
-		"xlink:href": return true
-		"xlink:role": return true
-		"xlink:show": return true
-		"xlink:title": return true
-		"xlink:type": return true
-		"xml:base": return true
-		"xml:lang": return true
-		"xml:space": return true
-		"xmlns:xlink": return true
-		_: return false
+		"xlink:actuate" => return true
+		"xlink:arcrole" => return true
+		"xlink:href" => return true
+		"xlink:role" => return true
+		"xlink:show" => return true
+		"xlink:title" => return true
+		"xlink:type" => return true
+		"xml:base" => return true
+		"xml:lang" => return true
+		"xml:space" => return true
+		"xmlns:xlink" => return true
+		_ => return false
 
 QUIRKY_IDS := [
 	"+//silmaril//dtd html pro v0r11 19970101//",
@@ -3554,7 +3554,7 @@ QUIRKY_IDS := [
 
 // Lower-cases each scalar with its single-scalar mapping, as Go's `strings.ToLower`
 // does.
-fn go_lower(text: String) String:
+fn go_lower(text String) String:
 	var out = ""
 
 	for c in text.chars():
@@ -3569,11 +3569,11 @@ fn go_lower(text: String) String:
 
 	return out
 
-fn is_html_whitespace(b: Int) Bool:
+fn is_html_whitespace(b Int) Bool:
 	return is_space(b)
 
 // Whether `pos` is the start of a UTF-8 scalar (or the end) in `b`.
-fn valid_boundary(b: Bytes, pos: Int) Bool:
+fn valid_boundary(b Bytes, pos Int) Bool:
 	if pos >= b.length(): return true
 	return b.get(pos).to_int() < 128 or b.get(pos).to_int() >= 192
 
@@ -3699,1261 +3699,1261 @@ A_WBR := 365
 A_XMP := 369
 
 // Atom for a lower-case name packed as length then up to six bytes, or 0.
-fn atom_short(key: Int) Int:
+fn atom_short(key Int) Int:
 	match key:
-		353: return 1
-		18813706866: return 2
-		1795929357512820: return 3
-		1795929642987374: return 7
-		5915988813678: return 9
-		56716404: return 13
-		1795985410647412: return 16
-		18814756193: return 17
-		156019: return 19
-		5916106253413: return 20
-		5916107304547: return 21
-		5916139481455: return 22
-		354: return 26
-		18830422885: return 27
-		56779881: return 29
-		56779887: return 30
-		56781159: return 32
-		5920283782763: return 33
-		18831336569: return 35
-		156274: return 36
-		1797106464747374: return 37
-		1798119976493427: return 38
-		1798137156232562: return 40
-		18847724645: return 44
-		5924578227059: return 45
-		18848113765: return 46
-		56848236: return 47
-		5924629278578: return 49
-		18848115827: return 50
-		1798180122551411: return 57
-		18863977569: return 59
-		156772: return 62
-		5928756077938: return 64
-		56911212: return 65
-		18864239459: return 66
-		56911470: return 68
-		1799253629103975: return 69
-		56912242: return 70
-		56912246: return 73
-		156780: return 74
-		156788: return 78
-		157037: return 79
-		5933185000804: return 80
-		18897527653: return 82
-		1801452753613413: return 85
-		18898447988: return 86
-		1801478657566066: return 87
-		57044850: return 88
-		18898449005: return 91
-		5937563790693: return 97
-		157745: return 99
-		157746: return 100
-		157747: return 101
-		157748: return 102
-		157749: return 103
-		157750: return 104
-		18931343716: return 105
-		1803634495219058: return 106
-		1803634629634164: return 108
-		1803643371091312: return 109
-		1803651725419886: return 110
-		18931607400: return 111
-		157810: return 112
-		18932196710: return 113
-		18932329836: return 115
-		361: return 117
-		18947993454: return 118
-		158052: return 119
-		1804738586832229: return 120
-		5950364804965: return 121
-		57240935: return 122
-		5950382568820: return 123
-		57241203: return 125
-		158067: return 127
-		5950466253168: return 129
-		1804798499055972: return 130
-		57369188: return 135
-		1806933432952174: return 136
-		18981940836: return 138
-		5963048445292: return 139
-		18998193767: return 140
-		1808032642461284: return 141
-		158825: return 142
-		18998718059: return 143
-		18998719348: return 144
-		18999111536: return 146
-		57438071: return 147
-		19014969710: return 148
-		57500016: return 151
-		19014972011: return 152
-		19014972520: return 154
-		57500024: return 155
-		5967410653537: return 157
-		19015233141: return 159
-		19015234657: return 161
-		5967411701106: return 162
-		1809132372389732: return 163
-		1809140829220968: return 164
-		159081: return 165
-		57502062: return 166
-		159086: return 168
-		159087: return 169
-		159091: return 170
-		5967662381172: return 171
-		5967680136548: return 173
-		19031747941: return 174
-		57565558: return 175
-		19032662642: return 176
-		5971874046821: return 180
-		1811318342771572: return 183
-		159596: return 184
-		1811369748624754: return 192
-		1811369765597305: return 200
-		5976151520628: return 202
-		1811369782567271: return 204
-		1811369782570864: return 211
-		1811369916588388: return 224
-		1811369983500665: return 245
-		1811370033573751: return 258
-		1811370034033268: return 259
-		19049506158: return 271
-		1811378640351086: return 274
-		1811400115647860: return 275
-		368: return 276
-		5980229362029: return 277
-		19065826919: return 280
-		1812473840952690: return 284
-		57700965: return 285
-		1812486658289780: return 288
-		1812499325020515: return 289
-		369: return 290
-		160354: return 292
-		57828716: return 295
-		19099776883: return 298
-		160368: return 300
-		160372: return 301
-		57832547: return 302
-		19100164729: return 303
-		371: return 304
-		19115634032: return 305
-		5993147625573: return 307
-		1815720768857444: return 308
-		1815720818733172: return 309
-		1815729124041576: return 311
-		1815729307738996: return 313
-		5993230594149: return 315
-		19116161637: return 316
-		5993249006963: return 317
-		19116355444: return 318
-		5993314479212: return 319
-		1815772359058788: return 321
-		1815772409258853: return 322
-		1815776367699314: return 323
-		19116613998: return 324
-		57897571: return 326
-		1815784991256419: return 327
-		1815784992236916: return 329
-		5993431921268: return 330
-		19116877168: return 331
-		1815793833175909: return 332
-		1815793833569895: return 333
-		5993433492581: return 334
-		57898338: return 335
-		57898352: return 337
-		57898599: return 338
-		1815815325508973: return 339
-		5997408185445: return 341
-		1816811740292468: return 342
-		5997425812601: return 343
-		160868: return 344
-		5997492924276: return 347
-		160872: return 348
-		5997525819748: return 349
-		19132935525: return 350
-		5997543582821: return 351
-		160882: return 352
-		5997693330283: return 353
-		160884: return 355
-		19133984869: return 356
-		373: return 358
-		161132: return 359
-		1817988343619952: return 361
-		6005998777701: return 362
-		58089842: return 363
-		6006132467055: return 364
-		58155634: return 365
-		6010427438184: return 366
-		19183853936: return 368
-		58223984: return 369
-		_: return 0
+		353 => return 1
+		18813706866 => return 2
+		1795929357512820 => return 3
+		1795929642987374 => return 7
+		5915988813678 => return 9
+		56716404 => return 13
+		1795985410647412 => return 16
+		18814756193 => return 17
+		156019 => return 19
+		5916106253413 => return 20
+		5916107304547 => return 21
+		5916139481455 => return 22
+		354 => return 26
+		18830422885 => return 27
+		56779881 => return 29
+		56779887 => return 30
+		56781159 => return 32
+		5920283782763 => return 33
+		18831336569 => return 35
+		156274 => return 36
+		1797106464747374 => return 37
+		1798119976493427 => return 38
+		1798137156232562 => return 40
+		18847724645 => return 44
+		5924578227059 => return 45
+		18848113765 => return 46
+		56848236 => return 47
+		5924629278578 => return 49
+		18848115827 => return 50
+		1798180122551411 => return 57
+		18863977569 => return 59
+		156772 => return 62
+		5928756077938 => return 64
+		56911212 => return 65
+		18864239459 => return 66
+		56911470 => return 68
+		1799253629103975 => return 69
+		56912242 => return 70
+		56912246 => return 73
+		156780 => return 74
+		156788 => return 78
+		157037 => return 79
+		5933185000804 => return 80
+		18897527653 => return 82
+		1801452753613413 => return 85
+		18898447988 => return 86
+		1801478657566066 => return 87
+		57044850 => return 88
+		18898449005 => return 91
+		5937563790693 => return 97
+		157745 => return 99
+		157746 => return 100
+		157747 => return 101
+		157748 => return 102
+		157749 => return 103
+		157750 => return 104
+		18931343716 => return 105
+		1803634495219058 => return 106
+		1803634629634164 => return 108
+		1803643371091312 => return 109
+		1803651725419886 => return 110
+		18931607400 => return 111
+		157810 => return 112
+		18932196710 => return 113
+		18932329836 => return 115
+		361 => return 117
+		18947993454 => return 118
+		158052 => return 119
+		1804738586832229 => return 120
+		5950364804965 => return 121
+		57240935 => return 122
+		5950382568820 => return 123
+		57241203 => return 125
+		158067 => return 127
+		5950466253168 => return 129
+		1804798499055972 => return 130
+		57369188 => return 135
+		1806933432952174 => return 136
+		18981940836 => return 138
+		5963048445292 => return 139
+		18998193767 => return 140
+		1808032642461284 => return 141
+		158825 => return 142
+		18998718059 => return 143
+		18998719348 => return 144
+		18999111536 => return 146
+		57438071 => return 147
+		19014969710 => return 148
+		57500016 => return 151
+		19014972011 => return 152
+		19014972520 => return 154
+		57500024 => return 155
+		5967410653537 => return 157
+		19015233141 => return 159
+		19015234657 => return 161
+		5967411701106 => return 162
+		1809132372389732 => return 163
+		1809140829220968 => return 164
+		159081 => return 165
+		57502062 => return 166
+		159086 => return 168
+		159087 => return 169
+		159091 => return 170
+		5967662381172 => return 171
+		5967680136548 => return 173
+		19031747941 => return 174
+		57565558 => return 175
+		19032662642 => return 176
+		5971874046821 => return 180
+		1811318342771572 => return 183
+		159596 => return 184
+		1811369748624754 => return 192
+		1811369765597305 => return 200
+		5976151520628 => return 202
+		1811369782567271 => return 204
+		1811369782570864 => return 211
+		1811369916588388 => return 224
+		1811369983500665 => return 245
+		1811370033573751 => return 258
+		1811370034033268 => return 259
+		19049506158 => return 271
+		1811378640351086 => return 274
+		1811400115647860 => return 275
+		368 => return 276
+		5980229362029 => return 277
+		19065826919 => return 280
+		1812473840952690 => return 284
+		57700965 => return 285
+		1812486658289780 => return 288
+		1812499325020515 => return 289
+		369 => return 290
+		160354 => return 292
+		57828716 => return 295
+		19099776883 => return 298
+		160368 => return 300
+		160372 => return 301
+		57832547 => return 302
+		19100164729 => return 303
+		371 => return 304
+		19115634032 => return 305
+		5993147625573 => return 307
+		1815720768857444 => return 308
+		1815720818733172 => return 309
+		1815729124041576 => return 311
+		1815729307738996 => return 313
+		5993230594149 => return 315
+		19116161637 => return 316
+		5993249006963 => return 317
+		19116355444 => return 318
+		5993314479212 => return 319
+		1815772359058788 => return 321
+		1815772409258853 => return 322
+		1815776367699314 => return 323
+		19116613998 => return 324
+		57897571 => return 326
+		1815784991256419 => return 327
+		1815784992236916 => return 329
+		5993431921268 => return 330
+		19116877168 => return 331
+		1815793833175909 => return 332
+		1815793833569895 => return 333
+		5993433492581 => return 334
+		57898338 => return 335
+		57898352 => return 337
+		57898599 => return 338
+		1815815325508973 => return 339
+		5997408185445 => return 341
+		1816811740292468 => return 342
+		5997425812601 => return 343
+		160868 => return 344
+		5997492924276 => return 347
+		160872 => return 348
+		5997525819748 => return 349
+		19132935525 => return 350
+		5997543582821 => return 351
+		160882 => return 352
+		5997693330283 => return 353
+		160884 => return 355
+		19133984869 => return 356
+		373 => return 358
+		161132 => return 359
+		1817988343619952 => return 361
+		6005998777701 => return 362
+		58089842 => return 363
+		6006132467055 => return 364
+		58155634 => return 365
+		6010427438184 => return 366
+		19183853936 => return 368
+		58223984 => return 369
+		_ => return 0
 
 // Atom for a longer lower-case name from its hash; the caller verifies the name.
-fn atom_long(hash: Int) Int:
+fn atom_long(hash Int) Int:
 	match hash:
-		75709808377100: return 4
-		212666035018592: return 5
-		229459127764030: return 6
-		229459150394347: return 8
-		1628798302871: return 10
-		143892782447883: return 11
-		200171877114755: return 12
-		278531945027264: return 14
-		86634213961918: return 15
-		229459716938729: return 18
-		194029230122231: return 23
-		213455497732670: return 24
-		253825146487604: return 25
-		253841884220919: return 28
-		229460576966743: return 31
-		40682423108254: return 34
-		229461630231251: return 39
-		215689626680520: return 41
-		229461886328879: return 42
-		229461890524780: return 43
-		253902312071024: return 48
-		229462173354293: return 51
-		229462174308676: return 52
-		229462175750528: return 53
-		261718652188186: return 54
-		197894262714719: return 55
-		253902405758489: return 56
-		57035255204631: return 58
-		253927155707835: return 60
-		253927160738802: return 61
-		229463065711754: return 63
-		229463082301579: return 67
-		229463236929797: return 71
-		253937447959613: return 72
-		253945369088477: return 75
-		217522017965310: return 76
-		253948933284630: return 77
-		229464706527773: return 81
-		254022150074709: return 83
-		221767794735049: return 84
-		153391350516134: return 90
-		230687948579959: return 92
-		12883508557841: return 93
-		230688420575418: return 94
-		106729841165280: return 95
-		230688689706208: return 96
-		254033617966716: return 98
-		229468225744609: return 107
-		254119003325036: return 114
-		49155062290748: return 116
-		224403523061754: return 124
-		224408047524068: return 126
-		229470074953305: return 128
-		254164213167701: return 131
-		229470109324305: return 132
-		224644712943918: return 133
-		254164213319094: return 134
-		229472129207312: return 137
-		229473570083839: return 145
-		254143013095176: return 149
-		254310496149660: return 150
-		229474547187701: return 153
-		229485079540173: return 156
-		259427457105554: return 158
-		254315676376265: return 160
-		229813112404299: return 167
-		254336260402929: return 172
-		229476370969759: return 177
-		254370892562912: return 178
-		254371163069640: return 179
-		254371384141143: return 181
-		39185283551852: return 182
-		229477618177946: return 185
-		81086033540641: return 186
-		107182834625652: return 187
-		77570281223870: return 188
-		83321664197270: return 189
-		201092964985602: return 190
-		162143571221432: return 191
-		254412082427368: return 193
-		232824395968682: return 194
-		204547524255019: return 195
-		254412090273672: return 196
-		229477620902120: return 197
-		229477620909176: return 198
-		237910277504316: return 199
-		219128402439845: return 201
-		83424512010074: return 203
-		232826336990711: return 205
-		220401943314750: return 206
-		83444749516922: return 207
-		220401951272621: return 208
-		83444749873980: return 209
-		220401960113006: return 210
-		2319281517582: return 212
-		232827451041770: return 213
-		229477623340450: return 214
-		229477623499788: return 215
-		229477624561762: return 216
-		117420063389388: return 217
-		229477628097746: return 218
-		232832662485161: return 219
-		232834896871875: return 220
-		83727239903704: return 221
-		229477630155952: return 222
-		226079766973516: return 223
-		40508520717637: return 225
-		8561555269772: return 226
-		232836551220473: return 227
-		231525256323824: return 228
-		232837473215559: return 229
-		257538629732977: return 230
-		232958064169859: return 231
-		87791747564169: return 232
-		87791755522040: return 233
-		232958064493250: return 234
-		83825238029315: return 235
-		232958064572199: return 236
-		232837866946160: return 237
-		87791768678784: return 238
-		232840079627301: return 239
-		254412567404007: return 240
-		83934448408985: return 241
-		83934448803584: return 242
-		229477635935231: return 243
-		229477635937376: return 244
-		232841600445206: return 246
-		83952898205042: return 247
-		83956719174967: return 248
-		18623698026676: return 249
-		236419199961877: return 250
-		229477638450341: return 251
-		254412674388852: return 252
-		254412711122545: return 253
-		84301604030783: return 254
-		254412713022611: return 255
-		232845205141928: return 256
-		254412713267586: return 257
-		232845787468043: return 260
-		232845804274647: return 261
-		254412731891862: return 262
-		232845848086436: return 263
-		122400320694196: return 264
-		254412764084964: return 265
-		154451805055096: return 266
-		254412802222469: return 267
-		67517188597312: return 268
-		232850219539349: return 269
-		229477644472503: return 270
-		254415337937861: return 272
-		229477719230704: return 273
-		229478424054275: return 278
-		229478716994177: return 279
-		246929790499816: return 281
-		234143297985054: return 282
-		247885514752077: return 283
-		229479071289964: return 286
-		254460343628858: return 287
-		204384815827201: return 291
-		254528239879715: return 293
-		243421917184946: return 294
-		254528885995142: return 296
-		254529063021893: return 297
-		229481558418959: return 299
-		229482290764308: return 306
-		254570868878594: return 310
-		229482434843354: return 312
-		254571289572974: return 314
-		254584456762593: return 320
-		271938799828931: return 325
-		229482943307215: return 328
-		229483072608691: return 336
-		254608355911732: return 340
-		254613960499713: return 345
-		254614395355427: return 346
-		240024844430451: return 354
-		218260403063581: return 357
-		273661053224476: return 360
-		175255844693089: return 367
-		_: return 0
+		75709808377100 => return 4
+		212666035018592 => return 5
+		229459127764030 => return 6
+		229459150394347 => return 8
+		1628798302871 => return 10
+		143892782447883 => return 11
+		200171877114755 => return 12
+		278531945027264 => return 14
+		86634213961918 => return 15
+		229459716938729 => return 18
+		194029230122231 => return 23
+		213455497732670 => return 24
+		253825146487604 => return 25
+		253841884220919 => return 28
+		229460576966743 => return 31
+		40682423108254 => return 34
+		229461630231251 => return 39
+		215689626680520 => return 41
+		229461886328879 => return 42
+		229461890524780 => return 43
+		253902312071024 => return 48
+		229462173354293 => return 51
+		229462174308676 => return 52
+		229462175750528 => return 53
+		261718652188186 => return 54
+		197894262714719 => return 55
+		253902405758489 => return 56
+		57035255204631 => return 58
+		253927155707835 => return 60
+		253927160738802 => return 61
+		229463065711754 => return 63
+		229463082301579 => return 67
+		229463236929797 => return 71
+		253937447959613 => return 72
+		253945369088477 => return 75
+		217522017965310 => return 76
+		253948933284630 => return 77
+		229464706527773 => return 81
+		254022150074709 => return 83
+		221767794735049 => return 84
+		153391350516134 => return 90
+		230687948579959 => return 92
+		12883508557841 => return 93
+		230688420575418 => return 94
+		106729841165280 => return 95
+		230688689706208 => return 96
+		254033617966716 => return 98
+		229468225744609 => return 107
+		254119003325036 => return 114
+		49155062290748 => return 116
+		224403523061754 => return 124
+		224408047524068 => return 126
+		229470074953305 => return 128
+		254164213167701 => return 131
+		229470109324305 => return 132
+		224644712943918 => return 133
+		254164213319094 => return 134
+		229472129207312 => return 137
+		229473570083839 => return 145
+		254143013095176 => return 149
+		254310496149660 => return 150
+		229474547187701 => return 153
+		229485079540173 => return 156
+		259427457105554 => return 158
+		254315676376265 => return 160
+		229813112404299 => return 167
+		254336260402929 => return 172
+		229476370969759 => return 177
+		254370892562912 => return 178
+		254371163069640 => return 179
+		254371384141143 => return 181
+		39185283551852 => return 182
+		229477618177946 => return 185
+		81086033540641 => return 186
+		107182834625652 => return 187
+		77570281223870 => return 188
+		83321664197270 => return 189
+		201092964985602 => return 190
+		162143571221432 => return 191
+		254412082427368 => return 193
+		232824395968682 => return 194
+		204547524255019 => return 195
+		254412090273672 => return 196
+		229477620902120 => return 197
+		229477620909176 => return 198
+		237910277504316 => return 199
+		219128402439845 => return 201
+		83424512010074 => return 203
+		232826336990711 => return 205
+		220401943314750 => return 206
+		83444749516922 => return 207
+		220401951272621 => return 208
+		83444749873980 => return 209
+		220401960113006 => return 210
+		2319281517582 => return 212
+		232827451041770 => return 213
+		229477623340450 => return 214
+		229477623499788 => return 215
+		229477624561762 => return 216
+		117420063389388 => return 217
+		229477628097746 => return 218
+		232832662485161 => return 219
+		232834896871875 => return 220
+		83727239903704 => return 221
+		229477630155952 => return 222
+		226079766973516 => return 223
+		40508520717637 => return 225
+		8561555269772 => return 226
+		232836551220473 => return 227
+		231525256323824 => return 228
+		232837473215559 => return 229
+		257538629732977 => return 230
+		232958064169859 => return 231
+		87791747564169 => return 232
+		87791755522040 => return 233
+		232958064493250 => return 234
+		83825238029315 => return 235
+		232958064572199 => return 236
+		232837866946160 => return 237
+		87791768678784 => return 238
+		232840079627301 => return 239
+		254412567404007 => return 240
+		83934448408985 => return 241
+		83934448803584 => return 242
+		229477635935231 => return 243
+		229477635937376 => return 244
+		232841600445206 => return 246
+		83952898205042 => return 247
+		83956719174967 => return 248
+		18623698026676 => return 249
+		236419199961877 => return 250
+		229477638450341 => return 251
+		254412674388852 => return 252
+		254412711122545 => return 253
+		84301604030783 => return 254
+		254412713022611 => return 255
+		232845205141928 => return 256
+		254412713267586 => return 257
+		232845787468043 => return 260
+		232845804274647 => return 261
+		254412731891862 => return 262
+		232845848086436 => return 263
+		122400320694196 => return 264
+		254412764084964 => return 265
+		154451805055096 => return 266
+		254412802222469 => return 267
+		67517188597312 => return 268
+		232850219539349 => return 269
+		229477644472503 => return 270
+		254415337937861 => return 272
+		229477719230704 => return 273
+		229478424054275 => return 278
+		229478716994177 => return 279
+		246929790499816 => return 281
+		234143297985054 => return 282
+		247885514752077 => return 283
+		229479071289964 => return 286
+		254460343628858 => return 287
+		204384815827201 => return 291
+		254528239879715 => return 293
+		243421917184946 => return 294
+		254528885995142 => return 296
+		254529063021893 => return 297
+		229481558418959 => return 299
+		229482290764308 => return 306
+		254570868878594 => return 310
+		229482434843354 => return 312
+		254571289572974 => return 314
+		254584456762593 => return 320
+		271938799828931 => return 325
+		229482943307215 => return 328
+		229483072608691 => return 336
+		254608355911732 => return 340
+		254613960499713 => return 345
+		254614395355427 => return 346
+		240024844430451 => return 354
+		218260403063581 => return 357
+		273661053224476 => return 360
+		175255844693089 => return 367
+		_ => return 0
 
 // The name of an atom.
-fn atom_name(atom: Int) String:
+fn atom_name(atom Int) String:
 	match atom:
-		1: return "a"
-		2: return "abbr"
-		3: return "accept"
-		4: return "accept-charset"
-		5: return "accesskey"
-		6: return "acronym"
-		7: return "action"
-		8: return "address"
-		9: return "align"
-		10: return "allowfullscreen"
-		11: return "allowpaymentrequest"
-		12: return "allowusermedia"
-		13: return "alt"
-		14: return "annotation"
-		15: return "annotation-xml"
-		16: return "applet"
-		17: return "area"
-		18: return "article"
-		19: return "as"
-		20: return "aside"
-		21: return "async"
-		22: return "audio"
-		23: return "autocomplete"
-		24: return "autofocus"
-		25: return "autoplay"
-		26: return "b"
-		27: return "base"
-		28: return "basefont"
-		29: return "bdi"
-		30: return "bdo"
-		31: return "bgsound"
-		32: return "big"
-		33: return "blink"
-		34: return "blockquote"
-		35: return "body"
-		36: return "br"
-		37: return "button"
-		38: return "canvas"
-		39: return "caption"
-		40: return "center"
-		41: return "challenge"
-		42: return "charset"
-		43: return "checked"
-		44: return "cite"
-		45: return "class"
-		46: return "code"
-		47: return "col"
-		48: return "colgroup"
-		49: return "color"
-		50: return "cols"
-		51: return "colspan"
-		52: return "command"
-		53: return "content"
-		54: return "contenteditable"
-		55: return "contextmenu"
-		56: return "controls"
-		57: return "coords"
-		58: return "crossorigin"
-		59: return "data"
-		60: return "datalist"
-		61: return "datetime"
-		62: return "dd"
-		63: return "default"
-		64: return "defer"
-		65: return "del"
-		66: return "desc"
-		67: return "details"
-		68: return "dfn"
-		69: return "dialog"
-		70: return "dir"
-		71: return "dirname"
-		72: return "disabled"
-		73: return "div"
-		74: return "dl"
-		75: return "download"
-		76: return "draggable"
-		77: return "dropzone"
-		78: return "dt"
-		79: return "em"
-		80: return "embed"
-		81: return "enctype"
-		82: return "face"
-		83: return "fieldset"
-		84: return "figcaption"
-		85: return "figure"
-		86: return "font"
-		87: return "footer"
-		88: return "for"
-		89: return "foreignObject"
-		90: return "foreignobject"
-		91: return "form"
-		92: return "formaction"
-		93: return "formenctype"
-		94: return "formmethod"
-		95: return "formnovalidate"
-		96: return "formtarget"
-		97: return "frame"
-		98: return "frameset"
-		99: return "h1"
-		100: return "h2"
-		101: return "h3"
-		102: return "h4"
-		103: return "h5"
-		104: return "h6"
-		105: return "head"
-		106: return "header"
-		107: return "headers"
-		108: return "height"
-		109: return "hgroup"
-		110: return "hidden"
-		111: return "high"
-		112: return "hr"
-		113: return "href"
-		114: return "hreflang"
-		115: return "html"
-		116: return "http-equiv"
-		117: return "i"
-		118: return "icon"
-		119: return "id"
-		120: return "iframe"
-		121: return "image"
-		122: return "img"
-		123: return "input"
-		124: return "inputmode"
-		125: return "ins"
-		126: return "integrity"
-		127: return "is"
-		128: return "isindex"
-		129: return "ismap"
-		130: return "itemid"
-		131: return "itemprop"
-		132: return "itemref"
-		133: return "itemscope"
-		134: return "itemtype"
-		135: return "kbd"
-		136: return "keygen"
-		137: return "keytype"
-		138: return "kind"
-		139: return "label"
-		140: return "lang"
-		141: return "legend"
-		142: return "li"
-		143: return "link"
-		144: return "list"
-		145: return "listing"
-		146: return "loop"
-		147: return "low"
-		148: return "main"
-		149: return "malignmark"
-		150: return "manifest"
-		151: return "map"
-		152: return "mark"
-		153: return "marquee"
-		154: return "math"
-		155: return "max"
-		156: return "maxlength"
-		157: return "media"
-		158: return "mediagroup"
-		159: return "menu"
-		160: return "menuitem"
-		161: return "meta"
-		162: return "meter"
-		163: return "method"
-		164: return "mglyph"
-		165: return "mi"
-		166: return "min"
-		167: return "minlength"
-		168: return "mn"
-		169: return "mo"
-		170: return "ms"
-		171: return "mtext"
-		172: return "multiple"
-		173: return "muted"
-		174: return "name"
-		175: return "nav"
-		176: return "nobr"
-		177: return "noembed"
-		178: return "noframes"
-		179: return "nomodule"
-		180: return "nonce"
-		181: return "noscript"
-		182: return "novalidate"
-		183: return "object"
-		184: return "ol"
-		185: return "onabort"
-		186: return "onafterprint"
-		187: return "onautocomplete"
-		188: return "onautocompleteerror"
-		189: return "onauxclick"
-		190: return "onbeforeprint"
-		191: return "onbeforeunload"
-		192: return "onblur"
-		193: return "oncancel"
-		194: return "oncanplay"
-		195: return "oncanplaythrough"
-		196: return "onchange"
-		197: return "onclick"
-		198: return "onclose"
-		199: return "oncontextmenu"
-		200: return "oncopy"
-		201: return "oncuechange"
-		202: return "oncut"
-		203: return "ondblclick"
-		204: return "ondrag"
-		205: return "ondragend"
-		206: return "ondragenter"
-		207: return "ondragexit"
-		208: return "ondragleave"
-		209: return "ondragover"
-		210: return "ondragstart"
-		211: return "ondrop"
-		212: return "ondurationchange"
-		213: return "onemptied"
-		214: return "onended"
-		215: return "onerror"
-		216: return "onfocus"
-		217: return "onhashchange"
-		218: return "oninput"
-		219: return "oninvalid"
-		220: return "onkeydown"
-		221: return "onkeypress"
-		222: return "onkeyup"
-		223: return "onlanguagechange"
-		224: return "onload"
-		225: return "onloadeddata"
-		226: return "onloadedmetadata"
-		227: return "onloadend"
-		228: return "onloadstart"
-		229: return "onmessage"
-		230: return "onmessageerror"
-		231: return "onmousedown"
-		232: return "onmouseenter"
-		233: return "onmouseleave"
-		234: return "onmousemove"
-		235: return "onmouseout"
-		236: return "onmouseover"
-		237: return "onmouseup"
-		238: return "onmousewheel"
-		239: return "onoffline"
-		240: return "ononline"
-		241: return "onpagehide"
-		242: return "onpageshow"
-		243: return "onpaste"
-		244: return "onpause"
-		245: return "onplay"
-		246: return "onplaying"
-		247: return "onpopstate"
-		248: return "onprogress"
-		249: return "onratechange"
-		250: return "onrejectionhandled"
-		251: return "onreset"
-		252: return "onresize"
-		253: return "onscroll"
-		254: return "onsecuritypolicyviolation"
-		255: return "onseeked"
-		256: return "onseeking"
-		257: return "onselect"
-		258: return "onshow"
-		259: return "onsort"
-		260: return "onstalled"
-		261: return "onstorage"
-		262: return "onsubmit"
-		263: return "onsuspend"
-		264: return "ontimeupdate"
-		265: return "ontoggle"
-		266: return "onunhandledrejection"
-		267: return "onunload"
-		268: return "onvolumechange"
-		269: return "onwaiting"
-		270: return "onwheel"
-		271: return "open"
-		272: return "optgroup"
-		273: return "optimum"
-		274: return "option"
-		275: return "output"
-		276: return "p"
-		277: return "param"
-		278: return "pattern"
-		279: return "picture"
-		280: return "ping"
-		281: return "placeholder"
-		282: return "plaintext"
-		283: return "playsinline"
-		284: return "poster"
-		285: return "pre"
-		286: return "preload"
-		287: return "progress"
-		288: return "prompt"
-		289: return "public"
-		290: return "q"
-		291: return "radiogroup"
-		292: return "rb"
-		293: return "readonly"
-		294: return "referrerpolicy"
-		295: return "rel"
-		296: return "required"
-		297: return "reversed"
-		298: return "rows"
-		299: return "rowspan"
-		300: return "rp"
-		301: return "rt"
-		302: return "rtc"
-		303: return "ruby"
-		304: return "s"
-		305: return "samp"
-		306: return "sandbox"
-		307: return "scope"
-		308: return "scoped"
-		309: return "script"
-		310: return "seamless"
-		311: return "search"
-		312: return "section"
-		313: return "select"
-		314: return "selected"
-		315: return "shape"
-		316: return "size"
-		317: return "sizes"
-		318: return "slot"
-		319: return "small"
-		320: return "sortable"
-		321: return "sorted"
-		322: return "source"
-		323: return "spacer"
-		324: return "span"
-		325: return "spellcheck"
-		326: return "src"
-		327: return "srcdoc"
-		328: return "srclang"
-		329: return "srcset"
-		330: return "start"
-		331: return "step"
-		332: return "strike"
-		333: return "strong"
-		334: return "style"
-		335: return "sub"
-		336: return "summary"
-		337: return "sup"
-		338: return "svg"
-		339: return "system"
-		340: return "tabindex"
-		341: return "table"
-		342: return "target"
-		343: return "tbody"
-		344: return "td"
-		345: return "template"
-		346: return "textarea"
-		347: return "tfoot"
-		348: return "th"
-		349: return "thead"
-		350: return "time"
-		351: return "title"
-		352: return "tr"
-		353: return "track"
-		354: return "translate"
-		355: return "tt"
-		356: return "type"
-		357: return "typemustmatch"
-		358: return "u"
-		359: return "ul"
-		360: return "updateviacache"
-		361: return "usemap"
-		362: return "value"
-		363: return "var"
-		364: return "video"
-		365: return "wbr"
-		366: return "width"
-		367: return "workertype"
-		368: return "wrap"
-		369: return "xmp"
-		_: return ""
+		1 => return "a"
+		2 => return "abbr"
+		3 => return "accept"
+		4 => return "accept-charset"
+		5 => return "accesskey"
+		6 => return "acronym"
+		7 => return "action"
+		8 => return "address"
+		9 => return "align"
+		10 => return "allowfullscreen"
+		11 => return "allowpaymentrequest"
+		12 => return "allowusermedia"
+		13 => return "alt"
+		14 => return "annotation"
+		15 => return "annotation-xml"
+		16 => return "applet"
+		17 => return "area"
+		18 => return "article"
+		19 => return "as"
+		20 => return "aside"
+		21 => return "async"
+		22 => return "audio"
+		23 => return "autocomplete"
+		24 => return "autofocus"
+		25 => return "autoplay"
+		26 => return "b"
+		27 => return "base"
+		28 => return "basefont"
+		29 => return "bdi"
+		30 => return "bdo"
+		31 => return "bgsound"
+		32 => return "big"
+		33 => return "blink"
+		34 => return "blockquote"
+		35 => return "body"
+		36 => return "br"
+		37 => return "button"
+		38 => return "canvas"
+		39 => return "caption"
+		40 => return "center"
+		41 => return "challenge"
+		42 => return "charset"
+		43 => return "checked"
+		44 => return "cite"
+		45 => return "class"
+		46 => return "code"
+		47 => return "col"
+		48 => return "colgroup"
+		49 => return "color"
+		50 => return "cols"
+		51 => return "colspan"
+		52 => return "command"
+		53 => return "content"
+		54 => return "contenteditable"
+		55 => return "contextmenu"
+		56 => return "controls"
+		57 => return "coords"
+		58 => return "crossorigin"
+		59 => return "data"
+		60 => return "datalist"
+		61 => return "datetime"
+		62 => return "dd"
+		63 => return "default"
+		64 => return "defer"
+		65 => return "del"
+		66 => return "desc"
+		67 => return "details"
+		68 => return "dfn"
+		69 => return "dialog"
+		70 => return "dir"
+		71 => return "dirname"
+		72 => return "disabled"
+		73 => return "div"
+		74 => return "dl"
+		75 => return "download"
+		76 => return "draggable"
+		77 => return "dropzone"
+		78 => return "dt"
+		79 => return "em"
+		80 => return "embed"
+		81 => return "enctype"
+		82 => return "face"
+		83 => return "fieldset"
+		84 => return "figcaption"
+		85 => return "figure"
+		86 => return "font"
+		87 => return "footer"
+		88 => return "for"
+		89 => return "foreignObject"
+		90 => return "foreignobject"
+		91 => return "form"
+		92 => return "formaction"
+		93 => return "formenctype"
+		94 => return "formmethod"
+		95 => return "formnovalidate"
+		96 => return "formtarget"
+		97 => return "frame"
+		98 => return "frameset"
+		99 => return "h1"
+		100 => return "h2"
+		101 => return "h3"
+		102 => return "h4"
+		103 => return "h5"
+		104 => return "h6"
+		105 => return "head"
+		106 => return "header"
+		107 => return "headers"
+		108 => return "height"
+		109 => return "hgroup"
+		110 => return "hidden"
+		111 => return "high"
+		112 => return "hr"
+		113 => return "href"
+		114 => return "hreflang"
+		115 => return "html"
+		116 => return "http-equiv"
+		117 => return "i"
+		118 => return "icon"
+		119 => return "id"
+		120 => return "iframe"
+		121 => return "image"
+		122 => return "img"
+		123 => return "input"
+		124 => return "inputmode"
+		125 => return "ins"
+		126 => return "integrity"
+		127 => return "is"
+		128 => return "isindex"
+		129 => return "ismap"
+		130 => return "itemid"
+		131 => return "itemprop"
+		132 => return "itemref"
+		133 => return "itemscope"
+		134 => return "itemtype"
+		135 => return "kbd"
+		136 => return "keygen"
+		137 => return "keytype"
+		138 => return "kind"
+		139 => return "label"
+		140 => return "lang"
+		141 => return "legend"
+		142 => return "li"
+		143 => return "link"
+		144 => return "list"
+		145 => return "listing"
+		146 => return "loop"
+		147 => return "low"
+		148 => return "main"
+		149 => return "malignmark"
+		150 => return "manifest"
+		151 => return "map"
+		152 => return "mark"
+		153 => return "marquee"
+		154 => return "math"
+		155 => return "max"
+		156 => return "maxlength"
+		157 => return "media"
+		158 => return "mediagroup"
+		159 => return "menu"
+		160 => return "menuitem"
+		161 => return "meta"
+		162 => return "meter"
+		163 => return "method"
+		164 => return "mglyph"
+		165 => return "mi"
+		166 => return "min"
+		167 => return "minlength"
+		168 => return "mn"
+		169 => return "mo"
+		170 => return "ms"
+		171 => return "mtext"
+		172 => return "multiple"
+		173 => return "muted"
+		174 => return "name"
+		175 => return "nav"
+		176 => return "nobr"
+		177 => return "noembed"
+		178 => return "noframes"
+		179 => return "nomodule"
+		180 => return "nonce"
+		181 => return "noscript"
+		182 => return "novalidate"
+		183 => return "object"
+		184 => return "ol"
+		185 => return "onabort"
+		186 => return "onafterprint"
+		187 => return "onautocomplete"
+		188 => return "onautocompleteerror"
+		189 => return "onauxclick"
+		190 => return "onbeforeprint"
+		191 => return "onbeforeunload"
+		192 => return "onblur"
+		193 => return "oncancel"
+		194 => return "oncanplay"
+		195 => return "oncanplaythrough"
+		196 => return "onchange"
+		197 => return "onclick"
+		198 => return "onclose"
+		199 => return "oncontextmenu"
+		200 => return "oncopy"
+		201 => return "oncuechange"
+		202 => return "oncut"
+		203 => return "ondblclick"
+		204 => return "ondrag"
+		205 => return "ondragend"
+		206 => return "ondragenter"
+		207 => return "ondragexit"
+		208 => return "ondragleave"
+		209 => return "ondragover"
+		210 => return "ondragstart"
+		211 => return "ondrop"
+		212 => return "ondurationchange"
+		213 => return "onemptied"
+		214 => return "onended"
+		215 => return "onerror"
+		216 => return "onfocus"
+		217 => return "onhashchange"
+		218 => return "oninput"
+		219 => return "oninvalid"
+		220 => return "onkeydown"
+		221 => return "onkeypress"
+		222 => return "onkeyup"
+		223 => return "onlanguagechange"
+		224 => return "onload"
+		225 => return "onloadeddata"
+		226 => return "onloadedmetadata"
+		227 => return "onloadend"
+		228 => return "onloadstart"
+		229 => return "onmessage"
+		230 => return "onmessageerror"
+		231 => return "onmousedown"
+		232 => return "onmouseenter"
+		233 => return "onmouseleave"
+		234 => return "onmousemove"
+		235 => return "onmouseout"
+		236 => return "onmouseover"
+		237 => return "onmouseup"
+		238 => return "onmousewheel"
+		239 => return "onoffline"
+		240 => return "ononline"
+		241 => return "onpagehide"
+		242 => return "onpageshow"
+		243 => return "onpaste"
+		244 => return "onpause"
+		245 => return "onplay"
+		246 => return "onplaying"
+		247 => return "onpopstate"
+		248 => return "onprogress"
+		249 => return "onratechange"
+		250 => return "onrejectionhandled"
+		251 => return "onreset"
+		252 => return "onresize"
+		253 => return "onscroll"
+		254 => return "onsecuritypolicyviolation"
+		255 => return "onseeked"
+		256 => return "onseeking"
+		257 => return "onselect"
+		258 => return "onshow"
+		259 => return "onsort"
+		260 => return "onstalled"
+		261 => return "onstorage"
+		262 => return "onsubmit"
+		263 => return "onsuspend"
+		264 => return "ontimeupdate"
+		265 => return "ontoggle"
+		266 => return "onunhandledrejection"
+		267 => return "onunload"
+		268 => return "onvolumechange"
+		269 => return "onwaiting"
+		270 => return "onwheel"
+		271 => return "open"
+		272 => return "optgroup"
+		273 => return "optimum"
+		274 => return "option"
+		275 => return "output"
+		276 => return "p"
+		277 => return "param"
+		278 => return "pattern"
+		279 => return "picture"
+		280 => return "ping"
+		281 => return "placeholder"
+		282 => return "plaintext"
+		283 => return "playsinline"
+		284 => return "poster"
+		285 => return "pre"
+		286 => return "preload"
+		287 => return "progress"
+		288 => return "prompt"
+		289 => return "public"
+		290 => return "q"
+		291 => return "radiogroup"
+		292 => return "rb"
+		293 => return "readonly"
+		294 => return "referrerpolicy"
+		295 => return "rel"
+		296 => return "required"
+		297 => return "reversed"
+		298 => return "rows"
+		299 => return "rowspan"
+		300 => return "rp"
+		301 => return "rt"
+		302 => return "rtc"
+		303 => return "ruby"
+		304 => return "s"
+		305 => return "samp"
+		306 => return "sandbox"
+		307 => return "scope"
+		308 => return "scoped"
+		309 => return "script"
+		310 => return "seamless"
+		311 => return "search"
+		312 => return "section"
+		313 => return "select"
+		314 => return "selected"
+		315 => return "shape"
+		316 => return "size"
+		317 => return "sizes"
+		318 => return "slot"
+		319 => return "small"
+		320 => return "sortable"
+		321 => return "sorted"
+		322 => return "source"
+		323 => return "spacer"
+		324 => return "span"
+		325 => return "spellcheck"
+		326 => return "src"
+		327 => return "srcdoc"
+		328 => return "srclang"
+		329 => return "srcset"
+		330 => return "start"
+		331 => return "step"
+		332 => return "strike"
+		333 => return "strong"
+		334 => return "style"
+		335 => return "sub"
+		336 => return "summary"
+		337 => return "sup"
+		338 => return "svg"
+		339 => return "system"
+		340 => return "tabindex"
+		341 => return "table"
+		342 => return "target"
+		343 => return "tbody"
+		344 => return "td"
+		345 => return "template"
+		346 => return "textarea"
+		347 => return "tfoot"
+		348 => return "th"
+		349 => return "thead"
+		350 => return "time"
+		351 => return "title"
+		352 => return "tr"
+		353 => return "track"
+		354 => return "translate"
+		355 => return "tt"
+		356 => return "type"
+		357 => return "typemustmatch"
+		358 => return "u"
+		359 => return "ul"
+		360 => return "updateviacache"
+		361 => return "usemap"
+		362 => return "value"
+		363 => return "var"
+		364 => return "video"
+		365 => return "wbr"
+		366 => return "width"
+		367 => return "workertype"
+		368 => return "wrap"
+		369 => return "xmp"
+		_ => return ""
 
 // HTML special elements (by atom).
-fn is_special_atom(atom: Int) Bool:
+fn is_special_atom(atom Int) Bool:
 	match atom:
-		8: return true
-		16: return true
-		17: return true
-		18: return true
-		20: return true
-		27: return true
-		28: return true
-		31: return true
-		34: return true
-		35: return true
-		36: return true
-		37: return true
-		39: return true
-		40: return true
-		47: return true
-		48: return true
-		62: return true
-		67: return true
-		70: return true
-		73: return true
-		74: return true
-		78: return true
-		80: return true
-		83: return true
-		84: return true
-		85: return true
-		87: return true
-		91: return true
-		97: return true
-		98: return true
-		99: return true
-		100: return true
-		101: return true
-		102: return true
-		103: return true
-		104: return true
-		105: return true
-		106: return true
-		109: return true
-		112: return true
-		115: return true
-		120: return true
-		122: return true
-		123: return true
-		136: return true
-		142: return true
-		143: return true
-		145: return true
-		148: return true
-		153: return true
-		159: return true
-		161: return true
-		175: return true
-		177: return true
-		178: return true
-		181: return true
-		183: return true
-		184: return true
-		276: return true
-		277: return true
-		282: return true
-		285: return true
-		309: return true
-		312: return true
-		313: return true
-		322: return true
-		334: return true
-		336: return true
-		341: return true
-		343: return true
-		344: return true
-		345: return true
-		346: return true
-		347: return true
-		348: return true
-		349: return true
-		351: return true
-		352: return true
-		353: return true
-		359: return true
-		365: return true
-		369: return true
-		_: return false
+		8 => return true
+		16 => return true
+		17 => return true
+		18 => return true
+		20 => return true
+		27 => return true
+		28 => return true
+		31 => return true
+		34 => return true
+		35 => return true
+		36 => return true
+		37 => return true
+		39 => return true
+		40 => return true
+		47 => return true
+		48 => return true
+		62 => return true
+		67 => return true
+		70 => return true
+		73 => return true
+		74 => return true
+		78 => return true
+		80 => return true
+		83 => return true
+		84 => return true
+		85 => return true
+		87 => return true
+		91 => return true
+		97 => return true
+		98 => return true
+		99 => return true
+		100 => return true
+		101 => return true
+		102 => return true
+		103 => return true
+		104 => return true
+		105 => return true
+		106 => return true
+		109 => return true
+		112 => return true
+		115 => return true
+		120 => return true
+		122 => return true
+		123 => return true
+		136 => return true
+		142 => return true
+		143 => return true
+		145 => return true
+		148 => return true
+		153 => return true
+		159 => return true
+		161 => return true
+		175 => return true
+		177 => return true
+		178 => return true
+		181 => return true
+		183 => return true
+		184 => return true
+		276 => return true
+		277 => return true
+		282 => return true
+		285 => return true
+		309 => return true
+		312 => return true
+		313 => return true
+		322 => return true
+		334 => return true
+		336 => return true
+		341 => return true
+		343 => return true
+		344 => return true
+		345 => return true
+		346 => return true
+		347 => return true
+		348 => return true
+		349 => return true
+		351 => return true
+		352 => return true
+		353 => return true
+		359 => return true
+		365 => return true
+		369 => return true
+		_ => return false
 
 // Elements whose end tags are implied.
-fn is_implied_end(atom: Int) Bool:
+fn is_implied_end(atom Int) Bool:
 	match atom:
-		62: return true
-		78: return true
-		142: return true
-		272: return true
-		274: return true
-		276: return true
-		292: return true
-		300: return true
-		301: return true
-		302: return true
-		_: return false
+		62 => return true
+		78 => return true
+		142 => return true
+		272 => return true
+		274 => return true
+		276 => return true
+		292 => return true
+		300 => return true
+		301 => return true
+		302 => return true
+		_ => return false
 
 // HTML default-scope boundaries.
-fn is_scope_stop(atom: Int) Bool:
+fn is_scope_stop(atom Int) Bool:
 	match atom:
-		16: return true
-		39: return true
-		115: return true
-		341: return true
-		344: return true
-		348: return true
-		153: return true
-		183: return true
-		345: return true
-		_: return false
+		16 => return true
+		39 => return true
+		115 => return true
+		341 => return true
+		344 => return true
+		348 => return true
+		153 => return true
+		183 => return true
+		345 => return true
+		_ => return false
 
 // MathML default-scope boundaries.
-fn is_math_stop(atom: Int) Bool:
+fn is_math_stop(atom Int) Bool:
 	match atom:
-		15: return true
-		165: return true
-		168: return true
-		169: return true
-		170: return true
-		171: return true
-		_: return false
+		15 => return true
+		165 => return true
+		168 => return true
+		169 => return true
+		170 => return true
+		171 => return true
+		_ => return false
 
 // SVG default-scope boundaries.
-fn is_svg_stop(atom: Int) Bool:
+fn is_svg_stop(atom Int) Bool:
 	match atom:
-		66: return true
-		89: return true
-		351: return true
-		_: return false
+		66 => return true
+		89 => return true
+		351 => return true
+		_ => return false
 
 // Table, section and row elements.
-fn is_table_context(atom: Int) Bool:
+fn is_table_context(atom Int) Bool:
 	match atom:
-		341: return true
-		343: return true
-		347: return true
-		349: return true
-		352: return true
-		_: return false
+		341 => return true
+		343 => return true
+		347 => return true
+		349 => return true
+		352 => return true
+		_ => return false
 
 // Tags that leave foreign content.
-fn is_breakout_atom(atom: Int) Bool:
+fn is_breakout_atom(atom Int) Bool:
 	match atom:
-		26: return true
-		32: return true
-		34: return true
-		35: return true
-		36: return true
-		40: return true
-		46: return true
-		62: return true
-		73: return true
-		74: return true
-		78: return true
-		79: return true
-		80: return true
-		99: return true
-		100: return true
-		101: return true
-		102: return true
-		103: return true
-		104: return true
-		105: return true
-		112: return true
-		117: return true
-		122: return true
-		142: return true
-		145: return true
-		159: return true
-		161: return true
-		176: return true
-		184: return true
-		276: return true
-		285: return true
-		303: return true
-		304: return true
-		319: return true
-		324: return true
-		333: return true
-		332: return true
-		335: return true
-		337: return true
-		341: return true
-		355: return true
-		358: return true
-		359: return true
-		363: return true
-		_: return false
+		26 => return true
+		32 => return true
+		34 => return true
+		35 => return true
+		36 => return true
+		40 => return true
+		46 => return true
+		62 => return true
+		73 => return true
+		74 => return true
+		78 => return true
+		79 => return true
+		80 => return true
+		99 => return true
+		100 => return true
+		101 => return true
+		102 => return true
+		103 => return true
+		104 => return true
+		105 => return true
+		112 => return true
+		117 => return true
+		122 => return true
+		142 => return true
+		145 => return true
+		159 => return true
+		161 => return true
+		176 => return true
+		184 => return true
+		276 => return true
+		285 => return true
+		303 => return true
+		304 => return true
+		319 => return true
+		324 => return true
+		333 => return true
+		332 => return true
+		335 => return true
+		337 => return true
+		341 => return true
+		355 => return true
+		358 => return true
+		359 => return true
+		363 => return true
+		_ => return false
 
 // MathML text integration points.
-fn is_math_text_atom(atom: Int) Bool:
+fn is_math_text_atom(atom Int) Bool:
 	match atom:
-		165: return true
-		169: return true
-		168: return true
-		170: return true
-		171: return true
-		_: return false
+		165 => return true
+		169 => return true
+		168 => return true
+		170 => return true
+		171 => return true
+		_ => return false
 
 // Open elements allowed at end of input.
-fn is_end_ok_in_body(atom: Int) Bool:
+fn is_end_ok_in_body(atom Int) Bool:
 	match atom:
-		62: return true
-		78: return true
-		142: return true
-		272: return true
-		274: return true
-		276: return true
-		292: return true
-		300: return true
-		301: return true
-		302: return true
-		343: return true
-		344: return true
-		347: return true
-		348: return true
-		349: return true
-		352: return true
-		35: return true
-		115: return true
-		_: return false
+		62 => return true
+		78 => return true
+		142 => return true
+		272 => return true
+		274 => return true
+		276 => return true
+		292 => return true
+		300 => return true
+		301 => return true
+		302 => return true
+		343 => return true
+		344 => return true
+		347 => return true
+		348 => return true
+		349 => return true
+		352 => return true
+		35 => return true
+		115 => return true
+		_ => return false
 
 // In-body start-tag rule for an atom, as one of the `S_*` constants (0 for null).
-fn body_start_class(atom: Int) Int:
+fn body_start_class(atom Int) Int:
 	match atom:
-		115: return 1  // html
-		27: return 2  // base
-		28: return 2  // basefont
-		31: return 2  // bgsound
-		143: return 2  // link
-		161: return 2  // meta
-		178: return 2  // noframes
-		309: return 2  // script
-		334: return 2  // style
-		345: return 2  // template
-		351: return 2  // title
-		35: return 3  // body
-		98: return 4  // frameset
-		8: return 5  // address
-		18: return 5  // article
-		20: return 5  // aside
-		34: return 5  // blockquote
-		40: return 5  // center
-		67: return 5  // details
-		69: return 5  // dialog
-		70: return 5  // dir
-		73: return 5  // div
-		74: return 5  // dl
-		83: return 5  // fieldset
-		84: return 5  // figcaption
-		85: return 5  // figure
-		87: return 5  // footer
-		106: return 5  // header
-		109: return 5  // hgroup
-		148: return 5  // main
-		159: return 5  // menu
-		175: return 5  // nav
-		184: return 5  // ol
-		276: return 5  // p
-		311: return 5  // search
-		312: return 5  // section
-		336: return 5  // summary
-		359: return 5  // ul
-		99: return 6  // h1
-		100: return 6  // h2
-		101: return 6  // h3
-		102: return 6  // h4
-		103: return 6  // h5
-		104: return 6  // h6
-		285: return 7  // pre
-		145: return 7  // listing
-		91: return 8  // form
-		142: return 9  // li
-		62: return 10  // dd
-		78: return 10  // dt
-		282: return 11  // plaintext
-		37: return 12  // button
-		1: return 13  // a
-		26: return 14  // b
-		32: return 14  // big
-		46: return 14  // code
-		79: return 14  // em
-		86: return 14  // font
-		117: return 14  // i
-		304: return 14  // s
-		319: return 14  // small
-		332: return 14  // strike
-		333: return 14  // strong
-		355: return 14  // tt
-		358: return 14  // u
-		176: return 15  // nobr
-		16: return 16  // applet
-		153: return 16  // marquee
-		183: return 16  // object
-		341: return 17  // table
-		17: return 18  // area
-		36: return 18  // br
-		80: return 18  // embed
-		122: return 18  // img
-		123: return 18  // input
-		136: return 18  // keygen
-		365: return 18  // wbr
-		277: return 19  // param
-		322: return 19  // source
-		353: return 19  // track
-		112: return 20  // hr
-		121: return 21  // image
-		346: return 22  // textarea
-		369: return 23  // xmp
-		120: return 24  // iframe
-		177: return 25  // noembed
-		181: return 26  // noscript
-		313: return 27  // select
-		272: return 28  // optgroup
-		274: return 28  // option
-		292: return 29  // rb
-		302: return 29  // rtc
-		300: return 30  // rp
-		301: return 30  // rt
-		154: return 31  // math
-		338: return 31  // svg
-		39: return 32  // caption
-		47: return 32  // col
-		48: return 32  // colgroup
-		97: return 32  // frame
-		105: return 32  // head
-		343: return 32  // tbody
-		344: return 32  // td
-		347: return 32  // tfoot
-		348: return 32  // th
-		349: return 32  // thead
-		352: return 32  // tr
-		_: return 0
+		115 => return 1  // html
+		27 => return 2  // base
+		28 => return 2  // basefont
+		31 => return 2  // bgsound
+		143 => return 2  // link
+		161 => return 2  // meta
+		178 => return 2  // noframes
+		309 => return 2  // script
+		334 => return 2  // style
+		345 => return 2  // template
+		351 => return 2  // title
+		35 => return 3  // body
+		98 => return 4  // frameset
+		8 => return 5  // address
+		18 => return 5  // article
+		20 => return 5  // aside
+		34 => return 5  // blockquote
+		40 => return 5  // center
+		67 => return 5  // details
+		69 => return 5  // dialog
+		70 => return 5  // dir
+		73 => return 5  // div
+		74 => return 5  // dl
+		83 => return 5  // fieldset
+		84 => return 5  // figcaption
+		85 => return 5  // figure
+		87 => return 5  // footer
+		106 => return 5  // header
+		109 => return 5  // hgroup
+		148 => return 5  // main
+		159 => return 5  // menu
+		175 => return 5  // nav
+		184 => return 5  // ol
+		276 => return 5  // p
+		311 => return 5  // search
+		312 => return 5  // section
+		336 => return 5  // summary
+		359 => return 5  // ul
+		99 => return 6  // h1
+		100 => return 6  // h2
+		101 => return 6  // h3
+		102 => return 6  // h4
+		103 => return 6  // h5
+		104 => return 6  // h6
+		285 => return 7  // pre
+		145 => return 7  // listing
+		91 => return 8  // form
+		142 => return 9  // li
+		62 => return 10  // dd
+		78 => return 10  // dt
+		282 => return 11  // plaintext
+		37 => return 12  // button
+		1 => return 13  // a
+		26 => return 14  // b
+		32 => return 14  // big
+		46 => return 14  // code
+		79 => return 14  // em
+		86 => return 14  // font
+		117 => return 14  // i
+		304 => return 14  // s
+		319 => return 14  // small
+		332 => return 14  // strike
+		333 => return 14  // strong
+		355 => return 14  // tt
+		358 => return 14  // u
+		176 => return 15  // nobr
+		16 => return 16  // applet
+		153 => return 16  // marquee
+		183 => return 16  // object
+		341 => return 17  // table
+		17 => return 18  // area
+		36 => return 18  // br
+		80 => return 18  // embed
+		122 => return 18  // img
+		123 => return 18  // input
+		136 => return 18  // keygen
+		365 => return 18  // wbr
+		277 => return 19  // param
+		322 => return 19  // source
+		353 => return 19  // track
+		112 => return 20  // hr
+		121 => return 21  // image
+		346 => return 22  // textarea
+		369 => return 23  // xmp
+		120 => return 24  // iframe
+		177 => return 25  // noembed
+		181 => return 26  // noscript
+		313 => return 27  // select
+		272 => return 28  // optgroup
+		274 => return 28  // option
+		292 => return 29  // rb
+		302 => return 29  // rtc
+		300 => return 30  // rp
+		301 => return 30  // rt
+		154 => return 31  // math
+		338 => return 31  // svg
+		39 => return 32  // caption
+		47 => return 32  // col
+		48 => return 32  // colgroup
+		97 => return 32  // frame
+		105 => return 32  // head
+		343 => return 32  // tbody
+		344 => return 32  // td
+		347 => return 32  // tfoot
+		348 => return 32  // th
+		349 => return 32  // thead
+		352 => return 32  // tr
+		_ => return 0
 
 // In-body end-tag rule for an atom, as one of the `E_*` constants (0 for null).
-fn body_end_class(atom: Int) Int:
+fn body_end_class(atom Int) Int:
 	match atom:
-		35: return 1  // body
-		115: return 2  // html
-		8: return 3  // address
-		18: return 3  // article
-		20: return 3  // aside
-		34: return 3  // blockquote
-		37: return 3  // button
-		40: return 3  // center
-		67: return 3  // details
-		69: return 3  // dialog
-		70: return 3  // dir
-		73: return 3  // div
-		74: return 3  // dl
-		83: return 3  // fieldset
-		84: return 3  // figcaption
-		85: return 3  // figure
-		87: return 3  // footer
-		106: return 3  // header
-		109: return 3  // hgroup
-		145: return 3  // listing
-		148: return 3  // main
-		159: return 3  // menu
-		175: return 3  // nav
-		184: return 3  // ol
-		285: return 3  // pre
-		311: return 3  // search
-		312: return 3  // section
-		336: return 3  // summary
-		359: return 3  // ul
-		91: return 4  // form
-		276: return 5  // p
-		142: return 6  // li
-		62: return 7  // dd
-		78: return 7  // dt
-		99: return 8  // h1
-		100: return 8  // h2
-		101: return 8  // h3
-		102: return 8  // h4
-		103: return 8  // h5
-		104: return 8  // h6
-		1: return 9  // a
-		26: return 9  // b
-		32: return 9  // big
-		46: return 9  // code
-		79: return 9  // em
-		86: return 9  // font
-		117: return 9  // i
-		176: return 9  // nobr
-		304: return 9  // s
-		319: return 9  // small
-		332: return 9  // strike
-		333: return 9  // strong
-		355: return 9  // tt
-		358: return 9  // u
-		16: return 10  // applet
-		153: return 10  // marquee
-		183: return 10  // object
-		36: return 11  // br
-		345: return 12  // template
-		_: return 0
+		35 => return 1  // body
+		115 => return 2  // html
+		8 => return 3  // address
+		18 => return 3  // article
+		20 => return 3  // aside
+		34 => return 3  // blockquote
+		37 => return 3  // button
+		40 => return 3  // center
+		67 => return 3  // details
+		69 => return 3  // dialog
+		70 => return 3  // dir
+		73 => return 3  // div
+		74 => return 3  // dl
+		83 => return 3  // fieldset
+		84 => return 3  // figcaption
+		85 => return 3  // figure
+		87 => return 3  // footer
+		106 => return 3  // header
+		109 => return 3  // hgroup
+		145 => return 3  // listing
+		148 => return 3  // main
+		159 => return 3  // menu
+		175 => return 3  // nav
+		184 => return 3  // ol
+		285 => return 3  // pre
+		311 => return 3  // search
+		312 => return 3  // section
+		336 => return 3  // summary
+		359 => return 3  // ul
+		91 => return 4  // form
+		276 => return 5  // p
+		142 => return 6  // li
+		62 => return 7  // dd
+		78 => return 7  // dt
+		99 => return 8  // h1
+		100 => return 8  // h2
+		101 => return 8  // h3
+		102 => return 8  // h4
+		103 => return 8  // h5
+		104 => return 8  // h6
+		1 => return 9  // a
+		26 => return 9  // b
+		32 => return 9  // big
+		46 => return 9  // code
+		79 => return 9  // em
+		86 => return 9  // font
+		117 => return 9  // i
+		176 => return 9  // nobr
+		304 => return 9  // s
+		319 => return 9  // small
+		332 => return 9  // strike
+		333 => return 9  // strong
+		355 => return 9  // tt
+		358 => return 9  // u
+		16 => return 10  // applet
+		153 => return 10  // marquee
+		183 => return 10  // object
+		36 => return 11  // br
+		345 => return 12  // template
+		_ => return 0
 
-fn svg_tag(name: String) String:
+fn svg_tag(name String) String:
 	match name:
-		"altglyph": return "altGlyph"
-		"altglyphdef": return "altGlyphDef"
-		"altglyphitem": return "altGlyphItem"
-		"animatecolor": return "animateColor"
-		"animatemotion": return "animateMotion"
-		"animatetransform": return "animateTransform"
-		"clippath": return "clipPath"
-		"feblend": return "feBlend"
-		"fecolormatrix": return "feColorMatrix"
-		"fecomponenttransfer": return "feComponentTransfer"
-		"fecomposite": return "feComposite"
-		"feconvolvematrix": return "feConvolveMatrix"
-		"fediffuselighting": return "feDiffuseLighting"
-		"fedisplacementmap": return "feDisplacementMap"
-		"fedistantlight": return "feDistantLight"
-		"feflood": return "feFlood"
-		"fefunca": return "feFuncA"
-		"fefuncb": return "feFuncB"
-		"fefuncg": return "feFuncG"
-		"fefuncr": return "feFuncR"
-		"fegaussianblur": return "feGaussianBlur"
-		"feimage": return "feImage"
-		"femerge": return "feMerge"
-		"femergenode": return "feMergeNode"
-		"femorphology": return "feMorphology"
-		"feoffset": return "feOffset"
-		"fepointlight": return "fePointLight"
-		"fespecularlighting": return "feSpecularLighting"
-		"fespotlight": return "feSpotLight"
-		"fetile": return "feTile"
-		"feturbulence": return "feTurbulence"
-		"foreignobject": return "foreignObject"
-		"glyphref": return "glyphRef"
-		"lineargradient": return "linearGradient"
-		"radialgradient": return "radialGradient"
-		"textpath": return "textPath"
-		_: return ""
+		"altglyph" => return "altGlyph"
+		"altglyphdef" => return "altGlyphDef"
+		"altglyphitem" => return "altGlyphItem"
+		"animatecolor" => return "animateColor"
+		"animatemotion" => return "animateMotion"
+		"animatetransform" => return "animateTransform"
+		"clippath" => return "clipPath"
+		"feblend" => return "feBlend"
+		"fecolormatrix" => return "feColorMatrix"
+		"fecomponenttransfer" => return "feComponentTransfer"
+		"fecomposite" => return "feComposite"
+		"feconvolvematrix" => return "feConvolveMatrix"
+		"fediffuselighting" => return "feDiffuseLighting"
+		"fedisplacementmap" => return "feDisplacementMap"
+		"fedistantlight" => return "feDistantLight"
+		"feflood" => return "feFlood"
+		"fefunca" => return "feFuncA"
+		"fefuncb" => return "feFuncB"
+		"fefuncg" => return "feFuncG"
+		"fefuncr" => return "feFuncR"
+		"fegaussianblur" => return "feGaussianBlur"
+		"feimage" => return "feImage"
+		"femerge" => return "feMerge"
+		"femergenode" => return "feMergeNode"
+		"femorphology" => return "feMorphology"
+		"feoffset" => return "feOffset"
+		"fepointlight" => return "fePointLight"
+		"fespecularlighting" => return "feSpecularLighting"
+		"fespotlight" => return "feSpotLight"
+		"fetile" => return "feTile"
+		"feturbulence" => return "feTurbulence"
+		"foreignobject" => return "foreignObject"
+		"glyphref" => return "glyphRef"
+		"lineargradient" => return "linearGradient"
+		"radialgradient" => return "radialGradient"
+		"textpath" => return "textPath"
+		_ => return ""
 
-fn svg_attribute(name: String) String:
+fn svg_attribute(name String) String:
 	match name:
-		"attributename": return "attributeName"
-		"attributetype": return "attributeType"
-		"basefrequency": return "baseFrequency"
-		"baseprofile": return "baseProfile"
-		"calcmode": return "calcMode"
-		"clippathunits": return "clipPathUnits"
-		"diffuseconstant": return "diffuseConstant"
-		"edgemode": return "edgeMode"
-		"filterunits": return "filterUnits"
-		"glyphref": return "glyphRef"
-		"gradienttransform": return "gradientTransform"
-		"gradientunits": return "gradientUnits"
-		"kernelmatrix": return "kernelMatrix"
-		"kernelunitlength": return "kernelUnitLength"
-		"keypoints": return "keyPoints"
-		"keysplines": return "keySplines"
-		"keytimes": return "keyTimes"
-		"lengthadjust": return "lengthAdjust"
-		"limitingconeangle": return "limitingConeAngle"
-		"markerheight": return "markerHeight"
-		"markerunits": return "markerUnits"
-		"markerwidth": return "markerWidth"
-		"maskcontentunits": return "maskContentUnits"
-		"maskunits": return "maskUnits"
-		"numoctaves": return "numOctaves"
-		"pathlength": return "pathLength"
-		"patterncontentunits": return "patternContentUnits"
-		"patterntransform": return "patternTransform"
-		"patternunits": return "patternUnits"
-		"pointsatx": return "pointsAtX"
-		"pointsaty": return "pointsAtY"
-		"pointsatz": return "pointsAtZ"
-		"preservealpha": return "preserveAlpha"
-		"preserveaspectratio": return "preserveAspectRatio"
-		"primitiveunits": return "primitiveUnits"
-		"refx": return "refX"
-		"refy": return "refY"
-		"repeatcount": return "repeatCount"
-		"repeatdur": return "repeatDur"
-		"requiredextensions": return "requiredExtensions"
-		"requiredfeatures": return "requiredFeatures"
-		"specularconstant": return "specularConstant"
-		"specularexponent": return "specularExponent"
-		"spreadmethod": return "spreadMethod"
-		"startoffset": return "startOffset"
-		"stddeviation": return "stdDeviation"
-		"stitchtiles": return "stitchTiles"
-		"surfacescale": return "surfaceScale"
-		"systemlanguage": return "systemLanguage"
-		"tablevalues": return "tableValues"
-		"targetx": return "targetX"
-		"targety": return "targetY"
-		"textlength": return "textLength"
-		"viewbox": return "viewBox"
-		"viewtarget": return "viewTarget"
-		"xchannelselector": return "xChannelSelector"
-		"ychannelselector": return "yChannelSelector"
-		"zoomandpan": return "zoomAndPan"
-		_: return ""
+		"attributename" => return "attributeName"
+		"attributetype" => return "attributeType"
+		"basefrequency" => return "baseFrequency"
+		"baseprofile" => return "baseProfile"
+		"calcmode" => return "calcMode"
+		"clippathunits" => return "clipPathUnits"
+		"diffuseconstant" => return "diffuseConstant"
+		"edgemode" => return "edgeMode"
+		"filterunits" => return "filterUnits"
+		"glyphref" => return "glyphRef"
+		"gradienttransform" => return "gradientTransform"
+		"gradientunits" => return "gradientUnits"
+		"kernelmatrix" => return "kernelMatrix"
+		"kernelunitlength" => return "kernelUnitLength"
+		"keypoints" => return "keyPoints"
+		"keysplines" => return "keySplines"
+		"keytimes" => return "keyTimes"
+		"lengthadjust" => return "lengthAdjust"
+		"limitingconeangle" => return "limitingConeAngle"
+		"markerheight" => return "markerHeight"
+		"markerunits" => return "markerUnits"
+		"markerwidth" => return "markerWidth"
+		"maskcontentunits" => return "maskContentUnits"
+		"maskunits" => return "maskUnits"
+		"numoctaves" => return "numOctaves"
+		"pathlength" => return "pathLength"
+		"patterncontentunits" => return "patternContentUnits"
+		"patterntransform" => return "patternTransform"
+		"patternunits" => return "patternUnits"
+		"pointsatx" => return "pointsAtX"
+		"pointsaty" => return "pointsAtY"
+		"pointsatz" => return "pointsAtZ"
+		"preservealpha" => return "preserveAlpha"
+		"preserveaspectratio" => return "preserveAspectRatio"
+		"primitiveunits" => return "primitiveUnits"
+		"refx" => return "refX"
+		"refy" => return "refY"
+		"repeatcount" => return "repeatCount"
+		"repeatdur" => return "repeatDur"
+		"requiredextensions" => return "requiredExtensions"
+		"requiredfeatures" => return "requiredFeatures"
+		"specularconstant" => return "specularConstant"
+		"specularexponent" => return "specularExponent"
+		"spreadmethod" => return "spreadMethod"
+		"startoffset" => return "startOffset"
+		"stddeviation" => return "stdDeviation"
+		"stitchtiles" => return "stitchTiles"
+		"surfacescale" => return "surfaceScale"
+		"systemlanguage" => return "systemLanguage"
+		"tablevalues" => return "tableValues"
+		"targetx" => return "targetX"
+		"targety" => return "targetY"
+		"textlength" => return "textLength"
+		"viewbox" => return "viewBox"
+		"viewtarget" => return "viewTarget"
+		"xchannelselector" => return "xChannelSelector"
+		"ychannelselector" => return "yChannelSelector"
+		"zoomandpan" => return "zoomAndPan"
+		_ => return ""
 
 // ---- public parse ----
 
@@ -4961,7 +4961,7 @@ fn limit_error() Error:
 	return Error("HTML: limit exceeded", kind: "EOVERFLOW")
 
 // A limit as a count: null is unlimited and a negative limit is an `EINVAL` error.
-fn budget(limit: Int?) Int!:
+fn budget(limit Int?) Int!:
 	if limit == null: return ok(9223372036854775807)
 
 	n := limit
@@ -4971,9 +4971,9 @@ fn budget(limit: Int?) Int!:
 
 // Whether the tree under the document has at most `max_nodes` reachable nodes and nests
 // at most `max_depth` levels (the document is level zero).
-fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
-	var stack: List[Int] = [1]
-	var depths: List[Int] = [0]
+fn within_limits(p Parser, max_depth Int, max_nodes Int) Bool:
+	var stack List[Int] = [1]
+	var depths List[Int] = [0]
 	var count = 0
 
 	while stack.length() > 0:
@@ -4993,7 +4993,7 @@ fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 
 // Parses HTML into a normalized tree and applies the limits in `options`. The result is
 // the `Document` node.
-export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
+export fn parse(text String, options HtmlOptions = HtmlOptions()) HtmlNode!:
 	max_bytes := budget(options.max_bytes)?
 	max_depth := budget(options.max_depth)?
 	max_nodes := budget(options.max_nodes)?
@@ -5011,7 +5011,7 @@ export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 	return ok(node(p, 1))
 
 // Copies node `id`, and everything under it, into an `HtmlNode`.
-fn node(p: Parser, id: Int) HtmlNode:
+fn node(p Parser, id Int) HtmlNode:
 	kind := p.kind[id]
 
 	if kind == K_ELEMENT:
@@ -5041,8 +5041,8 @@ fn node(p: Parser, id: Int) HtmlNode:
 
 	return HtmlNode.Document(children(p, id))
 
-fn children(p: Parser, id: Int) List[HtmlNode]:
-	var out: List[HtmlNode] = []
+fn children(p Parser, id Int) List[HtmlNode]:
+	var out List[HtmlNode] = []
 	var at = p.first[id]
 
 	while at >= 0:
@@ -5051,8 +5051,8 @@ fn children(p: Parser, id: Int) List[HtmlNode]:
 
 	return out
 
-fn attributes(p: Parser, id: Int) List[HtmlAttribute]:
-	var out: List[HtmlAttribute] = []
+fn attributes(p Parser, id Int) List[HtmlAttribute]:
+	var out List[HtmlAttribute] = []
 	start := p.attr_start[id]
 	for i in 0..p.attr_count[id]:
 		out.append(

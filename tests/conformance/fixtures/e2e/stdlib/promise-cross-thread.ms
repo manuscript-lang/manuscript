@@ -12,20 +12,20 @@ import (
 	sleep from "@std/time.ms",
 )
 
-fn spin(n: Int) Int:
+fn spin(n Int) Int:
 	var s = 0
 	for i in 0..n:
 		s += i % 7
 	return s
 
-fn work(k: Int) Int!:
+fn work(k Int) Int!:
 	return ok(spin(2000000) + k)
 
-fn after(first: Promise[Int]) Int!:
+fn after(first Promise[Int]) Int!:
 	return ok(first.wait()? + 1)
 
-fn make(k: Int) Promise[Int]!:
-	return ok(promise(fn: work(k)))
+fn make(k Int) Promise[Int]!:
+	return ok(promise(() => work(k)))
 
 // An idle thread may take a promise while the promises it uses belong to another
 // thread's table, so these waits must not depend on where the work ran. Each shape is
@@ -35,8 +35,8 @@ test "a promise waits on a promise made by another thread":
 	var total = 0
 
 	for k in 0..12:
-		first := promise(fn: work(k))
-		second := promise(fn: after(first))
+		first := promise(() => work(k))
+		second := promise(() => after(first))
 		total += second.wait()?
 
 	expect_equal(total, 12 * (base + 1) + 66)?
@@ -46,7 +46,7 @@ test "a promise returned by a promise is waited by its caller":
 	var total = 0
 
 	for k in 0..12:
-		outer := promise(fn: make(k))
+		outer := promise(() => make(k))
 		inner := outer.wait()?
 		total += inner.wait()?
 
@@ -57,7 +57,7 @@ test "wait_all and wait_first accept promises of several threads":
 	var inners = List[Promise[Int]]()
 
 	for k in 0..6:
-		outer := promise(fn: make(k))
+		outer := promise(() => make(k))
 		inners.append(outer.wait()?)
 
 	all := wait_all(inners)?
@@ -67,7 +67,7 @@ test "wait_all and wait_first accept promises of several threads":
 	var more = List[Promise[Int]]()
 
 	for k in 0..4:
-		outer := promise(fn: make(k))
+		outer := promise(() => make(k))
 		more.append(outer.wait()?)
 
 	first := wait_first(more)?
@@ -79,13 +79,13 @@ fn long_sleep() Promise[Void]!:
 fn deferred_error() Promise[Void]!:
 	return ok(
 		deferred[Void](
-			fn id: complete[Void](id, error(Error("should stay deferred")))
+			id => complete[Void](id, error(Error("should stay deferred")))
 		)
 	)
 
 test "wait_first runs a local deferred input beside a foreign promise":
 	for k in 0..8:
-		outer := promise(fn: long_sleep())
+		outer := promise(() => long_sleep())
 
 		// Give idle threads work to take while this thread computes; the result is
 		// checked.
@@ -93,17 +93,17 @@ test "wait_first runs a local deferred input beside a foreign promise":
 		expect_equal(busy >= 0, true)?
 
 		remote := (outer.wait()?).with(options: PromiseOptions(timeout: 1.seconds()))
-		local := deferred[Void](fn id: complete[Void](id, ok()))
+		local := deferred[Void](id => complete[Void](id, ok()))
 		wait_first([local, remote])?
 
 test "wait_first returns a ready input before foreign deferred work":
 	for k in 0..8:
-		outer := promise(fn: deferred_error())
+		outer := promise(() => deferred_error())
 		busy := spin(2000000)
 		expect_equal(busy >= 0, true)?
 
 		remote := outer.wait()?
-		ready := promise[Void](fn: ok())
+		ready := promise[Void](() => ok())
 		while not ready.done():
 			continue
 		wait_first([remote, ready])?

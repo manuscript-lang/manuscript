@@ -20,7 +20,7 @@ import (
 	read_file, write_file from "@std/os/fs.ms",
 )
 
-fn is_name_byte(b: Int) Bool:
+fn is_name_byte(b Int) Bool:
 	return (
 		(b >= 48 and b <= 57)
 		or (b >= 65 and b <= 90)
@@ -29,31 +29,31 @@ fn is_name_byte(b: Int) Bool:
 	)
 
 type Scan:
-	text: String
-	bytes: Bytes
-	at: Int
+	text String
+	bytes Bytes
+	at Int
 	// Set when the source already holds an f"..." literal.
-	saw_f: Bool
+	saw_f Bool
 
-fn Scan.byte(offset: Int) Int:
+fn Scan.byte(offset Int) Int:
 	if offset < 0 or offset >= self.bytes.length(): return 0
 	return self.bytes[offset].to_int()
 
 // The source text from `start` up to `end`.
-fn Scan.part(start: Int, end: Int) String:
+fn Scan.part(start Int, end Int) String:
 	return self.text.slice(start, end)
 
-fn Scan.starts(prefix: String) Bool:
+fn Scan.starts(prefix String) Bool:
 	return self.starts_at(self.at, prefix)
 
-fn Scan.starts_at(offset: Int, prefix: String) Bool:
+fn Scan.starts_at(offset Int, prefix String) Bool:
 	bytes := prefix.view_bytes()
 	for i in 0..bytes.length():
 		if self.byte(offset + i) != bytes[i].to_int(): return false
 	return true
 
 // The offset after the escape's character, which may be a multi-byte scalar.
-fn Scan.past_escaped(offset: Int) Int:
+fn Scan.past_escaped(offset Int) Int:
 	var i = offset + 2
 	while i < self.bytes.length() and self.byte(i) >= 128 and self.byte(i) < 192: i += 1
 	return i
@@ -63,7 +63,7 @@ fn Scan.after_name_byte() Bool:
 
 // The index just after the next `needle` at or after the cursor, or the end of the
 // text.
-fn Scan.past(needle: String) Int:
+fn Scan.past(needle String) Int:
 	found := self.part(self.at, self.text.length()).index_of(needle)
 	if found != null: return self.at + found + needle.length()
 
@@ -71,7 +71,7 @@ fn Scan.past(needle: String) Int:
 
 // Whether the literal body starting at the cursor holds an unescaped `{` before its
 // closing quote.
-fn Scan.interpolates(multiline: Bool) Bool:
+fn Scan.interpolates(multiline Bool) Bool:
 	var i = self.at
 	n := self.text.length()
 
@@ -97,7 +97,7 @@ fn Scan.interpolates(multiline: Bool) Bool:
 // Rewrites the literal whose opening quote is at the cursor, or copies it if
 // unterminated.
 // `written_f` is set when the source already has the `f` prefix, so the literal interpolates.
-fn var Scan.literal(written_f: Bool) String:
+fn var Scan.literal(written_f Bool) String:
 	n := self.text.length()
 	multiline := self.starts("\"\"\"")
 	quote := if multiline: "\"\"\"" else: "\""
@@ -150,7 +150,7 @@ fn var Scan.literal(written_f: Bool) String:
 
 // Rewrites code until the end of the text, or until the `}` that closes an
 // interpolation.
-fn var Scan.code(stop_at_brace: Bool) String:
+fn var Scan.code(stop_at_brace Bool) String:
 	n := self.text.length()
 	var out = ""
 	var run = self.at
@@ -203,7 +203,7 @@ fn var Scan.code(stop_at_brace: Bool) String:
 
 // The rewritten source, or none when it already holds an f"..." literal (it is
 // converted).
-fn convert(source: String) String?:
+fn convert(source String) String?:
 	var scan = Scan(text: source.clone(), bytes: source.to_bytes(), at: 0, saw_f: false)
 	converted := scan.code(false)
 	if scan.saw_f: return null
@@ -212,7 +212,7 @@ fn convert(source: String) String?:
 
 // Rewrites the manuscript fences of a Markdown page, or of the documentation comments
 // of a source file (`//` lines and `/* */` blocks carry fences too).
-fn convert_fences(source: String) String:
+fn convert_fences(source String) String:
 	var out = List[String]()
 	var block = List[String]()
 	var originals = List[String]()

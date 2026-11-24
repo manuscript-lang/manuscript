@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn choose(value: Choice) Int:\n\tmatch value:\n\t\tfirst: return 1\n\t\tsecond: return 2\n\t\tthird:\n\t\t\tresult := calculate()\n\t\t\treturn result\n\t\t_: return 0\n\n\treturn 3\n"
+    "fmt": "fn choose(value Choice) Int:\n\tmatch value:\n\t\tfirst => return 1\n\t\tsecond => return 2\n\t\tthird:\n\t\t\tresult := calculate()\n\t\t\treturn result\n\t\t_ => return 0\n\n\treturn 3\n"
   }
 }

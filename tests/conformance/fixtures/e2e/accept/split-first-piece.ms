@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn first(text: String, sep: String) String:
+fn first(text String, sep String) String:
 	return text.split(sep)[0].clone()
 
 test "the first piece of a split matches the list's first element":

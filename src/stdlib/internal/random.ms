@@ -12,12 +12,12 @@ import (
 )
 
 // The operating system's entropy: exactly `count` bytes, `count` from 0 through 16 MiB.
-export extern fn msstd_random_os_bytes(count: Int) move Bytes!
+export extern fn msstd_random_os_bytes(count Int) move Bytes!
 
 // The stamp `millis * 4096 + sequence` of the next version-7 UUID made at `millis`,
 // strictly greater than every earlier one. A new millisecond starts the sequence at
 // `seed` modulo 2048.
-export extern fn msstd_random_v7_next(millis: Int, seed: Int) Int
+export extern fn msstd_random_v7_next(millis Int, seed Int) Int
 
 export fn invalid_input() Error:
 	return Error("random: invalid input", kind: "EINVAL")
@@ -25,7 +25,7 @@ export fn invalid_input() Error:
 // Returns an unbiased integer from `min` up to `min + width`, where `width` is the
 // 64-bit pattern of a positive count. Draws big-endian bytes masked to the width's bit
 // length and redraws those at or past the width.
-fn draw_below(min: Int, width: Int) Int!:
+fn draw_below(min Int, width Int) Int!:
 	var bits = 0
 	var rest = width
 
@@ -55,7 +55,7 @@ fn draw_below(min: Int, width: Int) Int!:
 
 // An integer at least `min` and below `max_exclusive` (below the largest Int when
 // null).
-export fn draw_int(min: Int, max_exclusive: Int?) Int!:
+export fn draw_int(min Int, max_exclusive Int?) Int!:
 	max := max_exclusive or max_int
 	if min >= max: return error(invalid_input())
 
@@ -85,7 +85,7 @@ export fn draw_float() Float!:
 	return ok(bits.to_float() / 9007199254740992.0)
 
 // `values` shuffled in place by a Fisher-Yates pass.
-export fn draw_shuffle[T](move values: List[T]) List[T]!:
+export fn draw_shuffle[T](move values List[T]) List[T]!:
 	var out = values
 	var index = out.length() - 1
 
@@ -96,7 +96,7 @@ export fn draw_shuffle[T](move values: List[T]) List[T]!:
 	return ok(out)
 
 // A uniformly chosen item, or null for an empty list.
-export fn draw_choice[T: Clonable](values: List[T]) T?!:
+export fn draw_choice[T Clonable](values List[T]) T?!:
 	if values.is_empty(): return ok(null)
 
 	at := draw_below(0, values.length())?

@@ -7,15 +7,15 @@ import (
 	Stats, case_labels, read_cases from "./stdlib_results.ms",
 )
 
-fn bench(name: String, status: String, ops: String, median: String) String:
+fn bench(name String, status String, ops String, median String) String:
 	return j(
 		f"<'name':'m.ms::{name}','status':'{status}','stats':<'operations':{ops},'median_ns':{median}>>"
 	)
 
-fn j(text: String) String:
+fn j(text String) String:
 	return text.replace("'", "\"").replace("<", "{").replace(">", "}")
 
-fn document(cases: List[String]) String:
+fn document(cases List[String]) String:
 	return j(f"<'benches':[{cases.join(",")}],'diagnostics':[]>")
 
 test "invalid numeric fields are rejected":
@@ -67,7 +67,7 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
 	)?
 	expect_equal(
 		(
-			cases[0].stats
+			cases[0].stats.clone()
 			or Stats(
 				operations: 0,
 				iterations: null,

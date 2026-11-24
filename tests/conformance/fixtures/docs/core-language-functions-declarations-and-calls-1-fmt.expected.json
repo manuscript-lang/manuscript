@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn decrement(value: Int) Int:\n\treturn value - 1\n\nremaining := decrement(3)\n"
+    "fmt": "fn decrement(value Int) Int:\n\treturn value - 1\n\nremaining := decrement(3)\n"
   }
 }

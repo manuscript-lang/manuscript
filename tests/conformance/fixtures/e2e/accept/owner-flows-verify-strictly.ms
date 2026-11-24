@@ -7,12 +7,12 @@
 import OpenMode, OpenOptions, open, read_file from "@std/os/fs.ms"
 
 type Lang:
-	id: String
-	context: List[String]
+	id String
+	context List[String]
 
-fn identity[T](result: T!) T!: result
+fn identity[T](result T!) T! => result
 
-fn unreadable(path: String) String:
+fn unreadable(path String) String:
 	read := read_file(path).wait()
 
 	if bytes := read:
@@ -20,7 +20,7 @@ fn unreadable(path: String) String:
 	else:
 		return "unreadable"
 
-fn languages(ids: List[String], names: List[String]) List[Lang]:
+fn languages(ids List[String], names List[String]) List[Lang]:
 	var out = List[Lang]()
 	var known = List[String]()
 
@@ -34,7 +34,7 @@ fn languages(ids: List[String], names: List[String]) List[Lang]:
 
 	return out
 
-fn parsed(lines: List[String]) List[String]:
+fn parsed(lines List[String]) List[String]:
 	var out = List[String]()
 
 	for line in lines:
@@ -44,7 +44,7 @@ fn parsed(lines: List[String]) List[String]:
 
 	return out
 
-fn opened(path: String) Void!:
+fn opened(path String) Void!:
 	var file = identity(open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384)))?
 	file.close()?
 

@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/hints_test.go:30 TestDiagnosticsStateCauseAndFix
 type Optional:
-    x: Int
+    x Int
 
-fn f(o: Int?) Int:
+fn f(o Int?) Int:
     return 0

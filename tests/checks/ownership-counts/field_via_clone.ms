@@ -3,9 +3,9 @@
 // Reading a field through a function that returns an owned clone; field_via_ref.ms
 // lends it. The floor for elision.
 type Box:
-	name: String
+	name String
 
-fn name_of(b: Box) String:
+fn name_of(b Box) String:
 	return b.name.clone()
 
 export fn main() Int:

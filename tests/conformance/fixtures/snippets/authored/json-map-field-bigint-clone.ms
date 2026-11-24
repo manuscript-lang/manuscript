@@ -5,8 +5,8 @@ import stringify, parse from "@std/data/json.ms"
 import big_int_of_int from "@std/math/math.ms"
 
 type Report:
-    name: String
-    scores: Map[String, Int]
+    name String
+    scores Map[String, Int]
 
 test "a record with a Map[String, T] field is Data and roundtrips as a JSON object":
     var scores = Map[String, Int]()

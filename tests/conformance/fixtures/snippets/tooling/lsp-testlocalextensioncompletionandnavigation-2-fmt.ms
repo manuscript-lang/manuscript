@@ -4,5 +4,5 @@
 import Box from "./domain.ms"
 import read from "./extension.ms"
 
-fn use(value: Box) Int:
+fn use(value Box) Int:
     return value.value

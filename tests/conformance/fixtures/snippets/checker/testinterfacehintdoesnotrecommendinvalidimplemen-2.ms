@@ -7,4 +7,4 @@ interface A:
 interface B:
     fn b() Int
 
-fn f(value: A) B: value
+fn f(value A) B => value

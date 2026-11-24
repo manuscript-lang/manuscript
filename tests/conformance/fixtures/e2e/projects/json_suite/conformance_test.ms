@@ -13,7 +13,7 @@ import (
 // list only ever shrinks.
 
 // Whether the parser agrees with the suite on one case file.
-fn passes(tree: FileTree, name: String) Bool:
+fn passes(tree FileTree, name String) Bool:
 	bytes := tree.read(name, null).get_or("".to_bytes())
 	text := bytes.decode_utf8()
 
@@ -27,11 +27,11 @@ fn passes(tree: FileTree, name: String) Bool:
 
 test "JSONTestSuite agrees with the parser except for the listed cases":
 	tree := files()
-	var cases: List[String] = []
+	var cases List[String] = []
 	for entry in walk(tree).get_or([]):
 		if entry.path.ends_with(".json"): cases.append(entry.path.clone())
 
-	var failing: List[String] = []
+	var failing List[String] = []
 	for name in cases:
 		if not passes(tree, name): failing.append(name.clone())
 	failing.sort()
@@ -40,7 +40,7 @@ test "JSONTestSuite agrees with the parser except for the listed cases":
 		tree.read("expect-fail.txt", null).get_or("".to_bytes()).decode_utf8()
 		or ""
 	)
-	var expected: List[String] = []
+	var expected List[String] = []
 
 	for line in listed.split("\n"):
 		name := line.split(" ").get_or(0, "")

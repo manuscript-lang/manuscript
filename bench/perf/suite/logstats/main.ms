@@ -19,7 +19,7 @@ fn main() Void:
 
 		cls := f[4].scalar_at(0) - 50
 		classes[cls] += 1
-		paths.update(f[3].clone(), 0, fn v: v + 1)
+		paths.update(f[3], 0, v => v + 1)
 
 	print(f"lines: {rows}")
 	print(
@@ -28,8 +28,9 @@ fn main() Void:
 	print(f"latency: {latency}")
 
 	ranked := paths.entries().sorted(
-		fn a,
-		b: if a.value != b.value: b.value - a.value else: a.key.compare(b.key)
+		(a, b) => if a.value != b.value: b.value - a.value else: a.key.compare(
+			b.key
+		)
 	)
 	for e in ranked.slice(0, 5).get():
 		print(f"{e.key} {e.value}")

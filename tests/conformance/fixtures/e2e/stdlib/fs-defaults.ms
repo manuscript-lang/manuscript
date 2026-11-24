@@ -15,33 +15,33 @@ import (
 	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
 )
 
-fn expect_limit(outcome: Void!) Void!:
+fn expect_limit(outcome Void!) Void!:
 	cause := expect_error(outcome)?
 	expect_equal(cause.kind, "EOVERFLOW")?
 	if not cause.message.starts_with("filesystem: limit exceeded"):
 		return error(Error(f"wrong limit message: {cause.message}"))
 
-fn generic_write(path: String, data: String) Void!:
+fn generic_write(path String, data String) Void!:
 	return write_file(path, data).wait()
 
-fn generic_copy(source: String, destination: String) Void!:
+fn generic_copy(source String, destination String) Void!:
 	return copy(source, destination)
 
-fn generic_tree(source: String, destination: String) Void!:
+fn generic_tree(source String, destination String) Void!:
 	return copy(source, destination, CopyOptions(recursive: true))
 
-fn generic_directory(path: String) Void!:
+fn generic_directory(path String) Void!:
 	return create_directory(path)
 
-fn generic_remove(path: String) Void!:
+fn generic_remove(path String) Void!:
 	return remove(path)
 
-fn rejected(result: Void!) Void!:
+fn rejected(result Void!) Void!:
 	match result:
-		error(_): return ok()
-		ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
+		error(_) => return ok()
+		ok(_) => return error(Error("exclusive or nonrecursive operation succeeded"))
 
-fn text(path: String) String!:
+fn text(path String) String!:
 	return ok(
 		(
 			(read_file(path).wait() | expect_ok?).decode_utf8()
@@ -49,11 +49,11 @@ fn text(path: String) String!:
 		)
 	)
 
-fn argument(var log: List[String], mark: String, path: String) String:
-	log.append(mark)
+fn argument(var log List[String], mark String, path String) String:
+	log.append(mark.clone())
 	return path
 
-fn data_argument(var log: List[String]) Bytes:
+fn data_argument(var log List[String]) Bytes:
 	log.append("data")
 	return "new".to_bytes()
 
@@ -144,7 +144,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
 		) | expect_limit?
 	)
 
-	invalid: Void! := error(Error("filesystem: invalid input", kind: "EINVAL"))
+	invalid Void! := error(Error("filesystem: invalid input", kind: "EINVAL"))
 	(
 		copy(
 			source,
@@ -182,7 +182,7 @@ test "filesystem tree copies reject empty and disjoint existing directories":
 		destination,
 		CopyOptions(
 			recursive: true,
-			filter: fn(s: String, d: String) Bool: false
+			filter: fn(s String, d String) Bool => false
 		),
 	)?
 	expect_equal((list(destination)?).length(), 1)?
@@ -228,7 +228,7 @@ test "filesystem removal defaults to retaining nonempty trees":
 
 test "filesystem default preparation retains written argument order":
 	temporary := temporary("manuscript-default-order-") | expect_ok?
-	var log: List[String] = []
+	var log List[String] = []
 	(
 		write_file(
 			data: data_argument(log),

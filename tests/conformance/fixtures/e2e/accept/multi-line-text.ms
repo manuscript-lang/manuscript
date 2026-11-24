@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn banner(name: String, count: Int) String:
+fn banner(name String, count Int) String:
 	return f"""
         Hello, {name}!
           {count} items, "quoted"\t\{literal\}
@@ -35,8 +35,8 @@ test "raw text keeps braces quotes and backslashes":
 	)?
 
 type Person:
-	name: String
-	n: Int
+	name String
+	n Int
 
 test "raw text needs no escapes for JSON":
 	person := parse[Person](text: r"""

@@ -21,8 +21,8 @@ test "pairwise pairs neighbors":
 	expect_equal(pairwise(List[Int]()).length(), 0)?
 
 test "accumulate and cycle":
-	expect_equal(accumulate([1, 2, 3, 4], fn a, b: a + b), [1, 3, 6, 10])?
-	expect_equal(accumulate(List[Int](), fn a, b: a + b), List[Int]())?
+	expect_equal(accumulate([1, 2, 3, 4], (a, b) => a + b), [1, 3, 6, 10])?
+	expect_equal(accumulate(List[Int](), (a, b) => a + b), List[Int]())?
 	expect_equal(cycle([1, 2], 3), [1, 2, 1, 2, 1, 2])?
 	expect_equal(cycle([1, 2], 0), List[Int]())?
 
@@ -35,15 +35,15 @@ test "zip_longest pads with none":
 	expect_equal(zipped[2].second, null)?
 
 test "group_runs groups adjacent equal keys":
-	runs := group_runs([1, 1, 2, 1], fn n: n)
+	runs := group_runs([1, 1, 2, 1], n => n)
 	expect_equal(runs.length(), 3)?
 	expect_equal(runs[0].items, [1, 1])?
 	expect_equal(runs[1].key, 2)?
 	expect_equal(runs[2].items, [1])?
 
-	words := group_runs(["ant", "bee", "cat", "dog"], fn w: w.length())
+	words := group_runs(["ant", "bee", "cat", "dog"], w => w.length())
 	expect_equal(words.length(), 1)?
-	expect_equal(group_runs(List[Int](), fn n: n).length(), 0)?
+	expect_equal(group_runs(List[Int](), n => n).length(), 0)?
 
 test "permutations and combinations":
 	expect_equal(
@@ -78,7 +78,7 @@ test "combinations of every size keep their order":
 	expect_equal(combinations(values.clone(), 0), [[]])?
 	expect_equal(combinations(List[Int](), 0), [[]])?
 
-	var many: List[Int] = []
+	var many List[Int] = []
 	for i in 0..30: many.append(i)
 	expect_equal(combinations(many.clone(), 30), [many.clone()])?
 	expect_equal(combinations(many.clone(), 29).length(), 30)?
@@ -99,7 +99,7 @@ test "cycle empty input skips repetition":
 	expect_equal(cycle(["a", "b"], 2), ["a", "b", "a", "b"])?
 
 test "full-size combinations do not consume call depth":
-	var values: List[Int] = []
+	var values List[Int] = []
 	for i in 0..1000000:
 		values.append(i)
 
@@ -125,7 +125,7 @@ test "zero-size permutations preserve shape and out-of-range sizes are empty":
 	expect_equal(permutations(empty, 0), [List[Int]()])?
 	expect_equal(permutations([[1], [2]], 0), [List[List[Int]]()])?
 
-	var values: List[Int] = []
+	var values List[Int] = []
 	for i in 0..100000:
 		values.append(i)
 	expect_equal(permutations(values, 0), [List[Int]()])?

@@ -3,7 +3,7 @@
 
 // Feature-area tags. Stdlib modules are `stdlib-<module>`; anything else is rejected by
 // `lint`.
-TAGS: List[String] := [
+TAGS List[String] := [
 	"lexer", "layout", "parser", "formatter", "types", "generics", "interfaces",
 	"closures", "match", "destructuring", "try-result", "optional", "scope-cleanup",
 	"faults", "strings", "lists", "maps", "sets", "numbers", "decimal", "interpolation",
@@ -15,24 +15,24 @@ TAGS: List[String] := [
 ]
 // Projects that bind sockets, wait for signals or spawn processes; they are checked,
 // not run.
-HOSTILE_IMPORTS: List[String] := [
+HOSTILE_IMPORTS List[String] := [
 	"http", "net", "tls", "websocket", "sse", "fetch", "process", "terminal", "system",
 	"random", "time"
 ]
 // Modules that read or write the host; they put a fixture in the `io` tier.
-IO_IMPORTS: List[String] := ["fs", "path", "log", "system"]
+IO_IMPORTS List[String] := ["fs", "path", "log", "system"]
 
-export fn tag_allowed(tag: String) Bool:
+export fn tag_allowed(tag String) Bool:
 	if TAGS.contains(tag): return true
 	return tag.starts_with("stdlib-") and tag.length() > "stdlib-".length()
 
-export fn hostile(text: String) Bool:
+export fn hostile(text String) Bool:
 	for name in imports_of(text):
 		if HOSTILE_IMPORTS.contains(name): return true
 	return false
 
 // The names of the `@std/...` modules `text` imports, sorted and without repeats.
-export fn imports_of(text: String) List[String]:
+export fn imports_of(text String) List[String]:
 	var found = List[String]()
 	var rest = text.clone()
 
@@ -68,7 +68,7 @@ export fn imports_of(text: String) List[String]:
 
 // The milestone tier of a program: stdout and the test harness are part of the core
 // language experience, so `io` and `testing` do not raise it.
-export fn tier_of(imports: List[String]) String:
+export fn tier_of(imports List[String]) String:
 	var others = List[String]()
 	for name in imports:
 		if name != "io" and name != "testing": others.append(name.clone())
@@ -80,7 +80,7 @@ export fn tier_of(imports: List[String]) String:
 
 // Programs whose answer can depend on assignment sharing: explicit `.clone()`, or a
 // binding of one name to another next to an in-place mutation. Over-tagging is safe.
-export fn aliasing_dependent(text: String) Bool:
+export fn aliasing_dependent(text String) Bool:
 	if text.contains(".clone()"): return true
 
 	var mutates = false
@@ -135,9 +135,9 @@ export fn aliasing_dependent(text: String) Bool:
 	return false
 
 // Feature tags from the source text (conservative keyword rules).
-export fn tags_for(text: String, phase: String) List[String]:
+export fn tags_for(text String, phase String) List[String]:
 	var tags = List[String]()
-	rules: List[List[String]] := [
+	rules List[List[String]] := [
 		["match ", "match"],
 		["try ", "try-result"],
 		["Result[", "try-result"],
@@ -192,7 +192,7 @@ export fn tags_for(text: String, phase: String) List[String]:
 	if only_tiers: tags.append("functions")
 	return sorted_unique(tags)
 
-export fn sorted_unique(items: List[String]) List[String]:
+export fn sorted_unique(items List[String]) List[String]:
 	var out = List[String]()
 	var ordered = items.clone()
 	ordered.sort()
@@ -201,7 +201,7 @@ export fn sorted_unique(items: List[String]) List[String]:
 	return out
 
 // A lowercase ASCII slug of `text`, at most 60 characters.
-export fn slugify(text: String) String:
+export fn slugify(text String) String:
 	var out = ""
 	var dash = true
 

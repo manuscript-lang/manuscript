@@ -8,10 +8,10 @@ import (
 )
 
 type Failing:
-	log: String
-	id: Int
-	closed: Bool = false
-	fail: Bool = true
+	log String
+	id Int
+	closed Bool = false
+	fail Bool = true
 
 fn move Failing.close() Void!:
 	if not self.closed:
@@ -26,11 +26,11 @@ fn move Failing.close() Void!:
 				)
 			)
 
-fn events(log: String) String:
+fn events(log String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
-fn work(log: String, fail: Bool) Int!:
+fn work(log String, fail Bool) Int!:
 	_first := Failing(log.clone(), 1)
 	_second := Failing(log.clone(), 2)
 	if fail:
@@ -47,32 +47,32 @@ fn work(log: String, fail: Bool) Int!:
 fn failure() Int!:
 	return error(Error("original try error", kind: "ETRY", details: {"id": "try"}))
 
-fn propagated(log: String) Int!:
+fn propagated(log String) Int!:
 	_first := Failing(log.clone(), 1)
 	_second := Failing(log.clone(), 2)
 	return ok(failure()?)
 
-fn borrowed(log: String, move cause: Error) Int!:
+fn borrowed(log String, move cause Error) Int!:
 	_first := Failing(log.clone(), 1)
 	return error(cause)
 
-fn handled(log: String) Int!:
+fn handled(log String) Int!:
 	var first = Failing(log.clone(), 1)
 	void first.close()
 	return ok(77)
 
-fn nested_success(log: String) Result[Int!, Error]:
+fn nested_success(log String) Result[Int!, Error]:
 	_first := Failing(log.clone(), 1)
 	return ok(error(Error("inner error", kind: "EINNER")))
 
-fn break_scope(log: String) Int!:
+fn break_scope(log String) Int!:
 	for n in 0..2:
 		_first := Failing(log.clone(), n)
 		break
 
 	return ok(77)
 
-fn infallible(log: String) Int:
+fn infallible(log String) Int:
 	_first := Failing(log.clone(), 1)
 	return 77
 
@@ -138,57 +138,57 @@ test "a scope exited by break still returns its close error":
 test "a close error still faults when the function cannot return Error":
 	dir := temporary("close-infallible-error-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: ok(infallible(log)))
+	work := promise(() => ok(infallible(log)))
 	cause := work.wait() | expect_error?
 	expect_equal(cause.kind, "EIO")?
 	expect_equal(events(log), "close 1\n")?
 
-fn borrowed_ok(log: String, payload: String, fail: Bool) String!:
+fn borrowed_ok(log String, payload String, fail Bool) String!:
 	_resource := Failing(log.clone(), 1, fail: fail)
-	return ok(payload)
+	return ok(payload.clone())
 
-fn forward_ok(log: String, payload: String, fail: Bool) String!:
+fn forward_ok(log String, payload String, fail Bool) String!:
 	return borrowed_ok(log, payload, fail)
 
-fn mixed_error(source: Int!) String!:
+fn mixed_error(source Int!) String!:
 	_number := source.clone()?
 	return ok("fresh success")
 
-fn forward_error(log: String, source: Int!) String!:
+fn forward_error(log String, source Int!) String!:
 	_resource := Failing(log.clone(), 1)
 	return mixed_error(source)
 
-fn generic_error[E](log: String, move cause: E) Int!E:
+fn generic_error[E](log String, move cause E) Int!E:
 	_resource := Failing(log.clone(), 1)
 	return error(cause)
 
 type Domain:
-	code: Int
-	label: String
+	code Int
+	label String
 
-fn custom(log: String, fail: Bool) Int!Domain:
+fn custom(log String, fail Bool) Int!Domain:
 	_resource := Failing(log.clone(), 1)
 	if fail: return error(Domain(73, "custom body"))
 
 	return ok(77)
 
-fn borrowed_custom(log: String, cause: Domain) Int!Domain:
+fn borrowed_custom(log String, cause Domain) Int!Domain:
 	_resource := Failing(log.clone(), 1)
-	return error(cause)
+	return error(cause.clone())
 
-fn inner_close(log: String, cause: Error) Int!:
+fn inner_close(log String, cause Error) Int!:
 	if true:
 		_resource := Failing(log.clone(), 1)
-	return error(cause)
+	return error(cause.clone())
 
-fn consume(value: Failing) Int:
-	_values := [value]
+fn consume(value Failing) Int:
+	_values := [value.clone()]
 	return 1
 
-fn consumed_parameter(move value: Failing, payload: String, take: Bool) String!:
+fn consumed_parameter(move value Failing, payload String, take Bool) String!:
 	if take:
 		_number := consume(value)
-	return ok(payload)
+	return ok(payload.clone())
 
 test "a borrowed success survives a successful close through forwarding":
 	dir := temporary("close-borrowed-ok-") | expect_ok?
@@ -211,7 +211,7 @@ test "a close error replaces borrowed success and leaves its source valid":
 test "a forwarded borrowed error is preserved across a failing close":
 	dir := temporary("close-forwarded-error-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: Int! := error(
+	original Int! := error(
 		Error("forwarded body", kind: "EFORWARD", details: {"id": "source"})
 	)
 	cause := forward_error(log, original) | expect_error?
@@ -252,7 +252,7 @@ test "a pending borrowed custom error retains the caller value":
 test "an incompatible close error still faults after pending success":
 	dir := temporary("close-custom-success-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: ok(custom(log, false)))
+	work := promise(() => ok(custom(log, false)))
 	cause := work.wait() | expect_error?
 	expect_equal(cause.kind, "EIO")?
 	expect_equal(events(log), "close 1\n")?
@@ -275,27 +275,27 @@ test "a consumed parameter closes on its retained path before borrowed success":
 	expect_equal(payload, "still borrowed")?
 	expect_equal(events(log), "close 1\n")?
 
-fn whole_result(log: String, source: Int!, fail: Bool) Int!:
+fn whole_result(log String, source Int!, fail Bool) Int!:
 	_resource := Failing(log.clone(), 1, fail: fail)
 	return source
 
 type Holder:
-	resource: Failing
+	resource Failing
 
-fn holder_result[T](log: String, source: T!) T!:
+fn holder_result[T](log String, source T!) T!:
 	_holder := Holder(Failing(log.clone(), 1, fail: false))
 	return source
 
-fn overlapping(log: String, value: String, cause: Error, fail: Bool) String!:
+fn overlapping(log String, value String, cause Error, fail Bool) String!:
 	_resource := Failing(log.clone(), 1, fail: false)
-	if fail: return error(cause)
+	if fail: return error(cause.clone())
 
-	return ok(value)
+	return ok(value.clone())
 
 test "whole Result forwarding preserves the body error and caller source":
 	dir := temporary("close-whole-error-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: Int! := error(
+	original Int! := error(
 		Error("whole body", kind: "EWHOLE", details: {"id": "whole"})
 	)
 	cause := whole_result(log, original, true) | expect_error?
@@ -310,7 +310,7 @@ test "whole Result forwarding preserves the body error and caller source":
 test "whole Result forwarding returns the first close error after success":
 	dir := temporary("close-whole-success-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: Int! := ok(73)
+	original Int! := ok(73)
 	cause := whole_result(log, original, true) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
 	expect_equal(original?, 73)?
@@ -319,7 +319,7 @@ test "whole Result forwarding returns the first close error after success":
 test "holder cleanup does not withdraw a generic whole Result borrow":
 	dir := temporary("close-holder-result-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: String! := error(Error("holder body", kind: "EHOLDER"))
+	original String! := error(Error("holder body", kind: "EHOLDER"))
 	cause := holder_result(log, original) | expect_error?
 	expect_equal(cause.message, "holder body")?
 	expect_equal(cause.kind, "EHOLDER")?
@@ -343,23 +343,23 @@ test "overlapping borrowed errors normalize without copying borrowed success":
 	expect_equal(events(second), "close 1\n")?
 
 type OwnHolder:
-	resource: Failing
+	resource Failing
 
 fn move OwnHolder.close() Void!:
 	return ok()
 
-fn own_holder_result[T](log: String, source: T!) T!:
+fn own_holder_result[T](log String, source T!) T!:
 	_holder := OwnHolder(Failing(log.clone(), 1, fail: false))
 	return source
 
-fn generic_whole[T](log: String, source: T!) T!:
+fn generic_whole[T](log String, source T!) T!:
 	_resource := Failing(log.clone(), 1, fail: false)
 	return source
 
 test "a holder with its own close still preserves a generic Result borrow":
 	dir := temporary("close-own-holder-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: String! := error(Error("own holder body", kind: "EOWNHOLDER"))
+	original String! := error(Error("own holder body", kind: "EOWNHOLDER"))
 	cause := own_holder_result(log, original) | expect_error?
 	expect_equal(cause.kind, "EOWNHOLDER")?
 
@@ -373,7 +373,7 @@ test "a generic propagating closer consumes its whole Result without a forbidden
 	expect_equal(generic_whole[String](log, ok("moved payload"))?, "moved payload")?
 	expect_equal(events(log), "close 1\n")?
 
-fn resource_domain_error(log: String) Bool:
+fn resource_domain_error(log String) Bool:
 	result := generic_error(log, Failing(log.clone(), 2, fail: false))
 	return result.is_error()
 
@@ -383,17 +383,17 @@ test "a generic resource error stays owned and closes exactly once":
 	expect_equal(resource_domain_error(log), true)?
 	expect_equal(events(log), "close 1\nclose 2\n")?
 
-fn moved_holder_result[T](log: String, source: T!) T!:
+fn moved_holder_result[T](log String, source T!) T!:
 	resource := Failing(log.clone(), 1, fail: false)
 	_holder := Holder(resource)
 	return source
 
-fn handled_result[T](log: String, source: T!) T!:
+fn handled_result[T](log String, source T!) T!:
 	var resource = Failing(log.clone(), 1)
 	void resource.close()
 	return source
 
-fn nested_closure_result[T](log: String, source: T!) T!:
+fn nested_closure_result[T](log String, source T!) T!:
 	_unused := fn:
 		_resource := Failing(log.clone(), 1)
 		return
@@ -403,7 +403,7 @@ fn nested_closure_result[T](log: String, source: T!) T!:
 test "a moved resource no longer contributes an outer close error":
 	dir := temporary("close-result-scope-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: String! := error(Error("source", kind: "ESOURCE"))
+	original String! := error(Error("source", kind: "ESOURCE"))
 	returned := moved_holder_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
 
@@ -414,7 +414,7 @@ test "a moved resource no longer contributes an outer close error":
 test "a handled close does not withdraw a whole Result borrow":
 	dir := temporary("close-result-scope-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: String! := error(Error("source", kind: "ESOURCE"))
+	original String! := error(Error("source", kind: "ESOURCE"))
 	returned := handled_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
 
@@ -425,7 +425,7 @@ test "a handled close does not withdraw a whole Result borrow":
 test "an uncalled closure cannot contribute an outer close error":
 	dir := temporary("close-result-scope-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: String! := error(Error("source", kind: "ESOURCE"))
+	original String! := error(Error("source", kind: "ESOURCE"))
 	returned := nested_closure_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
 
@@ -433,13 +433,13 @@ test "an uncalled closure cannot contribute an outer close error":
 	expect_equal(source.kind, "ESOURCE")?
 	expect_equal(events(log), "")?
 
-fn replaced_handled_result[T](log: String, source: T!) T!:
+fn replaced_handled_result[T](log String, source T!) T!:
 	var resource = Failing(log.clone(), 1, fail: false)
 	resource = Failing(log.clone(), 2)
 	void resource.close()
 	return source
 
-fn replaced_unhandled_result(log: String, source: Int!) Int!:
+fn replaced_unhandled_result(log String, source Int!) Int!:
 	var resource = Failing(log.clone(), 1, fail: false)
 	void resource.close()
 	resource = Failing(log.clone(), 2)
@@ -448,21 +448,21 @@ fn replaced_unhandled_result(log: String, source: Int!) Int!:
 fn failing_replacement() Failing!:
 	return error(Error("replacement", kind: "EREPLACE"))
 
-fn replacement_exit(log: String) Int!:
+fn replacement_exit(log String) Int!:
 	var resource = Failing(log.clone(), 1)
 	resource = failing_replacement()?
 	void resource.close()
 	return ok(7)
 
-fn captured_result[T](log: String, source: T!) T!:
+fn captured_result[T](log String, source T!) T!:
 	resource := Failing(log.clone(), 1, fail: false)
-	_callbacks: List[fn() Int] := [fn: resource.id]
+	_callbacks List[fn() Int] := [() => resource.id]
 	return source
 
 test "handled replacement lifetimes preserve whole Result borrowing":
 	dir := temporary("close-result-lifetime-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: String! := error(Error("source", kind: "ESOURCE"))
+	original String! := error(Error("source", kind: "ESOURCE"))
 	returned := replaced_handled_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
 
@@ -473,7 +473,7 @@ test "handled replacement lifetimes preserve whole Result borrowing":
 test "a captured resource contributes no outer close error":
 	dir := temporary("close-result-lifetime-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: String! := error(Error("source", kind: "ESOURCE"))
+	original String! := error(Error("source", kind: "ESOURCE"))
 	returned := captured_result(log, original) | expect_error?
 	expect_equal(returned.kind, "ESOURCE")?
 
@@ -484,7 +484,7 @@ test "a captured resource contributes no outer close error":
 test "an unhandled final replacement still propagates its close error":
 	dir := temporary("close-result-unhandled-") | expect_ok?
 	log := f"{dir.path()}/events"
-	original: Int! := ok(7)
+	original Int! := ok(7)
 	cause := replaced_unhandled_result(log, original) | expect_error?
 	expect_equal(cause.kind, "ECLOSE")?
 	expect_equal(original?, 7)?

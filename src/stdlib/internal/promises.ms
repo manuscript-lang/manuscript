@@ -5,68 +5,68 @@ import Bytes from "@std/bytes.ms"
 // error, 2 timed out, 3 cancelled, 4 closed (the result was already taken), 5 failed (a
 // fault inside).
 
-export extern fn msrt_promise_put[T](id: Int, move value: T, failed: Int) Void
+export extern fn msrt_promise_put[T](id Int, move value T, failed Int) Void
 
-export extern fn msrt_promise_take[T](id: Int) move T?
+export extern fn msrt_promise_take[T](id Int) move T?
 
 // A result held in a slot of its own: taking `Slot[T]` instead of `T` tells a result
 // that is `null` (`T` nullable) from a result that is gone, which `T?` of a nullable
 // `T` cannot. It has the layout of `T`.
 export type Slot[T]:
-	value: T
+	value T
 
 // Waits for the promise without a limit and takes its value. `null` when it ended any
 // other way; `msrt_promise_wait` then says which.
-export extern fn msrt_promise_result[T](id: Int) move T?
+export extern fn msrt_promise_result[T](id Int) move T?
 
-export extern fn msrt_promise_done(id: Int) Bool
+export extern fn msrt_promise_done(id Int) Bool
 
 // Starts `work` as a new promise and returns its id. The work is called with that id
 // and finishes with `msrt_promise_put`. `site` is the line a fault report names as the
 // start. The work is queued on the calling thread: its waiter runs it, or an idle
 // thread takes it.
-export extern fn msrt_promise_start(move work: fn(Int) Void, site: String) Int
+export extern fn msrt_promise_start(move work fn(Int) Void, site String) Int
 
 // As `msrt_promise_start`, but always a task on the calling thread.
-export extern fn msrt_promise_start_here(move work: fn(Int) Void, site: String) Int
+export extern fn msrt_promise_start_here(move work fn(Int) Void, site String) Int
 
 // Like `msrt_promise_start_here`, but with no other task running the work waits for its
 // waiter.
-export extern fn msrt_promise_start_idle(move work: fn(Int) Void, site: String) Int
+export extern fn msrt_promise_start_idle(move work fn(Int) Void, site String) Int
 
 // As `msrt_promise_start`, but on the least loaded thread.
-export extern fn msrt_promise_start_spread(move work: fn(Int) Void, site: String) Int
+export extern fn msrt_promise_start_spread(move work fn(Int) Void, site String) Int
 
-export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
+export extern fn msrt_promise_wait(id Int, timeout_ns Int) Int
 
 // Limits the promise: once `timeout_ns` has passed from now without a result it is
 // cancelled and a wait reports a timeout.
-export extern fn msrt_promise_limit(id: Int, timeout_ns: Int) Void
+export extern fn msrt_promise_limit(id Int, timeout_ns Int) Void
 
 // Cancels the promise if it has not finished; a wait then reports a cancellation. It
 // does not wait.
-export extern fn msrt_promise_cancel(id: Int) Void
+export extern fn msrt_promise_cancel(id Int) Void
 
 // Makes the promise listen to the cancel switch: when it fires the promise is
 // cancelled. Call it once the work has started.
-export extern fn msrt_promise_on_cancel(id: Int, cancel: Int) Void
+export extern fn msrt_promise_on_cancel(id Int, cancel Int) Void
 
 // A new cancel switch that has not fired, as an id.
 export extern fn msrt_cancel_new() Int
 
 // Fires the switch: every promise listening to it is cancelled. Firing twice does
 // nothing.
-export extern fn msrt_cancel_fire(id: Int) Void
+export extern fn msrt_cancel_fire(id Int) Void
 
 // Whether the switch has fired; a freed switch reads as not fired.
-export extern fn msrt_cancel_fired(id: Int) Bool
+export extern fn msrt_cancel_fired(id Int) Bool
 
 // Frees the switch; the promises that listened keep running.
-export extern fn msrt_cancel_free(id: Int) Void
+export extern fn msrt_cancel_free(id Int) Void
 
 // The index of the first of `ids` to finish, waiting up to `timeout_ns` (negative: no
 // limit); -1 on timeout.
-export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
+export extern fn msrt_promise_wait_any(ids List[Int], timeout_ns Int) Int
 
 // A wait group watches promises of this thread and reports each as it finishes, so
 // waiting for many costs one step per promise instead of a rescan after every wake.
@@ -75,7 +75,7 @@ export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
 // is left.
 export extern fn msrt_group_new() Int
 
-export extern fn msrt_group_next(group: Int) Int
+export extern fn msrt_group_next(group Int) Int
 
 // Runs promise `id` on the waiter's own stack if no thread has taken it. The waiter's
 // promises have the ids `ids`: while the promise runs, one of them that fails ends the
@@ -83,108 +83,108 @@ export extern fn msrt_group_next(group: Int) Int
 // `group` when the run first waits. Answers 0 when nothing ran, 1 when a promise ran, 2
 // when a failure ended the run.
 export extern fn msrt_promise_run_watched(
-	id: Int,
-	group: Int,
-	ids: List[Int],
-	from: Int,
+	id Int,
+	group Int,
+	ids List[Int],
+	from Int,
 ) Int
 
 // Adds the promises of `ids` from index `from` on to `group`, tagged by index, unless
 // that was done; answers 1 when all joined, 2 when some belong to another thread.
-export extern fn msrt_group_join(group: Int, ids: List[Int], from: Int) Int
+export extern fn msrt_group_join(group Int, ids List[Int], from Int) Int
 
 // The tag of a finished promise not reported yet, or -1; never waits.
-export extern fn msrt_group_poll(group: Int) Int
+export extern fn msrt_group_poll(group Int) Int
 
-export extern fn msrt_group_free(group: Int) Void
+export extern fn msrt_group_free(group Int) Void
 
-export extern fn msrt_promise_fault_report(id: Int) move String
+export extern fn msrt_promise_fault_report(id Int) move String
 
-export extern fn msrt_promise_drop(id: Int) Void
+export extern fn msrt_promise_drop(id Int) Void
 
 // Cancels and joins the work of `id`, then drops it unless a result is left for the
 // caller to take (true): the caller takes it and calls `msrt_promise_drop`.
-export extern fn msrt_promise_close(id: Int) Bool
+export extern fn msrt_promise_close(id Int) Bool
 
 // A promise that finishes after `ns` nanoseconds; it has no task. Wait with code 0.
-export extern fn msrt_promise_sleep(ns: Int) Int
+export extern fn msrt_promise_sleep(ns Int) Int
 
 // In-memory pipes (crates/ms-rt/src/pipes.rs). A pipe starts with one writer, the Pipe
 // value itself.
-export extern fn msrt_pipe_new(capacity: Int) Int
+export extern fn msrt_pipe_new(capacity Int) Int
 
 // Another writing end.
-export extern fn msrt_pipe_add_writer(pipe: Int) Void
+export extern fn msrt_pipe_add_writer(pipe Int) Void
 
 // Moves a value in; 0 written, 1 the reader is gone (the value is dropped). Never
 // waits.
-export extern fn msrt_pipe_write[T](pipe: Int, move value: T) Int
+export extern fn msrt_pipe_write[T](pipe Int, move value T) Int
 
 // A promise for the next value (take it with msrt_promise_take[T]); finishes with no
 // value at the end.
-export extern fn msrt_pipe_read(pipe: Int) Int
+export extern fn msrt_pipe_read(pipe Int) Int
 
 // The next queued value without a promise; none when nothing is queued right now.
-export extern fn msrt_pipe_try[T](pipe: Int) move T?
+export extern fn msrt_pipe_try[T](pipe Int) move T?
 
 // 1 when a read would end with no value: every writer closed and nothing is queued.
-export extern fn msrt_pipe_ended(pipe: Int) Int
+export extern fn msrt_pipe_ended(pipe Int) Int
 
-export extern fn msrt_pipe_brief_wait(pipe: Int) Int
+export extern fn msrt_pipe_brief_wait(pipe Int) Int
 
 // A promise that finishes when no more than `capacity` values are queued, or the reader
 // is gone.
-export extern fn msrt_pipe_flush(pipe: Int) Int
+export extern fn msrt_pipe_flush(pipe Int) Int
 
-export extern fn msrt_pipe_close_writer(pipe: Int) Void
+export extern fn msrt_pipe_close_writer(pipe Int) Void
 
-export extern fn msrt_pipe_close_reader(pipe: Int) Void
+export extern fn msrt_pipe_close_reader(pipe Int) Void
 
 // The native stream table (crates/ms-rt/src/streams.rs): descriptor-backed byte
 // streams. Flags of msrt_streams_open: 1 reads, 2 writes, 4 closing the stream closes
 // the descriptor.
-export extern fn msrt_streams_open(fd: Int, flags: Int) Int
+export extern fn msrt_streams_open(fd Int, flags Int) Int
 
 // A promise for the next chunk (take it with msrt_promise_take[Bytes]); no value at the
 // end or after a failure.
-export extern fn msrt_streams_read(stream: Int) Int
+export extern fn msrt_streams_read(stream Int) Int
 
 // Queues bytes; 0 admitted, 1 closed or not writable. Check msrt_streams_error for
 // terminal write failures. Never waits.
-export extern fn msrt_streams_write(stream: Int, data: Bytes) Int
+export extern fn msrt_streams_write(stream Int, data Bytes) Int
 
 // A promise that finishes when the write buffer has drained.
-export extern fn msrt_streams_flush(stream: Int) Int
+export extern fn msrt_streams_flush(stream Int) Int
 
-export extern fn msrt_streams_buffered(stream: Int) Int
+export extern fn msrt_streams_buffered(stream Int) Int
 
 // The last read failure or the terminal write failure (retained until close), or an
 // empty string.
-export extern fn msrt_streams_error(stream: Int) move String
+export extern fn msrt_streams_error(stream Int) move String
 
-export extern fn msrt_streams_close(stream: Int) Void
+export extern fn msrt_streams_close(stream Int) Void
 
 // A new promise whose work runs in the first task that waits on it, called with the
 // promise's id.
-export extern fn msrt_promise_defer(move work: fn(Int) Void) Int
+export extern fn msrt_promise_defer(move work fn(Int) Void) Int
 
 // An already finished promise with no value.
 export extern fn msrt_promise_finished() Int
 
 // The process-wide output buffers (crates/ms-rt/src/io.rs); standard output is flushed
 // at exit.
-export extern fn msrt_io_write_stdout(text: String) Void
+export extern fn msrt_io_write_stdout(text String) Void
 
-export extern fn msrt_io_write_stderr(text: String) Void
+export extern fn msrt_io_write_stderr(text String) Void
 
-export extern fn msrt_io_write_bytes_stdout(data: Bytes) Void
+export extern fn msrt_io_write_bytes_stdout(data Bytes) Void
 
-export extern fn msrt_io_write_bytes_stderr(data: Bytes) Void
+export extern fn msrt_io_write_bytes_stderr(data Bytes) Void
 
 // Bounds every wait of the running task until it is restored: none lasts past
 // `timeout_ns` in all, and one that reaches it reports a timeout to its caller. A bound
 // already in force stays when it ends sooner. Returns the previous limit.
-export extern fn msrt_task_read_limit(timeout_ns: Int) Int
+export extern fn msrt_task_read_limit(timeout_ns Int) Int
 
 // Puts back the limit `msrt_task_read_limit` returned.
-export extern fn msrt_task_read_limit_restore(previous: Int) Void
+export extern fn msrt_task_read_limit_restore(previous Int) Void

@@ -5,20 +5,20 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn original(value: Int = 7) Int: value + 1
+fn original(value Int = 7) Int => value + 1
 
-fn replacement(value: Int) Int: value + 2
+fn replacement(value Int) Int => value + 2
 
-fn original_float(value: Float = 7.0) Float: value
+fn original_float(value Float = 7.0) Float => value
 
-fn choose[T](left: T, right: T) T: right
+fn choose[T](left T, right T) T => right
 
 type Offset:
-	base: Int
+	base Int
 
-fn Offset.original(value: Int = 7) Int: self.base + value
+fn Offset.original(value Int = 7) Int => self.base + value
 
-fn Offset.replacement(value: Int) Int: self.base + value + 1
+fn Offset.replacement(value Int) Int => self.base + value + 1
 
 test "required source functions replace defaulted callable values":
 	var callback = original
@@ -36,7 +36,7 @@ test "required source functions replace defaulted callable values":
 
 test "required lambdas replace defaulted callable values":
 	var callback = original
-	callback = fn(value: Int): value + 2
+	callback = fn(value Int) => value + 2
 	expect_equal(callback(3), 5)?
 
 test "required native functions replace defaulted callable values":
@@ -53,13 +53,13 @@ test "required bound methods replace defaulted callable values":
 	callback = offset.clone().replacement
 	expect_equal(callback(3), 6)?
 
-fn original_text(value: String = "default") Int: value.length()
+fn original_text(value String = "default") Int => value.length()
 
-fn original_predicate(value: String = "default") Bool: false
+fn original_predicate(value String = "default") Bool => false
 
 test "required lambda adapters retain supplied owned payloads":
 	var callback = original_text
-	callback = fn(value: String): value.length()
+	callback = fn(value String) => value.length()
 
 	text := "a sufficiently long string payload".clone()
 	expect_equal(callback(text), 34)?
@@ -70,12 +70,12 @@ test "required bound native methods decode supplied payloads":
 	expect_equal(callback("needle".clone()), true)?
 
 interface Reader:
-	fn read(value: Int?) Int
+	fn read(value Int?) Int
 
 type ReaderOffset:
-	base: Int
+	base Int
 
-fn ReaderOffset.read(value: Int?) Int: self.base + (value or 5)
+fn ReaderOffset.read(value Int?) Int => self.base + (value or 5)
 
 test "inherited defaults remain available on immutable bound callables":
 	offset := ReaderOffset(2)
@@ -84,7 +84,7 @@ test "inherited defaults remain available on immutable bound callables":
 	expect_equal(callback(3), 5)?
 
 test "inferred callable returns use required arguments consistently":
-	factory := fn(flag: Bool):
+	factory := fn(flag Bool):
 		if flag: return original
 		return replacement
 
@@ -92,8 +92,8 @@ test "inferred callable returns use required arguments consistently":
 	expect_equal(factory(false)(3), 5)?
 
 	callback := match true:
-		true: original
-		false: replacement
+		true => original
+		false => replacement
 
 	expect_equal(callback(3), 4)?
 

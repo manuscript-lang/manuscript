@@ -1,8 +1,8 @@
 // Copy sweep (`make copy-check`): builds the programs and test fixtures of the corpus
 // with
-// `MS_COPY_PROBE=1`, which makes the compiler print every implicit `copy` of an object value (a
-// closure, interface or runtime object, or a value holding one) in the lowered code.
-// Such a value has one owner and a program duplicates it only through a written
+// `MS_COPY_PROBE=1`, which makes the compiler print every copy of a value that owns memory
+// (a string, list, record, closure or runtime object) that no written `.clone()` asked
+// for. Such a value has one owner and a program duplicates it only through a written
 // `.clone()`, which the probe leaves out, so each line is a lowering site to fix; the
 // sweep fails while any remain. Arguments name the files to sweep instead. MS names the
 // ms that builds the programs (default .artifacts/build/ci/src/cli/ms). Usage: ms run
@@ -17,7 +17,7 @@ import (
 )
 
 // The probe lines the compiler printed on standard error, without their prefix.
-fn copies(text: String) List[String]:
+fn copies(text String) List[String]:
 	var sites = List[String]()
 	for line in text.split("\n"):
 		if line.starts_with("copy-probe\t"): sites.append(

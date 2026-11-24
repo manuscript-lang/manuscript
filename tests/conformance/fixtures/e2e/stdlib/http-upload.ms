@@ -15,8 +15,8 @@ import (
 )
 
 // Reads `input` to its end and joins the chunks.
-fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
-	var chunks: List[Bytes] = []
+fn read_to_end(var input ReadStream[Bytes]) Bytes!:
+	var chunks List[Bytes] = []
 
 	while true:
 		chunk := input.next()?
@@ -31,9 +31,9 @@ fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
 
 // Hands out its parts one chunk at a time, then reports the end of the stream.
 type Chunks:
-	parts: List[String]
-	at: Int = 0
-	failure: String?
+	parts List[String]
+	at Int = 0
+	failure String?
 
 fn move Chunks.close() Void!:
 	return ok()
@@ -41,14 +41,14 @@ fn move Chunks.close() Void!:
 fn var Chunks.next() Bytes?!:
 	if self.at == self.parts.length():
 		match self.failure:
-			message: return error(Error(message.clone(), kind: "EIO"))
-			null: return ok(null)
+			message => return error(Error(message.clone(), kind: "EIO"))
+			null => return ok(null)
 
 	chunk := self.parts[self.at]
 	self.at += 1
 	return ok(chunk.to_bytes())
 
-fn echo(request: HttpRequest) HttpResponse:
+fn echo(request HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: request.body.clone())
 
 test "request_stream uploads each chunk of a ReadStream":

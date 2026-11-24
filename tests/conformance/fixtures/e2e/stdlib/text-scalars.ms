@@ -5,8 +5,8 @@ import (
 	scalars from "@std/text.ms",
 )
 
-fn read_all(text: String) List[String]!:
-	var out: List[String] = []
+fn read_all(text String) List[String]!:
+	var out List[String] = []
 	for scalar in scalars(text):
 		out.append(scalar)
 	return ok(out)

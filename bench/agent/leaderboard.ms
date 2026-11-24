@@ -27,30 +27,30 @@ CATEGORIES := ["base", "docs", "reads", "build", "writes", "model output"]
 
 // One graded Harbor trial, as a line of `trials-*.jsonl`.
 type Trial:
-	trial: String
-	challenge: String
-	category: String
-	tier: Int
-	language: String
-	pass: Bool
-	errored: Bool
-	tokens_in: Int
-	tokens_cached: Int
-	tokens_out: Int
-	cost_usd: Float
-	turns: Int
-	wall_s: Float
-	input_by_source: JsonValue
-	started: String
-	agent: String?
-	model: String?
-	cases_passed: Int?
-	cases_total: Int?
-	first_build_ok: Bool?
-	code_tokens: Int?
-	builds: Int?
+	trial String
+	challenge String
+	category String
+	tier Int
+	language String
+	pass Bool
+	errored Bool
+	tokens_in Int
+	tokens_cached Int
+	tokens_out Int
+	cost_usd Float
+	turns Int
+	wall_s Float
+	input_by_source JsonValue
+	started String
+	agent String?
+	model String?
+	cases_passed Int?
+	cases_total Int?
+	first_build_ok Bool?
+	code_tokens Int?
+	builds Int?
 
-fn lang_name(id: String) String:
+fn lang_name(id String) String:
 	if id == "ts": return "TypeScript"
 	if id == "go": return "Go"
 	if id == "rust": return "Rust"
@@ -61,29 +61,29 @@ fn lang_name(id: String) String:
 fn today() String:
 	return now().format("YYYY-MM-DD", "Local").get_or("")
 
-fn trials_file() String: f"{root()}/results/trials-{today()}.jsonl"
+fn trials_file() String => f"{root()}/results/trials-{today()}.jsonl"
 
-fn text_at(doc: JsonValue, key: String) String:
+fn text_at(doc JsonValue, key String) String:
 	return (doc.get(key) or JsonValue.Null).as_string() or ""
 
-fn seconds_of(text: String) Float:
+fn seconds_of(text String) Float:
 	t := parse_timestamp(text).get()
 	return t.unix_seconds().to_float() + t.nanoseconds().to_float() / 1000000000.0
 
 // Which kind of content a step's tool results add to the context.
-fn categorize(step: JsonValue) String:
+fn categorize(step JsonValue) String:
 	calls := (step.get("tool_calls") or JsonValue.Null).as_list() or []
 	text := calls.map(
-		fn c: dumps(
+		c => dumps(
 			c.get("arguments") or JsonValue.ObjectValue(
 				Map[String, JsonValue]()
 			),
 			0,
 		)
 	).join(" ")
-	names := calls.map(fn c: text_at(c, "function_name"))
+	names := calls.map(c => text_at(c, "function_name"))
 	if names.any(
-		fn n: (
+		n => (
 			n == "Write"
 			or n == "Edit"
 			or n == "MultiEdit"
@@ -95,11 +95,11 @@ fn categorize(step: JsonValue) String:
 	build_marks := [
 		"check.sh", "ms build", "ms check", "ms run", "cargo ", "go build", "node "
 	]
-	if build_marks.any(fn k: text.contains(k)): return "build"
+	if build_marks.any(k => text.contains(k)): return "build"
 
 	return "reads"
 
-fn metric(step: JsonValue, key: String) Float:
+fn metric(step JsonValue, key String) Float:
 	return (
 		(
 			(step.get("metrics") or JsonValue.Null).get(key)
@@ -115,11 +115,11 @@ fn metric(step: JsonValue, key: String) Float:
 // previous step, credit the growth to the previous step's tool category (and its
 // completion tokens to "model output"), and split every step's prompt tokens by the
 // running composition. The total equals the sum of prompt tokens over agent steps.
-fn breakdown(steps: List[JsonValue]) List[Float]:
-	var comp = CATEGORIES.map(fn _c: 0.0)
-	var out = CATEGORIES.map(fn _c: 0.0)
+fn breakdown(steps List[JsonValue]) List[Float]:
+	var comp = CATEGORIES.map(_c => 0.0)
+	var out = CATEGORIES.map(_c => 0.0)
 	var prev_prompt = 0.0
-	var prev: JsonValue? = null
+	var prev JsonValue? = null
 
 	for st in steps:
 		if text_at(st, "source") != "agent" or (st.get("metrics") == null): continue
@@ -145,7 +145,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 
 	return out
 
-fn read_trial(dir: String) Trial?:
+fn read_trial(dir String) Trial?:
 	if not access(f"{dir}/result.json", 0).is_ok(): return null
 
 	r := parse(must_read(f"{dir}/result.json")).get_or(JsonValue.Null)
@@ -183,7 +183,7 @@ fn read_trial(dir: String) Trial?:
 			).as_list()
 			or []
 		)
-		turns = steps.count(fn s: text_at(s, "source") == "agent")
+		turns = steps.count(s => text_at(s, "source") == "agent")
 
 		split := breakdown(steps)
 		cats := CATEGORIES
@@ -204,7 +204,7 @@ fn read_trial(dir: String) Trial?:
 		)
 
 	agent_cfg := (r.get("config") or JsonValue.Null).get("agent") or JsonValue.Null
-	score := (reward or JsonValue.Null).as_float()
+	score := (reward.clone() or JsonValue.Null).as_float()
 	passed := (score or 0.0) == 1.0
 	return Trial(
 		trial: text_at(r, "trial_name"),
@@ -237,13 +237,13 @@ fn read_trial(dir: String) Trial?:
 		started: (r.get("started_at") or JsonValue.Null).as_string() or "",
 	)
 
-fn read_trials(path: String) List[Trial]:
+fn read_trials(path String) List[Trial]:
 	var rows = List[Trial]()
 	for line in nonblank_lines(read_text(path)):
 		rows.append(parse[Trial](line).get())
 	return rows
 
-fn collect(dirs: List[String]) Int:
+fn collect(dirs List[String]) Int:
 	var rows = read_trials(trials_file())
 
 	for jobs in dirs:
@@ -258,16 +258,16 @@ fn collect(dirs: List[String]) Int:
 				t := read_trial(dir)
 
 				if t != null:
-					rows = rows.filter(fn old: old.trial != t.trial)
+					rows = rows.filter(old => old.trial != t.trial)
 					rows.append(t)
 
 	// A resumed job reruns trials; keep one (the latest) per challenge, language, agent
 	// and model.
 	var latest = List[Trial]()
 
-	for t in rows.sorted(fn a, b: a.started.compare(b.started)):
+	for t in rows.sorted((a, b) => a.started.compare(b.started)):
 		latest = latest.filter(
-			fn o: not (
+			o => not (
 				o.challenge == t.challenge
 				and o.language == t.language
 				and o.agent == t.agent
@@ -276,47 +276,47 @@ fn collect(dirs: List[String]) Int:
 		)
 		latest.append(t.clone())
 
-	kept := latest.sorted(fn a, b: a.trial.compare(b.trial))
-	write_text(trials_file(), kept.map(fn t: dumps_data(t, 0) + "\n").join(""))
+	kept := latest.sorted((a, b) => a.trial.compare(b.trial))
+	write_text(trials_file(), kept.map(t => dumps_data(t, 0) + "\n").join(""))
 	print(f"{kept.length()} trials in {trials_file()}")
 	return 0
 
 // Aggregates of one group of trials; passing trials only for the averages.
 type Agg:
-	n: Int
-	pass: Float
-	fb: Float
-	tokens: Float?
-	turns: Float?
-	wall: Float?
-	cost: Float?
-	code: Float?
+	n Int
+	pass Float
+	fb Float
+	tokens Float?
+	turns Float?
+	wall Float?
+	cost Float?
+	code Float?
 
-fn mean_of(values: List[Float]) Float?:
+fn mean_of(values List[Float]) Float?:
 	if values.is_empty(): return null
 	return values.sum() / values.length().to_float()
 
-fn mean_scaled_opt(values: List[Float], scale: Float) Float?:
+fn mean_scaled_opt(values List[Float], scale Float) Float?:
 	if values.is_empty(): return null
 	return mean_scaled(values, scale)
 
-fn agg(rs: List[Trial]) Agg:
-	ok := rs.filter(fn r: r.pass)
-	coded := ok.filter(fn r: r.code_tokens != null)
+fn agg(rs List[Trial]) Agg:
+	ok := rs.filter(r => r.pass)
+	coded := ok.filter(r => r.code_tokens != null)
 	return Agg(
 		rs.length(),
 		ok.length().to_float() / rs.length().to_float(),
 		rs.count(
-			fn r: r.first_build_ok or (false)
+			r => r.first_build_ok or (false)
 		).to_float() / rs.length().to_float(),
-		mean_of(ok.map(fn r: (r.tokens_in + r.tokens_out).to_float())),
-		mean_of(ok.map(fn r: (r.turns.to_float()))),
-		mean_scaled_opt(ok.map(fn r: r.wall_s), 10.0),
-		mean_of(ok.map(fn r: r.cost_usd)),
-		mean_of(coded.map(fn r: ((r.code_tokens or 0).to_float()))),
+		mean_of(ok.map(r => (r.tokens_in + r.tokens_out).to_float())),
+		mean_of(ok.map(r => (r.turns.to_float()))),
+		mean_scaled_opt(ok.map(r => r.wall_s), 10.0),
+		mean_of(ok.map(r => r.cost_usd)),
+		mean_of(coded.map(r => ((r.code_tokens or 0).to_float()))),
 	)
 
-fn fmt(kind: String, v: Float?) String:
+fn fmt(kind String, v Float?) String:
 	if v == null: return if kind == "n0": "n/a" else: "-"
 
 	x := v
@@ -328,10 +328,10 @@ fn fmt(kind: String, v: Float?) String:
 	return fixed(x, 0)
 
 type Row:
-	key: String
-	stats: Agg
+	key String
+	stats Agg
 
-fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) String:
+fn table(title String, rs List[Trial], key fn(Trial) String, label String) String:
 	var lines = [f"### {title}", ""]
 	lines.append(
 		f"| rank | {label} | trials | pass | first build ok | agent tokens | solution size (tokens) | turns | wall s | cost |"
@@ -339,11 +339,10 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 	lines.append("|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|")
 
 	keys := rs.map(key).distinct()
-	var rows = keys.map(fn k: Row(k.clone(), agg(rs.filter(fn t: key(t) == k))))
+	var rows = keys.map(k => Row(k.clone(), agg(rs.filter(t => key(t) == k))))
 	rows = rows.entries().sorted(
-		fn a,
-		b: order(a.value, b.value, a.index, b.index)
-	).map(fn e: (e.value.clone()))
+		(a, b) => order(a.value, b.value, a.index, b.index)
+	).map(e => (e.value.clone()))
 
 	for i in 0..rows.length():
 		a := rows[i].stats
@@ -356,7 +355,7 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 
 // Higher pass rate first, then lower cost; trials without a passing run sort last, then
 // input order.
-fn order(a: Row, b: Row, ai: Int, bi: Int) Int:
+fn order(a Row, b Row, ai Int, bi Int) Int:
 	if a.stats.pass != b.stats.pass: return if a.stats.pass > b.stats.pass: -1 else: 1
 
 	ac := a.stats.cost or 1000000000.0
@@ -365,11 +364,11 @@ fn order(a: Row, b: Row, ai: Int, bi: Int) Int:
 
 	return ai - bi
 
-fn source_value(t: Trial, c: String) Float:
+fn source_value(t Trial, c String) Float:
 	return (t.input_by_source.get(c) or JsonValue.Null).as_float() or 0.0
 
 // Where input tokens go, per language, averaged over passing trials.
-fn source_table(rows: List[Trial]) String:
+fn source_table(rows List[Trial]) String:
 	var lines = ["### Where the input tokens go (passing trials, mean per trial)", ""]
 	lines.append(
 		"Input tokens include cache reads. `base` is the system prompt plus the task, re-sent on every step, so it scales with turns; `docs` is the Manuscript docs bundle when the agent reads it;"
@@ -379,11 +378,11 @@ fn source_table(rows: List[Trial]) String:
 	)
 	lines.append("")
 	lines.append(f"| language | input | output | {CATEGORIES.join(" | ")} |")
-	lines.append("|---|---:|---:|" + CATEGORIES.map(fn _c: "---:|").join(""))
+	lines.append("|---|---:|---:|" + CATEGORIES.map(_c => "---:|").join(""))
 
 	for lang in ["ts", "go", "rust", "ms"]:
 		ok := rows.filter(
-			fn t: (
+			t => (
 				t.language == lang
 				and t.pass
 				and t.input_by_source != JsonValue.ObjectValue(
@@ -393,13 +392,13 @@ fn source_table(rows: List[Trial]) String:
 		)
 		if ok.is_empty(): continue
 
-		mean_in := (ok.map(fn t: t.tokens_in.to_float()).sum() / ok.length().to_float())
-		out := ok.map(fn t: t.tokens_out.to_float()).sum() / ok.length().to_float()
+		mean_in := (ok.map(t => t.tokens_in.to_float()).sum() / ok.length().to_float())
+		out := ok.map(t => t.tokens_out.to_float()).sum() / ok.length().to_float()
 		cells := CATEGORIES.map(
-			fn c: (
+			c => (
 				fixed(
 					ok.map(
-						fn t: source_value(t, c)
+						t => source_value(t, c)
 					).sum() / ok.length().to_float() / 1000.0,
 					0,
 				)
@@ -412,19 +411,19 @@ fn source_table(rows: List[Trial]) String:
 
 	return lines.join("\n") + "\n"
 
-fn render(src_arg: String?) Int:
-	var src = src_arg or ""
+fn render(src_arg String?) Int:
+	var src = src_arg.clone() or ""
 
 	if src == "":
 		found := glob(f"{root()}/results", GlobOptions(patterns: ["trials-*.jsonl"])).get_or(
 			[]
 		)
-		names := found.map(fn e: e.path.clone())
+		names := found.map(e => e.path.clone())
 		src = f"{root()}/results/{(names.sorted().last() or "")}"
 
 	board := src.replace("trials-", "leaderboard-").replace(".jsonl", ".md")
 	trials := read_trials(src)
-	clean := trials.filter(fn t: not t.errored)
+	clean := trials.filter(t => not t.errored)
 	var out = ["# agent-bench leaderboard", ""]
 	out.append(
 		f"{trials.length()} trials ({trials.length() - clean.length()} errored and excluded). Pass rate counts all scored trials; tokens, turns, wall time and cost average over passing trials only. `agent tokens` is what the agent consumed (input including cache reads, plus output). `solution size (tokens)` is the number of lexical tokens (identifiers, literals, punctuation; comments excluded) in the final source it wrote, mean over passing trials; `n/a` means the run predates the measurement. Ranked by pass rate, then cost."
@@ -434,43 +433,43 @@ fn render(src_arg: String?) Int:
 		table(
 			"Languages (all models)",
 			clean,
-			fn t: lang_name(t.language),
-			"language"
+			t => lang_name(t.language),
+			"language",
 		)
 	)
 	out.append(
 		table(
 			"Models (all languages)",
 			clean,
-			fn t: f"{(t.agent or "None")} / {(t.model or "None")}",
-			"agent / model"
+			t => f"{(t.agent or "None")} / {(t.model or "None")}",
+			"agent / model",
 		)
 	)
 	out.append(
 		table(
 			"Model x language",
 			clean,
-			fn t: f"{(t.model or "None")} / {lang_name(t.language)}",
-			"model / language"
+			t => f"{(t.model or "None")} / {lang_name(t.language)}",
+			"model / language",
 		)
 	)
 	out.append(source_table(clean))
-	for cat in clean.map(fn t: t.category.clone()).distinct().sorted():
+	for cat in clean.map(t => t.category.clone()).distinct().sorted():
 		out.append(
 			table(
 				f"Category: {cat}",
-				clean.filter(fn t: t.category == cat),
-				fn t: lang_name(t.language),
-				"language"
+				clean.filter(t => t.category == cat),
+				t => lang_name(t.language),
+				"language",
 			)
 		)
-	for tier in clean.map(fn t: t.tier).distinct().sorted():
+	for tier in clean.map(t => t.tier).distinct().sorted():
 		out.append(
 			table(
 				f"Tier {tier}",
-				clean.filter(fn t: t.tier == tier),
-				fn t: lang_name(t.language),
-				"language"
+				clean.filter(t => t.tier == tier),
+				t => lang_name(t.language),
+				"language",
 			)
 		)
 	write_text(board, out.join("\n"))

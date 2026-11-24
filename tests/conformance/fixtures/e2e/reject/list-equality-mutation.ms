@@ -7,22 +7,22 @@
 import fail from "@std/test/test.ms"
 
 type Element:
-    id: Int
-    on_equal: fn() Void
+    id Int
+    on_equal fn() Void
 
-fn Element.equals(other: Element) Bool:
+fn Element.equals(other Element) Bool:
     self.on_equal()
     return self.id == other.id
 
 type Visits:
-    count: Int
+    count Int
 
 fn noop() Void:
     return
 
-fn check_equality(side: String, mutation: String) Void!:
-    var left: List[Element] = []
-    var right: List[Element] = []
+fn check_equality(side String, mutation String) Void!:
+    var left List[Element] = []
+    var right List[Element] = []
     calls := Visits(0)
 
     visit := fn:

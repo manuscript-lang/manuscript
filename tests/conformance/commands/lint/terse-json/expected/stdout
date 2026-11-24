@@ -9,20 +9,20 @@
         "file": "main.ms",
         "line": 7,
         "column": 20,
-        "offset": 159
+        "offset": 156
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 7,
           "column": 5,
-          "offset": 147
+          "offset": 144
         },
         "end": {
           "file": "main.ms",
           "line": 7,
           "column": 21,
-          "offset": 163
+          "offset": 160
         },
         "replacement": "xs.is_empty()"
       }
@@ -35,20 +35,20 @@
         "file": "main.ms",
         "line": 8,
         "column": 19,
-        "offset": 192
+        "offset": 189
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 8,
           "column": 5,
-          "offset": 181
+          "offset": 178
         },
         "end": {
           "file": "main.ms",
           "line": 8,
           "column": 19,
-          "offset": 195
+          "offset": 192
         },
         "replacement": "not m.is_empty()"
       }
@@ -61,20 +61,20 @@
         "file": "main.ms",
         "line": 10,
         "column": 26,
-        "offset": 233
+        "offset": 230
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 10,
           "column": 9,
-          "offset": 219
+          "offset": 216
         },
         "end": {
           "file": "main.ms",
           "line": 10,
           "column": 27,
-          "offset": 237
+          "offset": 234
         },
         "replacement": "text.is_empty()"
       }
@@ -87,20 +87,20 @@
         "file": "main.ms",
         "line": 13,
         "column": 15,
-        "offset": 279
+        "offset": 275
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 13,
           "column": 11,
-          "offset": 278
+          "offset": 274
         },
         "end": {
           "file": "main.ms",
           "line": 13,
           "column": 18,
-          "offset": 285
+          "offset": 281
         },
         "replacement": "[0]"
       }
@@ -113,7 +113,7 @@
         "file": "main.ms",
         "line": 19,
         "column": 5,
-        "offset": 451
+        "offset": 445
       }
     },
     {
@@ -124,20 +124,20 @@
         "file": "main.ms",
         "line": 22,
         "column": 5,
-        "offset": 491
+        "offset": 484
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 22,
           "column": 2,
-          "offset": 491
+          "offset": 484
         },
         "end": {
           "file": "main.ms",
           "line": 24,
           "column": 8,
-          "offset": 518
+          "offset": 511
         },
         "replacement": "x := if flag: 2 else: 1"
       }
@@ -150,20 +150,20 @@
         "file": "main.ms",
         "line": 28,
         "column": 5,
-        "offset": 552
+        "offset": 544
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 28,
           "column": 2,
-          "offset": 552
+          "offset": 544
         },
         "end": {
           "file": "main.ms",
           "line": 29,
           "column": 10,
-          "offset": 572
+          "offset": 564
         },
         "replacement": "return n + 1"
       }
@@ -176,20 +176,20 @@
         "file": "main.ms",
         "line": 32,
         "column": 5,
-        "offset": 603
+        "offset": 594
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 32,
           "column": 1,
-          "offset": 602
+          "offset": 593
         },
         "end": {
           "file": "main.ms",
           "line": 37,
           "column": 9,
-          "offset": 661
+          "offset": 652
         },
         "replacement": "\tvar sum = 0\n\n\tfor i in 0..10:\n\t\tsum += i"
       }
@@ -202,18 +202,18 @@
         "file": "main.ms",
         "line": 39,
         "column": 5,
-        "offset": 664
+        "offset": 655
       }
     },
     {
       "code": "MSL124",
       "severity": "warning",
-      "message": "Build the list with `xs.map(fn x: ...)` or `xs.filter(fn x: ...)` instead of a loop that appends",
+      "message": "Build the list with `xs.map(x =\u003e ...)` or `xs.filter(x =\u003e ...)` instead of a loop that appends",
       "position": {
         "file": "main.ms",
         "line": 42,
         "column": 5,
-        "offset": 706
+        "offset": 697
       }
     },
     {
@@ -224,7 +224,7 @@
         "file": "main.ms",
         "line": 43,
         "column": 5,
-        "offset": 731
+        "offset": 721
       }
     },
     {
@@ -235,7 +235,7 @@
         "file": "main.ms",
         "line": 48,
         "column": 14,
-        "offset": 818
+        "offset": 807
       }
     },
     {
@@ -246,7 +246,7 @@
         "file": "main.ms",
         "line": 49,
         "column": 5,
-        "offset": 826
+        "offset": 815
       }
     },
     {
@@ -257,7 +257,7 @@
         "file": "main.ms",
         "line": 49,
         "column": 14,
-        "offset": 835
+        "offset": 824
       }
     },
     {
@@ -268,7 +268,7 @@
         "file": "main.ms",
         "line": 53,
         "column": 5,
-        "offset": 879
+        "offset": 868
       }
     },
     {
@@ -279,7 +279,7 @@
         "file": "main.ms",
         "line": 57,
         "column": 14,
-        "offset": 946
+        "offset": 934
       }
     },
     {
@@ -290,7 +290,7 @@
         "file": "main.ms",
         "line": 66,
         "column": 35,
-        "offset": 1101
+        "offset": 1087
       }
     },
     {
@@ -301,7 +301,7 @@
         "file": "main.ms",
         "line": 70,
         "column": 7,
-        "offset": 1149
+        "offset": 1135
       }
     },
     {
@@ -312,20 +312,20 @@
         "file": "main.ms",
         "line": 71,
         "column": 12,
-        "offset": 1163
+        "offset": 1149
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 71,
           "column": 2,
-          "offset": 1156
+          "offset": 1142
         },
         "end": {
           "file": "main.ms",
           "line": 71,
           "column": 21,
-          "offset": 1175
+          "offset": 1161
         },
         "replacement": "void unit()"
       }
@@ -338,7 +338,7 @@
         "file": "main.ms",
         "line": 72,
         "column": 5,
-        "offset": 1177
+        "offset": 1163
       }
     },
     {
@@ -349,7 +349,7 @@
         "file": "main.ms",
         "line": 72,
         "column": 5,
-        "offset": 1177
+        "offset": 1163
       }
     }
   ]

@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/parser/partial_test.go:24 FuzzParsePartial
 type Box:
-    value: String
+    value String

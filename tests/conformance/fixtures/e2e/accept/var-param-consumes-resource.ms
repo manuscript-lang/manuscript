@@ -7,25 +7,25 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
 type Slot:
-	door: Door
+	door Door
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
-fn put(var slot: Slot, door: Door) Void:
+fn put(var slot Slot, move door Door) Void:
 	slot.door = door
 
-fn stash(var doors: List[Door], move door: Door) Void:
+fn stash(var doors List[Door], move door Door) Void:
 	doors.append(door)
 
 test "a temporary passed to a var-parameter function that keeps it closes once, later":

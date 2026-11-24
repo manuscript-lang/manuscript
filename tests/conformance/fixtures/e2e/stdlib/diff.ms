@@ -133,12 +133,12 @@ test "unified_diff joins overlapping context without losing earlier changes":
 	)?
 
 test "unified_diff handles dense changes with full-file context":
-	var lines: List[String] = []
+	var lines List[String] = []
 	for i in 0..4000:
 		lines.append(f"line {i}")
 
-	inserted := lines.map(fn line: f"+{line}").join("\n")
-	removed := lines.map(fn line: f"-{line}").join("\n")
+	inserted := lines.map(line => f"+{line}").join("\n")
+	removed := lines.map(line => f"-{line}").join("\n")
 	full := UnifiedDiffOptions(context: 9223372036854775807)
 	expect_equal(
 		unified_diff([], lines, full),

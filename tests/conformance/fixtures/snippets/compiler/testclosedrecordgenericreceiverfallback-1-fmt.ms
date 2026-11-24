@@ -2,12 +2,12 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/record_bounds_test.go:80 TestClosedRecordGenericReceiverFallback
 interface Counter:
-    var fn bump(by: Int) Int
+    var fn bump(by Int) Int
 
 type Cell[T]:
-    total: Int
+    total Int
 
-fn var Cell[T].bump(by: Int) Int:
+fn var Cell[T].bump(by Int) Int:
     self.total += by
     return self.total
 

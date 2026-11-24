@@ -10,22 +10,22 @@ import (
 )
 
 type Door:
-	name: String
+	name String
 
 fn move Door.close() Void!:
 	stdout().write(f"close {self.name}\n").get()
 
 type Room:
-	first: Door
-	second: Door
+	first Door
+	second Door
 
 fn faulting() Void:
 	r := Room(Door("one"), Door("two"))
-	var xs: List[Door] = []
+	var xs List[Door] = []
 	xs.append(r.first)
 	panic("fault after the move")
 
 fn main() Void:
-	work := promise(fn: ok(faulting()))
+	work := promise(() => ok(faulting()))
 	waited := work.wait()
 	stdout().write(f"waited: {waited.is_error()}\n").get()

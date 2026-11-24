@@ -5,9 +5,9 @@ import (
 )
 
 type Resource:
-	label: String
-	output: WriteStream[String]
-	done: Bool = false
+	label String
+	output WriteStream[String]
+	done Bool = false
 
 // Idempotent, as the Closeable contract requires: the block that ends early closes by
 // hand and the scope closes again.
@@ -18,21 +18,21 @@ fn move Resource.close() Void!:
 	void self.output.write(value: f"close {self.label}\n")
 
 type Pair:
-	first: Int
-	second: Int
+	first Int
+	second Int
 
-fn report(var output: WriteStream[String], label: String, value: Int) Int:
+fn report(var output WriteStream[String], label String, value Int) Int:
 	void output.write(value: f"{label}\n")
 	return value
 
-fn combine(first: Int, second: Int) Int:
+fn combine(first Int, second Int) Int:
 	return first + second
 
-fn select(var output: WriteStream[String]) fn(Int, Int) Int:
+fn select(var output WriteStream[String]) fn(Int, Int) Int:
 	void output.write(value: "callable\n")
 	return combine
 
-fn early(var output: WriteStream[String]) Int:
+fn early(var output WriteStream[String]) Int:
 	_outer := Resource(label: "outer", output: stdout())
 	_inner := Resource(label: "inner", output: stdout())
 	return report(output: output, label: "return value", value: 5)
@@ -40,12 +40,12 @@ fn early(var output: WriteStream[String]) Int:
 fn failure() Int!Error:
 	return error(Error("expected"))
 
-fn propagate(move output: WriteStream[String]) Int!Error:
+fn propagate(move output WriteStream[String]) Int!Error:
 	_resource := Resource(label: "propagation", output: output)
 	number := failure()?
 	return ok(number)
 
-fn iterable(var output: WriteStream[String]) List[Int]:
+fn iterable(var output WriteStream[String]) List[Int]:
 	void output.write(value: "iterable\n")
 	return [1, 2]
 
@@ -98,7 +98,7 @@ fn exercise() Int!:
 
 export fn main() Int:
 	match exercise():
-		ok(status): return status
+		ok(status) => return status
 		error(cause):
 			_written := stderr().write(f"{cause.message}\n")
 			return 1

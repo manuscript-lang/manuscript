@@ -5,7 +5,7 @@ import (
 	expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms",
 )
 
-fn of(members: List[Int]) BitSet!:
+fn of(members List[Int]) BitSet!:
 	var set = BitSet()
 	for member in members:
 		set.add(member)?

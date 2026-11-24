@@ -3,10 +3,10 @@
 // conform: origin=tests/e2e/testdata/accept/closures.ms
 import expect_equal from "@std/test/test.ms"
 
-fn apply(value: Int, action: fn(Int) Int) Int:
+fn apply(value Int, action fn(Int) Int) Int:
     return action(value)
 
-fn countdown[T](value: T, count: Int) T:
+fn countdown[T](value T, count Int) T:
     if count == 0:
         return value
 
@@ -16,7 +16,7 @@ test "closures borrow variables and returned closures copy":
     var offset = 1
     offset = 10
 
-    action := fn(value: Int):
+    action := fn(value Int):
         return value + offset
 
     if true:

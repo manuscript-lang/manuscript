@@ -4,7 +4,7 @@
 // café 🦀
 import stat from "@std/os/fs.ms"
 
-fn use(path: String) Int:
+fn use(path String) Int:
     match stat(path: path, follow_links: true):
-        error(_): return 1
-        ok(_): return 0
+        error(_) => return 1
+        ok(_) => return 0

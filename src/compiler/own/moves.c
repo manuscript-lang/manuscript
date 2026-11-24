@@ -257,18 +257,91 @@ static void leave_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* A value whose copy a program can write: it owns memory and has a `.clone()`. A function value is shared, and an
+ * interface or opaque runtime handle has no `.clone()` to ask for. */
+static bool copy_is_written(Moves *pass, MsTy ty) {
+  const MsTyKind kind = ms_ty_kind(&pass->program->types, ty);
+  return kind != MS_TY_FUNCTION && kind != MS_TY_CONTRACT && kind != MS_TY_NATIVE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
+}
+
 /* A borrowed parameter, or a payload of one, written where a new owner is made: a constructor argument, a `move`
  * parameter's argument, or the returned value. */
-static void check_handed_on(Moves *pass, const MsExpr *value) {
+static void check_handed_on(Moves *pass, const MsExpr *value, bool any_data) {
   uint32_t binding = 0;
   const MsTy ty = ms_facts_type(pass->facts, value->id);
   const MsTy concrete = pass->instance && ty != MS_TY_NONE && ms_ty_has_variable(&pass->program->types, ty)
                             ? ms_ty_subst(&pass->program->types, ty, pass->subst_vars, pass->subst_args, pass->nsubst)
                             : (pass->instance ? MS_TY_NONE : ty);
   if (pass->depth == 0 && value->kind == MS_E_NAME && ms_bind_of(pass->facts, value->id, &binding) &&
-      ms_binding_list_contains(&pass->borrowed, binding) && concrete != MS_TY_NONE && ms_check_holds_resource(pass->program, concrete)) {
+      (ms_binding_list_contains(&pass->borrowed, binding) || (any_data && !pass->instance && ms_binding_list_contains(&pass->plainparams, binding))) &&
+      concrete != MS_TY_NONE && (ms_check_holds_resource(pass->program, concrete) ||
+       (any_data && !pass->instance && !ms_ty_has_variable(&pass->program->types, concrete) && copy_is_written(pass, concrete)))) {
     report_borrowed(pass, value);
   }
+}
+
+static bool owner_at_last_use(Moves *pass, const MsExpr *name, bool allow_var);
+static MsSpan place_text(const Moves *pass, const MsExpr *expr);
+
+/* The root name of a field or element path (`self.rows[0]`), and whether an element is on the way. */
+static const MsExpr *path_root(const MsExpr *expr, bool *element) {
+  MsExpr *left = NULL;
+  MsExpr *at = NULL;
+  while (expr->kind == MS_E_MEMBER || ms_expr_index(expr, &left, &at)) {
+    *element = *element || expr->kind != MS_E_MEMBER;
+    expr = expr->kind == MS_E_MEMBER ? expr->u.member.left : left;
+  }
+  return expr;
+}
+
+/* A field or element of an existing value, written where a new owner is made (a constructor argument or a `move`
+ * parameter's argument). Only a field read at its record's last use leaves the record; anything else would be copied
+ * behind the source's back, and `.clone()` is the only copy. */
+static void check_place_handed_on(Moves *pass, const MsExpr *value) {
+  uint32_t binding = 0;
+  MsExpr *left = NULL;
+  MsExpr *at = NULL;
+  if (pass->depth != 0 || (value->kind != MS_E_MEMBER && !ms_expr_index(value, &left, &at))) {
+    return;
+  }
+  const MsRef *member = value->kind == MS_E_MEMBER ? ms_facts_ref(pass->facts, value->id) : NULL;
+  if (member != NULL && member->kind == MS_REF_CASE) {
+    return; /* `Color.Red` names a case */
+  }
+  bool element = false;
+  const MsExpr *root = path_root(value, &element);
+  if (root->kind != MS_E_NAME || !ms_bind_of(pass->facts, root->id, &binding)) {
+    return; /* the field of a call's result leaves the temporary */
+  }
+  const MsTy ty = ms_facts_type(pass->facts, value->id);
+  const MsTy concrete = pass->instance && ty != MS_TY_NONE && ms_ty_has_variable(&pass->program->types, ty)
+                            ? ms_ty_subst(&pass->program->types, ty, pass->subst_vars, pass->subst_args, pass->nsubst)
+                            : (pass->instance ? MS_TY_NONE : ty);
+  if (concrete == MS_TY_NONE || (!pass->instance && ms_ty_has_variable(&pass->program->types, concrete)) || !copy_is_written(pass, concrete)) {
+    return;
+  }
+  const bool leaves = !element && value->kind == MS_E_MEMBER && root == value->u.member.left && !pass->instance &&
+                      !ms_binding_list_contains(&pass->borrowed, binding) && !ms_binding_list_contains(&pass->vars, binding) &&
+                      !ms_binding_list_contains(&pass->varparams, binding) && owner_at_last_use(pass, root, false);
+  if (leaves || ms_check_holds_resource(pass->program, concrete)) {
+    return; /* a resource is reported by `check_move_receiver` and the borrowed-name rule */
+  }
+  if (pass->instance) {
+    return; /* a generic body is checked once, where its type is still a variable */
+  }
+  const MsSpan place_span = place_text(pass, value);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "`");
+  ms_strbuild_append(&text, place_span);
+  ms_strbuild_append_text(&text, "` belongs to `");
+  ms_strbuild_append(&text, ms_names_span(pass->program->names, root->u.sym));
+  ms_strbuild_append_text(&text, "`, so a new owner would get a hidden copy; write `");
+  ms_strbuild_append(&text, place_span);
+  ms_strbuild_append_text(&text, ".clone()` to copy it");
+  if (!element) {
+    ms_strbuild_append_text(&text, ", or use the field at the last use of the record to move it");
+  }
+  ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
@@ -284,7 +357,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
                            stmt->u.expr->kind == MS_E_NAME && ms_bind_of(pass->facts, stmt->u.expr->id, &returned) &&
                            ms_binding_list_contains(&pass->plainparams, returned);
   if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL && !whole_param) {
-    check_handed_on(pass, stmt->u.expr);
+    check_handed_on(pass, stmt->u.expr, false);
   }
 }
 
@@ -411,7 +484,8 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
       if (expr->u.call.args.ptr[at].value->id == call->args[index].node.node) {
-        check_handed_on(pass, expr->u.call.args.ptr[at].value);
+        check_handed_on(pass, expr->u.call.args.ptr[at].value, true);
+        check_place_handed_on(pass, expr->u.call.args.ptr[at].value);
       }
     }
   }
@@ -422,6 +496,23 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
       const MsArm *one = expr->u.match.arms.ptr[arm];
       ms_binding_list_push(&pass->borrowed, one->id);
     }
+  }
+  /* `x or default` gives the payload of `x` to the result, so `x` is moved, never copied. `x or panic(..)` only reads. */
+  if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR && !ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
+      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
+    check_handed_on(pass, expr->u.bin.left, true);
+    check_place_handed_on(pass, expr->u.bin.left);
+  }
+  /* A list or map literal makes a new owner of every element it is given. */
+  for (uint32_t at = 0; expr->kind == MS_E_LIST && at < expr->u.list.len; at++) {
+    check_handed_on(pass, expr->u.list.ptr[at], true);
+    check_place_handed_on(pass, expr->u.list.ptr[at]);
+  }
+  for (uint32_t at = 0; expr->kind == MS_E_MAP && at < expr->u.map.len; at++) {
+    check_handed_on(pass, expr->u.map.ptr[at].key, true);
+    check_place_handed_on(pass, expr->u.map.ptr[at].key);
+    check_handed_on(pass, expr->u.map.ptr[at].value, true);
+    check_place_handed_on(pass, expr->u.map.ptr[at].value);
   }
   if (pass->instance) {
     return; /* an instance only reports a view or borrowed parameter that became a resource and moved on */

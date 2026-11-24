@@ -2,12 +2,12 @@
 // conform: phase=parse
 // conform: origin=pkg/parser/group_test.go:11 TestBindingGroupsParseAsIndividualBindings
 A := 1
-B: Int := A + 1
+B Int := A + 1
 
 fn main() Void:
     var (
         _a = 10
-        _b = fn(x: Int) Int:
+        _b = fn(x Int) Int:
             return x + 1
     )
     _c := 11

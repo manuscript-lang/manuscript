@@ -14,26 +14,26 @@
           "file": "var-at-call-site.ms",
           "line": 9,
           "column": 14,
-          "offset": 233
+          "offset": 231
         },
         "end": {
           "file": "var-at-call-site.ms",
           "line": 9,
           "column": 18,
-          "offset": 237
+          "offset": 235
         },
         "fix": {
           "position": {
             "file": "var-at-call-site.ms",
             "line": 9,
             "column": 14,
-            "offset": 233
+            "offset": 231
           },
           "end": {
             "file": "var-at-call-site.ms",
             "line": 9,
             "column": 18,
-            "offset": 237
+            "offset": 235
           },
           "replacement": ""
         }

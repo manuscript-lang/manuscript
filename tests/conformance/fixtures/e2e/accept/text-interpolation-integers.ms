@@ -8,10 +8,10 @@ import (
 // Integer interpolations are written straight into the joined text (the `strfuse` pass
 // writes the integer into a frame and copies it after the other parts), so every integer shape and length must
 // still read back the same.
-fn label(prefix: String, n: Int) String:
+fn label(prefix String, n Int) String:
 	return f"{prefix}{n}"
 
-fn pair(a: Int, sep: String, b: Int) String:
+fn pair(a Int, sep String, b Int) String:
 	return f"{a}{sep}{b}"
 
 test "integer interpolation shapes":

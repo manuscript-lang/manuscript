@@ -9,8 +9,8 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn faulting(var exchange: HttpExchange) Void!:
-	xs: List[Int] := []
+fn faulting(var exchange HttpExchange) Void!:
+	xs List[Int] := []
 	n := xs[1000000]
 	if n > 5: return ok()
 

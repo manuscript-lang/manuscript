@@ -11,11 +11,11 @@ import (
 	milliseconds from "@std/time.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	return HttpResponse(200, "ok\n".to_bytes())
 
 // True when the server closed the connection within two seconds of the half-close.
-fn ends_promptly(address: String, partial: String) Bool!:
+fn ends_promptly(address String, partial String) Bool!:
 	var conn = connect(address).wait()?
 	conn.output.write(partial.to_bytes())?
 	conn.output.flush()?

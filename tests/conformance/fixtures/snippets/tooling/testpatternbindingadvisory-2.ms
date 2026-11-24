@@ -2,9 +2,9 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/pattern_lint_test.go:23 TestPatternBindingAdvisory
 type Item:
-    value: Int
+    value Int
 
-fn use(value: Item?) Int:
+fn use(value Item?) Int:
     match value:
-        item: return Item.value
-        null: return 0
+        item => return Item.value
+        null => return 0

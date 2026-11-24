@@ -5,7 +5,7 @@ import expect_true, fail from "@std/test/test.ms"
 interface Read:
     fn get() Int
 type Box[T]:
-    value: T
+    value T
 impl Read for Box[T]:
     fn get() Int:
         return 3

@@ -3,8 +3,8 @@
 import expect_equal from "@std/test/test.ms"
 
 type Point:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
 fn origin() Point:
 	return Point(x: 1, y: 2)

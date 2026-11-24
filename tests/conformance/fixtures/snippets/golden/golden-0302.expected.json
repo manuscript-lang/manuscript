@@ -13,8 +13,8 @@
         "position": {
           "file": "golden-0302.ms",
           "line": 3,
-          "column": 62,
-          "offset": 114
+          "column": 60,
+          "offset": 112
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "golden-0302.ms",
           "line": 3,
-          "column": 93,
-          "offset": 145
+          "column": 91,
+          "offset": 143
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "golden-0302.ms",
           "line": 6,
-          "column": 77,
-          "offset": 283
+          "column": 76,
+          "offset": 280
         }
       },
       {
@@ -46,15 +46,15 @@
         "position": {
           "file": "golden-0302.ms",
           "line": 7,
-          "column": 23,
-          "offset": 333
+          "column": 22,
+          "offset": 331
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0302.ms:3:62: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 3 | fn collect[T, U](items: List[T], step: fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:\n   |                                                              ^\n<DIR>/golden-0302.ms:3:93: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 3 | fn collect[T, U](items: List[T], step: fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:\n   |                                                                                             ^\n<DIR>/golden-0302.ms:6:77: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     result := collect(items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value]))\n   |                                                                             ^\n<DIR>/golden-0302.ms:7:23: type: expected Int, found String (in the initializer of 'unrelated')\n   |\n 7 |     unrelated: Int := \"wrong\"\n   |                       ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0302.ms:3:60: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 3 | fn collect[T, U](items List[T], step fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:\n   |                                                            ^\n<DIR>/golden-0302.ms:3:91: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 3 | fn collect[T, U](items List[T], step fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:\n   |                                                                                           ^\n<DIR>/golden-0302.ms:6:76: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     result := collect(items: [1, 2], step: fn(value Int) Result[List[Int], MissingError] => ok([value]))\n   |                                                                            ^\n<DIR>/golden-0302.ms:7:22: type: expected Int, found String (in the initializer of 'unrelated')\n   |\n 7 |     unrelated Int := \"wrong\"\n   |                      ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

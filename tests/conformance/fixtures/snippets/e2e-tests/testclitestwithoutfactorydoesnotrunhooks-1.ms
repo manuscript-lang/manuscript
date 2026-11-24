@@ -5,7 +5,7 @@ import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 
 type UnusedFixture:
-    value: Int
+    value Int
 
 fn UnusedFixture.before_all() Void!:
     _written := stdout().write("UNUSED before_all").get()

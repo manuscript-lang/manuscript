@@ -11,9 +11,9 @@ import (
 
 // Hands out the chunks in order, then ends.
 type Chunks:
-	data: Bytes
-	size: Int
-	at: Int
+	data Bytes
+	size Int
+	at Int
 
 fn var Chunks.next() Bytes?!:
 	if self.at >= self.data.length(): return ok(null)
@@ -28,7 +28,7 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
+fn chunked(move data Bytes, size Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 test "stream checksums match the whole-value functions under every chunk size":

@@ -16,7 +16,7 @@ fn plain() Error:
 fn detailed() Error:
 	return Error("detailed", kind: "ENOENT", details: {"path": "/a", "op": "open"})
 
-fn fails(i: Int) Int!:
+fn fails(i Int) Int!:
 	if i % 2 == 0: return error(plain())
 	return error(detailed())
 

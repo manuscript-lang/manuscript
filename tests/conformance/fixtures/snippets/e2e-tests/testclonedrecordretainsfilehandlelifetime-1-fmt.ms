@@ -5,8 +5,8 @@ import open_read from "@std/io/io.ms"
 import File from "@std/io/io.ms"
 
 type Holder:
-    file: File
-    label: String
+    file File
+    label String
 
 export fn main() Int:
     opened := open_read("data.txt")

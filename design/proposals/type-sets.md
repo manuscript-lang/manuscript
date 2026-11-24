@@ -22,8 +22,8 @@
 type Numeric = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | Float | Float32
 
 // An empty list sums to 0. Example: `[1, 2, 3].sum()` is `6`.
-fn List[T: Numeric].sum() T:
-	var total: T = 0
+fn List[T Numeric].sum() T:
+	var total T = 0
 	for x in self:
 		total += x
 	return total
@@ -39,12 +39,12 @@ fn List[T: Numeric].sum() T:
 ```manuscript
 type Rows = List[Row]
 
-fn count(rows: Rows) Int:
+fn count(rows Rows) Int:
 	return rows.length()
 
-xs: List[Row] := load()
+xs List[Row] := load()
 n := count(xs)          // accepted: Rows is List[Row]
-ys: Rows := xs.clone()         // accepted, and Rows has every List[Row] method
+ys Rows := xs.clone()         // accepted, and Rows has every List[Row] method
 ```
 
   A distinct type needs a record (`type Rows: items: List[Row]`), which is not interchangeable with `List[Row]`.

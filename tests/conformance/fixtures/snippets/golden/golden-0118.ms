@@ -3,7 +3,7 @@
 import panic from "@std/faults.ms"
 
 fn failed_initializer() Never:
-    _impossible: Int := panic("initializer cannot return")
+    _impossible Int := panic("initializer cannot return")
 
 fn returned_failure() Int:
     return panic("result cannot return")

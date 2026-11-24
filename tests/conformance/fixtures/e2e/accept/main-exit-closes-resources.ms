@@ -5,16 +5,16 @@
 import Closeable from "@std/core.ms"
 
 type Gate:
-    id: Int
+    id Int
 
 fn move Gate.close() Void!:
     print(f"closed {self.id}")
     return ok()
 
 type Holder:
-    name: String
-    gates: List[Gate]
-    words: Map[String, List[String]]
+    name String
+    gates List[Gate]
+    words Map[String, List[String]]
 
 fn main() Void:
     var words = Map[String, List[String]]()

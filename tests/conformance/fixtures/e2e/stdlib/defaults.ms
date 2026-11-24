@@ -13,42 +13,42 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn forward[T](item: T) T: item
+fn forward[T](item T) T => item
 
 type Capture:
-	tag: Bytes
+	tag Bytes
 
 fn Capture.run(
-	program: String,
-	arguments: List[String],
-	options: RunOptions = RunOptions(),
+	program String,
+	arguments List[String],
+	options RunOptions = RunOptions(),
 ) CommandOutput!:
 	return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
 
 fn Capture.spawn(
-	program: String,
-	arguments: List[String],
-	options: SpawnOptions,
+	program String,
+	arguments List[String],
+	options SpawnOptions,
 ) Subprocess!:
 	return error(Error("process: service unavailable", kind: "EAGAIN"))
 
-fn generic_run[T: Commands](service: T) Bytes!:
+fn generic_run[T Commands](service T) Bytes!:
 	return ok((service.run("fake", [])?).stdout)
 
 type Override:
-	input: Bytes
+	input Bytes
 
 fn Override.run(
-	program: String,
-	arguments: List[String],
-	options: RunOptions = RunOptions(input: self.input.clone()),
+	program String,
+	arguments List[String],
+	options RunOptions = RunOptions(input: self.input.clone()),
 ) CommandOutput!:
 	return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
 
 fn Override.spawn(
-	program: String,
-	arguments: List[String],
-	options: SpawnOptions,
+	program String,
+	arguments List[String],
+	options SpawnOptions,
 ) Subprocess!:
 	return error(Error("process: service unavailable", kind: "EAGAIN"))
 
@@ -57,7 +57,7 @@ test "concrete implementation defaults and interface defaults stay distinct":
 	concrete := service.run
 	expect_equal((concrete("fake", [])?).stdout, service.input)?
 
-	commands: Commands := service
+	commands Commands := service
 	viewed := commands.run
 	expect_equal((viewed("fake", [])?).stdout.length(), 0)?
 
@@ -92,7 +92,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
 	typed := forward(stringify)
 	expect_equal((typed([["a", "b"]], second, null)?), "a,b\n")?
 
-	limited: List[List[String]]! := error(
+	limited List[List[String]]! := error(
 		Error("CSV: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_false(
@@ -102,7 +102,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
 		)
 	)?
 
-	invalid: String! := error(Error("CSV: invalid input", kind: "EINVAL"))
+	invalid String! := error(Error("CSV: invalid input", kind: "EINVAL"))
 	expect_equal(stringify([["a"]], CsvOptions("")), invalid)?
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -119,7 +119,7 @@ test "Base64 defaults support stored functions and explicit alphabets":
 	copied := base64_encode
 	expect_equal(copied(bytes), "/w==")?
 
-	typed: fn(Bytes, Bool, Bool) String := encode
+	typed fn(Bytes, Bool, Bool) String := encode
 	expect_equal(typed(bytes, false, true), "/w==")?
 	expect_false(
 		(
@@ -131,10 +131,10 @@ test "Base64 defaults support stored functions and explicit alphabets":
 	decode := base64_decode
 	expect_equal((decode("/w==", false, true, 1)?), bytes)?
 
-	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+	invalid Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(base64_decode("_w=="), invalid)?
 
-	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	limited Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(base64_decode("/w==", max_bytes: 0), limited)?
 
 test "Commands defaults cross concrete bound view and generic boundaries":
@@ -143,7 +143,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 	expect_equal((bound("fake", [])?).stdout.length(), 0)?
 	expect_equal((capture.run("fake", [])?).stdout.length(), 0)?
 
-	view: Commands := Capture("x".to_bytes())
+	view Commands := Capture("x".to_bytes())
 	viewed := view.run
 	expect_equal((viewed("fake", [])?).stdout.length(), 0)?
 	expect_equal((generic_run(Capture("x".to_bytes()))?).length(), 0)?
@@ -160,6 +160,6 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 		42,
 	)?
 
-	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
+	invalid CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	native := run
 	expect_equal(native("", []).wait(), invalid)?

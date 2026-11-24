@@ -13,7 +13,7 @@ Implemented, 2026-11-01. Direction (Chinmay): "let's revamp the error mechanism 
 ## Problem
 
 ```manuscript
-fn handle(cause: Error) String:
+fn handle(cause Error) String:
     match cause:                            // contract type pattern: narrowing
         IoError(e): return f"io {e.message()}"
         _: return cause.message()
@@ -28,9 +28,9 @@ fn handle(cause: Error) String:
 ```manuscript
 // prelude
 export type Error:
-    message: String
-    kind: ErrorCategory = ErrorCategory.Other
-    details: Map[String, String] = Map[String, String]()
+    message String
+    kind ErrorCategory = ErrorCategory.Other
+    details Map[String, String] = Map[String, String]()
 ```
 
 - `Error("bad port")`, `Error("no such file", kind: "ENOENT", details: {"path": path})`. No new syntax, static method or namespace.

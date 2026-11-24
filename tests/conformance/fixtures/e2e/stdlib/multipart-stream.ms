@@ -14,9 +14,9 @@ import (
 
 // Hands out the chunks in order, then ends.
 type Chunks:
-	data: Bytes
-	size: Int
-	at: Int
+	data Bytes
+	size Int
+	at Int
 
 fn var Chunks.next() Bytes?!:
 	if self.at >= self.data.length(): return ok(null)
@@ -31,12 +31,12 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-	return ReadStream[Bytes](Chunks(data, size, 0))
+fn chunked(data Bytes, size Int) ReadStream[Bytes]:
+	return ReadStream[Bytes](Chunks(data.clone(), size, 0))
 
-fn read_parts(body: Bytes, size: Int, max_part_bytes: Int? = null) List[Part]!:
+fn read_parts(body Bytes, size Int, max_part_bytes Int? = null) List[Part]!:
 	var parts = multipart_parts(chunked(body, size), "XyZ", max_part_bytes)
-	var out: List[Part] = []
+	var out List[Part] = []
 
 	while true:
 		next := parts.next()?
@@ -141,7 +141,7 @@ test "padded multipart sections retain exact raw budget boundary":
 		expect_equal(read_parts(body.clone(), size, 6).err().kind, "EOVERFLOW")?
 
 // Replaces the byte at `at` with `value`.
-fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
+fn with_byte(data Bytes, at Int, value Int) Bytes:
 	var out = BytesBuilder()
 	out.append_bytes(data.slice(0, at).get_or("".to_bytes()))
 	out.append(value.to_uint8() or 0)
@@ -149,7 +149,7 @@ fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
 	return out.build()
 
 // Compares the two parsers on one body: the same error kind, or the same parts.
-fn agree(body: Bytes, size: Int) String:
+fn agree(body Bytes, size Int) String:
 	whole := parse_multipart(body.clone(), "XyZ")
 	stream := read_parts(body.clone(), size)
 
@@ -165,7 +165,7 @@ fn agree(body: Bytes, size: Int) String:
 
 test "parts and parse_multipart agree on corrupted and truncated bodies":
 	body := sample()
-	var cases: List[Bytes] = []
+	var cases List[Bytes] = []
 
 	for at in 0..body.length():
 		if at % 5 != 0: continue
@@ -181,8 +181,8 @@ test "parts and parse_multipart agree on corrupted and truncated bodies":
 			verdict := agree(cases[index].clone(), size)
 			if verdict != "": return fail(f"case {index}, chunk {size}: {verdict}")
 
-fn empty_chunks(data: Bytes, size: Int) List[Bytes]:
-	var chunks: List[Bytes] = []
+fn empty_chunks(data Bytes, size Int) List[Bytes]:
+	var chunks List[Bytes] = []
 	var at = 0
 
 	while at < data.length():

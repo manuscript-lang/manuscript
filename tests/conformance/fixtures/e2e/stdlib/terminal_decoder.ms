@@ -6,14 +6,14 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn key(move name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
+fn key(move name String, ctrl Bool, alt Bool, shift Bool) TerminalEvent:
 	return TerminalEvent.Key(name, ctrl, alt, shift)
 
-fn plain(move name: String) TerminalEvent:
+fn plain(move name String) TerminalEvent:
 	return key(name, false, false, false)
 
 // Joins adjacent text events, so a split read compares equal to a whole one.
-fn merged(events: List[TerminalEvent]) List[TerminalEvent]:
+fn merged(events List[TerminalEvent]) List[TerminalEvent]:
 	var out = List[TerminalEvent]()
 
 	for event in events:
@@ -29,14 +29,14 @@ fn merged(events: List[TerminalEvent]) List[TerminalEvent]:
 						)
 						continue
 				out.append(TerminalEvent.Text(more.clone()))
-			_: out.append(event.clone())
+			_ => out.append(event.clone())
 
 	return out
 
-fn text_of(event: TerminalEvent) String?:
+fn text_of(event TerminalEvent) String?:
 	match event:
-		Text(text): return text.clone()
-		_: return null
+		Text(text) => return text.clone()
+		_ => return null
 
 test "text, controls and named keys":
 	var d = terminal_decoder()

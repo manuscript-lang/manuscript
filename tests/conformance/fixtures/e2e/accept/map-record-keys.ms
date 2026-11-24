@@ -3,25 +3,25 @@
 import expect_true from "@std/test/test.ms"
 
 type Point:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
 type Tagged:
-	id: Int32
-	ok: Bool
-	n: Int
+	id Int32
+	ok Bool
+	n Int
 
 type Named:
-	name: String
-	n: Int
+	name String
+	n Int
 
 type Folded:
-	n: Int
+	n Int
 
 fn Folded.hash() Int:
 	return 0
 
-fn Folded.equals(other: Folded) Bool:
+fn Folded.equals(other Folded) Bool:
 	return true
 
 test "plain record keys":

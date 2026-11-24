@@ -2,11 +2,11 @@
 // stringify it back.
 import JsonValue, parse, stringify from "@std/data/json.ms"
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
 // Keys are in sorted order so every language writes members the same way.
-fn make_text(n: Int) String:
+fn make_text(n Int) String:
 	var sb = ""
 	var x = 1
 	sb += "["
@@ -19,12 +19,12 @@ fn make_text(n: Int) String:
 	sb += "]"
 	return sb
 
-fn walk(v: JsonValue) Int:
+fn walk(v JsonValue) Int:
 	match v:
-		Null: return 1
-		BoolValue(_): return 1
-		NumberValue(t): return t.parse_int() or 0
-		StringValue(s): return s.length()
+		Null => return 1
+		BoolValue(_) => return 1
+		NumberValue(t) => return t.parse_int() or 0
+		StringValue(s) => return s.length()
 		ArrayValue(items):
 			var t = 0
 			for item in items:

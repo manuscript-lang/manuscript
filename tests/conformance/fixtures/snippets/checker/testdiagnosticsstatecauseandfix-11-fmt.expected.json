@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Optional:\n\tx: Int\n\nfn f(o: Int?) Int:\n\treturn 0\n"
+    "fmt": "type Optional:\n\tx Int\n\nfn f(o Int?) Int:\n\treturn 0\n"
   }
 }

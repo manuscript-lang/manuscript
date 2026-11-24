@@ -4,6 +4,6 @@
 fn work() Bool:
     return (
         [[1, 2], [3]].flat_map(
-            transform: fn(value: List[Int]) List[Int]: return value
+            transform: fn(value List[Int]) List[Int] => return value
         ) == [1, 2, 3]
     )

@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`",
+        "position": {
+          "file": "wrapper-and-or-from-borrowed-parameter.ms",
+          "line": 5,
+          "column": 15,
+          "offset": 210
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`",
+        "position": {
+          "file": "wrapper-and-or-from-borrowed-parameter.ms",
+          "line": 8,
+          "column": 12,
+          "offset": 258
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/wrapper-and-or-from-borrowed-parameter.ms:5:15: type: `name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`\n   |\n 5 |     return ok(name)\n   |               ^\n<DIR>/wrapper-and-or-from-borrowed-parameter.ms:8:12: type: `name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`\n   |\n 8 |     return name or \"none\"\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

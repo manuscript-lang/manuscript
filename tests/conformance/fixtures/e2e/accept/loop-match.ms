@@ -7,7 +7,7 @@ enum State:
     Ready
     Waiting
 
-fn loop(state: State) Int:
+fn loop(state State) Int:
     var count = 0
 
     for value in [1, 2, 3]:

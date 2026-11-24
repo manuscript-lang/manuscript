@@ -5,11 +5,11 @@
 import Closeable from "@std/core.ms"
 
 type Item:
-    label: String
+    label String
 
-fn move Item.close() Void!: ok()
+fn move Item.close() Void! => ok()
 
-fn close_first(members: List[Item]) Void!:
+fn close_first(members List[Item]) Void!:
     members[0].close()?
     return ok()
 

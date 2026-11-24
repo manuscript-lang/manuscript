@@ -13,14 +13,14 @@ import (
 )
 
 type RestoreDirectory:
-	path: String
+	path String
 
 fn move RestoreDirectory.close() Void!:
 	return change_directory(self.path)
 
-fn matched_paths(root: String, options: GlobOptions) List[String]!:
+fn matched_paths(root String, options GlobOptions) List[String]!:
 	entries := glob(root, options)?
-	return ok(entries.map(fn(entry: PathEntry) String: entry.path.clone()))
+	return ok(entries.map(fn(entry PathEntry) String => entry.path.clone()))
 
 test "glob keeps dot named and parent query results relative to their root":
 	directory := temporary("manuscript-glob-relative-")?
@@ -51,9 +51,9 @@ test "glob keeps dot named and parent query results relative to their root":
 		["a.txt", "café.txt"],
 	)?
 
-	selected := glob(".", all, fn(entry: PathEntry) Bool: entry.path == "src")?
+	selected := glob(".", all, fn(entry PathEntry) Bool => entry.path == "src")?
 	expect_equal(
-		selected.map(fn(entry: PathEntry) String: entry.path.clone()),
+		selected.map(fn(entry PathEntry) String => entry.path.clone()),
 		["a.txt", "café.txt"],
 	)?
 

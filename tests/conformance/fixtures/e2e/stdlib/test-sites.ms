@@ -15,7 +15,7 @@ import (
 	repr from "@std/test/test.ms",
 )
 
-fn site_of(failure: Error) String:
+fn site_of(failure Error) String:
 	return failure.details.get_or("site", "")
 
 fn good() Int!:
@@ -27,7 +27,7 @@ fn bad() Int!:
 fn nothing() String?:
 	return null
 
-fn wrapped(actual: Bool, site: String = caller_site()) Void!:
+fn wrapped(actual Bool, site String = caller_site()) Void!:
 	return expect_true(actual, site)
 
 test "a failed expectation names the line of its call":
@@ -57,10 +57,10 @@ test "repr quotes strings and spells out collections":
 	expect_equal(repr(7), "7")?
 
 test "catch_fault returns a fault message and none for a normal return":
-	message := expect_some(catch_fault(fn: panic("boom")))?
+	message := expect_some(catch_fault(() => panic("boom")))?
 	expect_equal(message, "boom")?
-	expect_none(catch_fault(fn: void))?
-	expect_equal(expect_fault(fn: panic("again"))?, "again")?
+	expect_none(catch_fault(() => void))?
+	expect_equal(expect_fault(() => panic("again"))?, "again")?
 
 test "fail builds an error with a site":
 	failure := expect_error(fail("custom"))?

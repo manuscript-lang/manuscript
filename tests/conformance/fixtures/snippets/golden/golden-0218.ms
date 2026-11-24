@@ -2,7 +2,7 @@
 // conform: phase=check
 fn f() Void:
     var outer = 1
-    callback := fn(value: Int = (fn() Int:
+    callback := fn(value Int = (fn() Int:
         outer = 2
         return outer
     )()) Int:

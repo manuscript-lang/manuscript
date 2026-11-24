@@ -34,27 +34,27 @@ import (
 export type Duration:
 	// The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build
 	// one.
-	nanos: Int
+	nanos Int
 
 // Writes the signed nanoseconds as a JSON integer.
 fn Duration.to_json() JsonValue:
 	return JsonValue.NumberValue(f"{self.nanos}")
 
 // Adds signed nanoseconds; a result outside Duration's representable range faults.
-fn Duration.add(other: Duration) Duration:
+fn Duration.add(other Duration) Duration:
 	return Duration(nanos: msstd_time_duration_add(self.nanos, other.nanos))
 
 // Subtracts signed nanoseconds; a result outside Duration's representable range
 // faults.
-fn Duration.subtract(other: Duration) Duration:
+fn Duration.subtract(other Duration) Duration:
 	return Duration(nanos: msstd_time_duration_subtract(self.nanos, other.nanos))
 
 // Multiplies by an integer factor; overflow faults.
-fn Duration.multiply(factor: Int) Duration:
+fn Duration.multiply(factor Int) Duration:
 	return Duration(nanos: msstd_time_duration_multiply(self.nanos, factor))
 
 // Divides by a nonzero integer, truncating toward zero; zero faults.
-fn Duration.divide(divisor: Int) Duration:
+fn Duration.divide(divisor Int) Duration:
 	return Duration(nanos: msstd_time_duration_divide(self.nanos, divisor))
 
 // Negates this duration; the minimum Duration faults.
@@ -67,7 +67,7 @@ fn Duration.abs() Duration:
 
 // Returns -1 when this duration is shorter than `other`, 0 when equal and 1 when
 // longer.
-fn Duration.compare(other: Duration) Int:
+fn Duration.compare(other Duration) Int:
 	if self.nanos < other.nanos: return -1
 	if self.nanos > other.nanos: return 1
 
@@ -75,19 +75,19 @@ fn Duration.compare(other: Duration) Int:
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
-fn Duration.min(other: Duration) Duration:
+fn Duration.min(other Duration) Duration:
 	if other.compare(self) < 0: return other
 	return self
 
 // Returns the greater of this value and `other`, or this value when they compare
 // equal.
-fn Duration.max(other: Duration) Duration:
+fn Duration.max(other Duration) Duration:
 	if other.compare(self) > 0: return other
 	return self
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn Duration.clamp(low: Duration, high: Duration) Duration:
+fn Duration.clamp(low Duration, high Duration) Duration:
 	if low.compare(high) > 0:
 		panic("clamp: low must not be greater than high")
 	if self.compare(low) < 0: return low
@@ -147,39 +147,39 @@ fn Duration.to_hours() Float:
 // An instant on a monotonic clock; it is not a calendar timestamp.
 export type Instant:
 	// The clock the reading belongs to; instants from different domains do not compare.
-	domain: Int
+	domain Int
 	// Nanoseconds on that clock.
-	tick: Int
+	tick Int
 
 // Shifts this monotonic instant by a duration.
-fn Instant.shift(duration: Duration) Instant:
+fn Instant.shift(duration Duration) Instant:
 	return msstd_time_instant_shift(self, duration.nanos)
 
 // Returns this instant minus `other`: the time elapsed since `other`, negative when
 // `other` is later.
-fn Instant.difference(other: Instant) Duration:
+fn Instant.difference(other Instant) Duration:
 	return Duration(nanos: msstd_time_instant_difference(self, other))
 
 // Returns -1 when this instant is earlier than `other`, 0 when equal and 1 when
 // later. Instants from different clock domains fault.
-fn Instant.compare(other: Instant) Int:
+fn Instant.compare(other Instant) Int:
 	return msstd_time_instant_compare(self, other)
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
-fn Instant.min(other: Instant) Instant:
+fn Instant.min(other Instant) Instant:
 	if other.compare(self) < 0: return other
 	return self
 
 // Returns the greater of this value and `other`, or this value when they compare
 // equal.
-fn Instant.max(other: Instant) Instant:
+fn Instant.max(other Instant) Instant:
 	if other.compare(self) > 0: return other
 	return self
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn Instant.clamp(low: Instant, high: Instant) Instant:
+fn Instant.clamp(low Instant, high Instant) Instant:
 	if low.compare(high) > 0:
 		panic("clamp: low must not be greater than high")
 	if self.compare(low) < 0: return low
@@ -193,11 +193,11 @@ fn out_of_range() Error:
 // Whole seconds and a nanosecond remainder of a nanosecond count, which may lie
 // outside 0 through 999999999 because Timestamp's fields are public.
 type Split:
-	whole: Int
-	rest: Int
+	whole Int
+	rest Int
 
 // Splits nanos so the remainder is in 0 through 999999999 and nothing overflows.
-fn floor_split(nanos: Int) Split:
+fn floor_split(nanos Int) Split:
 	if nanos >= 0 and nanos < 1000000000: return Split(0, nanos)
 
 	whole := nanos / 1000000000
@@ -209,7 +209,7 @@ fn floor_split(nanos: Int) Split:
 // The duration whole * 1e9 + rest, or ERANGE when it does not fit an Int. The bounds
 // are the Int range, -9223372036854775808 through 9223372036854775807, in seconds
 // and nanoseconds.
-fn duration_of(whole: Int, rest: Int) Duration!:
+fn duration_of(whole Int, rest Int) Duration!:
 	// Align the signs so the two parts count the same way.
 	var w = whole
 	var r = rest
@@ -231,9 +231,9 @@ fn duration_of(whole: Int, rest: Int) Duration!:
 // A wall-clock time with Unix seconds and nanoseconds.
 export type Timestamp:
 	// Whole seconds since the Unix epoch.
-	seconds: Int
+	seconds Int
 	// The nanosecond within the second, 0 through 999999999.
-	nanos: Int
+	nanos Int
 
 // Formats this timestamp in RFC 3339 form.
 fn Timestamp.to_string() String:
@@ -253,7 +253,7 @@ fn Timestamp.nanoseconds() Int:
 
 // Adds a duration to this wall-clock timestamp. A result outside years 1 through
 // 9999 returns `ERANGE`.
-fn Timestamp.shift(duration: Duration) Timestamp!:
+fn Timestamp.shift(duration Duration) Timestamp!:
 	// A start beyond this can never land in the calendar range: the carry below is at
 	// most about 2e10 seconds. It also keeps the sum from overflowing.
 	if self.seconds > 300000000000 or self.seconds < -300000000000:
@@ -285,7 +285,7 @@ fn Timestamp.shift(duration: Duration) Timestamp!:
 
 // Returns this timestamp minus `other` as a duration. A result that does not fit a
 // Duration returns `ERANGE`.
-fn Timestamp.difference(other: Timestamp) Duration!:
+fn Timestamp.difference(other Timestamp) Duration!:
 	// Normalized fields of nearby timestamps: the subtraction and product cannot
 	// overflow.
 	if (
@@ -332,7 +332,7 @@ fn Timestamp.difference(other: Timestamp) Duration!:
 
 // Returns -1 when this timestamp is earlier than `other`, 0 when equal and 1 when
 // later, across the full calendar range.
-fn Timestamp.compare(other: Timestamp) Int:
+fn Timestamp.compare(other Timestamp) Int:
 	if self.seconds != other.seconds: return if self.seconds > other.seconds: 1 else: -1
 	if self.nanos != other.nanos: return if self.nanos > other.nanos: 1 else: -1
 
@@ -340,19 +340,19 @@ fn Timestamp.compare(other: Timestamp) Int:
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
-fn Timestamp.min(other: Timestamp) Timestamp:
+fn Timestamp.min(other Timestamp) Timestamp:
 	if other.compare(self) < 0: return other
 	return self
 
 // Returns the greater of this value and `other`, or this value when they compare
 // equal.
-fn Timestamp.max(other: Timestamp) Timestamp:
+fn Timestamp.max(other Timestamp) Timestamp:
 	if other.compare(self) > 0: return other
 	return self
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn Timestamp.clamp(low: Timestamp, high: Timestamp) Timestamp:
+fn Timestamp.clamp(low Timestamp, high Timestamp) Timestamp:
 	if low.compare(high) > 0:
 		panic("clamp: low must not be greater than high")
 	if self.compare(low) < 0: return low
@@ -363,7 +363,7 @@ fn Timestamp.clamp(low: Timestamp, high: Timestamp) Timestamp:
 // Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an
 // IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`. An
 // unknown zone returns `EINVAL`.
-fn Timestamp.calendar(zone: String) Date!:
+fn Timestamp.calendar(zone String) Date!:
 	resolved := load(zone)?
 	at := resolved.at(self.seconds)
 	return ok(msstd_time_timestamp_calendar(self, at.offset, at.abbreviation))
@@ -375,7 +375,7 @@ Tokens are replaced wherever they appear, even inside words (`"Dummy"` becomes `
 To include literal letters that spell a token, format the fields separately and join the pieces yourself.
 An unknown zone returns `EINVAL`.
 */
-fn Timestamp.format(pattern: String, zone: String) String!:
+fn Timestamp.format(pattern String, zone String) String!:
 	resolved := load(zone)?
 	at := resolved.at(self.seconds)
 	return ok(msstd_time_timestamp_format(self, pattern, at.offset, at.abbreviation))
@@ -383,31 +383,31 @@ fn Timestamp.format(pattern: String, zone: String) String!:
 // Date and time fields of a timestamp in one time zone.
 export type Date:
 	// The year, 1 through 9999 in UTC and nearby values in other zones.
-	year: Int
+	year Int
 	// The month, 1 (January) through 12.
-	month: Int
+	month Int
 	// The day of the month, starting at 1.
-	day: Int
+	day Int
 	// The hour, 0 through 23.
-	hour: Int
+	hour Int
 	// The minute, 0 through 59.
-	minute: Int
+	minute Int
 	// The second, 0 through 59.
-	second: Int
+	second Int
 	// The nanosecond within the second, 0 through 999999999.
-	nanosecond: Int
+	nanosecond Int
 	// The day of the week, 0 (Sunday) through 6 (Saturday).
-	weekday: Int
+	weekday Int
 	// The day of the year, starting at 1.
-	day_of_year: Int
+	day_of_year Int
 	// The zone's offset from UTC in seconds at this moment; positive is east.
-	offset_seconds: Int
+	offset_seconds Int
 	// The zone abbreviation at this moment, such as `UTC` or `EST`.
-	zone: String
+	zone String
 
 // Writes `whole` with the digits of a fractional part `frac` of `width` places,
 // trailing zeros dropped.
-fn duration_decimal(whole: Int, frac: Int, width: Int) String:
+fn duration_decimal(whole Int, frac Int, width Int) String:
 	if frac == 0: return f"{whole}"
 
 	var rest = frac
@@ -428,34 +428,34 @@ fn duration_decimal(whole: Int, frac: Int, width: Int) String:
 
 // Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be
 // negative.
-export fn nanoseconds(n: Int) Duration:
+export fn nanoseconds(n Int) Duration:
 	return Duration(nanos: n)
 
 // Constructs a duration of `n` microseconds; `n` may be negative, and a nanosecond
 // count outside Int faults like any Int multiplication.
-export fn microseconds(n: Int) Duration:
+export fn microseconds(n Int) Duration:
 	return nanoseconds(n * 1000)
 
 // Constructs a duration of `n` milliseconds; `n` may be negative, and a nanosecond
 // count outside Int faults like any Int multiplication.
-export fn milliseconds(n: Int) Duration:
+export fn milliseconds(n Int) Duration:
 	return nanoseconds(n * 1000000)
 
 // Constructs a duration of `n` seconds, as in `sleep(seconds(2))`; `n` may be negative,
 // and a nanosecond count outside Int faults like any Int multiplication.
-export fn seconds(n: Int) Duration:
+export fn seconds(n Int) Duration:
 	return nanoseconds(n * 1000000000)
 
 // Constructs a duration of `n` minutes; `n` may be negative, and a nanosecond count
 // outside Int faults like any Int multiplication. For example,
 // `monotonic().difference(start).compare(minutes(5)) > 0` tests whether more than
 // five minutes have elapsed.
-export fn minutes(n: Int) Duration:
+export fn minutes(n Int) Duration:
 	return nanoseconds(n * 60000000000)
 
 // Constructs a duration of `n` hours; `n` may be negative, and a nanosecond count
 // outside Int faults like any Int multiplication.
-export fn hours(n: Int) Duration:
+export fn hours(n Int) Duration:
 	return nanoseconds(n * 3600000000000)
 
 /*
@@ -466,7 +466,7 @@ Fractions may have any number of ASCII digits. Each component truncates toward z
 Whitespace, exponents, missing units and other syntax return `EBADMSG`, even after an overflowing prefix.
 A well-formed span outside -9223372036854775808 through 9223372036854775807 nanoseconds returns `ERANGE`.
 */
-export fn parse_duration(text: String) Duration!:
+export fn parse_duration(text String) Duration!:
 	data := text.to_bytes()
 	size := data.length()
 	if size == 0: return error(Error("time: invalid data", kind: "EBADMSG"))
@@ -587,7 +587,7 @@ export fn parse_duration(text: String) Duration!:
 	return ok(nanoseconds(if negative: total else: -total))
 
 // Parses an RFC 3339 timestamp with an explicit time zone.
-export fn parse_timestamp(text: String) Timestamp!:
+export fn parse_timestamp(text String) Timestamp!:
 	return msstd_time_parse_timestamp(text)
 
 /*
@@ -596,14 +596,14 @@ Fields outside their calendar range, such as month 13 or February 30, return `ER
 A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
 */
 export fn from_calendar(
-	year: Int,
-	month: Int,
-	day: Int,
-	hour: Int,
-	minute: Int,
-	second: Int,
-	nanosecond: Int,
-	zone: String,
+	year Int,
+	month Int,
+	day Int,
+	hour Int,
+	minute Int,
+	second Int,
+	nanosecond Int,
+	zone String,
 ) Timestamp!:
 	resolved := load(zone)?
 	local := msstd_time_local_from_calendar(
@@ -626,14 +626,14 @@ export fn local_zone() String:
 // pause the current task for at least that long. The timer has no task of its own, and
 // dropping the promise cancels it.
 // ms: effect std.clock.sleep
-export fn sleep(duration: Duration) Promise[Void]:
+export fn sleep(duration Duration) Promise[Void]:
 	return adopt[Void](msrt_promise_sleep(duration.nanos))
 
 // Constructs a timestamp from Unix seconds and the nanosecond within that second.
 // `nanoseconds` must be 0 through 999999999, and `seconds` from -62135596800 (year 1)
 // through 253402300799 (year 9999); anything else returns `ERANGE`. It does not carry
 // extra nanoseconds into the seconds.
-export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
+export fn timestamp(seconds Int, nanoseconds Int) Timestamp!:
 	if nanoseconds < 0 or nanoseconds >= 1000000000:
 		return error(Error("time: value out of range", kind: "ERANGE"))
 	if seconds < -62135596800 or seconds > 253402300799:
@@ -658,7 +658,7 @@ export fn now() Timestamp:
 // request's time budget.
 export type Deadline:
 	// The instant the deadline expires.
-	at: Instant
+	at Instant
 
 // Returns the time left, or zero once the deadline has passed.
 fn Deadline.remaining() Duration:
@@ -675,7 +675,7 @@ fn Deadline.wait() Void:
 
 // Returns a deadline `duration` from now.
 // ms: effect std.clock.read
-export fn deadline_after(duration: Duration) Deadline:
+export fn deadline_after(duration Duration) Deadline:
 	return Deadline(at: monotonic().shift(duration))
 
 /*
@@ -685,9 +685,9 @@ with the loop body: a body slower than the period gets the next tick at once, an
 */
 type TickSource:
 	// The time between ticks.
-	period: Duration
+	period Duration
 	// The instant of the next tick.
-	due: Instant
+	due Instant
 
 // Waits for the next tick and returns the instant it was due; never ends.
 fn var TickSource.next() Instant?!:
@@ -709,16 +709,16 @@ fn move TickSource.close() Void!:
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or
 // less is a programming fault.
 // ms: effect std.clock.sleep
-export fn ticker(period: Duration) ReadStream[Instant]:
+export fn ticker(period Duration) ReadStream[Instant]:
 	if period.compare(nanoseconds(0)) <= 0:
 		panic("ticker: period must be positive")
 
 	due := monotonic().shift(period.clone())
-	return ReadStream[Instant](TickSource(period: period, due: due))
+	return ReadStream[Instant](TickSource(period: period.clone(), due: due))
 
 // `n.milliseconds()`, `n.seconds()` and `n.minutes()` are the constructors above on the
 // receiver. A count whose nanoseconds do not fit in Int faults and names the range.
-fn unit_count(operation: String, n: Int, scale: Int) Int:
+fn unit_count(operation String, n Int, scale Int) Int:
 	low := (-9223372036854775807 - 1) / scale
 	high := 9223372036854775807 / scale
 	if n < low or n > high: panic(

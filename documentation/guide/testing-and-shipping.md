@@ -12,12 +12,12 @@ The invoice rules are the part where a mistake costs money, so they get tests. A
 import expect_equal from "@std/test/test.ms"
 import check, ints, lists from "@std/test/property.ms"
 
-fn shipping(subtotal: Int) Int:
+fn shipping(subtotal Int) Int:
     if subtotal >= 4000:
         return 0
     return 500
 
-fn order_total(prices: List[Int]) Int:
+fn order_total(prices List[Int]) Int:
     subtotal := prices.sum()
     return subtotal + shipping(subtotal)
 
@@ -28,7 +28,7 @@ test "big orders ship free":
     expect_equal(order_total([2500, 2500]), 5000)?
 
 test "the order of items never changes the total":
-    check("any order", lists(ints(0, 5000), 0, 20), fn prices: expect_equal(order_total(prices.reversed()), order_total(prices)))?
+    check("any order", lists(ints(0, 5000), 0, 20), prices => expect_equal(order_total(prices.reversed()), order_total(prices)))?
 ```
 
 ```text

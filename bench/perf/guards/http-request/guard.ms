@@ -20,14 +20,14 @@ import (
 
 REQUESTS := 10000
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	return HttpResponse(
 		status: 200,
 		headers: headers(),
 		body: "{\"ok\":true,\"items\":[1,2,3,4,5,6,7,8,9,10]}".to_bytes(),
 	)
 
-fn client(address: String, request: String) Int!:
+fn client(address String, request String) Int!:
 	var connection = connect(address, timeout: seconds(5)).wait()?
 	var answered = 0
 
@@ -40,7 +40,7 @@ fn client(address: String, request: String) Int!:
 
 	return ok(answered)
 
-fn drive(own_path: String, request: String) Int!:
+fn drive(own_path String, request String) Int!:
 	server := serve(
 		address: "127.0.0.1:0",
 		handler: buffered(handle),
@@ -55,7 +55,7 @@ fn drive(own_path: String, request: String) Int!:
 
 // The guard's exit status: 0 when every request was answered. `request` is the whole
 // request text, sent on each pass.
-export fn guard(request: String) Int:
+export fn guard(request String) Int:
 	args := arguments()
 
 	if args.length() == 3 and args[0] == "client":

@@ -10,16 +10,16 @@ There is no garbage collector in Manuscript and no lifetime annotation to write.
 <!-- manuscript-example: {"mode":"run","stdout":"Sam has 2 items\nSam has 3 items\nSam has 4 items; archived: 3\n"} -->
 ```manuscript {filename="cart.ms"}
 type Cart:
-    owner: String
-    items: List[String]
+    owner String
+    items List[String]
 
-fn summary(cart: Cart) String:
+fn summary(cart Cart) String:
     return f"{cart.owner} has {cart.items.length()} items"
 
-fn add_gift(var cart: Cart) Void:
+fn add_gift(var cart Cart) Void:
     cart.items.append("gift card")
 
-fn archive(cart: Cart, var history: List[Cart]) Void:
+fn archive(cart Cart, var history List[Cart]) Void:
     history.append(cart)
 
 fn main() Void:
@@ -51,7 +51,7 @@ Sam has 4 items; archived: 3
 
 Leave out the `.clone()`:
 
-<!-- manuscript-example: {"mode":"error","contains":"moved here but used again","context":"type Cart:\n    owner: String\n    items: List[String]\n\nfn archive(cart: Cart, var history: List[Cart]) Void:\n    history.append(cart)","given":["cart: Cart","var history: List[Cart]"]} -->
+<!-- manuscript-example: {"mode":"error","contains":"moved here but used again","context":"type Cart:\n    owner String\n    items List[String]\n\nfn archive(cart Cart, var history List[Cart]) Void:\n    history.append(cart)","given":["cart Cart","var history List[Cart]"]} -->
 ```manuscript
     archive(cart, history)
     print(cart.owner)

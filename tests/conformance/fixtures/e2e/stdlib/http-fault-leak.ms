@@ -13,9 +13,9 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn faulting(var exchange: HttpExchange) Void!:
+fn faulting(var exchange HttpExchange) Void!:
 	big := "x".repeat(1000000)
-	xs: List[Int] := []
+	xs List[Int] := []
 	n := xs[big.length()]
 	if big.length() + n > 5: return ok()
 
@@ -37,7 +37,7 @@ test "a faulting handler releases the values its frames own":
 	grown := (memory_usage() | expect_ok?).resident - before
 	if grown > 45000000: return error(Error(f"resident memory grew {grown} bytes"))
 
-fn hanging(var exchange: HttpExchange) Void!:
+fn hanging(var exchange HttpExchange) Void!:
 	sleep(30.seconds()).wait()?
 
 // Closing cancels the hanging handlers at once rather than waiting out their sleep.

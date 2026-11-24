@@ -9,12 +9,12 @@ import (
 // A stream closes its source or sink once, whether the stream is closed by hand or
 // dropped.
 type Counted:
-	log: String
+	log String
 
 fn var Counted.next() Int?!:
 	return ok(null)
 
-fn var Counted.write(move value: Int) Void!:
+fn var Counted.write(move value Int) Void!:
 	return ok()
 
 fn var Counted.flush() Void!:
@@ -23,7 +23,7 @@ fn var Counted.flush() Void!:
 fn move Counted.close() Void!:
 	void append_file(self.log, "x").wait()
 
-fn closes(log: String) String:
+fn closes(log String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
@@ -46,7 +46,7 @@ test "a write stream closes its sink once":
 	expect_equal(closes(log), "x")?
 
 type Failing:
-	unused: Int
+	unused Int
 
 fn var Failing.next() Int?!:
 	return ok(null)

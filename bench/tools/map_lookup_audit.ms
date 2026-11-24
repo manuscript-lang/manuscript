@@ -6,7 +6,7 @@ import (
 	capture, ensure_directory, finish, invalid, write_text from "./lib.ms",
 )
 
-fn run(args: List[String]) String!:
+fn run(args List[String]) String!:
 	if args.length() != 8: return invalid(
 		"expected BEFORE AFTER OUTPUT PAIRS MODE SIZE REPEATS PREFIX_WIDTH"
 	)

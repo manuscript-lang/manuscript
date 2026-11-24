@@ -15,10 +15,10 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:
+fn digest(algorithm HashAlgorithm, data Bytes) Bytes:
 	return algorithm.digest(data)
 
-fn call_digest[T](operation: fn(Bytes) T, data: Bytes) T:
+fn call_digest[T](operation fn(Bytes) T, data Bytes) T:
 	return operation(data)
 
 test "typed SHA selectors match their algorithms and retain bound operations":
@@ -54,23 +54,23 @@ test "typed compression preserves bytes limits and errors":
 			expect_equal((decompress(encoded, format)?), data)?
 			expect_equal((decompress(encoded, format, data.length())?), data)?
 
-			limited: Bytes! := error(
+			limited Bytes! := error(
 				Error("compression: limit exceeded", kind: "EOVERFLOW")
 			)
 			expect_equal(decompress(encoded, format, data.length() - 1), limited)?
 
-		invalid: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
+		invalid Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 		expect_equal(compress(data, format, CompressOptions(level: -1)), invalid)?
 		expect_equal(compress(data, format, CompressOptions(max_bytes: -1)), invalid)?
 
-		zero: Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
+		zero Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
 		expect_equal(compress(data, format, CompressOptions(max_bytes: 0)), zero)?
 
 	encoded := compress(data, CompressionFormat.Gzip, CompressOptions(max_bytes: 1024))?
 	decoder := decompress
 	expect_equal((decoder(encoded, CompressionFormat.Gzip)?), data)?
 
-	malformed: Bytes! := error(Error("compression: invalid data", kind: "EBADMSG"))
+	malformed Bytes! := error(Error("compression: invalid data", kind: "EBADMSG"))
 	expect_equal(decompress(data, CompressionFormat.Gzip), malformed)?
 
 test "typed archives retain entry limits and validation":
@@ -81,12 +81,12 @@ test "typed archives retain entry limits and validation":
 		expect_equal((unpack(encoded, format)?), entries)?
 		expect_equal((unpack(encoded, format, ArchiveOptions())?), entries)?
 
-		limited: List[ArchiveEntry]! := error(
+		limited List[ArchiveEntry]! := error(
 			Error("archive: limit exceeded", kind: "EOVERFLOW")
 		)
 		expect_equal(unpack(encoded, format, ArchiveOptions(max_entries: 0)), limited)?
 
-		invalid: Bytes! := error(Error("archive: invalid input", kind: "EINVAL"))
+		invalid Bytes! := error(Error("archive: invalid input", kind: "EINVAL"))
 		expect_equal(
 			pack([ArchiveEntry("../escape", "".to_bytes(), false)], format),
 			invalid,

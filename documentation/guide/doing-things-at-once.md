@@ -12,11 +12,11 @@ Orders arrive as one file per day. Reading them one after another wastes time wh
 import read_file from "@std/os/fs.ms"
 import wait_all from "@std/concurrency/promise.ms"
 
-fn count_rows(text: String) Int:
-    return text.split("\n").filter(fn line: not line.is_empty()).length()
+fn count_rows(text String) Int:
+    return text.split("\n").filter(line => not line.is_empty()).length()
 
-fn run(paths: List[String]) Int!:
-    reads := paths.map(fn path: read_file(path))
+fn run(paths List[String]) Int!:
+    reads := paths.map(path => read_file(path))
     files := wait_all(reads)?
     var rows = 0
     for file in files:

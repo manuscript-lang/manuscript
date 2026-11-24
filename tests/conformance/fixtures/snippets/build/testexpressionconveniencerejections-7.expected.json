@@ -13,15 +13,15 @@
         "position": {
           "file": "testexpressionconveniencerejections-7.ms",
           "line": 4,
-          "column": 27,
-          "offset": 197
+          "column": 29,
+          "offset": 199
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpressionconveniencerejections-7.ms:4:27: type: operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)\n   |\n 4 | fn f() String: return \"a\" + 1\n   |                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpressionconveniencerejections-7.ms:4:29: type: operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)\n   |\n 4 | fn f() String => return \"a\" + 1\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

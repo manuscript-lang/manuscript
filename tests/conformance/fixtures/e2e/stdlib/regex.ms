@@ -24,12 +24,12 @@ test "regex rejects invalid expressions and exhausted budgets":
 	)?
 
 	regex := compile("[0-9]+")?
-	limited: List[String]! := error(
+	limited List[String]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(regex.find_all("1 2", 1), limited)?
 
-	output_limit: String! := error(
+	output_limit String! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(regex.replace_all("1", "long", 3), output_limit)?
@@ -60,7 +60,7 @@ test "regex captures groups spans and splits":
 		"home:me $ y:x $",
 	)?
 
-	limited: List[String]! := error(
+	limited List[String]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(comma.split("a,b,c", 2), limited)?
@@ -72,7 +72,7 @@ test "regex repeated captures clear absent groups and preserve budgets":
 		[["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]],
 	)?
 
-	limited: List[List[String]]! := error(
+	limited List[List[String]]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(re.capture_all("a bbb a", 2), limited)?
@@ -86,7 +86,7 @@ test "regex repeated template expansion preserves byte budgets":
 	)?
 	expect_equal((re.replace_template("a b", "$$", 3)?), "$ $")?
 
-	limited: String! := error(
+	limited String! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(re.replace_template("a b", "$$", 2), limited)?
@@ -100,7 +100,7 @@ test "regex capped templates preserve Unicode references and malformed syntax":
 	expect_equal((re.replace_template("é🙂", "$3${missing}", 0)?), "")?
 	expect_equal((re.replace_template("é🙂", "${open $1", 9)?), "${open é")?
 
-	limited: String! := error(
+	limited String! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(re.replace_template("é🙂", template, 9), limited)?
@@ -128,7 +128,7 @@ test "regex capture methods preserve whole match only patterns":
 	expect_equal(unnamed.capture_named("word123").is_empty(), true)?
 	expect_equal((re.capture_all("sword word word", 2)?), [["word"], ["word"]])?
 
-	limited: List[List[String]]! := error(
+	limited List[List[String]]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(re.capture_all("word word", 1), limited)?
@@ -146,10 +146,10 @@ test "regex collection budgets preserve empty adjacency and exact counts":
 	expect_equal((re.find_all("a🙂🙂a", 3)?), ["a", "", "a"])?
 	expect_equal((re.capture_all("a🙂🙂a", 3)?), [["a"], [""], ["a"]])?
 
-	find_limit: List[String]! := error(
+	find_limit List[String]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
-	capture_limit: List[List[String]]! := error(
+	capture_limit List[List[String]]! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(re.find_all("a🙂🙂a", 2), find_limit)?

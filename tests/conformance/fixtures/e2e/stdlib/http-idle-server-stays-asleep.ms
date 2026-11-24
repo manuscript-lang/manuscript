@@ -21,10 +21,10 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	return HttpResponse(200, f"ok {request.path} done\n".to_bytes())
 
-fn warm(var conn: Connection) Bool!:
+fn warm(var conn Connection) Bool!:
 	send(conn, "GET /warm HTTP/1.1\r\nHost: t\r\n\r\n")?
 
 	var text = ""

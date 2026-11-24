@@ -18,11 +18,11 @@ test "bound remove":
     remove(-2)
 
 test "empty set":
-    var items: List[Int] = []
+    var items List[Int] = []
     items.set(0, 2)
 
 test "empty remove":
-    var items: List[Int] = []
+    var items List[Int] = []
     items.remove(0)
 
 test "continues":

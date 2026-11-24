@@ -17,21 +17,21 @@ import (
 	Duration, monotonic, nanoseconds, sleep from "@std/time.ms",
 )
 
-fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
-	return promise(fn: input.next()).with(
-		options: PromiseOptions(timeout: timeout)
+fn within(var input ReadStream[Bytes], timeout Duration) Bytes?!:
+	return promise(() => input.next()).with(
+		options: PromiseOptions(timeout: timeout.clone())
 	).wait()
 
-fn send(var conn: Connection, text: String) Void!:
+fn send(var conn Connection, text String) Void!:
 	conn.output.write(text.to_bytes())?
 	return conn.output.flush()
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	if request.path == "/slow":
 		void sleep(nanoseconds(3000000000)).wait()
 	return HttpResponse(200, f"ok {request.path}\n".to_bytes())
 
-fn fetch(address: String, path: String) String:
+fn fetch(address String, path String) String:
 	began := monotonic()
 
 	if var conn = connect(address).wait():
@@ -65,7 +65,7 @@ fn fetch(address: String, path: String) String:
 
 	return "connect failed"
 
-fn run(label: String, grace_ms: Int) Bool:
+fn run(label String, grace_ms Int) Bool:
 	options := HttpServerOptions(
 		timeout: nanoseconds(200000000),
 		grace: nanoseconds(grace_ms * 1000000),

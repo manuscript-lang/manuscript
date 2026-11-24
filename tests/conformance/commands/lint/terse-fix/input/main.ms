@@ -3,32 +3,32 @@ import (
 	panic, print from "@std/core.ms",
 )
 
-fn empties(xs: List[Int], m: Map[String, Int], text: String) Bool:
+fn empties(xs List[Int], m Map[String, Int], text String) Bool:
 	if xs.length() == 0: return true
 	if m.length() > 0: return false
 
 	return text.length() == 0
 
-fn first(xs: List[Int]) Int:
+fn first(xs List[Int]) Int:
 	return xs.get(0)
 
-fn counts(var m: Map[String, Int], k: String) Void:
+fn counts(var m Map[String, Int], k String) Void:
 	var total = 0
 	total = m.get(k) or 0
 	m[k.clone()] = (m.get(k) or panic("called Optional.get() on null")) + 1
 	print(total)
 
-fn pick(flag: Bool) Int:
+fn pick(flag Bool) Int:
 	var x = 1
 	if flag:
 		x = 2
 	return x
 
-fn done(n: Int) Int:
+fn done(n Int) Int:
 	r := n + 1
 	return r
 
-fn loop(xs: List[Int]) Int:
+fn loop(xs List[Int]) Int:
 	var i = 0
 	var sum = 0
 
@@ -39,12 +39,12 @@ fn loop(xs: List[Int]) Int:
 	for j in 0..xs.length():
 		sum += xs[j]
 
-	var out: List[Int] = []
+	var out List[Int] = []
 	for x in xs:
 		out.append(x)
 	return sum
 
-fn sorted(var xs: List[Int]) Void:
+fn sorted(var xs List[Int]) Void:
 	ys := xs.sort()
 	print(xs.reverse())
 	print(ys)
@@ -53,16 +53,16 @@ fn nothing() Void!:
 	print("x")
 	return ok()
 
-fn bytes_text(b: Bytes) String:
+fn bytes_text(b Bytes) String:
 	return b.to_string()
 
-fn parse(text: String) Int!:
+fn parse(text String) Int!:
 	return ok(1)
 
 fn unit() Void!:
 	return ok()
 
-fn slices(xs: List[Int]) List[Int]:
+fn slices(xs List[Int]) List[Int]:
 	return xs.clone().slice(1, 3).get_or([])
 
 fn run() Void!:

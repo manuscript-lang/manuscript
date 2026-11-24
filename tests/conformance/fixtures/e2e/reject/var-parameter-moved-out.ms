@@ -1,6 +1,6 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-fn rewrap(var xs: List[Int]) Void:
+fn rewrap(var xs List[Int]) Void:
 	// Binding the caller's value elsewhere moves it out of the parameter.
 	old := xs
 	xs = [old.length()]

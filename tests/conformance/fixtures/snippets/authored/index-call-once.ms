@@ -2,7 +2,7 @@
 // conform: phase=run
 
 type Counter:
-    n: Int
+    n Int
 
 fn var Counter.next() Int:
     self.n += 1

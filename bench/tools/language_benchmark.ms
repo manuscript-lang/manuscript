@@ -27,14 +27,14 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn execute(binary: String, cpu: String) Result[Void, Error]:
+fn execute(binary String, cpu String) Result[Void, Error]:
 	if cpu == "":
 		void must(binary, capture(binary, []))?
 		return ok()
 
 	void must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))?
 
-fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
+fn run(opts Map[String, String], runs Int) Result[String, Error]:
 	out := absolute(opts.get_or("output", ""))
 	ensure_directory(out)
 
@@ -110,7 +110,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 		for label in ["before", "after"]:
 			seconds.add(
 				label.clone(),
-				jlist(samples.get_or(label, []).map(fn s: jfloat(s))),
+				jlist(samples.get_or(label, []).map(s => jfloat(s))),
 			)
 		medians.add("before", jfloat(before))
 		medians.add("after", jfloat(after))

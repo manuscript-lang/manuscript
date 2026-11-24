@@ -2,12 +2,12 @@
 // conform: phase=check
 // Adds two numbers.
 // Never rounds.
-export fn add(a: Int, b: Int) Int:
+export fn add(a Int, b Int) Int:
     return a + b
 
 // Detached by a blank line.
 
-export fn sub(a: Int, b: Int) Int:
+export fn sub(a Int, b Int) Int:
     return a - b
 
 // Not a doc comment: private declaration.

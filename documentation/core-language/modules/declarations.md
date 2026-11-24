@@ -50,10 +50,10 @@ A module-level `:=` names a value usable throughout the module; add `export` to 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export MAX_ITEMS := 100
-NAMES: List[String] := ["Ada", "Grace"]
+NAMES List[String] := ["Ada", "Grace"]
 LIMIT := MAX_ITEMS * 2
 
-fn is_full(count: Int) Bool:
+fn is_full(count Int) Bool:
     return count >= LIMIT
 ```
 
@@ -68,7 +68,7 @@ A constant has no storage or initialization order; each use evaluates the initia
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export type CustomerId:
-    value: String
+    value String
 ```
 
 `src/main.ms` imports it:
@@ -87,7 +87,7 @@ An exported function, data type, or contract cannot expose an internal nominal t
 <!-- manuscript-example: {"mode":"error","contains":"PrivateToken"} -->
 ```manuscript
 type PrivateToken:
-    value: String
+    value String
 
 // Rejected: callers cannot name the internal result type.
 export fn issue() PrivateToken:

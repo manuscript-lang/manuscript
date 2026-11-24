@@ -26,13 +26,13 @@ import (
 
 // What one run of ms left: its exit status and streams, as text.
 export type Process:
-	code: Int
-	stdout: String
-	stderr: String
-	timed_out: Bool
-	spawn_error: String
+	code Int
+	stdout String
+	stderr String
+	timed_out Bool
+	spawn_error String
 
-export fn default_timeout(phase: String) Int:
+export fn default_timeout(phase String) Int:
 	if phase == "parse": return 30
 	if phase == "check": return 60
 	if phase == "run": return 120
@@ -43,11 +43,11 @@ export fn default_timeout(phase: String) Int:
 	return 120
 
 export fn invoke(
-	ms: String,
-	fx: Fixture,
-	args: List[String],
-	work: String,
-	input: Bytes,
+	ms String,
+	fx Fixture,
+	args List[String],
+	work String,
+	input Bytes,
 ) Process:
 	limit := if fx.timeout > 0: fx.timeout else: default_timeout(fx.phase)
 	result := run(
@@ -56,7 +56,7 @@ export fn invoke(
 		RunOptions(
 			cwd: work.clone(),
 			timeout: seconds(limit),
-			input: input,
+			input: input.clone(),
 			env: {"MS_UNDER_TEST": ms.clone()},
 		),
 	).wait()
@@ -70,7 +70,7 @@ export fn invoke(
 		)
 
 	cause := result.err()
-	timed := (cause.kind or "") == "ETIMEDOUT"
+	timed := (cause.kind.clone() or "") == "ETIMEDOUT"
 	return Process(
 		code: if timed: 137 else: 127,
 		stdout: "",
@@ -82,7 +82,7 @@ export fn invoke(
 // `text` with the work directory (as given and with forward slashes) as <DIR> and its
 // parent as <SCRATCH>, the line number of a standard-library frame as <LINE>, and the
 // count of a repeated frame as <COUNT>.
-fn normalize_text(text: String, work: String) String:
+fn normalize_text(text String, work String) String:
 	var out = text.replace(work, "<DIR>").replace(work.replace("\\", "/"), "<DIR>")
 	parent_end := parent_length(work)
 
@@ -97,7 +97,7 @@ fn normalize_text(text: String, work: String) String:
 
 // A recursive frame repeated `N more times` names its count <COUNT>: how deep a
 // recursion gets before the stack ends depends on the platform's frame sizes.
-fn mask_repeat_counts(text: String) String:
+fn mask_repeat_counts(text String) String:
 	marker := "repeated "
 	if not text.contains(marker): return text.clone()
 
@@ -128,7 +128,7 @@ fn mask_repeat_counts(text: String) String:
 // A standard-library frame (`@std/concurrency/promise.ms:312`) names its line as
 // <LINE>, so editing a standard-library file does not change the expectation of every
 // fixture that faults through it.
-fn mask_stdlib_lines(text: String) String:
+fn mask_stdlib_lines(text String) String:
 	if not text.contains("@std/"): return text.clone()
 
 	var out = ""
@@ -160,12 +160,12 @@ fn mask_stdlib_lines(text: String) String:
 
 	return out + rest
 
-fn leading_digits(text: String) Int:
+fn leading_digits(text String) Int:
 	var count = 0
 	while count < text.length() and "0123456789".contains(text.slice(count, count + 1)): count += 1
 	return count
 
-fn path_name(name: String) Bool:
+fn path_name(name String) Bool:
 	for index in 0..name.length():
 		letter := name.slice(index, index + 1)
 		if not (
@@ -178,9 +178,9 @@ fn path_name(name: String) Bool:
 
 // Every string of `value` normalized, and the `subcode` members the frozen corpus never
 // recorded dropped.
-fn normalized(value: JsonValue, work: String) JsonValue:
+fn normalized(value JsonValue, work String) JsonValue:
 	match value:
-		StringValue(text): return JsonValue.StringValue(normalize_text(text, work))
+		StringValue(text) => return JsonValue.StringValue(normalize_text(text, work))
 		ArrayValue(items):
 			var out = List[JsonValue]()
 			for item in items: out.append(normalized(item, work))
@@ -194,11 +194,11 @@ fn normalized(value: JsonValue, work: String) JsonValue:
 				out.add(field.key.clone(), normalized(field.value, work))
 
 			return JsonValue.ObjectValue(out)
-		_: return value.clone()
+		_ => return value.clone()
 
 // A JSON report read from standard output and normalized, or a record of why it could
 // not be read.
-fn read_report(out: Process, work: String) JsonValue:
+fn read_report(out Process, work String) JsonValue:
 	parsed := parse(out.stdout)
 	if document := parsed: return normalized(document, work)
 
@@ -207,20 +207,20 @@ fn read_report(out: Process, work: String) JsonValue:
 	broken.add("stdout", JsonValue.StringValue(normalize_text(out.stdout, work)))
 	return JsonValue.ObjectValue(broken)
 
-export fn number(value: Int) JsonValue:
+export fn number(value Int) JsonValue:
 	return JsonValue.NumberValue(f"{value}")
 
-export fn text_value(value: String) JsonValue:
+export fn text_value(value String) JsonValue:
 	return JsonValue.StringValue(value.clone())
 
 // `exit_code`, `timed_out` and `spawn_error` of a run.
-fn process_fields(var fields: Map[String, JsonValue], out: Process) Void:
+fn process_fields(var fields Map[String, JsonValue], out Process) Void:
 	fields.add("exit_code", number(out.code))
 	if out.timed_out: fields.add("timed_out", JsonValue.BoolValue(true))
 	if out.spawn_error != "": fields.add("spawn_error", text_value(out.spawn_error))
 
 // The text of `source` below its `// conform:` header lines.
-fn without_header(source: String) String:
+fn without_header(source String) String:
 	var skip = 0
 
 	for line in source.split("\n"):
@@ -232,7 +232,7 @@ fn without_header(source: String) String:
 
 	return source.slice(skip, source.length())
 
-fn parse_phase(ms: String, fx: Fixture, work: String) JsonValue:
+fn parse_phase(ms String, fx Fixture, work String) JsonValue:
 	// `fmt --check` parses without loading the standard library, which `check` does for
 	// every file that parses; the parse diagnostics are the same.
 	checked := invoke(
@@ -264,7 +264,7 @@ fn parse_phase(ms: String, fx: Fixture, work: String) JsonValue:
 
 	return JsonValue.ObjectValue(fields)
 
-fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
+fn check_phase(ms String, fx Fixture, work String) JsonValue:
 	// `--with-text` carries the terminal output in the same document. A run that wrote no
 	// document, such as a usage error, is repeated without `--json` for its terminal
 	// output.
@@ -310,7 +310,7 @@ fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
 	fields.add("text", JsonValue.ObjectValue(text))
 	return JsonValue.ObjectValue(fields)
 
-fn run_phase(ms: String, fx: Fixture, work: String, build_type: String) JsonValue:
+fn run_phase(ms String, fx Fixture, work String, build_type String) JsonValue:
 	var args = ["run", fx.entry.clone(), "--build-type", build_type.clone()]
 
 	if not fx.args.is_empty():
@@ -325,7 +325,7 @@ fn run_phase(ms: String, fx: Fixture, work: String, build_type: String) JsonValu
 	return JsonValue.ObjectValue(fields)
 
 // `value` without the members called `name`, at every depth.
-fn without_member(value: JsonValue, name: String) JsonValue:
+fn without_member(value JsonValue, name String) JsonValue:
 	match value:
 		ArrayValue(items):
 			var out = List[JsonValue]()
@@ -340,10 +340,10 @@ fn without_member(value: JsonValue, name: String) JsonValue:
 				out.add(field.key.clone(), without_member(field.value, name))
 
 			return JsonValue.ObjectValue(out)
-		_: return value.clone()
+		_ => return value.clone()
 
 // The key paths of a report, so a missing or extra field is a protocol break.
-fn shape(value: JsonValue, path: String, var out: List[String]) Void:
+fn shape(value JsonValue, path String, var out List[String]) Void:
 	match value:
 		ObjectValue(fields):
 			for field in fields.entries():
@@ -352,9 +352,9 @@ fn shape(value: JsonValue, path: String, var out: List[String]) Void:
 				shape(field.value, next, out)
 		ArrayValue(items):
 			for item in items: shape(item, f"{path}[]", out)
-		_: return
+		_ => return
 
-fn test_phase(ms: String, fx: Fixture, work: String, build_type: String) JsonValue:
+fn test_phase(ms String, fx Fixture, work String, build_type String) JsonValue:
 	var args = ["test", fx.entry.clone(), "--json", "--build-type", build_type.clone()]
 
 	if not fx.args.is_empty():
@@ -381,7 +381,7 @@ fn test_phase(ms: String, fx: Fixture, work: String, build_type: String) JsonVal
 	return JsonValue.ObjectValue(fields)
 
 // What `ms` observes of `fx`, in a fresh working directory.
-export fn observe(ms: String, fx: Fixture, build_type: String) JsonValue:
+export fn observe(ms String, fx Fixture, build_type String) JsonValue:
 	scratch := temporary("ms-conform-").get()
 	work := f"{scratch.path()}/w"
 	create_directory(work.clone()).get()
@@ -392,5 +392,5 @@ export fn observe(ms: String, fx: Fixture, build_type: String) JsonValue:
 
 	return test_phase(ms, fx, work.clone(), build_type)
 
-export fn same(left: JsonValue, right: JsonValue) Bool:
+export fn same(left JsonValue, right JsonValue) Bool:
 	return stringify(left).get() == stringify(right).get()

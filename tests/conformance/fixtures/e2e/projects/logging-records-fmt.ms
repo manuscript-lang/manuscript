@@ -4,18 +4,18 @@
 import Logger, LogLevel, record from "@std/log.ms"
 
 type Request:
-    request: String
+    request String
 
 type Payload:
-    count: Int
-    ok: Bool
-    nested: List[Bool?]
-    service: String
-    level: Int
-    msg: String
-    time: Int
+    count Int
+    ok Bool
+    nested List[Bool?]
+    service String
+    level Int
+    msg String
+    time Int
 
-export fn emit(logger: Logger) Void!:
+export fn emit(logger Logger) Void!:
     child := logger.child_json("{\"request\":\"req-1\"}")?
     fields := Payload(
         count: 9007199254740993, ok: true, nested: [null, false], service: "worker",

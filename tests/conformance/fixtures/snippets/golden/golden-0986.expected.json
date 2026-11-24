@@ -13,15 +13,15 @@
         "position": {
           "file": "golden-0986.ms",
           "line": 4,
-          "column": 15,
-          "offset": 81
+          "column": 14,
+          "offset": 80
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0986.ms:4:15: resolution: unknown type Envelope; declare it with 'type Envelope:' / 'enum Envelope:' / 'interface Envelope:', declare it as a type parameter, or import it\n   |\n 4 | fn use(value: Envelope) Int:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0986.ms:4:14: resolution: unknown type Envelope; declare it with 'type Envelope:' / 'enum Envelope:' / 'interface Envelope:', declare it as a type parameter, or import it\n   |\n 4 | fn use(value Envelope) Int:\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

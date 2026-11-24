@@ -24,15 +24,15 @@ test "windows overlap and a short list has none":
 	expect_equal(["a", "b", "c"].windows(3), [["a", "b", "c"]])?
 
 test "partition splits by predicate keeping order":
-	split := [1, 2, 3, 4, 5].partition(fn x: x % 2 == 0)
+	split := [1, 2, 3, 4, 5].partition(x => x % 2 == 0)
 	expect_equal(split.matching, [2, 4])?
 	expect_equal(split.rest, [1, 3, 5])?
 
-	none_split := List[Int]().partition(fn x: x > 0)
+	none_split := List[Int]().partition(x => x > 0)
 	expect_equal(none_split.matching.length(), 0)?
 	expect_equal(none_split.rest.length(), 0)?
 
 test "flat_map infers its element type from list literals returned by a callback":
-	expect_equal([1, 2].flat_map(fn x: [x, x * 10]), [1, 10, 2, 20])?
-	expect_equal(["a"].flat_map(fn s: [s + "!"]), ["a!"])?
-	expect_equal([1, 2].flat_map(fn x: (if x > 1: [x] else: [])), [2])?
+	expect_equal([1, 2].flat_map(x => [x, x * 10]), [1, 10, 2, 20])?
+	expect_equal(["a"].flat_map(s => [s + "!"]), ["a!"])?
+	expect_equal([1, 2].flat_map(x => (if x > 1: [x] else: [])), [2])?

@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=tests/e2e/inherent_methods_test.go:36 TestInherentImplRejections
 type B:
-    x: Int
+    x Int
 
-fn B.m[U](u: U) U:
+fn B.m[U](u U) U:
     return u

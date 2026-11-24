@@ -5,41 +5,41 @@ import (
 
 // ns per interface call. One line per case: `name ns checksum`.
 
-fn say(text: String) Void:
-	_ignored := stdout().write(text)
+fn say(text String) Void:
+	_ignored := stdout().write(text.clone())
 
-fn report(name: String, n: Int, start: Instant, sum: Int) Void:
+fn report(name String, n Int, start Instant, sum Int) Void:
 	ns := monotonic().difference(start).to_nanoseconds()
 	say(f"{name} {ns.to_float() / n.to_float()} {sum}\n")
 
 interface Step:
-	fn apply(x: Int) Int
+	fn apply(x Int) Int
 
 type AddOne:
-	unused: Int
+	unused Int
 
-fn AddOne.apply(x: Int) Int:
+fn AddOne.apply(x Int) Int:
 	return x + 1
 
 type Scale:
-	k: Int
+	k Int
 
-fn Scale.apply(x: Int) Int:
+fn Scale.apply(x Int) Int:
 	return x * self.k + 1
 
 fn make_add() Step:
 	return AddOne(unused: 0)
 
-fn make_scale(k: Int) Step:
+fn make_scale(k Int) Step:
 	return Scale(k: k)
 
-fn run_through(s: Step, n: Int) Int:
+fn run_through(s Step, n Int) Int:
 	var total = 0
 	for i in 0..n:
 		total += s.apply(i)
 	return total
 
-fn run_direct_add(n: Int) Int:
+fn run_direct_add(n Int) Int:
 	var total = 0
 	for i in 0..n:
 		total += i + 1
@@ -54,7 +54,7 @@ fn main() Void:
 	// The value is built where it is called.
 	start = monotonic()
 
-	s1: Step := AddOne(unused: 0)
+	s1 Step := AddOne(unused: 0)
 	var t1 = 0
 	for i in 0..n:
 		t1 += s1.apply(i)

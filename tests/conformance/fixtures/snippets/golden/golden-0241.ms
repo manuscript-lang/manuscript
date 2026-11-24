@@ -4,20 +4,20 @@
 export type Counter:
     // Current count in items.
     // May start at zero.
-    count: Int = 0
+    count Int = 0
     // Detached description.
 
-    undocumented: Int = 1
+    undocumented Int = 1
 
 export enum Outcome:
     // A completed count.
-    Ready(value: Int)
+    Ready(value Int)
     // Work is pending.
     Pending
     // Work failed with source context.
     Failed(
         // Original failure diagnostic.
-        message: String
+        message String
     )
 
 export interface Countable:

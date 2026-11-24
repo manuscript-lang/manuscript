@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "price := discount(price: 20d, percent: 10d).get(0d)\ntext := discount(price: 20d, percent: 10d).map(fn value: value.to_string())\n"
+    "fmt": "price := discount(price: 20d, percent: 10d).get(0d)\ntext := discount(price: 20d, percent: 10d).map(value => value.to_string())\n"
   }
 }

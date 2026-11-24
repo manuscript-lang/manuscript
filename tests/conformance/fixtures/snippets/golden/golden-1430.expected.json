@@ -14,13 +14,77 @@
           "file": "golden-1430.ms",
           "line": 6,
           "column": 1,
-          "offset": 139
+          "offset": 138
         },
         "end": {
           "file": "golden-1430.ms",
           "line": 6,
           "column": 5,
-          "offset": 143
+          "offset": 142
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'by' and its type; write by Type",
+        "position": {
+          "file": "golden-1430.ms",
+          "line": 10,
+          "column": 15,
+          "offset": 269
+        },
+        "end": {
+          "file": "golden-1430.ms",
+          "line": 10,
+          "column": 16,
+          "offset": 270
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1430.ms",
+            "line": 10,
+            "column": 15,
+            "offset": 269
+          },
+          "end": {
+            "file": "golden-1430.ms",
+            "line": 10,
+            "column": 16,
+            "offset": 270
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'total' and its type; write total Type",
+        "position": {
+          "file": "golden-1430.ms",
+          "line": 13,
+          "column": 10,
+          "offset": 335
+        },
+        "end": {
+          "file": "golden-1430.ms",
+          "line": 13,
+          "column": 11,
+          "offset": 336
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1430.ms",
+            "line": 13,
+            "column": 10,
+            "offset": 335
+          },
+          "end": {
+            "file": "golden-1430.ms",
+            "line": 13,
+            "column": 11,
+            "offset": 336
+          },
+          "replacement": ""
         }
       },
       {
@@ -31,20 +95,52 @@
           "file": "golden-1430.ms",
           "line": 14,
           "column": 1,
-          "offset": 342
+          "offset": 341
         },
         "end": {
           "file": "golden-1430.ms",
           "line": 14,
           "column": 5,
-          "offset": 346
+          "offset": 345
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'value' and its type; write value Type",
+        "position": {
+          "file": "golden-1430.ms",
+          "line": 21,
+          "column": 21,
+          "offset": 557
+        },
+        "end": {
+          "file": "golden-1430.ms",
+          "line": 21,
+          "column": 22,
+          "offset": 558
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1430.ms",
+            "line": 21,
+            "column": 21,
+            "offset": 557
+          },
+          "end": {
+            "file": "golden-1430.ms",
+            "line": 21,
+            "column": 22,
+            "offset": 558
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1430.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Closeable for AggregateResource:\n   | ^^^^\n<DIR>/golden-1430.ms:14:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 14 | impl AggregateCounter for AggregateCell:\n    | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1430.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Closeable for AggregateResource:\n   | ^^^^\n<DIR>/golden-1430.ms:10:15: parse: remove the ':' between 'by' and its type; write by Type\n    |\n 10 |     fn bump(by: Int) Int\n    |               ^\n<DIR>/golden-1430.ms:13:10: parse: remove the ':' between 'total' and its type; write total Type\n    |\n 13 |     total: Int\n    |          ^\n<DIR>/golden-1430.ms:14:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 14 | impl AggregateCounter for AggregateCell:\n    | ^^^^\n<DIR>/golden-1430.ms:21:21: parse: remove the ':' between 'value' and its type; write value Type\n    |\n 21 | fn identity[T](value: T) T => return value\n    |                     ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

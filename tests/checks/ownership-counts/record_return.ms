@@ -4,10 +4,10 @@
 // in the caller (the floor is the name and list per record), so return-slot
 // construction has no measured gain. Debug pays list growth the reserve pass removes.
 type Big:
-	name: String
-	items: List[Int]
+	name String
+	items List[Int]
 
-fn mk(n: Int) Big:
+fn mk(n Int) Big:
 	var xs = List[Int]()
 	for i in 0..n:
 		xs.append(i)
@@ -15,11 +15,11 @@ fn mk(n: Int) Big:
 	b := Big(name: "a name that is long enough to live on the heap", items: xs)
 	return b
 
-fn wrap(n: Int) Big:
+fn wrap(n Int) Big:
 	b := mk(n)
 	return b
 
-fn pick(n: Int, c: Bool) Big:
+fn pick(n Int, c Bool) Big:
 	if c: return mk(n)
 	return wrap(n)
 

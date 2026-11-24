@@ -4,77 +4,77 @@ import (
 )
 
 type Cmd:
-	text: String
-	line: Int
+	text String
+	line Int
 
 type Rule:
-	pre: List[String]
-	oo: List[String]
-	cmds: List[Cmd]
+	pre List[String]
+	oo List[String]
+	cmds List[Cmd]
 
 type PatRule:
-	pat: String
-	pre: List[String]
-	oo: List[String]
-	cmds: List[Cmd]
+	pat String
+	pre List[String]
+	oo List[String]
+	cmds List[Cmd]
 
 type Var:
-	val: String
-	simple: Bool
+	val String
+	simple Bool
 
 type Frame:
-	active: Bool
-	parent: Bool
-	cond: Bool
-	seen_else: Bool
-	line: Int
+	active Bool
+	parent Bool
+	cond Bool
+	seen_else Bool
+	line Int
 
 type Resolved:
-	found: Bool
-	pre: List[String]
-	oo: List[String]
-	cmds: List[Cmd]
-	stem: String
+	found Bool
+	pre List[String]
+	oo List[String]
+	cmds List[Cmd]
+	stem String
 
 type Ctx:
-	vars: Map[String, Var] = Map[String, Var]()
-	cmdvars: Set[String] = Set[String]()
-	rules: Map[String, Rule] = Map[String, Rule]()
-	order: List[String] = List[String]()
-	pats: List[PatRule] = List[PatRule]()
-	phony: Set[String] = Set[String]()
-	phony_order: List[String] = List[String]()
-	files: Map[String, Int] = Map[String, Int]()
-	clock: Int = 0
-	out: List[String] = List[String]()
-	line: Int = 0
-	expanding: Set[String] = Set[String]()
-	binds: Map[String, String] = Map[String, String]()
-	auto: Map[String, String] = Map[String, String]()
-	cstack: List[Frame] = List[Frame]()
-	rule_open: Bool = false
-	r_targets: List[String] = List[String]()
-	r_pre: List[String] = List[String]()
-	r_oo: List[String] = List[String]()
-	r_cmds: List[Cmd] = List[Cmd]()
-	r_line: Int = 0
-	r_phony: Bool = false
-	memo: Map[String, Bool] = Map[String, Bool]()
-	bstack: List[String] = List[String]()
-	ran: Int = 0
-	dry: Bool = false
-	dseen: Set[String] = Set[String]()
-	dres: List[String] = List[String]()
+	vars Map[String, Var] = Map[String, Var]()
+	cmdvars Set[String] = Set[String]()
+	rules Map[String, Rule] = Map[String, Rule]()
+	order List[String] = List[String]()
+	pats List[PatRule] = List[PatRule]()
+	phony Set[String] = Set[String]()
+	phony_order List[String] = List[String]()
+	files Map[String, Int] = Map[String, Int]()
+	clock Int = 0
+	out List[String] = List[String]()
+	line Int = 0
+	expanding Set[String] = Set[String]()
+	binds Map[String, String] = Map[String, String]()
+	auto Map[String, String] = Map[String, String]()
+	cstack List[Frame] = List[Frame]()
+	rule_open Bool = false
+	r_targets List[String] = List[String]()
+	r_pre List[String] = List[String]()
+	r_oo List[String] = List[String]()
+	r_cmds List[Cmd] = List[Cmd]()
+	r_line Int = 0
+	r_phony Bool = false
+	memo Map[String, Bool] = Map[String, Bool]()
+	bstack List[String] = List[String]()
+	ran Int = 0
+	dry Bool = false
+	dseen Set[String] = Set[String]()
+	dres List[String] = List[String]()
 
-fn bs(s: String, a: Int, b: Int) String:
+fn bs(s String, a Int, b Int) String:
 	if a >= b: return ""
 	if r := s.slice(a, b): return r
 
 	return ""
 
-fn is_ws(c: String) Bool: c == " " or c == "\t" or c == "\n" or c == "\r"
+fn is_ws(c String) Bool => c == " " or c == "\t" or c == "\n" or c == "\r"
 
-fn words(s: String) List[String]:
+fn words(s String) List[String]:
 	var out = List[String]()
 	var cur = ""
 
@@ -90,14 +90,14 @@ fn words(s: String) List[String]:
 		out.append(cur.clone())
 	return out
 
-fn dedup(xs: List[String]) List[String]:
+fn dedup(xs List[String]) List[String]:
 	var out = List[String]()
 	for x in xs:
 		if not out.contains(x):
 			out.append(x.clone())
 	return out
 
-fn split_args(s: String) List[String]:
+fn split_args(s String) List[String]:
 	var out = List[String]()
 	var cur = ""
 	var depth = 0
@@ -118,7 +118,7 @@ fn split_args(s: String) List[String]:
 	out.append(cur.trim())
 	return out
 
-fn stem_of(pat: String, w: String, nonempty: Bool) String?:
+fn stem_of(pat String, w String, nonempty Bool) String?:
 	pi := pat.index_of("%")
 	p := pi
 
@@ -134,13 +134,13 @@ fn stem_of(pat: String, w: String, nonempty: Bool) String?:
 
 	return null
 
-fn subst_pct(s: String, stem: String) String:
+fn subst_pct(s String, stem String) String:
 	p := s.index_of("%")
 	if p != null: return bs(s, 0, p) + stem + bs(s, p + 1, s.length())
 
 	return s.clone()
 
-fn pat_word(pat: String, rep: String, w: String) String:
+fn pat_word(pat String, rep String, w String) String:
 	if pat.contains("%"):
 		st := stem_of(pat, w, false)
 		if st != null: return subst_pct(rep, st)
@@ -151,7 +151,7 @@ fn pat_word(pat: String, rep: String, w: String) String:
 
 	return w.clone()
 
-fn matches_any(pats: List[String], w: String) Bool:
+fn matches_any(pats List[String], w String) Bool:
 	for p in pats:
 		if p.contains("%"):
 			if stem_of(p, w, false) != null: return true
@@ -159,7 +159,7 @@ fn matches_any(pats: List[String], w: String) Bool:
 
 	return false
 
-fn glob(p: List[String], i: Int, s: List[String], j: Int) Bool:
+fn glob(p List[String], i Int, s List[String], j Int) Bool:
 	if i == p.length(): return j == s.length()
 
 	c := p[i]
@@ -180,7 +180,7 @@ fn glob(p: List[String], i: Int, s: List[String], j: Int) Bool:
 
 	return c == s[j] and glob(p, i + 1, s, j + 1)
 
-fn last_char_idx(w: String, ch: String) Int:
+fn last_char_idx(w String, ch String) Int:
 	var idx = -1
 	var k = 0
 
@@ -190,7 +190,7 @@ fn last_char_idx(w: String, ch: String) Int:
 
 	return idx
 
-fn word_fn(fname: String, w: String) String:
+fn word_fn(fname String, w String) String:
 	if fname == "dir":
 		i := last_char_idx(w, "/")
 		if i < 0: return "./"
@@ -211,7 +211,7 @@ fn word_fn(fname: String, w: String) String:
 
 	return bs(w, 0, w.length() - (base.length() - d))
 
-fn is_func(n: String) Bool:
+fn is_func(n String) Bool:
 	names := [
 		"subst", "patsubst", "strip", "findstring", "filter", "filter-out", "sort",
 		"word", "wordlist", "words", "firstword", "lastword", "dir", "notdir", "suffix",
@@ -220,7 +220,7 @@ fn is_func(n: String) Bool:
 	]
 	return names.contains(n)
 
-fn find_top(cs: List[String], ch: String, stop_semi: Bool, from: Int) Int:
+fn find_top(cs List[String], ch String, stop_semi Bool, from Int) Int:
 	n := cs.length()
 	var i = from
 
@@ -258,7 +258,7 @@ fn find_top(cs: List[String], ch: String, stop_semi: Bool, from: Int) Int:
 
 	return -1
 
-fn sub(cs: List[String], a: Int, b: Int) String:
+fn sub(cs List[String], a Int, b Int) String:
 	var r = ""
 	var i = a
 
@@ -268,9 +268,9 @@ fn sub(cs: List[String], a: Int, b: Int) String:
 
 	return r
 
-fn join_sp(xs: List[String]) String: xs.join(" ")
+fn join_sp(xs List[String]) String => xs.join(" ")
 
-fn Ctx.fatal(msg: String) Error:
+fn Ctx.fatal(msg String) Error:
 	if self.line > 0: return Error(f"Makefile:{self.line}: *** {msg}.  Stop.")
 	return Error(f"make: *** {msg}.  Stop.")
 
@@ -278,7 +278,7 @@ fn var Ctx.tick() Int:
 	self.clock += 1
 	return self.clock
 
-fn var Ctx.lookup(name: String) String!:
+fn var Ctx.lookup(name String) String!:
 	if self.binds.contains(name): return ok(self.binds.get_or(name, "").clone())
 	if self.auto.contains(name): return ok(self.auto.get_or(name, "").clone())
 
@@ -306,7 +306,7 @@ fn var Ctx.lookup(name: String) String!:
 	self.expanding.remove(name)
 	return ok(r)
 
-fn var Ctx.expand(text: String) String!:
+fn var Ctx.expand(text String) String!:
 	if not text.contains("$"): return ok(text.clone())
 
 	cs := text.chars()
@@ -365,8 +365,8 @@ fn var Ctx.expand(text: String) String!:
 
 	return ok(res)
 
-fn var Ctx.eval_ref(inner: String) String!:
-	k := inner.find_char(fn c: c == " " or c == "\t")
+fn var Ctx.eval_ref(inner String) String!:
+	k := inner.find_char(c => c == " " or c == "\t")
 
 	if k != null:
 		fname := bs(inner, 0, k)
@@ -400,11 +400,11 @@ fn var Ctx.eval_ref(inner: String) String!:
 
 	return self.lookup(name)
 
-fn var Ctx.arg(args: List[String], i: Int) String!:
+fn var Ctx.arg(args List[String], i Int) String!:
 	a := args.get_or(i, "")
 	return self.expand(a)
 
-fn var Ctx.call_func(fname: String, rest: String) String!:
+fn var Ctx.call_func(fname String, rest String) String!:
 	args := split_args(rest)
 
 	if fname == "subst":
@@ -567,7 +567,7 @@ fn var Ctx.call_func(fname: String, rest: String) String!:
 
 // ---------- parsing ----------
 
-fn var Ctx.setup(cv: Map[String, String]) Void:
+fn var Ctx.setup(cv Map[String, String]) Void:
 	self.vars = Map[String, Var]()
 	self.cmdvars = Set[String]()
 	self.rules = Map[String, Rule]()
@@ -629,7 +629,7 @@ fn var Ctx.close_rule() Void:
 				)
 			)
 
-fn Ctx.copy_cmds(cs: List[Cmd]) List[Cmd]:
+fn Ctx.copy_cmds(cs List[Cmd]) List[Cmd]:
 	var o = List[Cmd]()
 	for c in cs:
 		o.append(Cmd(c.text.clone(), c.line))
@@ -641,7 +641,7 @@ fn Ctx.is_active() Bool:
 
 	return self.cstack[n - 1].active
 
-fn split_cond(s: String) List[String]?:
+fn split_cond(s String) List[String]?:
 	// s is "(A,B)" ; returns [A, B] or none
 	if not s.starts_with("(") or not s.ends_with(")"): return null
 
@@ -668,7 +668,7 @@ fn split_cond(s: String) List[String]?:
 
 	return parts
 
-fn var Ctx.parse(src: List[String]) Void!:
+fn var Ctx.parse(src List[String]) Void!:
 	n := src.length()
 	var i = 0
 
@@ -718,7 +718,7 @@ fn var Ctx.parse(src: List[String]) Void!:
 		if text.length() == 0: continue
 
 		var fw = text.clone()
-		sp := text.find_char(fn c: c == " " or c == "\t")
+		sp := text.find_char(c => c == " " or c == "\t")
 		if sp != null:
 			fw = bs(text, 0, sp)
 
@@ -911,7 +911,7 @@ fn Ctx.default_goal() String:
 
 // ---------- resolution ----------
 
-fn Ctx.can_make(name: String, d: Int) Bool:
+fn Ctx.can_make(name String, d Int) Bool:
 	if (
 		self.files.contains(name)
 		or self.rules.contains(name)
@@ -921,7 +921,7 @@ fn Ctx.can_make(name: String, d: Int) Bool:
 
 	return self.find_pat(name, d) >= 0
 
-fn Ctx.find_pat(t: String, d: Int) Int:
+fn Ctx.find_pat(t String, d Int) Int:
 	for i in 0..self.pats.length():
 		p := self.pats[i]
 		if p.cmds.length() == 0: continue
@@ -946,7 +946,7 @@ fn Ctx.find_pat(t: String, d: Int) Int:
 
 	return -1
 
-fn Ctx.resolve(t: String) Resolved:
+fn Ctx.resolve(t String) Resolved:
 	if self.rules.contains(t):
 		r := self.rules.get_or(t, Rule(List[String](), List[String](), List[Cmd]()))
 		if r.cmds.length() > 0:
@@ -983,7 +983,7 @@ fn Ctx.resolve(t: String) Resolved:
 
 // ---------- building ----------
 
-fn var Ctx.simulate(cmd: String) Int:
+fn var Ctx.simulate(cmd String) Int:
 	ws := words(cmd)
 	first := ws.get_or(0, "")
 	if first == "false": return 1
@@ -1026,13 +1026,7 @@ fn var Ctx.simulate(cmd: String) Int:
 
 	return 0
 
-fn var Ctx.run_recipe(
-	t: String,
-	r: Resolved,
-	pre: List[String],
-	was_in: Bool,
-	mt: Int,
-) Void!:
+fn var Ctx.run_recipe(t String, r Resolved, pre List[String], was_in Bool, mt Int) Void!:
 	self.ran += 1
 
 	var upd = List[String]()
@@ -1106,7 +1100,7 @@ fn var Ctx.run_recipe(
 
 	return ok()
 
-fn var Ctx.update(t: String, needed: String) Bool!:
+fn var Ctx.update(t String, needed String) Bool!:
 	if self.memo.contains(t): return ok(self.memo.get_or(t, false))
 
 	if self.bstack.contains(t):
@@ -1175,7 +1169,7 @@ fn var Ctx.update(t: String, needed: String) Bool!:
 	self.memo[t.clone()] = changed
 	return ok(changed)
 
-fn var Ctx.do_build(goals_in: List[String]) Void!:
+fn var Ctx.do_build(goals_in List[String]) Void!:
 	var goals = goals_in.clone()
 
 	if goals.length() == 0:
@@ -1208,7 +1202,7 @@ fn var Ctx.do_build(goals_in: List[String]) Void!:
 
 	return ok()
 
-fn var Ctx.deps_visit(t: String, path: List[String]) Void!:
+fn var Ctx.deps_visit(t String, path List[String]) Void!:
 	r := self.resolve(t)
 	var all = dedup(r.pre)
 	for p in dedup(r.oo): all.append(p.clone())
@@ -1242,7 +1236,7 @@ fn var Ctx.deps_visit(t: String, path: List[String]) Void!:
 
 // ---------- driver ----------
 
-fn var Ctx.start(cv: Map[String, String], src: List[String]) Bool:
+fn var Ctx.start(cv Map[String, String], src List[String]) Bool:
 	self.setup(cv)
 
 	res := self.parse(src)
@@ -1255,7 +1249,7 @@ fn var Ctx.start(cv: Map[String, String], src: List[String]) Bool:
 		self.line = 0
 		return false
 
-fn fmt_rule(name: String, pre: List[String], oo: List[String]) String:
+fn fmt_rule(name String, pre List[String], oo List[String]) String:
 	var s = name + ": " + join_sp(pre)
 	if oo.length() > 0:
 		s += " | " + join_sp(oo)

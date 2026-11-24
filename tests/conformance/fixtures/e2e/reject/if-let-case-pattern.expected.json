@@ -14,13 +14,13 @@
           "file": "if-let-case-pattern.ms",
           "line": 8,
           "column": 8,
-          "offset": 141
+          "offset": 139
         },
         "end": {
           "file": "if-let-case-pattern.ms",
           "line": 8,
           "column": 11,
-          "offset": 144
+          "offset": 142
         }
       }
     ],

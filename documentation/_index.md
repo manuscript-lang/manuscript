@@ -16,7 +16,7 @@ A web server in a dozen lines. Each connection runs as its own promise across al
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
     return HttpResponse(200, f"hello {request.path}".to_bytes())
 
 fn main() Void!:
@@ -49,10 +49,10 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order: String) Void!:
+fn save(order String) Void!:
     return write_file("orders.log", order).wait()
 
-fn audit(total: Int) Void!:
+fn audit(total Int) Void!:
     return save(f"audit {total}")
     // ms lint: `audit` reaches db.write: audit -> save
 ```

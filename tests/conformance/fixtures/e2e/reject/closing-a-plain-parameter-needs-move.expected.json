@@ -9,19 +9,30 @@
       {
         "code": "MS3000",
         "phase": "type",
+        "message": "the body keeps `res`, so the signature must say so: write `move res Type`, or keep `.clone()` of it",
+        "position": {
+          "file": "closing-a-plain-parameter-needs-move.ms",
+          "line": 15,
+          "column": 12,
+          "offset": 352
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
         "message": "cannot pass `res` as a `move` receiver: it is not declared `move`, so the caller keeps it; write `move res: <Type>` in the signature",
         "position": {
           "file": "closing-a-plain-parameter-needs-move.ms",
           "line": 16,
           "column": 5,
-          "offset": 372
+          "offset": 369
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/closing-a-plain-parameter-needs-move.ms:16:5: type: cannot pass `res` as a `move` receiver: it is not declared `move`, so the caller keeps it; write `move res: <Type>` in the signature\n    |\n 16 |     res.close()?\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/closing-a-plain-parameter-needs-move.ms:15:12: type: the body keeps `res`, so the signature must say so: write `move res Type`, or keep `.clone()` of it\n    |\n 15 | fn consume(res Res) Void!:\n    |            ^\n<DIR>/closing-a-plain-parameter-needs-move.ms:16:5: type: cannot pass `res` as a `move` receiver: it is not declared `move`, so the caller keeps it; write `move res: <Type>` in the signature\n    |\n 16 |     res.close()?\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

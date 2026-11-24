@@ -5,13 +5,13 @@ import (
 	expect_false from "@std/test/test.ms",
 )
 
-fn replace[T](var values: List[T], value: T) Void:
+fn replace[T](var values List[T], value T) Void:
 	values.set(1, value)
 
 test "range iterates a snapshot while the live list changes":
 	var values = [1, 2, 3]
 	clone := values.clone()
-	var seen: List[Int] = []
+	var seen List[Int] = []
 	var index = 0
 
 	for value in values.clone():
@@ -32,7 +32,7 @@ test "range iterates a snapshot while the live list changes":
 
 test "append growth does not change the iterated snapshot":
 	var values = [1, 2, 3]
-	var seen: List[Int] = []
+	var seen List[Int] = []
 	var index = 0
 
 	for value in values.clone():
@@ -50,7 +50,7 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
 	var values = [1, 2, 3]
 	clone := values.clone()
 	each := values.clone().for_each
-	var seen: List[Int] = []
+	var seen List[Int] = []
 
 	each(
 		fn value:
@@ -72,8 +72,8 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
 
 test "nested reverse copy shrink and self splice iterate snapshots":
 	var values = [1, 2, 3]
-	var outer: List[Int] = []
-	var inner: List[Int] = []
+	var outer List[Int] = []
+	var inner List[Int] = []
 	var index = 0
 
 	for value in values.clone():
@@ -90,8 +90,8 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 
 	var backward = [1, 2, 3]
 	var truncated = [1, 2, 3]
-	var seen_backward: List[Int] = []
-	var seen_truncated: List[Int] = []
+	var seen_backward List[Int] = []
+	var seen_truncated List[Int] = []
 	var count = 0
 
 	for value in backward.clone():
@@ -118,7 +118,7 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 	)?
 
 	var shrinking = [1, 2, 3]
-	var seen_shrinking: List[Int] = []
+	var seen_shrinking List[Int] = []
 	count = 0
 
 	for value in shrinking.clone():
@@ -136,7 +136,7 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 	)?
 
 	var self_list = [1, 2, 3]
-	var seen_self: List[Int] = []
+	var seen_self List[Int] = []
 	count = 0
 
 	for value in self_list.clone():
@@ -148,17 +148,17 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 	expect_false(not (seen_self == [1, 2, 3] and self_list == [1, 1, 2, 3, 3]))?
 
 type Child:
-	value: Int
+	value Int
 
 type Node:
-	children: List[Node]
+	children List[Node]
 
 test "clone slice and nested values keep their own contracts":
 	child := Child(1)
 	var values = [child.clone(), child.clone()]
 	clone := values.clone()
 	slice := values.slice(0, 2).get().clone()
-	var seen: List[Int] = []
+	var seen List[Int] = []
 
 	(
 		values.clone().for_each(
@@ -187,7 +187,7 @@ test "clone slice and nested values keep their own contracts":
 		)
 	)?
 
-	var children: List[Node] = [Node([])]
+	var children List[Node] = [Node([])]
 	var count = 0
 	children.clone().for_each(
 		fn value:
@@ -206,14 +206,14 @@ test "clone slice and nested values keep their own contracts":
 	)?
 
 test "function values can replace later backing elements":
-	var seen: List[Int] = []
-	var functions = [fn() Int: 7, fn() Int: 7]
+	var seen List[Int] = []
+	var functions = [fn() Int => 7, fn() Int => 7]
 
 	(
 		[0, 1].for_each(
 			fn index:
 				seen.append(functions[index]())
-				functions.set(index, fn() Int: 9)
+				functions.set(index, fn() Int => 9)
 		)
 	)
 

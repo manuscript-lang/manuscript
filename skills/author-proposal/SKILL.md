@@ -5,7 +5,7 @@ description: Write a Manuscript design proposal grounded in the existing languag
 
 # Author a proposal
 
-Use whenever you write or revise a design proposal. Store it in the repo as `design/proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design](../language-design/SKILL.md).
+Use whenever you write or revise a design proposal. Start from [TEMPLATE.md](../../design/proposals/TEMPLATE.md) (when a proposal is required: [README](../../design/proposals/README.md)). Store it in the repo as `design/proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design](../language-design/SKILL.md).
 
 The default design is no new syntax, no new type, and no new keyword. Earn each addition.
 
@@ -23,14 +23,14 @@ Do this before writing any section. A proposal that invents syntax or names with
 
 ## Step 2: write it
 
-Target 60 to 100 lines; past 120, split or cut. Every line must change the decision or tell the implementer what to build. Technical and scannable: one fact per bullet, bullets of one or two lines, no paragraph over two sentences. Name crates, files, functions, and types exactly. Label claims as measured (command, commit, number), verified (`file:line`), or hypothesis.
+Target 80 to 150 lines, most of it the Design section; past 180, split or cut. Every line must change the decision or tell the implementer what to build. Technical and scannable: one fact per bullet, bullets of one or two lines, no paragraph over two sentences. Name crates, files, functions, and types exactly. Label claims as measured (command, commit, number), verified (`file:line`), or hypothesis.
 
 Sections, in order. A small change uses Summary, Problem, Design, Components, Alternatives.
 
 1. **Summary**: 3 bullets: problem, change, decision requested.
 2. **Status**: one line: proposal, approved, or implemented; date; commit checked. Quote the user's direction only when it constrains the design. No review logs, changelogs, or progress notes; the review outcome is one line.
 3. **Problem**: the observable failure or cost, with one minimal repro (at most 10 lines) or one measurement. Further cases get one bullet each, with a pointer to the test or fixture. Non-goals only if a reader would assume them.
-4. **Design**: the rule, stated once.
+4. **Design**: the rule, stated once, in enough detail that someone who is not the author can implement it without asking (the template's Detailed design lists what to cover).
    - Syntax and API as short `.ms` examples (accepted and rejected, with the exact diagnostic) and before/after only for programs that change.
    - Semantics for ownership, errors, cancellation, and edge cases, one bullet each.
    - A diagram only where data flow, lifetimes, layout, or stage order matter. Never restate a bullet list.
@@ -44,7 +44,7 @@ Sections, in order. A small change uses Summary, Problem, Design, Components, Al
 7. **Stages**: one line per stage with its check; each lands green. Omit when there is one stage.
 8. **Open questions**: only where the language or user-visible behavior changes, each with a recommendation.
 
-Omit a section by leaving it out. Add nothing beyond these.
+Omit a section by leaving it out. The template adds optional sections (Fit with the language, Measured benefit, Compatibility, Future directions); use them only when they change the decision, and keep the template and this list in step.
 
 Cut on sight:
 - history of how the idea evolved, rejected syntax that nobody proposed, and restated context from other proposals (link instead);

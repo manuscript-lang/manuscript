@@ -5,19 +5,19 @@ import (
 )
 
 type Rec:
-	id: Int
-	name: String
-	tags: List[String]
+	id Int
+	name String
+	tags List[String]
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Void:
+fn stop(name String, t0 Int, chk Int) Void:
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn base() List[Int]:
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..2000000:
 		xs.append(i % 1000)
 	return xs
@@ -29,7 +29,7 @@ fn l_reversed() Int:
 	return base().reversed()[0]
 
 fn l_filter_map() Int:
-	return base().filter(fn v: v % 2 == 0).map(fn v: v * 3).length()
+	return base().filter(v => v % 2 == 0).map(v => v * 3).length()
 
 fn l_contains() Int:
 	xs := base()
@@ -39,7 +39,7 @@ fn l_contains() Int:
 	return t
 
 fn l_clone_nested() Int:
-	var rs: List[Rec] = []
+	var rs List[Rec] = []
 	for i in 0..200000:
 		rs.append(Rec(i, f"name-{i}", ["a", "b", "c"]))
 
@@ -52,7 +52,7 @@ fn l_clone_nested() Int:
 	return t
 
 fn l_insert_remove() Int:
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..50000:
 		xs.insert(xs.length() / 2, i)
 
@@ -65,18 +65,18 @@ fn l_insert_remove() Int:
 	return t
 
 fn l_sort_records_str() Int:
-	var rs: List[Rec] = []
+	var rs List[Rec] = []
 	var x = 1
 
 	for i in 0..300000:
 		x = lcg(x)
 		rs.append(Rec(i, f"user-name-{x}", []))
 
-	rs.sort(fn a, b: a.name.compare(b.name))
+	rs.sort((a, b) => a.name.compare(b.name))
 	return rs[0].id + rs[299999].id
 
 fn l_group_words() Int:
-	var m: Map[String, List[Int]] = {}
+	var m Map[String, List[Int]] = {}
 	var x = 1
 
 	for i in 0..1000000:
@@ -92,11 +92,11 @@ fn l_group_words() Int:
 	return t
 
 fn l_map_keys_sorted() Int:
-	var m: Map[Int, Int] = {}
+	var m Map[Int, Int] = {}
 	for i in 0..500000:
 		m[i * 7 % 1000003] = i
 
-	ks := m.keys().sorted(fn a, b: a - b)
+	ks := m.keys().sorted((a, b) => a - b)
 	return ks[0] + ks[499999]
 
 fn l_pq() Int:
@@ -113,7 +113,7 @@ fn l_pq() Int:
 	return t
 
 fn l_join_split() Int:
-	var parts: List[String] = []
+	var parts List[String] = []
 	for i in 0..500000:
 		parts.append(f"item{i}")
 
@@ -142,10 +142,10 @@ fn l_set_strings() Int:
 	return s.length()
 
 fn l_flatten() Int:
-	var ll: List[List[Int]] = []
+	var ll List[List[Int]] = []
 	for i in 0..200000:
 		ll.append([i, i + 1, i + 2, i + 3])
-	return ll.flat_map(fn r: r).length()
+	return ll.flat_map(r => r).length()
 
 fn main() Void:
 	t_l_distinct := monotonic().tick

@@ -9,7 +9,7 @@ import (
 	connect, serve from "@std/net/net.ms",
 )
 
-fn failing(var exchange: HttpExchange) Void!:
+fn failing(var exchange HttpExchange) Void!:
 	return error(
 		Error(
 			"the handler failed with a message that fills its own allocation",
@@ -17,7 +17,7 @@ fn failing(var exchange: HttpExchange) Void!:
 		)
 	)
 
-fn fetch(address: String) Bool:
+fn fetch(address String) Bool:
 	if var conn = connect(address).wait():
 		_sent := conn.output.write(
 			"GET /x HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n".to_bytes()

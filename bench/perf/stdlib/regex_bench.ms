@@ -7,7 +7,7 @@ import (
 
 // The helpers take what the fixture built, so the timing covers the regex work and its
 // checks only.
-fn captures_run(re: Regex, text: String, count: Int) Int!:
+fn captures_run(re Regex, text String, count Int) Int!:
 	expected_row := ["word123", "word", "123"]
 	rows := re.capture_all(text)?
 	var checksum = 0
@@ -20,20 +20,20 @@ fn captures_run(re: Regex, text: String, count: Int) Int!:
 	expect_equal(checksum, 14 * count)?
 	return ok(checksum)
 
-fn template_run(re: Regex, text: String, expected: String, template: String) Int!:
+fn template_run(re Regex, text String, expected String, template String) Int!:
 	out := re.replace_template(text, template)?
 	expect_equal(out, expected)?
 	return ok(out.length())
 
-fn named_run(re: Regex, expected: Map[String, String]) Int:
+fn named_run(re Regex, expected Map[String, String]) Int:
 	out := re.capture_named("abcdefgh")
 	expect_equal(out, expected).get()
 	return out.length()
 
-fn named_pattern(count: Int) String:
+fn named_pattern(count Int) String:
 	return if count == 1: "(?P<a>a)" else: "(?P<a>a)(?P<b>b)(?P<c>c)(?P<d>d)(?P<e>e)(?P<f>f)(?P<g>g)(?P<h>h)"
 
-fn named_expected(count: Int) Map[String, String]:
+fn named_expected(count Int) Map[String, String]:
 	names := ["a", "b", "c", "d", "e", "f", "g", "h"]
 	var expected = Map[String, String]()
 	for i in 0..count:
@@ -41,32 +41,32 @@ fn named_expected(count: Int) Map[String, String]:
 	return expected
 
 type BenchData:
-	re: Regex
-	first: String
-	rest: String
-	text: String
-	expected_first: String
-	expected_rest: String
-	expected: String
-	re_12: Regex
-	template: String
-	capture_re: Regex
-	template_re: Regex
-	literal_re: Regex
-	text_0: String
-	text_1: String
-	text_128: String
-	text_2000: String
-	named_re_1: Regex
-	named_re_8: Regex
-	named_1: Map[String, String]
-	named_8: Map[String, String]
-	text_15: String
-	re_15: Regex
-	re_16: Regex
-	text_17: String
-	re_17: Regex
-	expected_17: String
+	re Regex
+	first String
+	rest String
+	text String
+	expected_first String
+	expected_rest String
+	expected String
+	re_12 Regex
+	template String
+	capture_re Regex
+	template_re Regex
+	literal_re Regex
+	text_0 String
+	text_1 String
+	text_128 String
+	text_2000 String
+	named_re_1 Regex
+	named_re_8 Regex
+	named_1 Map[String, String]
+	named_8 Map[String, String]
+	text_15 String
+	re_15 Regex
+	re_16 Regex
+	text_17 String
+	re_17 Regex
+	expected_17 String
 
 fn make_fixture() BenchData:
 	re := compile("(a+)").get()
@@ -96,31 +96,31 @@ fn make_fixture() BenchData:
 	re_17 := compile("word[0-9]+").get()
 	expected_17 := ("w ".repeat(1999)) + "w"
 	return BenchData(
-		re: re,
+		re: re.clone(),
 		first: first,
 		rest: rest,
 		text: text,
 		expected_first: expected_first,
 		expected_rest: expected_rest,
 		expected: expected,
-		re_12: re_12,
+		re_12: re_12.clone(),
 		template: template,
-		capture_re: capture_re,
-		template_re: template_re,
-		literal_re: literal_re,
+		capture_re: capture_re.clone(),
+		template_re: template_re.clone(),
+		literal_re: literal_re.clone(),
 		text_0: text_0,
 		text_1: text_1,
 		text_128: text_128,
 		text_2000: text_2000,
-		named_re_1: named_re_1,
-		named_re_8: named_re_8,
+		named_re_1: named_re_1.clone(),
+		named_re_8: named_re_8.clone(),
 		named_1: named_1,
 		named_8: named_8,
 		text_15: text_15,
-		re_15: re_15,
-		re_16: re_16,
+		re_15: re_15.clone(),
+		re_16: re_16.clone(),
 		text_17: text_17,
-		re_17: re_17,
+		re_17: re_17.clone(),
 		expected_17: expected_17,
 	)
 

@@ -4,7 +4,7 @@
 import BigInt, big_int_of_int from "@std/math/math.ms"
 
 // floor(log2(10^e)) for an exponent e of either sign.
-fn floor_log2_pow10(e: Int) Int:
+fn floor_log2_pow10(e Int) Int:
 	ten := big_int_of_int(10)
 	if e >= 0: return bit_length(ten.pow(e).get()) - 1
 
@@ -12,11 +12,11 @@ fn floor_log2_pow10(e: Int) Int:
 	n := ten.pow(-e).get()
 	return -bit_length(n.subtract(big_int_of_int(1)))
 
-fn bit_length(value: BigInt) Int:
+fn bit_length(value BigInt) Int:
 	return value.to_binary().length()
 
 // g(k) = floor(10^-k * 2^(125 - floor(log2(10^-k)))) + 1, a 126-bit value.
-fn entry(k: Int) BigInt:
+fn entry(k Int) BigInt:
 	e := -k
 	r := 125 - floor_log2_pow10(e)
 	ten := big_int_of_int(10)
@@ -31,7 +31,7 @@ fn entry(k: Int) BigInt:
 	whole := big_int_of_int(1).shift_left(r).get().divide(ten.pow(-e).get()).get()
 	return whole.add(big_int_of_int(1))
 
-fn hex16(value: BigInt) String:
+fn hex16(value BigInt) String:
 	return f"0x{value.to_hex().pad_start(16, "0")}"
 
 fn main() Void:

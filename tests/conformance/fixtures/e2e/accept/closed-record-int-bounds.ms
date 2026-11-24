@@ -4,17 +4,17 @@
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 interface Counter:
-    var fn bump(by: Int) Int
-    var fn lower(by: Int) Int
+    var fn bump(by Int) Int
+    var fn lower(by Int) Int
 
 type Cell:
-    total: Int
+    total Int
 
-fn var Cell.bump(by: Int) Int:
+fn var Cell.bump(by Int) Int:
     self.total += by
     return self.total
 
-fn var Cell.lower(by: Int) Int:
+fn var Cell.lower(by Int) Int:
     self.total -= by
     return self.total
 
@@ -75,11 +75,11 @@ fn reset() Int:
 
     return cell.total
 
-fn effect(var visits: List[Int]) Int:
+fn effect(var visits List[Int]) Int:
     visits.append(7)
     return 1
 
-fn eager(var visits: List[Int]) Int:
+fn eager(var visits List[Int]) Int:
     var cell = Cell(0)
     cell.bump(effect(visits))
     return cell.total
@@ -88,20 +88,20 @@ test "closed cell updates preserve each operation":
     sum() | expect_equal(1000)?
 
 test "closed cells retain prefix overflow":
-    (expect_fault(fn: _ignored := prefix())?) | expect_contains(
+    (expect_fault(() => _ignored := prefix())?) | expect_contains(
         "Int overflow"
     )?
 
 test "peer cells and scalar carries are not initial invariants":
-    (expect_fault(fn: _ignored := peer())?) | expect_contains("Int overflow")?
-    (expect_fault(fn: _ignored := scalar_peer())?) | expect_contains(
+    (expect_fault(() => _ignored := peer())?) | expect_contains("Int overflow")?
+    (expect_fault(() => _ignored := scalar_peer())?) | expect_contains(
         "Int overflow"
     )?
 
 test "field resets keep ordinary overflow checks":
-    (expect_fault(fn: _ignored := reset())?) | expect_contains("Int overflow")?
+    (expect_fault(() => _ignored := reset())?) | expect_contains("Int overflow")?
 
 test "record arguments execute exactly once before the update":
-    var visits: List[Int] = []
+    var visits List[Int] = []
     eager(visits) | expect_equal(1)?
     visits | expect_equal([7])?

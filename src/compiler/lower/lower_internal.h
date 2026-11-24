@@ -108,6 +108,7 @@ typedef struct Lower {
   MirModule *module;
   MsStrBuild *error;
   uint32_t unwinding; /* the extern `msrt_unwinding`, once made */
+  bool copy_probe; /* MS_COPY_PROBE: print each copy no `.clone()` asked for (tools/copy-check.ms) */
   bool failed; /* a type with no MIR form reached lowering: the program does not compile, whatever else lowers */
   LowerTyMap types;            /* type (after substitution) -> MIR type */
   MsNames instance_keys;       /* instance key text -> dense id, the index into `instances` */

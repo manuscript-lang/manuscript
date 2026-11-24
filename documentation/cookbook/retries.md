@@ -16,7 +16,7 @@ Save as `retry.ms`. `retry` calls the operation with the attempt number until it
 import RetryPolicy, retry from "@std/concurrency/resilience.ms"
 import milliseconds from "@std/time.ms"
 
-fn flaky(attempt: Int) Int!:
+fn flaky(attempt Int) Int!:
     print(f"attempt {attempt}")
     if attempt < 3:
         return error(Error("temporarily unavailable", kind: "EAGAIN"))
@@ -32,7 +32,7 @@ fn main() Void!:
 ms run retry.ms
 ```
 
-- Only retry errors that can go away. Pass a function such as `fn e: e.kind == "EAGAIN"` as the third argument to retry those and return the rest at once.
+- Only retry errors that can go away. Pass a function such as `e => e.kind == "EAGAIN"` as the third argument to retry those and return the rest at once.
 - Keep `jitter` on in services, so many callers that failed together do not retry together.
 - Waiting uses `sleep`, so cancelling the task ends the wait.
 
@@ -53,6 +53,6 @@ fn main() Void:
     for round in 0..3:
         result := breaker.call(down)
         match result.err():
-            Failed(cause): print(f"failed: {cause.message}")
-            Open: print("open: call skipped")
+            Failed(cause) => print(f"failed: {cause.message}")
+            Open => print("open: call skipped")
 ```

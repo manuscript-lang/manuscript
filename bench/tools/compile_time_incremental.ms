@@ -19,15 +19,15 @@ import (
 )
 
 type Edit:
-	label: String
-	file: String
-	from: String
-	to: String
+	label String
+	file String
+	from String
+	to String
 	// Appended to the file after the replacement.
-	tail: String = ""
+	tail String = ""
 
-fn header(p: Int, f: Int, k: Int) String:
-	return f"export fn w_{p}_{f}_{k}(x: Int) Int:\n    var acc = x\n"
+fn header(p Int, f Int, k Int) String:
+	return f"export fn w_{p}_{f}_{k}(x Int) Int:\n    var acc = x\n"
 
 fn edits() List[Edit]:
 	leaf := "src/pkg20/f10.ms"
@@ -59,7 +59,7 @@ fn edits() List[Edit]:
 			leaf.clone(),
 			header(20, 10, 0),
 			header(20, 10, 0) + "    acc += extra_fn(acc)\n",
-			"\nexport fn extra_fn(x: Int) Int:\n    return x + 1\n",
+			"\nexport fn extra_fn(x Int) Int:\n    return x + 1\n",
 		),
 		Edit(
 			"edit a shared module",
@@ -69,7 +69,7 @@ fn edits() List[Edit]:
 		),
 	]
 
-fn build(dir: String, profile: String, output: String) Result[Float, Error]:
+fn build(dir String, profile String, output String) Result[Float, Error]:
 	start := now_ns()
 	void must(
 		"build",
@@ -88,7 +88,7 @@ fn build(dir: String, profile: String, output: String) Result[Float, Error]:
 	)?
 	return ok((now_ns() - start).to_float() / 1000000000.0)
 
-fn measure(dir: String, profile: String, output: String) Result[Void, Error]:
+fn measure(dir String, profile String, output String) Result[Void, Error]:
 	void remove(f"{dir}/.ms-cache", recursive: true)
 
 	cold := build(dir, profile, output)?

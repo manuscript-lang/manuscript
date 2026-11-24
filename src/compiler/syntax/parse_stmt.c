@@ -29,7 +29,7 @@ static const ForeignKeyword FOREIGN_KEYWORDS[] = {
     {{"throw", "raise", "catch"}, FAILURES_ADVICE, NULL, true},
     {{"elseif"}, "'elseif' is not a keyword; write 'else if <condition>:' for a further branch", NULL, false},
     {{"elif"}, "there is no 'elif': write 'else if <condition>:' for a further branch", NULL, false},
-    {{"def"}, "there is no 'def': declare a function with 'fn name(a: Int) Int:'", NULL, false},
+    {{"def"}, "there is no 'def': declare a function with 'fn name(a Int) Int:'", NULL, false},
     {{"switch"},
      "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == "
      "a:' with 'else if' for plain values",
@@ -224,7 +224,7 @@ static bool report_removed_binding(Parser *p, MsToken t) {
       starts_binding_target((MsTok)parse_ahead(p, 1).kind)) {
     report_removed_let(
         p, t,
-        ms_span_of_text("'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with "
+        ms_span_of_text("'let' was removed; bind with 'x := value' (or 'x Type := value'), destructure with "
                         "'[a, b] := value', and use 'var x = value' for a mutable binding"));
     return true;
   }
@@ -542,8 +542,27 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bo
                                                bool outer_lambda, MsStmts *out) {
   const bool bench_body = p->bench_suite;
   p->bench_suite = false;
-  if (!parse_need(p, MS_T_Colon))
+  const bool value_body = is_expression || fn_body;
+  const bool arrow = value_body && parse_kind(p) == MS_T_FatArrow;
+  MsToken opener = parse_peek(p);
+  if (arrow) {
+    p->at++;
+    if (parse_kind(p) == MS_T_Newline || parse_kind(p) == MS_T_Ellipsis) {
+      parse_fail(p, parse_peek(p),
+                 ms_span_of_text("'=>' takes one expression on the same line; write a longer body after "
+                                 "':' on the next lines"));
+      return false;
+    }
+  } else if (!parse_need(p, MS_T_Colon)) {
     return false;
+  }
+  if (!arrow && value_body && parse_kind(p) != MS_T_Newline && parse_kind(p) != MS_T_Ellipsis) {
+    parse_fail_fix(p, opener,
+                   ms_span_of_text("a one-line function body is written with '=>', as in fn f() Int => 1; "
+                                   "a ':' body goes on the next lines"),
+                   ms_span_of_text(" =>"));
+    return false;
+  }
   MsStmts none = {NULL, 0};
   if (parse_kind(p) == MS_T_Ellipsis && fn_body) {
     p->at++;
@@ -553,7 +572,7 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bo
     *out = none;
     return true;
   }
-  if (parse_kind(p) != MS_T_Newline) {
+  if (arrow || parse_kind(p) != MS_T_Newline) {
     if (parse_kind(p) == MS_T_If && (is_expression || fn_body)) {
       /* `fn x: if c: a else: b`: the body is the conditional expression. */
       size_t start = p->at;

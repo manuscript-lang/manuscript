@@ -8,7 +8,7 @@ import (
 	serve from "@std/net/net.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	return HttpResponse(200, f"hello {request.path}".to_bytes())
 
 export fn main() Int:

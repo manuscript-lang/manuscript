@@ -19,15 +19,15 @@ import (
 // supervisor report each worker's process id on standard error.
 
 // `body` with its `@URI@` replaced by the document's URI.
-fn at(body: String, uri: String) String:
+fn at(body String, uri String) String:
 	return body.replace("@URI@", uri)
 
-fn frame(body: String) Bytes:
+fn frame(body String) Bytes:
 	size := body.to_bytes().length()
 	return f"Content-Length: {size}\r\n\r\n{body}".to_bytes()
 
 // Reads standard output until the text holds `needle`.
-fn wait_for(var output: ReadStream[Bytes], seen: String, needle: String) String!:
+fn wait_for(var output ReadStream[Bytes], seen String, needle String) String!:
 	var text = seen.clone()
 
 	while not text.contains(needle):
@@ -42,7 +42,7 @@ fn wait_for(var output: ReadStream[Bytes], seen: String, needle: String) String!
 	return ok(text)
 
 // The process id in the next `ms-lsp: worker N started` line.
-fn worker_pid(var report: ReadStream[String]) Int!:
+fn worker_pid(var report ReadStream[String]) Int!:
 	line := within(report, 20.seconds())?
 	text := line or ""
 	parts := text.split_once("worker ")

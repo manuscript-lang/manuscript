@@ -26,11 +26,11 @@ result := try job.wait(timeout: seconds(5))
 ## Design
 
 ```manuscript
-export type PromiseOptions:
-    timeout: Duration? = none
-    cancel: Signal? = none
+export type PromiseOptions
+    timeout Duration? = none
+    cancel Signal? = none
 
-export fn promise[U](entry: fn() U!, options: PromiseOptions = PromiseOptions()) Promise[U]
+export fn promise[U](entry fn() U!, options PromiseOptions = PromiseOptions()) Promise[U]
 
 export type Cancel                       // the owner: a resource, freed at scope end
 impl Cancel:

@@ -7,18 +7,18 @@ interface Shape:
 	fn area() Int
 
 type Sq:
-	n: Int
+	n Int
 
-fn Sq.area() Int: self.n * self.n
+fn Sq.area() Int => self.n * self.n
 
 type Holder:
-	s: Shape?
+	s Shape?
 
-fn pick(b: Bool) Shape?:
+fn pick(b Bool) Shape?:
 	if b: return Sq(3)
 	return null
 
-fn take(x: Shape?) Int:
+fn take(x Shape?) Int:
 	s := x
 	if s != null: return s.area()
 
@@ -26,8 +26,8 @@ fn take(x: Shape?) Int:
 
 fn main() Void:
 	h := Holder(Sq(4))
-	t: Shape? := Sq(5)
-	var v: Shape? = null
+	t Shape? := Sq(5)
+	var v Shape? = null
 	v = Sq(6)
 	(
 		stdout()

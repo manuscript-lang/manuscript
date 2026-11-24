@@ -6,8 +6,8 @@ import (
 )
 
 test "try inside a loop over a list of promises":
-	a := promise(fn: ok(1))
-	b := promise(fn: ok(2))
+	a := promise(() => ok(1))
+	b := promise(() => ok(2))
 	var total = 0
 
 	for p in [a, b]:

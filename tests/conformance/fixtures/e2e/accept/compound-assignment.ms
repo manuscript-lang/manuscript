@@ -4,13 +4,13 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Counter:
-    count: Int
-    label: String
+    count Int
+    label String
 
 type Outer:
-    inner: Counter
+    inner Counter
 
-fn tally(values: List[Int]) Int:
+fn tally(values List[Int]) Int:
     var total = values.sum()
     return total
 

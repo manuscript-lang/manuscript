@@ -3,7 +3,7 @@
 // conform: origin=documentation/core-language/errors/faults.md:14
 import panic from "@std/core.ms"
 
-fn discount_validated(price: Decimal, percent: Decimal) Decimal:
+fn discount_validated(price Decimal, percent Decimal) Decimal:
     if price <= 0d:
         return panic("Price must be positive")
     if percent <= 0d or percent >= 100d:

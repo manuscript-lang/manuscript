@@ -11,17 +11,17 @@ A record holds the facts; an enum names the states and carries what each state n
 <!-- complete: idiom-orders.ms -->
 ```manuscript
 type Order:
-	id: Int
-	customer: String
-	cents: Int
-	status: Status = Status.Open
+	id Int
+	customer String
+	cents Int
+	status Status = Status.Open
 
 enum Status:
 	Open
-	Shipped(tracking: String)
-	Cancelled(reason: String)
+	Shipped(tracking String)
+	Cancelled(reason String)
 
-fn label(status: Status) String:
+fn label(status Status) String:
 	match status:
 		Open:
 			return "waiting"
@@ -30,14 +30,14 @@ fn label(status: Status) String:
 		Cancelled(reason):
 			return f"cancelled: {reason}"
 
-fn is_open(order: Order) Bool:
+fn is_open(order Order) Bool:
 	match order.status:
 		Open:
 			return true
 		_:
 			return false
 
-fn spent_by_customer(orders: List[Order]) Map[String, Int]:
+fn spent_by_customer(orders List[Order]) Map[String, Int]:
 	var spent = Map[String, Int]()
 	for order in orders:
 		total := spent.get_or(order.customer, 0) + order.cents
@@ -50,7 +50,7 @@ fn main() Void:
 		Order(2, "Ada", 4000, status: Status.Shipped("ZX81")),
 		Order(3, "Sam", 3100, status: Status.Cancelled("out of stock")),
 	]
-	open_cents := orders | .filter(is_open) | .map(fn o: o.cents) | .sum()
+	open_cents := orders | .filter(is_open) | .map(o => o.cents) | .sum()
 	spent := spent_by_customer(orders)
 	for order in orders:
 		print(f"#{order.id} {order.customer}: {label(order.status)}")
@@ -67,15 +67,15 @@ Parse each line into a record or `null`, drop the failures with a pipeline, grou
 <!-- complete: idiom-report.ms -->
 ```manuscript
 type Sale:
-	region: String
-	cents: Int
+	region String
+	cents Int
 
-fn money(cents: Int) String:
+fn money(cents Int) String:
 	rest := cents % 100
 	pad := if rest < 10: "0" else: ""
 	return f"{cents / 100}.{pad}{rest}"
 
-fn parse_sale(line: String) Sale?:
+fn parse_sale(line String) Sale?:
 	parts := line.split(",")
 	if parts.length() != 2:
 		return null
@@ -83,25 +83,25 @@ fn parse_sale(line: String) Sale?:
 		return Sale(parts[0].clone(), cents)
 	return null
 
-fn totals_by_region(sales: List[Sale]) Map[String, Int]:
+fn totals_by_region(sales List[Sale]) Map[String, Int]:
 	var totals = Map[String, Int]()
 	for sale in sales:
 		totals.add(sale.region.clone(), totals.get_or(sale.region, 0) + sale.cents)
 	return totals
 
-fn report(totals: Map[String, Int]) List[String]:
-	regions := totals.keys().sorted(fn a, b: a.compare(b))
-	return regions.map(fn region: f"{region}: {money(totals.get_or(region, 0))}")
+fn report(totals Map[String, Int]) List[String]:
+	regions := totals.keys().sorted((a, b) => a.compare(b))
+	return regions.map(region => f"{region}: {money(totals.get_or(region, 0))}")
 
 fn main() Void:
 	lines := ["north,1250", "south,800", "north,2505", "bad line", "south,x"]
-	sales := lines | .map(parse_sale) | .filter(fn s: s != null) | .map(fn s: s.get())
+	sales := lines | .map(parse_sale) | .filter(s => s != null) | .map(s => s.get())
 	skipped := lines.length() - sales.length()
 	print(report(totals_by_region(sales)).join("\n"))
 	print(f"skipped {skipped} lines")
 ```
 
-- `sorted(fn a, b: a.compare(b))` sorts a copy; compare Ints, Floats and Strings with `compare`.
+- `sorted((a, b) => a.compare(b))` sorts a copy; compare Ints, Floats and Strings with `compare`.
 - Money and fixed-width output are small helper functions (`money`), not inline arithmetic.
 
 ## 3. Errors are values: `T!` and `?`
@@ -111,11 +111,11 @@ A function that can fail returns `T!` (a Result). Inside it, `?` unwraps a succe
 <!-- complete: idiom-lines.ms -->
 ```manuscript
 type Line:
-	name: String
-	quantity: Int
-	cents: Int
+	name String
+	quantity Int
+	cents Int
 
-fn parse_line(text: String) Line!:
+fn parse_line(text String) Line!:
 	parts := text.split(",")
 	if parts.length() != 3:
 		return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
@@ -125,7 +125,7 @@ fn parse_line(text: String) Line!:
 	cents := parts[2].parse_int().ok_or(Error(f"price is not a number: {text}", kind: "EINVAL"))?
 	return ok(Line(parts[0].clone(), quantity, cents))
 
-fn total(lines: List[String]) Int!:
+fn total(lines List[String]) Int!:
 	var sum = 0
 	for text in lines:
 		line := parse_line(text)?
@@ -143,21 +143,21 @@ fn main() Void:
 
 ## 4. One owner: borrow, change with `var`, clone to copy
 
-Reading a value (a plain argument, a comparison, a field read) borrows it. A function that changes its argument says `var` in its declaration (`fn add_gift(var cart: Cart)`); the call writes `add_gift(cart)`. Storing a value in a collection or record moves it; to keep the original, store `.clone()`. `.clone()` is the only copy, so scanning for it shows where data is duplicated.
+Reading a value (a plain argument, a comparison, a field read) borrows it. A function that changes its argument says `var` in its declaration (`fn add_gift(var cart Cart)`); the call writes `add_gift(cart)`. Storing a value in a collection or record moves it; to keep the original, store `.clone()`. `.clone()` is the only copy, so scanning for it shows where data is duplicated.
 
 <!-- complete: idiom-cart.ms -->
 ```manuscript
 type Cart:
-	owner: String
-	items: List[String]
+	owner String
+	items List[String]
 
-fn summary(cart: Cart) String:
+fn summary(cart Cart) String:
 	return f"{cart.owner} has {cart.items.length()} items"
 
-fn add_gift(var cart: Cart) Void:
+fn add_gift(var cart Cart) Void:
 	cart.items.append("gift card")
 
-fn archive(cart: Cart, var history: List[Cart]) Void:
+fn archive(cart Cart, var history List[Cart]) Void:
 	history.append(cart)
 
 fn main() Void:
@@ -182,12 +182,12 @@ A parser is a record holding the input and a position, with `fn var` methods tha
 <!-- complete: idiom-calc.ms -->
 ```manuscript
 enum Expr:
-	Num(value: Int)
-	Add(left: Expr, right: Expr)
-	Mul(left: Expr, right: Expr)
-	Neg(inner: Expr)
+	Num(value Int)
+	Add(left Expr, right Expr)
+	Mul(left Expr, right Expr)
+	Neg(inner Expr)
 
-fn eval(expr: Expr) Int:
+fn eval(expr Expr) Int:
 	match expr:
 		Num(value):
 			return value
@@ -199,8 +199,8 @@ fn eval(expr: Expr) Int:
 			return -eval(inner)
 
 type Parser:
-	chars: List[String]
-	pos: Int
+	chars List[String]
+	pos Int
 
 fn var Parser.peek() String:
 	return self.chars.get_or(self.pos, "")
@@ -251,7 +251,7 @@ fn var Parser.sum() Expr!:
 		left = Expr.Add(left, right)
 	return ok(left)
 
-fn calculate(text: String) Int!:
+fn calculate(text String) Int!:
 	var parser = Parser(text.chars().clone(), 0)
 	expr := parser.sum()?
 	return ok(eval(expr))
@@ -275,10 +275,10 @@ Breadth-first search is a `List` used as a queue with a `head` index, a `Map` or
 <!-- complete: idiom-bfs.ms -->
 ```manuscript
 type Point:
-	row: Int
-	col: Int
+	row Int
+	col Int
 
-fn neighbors(grid: List[String], at: Point) List[Point]:
+fn neighbors(grid List[String], at Point) List[Point]:
 	var found = List[Point]()
 	for step in [Point(-1, 0), Point(1, 0), Point(0, -1), Point(0, 1)]:
 		next := Point(at.row + step.row, at.col + step.col)
@@ -287,7 +287,7 @@ fn neighbors(grid: List[String], at: Point) List[Point]:
 			found.append(next)
 	return found
 
-fn shortest(grid: List[String], start: Point, goal: Point) Int?:
+fn shortest(grid List[String], start Point, goal Point) Int?:
 	var distance = Map[String, Int]()
 	var queue = [start.clone()]
 	var head = 0
@@ -324,22 +324,22 @@ import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
 type Shop:
-	stock: Map[String, Int]
-	log: List[String]
+	stock Map[String, Int]
+	log List[String]
 
-fn var Shop.add(sku: String, qty: Int) String:
+fn var Shop.add(sku String, qty Int) String:
 	total := self.stock.get_or(sku, 0) + qty
 	self.stock.add(sku.clone(), total)
 	return f"ok {sku} stock={total}"
 
-fn var Shop.take(sku: String, qty: Int) String:
+fn var Shop.take(sku String, qty Int) String:
 	have := self.stock.get_or(sku, 0)
 	if qty > have:
 		return f"error: only {have} of {sku}"
 	self.stock.add(sku.clone(), have - qty)
 	return f"ok {sku} stock={have - qty}"
 
-fn run_command(var shop: Shop, line: String) String:
+fn run_command(var shop Shop, line String) String:
 	words := line.split(" ")
 	qty := words.get_or(2, "").parse_int()
 	if words.length() != 3 or qty == null:
@@ -355,11 +355,11 @@ fn run_command(var shop: Shop, line: String) String:
 fn main() Void!:
 	var shop = Shop(Map[String, Int](), [])
 	text := stdin() | lines | collect(null)?
-	for line in text.filter(fn l: not l.is_empty()):
+	for line in text.filter(l => not l.is_empty()):
 		print(run_command(shop, line))
 ```
 
-- `match` on a String works; the `_:` arm catches unknown commands.
+- `match` on a String works; the `_ =>` arm catches unknown commands.
 - A method that only reads is `fn Shop.name()`; one that changes the receiver is `fn var Shop.add()`.
 
 ## 8. Interfaces and generics
@@ -373,19 +373,19 @@ interface Shape:
 	fn name() String
 
 type Rect:
-	width: Float
-	height: Float
+	width Float
+	height Float
 
 type Circle:
-	radius: Float
+	radius Float
 
-fn Rect.area() Float: self.width * self.height
-fn Rect.name() String: "rect"
-fn Circle.area() Float: 3.0 * self.radius * self.radius
-fn Circle.name() String: "circle"
+fn Rect.area() Float => self.width * self.height
+fn Rect.name() String => "rect"
+fn Circle.area() Float => 3.0 * self.radius * self.radius
+fn Circle.name() String => "circle"
 
-fn largest[T: Clonable](items: List[T], score: fn(T) Float) T?:
-	var best: T? = null
+fn largest[T Clonable](items List[T], score fn(T) Float) T?:
+	var best T? = null
 	var best_score = -1.0
 	for item in items:
 		s := score(item)
@@ -394,14 +394,14 @@ fn largest[T: Clonable](items: List[T], score: fn(T) Float) T?:
 			best = item.clone()
 	return best
 
-fn describe(shape: Shape) String:
+fn describe(shape Shape) String:
 	return f"{shape.name()} with area {shape.area()}"
 
 fn main() Void:
 	print(describe(Rect(2.0, 3.0)))
 	print(describe(Circle(1.0)))
 	rects := [Rect(2.0, 3.0), Rect(4.0, 1.5), Rect(1.0, 1.0)]
-	if big := largest(rects, fn r: r.area()):
+	if big := largest(rects, r => r.area()):
 		print(f"largest: {big.width} x {big.height}")
 ```
 
@@ -415,17 +415,17 @@ import stdin from "@std/io/io.ms"
 import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
-fn word_counts(text: List[String]) Map[String, Int]:
+fn word_counts(text List[String]) Map[String, Int]:
 	var counts = Map[String, Int]()
 	for line in text:
-		for word in line.split(" ").filter(fn w: not w.is_empty()):
+		for word in line.split(" ").filter(w => not w.is_empty()):
 			counts.add(word.clone(), counts.get_or(word, 0) + 1)
 	return counts
 
 fn main() Void!:
 	text := stdin() | lines | collect(null)?
 	counts := word_counts(text)
-	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3) or null
+	top := counts.entries().sorted((a, b) => b.value.compare(a.value)).slice(0, 3) or null
 	for entry in top:
 		print(f"{entry.key} {entry.value}")
 ```
@@ -441,11 +441,11 @@ import read_file from "@std/os/fs.ms"
 import parse, stringify from "@std/data/json.ms"
 
 type Config:
-	name: String
-	retries: Int = 3
-	tags: List[String] = []
+	name String
+	retries Int = 3
+	tags List[String] = []
 
-fn load(path: String) Config!:
+fn load(path String) Config!:
 	bytes := read_file(path, max_bytes: 65536).wait()?
 	text := bytes.decode_utf8().ok_or(Error(f"{path} is not UTF-8", kind: "EBADMSG"))?
 	return parse[Config](text)
@@ -467,7 +467,7 @@ import open from "@std/os/fs.ms"
 import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
-fn count_orders(path: String) Int!:
+fn count_orders(path String) Int!:
 	file := open(path)?
 	rows := collect(file.reader()? | lines)?
 	if rows.is_empty():
@@ -488,11 +488,11 @@ A call that waits (reading a file, a request) returns a Promise that is already 
 import read_file from "@std/os/fs.ms"
 import wait_all from "@std/concurrency/promise.ms"
 
-fn count_rows(text: String) Int:
-	return text.split("\n").filter(fn line: not line.is_empty()).length()
+fn count_rows(text String) Int:
+	return text.split("\n").filter(line => not line.is_empty()).length()
 
-fn run(paths: List[String]) Int!:
-	reads := paths.map(fn path: read_file(path))
+fn run(paths List[String]) Int!:
+	reads := paths.map(path => read_file(path))
 	files := wait_all(reads)?
 	var rows = 0
 	for file in files:
@@ -513,12 +513,12 @@ A `test "name":` block sits in the same file and runs with `ms test`. Test the r
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn shipping(subtotal: Int) Int:
+fn shipping(subtotal Int) Int:
 	if subtotal >= 4000:
 		return 0
 	return 500
 
-fn order_total(prices: List[Int]) Int:
+fn order_total(prices List[Int]) Int:
 	subtotal := prices.sum()
 	return subtotal + shipping(subtotal)
 

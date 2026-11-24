@@ -4,15 +4,15 @@
 import Closeable from "@std/core.ms"
 
 type Res:
-	name: String
+	name String
 
 fn move Res.close() Void!:
 	print(f"close {self.name}")
 
-fn make(move name: String) Res!Error:
+fn make(move name String) Res!Error:
 	return ok(Res(name))
 
-fn keep(r: Res) Res:
+fn keep(move r Res) Res:
 	return r
 
 fn via_try() Void!Error:
@@ -24,7 +24,7 @@ fn via_get() Void:
 	print(f"body {r.name}")
 
 fn via_optional() Void:
-	o: Res? := Res("optional")
+	o Res? := Res("optional")
 	r := o
 	if r != null:
 		print(f"body {r.name}")

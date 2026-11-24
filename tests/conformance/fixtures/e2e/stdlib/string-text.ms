@@ -13,11 +13,11 @@ test "string text helpers":
 	"a<b>".replace_each({"<": "&lt;", ">": "&gt;"}) | expect_equal("a&lt;b&gt;")?
 	"".fields() | expect_equal(List[String]())?
 	"a\u{a0}b".fields() | expect_equal(["a", "b"])?
-	"a1b22c".fields_by(fn c: c >= "0" and c <= "9") | expect_equal(["a", "b", "c"])?
-	"1a22bc3".fields_by(fn c: c >= "0" and c <= "9") | expect_equal(["a", "bc"])?
-	"123".fields_by(fn c: c >= "0" and c <= "9") | expect_equal(List[String]())?
-	"".fields_by(fn c: c == " ") | expect_equal(List[String]())?
-	"é 1éé  x".fields_by(fn c: c == " ") | expect_equal(["é", "1éé", "x"])?
+	"a1b22c".fields_by(c => c >= "0" and c <= "9") | expect_equal(["a", "b", "c"])?
+	"1a22bc3".fields_by(c => c >= "0" and c <= "9") | expect_equal(["a", "bc"])?
+	"123".fields_by(c => c >= "0" and c <= "9") | expect_equal(List[String]())?
+	"".fields_by(c => c == " ") | expect_equal(List[String]())?
+	"é 1éé  x".fields_by(c => c == " ") | expect_equal(["é", "1éé", "x"])?
 	"aaa".count("") | expect_equal(4)?
 	"aaaa".count("aa") | expect_equal(2)?
 	"héllo".trim_start_chars("hé") | expect_equal("llo")?
@@ -29,8 +29,8 @@ test "string text helpers":
 	"a,b,".split_after(",") | expect_equal(["a,", "b,"])?
 	"élan vital".capitalize() | expect_equal("Élan vital")?
 	"it's a dog".title() | expect_equal("It's A Dog")?
-	"a1b".map_chars(fn c: if c == "1": "" else: c.upper()) | expect_equal("AB")?
-	"héllo".find_char(fn c: c == "l") | expect_equal(3)?
+	"a1b".map_chars(c => if c == "1": "" else: c.upper()) | expect_equal("AB")?
+	"héllo".find_char(c => c == "l") | expect_equal(3)?
 	"aaa".replace_each({"aa": "b", "a": "c"}) | expect_equal("bc")?
 	"x".replace_each(Map[String, String]()) | expect_equal("x")?
 
@@ -64,7 +64,7 @@ test "replace_each scans bytes with map order, multibyte keys and unmatched runs
 	"tail a".replace_each({"a": "b"}) | expect_equal("tbil b")?
 
 // The reference walks every scalar, so it shares nothing with the windowed scans.
-fn reference_start(text: String, set: String) Int:
+fn reference_start(text String, set String) Int:
 	var count = 0
 
 	for c in text.chars():
@@ -74,7 +74,7 @@ fn reference_start(text: String, set: String) Int:
 
 	return count
 
-fn reference_end(text: String, set: String) Int:
+fn reference_end(text String, set String) Int:
 	cs := text.chars()
 	var n = text.length()
 	var i = cs.length()
@@ -102,7 +102,7 @@ test "char-set trims and find_char agree with a scalar walk across scan windows"
 				)?
 				expect_equal(text.trim_end_chars("é"), text.view(0, expected_end))?
 				expect_equal(
-					text.find_char(fn c: c != "é"),
+					text.find_char(c => c != "é"),
 					if expected_start == text.length(): null else: expected_start,
 				)?
 

@@ -39,15 +39,15 @@ import (
 export type CommandOutput:
 	// The child's exit status; 0 conventionally means success. A nonzero status is
 	// still an Ok result, and a child ended by a signal reports -1 on Unix.
-	exit_code: Int
+	exit_code Int
 	// Everything the child wrote to standard output, as raw bytes that may not be valid
 	// UTF-8.
-	stdout: Bytes
+	stdout Bytes
 	// Everything the child wrote to standard error, as raw bytes that may not be valid
 	// UTF-8.
-	stderr: Bytes
+	stderr Bytes
 	// The child's peak resident set size in bytes, or 0 when the host cannot report it.
-	max_resident_bytes: Int
+	max_resident_bytes Int
 
 // Where a child's standard input, output, or error goes, chosen per stream.
 // `spawn("make", [], SpawnOptions(stdout: Stdio.Inherit, stderr: Stdio.Inherit))` lets the
@@ -63,30 +63,30 @@ export enum Stdio:
 // environment.
 export type RunOptions:
 	// Bytes written to the child's standard input.
-	input: Bytes = "".to_bytes()
+	input Bytes = "".to_bytes()
 	// Largest total output of both streams in bytes; null sets no cap. More returns
 	// EOVERFLOW.
-	max_output_bytes: Int?
+	max_output_bytes Int?
 	// How long the child may run; null waits without limit. Expiry returns ETIMEDOUT.
-	timeout: Duration?
+	timeout Duration?
 	// The child's working directory; null inherits the caller's.
-	cwd: String?
+	cwd String?
 	// Variables added to or replaced in the inherited environment.
-	env: Map[String, String] = Map[String, String]()
+	env Map[String, String] = Map[String, String]()
 
 // Settings for `spawn`. Every field has a default, so `SpawnOptions()` pipes all three
 // streams and inherits the caller's directory and environment.
 export type SpawnOptions:
 	// Where the child reads standard input.
-	stdin: Stdio = Stdio.Pipe
+	stdin Stdio = Stdio.Pipe
 	// Where the child writes standard output.
-	stdout: Stdio = Stdio.Pipe
+	stdout Stdio = Stdio.Pipe
 	// Where the child writes standard error.
-	stderr: Stdio = Stdio.Pipe
+	stderr Stdio = Stdio.Pipe
 	// The child's working directory; null inherits the caller's.
-	cwd: String?
+	cwd String?
 	// Variables added to or replaced in the inherited environment.
-	env: Map[String, String] = Map[String, String]()
+	env Map[String, String] = Map[String, String]()
 
 // The shape of `run` and `spawn`, for code that takes child-process operations as a
 // parameter so a test can pass a fake. Programs call the module functions `run` and
@@ -98,9 +98,9 @@ export interface Commands:
     `options.cwd` is the child's working directory (null inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns ENOENT. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
     */
 	fn run(
-		program: String,
-		arguments: List[String],
-		options: RunOptions = RunOptions(),
+		program String,
+		arguments List[String],
+		options RunOptions = RunOptions(),
 	) move CommandOutput!
 	// Starts `program` directly, without a shell, searching the PATH, and returns a
 	// live Subprocess that its scope closes. `arguments` follow the program name;
@@ -111,9 +111,9 @@ export interface Commands:
 	// kills the child's process group.
 	// `options.cwd` and `options.env` behave as in `run`.
 	fn spawn(
-		program: String,
-		arguments: List[String],
-		options: SpawnOptions = SpawnOptions(),
+		program String,
+		arguments List[String],
+		options SpawnOptions = SpawnOptions(),
 	) move Subprocess!
 
 // The runtime handle behind a `Subprocess`.
@@ -126,7 +126,7 @@ A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already close
 */
 export opaque type Subprocess:
 	// The runtime handle; it is released by `close` and owned by this value.
-	native: NativeSubprocess
+	native NativeSubprocess
 
 // Kills the process group, joins the child, kills leftover group members, and
 // closes all three streams. Idempotent; scope exit calls it.
@@ -157,7 +157,7 @@ fn Subprocess.stderr() ReadStream[Bytes]:
 // Waits for the child to exit and returns its exit status, or -1 for a child ended by a
 // signal on Unix. Returns ETIMEDOUT if `timeout` elapses first, leaving the child
 // running.
-fn Subprocess.wait(timeout: Duration? = null) Int!:
+fn Subprocess.wait(timeout Duration? = null) Int!:
 	return msstd_process_subprocess_wait(self.native, timeout)
 
 // The child's peak resident set size in bytes, known once `wait` has returned its
@@ -177,26 +177,26 @@ fn Subprocess.kill() Void:
 // Identity and invocation details for the current process.
 export type ProcessInfo:
 	// Operating system id of this process.
-	pid: Int
+	pid Int
 	// Operating system id of the parent process at the time of the call.
-	parent_pid: Int
+	parent_pid Int
 	// Absolute path of the running program file.
-	executable: String
+	executable String
 	// The native argv including argv[0]. `arguments()` from `@std/os/env.ms` returns
 	// the startup arguments without it.
-	arguments: List[String]
+	arguments List[String]
 	// Operating system name, such as `linux`, `darwin`, or `windows`.
-	os: String
+	os String
 	// Processor architecture name, such as `amd64` or `arm64`.
-	architecture: String
+	architecture String
 	// Real user id; -1 on Windows, where ids are not numeric.
-	uid: Int
+	uid Int
 	// Real group id; -1 on Windows, where ids are not numeric.
-	gid: Int
+	gid Int
 	// Effective user id used for permission checks; -1 on Windows.
-	effective_uid: Int
+	effective_uid Int
 	// Effective group id used for permission checks; -1 on Windows.
-	effective_gid: Int
+	effective_gid Int
 
 // Which of the process identities `set_identity` changes.
 export enum IdentityKind:
@@ -208,9 +208,9 @@ export enum IdentityKind:
 // Cumulative CPU time consumed by the current process, in integer microseconds.
 export type CpuUsage:
 	// User CPU time in microseconds.
-	user_microseconds: Int
+	user_microseconds Int
 	// Kernel CPU time in microseconds.
-	system_microseconds: Int
+	system_microseconds Int
 
 /*
 Kernel resource counters for the current process. CPU times are integer microseconds;
@@ -220,31 +220,31 @@ Unavailable Windows fault/context-switch counters are zero.
 */
 export type ResourceUsage:
 	// Cumulative CPU time spent running this process's own code, in microseconds.
-	user_microseconds: Int
+	user_microseconds Int
 	// Cumulative CPU time the kernel spent on behalf of this process, in microseconds.
-	system_microseconds: Int
+	system_microseconds Int
 	// Peak physical memory the process has held at once, in bytes.
-	max_resident_bytes: Int
+	max_resident_bytes Int
 	// Page faults served without disk I/O, as a count.
-	minor_faults: Int
+	minor_faults Int
 	// Page faults that required disk I/O, as a count.
-	major_faults: Int
+	major_faults Int
 	// Block input operations charged to the process, as a count.
-	filesystem_reads: Int
+	filesystem_reads Int
 	// Block output operations charged to the process, as a count.
-	filesystem_writes: Int
+	filesystem_writes Int
 	// Context switches where the process gave up the CPU, such as to wait for I/O, as a
 	// count.
-	voluntary_switches: Int
+	voluntary_switches Int
 	// Context switches where the scheduler preempted the process, as a count.
-	involuntary_switches: Int
+	involuntary_switches Int
 
 // The runtime observer behind `watch_signals`; signals arriving while no read waits are
 // buffered.
 export extern type NativeSignals
 
 type SignalSource:
-	signals: NativeSignals
+	signals NativeSignals
 
 fn var SignalSource.next() Int?!:
 	return ok(msstd_process_signal_next(self.signals)?)
@@ -254,20 +254,20 @@ fn move SignalSource.close() Void!:
 	msstd_process_signal_close(self.signals)
 
 // The names of an environment map, in the order of its values.
-fn environment_names(environment: Map[String, String]) List[String]:
-	var names = environment.entries().map(fn entry: entry.key.clone())
+fn environment_names(environment Map[String, String]) List[String]:
+	var names = environment.entries().map(entry => entry.key.clone())
 	return names
 
 // The values of an environment map, in the order of its names.
-fn environment_values(environment: Map[String, String]) List[String]:
-	var values = environment.entries().map(fn entry: entry.value.clone())
+fn environment_values(environment Map[String, String]) List[String]:
+	var values = environment.entries().map(entry => entry.value.clone())
 	return values
 
 // The work of `run`.
 fn run_command(
-	program: String,
-	arguments: List[String],
-	options: RunOptions,
+	program String,
+	arguments List[String],
+	options RunOptions,
 ) CommandOutput!:
 	return msstd_process_command_run(
 		program,
@@ -287,16 +287,16 @@ Output beyond `options.max_output_bytes` in total across both streams returns EO
 */
 // ms: effect std.process.run
 export fn run(
-	program: String,
-	arguments: List[String] = [],
-	options: RunOptions = RunOptions(),
+	program String,
+	arguments List[String] = [],
+	options RunOptions = RunOptions(),
 ) Promise[CommandOutput]:
 	owned_program := program.clone()
 	owned_arguments := arguments.clone()
 	owned_options := options.clone()
 	return promise(
-		fn: run_command(owned_program, owned_arguments, owned_options),
-		options: PromiseOptions(placement: Placement.Here)
+		() => run_command(owned_program, owned_arguments, owned_options),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // Starts `program` directly, without a shell, searching the PATH, and returns a live
@@ -309,9 +309,9 @@ export fn run(
 // `options.cwd` and `options.env` behave as in `run`.
 // ms: effect std.process.run
 export fn spawn(
-	program: String,
-	arguments: List[String] = [],
-	options: SpawnOptions = SpawnOptions(),
+	program String,
+	arguments List[String] = [],
+	options SpawnOptions = SpawnOptions(),
 ) Subprocess!:
 	return msstd_process_command_spawn(
 		program,
@@ -333,7 +333,7 @@ Each read yields the next signal number; the stream never ends on its own. Dropp
 Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation may prevent code after a read from running.
 */
 // ms: effect std.process.signal
-export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
+export fn watch_signals(signals List[Int], capacity Int?) ReadStream[Int]!:
 	native := msstd_process_watch_signals(signals, capacity)?
 	return ok(ReadStream[Int](SignalSource(native)))
 
@@ -347,7 +347,7 @@ export fn title() String!:
 // returns EINVAL, and platforms that cannot rename a process return ENOTSUP. On Linux
 // and macOS a title longer than the program's original command line is cut to fit.
 // ms: effect std.process.write
-export fn set_title(title: String) Void!:
+export fn set_title(title String) Void!:
 	return msstd_process_set_title(title)
 
 // Replaces the supplementary group list with the groups of `username` from the account
@@ -355,7 +355,7 @@ export fn set_title(title: String) Void!:
 // `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns
 // EACCES.
 // ms: effect std.process.write
-export fn initialize_groups(username: String, gid: Int) Void!:
+export fn initialize_groups(username String, gid Int) Void!:
 	return msstd_process_initialize_groups(username, gid)
 
 // Replaces the running process image with `program` using exactly the given `arguments`
@@ -366,12 +366,12 @@ export fn initialize_groups(username: String, gid: Int) Void!:
 // Windows.
 // ms: effect std.process.run
 export fn replace(
-	program: String,
-	arguments: List[String],
-	environment: Map[String, String],
+	program String,
+	arguments List[String],
+	environment Map[String, String],
 ) Void!:
-	var names: List[String] = []
-	var values: List[String] = []
+	var names List[String] = []
+	var values List[String] = []
 
 	for entry in environment.entries():
 		names.append(entry.key.clone())
@@ -397,7 +397,7 @@ export fn cpu_usage() CpuUsage!:
 // signal 0 and forced termination with INT, KILL, or TERM. A pid that names no process
 // returns ENOENT.
 // ms: effect std.process.signal
-export fn send_signal(pid: Int, signal: Int) Void!:
+export fn send_signal(pid Int, signal Int) Void!:
 	return msstd_process_send_signal(pid, signal)
 
 // Returns the numeric ids of the supplementary groups of the process.
@@ -415,7 +415,7 @@ export fn resource_usage() ResourceUsage!:
 // Sets the real or effective user or group id to `id`, 0..2147483647; other ids return
 // EINVAL. Identity changes require OS permission and are ENOTSUP on Windows.
 // ms: effect std.process.write
-export fn set_identity(kind: IdentityKind, id: Int) Void!:
+export fn set_identity(kind IdentityKind, id Int) Void!:
 	if kind == IdentityKind.Uid: return msstd_process_set_identity("uid", id)
 	if kind == IdentityKind.Gid: return msstd_process_set_identity("gid", id)
 	if kind == IdentityKind.Euid: return msstd_process_set_identity("euid", id)
@@ -426,7 +426,7 @@ export fn set_identity(kind: IdentityKind, id: Int) Void!:
 // 2147483647. Requires privilege. Invalid ids return EINVAL, a lack of privilege
 // returns EACCES, and Windows returns ENOTSUP.
 // ms: effect std.process.write
-export fn set_groups(groups: List[Int]) Void!:
+export fn set_groups(groups List[Int]) Void!:
 	return msstd_process_set_groups(groups)
 
 // Returns the scheduling priority of process `pid` (0 means the calling process) as a
@@ -434,7 +434,7 @@ export fn set_groups(groups: List[Int]) Void!:
 // classes onto this range. A pid outside 0 through 2147483647 returns EINVAL, and
 // platforms without priorities return ENOTSUP.
 // ms: effect std.process.read
-export fn get_priority(pid: Int) Int!:
+export fn get_priority(pid Int) Int!:
 	return msstd_system_get_priority(pid)
 
 // Sets the scheduling priority of process `pid` (0 means the calling process) to a
@@ -442,5 +442,5 @@ export fn get_priority(pid: Int) Int!:
 // 2147483647 or a priority outside that range returns EINVAL. Unix uses nice values;
 // Windows maps the range to native priority classes.
 // ms: effect std.process.write
-export fn set_priority(pid: Int, priority: Int) Void!:
+export fn set_priority(pid Int, priority Int) Void!:
 	return msstd_system_set_priority(pid, priority)

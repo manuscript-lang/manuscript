@@ -6,11 +6,11 @@ import (
 
 // A token: `n` with a value, or `o` with the operator character.
 type Tok:
-	kind: String
-	text: String
-	value: Int
+	kind String
+	text String
+	value Int
 
-fn tokens(line: String) List[Tok]:
+fn tokens(line String) List[Tok]:
 	var out = List[Tok]()
 	chars := line.chars()
 	var i = 0
@@ -37,12 +37,12 @@ fn tokens(line: String) List[Tok]:
 // A recursive-descent evaluator. `bad` records a syntax error (which wins over a
 // division by zero); once set the parser sees no more tokens, so every loop ends.
 type Parser:
-	toks: List[Tok]
-	pos: Int = 0
-	div: Bool = false
-	bad: Bool = false
+	toks List[Tok]
+	pos Int = 0
+	div Bool = false
+	bad Bool = false
 
-fn Parser.at_op(text: String) Bool:
+fn Parser.at_op(text String) Bool:
 	if self.bad or self.pos >= self.toks.length(): return false
 	return self.toks[self.pos].kind == "o" and self.toks[self.pos].text == text
 
@@ -106,7 +106,7 @@ fn var Parser.atom() Int:
 	self.bad = true
 	return 0
 
-fn evaluate(line: String) String:
+fn evaluate(line String) String:
 	var p = Parser(tokens(line))
 	v := p.expr()
 	if p.pos < p.toks.length(): p.bad = true
@@ -115,14 +115,14 @@ fn evaluate(line: String) String:
 
 	return f"{v}"
 
-fn solve(s: String) String:
-	return s.split("\n").filter(fn l: not l.trim().is_empty()).map(
-		fn l: (evaluate(l) + "\n")
+fn solve(s String) String:
+	return s.split("\n").filter(l => not l.trim().is_empty()).map(
+		l => (evaluate(l) + "\n")
 	).join("")
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
-fn rexpr(var rnd: Random, d: Int) String:
+fn rexpr(var rnd Random, d Int) String:
 	if d == 0 or rnd.random() < 0.25: return f"{rnd.randint(0, 99)}"
 
 	r := rnd.random()

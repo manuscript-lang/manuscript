@@ -1,11 +1,11 @@
 // conform: tags=diagnostics,match,optional,tier-core
 // conform: phase=check
 // conform: origin=pkg/tooling/nested_match_lint_test.go:27 TestNestedMatchLint
-fn use(value: Int?) Int:
+fn use(value Int?) Int:
     present := match value:
-        n: n
-        null: return 0
+        n => n
+        null => return 0
 
     return match value:
-        n: present + n
-        null: 0
+        n => present + n
+        null => 0

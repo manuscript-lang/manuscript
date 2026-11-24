@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/performance_test.go:39 BenchmarkCheckerEffects
 type Cell:
-    value: Int
+    value Int

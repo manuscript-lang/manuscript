@@ -9,7 +9,7 @@ import (
 ) from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 
-fn ok_route(request: HttpRequest) HttpResponse:
+fn ok_route(request HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
 // A serve call that fails in the runtime, here on a zero request timeout, still releases the handler it was given.

@@ -4,7 +4,7 @@
 import TestHooks, expect_equal from "@std/test/test.ms"
 
 type Counter:
-    value: Int
+    value Int
 
 fn make_fixture() Counter:
     return Counter(0)

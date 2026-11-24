@@ -9,20 +9,20 @@ fn tick() Void!:
 	return sleep(milliseconds(1)).wait()
 
 type Inner:
-	tags: List[String]
-	weights: Map[String, Int]
+	tags List[String]
+	weights Map[String, Int]
 
 type Outer:
-	inner: Inner
-	history: List[Inner]
-	title: String
+	inner Inner
+	history List[Inner]
+	title String
 
-fn var Inner.bump(key: String) Void!:
+fn var Inner.bump(key String) Void!:
 	tick()?
 	self.tags.append(key.clone())
 	self.weights[key.clone()] = (self.weights.get(key) or 0) + 1
 
-fn var Outer.touch(key: String) Void!:
+fn var Outer.touch(key String) Void!:
 	self.inner.bump(key)?
 	tick()?
 	self.history.append(
@@ -32,7 +32,7 @@ fn var Outer.touch(key: String) Void!:
 		)
 	)
 
-fn fresh(title: String) Outer:
+fn fresh(title String) Outer:
 	return Outer(
 		inner: Inner(tags: [], weights: Map[String, Int]()),
 		history: [],
@@ -46,7 +46,7 @@ test "nested var methods through two levels of fields":
 	o.touch("a")?
 	expect_equal(o.history.length(), 3)?
 
-fn consume(move o: Outer) Int!:
+fn consume(move o Outer) Int!:
 	tick()?
 
 	var n = o.history.length()
@@ -63,7 +63,7 @@ test "a moved outer consumed across parks":
 	o.touch("y")?
 	expect_equal(consume(o)?, 5)?
 
-fn take_inner(var o: Outer) Inner!:
+fn take_inner(var o Outer) Inner!:
 	tick()?
 
 	var inner = o.inner.clone()
@@ -78,7 +78,7 @@ test "a field moved out of a var parameter then returned":
 	got := take_inner(o)?
 	expect_equal(got.tags.length(), 2)?
 
-fn swap(var a: Outer, var b: Outer) Void!:
+fn swap(var a Outer, var b Outer) Void!:
 	tick()?
 
 	held := a.inner.clone()

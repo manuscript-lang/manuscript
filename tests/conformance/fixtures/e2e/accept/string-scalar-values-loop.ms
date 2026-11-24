@@ -2,13 +2,13 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn walked(s: String) List[Int]:
-	var out: List[Int] = []
+fn walked(s String) List[Int]:
+	var out List[Int] = []
 	out.extend(s.scalar_values())
 	return out
 
-fn digits_only(s: String) Bool:
-	return not s.scalar_values().any(fn c: c < 48 or c > 57)
+fn digits_only(s String) Bool:
+	return not s.scalar_values().any(c => c < 48 or c > 57)
 
 test "a scalar walk yields what the list holds":
 	for s in ["", "abc", "héllo wörld ✓ 😀!", "añb"]:

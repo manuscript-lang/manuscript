@@ -7,7 +7,7 @@ import (
 
 // Regressions: block key.
 
-fn invalid_block_key(source: String) Void!:
+fn invalid_block_key(source String) Void!:
 	cause := parse(source) | expect_error?
 	if cause.kind == "EBADMSG": return ok()
 
@@ -43,7 +43,7 @@ test "YAML collection mapping keys remain unsupported":
 
 // Regressions: colon.
 
-fn object(keys: List[String], values: List[YamlValue]) YamlValue:
+fn object(keys List[String], values List[YamlValue]) YamlValue:
 	var result = Map[String, YamlValue]()
 	for i in 0..keys.length(): result.add(keys.get(i).clone(), values.get(i).clone())
 	return YamlValue.ObjectValue(result)
@@ -94,7 +94,7 @@ test "YAML flow colon separators retain quoted and empty values":
 	)
 	parse("{a:]}").is_error() | expect_true?
 
-fn invalid_colon(source: String) Void!:
+fn invalid_colon(source String) Void!:
 	cause := parse(source) | expect_error?
 	if cause.kind != "EBADMSG": return fail(f"expected malformed YAML, got {cause}")
 
@@ -130,7 +130,7 @@ test "YAML block scalar rejects a separator before a folded paragraph break":
 
 // Regressions: comment continuation.
 
-fn rejects_continuation(text: String) Void!Error:
+fn rejects_continuation(text String) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail(f"expected InvalidData, got {cause}")
 
@@ -230,7 +230,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 		)?
 	)
 
-fn rejects_flow_continuation(text: String, reason: String) Void!Error:
+fn rejects_flow_continuation(text String, reason String) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail(f"expected InvalidData, got {cause}")
 
@@ -354,7 +354,7 @@ test "YAML flow mappings retain existing empty-key forms":
 
 // Regressions: error location.
 
-fn error_at(text: String, line: Int, column: Int) Void!Error:
+fn error_at(text String, line Int, column Int) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail(f"expected InvalidData, got {cause}")
 
@@ -396,7 +396,7 @@ test "YAML compact tab rewrites retain original scalar columns":
 	error_at("- \t key: [one", 1, 14)?
 	error_at("-\t\tkey: ok\n- key: [one", 2, 12)?
 
-fn unsupported_at(text: String, line: Int) Void!Error:
+fn unsupported_at(text String, line Int) Void!Error:
 	cause := parse(text) | expect_error?
 	if cause.kind != "ENOTSUP": return fail(f"expected UnsupportedFeature, got {cause}")
 
@@ -581,12 +581,12 @@ test "YAML plain closing brackets do not hide malformed nested values":
 // Regressions: incremental flow.
 
 type FoldControl:
-	input: String
-	output: String
+	input String
+	output String
 
 test "YAML long multiline flow retains every scalar":
 	var source = ""
-	var expected: List[YamlValue] = []
+	var expected List[YamlValue] = []
 	source += "["
 
 	for i in 0..2000:
@@ -605,7 +605,7 @@ test "YAML long multiline flow retains every scalar":
 	]:
 		expect_equal(
 			parse(control.input)?,
-			YamlValue.ArrayValue([YamlValue.StringValue(control.output)]),
+			YamlValue.ArrayValue([YamlValue.StringValue(control.output.clone())]),
 		)?
 
 test "YAML flow scanner carries anchors and quoted markers across lines":
@@ -653,11 +653,11 @@ test "YAML flow comment offsets remain scalar based":
 
 // Regressions: block indentation.
 
-fn text(source: String, expected: String) Void!:
-	expect_equal((parse(source)?), YamlValue.StringValue(expected))?
+fn text(source String, expected String) Void!:
+	expect_equal((parse(source)?), YamlValue.StringValue(expected.clone()))?
 
-fn field(source: String, expected: String) Void!:
-	want := YamlValue.ObjectValue({"value": YamlValue.StringValue(expected)})
+fn field(source String, expected String) Void!:
+	want := YamlValue.ObjectValue({"value": YamlValue.StringValue(expected.clone())})
 	expect_equal((parse(source)?), want)?
 
 test "YAML root indentation indicators start at column zero":
@@ -874,7 +874,7 @@ test "YAML scalar keys become their text and collection keys are rejected":
 	unsupported_at("{[a]: 1}", 1)?
 	unsupported_at("a: 1\n{b: c}: d", 2)?
 
-fn count(text: String, want: Int) Void!:
+fn count(text String, want Int) Void!:
 	docs := parse_all(text)?
 	expect_equal(docs.length(), want)?
 

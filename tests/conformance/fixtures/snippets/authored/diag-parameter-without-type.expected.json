@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "parameter 'a' has no type; every parameter is written name: Type, e.g. a: Int",
+        "message": "parameter 'a' has no type; every parameter is written name Type, e.g. a Int",
         "position": {
           "file": "diag-parameter-without-type.ms",
           "line": 3,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-parameter-without-type.ms:3:8: parse: parameter 'a' has no type; every parameter is written name: Type, e.g. a: Int\n   |\n 3 | fn add(a, b) Int:\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-parameter-without-type.ms:3:8: parse: parameter 'a' has no type; every parameter is written name Type, e.g. a Int\n   |\n 3 | fn add(a, b) Int:\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

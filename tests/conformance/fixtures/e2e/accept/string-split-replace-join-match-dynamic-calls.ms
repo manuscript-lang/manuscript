@@ -13,7 +13,7 @@ test "split keeps every piece":
     expect_true(("".replace(old: "x", new: "y") == ""))?
     expect_true((["a", "b", "c"].join(separator: "-") == "a-b-c"))?
 
-    none_left: List[String] := []
+    none_left List[String] := []
     expect_true((none_left.join(separator: "-") == ""))?
 
     var parts = ["x"]

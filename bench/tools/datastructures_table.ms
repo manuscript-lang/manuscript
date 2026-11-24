@@ -5,8 +5,8 @@
 import invalid, left, right from "./lib.ms"
 
 export type Operation:
-	name: String
-	count: Int
+	name String
+	count Int
 
 export fn operations() List[Operation]:
 	return [
@@ -27,30 +27,30 @@ export fn versions() List[String]:
 	return ["ms", "go", "rs"]
 
 // Go has no sorted-map producer; all other rows are required in every version.
-fn required(version: String) List[String]:
-	names := operations().map(fn o: o.name.clone())
-	if version == "go": return names.filter(fn n: n != "sorted_map_add_contains")
+fn required(version String) List[String]:
+	names := operations().map(o => o.name.clone())
+	if version == "go": return names.filter(n => n != "sorted_map_add_contains")
 
 	return names
 
-fn count_of(name: String) Int:
+fn count_of(name String) Int:
 	for op in operations():
 		if op.name == name: return op.count
 	return 0
 
-fn ratio(num: Float?, den: Float?) String:
+fn ratio(num Float?, den Float?) String:
 	if (num == null) or (den == null): return "-"
 	if (num) == 0.0 or (den) == 0.0: return "-"
 
 	return ((num) / (den)).to_fixed(2)
 
-fn cell(value: Float?) String:
+fn cell(value Float?) String:
 	v := value
 	if v != null: return right(v.to_fixed(1), 9)
 
 	return right("-", 9)
 
-export fn summarize(lines: List[String], repeats: Int) String!:
+export fn summarize(lines List[String], repeats Int) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 
 	var best = Map[String, Float]()
@@ -62,7 +62,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 	var pending = Set[String]()
 
 	for line in lines:
-		parts := line.trim().split(" ").filter(fn p: p != "")
+		parts := line.trim().split(" ").filter(p => p != "")
 		if parts.length() < 2 or not versions().contains(parts[0]):
 			return invalid(f"invalid sample: {line.trim()}")
 
@@ -78,7 +78,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 			need := required(version)
 			if (
 				pending.length() != need.length()
-				or not need.all(fn n: pending.contains(n))
+				or not need.all(n => pending.contains(n))
 			):
 				return invalid(f"incomplete {version} trial")
 
@@ -110,7 +110,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 		pending.add(name.clone())
 
-	if active != "" or versions().any(fn v: trials.get_or(v, 0) != repeats):
+	if active != "" or versions().any(v => trials.get_or(v, 0) != repeats):
 		return invalid(f"expected {repeats} complete trials of every version")
 
 	var rows = [
@@ -125,7 +125,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 	for op in operations():
 		n := op.count.to_float()
 		m := best.get_or(f"{op.name} ms", 0.0) / n
-		var g: Float? = null
+		var g Float? = null
 		t := best.get(f"{op.name} go")
 		if t != null: g = t / n
 

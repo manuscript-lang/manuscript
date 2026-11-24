@@ -3,7 +3,7 @@
 // conform: origin=m.add(w.clone(), m.get_or(w, 0) + 1) borrows w and copies the key only when it is absent
 import stdout from "@std/io/io.ms"
 
-fn tally(words: List[String]) Map[String, Int]:
+fn tally(words List[String]) Map[String, Int]:
     var m = Map[String, Int]()
 
     for i in 0..words.length():

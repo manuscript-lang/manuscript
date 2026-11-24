@@ -5,7 +5,7 @@ import (
 
 // Builds a about 1 MB string from pieces of each size and prints the best of 40 runs
 // per size in microseconds.
-fn run(piece: String, count: Int) Int:
+fn run(piece String, count Int) Int:
 	var sb = ""
 	for i in 0..count:
 		sb += piece
@@ -13,8 +13,8 @@ fn run(piece: String, count: Int) Int:
 
 // Builds a list of `count` Ints with append in a `while` loop, so growth is by
 // doubling, the path every list shares with the builder.
-fn fill(count: Int) Int:
-	var items: List[Int] = []
+fn fill(count Int) Int:
+	var items List[Int] = []
 	var i = 0
 
 	while i < count:

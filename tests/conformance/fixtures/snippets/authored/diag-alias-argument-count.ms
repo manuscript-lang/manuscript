@@ -3,5 +3,5 @@
 // conform: origin=type-aliases
 type Bad[T] = List[T]
 
-fn f(x: Bad) Int:
+fn f(x Bad) Int:
     return 0

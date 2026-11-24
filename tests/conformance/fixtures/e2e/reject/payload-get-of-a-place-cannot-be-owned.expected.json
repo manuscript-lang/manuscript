@@ -14,7 +14,7 @@
           "file": "payload-get-of-a-place-cannot-be-owned.ms",
           "line": 19,
           "column": 20,
-          "offset": 522
+          "offset": 518
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "payload-get-of-a-place-cannot-be-owned.ms",
           "line": 22,
           "column": 20,
-          "offset": 617
+          "offset": 612
         }
       }
     ],

@@ -127,7 +127,7 @@ test "big integer square root is exact and rejects negative input":
 		above := root + big_int_of_int(1)
 		expect_true(above * above > value)?
 
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(big_int_of_int(-1).sqrt(), invalid)?
 
 test "modular exponentiation normalizes results and validates its domain":
@@ -137,7 +137,7 @@ test "modular exponentiation normalizes results and validates its domain":
 	expect_equal((big_int_of_int(0).pow_mod(big_int_of_int(0), big_int_of_int(7))?), big_int_of_int(1))?
 	expect_equal((big_int_of_int(0).pow_mod(big_int_of_int(0), big_int_of_int(1))?), big_int_of_int(0))?
 
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(big_int_of_int(2).pow_mod(big_int_of_int(-1), big_int_of_int(7)), invalid)?
 	expect_equal(big_int_of_int(2).pow_mod(big_int_of_int(3), big_int_of_int(0)), invalid)?
 	expect_equal(big_int_of_int(2).pow_mod(big_int_of_int(3), big_int_of_int(-7)), invalid)?

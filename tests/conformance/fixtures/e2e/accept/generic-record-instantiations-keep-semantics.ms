@@ -4,20 +4,20 @@
 import expect_true from "@std/test/test.ms"
 
 type Box[T]:
-    v: T
-    n: Int
+    v T
+    n Int
 
 type Pair[A, B]:
-    first: A
-    second: B
+    first A
+    second B
 
-fn wrap[T](value: T) Box[T]:
+fn wrap[T](value T) Box[T]:
     return Box[T](v: value, n: 1)
 
-fn unwrap[T](b: Box[T]) T:
+fn unwrap[T](b Box[T]) T:
     return b.v
 
-fn bump(b: Box[Int]) Int:
+fn bump(b Box[Int]) Int:
     return b.v + b.n
 
 test "generic records":

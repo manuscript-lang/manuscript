@@ -107,7 +107,7 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 - `--format html` includes all views in one page and accepts `--diff`; omit `--view` and `--entity`. Type hints are capped at 200,000 identifiers. Individual views bound their display (about 40 overview nodes, 60 call nodes and 14 sequence lifelines); the map shows omitted counts and lets you navigate to a different part of the program.
 - `--json` emits a versioned document with `view`, `entity` and `tree` (the default view is `calls`).
   - Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted` and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap.
-  - Unless `--diff` is given, `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o: Order, i: Item) Order`), not the generic tree. `var` may change the argument; use JSON or Mermaid for the checked ownership modes.
+  - Unless `--diff` is given, `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o Order, i Item) Order`), not the generic tree. `var` may change the argument; use JSON or Mermaid for the checked ownership modes.
   - `--format mermaid` renders a view for people: `types` becomes a class diagram with composition arrows, and `ownership` a flow colored by borrow mode (unless `--diff` is given). `--json` and `--format` cannot be combined.
 
 ## Review report
@@ -326,7 +326,7 @@ Format code as paragraphs: keep related steps together and put space between new
 Expression layout uses a soft limit of 88 columns:
 
 - Calls and signatures stay on one line when they fit (including the return type, excluding callback bodies). An anonymous function with a multi-statement suite always expands its call.
-- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(fn: return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
+- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(() => return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
 - Lists, grouped imports, and maps stay compact when they fit. Wrapped lists pack simple elements into rows; nested groups, expressions, and commented items get their own lines.
 - When a group expands, each item goes on its own line, indented one level, closing delimiter aligned with the opening line. An authored multiline group collapses if it fits and has no comment or suite.
 - Long conditions break at the lowest-precedence logical operator, keeping comparison operands together. Long arithmetic and member chains gain continuation lines, with grouping parentheses where needed.

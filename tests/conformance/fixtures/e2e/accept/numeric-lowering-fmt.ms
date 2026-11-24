@@ -4,13 +4,13 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Counter:
-    value: Int
+    value Int
 
-fn step(var counter: Counter, value: Int) Int:
+fn step(var counter Counter, value Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
-fn identity[T](value: T) T:
+fn identity[T](value T) T:
     return value
 
 test "typed operands retain evaluation order and generic boundaries":
@@ -22,7 +22,7 @@ test "typed operands retain evaluation order and generic boundaries":
     value += 1
     value -= 1
 
-    snapshot := fn() Int: return value * 2
+    snapshot := fn() Int => return value * 2
     expect_false(snapshot() != 18 or value != 9)?
     expect_equal(-9223372036854775808 % -1, 0)?
     expect_false(-7 / 2 != -3 or - 7 % 3 != -1)?

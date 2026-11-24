@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn helper() Int: 1
+fn helper() Int 1
 let (
     A = 1
     B: Int   = A+1

@@ -3,51 +3,45 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn say(text: String) Void:
-	_ignored := stdout().write(text)
+fn say(text String) Void:
+	_ignored := stdout().write(text.clone())
 
-fn k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Void:
+fn k_fma(a List[Float32], b List[Float32], var out List[Float32], n Int) Void:
 	for i in 0..n:
 		out[i] = a[i] * b[i] + 1.5
 
-fn k_scale64(a: List[Float], var out: List[Float], n: Int) Void:
+fn k_scale64(a List[Float], var out List[Float], n Int) Void:
 	for i in 0..n:
 		out[i] = a[i] * 2.0
 
-fn k_intadd(a: List[Int], b: List[Int], var out: List[Int], n: Int) Void:
+fn k_intadd(a List[Int], b List[Int], var out List[Int], n Int) Void:
 	for i in 0..n:
 		out[i] = a[i] + b[i]
 
-fn k_stencil(a: List[Float32], var out: List[Float32], n: Int) Void:
+fn k_stencil(a List[Float32], var out List[Float32], n Int) Void:
 	for i in 0..n - 1:
 		out[i] = a[i] + a[i + 1]
 
-fn k_base(
-	w: List[Float32],
-	x: List[Float32],
-	var out: List[Float32],
-	base: Int,
-	n: Int,
-) Void:
+fn k_base(w List[Float32], x List[Float32], var out List[Float32], base Int, n Int) Void:
 	for i in 0..n:
 		out[i] = w[base + i] * x[i]
 
-fn k_clamp(a: List[Float32], var out: List[Float32], n: Int) Void:
+fn k_clamp(a List[Float32], var out List[Float32], n Int) Void:
 	for i in 0..n:
 		v := a[i]
 		out[i] = if v < 0.0: 0.0 else: (if v > 1.0: 1.0 else: v)
 
-fn k_conv(a: List[Int], var out: List[Float], n: Int) Void:
+fn k_conv(a List[Int], var out List[Float], n Int) Void:
 	for i in 0..n:
 		out[i] = a[i].to_float() * 0.5
 
-fn k_dot(a: List[Float32], b: List[Float32], n: Int) Float32:
-	var acc: Float32 = 0.0
+fn k_dot(a List[Float32], b List[Float32], n Int) Float32:
+	var acc Float32 = 0.0
 	for i in 0..n:
 		acc += a[i] * b[i]
 	return acc
 
-fn report(name: String, flops: Int, reps: Int, t: Int) Void:
+fn report(name String, flops Int, reps Int, t Int) Void:
 	say(f"{name} {(flops * reps).to_float() / t.to_float()}\n")
 
 fn main() Void:
@@ -102,7 +96,7 @@ fn main() Void:
 	report("conv", n, reps, monotonic().difference(t).to_nanoseconds())
 	t = monotonic()
 
-	var s: Float32 = 0.0
+	var s Float32 = 0.0
 	for _r in 0..reps:
 		s += k_dot(f1, f2, n)
 	report("dot32", 2 * n, reps, monotonic().difference(t).to_nanoseconds())

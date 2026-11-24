@@ -23,9 +23,9 @@ import (
 	expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
 )
 
-fn expect_fs_error[T](outcome: T!, expected: Error) Void!:
+fn expect_fs_error[T](outcome T!, expected Error) Void!:
 	match outcome:
-		ok(_): return error(Error("filesystem misuse succeeded"))
+		ok(_) => return error(Error("filesystem misuse succeeded"))
 		error(cause):
 			// A failure names the path after the status words: "filesystem: <failure>:
 			// <path>".
@@ -44,7 +44,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 
 	all := GlobOptions(patterns: ["**/*.{txt,md}"])
 	matches := glob(path: root, options: all.clone()) | expect_ok?
-	matches.map(fn e: e.path.clone()) | expect_equal(["a.txt", "b.md", "sub/c.txt"])?
+	matches.map(e => e.path.clone()) | expect_equal(["a.txt", "b.md", "sub/c.txt"])?
 	(
 		glob(
 			path: root,
@@ -67,7 +67,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 			glob(
 				path: root,
 				options: options.clone(),
-				exclude: fn(entry: PathEntry) Bool: entry.path == "missing.txt"
+				exclude: fn(entry PathEntry) Bool => entry.path == "missing.txt"
 			)
 		)?
 	)
@@ -194,13 +194,13 @@ test "file handles positional I/O stream adapters and closed errors":
 	handle.close()?
 
 test "empty paths are rejected instead of resolving to the working directory":
-	invalid: Void! := error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
+	invalid Void! := error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
 	remove(path: "", recursive: true) | expect_equal(invalid)?
 	create_directory(path: "", recursive: true) | expect_equal(invalid)?
 	write_file(path: "", data: "x", replace: true).wait() | expect_equal(invalid)?
 
 	match stat(path: ""):
-		ok(_): return fail("stat empty path")
+		ok(_) => return fail("stat empty path")
 		error(cause):
 			expect_equal(cause, Error("filesystem: invalid input", kind: "EINVAL"))?
 
@@ -212,9 +212,9 @@ test "rename and copy failures name source and destination":
 	expected := f"filesystem: file or directory not found: {from} -> {to}"
 
 	match rename(from, to):
-		ok(_): return fail("rename of a missing file succeeded")
-		error(cause): cause.message | expect_equal(expected)?
+		ok(_) => return fail("rename of a missing file succeeded")
+		error(cause) => cause.message | expect_equal(expected)?
 
 	match copy(from, to):
-		ok(_): return fail("copy of a missing file succeeded")
-		error(cause): cause.message | expect_equal(expected)?
+		ok(_) => return fail("copy of a missing file succeeded")
+		error(cause) => cause.message | expect_equal(expected)?

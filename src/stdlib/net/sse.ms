@@ -9,58 +9,58 @@ import (
 // One dispatched event, with the `message` type used when no `event:` field was sent.
 export type SseEvent:
 	// The event type from the last `event:` field, or `message`.
-	event: String
+	event String
 	// Every `data:` line of the event joined with LF; a bare `data:` line gives an
 	// empty line.
-	data: String
+	data String
 	// The last event ID in effect when the event was dispatched, or null if the stream
 	// never set one.
-	id: String?
+	id String?
 	// The latest valid `retry:` reconnection time in milliseconds sent up to this
 	// event, or null if the stream sent null.
-	retry: Int?
+	retry Int?
 
 // Optional byte limits for one line and for one event. A supplied limit must be
 // positive.
 export type SseLimits:
 	// Largest line in bytes, excluding its line ending; null sets no limit.
-	max_line_bytes: Int?
+	max_line_bytes Int?
 	// Largest total of all field lines in one event, excluding line endings and
 	// comments; null sets no limit.
-	max_event_bytes: Int?
+	max_event_bytes Int?
 
 // Internal transform state behind `sse_events`.
 type Decoder:
 	// Limits fixed when the decoder was created.
-	limits: SseLimits
+	limits SseLimits
 	// Internal: bytes of the line being assembled.
-	line: BytesBuilder
+	line BytesBuilder
 	// Internal: length of the line being assembled.
-	line_bytes: Int
+	line_bytes Int
 	// Internal: bytes counted against the event budget.
-	event_bytes: Int
+	event_bytes Int
 	// Internal: True when the previous byte was CR, so an immediately following LF is
 	// part of the same ending.
-	carriage: Bool
+	carriage Bool
 	// Internal: True once the first line has been assembled and the byte order mark has
 	// been considered.
-	started: Bool
+	started Bool
 	// Internal: True while field lines have arrived since the last blank line.
-	open_block: Bool
+	open_block Bool
 	// Internal: the pending `event:` value, empty when unset.
-	event_type: String
+	event_type String
 	// Internal: the pending `data:` lines.
-	data: List[String]
+	data List[String]
 	// Internal: True after `finish`.
-	closed: Bool
+	closed Bool
 	// The latest valid `retry:` value in milliseconds, or null if the stream sent null.
-	retry_ms: Int?
+	retry_ms Int?
 	// Internal: the last event ID, which persists across events.
-	last_id: String?
+	last_id String?
 	// Internal: the first failure, repeated by later calls.
-	failure: Error?
+	failure Error?
 
-fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
+fn var Decoder.step(move value Bytes, var out List[SseEvent]) Void!:
 	var events = List[SseEvent]()
 	failure := self.failure
 	if failure != null: return error(failure.clone())
@@ -106,7 +106,7 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 
 	for event in events: out.append(event.clone())
 
-fn var Decoder.finish(var out: List[SseEvent]) Void!:
+fn var Decoder.finish(var out List[SseEvent]) Void!:
 	failure := self.failure
 	if failure != null: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
@@ -118,7 +118,7 @@ fn var Decoder.finish(var out: List[SseEvent]) Void!:
 		return error(Error("SSE stream ended inside an event", kind: "EBADMSG"))
 
 // Buffers the unterminated tail of a chunk as part of the line being assembled.
-fn var Decoder.hold(segment: Bytes) Void!:
+fn var Decoder.hold(segment Bytes) Void!:
 	self.line_bytes += segment.length()
 	if exceeds(self.line_bytes, self.limits.max_line_bytes): return error(
 		Error("SSE limit exceeded", kind: "EOVERFLOW")
@@ -126,7 +126,7 @@ fn var Decoder.hold(segment: Bytes) Void!:
 
 	self.line.append_bytes(segment)
 
-fn var Decoder.apply(line: String) Void:
+fn var Decoder.apply(line String) Void:
 	if line.starts_with("data:"):
 		self.data.append(value_after(line, 5, line.starts_with("data: ")).clone())
 	else if line.starts_with("event:"):
@@ -138,7 +138,7 @@ fn var Decoder.apply(line: String) Void:
 	else: self.apply_other(line)
 
 // Lines without a colon name a field with an empty value; other names are ignored.
-fn var Decoder.apply_other(line: String) Void:
+fn var Decoder.apply_other(line String) Void:
 	if line.index_of(":") != null: return
 
 	if line == "data": self.data.append("")
@@ -147,13 +147,13 @@ fn var Decoder.apply_other(line: String) Void:
 	else if line == "retry": self.reconnect("")
 
 // An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
-fn var Decoder.identify(value: String) Void:
+fn var Decoder.identify(value String) Void:
 	if value.to_bytes().contains("\u{0}".to_bytes()): return
 
 	self.last_id = value.clone()
 
 // Only ASCII digits form a retry time; overflow and signs are ignored.
-fn var Decoder.reconnect(value: String) Void:
+fn var Decoder.reconnect(value String) Void:
 	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return
 
 	milliseconds := value.parse_int()
@@ -169,16 +169,16 @@ must be positive, otherwise the first read fails with `EINVAL`. Closing the resu
 */
 // ms: effect std.net.connect
 export fn sse_events(
-	move input: ReadStream[Bytes],
-	limits: SseLimits = SseLimits(),
+	move input ReadStream[Bytes],
+	limits SseLimits = SseLimits(),
 ) ReadStream[SseEvent]:
-	var failure: Error? = null
+	var failure Error? = null
 	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
 		failure = Error("SSE invalid input", kind: "EINVAL")
 	return through[Bytes, SseEvent](
 		input,
 		Decoder(
-			limits: limits,
+			limits: limits.clone(),
 			retry_ms: null,
 			last_id: null,
 			line: BytesBuilder(),
@@ -194,13 +194,13 @@ export fn sse_events(
 		),
 	)
 
-fn positive(limit: Int?) Bool:
+fn positive(limit Int?) Bool:
 	maximum := limit
 	if maximum != null: return maximum > 0
 
 	return true
 
-fn exceeds(value: Int, limit: Int?) Bool:
+fn exceeds(value Int, limit Int?) Bool:
 	maximum := limit
 	if maximum != null: return value > maximum
 
@@ -209,11 +209,11 @@ fn exceeds(value: Int, limit: Int?) Bool:
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any
 // bytes held from earlier chunks.
 fn complete(
-	var decoder: Decoder,
-	chunk: Bytes,
-	start: Int,
-	end: Int,
-	var events: List[SseEvent],
+	var decoder Decoder,
+	chunk Bytes,
+	start Int,
+	end Int,
+	var events List[SseEvent],
 ) Void!:
 	if decoder.line_bytes == 0:
 		if exceeds(end - start, decoder.limits.max_line_bytes): return error(
@@ -228,11 +228,11 @@ fn complete(
 	return end_line(decoder, joined, 0, joined.length(), events)
 
 fn end_line(
-	var decoder: Decoder,
-	bytes: Bytes,
-	start: Int,
-	end: Int,
-	var events: List[SseEvent],
+	var decoder Decoder,
+	bytes Bytes,
+	start Int,
+	end Int,
+	var events List[SseEvent],
 ) Void!:
 	var from = start
 
@@ -260,11 +260,11 @@ fn end_line(
 	return ok()
 
 // The value after the colon, skipping one leading space when `spaced`.
-fn value_after(line: String, colon_end: Int, spaced: Bool) String:
+fn value_after(line String, colon_end Int, spaced Bool) String:
 	if spaced: return line.slice(colon_end + 1, line.length())
 	return line.slice(colon_end, line.length())
 
-fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Void:
+fn dispatch(var decoder Decoder, var events List[SseEvent]) Void:
 	if not decoder.data.is_empty():
 		var name = decoder.event_type.clone()
 		if name == "": name = "message"

@@ -9,10 +9,10 @@ import (
 )
 
 type Token:
-	log: String
-	id: Int
-	closed: Bool = false
-	fail: Bool = false
+	log String
+	id Int
+	closed Bool = false
+	fail Bool = false
 
 fn move Token.close() Void!:
 	if not self.closed:
@@ -20,15 +20,15 @@ fn move Token.close() Void!:
 		append_file(self.log, f"close {self.id}\n").wait()?
 		if self.fail: return error(Error("close failed", kind: "ECLOSE"))
 
-fn token(log: String, id: Int, fail: Bool = false) Token:
+fn token(log String, id Int, fail Bool = false) Token:
 	append_file(log, f"acquire {id}\n").wait().get()
 	return Token(log.clone(), id, fail: fail)
 
-fn events(log: String) String:
+fn events(log String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
-fn check(log: String, action: Int) Int!:
+fn check(log String, action Int) Int!:
 	append_file(log, "check\n").wait()?
 	if action == 1: return error(Error("field failed", kind: "EBODY"))
 
@@ -37,15 +37,15 @@ fn check(log: String, action: Int) Int!:
 	return ok(42)
 
 type Pair:
-	first: Token
-	second: Token
-	code: Int
+	first Token
+	second Token
+	code Int
 
-fn direct(log: String, action: Int) Void!:
+fn direct(log String, action Int) Void!:
 	value := Pair(token(log, 1), token(log, 2), check(log, action)?)
 	append_file(log, f"body {value.code}\n").wait()?
 
-fn labeled(log: String, action: Int) Void!:
+fn labeled(log String, action Int) Void!:
 	value := Pair(
 		second: token(log, 2),
 		first: token(log, 1),
@@ -54,11 +54,11 @@ fn labeled(log: String, action: Int) Void!:
 	append_file(log, f"body {value.code}\n").wait()?
 
 type Wrapped:
-	second: Token!
-	code: Int
-	first: Token?
+	second Token!
+	code Int
+	first Token?
 
-fn wrapped(log: String, action: Int) Void!:
+fn wrapped(log String, action Int) Void!:
 	value := Wrapped(
 		first: token(log, 1),
 		second: ok(token(log, 2)),
@@ -66,28 +66,28 @@ fn wrapped(log: String, action: Int) Void!:
 	)
 	append_file(log, f"body {value.code}\n").wait()?
 
-fn default_code(log: String, action: Int) Int:
+fn default_code(log String, action Int) Int:
 	append_file(log, "default\n").wait().get()
 	if action == 2: panic("default fault")
 	return 42
 
 type Defaulted:
-	log: String
-	first: Token
-	action: Int
-	second: Token = token(log, 2)
-	code: Int = default_code(log, action)
+	log String
+	first Token
+	action Int
+	second Token = token(log, 2)
+	code Int = default_code(log, action)
 
-fn defaulted(log: String, action: Int) Void!:
+fn defaulted(log String, action Int) Void!:
 	value := Defaulted(log.clone(), token(log, 1), action)
 	append_file(log, f"body {value.code}\n").wait()?
 
 type Nested:
-	first: Pair
-	last: Token
-	code: Int
+	first Pair
+	last Token
+	code Int
 
-fn nested(log: String, action: Int) Void!:
+fn nested(log String, action Int) Void!:
 	value := Nested(
 		Pair(token(log, 1), token(log, 2), 0),
 		token(log, 3),
@@ -95,16 +95,16 @@ fn nested(log: String, action: Int) Void!:
 	)
 	append_file(log, f"body {value.code}\n").wait()?
 
-fn moved_binding(log: String, action: Int) Void!:
+fn moved_binding(log String, action Int) Void!:
 	_outer := token(log, 0)
 	first := token(log, 1)
 	value := Pair(first, token(log, 2), check(log, action)?)
 	append_file(log, f"body {value.code}\n").wait()?
 
-fn inspect(first: Token, value: Pair) Int:
+fn inspect(first Token, value Pair) Int:
 	return first.id + value.code
 
-fn outer_temporary(log: String) Int!:
+fn outer_temporary(log String) Int!:
 	return ok(
 		inspect(
 			token(log, 0),
@@ -112,10 +112,10 @@ fn outer_temporary(log: String) Int!:
 		)
 	)
 
-fn failing_cleanup(log: String) Void!:
+fn failing_cleanup(log String) Void!:
 	_value := Pair(token(log, 1), token(log, 2, fail: true), check(log, 1)?)
 
-fn wait_for_check(log: String) Void!:
+fn wait_for_check(log String) Void!:
 	for attempt in 0..1000:
 		if events(log).contains("check\n"): return ok()
 
@@ -167,7 +167,7 @@ test "a later field fault closes earlier acquired fields repeatedly":
 	for attempt in 0..3:
 		log := f"{dir.path()}/{attempt}"
 		own := log.clone()
-		work := promise(fn: direct(own, 2))
+		work := promise(() => direct(own, 2))
 		cause := work.wait() | expect_error?
 		expect_equal(cause.kind, "EIO")?
 		expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
@@ -184,7 +184,7 @@ test "resource field defaults transfer to the completed holder":
 test "a faulting default closes both provided and default resources":
 	dir := temporary("constructor-default-fault-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: defaulted(log, 2))
+	work := promise(() => defaulted(log, 2))
 	void work.wait() | expect_error?
 	expect_equal(events(log), "acquire 1\nacquire 2\ndefault\nclose 2\nclose 1\n")?
 
@@ -200,7 +200,7 @@ test "nested acquired holders close depth first on an error":
 test "moving a prior binding into a partial holder preserves one owner":
 	dir := temporary("constructor-move-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: moved_binding(log, 2))
+	work := promise(() => moved_binding(log, 2))
 	void work.wait() | expect_error?
 	expect_equal(
 		events(log),
@@ -219,7 +219,7 @@ test "pending constructor fields close before an older call temporary":
 test "a temporary close failure faults and still closes other fields":
 	dir := temporary("constructor-close-fault-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: failing_cleanup(log))
+	work := promise(() => failing_cleanup(log))
 	cause := work.wait() | expect_error?
 	expect_equal(cause.kind, "EIO")?
 	expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
@@ -230,7 +230,7 @@ test "cancelling a later field closes acquired fields once":
 	for attempt in 0..2:
 		log := f"{dir.path()}/{attempt}"
 		own := log.clone()
-		work := promise(fn: direct(own, 3))
+		work := promise(() => direct(own, 3))
 		wait_for_check(log)?
 		work.cancel()
 

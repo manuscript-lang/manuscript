@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/lsp/defaults_test.go:9 TestDefaultClosureAssignmentReferencesAndListHints
 fn answer(
-    value: Int = (
+    value Int = (
         fn() Int:
             var current = 0
             current = current + 1

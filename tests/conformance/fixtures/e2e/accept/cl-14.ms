@@ -4,22 +4,22 @@
 import expect_equal from "@std/test/test.ms"
 
 enum Problem:
-    Missing(reason: String)
+    Missing(reason String)
 
 enum OtherProblem:
-    Invalid(reason: String)
+    Invalid(reason String)
 
-fn checked(value: Int) Int!Problem:
+fn checked(value Int) Int!Problem:
     if value < 0:
         return error(Problem.Missing("negative"))
 
     return ok(value)
 
-fn doubled(value: Int) Int!Problem:
+fn doubled(value Int) Int!Problem:
     accepted := checked(value)?
     return ok(accepted * 2)
 
-fn summarize(outcome: Int!Problem) Int:
+fn summarize(outcome Int!Problem) Int:
     return outcome.clone().get_or(-1)
 
 test "unchanged propagated error":

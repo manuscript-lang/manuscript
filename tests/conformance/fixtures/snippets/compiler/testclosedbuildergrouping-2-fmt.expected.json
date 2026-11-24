@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "read := fn() String: b.build()\n"
+    "fmt": "read := fn() String => b.build()\n"
   }
 }

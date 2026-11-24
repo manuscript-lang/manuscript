@@ -10,7 +10,7 @@ To load a file straight into the environment use `load_environment` from `@std/o
 
 Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"8080"` and `NAME` as `"my app"`.
 */
-export fn parse_dotenv(text: String) Map[String, String]!:
+export fn parse_dotenv(text String) Map[String, String]!:
 	var out = Map[String, String]()
 
 	// Split on LF alone: a CR before it stays until the parser knows it is outside a
@@ -84,7 +84,7 @@ Parses INI text into sections of settings, both in file order. Keys before the f
 
 Example: `parse_ini("[db]\nhost = localhost\nport: 5432")` holds `ini["db"]["port"]` as `"5432"`.
 */
-export fn parse_ini(text: String) Map[String, Map[String, String]]!:
+export fn parse_ini(text String) Map[String, Map[String, String]]!:
 	var sections = Map[String, Map[String, String]]()
 	sections.add("", Map[String, String]())
 
@@ -120,7 +120,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 
 // The text before an inline comment: a `#` at the start or after a space or tab. Other
 // `#` characters belong to the value.
-fn bare_value(value: String) String:
+fn bare_value(value String) String:
 	var previous = " "
 	var at = 0
 
@@ -133,7 +133,7 @@ fn bare_value(value: String) String:
 
 	return value.trim()
 
-fn valid_name(name: String) Bool:
+fn valid_name(name String) Bool:
 	if name.is_empty(): return false
 
 	var position = 0
@@ -147,7 +147,7 @@ fn valid_name(name: String) Bool:
 
 	return true
 
-fn first_assignment(entry: String) Int?:
+fn first_assignment(entry String) Int?:
 	eq := entry.index_of("=")
 	colon := entry.index_of(":")
 	if eq == null: return colon
@@ -155,7 +155,7 @@ fn first_assignment(entry: String) Int?:
 
 	return (eq).min(colon)
 
-fn ini_value(value: String) String:
+fn ini_value(value String) String:
 	trimmed := value.trim()
 
 	// The quote is one ASCII byte; any other first scalar is not a quote.
@@ -194,7 +194,7 @@ fn ini_value(value: String) String:
 
 // Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in
 // `details`.
-fn config_error(line: Int, reason: String) Error:
+fn config_error(line Int, reason String) Error:
 	return Error(
 		f"config: line {line}: {reason}",
 		kind: "EBADMSG",

@@ -3,18 +3,18 @@
 // conform: origin=tests/e2e/testdata/accept/direct-calls-fill-omitted-defaults.ms
 import expect_true from "@std/test/test.ms"
 
-fn scaled(base: Int, factor: Int = 2, label: String = "x") String: f"{label}{base * factor}"
+fn scaled(base Int, factor Int = 2, label String = "x") String => f"{label}{base * factor}"
 
-fn chained(base: Int, plus: Int = base + 1) Int: base + plus
+fn chained(base Int, plus Int = base + 1) Int => base + plus
 
-fn maybe(value: Int, extra: Int?) Int:
+fn maybe(value Int, extra Int?) Int:
     match extra:
         number:
             return value + number
         null:
             return value
 
-fn countdown(n: Int, step: Int = 1) Int:
+fn countdown(n Int, step Int = 1) Int:
     if n <= 0:
         return 0
 

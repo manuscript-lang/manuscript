@@ -63,14 +63,14 @@ test "a read cancelled by its timeout leaves the stream closable":
 	expect_true(within(client.input, 50.milliseconds()).is_error())?
 	client.close()?
 
-fn accept_all(listener: Listener) Void!:
+fn accept_all(listener Listener) Void!:
 	while true:
 		_connection := listener.accept().wait()?
 
 test "a promise that accepts on a listener runs where the listener lives":
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	_accepting := promise(fn: accept_all(listener))
+	_accepting := promise(() => accept_all(listener))
 
 	// Accepts and connects register their connections with one network, which is not
 	// thread
@@ -163,13 +163,13 @@ test "typed addresses preserve normalization and reject zones":
 	expect_ip_error("fe80::1%eth0")?
 	expect_false((contains_ip(parse_cidr("::ffff:192.0.2.0/120")?, ip)?))?
 
-fn expect_ip_error(input: String) Void!:
+fn expect_ip_error(input String) Void!:
 	expect_equal(
 		(expect_error(parse_ip(input))?),
 		Error("network: invalid data", kind: "EBADMSG"),
 	)?
 
-fn accept_one(l: Listener) Int:
+fn accept_one(l Listener) Int:
 	r := l.accept(2.seconds()).wait()
 
 	if r.is_ok():
@@ -181,14 +181,14 @@ fn accept_one(l: Listener) Int:
 test "a promise accepts on a listener it owns":
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	a := promise(fn: ok(accept_one(listener)))
+	a := promise(() => ok(accept_one(listener)))
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	expect_equal(a.wait()?, 1)?
 	client.close()?
 
 // Accepts one connection and reads from it, all inside the promise that owns the
 // connection.
-fn accept_and_read(listener: Listener) Int:
+fn accept_and_read(listener Listener) Int:
 	var conn = listener.accept(2.seconds()).wait().get()
 	r := within(conn.input, 2.seconds())
 	if r.is_ok() and (r.get() != null): return 1
@@ -198,7 +198,7 @@ fn accept_and_read(listener: Listener) Int:
 test "a promise reads a connection it owns":
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	a := promise(fn: ok(accept_and_read(listener)))
+	a := promise(() => ok(accept_and_read(listener)))
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	client.output.write("xy".to_bytes())?
 	client.output.flush()?
@@ -207,7 +207,7 @@ test "a promise reads a connection it owns":
 
 // Answers one DNS query with a single MX record: preference 10, exchange
 // mail.example.test.
-fn answer_mx(var served: DatagramSocket) Int!:
+fn answer_mx(var served DatagramSocket) Int!:
 	query := (
 		(within(served.input, 2.seconds())?)
 		or panic("called Optional.get() on null")
@@ -226,7 +226,7 @@ fn answer_mx(var served: DatagramSocket) Int!:
 	served.output.write(
 		Datagram(
 			header.concat(question).concat(record).concat(name),
-			query.address,
+			query.address.clone(),
 		)
 	)?
 	served.output.flush()?
@@ -241,7 +241,7 @@ test "resolve returns typed DNS records from the configured resolver":
 	server := bind_datagram("127.0.0.1:0")?
 	derived := with_resolver(server.address.clone())?
 	asking := promise(
-		fn: derived.resolve_dns(
+		() => derived.resolve_dns(
 			"example.test",
 			DnsKind.MX,
 			DnsOptions(timeout: 2.seconds()),

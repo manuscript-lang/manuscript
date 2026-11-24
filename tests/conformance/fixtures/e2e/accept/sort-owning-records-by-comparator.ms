@@ -3,13 +3,13 @@
 import expect_equal from "@std/test/test.ms"
 
 type Entry:
-	key: Int
-	id: Int
-	name: String
-	tags: List[String]
+	key Int
+	id Int
+	name String
+	tags List[String]
 
-fn entries(count: Int) List[Entry]:
-	var out: List[Entry] = []
+fn entries(count Int) List[Entry]:
+	var out List[Entry] = []
 	var x = 7
 
 	for i in 0..count:
@@ -25,7 +25,7 @@ fn entries(count: Int) List[Entry]:
 
 	return out
 
-fn in_order(list: List[Entry]) Bool:
+fn in_order(list List[Entry]) Bool:
 	for i in 1..list.length():
 		before := list[i - 1]
 		after := list[i]
@@ -36,7 +36,7 @@ fn in_order(list: List[Entry]) Bool:
 
 test "sorting records that own strings and lists orders by key and keeps equal keys in input order":
 	original := entries(500)
-	sorted := original.sorted(compare: fn(a: Entry, b: Entry) Int: (a.key - b.key))
+	sorted := original.sorted(compare: fn(a Entry, b Entry) Int => (a.key - b.key))
 	expect_equal(in_order(sorted), true)?
 	expect_equal(sorted.length(), 500)?
 	expect_equal(in_order(original), false)?
@@ -44,7 +44,7 @@ test "sorting records that own strings and lists orders by key and keeps equal k
 
 test "the sorted copy owns its strings and lists independently of the original":
 	original := entries(100)
-	var sorted = original.sorted(compare: fn(a: Entry, b: Entry) Int: b.key - a.key)
+	var sorted = original.sorted(compare: fn(a Entry, b Entry) Int => b.key - a.key)
 	sorted[0].tags.append("changed")
 	sorted[0].name = "renamed"
 	expect_equal(sorted[0].tags.length(), 3)?
@@ -57,7 +57,7 @@ test "the sorted copy owns its strings and lists independently of the original":
 
 test "sorting records that own data in place keeps every record":
 	var list = entries(300)
-	list.sort(compare: fn(a: Entry, b: Entry) Int: a.key - b.key)
+	list.sort(compare: fn(a Entry, b Entry) Int => a.key - b.key)
 	expect_equal(in_order(list), true)?
 
 	var ids = 0
@@ -67,11 +67,11 @@ test "sorting records that own data in place keeps every record":
 	expect_equal(list[299].tags[1], "u")?
 
 test "sorting strings longer than the inline size by compare leaves the original alone":
-	var words: List[String] = []
+	var words List[String] = []
 	for i in 0..300:
 		words.append(f"a string longer than the inline size {(i * 7919) % 1009}")
 
-	sorted := words.sorted(compare: fn(a: String, b: String) Int: a.compare(b))
+	sorted := words.sorted(compare: fn(a String, b String) Int => a.compare(b))
 	for i in 1..sorted.length():
 		expect_equal(sorted[i - 1].compare(sorted[i]) <= 0, true)?
 

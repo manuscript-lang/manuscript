@@ -5,4 +5,4 @@ fn caller() Result[Int, Error]:
         ok(value):
             operation()
             operation()
-        error(cause): operation()
+        error(cause) => operation()

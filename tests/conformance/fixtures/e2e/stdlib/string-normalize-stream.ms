@@ -6,9 +6,9 @@ import (
 )
 
 type BudgetCase:
-	form: String
-	text: String
-	expected: String
+	form String
+	text String
+	expected String
 
 test "normalization preserves all four forms and literal replacement characters":
 	expect_equal("e\u{301}".normalize("NFC").get(), "é")?

@@ -4,8 +4,8 @@
 import promise from "@std/concurrency/promise.ms"
 
 type Door:
-	id: Int
-	opened: Bool
+	id Int
+	opened Bool
 
 fn move Door.close() Void!:
 	print("close door")
@@ -17,6 +17,6 @@ fn var Door.open() Int:
 
 fn main() Void!:
 	var door = Door(id: 3, opened: false)
-	work := promise(fn: ok(door.open()))
+	work := promise(() => ok(door.open()))
 	work.cancel()
 	void work.wait()

@@ -2,14 +2,14 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn neighbours(n: Int) Int:
+fn neighbours(n Int) Int:
 	var total = 0
 	for i in 0..n:
 		for d in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
 			total += (d[0] + 2) * (d[1] + 3) * i
 	return total
 
-fn first_hit(limit: Int) Int:
+fn first_hit(limit Int) Int:
 	var i = 0
 	while i < limit:
 		for step in [3, 5, 7]:
@@ -26,14 +26,14 @@ fn breaks_and_continues() Int:
 			seen += d[0] + d[1] + i
 	return seen
 
-fn floats(n: Int) Float:
+fn floats(n Int) Float:
 	var t = 0.0
 	for i in 0..n:
 		for w in [0.5, 1.5]:
 			t += w
 	return t
 
-fn mutated_copy(n: Int) Int:
+fn mutated_copy(n Int) Int:
 	var kept = 0
 	for i in 0..n:
 		for d in [[1, 2], [3, 4]]:
@@ -42,8 +42,8 @@ fn mutated_copy(n: Int) Int:
 			kept += copy.length() + d.length()
 	return kept
 
-fn escapes(n: Int) List[List[Int]]:
-	var out: List[List[Int]] = []
+fn escapes(n Int) List[List[Int]]:
+	var out List[List[Int]] = []
 	for i in 0..n:
 		for d in [[1, 2], [3, 4]]:
 			out.append(d)
@@ -60,5 +60,5 @@ test "a table iterated in a loop gives the same results as building it each time
 test "a loop variable that changes or escapes owns its list":
 	expect_equal(mutated_copy(3), 30)?
 	expect_equal(escapes(2), [[1, 2], [3, 4], [1, 2], [3, 4]])?
-	closure_total := [1, 2, 3].map(fn x: x + 1).filter(fn x: x > 0).sum()
+	closure_total := [1, 2, 3].map(x => x + 1).filter(x => x > 0).sum()
 	expect_equal(closure_total, 9)?

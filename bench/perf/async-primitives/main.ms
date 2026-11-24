@@ -16,36 +16,36 @@ import (
 	monotonic, nanoseconds, sleep from "@std/time.ms",
 )
 
-fn work(a: Int) Int!:
+fn work(a Int) Int!:
 	return ok(a * 2 + 1)
 
-fn run_inline(n: Int) Int:
+fn run_inline(n Int) Int:
 	var total = 0
 
 	for i in 0..n:
-		p := promise[Int](fn: work(i))
+		p := promise[Int](() => work(i))
 		total += p.wait().get()
 
 	return total
 
-fn run_here(n: Int) Int:
+fn run_here(n Int) Int:
 	var total = 0
 
 	for i in 0..n:
 		p := promise[Int](
-			fn: work(i),
-			options: PromiseOptions(placement: Placement.Here)
+			() => work(i),
+			options: PromiseOptions(placement: Placement.Here),
 		)
 		total += p.wait().get()
 
 	return total
 
-fn run_batch(n: Int, here: Bool) Int:
+fn run_batch(n Int, here Bool) Int:
 	var total = 0
 	var done = 0
 
 	while done < n:
-		var promises: List[Promise[Int]] = []
+		var promises List[Promise[Int]] = []
 
 		for i in 0..64:
 			value := done + i
@@ -53,14 +53,14 @@ fn run_batch(n: Int, here: Bool) Int:
 			if here:
 				promises.append(
 					promise[Int](
-						fn: work(value),
+						() => work(value),
 						options: PromiseOptions(
 							placement: Placement.Here
-						)
+						),
 					)
 				)
 			else:
-				promises.append(promise[Int](fn: work(value)))
+				promises.append(promise[Int](() => work(value)))
 
 		for p in promises:
 			total += p.wait().get()
@@ -68,7 +68,7 @@ fn run_batch(n: Int, here: Bool) Int:
 
 	return total
 
-fn echo_pipe(requests: Pipe[Int], replies: Pipe[Int]) Void!:
+fn echo_pipe(requests Pipe[Int], replies Pipe[Int]) Void!:
 	var out = replies.writer()
 
 	while true:
@@ -79,14 +79,14 @@ fn echo_pipe(requests: Pipe[Int], replies: Pipe[Int]) Void!:
 		else:
 			return out.close()
 
-fn run_pingpong(n: Int) Int:
+fn run_pingpong(n Int) Int:
 	requests := pipe[Int](1)
 	replies := pipe[Int](1)
 	var out = requests.writer()
 	var gate = replies.writer()
 	server := promise[Void](
-		fn: echo_pipe(requests, replies),
-		options: PromiseOptions(placement: Placement.Here)
+		() => echo_pipe(requests, replies),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	var total = 0
 
@@ -101,20 +101,20 @@ fn run_pingpong(n: Int) Int:
 	server.wait().get()
 	return total
 
-fn produce(values: Pipe[Int], n: Int) Void!:
+fn produce(values Pipe[Int], n Int) Void!:
 	var out = values.writer()
 	for i in 0..n:
 		out.write(i)?
 	return out.close()
 
-fn run_stream(n: Int) Int:
+fn run_stream(n Int) Int:
 	values := pipe[Int](64)
 
 	// The gate keeps the pipe open until the producer has made its own writer.
 	var gate = values.writer()
 	writer := promise[Void](
-		fn: produce(values, n),
-		options: PromiseOptions(placement: Placement.Here)
+		() => produce(values, n),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	var total = 0
 
@@ -126,12 +126,12 @@ fn run_stream(n: Int) Int:
 	writer.wait().get()
 	return total
 
-fn run_sleep(n: Int) Int:
+fn run_sleep(n Int) Int:
 	for i in 0..n:
 		sleep(nanoseconds(0)).wait().get()
 	return n
 
-fn echo_tcp(var listener: Listener) Void!:
+fn echo_tcp(var listener Listener) Void!:
 	var conn = listener.accept().wait()?
 
 	while true:
@@ -143,12 +143,12 @@ fn echo_tcp(var listener: Listener) Void!:
 		else:
 			return conn.close()
 
-fn run_echo(n: Int) Int:
+fn run_echo(n Int) Int:
 	var listener = listen("127.0.0.1:0").get()
 	address := listener.address()
 	server := promise[Void](
-		fn: echo_tcp(listener),
-		options: PromiseOptions(placement: Placement.Here)
+		() => echo_tcp(listener),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	var client = connect(address).wait().get()
 	var total = 0

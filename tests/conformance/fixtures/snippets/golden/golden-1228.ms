@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn work(a: Int) Int:
+fn work(a Int) Int:
     b := a + 1
     c := = 3
     return b

@@ -64,7 +64,7 @@ export fn pipe[T](capacity: Int) Pipe[T]         # unchanged from the concurrenc
 `@std/io/streams.ms` (Manuscript; every function takes its input first and by move, so each one is a `|` step)
 
 ```manuscript
-export fn from_list[T](items: List[T]) ReadStream[T]
+export fn from_list[T](items List[T]) ReadStream[T]
 export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]
 export fn map[T, U](input: ReadStream[T], f: fn(T) U) ReadStream[U]
 export fn filter[T](input: ReadStream[T], keep: fn(T) Bool) ReadStream[T]

@@ -11,12 +11,12 @@ Save as `callback.ms` and run `ms run callback.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
-fn apply(value: Int, transform: fn(Int) Int) Int:
+fn apply(value Int, transform fn(Int) Int) Int:
     return transform(value)
 
 fn main() Int:
     offset := 1
-    decrement := fn(value: Int) Int:
+    decrement := fn(value Int) Int:
         return value - offset
     print(apply(3, decrement))
     return 0
@@ -34,62 +34,62 @@ Function types name no parameters. A parameter the function changes in place is 
 
 ## Function type compatibility
 
-Parameter types in order, their `var` and `move` markers, and the result type are function-type identity. Compatibility is invariant except for one adaptation: a function that only reads a parameter may stand in where one that changes it (`var`) is expected ([changing parameters](#changing-parameters)); `move` always matches exactly. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
+Parameter types in order, their `var` and `move` markers, and the result type are function-type identity. Compatibility is invariant except for one adaptation: a function that only reads a parameter may stand in where one that changes it (`var`) is expected ([changing parameters](#changing-parameters)); `move` always matches exactly. Parameter names are not part of it: `fn f(amount Int) Int` and `fn g(value Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
-<!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","context":"fn apply(value: Int, transform: fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","context":"fn apply(value Int, transform fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
-fn subtract_one(amount: Int) Int:
+fn subtract_one(amount Int) Int:
     return amount - 1
 
 fn adapt() Void:
-    ok: fn(Int) Int := subtract_one
+    ok fn(Int) Int := subtract_one
     // Rejected: the result type differs.
-    invalid: fn(Int) String := subtract_one
+    invalid fn(Int) String := subtract_one
     result := apply(value: 3, transform: ok)
 ```
 
-An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `increment: fn(Int) Int = fn item: item + 1` is called as `increment(3)`.
+An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `increment fn(Int) Int = item => item + 1` is called as `increment(3)`.
 
 - An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Void`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.
 - A generic function must be instantiated to be a value: `identity[Int]`, not bare `identity`.
-- A method that takes its receiver (`fn move T.m`, or one whose body keeps `self`) cannot be used as a value: the value could be called again, and each call would need its own receiver. Write the copy in a closure (`fn: item.clone().listed()`), or call the method.
+- A method that takes its receiver (`fn move T.m`) cannot be used as a value: the value could be called again, and each call would need its own receiver. Write the copy in a closure (`() => item.clone().listed()`), or call the method.
 - A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a moving parameter: `find := re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
 - An anonymous function is its own boundary for `return`, `?`, `break`, and `continue`.
 
 ## Changing parameters
 
-A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value passes the argument plainly, exactly as a direct call does (the type says it is changed), and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way.
+A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values List[Int]) Void` has type `fn(var List[Int]) Void`. A call through the value passes the argument plainly, exactly as a direct call does (the type says it is changed), and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way.
 
 `fn(List[Int]) Void` and `fn(var List[Int]) Void` are different types:
 
-- A function that only reads a parameter may be used where one that may change it is expected. `apply(fn(xs: List[Int]): void, values)` is accepted, and the callee's `var` argument is passed to it as a plain read.
+- A function that only reads a parameter may be used where one that may change it is expected. `apply(fn(xs List[Int]): void, values)` is accepted, and the callee's `var` argument is passed to it as a plain read.
 - The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
 
-A function that takes ownership of a parameter says so in its type: `fn keep(move item: Item) Int` has type `fn(move Item) Int`. A call through the value hands the argument over, so the caller's name is dead after it.
+A function that takes ownership of a parameter says so in its type: `fn keep(move item Item) Int` has type `fn(move Item) Int`. A call through the value hands the argument over, so the caller's name is dead after it.
 
-- **Anonymous functions** take `move` from the expected type, or declare it as `fn move item: ...`. They then own the argument and may keep it, even a resource. One that only reads it drops the argument (closing a resource) when it returns.
+- **Anonymous functions** take `move` from the expected type, or declare it as `(move item) => ...`. They then own the argument and may keep it, even a resource. One that only reads it drops the argument (closing a resource) when it returns.
 - **Reading is accepted where `move` is expected.** A function that only reads a parameter may stand in for `fn(move T)`: the call drops the argument when it returns.
-- **Keeping is not accepted where borrowing is expected.** A named function that keeps a parameter, used where the function type borrows it (`fn(T)`), would need a hidden copy of every argument. Write the copy in a closure instead: `fn x: keep(x.clone())`.
+- **Keeping is not accepted where borrowing is expected.** A named function that keeps a parameter, used where the function type borrows it (`fn(T)`), would need a hidden copy of every argument. Write the copy in a closure instead: `x => keep(x.clone())`.
 
 See [moving into a function](../types/references.md#moving-into-a-function).
 
-`List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list.
+`List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each((var s) => s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list.
 
 The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`each := scores.for_each`); call it, or write a closure.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn push_one(var values: List[Int]) Void:
+fn push_one(var values List[Int]) Void:
     values.append(1)
 
-fn apply(change: fn(var List[Int]) Void, var values: List[Int]) Void:
+fn apply(change fn(var List[Int]) Void, var values List[Int]) Void:
     change(values)
 
 fn changed() List[Int]:
-    var values: List[Int] = []
+    var values List[Int] = []
     apply(push_one, values)
-    apply(fn(var xs: List[Int]): xs.append(2), values)
+    apply(fn(var xs List[Int]) => xs.append(2), values)
     return values
 ```
 
@@ -120,7 +120,7 @@ A closure that is called only in the function that made it (including a callback
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn total(values: List[Int]) Int:
+fn total(values List[Int]) Int:
     var sum = 0
     values.for_each(fn value:
         sum += value
@@ -141,10 +141,10 @@ A bound method keeps its receiver by the same rules. A method that changes its r
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Counter:
-    read: fn() Int
+    read fn() Int
 
-fn counter(values: List[Int]) Counter:
-    return Counter(read: fn: values.length())
+fn counter(values List[Int]) Counter:
+    return Counter(read: () => values.length())
 
 fn total() Int:
     values := [1, 2]
@@ -161,7 +161,7 @@ Open a resource inside the callback that uses it:
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
-fn notes_reader(path: String) fn() Bytes!:
+fn notes_reader(path String) fn() Bytes!:
     return fn:
         file := open(path: path)?
         return file.read_file(max_bytes: 1048576)
@@ -176,7 +176,7 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn names() List[String]:
-    return [1, 2].map(fn value: value.to_string())
+    return [1, 2].map(value => value.to_string())
 ```
 
 The list supplies `Int` for `value`, and the expected `List[String]` supplies the callback result. Other arguments may establish callback inputs in any written order; callbacks are revisited as context appears, and runtime order is unchanged. An unambiguous expected result may establish generic arguments first ([inference](../types/generics.md#inference-from-arguments)). A Result context supplies the error type while the body gives the success type. Otherwise add a specialization or annotation.

@@ -5,4 +5,4 @@ import FileHandle from "@std/os/fs.ms"
 import Connection from "@std/net/net.ms"
 
 type Val:
-    val: Int
+    val Int

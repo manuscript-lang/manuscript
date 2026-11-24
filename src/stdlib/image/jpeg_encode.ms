@@ -59,10 +59,10 @@ jpeg_ac_chroma_values := [
 
 // The Huffman code and its bit length for each of the 256 possible symbols.
 type JpegCodes:
-	code: List[Int]
-	size: List[Int]
+	code List[Int]
+	size List[Int]
 
-fn jpeg_codes(counts: List[Int], values: List[Int]) JpegCodes:
+fn jpeg_codes(counts List[Int], values List[Int]) JpegCodes:
 	var code = jpeg_zeros(256)
 	var size = jpeg_zeros(256)
 	var next = 0
@@ -80,11 +80,11 @@ fn jpeg_codes(counts: List[Int], values: List[Int]) JpegCodes:
 	return JpegCodes(code, size)
 
 type JpegWriter:
-	out: BytesBuilder
-	acc: Int
-	count: Int
+	out BytesBuilder
+	acc Int
+	count Int
 
-fn var JpegWriter.put(code: Int, size: Int) Void:
+fn var JpegWriter.put(code Int, size Int) Void:
 	self.acc = bit_or(shift_left(self.acc, size), code)
 	self.count += size
 
@@ -100,7 +100,7 @@ fn var JpegWriter.put(code: Int, size: Int) Void:
 fn var JpegWriter.align() Void:
 	if self.count > 0: self.put(shift_left(1, 8 - self.count) - 1, 8 - self.count)
 
-fn bit_length(value: Int) Int:
+fn bit_length(value Int) Int:
 	var v = if value < 0: 0 - value else: value
 	var n = 0
 
@@ -112,13 +112,7 @@ fn bit_length(value: Int) Int:
 
 // Forward DCT and quantization of the 8x8 block at (x0, y0); returns 64 levels in
 // jpeg_zigzag order.
-fn jpeg_forward(
-	plane: List[Int],
-	stride: Int,
-	x0: Int,
-	y0: Int,
-	quant: List[Int],
-) List[Int]:
+fn jpeg_forward(plane List[Int], stride Int, x0 Int, y0 Int, quant List[Int]) List[Int]:
 	// The matrix is symmetric: row 7 - k is row k with the sign of odd columns flipped.
 	// So a column's sum over eight inputs is a sum over four sums (even columns) or
 	// four differences (odd columns) of mirrored inputs, half the multiplications.
@@ -170,11 +164,11 @@ fn jpeg_forward(
 	return levels
 
 fn jpeg_emit(
-	var w: JpegWriter,
-	levels: List[Int],
-	previous: Int,
-	dc: JpegCodes,
-	ac: JpegCodes,
+	var w JpegWriter,
+	levels List[Int],
+	previous Int,
+	dc JpegCodes,
+	ac JpegCodes,
 ) Void:
 	diff := levels[0] - previous
 	size := bit_length(diff)
@@ -201,22 +195,17 @@ fn jpeg_emit(
 
 	if run > 0: w.put(ac.code[0], ac.size[0])
 
-fn put16_be(var out: BytesBuilder, value: Int) Void:
+fn put16_be(var out BytesBuilder, value Int) Void:
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 	out.append(byte(bit_and(value, 255)))
 
-fn jpeg_marker(var out: BytesBuilder, marker: Int, body: Bytes) Void:
+fn jpeg_marker(var out BytesBuilder, marker Int, body Bytes) Void:
 	out.append(byte(255))
 	out.append(byte(marker))
 	put16_be(out, body.length() + 2)
 	out.append_bytes(body)
 
-fn jpeg_dht(
-	var out: BytesBuilder,
-	class_id: Int,
-	counts: List[Int],
-	values: List[Int],
-) Void:
+fn jpeg_dht(var out BytesBuilder, class_id Int, counts List[Int], values List[Int]) Void:
 	var body = BytesBuilder()
 	body.append(byte(class_id))
 	for c in counts:
@@ -227,7 +216,7 @@ fn jpeg_dht(
 
 // Scales a base quantization table for `quality` (1 through 100) with the libjpeg
 // formula, keeping each entry in 1 through 255.
-fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
+fn jpeg_scaled(base List[Int], quality Int) List[Int]:
 	scale := if quality < 50: 5000 / quality else: 200 - quality * 2
 	var table = List[Int]()
 	for zi in 0..64:
@@ -240,13 +229,13 @@ fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
 // outside 1 through 100 and a `restart_interval` outside 0 through 65535 return EINVAL,
 // and a width or height above 65535 returns EOVERFLOW.
 export fn jpeg_encode(
-	width: Int,
-	height: Int,
-	channels: Int,
-	pixels: List[UInt8],
-	quality: Int,
-	quarter: Bool,
-	restart_interval: Int,
+	width Int,
+	height Int,
+	channels Int,
+	pixels List[UInt8],
+	quality Int,
+	quarter Bool,
+	restart_interval Int,
 ) Bytes!:
 	if channels % 2 == 0:
 		return error(

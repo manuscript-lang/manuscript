@@ -13,15 +13,15 @@
         "position": {
           "file": "testrecursivetypespreserveinitializationandhash-8.ms",
           "line": 6,
-          "column": 12,
-          "offset": 250
+          "column": 11,
+          "offset": 249
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testrecursivetypespreserveinitializationandhash-8.ms:6:12: resolution: unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import it\n   |\n 6 | fn f(node: Node) Int: return hash(node)\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testrecursivetypespreserveinitializationandhash-8.ms:6:11: resolution: unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import it\n   |\n 6 | fn f(node Node) Int => return hash(node)\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

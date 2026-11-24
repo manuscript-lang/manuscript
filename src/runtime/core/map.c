@@ -189,11 +189,11 @@ uint8_t *msrt_map_slot_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc
   return ms_table_entry(m, &layout, probe.entry) + layout.value_offset;
 }
 
-/* `update(key, initial, change)`: one probe finds the entry of the owned `key`, appending it with the owned `initial` when
- * absent (an existing entry drops both), and `step` replaces the value in its slot (`env` is the closure it calls). The
+/* `update(key, initial, change)`: one probe finds the entry of the borrowed `key`, appending a copy of it with the owned
+ * `initial` when absent (an existing entry copies nothing and drops `initial`), and `step` replaces the value in its slot (`env` is the closure it calls). The
  * slot is only used before `step` returns, which may not touch the map. A `step` that exits early leaves the value it
  * was handed in the slot. */
-void msrt_map_update(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *initial,
+void msrt_map_update(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key, uint8_t *initial,
                      MsUpdateFn step, uint8_t *env) {
   kd = ms_map_key_desc(m, kd);
   const MsMapLayout layout = ms_map_layout(kd, vd);
@@ -202,12 +202,11 @@ void msrt_map_update(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8
   if (probe.entry == MS_MAP_NO_ENTRY) {
     entry = ms_table_next_entry(m, &layout);
     ms_store64(entry, probe.hash);
-    __builtin_memcpy(entry + layout.key_offset, key, layout.key_size);
+    ms_slot_copy(kd, key, entry + layout.key_offset);
     __builtin_memcpy(entry + layout.value_offset, initial, layout.value_size);
     ms_table_publish(m, probe.hash);
   } else {
     entry = ms_table_entry(m, &layout, probe.entry);
-    ms_slot_drop(kd, key);
     ms_slot_drop(vd, initial);
   }
   step(env, entry + layout.value_offset);

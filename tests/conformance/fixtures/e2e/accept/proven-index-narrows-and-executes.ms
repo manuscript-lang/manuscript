@@ -3,13 +3,13 @@
 // conform: origin=tests/e2e/testdata/accept/proven-index-narrows-and-executes.ms
 import expect_equal from "@std/test/test.ms"
 
-fn read(values: List[Int], index: Int) Int:
+fn read(values List[Int], index Int) Int:
     if index < 0 or index >= values.length():
         return -1
 
     return values[index]
 
-fn total(values: List[Int]) Int:
+fn total(values List[Int]) Int:
     var sum = 0
     var i = 0
 
@@ -19,7 +19,7 @@ fn total(values: List[Int]) Int:
 
     return sum
 
-fn nested(values: List[Int?], index: Int) Int?:
+fn nested(values List[Int?], index Int) Int?:
     if index >= 0 and index < values.length():
         return values[index]
 

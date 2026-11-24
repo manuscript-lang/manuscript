@@ -14,20 +14,84 @@
           "file": "golden-1348.ms",
           "line": 6,
           "column": 1,
-          "offset": 107
+          "offset": 106
         },
         "end": {
           "file": "golden-1348.ms",
           "line": 6,
           "column": 5,
-          "offset": 111
+          "offset": 110
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'cause' and its type; write cause Type",
+        "position": {
+          "file": "golden-1348.ms",
+          "line": 8,
+          "column": 22,
+          "offset": 182
+        },
+        "end": {
+          "file": "golden-1348.ms",
+          "line": 8,
+          "column": 23,
+          "offset": 183
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1348.ms",
+            "line": 8,
+            "column": 22,
+            "offset": 182
+          },
+          "end": {
+            "file": "golden-1348.ms",
+            "line": 8,
+            "column": 23,
+            "offset": 183
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'result' and its type; write result Type",
+        "position": {
+          "file": "golden-1348.ms",
+          "line": 12,
+          "column": 19,
+          "offset": 292
+        },
+        "end": {
+          "file": "golden-1348.ms",
+          "line": 12,
+          "column": 20,
+          "offset": 293
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1348.ms",
+            "line": 12,
+            "column": 19,
+            "offset": 292
+          },
+          "end": {
+            "file": "golden-1348.ms",
+            "line": 12,
+            "column": 20,
+            "offset": 293
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1348.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Error for Failure:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1348.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Error for Failure:\n   | ^^^^\n<DIR>/golden-1348.ms:8:22: parse: remove the ':' between 'cause' and its type; write cause Type\n   |\n 8 | fn failure_code(cause: Failure) Int:\n   |                      ^\n<DIR>/golden-1348.ms:12:19: parse: remove the ':' between 'result' and its type; write result Type\n    |\n 12 | fn classify(result: Result[Int, Failure]) Int:\n    |                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

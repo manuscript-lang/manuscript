@@ -7,33 +7,33 @@ import (
 )
 
 type Resource:
-	dir: String
-	id: Int
+	dir String
+	id Int
 
 // Close records itself by writing a marker file named after the resource.
 fn move Resource.close() Void!:
 	void write_file(f"{self.dir}/{self.id}", "closed", true).wait()
 
-fn closed(dir: String, id: Int) Bool:
+fn closed(dir String, id Int) Bool:
 	return read_file(f"{dir}/{id}").wait().is_ok()
 
-fn falls_off_the_end(move dir: String) Int:
+fn falls_off_the_end(move dir String) Int:
 	r := Resource(dir, 1)
 	return r.id
 
-fn returns_early(move dir: String, early: Bool) Int:
+fn returns_early(move dir String, early Bool) Int:
 	r := Resource(dir, 2)
 	if early: return 1
 
 	return r.id
 
-fn propagates(move dir: String) Int!Error:
+fn propagates(move dir String) Int!Error:
 	r := Resource(dir, 3)
-	failed: Int!Error := error(Error("boom"))
+	failed Int!Error := error(Error("boom"))
 	v := failed?
 	return ok(v + r.id)
 
-fn breaks_out(dir: String) Int:
+fn breaks_out(dir String) Int:
 	var i = 0
 
 	while i < 3:
@@ -44,7 +44,7 @@ fn breaks_out(dir: String) Int:
 
 	return i
 
-fn closes_by_hand_too(move dir: String) Int:
+fn closes_by_hand_too(move dir String) Int:
 	var r = Resource(dir, 20)
 	id := r.id
 	void r.close()
@@ -78,7 +78,7 @@ test "closing by hand does not stop the scope's own close":
 	expect_equal(closes_by_hand_too(dir.clone()), 20)?
 	expect_true(closed(dir, 20))?
 
-fn reassigns(move dir: String) Int:
+fn reassigns(move dir String) Int:
 	var r = Resource(dir.clone(), 30)
 	r = Resource(dir, 31)
 	return r.id
@@ -90,10 +90,10 @@ test "reassigning a resource closes the value it replaces":
 	expect_true(closed(dir, 30))?
 	expect_true(closed(dir, 31))?
 
-fn open_resource(move dir: String, id: Int) Resource:
+fn open_resource(move dir String, id Int) Resource:
 	return Resource(dir, id)
 
-fn temporary_id(move dir: String) Int:
+fn temporary_id(move dir String) Int:
 	return open_resource(dir, 40).id
 
 test "an unbound resource temporary is closed at the end of its statement":
@@ -102,7 +102,7 @@ test "an unbound resource temporary is closed at the end of its statement":
 	expect_equal(temporary_id(dir.clone()), 40)?
 	expect_true(closed(dir, 40))?
 
-fn pops_and_discards(move dir: String) Int:
+fn pops_and_discards(move dir String) Int:
 	var rs = [Resource(dir.clone(), 50), Resource(dir, 51)]
 	rs.pop()
 	return rs.length()

@@ -34,7 +34,7 @@ Every fallible call needs a keyword before it, and a call inside a call needs tw
 `expr?` is exactly `try expr`: unwraps `ok`, returns the error from the enclosing function, same error-compatibility and `Unit!` rules as [propagation](../../documentation/core-language/errors/propagation.md).
 
 ```manuscript
-fn label(s: String) String!:
+fn label(s String) String!:
     n := parse(s)?
     check(n)?
     return ok(f"n={n}")

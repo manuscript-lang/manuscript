@@ -3,23 +3,23 @@
 import expect_equal from "@std/test/test.ms"
 
 type Bucket:
-	keys: List[Int] = []
-	names: List[String] = []
-	size: Int = 0
+	keys List[Int] = []
+	names List[String] = []
+	size Int = 0
 
-fn var Bucket.add(key: Int, name: String) Void:
+fn var Bucket.add(key Int, name String) Void:
 	self.keys.append(key)
-	self.names.append(name)
+	self.names.append(name.clone())
 	self.size += 1
 
 type Shelf:
-	buckets: List[Bucket] = []
-	spare: Bucket = Bucket()
+	buckets List[Bucket] = []
+	spare Bucket = Bucket()
 
 type Store:
-	shelf: Shelf = Shelf()
+	shelf Shelf = Shelf()
 
-fn var Store.put(at: Int, key: Int) Void:
+fn var Store.put(at Int, key Int) Void:
 	self.shelf.buckets[at].add(key, f"k{key}")
 
 test "var method on a list element changes only that element":

@@ -7,8 +7,8 @@ import (
 )
 
 type Link:
-	value: Int
-	next: Link?
+	value Int
+	next Link?
 
 test "recursive record round trips through JSON":
 	text := stringify(Link(value: 2, next: Link(value: 1, next: null)))?

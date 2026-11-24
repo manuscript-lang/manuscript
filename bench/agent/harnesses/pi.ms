@@ -7,17 +7,17 @@ import (
 // UNTESTED: pi's JSON event schema is assumed; sums `usage` blocks on assistant
 // messages.
 export type Pi:
-	placeholder: Bool = true
+	placeholder Bool = true
 
-fn Pi.name() String: "pi"
+fn Pi.name() String => "pi"
 
-fn Pi.command(prompt: String, workspace: String, model: String?) List[String]:
+fn Pi.command(prompt String, workspace String, model String?) List[String]:
 	var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]
 	m := model
 	if m != null: cmd = cmd.concat(["--model", m.clone()])
 	return cmd
 
-fn Pi.parse(transcript: String) Usage:
+fn Pi.parse(transcript String) Usage:
 	var u = Usage()
 
 	for ev in events(transcript):

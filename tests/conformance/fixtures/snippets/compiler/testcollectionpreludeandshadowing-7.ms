@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/prelude_test.go:69 TestCollectionPreludeAndShadowing
 type Map[K, V]:
-    value: V
+    value V
 
 fn f() Void:
     xs := {1: 2}

@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Box[T]:
-    item: T
+    item T
 impl Error for Box[T]:
     fn message() String:
         return "box"

@@ -11,11 +11,11 @@ import (
 // CSV row names the fields. A case outside `expect-fail.txt` must match; a listed case
 // must still fail, so the list only ever shrinks.
 
-fn read(tree: FileTree, path: String) String:
+fn read(tree FileTree, path String) String:
 	return tree.read(path, null).get_or("".to_bytes()).decode_utf8() or ""
 
 // Whether the parser agrees with the suite on one case.
-fn passes(tree: FileTree, name: String) Bool:
+fn passes(tree FileTree, name String) Bool:
 	rows := parse(read(tree, f"{name}.csv"))
 	want := records(read(tree, f"{name}.json"))
 	if rows.is_error() or want.is_error(): return false
@@ -39,18 +39,18 @@ fn passes(tree: FileTree, name: String) Bool:
 
 test "csv-spectrum agrees with the parser except for the listed cases":
 	tree := files()
-	var cases: List[String] = []
+	var cases List[String] = []
 	for entry in walk(tree).get_or([]):
 		if entry.path.ends_with(".csv"):
 			cases.append(entry.path.slice(0, entry.path.length() - 4))
 
-	var failing: List[String] = []
+	var failing List[String] = []
 	for name in cases:
 		if not passes(tree, name): failing.append(name.clone())
 	failing.sort()
 
 	listed := read(tree, "expect-fail.txt")
-	var expected: List[String] = []
+	var expected List[String] = []
 
 	for line in listed.split("\n"):
 		name := line.split(" ").get_or(0, "")

@@ -25,12 +25,12 @@ test "compression formats roundtrip and enforce expanded byte budgets":
 		packed := compress(input, format)?
 		expect_equal((decompress(packed, format, 17)?), input)?
 
-		limited: Bytes! := error(
+		limited Bytes! := error(
 			Error("compression: limit exceeded", kind: "EOVERFLOW")
 		)
 		expect_equal(decompress(packed, format, 16), limited)?
 
-	malformed: Bytes! := error(Error("compression: invalid data", kind: "EBADMSG"))
+	malformed Bytes! := error(Error("compression: invalid data", kind: "EBADMSG"))
 	expect_equal(decompress(input, CompressionFormat.Gzip), malformed)?
 
 test "ZIP and TAR preserve entries and independently enforce archive limits":
@@ -43,7 +43,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
 		packed := pack(entries, format)?
 		expect_equal((unpack(packed, format)?), entries)?
 
-		limited: List[ArchiveEntry]! := error(
+		limited List[ArchiveEntry]! := error(
 			Error("archive: limit exceeded", kind: "EOVERFLOW")
 		)
 		expect_equal(unpack(packed, format, ArchiveOptions(max_entries: 1)), limited)?
@@ -54,7 +54,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
 		expect_equal(unpack(packed, format, ArchiveOptions(max_bytes: 7)), limited)?
 
 test "archives reject traversal paths":
-	invalid: Bytes! := error(Error("archive: invalid input", kind: "EINVAL"))
+	invalid Bytes! := error(Error("archive: invalid input", kind: "EINVAL"))
 
 	for path in ["../escape", "/absolute"]:
 		entries := [ArchiveEntry(path, "".to_bytes(), directory: false)]

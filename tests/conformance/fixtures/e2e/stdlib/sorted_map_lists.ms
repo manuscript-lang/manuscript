@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn filled(count: Int) SortedMap[Int, String]:
+fn filled(count Int) SortedMap[Int, String]:
 	var map = SortedMap[Int, String]()
 
 	// Insert from both ends so the chunks split in more than one place.

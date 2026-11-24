@@ -10,7 +10,7 @@ import (
 	expect_true from "@std/test/test.ms",
 )
 
-fn effect(var visits: List[Int], value: Int) Int:
+fn effect(var visits List[Int], value Int) Int:
 	visits.append(value)
 	return value
 
@@ -38,7 +38,7 @@ test "closed maps preserve lookup replacement and absence":
 	values.get_or(0, 99) | expect_equal(99)?
 
 test "closed map arguments retain written evaluation order":
-	var visits: List[Int] = []
+	var visits List[Int] = []
 	var values = Map[Int, Int]()
 	values.add(value: effect(visits, 20), key: effect(visits, 2))
 	values.add(key: effect(visits, 3), value: effect(visits, 30))
@@ -47,14 +47,14 @@ test "closed map arguments retain written evaluation order":
 	(values.get(3) or panic("called Optional.get() on null")) | expect_equal(30)?
 
 test "missing local lookups keep Optional faults":
-	(expect_fault(fn: _ignored := missing())?) | expect_contains("Optional.get")?
+	(expect_fault(() => _ignored := missing())?) | expect_contains("Optional.get")?
 
 test "escaped map results keep insertion order":
 	var values = returned_alias()
 	values.add(1, 10)
 	values.add(2, 21)
 
-	var seen = values.map(fn entry: entry.key)
+	var seen = values.map(entry => entry.key)
 	seen | expect_equal([2, 1])?
 	(values.get(2) or panic("called Optional.get() on null")) | expect_equal(21)?
 
@@ -62,5 +62,5 @@ test "captured maps read the entries present at capture":
 	var values = Map[Int, Int]()
 	values.add(1, 10)
 
-	callback := fn() Int: values.get(1) or panic("called Optional.get() on null")
+	callback := fn() Int => values.get(1) or panic("called Optional.get() on null")
 	callback() | expect_equal(10)?

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn bounded[T: Equal](r: T!) Void: return\n\nfn first(r: Error!E1) Void: bounded(r)\n"
+    "fmt": "fn bounded[T Equal](r T!) Void => return\n\nfn first(r Error!E1) Void => bounded(r)\n"
   }
 }

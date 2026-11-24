@@ -22,12 +22,44 @@
           "column": 8,
           "offset": 219
         }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'value' and its type; write value Type",
+        "position": {
+          "file": "testcoreparityrejectsinvalidcontracts-4.ms",
+          "line": 8,
+          "column": 15,
+          "offset": 274
+        },
+        "end": {
+          "file": "testcoreparityrejectsinvalidcontracts-4.ms",
+          "line": 8,
+          "column": 16,
+          "offset": 275
+        },
+        "fix": {
+          "position": {
+            "file": "testcoreparityrejectsinvalidcontracts-4.ms",
+            "line": 8,
+            "column": 15,
+            "offset": 274
+          },
+          "end": {
+            "file": "testcoreparityrejectsinvalidcontracts-4.ms",
+            "line": 8,
+            "column": 16,
+            "offset": 275
+          },
+          "replacement": ""
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcoreparityrejectsinvalidcontracts-4.ms:4:7: parse: expected ':', found '!'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body\n   |\n 4 | enum T!E:\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcoreparityrejectsinvalidcontracts-4.ms:4:7: parse: expected ':', found '!'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body\n   |\n 4 | enum T!E:\n   |       ^\n<DIR>/testcoreparityrejectsinvalidcontracts-4.ms:8:15: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 | fn wrong(value: Int!String) Int => value.get()\n   |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

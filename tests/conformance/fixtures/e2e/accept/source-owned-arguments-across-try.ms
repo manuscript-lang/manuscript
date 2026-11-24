@@ -2,17 +2,17 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn successful_value(value: Int) Int!:
+fn successful_value(value Int) Int!:
 	return ok(value)
 
-fn consume(move key: String, value: Int) Int:
+fn consume(move key String, value Int) Int:
 	keys := [key]
 	return keys.length() + value
 
 type Box:
-	text: String
+	text String
 
-fn Box.consume(value: Int) Int:
+fn Box.consume(value Int) Int:
 	boxes := [self.clone()]
 	return boxes.length() + value
 

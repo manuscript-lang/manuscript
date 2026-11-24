@@ -3,8 +3,8 @@
 // conform: origin=documentation/core-language/types/collections.md:187
 import panic from "@std/core.ms"
 
-fn positives(values: List[Int]) List[Int]:
-    var result: List[Int] = []
+fn positives(values List[Int]) List[Int]:
+    var result List[Int] = []
     for value in values:
         if value > 0:
             result.append(value)

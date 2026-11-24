@@ -3,19 +3,19 @@
 import print from "@std/core.ms"
 
 type Person:
-    name: String
-    tags: List[String]
+    name String
+    tags List[String]
 
 type Team:
-    members: List[Person]
+    members List[Person]
 
-fn first_tag(p: Person) String:
+fn first_tag(p Person) String:
     return p.tags[0]
 
-fn deep(t: Team) String:
+fn deep(t Team) String:
     return first_tag(t.members[0])
 
-fn make_team(tag: String) Team:
+fn make_team(tag String) Team:
     return Team(members: [Person(name: "ann", tags: [tag.clone()])])
 
 // The lent tag is longer than an inline string, so it lives on the heap with its record: the

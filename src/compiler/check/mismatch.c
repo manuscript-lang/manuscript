@@ -170,7 +170,7 @@ static void interface_hint(Body *body, MsStrBuild *out, MsTy actual, MsTy expect
     show(body, out, expected);
     ms_strbuild_append_text(out, " declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: ");
     show(body, out, expected);
-    ms_strbuild_append_text(out, "](x: T)`) but cannot type a value");
+    ms_strbuild_append_text(out, "](x T)`) but cannot type a value");
     return;
   }
   const MsDef *def = body_def(body, actual);
@@ -312,7 +312,7 @@ void body_report_uninferred_none(Body *body, MsPos pos) {
     return;
   }
   ms_check_report(body->program, body->module, pos, MS_CHECK_TYPE,
-                  ms_string_from_span(ms_span_of_text("cannot infer the type of null; give it a target, e.g. `x: Int? := "
+                  ms_string_from_span(ms_span_of_text("cannot infer the type of null; give it a target, e.g. `x Int? := "
                                                       "null`, or pass a value")));
 }
 

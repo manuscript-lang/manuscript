@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_contains, expect_fault from "@std/test/test.ms"
 
-fn times(a: UInt32, b: UInt32) UInt32:
+fn times(a UInt32, b UInt32) UInt32:
 	return a * b
 
 // The product of two UInt32 values can pass 63 bits before the type's range check, so

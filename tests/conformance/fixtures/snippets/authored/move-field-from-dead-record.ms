@@ -4,15 +4,15 @@
 import stdout from "@std/io/io.ms"
 
 type Pair:
-    left: List[String]
-    right: List[String]
-    tag: String
+    left List[String]
+    right List[String]
+    tag String
 
-fn left_of(p: Pair) List[String]: p.left.clone()
+fn left_of(p Pair) List[String] => p.left.clone()
 
-fn tag_of(p: Pair) String: p.tag.clone()
+fn tag_of(p Pair) String => p.tag.clone()
 
-fn make(n: Int) Pair:
+fn make(n Int) Pair:
     var l = List[String]()
     var r = List[String]()
 

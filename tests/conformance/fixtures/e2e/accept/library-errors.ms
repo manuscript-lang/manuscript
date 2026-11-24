@@ -9,7 +9,7 @@ import (
 // Library failures are plain Error values: callers branch on `kind`, not on a domain
 // type.
 
-fn describe_error(cause: Error) String:
+fn describe_error(cause Error) String:
 	if cause.kind == "EINVAL": return "bad limits"
 	if cause.kind == "EBADMSG": return "malformed input"
 	if cause.kind == "EOVERFLOW": return "bound exceeded"
@@ -39,7 +39,7 @@ test "propagation with try forwards the same Error":
 	cause := match propagate_generic():
 		ok(_):
 			return fail(message: "invalid data succeeded")
-		error(cause): cause
+		error(cause) => cause
 
 	cause.kind | expect_equal("EBADMSG")?
 	cause.message | expect_equal("encoding: invalid data")?
@@ -56,9 +56,9 @@ test "an Error built by hand has a message, a kind and details":
 	read.details["attempt"] | expect_equal("2")?
 
 type ReadError:
-	path: String
-	attempt: Int
-	retryable: Bool
+	path String
+	attempt Int
+	retryable Bool
 
 fn failed_read() Void!ReadError:
 	return error(ReadError(path: "settings.json", attempt: 2, retryable: true))
@@ -70,7 +70,7 @@ test "a domain record is still a legal error value":
 	cause := match propagate_read():
 		ok(_):
 			return fail(message: "failed read succeeded")
-		error(cause): cause
+		error(cause) => cause
 
 	(
 		(
@@ -80,10 +80,10 @@ test "a domain record is still a legal error value":
 		) | expect_false?
 	)
 
-fn read_failure(move cause: ReadError) Void!ReadError:
+fn read_failure(move cause ReadError) Void!ReadError:
 	return error(cause)
 
-fn general_read(move cause: ReadError) Void!:
+fn general_read(move cause ReadError) Void!:
 	failed := read_failure(cause)
 	if failed.is_error():
 		return error(

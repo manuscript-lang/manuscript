@@ -3,14 +3,14 @@
 // conform: origin=tests/e2e/testdata/accept/data-1.ms
 import expect_equal from "@std/test/test.ms"
 
-fn positives(values: List[Int]) List[Int]:
-    var result = values.filter(fn value: value > 0)
+fn positives(values List[Int]) List[Int]:
+    var result = values.filter(value => value > 0)
     return result
 
 test "dynamic mutable data and explicit copies":
     expect_equal(positives([3, -1, 2]), [3, 2])?
 
-    _absent: Int? := null
+    _absent Int? := null
     expect_equal([1].get_or(5, -1), -1)?
 
     var original = Map[String, Int]()

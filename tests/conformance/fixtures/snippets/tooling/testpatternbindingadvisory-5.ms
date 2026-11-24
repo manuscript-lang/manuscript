@@ -7,7 +7,7 @@ enum First:
 enum Second:
     Ready
 
-fn use(value: Int?) Int:
+fn use(value Int?) Int:
     match value:
-        ready: return Ready
-        null: return 0
+        ready => return Ready
+        null => return 0

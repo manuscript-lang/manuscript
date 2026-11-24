@@ -1,3 +1,3 @@
 fn main() Int:
-	x: Int := "no"
+	x Int := "no"
 	return 0

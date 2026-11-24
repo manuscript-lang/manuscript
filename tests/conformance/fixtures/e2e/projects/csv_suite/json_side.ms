@@ -1,8 +1,8 @@
 import JsonValue, parse from "@std/data/json.ms"
 
 // The records of a csv-spectrum `.json` file as string maps.
-export fn records(text: String) List[Map[String, String]]!:
-	var out: List[Map[String, String]] = []
+export fn records(text String) List[Map[String, String]]!:
+	var out List[Map[String, String]] = []
 	root := parse(text)?
 	list := root.as_list() or []
 

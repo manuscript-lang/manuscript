@@ -4,10 +4,10 @@
 enum Other:
     OutOfRange
 
-fn other() Other: Other.OutOfRange
+fn other() Other => Other.OutOfRange
 
-fn standard() Error: Error("collection: out of range", kind: "ERANGE")
+fn standard() Error => Error("collection: out of range", kind: "ERANGE")
 
-fn recognize(value: Other) Int:
+fn recognize(value Other) Int:
     match value:
-        OutOfRange: return 1
+        OutOfRange => return 1

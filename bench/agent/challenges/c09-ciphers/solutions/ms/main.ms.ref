@@ -3,11 +3,11 @@ import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 import from_scalars from "@std/string.ms"
 
-fn is_upper(c: Int) Bool: return c >= 65 and c <= 90
-fn is_lower(c: Int) Bool: return c >= 97 and c <= 122
+fn is_upper(c Int) Bool: return c >= 65 and c <= 90
+fn is_lower(c Int) Bool: return c >= 97 and c <= 122
 
 // Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
-fn transform(text: String, keys: List[Int], sign: Int) String:
+fn transform(text String, keys List[Int], sign Int) String:
     var i = 0
     out := text.scalar_values().map(fn c:
         if not is_upper(c) and not is_lower(c): return c
@@ -17,14 +17,14 @@ fn transform(text: String, keys: List[Int], sign: Int) String:
     )
     return from_scalars(out).get()
 
-fn parse_caesar_key(key: String) Int?:
+fn parse_caesar_key(key String) Int?:
     neg := key.starts_with("-")
     digits := if neg: key.slice(1, key.length()) else: key
     if digits.length() < 1 or digits.length() > 7 or not digits.scalar_values().all(fn c: c >= 48 and c <= 57): return none
     k := digits.parse_int().get()
     return if neg: -k else: k
 
-fn solve_line(line: String) String:
+fn solve_line(line String) String:
     parts := line.split(" ")
     if parts.length() < 4: return "error: bad command"
     [cipher, mode, key] := parts.slice(0, 3).get()

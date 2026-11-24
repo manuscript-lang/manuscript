@@ -10,7 +10,7 @@ import (
 
 test "closed normalization forms reject spelling changes with their domain errors":
 	data := "text".to_bytes()
-	normalization_error: String! := error(
+	normalization_error String! := error(
 		Error("string: invalid input", kind: "EINVAL")
 	)
 	for form in ["nfc", "NFC ", ""]:
@@ -34,7 +34,7 @@ test "closed normalization forms reject spelling changes with their domain error
 				data,
 			)?
 
-	level_error: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
+	level_error Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 	for level in [-1, 10]:
 		expect_equal(
 			compress(

@@ -4,24 +4,24 @@ import expect_equal from "@std/test/test.ms"
 
 // A `String` key that `Map.update` takes on one branch only: the path that skips the
 // call still owns the key and releases it, and the path that takes it releases it once.
-fn count(lines: List[String]) Map[String, Int]:
-	var counts: Map[String, Int] = {}
+fn count(lines List[String]) Map[String, Int]:
+	var counts Map[String, Int] = {}
 
 	for line in lines:
 		key := line.trim()
 		if line.length() > 3:
-			counts.update(key, 0, fn n: n + 1)
+			counts.update(key, 0, n => n + 1)
 
 	return counts
 
-fn count_or_keep(lines: List[String]) Map[String, Int]:
-	var counts: Map[String, Int] = {}
+fn count_or_keep(lines List[String]) Map[String, Int]:
+	var counts Map[String, Int] = {}
 
 	for line in lines:
 		key := line.trim()
 
 		if line.length() > 3:
-			counts.update(key, 0, fn n: n + 1)
+			counts.update(key, 0, n => n + 1)
 		else:
 			counts[key] = 100
 

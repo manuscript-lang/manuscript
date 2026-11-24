@@ -29,26 +29,26 @@ esc := "\u{1b}"
 // Rows drawn so far and where the cursor was left, for diffing the next draw.
 export type Screen:
 	// The rows drawn last.
-	previous: List[String]
+	previous List[String]
 	// The row, within `previous`, where the cursor was left.
-	cursor_row: Int
+	cursor_row Int
 	// Terminal height in rows, used to tell whether a changed row is still in view.
-	height: Int
+	height Int
 
 // Draws `rows` on `terminal` and leaves the cursor at `cursor_row` (an index into
 // `rows`; a negative value means the first row) and `cursor_column` (0 is the left
 // edge).
 fn var Screen.draw(
-	terminal: RawTerminal,
-	rows: List[String],
-	cursor_row: Int,
-	cursor_column: Int,
+	terminal RawTerminal,
+	rows List[String],
+	cursor_row Int,
+	cursor_column Int,
 ) Void!:
 	return terminal.write(self.render(rows, cursor_row, cursor_column))
 
 // The bytes that turn what was drawn last into `rows`, which also become what was
 // drawn last. `draw` writes them; tests and custom outputs can use them directly.
-fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) String:
+fn var Screen.render(rows List[String], cursor_row Int, cursor_column Int) String:
 	var diff = first_difference(self.previous, rows)
 	last := self.previous.length() - 1
 	unreachable := (
@@ -109,7 +109,7 @@ fn var Screen.reset() Void:
 	if size.is_ok(): self.height = size.get_or(null).rows
 
 // Updates the terminal height after a `Resize` event.
-fn var Screen.resize(rows: Int) Void:
+fn var Screen.resize(rows Int) Void:
 	self.height = rows
 
 // A screen that starts drawing at the current cursor row; the height is the terminal's,
@@ -120,7 +120,7 @@ export fn new_screen() Screen:
 	rows := if size.is_error(): 24 else: size.get_or(null).rows
 	return Screen(previous: List[String](), cursor_row: 0, height: rows)
 
-fn first_difference(before: List[String], after: List[String]) Int:
+fn first_difference(before List[String], after List[String]) Int:
 	limit := if before.length() < after.length(): before.length() else: after.length()
 	var i = 0
 	while i < limit and before[i] == after[i]: i += 1
@@ -128,7 +128,7 @@ fn first_difference(before: List[String], after: List[String]) Int:
 
 // The sequence moving the cursor from row `from` to row `to` within the block, then to
 // the line start.
-fn vertical(from: Int, to: Int) String:
+fn vertical(from Int, to Int) String:
 	if from > to: return f"{esc}[{from - to}A\r"
 	if from < to: return f"{esc}[{to - from}B\r"
 
