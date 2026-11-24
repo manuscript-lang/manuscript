@@ -16,6 +16,8 @@ Measured on a 7-line program importing `@std/data/yaml.ms` (`ms emit --opt`, aft
 
 - MIR instructions after each stage: lowering 8.4K, after early simplify/copyelim/probe/inline 13.8K, after `fastpaths` 59.8K (4x, from inlining the view, bytes and string fast paths), after function passes 45.8K, final 49.6K.
 - Function passes ran 116, 62 and 38 functions in rounds 1 to 3. Wall time by pass over three rounds: simplify 118 ms, range 80 ms, copyelim 24 ms. A change by one pass makes the next walk the whole function again.
+- Instruction counts (callgrind, same program): `opt_simplify_func` 974M of 2.2G (170 calls from function rounds on the expanded 60K-instruction form, 675M; 2 module steps, 300M); its sub-passes run 848 times for 471 calls (1.8 rounds each): cse 224M, fold 184M, branches 153M, dead_owned 101M, phis 78M. `range` 230M, `inline` 179M, `copyelim` 141M. `mir_use_counts` is 4.6%: incremental use counts alone are not worth a stage.
+- Rounds 2 and 3 of the function passes change little: `OPT_FUNCTION_ROUNDS` 1 instead of 3 gives 46329 instead of 46334 instructions and 4% less emit time. The cost is volume (the 4x expansion) times visits per instruction (about 100 per sub-pass), not the round count.
 - Every pass rebuilds its own def/use facts (`mir_use_counts`, `rg_build_env`, `SfEnv`, `cpe_*`) from scratch.
 - Moving `fastpaths` after the function passes (tried) saves only 6% of emit time and leaves the final size the same: the expanded bodies are optimized once either way, so reordering alone does not help.
 
@@ -55,7 +57,7 @@ Ownership and range fit the two walks because both are dominator-ordered (range,
 
 ## Stages
 
-1. Incremental use counts threaded through simplify, copyelim and strfuse; gate: byte-identical `ms emit --opt` on the 483-program set, fewer `mir_use_counts` calls.
+1. Simplify revisits only what changed: per-block dirty bits through the core rounds, so the confirming second round touches changed blocks only; gate: byte-identical `ms emit --opt` on the 483-program set, simplify instruction count down.
 2. Forward walk replacing simplify core and CSE (dominator-scoped); gate: perf suite instruction counts no worse than the latest `bench/perf` baseline.
 3. Range folded into the forward walk; gate: count of proofs lost against the fixpoint, each regained or justified.
 4. Backward walk; gate: conform, ownership tests.
