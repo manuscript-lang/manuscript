@@ -25,6 +25,9 @@ struct EmitWide {
   bool loading;         /* writing the loads: names are not requests */
   uint32_t capacity;    /* entries of `touched` */
   bool *stored;         /* by value: its cell was written by the call that made it */
+  MirValue moved;       /* the value whose leaves [moved_first, +moved_count) were just copied cell to cell */
+  uint32_t moved_first;
+  uint32_t moved_count;
 };
 
 static EmitWide *active; /* the function being written; the emitter writes one function at a time */
@@ -61,6 +64,7 @@ const bool *emit_wide_plan(EmitCx *cx, MsArena *arena) {
   for (size_t value = 0; value < count; value++) {
     plan->held[value] = plan->incoming[value] = cells[value] = plan->stored[value] = false;
   }
+  plan->moved = MIR_NONE;
   /* Every parameter, and every value anything reads, is held. */
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
@@ -168,15 +172,73 @@ static void cell_name(const EmitCx *cx, MirValue value, char *out, size_t capaci
   }
 }
 
-/* Writes the leaves of a value just made to its cell. */
+/* Writes the leaves of a value just made to its cell, except a run an instruction copied there already. */
 void emit_wide_store(EmitCx *cx, MirValue value) {
   if (cx->wide == NULL || value == MIR_NONE || !cx->wide->held[value] || cx->wide->incoming[value] ||
       cx->wide->stored[value]) {
     return;
   }
+  EmitWide *plan = cx->wide;
   char cell[24];
   cell_name(cx, value, cell, sizeof cell);
-  emit_leaves_at(cx, value, cell, false);
+  if (plan->moved != value) {
+    emit_leaves_at(cx, value, cell, false);
+    return;
+  }
+  MsSpan leaves = emit_value_leaves(cx, value);
+  uint32_t *offsets = ms_alloc_zeroed(((size_t)leaves.len + 1) * sizeof *offsets);
+  (void)mir_mem_layout(leaves, offsets);
+  for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {
+    if (leaf < plan->moved_first || leaf >= plan->moved_first + plan->moved_count) {
+      emit_store_leaf(cx, leaves.ptr[leaf], value, leaf, emit_address(cx, cell, offsets[leaf]));
+    }
+  }
+  ms_free(offsets);
+  plan->moved = MIR_NONE;
+}
+
+/* Copies `count` leaves of held `src`, from leaf `from`, over those of held `dst` from leaf `to` as one block, when
+ * both have the same leaf types and byte distances. The caller skips those leaves; the rest of `dst` is stored by
+ * emit_wide_store. False, with nothing written, when the leaves do not line up. */
+bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, uint32_t from, uint32_t count) {
+  EmitWide *plan = cx->wide;
+  if (plan == NULL || count < 2 || !plan->held[dst] || !plan->held[src] || plan->incoming[dst] ||
+      plan->stored[dst] || plan->moved != MIR_NONE) {
+    return false;
+  }
+  MsSpan dleaves = emit_value_leaves(cx, dst);
+  MsSpan sleaves = emit_value_leaves(cx, src);
+  if (to + count > dleaves.len || from + count > sleaves.len) {
+    return false;
+  }
+  uint32_t *doff = ms_alloc_zeroed(((size_t)dleaves.len + 1) * sizeof *doff);
+  uint32_t *soff = ms_alloc_zeroed(((size_t)sleaves.len + 1) * sizeof *soff);
+  doff[dleaves.len] = mir_mem_layout(dleaves, doff).size;
+  soff[sleaves.len] = mir_mem_layout(sleaves, soff).size;
+  bool same = true;
+  for (uint32_t index = 0; index < count && same; index++) {
+    same = dleaves.ptr[to + index] == sleaves.ptr[from + index] &&
+           doff[to + index] - doff[to] == soff[from + index] - soff[from];
+  }
+  const uint32_t size = doff[to + count] - doff[to];
+  same = same && size == soff[from + count] - soff[from];
+  char dcell[24];
+  char scell[24];
+  cell_name(cx, dst, dcell, sizeof dcell);
+  cell_name(cx, src, scell, sizeof scell);
+  if (same) {
+    const bool shared = !plan->incoming[src] && cx->pool[src] == cx->pool[dst];
+    const EmitAddr target = emit_address(cx, dcell, doff[to]);
+    const EmitAddr source = emit_address(cx, scell, soff[from]);
+    ms_strbuild_printf(cx->out, "  call void @llvm.%s.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n",
+                       shared ? "memmove" : "memcpy", target.text, source.text, size);
+    plan->moved = dst;
+    plan->moved_first = to;
+    plan->moved_count = count;
+  }
+  ms_free(doff);
+  ms_free(soff);
+  return same;
 }
 
 /* The loads of every leaf the instruction just written asked for, then the bits are cleared for the next one. */

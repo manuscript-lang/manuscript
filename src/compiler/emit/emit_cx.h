@@ -174,6 +174,7 @@ bool emit_wide_name(MsStrBuild *out, MirValue value, uint32_t leaf);
 void emit_wide_start(EmitCx *cx, MirValue defining);
 /* After a value is made: writes it to its cell. */
 void emit_wide_store(EmitCx *cx, MirValue value);
+bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, uint32_t from, uint32_t count);
 /* After an instruction is written: the loads of the leaves it read from cells, to go before it. */
 void emit_wide_loads(EmitCx *cx);
 bool emit_wide_edge_copies(const EmitCx *cx, const MirTerm *term, uint32_t index);
