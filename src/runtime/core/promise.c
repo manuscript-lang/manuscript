@@ -167,6 +167,19 @@ static void complete(size_t row, void *block, const MsTypeDesc *desc, bool faile
   settle(hot, cold, row, failed);
 }
 
+/* Copies a value that fits a row. Most are one, two or three whole words, which copy without a call. */
+static inline void copy_small(void *to, const void *from, size_t size) {
+  if (size == 8) {
+    __builtin_memcpy(to, from, 8);
+  } else if (size == 16) {
+    __builtin_memcpy(to, from, 16);
+  } else if (size == 24) {
+    __builtin_memcpy(to, from, 24);
+  } else {
+    __builtin_memcpy(to, from, size);
+  }
+}
+
 /* Completes `row` with the `desc` value at `value`, which fits the row; the value is taken either way. */
 static void complete_small(size_t row, const uint8_t *value, const MsTypeDesc *desc, bool failed) {
   Hot *const hot = &promise_table.hot.ptr[row];
@@ -177,7 +190,7 @@ static void complete_small(size_t row, const uint8_t *value, const MsTypeDesc *d
     ms_slot_drop_owned(desc, (uint8_t *)copy);
     return;
   }
-  __builtin_memcpy(cold->small, value, desc->size);
+  copy_small(cold->small, value, desc->size);
   cold->small_result = true;
   cold->result = NULL;
   cold->desc = desc;
@@ -260,10 +273,14 @@ bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
     return false;
   }
   Cold *const cold = &promise_table.cold.ptr[row];
-  __builtin_memcpy(out, promise_result_bytes(cold), desc->size);
-  ms_free(cold->result);
-  cold->result = NULL;
-  cold->small_result = false;
+  if (cold->small_result) {
+    copy_small(out, cold->small, desc->size);
+    cold->small_result = false;
+  } else {
+    __builtin_memcpy(out, cold->result, desc->size);
+    ms_free(cold->result);
+    cold->result = NULL;
+  }
   cold->desc = NULL;
   promise_table.hot.ptr[row].state = STATE_TAKEN;
   return true;
@@ -316,7 +333,17 @@ static void unlink_started(size_t row, MsTaskHandle creator) {
 
 /* ---- the work's task ---- */
 
-static void run_closure(void *closure) { ((MsClosure *)closure)->code(closure); }
+/* A promise's work and the id it completes: what the closure is called with. */
+typedef struct Work {
+  MsPromise id;
+  MsObj *closure;
+} Work;
+
+static void run_work(void *argument) {
+  const Work *const work = argument;
+  MsClosure *const closure = (MsClosure *)(void *)work->closure;
+  closure->code(closure, work->id);
+}
 
 /* The task of promise `id` ended with `status` (a MsGuardStatus); records how, drops the closure and wakes. */
 static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) {
@@ -404,7 +431,8 @@ static void work_entry(void *argument) {
     return;
   }
   MsFaultText message = {0};
-  const MsGuardStatus status = ms_guard_call(run_closure, promise_table.cold.ptr[row].closure, &message);
+  Work work = {.id = id, .closure = promise_table.cold.ptr[row].closure};
+  const MsGuardStatus status = ms_guard_call(run_work, &work, &message);
   finish_report((size_t)row, status, &message);
   /* Ending drops the closure, which closes what it captured: like any implicit close it runs shielded, since a
    * cancelled task would otherwise be cancelled again at its first park. */
@@ -413,26 +441,22 @@ static void work_entry(void *argument) {
   ms_shield_exit();
 }
 
-static void start_task(MsPromise id, MsObj *closure, const MsString *site, bool rooted) {
-  const size_t row = promise_row_or_fault(id);
+/* The row of an id ms_promise_new just returned. */
+static size_t new_row(MsPromise id) { return (size_t)((uint64_t)id & 0xffffffffu) - 1; }
+
+static void start_task(MsPromise id, MsObj *closure, const MsString *site) {
+  const size_t row = new_row(id);
   Cold *const cold = &promise_table.cold.ptr[row];
-  if (cold->closure != NULL || (promise_table.hot.ptr[row].flags & FLAG_DEFERRED) != 0) {
-    promise_fail("promise: already started");
-  }
   cold->closure = closure;
-  cold->creator = rooted ? 0 : ms_task_current();
+  cold->creator = ms_task_current();
   cold->started_at = ms_cleanup_base();
   keep_started(cold, site);
-  if (!rooted) {
-    link_started(row);
-  }
+  link_started(row);
   MsTaskStatus status = MS_TASK_OK;
   void *const argument = (void *)(uintptr_t)id; // NOLINT(performance-no-int-to-ptr): the id travels as the argument word
   const MsTaskHandle task = ms_task_spawn(work_entry, argument, MS_SPAWN_DETACHED, 0, &status);
   if (task == 0) {
-    if (!rooted) {
-      unlink_started(row, cold->creator);
-    }
+    unlink_started(row, cold->creator);
     cold->closure = NULL;
     cold->creator = 0;
     promise_release_started(cold);
@@ -445,12 +469,9 @@ static void start_task(MsPromise id, MsObj *closure, const MsString *site, bool 
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
 static bool queue_work(MsPromise id, MsObj *closure, const MsString *site) {
-  const size_t row = promise_row_or_fault(id);
+  const size_t row = new_row(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
-  if (cold->closure != NULL || (hot->flags & (FLAG_DEFERRED | FLAG_REMOTE)) != 0) {
-    promise_fail("promise: already started");
-  }
   /* Stress mode queues every start aged, so any idle isolate may take it. */
   if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, ms_workers_stress(), &cold->queue_sequence)) {
     return false;
@@ -471,27 +492,26 @@ static bool queue_work(MsPromise id, MsObj *closure, const MsString *site) {
   return true;
 }
 
-void ms_promise_start_here(MsPromise id, MsObj *closure, const MsString *site) { start_task(id, closure, site, false); }
+MsPromise ms_promise_start_here(MsObj *closure, const MsString *site) {
+  const MsPromise id = ms_promise_new();
+  start_task(id, closure, site);
+  return id;
+}
 
-/* For work the runtime starts from the scheduler's own contexts, which run on whichever task last switched away: no task
- * owns it, so it is on no task's list of started promises (a task that ends cancels the promises on its list). */
-void ms_promise_start_detached(MsPromise id, MsObj *closure) { start_task(id, closure, NULL, true); }
-
-void ms_promise_start(MsPromise id, MsObj *closure, const MsString *site) {
+MsPromise ms_promise_start(MsObj *closure, const MsString *site) {
+  const MsPromise id = ms_promise_new();
   if (!queue_work(id, closure, site)) {
-    start_task(id, closure, site, false);
+    start_task(id, closure, site);
   }
+  return id;
 }
 
 /* Sends the work of `id` to run as a task on `target`, as if that isolate had taken it from the queue: the row reads as
  * queued work no queue holds, so its waiter finds it remote. False when the mail cannot be sent. */
 static bool send_work(MsPromise id, MsObj *closure, const MsString *site, uint32_t target) {
-  const size_t row = promise_row_or_fault(id);
+  const size_t row = new_row(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
-  if (cold->closure != NULL || (hot->flags & (FLAG_DEFERRED | FLAG_REMOTE)) != 0) {
-    promise_fail("promise: already started");
-  }
   MsMail *const mail = ms_alloc(sizeof *mail);
   *mail = (MsMail){.kind = MS_MAIL_PROMISE, .a = MS_MAIL_START, .b = (uint64_t)id, .p = closure};
   if (!ms_isolate_post(target, mail)) {
@@ -507,15 +527,13 @@ static bool send_work(MsPromise id, MsObj *closure, const MsString *site, uint32
   return true;
 }
 
-void ms_promise_start_spread(MsPromise id, MsObj *closure, const MsString *site) {
+MsPromise ms_promise_start_spread(MsObj *closure, const MsString *site) {
+  const MsPromise id = ms_promise_new();
   const uint32_t target = ms_workers_spread_pick();
-  if (target == MS_NO_ISOLATE || target == ms_sched()->isolate) {
-    start_task(id, closure, site, false);
-    return;
+  if (target == MS_NO_ISOLATE || target == ms_sched()->isolate || !send_work(id, closure, site, target)) {
+    start_task(id, closure, site);
   }
-  if (!send_work(id, closure, site, target)) {
-    start_task(id, closure, site, false);
-  }
+  return id;
 }
 
 /* Takes the queued work of `row` back from the queue. True when it is still this isolate's (its flags then read as
@@ -537,18 +555,19 @@ bool promise_claim_queued(size_t row) {
   return ours;
 }
 
-void ms_promise_defer(MsPromise id, MsObj *closure) {
-  const size_t row = promise_row_or_fault(id);
+MsPromise ms_promise_defer(MsObj *closure) {
+  const MsPromise id = ms_promise_new();
+  const size_t row = new_row(id);
   promise_table.hot.ptr[row].flags |= FLAG_DEFERRED;
   promise_table.cold.ptr[row].closure = closure;
+  return id;
 }
 
-void ms_promise_start_idle(MsPromise id, MsObj *closure, const MsString *site) {
+MsPromise ms_promise_start_idle(MsObj *closure, const MsString *site) {
   if (ms_task_count() <= 1) {
-    ms_promise_defer(id, closure);
-  } else {
-    start_task(id, closure, site, false);
+    return ms_promise_defer(closure);
   }
+  return ms_promise_start_here(closure, site);
 }
 
 /* Records how a guarded inline run ended. */
@@ -606,12 +625,13 @@ bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
   const int64_t earlier = ms_task_set_defer_deadline(until);
   MsFaultText message = {0};
   MsGuardStatus status = MS_GUARD_OK;
+  Work work = {.id = id, .closure = closure};
   if (guarded) {
     /* Every way out of the guard comes back here, so the closure needs no registration. */
-    status = ms_guard_call(run_closure, closure, &message);
+    status = ms_guard_call(run_work, &work, &message);
   } else {
     const size_t handle = ms_cleanup_push(drop_closure, (uint8_t *)closure);
-    run_closure(closure);
+    run_work(&work);
     ms_cleanup_discard(handle);
   }
   msrt_obj_drop(closure);
@@ -624,10 +644,7 @@ bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
 
 
 /* The work of a promise another isolate owns, running here as a task. */
-typedef struct Taken {
-  MsPromise id;
-  MsObj *closure;
-} Taken;
+typedef Work Taken;
 
 static void post_promise_mail(uint32_t target, MsMail *mail) {
   if (!ms_isolate_post(target, mail)) {
@@ -657,7 +674,7 @@ static void taken_entry(void *argument) {
   *started = (MsMail){.kind = MS_MAIL_PROMISE, .a = MAIL_STARTED, .b = (uint64_t)taken->id, .c = ms_task_current()};
   post_promise_mail((uint32_t)((uint64_t)taken->id >> ISOLATE_SHIFT), started);
   MsFaultText message = {0};
-  const MsGuardStatus status = ms_guard_call(run_closure, taken->closure, &message);
+  const MsGuardStatus status = ms_guard_call(run_work, taken, &message);
   if (status == MS_GUARD_FAULT && ms_task_capture() != 0) {
     ms_test_keep_fault(ms_task_capture(), &message);
   }

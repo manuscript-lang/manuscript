@@ -12,13 +12,12 @@ import (
 	msrt_group_next,
 	msrt_group_poll,
 	msrt_promise_cancel,
+	msrt_promise_close,
 	msrt_promise_defer,
 	msrt_promise_done,
 	msrt_promise_drop,
-	msrt_promise_end,
 	msrt_promise_fault_report,
 	msrt_promise_limit,
-	msrt_promise_new,
 	msrt_promise_on_cancel,
 	msrt_promise_put,
 	msrt_promise_run_watched,
@@ -103,9 +102,9 @@ fn Promise[T].done() Bool:
 // Dropping a promise ends it: unfinished work is cancelled and waited for, and a
 // result nobody took is dropped, which closes what it holds.
 fn move Promise[T].close() Void!:
-	if msrt_promise_end(self.id):
+	if msrt_promise_close(self.id):
 		_leftover := msrt_promise_take[T](self.id)
-	msrt_promise_drop(self.id)
+		msrt_promise_drop(self.id)
 
 // Which thread runs a promise's work.
 export enum Placement:
@@ -240,8 +239,7 @@ export fn complete[U](id: Int, move result: U!) Void:
 // of its own. Use it for operations that do not block for long, such as reading a
 // file. The work follows the capture rules of `promise`.
 export fn promise_when_idle[U](entry: fn() U!, site: String = caller_frame()) Promise[U]:
-	id := msrt_promise_new()
-	msrt_promise_start_idle(id, fn: complete(id, entry()), site)
+	id := msrt_promise_start_idle(fn id: complete(id, entry()), site)
 	return Promise[U](id: id)
 
 // Returns where the call that omitted this argument is, as a fault report shows a
@@ -265,15 +263,10 @@ export fn promise[U](
 	options: PromiseOptions = PromiseOptions(),
 	site: String = caller_frame()
 ) Promise[U]:
-	id := msrt_promise_new()
-
-	match options.placement:
-		Placement.Any:
-			msrt_promise_start(id, fn: complete(id, entry()), site)
-		Placement.Spread:
-			msrt_promise_start_spread(id, fn: complete(id, entry()), site)
-		Placement.Here:
-			msrt_promise_start_here(id, fn: complete(id, entry()), site)
+	id := match options.placement:
+		Placement.Any: msrt_promise_start(fn id: complete(id, entry()), site)
+		Placement.Spread: msrt_promise_start_spread(fn id: complete(id, entry()), site)
+		Placement.Here: msrt_promise_start_here(fn id: complete(id, entry()), site)
 
 	limit(id, options)
 	return Promise[U](id: id)
@@ -418,8 +411,7 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
 // promise's id and must finish with `complete(id, ...)`. This is for stream
 // implementations. Dropping the promise before any wait discards the work unrun.
 export fn deferred[U](work: fn(Int) Void) Promise[U]:
-	id := msrt_promise_new()
-	msrt_promise_defer(id, fn: work(id))
+	id := msrt_promise_defer(fn id: work(id))
 	return Promise[U](id: id)
 
 // Wraps the runtime promise `id`, which a native operation completes (a stream read

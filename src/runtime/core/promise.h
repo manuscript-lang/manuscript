@@ -87,6 +87,9 @@ void ms_promise_limit(MsPromise id, int64_t timeout_ns);
 bool ms_promise_end(MsPromise id);
 /* Ends the promise and frees its row and any value left in it. */
 void ms_promise_drop(MsPromise id);
+/* Ends the promise as ms_promise_end does and, unless a result is left for the caller to take, drops it too. True
+ * when a result is left: the caller takes it and then calls ms_promise_drop. */
+bool ms_promise_close(MsPromise id);
 /* The report of the fault that failed the promise (owned by the caller); length 0 when none. */
 MsFaultText ms_promise_fault_report(MsPromise id);
 
@@ -118,18 +121,19 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
 
 /* ---- work ---- */
 
-/* Runs `closure` (a function value, owned by the promise) as a task of this thread. Starting twice faults. */
-void ms_promise_start(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
+/* Each of these makes a promise for `closure` (a function value the promise owns, called with the promise's id) and
+ * returns it. `site` is the program line a fault report names as the start, or NULL. */
+
+/* Queues the work on this thread, where its waiter runs it or an idle thread takes it. */
+MsPromise ms_promise_start(MsObj *closure, const MsString *site) MS_NONNULL_ARGS(1);
 /* Starts the work as a task of this thread, never queued for another isolate (I/O work whose handles are thread-bound). */
-void ms_promise_start_here(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
-/* Like start_here for work no task owns (the idle pool's requests): the promise is on no task's list of started work. */
-void ms_promise_start_detached(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+MsPromise ms_promise_start_here(MsObj *closure, const MsString *site) MS_NONNULL_ARGS(1);
 /* Like start, but on the least loaded isolate (with one isolate, here). */
-void ms_promise_start_spread(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
-/* Like start, but with no other task running the work waits for its waiter (runs on the waiter's stack). */
-void ms_promise_start_idle(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
+MsPromise ms_promise_start_spread(MsObj *closure, const MsString *site) MS_NONNULL_ARGS(1);
+/* Like start_here, but with no other task running the work waits for its waiter (runs on the waiter's stack). */
+MsPromise ms_promise_start_idle(MsObj *closure, const MsString *site) MS_NONNULL_ARGS(1);
 /* The work is not run until a waiter asks for it. */
-void ms_promise_defer(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+MsPromise ms_promise_defer(MsObj *closure) MS_NONNULL_ARGS(1);
 
 /* ---- I/O promises (no task) ---- */
 

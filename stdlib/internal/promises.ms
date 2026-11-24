@@ -5,37 +5,27 @@ import Bytes from "@std/bytes.ms"
 // error, 2 timed out, 3 cancelled, 4 closed (the result was already taken), 5 failed (a
 // fault inside).
 
-export extern fn msrt_promise_new() Int
-
 export extern fn msrt_promise_put[T](id: Int, move value: T, failed: Int) Void
 
 export extern fn msrt_promise_take[T](id: Int) move T?
 
 export extern fn msrt_promise_done(id: Int) Bool
 
-export extern fn msrt_promise_start(id: Int, move work: fn() Void, site: String) Void
+// Starts `work` as a new promise and returns its id. The work is called with that id
+// and finishes with `msrt_promise_put`. `site` is the line a fault report names as the
+// start. The work is queued on the calling thread: its waiter runs it, or an idle
+// thread takes it.
+export extern fn msrt_promise_start(move work: fn(Int) Void, site: String) Int
 
-// As `msrt_promise_start`, but always on the calling thread.
-export extern fn msrt_promise_start_here(
-	id: Int,
-	move work: fn() Void,
-	site: String
-) Void
+// As `msrt_promise_start`, but always a task on the calling thread.
+export extern fn msrt_promise_start_here(move work: fn(Int) Void, site: String) Int
 
 // Like `msrt_promise_start_here`, but with no other task running the work waits for its
 // waiter.
-export extern fn msrt_promise_start_idle(
-	id: Int,
-	move work: fn() Void,
-	site: String
-) Void
+export extern fn msrt_promise_start_idle(move work: fn(Int) Void, site: String) Int
 
 // As `msrt_promise_start`, but on the least loaded thread.
-export extern fn msrt_promise_start_spread(
-	id: Int,
-	move work: fn() Void,
-	site: String
-) Void
+export extern fn msrt_promise_start_spread(move work: fn(Int) Void, site: String) Int
 
 export extern fn msrt_promise_wait(id: Int, timeout_ns: Int) Int
 
@@ -102,9 +92,9 @@ export extern fn msrt_promise_fault_report(id: Int) move String
 
 export extern fn msrt_promise_drop(id: Int) Void
 
-// Cancels and joins the work of `id` and keeps its slot; true when a value is left to
-// take.
-export extern fn msrt_promise_end(id: Int) Bool
+// Cancels and joins the work of `id`, then drops it unless a result is left for the
+// caller to take (true): the caller takes it and calls `msrt_promise_drop`.
+export extern fn msrt_promise_close(id: Int) Bool
 
 // A promise that finishes after `ns` nanoseconds; it has no task. Wait with code 0.
 export extern fn msrt_promise_sleep(ns: Int) Int
@@ -164,8 +154,9 @@ export extern fn msrt_streams_error(stream: Int) move String
 
 export extern fn msrt_streams_close(stream: Int) Void
 
-// Makes the new promise `id` one whose work runs in the first task that waits on it.
-export extern fn msrt_promise_defer(id: Int, move work: fn() Void) Void
+// A new promise whose work runs in the first task that waits on it, called with the
+// promise's id.
+export extern fn msrt_promise_defer(move work: fn(Int) Void) Int
 
 // An already finished promise with no value.
 export extern fn msrt_promise_finished() Int

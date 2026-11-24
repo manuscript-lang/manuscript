@@ -107,7 +107,7 @@ typedef struct Table {
 
 typedef struct MsClosure {
   MsObj header;
-  void (*code)(struct MsClosure *);
+  void (*code)(struct MsClosure *, int64_t); /* called with the promise's id */
 } MsClosure;
 
 extern _Thread_local Table promise_table; /* per-thread state, like the scheduler's */

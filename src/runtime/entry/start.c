@@ -89,6 +89,7 @@ static void release_process_memory(void) {
   ms_watch_stop();
   ms_pipe_release_all();
   ms_release_run();
+  ms_frames_release(); /* the sorted copy of a program of several modules */
   ms_core_heap_report();
 }
 
