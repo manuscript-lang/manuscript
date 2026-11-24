@@ -83,6 +83,22 @@ static void test_queue(void) {
   CHECK(!ms_queue_steal(1, 31, 1000, &id, &work));
   ms_queue_release(1, drop);
   CHECK(dropped == 49 && ms_queue_length(1) == 0 && ms_queue_oldest(1, 40) == INT64_MAX);
+  /* An owner that pushes and removes with nobody looking: removed entries are counted until the ring fills, then
+   * the owner drops them itself, so the count stays under one ring and a look finds nothing. */
+  size_t most = 0;
+  for (uint64_t i = 100; i < 1100; i++) {
+    CHECK(ms_queue_push(1, i, &a, false, &sequence) && ms_queue_remove(1, i, sequence));
+    most = ms_queue_length(1) > most ? ms_queue_length(1) : most;
+  }
+  CHECK(most <= 16 && !ms_queue_steal(1, 50, -1, &id, &work) && ms_queue_length(1) == 0);
+  /* One entry stays while the owner churns behind it: the ring grows once instead of losing it. */
+  uint64_t kept = 0;
+  CHECK(ms_queue_push(1, 5000, &b, false, &kept));
+  for (uint64_t i = 6000; i < 6100; i++) {
+    CHECK(ms_queue_push(1, i, &a, false, &sequence) && ms_queue_remove(1, i, sequence));
+  }
+  CHECK(ms_queue_steal(1, 60, -1, &id, &work) && id == 5000 && work == &b && !ms_queue_remove(1, 5000, kept));
+  ms_queue_release(1, NULL);
 }
 
 static bool never(uintptr_t pc, const void *context) {
