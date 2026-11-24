@@ -59,8 +59,9 @@ fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
 
 	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
 		// Valgrind prefixes each line with `==pid==`. A program that forks a child (the
-		// http-request guards) also reports the child's count, and the child exits first:
-		// the count wanted is the one of the process valgrind started, the first to print.
+		// http-request guards) also reports the child's count, and the child exits
+		// first: the count wanted is the one of the process valgrind started, the first
+		// to print.
 		lines := (out.stderr.decode_utf8() or "").split("\n")
 		var prefix = ""
 
