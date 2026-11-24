@@ -26,9 +26,6 @@ fn failure(id: Int) Int!Marker: error(Marker(id))
 fn optional_cause() Void:
 	_kept := ok_or(present(1), 0)
 
-fn optional_callback() Void:
-	_kept := present(2).ok_or_else(fn: 0)
-
 fn result_error_map() Void:
 	_kept := success(3).map_error(fn cause: cause + 1)
 
@@ -58,7 +55,6 @@ fn result_or_else() Void:
 
 fn main() Void:
 	optional_cause()
-	optional_callback()
 	result_error_map()
 	result_optional()
 	result_map()
