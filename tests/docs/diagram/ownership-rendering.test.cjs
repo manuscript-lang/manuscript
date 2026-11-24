@@ -6,7 +6,7 @@ const path = require('node:path');
 const {after, test} = require('node:test');
 const {purePage, embeddedData} = require('./pure-page.cjs');
 
-const root = path.resolve(__dirname, '../..');
+const root = path.resolve(__dirname, '../../..');
 const binary = process.env.MS_BIN
   ? path.resolve(root, process.env.MS_BIN)
   : path.resolve(root, '.artifacts/build/ci/src/cli', process.platform === 'win32' ? 'ms.exe' : 'ms');

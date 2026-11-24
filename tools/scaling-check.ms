@@ -5,7 +5,7 @@
 // about 12, quadratic work about 100, so the default bound of 30 leaves room for cache
 // effects and noisy runners. Compile shapes (long functions, many locals, long
 // interpolation, many impls, many functions, many branches, big literals) run
-// `ms check` and `ms emit`; the runtime half runs tests/scaling/containers.ms at 10k
+// `ms check` and `ms emit`; the runtime half runs tests/checks/scaling/containers.ms at 10k
 // and 100k and compares each phase's own timing. A ratio over the bound is measured
 // again (RETRIES times) and the lowest kept. An input that exceeds TIMEOUT seconds
 // fails. MS names the ms to measure (default .artifacts/build/ci/src/cli/ms);
@@ -286,7 +286,7 @@ fn main() Int:
 				)
 
 	if not compile_only:
-		program := f"{root}/tests/scaling/containers.ms"
+		program := f"{root}/tests/checks/scaling/containers.ms"
 		mid := run_phases(ms.clone(), program.clone(), 10000, limit)
 		big := run_phases(ms.clone(), program.clone(), 100000, limit)
 		checked += 1
@@ -294,7 +294,7 @@ fn main() Int:
 		if mid.is_empty() or big.is_empty():
 			failures += 1
 			say(
-				"fail: tests/scaling/containers.ms did not run; run it with ms run --build-type Debug\n"
+				"fail: tests/checks/scaling/containers.ms did not run; run it with ms run --build-type Debug\n"
 			)
 
 		for entry in mid.entries():

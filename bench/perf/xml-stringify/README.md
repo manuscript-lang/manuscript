@@ -40,7 +40,7 @@ performance improvement, not a claim about overall XML speed or other hosts.
 The latest broad [baseline](../baseline-2026-10-28.md) has no XML stringify case;
 these fresh paired measurements provide the relevant comparison.
 
-The deterministic [allocation fixture](../../../tests/ownership-counts/xml_stringify.ms)
+The deterministic [allocation fixture](../../../tests/checks/ownership-counts/xml_stringify.ms)
 requests 27 allocations / 90,509 bytes in native Cranelift Debug before the fix
 and 25 / 82,317 after it. Cranelift Release changes 28 / 90,525 to 26 / 82,333.
 Both variants exit with zero live runtime blocks. This catches the redundant
@@ -57,7 +57,7 @@ python3 bench/perf/xml-stringify/run.py --ms target/release/ms --pairs 15 --cpu 
 The driver writes binaries, source snapshots, raw timings, summary and hashes to
 `.artifacts/xml-stringify/`. `--before` selects a baseline revision and `--output`
 selects an independent output directory. Run the allocation fixture with
-`ms run tools/count-check.ms -- tests/ownership-counts/xml_stringify.ms`.
+`ms run tools/count-check.ms -- tests/checks/ownership-counts/xml_stringify.ms`.
 
 The driver passed syntax validation, but its native smoke build stopped before
 execution because the default runtime cache was read-only. That operation was

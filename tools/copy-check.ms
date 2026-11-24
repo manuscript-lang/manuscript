@@ -32,7 +32,7 @@ fn main() Int:
 	if files.is_empty():
 		for dir in [
 			"tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
-			"tests/ownership-counts"
+			"tests/checks/ownership-counts"
 		]:
 			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get_or([]):
 				files.append(f"{dir}/{f.path}")

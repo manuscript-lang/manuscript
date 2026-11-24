@@ -6,7 +6,7 @@ const path = require('node:path');
 const { after, test } = require('node:test');
 const vm = require('node:vm');
 
-const root = path.resolve(__dirname, '../..');
+const root = path.resolve(__dirname, '../../..');
 const page = fs.readFileSync(path.join(root, 'src/tooling/data/page.html'), 'utf8');
 const cli = process.env.MS_BIN
   ? path.resolve(root, process.env.MS_BIN)

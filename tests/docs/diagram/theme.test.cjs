@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
 
-const root = path.resolve(__dirname, '../..');
+const root = path.resolve(__dirname, '../../..');
 const page = fs.readFileSync(path.join(root, 'src/tooling/data/page.html'), 'utf8');
 const site = fs.readFileSync(path.join(root, 'website/assets/_custom.scss'), 'utf8');
 // Inspect CSS declarations only: no page startup or browser substitute.
