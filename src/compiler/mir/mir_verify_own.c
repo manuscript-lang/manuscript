@@ -223,6 +223,8 @@ void mv_scoped_closures(Mv *v) {
 
 /* ---- ownership ---- */
 
+#define MV_NO_BIT UINT32_MAX
+
 typedef struct MvOwn {
   Mv *v;
   bool *owned_def;        /* the value is defined owned */
@@ -233,7 +235,8 @@ typedef struct MvOwn {
   bool *watched;          /* some borrow points into the owner: its drops matter */
   uint64_t **dropped_in;  /* per block: bit set of owners an explicit drop released on some path there, or NULL */
   uint64_t *dropped;      /* the block being walked: the same set, reused across blocks */
-  uint32_t words;         /* 64-bit words in one bit set over the function's values */
+  uint32_t words;         /* 64-bit words in one bit set over the function's reference-counted values */
+  uint32_t *bit;          /* per value: its bit in those sets, or MV_NO_BIT for a value that holds nothing to own */
   MvSet *entry_state;     /* per block: the live set on its first incoming edge */
   bool *has_entry;
   bool *back_target;      /* some edge into the block comes from a later block: its entry state is read again */
@@ -281,7 +284,14 @@ static void mv_own_init(Mv *v, MvOwn *o) {
   o->watched = mv_flags(v, (uint32_t)f->values.len);
   o->owner_of = mv_values_none(v, (uint32_t)f->values.len);
   o->pointer_owner = mv_values_none(v, (uint32_t)f->values.len);
-  o->words = (uint32_t)(f->values.len / 64) + 1;
+  /* The dropped sets cover the values that can be owned, not every value: a long function of integers has none, and a
+   * set per block over all its values made it quadratic. */
+  o->bit = MS_ARENA_NEW_ARRAY(&v->scratch, uint32_t, f->values.len + 1);
+  uint32_t owners = 0;
+  for (uint32_t x = 0; x < f->values.len; x++) {
+    o->bit[x] = mv_rc(v, x) ? owners++ : MV_NO_BIT;
+  }
+  o->words = owners / 64 + 1;
   o->dropped_in = MS_ARENA_NEW_ARRAY(&v->scratch, uint64_t *, f->blocks.len + 1);
   o->dropped = MS_ARENA_NEW_ARRAY(&v->scratch, uint64_t, o->words);
   o->entry_state = MS_ARENA_NEW_ARRAY(&v->scratch, MvSet, f->blocks.len + 1);
@@ -318,8 +328,9 @@ static MirValue mv_owner_or_self(const MvOwn *o, MirValue x) {
 /* The dropped owners are a bit set over value ids, not a sorted array: a long function drops
  * thousands of watched owners and every block carries them, so the array form made verification
  * quadratic in memory with a large constant. */
-static bool mvd_has(const uint64_t *bits, uint32_t id) {
-  return (bits[id / 64] >> (id % 64) & 1) != 0;
+static bool mvd_has(const MvOwn *o, const uint64_t *bits, uint32_t id) {
+  const uint32_t bit = o->bit[id];
+  return bit != MV_NO_BIT && (bits[bit / 64] >> (bit % 64) & 1) != 0;
 }
 
 /* Adds the set `from` to the one a successor block starts with. */
@@ -345,7 +356,7 @@ static void mv_report_dead_borrow(Mv *v, MirBlock bi, const MirInst *in, const u
                  const MvOwn *o) {
   for (uint32_t k = 0; k < in->nargs; k++) {
     MirValue owner = o->owner_of[in->args[k]];
-    if (owner != MIR_NONE && mvd_has(dropped, owner)) {
+    if (owner != MIR_NONE && mvd_has(o, dropped, owner)) {
       mv_err(v, bi, "%s: %%%u points into %%%u, which was consumed before this use",
          mv_op_name(in), in->args[k], owner);
     }
@@ -445,8 +456,10 @@ static void mv_check_operands(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *l
 static void mv_own_inst(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *live, uint64_t *dropped) {
   Mv *v = o->v;
   mv_report_dead_borrow(v, bi, in, dropped, o);
-  if ((in->op == MOP_Drop || in->op == MOP_DropIf) && in->nargs > 0 && o->watched[in->args[0]]) {
-    dropped[in->args[0] / 64] |= (uint64_t)1 << (in->args[0] % 64);
+  if ((in->op == MOP_Drop || in->op == MOP_DropIf) && in->nargs > 0 && o->watched[in->args[0]] &&
+      o->bit[in->args[0]] != MV_NO_BIT) {
+    const uint32_t bit = o->bit[in->args[0]];
+    dropped[bit / 64] |= (uint64_t)1 << (bit % 64);
   }
   mv_track_result(o, in);
   mv_check_operands(o, bi, in, live);
@@ -533,7 +546,7 @@ static void mv_own_edges(MvOwn *o, MirBlock bi, const MirTerm *term, const MvSet
     const MirTarget *t = mir_term_target_const(term, k);
     for (uint32_t a = 0; a < t->nargs; a++) {
       MirValue owner = o->owner_of[t->args[a]];
-      if (owner != MIR_NONE && mvd_has(dropped, owner)) {
+      if (owner != MIR_NONE && mvd_has(o, dropped, owner)) {
         mv_err(v, bi, "branch: %%%u points into %%%u, which was consumed before this use",
            t->args[a], owner);
       }

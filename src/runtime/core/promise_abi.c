@@ -73,6 +73,12 @@ int64_t msrt_promise_start_spread(MsObj *work, const MsString *site) { return ms
 uint8_t msrt_promise_take(int64_t id, const MsTypeDesc *d, uint8_t *out) { return ms_promise_take(id, d, out) ? 1 : 0; }
 int64_t msrt_promise_wait(int64_t id, int64_t timeout_ns) { return msrt_end_wait(ms_promise_wait(id, timeout_ns)); }
 
+uint8_t msrt_promise_result(int64_t id, const MsTypeDesc *d, uint8_t *out) {
+  bool taken = false;
+  (void)msrt_end_wait(ms_promise_result(id, d, out, &taken));
+  return taken ? 1 : 0;
+}
+
 int64_t msrt_promise_wait_any(const MsList *ids, int64_t timeout_ns) {
   return msrt_end_wait(ms_promise_wait_any((const MsPromise *)(const void *)ids->ptr, ids->len, timeout_ns));
 }

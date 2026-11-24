@@ -55,7 +55,7 @@ ms_library(ms_emit compiler/emit
   SOURCES
     emit_leaf.c emit_memory.c emit_scalar.c emit_call.c emit_checked.c emit_record.c emit_term.c emit_func.c emit.c
     emit_decl.c emit_entry.c emit_data.c emit_option.c emit_list.c emit_string.c emit_closure.c emit_iface.c
-    emit_task.c emit_debug.c emit_tables.c emit_units.c emit_hints.c emit_copies.c emit_wide.c
+    emit_task.c emit_debug.c emit_tables.c emit_units.c emit_hints.c emit_copies.c emit_dead.c emit_wide.c
   LINK ms_mir ms_base)
 
 # One linker per OS family.

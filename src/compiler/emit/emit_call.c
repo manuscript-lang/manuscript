@@ -389,8 +389,10 @@ void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const c
   uint32_t result_leaves = inst->res == MIR_NONE ? 0 : (uint32_t)emit_value_leaves(cx, inst->res).len;
   char held_area[24];
   const char *area = "%R";
+  bool held = false; /* the result stays in its cell: the instructions that read it load what they need */
   if (result_leaves > 1 && emit_wide_result(cx, inst->res, held_area, sizeof held_area)) {
     area = held_area;
+    held = true;
   }
   if (result_leaves == 1) {
     ms_strbuild_printf(out, "  %%v%u = call %s ", inst->res, emit_value_register_type(cx, inst->res));
@@ -405,7 +407,7 @@ void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const c
   ms_strbuild_append_byte(out, '(');
   call_arguments(cx, inst, result_leaves > 1 ? area : NULL, lead, block, index);
   ms_strbuild_append_text(out, ")\n");
-  if (result_leaves > 1) {
+  if (result_leaves > 1 && !held) {
     emit_leaves_at(cx, inst->res, area, true);
   }
 }
@@ -523,8 +525,9 @@ static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32
   area[0] = '%';
   area[1] = 'R';
   area[2] = 0; /* the area every call shares */
+  bool held = false;
   if (!direct && inst->res != MIR_NONE) {
-    (void)emit_wide_result(cx, inst->res, area, sizeof area); /* a held result goes straight to its cell */
+    held = emit_wide_result(cx, inst->res, area, sizeof area); /* a held result goes straight to its cell */
   }
   if (!direct || option) {
     ms_strbuild_printf(&args, "%sptr %s", ms_strbuild_length(&args) > 0 ? ", " : "", area);
@@ -554,7 +557,7 @@ static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32
   if (narrow) {
     widen_rt_result(cx, inst->res, kind);
   }
-  if (!direct && inst->res != MIR_NONE) {
+  if (!direct && inst->res != MIR_NONE && !held) {
     emit_leaves_at(cx, inst->res, area, true);
   }
   ms_strbuild_free(&args);

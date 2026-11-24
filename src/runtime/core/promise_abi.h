@@ -65,6 +65,9 @@ int64_t msrt_promise_start_here(MsObj *work, const MsString *site);
 int64_t msrt_promise_start_idle(MsObj *work, const MsString *site);
 /* ms-sig: msrt_promise_start_spread(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
 int64_t msrt_promise_start_spread(MsObj *work, const MsString *site);
+/* Waits for `id` without a limit and moves its value out: 0 when it ended any other way, which a wait then names. */
+/* ms-sig: msrt_promise_result(id: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=promise */
+uint8_t msrt_promise_result(int64_t id, const MsTypeDesc *d, uint8_t *out);
 /* ms-sig: msrt_promise_take(id: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=promise */
 uint8_t msrt_promise_take(int64_t id, const MsTypeDesc *d, uint8_t *out);
 /* ms-sig: msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 @domain=promise */

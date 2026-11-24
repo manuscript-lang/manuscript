@@ -246,6 +246,21 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   MsArena scratch = {0};
   cx->framed = mir_framed_closures(&scratch, cx->module, func);
   cx->borrowed = mir_framed_iface_borrows(&scratch, cx->module, func);
+  bool *is_iconst = MS_ARENA_NEW_ARRAY(&scratch, bool, func->values.len + 1);
+  int64_t *iconst = MS_ARENA_NEW_ARRAY(&scratch, int64_t, func->values.len + 1);
+  __builtin_memset(is_iconst, 0, sizeof *is_iconst * (func->values.len + 1));
+  for (uint32_t block = 0; block < func->blocks.len; block++) {
+    const MirBlockData *data = &func->blocks.ptr[block];
+    for (uint32_t at = 0; at < data->insts.len; at++) {
+      const MirInst *inst = &data->insts.ptr[at];
+      if (inst->op == MOP_IConst && inst->res != MIR_NONE) {
+        is_iconst[inst->res] = true;
+        iconst[inst->res] = inst->imm.i;
+      }
+    }
+  }
+  cx->is_iconst = is_iconst;
+  cx->iconst = iconst;
   const bool *held = emit_wide_plan(cx, &scratch);
   cx->pool = emit_slot_pool(&scratch, cx, held);
   uint32_t subprogram = cx->debug != NULL ? emit_debug_subprogram(cx, index) : 0;
@@ -259,6 +274,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->out = module_out;
   if (ok) {
     emit_forward_copies(&body);
+    emit_drop_dead_definitions(&body);
     emit_header(cx, index, subprogram);
     ms_strbuild_append(module_out, ms_strbuild_span(&body));
     ms_strbuild_append_text(module_out, "}\n\n");
@@ -268,6 +284,8 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   ms_arena_free(&scratch);
   cx->framed = NULL;
   cx->borrowed = NULL;
+  cx->is_iconst = NULL;
+  cx->iconst = NULL;
   cx->pool = NULL;
   cx->cell_bytes = NULL;
   cx->cell_escape = NULL;

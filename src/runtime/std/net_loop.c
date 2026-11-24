@@ -6,6 +6,7 @@
 #include "base/alloc.h"
 #include "runtime/core/release.h"
 #include "runtime/core/task.h"
+#include "runtime/sys/sys.h"
 
 static struct {
   uv_once_t once;
@@ -85,6 +86,7 @@ static atomic_bool loop_started;
 
 static void start_loop(void) {
   atomic_store(&loop_started, true);
+  ms_quiesce_at_thread_exit(ms_net_quiesce);
   ms_release_at_exit(ms_net_release_all);
   (void)uv_loop_init(&net.loop);
   (void)uv_mutex_init(&net.lock);
@@ -143,6 +145,25 @@ MsNetWait ms_net_run(MsNetOp *op, int64_t timeout_ns) {
   enqueue(&request->op);
   op_unref(op); /* the waiter's reference */
   return (result & MS_WAIT_CANCELLED) != 0 ? MS_NET_WAIT_CANCELLED : MS_NET_WAIT_TIMED_OUT;
+}
+
+/* A marker that lives on its waiter's stack: the loop only sets the flag, so nothing is freed after the waiter leaves. */
+typedef struct Barrier {
+  MsNetOp op;
+  atomic_bool reached;
+} Barrier;
+
+static void barrier_start(MsNetOp *op) { atomic_store(&((Barrier *)op)->reached, true); }
+
+void ms_net_quiesce(void) {
+  if (!atomic_load(&loop_started)) {
+    return;
+  }
+  Barrier barrier = {.op = {.start = barrier_start}};
+  enqueue(&barrier.op);
+  while (!atomic_load(&barrier.reached)) {
+    ms_sys_yield();
+  }
 }
 
 int64_t ms_net_timeout(uint8_t has_timeout, int64_t timeout) { return has_timeout != 0 && timeout >= 0 ? timeout : -1; }

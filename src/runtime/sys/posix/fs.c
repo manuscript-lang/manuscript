@@ -110,6 +110,10 @@ bool ms_sys_fs_watch_names_self(void) {
   return true;
 }
 
+bool ms_sys_fs_watch_drops_batches(void) {
+  return false;
+}
+
 const char *ms_sys_fs_watch_ready_prefix(void) {
 #ifdef __APPLE__
   return ".ms-watch-ready-";

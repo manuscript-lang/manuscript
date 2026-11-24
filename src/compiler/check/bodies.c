@@ -58,6 +58,8 @@ void body_push_local(Body *body, MsLocal local) {
 void body_free_locals(Body *body) {
   ms_local_list_free(&body->locals);
   ms_free(body->local_latest);
+  ms_free(body->decl_symbol);
+  body->decl_symbol = NULL;
   body->local_latest = NULL;
   body->nlocal_latest = 0;
 }
@@ -555,13 +557,23 @@ static void method_decl(Body *body, const MsMethod *method) {
   ms_ty_list_truncate(&body->resolver.types, mark);
 }
 
-static const MsSymbol *symbol_of(const MsCheckProgram *program, uint32_t module, const MsDecl *decl) {
-  for (MsSymbolId id = 1; id < program->symbols.len; id++) {
-    if (program->symbols.ptr[id].module == module && program->symbols.ptr[id].decl == decl) {
-      return &program->symbols.ptr[id];
+/* The symbol of a declaration of this module (the first one made for it), found through a table by declaration node
+ * that the first call builds: one pass over the symbols, not one per declaration. */
+static const MsSymbol *symbol_of(Body *body, const MsDecl *decl) {
+  const MsCheckProgram *program = body->program;
+  const uint32_t nodes = program->modules.ptr[body->module].tree->node_count;
+  if (body->decl_symbol == NULL) {
+    body->decl_symbol = ms_alloc_zeroed(((size_t)nodes + 1) * sizeof *body->decl_symbol);
+    for (MsSymbolId id = 1; id < program->symbols.len; id++) {
+      const MsSymbol *symbol = &program->symbols.ptr[id];
+      if (symbol->module == body->module && symbol->decl != NULL && symbol->decl->id < nodes &&
+          body->decl_symbol[symbol->decl->id] == 0) {
+        body->decl_symbol[symbol->decl->id] = id;
+      }
     }
   }
-  return NULL;
+  const MsSymbolId id = decl->id < nodes ? body->decl_symbol[decl->id] : 0;
+  return id != 0 ? &program->symbols.ptr[id] : NULL;
 }
 
 /* Types the default expressions of a type's fields or an enum case's payload slots. */
@@ -605,7 +617,7 @@ static void declaration(Body *body, const MsDecl *decl) {
   body->result = MS_TY_NONE;
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN: {
-    const MsSymbol *symbol = symbol_of(body->program, body->module, decl);
+    const MsSymbol *symbol = symbol_of(body, decl);
     if (symbol != NULL && symbol->ty != MS_TY_NONE && decl->u.fn.external) {
       body_check_extern(body, decl, symbol->ty);
     } else if (symbol != NULL && symbol->ty != MS_TY_NONE) {
@@ -660,7 +672,7 @@ static void declaration(Body *body, const MsDecl *decl) {
   }
   case MS_D_TYPE:
     report_optionals_last(body, decl->u.type.fields, true);
-    field_defaults(body, decl->u.type.fields, symbol_of(body->program, body->module, decl));
+    field_defaults(body, decl->u.type.fields, symbol_of(body, decl));
     break;
   case MS_D_ENUM:
     for (uint32_t index = 0; index < decl->u.enumeration.cases.len; index++) {
