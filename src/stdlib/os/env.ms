@@ -22,7 +22,7 @@ export fn arguments() List[String]:
 	return msrt_args()
 
 /*
-Finds the executable that running `name` would start, or none.
+Finds the executable that running `name` would start, or null.
 A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries.
 Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there.
 The result is a regular file the process may execute (any regular file on Windows). It is not made absolute or canonical.
@@ -31,7 +31,7 @@ Example: `if path := which("git"): print(path)` prints the executable found on t
 // ms: effect std.env.read
 // ms: effect std.fs.read
 export fn which(name: String) String?:
-	if name == "": return none
+	if name == "": return null
 
 	windows := os() == Os.Windows
 	has_path := name.contains("/") or (windows and name.contains("\\"))
@@ -66,7 +66,7 @@ export fn which(name: String) String?:
 			if extension == "": continue
 			if runnable(f"{candidate}{extension}", windows): return f"{candidate}{extension}"
 
-	return none
+	return null
 
 fn runnable(path: String, windows: Bool) Bool:
 	info := stat(path)
@@ -82,7 +82,7 @@ export fn environment() Map[String, String]!:
 	return msstd_process_environment_map()
 
 // Sets environment variable `name` for this process to `value`, or removes it when
-// `value` is none. An empty name, or a name or value with `=` or NUL, returns EINVAL.
+// `value` is null. An empty name, or a name or value with `=` or NUL, returns EINVAL.
 // The change is visible to child processes started afterwards.
 // ms: effect std.env.write
 export fn set_environment(name: String, value: String?) Void!:
@@ -98,12 +98,12 @@ export fn set_environment(name: String, value: String?) Void!:
 // directory returns EINVAL, as for `read_file`.
 // ms: effect std.env.write
 // ms: effect std.fs.read
-export fn load_environment(path: String, max_bytes: Int? = none) Void!:
+export fn load_environment(path: String, max_bytes: Int? = null) Void!:
 	data := msstd_fs_read_file(path, max_bytes)?
 	text := data.decode_utf8()
-	if text.is_none(): return error(Error("environment: invalid data", kind: "EBADMSG"))
+	if text == null: return error(Error("environment: invalid data", kind: "EBADMSG"))
 
-	entries := parse_dotenv(text.get_or(""))?
+	entries := parse_dotenv(text)?
 
 	for entry in entries.entries():
 		if msstd_process_environment_is_set(entry.key): continue

@@ -146,7 +146,7 @@ fn bench_bytes(n: Int) Int:
 	t := monotonic()
 	var bb = BytesBuilder()
 	for i in 0..n:
-		bb.append((i % 256).to_uint8().get_or(0))
+		bb.append((i % 256).to_uint8() or 0)
 
 	b := bb.build()
 	report("bytes_append", n, t)
@@ -163,7 +163,7 @@ fn bench_pq(n: Int) Int:
 
 	var sum = 0
 	for i in 0..n:
-		sum += q.dequeue().get_or(0)
+		sum += q.dequeue() or 0
 	report("pq_int_enqueue_dequeue", n * 2, t)
 	return sum
 

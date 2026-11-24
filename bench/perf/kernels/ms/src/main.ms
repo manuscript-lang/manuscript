@@ -341,13 +341,13 @@ fn run_vm(code: List[Op], iters: Int) Int:
 				stack.append(n)
 				pc += 1
 			Add:
-				b := stack.pop().get_or(0)
-				a := stack.pop().get_or(0)
+				b := stack.pop() or 0
+				a := stack.pop() or 0
 				stack.append(a + b)
 				pc += 1
 			Mul:
-				b := stack.pop().get_or(0)
-				a := stack.pop().get_or(0)
+				b := stack.pop() or 0
+				a := stack.pop() or 0
 				stack.append(a * b % 1000003)
 				pc += 1
 			Dup:
@@ -355,13 +355,13 @@ fn run_vm(code: List[Op], iters: Int) Int:
 				stack.append(v)
 				pc += 1
 			Swap:
-				b := stack.pop().get_or(0)
-				a := stack.pop().get_or(0)
+				b := stack.pop() or 0
+				a := stack.pop() or 0
 				stack.append(b)
 				stack.append(a)
 				pc += 1
 			Pop:
-				acc += stack.pop().get_or(0)
+				acc += stack.pop() or 0
 				pc += 1
 			JmpNz(target):
 				if stack.get(stack.length() - 1) != 0:
@@ -369,7 +369,7 @@ fn run_vm(code: List[Op], iters: Int) Int:
 				else:
 					pc += 1
 			Dec:
-				v := stack.pop().get_or(0)
+				v := stack.pop() or 0
 				stack.append(v - 1)
 				pc += 1
 
@@ -462,18 +462,18 @@ fn main() Int:
 				Body(0.0, 0.0, 3.0, 0.0, 0.0, 1.0, 1.0),
 				Body(4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.5),
 			]
-			return (advance(bodies, 200000) * 1000.0).truncate_to_int().get_or(0)
+			return (advance(bodies, 200000) * 1000.0).truncate_to_int() or 0
 	)
 
 	timed("life_128x128_50", fn() Int: return life(50))
-	timed("matmul_200", fn() Int: return matmul(200).truncate_to_int().get_or(0))
+	timed("matmul_200", fn() Int: return matmul(200).truncate_to_int() or 0)
 	timed("trees_d16_x20", fn() Int: return trees(20))
 	timed("collatz_1M", fn() Int: return collatz(1000000))
 	timed("map_count_2M", fn() Int: return wordfreq(2000000))
 	timed("mandel_400", fn() Int: return mandel(400))
 	timed(
 		"particles_1k_5k",
-		fn() Int: return particles(1000, 5000).truncate_to_int().get_or(0)
+		fn() Int: return particles(1000, 5000).truncate_to_int() or 0
 	)
 	timed("vm_5M", fn() Int: return vm(5000000))
 	timed("expr_d20_x20", fn() Int: return exprs(20, 20))

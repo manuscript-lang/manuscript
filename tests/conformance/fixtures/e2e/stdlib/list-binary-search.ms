@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	SearchResult from "@std/collections/collections.ms",
+	panic from "@std/core.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_ok, expect_true from "@std/test/test.ms",
 )
@@ -101,8 +102,12 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
 	expect_equal([0.0, infinity].binary_search(nan).index, 2)?
 	expect_true(not [0.0, infinity].binary_search(nan).found)?
 
-	narrow: List[Float32] := [0.0, 1.0, nan.to_float32().get()]
-	narrow_nan: Float32 := nan.to_float32().get()
+	narrow: List[Float32] := [
+		0.0,
+		1.0,
+		(nan.to_float32() or panic("called Optional.get() on null")),
+	]
+	narrow_nan: Float32 := nan.to_float32() or panic("called Optional.get() on null")
 	check_search(narrow, narrow_nan)?
 
 fn count(path: String) Int:

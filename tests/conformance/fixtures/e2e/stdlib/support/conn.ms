@@ -34,8 +34,9 @@ export fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
 
 	while true:
 		chunk := input.next()?
+		bytes := chunk
 
-		if bytes := chunk:
+		if bytes != null:
 			chunks.append(bytes)
 		else:
 			break

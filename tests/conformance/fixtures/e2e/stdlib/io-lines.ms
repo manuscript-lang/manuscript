@@ -11,8 +11,8 @@ import (
 	closed_reader, memory from "./support/streams.ms",
 )
 
-fn gather(move input: ReadStream[Bytes], max_bytes: Int? = none) List[String]!:
-	return collect(lines(input, max_bytes), none)
+fn gather(move input: ReadStream[Bytes], max_bytes: Int? = null) List[String]!:
+	return collect(lines(input, max_bytes), null)
 
 test "an empty stream has no lines":
 	expect_equal(gather(memory("")), ok([]))?
@@ -26,7 +26,7 @@ test "a final newline adds no empty line":
 test "an over-budget line fails the read after the lines before it":
 	var input = lines(memory("ok\ntoo long line\nnever"), 5)
 	var seen: List[String] = []
-	var failure: Error? = none
+	var failure: Error? = null
 
 	while true:
 		step := input.next()
@@ -35,7 +35,9 @@ test "an over-budget line fails the read after the lines before it":
 			failure = step.err()
 			break
 
-		if line := step.get():
+		line := step.get()
+
+		if line != null:
 			seen.append(line.clone())
 		else:
 			break
@@ -64,7 +66,7 @@ type Countdown:
 	left: Int
 
 fn var Countdown.next() Int?:
-	if self.left == 0: return none
+	if self.left == 0: return null
 
 	self.left -= 1
 	return (self.left + 1)

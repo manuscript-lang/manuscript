@@ -62,7 +62,7 @@ fn main() Void:
 
 ## 2. Turn text into records, group, sort, print
 
-Parse each line into a record or `none`, drop the failures with a pipeline, group into a Map, sort the keys, and `join` the output. Report what was skipped instead of failing silently. `if v := optional:` binds the value in the success branch.
+Parse each line into a record or `null`, drop the failures with a pipeline, group into a Map, sort the keys, and `join` the output. Report what was skipped instead of failing silently. `if v := optional:` binds the value in the success branch.
 
 <!-- complete: idiom-report.ms -->
 ```manuscript
@@ -78,10 +78,10 @@ fn money(cents: Int) String:
 fn parse_sale(line: String) Sale?:
 	parts := line.split(",")
 	if parts.length() != 2:
-		return none
+		return null
 	if cents := parts[1].parse_int():
 		return Sale(parts[0].clone(), cents)
-	return none
+	return null
 
 fn totals_by_region(sales: List[Sale]) Map[String, Int]:
 	var totals = Map[String, Int]()
@@ -95,7 +95,7 @@ fn report(totals: Map[String, Int]) List[String]:
 
 fn main() Void:
 	lines := ["north,1250", "south,800", "north,2505", "bad line", "south,x"]
-	sales := lines | .map(parse_sale) | .filter(fn s: s.is_some()) | .map(fn s: s.get())
+	sales := lines | .map(parse_sale) | .filter(fn s: s != null) | .map(fn s: s.get())
 	skipped := lines.length() - sales.length()
 	print(report(totals_by_region(sales)).join("\n"))
 	print(f"skipped {skipped} lines")
@@ -213,7 +213,7 @@ fn var Parser.number() Expr!:
 	start := self.pos
 	while self.peek() >= "0" and self.peek() <= "9" and not self.peek().is_empty():
 		self.pos += 1
-	digits := self.chars.slice(start, self.pos).get_or([]).join("")
+	digits := self.chars.slice(start, self.pos) or [].join("")
 	value := digits.parse_int().ok_or(Error(f"expected a number at {start}", kind: "EINVAL"))?
 	return ok(Expr.Num(value))
 
@@ -270,7 +270,7 @@ fn main() Void:
 
 ## 6. Algorithms: grids, queues, visited sets
 
-Breadth-first search is a `List` used as a queue with a `head` index, a `Map` or `Set` of visited keys, and an Optional result. Key a visited set by a string such as `f"{row},{col}"`. A record with two Ints is the point type. Return `none` for "no path" and let the caller handle it with `if steps := shortest(...)`. Dynamic programming is a `var` List of the right length updated in a loop.
+Breadth-first search is a `List` used as a queue with a `head` index, a `Map` or `Set` of visited keys, and an Optional result. Key a visited set by a string such as `f"{row},{col}"`. A record with two Ints is the point type. Return `null` for "no path" and let the caller handle it with `if steps := shortest(...)`. Dynamic programming is a `var` List of the right length updated in a loop.
 
 <!-- complete: idiom-bfs.ms -->
 ```manuscript
@@ -303,7 +303,7 @@ fn shortest(grid: List[String], start: Point, goal: Point) Int?:
 			if not distance.contains(key):
 				distance.add(key, steps + 1)
 				queue.append(next)
-	return none
+	return null
 
 fn main() Void:
 	grid := ["S..#", ".#..", "...G"]
@@ -342,7 +342,7 @@ fn var Shop.take(sku: String, qty: Int) String:
 fn run_command(var shop: Shop, line: String) String:
 	words := line.split(" ")
 	qty := words.get_or(2, "").parse_int()
-	if words.length() != 3 or qty.is_none():
+	if words.length() != 3 or qty == null:
 		return "error: usage: add|take <sku> <qty>"
 	match words[0]:
 		"add":
@@ -354,7 +354,7 @@ fn run_command(var shop: Shop, line: String) String:
 
 fn main() Void!:
 	var shop = Shop(Map[String, Int](), [])
-	text := stdin() | lines | collect(none)?
+	text := stdin() | lines | collect(null)?
 	for line in text.filter(fn l: not l.is_empty()):
 		print(run_command(shop, line))
 ```
@@ -385,7 +385,7 @@ fn Circle.area() Float: 3.0 * self.radius * self.radius
 fn Circle.name() String: "circle"
 
 fn largest[T: Clonable](items: List[T], score: fn(T) Float) T?:
-	var best: T? = none
+	var best: T? = null
 	var best_score = -1.0
 	for item in items:
 		s := score(item)
@@ -407,7 +407,7 @@ fn main() Void:
 
 ## 9. Read input as a stream, count with a Map
 
-Standard input, files and sockets are streams. `stdin() | lines | collect(none)?` reads every line into a List, in a function that returns a Result. Count with `counts.add(key.clone(), counts.get_or(key, 0) + 1)`, then sort and slice the entries.
+Standard input, files and sockets are streams. `stdin() | lines | collect(null)?` reads every line into a List, in a function that returns a Result. Count with `counts.add(key.clone(), counts.get_or(key, 0) + 1)`, then sort and slice the entries.
 
 <!-- complete: idiom-words.ms -->
 ```manuscript
@@ -423,9 +423,9 @@ fn word_counts(text: List[String]) Map[String, Int]:
 	return counts
 
 fn main() Void!:
-	text := stdin() | lines | collect(none)?
+	text := stdin() | lines | collect(null)?
 	counts := word_counts(text)
-	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3).get_or(none)
+	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3) or null
 	for entry in top:
 		print(f"{entry.key} {entry.value}")
 ```

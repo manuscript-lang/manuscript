@@ -31,33 +31,36 @@ test "rotation preserves order across ring positions and signed boundaries":
 				var q = Deque[Int]()
 				for i in 0..size:
 					q.push_back(i)
+
 				for i in 0..advance:
-					if value := q.pop_front():
+					value := q.pop_front()
+					if value != null:
 						q.push_back(value)
+
 				q.rotate(count)
 				expect_equal(q.length(), size)?
 
 				if size > 0:
 					shift := (count % size + size + advance % size) % size
 					for i in 0..size:
-						expect_equal(q.get(i).get_or(-1), (i + shift) % size)?
+						expect_equal(q.get(i) or (-1), (i + shift) % size)?
 					expect_equal(q.front(), q.get(0))?
 					expect_equal(q.back(), q.get(size - 1))?
 
 test "negative rotation keeps optional values and nested contents":
 	var q = Deque[List[Int]?]()
 	q.push_back([1, 2])
-	q.push_back(none)
+	q.push_back(null)
 	q.push_back([3])
 	q.rotate(-1)
 
 	last: List[Int]? := [3]
 	first: List[Int]? := [1, 2]
-	absent: List[Int]? := none
+	absent: List[Int]? := null
 	expect_equal(q.pop_front(), last)?
 	expect_equal(q.pop_front(), first)?
 	expect_equal(q.pop_front(), absent)?
-	expect_equal(q.pop_front(), none)?
+	expect_equal(q.pop_front(), null)?
 
 test "positive near-whole rotations preserve full and partial rings":
 	for size in [8191, 8192]:
@@ -68,7 +71,7 @@ test "positive near-whole rotations preserve full and partial rings":
 			q.rotate(size - 1)
 		expect_equal(q.length(), size)?
 		for i in 0..size:
-			expect_equal(q.get(i).get_or(-1), (i + size - 100) % size)?
+			expect_equal(q.get(i) or (-1), (i + size - 100) % size)?
 		q.push_back(size)
 		expect_equal(q.pop_back(), size)?
 		q.rotate(100)
@@ -79,13 +82,13 @@ test "positive near-whole rotations preserve full and partial rings":
 test "positive near-whole rotation preserves optional nested payloads":
 	var q = Deque[List[Int]?]()
 	q.push_back([1, 2])
-	q.push_back(none)
+	q.push_back(null)
 	q.push_back([3])
 	q.rotate(2)
 
 	last: List[Int]? := [3]
 	first: List[Int]? := [1, 2]
-	absent: List[Int]? := none
+	absent: List[Int]? := null
 	expect_equal(q.pop_front(), last)?
 	expect_equal(q.pop_front(), first)?
 	expect_equal(q.pop_front(), absent)?

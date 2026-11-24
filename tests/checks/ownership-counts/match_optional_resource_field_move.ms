@@ -16,7 +16,7 @@ type Slot[V]:
 
 fn take[V](move taken: Slot[V]?) V!:
 	match taken:
-		none: return error(Error("gone"))
+		null: return error(Error("gone"))
 		slot: return ok(slot.value)
 
 fn main() Void:

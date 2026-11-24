@@ -46,7 +46,7 @@ fn main() Void:
 	report("sb_append", t, sb.length())
 	t = monotonic()
 	s = 0
-	for k in 0..200: s += text.index_of("w99999-976 w0").get_or(-1)
+	for k in 0..200: s += text.index_of("w99999-976 w0") or (-1)
 	report("index_of_big", t, s)
 	t = monotonic()
 	s = 0

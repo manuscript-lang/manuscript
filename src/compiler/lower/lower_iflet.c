@@ -68,6 +68,24 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   const MirTyData *data = mir_ty_data(module, mir_b_ty(&fn->b, value));
   MirValue payload = MIR_NONE;
   MirTy ty = MIR_VOID;
+  /* A nullable `T` (a generic instantiated with `Int?`) tested as `T?` is the same type: a present value is itself the payload. */
+  const MirTy value_ty = mir_b_ty(&fn->b, value);
+  const MsTy bound = ms_facts_type(fn->facts, pattern->id);
+  if (data->kind == MK_OPT && bound != MS_TY_NONE && fn_type(fn, bound) == value_ty) {
+    if (owns) {
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+      if (mir_needs_drop(module, value_ty)) {
+        fn_own(fn, fn_scope(fn), value);
+        if (fn->local_owns != NULL && ref->local < fn->nvars) {
+          fn->local_owns[ref->local] = 1;
+        }
+      }
+    } else if (fn->local_owns != NULL && ref->local < fn->nvars && mir_needs_drop(module, value_ty)) {
+      fn->local_owns[ref->local] = 2;
+    }
+    mir_b_def_var(&fn->b, fn_local(fn, ref->local, value_ty), value);
+    return !fn->failed;
+  }
   if (owns && !fn_owns_result(fn, value)) {
     owns = false; /* a view of an element or field its owner keeps */
   }
@@ -121,7 +139,7 @@ bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr
     return false;
   }
   const MsTyTable *types = &fn->cx->program->types;
-  const MsTy held = ms_facts_type(fn->facts, callee->u.member.left->id);
+  const MsTy held = fn_read_type(fn, callee->u.member.left);
   const MsTy result = ms_facts_type(fn->facts, cond->id);
   const MsTy key = ms_facts_type(fn->facts, cond->u.call.args.ptr[0].value->id);
   if (held == MS_TY_NONE || result == MS_TY_NONE || key == MS_TY_NONE || !ms_ty_is(types, result, MS_BUILTIN_Optional) ||

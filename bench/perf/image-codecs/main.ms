@@ -20,15 +20,9 @@ fn main() Void!:
 
 		while x < w:
 			at := (y * w + x) * 3
-			img.pixels[at] = ((x * 3 + y * 5 + (x * y) / 512) % 256).to_uint8().get_or(
-				0
-			)
-			img.pixels[at + 1] = ((x + y * 2 + (x + y * 3) % 251) % 256).to_uint8().get_or(
-				0
-			)
-			img.pixels[at + 2] = ((x * 7 + y + (x / 8) * (y / 8)) % 256).to_uint8().get_or(
-				0
-			)
+			img.pixels[at] = ((x * 3 + y * 5 + (x * y) / 512) % 256).to_uint8() or 0
+			img.pixels[at + 1] = ((x + y * 2 + (x + y * 3) % 251) % 256).to_uint8() or 0
+			img.pixels[at + 2] = ((x * 7 + y + (x / 8) * (y / 8)) % 256).to_uint8() or 0
 			x += 1
 
 		y += 1

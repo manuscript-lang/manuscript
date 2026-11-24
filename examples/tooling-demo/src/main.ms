@@ -14,8 +14,9 @@ fn main() Int:
 	package := Package("Manuscript", 42)
 	values := [10, 20, 30]
 	optional: Int? := 5
+	value := optional
 
-	if value := optional:
+	if value != null:
 		if value != 5: return 1
 	else:
 		return 1

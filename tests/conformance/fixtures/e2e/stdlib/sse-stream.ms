@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	ReadStream, Source from "@std/io/io.ms",
 	SseEvent, SseLimits, sse_events from "@std/net/sse.ms",
 	expect_equal, expect_false, fail from "@std/test/test.ms",
@@ -19,15 +20,16 @@ fn var Chunks.next() Bytes?!:
 		self.index += 1
 		return ok(part)
 
-	if cause := self.failure: return error(cause.clone())
+	cause := self.failure
+	if cause != null: return error(cause.clone())
 
-	return ok(none)
+	return ok(null)
 
 fn move Chunks.close() Void!:
 	return ok()
 
 fn chunks(move parts: List[Bytes]) ReadStream[Bytes]:
-	return ReadStream[Bytes](Chunks(parts, 0, none))
+	return ReadStream[Bytes](Chunks(parts, 0, null))
 
 // Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
 fn splits(source: Bytes) List[List[Bytes]]:
@@ -49,8 +51,9 @@ fn decode(move parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEven
 
 	while true:
 		next := events.next()?
+		event := next
 
-		if event := next:
+		if event != null:
 			out.append(event)
 		else:
 			break
@@ -59,7 +62,7 @@ fn decode(move parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEven
 
 fn summary(events: List[SseEvent]) String:
 	return events.map(
-		fn event: f"{event.event}|{event.data}|{event.id.get_or("-")}"
+		fn event: f"{event.event}|{event.data}|{(event.id or "-")}"
 	).join(";")
 
 fn expect(source: String, want: String) Void!:
@@ -109,7 +112,7 @@ test "events carry the latest valid retry time":
 	expect_equal(kept[1].retry, 1500)?
 
 	none_sent := decode(["data: a\n\n".to_bytes()])?
-	expect_equal(none_sent[0].retry, none)?
+	expect_equal(none_sent[0].retry, null)?
 
 test "a byte order mark is dropped only at the start of the stream":
 	expect("\u{feff}data: a\n\n", "message|a|-")?
@@ -169,7 +172,7 @@ test "a read failure is the stream's error and events before it arrive":
 			)
 		)
 	)
-	first := (events.next()?).get()
+	first := (events.next()?) or panic("called Optional.get() on null")
 	expect_equal(first.data, "a")?
 
 	failed := events.next()

@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != none` is `x.is_some()`), or compare with the plain value, e.g. x == 3",
+        "message": "null has no type of its own here; compare a nullable with `x == null`, or compare plain values with each other, e.g. x == 3",
         "position": {
           "file": "none-compare-on-int-has-no-fix.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/none-compare-on-int-has-no-fix.ms:4:14: type: none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != none` is `x.is_some()`), or compare with the plain value, e.g. x == 3\n   |\n 4 |     return n == none\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/none-compare-on-int-has-no-fix.ms:4:14: type: null has no type of its own here; compare a nullable with `x == null`, or compare plain values with each other, e.g. x == 3\n   |\n 4 |     return n == null\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

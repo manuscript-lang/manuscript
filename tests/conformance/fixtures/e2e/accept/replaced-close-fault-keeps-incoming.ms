@@ -28,7 +28,7 @@ test "replacement stays owned while the discarded entry closes":
 	message := expect_fault(fn: replace(log.clone()))?
 	expect_contains(message, "a resource could not be closed")?
 
-	events := read_file(log).wait().get().decode_utf8().get_or("")
+	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "1,9,")?
 
 fn replace_in_map(move log: String) Void:
@@ -42,5 +42,5 @@ test "map replacement keeps the incoming entry owned while the old one closes":
 	message := expect_fault(fn: replace_in_map(log.clone()))?
 	expect_contains(message, "a resource could not be closed")?
 
-	events := read_file(log).wait().get().decode_utf8().get_or("")
+	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "1,9,")?

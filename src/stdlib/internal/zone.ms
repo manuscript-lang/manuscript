@@ -68,7 +68,7 @@ fn Zone.type_at(t: Int) ZoneAt:
 		stop += 1
 	return ZoneAt(
 		offset: be_i32(self.data, at),
-		abbreviation: self.data.decode_utf8_range(start, stop).get_or(""),
+		abbreviation: self.data.decode_utf8_range(start, stop) or "",
 	)
 
 // The footer rule's offset and abbreviation at `unix`.
@@ -246,12 +246,12 @@ fn var Scan.name() String:
 
 		finish := self.pos
 		if not self.eat(62): self.bad = true
-		return self.text.decode_utf8_range(start, finish).get_or("")
+		return self.text.decode_utf8_range(start, finish) or ""
 
 	while is_alpha(self.peek()):
 		self.pos += 1
 	if self.pos - start < 3: self.bad = true
-	return self.text.decode_utf8_range(start, self.pos).get_or("")
+	return self.text.decode_utf8_range(start, self.pos) or ""
 
 // `[+-]hh[:mm[:ss]]` in seconds, the sign as written.
 fn var Scan.clock() Int:
@@ -517,20 +517,20 @@ fn rule_seconds(rule: Rule, year: Int) Int:
 
 	return day * 86400 + rule.time
 
-// `[+-]hh:mm` as seconds east of UTC, or none.
+// `[+-]hh:mm` as seconds east of UTC, or null.
 fn fixed_offset(text: String) Int?:
 	data := text.view_bytes()
-	if data.length() != 6 or data.get(3).to_int() != 58: return none
+	if data.length() != 6 or data.get(3).to_int() != 58: return null
 
 	sign := data.get(0).to_int()
-	if sign != 43 and sign != 45: return none
+	if sign != 43 and sign != 45: return null
 
 	for i in [1, 2, 4, 5]:
-		if not is_digit(data.get(i).to_int()): return none
+		if not is_digit(data.get(i).to_int()): return null
 
 	hours := (data.get(1).to_int() - 48) * 10 + data.get(2).to_int() - 48
 	minutes := (data.get(4).to_int() - 48) * 10 + data.get(5).to_int() - 48
-	if hours > 23 or minutes > 59: return none
+	if hours > 23 or minutes > 59: return null
 
 	seconds := hours * 3600 + minutes * 60
 	return if sign == 45: -seconds else: seconds
@@ -550,9 +550,10 @@ fn host_zone() Zone:
 
 	if spec.starts_with("windows:"):
 		iana := (
-			msstd_time_zone_data(f"windows/{spec.view(8, spec.length())}")
-			.decode_utf8()
-			.get_or("")
+			msstd_time_zone_data(
+				f"windows/{spec.view(8, spec.length())}"
+			).decode_utf8()
+			or ""
 		)
 		if zone := named(iana): return zone
 
@@ -582,11 +583,13 @@ fn host_zone() Zone:
 export fn load(name: String) Zone!:
 	if name == "UTC" or name.is_empty(): return ok(plain_zone(0, "UTC", 0))
 	if name == "Local": return ok(host_zone())
-	if offset := fixed_offset(name): return ok(plain_zone(1, name.clone(), offset))
+
+	offset := fixed_offset(name)
+	if offset != null: return ok(plain_zone(1, name.clone(), offset))
 
 	return named(name)
 
-// The IANA name of the host's zone, `UTC` when it has none.
+// The IANA name of the host's zone, `UTC` when it has null.
 export fn local_name() String:
 	name := host_zone().name
 	if name.is_empty(): return "UTC"

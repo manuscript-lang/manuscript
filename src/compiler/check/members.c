@@ -6,6 +6,7 @@
 #include "compiler/syntax/parse.h"
 #include "compiler/check/body.h"
 #include "compiler/check/bounds.h"
+#include "compiler/check/call_internal.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/suggest.h"
 
@@ -94,7 +95,7 @@ static bool payload_hint(Body *body, MsTy receiver, MsSpan name, MsStrBuild *out
   ms_strbuild_append_text(out, ", which has ");
   ms_strbuild_append(out, name);
   ms_strbuild_append_text(out, ": unwrap it first with ");
-  ms_strbuild_append_text(out, optional ? "`if value := x:` or x.get_or(default)"
+  ms_strbuild_append_text(out, optional ? "`if x != null:` or `x or default`"
                                         : "`x?` inside a fn that returns Result, `if value := x:` or x.get_or(default)");
   return true;
 }
@@ -133,7 +134,7 @@ static bool habit_before_payload(Body *body, MsTy receiver, MsName id, MsSpan na
   const bool result = ms_ty_is(types, receiver, MS_BUILTIN_Result);
   const char *fix = NULL;
   if (optional && (NAME_IN(name, "unwrap", "expect", "value", "unwrap_or") || NAME_IN(name, "unwrap_or_else", "or_default", "unwrap_or_default"))) {
-    fix = "read an Optional with x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:` to test and unwrap; x.get() with no default faults on none";
+    fix = "read an Optional with x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:` to test and unwrap; x.get() with no default faults on null";
   } else if (optional && NAME_IN(name, "map_or", "is_some_and", "flatten", "filter")) {
     fix = "use map, and_then, is_some, or `if value := x:`";
   } else if (result && (NAME_IN(name, "unwrap", "expect", "unwrap_or", "unwrap_or_else") || NAME_IN(name, "unwrap_or_default"))) {
@@ -149,7 +150,7 @@ static bool habit_before_payload(Body *body, MsTy receiver, MsName id, MsSpan na
   if (!optional && !result && NAME_IN(name, "is_none", "is_some")) {
     ms_strbuild_append_text(out, "; a value of type ");
     show(body, out, receiver);
-    ms_strbuild_append_text(out, " is never none here. List.get(i) returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first");
+    ms_strbuild_append_text(out, " is never null here. List.get(i) returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first");
     return true;
   }
   return false;
@@ -333,6 +334,17 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   }
   if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
       (!unmet && ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name, receiver))) {
+    return;
+  }
+  const char *removed = ms_ty_is(types, receiver, MS_BUILTIN_Optional) ? body_removed_nullable_method(name) : NULL;
+  if (removed != NULL) {
+    MsStrBuild gone = ms_strbuild_new();
+    ms_strbuild_append_text(&gone, "a nullable has no method `");
+    ms_strbuild_append(&gone, name);
+    ms_strbuild_append_text(&gone, "`; write `");
+    ms_strbuild_append_text(&gone, removed);
+    ms_strbuild_append_text(&gone, "`");
+    ms_check_report(body->program, body->module, member->pos, MS_CHECK_TYPE, ms_strbuild_finish(&gone));
     return;
   }
   MsStrBuild text = ms_strbuild_new();

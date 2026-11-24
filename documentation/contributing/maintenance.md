@@ -29,7 +29,7 @@ The public contracts are syntax, standard signatures, CLI flags and statuses, di
 - A deprecation documents the replacement and removal release, and tests both.
 - Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/checks/removed/` in the same change. It starts with `// removed: <old spelling>`, `// use: <text the error must contain>` and `// fix: <text the file holds after `ms check --fix`>`.
   - `make removed-check` fails unless `ms check` rejects the snippet with an error naming the replacement and `--fix` rewrites it so `ms check` passes. When the check fails, fix the diagnostic, not the snippet.
-  - A removal that no mechanical edit can carry writes `// fix: none: <why>`. Reviewers should question each one.
+  - A removal that no mechanical edit can carry writes `// fix: null: <why>`. Reviewers should question each one.
 - List breaking changes with their migration in the release notes. The user-facing list of frozen contracts is [what is frozen](../core-language/stability.md).
 - Explicit user-directed removals win; this policy does not restore retired APIs.
 - Compiler, runtime, or target changes alter build identity. Do not claim cross-environment binary reproducibility.

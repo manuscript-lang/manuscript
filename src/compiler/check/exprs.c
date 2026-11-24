@@ -23,10 +23,10 @@ const MsSymbol *body_find_symbol(const Body *body, MsName name) {
   if (found == NULL) {
     id = resolver_prelude_symbol(program, name);
   }
-  /* `print` is a core function every module sees, and `a..b` calls the collections function `range`. */
+  /* `print` and `ok_or` are core functions every module sees, and `a..b` calls the collections function `range`. */
   const MsSpan text = ms_names_span(program->names, name);
   const bool range = ms_span_is_text(text, "..");
-  if (id == 0 && (range || ms_span_is_text(text, "print"))) {
+  if (id == 0 && (range || ms_span_is_text(text, "print") || ms_span_is_text(text, "ok_or"))) {
     const MsName home = intern(body, range ? "@std/collections/collections.ms" : "@std/core.ms");
     const MsName target = range ? intern(body, "range") : name;
     for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
@@ -113,7 +113,7 @@ bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsT
   for (size_t position = 0; position < seen.len; position++) {
     const MsSymbol *symbol = &seen.ptr[position];
     uint32_t found_at = 0;
-    if (symbol->kind == MS_SYMBOL_ALIAS || symbol->ty == MS_TY_NONE ||
+    if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || /* a constant of an enum type is no enum */
         ms_ty_kind(&program->types, symbol->ty) != MS_TY_ALTERNATIVE ||
         body_case_of(body, symbol->ty, name, &found_at) == NULL) {
       continue;
@@ -203,7 +203,7 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   }
   if (local != NULL) {
     body_set_ref(body, expr->id, body_local_ref(body, local));
-    return local->ty;
+    return local->narrowed != MS_TY_NONE ? local->narrowed : local->ty;
   }
   const MsSymbol *symbol = body_find_symbol(body, name);
   if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
@@ -310,7 +310,7 @@ bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, boo
   MsStrBuild text = ms_strbuild_new();
   const MsSpan member = ms_names_span(body->program->names, name);
   if (optional) {
-    ms_strbuild_append_text(&text, "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none");
+    ms_strbuild_append_text(&text, "Optional has no qualified cases; write null or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := null");
   } else if (contract) {
     ms_ty_show(&text, body->program->names, types, owner);
     ms_strbuild_append_text(&text, " is an interface, not an alternative; declare a concrete type with the methods ");
@@ -494,14 +494,14 @@ static MsTy expected_arg(const Body *body, MsTy expected, MsBuiltin builtin, siz
              : MS_TY_NONE;
 }
 
-/* A literal holding the bare `none` beside values of one type holds that type optionally: `[none, 0]` is `[Int?]`. */
+/* A literal holding the bare `null` beside values of one type holds that type optionally: `[null, 0]` is `[Int?]`. */
 static MsTy none_widened(Body *body, MsExpr *const *entries, size_t count) {
   bool has_none = false;
   const MsExpr *typed = NULL;
   for (size_t index = 0; index < count; index++) {
     const MsExpr *entry = entries[index];
     const bool none = entry->kind == MS_E_NAME && body_find_local(body, entry->u.sym) == NULL &&
-                      ms_span_is_text(ms_names_span(body->program->names, entry->u.sym), "none");
+                      ms_span_is_text(ms_names_span(body->program->names, entry->u.sym), "null");
     has_none = has_none || none;
     typed = typed == NULL && !none ? entry : typed;
   }
@@ -877,6 +877,9 @@ MsTy body_expr(Body *body, const MsExpr *expr, MsTy expected) {
     break;
   }
   body_set_type(body, expr->id, ty);
+  if (expr->kind == MS_E_NAME) {
+    body_note_narrowing(body, expr, ty);
+  }
   body_convert(body, expr, ty, expected);
   return ty;
 }

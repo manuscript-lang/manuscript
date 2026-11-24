@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	parse_dotenv, parse_ini from "@std/data/config.ms",
 	expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
 )
@@ -115,25 +116,77 @@ test "ini detects comments before trimming empty assignment values":
 		for marker in ["#", ";"]:
 			text := f"empty{separator} {marker} optional\n[設定]\nkey{separator}old\nkey{separator}   {marker} replaced\nplain{separator}\n"
 			ini := parse_ini(text)?
-			ini.get("").get().get("empty").get() | expect_equal("")?
+			(
+				(
+					(
+						ini.get("")
+						or panic(
+							"called Optional.get() on null"
+						)
+					).get("empty")
+					or panic("called Optional.get() on null")
+				)
+				| expect_equal("")?
+			)
 
-			section := ini.get("設定").get()
+			section := ini.get("設定") or panic("called Optional.get() on null")
 			section.keys() | expect_equal(["key", "plain"])?
-			section.get("key").get() | expect_equal("")?
-			section.get("plain").get() | expect_equal("")?
+			(
+				(
+					section.get("key")
+					or panic("called Optional.get() on null")
+				)
+				| expect_equal("")?
+			)
+			(
+				(
+					section.get("plain")
+					or panic("called Optional.get() on null")
+				) | expect_equal("")?
+			)
 
 test "ini preserves literal markers and quoted whitespace":
 	ini := parse_ini(
 		"hash=#literal\nsemi:;literal\ntab=\t#literal\ninner=x\t;literal\nquoted=  \" # text ; 界 \"  \nsingle:  ' ; text # é '  \nempty= \"\"\n"
 	)?
-	values := ini.get("").get()
-	values.get("hash").get() | expect_equal("#literal")?
-	values.get("semi").get() | expect_equal(";literal")?
-	values.get("tab").get() | expect_equal("#literal")?
-	values.get("inner").get() | expect_equal("x\t;literal")?
-	values.get("quoted").get() | expect_equal(" # text ; 界 ")?
-	values.get("single").get() | expect_equal(" ; text # é ")?
-	values.get("empty").get() | expect_equal("")?
+	values := ini.get("") or panic("called Optional.get() on null")
+	(
+		(
+			values.get("hash")
+			or panic("called Optional.get() on null")
+		) | expect_equal("#literal")?
+	)
+	(
+		(
+			values.get("semi")
+			or panic("called Optional.get() on null")
+		) | expect_equal(";literal")?
+	)
+	(
+		(
+			values.get("tab")
+			or panic("called Optional.get() on null")
+		) | expect_equal("#literal")?
+	)
+	(
+		(
+			values.get("inner")
+			or panic("called Optional.get() on null")
+		) | expect_equal("x\t;literal")?
+	)
+	(
+		(
+			values.get("quoted")
+			or panic("called Optional.get() on null")
+		) | expect_equal(" # text ; 界 ")?
+	)
+	(
+		(
+			values.get("single")
+			or panic("called Optional.get() on null")
+		) | expect_equal(" ; text # é ")?
+	)
+	(values.get("empty") or panic("called Optional.get() on null")) | expect_equal("")?
 
 test "dotenv keeps CRLF inside a quoted value and accepts CRLF records":
 	values := (

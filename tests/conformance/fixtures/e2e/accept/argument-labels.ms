@@ -52,7 +52,7 @@ fn prepare_function(var state: Counter) (fn(Int) Int)!:
 	return ok(increment)
 
 fn absent(value: Int?) Bool:
-	missing: Int? := none
+	missing: Int? := null
 	return value == missing
 
 test "optional labels on single-parameter functions":
@@ -64,7 +64,7 @@ test "optional labels on single-parameter functions":
 	identity[Int](7) | expect_equal(7)?
 	(identity(true)) | expect_true?
 	identity(void) | expect_equal(void)?
-	(absent(none)) | expect_true?
+	(absent(null)) | expect_true?
 	f"{increment(3)}" | expect_equal("4")?
 	select()(5) | expect_equal(6)?
 

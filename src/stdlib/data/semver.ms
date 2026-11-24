@@ -65,7 +65,9 @@ export fn parse(text: String) Version!:
 			Error("semver: invalid data", kind: "EBADMSG")
 		)
 
-		if value := part.parse_int(): values.append(value)
+		value := part.parse_int()
+
+		if value != null: values.append(value)
 		else:
 			out_of_range = true
 			values.append(0)
@@ -108,10 +110,12 @@ export fn parse(text: String) Version!:
 
 // Splits at the first separator only, keeping the rest in the second piece.
 fn split_first(text: String, separator: String) List[String]:
-	if at := text.index_of(separator): return [
+	at := text.index_of(separator)
+	if at != null: return [
 		text.view(0, at).clone(),
 		text.view(at + 1, text.length()).clone(),
 	]
+
 	return [text.clone()]
 
 fn compare_ints(left: Int, right: Int) Int:

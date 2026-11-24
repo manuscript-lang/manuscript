@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+)
 
 type Counter:
 	count: Int
@@ -40,11 +43,20 @@ test "Map transformations and directional queries are callable":
 
 	keyed := source.map_keys(fn k, v: v)
 	keyed[2] | expect_equal(2)?
-	expect_equal(source.find_last(fn k, v: true).get().key, "a")?
+	expect_equal(
+		(
+			source.find_last(fn k, v: true)
+			or panic("called Optional.get() on null")
+		).key,
+		"a",
+	)?
 	expect_equal(source.fold_right("", fn acc, k, v: acc + k), "ab")?
 
 	values := Set[Int]([2, 1])
-	expect_equal(values.find_last(fn v: true).get(), 1)?
+	expect_equal(
+		values.find_last(fn v: true) or panic("called Optional.get() on null"),
+		1,
+	)?
 	expect_equal(values.fold_right("", fn acc, v: acc + v.to_string()), "12")?
 
 test "Map value transformation copies ordered snapshots and keeps independent values":
@@ -131,7 +143,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
 	values: Map[String, Int] := {"a": 0}
 	map := values.clone().map[Int?]
-	expect_true((map(fn k, v: none)["a"].is_none()))?
+	expect_true((map(fn k, v: null)["a"] == null))?
 
 	nested := values.map(fn k, v: Result[Int, Error].error(Error("nested")))
 	nested["a"].err().message | expect_equal("nested")?
@@ -187,14 +199,15 @@ test "Map reverse fold and last match retain ordered snapshots":
 	var seen: List[String] = []
 	find := source.clone().find_last
 	var found = (
-		find(
-			predicate: fn k,
-			v:
-				seen.append(k.clone())
-				return k == "a"
-		)
-		.get()
-		.clone()
+		(
+			find(
+				predicate: fn k,
+				v:
+					seen.append(k.clone())
+					return k == "a"
+			)
+			or panic("called Optional.get() on null")
+		).clone()
 	)
 	(seen != ["c", "a"] or found.key != "a") | expect_false?
 
@@ -227,11 +240,14 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
 
 	var seen: List[Int] = []
 	find := source.clone().find_last
-	var found = find(
-		fn v:
-			seen.append(v.id)
-			return v.id == 1
-	).get().clone()
+	var found = (
+		find(
+			fn v:
+				seen.append(v.id)
+				return v.id == 1
+		)
+		or panic("called Optional.get() on null")
+	).clone()
 	seen | expect_equal([3, 1])?
 	found.label = "found"
 	a.label | expect_equal("a")?
@@ -274,29 +290,25 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	initial.is_empty() | expect_true?
 	expect_false(
 		not (
-			empty_map
-			.find_last(
+			empty_map.find_last(
 				(
 					fn k,
 					v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 	expect_false(
 		not (
-			empty_set
-			.find_last(
+			empty_set.find_last(
 				(
 					fn v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 
@@ -305,14 +317,12 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	expect_false(
 		(
 			not (
-				values
-				.find_last(
+				values.find_last(
 					fn k,
 					v:
 						seen_map.append(k.clone())
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or seen_map != ["c", "a", "b"]
 		)
@@ -323,13 +333,11 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	expect_false(
 		(
 			not (
-				members
-				.find_last(
+				members.find_last(
 					fn v:
 						seen_set.append(v)
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or seen_set != [3, 1, 2]
 		)

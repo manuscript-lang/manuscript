@@ -11,11 +11,11 @@ fn move Marker.close() Void!:
 	print("closed")
 
 fn Marker.finish(flag: Bool) Marker?:
-	if flag: return none
+	if flag: return null
 	return self
 
 fn run() Void:
 	held := Marker(1)
 	f := held.finish
 	r := f(false)
-	print(f"{r.is_some()}")
+	print(f"{(r != null)}")

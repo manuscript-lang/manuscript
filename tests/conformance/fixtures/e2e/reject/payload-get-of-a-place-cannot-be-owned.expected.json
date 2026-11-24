@@ -9,30 +9,30 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot move `s.value.get(..)` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place (`if value := s.value:`) or move `s.value` itself",
+        "message": "cannot move `s.value or ..` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place or move `s.value` itself",
         "position": {
           "file": "payload-get-of-a-place-cannot-be-owned.ms",
-          "line": 17,
+          "line": 19,
           "column": 20,
-          "offset": 488
+          "offset": 522
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot move `s.value.get(..)` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place (`if value := s.value:`) or move `s.value` itself",
+        "message": "cannot move `s.value or ..` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place or move `s.value` itself",
         "position": {
           "file": "payload-get-of-a-place-cannot-be-owned.ms",
-          "line": 20,
+          "line": 22,
           "column": 20,
-          "offset": 547
+          "offset": 617
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/payload-get-of-a-place-cannot-be-owned.ms:17:20: type: cannot move `s.value.get(..)` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place (`if value := s.value:`) or move `s.value` itself\n    |\n 17 |     return s.value.get()\n    |                    ^\n<DIR>/payload-get-of-a-place-cannot-be-owned.ms:20:20: type: cannot move `s.value.get(..)` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place (`if value := s.value:`) or move `s.value` itself\n    |\n 20 |     return s.value.get()\n    |                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/payload-get-of-a-place-cannot-be-owned.ms:19:20: type: cannot move `s.value or ..` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place or move `s.value` itself\n    |\n 19 |     return s.value or panic(\"called Optional.get() on null\")\n    |                    ^\n<DIR>/payload-get-of-a-place-cannot-be-owned.ms:22:20: type: cannot move `s.value or ..` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place or move `s.value` itself\n    |\n 22 |     return s.value or panic(\"called Optional.get() on null\")\n    |                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

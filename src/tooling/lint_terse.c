@@ -244,7 +244,7 @@ static void bytes_to_string(const TerseScan *scan, const MsExpr *e) {
   if (left != NULL && terse_type_is(scan, left->id, MS_BUILTIN_Bytes)) {
     terse_note(scan, "MSL135",
                text_of("`to_string()` on Bytes gives `Bytes(104, 105)`, not the text; `decode_utf8()` returns the text as "
-                       "a `String?`, so write `.decode_utf8().ok_or(Error(\"not UTF-8\", kind: \"EBADMSG\"))?`"),
+                       "a `String?`, so write `ok_or(x.decode_utf8(), Error(\"not UTF-8\", kind: \"EBADMSG\"))?`"),
                e->pos);
   }
 }
@@ -294,7 +294,7 @@ static size_t leftmost(const MsExpr *e) {
   return ms_expr_index(e, &left, &index) ? leftmost(left) : e->pos.offset;
 }
 
-/* A statement `r.get(none)` on a `Void!` is `void r`; a statement `r.get()` on a Result faults on error, so it is
+/* A statement `r.get(null)` on a `Void!` is `void r`; a statement `r.get()` on a Result faults on error, so it is
  * `r?` where the function can return one. */
 static void statement_get(const TerseScan *scan, const MsExpr *e) {
   if (e->kind != MS_E_CALL || e->u.call.callee->kind != MS_E_MEMBER) {
@@ -314,13 +314,13 @@ static void statement_get(const TerseScan *scan, const MsExpr *e) {
   if (!get && e->u.call.args.len == 1) {
     const MsArg *arg = &e->u.call.args.ptr[0];
     MsSpan written = {0};
-    if (!arg->has_name && terse_expr_text(scan, arg->value, &written) && ms_span_is_text(written, "none") &&
+    if (!arg->has_name && terse_expr_text(scan, arg->value, &written) && ms_span_is_text(written, "null") &&
         ms_ty_arg_count(types, ty) > 0 && ms_ty_is(types, ms_ty_args(types, ty)[0], MS_BUILTIN_Void)) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append_text(&text, "void ");
       ms_strbuild_append(&text, receiver);
       terse_report(scan, "MSL129",
-                   text_of("Use `void result` to ignore a Void! outcome instead of result.get_or(none)"), e->pos,
+                   text_of("Use `void result` to ignore a Void! outcome instead of result.get_or(null)"), e->pos,
                    leftmost(left), e->end.offset, terse_keep(scan, &text));
     }
   } else if (get && e->u.call.args.len == 0) {

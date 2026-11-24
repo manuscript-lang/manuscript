@@ -55,7 +55,7 @@ A negative `max_bytes` returns `EINVAL`; output exceeding it returns `EOVERFLOW`
 export fn base32_decode(
 	text: String,
 	options: Base32Options = Base32Options(),
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	return msstd_encoding_base32_decode(
 		text,
@@ -73,7 +73,7 @@ export fn base64_decode(
 	text: String,
 	url_safe: Bool = false,
 	padded: Bool = true,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	if not padded: return msstd_encoding_base64_decode_unpadded(
 		text,
@@ -85,7 +85,9 @@ export fn base64_decode(
 // The budget as a count: no budget is the largest `Int`, and a negative budget stays
 // negative.
 fn budget(max_bytes: Int?) Int:
-	if limit := max_bytes: return limit
+	limit := max_bytes
+	if limit != null: return limit
+
 	return 9223372036854775807
 
 // Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text
@@ -145,7 +147,7 @@ fn utf8_length(scalar: Int) Int:
 
 // A byte from a count already known to be 0 through 255.
 fn byte_of(n: Int) UInt8:
-	return n.to_uint8().get_or(0)
+	return n.to_uint8() or 0
 
 fn text_of(scalars: List[Int]) String:
 	if text := from_scalars(scalars): return text
@@ -226,7 +228,7 @@ export fn ascii_decode(data: Bytes) String!:
 	bytes := data.values()
 	for byte in bytes:
 		if byte > 127: return error(encoding_invalid_data())
-	return ok(data.decode_utf8().get_or(""))
+	return ok(data.decode_utf8() or "")
 
 fn encoding_invalid_data() Error:
 	return Error("encoding: invalid data", kind: "EBADMSG")

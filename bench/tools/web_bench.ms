@@ -65,7 +65,7 @@ type Plan:
 fn plan(w: String) Plan:
 	var server = env("SERVER_CPUS", "0,1")
 	var load = env("LOAD_CPUS", "2,3")
-	cpus := capture("nproc", []).stdout.trim().parse_int().get_or(1)
+	cpus := capture("nproc", []).stdout.trim().parse_int() or 1
 	taskset := capture("taskset", ["--version"])
 
 	if not taskset.ok or taskset.code != 0 or cpus < 4:
@@ -104,7 +104,7 @@ fn syscalls(pid: String, seconds: Int, file: String) Int:
 	for line in read_text(file).split("\n"):
 		if line.contains(" total"):
 			cells := line.split(" ").filter(fn c: c != "")
-			return cells[3].parse_int().get_or(0)
+			return cells[3].parse_int() or 0
 
 	return 0
 
@@ -187,19 +187,18 @@ fn measure_server(
 		void sleep(milliseconds(500)).wait()
 
 		reqs := (
-			load(p, port, ["64", "2", "/health"]).split(" ")[
-				1
-			].parse_int().get_or(0)
-			* 2
+			load(p, port, ["64", "2", "/health"]).split(" ")[1].parse_int()
+			or 0 * 2
 		)
 		busy.wait().get_or(0)
 		void busy.close()
 
 		var total = 0
 		for line in read_text(f"{p.w}/busy").split("\n"):
-			if line.contains(" total"): total = line.split(" ").filter(
-				fn c: c != ""
-			)[3].parse_int().get_or(0)
+			if line.contains(" total"): total = (
+				line.split(" ").filter(fn c: c != "")[3].parse_int()
+				or 0
+			)
 
 		per := if reqs > 0: total.to_float() / reqs.to_float() else: 0.0
 		say(
@@ -403,7 +402,7 @@ fn main() Int:
 
 	fallback := if args[0] == "run": "5" else: "3"
 	given := if args.length() == 2: args[1].clone() else: fallback
-	seconds := given.parse_int().get_or(0)
+	seconds := given.parse_int() or 0
 	if seconds <= 0: return usage("seconds must be a positive integer")
 
 	here := absolute("bench/perf/web")

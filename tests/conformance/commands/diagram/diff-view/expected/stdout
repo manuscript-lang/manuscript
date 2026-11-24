@@ -1,7 +1,0 @@
-FLOW VIEW
-`- parse_total  [fn] src/shapes.ms:15  <- INTERNAL
-   |- for item in items
-   |  |- call read_number  <- changed
-   |  `- native Result[Int, Failure].get_or  <- changed
-   |- call area  <- INTERNAL
-   `- return total + area(Shape(1, 1)) - 1

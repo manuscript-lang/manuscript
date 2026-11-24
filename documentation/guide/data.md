@@ -62,7 +62,7 @@ Sam spent 4350 cents
 - `type Order` groups named fields. `status: Status = Status.Open` is a default, so `Order(1, "Sam", 1250)` needs no status. Pass a field by name to override it.
 - `enum Status` lists the cases an order can be in. `Shipped` and `Cancelled` carry a value; `Open` does not.
 - `match` must cover every case. Add a fourth case to `Status` and the compiler points at `label` until you handle it.
-- Lists, maps and sets need no import. `spent.get(name)` returns an optional, a value or nothing, and `.get_or(0)` supplies a fallback for a missing key.
+- Lists, maps and sets need no import. `spent.get(name)` returns an optional, a value or nothing, and `or 0` supplies a fallback for a missing key.
 - A `Set` ignores duplicates, so `customers.length()` counts people, not orders.
 
 You may have noticed `.clone()` when a customer name is stored in the set and the map. The compiler requires it, and the next chapters explain why: each value has one owner, and putting a name into a second place needs its own copy.

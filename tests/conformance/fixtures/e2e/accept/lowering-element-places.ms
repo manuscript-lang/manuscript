@@ -69,5 +69,5 @@ test "an eager list get default is released on every path":
 test "find over owned elements keeps the hit":
     rows := [[1], [2], [3, 3]]
     expect_equal(rows.find(fn(value: List[Int]): value[0] == 2), [2])?
-    expect_equal(rows.find(fn(value: List[Int]): value[0] == 9), none)?
+    expect_equal(rows.find(fn(value: List[Int]): value[0] == 9), null)?
     expect_equal(rows.find_last(fn(value: List[Int]): value[0] > 1), [3, 3])?

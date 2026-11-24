@@ -4,8 +4,9 @@ import expect_equal from "@std/test/test.ms"
 
 fn grown() Int:
 	var o: List[String]? = ["a"]
+	l := o
 
-	if l := o:
+	if l != null:
 		var copy = l.clone()
 		copy.append("q")
 		return copy.length()

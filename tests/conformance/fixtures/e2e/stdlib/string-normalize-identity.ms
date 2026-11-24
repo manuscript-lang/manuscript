@@ -15,7 +15,7 @@ test "ASCII identity covers every byte and preserves exact byte budgets":
 		NormalizationForm.Nfkd,
 	]:
 		expect_equal(form.normalize(text).get(), text.clone())?
-		expect_equal(form.normalize(text, none).get(), text.clone())?
+		expect_equal(form.normalize(text, null).get(), text.clone())?
 		expect_equal(form.normalize(text, 128).get(), text.clone())?
 		expect_equal(
 			form.normalize(text, 127).err(),

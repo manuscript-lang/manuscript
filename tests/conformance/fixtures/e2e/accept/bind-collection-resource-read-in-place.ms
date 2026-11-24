@@ -13,8 +13,8 @@ fn from_list(xs: List[Handle]) Int:
 
 fn from_map(m: Map[String, Handle], key: String) Int:
 	found := m.get(key)
-	if found.is_some():
-		return 1
+	if found != null: return 1
+
 	return 0
 
 export fn main() Int:

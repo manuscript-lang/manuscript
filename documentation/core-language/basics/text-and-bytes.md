@@ -115,7 +115,7 @@ There is no `text[index]`, and no integer scalar index into a String. Positions 
 
 Bytes, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
 
-- `index_of` and `last_index_of` return the byte offset of the first or last match, or `none`. An empty search matches at 0 (`index_of`) or `length()` (`last_index_of`).
+- `index_of` and `last_index_of` return the byte offset of the first or last match, or `null`. An empty search matches at 0 (`index_of`) or `length()` (`last_index_of`).
 - `scalar_at(offset, default:)` returns the code point that starts at byte `offset` as an Int. An offset that is out of range or inside another scalar gives the default, or a fault without one.
 - `scalar_length()` counts scalars in linear time; `is_empty()` tests for zero length.
 - `chars()` returns a `List[String]` that borrows the receiver, like `split` and `lines`; `scalar_values()` returns code points.
@@ -156,13 +156,13 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 | `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
-`to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `none` otherwise. `get(index)`, `get_or(index, default)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic. Negative indexes count from the end. `get` and `[]` fault when the index is out of range, while `get_or` returns its default. Bytes are immutable, so `data[i] = v` is rejected.
+`to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `null` otherwise. `get(index)`, `get_or(index, default)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic. Negative indexes count from the end. `get` and `[]` fault when the index is out of range, while `get_or` returns its default. Bytes are immutable, so `data[i] = v` is rejected.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
-`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`.
+`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `null`.
 
-`parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Locale-aware operations are unsupported.
+`parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `null`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Locale-aware operations are unsupported.
 
 `trim`, `trim_start` and `trim_end` remove the Unicode `White_Space` scalars: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Zero-width spaces (U+200B), U+180E and U+FEFF are not whitespace.
 
@@ -177,7 +177,7 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
-    invalid: String? := none
+    invalid: String? := null
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == -7):
@@ -186,7 +186,7 @@ test "explicit byte conversion":
 
 ## Repeating and splitting once
 
-`repeat(count)` returns a `String`: a count of zero or below, or empty text, gives empty text, and an output beyond the string limit faults, as `concat` does. `split_once(separator)` cuts at the first separator and `rsplit_once(separator)` at the last. Each returns a `SplitParts` with `before` and `after`, or `none` when the separator is absent or empty, so a `key=value` line needs no index arithmetic.
+`repeat(count)` returns a `String`: a count of zero or below, or empty text, gives empty text, and an output beyond the string limit faults, as `concat` does. `split_once(separator)` cuts at the first separator and `rsplit_once(separator)` at the last. Each returns a `SplitParts` with `before` and `after`, or `null` when the separator is absent or empty, so a `key=value` line needs no index arithmetic.
 
 ## Padding and fixed digits
 
@@ -237,7 +237,7 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
 | Type | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
-| Optional | `some(value)` or `none`; for example, an `Int?` holding 42 formats as `some(42)` |
+| Optional | `some(value)` or `null`; for example, an `Int?` holding 42 formats as `some(42)` |
 | Result | `ok(value)` or `error(cause)`; for example, `ok(42)` formats as `ok(42)` |
 | List | `[value, ...]` in element order |
 | Map | `Map(key: value, ...)` in insertion order |

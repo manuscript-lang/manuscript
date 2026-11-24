@@ -15,31 +15,31 @@ fn move Door.close() Void!:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get_or("")
+	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
 fn present(log: String) Int:
 	held: Door? := Door(1, log.clone())
-	door := held.get_or(Door(2, log.clone()))
+	door := held or Door(2, log.clone())
 	return door.id
 
 fn absent(log: String) Int:
-	held: Door? := none
-	door := held.get_or(Door(3, log.clone()))
+	held: Door? := null
+	door := held or Door(3, log.clone())
 	return door.id
 
 fn named(log: String) Int:
 	held: Door? := Door(4, log.clone())
 	spare := Door(5, log.clone())
-	door := held.get_or(spare)
+	door := held or spare
 	return door.id + 8
 
-test "an unused temporary default closes at once":
+test "an unused default is never built":
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	expect_equal(present(log.clone()), 1)?
-	logged(log.clone()) | expect_equal("2,1,")?
+	logged(log.clone()) | expect_equal("1,")?
 
 test "a used default closes with its binding":
 	tmp := temporary("ms-log-") | expect_ok?
@@ -47,8 +47,8 @@ test "a used default closes with its binding":
 	expect_equal(absent(log.clone()), 3)?
 	logged(log.clone()) | expect_equal("3,")?
 
-test "a named default moves into get and closes with the call":
+test "a named default stays with its binding and closes with the call":
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	expect_equal(named(log.clone()), 12)?
-	logged(log.clone()) | expect_equal("5,4,")?
+	logged(log.clone()) | expect_equal("4,5,")?

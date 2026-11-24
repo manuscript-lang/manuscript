@@ -33,9 +33,9 @@ test "next finds the following member":
 	expect_equal(set.next(5), 5)?
 	expect_equal(set.next(6), 64)?
 	expect_equal(set.next(65), 130)?
-	expect_equal(set.next(131), none)?
+	expect_equal(set.next(131), null)?
 	expect_equal(set.next(-3), 5)?
-	expect_equal(BitSet().next(), none)?
+	expect_equal(BitSet().next(), null)?
 
 test "set algebra matches Set":
 	a := of([1, 5, 63, 64, 130])?

@@ -39,8 +39,8 @@ fn main() Void:
     _b := stdout().write(f"{v.sorted(descending)}\n")
     _c := stdout().write(f"{v.sorted(shifted)}\n")
     _d := stdout().write(f"{v}\n")
-    none: List[Int] := []
-    _e := stdout().write(f"{none.sorted(ascending)} {[4].sorted(descending)}\n")
+    null: List[Int] := []
+    _e := stdout().write(f"{null.sorted(ascending)} {[4].sorted(descending)}\n")
     items := [
         Item(key: 2, tag: "a"), Item(key: 1, tag: "b"), Item(key: 2, tag: "c"),
         Item(key: 1, tag: "d")

@@ -1,7 +1,7 @@
 // Request routing and middleware over `HttpExchange`, implemented in Manuscript.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	uuid_v4 from "@std/data/uuid.ms",
 	Logger from "@std/log.ms",
 	HttpExchange,
@@ -36,7 +36,9 @@ type Held[T]:
 fn move Held[T].close() Void!:
 	if self.held:
 		self.held = false
-		if value := self.items.pop():
+
+		value := self.items.pop()
+		if value != null:
 			put_slot(self.slot, value)
 
 // Owns a slot: the scope that holds it releases the slot however the scope ends.
@@ -55,16 +57,18 @@ export type RouteParams:
 	// by `/`.
 	values: List[String]
 
-// Returns the text captured for `name`, or none when the pattern has no such
+// Returns the text captured for `name`, or null when the pattern has no such
 // parameter.
 fn RouteParams.get(name: String) String?:
-	if index := self.names.index_of(name): return self.values[index].clone()
-	return none
+	index := self.names.index_of(name)
+	if index != null: return self.values[index].clone()
+
+	return null
 
 // Returns the text captured for `name`, or `fallback` when the pattern has no such
 // parameter.
 fn RouteParams.get_or(name: String, fallback: String) String:
-	return self.get(name).get_or(fallback)
+	return self.get(name) or fallback
 
 // One segment of a route pattern.
 export enum Segment:
@@ -204,7 +208,7 @@ fn var Router.mount(prefix: String, routes: Router) Void!:
 	offset := self.groups.length()
 	var groups = drain(mounted.groups)
 	while not groups.is_empty():
-		self.groups.append(groups.pop().get())
+		self.groups.append(groups.pop() or panic("called Optional.get() on null"))
 
 	own := self.groups.length()
 	self.groups.append(in_order(mounted.middleware))
@@ -212,7 +216,7 @@ fn var Router.mount(prefix: String, routes: Router) Void!:
 	var sources = drain(mounted.routes)
 
 	while not sources.is_empty():
-		var route = sources.pop().get()
+		var route = sources.pop() or panic("called Optional.get() on null")
 		remount(route, base, own, offset)?
 		insert(self.routes, route)?
 
@@ -297,7 +301,7 @@ fn remount(var route: Route, base: String, own: Int, offset: Int) Void!:
 fn drain[T](var from: List[T]) List[T]:
 	var stack: List[T] = []
 	while not from.is_empty():
-		stack.append(from.pop().get())
+		stack.append(from.pop() or panic("called Optional.get() on null"))
 	return stack
 
 // Empties `from` into a new list in the same order.
@@ -327,12 +331,13 @@ fn parse_pattern(pattern: String) List[Segment]!:
 		if not valid_segment(segment, names, last):
 			return error(invalid_pattern(pattern))
 
-		if name := segment_name(segment): names.append(name)
+		name := segment_name(segment)
+		if name != null: names.append(name)
 		segments.append(segment)
 
 	return ok(segments)
 
-// The segments of an absolute path; "/" has none.
+// The segments of an absolute path; "/" has null.
 fn split_path(path: String) List[String]:
 	if path == "/": return []
 	return path.view(1, path.length()).split("/").clone()
@@ -345,7 +350,7 @@ fn segment_of(part: String) Segment:
 
 fn segment_name(segment: Segment) String?:
 	match segment:
-		Literal(_): return none
+		Literal(_): return null
 		Param(name): return name.clone()
 		Rest(name): return name.clone()
 
@@ -377,10 +382,10 @@ type Lookup:
 // The lookup for a path that is not absolute (such as `*` or an empty path): no route
 // matches it.
 fn unrouted() Lookup:
-	return Lookup(params: RouteParams(names: [], values: []), allow: [], found: none)
+	return Lookup(params: RouteParams(names: [], values: []), allow: [], found: null)
 
 fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
-	var found: Int? = none
+	var found: Int? = null
 	var fallback = false
 	var params = RouteParams(names: [], values: [])
 	var allow: List[String] = []
@@ -388,14 +393,15 @@ fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
 
 	while index < routes.length():
 		route := routes[index]
+		captured := capture(route.segments, parts)
 
-		if captured := capture(route.segments, parts):
+		if captured != null:
 			allow.append(route.method.clone())
 
 			if (
 				serves(route.method, method)
 				and (
-					found.is_none()
+					found == null
 					or (fallback and route.method == method)
 				)
 			):
@@ -415,7 +421,9 @@ fn names_of(segments: List[Segment]) List[String]:
 	return segments.flat_map(fn segment: name_list(segment))
 
 fn name_list(segment: Segment) List[String]:
-	if name := segment_name(segment): return [name]
+	name := segment_name(segment)
+	if name != null: return [name]
+
 	return []
 
 // The captured values when `parts` match `segments`.
@@ -427,10 +435,10 @@ fn capture(segments: List[Segment], parts: List[String]) List[String]?:
 			values.append(parts.drop(entry.index).join("/"))
 			return values
 
-		if entry.index >= parts.length(): return none
-		if not accepts(entry.value, parts[entry.index], values): return none
+		if entry.index >= parts.length(): return null
+		if not accepts(entry.value, parts[entry.index], values): return null
 
-	if parts.length() != segments.length(): return none
+	if parts.length() != segments.length(): return null
 
 	return values
 
@@ -529,8 +537,9 @@ fn finish(
 ) Void!:
 	method := target.method
 	found := target.found
+	index := found.found
 
-	if index := found.found:
+	if index != null:
 		route := routes[index]
 		return chain_groups(
 			groups,
@@ -593,7 +602,7 @@ fn TestExchange.query() String:
 	return self.request.query.clone()
 
 fn var TestExchange.read(max_bytes: Int?) Bytes?!:
-	requested := max_bytes.get_or(65536)
+	requested := max_bytes or 65536
 	if requested <= 0: return error(Error("I/O: invalid input", kind: "EINVAL"))
 
 	max := if requested > 65536: 65536 else: requested
@@ -603,17 +612,19 @@ fn var TestExchange.read(max_bytes: Int?) Bytes?!:
 	)
 
 	chunk := guard.items[0].unread.clone()
-	guard.items[0].unread = none
+	guard.items[0].unread = null
 
-	if bytes := chunk:
-		if bytes.length() == 0: return ok(none)
+	bytes := chunk
+
+	if bytes != null:
+		if bytes.length() == 0: return ok(null)
 
 		n := if max < bytes.length(): max else: bytes.length()
 		if n < bytes.length():
 			guard.items[0].unread = bytes.slice(n, bytes.length()).get()
 		return ok(bytes.slice(0, n).get())
 
-	return ok(none)
+	return ok(null)
 
 fn var TestExchange.send_headers(status: Int, headers: HttpHeaders) Void!:
 	if status < 200 or status > 599: return error(
@@ -703,7 +714,7 @@ type Tap:
 	request: HttpHeaders
 	state: Int?
 
-// The body bytes the exchange transmits: none for HEAD or a status that forbids a
+// The body bytes the exchange transmits: null for HEAD or a status that forbids a
 // body.
 fn Tap.sent_length(status: Int, length: Int) Int:
 	if self.inner.method() == HttpMethod.Head or not has_body(status): return 0
@@ -711,7 +722,9 @@ fn Tap.sent_length(status: Int, length: Int) Int:
 
 // The status the response headers went out with, or 200 before any are sent.
 fn Tap.status_so_far() Int:
-	if state := self.state:
+	state := self.state
+
+	if state != null:
 		seen := snapshot(state).status
 		if seen != 0: return seen
 
@@ -768,7 +781,7 @@ fn new_tap(
 	inner: HttpExchange,
 	extra: HttpHeaders,
 	request: HttpHeaders,
-	state: Int? = none,
+	state: Int? = null,
 ) Tap:
 	return Tap(inner: inner, extra: extra, request: request, state: state)
 
@@ -779,7 +792,9 @@ export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders)
 	exchange = new_tap(exchange, headers(), request)
 
 fn counted(status: Int, bytes: Int, slot: Int?) Void:
-	if state := slot:
+	state := slot
+
+	if state != null:
 		var guard = hold[TapState](state)
 		if status != 0: guard.items[0].status = status
 		guard.items[0].bytes += bytes
@@ -809,7 +824,7 @@ export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
 
 fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Void!) Void!:
 	var request = exchange.headers()
-	var id = request.get("X-Request-Id").get_or("")
+	var id = request.get("X-Request-Id") or ""
 
 	if not usable_id(id):
 		id = new_id()?
@@ -904,7 +919,7 @@ fn new_slot[T](value: T) Int:
 fn take_slot[T](slot: Int) T:
 	read := msrt_pipe_read(slot)
 	_code := msrt_promise_wait(read, -1)
-	value := msrt_promise_take[T](read).get()
+	value := msrt_promise_take[T](read) or panic("called Optional.get() on null")
 	msrt_promise_drop(read)
 	return value
 

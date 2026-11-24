@@ -236,7 +236,7 @@ fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
 
 // Encodes baseline JPEG of `pixels`, which hold `channels` 1 (gray) or 3 (RGB) bytes
 // per pixel. `quarter` subsamples chroma 4:2:0, and `restart_interval` is the MCUs
-// between restart markers, or 0 for none. Alpha (an even `channels`), a `quality`
+// between restart markers, or 0 for null. Alpha (an even `channels`), a `quality`
 // outside 1 through 100 and a `restart_interval` outside 0 through 65535 return EINVAL,
 // and a width or height above 65535 returns EOVERFLOW.
 export fn jpeg_encode(

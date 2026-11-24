@@ -122,7 +122,7 @@ Earlier malformed bytes do not invalidate a valid final scalar. An empty prefix 
 Requires 0 <= end <= data.length(); an offset outside that range faults. A trailing proper prefix of a scalar returns Incomplete.
 */
 export fn decode_last(data: Bytes, end: Int?) Utf8Scalar!Utf8Error:
-	stop := end.get_or(data.length())
+	stop := end or data.length()
 	if stop < 0 or stop > data.length():
 		panic("utf8.decode_last: end must be between zero and the byte length")
 	return decoded(decode_ending(data, stop))

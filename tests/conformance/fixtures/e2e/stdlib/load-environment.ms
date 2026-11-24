@@ -12,8 +12,8 @@ test "load_environment keeps existing values and takes the last duplicate":
 	path := join([dir.path(), "a.env"])
 	write_file(path, "MS_LOAD_A=1\nMS_LOAD_B='two'\nMS_LOAD_D=1\nMS_LOAD_D='2'\n").wait()?
 	set_environment("MS_LOAD_A", "kept")?
-	set_environment("MS_LOAD_B", none)?
-	set_environment("MS_LOAD_D", none)?
+	set_environment("MS_LOAD_B", null)?
+	set_environment("MS_LOAD_D", null)?
 	load_environment(path)?
 
 	env := environment()?
@@ -25,8 +25,8 @@ test "load_environment errors change nothing":
 	dir := temporary("ms-env-")?
 	path := join([dir.path(), "b.env"])
 	write_file(path, "MS_LOAD_C=1\nexport  =bad\n").wait()?
-	set_environment("MS_LOAD_C", none)?
-	expect_equal(load_environment(path).err().kind.clone().get_or(""), "EBADMSG")?
+	set_environment("MS_LOAD_C", null)?
+	expect_equal(load_environment(path).err().kind.clone() or "", "EBADMSG")?
 	expect_false((environment()?).contains("MS_LOAD_C"))?
-	expect_equal(load_environment(path, 3).err().kind.clone().get_or(""), "EOVERFLOW")?
-	expect_equal(load_environment(dir.path()).err().kind.clone().get_or(""), "EINVAL")?
+	expect_equal(load_environment(path, 3).err().kind.clone() or "", "EOVERFLOW")?
+	expect_equal(load_environment(dir.path()).err().kind.clone() or "", "EINVAL")?

@@ -56,8 +56,9 @@ export fn parse_address(text: String) Address!:
 
 	var name = ""
 	var address = trimmed.clone()
+	open := trimmed.last_index_of("<")
 
-	if open := trimmed.last_index_of("<"):
+	if open != null:
 		if not trimmed.ends_with(">"): return error(
 			Error("mail: invalid address", kind: "EBADMSG")
 		)
@@ -85,10 +86,10 @@ export fn parse_address(text: String) Address!:
 
 fn valid_address(address: String) Bool:
 	at := address.last_index_of("@")
-	if at.is_none(): return false
+	if at == null: return false
 
-	local := address.view(0, at.get_or(0))
-	domain := address.view(at.get_or(0) + 1, address.length())
+	local := address.view(0, at)
+	domain := address.view((at) + 1, address.length())
 	if local.is_empty() or domain.is_empty(): return false
 
 	return not address.contains_any(" \t<>,;")
@@ -210,7 +211,7 @@ export fn decode_words(text: String) String:
 		literal := head
 		head = ""
 
-		var decoded: String? = none
+		var decoded: String? = null
 		if index + 4 < fields.length() and fields[index + 4].starts_with("="):
 			decoded = decode_word(
 				fields[index + 1],
@@ -218,7 +219,7 @@ export fn decode_words(text: String) String:
 				fields[index + 3],
 			)
 
-		if decoded.is_none():
+		if decoded == null:
 			out += literal
 			out += "=?"
 			previous_encoded = false
@@ -228,7 +229,7 @@ export fn decode_words(text: String) String:
 
 		// Whitespace between two adjacent encoded words is dropped.
 		if not (previous_encoded and literal.trim().is_empty()): out += literal
-		out += decoded.get_or("")
+		out += (decoded or "")
 		previous_encoded = true
 		seg = fields[index + 4].view(1, fields[index + 4].length()).clone()
 		index += 4
@@ -243,18 +244,18 @@ fn decode_word(charset: String, encoding: String, payload: String) String?:
 
 	if kind == "B":
 		decoded := base64_decode(payload)
-		if decoded.is_error(): return none
+		if decoded.is_error(): return null
 
 		bytes = decoded.get()
 	else if kind == "Q":
 		bytes = q_decode(payload)
 	else:
-		return none
+		return null
 
 	if set == "utf-8" or set == "us-ascii": return bytes.decode_utf8()
 	if set == "iso-8859-1" or set == "latin1": return latin1_decode(bytes)
 
-	return none
+	return null
 
 fn q_decode(payload: String) Bytes:
 	var out = BytesBuilder()
@@ -270,7 +271,7 @@ fn q_decode(payload: String) Bytes:
 			value := parse_int(f"{chars[i + 1]}{chars[i + 2]}", 16)
 
 			if value.is_ok():
-				out.append(value.get_or(0).to_uint8().get_or(0))
+				out.append(value.get_or(0).to_uint8() or 0)
 				i += 2
 			else:
 				out.append(61)

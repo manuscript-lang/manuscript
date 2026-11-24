@@ -5,5 +5,5 @@ fn answer(value: Int?) Int:
     match value:
         _value:
             return 1
-        none:
+        null:
             return 0

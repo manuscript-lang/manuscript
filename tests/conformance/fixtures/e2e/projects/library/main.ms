@@ -84,7 +84,7 @@ fn exercise(path: String) Void!:
 	)?
 	_appended := common_result(result: append_file(path: path, data: "!").wait())?
 	events := watcher.next()?
-	events.is_some() | expect_true?
+	(events != null) | expect_true?
 	watcher.close()?
 
 	paths := posix()

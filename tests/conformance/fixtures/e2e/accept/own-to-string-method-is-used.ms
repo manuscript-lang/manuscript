@@ -51,4 +51,4 @@ fn main() Void:
     maybe: Money? := m.clone()
     print(maybe)
     print(f"{[m.clone(), Money(5)]}")
-    print(Wallet("ada", m.clone(), [Money(5)], none))
+    print(Wallet("ada", m.clone(), [Money(5)], null))

@@ -121,7 +121,7 @@ fn BigRat.round() BigInt:
 
 	return magnitude
 
-// Converts to the nearest Float, or none when the magnitude is beyond the Float
+// Converts to the nearest Float, or null when the magnitude is beyond the Float
 // range.
 fn BigRat.to_float() Float?:
 	parts := div_parts(self.num, self.den, 53)
@@ -176,13 +176,13 @@ export fn rat_of_big_int(value: BigInt) BigRat:
 
 // Returns the exact value of a Float as a fraction: 1/2 for 0.5, and
 // 3602879701896397/36028797018963968 for 0.1, which a Float stores inexactly. Returns
-// none for NaN and infinities.
+// null for NaN and infinities.
 export fn rat_of_float(value: Float) BigRat?:
-	if not value.is_finite(): return none
+	if not value.is_finite(): return null
 	if value == 0.0: return rat_of_int(0)
 
 	parts := frexp(value)
-	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get_or(0)
+	mantissa := ldexp(parts.fraction, 53).truncate_to_int() or 0
 	return rat_of_binary(big(mantissa), parts.exponent - 53)
 
 // Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216
@@ -192,7 +192,9 @@ export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
 	return reduced(mantissa.clone(), shl(big(1), -exponent))
 
 fn parse_digits(text: String) BigInt!:
-	if value := parse_big(text): return ok(value)
+	value := parse_big(text)
+	if value != null: return ok(value)
+
 	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 // Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`,
@@ -408,7 +410,7 @@ fn BigFloat.truncate() BigInt:
 
 	return magnitude
 
-// Converts to the nearest Float, or none when the magnitude is beyond the Float
+// Converts to the nearest Float, or null when the magnitude is beyond the Float
 // range.
 fn BigFloat.to_float() Float?:
 	return binary_to_float(binary_of(self), false)
@@ -442,14 +444,14 @@ export fn big_float_of_int(value: Int, precision: Int) BigFloat:
 	return big_float_of_big_int(big(value), precision)
 
 // Returns a Float rounded to `precision` bits (exact when precision is at least 53), or
-// none for NaN and infinities.
+// null for NaN and infinities.
 export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
 	bits := checked(precision)
-	if not value.is_finite(): return none
+	if not value.is_finite(): return null
 	if value == 0.0: return big_float_of_int(0, bits)
 
 	parts := frexp(value)
-	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get_or(0)
+	mantissa := ldexp(parts.fraction, 53).truncate_to_int() or 0
 	return make(round_to(big(mantissa), parts.exponent - 53, false, bits), bits)
 
 // Returns the rational rounded once to `precision` bits.
@@ -504,7 +506,7 @@ fn big(value: Int) BigInt:
 
 fn parse_big(text: String) BigInt?:
 	if value := parse_big_int(text, 10): return value
-	return none
+	return null
 
 fn shl(value: BigInt, count: Int) BigInt:
 	if result := value.shift_left(count): return result
@@ -582,7 +584,7 @@ fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
 	parts := div_parts(numerator, denominator, prec)
 	return round_to(parts.value.mant, parts.value.exp, parts.sticky, prec)
 
-// Converts to the nearest Float, or none when the magnitude is beyond the Float range.
+// Converts to the nearest Float, or null when the magnitude is beyond the Float range.
 // Rounds once, onto the binary64 grid: 53 significant bits for a normal result, fewer
 // as the value falls into the subnormal range.
 // `sticky` says nonzero bits lie below `value`, which then must carry at least 55 bits.
@@ -610,13 +612,15 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
 			if order > 0 or order == 0 and (sticky or odd):
 				kept += big_int_of_int(1)
 
-	if fraction := kept.to_float():
+	fraction := kept.to_float()
+
+	if fraction != null:
 		var result = ldexp(fraction, exponent)
 		if value.mant.sign() < 0:
 			result = -result
 		if result.is_finite(): return result
 
-	return none
+	return null
 
 // Reduces `numerator / denominator` for a nonzero denominator.
 fn reduced(numerator: BigInt, denominator: BigInt) BigRat:

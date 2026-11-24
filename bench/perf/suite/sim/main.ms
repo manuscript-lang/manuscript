@@ -31,7 +31,7 @@ fn heat(n: Int, steps: Int) Int:
 	var total = 0.0
 	for v in a:
 		total += v
-	return (total * 1000.0).truncate_to_int().get_or(0)
+	return (total * 1000.0).truncate_to_int() or 0
 
 fn mandelbrot(size: Int, limit: Int) Int:
 	var inside = 0
@@ -63,7 +63,7 @@ fn norms(count: Int) Int:
 		f := i.to_float()
 		total += sqrt(f * f + 3.0)
 
-	return (total).truncate_to_int().get_or(0)
+	return (total).truncate_to_int() or 0
 
 fn main() Void:
 	print(f"heat {heat(500, 120)}")

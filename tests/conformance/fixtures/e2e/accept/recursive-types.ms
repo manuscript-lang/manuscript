@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, fail from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
+)
 
 enum Expr:
 	Num(value: Int)
@@ -64,35 +67,38 @@ test "recursive alternatives construct match compare and clone":
 		Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
-	child := Node(value: 2, next: none)
+	child := Node(value: 2, next: null)
 	root := Node(value: 1, next: child.clone())
 	var alias = root.clone()
 	var copy = root.clone()
 	alias.value = 3
 
-	var inner = copy.next.get().clone()
+	var inner = (copy.next or panic("called Optional.get() on null")).clone()
 	inner.value = 4
 	copy.next = inner
 	(
 		(
 			root.value != 1
 			or alias.value != 3
-			or copy.next.get().value != 4
+			or (
+				copy.next
+				or panic("called Optional.get() on null")
+			).value != 4
 			or child.value != 2
 		) | expect_false?
 	)
-	copy.next = none
-	root.next.is_none() | expect_false?
+	copy.next = null
+	(root.next == null) | expect_false?
 
 test "recursive structural equality checks nested and unequal fields":
-	var left = Node(value: 1, next: none)
-	var right = Node(value: 1, next: none)
+	var left = Node(value: 1, next: null)
+	var right = Node(value: 1, next: null)
 	left.next = left.clone()
 	right.next = right.clone()
 	left.clone() | expect_equal(right.clone())?
 
 	var copy = left.clone()
-	var inner = copy.next.get().clone()
+	var inner = (copy.next or panic("called Optional.get() on null")).clone()
 	inner.value = 2
 	copy.next = inner
 	(
@@ -104,14 +110,14 @@ test "recursive structural equality checks nested and unequal fields":
 		) | expect_false?
 	)
 
-	var a = Node(value: 1, next: none)
+	var a = Node(value: 1, next: null)
 	b := Node(value: 1, next: a.clone())
 	a.next = b
 	(right == a) | expect_false?
 
 test "recursive domain hashing uses explicit implementations":
-	var left = Link(value: 7, next: none)
-	var right = Link(value: 7, next: none)
+	var left = Link(value: 7, next: null)
+	var right = Link(value: 7, next: null)
 	left.next = left.clone()
 	right.next = right.clone()
 	(left != right or left.hash() != right.hash()) | expect_false?
@@ -122,7 +128,10 @@ test "recursive domain hashing uses explicit implementations":
 	var members = Set[Link]([left.clone()])
 	(
 		(
-			values.get(right.clone()).get() != 9
+			(
+				values.get(right.clone())
+				or panic("called Optional.get() on null")
+			) != 9
 			or not members.contains(right.clone())
 		) | expect_false?
 	)
@@ -132,7 +141,10 @@ test "recursive domain hashing uses explicit implementations":
 		(
 			values.length() != 1
 			or members.length() != 1
-			or values.get(left.clone()).get() != 10
+			or (
+				values.get(left.clone())
+				or panic("called Optional.get() on null")
+			) != 10
 		) | expect_false?
 	)
 
@@ -140,7 +152,15 @@ test "recursive defaults construct independent complete objects":
 	var first = DefaultNode(value: 1)
 	second := DefaultNode(value: 2)
 	first.next = first.clone()
-	(second.next.is_some() or first.next.get().value != 1) | expect_false?
+	(
+		(
+			(second.next != null)
+			or (
+				first.next
+				or panic("called Optional.get() on null")
+			).value != 1
+		) | expect_false?
+	)
 
 type Entry:
 	name: String
@@ -164,7 +184,15 @@ type Pair[T, U]:
 
 test "finite nested generic composition constructs and extracts values":
 	person := Person(Entry(name: "Ada", nickname: "A"))
-	person.primary.get().nickname.get() | expect_equal("A")?
+	(
+		(
+			(
+				person.primary
+				or panic("called Optional.get() on null")
+			).nickname
+			or panic("called Optional.get() on null")
+		) | expect_equal("A")?
+	)
 
 	four: Int? := 4
 	nested_four: Int?? := four
@@ -172,7 +200,7 @@ test "finite nested generic composition constructs and extracts values":
 
 	match optional:
 		Value(value):
-			expect_equal(value.get().get(), 4)?
+			expect_equal(value or panic("called Optional.get() on null"), 4)?
 
 	result := NestedResult(ok(ok(5)))
 
@@ -190,4 +218,12 @@ test "finite nested generic composition constructs and extracts values":
 
 	inner_text: String? := "nested"
 	pair: Pair[Int?, String??] := Pair(first: 7, second: inner_text)
-	(pair.first.get() != 7 or pair.second.get().get() != "nested") | expect_false?
+	(
+		(
+			(pair.first or panic("called Optional.get() on null")) != 7
+			or (
+				pair.second
+				or panic("called Optional.get() on null")
+			) != "nested"
+		) | expect_false?
+	)

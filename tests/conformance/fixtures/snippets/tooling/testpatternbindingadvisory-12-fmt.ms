@@ -4,4 +4,4 @@
 fn use[T](value: T?) T:
     match value:
         value: return Value
-        none: return panic(message: "empty")
+        null: return panic(message: "empty")

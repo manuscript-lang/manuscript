@@ -24,7 +24,7 @@ fn latch(move log: String, id: Int) Latch:
 	return Latch(log, id, true)
 
 fn closed(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
 type Holder:
@@ -46,7 +46,7 @@ fn holder_part(move log: String) Int:
 
 fn optional_part(move log: String) Int:
 	maybe: Latch? := latch(log, 3)
-	if maybe.is_some(): return 1
+	if maybe != null: return 1
 
 	return 0
 
@@ -119,7 +119,8 @@ fn made_by_resource(move log: String) Int:
 
 fn found_by_resource(move log: String) Int:
 	var maker = Maker(0)
-	if found := maker.find(log, 17): return found.id
+	found := maker.find(log, 17)
+	if found != null: return found.id
 
 	return 0
 

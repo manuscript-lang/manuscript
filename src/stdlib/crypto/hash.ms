@@ -30,7 +30,7 @@ export fn fnv1a32(data: Bytes) UInt32:
 			),
 			4294967295,
 		)
-	return hash.to_uint32().get_or(0)
+	return hash.to_uint32() or 0
 
 // Hashes `data` with 32-bit FNV-1, which multiplies before it XORs in each byte.
 // `fnv1_32("a".to_bytes())` returns 84696446 (0x050C5D7E).
@@ -41,7 +41,7 @@ export fn fnv1_32(data: Bytes) UInt32:
 			bit_and(wrapping_multiply(hash, 16777619), 4294967295),
 			data.get(index).to_int(),
 		)
-	return hash.to_uint32().get_or(0)
+	return hash.to_uint32() or 0
 
 // Hashes `data` with 64-bit FNV-1a (offset 14695981039346656037, prime 1099511628211).
 // `fnv1a64("a".to_bytes())` returns 12638187200555641996 (0xAF63DC4C8601EC8C).
@@ -241,6 +241,6 @@ export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64
 
 // 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
 fn unsigned(raw: Int) UInt64:
-	high := shift_right_unsigned(raw, 32).to_uint64().get_or(0)
-	low := bit_and(raw, 4294967295).to_uint64().get_or(0)
+	high := shift_right_unsigned(raw, 32).to_uint64() or 0
+	low := bit_and(raw, 4294967295).to_uint64() or 0
 	return high * 4294967296 + low

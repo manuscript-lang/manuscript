@@ -3,6 +3,7 @@
 import (
 	Command, Flag, FlagKind, command from "@std/cli/command.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	uuid_v4 from "@std/data/uuid.ms",
 	stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
@@ -73,7 +74,7 @@ fn split_ids(text: String) List[String]:
 fn llm_tokens(path: String) Int?:
 	program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
 	ran := bash(f"python3 -c \"{program}\" \"{path}\"", ".", 60, "")
-	if ran.code != 0: return none
+	if ran.code != 0: return null
 
 	return ran.out.trim().parse_int()
 
@@ -85,7 +86,7 @@ fn reference_for(ch: Challenge, lang: Lang) String:
 // grading build mentions an internal error or a Rust panic.
 fn keep_ice(said: String, ws: String, g: Grade) Bool:
 	last := read_text(f"{ws}/.bench/build.out")
-	text := f"{said}\n{last}\n{g.error.get_or("")}"
+	text := f"{said}\n{last}\n{(g.error or "")}"
 	return (
 		text.contains("internal error")
 		or text.contains("internal compiler error")
@@ -119,11 +120,7 @@ fn run_one(
 			f"{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
 			recursive: true,
 		).get()
-		if size.is_some(): copy(
-			src,
-			f"{ws}/{lang.solution}",
-			CopyOptions(replace: true),
-		).get()
+		if size != null: copy(src, f"{ws}/{lang.solution}", CopyOptions(replace: true)).get()
 	else:
 		limit := if ch.agent_timeout_s > timeout_s: ch.agent_timeout_s else: timeout_s
 		agent = run_agent(h, prompt, ws, limit, transcript, model)
@@ -216,7 +213,7 @@ type Job:
 
 // Runs every job in `items`, printing one verdict line each; returns how many failed.
 fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
-	h := find(harness).get()
+	h := find(harness) or panic("called Optional.get() on null")
 	var bad = 0
 
 	for item in items:
@@ -268,7 +265,10 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 
 	chs := load_challenges(split_ids(o.challenges))
 	langs := load_languages(split_ids(o.languages))
-	h := find(if oracle: "oracle" else: o.harness).get()
+	h := (
+		find(if oracle: "oracle" else: o.harness)
+		or panic("called Optional.get() on null")
+	)
 	var todo = List[Job]()
 
 	for ch in chs:

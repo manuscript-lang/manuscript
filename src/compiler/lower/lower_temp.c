@@ -96,7 +96,7 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
                                ms_own_call_borrows(fn->cx->program, call, index))) {
     return false;
   }
-  *checked = ms_ty_subst(types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  *checked = ms_ty_subst(types, fn_read_type(fn, written), fn->subst.vars, fn->subst.args, fn->subst.count);
   const size_t declared = ms_ty_param_count(types, call->callee_ty);
   if (declared != 0 && index + declared >= call->arg_count) {
     const MsTy param = ms_ty_subst(types, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty,
@@ -117,6 +117,13 @@ static bool member_temp_type(LowerFn *fn, const MsExpr *member, MsTy *checked) {
   const MsExpr *base = member->u.member.left;
   MsTyTable *types = &fn->cx->program->types;
   const MsRef *ref = ms_facts_ref(fn->facts, member->id);
+  /* `(x or d).field`: the nullable `or` builds an owner of its own, which nothing else holds. */
+  const bool nullable_or = base->kind == MS_E_BINARY && base->op == MS_B_OR &&
+                           ms_ty_is(types, ms_facts_type(fn->facts, base->u.bin.left->id), MS_BUILTIN_Optional);
+  if (nullable_or && ref != NULL && ref->kind == MS_REF_FIELD) {
+    *checked = ms_ty_subst(types, ms_facts_type(fn->facts, base->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+    return *checked != MS_TY_NONE && fn_temp_closes(fn, *checked);
+  }
   if (base->kind != MS_E_CALL || ref == NULL || ref->kind != MS_REF_FIELD) {
     return false;
   }
@@ -195,6 +202,25 @@ MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base) {
   return fn_own_temporary(fn, checked, base);
 }
 
+/* The type of a call result a comparison reads (`open() != null`), which nothing else owns. */
+static bool operand_temp_type(LowerFn *fn, const MsExpr *operand, MsTy *checked) {
+  if (operand->kind != MS_E_CALL) {
+    return false;
+  }
+  MsTyTable *types = &fn->cx->program->types;
+  *checked = ms_ty_subst(types, ms_facts_type(fn->facts, operand->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return *checked != MS_TY_NONE && fn_temp_closes(fn, *checked);
+}
+
+MirValue fn_closing_operand(LowerFn *fn, const MsExpr *operand, MirValue value) {
+  MsTy checked = MS_TY_NONE;
+  if (!fn->temps || !operand_temp_type(fn, operand, &checked) || fn_type(fn, checked) != mir_b_ty(&fn->b, value) ||
+      !fn_owns_result(fn, value)) {
+    return value;
+  }
+  return fn_own_temporary(fn, checked, value);
+}
+
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value) {
   MsTy checked = MS_TY_NONE;
   if (!fn->temps || !temp_type(fn, expr, index, written, &checked) || fn_type(fn, checked) != mir_b_ty(&fn->b, value) ||
@@ -213,7 +239,7 @@ static bool drops_resources(LowerFn *fn, const MsExpr *callee) {
       !ms_span_is_text(name, "clear") && !ms_span_is_text(name, "set")) {
     return false;
   }
-  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, callee->u.member.left->id), fn->subst.vars, fn->subst.args,
+  const MsTy owner = ms_ty_subst(types, fn_read_type(fn, callee->u.member.left), fn->subst.vars, fn->subst.args,
                                  fn->subst.count);
   if (owner == MS_TY_NONE) {
     return false;
@@ -232,7 +258,7 @@ static bool closure_temp(LowerFn *fn, const MsExpr *expr, const MsCall *call, ui
   if (written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) || callee_consumes(fn, call, index)) {
     return false;
   }
-  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, written), fn->subst.vars, fn->subst.args, fn->subst.count);
   return ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, ty) == MS_TY_FUNCTION && mir_needs_drop(fn->cx->module, fn_type(fn, ty));
 }
 
@@ -254,6 +280,9 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
     scan->skip++;
   }
   MsTy member = MS_TY_NONE;
+  if (expr->kind == MS_E_BINARY && (expr->op == MS_B_EQ || expr->op == MS_B_NE) && scan->skip == 0) {
+    scan->found |= operand_temp_type(scan->fn, expr->u.bin.left, &member) || operand_temp_type(scan->fn, expr->u.bin.right, &member);
+  }
   scan->found |= expr->kind == MS_E_MEMBER && scan->skip == 0 && member_temp_type(scan->fn, expr, &member);
   scan->found |= expr->kind == MS_E_INDEX && scan->skip == 0 && index_temp_type(scan->fn, expr, &member);
   const MsCall *call = expr->kind == MS_E_CALL && scan->skip == 0 ? fn_find_call(scan->fn->facts, expr->id) : NULL;

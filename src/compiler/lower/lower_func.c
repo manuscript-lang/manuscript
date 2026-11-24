@@ -280,7 +280,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
     return;
   }
   const MsExpr *value = stmt->u.expr;
-  if (value->kind == MS_E_NAME && ms_span_is_text(ms_names_span(counts->cx->program->names, value->u.sym), "none")) {
+  if (value->kind == MS_E_NAME && ms_span_is_text(ms_names_span(counts->cx->program->names, value->u.sym), "null")) {
     const MsRef *ref = ms_facts_ref(counts->facts, value->id);
     if (ref == NULL || (ref->kind != MS_REF_PARAM && ref->kind != MS_REF_LOCAL)) {
       return; /* `none` holds nothing to borrow or own */

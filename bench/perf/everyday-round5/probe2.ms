@@ -1,5 +1,6 @@
 import (
 	PriorityQueue from "@std/collections/queue.ms",
+	panic from "@std/core.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -114,7 +115,7 @@ fn x_particles() Int:
 	var t = 0.0
 	for p in ps:
 		t += p.x + p.y
-	return t.truncate_to_int().get_or(0)
+	return t.truncate_to_int() or 0
 
 fn x_grid_stencil() Int:
 	n := 1000
@@ -170,7 +171,7 @@ fn x_dijkstra() Int:
 	pq.enqueue(Item(0, 0))
 
 	while not pq.is_empty():
-		it := pq.dequeue().get()
+		it := pq.dequeue() or panic("called Optional.get() on null")
 		if it.score > dist[it.id]: continue
 
 		x := it.id % n
@@ -245,9 +246,12 @@ fn x_find_first() Int:
 		xs.append(Item(i, i))
 
 	var t = 0
+
 	for i in 0..20000:
-		if f := xs.find(fn it: it.score == i % 1000):
+		f := xs.find(fn it: it.score == i % 1000)
+		if f != null:
 			t += f.id
+
 	return t
 
 fn run(name: String, f: fn() Int) Void:

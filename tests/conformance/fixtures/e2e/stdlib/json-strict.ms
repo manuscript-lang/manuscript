@@ -17,7 +17,7 @@ type Holder:
     items: List[Void]
 
 test "JSON stringify omits values without a JSON form unless strict":
-    handler := Handler("h", void, none)
+    handler := Handler("h", void, null)
     expect_equal(stringify(handler), ok("{\"name\":\"h\"}"))?
 
     invalid: String! := error(Error("JSON: invalid data", kind: "EBADMSG"))
@@ -31,7 +31,7 @@ test "JSON strict stringify rejects no-form list elements":
     expect_equal(stringify(holder, StringifyOptions(strict: true)), invalid)?
 
 test "JSON strict stringify accepts none and nulls that are values":
-    plain := Plain("p", [1, none], none)
+    plain := Plain("p", [1, null], null)
     expected := "{\"name\":\"p\",\"tags\":[1,null]}"
     expect_equal(
         stringify(plain, StringifyOptions(strict: true)), ok(expected.clone())

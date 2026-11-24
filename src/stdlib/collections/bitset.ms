@@ -63,12 +63,12 @@ fn BitSet.is_empty() Bool:
 fn var BitSet.clear() Void:
 	self.words = []
 
-// Returns the smallest member that is at least `from`, or `none` when there is no
+// Returns the smallest member that is at least `from`, or `null` when there is no
 // such member.
 fn BitSet.next(from: Int = 0) Int?:
 	start := from.max(0)
 	var word = start / 64
-	if word >= self.words.length(): return none
+	if word >= self.words.length(): return null
 
 	var bits = bit_and(self.words[word], shift_left(-1, start % 64))
 
@@ -76,7 +76,7 @@ fn BitSet.next(from: Int = 0) Int?:
 		if bits != 0: return word * 64 + trailing_zeros(bits)
 
 		word += 1
-		if word >= self.words.length(): return none
+		if word >= self.words.length(): return null
 
 		bits = self.words[word]
 

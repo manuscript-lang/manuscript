@@ -14,7 +14,7 @@ type Bag:
 	note: String?
 
 fn fill(n: Int) Bag!:
-	var bag = Bag(names: [], index: Map[String, List[Int]](), note: none)
+	var bag = Bag(names: [], index: Map[String, List[Int]](), note: null)
 
 	for i in 0..n:
 		name := f"name-{i}"
@@ -37,7 +37,9 @@ fn merge(var a: Bag, var b: Bag) Bag!:
 
 	for key in b.index.keys():
 		tick()?
-		if v := b.index.get(key):
+
+		v := b.index.get(key)
+		if v != null:
 			a.index[key.clone()] = v.clone()
 
 	a.note = "merged"

@@ -1,6 +1,9 @@
 // conform: tags=testing,numbers,tier-core
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 fn byte_sum(values: List[UInt8]) Int:
 	var total = 0
@@ -27,7 +30,7 @@ test "a sum of bytes is the exact total":
 	var i = 0
 
 	while i < 1000:
-		values.append((i % 256).to_uint8().get())
+		values.append((i % 256).to_uint8() or panic("called Optional.get() on null"))
 		i += 1
 
 	expect_equal(byte_sum(values), 124716)?
@@ -37,7 +40,7 @@ test "a sum of signed bytes goes negative without a fault":
 	var i = 0
 
 	while i < 300:
-		values.append((-100).to_int8().get())
+		values.append((-100).to_int8() or panic("called Optional.get() on null"))
 		i += 1
 
 	expect_equal(signed_sum(values), -30000)?

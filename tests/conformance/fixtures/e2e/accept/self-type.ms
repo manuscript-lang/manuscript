@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+)
 
 type CustomerKey:
 	id: Int
@@ -57,4 +60,7 @@ test "interface values of different types are unequal":
 
 test "keys use the custom equality":
 	keys := {CustomerKey(1, "a"): "first"}
-	expect_equal(keys.get(CustomerKey(1, "b")).get(), "first")?
+	expect_equal(
+		keys.get(CustomerKey(1, "b")) or panic("called Optional.get() on null"),
+		"first",
+	)?

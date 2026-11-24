@@ -5,7 +5,7 @@ import expect_true from "@std/test/test.ms"
 
 fn halve(n: Int) Int?:
     if n % 2 != 0:
-        return none
+        return null
 
     return (n / 2)
 
@@ -21,7 +21,7 @@ fn matched(n: Int) Int:
     match found:
         v:
             return v
-        none:
+        null:
             return 0 - 1
 
 fn twice(n: Int) Int:
@@ -31,13 +31,13 @@ fn twice(n: Int) Int:
     match found:
         v:
             total = total + v
-        none:
+        null:
             total = total + 100
 
     match found:
         v:
             total = total + v
-        none:
+        null:
             total = total + 1000
 
     return total
@@ -61,7 +61,7 @@ fn captured(n: Int) Int:
         match found:
             v:
                 return v
-            none:
+            null:
                 return 0 - 1
     return read()
 

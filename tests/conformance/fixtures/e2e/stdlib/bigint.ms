@@ -7,7 +7,7 @@ import (
 
 test "big integers exceed machine range without losing precision":
 	big := parse_big_int("9223372036854775808", 10)?
-	expect_false(big.to_int().is_some())?
+	expect_false(big.to_int() != null)?
 	expect_equal(big.subtract(big_int_of_int(1)).to_int(), 9223372036854775807)?
 	expect_equal(big_int_of_int(7).multiply(big_int_of_int(6)).to_string(), "42")?
 	expect_equal((big_int_of_int(-7).divide(big_int_of_int(3))?).to_int(), -2)?
@@ -53,7 +53,10 @@ test "big integers support sign pow shifts and conversion":
 	)?
 	expect_equal((five.shift_left(3)?).to_int(), 40)?
 	expect_equal((big_int_of_int(-5).shift_right(1)?).to_int(), -3)?
-	expect_equal((big_int_of_int(1).shift_left(70)?).to_float(), 1180591620717411303424.0)?
+	expect_equal(
+		(big_int_of_int(1).shift_left(70)?).to_float(),
+		1180591620717411303424.0,
+	)?
 
 	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(five.pow(-1), invalid)?

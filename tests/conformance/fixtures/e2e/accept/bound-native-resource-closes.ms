@@ -18,7 +18,7 @@ fn failed(id: Int, move log: String) Int!Marker:
 	return error(Marker(id, log))
 
 fn events(log: String) String:
-	return read_file(log).wait().get().decode_utf8().get_or("")
+	return read_file(log).wait().get().decode_utf8() or ""
 
 fn call_twice(log: String) Void!:
 	status := failed(1, log.clone()).is_error

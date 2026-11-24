@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "get-default-closes-unused.ms::an unused temporary default closes at once",
+          "name": "get-default-closes-unused.ms::an unused default is never built",
           "status": "passed"
         },
         {
@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "get-default-closes-unused.ms::a named default moves into get and closes with the call",
+          "name": "get-default-closes-unused.ms::a named default stays with its binding and closes with the call",
           "status": "passed"
         }
       ],
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN get-default-closes-unused.ms::an unused temporary default closes at once\nPASS get-default-closes-unused.ms::an unused temporary default closes at once\nRUN get-default-closes-unused.ms::a used default closes with its binding\nPASS get-default-closes-unused.ms::a used default closes with its binding\nRUN get-default-closes-unused.ms::a named default moves into get and closes with the call\nPASS get-default-closes-unused.ms::a named default moves into get and closes with the call\n3 tests, 0 failed\n",
+      "stdout": "RUN get-default-closes-unused.ms::an unused default is never built\nPASS get-default-closes-unused.ms::an unused default is never built\nRUN get-default-closes-unused.ms::a used default closes with its binding\nPASS get-default-closes-unused.ms::a used default closes with its binding\nRUN get-default-closes-unused.ms::a named default stays with its binding and closes with the call\nPASS get-default-closes-unused.ms::a named default stays with its binding and closes with the call\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

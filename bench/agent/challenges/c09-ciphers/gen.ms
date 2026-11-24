@@ -51,7 +51,7 @@ fn solve_line(line: String) String:
 
 	if cipher == "caesar":
 		if not caesar_key(key): return "error: bad key"
-		return shift(text, [], key.parse_int().get_or(0), false, sign)
+		return shift(text, [], key.parse_int() or 0, false, sign)
 
 	if key.is_empty() or not key.chars().all(fn c: LETTERS.contains(c)): return "error: bad key"
 

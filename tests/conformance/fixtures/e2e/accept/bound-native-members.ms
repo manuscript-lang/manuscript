@@ -152,7 +152,7 @@ test "numeric and optional members as values":
 	(sign() == -1) | expect_true?
 	(to_float() == -7.0) | expect_true?
 	(to_decimal().to_string() == "-7") | expect_true?
-	(narrow().get_or(default: 0) == -7) | expect_true?
+	((narrow() or 0) == -7) | expect_true?
 	(float_abs() == 2.5) | expect_true?
 	(is_nan() == false) | expect_true?
 	(is_finite()) | expect_true?

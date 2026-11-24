@@ -23,7 +23,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Hashable](core-language/types/equality-and-hashing.md) | A standard interface for computing lookup hashes. Map keys and set elements must also implement Equal. |
 | Prelude | Names available without imports, including `Optional`, `Result`, `Error`, `print`, and the standard equality interfaces. |
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
-| [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
+| [Optional](core-language/types/optionals.md) | Either a present value or `null`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
 | [Effect](core-language/functions/effects.md) | Something a function does beyond computing a value, such as printing, reading a file or reading the clock. `// ms: allow_effect` permits one; a function with no such line is pure. See also [effects in developer tooling](developer-tooling/source/effects.md). |
 | [Closure](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses (its captures). |

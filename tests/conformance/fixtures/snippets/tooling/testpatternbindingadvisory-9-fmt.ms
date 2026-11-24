@@ -9,4 +9,4 @@ fn use(value: Int?) Int:
 
     match value:
         ready: return Ready
-        none: return 0
+        null: return 0

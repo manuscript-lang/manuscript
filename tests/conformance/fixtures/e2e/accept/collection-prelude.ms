@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, fail from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
+)
 
 enum Shape:
 	Circle(radius: Float)
@@ -66,12 +69,17 @@ test "map add retains optional wrapping and generic bound calls":
 	values.add(1, 2)
 	values.add(value: 3, key: 1)
 	values.add(4, 5)
-	expect_equal(values[1].get(), 3)?
-	expect_equal(values[4].get(), 5)?
+	expect_equal(values[1] or panic("called Optional.get() on null"), 3)?
+	expect_equal(values[4] or panic("called Optional.get() on null"), 5)?
 
 	var generic = update[Int?, Int?](values, 6, 7)
 	generic.add(8, 9)
-	expect_false(generic[6].get() != 7 or generic[8].get() != 9)?
+	expect_false(
+		(generic[6] or panic("called Optional.get() on null")) != 7 or (
+			generic[8]
+			or panic("called Optional.get() on null")
+		) != 9
+	)?
 
 test "map add captures receivers and arguments in written order":
 	var original = Map[Int, Int]()
@@ -81,7 +89,7 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				visits = 1
 				1
-			none: 0
+			null: 0
 		,
 		2,
 	)
@@ -94,7 +102,7 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				key = 4
 				5
-			none: 0
+			null: 0
 	)
 	expect_false(original[3] != 5 or original.contains(4))?
 
@@ -104,14 +112,14 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				order = 1
 				7
-			none: 0
+			null: 0
 		,
 		key: match present(1):
 			_value:
 				expect_equal(order, 1)?
 				order = 2
 				6
-			none: 0
+			null: 0
 	)
 	expect_false(order != 2 or original[6] != 7)?
 

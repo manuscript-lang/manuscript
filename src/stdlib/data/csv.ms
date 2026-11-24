@@ -13,10 +13,10 @@ export type CsvOptions:
 	// Row terminator when writing, either LF or CRLF; defaults to LF. Parsing accepts
 	// both.
 	line_ending: String = "\n"
-	// Maximum rows `parse` returns; none adds no row budget.
-	max_rows: Int? = none
-	// Maximum cells `parse` returns across all rows; none adds no cell budget.
-	max_cells: Int? = none
+	// Maximum rows `parse` returns; null adds no row budget.
+	max_rows: Int? = null
+	// Maximum cells `parse` returns across all rows; null adds no cell budget.
+	max_cells: Int? = null
 
 // A malformed-input error at the one-based line and character column of byte offset
 // `at`.
@@ -29,7 +29,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 			line += 1
 			start = i + 1
 
-	before := bytes.decode_utf8_range(start, at).get_or("")
+	before := bytes.decode_utf8_range(start, at) or ""
 	column := before.scalar_length() + 1
 	return Error(
 		f"CSV {line}:{column}: {reason}",
@@ -53,9 +53,7 @@ fn open_reader(text: String, options: CsvOptions) Reader!:
 			text: text.clone(),
 			bytes: bytes,
 			total: total,
-			delimiter: options.delimiter.scalar_values()[
-				0
-			].to_uint8().get_or(0),
+			delimiter: options.delimiter.scalar_values()[0].to_uint8() or 0,
 			delimiter_text: options.delimiter.clone(),
 			at: 0,
 			quote: -1,
@@ -94,7 +92,7 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 		if record.is_error(): return error(record.err().clone())
 
 		found := record.get()
-		if found.is_none(): break
+		if found == null: break
 		if rows.length() >= rows_budget or row.length() > cells_budget - cells: return error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -129,9 +127,9 @@ export fn each_cell(
 		if record.is_error(): return error(record.err().clone())
 
 		found := record.get()
-		if found.is_none(): break
+		if found == null: break
 
-		count := found.get_or(0)
+		count := found
 		if rows >= rows_budget or count > cells_budget - cells: return error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -144,7 +142,9 @@ export fn each_cell(
 // The budget as a count: no budget is the largest `Int`, and a negative budget stays
 // negative.
 fn budget(limit: Int?) Int:
-	if value := limit: return value
+	value := limit
+	if value != null: return value
+
 	return 9223372036854775807
 
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
@@ -165,7 +165,7 @@ fn check_options(options: CsvOptions) Void!:
 	)
 
 // The input as bytes with a cursor. The cached offsets are the next quote, delimiter
-// and LF at or after the cursor, or total when there is none; they are searched again
+// and LF at or after the cursor, or total when there is null; they are searched again
 // only once passed.
 type Reader:
 	text: String
@@ -179,21 +179,20 @@ type Reader:
 	line_at: Int
 
 fn var Reader.next_quote(from: Int) Int:
-	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from).get_or(
-		self.total
-	)
+	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from) or self.total
 	return self.quote
 
 fn var Reader.next_delimiter(from: Int) Int:
-	if self.delimiter_at < from: self.delimiter_at = self.bytes.index_of_byte(
-		self.delimiter,
-		from,
-	).get_or(self.total)
+	if self.delimiter_at < from: self.delimiter_at = (
+		self.bytes.index_of_byte(self.delimiter, from)
+		or self.total
+	)
 	return self.delimiter_at
 
 fn var Reader.next_line(from: Int) Int:
-	if self.line_at < from: self.line_at = self.bytes.index_of_byte(10, from).get_or(
-		self.total
+	if self.line_at < from: self.line_at = (
+		self.bytes.index_of_byte(10, from)
+		or self.total
 	)
 	return self.line_at
 
@@ -211,7 +210,7 @@ fn Reader.line_end_after(at: Int) Int:
 
 // Reads the next record, skipping empty lines, and hands each cell to `f` as (row,
 // column, cell): a view of the input where the cell is plain, an owned text where
-// quotes were unescaped. Returns the cell count, or none at end of input.
+// quotes were unescaped. Returns the cell count, or null at end of input.
 fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 	while true:
 		skipped := self.line_end_after(self.at)
@@ -219,7 +218,7 @@ fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 
 		self.at = skipped
 
-	if self.at >= self.total: return ok(none)
+	if self.at >= self.total: return ok(null)
 
 	var col = 0
 
@@ -347,7 +346,7 @@ type CsvRows:
 	max_record_bytes: Int?
 
 // Offset just past the last line end outside quotes in `data`, or 0 when the block
-// holds none.
+// holds null.
 fn var CsvRows.boundary(data: Bytes) Int:
 	total := data.length()
 	var pos = 0
@@ -355,8 +354,8 @@ fn var CsvRows.boundary(data: Bytes) Int:
 	var previous = self.pending_size
 	self.longest = 0
 
-	var quote = data.index_of_byte(34, pos).get_or(total)
-	var line = data.index_of_byte(10, pos).get_or(total)
+	var quote = data.index_of_byte(34, pos) or total
+	var line = data.index_of_byte(10, pos) or total
 
 	while pos < total:
 		if self.quoted:
@@ -364,11 +363,11 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 			self.quoted = false
 			pos = quote + 1
-			quote = data.index_of_byte(34, pos).get_or(total)
+			quote = data.index_of_byte(34, pos) or total
 			continue
 
-		if line < pos: line = data.index_of_byte(10, pos).get_or(total)
-		if quote < pos: quote = data.index_of_byte(34, pos).get_or(total)
+		if line < pos: line = data.index_of_byte(10, pos) or total
+		if quote < pos: quote = data.index_of_byte(34, pos) or total
 
 		if line < quote:
 			size := previous + line - cut
@@ -382,12 +381,13 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 		self.quoted = true
 		pos = quote + 1
-		quote = data.index_of_byte(34, pos).get_or(total)
+		quote = data.index_of_byte(34, pos) or total
 
 	return cut
 
 fn CsvRows.check_size(size: Int) Void!:
-	if limit := self.max_record_bytes:
+	limit := self.max_record_bytes
+	if limit != null:
 		if size > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
 fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
@@ -416,9 +416,9 @@ fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
 	self.check_size(size)?
 
 	decoded := data.decode_utf8_range(0, end)
-	if decoded.is_none(): return invalid_text()
+	if decoded == null: return invalid_text()
 
-	text := decoded.get_or("")
+	text := decoded
 	return write_rows(parse(text, self.options)?, out)
 
 fn var CsvRows.finish(var out: List[List[String]]) Void!:
@@ -430,9 +430,9 @@ fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	self.check_size(data.length())?
 
 	decoded := data.decode_utf8()
-	if decoded.is_none(): return invalid_text()
+	if decoded == null: return invalid_text()
 
-	text := decoded.get_or("")
+	text := decoded
 	return write_rows(parse(text, self.options)?, out)
 
 fn invalid_text() Void!:
@@ -453,7 +453,7 @@ record; exceeding it fails the read with `EOVERFLOW`. A malformed record fails t
 export fn csv_rows(
 	move input: ReadStream[Bytes],
 	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = none,
+	max_record_bytes: Int? = null,
 ) ReadStream[List[String]]:
 	return through[Bytes, List[String]](
 		input,
@@ -477,7 +477,7 @@ export fn csv_rows(
 export fn stringify(
 	rows: List[List[String]],
 	options: CsvOptions = CsvOptions(),
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) String!:
 	limit := budget(max_bytes)
 	if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))

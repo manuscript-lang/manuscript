@@ -3,6 +3,7 @@
 // SIZES and MODES are comma-separated; ACTION is check, lint, build, or projects. Set
 // MS_CACHE=off for build measurements. Pin the driver externally when supported.
 import (
+	panic from "@std/core.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
 
@@ -56,7 +57,7 @@ fn report(out: String, name: String) Void!:
 	var slower = 0
 
 	for entry in baseline.entries():
-		a := candidate.get(entry.key).get()
+		a := candidate.get(entry.key) or panic("called Optional.get() on null")
 		before.append(entry.value / 1000000.0)
 		after.append(a / 1000000.0)
 		ratios.append(a / entry.value)
@@ -277,7 +278,7 @@ fn run(args: List[String]) String!:
 		return ok("summaries written")
 
 	binaries := [absolute(args[1].clone()), absolute(args[2].clone())]
-	repeats := args[3].parse_int().get_or(0)
+	repeats := args[3].parse_int() or 0
 	if repeats < 1: return invalid("repeats must be positive")
 
 	ensure_directory(out)
@@ -337,7 +338,7 @@ fn run(args: List[String]) String!:
 		return ok("project controls passed")
 
 	for size_text in args[4].split(","):
-		size := size_text.parse_int().get_or(0)
+		size := size_text.parse_int() or 0
 		if size < 1: return invalid("size must be positive")
 
 		for mode in args[5].split(","):

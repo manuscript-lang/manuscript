@@ -1,3 +1,4 @@
+import panic from "@std/core.ms"
 // `conform harvest`: turns the repository's Manuscript sources and the ```manuscript fences of the
 // documentation into corpus fixtures. Each candidate is classified by asking the ms
 // under test to check it: parse errors become `parse` fixtures, type errors `check`
@@ -228,12 +229,13 @@ fn check_candidate(
 	if report == JsonValue.Null: return unusable("check printed no JSON")
 
 	var verdict = Verdict(parse_errors: false, type_errors: false, unusable: "")
+	listed := report.get("diagnostics")
 
-	if listed := report.get("diagnostics"):
-		for diagnostic in listed.as_list().get_or([]):
+	if listed != null:
+		for diagnostic in (listed.as_list() or []):
 			phase := diagnostic.get("phase")
 
-			if phase.is_some() and phase.get().as_string().get_or("") == "parse": verdict.parse_errors = true
+			if phase != null and (phase.as_string() or "") == "parse": verdict.parse_errors = true
 			else: verdict.type_errors = true
 
 	return verdict
@@ -459,13 +461,13 @@ export fn harvest(root: String, corpus: String, args: Args) Int:
 
 		for phase in phases:
 			written += 1
-			by_phase.add(phase.clone(), by_phase.get(phase).get_or(0) + 1)
+			by_phase.add(phase.clone(), (by_phase.get(phase) or 0) + 1)
 
 	print(
 		f"{written} fixtures written, {duplicates} duplicates dropped, {problems.length()} unusable"
 	)
 	for phase in ["parse", "check", "run", "test"]: print(
-		f"  {phase}: {by_phase.get(phase).get_or(0)}"
+		f"  {phase}: {(by_phase.get(phase) or 0)}"
 	)
 	for problem in problems: print(problem)
 	return 0

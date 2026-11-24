@@ -28,15 +28,15 @@ export type ArchiveEntry:
 	// are not supported.
 	directory: Bool
 
-// Limits applied while unpacking untrusted archive data. A field left as `none` sets
+// Limits applied while unpacking untrusted archive data. A field left as `null` sets
 // no limit.
 export type ArchiveOptions:
 	// Maximum unpacked entries, including directories.
-	max_entries: Int? = none
+	max_entries: Int? = null
 	// Maximum unpacked bytes for each entry; zero admits only empty data.
-	max_entry_bytes: Int? = none
+	max_entry_bytes: Int? = null
 	// Maximum unpacked file bytes summed across all entries.
-	max_bytes: Int? = none
+	max_bytes: Int? = null
 
 // A supported archive format.
 export enum ArchiveFormat:
@@ -53,7 +53,7 @@ fn archive_format_name(format: ArchiveFormat) String:
 export fn pack(
 	entries: List[ArchiveEntry],
 	format: ArchiveFormat,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	return msstd_archive_pack(entries, archive_format_name(format), max_bytes)
 
@@ -89,8 +89,8 @@ export type CompressOptions:
 	// Compression level 0 to 9, where 0 stores the data uncompressed and 6 is balanced.
 	// Other levels return `EINVAL`.
 	level: Int = 6
-	// Maximum encoded bytes; `none` sets no limit.
-	max_bytes: Int? = none
+	// Maximum encoded bytes; `null` sets no limit.
+	max_bytes: Int? = null
 
 // Compresses `data` as `format`. When `options.max_bytes` is supplied, it bounds the
 // encoded output.
@@ -111,7 +111,7 @@ export fn compress(
 export fn decompress(
 	data: Bytes,
 	format: CompressionFormat,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	return msstd_compress_decompress(data, compression_format_name(format), max_bytes)
 
@@ -126,18 +126,23 @@ type Compressing:
 	failure: Error?
 
 fn var Compressing.step(move value: Bytes, var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if encoder := self.encoder:
+	encoder := self.encoder
+
+	if encoder != null:
 		packed := msstd_compress_encoder_push(encoder, value)
 		if not packed.is_empty(): out.append(packed)
 
 fn var Compressing.finish(var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if encoder := self.encoder:
+	encoder := self.encoder
+	if encoder != null:
 		out.append(msstd_compress_encoder_end(encoder))
-	self.encoder = none
+	self.encoder = null
 
 // Compresses a byte stream into `format`, chunk by chunk, holding only the codec's
 // window in memory. `level` defaults to 6 and must be 0 to 9; otherwise reads fail
@@ -148,7 +153,7 @@ export fn compressed(
 	level: Int = 6,
 ) ReadStream[Bytes]:
 	made := msstd_compress_encoder_new(compression_format_name(format), level)
-	var step = Compressing(encoder: none, failure: none)
+	var step = Compressing(encoder: null, failure: null)
 
 	if made.is_error():
 		step.failure = made.err()
@@ -162,20 +167,26 @@ type Decompressing:
 	failure: Error?
 
 fn var Decompressing.step(move value: Bytes, var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if decoder := self.decoder:
+	decoder := self.decoder
+
+	if decoder != null:
 		plain := msstd_compress_decoder_push(decoder, value)?
 		if not plain.is_empty(): out.append(plain)
 
 fn var Decompressing.finish(var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if decoder := self.decoder:
+	decoder := self.decoder
+
+	if decoder != null:
 		plain := msstd_compress_decoder_end(decoder)?
 		if not plain.is_empty(): out.append(plain)
 
-	self.decoder = none
+	self.decoder = null
 
 // Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated
 // data, or bytes after the payload, fail the read with `EBADMSG`. `max_bytes` bounds
@@ -184,10 +195,10 @@ fn var Decompressing.finish(var out: List[Bytes]) Void!:
 export fn decompressed(
 	move input: ReadStream[Bytes],
 	format: CompressionFormat,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) ReadStream[Bytes]:
 	made := msstd_compress_decoder_new(compression_format_name(format), max_bytes)
-	var step = Decompressing(decoder: none, failure: none)
+	var step = Decompressing(decoder: null, failure: null)
 
 	if made.is_error():
 		step.failure = made.err()
@@ -232,11 +243,11 @@ fn pax_size(data: Bytes) Int:
 
 	while pos < data.length():
 		space := data.index_of_byte(32, pos)
-		if space.is_none(): break
+		if space == null: break
 
 		var length = 0
 
-		for i in pos..space.get():
+		for i in pos..space:
 			digit := data.get_or(i, 0).to_int()
 			if digit < 48 or digit > 57 or i - pos > 9: return found
 
@@ -245,16 +256,16 @@ fn pax_size(data: Bytes) Int:
 		if length < 5 or pos + length > data.length(): break
 
 		end := pos + length - 1
-		eq := data.index_of_byte(61, space.get() + 1)
+		eq := data.index_of_byte(61, space + 1)
 
-		if eq.is_some() and eq.get() < end:
-			key := data.slice(space.get() + 1, eq.get()).clone().get_or("".to_bytes())
+		if (eq != null) and eq < end:
+			key := data.slice(space + 1, eq).clone().get_or("".to_bytes())
 
 			if key == "size".to_bytes():
 				var value = 0
-				var valid = eq.get() + 1 < end and end - eq.get() - 1 <= 15
+				var valid = eq + 1 < end and end - eq - 1 <= 15
 
-				for i in eq.get() + 1..end:
+				for i in eq + 1..end:
 					digit := data.get_or(i, 0).to_int()
 					if digit < 48 or digit > 57: valid = false
 					if valid: value = value * 10 + digit - 48
@@ -290,9 +301,12 @@ type TarEntries:
 // `max_entry_bytes` or would take the archive past `max_bytes`.
 fn TarEntries.check_size(size: Int) Void!:
 	over: Void! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
-	if most := self.options.max_entry_bytes:
+	most := self.options.max_entry_bytes
+	if most != null:
 		if size > most: return over
-	if most := self.options.max_bytes:
+
+	most := self.options.max_bytes
+	if most != null:
 		if self.total + size > most: return over
 
 // Internal: the byte length of the member at the start of the buffer, or 0 while its
@@ -363,9 +377,9 @@ fn var TarEntries.admit(path: String, directory: Bool) Void!:
 
 	while true:
 		slash := dir.last_index_of("/")
-		if slash.is_none(): break
+		if slash == null: break
 
-		dir = dir.view(0, slash.get()).clone()
+		dir = dir.view(0, slash).clone()
 		if self.files.contains(dir.clone()): return invalid
 
 		self.parents.add(dir.clone())
@@ -401,11 +415,14 @@ fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Void!:
 			self.total += entry.data.length()
 			out.append(entry)
 
-		if most := self.options.max_entries:
+		most := self.options.max_entries
+		if most != null:
 			if self.count > most: return error(
 				Error("archive: limit exceeded", kind: "EOVERFLOW")
 			)
-		if most := self.options.max_bytes:
+
+		most := self.options.max_bytes
+		if most != null:
 			if self.total > most: return error(
 				Error("archive: limit exceeded", kind: "EOVERFLOW")
 			)

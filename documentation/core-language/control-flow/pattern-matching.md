@@ -40,7 +40,7 @@ Each arm handles one case and gives its payload a local name. A newly added case
 Nested `match` is an anti-pattern. Bind the outer payload with an early exit, propagate with `?`, use Optional methods, or call a small helper (the contract handler below shows a helper).
 
 - `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
-- An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `none:` (`v:` binds the payload). A two-arm payload/`none` match is **MSL108**. Use [`if v := x`](conditionals.md#unwrapping-an-optional-or-result), `get_or(default)`, or `map`.
+- An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `null:` (`v:` binds the payload). A two-arm payload/`null` match is **MSL108**. Use [`if v := x`](conditionals.md#unwrapping-an-optional-or-result), `get_or(default)`, or `map`.
 
 Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `?`, `if value := result:` with `else:`, or a Result method such as `get_or(default)`, `is_error`, or `err`.
 
@@ -80,7 +80,7 @@ fn total(cents: Cents) Result[Int, Error]:
 
 `return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.
 
-Short arms put the value after the colon (`none: 0`). End an effect-only arm with `void` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm or block is `void`; there is no `pass`.
+Short arms put the value after the colon (`null: 0`). End an effect-only arm with `void` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm or block is `void`; there is no `pass`.
 
 ## Payload patterns
 

@@ -20,9 +20,9 @@ fn count_tokens(paths: List[String]) List[Int]?:
 	program := "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
 	quoted := paths.map(fn p: f"'{p}'").join(" ")
 	ran := bash(f"python3 -c \"{program}\" {quoted}", ".", 600, "")
-	if ran.code != 0: return none
+	if ran.code != 0: return null
 
-	counts: List[Int] := ran.out.trim().split("\n").map(fn n: n.parse_int().get_or(0))
+	counts: List[Int] := ran.out.trim().split("\n").map(fn n: n.parse_int() or 0)
 	return counts
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
@@ -50,7 +50,7 @@ fn main() Int:
 
 	counts := count_tokens(paths)
 
-	if counts.is_none():
+	if counts == null:
 		(
 			stderr()
 			.write(
@@ -60,7 +60,7 @@ fn main() Int:
 		)
 		return 1
 
-	all := counts.get_or([])
+	all := counts
 	var totals = [0, 0, 0, 0]
 	var out = (
 		"challenge".pad_end(26, " ")

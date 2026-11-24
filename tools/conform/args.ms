@@ -25,7 +25,7 @@ export fn parse_args(words: List[String]) Args:
 			continue
 
 		flag := word.slice(2, word.length())
-		equals := flag.index_of("=").get_or(-1)
+		equals := flag.index_of("=") or (-1)
 		var name = flag.clone()
 		var value = ""
 
@@ -40,28 +40,29 @@ export fn parse_args(words: List[String]) Args:
 			value = words[at].clone()
 			at += 1
 
-		var held = args.values.get(name).get_or(List[String]()).clone()
+		var held = (args.values.get(name) or List[String]()).clone()
 		held.append(value.clone())
 		args.values.add(name.clone(), held)
 
 	return args
 
 export fn has(args: Args, flag: String) Bool:
-	return args.values.get(flag).is_some()
+	return args.values.get(flag) != null
 
 // The last value of `flag`, or `fallback`.
 export fn one(args: Args, flag: String, fallback: String) String:
-	if held := args.values.get(flag):
+	held := args.values.get(flag)
+	if held != null:
 		if held.length() > 0: return held[held.length() - 1].clone()
 	return fallback.clone()
 
 // Every value of a repeatable flag; each value may be comma separated.
 export fn many(args: Args, flag: String) List[String]:
 	var out = List[String]()
-	for value in args.values.get(flag).get_or(List[String]()):
+	for value in (args.values.get(flag) or List[String]()):
 		for part in value.split(","):
 			if part.trim() != "": out.append(part.trim().clone())
 	return out
 
 export fn number(args: Args, flag: String, fallback: Int) Int:
-	return one(args, flag, "").parse_int().get_or(fallback)
+	return one(args, flag, "").parse_int() or fallback

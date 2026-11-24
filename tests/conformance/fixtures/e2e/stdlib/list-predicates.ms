@@ -46,8 +46,8 @@ test "set and map any and all":
 
 test "max_by and min_by pick the first of ties and call key once per element":
 	empty: List[Person] := []
-	expect_true(empty.max_by(fn(p: Person) Int: p.age).is_none())?
-	expect_true(empty.min_by(fn(p: Person) Int: p.age).is_none())?
+	expect_true(empty.max_by(fn(p: Person) Int: p.age) == null)?
+	expect_true(empty.min_by(fn(p: Person) Int: p.age) == null)?
 
 	var calls = 0
 
@@ -58,10 +58,12 @@ test "max_by and min_by pick the first of ties and call key once per element":
 	)
 
 	expect_equal(calls, 4)?
-	expect_equal(oldest.map(fn(p: Person) String: p.name.clone()), "ann")?
+	expect_true(oldest != null)?
+	if oldest != null: expect_equal(oldest.name, "ann")?
 
 	youngest := people().min_by(fn(p: Person) Int: p.age)
-	expect_equal(youngest.map(fn(p: Person) String: p.name.clone()), "bob")?
+	expect_true(youngest != null)?
+	if youngest != null: expect_equal(youngest.name, "bob")?
 
 test "max_by supports owned String keys":
 	words := ["pear", "fig", "banana", "kiwi"]

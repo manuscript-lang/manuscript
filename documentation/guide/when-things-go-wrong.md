@@ -18,10 +18,10 @@ fn parse_line(text: String) Line!:
     parts := text.split(",")
     if parts.length() != 3:
         return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
-    quantity := parts[1].parse_int().ok_or(Error(f"quantity is not a number: {text}", kind: "EINVAL"))?
+    quantity := ok_or(parts[1].parse_int(), Error(f"quantity is not a number: {text}", kind: "EINVAL"))?
     if quantity <= 0:
         return error(Error(f"quantity must be positive: {text}", kind: "EINVAL"))
-    cents := parts[2].parse_int().ok_or(Error(f"price is not a number: {text}", kind: "EINVAL"))?
+    cents := ok_or(parts[2].parse_int(), Error(f"price is not a number: {text}", kind: "EINVAL"))?
     return ok(Line(parts[0].clone(), quantity, cents))
 
 fn total(lines: List[String]) Int!:
@@ -55,7 +55,7 @@ Nothing is thrown. `total` returned an error value, and `main` decided what to p
 - `Int!` means "an `Int`, or an `Error`". It is short for `Result[Int, Error]`, and `Line!` works the same way. A caller cannot use the number without handling the other case.
 - `return ok(value)` and `return error(Error(...))` are ordinary values with no hidden control flow.
 - `?` unwraps a success. If the call failed, the function returns that error immediately. That is the whole error plumbing in `total`: one `?` per call that can fail.
-- `parse_int()` returns an optional, because the text might not be a number. `.ok_or(error)` turns "nothing" into a specific error, so the message names the bad line.
+- `parse_int()` returns an optional, because the text might not be a number. `ok_or(value, error)` turns "nothing" into a specific error, so the message names the bad line.
 - `kind` is a short code a caller can branch on, such as `"EINVAL"`. The standard library uses the same codes, so you never import a per-module error type.
 - `good.get_or(0)` reads a result with a fallback. For a full branch use `if result.is_error():` as `main` does.
 

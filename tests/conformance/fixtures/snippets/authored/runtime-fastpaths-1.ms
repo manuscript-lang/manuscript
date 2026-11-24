@@ -5,13 +5,13 @@ import stdout from "@std/io/io.ms"
 import parse_int from "@std/math/math.ms"
 
 fn compare(left: Int, right: Int) Int:
-    if left < right: return -1
-    if left > right: return 1
+	if left < right: return -1
+	if left > right: return 1
 
-    return 0
+	return 0
 
 fn say(text: String) Void:
-    _ignored := stdout().write(text.clone())
+	_ignored := stdout().write(text.clone())
 
 fn main() Void:
     var b = ""
@@ -27,38 +27,40 @@ fn main() Void:
     joined := b
     say(f"{joined}\n")
 
-    var total = 0
+	var total = 0
 
-    for part in "12,-7,+5,x,,99999999999999999999,999999999999999999".split(","):
-        if v := part.parse_int():
-            total += v
-        else:
-            total += 1
+	for part in "12,-7,+5,x,,99999999999999999999,999999999999999999".split(","):
+		v := part.parse_int()
 
-    say(f"{total}\n")
+		if v != null:
+			total += v
+		else:
+			total += 1
 
-    var hits = 0
-    for c in "hello wörld, ünï".chars():
-        if c == "l":
-            hits += 1
-    say(f"{hits} {"naïve".chars().length()} {"".chars().length()}\n")
+	say(f"{total}\n")
 
-    var xs: List[Int] = []
-    var k = 0
+	var hits = 0
+	for c in "hello wörld, ünï".chars():
+		if c == "l":
+			hits += 1
+	say(f"{hits} {"naïve".chars().length()} {"".chars().length()}\n")
 
-    while k < 200:
-        xs.append(k * 7919 % 101)
-        k += 1
+	var xs: List[Int] = []
+	var k = 0
 
-    sorted := xs.sorted(compare)
-    say(f"{sorted.get(0)} {sorted.get(100)} {sorted.get(199)}\n")
+	while k < 200:
+		xs.append(k * 7919 % 101)
+		k += 1
 
-    var ordered = true
-    var j = 1
+	sorted := xs.sorted(compare)
+	say(f"{sorted.get(0)} {sorted.get(100)} {sorted.get(199)}\n")
 
-    while j < sorted.length():
-        if sorted.get(j - 1) > sorted.get(j):
-            ordered = false
-        j += 1
+	var ordered = true
+	var j = 1
 
-    say(f"{ordered}\n")
+	while j < sorted.length():
+		if sorted.get(j - 1) > sorted.get(j):
+			ordered = false
+		j += 1
+
+	say(f"{ordered}\n")

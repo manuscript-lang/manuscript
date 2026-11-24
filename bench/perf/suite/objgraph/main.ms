@@ -12,36 +12,45 @@ fn var Node.insert(key: Int) Void:
 	if key == self.key: return
 
 	if key < self.key:
-		if self.left.is_none():
-			self.left = Node(key, none, none)
+		if self.left == null:
+			self.left = Node(key, null, null)
 			return
 
 		self.left?.insert(key)
 		return
 
-	if self.right.is_none():
-		self.right = Node(key, none, none)
+	if self.right == null:
+		self.right = Node(key, null, null)
 		return
 
 	self.right?.insert(key)
 
 fn Node.count() Int:
 	var t = 1
-	if l := self.left: t += l.count()
-	if r := self.right: t += r.count()
+	l := self.left
+	if l != null: t += l.count()
+
+	r := self.right
+	if r != null: t += r.count()
 	return t
 
 fn Node.height() Int:
 	var lh = 0
 	var rh = 0
-	if l := self.left: lh = l.height()
-	if r := self.right: rh = r.height()
+	l := self.left
+	if l != null: lh = l.height()
+
+	r := self.right
+	if r != null: rh = r.height()
 	return 1 + (if lh > rh: lh else: rh)
 
 fn Node.sum() Int:
 	var t = self.key
-	if l := self.left: t += l.sum()
-	if r := self.right: t += r.sum()
+	l := self.left
+	if l != null: t += l.sum()
+
+	r := self.right
+	if r != null: t += r.sum()
 	return t
 
 enum Tree:
@@ -62,11 +71,13 @@ type Link:
 	next: Link?
 
 fn sum(l: Link?) Int:
-	if x := l: return x.value + sum(x.next)
+	x := l
+	if x != null: return x.value + sum(x.next)
+
 	return 0
 
 fn main() Void:
-	var root = Node(1000000000, none, none)
+	var root = Node(1000000000, null, null)
 	var x = 11
 
 	for i in 0..400000:
@@ -80,7 +91,7 @@ fn main() Void:
 		nodes += count(make(16))
 	print(f"trees {nodes}")
 
-	var head: Link? = none
+	var head: Link? = null
 	for i in 0..1000000:
 		head = Link(i, head)
 	print(f"list {sum(head)}")

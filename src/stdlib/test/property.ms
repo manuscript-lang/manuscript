@@ -228,13 +228,13 @@ fn zip_draw[A, B, C](
 	{value: b, source} := second.make(middle)
 	return Drawn(combine(a, b), source)
 
-// Generates a value or `none`, shrinking toward `none`.
+// Generates a value or `null`, shrinking toward `null`.
 export fn optionals[T](move gen: Gen[T]) Gen[T?]:
 	return Gen[T?](fn s: optional_draw(gen, s.clone()))
 
 fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
 	{value: flag, source: middle} := draw(s, 3)
-	if flag == 0: return Drawn(none, middle)
+	if flag == 0: return Drawn(null, middle)
 
 	{value, source} := gen.make(middle)
 	return Drawn(value, source)
@@ -294,20 +294,25 @@ export type Settings:
 	// Time budget in milliseconds; above 0, cases run until it expires instead of
 	// stopping at `runs`.
 	fuzz_milliseconds: Int
-	// First case seed, or none for a random one that failures report.
+	// First case seed, or null for a random one that failures report.
 	seed: Int?
 
 // Returns the run settings, with `runs` as the default case count, after applying the
 // `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`, `MS_TEST_FUZZ_MS`).
 export fn settings(runs: Int = 100) Settings:
-	var found = Settings(runs, 0, none)
+	var found = Settings(runs, 0, null)
 	environment := environment().get_or(Map[String, String]())
-	if text := environment.get("MS_TEST_RUNS"):
-		found.runs = text.parse_int().get_or(runs)
-	if text := environment.get("MS_TEST_SEED"):
+	text := environment.get("MS_TEST_RUNS")
+	if text != null:
+		found.runs = text.parse_int() or runs
+
+	text := environment.get("MS_TEST_SEED")
+	if text != null:
 		found.seed = text.parse_int()
-	if text := environment.get("MS_TEST_FUZZ_MS"):
-		found.fuzz_milliseconds = text.parse_int().get_or(0)
+
+	text := environment.get("MS_TEST_FUZZ_MS")
+	if text != null:
+		found.fuzz_milliseconds = text.parse_int() or 0
 	return found
 
 // Internal: the result of running one case: the replayed source, and the failure when
@@ -318,7 +323,7 @@ type Outcome:
 
 fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
 	{value, source} := gen.make(s)
-	if source.invalid: return Outcome(source, none)
+	if source.invalid: return Outcome(source, null)
 
 	/*
     The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
@@ -326,7 +331,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
     on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
     */
 	faulted := expect_fault(fn: run_property(property, value))
-	if faulted.is_error(): return Outcome(source, none)
+	if faulted.is_error(): return Outcome(source, null)
 
 	message := faulted.get_or("")
 	if message != property_failed: return Outcome(source, Error(f"fault: {message}"))
@@ -364,10 +369,10 @@ fn attempt[T](
 	current: List[Int]
 ) List[Int]?:
 	outcome := replay(gen, property, candidate)
-	if outcome.failure.is_none(): return none
+	if outcome.failure == null: return null
 
 	used := outcome.source.choices.take(outcome.source.pos)
-	if not simpler(used, current): return none
+	if not simpler(used, current): return null
 
 	return used
 
@@ -393,7 +398,9 @@ fn shrink[T](
 				candidate := best.take(start).concat(best.drop(start + size))
 				spent += 1
 
-				if used := attempt(gen, property, candidate, best):
+				used := attempt(gen, property, candidate, best)
+
+				if used != null:
 					best = used
 					progress = true
 
@@ -410,7 +417,9 @@ fn shrink[T](
 					candidate[index] = target
 					spent += 1
 
-					if used := attempt(gen, property, candidate, best):
+					used := attempt(gen, property, candidate, best)
+
+					if used != null:
 						best = used
 						progress = true
 
@@ -423,8 +432,8 @@ fn shrink[T](
 export type PropertyOptions:
 	// Number of generated cases (default 100).
 	runs: Int = 100
-	// Fixes the random seed to replay a failure; `none` picks a fresh seed.
-	seed: Int? = none
+	// Fixes the random seed to replay a failure; `null` picks a fresh seed.
+	seed: Int? = null
 
 /*
 Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
@@ -439,12 +448,13 @@ export fn check[T](
 ) Void!:
 	config := settings(options.runs)
 	var chosen = options.seed
-	if chosen.is_none():
+	if chosen == null:
 		chosen = config.seed
 
 	var base = 0
+	given := chosen
 
-	if given := chosen:
+	if given != null:
 		base = given
 	else:
 		base = secure_int(0, max_int)?
@@ -484,7 +494,9 @@ export fn check[T](
 			continue
 
 		executed += 1
-		if message := outcome.failure:
+
+		message := outcome.failure
+		if message != null:
 			return report(
 				name,
 				gen,
@@ -510,7 +522,7 @@ fn report[T](
 	small := shrink(gen, property, used, 2000)
 	final := replay(gen, property, small)
 	{value: shown} := gen.make(Source(small.clone(), 0, 0, false, false))
-	reason := final.failure.clone().get_or(message.clone())
+	reason := final.failure.clone() or message.clone()
 
 	// The failure keeps the details of the assertion that failed, which name its source
 	// position.

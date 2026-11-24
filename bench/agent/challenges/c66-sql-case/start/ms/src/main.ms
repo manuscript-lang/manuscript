@@ -62,7 +62,7 @@ fn is_alpha(c: Int) Bool: (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c =
 
 fn is_digit(c: Int) Bool: c >= 48 and c <= 57
 
-fn sub(src: Bytes, a: Int, b: Int) String: src.decode_utf8_range(a, b).get_or("")
+fn sub(src: Bytes, a: Int, b: Int) String: src.decode_utf8_range(a, b) or ""
 
 fn lex(src: Bytes) List[Chunk]:
 	kws := keywords()
@@ -112,8 +112,9 @@ fn lex(src: Bytes) List[Chunk]:
 				i += 1
 
 			text := sub(src, start, i)
+			v := text.parse_int()
 
-			if v := text.parse_int():
+			if v != null:
 				toks.append(Token(kind: 3, n: v))
 			else:
 				bad = true
@@ -733,7 +734,9 @@ type Table:
 	rows: List[List[Val]] = List[List[Val]]()
 
 fn get_table(db: Map[String, Table], name: String) Table!:
-	if t := db.get(name): return ok(t.clone())
+	t := db.get(name)
+	if t != null: return ok(t.clone())
+
 	return error(err(f"no such table: {name}"))
 
 // ---------- resolve ----------
@@ -1348,8 +1351,9 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 
 			for r in rows:
 				key := rowkey(r, gb)
+				gi := index.get(key)
 
-				if gi := index.get(key):
+				if gi != null:
 					groups[gi].append(r.clone())
 				else:
 					index[key] = groups.length()

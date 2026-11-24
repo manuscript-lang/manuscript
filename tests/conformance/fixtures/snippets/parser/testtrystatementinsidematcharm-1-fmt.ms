@@ -6,4 +6,4 @@ fn f(x: Int?) Void!:
         n:
             g(n)?
             return ok()
-        none: return ok()
+        null: return ok()

@@ -14,7 +14,7 @@ bench "queue.enqueue_dequeue_100000" per 200000:
 
 	var total = 0
 	for i in 0..100000:
-		total += queue.dequeue().get_or(0)
+		total += queue.dequeue() or 0
 	total
 
 bench "priority_queue.enqueue_dequeue_100000" per 200000:
@@ -24,7 +24,7 @@ bench "priority_queue.enqueue_dequeue_100000" per 200000:
 
 	var total = 0
 	for i in 0..100000:
-		total += queue.dequeue().get_or(0)
+		total += queue.dequeue() or 0
 	total
 
 bench "deque.push_pop_both_ends_100000" per 400000:
@@ -36,7 +36,7 @@ bench "deque.push_pop_both_ends_100000" per 400000:
 
 	var total = 0
 	for i in 0..100000:
-		total += deque.pop_front().get_or(0) + deque.pop_back().get_or(0)
+		total += (deque.pop_front() or 0) + (deque.pop_back() or 0)
 	total
 
 bench "bitset.add_contains_100000" per 200000:
@@ -83,7 +83,7 @@ bench "queue.enqueue_dequeue_400000" per 800000:
 
 	var total = 0
 	for i in 0..400000:
-		total += queue.dequeue().get_or(0)
+		total += queue.dequeue() or 0
 	total
 
 bench "priority_queue.enqueue_dequeue_400000" per 800000:
@@ -93,7 +93,7 @@ bench "priority_queue.enqueue_dequeue_400000" per 800000:
 
 	var total = 0
 	for i in 0..400000:
-		total += queue.dequeue().get_or(0)
+		total += queue.dequeue() or 0
 	total
 
 bench "deque.push_pop_both_ends_400000" per 1600000:
@@ -105,7 +105,7 @@ bench "deque.push_pop_both_ends_400000" per 1600000:
 
 	var total = 0
 	for i in 0..400000:
-		total += deque.pop_front().get_or(0) + deque.pop_back().get_or(0)
+		total += (deque.pop_front() or 0) + (deque.pop_back() or 0)
 	total
 
 bench "bitset.add_contains_400000" per 800000:

@@ -321,7 +321,22 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   if (late.kind != MS_REF_FIELD && fn_read_field_in_place(fn, expr, &in_place)) {
     return in_place;
   }
-  const MirValue read = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  /* A field moves out of a narrowed local: the payload is taken whole, and the rest closes with it. */
+  const MsExpr *left = expr->u.member.left;
+  const bool narrowed = left->kind == MS_E_NAME && fn_read_type(fn, left) != ms_facts_type(fn->facts, left->id);
+  const MsTy member_ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args,
+                                    fn->subst.count);
+  const bool leaves = narrowed && fn->placing_member != expr && taking && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE &&
+                      (mir_needs_drop(fn->cx->module, fn_type(fn, member_ty)) || ms_check_holds_resource(fn->cx->program, member_ty));
+  /* `(x or d).field` at the last use of `x`: the payload is taken from `x` rather than copied. */
+  const bool or_take = taking && left->kind == MS_E_BINARY && left->op == MS_B_OR && fn->placing_member != expr &&
+                       ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE &&
+                       (mir_needs_drop(fn->cx->module, fn_type(fn, member_ty)) || ms_check_holds_resource(fn->cx->program, member_ty));
+  fn->narrow_take = leaves || or_take ? left : NULL;
+  fn->or_view = left->kind == MS_E_BINARY && !leaves && !or_take ? left : NULL;
+  const MirValue read = fn_expr(fn, left, leaves ? LW_MOVE : LW_BORROW);
+  fn->narrow_take = NULL;
+  fn->or_view = NULL;
   if (read == MIR_NONE) {
     return MIR_NONE;
   }
@@ -336,21 +351,23 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                                                    : fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, read_ty);
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
-                                        expr->u.member.left->kind == MS_E_CALL);
+                                        expr->u.member.left->kind == MS_E_CALL || expr->u.member.left->kind == MS_E_BINARY);
   const bool moves = fn->placing_member != expr && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
-                     mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
+                     (leaves || mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field)));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
-  if (moves && fn_move_field(fn, expr, ref->index)) {
+  if (moves && !leaves && fn_move_field(fn, expr, ref->index)) {
     /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
     return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
   }
-  const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME && fn->facts->last != NULL &&
-                          fn->facts->last[expr->id] != 0 && fn_fresh_owner(fn, base);
-  if (moves && (expr->u.member.left->kind == MS_E_CALL || last_field) && fn_fresh_owner(fn, base)) {
+  const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME &&
+                          (leaves || (fn->facts->last != NULL && fn->facts->last[expr->id] != 0)) && fn_fresh_owner(fn, base);
+  if (moves && (expr->u.member.left->kind == MS_E_CALL || expr->u.member.left->kind == MS_E_BINARY || last_field) &&
+      fn_fresh_owner(fn, base)) {
     /* The field leaves a temporary that dies with the statement, or a name at its last use: the rest of the record is
      * released with it. */
     const MirTy field_ty = mir_b_ty(&fn->b, field);
-    const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+    /* A resource the scope closes by its closer holds nothing a drop frees: it leaves as the field read itself. */
+    const MirValue taken = mir_needs_drop(fn->cx->module, field_ty) ? fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty) : field;
     uint32_t released = ref->index < 32 ? UINT32_C(1) << ref->index : 0;
     released |= fn_close_rest(fn, expr, base, data->id, ref->index);
     const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = released};
@@ -404,39 +421,6 @@ static MirValue float_binary(LowerFn *fn, const BinaryOps *ops, MirValue left, M
   }
   const MirValue result = fn_emit(fn, op, operands, 2, (MirImm){0}, ty);
   return ty == MIR_FLOAT32 ? fn_emit(fn, MOP_F32Round, &result, 1, (MirImm){0}, ty) : result;
-}
-
-/* `left && right` and `left || right`: the right operand runs only when the left does not decide the result. */
-static MirValue lower_logical(LowerFn *fn, const MsExpr *expr) {
-  const bool is_and = expr->op == MS_B_AND;
-  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
-  if (left == MIR_NONE) {
-    return MIR_NONE;
-  }
-  const MirBlock rhs = mir_b_new_block(&fn->b);
-  const MirBlock decided = mir_b_new_block(&fn->b);
-  const MirBlock join = mir_b_new_block(&fn->b);
-  const MirValue result = mir_b_add_block_param(&fn->b, join, MIR_BOOL, MM_BORROW);
-  mir_b_br_if(&fn->b, left, is_and ? rhs : decided, NULL, 0, is_and ? decided : rhs, NULL, 0);
-  mir_b_seal_block(&fn->b, rhs);
-  mir_b_seal_block(&fn->b, decided);
-  mir_b_switch_to(&fn->b, decided);
-  const MirValue known = mir_b_bconst(&fn->b, !is_and);
-  mir_b_br(&fn->b, join, &known, 1);
-  mir_b_switch_to(&fn->b, rhs);
-  (void)fn_scope_begin(fn);
-  const bool saved_temps = fn->temps;
-  fn->temps = saved_temps || fn_expr_has_temporary(fn, expr->u.bin.right); /* the operand's temporaries close with it */
-  const MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
-  fn->temps = saved_temps;
-  fn_scope_end(fn);
-  if (right == MIR_NONE) {
-    return MIR_NONE;
-  }
-  mir_b_br(&fn->b, join, &right, 1);
-  mir_b_seal_block(&fn->b, join);
-  mir_b_switch_to(&fn->b, join);
-  return result;
 }
 
 /* A UInt64 operation: the checked forms fault when the result leaves the range, and ordering is unsigned. */
@@ -671,19 +655,45 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
   return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
 }
 
+/* The literal `null`, as written (not a local that happens to be named so). */
+static bool is_null_literal(const LowerFn *fn, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && ms_span_is_text(ms_names_span(fn->cx->program->names, expr->u.sym), "null");
+}
+
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
+  if (expr->op == MS_B_OR && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
+    return fn_lower_or_null(fn, expr);
+  }
   if (expr->op == MS_B_AND || expr->op == MS_B_OR) {
-    return lower_logical(fn, expr);
+    return fn_lower_logical(fn, expr);
   }
   BinaryOps ops;
   if (!binary_ops((MsBinaryOp)expr->op, &ops)) {
     (void)fn_fail(fn, "this binary operator is not lowered yet");
     return MIR_NONE;
   }
-  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
-  const MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
+  if (expr->op == MS_B_EQ || expr->op == MS_B_NE) {
+    const bool null_right = is_null_literal(fn, expr->u.bin.right);
+    const MsExpr *tested = null_right ? expr->u.bin.left : expr->u.bin.right;
+    if ((null_right || is_null_literal(fn, expr->u.bin.left)) && !is_null_literal(fn, tested)) {
+      /* `x == null` asks only whether `x` holds a value; its payload is never compared. */
+      MirValue value = fn_expr(fn, tested, LW_BORROW);
+      if (value == MIR_NONE) {
+        return MIR_NONE;
+      }
+      value = fn_closing_operand(fn, tested, value);
+      const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
+      return expr->op == MS_B_NE ? present : mir_b_emit(&fn->b, MOP_Not, &present, 1, (MirImm){0}, MIR_BOOL);
+    }
+  }
+  MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
   if (left == MIR_NONE || right == MIR_NONE) {
     return MIR_NONE;
+  }
+  if (expr->op == MS_B_EQ || expr->op == MS_B_NE) {
+    left = fn_closing_operand(fn, expr->u.bin.left, left);
+    right = fn_closing_operand(fn, expr->u.bin.right, right);
   }
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
     return fn_string_concat(fn, left, right);
@@ -861,7 +871,7 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
 
 /* Whether a read of `expr` leaves the binding: the checker's move, or an owner's last read (own/moves.c). */
 static bool leaves_binding(const LowerFn *fn, const MsExpr *expr) {
-  return ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
+  return ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || fn->narrow_take == expr ||
          (expr->kind == MS_E_NAME && fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0);
 }
 
@@ -972,5 +982,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     }
   }
   const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
-  return fn_convert(fn, expr, value);
+  fn->read_moves = want == LW_MOVE;
+  const MirValue converted = fn_convert(fn, expr, value);
+  fn->read_moves = false;
+  return converted;
 }

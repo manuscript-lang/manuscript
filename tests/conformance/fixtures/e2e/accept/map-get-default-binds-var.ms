@@ -6,8 +6,9 @@ import expect_equal from "@std/test/test.ms"
 // without touching the map (only a lent slice keeps its borrow through `get(default)`).
 fn lookup(table: Map[String, String], key: String) String:
 	var found = table.get_or("default", "")
-	if own := table.get(key): found = own.clone()
-	found = found + "!"
+	own := table.get(key)
+	if own != null: found = own.clone()
+	found += "!"
 	return found
 
 test "a map value read with get(default) is an owned var":

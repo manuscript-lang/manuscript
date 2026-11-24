@@ -5,4 +5,4 @@ var i = 0
         n:
             i = start
             n
-        none: 0
+        null: 0

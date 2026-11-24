@@ -6,6 +6,6 @@ fn f(xs: List[Int], o: Int?) Void:
         v:
             n = v
             xs.set(index: 0, value: 5)
-        none:
+        null:
             n = 2
     xs.append(n)

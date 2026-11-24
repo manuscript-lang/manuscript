@@ -151,10 +151,10 @@ test "regression stays finite and exact at large and tiny scales and with a larg
 	expect_equal(flat.intercept, 5.0)?
 
 test "requests with no answer give none or an empty list":
-	expect_true(percentile([1.0], 101.0).is_none())?
+	expect_true(percentile([1.0], 101.0) == null)?
 	expect_equal(quantiles([1.0], 1), List[Float]())?
-	expect_true(bin_counts([1.0], 0).is_none())?
-	expect_true(correlation([1.0, 2.0], [1.0]).is_none())?
+	expect_true(bin_counts([1.0], 0) == null)?
+	expect_true(correlation([1.0, 2.0], [1.0]) == null)?
 
 test "percentile finite spans do not overflow during interpolation":
 	values := [-1e308, 1e308]

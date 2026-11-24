@@ -32,7 +32,7 @@ fn generic[T: Equal](left: T, right: T) Bool: left == right
 fn returning_match() Bool:
 	return true == match present(1):
 		_value: return false
-		none: false
+		null: false
 
 test "primitive equality captures operands once in order":
 	var counter = Counter()
@@ -44,7 +44,7 @@ test "primitive equality captures operands once in order":
 		value:
 			original = 2
 			value
-		none: 0
+		null: 0
 	expect_false(not captured or original != 2)?
 
 	skipped := false and mark(counter, 3) == 3
@@ -67,7 +67,7 @@ fn matched(marker: String) Int:
 			var _resource = Resource(marker.clone())
 			return value
 			0
-		none: 0
+		null: 0
 
 fn defaulted(
 	marker: String,
@@ -77,7 +77,7 @@ fn defaulted(
 			_used := void
 			void _resource.close()
 			number
-		none: 0
+		null: 0
 ) Int: value
 
 fn nested(marker: String) Void:
@@ -122,7 +122,7 @@ fn statement_match_try(marker: String) Int!Error:
 			_resource := Resource(marker.clone())
 			value := failed()?
 			return ok(value)
-		none: return ok(0)
+		null: return ok(0)
 
 	return ok(-1)
 
@@ -136,7 +136,7 @@ fn value_match_loop_try(marker: String) Int!Error:
 				_value := failed()?
 				void _resource.close()
 				number
-			none: 0
+			null: 0
 
 		index += 1
 

@@ -87,7 +87,7 @@ fn expression_overflow() Int:
 			n:
 				sum = 9223372036854775807
 				n
-			none: 0
+			null: 0
 
 		sum += value
 		i += 1

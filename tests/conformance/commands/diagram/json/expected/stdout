@@ -19,11 +19,11 @@
         "omitted": 0,
         "children": [
           {
-            "label": "parse_total  [fn] src/shapes.ms:15",
+            "label": "parse_total  [fn] src/shapes.ms:17",
             "kind": "fn",
             "reference": "src/shapes.ms#fn#parse_total",
             "file": "src/shapes.ms",
-            "line": 15,
+            "line": 17,
             "omitted": 0,
             "children": [
               {
@@ -121,11 +121,11 @@
         "omitted": 0,
         "children": [
           {
-            "label": "parse_total  [fn] src/shapes.ms:15",
+            "label": "parse_total  [fn] src/shapes.ms:17",
             "kind": "fn",
             "reference": "src/shapes.ms#fn#parse_total",
             "file": "src/shapes.ms",
-            "line": 15,
+            "line": 17,
             "omitted": 0,
             "children": [
               {

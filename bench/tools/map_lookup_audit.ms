@@ -11,10 +11,10 @@ fn run(args: List[String]) String!:
 		"expected BEFORE AFTER OUTPUT PAIRS MODE SIZE REPEATS PREFIX_WIDTH"
 	)
 
-	pairs := args[3].parse_int().get_or(0)
-	n := args[5].parse_int().get_or(-1)
-	repeats := args[6].parse_int().get_or(0)
-	width := args[7].parse_int().get_or(-1)
+	pairs := args[3].parse_int() or 0
+	n := args[5].parse_int() or (-1)
+	repeats := args[6].parse_int() or 0
+	width := args[7].parse_int() or (-1)
 	if pairs < 1 or n < 0 or repeats < 1 or width < 0: return invalid(
 		"invalid numeric argument"
 	)
@@ -42,8 +42,8 @@ fn run(args: List[String]) String!:
 			parts := ran.stdout.trim().split(" ")
 			if parts.length() != 2: return invalid("invalid producer output")
 
-			elapsed := parts[0].parse_int().get_or(0)
-			actual := parts[1].parse_int().get_or(-1)
+			elapsed := parts[0].parse_int() or 0
+			actual := parts[1].parse_int() or (-1)
 			if elapsed <= 0 or actual != want: return invalid(
 				"invalid timing or checksum"
 			)

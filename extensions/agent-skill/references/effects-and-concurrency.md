@@ -15,7 +15,7 @@ fn work() Int!: ok(21)
 fn main() Void!:
 	pending := promise(fn: work())
 	value := pending.wait()?
-	output := from_list([value]) | map(fn x: x * 2) | collect(none)?
+	output := from_list([value]) | map(fn x: x * 2) | collect(null)?
 	if output.get_or(0, 0) != 42:
 		return error(Error("unexpected output"))
 ```
@@ -24,7 +24,7 @@ Import PromiseOptions from `"@std/concurrency/promise.ms"`; set `promise(..., op
 
 `from_list`, `collect`: `"@std/io/streams.ms"`. `lines`, `map`: `"@std/io/steps.ms"`. `pipe`: `"@std/io/io.ms"`. `pipe[T](capacity)` coordinates producers/consumers; keep mutable state with one owner.
 
-Stream `.next()` returns T?!: Result of Optional, none at EOF. `for item in stream:` extracts items and propagates errors; use a Result-returning function. Writes return Void! and wait when full. Transformations pull lazily; closing them closes their input. `collect(none)` is unlimited; bound potentially unbounded inputs.
+Stream `.next()` returns T?!: Result of Optional, null at EOF. `for item in stream:` extracts items and propagates errors; use a Result-returning function. Writes return Void! and wait when full. Transformations pull lazily; closing them closes their input. `collect(null)` is unlimited; bound potentially unbounded inputs.
 
 `wait_all` cancels the rest on the first failure. To collect every outcome (for example one result per URL), start the promises in a List and `.wait()` each in turn; the outcome of each is a Result you can store. For bounded concurrency, work in batches of N: start N promises, wait them, start the next N. A pipe has one reader, so it is not a worker pool. A timeout set by `PromiseOptions(timeout:)` surfaces as an error whose `kind` is `ETIMEDOUT`; `kind` is `String?`, so compare `e.kind.get_or("")`. Read a Result's error with `r.err()`.
 

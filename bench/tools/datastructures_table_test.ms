@@ -57,7 +57,7 @@ test "zero samples stay visible without ratios":
 test "rejects invalid evidence":
 	good := trials(100)
 	rest := good.slice(1, good.length()).get_or([])
-	go_end := good.index_of("go # end").get_or(0)
+	go_end := good.index_of("go # end") or 0
 	var cases = Map[String, List[String]]()
 	cases.add("empty", List[String]())
 	cases.add("unfinished", good.slice(0, good.length() - 1).get_or([]))

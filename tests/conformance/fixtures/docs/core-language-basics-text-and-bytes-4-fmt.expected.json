@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tBytes from \"@std/bytes.ms\",\n\tpanic from \"@std/core.ms\",\n)\n\ntest \"explicit byte conversion\":\n\tif not (\"é\".length() == 2): return panic(\"check failed\")\n\tif not (\"é\".to_bytes().decode_utf8() == \"é\"): return panic(\"check failed\")\n\n\tinvalid: String? := none\n\tif not (Bytes([255]).decode_utf8() == invalid): return panic(\"check failed\")\n\tif not (\"-007\".parse_int() == -7): return panic(\"check failed\")\n"
+    "fmt": "import (\n\tBytes from \"@std/bytes.ms\",\n\tpanic from \"@std/core.ms\",\n)\n\ntest \"explicit byte conversion\":\n\tif not (\"é\".length() == 2): return panic(\"check failed\")\n\tif not (\"é\".to_bytes().decode_utf8() == \"é\"): return panic(\"check failed\")\n\n\tinvalid: String? := null\n\tif not (Bytes([255]).decode_utf8() == invalid): return panic(\"check failed\")\n\tif not (\"-007\".parse_int() == -7): return panic(\"check failed\")\n"
   }
 }

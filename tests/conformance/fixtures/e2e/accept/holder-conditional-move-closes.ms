@@ -15,7 +15,7 @@ fn move Door.close() Void!:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get_or("")
+	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
@@ -27,10 +27,10 @@ test "a list moved on one path closes on the path that keeps it":
 
 fn block(log: String, id: Int) Void:
 	doors := [Door(id, log.clone())]
-	var moved: List[Door]? = none
+	var moved: List[Door]? = null
 	if doors.is_empty():
 		moved = doors
-	if moved.is_some(): return
+	if moved != null: return
 
 test "an optional resource reassigned after a conditional move closes the new value":
 	tmp := temporary("ms-log-") | expect_ok?
@@ -40,10 +40,11 @@ test "an optional resource reassigned after a conditional move closes the new va
 
 fn reassign(log: String) Void:
 	var held: Door? = Door(1, log.clone())
-	if door := held:
+	door := held
+	if door != null:
 		if door.id == 0: return
 	held = Door(2, log.clone())
-	if held.is_none(): return
+	if held == null: return
 
 fn walk(log: String, stop: Int) Void:
 	doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]

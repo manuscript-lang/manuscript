@@ -12,9 +12,9 @@
         "message": "expected Result[Int, Error], found Result[Int, DomainError] (in the return value)",
         "position": {
           "file": "reportless-error-boundary.ms",
-          "line": 13,
+          "line": 15,
           "column": 12,
-          "offset": 223
+          "offset": 257
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "'?' requires the same error type; this function returns Result[Int, Error] but the operand fails with DomainError, so change the return error type or translate the error with map_error",
         "position": {
           "file": "reportless-error-boundary.ms",
-          "line": 16,
+          "line": 18,
           "column": 14,
-          "offset": 282
+          "offset": 316
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "'?' requires the same error type; this function returns Result[Int, OtherError] but the operand fails with DomainError, so change the return error type or translate the error with map_error",
         "position": {
           "file": "reportless-error-boundary.ms",
-          "line": 20,
+          "line": 22,
           "column": 14,
-          "offset": 369
+          "offset": 403
         }
       },
       {
@@ -45,22 +45,22 @@
         "message": "expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"",
         "position": {
           "file": "reportless-error-boundary.ms",
-          "line": 27,
+          "line": 29,
           "column": 34,
-          "offset": 547
+          "offset": 619
         },
         "fix": {
           "position": {
             "file": "reportless-error-boundary.ms",
-            "line": 27,
+            "line": 29,
             "column": 34,
-            "offset": 547
+            "offset": 619
           },
           "end": {
             "file": "reportless-error-boundary.ms",
-            "line": 27,
+            "line": 29,
             "column": 35,
-            "offset": 548
+            "offset": 620
           },
           "replacement": "\"7\""
         }
@@ -69,7 +69,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/reportless-error-boundary.ms:13:12: type: expected Result[Int, Error], found Result[Int, DomainError] (in the return value)\n    |\n 13 |     return domain_failure()\n    |            ^\n<DIR>/reportless-error-boundary.ms:16:14: type: '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 16 |     value := domain_failure()?\n    |              ^\n<DIR>/reportless-error-boundary.ms:20:14: type: '?' requires the same error type; this function returns Result[Int, OtherError] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 20 |     value := domain_failure()?\n    |              ^\n<DIR>/reportless-error-boundary.ms:27:34: type: expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n    |\n 27 |     return optional_result(error(7))\n    |                                  ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/reportless-error-boundary.ms:15:12: type: expected Result[Int, Error], found Result[Int, DomainError] (in the return value)\n    |\n 15 |     return domain_failure()\n    |            ^\n<DIR>/reportless-error-boundary.ms:18:14: type: '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 18 |     value := domain_failure()?\n    |              ^\n<DIR>/reportless-error-boundary.ms:22:14: type: '?' requires the same error type; this function returns Result[Int, OtherError] but the operand fails with DomainError, so change the return error type or translate the error with map_error\n    |\n 22 |     value := domain_failure()?\n    |              ^\n<DIR>/reportless-error-boundary.ms:29:34: type: expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n    |\n 29 |     return optional_result(error(7))\n    |                                  ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

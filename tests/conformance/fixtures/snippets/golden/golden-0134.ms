@@ -5,4 +5,4 @@ fn f(x: Int?) Int:
         n:
             n
             n + 1
-        none: 0
+        null: 0

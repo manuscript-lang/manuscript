@@ -17,11 +17,11 @@ test "an unterminated carriage return remains line content":
 		write_file(path, text, replace: true).wait()?
 
 		file := open(path, OpenMode.Read, OpenOptions(permissions: 384))?
-		found := collect(lines(file.reader()?), none)?
+		found := collect(lines(file.reader()?), null)?
 		expect_equal(found, [text])?
 
 test "file and memory line readers agree on endings and byte limits":
-	limits: List[Int?] := [none, 0, 1, 2, 3, 8]
+	limits: List[Int?] := [null, 0, 1, 2, 3, 8]
 	temporary := temporary("manuscript-line-parity-")?
 	path := f"{temporary.path()}/lines.txt"
 
@@ -30,23 +30,23 @@ test "file and memory line readers agree on endings and byte limits":
 			write_file(path, text, replace: true).wait()?
 
 			file := open(path, OpenMode.Read, OpenOptions(permissions: 384))?
-			actual := collect(lines(file.reader()?, limit), none)
-			expect_equal(actual, collect(lines(memory(text), limit), none))?
+			actual := collect(lines(file.reader()?, limit), null)
+			expect_equal(actual, collect(lines(memory(text), limit), null))?
 
 test "a carriage return split from its newline does not count toward the limit":
 	chunks := ["abc\r".to_bytes(), "\n".to_bytes()]
-	found := collect(lines(from_list(chunks), 3), none)?
+	found := collect(lines(from_list(chunks), 3), null)?
 	expect_equal(found, ["abc"])?
 
 test "an unterminated carriage return counts toward the limit at the end":
-	found := collect(lines(from_list(["abc\r".to_bytes()]), 3), none)
+	found := collect(lines(from_list(["abc\r".to_bytes()]), 3), null)
 	expect_equal(found.is_error(), true)?
 
 test "a line that is not valid UTF-8 is an error, not an empty line":
 	bad := "ok\n".to_bytes().concat("\u{ff}".to_bytes().slice(0, 1).get()).concat(
 		"\nnext\n".to_bytes()
 	)
-	found := collect(lines(from_bytes(bad)), none)
+	found := collect(lines(from_bytes(bad)), null)
 	expect_equal(found.err().kind, "EBADMSG")?
 
 test "lines decode in place across chunks with non-ASCII text and a final unterminated line":
@@ -62,7 +62,7 @@ test "lines decode in place across chunks with non-ASCII text and a final unterm
 	expected.append("last")
 	source += "last"
 
-	found := collect(lines(memory(source, 7)), none)?
+	found := collect(lines(memory(source, 7)), null)?
 	expect_equal(found, expected)?
 
 test "long lines cross small chunks without changing output":
@@ -70,13 +70,13 @@ test "long lines cross small chunks without changing output":
 
 	for chunk in [1, 7, 64, 4096]:
 		source := f"{text}\r\nnext\n{text}"
-		found := collect(lines(from_bytes(source.to_bytes(), chunk)), none)?
+		found := collect(lines(from_bytes(source.to_bytes(), chunk)), null)?
 		expect_equal(found, [text.clone(), "next", text.clone()])?
 
 test "empty chunks preserve pending carriage returns and byte budgets":
 	for tail in ["\n", ""]:
 		chunks := ["abc\r".to_bytes(), "".to_bytes(), "".to_bytes(), tail.to_bytes()]
-		found := collect(lines(from_list(chunks), 3), none)
+		found := collect(lines(from_list(chunks), 3), null)
 
 		if tail == "\n": expect_equal(found, ok(["abc"]))?
 		else: expect_equal(found.err().kind, "EOVERFLOW")?

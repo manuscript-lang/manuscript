@@ -530,6 +530,9 @@ static bool il_auto_ok(IlRun *r, uint32_t bi, const MirInst *inst, const MirFunc
     }
   }
   uint32_t limit = r->m->inline_base != 0 ? r->m->inline_base : OPT_INLINE_BASE_THRESHOLD;
+  if (r->m->funcs.ptr[r->fi].runs_once && limit > OPT_INLINE_COMPACT_THRESHOLD) {
+    limit = OPT_INLINE_COMPACT_THRESHOLD; /* a test body runs once: only a call that costs no more than its copy is inlined */
+  }
   if (r->sites[inst->imm.a] == 1) {
     limit += IL_SINGLE_CALLER_BONUS;
   }

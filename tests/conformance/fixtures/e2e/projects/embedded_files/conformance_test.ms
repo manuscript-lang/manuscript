@@ -8,17 +8,17 @@ import (
 test "embedded files read back byte for byte":
 	tree := files()
 	(
-		tree.read("hello.txt", none) | expect_ok? | expect_equal(
+		tree.read("hello.txt", null) | expect_ok? | expect_equal(
 			"hello {braces} and \"quotes\"\n".to_bytes()
 		)?
 	)
 	(
-		tree.read("nested/deep.txt", none) | expect_ok? | expect_equal(
+		tree.read("nested/deep.txt", null) | expect_ok? | expect_equal(
 			"deep\n".to_bytes()
 		)?
 	)
 
-	data := tree.read("data.bin", none) | expect_ok?
+	data := tree.read("data.bin", null) | expect_ok?
 	data.length() | expect_equal(256)?
 	data.get_or(255, 0).to_int() | expect_equal(255)?
 
@@ -31,7 +31,7 @@ test "embedded tree walks in name order":
 
 test "missing embedded files report NotFound":
 	(
-		files().read("nope.txt", none)
+		files().read("nope.txt", null)
 		| expect_error?
 		| expect_equal(
 			Error("filesystem: file or directory not found", kind: "ENOENT")
@@ -46,12 +46,12 @@ test "embedded trees respect read limits and directories":
 		)?
 	)
 	(
-		tree.read("nested", none) | expect_error? | expect_equal(
+		tree.read("nested", null) | expect_error? | expect_equal(
 			Error("filesystem: invalid input", kind: "EINVAL")
 		)?
 	)
 	(
-		tree.children("hello.txt", none) | expect_error? | expect_equal(
+		tree.children("hello.txt", null) | expect_error? | expect_equal(
 			Error("filesystem: invalid input", kind: "EINVAL")
 		)?
 	)

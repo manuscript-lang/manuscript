@@ -194,6 +194,11 @@ MsPos ms_expr_start(const MsExpr *e) {
     return ms_expr_start(e->u.bin.left);
   case MS_E_CALL:
     return ms_expr_start(e->u.call.callee);
+  case MS_E_UNARY:
+    if (e->op == MS_U_TRY) {
+      return ms_expr_start(e->u.bin.left); /* a postfix `?` starts where its operand does */
+    }
+    break;
   case MS_E_NUMBER:
   case MS_E_BOOL:
   case MS_E_VOID:
@@ -201,7 +206,6 @@ MsPos ms_expr_start(const MsExpr *e) {
   case MS_E_NAME:
   case MS_E_LIST:
   case MS_E_MAP:
-  case MS_E_UNARY:
   case MS_E_LAMBDA:
   case MS_E_MATCH:
     break;

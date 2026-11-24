@@ -1,4 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f[T](value: T?) T: return value.get()
-fn call() Void: value := f(none)
+import panic from "@std/core.ms"
+
+fn f[T](value: T?) T: return value or panic("called Optional.get() on null")
+
+fn call() Void: value := f(null)

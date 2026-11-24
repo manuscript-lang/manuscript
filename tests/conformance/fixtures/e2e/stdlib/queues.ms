@@ -2,16 +2,17 @@
 // conform: phase=test
 import (
 	PriorityQueue, Queue from "@std/collections/queue.ms",
+	panic from "@std/core.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 test "FIFO capacity empty reads draining and reuse":
 	var queue = Queue[Int](2)
-	expect_false(not queue.is_empty() or queue.peek().is_some())?
+	expect_false(not queue.is_empty() or (queue.peek() != null))?
 	expect_false((not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)))?
 	expect_false(queue.peek() != 1 or queue.length() != 2)?
 	expect_false(queue.dequeue() != 1 or queue.dequeue() != 2)?
-	expect_false(queue.dequeue().is_some() or not queue.enqueue(4))?
+	expect_false((queue.dequeue() != null) or not queue.enqueue(4))?
 
 test "priority queue orders values and honors capacity":
 	var queue = PriorityQueue[Int](3)
@@ -36,7 +37,7 @@ test "priority queue sorts many values and copies are independent":
 	var previous = -1
 
 	while not queue.is_empty():
-		next := queue.dequeue().get()
+		next := queue.dequeue() or panic("called Optional.get() on null")
 		expect_false(next < previous)?
 		previous = next
 
@@ -49,7 +50,7 @@ test "ordered priority queue defaults to natural order and honors capacity":
 	expect_false(queue.enqueue("c"))?
 	expect_equal(queue.dequeue(), "a")?
 	expect_equal(queue.dequeue(), "b")?
-	expect_equal(queue.dequeue(), none)?
+	expect_equal(queue.dequeue(), null)?
 
 test "get reads by position and counts negative indexes from the end":
 	var queue = Queue[String]()
@@ -59,11 +60,11 @@ test "get reads by position and counts negative indexes from the end":
 	expect_equal(queue.dequeue(), "a")?
 	expect_equal(queue.get(0), "b")?
 	expect_equal(queue.get(-1), "c")?
-	expect_equal(queue.get(2), none)?
+	expect_equal(queue.get(2), null)?
 
 	var heap = PriorityQueue[Int]()
 	heap.enqueue(5)
 	heap.enqueue(1)
 	expect_equal(heap.get(0), 1)?
 	expect_equal(heap.get(-1), 5)?
-	expect_equal(heap.get(2), none)?
+	expect_equal(heap.get(2), null)?

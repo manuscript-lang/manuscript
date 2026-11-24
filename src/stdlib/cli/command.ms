@@ -1,5 +1,5 @@
 // ms: allow_effect std.console.write
-
+import panic from "@std/core.ms"
 /*
 Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
 
@@ -59,10 +59,10 @@ export type Flag:
 	name: String
 	// What the flag accepts, and so the type of the record field; defaults to String.
 	kind: FlagKind = FlagKind.String
-	// One-letter alias used as `-p`; empty for none. A value follows as `-p 8080` or
+	// One-letter alias used as `-p`; empty for null. A value follows as `-p 8080` or
 	// `-p=8080`; short flags do not combine (`-vd`) or attach a value (`-p8080`).
 	short: String = ""
-	// Text used when the flag is absent; none for no default. A Bool defaults to false.
+	// Text used when the flag is absent; null for no default. A Bool defaults to false.
 	default: String?
 	// One line shown in help.
 	help: String = ""
@@ -108,15 +108,15 @@ export type Matches:
 
 // Returns the text of a flag or argument.
 fn Matches.string(name: String) String:
-	return self.values.get(name).get()[0].clone()
+	return (self.values.get(name) or panic("called Optional.get() on null"))[0].clone()
 
 // Returns an Int flag or argument value.
 fn Matches.int(name: String) Int:
-	return self.string(name).parse_int().get()
+	return self.string(name).parse_int() or panic("called Optional.get() on null")
 
 // Returns a Float flag or argument value.
 fn Matches.float(name: String) Float:
-	return self.string(name).parse_float().get()
+	return self.string(name).parse_float() or panic("called Optional.get() on null")
 
 // Returns a Bool flag value; absent is false.
 fn Matches.bool(name: String) Bool:
@@ -126,21 +126,26 @@ fn Matches.bool(name: String) Bool:
 fn Matches.list(name: String) List[String]:
 	return self.values.get_or(name, []).clone()
 
-// Returns the text, or none for an optional argument or flag that was not supplied.
+// Returns the text, or null for an optional argument or flag that was not supplied.
 fn Matches.string_or_none(name: String) String?:
-	if items := self.values.get(name):
+	items := self.values.get(name)
+	if items != null:
 		if not items.is_empty(): return items[0].clone()
-	return none
+	return null
 
-// Returns an Int value, or none when absent.
+// Returns an Int value, or null when absent.
 fn Matches.int_or_none(name: String) Int?:
-	if text := self.string_or_none(name): return text.parse_int()
-	return none
+	text := self.string_or_none(name)
+	if text != null: return text.parse_int()
 
-// Returns a Float value, or none when absent.
+	return null
+
+// Returns a Float value, or null when absent.
 fn Matches.float_or_none(name: String) Float?:
-	if text := self.string_or_none(name): return text.parse_float()
-	return none
+	text := self.string_or_none(name)
+	if text != null: return text.parse_float()
+
+	return null
 
 /*
 A command or command group: its schema, subcommands and handler.
@@ -198,22 +203,24 @@ fn Command.execute(argv: List[String]) Int:
 // an `EINVAL` error.
 fn Command.run(matches: Matches) Int!:
 	if matches.path.length() > 0 and matches.path[0] == self.name:
-		if node := node_at(self, matches.path, 1): return node.exec(matches)
+		node := node_at(self, matches.path, 1)
+		if node != null: return node.exec(matches)
+
 	return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
 
 // Returns the help text for the command reached by following `path` from this node,
-// or none for an unknown path.
+// or null for an unknown path.
 fn Command.help(path: List[String] = []) String?:
 	rendered := help_at(self, path, 0, [self.name.clone()], [])
-	if rendered.is_error(): return none
+	if rendered.is_error(): return null
 
 	return rendered.get()
 
-// Returns the child named `word`, or none; the result reads the child in place.
+// Returns the child named `word`, or null; the result reads the child in place.
 fn Command.child(word: String) Command?:
 	for candidate in self.children:
 		if candidate.name == word: return candidate
-	return none
+	return null
 
 // The outcome of parsing: help text to show, or a node ready to run.
 export enum Parsed:
@@ -229,12 +236,14 @@ export enum Parsed:
 		matches: Matches
 	)
 
-// The command reached by following `path` from `from` on, or none for an unknown word.
+// The command reached by following `path` from `from` on, or null for an unknown word.
 fn node_at(node: Command, path: List[String], from: Int) Command?:
 	if from >= path.length(): return node
-	if next := node.child(path[from]): return node_at(next, path, from + 1)
 
-	return none
+	next := node.child(path[from])
+	if next != null: return node_at(next, path, from + 1)
+
+	return null
 
 // The help of the command reached by following `words` from `from` on, under `names`
 // and the persistent flags `inherited` so far; an unknown word is an error naming the
@@ -247,7 +256,9 @@ fn help_at(
 	inherited: List[Flag],
 ) String!:
 	if from >= words.length(): return ok(render_help(node, names, inherited))
-	if next := node.child(words[from]):
+
+	next := node.child(words[from])
+	if next != null:
 		return help_at(
 			next,
 			words,
@@ -274,7 +285,7 @@ type its kind names:
 | `Arg` with `kind` `Int` or `Float` | `Int` or `Float` |
 | any other `Arg` | `String` |
 
-A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `none`
+A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `null`
 when absent. A field with no matching value, or of the wrong type, fails the run with an `Error` with kind `"EINVAL"`. The
 handler returns the exit status.
 */
@@ -309,8 +320,8 @@ fn decode[T: Data](matches: Matches) T!:
 fn literal(kind: FlagKind, text: String) String:
 	match kind:
 		Bool: return text.clone()
-		Int: return f"{text.parse_int().get_or(0)}"
-		Float: return f"{text.parse_float().get_or(0.0)}"
+		Int: return f"{(text.parse_int() or 0)}"
+		Float: return f"{(text.parse_float() or 0.0)}"
 		_: return stringify(text.clone()).get_or("\"\"")
 
 // Collects the JSON literal of every supplied flag and argument for `command`.
@@ -384,9 +395,11 @@ fn fits(kind: FlagKind, choices: List[String], value: String) Bool:
 
 	match kind:
 		Bool: return value == "true" or value == "false"
-		Int: return value.parse_int().is_some()
+		Int: return value.parse_int() != null
 		Float:
-			if number := value.parse_float(): return number.is_finite()
+			number := value.parse_float()
+			if number != null: return number.is_finite()
+
 			return false
 		_: return true
 
@@ -424,7 +437,8 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 		claim(shorts, flag.short.clone(), f"short -{flag.short} in {where}")?
 
 	for flag in node.flags:
-		if text := flag.default:
+		text := flag.default
+		if text != null:
 			if not fits(flag.kind, flag.choices, text):
 				return error(
 					cli_invalid_schema(
@@ -484,7 +498,7 @@ fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
 		if long and flag.name == key: return flag.clone()
 		if not long and not flag.short.is_empty() and flag.short == key: return flag.clone()
 
-	return none
+	return null
 
 // Stores one flag occurrence after checking it against the kind.
 fn store(var values: Map[String, List[String]], flag: Flag, value: String) Result[
@@ -558,30 +572,34 @@ fn walk_from(
 			long := token.starts_with("--")
 			body := token.view(if long: 2 else: 1, token.length())
 			cut := body.index_of("=")
-			key := body.view(0, cut.get_or(body.length()))
+			key := body.view(0, cut or body.length())
 			var flag = find_flag(flags, key, long)
 			var negated = false
 
-			if long and flag.is_none() and key.starts_with("no-"):
+			if long and (flag == null) and key.starts_with("no-"):
 				positive := find_flag(flags, key.view(3, key.length()), true)
+				found := positive
 
-				if found := positive:
+				if found != null:
 					if is_bool(found.kind):
 						flag = positive
 						negated = true
 
-			chosen := flag.ok_or(cli_unknown_flag(token))?
+			chosen := ok_or(flag, cli_unknown_flag(token))?
 
 			if is_bool(chosen.kind):
 				if negated: values[chosen.name.clone()] = ["false"]
 				else:
 					var supplied = "true"
-					if at := cut: supplied = body.view(at + 1, body.length()).clone()
+					at := cut
+					if at != null: supplied = body.view(at + 1, body.length()).clone()
 					store(values, chosen, supplied)?
 
 				continue
 
-			if at := cut:
+			at := cut
+
+			if at != null:
 				store(values, chosen, body.view(at + 1, body.length()).clone())?
 				continue
 
@@ -592,7 +610,8 @@ fn walk_from(
 			continue
 
 		if words.is_empty():
-			if next := node.child(token):
+			next := node.child(token)
+			if next != null:
 				return walk_from(
 					next,
 					argv,
@@ -665,7 +684,9 @@ fn bind(
 fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
 	if values.contains(flag.name): return ok()
 
-	if text := flag.default:
+	text := flag.default
+
+	if text != null:
 		values[flag.name.clone()] = [text.clone()]
 		return ok()
 
@@ -727,7 +748,8 @@ fn flag_section(title: String, flags: List[Flag]) String:
 		if not is_bool(flag.kind): label += f" <{value_hint(flag)}>"
 
 		var help = flag.help.clone()
-		if text := flag.default: help += f" (default {text})"
+		text := flag.default
+		if text != null: help += f" (default {text})"
 		if flag.required: help += " (required)"
 		help_row(table, [label, help])
 

@@ -35,24 +35,25 @@ export fn stdlib_table(output: String) String!:
 	]
 
 	for c in cases:
-		s := c.stats.get_or(
-			Stats(
+		s := (
+			c.stats
+			or Stats(
 				operations: 0,
-				iterations: none,
-				samples: none,
+				iterations: null,
+				samples: null,
 				median_ns: 0.0,
-				min_ns: none,
-				max_ns: none,
-				mean_ns: none,
-				stddev_ns: none,
+				min_ns: null,
+				max_ns: null,
+				mean_ns: null,
+				stddev_ns: null,
 			)
 		)
 		rows.append(
 			left(labels.get_or(c.name, ""), width) + "  " + right(
 				s.median_ns.to_fixed(2),
 				12,
-			) + "  " + right(s.min_ns.get_or(0.0).to_fixed(2), 10) + "  " + right(
-				s.max_ns.get_or(0.0).to_fixed(2),
+			) + "  " + right((s.min_ns or 0.0).to_fixed(2), 10) + "  " + right(
+				(s.max_ns or 0.0).to_fixed(2),
 				10,
 			)
 		)

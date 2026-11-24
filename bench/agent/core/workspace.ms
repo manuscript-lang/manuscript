@@ -116,13 +116,16 @@ export fn read_log(ws: String) BuildLog:
 	builds := rows.filter(fn r: r.phase == "build")
 	checks := rows.filter(fn r: r.phase == "check")
 	var first_ok = false
-	if first := builds.first(): first_ok = first.ok
+	first := builds.first()
+	if first != null: first_ok = first.ok
 
 	var fixed_ok = first_ok
-	if first := builds.first(): fixed_ok = first.ok or first.fixed == "true"
+	first := builds.first()
+	if first != null: fixed_ok = first.ok or first.fixed == "true"
 
 	var last_ok = false
-	if last := checks.last(): last_ok = last.ok
+	last := checks.last()
+	if last != null: last_ok = last.ok
 
 	var codes = List[String]()
 	var errors = List[String]()
@@ -159,9 +162,9 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 			total: cases.length(),
 			pass: false,
 			error: tail,
-			failed: none,
+			failed: null,
 			code_tokens: tokens,
-			llm_tokens: none,
+			llm_tokens: null,
 		)
 
 	var passed = 0
@@ -180,8 +183,8 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 		passed: passed,
 		total: cases.length(),
 		pass: passed == cases.length(),
-		error: none,
+		error: null,
 		failed: failed.take(10),
 		code_tokens: tokens,
-		llm_tokens: none,
+		llm_tokens: null,
 	)

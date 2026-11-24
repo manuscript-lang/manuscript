@@ -8,3 +8,7 @@
 - The code generator's options are process-wide and differ between the generate and assemble steps, so every module finishes generating before any assembles (`link_generate`, `link_finish`).
 - LLVM never inlined across functions anyway (`noinline` on every function); a module only loses folding of loads from static data (defined in module 0).
 - Forcing `MS_UNITS=3` over the conformance run and test phases passes, apart from failures that also occur with one module.
+
+## What is left is IR volume
+
+After the split, Release `ms test` time follows the LLVM input size, not the thread count (O2 against O3 and llc flags change nothing). Test bodies dominated it: each inlined `expect_equal` copied its failure path (about 350 IR lines per call), so a 534-line fixture produced 22 MB. A `test` block runs once, so lowering sets `MirFunc.runs_once` on it (not on `bench`) and the inliner uses the Debug threshold for call sites in it. Router test Release 5.4 s to 3.0 s, `json` 1.64 to 1.19 s, `fs` 2.17 to 1.07 s, Debug unchanged (Rust, Release: 3.07 s). The Rust Debug baseline (0.49 s) used Cranelift and is not a like-for-like target for LLVM.

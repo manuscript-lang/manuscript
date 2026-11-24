@@ -38,8 +38,8 @@ test "case mapping and normalization return text that needs no change":
 	expect_equal("@[`{".upper(), "@[`{")?
 	expect_equal("@[`{".lower(), "@[`{")?
 	expect_equal("É".lower(), "é")?
-	expect_equal(pad(20).normalize("NFC", none).get_or(""), pad(20))?
-	expect_equal("abc".normalize("NFKD", none).get_or(""), "abc")?
-	expect_equal("e\u{301}".normalize("NFC", none).get_or(""), "é")?
+	expect_equal(pad(20).normalize("NFC", null).get_or(""), pad(20))?
+	expect_equal("abc".normalize("NFKD", null).get_or(""), "abc")?
+	expect_equal("e\u{301}".normalize("NFC", null).get_or(""), "é")?
 	expect_true("abcdef".normalize("NFC", 3).is_error())?
 	expect_equal("abc".normalize("NFC", 3).get_or(""), "abc")?

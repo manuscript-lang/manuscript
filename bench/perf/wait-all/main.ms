@@ -1,5 +1,6 @@
 import (
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 	milliseconds, monotonic, sleep from "@std/time.ms",
 )
@@ -20,7 +21,7 @@ fn ordered_wait_all[T](promises: List[Promise[T]]) List[T]!:
 
 fn main() Int:
 	args := arguments()
-	count := args[0].parse_int().get()
+	count := args[0].parse_int() or panic("called Optional.get() on null")
 	jitter := args[1] == "jitter"
 	before := monotonic()
 	var promises: List[Promise[Int]] = []

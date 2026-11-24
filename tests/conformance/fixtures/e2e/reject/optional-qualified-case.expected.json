@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none",
+        "message": "Optional has no qualified cases; write null or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := null",
         "position": {
           "file": "optional-qualified-case.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/optional-qualified-case.ms:4:26: resolution: Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none\n   |\n 4 |     return Optional[Int].none\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/optional-qualified-case.ms:4:26: resolution: Optional has no qualified cases; write null or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := null\n   |\n 4 |     return Optional[Int].null\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

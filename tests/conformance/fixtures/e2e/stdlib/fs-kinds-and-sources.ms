@@ -27,7 +27,7 @@ test "whole-file writes take text or bytes and complete through promises":
 	write_atomic(f"{root}/b.txt", "x").wait() | expect_ok?
 
 	data := read_file(f"{root}/a.txt").wait() | expect_ok?
-	data.decode_utf8().get_or("") | expect_equal("hello world")?
+	(data.decode_utf8() or "") | expect_equal("hello world")?
 
 test "stat reports one closed kind and follows links by default":
 	dir := temporary("manuscript-kinds-") | expect_ok?
@@ -57,7 +57,7 @@ test "a directory is a stream source of entries and seek takes an origin":
 	entries := open_directory(root) | expect_ok?
 	all := (
 		ReadStream[DirectoryEntry](entries)
-		| collect(none)
+		| collect(null)
 		| expect_ok?
 	)
 	all.length() | expect_equal(2)?

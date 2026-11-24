@@ -35,11 +35,11 @@ fn generate(kind: Kind, seed: Int) Generated:
 // `A..B` as the half-open seed range; (0, 0) with a problem when it does not parse.
 fn seed_range(args: Args) List[Int]:
 	text := one(args, "seeds", "0..100")
-	at := text.index_of("..").get_or(-1)
+	at := text.index_of("..") or (-1)
 	if at < 0: return [-1, -1]
 
-	low := text.slice(0, at).parse_int().get_or(-1)
-	high := text.slice(at + 2, text.length()).parse_int().get_or(-1)
+	low := text.slice(0, at).parse_int() or (-1)
+	high := text.slice(at + 2, text.length()).parse_int() or (-1)
 	return [low, high]
 
 fn padded(seed: Int) String:

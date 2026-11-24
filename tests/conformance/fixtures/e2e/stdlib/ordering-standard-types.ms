@@ -22,9 +22,9 @@ test "Timestamp orders with min, max and clamp":
 test "Decimal orders with min, max and clamp":
     a := (150).to_decimal()
     b := (7).to_decimal()
-    expect_equal(a.min(b).to_fixed(0, none).get(), "7")?
-    expect_equal(a.max(b).to_fixed(0, none).get(), "150")?
-    expect_equal(a.clamp(b, b).to_fixed(0, none).get(), "7")?
+    expect_equal(a.min(b).to_fixed(0, null).get(), "7")?
+    expect_equal(a.max(b).to_fixed(0, null).get(), "150")?
+    expect_equal(a.clamp(b, b).to_fixed(0, null).get(), "7")?
 
 test "BigInt orders with min, max and clamp":
     expect_equal(big_int_of_int(-4).min(big_int_of_int(2)).to_string(), "-4")?

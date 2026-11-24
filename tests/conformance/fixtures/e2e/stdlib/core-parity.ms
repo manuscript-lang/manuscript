@@ -3,7 +3,7 @@
 import (
 	panic from "@std/core.ms",
 	JsonOptions from "@std/data/json.ms",
-	expect_equal, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 type Counter:
@@ -23,7 +23,12 @@ fn chain_result[T, E, U](value: T!E, transform: fn(T) U!E) U!E:
 	return value.and_then(transform)
 
 fn map_optional[T, U](transform: fn(T) U, value: T?) U?:
-	return value.map(transform)
+	if value == null: return null
+	return transform(value)
+
+fn then_optional[T, U](transform: fn(T) U?, value: T?) U?:
+	if value == null: return null
+	return transform(value)
 
 fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
 	return values.map[U](transform)
@@ -40,11 +45,8 @@ test "core parity operations are callable":
 	chained: String!Error := success.and_then(fn n: ok(n.to_string()))
 	expect_equal(chained.get(), "2")?
 
-	present: Int? := 2
-	missing: Int? := none
-	expect_equal(present.map(fn n: n + 1).get(), 3)?
-	expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")?
-	expect_equal(missing.or_else(fn: 4).get(), 4)?
+	missing: Int? := null
+	expect_equal(missing or 4, 4)?
 
 	values: Map[String, Int] := {"a": 1, "b": 2}
 	expect_false(values.is_empty() or values.get_or("absent", 8) != 8)?
@@ -106,11 +108,11 @@ test "Result preserves unconstrained payloads and success-only composition":
 	record: JsonOptions!Error := ok(limits.clone())
 	var changed = record.clone().map(fn value: value).get().clone()
 	changed.max_values = 7
-	expect_equal(changed.max_values.get(), 7)?
-	expect_false(limits.max_values.is_some())?
+	expect_equal(changed.max_values or panic("called Optional.get() on null"), 7)?
+	expect_false(limits.max_values != null)?
 
 	nested := success.clone().map(fn(n: Int) Int?: n)
-	expect_equal(nested.get().get(), 0)?
+	expect_equal(nested.get() or panic("called Optional.get() on null"), 0)?
 
 	unit_result: Void!Error := ok()
 	expect_false(not (unit_result.is_ok()))?
@@ -126,6 +128,7 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 
 	create := fn(cause: Counter) Int: 12
 	unexpected := fn(cause: Counter) Int: panic("fallback must stay lazy")
+
 	// `get_or_else` takes its receiver, so a reusable value states the copy.
 	lazy := fn(fallback: fn(Counter) Int) Int: success.clone().get_or_else(fallback)
 	expect_false(lazy(unexpected) != 0)?
@@ -136,45 +139,62 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	extracted.calls = 3
 	expect_equal(failure.err().calls, 0)?
 	expect_equal(extracted.calls, 3)?
-
 	expect_equal(success.clone().map(fn n: n.to_string()).get(), "0")?
 	expect_equal(success.clone().and_then(fn n: ok(n.to_string())).get(), "0")?
 
 test "Optional composition keeps nesting identity and lazy callback counts":
 	counter := Counter(0)
 	present: Counter? := counter.clone()
-	missing: Counter? := none
+	missing: Counter? := null
 	transform := fn(value: Counter) Counter:
 		return Counter(value.calls + 1)
 	unexpected := fn(value: Counter) Counter: panic("map must not run for none")
-	expect_false(not (map_optional(unexpected, missing.clone()).is_none()))?
+	expect_false(not (map_optional(unexpected, missing.clone()) == null))?
 
-	mapped := present.clone().map(transform)
-	expect_equal(mapped.get().calls, 1)?
+	mapped := map_optional(transform, present.clone())
+	expect_equal((mapped or panic("called Optional.get() on null")).calls, 1)?
 	expect_equal(counter.calls, 0)?
 
-	var edited = mapped.get().clone()
+	var edited = (mapped or panic("called Optional.get() on null")).clone()
 	edited.calls = 2
-	expect_equal(mapped.get().calls, 1)?
+	expect_equal((mapped or panic("called Optional.get() on null")).calls, 1)?
 
-	chained := present.clone().and_then(fn(value: Counter) Counter?: value)
-	expect_equal(chained.get().calls, 0)?
+	chained := then_optional(fn(value: Counter) Counter?: value, present.clone())
+	expect_equal((chained or panic("called Optional.get() on null")).calls, 0)?
 
-	absent := present.clone().and_then(fn(unused: Counter) Int?: none)
-	expect_false(not (absent.is_none()))?
+	absent := then_optional(fn(unused: Counter) Int?: null, present.clone())
+	expect_false(not (absent == null))?
 
 	create := fn() Counter?: Counter(5)
 	unexpected_create := fn() Counter?: panic("fallback must stay lazy")
-	expect_equal(present.clone().or_else(unexpected_create).get().calls, 0)?
+	expect_equal(
+		(
+			(present.clone() or unexpected_create())
+			or panic("called Optional.get() on null")
+		).calls,
+		0,
+	)?
 
-	fallback := missing.clone().or_else(create)
-	expect_equal(fallback.get().calls, 5)?
+	fallback := missing.clone() or create()
+	expect_equal((fallback or panic("called Optional.get() on null")).calls, 5)?
 
-	nested := present.clone().map(fn(unused: Counter) Int?: none)
-	expect_false(not (nested.is_some()) or not (nested.get().is_none()))?
-
-	expect_equal(mapped.clone().map(fn value: value.calls.to_string()).get(), "1")?
-	expect_false(not (missing.clone().and_then[String](fn unused: "unexpected").is_none()))?
+	nested := map_optional(fn(unused: Counter) Int?: null, present.clone())
+	expect_true(nested == null)?
+	expect_equal(
+		map_optional(
+			fn value: value.calls.to_string(),
+			mapped.clone()
+		) or panic("called Optional.get() on null"),
+		"1",
+	)?
+	expect_false(
+		not (
+			then_optional(
+				fn(unused: Counter) String?: "unexpected",
+				missing.clone()
+			) == null
+		)
+	)?
 
 test "Map filter copies ordered membership and get_or never inserts":
 	var counter = Counter(0)

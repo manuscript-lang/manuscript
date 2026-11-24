@@ -5,6 +5,6 @@ fn explicit() Void:
     fs := filesystem()
     fs.write_file("", "", false)
     fs.copy_file("", "", true)
-    fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
+    fs.copy_tree("", "", false, max_entries: null, max_bytes: 3)
     fs.create_directory("", true)
     fs.remove("", false)

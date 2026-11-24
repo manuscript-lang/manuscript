@@ -5,7 +5,7 @@ fn use(value: Int?) Int:
     return match (
         match value:
             x: x
-            none: 0
+            null: 0
     ):
         x: x
-        none: 0
+        null: 0

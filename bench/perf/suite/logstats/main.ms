@@ -4,7 +4,7 @@ import (
 )
 
 fn main() Void:
-	data := read_all(stdin(), none).get().decode_utf8().get_or("")
+	data := read_all(stdin(), null).get().decode_utf8() or ""
 	var rows = 0
 	var latency = 0
 	var classes = [0].repeated(4)
@@ -15,7 +15,7 @@ fn main() Void:
 
 		f := line.split(" ")
 		rows += 1
-		latency += f[5].parse_int().get_or(0)
+		latency += f[5].parse_int() or 0
 
 		cls := f[4].scalar_at(0) - 50
 		classes[cls] += 1

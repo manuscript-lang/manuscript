@@ -44,7 +44,7 @@ fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) B
 	if ran.exit_code != 0:
 		return error(
 			Error(
-				f"ms build {source} failed:\n{ran.stderr.decode_utf8().get_or("")}"
+				f"ms build {source} failed:\n{(ran.stderr.decode_utf8() or "")}"
 			)
 		)
 
@@ -52,7 +52,7 @@ fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) B
 	return ok(
 		Built(
 			seconds,
-			f"{program.exit_code}:{program.stdout.decode_utf8().get_or("")}",
+			f"{program.exit_code}:{(program.stdout.decode_utf8() or "")}",
 		)
 	)
 
@@ -98,7 +98,7 @@ fn report(ms: String, source: String, level: String, runs: Int) Int:
 
 fn main() Int:
 	ms := canonicalize(env("MS", f".artifacts/build/ci/src/cli/ms{exe()}")).get()
-	runs := env("RUNS", "5").parse_int().get_or(5)
+	runs := env("RUNS", "5").parse_int() or 5
 	print(
 		"| program | build | process median s | in-process median s | speedup | process min s | in-process min s | same behavior |"
 	)

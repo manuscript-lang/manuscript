@@ -24,8 +24,8 @@ test "replace_each does not rescan replacements":
 test "index_any reports the byte offset of the first scalar in the set":
 	"héllo".index_any("l") | expect_equal(3)?
 	"héllo".index_any("éo") | expect_equal(1)?
-	"abc".index_any("z").is_none() | expect_equal(true)?
-	"abc".index_any("").is_none() | expect_equal(true)?
-	"".index_any("a").is_none() | expect_equal(true)?
+	("abc".index_any("z") == null) | expect_equal(true)?
+	("abc".index_any("") == null) | expect_equal(true)?
+	("".index_any("a") == null) | expect_equal(true)?
 	"a🦀b".index_any("🦀") | expect_equal(1)?
 	"zzzzzzzzzzk".index_any("abcdefghijk") | expect_equal(10)?

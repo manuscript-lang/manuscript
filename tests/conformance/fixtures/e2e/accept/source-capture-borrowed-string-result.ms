@@ -52,21 +52,21 @@ test "borrowed String method results outlive their owning source environments":
 	write_file(log, "").wait()?
 
 	first := ordinary(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,")?
 	expect_equal(first, "payload-1")?
 
 	second := defaulted(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,")?
 	expect_equal(second, "payload-2")?
 
 	third := explicit_default(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,")?
 	expect_equal(third, "payload-3")?
 
 	fourth := repeated(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,4,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,")?
 	expect_equal(fourth, ["payload-4", "payload-4"])?
 
 	fifth := repeated_default(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,4,5,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,5,")?
 	expect_equal(fifth, ["payload-5", "payload-5"])?

@@ -60,7 +60,7 @@ test "a write waits while the pipe holds more than its capacity, so the reader s
 
 	var seen: List[Int] = []
 	for i in 0..20:
-		seen.append((input.next()?).get_or(-1))
+		seen.append((input.next()?) or (-1))
 	producer.wait()?
 	gate.close()?
 	expect_equal(
@@ -83,7 +83,7 @@ test "a pipe has one reader; asking again gives a stream that has already ended"
 	var input = p.reader()
 	var again = p.reader()
 	out.write(7)?
-	expect_equal((again.next()?), none)?
+	expect_equal((again.next()?), null)?
 	expect_equal((input.next()?), 7)?
 
 test "a promise that owns a pipe writes to it through a writer of its own":

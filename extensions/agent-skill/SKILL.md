@@ -35,7 +35,7 @@ fn tally(lines: List[String]) Map[String, Int]:
 - **Transformation:** a pipeline (`xs | .filter(f) | .map(g) | .sum()`) to derive values; a `for` loop to build a Map or change a `var`. A named function beats a one-use closure.
 - **Ownership:** reading borrows; changing needs `var` on the parameter (the call writes the argument plainly); storing moves. `.clone()` is for a real second owner and costs time and memory: borrow, move at the last use, or keep an index first.
 - **Short forms:** `print(x)`, not `stdout().write`. `0..n`, `[0].repeated(n)`, `.map`, `.filter`, `.any`, `.all`, `.sum()`, `xs.extend(ys)` instead of loops that build or accumulate. `x := if c: a else: b`, `m.get_or(k, d)`, `s.is_empty()`, `a.max(b)`, `for _round in` for an unused name, `"""` for multi-line text.
-- **Failure:** `T!` for what can fail, `return ok(v)` / `return error(Error("what"))` (not `return Error(...)`), `?` to propagate, and in a test `f()?` to read a Result, `.ok_or(Error("what and which input", kind: "EINVAL"))` to turn absence into an error. `T?` when absence is normal; unwrap with `if v := o:` or `.get_or(default)`. Do not write `call().get()` as a statement (it faults on error): use `call()?` (`main` may return `Void!`), or `void call()` to ignore the outcome.
+- **Failure:** `T!` for what can fail, `return ok(v)` / `return error(Error("what"))` (not `return Error(...)`), `?` to propagate, and in a test `f()?` to read a Result, `.ok_or(Error("what and which input", kind: "EINVAL"))` to turn absence into an error. `T?` when absence is normal; unwrap with `if v := o:` or `o or default`. Do not write `call().get()` as a statement (it faults on error): use `call()?` (`main` may return `Void!`), or `void call()` to ignore the outcome.
 - **Waiting:** no `async`. A waiting call returns a Promise already running; start several, `wait_all` them. Streams are read with `for line in stream | lines`. Share state through one owner and a pipe.
 - **Tests:** `test "name":` blocks beside the code, run by `ms test`.
 
@@ -81,7 +81,7 @@ Four rules cover most compiler errors; an error that names one is that rule.
 
 1. **One owner.** `price.add(sku.clone(), 0)` then `stock.add(sku, n)`. "Moved here but used again" means clone at the store. While a binding borrows from `xs` (`it := xs.get(0, d)`, `for x in xs`), do not change `xs`.
 2. **`?` unwraps a Result or an Optional.** It leaves the function on error or absence: the function must return a matching Result, or an Optional/`Void` for an Optional. `s.parse_int()` is `Int?`: `s.parse_int().ok_or(Error("bad number"))?` in a `Result` function. A Result is never dropped; `_done := f(x)?` when its value is unused. `r?.abs()` unwraps then calls.
-3. **Names are exact.** Never translate: `xs.append(x)` not `push`, `contains` not `contains_key`, `pop` not `remove_last`, `is_error` not `is_err`, `x.length()` not `x.len`, `x.is_none()` not `x == none`. An Optional needs no wrapper: `return value`, never `some(value)` (absent is `none`).
+3. **Names are exact.** Never translate: `xs.append(x)` not `push`, `contains` not `contains_key`, `pop` not `remove_last`, `is_error` not `is_err`, `x.length()` not `x.len`, `x.is_none()` not `x == null`. An Optional needs no wrapper: `return value`, never `some(value)` (absent is `null`).
 4. **Shapes are fixed.** A body goes on indented lines after a `:` header. `for _i in xs` (a bare `_` is no name). Records, not tuples; `List[Int]`, not `List<Int>`; `not x`, not `!x`. Reserved words (`type`, `test`, `fn`, `var` ...) are never names.
 
 ## References by task

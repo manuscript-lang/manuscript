@@ -8,7 +8,7 @@ fn normalize(form: NormalizationForm, text: String) String!:
     return form.normalize(text)
 
 fn call[T](operation: fn(String, Int?) T, text: String) T:
-    return operation(text, none)
+    return operation(text, null)
 
 test "typed Unicode forms retain normalization and bound dispatch":
     decomposed := "é"

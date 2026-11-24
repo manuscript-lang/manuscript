@@ -27,7 +27,7 @@ export extern fn msstd_time_duration_to_hours(value: Int) Float
 
 // The bundled zone database's entry for an exact name (a TZif version 2+ block, or an
 // IANA name for
-// `windows/<key>`), or empty Bytes when there is none.
+// `windows/<key>`), or empty Bytes when there is null.
 export extern fn msstd_time_zone_data(name: String) move Bytes
 
 // How the host names its zone: `tz:NAME` from the TZ setting, `link:NAME` from
@@ -35,7 +35,7 @@ export extern fn msstd_time_zone_data(name: String) move Bytes
 export extern fn msstd_time_system_zone() move String
 
 // The whole of the system zone file (/etc/localtime), or empty Bytes when there is
-// none.
+// null.
 export extern fn msstd_time_system_zone_file() move Bytes!
 
 // Validates calendar fields and returns their local seconds (the fields read as UTC); a

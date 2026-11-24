@@ -16,8 +16,9 @@ fn follow(root: String, last: String, seen: WriteStream[Int]) Void!:
 
 	while true:
 		event := events.next()?
+		found := event
 
-		if found := event:
+		if found != null:
 			if found.path == last:
 				out.write(1)?
 		else:

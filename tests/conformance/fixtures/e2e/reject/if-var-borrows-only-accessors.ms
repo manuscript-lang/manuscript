@@ -5,6 +5,8 @@ export fn main() Int:
 	var n = 0
 	if var l = o:
 		l.append("q")
-	if k := o:
+
+	k := o
+	if k != null:
 		n += k.length()
 	return n

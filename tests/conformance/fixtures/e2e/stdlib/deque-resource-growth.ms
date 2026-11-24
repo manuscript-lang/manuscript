@@ -15,7 +15,7 @@ fn move Door.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
 fn events(log: String) String!:
-	return ok((read_file(log).wait()?).decode_utf8().get_or(""))
+	return ok((read_file(log).wait()?).decode_utf8() or "")
 
 // A nonzero start is required to exercise the old copying growth path.
 fn grow(log: String, front: Bool, wrapped: Bool) Void!:
@@ -36,12 +36,18 @@ fn grow(log: String, front: Bool, wrapped: Bool) Void!:
 
 	expect_equal((events(log)?), before)?
 	expect_equal(queue.length(), 5)?
-	expect_equal(queue.front().get().id, if front: 5 else: (if wrapped: 1 else: 0))?
-	expect_equal(queue.back().get().id, if front: (if wrapped: 4 else: 3) else: 5)?
+	expect_equal(
+		(queue.front() or panic("called Optional.get() on null")).id,
+		if front: 5 else: (if wrapped: 1 else: 0),
+	)?
+	expect_equal(
+		(queue.back() or panic("called Optional.get() on null")).id,
+		if front: (if wrapped: 4 else: 3) else: 5,
+	)?
 
 	// Popped values remain owned by these bindings until the helper exits.
-	first := queue.pop_front().get()
-	last := queue.pop_back().get()
+	first := queue.pop_front() or panic("called Optional.get() on null")
+	last := queue.pop_back() or panic("called Optional.get() on null")
 	expect_equal((events(log)?), before)?
 	expect_equal(first.id, if front: 5 else: (if wrapped: 1 else: 0))?
 	expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)?
@@ -66,9 +72,9 @@ type Holder:
 fn nested(log: String) Void!:
 	var queue = Deque[Holder?]()
 	queue.push_back(Holder(Door(0, log.clone()), "first"))
-	queue.push_back(none)
+	queue.push_back(null)
 	queue.push_back(Holder(Door(1, log.clone()), "second"))
-	queue.push_back(none)
+	queue.push_back(null)
 	queue.pop_front()
 	queue.push_back(Holder(Door(2, log.clone()), "third"))
 	queue.push_back(Holder(Door(3, log.clone()), "fourth"))
@@ -78,9 +84,10 @@ fn nested(log: String) Void!:
 	var popped: List[Int] = []
 
 	while not queue.is_empty():
-		item := queue.pop_front().get()
+		item := queue.pop_front()
+		holder := item
 
-		if holder := item:
+		if holder != null:
 			popped.append(holder.door.id)
 		else:
 			popped.append(-1)
@@ -140,8 +147,8 @@ test "wrapped growth leaves opaque native file handles usable":
 			q.push_back(open(path, OpenMode.ReadWrite)?)
 
 		while not q.is_empty():
-			var handle = q.pop_front().get()
+			var handle = q.pop_front() or panic("called Optional.get() on null")
 			content := handle.read_file()?
-			expect_equal(content.decode_utf8().get_or(""), "still open")?
+			expect_equal(content.decode_utf8() or "", "still open")?
 			handle.sync()?
 			handle.close()?

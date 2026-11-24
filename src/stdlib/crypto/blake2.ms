@@ -108,7 +108,7 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 			bit_and(
 				shift_right_unsigned(w, 8 * (index % 8)),
 				255,
-			).to_uint8().get_or(0)
+			).to_uint8() or 0
 		)
 
 	return out.build()
@@ -204,7 +204,7 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
 			bit_and(
 				shift_right_unsigned(w, 8 * (index % 4)),
 				255,
-			).to_uint8().get_or(0)
+			).to_uint8() or 0
 		)
 
 	return out.build()
