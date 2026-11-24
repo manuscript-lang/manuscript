@@ -626,6 +626,8 @@ bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
   MsFaultText message = {0};
   MsGuardStatus status = MS_GUARD_OK;
   Work work = {.id = id, .closure = closure};
+  /* Registered around the guard too: the entry puts the guard's base above the promises this frame started, so a
+   * fault or a cancel inside the work ends only what the work started (promise_end_started compares heights). */
   const size_t handle = ms_cleanup_push(drop_closure, (uint8_t *)closure);
   if (guarded) {
     status = ms_guard_call(run_work, &work, &message);
