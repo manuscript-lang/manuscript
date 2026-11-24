@@ -1,7 +1,7 @@
 # Feature name
 
 <!-- Copy to design/proposals/<kebab-name>.md. Delete every comment and every
-     section that does not apply. Target 60 to 100 lines; see README.md. -->
+     section that does not apply. Target 80 to 150 lines, most of it Detailed design; see README.md. -->
 
 * Status: **Proposed** | **Approved** | **Implemented** | **Rejected** | **Withdrawn** (date, commit checked)
 * Authors: [name](https://github.com/login)
@@ -24,11 +24,25 @@
      measurement (command, commit, number). Further cases: one bullet each, with a
      pointer to the test or fixture. Non-goals only if a reader would assume them. -->
 
-## Proposed design
+## Proposed solution
 
-<!-- The rule, stated once. Short `.ms` examples that pass `ms check` (accepted, and
-     rejected with the exact diagnostic). Semantics for ownership, errors,
-     cancellation, and edge cases, one bullet each. -->
+<!-- The idea in the user's terms: one or two short `.ms` before/after examples that
+     pass `ms check`, and why this beats the workaround. Not comprehensive. -->
+
+## Detailed design
+
+<!-- Enough for someone who is not the author to implement it without asking.
+     Cover each that applies, as a subsection or bullet:
+     - Syntax: grammar additions, with accepted and rejected `.ms` examples
+       (`ms check` output pasted, including exact diagnostics and their mechanical fixes).
+     - API: full stdlib declarations with doc comments, as they will appear in `src/stdlib/*.ms`.
+     - Semantics: typing rules, ownership and moves, borrows, errors, cancellation,
+       resource closing, concurrency, and evaluation order.
+     - Edge cases: empty, nested, generic, shadowed, and error paths, one bullet each.
+     - Lowering and runtime: what the checker, MIR, optimizer, and runtime do; data
+       layout and any new invariant or ABI entry point.
+     - Diagnostics and tooling: messages, lsp, fmt, lint, docs, agent skill.
+     A diagram only where data flow, lifetimes, layout, or stage order matter. -->
 
 ## Fit with the language
 

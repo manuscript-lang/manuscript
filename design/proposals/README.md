@@ -23,4 +23,4 @@ Bug fixes, internal refactors inside one layer, and docs need none. When unsure,
 
 - No review manager, forum threads, or ABI section; the review is the PR and the owner's decision.
 - Added: fit with the memory model, agent ergonomics, measured benefit, and platform parity, because those decide Manuscript changes.
-- Length is capped (60 to 100 lines) and every line must change the decision or the build.
+- Detailed design is required and must be enough to implement from: syntax, API, semantics, edge cases, lowering, diagnostics. Length target is 80 to 150 lines; every line must change the decision or the build.
