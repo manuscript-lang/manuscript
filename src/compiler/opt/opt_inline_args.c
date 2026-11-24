@@ -128,11 +128,25 @@ static bool ic_pick_arg(const MirModule *m, const IcKnown *known, const MirInst 
   return false;
 }
 
-static bool ic_has_call_ind(const MirFunc *f) {
+/* Whether `f` calls a closure, or hands a closure parameter on to a call that can: a wrapper's copy then
+ * has a known closure for its callee in the next round. */
+static bool ic_has_call_ind(const MirModule *m, const MirFunc *f) {
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
-      if (f->blocks.ptr[b].insts.ptr[i].op == MOP_CallInd) {
+      const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
+      if (in->op == MOP_CallInd) {
         return true;
+      }
+      if (in->op != MOP_Call) {
+        continue;
+      }
+      for (uint32_t a = 0; a < in->nargs; a++) {
+        for (uint32_t p = 0; p < f->blocks.ptr[0].params.len; p++) {
+          if (in->args[a] == f->blocks.ptr[0].params.ptr[p].value &&
+              mir_ty_data(m, mir_value_ty(f, in->args[a]))->kind == MK_FN) {
+            return true;
+          }
+        }
       }
     }
   }
@@ -158,7 +172,7 @@ static bool ic_specializable(const IcSpecialize *s, uint32_t fi, uint32_t ci) {
   const MirFunc *callee = &s->m->funcs.ptr[ci];
   const bool cyclic = ci < s->ncyc && s->cyc[ci] && !ic_only_self_recursive(s, ci);
   return ci != fi && !cyclic && callee->kind == MFK_NORMAL && callee->inline_hint != MINL_NEVER &&
-     mir_inst_count(callee) <= OPT_INLINE_SPECIALIZE_MAX_SIZE && ic_has_call_ind(callee);
+     mir_inst_count(callee) <= OPT_INLINE_SPECIALIZE_MAX_SIZE && ic_has_call_ind(s->m, callee);
 }
 
 /* The copy of `c` specialised for closure code `g` in parameter `i`, made on first use; MIR_NONE

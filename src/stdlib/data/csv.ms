@@ -208,6 +208,28 @@ fn Reader.line_end_after(at: Int) Int:
 
 	return at
 
+// The cells of a line without quotes: the delimiter-separated pieces, with the one call of `f`
+// the whole line shares.
+fn var Reader.read_plain_record(row: Int, line: Int, f: fn(Int, Int, String) Void) Int:
+	var col = 0
+	var last = line
+	if last > self.at and self.bytes[last - 1] == 13: last -= 1
+
+	var start = self.at
+
+	while true:
+		stop := self.next_delimiter(start)
+		closes := stop >= last
+		f(row, col, self.text.view(start, if closes: last else: stop))
+		col += 1
+		if closes: break
+
+		start = stop + 1
+
+	self.at = line
+	if line < self.total: self.at = line + 1
+	return col
+
 // Reads the next record, skipping empty lines, and hands each cell to `f` as (row,
 // column, cell): a view of the input where the cell is plain, an owned text where
 // quotes were unescaped. Returns the cell count, or null at end of input.
@@ -226,27 +248,7 @@ fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 	// pieces.
 	line := self.next_line(self.at)
 
-	if self.next_quote(self.at) > line:
-		var last = line
-		if last > self.at and self.bytes[last - 1] == 13: last -= 1
-
-		var start = self.at
-
-		while true:
-			stop := self.next_delimiter(start)
-
-			if stop >= last:
-				f(row, col, self.text.view(start, last))
-				col += 1
-				break
-
-			f(row, col, self.text.view(start, stop))
-			col += 1
-			start = stop + 1
-
-		self.at = line
-		if line < self.total: self.at = line + 1
-		return ok(col)
+	if self.next_quote(self.at) > line: return ok(self.read_plain_record(row, line, f))
 
 	while true:
 		var at = self.at.to_int()
