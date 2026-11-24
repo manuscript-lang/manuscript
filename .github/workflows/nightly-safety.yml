@@ -51,7 +51,14 @@ jobs:
         run: |
           set -o pipefail
           make build
-          make perf-counts | tee perf-counts.txt
+          PERF_COUNTS_OUT="$PWD/perf-counts-measured.txt" make perf-counts | tee perf-counts.txt
+      - name: Keep the measured counts as the canonical numbers
+        if: always() && hashFiles('perf-counts-measured.txt') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: perf-counts
+          path: perf-counts-measured.txt
+          retention-days: 30
       - name: Open an issue naming the commit range
         if: failure() && steps.counts.outcome == 'failure'
         env:
@@ -69,6 +76,7 @@ jobs:
             cat perf-counts.txt
             echo '```'
             echo
+            echo "The measured numbers of this run are the \`perf-counts\` artifact of ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}; copy them to bench/perf/counts.txt when the change is deliberate."
             echo "Bisect that range with \`make perf-counts\` (instruction counts are deterministic), fix the cause or revert, and refresh the file only when the cost is deliberate."
           } > body.md
           gh issue create --title "Nightly perf counts regressed on $(git rev-parse --short HEAD)" --label performance --body-file body.md || gh issue create --title "Nightly perf counts regressed on $(git rev-parse --short HEAD)" --body-file body.md
