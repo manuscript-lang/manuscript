@@ -368,10 +368,7 @@ static int link_call(const char *source, const char *destination) {
 
 /* The link at `path` names `target`. */
 static int symlink_call(const char *path, const char *target) {
-  uv_fs_t request;
-  const int code = uv_fs_symlink(NULL, &request, target, path, 0, NULL);
-  uv_fs_req_cleanup(&request);
-  return code;
+  return ms_sys_fs_symlink(target, path);
 }
 
 /* A two-path operation: `path` and `other` as validated paths, run through `call`. */

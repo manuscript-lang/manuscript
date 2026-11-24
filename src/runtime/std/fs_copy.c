@@ -416,9 +416,7 @@ static bool make_symlink(Copier *copier, MsSpan link, MsSpan destination) {
     ms_os_text_free(&link_text);
     return false;
   }
-  uv_fs_t request;
-  const int code = uv_fs_symlink(NULL, &request, link_text.ptr, destination_text.ptr, 0, NULL);
-  uv_fs_req_cleanup(&request);
+  const int code = ms_sys_fs_symlink(link_text.ptr, destination_text.ptr);
   ms_os_text_free(&link_text);
   ms_os_text_free(&destination_text);
   if (code != 0) {

@@ -27,6 +27,7 @@ import (
 	Closeable, Writable from "@std/core.ms",
 	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	BigInt from "@std/math/math.ms",
+	normalize from "@std/os/path.ms",
 	Duration, Timestamp, milliseconds, monotonic, now, sleep from "@std/time.ms",
 
 	msstd_fs_access,
@@ -441,7 +442,10 @@ fn var WatchSource.next() move FileEvent?!:
 		if next.is_none(): return ok(none)
 
 		// An empty batch only means nothing changed yet; only none ends the stream.
-		var batch = next.get_or(List[FileEvent]())
+		// Paths are spelled as `join` spells them on this host (Windows: backslashes).
+		var batch = List[FileEvent]()
+		for event in next.get_or(List[FileEvent]()):
+			batch.append(FileEvent(normalize(event.path), event.kind.clone()))
 		batch.reverse()
 		self.pending = batch
 

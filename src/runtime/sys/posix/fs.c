@@ -134,3 +134,10 @@ int ms_sys_fs_refine_error(int code, const char *path, size_t length) {
   (void)length;
   return code;
 }
+
+int ms_sys_fs_symlink(const char *target, const char *path) {
+  uv_fs_t request;
+  const int code = uv_fs_symlink(NULL, &request, target, path, 0, NULL);
+  uv_fs_req_cleanup(&request);
+  return code;
+}

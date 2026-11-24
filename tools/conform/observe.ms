@@ -37,8 +37,10 @@ export fn default_timeout(phase: String) Int:
 	if phase == "check": return 60
 	if phase == "run": return 120
 
-	// The slowest test fixture takes about 15 s (many-tasks); twice that is a hang.
-	return 30
+	// A hang detector, not a speed budget: the slowest test fixtures take 15 to 20 s on
+	// Linux (yaml, many-tasks) and three times that on a loaded Windows runner, so the
+	// limit matches the run phase.
+	return 120
 
 export fn invoke(
 	ms: String,
