@@ -10,7 +10,6 @@ extern @msstd_value_to_string(ptr, ptr) -> str fresh
 extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
 extern @msrt_io_write_stdout(str) -> void
 extern @msrt_string_parse_int(str, ptr) -> uint8 string_parse_int
-extern @msrt_string_clone(str) -> str fresh
 extern @msrt_panic(str) -> void
 entry @main
 
@@ -109,7 +108,7 @@ b4():
 b5():
   br b6() !2:13:30
 b6():
-  %12: str = call.rt @msrt_string_clone (%0) !2:15:35
+  %12: str = clone %0 !2:15:35
   %13: Failure = alt.new Failure.Bad %12 !2:15:26
   %14: Result[Int, Failure] = alt.new Result[Int, Failure].error %13 !2:15:12
   ret %14 !2:15:12
