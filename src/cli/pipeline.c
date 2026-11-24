@@ -171,9 +171,9 @@ static void run_phase(UnitJob *jobs, uint32_t units, void (*phase)(void *)) {
 }
 
 /* How many modules a program may be written as: `MS_UNITS` (and exactly that many, however small the program), or
- * one per core. A module below UNIT_BYTES of function text is not worth a thread: it loses the calls LLVM inlines
- * across modules and parses the debug metadata again. */
-enum { UNIT_BYTES = 256 << 10 };
+ * one per core. A module below UNIT_BYTES of function text is not worth a thread: it parses the debug metadata again
+ * and loses the folding of loads from the first module's static data. */
+enum { UNIT_BYTES = 64 << 10 };
 
 static void unit_limits(BackendOptions *backend) {
   MsString value = ms_string_empty();
