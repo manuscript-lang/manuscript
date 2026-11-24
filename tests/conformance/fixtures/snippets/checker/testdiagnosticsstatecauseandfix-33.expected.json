@@ -12,9 +12,9 @@
         "message": "pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-33.ms",
-          "line": 10,
+          "line": 11,
           "column": 9,
-          "offset": 281
+          "offset": 271
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-33.ms",
-          "line": 11,
+          "line": 12,
           "column": 9,
-          "offset": 325
+          "offset": 309
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-33.ms:10:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 10 |         Choice[String].Found(v) => return 1\n    |         ^\n<DIR>/testdiagnosticsstatecauseandfix-33.ms:11:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 11 |         Choice[String].Missing => return 0\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-33.ms:11:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 11 |         Choice[String].Found(v) => return 1\n    |         ^\n<DIR>/testdiagnosticsstatecauseandfix-33.ms:12:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 12 |         Choice[String].Missing => return 0\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -95,8 +95,8 @@ static bool payload_hint(Body *body, MsTy receiver, MsSpan name, MsStrBuild *out
   ms_strbuild_append_text(out, ", which has ");
   ms_strbuild_append(out, name);
   ms_strbuild_append_text(out, ": unwrap it first with ");
-  ms_strbuild_append_text(out, optional ? "`if x != null:` or `x or default`"
-                                        : "`x?` inside a fn that returns Result, `if value := x:` or x.get_or(default)");
+  ms_strbuild_append_text(out, optional ? "`if x != null { ... }` or `x or default`"
+                                        : "`x?` inside a fn that returns Result, `if value := x { ... }` or x.get_or(default)");
   return true;
 }
 
@@ -134,13 +134,13 @@ static bool habit_before_payload(Body *body, MsTy receiver, MsName id, MsSpan na
   const bool result = ms_ty_is(types, receiver, MS_BUILTIN_Result);
   const char *fix = NULL;
   if (optional && (NAME_IN(name, "unwrap", "expect", "value", "unwrap_or") || NAME_IN(name, "unwrap_or_else", "or_default", "unwrap_or_default"))) {
-    fix = "read an Optional with x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:` to test and unwrap; x.get() with no default faults on null";
+    fix = "read an Optional with x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x { ... }` to test and unwrap; x.get() with no default faults on null";
   } else if (optional && NAME_IN(name, "map_or", "is_some_and", "flatten", "filter")) {
-    fix = "use map, and_then, is_some, or `if value := x:`";
+    fix = "use map, and_then, is_some, or `if value := x { ... }`";
   } else if (result && (NAME_IN(name, "unwrap", "expect", "unwrap_or", "unwrap_or_else") || NAME_IN(name, "unwrap_or_default"))) {
-    fix = "read a Result with `x?` inside a fn that returns Result, x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:`";
+    fix = "read a Result with `x?` inside a fn that returns Result, x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x { ... }`";
   } else if (result && NAME_IN(name, "unwrap_err", "err", "ok")) {
-    fix = "inspect a Result with `if value := x:` or is_error()";
+    fix = "inspect a Result with `if value := x { ... }` or is_error()";
   }
   if (fix != NULL) {
     ms_strbuild_append_text(out, "; ");

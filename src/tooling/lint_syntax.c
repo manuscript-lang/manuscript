@@ -71,7 +71,7 @@ static MsSpan wrapped(MsArena *arena, MsSpan code, size_t *removed_indent) {
   }
   *removed_indent = common == SIZE_MAX ? 0 : common;
   MsStrBuild out = ms_strbuild_new();
-  ms_strbuild_append_text(&out, "fn fragment() Void:\n");
+  ms_strbuild_append_text(&out, "fn fragment() Void {\n");
   for (size_t line = 1;; line++) {
     const MsSpan text = line_of(code, line);
     if (text.ptr == NULL) {
@@ -82,6 +82,7 @@ static MsSpan wrapped(MsArena *arena, MsSpan code, size_t *removed_indent) {
                                       .len = text.len - (text.len >= common ? common : 0)});
     ms_strbuild_append_byte(&out, '\n');
   }
+  ms_strbuild_append_text(&out, "}\n");
   const MsSpan result = ms_message_take_builder(arena, &out);
   return result;
 }

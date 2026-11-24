@@ -2,8 +2,9 @@ import Harness, Usage from "./harness.ms"
 
 // Not an agent: the runner copies the reference solution in. Used to validate
 // challenges and tests.
-export type Oracle:
+export type Oracle {
 	placeholder Bool = true
+}
 
 fn Oracle.name() String => "oracle"
 

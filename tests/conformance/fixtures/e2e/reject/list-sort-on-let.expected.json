@@ -14,20 +14,20 @@
           "file": "list-sort-on-let.ms",
           "line": 5,
           "column": 5,
-          "offset": 99
+          "offset": 100
         },
         "fix": {
           "position": {
             "file": "list-sort-on-let.ms",
             "line": 4,
             "column": 5,
-            "offset": 82
+            "offset": 83
           },
           "end": {
             "file": "list-sort-on-let.ms",
             "line": 4,
             "column": 13,
-            "offset": 90
+            "offset": 91
           },
           "replacement": "var items ="
         }

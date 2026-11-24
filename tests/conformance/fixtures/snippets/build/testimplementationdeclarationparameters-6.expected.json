@@ -12,7 +12,7 @@
         "message": "unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it",
         "position": {
           "file": "testimplementationdeclarationparameters-6.ms",
-          "line": 10,
+          "line": 12,
           "column": 19,
           "offset": 273
         }
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testimplementationdeclarationparameters-6.ms:10:19: resolution: unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it\n    |\n 10 | fn Box[Int].get() T:\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testimplementationdeclarationparameters-6.ms:12:19: resolution: unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it\n    |\n 12 | fn Box[Int].get() T {\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

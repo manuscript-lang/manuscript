@@ -12,20 +12,9 @@
         "message": "unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-0302.ms",
-          "line": 3,
-          "column": 60,
-          "offset": 112
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "golden-0302.ms",
-          "line": 3,
-          "column": 91,
-          "offset": 143
+          "line": 5,
+          "column": 32,
+          "offset": 115
         }
       },
       {
@@ -35,8 +24,19 @@
         "position": {
           "file": "golden-0302.ms",
           "line": 6,
-          "column": 76,
-          "offset": 280
+          "column": 19,
+          "offset": 147
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0302.ms",
+          "line": 13,
+          "column": 47,
+          "offset": 288
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "expected Int, found String (in the initializer of 'unrelated')",
         "position": {
           "file": "golden-0302.ms",
-          "line": 7,
+          "line": 15,
           "column": 22,
-          "offset": 331
+          "offset": 338
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0302.ms:3:60: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 3 | fn collect[T, U](items List[T], step fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:\n   |                                                            ^\n<DIR>/golden-0302.ms:3:91: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 3 | fn collect[T, U](items List[T], step fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:\n   |                                                                                           ^\n<DIR>/golden-0302.ms:6:76: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     result := collect(items: [1, 2], step: fn(value Int) Result[List[Int], MissingError] => ok([value]))\n   |                                                                            ^\n<DIR>/golden-0302.ms:7:22: type: expected Int, found String (in the initializer of 'unrelated')\n   |\n 7 |     unrelated Int := \"wrong\"\n   |                      ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0302.ms:5:32: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 5 |     step fn(T) Result[List[U], MissingError]\n   |                                ^\n<DIR>/golden-0302.ms:6:19: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 | ) Result[List[U], MissingError] {\n   |                   ^\n<DIR>/golden-0302.ms:13:47: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n    |\n 13 |         step: fn(value Int) Result[List[Int], MissingError] => ok([value])\n    |                                               ^\n<DIR>/golden-0302.ms:15:22: type: expected Int, found String (in the initializer of 'unrelated')\n    |\n 15 |     unrelated Int := \"wrong\"\n    |                      ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

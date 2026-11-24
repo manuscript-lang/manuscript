@@ -1,16 +1,20 @@
 // conform: tags=closures,scope-cleanup
 // conform: phase=run
-type Door:
+type Door {
 	name String
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
 	print("closed " + self.name)
+}
 
-fn size(door Door) Int:
+fn size(door Door) Int {
 	return door.name.length()
+}
 
-fn main() Void:
+fn main() Void {
 	door := Door(name: "front".clone())
 	f := () => size(door)
 	print(f())
 	print("end")
+}

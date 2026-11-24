@@ -1,23 +1,30 @@
 // conform: tags=control-flow,diagnostics,match,modules,stdlib-testing,strings,testing,tier-core,try-result
 // conform: phase=check
 // conform: origin=tests/e2e/testdata/projects/result_argument_scope/conformance_test.ms
-import first, first_generic from "./first.ms"
-import second, second_generic from "./second.ms"
-import Cause from "./domain.ms"
-import expect_true, fail from "@std/test/test.ms"
+import (
+	expect_true, fail from "@std/test/test.ms",
 
-fn describe(r Int!) String:
-    match r:
-        ok(_) => return "unexpected success"
-        error(cause):
-            return cause.message.clone()
+	Cause from "./domain.ms",
+	first, first_generic from "./first.ms",
+	second, second_generic from "./second.ms",
+)
 
-test "each module's error conversion is kept through inference and forwarding":
-    if describe(first()) != "first 7": return fail("lost first scope")
-    if describe(second()) != "second 7": return fail("lost second scope")
-    if describe(first_generic()) != "first 7": return fail(
-        "lost first generic evidence"
-    )
-    if describe(second_generic()) != "second 7": return fail(
-        "lost second generic evidence"
-    )
+fn describe(r Int!) String {
+	match r {
+		ok(_) => return "unexpected success"
+		error(cause) => {
+			return cause.message.clone()
+		}
+	}
+}
+
+test "each module's error conversion is kept through inference and forwarding" {
+	if describe(first()) != "first 7" { return fail("lost first scope") }
+	if describe(second()) != "second 7" { return fail("lost second scope") }
+	if describe(first_generic()) != "first 7" {
+		return fail("lost first generic evidence")
+	}
+	if describe(second_generic()) != "second 7" {
+		return fail("lost second generic evidence")
+	}
+}

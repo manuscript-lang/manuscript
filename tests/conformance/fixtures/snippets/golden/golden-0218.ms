@@ -1,9 +1,15 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Void:
-    var outer = 1
-    callback := fn(value Int = (fn() Int:
-        outer = 2
-        return outer
-    )()) Int:
-        return value
+fn f() Void {
+	var outer = 1
+	callback := fn(
+		value Int = (
+			fn() Int {
+				outer = 2
+				return outer
+			}
+		)()
+	) Int {
+		return value
+	}
+}

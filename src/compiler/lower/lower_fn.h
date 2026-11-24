@@ -595,7 +595,7 @@ bool lower_lambda_bodies(Lower *cx, bool *progressed);
 /* A list literal (lower_list.c). */
 MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_list(LowerFn *fn, const MsExpr *expr);
-/* `if x := value:` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
+/* `if x := value { ... }` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
 bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt);

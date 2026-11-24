@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export type Point:\n\tx Int\n\nexport enum Mode:\n\tOff\n\tOn\n\nexport fn shifted() Int:\n\treturn Point(10).x + 1\n\nexport fn flip() Int:\n\tmatch Mode.Off:\n\t\tMode.Off => return 2\n\t\t_ => return 0\n"
+    "fmt": "export type Point {\n\tx Int\n}\n\nexport enum Mode {\n\tOff\n\tOn\n}\n\nexport fn shifted() Int {\n\treturn Point(10).x + 1\n}\n\nexport fn flip() Int {\n\tmatch Mode.Off {\n\t\tMode.Off => return 2\n\t\t_ => return 0\n\t}\n}\n"
   }
 }

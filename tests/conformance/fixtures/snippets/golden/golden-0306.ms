@@ -1,6 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Shape:
-    fn area() Int
-type Sq:
-    s Int
+interface Shape {
+	fn area() Int
+}
+
+type Sq {
+	s Int
+}

@@ -29,16 +29,16 @@
         "message": "unterminated delimiter '(' opened at line 4:9; add the matching ')' before the end of the file",
         "position": {
           "file": "golden-0727.ms",
-          "line": 4,
-          "column": 13,
-          "offset": 91
+          "line": 5,
+          "column": 2,
+          "offset": 94
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0727.ms:3:1: parse: unmatched closing delimiter ']'; remove it or add the matching opener before it\n   |\n 3 | ], value: T) Void: return\n   | ^\n<DIR>/golden-0727.ms:4:13: parse: unterminated delimiter '(' opened at line 4:9; add the matching ')' before the end of the file\n   |\n 4 | fn first(r: \n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0727.ms:3:1: parse: unmatched closing delimiter ']'; remove it or add the matching opener before it\n   |\n 3 | ], value: T) Void: return\n   | ^\n<DIR>/golden-0727.ms:5:2: parse: unterminated delimiter '(' opened at line 4:9; add the matching ')' before the end of the file\n   |\n 5 | }\n   |  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

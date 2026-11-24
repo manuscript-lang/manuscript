@@ -2,34 +2,42 @@
 // conform: phase=test
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 
-interface Counter:
+interface Counter {
 	var fn increment() Void
+}
 
-type Val:
+type Val {
 	val Int
+}
 
-fn var Val.increment() Void:
+fn var Val.increment() Void {
 	self.val += 1
+}
 
-type Box[T]:
+type Box[T] {
 	value T
 	child Val
+}
 
-fn replace[T](var box Box[T], value T) Void:
+fn replace[T](var box Box[T], value T) Void {
 	box.value = value
+}
 
-fn receiver(var log List[Int], value Val) Val:
+fn receiver(var log List[Int], value Val) Val {
 	log.append(1)
 	return value
+}
 
-fn replacement(var log List[Int]) Int:
+fn replacement(var log List[Int]) Int {
 	log.append(2)
 	return 7
+}
 
-fn bump(var value Val) Void:
+fn bump(var value Val) Void {
 	value.val += 1
+}
 
-test "record fields mutate through methods views and var parameters":
+test "record fields mutate through methods views and var parameters" {
 	var counter = Val(0)
 	copy := counter.clone()
 	counter.increment()
@@ -54,8 +62,9 @@ test "record fields mutate through methods views and var parameters":
 	var target = receiver(log, counter.clone())
 	target.val = replacement(log)
 	expect_false(not (log == [1, 2] and target.val == 7 and counter.val == 3))?
+}
 
-test "collection updates mutate in place and clone separates storage":
+test "collection updates mutate in place and clone separates storage" {
 	var values = [1, 2]
 	copy := values.clone()
 	append := values.append
@@ -83,27 +92,32 @@ test "collection updates mutate in place and clone separates storage":
 	set.add(2)
 	set.remove(1)
 	expect_false(not (set.values() == [2] and set_copy.values() == [1]))?
+}
 
-test "for loop iterates a snapshot while the source changes":
+test "for loop iterates a snapshot while the source changes" {
 	var values = [1, 2, 3]
 	var seen List[Int] = []
 
-	for value in values.clone():
+	for value in values.clone() {
 		seen.append(value)
 		values.fill(9, 0, 3)
+	}
 
 	expect_false(not (seen == [1, 2, 3] and values == [9, 9, 9]))?
+}
 
-test "callbacks over a snapshot leave the source writable":
+test "callbacks over a snapshot leave the source writable" {
 	var values = [1, 2, 3]
 	result := values.clone().map(value => return value + 1)
 	values.fill(9, 0, 3)
 	expect_false(not (result == [2, 3, 4] and values == [9, 9, 9]))?
+}
 
-test "list growth and saved clone methods preserve current contents":
+test "list growth and saved clone methods preserve current contents" {
 	var values List[Int] = []
-	for index in 0..2048:
+	for index in 0..2048 {
 		values.append(index)
+	}
 
 	clone := values.clone
 	copy := clone()
@@ -122,8 +136,9 @@ test "list growth and saved clone methods preserve current contents":
 	var empty_copy = empty.clone()
 	empty_copy.append(1)
 	expect_false(not (empty.is_empty() and empty_copy.length() == 1))?
+}
 
-test "collection clones keep independent lengths":
+test "collection clones keep independent lengths" {
 	child := Val(1)
 	values := [child.clone()]
 	var copied_values = values.clone()
@@ -142,17 +157,20 @@ test "collection clones keep independent lengths":
 			and copied_entries.length() == 2
 		)
 	)?
-	for value in values:
+	for value in values {
 		expect_equal(value.val, 1)?
+	}
 
 	value := entries.get("child")
 
-	if value != null:
+	if value != null {
 		expect_equal(value.val, 1)?
-	else:
+	} else {
 		return fail("cloning removed an original map entry")
+	}
+}
 
-test "map and set clear affect their owner while copies retain contents":
+test "map and set clear affect their owner while copies retain contents" {
 	var entries = Map[String, Int]()
 	entries.add("a", 1)
 
@@ -181,36 +199,46 @@ test "map and set clear affect their owner while copies retain contents":
 	expect_false(not (values.values() == [1, 2] and set_copy.values() == [1]))?
 	values.clear()
 	expect_false(not (values.is_empty() and set_copy.length() == 1))?
+}
 
-enum Choice:
+enum Choice {
 	Present(value Val)
 	Missing
+}
 
-test "alternative clones retain tags and payloads":
+test "alternative clones retain tags and payloads" {
 	child := Val(1)
 	original := Choice.Present(child)
 	copy := original.clone()
 
-	match copy:
-		Choice.Present(value):
+	match copy {
+		Choice.Present(value) => {
 			expect_equal(value.val, 1)?
-		Choice.Missing:
+		}
+		Choice.Missing => {
 			return fail("clone changed the alternative tag")
+		}
+	}
 
-	match original:
-		Choice.Present(value):
+	match original {
+		Choice.Present(value) => {
 			expect_equal(value.val, 1)?
-		Choice.Missing:
+		}
+		Choice.Missing => {
 			return fail("clone changed the original alternative")
+		}
+	}
 
 	missing := Choice.Missing.clone()
 	expect_equal(missing, Choice.Missing)?
+}
 
-type Node:
+type Node {
 	value Int
 	children List[Node]
+}
 
-test "mutable recursive graphs compare and clone without recursion failures":
+test "mutable recursive graphs compare and clone without recursion failures" {
 	var left = Node(1, [])
 	var right = Node(1, [])
 	left.children.append(left.clone())
@@ -224,3 +252,4 @@ test "mutable recursive graphs compare and clone without recursion failures":
 	expect_equal(copy.children.length(), 2)?
 	right.value = 4
 	expect_not_equal(left, right)?
+}

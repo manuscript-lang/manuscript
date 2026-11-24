@@ -12,7 +12,7 @@
         "message": "a constant can refer only to other constants, but f is a function; compute the value in a function",
         "position": {
           "file": "testconstantdiagnostics-2.ms",
-          "line": 7,
+          "line": 8,
           "column": 6,
           "offset": 168
         }
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testconstantdiagnostics-2.ms:7:6: type: a constant can refer only to other constants, but f is a function; compute the value in a function\n   |\n 7 | X := f\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testconstantdiagnostics-2.ms:8:6: type: a constant can refer only to other constants, but f is a function; compute the value in a function\n   |\n 8 | X := f\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

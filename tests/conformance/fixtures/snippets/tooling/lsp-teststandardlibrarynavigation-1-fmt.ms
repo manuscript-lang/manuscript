@@ -1,11 +1,15 @@
 // conform: tags=formatter,lists,modules,parser,stdlib-collections,stdlib-system,strings,tier-io
 // conform: phase=parse
 // conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
-import ListEntry from "@std/collections/collections.ms"
-import system_info from "@std/os/system.ms"
+import (
+	ListEntry from "@std/collections/collections.ms",
+	system_info from "@std/os/system.ms",
+)
 
-fn length(values List[Int]) Int:
-    return values.length()
+fn length(values List[Int]) Int {
+	return values.length()
+}
 
-fn os_name() String:
-    return system_info().os
+fn os_name() String {
+	return system_info().os
+}

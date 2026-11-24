@@ -12,7 +12,7 @@ typedef struct ForeignKeyword {
 
 static const char FAILURES_ADVICE[] =
     "'%S' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a "
-    "Result with 'call()?', or handle it with 'if value := result:' and an else branch";
+    "Result with 'call()?', or handle it with 'if value := result { ... }' and an else branch";
 
 static const ForeignKeyword FOREIGN_KEYWORDS[] = {
     {{"assert"},
@@ -27,19 +27,19 @@ static const ForeignKeyword FOREIGN_KEYWORDS[] = {
      NULL,
      true},
     {{"throw", "raise", "catch"}, FAILURES_ADVICE, NULL, true},
-    {{"elseif"}, "'elseif' is not a keyword; write 'else if <condition>:' for a further branch", NULL, false},
-    {{"elif"}, "there is no 'elif': write 'else if <condition>:' for a further branch", NULL, false},
-    {{"def"}, "there is no 'def': declare a function with 'fn name(a Int) Int:'", NULL, false},
+    {{"elseif"}, "'elseif' is not a keyword; write 'else if <condition> { ... }' for a further branch", NULL, false},
+    {{"elif"}, "there is no 'elif': write 'else if <condition> { ... }' for a further branch", NULL, false},
+    {{"def"}, "there is no 'def': declare a function with 'fn name(a Int) Int { ... }'", NULL, false},
     {{"switch"},
-     "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == "
-     "a:' with 'else if' for plain values",
+     "'switch' is not a keyword; write 'match value { ... }' with one arm per case of your own type, or 'if x == "
+     "a { ... }' with 'else if' for plain values",
      NULL,
      false},
     {{"except", "finally"}, FAILURES_ADVICE, NULL, true},
-    {{"loop"}, "'loop' is not a keyword; write 'while true:' and leave it with 'break'", NULL, false},
-    {{"foreach"}, "'foreach' is not a keyword; write 'for item in items:'", NULL, false},
+    {{"loop"}, "'loop' is not a keyword; write 'while true { ... }' and leave it with 'break'", NULL, false},
+    {{"foreach"}, "'foreach' is not a keyword; write 'for item in items { ... }'", NULL, false},
     {{"class"},
-     "'class' is not a keyword inside a fn; declare a type with 'type Name:' at module level",
+     "'class' is not a keyword inside a fn; declare a type with 'type Name { ... }' at module level",
      NULL,
      false},
     {{"del"},
@@ -163,7 +163,7 @@ MS_NODISCARD static bool expression_statement(Parser *p, MsToken t, bool allow_v
  * tokens are not their statement, so the caller tries the next one. */
 
 static bool ends_expression(MsTok k) {
-  return k == MS_T_Newline || k == MS_T_Indent || k == MS_T_Dedent || k == MS_T_Eof || k == MS_T_Comma ||
+  return k == MS_T_Newline || k == MS_T_BlockOpen || k == MS_T_BlockClose || k == MS_T_Eof || k == MS_T_Comma ||
          k == MS_T_RParen || k == MS_T_RBracket || k == MS_T_RBrace;
 }
 
@@ -251,7 +251,7 @@ MS_NODISCARD static bool var_statement(Parser *p, MsToken t, MsPos pos, MsStmt *
   return true;
 }
 
-/* `fn name(...) Result:` inside a body binds a lambda to the name. */
+/* `fn name(...) Result { ... }` inside a body binds a lambda to the name. */
 MS_NODISCARD static bool local_fn_statement(Parser *p, MsToken t, MsStmt *st, MsStmt **out) {
   if (!(parse_ahead(p, 1).kind == MS_T_Name &&
         (parse_ahead(p, 2).kind == MS_T_LParen || parse_ahead(p, 2).kind == MS_T_LBracket))) {
@@ -301,7 +301,7 @@ MS_NODISCARD static bool return_statement(Parser *p, MsStmt *st, MsStmt **out) {
   MsTok k = parse_kind(p);
   bool closes_inline =
       p->inline_statement && (k == MS_T_Comma || k == MS_T_RParen || k == MS_T_RBracket || k == MS_T_RBrace);
-  if (k != MS_T_Newline && !closes_inline) {
+  if (k != MS_T_Newline && k != MS_T_BlockClose && !closes_inline) {
     if (!parse_expression(p, 0, &value))
       return false;
   }
@@ -313,13 +313,13 @@ MS_NODISCARD static bool return_statement(Parser *p, MsStmt *st, MsStmt **out) {
   return true;
 }
 
-/* The binding of `if value := optional:` or `if var value = optional:`; none when absent. */
+/* The binding of `if value := optional { ... }` or `if var value = optional { ... }`; none when absent. */
 MS_NODISCARD static bool if_binding(Parser *p, MsToken t, MsPattern **bind, bool *is_mutable) {
   if (parse_kind(p) == MS_T_Name && parse_text_is(p, parse_peek(p), "let") &&
       starts_binding_target((MsTok)parse_ahead(p, 1).kind)) {
     report_removed_let(p, parse_peek(p),
-                       ms_span_of_text("'if let' was removed; write 'if value := optional:' (or 'if var "
-                                       "value = optional:' for a mutable binding)"));
+                       ms_span_of_text("'if let' was removed; write 'if value := optional { ... }' (or 'if var "
+                                       "value = optional { ... }' for a mutable binding)"));
     return false;
   }
   bool names_binding = (parse_kind(p) == MS_T_Name || parse_kind(p) == MS_T_Underscore) &&
@@ -336,7 +336,7 @@ MS_NODISCARD static bool if_binding(Parser *p, MsToken t, MsPattern **bind, bool
     return false;
   if (pat->kind != MS_P_NAME) {
     parse_fail(p, t,
-               ms_span_of_text("an if binding takes one name; write 'if value := optional:' and destructure "
+               ms_span_of_text("an if binding takes one name; write 'if value := optional { ... }' and destructure "
                                "the value inside the branch"));
     return false;
   }
@@ -344,7 +344,7 @@ MS_NODISCARD static bool if_binding(Parser *p, MsToken t, MsPattern **bind, bool
     parse_fail(p, t,
                ms_span_of_text(
                    "an if binding unwraps an Optional or Result into one name; it does not match alternative "
-                   "cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'"));
+                   "cases. Write 'match value { ... }' with a 'Case(x) => ...' arm, or 'if value := optional { ... }'"));
     return false;
   }
   *bind = pat;
@@ -394,7 +394,7 @@ MS_NODISCARD static bool while_statement(Parser *p, MsStmt *st, MsStmt **out) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text(
                    "while takes a condition, not a binding; to loop while a value is present write 'while "
-                   "true:', bind it inside with 'if name := value:', and leave with 'else: break'"));
+                   "true { ... }', bind it inside with 'if name := value { ... }', and leave with 'else { break }'"));
     return false;
   }
   MsStmts body = {0};
@@ -425,7 +425,7 @@ MS_NODISCARD static bool for_statement(Parser *p, MsStmt *st, MsStmt **out) {
   if (parse_kind(p) == MS_T_LParen) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text("for does not take parentheses or a counter clause; write 'for item in "
-                               "items:' to visit a List, or 'for i in 0..n:' to count"));
+                               "items { ... }' to visit a List, or 'for i in 0..n { ... }' to count"));
     return false;
   }
   MsName name = 0;
@@ -433,15 +433,15 @@ MS_NODISCARD static bool for_statement(Parser *p, MsStmt *st, MsStmt **out) {
   if (!for_variable(p, &name, &pat))
     return false;
   if (parse_kind(p) == MS_T_Name && parse_text_is(p, parse_peek(p), "of")) {
-    parse_fail(p, parse_peek(p), ms_span_of_text("for uses 'in', not 'of'; write 'for item in items:'"));
+    parse_fail(p, parse_peek(p), ms_span_of_text("for uses 'in', not 'of'; write 'for item in items { ... }'"));
     return false;
   }
   if (parse_kind(p) == MS_T_Comma) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text(
                    "for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for "
-                   "entry in items.entries():' and use entry.index and entry.value (a Map's entries() give "
-                   "entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'"));
+                   "entry in items.entries() { ... }' and use entry.index and entry.value (a Map's entries() give "
+                   "entry.key and entry.value), or destructure each element with 'for [a, b] in pairs { ... }'"));
     return false;
   }
   if (!parse_need(p, MS_T_In))
@@ -527,122 +527,121 @@ MS_NODISCARD bool parse_statement(Parser *p, bool allow_value, MsStmt **out) {
 /* Whether the statement at the cursor is the last of its suite: no further line before the suite ends. */
 static bool last_in_suite(const Parser *p) {
   size_t n = 0;
-  while (parse_ahead(p, n).kind != MS_T_Newline && parse_ahead(p, n).kind != MS_T_Eof) {
+  while (parse_ahead(p, n).kind != MS_T_Newline && parse_ahead(p, n).kind != MS_T_Eof && parse_ahead(p, n).kind != MS_T_BlockClose) {
     n++;
   }
   while (parse_ahead(p, n).kind == MS_T_Newline) {
     n++;
   }
-  return parse_ahead(p, n).kind == MS_T_Dedent || parse_ahead(p, n).kind == MS_T_Eof;
+  return parse_ahead(p, n).kind == MS_T_BlockClose || parse_ahead(p, n).kind == MS_T_Eof;
 }
 
-/* Parses `: body`. `expression` marks a lambda body (an inline body is its value); `fn_body`
- * marks a function or method body (inline returns, may be empty). */
+/* The one expression after `=>`: a conditional expression, or a statement returned as a value. */
+MS_NODISCARD static bool arrow_body(Parser *p, bool is_expression, bool outer, MsStmts *out) {
+  if (parse_kind(p) == MS_T_If) {
+    /* `x => if c { a } else { b }`: the body is the conditional expression. */
+    size_t start = p->at;
+    MsPos at_pos = parse_peek(p).pos;
+    Checkpoint checkpoint = parse_checkpoint_take(p);
+    MsExpr *value = NULL;
+    bool ok = parse_expression(p, 0, &value) && (is_expression || parse_end(p));
+    if (!ok) {
+      parse_checkpoint_restore(p, &checkpoint);
+    }
+    if (ok) {
+      MsStmt *s = MS_ARENA_NEW(p->arena, MsStmt);
+      s->id = parse_new_id(p);
+      s->pos = at_pos;
+      s->kind = MS_S_RETURN;
+      s->u.expr = value;
+      MsStmts result = {MS_ARENA_NEW_ARRAY(p->arena, MsStmt *, 1), 1};
+      result.ptr[0] = s;
+      *out = result;
+      return true;
+    }
+    p->at = start;
+  }
+  if (parse_kind(p) == MS_T_While || parse_kind(p) == MS_T_For) {
+    MsToken t = parse_peek(p);
+    parse_fail(p, t,
+               parse_fmt(p, "'=>' takes one expression; put '%s' in a block", ms_tok_str((MsTok)t.kind)));
+    return false;
+  }
+  p->inline_statement = true;
+  p->inline_return = true;
+  MsStmts body = {MS_ARENA_NEW_ARRAY(p->arena, MsStmt *, 1), 1};
+  if (!parse_statement(p, false, &body.ptr[0]))
+    return false;
+  p->inline_statement = outer;
+  if (!is_expression) {
+    if (!parse_end(p))
+      return false;
+  }
+  *out = body;
+  return true;
+}
+
+/* Parses a body: `{ statements }`, or after `=>` (a function or closure body) one expression.
+ * `expression` marks a lambda body; `fn_body` marks a function or method body (may be empty). */
 MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bool fn_body, bool outer,
                                                bool outer_lambda, MsStmts *out) {
   const bool bench_body = p->bench_suite;
   p->bench_suite = false;
   const bool value_body = is_expression || fn_body;
   const bool arrow = value_body && parse_kind(p) == MS_T_FatArrow;
-  MsToken opener = parse_peek(p);
   if (arrow) {
     p->at++;
     if (parse_kind(p) == MS_T_Newline || parse_kind(p) == MS_T_Ellipsis) {
       parse_fail(p, parse_peek(p),
-                 ms_span_of_text("'=>' takes one expression on the same line; write a longer body after "
-                                 "':' on the next lines"));
+                 ms_span_of_text("'=>' takes one expression on the same line; write a longer body inside "
+                                 "braces"));
       return false;
     }
-  } else if (!parse_need(p, MS_T_Colon)) {
-    return false;
   }
-  if (!arrow && value_body && parse_kind(p) != MS_T_Newline && parse_kind(p) != MS_T_Ellipsis) {
-    parse_fail_fix(p, opener,
-                   ms_span_of_text("a one-line function body is written with '=>', as in fn f() Int => 1; "
-                                   "a ':' body goes on the next lines"),
+  if (arrow && parse_kind(p) != MS_T_BlockOpen) {
+    return arrow_body(p, is_expression, outer, out);
+  }
+  if (value_body && parse_kind(p) == MS_T_Colon && parse_ahead(p, 1).kind != MS_T_Newline) {
+    parse_fail_fix(p, parse_peek(p),
+                   ms_span_of_text("a one-line function body is written with '=>', as in fn f() Int => 1; a "
+                                   "longer body goes in braces"),
                    ms_span_of_text(" =>"));
     return false;
   }
+  if (!parse_need(p, MS_T_BlockOpen)) {
+    return false;
+  }
+  parse_newlines(p);
   MsStmts none = {NULL, 0};
   if (parse_kind(p) == MS_T_Ellipsis && fn_body) {
     p->at++;
     p->ellipsis_body = true;
-    if (!parse_end(p))
+    parse_newlines(p);
+    if (!parse_need(p, MS_T_BlockClose))
       return false;
     *out = none;
-    return true;
-  }
-  if (arrow || parse_kind(p) != MS_T_Newline) {
-    if (parse_kind(p) == MS_T_If && (is_expression || fn_body)) {
-      /* `fn x: if c: a else: b`: the body is the conditional expression. */
-      size_t start = p->at;
-      MsPos at_pos = parse_peek(p).pos;
-      Checkpoint checkpoint = parse_checkpoint_take(p);
-      MsExpr *value = NULL;
-      bool ok = parse_expression(p, 0, &value) && (is_expression || parse_end(p));
-      if (!ok) {
-        parse_checkpoint_restore(p, &checkpoint);
-      }
-      if (ok) {
-        MsStmt *s = MS_ARENA_NEW(p->arena, MsStmt);
-        s->id = parse_new_id(p);
-        s->pos = at_pos;
-        s->kind = MS_S_RETURN;
-        s->u.expr = value;
-        MsStmts result = {MS_ARENA_NEW_ARRAY(p->arena, MsStmt *, 1), 1};
-        result.ptr[0] = s;
-        *out = result;
-        return true;
-      }
-      /* Not a conditional expression: report it as the statement it was written as. */
-      p->at = start;
-    }
-    if (parse_kind(p) == MS_T_If || parse_kind(p) == MS_T_While || parse_kind(p) == MS_T_For) {
-      MsToken t = parse_peek(p);
-      parse_fail(
-          p, t,
-          parse_fmt(
-              p, "inline bodies require one simple statement; put '%s' on its own line in an indented block",
-              ms_tok_str((MsTok)t.kind)));
-      return false;
-    }
-    p->inline_statement = true;
-    p->inline_return = is_expression || fn_body;
-    MsStmts body = {MS_ARENA_NEW_ARRAY(p->arena, MsStmt *, 1), 1};
-    if (!parse_statement(p, false, &body.ptr[0]))
-      return false;
-    p->inline_statement = outer;
-    if (!is_expression) {
-      if (!parse_end(p))
-        return false;
-    }
-    *out = body;
     return true;
   }
   p->inline_statement = false;
   p->inline_return = false;
   p->block_lambda = outer_lambda || is_expression;
-  if (!parse_need(p, MS_T_Newline))
-    return false;
-  if (!parse_need(p, MS_T_Indent))
-    return false;
   size_t m = parse_mark(p);
   for (;;) {
     parse_newlines(p);
-    if (parse_kind(p) == MS_T_Dedent || parse_kind(p) == MS_T_Eof) {
+    if (parse_kind(p) == MS_T_BlockClose || parse_kind(p) == MS_T_Eof) {
       break;
     }
     if (!parse_statements(p, bench_body && last_in_suite(p)))
       return false;
   }
-  if (!parse_need(p, MS_T_Dedent))
+  if (!parse_need(p, MS_T_BlockClose))
     return false;
   MsStmts body;
   body.ptr = parse_finish(p, m, &body.len, sizeof(void *), _Alignof(void *));
   if (body.len == 0) {
     parse_fail(p, parse_previous(p),
-               ms_span_of_text("suite cannot be empty; add at least one statement, or write '...' after the "
-                               "colon for a runtime-bound declaration"));
+               ms_span_of_text("a block cannot be empty; add at least one statement, or write '...' inside "
+                               "the braces for a runtime-bound declaration"));
     return false;
   }
   *out = body;

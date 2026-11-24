@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn probe() Int:
+fn probe() Int {
     values := [
+}

@@ -7,29 +7,35 @@ import (
 )
 
 // Forwards one read of `input`, itself bounded by `limit`.
-type Forward:
+type Forward {
 	input ReadStream[Int]
 	limit Int
+}
 
-fn var Forward.next() Int?!:
+fn var Forward.next() Int?! {
 	return self.input.next(timeout: milliseconds(self.limit))
+}
 
-fn move Forward.close() Void!:
+fn move Forward.close() Void! {
 	return self.input.close()
+}
 
 // Reads one value that is ready, then waits for a second that never comes.
-type ReadyThenStall:
+type ReadyThenStall {
 	input ReadStream[Int]
 	reads Int = 0
+}
 
-fn var ReadyThenStall.next() Int?!:
+fn var ReadyThenStall.next() Int?! {
 	self.reads += 1
 	return self.input.next(timeout: milliseconds(600))
+}
 
-fn move ReadyThenStall.close() Void!:
+fn move ReadyThenStall.close() Void! {
 	return self.input.close()
+}
 
-test "an outer deadline bounds a longer nested read":
+test "an outer deadline bounds a longer nested read" {
 	var queue = pipe[Int](4)
 	gate := queue.writer()
 	var input = ReadStream[Int](Forward(queue.reader(), 600))
@@ -40,8 +46,9 @@ test "an outer deadline bounds a longer nested read":
 	expect_true(elapsed.compare(milliseconds(300)) < 0)?
 
 	_gate := gate
+}
 
-test "a shorter nested bound still applies inside a longer outer one":
+test "a shorter nested bound still applies inside a longer outer one" {
 	var queue = pipe[Int](4)
 	gate := queue.writer()
 	var input = ReadStream[Int](Forward(queue.reader(), 20))
@@ -52,8 +59,9 @@ test "a shorter nested bound still applies inside a longer outer one":
 	expect_true(elapsed.compare(milliseconds(300)) < 0)?
 
 	_gate := gate
+}
 
-test "a nested read that finishes at once leaves the outer deadline in force":
+test "a nested read that finishes at once leaves the outer deadline in force" {
 	var queue = pipe[Int](4)
 	var gate = queue.writer()
 	gate.write(7)?
@@ -68,8 +76,9 @@ test "a nested read that finishes at once leaves the outer deadline in force":
 	elapsed := monotonic().difference(started)
 	expect_equal(second.err().kind, "ETIMEDOUT")?
 	expect_true(elapsed.compare(milliseconds(300)) < 0)?
+}
 
-test "a bound does not leak into a later unbounded wait":
+test "a bound does not leak into a later unbounded wait" {
 	var queue = pipe[Int](4)
 	var gate = queue.writer()
 	var input = queue.reader()
@@ -80,3 +89,4 @@ test "a bound does not leak into a later unbounded wait":
 	value := input.next()?
 	expected Int? := 5
 	expect_equal(value, expected)?
+}

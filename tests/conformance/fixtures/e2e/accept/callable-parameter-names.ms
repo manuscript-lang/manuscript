@@ -8,11 +8,12 @@ fn second(value Int) Int => value + 2
 
 fn choose[T](left T, right T) T => left
 
-type Pair[T]:
+type Pair[T] {
 	left T
 	right T
+}
 
-test "callable identity uses ordered types rather than parameter names":
+test "callable identity uses ordered types rather than parameter names" {
 	selected := choose(first, second)
 	expect_equal(selected(3), 4)?
 	expect_equal(choose(second, first)(3), 5)?
@@ -29,9 +30,11 @@ test "callable identity uses ordered types rather than parameter names":
 	callback = second
 	expect_equal(callback(3), 5)?
 
-	factory := fn(flag Bool):
-		if flag: return first
+	factory := fn(flag Bool) {
+		if flag { return first }
 		return second
+	}
 
 	expect_equal(factory(true)(3), 4)?
 	expect_equal(factory(false)(3), 5)?
+}

@@ -1,1 +1,2 @@
-fn broken(:
+fn broken( {
+}

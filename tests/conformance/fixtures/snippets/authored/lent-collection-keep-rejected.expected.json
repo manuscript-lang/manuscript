@@ -12,9 +12,9 @@
         "message": "`slice` borrows `xs`, which this position would keep; store `.clone()` of it, or use it in place",
         "position": {
           "file": "lent-collection-keep-rejected.ms",
-          "line": 9,
+          "line": 10,
           "column": 32,
-          "offset": 277
+          "offset": 281
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "`keys` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place",
         "position": {
           "file": "lent-collection-keep-rejected.ms",
-          "line": 12,
+          "line": 14,
           "column": 14,
-          "offset": 342
+          "offset": 349
         }
       },
       {
@@ -34,27 +34,27 @@
         "message": "`values` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place",
         "position": {
           "file": "lent-collection-keep-rejected.ms",
-          "line": 15,
+          "line": 18,
           "column": 14,
-          "offset": 406
+          "offset": 416
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `table` while `names` borrows it (binding of a part of it, at 19:5); finish using `names` before this, or give `names` its own value by ending its initializer with `.clone()`",
+        "message": "cannot change `table` while `names` borrows it (binding of a part of it, at 23:5); finish using `names` before this, or give `names` its own value by ending its initializer with `.clone()`",
         "position": {
           "file": "lent-collection-keep-rejected.ms",
-          "line": 20,
+          "line": 24,
           "column": 5,
-          "offset": 509
+          "offset": 522
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lent-collection-keep-rejected.ms:9:32: type: `slice` borrows `xs`, which this position would keep; store `.clone()` of it, or use it in place\n   |\n 9 |     return Page(xs.slice(0, 2).get())\n   |                                ^\n<DIR>/lent-collection-keep-rejected.ms:12:14: type: `keys` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 12 |     return m.keys()\n    |              ^\n<DIR>/lent-collection-keep-rejected.ms:15:14: type: `values` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 15 |     return m.values()\n    |              ^\n<DIR>/lent-collection-keep-rejected.ms:20:5: type: cannot change `table` while `names` borrows it (binding of a part of it, at 19:5); finish using `names` before this, or give `names` its own value by ending its initializer with `.clone()`\n    |\n 20 |     table[\"x\"] = 1\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lent-collection-keep-rejected.ms:10:32: type: `slice` borrows `xs`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 10 |     return Page(xs.slice(0, 2).get())\n    |                                ^\n<DIR>/lent-collection-keep-rejected.ms:14:14: type: `keys` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 14 |     return m.keys()\n    |              ^\n<DIR>/lent-collection-keep-rejected.ms:18:14: type: `values` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 18 |     return m.values()\n    |              ^\n<DIR>/lent-collection-keep-rejected.ms:24:5: type: cannot change `table` while `names` borrows it (binding of a part of it, at 23:5); finish using `names` before this, or give `names` its own value by ending its initializer with `.clone()`\n    |\n 24 |     table[\"x\"] = 1\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

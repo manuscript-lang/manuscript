@@ -4,5 +4,6 @@
 // body to find out, and a caller reading only the signature knows its argument stays its own.
 import FileHandle from "@std/os/fs.ms"
 
-fn pass(move file FileHandle) FileHandle:
+fn pass(move file FileHandle) FileHandle {
 	return file
+}

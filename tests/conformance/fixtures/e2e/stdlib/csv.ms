@@ -5,9 +5,9 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-test "CSV retains single empty fields and distinguishes empty rows":
-	for ending in ["\n", "\r\n"]:
-		for delimiter in [",", ";", "\t"]:
+test "CSV retains single empty fields and distinguishes empty rows" {
+	for ending in ["\n", "\r\n"] {
+		for delimiter in [",", ";", "\t"] {
 			options := CsvOptions(delimiter.clone(), ending.clone())
 			rows := [["a"], [""], ["b"], [""], [""]]
 			expected := f"a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
@@ -31,9 +31,12 @@ test "CSV retains single empty fields and distinguishes empty rows":
 				)
 			)?
 			expect_equal((stringify([["", ""]], options)?), f"{delimiter}{ending}")?
+		}
+	}
+}
 
-test "CSV quoted empty fields respect exact row cell and byte budgets":
-	for ending in ["\n", "\r\n"]:
+test "CSV quoted empty fields respect exact row cell and byte budgets" {
+	for ending in ["\n", "\r\n"] {
 		options := CsvOptions(",", ending.clone())
 		rows := [[""], ["a"], [""]]
 		text := f"\"\"{ending}a{ending}\"\"{ending}"
@@ -58,8 +61,10 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
 			parse("\"\"", CsvOptions(",", ending.clone(), max_cells: 0)),
 			limited_rows,
 		)?
+	}
+}
 
-test "CSV preserves whitespace and normalizes quoted CRLF":
+test "CSV preserves whitespace and normalizes quoted CRLF" {
 	options := CsvOptions(",", "\n")
 	rows := [[" "], ["\t"], ["line\n\nbreak"], ["\""], ["", "", ""]]
 	expect_equal((parse(stringify(rows, options)?, options)?), rows)?
@@ -69,8 +74,9 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
 			[""],
 		]
 	)?
+}
 
-test "CSV quotes delimiters multiline cells and line endings":
+test "CSV quotes delimiters multiline cells and line endings" {
 	options := CsvOptions(",", "\n")
 	rows := [["a,b", "say \"hi\"", "line\nbreak"], ["", "é", "last"]]
 	text := stringify(rows, options)?
@@ -78,8 +84,9 @@ test "CSV quotes delimiters multiline cells and line endings":
 
 	windows := CsvOptions(";", "\r\n")
 	expect_equal((stringify([["a", "b"]], windows)?), "a;b\r\n")?
+}
 
-fn malformed(line Int, column Int, reason String) List[List[String]]!:
+fn malformed(line Int, column Int, reason String) List[List[String]]! {
 	return error(
 		Error(
 			f"CSV {line}:{column}: {reason}",
@@ -91,8 +98,9 @@ fn malformed(line Int, column Int, reason String) List[List[String]]!:
 			},
 		)
 	)
+}
 
-test "CSV malformed records name their line and column":
+test "CSV malformed records name their line and column" {
 	options := CsvOptions(",", "\n")
 	expect_equal(
 		parse("\"unterminated", options),
@@ -118,11 +126,13 @@ test "CSV malformed records name their line and column":
 			"expected a delimiter or line end after the closing quote",
 		),
 	)?
+}
 
-test "CSV rejects malformed records invalid options and limits":
+test "CSV rejects malformed records invalid options and limits" {
 	options := CsvOptions(",", "\n")
-	for text in ["\"\"x\n", "x\"\"\n", "\"\"\"\n"]:
+	for text in ["\"\"x\n", "x\"\"\n", "\"\"\"\n"] {
 		expect_true(parse(text, options).is_error())?
+	}
 
 	limited List[List[String]]! := error(
 		Error("CSV: limit exceeded", kind: "EOVERFLOW")
@@ -132,15 +142,16 @@ test "CSV rejects malformed records invalid options and limits":
 
 	invalid String! := error(Error("CSV: invalid input", kind: "EINVAL"))
 	expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)?
+}
 
-test "CSV quoted fields preserve zero one and many escaped quotes":
-	for value in ["", "plain", "\"", "a\"b", "\"\"", "é\"日\"fin", "a\r\nb\"c\"d"]:
+test "CSV quoted fields preserve zero one and many escaped quotes" {
+	for value in ["", "plain", "\"", "a\"b", "\"\"", "é\"日\"fin", "a\r\nb\"c\"d"] {
 		encoded := f"\"{value.replace("\"", "\"\"")}\""
 		expected := [[value.replace("\r\n", "\n"), "tail"]]
 
-		for delimiter in [",", ";", "\t"]:
+		for delimiter in [",", ";", "\t"] {
 			options := CsvOptions(delimiter.clone())
-			for ending in ["", "\n", "\r\n"]:
+			for ending in ["", "\n", "\r\n"] {
 				expect_equal(
 					(
 						parse(
@@ -150,34 +161,42 @@ test "CSV quoted fields preserve zero one and many escaped quotes":
 					),
 					expected,
 				)?
+			}
+		}
+	}
 
 	value := "a\"日".repeat(8000)
 	encoded := f"\"{value.replace("\"", "\"\"")}\"\n"
 	expect_equal((parse(encoded)?), [[value]])?
+}
 
-test "CSV escaped fields preserve malformed closing quote locations":
-	for text in ["\"a\"\"b", "\"a\"\"b\"\"c", "\"é\"\"日\"x"]:
+test "CSV escaped fields preserve malformed closing quote locations" {
+	for text in ["\"a\"\"b", "\"a\"\"b\"\"c", "\"é\"\"日\"x"] {
 		result := parse(text)
 		expect_true(result.is_error())?
 		expect_equal(result.err().kind, "EBADMSG")?
+	}
 
 	expect_equal(parse("\"a\"\"b").err().message, "CSV 1:1: unterminated quoted cell")?
 	expect_equal(
 		parse("\"é\"\"日\"x").err().message,
 		"CSV 1:7: expected a delimiter or line end after the closing quote",
 	)?
+}
 
-test "CSV quote scanning preserves Unicode and exact backslash dot":
-	for field in ["é日😀", "x\\.", "\\.x", "\\", ".", "a b", "x "]:
+test "CSV quote scanning preserves Unicode and exact backslash dot" {
+	for field in ["é日😀", "x\\.", "\\.x", "\\", ".", "a b", "x "] {
 		expect_equal((stringify([[field.clone(), "tail"]])?), f"{field},tail\n")?
-	for field in ["\\.", " x", " x", "\tx", " x", "a,b", "a\"b"]:
+	}
+	for field in ["\\.", " x", " x", "\tx", " x", "a,b", "a\"b"] {
 		expect_equal(
 			(stringify([[field.clone(), "tail"]])?),
 			f"\"{field.replace("\"", "\"\"")}\",tail\n",
 		)?
+	}
 
-	for delimiter in [";", "\t", "|", "\\", "."]:
-		for ending in ["\n", "\r\n"]:
+	for delimiter in [";", "\t", "|", "\\", "."] {
+		for ending in ["\n", "\r\n"] {
 			options := CsvOptions(delimiter.clone(), ending.clone())
 			field := f"a{delimiter}日"
 			text := f"\"{field}\"{delimiter}tail{ending}"
@@ -201,18 +220,24 @@ test "CSV quote scanning preserves Unicode and exact backslash dot":
 				),
 				failure,
 			)?
+		}
+	}
+}
 
-test "CSV stringify retains invalid option and negative budget errors":
+test "CSV stringify retains invalid option and negative budget errors" {
 	invalid String! := error(Error("CSV: invalid input", kind: "EINVAL"))
-	for delimiter in ["", "::", "é", "\"", "\r", "\n"]:
+	for delimiter in ["", "::", "é", "\"", "\r", "\n"] {
 		expect_equal(stringify([["a"]], CsvOptions(delimiter.clone())), invalid)?
-	for ending in ["", "\r", "x"]:
+	}
+	for ending in ["", "\r", "x"] {
 		expect_equal(
 			stringify([["a"]], CsvOptions(line_ending: ending.clone())),
 			invalid,
 		)?
+	}
 	expect_equal(stringify([["a"]], max_bytes: -1), invalid)?
 	expect_equal(stringify([["a"]], CsvOptions("::", "x"), -1), invalid)?
 
 	no_rows List[List[String]] := []
 	expect_equal((stringify(no_rows, max_bytes: 0)?), "")?
+}

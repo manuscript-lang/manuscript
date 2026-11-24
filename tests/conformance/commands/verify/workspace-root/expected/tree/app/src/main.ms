@@ -1,4 +1,5 @@
 import greeting from "@greeter/lib.ms"
 
-fn main() Void:
+fn main() Void {
 	print(greeting("ms"))
+}

@@ -2,12 +2,14 @@
 // conform: phase=check
 // conform: origin=tests/e2e/builder_range_test.go:180 TestBuilderAndRangeFaultFrames
 
-fn probe() String:
-    var b = ""
-    var i = 0
+fn probe() String {
+	var b = ""
+	var i = 0
 
-    while i < 321:
-        b += "x"
-        i += 1
+	while i < 321 {
+		b += "x"
+		i += 1
+	}
 
-    return b
+	return b
+}

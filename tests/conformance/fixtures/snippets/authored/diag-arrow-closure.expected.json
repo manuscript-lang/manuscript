@@ -14,13 +14,13 @@
           "file": "diag-arrow-closure.ms",
           "line": 4,
           "column": 29,
-          "offset": 113
+          "offset": 114
         },
         "end": {
           "file": "diag-arrow-closure.ms",
           "line": 4,
           "column": 31,
-          "offset": 115
+          "offset": 116
         }
       }
     ],

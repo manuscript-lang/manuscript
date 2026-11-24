@@ -12,16 +12,16 @@
         "message": "a function takes at most 32 parameters; pass a record instead",
         "position": {
           "file": "too-many-parameters.ms",
-          "line": 37,
+          "line": 38,
           "column": 5,
-          "offset": 486
+          "offset": 489
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/too-many-parameters.ms:37:5: type: a function takes at most 32 parameters; pass a record instead\n    |\n 37 |     a32 Int,\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/too-many-parameters.ms:38:5: type: a function takes at most 32 parameters; pass a record instead\n    |\n 38 |     a32 Int,\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

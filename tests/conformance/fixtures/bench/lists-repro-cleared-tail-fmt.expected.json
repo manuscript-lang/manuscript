@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\nfn main() Void:\n\tvar values = [1, 2, 3]\n\tvar total = 0\n\tvar count = 0\n\n\tfor value in values.clone():\n\t\ttotal += value\n\t\tif count == 0:\n\t\t\tvalues.remove(0)\n\t\tcount += 1\n\n\tif total != 6:\n\t\tpanic(\"unexpected sum\")\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\nfn main() Void {\n\tvar values = [1, 2, 3]\n\tvar total = 0\n\tvar count = 0\n\n\tfor value in values.clone() {\n\t\ttotal += value\n\t\tif count == 0 {\n\t\t\tvalues.remove(0)\n\t\t}\n\t\tcount += 1\n\t}\n\n\tif total != 6 {\n\t\tpanic(\"unexpected sum\")\n\t}\n}\n"
   }
 }

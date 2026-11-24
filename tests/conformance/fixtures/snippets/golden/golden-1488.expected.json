@@ -13,14 +13,14 @@
         "position": {
           "file": "golden-1488.ms",
           "line": 4,
-          "column": 8,
-          "offset": 105
+          "column": 5,
+          "offset": 63
         },
         "end": {
           "file": "golden-1488.ms",
           "line": 4,
-          "column": 13,
-          "offset": 110
+          "column": 10,
+          "offset": 68
         }
       },
       {
@@ -29,9 +29,9 @@
         "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
         "position": {
           "file": "golden-1488.ms",
-          "line": 10,
+          "line": 12,
           "column": 9,
-          "offset": 219
+          "offset": 207
         },
         "fix": {
           "position": {
@@ -55,16 +55,16 @@
         "message": "reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)",
         "position": {
           "file": "golden-1488.ms",
-          "line": 6,
+          "line": 8,
           "column": 1,
-          "offset": 134
+          "offset": 135
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1488.ms:4:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 4 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1488.ms:10:9: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 10 |         panic(message: \"positive value required\")\n    |         ^\n<DIR>/golden-1488.ms:6:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n   |\n 6 | fn positive(value Int) Int:\n   | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1488.ms:4:5: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 4 |     panic from \"@std/faults.ms\",\n   |     ^^^^^\n<DIR>/golden-1488.ms:12:9: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 12 |         panic(message: \"positive value required\")\n    |         ^\n<DIR>/golden-1488.ms:8:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n   |\n 8 | fn positive(value Int) Int {\n   | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

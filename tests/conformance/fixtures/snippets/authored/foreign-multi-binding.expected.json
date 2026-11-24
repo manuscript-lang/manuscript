@@ -10,15 +10,15 @@
         "message": "a statement cannot start with a comma-separated list of names: write one binding per line ('a := f()'), or destructure one value with '[a, b] := value'",
         "position": {
           "file": "foreign-multi-binding.ms",
-          "line": 8,
+          "line": 9,
           "column": 5,
-          "offset": 162
+          "offset": 166
         },
         "end": {
           "file": "foreign-multi-binding.ms",
-          "line": 8,
+          "line": 9,
           "column": 6,
-          "offset": 163
+          "offset": 167
         }
       }
     ],

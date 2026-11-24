@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn later(value Int = 3) Int:\n\treturn value\n"
+    "fmt": "fn later(value Int = 3) Int {\n\treturn value\n}\n"
   }
 }

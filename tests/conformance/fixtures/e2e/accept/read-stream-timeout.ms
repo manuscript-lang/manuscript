@@ -6,7 +6,7 @@ import (
 	milliseconds from "@std/time.ms",
 )
 
-test "a stalled read times out and a ready one does not":
+test "a stalled read times out and a ready one does not" {
 	var queue = pipe[Int](4)
 	var out = queue.writer()
 	var input = queue.reader()
@@ -18,3 +18,4 @@ test "a stalled read times out and a ready one does not":
 	stalled := input.next(timeout: milliseconds(50))
 	expect_equal(stalled.is_error(), true)?
 	expect_equal(stalled.err().kind, "ETIMEDOUT")?
+}

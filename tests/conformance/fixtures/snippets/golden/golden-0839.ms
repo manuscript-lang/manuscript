@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-export type Duration: ...
+export type Duration { ... }

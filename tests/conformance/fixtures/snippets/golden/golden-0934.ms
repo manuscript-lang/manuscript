@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type interface:
+type interface {
     value: Int
+}

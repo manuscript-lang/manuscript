@@ -25,7 +25,7 @@ import (
 )
 
 // One line of `results/runs.jsonl`.
-type RunRecord:
+type RunRecord {
 	run_id String
 	ts Int
 	tag String
@@ -53,8 +53,9 @@ type RunRecord:
 	// so a result names the compiler and the teaching text it measured.
 	toolchain String = ""
 	skill String = ""
+}
 
-type Options:
+type Options {
 	harness String = "oracle"
 	model String?
 	challenges String = ""
@@ -65,26 +66,30 @@ type Options:
 	keep Bool = false
 	tag String = ""
 	out String = f"{root()}/results/runs.jsonl"
+}
 
-fn split_ids(text String) List[String]:
+fn split_ids(text String) List[String] {
 	return text.split(",").filter(x => not x.is_empty())
+}
 
 // Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none
 // without tiktoken.
-fn llm_tokens(path String) Int?:
+fn llm_tokens(path String) Int? {
 	program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
 	ran := bash(f"python3 -c \"{program}\" \"{path}\"", ".", 60, "")
-	if ran.code != 0: return null
+	if ran.code != 0 { return null }
 
 	return ran.out.trim().parse_int()
+}
 
-fn reference_for(ch Challenge, lang Lang) String:
+fn reference_for(ch Challenge, lang Lang) String {
 	return f"{ch.solution(lang.template)}/{lang.reference()}"
+}
 
 // Whether a trial hit a compiler crash. Such a trial keeps its whole workspace,
 // so the crash has a reproducer: the transcript, the last build output, or the
 // grading build mentions an internal error or a Rust panic.
-fn keep_ice(said String, ws String, g Grade) Bool:
+fn keep_ice(said String, ws String, g Grade) Bool {
 	last := read_text(f"{ws}/.bench/build.out")
 	text := f"{said}\n{last}\n{(g.error or "")}"
 	return (
@@ -92,6 +97,7 @@ fn keep_ice(said String, ws String, g Grade) Bool:
 		or text.contains("internal compiler error")
 		or text.contains("panicked at")
 	)
+}
 
 fn run_one(
 	ch Challenge,
@@ -102,7 +108,7 @@ fn run_one(
 	out_file String,
 	tag String,
 	model String?,
-) RunRecord:
+) RunRecord {
 	run_id := uuid_v4().get_or("").replace("-", "").view(0, 10).clone()
 	base := temporary_directory("agent-bench-").get()
 	ws := f"{base}/ws"
@@ -113,17 +119,18 @@ fn run_one(
 	transcript := f"{transcripts}/{run_id}.log"
 	var agent = AgentRun(Usage(), 0.0, 0, false)
 
-	if h.name() == "oracle":
+	if h.name() == "oracle" {
 		src := reference_for(ch, lang)
 		size := stat(src).to_optional()
 		create_directory(
 			f"{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
 			recursive: true,
 		).get()
-		if size != null: copy(src, f"{ws}/{lang.solution}", CopyOptions(replace: true)).get()
-	else:
-		limit := if ch.agent_timeout_s > timeout_s: ch.agent_timeout_s else: timeout_s
+		if size != null { copy(src, f"{ws}/{lang.solution}", CopyOptions(replace: true)).get() }
+	} else {
+		limit := if ch.agent_timeout_s > timeout_s { ch.agent_timeout_s } else { timeout_s }
 		agent = run_agent(h, prompt, ws, limit, transcript, model)
+	}
 
 	log := read_log(ws)
 
@@ -137,11 +144,12 @@ fn run_one(
 	var g = grade(ch, lang, ws)
 	sol := f"{ws}/{lang.solution}"
 
-	if stat(sol).is_ok() and h.name() != "oracle":
+	if stat(sol).is_ok() and h.name() != "oracle" {
 		copied := f"{root()}/results/sources/{run_id}{lang.suffix()}"
 		create_directory(f"{root()}/results/sources", recursive: true).get()
 		copy(sol, copied, CopyOptions(replace: true)).get()
 		g.llm_tokens = llm_tokens(sol)
+	}
 
 	toolchain := bash(lang.version, ws, 20, "").out.trim()
 	skill := bash(
@@ -152,7 +160,7 @@ fn run_one(
 	).out.trim()
 	rec := RunRecord(
 		toolchain: toolchain,
-		skill: if skill == "e3b0c44298fc": "" else: skill,
+		skill: if skill == "e3b0c44298fc" { "" } else { skill },
 		run_id: run_id.clone(),
 		ts: now().unix_seconds(),
 		tag: tag.clone(),
@@ -179,7 +187,7 @@ fn run_one(
 	)
 	append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
 
-	if keep_ice(said, ws, g):
+	if keep_ice(said, ws, g) {
 		saved := f"{root()}/results/ice/{run_id}"
 		create_directory(f"{root()}/results/ice", recursive: true).get()
 		bash(
@@ -189,8 +197,9 @@ fn run_one(
 			"",
 		)
 		print(f"  internal compiler error; workspace saved: {saved}")
+	}
 
-	if stat(f"{ws}/.bench/first-build.out").is_ok():
+	if stat(f"{ws}/.bench/first-build.out").is_ok() {
 		first := f"{root()}/results/first-builds/{run_id}"
 		create_directory(f"{root()}/results/first-builds", recursive: true).get()
 		bash(
@@ -199,24 +208,28 @@ fn run_one(
 			120,
 			"",
 		)
+	}
 
-	if keep:
+	if keep {
 		print(f"  workspace kept: {ws}")
-	else:
+	} else {
 		remove(base, recursive: true).get()
+	}
 
 	return rec
+}
 
-type Job:
+type Job {
 	challenge Challenge
 	language Lang
+}
 
 // Runs every job in `items`, printing one verdict line each; returns how many failed.
-fn work(items List[Job], harness String, o Options, tag String) Int:
+fn work(items List[Job], harness String, o Options, tag String) Int {
 	h := find(harness) or panic("called Optional.get() on null")
 	var bad = 0
 
-	for item in items:
+	for item in items {
 		rec := run_one(
 			item.challenge,
 			item.language,
@@ -227,7 +240,7 @@ fn work(items List[Job], harness String, o Options, tag String) Int:
 			tag,
 			o.model,
 		)
-		verdict := if rec.pass: "PASS" else: "FAIL"
+		verdict := if rec.pass { "PASS" } else { "FAIL" }
 		(
 			stdout()
 			.write(
@@ -235,12 +248,14 @@ fn work(items List[Job], harness String, o Options, tag String) Int:
 			)
 			.get()
 		)
-		if not rec.pass: bad += 1
+		if not rec.pass { bad += 1 }
+	}
 
 	return bad
+}
 
-fn cmd_list(o Options) Int!:
-	for c in load_challenges([]):
+fn cmd_list(o Options) Int! {
+	for c in load_challenges([]) {
 		(
 			stdout()
 			.write(
@@ -248,32 +263,37 @@ fn cmd_list(o Options) Int!:
 			)
 			.get()
 		)
+	}
 	(
-		stdout().write(
+		stdout()
+		.write(
 			f"languages: {load_languages([]).map(l => l.id.clone()).join(", ")}\n"
-		).get()
+		)
+		.get()
 	)
 	print(f"harnesses: {names().join(", ")}")
 	return ok(0)
+}
 
-fn cmd_run(opts Options, oracle Bool) Int!:
+fn cmd_run(opts Options, oracle Bool) Int! {
 	var o = opts.clone()
 
-	if oracle:
+	if oracle {
 		o.out = f"{root()}/results/oracle.jsonl"
 		remove(o.out, recursive: false).to_optional()
+	}
 
 	chs := load_challenges(split_ids(o.challenges))
 	langs := load_languages(split_ids(o.languages))
 	h := (
-		find(if oracle: "oracle" else: o.harness)
+		find(if oracle { "oracle" } else { o.harness })
 		or panic("called Optional.get() on null")
 	)
 	var todo = List[Job]()
 
-	for ch in chs:
-		for lang in langs:
-			if oracle and not stat(reference_for(ch, lang)).is_ok():
+	for ch in chs {
+		for lang in langs {
+			if oracle and not stat(reference_for(ch, lang)).is_ok() {
 				(
 					stdout()
 					.write(
@@ -282,15 +302,19 @@ fn cmd_run(opts Options, oracle Bool) Int!:
 					.get()
 				)
 				continue
+			}
 
-			for _n in 0..(if oracle: 1 else: o.repeat):
+			for _n in 0..(if oracle { 1 } else { o.repeat }) {
 				todo.append(Job(ch.clone(), lang.clone()))
+			}
+		}
+	}
 
-	jobs := if oracle: 1 else: if o.jobs < 1: 1 else: o.jobs
-	tag := if oracle: "oracle" else: o.tag.clone()
+	jobs := if oracle { 1 } else { if o.jobs < 1 { 1 } else { o.jobs } }
+	tag := if oracle { "oracle" } else { o.tag.clone() }
 	var bad = 0
 	var running List[Promise[Int]] = []
-	for w in 0..jobs:
+	for w in 0..jobs {
 		running.append(
 			spawn(
 				todo.entries().filter(e => e.index % jobs == w).map(
@@ -301,14 +325,17 @@ fn cmd_run(opts Options, oracle Bool) Int!:
 				tag.clone(),
 			)
 		)
-	for n in wait_all(running).get_or([]): bad += n
-	if oracle: remove(o.out, recursive: false).to_optional()
-	return ok(if bad > 0 and oracle: 1 else: 0)
+	}
+	for n in wait_all(running).get_or([]) { bad += n }
+	if oracle { remove(o.out, recursive: false).to_optional() }
+	return ok(if bad > 0 and oracle { 1 } else { 0 })
+}
 
-fn spawn(mine List[Job], me String, own Options, label String) Promise[Int]:
+fn spawn(mine List[Job], me String, own Options, label String) Promise[Int] {
 	return promise(() => ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
+}
 
-fn main() Int:
+fn main() Int {
 	flags := [
 		Flag(
 			"challenges",
@@ -367,3 +394,4 @@ fn main() Int:
 		],
 	)
 	return root.execute(arguments())
+}

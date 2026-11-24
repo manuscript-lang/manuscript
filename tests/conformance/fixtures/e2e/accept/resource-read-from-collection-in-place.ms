@@ -4,27 +4,31 @@
 // place; the collection closes each resource exactly once.
 import panic from "@std/core.ms"
 
-type Handle:
+type Handle {
 	id Int
+}
 
-fn move Handle.close() Void!:
+fn move Handle.close() Void! {
 	print(f"close {self.id}")
+}
 
-fn id_of(handle Handle) Int:
+fn id_of(handle Handle) Int {
 	return handle.id
+}
 
-export fn main() Int:
+export fn main() Int {
 	handles := [Handle(1), Handle(2)]
 	var by_key = Map[Int, Handle]()
 	by_key.add(7, Handle(70))
 
 	first := handles.first()
-	if first != null: print(first.id)
+	if first != null { print(first.id) }
 	print(handles.get(1).id)
 	print(id_of(handles.get(0)))
 
 	found := by_key.get(7)
-	if found != null: print(found.id)
+	if found != null { print(found.id) }
 	print((by_key.get(7) or panic("called Optional.get() on null")).id)
 	print("end")
 	return 0
+}

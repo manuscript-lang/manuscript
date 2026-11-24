@@ -5,5 +5,6 @@ fn broken(amount Int) Missing => 1
 
 fn apply[T, U](callback fn(T) U) Void => return
 
-fn exercise() Void:
-    apply(broken)
+fn exercise() Void {
+	apply(broken)
+}

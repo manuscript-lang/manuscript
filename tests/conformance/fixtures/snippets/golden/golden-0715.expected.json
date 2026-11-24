@@ -9,19 +9,19 @@
       {
         "code": "MS3050",
         "phase": "type",
-        "message": "non-exhaustive match; missing cases: Add, or add a final '_:' arm; add the arms 'Add(left, right):'",
+        "message": "non-exhaustive match; missing cases: Add, or add a final '_ => ...' arm; add the arms 'Add(left, right) => ...'",
         "position": {
           "file": "golden-0715.ms",
-          "line": 7,
+          "line": 9,
           "column": 5,
-          "offset": 143
+          "offset": 139
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0715.ms:7:5: type: non-exhaustive match; missing cases: Add, or add a final '_:' arm; add the arms 'Add(left, right):'\n   |\n 7 |     match expr:\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0715.ms:9:5: type: non-exhaustive match; missing cases: Add, or add a final '_ => ...' arm; add the arms 'Add(left, right) => ...'\n   |\n 9 |     match expr {\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

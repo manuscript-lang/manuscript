@@ -5,101 +5,131 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-type Box:
+type Box {
 	f fn() Int
+}
 
-interface Sink:
+interface Sink {
 	var fn put(move f fn() Int) Void
 	fn total() Int
+}
 
-type ListSink:
+type ListSink {
 	fs List[fn() Int]
+}
 
-fn var ListSink.put(move f fn() Int) Void:
+fn var ListSink.put(move f fn() Int) Void {
 	self.fs.append(f)
+}
 
-fn ListSink.total() Int:
+fn ListSink.total() Int {
 	var t = 0
-	for f in self.fs:
+	for f in self.fs {
 		t += f()
+	}
 	return t
+}
 
-fn mk(move f fn() Int) Box:
+fn mk(move f fn() Int) Box {
 	return Box(f: f)
+}
 
-fn c1(move text String) Int:
-	var out = text.split(",").map(fn(move p String) => mk(fn() Int => return p.length()))
+fn c1(move text String) Int {
+	var out = text.split(",").map(
+		fn(move p String) => mk(fn() Int => return p.length())
+	)
 	var t = 0
-	for b in out:
+	for b in out {
 		t += b.f()
+	}
 	return t
+}
 
-fn c2(text String) Int:
+fn c2(text String) Int {
 	var m Map[Int, fn() Int] = {}
 	var i = 0
 
-	for p in text.split(",").clone():
+	for p in text.split(",").clone() {
 		m[i] = fn() Int => return p.length()
 		i += 1
+	}
 
 	var t = 0
-	for k in m.keys():
+	for k in m.keys() {
 		t += (m.get(k) or panic("called Optional.get() on null"))()
+	}
 	return t
+}
 
-fn c3(text String) Int:
+fn c3(text String) Int {
 	var g fn() Int = fn() Int => 0
-	for p in text.split(",").clone():
+	for p in text.split(",").clone() {
 		g = fn() Int => return p.length()
+	}
 	return g()
+}
 
-fn c4(text String) Int:
+fn c4(text String) Int {
 	var b = Box(f: fn() Int => 0)
-	for p in text.split(",").clone():
+	for p in text.split(",").clone() {
 		b.f = fn() Int => return p.length()
+	}
 	return b.f()
+}
 
-fn c5(text String) Int:
+fn c5(text String) Int {
 	var sink = ListSink(fs: [])
-	for p in text.split(",").clone():
+	for p in text.split(",").clone() {
 		sink.put(fn() Int => return p.length())
+	}
 	return sink.total()
+}
 
-fn outer(move text String) fn() Int:
+fn outer(move text String) fn() Int {
 	var held = text.split(",").length()
 	inner := fn() Int => return held + text.length()
 	return fn() Int => return inner()
+}
 
-fn c6(move text String) Int:
+fn c6(move text String) Int {
 	return outer(text)()
+}
 
-fn c7(text String) Int:
+fn c7(text String) Int {
 	var fs List[fn() Int] = []
 
-	for p in text.split(",").clone():
+	for p in text.split(",").clone() {
 		f := fn() Int => return p.length()
 		fs.append(f)
+	}
 
 	var t = 0
-	for f in fs:
+	for f in fs {
 		t += f()
+	}
 	return t
+}
 
-fn maker(move text String) fn() fn() Int:
-	return fn() fn() Int:
+fn maker(move text String) fn() fn() Int {
+	return fn() fn() Int {
 		n := text.length()
 		return fn() Int => return n + n
+	}
+}
 
-fn c8(move text String) Int:
+fn c8(move text String) Int {
 	return maker(text)()()
+}
 
-fn c9(text String) (fn() Int)?:
+fn c9(text String) (fn() Int)? {
 	var r (fn() Int)? = null
-	for p in text.split(",").clone():
+	for p in text.split(",").clone() {
 		r = fn() Int => return p.length()
+	}
 	return r
+}
 
-test "closures that outlive their statement keep what they captured":
+test "closures that outlive their statement keep what they captured" {
 	expect_equal(c1("x,yyyy,zz"), 7)?
 	expect_equal(c2("x,yyyy,zz"), 7)?
 	expect_equal(c3("x,yyyy,zz"), 2)?
@@ -109,3 +139,4 @@ test "closures that outlive their statement keep what they captured":
 	expect_equal(c7("x,yyyy,zz"), 7)?
 	expect_equal(c8("abc"), 6)?
 	expect_equal((c9("x,yyyy,zz") or panic("called Optional.get() on null"))(), 2)?
+}

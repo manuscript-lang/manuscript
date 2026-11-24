@@ -1,10 +1,13 @@
 import expect_equal from "@std/test/test.ms"
 
-fn double(n Int) Int:
+fn double(n Int) Int {
 	return n * 2
+}
 
-test "double":
+test "double" {
 	return expect_equal(double(4), 8)
+}
 
-bench "double":
+bench "double" {
 	double(1000)
+}

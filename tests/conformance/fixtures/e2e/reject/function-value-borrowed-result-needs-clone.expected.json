@@ -12,16 +12,16 @@
         "message": "`identity` returns a borrow of its arguments, so as a function value its result would be a hidden copy; wrap it in a closure that returns `.clone()` of the call",
         "position": {
           "file": "function-value-borrowed-result-needs-clone.ms",
-          "line": 12,
+          "line": 14,
           "column": 18,
-          "offset": 377
+          "offset": 384
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/function-value-borrowed-result-needs-clone.ms:12:18: type: `identity` returns a borrow of its arguments, so as a function value its result would be a hidden copy; wrap it in a closure that returns `.clone()` of the call\n    |\n 12 |     return apply(identity, s)\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/function-value-borrowed-result-needs-clone.ms:14:18: type: `identity` returns a borrow of its arguments, so as a function value its result would be a hidden copy; wrap it in a closure that returns `.clone()` of the call\n    |\n 14 |     return apply(identity, s)\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

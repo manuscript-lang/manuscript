@@ -27,8 +27,9 @@ Type positions use [ordinary name resolution](../modules/declarations.md#names-a
 
 <!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","given":[]} -->
 ```manuscript
-fn identity(value Int) Int:
+fn identity(value Int) Int {
     return value
+}
 
 exact fn(Int) Int := identity
 // Rejected: the result type differs.
@@ -47,8 +48,9 @@ It also supplies missing type arguments for a uniquely identified `null`, `ok`, 
 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
-type Input:
+type Input {
     names List[String?]
+}
 
 input := Input([null, "Ada"])
 nested List[List[Int]] := [[], [1]]
@@ -73,14 +75,16 @@ Operators and `?` normally require operands to determine their own types first. 
 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
-fn known() Result[Int, Error]:
+fn known() Result[Int, Error] {
     number Int := Result[Int, Error].ok(1)?
     return ok(number)
+}
 
-fn unknown() Result[Int, Error]:
+fn unknown() Result[Int, Error] {
     // Rejected: the `?` operand's error type is undetermined.
     number Int := ok(1)?
     return ok(number)
+}
 ```
 
 Likewise `[] == []` is ill typed even where `Bool` is expected; annotate or qualify incomplete operands. `Never` operands follow the [operator candidate rules](../basics/expressions.md#never-operands).

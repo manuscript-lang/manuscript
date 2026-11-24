@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+        "message": "every fn declares its result type after the parameter list, e.g. fn f() Void { ... } (Void when it returns nothing)",
         "position": {
           "file": "golden-1131.ms",
-          "line": 4,
-          "column": 3,
-          "offset": 65
+          "line": 3,
+          "column": 10,
+          "offset": 62
+        },
+        "end": {
+          "file": "golden-1131.ms",
+          "line": 3,
+          "column": 11,
+          "offset": 63
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1131.ms:4:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n   |\n 4 |   return\n   |   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1131.ms:3:10: parse: every fn declares its result type after the parameter list, e.g. fn f() Void { ... } (Void when it returns nothing)\n   |\n 3 | fn bad() {\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

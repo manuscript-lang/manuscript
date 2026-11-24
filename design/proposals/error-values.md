@@ -13,10 +13,12 @@ Implemented, 2026-11-01. Direction (Chinmay): "let's revamp the error mechanism 
 ## Problem
 
 ```manuscript
-fn handle(cause Error) String:
-    match cause:                            // contract type pattern: narrowing
+fn handle(cause Error) String {
+    match cause {                            // contract type pattern: narrowing
         IoError(e): return f"io {e.message()}"
         _: return cause.message()
+    }
+}
 ```
 
 - 44 error types, 134 conformance files with `impl Error for`, about 1000 mentions of `*Error.Case` in tests and docs.
@@ -27,10 +29,11 @@ fn handle(cause Error) String:
 
 ```manuscript
 // prelude
-export type Error:
+export type Error {
     message String
     kind ErrorCategory = ErrorCategory.Other
     details Map[String, String] = Map[String, String]()
+}
 ```
 
 - `Error("bad port")`, `Error("no such file", kind: "ENOENT", details: {"path": path})`. No new syntax, static method or namespace.

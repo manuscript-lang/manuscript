@@ -18,8 +18,9 @@ import (
 // Each call returns a new list, so changing it affects neither later calls nor the
 // native argv.
 // ms: effect std.env.read
-export fn arguments() List[String]:
+export fn arguments() List[String] {
 	return msrt_args()
+}
 
 /*
 Finds the executable that running `name` would start, or null.
@@ -30,8 +31,8 @@ Example: `if path := which("git"): print(path)` prints the executable found on t
 */
 // ms: effect std.env.read
 // ms: effect std.fs.read
-export fn which(name String) String?:
-	if name == "": return null
+export fn which(name String) String? {
+	if name == "" { return null }
 
 	windows := os() == Os.Windows
 	has_path := name.contains("/") or (windows and name.contains("\\"))
@@ -39,54 +40,70 @@ export fn which(name String) String?:
 	var separator = ":"
 	var directories = List[String]()
 
-	if windows:
+	if windows {
 		separator = ";"
 		extensions = [".COM", ".EXE", ".BAT", ".CMD"]
+	}
 
 	env := environment()
 
-	if env.is_ok():
-		for entry in env.get_or(Map[String, String]()).entries():
-			key := if windows: entry.key.upper() else: entry.key.clone()
-			if key == "PATH": directories = entry.value.split(separator).clone()
-			if key == "PATHEXT" and windows: extensions = entry.value.split(";").clone()
+	if env.is_ok() {
+		for entry in env.get_or(Map[String, String]()).entries() {
+			key := if windows { entry.key.upper() } else { entry.key.clone() }
+			if key == "PATH" {
+				directories = entry.value.split(separator).clone()
+			}
+			if key == "PATHEXT" and windows {
+				extensions = entry.value.split(";").clone()
+			}
+		}
+	}
 
-	if has_path:
+	if has_path {
 		directories = [""]
+	}
 
-	for directory in directories:
-		if directory == "" and not has_path: continue
+	for directory in directories {
+		if directory == "" and not has_path { continue }
 
-		candidate := if directory == "": name.clone() else: join(
-			[directory.clone(), name.clone()]
-		)
-		if runnable(candidate, windows): return candidate
+		candidate := if directory == "" {
+			name.clone()
+		} else {
+			join([directory.clone(), name.clone()])
+		}
+		if runnable(candidate, windows) { return candidate }
 
-		for extension in extensions:
-			if extension == "": continue
-			if runnable(f"{candidate}{extension}", windows): return f"{candidate}{extension}"
+		for extension in extensions {
+			if extension == "" { continue }
+			if runnable(f"{candidate}{extension}", windows) { return f"{candidate}{extension}" }
+		}
+	}
 
 	return null
+}
 
-fn runnable(path String, windows Bool) Bool:
+fn runnable(path String, windows Bool) Bool {
 	info := stat(path)
-	if info.is_error() or not info.get().is_file(): return false
-	if windows: return true
+	if info.is_error() or not info.get().is_file() { return false }
+	if windows { return true }
 
 	return access(path, 1).is_ok()
+}
 
 // Returns a new map of the process's current environment. An entry whose name or value
 // is not valid UTF-8 is left out.
 // ms: effect std.env.read
-export fn environment() Map[String, String]!:
+export fn environment() Map[String, String]! {
 	return msstd_process_environment_map()
+}
 
 // Sets environment variable `name` for this process to `value`, or removes it when
 // `value` is null. An empty name, or a name or value with `=` or NUL, returns EINVAL.
 // The change is visible to child processes started afterwards.
 // ms: effect std.env.write
-export fn set_environment(name String, value String?) Void!:
+export fn set_environment(name String, value String?) Void! {
 	return msstd_process_set_environment(name, value)
+}
 
 // Reads `KEY=value` lines from the file at `path` and sets each variable that is not
 // already present in the environment. Existing variables keep their values, and a later
@@ -98,33 +115,38 @@ export fn set_environment(name String, value String?) Void!:
 // directory returns EINVAL, as for `read_file`.
 // ms: effect std.env.write
 // ms: effect std.fs.read
-export fn load_environment(path String, max_bytes Int? = null) Void!:
+export fn load_environment(path String, max_bytes Int? = null) Void! {
 	data := msstd_fs_read_file(path, max_bytes)?
 	text := data.decode_utf8()
-	if text == null: return error(Error("environment: invalid data", kind: "EBADMSG"))
+	if text == null { return error(Error("environment: invalid data", kind: "EBADMSG")) }
 
 	entries := parse_dotenv(text)?
 
-	for entry in entries.entries():
-		if msstd_process_environment_is_set(entry.key): continue
+	for entry in entries.entries() {
+		if msstd_process_environment_is_set(entry.key) { continue }
 
 		set_environment(entry.key, entry.value)?
+	}
+}
 
 // Returns the process's current working directory. An OS failure is returned as an
 // `Error`.
 // ms: effect std.env.read
-export fn working_directory() String!:
+export fn working_directory() String! {
 	return msstd_process_working_directory()
+}
 
 // Changes the working directory of the whole process, affecting relative paths
 // everywhere. A missing path returns ENOENT, a path containing NUL returns EINVAL, and
 // a denied path returns EACCES.
 // ms: effect std.env.write
-export fn change_directory(path String) Void!:
+export fn change_directory(path String) Void! {
 	return msstd_process_change_directory(path)
+}
 
 // Returns the current user's home directory path, from the host's environment or
 // account database. A path that is not valid UTF-8 returns ENOTSUP.
 // ms: effect std.env.read
-export fn home_directory() String!:
+export fn home_directory() String! {
 	return msstd_system_home_directory()
+}

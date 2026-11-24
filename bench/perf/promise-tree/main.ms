@@ -5,24 +5,27 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn fib(n Int) Int:
-	if n < 2: return n
+fn fib(n Int) Int {
+	if n < 2 { return n }
 	return fib(n - 1) + fib(n - 2)
+}
 
 // promise-per-level fib: spawn one half as a promise, compute other inline
-fn pfib(n Int, cutoff Int) Int!:
-	if n < cutoff: return ok(fib(n))
+fn pfib(n Int, cutoff Int) Int! {
+	if n < cutoff { return ok(fib(n)) }
 
 	m := n - 1
 	p := promise[Int](() => pfib(m, cutoff))
 	b := pfib(n - 2, cutoff)?
 	a := p.wait()?
 	return ok(a + b)
+}
 
-fn work(n Int) Int!:
+fn work(n Int) Int! {
 	return ok(fib(n))
+}
 
-fn main() Void:
+fn main() Void {
 	args := arguments()
 	mode := args[0].clone()
 	n := args[1].parse_int() or panic("called Optional.get() on null")
@@ -30,16 +33,19 @@ fn main() Void:
 	t0 := monotonic()
 	var r = 0
 
-	if mode == "fan":
+	if mode == "fan" {
 		var ps List[Promise[Int]] = []
-		for i in 0..k:
+		for i in 0..k {
 			ps.append(promise[Int](() => work(n)))
+		}
 
 		rs := wait_all(ps).get()
-		for x in rs:
+		for x in rs {
 			r += x
-	else if mode == "tree":
+		}
+	} else if mode == "tree" {
 		r = pfib(n, k).get()
+	}
 
 	print(
 		mode + " result " + r.to_string() + " ms " + (
@@ -47,3 +53,4 @@ fn main() Void:
 			/ 1000000
 		).to_string()
 	)
+}

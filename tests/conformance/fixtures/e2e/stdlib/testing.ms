@@ -15,10 +15,11 @@ import (
 	fail
 ) from "@std/test/test.ms"
 
-fn identity[T](value T) T:
+fn identity[T](value T) T {
 	return value
+}
 
-test "testing assertions":
+test "testing assertions" {
 	true | expect_true?
 	false | expect_false?
 	identity(3) | expect_equal(3)?
@@ -45,19 +46,24 @@ test "testing assertions":
 	quiet := expect_fault(() => void)
 	quiet_cause := (quiet | expect_error?)
 	quiet_cause.message | expect_contains("returned normally")?
+}
 
-test "failure helpers return errors":
+test "failure helpers return errors" {
 	failed := fail("custom failure")
 	failed_cause := (failed | expect_error?)
 	failed_cause.message | expect_contains("custom failure")?
+}
 
-type Key:
+type Key {
 	id Int
 	label String
+}
 
-fn Key.equals(other Key) Bool:
+fn Key.equals(other Key) Bool {
 	return self.id == other.id
+}
 
-test "assertions preserve domain equality":
+test "assertions preserve domain equality" {
 	Key(id: 1, label: "first") | expect_equal(Key(id: 1, label: "second"))?
 	Key(id: 1, label: "first") | expect_not_equal(Key(id: 2, label: "first"))?
+}

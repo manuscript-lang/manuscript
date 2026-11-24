@@ -14,20 +14,31 @@
           "file": "golden-1066.ms",
           "line": 5,
           "column": 9,
-          "offset": 109
+          "offset": 110
         },
         "end": {
           "file": "golden-1066.ms",
           "line": 5,
           "column": 12,
-          "offset": 112
+          "offset": 113
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "mismatched closing delimiter '}'; the '(' opened at line 4:23 needs ')'",
+        "position": {
+          "file": "golden-1066.ms",
+          "line": 10,
+          "column": 9,
+          "offset": 212
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1066.ms:5:9: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 5 |         try match 0:\n   |         ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1066.ms:5:9: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 5 |         try match 0 {\n   |         ^^^\n<DIR>/golden-1066.ms:10:9: parse: mismatched closing delimiter '}'; the '(' opened at line 4:23 needs ')'\n    |\n 10 |         }\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

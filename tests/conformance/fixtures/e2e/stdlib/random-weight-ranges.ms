@@ -6,46 +6,51 @@ import (
 	expect_equal, expect_error, expect_none, expect_some from "@std/test/test.ms",
 )
 
-fn compare_draws(weights List[Float], ordinary List[Float]) Void!:
+fn compare_draws(weights List[Float], ordinary List[Float]) Void! {
 	var scaled = seeded(1)
 	var reference = seeded(1)
 	var draws = seeded(1)
 
-	for draw in 0..1000:
+	for draw in 0..1000 {
 		_point := draws.float()
 		expect_equal(
 			scaled.weighted_choice([0, 1], weights),
 			reference.weighted_choice([0, 1], ordinary),
 		)?
+	}
 
 	// Selection consumes exactly one draw, independent of the weight scale.
 	next := scaled.next_bits()
 	expect_equal(next, reference.next_bits())?
 	expect_equal(next, draws.next_bits())?
+}
 
-test "seeded weighted choices retain ratios across the Float range":
+test "seeded weighted choices retain ratios across the Float range" {
 	compare_draws([max_float, max_float], [1.0, 1.0])?
 	compare_draws([min_float, min_float], [1.0, 1.0])?
 	compare_draws([max_float / 2.0, max_float], [1.0, 2.0])?
 	compare_draws([min_float, min_float * 2.0], [1.0, 2.0])?
 	compare_draws([1e-300, 2e-300], [1.0, 2.0])?
 	compare_draws([1e300, 2e300], [1.0, 2.0])?
+}
 
-test "ordinary weighted choices keep direct draws":
+test "ordinary weighted choices keep direct draws" {
 	for weights in [
 		[1.0, 2.0],
 		[max_float / 2.0, max_float / 4.0],
 		[1.1125369292536007e-308, 1.1125369292536007e-308],
 		[0.8833108082136426, 0.1166891917863574],
-	]:
+	] {
 		var rng = seeded(0)
 		var direct = seeded(0)
 		total := weights[0] + weights[1]
 
-		for draw in 0..1000:
+		for draw in 0..1000 {
 			point := direct.float() * total
-			expected := if point < weights[0]: 0 else: 1
+			expected := if point < weights[0] { 0 } else { 1 }
 			expect_equal(rng.weighted_choice([0, 1], weights), expected)?
+		}
+	}
 
 	// The largest unit draw rounds to the minimum-normal total; keep the last positive
 	// slot.
@@ -57,9 +62,10 @@ test "ordinary weighted choices keep direct draws":
 		),
 		1,
 	)?
+}
 
-test "secure weighted choices accept finite extreme weights":
-	for draw in 0..32:
+test "secure weighted choices accept finite extreme weights" {
+	for draw in 0..32 {
 		huge := expect_some(weighted_choice([0, 1], [max_float, max_float])?)?
 		expect_equal(huge == 0 or huge == 1, true)?
 
@@ -77,8 +83,10 @@ test "secure weighted choices accept finite extreme weights":
 			)?,
 			1,
 		)?
+	}
+}
 
-test "weighted choices retain zero exclusions and caller values":
+test "weighted choices retain zero exclusions and caller values" {
 	var tiny_first = seeded(7046029254386353131)
 	var tiny_last = seeded(7046029254386353131)
 	expect_equal(
@@ -103,8 +111,9 @@ test "weighted choices retain zero exclusions and caller values":
 	picked.append(3)
 	expect_equal(values, [[1], [2]])?
 	expect_equal(weights, [max_float, max_float])?
+}
 
-test "weighted choices preserve invalid input and empty behavior":
+test "weighted choices preserve invalid input and empty behavior" {
 	for weights in [
 		[0.0, 0.0],
 		[-0.0, 0.0],
@@ -115,13 +124,15 @@ test "weighted choices preserve invalid input and empty behavior":
 		[1.0, -infinity],
 		[1.0],
 		List[Float](),
-	]:
+	] {
 		expect_equal((expect_error(weighted_choice([0, 1], weights))?).kind, "EINVAL")?
 
 		var invalid_rng = seeded(1)
 		expect_none(invalid_rng.weighted_choice([0, 1], weights))?
+	}
 
 	var rng = seeded(1)
 	expect_none(rng.weighted_choice(List[Int](), List[Float]()))?
 	expect_none(weighted_choice(List[Int](), List[Float]())?)?
 	expect_equal((expect_error(weighted_choice(List[Int](), [1.0]))?).kind, "EINVAL")?
+}

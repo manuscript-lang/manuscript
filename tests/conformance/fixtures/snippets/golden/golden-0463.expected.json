@@ -12,15 +12,15 @@
         "message": "module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
         "position": {
           "file": "golden-0463.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
+          "line": 5,
+          "column": 5,
+          "offset": 92
         },
         "end": {
           "file": "golden-0463.ms",
-          "line": 3,
-          "column": 19,
-          "offset": 71
+          "line": 5,
+          "column": 16,
+          "offset": 103
         }
       },
       {
@@ -29,15 +29,15 @@
         "message": "module does not export MapBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
         "position": {
           "file": "golden-0463.ms",
-          "line": 3,
-          "column": 21,
-          "offset": 73
+          "line": 6,
+          "column": 5,
+          "offset": 106
         },
         "end": {
           "file": "golden-0463.ms",
-          "line": 3,
-          "column": 31,
-          "offset": 83
+          "line": 6,
+          "column": 15,
+          "offset": 116
         }
       },
       {
@@ -46,15 +46,15 @@
         "message": "module does not export SetBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
         "position": {
           "file": "golden-0463.ms",
-          "line": 3,
-          "column": 33,
-          "offset": 85
+          "line": 7,
+          "column": 5,
+          "offset": 119
         },
         "end": {
           "file": "golden-0463.ms",
-          "line": 3,
-          "column": 43,
-          "offset": 95
+          "line": 7,
+          "column": 15,
+          "offset": 129
         }
       },
       {
@@ -63,15 +63,15 @@
         "message": "unknown standard module @std/errors.ms",
         "position": {
           "file": "golden-0463.ms",
-          "line": 4,
-          "column": 8,
-          "offset": 168
+          "line": 10,
+          "column": 5,
+          "offset": 199
         },
         "end": {
           "file": "golden-0463.ms",
-          "line": 4,
-          "column": 21,
-          "offset": 181
+          "line": 10,
+          "column": 18,
+          "offset": 212
         }
       },
       {
@@ -80,15 +80,15 @@
         "message": "unknown standard module @std/errors.ms",
         "position": {
           "file": "golden-0463.ms",
-          "line": 4,
-          "column": 23,
-          "offset": 183
+          "line": 10,
+          "column": 20,
+          "offset": 214
         },
         "end": {
           "file": "golden-0463.ms",
-          "line": 4,
-          "column": 32,
-          "offset": 192
+          "line": 10,
+          "column": 29,
+          "offset": 223
         }
       },
       {
@@ -97,15 +97,15 @@
         "message": "unknown standard module @std/errors.ms",
         "position": {
           "file": "golden-0463.ms",
-          "line": 4,
-          "column": 34,
-          "offset": 194
+          "line": 10,
+          "column": 31,
+          "offset": 225
         },
         "end": {
           "file": "golden-0463.ms",
-          "line": 4,
-          "column": 42,
-          "offset": 202
+          "line": 10,
+          "column": 39,
+          "offset": 233
         }
       },
       {
@@ -114,20 +114,20 @@
         "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-0463.ms",
-          "line": 8,
+          "line": 17,
           "column": 31,
-          "offset": 372
+          "offset": 375
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding ListBuilder; declare it with 'ListBuilder := ...' before use, define 'fn ListBuilder(...) T:', or import it from a module",
+        "message": "unknown binding ListBuilder; declare it with 'ListBuilder := ...' before use, define 'fn ListBuilder(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-0463.ms",
-          "line": 7,
+          "line": 15,
           "column": 25,
-          "offset": 314
+          "offset": 316
         }
       },
       {
@@ -136,22 +136,22 @@
         "message": "unknown binding TextError; did you mean 'text_error'?",
         "position": {
           "file": "golden-0463.ms",
-          "line": 8,
+          "line": 17,
           "column": 44,
-          "offset": 385
+          "offset": 388
         },
         "fix": {
           "position": {
             "file": "golden-0463.ms",
-            "line": 8,
+            "line": 17,
             "column": 44,
-            "offset": 385
+            "offset": 388
           },
           "end": {
             "file": "golden-0463.ms",
-            "line": 8,
+            "line": 17,
             "column": 53,
-            "offset": 394
+            "offset": 397
           },
           "replacement": "text_error"
         }
@@ -160,7 +160,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0463.ms:3:8: resolution: module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^^^\n<DIR>/golden-0463.ms:3:21: resolution: module does not export MapBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from \"@std/collections/collections.ms\"\n   |                     ^^^^^^^^^^\n<DIR>/golden-0463.ms:3:33: resolution: module does not export SetBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from \"@std/collections/collections.ms\"\n   |                                 ^^^^^^^^^^\n<DIR>/golden-0463.ms:4:8: resolution: unknown standard module @std/errors.ms\n   |\n 4 | import ErrorCategory, TextError, category from \"@std/errors.ms\"\n   |        ^^^^^^^^^^^^^\n<DIR>/golden-0463.ms:4:23: resolution: unknown standard module @std/errors.ms\n   |\n 4 | import ErrorCategory, TextError, category from \"@std/errors.ms\"\n   |                       ^^^^^^^^^\n<DIR>/golden-0463.ms:4:34: resolution: unknown standard module @std/errors.ms\n   |\n 4 | import ErrorCategory, TextError, category from \"@std/errors.ms\"\n   |                                  ^^^^^^^^\n<DIR>/golden-0463.ms:8:31: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 8 | fn text_error(message String) TextError => TextError(message)\n   |                               ^\n<DIR>/golden-0463.ms:7:25: resolution: unknown binding ListBuilder; declare it with 'ListBuilder := ...' before use, define 'fn ListBuilder(...) T:', or import it from a module\n   |\n 7 | fn build() List[Int] => ListBuilder[Int]().freeze()\n   |                         ^\n<DIR>/golden-0463.ms:8:44: resolution: unknown binding TextError; did you mean 'text_error'?\n   |\n 8 | fn text_error(message String) TextError => TextError(message)\n   |                                            ^\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0463.ms:5:5: resolution: module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 5 |     ListBuilder,\n   |     ^^^^^^^^^^^\n<DIR>/golden-0463.ms:6:5: resolution: module does not export MapBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 6 |     MapBuilder,\n   |     ^^^^^^^^^^\n<DIR>/golden-0463.ms:7:5: resolution: module does not export SetBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 7 |     SetBuilder,\n   |     ^^^^^^^^^^\n<DIR>/golden-0463.ms:10:5: resolution: unknown standard module @std/errors.ms\n    |\n 10 |     ErrorCategory, TextError, category from \"@std/errors.ms\",\n    |     ^^^^^^^^^^^^^\n<DIR>/golden-0463.ms:10:20: resolution: unknown standard module @std/errors.ms\n    |\n 10 |     ErrorCategory, TextError, category from \"@std/errors.ms\",\n    |                    ^^^^^^^^^\n<DIR>/golden-0463.ms:10:31: resolution: unknown standard module @std/errors.ms\n    |\n 10 |     ErrorCategory, TextError, category from \"@std/errors.ms\",\n    |                               ^^^^^^^^\n<DIR>/golden-0463.ms:17:31: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n    |\n 17 | fn text_error(message String) TextError => TextError(message)\n    |                               ^\n<DIR>/golden-0463.ms:15:25: resolution: unknown binding ListBuilder; declare it with 'ListBuilder := ...' before use, define 'fn ListBuilder(...) T { ... }', or import it from a module\n    |\n 15 | fn build() List[Int] => ListBuilder[Int]().freeze()\n    |                         ^\n<DIR>/golden-0463.ms:17:44: resolution: unknown binding TextError; did you mean 'text_error'?\n    |\n 17 | fn text_error(message String) TextError => TextError(message)\n    |                                            ^\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

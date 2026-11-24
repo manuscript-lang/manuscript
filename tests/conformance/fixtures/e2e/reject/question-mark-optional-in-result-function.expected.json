@@ -12,16 +12,16 @@
         "message": "'?' on an Optional leaves the function when the value is absent, so the function must return an Optional or Void; declare it to return T?, or use 'if x != null', or 'x or default'",
         "position": {
           "file": "question-mark-optional-in-result-function.ms",
-          "line": 7,
+          "line": 8,
           "column": 14,
-          "offset": 156
+          "offset": 160
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/question-mark-optional-in-result-function.ms:7:14: type: '?' on an Optional leaves the function when the value is absent, so the function must return an Optional or Void; declare it to return T?, or use 'if x != null', or 'x or default'\n   |\n 7 |     value := first(items)?\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/question-mark-optional-in-result-function.ms:8:14: type: '?' on an Optional leaves the function when the value is absent, so the function must return an Optional or Void; declare it to return T?, or use 'if x != null', or 'x or default'\n   |\n 8 |     value := first(items)?\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

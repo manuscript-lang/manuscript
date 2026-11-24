@@ -9,26 +9,26 @@
         "file": "main.ms",
         "line": 2,
         "column": 11,
-        "offset": 23
+        "offset": 24
       },
       "end": {
         "file": "main.ms",
         "line": 2,
         "column": 12,
-        "offset": 24
+        "offset": 25
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 2,
           "column": 11,
-          "offset": 23
+          "offset": 24
         },
         "end": {
           "file": "main.ms",
           "line": 2,
           "column": 12,
-          "offset": 24
+          "offset": 25
         },
         "replacement": ":="
       }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn a(n Int) Int:\n\treturn b(n)\n\nfn b(n Int) Int:\n\treturn a(n)\n"
+    "fmt": "fn a(n Int) Int {\n\treturn b(n)\n}\n\nfn b(n Int) Int {\n\treturn a(n)\n}\n"
   }
 }

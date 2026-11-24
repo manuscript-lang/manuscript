@@ -277,7 +277,7 @@ static void printed_result(const TerseScan *scan, const MsExpr *e) {
   }
   terse_note(scan, "MSL131",
              text_of("`print` of a Result shows the `ok(...)` wrapper; write `call()?` in a function that returns a "
-                     "Result, or `if value := call():` to read the success"),
+                     "Result, or `if value := call() { ... }` to read the success"),
              e->pos);
 }
 

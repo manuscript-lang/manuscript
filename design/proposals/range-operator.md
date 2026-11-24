@@ -34,11 +34,13 @@ Intended examples (checked after implementation):
 ```manuscript
 import stdout from "@std/io/io.ms"
 
-fn main() Unit:
+fn main() Unit {
     var total = 0
-    for i in 0..5:
+    for i in 0..5 {
         total += i
+    }
     stdout().write("{total}\n")
+}
 ```
 
 Verified today on `main`: `for i in 0..5:` fails with the `no '..' range` parse error above; the `range(0, 5)` form passes `ms check` once `print` is replaced by `stdout().write`.

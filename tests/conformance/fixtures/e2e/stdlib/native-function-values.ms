@@ -13,7 +13,7 @@ import (
 	monotonic, now from "@std/time.ms",
 )
 
-test "stdlib natives bound to a name behave like the call":
+test "stdlib natives bound to a name behave like the call" {
 	digest := sha256
 	wide := sha512
 	expect_equal(digest(Bytes([1])), sha256(Bytes([1])))?
@@ -27,8 +27,9 @@ test "stdlib natives bound to a name behave like the call":
 
 	biggest := max[Int]
 	expect_equal(biggest(1, 3), 3)?
+}
 
-test "random natives bound to a name draw from the operating system":
+test "random natives bound to a name draw from the operating system" {
 	int_in := secure_int
 	id := uuid_v4
 	mix := shuffle[Int]
@@ -40,8 +41,9 @@ test "random natives bound to a name draw from the operating system":
 	expect_equal(mix([1, 2, 3]).get().length(), 3)?
 	expect_true(pick([7]).get() != null)?
 	expect_true(draw().get() < 1.0)?
+}
 
-test "handle natives bound to a name are usable":
+test "handle natives bound to a name are usable" {
 	out := stdout
 	err := stderr
 	wall := now
@@ -53,3 +55,4 @@ test "handle natives bound to a name are usable":
 	first := mono()
 	second := mono()
 	expect_true(second.difference(first).to_nanoseconds() >= 0)?
+}

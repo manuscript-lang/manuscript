@@ -1,8 +1,9 @@
 // conform: tags=control-flow,formatter,interfaces,maps,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/checker/stdlib_revamp_test.go:15 TestEqualityInterfacesAndHashConsistency
-type Key:
-    id Int
+type Key {
+	id Int
+}
 
 fn Key.equals(other Key) Bool => return true
 

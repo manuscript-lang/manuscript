@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Bool:\n\treturn (\n\t\taccount_is_active\n\t\tand payment_is_allowed\n\t\tand remaining_balance > minimum_balance\n\t)\n"
+    "fmt": "fn work() Bool {\n\treturn (\n\t\taccount_is_active\n\t\tand payment_is_allowed\n\t\tand remaining_balance > minimum_balance\n\t)\n}\n"
   }
 }

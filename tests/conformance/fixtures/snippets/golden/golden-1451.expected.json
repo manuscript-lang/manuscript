@@ -12,22 +12,22 @@
         "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1451.ms",
-          "line": 9,
+          "line": 11,
           "column": 1,
-          "offset": 162
+          "offset": 168
         },
         "end": {
           "file": "golden-1451.ms",
-          "line": 9,
+          "line": 11,
           "column": 5,
-          "offset": 166
+          "offset": 172
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1451.ms:9:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 9 | impl Read for Box[T]:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1451.ms:11:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 11 | impl Read for Box[T] {\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

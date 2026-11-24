@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-    a := [1, "x"]
+a := [1, "x"]

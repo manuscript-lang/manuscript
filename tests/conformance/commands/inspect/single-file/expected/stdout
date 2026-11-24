@@ -7,18 +7,18 @@
       "span": {
         "file": "main.ms",
         "start": 10,
-        "end": 21,
+        "end": 22,
         "line": 1,
         "column": 11
       }
     }
   ],
   "format": 2,
-  "build_id": "8ba15893532a18db20daae637ea353caab94dfc3ab0cffa4b688da9009452ea5",
+  "build_id": "31aa2481880d7a3d4f85429a1a233d13f103e9c4b45f4893c657375f65345799",
   "sources": [
     {
       "file": "main.ms",
-      "sha256": "5644b5eb4d8aed2d6d57fbd9119f93958049064bc03d162178e97845e8cb57f1"
+      "sha256": "9a7d46faae2ef13033c66a8d798d5ba0f1d2a0f1ded6d328aa721d339a3cb128"
     }
   ],
   "entities": [
@@ -31,7 +31,7 @@
       "span": {
         "file": "main.ms",
         "start": 0,
-        "end": 21,
+        "end": 22,
         "line": 1,
         "column": 1
       },
@@ -45,9 +45,9 @@
       "type": "fn() Void",
       "span": {
         "file": "main.ms",
-        "start": 37,
-        "end": 52,
-        "line": 4,
+        "start": 40,
+        "end": 56,
+        "line": 5,
         "column": 1
       },
       "exported": false,
@@ -61,28 +61,28 @@
   ],
   "calls": [
     {
-      "id": "main.ms#call#54",
+      "id": "main.ms#call#58",
       "owner": "main.ms#fn#main",
       "target": "@std/core.ms#fn#print",
       "kind": "function",
       "span": {
         "file": "main.ms",
-        "start": 54,
-        "end": 76,
-        "line": 5,
+        "start": 58,
+        "end": 80,
+        "line": 6,
         "column": 5
       }
     },
     {
-      "id": "main.ms#call#63",
+      "id": "main.ms#call#67",
       "owner": "main.ms#fn#main",
       "target": "main.ms#fn#double",
       "kind": "function",
       "span": {
         "file": "main.ms",
-        "start": 63,
-        "end": 76,
-        "line": 5,
+        "start": 67,
+        "end": 80,
+        "line": 6,
         "column": 14
       }
     }
@@ -90,16 +90,16 @@
   "statements": [
     {
       "file": "main.ms",
-      "start": 23,
-      "end": 35,
+      "start": 24,
+      "end": 36,
       "line": 2,
       "column": 5
     },
     {
       "file": "main.ms",
-      "start": 54,
-      "end": 76,
-      "line": 5,
+      "start": 58,
+      "end": 80,
+      "line": 6,
       "column": 5
     }
   ]

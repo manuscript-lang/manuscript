@@ -14,18 +14,18 @@
           "file": "golden-1100.ms",
           "line": 6,
           "column": 13,
-          "offset": 109
+          "offset": 92
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding CommandError; declare it with 'CommandError := ...' before use, define 'fn CommandError(...) T:', or import it from a module",
+        "message": "unknown binding CommandError; declare it with 'CommandError := ...' before use, define 'fn CommandError(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1100.ms",
           "line": 6,
           "column": 20,
-          "offset": 116
+          "offset": 99
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "golden-1100.ms",
           "line": 5,
           "column": 9,
-          "offset": 90
+          "offset": 82
         }
       },
       {
@@ -47,14 +47,14 @@
           "file": "golden-1100.ms",
           "line": 7,
           "column": 11,
-          "offset": 177
+          "offset": 154
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1100.ms:6:13: type: unknown argument value; parameters of Error: details, kind, message\n   |\n 6 |             value: CommandError.Failed(message: \"command diagnostic\")\n   |             ^\n<DIR>/golden-1100.ms:6:20: resolution: unknown binding CommandError; declare it with 'CommandError := ...' before use, define 'fn CommandError(...) T:', or import it from a module\n   |\n 6 |             value: CommandError.Failed(message: \"command diagnostic\")\n   |                    ^\n<DIR>/golden-1100.ms:5:9: type: missing argument message: String in call to Error; add 'message: <String>'\n   |\n 5 |         Error(\n   |         ^\n<DIR>/golden-1100.ms:7:11: type: message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead\n   |\n 7 |         ).message() != \"command diagnostic\"\n   |           ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1100.ms:6:13: type: unknown argument value; parameters of Error: details, kind, message\n   |\n 6 |             value: CommandError.Failed(message: \"command diagnostic\")\n   |             ^\n<DIR>/golden-1100.ms:6:20: resolution: unknown binding CommandError; declare it with 'CommandError := ...' before use, define 'fn CommandError(...) T { ... }', or import it from a module\n   |\n 6 |             value: CommandError.Failed(message: \"command diagnostic\")\n   |                    ^\n<DIR>/golden-1100.ms:5:9: type: missing argument message: String in call to Error; add 'message: <String>'\n   |\n 5 |         Error(\n   |         ^\n<DIR>/golden-1100.ms:7:11: type: message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead\n   |\n 7 |         ).message() != \"command diagnostic\"\n   |           ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

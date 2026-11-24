@@ -29,28 +29,28 @@
         "message": "remove the ':' between 'value' and its type; write value Type",
         "position": {
           "file": "golden-0224.ms",
-          "line": 6,
+          "line": 8,
           "column": 17,
-          "offset": 136
+          "offset": 146
         },
         "end": {
           "file": "golden-0224.ms",
-          "line": 6,
+          "line": 8,
           "column": 18,
-          "offset": 137
+          "offset": 147
         },
         "fix": {
           "position": {
             "file": "golden-0224.ms",
-            "line": 6,
+            "line": 8,
             "column": 17,
-            "offset": 136
+            "offset": 146
           },
           "end": {
             "file": "golden-0224.ms",
-            "line": 6,
+            "line": 8,
             "column": 18,
-            "offset": 137
+            "offset": 147
           },
           "replacement": ""
         }
@@ -59,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0224.ms:3:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 3 | impl Error for Result:\n   | ^^^^\n<DIR>/golden-0224.ms:6:17: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 6 | fn general(value: Result) Error:\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0224.ms:3:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 3 | impl Error for Result {\n   | ^^^^\n<DIR>/golden-0224.ms:8:17: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 | fn general(value: Result) Error {\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

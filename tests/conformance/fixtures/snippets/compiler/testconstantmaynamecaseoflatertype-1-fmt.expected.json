@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "initial := Mode.Idle\n\nenum Mode:\n\tIdle\n\tBusy\n\nexport fn main() Int:\n\tmatch initial:\n\t\tIdle:\n\t\t\treturn 0\n\t\tBusy:\n\t\t\treturn 1\n"
+    "fmt": "initial := Mode.Idle\n\nenum Mode {\n\tIdle\n\tBusy\n}\n\nexport fn main() Int {\n\tmatch initial {\n\t\tIdle => {\n\t\t\treturn 0\n\t\t}\n\t\tBusy => {\n\t\t\treturn 1\n\t\t}\n\t}\n}\n"
   }
 }

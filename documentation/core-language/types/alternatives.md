@@ -9,10 +9,11 @@ Use an enum (a tagged union) when a value is exactly one of several declared cas
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-enum Payment:
+enum Payment {
     Paid(receipt String)
     Declined(reason String)
     Pending(reference String)
+}
 ```
 
 Enums are tagged and exhaustively matched.
@@ -22,13 +23,13 @@ Enums are tagged and exhaustively matched.
 - Payload types are explicit, and payload fields have no defaults.
 - An `enum` body holds only case names with optional payload parameters. Fields belong in a `type`, and methods are receiver methods, `fn Enum.name(...)`.
 
-Migration from the old syntax: replace `type Choice:` with `enum Choice:` when its body declares cases, then remove `case` before each case name. The compiler rejects both old spellings with a diagnostic that names the new one. Constructors and exhaustive matching behave as before, and `type` still declares types.
+Migration from the old syntax: replace `type Choice { ... }` with `enum Choice { ... }` when its body declares cases, then remove `case` before each case name. The compiler rejects both old spellings with a diagnostic that names the new one. Constructors and exhaustive matching behave as before, and `type` still declares types.
 
 `enum` is a reserved word, so rename any existing identifier spelled `enum`. `case` is no longer reserved: `case`, `case(value Int)`, and a field `case Int` are ordinary names in their contexts.
 
 ## Construction and identity
 
-<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt String)\n    Declined(reason String)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"enum Payment {\n    Paid(receipt String)\n    Declined(reason String)\n}","given":[]} -->
 ```manuscript
 payment := Payment.Paid("receipt-42")
 declined Payment := Declined("Card rejected")
@@ -45,11 +46,13 @@ Once the case is unique, an expected enum type can supply generic arguments. A q
 
 <!-- manuscript-example: {"mode":"error","contains":"ambiguous alternative case","given":[]} -->
 ```manuscript
-enum LeftState:
+enum LeftState {
     Ready
+}
 
-enum RightState:
+enum RightState {
     Ready
+}
 
 left LeftState := LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.

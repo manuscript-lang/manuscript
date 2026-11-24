@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(second Int, first Int = 1) Int:\n\treturn first + second\n\nfn call() Int:\n\treturn f()\n"
+    "fmt": "fn f(second Int, first Int = 1) Int {\n\treturn first + second\n}\n\nfn call() Int {\n\treturn f()\n}\n"
   }
 }

@@ -8,7 +8,7 @@ foreach(n RANGE 1 130)
   string(LENGTH "${n}" digits)
   string(REPEAT "0" 3 pad)
   string(SUBSTRING "${pad}${n}" ${digits} 3 name)
-  file(WRITE "${WORK}/f${name}.ms" "fn probe_${name}() Void:\n    return\n")
+  file(WRITE "${WORK}/f${name}.ms" "fn probe_${name}() Void {\n    return\n}\n")
 endforeach()
 
 function(search query out_text out_error)

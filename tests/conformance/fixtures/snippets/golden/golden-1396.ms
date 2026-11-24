@@ -1,4 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn fragment() Void: ...
-    
+fn fragment() Void { ... }

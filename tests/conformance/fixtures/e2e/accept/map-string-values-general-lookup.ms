@@ -5,7 +5,7 @@ import expect_equal, expect_true from "@std/test/test.ms"
 // A `String` value is two words, so `Map[Int, String]` and `Map[String, String]` take
 // the general lookup entry points; the word-layout fast paths read a 24-byte slot and
 // missed the second key.
-test "int keys with string values find every key":
+test "int keys with string values find every key" {
 	var names = Map[Int, String]()
 	names.add(1, "one")
 	names.add(2, "two")
@@ -16,25 +16,32 @@ test "int keys with string values find every key":
 	expect_equal(names.get_or(key: 3, fallback: "none"), "none")?
 
 	found := names.get(1)
-	if found != null:
+	if found != null {
 		expect_equal(found, "one")?
+	}
+}
 
-test "string keys with string values find every key":
+test "string keys with string values find every key" {
 	var m = Map[String, String]()
 	m.add("a", "apple")
 	m.add("b", "berry")
 	expect_true(m.contains("b"))?
 	expect_equal(m["b"], "berry")?
 	expect_equal(m.get_or(key: "a", fallback: ""), "apple")?
+}
 
-test "many int keys with string values":
+test "many int keys with string values" {
 	var m = Map[Int, String]()
-	for i in 0..200:
+	for i in 0..200 {
 		m.add(i, f"v{i}")
+	}
 
 	var hits = 0
-	for i in 0..200:
-		if m.contains(i):
+	for i in 0..200 {
+		if m.contains(i) {
 			hits += 1
+		}
+	}
 	expect_equal(hits, 200)?
 	expect_equal(m[199], "v199")?
+}

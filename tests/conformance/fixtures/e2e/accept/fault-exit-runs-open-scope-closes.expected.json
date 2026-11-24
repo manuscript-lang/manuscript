@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "start\nclosed outer\n",
-    "stderr": "boom outer\n  at fault-exit-runs-open-scope-closes.ms:15 in main\n"
+    "stderr": "boom outer\n  at fault-exit-runs-open-scope-closes.ms:20 in main\n"
   }
 }

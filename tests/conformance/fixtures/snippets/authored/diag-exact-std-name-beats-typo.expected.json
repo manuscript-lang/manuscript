@@ -14,7 +14,7 @@
           "file": "diag-exact-std-name-beats-typo.ms",
           "line": 4,
           "column": 11,
-          "offset": 95
+          "offset": 93
         },
         "fix": {
           "position": {

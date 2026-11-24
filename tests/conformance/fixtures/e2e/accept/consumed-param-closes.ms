@@ -6,24 +6,28 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-type Door:
+type Door {
 	id Int
 	log String
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
 	void append_file(self.log, f"{self.id},").wait()
+}
 
-fn logged(path String) String:
+fn logged(path String) String {
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8() or ""
+	if bytes := read { return bytes.decode_utf8() or "" }
 
 	return ""
+}
 
-fn keep_if(move d Door, keep Bool) Door?:
-	if keep: return d
+fn keep_if(move d Door, keep Bool) Door? {
+	if keep { return d }
 	return null
+}
 
-test "a parameter the callee drops on some path is closed there":
+test "a parameter the callee drops on some path is closed there" {
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	kept := keep_if(Door(1, log.clone()), true)
@@ -31,14 +35,18 @@ test "a parameter the callee drops on some path is closed there":
 
 	dropped := keep_if(Door(2, log.clone()), false)
 	logged(log.clone()) | expect_equal("2,")?
-	if (kept != null) and (dropped == null):
+	if (kept != null) and (dropped == null) {
 		logged(log.clone()) | expect_equal("2,")?
+	}
+}
 
-test "a bound resource passed to such a callee closes once":
+test "a bound resource passed to such a callee closes once" {
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	door := Door(3, log.clone())
 	dropped := keep_if(door, false)
 	logged(log.clone()) | expect_equal("3,")?
-	if dropped == null:
+	if dropped == null {
 		logged(log.clone()) | expect_equal("3,")?
+	}
+}

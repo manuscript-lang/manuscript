@@ -14,14 +14,31 @@
           "file": "literal-reject-double-sep.ms",
           "line": 5,
           "column": 11,
-          "offset": 153
+          "offset": 154
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
+        "position": {
+          "file": "literal-reject-double-sep.ms",
+          "line": 7,
+          "column": 1,
+          "offset": 171
+        },
+        "end": {
+          "file": "literal-reject-double-sep.ms",
+          "line": 7,
+          "column": 2,
+          "offset": 172
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-double-sep.ms:5:11: parse: a digit separator goes between two digits; write e.g. 1_000_000 or 0xFF_FF\n   |\n 5 |     x := 1__0\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-double-sep.ms:5:11: parse: a digit separator goes between two digits; write e.g. 1_000_000 or 0xFF_FF\n   |\n 5 |     x := 1__0\n   |           ^\n<DIR>/literal-reject-double-sep.ms:7:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 7 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

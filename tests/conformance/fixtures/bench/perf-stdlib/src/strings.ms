@@ -1,117 +1,125 @@
-import (
+import bench, words from "./harness.ms"
 
-	bench, words from "./harness.ms",
-)
-
-export fn bench_string() Void:
+export fn bench_string() Void {
 	text := words(2000).join(" ")
 
 	bench(
 		"string.append_builder",
 		100000,
-		fn() Int:
+		fn() Int {
 			var sb = ""
-			for i in 0..100000:
+			for i in 0..100000 {
 				sb += "x"
-			return sb.length()
+			} return sb.length()
+		}
 	)
 
 	bench(
 		"string.concat",
 		20000,
-		fn() Int:
+		fn() Int {
 			var s = ""
-			for i in 0..20000:
+			for i in 0..20000 {
 				s = s.concat("x")
-			return s.length()
+			} return s.length()
+		}
 	)
 
 	bench(
 		"string.split",
 		200,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..200:
+			for i in 0..200 {
 				n += text.split(" ").length()
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"string.replace_all",
 		200,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..200:
+			for i in 0..200 {
 				n = (n + text.replace("word", "w").length())
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"string.contains",
 		2000,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..2000:
-				if text.contains("word976 word0"): n += 1
-			return n
+			for i in 0..2000 {
+				if text.contains("word976 word0") { n += 1 } } return n
+		}
 	)
 
 	bench(
 		"string.upper",
 		200,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..200:
+			for i in 0..200 {
 				n += text.upper().length()
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"string.trim",
 		100000,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..100000:
+			for i in 0..100000 {
 				n += "  padded  ".trim().length()
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"string.index_char_at",
 		100000,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..100000:
+			for i in 0..100000 {
 				n += text.scalar_at(i % 5000, 0)
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"string.chars",
 		20,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..20:
+			for i in 0..20 {
 				n += text.chars().length()
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"string.parse_int",
 		100000,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..100000:
+			for i in 0..100000 {
 				n += "12345".parse_int() or 0
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"string.interpolate",
 		100000,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..100000:
+			for i in 0..100000 {
 				n += f"item {i} of {n}".length()
-			return n
+			} return n
+		}
 	)
+}

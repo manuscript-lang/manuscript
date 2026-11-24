@@ -35,16 +35,19 @@ A borrow is a handle to a value that another binding owns. Until the borrow's la
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Box:
+type Box {
     items List[Int]
+}
 
-fn Box.list() List[Int]:
+fn Box.list() List[Int] {
     return self.items
+}
 
-fn grow(var b Box) Int:
+fn grow(var b Box) Int {
     var xs = b.list()
     xs.append(1)
     return b.items.length()
+}
 ```
 `grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list.
 
@@ -60,20 +63,25 @@ A signature says how a function treats each argument; the compiler never reads t
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Item:
+type Item {
     name String
+}
 
-interface Sink:
+interface Sink {
     fn add(move item Item) Int
+}
 
-type Log:
+type Log {
     count Int
+}
 
-fn Log.add(move item Item) Int:
+fn Log.add(move item Item) Int {
     return item.name.length()
+}
 
-fn send(s Sink, move item Item) Int:
+fn send(s Sink, move item Item) Int {
     return s.add(item)
+}
 ```
 
 - `move name Type` says the callee takes the argument; `fn move Type.name` takes the receiver (`move fn name` in an interface). A caller writes nothing: the argument moves at its last use, and using it afterwards is an error.

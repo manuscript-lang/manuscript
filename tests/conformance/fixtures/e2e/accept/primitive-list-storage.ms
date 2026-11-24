@@ -6,22 +6,26 @@ import (
 	expect_equal, expect_false, fail from "@std/test/test.ms",
 )
 
-fn append_value[T Clonable](var values List[T], value T) List[T]:
+fn append_value[T Clonable](var values List[T], value T) List[T] {
 	values.append(value)
 	return values.clone()
+}
 
-fn forwarded[T Clonable](values List[T]) List[T]:
+fn forwarded[T Clonable](values List[T]) List[T] {
 	return values.clone()
+}
 
-type Lists:
+type Lists {
 	values List[Int]
+}
 
-test "primitive storage retains generic record Optional and independent copies":
+test "primitive storage retains generic record Optional and independent copies" {
 	var values = [9223372036854775807, -9223372036854775808]
 	var record = Lists(values.clone())
 	wrapped List[Int]? := values.clone()
-	for i in 0..4096:
+	for i in 0..4096 {
 		append_value(record.values, i)
+	}
 	values.append(17)
 	expect_equal(values.length(), 3)?
 	expect_equal(record.values.length(), 4098)?
@@ -43,18 +47,21 @@ test "primitive storage retains generic record Optional and independent copies":
 			and (nested[1] == null)
 		)
 	)?
+}
 
-test "Float Bool and String preserve mutation traversal and width":
+test "Float Bool and String preserve mutation traversal and width" {
 	var floats = [1e-300, 1e300, 0.25]
 	clone := floats.clone()
 	var seen List[Float] = []
 	var index = 0
 
-	for value in floats.clone():
+	for value in floats.clone() {
 		seen.append(value)
-		if index == 0:
+		if index == 0 {
 			floats.set(1, 0.5)
+		}
 		index += 1
+	}
 
 	expect_false(
 		not (
@@ -71,18 +78,21 @@ test "Float Bool and String preserve mutation traversal and width":
 	var strings = ["a", "b", "c"]
 	strings.reverse()
 	expect_false(not (booleans == [false, false, true] and strings == ["c", "b", "a"]))?
+}
 
-test "stable sort and strict Result slice preserve separate storage":
+test "stable sort and strict Result slice preserve separate storage" {
 	values := [7, 1, 4, 8, 2, 5]
 	var sorted = values.sorted((left, right) => return left % 3 - right % 3)
 	sorted.set(0, 99)
 	expect_equal(values[0], 7)?
 
-	if slice := values.slice(-2, 6):
+	if slice := values.slice(-2, 6) {
 		var copy = slice.clone()
 		copy.set(0, 12)
 		expect_false(not (copy == [12, 5] and values[4] == 2))?
-	else:
+	} else {
 		return fail("valid strict slice failed")
+	}
 
 	expect_false(values.slice(-7, 6).is_ok())?
+}

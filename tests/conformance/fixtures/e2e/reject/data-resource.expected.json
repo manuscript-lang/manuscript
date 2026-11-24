@@ -12,16 +12,16 @@
         "message": "Report does not satisfy Data; field log is FileHandle, opaque; return a plain value from the module that declares it",
         "position": {
           "file": "data-resource.ms",
-          "line": 17,
+          "line": 19,
           "column": 12,
-          "offset": 317
+          "offset": 324
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/data-resource.ms:17:12: type: Report does not satisfy Data; field log is FileHandle, opaque; return a plain value from the module that declares it\n    |\n 17 |     return show(report).length()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/data-resource.ms:19:12: type: Report does not satisfy Data; field log is FileHandle, opaque; return a plain value from the module that declares it\n    |\n 19 |     return show(report).length()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -12,9 +12,9 @@
         "message": "cannot infer type arguments A, B, C for compose; write compose[A, B, C](...) with explicit types for A, B, C; call arguments and the expected result must determine every type parameter",
         "position": {
           "file": "diag-infer-callbacks-no-invalid.ms",
-          "line": 8,
+          "line": 9,
           "column": 10,
-          "offset": 223
+          "offset": 221
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "cannot infer callback parameter x; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`",
         "position": {
           "file": "diag-infer-callbacks-no-invalid.ms",
-          "line": 8,
+          "line": 9,
           "column": 18,
-          "offset": 231
+          "offset": 229
         }
       },
       {
@@ -34,16 +34,16 @@
         "message": "cannot infer callback parameter y; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`",
         "position": {
           "file": "diag-infer-callbacks-no-invalid.ms",
-          "line": 8,
+          "line": 9,
           "column": 30,
-          "offset": 243
+          "offset": 241
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-infer-callbacks-no-invalid.ms:8:10: type: cannot infer type arguments A, B, C for compose; write compose[A, B, C](...) with explicit types for A, B, C; call arguments and the expected result must determine every type parameter\n   |\n 8 |     e := compose(x => x + 1, y => f\"{y}\")\n   |          ^\n<DIR>/diag-infer-callbacks-no-invalid.ms:8:18: type: cannot infer callback parameter x; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`\n   |\n 8 |     e := compose(x => x + 1, y => f\"{y}\")\n   |                  ^\n<DIR>/diag-infer-callbacks-no-invalid.ms:8:30: type: cannot infer callback parameter y; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`\n   |\n 8 |     e := compose(x => x + 1, y => f\"{y}\")\n   |                              ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-infer-callbacks-no-invalid.ms:9:10: type: cannot infer type arguments A, B, C for compose; write compose[A, B, C](...) with explicit types for A, B, C; call arguments and the expected result must determine every type parameter\n   |\n 9 |     e := compose(x => x + 1, y => f\"{y}\")\n   |          ^\n<DIR>/diag-infer-callbacks-no-invalid.ms:9:18: type: cannot infer callback parameter x; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`\n   |\n 9 |     e := compose(x => x + 1, y => f\"{y}\")\n   |                  ^\n<DIR>/diag-infer-callbacks-no-invalid.ms:9:30: type: cannot infer callback parameter y; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`\n   |\n 9 |     e := compose(x => x + 1, y => f\"{y}\")\n   |                              ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

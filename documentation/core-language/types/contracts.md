@@ -11,20 +11,25 @@ Save as `adjust.ms` and run `ms run adjust.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"12\n"} -->
 ```manuscript
-interface Increment:
+interface Increment {
     fn apply(value Int) Int
+}
 
-type Offset:
+type Offset {
     delta Int
+}
 
-fn Offset.apply(value Int) Int:
+fn Offset.apply(value Int) Int {
     return value + self.delta
+}
 
-fn adjusted(value Int, operation Increment) Int:
+fn adjusted(value Int, operation Increment) Int {
     return operation.apply(value)
+}
 
-fn main() Void:
+fn main() Void {
     print(adjusted(10, Offset(2)))
+}
 ```
 
 ```text
@@ -59,20 +64,25 @@ A type satisfies an interface when it has one own method for each operation, wit
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
 ```manuscript
-interface Increment:
+interface Increment {
     fn apply(value Int) Int
+}
 
-type Offset:
+type Offset {
     delta Int
+}
 
-fn Offset.apply(value Int) Int:
+fn Offset.apply(value Int) Int {
     return value + self.delta
+}
 
-fn adjusted(value Int, operation Increment) Int:
+fn adjusted(value Int, operation Increment) Int {
     return operation.apply(value)
+}
 
-fn main() Void:
+fn main() Void {
     print(adjusted(1, Offset(2)))
+}
 ```
 
 ```text
@@ -90,8 +100,9 @@ fn main() Void:
 
 ```text
 // Rejected: amount does not match the interface's value label.
-fn Offset.apply(amount Int) Int:
+fn Offset.apply(amount Int) Int {
     return amount + self.delta
+}
 ```
 
 ## Coherence and visibility
@@ -111,14 +122,17 @@ A receiver names its declaration's generic parameters; matching the receiver det
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-interface ReadValue[T]:
+interface ReadValue[T] {
     fn get() T
+}
 
-type Box[T Clonable]:
+type Box[T Clonable] {
     value T
+}
 
-fn Box[T].get() T:
+fn Box[T].get() T {
     return self.value.clone()
+}
 ```
 
 This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and from any bound written on the receiver. The body is checked once under them with `self Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them.
@@ -127,14 +141,17 @@ A bound written on the receiver restricts one method without restricting the dat
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-interface SameValue[T Equal]:
+interface SameValue[T Equal] {
     fn same(other T) Bool
+}
 
-type Box[T]:
+type Box[T] {
     value T
+}
 
-fn Box[T Equal].same(other T) Bool:
+fn Box[T Equal].same(other T) Bool {
     return self.value == other
+}
 ```
 
 A `Box[T]` without `T: Equal` has no `same`. A receiver may also fix an argument, `fn Box[Int].total() Int`; it applies to `Box[Int]` only. Two receiver forms that could match the same application and declare one name are rejected, as are two methods of one name on the same form.
@@ -144,11 +161,13 @@ A `Box[T]` without `T: Equal` has no `same`. A receiver may also fix an argument
 An interface operation and a method may declare type parameters after their name. The method repeats the operation's parameters in the same order with the same bounds, and its signature must match once they are renamed.
 
 ```text
-interface Ranked[T]:
+interface Ranked[T] {
     fn best_by[K: Comparable](key: fn(T) K) T?
+}
 
-fn Scores.best_by[K: Comparable](key: fn(Int) K) Int?:
+fn Scores.best_by[K: Comparable](key: fn(Int) K) Int? {
     ...
+}
 ```
 
 A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface.
@@ -165,10 +184,11 @@ The conversion follows the [ownership rules](https://github.com/manuscript-lang/
 
 A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
-<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount Int) Int\n\ntype Offset:\n    delta Int\n\nfn Offset.apply(amount Int) Int:\n    return amount + self.delta","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment {\n    fn apply(amount Int) Int\n}\n\ntype Offset {\n    delta Int\n}\n\nfn Offset.apply(amount Int) Int {\n    return amount + self.delta\n}","given":[]} -->
 ```manuscript
-fn use_increment(operation Increment) Int:
+fn use_increment(operation Increment) Int {
     return operation.apply(1)
+}
 
 offset := Offset(2)
 result := use_increment(offset)
@@ -184,11 +204,12 @@ A type has one method per name, so a call on a concrete receiver, a generic para
 
 An interface type satisfies its own exact generic bound: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
-<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount Int) Int\n\ntype Offset:\n    delta Int\n\nfn Offset.apply(amount Int) Int:\n    return amount + self.delta","given":["offset Offset","view Increment"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment {\n    fn apply(amount Int) Int\n}\n\ntype Offset {\n    delta Int\n}\n\nfn Offset.apply(amount Int) Int {\n    return amount + self.delta\n}","given":["offset Offset","view Increment"]} -->
 ```manuscript
-fn invoke[T Increment](operation T) Int:
+fn invoke[T Increment](operation T) Int {
     view Increment := operation
     return view.apply(1)
+}
 
 from_concrete := invoke(offset)
 from_view := invoke(view)

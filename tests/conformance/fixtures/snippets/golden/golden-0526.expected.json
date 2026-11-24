@@ -7,21 +7,44 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4",
+        "message": "expected '=>', found '+'",
         "position": {
           "file": "golden-0526.ms",
-          "line": 4,
+          "line": 9,
           "column": 13,
-          "offset": 79
+          "offset": 181
+        },
+        "end": {
+          "file": "golden-0526.ms",
+          "line": 9,
+          "column": 14,
+          "offset": 182
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected '=>', found '+'",
+        "position": {
+          "file": "golden-0526.ms",
+          "line": 10,
+          "column": 11,
+          "offset": 196
+        },
+        "end": {
+          "file": "golden-0526.ms",
+          "line": 10,
+          "column": 12,
+          "offset": 197
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0526.ms:4:13: parse: a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4\n   |\n 4 |             n:\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0526.ms:9:13: parse: expected '=>', found '+'\n   |\n 9 |         sum += i\n   |             ^\n<DIR>/golden-0526.ms:10:11: parse: expected '=>', found '+'\n    |\n 10 |         i += 1\n    |           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

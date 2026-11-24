@@ -26,66 +26,23 @@
           "position": {
             "file": "testgroupedimportresolutionerrors-1.ms",
             "line": 4,
-            "column": 8,
-            "offset": 183
+            "column": 1,
+            "offset": 176
           },
           "end": {
             "file": "testgroupedimportresolutionerrors-1.ms",
-            "line": 4,
-            "column": 19,
-            "offset": 194
+            "line": 5,
+            "column": 1,
+            "offset": 232
           },
           "replacement": ""
-        }
-      },
-      {
-        "code": "MS2003",
-        "phase": "resolution",
-        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
-        "position": {
-          "file": "testgroupedimportresolutionerrors-1.ms",
-          "line": 4,
-          "column": 19,
-          "offset": 194
-        },
-        "end": {
-          "file": "testgroupedimportresolutionerrors-1.ms",
-          "line": 4,
-          "column": 28,
-          "offset": 203
-        },
-        "fix": {
-          "position": {
-            "file": "testgroupedimportresolutionerrors-1.ms",
-            "line": 4,
-            "column": 17,
-            "offset": 192
-          },
-          "end": {
-            "file": "testgroupedimportresolutionerrors-1.ms",
-            "line": 4,
-            "column": 28,
-            "offset": 203
-          },
-          "replacement": ""
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "duplicate or intrinsic name ListEntry; this name is already declared, imported, or built in, so rename one of them",
-        "position": {
-          "file": "testgroupedimportresolutionerrors-1.ms",
-          "line": 4,
-          "column": 19,
-          "offset": 194
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testgroupedimportresolutionerrors-1.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, ListEntry from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/testgroupedimportresolutionerrors-1.ms:4:19: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, ListEntry from \"@std/collections/collections.ms\"\n   |                   ^^^^^^^^^\n<DIR>/testgroupedimportresolutionerrors-1.ms:4:19: resolution: duplicate or intrinsic name ListEntry; this name is already declared, imported, or built in, so rename one of them\n   |\n 4 | import ListEntry, ListEntry from \"@std/collections/collections.ms\"\n   |                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testgroupedimportresolutionerrors-1.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

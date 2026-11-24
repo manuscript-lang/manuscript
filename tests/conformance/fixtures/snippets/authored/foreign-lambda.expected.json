@@ -12,13 +12,13 @@
           "file": "foreign-lambda.ms",
           "line": 5,
           "column": 17,
-          "offset": 144
+          "offset": 145
         },
         "end": {
           "file": "foreign-lambda.ms",
           "line": 5,
           "column": 18,
-          "offset": 145
+          "offset": 146
         }
       }
     ],

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Node:\n\tnext Node?\n\nexport fn main() Int:\n\tnode := Node(node)\n\treturn 0\n"
+    "fmt": "type Node {\n\tnext Node?\n}\n\nexport fn main() Int {\n\tnode := Node(node)\n\treturn 0\n}\n"
   }
 }

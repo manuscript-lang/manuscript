@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=internal/cli/format_result_test.go:16 TestFormatJSONChecksAndPartialFailures
-fn value() Int:
-    return 0
+fn value() Int {
+	return 0
+}

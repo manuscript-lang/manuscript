@@ -2,25 +2,31 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-interface Visitor[R]:
+interface Visitor[R] {
 	fn visit(n Int) R
+}
 
-type Doubler:
+type Doubler {
 	k Int
+}
 
-fn Doubler.visit(n Int) Int:
+fn Doubler.visit(n Int) Int {
 	return n * self.k
+}
 
-type Bracketer:
+type Bracketer {
 	open String
+}
 
-fn Bracketer.visit(n Int) String:
+fn Bracketer.visit(n Int) String {
 	return f"{self.open}{n}>"
+}
 
-fn run[R](v Visitor[R], n Int) R:
+fn run[R](v Visitor[R], n Int) R {
 	return v.visit(n)
+}
 
-test "two receivers implement different applications of a generic contract":
+test "two receivers implement different applications of a generic contract" {
 	d := Doubler(k: 3)
 	as_int Visitor[Int] := d
 	as_string Visitor[String] := Bracketer(open: "<")
@@ -28,3 +34,4 @@ test "two receivers implement different applications of a generic contract":
 	b String := run(as_string, 5)
 	expect_equal(a, 15)?
 	expect_equal(b, "<5>")?
+}

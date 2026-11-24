@@ -282,7 +282,7 @@ static bool at_enum_variant_start(const Parser *p) {
   /* A payload's `(` touches the variant name; a field's parenthesized type follows a space. */
   bool payload = next.kind == MS_T_LParen && next.lo == parse_peek(p).hi;
   return parse_kind(p) == MS_T_Name &&
-         (payload || next.kind == MS_T_Newline || next.kind == MS_T_Dedent || next.kind == MS_T_Eof);
+         (payload || next.kind == MS_T_Newline || next.kind == MS_T_BlockClose || next.kind == MS_T_Eof);
 }
 
 /* Rejects a member that does not belong in the body of this kind of declaration. */
@@ -491,13 +491,11 @@ MS_NODISCARD bool parse_declaration_body_start(Parser *p, MsToken token) {
             "an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field Type)'"));
     return false;
   }
-  if (!parse_need(p, MS_T_Newline))
-    return false;
-  if (token.kind == MS_T_Enum && parse_kind(p) != MS_T_Indent) {
+  if (token.kind == MS_T_Enum && parse_kind(p) == MS_T_BlockClose) {
     parse_fail(p, parse_peek(p),
-               ms_span_of_text("an enum must declare at least one variant; indent 'Name' or 'Name(field: "
-                               "Type)' under the header"));
+               ms_span_of_text("an enum must declare at least one variant; write 'Name' or 'Name(field "
+                               "Type)' inside the braces"));
     return false;
   }
-  return parse_need(p, MS_T_Indent);
+  return true;
 }

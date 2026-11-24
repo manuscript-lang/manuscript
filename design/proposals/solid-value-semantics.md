@@ -37,10 +37,11 @@ Each repro below was run with `ms run` on a release build of `02ea1a1c`, and eac
 ### P1. An escaping closure keeps a view past its source (use-after-free)
 
 ```manuscript
-type View:
+type View {
     items ref List[Int]
+}
 
-export fn main() Int:
+export fn main() Int {
     var xs = [1, 2, 3]
     v := View(items: xs)
     var fs: List[fn() Int] = []
@@ -50,6 +51,7 @@ export fn main() Int:
     // ... allocate other lists ...
     stdout().write(f"n={n} closure={fs[0]()}\n").get()
     return 0
+}
 ```
 
 - Output: `closure=777`, which is freed memory reused by later lists. The closure should read 4, or the program should be rejected.
@@ -58,17 +60,20 @@ export fn main() Int:
 ### P2. Cloning a resource through an alternative closes it twice
 
 ```manuscript
-type Holder:
+type Holder {
     case Has(r: Res)
     case Empty
+}
 
-fn dup[T: Clonable](x: T) T:
+fn dup[T: Clonable](x: T) T {
     return x.clone()
+}
 
-export fn main() Int:
+export fn main() Int {
     a := Holder.Has(Res(1))
     _b := dup(a)
     return 0
+}
 ```
 
 - Output: `close 1` twice.
@@ -78,17 +83,21 @@ export fn main() Int:
 ### P3. A resource temporary with no heap storage is never closed
 
 ```manuscript
-type Res:
+type Res {
     id Int
+}
 
-impl Closeable for Res:
-    var fn close() Unit:
+impl Closeable for Res {
+    var fn close() Unit {
         stdout().write(f"close {self.id}\n").get()
+    }
+}
 
-export fn main() Int:
+export fn main() Int {
     a := make(7).get_id()          // Res: Int field only
     b := make_named("heap").get_id() // Named: String field
     return 0
+}
 ```
 
 - Output: `close heap` only. `Res(7)` is never closed.
@@ -100,13 +109,15 @@ export fn main() Int:
 type Wrap[T]
     value T
 
-fn keep[T](v T) Int:
+fn keep[T](v T) Int {
     _w := Wrap(v)
     return 0
+}
 
-export fn main() Int:
+export fn main() Int {
     _ := keep(Res(2))
     return 0
+}
 ```
 
 - Output: no `close 2`.

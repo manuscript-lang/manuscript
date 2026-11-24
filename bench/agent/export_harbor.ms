@@ -21,28 +21,31 @@ import (
 	read_text, write_text from "./lib/text.ms",
 )
 
-type Options:
+type Options {
 	out String
 	challenges String = ""
 	languages String = ""
 	ms_binary String = ""
 	agent_timeout Int = 900
+}
 
-fn base_image(lang_id String) String:
-	if lang_id == "ts": return "node:22-bookworm"
-	if lang_id == "go": return "golang:1.25-bookworm"
-	if lang_id == "rust": return "rust:1-bookworm"
+fn base_image(lang_id String) String {
+	if lang_id == "ts" { return "node:22-bookworm" }
+	if lang_id == "go" { return "golang:1.25-bookworm" }
+	if lang_id == "rust" { return "rust:1-bookworm" }
 
 	return "ubuntu:24.04"
+}
 
-fn dockerfile(lang_id String) String:
+fn dockerfile(lang_id String) String {
 	install := "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git && rm -rf /var/lib/apt/lists/*"
 	return [
 		f"FROM {base_image(lang_id)}", f"RUN {install}", "COPY ms /usr/local/bin/ms",
 		"WORKDIR /app", "COPY workspace /app", ""
 	].join("\n")
+}
 
-fn task_toml(name String, ch Challenge, agent_timeout Int) String:
+fn task_toml(name String, ch Challenge, agent_timeout Int) String {
 	return read_text(f"{root()}/harbor/task.toml.tmpl").replace("{name}", name).replace(
 		"{title}",
 		ch.title,
@@ -50,15 +53,17 @@ fn task_toml(name String, ch Challenge, agent_timeout Int) String:
 		"{agent_timeout}",
 		f"{agent_timeout}.0",
 	)
+}
 
 fn quote(text String) String => dumps(JsonValue.StringValue(text.clone()), 0)
 
-fn put(from String, to String) Void:
+fn put(from String, to String) Void {
 	create_directory(
 		to.split("/").take(to.split("/").length() - 1).join("/"),
 		recursive: true,
 	).get()
 	copy(from, to, CopyOptions(replace: true)).get()
+}
 
 fn export_one(
 	ch Challenge,
@@ -66,7 +71,7 @@ fn export_one(
 	out String,
 	ms_binary String,
 	agent_timeout Int,
-) Void:
+) Void {
 	name := f"{ch.id}-{lang.id}"
 	d := f"{out}/{name}"
 	remove(d, recursive: true).to_optional()
@@ -77,7 +82,7 @@ fn export_one(
 	write_text(f"{d}/task.toml", task_toml(name, ch, agent_timeout))
 	write_text(f"{d}/environment/Dockerfile", dockerfile(lang.id))
 
-	if ms_binary == "":
+	if ms_binary == "" {
 		(
 			stderr()
 			.write(
@@ -85,12 +90,14 @@ fn export_one(
 			)
 			.get()
 		)
-	else:
+	} else {
 		put(ms_binary, f"{d}/environment/ms")
+	}
 
 	// The verifier and the modules it imports keep their relative layout under /tests.
-	for file in ["grade.ms", "core/model.ms", "core/codetokens.ms", "lib/text.ms"]:
+	for file in ["grade.ms", "core/model.ms", "core/codetokens.ms", "lib/text.ms"] {
 		put(f"{root()}/{file}", f"{d}/tests/{file}")
+	}
 	put(f"{ch.dir}/hidden/cases.json", f"{d}/tests/cases.json")
 	write_text(
 		f"{d}/tests/test.sh",
@@ -99,40 +106,46 @@ fn export_one(
 
 	reference := f"{ch.solution(lang.template)}/{lang.reference()}"
 
-	if stat(reference).is_ok():
+	if stat(reference).is_ok() {
 		put(reference, f"{d}/solution/reference")
 		write_text(
 			f"{d}/solution/solve.sh",
 			f"#!/bin/bash\nmkdir -p \"$(dirname /app/{lang.solution})\"\ncp \"$(dirname \"$0\")/reference\" /app/{lang.solution}\n",
 		)
-	else:
+	} else {
 		// Large challenges are oracle-validated in Go only; the oracle agent has
 		// nothing to apply.
 		write_text(
 			f"{d}/solution/solve.sh",
 			"#!/bin/bash\necho 'no reference solution for this language' >&2\nexit 1\n",
 		)
+	}
 
 	chmod(f"{d}/tests/test.sh", 493).get()
 	chmod(f"{d}/solution/solve.sh", 493).get()
+}
 
-fn split_ids(text String) List[String]:
+fn split_ids(text String) List[String] {
 	return text.split(",").filter(x => not x.is_empty())
+}
 
-fn run_export(o Options) Int!:
+fn run_export(o Options) Int! {
 	create_directory(o.out, recursive: true).get()
 
 	var n = 0
 
-	for ch in load_challenges(split_ids(o.challenges)):
-		for lang in load_languages(split_ids(o.languages)):
+	for ch in load_challenges(split_ids(o.challenges)) {
+		for lang in load_languages(split_ids(o.languages)) {
 			export_one(ch, lang, o.out, o.ms_binary, o.agent_timeout)
 			n += 1
+		}
+	}
 
 	print(f"exported {n} tasks to {o.out}")
 	return ok(0)
+}
 
-fn main() Int:
+fn main() Int {
 	root := command[Options](
 		name: "export_harbor.ms",
 		about: "Export agent-bench challenges as Harbor tasks (one per challenge x language)",
@@ -146,3 +159,4 @@ fn main() Int:
 		run: o => run_export(o),
 	)
 	return root.execute(arguments())
+}

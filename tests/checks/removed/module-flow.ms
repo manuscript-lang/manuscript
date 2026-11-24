@@ -3,5 +3,6 @@
 // fix: import retry from "@std/concurrency/resilience.ms"
 import retry from "@std/concurrency/flow.ms"
 
-fn main() Int:
+fn main() Int {
 	return 0
+}

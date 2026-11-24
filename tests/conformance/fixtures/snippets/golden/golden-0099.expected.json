@@ -12,15 +12,15 @@
         "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0099.ms",
-          "line": 7,
+          "line": 9,
           "column": 1,
-          "offset": 129
+          "offset": 135
         },
         "end": {
           "file": "golden-0099.ms",
-          "line": 7,
+          "line": 9,
           "column": 5,
-          "offset": 133
+          "offset": 139
         }
       },
       {
@@ -29,28 +29,28 @@
         "message": "a type parameter's bound follows its name without ':'; write T Comparable",
         "position": {
           "file": "golden-0099.ms",
-          "line": 10,
+          "line": 14,
           "column": 13,
-          "offset": 229
+          "offset": 245
         },
         "end": {
           "file": "golden-0099.ms",
-          "line": 10,
+          "line": 14,
           "column": 14,
-          "offset": 230
+          "offset": 246
         },
         "fix": {
           "position": {
             "file": "golden-0099.ms",
-            "line": 10,
+            "line": 14,
             "column": 13,
-            "offset": 229
+            "offset": 245
           },
           "end": {
             "file": "golden-0099.ms",
-            "line": 10,
+            "line": 14,
             "column": 14,
-            "offset": 230
+            "offset": 246
           },
           "replacement": ""
         }
@@ -59,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0099.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Same[T] for Box[T]:\n   | ^^^^\n<DIR>/golden-0099.ms:10:13: parse: a type parameter's bound follows its name without ':'; write T Comparable\n    |\n 10 | fn compare[T: Equal](value: Box[T], other: T) Bool:\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0099.ms:9:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 9 | impl Same[T] for Box[T] {\n   | ^^^^\n<DIR>/golden-0099.ms:14:13: parse: a type parameter's bound follows its name without ':'; write T Comparable\n    |\n 14 | fn compare[T: Equal](value: Box[T], other: T) Bool {\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

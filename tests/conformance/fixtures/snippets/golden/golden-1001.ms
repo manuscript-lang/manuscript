@@ -1,6 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type Box:
+type Box {
     value Int
-impl Box:
+}
+impl Box {
     fn get() Int => self.value
+}

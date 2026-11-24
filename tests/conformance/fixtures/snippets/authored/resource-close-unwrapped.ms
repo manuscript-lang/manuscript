@@ -3,38 +3,48 @@
 // conform: origin=a resource unwrapped or passed through a call closes at scope end
 import Closeable from "@std/core.ms"
 
-type Res:
+type Res {
 	name String
+}
 
-fn move Res.close() Void!:
+fn move Res.close() Void! {
 	print(f"close {self.name}")
+}
 
-fn make(move name String) Res!Error:
+fn make(move name String) Res!Error {
 	return ok(Res(name))
+}
 
-fn keep(move r Res) Res:
+fn keep(move r Res) Res {
 	return r
+}
 
-fn via_try() Void!Error:
+fn via_try() Void!Error {
 	r := make("try")?
 	print(f"body {r.name}")
+}
 
-fn via_get() Void:
+fn via_get() Void {
 	r := make("get").get()
 	print(f"body {r.name}")
+}
 
-fn via_optional() Void:
+fn via_optional() Void {
 	o Res? := Res("optional")
 	r := o
-	if r != null:
+	if r != null {
 		print(f"body {r.name}")
+	}
+}
 
-fn via_passthrough() Void:
+fn via_passthrough() Void {
 	r := keep(Res("keep"))
 	print(f"body {r.name}")
+}
 
-fn main() Void:
+fn main() Void {
 	void via_try()
 	via_get()
 	via_optional()
 	via_passthrough()
+}

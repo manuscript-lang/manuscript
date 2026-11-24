@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Starter:\n\tfn start(operation fn() Void) Void\n\ntype Sequential: ...\n\nfn Sequential.start(operation fn() Void) Void:\n\toperation()\n\nfn run() Void:\n\tvar values = [0]\n\tSequential().start(\n\t\tfn:\n\t\t\tvalues.append(1)\n\t)\n"
+    "fmt": "interface Starter {\n\tfn start(operation fn() Void) Void\n}\n\ntype Sequential { ... }\n\nfn Sequential.start(operation fn() Void) Void {\n\toperation()\n}\n\nfn run() Void {\n\tvar values = [0]\n\tSequential().start(\n\t\t() => {\n\t\t\tvalues.append(1)\n\t\t}\n\t)\n}\n"
   }
 }

@@ -8,18 +8,20 @@ import (
 
 fn pair(a Int, b Int) Int => a * 10 + b
 
-test "arguments":
+test "arguments" {
 	var value = 1
 	option Int? := 2
 	result := pair(
 		a: value,
-		b: match option:
-			i:
+		b: match option {
+			i => {
 				value = 9
 				i
-			null => 0
+			} null => 0
+		}
 	)
 	expect_equal(result, 12)?
+}
 
 fn optional(value Int?) Int => value or panic("called Optional.get() on null")
 
@@ -27,7 +29,7 @@ fn defaulted(value Int = 3) Int => value
 
 fn identity[T](value T) T => value
 
-test "source call dispatch contracts":
+test "source call dispatch contracts" {
 	expect_equal(optional(4), 4)?
 	expect_equal(defaulted(5), 5)?
 	expect_equal(defaulted(), 3)?
@@ -36,3 +38,4 @@ test "source call dispatch contracts":
 	callback := pair
 	expect_equal(callback(3, 4), 34)?
 	expect_equal(identity(6), 6)?
+}

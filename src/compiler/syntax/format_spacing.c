@@ -349,11 +349,10 @@ bool fmt_align_suite_headers(Fmt *f, const MsSpan *lines, size_t nlines, const M
     } else if (kind == MS_T_RParen || kind == MS_T_RBracket || kind == MS_T_RBrace) {
       depth--;
     }
-    if (kind != MS_T_Indent || depth != 0 || i < 3 || i + 1 >= ntokens || tokens[i + 1].kind == MS_T_Dedent ||
-        tokens[i - 1].kind != MS_T_Newline || tokens[i - 2].kind != MS_T_Colon) {
+    if (kind != MS_T_BlockOpen || depth != 0 || i < 2 || i + 1 >= ntokens) {
       continue;
     }
-    size_t start = i - 2;
+    size_t start = i;
     // A parameter default can contain its own suite. Its layout tokens belong to the enclosing
     // group, not the start of this header.
     int groups = 0;
@@ -363,12 +362,12 @@ bool fmt_align_suite_headers(Fmt *f, const MsSpan *lines, size_t nlines, const M
         groups++;
       } else if (fmt_is_open(before)) {
         groups--;
-      } else if ((before == MS_T_Newline || before == MS_T_Indent || before == MS_T_Dedent) && groups == 0) {
+      } else if ((before == MS_T_Newline || before == MS_T_BlockOpen || before == MS_T_BlockClose) && groups == 0) {
         break;
       }
       start--;
     }
-    const uint32_t header = tokens[i - 2].pos.line;
+    const uint32_t header = tokens[i].pos.line;
     const uint32_t first = tokens[start].pos.line;
     if (header == first || header > nlines ||
         fmt_indent_of(lines[header - 1]) == fmt_indent_of(lines[first - 1])) {
@@ -377,12 +376,12 @@ bool fmt_align_suite_headers(Fmt *f, const MsSpan *lines, size_t nlines, const M
     size_t end = nlines;
     int nesting = 0;
     for (size_t later = i; later < ntokens; later++) {
-      if (tokens[later].kind == MS_T_Indent) {
+      if (tokens[later].kind == MS_T_BlockOpen) {
         nesting++;
-      } else if (tokens[later].kind == MS_T_Dedent) {
+      } else if (tokens[later].kind == MS_T_BlockClose) {
         nesting--;
         if (nesting == 0) {
-          const size_t line = tokens[later].pos.line - 1;
+          const size_t line = tokens[later].pos.line;
           end = end < line ? end : line;
           break;
         }

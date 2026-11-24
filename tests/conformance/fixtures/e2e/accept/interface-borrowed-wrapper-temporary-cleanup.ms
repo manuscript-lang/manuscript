@@ -6,17 +6,19 @@ import (
 	expect_equal, expect_fault, expect_some from "@std/test/test.ms",
 )
 
-type Resource:
+type Resource {
 	id Int
 	path String
+}
 
-fn move Resource.close() Void!:
+fn move Resource.close() Void! {
 	append_file(self.path, f"{self.id},").wait()?
-	if self.id == 98: return error(Error("failed close"))
+	if self.id == 98 { return error(Error("failed close")) }
 
 	self.path = "closed"
+}
 
-interface Observer:
+interface Observer {
 	fn observe(first Resource?, second Resource?, tail Int? = null) Bool
 	fn reject(value Resource?) Void!
 	fn broken(value Resource?) Void
@@ -24,36 +26,45 @@ interface Observer:
 	fn change(var value Resource) Void
 	fn fault_with_var(var value Resource) Void
 	fn result(value Result[Resource, String]) Bool
+}
 
-type Reader:
+type Reader {
 	tag Int
+}
 
-fn Reader.observe(first Resource?, second Resource?, tail Int? = null) Bool:
+fn Reader.observe(first Resource?, second Resource?, tail Int? = null) Bool {
 	return (first != null) or (second != null) or (tail or 0) > 0
+}
 
-fn Reader.reject(value Resource?) Void!:
-	if value != null: return error(Error("expected"))
+fn Reader.reject(value Resource?) Void! {
+	if value != null { return error(Error("expected")) }
+}
 
-fn Reader.broken(value Resource?) Void:
-	if value != null: _bad := [1].get(3)
+fn Reader.broken(value Resource?) Void {
+	if value != null { _bad := [1].get(3) }
+}
 
-fn Reader.create(path String, value Resource?) Resource:
-	if value != null: return Resource(50, path.clone())
+fn Reader.create(path String, value Resource?) Resource {
+	if value != null { return Resource(50, path.clone()) }
 	return Resource(51, path.clone())
+}
 
-fn Reader.change(var value Resource) Void:
+fn Reader.change(var value Resource) Void {
 	value.id += 1
+}
 
-fn Reader.fault_with_var(var value Resource) Void:
+fn Reader.fault_with_var(var value Resource) Void {
 	_bad := [value.id].get(3)
+}
 
 fn Reader.result(value Result[Resource, String]) Bool => value.is_ok()
 
 fn present(path String, id Int) Resource? => Resource(id, path.clone())
 
-fn log_text(path String) String!:
+fn log_text(path String) String! {
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
+}
 
 fn rejected() Int! => error(Error("expected"))
 
@@ -61,25 +72,30 @@ fn accepted() Int! => ok(1)
 
 fn faulted() Int => [1].get(3)
 
-fn later_error(reader Observer, path String) Void!:
+fn later_error(reader Observer, path String) Void! {
 	_used := reader.observe(present(path, 10), present(path, 11), rejected()?)
+}
 
-fn later_success(reader Observer, path String) Void!:
+fn later_success(reader Observer, path String) Void! {
 	_used := reader.observe(present(path, 12), present(path, 13), accepted()?)
+}
 
-fn later_fault(reader Observer, path String) Void:
+fn later_fault(reader Observer, path String) Void {
 	_used := reader.observe(present(path, 14), present(path, 15), faulted())
+}
 
-fn new_owner_fault(reader Observer, path String) Void:
+fn new_owner_fault(reader Observer, path String) Void {
 	owner := reader.create(path, present(path, 49))
 	_used := owner.id + faulted()
+}
 
-fn failed_close(reader Observer, path String) Void:
+fn failed_close(reader Observer, path String) Void {
 	owner := Resource(99, path.clone())
 	_used := reader.observe(present(path, 98), null)
 	_id := owner.id
+}
 
-test "interface borrows intact temporary wrappers in written order":
+test "interface borrows intact temporary wrappers in written order" {
 	directory := temporary("iface-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
@@ -97,8 +113,9 @@ test "interface borrows intact temporary wrappers in written order":
 	expect_equal(reader.observe(named, null), true)?
 	expect_equal(reader.observe(named, null), true)?
 	expect_equal(log_text(path)?, "2,1,4,3,")?
+}
 
-test "interface arguments retain cleanup through later try and faults":
+test "interface arguments retain cleanup through later try and faults" {
 	directory := temporary("iface-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
@@ -109,8 +126,9 @@ test "interface arguments retain cleanup through later try and faults":
 
 	_fault := expect_fault(() => later_fault(reader, path))?
 	expect_equal(log_text(path)?, "11,10,13,12,15,14,")?
+}
 
-test "interface callee errors faults and new owners preserve cleanup":
+test "interface callee errors faults and new owners preserve cleanup" {
 	directory := temporary("iface-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
@@ -121,8 +139,9 @@ test "interface callee errors faults and new owners preserve cleanup":
 	_fault := expect_fault(() => reader.broken(present(path, 21)))?
 	_new := expect_fault(() => new_owner_fault(reader, path))?
 	expect_equal(log_text(path)?, "20,21,49,50,")?
+}
 
-test "interface resource var arguments preserve their owners":
+test "interface resource var arguments preserve their owners" {
 	directory := temporary("iface-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
@@ -132,8 +151,9 @@ test "interface resource var arguments preserve their owners":
 	reader.change(named)
 	expect_equal(named.id, 31)?
 	expect_equal(log_text(path)?, "")?
+}
 
-test "interface failed temporary close leaves older owner registered":
+test "interface failed temporary close leaves older owner registered" {
 	directory := temporary("iface-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
@@ -141,15 +161,18 @@ test "interface failed temporary close leaves older owner registered":
 	reader Observer := Reader(1)
 	_fault := expect_fault(() => failed_close(reader, path))?
 	expect_equal(log_text(path)?, "98,99,")?
+}
 
-fn named_var_fault(reader Observer, path String) Void:
+fn named_var_fault(reader Observer, path String) Void {
 	var value = Resource(60, path.clone())
 	reader.fault_with_var(value)
+}
 
-fn wrapped_result(path String) Result[Resource, String]:
+fn wrapped_result(path String) Result[Resource, String] {
 	return ok(Resource(70, path.clone()))
+}
 
-test "interface var fault retains the caller cleanup":
+test "interface var fault retains the caller cleanup" {
 	directory := temporary("iface-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
@@ -157,8 +180,9 @@ test "interface var fault retains the caller cleanup":
 	reader Observer := Reader(1)
 	_fault := expect_fault(() => named_var_fault(reader, path))?
 	expect_equal(log_text(path)?, "60,")?
+}
 
-test "interface Result temporaries and loop conditions keep cleanup bounded":
+test "interface Result temporaries and loop conditions keep cleanup bounded" {
 	directory := temporary("iface-wrapper-")?
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
@@ -169,9 +193,11 @@ test "interface Result temporaries and loop conditions keep cleanup bounded":
 
 	var count = 0
 
-	while count < 3 and reader.observe(present(path, 80), null):
+	while count < 3 and reader.observe(present(path, 80), null) {
 		count += 1
-		if count == 1: continue
-		if count == 3: break
+		if count == 1 { continue }
+		if count == 3 { break }
+	}
 
 	expect_equal(log_text(path)?, "70,80,80,80,")?
+}

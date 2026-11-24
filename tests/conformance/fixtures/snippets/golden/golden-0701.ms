@@ -1,8 +1,11 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Counter:
+interface Counter {
     fn bump(by Int) Int
-type Cell:
+}
+type Cell {
     total Int
-impl Counter for Cell:
+}
+impl Counter for Cell {
+}
     

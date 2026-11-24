@@ -2,11 +2,12 @@
 // (bench/perf/programs).
 import fixed, invalid, median from "./lib.ms"
 
-export type Op:
+export type Op {
 	name String
 	count Int
+}
 
-export fn ops() List[Op]:
+export fn ops() List[Op] {
 	return [
 		Op("string_append_50k", 50000),
 		Op("read_line", 200000),
@@ -19,6 +20,7 @@ export fn ops() List[Op]:
 		Op("builtin_length", 100000000),
 		Op("for_list", 100000000),
 	]
+}
 
 export SINK := [
 	50000, 63992000, 3333334, 4999999950000000, 100000000, 5000000050000000, 633333333,
@@ -26,61 +28,73 @@ export SINK := [
 ]
 VERSIONS := ["ms", "go", "rust", "rust-checked"]
 
-fn title(version String) String:
-	if version == "ms": return "Manuscript"
-	if version == "go": return "Go"
-	if version == "rust": return "Rust"
+fn title(version String) String {
+	if version == "ms" { return "Manuscript" }
+	if version == "go" { return "Go" }
+	if version == "rust" { return "Rust" }
 
 	return "Rust, overflow checks"
+}
 
-fn ops_of(name String) Int?:
-	for op in ops():
-		if op.name == name: return op.count
+fn ops_of(name String) Int? {
+	for op in ops() {
+		if op.name == name { return op.count }
+	}
 	return null
+}
 
 // One sample line: `<version> <operation> <count> <ns>` or
 // `<version> # sink <checksums>`.
-export fn summarize(lines List[String], repeats Int) String!:
-	if repeats < 1: return invalid("repeats must be positive")
+export fn summarize(lines List[String], repeats Int) String! {
+	if repeats < 1 { return invalid("repeats must be positive") }
 
 	var samples = Map[String, List[Float]]()
 	var pending = Map[String, Set[String]]()
 	var sinks = Map[String, Int]()
 
-	for line in lines:
+	for line in lines {
 		parts := line.trim().split(" ").filter(p => p != "")
-		if parts.length() < 2 or not VERSIONS.contains(parts[0]):
+		if parts.length() < 2 or not VERSIONS.contains(parts[0]) {
 			return invalid(f"invalid sample: {line.trim()}")
+		}
 
 		version := parts[0].clone()
 		name := parts[1].clone()
-		if not pending.contains(version): pending.add(version.clone(), Set[String]())
+		if not pending.contains(version) {
+			pending.add(version.clone(), Set[String]())
+		}
 
-		if name == "#":
+		if name == "#" {
 			var sink = List[Int]()
-			for p in parts.slice(3, parts.length()).get_or([]):
+			for p in parts.slice(3, parts.length()).get_or([]) {
 				sink.append(p.parse_int() or (-1))
-			if parts.length() < 3 or parts[2] != "sink" or sink != SINK:
+			}
+			if parts.length() < 3 or parts[2] != "sink" or sink != SINK {
 				return invalid(f"incorrect {version} checksum")
-			if pending.get_or(version, Set[String]()).length() != ops().length():
+			}
+			if pending.get_or(version, Set[String]()).length() != ops().length() {
 				return invalid(f"incomplete {version} sample")
+			}
 
 			pending.add(version.clone(), Set[String]())
 			sinks.add(version.clone(), sinks.get_or(version, 0) + 1)
 			continue
+		}
 
 		want := ops_of(name)
 		if (
 			parts.length() != 4
 			or (want == null)
 			or pending.get_or(version, Set[String]()).contains(name)
-		):
+		) {
 			return invalid(f"invalid operation: {line.trim()}")
+		}
 
 		count := parts[2].parse_int() or (-1)
 		elapsed := parts[3].parse_int() or (-1)
-		if count != (want) or elapsed <= 0:
+		if count != (want) or elapsed <= 0 {
 			return invalid(f"incorrect work count or timing: {line.trim()}")
+		}
 
 		key := f"{version} {name}"
 		var list = samples.get_or(key, List[Float]())
@@ -90,42 +104,51 @@ export fn summarize(lines List[String], repeats Int) String!:
 		var seen_ops = pending.get_or(version, Set[String]())
 		seen_ops.add(name.clone())
 		pending.add(version.clone(), seen_ops)
+	}
 
 	var seen = List[String]()
-	for v in VERSIONS:
-		if sinks.get_or(v, 0) > 0 or not pending.get_or(v, Set[String]()).is_empty(): seen.append(
-			v.clone()
-		)
-	if not seen.contains("ms") or not seen.contains("go"):
+	for v in VERSIONS {
+		if sinks.get_or(v, 0) > 0 or not pending.get_or(v, Set[String]()).is_empty() {
+			seen.append(v.clone())
+		}
+	}
+	if not seen.contains("ms") or not seen.contains("go") {
 		return invalid("expected ms and go samples")
+	}
 
-	for v in seen:
+	for v in seen {
 		if (
 			not pending.get_or(v, Set[String]()).is_empty()
 			or sinks.get_or(v, 0) != repeats
-		):
+		) {
 			return invalid(f"expected {repeats} complete {v} samples")
+		}
+	}
 
 	others := seen.filter(v => v != "ms" and v != "go")
 	order := ["ms", "go"].concat(others)
 	var heads = order.map(v => title(v))
 	heads.append("ms / Go")
-	for v in others:
+	for v in others {
 		heads.append(f"ms / {title(v)}")
+	}
 
 	var rows = List[String]()
 
-	for op in ops():
+	for op in ops() {
 		var med = Map[String, Float]()
-		for v in seen:
+		for v in seen {
 			med.add(v.clone(), median(samples.get_or(f"{v} {op.name}", [])))
+		}
 
 		var cells = order.map(v => fixed(med.get_or(v, 0.0), 2))
 		ms := med.get_or("ms", 0.0)
 		cells.append(fixed(ms / med.get_or("go", 1.0), 2) + "x")
-		for v in others:
+		for v in others {
 			cells.append(fixed(ms / med.get_or(v, 1.0), 2) + "x")
+		}
 		rows.append(f"| {op.name} | {op.count} | " + cells.join(" | ") + " |")
+	}
 
 	rule := heads.map(_h => "---:|").join("")
 	return ok(f"""
@@ -135,3 +158,4 @@ export fn summarize(lines List[String], repeats Int) String!:
         |---|---:|{rule}
         {rows.join("\n")}
         """)
+}

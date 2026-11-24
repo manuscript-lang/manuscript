@@ -1,2 +1,3 @@
-fn   main( )  Void:
-    print( "hi" )
+fn main() Void {
+	print("hi")
+}

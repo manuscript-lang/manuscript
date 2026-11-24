@@ -11,8 +11,9 @@ Save this entrypoint as `main.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"ready\n"} -->
 ```manuscript
-fn main() Void:
+fn main() Void {
     print("ready")
+}
 ```
 
 Choose a level when building or running it:

@@ -3,46 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "expected ':', found '{'; blocks are not braced: end the header with ':', indent the body four spaces on the following lines, and remove the closing '}'",
-        "position": {
-          "file": "diag-braced-block.ms",
-          "line": 3,
-          "column": 22,
-          "offset": 84
-        },
-        "end": {
-          "file": "diag-braced-block.ms",
-          "line": 3,
-          "column": 23,
-          "offset": 85
-        },
-        "fix": {
-          "position": {
-            "file": "diag-braced-block.ms",
-            "line": 3,
-            "column": 21,
-            "offset": 83
-          },
-          "end": {
-            "file": "diag-braced-block.ms",
-            "line": 3,
-            "column": 23,
-            "offset": 85
-          },
-          "replacement": ":"
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/diag-braced-block.ms:3:22: parse: expected ':', found '{'; blocks are not braced: end the header with ':', indent the body four spaces on the following lines, and remove the closing '}'\n   |\n 3 | export fn main() Int {\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked diag-braced-block.ms\n",
+      "stderr": ""
     }
   }
 }

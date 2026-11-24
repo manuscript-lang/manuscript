@@ -23,24 +23,28 @@ import (
 	expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
 )
 
-fn expect_fs_error[T](outcome T!, expected Error) Void!:
-	match outcome:
+fn expect_fs_error[T](outcome T!, expected Error) Void! {
+	match outcome {
 		ok(_) => return error(Error("filesystem misuse succeeded"))
-		error(cause):
+		error(cause) => {
 			// A failure names the path after the status words: "filesystem: <failure>:
 			// <path>".
 			named := cause.message.starts_with(f"{expected.message}: ")
 			if (
 				cause.kind != expected.kind
 				or (cause.message != expected.message and not named)
-			): return error(Error(f"wrong filesystem error: {cause}"))
+			) { return error(Error(f"wrong filesystem error: {cause}")) }
+		}
+	}
+}
 
-test "glob queries reuse patterns without changing hidden paths limits or callbacks":
+test "glob queries reuse patterns without changing hidden paths limits or callbacks" {
 	temporary := temporary("manuscript-glob-") | expect_ok?
 	root := temporary.path()
 	create_directory(path: f"{root}/sub", recursive: false) | expect_ok?
-	for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
+	for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"] {
 		write_file(path: f"{root}/{name}", data: "", replace: false).wait() | expect_ok?
+	}
 
 	all := GlobOptions(patterns: ["**/*.{txt,md}"])
 	matches := glob(path: root, options: all.clone()) | expect_ok?
@@ -67,15 +71,18 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 			glob(
 				path: root,
 				options: options.clone(),
-				exclude: fn(entry PathEntry) Bool => entry.path == "missing.txt"
+				exclude: fn(
+					entry PathEntry
+				) Bool => entry.path == "missing.txt"
 			)
 		)?
 	)
 	entries.length() | expect_equal(1)?
 	entries.get(0).path | expect_equal("a.txt")?
 	options.patterns | expect_equal(["*.txt"])?
+}
 
-test "ordinary filesystem misuse retains typed cases":
+test "ordinary filesystem misuse retains typed cases" {
 	temporary := temporary("manuscript-errors-") | expect_ok?
 	directory := f"{temporary.path()}/directory"
 	file := f"{temporary.path()}/file"
@@ -120,8 +127,9 @@ test "ordinary filesystem misuse retains typed cases":
 		writer.read_file()
 		| expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))?
 	)
+}
 
-test "filesystem scoped temporary directories and bounded file reads":
+test "filesystem scoped temporary directories and bounded file reads" {
 	var directory = ""
 	var temporary = temporary("manuscript-stdlib-") | expect_ok?
 	directory = temporary.path()
@@ -163,8 +171,9 @@ test "filesystem scoped temporary directories and bounded file reads":
 			Error("filesystem: file or directory not found", kind: "ENOENT")
 		)?
 	)
+}
 
-test "file handles positional I/O stream adapters and closed errors":
+test "file handles positional I/O stream adapters and closed errors" {
 	temporary := temporary("manuscript-handles-") | expect_ok?
 	path := f"{temporary.path()}/data.txt"
 	_written := (
@@ -192,29 +201,36 @@ test "file handles positional I/O stream adapters and closed errors":
 	contents := read_all(input: handle.reader()?, max_bytes: null) | expect_ok?
 	contents | expect_equal("aXYd".to_bytes())?
 	handle.close()?
+}
 
-test "empty paths are rejected instead of resolving to the working directory":
+test "empty paths are rejected instead of resolving to the working directory" {
 	invalid Void! := error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
 	remove(path: "", recursive: true) | expect_equal(invalid)?
 	create_directory(path: "", recursive: true) | expect_equal(invalid)?
 	write_file(path: "", data: "x", replace: true).wait() | expect_equal(invalid)?
 
-	match stat(path: ""):
+	match stat(path: "") {
 		ok(_) => return fail("stat empty path")
-		error(cause):
+		error(cause) => {
 			expect_equal(cause, Error("filesystem: invalid input", kind: "EINVAL"))?
+		}
+	}
+}
 
-test "rename and copy failures name source and destination":
+test "rename and copy failures name source and destination" {
 	temporary := temporary("manuscript-pair-") | expect_ok?
 	root := temporary.path()
 	from := f"{root}/missing"
 	to := f"{root}/target"
 	expected := f"filesystem: file or directory not found: {from} -> {to}"
 
-	match rename(from, to):
+	match rename(from, to) {
 		ok(_) => return fail("rename of a missing file succeeded")
 		error(cause) => cause.message | expect_equal(expected)?
+	}
 
-	match copy(from, to):
+	match copy(from, to) {
 		ok(_) => return fail("copy of a missing file succeeded")
 		error(cause) => cause.message | expect_equal(expected)?
+	}
+}

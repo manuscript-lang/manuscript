@@ -14,10 +14,11 @@ import (
 	nanoseconds, sleep from "@std/time.ms",
 )
 
-fn square(n Int) Int:
+fn square(n Int) Int {
 	return n * n
+}
 
-fn main() Void:
+fn main() Void {
 	squared := promise(() => ok(square(12))).wait().get_or(-1)
 	file := stat("/etc/hosts", follow_links: true).is_ok()
 	child := run("true", []).wait().is_ok()
@@ -30,3 +31,4 @@ fn main() Void:
 
 	math := pow(2.0, 10.0) + exp(0.0) + log(1.0) + hypot(3.0, 4.0)
 	stdout().write(f"{squared} {file} {child} {entropy} {hosts} {env} {math}\n").get()
+}

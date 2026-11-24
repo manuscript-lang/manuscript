@@ -5,7 +5,7 @@ weight = 3
 
 # Test your code
 
-A `test "name":` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test/test.ms` return `Result`s; `?` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
+A `test "name" { ... }` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test/test.ms` return `Result`s; `?` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
 
 Save this complete file as `test.ms`:
 
@@ -13,14 +13,17 @@ Save this complete file as `test.ms`:
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn add(a Int, b Int) Int:
+fn add(a Int, b Int) Int {
     return a + b
+}
 
-test "addition":
+test "addition" {
     expect_equal(add(1, 2), 3)?
+}
 
-test "zero is unchanged":
+test "zero is unchanged" {
     expect_equal(add(0, 7), 7)?
+}
 ```
 
 ```sh
@@ -72,15 +75,19 @@ For each standalone test example below, replace the contents of `test.ms` and ru
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import parse from "@std/data/json.ms"
-import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
+import (
+    parse from "@std/data/json.ms",
+    expect_equal, expect_error, expect_ok, expect_some from "@std/test/test.ms",
+)
 
-test "typed JSON and Optional payloads":
+test "typed JSON and Optional payloads" {
     number := expect_ok(parse[Int]("3"))?
     expect_equal(number, 3)?
+
     cause := expect_error(parse[Int]("true"))?
     expect_equal(cause.kind, "EBADMSG")?
     expect_some([number].first())? | expect_equal(3)?
+}
 ```
 
 Test output:
@@ -129,11 +136,18 @@ A property test checks a rule on many generated inputs instead of a few hand-pic
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import check, ints, lists from "@std/test/property.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    check, ints, lists from "@std/test/property.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
-test "reversing twice restores a list":
-    check("reverse twice", lists(ints(-100, 100)), xs => expect_equal(xs.reversed().reversed(), xs))?
+test "reversing twice restores a list" {
+    check(
+        "reverse twice",
+        lists(ints(-100, 100)),
+        xs => expect_equal(xs.reversed().reversed(), xs),
+    )?
+}
 ```
 
 Test output:
@@ -183,20 +197,23 @@ All assertions return `Result`, so use `?`:
 
 ## Benchmark your code
 
-A `bench "name":` block works like a `test` block, but `ms bench` times it instead of checking it. The body is one iteration; `ms bench` repeats it until a sample takes about 100ms (that calibration is also the warmup), takes ten samples, and reports the time per iteration. `ms test` skips bench blocks. Save this complete file as `bench.ms`:
+A `bench "name" { ... }` block works like a `test` block, but `ms bench` times it instead of checking it. The body is one iteration; `ms bench` repeats it until a sample takes about 100ms (that calibration is also the warmup), takes ten samples, and reports the time per iteration. `ms test` skips bench blocks. Save this complete file as `bench.ms`:
 
 <!-- manuscript-example: {"mode":"bench"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn sum_to(n Int) Int:
+fn sum_to(n Int) Int {
     var total = 0
-    for i in 0..n:
+    for i in 0..n {
         total += i
+    }
     return total
+}
 
-bench "sum to one hundred":
+bench "sum to one hundred" {
     expect_equal(sum_to(100), 4950)?
+}
 ```
 
 ```sh
@@ -207,7 +224,7 @@ ms bench ms.toml --filter "sum" --json
 
 - A project loads `bench.ms` and `*_bench.ms` files; a bench may also sit in any module the command loads. Benches take the same selection options as tests (`--filter`, `--match`, `--exclude`, `--bench`, `--list`, `--repeat`, `--fail-fast`, `--timeout`).
 - `--time` sets the target length of one sample, `--samples` the number of timed samples, and `--iterations` fixes the iteration count and skips calibration.
-- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation.
+- `bench "name" per 1000 { ... }` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation.
 - The whole body is timed, and the harness keeps the body's last statement: end it with a bare value (or a call, with `?` for a fallible one) and the work cannot be removed. The compiler can still fold a body whose inputs are constants, so read inputs from the fixture.
 - To keep setup out of the timing, use a fixture as in tests: `fn make_fixture() T` and the hooks `before_all`, `before_each`, `after_each` and `after_all`, read in the body as `fixture`. They run once per bench process, outside the timed region. Because each bench runs in its own process, `make_fixture` of a file runs once for every bench in it, so build only what the file's benches share.
 - Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
@@ -237,21 +254,26 @@ Without `make_fixture`, no hooks run. Define `fn make_fixture() T` for a record 
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-type Counter:
+type Counter {
     count Int
+}
 
-fn make_fixture() Counter:
+fn make_fixture() Counter {
     return Counter(0)
+}
 
-fn var Counter.before_each() Void!:
+fn var Counter.before_each() Void! {
     self.count = 0
+}
 
-test "increments":
+test "increments" {
     fixture.count += 1
     expect_equal(fixture.count, 1)?
+}
 
-test "starts fresh":
+test "starts fresh" {
     expect_equal(fixture.count, 0)?
+}
 ```
 
 Test output:
@@ -278,31 +300,41 @@ To skip a single test, call `skip` in its body:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import skip from "@std/test/test.ms"
-import os, Os from "@std/os/system.ms"
+import (
+    Os, os from "@std/os/system.ms",
+    skip from "@std/test/test.ms",
+)
 
-test "unix permission bits":
-    if os() == Os.Windows:
+test "unix permission bits" {
+    if os() == Os.Windows {
         skip("Unix only")?
+    }
     // Unix-only assertions follow.
+}
 ```
 
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import skip from "@std/test/test.ms"
-import os, Os from "@std/os/system.ms"
+import (
+    Os, os from "@std/os/system.ms",
+    skip from "@std/test/test.ms",
+)
 
-type WindowsOnly:
+type WindowsOnly {
     ok Bool
+}
 
-fn make_fixture() WindowsOnly:
+fn make_fixture() WindowsOnly {
     return WindowsOnly(os() == Os.Windows)
+}
 
-fn var WindowsOnly.before_all() Void!:
-    if not self.ok:
+fn var WindowsOnly.before_all() Void! {
+    if not self.ok {
         skip("Windows only")?
+    }
+}
 ```
 
 Skipped tests are counted in the `ms test` summary, so a platform that runs nothing stays visible.

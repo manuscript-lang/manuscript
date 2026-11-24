@@ -29,14 +29,15 @@ import (
 	http_result, list_headers, text_headers from "./support/http.ms",
 )
 
-fn hello(var exchange HttpExchange) Void!:
+fn hello(var exchange HttpExchange) Void! {
 	_started := exchange.send_headers(
 		status: 200,
 		headers: (list_headers(Map[String, List[String]]())?),
 	)?
 	_written := (http_result(exchange.write("secure"))?)
+}
 
-test "TLS certificate parsing verification hostname and expiration":
+test "TLS certificate parsing verification hostname and expiration" {
 	certificates := (
 		parse_certificates(pem: certificate(), max_certificates: 1) | expect_ok?
 	)
@@ -79,19 +80,19 @@ test "TLS certificate parsing verification hostname and expiration":
 			) != failed
 		)
 	)?
+}
 
-test "TLS rejects malformed PEM and certificate budgets":
-	invalid List[CertificateInfo]! := error(
-		Error("TLS: invalid data", kind: "EBADMSG")
-	)
+test "TLS rejects malformed PEM and certificate budgets" {
+	invalid List[CertificateInfo]! := error(Error("TLS: invalid data", kind: "EBADMSG"))
 	parse_certificates(pem: "not PEM") | expect_equal(invalid)?
 
 	limited List[CertificateInfo]! := error(
 		Error("TLS: limit exceeded", kind: "EOVERFLOW")
 	)
 	parse_certificates(pem: certificate(), max_certificates: 0) | expect_equal(limited)?
+}
 
-test "HTTPS trusts only the explicitly supplied local test root":
+test "HTTPS trusts only the explicitly supplied local test root" {
 	server_tls := TlsOptions(
 		server_name: "",
 		roots_pem: "",
@@ -147,15 +148,17 @@ test "HTTPS trusts only the explicitly supplied local test root":
 			) != "secure".to_bytes()
 		)
 	)?
+}
 
-fn report_protocol(var exchange HttpExchange) Void!:
+fn report_protocol(var exchange HttpExchange) Void! {
 	_started := exchange.send_headers(
 		status: 200,
 		headers: (list_headers(Map[String, List[String]]())?),
 	)?
 	_written := (http_result(exchange.write(exchange.protocol()))?)
+}
 
-test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
+test "HTTP/2 negotiates through ALPN and reports the protocol on both sides" {
 	server_options := HttpServerOptions(
 		timeout: 3.seconds(),
 		grace: 0.seconds(),
@@ -204,23 +207,28 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 	)
 	expect_equal(response.metadata.protocol, "HTTP/2.0")?
 	expect_equal(read_to_end(response.body)?, "HTTP/2.0".to_bytes())?
+}
 
-fn answer_ping(move connection Connection) Int:
+fn answer_ping(move connection Connection) Int {
 	ping := recv(connection, 3.seconds())
 	pong := send(connection, "pong")
 	void connection.close()
-	if ping.is_error() or pong.is_error(): return 0
+	if ping.is_error() or pong.is_error() { return 0 }
 
 	return 1
+}
 
-fn serve_one_tls(listener Listener) Int:
-	match listener.accept(3.seconds()).wait():
-		ok(accepted):
+fn serve_one_tls(listener Listener) Int {
+	match listener.accept(3.seconds()).wait() {
+		ok(accepted) => {
 			var connection = accepted
 			return answer_ping(connection)
+		}
 		error(_) => return 0
+	}
+}
 
-test "raw TLS listeners and clients handshake and report negotiated details":
+test "raw TLS listeners and clients handshake and report negotiated details" {
 	server_tls := TlsOptions(
 		server_name: "",
 		roots_pem: "",
@@ -260,8 +268,9 @@ test "raw TLS listeners and clients handshake and report negotiated details":
 	expect_equal(more[1].length(), more[0].length())?
 	client.close()?
 	expect_equal((wait_all([served])?)[0], 1)?
+}
 
-test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
+test "connect_tls trusts only the system roots and tls_info rejects plain TCP" {
 	server_tls := TlsOptions(
 		server_name: "",
 		roots_pem: "",
@@ -284,28 +293,31 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
 	plain := listen("127.0.0.1:0")?
 	var client = connect(plain.address(), timeout: 2.seconds()).wait()?
 	expect_false(client.info.tls_info().is_ok())?
+}
 
-fn count_until_eof(listener Listener) Int:
+fn count_until_eof(listener Listener) Int {
 	var accepted = listener.accept(5.seconds()).wait()
-	if accepted.is_error(): return -1
+	if accepted.is_error() { return -1 }
 
 	var connection = accepted.get()
 	var total = 0
 	var reads = 0
 
-	while reads < 100000:
+	while reads < 100000 {
 		reads += 1
 
 		chunk := recv(connection, 5.seconds())
-		if chunk.is_error(): return -2
-		if chunk.get() == null: break
+		if chunk.is_error() { return -2 }
+		if chunk.get() == null { break }
 
 		total += (chunk.get() or Bytes([])).length()
+	}
 
 	void connection.close()
 	return total
+}
 
-test "raw TLS client that writes a large payload and closes at once loses no bytes":
+test "raw TLS client that writes a large payload and closes at once loses no bytes" {
 	server_tls := TlsOptions(
 		server_name: "",
 		roots_pem: "",
@@ -331,21 +343,23 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 	// No read first: the server's post-handshake bytes must not reset the connection.
 	client.close()?
 	expect_equal((wait_all([served])?)[0], 20000000)?
+}
 
-fn starttls_server(listener Listener, options TlsOptions) Int:
+fn starttls_server(listener Listener, options TlsOptions) Int {
 	var plain = listener.accept(3.seconds()).wait().get()
 	hello := recv(plain, 3.seconds())
-	if hello.is_error(): return 0
-	if (hello.get() or Bytes([])) != "STARTTLS".to_bytes(): return 0
-	if send(plain, "OK").is_error(): return 0
+	if hello.is_error() { return 0 }
+	if (hello.get() or Bytes([])) != "STARTTLS".to_bytes() { return 0 }
+	if send(plain, "OK").is_error() { return 0 }
 
 	upgraded := accept_tls(plain, options, 3.seconds())
-	if upgraded.is_error(): return 0
+	if upgraded.is_error() { return 0 }
 
 	secure := upgraded.get()
 	return answer_ping(secure)
+}
 
-test "start_tls upgrades a plain connection in place on both sides":
+test "start_tls upgrades a plain connection in place on both sides" {
 	server_tls := TlsOptions(
 		certificate_pem: certificate(),
 		private_key_pem: private_key(),
@@ -381,8 +395,9 @@ test "start_tls upgrades a plain connection in place on both sides":
 	_again := expect_error(start_tls(client, client_tls, 3.seconds()))?
 	client.close()?
 	expect_equal((wait_all([served])?)[0], 1)?
+}
 
-test "start_tls rejects an untrusted server and an empty server name":
+test "start_tls rejects an untrusted server and an empty server name" {
 	server_tls := TlsOptions(
 		certificate_pem: certificate(),
 		private_key_pem: private_key(),
@@ -402,3 +417,4 @@ test "start_tls rejects an untrusted server and an empty server name":
 		start_tls(plain, TlsOptions(server_name: "stdlib.test"), 3.seconds())
 	)?
 	_served := wait_all([served])?
+}

@@ -22,13 +22,15 @@ A simple HTTP server:
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 
-fn handle(request HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse {
     return HttpResponse(200, f"hello {request.path}".to_bytes())
+}
 
-fn main() Void!:
+fn main() Void! {
     server := serve("127.0.0.1:0", buffered(handle))?
     print(f"{server.address()}")
     server.wait()?
+}
 ```
 
 HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise across all cores. Here is what makes programs like this easy to hand to an agent.
@@ -37,11 +39,12 @@ HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise a
 
 <!-- manuscript-example: {"mode":"error","contains":"is moved here"} -->
 ```rust
-fn main() Void:
+fn main() Void {
     var names = List[String]()
     first := "ada"
     names.append(first)
     print(first)
+}
 ```
 
 ```text
@@ -56,12 +59,14 @@ Use-after-move is a compile error, and there are no lifetime annotations to writ
 ```rust
 import promise, wait_all from "@std/concurrency/promise.ms"
 
-fn fib(n Int) Int:
+fn fib(n Int) Int {
     return if n < 2: n else: fib(n - 1) + fib(n - 2)
+}
 
-fn main() Void:
+fn main() Void {
     tasks := [36, 36, 36, 36].map(n => promise(() => ok(fib(n))))
     print(wait_all(tasks).get_or(List[Int]()).length())
+}
 ```
 
 No async, no await, no function coloring: wrap a call in `promise(fn: ...)` and it runs on another core. The lambda borrows its captures read-only, so the checker rules out data races. A parked promise costs about 5 KB on Linux, and idle stacks hibernate, so millions fit in memory.
@@ -73,11 +78,13 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order String) Void!:
+fn save(order String) Void! {
     return write_file("orders.log", order).wait()
+}
 
-fn audit(total Int) Void!:
+fn audit(total Int) Void! {
     return save(f"audit {total}")
+}
 ```
 
 Declare an effect once, and `ms lint` flags every caller that did not allow it, naming the call chain that brings it in. Effects are comments, so the language gains no extra syntax.
@@ -98,13 +105,15 @@ Every diagnostic gives the cause and the remedy, `ms check --fix` applies the me
 ```rust
 import parse, stringify, StringifyOptions from "@std/data/json.ms"
 
-type Config:
+type Config {
     name String
     enabled Bool = true
+}
 
-fn roundtrip(text String) Result[String, Error]:
+fn roundtrip(text String) Result[String, Error] {
     config := parse[Config](text)?
     return stringify(config, StringifyOptions(strict: true))
+}
 ```
 
 HTTP, WebSocket and TLS, JSON, YAML, TOML, CSV and XML, crypto, big and decimal math, files, processes, images and testing ship with the compiler. Decoders are generated per type at compile time, with no reflection.

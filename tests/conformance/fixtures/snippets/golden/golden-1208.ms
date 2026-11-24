@@ -2,6 +2,7 @@
 // conform: phase=check
 fn answer(
     input Int,
-) Int:
+) Int {
     return inp|
+}
 fn broken(

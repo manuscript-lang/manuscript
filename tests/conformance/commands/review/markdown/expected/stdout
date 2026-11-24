@@ -15,13 +15,13 @@
 
 | ENTITY | KIND | TYPE | WHERE |
 | --- | --- | --- | --- |
-| parse_total | fn | fn(List[String]) Int | src/shapes.ms:17 |
+| parse_total | fn | fn(List[String]) Int | src/shapes.ms:21 |
 
 ## 3. ENTRY POINTS
 
 | ENTITY | KIND | EFFECTS | WHERE |
 | --- | --- | --- | --- |
-| main total | test | none | src/main.ms:12 |
+| main total | test | none | src/main.ms:13 |
 
 ## 4. ERROR TYPES
 
@@ -44,4 +44,4 @@
 - INTERNAL means no tracked contract, effect, error-flow, or resource change; runtime behavior can still change.
 - Use --explain <number|id> with --diff for evidence and a focused diagram.
 
-digest sha256:8ab3c919221b70ab0289b5b11e4a15120995bad1b9e20573b4de48237839eb26
+digest sha256:c0f30eec22d059c672b964d7ea38e5c02e28a38052c755de93f7afe6ae31c23f

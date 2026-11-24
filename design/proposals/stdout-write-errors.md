@@ -15,10 +15,11 @@ Implemented in this PR, 2026-11-14, checked against `bd90fccd`. Not a language c
 ```manuscript
 import stdout from "@std/io/io.ms"
 
-fn main() Unit!:
+fn main() Unit! {
     out := stdout()
     out.write("hello\n")?
     out.flush()?
+}
 ```
 
 `./prog >/dev/full` prints nothing, exits 0. Opening `/dev/full` as a file and writing to it reports "no space left on device", so standard output is the outlier. Verified: `crates/ms-rt/src/io.rs` `flush_locked` calls `sys::write_all`, which returns `()` and drops every error (`crates/ms-rt/src/sys.rs:201`, `sys_windows.rs:223`).

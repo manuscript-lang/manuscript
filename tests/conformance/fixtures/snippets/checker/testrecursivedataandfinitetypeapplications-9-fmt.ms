@@ -1,9 +1,11 @@
 // conform: tags=formatter,optional,parser,records,strings,tier-core
 // conform: phase=parse
 // conform: origin=pkg/checker/layout_diagnostics_test.go:26 TestRecursiveDataAndFiniteTypeApplications
-type Entry:
-    name String
-    nickname String?
+type Entry {
+	name String
+	nickname String?
+}
 
-type Person:
-    primary Entry?
+type Person {
+	primary Entry?
+}

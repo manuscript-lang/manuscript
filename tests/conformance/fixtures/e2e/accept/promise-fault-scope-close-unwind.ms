@@ -6,40 +6,50 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-interface Src:
+interface Src {
 	var fn read(max Int) Int?!Error
 	move fn close() Void
+}
 
-type Probe:
+type Probe {
 	action Int
+}
 
-fn var Probe.read(max Int) Int?!Error:
-	if self.action == 2: panic("source read failed")
+fn var Probe.read(max Int) Int?!Error {
+	if self.action == 2 { panic("source read failed") }
 	return ok(null)
+}
 
-fn move Probe.close() Void:
+fn move Probe.close() Void {
 	return
+}
 
-type Wrapper:
+type Wrapper {
 	input Src
+}
 
-fn move Wrapper.close() Void!:
+fn move Wrapper.close() Void! {
 	self.input.close()
+}
 
-fn var Wrapper.read() Int?!Error:
+fn var Wrapper.read() Int?!Error {
 	return self.input.read(0)
+}
 
-fn run_wrapped(action Int) Int!:
+fn run_wrapped(action Int) Int! {
 	_first := Wrapper(Probe(0))
 	var last = Wrapper(Probe(action))
 	result := last.read()
-	return ok(if result.is_ok(): 0 else: 1)
+	return ok(if result.is_ok() { 0 } else { 1 })
+}
 
-test "consecutive promise faults in an interface read free each scope-closed wrapper once":
+test "consecutive promise faults in an interface read free each scope-closed wrapper once" {
 	var failed = 0
 
-	for action in [2, 2, 2]:
+	for action in [2, 2, 2] {
 		p := promise(() => run_wrapped(action))
-		if not p.wait().is_ok(): failed += 1
+		if not p.wait().is_ok() { failed += 1 }
+	}
 
 	expect_equal(failed, 3)?
+}

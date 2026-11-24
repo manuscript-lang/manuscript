@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export enum Failure:\n\tNotFound\n\tDenied(reason String)\n\nexport type Item:\n\tvalue Int\n\nexport fn fail() Int!Failure => error(Failure.Denied(\"denied\"))\n"
+    "fmt": "export enum Failure {\n\tNotFound\n\tDenied(reason String)\n}\n\nexport type Item {\n\tvalue Int\n}\n\nexport fn fail() Int!Failure => error(Failure.Denied(\"denied\"))\n"
   }
 }

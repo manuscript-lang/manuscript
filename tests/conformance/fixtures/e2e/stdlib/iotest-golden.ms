@@ -16,22 +16,26 @@ import (
 	expect_true from "@std/test/test.ms",
 )
 
-fn source() ReadStream[Bytes]:
+fn source() ReadStream[Bytes] {
 	return from_bytes("hello, world".to_bytes(), 5)
+}
 
-test "a plain stream passes the reader check":
+test "a plain stream passes the reader check" {
 	check_reader(source, "hello, world".to_bytes())?
+}
 
-test "a wrong expectation fails the reader check":
+test "a wrong expectation fails the reader check" {
 	cause := expect_error(check_reader(source, "hello".to_bytes()))?
 	expect_contains(cause.message, "check_reader")?
+}
 
-test "one_byte returns single bytes":
+test "one_byte returns single bytes" {
 	var input = one_byte(source())
 	chunk := input.next()?
 	expect_equal((chunk or panic("called Optional.get() on null")).length(), 1)?
+}
 
-test "fail_after delivers a prefix and then fails":
+test "fail_after delivers a prefix and then fails" {
 	var input = fail_after(
 		source(),
 		4,
@@ -39,8 +43,9 @@ test "fail_after delivers a prefix and then fails":
 	)
 	all := read_all(input, null)
 	expect_true(all.is_error())?
+}
 
-test "fail_writer_after writes the prefix that fits and then fails":
+test "fail_writer_after writes the prefix that fits and then fails" {
 	dir := expect_ok(temporary("iotest-"))?
 	path := join([dir.path(), "out.bin"])
 	file := expect_ok(open(path, OpenMode.Write, OpenOptions(permissions: 420)))?
@@ -54,8 +59,9 @@ test "fail_writer_after writes the prefix that fits and then fails":
 	expect_true(out.write("g".to_bytes()).is_error())?
 	expect_ok(out.close())?
 	expect_equal(expect_ok(read_file(path, null).wait())?, "abc".to_bytes())?
+}
 
-test "golden comparison passes and names the first differing line":
+test "golden comparison passes and names the first differing line" {
 	dir := expect_ok(temporary("golden-"))?
 	path := join([dir.path(), "out.txt"])
 	expect_ok(write_file(path, "a\nb\nc", true).wait())?
@@ -70,3 +76,4 @@ test "golden comparison passes and names the first differing line":
 
 	bytes := expect_error(expect_golden_bytes(path, "a\nb\nd".to_bytes()))?
 	expect_contains(bytes.message, "byte 4")?
+}

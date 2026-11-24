@@ -3,5 +3,6 @@
 // conform: origin=ms-check/tests/messages.rs
 fn source(_0 Int) Int => _0
 
-fn exercise() Void:
-    callback fn(Int?) Int := source
+fn exercise() Void {
+	callback fn(Int?) Int := source
+}

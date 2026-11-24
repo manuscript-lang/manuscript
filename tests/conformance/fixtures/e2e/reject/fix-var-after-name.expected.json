@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-var-after-name.ms:3:12: parse: 'var' goes before the parameter name, not its type; write var out Type\n   |\n 3 | fn add(out var List[Int], n: Int) Void:\n   |            ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-var-after-name.ms:3:12: parse: 'var' goes before the parameter name, not its type; write var out Type\n   |\n 3 | fn add(out var List[Int], n: Int) Void {\n   |            ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

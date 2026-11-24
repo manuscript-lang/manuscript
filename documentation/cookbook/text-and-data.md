@@ -13,19 +13,25 @@ Save as `number.ms`. `parse_int()` returns an `Int?`.
 
 <!-- manuscript-example: {"mode":"run","args":["42"],"stdout":"42\n","cases":[{"args":["oops"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+)
 
-fn show(number Int) Result[Void, Error]:
+fn show(number Int) Result[Void, Error] {
     stdout().write(f"{number}\n")?
     return stdout().flush()
+}
 
-fn main() Int:
+fn main() Int {
     number := arguments().get_or(0, "42").parse_int()
-    if value := number:
-        if show(value).is_ok():
+    if value := number {
+        if show(value).is_ok() {
             return 0
+        }
+    }
     return 1
+}
 ```
 
 ```sh
@@ -44,17 +50,21 @@ Save as `json.ms`. `parse[String]` errors on malformed JSON or another type.
 
 <!-- manuscript-example: {"mode":"run","args":["\"hello\""],"stdout":"hello\n","cases":[{"args":["{"],"exit_code":1},{"args":["42"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/env.ms"
-import parse from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
+import (
+    parse from "@std/data/json.ms",
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+)
 
-fn run() Result[Void, Error]:
+fn run() Result[Void, Error] {
     text := parse[String](arguments().get_or(0, "\"hello\""))?
     stdout().write(f"{text}\n")?
     return stdout().flush()
+}
 
-fn main() Void!:
+fn main() Void! {
     return run()
+}
 ```
 
 ```sh
@@ -75,23 +85,28 @@ Save as `config.ms`. Parse into a type directly and serialize it back. Use stric
 
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/env.ms"
-import parse, stringify, StringifyOptions from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
+import (
+    StringifyOptions, parse, stringify from "@std/data/json.ms",
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+)
 
-type Config:
+type Config {
     name String
     enabled Bool = true
+}
 
-fn run() Result[Void, Error]:
+fn run() Result[Void, Error] {
     text := arguments().get_or(0, "{\"name\":\"Sam\"}")
     config := parse[Config](text)?
     encoded := stringify(config, StringifyOptions(strict: true))?
     stdout().write(f"{encoded}\n")?
     return stdout().flush()
+}
 
-fn main() Void!:
+fn main() Void! {
     return run()
+}
 ```
 
 ```sh

@@ -3,17 +3,21 @@
 // conform: origin=tests/e2e/testdata/accept/cl-09.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-type Box[T]:
-    value T
+type Box[T] {
+	value T
+}
 
-fn unwrap[T](box Box[T]) T:
-    return box.value
+fn unwrap[T](box Box[T]) T {
+	return box.value
+}
 
-fn same[T Equal](left T, right T) Bool:
-    return left == right
+fn same[T Equal](left T, right T) Bool {
+	return left == right
+}
 
-test "generic argument inference":
-    box := Box[Int](6)
-    expect_equal(unwrap(box), 6)?
-    expect_equal(unwrap[Int](box), 6)?
-    expect_false(not (same(6, 6)))?
+test "generic argument inference" {
+	box := Box[Int](6)
+	expect_equal(unwrap(box), 6)?
+	expect_equal(unwrap[Int](box), 6)?
+	expect_false(not (same(6, 6)))?
+}

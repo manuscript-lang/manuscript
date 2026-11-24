@@ -12,12 +12,13 @@ fn add(
 	prog String,
 	inputs String = "null",
 	opts String = "",
-) Void:
-	head := if opts.is_empty(): "" else: opts + " "
-	tail := if inputs.ends_with("\n"): "" else: "\n"
+) Void {
+	head := if opts.is_empty() { "" } else { opts + " " }
+	tail := if inputs.ends_with("\n") { "" } else { "\n" }
 	cs.push(name, head + prog + "\n" + inputs + tail)
+}
 
-export fn gen_c55() Void:
+export fn gen_c55() Void {
 	var cs = Cases(build_oracle("c55-jq-lite"))
 	add(
 		cs,
@@ -394,3 +395,4 @@ export fn gen_c55() Void:
 		),
 	]
 	write_cases("c55-jq-lite", examples, examples.concat(cs.list))
+}

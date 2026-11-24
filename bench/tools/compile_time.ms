@@ -25,18 +25,20 @@ fn timed(
 	dir String,
 	program String,
 	args List[String],
-) Result[Void, Error]:
+) Result[Void, Error] {
 	start := now_ns()
 	void must(label, run_in(dir, program, args))?
 
 	seconds := (now_ns() - start).to_float() / 1000000000.0
 	print(f"{label} {seconds.to_fixed(2)} s")
 	return ok()
+}
 
-fn drop_cache(dir String) Void:
+fn drop_cache(dir String) Void {
 	void remove(f"{dir}/.ms-cache", recursive: true)
+}
 
-fn run(out String, p Int, f Int, k Int) Result[Void, Error]:
+fn run(out String, p Int, f Int, k Int) Result[Void, Error] {
 	generate(out, p, f, k)
 
 	ms := ms_binary()
@@ -57,15 +59,18 @@ fn run(out String, p Int, f Int, k Int) Result[Void, Error]:
 	timed("ms clif:  ", f"{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin_c"])?
 	set_environment("MS_BACKEND", null).get()
 
-	if env("SKIP_LLVM", "") == "":
+	if env("SKIP_LLVM", "") == "" {
 		drop_cache(f"{out}/ms")
 		timed("ms release:", f"{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin"])?
+	}
 
-	if env("SKIP_RUST", "") == "":
+	if env("SKIP_RUST", "") == "" {
 		cargo := env("CARGO", "cargo")
 		rust_timed("rust check:  ", out, cargo, ["check"])?
 		rust_timed("rust debug:  ", out, cargo, ["build"])?
 		rust_timed("rust release:", out, cargo, ["build", "--release"])?
+	}
+}
 
 // Times one cargo build from a cold target directory.
 fn rust_timed(
@@ -73,31 +78,36 @@ fn rust_timed(
 	out String,
 	cargo String,
 	args List[String],
-) Result[Void, Error]:
+) Result[Void, Error] {
 	void remove(f"{out}/rs/target", recursive: true)
 	return timed(label, f"{out}/rs", cargo, args)
+}
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
 	var dims = [40, 25, 10]
 
-	for i in 0..3:
-		if args.length() > i:
+	for i in 0..3 {
+		if args.length() > i {
 			v := args[i].parse_int() or 0
-			if v < 1: return usage("packages, files and fns must be positive integers")
+			if v < 1 { return usage("packages, files and fns must be positive integers") }
 
 			dims[i] = v
+		}
+	}
 
 	keep := env("OUT", "")
 	var out = ""
 
-	if keep != "":
+	if keep != "" {
 		out = absolute(keep)
 		void remove(out, recursive: true)
-	else:
+	} else {
 		out = temporary("compile-time-").get().path()
+	}
 
 	result := run(out, dims[0], dims[1], dims[2])
-	if result.is_error(): return fail(result.err().message)
+	if result.is_error() { return fail(result.err().message) }
 
 	return 0
+}

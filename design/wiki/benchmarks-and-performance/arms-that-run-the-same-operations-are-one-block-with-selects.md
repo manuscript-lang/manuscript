@@ -1,6 +1,6 @@
 # Two arms that run the same operations are one block with selects
 
-`if b < a: dst[k] = b; j += 1 else: dst[k] = a; i += 1` stayed two branches because each arm holds a checked store, so `ifconv` (pure arms only) left it. The branch mispredicts on random data. A bottom-up merge sort over `List[Int]` ran 93 ms against 68 ms for the same loop in C with bounds checks, at the same instruction count; the same code written with `v = if ..` selects ran 61 ms.
+`if b < a { dst[k] = b; j += 1 } else { dst[k] = a; i += 1 }` stayed two branches because each arm holds a checked store, so `ifconv` (pure arms only) left it. The branch mispredicts on random data. A bottom-up merge sort over `List[Int]` ran 93 ms against 68 ms for the same loop in C with bounds checks, at the same instruction count; the same code written with `v = if ..` selects ran 61 ms.
 
 The `twins` pass (`src/compiler/opt/opt_twins.c`, after `ifconv` in the function rounds) merges the two arms of a branch when they run the same operations: same operations, parameters, terminator kind and shared successors, with operands the same value, the same position in each arm, or a scalar that differs. Differing external scalars become block parameters; a scalar from one arm mixed with another is chosen by a side flag. Single-predecessor successors merge recursively (the bounds-check fault blocks), then a branch whose two edges reach one block becomes `select`s.
 

@@ -2,11 +2,12 @@
 // conform: phase=test
 import expect_equal, expect_false from "@std/test/test.ms"
 
-test "List take and drop copy prefix and remainder":
+test "List take and drop copy prefix and remainder" {
 	values := [1, 2, 3]
 	expect_false(values.take(2) != [1, 2] or values.drop(2) != [3])?
+}
 
-test "List take and drop clamp positive counts and preserve empty boundaries":
+test "List take and drop clamp positive counts and preserve empty boundaries" {
 	values := [1, 2, 3]
 	expect_false(not (values.take(0).is_empty()) or values.drop(0) != values)?
 	expect_false(values.take(3) != values or not (values.drop(3).is_empty()))?
@@ -19,8 +20,9 @@ test "List take and drop clamp positive counts and preserve empty boundaries":
 
 	empty List[Int] := []
 	expect_false(not (empty.take(0).is_empty()) or not (empty.drop(7).is_empty()))?
+}
 
-test "List take and drop allocate independent outer storage":
+test "List take and drop allocate independent outer storage" {
 	values := [1, 2, 3]
 	var prefix = values.take(3)
 	var remainder = values.drop(0)
@@ -34,11 +36,13 @@ test "List take and drop allocate independent outer storage":
 	empty_take.append(5)
 	empty_drop.append(6)
 	expect_false(not (values.take(0).is_empty()) or not (values.drop(3).is_empty()))?
+}
 
-type Box:
+type Box {
 	value Int
+}
 
-test "List take and drop copy payloads before changing them":
+test "List take and drop copy payloads before changing them" {
 	boxes := [Box(1), Box(2)]
 	var prefix = boxes.take(1)
 	remainder := boxes.drop(0)
@@ -58,17 +62,20 @@ test "List take and drop copy payloads before changing them":
 	inner.append(2)
 	copied.set(0, inner)
 	expect_false(nested != [1] or lists.get(0) != nested or copied.get(0) != [1, 2])?
+}
 
-fn copy_window[T Clonable](values List[T], first Int, skip Int) List[T]:
+fn copy_window[T Clonable](values List[T], first Int, skip Int) List[T] {
 	return values.take(first).drop(skip)
+}
 
-test "List take and drop support generic and nested values":
+test "List take and drop support generic and nested values" {
 	expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])?
 
 	values List[Int?!Error] := [ok(1), error(Error("cause"))]
 	expect_equal(copy_window(values, 2, 1).get(0).err().message, "cause")?
+}
 
-test "List take and drop bound methods read the retained receiver":
+test "List take and drop bound methods read the retained receiver" {
 	var values = [1, 2, 3, 4]
 	take := values.clone().take
 	drop fn(Int) List[Int] := values.clone().drop
@@ -77,3 +84,4 @@ test "List take and drop bound methods read the retained receiver":
 	var first = take(2)
 	first.set(0, 8)
 	expect_false(take(2) != [1, 2] or first != [8, 2])?
+}

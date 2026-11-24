@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn count(values List[String]) Int:\n\treturn values.length()\n"
+    "fmt": "fn count(values List[String]) Int {\n\treturn values.length()\n}\n"
   }
 }

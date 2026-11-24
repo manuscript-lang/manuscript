@@ -12,15 +12,15 @@
         "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0106.ms",
-          "line": 7,
+          "line": 9,
           "column": 1,
-          "offset": 129
+          "offset": 135
         },
         "end": {
           "file": "golden-0106.ms",
-          "line": 7,
+          "line": 9,
           "column": 5,
-          "offset": 133
+          "offset": 139
         }
       },
       {
@@ -29,28 +29,28 @@
         "message": "remove the ':' between 'value' and its type; write value Type",
         "position": {
           "file": "golden-0106.ms",
-          "line": 10,
+          "line": 14,
           "column": 20,
-          "offset": 236
+          "offset": 252
         },
         "end": {
           "file": "golden-0106.ms",
-          "line": 10,
+          "line": 14,
           "column": 21,
-          "offset": 237
+          "offset": 253
         },
         "fix": {
           "position": {
             "file": "golden-0106.ms",
-            "line": 10,
+            "line": 14,
             "column": 20,
-            "offset": 236
+            "offset": 252
           },
           "end": {
             "file": "golden-0106.ms",
-            "line": 10,
+            "line": 14,
             "column": 21,
-            "offset": 237
+            "offset": 253
           },
           "replacement": ""
         }
@@ -59,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0106.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Same[T] for Box[T]:\n   | ^^^^\n<DIR>/golden-0106.ms:10:20: parse: remove the ':' between 'value' and its type; write value Type\n    |\n 10 | fn compare[T](value: Box[T], other: T) Bool:\n    |                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0106.ms:9:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 9 | impl Same[T] for Box[T] {\n   | ^^^^\n<DIR>/golden-0106.ms:14:20: parse: remove the ':' between 'value' and its type; write value Type\n    |\n 14 | fn compare[T](value: Box[T], other: T) Bool {\n    |                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

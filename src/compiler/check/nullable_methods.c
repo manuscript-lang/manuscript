@@ -337,7 +337,7 @@ bool body_redundant_or(Body *body, const MsExpr *expr) {
   return true;
 }
 
-/* `if v := x:` over an Optional: the binding is written as a declaration and a `v != null` test, which narrows `v`. */
+/* `if v := x { ... }` over an Optional: the binding is written as a declaration and a `v != null` test, which narrows `v`. */
 void body_report_if_unwrap(Body *body, const MsStmt *stmt) {
   const MsPattern *binding = stmt->u.branch.binding;
   if (!body_reports(body) || body->quiet || stmt->u.branch.is_mutable) {
@@ -345,7 +345,7 @@ void body_report_if_unwrap(Body *body, const MsStmt *stmt) {
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "an Optional is tested with `!= null`, not unwrapped by `if v := x`; "
-                                 "write `v := x` and then `if v != null:`");
+                                 "write `v := x` and then `if v != null { ... }`");
   ms_check_report(body->program, body->module, stmt->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   const MsExpr *cond = stmt->u.branch.cond;
   MsSpan written = {0};

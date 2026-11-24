@@ -4,33 +4,40 @@ import lines from "@std/io/steps.ms"
 import flatten from "@std/collections/collections.ms"
 
 // Cells are scalar values: # = 35, . = 46, S = 83, E = 69.
-fn solve(rows List[List[Int]]) String:
-    for r in 0..rows.length():
-        for c in 0..rows[r].length():
-            if not [35, 46, 83, 69].contains(rows[r][c]): return f"error: bad character at {r + 1},{c + 1}"
-    if rows.any(fn r: r.length() != rows[0].length()): return "error: ragged grid"
+fn solve(rows List[List[Int]]) String {
+    for r in 0..rows.length() {
+        for c in 0..rows[r].length() {
+            if not [35, 46, 83, 69].contains(rows[r][c]) { return f"error: bad character at {r + 1},{c + 1}" }
+        }
+    }
+    if rows.any(fn r: r.length() != rows[0].length()) { return "error: ragged grid" }
     flat := flatten(rows)
     s := flat.count(fn x: x == 83)
     e := flat.count(fn x: x == 69)
-    if s != 1: return if s == 0: "error: no start" else: "error: multiple starts"
-    if e != 1: return if e == 0: "error: no end" else: "error: multiple ends"
+    if s != 1 { return if s == 0: "error: no start" else: "error: multiple starts" }
+    if e != 1 { return if e == 0: "error: no end" else: "error: multiple ends" }
     w := rows[0].length()
     var dist = [-1].repeated(flat.length())
     var q = [flat.index_of(83).get()]
     dist[q[0]] = 0
-    for h in 0..flat.length():
-        if h >= q.length(): break
+    for h in 0..flat.length() {
+        if h >= q.length() { break }
         cur := q[h]
-        if flat[cur] == 69: return f"{dist[cur]}"
-        for d in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
+        if flat[cur] == 69 { return f"{dist[cur]}" }
+        for d in [[1, 0], [-1, 0], [0, 1], [0, -1]] {
             r := cur / w + d[0]
             c := cur % w + d[1]
-            if r < 0 or r >= rows.length() or c < 0 or c >= w or flat[r * w + c] == 35 or dist[r * w + c] >= 0: continue
+            if r < 0 or r >= rows.length() or c < 0 or c >= w or flat[r * w + c] == 35 or dist[r * w + c] >= 0 { continue }
             dist[r * w + c] = dist[cur] + 1
             q.append(r * w + c)
+        }
+    }
     return "no path"
+}
 
-fn main() Void:
-    if var rows = stdin() | lines | collect(none):
-        while rows.last().get_or("x") == "": rows.pop()
+fn main() Void {
+    if var rows = stdin() | lines | collect(none) {
+        while rows.last().get_or("x") == "" { rows.pop() }
         print(solve(rows.map(fn l: l.scalar_values())))
+    }
+}

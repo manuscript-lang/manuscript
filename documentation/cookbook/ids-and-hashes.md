@@ -13,19 +13,23 @@ Save as `ids.ms`. `sha256` takes `Bytes`, so convert text with `to_bytes()`; `he
 
 <!-- manuscript-example: {"mode":"run","stdout":"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\n36\n22\n"} -->
 ```manuscript
-import sha256 from "@std/crypto/crypto.ms"
-import hex_encode from "@std/data/encoding.ms"
-import uuid_v4 from "@std/data/uuid.ms"
-import token from "@std/random.ms"
+import (
+    sha256 from "@std/crypto/crypto.ms",
+    hex_encode from "@std/data/encoding.ms",
+    uuid_v4 from "@std/data/uuid.ms",
+    token from "@std/random.ms",
+)
 
-fn main() Void!:
+fn main() Void! {
     digest := sha256("hello".to_bytes())
     print(hex_encode(digest))
 
     id := uuid_v4()?
     print(id.length())
+
     secret := token(16)?
     print(secret.length())
+}
 ```
 
 - `token(16)` is 16 random bytes as unpadded URL-safe Base64, 22 characters; the default 32 bytes is 43. Use it for session ids and API keys.
@@ -40,10 +44,11 @@ fn main() Void!:
 ```manuscript
 import seeded from "@std/random.ms"
 
-fn main() Void:
+fn main() Void {
     var first = seeded(42)
     var second = seeded(42)
     print(first.int(1, 7) == second.int(1, 7))
+}
 ```
 
 `shuffle`, `choice` and `sample` exist on the generator as well as at module level.

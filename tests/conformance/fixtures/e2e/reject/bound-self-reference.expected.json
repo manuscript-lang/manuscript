@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/bound-self-reference.ms:3:12: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n   |\n 3 | type Box[T Box[T]]:\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/bound-self-reference.ms:3:12: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n   |\n 3 | type Box[T Box[T]] {\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

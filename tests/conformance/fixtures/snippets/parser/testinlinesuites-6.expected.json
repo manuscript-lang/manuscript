@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding use; declare it with 'use := ...' before use, define 'fn use(...) T:', or import it from a module",
+        "message": "unknown binding use; declare it with 'use := ...' before use, define 'fn use(...) T { ... }', or import it from a module",
         "position": {
           "file": "testinlinesuites-6.ms",
           "line": 6,
           "column": 5,
-          "offset": 190
+          "offset": 185
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "testinlinesuites-6.ms",
           "line": 8,
           "column": 33,
-          "offset": 264
+          "offset": 256
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'use := ...' before use, define 'fn use(...) T:', or import it from a module\n   |\n 6 |     use(fn(x Int) Int => return x, other: 1)\n   |     ^\n<DIR>/testinlinesuites-6.ms:8:33: type: expected fn() Void, found fn() Int (in entry 2 of the literal, whose entries share one type)\n   |\n 8 |     gs := [fn() Void => return, fn() Int => return 2]\n   |                                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'use := ...' before use, define 'fn use(...) T { ... }', or import it from a module\n   |\n 6 |     use(fn(x Int) Int => return x, other: 1)\n   |     ^\n<DIR>/testinlinesuites-6.ms:8:33: type: expected fn() Void, found fn() Int (in entry 2 of the literal, whose entries share one type)\n   |\n 8 |     gs := [fn() Void => return, fn() Int => return 2]\n   |                                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

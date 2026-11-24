@@ -303,7 +303,7 @@ static void stmt_assign(Body *body, const MsStmt *stmt) {
   (void)body_expect(body, stmt->u.assign.value, target, (MsSpan){0});
 }
 
-/* The payload an `if x := expr:` binding takes from the tested value. */
+/* The payload an `if x := expr { ... }` binding takes from the tested value. */
 static MsTy payload_type(const Body *body, MsTy tested) {
   const MsTyTable *types = &body->program->types;
   const bool wraps = ms_ty_is(types, tested, MS_BUILTIN_Optional) || ms_ty_is(types, tested, MS_BUILTIN_Result);

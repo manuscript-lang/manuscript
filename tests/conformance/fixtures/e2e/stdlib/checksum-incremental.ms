@@ -7,21 +7,23 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "Adler32 RFC vectors and zlib trailer agree":
+test "Adler32 RFC vectors and zlib trailer agree" {
 	expect_equal(adler32(Bytes([])).to_int(), 1)?
 	expect_equal(adler32("Wikipedia".to_bytes()).to_int(), 300286872)?
 	expect_equal(adler32("123456789".to_bytes()).to_int(), 152961502)?
 
 	var binary = BytesBuilder()
-	for byte in 0..256:
+	for byte in 0..256 {
 		binary.append(byte.to_uint8() or 0)
+	}
 	expect_equal(adler32(binary.build()).to_int(), 2918612865)?
 
 	input := "a checksum without compressing the input".to_bytes()
 	encoded := compress(input, CompressionFormat.Zlib)?
 	expect_equal(adler32(input), encoded.uint32_be(encoded.length() - 4)?)?
+}
 
-test "checksum values start empty and observations do not reset":
+test "checksum values start empty and observations do not reset" {
 	var crc = Crc32()
 	var adler = Adler32()
 	empty := Bytes([])
@@ -52,8 +54,9 @@ test "checksum values start empty and observations do not reset":
 	expect_equal(adler.value().to_int(), 300286872)?
 	expect_equal(crc_prefix, crc32("1234".to_bytes()))?
 	expect_equal(adler_prefix, adler32("Wiki".to_bytes()))?
+}
 
-test "checksum clones advance independently from the same prefix":
+test "checksum clones advance independently from the same prefix" {
 	prefix := "abc".to_bytes()
 	var crc = Crc32()
 	var adler = Adler32()
@@ -70,30 +73,36 @@ test "checksum clones advance independently from the same prefix":
 	expect_equal(adler.value(), adler32("abcdef".to_bytes()))?
 	expect_equal(crc_branch.value(), crc32("abcxyz".to_bytes()))?
 	expect_equal(adler_branch.value(), adler32("abcxyz".to_bytes()))?
+}
 
-test "whole and incremental checksums agree across binary chunk boundaries":
+test "whole and incremental checksums agree across binary chunk boundaries" {
 	var builder = BytesBuilder()
-	for index in 0..4097:
+	for index in 0..4097 {
 		builder.append(((index * 73 + index / 7) % 256).to_uint8() or 0)
+	}
 
 	data := builder.build()
 
-	for length in [0, 1, 7, 16, 31, 32, 255, 256, 257, 4095, 4096, 4097]:
+	for length in [0, 1, 7, 16, 31, 32, 255, 256, 257, 4095, 4096, 4097] {
 		input := data.slice(0, length)?
 
-		for chunk_size in [1, 2, 3, 7, 16, 64, 255, 1024, 4096]:
+		for chunk_size in [1, 2, 3, 7, 16, 64, 255, 1024, 4096] {
 			var crc = Crc32()
 			var adler = Adler32()
 			var start = 0
 
-			while start < length:
-				end := if length - start < chunk_size: length else: start + chunk_size
+			while start < length {
+				end := if length - start < chunk_size { length } else { start + chunk_size }
 				chunk := input.slice(start, end)?
 				crc.update(chunk)
 				adler.update(chunk)
 				start = end
+			}
 
 			expect_equal(crc.value(), crc32(input))?
 			expect_equal(adler.value(), adler32(input))?
+		}
+	}
 
 	expect_equal(data.get(17).to_int(), (17 * 73 + 17 / 7) % 256)?
+}

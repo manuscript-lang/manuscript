@@ -3,8 +3,10 @@
 // conform: origin=tests/e2e/builder_range_test.go:16 TestBuilderAndRangeQueryStates
 import Closeable from "@std/core.ms"
 
-type Resource:
-    visits List[Int]
+type Resource {
+	visits List[Int]
+}
 
-fn move Resource.close() Void!:
-    self.visits.append(1)
+fn move Resource.close() Void! {
+	self.visits.append(1)
+}

@@ -12,7 +12,7 @@
         "message": "public signature exposes private type Row; add 'export' to its declaration or keep the function private",
         "position": {
           "file": "diag-alias-exports-private-type.ms",
-          "line": 7,
+          "line": 8,
           "column": 8,
           "offset": 130
         }
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-alias-exports-private-type.ms:7:8: type: public signature exposes private type Row; add 'export' to its declaration or keep the function private\n   |\n 7 | export type Rows = List[Row]\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-alias-exports-private-type.ms:8:8: type: public signature exposes private type Row; add 'export' to its declaration or keep the function private\n   |\n 8 | export type Rows = List[Row]\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

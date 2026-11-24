@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-test "replace changes every nonoverlapping match and replace_first changes one":
+test "replace changes every nonoverlapping match and replace_first changes one" {
 	expect_equal("aaaa".replace("a", "b"), "bbbb")?
 	expect_equal("aaaa".replace_first("a", "b"), "baaa")?
 	expect_equal("aaa".replace("aa", "b"), "ba")?
@@ -14,8 +14,9 @@ test "replace changes every nonoverlapping match and replace_first changes one":
 	expect_equal("a-b-c".replace(old: "-", new: "+"), "a+b+c")?
 	expect_equal("a-b-c".replace_first(old: "-", new: "+"), "a+b-c")?
 	expect_equal("a".replace("a", "世界").length(), 6)?
+}
 
-test "empty patterns use Unicode scalar boundaries without normalization":
+test "empty patterns use Unicode scalar boundaries without normalization" {
 	expect_equal("ab".replace("", "-"), "-a-b-")?
 	expect_equal("é😀".replace("", "|"), "|é|😀|")?
 	expect_equal("é😀".replace_first("", "|"), "|é😀")?
@@ -24,8 +25,9 @@ test "empty patterns use Unicode scalar boundaries without normalization":
 	expect_equal("e\u{301}".replace("é", "x"), "e\u{301}")?
 	expect_equal("éé".replace("é", "😀"), "😀😀")?
 	expect_equal("éé".replace_first("é", "😀"), "😀é")?
+}
 
-test "replace_first handles early and late matches across output sizes":
+test "replace_first handles early and late matches across output sizes" {
 	expect_equal("abcabc".replace_first("abc", "X"), "Xabc")?
 	expect_equal("abcabc".replace_first("bc", "LONG"), "aLONGabc")?
 	expect_equal("abcabc".replace_first("bc", ""), "aabc")?
@@ -33,10 +35,11 @@ test "replace_first handles early and late matches across output sizes":
 	expect_equal("é🙂é".replace_first("🙂", "X"), "éXé")?
 	expect_equal("abcdefghijklmno".replace_first("o", "世界"), "abcdefghijklmn世界")?
 	expect_equal("abcdefghijklmno".replace_first("missing", "世界"), "abcdefghijklmno")?
+}
 
 fn forward[T](value T) T => value
 
-test "bound typed and generic calls keep the all-versus-first split":
+test "bound typed and generic calls keep the all-versus-first split" {
 	text := "aaaa"
 	replace := text.replace
 	expect_equal(replace("a", "b"), "bbbb")?
@@ -46,8 +49,9 @@ test "bound typed and generic calls keep the all-versus-first split":
 
 	generic := forward(text.replace)
 	expect_equal(generic("aa", "x"), "xx")?
+}
 
-test "replacing long text with a shorter or equal string trims, shares or inlines the result":
+test "replacing long text with a shorter or equal string trims, shares or inlines the result" {
 	long := "word word word word word word word word word word"
 	expect_equal(long.replace("word", "w"), "w w w w w w w w w w")?
 	expect_equal(
@@ -62,8 +66,9 @@ test "replacing long text with a shorter or equal string trims, shares or inline
 	wide := "é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é"
 	expect_equal(wide.replace("é", "e"), "e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e")?
 	expect_equal(wide.replace("-", "").length(), 40)?
+}
 
-test "join sizes its result exactly across the inline and heap boundary":
+test "join sizes its result exactly across the inline and heap boundary" {
 	empty List[String] := []
 	expect_equal(empty.join(","), "")?
 	expect_equal(["a"].join(","), "a")?
@@ -79,3 +84,4 @@ test "join sizes its result exactly across the inline and heap boundary":
 		["one", "two", "three", "four", "five", "six", "seven"].join("--"),
 		"one--two--three--four--five--six--seven",
 	)?
+}

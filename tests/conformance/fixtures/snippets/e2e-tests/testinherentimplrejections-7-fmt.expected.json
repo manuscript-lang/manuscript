@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type B:\n\tx Int\n\nfn B.m() Int: ...\n"
+    "fmt": "type B {\n\tx Int\n}\n\nfn B.m() Int { ... }\n"
   }
 }

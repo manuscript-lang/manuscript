@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import CompressionFormat from \"@std/io/archive.ms\"\n\nfn wrong() Void:\n\tformat := CompressionFormat.GZip\n"
+    "fmt": "import CompressionFormat from \"@std/io/archive.ms\"\n\nfn wrong() Void {\n\tformat := CompressionFormat.GZip\n}\n"
   }
 }

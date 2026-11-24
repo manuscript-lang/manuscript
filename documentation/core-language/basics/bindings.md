@@ -11,11 +11,12 @@ Save as `stock.ms` and run `ms run stock.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"2 of 3 left\n"} -->
 ```manuscript
-fn main() Void:
+fn main() Void {
     count := 3
     var remaining = count
     remaining -= 1
     print(f"{remaining} of {count} left")
+}
 ```
 
 ```text
@@ -34,13 +35,13 @@ var (
 )
 ```
 
-A group is only a layout: entries are separate bindings with their own scope rules, and the formatter keeps the group together. Separate entries by lines, not commas, and use `var [a, b] = pair` to destructure. A group cannot sit in an inline body such as `if ready: var (`. Immutable bindings have no group form; write one `name := value` per line.
+A group is only a layout: entries are separate bindings with their own scope rules, and the formatter keeps the group together. Separate entries by lines, not commas, and use `var [a, b] = pair` to destructure. A group cannot sit in an inline body such as `if ready { var ( }`. Immutable bindings have no group form; write one `name := value` per line.
 
 ## Local type inference
 
 Parameters and return types are explicit; local annotations are optional. `count := 3` and `count Int := 3` are the same: `:=` marks an immutable binding and the annotation only names its type. `var` alone binds with `=`, so `var count Int = 3` keeps it. Writing `count Int = 3` is rejected with a fix to `:=`. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name String\n    active Bool\n\nfn welcome(customer Customer) String:\n    return customer.name","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    active Bool\n}\n\nfn welcome(customer Customer) String {\n    return customer.name\n}","given":[]} -->
 ```manuscript
 customer := Customer(name: "Ada", active: true)
 greeting := welcome(customer)
@@ -53,7 +54,7 @@ remaining -= 1
 
 Unpack positions or named fields:
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name String\n    email String","given":["names List[String]","customer: Customer"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    email String\n}","given":["names List[String]","customer: Customer"]} -->
 ```manuscript
 [first_name, second_name] := names
 {name, email: customer_email} := customer
@@ -72,10 +73,11 @@ Unpack positions or named fields:
 
 <!-- manuscript-example: {"mode":"error","contains":"expected Int"} -->
 ```manuscript
-fn example() Void:
+fn example() Void {
     var remaining = 3
     remaining = 2
     remaining = 2.0  // Rejected: Float cannot replace Int.
+}
 ```
 
 `+=`, `-=`, `*=`, `/=`, and `%=` update a `var` or field: `remaining -= 1` means `remaining = remaining - 1`. The right side is one operand (`total -= a - b` subtracts the difference), and `+=` also appends text. See the [statement grammar](grammar.md#statements-and-patterns).

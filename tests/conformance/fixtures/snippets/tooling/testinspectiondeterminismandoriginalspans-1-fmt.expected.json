@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn one() Int:\n\treturn 1\n\ntest \"calls\":\n\tif one() != 1: return\n"
+    "fmt": "fn one() Int {\n\treturn 1\n}\n\ntest \"calls\" {\n\tif one() != 1 {\n\t\treturn\n\t}\n}\n"
   }
 }

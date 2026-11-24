@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import hex_decode from \"@std/data/encoding.ms\"\n\nfn wrong() Void!:\n\tbytes := hex_decode(text: \"ff\", max_bytes: 1)?\n\treturn ok(value: void)\n"
+    "fmt": "import hex_decode from \"@std/data/encoding.ms\"\n\nfn wrong() Void! {\n\tbytes := hex_decode(text: \"ff\", max_bytes: 1)?\n\treturn ok(value: void)\n}\n"
   }
 }

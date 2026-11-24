@@ -6,26 +6,29 @@ import (
 	deadline_after, monotonic, nanoseconds, sleep, ticker from "@std/time.ms",
 )
 
-test "wrap_error adds context and keeps the kind":
+test "wrap_error adds context and keeps the kind" {
 	gone := Error("gone", kind: "ENOENT", details: {"path": "a.txt"})
 	outer := wrap_error("load", wrap_error("read", gone))
 	expect_equal(outer.message, "load: read: gone")?
 	expect_equal(outer.kind, "ENOENT")?
 	expect_equal(outer.details["path"], "a.txt")?
 	expect_equal(outer.details["cause"], "read: gone")?
+}
 
-test "join_errors reports each error and none for empty":
+test "join_errors reports each error and none for empty" {
 	none_joined := join_errors([])
 	expect_true(none_joined == null)?
 
 	both := join_errors([Error("a"), Error("b")])
 	joined := both
 
-	if joined != null:
+	if joined != null {
 		expect_equal(joined.message, "a\nb")?
 		expect_equal(joined.details["count"], "2")?
+	}
+}
 
-test "deadline expires and ticker paces":
+test "deadline expires and ticker paces" {
 	d := deadline_after(20.milliseconds())
 	expect_false(d.expired())?
 	d.wait()
@@ -36,14 +39,16 @@ test "deadline expires and ticker paces":
 	var count = 0
 	var ticks = ticker(10.milliseconds())
 
-	while count < 3:
+	while count < 3 {
 		tick := ticks.next()?
 		expect_true(tick != null)?
 		count += 1
+	}
 
 	expect_true(monotonic().difference(start).to_milliseconds() >= 29)?
+}
 
-test "ticker keeps its original cadence when the consumer misses ticks":
+test "ticker keeps its original cadence when the consumer misses ticks" {
 	// Alignment is exact even on a loaded runner; no upper bound on elapsed time is
 	// assumed.
 	period := nanoseconds(10000019)
@@ -53,7 +58,7 @@ test "ticker keeps its original cadence when the consumer misses ticks":
 	for pause in [
 		period.multiply(4).add(nanoseconds(1)),
 		period.multiply(7).add(nanoseconds(3)),
-	]:
+	] {
 		sleep(pause).wait()?
 
 		pending := ((ticks.next()?) or panic("called Optional.get() on null")).clone()
@@ -63,3 +68,5 @@ test "ticker keeps its original cadence when the consumer misses ticks":
 		expect_equal(pending_offset % period.to_nanoseconds(), 0)?
 		expect_equal(next_offset % period.to_nanoseconds(), 0)?
 		expect_true(next.difference(pending).compare(period) > 0)?
+	}
+}

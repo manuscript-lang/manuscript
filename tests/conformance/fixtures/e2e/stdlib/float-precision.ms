@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "precision formatting preserves signed zero significant padding and special values":
+test "precision formatting preserves signed zero significant padding and special values" {
 	expect_equal((-0.0).to_precision(1), "-0")?
 	expect_equal((-0.0).to_precision(4), "-0.000")?
 	expect_equal(0.0.to_precision(4), "0.000")?
@@ -17,3 +17,4 @@ test "precision formatting preserves signed zero significant padding and special
 	expect_equal((parse_float("NaN")?).to_precision(3), "NaN")?
 	expect_equal((parse_float("Infinity")?).to_precision(3), "Infinity")?
 	expect_equal((parse_float("-Infinity")?).to_precision(3), "-Infinity")?
+}

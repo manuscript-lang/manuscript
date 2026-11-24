@@ -5,7 +5,7 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-test "min max and clamp on Int and the sized integers":
+test "min max and clamp on Int and the sized integers" {
 	expect_equal((3).min(2), 2)?
 	expect_equal((3).max(2), 3)?
 	expect_equal((-5).clamp(0, 10), 0)?
@@ -18,8 +18,9 @@ test "min max and clamp on Int and the sized integers":
 
 	wide Int32 := 70000
 	expect_equal(wide.max(5), 70000)?
+}
 
-test "unsigned integers order, compare and clamp":
+test "unsigned integers order, compare and clamp" {
 	a UInt8 := 250
 	b UInt8 := 3
 	expect_equal(a.compare(b), 1)?
@@ -44,8 +45,9 @@ test "unsigned integers order, compare and clamp":
 
 	top UInt32 := 4000000001
 	expect_equal(ordered.max(), top)?
+}
 
-test "min max and clamp on Float order NaN above every value":
+test "min max and clamp on Float order NaN above every value" {
 	expect_equal((2.5).min(1.5), 1.5)?
 	expect_equal((2.5).clamp(0.0, 1.0), 1.0)?
 
@@ -55,9 +57,11 @@ test "min max and clamp on Float order NaN above every value":
 
 	narrow Float32 := 2.5
 	expect_equal(narrow.min(1.5), 1.5)?
+}
 
-test "min max and clamp on String use scalar order":
+test "min max and clamp on String use scalar order" {
 	expect_equal("apple".min("banana"), "apple")?
 	expect_equal("apple".max("banana"), "banana")?
 	expect_equal("zebra".clamp("a", "m"), "m")?
 	expect_equal("Z".min("a"), "Z")?
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Map from \"@std/collections/collections.ms\"\n\ntype Map[K, V]:\n\tvalue V\n"
+    "fmt": "import Map from \"@std/collections/collections.ms\"\n\ntype Map[K, V] {\n\tvalue V\n}\n"
   }
 }

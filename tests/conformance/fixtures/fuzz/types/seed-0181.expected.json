@@ -12,22 +12,22 @@
         "message": "expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"",
         "position": {
           "file": "seed-0181.ms",
-          "line": 38,
+          "line": 41,
           "column": 16,
-          "offset": 1053
+          "offset": 993
         },
         "fix": {
           "position": {
             "file": "seed-0181.ms",
-            "line": 38,
+            "line": 41,
             "column": 16,
-            "offset": 1053
+            "offset": 993
           },
           "end": {
             "file": "seed-0181.ms",
-            "line": 38,
+            "line": 41,
             "column": 17,
-            "offset": 1054
+            "offset": 994
           },
           "replacement": "\"1\""
         }
@@ -38,16 +38,16 @@
         "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
         "position": {
           "file": "seed-0181.ms",
-          "line": 38,
+          "line": 41,
           "column": 19,
-          "offset": 1056
+          "offset": 996
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0181.ms:38:16: type: expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n    |\n 38 |     bad := say(1, 2)\n    |                ^\n<DIR>/seed-0181.ms:38:19: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 38 |     bad := say(1, 2)\n    |                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0181.ms:41:16: type: expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n    |\n 41 |     bad := say(1, 2)\n    |                ^\n<DIR>/seed-0181.ms:41:19: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 41 |     bad := say(1, 2)\n    |                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

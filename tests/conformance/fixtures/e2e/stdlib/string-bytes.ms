@@ -7,14 +7,15 @@ import (
 )
 
 // Fails unless `result` is an error of `kind` whose message starts with `prefix`.
-fn expect_failure(result String!, kind String, prefix String) Void!:
-	if value := result: return error(Error(f"expected {kind}, got ok({value})"))
+fn expect_failure(result String!, kind String, prefix String) Void! {
+	if value := result { return error(Error(f"expected {kind}, got ok({value})")) }
 
 	cause := result.err()
 	expect_equal(cause.kind, kind)?
 	expect_equal(cause.message.starts_with(prefix), true)?
+}
 
-test "Unicode scalar offsets differ from scalar count":
+test "Unicode scalar offsets differ from scalar count" {
 	text := "aé🙂"
 	expect_false(text.length() != 7 or text.scalar_length() != 3)?
 	expect_equal(text.scalar_values(), [97, 233, 128578])?
@@ -24,8 +25,9 @@ test "Unicode scalar offsets differ from scalar count":
 	expect_equal((text.scalar_values() | from_scalars?), text)?
 	expect_equal(text.slice(1, 7), "é🙂")?
 	expect_equal(("é".normalize("NFC")?), "é")?
+}
 
-test "repeat is plain text and clamps nonpositive counts":
+test "repeat is plain text and clamps nonpositive counts" {
 	expect_equal("ab".repeat(2), "abab")?
 	expect_equal("ab".repeat(0), "")?
 	expect_equal("ab".repeat(-3), "")?
@@ -41,8 +43,9 @@ test "repeat is plain text and clamps nonpositive counts":
 
 	scalar_error String! := error(Error("string: invalid input", kind: "EINVAL"))
 	expect_equal(from_scalars([55296]), scalar_error)?
+}
 
-test "bytes copy slice search and UTF8 validation":
+test "bytes copy slice search and UTF8 validation" {
 	data := Bytes([0, 1, 255, 1])
 	expect_equal(data.get(-1), 1)?
 	expect_equal(data.get_or(4, default: 7), 7)?
@@ -60,8 +63,9 @@ test "bytes copy slice search and UTF8 validation":
 	expect_false(copied.get(0) != 42 or data.get(0) != 0)?
 	expect_false(Bytes([255]).decode_utf8() != null)?
 	expect_equal("é".to_bytes().decode_utf8(), "é")?
+}
 
-test "Bytes values direct bound and free calls return independent lists":
+test "Bytes values direct bound and free calls return independent lists" {
 	var input List[UInt8] = [0, 1, 255]
 	data := Bytes(input.clone())
 	input.set(0, 42)
@@ -81,8 +85,9 @@ test "Bytes values direct bound and free calls return independent lists":
 	expect_false(
 		Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
 	)?
+}
 
-test "String slice uses byte offsets with relative bounds and clamps out-of-range ones":
+test "String slice uses byte offsets with relative bounds and clamps out-of-range ones" {
 	text := "aé🙂z"
 	expect_equal(text.slice(-5, 8), "🙂z")?
 	expect_equal(text.slice(0, -1), "aé🙂")?
@@ -95,8 +100,9 @@ test "String slice uses byte offsets with relative bounds and clamps out-of-rang
 	expect_equal(text.slice(1, 5), "é")?
 	expect_equal(text.slice(0, 4), "aé")?
 	expect_equal(text.slice(1, 3), "é")?
+}
 
-test "string and bytes builders freeze":
+test "string and bytes builders freeze" {
 	var text = ""
 	text += "é"
 	text += "🙂"
@@ -106,8 +112,9 @@ test "string and bytes builders freeze":
 	bytes.append(0)
 	bytes.append_bytes(Bytes([255, 1]))
 	expect_equal(bytes.build(), Bytes([0, 255, 1]))?
+}
 
-test "empty text splits into one part and case mapping is full Unicode":
+test "empty text splits into one part and case mapping is full Unicode" {
 	expect_equal("".split(","), [""])?
 
 	none_requested List[String] := []
@@ -117,29 +124,34 @@ test "empty text splits into one part and case mapping is full Unicode":
 	expect_equal("ΑΣ".lower(), "ας")?
 	expect_equal("İ".lower(), "i\u{307}")?
 	expect_equal("Maße".upper(), "MASSE")?
+}
 
-test "offset walks over long strings match scalar_values":
+test "offset walks over long strings match scalar_values" {
 	a := "aé€🙂".repeat(300)
 	b := "日é".repeat(450)
 
-	for text in [a, b]:
+	for text in [a, b] {
 		var walked = 0
 		var offset = 0
 
-		while offset < text.length():
+		while offset < text.length() {
 			code := text.scalar_at(offset, -1)
 			walked += code
 			offset += (
-				if code < 128: 1 else: if code < 2048: 2 else: if code < 65536: 3 else: 4
+				if code < 128 { 1 } else { if code < 2048 { 2 } else { if code < 65536 { 3 } else { 4 } } }
 			)
+		}
 
 		var total = 0
-		for code in text.scalar_values():
+		for code in text.scalar_values() {
 			total += code
+		}
 		expect_equal(walked, total)?
 		expect_equal(text.scalar_at(text.length() - 1, -1), -1)?
+	}
+}
 
-test "offsets and slicing in long mixed-width text agree with the scalar walk":
+test "offsets and slicing in long mixed-width text agree with the scalar walk" {
 	block := "aé€🙂"
 	text := block.repeat(600)
 	expect_equal(text.length(), 6000)?
@@ -148,12 +160,13 @@ test "offsets and slicing in long mixed-width text agree with the scalar walk":
 	var forward = 0
 	var offset = 0
 
-	while offset < text.length():
+	while offset < text.length() {
 		code := text.scalar_at(offset, -1)
 		forward += code
 		offset += (
-			if code < 128: 1 else: if code < 2048: 2 else: if code < 65536: 3 else: 4
+			if code < 128 { 1 } else { if code < 2048 { 2 } else { if code < 65536 { 3 } else { 4 } } }
 		)
+	}
 
 	expect_equal(forward, 600 * (97 + 233 + 8364 + 128578))?
 	expect_false(
@@ -170,11 +183,12 @@ test "offsets and slicing in long mixed-width text agree with the scalar walk":
 	expect_equal(text.slice(5996, 6000), "🙂")?
 	expect_equal(text.slice(6000, 6001), "")?
 	expect_equal(text.slice(7, 8), "")?
+}
 
-test "builder appends literals of every short length across growth":
+test "builder appends literals of every short length across growth" {
 	var sb = ""
 
-	for i in 0..40:
+	for i in 0..40 {
 		sb += "a"
 		sb += "bc"
 		sb += "def"
@@ -185,29 +199,35 @@ test "builder appends literals of every short length across growth":
 		sb += "EFGHIJKLMNOPQRS"
 		sb += "0123456789abcdef"
 		sb += "é€"
+	}
 
 	one := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS0123456789abcdefé€"
 	var want = ""
-	for i in 0..40:
+	for i in 0..40 {
 		want += one
+	}
 	expect_equal(sb, want)?
+}
 
-test "builder appends variable text of every length across growth":
+test "builder appends variable text of every length across growth" {
 	base := "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
 	var sb = ""
 	var want = 0
 
-	for round in 0..3:
-		for n in 0..70:
+	for round in 0..3 {
+		for n in 0..70 {
 			piece := base.slice(0, n)
 			sb += piece
 			want += n
+		}
+	}
 
 	built := sb
 	expect_equal(built.length(), want)?
 	expect_equal(built.slice(0, 10), "0010120123")?
+}
 
-test "search indexes are byte offsets for ascii, inline and unicode text":
+test "search indexes are byte offsets for ascii, inline and unicode text" {
 	long := "a".repeat(100).concat("!").concat("é").concat("!")
 	expect_equal(long.index_of("!") or (-1), 100)?
 	expect_equal(long.last_index_of("!") or (-1), 103)?
@@ -219,8 +239,9 @@ test "search indexes are byte offsets for ascii, inline and unicode text":
 	expect_equal("ab!".last_index_of("!") or (-1), 2)?
 	expect_equal("é!".last_index_of("!") or (-1), 2)?
 	expect_equal(ascii.last_index_of("?") or (-1), -1)?
+}
 
-test "count matches split for nonempty parts and counts scalars plus one for an empty part":
+test "count matches split for nonempty parts and counts scalars plus one for an empty part" {
 	expect_equal("word,".repeat(10000).count(","), 10000)?
 	expect_equal("aaaa".count("aa"), 2)?
 	expect_equal("héllo".count(""), 6)?
@@ -228,8 +249,9 @@ test "count matches split for nonempty parts and counts scalars plus one for an 
 	expect_equal("".count(""), 1)?
 	expect_equal("🙂x🙂".count("🙂"), 2)?
 	expect_equal("abc".count("abcd"), 0)?
+}
 
-test "list slice errors name the values that failed":
+test "list slice errors name the values that failed" {
 	items := [1, 2, 3]
 	r := items.slice(1, 10)
 	cause := r.err()
@@ -239,3 +261,4 @@ test "list slice errors name the values that failed":
 		),
 		true,
 	)?
+}

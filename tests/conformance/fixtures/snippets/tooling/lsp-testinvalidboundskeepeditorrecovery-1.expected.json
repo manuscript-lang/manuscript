@@ -12,7 +12,7 @@
         "message": "a bound must be an interface, but Named resolves to a type parameter; rename the type parameter or name an interface",
         "position": {
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 7,
+          "line": 8,
           "column": 16,
           "offset": 253
         }
@@ -23,7 +23,7 @@
         "message": "unknown or ambiguous member name on Named; Named has no bound, so it has no operations: bound it where it is declared, as in `fn f[Named: Contract]` for a function or `fn var Repository[Named: Contract].add` for a method of a generic type",
         "position": {
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 10,
+          "line": 12,
           "column": 43,
           "offset": 320
         }
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:7:16: type: a bound must be an interface, but Named resolves to a type parameter; rename the type parameter or name an interface\n   |\n 7 | type Box[Named Named]:\n   |                ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:10:43: resolution: unknown or ambiguous member name on Named; Named has no bound, so it has no operations: bound it where it is declared, as in `fn f[Named: Contract]` for a function or `fn var Repository[Named: Contract].add` for a method of a generic type\n    |\n 10 | fn Box[Named].name() String => self.cause.name()\n    |                                           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:8:16: type: a bound must be an interface, but Named resolves to a type parameter; rename the type parameter or name an interface\n   |\n 8 | type Box[Named Named] {\n   |                ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:12:43: resolution: unknown or ambiguous member name on Named; Named has no bound, so it has no operations: bound it where it is declared, as in `fn f[Named: Contract]` for a function or `fn var Repository[Named: Contract].add` for a method of a generic type\n    |\n 12 | fn Box[Named].name() String => self.cause.name()\n    |                                           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

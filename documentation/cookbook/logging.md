@@ -15,22 +15,27 @@ Save as `logs.ms`. Each record has a level, a message and optional fields of any
 ```manuscript
 import LoggerOptions, create, stdout_transport from "@std/log.ms"
 
-type Started:
+type Started {
     port Int
+}
 
-type Slow:
+type Slow {
     ms Int
+}
 
-type Request:
+type Request {
     request Int
+}
 
-fn main() Void!:
+fn main() Void! {
     log := create(stdout_transport(), LoggerOptions(timestamp: false))?
     log.info("started", Started(port: 8080))?
     log.debug("not shown at the default level")?
+
     handler := log.child(Request(request: 7))?
     handler.warn("slow request", Slow(ms: 950))?
     return ok()
+}
 ```
 
 ```sh
@@ -49,10 +54,15 @@ Save as `rotate.ms`. `rotating_file_transport(path, max_bytes, keep)` moves the 
 ```manuscript
 import LoggerOptions, create, rotating_file_transport from "@std/log.ms"
 
-fn main() Void!:
-    var log = create(rotating_file_transport("app.log", 200, 2)?, LoggerOptions(timestamp: false))?
-    for i in 0..20:
+fn main() Void! {
+    var log = create(
+        rotating_file_transport("app.log", 200, 2)?,
+        LoggerOptions(timestamp: false),
+    )?
+    for i in 0..20 {
         log.info(f"record {i}")?
+    }
     log.close()?
     print("ok")
+}
 ```

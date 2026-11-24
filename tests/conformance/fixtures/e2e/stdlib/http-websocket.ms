@@ -25,7 +25,7 @@ import (
 	http_result, list_headers, text_headers from "./support/http.ms",
 )
 
-fn tls_options() TlsOptions:
+fn tls_options() TlsOptions {
 	return TlsOptions(
 		server_name: "",
 		roots_pem: "",
@@ -34,9 +34,10 @@ fn tls_options() TlsOptions:
 		alpn: [],
 		require_client_certificate: false,
 	)
+}
 
-fn echo(var exchange HttpExchange) Void!:
-	if exchange.path() == "/ws":
+fn echo(var exchange HttpExchange) Void! {
+	if exchange.path() == "/ws" {
 		var socket = (
 			http_result(
 				upgrade(
@@ -63,6 +64,7 @@ fn echo(var exchange HttpExchange) Void!:
 		)
 		void socket.close()
 		return ok()
+	}
 
 	var chain_1 = Map[String, List[String]]()
 	chain_1.add(key: "X-Test", value: ["manuscript"])
@@ -70,8 +72,9 @@ fn echo(var exchange HttpExchange) Void!:
 	headers := (list_headers(chain_1)?)
 	_started := exchange.send_headers(status: 201, headers: headers)?
 	_written := (http_result(exchange.write("hello"))?)
+}
 
-test "HTTP buffered and streaming clients call a Manuscript handler":
+test "HTTP buffered and streaming clients call a Manuscript handler" {
 	options := HttpServerOptions(
 		max_requests: 4,
 		timeout: 3.seconds(),
@@ -142,12 +145,15 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 			max_bytes: 4,
 			timeout: 2.seconds(),
 		),
-	):
+	) {
 		ok(_) => return fail("HTTP output budget ignored")
-		error(cause):
+		error(cause) => {
 			expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))?
+		}
+	}
+}
 
-test "WebSocket negotiates a protocol and echoes a text frame":
+test "WebSocket negotiates a protocol and echoes a text frame" {
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := (
 		serve(
@@ -191,8 +197,9 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 			or message.data != "é🙂".to_bytes()
 		) | expect_false?
 	)
+}
 
-fn upgrade_status(address String, version String, extra String) String!:
+fn upgrade_status(address String, version String, extra String) String! {
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	key := "dGhlIHNhbXBsZSBub25jZQ=="
 	request := (
@@ -203,8 +210,9 @@ fn upgrade_status(address String, version String, extra String) String!:
 
 	reply := (recv(client, 2.seconds())?) or Bytes([])
 	return ok((reply.decode_utf8() or "").split("\r\n").first() or "")
+}
 
-test "WebSocket client options bound messages and reject bad values":
+test "WebSocket client options bound messages and reject bad values" {
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := (
 		serve(
@@ -244,8 +252,9 @@ test "WebSocket client options bound messages and reject bad values":
 		WebSocketOptions(timeout: 0.seconds().subtract(1.seconds())),
 	)
 	expect_equal(negative.err().kind, "EINVAL")?
+}
 
-test "WebSocket upgrades need HTTP/1.1 and one key":
+test "WebSocket upgrades need HTTP/1.1 and one key" {
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := (
 		serve(
@@ -268,13 +277,15 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
 		)?,
 		"HTTP/1.1 400 Bad Request",
 	)?
+}
 
-fn report_host(var exchange HttpExchange) Void!:
+fn report_host(var exchange HttpExchange) Void! {
 	hosts := exchange.headers().get_all("Host")
 	_started := exchange.send_headers(status: 200, headers: headers())?
 	_written := (http_result(exchange.write(hosts.join(",")))?)
+}
 
-test "HTTP streaming handlers see the Host request header":
+test "HTTP streaming handlers see the Host request header" {
 	options := HttpServerOptions(
 		max_requests: 2,
 		timeout: 3.seconds(),
@@ -299,8 +310,9 @@ test "HTTP streaming handlers see the Host request header":
 		) | expect_ok?
 	)
 	response.body | expect_equal(server.address().to_bytes())?
+}
 
-test "HTTP requests reject an empty method":
+test "HTTP requests reject an empty method" {
 	match request(
 		method: HttpMethod.Custom(value: ""),
 		url: "http://127.0.0.1:1/",
@@ -308,14 +320,17 @@ test "HTTP requests reject an empty method":
 			headers: (text_headers(Map[String, String]())?),
 			timeout: 1.seconds(),
 		),
-	):
+	) {
 		ok(_) => return fail("empty method accepted")
-		error(cause):
+		error(cause) => {
 			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
+		}
+	}
+}
 
 // The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep
 // instead of waiting it out.
-fn silent(var exchange HttpExchange) Void!:
+fn silent(var exchange HttpExchange) Void! {
 	var _socket = (
 		http_result(
 			upgrade(
@@ -327,8 +342,9 @@ fn silent(var exchange HttpExchange) Void!:
 		)?
 	)
 	void sleep(30.seconds()).wait()
+}
 
-test "a WebSocket read cancelled by its timeout leaves the socket closable":
+test "a WebSocket read cancelled by its timeout leaves the socket closable" {
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -339,8 +355,9 @@ test "a WebSocket read cancelled by its timeout leaves the socket closable":
 	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
 	expect_true(within(socket.input, 50.milliseconds()).is_error())?
 	socket.close() | expect_ok?
+}
 
-test "a promise cancelled while it owns a WebSocket closes it without ending the program":
+test "a promise cancelled while it owns a WebSocket closes it without ending the program" {
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -356,8 +373,9 @@ test "a promise cancelled while it owns a WebSocket closes it without ending the
 		options: PromiseOptions(timeout: 50.milliseconds())
 	).wait()
 	expect_true(read.is_error())?
+}
 
-fn direct(var exchange HttpExchange) Void!:
+fn direct(var exchange HttpExchange) Void! {
 	var socket = http_result(
 		exchange.upgrade(
 			allowed_origins: [],
@@ -370,8 +388,9 @@ fn direct(var exchange HttpExchange) Void!:
 		or panic("called Optional.get() on null")
 	)
 	_sent := http_result(socket.output.write(message))?
+}
 
-test "HttpExchange.upgrade returns a WebSocket":
+test "HttpExchange.upgrade returns a WebSocket" {
 	server := serve(address: "127.0.0.1:0", handler: direct) | expect_ok?
 	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
 	_sent := (
@@ -388,3 +407,4 @@ test "HttpExchange.upgrade returns a WebSocket":
 		or panic("called Optional.get() on null")
 	)
 	message.data | expect_equal("hi".to_bytes())?
+}

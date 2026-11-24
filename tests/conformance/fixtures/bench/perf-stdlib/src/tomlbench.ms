@@ -1,21 +1,27 @@
-import bench from "./harness.ms"
-import parse from "@std/data/toml.ms"
+import (
+	parse from "@std/data/toml.ms",
 
-fn toml_doc(count Int) String:
-    var sb = ""
-    for i in 0..count:
-        sb += f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n"
-    return sb
+	bench from "./harness.ms",
+)
 
-export fn bench_toml() Void:
-    toml := toml_doc(2000)
+fn toml_doc(count Int) String {
+	var sb = ""
+	for i in 0..count {
+		sb += f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n"
+	}
+	return sb
+}
 
-    bench(
-        "toml.parse",
-        2000,
-        fn() Int:
-            if parse(toml).is_ok():
-                return 1
+export fn bench_toml() Void {
+	toml := toml_doc(2000)
 
-            return 0
-    )
+	bench(
+		"toml.parse",
+		2000,
+		fn() Int {
+			if parse(toml).is_ok() {
+				return 1
+			} return 0
+		}
+	)
+}

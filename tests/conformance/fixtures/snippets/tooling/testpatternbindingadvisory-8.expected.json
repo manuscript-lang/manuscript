@@ -12,9 +12,9 @@
         "message": "Box has no member value; a type name is followed only by an enum case",
         "position": {
           "file": "testpatternbindingadvisory-8.ms",
-          "line": 9,
+          "line": 10,
           "column": 27,
-          "offset": 281
+          "offset": 274
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
         "position": {
           "file": "testpatternbindingadvisory-8.ms",
-          "line": 10,
+          "line": 11,
           "column": 24,
-          "offset": 310
+          "offset": 297
         },
         "fix": {
           "position": {
@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testpatternbindingadvisory-8.ms:9:27: resolution: Box has no member value; a type name is followed only by an enum case\n   |\n 9 |         box => return Box.value\n   |                           ^\n<DIR>/testpatternbindingadvisory-8.ms:10:24: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 10 |         null => return panic(message: \"empty\")\n    |                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testpatternbindingadvisory-8.ms:10:27: resolution: Box has no member value; a type name is followed only by an enum case\n    |\n 10 |         box => return Box.value\n    |                           ^\n<DIR>/testpatternbindingadvisory-8.ms:11:24: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 11 |         null => return panic(message: \"empty\")\n    |                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

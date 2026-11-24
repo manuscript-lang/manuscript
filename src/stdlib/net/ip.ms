@@ -11,7 +11,7 @@ import (
 )
 
 // The DNS record categories that `resolve_dns` can request.
-export enum DnsKind:
+export enum DnsKind {
 	A  // IPv4 address records for the queried name.
 	AAAA  // IPv6 address records for the queried name.
 	CNAME  // Canonical name alias records for the queried name.
@@ -20,10 +20,11 @@ export enum DnsKind:
 	TXT  // Text records returned as string values.
 	PTR  // Reverse address pointer records for an IP.
 	SRV  // Service location records with priority, weight and port.
+}
 
 // Returns the uppercase wire category.
-fn DnsKind.to_string() String:
-	match self:
+fn DnsKind.to_string() String {
+	match self {
 		A => return "A"
 		AAAA => return "AAAA"
 		CNAME => return "CNAME"
@@ -32,49 +33,59 @@ fn DnsKind.to_string() String:
 		TXT => return "TXT"
 		PTR => return "PTR"
 		SRV => return "SRV"
+	}
+}
 
 // Numeric address families reported by IP values and host interfaces.
-export enum IpFamily:
+export enum IpFamily {
 	IPv4  // A four-byte numeric address.
 	IPv6  // A sixteen-byte numeric address.
+}
 
 // Returns IPv4 or IPv6.
-fn IpFamily.to_string() String:
-	match self:
+fn IpFamily.to_string() String {
+	match self {
 		IPv4 => return "IPv4"
 		IPv6 => return "IPv6"
+	}
+}
 
 // A validated numeric IPv4/IPv6 address without a port or zone.
 // ms: data
 export extern type IpAddress
 
 // Returns canonical text; mapped IPv6 input is normalized to IPv4.
-fn IpAddress.to_string() String:
+fn IpAddress.to_string() String {
 	return msstd_net_ip_address_text(self)
+}
 
 // Writes the canonical text as a JSON string.
-fn IpAddress.to_json() JsonValue:
+fn IpAddress.to_json() JsonValue {
 	return JsonValue.StringValue(self.to_string())
+}
 
 // Returns the normalized address family.
-fn IpAddress.family() IpFamily:
-	if msstd_net_ip_address_family(self): return IPv6
+fn IpAddress.family() IpFamily {
+	if msstd_net_ip_address_family(self) { return IPv6 }
 	return IPv4
+}
 
 // A validated, masked numeric CIDR range.
 // ms: data
 export extern type Cidr
 
 // Returns the canonical text of the masked range, such as `10.0.0.0/8`.
-fn Cidr.to_string() String:
+fn Cidr.to_string() String {
 	return msstd_net_cidr_text(self)
+}
 
 // Writes the canonical text as a JSON string.
-fn Cidr.to_json() JsonValue:
+fn Cidr.to_json() JsonValue {
 	return JsonValue.StringValue(self.to_string())
+}
 
 // DNS record data returned by a typed lookup.
-export type DnsRecord:
+export type DnsRecord {
 	// The same typed category used by the query.
 	kind DnsKind
 	// The record's answer: an IP address for A and AAAA, the target host name for
@@ -88,19 +99,23 @@ export type DnsRecord:
 	weight Int
 	// The service port of an SRV record; 0 for other kinds.
 	port Int
+}
 
 // Reports whether an IP address belongs to a CIDR range. The families must match: an
 // address written `::ffff:1.2.3.4` is normalized to IPv4, so an IPv4 range contains it
 // and a range written in `::ffff:` form (which keeps its IPv6 spelling) contains no
 // IPv4 address.
-export fn contains_ip(cidr Cidr, address IpAddress) Bool!:
+export fn contains_ip(cidr Cidr, address IpAddress) Bool! {
 	return msstd_net_contains_ip(cidr, address)
+}
 
 // Validates and canonicalizes an IPv4 or IPv6 CIDR range: host bits are cleared, so
 // `10.1.2.3/8` is `10.0.0.0/8`, and the prefix length has no sign or leading zero.
-export fn parse_cidr(text String) Cidr!:
+export fn parse_cidr(text String) Cidr! {
 	return msstd_net_parse_cidr(text)
+}
 
 // Validates and canonicalizes an IPv4 or IPv6 address.
-export fn parse_ip(text String) IpAddress!:
+export fn parse_ip(text String) IpAddress! {
 	return msstd_net_parse_ip(text)
+}

@@ -92,24 +92,17 @@ MS_NODISCARD bool parse_result_type(Parser *p, MsTypeRef **out, bool *moves) {
     parse_fail_fix(
         p, t,
         ms_span_of_text(
-            "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void:"),
+            "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void { ... }"),
         ms_span_of_text(""));
     return false;
   }
-  if (t.kind == MS_T_LBrace) {
-    parse_fail(p, t,
-               ms_span_of_text("blocks are not braced and every fn declares its result type: write the "
-                               "result type, then ':' and an indented body, e.g. fn f() Void: (Void when it "
-                               "returns nothing), and remove the closing '}'"));
-    return false;
-  }
-  if (t.kind == MS_T_Colon || t.kind == MS_T_FatArrow || t.kind == MS_T_Newline) {
+  if (t.kind == MS_T_Colon || t.kind == MS_T_FatArrow || t.kind == MS_T_Newline || t.kind == MS_T_BlockOpen) {
     if (p->speculative > 0) {
       return false;
     }
     parse_fail(
         p, t,
-        ms_span_of_text("every fn declares its result type after the parameter list, e.g. fn f() Void:"));
+        ms_span_of_text("every fn declares its result type after the parameter list, e.g. fn f() Void { ... } (Void when it returns nothing)"));
     return false;
   }
   return parse_move_type(p, out, moves);
@@ -233,7 +226,7 @@ MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
     if (parse_kind(p) == MS_T_Comma && p->speculative == 0) {
       parse_fail(
           p, parse_peek(p),
-          ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair:' and named fields to "
+          ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair { ... }' and named fields to "
                           "return several values, or use a List when the items share one type"));
       return false;
     }

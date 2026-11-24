@@ -1,13 +1,19 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Reader:
+interface Reader {
     fn read() String
-type Box:
+}
+type Box {
     label String
-impl Reader for Box:
-    fn read() String:
+}
+impl Reader for Box {
+    fn read() String {
         return self.label
-fn message(value: Reader) String:
+    }
+}
+fn message(value: Reader) String {
     return value.read()
-fn make() Box:
+}
+fn make() Box {
     return Box(label: "value")
+}

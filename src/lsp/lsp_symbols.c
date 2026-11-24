@@ -297,21 +297,20 @@ void lsp_folding_ranges(const LspDoc *doc, MsStrBuild *out) {
   FoldList folds = {0};
   const MsSpan source = ms_string_span(&doc->text);
   if (ms_lex(&arena, source, &lexed, &diag)) {
-    /* Suites end at their last code token, excluding trailing comments. */
+    /* Blocks end at their last code token before the closing brace, excluding trailing comments. */
     LineStack starts = {0};
-    size_t header = 0, last = 0;
+    size_t last = 0;
     for (size_t i = 0; i < lexed.ntokens; i++) {
       const MsToken *token = &lexed.tokens[i];
-      if (token->kind == MS_T_Indent) {
-        line_stack_push(&starts, header);
-      } else if (token->kind == MS_T_Dedent) {
+      if (token->kind == MS_T_BlockOpen) {
+        line_stack_push(&starts, token->pos.line - 1);
+      } else if (token->kind == MS_T_BlockClose) {
         if (starts.len > 0) {
           const size_t start = starts.ptr[--starts.len];
           if (last > start) fold_list_push(&folds, (Fold){start, last});
         }
       } else if (token->kind != MS_T_Comment && token->kind != MS_T_Newline && token->kind != MS_T_Eof) {
         last = token->end.line - 1;
-        if (token->kind == MS_T_Colon) header = token->pos.line - 1;
       }
     }
     line_stack_free(&starts);

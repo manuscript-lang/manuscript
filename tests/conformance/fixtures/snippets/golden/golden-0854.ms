@@ -1,4 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Void:
-    if true:
+fn f() Void {
+    if true {
+    }
+}

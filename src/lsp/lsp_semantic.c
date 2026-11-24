@@ -112,8 +112,8 @@ static void scan(MsSpan source, SemanticList *tokens) {
       case MS_T_String: kind = LEX_STRING; break;
       case MS_T_Comment: kind = LEX_COMMENT; break;
       case MS_T_Newline:
-      case MS_T_Indent:
-      case MS_T_Dedent:
+      case MS_T_BlockOpen:
+      case MS_T_BlockClose:
       case MS_T_Eof: kind = LEX_SKIP; break;
       default: {
         const char first = ms_tok_str((MsTok)t->kind)[0];
@@ -123,7 +123,7 @@ static void scan(MsSpan source, SemanticList *tokens) {
       const bool zero_width = t->end.offset <= t->pos.offset;
       const MsTok before = previous;
       previous = (MsTok)t->kind;
-      /* Indent, Dedent and Eof take no source text and share their offset with the next token; qsort leaves
+      /* Newline and Eof take no source text and share their offset with the next token; qsort leaves
        * equal keys in any order, and where one landed between `fn` and its receiver the receiver lost its kind. */
       if (zero_width) continue;
       semantic_list_push(tokens, (SemanticToken){.kind = kind,

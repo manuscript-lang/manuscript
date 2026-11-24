@@ -10,28 +10,28 @@
         "message": "match arms use bare variant names, e.g. Paid(receipt) => value or Missing => value; remove the legacy 'case' prefix",
         "position": {
           "file": "foreign-case-arm.ms",
-          "line": 9,
+          "line": 10,
           "column": 9,
-          "offset": 167
+          "offset": 172
         },
         "end": {
           "file": "foreign-case-arm.ms",
-          "line": 9,
+          "line": 10,
           "column": 14,
-          "offset": 172
+          "offset": 177
         },
         "fix": {
           "position": {
             "file": "foreign-case-arm.ms",
-            "line": 9,
+            "line": 10,
             "column": 9,
-            "offset": 167
+            "offset": 172
           },
           "end": {
             "file": "foreign-case-arm.ms",
-            "line": 9,
+            "line": 10,
             "column": 14,
-            "offset": 172
+            "offset": 177
           },
           "replacement": ""
         }

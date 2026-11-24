@@ -7,17 +7,20 @@ import (
 	expect_equal, expect_error from "@std/test/test.ms",
 )
 
-type Service:
+type Service {
 	service String
+}
 
-type Request:
+type Request {
 	request Int
+}
 
-fn lines(path String) String!:
+fn lines(path String) String! {
 	data := read_file(path).wait()?
 	return ok(data.decode_utf8() or "")
+}
 
-test "levels filter, fields nest under data, and bound fields merge":
+test "levels filter, fields nest under data, and bound fields merge" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/events.ndjson"
 	var logger = create(
@@ -41,8 +44,9 @@ test "levels filter, fields nest under data, and bound fields merge":
 
 	expected := "{\"level\":40,\"msg\":\"warn\"}\n{\"level\":50,\"msg\":\"n\",\"data\":7}\n{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]}\n{\"level\":40,\"msg\":\"child\",\"context\":{\"service\":\"api\",\"request\":7},\"data\":{\"service\":\"worker\"}}\n{\"level\":10,\"msg\":\"trace\"}\n"
 	expect_equal(lines(path)?, expected)?
+}
 
-test "limits, invalid levels, and closed transports are errors":
+test "limits, invalid levels, and closed transports are errors" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/events.ndjson"
 	line := "{\"level\":30,\"msg\":\"x\"}\n"
@@ -65,8 +69,9 @@ test "limits, invalid levels, and closed transports are errors":
 	)?
 	logger.close()?
 	expect_equal(lines(path)?, line)?
+}
 
-test "a missing directory is a filesystem error":
+test "a missing directory is a filesystem error" {
 	directory := temporary("manuscript-log-")?
 	missing := expect_error(file_transport(f"{directory.path()}/missing/events.ndjson"))?
 	expect_equal(missing.kind, "ENOENT")?
@@ -74,3 +79,4 @@ test "a missing directory is a filesystem error":
 		missing.message,
 		f"filesystem: file or directory not found: {directory.path()}/missing/events.ndjson",
 	)?
+}

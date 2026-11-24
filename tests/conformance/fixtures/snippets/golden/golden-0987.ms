@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn value() String:
+fn value() String {
     return "
+}

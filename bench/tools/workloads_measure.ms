@@ -2,56 +2,65 @@
 // (bench/perf/workloads).
 import invalid, left, now_ns, right, rotate from "./lib.ms"
 
-export type Sample:
+export type Sample {
 	trial Int
 	version String
 	elapsed_ns Int
+}
 
-export fn versions() List[String]:
+export fn versions() List[String] {
 	return ["ms", "go", "rs"]
+}
 
 // The samples of every trial plus the expected output (produced by the Go reference).
-export type Measured:
+export type Measured {
 	samples List[Sample]
 	expected String
+}
 
-fn best(samples List[Sample], version String) Float:
+fn best(samples List[Sample], version String) Float {
 	var low = 0
-	for s in samples:
-		if s.version == version and (low == 0 or s.elapsed_ns < low): low = s.elapsed_ns
+	for s in samples {
+		if s.version == version and (low == 0 or s.elapsed_ns < low) { low = s.elapsed_ns }
+	}
 	return low.to_float() / 1000000.0
+}
 
 // `run(version)` executes one program with the workload's input and returns its standard output, or an error when it fails.
-export fn measure(repeats Int, name String, run fn(String) String!) Measured!:
-	if repeats < 1: return invalid("repeats must be positive")
+export fn measure(repeats Int, name String, run fn(String) String!) Measured! {
+	if repeats < 1 { return invalid("repeats must be positive") }
 
 	// One untimed run of each version warms executable and input pages. The Go
 	// reference establishes the expected output; every other output must match.
 	expected := run("go")?
 
-	for v in ["ms", "rs"]:
+	for v in ["ms", "rs"] {
 		got := run(v)?
-		if got != expected: return invalid(
-			f"{name}: {v} warm-up output differs from Go"
-		)
+		if got != expected {
+			return invalid(f"{name}: {v} warm-up output differs from Go")
+		}
+	}
 
 	var samples = List[Sample]()
 
-	for trial in 0..repeats:
-		for v in rotate(versions(), trial % versions().length()):
+	for trial in 0..repeats {
+		for v in rotate(versions(), trial % versions().length()) {
 			start := now_ns()
 			got := run(v)?
 			elapsed := now_ns() - start
-			if elapsed <= 0: return invalid(f"{name}: nonpositive elapsed time")
-			if got != expected: return invalid(
-				f"{name}: {v} trial {trial + 1} output differs from Go"
-			)
+			if elapsed <= 0 { return invalid(f"{name}: nonpositive elapsed time") }
+			if got != expected {
+				return invalid(f"{name}: {v} trial {trial + 1} output differs from Go")
+			}
 
 			samples.append(Sample(trial, v.clone(), elapsed))
+		}
+	}
 
 	return ok(Measured(samples, expected))
+}
 
-export fn row(name String, samples List[Sample]) String:
+export fn row(name String, samples List[Sample]) String {
 	m := best(samples, "ms")
 	g := best(samples, "go")
 	r := best(samples, "rs")
@@ -69,8 +78,9 @@ export fn row(name String, samples List[Sample]) String:
 		+ right((m / r).to_fixed(2), 7)
 		+ "x"
 	)
+}
 
-export fn header() String:
+export fn header() String {
 	return (
 		left("program", 24)
 		+ " "
@@ -84,3 +94,4 @@ export fn header() String:
 		+ " "
 		+ right("ms/rust", 8)
 	)
+}

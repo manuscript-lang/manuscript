@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'except' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch",
+        "message": "'except' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result { ... }' and an else branch",
         "position": {
           "file": "foreign-except.ms",
           "line": 5,
           "column": 5,
-          "offset": 133
+          "offset": 134
         },
         "end": {
           "file": "foreign-except.ms",
           "line": 5,
           "column": 11,
-          "offset": 139
+          "offset": 140
         }
       }
     ],

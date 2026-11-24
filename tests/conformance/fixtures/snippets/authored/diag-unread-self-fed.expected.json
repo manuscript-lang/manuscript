@@ -12,16 +12,16 @@
         "message": "local binding t is never read: it is only read to compute its own next value, so nothing observes it; remove it, use it elsewhere, or name it with a leading '_' to ignore it",
         "position": {
           "file": "diag-unread-self-fed.ms",
-          "line": 8,
+          "line": 9,
           "column": 9,
-          "offset": 166
+          "offset": 170
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-unread-self-fed.ms:8:9: type: local binding t is never read: it is only read to compute its own next value, so nothing observes it; remove it, use it elsewhere, or name it with a leading '_' to ignore it\n   |\n 8 |     var t = 0\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-unread-self-fed.ms:9:9: type: local binding t is never read: it is only read to compute its own next value, so nothing observes it; remove it, use it elsewhere, or name it with a leading '_' to ignore it\n   |\n 9 |     var t = 0\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

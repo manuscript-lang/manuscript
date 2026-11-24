@@ -3,20 +3,25 @@
 // conform: origin=tests/e2e/testdata/accept/cl-03.ms
 import expect_equal from "@std/test/test.ms"
 
-type CustomerId:
-    value String
+type CustomerId {
+	value String
+}
 
-type OrderId:
-    value String
+type OrderId {
+	value String
+}
 
-type Customer:
-    id CustomerId
-    name String
+type Customer {
+	id CustomerId
+	name String
+}
 
-fn customer_name(customer Customer) String:
-    {id: {value}, name: display_name} := customer
-    return f"{value}: {display_name}"
+fn customer_name(customer Customer) String {
+	{id: {value}, name: display_name} := customer
+	return f"{value}: {display_name}"
+}
 
-test "nominal record and nested binding":
-    customer := Customer(CustomerId("c1"), "Ada")
-    expect_equal(customer_name(customer), "c1: Ada")?
+test "nominal record and nested binding" {
+	customer := Customer(CustomerId("c1"), "Ada")
+	expect_equal(customer_name(customer), "c1: Ada")?
+}

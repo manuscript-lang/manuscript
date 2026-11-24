@@ -3,57 +3,141 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "library-errors.ms::library errors carry a kind callers can branch on",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "library-errors.ms::propagation with try forwards the same Error",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "library-errors.ms::an Error built by hand has a message, a kind and details",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "library-errors.ms::a domain record is still a legal error value",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "library-errors.ms::a domain record converts to Error by an ordinary function",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 5,
-        "selected": 5,
-        "passed": 5,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN library-errors.ms::library errors carry a kind callers can branch on\nPASS library-errors.ms::library errors carry a kind callers can branch on\nRUN library-errors.ms::propagation with try forwards the same Error\nPASS library-errors.ms::propagation with try forwards the same Error\nRUN library-errors.ms::an Error built by hand has a message, a kind and details\nPASS library-errors.ms::an Error built by hand has a message, a kind and details\nRUN library-errors.ms::a domain record is still a legal error value\nPASS library-errors.ms::a domain record is still a legal error value\nRUN library-errors.ms::a domain record converts to Error by an ordinary function\nPASS library-errors.ms::a domain record converts to Error by an ordinary function\n5 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS2001",
+          "phase": "resolution",
+          "message": "unknown binding cause; did you mean 'parse'?",
+          "position": {
+            "file": "library-errors.ms",
+            "line": 92,
+            "column": 13,
+            "offset": 2253
+          },
+          "fix": {
+            "position": {
+              "file": "library-errors.ms",
+              "line": 92,
+              "column": 13,
+              "offset": 2253
+            },
+            "end": {
+              "file": "library-errors.ms",
+              "line": 92,
+              "column": 18,
+              "offset": 2258
+            },
+            "replacement": "parse"
+          }
+        },
+        {
+          "code": "MS2001",
+          "phase": "resolution",
+          "message": "unknown binding cause; did you mean 'parse'?",
+          "position": {
+            "file": "library-errors.ms",
+            "line": 93,
+            "column": 16,
+            "offset": 2289
+          },
+          "fix": {
+            "position": {
+              "file": "library-errors.ms",
+              "line": 93,
+              "column": 16,
+              "offset": 2289
+            },
+            "end": {
+              "file": "library-errors.ms",
+              "line": 93,
+              "column": 21,
+              "offset": 2294
+            },
+            "replacement": "parse"
+          }
+        },
+        {
+          "code": "MS2001",
+          "phase": "resolution",
+          "message": "unknown binding cause; did you mean 'parse'?",
+          "position": {
+            "file": "library-errors.ms",
+            "line": 94,
+            "column": 20,
+            "offset": 2318
+          },
+          "fix": {
+            "position": {
+              "file": "library-errors.ms",
+              "line": 94,
+              "column": 20,
+              "offset": 2318
+            },
+            "end": {
+              "file": "library-errors.ms",
+              "line": 94,
+              "column": 25,
+              "offset": 2323
+            },
+            "replacement": "parse"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "callee is not a function (it has type ReadError); only functions and methods can be called, so remove the (...) or call a function instead",
+          "position": {
+            "file": "library-errors.ms",
+            "line": 84,
+            "column": 14,
+            "offset": 2125
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -64,11 +148,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

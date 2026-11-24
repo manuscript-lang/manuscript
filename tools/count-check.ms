@@ -23,17 +23,19 @@ import (
 )
 
 // The text after `prefix` on every line that starts with it.
-fn after(text String, prefix String) List[String]:
+fn after(text String, prefix String) List[String] {
 	var found = List[String]()
-	for line in text.split("\n"):
-		if line.starts_with(prefix): found.append(
-			line.slice(prefix.length(), line.length()).clone()
-		)
+	for line in text.split("\n") {
+		if line.starts_with(prefix) {
+			found.append(line.slice(prefix.length(), line.length()).clone())
+		}
+	}
 	return found
+}
 
-fn main() Int:
+fn main() Int {
 	code := use_stats_runtime()
-	if code != 0: return code
+	if code != 0 { return code }
 
 	// LLVM would delete blocks nothing reads; the gate counts every block the compiler
 	// asks for.
@@ -46,12 +48,14 @@ fn main() Int:
 
 	root := working_directory().get()
 	var files = List[String]()
-	for f in arguments(): files.append(f.clone())
-	if files.is_empty():
+	for f in arguments() { files.append(f.clone()) }
+	if files.is_empty() {
 		for f in glob("tests/checks/ownership-counts", GlobOptions(patterns: ["*.ms"])).get_or(
 			[]
-		):
+		) {
 			files.append(f"tests/checks/ownership-counts/{f.path}")
+		}
+	}
 
 	ms := tool_ms(root.clone())
 	scratch := temporary("ms-counts-").get()
@@ -60,18 +64,18 @@ fn main() Int:
 	var failures = 0
 	var checked = 0
 
-	for f in files:
+	for f in files {
 		source := read_file(f"{root}/{f}").wait().get().decode_utf8() or ""
 		expected_out := after(source, "// expect-stdout: ")
 
-		for build in ["debug", "release"]:
+		for build in ["debug", "release"] {
 			ran := run(
 				ms.clone(),
 				["run", f"{root}/{f}", "--build-type", build.clone()],
 			).wait()
 			checked += 1
 
-			if ran.is_error():
+			if ran.is_error() {
 				failures += 1
 
 				cause := ran.err().message.clone()
@@ -83,12 +87,13 @@ fn main() Int:
 					.get()
 				)
 				continue
+			}
 
 			child := ran.get()
 			out := child.stdout.decode_utf8() or ""
 			err := child.stderr.decode_utf8() or ""
 
-			if child.exit_code != 0:
+			if child.exit_code != 0 {
 				failures += 1
 				(
 					stdout()
@@ -98,28 +103,32 @@ fn main() Int:
 					.get()
 				)
 				continue
+			}
 
 			counts := after(err, "ms-rt counts: ")
 			live := after(err, "ms-rt live blocks at exit: ")
 
-			if live.is_empty() or live[0] != "0":
+			if live.is_empty() or live[0] != "0" {
 				failures += 1
 
-				shown := if not live.is_empty(): live[0].clone() else: "an unreported number of"
+				shown := if not live.is_empty() { live[0].clone() } else { "an unreported number of" }
 				print(f"leak: {f} ({build}) left {shown} live blocks")
+			}
 
 			var have = List[String]()
-			if not counts.is_empty(): have = counts[0].split(" ").clone()
+			if not counts.is_empty() {
+				have = counts[0].split(" ").clone()
+			}
 
-			for header in after(source, f"// expect-{build}: "):
-				for pair in header.split(" "):
-					if pair == "": continue
+			for header in after(source, f"// expect-{build}: ") {
+				for pair in header.split(" ") {
+					if pair == "" { continue }
 
 					checked += 1
 
 					want := pair.clone()
 
-					if not have.contains(want):
+					if not have.contains(want) {
 						failures += 1
 						(
 							stdout()
@@ -128,21 +137,30 @@ fn main() Int:
 							)
 							.get()
 						)
+					}
+				}
+			}
 
-			if not expected_out.is_empty():
+			if not expected_out.is_empty() {
 				checked += 1
 
-				if out.trim_end() != expected_out.join("\n"):
+				if out.trim_end() != expected_out.join("\n") {
 					failures += 1
 					print(f"stdout: {f} ({build}) differs:\n{out}")
+				}
+			}
+		}
+	}
 
 	change_directory(root).get()
 	print(f"checked {checked} expectations, {failures} failing")
 
-	if checked == 0:
+	if checked == 0 {
 		print("no expectations ran")
 		return 1
+	}
 
-	if failures > 0: return 1
+	if failures > 0 { return 1 }
 
 	return 0
+}

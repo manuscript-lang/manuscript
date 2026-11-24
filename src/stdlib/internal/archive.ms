@@ -4,10 +4,11 @@ import (
 )
 
 // Native unpack bounds; `unpack` builds them from `ArchiveOptions`.
-export type ArchiveLimits:
+export type ArchiveLimits {
 	max_entries Int?
 	max_entry_bytes Int?
 	max_total_bytes Int?
+}
 
 export extern fn msstd_compress_encoder_new(
 	format String,

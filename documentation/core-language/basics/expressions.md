@@ -22,7 +22,7 @@ Rows are ordered from highest to lowest precedence.
 | `not` | Right to left; its operand includes comparisons |
 | `and` | Left to right, short circuit |
 | `or` | Left to right, short circuit |
-| `if c: a else: b` | A primary expression; its branches are full expressions; `else if` chains |
+| `if c { a } else { b }` | A primary expression; its branches are full expressions; `else if` chains |
 | Pipe `\|` | Left to right; lowest precedence, see [pipe flows](#pipe-flows) |
 
 ```ebnf
@@ -78,17 +78,23 @@ Save as `port.ms` and run `ms run port.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
 ```manuscript
-fn port_number(text String) Int!:
-    port := text.trim()
+fn port_number(text String) Int! {
+    port := (
+        text.trim()
         | .parse_int()
         | ok_or(Error("expected a port number"))?
+    )
     return ok(port)
+}
 
-fn main() Int:
-    if port := port_number(" 8080 "):
+fn main() Int {
+    if port := port_number(" 8080 ") {
         print(port)
         return 0
+    }
+
     return 1
+}
 ```
 
 ```text
@@ -100,7 +106,7 @@ fn main() Int:
 - `x | f(...)` always inserts `x` as the first positional argument; it cannot apply a function that `f(...)` returns.
 - A trailing `?` on a step unwraps its result under the [propagation rules](../errors/propagation.md). Without `?`, a Result passes through unchanged. A flow may have several `?` steps.
 - `.member`, call, or index directly after a step applies to its result: `x | f(a: 1).size()` is `f(x, a: 1).size()`. A `.member` on the next line is not part of the step: use `x | .size()?` to propagate `x.size()`.
-- A line starting with `|` or `.` continues the statement; indent it exactly four spaces past the statement's first line.
+- A line starting with `|` or `.` continues the statement; `ms fmt` indents it one level past the statement's first line.
 
 ## Operand and result types
 
@@ -144,8 +150,9 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 `__LINE__` is the `Int` line number of the token and `__FILE__` is the `String` name of the file being compiled; both are constants filled in at the use site, so inside a function they name where it is written, not where it is called. A local binding or declaration with either name shadows the constant. To report a caller's position, use a parameter default of `caller_site()` from `@std/test/test.ms` (`file:line:col`) or `caller_frame()` from `@std/concurrency/promise.ms` (`file:line in function`, the form a fault report shows) instead.
 
 ```ms
-fn main() Void:
+fn main() Void {
     print(f"{__FILE__}:{__LINE__}")
+}
 ```
 
 ## Evaluation
@@ -162,19 +169,23 @@ fn main() Void:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn calculated(value Int, active Bool) Int:
-    product := 1 + 2 * 3             // 7
-    same := not value == product     // not (value == product)
-    if active and same:
+fn calculated(value Int, active Bool) Int {
+    product := 1 + 2 * 3  // 7
+    same := not value == product  // not (value == product)
+    if active and same {
         return product
+    }
+
     return value
+}
 ```
 
 <!-- manuscript-example: {"mode":"error","contains":"comparison operators cannot chain","given":[]} -->
 ```manuscript
-fn invalid(value Int, ratio Float) Bool:
+fn invalid(value Int, ratio Float) Bool {
     mixed := value + ratio           // Type error: exact numeric types differ.
     return 0 < value < 10               // Syntax error: comparison chain.
+}
 ```
 
-Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, tuples, and general expression-valued blocks. Conditional expressions use `if condition: a else: b`; see [conditionals](../control-flow/conditionals.md#if-as-an-expression).
+Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, tuples, and general expression-valued blocks. Conditional expressions use `if condition { a } else { b }`; see [conditionals](../control-flow/conditionals.md#if-as-an-expression).

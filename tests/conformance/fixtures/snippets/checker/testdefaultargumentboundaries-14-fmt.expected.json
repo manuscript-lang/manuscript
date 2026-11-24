@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Add:\n\tfn add(value Int) Int\n\ntype Offset:\n\tvalue Int\n\nfn Offset.add(value Int = self.value) Int:\n\treturn value\n\nfn call(value Add) Int:\n\treturn value.add()\n"
+    "fmt": "interface Add {\n\tfn add(value Int) Int\n}\n\ntype Offset {\n\tvalue Int\n}\n\nfn Offset.add(value Int = self.value) Int {\n\treturn value\n}\n\nfn call(value Add) Int {\n\treturn value.add()\n}\n"
   }
 }

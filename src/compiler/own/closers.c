@@ -126,7 +126,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
       (!stmt->u.branch.is_mutable || stmt->u.branch.cond->kind == MS_E_CALL)) {
-    /* `if r := value:` owns the payload it binds, and so does `if var r = call():`, whose result has no place to
+    /* `if r := value { ... }` owns the payload it binds, and so does `if var r = call() { ... }`, whose result has no place to
      * write back to. */
     const MsRef *bound = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
     /* A read that answers a part of its receiver in place (`m.get(k)`) lends the payload: its owner closes it. */
@@ -208,7 +208,7 @@ static MsTy bound_type(const Closers *pass, MsTy scrutinee, uint32_t kase, uint3
   return ms_check_part_type(pass->program, scrutinee, def, def->cases.ptr[kase].fields.ptr[at].ty);
 }
 
-/* `match call():` over an alternative: an arm that binds a part of a call's result owns it, so a resource it holds
+/* `match call() { ... }` over an alternative: an arm that binds a part of a call's result owns it, so a resource it holds
  * closes where the arm ends unless the arm moves it on. The closer is keyed on the arm and names the first binding
  * that holds a resource. */
 static void visit_match(void *ctx, const MsExpr *expr) {

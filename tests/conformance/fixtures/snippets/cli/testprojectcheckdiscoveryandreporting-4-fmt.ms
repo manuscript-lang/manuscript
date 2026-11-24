@@ -3,5 +3,6 @@
 // conform: origin=internal/cli/project_check_test.go:53 TestProjectCheckDiscoveryAndReporting
 import panic from "@std/core.ms"
 
-test "never execute":
-    return panic("check executed code")
+test "never execute" {
+	return panic("check executed code")
+}

@@ -2,76 +2,93 @@ import stdin from "@std/io/io.ms"
 import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
-type Account:
+type Account {
     bal Int
     lim Int
     ops Int
     rej Int
     frozen Bool
+}
 
-type Ledger:
+type Ledger {
     accounts Map[String, Account]
     fees Int
+}
 
-fn reject(var l Ledger, id String, msg String) String:
-    if var a = l.accounts[id]?: a.rej += 1
+fn reject(var l Ledger, id String, msg String) String {
+    if var a = l.accounts[id]? { a.rej += 1 }
     return msg
+}
 
-fn report(l Ledger) String:
+fn report(l Ledger) String {
     rows := l.accounts.keys().sorted(fn a, b: a.compare(b)).map(fn id: f"{id} balance={l.accounts.get(id).get().bal} limit={l.accounts.get(id).get().lim} ops={l.accounts.get(id).get().ops} rejected={l.accounts.get(id).get().rej} frozen={if l.accounts.get(id).get().frozen: "yes" else: "no"}")
     return f"{rows.map(fn r: r + "\n").join("")}total balance={l.accounts.values().map(fn a: a.bal).sum()} fees={l.fees}"
+}
 
-fn money(var l Ledger, cmd String, t List[String]) String:
+fn money(var l Ledger, cmd String, t List[String]) String {
     ids := t.slice(1, t.length() - 1).get()
-    for id in ids:
-        if not l.accounts.contains(id): return f"error: unknown account {id}"
+    for id in ids {
+        if not l.accounts.contains(id) { return f"error: unknown account {id}" }
+    }
     from := ids[0]
     amount := t[t.length() - 1]
-    if cmd == "transfer" and from == ids[1]: return reject(l, from, "error: same account")
-    if amount.scalar_values().any(fn c: c < 48 or c > 57) or amount.parse_int().get_or(0) <= 0: return reject(l, from, "error: invalid amount")
-    for id in ids:
-        if l.accounts.get(id).get().frozen: return reject(l, id, f"error: account frozen {id}")
+    if cmd == "transfer" and from == ids[1] { return reject(l, from, "error: same account") }
+    if amount.scalar_values().any(fn c: c < 48 or c > 57) or amount.parse_int().get_or(0) <= 0 { return reject(l, from, "error: invalid amount") }
+    for id in ids {
+        if l.accounts.get(id).get().frozen { return reject(l, id, f"error: account frozen {id}") }
+    }
     n := amount.parse_int().get()
-    if cmd == "deposit":
+    if cmd == "deposit" {
         var bal = 0
-        if var a = l.accounts[from]?:
+        if var a = l.accounts[from]? {
             a.bal += n
             a.ops += 1
             bal = a.bal
+        }
         return f"ok {bal}"
+    }
     old := l.accounts.get(from).get().bal
     fee := if old >= 0 and old - n < 0: 5 else: 0
-    if old - n - fee < -l.accounts.get(from).get().lim: return reject(l, from, f"error: overdraft limit exceeded {from}")
+    if old - n - fee < -l.accounts.get(from).get().lim { return reject(l, from, f"error: overdraft limit exceeded {from}") }
     l.fees += fee
-    if var a = l.accounts[from]?:
+    if var a = l.accounts[from]? {
         a.bal = old - n - fee
         a.ops += 1
+    }
     suffix := if fee > 0: f" fee={fee}" else: ""
-    if cmd == "withdraw": return f"ok {old - n - fee}{suffix}"
+    if cmd == "withdraw" { return f"ok {old - n - fee}{suffix}" }
     var to_bal = 0
-    if var b = l.accounts[ids[1]]?:
+    if var b = l.accounts[ids[1]]? {
         b.bal += n
         b.ops += 1
         to_bal = b.bal
+    }
     return f"ok {old - n - fee} {to_bal}{suffix}"
+}
 
-fn step(var l Ledger, t List[String]) String:
+fn step(var l Ledger, t List[String]) String {
     arity := {"open": 3, "deposit": 3, "withdraw": 3, "transfer": 4, "freeze": 2, "unfreeze": 2, "report": 1}.get(t[0]).get_or(0)
-    if arity != t.length(): return "error: bad command"
-    if t[0] == "report": return report(l)
-    if t[0] == "open":
-        if t[2].is_empty() or t[2].scalar_values().any(fn c: c < 48 or c > 57): return "error: invalid limit"
-        if l.accounts.contains(t[1]): return f"error: account exists {t[1]}"
+    if arity != t.length() { return "error: bad command" }
+    if t[0] == "report" { return report(l) }
+    if t[0] == "open" {
+        if t[2].is_empty() or t[2].scalar_values().any(fn c: c < 48 or c > 57) { return "error: invalid limit" }
+        if l.accounts.contains(t[1]) { return f"error: account exists {t[1]}" }
         l.accounts[t[1].clone()] = Account(0, t[2].parse_int().get(), 0, 0, false)
         return "ok"
-    if t[0] == "freeze" or t[0] == "unfreeze":
-        if var a = l.accounts[t[1]]?:
+    }
+    if t[0] == "freeze" or t[0] == "unfreeze" {
+        if var a = l.accounts[t[1]]? {
             a.frozen = t[0] == "freeze"
             return "ok"
+        }
         return f"error: unknown account {t[1]}"
+    }
     return money(l, t[0], t)
+}
 
-fn main() Void:
+fn main() Void {
     var l = Ledger(Map[String, Account](), 0)
-    if ls := stdin() | lines | collect(none):
-        for t in ls.map(fn s: s.replace("\t", " ").split(" ").filter(fn p: not p.is_empty())).filter(fn t: not t.is_empty()): print(step(l, t))
+    if ls := stdin() | lines | collect(none) {
+        for t in ls.map(fn s: s.replace("\t", " ").split(" ").filter(fn p: not p.is_empty())).filter(fn t: not t.is_empty()) { print(step(l, t)) }
+    }
+}

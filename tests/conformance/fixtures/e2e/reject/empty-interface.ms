@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-interface Marker: ...
+interface Marker { ... }
 
-export fn main() Int:
+export fn main() Int {
 	return 0
+}

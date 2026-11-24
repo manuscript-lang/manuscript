@@ -1,6 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
 import panic from "@std/faults.ms"
-type Override:
+type Override {
     received Bool
-impl FileSystem for Override:
+}
+impl FileSystem for Override {
+}

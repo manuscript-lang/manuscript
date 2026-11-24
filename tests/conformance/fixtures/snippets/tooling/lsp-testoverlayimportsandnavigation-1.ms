@@ -3,5 +3,6 @@
 // conform: origin=pkg/tooling/lsp/analysis_test.go:17 TestOverlayImportsAndNavigation
 import answer from "./dep.ms"
 
-fn value() Int:
-    return answer()
+fn value() Int {
+	return answer()
+}

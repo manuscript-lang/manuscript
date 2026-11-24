@@ -2,10 +2,11 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn first_copy[T Clonable](xs List[T]) T?:
+fn first_copy[T Clonable](xs List[T]) T? {
 	return xs[0].clone()
+}
 
-test "min and max keep the element width":
+test "min and max keep the element width" {
 	small List[Int8] := [5, -3, 7]
 	mid List[Int16] := [300, -300, 7]
 	wide List[Int32] := [2147483647, -2147483648, 0]
@@ -33,8 +34,10 @@ test "min and max keep the element width":
 
 	want_floats_min Float32? := -0.5
 	expect_equal(floats.min(), want_floats_min)?
+}
 
-test "clone of a generic sized number keeps its width":
+test "clone of a generic sized number keeps its width" {
 	small List[Int8] := [5, 3]
 	want Int8? := 5
 	expect_equal(first_copy(small), want)?
+}

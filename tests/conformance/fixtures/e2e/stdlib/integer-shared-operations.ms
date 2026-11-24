@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "integer families share one set of operations":
+test "integer families share one set of operations" {
 	a Int8 := (-5).to_int8() or panic("called Optional.get() on null")
 	expect_equal(a.abs(), (5).to_int8() or panic("called Optional.get() on null"))?
 	expect_equal(a.sign(), -1)?
@@ -19,3 +19,4 @@ test "integer families share one set of operations":
 	expect_equal((7).abs(), 7)?
 	expect_equal((-7).sign(), -1)?
 	expect_equal((3).compare(4), -1)?
+}

@@ -7,7 +7,7 @@ import (
 
 extern fn codec_bench_cpu_ns() Int
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
 	size := args[0].parse_int() or panic("called Optional.get() on null")
 	rounds := args[1].parse_int() or panic("called Optional.get() on null")
@@ -17,53 +17,65 @@ fn main() Int:
 	var expected = ""
 	var input = ""
 
-	if valid: input += "\""
-	else: input += "]"
+	if valid {
+		input += "\""
+	} else {
+		input += "]"
+	}
 
-	for i in 0..size:
+	for i in 0..size {
 		expected += "a"
 
-		if shape.ends_with("escaped"): input += "\\"
-		else: input += "a"
+		if shape.ends_with("escaped") {
+			input += "\\"
+		} else {
+			input += "a"
+		}
+	}
 
-	if valid: input += "\""
+	if valid { input += "\"" }
 
 	wanted := expected
 	text := input
 	var checksum = 0
 	cpu_start := codec_bench_cpu_ns()
-	if cpu_start < 0: return 4
+	if cpu_start < 0 { return 4 }
 
 	start := monotonic()
 
-	for i in 0..rounds:
-		if typed:
+	for i in 0..rounds {
+		if typed {
 			result := parse[String](text)
 
-			if valid:
-				if result.is_error(): return 2
-				if result.get() != wanted: return 8
-			else:
-				if result.is_ok(): return 3
-				if result.err().kind != "EBADMSG": return 5
-		else:
+			if valid {
+				if result.is_error() { return 2 }
+				if result.get() != wanted { return 8 }
+			} else {
+				if result.is_ok() { return 3 }
+				if result.err().kind != "EBADMSG" { return 5 }
+			}
+		} else {
 			result := parse(text)
 
-			if valid:
-				if result.is_error(): return 2
+			if valid {
+				if result.is_error() { return 2 }
 
 				parsed := result.get()
-				if not (parsed.as_string() != null): return 7
-				if (parsed.as_string() or "") != wanted: return 8
-			else:
-				if result.is_ok(): return 3
-				if result.err().kind != "EBADMSG": return 5
+				if not (parsed.as_string() != null) { return 7 }
+				if (parsed.as_string() or "") != wanted { return 8 }
+			} else {
+				if result.is_ok() { return 3 }
+				if result.err().kind != "EBADMSG" { return 5 }
+			}
+		}
 
 		checksum += 1
+	}
 
 	elapsed := monotonic().difference(start).to_nanoseconds()
 	cpu := codec_bench_cpu_ns() - cpu_start
-	if cpu <= 0: return 6
+	if cpu <= 0 { return 6 }
 
 	print(f"{size} {rounds} {shape} {checksum} {elapsed} {cpu}")
 	return 0
+}

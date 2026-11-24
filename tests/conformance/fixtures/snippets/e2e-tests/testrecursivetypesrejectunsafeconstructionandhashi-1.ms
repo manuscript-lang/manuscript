@@ -1,9 +1,11 @@
 // conform: tags=diagnostics,optional,records,tier-core
 // conform: phase=check
 // conform: origin=tests/e2e/recursive_types_test.go:12 TestRecursiveTypesRejectUnsafeConstructionAndHashing
-type Node:
-    next Node?
+type Node {
+	next Node?
+}
 
-export fn main() Int:
-    node := Node(node)
-    return 0
+export fn main() Int {
+	node := Node(node)
+	return 0
+}

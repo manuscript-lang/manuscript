@@ -3,9 +3,11 @@
 // conform: origin=documentation/learn/common-tasks.md:15
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Void, Error]:
-    stdout().write("Hello, Manuscript!\n")?
-    return stdout().flush()
+fn run() Result[Void, Error] {
+	stdout().write("Hello, Manuscript!\n")?
+	return stdout().flush()
+}
 
-fn main() Void!:
-    run()?
+fn main() Void! {
+	run()?
+}

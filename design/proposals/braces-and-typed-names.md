@@ -6,7 +6,7 @@
 - Decision requested: approve the rules, then a stage plan for the compiler, formatter and migration.
 
 ## Status
-Proposal, 2026-11-24, checked against `2f628626`. Stage 1 (colon-free types) ships with this file; stages 2 and 3 follow. Decisions from Chinmay in the thread: braces on every block, arrows for arms and closures, labels kept (decided 2026-11-24 after the skip-default discussion). Measured on five samples: +18% lines, +4% characters. Examples are hand-written (`examples-final.md`) and cannot pass `ms check` until the parser changes.
+Implemented 2026-11-24 in four stacked changes (colon-free types, arrows, braces, grouped names). Decisions from Chinmay in the thread: braces on every block, arrows for arms and closures, labels kept (decided 2026-11-24 after the skip-default discussion). Measured on five samples: +18% lines, +4% characters. Examples are hand-written (`examples-final.md`) and cannot pass `ms check` until the parser changes.
 
 ## Problem
 - Colon overload: `fn f(a: Int)` (type), `if x:` (block), `f(a: 1)` (label), `Circle(r): ...` (arm), `{k: v}` (map).

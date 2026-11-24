@@ -12,9 +12,9 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-functions-declarations-and-calls-4.ms",
-          "line": 10,
+          "line": 12,
           "column": 10,
-          "offset": 300
+          "offset": 292
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-functions-declarations-and-calls-4.ms",
-          "line": 11,
+          "line": 13,
           "column": 10,
-          "offset": 324
+          "offset": 316
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-functions-declarations-and-calls-4.ms:10:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 10 | total := sum([1, 2, 3])\n    |          ^\n<DIR>/core-language-functions-declarations-and-calls-4.ms:11:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 11 | empty := sum([])\n    |          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-functions-declarations-and-calls-4.ms:12:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 12 | total := sum([1, 2, 3])\n    |          ^\n<DIR>/core-language-functions-declarations-and-calls-4.ms:13:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 13 | empty := sum([])\n    |          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

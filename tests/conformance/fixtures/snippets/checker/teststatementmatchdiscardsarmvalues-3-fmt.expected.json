@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(xs List[Int], o Int?) Void:\n\tr := match o:\n\t\tv:\n\t\t\txs.set(index: 0, value: v)\n\t\tnull:\n\t\t\txs.length()\n"
+    "fmt": "fn f(xs List[Int], o Int?) Void {\n\tr := match o {\n\t\tv => {\n\t\t\txs.set(index: 0, value: v)\n\t\t}\n\t\tnull => {\n\t\t\txs.length()\n\t\t}\n\t}\n}\n"
   }
 }

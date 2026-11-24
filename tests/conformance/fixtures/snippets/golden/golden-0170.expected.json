@@ -29,9 +29,9 @@
         "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
         "position": {
           "file": "golden-0170.ms",
-          "line": 5,
+          "line": 6,
           "column": 12,
-          "offset": 121
+          "offset": 120
         },
         "fix": {
           "position": {
@@ -53,7 +53,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0170.ms:3:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0170.ms:5:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 5 |     return panic(message: \"profile failure\")\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0170.ms:3:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0170.ms:6:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 6 |     return panic(message: \"profile failure\")\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

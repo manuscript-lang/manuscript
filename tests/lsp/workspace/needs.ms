@@ -1,2 +1,3 @@
-fn main() Void:
+fn main() Void {
 	print(double(2))
+}

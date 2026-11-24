@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work(first Int, second String) (Map[String, String]?)!ApplicationError:\n\treturn error(cause)\n"
+    "fmt": "fn work(first Int, second String) (Map[String, String]?)!ApplicationError {\n\treturn error(cause)\n}\n"
   }
 }

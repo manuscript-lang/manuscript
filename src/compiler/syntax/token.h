@@ -7,8 +7,8 @@
 #define MS_TOKENS(X)                                                                                         \
   X(Comment, "#comment")                                                                                     \
   X(Newline, "NEWLINE")                                                                                      \
-  X(Indent, "INDENT")                                                                                        \
-  X(Dedent, "DEDENT")                                                                                        \
+  X(BlockOpen, "{")                                                                                        \
+  X(BlockClose, "}")                                                                                        \
   X(Eof, "EOF")                                                                                              \
   X(Name, "NAME") X(Number, "NUMBER") X(String, "STRING") X(And, "and") X(Break, "break")                    \
       X(Continue, "continue") X(Else, "else") X(Enum, "enum") X(Export, "export") X(Extern, "extern")        \

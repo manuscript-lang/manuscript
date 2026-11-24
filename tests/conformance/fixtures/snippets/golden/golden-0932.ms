@@ -1,3 +1,4 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Read:
+interface Read {
+}

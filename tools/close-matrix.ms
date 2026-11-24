@@ -64,18 +64,20 @@ fn ident[X](x: X) X: return x
 fn pass[X](x: X) Void: return
 """
 
-type Shape:
+type Shape {
 	name String
 	ty String
 	make String
+}
 
-type Construct:
+type Construct {
 	name String
 	defs String
 	body String
 	only String
+}
 
-fn shapes() List[Shape]:
+fn shapes() List[Shape] {
 	return [
 		Shape("bare", "Marker", "mk(@ID@)"),
 		Shape("optional", "Marker?", "mk(@ID@)"),
@@ -86,19 +88,22 @@ fn shapes() List[Shape]:
 		Shape("enum", "Slot", "Full(mk(@ID@))"),
 		Shape("nested", "List[Marker?]", "mk_nested(@ID@)"),
 	]
+}
 
-fn c(move name String, move defs String, move body String) Construct:
+fn c(move name String, move defs String, move body String) Construct {
 	return Construct(name, defs, body, "")
+}
 
 fn only(
 	move name String,
 	move shape String,
 	move defs String,
 	move body String,
-) Construct:
+) Construct {
 	return Construct(name, defs, body, shape)
+}
 
-fn constructs() List[Construct]:
+fn constructs() List[Construct] {
 	return [
 		c("scope_end", "", "x @TY@ := @M1@\n    see(x)"),
 		c(
@@ -400,44 +405,50 @@ fn constructs() List[Construct]:
 			"r @TY@ := @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok()",
 		),
 	]
+}
 
 // The program for `construct` applied to `shape`.
-fn program(shape Shape, construct Construct) String:
+fn program(shape Shape, construct Construct) String {
 	see := "fn see(x @TY@) Void: return\n\nfn see_all(xs List[@TY@]) Void: return\n\nfn seeok(x @TY@) Void!: return ok()\n\nfn see_marker(m Marker) Void: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
 	m1 := shape.make.replace("@ID@", "1")
 	m2 := shape.make.replace("@ID@", "2")
 	var text = f"{HEADER}\n{see}\n{construct.defs}\n\nfn body() Void!:\n    {construct.body}\n    return ok()\n\nfn run() Void:\n    void body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
 	text = text.replace("@TY@", shape.ty).replace("@M1@", m1).replace("@M2@", m2)
 	return text
+}
 
 // How many times `prefix` + `id` appears as a line.
-fn count(lines List[String], prefix String) Map[String, Int]:
+fn count(lines List[String], prefix String) Map[String, Int] {
 	var counts = Map[String, Int]()
 
-	for line in lines:
-		if not line.starts_with(prefix): continue
+	for line in lines {
+		if not line.starts_with(prefix) { continue }
 
 		key := line.trim()
 		counts.add(key.clone(), counts.get_or(key.clone(), 0) + 1)
+	}
 
 	return counts
+}
 
 // One combination to try and what happened when it ran: counts, and the lines to print
 // in order.
-type Cell:
+type Cell {
 	shape Shape
 	construct Construct
 	name String
+}
 
-type Tally:
+type Tally {
 	checked Int
 	rejected Int
 	failures Int
 	lines List[String]
+}
 
 // Runs one combination: `ms check`, then the program in Debug and Release. Independent
 // of every other combination, so the matrix runs them concurrently.
-fn verify(ms String, scratch String, cell Cell, show Bool, filter String) Tally:
+fn verify(ms String, scratch String, cell Cell, show Bool, filter String) Tally {
 	var tally = Tally(0, 0, 0, [])
 	name := cell.name.clone()
 	file := f"{scratch}/{name}.ms"
@@ -445,33 +456,36 @@ fn verify(ms String, scratch String, cell Cell, show Bool, filter String) Tally:
 
 	verdict := run(ms.clone(), ["check", file.clone()]).wait()
 
-	if verdict.is_error() or verdict.get().exit_code != 0:
+	if verdict.is_error() or verdict.get().exit_code != 0 {
 		tally.rejected += 1
 
 		why := verdict.get().stderr.decode_utf8() or ""
 
-		if why.contains(": parse:"):
+		if why.contains(": parse:") {
 			tally.failures += 1
 			tally.lines.append(f"generated: {name} does not parse: {why}\n")
-		else if show or filter != "":
+		} else if show or filter != "" {
 			tally.lines.append(f"rejected {name}: {why.split("\n")[0]}\n")
+		}
 
 		return tally
+	}
 
-	for build in ["debug", "release"]:
+	for build in ["debug", "release"] {
 		tally.checked += 1
 
 		ran := run(ms.clone(), ["run", file.clone(), "--build-type", build.clone()]).wait()
 
-		if ran.is_error():
+		if ran.is_error() {
 			tally.failures += 1
 			tally.lines.append(f"run: {name} ({build}) could not run {ms}\n")
 			continue
+		}
 
 		child := ran.get()
 		lines := (child.stdout.decode_utf8() or "").split("\n")
 
-		if child.exit_code != 0:
+		if child.exit_code != 0 {
 			tally.failures += 1
 
 			why := child.stderr.decode_utf8() or ""
@@ -483,18 +497,23 @@ fn verify(ms String, scratch String, cell Cell, show Bool, filter String) Tally:
 				)
 			)
 			continue
+		}
 
 		made := count(lines, "made-")
 		closed := count(lines, "closed-")
 		var wrong = false
 
-		for key in made.keys():
+		for key in made.keys() {
 			id := key.slice(5, key.length())
-			if made.get_or(key.clone(), 0) != closed.get_or(f"closed-{id}", 0): wrong = true
+			if made.get_or(key.clone(), 0) != closed.get_or(
+				f"closed-{id}",
+				0,
+			) { wrong = true }
+		}
 
-		if closed.length() != made.length(): wrong = true
+		if closed.length() != made.length() { wrong = true }
 
-		if wrong:
+		if wrong {
 			tally.failures += 1
 			(
 				tally
@@ -503,30 +522,41 @@ fn verify(ms String, scratch String, cell Cell, show Bool, filter String) Tally:
 					f"ownership: {name} ({build}) made {made.length()} ids and closed {closed.length()}; each resource must close once ({file})\n"
 				)
 			)
+		}
+	}
 
 	return tally
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root)
 	scratch := temporary("ms-close-matrix-").get()
 	var filter = ""
 	var show = false
 
-	for a in arguments():
-		if a == "rejects": show = true
-		else: filter = a.clone()
+	for a in arguments() {
+		if a == "rejects" {
+			show = true
+		} else {
+			filter = a.clone()
+		}
+	}
 
 	var cells List[Cell] = []
 
-	for shape in shapes():
-		for construct in constructs():
-			if construct.only != "" and construct.only != shape.name: continue
+	for shape in shapes() {
+		for construct in constructs() {
+			if construct.only != "" and construct.only != shape.name { continue }
 
 			name := f"{construct.name}_{shape.name}"
-			if filter != "" and not name.contains(filter): continue
+			if filter != "" and not name.contains(
+				filter
+			) { continue }
 
 			cells.append(Cell(shape.clone(), construct.clone(), name))
+		}
+	}
 
 	// Each combination compiles and links two programs, so the matrix is bound by the
 	// build, not by this
@@ -547,12 +577,14 @@ fn main() Int:
 	var rejected = 0
 	var failures = 0
 
-	for tally in tallies:
+	for tally in tallies {
 		checked += tally.checked
 		rejected += tally.rejected
 		failures += tally.failures
-		for line in tally.lines:
+		for line in tally.lines {
 			stdout().write(line.clone()).get()
+		}
+	}
 
 	(
 		stdout()
@@ -562,10 +594,12 @@ fn main() Int:
 		.get()
 	)
 
-	if checked == 0:
+	if checked == 0 {
 		print("no combination ran")
 		return 1
+	}
 
-	if failures > 0: return 1
+	if failures > 0 { return 1 }
 
 	return 0
+}

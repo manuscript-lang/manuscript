@@ -437,7 +437,7 @@ All global variable expressions should be referenced by the `globals:` field of 
 
 ##### DISubprogram
 
-`DISubprogram` nodes represent functions from the source language. A distinct `DISubprogram` may be attached to a function definition using `!dbg` metadata. A unique `DISubprogram` may be attached to a function declaration used for call site debug info. The `retainedNodes:` field is a list of [variables](#dilocalvariable) and [labels](#dilabel) that must be retained, even if their IR counterparts are optimized out of the IR. The `type:` field must point at an [DISubroutineType](#disubroutinetype).
+`DISubprogram` nodes represent functions from the source language. A distinct `DISubprogram` may be attached to a function definition using `!dbg` metadata. A unique `DISubprogram` may be attached to a function declaration used for call site debug info. The `retainedNodes:` field is a list of [variables](#dilocalvariable) and [labels](#dilabel) that must be retained, even if their IR counterparts are optimized out of the IR. The `type { ... }` field must point at an [DISubroutineType](#disubroutinetype).
 
 When `spFlags: DISPFlagDefinition` is not present, subprograms describe a declaration in the type tree as opposed to a definition of a function. In this case, the `declaration` field must be empty. If the scope is a composite type with an ODR `identifier:` and that does not set `flags: DIFwdDecl`, then the subprogram declaration is uniqued based only on its `linkageName:` and `scope:`.
 

@@ -21,32 +21,37 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn handle(request HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse {
 	return HttpResponse(200, f"ok {request.path} done\n".to_bytes())
+}
 
-fn warm(var conn Connection) Bool!:
+fn warm(var conn Connection) Bool! {
 	send(conn, "GET /warm HTTP/1.1\r\nHost: t\r\n\r\n")?
 
 	var text = ""
 
-	while not text.ends_with("done\n"):
-		if chunk := recv(conn, nanoseconds(10000000000)):
+	while not text.ends_with("done\n") {
+		if chunk := recv(conn, nanoseconds(10000000000)) {
 			data := chunk
 
-			if data != null:
+			if data != null {
 				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
+			}
+		}
 
 		return ok(false)
+	}
 
 	return ok(text.starts_with("HTTP/1.1 200 OK"))
+}
 
 // Context switches are not counted on every platform (they read zero there), so the
 // bound on them can only be met. CPU time is counted in clock ticks on Windows (15.6
 // ms), so the bound allows several ticks (main measured 3 there); a thread that polled
 // would use hundreds of ms in the window. The switch count is the sharp check
 // elsewhere.
-fn run() Bool!:
+fn run() Bool! {
 	var server = serve(
 		address: "127.0.0.1:0",
 		handler: buffered(handle),
@@ -90,13 +95,16 @@ fn run() Bool!:
 	void server.close()
 
 	asleep := warmed and cpu < 100000 and switches < 40
-	if not asleep:
+	if not asleep {
 		_out := stdout().write(f"warmed {warmed}, cpu {cpu} us, switches {switches}\n")
+	}
 	return ok(asleep)
+}
 
-export fn main() Int:
+export fn main() Int {
 	asleep := run().get_or(false)
 	_out := stdout().write(f"idle server stays asleep: {asleep}\n")
-	if asleep: return 0
+	if asleep { return 0 }
 
 	return 1
+}

@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "decimal comparison orders signs exponent gaps and overlapping digits":
+test "decimal comparison orders signs exponent gaps and overlapping digits" {
 	ascending := [
 		-1e6144d,
 		-1e34d,
@@ -21,12 +21,15 @@ test "decimal comparison orders signs exponent gaps and overlapping digits":
 		1e6144d,
 	]
 
-	for i in 0..ascending.length():
+	for i in 0..ascending.length() {
 		expect_equal(ascending[i].compare(ascending[i]), 0)?
 
-		for j in (i + 1)..ascending.length():
+		for j in (i + 1)..ascending.length() {
 			expect_equal(ascending[i].compare(ascending[j]), -1)?
 			expect_equal(ascending[j].compare(ascending[i]), 1)?
+		}
+	}
 
 	expect_equal(1.1d.compare(1d), 1)?
 	expect_equal((-1.1d).compare(-1d), -1)?
+}

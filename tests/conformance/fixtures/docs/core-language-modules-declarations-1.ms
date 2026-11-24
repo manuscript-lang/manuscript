@@ -5,5 +5,6 @@ export MAX_ITEMS := 100
 NAMES List[String] := ["Ada", "Grace"]
 LIMIT := MAX_ITEMS * 2
 
-fn is_full(count Int) Bool:
-    return count >= LIMIT
+fn is_full(count Int) Bool {
+	return count >= LIMIT
+}

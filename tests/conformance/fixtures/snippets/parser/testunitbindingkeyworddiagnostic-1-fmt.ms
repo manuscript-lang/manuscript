@@ -3,4 +3,4 @@
 // conform: origin=pkg/parser/lambda_keyword_test.go:40 TestUnitBindingKeywordDiagnostic
 fn before() Void => void
 
-fn broken() Void: ...
+fn broken() Void { ... }

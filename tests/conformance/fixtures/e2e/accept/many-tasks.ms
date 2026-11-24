@@ -13,53 +13,63 @@ import (
 	milliseconds, seconds, sleep from "@std/time.ms",
 )
 
-fn park(a Int) Int!:
+fn park(a Int) Int! {
 	sleep(seconds(600)).wait()?
 	return ok(a)
+}
 
 // Fifty thousand promise tasks park at once: each costs a few kilobytes, so this takes
 // a few hundred megabytes, and cancelling them all is linear.
-test "fifty thousand parked promise tasks fit and cancel in bounded time":
+test "fifty thousand parked promise tasks fit and cancel in bounded time" {
 	var promises List[Promise[Int]] = []
-	for i in 0..50000:
+	for i in 0..50000 {
 		promises.append(
 			promise(
 				() => park(i),
-				options: PromiseOptions(placement: Placement.Here)
+				options: PromiseOptions(placement: Placement.Here),
 			)
 		)
+	}
 	sleep(milliseconds(500)).wait()?
 
 	var done = 0
-	for p in promises:
-		if p.done(): done += 1
+	for p in promises {
+		if p.done() { done += 1 }
+	}
 	expect_equal(done, 0)?
-	for p in promises:
+	for p in promises {
 		p.cancel()
+	}
 
 	var cancelled = 0
 
-	for p in promises:
-		match p.wait():
+	for p in promises {
+		match p.wait() {
 			ok(_) => cancelled += 0
 			error(_) => cancelled += 1
+		}
+	}
 
 	expect_equal(cancelled, 50000)?
+}
 
 // Forty thousand task-backed reads at once used to exhaust the process's memory
 // mappings (two per task stack); slots carved from large regions cost none.
-test "forty thousand concurrent file reads complete":
+test "forty thousand concurrent file reads complete" {
 	dir := temporary_directory("many-tasks")?
 	path := dir + "/read.txt"
 	write_file(path, "hello").wait()?
 
 	var reads List[Promise[Bytes]] = []
-	for unused in 0..40000:
+	for unused in 0..40000 {
 		reads.append(read_file(path, null))
+	}
 
 	results := wait_all(reads)?
 	var total = 0
-	for data in results:
+	for data in results {
 		total += data.length()
+	}
 	expect_equal(total, 200000)?
 	remove(dir, recursive: true)?
+}

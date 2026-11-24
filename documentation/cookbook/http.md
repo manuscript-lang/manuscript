@@ -13,20 +13,25 @@ Save as `get.ms`. `fetch` buffers the body, `check_status()` rejects statuses ou
 
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/env.ms"
-import fetch, FetchOptions from "@std/net/fetch.ms"
-import stdout from "@std/io/io.ms"
+import (
+    stdout from "@std/io/io.ms",
+    FetchOptions, fetch from "@std/net/fetch.ms",
+    arguments from "@std/os/env.ms",
+)
 
-fn run() Result[Void, Error]:
+fn run() Result[Void, Error] {
     url := ok_or(arguments().first(), Error("missing URL", kind: "EINVAL"))?
     response := fetch(url, FetchOptions(max_response_bytes: 1048576)).wait()?
     response.check_status()?
+
     text := response.text()?
     stdout().write(text)?
     return stdout().flush()
+}
 
-fn main() Void!:
+fn main() Void! {
     return run()
+}
 ```
 
 ```sh

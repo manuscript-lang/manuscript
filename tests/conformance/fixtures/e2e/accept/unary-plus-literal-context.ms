@@ -8,13 +8,13 @@ fn unsigned() UInt8 => + 255
 
 fn minimum() Int8 => + (-128)
 
-fn negative() Int8 => -(+ 127)
+fn negative() Int8 => - (+ 127)
 
 fn rounded() Float32 => + 1.0000000596046448
 
 fn add(value Int8) Int8 => value + + 1
 
-test "unary signs preserve sized literal context":
+test "unary signs preserve sized literal context" {
 	expect_equal(signed().to_int(), 127)?
 	expect_equal(unsigned().to_int(), 255)?
 	expect_equal(minimum().to_int(), -128)?
@@ -24,14 +24,16 @@ test "unary signs preserve sized literal context":
 
 	values List[Int8] := [+ 1, + 2]
 	expect_true(values == [+ 1, + 2])?
+}
 
-fn negative_minimum() Int8 => -(-128)
+fn negative_minimum() Int8 => - (-128)
 
-fn negative_signed_minimum() Int8 => -(+ (-128))
+fn negative_signed_minimum() Int8 => - (+ (-128))
 
-test "nested sign overflow still faults":
+test "nested sign overflow still faults" {
 	(expect_fault(() => _ignored := negative_minimum())?) | expect_contains("overflow")?
 	(
 		(expect_fault(() => _ignored := negative_signed_minimum())?)
 		| expect_contains("overflow")?
 	)
+}

@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "entry must declare fn main; main is a constant, so rename it and declare 'fn main() Void:'",
+        "message": "entry must declare fn main; main is a constant, so rename it and declare 'fn main() Void { ... }'",
         "position": {
           "file": "golden-1427.ms",
           "line": 3,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1427.ms:3:8: type: entry must declare fn main; main is a constant, so rename it and declare 'fn main() Void:'\n   |\n 3 | export main := 0\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1427.ms:3:8: type: entry must declare fn main; main is a constant, so rename it and declare 'fn main() Void { ... }'\n   |\n 3 | export main := 0\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

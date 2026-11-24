@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type B[T]:\n\ta A[List[T]]\n\ntype A[T]:\n\tb B[T]\n\ntype C[T]:\n\tb B[T]\n"
+    "fmt": "type B[T] {\n\ta A[List[T]]\n}\n\ntype A[T] {\n\tb B[T]\n}\n\ntype C[T] {\n\tb B[T]\n}\n"
   }
 }

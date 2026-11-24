@@ -2,5 +2,6 @@
 // conform: phase=check
 import stdout from "@std/io/io.ms"
 
-fn main() Void!:
+fn main() Void! {
     return stdout().write(data: %q)
+}

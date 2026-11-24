@@ -29,18 +29,18 @@
         "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-1463.ms",
-          "line": 4,
+          "line": 5,
           "column": 27,
-          "offset": 118
+          "offset": 119
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module",
+        "message": "unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1463.ms",
-          "line": 7,
+          "line": 10,
           "column": 23,
           "offset": 202
         }
@@ -49,7 +49,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1463.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1463.ms:4:27: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 4 | fn deep(value Result[Int, TextError]) Int:\n   |                           ^\n<DIR>/golden-1463.ms:7:23: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module\n   |\n 7 |     return deep(error(TextError(\"expected failure\")))\n   |                       ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1463.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1463.ms:5:27: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 5 | fn deep(value Result[Int, TextError]) Int {\n   |                           ^\n<DIR>/golden-1463.ms:10:23: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T { ... }', or import it from a module\n    |\n 10 |     return deep(error(TextError(\"expected failure\")))\n    |                       ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

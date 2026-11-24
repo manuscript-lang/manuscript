@@ -12,9 +12,9 @@
         "message": "local binding labels is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "golden-1273.ms",
-          "line": 6,
+          "line": 8,
           "column": 5,
-          "offset": 123
+          "offset": 122
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "local binding convert is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "golden-1273.ms",
-          "line": 7,
+          "line": 9,
           "column": 5,
-          "offset": 163
+          "offset": 159
         }
       },
       {
@@ -34,16 +34,16 @@
         "message": "local binding text is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "golden-1273.ms",
-          "line": 8,
+          "line": 10,
           "column": 5,
-          "offset": 194
+          "offset": 187
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1273.ms:6:5: type: local binding labels is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 6 |     labels := [1].map(transform: label)\n   |     ^\n<DIR>/golden-1273.ms:7:5: type: local binding convert is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 7 |     convert := [2].map[String]\n   |     ^\n<DIR>/golden-1273.ms:8:5: type: local binding text is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 8 |     text := \" hello \".trim()\n   |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1273.ms:8:5: type: local binding labels is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 8 |     labels := [1].map(transform: label)\n   |     ^\n<DIR>/golden-1273.ms:9:5: type: local binding convert is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 9 |     convert := [2].map[String]\n   |     ^\n<DIR>/golden-1273.ms:10:5: type: local binding text is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 10 |     text := \" hello \".trim()\n    |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

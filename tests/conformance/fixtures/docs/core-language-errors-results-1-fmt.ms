@@ -3,14 +3,18 @@
 // conform: origin=documentation/core-language/errors/results.md:14
 import Decimal from "@std/math/decimal.ms"
 
-enum DiscountError:
-    InvalidPrice
-    InvalidPercent
+enum DiscountError {
+	InvalidPrice
+	InvalidPercent
+}
 
-fn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError]:
-    if price < 0d:
-        return error(InvalidPrice)
-    if percent < 0d or percent > 100d:
-        return error(InvalidPercent)
+fn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {
+	if price < 0d {
+		return error(InvalidPrice)
+	}
+	if percent < 0d or percent > 100d {
+		return error(InvalidPercent)
+	}
 
-    return ok(price * (1d - percent / 100d))
+	return ok(price * (1d - percent / 100d))
+}

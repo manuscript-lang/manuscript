@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn call(operation fn() Int) Int:\n\treturn operation()\n"
+    "fmt": "fn call(operation fn() Int) Int {\n\treturn operation()\n}\n"
   }
 }

@@ -18,10 +18,10 @@
           "index": 1,
           "name": "testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails",
           "status": "failed",
-          "failure": "expected failure\n  at testclitestjsonpreservesoutputsfailuresandlocation-1.ms:12:5",
+          "failure": "expected failure\n  at testclitestjsonpreservesoutputsfailuresandlocation-1.ms:15:5",
           "position": {
             "file": "testclitestjsonpreservesoutputsfailuresandlocation-1.ms",
-            "line": 12,
+            "line": 15,
             "column": 5,
             "offset": 0
           }
@@ -42,7 +42,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nPASS fake test\nuser stdout\nPASS testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nRUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails\nFAIL testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails: expected failure\n  at testclitestjsonpreservesoutputsfailuresandlocation-1.ms:12:5\nRUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\nPASS testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\n3 tests, 1 failed\n",
+      "stdout": "RUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nPASS fake test\nuser stdout\nPASS testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nRUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails\nFAIL testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails: expected failure\n  at testclitestjsonpreservesoutputsfailuresandlocation-1.ms:15:5\nRUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\nPASS testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\n3 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -12,13 +12,13 @@
           "file": "foreign-go.ms",
           "line": 5,
           "column": 5,
-          "offset": 146
+          "offset": 147
         },
         "end": {
           "file": "foreign-go.ms",
           "line": 5,
           "column": 7,
-          "offset": 148
+          "offset": 149
         }
       }
     ],

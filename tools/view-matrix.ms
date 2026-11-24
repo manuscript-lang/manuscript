@@ -33,21 +33,23 @@ fn show(v: String) Void:
 
 // One view operation on the text `s` (always " ab cd "): the statements that bind the
 // view, the expression that prints it later and the text it must print.
-type Operation:
+type Operation {
 	name String
 	binds String
 	shown String
 	expected String
+}
 
 fn op(
 	move name String,
 	move binds String,
 	move shown String,
 	move expected String,
-) Operation:
+) Operation {
 	return Operation(name, binds, shown, expected)
+}
 
-fn operations() List[Operation]:
+fn operations() List[Operation] {
 	return [
 		op("trim", "v := s.trim()", "v", "ab cd"),
 		op("trim_start", "v := s.trim_start()", "v", "ab cd "),
@@ -62,15 +64,17 @@ fn operations() List[Operation]:
 		),
 		op("trim_twice", "t := s.trim()\n    v := t.trim_start()", "v", "ab cd"),
 	]
+}
 
 // A way to hold the text: statements that define `s`, and the function it runs in.
-type Source:
+type Source {
 	name String
 	setup String
 	params String
 	caller String
+}
 
-fn sources() List[Source]:
+fn sources() List[Source] {
 	return [
 		Source("concat_local", "s := \" ab\" + \" cd \"", "", "run()"),
 		Source("call_local", "s := mk(\" ab\", \" cd \")", "", "run()"),
@@ -80,15 +84,17 @@ fn sources() List[Source]:
 		// backend spills it into a slot of its own for the call.
 		Source("temporary", "", "", "run()"),
 	]
+}
 
 // Statements after the view that make short temporaries, each printed so none is
 // dropped, and the text they print.
-type Stomp:
+type Stomp {
 	name String
 	lines String
 	expected List[String]
+}
 
-fn stomps() List[Stomp]:
+fn stomps() List[Stomp] {
 	return [
 		Stomp("none", "", []),
 		Stomp(
@@ -119,61 +125,69 @@ fn stomps() List[Stomp]:
 			["ab1", "ab2"],
 		),
 	]
+}
 
-fn program(o Operation, source Source, stomp Stomp) String:
+fn program(o Operation, source Source, stomp Stomp) String {
 	var body = ""
-	if source.setup != "": body = f"    {source.setup}\n"
+	if source.setup != "" { body = f"    {source.setup}\n" }
 
 	var binds = o.binds.clone()
-	if source.name == "temporary":
+	if source.name == "temporary" {
 		binds = o.binds.replace("s.", "mk(\" ab\", \" cd \").")
+	}
 	body = f"{body}    {binds}\n"
-	if stomp.lines != "": body = f"{body}    {stomp.lines}\n"
+	if stomp.lines != "" { body = f"{body}    {stomp.lines}\n" }
 	body = f"{body}    print({o.shown})\n"
-	if source.name != "temporary": body = f"{body}    show(s)\n"
+	if source.name != "temporary" { body = f"{body}    show(s)\n" }
 	return (
 		f"{HEADER}fn run({source.params}) Void:\n{body}\nfn main() Void:\n    {source.caller}\n"
 	)
+}
 
-fn expected(o Operation, source Source, stomp Stomp) String:
+fn expected(o Operation, source Source, stomp Stomp) String {
 	var lines = List[String]()
-	for line in stomp.expected: lines.append(line.clone())
+	for line in stomp.expected { lines.append(line.clone()) }
 	lines.append(o.expected.clone())
-	if source.name != "temporary": lines.append(" ab cd ")
+	if source.name != "temporary" {
+		lines.append(" ab cd ")
+	}
 	return f"{lines.join("\n")}\n"
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root)
 	scratch := temporary("ms-view-matrix-").get()
 	set_environment("MS_POISON_SLOTS", "1").get()
 
 	var filter = ""
-	for a in arguments(): filter = a.clone()
+	for a in arguments() { filter = a.clone() }
 
 	var checked = 0
 	var rejected = 0
 	var failures = 0
 
-	for o in operations():
-		for source in sources():
-			for stomp in stomps():
+	for o in operations() {
+		for source in sources() {
+			for stomp in stomps() {
 				name := f"{o.name}_{source.name}_{stomp.name}"
-				if filter != "" and not name.contains(filter): continue
+				if filter != "" and not name.contains(
+					filter
+				) { continue }
 
 				file := f"{scratch.path()}/{name}.ms"
 				write_file(file, program(o, source, stomp)).wait().get()
 
 				verdict := run(ms.clone(), ["check", file.clone()]).wait()
 
-				if verdict.is_error() or verdict.get().exit_code != 0:
+				if verdict.is_error() or verdict.get().exit_code != 0 {
 					rejected += 1
 
 					why := verdict.get().stderr.decode_utf8() or ""
 
 					// Only a checker rule may reject a combination; a program that does
 					// not parse is this tool's bug.
-					if why.contains(": parse:"):
+					if why.contains(": parse:") {
 						failures += 1
 						(
 							stdout()
@@ -182,14 +196,16 @@ fn main() Int:
 							)
 							.get()
 						)
-					else if filter != "":
+					} else if filter != "" {
 						print(f"rejected {name}: {why}")
+					}
 
 					continue
+				}
 
 				want := expected(o, source, stomp)
 
-				for build in ["debug", "release"]:
+				for build in ["debug", "release"] {
 					checked += 1
 
 					ran := run(
@@ -202,7 +218,7 @@ fn main() Int:
 						],
 					).wait()
 
-					if ran.is_error():
+					if ran.is_error() {
 						failures += 1
 						(
 							stdout()
@@ -212,11 +228,12 @@ fn main() Int:
 							.get()
 						)
 						continue
+					}
 
 					child := ran.get()
 					have := child.stdout.decode_utf8() or ""
 
-					if child.exit_code != 0 or have != want:
+					if child.exit_code != 0 or have != want {
 						failures += 1
 
 						why := child.stderr.decode_utf8() or ""
@@ -227,6 +244,11 @@ fn main() Int:
 							)
 							.get()
 						)
+					}
+				}
+			}
+		}
+	}
 
 	(
 		stdout()
@@ -236,10 +258,12 @@ fn main() Int:
 		.get()
 	)
 
-	if checked == 0:
+	if checked == 0 {
 		print("no combination ran")
 		return 1
+	}
 
-	if failures > 0: return 1
+	if failures > 0 { return 1 }
 
 	return 0
+}

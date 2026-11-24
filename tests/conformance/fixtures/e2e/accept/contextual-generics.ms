@@ -15,8 +15,9 @@ fn from_callback[T](factory fn() T) T => factory()
 
 fn transform[T, U](callback fn(T) U) fn(T) U => callback
 
-type Failure:
+type Failure {
 	detail String
+}
 
 fn failure_error(cause Failure) Error => Error(cause.detail.clone())
 
@@ -28,18 +29,21 @@ fn forward[T]() T? => absent()
 
 fn consume(value Int?) Int => value or 0
 
-type Events:
+type Events {
 	values List[Int]
+}
 
-fn record[T](var events Events, value Int) T?:
+fn record[T](var events Events, value Int) T? {
 	events.values.append(value)
 	return null
+}
 
-fn combine[T](var events Events, first T?, second T?) T?:
+fn combine[T](var events Events, first T?, second T?) T? {
 	events.values.append(3)
 	return first
+}
 
-test "expected generic results preserve behavior and call order":
+test "expected generic results preserve behavior and call order" {
 	result List[Int]!Error := first()
 	expect_false(result.is_ok())?
 	expect_equal(result.err().message, "empty")?
@@ -70,3 +74,4 @@ test "expected generic results preserve behavior and call order":
 	)
 	expect_false(not (combined == null))?
 	expect_equal(events.values, [2, 1, 3])?
+}

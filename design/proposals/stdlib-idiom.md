@@ -45,7 +45,7 @@ Splitting removes the `format`/`parse`/`resolve` collisions (`url.parse`, `path.
 
 ```manuscript
 // sketch
-export enum FileKind:
+export enum FileKind {
     File
     Directory
     Symlink
@@ -53,22 +53,26 @@ export enum FileKind:
     Socket
     BlockDevice
     CharDevice
+}
 
-export enum OpenMode:
+export enum OpenMode {
     Read
-    Write       // create or truncate
+    Write  // create or truncate
     Append
     ReadWrite
+}
 
-export enum Seek:
+export enum Seek {
     Start
     Current
     End
+}
 
-export enum Os:
+export enum Os {
     Linux
     Macos
     Windows
+}
 ```
 
 - `FileInfo.kind: FileKind`; keep `directory`/`symlink` as methods (`info.is_directory()`), delete the four device Bools and `regular`.

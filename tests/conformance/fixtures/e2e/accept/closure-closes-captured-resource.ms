@@ -3,31 +3,38 @@
 // An escaping closure owns the resource it captured and closes it when it is dropped,
 // not when the maker returns; a resource that holds only plain memory counts the same
 // as one with parts.
-type Marker:
+type Marker {
 	id Int
+}
 
-fn move Marker.close() Void!:
+fn move Marker.close() Void! {
 	print(f"close {self.id}")
+}
 
-fn Marker.status() Int:
+fn Marker.status() Int {
 	return self.id
+}
 
-fn use_it(marker Marker) Void:
+fn use_it(marker Marker) Void {
 	return
+}
 
-fn make_from_parameter(move marker Marker) fn() Void:
+fn make_from_parameter(move marker Marker) fn() Void {
 	return () => use_it(marker)
+}
 
-fn make_from_local() fn() Void:
+fn make_from_local() fn() Void {
 	marker := Marker(id: 2)
 	return () => use_it(marker)
+}
 
-fn bound_temporary() Int:
+fn bound_temporary() Int {
 	read := Marker(id: 3).status
 	first := read()
 	return first + read()
+}
 
-fn main() Void:
+fn main() Void {
 	parameter := make_from_parameter(Marker(id: 1))
 	parameter()
 	print("after parameter call")
@@ -36,3 +43,4 @@ fn main() Void:
 	local()
 	print("after local call")
 	print(f"bound {bound_temporary()}")
+}

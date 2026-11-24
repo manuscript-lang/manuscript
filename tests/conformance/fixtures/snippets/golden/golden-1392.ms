@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type Data:
-    count Int
+type Data {
+	count Int
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Bool:\n\treturn (Error(\"command diagnostic\", kind: \"EIO\").message != \"command diagnostic\")\n"
+    "fmt": "fn work() Bool {\n\treturn (Error(\"command diagnostic\", kind: \"EIO\").message != \"command diagnostic\")\n}\n"
   }
 }

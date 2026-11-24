@@ -2,44 +2,52 @@
 // Rust.
 import monotonic from "@std/time.ms"
 
-type Event:
+type Event {
 	id Int
 	kind Int
 	name String
 	score Int
+}
 
-type Plain:
+type Plain {
 	id Int
 	kind Int
 	score Int
+}
 
-fn lcg(x Int) Int:
+fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
+}
 
-fn us(a Int, b Int) Int:
+fn us(a Int, b Int) Int {
 	return (b - a) / 1000
+}
 
-fn events(n Int, m Int) List[Event]:
+fn events(n Int, m Int) List[Event] {
 	var xs List[Event] = []
 	var x = 1
 
-	for i in 0..n:
+	for i in 0..n {
 		x = lcg(x)
 		xs.append(Event(i, x % m, "an-event-name-over-sixteen-bytes", i % 13))
+	}
 
 	return xs
+}
 
-fn plains(n Int, m Int) List[Plain]:
+fn plains(n Int, m Int) List[Plain] {
 	var xs List[Plain] = []
 	var x = 1
 
-	for i in 0..n:
+	for i in 0..n {
 		x = lcg(x)
 		xs.append(Plain(i, x % m, i % 13))
+	}
 
 	return xs
+}
 
-fn main() Void:
+fn main() Void {
 	n := 1000000
 	a := events(n, 1000)
 	t0 := monotonic().tick
@@ -83,8 +91,9 @@ fn main() Void:
 	)
 
 	var s List[Plain] = []
-	for k in 0..n:
+	for k in 0..n {
 		s.append(Plain(k, k / 4 + (k % 3), 0))
+	}
 
 	t10 := monotonic().tick
 	r := s.sorted((p, q) => p.kind - q.kind)
@@ -92,3 +101,4 @@ fn main() Void:
 	print(
 		f"plain-nearly-sorted {us(t10, t11)} {r[0].kind + r[n - 1].kind + r[1000].id % 7}"
 	)
+}

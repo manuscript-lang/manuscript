@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn tag_count() Int:\n\tvar tags = [\"docs\"]\n\ttags.append(\"release\")\n\n\tcount := fn:\n\t\treturn tags.length()\n\treturn count()\n// tag_count() returns 2.\n"
+    "fmt": "fn tag_count() Int {\n\tvar tags = [\"docs\"]\n\ttags.append(\"release\")\n\n\tcount := () => {\n\t\treturn tags.length()\n\t}\n\treturn count()\n}\n// tag_count() returns 2.\n"
   }
 }

@@ -211,9 +211,9 @@ static bool emit_file(Walk *w, Emit *emit, const Found *item, MsSpan path_litera
     return too_big ? emit_failure(w, "embedded ", item->path, " is larger than 16 MiB; keep large data outside the program")
                    : emit_failure(w, "embedded ", name, " holds more than 64 MiB; keep large data outside the program");
   }
-  ms_strbuild_printf(&emit->loads, "fn file_%zu() Bytes:\n    return msstd_embed_bytes(\"", emit->files);
+  ms_strbuild_printf(&emit->loads, "fn file_%zu() Bytes {\n    return msstd_embed_bytes(\"", emit->files);
   append_base64(&emit->loads, ms_bytes_span(&data));
-  ms_strbuild_append_text(&emit->loads, "\")\n\n");
+  ms_strbuild_append_text(&emit->loads, "\")\n}\n\n");
   ms_strbuild_append_text(&emit->paths, emit->files == 0 ? "" : "\\n");
   ms_strbuild_append(&emit->paths, path_literal);
   emit->files++;
@@ -256,8 +256,12 @@ static void emit_halves(MsStrBuild *out, size_t first, size_t last, size_t depth
   for (size_t i = 0; i < depth; i++) {
     ms_strbuild_append_text(out, "    ");
   }
-  ms_strbuild_printf(out, "if index < %zu:\n", middle);
+  ms_strbuild_printf(out, "if index < %zu {\n", middle);
   emit_halves(out, first, middle, depth + 1);
+  for (size_t i = 0; i < depth; i++) {
+    ms_strbuild_append_text(out, "    ");
+  }
+  ms_strbuild_append_text(out, "}\n");
   emit_halves(out, middle, last, depth); /* the branch above returns, so the rest follows flat */
 }
 
@@ -269,13 +273,13 @@ static void emit_load(MsStrBuild *out, size_t first, size_t last) {
     emit_load(out, first, middle);
     emit_load(out, middle, last);
   }
-  ms_strbuild_printf(out, "fn load_%zu_%zu(index Int) Bytes:\n", first, last);
+  ms_strbuild_printf(out, "fn load_%zu_%zu(index Int) Bytes {\n", first, last);
   if (last - first > DISPATCH_LEAF) {
-    ms_strbuild_printf(out, "    if index < %zu:\n        return load_%zu_%zu(index)\n    return load_%zu_%zu(index)\n\n",
+    ms_strbuild_printf(out, "    if index < %zu {\n        return load_%zu_%zu(index)\n    }\n    return load_%zu_%zu(index)\n}\n\n",
                        middle, first, middle, middle, last);
   } else {
     emit_halves(out, first, last, 1);
-    ms_strbuild_append_byte(out, '\n');
+    ms_strbuild_append_text(out, "}\n\n");
   }
 }
 
@@ -293,24 +297,24 @@ bool ms_project_embed_generate(MsArena *arena, MsSpan name, MsSpan directory, Ms
     ms_strbuild_append(&text, ms_strbuild_span(&emit.loads));
     if (emit.files > 0) {
       emit_load(&text, 0, emit.files);
-      ms_strbuild_printf(&text, "fn load(index Int) Bytes:\n    return load_0_%zu(index)\n", emit.files);
+      ms_strbuild_printf(&text, "fn load(index Int) Bytes {\n    return load_0_%zu(index)\n}\n", emit.files);
     } else {
-      ms_strbuild_append_text(&text, "fn load(index Int) Bytes:\n    return msstd_embed_bytes(\"\")\n");
+      ms_strbuild_append_text(&text, "fn load(index Int) Bytes {\n    return msstd_embed_bytes(\"\")\n}\n");
     }
-    ms_strbuild_append_text(&text, "\nexport fn files() EmbeddedTree:\n"
+    ms_strbuild_append_text(&text, "\nexport fn files() EmbeddedTree {\n"
                                    "    var indexes = Map[String, Int]()\n    var directories = Set[String]()\n"
                                    "    directories.add(\"\")\n");
     if (emit.files > 0) {
       ms_strbuild_append_text(&text, "    var number = 0\n    for path in \"");
       ms_strbuild_append(&text, ms_strbuild_span(&emit.paths));
-      ms_strbuild_append_text(&text, "\".split(\"\\n\"):\n        indexes.add(path, number)\n        number += 1\n");
+      ms_strbuild_append_text(&text, "\".split(\"\\n\") {\n        indexes.add(path, number)\n        number += 1\n    }\n");
     }
     if (emit.directories > 0) {
       ms_strbuild_append_text(&text, "    for path in \"");
       ms_strbuild_append(&text, ms_strbuild_span(&emit.dirs));
-      ms_strbuild_append_text(&text, "\".split(\"\\n\"):\n        directories.add(path)\n");
+      ms_strbuild_append_text(&text, "\".split(\"\\n\") {\n        directories.add(path)\n    }\n");
     }
-    ms_strbuild_append_text(&text, "    return embedded_tree(indexes, directories, load)\n");
+    ms_strbuild_append_text(&text, "    return embedded_tree(indexes, directories, load)\n}\n");
     *source = ms_message_take_builder(arena, &text);
   }
   ms_strbuild_free(&emit.loads);

@@ -4,9 +4,11 @@
 // (of a local or of a parameter) is rejected; copy it with `.clone()` after the view.
 import Bytes from "@std/bytes.ms"
 
-fn result() Bytes:
+fn result() Bytes {
 	bytes := Bytes([10, 20, 30])
 	return bytes.view(1, 3)
+}
 
-export fn main() Int:
+export fn main() Int {
 	return result().length()
+}

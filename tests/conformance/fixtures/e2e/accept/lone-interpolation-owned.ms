@@ -2,16 +2,19 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type Titled:
+type Titled {
 	title String
+}
 
-type Holder:
+type Holder {
 	text String
+}
 
-fn quoted(t Titled) String:
+fn quoted(t Titled) String {
 	return f"{t.title}"
+}
 
-test "a lone interpolation of a borrowed string is a new string wherever it is owned":
+test "a lone interpolation of a borrowed string is a new string wherever it is owned" {
 	t := Titled("a")
 	var xs = List[String]()
 	xs.append(f"{t.title}")
@@ -22,3 +25,4 @@ test "a lone interpolation of a borrowed string is a new string wherever it is o
 	expect_equal(xs, ["a"])?
 	expect_equal(h.text, "a")?
 	expect_equal(f(), "a")?
+}

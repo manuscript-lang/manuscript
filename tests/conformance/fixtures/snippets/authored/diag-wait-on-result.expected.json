@@ -14,20 +14,20 @@
           "file": "diag-wait-on-result.ms",
           "line": 6,
           "column": 20,
-          "offset": 139
+          "offset": 137
         },
         "fix": {
           "position": {
             "file": "diag-wait-on-result.ms",
             "line": 6,
             "column": 19,
-            "offset": 138
+            "offset": 136
           },
           "end": {
             "file": "diag-wait-on-result.ms",
             "line": 6,
             "column": 26,
-            "offset": 145
+            "offset": 143
           },
           "replacement": ""
         }
@@ -40,7 +40,7 @@
           "file": "diag-wait-on-result.ms",
           "line": 8,
           "column": 12,
-          "offset": 173
+          "offset": 165
         }
       }
     ],

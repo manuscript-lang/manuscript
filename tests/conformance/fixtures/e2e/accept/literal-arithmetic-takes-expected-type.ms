@@ -2,10 +2,11 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn scaled(x Int8) Int8:
+fn scaled(x Int8) Int8 {
 	return (1 + 2) * x
+}
 
-test "arithmetic over literals takes the expected sized type":
+test "arithmetic over literals takes the expected sized type" {
 	a Float32 := 0.1 + 0.2
 	expect_equal(a.to_float(), 0.30000001192092896)?
 
@@ -17,9 +18,11 @@ test "arithmetic over literals takes the expected sized type":
 
 	d Float32 := 1.0 / 3.0
 	expect_equal(d.to_float(), 0.3333333432674408)?
+}
 
-test "literal arithmetic beside a sized operand adopts its type":
+test "literal arithmetic beside a sized operand adopts its type" {
 	expect_equal(scaled(5).to_int(), 15)?
 
 	y Float32 := 2.0
 	expect_equal((y + 0.5 * 3.0).to_float(), 3.5)?
+}

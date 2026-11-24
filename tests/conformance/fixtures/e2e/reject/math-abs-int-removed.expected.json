@@ -26,19 +26,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding abs_int; declare it with 'abs_int := ...' before use, define 'fn abs_int(...) T:', or import it from a module",
+        "message": "unknown binding abs_int; declare it with 'abs_int := ...' before use, define 'fn abs_int(...) T { ... }', or import it from a module",
         "position": {
           "file": "math-abs-int-removed.ms",
           "line": 6,
           "column": 12,
-          "offset": 132
+          "offset": 133
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/math-abs-int-removed.ms:3:8: resolution: module does not export abs_int; @std/math/math.ms exports: BigInt, BinaryFloatParts, DivMod, FloatParts, WideProduct, WordDifference, WordDivision, WordSum, acos, acosh, add_with_carry, asin, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/math/math.ms\"'\n   |\n 3 | import abs_int from \"@std/math/math.ms\"\n   |        ^^^^^^^\n<DIR>/math-abs-int-removed.ms:6:12: resolution: unknown binding abs_int; declare it with 'abs_int := ...' before use, define 'fn abs_int(...) T:', or import it from a module\n   |\n 6 |     return abs_int(-3)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/math-abs-int-removed.ms:3:8: resolution: module does not export abs_int; @std/math/math.ms exports: BigInt, BinaryFloatParts, DivMod, FloatParts, WideProduct, WordDifference, WordDivision, WordSum, acos, acosh, add_with_carry, asin, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/math/math.ms\"'\n   |\n 3 | import abs_int from \"@std/math/math.ms\"\n   |        ^^^^^^^\n<DIR>/math-abs-int-removed.ms:6:12: resolution: unknown binding abs_int; declare it with 'abs_int := ...' before use, define 'fn abs_int(...) T { ... }', or import it from a module\n   |\n 6 |     return abs_int(-3)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

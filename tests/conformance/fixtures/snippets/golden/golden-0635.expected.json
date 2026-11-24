@@ -12,16 +12,16 @@
         "message": "unknown argument other; parameters of f: value",
         "position": {
           "file": "golden-0635.ms",
-          "line": 4,
+          "line": 5,
           "column": 21,
-          "offset": 105
+          "offset": 106
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0635.ms:4:21: type: unknown argument other; parameters of f: value\n   |\n 4 | fn call() Void => f(other: 4)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0635.ms:5:21: type: unknown argument other; parameters of f: value\n   |\n 5 | fn call() Void => f(other: 4)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

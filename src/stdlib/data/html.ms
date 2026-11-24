@@ -19,7 +19,7 @@ character references back.
 // adds no limit. The defaults are a depth of 10,000 and 1,000,000 nodes, with no limit
 // on input bytes. A negative limit returns `EINVAL`, and input that exceeds a limit
 // returns `EOVERFLOW`.
-export type HtmlOptions:
+export type HtmlOptions {
 	// Maximum UTF-8 input bytes before parsing; null adds no input-size budget.
 	max_bytes Int? = null
 	// Maximum normalized node depth; the document is depth zero and direct children
@@ -28,18 +28,20 @@ export type HtmlOptions:
 	// Maximum returned nodes, including document/text/comment/doctype and implied
 	// element nodes.
 	max_nodes Int? = 1000000
+}
 
 // An HTML attribute with its name, namespace and decoded value.
-export type HtmlAttribute:
+export type HtmlAttribute {
 	// Attribute name after HTML parsing and normalization.
 	name String
 	// Attribute namespace prefix, or empty text for an unqualified attribute.
 	namespace String
 	// Decoded attribute contents, with character references resolved.
 	value String
+}
 
 // A parsed HTML document tree with document, element, text, comment, and doctype nodes.
-export enum HtmlNode:
+export enum HtmlNode {
 	// Root document node, including any elements implied by HTML tree normalization.
 	Document(
 		// Direct child nodes in normalized document order.
@@ -75,16 +77,19 @@ export enum HtmlNode:
 		// System identifier, or empty text when no system identifier is present.
 		system_id String
 	)
+}
 
 // Escapes text for insertion into an HTML text or quoted attribute context.
-export fn escape(text String) String:
+export fn escape(text String) String {
 	return msstd_html_escape(text)
+}
 
 // Decodes HTML5 named and numeric character references in text context, once. A
 // recognized reference may omit its semicolon; unrecognized text stays literal. Invalid
 // numeric references become U+FFFD. It does not parse markup or normalize text.
-export fn unescape(text String) String:
+export fn unescape(text String) String {
 	return msstd_html_unescape(text)
+}
 
 // ---- parser state ----
 
@@ -220,7 +225,7 @@ E_TEMPLATE := 12
 // marker and node 1 the document. The open elements (`oe`) and the active formatting
 // elements (`afe`) are lists of node ids. An element's name is its atom (see the
 // generated tables), or its `data` text when the tag is not a known atom.
-type Parser:
+type Parser {
 	src Bytes
 	size Int
 	max_open Int
@@ -286,31 +291,37 @@ type Parser:
 	original_im Int = -1
 	foster_parenting Bool = false
 	quirks Bool = false
+}
 
-fn var Parser.read_byte() Int:
-	if self.raw_end >= self.size:
+fn var Parser.read_byte() Int {
+	if self.raw_end >= self.size {
 		self.eof = true
 		return 0
+	}
 
 	x := self.src.get(self.raw_end).to_int()
 	self.raw_end += 1
 	return x
+}
 
-fn var Parser.skip_white_space() Void:
-	if self.eof: return
+fn var Parser.skip_white_space() Void {
+	if self.eof { return }
 
-	while true:
+	while true {
 		c := self.read_byte()
-		if self.eof: return
+		if self.eof { return }
 
-		if not is_space(c):
+		if not is_space(c) {
 			self.raw_end -= 1
 			return
+		}
+	}
+}
 
-fn var Parser.set_raw_tag(tag Int) Void:
+fn var Parser.set_raw_tag(tag Int) Void {
 	self.raw_tag = tag
 
-	match tag:
+	match tag {
 		1 => self.raw_name = "iframe".to_bytes()
 		2 => self.raw_name = "noembed".to_bytes()
 		3 => self.raw_name = "noframes".to_bytes()
@@ -322,270 +333,309 @@ fn var Parser.set_raw_tag(tag Int) Void:
 		9 => self.raw_name = "title".to_bytes()
 		10 => self.raw_name = "xmp".to_bytes()
 		_ => self.raw_name = Bytes(values: [])
+	}
+}
 
-fn var Parser.read_raw_or_rcdata() Void:
-	if self.raw_tag == RAW_SCRIPT:
+fn var Parser.read_raw_or_rcdata() Void {
+	if self.raw_tag == RAW_SCRIPT {
 		self.read_script()
 		self.text_is_raw = true
 		self.raw_tag = RAW_NONE
 		return
+	}
 
-	while true:
+	while true {
 		c := self.read_byte()
-		if self.eof: break
-		if c != 60: continue
+		if self.eof { break }
+		if c != 60 { continue }
 
 		c2 := self.read_byte()
-		if self.eof: break
+		if self.eof { break }
 
-		if c2 != 47:
+		if c2 != 47 {
 			self.raw_end -= 1
 			continue
+		}
 
-		if self.read_raw_end_tag() or self.eof: break
+		if self.read_raw_end_tag() or self.eof { break }
+	}
 
 	self.data_end = self.raw_end
 	self.text_is_raw = self.raw_tag != RAW_TEXTAREA and self.raw_tag != RAW_TITLE
 	self.raw_tag = RAW_NONE
+}
 
-fn var Parser.read_raw_end_tag() Bool:
+fn var Parser.read_raw_end_tag() Bool {
 	length := self.raw_name.length()
 
-	for i in 0..length:
+	for i in 0..length {
 		c := self.read_byte()
-		if self.eof: return false
+		if self.eof { return false }
 
 		t := self.raw_name.get(i).to_int()
 
-		if c != t and c != t - 32:
+		if c != t and c != t - 32 {
 			self.raw_end -= 1
 			return false
+		}
+	}
 
 	c := self.read_byte()
-	if self.eof: return false
+	if self.eof { return false }
 
-	if is_space(c) or c == 47 or c == 62:
+	if is_space(c) or c == 47 or c == 62 {
 		self.raw_end -= 3 + length
 		return true
+	}
 
 	self.raw_end -= 1
 	return false
+}
 
-fn var Parser.read_script() Void:
+fn var Parser.read_script() Void {
 	var st = SC_DATA
 
-	while true:
-		if st == SC_DATA:
+	while true {
+		if st == SC_DATA {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 60:
+			if c == 60 {
 				st = SC_LESS_THAN
-		else if st == SC_LESS_THAN:
+			}
+		} else if st == SC_LESS_THAN {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 47:
+			if c == 47 {
 				st = SC_END_TAG_OPEN
-			else if c == 33:
+			} else if c == 33 {
 				st = SC_ESCAPE_START
-			else:
+			} else {
 				self.raw_end -= 1
 				st = SC_DATA
-		else if st == SC_END_TAG_OPEN:
-			if self.read_raw_end_tag() or self.eof: break
+			}
+		} else if st == SC_END_TAG_OPEN {
+			if self.read_raw_end_tag() or self.eof { break }
 
 			st = SC_DATA
-		else if st == SC_ESCAPE_START:
+		} else if st == SC_ESCAPE_START {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_ESCAPE_START_DASH
-			else:
+			} else {
 				self.raw_end -= 1
 				st = SC_DATA
-		else if st == SC_ESCAPE_START_DASH:
+			}
+		} else if st == SC_ESCAPE_START_DASH {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_ESCAPED_DASH_DASH
-			else:
+			} else {
 				self.raw_end -= 1
 				st = SC_DATA
-		else if st == SC_ESCAPED:
+			}
+		} else if st == SC_ESCAPED {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_ESCAPED_DASH
-			else if c == 60:
+			} else if c == 60 {
 				st = SC_ESCAPED_LESS_THAN
-		else if st == SC_ESCAPED_DASH:
+			}
+		} else if st == SC_ESCAPED_DASH {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_ESCAPED_DASH_DASH
-			else if c == 60:
+			} else if c == 60 {
 				st = SC_ESCAPED_LESS_THAN
-			else:
+			} else {
 				st = SC_ESCAPED
-		else if st == SC_ESCAPED_DASH_DASH:
+			}
+		} else if st == SC_ESCAPED_DASH_DASH {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_ESCAPED_DASH_DASH
-			else if c == 60:
+			} else if c == 60 {
 				st = SC_ESCAPED_LESS_THAN
-			else if c == 62:
+			} else if c == 62 {
 				st = SC_DATA
-			else:
+			} else {
 				st = SC_ESCAPED
-		else if st == SC_ESCAPED_LESS_THAN:
+			}
+		} else if st == SC_ESCAPED_LESS_THAN {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 47:
+			if c == 47 {
 				st = SC_ESCAPED_END_TAG_OPEN
-			else if is_alpha(c):
+			} else if is_alpha(c) {
 				st = SC_DOUBLE_ESCAPE_START
-			else:
+			} else {
 				self.raw_end -= 1
 				st = SC_DATA
-		else if st == SC_ESCAPED_END_TAG_OPEN:
-			if self.read_raw_end_tag() or self.eof: break
+			}
+		} else if st == SC_ESCAPED_END_TAG_OPEN {
+			if self.read_raw_end_tag() or self.eof { break }
 
 			st = SC_ESCAPED
-		else if st == SC_DOUBLE_ESCAPE_START:
+		} else if st == SC_DOUBLE_ESCAPE_START {
 			self.raw_end -= 1
 
 			var mismatch = false
 			script := "script".to_bytes()
 
-			for i in 0..6:
+			for i in 0..6 {
 				c := self.read_byte()
 
-				if self.eof:
+				if self.eof {
 					self.data_end = self.raw_end
 					return
+				}
 
 				t := script.get(i).to_int()
 
-				if c != t and c != t - 32:
+				if c != t and c != t - 32 {
 					self.raw_end -= 1
 					mismatch = true
 					break
+				}
+			}
 
-			if mismatch:
+			if mismatch {
 				st = SC_ESCAPED
-			else:
+			} else {
 				c := self.read_byte()
-				if self.eof: break
+				if self.eof { break }
 
-				if is_space(c) or c == 47 or c == 62:
+				if is_space(c) or c == 47 or c == 62 {
 					st = SC_DOUBLE_ESCAPED
-				else:
+				} else {
 					self.raw_end -= 1
 					st = SC_ESCAPED
-		else if st == SC_DOUBLE_ESCAPED:
+				}
+			}
+		} else if st == SC_DOUBLE_ESCAPED {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_DOUBLE_ESCAPED_DASH
-			else if c == 60:
+			} else if c == 60 {
 				st = SC_DOUBLE_ESCAPED_LESS_THAN
-		else if st == SC_DOUBLE_ESCAPED_DASH:
+			}
+		} else if st == SC_DOUBLE_ESCAPED_DASH {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_DOUBLE_ESCAPED_DASH_DASH
-			else if c == 60:
+			} else if c == 60 {
 				st = SC_DOUBLE_ESCAPED_LESS_THAN
-			else:
+			} else {
 				st = SC_DOUBLE_ESCAPED
-		else if st == SC_DOUBLE_ESCAPED_DASH_DASH:
+			}
+		} else if st == SC_DOUBLE_ESCAPED_DASH_DASH {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 45:
+			if c == 45 {
 				st = SC_DOUBLE_ESCAPED_DASH_DASH
-			else if c == 60:
+			} else if c == 60 {
 				st = SC_DOUBLE_ESCAPED_LESS_THAN
-			else if c == 62:
+			} else if c == 62 {
 				st = SC_DATA
-			else:
+			} else {
 				st = SC_DOUBLE_ESCAPED
-		else if st == SC_DOUBLE_ESCAPED_LESS_THAN:
+			}
+		} else if st == SC_DOUBLE_ESCAPED_LESS_THAN {
 			c := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if c == 47:
+			if c == 47 {
 				st = SC_DOUBLE_ESCAPE_END
-			else:
+			} else {
 				self.raw_end -= 1
 				st = SC_DOUBLE_ESCAPED
-		else:
+			}
+		} else {
 			// SC_DOUBLE_ESCAPE_END
-			if self.read_raw_end_tag():
+			if self.read_raw_end_tag() {
 				self.raw_end += 9
 				st = SC_ESCAPED
-			else if self.eof:
+			} else if self.eof {
 				break
-			else:
+			} else {
 				st = SC_DOUBLE_ESCAPED
+			}
+		}
+	}
 
 	self.data_end = self.raw_end
+}
 
-fn var Parser.read_comment() Void:
+fn var Parser.read_comment() Void {
 	self.data_start = self.raw_end
 
 	var dash_count = 0
 	var beginning = true
 
-	while true:
+	while true {
 		var c = self.read_byte()
 
-		if self.eof:
+		if self.eof {
 			self.data_end = self.abrupt_comment_data_end()
 			break
+		}
 
-		if c == 45:
+		if c == 45 {
 			dash_count += 1
 			continue
+		}
 
-		if c == 62:
-			if dash_count >= 2 or beginning:
+		if c == 62 {
+			if dash_count >= 2 or beginning {
 				self.data_end = self.raw_end - 3
 				break
-		else if c == 33 and dash_count >= 2:
+			}
+		} else if c == 33 and dash_count >= 2 {
 			c = self.read_byte()
 
-			if self.eof:
+			if self.eof {
 				self.data_end = self.abrupt_comment_data_end()
 				break
-			else if c == 62:
+			} else if c == 62 {
 				self.data_end = self.raw_end - 4
 				break
-			else if c == 45:
+			} else if c == 45 {
 				dash_count = 1
 				beginning = false
 				continue
+			}
+		}
 
 		dash_count = 0
 		beginning = false
+	}
 
-	if self.data_end < self.data_start:
+	if self.data_end < self.data_start {
 		self.data_end = self.data_start
+	}
+}
 
-fn Parser.abrupt_comment_data_end() Int:
+fn Parser.abrupt_comment_data_end() Int {
 	length := self.raw_end - self.raw_start
 
-	if length >= 4:
+	if length >= 4 {
 		// A comment cut off by the end of input drops a trailing `-`, `--` or `--!`
 		// from its data, as long as that trailing run lies after the four-byte `<!--`
 		// opener.
@@ -593,441 +643,546 @@ fn Parser.abrupt_comment_data_end() Int:
 		prior := self.byte_at(self.raw_end - 2)
 		before := self.byte_at(self.raw_end - 3)
 		body := length - 4
-		if body >= 3 and before == 45 and prior == 45 and last == 33: return (
-			self.raw_end
-			- 3
-		)
-		if body >= 2 and prior == 45 and last == 45: return self.raw_end - 2
-		if body >= 1 and last == 45: return self.raw_end - 1
+		if body >= 3 and before == 45 and prior == 45 and last == 33 {
+			return (self.raw_end - 3)
+		}
+		if body >= 2 and prior == 45 and last == 45 { return self.raw_end - 2 }
+		if body >= 1 and last == 45 { return self.raw_end - 1 }
+	}
 
 	return self.raw_end
+}
 
-fn Parser.byte_at(pos Int) Int:
-	if pos < 0 or pos >= self.size: return -1
+fn Parser.byte_at(pos Int) Int {
+	if pos < 0 or pos >= self.size { return -1 }
 	return self.src.get(pos).to_int()
+}
 
-fn var Parser.read_until_close_angle() Void:
+fn var Parser.read_until_close_angle() Void {
 	self.data_start = self.raw_end
 
 	idx := self.src.index_of_byte(62, self.raw_end)
 
-	if idx == null:
+	if idx == null {
 		self.raw_end = self.size
 		self.eof = true
 		self.data_end = self.raw_end
 		return
+	}
 
 	self.raw_end = (idx) + 1
 	self.data_end = self.raw_end - 1
+}
 
-fn var Parser.read_markup_declaration() Int:
+fn var Parser.read_markup_declaration() Int {
 	self.data_start = self.raw_end
 
 	var first = 0
 	var second = 0
 	first = self.read_byte()
 
-	if self.eof:
+	if self.eof {
 		self.data_end = self.raw_end
 		return T_COMMENT
+	}
 
 	second = self.read_byte()
 
-	if self.eof:
+	if self.eof {
 		self.data_end = self.raw_end
 		return T_COMMENT
+	}
 
-	if first == 45 and second == 45:
+	if first == 45 and second == 45 {
 		self.read_comment()
 		return T_COMMENT
+	}
 
 	self.raw_end -= 2
-	if self.read_doctype(): return T_DOCTYPE
+	if self.read_doctype() { return T_DOCTYPE }
 
-	if self.allow_cdata and self.read_cdata():
+	if self.allow_cdata and self.read_cdata() {
 		self.convert_nul = true
 		return T_TEXT
+	}
 
 	self.read_until_close_angle()
 	return T_COMMENT
+}
 
-fn var Parser.read_doctype() Bool:
+fn var Parser.read_doctype() Bool {
 	word := "DOCTYPE".to_bytes()
 
-	for i in 0..7:
+	for i in 0..7 {
 		c := self.read_byte()
 
-		if self.eof:
+		if self.eof {
 			self.data_end = self.raw_end
 			return false
+		}
 
 		s := word.get(i).to_int()
 
-		if c != s and c != s + 32:
+		if c != s and c != s + 32 {
 			self.raw_end = self.data_start
 			return false
+		}
+	}
 
 	self.skip_white_space()
 
-	if self.eof:
+	if self.eof {
 		self.data_start = self.raw_end
 		self.data_end = self.raw_end
 		return true
+	}
 
 	self.read_until_close_angle()
 	return true
+}
 
-fn var Parser.read_cdata() Bool:
+fn var Parser.read_cdata() Bool {
 	word := "[CDATA[".to_bytes()
 
-	for i in 0..7:
+	for i in 0..7 {
 		c := self.read_byte()
 
-		if self.eof:
+		if self.eof {
 			self.data_end = self.raw_end
 			return false
+		}
 
-		if c != word.get(i).to_int():
+		if c != word.get(i).to_int() {
 			self.raw_end = self.data_start
 			return false
+		}
+	}
 
 	self.data_start = self.raw_end
 
 	var brackets = 0
 
-	while true:
+	while true {
 		c := self.read_byte()
 
-		if self.eof:
+		if self.eof {
 			self.data_end = self.raw_end
 			return true
+		}
 
-		if c == 93:
+		if c == 93 {
 			brackets += 1
-		else if c == 62:
-			if brackets >= 2:
+		} else if c == 62 {
+			if brackets >= 2 {
 				self.data_end = self.raw_end - 3
 				return true
+			}
 
 			brackets = 0
-		else:
+		} else {
 			brackets = 0
+		}
+	}
 
 	return true
+}
 
 // The raw-text element whose name is the current tag name, or `RAW_NONE`.
-fn Parser.raw_text_tag() Int:
+fn Parser.raw_text_tag() Int {
 	start := self.data_start
 	length := self.data_end - start
 	c := lower_byte(self.byte_at(start))
-	if c == 105 and self.name_is(start, length, "iframe"): return RAW_IFRAME
+	if c == 105 and self.name_is(
+		start,
+		length,
+		"iframe",
+	) { return RAW_IFRAME }
 
-	if c == 110:
-		if self.name_is(start, length, "noembed"): return RAW_NOEMBED
-		if self.name_is(start, length, "noframes"): return RAW_NOFRAMES
-		if self.name_is(start, length, "noscript"): return RAW_NOSCRIPT
+	if c == 110 {
+		if self.name_is(
+			start,
+			length,
+			"noembed",
+		) { return RAW_NOEMBED }
+		if self.name_is(
+			start,
+			length,
+			"noframes",
+		) { return RAW_NOFRAMES }
+		if self.name_is(
+			start,
+			length,
+			"noscript",
+		) { return RAW_NOSCRIPT }
+	}
 
-	if c == 112 and self.name_is(start, length, "plaintext"): return RAW_PLAINTEXT
+	if c == 112 and self.name_is(
+		start,
+		length,
+		"plaintext",
+	) { return RAW_PLAINTEXT }
 
-	if c == 115:
-		if self.name_is(start, length, "script"): return RAW_SCRIPT
-		if self.name_is(start, length, "style"): return RAW_STYLE
+	if c == 115 {
+		if self.name_is(start, length, "script") { return RAW_SCRIPT }
+		if self.name_is(start, length, "style") { return RAW_STYLE }
+	}
 
-	if c == 116:
-		if self.name_is(start, length, "textarea"): return RAW_TEXTAREA
-		if self.name_is(start, length, "title"): return RAW_TITLE
+	if c == 116 {
+		if self.name_is(
+			start,
+			length,
+			"textarea",
+		) { return RAW_TEXTAREA }
+		if self.name_is(
+			start,
+			length,
+			"title",
+		) { return RAW_TITLE }
+	}
 
-	if c == 120 and self.name_is(start, length, "xmp"): return RAW_XMP
+	if c == 120 and self.name_is(
+		start,
+		length,
+		"xmp",
+	) { return RAW_XMP }
 
 	return RAW_NONE
+}
 
 // Whether the `length` bytes at `start` equal the lower-case `word`, ignoring ASCII
 // case.
-fn Parser.name_is(start Int, length Int, word String) Bool:
-	if length != word.length(): return false
+fn Parser.name_is(start Int, length Int, word String) Bool {
+	if length != word.length() { return false }
 	return bytes_equal_fold(self.src, start, word.to_bytes())
+}
 
-fn var Parser.read_start_tag() Int:
+fn var Parser.read_start_tag() Int {
 	self.read_tag(true)
-	if self.eof: return T_ERROR
+	if self.eof { return T_ERROR }
 
 	raw := self.raw_text_tag()
-	if raw != RAW_NONE: self.set_raw_tag(raw)
+	if raw != RAW_NONE { self.set_raw_tag(raw) }
 
 	n := self.attr_n
-	if self.byte_at(self.raw_end - 2) == 47:
-		if n == 0 or self.raw_end - 2 != self.attr_ve[n - 1] - 1: return T_SELF_CLOSING
+	if self.byte_at(self.raw_end - 2) == 47 {
+		if n == 0 or self.raw_end - 2 != self.attr_ve[n - 1] - 1 { return T_SELF_CLOSING }
+	}
 	return T_START
+}
 
 // Records the pending attribute spans as the next attribute of the tag.
-fn var Parser.push_attr() Void:
+fn var Parser.push_attr() Void {
 	n := self.attr_n
 
-	if n < self.attr_ks.length():
+	if n < self.attr_ks.length() {
 		self.attr_ks[n] = self.pk_s
 		self.attr_ke[n] = self.pk_e
 		self.attr_vs[n] = self.pv_s
 		self.attr_ve[n] = self.pv_e
-	else:
+	} else {
 		self.attr_ks.append(self.pk_s)
 		self.attr_ke.append(self.pk_e)
 		self.attr_vs.append(self.pv_s)
 		self.attr_ve.append(self.pv_e)
+	}
 
 	self.attr_n = n + 1
+}
 
-fn var Parser.read_tag(save_attr Bool) Void:
+fn var Parser.read_tag(save_attr Bool) Void {
 	self.attr_n = 0
 	self.read_tag_name()
 	self.skip_white_space()
-	if self.eof: return
+	if self.eof { return }
 
-	while true:
+	while true {
 		c := self.read_byte()
-		if self.eof or c == 62: break
+		if self.eof or c == 62 { break }
 
 		self.raw_end -= 1
 		self.read_tag_attr_key()
 		self.read_tag_attr_val()
-		if save_attr and self.pk_s != self.pk_e: self.push_attr()
+		if save_attr and self.pk_s != self.pk_e { self.push_attr() }
 		self.skip_white_space()
-		if self.eof: break
+		if self.eof { break }
+	}
+}
 
-fn var Parser.read_tag_name() Void:
+fn var Parser.read_tag_name() Void {
 	self.data_start = self.raw_end - 1
 
-	while true:
+	while true {
 		c := self.read_byte()
 
-		if self.eof:
+		if self.eof {
 			self.data_end = self.raw_end
 			return
+		}
 
-		if is_space(c):
+		if is_space(c) {
 			self.data_end = self.raw_end - 1
 			return
+		}
 
-		if c == 47 or c == 62:
+		if c == 47 or c == 62 {
 			self.raw_end -= 1
 			self.data_end = self.raw_end
 			return
+		}
+	}
+}
 
-fn var Parser.read_tag_attr_key() Void:
+fn var Parser.read_tag_attr_key() Void {
 	self.pk_s = self.raw_end
 
-	while true:
+	while true {
 		c := self.read_byte()
 
-		if self.eof:
+		if self.eof {
 			self.pk_e = self.raw_end
 			return
+		}
 
-		if c == 61 and self.pk_s + 1 == self.raw_end: continue
+		if c == 61 and self.pk_s + 1 == self.raw_end { continue }
 
-		if c == 61 or is_space(c) or c == 47 or c == 62:
+		if c == 61 or is_space(c) or c == 47 or c == 62 {
 			self.raw_end -= 1
 			self.pk_e = self.raw_end
 			return
+		}
+	}
+}
 
-fn var Parser.read_tag_attr_val() Void:
+fn var Parser.read_tag_attr_val() Void {
 	self.pv_s = self.raw_end
 	self.pv_e = self.raw_end
 	self.skip_white_space()
-	if self.eof: return
+	if self.eof { return }
 
 	c := self.read_byte()
-	if self.eof: return
-	if c == 47: return
+	if self.eof { return }
+	if c == 47 { return }
 
-	if c != 61:
+	if c != 61 {
 		self.raw_end -= 1
 		return
+	}
 
 	self.skip_white_space()
-	if self.eof: return
+	if self.eof { return }
 
 	quote := self.read_byte()
-	if self.eof: return
+	if self.eof { return }
 
-	if quote == 62:
+	if quote == 62 {
 		self.raw_end -= 1
-	else if quote == 39 or quote == 34:
+	} else if quote == 39 or quote == 34 {
 		self.pv_s = self.raw_end
 
 		var idx Int? = null
 
-		if quote == 39:
+		if quote == 39 {
 			idx = self.src.index_of_byte(39, self.raw_end)
-		else:
+		} else {
 			idx = self.src.index_of_byte(34, self.raw_end)
+		}
 
-		if idx == null:
+		if idx == null {
 			self.raw_end = self.size
 			self.eof = true
 			self.pv_e = self.raw_end
 			return
+		}
 
 		self.raw_end = (idx or 0) + 1
 		self.pv_e = self.raw_end - 1
-	else:
+	} else {
 		self.pv_s = self.raw_end - 1
 
-		while true:
+		while true {
 			d := self.read_byte()
 
-			if self.eof:
+			if self.eof {
 				self.pv_e = self.raw_end
 				return
+			}
 
-			if is_space(d):
+			if is_space(d) {
 				self.pv_e = self.raw_end - 1
 				return
+			}
 
-			if d == 62:
+			if d == 62 {
 				self.raw_end -= 1
 				self.pv_e = self.raw_end
 				return
+			}
+		}
+	}
+}
 
 // Advances to the next token and sets `tt`.
-fn var Parser.next_token() Int:
+fn var Parser.next_token() Int {
 	self.raw_start = self.raw_end
 	self.data_start = self.raw_end
 	self.data_end = self.raw_end
 
-	if self.eof:
+	if self.eof {
 		self.tt = T_ERROR
 		return self.tt
+	}
 
-	if self.raw_tag != RAW_NONE:
-		if self.raw_tag == RAW_PLAINTEXT:
+	if self.raw_tag != RAW_NONE {
+		if self.raw_tag == RAW_PLAINTEXT {
 			self.raw_end = self.size
 			self.eof = true
 			self.data_end = self.raw_end
 			self.text_is_raw = true
-		else:
+		} else {
 			self.read_raw_or_rcdata()
+		}
 
-		if self.data_end > self.data_start:
+		if self.data_end > self.data_start {
 			self.tt = T_TEXT
 			self.convert_nul = true
 			return self.tt
+		}
+	}
 
 	self.text_is_raw = false
 	self.convert_nul = false
 
-	while true:
+	while true {
 		// Skip to the next `<`; the bytes before it are text.
 		idx := self.src.index_of_byte(60, self.raw_end)
 
-		if idx == null:
+		if idx == null {
 			self.raw_end = self.size
 			self.eof = true
 			break
+		}
 
 		self.raw_end = (idx) + 1
 
 		c := self.read_byte()
-		if self.eof: break
+		if self.eof { break }
 
 		var token_type = T_ERROR
 
-		if is_alpha(c):
+		if is_alpha(c) {
 			token_type = T_START
-		else if c == 47:
+		} else if c == 47 {
 			token_type = T_END
-		else if c == 33 or c == 63:
+		} else if c == 33 or c == 63 {
 			token_type = T_COMMENT
-		else:
+		} else {
 			self.raw_end -= 1
 			continue
+		}
 
 		x := self.raw_end - 2
 
-		if self.raw_start < x:
+		if self.raw_start < x {
 			self.raw_end = x
 			self.data_end = x
 			self.tt = T_TEXT
 			return self.tt
+		}
 
-		if token_type == T_START:
+		if token_type == T_START {
 			self.tt = self.read_start_tag()
 			return self.tt
+		}
 
-		if token_type == T_END:
+		if token_type == T_END {
 			d := self.read_byte()
-			if self.eof: break
+			if self.eof { break }
 
-			if d == 62:
+			if d == 62 {
 				self.tt = T_COMMENT
 				return self.tt
+			}
 
-			if is_alpha(d):
+			if is_alpha(d) {
 				self.read_tag(false)
 
-				if self.eof:
+				if self.eof {
 					self.tt = T_ERROR
-				else:
+				} else {
 					self.tt = T_END
+				}
 
 				return self.tt
+			}
 
 			self.raw_end -= 1
 			self.read_until_close_angle()
 			self.tt = T_COMMENT
 			return self.tt
+		}
 
-		if c == 33:
+		if c == 33 {
 			self.tt = self.read_markup_declaration()
 			return self.tt
+		}
 
 		self.raw_end -= 1
 		self.read_until_close_angle()
 		self.tt = T_COMMENT
 		return self.tt
+	}
 
-	if self.raw_start < self.raw_end:
+	if self.raw_start < self.raw_end {
 		self.data_end = self.raw_end
 		self.tt = T_TEXT
 		return self.tt
+	}
 
 	self.tt = T_ERROR
 	return self.tt
+}
 
 // ---- tokens ----
 
 // The text of the current token range after newline, NUL and character-reference
 // handling.
-fn var Parser.token_text() String:
+fn var Parser.token_text() String {
 	var s = convert_newlines(
 		self.src.decode_utf8_range(self.data_start, self.data_end) or ""
 	)
-	if (self.convert_nul or self.tt == T_COMMENT) and s.contains("\u{0}"):
+	if (self.convert_nul or self.tt == T_COMMENT) and s.contains("\u{0}") {
 		s = s.replace("\u{0}", "\u{FFFD}")
-	if not self.text_is_raw and s.contains("&"):
+	}
+	if not self.text_is_raw and s.contains("&") {
 		s = msstd_html_decode(s, false)
+	}
 	return s
+}
 
 // Fills the current token fields from the tokenizer's last token.
-fn var Parser.load_token() Void:
+fn var Parser.load_token() Void {
 	self.tok_ty = self.tt
 	self.tok_atom = 0
 	self.tok_data = ""
 	self.tok_n = 0
 
-	if self.tt == T_TEXT or self.tt == T_COMMENT or self.tt == T_DOCTYPE:
+	if self.tt == T_TEXT or self.tt == T_COMMENT or self.tt == T_DOCTYPE {
 		self.tok_data = self.token_text()
 		return
+	}
 
-	if self.tt == T_ERROR: return
+	if self.tt == T_ERROR { return }
 
-	if self.data_start < self.data_end:
+	if self.data_start < self.data_end {
 		self.tok_atom = atom_of_range(self.src, self.data_start, self.data_end)
-		if self.tok_atom == 0:
+		if self.tok_atom == 0 {
 			self.tok_data = lowered_text(self.src, self.data_start, self.data_end)
+		}
+	}
 
-	if self.tt == T_END: return
+	if self.tt == T_END { return }
 
-	for i in 0..self.attr_n:
+	for i in 0..self.attr_n {
 		key := lowered_text(self.src, self.attr_ks[i], self.attr_ke[i])
 		var value = convert_newlines(
 			self.src.decode_utf8_range(
@@ -1035,34 +1190,39 @@ fn var Parser.load_token() Void:
 				self.attr_ve[i],
 			) or ""
 		)
-		if value.contains("&"): value = msstd_html_decode(value, true)
+		if value.contains("&") { value = msstd_html_decode(value, true) }
 
-		if i < self.tok_keys.length():
+		if i < self.tok_keys.length() {
 			self.tok_keys[i] = key
 			self.tok_vals[i] = value
 			self.tok_nss[i] = ""
-		else:
+		} else {
 			self.tok_keys.append(key)
 			self.tok_vals.append(value)
 			self.tok_nss.append("")
+		}
+	}
 
 	self.tok_n = self.attr_n
+}
 
 // ---- node tree ----
 
 // The name of an element node.
-fn Parser.tag_name(n Int) String:
+fn Parser.tag_name(n Int) String {
 	a := self.atom[n]
-	if a != 0: return atom_name(a)
+	if a != 0 { return atom_name(a) }
 
 	return self.data[n].clone()
+}
 
 // The name of the current tag token.
-fn Parser.tok_name() String:
-	if self.tok_atom != 0: return atom_name(self.tok_atom)
+fn Parser.tok_name() String {
+	if self.tok_atom != 0 { return atom_name(self.tok_atom) }
 	return self.tok_data.clone()
+}
 
-fn var Parser.alloc(kind Int, atom Int, data String) Int:
+fn var Parser.alloc(kind Int, atom Int, data String) Int {
 	id := self.kind.length()
 	self.kind.append(kind)
 	self.atom.append(atom)
@@ -1076,257 +1236,303 @@ fn var Parser.alloc(kind Int, atom Int, data String) Int:
 	self.attr_start.append(self.akey.length())
 	self.attr_count.append(0)
 	return id
+}
 
 // Links `child` before `old` under `parent`; `old` of -1 appends.
-fn var Parser.insert_before(parent Int, child Int, old Int) Void:
+fn var Parser.insert_before(parent Int, child Int, old Int) Void {
 	var before = self.last[parent]
 	var after = -1
 
-	if old >= 0:
+	if old >= 0 {
 		before = self.prev[old]
 		after = old
+	}
 
-	if before >= 0:
+	if before >= 0 {
 		self.next[before] = child
-	else:
+	} else {
 		self.first[parent] = child
+	}
 
-	if after >= 0:
+	if after >= 0 {
 		self.prev[after] = child
-	else:
+	} else {
 		self.last[parent] = child
+	}
 
 	self.parent[child] = parent
 	self.prev[child] = before
 	self.next[child] = after
+}
 
-fn var Parser.append_child(parent Int, child Int) Void:
+fn var Parser.append_child(parent Int, child Int) Void {
 	self.insert_before(parent, child, -1)
+}
 
-fn var Parser.remove_child(parent Int, child Int) Void:
+fn var Parser.remove_child(parent Int, child Int) Void {
 	before := self.prev[child]
 	after := self.next[child]
-	if self.first[parent] == child: self.first[parent] = after
-	if after >= 0: self.prev[after] = before
-	if self.last[parent] == child: self.last[parent] = before
-	if before >= 0: self.next[before] = after
+	if self.first[parent] == child { self.first[parent] = after }
+	if after >= 0 { self.prev[after] = before }
+	if self.last[parent] == child { self.last[parent] = before }
+	if before >= 0 { self.next[before] = after }
 	self.parent[child] = -1
 	self.prev[child] = -1
 	self.next[child] = -1
+}
 
-fn var Parser.detach(child Int) Void:
+fn var Parser.detach(child Int) Void {
 	p := self.parent[child]
-	if p >= 0: self.remove_child(p, child)
+	if p >= 0 { self.remove_child(p, child) }
+}
 
-fn var Parser.reparent_children(dst Int, src Int) Void:
-	while self.first[src] >= 0:
+fn var Parser.reparent_children(dst Int, src Int) Void {
+	while self.first[src] >= 0 {
 		child := self.first[src]
 		self.remove_child(src, child)
 		self.append_child(dst, child)
+	}
+}
 
 // A copy of the node's type, atom, name and attributes (not its namespace).
-fn var Parser.clone_node(n Int) Int:
+fn var Parser.clone_node(n Int) Int {
 	id := self.alloc(self.kind[n], self.atom[n], self.data[n].clone())
 	start := self.attr_start[n]
 	count := self.attr_count[n]
 
-	for i in 0..count:
+	for i in 0..count {
 		self.akey.append(self.akey[start + i].clone())
 		self.aval.append(self.aval[start + i].clone())
 		self.ans.append(self.ans[start + i].clone())
+	}
 
 	self.attr_count[id] = count
 	return id
+}
 
 // ---- stacks ----
 
-fn Parser.oe_top() Int:
+fn Parser.oe_top() Int {
 	n := self.oe.length()
-	if n == 0: return -1
+	if n == 0 { return -1 }
 
 	return self.oe[n - 1]
+}
 
-fn Parser.top() Int:
+fn Parser.top() Int {
 	n := self.oe.length()
-	if n == 0: return 1
+	if n == 0 { return 1 }
 
 	return self.oe[n - 1]
+}
 
-fn Parser.top_atom() Int:
+fn Parser.top_atom() Int {
 	return self.atom[self.top()]
+}
 
-fn Parser.oe_top_atom() Int:
+fn Parser.oe_top_atom() Int {
 	n := self.oe.length()
-	if n == 0: return 0
+	if n == 0 { return 0 }
 
 	return self.atom[self.oe[n - 1]]
+}
 
 // Computes the scope marks of open element `i` from the entry below it.
-fn var Parser.mark(i Int) Void:
+fn var Parser.mark(i Int) Void {
 	n := self.oe[i]
 	html := self.ns[n] == NS_HTML
 	a := self.atom[n]
 	var below_p = 0
 	var below_stop = 0
 
-	if i > 0:
+	if i > 0 {
 		below_p = self.oe_p[i - 1]
 		below_stop = self.oe_stop[i - 1]
+	}
 
 	var p = below_p
 	var stop = below_stop
-	if html and a == A_P: p = i + 1
-	if (html and a == A_BUTTON) or stop_atom(self.ns[n], a): stop = i + 1
+	if html and a == A_P { p = i + 1 }
+	if (html and a == A_BUTTON) or stop_atom(self.ns[n], a) { stop = i + 1 }
 
-	if i < self.oe_p.length():
+	if i < self.oe_p.length() {
 		self.oe_p[i] = p
 		self.oe_stop[i] = stop
-	else:
+	} else {
 		self.oe_p.append(p)
 		self.oe_stop.append(stop)
+	}
+}
 
-fn var Parser.oe_remark(start Int) Void:
-	while self.oe_p.length() > start:
+fn var Parser.oe_remark(start Int) Void {
+	while self.oe_p.length() > start {
 		self.oe_p.pop()
 		self.oe_stop.pop()
+	}
 
-	for i in start..self.oe.length():
+	for i in start..self.oe.length() {
 		self.mark(i)
+	}
+}
 
-fn var Parser.oe_push(n Int) Void:
+fn var Parser.oe_push(n Int) Void {
 	self.oe.append(n)
 	self.mark(self.oe.length() - 1)
+}
 
-fn var Parser.oe_pop() Int:
-	if self.oe.length() == 0: return -1
+fn var Parser.oe_pop() Int {
+	if self.oe.length() == 0 { return -1 }
 
 	self.oe_p.pop()
 	self.oe_stop.pop()
 	return self.oe.pop() or (-1)
+}
 
-fn var Parser.oe_truncate(len Int) Void:
-	while self.oe.length() > len:
+fn var Parser.oe_truncate(len Int) Void {
+	while self.oe.length() > len {
 		self.oe.pop()
 		self.oe_p.pop()
 		self.oe_stop.pop()
+	}
+}
 
-fn var Parser.oe_insert(at Int, n Int) Void:
+fn var Parser.oe_insert(at Int, n Int) Void {
 	self.oe.insert(at, n)
 	self.oe_remark(at)
+}
 
-fn var Parser.oe_set(i Int, n Int) Void:
+fn var Parser.oe_set(i Int, n Int) Void {
 	self.oe[i] = n
 	self.oe_remark(i)
+}
 
-fn var Parser.oe_remove(n Int) Void:
+fn var Parser.oe_remove(n Int) Void {
 	i := self.oe_index(n)
 
-	if i >= 0:
+	if i >= 0 {
 		self.oe.remove(i)
 		self.oe_remark(i)
+	}
+}
 
 // The position of the last occurrence of `n` in the open elements, or -1.
-fn Parser.oe_index(n Int) Int:
+fn Parser.oe_index(n Int) Int {
 	var i = self.oe.length() - 1
 
-	while i >= 0:
-		if self.oe[i] == n: return i
+	while i >= 0 {
+		if self.oe[i] == n { return i }
 
 		i -= 1
+	}
 
 	return -1
+}
 
-fn Parser.afe_index(n Int) Int:
+fn Parser.afe_index(n Int) Int {
 	var i = self.afe.length() - 1
 
-	while i >= 0:
-		if self.afe[i] == n: return i
+	while i >= 0 {
+		if self.afe[i] == n { return i }
 
 		i -= 1
+	}
 
 	return -1
+}
 
-fn var Parser.afe_remove(n Int) Void:
+fn var Parser.afe_remove(n Int) Void {
 	i := self.afe_index(n)
-	if i >= 0: self.afe.remove(i)
+	if i >= 0 { self.afe.remove(i) }
+}
 
-fn var Parser.afe_truncate_pop() Int:
+fn var Parser.afe_truncate_pop() Int {
 	r := self.afe.pop()
 	return r or (-1)
+}
 
 // Whether an HTML element with the atom is open.
-fn Parser.oe_contains(atom Int) Bool:
-	for n in self.oe:
-		if self.atom[n] == atom and self.ns[n] == NS_HTML: return true
+fn Parser.oe_contains(atom Int) Bool {
+	for n in self.oe {
+		if self.atom[n] == atom and self.ns[n] == NS_HTML { return true }
+	}
 	return false
+}
 
-fn Parser.is_special_element(n Int) Bool:
+fn Parser.is_special_element(n Int) Bool {
 	a := self.atom[n]
 	v := self.ns[n]
-	if v == NS_HTML: return is_special_atom(a)
-	if v == NS_MATH: return is_math_stop(a)
+	if v == NS_HTML { return is_special_atom(a) }
+	if v == NS_MATH { return is_math_stop(a) }
 
 	return is_svg_stop(a)
+}
 
 // ---- scope ----
 
 // The index of the nearest open element matching one of the atoms (-2 as the first atom
 // matches any heading) before a boundary of the scope, or -1.
-fn Parser.scope_index(s Int, m1 Int, m2 Int, m3 Int) Int:
-	if s == SCOPE_BUTTON and m1 == A_P and m2 == -1:
+fn Parser.scope_index(s Int, m1 Int, m2 Int, m3 Int) Int {
+	if s == SCOPE_BUTTON and m1 == A_P and m2 == -1 {
 		mark_p := self.oe_p.get_or(self.oe.length() - 1, 0)
 		mark_stop := self.oe_stop.get_or(self.oe.length() - 1, 0)
-		if mark_p > mark_stop: return mark_p - 1
+		if mark_p > mark_stop { return mark_p - 1 }
 
 		return -1
+	}
 
 	var i = self.oe.length() - 1
 
-	while i >= 0:
+	while i >= 0 {
 		n := self.oe[i]
 		a := self.atom[n]
 		v := self.ns[n]
 
-		if v == NS_HTML:
-			if tag_matches(a, m1, m2, m3): return i
+		if v == NS_HTML {
+			if tag_matches(a, m1, m2, m3) { return i }
 
-			if s == SCOPE_LIST_ITEM:
-				if a == A_OL or a == A_UL: return -1
-			else if s == SCOPE_BUTTON:
-				if a == A_BUTTON: return -1
-			else if s == SCOPE_TABLE:
-				if a == A_HTML or a == A_TABLE or a == A_TEMPLATE: return -1
-			else if s == SCOPE_SELECT:
-				if a != A_OPTGROUP and a != A_OPTION: return -1
+			if s == SCOPE_LIST_ITEM {
+				if a == A_OL or a == A_UL { return -1 }
+			} else if s == SCOPE_BUTTON {
+				if a == A_BUTTON { return -1 }
+			} else if s == SCOPE_TABLE {
+				if a == A_HTML or a == A_TABLE or a == A_TEMPLATE { return -1 }
+			} else if s == SCOPE_SELECT {
+				if a != A_OPTGROUP and a != A_OPTION { return -1 }
+			}
+		}
 
-		if s <= SCOPE_BUTTON and stop_atom(v, a): return -1
+		if s <= SCOPE_BUTTON and stop_atom(v, a) { return -1 }
 
 		i -= 1
+	}
 
 	return -1
+}
 
-fn var Parser.pop_until(s Int, m1 Int, m2 Int, m3 Int) Bool:
+fn var Parser.pop_until(s Int, m1 Int, m2 Int, m3 Int) Bool {
 	i := self.scope_index(s, m1, m2, m3)
-	if i < 0: return false
+	if i < 0 { return false }
 
 	self.oe_truncate(i)
 	return true
+}
 
-fn Parser.element_in_scope(s Int, m1 Int, m2 Int, m3 Int) Bool:
+fn Parser.element_in_scope(s Int, m1 Int, m2 Int, m3 Int) Bool {
 	return self.scope_index(s, m1, m2, m3) >= 0
+}
 
-fn var Parser.clear_stack_to_context(s Int) Void:
+fn var Parser.clear_stack_to_context(s Int) Void {
 	var i = self.oe.length() - 1
 
-	while i >= 0:
+	while i >= 0 {
 		a := self.atom[self.oe[i]]
 		var hit = false
 
-		if s == SCOPE_TABLE:
+		if s == SCOPE_TABLE {
 			hit = a == A_HTML or a == A_TABLE or a == A_TEMPLATE
-		else if s == SCOPE_TABLE_ROW:
+		} else if s == SCOPE_TABLE_ROW {
 			hit = a == A_HTML or a == A_TR or a == A_TEMPLATE
-		else if s == SCOPE_TABLE_BODY:
+		} else if s == SCOPE_TABLE_BODY {
 			hit = (
 				a == A_HTML
 				or a == A_TBODY
@@ -1334,304 +1540,366 @@ fn var Parser.clear_stack_to_context(s Int) Void:
 				or a == A_THEAD
 				or a == A_TEMPLATE
 			)
+		}
 
-		if hit:
+		if hit {
 			self.oe_truncate(i + 1)
 			return
+		}
 
 		i -= 1
+	}
+}
 
-fn var Parser.parse_generic_raw_text_element() Void:
+fn var Parser.parse_generic_raw_text_element() Void {
 	self.add_element()
 	self.original_im = self.im
 	self.im = IM_TEXT
+}
 
 // Pops elements whose end tags are implied, stopping before an element with atom
 // `skip_atom` (-1 for null).
-fn var Parser.generate_implied_end_tags(skip_atom Int) Void:
+fn var Parser.generate_implied_end_tags(skip_atom Int) Void {
 	var i = self.oe.length()
 
-	while i > 0:
+	while i > 0 {
 		n := self.oe[i - 1]
-		if self.kind[n] != K_ELEMENT: break
+		if self.kind[n] != K_ELEMENT { break }
 
 		a := self.atom[n]
-		if not is_implied_end(a): break
-		if a == skip_atom: break
+		if not is_implied_end(a) { break }
+		if a == skip_atom { break }
 
 		i -= 1
+	}
 
 	self.oe_truncate(i)
+}
 
-fn var Parser.add_child(n Int) Void:
-	if self.should_foster_parent():
+fn var Parser.add_child(n Int) Void {
+	if self.should_foster_parent() {
 		self.foster_parent(n)
-	else:
+	} else {
 		self.append_child(self.top(), n)
+	}
 
-	if self.kind[n] == K_ELEMENT: self.oe_push(n)
+	if self.kind[n] == K_ELEMENT {
+		self.oe_push(n)
+	}
+}
 
-fn Parser.should_foster_parent() Bool:
+fn Parser.should_foster_parent() Bool {
 	return self.foster_parenting and is_table_context(self.top_atom())
+}
 
-fn Parser.oe_last_atom(atom Int) Int:
+fn Parser.oe_last_atom(atom Int) Int {
 	var i = self.oe.length() - 1
 
-	while i >= 0:
-		if self.atom[self.oe[i]] == atom: return i
+	while i >= 0 {
+		if self.atom[self.oe[i]] == atom { return i }
 
 		i -= 1
+	}
 
 	return -1
+}
 
-fn var Parser.foster_parent(n Int) Void:
+fn var Parser.foster_parent(n Int) Void {
 	table_i := self.oe_last_atom(A_TABLE)
 	template_j := self.oe_last_atom(A_TEMPLATE)
 
-	if template_j >= 0 and (table_i < 0 or template_j > table_i):
+	if template_j >= 0 and (table_i < 0 or template_j > table_i) {
 		self.append_child(self.oe[template_j], n)
 		return
+	}
 
 	var table = -1
-	if table_i >= 0: table = self.oe[table_i]
+	if table_i >= 0 { table = self.oe[table_i] }
 
 	var parent = self.oe[0]
 
-	if table >= 0:
+	if table >= 0 {
 		parent = self.parent[table]
-		if parent < 0:
+		if parent < 0 {
 			parent = self.oe[table_i - 1]
+		}
+	}
 
 	var before = self.last[parent]
-	if table >= 0: before = self.prev[table]
+	if table >= 0 { before = self.prev[table] }
 
-	if before >= 0 and self.kind[before] == K_TEXT and self.kind[n] == K_TEXT:
+	if before >= 0 and self.kind[before] == K_TEXT and self.kind[n] == K_TEXT {
 		self.data[before] = self.data[before].concat(self.data[n])
 		self.data[n] = ""
 		return
+	}
 
 	self.insert_before(parent, n, table)
+}
 
-fn var Parser.add_text(text String) Void:
-	if text == "": return
+fn var Parser.add_text(text String) Void {
+	if text == "" { return }
 
-	if self.should_foster_parent():
+	if self.should_foster_parent() {
 		n := self.alloc(K_TEXT, 0, text)
 		self.foster_parent(n)
 		return
+	}
 
 	t := self.top()
 	l := self.last[t]
 
-	if l >= 0 and self.kind[l] == K_TEXT:
+	if l >= 0 and self.kind[l] == K_TEXT {
 		self.data[l] = self.data[l].concat(text)
 		return
+	}
 
 	n := self.alloc(K_TEXT, 0, text)
 	self.add_child(n)
+}
 
-fn var Parser.add_comment() Void:
+fn var Parser.add_comment() Void {
 	n := self.alloc(K_COMMENT, 0, self.tok_data.clone())
 	self.add_child(n)
+}
 
-fn var Parser.append_doc_comment() Void:
+fn var Parser.append_doc_comment() Void {
 	n := self.alloc(K_COMMENT, 0, self.tok_data.clone())
 	self.append_child(1, n)
+}
 
 // Copies the current token's attributes onto node `id`, which has null yet.
-fn var Parser.set_token_attributes(id Int) Void:
+fn var Parser.set_token_attributes(id Int) Void {
 	self.attr_start[id] = self.akey.length()
 
-	for i in 0..self.tok_n:
+	for i in 0..self.tok_n {
 		self.akey.append(self.tok_keys[i].clone())
 		self.aval.append(self.tok_vals[i].clone())
 		self.ans.append(self.tok_nss[i].clone())
+	}
 
 	self.attr_count[id] = self.tok_n
+}
 
-fn var Parser.add_element() Void:
+fn var Parser.add_element() Void {
 	var data = ""
-	if self.tok_atom == 0: data = self.tok_data.clone()
+	if self.tok_atom == 0 { data = self.tok_data.clone() }
 
 	id := self.alloc(K_ELEMENT, self.tok_atom, data)
-	if self.tok_n > 0: self.set_token_attributes(id)
+	if self.tok_n > 0 { self.set_token_attributes(id) }
 	self.add_child(id)
+}
 
 // Whether node `n` and the current token have the same attributes (name, namespace and
 // value), in any order.
-fn Parser.same_attributes(n Int) Bool:
+fn Parser.same_attributes(n Int) Bool {
 	count := self.attr_count[n]
-	if count != self.tok_n: return false
+	if count != self.tok_n { return false }
 
 	start := self.attr_start[n]
 
-	for i in 0..count:
+	for i in 0..count {
 		var found = false
 
-		for j in 0..self.tok_n:
+		for j in 0..self.tok_n {
 			if (
 				self.akey[start + i] == self.tok_keys[j]
 				and self.ans[start + i] == self.tok_nss[j]
 				and self.aval[start + i] == self.tok_vals[j]
-			):
+			) {
 				found = true
 				break
+			}
+		}
 
-		if not found: return false
+		if not found { return false }
+	}
 
 	return true
+}
 
-fn var Parser.add_formatting_element() Void:
+fn var Parser.add_formatting_element() Void {
 	tag_atom := self.tok_atom
 	self.add_element()
 
 	var identical = 0
 	var i = self.afe.length()
 
-	while i > 0:
+	while i > 0 {
 		i -= 1
 
 		id := self.afe[i]
-		if self.kind[id] == K_MARKER: break
+		if self.kind[id] == K_MARKER { break }
 		if (
 			self.kind[id] != K_ELEMENT
 			or self.ns[id] != NS_HTML
 			or self.atom[id] != tag_atom
 			or not self.same_attributes(id)
-		):
+		) {
 			continue
+		}
 
 		identical += 1
-		if identical >= 3: self.afe_remove(id)
+		if identical >= 3 { self.afe_remove(id) }
+	}
 
 	self.afe.append(self.top())
+}
 
-fn var Parser.clear_active_formatting_elements() Void:
-	while true:
+fn var Parser.clear_active_formatting_elements() Void {
+	while true {
 		n := self.afe_truncate_pop()
-		if self.afe.length() == 0 or n < 0 or self.kind[n] == K_MARKER: return
+		if self.afe.length() == 0 or n < 0 or self.kind[n] == K_MARKER { return }
+	}
+}
 
-fn var Parser.reconstruct_active_formatting_elements() Void:
-	if self.afe.length() == 0: return
+fn var Parser.reconstruct_active_formatting_elements() Void {
+	if self.afe.length() == 0 { return }
 
 	top := self.afe[self.afe.length() - 1]
-	if self.kind[top] == K_MARKER or self.oe_index(top) >= 0: return
+	if self.kind[top] == K_MARKER or self.oe_index(top) >= 0 { return }
 
 	var n = top
 	var i = self.afe.length() - 1
 
-	while self.kind[n] != K_MARKER and self.oe_index(n) < 0:
-		if i == 0:
+	while self.kind[n] != K_MARKER and self.oe_index(n) < 0 {
+		if i == 0 {
 			i = -1
 			break
+		}
 
 		i -= 1
 		n = self.afe[i]
+	}
 
-	while true:
+	while true {
 		i += 1
 
 		clone := self.clone_node(self.afe[i])
 		self.add_child(clone)
 		self.afe[i] = clone
-		if i == self.afe.length() - 1: break
+		if i == self.afe.length() - 1 { break }
+	}
+}
 
-fn var Parser.reset_insertion_mode() Void:
+fn var Parser.reset_insertion_mode() Void {
 	var i = self.oe.length() - 1
 
-	while i >= 0:
+	while i >= 0 {
 		n := self.oe[i]
 		last := i == 0
 		a := self.atom[n]
 
-		if a == A_SELECT:
-			if not last:
+		if a == A_SELECT {
+			if not last {
 				first := self.oe[0]
 				var ancestor = n
 
-				while ancestor != first:
+				while ancestor != first {
 					idx := self.oe_index(ancestor)
 					var at = idx - 1
-					if idx < 0: at = 0
-					if at < 0: at = 0
+					if idx < 0 { at = 0 }
+					if at < 0 { at = 0 }
 					ancestor = self.oe[at]
 
 					anc := self.atom[ancestor]
 
-					if anc == A_TEMPLATE:
+					if anc == A_TEMPLATE {
 						self.im = IM_IN_SELECT
 						return
+					}
 
-					if anc == A_TABLE:
+					if anc == A_TABLE {
 						self.im = IM_IN_SELECT_IN_TABLE
 						return
+					}
+				}
+			}
 
 			self.im = IM_IN_SELECT
 			return
+		}
 
-		if a == A_TD or a == A_TH:
+		if a == A_TD or a == A_TH {
 			self.im = IM_IN_CELL
 			return
+		}
 
-		if a == A_TR:
+		if a == A_TR {
 			self.im = IM_IN_ROW
 			return
+		}
 
-		if a == A_TBODY or a == A_THEAD or a == A_TFOOT:
+		if a == A_TBODY or a == A_THEAD or a == A_TFOOT {
 			self.im = IM_IN_TABLE_BODY
 			return
+		}
 
-		if a == A_CAPTION:
+		if a == A_CAPTION {
 			self.im = IM_IN_CAPTION
 			return
+		}
 
-		if a == A_COLGROUP:
+		if a == A_COLGROUP {
 			self.im = IM_IN_COLUMN_GROUP
 			return
+		}
 
-		if a == A_TABLE:
+		if a == A_TABLE {
 			self.im = IM_IN_TABLE
 			return
+		}
 
-		if a == A_TEMPLATE:
-			if self.ns[n] != NS_HTML:
+		if a == A_TEMPLATE {
+			if self.ns[n] != NS_HTML {
 				i -= 1
 				continue
+			}
 
 			self.im = IM_IN_BODY
-			if self.template_stack.length() > 0:
+			if self.template_stack.length() > 0 {
 				self.im = self.template_stack[self.template_stack.length() - 1]
+			}
 			return
+		}
 
-		if a == A_HEAD:
+		if a == A_HEAD {
 			self.im = IM_IN_HEAD
 			return
+		}
 
-		if a == A_BODY:
+		if a == A_BODY {
 			self.im = IM_IN_BODY
 			return
+		}
 
-		if a == A_FRAMESET:
+		if a == A_FRAMESET {
 			self.im = IM_IN_FRAMESET
 			return
+		}
 
-		if a == A_HTML:
-			if self.head < 0:
+		if a == A_HTML {
+			if self.head < 0 {
 				self.im = IM_BEFORE_HEAD
-			else:
+			} else {
 				self.im = IM_AFTER_HEAD
+			}
 
 			return
+		}
 
-		if last:
+		if last {
 			self.im = IM_IN_BODY
 			return
+		}
 
 		i -= 1
+	}
+}
 
 // Adds the current token's attributes that node `dst` lacks, after its own.
-fn var Parser.copy_attributes(dst Int) Void:
-	if self.tok_n == 0: return
+fn var Parser.copy_attributes(dst Int) Void {
+	if self.tok_n == 0 { return }
 
 	count := self.attr_count[dst]
 	start := self.attr_start[dst]
@@ -1639,167 +1907,196 @@ fn var Parser.copy_attributes(dst Int) Void:
 	var vals List[String] = []
 	var nss List[String] = []
 
-	for i in 0..count:
+	for i in 0..count {
 		keys.append(self.akey[start + i].clone())
 		vals.append(self.aval[start + i].clone())
 		nss.append(self.ans[start + i].clone())
+	}
 
-	for j in 0..self.tok_n:
+	for j in 0..self.tok_n {
 		var present = false
 
-		for i in 0..count:
-			if self.akey[start + i] == self.tok_keys[j]:
+		for i in 0..count {
+			if self.akey[start + i] == self.tok_keys[j] {
 				present = true
 				break
+			}
+		}
 
-		if not present:
+		if not present {
 			keys.append(self.tok_keys[j].clone())
 			vals.append(self.tok_vals[j].clone())
 			nss.append(self.tok_nss[j].clone())
+		}
+	}
 
 	self.attr_start[dst] = self.akey.length()
 	self.attr_count[dst] = keys.length()
 
-	for k in 0..keys.length():
+	for k in 0..keys.length() {
 		self.akey.append(keys[k].clone())
 		self.aval.append(vals[k].clone())
 		self.ans.append(nss[k].clone())
+	}
+}
 
-fn Parser.tok_attr_is_hidden_input() Bool:
-	for i in 0..self.tok_n:
-		if self.tok_keys[i] == "type" and ascii_equal_fold(self.tok_vals[i], "hidden"): return true
+fn Parser.tok_attr_is_hidden_input() Bool {
+	for i in 0..self.tok_n {
+		if self.tok_keys[i] == "type" and ascii_equal_fold(self.tok_vals[i], "hidden") { return true }
+	}
 	return false
+}
 
 // Whether an attribute named `key` is in the current token.
-fn Parser.tok_has_attr(key String) Bool:
-	for i in 0..self.tok_n:
-		if self.tok_keys[i] == key: return true
+fn Parser.tok_has_attr(key String) Bool {
+	for i in 0..self.tok_n {
+		if self.tok_keys[i] == key { return true }
+	}
 	return false
+}
 
-fn var Parser.next_is_not_raw_text() Void:
+fn var Parser.next_is_not_raw_text() Void {
 	self.raw_tag = RAW_NONE
+}
 
-fn var Parser.pop_p() Void:
+fn var Parser.pop_p() Void {
 	_popped := self.pop_until(SCOPE_BUTTON, A_P, -1, -1)
+}
 
 // Splits leading whitespace off a text token and adds it; true when nothing remains.
-fn var Parser.add_leading_whitespace() Bool:
+fn var Parser.add_leading_whitespace() Bool {
 	d := self.tok_data.clone()
 	cut := trim_left_len(d)
 
-	if cut > 0:
+	if cut > 0 {
 		ws := d.view(0, cut).clone()
 		self.add_text(ws)
-		if cut == d.length(): return true
+		if cut == d.length() { return true }
 
 		self.tok_data = d.view(cut, d.length()).clone()
+	}
 
 	return false
+}
 
-fn var Parser.trim_tok_left() Bool:
+fn var Parser.trim_tok_left() Bool {
 	cut := trim_left_len(self.tok_data)
-	if cut > 0: self.tok_data = self.tok_data.view(cut, self.tok_data.length()).clone()
+	if cut > 0 {
+		self.tok_data = self.tok_data.view(cut, self.tok_data.length()).clone()
+	}
 	return self.tok_data == ""
+}
 
-fn var Parser.run_im(im Int) Bool:
-	if im == IM_IN_BODY: return self.in_body_im()
-	if im == IM_INITIAL: return self.initial_im()
-	if im == IM_BEFORE_HTML: return self.before_html_im()
-	if im == IM_BEFORE_HEAD: return self.before_head_im()
-	if im == IM_IN_HEAD: return self.in_head_im()
-	if im == IM_AFTER_HEAD: return self.after_head_im()
-	if im == IM_TEXT: return self.text_im()
-	if im == IM_IN_TABLE: return self.in_table_im()
-	if im == IM_IN_CAPTION: return self.in_caption_im()
-	if im == IM_IN_COLUMN_GROUP: return self.in_column_group_im()
-	if im == IM_IN_TABLE_BODY: return self.in_table_body_im()
-	if im == IM_IN_ROW: return self.in_row_im()
-	if im == IM_IN_CELL: return self.in_cell_im()
-	if im == IM_IN_SELECT: return self.in_select_im()
-	if im == IM_IN_SELECT_IN_TABLE: return self.in_select_in_table_im()
-	if im == IM_IN_TEMPLATE: return self.in_template_im()
-	if im == IM_AFTER_BODY: return self.after_body_im()
-	if im == IM_IN_FRAMESET: return self.in_frameset_im()
-	if im == IM_AFTER_FRAMESET: return self.after_frameset_im()
-	if im == IM_AFTER_AFTER_BODY: return self.after_after_body_im()
-	if im == IM_AFTER_AFTER_FRAMESET: return self.after_after_frameset_im()
+fn var Parser.run_im(im Int) Bool {
+	if im == IM_IN_BODY { return self.in_body_im() }
+	if im == IM_INITIAL { return self.initial_im() }
+	if im == IM_BEFORE_HTML { return self.before_html_im() }
+	if im == IM_BEFORE_HEAD { return self.before_head_im() }
+	if im == IM_IN_HEAD { return self.in_head_im() }
+	if im == IM_AFTER_HEAD { return self.after_head_im() }
+	if im == IM_TEXT { return self.text_im() }
+	if im == IM_IN_TABLE { return self.in_table_im() }
+	if im == IM_IN_CAPTION { return self.in_caption_im() }
+	if im == IM_IN_COLUMN_GROUP { return self.in_column_group_im() }
+	if im == IM_IN_TABLE_BODY { return self.in_table_body_im() }
+	if im == IM_IN_ROW { return self.in_row_im() }
+	if im == IM_IN_CELL { return self.in_cell_im() }
+	if im == IM_IN_SELECT { return self.in_select_im() }
+	if im == IM_IN_SELECT_IN_TABLE { return self.in_select_in_table_im() }
+	if im == IM_IN_TEMPLATE { return self.in_template_im() }
+	if im == IM_AFTER_BODY { return self.after_body_im() }
+	if im == IM_IN_FRAMESET { return self.in_frameset_im() }
+	if im == IM_AFTER_FRAMESET { return self.after_frameset_im() }
+	if im == IM_AFTER_AFTER_BODY { return self.after_after_body_im() }
+	if im == IM_AFTER_AFTER_FRAMESET { return self.after_after_frameset_im() }
 
 	return true
+}
 
-fn var Parser.initial_im() Bool:
-	if self.tok_ty == T_TEXT:
-		if self.trim_tok_left(): return true
-	else if self.tok_ty == T_COMMENT:
+fn var Parser.initial_im() Bool {
+	if self.tok_ty == T_TEXT {
+		if self.trim_tok_left() { return true }
+	} else if self.tok_ty == T_COMMENT {
 		self.append_doc_comment()
 		return true
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		self.quirks = self.add_doctype(self.tok_data.clone())
 		self.im = IM_BEFORE_HTML
 		return true
+	}
 
 	self.quirks = true
 	self.im = IM_BEFORE_HTML
 	return false
+}
 
-fn var Parser.before_html_im() Bool:
-	if self.tok_ty == T_DOCTYPE: return true
+fn var Parser.before_html_im() Bool {
+	if self.tok_ty == T_DOCTYPE { return true }
 
-	if self.tok_ty == T_TEXT:
-		if self.trim_tok_left(): return true
-	else if self.tok_ty == T_START:
-		if self.tok_atom == A_HTML:
+	if self.tok_ty == T_TEXT {
+		if self.trim_tok_left() { return true }
+	} else if self.tok_ty == T_START {
+		if self.tok_atom == A_HTML {
 			self.add_element()
 			self.im = IM_BEFORE_HEAD
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_HEAD or a == A_BODY or a == A_HTML or a == A_BR:
+		if a == A_HEAD or a == A_BODY or a == A_HTML or a == A_BR {
 			self.parse_implied_token(T_START, A_HTML)
 			return false
+		}
 
 		return true
-	else if self.tok_ty == T_COMMENT:
+	} else if self.tok_ty == T_COMMENT {
 		self.append_doc_comment()
 		return true
+	}
 
 	self.parse_implied_token(T_START, A_HTML)
 	return false
+}
 
-fn var Parser.before_head_im() Bool:
-	if self.tok_ty == T_TEXT:
-		if self.trim_tok_left(): return true
-	else if self.tok_ty == T_START:
-		if self.tok_atom == A_HEAD:
+fn var Parser.before_head_im() Bool {
+	if self.tok_ty == T_TEXT {
+		if self.trim_tok_left() { return true }
+	} else if self.tok_ty == T_START {
+		if self.tok_atom == A_HEAD {
 			self.add_element()
 			self.head = self.top()
 			self.im = IM_IN_HEAD
 			return true
+		}
 
-		if self.tok_atom == A_HTML: return self.in_body_im()
-	else if self.tok_ty == T_END:
+		if self.tok_atom == A_HTML { return self.in_body_im() }
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_HEAD or a == A_BODY or a == A_HTML or a == A_BR:
+		if a == A_HEAD or a == A_BODY or a == A_HTML or a == A_BR {
 			self.parse_implied_token(T_START, A_HEAD)
 			return false
+		}
 
 		return true
-	else if self.tok_ty == T_COMMENT:
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
 		return true
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		return true
+	}
 
 	self.parse_implied_token(T_START, A_HEAD)
 	return false
+}
 
-fn var Parser.in_head_im() Bool:
-	if self.tok_ty == T_TEXT:
-		if self.add_leading_whitespace(): return true
-	else if self.tok_ty == T_START:
+fn var Parser.in_head_im() Bool {
+	if self.tok_ty == T_TEXT {
+		if self.add_leading_whitespace() { return true }
+	} else if self.tok_ty == T_START {
 		a := self.tok_atom
-		if a == A_HTML: return self.in_body_im()
+		if a == A_HTML { return self.in_body_im() }
 
 		if (
 			a == A_BASE
@@ -1807,30 +2104,35 @@ fn var Parser.in_head_im() Bool:
 			or a == A_BGSOUND
 			or a == A_LINK
 			or a == A_META
-		):
+		) {
 			self.add_element()
 
 			_popped := self.oe_pop()
 			self.has_self_closing = false
 			return true
+		}
 
-		if a == A_NOSCRIPT or a == A_NOFRAMES or a == A_STYLE:
+		if a == A_NOSCRIPT or a == A_NOFRAMES or a == A_STYLE {
 			self.parse_generic_raw_text_element()
 			return true
+		}
 
-		if a == A_SCRIPT or a == A_TITLE:
+		if a == A_SCRIPT or a == A_TITLE {
 			self.add_element()
 			self.original_im = self.im
 			self.im = IM_TEXT
 			return true
+		}
 
-		if a == A_HEAD: return true
+		if a == A_HEAD { return true }
 
-		if a == A_TEMPLATE:
-			for e in self.oe:
-				if self.ns[e] != NS_HTML:
+		if a == A_TEMPLATE {
+			for e in self.oe {
+				if self.ns[e] != NS_HTML {
 					self.im = IM_IGNORE_REMAINING
 					return true
+				}
+			}
 
 			self.add_element()
 			self.afe.append(0)
@@ -1838,67 +2140,79 @@ fn var Parser.in_head_im() Bool:
 			self.im = IM_IN_TEMPLATE
 			self.template_stack.append(IM_IN_TEMPLATE)
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_HEAD:
+		if a == A_HEAD {
 			_popped := self.oe_pop()
 			self.im = IM_AFTER_HEAD
 			return true
+		}
 
-		if a == A_BODY or a == A_HTML or a == A_BR:
+		if a == A_BODY or a == A_HTML or a == A_BR {
 			self.parse_implied_token(T_END, A_HEAD)
 			return false
+		}
 
-		if a == A_TEMPLATE:
-			if not self.oe_contains(A_TEMPLATE): return true
+		if a == A_TEMPLATE {
+			if not self.oe_contains(
+				A_TEMPLATE
+			) { return true }
 
 			self.generate_implied_end_tags(-1)
 
 			var i = self.oe.length() - 1
 
-			while i >= 0:
+			while i >= 0 {
 				n := self.oe[i]
 
-				if self.ns[n] == NS_HTML and self.atom[n] == A_TEMPLATE:
+				if self.ns[n] == NS_HTML and self.atom[n] == A_TEMPLATE {
 					self.oe_truncate(i)
 					break
+				}
 
 				i -= 1
+			}
 
 			self.clear_active_formatting_elements()
 
 			_templates := self.template_stack.pop()
 			self.reset_insertion_mode()
 			return true
+		}
 
 		return true
-	else if self.tok_ty == T_COMMENT:
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
 		return true
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		return true
+	}
 
 	self.parse_implied_token(T_END, A_HEAD)
 	return false
+}
 
-fn var Parser.after_head_im() Bool:
-	if self.tok_ty == T_TEXT:
-		if self.add_leading_whitespace(): return true
-	else if self.tok_ty == T_START:
+fn var Parser.after_head_im() Bool {
+	if self.tok_ty == T_TEXT {
+		if self.add_leading_whitespace() { return true }
+	} else if self.tok_ty == T_START {
 		a := self.tok_atom
-		if a == A_HTML: return self.in_body_im()
+		if a == A_HTML { return self.in_body_im() }
 
-		if a == A_BODY:
+		if a == A_BODY {
 			self.add_element()
 			self.frameset_ok = false
 			self.im = IM_IN_BODY
 			return true
+		}
 
-		if a == A_FRAMESET:
+		if a == A_FRAMESET {
 			self.add_element()
 			self.im = IM_IN_FRAMESET
 			return true
+		}
 
 		if (
 			a == A_BASE
@@ -1911,87 +2225,100 @@ fn var Parser.after_head_im() Bool:
 			or a == A_STYLE
 			or a == A_TEMPLATE
 			or a == A_TITLE
-		):
+		) {
 			var head = self.head
-			if head < 0: head = 1
+			if head < 0 { head = 1 }
 			self.oe_push(head)
 
 			r := self.in_head_im()
 			self.oe_remove(head)
 			return r
+		}
 
-		if a == A_HEAD: return true
-	else if self.tok_ty == T_END:
+		if a == A_HEAD { return true }
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
-		if a == A_TEMPLATE: return self.in_head_im()
-		if a != A_BODY and a != A_HTML and a != A_BR: return true
-	else if self.tok_ty == T_COMMENT:
+		if a == A_TEMPLATE { return self.in_head_im() }
+		if a != A_BODY and a != A_HTML and a != A_BR { return true }
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
 		return true
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		return true
+	}
 
 	self.parse_implied_token(T_START, A_BODY)
 	self.frameset_ok = true
 	return self.tok_ty == T_ERROR
+}
 
-fn var Parser.in_body_im() Bool:
-	if self.tok_ty == T_TEXT:
+fn var Parser.in_body_im() Bool {
+	if self.tok_ty == T_TEXT {
 		var d = self.tok_data.clone()
 		t := self.oe_top()
 
-		if t >= 0 and self.first[t] < 0:
+		if t >= 0 and self.first[t] < 0 {
 			a := self.atom[t]
-			if a == A_PRE or a == A_LISTING: d = strip_leading_newline(d)
+			if a == A_PRE or a == A_LISTING { d = strip_leading_newline(d) }
+		}
 
-		if d.contains("\u{0}"): d = d.replace("\u{0}", "")
-		if d == "": return true
+		if d.contains("\u{0}") {
+			d = d.replace("\u{0}", "")
+		}
+		if d == "" { return true }
 
 		self.reconstruct_active_formatting_elements()
-		if self.frameset_ok and not is_blank(d): self.frameset_ok = false
+		if self.frameset_ok and not is_blank(d) { self.frameset_ok = false }
 		self.add_text(d)
-	else if self.tok_ty == T_START:
+	} else if self.tok_ty == T_START {
 		return self.in_body_start_tag()
-	else if self.tok_ty == T_END:
+	} else if self.tok_ty == T_END {
 		return self.in_body_end_tag()
-	else if self.tok_ty == T_COMMENT:
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
-	else if self.tok_ty == T_ERROR:
-		if self.template_stack.length() > 0:
+	} else if self.tok_ty == T_ERROR {
+		if self.template_stack.length() > 0 {
 			self.im = IM_IN_TEMPLATE
 			return false
+		}
 
-		for e in self.oe:
-			if not is_end_ok_in_body(self.atom[e]): return true
+		for e in self.oe {
+			if not is_end_ok_in_body(self.atom[e]) { return true }
+		}
+	}
 
 	return true
+}
 
-fn var Parser.in_body_start_tag() Bool:
+fn var Parser.in_body_start_tag() Bool {
 	tag := self.tok_atom
 	rule := body_start_class(tag)
 
-	if rule == S_HTML:
-		if self.oe_contains(A_TEMPLATE): return true
+	if rule == S_HTML {
+		if self.oe_contains(A_TEMPLATE) { return true }
 
 		self.copy_attributes(self.oe[0])
-	else if rule == S_HEAD_LIKE:
+	} else if rule == S_HEAD_LIKE {
 		return self.in_head_im()
-	else if rule == S_BODY:
-		if self.oe_contains(A_TEMPLATE): return true
+	} else if rule == S_BODY {
+		if self.oe_contains(A_TEMPLATE) { return true }
 
-		if self.oe.length() >= 2:
+		if self.oe.length() >= 2 {
 			body := self.oe[1]
 
-			if self.kind[body] == K_ELEMENT and self.atom[body] == A_BODY:
+			if self.kind[body] == K_ELEMENT and self.atom[body] == A_BODY {
 				self.frameset_ok = false
 				self.copy_attributes(body)
-	else if rule == S_FRAMESET:
+			}
+		}
+	} else if rule == S_FRAMESET {
 		if (
 			not self.frameset_ok
 			or self.oe.length() < 2
 			or self.atom[self.oe[1]] != A_BODY
-		):
+		) {
 			return true
+		}
 
 		body := self.oe[1]
 		self.detach(body)
@@ -1999,302 +2326,350 @@ fn var Parser.in_body_start_tag() Bool:
 		self.add_element()
 		self.im = IM_IN_FRAMESET
 		return true
-	else if rule == S_BLOCK:
+	} else if rule == S_BLOCK {
 		self.pop_p()
 		self.add_element()
-	else if rule == S_HEADING:
+	} else if rule == S_HEADING {
 		self.pop_p()
-		if is_heading(self.top_atom()): _popped := self.oe_pop()
+		if is_heading(self.top_atom()) { _popped := self.oe_pop() }
 		self.add_element()
-	else if rule == S_PRE:
+	} else if rule == S_PRE {
 		self.pop_p()
 		self.add_element()
 		self.frameset_ok = false
-	else if rule == S_FORM:
-		if self.form >= 0 and not self.oe_contains(A_TEMPLATE): return true
+	} else if rule == S_FORM {
+		if self.form >= 0 and not self.oe_contains(
+			A_TEMPLATE
+		) { return true }
 
 		self.pop_p()
 		self.add_element()
-		if not self.oe_contains(A_TEMPLATE): self.form = self.top()
-	else if rule == S_LI:
+		if not self.oe_contains(
+			A_TEMPLATE
+		) { self.form = self.top() }
+	} else if rule == S_LI {
 		self.frameset_ok = false
 		self.close_list_item(A_LI, -1)
 		self.pop_p()
 		self.add_element()
-	else if rule == S_DD_DT:
+	} else if rule == S_DD_DT {
 		self.frameset_ok = false
 		self.close_list_item(A_DD, A_DT)
 		self.pop_p()
 		self.add_element()
-	else if rule == S_PLAINTEXT:
+	} else if rule == S_PLAINTEXT {
 		self.pop_p()
 		self.add_element()
-	else if rule == S_BUTTON:
+	} else if rule == S_BUTTON {
 		_popped := self.pop_until(SCOPE_DEFAULT, A_BUTTON, -1, -1)
 		self.reconstruct_active_formatting_elements()
 		self.add_element()
 		self.frameset_ok = false
-	else if rule == S_ANCHOR:
+	} else if rule == S_ANCHOR {
 		var i = self.afe.length()
 
-		while i > 0 and self.kind[self.afe[i - 1]] != K_MARKER:
+		while i > 0 and self.kind[self.afe[i - 1]] != K_MARKER {
 			i -= 1
 
 			n := self.afe[i]
 
-			if self.kind[n] == K_ELEMENT and self.atom[n] == A_A:
+			if self.kind[n] == K_ELEMENT and self.atom[n] == A_A {
 				self.in_body_end_tag_formatting(A_A, "a")
 				self.oe_remove(n)
 				self.afe_remove(n)
 				break
+			}
+		}
 
 		self.reconstruct_active_formatting_elements()
 		self.add_formatting_element()
-	else if rule == S_FORMATTING:
+	} else if rule == S_FORMATTING {
 		self.reconstruct_active_formatting_elements()
 		self.add_formatting_element()
-	else if rule == S_NOBR:
+	} else if rule == S_NOBR {
 		self.reconstruct_active_formatting_elements()
 
-		if self.element_in_scope(SCOPE_DEFAULT, A_NOBR, -1, -1):
+		if self.element_in_scope(SCOPE_DEFAULT, A_NOBR, -1, -1) {
 			self.in_body_end_tag_formatting(A_NOBR, "nobr")
 			self.reconstruct_active_formatting_elements()
+		}
 
 		self.add_formatting_element()
-	else if rule == S_APPLET:
+	} else if rule == S_APPLET {
 		self.reconstruct_active_formatting_elements()
 		self.add_element()
 		self.afe.append(0)
 		self.frameset_ok = false
-	else if rule == S_TABLE:
-		if not self.quirks: self.pop_p()
+	} else if rule == S_TABLE {
+		if not self.quirks { self.pop_p() }
 		self.add_element()
 		self.frameset_ok = false
 		self.im = IM_IN_TABLE
 		return true
-	else if rule == S_VOID_REOPEN:
+	} else if rule == S_VOID_REOPEN {
 		self.reconstruct_active_formatting_elements()
 		self.add_element()
 
 		_popped := self.oe_pop()
 		self.has_self_closing = false
-		if tag == A_INPUT and self.tok_attr_is_hidden_input(): return true
+		if tag == A_INPUT and self.tok_attr_is_hidden_input() { return true }
 
 		self.frameset_ok = false
-	else if rule == S_VOID:
+	} else if rule == S_VOID {
 		self.add_element()
 
 		_popped := self.oe_pop()
 		self.has_self_closing = false
-	else if rule == S_HR:
+	} else if rule == S_HR {
 		self.pop_p()
 		self.add_element()
 
 		_popped := self.oe_pop()
 		self.has_self_closing = false
 		self.frameset_ok = false
-	else if rule == S_IMAGE:
+	} else if rule == S_IMAGE {
 		self.tok_atom = A_IMG
 		self.tok_data = ""
 		return false
-	else if rule == S_TEXTAREA:
+	} else if rule == S_TEXTAREA {
 		self.add_element()
 		self.original_im = self.im
 		self.frameset_ok = false
 		self.im = IM_TEXT
-	else if rule == S_XMP:
+	} else if rule == S_XMP {
 		self.pop_p()
 		self.reconstruct_active_formatting_elements()
 		self.frameset_ok = false
 		self.parse_generic_raw_text_element()
-	else if rule == S_IFRAME:
+	} else if rule == S_IFRAME {
 		self.frameset_ok = false
 		self.parse_generic_raw_text_element()
-	else if rule == S_NOEMBED:
+	} else if rule == S_NOEMBED {
 		self.parse_generic_raw_text_element()
-	else if rule == S_NOSCRIPT:
+	} else if rule == S_NOSCRIPT {
 		self.parse_generic_raw_text_element()
 		return true
-	else if rule == S_SELECT:
+	} else if rule == S_SELECT {
 		self.reconstruct_active_formatting_elements()
 		self.add_element()
 		self.frameset_ok = false
 		self.im = IM_IN_SELECT
 		return true
-	else if rule == S_OPTION:
-		if self.top_atom() == A_OPTION: _popped := self.oe_pop()
+	} else if rule == S_OPTION {
+		if self.top_atom() == A_OPTION { _popped := self.oe_pop() }
 		self.reconstruct_active_formatting_elements()
 		self.add_element()
-	else if rule == S_RUBY_BASE:
-		if self.element_in_scope(SCOPE_DEFAULT, A_RUBY, -1, -1): self.generate_implied_end_tags(
-			-1
-		)
+	} else if rule == S_RUBY_BASE {
+		if self.element_in_scope(
+			SCOPE_DEFAULT,
+			A_RUBY,
+			-1,
+			-1,
+		) { self.generate_implied_end_tags(-1) }
 		self.add_element()
-	else if rule == S_RUBY_TEXT:
-		if self.element_in_scope(SCOPE_DEFAULT, A_RUBY, -1, -1):
+	} else if rule == S_RUBY_TEXT {
+		if self.element_in_scope(SCOPE_DEFAULT, A_RUBY, -1, -1) {
 			self.generate_implied_end_tags(A_RTC)
+		}
 		self.add_element()
-	else if rule == S_FOREIGN:
+	} else if rule == S_FOREIGN {
 		self.reconstruct_active_formatting_elements()
 
-		if tag == A_MATH:
+		if tag == A_MATH {
 			self.adjust_math_attributes()
-		else:
+		} else {
 			self.adjust_svg_attributes()
+		}
 
 		self.adjust_foreign_attributes()
 		self.add_element()
 
 		t := self.top()
 
-		if tag == A_MATH:
+		if tag == A_MATH {
 			self.ns[t] = NS_MATH
-		else:
+		} else {
 			self.ns[t] = NS_SVG
+		}
 
-		if self.has_self_closing:
+		if self.has_self_closing {
 			_popped := self.oe_pop()
 			self.has_self_closing = false
+		}
 
 		return true
-	else if rule == S_TABLE_PART:
+	} else if rule == S_TABLE_PART {
 		return true
-	else:
+	} else {
 		self.reconstruct_active_formatting_elements()
 		self.add_element()
+	}
 
 	return true
+}
 
 // The `li` / `dd` / `dt` loop of the start-tag rules: closes an open item of the same
 // kind.
-fn var Parser.close_list_item(a1 Int, a2 Int) Void:
+fn var Parser.close_list_item(a1 Int, a2 Int) Void {
 	var i = self.oe.length() - 1
 
-	while i >= 0:
+	while i >= 0 {
 		node := self.oe[i]
 		a := self.atom[node]
 
-		if a == a1 or a == a2:
+		if a == a1 or a == a2 {
 			self.oe_truncate(i)
-		else if (
+		} else if (
 			a == A_ADDRESS
 			or a == A_DIV
 			or a == A_P
 			or not self.is_special_element(node)
-		):
+		) {
 			i -= 1
 			continue
+		}
 
 		break
+	}
+}
 
-fn var Parser.in_body_end_tag() Bool:
+fn var Parser.in_body_end_tag() Bool {
 	tag := self.tok_atom
 	rule := body_end_class(tag)
 
-	if rule == E_BODY:
-		if self.element_in_scope(SCOPE_DEFAULT, A_BODY, -1, -1): self.im = IM_AFTER_BODY
-	else if rule == E_HTML:
-		if self.element_in_scope(SCOPE_DEFAULT, A_BODY, -1, -1):
+	if rule == E_BODY {
+		if self.element_in_scope(
+			SCOPE_DEFAULT,
+			A_BODY,
+			-1,
+			-1,
+		) { self.im = IM_AFTER_BODY }
+	} else if rule == E_HTML {
+		if self.element_in_scope(SCOPE_DEFAULT, A_BODY, -1, -1) {
 			self.parse_implied_token(T_END, A_BODY)
 			return false
+		}
 
 		return true
-	else if rule == E_BLOCK:
+	} else if rule == E_BLOCK {
 		_popped := self.pop_until(SCOPE_DEFAULT, tag, -1, -1)
-	else if rule == E_FORM:
-		if self.oe_contains(A_TEMPLATE):
+	} else if rule == E_FORM {
+		if self.oe_contains(A_TEMPLATE) {
 			i := self.scope_index(SCOPE_DEFAULT, A_FORM, -1, -1)
-			if i < 0: return true
+			if i < 0 { return true }
 
 			self.generate_implied_end_tags(-1)
-			if self.atom[self.oe[i]] != A_FORM: return true
+			if self.atom[self.oe[i]] != A_FORM { return true }
 
 			_popped := self.pop_until(SCOPE_DEFAULT, A_FORM, -1, -1)
-		else:
+		} else {
 			node := self.form
 			self.form = -1
 
 			i := self.scope_index(SCOPE_DEFAULT, A_FORM, -1, -1)
-			if node < 0 or i < 0 or self.oe[i] != node: return true
+			if node < 0 or i < 0 or self.oe[i] != node { return true }
 
 			self.generate_implied_end_tags(-1)
 			self.oe_remove(node)
-	else if rule == E_P:
-		if not self.element_in_scope(SCOPE_BUTTON, A_P, -1, -1):
+		}
+	} else if rule == E_P {
+		if not self.element_in_scope(SCOPE_BUTTON, A_P, -1, -1) {
 			self.parse_implied_token(T_START, A_P)
+		}
 		self.pop_p()
-	else if rule == E_LI:
+	} else if rule == E_LI {
 		_popped := self.pop_until(SCOPE_LIST_ITEM, A_LI, -1, -1)
-	else if rule == E_DD_DT:
+	} else if rule == E_DD_DT {
 		_popped := self.pop_until(SCOPE_DEFAULT, tag, -1, -1)
-	else if rule == E_HEADING:
+	} else if rule == E_HEADING {
 		_popped := self.pop_until(SCOPE_DEFAULT, -2, -1, -1)
-	else if rule == E_FORMATTING:
+	} else if rule == E_FORMATTING {
 		self.in_body_end_tag_formatting(tag, atom_name(tag))
-	else if rule == E_APPLET:
-		if self.pop_until(SCOPE_DEFAULT, tag, -1, -1): self.clear_active_formatting_elements()
-	else if rule == E_BR:
+	} else if rule == E_APPLET {
+		if self.pop_until(
+			SCOPE_DEFAULT,
+			tag,
+			-1,
+			-1,
+		) { self.clear_active_formatting_elements() }
+	} else if rule == E_BR {
 		self.tok_ty = T_START
 		return false
-	else if rule == E_TEMPLATE:
+	} else if rule == E_TEMPLATE {
 		return self.in_head_im()
-	else:
+	} else {
 		self.in_body_end_tag_other(tag, self.tok_data.clone())
+	}
 
 	return true
+}
 
 // The adoption agency algorithm.
-fn var Parser.in_body_end_tag_formatting(tag_atom Int, tag_name String) Void:
+fn var Parser.in_body_end_tag_formatting(tag_atom Int, tag_name String) Void {
 	current := self.oe_top()
 
 	if (
 		current >= 0
 		and self.tag_name(current) == tag_name
 		and self.afe_index(current) < 0
-	):
+	) {
 		_popped := self.oe_pop()
 		return
+	}
 
-	for _round in 0..8:
+	for _round in 0..8 {
 		var formatting = -1
 		var j = self.afe.length() - 1
 
-		while j >= 0:
+		while j >= 0 {
 			n := self.afe[j]
-			if self.kind[n] == K_MARKER: break
+			if self.kind[n] == K_MARKER { break }
 
-			if self.atom[n] == tag_atom:
+			if self.atom[n] == tag_atom {
 				formatting = n
 				break
+			}
 
 			j -= 1
+		}
 
-		if formatting < 0:
+		if formatting < 0 {
 			self.in_body_end_tag_other(tag_atom, tag_name)
 			return
+		}
 
 		fe_index := self.oe_index(formatting)
 
-		if fe_index < 0:
+		if fe_index < 0 {
 			self.afe_remove(formatting)
 			return
+		}
 
-		if not self.element_in_scope(SCOPE_DEFAULT, tag_atom, -1, -1): return
+		if not self.element_in_scope(
+			SCOPE_DEFAULT,
+			tag_atom,
+			-1,
+			-1,
+		) { return }
 
 		var furthest = -1
 
-		for k in fe_index..self.oe.length():
-			if self.is_special_element(self.oe[k]):
+		for k in fe_index..self.oe.length() {
+			if self.is_special_element(self.oe[k]) {
 				furthest = self.oe[k]
 				break
+			}
+		}
 
-		if furthest < 0:
-			while true:
+		if furthest < 0 {
+			while true {
 				e := self.oe_pop()
-				if e == formatting or e < 0: break
+				if e == formatting or e < 0 { break }
+			}
 
 			self.afe_remove(formatting)
 			return
+		}
 
 		common_ancestor := self.oe[fe_index - 1]
 		var bookmark = self.afe_index(formatting)
@@ -2303,168 +2678,199 @@ fn var Parser.in_body_end_tag_formatting(tag_atom Int, tag_name String) Void:
 		var x = self.oe_index(furthest)
 		var steps = 0
 
-		while true:
+		while true {
 			steps += 1
 			x -= 1
 			node = self.oe[x]
-			if node == formatting: break
+			if node == formatting { break }
 
 			ni := self.afe_index(node)
 
-			if steps > 3 and ni >= 0:
+			if steps > 3 and ni >= 0 {
 				self.afe_remove(node)
-				if ni <= bookmark: bookmark -= 1
+				if ni <= bookmark { bookmark -= 1 }
 				continue
+			}
 
-			if ni < 0:
+			if ni < 0 {
 				self.oe_remove(node)
 				continue
+			}
 
 			clone := self.clone_node(node)
 			self.afe[ni] = clone
 
 			oi := self.oe_index(node)
-			if oi >= 0: self.oe_set(oi, clone)
+			if oi >= 0 { self.oe_set(oi, clone) }
 			node = clone
-			if last_node == furthest: bookmark = self.afe_index(node) + 1
+			if last_node == furthest {
+				bookmark = self.afe_index(node) + 1
+			}
 			self.detach(last_node)
 			self.append_child(node, last_node)
 			last_node = node
+		}
 
 		self.detach(last_node)
 
-		if is_table_context(self.atom[common_ancestor]):
+		if is_table_context(self.atom[common_ancestor]) {
 			self.foster_parent(last_node)
-		else:
+		} else {
 			self.append_child(common_ancestor, last_node)
+		}
 
 		clone := self.clone_node(formatting)
 		self.reparent_children(clone, furthest)
 		self.append_child(furthest, clone)
 
 		old := self.afe_index(formatting)
-		if old >= 0 and old < bookmark: bookmark -= 1
+		if old >= 0 and old < bookmark { bookmark -= 1 }
 		self.afe_remove(formatting)
 
 		var at = bookmark
-		if at < 0: at = 0
-		if at > self.afe.length(): at = self.afe.length()
+		if at < 0 { at = 0 }
+		if at > self.afe.length() { at = self.afe.length() }
 		self.afe.insert(at, clone)
 		self.oe_remove(formatting)
 
 		fi := self.oe_index(furthest)
 		var place = 0
-		if fi >= 0: place = fi + 1
+		if fi >= 0 { place = fi + 1 }
 		self.oe_insert(place, clone)
+	}
+}
 
-fn var Parser.in_body_end_tag_other(tag_atom Int, tag_name String) Void:
+fn var Parser.in_body_end_tag_other(tag_atom Int, tag_name String) Void {
 	var i = self.oe.length() - 1
 
-	while i >= 0:
+	while i >= 0 {
 		n := self.oe[i]
 
-		if self.atom[n] == tag_atom and (tag_atom != 0 or self.data[n] == tag_name):
+		if self.atom[n] == tag_atom and (tag_atom != 0 or self.data[n] == tag_name) {
 			self.oe_truncate(i)
 			break
+		}
 
-		if self.is_special_element(n): break
+		if self.is_special_element(n) { break }
 
 		i -= 1
+	}
+}
 
-fn var Parser.text_im() Bool:
-	if self.tok_ty == T_ERROR:
+fn var Parser.text_im() Bool {
+	if self.tok_ty == T_ERROR {
 		_popped := self.oe_pop()
-	else if self.tok_ty == T_TEXT:
+	} else if self.tok_ty == T_TEXT {
 		var d = self.tok_data.clone()
 		t := self.oe_top()
-		if t >= 0 and self.atom[t] == A_TEXTAREA and self.first[t] < 0:
+		if t >= 0 and self.atom[t] == A_TEXTAREA and self.first[t] < 0 {
 			d = strip_leading_newline(d)
-		if d == "": return true
+		}
+		if d == "" { return true }
 
 		self.add_text(d)
 		return true
-	else if self.tok_ty == T_END:
+	} else if self.tok_ty == T_END {
 		_popped := self.oe_pop()
+	}
 
 	self.im = IM_IN_BODY
-	if self.original_im >= 0: self.im = self.original_im
+	if self.original_im >= 0 { self.im = self.original_im }
 	self.original_im = -1
 	return self.tok_ty == T_END
+}
 
-fn var Parser.in_table_im() Bool:
-	if self.tok_ty == T_TEXT:
-		if self.tok_data.contains("\u{0}"): self.tok_data = self.tok_data.replace(
-			"\u{0}",
-			"",
-		)
+fn var Parser.in_table_im() Bool {
+	if self.tok_ty == T_TEXT {
+		if self.tok_data.contains("\u{0}") {
+			self.tok_data = self.tok_data.replace("\u{0}", "")
+		}
 
-		if is_table_context(self.oe_top_atom()) and is_blank(self.tok_data):
+		if is_table_context(self.oe_top_atom()) and is_blank(self.tok_data) {
 			self.add_text(self.tok_data.clone())
 			return true
-	else if self.tok_ty == T_START:
+		}
+	} else if self.tok_ty == T_START {
 		a := self.tok_atom
 
-		if a == A_CAPTION:
+		if a == A_CAPTION {
 			self.clear_stack_to_context(SCOPE_TABLE)
 			self.afe.append(0)
 			self.add_element()
 			self.im = IM_IN_CAPTION
 			return true
+		}
 
-		if a == A_COLGROUP:
+		if a == A_COLGROUP {
 			self.clear_stack_to_context(SCOPE_TABLE)
 			self.add_element()
 			self.im = IM_IN_COLUMN_GROUP
 			return true
+		}
 
-		if a == A_COL:
+		if a == A_COL {
 			self.parse_implied_token(T_START, A_COLGROUP)
 			return false
+		}
 
-		if a == A_TBODY or a == A_TFOOT or a == A_THEAD:
+		if a == A_TBODY or a == A_TFOOT or a == A_THEAD {
 			self.clear_stack_to_context(SCOPE_TABLE)
 			self.add_element()
 			self.im = IM_IN_TABLE_BODY
 			return true
+		}
 
-		if a == A_TD or a == A_TH or a == A_TR:
+		if a == A_TD or a == A_TH or a == A_TR {
 			self.parse_implied_token(T_START, A_TBODY)
 			return false
+		}
 
-		if a == A_TABLE:
-			if self.pop_until(SCOPE_TABLE, A_TABLE, -1, -1):
+		if a == A_TABLE {
+			if self.pop_until(SCOPE_TABLE, A_TABLE, -1, -1) {
 				self.reset_insertion_mode()
 				return false
+			}
 
 			return true
+		}
 
-		if a == A_STYLE or a == A_SCRIPT or a == A_TEMPLATE: return self.in_head_im()
+		if a == A_STYLE or a == A_SCRIPT or a == A_TEMPLATE { return self.in_head_im() }
 
-		if a == A_INPUT:
-			if self.tok_attr_is_hidden_input():
+		if a == A_INPUT {
+			if self.tok_attr_is_hidden_input() {
 				self.add_element()
 
 				_popped := self.oe_pop()
 				return true
-		else if a == A_FORM:
-			if self.oe_contains(A_TEMPLATE) or self.form >= 0: return true
+			}
+		} else if a == A_FORM {
+			if self.oe_contains(
+				A_TEMPLATE
+			) or self.form >= 0 { return true }
 
 			self.add_element()
 			self.form = self.oe_pop()
-		else if a == A_SELECT:
+		} else if a == A_SELECT {
 			self.reconstruct_active_formatting_elements()
-			if is_table_context(self.top_atom()): self.foster_parenting = true
+			if is_table_context(self.top_atom()) { self.foster_parenting = true }
 			self.add_element()
 			self.foster_parenting = false
 			self.frameset_ok = false
 			self.im = IM_IN_SELECT_IN_TABLE
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_TABLE:
-			if self.pop_until(SCOPE_TABLE, A_TABLE, -1, -1): self.reset_insertion_mode()
+		if a == A_TABLE {
+			if self.pop_until(
+				SCOPE_TABLE,
+				A_TABLE,
+				-1,
+				-1,
+			) { self.reset_insertion_mode() }
 			return true
+		}
 
 		if (
 			a == A_BODY
@@ -2478,25 +2884,28 @@ fn var Parser.in_table_im() Bool:
 			or a == A_TH
 			or a == A_THEAD
 			or a == A_TR
-		):
+		) {
 			return true
-		if a == A_TEMPLATE: return self.in_head_im()
-	else if self.tok_ty == T_COMMENT:
+		}
+		if a == A_TEMPLATE { return self.in_head_im() }
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
 		return true
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		return true
-	else if self.tok_ty == T_ERROR:
+	} else if self.tok_ty == T_ERROR {
 		return self.in_body_im()
+	}
 
 	self.foster_parenting = true
 
 	r := self.in_body_im()
 	self.foster_parenting = false
 	return r
+}
 
-fn var Parser.in_caption_im() Bool:
-	if self.tok_ty == T_START:
+fn var Parser.in_caption_im() Bool {
+	if self.tok_ty == T_START {
 		a := self.tok_atom
 
 		if (
@@ -2508,35 +2917,50 @@ fn var Parser.in_caption_im() Bool:
 			or a == A_TFOOT
 			or a == A_THEAD
 			or a == A_TR
-		):
-			if not self.pop_until(SCOPE_TABLE, A_CAPTION, -1, -1): return true
+		) {
+			if not self.pop_until(
+				SCOPE_TABLE,
+				A_CAPTION,
+				-1,
+				-1,
+			) { return true }
 
 			self.clear_active_formatting_elements()
 			self.im = IM_IN_TABLE
 			return false
+		}
 
-		if a == A_SELECT:
+		if a == A_SELECT {
 			self.reconstruct_active_formatting_elements()
 			self.add_element()
 			self.frameset_ok = false
 			self.im = IM_IN_SELECT_IN_TABLE
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_CAPTION:
-			if self.pop_until(SCOPE_TABLE, A_CAPTION, -1, -1):
+		if a == A_CAPTION {
+			if self.pop_until(SCOPE_TABLE, A_CAPTION, -1, -1) {
 				self.clear_active_formatting_elements()
 				self.im = IM_IN_TABLE
+			}
 
 			return true
+		}
 
-		if a == A_TABLE:
-			if not self.pop_until(SCOPE_TABLE, A_CAPTION, -1, -1): return true
+		if a == A_TABLE {
+			if not self.pop_until(
+				SCOPE_TABLE,
+				A_CAPTION,
+				-1,
+				-1,
+			) { return true }
 
 			self.clear_active_formatting_elements()
 			self.im = IM_IN_TABLE
 			return false
+		}
 
 		if (
 			a == A_BODY
@@ -2549,65 +2973,75 @@ fn var Parser.in_caption_im() Bool:
 			or a == A_TH
 			or a == A_THEAD
 			or a == A_TR
-		):
+		) {
 			return true
+		}
+	}
 
 	return self.in_body_im()
+}
 
-fn var Parser.in_column_group_im() Bool:
-	if self.tok_ty == T_TEXT:
-		if self.add_leading_whitespace(): return true
-	else if self.tok_ty == T_COMMENT:
+fn var Parser.in_column_group_im() Bool {
+	if self.tok_ty == T_TEXT {
+		if self.add_leading_whitespace() { return true }
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
 		return true
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		return true
-	else if self.tok_ty == T_START:
+	} else if self.tok_ty == T_START {
 		a := self.tok_atom
-		if a == A_HTML: return self.in_body_im()
+		if a == A_HTML { return self.in_body_im() }
 
-		if a == A_COL:
+		if a == A_COL {
 			self.add_element()
 
 			_popped := self.oe_pop()
 			self.has_self_closing = false
 			return true
+		}
 
-		if a == A_TEMPLATE: return self.in_head_im()
-	else if self.tok_ty == T_END:
+		if a == A_TEMPLATE { return self.in_head_im() }
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_COLGROUP:
-			if self.oe_top_atom() == A_COLGROUP:
+		if a == A_COLGROUP {
+			if self.oe_top_atom() == A_COLGROUP {
 				_popped := self.oe_pop()
 				self.im = IM_IN_TABLE
+			}
 
 			return true
+		}
 
-		if a == A_COL: return true
-		if a == A_TEMPLATE: return self.in_head_im()
-	else if self.tok_ty == T_ERROR:
+		if a == A_COL { return true }
+		if a == A_TEMPLATE { return self.in_head_im() }
+	} else if self.tok_ty == T_ERROR {
 		return self.in_body_im()
+	}
 
-	if self.oe_top_atom() != A_COLGROUP: return true
+	if self.oe_top_atom() != A_COLGROUP { return true }
 
 	_popped := self.oe_pop()
 	self.im = IM_IN_TABLE
 	return false
+}
 
-fn var Parser.in_table_body_im() Bool:
-	if self.tok_ty == T_START:
+fn var Parser.in_table_body_im() Bool {
+	if self.tok_ty == T_START {
 		a := self.tok_atom
 
-		if a == A_TR:
+		if a == A_TR {
 			self.clear_stack_to_context(SCOPE_TABLE_BODY)
 			self.add_element()
 			self.im = IM_IN_ROW
 			return true
+		}
 
-		if a == A_TD or a == A_TH:
+		if a == A_TD or a == A_TH {
 			self.parse_implied_token(T_START, A_TR)
 			return false
+		}
 
 		if (
 			a == A_CAPTION
@@ -2616,30 +3050,36 @@ fn var Parser.in_table_body_im() Bool:
 			or a == A_TBODY
 			or a == A_TFOOT
 			or a == A_THEAD
-		):
-			if self.pop_until(SCOPE_TABLE, A_TBODY, A_THEAD, A_TFOOT):
+		) {
+			if self.pop_until(SCOPE_TABLE, A_TBODY, A_THEAD, A_TFOOT) {
 				self.im = IM_IN_TABLE
 				return false
+			}
 
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_TBODY or a == A_TFOOT or a == A_THEAD:
-			if self.element_in_scope(SCOPE_TABLE, a, -1, -1):
+		if a == A_TBODY or a == A_TFOOT or a == A_THEAD {
+			if self.element_in_scope(SCOPE_TABLE, a, -1, -1) {
 				self.clear_stack_to_context(SCOPE_TABLE_BODY)
 
 				_popped := self.oe_pop()
 				self.im = IM_IN_TABLE
+			}
 
 			return true
+		}
 
-		if a == A_TABLE:
-			if self.pop_until(SCOPE_TABLE, A_TBODY, A_THEAD, A_TFOOT):
+		if a == A_TABLE {
+			if self.pop_until(SCOPE_TABLE, A_TBODY, A_THEAD, A_TFOOT) {
 				self.im = IM_IN_TABLE
 				return false
+			}
 
 			return true
+		}
 
 		if (
 			a == A_BODY
@@ -2650,24 +3090,28 @@ fn var Parser.in_table_body_im() Bool:
 			or a == A_TD
 			or a == A_TH
 			or a == A_TR
-		):
+		) {
 			return true
-	else if self.tok_ty == T_COMMENT:
+		}
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
 		return true
+	}
 
 	return self.in_table_im()
+}
 
-fn var Parser.in_row_im() Bool:
-	if self.tok_ty == T_START:
+fn var Parser.in_row_im() Bool {
+	if self.tok_ty == T_START {
 		a := self.tok_atom
 
-		if a == A_TD or a == A_TH:
+		if a == A_TD or a == A_TH {
 			self.clear_stack_to_context(SCOPE_TABLE_ROW)
 			self.add_element()
 			self.afe.append(0)
 			self.im = IM_IN_CELL
 			return true
+		}
 
 		if (
 			a == A_CAPTION
@@ -2677,32 +3121,44 @@ fn var Parser.in_row_im() Bool:
 			or a == A_TFOOT
 			or a == A_THEAD
 			or a == A_TR
-		):
-			if self.pop_until(SCOPE_TABLE, A_TR, -1, -1):
+		) {
+			if self.pop_until(SCOPE_TABLE, A_TR, -1, -1) {
 				self.im = IM_IN_TABLE_BODY
 				return false
+			}
 
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_TR:
-			if self.pop_until(SCOPE_TABLE, A_TR, -1, -1): self.im = IM_IN_TABLE_BODY
+		if a == A_TR {
+			if self.pop_until(
+				SCOPE_TABLE,
+				A_TR,
+				-1,
+				-1,
+			) { self.im = IM_IN_TABLE_BODY }
 			return true
+		}
 
-		if a == A_TABLE:
-			if self.pop_until(SCOPE_TABLE, A_TR, -1, -1):
+		if a == A_TABLE {
+			if self.pop_until(SCOPE_TABLE, A_TR, -1, -1) {
 				self.im = IM_IN_TABLE_BODY
 				return false
+			}
 
 			return true
+		}
 
-		if a == A_TBODY or a == A_TFOOT or a == A_THEAD:
-			if self.element_in_scope(SCOPE_TABLE, a, -1, -1):
+		if a == A_TBODY or a == A_TFOOT or a == A_THEAD {
+			if self.element_in_scope(SCOPE_TABLE, a, -1, -1) {
 				self.parse_implied_token(T_END, A_TR)
 				return false
+			}
 
 			return true
+		}
 
 		if (
 			a == A_BODY
@@ -2712,13 +3168,16 @@ fn var Parser.in_row_im() Bool:
 			or a == A_HTML
 			or a == A_TD
 			or a == A_TH
-		):
+		) {
 			return true
+		}
+	}
 
 	return self.in_table_im()
+}
 
-fn var Parser.in_cell_im() Bool:
-	if self.tok_ty == T_START:
+fn var Parser.in_cell_im() Bool {
+	if self.tok_ty == T_START {
 		a := self.tok_atom
 
 		if (
@@ -2731,29 +3190,38 @@ fn var Parser.in_cell_im() Bool:
 			or a == A_TH
 			or a == A_THEAD
 			or a == A_TR
-		):
-			if self.pop_until(SCOPE_TABLE, A_TD, A_TH, -1):
+		) {
+			if self.pop_until(SCOPE_TABLE, A_TD, A_TH, -1) {
 				self.clear_active_formatting_elements()
 				self.im = IM_IN_ROW
 				return false
+			}
 
 			return true
+		}
 
-		if a == A_SELECT:
+		if a == A_SELECT {
 			self.reconstruct_active_formatting_elements()
 			self.add_element()
 			self.frameset_ok = false
 			self.im = IM_IN_SELECT_IN_TABLE
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_TD or a == A_TH:
-			if not self.pop_until(SCOPE_TABLE, a, -1, -1): return true
+		if a == A_TD or a == A_TH {
+			if not self.pop_until(
+				SCOPE_TABLE,
+				a,
+				-1,
+				-1,
+			) { return true }
 
 			self.clear_active_formatting_elements()
 			self.im = IM_IN_ROW
 			return true
+		}
 
 		if (
 			a == A_BODY
@@ -2761,47 +3229,67 @@ fn var Parser.in_cell_im() Bool:
 			or a == A_COL
 			or a == A_COLGROUP
 			or a == A_HTML
-		):
+		) {
 			return true
+		}
 
-		if a == A_TABLE or a == A_TBODY or a == A_TFOOT or a == A_THEAD or a == A_TR:
-			if not self.element_in_scope(SCOPE_TABLE, a, -1, -1): return true
+		if a == A_TABLE or a == A_TBODY or a == A_TFOOT or a == A_THEAD or a == A_TR {
+			if not self.element_in_scope(
+				SCOPE_TABLE,
+				a,
+				-1,
+				-1,
+			) { return true }
 
-			if self.pop_until(SCOPE_TABLE, A_TD, A_TH, -1): self.clear_active_formatting_elements()
+			if self.pop_until(
+				SCOPE_TABLE,
+				A_TD,
+				A_TH,
+				-1,
+			) { self.clear_active_formatting_elements() }
 			self.im = IM_IN_ROW
 			return false
+		}
+	}
 
 	return self.in_body_im()
+}
 
-fn var Parser.in_select_im() Bool:
-	if self.tok_ty == T_TEXT:
+fn var Parser.in_select_im() Bool {
+	if self.tok_ty == T_TEXT {
 		d := self.tok_data.replace("\u{0}", "")
 		self.add_text(d)
-	else if self.tok_ty == T_START:
+	} else if self.tok_ty == T_START {
 		a := self.tok_atom
-		if a == A_HTML: return self.in_body_im()
+		if a == A_HTML { return self.in_body_im() }
 
-		if a == A_OPTION:
-			if self.top_atom() == A_OPTION: _popped := self.oe_pop()
+		if a == A_OPTION {
+			if self.top_atom() == A_OPTION { _popped := self.oe_pop() }
 			self.add_element()
-		else if a == A_OPTGROUP:
-			if self.top_atom() == A_OPTION: _popped := self.oe_pop()
-			if self.top_atom() == A_OPTGROUP: _popped := self.oe_pop()
+		} else if a == A_OPTGROUP {
+			if self.top_atom() == A_OPTION { _popped := self.oe_pop() }
+			if self.top_atom() == A_OPTGROUP { _popped := self.oe_pop() }
 			self.add_element()
-		else if a == A_SELECT:
-			if not self.pop_until(SCOPE_SELECT, A_SELECT, -1, -1): return true
+		} else if a == A_SELECT {
+			if not self.pop_until(
+				SCOPE_SELECT,
+				A_SELECT,
+				-1,
+				-1,
+			) { return true }
 
 			self.reset_insertion_mode()
-		else if a == A_INPUT or a == A_KEYGEN or a == A_TEXTAREA:
-			if self.element_in_scope(SCOPE_SELECT, A_SELECT, -1, -1):
+		} else if a == A_INPUT or a == A_KEYGEN or a == A_TEXTAREA {
+			if self.element_in_scope(SCOPE_SELECT, A_SELECT, -1, -1) {
 				self.parse_implied_token(T_END, A_SELECT)
 				return false
+			}
 
 			self.next_is_not_raw_text()
 			return true
-		else if a == A_SCRIPT or a == A_TEMPLATE:
+		} else if a == A_SCRIPT or a == A_TEMPLATE {
 			return self.in_head_im()
-		else if (
+		} else if (
 			a == A_IFRAME
 			or a == A_NOEMBED
 			or a == A_NOFRAMES
@@ -2810,35 +3298,46 @@ fn var Parser.in_select_im() Bool:
 			or a == A_STYLE
 			or a == A_TITLE
 			or a == A_XMP
-		):
+		) {
 			self.next_is_not_raw_text()
 			return true
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		a := self.tok_atom
 
-		if a == A_OPTION:
-			if self.top_atom() == A_OPTION: _popped := self.oe_pop()
-		else if a == A_OPTGROUP:
+		if a == A_OPTION {
+			if self.top_atom() == A_OPTION { _popped := self.oe_pop() }
+		} else if a == A_OPTGROUP {
 			var i = self.oe.length() - 1
-			if self.atom[self.oe[i]] == A_OPTION: i -= 1
-			if self.atom[self.oe[i]] == A_OPTGROUP: self.oe_truncate(i)
-		else if a == A_SELECT:
-			if not self.pop_until(SCOPE_SELECT, A_SELECT, -1, -1): return true
+			if self.atom[self.oe[i]] == A_OPTION { i -= 1 }
+			if self.atom[self.oe[i]] == A_OPTGROUP {
+				self.oe_truncate(i)
+			}
+		} else if a == A_SELECT {
+			if not self.pop_until(
+				SCOPE_SELECT,
+				A_SELECT,
+				-1,
+				-1,
+			) { return true }
 
 			self.reset_insertion_mode()
-		else if a == A_TEMPLATE:
+		} else if a == A_TEMPLATE {
 			return self.in_head_im()
-	else if self.tok_ty == T_COMMENT:
+		}
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		return true
-	else if self.tok_ty == T_ERROR:
+	} else if self.tok_ty == T_ERROR {
 		return self.in_body_im()
+	}
 
 	return true
+}
 
-fn var Parser.in_select_in_table_im() Bool:
-	if self.tok_ty == T_START or self.tok_ty == T_END:
+fn var Parser.in_select_in_table_im() Bool {
+	if self.tok_ty == T_START or self.tok_ty == T_END {
 		a := self.tok_atom
 
 		if (
@@ -2850,37 +3349,45 @@ fn var Parser.in_select_in_table_im() Bool:
 			or a == A_TR
 			or a == A_TD
 			or a == A_TH
-		):
+		) {
 			if (
 				self.tok_ty == T_END
 				and not self.element_in_scope(SCOPE_TABLE, a, -1, -1)
-			):
+			) {
 				return true
+			}
 
 			var i = self.oe.length() - 1
 
-			while i >= 0:
-				if self.atom[self.oe[i]] == A_SELECT:
+			while i >= 0 {
+				if self.atom[self.oe[i]] == A_SELECT {
 					self.oe_truncate(i)
 					break
+				}
 
 				i -= 1
+			}
 
 			self.reset_insertion_mode()
 			return false
+		}
+	}
 
 	return self.in_select_im()
+}
 
-fn var Parser.set_template_top(im Int) Void:
+fn var Parser.set_template_top(im Int) Void {
 	_popped := self.template_stack.pop()
 	self.template_stack.append(im)
 	self.im = im
+}
 
-fn var Parser.in_template_im() Bool:
-	if self.tok_ty == T_TEXT or self.tok_ty == T_COMMENT or self.tok_ty == T_DOCTYPE:
+fn var Parser.in_template_im() Bool {
+	if self.tok_ty == T_TEXT or self.tok_ty == T_COMMENT or self.tok_ty == T_DOCTYPE {
 		return self.in_body_im()
+	}
 
-	if self.tok_ty == T_START:
+	if self.tok_ty == T_START {
 		a := self.tok_atom
 		if (
 			a == A_BASE
@@ -2893,8 +3400,9 @@ fn var Parser.in_template_im() Bool:
 			or a == A_STYLE
 			or a == A_TEMPLATE
 			or a == A_TITLE
-		):
+		) {
 			return self.in_head_im()
+		}
 
 		if (
 			a == A_CAPTION
@@ -2902,315 +3410,374 @@ fn var Parser.in_template_im() Bool:
 			or a == A_TBODY
 			or a == A_TFOOT
 			or a == A_THEAD
-		):
+		) {
 			self.set_template_top(IM_IN_TABLE)
-		else if a == A_COL:
+		} else if a == A_COL {
 			self.set_template_top(IM_IN_COLUMN_GROUP)
-		else if a == A_TR:
+		} else if a == A_TR {
 			self.set_template_top(IM_IN_TABLE_BODY)
-		else if a == A_TD or a == A_TH:
+		} else if a == A_TD or a == A_TH {
 			self.set_template_top(IM_IN_ROW)
-		else:
+		} else {
 			self.set_template_top(IM_IN_BODY)
+		}
 
 		return false
+	}
 
-	if self.tok_ty == T_END:
-		if self.tok_atom == A_TEMPLATE: return self.in_head_im()
+	if self.tok_ty == T_END {
+		if self.tok_atom == A_TEMPLATE { return self.in_head_im() }
 		return true
+	}
 
-	if self.tok_ty == T_ERROR:
-		if not self.oe_contains(A_TEMPLATE): return true
+	if self.tok_ty == T_ERROR {
+		if not self.oe_contains(
+			A_TEMPLATE
+		) { return true }
 
 		self.generate_implied_end_tags(-1)
 
 		var i = self.oe.length() - 1
 
-		while i >= 0:
+		while i >= 0 {
 			n := self.oe[i]
 
-			if self.ns[n] == NS_HTML and self.atom[n] == A_TEMPLATE:
+			if self.ns[n] == NS_HTML and self.atom[n] == A_TEMPLATE {
 				self.oe_truncate(i)
 				break
+			}
 
 			i -= 1
+		}
 
 		self.clear_active_formatting_elements()
 
 		_popped := self.template_stack.pop()
 		self.reset_insertion_mode()
 		return false
+	}
 
 	return false
+}
 
-fn var Parser.after_body_im() Bool:
-	if self.tok_ty == T_ERROR: return true
+fn var Parser.after_body_im() Bool {
+	if self.tok_ty == T_ERROR { return true }
 
-	if self.tok_ty == T_TEXT:
-		if is_blank(self.tok_data): return self.in_body_im()
-	else if self.tok_ty == T_START:
-		if self.tok_atom == A_HTML: return self.in_body_im()
-	else if self.tok_ty == T_END:
-		if self.tok_atom == A_HTML:
+	if self.tok_ty == T_TEXT {
+		if is_blank(self.tok_data) { return self.in_body_im() }
+	} else if self.tok_ty == T_START {
+		if self.tok_atom == A_HTML { return self.in_body_im() }
+	} else if self.tok_ty == T_END {
+		if self.tok_atom == A_HTML {
 			self.im = IM_AFTER_AFTER_BODY
 			return true
-	else if self.tok_ty == T_COMMENT:
+		}
+	} else if self.tok_ty == T_COMMENT {
 		n := self.alloc(K_COMMENT, 0, self.tok_data.clone())
 		self.append_child(self.oe[0], n)
 		return true
+	}
 
 	self.im = IM_IN_BODY
 	return false
+}
 
 // The whitespace of the current text token; the framesets keep only that.
-fn Parser.tok_whitespace_only() String:
+fn Parser.tok_whitespace_only() String {
 	var out = ""
-	for c in self.tok_data.chars():
-		if c == " " or c == "\t" or c == "\n" or c == "\u{C}" or c == "\r": out += c
+	for c in self.tok_data.chars() {
+		if c == " " or c == "\t" or c == "\n" or c == "\u{C}" or c == "\r" { out += c }
+	}
 	return out
+}
 
-fn var Parser.in_frameset_im() Bool:
-	if self.tok_ty == T_COMMENT:
+fn var Parser.in_frameset_im() Bool {
+	if self.tok_ty == T_COMMENT {
 		self.add_comment()
-	else if self.tok_ty == T_TEXT:
+	} else if self.tok_ty == T_TEXT {
 		s := self.tok_whitespace_only()
-		if s != "": self.add_text(s)
-	else if self.tok_ty == T_START:
+		if s != "" { self.add_text(s) }
+	} else if self.tok_ty == T_START {
 		a := self.tok_atom
-		if a == A_HTML: return self.in_body_im()
+		if a == A_HTML { return self.in_body_im() }
 
-		if a == A_FRAMESET:
+		if a == A_FRAMESET {
 			self.add_element()
-		else if a == A_FRAME:
+		} else if a == A_FRAME {
 			self.add_element()
 
 			_popped := self.oe_pop()
 			self.has_self_closing = false
-		else if a == A_NOFRAMES:
+		} else if a == A_NOFRAMES {
 			return self.in_head_im()
-	else if (
+		}
+	} else if (
 		self.tok_ty == T_END
 		and self.tok_atom == A_FRAMESET
 		and self.oe_top_atom() != A_HTML
-	):
+	) {
 		_popped := self.oe_pop()
 
-		if self.oe_top_atom() != A_FRAMESET:
+		if self.oe_top_atom() != A_FRAMESET {
 			self.im = IM_AFTER_FRAMESET
 			return true
+		}
+	}
 
 	return true
+}
 
-fn var Parser.after_frameset_im() Bool:
-	if self.tok_ty == T_COMMENT:
+fn var Parser.after_frameset_im() Bool {
+	if self.tok_ty == T_COMMENT {
 		self.add_comment()
-	else if self.tok_ty == T_TEXT:
+	} else if self.tok_ty == T_TEXT {
 		s := self.tok_whitespace_only()
-		if s != "": self.add_text(s)
-	else if self.tok_ty == T_START:
-		if self.tok_atom == A_HTML: return self.in_body_im()
-		if self.tok_atom == A_NOFRAMES: return self.in_head_im()
-	else if self.tok_ty == T_END and self.tok_atom == A_HTML:
+		if s != "" { self.add_text(s) }
+	} else if self.tok_ty == T_START {
+		if self.tok_atom == A_HTML { return self.in_body_im() }
+		if self.tok_atom == A_NOFRAMES { return self.in_head_im() }
+	} else if self.tok_ty == T_END and self.tok_atom == A_HTML {
 		self.im = IM_AFTER_AFTER_FRAMESET
 		return true
+	}
 
 	return true
+}
 
-fn var Parser.after_after_body_im() Bool:
-	if self.tok_ty == T_ERROR: return true
+fn var Parser.after_after_body_im() Bool {
+	if self.tok_ty == T_ERROR { return true }
 
-	if self.tok_ty == T_TEXT:
-		if is_blank(self.tok_data): return self.in_body_im()
-	else if self.tok_ty == T_START:
-		if self.tok_atom == A_HTML: return self.in_body_im()
-	else if self.tok_ty == T_COMMENT:
+	if self.tok_ty == T_TEXT {
+		if is_blank(self.tok_data) { return self.in_body_im() }
+	} else if self.tok_ty == T_START {
+		if self.tok_atom == A_HTML { return self.in_body_im() }
+	} else if self.tok_ty == T_COMMENT {
 		self.append_doc_comment()
 		return true
-	else if self.tok_ty == T_DOCTYPE:
+	} else if self.tok_ty == T_DOCTYPE {
 		return self.in_body_im()
+	}
 
 	self.im = IM_IN_BODY
 	return false
+}
 
-fn var Parser.after_after_frameset_im() Bool:
-	if self.tok_ty == T_COMMENT:
+fn var Parser.after_after_frameset_im() Bool {
+	if self.tok_ty == T_COMMENT {
 		self.append_doc_comment()
-	else if self.tok_ty == T_TEXT:
+	} else if self.tok_ty == T_TEXT {
 		s := self.tok_whitespace_only()
 
-		if s != "":
+		if s != "" {
 			self.tok_data = s
 			return self.in_body_im()
-	else if self.tok_ty == T_START:
-		if self.tok_atom == A_HTML: return self.in_body_im()
-		if self.tok_atom == A_NOFRAMES: return self.in_head_im()
-	else if self.tok_ty == T_DOCTYPE:
+		}
+	} else if self.tok_ty == T_START {
+		if self.tok_atom == A_HTML { return self.in_body_im() }
+		if self.tok_atom == A_NOFRAMES { return self.in_head_im() }
+	} else if self.tok_ty == T_DOCTYPE {
 		return self.in_body_im()
+	}
 
 	return true
+}
 
 // ---- foreign content ----
 
-fn var Parser.adjust_math_attributes() Void:
-	for i in 0..self.tok_n:
-		if self.tok_keys[i] == "definitionurl": self.tok_keys[i] = "definitionURL"
+fn var Parser.adjust_math_attributes() Void {
+	for i in 0..self.tok_n {
+		if self.tok_keys[i] == "definitionurl" { self.tok_keys[i] = "definitionURL" }
+	}
+}
 
-fn var Parser.adjust_svg_attributes() Void:
-	for i in 0..self.tok_n:
+fn var Parser.adjust_svg_attributes() Void {
+	for i in 0..self.tok_n {
 		adjusted := svg_attribute(self.tok_keys[i])
-		if adjusted != "": self.tok_keys[i] = adjusted
+		if adjusted != "" { self.tok_keys[i] = adjusted }
+	}
+}
 
 // Splits the prefix of the namespaced attribute names off into their namespace.
-fn var Parser.adjust_foreign_attributes() Void:
-	for i in 0..self.tok_n:
+fn var Parser.adjust_foreign_attributes() Void {
+	for i in 0..self.tok_n {
 		key := self.tok_keys[i].clone()
-		if not key.starts_with("x") or not is_foreign_attribute(key): continue
+		if not key.starts_with(
+			"x"
+		) or not is_foreign_attribute(key) { continue }
 
 		colon := key.index_of(":")
 
-		if colon != null:
+		if colon != null {
 			at := colon
 			self.tok_nss[i] = key.view(0, at).clone()
 			self.tok_keys[i] = key.view(at + 1, key.length()).clone()
+		}
+	}
+}
 
-fn Parser.html_integration_point(n Int) Bool:
-	if self.kind[n] != K_ELEMENT: return false
+fn Parser.html_integration_point(n Int) Bool {
+	if self.kind[n] != K_ELEMENT { return false }
 
-	if self.ns[n] == NS_MATH:
-		if self.atom[n] != A_ANNOTATION_XML: return false
+	if self.ns[n] == NS_MATH {
+		if self.atom[n] != A_ANNOTATION_XML { return false }
 
 		start := self.attr_start[n]
 
-		for i in 0..self.attr_count[n]:
-			if self.akey[start + i] != "encoding": continue
+		for i in 0..self.attr_count[n] {
+			if self.akey[start + i] != "encoding" { continue }
 
 			value := self.aval[start + i]
 			if (
 				ascii_equal_fold(value, "text/html")
 				or ascii_equal_fold(value, "application/xhtml+xml")
-			):
+			) {
 				return true
+			}
+		}
 
 		return false
+	}
 
-	if self.ns[n] == NS_SVG: return is_svg_stop(self.atom[n])
+	if self.ns[n] == NS_SVG { return is_svg_stop(self.atom[n]) }
 
 	return false
+}
 
-fn Parser.math_text_integration_point(n Int) Bool:
+fn Parser.math_text_integration_point(n Int) Bool {
 	return self.ns[n] == NS_MATH and is_math_text_atom(self.atom[n])
+}
 
-fn Parser.tok_font_has_style_attribute() Bool:
-	for i in 0..self.tok_n:
+fn Parser.tok_font_has_style_attribute() Bool {
+	for i in 0..self.tok_n {
 		key := self.tok_keys[i]
-		if key == "color" or key == "face" or key == "size": return true
+		if key == "color" or key == "face" or key == "size" { return true }
+	}
 
 	return false
+}
 
-fn var Parser.parse_foreign_content() Bool:
-	if self.tok_ty == T_TEXT:
-		if self.frameset_ok:
+fn var Parser.parse_foreign_content() Bool {
+	if self.tok_ty == T_TEXT {
+		if self.frameset_ok {
 			cut := self.tok_data.replace("\u{0}", "")
 			self.frameset_ok = is_blank(cut)
+		}
 
 		self.tok_data = self.tok_data.replace("\u{0}", "\u{FFFD}")
 		self.add_text(self.tok_data.clone())
-	else if self.tok_ty == T_COMMENT:
+	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
-	else if self.tok_ty == T_START:
+	} else if self.tok_ty == T_START {
 		var breakout = is_breakout_atom(self.tok_atom)
-		if self.tok_atom == A_FONT and self.tok_font_has_style_attribute(): breakout = true
+		if self.tok_atom == A_FONT and self.tok_font_has_style_attribute() { breakout = true }
 
-		if breakout:
+		if breakout {
 			var i = self.oe.length() - 1
 
-			while i >= 0:
+			while i >= 0 {
 				n := self.oe[i]
 
 				if (
 					self.ns[n] == NS_HTML
 					or self.html_integration_point(n)
 					or self.math_text_integration_point(n)
-				):
+				) {
 					self.oe_truncate(i + 1)
 					break
+				}
 
 				i -= 1
+			}
 
 			return false
+		}
 
 		current := self.top()
 		v := self.ns[current]
 
-		if v == NS_MATH:
+		if v == NS_MATH {
 			self.adjust_math_attributes()
-		else if v == NS_SVG:
+		} else if v == NS_SVG {
 			adjusted := svg_tag(self.tok_name())
 
-			if adjusted != "":
+			if adjusted != "" {
 				self.tok_atom = atom_of_text(adjusted)
 				self.tok_data = adjusted
+			}
 
 			self.adjust_svg_attributes()
+		}
 
 		self.adjust_foreign_attributes()
 		self.add_element()
 		self.ns[self.top()] = v
-		if v != NS_HTML: self.next_is_not_raw_text()
+		if v != NS_HTML { self.next_is_not_raw_text() }
 
-		if self.has_self_closing:
+		if self.has_self_closing {
 			_popped := self.oe_pop()
 			self.has_self_closing = false
-	else if self.tok_ty == T_END:
+		}
+	} else if self.tok_ty == T_END {
 		var i = self.oe.length() - 1
 
-		while i >= 0:
+		while i >= 0 {
 			n := self.oe[i]
-			if self.ns[n] == NS_HTML: return self.run_im(self.im)
+			if self.ns[n] == NS_HTML {
+				return self.run_im(self.im)
+			}
 
-			if ascii_equal_fold(self.tag_name(n), self.tok_name()):
+			if ascii_equal_fold(self.tag_name(n), self.tok_name()) {
 				self.oe_truncate(i)
 				break
+			}
 
 			i -= 1
+		}
 
 		return true
+	}
 
 	return true
+}
 
-fn Parser.in_foreign_content() Bool:
+fn Parser.in_foreign_content() Bool {
 	n := self.oe_top()
-	if n < 0: return false
-	if self.ns[n] == NS_HTML: return false
+	if n < 0 { return false }
+	if self.ns[n] == NS_HTML { return false }
 
-	if self.math_text_integration_point(n):
+	if self.math_text_integration_point(n) {
 		if (
 			self.tok_ty == T_START
 			and self.tok_atom != A_MGLYPH
 			and self.tok_atom != A_MALIGNMARK
-		):
+		) {
 			return false
-		if self.tok_ty == T_TEXT: return false
+		}
+		if self.tok_ty == T_TEXT { return false }
+	}
 
 	if (
 		self.ns[n] == NS_MATH
 		and self.atom[n] == A_ANNOTATION_XML
 		and self.tok_ty == T_START
 		and self.tok_atom == A_SVG
-	):
+	) {
 		return false
+	}
 	if (
 		self.html_integration_point(n)
 		and (self.tok_ty == T_START or self.tok_ty == T_TEXT)
-	):
+	) {
 		return false
-	if self.tok_ty == T_ERROR: return false
+	}
+	if self.tok_ty == T_ERROR { return false }
 
 	return true
+}
 
 // Parses a token the document implies, such as the `html` start tag, then restores the
 // real one.
-fn var Parser.parse_implied_token(ty Int, atom Int) Void:
+fn var Parser.parse_implied_token(ty Int, atom Int) Void {
 	real_ty := self.tok_ty
 	real_atom := self.tok_atom
 	real_data := self.tok_data.clone()
@@ -3227,24 +3794,29 @@ fn var Parser.parse_implied_token(ty Int, atom Int) Void:
 	self.tok_data = real_data
 	self.tok_n = real_n
 	self.has_self_closing = self_closing
+}
 
-fn var Parser.parse_current_token() Void:
-	if self.tok_ty == T_SELF_CLOSING:
+fn var Parser.parse_current_token() Void {
+	if self.tok_ty == T_SELF_CLOSING {
 		self.has_self_closing = true
 		self.tok_ty = T_START
+	}
 
 	var consumed = false
 
-	while not consumed:
-		if self.in_foreign_content():
+	while not consumed {
+		if self.in_foreign_content() {
 			consumed = self.parse_foreign_content()
-		else:
+		} else {
 			consumed = self.run_im(self.im)
+		}
+	}
 
 	self.has_self_closing = false
+}
 
-fn var Parser.run() Void:
-	while true:
+fn var Parser.run() Void {
+	while true {
 		n := self.oe_top()
 		self.allow_cdata = n >= 0 and self.ns[n] != NS_HTML
 
@@ -3254,50 +3826,56 @@ fn var Parser.run() Void:
 		eof := self.tok_ty == T_ERROR
 		self.parse_current_token()
 
-		if self.oe.length() > self.max_open:
+		if self.oe.length() > self.max_open {
 			self.exceeded = true
 			break
+		}
 
-		if eof: break
+		if eof { break }
+	}
+}
 
 // ---- doctype ----
 
 // Parses the contents of a doctype token into a doctype node under the document,
 // returning whether it puts the document in quirks mode.
-fn var Parser.add_doctype(text String) Bool:
+fn var Parser.add_doctype(text String) Bool {
 	b := text.to_bytes()
 	size := b.length()
 	var quirks = false
 	var space = 0
-	while space < size and not is_html_whitespace(b.get(space).to_int()):
+	while space < size and not is_html_whitespace(b.get(space).to_int()) {
 		space += 1
+	}
 
 	name := b.decode_utf8_range(0, space) or ""
-	if name != "html": quirks = true
+	if name != "html" { quirks = true }
 
 	node := self.alloc(K_DOCTYPE, 0, go_lower(name))
 	self.append_child(1, node)
 
 	var pos = space
-	while pos < size and is_html_whitespace(b.get(pos).to_int()):
+	while pos < size and is_html_whitespace(b.get(pos).to_int()) {
 		pos += 1
-	if size - pos < 6: return quirks or pos < size
+	}
+	if size - pos < 6 { return quirks or pos < size }
 
 	var key = go_lower(b.decode_utf8_range(pos, pos + 6) or "")
 	pos += 6
-	if not valid_boundary(b, pos): pos = size
-	if key == "": key = "?"
+	if not valid_boundary(b, pos) { pos = size }
+	if key == "" { key = "?" }
 
 	var keys List[String] = []
 	var values List[String] = []
 
-	while key == "public" or key == "system":
-		while pos < size and is_html_whitespace(b.get(pos).to_int()):
+	while key == "public" or key == "system" {
+		while pos < size and is_html_whitespace(b.get(pos).to_int()) {
 			pos += 1
-		if pos >= size: break
+		}
+		if pos >= size { break }
 
 		quote := b.get(pos).to_int()
-		if quote != 34 and quote != 39: break
+		if quote != 34 and quote != 39 { break }
 
 		pos += 1
 
@@ -3305,48 +3883,56 @@ fn var Parser.add_doctype(text String) Bool:
 		var next = size
 		var scan = pos
 
-		while scan < size:
-			if b.get(scan).to_int() == quote:
+		while scan < size {
+			if b.get(scan).to_int() == quote {
 				end = scan
 				next = scan + 1
 				break
+			}
 
 			scan += 1
+		}
 
 		keys.append(key.clone())
 		values.append(b.decode_utf8_range(pos, end) or "")
 		pos = next
 
-		if key == "public":
+		if key == "public" {
 			key = "system"
-		else:
+		} else {
 			key = ""
+		}
+	}
 
 	self.attr_start[node] = self.akey.length()
 	self.attr_count[node] = keys.length()
 
-	for i in 0..keys.length():
+	for i in 0..keys.length() {
 		self.akey.append(keys[i].clone())
 		self.aval.append(values[i].clone())
 		self.ans.append("")
+	}
 
-	if key != "" or pos < size: return true
+	if key != "" or pos < size { return true }
 
-	if keys.length() > 0:
-		if keys[0] == "public":
+	if keys.length() > 0 {
+		if keys[0] == "public" {
 			public_id := go_lower(values[0])
 
 			if (
 				public_id == "-//w3o//dtd w3 html strict 3.0//en//"
 				or public_id == "-/w3d/dtd html 4.0 transitional/en"
 				or public_id == "html"
-			):
+			) {
 				quirks = true
-			else:
-				for id in QUIRKY_IDS:
-					if public_id.starts_with(id):
+			} else {
+				for id in QUIRKY_IDS {
+					if public_id.starts_with(id) {
 						quirks = true
 						break
+					}
+				}
+			}
 
 			if (
 				keys.length() == 1
@@ -3358,8 +3944,10 @@ fn var Parser.add_doctype(text String) Bool:
 						"-//w3c//dtd html 4.01 transitional//"
 					)
 				)
-			):
+			) {
 				quirks = true
+			}
+		}
 
 		last := keys.length() - 1
 		if (
@@ -3368,138 +3956,171 @@ fn var Parser.add_doctype(text String) Bool:
 				values[last],
 				"http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd",
 			)
-		):
+		) {
 			quirks = true
+		}
+	}
 
 	return quirks
+}
 
-fn is_space(c Int) Bool:
+fn is_space(c Int) Bool {
 	return c == 32 or c == 10 or c == 13 or c == 9 or c == 12
+}
 
-fn is_alpha(c Int) Bool:
+fn is_alpha(c Int) Bool {
 	return (c >= 97 and c <= 122) or (c >= 65 and c <= 90)
+}
 
-fn is_heading(atom Int) Bool:
+fn is_heading(atom Int) Bool {
 	return atom >= A_H1 and atom <= A_H6
+}
 
 // The numeric value of `c` lower-cased when it is an ASCII capital.
-fn lower_byte(c Int) Int:
-	if c >= 65 and c <= 90: return c + 32
+fn lower_byte(c Int) Int {
+	if c >= 65 and c <= 90 { return c + 32 }
 	return c
+}
 
 // Whether the bytes of `data` at `at` equal the lower-case `name`, ignoring ASCII case.
-fn bytes_equal_fold(data Bytes, at Int, name Bytes) Bool:
-	for i in 0..name.length():
-		if lower_byte(data.get(at + i).to_int()) != name.get(i).to_int(): return false
+fn bytes_equal_fold(data Bytes, at Int, name Bytes) Bool {
+	for i in 0..name.length() {
+		if lower_byte(data.get(at + i).to_int()) != name.get(
+			i
+		).to_int() { return false }
+	}
 	return true
+}
 
 // ---- tokenizer ----
 
 // Whether `src[start, end)` has a byte that is an ASCII capital or at least 128.
-fn needs_ascii_lowering(src Bytes, start Int, end Int) Bool:
-	for i in start..end:
+fn needs_ascii_lowering(src Bytes, start Int, end Int) Bool {
+	for i in start..end {
 		b := src.get(i).to_int()
-		if (b >= 65 and b <= 90) or b >= 128: return true
+		if (b >= 65 and b <= 90) or b >= 128 { return true }
+	}
 
 	return false
+}
 
 // The text of `src[start, end)` with ASCII capitals lower-cased (other scalars
 // unchanged).
-fn lowered_text(src Bytes, start Int, end Int) String:
+fn lowered_text(src Bytes, start Int, end Int) String {
 	text := src.decode_utf8_range(start, end) or ""
-	if not needs_ascii_lowering(src, start, end): return text
+	if not needs_ascii_lowering(src, start, end) { return text }
 
 	var out = ""
 
-	for c in text.chars():
+	for c in text.chars() {
 		code := c.scalar_at(0)
 
-		if code >= 65 and code <= 90:
+		if code >= 65 and code <= 90 {
 			out += c.lower()
-		else:
+		} else {
 			out += c
+		}
+	}
 
 	return out
+}
 
 // The atom of the lower-cased name `src[start, end)`, or 0 when it is not a known tag
 // name.
-fn atom_of_range(src Bytes, start Int, end Int) Int:
+fn atom_of_range(src Bytes, start Int, end Int) Int {
 	length := end - start
-	if length <= 0: return 0
+	if length <= 0 { return 0 }
 
-	if length <= 6:
+	if length <= 6 {
 		var key = length
-		for i in start..end:
+		for i in start..end {
 			key = key * 256 + lower_byte(src.get(i).to_int())
+		}
 		return atom_short(key)
+	}
 
 	var hash = 5381
-	for i in start..end:
+	for i in start..end {
 		hash = (hash * 33 + lower_byte(src.get(i).to_int())) % 281474976710656
+	}
 
 	candidate := atom_long(hash)
-	if candidate == 0: return 0
+	if candidate == 0 { return 0 }
 	if (
 		bytes_equal_fold(src, start, atom_name(candidate).to_bytes())
 		and length == atom_name(candidate).length()
-	):
+	) {
 		return candidate
+	}
 
 	return 0
+}
 
 // The atom of a name that is already a string; only a few mixed-case names matter.
-fn atom_of_text(name String) Int:
-	if name == "foreignObject": return A_FOREIGNOBJECT
+fn atom_of_text(name String) Int {
+	if name == "foreignObject" { return A_FOREIGNOBJECT }
 	return 0
+}
 
 // Line breaks are normalized to LF.
-fn convert_newlines(text String) String:
-	if not text.contains("\r"): return text.clone()
+fn convert_newlines(text String) String {
+	if not text.contains("\r") { return text.clone() }
 	return text.replace("\r\n", "\n").replace("\r", "\n")
+}
 
-fn stop_atom(ns Int, atom Int) Bool:
-	if ns == NS_HTML: return is_scope_stop(atom)
-	if ns == NS_MATH: return is_math_stop(atom)
+fn stop_atom(ns Int, atom Int) Bool {
+	if ns == NS_HTML { return is_scope_stop(atom) }
+	if ns == NS_MATH { return is_math_stop(atom) }
 
 	return is_svg_stop(atom)
+}
 
-fn tag_matches(a Int, m1 Int, m2 Int, m3 Int) Bool:
-	if a == m1 or a == m2 or a == m3: return true
+fn tag_matches(a Int, m1 Int, m2 Int, m3 Int) Bool {
+	if a == m1 or a == m2 or a == m3 { return true }
 	return m1 == -2 and is_heading(a)
+}
 
 // Equality ignoring ASCII case.
-fn ascii_equal_fold(a String, b String) Bool:
+fn ascii_equal_fold(a String, b String) Bool {
 	ab := a.to_bytes()
 	bb := b.to_bytes()
-	if ab.length() != bb.length(): return false
+	if ab.length() != bb.length() { return false }
 
-	for i in 0..ab.length():
-		if lower_byte(ab.get(i).to_int()) != lower_byte(bb.get(i).to_int()): return false
+	for i in 0..ab.length() {
+		if lower_byte(ab.get(i).to_int()) != lower_byte(bb.get(i).to_int()) { return false }
+	}
 	return true
+}
 
 // The first byte that is not HTML whitespace, or the length of the text.
-fn trim_left_len(text String) Int:
+fn trim_left_len(text String) Int {
 	b := text.to_bytes()
 	var i = 0
-	while i < b.length() and is_space(b.get(i).to_int()):
+	while i < b.length() and is_space(b.get(i).to_int()) {
 		i += 1
+	}
 	return i
+}
 
 // ---- tree-construction helpers ----
 
 // Removes a leading CR, then a leading LF, from `text` (each only if present).
-fn strip_leading_newline(text String) String:
+fn strip_leading_newline(text String) String {
 	var d = text.clone()
-	if d.starts_with("\r"): d = d.view(1, d.length()).clone()
-	if d.starts_with("\n"): d = d.view(1, d.length()).clone()
+	if d.starts_with("\r") {
+		d = d.view(1, d.length()).clone()
+	}
+	if d.starts_with("\n") { d = d.view(1, d.length()).clone() }
 	return d
+}
 
 // Whether the text has no scalar other than HTML whitespace.
-fn is_blank(text String) Bool:
+fn is_blank(text String) Bool {
 	return trim_left_len(text) == text.length()
+}
 
-fn is_foreign_attribute(key String) Bool:
-	match key:
+fn is_foreign_attribute(key String) Bool {
+	match key {
 		"xlink:actuate" => return true
 		"xlink:arcrole" => return true
 		"xlink:href" => return true
@@ -3512,6 +4133,8 @@ fn is_foreign_attribute(key String) Bool:
 		"xml:space" => return true
 		"xmlns:xlink" => return true
 		_ => return false
+	}
+}
 
 QUIRKY_IDS := [
 	"+//silmaril//dtd html pro v0r11 19970101//",
@@ -3554,28 +4177,33 @@ QUIRKY_IDS := [
 
 // Lower-cases each scalar with its single-scalar mapping, as Go's `strings.ToLower`
 // does.
-fn go_lower(text String) String:
+fn go_lower(text String) String {
 	var out = ""
 
-	for c in text.chars():
+	for c in text.chars() {
 		lowered := c.lower()
 
-		if lowered.scalar_length() == 1:
+		if lowered.scalar_length() == 1 {
 			out += lowered
-		else if c == "\u{130}":
+		} else if c == "\u{130}" {
 			out += "i"
-		else:
+		} else {
 			out += c
+		}
+	}
 
 	return out
+}
 
-fn is_html_whitespace(b Int) Bool:
+fn is_html_whitespace(b Int) Bool {
 	return is_space(b)
+}
 
 // Whether `pos` is the start of a UTF-8 scalar (or the end) in `b`.
-fn valid_boundary(b Bytes, pos Int) Bool:
-	if pos >= b.length(): return true
+fn valid_boundary(b Bytes, pos Int) Bool {
+	if pos >= b.length() { return true }
 	return b.get(pos).to_int() < 128 or b.get(pos).to_int() >= 192
+}
 
 // ---- generated atom tables (HTML tag names from the Go html atom table) ----
 
@@ -3699,8 +4327,8 @@ A_WBR := 365
 A_XMP := 369
 
 // Atom for a lower-case name packed as length then up to six bytes, or 0.
-fn atom_short(key Int) Int:
-	match key:
+fn atom_short(key Int) Int {
+	match key {
 		353 => return 1
 		18813706866 => return 2
 		1795929357512820 => return 3
@@ -3891,10 +4519,12 @@ fn atom_short(key Int) Int:
 		19183853936 => return 368
 		58223984 => return 369
 		_ => return 0
+	}
+}
 
 // Atom for a longer lower-case name from its hash; the caller verifies the name.
-fn atom_long(hash Int) Int:
-	match hash:
+fn atom_long(hash Int) Int {
+	match hash {
 		75709808377100 => return 4
 		212666035018592 => return 5
 		229459127764030 => return 6
@@ -4075,10 +4705,12 @@ fn atom_long(hash Int) Int:
 		273661053224476 => return 360
 		175255844693089 => return 367
 		_ => return 0
+	}
+}
 
 // The name of an atom.
-fn atom_name(atom Int) String:
-	match atom:
+fn atom_name(atom Int) String {
+	match atom {
 		1 => return "a"
 		2 => return "abbr"
 		3 => return "accept"
@@ -4449,10 +5081,12 @@ fn atom_name(atom Int) String:
 		368 => return "wrap"
 		369 => return "xmp"
 		_ => return ""
+	}
+}
 
 // HTML special elements (by atom).
-fn is_special_atom(atom Int) Bool:
-	match atom:
+fn is_special_atom(atom Int) Bool {
+	match atom {
 		8 => return true
 		16 => return true
 		17 => return true
@@ -4536,10 +5170,12 @@ fn is_special_atom(atom Int) Bool:
 		365 => return true
 		369 => return true
 		_ => return false
+	}
+}
 
 // Elements whose end tags are implied.
-fn is_implied_end(atom Int) Bool:
-	match atom:
+fn is_implied_end(atom Int) Bool {
+	match atom {
 		62 => return true
 		78 => return true
 		142 => return true
@@ -4551,10 +5187,12 @@ fn is_implied_end(atom Int) Bool:
 		301 => return true
 		302 => return true
 		_ => return false
+	}
+}
 
 // HTML default-scope boundaries.
-fn is_scope_stop(atom Int) Bool:
-	match atom:
+fn is_scope_stop(atom Int) Bool {
+	match atom {
 		16 => return true
 		39 => return true
 		115 => return true
@@ -4565,10 +5203,12 @@ fn is_scope_stop(atom Int) Bool:
 		183 => return true
 		345 => return true
 		_ => return false
+	}
+}
 
 // MathML default-scope boundaries.
-fn is_math_stop(atom Int) Bool:
-	match atom:
+fn is_math_stop(atom Int) Bool {
+	match atom {
 		15 => return true
 		165 => return true
 		168 => return true
@@ -4576,28 +5216,34 @@ fn is_math_stop(atom Int) Bool:
 		170 => return true
 		171 => return true
 		_ => return false
+	}
+}
 
 // SVG default-scope boundaries.
-fn is_svg_stop(atom Int) Bool:
-	match atom:
+fn is_svg_stop(atom Int) Bool {
+	match atom {
 		66 => return true
 		89 => return true
 		351 => return true
 		_ => return false
+	}
+}
 
 // Table, section and row elements.
-fn is_table_context(atom Int) Bool:
-	match atom:
+fn is_table_context(atom Int) Bool {
+	match atom {
 		341 => return true
 		343 => return true
 		347 => return true
 		349 => return true
 		352 => return true
 		_ => return false
+	}
+}
 
 // Tags that leave foreign content.
-fn is_breakout_atom(atom Int) Bool:
-	match atom:
+fn is_breakout_atom(atom Int) Bool {
+	match atom {
 		26 => return true
 		32 => return true
 		34 => return true
@@ -4643,20 +5289,24 @@ fn is_breakout_atom(atom Int) Bool:
 		359 => return true
 		363 => return true
 		_ => return false
+	}
+}
 
 // MathML text integration points.
-fn is_math_text_atom(atom Int) Bool:
-	match atom:
+fn is_math_text_atom(atom Int) Bool {
+	match atom {
 		165 => return true
 		169 => return true
 		168 => return true
 		170 => return true
 		171 => return true
 		_ => return false
+	}
+}
 
 // Open elements allowed at end of input.
-fn is_end_ok_in_body(atom Int) Bool:
-	match atom:
+fn is_end_ok_in_body(atom Int) Bool {
+	match atom {
 		62 => return true
 		78 => return true
 		142 => return true
@@ -4676,10 +5326,12 @@ fn is_end_ok_in_body(atom Int) Bool:
 		35 => return true
 		115 => return true
 		_ => return false
+	}
+}
 
 // In-body start-tag rule for an atom, as one of the `S_*` constants (0 for null).
-fn body_start_class(atom Int) Int:
-	match atom:
+fn body_start_class(atom Int) Int {
+	match atom {
 		115 => return 1  // html
 		27 => return 2  // base
 		28 => return 2  // basefont
@@ -4788,10 +5440,12 @@ fn body_start_class(atom Int) Int:
 		349 => return 32  // thead
 		352 => return 32  // tr
 		_ => return 0
+	}
+}
 
 // In-body end-tag rule for an atom, as one of the `E_*` constants (0 for null).
-fn body_end_class(atom Int) Int:
-	match atom:
+fn body_end_class(atom Int) Int {
+	match atom {
 		35 => return 1  // body
 		115 => return 2  // html
 		8 => return 3  // address
@@ -4852,9 +5506,11 @@ fn body_end_class(atom Int) Int:
 		36 => return 11  // br
 		345 => return 12  // template
 		_ => return 0
+	}
+}
 
-fn svg_tag(name String) String:
-	match name:
+fn svg_tag(name String) String {
+	match name {
 		"altglyph" => return "altGlyph"
 		"altglyphdef" => return "altGlyphDef"
 		"altglyphitem" => return "altGlyphItem"
@@ -4892,9 +5548,11 @@ fn svg_tag(name String) String:
 		"radialgradient" => return "radialGradient"
 		"textpath" => return "textPath"
 		_ => return ""
+	}
+}
 
-fn svg_attribute(name String) String:
-	match name:
+fn svg_attribute(name String) String {
+	match name {
 		"attributename" => return "attributeName"
 		"attributetype" => return "attributeType"
 		"basefrequency" => return "baseFrequency"
@@ -4954,107 +5612,125 @@ fn svg_attribute(name String) String:
 		"ychannelselector" => return "yChannelSelector"
 		"zoomandpan" => return "zoomAndPan"
 		_ => return ""
+	}
+}
 
 // ---- public parse ----
 
-fn limit_error() Error:
+fn limit_error() Error {
 	return Error("HTML: limit exceeded", kind: "EOVERFLOW")
+}
 
 // A limit as a count: null is unlimited and a negative limit is an `EINVAL` error.
-fn budget(limit Int?) Int!:
-	if limit == null: return ok(9223372036854775807)
+fn budget(limit Int?) Int! {
+	if limit == null { return ok(9223372036854775807) }
 
 	n := limit
-	if n < 0: return error(Error("HTML: invalid input", kind: "EINVAL"))
+	if n < 0 { return error(Error("HTML: invalid input", kind: "EINVAL")) }
 
 	return ok(n)
+}
 
 // Whether the tree under the document has at most `max_nodes` reachable nodes and nests
 // at most `max_depth` levels (the document is level zero).
-fn within_limits(p Parser, max_depth Int, max_nodes Int) Bool:
+fn within_limits(p Parser, max_depth Int, max_nodes Int) Bool {
 	var stack List[Int] = [1]
 	var depths List[Int] = [0]
 	var count = 0
 
-	while stack.length() > 0:
+	while stack.length() > 0 {
 		id := stack.pop() or 1
 		depth := depths.pop() or 0
 		count += 1
-		if count > max_nodes or depth > max_depth: return false
+		if count > max_nodes or depth > max_depth { return false }
 
 		var child = p.first[id]
 
-		while child >= 0:
+		while child >= 0 {
 			stack.append(child)
 			depths.append(depth + 1)
 			child = p.next[child]
+		}
+	}
 
 	return true
+}
 
 // Parses HTML into a normalized tree and applies the limits in `options`. The result is
 // the `Document` node.
-export fn parse(text String, options HtmlOptions = HtmlOptions()) HtmlNode!:
+export fn parse(text String, options HtmlOptions = HtmlOptions()) HtmlNode! {
 	max_bytes := budget(options.max_bytes)?
 	max_depth := budget(options.max_depth)?
 	max_nodes := budget(options.max_nodes)?
-	if text.length() > max_bytes: return error(limit_error())
+	if text.length() > max_bytes { return error(limit_error()) }
 
 	var max_open = max_depth
-	if max_depth < 9000000000000000000: max_open = max_depth + 64
+	if max_depth < 9000000000000000000 { max_open = max_depth + 64 }
 
 	src := text.to_bytes()
 	var p = Parser(src: src.clone(), size: src.length(), max_open: max_open)
 	p.run()
-	if p.exceeded: return error(limit_error())
-	if not within_limits(p, max_depth, max_nodes): return error(limit_error())
+	if p.exceeded { return error(limit_error()) }
+	if not within_limits(p, max_depth, max_nodes) { return error(limit_error()) }
 
 	return ok(node(p, 1))
+}
 
 // Copies node `id`, and everything under it, into an `HtmlNode`.
-fn node(p Parser, id Int) HtmlNode:
+fn node(p Parser, id Int) HtmlNode {
 	kind := p.kind[id]
 
-	if kind == K_ELEMENT:
+	if kind == K_ELEMENT {
 		var namespace = ""
-		if p.ns[id] == NS_MATH: namespace = "math"
-		if p.ns[id] == NS_SVG: namespace = "svg"
+		if p.ns[id] == NS_MATH { namespace = "math" }
+		if p.ns[id] == NS_SVG { namespace = "svg" }
 		return HtmlNode.Element(
 			p.tag_name(id),
 			namespace,
 			attributes(p, id),
 			children(p, id),
 		)
+	}
 
-	if kind == K_TEXT: return HtmlNode.Text(p.data[id].clone())
-	if kind == K_COMMENT: return HtmlNode.Comment(p.data[id].clone())
+	if kind == K_TEXT {
+		return HtmlNode.Text(p.data[id].clone())
+	}
+	if kind == K_COMMENT {
+		return HtmlNode.Comment(p.data[id].clone())
+	}
 
-	if kind == K_DOCTYPE:
+	if kind == K_DOCTYPE {
 		var public_id = ""
 		var system_id = ""
 		start := p.attr_start[id]
 
-		for i in 0..p.attr_count[id]:
-			if p.akey[start + i] == "public": public_id = p.aval[start + i].clone()
-			if p.akey[start + i] == "system": system_id = p.aval[start + i].clone()
+		for i in 0..p.attr_count[id] {
+			if p.akey[start + i] == "public" { public_id = p.aval[start + i].clone() }
+			if p.akey[start + i] == "system" { system_id = p.aval[start + i].clone() }
+		}
 
 		return HtmlNode.Doctype(p.data[id].clone(), public_id, system_id)
+	}
 
 	return HtmlNode.Document(children(p, id))
+}
 
-fn children(p Parser, id Int) List[HtmlNode]:
+fn children(p Parser, id Int) List[HtmlNode] {
 	var out List[HtmlNode] = []
 	var at = p.first[id]
 
-	while at >= 0:
+	while at >= 0 {
 		out.append(node(p, at))
 		at = p.next[at]
+	}
 
 	return out
+}
 
-fn attributes(p Parser, id Int) List[HtmlAttribute]:
+fn attributes(p Parser, id Int) List[HtmlAttribute] {
 	var out List[HtmlAttribute] = []
 	start := p.attr_start[id]
-	for i in 0..p.attr_count[id]:
+	for i in 0..p.attr_count[id] {
 		out.append(
 			HtmlAttribute(
 				name: p.akey[start + i].clone(),
@@ -5062,4 +5738,6 @@ fn attributes(p Parser, id Int) List[HtmlAttribute]:
 				value: p.aval[start + i].clone(),
 			)
 		)
+	}
 	return out
+}

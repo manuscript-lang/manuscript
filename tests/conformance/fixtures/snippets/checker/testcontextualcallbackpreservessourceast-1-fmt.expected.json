@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Callback:\n\tvalue fn(Int) Int\n\nfn example() Void:\n\t_callback := Callback(value => value + 1)\n"
+    "fmt": "type Callback {\n\tvalue fn(Int) Int\n}\n\nfn example() Void {\n\t_callback := Callback(value => value + 1)\n}\n"
   }
 }

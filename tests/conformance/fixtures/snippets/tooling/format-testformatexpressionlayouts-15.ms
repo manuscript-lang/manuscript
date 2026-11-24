@@ -1,14 +1,16 @@
 // conform: tags=closures,control-flow,diagnostics,tier-core
 // conform: phase=check
 // conform: origin=pkg/tooling/format/format_layout_test.go:142 TestFormatExpressionLayouts
-fn work() Int:
-    value := (
-        [2, 5, 3, (-6), (-9), 1, 2, 3, 4]
-        .clone()
-        .sorted(fn(l Int, r Int) Int => (l - r))
-        .first()
-    )
-    if value != null:
-        return value
+fn work() Int {
+	value := (
+		[2, 5, 3, (-6), (-9), 1, 2, 3, 4]
+		.clone()
+		.sorted(fn(l Int, r Int) Int => (l - r))
+		.first()
+	)
+	if value != null {
+		return value
+	}
 
-    return 0
+	return 0
+}

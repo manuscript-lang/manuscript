@@ -14,13 +14,13 @@
           "file": "golden-0985.ms",
           "line": 5,
           "column": 14,
-          "offset": 91
+          "offset": 93
         },
         "end": {
           "file": "golden-0985.ms",
           "line": 5,
           "column": 15,
-          "offset": 92
+          "offset": 94
         }
       },
       {
@@ -29,22 +29,22 @@
         "message": "expected an expression, found '='; write a value, name, call, or literal here",
         "position": {
           "file": "golden-0985.ms",
-          "line": 7,
+          "line": 8,
           "column": 10,
-          "offset": 119
+          "offset": 127
         },
         "end": {
           "file": "golden-0985.ms",
-          "line": 7,
+          "line": 8,
           "column": 11,
-          "offset": 120
+          "offset": 128
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0985.ms:5:14: parse: expected an expression, found '='; write a value, name, call, or literal here\n   |\n 5 |         y := = 3\n   |              ^\n<DIR>/golden-0985.ms:7:10: parse: expected an expression, found '='; write a value, name, call, or literal here\n   |\n 7 |     w := = 4\n   |          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0985.ms:5:14: parse: expected an expression, found '='; write a value, name, call, or literal here\n   |\n 5 |         y := = 3\n   |              ^\n<DIR>/golden-0985.ms:8:10: parse: expected an expression, found '='; write a value, name, call, or literal here\n   |\n 8 |     w := = 4\n   |          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

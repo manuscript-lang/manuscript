@@ -27,41 +27,50 @@
 // duty.
 import Closeable from "@std/core.ms"
 
-type Token:
+type Token {
 	id Int
+}
 
-fn move Token.close() Void!:
+fn move Token.close() Void! {
 	print(f"close {self.id}")
+}
 
-type NamedToken:
+type NamedToken {
 	id Int
 	name String
+}
 
-fn move NamedToken.close() Void!:
+fn move NamedToken.close() Void! {
 	print(f"close {self.id}")
+}
 
-enum Choice:
+enum Choice {
 	Full(first Token, second Token, third Token, code Int)
 	Empty
+}
 
-enum NamedChoice:
+enum NamedChoice {
 	NamedFull(first NamedToken, second NamedToken, third NamedToken, code Int)
 	NamedEmpty
+}
 
-enum GenericChoice[T]:
+enum GenericChoice[T] {
 	GenericFull(first T, second T, code Int)
 	GenericEmpty
+}
 
-fn scalar_omitted() Void:
+fn scalar_omitted() Void {
 	value := Full(Token(1), Token(2), Token(3), 7)
 
-	code := match value:
+	code := match value {
 		Full(_, _, _, code) => code
 		Empty => 0
+	}
 
 	print(f"code {code}")
+}
 
-fn heap_omitted() Void:
+fn heap_omitted() Void {
 	value := NamedFull(
 		NamedToken(4, "first"),
 		NamedToken(5, "second"),
@@ -69,64 +78,79 @@ fn heap_omitted() Void:
 		8,
 	)
 
-	code := match value:
+	code := match value {
 		NamedFull(_, _, _, code) => code
 		NamedEmpty => 0
+	}
 
 	print(f"code {code}")
+}
 
-fn mixed() Void:
+fn mixed() Void {
 	value := Full(Token(7), Token(8), Token(9), 0)
 
-	void match value:
-		Full(first, _, third, _):
+	void match value {
+		Full(first, _, third, _) => {
 			print(f"kept {first.id} {third.id}")
+		}
 		Empty => void
+	}
+}
 
-fn borrowed() Void:
+fn borrowed() Void {
 	value := Full(Token(10), Token(11), Token(12), 9)
 
-	code := match value:
+	code := match value {
 		Full(first, _, _, code) => code + first.id
 		Empty => 0
+	}
 
-	original := match value:
+	original := match value {
 		Full(_, _, _, saved) => saved
 		Empty => 0
+	}
 
 	print(f"borrowed {code - original} {original}")
 
-	void match value:
+	void match value {
 		Full(first, _, _, _) => first.id
 		Empty => 0
+	}
+}
 
-fn wildcard() Void:
+fn wildcard() Void {
 	value := Full(Token(13), Token(14), Token(15), 0)
 
-	code := match value:
+	code := match value {
 		_ => 0
+	}
 
 	print(f"wildcard {code}")
+}
 
-fn generic() Void:
+fn generic() Void {
 	value := GenericFull(Token(16), Token(17), 11)
 
-	code := match value:
+	code := match value {
 		GenericFull(_, _, code) => code
 		GenericEmpty => 0
+	}
 
 	print(f"generic {code}")
+}
 
-fn empty() Void:
+fn empty() Void {
 	value Choice := Empty
 
-	code := match value:
+	code := match value {
 		Full(_, _, _, code) => code
 		Empty => 0
+	}
 
 	print(f"empty {code}")
+}
 
-fn main() Void:
+fn main() Void {
 	scalar_omitted()
 	heap_omitted()
 	mixed()
@@ -134,3 +158,4 @@ fn main() Void:
 	wildcard()
 	generic()
 	empty()
+}

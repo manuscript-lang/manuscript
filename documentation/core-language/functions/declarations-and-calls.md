@@ -9,8 +9,9 @@ A function names its inputs, declares their types, and declares its return type.
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn decrement(value Int) Int:
+fn decrement(value Int) Int {
     return value - 1
+}
 
 remaining := decrement(3)
 ```
@@ -31,11 +32,13 @@ An entry file declares a nongeneric `fn main()` with no parameters; `export` is 
 
 <!-- manuscript-example: {"mode":"run","stdout":"checking\n"} -->
 ```manuscript
-fn check() Void!:
+fn check() Void! {
     print("checking")
+}
 
-fn main() Void!:
+fn main() Void! {
     return check()
+}
 ```
 
 ## Argument names
@@ -44,9 +47,9 @@ Labels are optional. An unlabeled argument fills the first parameter not yet fil
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn reduce(amount Int, deduction Int) Int:
+fn reduce(amount Int, deduction Int) Int {
     return amount - deduction
-
+}
 remaining := reduce(10, 3)
 explicit_remaining := reduce(amount: 10, deduction: 3)
 mixed := reduce(deduction: 3, 10)
@@ -78,13 +81,15 @@ Write `= expression` after a parameter's type to supply a default:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn subtract(amount Int, deduction Int = 1) Int:
+fn subtract(amount Int, deduction Int = 1) Int {
     return amount - deduction
+}
 
-fn example() Int:
+fn example() Int {
     usual := subtract(5)
     explicit := subtract(5, 2)
     return usual + explicit
+}
 ```
 
 `usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`.
@@ -104,10 +109,10 @@ To accept a variable number of values, declare an ordinary list parameter:
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn sum(values List[Int]) Int:
+fn sum(values List[Int]) Int {
     total := values.sum()
-
     return total
+}
 
 total := sum([1, 2, 3])
 empty := sum([])
@@ -136,12 +141,15 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 ```manuscript
 import panic from "@std/core.ms"
 
-fn check_positive(value Int) Void:
-    if not (value > 0):
+fn check_positive(value Int) Void {
+    if not (value > 0) {
         return panic(message: "check failed")
+    }
+}
 
-fn missing_value() Int:
+fn missing_value() Int {
     return panic(message: "Required value is missing")
+}
 ```
 
 `panic` has type `fn(String) Never`. A `Never` expression cannot complete normally and is accepted where any value type is expected. `List[Never]` is not compatible with `List[Int]`.
@@ -164,10 +172,12 @@ Typing is separate: `1 + panic(message: "stop")` has type `Int` ([operators](../
 
 <!-- manuscript-example: {"mode":"error","contains":"reachable fallthrough","given":[]} -->
 ```manuscript
-fn incomplete(active Bool) Int:
-    if active:
+fn incomplete(active Bool) Int {
+    if active {
         return 1
+    }
     // Rejected: the false path reaches the end without returning Int.
+}
 ```
 
 Unreachable statements are still parsed, resolved, and type-checked. A `Never` function has no reachable normal exit. A bare call may be a statement; other expressions cannot.

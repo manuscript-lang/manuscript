@@ -12,7 +12,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
-          "line": 7,
+          "line": 8,
           "column": 14,
           "offset": 235
         }
@@ -23,7 +23,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
-          "line": 8,
+          "line": 9,
           "column": 23,
           "offset": 271
         }
@@ -34,7 +34,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
-          "line": 9,
+          "line": 10,
           "column": 10,
           "offset": 313
         }
@@ -45,7 +45,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
-          "line": 12,
+          "line": 13,
           "column": 12,
           "offset": 377
         }
@@ -54,7 +54,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-functions-declarations-and-calls-2.ms:7:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | remaining := reduce(10, 3)\n   |              ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:8:23: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | explicit_remaining := reduce(amount: 10, deduction: 3)\n   |                       ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:9:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | mixed := reduce(deduction: 3, 10)\n   |          ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:12:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 12 | swapped := reduce(deduction: deduction, amount: amount)\n    |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-functions-declarations-and-calls-2.ms:8:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | remaining := reduce(10, 3)\n   |              ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:9:23: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | explicit_remaining := reduce(amount: 10, deduction: 3)\n   |                       ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:10:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 10 | mixed := reduce(deduction: 3, 10)\n    |          ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:13:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 13 | swapped := reduce(deduction: deduction, amount: amount)\n    |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

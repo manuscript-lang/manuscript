@@ -25,60 +25,68 @@ import (
 	binaries_json, fresh_directory, labeled, write_json from "./study.ms",
 )
 
-fn sizes() List[Int]:
+fn sizes() List[Int] {
 	return [0, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576]
+}
 
-fn kinds() List[String]:
+fn kinds() List[String] {
 	return [
 		"miss", "first", "middle", "last", "negative", "past", "equal", "offset",
 		"near1", "near7", "near8", "near9", "near15", "near16", "near17", "near18",
 		"near23", "near24", "near25", "near31", "near32", "near33"
 	]
+}
 
 // The expected (size, iterations, checksum) of every case.
-fn identities() Map[String, Identity]:
+fn identities() Map[String, Identity] {
 	var rows = Map[String, Identity]()
 
-	for size in sizes():
-		for kind in kinds():
+	for size in sizes() {
+		for kind in kinds() {
 			var position = -1
 			var start = 0
-			if kind == "first" or kind == "negative" or kind == "past": position = 0
+			if kind == "first" or kind == "negative" or kind == "past" { position = 0 }
 
-			if kind.starts_with("near"):
+			if kind.starts_with("near") {
 				want := kind.slice(4, kind.length()).parse_int() or 0
-				position = if want < size - 1: want else: size - 1
+				position = if want < size - 1 { want } else { size - 1 }
+			}
 
-			if kind == "middle": position = size / 2
-			if kind == "last" or kind == "offset": position = size - 1
-			if kind == "negative": start = -1
-			if kind == "past": start = size + 1
-			if kind == "equal": start = size
-			if kind == "offset": start = size / 2
+			if kind == "middle" { position = size / 2 }
+			if kind == "last" or kind == "offset" { position = size - 1 }
+			if kind == "negative" { start = -1 }
+			if kind == "past" { start = size + 1 }
+			if kind == "equal" { start = size }
+			if kind == "offset" { start = size / 2 }
 
-			from := if start > 0: start else: 0
+			from := if start > 0 { start } else { 0 }
 
 			// The first 0xFF at or after `from`, or -1.
-			found := if position >= 0 and position < size and position >= from: position else: -1
-			expected := if found == -1: size else: found
+			found := if position >= 0 and position < size and position >= from { position } else { - 1 }
+			expected := if found == -1 { size } else { found }
 			var work = size
-			if expected < size: work = expected + 1 - start
-			if start < 0: work = expected + 1
-			if start >= size: work = 1
+			if expected < size { work = expected + 1 - start }
+			if start < 0 { work = expected + 1 }
+			if start >= size { work = 1 }
 
-			divisor := if work > 32: work else: 32
+			divisor := if work > 32 { work } else { 32 }
 			by_work := 67108864 / divisor
-			iterations := if by_work < 256: 256 else: (
-				if by_work > 1000000: 1000000 else: by_work
-			)
+			iterations := if by_work < 256 {
+				256
+			} else {
+				(if by_work > 1000000 { 1000000 } else { by_work })
+			}
 			rows.add(
 				f"{kind}_{size}",
 				Identity(size, iterations, expected * iterations),
 			)
+		}
+	}
 
 	return rows
+}
 
-fn run(paths Map[String, String], out String, cpu String) Result[Void, Error]:
+fn run(paths Map[String, String], out String, cpu String) Result[Void, Error] {
 	fresh_directory(out)?
 
 	expected := identities()
@@ -89,21 +97,25 @@ fn run(paths Map[String, String], out String, cpu String) Result[Void, Error]:
 	var complete = false
 	var per = Map[String, List[Float]]()
 
-	for name in names:
+	for name in names {
 		_warm := run_rows(paths.get_or(name, ""), expected, cpu)?
 		validated.append(jstr(f"warmup {name}"))
+	}
 
-	for pair in 0..orders.length():
-		for variant in orders[pair]:
-			for row in run_rows(paths.get_or(variant, ""), expected, cpu)?:
+	for pair in 0..orders.length() {
+		for variant in orders[pair] {
+			for row in run_rows(paths.get_or(variant, ""), expected, cpu)? {
 				csv.append(f"{pair},{variant},{row.line}")
 
 				key := f"{row.name} {variant}"
 				var list = per.get_or(key, [])
 				list.append(row.elapsed_ns.to_float() / row.iterations.to_float())
 				per.add(key.clone(), list)
+			}
 
 			validated.append(jstr(f"{pair} {variant}"))
+		}
+	}
 
 	complete = true
 
@@ -124,10 +136,10 @@ fn run(paths Map[String, String], out String, cpu String) Result[Void, Error]:
 		"case,before_median_ns,before_min_ns,before_max_ns,after_median_ns,after_min_ns,after_max_ns,rust_median_ns,rust_min_ns,rust_max_ns,paired_delta_median_ns,pairs_slower"
 	]
 
-	for name in expected.keys():
+	for name in expected.keys() {
 		var cells = List[String]()
 
-		for variant in names:
+		for variant in names {
 			s := per.get_or(f"{name} {variant}", [])
 			sorted := s.sorted()
 			cells = cells.concat(
@@ -135,17 +147,20 @@ fn run(paths Map[String, String], out String, cpu String) Result[Void, Error]:
 					f"{median(s)}", f"{sorted[0]}", f"{sorted[sorted.length() - 1]}"
 				]
 			)
+		}
 
 		b := per.get_or(f"{name} before", [])
 		a := per.get_or(f"{name} after", [])
 		var deltas = List[Float]()
 		var slower = 0
 
-		for i in 0..b.length():
+		for i in 0..b.length() {
 			deltas.append(a[i] - b[i])
-			if a[i] - b[i] > 0.0: slower += 1
+			if a[i] - b[i] > 0.0 { slower += 1 }
+		}
 
 		rows.append(f"{name},{cells.join(",")},{median(deltas)},{slower}")
+	}
 
 	write_text(f"{out}/summary.csv", rows.join("\n") + "\n")
 	(
@@ -153,15 +168,18 @@ fn run(paths Map[String, String], out String, cpu String) Result[Void, Error]:
 			f"{expected.length()} cases, {orders.length()} orders, {out}/summary.csv\n"
 		).get()
 	)
+}
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
-	if args.length() < 4: return fail(
-		"usage: bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]"
-	)
+	if args.length() < 4 {
+		return fail(
+			"usage: bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]"
+		)
+	}
 
 	parsed := options(args.slice(4, args.length()).get_or([]), ["cpu"], [])
-	if parsed.is_error(): return fail(parsed.err().message)
+	if parsed.is_error() { return fail(parsed.err().message) }
 
 	var paths = Map[String, String]()
 	paths.add("before", absolute(args[0].clone()))
@@ -173,6 +191,7 @@ fn main() Int:
 		args[3].clone(),
 		parsed.get_or(Map[String, String]()).get_or("cpu", ""),
 	)
-	if result.is_error(): return fail(result.err().message)
+	if result.is_error() { return fail(result.err().message) }
 
 	return 0
+}
