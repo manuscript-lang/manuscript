@@ -4,6 +4,9 @@
  * the call can reach a cancellation point. Elsewhere the test becomes the constant zero, and the simplifier removes
  * the branch and the exit it guarded. */
 #include "compiler/mir/mir_pass.h"
+#include <stdlib.h>
+#include <string.h>
+#define MS_DIAG(c) (getenv("MS_DIAG") != NULL && strchr(getenv("MS_DIAG"), (c)) != NULL)
 #include "compiler/opt/opt_pass.h"
 
 /* Whether `inst` is the byte test of an unwind site. */
@@ -96,7 +99,7 @@ bool opt_unwind_pairs(MirModule *m) {
       MirInstList *insts = &f->blocks.ptr[bi].insts;
       size_t out = 0;
       for (size_t k = 0; k < insts->len; k++) {
-        if (k + 1 < insts->len && calls_named(m, &insts->ptr[k], pause) && calls_named(m, &insts->ptr[k + 1], resume)) {
+        if (!MS_DIAG('P') && k + 1 < insts->len && calls_named(m, &insts->ptr[k], pause) && calls_named(m, &insts->ptr[k + 1], resume)) {
           k++; /* nothing runs between them: the byte is set aside and put back untouched */
           changed = true;
           continue;
@@ -105,7 +108,7 @@ bool opt_unwind_pairs(MirModule *m) {
       }
       insts->len = out;
     }
-    changed = share_exits(f) || changed;
+    changed = (!MS_DIAG('S') && share_exits(f)) || changed;
   }
   return changed;
 }
