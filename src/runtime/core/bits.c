@@ -3,16 +3,18 @@
 #include "runtime/core/bits.h"
 #include "runtime/core/fault.h"
 
-/* Faults unless `count` is a valid shift count (0 through 63). */
-static unsigned shift_count(const char *operation, int64_t count) {
+/* Whether `count` is a valid shift count (0 through 63); otherwise a fault is posted. */
+static bool shift_count(const char *operation, int64_t count, unsigned *out) {
   if (count < 0 || count > 63) {
     MsStrBuild message = ms_strbuild_new();
     ms_strbuild_append_text(&message, operation);
     ms_strbuild_append_text(&message, ": count must be between 0 and 63, found ");
     ms_strbuild_append_i64(&message, count);
-    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+    ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
+    return false;
   }
-  return (unsigned)count;
+  *out = (unsigned)count;
+  return true;
 }
 
 /* Rotations take the count modulo 64, negative counts rotating the other way. */
@@ -33,17 +35,22 @@ int64_t msrt_bits_bit_xor(int64_t left, int64_t right) {
 }
 
 int64_t msrt_bits_shift_left(int64_t value, int64_t count) {
-  return (int64_t)((uint64_t)value << shift_count("shift_left", count));
+  unsigned n = 0;
+  return shift_count("shift_left", count, &n) ? (int64_t)((uint64_t)value << n) : 0;
 }
 
 int64_t msrt_bits_shift_right(int64_t value, int64_t count) {
-  const unsigned n = shift_count("shift_right", count);
+  unsigned n = 0;
+  if (!shift_count("shift_right", count, &n)) {
+    return 0;
+  }
   return value < 0 ? ~(~value >> n)
                    : value >> n; /* arithmetic, whatever the compiler does with >> on negatives */
 }
 
 int64_t msrt_bits_shift_right_unsigned(int64_t value, int64_t count) {
-  return (int64_t)((uint64_t)value >> shift_count("shift_right_unsigned", count));
+  unsigned n = 0;
+  return shift_count("shift_right_unsigned", count, &n) ? (int64_t)((uint64_t)value >> n) : 0;
 }
 
 int64_t msrt_bits_rotate_left(int64_t value, int64_t count) {

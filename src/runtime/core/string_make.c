@@ -16,6 +16,10 @@ void msrt_string_limit_fault(void) {
   ms_fault_text(MS_FAULT_KIND_FAULT, "string: limit exceeded");
 }
 
+void msrt_string_limit_post(void) {
+  ms_fault_post_text(MS_FAULT_KIND_FAULT, "string: limit exceeded");
+}
+
 size_t msrt_string_total(size_t a, size_t b) {
   size_t total = 0;
   if (!ms_size_add(a, b, &total) || total > MSRT_STRING_LIMIT) {
@@ -285,7 +289,8 @@ void msrt_string_repeat(const MsString *s, int64_t count, MsString *out) {
     return;
   }
   if ((uint64_t)count > MSRT_STRING_LIMIT / text.len) {
-    msrt_string_limit_fault();
+    msrt_string_limit_post();
+    return;
   }
   const size_t total = text.len * (size_t)count;
   uint8_t small[MS_STRING_INLINE_MAX + 1];

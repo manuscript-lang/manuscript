@@ -18,6 +18,8 @@ MS_LIST_DEFINE(MsStringList, ms_string_list, MsString)
 
 /* Raises the fault "string: limit exceeded". */
 MS_NORETURN void msrt_string_limit_fault(void);
+/* Posts the same fault and returns: the caller releases what it owns and returns at once. */
+void msrt_string_limit_post(void);
 
 /* a + b, faulting past the string limit. */
 size_t msrt_string_total(size_t a, size_t b);

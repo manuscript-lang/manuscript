@@ -18,7 +18,8 @@ uint8_t msrt_eq_enter(const uint8_t *a, const uint8_t *b) {
     }
   }
   if (unwind->eq_pairs.len >= MAX_EQ_DEPTH) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "equality comparison is nested too deeply");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "equality comparison is nested too deeply");
+    return 0; /* nothing was registered, so there is nothing to leave */
   }
   ms_eq_pair_list_push(&unwind->eq_pairs, (MsEqPair){.a = left, .b = right});
   return 1;
