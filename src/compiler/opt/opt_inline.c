@@ -11,7 +11,7 @@
 #include "compiler/opt/opt_simplify.h"
 
 /* Extra allowance when the callee has a single call site, and per constant argument. */
-#define IL_SINGLE_CALLER_BONUS 400u
+#define IL_SINGLE_CALLER_BONUS 25u
 #define IL_CONST_ARG_BONUS 5u
 /* Largest self-recursive function unrolled once into itself. */
 #define IL_SELF_UNROLL_MAX_SIZE 40u
