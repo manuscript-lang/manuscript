@@ -520,17 +520,35 @@ static void rl_propagate(RgLen *c, const RlGraph *g, const uint32_t *seeded, con
       work[nw++] = params[i];
     }
   }
-  while (nw != 0) {
-    const uint32_t v = work[--nw];
-    for (uint32_t k = g->ustart[v]; k < g->ustart[v + 1]; k++) {
-      const uint32_t u = g->users[k];
-      if (u < c->nv && mir_bits_test(pinned, u)) {
-        continue;
+  for (bool again = true; again;) {
+    while (nw != 0) {
+      const uint32_t v = work[--nw];
+      for (uint32_t k = g->ustart[v]; k < g->ustart[v + 1]; k++) {
+        const uint32_t u = g->users[k];
+        if (u < c->nv && mir_bits_test(pinned, u)) {
+          continue;
+        }
+        const uint32_t next = rl_join(c->facts[u], c->facts[v]);
+        if (next != c->facts[u]) {
+          c->facts[u] = next;
+          work[nw++] = u;
+        }
       }
-      const uint32_t next = rl_join(c->facts[u], c->facts[v]);
-      if (next != c->facts[u]) {
-        c->facts[u] = next;
-        work[nw++] = u;
+    }
+    /* A join with a source nothing is known about (a list read from a record that came in as a value) shares no origin:
+     * it is mixed, not the origin of its other sources. */
+    again = false;
+    for (uint32_t i = 0; i < nparams; i++) {
+      const uint32_t p = params[i];
+      for (uint32_t k = g->sstart[p]; c->facts[p] != RL_UNKNOWN && c->facts[p] != RL_MIXED && !mir_bits_test(pinned, p) &&
+                                      k < g->sstart[p + 1];
+           k++) {
+        if (c->facts[g->sources[k]] == RL_UNKNOWN) {
+          c->facts[p] = RL_MIXED;
+          work[nw++] = p;
+          again = true;
+          break;
+        }
       }
     }
   }
