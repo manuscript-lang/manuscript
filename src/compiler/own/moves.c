@@ -478,21 +478,14 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     note_last_field(pass, expr);
   }
   const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(pass->facts, expr->id) : NULL;
-  /* `ok(x)`, `some(x)` and `error(x)` wrap what they are given: Optional and Result need no `.clone()` for plain data
-   * (design/wiki/language/results-borrow-parts-of-their-arguments-without-a-marker.md, boundary copies). */
-  const MsTy made = call != NULL ? ms_facts_type(pass->facts, expr->id) : MS_TY_NONE;
-  const bool wrapper = made != MS_TY_NONE && (ms_ty_is(&pass->program->types, made, MS_BUILTIN_Optional) ||
-                                              ms_ty_is(&pass->program->types, made, MS_BUILTIN_Result));
   for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
     if (call->args[index].source != MS_ARG_WRITTEN || (!call->constructor && (call->args[index].flags & MS_PARAM_MOVE) == 0)) {
       continue;
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
       if (expr->u.call.args.ptr[at].value->id == call->args[index].node.node) {
-        check_handed_on(pass, expr->u.call.args.ptr[at].value, !wrapper);
-        if (!wrapper) {
-          check_place_handed_on(pass, expr->u.call.args.ptr[at].value);
-        }
+        check_handed_on(pass, expr->u.call.args.ptr[at].value, true);
+        check_place_handed_on(pass, expr->u.call.args.ptr[at].value);
       }
     }
   }
@@ -503,6 +496,12 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
       const MsArm *one = expr->u.match.arms.ptr[arm];
       ms_binding_list_push(&pass->borrowed, one->id);
     }
+  }
+  /* `x or default` gives the payload of `x` to the result, so `x` is moved, never copied. `x or panic(..)` only reads. */
+  if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR && !ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
+      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
+    check_handed_on(pass, expr->u.bin.left, true);
+    check_place_handed_on(pass, expr->u.bin.left);
   }
   /* A list or map literal makes a new owner of every element it is given. */
   for (uint32_t at = 0; expr->kind == MS_E_LIST && at < expr->u.list.len; at++) {
