@@ -4,6 +4,8 @@
 # flavor from the name it is run as, so it is copied as `ld.lld` (ld64.lld on macOS), and the compiler driver is
 # pointed at that copy. MS_SYSTEM_LINKER=ON keeps the compiler's own linker (a fallback for a host that cannot reach
 # the release).
+# MS_LLD_TOOL: the multi-call `lld` of this build tree, which a build-tree ms runs for the glibc stubs (src/cli/pipeline.c).
+set(MS_LLD_TOOL "lld")
 option(MS_SYSTEM_LINKER "Link ms with the compiler's own linker instead of the pinned lld" OFF)
 if(MS_SYSTEM_LINKER OR MSVC)
   return()
@@ -55,6 +57,7 @@ if(NOT EXISTS "${MS_LLD}")
   file(COPY_FILE "${ms_lld_dir}/extract/bin/lld${ms_lld_suffix}" "${MS_LLD}")
   file(CHMOD "${MS_LLD}" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 endif()
+set(MS_LLD_TOOL "${ms_lld_dir}/extract/bin/lld${ms_lld_suffix}")
 # Only C links: a C++ compiler another part of the build enables is not necessarily clang.
 add_link_options("$<$<LINK_LANGUAGE:C>:--ld-path=${MS_LLD}>")
 message(STATUS "Linking with the pinned lld ${ms_lld_version}: ${MS_LLD}")

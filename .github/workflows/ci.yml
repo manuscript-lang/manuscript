@@ -50,11 +50,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
+        with:
+          system-llvm: 'false'
       - run: cmake --preset ci
       - run: cmake --build --preset ci
       # The pinned shared LLVM library: ms compiles programs through it in this process instead of running opt and
       # llc. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
+      # The release's llc (the glibc stubs); with the pinned lld ms finds in the build tree, the runner needs no LLVM.
+      - run: cmake --build --preset ci --target llvm-tools
       - run: ctest --preset ci
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
       - if: ${{ !cancelled() }}

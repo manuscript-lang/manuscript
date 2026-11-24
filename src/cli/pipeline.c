@@ -276,7 +276,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild root = ms_strbuild_new();
   const bool installed = ms_install_root(&root);
   const MsSpan root_span = ms_strbuild_span(&root);
-  MsSpan opt_fallback = ms_span_of_text("opt"), llc_fallback = ms_span_of_text("llc"), lld_fallback = ms_span_of_text("lld");
+  MsSpan opt_fallback = ms_span_of_text("opt"), llc_fallback = ms_span_of_text("llc"), lld_fallback = ms_span_of_text(MS_BUILD_LLD);
   MsSpan files_fallback = ms_span_of_text(MS_BUILD_FILES);
   MsSpan runtime_fallback = ms_span_of_text(request->static_libc ? MS_BUILD_RUNTIME_STATIC : MS_BUILD_RUNTIME);
   if (installed) {

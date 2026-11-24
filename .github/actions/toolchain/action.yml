@@ -1,19 +1,24 @@
 name: Toolchain
 description: Install the build tools for this platform and restore the compiler and OpenSSL caches.
 
+inputs:
+  system-llvm:
+    description: Install the platform's LLVM and lld (opt, llc, lld on PATH). CI sets it to false and uses the pinned releases.
+    default: 'true'
+
 runs:
   using: composite
   steps:
     - if: runner.os == 'macOS'
       shell: bash
-      run: brew install ninja ccache llvm lld
+      run: brew install ninja ccache${{ inputs.system-llvm == 'true' && ' llvm lld' || '' }}
     # Homebrew's llvm is keg-only: release builds run its opt and llc from PATH.
-    - if: runner.os == 'macOS'
+    - if: runner.os == 'macOS' && inputs.system-llvm == 'true'
       shell: bash
       run: cmake -P cmake/CiMacosEnv.cmake
     - if: runner.os == 'Linux'
       shell: bash
-      run: sudo apt-get install -y ninja-build ccache llvm lld gdb
+      run: sudo apt-get install -y ninja-build ccache gdb${{ inputs.system-llvm == 'true' && ' llvm lld' || '' }}
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2, which brings the perl and make
     # pair OpenSSL's Configure needs.
     - if: runner.os == 'Windows'
