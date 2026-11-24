@@ -115,13 +115,13 @@ extern _Thread_local Table promise_table; /* per-thread state, like the schedule
 void promise_fail(const char *text);
 
 /* The isolate tag of this thread's ids. Read each time: a scheduler learns its isolate after its table may exist. */
-static inline uint64_t promise_own_isolate(void) { return (uint64_t)(ms_sched()->isolate & 0x3fu); }
+static inline MS_ALWAYS_INLINE uint64_t promise_own_isolate(void) { return (uint64_t)(ms_sched()->isolate & 0x3fu); }
 
 /* Whether `id` belongs to another isolate's table. */
 static inline bool promise_is_foreign(MsPromise id) { return ((uint64_t)id >> ISOLATE_SHIFT) != promise_own_isolate(); }
 
 /* The row of `id`, or -1 for a stale, closed or foreign id. */
-static inline ptrdiff_t promise_row_of(MsPromise id) {
+static inline MS_ALWAYS_INLINE ptrdiff_t promise_row_of(MsPromise id) {
   const uint64_t low = (uint64_t)id & 0xffffffffu;
   if (promise_is_foreign(id) || low == 0 || low > promise_table.hot.len) {
     return -1;
@@ -133,7 +133,7 @@ static inline ptrdiff_t promise_row_of(MsPromise id) {
   return (ptrdiff_t)low - 1;
 }
 
-static inline MsPromise promise_make_id(size_t row) {
+static inline MS_ALWAYS_INLINE MsPromise promise_make_id(size_t row) {
   return (MsPromise)(promise_own_isolate() << ISOLATE_SHIFT | (uint64_t)promise_table.hot.ptr[row].generation << 32 |
                      (uint64_t)(row + 1));
 }
@@ -142,6 +142,10 @@ size_t promise_row_or_fault(MsPromise id);
 void promise_wake(size_t row);
 bool promise_claim_queued(size_t row);
 bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded);
+/* The same for the row of `id` the caller already found, unguarded; answers the row afterwards (-1: closed). */
+ptrdiff_t promise_run_row(MsPromise id, size_t row, int64_t deadline);
+/* Moves the result of `row` out, as ms_promise_take does for an id. */
+bool promise_take_row(size_t row, const MsTypeDesc *desc, uint8_t *out);
 void promise_request_cancel(size_t row);
 uint32_t promise_park_on(MsPromise id, int64_t at_ns);
 void promise_end_started(size_t base);
@@ -156,6 +160,10 @@ static inline void promise_release_started(Cold *cold) {
   cold->started = ms_string_empty();
 }
 void promise_release_result(size_t row);
+/* Whether the row finished and its work is gone, so there is nothing to end. */
+bool promise_row_settled(size_t row);
+/* Frees the settled row: its result, start line, report and watches. Its ids match nothing afterwards. */
+void promise_free_row(size_t row);
 /* The stored result's bytes, or NULL when the row holds none. */
 static inline uint8_t *promise_result_bytes(Cold *cold) {
   return cold->small_result ? (uint8_t *)cold->small : cold->result;

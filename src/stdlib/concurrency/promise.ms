@@ -21,6 +21,7 @@ import (
 	msrt_promise_limit,
 	msrt_promise_on_cancel,
 	msrt_promise_put,
+	msrt_promise_result,
 	msrt_promise_run_watched,
 	msrt_promise_start,
 	msrt_promise_start_here,
@@ -76,10 +77,10 @@ export opaque type Promise[T]:
 // - `ETIMEDOUT`, once the promise's `timeout` option has passed, which also cancelled
 //   the work.
 fn Promise[T].wait() move T!:
-	code := msrt_promise_wait(self.id, -1)
-	if code == 0: return taken_result[T](self.id)
+	taken := msrt_promise_result[Slot[T]](self.id)
+	if taken != null: return ok(taken.value)
 
-	return error(failure(self.id, code))
+	return error(no_result(self.id))
 
 // Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`,
 // `exec`) and returns it, so
@@ -213,13 +214,6 @@ export fn set_options[T](
 ) Void:
 	limit(target.id, options)
 
-// Internal: the result in the slot of `id`, moved out; `EBADF` when it is gone.
-fn taken_result[V](id: Int) V!:
-	taken := msrt_promise_take[Slot[V]](id)
-	if taken != null: return ok(taken.value)
-
-	return error(outcome(id, 4))
-
 // Internal: the error in the slot of `id`, moved out.
 fn taken_error(id: Int) Error:
 	cause := msrt_promise_take[Error](id)
@@ -234,6 +228,13 @@ fn taken_error(id: Int) Error:
 fn failure(id: Int, code: Int) Error:
 	if code == 1: return taken_error(id)
 	return outcome(id, code)
+
+// Internal: why a finished wait on `id` had no value to take.
+fn no_result(id: Int) Error:
+	code := msrt_promise_wait(id, -1)
+	if code == 0: return outcome(id, 4)
+
+	return failure(id, code)
 
 // Stores how the work ended (its result or error) in the promise `id`.
 export fn complete[U](id: Int, move result: U!) Void:

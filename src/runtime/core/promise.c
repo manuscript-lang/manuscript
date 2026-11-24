@@ -39,7 +39,7 @@ size_t promise_row_or_fault(MsPromise id) {
 
 /* Remembers the program line that started the work (`site`, or NULL for none), so a fault in the work can name it.
  * The compiler passes a literal, whose bytes live forever; any other string is copied. */
-static void keep_started(Cold *cold, const MsString *site) {
+static inline MS_ALWAYS_INLINE void keep_started(Cold *cold, const MsString *site) {
   if (site == NULL) {
     return;
   }
@@ -59,7 +59,7 @@ void promise_release_result(size_t row) {
   cold->desc = NULL;
 }
 
-static void reset_row(size_t row) {
+static inline MS_ALWAYS_INLINE void reset_row(size_t row) {
   promise_table.cold.ptr[row] = (Cold){.deadline = NO_TIME, .limit = NO_TIME, .fd = -1, .started = ms_string_empty()};
   Hot *const hot = &promise_table.hot.ptr[row];
   hot->flags = 0;
@@ -71,7 +71,8 @@ static void grow_table(void) {
   cold_list_push(&promise_table.cold, (Cold){0});
 }
 
-MsPromise ms_promise_new(void) {
+/* The hot paths below call these bodies directly; the named functions are for the other files. */
+static inline MS_ALWAYS_INLINE MsPromise new_promise(void) {
   size_t row = 0;
   if (promise_table.free_rows.len != 0) {
     row = promise_table.free_rows.ptr[--promise_table.free_rows.len];
@@ -80,14 +81,13 @@ MsPromise ms_promise_new(void) {
     grow_table();
   }
   Hot *const hot = &promise_table.hot.ptr[row];
-  hot->generation = (hot->generation + 1) & GENERATION_MASK;
-  if (hot->generation == 0) {
-    hot->generation = 1;
-  }
+  hot->generation += 1; /* a row that reaches GENERATION_MASK is retired when it is freed */
   hot->state = STATE_PENDING;
   reset_row(row);
   return promise_make_id(row);
 }
+
+MsPromise ms_promise_new(void) { return new_promise(); }
 
 bool promise_ended_without_value(uint8_t state) {
   return state == STATE_ERROR || state == STATE_FAILED || state == STATE_CANCELLED;
@@ -109,7 +109,7 @@ void promise_post_watches(size_t row) {
   hot->flags &= (uint16_t)~FLAG_WATCHED;
 }
 
-void promise_wake(size_t row) {
+static inline MS_ALWAYS_INLINE void wake_row(size_t row) {
   Hot *const hot = &promise_table.hot.ptr[row];
   if ((hot->flags & FLAG_GROUPED) != 0 && hot->state != STATE_PENDING) {
     hot->flags &= (uint16_t)~FLAG_GROUPED;
@@ -124,6 +124,8 @@ void promise_wake(size_t row) {
     promise_post_watches(row);
   }
 }
+
+void promise_wake(size_t row) { wake_row(row); }
 
 /* ---- completion ---- */
 
@@ -140,7 +142,7 @@ static void drop_block(void *block, const MsTypeDesc *desc, int64_t pipe) {
 }
 
 /* The row has its result: it finishes now, or once its work's task has ended. */
-static void settle(Hot *hot, Cold *cold, size_t row, bool failed) {
+static inline MS_ALWAYS_INLINE void settle(Hot *hot, Cold *cold, size_t row, bool failed) {
   cold->retry = NULL;
   if (cold->closure != NULL || (hot->flags & FLAG_REMOTE) != 0) {
     /* The work's task is still ending: its owned resources close first. */
@@ -148,7 +150,7 @@ static void settle(Hot *hot, Cold *cold, size_t row, bool failed) {
     return;
   }
   hot->state = failed ? STATE_ERROR : STATE_OK;
-  promise_wake(row);
+  wake_row(row);
 }
 
 /* Completes `row` with `block` unless it already finished; `block` is taken either way. */
@@ -181,7 +183,7 @@ static inline void copy_small(void *to, const void *from, size_t size) {
 }
 
 /* Completes `row` with the `desc` value at `value`, which fits the row; the value is taken either way. */
-static void complete_small(size_t row, const uint8_t *value, const MsTypeDesc *desc, bool failed) {
+static inline MS_ALWAYS_INLINE void complete_small(size_t row, const uint8_t *value, const MsTypeDesc *desc, bool failed) {
   Hot *const hot = &promise_table.hot.ptr[row];
   Cold *const cold = &promise_table.cold.ptr[row];
   if (hot->state != STATE_PENDING || (hot->flags & FLAG_HELD) != 0) {
@@ -217,7 +219,7 @@ static void send_done(MsPromise id, void *block, const MsTypeDesc *desc, bool fa
   drop_block(block, desc, pipe);
 }
 
-void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool failed) {
+MS_ALWAYS_INLINE void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool failed) {
   const ptrdiff_t row = promise_row_of(id);
   const size_t size = desc->size;
   if (row >= 0 && size <= sizeof promise_table.cold.ptr[row].small) {
@@ -264,15 +266,11 @@ void ms_promise_io_done_int(MsPromise id, int64_t value) {
 
 void ms_promise_io_done_unit(MsPromise id) { ms_promise_io_done_int(id, 0); }
 
-bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
-  if (promise_is_foreign(id)) {
-    return ms_remote_take(id, desc, out);
-  }
-  const ptrdiff_t row = promise_row_of(id);
-  if (row < 0 || promise_result_bytes(&promise_table.cold.ptr[row]) == NULL) {
+MS_ALWAYS_INLINE bool promise_take_row(size_t row, const MsTypeDesc *desc, uint8_t *out) {
+  Cold *const cold = &promise_table.cold.ptr[row];
+  if (promise_result_bytes(cold) == NULL) {
     return false;
   }
-  Cold *const cold = &promise_table.cold.ptr[row];
   if (cold->small_result) {
     copy_small(out, cold->small, desc->size);
     cold->small_result = false;
@@ -283,7 +281,20 @@ bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
   }
   cold->desc = NULL;
   promise_table.hot.ptr[row].state = STATE_TAKEN;
+  if (promise_row_settled(row)) {
+    /* Nothing is left in the row, so it is freed here and the drop of the promise finds nothing to do. Its id
+     * matches no row from now on, which reads as a promise whose result was taken. */
+    promise_free_row(row);
+  }
   return true;
+}
+
+bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
+  if (promise_is_foreign(id)) {
+    return ms_remote_take(id, desc, out);
+  }
+  const ptrdiff_t row = promise_row_of(id);
+  return row >= 0 && promise_take_row((size_t)row, desc, out);
 }
 
 void ms_promise_set_remote_wake(MsPromise id) {
@@ -305,7 +316,7 @@ void ms_promise_on_drop(MsPromise id, MsPromiseRetry cancel, uintptr_t state) {
 
 /* ---- the lists of started promises ---- */
 
-static void link_started(size_t row) {
+static inline MS_ALWAYS_INLINE void link_started(size_t row) {
   Cold *const cold = &promise_table.cold.ptr[row];
   const uint32_t old = ms_task_started_swap(cold->creator, (uint32_t)row + 1);
   cold->next_started = old;
@@ -315,7 +326,7 @@ static void link_started(size_t row) {
   }
 }
 
-static void unlink_started(size_t row, MsTaskHandle creator) {
+static inline MS_ALWAYS_INLINE void unlink_started(size_t row, MsTaskHandle creator) {
   Cold *const cold = &promise_table.cold.ptr[row];
   const uint32_t prev = cold->prev_started;
   const uint32_t next = cold->next_started;
@@ -468,7 +479,7 @@ static void start_task(MsPromise id, MsObj *closure, const MsString *site) {
 
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
-static bool queue_work(MsPromise id, MsObj *closure, const MsString *site) {
+static inline MS_ALWAYS_INLINE bool queue_work(MsPromise id, MsObj *closure, const MsString *site) {
   const size_t row = new_row(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
@@ -498,8 +509,8 @@ MsPromise ms_promise_start_here(MsObj *closure, const MsString *site) {
   return id;
 }
 
-MsPromise ms_promise_start(MsObj *closure, const MsString *site) {
-  const MsPromise id = ms_promise_new();
+MS_ALWAYS_INLINE MsPromise ms_promise_start(MsObj *closure, const MsString *site) {
+  const MsPromise id = new_promise();
   if (!queue_work(id, closure, site)) {
     start_task(id, closure, site);
   }
@@ -538,11 +549,11 @@ MsPromise ms_promise_start_spread(MsObj *closure, const MsString *site) {
 
 /* Takes the queued work of `row` back from the queue. True when it is still this isolate's (its flags then read as
  * deferred work); false when another isolate took it, and the row now reads as running remotely. */
-bool promise_claim_queued(size_t row) {
+static inline MS_ALWAYS_INLINE bool claim_row(size_t row, MsPromise id) {
   Hot *const hot = &promise_table.hot.ptr[row];
   Cold *const cold = &promise_table.cold.ptr[row];
   hot->flags &= (uint16_t)~FLAG_QUEUED;
-  const bool ours = ms_queue_remove(ms_sched()->isolate, (uint64_t)promise_make_id(row), cold->queue_sequence);
+  const bool ours = ms_queue_remove(ms_sched()->isolate, (uint64_t)id, cold->queue_sequence);
   if (cold->creator != 0 && ours) {
     unlink_started(row, cold->creator);
     cold->creator = 0;
@@ -554,6 +565,8 @@ bool promise_claim_queued(size_t row) {
   }
   return ours;
 }
+
+bool promise_claim_queued(size_t row) { return claim_row(row, promise_make_id(row)); }
 
 MsPromise ms_promise_defer(MsObj *closure) {
   const MsPromise id = ms_promise_new();
@@ -570,12 +583,12 @@ MsPromise ms_promise_start_idle(MsObj *closure, const MsString *site) {
   return ms_promise_start_here(closure, site);
 }
 
-/* Records how a guarded inline run ended. */
-static void end_guarded_run(MsPromise id, MsGuardStatus status, MsFaultText message) {
+/* Records how a guarded inline run ended. Answers the row of `id` after the run, -1 when the work closed it. */
+static inline MS_ALWAYS_INLINE ptrdiff_t end_guarded_run(MsPromise id, MsGuardStatus status, MsFaultText message) {
   const ptrdiff_t row = promise_row_of(id);
   if (row < 0 || status == MS_GUARD_OK || promise_table.hot.ptr[row].state != STATE_PENDING) {
     ms_fault_text_free(&message);
-    return;
+    return row;
   }
   finish_report((size_t)row, status, &message);
   if (status == MS_GUARD_FAULT) {
@@ -586,17 +599,16 @@ static void end_guarded_run(MsPromise id, MsGuardStatus status, MsFaultText mess
     promise_table.hot.ptr[row].state = STATE_CANCELLED;
   }
   promise_wake((size_t)row);
+  return row;
 }
 
 /* Runs the deferred work of `id` on the caller's stack, ending by `deadline` (NO_TIME: no limit). With `guarded`, a
  * fault or a cancel inside the work ends the promise as failed or cancelled instead of unwinding the caller (the
  * run of a wait group, which a failing member interrupts). */
-bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
-  const ptrdiff_t found = promise_row_of(id);
-  if (found < 0 || (promise_table.hot.ptr[found].flags & FLAG_DEFERRED) == 0) {
+static inline MS_ALWAYS_INLINE bool run_row(MsPromise id, size_t row, int64_t deadline, bool guarded, ptrdiff_t *after) {
+  if ((promise_table.hot.ptr[row].flags & FLAG_DEFERRED) == 0) {
     return false;
   }
-  const size_t row = (size_t)found;
   /* Work taken back from the queue ends only its own promise when it faults, as it would on another isolate. */
   const bool was_queued = (promise_table.hot.ptr[row].flags & FLAG_QUEUED) != 0;
   if (was_queued && deadline != NO_TIME) {
@@ -607,7 +619,7 @@ bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
   if (was_queued && ms_workers_stress()) {
     return false; /* stress mode: the waiter parks and another isolate takes the work */
   }
-  if (was_queued && !promise_claim_queued(row)) {
+  if (was_queued && !claim_row(row, id)) {
     return false;
   }
   guarded = guarded || was_queued;
@@ -618,11 +630,12 @@ bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
   if (promise_table.cold.ptr[row].limit < until) {
     until = promise_table.cold.ptr[row].limit;
   }
+  /* The task's deadline changes only when this run's is earlier, which a wait with no limit never is. */
   const int64_t inherited = ms_task_defer_deadline();
-  if (inherited < until) {
-    until = inherited;
+  const bool tighter = until < inherited;
+  if (tighter) {
+    (void)ms_task_set_defer_deadline(until);
   }
-  const int64_t earlier = ms_task_set_defer_deadline(until);
   MsFaultText message = {0};
   MsGuardStatus status = MS_GUARD_OK;
   Work work = {.id = id, .closure = closure};
@@ -636,9 +649,22 @@ bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
   }
   ms_cleanup_discard(handle);
   msrt_obj_drop(closure);
-  (void)ms_task_set_defer_deadline(earlier);
-  end_guarded_run(id, status, message);
+  if (tighter) {
+    (void)ms_task_set_defer_deadline(inherited);
+  }
+  *after = end_guarded_run(id, status, message);
   return true;
+}
+
+bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
+  ptrdiff_t row = promise_row_of(id);
+  return row >= 0 && run_row(id, (size_t)row, deadline, guarded, &row);
+}
+
+MS_ALWAYS_INLINE ptrdiff_t promise_run_row(MsPromise id, size_t row, int64_t deadline) {
+  ptrdiff_t after = (ptrdiff_t)row;
+  (void)run_row(id, row, deadline, false, &after);
+  return after;
 }
 
 /* ---- work taken by another isolate ---- */

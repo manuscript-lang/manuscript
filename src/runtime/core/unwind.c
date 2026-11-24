@@ -13,6 +13,13 @@ static MsUnwind *running(void) { return &ms_task_running()->unwind; }
 
 /* ---- cancellation and shields ---- */
 
+/* Changes the shield depth. Only the task's own thread writes the depth (other threads read it), so a load and a
+ * store do; an atomic add is a locked instruction on x86, about 9 ns each on the 2026-11-23 benchmark machine. */
+static void shield_add(MsUnwind *unwind, int by) {
+  atomic_store_explicit(&unwind->hdr.shield, atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) + (uint32_t)by,
+                        memory_order_relaxed);
+}
+
 /* The cancel flag a task has when no shield holds it: the larger of a stop request (unless a stop shield holds
  * it back) and a cancel aimed at the task. */
 static uint8_t unshielded_flag(const MsUnwind *unwind) {
@@ -40,14 +47,14 @@ uint8_t ms_cancel_flag(void) { return atomic_load_explicit(&running()->hdr.cance
 
 void ms_shield_enter(void) {
   MsUnwind *const unwind = running();
-  atomic_fetch_add_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
+  shield_add(unwind, 1);
   atomic_store_explicit(&unwind->hdr.cancel, 0, memory_order_relaxed);
 }
 
 void ms_shield_exit(void) {
   MsUnwind *const unwind = running();
   if (atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) > 0) {
-    atomic_fetch_sub_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
+    shield_add(unwind, -1);
   }
   refresh_flag(unwind);
 }
@@ -70,7 +77,15 @@ bool ms_shielded(void) { return atomic_load_explicit(&running()->hdr.shield, mem
 
 void ms_cancel_deliver(void) { atomic_store_explicit(&running()->hdr.unwinding, 1, memory_order_relaxed); }
 
-bool ms_unwinding_take(void) { return atomic_exchange_explicit(&running()->hdr.unwinding, 0, memory_order_relaxed) != 0; }
+/* The flag is the task's own, set and cleared on its thread, so no exchange is needed. */
+bool ms_unwinding_take(void) {
+  MsTaskHdr *const hdr = &running()->hdr;
+  if (atomic_load_explicit(&hdr->unwinding, memory_order_relaxed) == 0) {
+    return false;
+  }
+  atomic_store_explicit(&hdr->unwinding, 0, memory_order_relaxed);
+  return true;
+}
 
 bool ms_unwinding(void) { return atomic_load_explicit(&running()->hdr.unwinding, memory_order_relaxed) != 0; }
 
@@ -104,10 +119,10 @@ static size_t guard_base(const MsUnwind *unwind) {
 
 /* Runs `function(argument)` with cancellation shielded: a cleanup is not cancelled half way. */
 static void run_shielded(MsUnwind *unwind, MsCleanupFn function, uint8_t *argument) {
-  atomic_fetch_add_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
+  shield_add(unwind, 1);
   atomic_store_explicit(&unwind->hdr.cancel, 0, memory_order_relaxed);
   function(argument);
-  atomic_fetch_sub_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
+  shield_add(unwind, -1);
   if (atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) == 0) {
     atomic_store_explicit(&unwind->hdr.cancel, unshielded_flag(unwind), memory_order_relaxed);
   }
