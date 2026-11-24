@@ -214,7 +214,7 @@ static PipeCell *cell_lock(int64_t id) {
 
 static void cell_unlock(PipeCell *cell) { ms_spin_unlock(&cell->lock); }
 
-static void fault_text(const char *message) { msrt_fault((const uint8_t *)message, __builtin_strlen(message)); }
+static void fault_text(const char *message) { ms_fault_post_text(MS_FAULT_KIND_FAULT, message); }
 
 /* ---- the free list and the table ---- */
 
@@ -441,6 +441,7 @@ int64_t msrt_pipe_new(int64_t capacity) {
   PipeCell *cell = index == SIZE_MAX ? NULL : cell_at(index);
   if (cell == NULL) {
     fault_text("pipe: too many pipes are open at once");
+    return 0;
   }
   ms_spin_lock(&cell->lock);
   cell->generation++;
@@ -537,6 +538,8 @@ int64_t msrt_pipe_read(int64_t pipe) {
   if (atomic_load_explicit(&cell->waiting, memory_order_acquire) != 0) {
     cell_unlock(cell);
     fault_text("pipe: a read is already waiting");
+    ms_promise_io_done(id); /* a posted fault: the caller leaves, and the promise ends empty */
+    return id;
   }
   if (!take_batch(cell, &item)) {
     const bool ended = cell->writers == 0;
