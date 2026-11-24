@@ -4,6 +4,7 @@
 #define MS_CLI_PIPELINE_H
 
 #include "base/strbuild.h"
+#include "cli/backend.h"
 #include "compiler/check/program.h"
 
 typedef enum MsBuildType { MS_BUILD_DEBUG, MS_BUILD_RELEASE, MS_BUILD_MINSIZEREL } MsBuildType;
@@ -28,6 +29,10 @@ typedef struct MsLinkRequest {
  * the runtime archives, separated by `:` (`;` on Windows). Without `MS_FILES` and `MS_RUNTIME` the build's own
  * `files` directory next to `ms` and its runtime archives are used (cmake/MsRuntimePackage.cmake). */
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error);
+
+/* The back-end options `ms_pipeline_link` uses for `request` (before it splits the program into modules), so a
+ * tool that prints the IR shows what a build would hand to `opt`. */
+BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request);
 
 /* The name of the executable `run` and `test` build inside their temporary folder: Windows will not start a program
  * whose name lacks `.exe`. */

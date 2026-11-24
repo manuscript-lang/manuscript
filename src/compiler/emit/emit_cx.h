@@ -93,10 +93,15 @@ void emit_function_symbol(const EmitCx *cx, uint32_t id);
 
 /* ---- memory (emit_memory.c) ---- */
 
-/* Writes the address `base + offset` as a new register and returns its number. */
-uint32_t emit_address(EmitCx *cx, const char *base, uint32_t offset);
-void emit_load_leaf(EmitCx *cx, MirLeaf leaf, MirValue dst, uint32_t index, uint32_t address);
-void emit_store_leaf(EmitCx *cx, MirLeaf leaf, MirValue src, uint32_t index, uint32_t address);
+/* A pointer operand: its text, with the `%`. */
+typedef struct EmitAddr {
+  char text[40];
+} EmitAddr;
+
+/* The address `base + offset`: `base` itself for offset 0, else a new `getelementptr` register. */
+EmitAddr emit_address(EmitCx *cx, const char *base, uint32_t offset);
+void emit_load_leaf(EmitCx *cx, MirLeaf leaf, MirValue dst, uint32_t index, EmitAddr address);
+void emit_store_leaf(EmitCx *cx, MirLeaf leaf, MirValue src, uint32_t index, EmitAddr address);
 /* Reads (`load`) or writes the leaves of `value` at the address in `base`. */
 void emit_leaves_at(EmitCx *cx, MirValue value, const char *base, bool load);
 /* Converts the word `value` to a pointer register; writes its name to `name`. */

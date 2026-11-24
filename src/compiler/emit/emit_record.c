@@ -112,8 +112,8 @@ static bool held_record_new(EmitCx *cx, const MirInst *inst) {
     if (count > 0 && emit_wide_address(cx, field, from, sizeof from)) {
       bool aligned = true;
       const uint32_t bytes = packed_bytes(cx, field, offsets[at], &aligned);
-      const uint32_t to = emit_address(cx, cell, offsets[at]);
-      ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %%a%u, ptr %s, i64 %u, i1 false)\n", to, from,
+      const EmitAddr to = emit_address(cx, cell, offsets[at]);
+      ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", to.text, from,
                          bytes);
       at += count;
       continue;
@@ -187,9 +187,8 @@ static bool held_record_get(EmitCx *cx, const MirInst *inst, uint32_t start, uin
     return false;
   }
   if (offset != 0 || !emit_wide_same_cell(cx, inst->args[0], inst->res)) {
-    char at[24];
-    emit_register_name(at, sizeof at, "a", emit_address(cx, from, offset));
-    ms_strbuild_printf(cx->out, "  call void @llvm.memmove.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", to, at,
+    const EmitAddr at = emit_address(cx, from, offset);
+    ms_strbuild_printf(cx->out, "  call void @llvm.memmove.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", to, at.text,
                        bytes);
   }
   return true;
@@ -264,10 +263,10 @@ static uint32_t header_store(EmitCx *cx, MirValue value, const EmitSite *site) {
   char base[24];
   emit_register_name(base, sizeof base, "p", branch.id);
   for (uint32_t word = 0; word < MIR_MAP_WORDS; word++) {
-    uint32_t at = emit_address(cx, base, word * 8);
+    const EmitAddr at = emit_address(cx, base, word * 8);
     ms_strbuild_append_text(out, "  store i64 ");
     emit_name(out, value, word);
-    ms_strbuild_printf(out, ", ptr %%a%u\n", at);
+    ms_strbuild_printf(out, ", ptr %s\n", at.text);
   }
   emit_if_end(cx, &branch, site);
   char header[24];
@@ -290,8 +289,8 @@ static void indirect_new(EmitCx *cx, const MirInst *inst, const EmitSite *site) 
       continue;
     }
     uint32_t header = header_store(cx, inst->args[field], site);
-    uint32_t at = emit_address(cx, base, block.offsets[block.starts[field]]);
-    ms_strbuild_printf(cx->out, "  store i64 %%h%u, ptr %%a%u\n", header, at);
+    const EmitAddr at = emit_address(cx, base, block.offsets[block.starts[field]]);
+    ms_strbuild_printf(cx->out, "  store i64 %%h%u, ptr %s\n", header, at.text);
   }
 }
 
@@ -301,8 +300,8 @@ static void indirect_get_collection(EmitCx *cx, const MirInst *inst, const MirRe
   MsStrBuild *out = cx->out;
   uint32_t field = inst->imm.b;
   uint32_t number = cx->next++;
-  uint32_t slot = emit_address(cx, base, block->offsets[block->starts[field]]);
-  ms_strbuild_printf(out, "  %%g%u = load i64, ptr %%a%u\n  %%g%ub = icmp ne i64 %%g%u, 0\n", number, slot, number,
+  const EmitAddr slot = emit_address(cx, base, block->offsets[block->starts[field]]);
+  ms_strbuild_printf(out, "  %%g%u = load i64, ptr %s\n  %%g%ub = icmp ne i64 %%g%u, 0\n", number, slot.text, number,
                      number);
   char condition[24];
   emit_text_name(condition, sizeof condition, "g", number, "b", MIR_NONE);
@@ -311,8 +310,8 @@ static void indirect_get_collection(EmitCx *cx, const MirInst *inst, const MirRe
   char header[24];
   emit_register_name(header, sizeof header, "gp", number);
   for (uint32_t word = 0; word < MIR_MAP_WORDS; word++) {
-    uint32_t at = emit_address(cx, header, word * 8);
-    ms_strbuild_printf(out, "  %%w%u_%u = load i64, ptr %%a%u\n", branch.id, word, at);
+    const EmitAddr at = emit_address(cx, header, word * 8);
+    ms_strbuild_printf(out, "  %%w%u_%u = load i64, ptr %s\n", branch.id, word, at.text);
   }
   emit_if_end(cx, &branch, site);
   for (uint32_t word = 0; word < MIR_MAP_WORDS; word++) {
@@ -343,9 +342,9 @@ static void indirect_get(EmitCx *cx, const MirInst *inst, const EmitSite *site) 
 }
 
 /* The branch that frees the header block behind the collection field at `slot`, when it is not null. */
-static void free_header(EmitCx *cx, uint32_t slot, const EmitSite *site) {
+static void free_header(EmitCx *cx, EmitAddr slot, const EmitSite *site) {
   uint32_t number = cx->next++;
-  ms_strbuild_printf(cx->out, "  %%g%u = load i64, ptr %%a%u\n  %%g%ub = icmp ne i64 %%g%u, 0\n", number, slot, number,
+  ms_strbuild_printf(cx->out, "  %%g%u = load i64, ptr %s\n  %%g%ub = icmp ne i64 %%g%u, 0\n", number, slot.text, number,
                      number);
   char condition[24];
   emit_text_name(condition, sizeof condition, "g", number, "b", MIR_NONE);
@@ -364,10 +363,10 @@ static void indirect_set(EmitCx *cx, const MirInst *inst, const EmitSite *site) 
   emit_pointer(cx, inst->args[0], base, sizeof base);
   uint32_t field = inst->imm.b;
   if (block.boxed[field]) {
-    uint32_t slot = emit_address(cx, base, block.offsets[block.starts[field]]);
+    const EmitAddr slot = emit_address(cx, base, block.offsets[block.starts[field]]);
     free_header(cx, slot, site);
     uint32_t header = header_store(cx, inst->args[1], site);
-    ms_strbuild_printf(cx->out, "  store i64 %%h%u, ptr %%a%u\n", header, slot);
+    ms_strbuild_printf(cx->out, "  store i64 %%h%u, ptr %s\n", header, slot.text);
   } else {
     store_field(cx, &block, base, field, inst->args[1]);
   }
