@@ -626,14 +626,13 @@ bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded) {
   MsFaultText message = {0};
   MsGuardStatus status = MS_GUARD_OK;
   Work work = {.id = id, .closure = closure};
+  const size_t handle = ms_cleanup_push(drop_closure, (uint8_t *)closure);
   if (guarded) {
-    /* Every way out of the guard comes back here, so the closure needs no registration. */
     status = ms_guard_call(run_work, &work, &message);
   } else {
-    const size_t handle = ms_cleanup_push(drop_closure, (uint8_t *)closure);
     run_work(&work);
-    ms_cleanup_discard(handle);
   }
+  ms_cleanup_discard(handle);
   msrt_obj_drop(closure);
   (void)ms_task_set_defer_deadline(earlier);
   end_guarded_run(id, status, message);
