@@ -10,6 +10,8 @@ Terminal faults: `ms_fault`, stack overflow (exit 139), out of memory, and a fau
 
 Guards (`ms_guard_call`) are plain calls: they read the byte afterwards, end the promises the code started (numbered by `ms_started_next`, ended above the guard's mark) and hand the report on.
 
+Cost control (#6880): the byte is clear on every normal edge, so `opt_unwind_thread` sends an edge that knows it (a `fault.site` false edge: clear; an exit that ends in `resume`: set) straight past the site test, after inlining; `opt_unwind_sites` drops the test after a call that cannot post; a native that cannot park or fault says `@leaf` in its `ms-sig` (`string_eq`, `string_compare`) so no site follows it. `opt_unwind_pairs` drops a `pause` right before a `resume` (an exit that closes nothing) and shares the bare cold exits of a function. The facts are local to one edge or a chain of single-predecessor blocks with no call, drop or check between; do not widen them to a dataflow without a case.
+
 Failure modes found: LLVM tail-merged post calls and moved fault lines, so post calls are `nomerge` (`MR_POSTS_FAULT`); `cancel_edges` must be program-wide (a per-scheduler flag made worker threads take the old path and leak); a flagged slot owner needs its drop flag cleared at `scope.disown`, or a conditional move closes twice.
 
 Apply when: adding a runtime fault, a native that can post, or a lowering that takes values out of closing slots.

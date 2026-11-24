@@ -24,6 +24,7 @@ uint32_t mir_extern_intern(MirModule *module, const MirExtern *def) {
     if (same_signature(have, def)) {
       /* One declaration serves every caller, so a role the first caller did not name is not lost to it. */
       have->role = have->role == MR_NONE ? def->role : have->role;
+      have->leaf = have->leaf || def->leaf; /* leaf is a fact about the function, whoever declares it first */
       return (uint32_t)index;
     }
   }

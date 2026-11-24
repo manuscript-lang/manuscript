@@ -1,5 +1,5 @@
-// expect-debug: allocs=5 alloc_bytes=198
-// expect-release: allocs=5 alloc_bytes=198
+// expect-debug: allocs=2 alloc_bytes=96
+// expect-release: allocs=2 alloc_bytes=96
 // Today a field of an owned record leaves only by a deep copy. The partial-move stage
 // should lower both counts.
 type Big:

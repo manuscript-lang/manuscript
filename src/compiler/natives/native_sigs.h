@@ -45,6 +45,7 @@ typedef struct MsNativeSig {
   const char *inline_op; /* `@inline=` the list or string operation lowering writes out in its own code instead of calling the native, else NULL */
   bool borrows;          /* `@borrows`: the result is a view into an argument, not a fresh owner */
   bool keeps;            /* `@keeps`: edits the value in its first (slot) argument in place and leaves it there, also when it faults */
+  bool leaf;             /* `@leaf`: neither parks nor faults, so no unwind site follows a call to it */
   const char *checks;    /* `@checks=`: the native that faults on a bad argument; lowering calls it first so a fault leaves the owned arguments with the caller */
   const char *twin;      /* `@twin=`: the family of borrowing twins the optimiser may call instead (`split_view`), else NULL */
 } MsNativeSig;
