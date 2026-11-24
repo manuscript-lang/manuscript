@@ -11,22 +11,21 @@ import (
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
 	all := environment().get_or(Map[String, String]())
-	if value := all.get(name): return value.clone()
+	value := all.get(name)
+	if value != null: return value.clone()
 
 	return fallback.clone()
 
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
-	if data := read_file(path).wait().to_optional(): return (
-		data
-		.decode_utf8()
-		.get_or("")
-	)
+	data := read_file(path).wait().to_optional()
+	if data != null: return (data.decode_utf8() or "")
+
 	return ""
 
 // The text of the file at `path`; a missing file stops the program.
 export fn must_read(path: String) String:
-	return read_file(path).wait().get().decode_utf8().get_or("")
+	return read_file(path).wait().get().decode_utf8() or ""
 
 // Replaces the file at `path`, creating its directory first.
 export fn write_text(path: String, text: String) Void:
@@ -75,11 +74,12 @@ export fn run_in(
 		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s)),
 	).wait()
 	elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
-	if done := result.clone().to_optional():
+	done := result.clone().to_optional()
+	if done != null:
 		return Ran(
 			done.exit_code,
-			done.stdout.decode_utf8().get_or(""),
-			done.stderr.decode_utf8().get_or(""),
+			done.stdout.decode_utf8() or "",
+			done.stderr.decode_utf8() or "",
 			elapsed,
 		)
 	if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
@@ -93,10 +93,10 @@ export fn split_max(text: String, separator: String, splits: Int) List[String]:
 
 	while out.length() < splits:
 		at := rest.index_of(separator)
-		if at.is_none(): break
+		if at == null: break
 
-		out.append(rest.slice(0, at.get_or(0)))
-		rest = rest.slice(at.get_or(0) + separator.length(), rest.length())
+		out.append(rest.slice(0, at))
+		rest = rest.slice((at) + separator.length(), rest.length())
 
 	out.append(rest)
 	return out
@@ -112,7 +112,9 @@ export fn strip_spaces(text: String) String:
 // Whether the regular expression `pattern` matches all of `text`, as Python's
 // `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
-	if re := compile(f"^(?:{pattern})$").to_optional(): return re.matches(text)
+	re := compile(f"^(?:{pattern})$").to_optional()
+	if re != null: return re.matches(text)
+
 	return false
 
 // `text.split()`: the words between runs of whitespace.

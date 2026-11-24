@@ -53,7 +53,7 @@ The entry follows the ordinary capture rules: a promise that leaves the function
 
 A listener and its connections are bound to one thread, so a server that accepts and handles on that thread uses one core. `listener.accept_pending()` returns a promise of a `PendingConnection`, an accepted socket that no thread owns yet; move it into a promise started with `Placement.Spread` and call `adopt()` there to get the `Connection` on that thread, as `serve` does for HTTP. A `PendingConnection` closed or dropped without `adopt` closes the socket, and a TLS listener returns EINVAL because its handshake belongs to the accepting thread.
 
-`cancel_switch()` makes a `Cancel` that stops many promises at once. Give each promise `PromiseOptions(cancel: stop.signal())`; `stop.cancel()` then cancels all of them, now or later, and `wait` reports `"ECANCELED"`. A signal is a copy you can hand around, and `signal.cancelled()` tells a loop that never waits to stop. Dropping the `Cancel` cancels nothing. Applying another signal with `.with` replaces the previous one; `cancel: none` leaves it unchanged.
+`cancel_switch()` makes a `Cancel` that stops many promises at once. Give each promise `PromiseOptions(cancel: stop.signal())`; `stop.cancel()` then cancels all of them, now or later, and `wait` reports `"ECANCELED"`. A signal is a copy you can hand around, and `signal.cancelled()` tells a loop that never waits to stop. Dropping the `Cancel` cancels nothing. Applying another signal with `.with` replaces the previous one; `cancel: null` leaves it unchanged.
 
 For several file reads, give each promise the same signal (this fragment assumes `paths` is a `List[String]` and imports `cancel_switch`):
 

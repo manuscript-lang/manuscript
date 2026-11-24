@@ -31,7 +31,7 @@ Findings: with fast handlers Manuscript matches Go and Node. A request that burn
 
 ## Results, 2026-11-16, connection stealing, same 4 vCPU Linux VM
 
-"Before" is `main` at 688af5b7; "now" is 7d462817 with [connection stealing](../../proposals/http-connection-stealing.md). Servers alternated in one session, two rounds of 15 to 20 s per scenario, ranges shown; the machine is shared, so compare rows of this table only with each other.
+"Before" is `main` at 688af5b7; "now" is 7d462817 with connection stealing. Servers alternated in one session, two rounds of 15 to 20 s per scenario, ranges shown; the machine is shared, so compare rows of this table only with each other.
 
 | Scenario | Server | p50 | p99 | p99.9 |
 | --- | --- | --- | --- | --- |
@@ -76,7 +76,7 @@ Findings: system time already equals C's. The user time left is the handler: `ou
 
 ## Results, 2026-11-16, instructions per request
 
-Counted with callgrind (method: [wiki](../../wiki/benchmarks-and-performance/count-a-request-in-instructions-with-a-heap-that-maps-under-valgrind.md)): one scheduler thread, 8 keep-alive connections, closed loop, a handler that returns a 45-byte constant, `GET /x?c=N` with only a `Host` header. Instruction counts repeat to about 0.3%; wall clock on the shared VM does not.
+Counted with callgrind (method: wiki): one scheduler thread, 8 keep-alive connections, closed loop, a handler that returns a 45-byte constant, `GET /x?c=N` with only a `Host` header. Instruction counts repeat to about 0.3%; wall clock on the shared VM does not.
 
 | Server | Instructions per request |
 | --- | --- |
@@ -85,7 +85,7 @@ Counted with callgrind (method: [wiki](../../wiki/benchmarks-and-performance/cou
 | Manuscript, content-type check by 8-byte words | 18.4k |
 | Manuscript, and detached request tasks | 15.9k |
 
-Where the rest goes is in [the proposal](../../proposals/http-request-path-instructions.md).
+Where the rest goes is in the proposal.
 
 ## Results, 2026-11-16, TLS and HTTP/2 connection stealing, same 4 vCPU Linux VM
 
@@ -160,7 +160,7 @@ Findings: user time falls about 14%. What is left per item is one call for the `
 
 ## Results, 2026-11-16, watcher look interval
 
-The watcher looks every 2 ms and every 100 µs for 0.1 s after a thread was held up 1 ms; it sleeps after 20 looks with every thread resting (it was 100). Fixed intervals were swept against it (alternated runs of 12 s after a 2 s warm-up, three rounds, ranges; CPU is the server's user plus system time in 10 ms ticks per run, so compare rows of one table only; full table in the [wiki](../../wiki/runtime/a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md)):
+The watcher looks every 2 ms and every 100 µs for 0.1 s after a thread was held up 1 ms; it sleeps after 20 looks with every thread resting (it was 100). Fixed intervals were swept against it (alternated runs of 12 s after a 2 s warm-up, three rounds, ranges; CPU is the server's user plus system time in 10 ms ticks per run, so compare rows of one table only; full table in the wiki):
 
 | Look interval | Fast mix CPU | TLS CPU | Slow mix p50 / p90 / p99 |
 | --- | --- | --- | --- |

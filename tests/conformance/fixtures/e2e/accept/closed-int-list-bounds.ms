@@ -104,7 +104,7 @@ test "list prefixes and Optional defaults keep overflow checks":
 	)
 	(
 		(
-			expect_fault(fn: _ignored := optional_overflow(none))?
+			expect_fault(fn: _ignored := optional_overflow(null))?
 		) | expect_contains("Int overflow;")?
 	)
 	(
@@ -154,7 +154,7 @@ fn match_length() Int:
 		n:
 			values.append(n)
 			n
-		none: 0
+		null: 0
 
 	return values.length()
 

@@ -35,6 +35,7 @@ fn main() Void:
 	total += f(3)
 
 	held := optional(Pair(5, "retained"))
-	if x := held:
+	x := held
+	if x != null:
 		total += first(x)
 	print(f"{total}")

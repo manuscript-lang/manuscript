@@ -1,7 +1,7 @@
 /* compiler/check/native.c: the operations a type has without declaring them.
  *
  * `to_string` exists on every value and `clone` on data; a primitive's operations are the `<Type>Operations`
- * interface that stdlib/core/intrinsics.ms declares, followed by the generic interfaces shared by its family,
+ * interface that src/stdlib/core/intrinsics.ms declares, followed by the generic interfaces shared by its family,
  * applied to the primitive itself. A match found here is native: the compiler or runtime provides it. */
 #include <stdio.h>
 

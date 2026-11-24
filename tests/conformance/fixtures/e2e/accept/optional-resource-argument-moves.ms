@@ -29,27 +29,27 @@ fn log_text(path: String) String!:
 
 fn absent_cause(path: String) Bool:
 	cause := Marker(1, path.clone())
-	missing: Int? := none
-	return missing.ok_or(cause).is_error()
+	missing: Int? := null
+	return ok_or(missing, cause).is_error()
 
 fn present_cause(path: String) Bool:
 	cause := Marker(2, path.clone())
 	found: Int? := 7
-	return found.ok_or(cause).is_ok()
+	return ok_or(found, cause).is_ok()
 
 fn temporary_cause(path: String) Bool:
-	missing: Int? := none
-	return missing.ok_or(Marker(3, path.clone())).is_error()
+	missing: Int? := null
+	return ok_or(missing, Marker(3, path.clone())).is_error()
 
 fn heap_cause(path: String) Bool:
 	cause := Held(4, path.clone(), "heap-backed")
-	missing: Int? := none
-	return missing.ok_or(cause).is_error()
+	missing: Int? := null
+	return ok_or(missing, cause).is_error()
 
 fn default_resource(path: String) Int:
 	fallback := Marker(5, path.clone())
-	missing: Marker? := none
-	return missing.get_or(fallback).id
+	missing: Marker? := null
+	return (missing or fallback).id
 
 test "a resource passed to ok_or or get moves into the result and closes once":
 	directory := temporary("optional-argument-")?

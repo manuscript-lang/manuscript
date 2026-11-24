@@ -20,7 +20,7 @@ fn echo(var exchange: HttpExchange) Void!:
         match socket.input.next()?:
             message:
                 socket.output.write(message)?
-            none:
+            null:
                 return ok()
 
         socket.close()?
@@ -39,7 +39,7 @@ fn exercise() Void!:
     server_options := HttpServerOptions(
         max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024,
         max_header_bytes: 65536, timeout: 3.seconds(), grace: 0.milliseconds(),
-        tls: none
+        tls: null
     )
     var server = serve(
         address: "127.0.0.1:0", handler: echo, options: server_options
@@ -64,7 +64,7 @@ fn exercise() Void!:
                     data.decode_utf8() == "hello from streaming Manuscript"
                 )
             )?
-        none:
+        null:
             return fail(message: "Unexpected case")
 
     response.close()?
@@ -87,7 +87,7 @@ fn exercise() Void!:
             expect_equal(
                 message.data.decode_utf8(), "echo me".to_bytes().decode_utf8()
             )?
-        none:
+        null:
             return fail(message: "Unexpected case")
 
     server.close()?

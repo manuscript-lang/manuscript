@@ -361,7 +361,8 @@ bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
 /* A generic value `msrt_promise_put[T](id, move value: T, failed)` hands the runtime the address of an owned slot
  * holding the value and the descriptor of its type; `msrt_promise_take[T](id) T?` gets a slot of the payload type
  * and answers whether it filled it. Returns false when `sig` takes no value descriptor. */
-bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirTy first_type_arg,
+                          MirValue *out) {
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
   if (sig == NULL || sig->count > NS_MAX_PARAMS) {
     return false;
@@ -378,7 +379,8 @@ bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t used = 0;
   uint32_t next = 0;
-  MirTy value_ty = takes_out ? optional->elem : MIR_NONE;
+  /* `T?` of a nullable `T` is `T`: the runtime then writes the whole nullable value, not a payload inside it. */
+  MirTy value_ty = takes_out ? (first_type_arg == ret ? ret : optional->elem) : MIR_NONE;
   MirValue out_slot = MIR_NONE;
   uint32_t shape_at = NS_MAX_PARAMS;
   for (uint32_t at = 0; at < sig->count; at++) {
@@ -448,7 +450,8 @@ bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   const MirImm of_type = {.tag = MI_TY, .a = value_ty};
   const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, value_ty) ? MOP_Take : MOP_Load, &out_slot, 1,
                                     of_type, value_ty);
-  const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
+  /* A nullable payload (`T?` of `T = Int?`) is its own optional: the value read is the answer. */
+  const MirValue some = value_ty == ret ? value : mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &some, 1);
   mir_b_switch_to(&fn->b, none_block);
   const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);

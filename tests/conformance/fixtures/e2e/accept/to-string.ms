@@ -69,7 +69,7 @@ test "records alternatives and collections convert":
 	)
 	(check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting")?)
 
-	absent: Int? := none
+	absent: Int? := null
 	present: Int? := 3
 	result: Int!Error := error(Error("failed"))
 	(check(value: absent.to_string(), expected: "none")?)

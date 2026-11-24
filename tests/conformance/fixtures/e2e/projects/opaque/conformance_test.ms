@@ -53,8 +53,9 @@ test "an opaque value lives in collections and optionals":
 	entity(all[1]) | expect_equal("u2")?
 
 	maybe: Approved? := approve("u3")
+	found := maybe
 
-	if found := maybe:
+	if found != null:
 		entity(found) | expect_equal("u3")?
 	else:
 		expect_true(false)?

@@ -12,14 +12,14 @@ type Resource:
 fn move Resource.close() Void!:
 	append_file(self.path, "closed,").wait()?
 
-fn observed(value: Resource?) Bool: value.is_some()
+fn observed(value: Resource?) Bool: value != null
 
 fn use_named(path: String) Void!:
 	named := Resource(path.clone())
 	expect_equal(observed(named), true)?
 
 	bytes := read_file(path).wait()?
-	expect_equal(bytes.decode_utf8().get_or(""), "")?
+	expect_equal(bytes.decode_utf8() or "", "")?
 
 // A named resource borrowed through an implicit Optional stays open; its owner closes
 // it once.
@@ -30,4 +30,4 @@ test "borrowing through an Optional does not close the named owner":
 	use_named(path.clone())?
 
 	bytes := read_file(path).wait()?
-	expect_equal(bytes.decode_utf8().get_or(""), "closed,")?
+	expect_equal(bytes.decode_utf8() or "", "closed,")?

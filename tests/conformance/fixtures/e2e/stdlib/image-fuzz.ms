@@ -36,14 +36,14 @@ fn mutate(data: Bytes, var rng: Rng) Bytes:
 
 	if kind == 0:
 		for _flip in 0..1 + rng.next(4):
-			values[rng.next(n)] = rng.next(256).to_uint8().get_or(0)
+			values[rng.next(n)] = rng.next(256).to_uint8() or 0
 	else if kind == 1:
 		return data.slice(0, rng.next(n)).clone().get_or(Bytes([]))
 	else if kind == 2:
 		at := rng.next(n)
 		extremes := [0, 255, 127, 128, 1]
 		for i in 0..4:
-			if at + i < n: values[at + i] = extremes[rng.next(5)].to_uint8().get_or(0)
+			if at + i < n: values[at + i] = extremes[rng.next(5)].to_uint8() or 0
 	else if kind == 3:
 		// Drop a range.
 		from := rng.next(n)
@@ -67,7 +67,7 @@ fn mutate(data: Bytes, var rng: Rng) Bytes:
 		return Bytes(grown)
 	else:
 		// Header fields are the likeliest to be dangerous: hit the first 40 bytes.
-		values[rng.next(min_int(n, 40))] = rng.next(256).to_uint8().get_or(0)
+		values[rng.next(min_int(n, 40))] = rng.next(256).to_uint8() or 0
 
 	return Bytes(values)
 
@@ -90,10 +90,10 @@ fn fix_png_crcs(data: Bytes) Bytes:
 
 		crc := crc32(data.slice(at + 4, at + 8 + length).clone().get_or(Bytes([]))).to_int()
 		post := at + 8 + length
-		values[post] = (crc / 16777216 % 256).to_uint8().get_or(0)
-		values[post + 1] = (crc / 65536 % 256).to_uint8().get_or(0)
-		values[post + 2] = (crc / 256 % 256).to_uint8().get_or(0)
-		values[post + 3] = (crc % 256).to_uint8().get_or(0)
+		values[post] = (crc / 16777216 % 256).to_uint8() or 0
+		values[post + 1] = (crc / 65536 % 256).to_uint8() or 0
+		values[post + 2] = (crc / 256 % 256).to_uint8() or 0
+		values[post + 3] = (crc % 256).to_uint8() or 0
 		at = post + 4
 
 	return Bytes(values)
@@ -104,9 +104,9 @@ fn min_int(a: Int, b: Int) Int:
 fn seeds() List[Bytes]:
 	var out = List[Bytes]()
 	for v in vectors():
-		out.append(hex_decode(v.png, none).get())
+		out.append(hex_decode(v.png, null).get())
 	for v in jpeg_vectors():
-		out.append(hex_decode(v.jpeg, none).get())
+		out.append(hex_decode(v.jpeg, null).get())
 
 	var img = new_image(5, 4, ColorMode.Rgba).get()
 	img.set_pixel(1, 1, Rgba(9, 8, 7, 6))
@@ -165,7 +165,7 @@ test "hostile headers fail before allocating":
 	// PNG IHDR 2^31-1 square, valid CRC, no pixel data.
 	ihdr := hex_decode(
 		"89504e470d0a1a0a0000000d494844527fffffff7fffffff0806000000",
-		none,
+		null,
 	).get()
 	expect_error(
 		fix_png_crcs(ihdr.concat(Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))),
@@ -177,7 +177,7 @@ test "hostile headers fail before allocating":
 		"ffd8ffdb004300"
 		+ "01".repeat(64)
 		+ "ffc0000b08ffffffff0101110000ffc400150000010000000000000000000000000000000000ffda0008010100003f00ffd9",
-		none,
+		null,
 	).get()
 	result := decode_image(jpeg)
 	if result.is_ok(): fail("hostile JPEG decoded")?
@@ -185,7 +185,7 @@ test "hostile headers fail before allocating":
 	// BMP with a gigapixel header and no pixel data.
 	bmp := hex_decode(
 		"424d3600000000000000360000002800000000ca9a3b00ca9a3b0100180000000000000000000000000000000000000000000000",
-		none,
+		null,
 	).get()
 	bmp_result := decode_image(bmp)
 	if bmp_result.is_ok(): fail("hostile BMP decoded")?

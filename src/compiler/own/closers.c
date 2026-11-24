@@ -175,8 +175,9 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   const MsNativeGet read = !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_CALL
                                ? ms_own_native_get(pass->program, pass->facts, stmt->u.bind.value)
                                : MS_NATIVE_GET_NONE;
-  if (read == MS_NATIVE_GET_LIST || read == MS_NATIVE_GET_MAP) {
-    return; /* a read that answers a part of its receiver in place (`xs.get(i)`) lends it: its owner closes it */
+  const bool list_end = !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_CALL && reads_list_end(pass, stmt->u.bind.value);
+  if (read == MS_NATIVE_GET_LIST || read == MS_NATIVE_GET_MAP || list_end) {
+    return; /* a read that answers a part of its receiver in place (`xs.get(i)`, `xs.first()`) lends it: its owner closes it */
   }
   const size_t before = pass->facts->closers.len;
   add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));

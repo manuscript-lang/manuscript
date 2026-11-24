@@ -15,7 +15,7 @@ fn move Door.close() Void!:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get_or("")
+	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
@@ -27,27 +27,27 @@ fn early(log: String) Int:
 		d:
 			if d.id == 1: return 10
 			return 20
-		none:
+		null:
 			return 0
 
 fn late(log: String) Int:
 	n := match open(2, log.clone()):
 		d: d.id
-		none: 0
+		null: 0
 
 	return n
 
 fn hand_on(log: String) Door?:
 	match open(3, log.clone()):
 		d: return d
-		none: return none
+		null: return null
 
 test "a payload moved out of the arm is not closed by the match":
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	kept := hand_on(log.clone())
 	logged(log.clone()) | expect_equal("")?
-	if kept.is_some():
+	if kept != null:
 		logged(log.clone()) | expect_equal("")?
 
 test "return from an arm closes the temporary scrutinee once":

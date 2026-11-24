@@ -131,7 +131,7 @@ candidate image differs from the earlier image, so the complete 80-case runtime
 matrix was repeated: **8,000 additional observations**, with no discarded trial.
 The native baseline remains main 28946f9, whose URL implementation is unchanged
 apart from the already-reconciled parser-module spelling. Exact identities are
-in [url-current-identities.json](results/url-current-identities.json). These are
+in url-current-identities.json. These are
 runtime measurements; no cached/fresh build-time comparison is made.
 
 | Workload | Before ns/op | After ns/op | Paired after/before | Paired after/Rust |

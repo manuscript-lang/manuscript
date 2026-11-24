@@ -233,9 +233,9 @@ bool fn_record_operator(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue righ
   if (checked == MS_TY_NONE) {
     return false;
   }
-  const MirFunc *funcs = fn->cx->module->funcs.ptr;
   if (operation != NULL) {
     const uint32_t method = lower_named_method(fn->cx, checked, operation);
+    const MirFunc *funcs = fn->cx->module->funcs.ptr; /* after the lookup: it can declare a function and move the list */
     if (method == MIR_NONE || funcs[method].nparams != 2 || funcs[method].params[1].ty != mir_b_ty(&fn->b, right)) {
       return false;
     }
@@ -248,6 +248,7 @@ bool fn_record_operator(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue righ
     return false;
   }
   const uint32_t method = lower_named_method(fn->cx, checked, "compare");
+  const MirFunc *funcs = fn->cx->module->funcs.ptr;
   if (method == MIR_NONE || funcs[method].nparams != 2 || funcs[method].ret != MIR_INT) {
     return false;
   }

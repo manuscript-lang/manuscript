@@ -9,7 +9,7 @@ import (
 )
 
 fn upper(chunk: Bytes) Bytes:
-	return chunk.decode_utf8().get_or("").upper().to_bytes()
+	return (chunk.decode_utf8() or "").upper().to_bytes()
 
 test "flows compose stream transforms":
 	temporary := temporary("manuscript-streams-") | expect_ok?
@@ -23,14 +23,14 @@ test "flows compose stream transforms":
 
 test "from_list and collect bridge lists and streams":
 	doubled := map(from_list([1, 2, 3]), fn(n: Int) Int: n * 2)
-	expect_equal((collect(doubled, none)?), [2, 4, 6])?
+	expect_equal((collect(doubled, null)?), [2, 4, 6])?
 
 	limited := collect(from_list([1, 2, 3]), 2)
 	expect_equal(limited.is_error(), true)?
 
 test "read_all joins chunks and enforces its limit":
 	expect_equal(
-		(read_all(from_bytes("abcdef".to_bytes(), 4), none)?),
+		(read_all(from_bytes("abcdef".to_bytes(), 4), null)?),
 		"abcdef".to_bytes(),
 	)?
 	expect_equal(read_all(from_bytes("abcdef".to_bytes(), 4), 5).is_error(), true)?

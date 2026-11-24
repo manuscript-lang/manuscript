@@ -27,9 +27,9 @@ The public contracts are syntax, standard signatures, CLI flags and statuses, di
 - Versions are dates, `YYYY.MM.PATCH` with no leading zero on the month.
 - State the affected source or command and its migration in the PR.
 - A deprecation documents the replacement and removal release, and tests both.
-- Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/removed/` in the same change. It starts with `// removed: <old spelling>`, `// use: <text the error must contain>` and `// fix: <text the file holds after `ms check --fix`>`.
+- Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/checks/removed/` in the same change. It starts with `// removed: <old spelling>`, `// use: <text the error must contain>` and `// fix: <text the file holds after `ms check --fix`>`.
   - `make removed-check` fails unless `ms check` rejects the snippet with an error naming the replacement and `--fix` rewrites it so `ms check` passes. When the check fails, fix the diagnostic, not the snippet.
-  - A removal that no mechanical edit can carry writes `// fix: none: <why>`. Reviewers should question each one.
+  - A removal that no mechanical edit can carry writes `// fix: null: <why>`. Reviewers should question each one.
 - List breaking changes with their migration in the release notes. The user-facing list of frozen contracts is [what is frozen](../core-language/stability.md).
 - Explicit user-directed removals win; this policy does not restore retired APIs.
 - Compiler, runtime, or target changes alter build identity. Do not claim cross-environment binary reproducibility.
@@ -43,7 +43,7 @@ The public contracts are syntax, standard signatures, CLI flags and statuses, di
 
 A version update creates no tag. The release workflow also attaches the release's book as `manuscript-docs-<version>.tar.gz`; a dropdown entry only links to it.
 
-The workflow also attaches the agent skill as `manuscript-skill.tar.gz` and its checksum, packed by `toolchain/package-skill.sh` from `agent-skill/` and stamped with `.msversion`, so the file name is the same on every release. `website/static/install-skill.sh` and `install-skill.ps1` download it; the release rehearsal installs it on all six targets.
+The workflow also attaches the agent skill as `manuscript-skill.tar.gz` and its checksum, packed by `cmake/toolchain/package-skill.sh` from `extensions/agent-skill/` and stamped with `.msversion`, so the file name is the same on every release. `website/static/install-skill.sh` and `install-skill.ps1` download it; the release rehearsal installs it on all six targets.
 
 ## Keep the feedback loop healthy
 

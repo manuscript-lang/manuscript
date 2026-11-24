@@ -89,7 +89,7 @@ const MsLocal *body_find_local(const Body *body, MsName name) {
 
 bool body_is_none_name(const Body *body, const MsExpr *expr) {
   return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "null");
 }
 
 /* The type a loop variable takes from the iterated type: a list's element, a set's member, or what the
@@ -325,11 +325,31 @@ static void stmt_if(Body *body, const MsStmt *stmt) {
       ms_strbuild_append_text(&text, "; use 'if' for a Bool condition or 'match' for other alternatives");
       ms_check_report(body->program, body->module, stmt->u.branch.cond->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     }
+    if (cond != MS_TY_NONE && ms_ty_is(types, cond, MS_BUILTIN_Optional) && ms_ty_arg_count(types, cond) == 1) {
+      body_report_if_unwrap(body, stmt);
+    }
     bind_pattern(body, stmt->u.branch.binding, wraps ? payload_type(body, cond) : MS_TY_NONE, stmt->u.branch.is_mutable);
+  }
+  const size_t narrow = body_narrow_mark(body);
+  const bool plain = stmt->u.branch.binding == NULL;
+  if (plain) {
+    body_narrow(body, stmt->u.branch.cond, true);
   }
   body_block(body, stmt->u.branch.body);
   body_scope_reset(body, mark);
+  body_narrow_reset(body, narrow);
+  if (plain) {
+    body_narrow(body, stmt->u.branch.cond, false);
+  }
   body_block(body, stmt->u.branch.else_body);
+  body_narrow_reset(body, narrow);
+  /* `if v == null: return` leaves v present for the rest of the block; the enclosing block ends the narrowing */
+  if (plain && stmt->u.branch.else_body.len == 0 && body_block_exits(body, stmt->u.branch.body)) {
+    body_narrow(body, stmt->u.branch.cond, false);
+  } else if (plain && stmt->u.branch.else_body.len != 0 && body_block_exits(body, stmt->u.branch.else_body) &&
+             !body_block_exits(body, stmt->u.branch.body)) {
+    body_narrow(body, stmt->u.branch.cond, true);
+  }
 }
 
 static void stmt_for(Body *body, const MsStmt *stmt) {
@@ -402,10 +422,14 @@ static void statement(Body *body, const MsStmt *stmt) {
   case MS_S_IF:
     stmt_if(body, stmt);
     break;
-  case MS_S_WHILE:
+  case MS_S_WHILE: {
     (void)body_expect(body, stmt->u.loop.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("a while condition"));
+    const size_t narrow = body_narrow_mark(body);
+    body_narrow(body, stmt->u.loop.cond, true);
     body_block(body, stmt->u.loop.body);
+    body_narrow_reset(body, narrow);
     break;
+  }
   case MS_S_FOR:
     stmt_for(body, stmt);
     break;
@@ -423,8 +447,10 @@ void body_statements(Body *body, MsStmts stmts) {
 
 void body_block(Body *body, MsStmts stmts) {
   const size_t mark = body_scope_mark(body);
+  const size_t narrow = body_narrow_mark(body);
   body_statements(body, stmts);
   body_scope_reset(body, mark);
+  body_narrow_reset(body, narrow);
 }
 
 /* ---- declarations ---- */
@@ -435,20 +461,25 @@ static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
   return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
 }
 
-/* Each required parameter or field that follows an optional one; a `T?` parameter or field defaults to none. */
-static void report_optionals_last(Body *body, MsParams params) {
+/* Each required parameter or field that follows an optional one. A field of type `T?` defaults to null, so it counts
+ * as optional; a parameter counts only with a written default, because a `T?` parameter may be given positionally
+ * (`ok_or(value, cause)`) and a call can still name the ones it leaves out. */
+static bool written_default(const MsParam *param, bool fields) {
+  return param->def != NULL && (fields || !param->implied_default);
+}
+
+static void report_optionals_last(Body *body, MsParams params, bool by_type) {
   uint32_t first = 0;
-  while (first < params.len && !body_param_omittable(body, params.ptr[first])) {
+  while (first < params.len && !written_default(params.ptr[first], by_type)) {
     first++;
   }
   if (first == params.len || !body_reports(body) || body->quiet) {
     return;
   }
   const MsParam *optional = params.ptr[first];
-  const bool by_type = optional->ty != NULL && optional->ty->kind == MS_TYPE_NAMED && optional->ty->args.len == 1 &&
-                       ms_span_is_text(ms_names_span(body->program->names, optional->ty->name), "Optional");
+  const bool typed = optional->implied_default;
   for (uint32_t index = first + 1; index < params.len; index++) {
-    if (body_param_omittable(body, params.ptr[index])) {
+    if (params.ptr[index]->def != NULL) {
       continue;
     }
     MsStrBuild text = ms_strbuild_new();
@@ -456,7 +487,7 @@ static void report_optionals_last(Body *body, MsParams params) {
     ms_strbuild_append(&text, ms_names_span(body->program->names, params.ptr[index]->name));
     ms_strbuild_append_text(&text, " follows optional ");
     ms_strbuild_append(&text, ms_names_span(body->program->names, optional->name));
-    ms_strbuild_append_text(&text, by_type ? " (a `T?` parameter or field defaults to none, so it counts as optional)" : "");
+    ms_strbuild_append_text(&text, typed ? " (a `T?` field defaults to null, so it counts as optional)" : "");
     ms_strbuild_append_text(&text, "; put optional parameters and fields last");
     ms_check_report(body->program, body->module, params.ptr[index]->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
@@ -465,7 +496,7 @@ static void report_optionals_last(Body *body, MsParams params) {
 /* Declares the parameters in order and checks each default before its own parameter is in scope, so a default sees
  * the parameters before it and a function of the same name as its own parameter (`headers: H = headers()`). */
 static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t first) {
-  report_optionals_last(body, params);
+  report_optionals_last(body, params, false);
   const MsTyTable *types = &body->program->types;
   const size_t count = ms_ty_param_count(types, fn_ty);
   for (uint32_t index = 0; index < params.len; index++) {
@@ -628,7 +659,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     break;
   }
   case MS_D_TYPE:
-    report_optionals_last(body, decl->u.type.fields);
+    report_optionals_last(body, decl->u.type.fields, true);
     field_defaults(body, decl->u.type.fields, symbol_of(body->program, body->module, decl));
     break;
   case MS_D_ENUM:

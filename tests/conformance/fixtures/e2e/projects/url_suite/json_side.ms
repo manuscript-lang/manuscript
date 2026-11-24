@@ -10,23 +10,27 @@ export type Case:
 export fn cases(source: String, table: String) List[Case]!:
 	root := parse(source)?
 	var out: List[Case] = []
-	items := root.get(table).clone().get_or(JsonValue.Null).as_list().get_or([])
+	items := (root.get(table).clone() or JsonValue.Null).as_list() or []
 
 	for item in items:
 		var fields = Map[String, String]()
 		var flags = Map[String, Bool]()
 		var expected = Map[String, List[String]]()
 
-		for entry in item.as_map().get_or(Map[String, JsonValue]()).entries():
-			if str := entry.value.as_string():
+		for entry in (item.as_map() or Map[String, JsonValue]()).entries():
+			str := entry.value.as_string()
+
+			if str != null:
 				fields.add(entry.key.clone(), str.clone())
-			else if flag := entry.value.as_bool():
-				flags.add(entry.key.clone(), flag)
-			else if members := entry.value.as_map():
+			else if entry.value.as_bool() != null:
+				flags.add(entry.key.clone(), entry.value.as_bool() or false)
+			else if entry.value.as_map() != null:
+				members := entry.value.as_map() or Map[String, JsonValue]()
+
 				for member in members.entries():
 					var values: List[String] = []
-					for value in member.value.as_list().get_or([]):
-						values.append(value.as_string().get_or("").clone())
+					for value in (member.value.as_list() or []):
+						values.append((value.as_string() or "").clone())
 					expected.add(member.key.clone(), values)
 
 		out.append(Case(fields: fields, flags: flags, expected: expected))

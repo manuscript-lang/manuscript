@@ -18,10 +18,10 @@ fn accepted() Int!: ok(1)
 fn failing() Int!: error(Error("stop"))
 
 fn observed(value: Resource?, tail: Int = accepted()?) Bool!:
-	return ok(value.is_some() or tail > 0)
+	return ok((value != null) or tail > 0)
 
 fn refused(value: Resource?, tail: Int = failing()?) Bool!:
-	return ok(value.is_some() or tail > 0)
+	return ok((value != null) or tail > 0)
 
 fn log_text(path: String) String!:
 	bytes := read_file(path).wait()?

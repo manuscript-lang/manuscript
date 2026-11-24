@@ -26,7 +26,7 @@ enum { PB_SLOTS = 0, PB_INDEX = 8, PB_LEN = 16, PB_MASK = 40 };
 #define PB_K1 ((int64_t)UINT64_C(0xff51afd7ed558ccd))
 #define PB_LEN_MASK ((INT64_C(1) << 31) - 1)
 
-typedef enum PbAnswer { PA_ADDRESS, PA_CONTAINS, PA_GET } PbAnswer;
+typedef enum PbAnswer { PA_ADDRESS, PA_CONTAINS, PA_GET, PA_GET_OR } PbAnswer;
 
 typedef struct PbShape {
   int64_t stride;   /* bytes per slot */
@@ -221,12 +221,29 @@ static MirValue pb_is_null(MirBuilder *b, MirValue p) {
   return mir_b_emit(b, MOP_PtrIsNull, &p, 1, (MirImm){0}, MIR_BOOL);
 }
 
-/* The answer built from the address `p` the probe found; `out` is the address a `get` copies to. */
-static MirValue pb_answer(MirBuilder *b, PbAnswer answer, MirValue p, MirValue out) {
+/* The answer built from the address `p` the probe found; `out` is the address a `get` copies to, and
+ * `fallback` the address a `get_or` reads when the key is absent. */
+static MirValue pb_answer(MirBuilder *b, PbAnswer answer, MirValue p, MirValue out, MirValue fallback) {
   if (answer == PA_ADDRESS) {
     return p;
   }
   const MirValue missing = pb_is_null(b, p);
+  if (answer == PA_GET_OR) {
+    const MirBlock hit = mir_b_new_block(b), miss = mir_b_new_block(b), done = mir_b_new_block(b);
+    const MirVar word = mir_b_declare_var(b, MIR_INT, MM_BORROW);
+    ob_br_if(b, missing, miss, hit);
+    mir_b_switch_to(b, hit);
+    mir_b_def_var(b, word, ob_load(b, p, 0, MIR_INT));
+    mir_b_br(b, done, NULL, 0);
+    mir_b_switch_to(b, miss);
+    mir_b_def_var(b, word, ob_load(b, fallback, 0, MIR_INT));
+    mir_b_br(b, done, NULL, 0);
+    mir_b_seal_block(b, done);
+    mir_b_switch_to(b, done);
+    const MirValue stored[2] = {out, mir_b_use_var(b, word)};
+    (void)mir_b_emit(b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+    return MIR_NONE;
+  }
   if (answer == PA_CONTAINS) {
     return mir_b_emit(b, MOP_Not, &missing, 1, (MirImm){0}, MIR_BOOL);
   }
@@ -248,16 +265,16 @@ static MirValue pb_answer(MirBuilder *b, PbAnswer answer, MirValue p, MirValue o
  * form, a map held in memory arrives as its address. */
 static uint32_t pb_build(MirModule *m, const PbShape *shape, PbAnswer answer, MirTy map_ty, MirTy key_ty, MirTy ret) {
   /* A key arrives as its address, or a string key as the string itself, which is spilled to read its words. */
-  MirParam params[3] = {{map_ty, MM_BORROW}, {key_ty, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+  MirParam params[4] = {{map_ty, MM_BORROW}, {key_ty, MM_BORROW}, {MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+  const uint32_t nparams = answer == PA_GET_OR ? 4 : answer == PA_GET ? 3 : 2;
   MirBuilder b;
   /* The module needs distinct names: one helper per shape, answer and map type. */
   MsStrBuild name = ms_strbuild_new();
   ms_strbuild_printf(&name, "map_probe.%u", (uint32_t)m->funcs.len);
-  mir_b_init_fast_path(&b, m, mir_name(m, ms_strbuild_span(&name)), params, answer == PA_GET ? 3 : 2,
-            ret);
+  mir_b_init_fast_path(&b, m, mir_name(m, ms_strbuild_span(&name)), params, nparams, ret);
   ms_strbuild_free(&name);
-  MirValue ps[3];
-  mir_b_params(&b, ps, 3);
+  MirValue ps[4];
+  mir_b_params(&b, ps, nparams);
   MirValue map = ps[0];
   if (map_ty != MIR_PTR) {
     map = mir_b_emit(&b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = map_ty}, MIR_PTR);
@@ -274,7 +291,7 @@ static uint32_t pb_build(MirModule *m, const PbShape *shape, PbAnswer answer, Mi
     (void)mir_b_emit(&b, MOP_Store, spilled, 2, (MirImm){0}, MIR_NONE);
   }
   const MirValue p = pb_find(&b, m, shape, map, key, text);
-  MirValue result = pb_answer(&b, answer, p, ps[2]);
+  MirValue result = pb_answer(&b, answer, p, answer == PA_GET_OR ? ps[3] : ps[2], ps[2]);
   if (ret == MIR_UINT8) { /* the runtime's `u8` answer, declared as uint8 */
     const MirValue one = mir_b_emit(&b, MOP_Conv, (MirValue[]){mir_b_iconst(&b, 1)}, 1, (MirImm){0}, MIR_UINT8);
     const MirValue zero = mir_b_emit(&b, MOP_Conv, (MirValue[]){mir_b_iconst(&b, 0)}, 1, (MirImm){0}, MIR_UINT8);
@@ -291,7 +308,9 @@ static bool pb_probe_of(const MirModule *m, uint32_t e, PbShape *shape, PbAnswer
   if (!pb_shape(ext->role, shape)) {
     return false;
   }
-  if (ext->ret == MIR_PTR) {
+  if (ext->ret == MIR_VOID && ext->nparams == 6) {
+    *answer = PA_GET_OR;
+  } else if (ext->ret == MIR_PTR) {
     *answer = PA_ADDRESS;
   } else if (ext->ret == MIR_BOOL || ext->ret == MIR_UINT8) {
     *answer = ext->nparams == 5 ? PA_GET : PA_CONTAINS;
@@ -345,11 +364,14 @@ bool opt_probe(MirModule *m) {
         }
         /* The descriptors are unused: the helper takes the map, the key, and for a get the
          * address to copy to. */
-        const uint32_t kept = answer == PA_GET ? 3 : 2;
+        const uint32_t kept = answer == PA_GET_OR ? 4 : answer == PA_GET ? 3 : 2;
         MirValue *args = MS_ARENA_NEW_ARRAY(&m->arena, MirValue, kept);
         args[0] = inst->args[0];
         args[1] = inst->args[inst->nargs == 3 ? 2 : 3]; /* a set lookup has no value descriptor */
-        if (answer == PA_GET) {
+        if (answer == PA_GET_OR) { /* the fallback, then the address to copy the answer to */
+          args[2] = inst->args[4];
+          args[3] = inst->args[5];
+        } else if (answer == PA_GET) {
           args[2] = inst->args[4];
         }
         inst->args = args;

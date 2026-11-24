@@ -34,7 +34,7 @@ A workflow replaces the previous one. Commands other than `create` work without 
 
 ## Commands
 
-All fields below can be changed by `create`/`edit` with `field=value` tokens; the fields are `title`, `priority`, `assignee`, `points`, `due`, `labels`, `reporter`. `none` as a value clears `assignee`, `points`, `due`, `labels` and `reporter`; `labels` takes a comma list. Validation errors, in this order for a token: a token without `=` (or starting with it) is `expected field=value, got 'TOKEN'`; field `state` is `use move to change state`; any other unknown field is `unknown field 'F'`; then value errors: `empty title`, `bad priority 'V'`, `bad points 'V'`, `bad date 'V'`, `bad label 'L'` (L lowercased), `empty assignee`, `empty reporter`. Tokens are validated left to right; the first problem is reported. If a field is given more than once the last value wins.
+All fields below can be changed by `create`/`edit` with `field=value` tokens; the fields are `title`, `priority`, `assignee`, `points`, `due`, `labels`, `reporter`. `null` as a value clears `assignee`, `points`, `due`, `labels` and `reporter`; `labels` takes a comma list. Validation errors, in this order for a token: a token without `=` (or starting with it) is `expected field=value, got 'TOKEN'`; field `state` is `use move to change state`; any other unknown field is `unknown field 'F'`; then value errors: `empty title`, `bad priority 'V'`, `bad points 'V'`, `bad date 'V'`, `bad label 'L'` (L lowercased), `empty assignee`, `empty reporter`. Tokens are validated left to right; the first problem is reported. If a field is given more than once the last value wins.
 
 - `actor NAME` prints `actor is NAME`. Usage error: `usage: actor NAME`.
 - `today DATE` prints `today is DATE`; `bad date 'DATE'` or `usage: today DATE`.
@@ -74,13 +74,13 @@ Fields (`ci` = case-insensitive):
 | Field | Operators | Meaning |
 | --- | --- | --- |
 | `id` `created` `updated` | `: != < <= > >=` | integer comparison |
-| `points` | same, plus `none` with `:`/`!=` | an issue without points matches only `none` (`:`) or `!=` of anything else; it never matches `<`, `<=`, `>`, `>=` |
-| `title` `assignee` `reporter` | `: != ~` | `:` equals (ci); `~` substring (ci); an absent value equals only `none`; `!=` is the negation of `:`; `~` never matches an absent value |
+| `points` | same, plus `null` with `:`/`!=` | an issue without points matches only `null` (`:`) or `!=` of anything else; it never matches `<`, `<=`, `>`, `>=` |
+| `title` `assignee` `reporter` | `: != ~` | `:` equals (ci); `~` substring (ci); an absent value equals only `null`; `!=` is the negation of `:`; `~` never matches an absent value |
 | `text` | `~` | substring (ci) of the title or of any comment |
 | `state` | `: !=` | exact state name; unknown names are `query: bad value 'V' for field 'state'` |
 | `priority` | `: != < <= > >=` | ordered low < medium < high < critical (exact lowercase names); with ordering operators only a single value is allowed |
-| `due` | `: != < <= > >=` | date string compare; `none` with `:`/`!=`; an absent due never matches ordering operators; ordering operators need a valid date value, `:`/`!=` accept a date or `none` |
-| `label` or `labels` | `: != ~` | `:` the issue has that label (the value is lowercased); `none` matches issues without labels; `~` substring of any label; `!=` negates `:` |
+| `due` | `: != < <= > >=` | date string compare; `null` with `:`/`!=`; an absent due never matches ordering operators; ordering operators need a valid date value, `:`/`!=` accept a date or `null` |
+| `label` or `labels` | `: != ~` | `:` the issue has that label (the value is lowercased); `null` matches issues without labels; `~` substring of any label; `!=` negates `:` |
 | `is` | `:` | `open`, `final`, `overdue` (open, has a due date, due < today), `unassigned` |
 | `has` | `:` | `assignee`, `due`, `points`, `labels`, `comments`, `reporter` |
 | `view` | `:` | the filter of a saved view (its sort and limit are ignored here); the value is one view name and is never split on `\|` (`view:a\|b` is `query: unknown view 'a\|b'`) |

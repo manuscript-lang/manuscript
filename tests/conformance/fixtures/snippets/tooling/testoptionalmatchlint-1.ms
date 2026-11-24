@@ -4,4 +4,4 @@
 fn use(value: Int?) Int:
     match value:
         n: return n
-        none: return 0
+        null: return 0

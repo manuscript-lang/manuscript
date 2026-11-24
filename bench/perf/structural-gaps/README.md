@@ -1,6 +1,6 @@
 # Structural gaps
 
-Evidence for [`proposals/c-parity-structure.md`](../../../proposals/c-parity-structure.md): where ordinary Manuscript spends its time against C once single runtime calls are tuned. Two programs.
+Evidence for [`design/proposals/c-parity-structure.md`](../../../design/proposals/c-parity-structure.md): where ordinary Manuscript spends its time against C once single runtime calls are tuned. Two programs.
 
 - `shapes.ms`: the same work in the shape lowering recognizes and in a neighboring shape (a binding, a helper argument, a combinator chain). Prints microseconds per case.
 - `logstats_bytes.ms`: [`suite/logstats/main.ms`](../suite/logstats/main.ms) written as a byte scan with no `split`, the code a C programmer would write. It bounds what removing per-line lists and copies can gain.
@@ -13,7 +13,7 @@ head -c 2000000 /tmp/eng/input/access.log > /tmp/small.log
 valgrind --tool=callgrind /tmp/logstats_bytes < /tmp/small.log
 ```
 
-Compare only runs from one machine. Callgrind sends allocations to glibc `malloc` ([wiki](../../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)), so allocator rows overstate the release cost; allocation counts are exact.
+Compare only runs from one machine. Callgrind sends allocations to glibc `malloc` ([wiki](../../../design/wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)), so allocator rows overstate the release cost; allocation counts are exact.
 
 ## 2026-11-12: Linux x86_64
 
@@ -204,7 +204,7 @@ Same build and machine; callgrind instructions, C twins in `c/`.
 | `queues.ms`: grid BFS over `Deque[Int]`, then 2M `PriorityQueue[Int]` operations | 1,527M | 603M | 2.5x |
 
 - `tokens`: `msrt_string_get` is 59% (about 62 instructions per call) and the compiled comparisons of one-character strings are 28% (72 instructions per input character; `c >= "0"` reaches `memcmp`). With code points, the compiled part falls to 20.9M, 1.4x C; the remaining 83.1M is the `msrt_string_scalar_at` call.
-- `queues`, BFS half: about 380M against C's 78M. `Deque` keeps `slots: List[T?]`, 16 bytes a slot for an `Int`, and `pop_front` calls `msrt_list_replace` to put `none` back: 109M in `deque.ms` and 70M in the runtime call for 2.25M pushes and pops, about 80 instructions a pair against a handful for a ring of plain slots. The caller's own loop is 202M (bounds, overflow and division checks on `seen[p + 1]`, `dist[p]`, `p % w`).
+- `queues`, BFS half: about 380M against C's 78M. `Deque` keeps `slots: List[T?]`, 16 bytes a slot for an `Int`, and `pop_front` calls `msrt_list_replace` to put `null` back: 109M in `deque.ms` and 70M in the runtime call for 2.25M pushes and pops, about 80 instructions a pair against a handful for a ring of plain slots. The caller's own loop is 202M (bounds, overflow and division checks on `seen[p + 1]`, `dist[p]`, `p % w`).
 - `queues`, heap half: about 1,070M against 524M, but not like for like: `PriorityQueue` keeps FIFO order among equal priorities with a second list.
 - At or ahead of C: `sqrt` and `sin` loops (0.94x), division and modulo loops (0.97x), `sorted()` of 1M `Int` and 200k `String` against `qsort` (0.96x). A tree interpreter over a recursive `enum` is 1.42x in `eval` (stack check and checked arithmetic); small-record arithmetic, a generic `Comparable` scan and an `entries()` loop are 1.39x together.
 - For the cost of the checks alone, the kernels page has C with Manuscript's checks against plain C: 1.07x (`nbody`) to 2.9x (`matmul`).
@@ -317,7 +317,7 @@ The map and set C twins did less than `Map` promises: `keyed.c` cases a and f us
 | `keyed.ms` case f (`Set[Int]`) | 92.1M | 176.0M | 182.8M |
 | `intmap.ms` | 136M | 257.4M | 292.9M |
 
-Against the equivalent C the gaps are 1.6x, 1.04x and 1.14x in instructions; `Set[Int]` wall time is at C (58 to 84 ms against 77 ms, min of 5 on a noisy shared VM). Earlier "gap to C" figures for maps and sets in this file and in `proposals/c-parity-structure.md` compare against the old twins and overstate the gap. The `Map[String, Stat]` twin (`containers.c`) is not in the repository, so that row has no equivalent C yet.
+Against the equivalent C the gaps are 1.6x, 1.04x and 1.14x in instructions; `Set[Int]` wall time is at C (58 to 84 ms against 77 ms, min of 5 on a noisy shared VM). Earlier "gap to C" figures for maps and sets in this file and in `design/proposals/c-parity-structure.md` compare against the old twins and overstate the gap. The `Map[String, Stat]` twin (`containers.c`) is not in the repository, so that row has no equivalent C yet.
 ## 2026-11-12: var calls through boxed optional fields
 
 `tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.

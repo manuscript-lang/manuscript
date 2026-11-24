@@ -1,5 +1,6 @@
 // Matched ratios, excluding round0: FILE [forward|swap] [wall|cpu].
 import (
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 
 	invalid, median, read_text from "./lib.ms",
@@ -32,7 +33,8 @@ export fn median_interval(values: List[Float]) List[Float]!:
 	return ok([sorted[rank - 1], sorted[n - rank]])
 
 fn finite_counter(text: String) Float!:
-	if value := text.parse_float():
+	value := text.parse_float()
+	if value != null:
 		if value.is_finite() and value >= 0.0: return ok(value)
 	return invalid("expected a finite nonnegative measurement")
 
@@ -57,7 +59,8 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 		if fields.length() != columns: return invalid("unexpected sample column count")
 
 		var round = -1
-		if parsed := fields[0].parse_int(): round = parsed
+		parsed := fields[0].parse_int()
+		if parsed != null: round = parsed
 		if round < 0: return invalid("invalid sample round")
 		if fields[1] != "before" and fields[1] != "after": return invalid(
 			"unknown sample label"
@@ -75,17 +78,19 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 			"measurement must be positive and finite"
 		)
 
-		if previous := hashes.get(fields[2]):
+		previous := hashes.get(fields[2])
+
+		if previous != null:
 			if previous != fields[5]: return invalid("input hash changed")
 		else:
 			hashes.add(fields[2].clone(), fields[5].clone())
 
 		if fields[1] == "before":
-			if before.get(key).is_some(): return invalid("duplicate before sample")
+			if before.get(key) != null: return invalid("duplicate before sample")
 
 			before.add(key, value)
 		else:
-			if after.get(key).is_some(): return invalid("duplicate after sample")
+			if after.get(key) != null: return invalid("duplicate after sample")
 
 			after.add(key, value)
 
@@ -94,7 +99,7 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 	var groups = Map[String, List[Float]]()
 
 	for key in before.keys():
-		if not after.get(key).is_some(): return invalid("incomplete pair")
+		if not (after.get(key) != null): return invalid("incomplete pair")
 
 		parts := key.split("\t")
 		if parts[1] == "0": continue
@@ -118,7 +123,7 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 		values := groups[key]
 		interval := median_interval(values)?
 		slower := values.filter(fn value: value > 1.0).length()
-		report += f"{key} n={values.length()} median_candidate_ratio={median(values)} median95_lower={interval[0]} median95_upper={interval[1]} min_ratio={values.min().get()} max_ratio={values.max().get()} candidate_slower={slower}\n"
+		report += f"{key} n={values.length()} median_candidate_ratio={median(values)} median95_lower={interval[0]} median95_upper={interval[1]} min_ratio={(values.min() or panic("called Optional.get() on null"))} max_ratio={(values.max() or panic("called Optional.get() on null"))} candidate_slower={slower}\n"
 
 	return ok(report)
 

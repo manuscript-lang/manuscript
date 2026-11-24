@@ -572,7 +572,21 @@ bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actual, const MsT
       continue;
     }
     if (bound[index] != MS_TY_NONE) {
-      return bound[index] == actual;
+      if (bound[index] == actual) {
+        return true;
+      }
+      /* `T?` is `T` or null, and `T??` is `T?`: the optional `Int?` unifies with `T?` as `T = Int` and as `T = Int?`,
+       * so a variable bound one way takes the other. */
+      const bool bound_wraps = ms_ty_is(types, bound[index], MS_BUILTIN_Optional) && ms_ty_arg_count(types, bound[index]) == 1;
+      if (bound_wraps && ms_ty_args(types, bound[index])[0] == actual) {
+        return true;
+      }
+      if (ms_ty_is(types, actual, MS_BUILTIN_Optional) && ms_ty_arg_count(types, actual) == 1 &&
+          ms_ty_args(types, actual)[0] == bound[index]) {
+        bound[index] = actual;
+        return true;
+      }
+      return false;
     }
     bound[index] = actual;
     return true;

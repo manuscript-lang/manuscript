@@ -25,7 +25,7 @@ fn token(log: String, id: Int, fail: Bool = false) Token:
 	return Token(log.clone(), id, fail: fail)
 
 fn events(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
 fn check(log: String, action: Int) Int!:
@@ -59,7 +59,11 @@ type Wrapped:
 	first: Token?
 
 fn wrapped(log: String, action: Int) Void!:
-	value := Wrapped(first: token(log, 1), second: ok(token(log, 2)), code: check(log, action)?)
+	value := Wrapped(
+		first: token(log, 1),
+		second: ok(token(log, 2)),
+		code: check(log, action)?,
+	)
 	append_file(log, f"body {value.code}\n").wait()?
 
 fn default_code(log: String, action: Int) Int:

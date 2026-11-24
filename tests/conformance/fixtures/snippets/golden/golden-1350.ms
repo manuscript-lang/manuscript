@@ -8,4 +8,4 @@ fn use() Int:
 fn record(value: Item?) Int:
     match value:
         item: return Item.value
-        none: return 0
+        null: return 0

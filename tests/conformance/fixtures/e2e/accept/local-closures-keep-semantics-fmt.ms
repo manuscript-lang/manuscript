@@ -15,7 +15,7 @@ fn lookup(limit: Int) Int:
         if key < limit:
             return (key * 2)
 
-        return none
+        return null
 
     var total = 0
     var i = 0
@@ -24,7 +24,7 @@ fn lookup(limit: Int) Int:
         match find(key: i):
             found:
                 total = total + found
-            none:
+            null:
                 total = total + 100
 
         i = i + 1

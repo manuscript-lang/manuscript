@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+)
 
 // Lowering moves or lends a value with one owner where the program wrote no `.clone()`:
 // `pop` takes the element out of the list, `get` on an owned optional or result hands the
@@ -23,11 +26,11 @@ type Ring:
 	size: Int
 
 fn Ring.at(index: Int) Counter?:
-	if index < 0 or index >= self.size: return none
+	if index < 0 or index >= self.size: return null
 	return self.slots.get(index)
 
 fn maybe(n: Int) Counter?:
-	if n < 0: return none
+	if n < 0: return null
 	return counter(n)
 
 fn make(n: Int) Counter!:
@@ -42,16 +45,19 @@ fn total(counters: List[Counter], scale: Int = 1) Int:
 test "pop moves the element out of the list":
 	var counters = [counter(1), counter(2), counter(3)]
 	var seen: List[Int] = []
+
 	while not counters.is_empty():
-		if c := counters.pop(): seen.append(c.read())
+		c := counters.pop()
+		if c != null: seen.append(c.read())
+
 	seen | expect_equal([3, 2, 1])?
 	counters.length() | expect_equal(0)?
 
 test "get on an owned optional hands the payload over":
-	taken := maybe(6).get()
+	taken := maybe(6) or panic("called Optional.get() on null")
 	taken.read() | expect_equal(6)?
 
-	later := maybe(9).get()
+	later := maybe(9) or panic("called Optional.get() on null")
 	later.read() | expect_equal(9)?
 
 test "get on a borrowed result lends the payload":
@@ -60,11 +66,12 @@ test "get on a borrowed result lends the payload":
 	r.get().read() | expect_equal(7)?
 
 test "a native lend beside a none path still lends":
-	slots: List[Counter?] := [counter(8), none]
+	slots: List[Counter?] := [counter(8), null]
 	ring := Ring(slots: slots, size: 2)
-	if c := ring.at(0): c.read() | expect_equal(8)?
-	ring.at(1).is_none() | expect_true?
-	ring.at(5).is_none() | expect_true?
+	c := ring.at(0)
+	if c != null: c.read() | expect_equal(8)?
+	(ring.at(1) == null) | expect_true?
+	(ring.at(5) == null) | expect_true?
 
 test "a function value with defaults passes a supplied argument through":
 	alias := total

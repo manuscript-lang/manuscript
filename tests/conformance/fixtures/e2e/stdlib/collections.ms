@@ -6,6 +6,7 @@ import (
 	flatten,
 	map_from_entries,
 	range_by from "@std/collections/collections.ms",
+	panic from "@std/core.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
@@ -31,7 +32,7 @@ test "list search callbacks empty identities and folding":
 
 	empty: List[Int] := []
 	expect_false(empty.any(positive) or not empty.all(positive))?
-	expect_false(empty.first().is_some() or empty.last().is_some())?
+	expect_false((empty.first() != null) or (empty.last() != null))?
 
 	groups := ([1, 2, 3]).group_by(parity)
 	expect_false(groups.get(1) != [1, 3] or groups.get(0) != [2])?
@@ -44,7 +45,7 @@ test "group_by keeps first-seen key order and element order across few and many 
 	var total = 0
 
 	for k in 0..3:
-		group := few.get(k).get()
+		group := few.get(k) or panic("called Optional.get() on null")
 		expect_equal(group.length(), 200)?
 
 		for j in 0..200:
@@ -84,7 +85,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
 	var copy = map.clone()
 	copy.remove("a")
 	expect_false(copy.keys() != ["b"] or map.keys() != ["a", "b"])?
-	expect_false(map.get("missing").is_some())?
+	expect_false(map.get("missing") != null)?
 
 test "set algebra removes duplicates and preserves values":
 	left := ([1, 2, 2]).to_set()
@@ -236,7 +237,7 @@ test "filled copies nested values independently through generic and function cal
 	expect_equal(source, [1])?
 
 	repeat := filled[List[Int]]
-	var via_function = repeat(source, 2, none)?
+	var via_function = repeat(source, 2, null)?
 	via_function[1].append(3)
 	expect_equal(via_function, [[1], [1, 3]])?
 	expect_equal(source, [1])?

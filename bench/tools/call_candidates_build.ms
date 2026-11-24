@@ -1,6 +1,7 @@
 // End-to-end uncached Release builds plus exact native output checks. MS_CACHE=off ms
 // run bench/tools/call_candidates_build.ms -- BEFORE AFTER INPUTS OUTPUT ROUNDS
 import (
+	panic from "@std/core.ms",
 	arguments, set_environment from "@std/os/env.ms",
 
 	timed from "./call_candidates_process.ms",
@@ -87,6 +88,6 @@ export fn main() Void!:
 		absolute(args[1].clone()),
 		absolute(args[2].clone()),
 		absolute(args[3].clone()),
-		args[4].parse_int().get(),
+		args[4].parse_int() or panic("called Optional.get() on null"),
 		if args.length() == 6: args[5].clone() else: "",
 	)?

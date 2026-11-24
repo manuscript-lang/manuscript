@@ -39,13 +39,15 @@ fn count_of(name: String) Int:
 	return 0
 
 fn ratio(num: Float?, den: Float?) String:
-	if num.is_none() or den.is_none(): return "-"
-	if num.get_or(0.0) == 0.0 or den.get_or(0.0) == 0.0: return "-"
+	if (num == null) or (den == null): return "-"
+	if (num) == 0.0 or (den) == 0.0: return "-"
 
-	return (num.get_or(0.0) / den.get_or(0.0)).to_fixed(2)
+	return ((num) / (den)).to_fixed(2)
 
 fn cell(value: Float?) String:
-	if v := value: return right(v.to_fixed(1), 9)
+	v := value
+	if v != null: return right(v.to_fixed(1), 9)
+
 	return right("-", 9)
 
 export fn summarize(lines: List[String], repeats: Int) String!:
@@ -94,18 +96,14 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 		ops := parts[2].parse_int()
 		ns := parts[3].parse_int()
-		if (
-			ops.is_none()
-			or ns.is_none()
-			or ops.get_or(0) != count_of(name)
-			or ns.get_or(0) < 0
-		):
+		if (ops == null or (ns == null) or (ops) != count_of(name) or (ns) < 0):
 			return invalid(f"invalid count or timing: {line.trim()}")
 
 		key := f"{name} {version}"
-		now := ns.get_or(0).to_float()
+		now := (ns).to_float()
+		prior := best.get(key)
 
-		if prior := best.get(key):
+		if prior != null:
 			best.add(key.clone(), if now < prior: now else: prior)
 		else:
 			best.add(key.clone(), now)
@@ -127,8 +125,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 	for op in operations():
 		n := op.count.to_float()
 		m := best.get_or(f"{op.name} ms", 0.0) / n
-		var g: Float? = none
-		if t := best.get(f"{op.name} go"): g = t / n
+		var g: Float? = null
+		t := best.get(f"{op.name} go")
+		if t != null: g = t / n
 
 		r := best.get_or(f"{op.name} rs", 0.0) / n
 		rows.append(

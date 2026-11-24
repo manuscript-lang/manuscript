@@ -8,14 +8,14 @@ type Rec:
 	score: Int
 
 fn main() Void:
-	data := read_all(stdin(), none).get().decode_utf8().get_or("")
+	data := read_all(stdin(), null).get().decode_utf8() or ""
 	var recs = List[Rec]()
 
 	for line in data.split("\n"):
 		if line.is_empty(): continue
 
 		f := line.split(" ")
-		recs.append(Rec(f[0].clone(), f[1].parse_int().get_or(0)))
+		recs.append(Rec(f[0].clone(), f[1].parse_int() or 0))
 
 	sorted := recs.sorted(
 		fn a,

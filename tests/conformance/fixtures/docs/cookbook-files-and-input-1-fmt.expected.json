@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\targuments from \"@std/os/env.ms\",\n\twrite_file from \"@std/os/fs.ms\",\n)\n\nfn run() Result[Void, Error]:\n\tpath := arguments().first().ok_or(\n\t\tError(\"filesystem: invalid input\", kind: \"EINVAL\")\n\t)?\n\treturn write_file(path, \"saved notes\\n\", replace: false).wait()\n\nfn main() Void!:\n\trun()?\n"
+    "fmt": "import (\n\targuments from \"@std/os/env.ms\",\n\twrite_file from \"@std/os/fs.ms\",\n)\n\nfn run() Result[Void, Error]:\n\tpath := ok_or(\n\t\targuments().first(),\n\t\tError(\"filesystem: invalid input\", kind: \"EINVAL\"),\n\t)?\n\treturn write_file(path, \"saved notes\\n\", replace: false).wait()\n\nfn main() Void!:\n\trun()?\n"
   }
 }

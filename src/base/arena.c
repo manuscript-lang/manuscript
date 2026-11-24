@@ -42,7 +42,7 @@ static void *bump(MsArena *arena, size_t size, size_t alignment) {
   return (void *)at;
 }
 
-void *ms_arena_alloc(MsArena *arena, size_t size, size_t alignment) {
+void *ms_arena_alloc_slow(MsArena *arena, size_t size, size_t alignment) {
   if (alignment == 0 || alignment > MS_ARENA_MAX_ALIGNMENT || (alignment & (alignment - 1)) != 0) {
     ms_fatal(MS_FATAL_INVARIANT, "bad arena alignment");
   }
@@ -84,6 +84,14 @@ void *ms_arena_alloc_array(MsArena *arena, size_t element_size, size_t alignment
     ms_fatal(MS_FATAL_OVERFLOW, "arena array size overflow");
   }
   return ms_arena_alloc_zeroed(arena, bytes, alignment);
+}
+
+void *ms_arena_alloc_array_uninit(MsArena *arena, size_t element_size, size_t alignment, size_t count) {
+  size_t bytes = 0;
+  if (!ms_size_mul(element_size, count, &bytes)) {
+    ms_fatal(MS_FATAL_OVERFLOW, "arena array size overflow");
+  }
+  return ms_arena_alloc(arena, bytes, alignment);
 }
 
 MsSpan ms_arena_copy(MsArena *arena, MsSpan span) {

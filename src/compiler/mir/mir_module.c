@@ -227,20 +227,6 @@ void mir_target_remove_arg(MirTarget *t, uint32_t k) {
   t->nargs--;
 }
 
-uint32_t mir_term_ntargets(const MirTerm *term) {
-  switch ((MirTermKind)term->kind) {
-  case MT_BR:
-    return 1;
-  case MT_CONDBR:
-    return 2;
-  case MT_SWITCH:
-    return term->ncases + 1;
-  case MT_RET: case MT_FAULT: case MT_UNREACHABLE:
-    return 0;
-  }
-  return 0;
-}
-
 MirTarget *mir_term_target(MirTerm *term, uint32_t index) {
   switch ((MirTermKind)term->kind) {
   case MT_BR:

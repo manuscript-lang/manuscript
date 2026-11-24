@@ -24,7 +24,7 @@ fn success(id: Int) Tag!Int:
 	return ok(Tag(id))
 
 fn events(log: String) String:
-	return read_file(log).wait().get().decode_utf8().get_or("")
+	return read_file(log).wait().get().decode_utf8() or ""
 
 fn project(id: Int) Int:
 	return success(id).get().id

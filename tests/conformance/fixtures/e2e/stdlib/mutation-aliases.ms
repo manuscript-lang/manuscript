@@ -40,7 +40,7 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     first.remove(
         match trigger:
             key: key
-            none: 0
+            null: 0
     )
     expect_false(not first.is_empty())?
 

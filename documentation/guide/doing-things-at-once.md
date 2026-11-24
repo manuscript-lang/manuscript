@@ -20,7 +20,7 @@ fn run(paths: List[String]) Int!:
     files := wait_all(reads)?
     var rows = 0
     for file in files:
-        text := file.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
+        text := ok_or(file.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))?
         rows += count_rows(text)
     return ok(rows)
 

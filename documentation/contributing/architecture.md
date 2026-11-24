@@ -22,7 +22,7 @@ weight = 1
 
 1. `cli/` validates options and picks a command; the command drives the stages below it.
 2. `compiler/project` reads `ms.toml` and `[aliases]`, resolves imports to canonical, root-confined paths (including editor overlays), follows imports, detects cycles and returns the modules in dependency order.
-3. `compiler/syntax` parses strictly, or with recovery for editor analysis. Standard declarations (`stdlib/*.ms`, embedded at build time) use the same parser.
+3. `compiler/syntax` parses strictly, or with recovery for editor analysis. Standard declarations (`src/stdlib/*.ms`, embedded at build time) use the same parser.
 4. `compiler/check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup and effects; `compiler/own` adds ownership. The result keeps what lowering, docs and editors need.
 5. Check, lint, inspect, diagram and review stop after checking. Formatting uses only the syntax layer.
 6. `compiler/lower` turns checked HIR into MIR; `compiler/mir` and `compiler/opt` elaborate ownership, optimize and verify it. See [lowering](compiler/lowering/_index.md).
@@ -42,7 +42,7 @@ An include crosses layers only downward (`src/layers.txt`, enforced by `ms_lint`
 | `src/lint` | `ms_lint`: banned calls and layering |
 | `src/third_party` | Vendored libraries pinned by `c-libs.lock` |
 
-`stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority.
+`src/stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority.
 
 ## Keep shared behavior in one implementation
 
@@ -61,15 +61,15 @@ An include crosses layers only downward (`src/layers.txt`, enforced by `ms_lint`
 | `website/static/stdlib.md`, `stdlib.json` | Generated API downloads; not committed |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads |
 | `src/` | The C implementation; `src/abi/README.md` records layouts and symbols |
-| `agent-skill/` | The agent skill (`SKILL.md` and references) packed into `manuscript-skill.tar.gz` by `toolchain/package-skill.sh` |
+| `extensions/agent-skill/` | The agent skill (`SKILL.md` and references) packed into `manuscript-skill.tar.gz` by `cmake/toolchain/package-skill.sh` |
 | `tools/` | Repository tools written in Manuscript (`ms run tools/<name>.ms`): conform, leak and count checks, repo-check, doctor |
-| `toolchain/` | Pinned lld, LLVM and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) and the glibc 2.28 symbol tables, read by the build before `ms` exists |
+| `cmake/toolchain/` | Pinned lld, LLVM and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) and the glibc 2.28 symbol tables, read by the build before `ms` exists |
 | `tests/` | `conformance/` (the corpus), `docs/` (book checks), and fixtures for the language server, ownership counts and scaling |
 | `bench/` | `perf/` (kernels, workloads, JSON, web, workers, stdlib, each with a run script and a dated result page) and `agent/` (the agent benchmark and its results) |
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets |
 | `.github/workflows/` | CI, book publishing, six-platform release packaging |
-| `skills/`, `wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
+| `skills/`, `design/wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
 | `.artifacts/` | Ignored build output, reports and archives |
 
 Fix generated output through its generator, never by editing HTML or copying standard signatures into another catalog.

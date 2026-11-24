@@ -39,7 +39,11 @@ typedef struct Uses {
   MsBindingList cand_locals, cand_nodes; /* `x := y` binds of a local `y` that nothing has read or assigned since */
   MsBindingList swapped; /* the reads that bind a local assigned while the binding lives (`old := a; a = b`) */
   const MsExpr *cand_places[16]; /* `x := a.f` binds of a field place that nothing has read or assigned since */
+  uint32_t cand_keys[16]; /* the local each candidate place's bind names */
   uint32_t ncand_places;
+  const MsExpr *pending_places[16]; /* binds whose place was assigned: swapped once the bound name is read again */
+  uint32_t pending_keys[16];
+  uint32_t npending;
   MsBindingList moved; /* the locals a name moves in the callable being marked */
   MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
   uint32_t assigned; /* the local the statement being marked assigns, or UINT32_MAX: its old value dies with the assignment */
@@ -103,6 +107,10 @@ static bool part_of_fresh_call(const Uses *pass, const MsExpr *expr) {
   const MsExpr *at = expr;
   while (at->kind == MS_E_MEMBER) {
     at = at->u.member.left;
+  }
+  if (at != expr && at->kind == MS_E_BINARY && at->op == MS_B_OR) { /* `(x or d).field`: the payload leaves the local `x` */
+    return at->u.bin.left->kind == MS_E_NAME && place_root(pass, at->u.bin.left) &&
+           ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, at->u.bin.left->id), MS_BUILTIN_Optional);
   }
   return at != expr && at->kind == MS_E_CALL && fresh_call(pass, at);
 }
@@ -194,6 +202,19 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
   if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY) { /* `r?` hands the payload of the local `r` on */
     if (expr->u.bin.left->kind == MS_E_NAME && place_root(pass, expr->u.bin.left)) {
       pass->facts->uses[expr->id] = MS_USE_MOVE;
+    }
+    return;
+  }
+  if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR) { /* `x or d` hands the payload of the local `x` on */
+    const MsExpr *named = expr->u.bin.left;
+    if (named->kind == MS_E_CALL) { /* `r.get() or d` hands the payload of the owner `r` on */
+      (void)payload_of_owner(pass, named);
+      return;
+    }
+    const MsTy ty = ms_facts_type(pass->facts, expr->id);
+    if (named->kind == MS_E_NAME && place_root(pass, named) && ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY &&
+        ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, named->id), MS_BUILTIN_Optional)) {
+      pass->facts->uses[expr->id] = MS_USE_MOVE; /* the expression carries the move, as `x.get()` does */
     }
     return;
   }
@@ -510,6 +531,7 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     if (stmt->u.bind.value->kind == MS_E_MEMBER && place_root(pass, stmt->u.bind.value) &&
         pass->ncand_places < sizeof pass->cand_places / sizeof pass->cand_places[0]) {
+      pass->cand_keys[pass->ncand_places] = swap_key(ms_facts_ref(pass->facts, stmt->u.bind.pattern->id));
       pass->cand_places[pass->ncand_places++] = stmt->u.bind.value; /* `old := self.f; self.f = g` */
       return;
     }
@@ -524,7 +546,13 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
   if (stmt->kind == MS_S_ASSIGN && stmt->u.assign.member_target && !stmt->u.assign.has_compound) {
     for (uint32_t at = 0; at < pass->ncand_places; at++) {
       if (pass->cand_places[at] != NULL && same_place(pass, pass->cand_places[at], stmt->u.assign.target)) {
-        ms_binding_list_push(&pass->swapped, pass->cand_places[at]->id);
+        /* The binding owns the value only if it is read after the assignment; a name dead by then keeps the borrow. */
+        if (pass->npending < sizeof pass->pending_places / sizeof pass->pending_places[0]) {
+          pass->pending_places[pass->npending] = pass->cand_places[at];
+          pass->pending_keys[pass->npending++] = pass->cand_keys[at];
+        } else {
+          ms_binding_list_push(&pass->swapped, pass->cand_places[at]->id);
+        }
         pass->cand_places[at] = NULL;
       }
     }
@@ -550,6 +578,12 @@ static void note_swap_expr(void *ctx, const MsExpr *expr) {
     }
   }
   const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(pass->facts, expr->id) : NULL;
+  for (uint32_t at = 0; swap_key(ref) != UINT32_MAX && at < pass->npending; at++) {
+    if (pass->pending_places[at] != NULL && pass->pending_keys[at] == swap_key(ref)) {
+      ms_binding_list_push(&pass->swapped, pass->pending_places[at]->id);
+      pass->pending_places[at] = NULL;
+    }
+  }
   for (size_t index = 0; swap_key(ref) != UINT32_MAX && index < pass->cand_locals.len; index++) {
     if (pass->cand_locals.ptr[index] == swap_key(ref) && pass->cand_nodes.ptr[index] != expr->id) {
       pass->cand_locals.ptr[index] = UINT32_MAX; /* read again before any assignment */
@@ -693,6 +727,7 @@ static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consum
   pass->cand_nodes.len = 0;
   pass->swapped.len = 0;
   pass->ncand_places = 0;
+  pass->npending = 0;
   pass->moving = consuming ? 1u : 0u; /* the receiver of a consuming method is parameter 0 */
   for (uint32_t at = 0; at < params.len; at++) {
     const MsRef *ref = ms_facts_ref(pass->facts, params.ptr[at]->id);

@@ -5,5 +5,5 @@ fn f(xs: List[Int], o: Int?) Void:
     r := match o:
         v:
             xs.set(index: 0, value: v)
-        none:
+        null:
             xs.length()

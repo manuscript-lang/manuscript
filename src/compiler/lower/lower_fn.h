@@ -140,6 +140,9 @@ typedef struct LowerFn {
   uint32_t nmoved_names;
   const MsExpr *placing_member; /* the receiver a native takes out of its place itself: reading it leaves it there */
   const MsExpr *taking_member; /* the member read whose value the consumer takes (LW_MOVE) */
+  bool read_moves;             /* the expression being read hands its value to a consumer (LW_MOVE) */
+  const MsExpr *narrow_take;   /* the narrowed local whose payload the reader takes, as a field moves out of it */
+  const MsExpr *or_view;        /* the `x or d` a field read looks through: its payload may stay a view of `x` */
   const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
   const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
   uint32_t nmoved_fields;
@@ -165,6 +168,7 @@ typedef struct LowerFn {
   uint32_t site_index;
   MirValue receiver_slot; /* a native call's fresh receiver, in the closing slot its arguments were evaluated after (MIR_NONE: none) */
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
+  MirTy native_value_ty; /* the element or value type of the collection the native being called reads, else MIR_NONE */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
   bool temps; /* a statement scope is open for the temporaries its calls borrow */
   const MsStmt *sink_stmt; /* a bench body's last statement: when it is a call, its value goes to the bench sink */
@@ -299,6 +303,8 @@ uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty);
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
+/* A call result a comparison reads: it closes with the statement. */
+MirValue fn_closing_operand(LowerFn *fn, const MsExpr *operand, MirValue value);
 MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value);
 /* The resources the other fields of record `base` hold, closed with the statement once field `moved` has left it; the mask of the fields taken out. */
 uint32_t fn_close_rest(LowerFn *fn, const MsExpr *member, MirValue base, uint32_t type_id, uint32_t moved);
@@ -329,7 +335,8 @@ static inline const MsExpr *fn_call_callee(const MsExpr *call) {
              : callee;
 }
 bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
-bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirTy first_type_arg,
+                          MirValue *out);
 enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record constructor takes one per field */
 
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written);
@@ -404,6 +411,7 @@ bool fn_number_bits(MsSpan text, uint64_t *out);
 bool fn_is_text_literal(const MsExpr *expr);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
+bool fn_call_never(const LowerFn *fn, const MsExpr *expr);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A new empty map or set of type `ty`: a pure, fresh runtime call, so an unused one is removed. */
@@ -411,6 +419,8 @@ MirValue fn_empty_map(LowerFn *fn, MirTy ty);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
 bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first);
+struct MsNativeSig;
+MirTwin fn_native_twin(const struct MsNativeSig *sig);
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
@@ -452,6 +462,13 @@ MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
 MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, MirTy *entry_ty);
+void fn_fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty);
+/* `cur = n.next` over a payload view of `cur` (lower_assign_take.c): the new value, or MIR_NONE when not that shape. */
+MirValue fn_take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var);
+bool fn_take_field_into_slot(LowerFn *fn, const MsStmt *stmt, const MsRef *ref, MsName name, bool *done);
+/* `x or d` over a nullable `x` (lower_or.c). */
+MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr);
+MirValue fn_lower_logical(LowerFn *fn, const MsExpr *expr); /* `a && b`, `a || b` */
 /* A call recorded with a bodiless standard operation as its callee. */
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 
@@ -484,6 +501,8 @@ MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const 
 
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
+/* The checked type of `expr` as it is read: a local narrowed by `v != null` reads as its payload type. */
+MsTy fn_read_type(const LowerFn *fn, const MsExpr *expr);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);

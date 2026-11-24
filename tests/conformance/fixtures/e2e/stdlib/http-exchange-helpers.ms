@@ -15,7 +15,7 @@ import (
 )
 
 fn echo(request: HttpRequest) HttpResponse:
-	return text(201, f"{request.path}:{request.body.decode_utf8().get_or("")}")
+	return text(201, f"{request.path}:{(request.body.decode_utf8() or "")}")
 
 fn exchange_echo(var exchange: HttpExchange) Void!:
 	body := read_body(exchange, 8)?
@@ -34,7 +34,7 @@ test "buffered adapts a request-to-response handler":
 
 	var text = ""
 	for chunk in response.body:
-		text += chunk.decode_utf8().get_or("")
+		text += chunk.decode_utf8() or ""
 	expect_equal(text, "/x:abc")?
 
 test "read_body bounds the body by its limit":
@@ -67,5 +67,5 @@ test "serve, the client and a response take their defaults":
 
 	var got = ""
 	for chunk in response.body:
-		got += chunk.decode_utf8().get_or("")
+		got += chunk.decode_utf8() or ""
 	expect_equal(got, "bare")?

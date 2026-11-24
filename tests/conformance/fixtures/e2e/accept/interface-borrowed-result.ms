@@ -42,7 +42,7 @@ test "a result of an operation outlives the value it was read from":
 	var out: List[String] = []
 
 	for i in 0..3:
-		pet := Pet(f"p{i}", [], none)
+		pet := Pet(f"p{i}", [], null)
 		view: Label := pet
 		out.append(view.text())
 

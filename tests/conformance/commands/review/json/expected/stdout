@@ -28,7 +28,7 @@
           "parse_total",
           "fn",
           "fn(List[String]) Int",
-          "src/shapes.ms:15"
+          "src/shapes.ms:17"
         ]
       ]
     },
@@ -87,5 +87,5 @@
     }
   ],
   "findings": [],
-  "digest": "sha256:126d19de47d67aecad521f1f74cd2f57c6f611b68764241439ef46124c3a882f"
+  "digest": "sha256:8ab3c919221b70ab0289b5b11e4a15120995bad1b9e20573b4de48237839eb26"
 }

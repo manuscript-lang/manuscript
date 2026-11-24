@@ -23,6 +23,12 @@ endif()
 if(NOT MSVC)
   string(APPEND CMAKE_C_FLAGS " -fno-omit-frame-pointer")
 endif()
+# Windows gives a thread 1 MiB unless the executable asks for more, where Linux gives the main thread 8 MiB: a program
+# whose checker and optimizer recurse through a 1500-term expression (the stack-overflow fixture) ended the compiler itself
+# with 0xC00000FD. Every executable reserves 64 MiB (address space only; pages commit as they are used).
+if(WIN32 AND NOT MSVC)
+  add_link_options("LINKER:--stack,67108864")
+endif()
 # The counting runtime (live blocks, parks, copies) for the leak, cancel and count gates: `cmake --preset stats`.
 option(MS_STATS "Compile the runtime's counters in" OFF)
 if(MS_STATS)
@@ -64,7 +70,7 @@ endfunction()
 ms_conform_target(conform "" "Replaying the conformance corpus and the command fixtures")
 ms_conform_target(conform-commands commands "Replaying the command fixtures")
 
-# Downloads the pinned shared LLVM library (toolchain/llvm-lib.lock) and, in CI, exports MS_LLVM for the later steps
+# Downloads the pinned shared LLVM library (cmake/toolchain/llvm-lib.lock) and, in CI, exports MS_LLVM for the later steps
 # (tools/fetch-llvm-lib.ms).
 add_custom_target(llvm-lib
   COMMAND $<TARGET_FILE:ms> run tools/fetch-llvm-lib.ms

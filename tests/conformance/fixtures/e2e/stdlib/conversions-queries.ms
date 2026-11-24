@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+)
 
 type Counter:
 	calls: Int
@@ -13,14 +16,16 @@ fn counted(var counter: Counter) Counter:
 	return counter.clone()
 
 fn require_value[T, E](cause: E, value: T?) T!E:
-	return value.ok_or(cause)
+	return ok_or(value, cause)
 
 fn require_lazy[T, E](create: fn() E, value: T?) T!E:
-	return value.ok_or_else[E](create)
+	if value != null: return ok(value)
+
+	return error(create())
 
 fn success_only[T, E](value: T!E) T?:
 	if item := value: return item
-	return none
+	return null
 
 fn reduce_map[K: Hashable, V, A: Clonable](
 	values: Map[K, V],
@@ -40,29 +45,35 @@ fn locate[K: Hashable, V: Clonable](
 
 test "conversions and collection queries are callable":
 	present: Int? := 2
-	missing: Int? := none
-	present.ok_or(Error("absent")).get() | expect_equal(2)?
-	expect_equal(missing.ok_or_else(fn: Error("absent")).err().message, "absent")?
+	missing: Int? := null
+	ok_or(present, Error("absent")).get() | expect_equal(2)?
+	expect_equal(ok_or(missing, Error("absent")).err().message, "absent")?
 
 	failed: Int!Error := error(Error("failed"))
-	(failed.to_optional().is_none()) | expect_true?
+	(failed.to_optional() == null) | expect_true?
 
 	entries: Map[String, Int] := {"b": 2, "a": 1}
 	expect_equal(entries.fold(0, fn acc, k, v: acc + v), 3)?
-	expect_equal(entries.find(fn k, v: v == 1).get().key, "a")?
+	expect_equal(
+		(
+			entries.find(fn k, v: v == 1)
+			or panic("called Optional.get() on null")
+		).key,
+		"a",
+	)?
 	expect_true((entries.any(fn k, v: v == 1)))?
 	expect_true((entries.all(fn k, v: v > 0)))?
 
 	values := Set[Int]([2, 1])
 	expect_equal(values.fold(0, fn acc, n: acc + n), 3)?
-	expect_equal(values.find(fn n: n == 1).get(), 1)?
+	expect_equal(values.find(fn n: n == 1) or panic("called Optional.get() on null"), 1)?
 	expect_true((values.any(fn n: n == 1)))?
 	expect_true((values.all(fn n: n > 0)))?
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
 	var counter = Counter(0)
 	present: Int? := 0
-	missing: Int? := none
+	missing: Int? := null
 	(
 		(
 			require_value(counted(counter), present).get() != 0
@@ -84,44 +95,40 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	lazy_cause.calls = 4
 	error_result.err().calls | expect_equal(10)?
 
-	bound := missing.ok_or[Counter]
-	var bound_cause = bound(cause: counter.clone()).err().clone()
-	bound_cause.calls = 5
-	counter.calls | expect_equal(1)?
-
-	missing.clone().ok_or_else(create).err().calls | expect_equal(10)?
-
 	failure: Counter!Pending := error(Pending([1, 2]))
-	(success_only(failure).is_none()) | expect_true?
+	(success_only(failure) == null) | expect_true?
 
 	success: Counter!Error := ok(counter.clone())
 	extract := fn: success.clone().to_optional()
-	var extracted = extract().get().clone()
+	var extracted = (extract() or panic("called Optional.get() on null")).clone()
 	extracted.calls = 7
 	counter.calls | expect_equal(1)?
 
-	nested_none: Int? := none
+	nested_none: Int? := null
 	nested: Int?? := nested_none
-	converted := nested.ok_or(Error("absent"))
-	(
-		(
-			not (converted.is_ok())
-			or not (converted.to_optional().get().is_none())
-		) | expect_false?
-	)
+	converted := ok_or(nested, Error("absent"))
+	converted.is_error() | expect_true?
+	(converted.to_optional() == null) | expect_true?
 
 	false_value: Bool? := false
-	false_value.ok_or(Error("absent")).to_optional().get() | expect_false?
+	(
+		(
+			ok_or(false_value, Error("absent")).to_optional()
+			or panic("called Optional.get() on null")
+		)
+		| expect_false?
+	)
 
 	unit_value: Void? := void
-	(unit_value.ok_or(Error("absent")).to_optional().is_some()) | expect_true?
+	(ok_or(unit_value, Error("absent")).to_optional() != null) | expect_true?
 
 	nested_inner: Int!Error := error(Error("nested"))
 	nested_result: Int!Error? := nested_inner
 	(
-		nested_result.ok_or(
-			Error("absent")
-		).to_optional().get().err().message | expect_equal("nested")?
+		(
+			ok_or(nested_result, Error("absent")).to_optional()
+			or panic("called Optional.get() on null")
+		).err().message | expect_equal("nested")?
 	)
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
@@ -179,42 +186,49 @@ test "Map find returns fresh entry shells with copied payloads":
 		"c": Counter(3)
 	}
 	var visits: List[String] = []
-	found := locate(
-		values.clone(),
-		fn k,
-		v:
-			visits.append(k.clone())
-			return k == "a"
-	).get()
+	found := (
+		locate(
+			values.clone(),
+			fn k,
+			v:
+				visits.append(k.clone())
+				return k == "a"
+		)
+		or panic("called Optional.get() on null")
+	)
 	(visits != ["b", "a"] or found.key != "a" or found.value.calls != 1) | expect_false?
 
 	var source = Map[String, Counter]()
 	source.add("b", counter.clone())
 
 	find := source.clone().find
-	var original = find(fn k, v: true).get().clone()
+	var original = (find(fn k, v: true) or panic("called Optional.get() on null")).clone()
 	var edited = original.value.clone()
 	edited.calls = 5
 	counter.calls | expect_equal(2)?
 	original.key = "other"
 	original.value = Counter(9)
 	(not (source.contains("b")) or source["b"].calls != 2) | expect_false?
-	expect_equal(source.find(fn k, v: true).get().key, "b")?
-	expect_true((source.find(fn k, v: false).is_none()))?
+	expect_equal(
+		(
+			source.find(fn k, v: true)
+			or panic("called Optional.get() on null")
+		).key,
+		"b",
+	)?
+	expect_true((source.find(fn k, v: false) == null))?
 
 	empty := Map[String, Counter]()
 	expect_false(
 		not (
-			empty
-			.find(
+			empty.find(
 				(
 					fn k,
 					v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 	empty_calls.is_empty() | expect_true?
@@ -341,31 +355,32 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 
 	var seen: List[Int] = []
 	find := values.clone().find
-	var found = find(
-		fn v:
-			seen.append(v.id)
-			return v.id == 1
-	).get().clone()
+	var found = (
+		find(
+			fn v:
+				seen.append(v.id)
+				return v.id == 1
+		)
+		or panic("called Optional.get() on null")
+	).clone()
 	seen | expect_equal([2, 1])?
 	found.label = "found"
 	a.label | expect_equal("a")?
 	values.clear()
 	expect_false(
 		not (
-			values
-			.find(
+			values.find(
 				(
 					fn v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 
 	flags := Set[Bool]([false])
-	expect_false(flags.find(fn v: true).get())?
+	expect_false(flags.find(fn v: true) or panic("called Optional.get() on null"))?
 	empty_calls.is_empty() | expect_true?
 
 test "Set predicates short circuit over snapshots and keep empty identities":
@@ -430,7 +445,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 
 	complete := Set[Int]([2, 1])
 	expect_false(complete.any(fn v: false) or not (complete.all(fn v: true)))?
-	expect_true((complete.find(fn v: false).is_none()))?
+	expect_true((complete.find(fn v: false) == null))?
 	empty_calls.is_empty() | expect_true?
 
 test "nonmatching queries and all-true predicates visit the complete snapshot":
@@ -465,14 +480,12 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	expect_false(
 		(
 			not (
-				map
-				.find(
+				map.find(
 					fn k,
 					v:
 						map_visits.append(k.clone())
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or map_visits != ["b", "a", "c"]
 		)
@@ -507,29 +520,26 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	expect_false(
 		(
 			not (
-				set
-				.find(
+				set.find(
 					fn v:
 						set_visits.append(v)
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or set_visits != [2, 1, 3]
 		)
 	)?
 
 fn find_port(port: Int?) Int!:
-	value := port.ok_or(Error("missing"))?
+	value := ok_or(port.clone(), Error("missing"))?
 	return ok(value)
 
 test "ok_or reports its explicit cause":
-	absent: Int? := none
-	direct: Int! := absent.ok_or(Error("missing"))
+	absent: Int? := null
+	direct: Int! := ok_or(absent, Error("missing"))
 	direct.err().message | expect_equal("missing")?
-
-	find_port(none).err().message | expect_equal("missing")?
+	find_port(null).err().message | expect_equal("missing")?
 	find_port(8080).get() | expect_equal(8080)?
 
-	named: Int!Error := absent.ok_or(Error("port"))
+	named: Int!Error := ok_or(absent, Error("port"))
 	named.err().message | expect_equal("port")?

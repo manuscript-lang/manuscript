@@ -1,7 +1,7 @@
 diff --git a/src/shapes.ms b/src/shapes.ms
 --- a/src/shapes.ms
 +++ b/src/shapes.ms
-@@ -16,4 +16,7 @@
+@@ -18,4 +18,7 @@
  	var total = 0
  	for item in items:
  		total += read_number(item).get_or(0)

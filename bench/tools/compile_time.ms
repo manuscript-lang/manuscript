@@ -55,7 +55,7 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Void, Error]:
 	drop_cache(f"{out}/ms")
 	set_environment("MS_BACKEND", "cranelift").get()
 	timed("ms clif:  ", f"{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin_c"])?
-	set_environment("MS_BACKEND", none).get()
+	set_environment("MS_BACKEND", null).get()
 
 	if env("SKIP_LLVM", "") == "":
 		drop_cache(f"{out}/ms")
@@ -83,7 +83,7 @@ fn main() Int:
 
 	for i in 0..3:
 		if args.length() > i:
-			v := args[i].parse_int().get_or(0)
+			v := args[i].parse_int() or 0
 			if v < 1: return usage("packages, files and fns must be positive integers")
 
 			dims[i] = v

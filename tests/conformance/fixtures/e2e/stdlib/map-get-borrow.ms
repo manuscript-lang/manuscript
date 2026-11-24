@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+)
 
 type Item:
 	name: String
@@ -9,27 +12,33 @@ type Item:
 test "reading through get leaves the map entry intact":
 	var m = Map[String, Item]()
 	m.add(key: "a", value: Item(name: "x", tags: ["p", "q"]))
-	expect_equal(m.get("a").get().name, "x")?
-	expect_equal(m.get("a").get().tags.length(), 2)?
-	expect_true(m.get("a").is_some())?
-	expect_true(m.get("zz").is_none())?
+	expect_equal((m.get("a") or panic("called Optional.get() on null")).name, "x")?
+	expect_equal(
+		(m.get("a") or panic("called Optional.get() on null")).tags.length(),
+		2,
+	)?
+	expect_true(m.get("a") != null)?
+	expect_true(m.get("zz") == null)?
 	expect_equal(m.get_or("zz", Item(name: "d", tags: [])).name, "d")?
 	expect_equal(m.get_or("a", Item(name: "d", tags: [])).name, "x")?
-	expect_equal(m.get("a").get().tags.length(), 2)?
+	expect_equal(
+		(m.get("a") or panic("called Optional.get() on null")).tags.length(),
+		2,
+	)?
 
 test "a kept value is a copy that later changes do not reach":
 	var m = Map[String, Item]()
 	m.add(key: "a", value: Item(name: "x", tags: ["p"]))
 
-	kept := m.get("a").get().clone()
+	kept := (m.get("a") or panic("called Optional.get() on null")).clone()
 	m.add(key: "a", value: Item(name: "y", tags: []))
 	expect_equal(kept.name, "x")?
 	expect_equal(kept.tags.length(), 1)?
-	expect_equal(m.get("a").get().name, "y")?
+	expect_equal((m.get("a") or panic("called Optional.get() on null")).name, "y")?
 
 test "get with a default on integer values":
 	var counts = Map[String, Int]()
 	counts.add(key: "k", value: 5)
 	expect_equal(counts.get_or("k", 0), 5)?
 	expect_equal(counts.get_or("none", 7), 7)?
-	expect_false(counts.get("none").is_some())?
+	expect_false(counts.get("none") != null)?

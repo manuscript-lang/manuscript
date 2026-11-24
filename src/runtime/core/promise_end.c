@@ -227,6 +227,18 @@ bool ms_promise_end(MsPromise id) {
   return found >= 0 && has_result((size_t)found);
 }
 
+/* Frees the settled row: its result, start line, report and watches. */
+static void free_row(size_t row) {
+  promise_release_result(row);
+  promise_release_started(&promise_table.cold.ptr[row]);
+  ms_fault_text_free(&promise_table.cold.ptr[row].report);
+  if ((promise_table.hot.ptr[row].flags & FLAG_WATCHED) != 0) {
+    promise_post_watches(row);
+  }
+  promise_table.hot.ptr[row].state = STATE_FREE;
+  row_list_push(&promise_table.free_rows, (uint32_t)row);
+}
+
 void ms_promise_drop(MsPromise id) {
   if (promise_is_foreign(id)) {
     ms_remote_drop(id);
@@ -237,18 +249,22 @@ void ms_promise_drop(MsPromise id) {
     (void)ms_promise_end(id);
     found = promise_row_of(id);
   }
-  if (found < 0) {
-    return;
+  if (found >= 0) {
+    free_row((size_t)found);
   }
-  const size_t row = (size_t)found;
-  promise_release_result(row);
-  promise_release_started(&promise_table.cold.ptr[row]);
-  ms_fault_text_free(&promise_table.cold.ptr[row].report);
-  if ((promise_table.hot.ptr[row].flags & FLAG_WATCHED) != 0) {
-    promise_post_watches(row);
+}
+
+bool ms_promise_close(MsPromise id) {
+  const ptrdiff_t found = promise_row_of(id);
+  if (found >= 0 && row_settled((size_t)found) && !has_result((size_t)found)) {
+    free_row((size_t)found); /* the usual end: the result was taken, so one call frees the row */
+    return false;
   }
-  promise_table.hot.ptr[row].state = STATE_FREE;
-  row_list_push(&promise_table.free_rows, (uint32_t)row);
+  if (ms_promise_end(id)) {
+    return true;
+  }
+  ms_promise_drop(id);
+  return false;
 }
 
 MsFaultText ms_promise_fault_report(MsPromise id) {

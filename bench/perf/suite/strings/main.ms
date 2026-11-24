@@ -22,7 +22,9 @@ fn main() Void:
 		upper_len += t.upper().length()
 		replaced += t.replace("_", "--").replace("Item", "I").length()
 		if t.contains("77"): found += 1
-		if i := t.index_of("-"): found += i
+
+		i := t.index_of("-")
+		if i != null: found += i
 		padded += t.pad_start(20, ".").length() + t.lower().pad_end(24, "*").length()
 
 	joined := words.map(fn w: w.trim().clone()).sorted(fn a, b: a.compare(b))

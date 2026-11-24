@@ -7,14 +7,15 @@ import (
 // The input is built by the fixture; each operation includes the source's owned body
 // copy.
 fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Int!:
-	var parts = multipart_parts(from_bytes(body.clone(), chunk), "XyZ", none)
+	var parts = multipart_parts(from_bytes(body.clone(), chunk), "XyZ", null)
 	var seen = 0
 	var bytes = 0
 
 	while true:
 		next := parts.next()?
+		part := next
 
-		if part := next:
+		if part != null:
 			if part.data.length() != size: return error(Error("wrong multipart size"))
 
 			seen += 1

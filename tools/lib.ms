@@ -42,7 +42,8 @@ export fn note(message: String) Void:
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
 	all := environment().get_or(Map[String, String]())
-	if value := all.get(name): return value.clone()
+	value := all.get(name)
+	if value != null: return value.clone()
 
 	return fallback.clone()
 
@@ -55,7 +56,7 @@ export fn status(code: Int) Int:
 // searched. A program that cannot start, or one that ends with a status above 125,
 // reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
-	return run_program_in(program, arguments, none)
+	return run_program_in(program, arguments, null)
 
 // `run_program` in the directory `cwd` (the caller's when none). A path with a drive
 // letter in an argument reads as `host:file` to GNU tar, so a caller on Windows names
@@ -79,7 +80,7 @@ export fn run_program_in(program: String, arguments: List[String], cwd: String?)
 // Runs `program` and returns its standard output; empty when it cannot run or fails.
 export fn capture(program: String, arguments: List[String]) String:
 	if out := run(program, arguments).wait():
-		if out.exit_code == 0: return out.stdout.decode_utf8().get_or("").clone()
+		if out.exit_code == 0: return (out.stdout.decode_utf8() or "").clone()
 	return ""
 
 // Whether `program` runs and exits zero with `arguments`.
@@ -93,9 +94,9 @@ export fn file_sha256(path: String) String:
 	return hex_encode(sha256(data))
 
 // Builds the counting runtime (`cmake --preset stats`: live blocks, parks and copies
-// printed on standard error at exit, see proposals/c-runtime-stats-variant.md) and
-// points MS at its ms, which the tools then run the programs with. Returns a nonzero
-// status when a build fails.
+// printed on standard error at exit, see design/proposals/c-runtime-stats-variant.md)
+// and points MS at its ms, which the tools then run the programs with. Returns a
+// nonzero status when a build fails.
 export fn use_stats_runtime() Int:
 	for step in [["--preset", "stats"], ["--build", "--preset", "stats"]]:
 		out := run("cmake", step.clone()).wait()
@@ -103,9 +104,10 @@ export fn use_stats_runtime() Int:
 		if out.is_error() or out.get().exit_code != 0:
 			note("cmake " + step.join(" ") + " failed")
 			if out.is_ok(): note(
-				out.get().stderr.decode_utf8().get_or(
-					""
-				) + out.get().stdout.decode_utf8().get_or("")
+				(out.get().stderr.decode_utf8() or "") + (
+					out.get().stdout.decode_utf8()
+					or ""
+				)
 			)
 			return 1
 

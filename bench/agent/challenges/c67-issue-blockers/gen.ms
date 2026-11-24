@@ -18,7 +18,7 @@ fn c60_inputs() List[JsonValue]:
 	doc := parse(read_text(f"{root()}/challenges/c60-issue-tracker/hidden/cases.json")).get_or(
 		JsonValue.Null
 	)
-	return doc.as_list().get_or([])
+	return doc.as_list() or []
 
 WF := "workflow\ninitial: todo\ntodo -> doing, done, wontfix\ndoing -> review requires assignee, todo\nreview -> done requires labels, doing\nfinal: done, wontfix\nend\ncreate A\ncreate B\ncreate C\ncreate D\n"
 
@@ -26,8 +26,8 @@ export fn gen_c67() Void:
 	var cs = Cases(build_oracle("c67-issue-blockers"))
 
 	for entry in c60_inputs():
-		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
-		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
+		name := (entry.get("name") or JsonValue.Null).as_string() or ""
+		stdin := (entry.get("stdin") or JsonValue.Null).as_string() or ""
 		add(cs, f"kept-{name}", stdin)
 
 	add(cs, "block-basic", WF + "block 1 2\nblock #1 #3\nshow 1\nshow 2\nlog\n")

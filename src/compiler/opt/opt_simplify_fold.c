@@ -16,19 +16,22 @@ typedef struct SfK {
 
 /* What a value was defined by: its opcode, operands and immediate. */
 typedef struct SfDef {
-  bool has;
   uint8_t op;
   uint32_t nargs;
-  MirValue *args;
+  const MirValue *args; /* `inl` when the operands fit */
+  MirValue inl[4];
   MirImm imm;
 } SfDef;
 
+/* Per value of the function. `known` and `defined` flag which entries of `consts` and `defs` are set, so the
+ * large entries are never cleared: only a byte per value is. */
 typedef struct SfEnv {
   MirModule *m;
   MirFunc *f;
   MsArena *arena;
   SfK *consts;
   SfDef *defs;
+  uint8_t *known, *defined;
   uint32_t cap;
 } SfEnv;
 
@@ -38,42 +41,55 @@ static void sf_env_fit(SfEnv *e) {
     return;
   }
   const uint32_t cap = (uint32_t)(e->f->values.len + e->f->values.len / 2 + 8);
-  SfK *consts = MS_ARENA_NEW_ARRAY(e->arena, SfK, cap);
-  SfDef *defs = MS_ARENA_NEW_ARRAY(e->arena, SfDef, cap);
-  if (e->cap > 0 && e->consts != NULL && e->defs != NULL) {
-    __builtin_memcpy(consts, e->consts, sizeof(SfK) * e->cap);
-    __builtin_memcpy(defs, e->defs, sizeof(SfDef) * e->cap);
+  SfK *consts = MS_ARENA_NEW_ARRAY_UNINIT(e->arena, SfK, cap);
+  SfDef *defs = MS_ARENA_NEW_ARRAY_UNINIT(e->arena, SfDef, cap);
+  uint8_t *known = MS_ARENA_NEW_ARRAY(e->arena, uint8_t, cap);
+  uint8_t *defined = MS_ARENA_NEW_ARRAY(e->arena, uint8_t, cap);
+  for (uint32_t v = 0; v < e->cap && e->consts != NULL; v++) {
+    known[v] = e->known[v];
+    defined[v] = e->defined[v];
+    if (known[v]) {
+      consts[v] = e->consts[v];
+    }
+    if (defined[v]) {
+      defs[v] = e->defs[v];
+      defs[v].args = e->defs[v].args == e->defs[v].inl ? defs[v].inl : e->defs[v].args;
+    }
   }
   e->consts = consts;
   e->defs = defs;
+  e->known = known;
+  e->defined = defined;
   e->cap = cap;
 }
 
 static SfK sf_const(const SfEnv *e, MirValue v) {
-  return v < e->cap ? e->consts[v] : (SfK){SFK_NONE, 0};
+  return v < e->cap && e->known[v] ? e->consts[v] : (SfK){SFK_NONE, 0};
 }
 
 static void sf_set_const(SfEnv *e, MirValue v, SfK k) {
   sf_env_fit(e);
   e->consts[v] = k;
+  e->known[v] = 1;
 }
 
 static void sf_set_def(SfEnv *e, MirValue r, uint8_t op, const MirValue *args, uint32_t nargs,
            MirImm imm) {
   sf_env_fit(e);
   SfDef *d = &e->defs[r];
-  d->has = true;
+  e->defined[r] = 1;
   d->op = op;
   d->nargs = nargs;
-  d->args = MS_ARENA_NEW_ARRAY(e->arena, MirValue, (nargs + 1));
+  MirValue *own = nargs <= 4 ? d->inl : MS_ARENA_NEW_ARRAY(e->arena, MirValue, nargs);
+  d->args = own;
   if (nargs > 0) {
-    __builtin_memcpy(d->args, args, sizeof(MirValue) * nargs);
+    __builtin_memcpy(own, args, sizeof(MirValue) * nargs);
   }
   d->imm = imm;
 }
 
 static const SfDef *sf_def(const SfEnv *e, MirValue v) {
-  return v < e->cap && e->defs[v].has ? &e->defs[v] : NULL;
+  return v < e->cap && e->defined[v] ? &e->defs[v] : NULL;
 }
 
 /* The integer (or boolean) constant `v` holds. */

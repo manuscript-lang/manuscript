@@ -9,20 +9,22 @@ test "index_of_byte agrees with a scan across the inline window and the runtime"
 	var at = 0
 
 	while true:
-		if i := b.index_of_byte(44, at):
+		i := b.index_of_byte(44, at)
+
+		if i != null:
 			found.append(i)
 			at = i + 1
 		else: break
 
 	expect_equal(found, [3, 27, 60])?
-	expect_equal(b.index_of_byte(10, 0).get_or(-1), 28)?
-	expect_equal(b.index_of_byte(120, -5).get_or(-1), 24)?
-	expect_equal(b.index_of_byte(122, 0).get_or(-1), 26)?
-	expect_equal(b.index_of_byte(255, 0).get_or(-1), -1)?
-	expect_equal(b.index_of_byte(44, 100).get_or(-1), -1)?
-	expect_equal(b.index_of_byte(120, 62).get_or(-1), -1)?
-	expect_equal("short".to_bytes().index_of_byte(116, 0).get_or(-1), 4)?
-	expect_equal("".to_bytes().index_of_byte(0, 0).get_or(-1), -1)?
-	expect_equal("0123456789abcdefg".to_bytes().index_of_byte(103, 0).get_or(-1), 16)?
-	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 0).get_or(-1), 15)?
-	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 1).get_or(-1), 15)?
+	expect_equal(b.index_of_byte(10, 0) or (-1), 28)?
+	expect_equal(b.index_of_byte(120, -5) or (-1), 24)?
+	expect_equal(b.index_of_byte(122, 0) or (-1), 26)?
+	expect_equal(b.index_of_byte(255, 0) or (-1), -1)?
+	expect_equal(b.index_of_byte(44, 100) or (-1), -1)?
+	expect_equal(b.index_of_byte(120, 62) or (-1), -1)?
+	expect_equal("short".to_bytes().index_of_byte(116, 0) or (-1), 4)?
+	expect_equal("".to_bytes().index_of_byte(0, 0) or (-1), -1)?
+	expect_equal("0123456789abcdefg".to_bytes().index_of_byte(103, 0) or (-1), 16)?
+	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 0) or (-1), 15)?
+	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 1) or (-1), 15)?

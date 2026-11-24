@@ -15,6 +15,7 @@
 #include "base/env.h"
 #include "compiler/opt/opt.h"
 #include "cli/invocation.h"
+#include "cli/pipeline.h"
 
 enum { STATUS_FAILED = 1 };
 
@@ -41,10 +42,13 @@ static bool print_mir(MsCheckProgram *program, uint32_t entry, bool optimize, Ms
   return ok;
 }
 
-static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation, bool ir, bool optimize) {
+static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation, bool ir, bool optimize, bool tests) {
   MsStrBuild out = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
-  const BackendOptions options = {.optimize = optimize, .verify = true};
+  /* With --opt the options are a Release build's, so the IR shown is what `opt` receives. */
+  const MsLinkRequest release = {.build_type = MS_BUILD_RELEASE, .tests = tests};
+  const BackendOptions options = optimize ? ms_pipeline_backend_options(&release)
+                                          : (BackendOptions){.verify = true, .tests = tests};
   const bool ok = ir ? ms_backend_ir(&checked->program, checked->entry, &options, &out, &why)
                      : print_mir(&checked->program, checked->entry, optimize, &out, &why);
   int status = STATUS_FAILED;
@@ -62,10 +66,13 @@ static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation,
 int ms_emit_command(int argc, char **argv) {
   bool ir = false;
   bool optimize = false;
+  bool tests = false;
   int kept = 0;
   for (int index = 0; index < argc; index++) {
     if (ms_cstr_equal(argv[index], "--ir")) {
       ir = true;
+    } else if (ms_cstr_equal(argv[index], "--tests")) {
+      tests = true;
     } else if (ms_cstr_equal(argv[index], "--opt")) {
       optimize = true;
     } else {
@@ -77,8 +84,8 @@ int ms_emit_command(int argc, char **argv) {
   int status = ms_invocation_parse(&arena, "emit", kept, argv, &invocation);
   if (status == 0) {
     MsCheckedInput checked = {0};
-    if (ms_checked_input_load(&arena, &checked, invocation.filename, MS_INPUT_PROGRAM)) {
-      status = emit_program(&checked, &invocation, ir, optimize);
+    if (ms_checked_input_load(&arena, &checked, invocation.filename, tests ? MS_INPUT_TESTS : MS_INPUT_PROGRAM)) {
+      status = emit_program(&checked, &invocation, ir, optimize, tests);
     } else {
       status = invocation.json ? ms_checked_input_report_json(&checked) : ms_checked_input_report(&checked);
     }

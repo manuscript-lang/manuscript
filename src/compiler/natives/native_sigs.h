@@ -47,6 +47,7 @@ typedef struct MsNativeSig {
   bool spawns;           /* `@spawns`: starts a task, so the unwind pass covers the program's frames */
   bool keeps;            /* `@keeps`: edits the value in its first (slot) argument in place and leaves it there, also when it faults */
   const char *checks;    /* `@checks=`: the native that faults on a bad argument; lowering calls it first so a fault leaves the owned arguments with the caller */
+  const char *twin;      /* `@twin=`: the family of borrowing twins the optimiser may call instead (`split_view`), else NULL */
 } MsNativeSig;
 
 extern const MsNativeSig ms_native_sigs[];

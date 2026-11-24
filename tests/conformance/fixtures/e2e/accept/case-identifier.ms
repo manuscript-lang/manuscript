@@ -16,7 +16,7 @@ fn case(value: Int) Int: value + 1
 fn present(value: Int?) Int:
 	match value:
 		case: return case
-		none: return 0
+		null: return 0
 
 test "case is an ordinary identifier in declarations and patterns":
 	expect_equal(case(7), 8)?
@@ -36,4 +36,4 @@ test "case is an ordinary identifier in declarations and patterns":
 		case: expect_equal(case, 3)?
 
 	expect_equal(present(7), 7)?
-	expect_equal(present(none), 0)?
+	expect_equal(present(null), 0)?

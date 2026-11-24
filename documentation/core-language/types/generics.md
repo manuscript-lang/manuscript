@@ -94,7 +94,7 @@ type Pair[A, B = A]:
     second: B
 
 fn parse[T = String](text: String) T?:
-    return none
+    return null
 
 same: Pair[Int] := Pair[Int](1, 2)    // Pair[Int, Int]
 mixed := Pair[Int, String](1, "x")
@@ -129,7 +129,7 @@ failed: Result[Int, Error] := fail("empty")
 
 Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. Error types, success types, and Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
 
-Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `T?` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
+Empty lists, `null`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `T?` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript

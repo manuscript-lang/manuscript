@@ -95,7 +95,7 @@ test "streaming routes validate original input and decode once":
 		serve(
 			address: "127.0.0.1:0",
 			handler: stream_route,
-			options: HttpServerOptions(tls: none),
+			options: HttpServerOptions(tls: null),
 		) | expect_ok?
 	)
 	(check_paths(f"http://{server.address()}")?)

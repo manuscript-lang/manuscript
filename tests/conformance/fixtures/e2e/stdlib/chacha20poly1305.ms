@@ -11,7 +11,7 @@ import (
 )
 
 fn bytes_of(hex: String) Bytes:
-	return hex_decode(hex, none).get_or(Bytes([]))
+	return hex_decode(hex, null).get_or(Bytes([]))
 
 key_hex := "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
 nonce_hex := "070000004041424344454647"
@@ -96,7 +96,7 @@ test "authentication failures use EAUTH":
 	failure := expect_error(
 		chacha20poly1305_open(key, nonce, sealed, "changed".to_bytes())
 	)?
-	expect_equal(failure.kind.clone().get_or(""), "EAUTH")?
+	expect_equal(failure.kind.clone() or "", "EAUTH")?
 
 test "chacha20 rejects data past the 32-bit block counter":
 	key := "01234567890123456789012345678901".to_bytes()

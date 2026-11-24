@@ -59,7 +59,7 @@ fn kept_ir(dir: String) String:
 		if access(path, 0).is_error():
 			if part > 0: break
 		else:
-			text += read_file(path).wait().get().decode_utf8().get_or("")
+			text += read_file(path).wait().get().decode_utf8() or ""
 
 		part += 1
 
@@ -99,7 +99,7 @@ fn build(source: String, dir: String, cranelift: Bool, verify: Bool) Built!:
 	if ran.exit_code != 0:
 		return error(
 			Error(
-				f"ms build {source} failed:\n{ran.stderr.decode_utf8().get_or("")}"
+				f"ms build {source} failed:\n{(ran.stderr.decode_utf8() or "")}"
 			)
 		)
 
@@ -124,11 +124,11 @@ fn output(exe_path: String) String!:
 	if ran.exit_code != 0:
 		return error(
 			Error(
-				f"{exe_path} exited {ran.exit_code}: {ran.stderr.decode_utf8().get_or("")}"
+				f"{exe_path} exited {ran.exit_code}: {(ran.stderr.decode_utf8() or "")}"
 			)
 		)
 
-	return ok(ran.stdout.decode_utf8().get_or("").clone())
+	return ok((ran.stdout.decode_utf8() or "").clone())
 
 // `name micros checksum` lines of a kernel program as `name checksum` and the times.
 fn parse_kernels(text: String) List[List[String]]:
@@ -150,7 +150,7 @@ fn row(name: String, old: Built, new: Built) String:
 	return f"| {name} | {old.seconds.to_fixed(2)} s | {new.seconds.to_fixed(2)} s | {new.lines} | {new.direct} of {new.functions} ({share.to_fixed(1)}%) |"
 
 fn runs_wanted() Int:
-	return env("RUNS", "5").parse_int().get_or(5)
+	return env("RUNS", "5").parse_int() or 5
 
 fn keep_min(var best: Map[String, Int], name: String, micros: Int) Void:
 	if not best.contains(name) or micros < best.get_or(name, micros):
@@ -168,9 +168,9 @@ fn kernel_times(old: String, new: String, runs: Int) List[List[String]]!:
 		new_rows := parse_kernels(output(new)?)
 		if n == 0: names = old_rows.map(fn r: r[0].clone())
 		for r in old_rows:
-			keep_min(best_old, r[0].clone(), r[1].parse_int().get_or(0))
+			keep_min(best_old, r[0].clone(), r[1].parse_int() or 0)
 		for r in new_rows:
-			keep_min(best_new, r[0].clone(), r[1].parse_int().get_or(0))
+			keep_min(best_new, r[0].clone(), r[1].parse_int() or 0)
 
 	return ok(
 		names.map(
@@ -210,8 +210,8 @@ fn report_program(
 		same = checksums(old_rows) == checksums(new_rows)
 
 		for k in kernel_times(old.exe, new.exe, runs_wanted())?:
-			o := k[1].parse_int().get_or(0)
-			n := k[2].parse_int().get_or(0)
+			o := k[1].parse_int() or 0
+			n := k[2].parse_int() or 0
 			ratio := if o == 0: 1.0 else: n.to_float() / o.to_float()
 			mark := if ratio > 1.15: " **slower**" else: ""
 			if ratio > 1.15: slow.append(f"{source} {k[0]}")

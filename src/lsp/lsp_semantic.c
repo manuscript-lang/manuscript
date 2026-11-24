@@ -172,7 +172,7 @@ static uint8_t kind_of(const MsCheckProgram *program, const MsOccurrence *entry)
   if (key_starts(entry->key, "field:")) return KIND_PROPERTY;
   if (key_starts(entry->key, "parameter:")) return KIND_PARAMETER;
   if (key_starts(entry->key, "case:")) return KIND_ENUM_MEMBER;
-  /* A bare standard constructor (`none`, `ok`) is keyed as a native; only its type tells it from a native function. */
+  /* A bare standard constructor (`null`, `ok`) is keyed as a native; only its type tells it from a native function. */
   if (key_starts(entry->key, "native:") && entry->ty != MS_TY_NONE && ms_ty_kind(&program->types, entry->ty) != MS_TY_FUNCTION) {
     return KIND_ENUM_MEMBER;
   }

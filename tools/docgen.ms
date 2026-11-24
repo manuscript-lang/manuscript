@@ -107,16 +107,16 @@ fn full_markdown(modules: List[Module]) String:
 
 // ---- the book's tree ----
 
-// `core.ms` and its siblings live in stdlib/core; everything else mirrors its import path.
+// `core.ms` and its siblings live in src/stdlib/core; everything else mirrors its import path.
 fn source_of(path: String, source_path: String) String:
-	if path == "prelude": return "stdlib/core/core.ms"
+	if path == "prelude": return "src/stdlib/core/core.ms"
 	if (
 		source_path == "core.ms"
 		or source_path == "intrinsics.ms"
 		or source_path == "string.ms"
-	): return f"stdlib/core/{source_path}"
+	): return f"src/stdlib/core/{source_path}"
 
-	return f"stdlib/{source_path}"
+	return f"src/stdlib/{source_path}"
 
 packages := ["collections", "concurrency", "data", "io", "math", "net", "os"]
 
@@ -129,12 +129,13 @@ fn old_stem(module_path: String) String:
 	if path == "test/test": return "test"
 	if path == "test/bench": return "bench"
 
-	if cut := path.split_once("/"):
+	cut := path.split_once("/")
+	if cut != null:
 		if packages.contains(cut.before): return cut.after.replace("/", "-")
 	return path.replace("/", "-")
 
 fn last_part(path: String) String:
-	return path.split("/").last().get_or("").clone()
+	return (path.split("/").last() or "").clone()
 
 type Tree:
 	files: Map[String, String]
@@ -475,13 +476,13 @@ fn options_of(words: List[String]) Options!:
 	return ok(o)
 
 fn text_of(path: String) String!:
-	return ok(read_file(path).wait()?.decode_utf8().get_or("").clone())
+	return ok((read_file(path).wait()?.decode_utf8() or "").clone())
 
 fn generate(ms: String, o: Options) Void!:
 	ran := run(ms.clone(), ["doc"]).wait()?
 	if ran.exit_code != 0: return error(Error(f"{ms} doc failed"))
 
-	snapshot_text := ran.stdout.decode_utf8().get_or("").clone()
+	snapshot_text := (ran.stdout.decode_utf8() or "").clone()
 	snapshot := parse[Snapshot](snapshot_text.clone())?
 	modules := snapshot.modules.clone()
 	entries := inventory(modules.clone())

@@ -16,12 +16,12 @@ import (
 // by `%N`.
 fn block_params(line: String, defs: Map[String, String]) Map[String, String]:
 	var out = defs.clone()
-	open := line.index_of("(").get_or(-1)
-	close := line.last_index_of(")").get_or(-1)
+	open := line.index_of("(") or (-1)
+	close := line.last_index_of(")") or (-1)
 	if open < 0 or close < open: return out
 
 	for part in line.slice(open + 1, close).split(", "):
-		colon := part.index_of(":").get_or(-1)
+		colon := part.index_of(":") or (-1)
 		if colon > 0 and part.starts_with("%"): out.add(part.slice(0, colon), "param")
 
 	return out
@@ -36,16 +36,16 @@ fn report(mir: String) List[String]:
 		else if line.starts_with("b") and line.contains("("):
 			defs = block_params(line, defs)
 		else if line.starts_with("  %") and line.contains(" = "):
-			colon := line.index_of(":").get_or(-1)
+			colon := line.index_of(":") or (-1)
 			id := line.slice(2, colon)
-			eq := line.index_of(" = ").get_or(-1)
+			eq := line.index_of(" = ") or (-1)
 			words := line.slice(eq + 3, line.length()).split(" ")
 			op := words[0].clone()
 			defs.add(id.clone(), op.clone())
 
 			if op == "copy":
 				ty := line.slice(colon + 2, line.length())
-				shown := ty.slice(0, ty.index_of(" = copy").get_or(ty.length()))
+				shown := ty.slice(0, ty.index_of(" = copy") or ty.length())
 				src := if words.length() > 1: words[1].clone() else: ""
 				key := f"{shown} <- {defs.get_or(src, "?")}"
 				counts.add(key.clone(), counts.get_or(key, 0) + 1)

@@ -21,4 +21,4 @@ test "a descriptor write waits while the reader is slow":
 	input.close()?
 
 	count := child.stdout().next()?
-	expect_equal(count.get_or("".to_bytes()), "8388608\n".to_bytes())?
+	expect_equal(count or "".to_bytes(), "8388608\n".to_bytes())?

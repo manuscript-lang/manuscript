@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `m` while `entry` borrows it (mutable borrow, at 5:9); finish using `entry` before this, or give `entry` its own value by ending its initializer with `.clone()`",
+        "message": "cannot change `m` while `entry` borrows it (mutable borrow, at 7:9); finish using `entry` before this, or give `entry` its own value by ending its initializer with `.clone()`",
         "position": {
           "file": "var-entry-borrow-overlap.ms",
-          "line": 6,
+          "line": 8,
           "column": 5,
-          "offset": 194
+          "offset": 264
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/var-entry-borrow-overlap.ms:6:5: type: cannot change `m` while `entry` borrows it (mutable borrow, at 5:9); finish using `entry` before this, or give `entry` its own value by ending its initializer with `.clone()`\n   |\n 6 |     m.add(\"b\", [2])\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/var-entry-borrow-overlap.ms:8:5: type: cannot change `m` while `entry` borrows it (mutable borrow, at 7:9); finish using `entry` before this, or give `entry` its own value by ending its initializer with `.clone()`\n   |\n 8 |     m.add(\"b\", [2])\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 enum Optional[T]:
-    none
+    null
     T
 impl T?:
     fn get() T: ...

@@ -47,7 +47,7 @@ test "logger writes typed escaped records and protects metadata":
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	var logger = create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
-	fields := Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
+	fields := Payload(9007199254740993, ok: true, Items([null, 1]), 0, "fake", 0)
 	logger.info("say \"hi\"\nnext", fields)?
 
 	expected := "{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"data\":{\"count\":9007199254740993,\"ok\":true,\"nested\":{\"items\":[null,1]},\"level\":0,\"msg\":\"fake\",\"time\":0}}\n"
@@ -285,7 +285,7 @@ test "loggers on several threads never interleave a record":
 	b.wait() | expect_ok?
 	logger.flush()?
 
-	text := (written(path)?).get_or("")
+	text := (written(path)?) or ""
 	expect_equal(text.split("\n").length(), 7)?
 
 	for line in text.split("\n"):
@@ -301,7 +301,7 @@ fn Memory.write(move data: String) Void!:
 	return append_file(self.path, data).wait()
 
 fn Memory.write_bytes(move data: Bytes) Void!:
-	return self.write(data.decode_utf8().get_or(""))
+	return self.write(data.decode_utf8() or "")
 
 fn Memory.flush() Void!:
 	return ok()
@@ -313,14 +313,14 @@ fn move Memory.close() Void:
 	return
 
 fn recorded(path: String) String:
-	return written(path).get_or(none).get_or("")
+	return written(path).get_or(null) or ""
 
 test "messages are escaped and fields keep their shape under data":
 	out_dir := temporary("manuscript-log-memory-")?
 	out := f"{out_dir.path()}/records"
 	logger := create(Memory(out.clone()), LoggerOptions(timestamp: false))?
 	logger.info("a<b>&\"\n\t\u{1}é")?
-	logger.info("m", Items([none, 1]))?
+	logger.info("m", Items([null, 1]))?
 	logger.info("m", "text")?
 	logger.info("m", JsonValue.Null)?
 	logger.info("m", JsonValue.ObjectValue(Map[String, JsonValue]()))?
@@ -385,9 +385,9 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
 	for index in 0..12: logger.info(f"record number {index}")?
 	logger.flush()?
 
-	current := (written(path)?).get_or("")
-	first := (written(f"{path}.1")?).get_or("")
-	second := (written(f"{path}.2")?).get_or("")
+	current := (written(path)?) or ""
+	first := (written(f"{path}.1")?) or ""
+	second := (written(f"{path}.2")?) or ""
 	expect_true(current != "" and first != "" and second != "")?
 	expect_true(current.to_bytes().length() <= 80)?
 	expect_true(read_file(f"{path}.3").wait().is_error())?

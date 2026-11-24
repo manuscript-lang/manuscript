@@ -3,6 +3,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	promise from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	DnsKind, IpFamily, contains_ip, parse_cidr, parse_ip from "@std/net/ip.ms",
 	Connection,
 	Datagram,
@@ -42,10 +43,15 @@ test "TCP loopback writes reads half close and EOF":
 	var server = listener.accept(2.seconds()).wait()?
 	client.output.write("hello".to_bytes())?
 	client.output.flush()?
-	expect_equal((within(server.input, 2.seconds())?).get(), "hello".to_bytes())?
+	expect_equal(
+		(within(server.input, 2.seconds())?) or panic(
+			"called Optional.get() on null"
+		),
+		"hello".to_bytes(),
+	)?
 	expect_equal(server.info.peer_address, client.info.local_address)?
 	client.output.end()?
-	expect_true((within(server.input, 2.seconds())?).is_none())?
+	expect_true((within(server.input, 2.seconds())?) == null)?
 
 test "a read cancelled by its timeout leaves the stream closable":
 	listener := listen("127.0.0.1:0")?
@@ -82,15 +88,20 @@ test "closing the input leaves the output open and closing both ends the connect
 	client.input.end()?
 	client.output.write("still open".to_bytes())?
 	client.output.flush()?
-	expect_equal((within(server.input, 2.seconds())?).get(), "still open".to_bytes())?
+	expect_equal(
+		(within(server.input, 2.seconds())?) or panic(
+			"called Optional.get() on null"
+		),
+		"still open".to_bytes(),
+	)?
 
 	// Closing the output too closes the socket: the peer sees the end of the stream.
 	client.output.end()?
-	expect_true((within(server.input, 2.seconds())?).is_none())?
+	expect_true((within(server.input, 2.seconds())?) == null)?
 
 test "host names resolve whatever their case":
 	listener := listen("127.0.0.1:0")?
-	port := listener.address().split(":").last().clone().get_or("")
+	port := listener.address().split(":").last().clone() or ""
 	client := connect(f"LocalHost:{port}", timeout: 2.seconds()).wait()?
 	server := listener.accept(2.seconds()).wait()?
 	expect_equal(server.info.peer_address, client.info.local_address)?
@@ -110,7 +121,10 @@ test "UDP loopback preserves datagram data and sender":
 	var sender = bind_datagram("127.0.0.1:0")?
 	sender.output.write(Datagram("packet".to_bytes(), receiver.address.clone()))?
 
-	packet := (within(receiver.input, 2.seconds())?).get()
+	packet := (
+		(within(receiver.input, 2.seconds())?)
+		or panic("called Optional.get() on null")
+	)
 	expect_false(
 		(packet.data != "packet".to_bytes() or packet.address != sender.address)
 	)?
@@ -177,7 +191,7 @@ test "a promise accepts on a listener it owns":
 fn accept_and_read(listener: Listener) Int:
 	var conn = listener.accept(2.seconds()).wait().get()
 	r := within(conn.input, 2.seconds())
-	if r.is_ok() and r.get().is_some(): return 1
+	if r.is_ok() and (r.get() != null): return 1
 
 	return 0
 
@@ -194,7 +208,10 @@ test "a promise reads a connection it owns":
 // Answers one DNS query with a single MX record: preference 10, exchange
 // mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
-	query := (within(served.input, 2.seconds())?).get()
+	query := (
+		(within(served.input, 2.seconds())?)
+		or panic("called Optional.get() on null")
+	)
 	question := (query.data.slice(12, query.data.length())).get_or(Bytes([]))
 	header := Bytes(
 		[query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
@@ -247,7 +264,12 @@ test "an empty host listens on every interface, with or without IPv6":
 	var server = listener.accept(2.seconds()).wait()?
 	client.output.write("hi".to_bytes())?
 	client.output.flush()?
-	expect_equal((within(server.input, 2.seconds())?).get(), "hi".to_bytes())?
+	expect_equal(
+		(within(server.input, 2.seconds())?) or panic(
+			"called Optional.get() on null"
+		),
+		"hi".to_bytes(),
+	)?
 	listener.close()?
 
 	socket := bind_datagram(":0")?

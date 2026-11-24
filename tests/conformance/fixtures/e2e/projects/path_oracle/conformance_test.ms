@@ -14,8 +14,8 @@ import (
 
 fn text(token: String) String:
 	digits := token.view(1, token.length())
-	bytes := hex_decode(digits, none) | .get_or("".to_bytes())
-	return bytes.decode_utf8().get_or("")
+	bytes := hex_decode(digits, null) | .get_or("".to_bytes())
+	return bytes.decode_utf8() or ""
 
 fn hex(value: String) String:
 	return f"x{hex_encode(value.to_bytes())}"
@@ -37,9 +37,17 @@ fn parts_of(token: String) PathParts:
 	)
 
 fn parts_text(parts: PathParts) String:
-	return [parts.root.clone(), parts.directory.clone(), parts.base.clone(), parts.extension.clone(), parts.name.clone()].map(
-		fn item: hex(item)
-	).join(" ")
+	return (
+		[
+			parts.root.clone(),
+			parts.directory.clone(),
+			parts.base.clone(),
+			parts.extension.clone(),
+			parts.name.clone(),
+		]
+		.map(fn item: hex(item))
+		.join(" ")
+	)
 
 fn result(outcome: String!) String:
 	if value := outcome: return f"ok {hex(value)}"
@@ -74,12 +82,8 @@ fn answer(rules: PathOperations, f: List[String]) String:
 	return f"unknown case {op}"
 
 test "path operations match the recorded corpus":
-	data := (
-		files().read("path.tsv", none)
-		| .get_or("".to_bytes())
-		| .decode_utf8()
-		| .get_or("")
-	)
+	raw := files().read("path.tsv", null).get_or("".to_bytes())
+	data := raw.decode_utf8() or ""
 	var checked = 0
 	var failures = List[String]()
 

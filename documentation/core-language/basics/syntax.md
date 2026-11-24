@@ -71,7 +71,7 @@ fn check(rows: List[String], limit: Int) String:
 - Collections are built and tested with `any`, `all`, `count`, `sum`, `map`, `filter`, `fold`, `[0].repeated(n)`, `a.extend(b)` and `(0..n)`, not loops.
 - Conditions are `x`, `not x`, `xs.is_empty()`, `a.max(b)`.
 - A value chosen by a condition is `x := if c: a else: b`.
-- An absent value is `o.get_or(d)`, `m.get_or(k, d)` or `if v := o:`; a `Result` is unwrapped with `?`.
+- An absent value is `o or d`, `m.get_or(k, d)` or `if v := o:`; a `Result` is unwrapped with `?`.
 
 ## Module boundaries
 

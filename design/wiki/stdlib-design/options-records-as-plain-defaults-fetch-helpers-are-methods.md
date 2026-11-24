@@ -1,0 +1,13 @@
+[Wiki](../index.md) › [Standard-library design](index.md)
+
+# Options records as plain defaults; fetch helpers are methods
+
+Decision: a function that takes a settings record declares it `options: FetchOptions = FetchOptions()`, never `FetchOptions? = none`, so callers write `fetch(url, FetchOptions(method: HttpMethod.Post))` without `some(...)`.
+
+Decision (Chinmay, Addendum 5 of the stdlib idiom proposal): a function takes at most three parameters in total; a fourth moves the optional ones into one `<Thing>Options` record, passed last with every field defaulted, while required inputs stay positional. Bounds use `max_bytes`, `max_entries`, `max_depth`, `timeout`; modes are enums, not strings. `JsonOptions`, `StringifyOptions`, `YamlOptions`, `TomlOptions`, `HtmlOptions`, `ArchiveOptions`, `CsvOptions` replaced the old `*Limits` records and loose bound parameters; `YamlOptions`, `TomlOptions` and `HtmlOptions` default the depth and value guards, and `none` lifts them. A `T?` parameter already defaults to `none`, so `repo-check` (`optional-defaults-allowed.txt`) only fails an `options` or `limits` parameter with no default. Native glue keeps a private `*Limits` record in `src/stdlib/internal/`, because the lowering flattens a record argument by field. A record holding a list (`alignments`) forces callers to clone it, so keep such inputs positional.
+
+Apply when: adding a parameter that is a record of settings, choosing between an interface and a record for a type with one implementation, naming the operation that waits for work to end, adding a second spelling of a constructor, naming a combinator over a record (prefer a method with the List name), naming an error type (derive it from the type whose operations return it, unique across sibling modules), or adding a type that sends and receives (make it a `Transport` behind `Channel`).
+Evidence: [fetch.ms](../../../src/stdlib/net/fetch.ms), [fetch fixture](../../../tests/conformance/fixtures/e2e/stdlib/fetch.ms), workers fixture.
+Verify: `ms test tests/conformance/fixtures/e2e/stdlib/fetch.ms tests/conformance/fixtures/e2e/stdlib/workers.ms`; `ms search_symbol read_json` finds no declaration.
+
+Absent is an optional, not a flag beside a string (owner, 2026-11-17, #4349): `Url.query` is `String?`, none for no query and `""` for `http://a/b?`. A first try added `has_query: Bool` and was replaced the same day. The ordering rule puts the optional after the required fields, so `fragment` moved before `query` and positional `Url(...)` callers changed.

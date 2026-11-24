@@ -20,7 +20,7 @@ type Outer:
 fn var Inner.bump(key: String) Void!:
 	tick()?
 	self.tags.append(key.clone())
-	self.weights[key.clone()] = self.weights.get(key).get_or(0) + 1
+	self.weights[key.clone()] = (self.weights.get(key) or 0) + 1
 
 fn var Outer.touch(key: String) Void!:
 	self.inner.bump(key)?

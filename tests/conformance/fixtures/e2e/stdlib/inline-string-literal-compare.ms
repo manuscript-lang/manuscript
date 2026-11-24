@@ -23,7 +23,7 @@ test "a captured short literal is found in a list":
 	needle := "k2"
 	words := ["k1", "k2", "k3"]
 	expect_equal(words.any(fn(w: String) Bool: w == needle), true)?
-	expect_equal(words.find_index(fn(w: String) Bool: w == "k3").get_or(-1), 2)?
+	expect_equal(words.find_index(fn(w: String) Bool: w == "k3") or (-1), 2)?
 	expect_equal(words.contains("k1"), true)?
 	expect_equal(words.contains("k4"), false)?
 	expect_equal("héllo".scalar_length(), 5)?

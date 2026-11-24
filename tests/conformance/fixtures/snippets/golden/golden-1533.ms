@@ -3,6 +3,6 @@
 type Node:
     next: Node?
 export fn main() Int:
-    node := Node(none)
+    node := Node(null)
     node.next = node
     return node.hash()

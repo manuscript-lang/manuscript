@@ -32,9 +32,10 @@ fn wait_for(var output: ReadStream[Bytes], seen: String, needle: String) String!
 
 	while not text.contains(needle):
 		chunk := within(output, 20.seconds())?
+		bytes := chunk
 
-		if bytes := chunk:
-			text += bytes.decode_utf8().get_or("")
+		if bytes != null:
+			text += bytes.decode_utf8() or ""
 		else:
 			break
 
@@ -43,17 +44,19 @@ fn wait_for(var output: ReadStream[Bytes], seen: String, needle: String) String!
 // The process id in the next `ms-lsp: worker N started` line.
 fn worker_pid(var report: ReadStream[String]) Int!:
 	line := within(report, 20.seconds())?
-	text := line.get_or("")
+	text := line or ""
 	parts := text.split_once("worker ")
+	found := parts
 
-	if found := parts:
+	if found != null:
 		number := found.after.split_once(" started")
-		if rest := number: return parse_int(rest.before)
+		rest := number
+		if rest != null: return parse_int(rest.before)
 
 	return ok(0 - 1)
 
 test "a killed worker is replaced and the open document is replayed":
-	ms := environment()?.get("MS_UNDER_TEST").get_or("ms")
+	ms := environment()?.get("MS_UNDER_TEST") or "ms"
 	options := SpawnOptions(env: {"MS_LSP_LOG": "1"})
 	var child = spawn(ms, ["lsp"], options)?
 	var report = lines(child.stderr())

@@ -12,7 +12,7 @@ Use a type for named fields, an enum for a fixed set of cases, an interface for 
 | [Types and nominal types](named-types.md) | Declare mutable fields and distinguish domain identifiers. |
 | [Enums](alternatives.md) | Represent a fixed set of possibilities with tagged cases. |
 | [Collections](collections.md) | Use mutable lists, maps, and sets with explicit deep copies. |
-| [Optional values](optionals.md) | Represent absence explicitly with T? and none. |
+| [Optional values](optionals.md) | Represent absence explicitly with T? and null. |
 | [Mutation and references](references.md) | Understand moves, borrows, reassignment, and deep copies. |
 | [Graphs and cycles](graphs-and-cycles.md) | Model graphs, parent links and cycles with indexes and handles. |
 | [Destructuring bindings](destructuring.md) | Unpack list positions and fields. |

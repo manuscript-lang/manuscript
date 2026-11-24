@@ -6,6 +6,6 @@ fn work(early: Int) Int:
         match? 0:
             _value:
                 10
-            none: 10
+            null: 10
     )
     return result

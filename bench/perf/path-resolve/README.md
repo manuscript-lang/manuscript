@@ -30,7 +30,7 @@ pairs per case with no concurrent builds. No samples were removed from those
 final paired runs. An initial A/A run overlapped a rebuild and was excluded; the
 committed A/A run was repeated without concurrent builds. Raw samples,
 A/A samples, page faults and executable SHA-256 values are in
-[results-2026-11-12](results-2026-11-12/). Hardware instruction counters and
+results-2026-11-12. Hardware instruction counters and
 Callgrind were unavailable in this environment.
 
 Median nanoseconds per call, including result equality and checksum work:

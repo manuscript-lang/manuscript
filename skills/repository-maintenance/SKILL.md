@@ -5,7 +5,7 @@ description: Organize or maintain Manuscript packages, shared guidance, embedded
 
 # Repository maintenance
 
-Use for cleanup, package moves, pins (`.node-version`, `.msversion`), CI/releases, or the skill catalog. Read [architecture](../../documentation/contributing/architecture.md), [maintenance](../../documentation/contributing/maintenance.md), and [lessons](../../wiki/repository/index.md).
+Use for cleanup, package moves, pins (`.node-version`, `.msversion`), CI/releases, or the skill catalog. Read [architecture](../../documentation/contributing/architecture.md), [maintenance](../../documentation/contributing/maintenance.md), and [lessons](../../design/wiki/repository/index.md).
 
 - Simplify duplicated traversal, queries, serialization, forwarding, and CLI paths as well as layout. Name the work removed; add a layer only for a concrete contract.
 - Respect layer ownership and dependency edges (see [architecture](../../documentation/contributing/architecture.md)) and the `make repo-check` invariants (`tools/repo-check.ms`).
@@ -19,4 +19,4 @@ Use for cleanup, package moves, pins (`.node-version`, `.msversion`), CI/release
 - CI runs `ctest`, lint, `dist-smoke`, `repo-check`, `docs-check` and `conform` per Linux arch; `.github/workflows/dist.yml` packages the six targets with the CMake `dist` target (`cmake/MsPackage.cmake`) and `release.yml` publishes them.
 - Run applicable Makefile checks: `make verify` is the fast gate; `make verify-full` adds the conformance corpus, book, and distribution checks. Native input moves need `make dist-check`.
 - Report concrete check/publication evidence and limitations. Use [manuscript-change](../manuscript-change/SKILL.md#record-durable-lessons) for durable lessons, distinguishing current decisions from historical outcomes.
-- No merge queue: `main` may break briefly so PRs merge fast; a red `main` gets a fix thread at once. Split shared files by area so parallel PRs do not conflict, check in no scaffolding `.ms` files, and close Dependabot PRs. See [standing rules](../../wiki/repository/standing-project-rules-from-the-owner.md).
+- No merge queue: `main` may break briefly so PRs merge fast; a red `main` gets a fix thread at once. Split shared files by area so parallel PRs do not conflict, check in no scaffolding `.ms` files, and close Dependabot PRs. See [standing rules](../../design/wiki/repository/standing-project-rules-from-the-owner.md).

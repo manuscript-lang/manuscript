@@ -251,6 +251,19 @@ static bool copyable(Th *t, MirBlock j, MirBlock s, MirBlock other, const MirTar
     s == j || s == other || sb->term.kind == MT_SWITCH) {
     return false;
   }
+  /* An owned parameter stays live along the copied path under the predecessor's value, and the original
+   * path keeps the parameter: a block both reach, such as one that leaks into a panic, then sees two
+   * different owned values. */
+  for (uint32_t i = 0; i < jb->params.len; i++) {
+    if (jb->params.ptr[i].mode == MM_MOVE) {
+      return false;
+    }
+  }
+  for (uint32_t i = 0; i < sb->params.len; i++) {
+    if (sb->params.ptr[i].mode == MM_MOVE) {
+      return false;
+    }
+  }
   for (uint32_t i = 0; i < jb->insts.len; i++) {
     const MirInst *in = &jb->insts.ptr[i];
     MirMode mode;
@@ -369,6 +382,16 @@ static bool sweep(MirModule *m, MirFunc *f, uint32_t *budget) {
   bool changed = false;
   bool *touched = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)nblocks + 1);
   __builtin_memset(touched, 0, sizeof(bool) * ((size_t)nblocks + 1));
+  /* A loop header is the target of an edge from a block it dominates. One pass finds them all: the dominators and the
+   * blocks the sweep looks at are those of the function as it was before the first rewrite, which only adds blocks. */
+  bool *header = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)nblocks + 1);
+  for (uint32_t q = 0; q < reachable; q++) {
+    const MirTerm *qt = &f->blocks.ptr[order[q]].term;
+    for (uint32_t k = 0; k < mir_term_ntargets(qt); k++) {
+      const MirBlock target = mir_term_target_const(qt, k)->block;
+      header[target] = header[target] || dominates(idom, target, order[q]);
+    }
+  }
   for (uint32_t i = 0; i < reachable; i++) {
     const MirBlock p = order[i];
     const MirTerm *pterm = &f->blocks.ptr[p].term;
@@ -381,14 +404,7 @@ static bool sweep(MirModule *m, MirFunc *f, uint32_t *budget) {
       f->blocks.ptr[j].insts.len > TH_MAX_JOIN || pterm->a.nargs != f->blocks.ptr[j].params.len) {
       continue;
     }
-    bool header = false;
-    for (uint32_t q = 0; q < reachable && !header; q++) {
-      const MirTerm *qt = &f->blocks.ptr[order[q]].term;
-      for (uint32_t k = 0; k < mir_term_ntargets(qt); k++) {
-        header = header || (mir_term_target_const(qt, k)->block == j && dominates(idom, j, order[q]));
-      }
-    }
-    if (header) {
+    if (header[j]) {
       continue;
     }
     const int pick = decide(&t, j, pterm->a.args);

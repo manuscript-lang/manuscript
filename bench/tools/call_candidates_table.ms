@@ -1,5 +1,6 @@
 // Summarize process-cold samples; round 0 is retained but excluded as warm-up.
 import (
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 
 	median, read_text from "./lib.ms",
@@ -16,7 +17,13 @@ export fn main() Void:
 		if fields[0] == "0": continue
 
 		key := f"{fields[2]} {fields[1]}"
-		value := fields[3].parse_float().get() / 1000000.0
+		value := (
+			(
+				fields[3].parse_float()
+				or panic("called Optional.get() on null")
+			)
+			/ 1000000.0
+		)
 
 		if var values = groups[key]?:
 			values.append(value)
@@ -26,5 +33,5 @@ export fn main() Void:
 	for key in groups.keys().sorted():
 		values := groups[key]
 		print(
-			f"{key} n={values.length()} median_ms={median(values)} min_ms={values.min().get()} max_ms={values.max().get()}"
+			f"{key} n={values.length()} median_ms={median(values)} min_ms={(values.min() or panic("called Optional.get() on null"))} max_ms={(values.max() or panic("called Optional.get() on null"))}"
 		)

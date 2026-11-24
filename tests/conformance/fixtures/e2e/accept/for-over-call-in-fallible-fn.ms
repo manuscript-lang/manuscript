@@ -9,7 +9,7 @@ type Src:
 	at: Int
 
 fn var Src.next() String?!:
-	if self.at >= 3: return ok(none)
+	if self.at >= 3: return ok(null)
 
 	self.at += 1
 	return ok("x")

@@ -87,6 +87,7 @@ static const Step early_steps[] = {
     {"copyelim", opt_copyelim},
     {"probe", opt_probe},
     {"inline", opt_inline},
+    {"splitview", opt_splitview},
     {"strfuse", strfuse_step},
     {"fastpaths", fastpaths_step},
     {"loopslot", opt_loopslot},

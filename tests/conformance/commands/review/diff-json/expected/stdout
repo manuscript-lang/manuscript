@@ -68,7 +68,7 @@
       "id": "src/shapes.ms#fn#perimeter",
       "tier": "INTERNAL",
       "entity": "perimeter",
-      "where": "src/shapes.ms:21",
+      "where": "src/shapes.ms:23",
       "changes": [
         "added"
       ],
@@ -83,7 +83,7 @@
       "id": "src/shapes.ms#fn#parse_total",
       "tier": "INTERNAL",
       "entity": "parse_total",
-      "where": "src/shapes.ms:15",
+      "where": "src/shapes.ms:17",
       "changes": [
         "body changed"
       ],

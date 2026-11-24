@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	HttpRequest,
 	HttpResponse,
 	HttpServerOptions,
@@ -25,7 +26,7 @@ test "serve caps the request header block":
 	// The server may answer and close before the whole head is written.
 	_written := send(client, head)
 	reply := recv(client, 5.seconds()) | expect_ok?
-	text := reply.get().decode_utf8().get_or("")
+	text := (reply or panic("called Optional.get() on null")).decode_utf8() or ""
 	if not text.starts_with("HTTP/1.1 431"): return error(
 		Error(f"oversized header block was not rejected: {text}")
 	)
@@ -41,7 +42,8 @@ test "serve timeout closes idle connections":
 	)
 	var silent = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	closed := recv(silent, 3.seconds()) | expect_ok?
-	if _data := closed: return error(Error("silent connection was answered"))
+	_data := closed
+	if _data != null: return error(Error("silent connection was answered"))
 
 	silent.close()?
 
@@ -49,11 +51,12 @@ test "serve timeout closes idle connections":
 	send(reused, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
 
 	first := recv(reused, 2.seconds()) | expect_ok?
-	answered := first.get_or(Bytes([]))
+	answered := first or Bytes([])
 	if answered.is_empty(): return error(Error("no response"))
 
 	after := recv(reused, 3.seconds()) | expect_ok?
-	if _data := after: return error(Error("idle keep-alive connection stayed open"))
+	_data := after
+	if _data != null: return error(Error("idle keep-alive connection stayed open"))
 
 test "serve rejects a zero request timeout":
 	failure := expect_error(

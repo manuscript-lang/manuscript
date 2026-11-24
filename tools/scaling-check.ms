@@ -5,7 +5,7 @@
 // about 12, quadratic work about 100, so the default bound of 30 leaves room for cache
 // effects and noisy runners. Compile shapes (long functions, many locals, long
 // interpolation, many impls, many functions, many branches, big literals) run
-// `ms check` and `ms emit`; the runtime half runs tests/scaling/containers.ms at 10k
+// `ms check` and `ms emit`; the runtime half runs tests/checks/scaling/containers.ms at 10k
 // and 100k and compares each phase's own timing. A ratio over the bound is measured
 // again (RETRIES times) and the lowest kept. An input that exceeds TIMEOUT seconds
 // fails. MS names the ms to measure (default .artifacts/build/ci/src/cli/ms);
@@ -146,14 +146,14 @@ fn say(text: String) Void:
 	stdout().write(text.clone()).get()
 
 fn show(ratio: Float) String:
-	tenths := (ratio * 10.0).truncate_to_int().get_or(0)
+	tenths := (ratio * 10.0).truncate_to_int() or 0
 	return f"{tenths / 10}.{tenths % 10}x"
 
 fn main() Int:
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
-	bound := env("SCALING_BOUND", "30").parse_float().get_or(30.0)
-	limit := env("SCALING_TIMEOUT", "300").parse_int().get_or(300)
+	bound := env("SCALING_BOUND", "30").parse_float() or 30.0
+	limit := env("SCALING_TIMEOUT", "300").parse_int() or 300
 	var shapes = List[String]()
 	for a in arguments(): shapes.append(a.clone())
 
@@ -286,7 +286,7 @@ fn main() Int:
 				)
 
 	if not compile_only:
-		program := f"{root}/tests/scaling/containers.ms"
+		program := f"{root}/tests/checks/scaling/containers.ms"
 		mid := run_phases(ms.clone(), program.clone(), 10000, limit)
 		big := run_phases(ms.clone(), program.clone(), 100000, limit)
 		checked += 1
@@ -294,7 +294,7 @@ fn main() Int:
 		if mid.is_empty() or big.is_empty():
 			failures += 1
 			say(
-				"fail: tests/scaling/containers.ms did not run; run it with ms run --build-type Debug\n"
+				"fail: tests/checks/scaling/containers.ms did not run; run it with ms run --build-type Debug\n"
 			)
 
 		for entry in mid.entries():
@@ -336,10 +336,10 @@ fn run_phases(ms: String, program: String, n: Int, limit: Int) Map[String, Int]:
 	if ran.is_error(): return phases
 	if ran.get().exit_code != 0: return phases
 
-	for line in ran.get().stdout.decode_utf8().get_or("").split("\n"):
+	for line in (ran.get().stdout.decode_utf8() or "").split("\n"):
 		parts := line.split(" ")
 		if parts.length() != 2: continue
 
-		phases[parts[0].clone()] = parts[1].parse_int().get_or(0)
+		phases[parts[0].clone()] = parts[1].parse_int() or 0
 
 	return phases

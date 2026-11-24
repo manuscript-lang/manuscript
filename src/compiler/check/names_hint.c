@@ -75,6 +75,7 @@ static void collect_value_names(const MsCheckProgram *program, uint32_t module, 
     }
   }
   span_list_push(names, ms_span_of_text("print"));
+  span_list_push(names, ms_span_of_text("ok_or"));
 }
 
 static size_t edit_distance(MsSpan a, MsSpan b) {

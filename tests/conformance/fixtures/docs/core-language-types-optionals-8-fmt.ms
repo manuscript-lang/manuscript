@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:95
 fn display_name(name: String?) String:
-    if value := name:
-        return value
+	value := name
+	if value != null: return value
 
-    return "Anonymous"
+	return "Anonymous"

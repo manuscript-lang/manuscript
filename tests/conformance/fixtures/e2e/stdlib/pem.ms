@@ -11,7 +11,7 @@ test "parse finds blocks and ignores surrounding text":
 	blocks := parse(SAMPLE).get()
 	expect_equal(blocks.length(), 2)?
 	expect_equal(blocks[0].label, "NOTE")?
-	expect_equal(blocks[0].data.decode_utf8().get_or(""), "hello world")?
+	expect_equal(blocks[0].data.decode_utf8() or "", "hello world")?
 	expect_equal(blocks[1].data.length(), 0)?
 
 test "encode wraps at 64 columns and round-trips":
@@ -30,7 +30,7 @@ test "headers round-trip":
 	text := encode_all([PemBlock(label: "KEY", headers: headers, data: "k".to_bytes())])
 	back := parse(text).get()
 	expect_equal(back[0].headers.get_or("Proc-Type", ""), "4,ENCRYPTED")?
-	expect_equal(back[0].data.decode_utf8().get_or(""), "k")?
+	expect_equal(back[0].data.decode_utf8() or "", "k")?
 
 test "malformed armor is an error":
 	expect_true(parse("-----BEGIN A-----\nAAAA\n").is_error())?

@@ -43,7 +43,7 @@ test "JSON writes IpAddress and Cidr as strings":
         "{\"host\":\"::1\",\"network\":\"10.0.0.0/8\",\"fallback\":\"192.0.2.7\"}"
     )?
 
-    bare := Endpoint(parse_ip("127.0.0.1")?, parse_cidr("::/0")?, none)
+    bare := Endpoint(parse_ip("127.0.0.1")?, parse_cidr("::/0")?, null)
     expect_equal(
         stringify(bare)?, "{\"host\":\"127.0.0.1\",\"network\":\"::/0\"}"
     )?

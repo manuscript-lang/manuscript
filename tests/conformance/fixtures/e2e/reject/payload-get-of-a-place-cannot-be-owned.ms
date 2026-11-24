@@ -3,6 +3,8 @@
 // The payload `get` reads out of an `Optional` that a parameter or field keeps stays
 // there. Returning it would make a second owner: a resource would close twice. Read it
 // in place, or consume the whole `Optional` parameter at its last use.
+import panic from "@std/core.ms"
+
 type Handle:
 	id: Int
 	note: String
@@ -14,7 +16,7 @@ type Slot[T]:
 	value: T?
 
 fn unwrap_field(s: Slot[Handle]) Handle:
-	return s.value.get()
+	return s.value or panic("called Optional.get() on null")
 
 fn unwrap_generic[T](s: Slot[T]) T:
-	return s.value.get()
+	return s.value or panic("called Optional.get() on null")

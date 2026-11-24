@@ -32,7 +32,7 @@
     {
       "name": "stats",
       "inherits": "ci",
-      "description": "The ci build with the runtime's counters (live blocks, parks, copies) for the leak, cancel and count gates (proposals/c-runtime-stats-variant.md).",
+      "description": "The ci build with the runtime's counters (live blocks, parks, copies) for the leak, cancel and count gates (design/proposals/c-runtime-stats-variant.md).",
       "cacheVariables": { "MS_STATS": "ON" }
     },
     {

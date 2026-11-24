@@ -20,7 +20,7 @@ ms build bench/perf/async-primitives/main.ms -o async && MS_THREADS=4 ./async in
 
 ## 2026-11-23 (x86-64 Linux sandbox, 4 cores, release `ms`)
 
-Change: `proposals/fast-tasks-and-promises.md` (queue at one thread, wait parks on the row, wake a thread only when none is looking, sleeping threads in one word, start site in the row). Before is main at 3122af1e plus `claude/web-request-path` at 1d6d0683; after is that plus the change. Median of 9 interleaved runs, ns per operation at 1 / 4 threads.
+Change: `design/proposals/fast-tasks-and-promises.md` (queue at one thread, wait parks on the row, wake a thread only when none is looking, sleeping threads in one word, start site in the row). Before is main at 3122af1e plus `claude/web-request-path` at 1d6d0683; after is that plus the change. Median of 9 interleaved runs, ns per operation at 1 / 4 threads.
 
 | mode | before | after | Go 1.24 | tokio |
 | --- | ---: | ---: | ---: | ---: |
@@ -99,7 +99,7 @@ The optimizer fuses the closure the standard library wraps around the work with 
 | `inline` | 204 / 215 | 186 / 180 | 33 |
 | `batch` | 173 / 173 | 143 / 154 | 26 |
 
-Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tests/ownership-counts/promise_wrapper_closure.ms`).
+Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tests/checks/ownership-counts/promise_wrapper_closure.ms`).
 
 ### Later the same day: the start line is a constant
 
@@ -111,3 +111,38 @@ Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start a
 | `batch` | 125 / 140 | 113 / 130 | 26 |
 
 Instructions for `inline` at one thread: 2,168 to 1,914.
+
+### Later the same day: the owner removes its queue entry without the lock
+
+Three changes to the path of a start that its own waiter runs:
+
+- The owner takes its entry back with one compare-and-swap on the entry (`ms_queue_remove`), not under the queue's lock; the ring is indexed by sequence number, and removed entries are trimmed at the next push or look.
+- Freeing an empty fault report and an empty start line is an inline test.
+
+Before is the section above; median of 9 interleaved runs, ns at 1 / 4 threads.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline` | 134 / 136 | 121 / 124 | 33 |
+| `batch` (4 threads) | 124 | 102 | 26 |
+
+Instructions for `inline` at one thread: 1,914 to 1,750. `bench/perf/promise-tree` `tree 36 10` against the build of the one-closure section (ms, median of 7, 1 / 2 / 4 threads): 160 / 114 / 64 to 145 / 79 / 55.
+
+### Later the same day: five runtime calls per promise, not seven
+
+- A start makes the promise: `msrt_promise_start(work, site)` returns the id and calls the work with it, so `msrt_promise_new` is gone and the closure no longer captures the id.
+- Dropping a promise is one call: `msrt_promise_close` ends the work and frees the row unless a result is left to take.
+- A result of one, two or three words is copied in and out of the row without a `memcpy` call.
+
+Before is the section above; median of 9 interleaved runs, ns at 1 / 4 threads (the machine was noisier than for the section above, so compare within the row).
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline` | 130 / 123 | 121 / 119 | 33 |
+| `batch` (4 threads) | 111 | 102 | 26 |
+
+Instructions for `inline` at one thread: 1,750 to 1,626. `bench/perf/promise-tree` `tree 36 10` (ms, median of 7, 1 / 2 / 4 threads): 142 / 78 / 67 to 133 / 72 / 61.
+
+Correction before merging: both sections above were measured with one more cut, a guarded inline run that registered no cleanup for its closure. That cut is not in the change. The closure's entry is also what puts the guard's base above the promises the waiting frame started, so a fault or cancel inside the run does not end them; without it `yaml` and `http-fault-leak` timed out on windows-amd64 (3 of 3 runs, 0 of 5 with the entry). With the entry back `inline` is 1,706 instructions, not 1,626, and the times above are a few nanoseconds optimistic.
+
+Not done. `inline` is 1,706 instructions against the C port's 270. The profile is flat: no function is above 80. About 900 are the promise and queue functions (five runtime calls per promise: start, wait, put, take, close), about 250 are cleanup registrations and the shield in compiled code, 90 the guard.

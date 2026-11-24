@@ -9,22 +9,29 @@ fn make(i: Int) Int!:
 // A Result built on each arm and tested after the join.
 fn total(n: Int) Int:
 	var total = 0
+
 	for i in 0..n:
 		var r: Int! = ok(0)
+
 		if i % 2 == 0: r = make(i)
 		else: r = make(i + 1)
+
 		if v := r: total += v
+
 	return total
 
 fn pick(flag: Bool, a: Int) Int?:
-	var o: Int? = none
+	var o: Int? = null
 	if flag: o = a
-	if v := o: return v + 1
-	return none
+
+	v := o
+	if v != null: return v + 1
+
+	return null
 
 test "a Result tested after an if/else join":
 	expect_equal(total(20), 160)?
 
 test "an optional tested after a join":
 	expect_equal(pick(true, 4), 5)?
-	expect_equal(pick(false, 4), none)?
+	expect_equal(pick(false, 4), null)?

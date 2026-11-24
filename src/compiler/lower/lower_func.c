@@ -281,7 +281,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
     return;
   }
   const MsExpr *value = stmt->u.expr;
-  if (value->kind == MS_E_NAME && ms_span_is_text(ms_names_span(counts->cx->program->names, value->u.sym), "none")) {
+  if (value->kind == MS_E_NAME && ms_span_is_text(ms_names_span(counts->cx->program->names, value->u.sym), "null")) {
     const MsRef *ref = ms_facts_ref(counts->facts, value->id);
     if (ref == NULL || (ref->kind != MS_REF_PARAM && ref->kind != MS_REF_LOCAL)) {
       return; /* `none` holds nothing to borrow or own */
@@ -397,7 +397,7 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   if (func.ret_borrowed && (ret_kind->kind == MK_IFACE ||
                             (ret_kind->kind == MK_OPT && mir_ty_data(cx->module, ret_kind->elem)->kind == MK_IFACE))) {
     /* An interface result that borrows is a view lender: it hands back an owned box (box-only, so dropping it frees the
-     * box and never the payload), and the caller drops it like any owned value (proposals/owned-interface-views.md). */
+     * box and never the payload), and the caller drops it like any owned value (design/proposals/owned-interface-views.md). */
     func.ret_borrowed = false;
     func.ret_view = true;
   }

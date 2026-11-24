@@ -1,6 +1,7 @@
 // Cancellation sweep (`make cancel-sweep`): cancels each test of the e2e fixtures at
 // every park (await point) in turn and checks that nothing leaks. It builds the
-// counting runtime (`cmake --preset stats`, proposals/c-runtime-stats-variant.md): with
+// counting runtime (`cmake --preset stats`,
+// design/proposals/c-runtime-stats-variant.md): with
 // `MS_PARK_COUNT=1` a process prints how many parks it made, and `MS_CANCEL_AT_PARK=k`
 // makes the k-th one report a cancellation, as if the parking task had been cancelled
 // there. Each test runs alone (`--test`), since a file's tests share a process. The
@@ -58,9 +59,9 @@ fn counted(text: String) List[Counted]:
 				)
 			)
 		else if line.starts_with("ms-rt parks: "):
-			parks = line.slice(13, line.length()).trim().parse_int().get_or(0)
+			parks = line.slice(13, line.length()).trim().parse_int() or 0
 		else if line.starts_with("ms-rt live blocks at exit: "):
-			live := line.slice(27, line.length()).trim().parse_int().get_or(0)
+			live := line.slice(27, line.length()).trim().parse_int() or 0
 			found.append(
 				Counted(
 					name: name.clone(),
@@ -95,9 +96,7 @@ fn test_run(
 		arguments,
 		RunOptions(timeout: seconds(120), env: settings),
 	).wait(): return counted(
-		out.stdout.decode_utf8().get_or("") + out.stderr.decode_utf8().get_or(
-			""
-		)
+		(out.stdout.decode_utf8() or "") + (out.stderr.decode_utf8() or "")
 	)
 
 	return List[Counted]()
@@ -110,7 +109,7 @@ fn test_names(ms: String, file: String) List[String]:
 		["test", file.clone(), "--list"],
 		RunOptions(timeout: seconds(120)),
 	).wait():
-		for line in out.stdout.decode_utf8().get_or("").split("\n"):
+		for line in (out.stdout.decode_utf8() or "").split("\n"):
 			if line.contains("::"): names.append(line.clone())
 	return names
 
@@ -194,7 +193,7 @@ fn main() Int:
 			GlobOptions(patterns: ["*.ms"]),
 		).get_or([]):
 			path := f"tests/conformance/fixtures/e2e/stdlib/{f.path}"
-			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get_or("")): files.append(
+			if has_tests(read_file(path.clone()).wait().get().decode_utf8() or ""): files.append(
 				path.clone()
 			)
 
@@ -203,11 +202,13 @@ fn main() Int:
 	change_directory(scratch.path()).get()
 
 	var jobs = system_info().cpu_count
-	if n := env("LEAK_JOBS", "").parse_int(): jobs = n
+	n := env("LEAK_JOBS", "").parse_int()
+	if n != null: jobs = n
 	if jobs < 1: jobs = 1
 
 	var most = 64
-	if n := env("SWEEP_MAX_PARKS", "").parse_int(): most = n
+	n := env("SWEEP_MAX_PARKS", "").parse_int()
+	if n != null: most = n
 
 	var chunks = List[List[String]]()
 

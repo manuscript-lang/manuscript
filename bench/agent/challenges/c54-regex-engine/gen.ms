@@ -6,9 +6,10 @@ import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 fn rep(text: String, count: Int) String:
 	return text.repeat(count)
 
-fn line(cmd: String, pat: String, subj: String = "", repl: String? = none) String:
+fn line(cmd: String, pat: String, subj: String = "", repl: String? = null) String:
 	var fields = [cmd, pat, subj]
-	if r := repl:
+	r := repl
+	if r != null:
 		fields.append(r)
 	return fields.join("\t") + "\n"
 

@@ -1,9 +1,10 @@
-// Fetches the pinned shared LLVM library for this host (`toolchain/llvm-lib.lock`:
-// release tag, version and the SHA-256 of each platform's archive) from
-// manuscript-lang/llvm-bundle into .artifacts/llvm-lib (LLVM_LIB_WORK overrides it) and
-// prints the absolute path of the library, which is what `MS_LLVM` takes. When
-// GITHUB_ENV is set it also appends `MS_LLVM=<path>` there, so the later steps of a CI
-// job use the library. Does nothing but print when the library is already there. With
+// Fetches the pinned shared LLVM library for this host
+// (`cmake/toolchain/llvm-lib.lock`: release tag, version and the SHA-256 of each
+// platform's archive) from manuscript-lang/llvm-bundle into .artifacts/llvm-lib
+// (LLVM_LIB_WORK overrides it) and prints the absolute path of the library, which is
+// what `MS_LLVM` takes. When GITHUB_ENV is set it also appends `MS_LLVM=<path>` there,
+// so the later steps of a CI job use the library. Does nothing but print when the
+// library is already there. With
 // `tools` it fetches the same release's opt and llc instead (`llvm-tools`), prints their
 // paths and exports MS_OPT and MS_LLC, so the process route can be timed against the
 // library. Usage: ms run tools/fetch-llvm-lib.ms [-- tools]
@@ -53,11 +54,10 @@ fn library_path(target_os: String) String:
 fn main() Int:
 	root := working_directory().get()
 	lock := (
-		read_file(f"{root}/toolchain/llvm-lib.lock")
-		.wait()
-		.get()
-		.decode_utf8()
-		.get_or("")
+		read_file(
+			f"{root}/cmake/toolchain/llvm-lib.lock"
+		).wait().get().decode_utf8()
+		or ""
 	)
 	tag := lock_value(lock, "tag")
 	version := lock_value(lock, "version")
@@ -69,7 +69,7 @@ fn main() Int:
 	want := lock_digest(lock, asset)
 
 	if want == "":
-		note(f"toolchain/llvm-lib.lock has no digest for {asset}")
+		note(f"cmake/toolchain/llvm-lib.lock has no digest for {asset}")
 		return 1
 
 	work := env("LLVM_LIB_WORK", f"{root}/.artifacts/llvm-lib")

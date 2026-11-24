@@ -106,7 +106,7 @@ With one scheduler thread the direct write is slower (70k against 54k at one CPU
 
 ## 2026-10-25, one task per request
 
-`/health`, `/user/42` and `/top?n=10`, 64 connections, 4 s, server on CPUs 0 and 1, load on 2 and 3, shared 4-CPU Linux VM (±10% between runs). Runs of main (`7439d30d`) and this change alternated, three rounds each. Each request now runs as a task of the server's scope instead of inline on the reactor task (`proposals/http-server-request-tasks.md`).
+`/health`, `/user/42` and `/top?n=10`, 64 connections, 4 s, server on CPUs 0 and 1, load on 2 and 3, shared 4-CPU Linux VM (±10% between runs). Runs of main (`7439d30d`) and this change alternated, three rounds each. Each request now runs as a task of the server's scope instead of inline on the reactor task (`design/proposals/http-server-request-tasks.md`).
 
 | Build | `/health` req/s | `/user/42` req/s | `/top?n=10` req/s |
 | --- | ---: | ---: | ---: |
@@ -229,7 +229,7 @@ Throughput and tail latency are at parity with hyper. `run.sh` prints resident m
 
 ## 2026-10-30, acceptor and serving workers
 
-`Listener.accept_raw` on the main thread, `HttpServer.adopt` in each worker, connections dealt round robin (`proposals/http-server-multicore.md`, stage 1). Server on CPUs 0-1 (main thread and workers share them), load on 2-3, shared 4-CPU Linux VM (+/-10% between runs), 64 keep-alive connections for 4 s per row (`load`), 32 connection-per-request clients for the last column (`Connection: close`, a Go dialer, scratch). Two rounds each.
+`Listener.accept_raw` on the main thread, `HttpServer.adopt` in each worker, connections dealt round robin (`design/proposals/http-server-multicore.md`, stage 1). Server on CPUs 0-1 (main thread and workers share them), load on 2-3, shared 4-CPU Linux VM (+/-10% between runs), 64 keep-alive connections for 4 s per row (`load`), 32 connection-per-request clients for the last column (`Connection: close`, a Go dialer, scratch). Two rounds each.
 
 | Manuscript | `/health` req/s | `/top?n=10` req/s | new connections per second |
 | --- | ---: | ---: | ---: |
@@ -290,7 +290,7 @@ Same server source on the pre-change integration head `d34af765` and the no-refc
 
 Revision `a460b7ef`, shared 4-CPU Linux VM, `/health` with 64 connections, 4 s, servers unpinned. Server CPU per request (user + system from `/proc/<pid>/stat`): Manuscript with 2 threads 15.1 µs (93k–104k req/s over two runs), hyper 12.3 µs (105k–114k req/s). System time is equal (about 8.5 µs); user time is 5.7 µs against 3.8 µs. The earlier 89k against 124k–143k came from a run where the servers shared cores with the load generator, and is not a stable gap.
 
-Resident memory after 64 `/io` connections, one serving thread: 8 MB after `/health`, 111 MB after `/io`, flat afterwards. Cause and rejected allocator changes: [wiki](../../../wiki/benchmarks-and-performance/freed-large-blocks-stay-resident-after-an-io-burst.md).
+Resident memory after 64 `/io` connections, one serving thread: 8 MB after `/health`, 111 MB after `/io`, flat afterwards. Cause and rejected allocator changes: [wiki](../../../design/wiki/benchmarks-and-performance/freed-large-blocks-stay-resident-after-an-io-burst.md).
 
 ## 2026-11-03, handler sweep and many connections
 
@@ -348,7 +348,7 @@ Still 2x behind Go: what remains is miniz_oxide's inflate (a raw, non-wrapping `
 
 Changes: `switch_away` called a non-blocking `epoll_wait` on every task switch while any task waited on a descriptor, so a batch of requests cost one `epoll_wait` each (`strace -c`: 16.9k `epoll_wait` for 16.2k requests; C: 393 for 25k). It now polls every 32 switches, and an empty queue still blocks in `reactor_wait`, which polls (1.5k for 23k requests). The request target's common case (no escapes, dot segments or doubled slashes) takes one pass and two allocations instead of eight. `Headers` shares its entries until written, so `HttpExchange.headers()` no longer copies every request header. `parse_request` starts with 32 header slots and retries with 256 only on a 431, instead of initializing 8 KiB per request.
 
-Still 1.4x behind C, all of it user time (3.1–3.7 µs against 0.5 µs). Callgrind with a small allocator reservation (the [wiki note](../../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)): 16k instructions per request, about 30 allocations (14% of instructions in `__rust_alloc` and `__rust_dealloc`), 18 `msrt_cleanup_push` calls per request (6%), one promise and one task per request, and three `String` clones for method, path and query. Those are the next cuts.
+Still 1.4x behind C, all of it user time (3.1–3.7 µs against 0.5 µs). Callgrind with a small allocator reservation (the [wiki note](../../../design/wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)): 16k instructions per request, about 30 allocations (14% of instructions in `__rust_alloc` and `__rust_dealloc`), 18 `msrt_cleanup_push` calls per request (6%), one promise and one task per request, and three `String` clones for method, path and query. Those are the next cuts.
 
 ## 2026-11-12, serving workers on every thread
 

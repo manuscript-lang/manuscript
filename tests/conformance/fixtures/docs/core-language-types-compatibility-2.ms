@@ -5,7 +5,7 @@
 type Input:
     names: List[String?]
 
-input := Input([none, "Ada"])
+input := Input([null, "Ada"])
 nested: List[List[Int]] := [[], [1]]
 success: Result[Int, Error] := ok(1)
 failure: Result[Int, Error] := error(Error("unavailable"))

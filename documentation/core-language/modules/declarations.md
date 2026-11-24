@@ -33,7 +33,7 @@ Declaration order does not matter: names and signatures are collected before bod
 
 The intrinsic core type names are `Bool`, `Int`, `Float`, `String`, `Void`, and `Never`. The standard interfaces `Equal`, `Comparable`, `Hashable`, and `Clonable` also have fixed identities in the prelude. Declarations, imports, and type parameters cannot redefine these. A local may reuse a module-level name, but it cannot shadow another local or parameter unless the new name starts with `_`; see [scope and shadowing](../basics/bindings.md#scope-and-shadowing). A value name cannot be used as a type.
 
-Prelude declarations: `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `ListEntry`, `MapEntry`, the function `print`, and `none`, `ok`, `error`. A present optional is a plain value in a `T?` position; there is no `some(...)` constructor. Qualify a Result case when its types need context, for example `Result[Int, Error].ok(3)`. A module declaration or import reusing a prelude name is rejected ("reuses a prelude name"); locals, parameters, and type parameters may shadow them.
+Prelude declarations: `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `ListEntry`, `MapEntry`, the function `print`, and `null`, `ok`, `error`. A present optional is a plain value in a `T?` position; there is no `some(...)` constructor. Qualify a Result case when its types need context, for example `Result[Int, Error].ok(3)`. A module declaration or import reusing a prelude name is rejected ("reuses a prelude name"); locals, parameters, and type parameters may shadow them.
 
 An explicit import of a prelude declaration, including `Equal` and `Hashable`, is rejected with `MS2003`; remove the import. Other exports of the same standard modules, such as collection builders, still need explicit imports.
 
@@ -57,7 +57,7 @@ fn is_full(count: Int) Bool:
     return count >= LIMIT
 ```
 
-The type comes from the annotation or initializer. The initializer is a constant expression: literals, constant `f` text, operators, list and map literals, payloadless cases (`none`, `State.Ready`), and other constants. Calls, constructors, functions, and `match` are not allowed. Self-dependent constants are rejected.
+The type comes from the annotation or initializer. The initializer is a constant expression: literals, constant `f` text, operators, list and map literals, payloadless cases (`null`, `State.Ready`), and other constants. Calls, constructors, functions, and `match` are not allowed. Self-dependent constants are rejected.
 
 A constant has no storage or initialization order; each use evaluates the initializer in place, so a list constant is always fresh. Locals and parameters shadow it. Constants cannot be assigned, and `main` must be a function.
 

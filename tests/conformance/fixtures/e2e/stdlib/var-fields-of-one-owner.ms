@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	FileHandle, OpenMode, open, temporary, append_file from "@std/os/fs.ms",
+	FileHandle, OpenMode, append_file, open, temporary from "@std/os/fs.ms",
 	expect_equal from "@std/test/test.ms",
 )
 
@@ -11,8 +11,14 @@ type Lanes:
 	counts: List[Int] = []
 
 // Moves the last handle of one list onto another, changing both lists and a third.
-fn hand_over(var from: List[FileHandle], var to: List[FileHandle], var counts: List[Int]) Void:
-	if handle := from.pop():
+fn hand_over(
+	var from: List[FileHandle],
+	var to: List[FileHandle],
+	var counts: List[Int],
+) Void:
+	handle := from.pop()
+
+	if handle != null:
 		to.append(handle)
 		counts.append(to.length())
 
@@ -30,7 +36,6 @@ test "changed fields of one record keep their owners without copying":
 	var lanes = Lanes()
 	for unused in 0..3:
 		lanes.left.append(open(path, OpenMode.Read)?)
-
 	lanes.shift()
 	lanes.shift()
 	lanes.shift_back()

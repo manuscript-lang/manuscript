@@ -9,5 +9,5 @@ fn main() Void!:
 	re := compile("func\\s+\\w+\\(")?
 	word := compile("[A-Za-z_]+[0-9]+")?
 	print(
-		f"{(re.find_all(text, none)?).length()} {(word.find_all(text, none)?).length()} {(re.replace_all(text, "fn(", none)?).length()}"
+		f"{(re.find_all(text, null)?).length()} {(word.find_all(text, null)?).length()} {(re.replace_all(text, "fn(", null)?).length()}"
 	)

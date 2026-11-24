@@ -40,21 +40,21 @@ fn unexpected_widen(cause: Error) Wrapped: panic("closure must not run")
 
 test "Optional get_or_else returns the payload and is lazy":
 	present: Int? := 0
-	missing: Int? := none
+	missing: Int? := null
 	var counter = Counter(0)
-	expect_equal(present.get_or_else(unexpected_int), 0)?
-	expect_equal(missing.get_or_else(fn: tick(counter)), 7)?
+	expect_equal(present or unexpected_int(), 0)?
+	expect_equal(missing or tick(counter), 7)?
 	expect_equal(counter.calls, 1)?
 
 	flag: Bool? := false
-	expect_false(flag.get_or_else(fn: true))?
+	expect_false(flag or true)?
 
 test "Optional or_else keeps the wrapper and is lazy":
 	present: Int? := 0
-	missing: Int? := none
-	expect_equal(present.or_else(unexpected_optional), 0)?
-	expect_equal(missing.or_else(fn: 4), 4)?
-	expect_equal(missing.or_else(fn: none), none)?
+	missing: Int? := null
+	expect_equal(present or unexpected_optional(), 0)?
+	expect_equal(missing or 4, 4)?
+	expect_equal(missing or null, null)?
 
 test "Result get_or_else returns the payload and receives the error":
 	success: Int!Error := ok(0)
@@ -80,9 +80,6 @@ test "Result map_error converts the error type and feeds try":
 	expect_equal(convert(false).err().message(), "wrapped bad")?
 
 test "map and and_then on both types keep their meaning":
-	present: Int? := 2
 	success: Int!Error := ok(2)
-	expect_equal(present.map(fn n: n + 1).get(), 3)?
-	expect_equal(present.and_then(fn(n: Int) Int?: n * 2).get(), 4)?
 	expect_equal(success.clone().map(fn n: n + 1).get(), 3)?
 	expect_equal(success.and_then(fn n: ok(n * 2)).get(), 4)?

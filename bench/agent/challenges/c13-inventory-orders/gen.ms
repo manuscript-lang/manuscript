@@ -14,8 +14,8 @@ fn money(c: Int) String: f"{c / 100}.{f"{c % 100}".pad_start(2, "0")}"
 
 fn qty_ok(s: String) Bool: (
 	full_match(NUM, s)
-	and s.parse_int().get_or(0) >= 1
-	and s.parse_int().get_or(0) <= 100000
+	and (s.parse_int() or 0) >= 1
+	and (s.parse_int() or 0) <= 100000
 )
 
 fn arity(c: String) Int:
@@ -72,10 +72,10 @@ fn solve(s: String) String:
 				skus.append(t[1].clone())
 				price[t[1].clone()] = 0
 
-			stock[t[1].clone()] = stock.get_or(t[1], 0) + t[2].parse_int().get_or(0)
+			stock[t[1].clone()] = stock.get_or(t[1], 0) + (t[2].parse_int() or 0)
 			out.append(f"ok {t[1]} stock={stock.get_or(t[1], 0)}")
 		else if c == "price":
-			if not (full_match(NUM, t[2]) and t[2].parse_int().get_or(0) <= 10000000):
+			if not (full_match(NUM, t[2]) and (t[2].parse_int() or 0) <= 10000000):
 				out.append("error: bad price")
 				continue
 
@@ -83,7 +83,7 @@ fn solve(s: String) String:
 				out.append(f"error: unknown sku {t[1]}")
 				continue
 
-			price[t[1].clone()] = t[2].parse_int().get_or(0)
+			price[t[1].clone()] = t[2].parse_int() or 0
 			out.append("ok")
 		else if c == "order":
 			oid := t[1].clone()
@@ -106,7 +106,7 @@ fn solve(s: String) String:
 					bad = tok.clone()
 					break
 
-				items.append(Item(p[0].clone(), p[1].parse_int().get_or(0)))
+				items.append(Item(p[0].clone(), p[1].parse_int() or 0))
 
 			if bad != "":
 				out.append(f"error: bad item {bad}")

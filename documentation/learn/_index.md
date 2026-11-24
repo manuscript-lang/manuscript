@@ -43,7 +43,7 @@ The `PromiseOptions` search starts with:
 
 ```text
 promise.PromiseOptions  type  std:@std/concurrency/promise.ms
-  type PromiseOptions: timeout: Duration? = none cancel: Signal? = none ...
+  type PromiseOptions: timeout: Duration? = null cancel: Signal? = null ...
 ```
 
 It also lists matching fields and related functions. Search covers project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output.

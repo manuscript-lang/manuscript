@@ -35,10 +35,10 @@ general application-speed claim.
 
 ### Method and correctness
 
-[main.ms](main.ms) constructs 1, 32 or 4096 timestamps outside the timed interval.
+main.ms constructs 1, 32 or 4096 timestamps outside the timed interval.
 Each process runs one untimed batch, then repeatedly processes the batch. The
 baseline calibrates the repetition count to about 60 ms; both sides use exactly
-the same count. [run.py](run.py) uses 12 AB/BA process pairs, shuffles case order
+the same count. run.py uses 12 AB/BA process pairs, shuffles case order
 with seed 20261110, pins each process to CPU 0, and retains every result. No
 builds or other benchmark jobs ran concurrently in this environment.
 
@@ -92,26 +92,26 @@ overflow case was 1–5.4% slower, so that version was rejected. The final overf
 decomposition improves both signs and exact multiples. All exploratory data is
 retained, including the original 27-case input and candidate diffs:
 
-- [First candidate](results-2026-11-10/first-candidate.json),
-  [second candidate](results-2026-11-10/second-candidate.json),
-  [preliminary input](results-2026-11-10/preliminary-main.ms.txt).
-- [Final 12-pair measurements](results-2026-11-10/final.json),
-  [identical-binary controls](results-2026-11-10/identical-binary.json).
-- [Before native assembly](results-2026-11-10/before-shift-assembly.txt),
-  [after native assembly](results-2026-11-10/after-shift-assembly.txt).
+- First candidate,
+  second candidate,
+  preliminary input.
+- Final 12-pair measurements,
+  identical-binary controls.
+- Before native assembly,
+  after native assembly.
 - Existing suite observations:
-  [baseline parse](results-2026-11-10/baseline-parse.json),
-  [candidate parse](results-2026-11-10/candidate-parse.json),
-  [baseline format](results-2026-11-10/baseline-format.json),
-  [candidate format](results-2026-11-10/candidate-format.json).
+  baseline parse,
+  candidate parse,
+  baseline format,
+  candidate format.
   These initial single-process observations were not contemporaneous pairs;
   do not interpret their differences as a regression or speedup.
 
 The earlier oversized-fraction observation needed its own follow-up: the short
 valid parse control does not exercise malformed text. After local CPU work
-stopped, [stdlib-controls.py](stdlib-controls.py) ran eight AB/BA pairs of the
+stopped, stdlib-controls.py ran eight AB/BA pairs of the
 three existing parser cases and timestamp formatting, all pinned to CPU 0.
-Each CLI invocation used 11 samples of 100 ms. The [unmodified CLI JSON reports](results-2026-11-10/stdlib-paired.json)
+Each CLI invocation used 11 samples of 100 ms. The unmodified CLI JSON reports
 retain commands, operation counts, all reported statistics and binary hashes.
 All cases passed. Medians of process medians, ns/op:
 

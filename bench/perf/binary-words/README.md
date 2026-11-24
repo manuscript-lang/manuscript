@@ -4,7 +4,7 @@ The private UInt64 reader performs two four-byte native reads and combines their
 
 ## Final same-main result
 
-Baseline `1ad25b0a22c91fbd2cdb57b59a4cd027a355d622`; proposed source is this patch. Both applications used the same formatted fixture and independently rebuilt CLI/runtime from that revision. LLVM Release, Linux x86-64, CPU affinity 4; machine and SHA-256 identities are in [metadata](current-main-2026-11-12/metadata.json). Seven alternating baseline/candidate/C triples per case; warmup and input loading precede timing. Every timed operation checks its result and checksum. Counts target at least 100 ms on the faster Manuscript side, capped at ten million; C durations can be shorter. Entries are ns per complete repeated operation (one, sixteen, or 8192 fields), not per byte. Ratios are medians of paired candidate/baseline ratios, not ratios of aggregate medians.
+Baseline `1ad25b0a22c91fbd2cdb57b59a4cd027a355d622`; proposed source is this patch. Both applications used the same formatted fixture and independently rebuilt CLI/runtime from that revision. LLVM Release, Linux x86-64, CPU affinity 4; machine and SHA-256 identities are in metadata. Seven alternating baseline/candidate/C triples per case; warmup and input loading precede timing. Every timed operation checks its result and checksum. Counts target at least 100 ms on the faster Manuscript side, capped at ten million; C durations can be shorter. Entries are ns per complete repeated operation (one, sixteen, or 8192 fields), not per byte. Ratios are medians of paired candidate/baseline ratios, not ratios of aggregate medians.
 
 UInt64 LE valid cases improve 55–61%, BE 47–49%, including one-field inputs, both unsigned halves and unaligned offsets. No changed-path regression was observed. Error controls and unchanged read/pack controls are noise controls, not claimed optimizations. Five same-binary A/A controls accompany the raw pairs; the single-run environment still limits precision for small differences.
 
@@ -43,9 +43,9 @@ The optimized C control is a complete checked operation using memcpy/byte-swap, 
 
 ## Coverage and rejected work
 
-The initial [f21 discovery](discovery-f21/report.json) measured 24 read/pack cases for u32, u64, i64, f32 and f64 at 1/16/8192 fields against C. Existing binary benchmarks were narrower; byte indexing is a separate scope. There is no fixed-width streaming interface to test. Packing differences do not justify adding a new primitive or changing the runtime in this pass. Neighboring widths and float paths yielded no additional clean source-only opportunity.
+The initial f21 discovery measured 24 read/pack cases for u32, u64, i64, f32 and f64 at 1/16/8192 fields against C. Existing binary benchmarks were narrower; byte indexing is a separate scope. There is no fixed-width streaming interface to test. Packing differences do not justify adding a new primitive or changing the runtime in this pass. Neighboring widths and float paths yielded no additional clean source-only opportunity.
 
-Historical [f21 candidate evidence](candidate-f21/report.json) is retained separately. An initial unchanged packing control was 3.9% slower; bounded ABBA yielded 0.989 and identical-binary A/A 0.999, and the final same-main control is 0.977. It was not a reproducible regression. No performance claim relies on that unchanged path. All final claims use the current-main directory.
+Historical f21 candidate evidence is retained separately. An initial unchanged packing control was 3.9% slower; bounded ABBA yielded 0.989 and identical-binary A/A 0.999, and the final same-main control is 0.977. It was not a reproducible regression. No performance claim relies on that unchanged path. All final claims use the current-main directory.
 
 ## Reproduction
 

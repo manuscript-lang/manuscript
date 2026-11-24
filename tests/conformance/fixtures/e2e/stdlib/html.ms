@@ -173,7 +173,7 @@ test "HTML parse applies default limits and none lifts them":
 	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse(nested), limited)?
 
-	lifted := parse(nested, HtmlOptions(max_depth: none, max_nodes: none))
+	lifted := parse(nested, HtmlOptions(max_depth: null, max_nodes: null))
 	expect_false(lifted.is_error())?
 
 test "unescape maps overflowing numeric references to U+FFFD instead of wrapping":

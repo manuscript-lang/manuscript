@@ -10,7 +10,7 @@ type MemorySource:
 	offset: Int
 
 fn var MemorySource.next() Bytes?!:
-	if self.offset == self.data.length(): return ok(none)
+	if self.offset == self.data.length(): return ok(null)
 
 	var end = self.offset + 65536
 	if end > self.data.length():
@@ -47,7 +47,7 @@ bench "io.lines" per 10:
 	var count = 0
 
 	while true:
-		if reader.next().get().is_none(): break
+		if reader.next().get() == null: break
 
 		count += 1
 
@@ -71,4 +71,4 @@ bench "io.lines long fragmented":
 	var input = lines(from_bytes(fixture.data.clone(), 64))
 	result := input.next()?
 	input.close()?
-	result.get_or("").length()
+	(result or "").length()

@@ -22,17 +22,43 @@ static void cpe_set_single_arg(MirModule *m, MirInst *inst, MirValue v) {
   inst->nargs = 1;
 }
 
+/* Whether the function has an instruction with op `op`: the rewrites below start from one, and without it they
+ * would still build the taint, use and drop tables for nothing. */
+static bool cpe_block_has_op(const MirBlockData *b, MirOp op) {
+  for (uint32_t i = 0; i < b->insts.len; i++) {
+    if (b->insts.ptr[i].op == op) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool cpe_has_op(const MirFunc *f, MirOp op) {
+  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
+    const MirInstList *insts = &f->blocks.ptr[bi].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      if (insts->ptr[i].op == op) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /* Turns `p = opt.get v; c = clone p; ...; drop v` into `c = opt.unbox v` when `v` is not touched in
  * between and `p` has no other use: the payload moves out and the shell is freed instead of the
  * payload being deep-copied and then dropped with its source. This is the shape of unwrapping a
  * recursive result, which would otherwise copy every subtree once per level. */
 bool cpe_unbox_dead_options(MsArena *arena, MirModule *m, MirFunc *f) {
+  if (!cpe_has_op(f, MOP_OptGet)) {
+    return false;
+  }
   const bool *tainted = cpe_view_tainted(arena, m, f);
   const uint32_t *uses = mir_use_counts(arena, f);
   bool changed = false;
   for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
     MirBlockData *b = &f->blocks.ptr[bi];
-    bool again = true;
+    bool again = cpe_block_has_op(b, MOP_OptGet);
     while (again) {
       again = false;
       const CpeBlockUses idx = cpe_block_uses(arena, b);
@@ -124,6 +150,9 @@ static void cpe_hoist_rebuild(MirModule *m, MirBlockData *b, uint32_t gi, uint32
  * the shape of `match cur: Link(_, next): cur = next` in a loop, which would otherwise deep-copy
  * the whole tail on every iteration. */
 bool cpe_unbox_dead_sources(MsArena *arena, MirModule *m, MirFunc *f) {
+  if (!cpe_has_op(f, MOP_AltGet)) {
+    return false;
+  }
   const bool *tainted = cpe_view_tainted(arena, m, f);
   const uint32_t *uses = mir_use_counts(arena, f);
   bool *nd = cpe_new_flags(arena, f);
@@ -133,7 +162,7 @@ bool cpe_unbox_dead_sources(MsArena *arena, MirModule *m, MirFunc *f) {
   bool changed = false;
   for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
     MirBlockData *b = &f->blocks.ptr[bi];
-    bool again = true;
+    bool again = cpe_block_has_op(b, MOP_AltGet);
     while (again) {
       again = false;
       const CpeBlockUses idx = cpe_block_uses(arena, b);
@@ -232,6 +261,9 @@ static uint32_t cpe_taken_fields(const MirBlockData *b, const CpeBlockUses *idx,
  * or unwind may sit between the first load and the drop, so no cleanup sees the field both moved
  * and still owned by the type. Rewrites the first site found. */
 bool cpe_take_type_fields(MsArena *arena, const MirModule *m, MirFunc *f) {
+  if (!cpe_has_op(f, MOP_Drop)) {
+    return false;
+  }
   const bool *tainted = cpe_view_tainted(arena, m, f);
   const uint32_t *uses = mir_use_counts(arena, f);
   bool *nd = cpe_new_flags(arena, f);
@@ -240,6 +272,13 @@ bool cpe_take_type_fields(MsArena *arena, const MirModule *m, MirFunc *f) {
   }
   for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
     MirBlockData *b = &f->blocks.ptr[bi];
+    bool has_drop = false;
+    for (uint32_t di = 0; di < b->insts.len && !has_drop; di++) {
+      has_drop = b->insts.ptr[di].op == MOP_Drop && b->insts.ptr[di].nargs != 0;
+    }
+    if (!has_drop) {
+      continue;
+    }
     const CpeBlockUses idx = cpe_block_uses(arena, b);
     uint32_t *gets = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)b->insts.len + 1);
     CpeTaken *taken = MS_ARENA_NEW_ARRAY(arena, CpeTaken, (size_t)b->insts.len + 1);

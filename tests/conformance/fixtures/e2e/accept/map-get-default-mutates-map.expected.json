@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "map-get-default-mutates-map.ms::a default that changes the map runs after the lookup",
+          "name": "map-get-default-mutates-map.ms::a default that changes the map does not run when the key is present",
           "status": "passed"
         },
         {
@@ -30,7 +30,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN map-get-default-mutates-map.ms::a default that changes the map runs after the lookup\nPASS map-get-default-mutates-map.ms::a default that changes the map runs after the lookup\nRUN map-get-default-mutates-map.ms::a missing key still takes the default\nPASS map-get-default-mutates-map.ms::a missing key still takes the default\n2 tests, 0 failed\n",
+      "stdout": "RUN map-get-default-mutates-map.ms::a default that changes the map does not run when the key is present\nPASS map-get-default-mutates-map.ms::a default that changes the map does not run when the key is present\nRUN map-get-default-mutates-map.ms::a missing key still takes the default\nPASS map-get-default-mutates-map.ms::a missing key still takes the default\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -32,12 +32,12 @@ export fn filter_of(args: Args) Filter:
 	shard := one(args, "shard", "")
 
 	if shard != "":
-		slash := shard.index_of("/").get_or(-1)
-		index := if slash < 0: -1 else: shard.slice(0, slash).parse_int().get_or(-1)
+		slash := shard.index_of("/") or (-1)
+		index := if slash < 0: -1 else: shard.slice(0, slash).parse_int() or (-1)
 		count := if slash < 0: 0 else: shard.slice(
 			slash + 1,
 			shard.length(),
-		).parse_int().get_or(0)
+		).parse_int() or 0
 
 		if index < 0 or count < 1 or index >= count: filter.problem = "--shard wants i/n with 0 <= i < n"
 		else:

@@ -196,7 +196,11 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
 }
 
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
-  MirValue value = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  /* A narrowed name at its last use hands its payload to the `?`: its new owner closes it. */
+  const MsExpr *operand = expr->u.bin.left;
+  const bool hands_on = want == LW_MOVE && operand->kind == MS_E_NAME && fn->facts->last != NULL &&
+                        fn->facts->last[operand->id] != 0 && fn_read_type(fn, operand) != ms_facts_type(fn->facts, operand->id);
+  MirValue value = fn_expr(fn, operand, hands_on ? LW_MOVE : LW_BORROW);
   uint32_t alt = 0;
   if (value == MIR_NONE) {
     return MIR_NONE;

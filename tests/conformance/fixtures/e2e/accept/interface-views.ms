@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 type Cause:
 	code: Int
@@ -52,7 +55,7 @@ fn looped(cause: Cause) Reportable:
 
 fn maybe(cause: Cause, b: Bool) Reportable?:
 	if b: return cause
-	return none
+	return null
 
 fn either(r: Holder, b: Bool) Reportable:
 	if b: return r.err
@@ -131,11 +134,12 @@ test "interface values converted from borrowed values are views":
 		)?
 	)
 	(
-		maybe(c, true).get().message() | expect_equal(
-			"cause 5: a heap allocated text that is long"
-		)?
+		(
+			maybe(c, true)
+			or panic("called Optional.get() on null")
+		).message() | expect_equal("cause 5: a heap allocated text that is long")?
 	)
-	maybe(c, false).is_some() | expect_equal(false)?
+	(maybe(c, false) != null) | expect_equal(false)?
 	(
 		either(h, true).message()
 		| expect_equal("cause 3: held heap text that is long enough")?

@@ -81,7 +81,7 @@ Save as `port.ms` and run `ms run port.ms`:
 fn port_number(text: String) Int!:
     port := text.trim()
         | .parse_int()
-        | .ok_or(Error("expected a port number"))?
+        | ok_or(Error("expected a port number"))?
     return ok(port)
 
 fn main() Int:

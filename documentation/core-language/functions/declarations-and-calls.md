@@ -27,7 +27,7 @@ Parameters and return types are explicit; local annotations are optional.
 
 ## The program entry
 
-An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Void`, `Void!`, `Int?!`, or `Int`. `Void` exits 0. `Void!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(none)`. `Int` is the exit status.
+An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Void`, `Void!`, `Int?!`, or `Int`. `Void` exits 0. `Void!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(null)`. `Int` is the exit status.
 
 <!-- manuscript-example: {"mode":"run","stdout":"checking\n"} -->
 ```manuscript
@@ -70,7 +70,7 @@ All five results are `7`. Arguments resolve left to right and labels do not rese
 
 The rule covers functions, generics, methods, library APIs, and constructors. A call through a function value, including a copy of a named function in a variable, is positional ([function values](function-values-and-closures.md)). A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type identity depends on ordered parameter types with their `var` markers and the result type; parameter names are not part of [type identity](function-values-and-closures.md).
 
-A parameter with a default may be omitted; others are required, except `T?`, which defaults to `none`. A supplied `T` is wrapped once as the present case ([optional arguments](../types/optionals.md#passing-optional-arguments)). Variadics and spreading are unsupported. Match bindings such as `value:` beside `none:` are [patterns](../control-flow/pattern-matching.md), not calls.
+A parameter with a default may be omitted; others are required, except `T?`, which defaults to `null`. A supplied `T` is wrapped once as the present case ([optional arguments](../types/optionals.md#passing-optional-arguments)). Variadics and spreading are unsupported. Match bindings such as `value:` beside `null:` are [patterns](../control-flow/pattern-matching.md), not calls.
 
 ## Default arguments
 
@@ -91,9 +91,9 @@ fn example() Int:
 
 - Optional parameters come last: a parameter with a default, or of type `T?`, may not precede a required one, and the checker rejects `fn choose(first: Int = 1, second: Int) Int`. Constructor fields follow the same rule. Write `fn choose(second: Int, first: Int = 1) Int` and skip `first` by omitting it; to skip an earlier optional, label a later argument.
 - A default is checked against its parameter type in the function's scope. It may use imports, module declarations, earlier parameters, and `self`; current and later parameters are not in scope. Anonymous functions may use captures.
-- Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `void`, `false`, and zero are supplied values.
+- Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `null`, `void`, `false`, and zero are supplied values.
 - A failing default stops later defaults and the body. `?` in a default propagates under the function's result type.
-- Named functions, closures, and methods may declare defaults; function types and enum payloads cannot. Interface signatures permit only `= none` on Optional parameters. A concrete default wins; an interface view uses the interface's.
+- Named functions, closures, and methods may declare defaults; function types and enum payloads cannot. Interface signatures permit only `= null` on Optional parameters. A concrete default wins; an interface view uses the interface's.
 - Fields have their own [defaults](../types/named-types.md#construction). Omitted arguments give no generic type evidence.
 - Defaults are callable permissions of known callables. Inferred immutable copies preserve them; explicit function types, mutable callable bindings, and generic inference require every parameter. Defaults are not part of function-type identity.
 - Native standard-library slice: expression defaults work on nongeneric functions and ordinary fields. Standard interface defaults must be closed literals. Native generic defaults, defaults on opaque native constructors, and recursive native default expansion are unsupported.

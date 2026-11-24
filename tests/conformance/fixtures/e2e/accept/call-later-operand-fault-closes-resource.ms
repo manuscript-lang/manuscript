@@ -30,7 +30,7 @@ fn failing(log: String) Int:
 
 fn events(log: String) String!:
 	bytes := read_file(log).wait()?
-	return ok(bytes.decode_utf8().get_or(""))
+	return ok(bytes.decode_utf8() or "")
 
 fn borrowed_call(log: String) Void:
 	_n := keep(Item(2, log.clone()), failing(log))

@@ -1,5 +1,5 @@
 /* compiler/lower/lower_tests.c: the test entry (ms_lower_tests). Instead of `main` the program starts at a function
- * that hands `run_test_files` (stdlib/internal/test_runner.ms) one runner closure per test file. A runner takes the
+ * that hands `run_test_files` (src/stdlib/internal/test_runner.ms) one runner closure per test file. A runner takes the
  * selected test indices and the results path, and calls `run_plain_file` with the file's tests as closures that
  * return `Void!`, and their global indices. A file with a `make_fixture` factory calls `run_fixture_file` instead: its
  * tests take the fixture as a `var` parameter, and the fixture type's hook methods become closures. */
@@ -115,6 +115,7 @@ static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *de
     return MIR_NONE;
   }
   /* A fault trace names the block as it is written: `test adds two numbers`, `bench sort`. */
+  cx->module->funcs.ptr[slot].runs_once = !decl->u.test.bench;
   cx->module->funcs.ptr[slot].display = mir_name(
       cx->module, ms_message_format(&cx->module->arena, decl->u.test.bench ? "bench %S" : "test %S", decl->u.test.name, (MsSpan){0}));
   return slot;

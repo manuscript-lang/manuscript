@@ -36,15 +36,15 @@ ms_library(ms_syntax compiler/syntax
     partial_recover.c token.c walk.c
   LINK ms_base)
 
-# The bundled standard library is generated from stdlib/ at build time.
+# The bundled standard library is generated from src/stdlib/ at build time.
 set(std_embedded ${MS_GEN}/std_embedded.c)
-file(GLOB_RECURSE std_files CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/stdlib/*.ms)
+file(GLOB_RECURSE std_files CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/stdlib/*.ms)
 add_custom_command(
   OUTPUT ${std_embedded}
-  COMMAND ${CMAKE_COMMAND} -DSTDLIB_DIR=${CMAKE_SOURCE_DIR}/stdlib -DOUTPUT=${std_embedded}
+  COMMAND ${CMAKE_COMMAND} -DSTDLIB_DIR=${CMAKE_SOURCE_DIR}/src/stdlib -DOUTPUT=${std_embedded}
           -P ${CMAKE_SOURCE_DIR}/cmake/EmbedStdlib.cmake
   DEPENDS ${std_files} ${CMAKE_SOURCE_DIR}/cmake/EmbedStdlib.cmake
-  COMMENT "Embedding stdlib/*.ms")
+  COMMENT "Embedding src/stdlib/*.ms")
 ms_library(ms_project compiler/project
   SOURCES
     discover.c edit.c embed.c files.c lock.c load.c manifest.c manifest_packages.c project.c package.c resolve.c
@@ -78,7 +78,7 @@ ms_library(ms_check compiler/check
     exports.c symbol_text.c effects_directives.c effects_paths.c effects_reach.c builtins.c check.c declare.c
     imports.c resolve.c signatures.c methods.c implements.c properties.c bounds.c instantiate.c typevars.c types.c
     type_ops.c facts.c bodies.c exprs.c exprs_ops.c conversions.c calls.c call_target.c call_report.c match.c
-    mismatch.c native.c operands.c members.c drop_labels.c test_fixture.c recursion.c order.c exprs_mismatch.c
+    mismatch.c native.c operands.c nullable_methods.c narrow.c members.c drop_labels.c test_fixture.c recursion.c order.c exprs_mismatch.c
     try_check.c opaque.c externs.c
   LINK ms_base ms_syntax ms_project)
 
@@ -95,7 +95,7 @@ ms_library(ms_opt compiler/opt
     opt_fuse.c opt_inline_dead.c opt_lastuse.c opt_lastuse_region.c opt_loopslot.c opt_optparam.c opt_pipeline.c opt_probe.c
     opt_range.c opt_range_eval.c opt_range_len.c opt_range_prove.c opt_range_refine.c opt_reserve.c opt_simplify.c
     opt_simplify_cfg.c opt_simplify_dead.c opt_simplify_fold.c opt_simplify_mutate.c opt_simplify_phis.c opt_simplify_probes.c
-    opt_sortgen.c opt_sortgen_drift.c opt_sortgen_emit.c opt_sortgen_merge.c opt_strfast.c opt_strfuse.c opt_unwind_sites.c opt_util.c
+    opt_sortgen.c opt_sortgen_drift.c opt_sortgen_emit.c opt_sortgen_merge.c opt_splitview.c opt_strfast.c opt_strfuse.c opt_unwind_sites.c opt_util.c
     opt_viewfast.c
   LINK ms_mir ms_base m)
 
@@ -104,5 +104,5 @@ ms_library(ms_lower compiler/lower
     lower_types.c lower_scope.c lower_unwind.c lower_func.c lower_expr.c lower_stmt.c lower_destructure.c lower_field.c lower_call.c lower_var_slot.c lower_native.c
     lower_native_list.c lower_native_roles.c lower_scalar_ops.c lower_object.c lower_extern.c lower_conv.c lower_for.c lower_close.c lower_parts.c
     lower_temp.c lower_text.c lower_match.c lower_list.c lower_iflet.c lower_closure.c lower_captures.c
-    lower_funcval.c lower_default.c lower_glue.c lower_hooks.c lower_result.c lower_tests.c lower_entry.c
+    lower_map_entry.c lower_or.c lower_assign_take.c lower_funcval.c lower_default.c lower_glue.c lower_hooks.c lower_result.c lower_tests.c lower_entry.c
   LINK ms_base ms_syntax ms_check ms_own ms_mir ms_native_sigs)

@@ -6,7 +6,7 @@ enum Choice[T]:
 fn f(c: Choice[Int], o: Int?) Int:
     match o:
         Optional.some(n): return n
-        Optional.none: return 0
+        Optional.null: return 0
     match c:
         Choice.Found(v): return v
         Choice.Missing: return 0

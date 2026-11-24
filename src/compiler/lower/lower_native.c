@@ -39,6 +39,21 @@ static bool is_collection(const LowerFn *fn, MirTy type) {
   return data->kind == MK_LIST || (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION);
 }
 
+/* Notes the element or value type of the first collection among `args`: a native that answers `T?` for a nullable `T`
+ * (`T??` is `T?`) then hands back the stored value itself, not a value inside an optional. */
+static void note_value_type(LowerFn *fn, const MirValue *args, uint32_t nargs) {
+  fn->native_value_ty = MIR_NONE;
+  for (uint32_t at = 0; at < nargs; at++) {
+    const MirTy type = mir_b_ty(&fn->b, args[at]);
+    if (!is_collection(fn, type)) {
+      continue;
+    }
+    const MirTyData *data = mir_ty_data(fn->cx->module, type);
+    fn->native_value_ty = collection_arg(fn, data, data->kind == MK_LIST ? 0 : 1);
+    return;
+  }
+}
+
 /* The descriptor argument `kind` asks for, from the first collection among `args`; false when there is none. */
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out) {
   for (uint32_t at = 0; at < nargs; at++) {
@@ -233,6 +248,7 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool scalar = ret == MIR_INT || ret == MIR_BOOL || ret == MIR_FLOAT || ret == MIR_FLOAT32;
   const MirTyData *data = mir_ty_data(fn->cx->module, ret);
   const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
+  const bool whole_value = optional && fn->native_value_ty == ret; /* a nullable value: the slot holds all of it */
   const uint8_t last = sig->count > 0 ? sig->kinds[sig->count - 1] : NS_VALUE;
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
   /* An optional that is the whole value (`replace` on a list of optionals): the native writes all of it. */
@@ -241,7 +257,7 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text && !listed)) {
     return MIR_NONE;
   }
-  const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
+  const MirImm of_type = {.tag = MI_TY, .a = optional && !whole_value ? data->elem : ret};
   const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   if (text) { /* the runtime writes the String over an empty one */
     const MirImm empty = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(""))};
@@ -266,10 +282,11 @@ static MirValue optional_from_status(LowerFn *fn, MsName name, MirValue *wanted,
   mir_b_seal_block(&fn->b, some_block);
   mir_b_seal_block(&fn->b, none_block);
   mir_b_switch_to(&fn->b, some_block);
-  const MirTy payload = mir_ty_data(fn->cx->module, ret)->elem;
+  const bool whole = fn->native_value_ty == ret;
+  const MirTy payload = whole ? ret : mir_ty_data(fn->cx->module, ret)->elem;
   const MirImm of_type = {.tag = MI_TY, .a = payload};
   const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload) ? MOP_Take : MOP_Load, &slot, 1, of_type, payload);
-  const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
+  const MirValue some = whole ? value : mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &some, 1);
   mir_b_switch_to(&fn->b, none_block);
   const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
@@ -309,6 +326,7 @@ static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, u
   const MsNativeSig *sig = ms_native_sig_find(text);
   const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
+                         .twin = (uint8_t)fn_native_twin(sig),
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret), .pure = pure,
                          .role = (uint8_t)(views ? MR_VIEW_RESULT
                                            : sig != NULL && sig->spawns ? MR_SPAWNS_TASK
@@ -368,98 +386,6 @@ MirValue fn_operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
   return slot;
 }
 
-/* Ends the current block with the fault of a missing map key: `key` is the slot holding the key of type `key_ty`. */
-static void fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
-  const MirImm of_key = {.tag = MI_TY, .a = key_ty};
-  const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, of_key, key_ty);
-  const MirValue text = fn_value_repr(fn, missing, key_ty);
-  const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
-                                         (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
-                                         MIR_STR);
-  const MirValue parts[2] = {prefix_lit, text};
-  const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
-  mir_b_unreachable(&fn->b);
-}
-
-/* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
-MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
-  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  const MirValue key = fn_operand_slot(fn, key_expr, true);
-  if (key == MIR_NONE) {
-    return MIR_NONE;
-  }
-  const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
-  const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
-  const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
-  const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
-  const MirValue out = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, value_ty, MIR_PTR);
-  const MirValue operands[5] = {map, key_desc, value_desc, key, out};
-  const MirValue found = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get")), operands, 5, MIR_BOOL);
-  const bool owns_value = mir_needs_drop(fn->cx->module, data->args[1]);
-  const MirBlock hit = mir_b_new_block(&fn->b);
-  const MirBlock miss = mir_b_new_block(&fn->b);
-  mir_b_br_if(&fn->b, found, hit, NULL, 0, miss, NULL, 0);
-  mir_b_seal_block(&fn->b, hit);
-  mir_b_seal_block(&fn->b, miss);
-  mir_b_switch_to(&fn->b, miss);
-  fault_missing_key(fn, key, data->args[0]);
-  mir_b_switch_to(&fn->b, hit);
-  return fn_emit(fn, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
-}
-
-/* The address of the entry `place[key]?` names in a list or map, or a null pointer when there is none (a list index
- * out of range counts from nothing: a negative index is no entry). `entry_ty` is the entry's type. */
-MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_expr, MirTy *entry_ty) {
-  const MirTy ty = mir_b_ty(&fn->b, container);
-  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
-    const MirValue key = fn_operand_slot(fn, key_expr, true);
-    if (key == MIR_NONE) {
-      return MIR_NONE;
-    }
-    const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
-    const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
-    const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
-    const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
-    const MirValue operands[4] = {container, key_desc, value_desc, key};
-    const MirValue address = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get_ptr")), operands, 4, MIR_PTR);
-    *entry_ty = data->args[1];
-    return address;
-  }
-  if (data->kind != MK_LIST) {
-    (void)fn_fail(fn, "only a list or a map can be probed");
-    return MIR_NONE;
-  }
-  const MirValue at = fn_expr(fn, key_expr, LW_BORROW);
-  if (at == MIR_NONE) {
-    return MIR_NONE;
-  }
-  const MirValue zero = mir_b_iconst(&fn->b, 0);
-  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &container, 1, (MirImm){0}, MIR_INT);
-  const MirValue not_negative = mir_b_icmp(&fn->b, MCC_GE, at, zero);
-  const MirValue below = mir_b_icmp(&fn->b, MCC_LT, at, length);
-  const MirValue inside = mir_b_select(&fn->b, not_negative, below, mir_b_bconst(&fn->b, false));
-  const MirBlock hit = mir_b_new_block(&fn->b);
-  const MirBlock miss = mir_b_new_block(&fn->b);
-  const MirBlock join = mir_b_new_block(&fn->b);
-  const MirValue address = mir_b_add_block_param(&fn->b, join, MIR_PTR, MM_BORROW);
-  mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
-  mir_b_seal_block(&fn->b, hit);
-  mir_b_seal_block(&fn->b, miss);
-  mir_b_switch_to(&fn->b, hit);
-  const MirValue operands[2] = {container, at};
-  const MirValue found = mir_b_emit(&fn->b, MOP_ListAddrU, operands, 2, (MirImm){0}, MIR_PTR);
-  mir_b_br(&fn->b, join, &found, 1);
-  mir_b_switch_to(&fn->b, miss);
-  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrNull, NULL, 0, (MirImm){0}, MIR_PTR);
-  mir_b_br(&fn->b, join, &absent, 1);
-  mir_b_seal_block(&fn->b, join);
-  mir_b_switch_to(&fn->b, join);
-  *entry_ty = data->elem;
-  return address;
-}
-
 /* Whether `expr` names a list through variables, fields and list elements only: borrowing it gives the list
  * where it lies, not a copy (a map element is read out as a copy). */
 bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
@@ -514,6 +440,15 @@ bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, M
     return true;
   }
   const MsExpr *read = place;
+  if (read->kind == MS_E_BINARY && read->op == MS_B_OR && fn_call_never(fn, read->u.bin.right)) {
+    read = read->u.bin.left; /* `m.get(k) or panic(..)` reads the entry `m.get(k)` names, or does not return */
+    if (read->kind != MS_E_CALL || ms_own_native_get(fn->cx->program, fn->facts, read) != MS_NATIVE_GET_MAP) {
+      return false;
+    }
+    *container = read->u.call.callee->u.member.left;
+    *key = read->u.call.args.ptr[0].value;
+    return true;
+  }
   if (read->kind == MS_E_CALL && read->u.call.args.len == 0 && read->u.call.callee->kind == MS_E_MEMBER &&
       read->u.call.callee->u.member.left->kind == MS_E_CALL &&
       ms_own_native_get(fn->cx->program, fn->facts, read) == MS_NATIVE_GET_PAYLOAD) {
@@ -573,7 +508,7 @@ bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *t
   mir_b_seal_block(&fn->b, hit);
   mir_b_switch_to(&fn->b, miss);
   const MirValue key_slot = fn_operand_slot(fn, key, true); /* the key again, for the fault text only */
-  fault_missing_key(fn, key_slot, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder))->args[0]);
+  fn_fault_missing_key(fn, key_slot, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder))->args[0]);
   mir_b_switch_to(&fn->b, hit);
   *addr = address;
   return true;
@@ -700,7 +635,7 @@ static bool standard_form(LowerFn *fn, const MirValue *args, uint32_t count, Mir
  * else the standard form (text through the shape, a structural copy). */
 static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
-  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, callee->u.member.left),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
   const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, NULL, 0, MS_TY_NONE);
   /* A method of another arity or result type (`to_string(prefix)` beside the operation `to_string()`) is not the operation. */
@@ -732,6 +667,7 @@ MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const 
   const MsName name = mir_name(fn->cx->module, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  note_value_type(fn, args, arg_count);
   MirValue expanded;
   /* The runtime cannot read a record of the program's own type, so building a map from entries is expanded here. */
   if (sig == NULL && arg_count == 1 && ms_span_is_text(ms_names_span(fn->cx->program->names, symbol->name), "map_from_entries") &&
@@ -783,6 +719,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
     return true;
   }
   MsName name;
+  note_value_type(fn, args, argc);
   const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
   fn_native_precheck(fn, sig, owner, argc, args);
   const char *op = ms_native_op_find(ms_names_span(&fn->cx->module->names, name));
@@ -938,7 +875,7 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   const bool via_bound = generic_receiver(fn, call);
   if (via_bound) {
     /* The instance knows the receiver: a standard type's operation is that type's own native. */
-    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, callee->u.member.left),
                                       fn->subst.vars, fn->subst.args, fn->subst.count);
     const MsTyTable *table = &fn->cx->program->types;
     if (ms_ty_kind(table, receiver) != MS_TY_NATIVE && ms_builtin_name(ms_ty_builtin(table, receiver))[0] == 0) {

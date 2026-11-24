@@ -87,7 +87,7 @@ bench "string.chars" per 20:
 bench "string.parse_int" per 100000:
 	var n = 0
 	for i in 0..100000:
-		n += "12345".parse_int().get_or(0)
+		n += "12345".parse_int() or 0
 	n
 
 bench "string.interpolate" per 100000:

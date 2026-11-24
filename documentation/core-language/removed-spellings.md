@@ -18,4 +18,4 @@ When Manuscript removes or renames something, the old spelling does not fail qui
 | `@std/concurrency/flow.ms` | `@std/concurrency/resilience.ms` |
 | `text.byte_length()` | `text.length()`, which counts bytes |
 
-`ms check --fix` rewrites every row except two, `impl` blocks and host getters, because the new spelling depends on the program. Each row has a test in `tests/removed/`, run by `make removed-check`, which checks both the error and the fix. A change that removes or renames a spelling adds its row and its test.
+`ms check --fix` rewrites every row except two, `impl` blocks and host getters, because the new spelling depends on the program. Each row has a test in `tests/checks/removed/`, run by `make removed-check`, which checks both the error and the fix. A change that removes or renames a spelling adds its row and its test.

@@ -21,18 +21,18 @@ fn main() Void:
 	ips := compile("([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)").get()
 	times := compile("took ([0-9]+)ms").get()
 	versions := compile("/api/v[0-9]/").get()
-	email_count := emails.find_all(text, none).get().length()
+	email_count := emails.find_all(text, null).get().length()
 	var octet_total = 0
-	for m in ips.capture_all(text, none).get():
-		octet_total += m[4].parse_int().get_or(0)
+	for m in ips.capture_all(text, null).get():
+		octet_total += m[4].parse_int() or 0
 
 	var took_total = 0
-	for m in times.capture_all(text, none).get():
-		took_total += m[1].parse_int().get_or(0)
+	for m in times.capture_all(text, null).get():
+		took_total += m[1].parse_int() or 0
 
-	masked := ips.replace_all(text, "x.x.x.x", none).get()
-	versions_found := versions.find_all(text, none).get().length()
-	pieces := compile(" +").get().split(text, none).get().length()
+	masked := ips.replace_all(text, "x.x.x.x", null).get()
+	versions_found := versions.find_all(text, null).get().length()
+	pieces := compile(" +").get().split(text, null).get().length()
 	print(
 		f"emails {email_count} octets {octet_total} took {took_total} masked {masked.length()} versions {versions_found} pieces {pieces}"
 	)

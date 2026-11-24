@@ -15,7 +15,7 @@ type Probe:
 
 fn var Probe.read(max: Int) Int?!Error:
 	if self.action == 2: panic("source read failed")
-	return ok(none)
+	return ok(null)
 
 fn move Probe.close() Void:
 	return

@@ -7,7 +7,7 @@ Landed: `ms_project_load` for a `.ms` file, an `ms.toml` or the nearest `ms.toml
 `../`) and `@alias` imports, the Rust loader's error texts, cycle detection and unsaved-editor overlays
 (`load.c`, `resolve.c`, `project.c`), the manifest reader for `[project]` (name, source, entry), `[aliases]` and
 `[embed]` (`manifest.c`, with the TOML subset in `toml.c`), and the bundled standard library
-(`cmake/EmbedStdlib.cmake` generates `std_embedded.c` from `stdlib/`).
+(`cmake/EmbedStdlib.cmake` generates `std_embedded.c` from `src/stdlib/`).
 
 Also landed: `[embed]` directories as generated modules (`embed.c`), and module discovery for libraries and
 `ms check` (`discover.c`). Unsaved editor files are not added to discovery.

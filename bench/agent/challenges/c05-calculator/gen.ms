@@ -27,7 +27,7 @@ fn tokens(line: String) List[Tok]:
 				digits += chars[i]
 				i += 1
 
-			out.append(Tok("n", digits.clone(), digits.parse_int().get_or(0)))
+			out.append(Tok("n", digits.clone(), digits.parse_int() or 0))
 		else:
 			out.append(Tok("o", c.clone(), 0))
 			i += 1

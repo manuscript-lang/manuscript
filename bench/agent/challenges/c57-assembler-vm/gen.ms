@@ -15,9 +15,10 @@ fn strip_nl(text: String) String:
 		end -= 1
 	return chars.slice(start, end).get_or([]).join("")
 
-fn add(var cs: Cases, name: String, prog: String, inp: String? = none) Void:
+fn add(var cs: Cases, name: String, prog: String, inp: String? = null) Void:
 	var s = strip_nl(prog) + "\n"
-	if text := inp:
+	text := inp
+	if text != null:
 		s += "====\n" + text + "\n"
 	cs.push(name, s)
 

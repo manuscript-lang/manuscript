@@ -17,7 +17,7 @@ interface Scaler:
 
 fn Counter.bump(by: Int) Int: self.n + by
 
-fn Counter.scale(factor: Int, offset: Int?) Int: (self.n * factor + offset.get_or(0))
+fn Counter.scale(factor: Int, offset: Int?) Int: (self.n * factor + (offset or 0))
 
 fn Shape.bump(by: Int) Int:
 	match self:

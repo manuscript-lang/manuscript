@@ -46,7 +46,7 @@ fn identities() Map[String, Identity]:
 			if kind == "first" or kind == "negative" or kind == "past": position = 0
 
 			if kind.starts_with("near"):
-				want := kind.slice(4, kind.length()).parse_int().get_or(0)
+				want := kind.slice(4, kind.length()).parse_int() or 0
 				position = if want < size - 1: want else: size - 1
 
 			if kind == "middle": position = size / 2

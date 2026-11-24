@@ -452,7 +452,7 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 	if verdict.is_error() or verdict.get().exit_code != 0:
 		tally.rejected += 1
 
-		why := verdict.get().stderr.decode_utf8().get_or("")
+		why := verdict.get().stderr.decode_utf8() or ""
 
 		if why.contains(": parse:"):
 			tally.failures += 1
@@ -473,14 +473,16 @@ fn verify(ms: String, scratch: String, cell: Cell, show: Bool, filter: String) T
 			continue
 
 		child := ran.get()
-		lines := child.stdout.decode_utf8().get_or("").split("\n")
+		lines := (child.stdout.decode_utf8() or "").split("\n")
 
 		if child.exit_code != 0:
 			tally.failures += 1
 
-			why := child.stderr.decode_utf8().get_or("")
+			why := child.stderr.decode_utf8() or ""
 			(
-				tally.lines.append(
+				tally
+				.lines
+				.append(
 					f"exit: {name} ({build}) passed `ms check` but failed: {why}\n"
 				)
 			)

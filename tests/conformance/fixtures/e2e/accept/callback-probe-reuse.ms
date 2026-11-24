@@ -1,13 +1,16 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
 fn choose[T](first: fn() T, second: fn() T) T: first()
 
 fn optional[T, U](value: T, transform: (fn(T) U)?) U:
-	return transform.get()(value)
+	return (transform or panic("called Optional.get() on null"))(value)
 
 fn with_result[T](transform: fn() T!Error) T!Error: transform()
 
@@ -32,8 +35,8 @@ test "callback inference retains captures and contextual metadata":
 	expect_equal(callback.transform(3), 10)?
 	expect_equal(optional(value: 5, transform: fn item: item + offset), 12)?
 
-	missing := choose(first: fn: none, second: fn() Int?: 3)
-	expect_false(missing.is_some())?
+	missing := choose(first: fn: null, second: fn() Int?: 3)
+	expect_false(missing != null)?
 
 	failure := with_result(
 		fn:
@@ -50,7 +53,7 @@ test "callback inference retains captures and contextual metadata":
 	expect_false(failed.is_ok())?
 	expect_equal(failed.err().detail, 9)?
 
-fn absent[T]() T?: none
+fn absent[T]() T?: null
 
 fn from_callback[T](factory: fn() T) T: factory()
 
@@ -63,7 +66,7 @@ test "later returns repair incomplete and convertible evidence":
 			return one
 	)
 
-	expect_false(value.is_some())?
+	expect_false(value != null)?
 
 	cause := from_callback(
 		fn:

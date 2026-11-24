@@ -18,7 +18,7 @@ fn track(move log: String, id: Int) Tracked:
 	return Tracked(log, id)
 
 fn closed(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
 type Pair:
@@ -64,7 +64,7 @@ fn holds_nested(move log: String) Int:
 	return n.all.length()
 
 fn holds_optional(move log: String, present: Bool) Int:
-	var _held: Tracked? = none
+	var _held: Tracked? = null
 	if present:
 		_held = track(log, 1)
 	return 0

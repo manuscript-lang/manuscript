@@ -28,7 +28,7 @@ type ListSource:
 	at: Int
 
 fn var ListSource.next() Int?!:
-	if self.at >= self.items.length(): return ok(none)
+	if self.at >= self.items.length(): return ok(null)
 
 	v := self.items[self.at]
 	self.at += 1
@@ -44,9 +44,9 @@ type MapSource:
 
 fn var MapSource.next() Int?!:
 	step := self.up.next()?
-	if v := step: return ok(self.f(v))
+	if step != null: return ok(self.f(step))
 
-	return ok(none)
+	return ok(null)
 
 fn move MapSource.close() Void!:
 	return self.up.close()
@@ -64,8 +64,8 @@ fn drain(source: Source[Int]) Int!:
 	while true:
 		step := s.next()?
 
-		if v := step:
-			total += v
+		if step != null:
+			total += step
 		else:
 			break
 
@@ -89,7 +89,7 @@ fn stdlib_map3(xs: List[Int]) Int!:
 	return ok(total)
 
 fn stdlib_collect(xs: List[Int]) Int!:
-	all := collect(from_list(xs) | map(fn x: x + 1), none)?
+	all := collect(from_list(xs) | map(fn x: x + 1), null)?
 	return ok(all.length())
 
 fn plain_filter(xs: List[Int]) Int:
@@ -133,11 +133,11 @@ fn hand_lines(data: Bytes) Int!:
 	while true:
 		end := data.index_of_byte(10, at)
 
-		if stop := end:
-			line := data.slice(at, stop)?
-			if text := line.decode_utf8():
-				count += text.length()
-			at = stop + 1
+		if end != null:
+			line := data.slice(at, end)?
+			text := line.decode_utf8()
+			if text != null: count += text.length()
+			at = end + 1
 		else:
 			break
 

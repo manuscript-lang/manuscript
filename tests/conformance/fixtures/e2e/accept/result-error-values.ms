@@ -1,12 +1,13 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	expect_contains,
 	expect_equal,
 	expect_error,
 	expect_ok,
-	expect_true
-) from "@std/test/test.ms"
+	expect_true from "@std/test/test.ms",
+)
 
 enum ValidationError:
 	BelowMinimum(actual: Int, minimum: Int)
@@ -24,24 +25,23 @@ fn actual(cause: ValidationError) Int:
 		BelowMinimum(value, _): return value
 
 fn optional_result(value: Int!String?) Int:
-	return value.get().get_or(-1)
+	return (value or panic("called Optional.get() on null")).get_or(-1)
 
 test "optional Result arguments supply constructor type context":
 	optional_result(ok(4)) | expect_equal(4)?
 	optional_result(error("missing")) | expect_equal(-1)?
 
-test "optional failure payloads and nested absence retain their layers":
-	absent: Int?? := none
-	absent.is_none() | expect_true?
+test "optional failure payloads collapse nested absence":
+	absent: Int?? := null
+	(absent == null) | expect_true?
 
-	inner: Int? := none
+	inner: Int? := null
 	present: Int?? := inner
-	present.is_some() | expect_true?
-	present.get().is_none() | expect_true?
+	(present == null) | expect_true?
 
-	failure: Result[Int, String?] := error(none)
+	failure: Result[Int, String?] := error(null)
 	failure.is_error() | expect_true?
-	failure.err().is_none() | expect_true?
+	(failure.err() == null) | expect_true?
 
 test "named failures propagate without a reporting implementation":
 	cause := expect_error(relay(checked(3)))?
@@ -88,7 +88,9 @@ test "Result transforms preserve primitive errors and map to named cases":
 	chained := success.and_then(fn value: Result[String, String].ok(value.to_string()))
 	chained.get() | expect_equal("4")?
 
-	recovered := failure.clone().or_else(fn message: Result[Int, String].ok(message.length()))
+	recovered := failure.clone().or_else(
+		fn message: Result[Int, String].ok(message.length())
+	)
 	recovered.get() | expect_equal(7)?
 	failure.get_or_else(fn message: message.length()) | expect_equal(7)?
 
@@ -109,22 +111,8 @@ test "assertion failures can describe values without a reporting implementation"
 		)?
 	)
 
-test "Optional adapters accept primitive errors and remain lazy":
+test "Optional adapters accept primitive errors":
 	present: Int? := 4
-	missing: Int? := none
-	missing.ok_or("absent").err() | expect_equal("absent")?
-	present.ok_or(9).get() | expect_equal(4)?
-
-	var calls = 0
-	present.ok_or_else(
-		fn() Int:
-			calls += 1
-			return 9
-	).get() | expect_equal(4)?
-	calls | expect_equal(0)?
-	missing.ok_or_else(
-		fn() Int:
-			calls += 1
-			return 9
-	).err() | expect_equal(9)?
-	calls | expect_equal(1)?
+	missing: Int? := null
+	ok_or(missing, "absent").err() | expect_equal("absent")?
+	ok_or(present, 9).get() | expect_equal(4)?

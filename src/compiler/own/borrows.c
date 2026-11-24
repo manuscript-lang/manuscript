@@ -125,6 +125,11 @@ static bool origin_of_arg(Borrows *pass, const MsExpr *arg, Source *out) {
   if (arg->kind == MS_E_UNARY && arg->op == MS_U_TRY) {
     return origin_of_arg(pass, arg->u.bin.left, out);
   }
+  if (arg->kind == MS_E_BINARY && arg->op == MS_B_OR &&
+      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, arg->u.bin.left->id), MS_BUILTIN_Optional)) {
+    /* `x or d` takes the payload out of a place; only a call's result (`m.get(k) or d`) is a view of something else */
+    return arg->u.bin.left->kind == MS_E_CALL && origin_of_arg(pass, arg->u.bin.left, out);
+  }
   return arg->kind == MS_E_CALL && origin_of_call(pass, arg, out);
 }
 
@@ -194,6 +199,10 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   }
   /* A resource field bound by name leaves its record (the next statement refills it): that is a take, not a borrow. */
   if (value->kind == MS_E_MEMBER && ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, value->id))) {
+    return;
+  }
+  /* A field read the callable moves (`old := self.f; self.f = g`) leaves its record: the name owns it. */
+  if (value->kind == MS_E_MEMBER && ms_facts_use(pass->facts, value->id) == MS_USE_MOVE) {
     return;
   }
   borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
@@ -394,15 +403,18 @@ static bool describe_returned(Borrows *pass, const MsExpr *value, MsStrBuild *te
     ms_strbuild_append_text(text, "` keeps, and this position would own it too; store `.clone()` of it, or use it in place");
     return true;
   }
-  if (get == MS_NATIVE_GET_PAYLOAD && receiver->kind == MS_E_MEMBER && ms_class_of(pass->classes, ty) != MS_CLASS_COPY &&
-      !ms_check_property(pass->program, ty, MS_PROPERTY_CLONABLE)) {
+  const bool nullable_or = value->kind == MS_E_BINARY && value->op == MS_B_OR &&
+                           ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, value->u.bin.left->id), MS_BUILTIN_Optional);
+  if (nullable_or) {
+    receiver = value->u.bin.left;
+  }
+  if ((get == MS_NATIVE_GET_PAYLOAD || nullable_or) && receiver->kind == MS_E_MEMBER &&
+      ms_class_of(pass->classes, ty) != MS_CLASS_COPY && !ms_check_property(pass->program, ty, MS_PROPERTY_CLONABLE)) {
     ms_strbuild_append_text(text, "cannot move `");
-    ms_own_expr_text(text, names, value);
-    ms_strbuild_append_text(text, "` out: it is read in place from `");
+    ms_own_expr_text(text, names, nullable_or ? receiver : value);
+    ms_strbuild_append_text(text, nullable_or ? " or ..` out: it is read in place from `" : "` out: it is read in place from `");
     ms_own_expr_text(text, names, receiver);
-    ms_strbuild_append_text(text, "`, which keeps it; it has one owner and no `clone`, so use it in place (`if value := ");
-    ms_own_expr_text(text, names, receiver);
-    ms_strbuild_append_text(text, ":`) or move `");
+    ms_strbuild_append_text(text, "`, which keeps it; it has one owner and no `clone`, so use it in place or move `");
     ms_own_expr_text(text, names, receiver);
     ms_strbuild_append_text(text, "` itself");
     return true;
