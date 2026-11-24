@@ -130,10 +130,7 @@ export opaque type Template:
 
 // Renders the template with `data` and the settings in `options`. When `data` is an
 // object, its members supply the root names.
-fn Template.render(
-	data JsonValue,
-	options RenderOptions = RenderOptions(),
-) String!Error:
+fn Template.render(data JsonValue, options RenderOptions = RenderOptions()) String!Error:
 	var frames = List[Map[String, JsonValue]]()
 	frames.append(root_names(data))
 
