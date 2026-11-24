@@ -5,7 +5,10 @@
 // runner. A count more than BOUND percent above the committed one fails (default 3); a
 // count that fell by more than BOUND percent is reported so the file can be refreshed.
 // `-- --update` rewrites the file with the measured counts. MS names the ms to measure
-// (default .artifacts/build/ci/src/cli/ms); PERF_COUNTS_BOUND overrides the bound.
+// (default .artifacts/build/ci/src/cli/ms); PERF_COUNTS_BOUND overrides the bound;
+// PERF_COUNTS_OUT names a file that receives the measured counts, gate or no gate.
+// The numbers depend on the build and the machine, so the committed file is refreshed
+// from the nightly job's `perf-counts` artifact, never from a developer machine.
 // Needs valgrind on the PATH. Usage: ms run tools/perf-counts.ms [-- --update]
 import (
 	stdout from "@std/io/io.ms",
@@ -55,10 +58,21 @@ fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
 	if shape != "": command.append(shape.clone())
 
 	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
-		for line in (out.stderr.decode_utf8() or "").split("\n"):
+		// Valgrind prefixes each line with `==pid==`. A program that forks a child (the
+		// http-request guards) also reports the child's count, and the child exits first:
+		// the count wanted is the one of the process valgrind started, the first to print.
+		lines := (out.stderr.decode_utf8() or "").split("\n")
+		var prefix = ""
+
+		for line in lines:
+			if line.contains("Callgrind, a call-graph"):
+				prefix = line.slice(0, line.index_of("== ") or 0)
+				break
+
+		for line in lines:
 			at := line.index_of("Collected : ")
 
-			if at != null:
+			if at != null and line.starts_with(prefix):
 				digits := line.slice(at + 12, line.length()).trim()
 				return digits.parse_int() or (-1)
 
@@ -150,6 +164,11 @@ fn main() Int:
 			)
 		else if tenths < -limit * 10:
 			say(f"note: {name} got faster; refresh {COUNTS} with --update\n")
+
+	// The CI nightly keeps what it measured, whether or not the gate passed, as the
+	// canonical numbers to refresh the committed file from.
+	measured := env("PERF_COUNTS_OUT", "")
+	if measured != "": write_file(measured, report.clone(), true).wait().get()
 
 	if update:
 		write_file(path, report, true).wait().get()
