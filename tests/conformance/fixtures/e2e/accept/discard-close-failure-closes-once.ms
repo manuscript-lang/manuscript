@@ -40,25 +40,25 @@ fn list_splice(log String) Void:
 test "remove whose close fails closes the entry once":
 	temp := temporary("w1-")?
 	log := f"{temp.path()}/log"
-	_f := expect_fault(fn: list_remove(log.clone()))?
+	_f := expect_fault(() => list_remove(log.clone()))?
 	expect_equal(events(log)?, "1,")?
 
 test "map add over an entry whose close fails closes each once":
 	temp := temporary("w2-")?
 	log := f"{temp.path()}/log"
-	_f := expect_fault(fn: map_add(log.clone()))?
+	_f := expect_fault(() => map_add(log.clone()))?
 	expect_equal(events(log)?, "1,2,")?
 
 test "map remove whose close fails closes the entry once":
 	temp := temporary("w3-")?
 	log := f"{temp.path()}/log"
-	_f := expect_fault(fn: map_remove(log.clone()))?
+	_f := expect_fault(() => map_remove(log.clone()))?
 	expect_equal(events(log)?, "1,")?
 
 test "splice over an entry whose close fails closes each once":
 	temp := temporary("w4-")?
 	log := f"{temp.path()}/log"
-	_f := expect_fault(fn: list_splice(log.clone()))?
+	_f := expect_fault(() => list_splice(log.clone()))?
 	expect_equal(events(log)?, "1,5,")?
 
 fn list_set(move log String) Void:
@@ -68,6 +68,6 @@ fn list_set(move log String) Void:
 test "set over an entry whose close fails closes each once":
 	temp := temporary("w5-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: list_set(log.clone()))?
+	fault := expect_fault(() => list_set(log.clone()))?
 	expect_contains(fault, "could not be closed")?
 	expect_equal(events(log)?, "1,2,")?

@@ -97,6 +97,6 @@ fn Table.render() String:
 // Spaces placed before a cell: all spare for Right, half for Center, null for Left.
 fn Table.before(col Int, spare Int) Int:
 	match self.columns[col]:
-		Left: return 0
-		Right: return spare
-		Center: return spare / 2
+		Left => return 0
+		Right => return spare
+		Center => return spare / 2

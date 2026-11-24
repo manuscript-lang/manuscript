@@ -13,5 +13,5 @@ export fn shifted() Int:
 
 export fn flip() Int:
     match Mode.Off:
-        Mode.Off: return 2
-        _: return 0
+        Mode.Off => return 2
+        _ => return 0

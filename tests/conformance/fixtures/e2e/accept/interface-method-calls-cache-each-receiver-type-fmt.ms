@@ -17,13 +17,13 @@ type Tri:
     b Int
     h Int
 
-fn Sq.area(scale Int) Int: self.side * self.side * scale
+fn Sq.area(scale Int) Int => self.side * self.side * scale
 
-fn Rect.area(scale Int) Int: self.w * self.h * scale
+fn Rect.area(scale Int) Int => self.w * self.h * scale
 
-fn Tri.area(scale Int) Int: self.b * self.h * scale / 2
+fn Tri.area(scale Int) Int => self.b * self.h * scale / 2
 
-fn measure(shape Shape, scale Int) Int: shape.area(scale: scale)
+fn measure(shape Shape, scale Int) Int => shape.area(scale: scale)
 
 test "three receiver types alternate at one site":
     shapes List[Shape] := [Sq(side: 3), Rect(w: 2, h: 5), Tri(b: 4, h: 5)]

@@ -27,8 +27,8 @@ fn main() Void:
     var subtotal = 0
     for price in prices:
         subtotal += line_total(price)
-    discounted := prices.map(fn price: price - 200)
-    cheap := discounted.filter(fn price: price <= 1000)
+    discounted := prices.map(price => price - 200)
+    cheap := discounted.filter(price => price <= 1000)
     total := subtotal + shipping(subtotal)
     print(f"Subtotal: {money(subtotal)}")
     print(f"Shipping: {money(shipping(subtotal))}")
@@ -51,7 +51,7 @@ Save it as `invoice.ms` and run `ms run invoice.ms`.
 - A function declares its parameter types and its result type after the parameter list. `quantity Int = 1` is a default, so `line_total(price)` works without the second argument.
 - `if` works as a statement and as an expression: `pad := if rest < 10: "0" else: ""` picks a value.
 - `{expression}` inside an `f"..."` string interpolates any expression, including a function call; plain `"..."` strings keep braces as written.
-- A function is a value. `prices.map(fn price: price - 200)` passes a function to `map`, and `filter` keeps the items for which a function returns `true`. `prices` itself does not change.
+- A function is a value. `prices.map(price => price - 200)` passes a function to `map`, and `filter` keeps the items for which a function returns `true`. `prices` itself does not change.
 - One tab (or four spaces) opens a block. There are no braces and no semicolons.
 
 ## Try it

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn mutual[T U, U T](value T) Void: return\n"
+    "fmt": "fn mutual[T U, U T](value T) Void => return\n"
   }
 }

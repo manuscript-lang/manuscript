@@ -77,9 +77,9 @@ fn list_enums() Int:
 	for r in 0..5:
 		for s in xs:
 			match s:
-				Circle(rad): t += 3 * rad * rad
-				Rect(w, h): t += w * h
-				Dot: t += 1
+				Circle(rad) => t += 3 * rad * rad
+				Rect(w, h) => t += w * h
+				Dot => t += 1
 
 	return t
 
@@ -222,7 +222,7 @@ fn sort_records() Int:
 		x = lcg(x)
 		xs.append(Event(i, x % 1000, "an-event-name-over-sixteen-bytes", i % 13))
 
-	ys := xs.sorted(fn a, b: a.kind - b.kind)
+	ys := xs.sorted((a, b) => a.kind - b.kind)
 	return ys[0].kind + ys[ys.length() - 1].kind + ys[1000].id % 7
 
 type Order:
@@ -313,9 +313,9 @@ fn map_enums() Int:
 
 			if s != null:
 				match s:
-					Circle(rad): t += 3 * rad * rad
-					Rect(w, h): t += w * h
-					Dot: t += 1
+					Circle(rad) => t += 3 * rad * rad
+					Rect(w, h) => t += w * h
+					Dot => t += 1
 
 	return t
 
@@ -338,7 +338,7 @@ fn string_chains() Int:
 
 			key := parts[0].trim()
 			v := parts[1].trim().parse_int() or 0
-			m.update(key, 0, fn n: n + v)
+			m.update(key, 0, n => n + v)
 
 	var t = bad
 	for e in m.entries():

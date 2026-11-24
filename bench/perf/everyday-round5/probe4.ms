@@ -32,8 +32,9 @@ fn z_top_k() Int:
 		rows.append(Row(e.key.clone(), e.value))
 
 	top := rows.sorted(
-		fn a,
-		b: if a.score != b.score: b.score - a.score else: a.name.compare(b.name)
+		(a, b) => if a.score != b.score: b.score - a.score else: a.name.compare(
+			b.name
+		)
 	).take(10)
 	return top[0].score + top[9].score + c.length()
 
@@ -78,7 +79,7 @@ fn z_group_rows() Int:
 	for i in 0..1000000:
 		rows.append(Row(f"user{i % 3000}", i % 100))
 
-	g := rows.group_by(fn r: r.name.clone())
+	g := rows.group_by(r => r.name.clone())
 	var t = 0
 	for e in g.entries():
 		t += e.value.length()

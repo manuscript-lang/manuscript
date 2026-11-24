@@ -47,7 +47,7 @@ test "closed map arguments retain written evaluation order":
 	(values.get(3) or panic("called Optional.get() on null")) | expect_equal(30)?
 
 test "missing local lookups keep Optional faults":
-	(expect_fault(fn: _ignored := missing())?) | expect_contains("Optional.get")?
+	(expect_fault(() => _ignored := missing())?) | expect_contains("Optional.get")?
 
 test "escaped map results keep insertion order":
 	var values = returned_alias()
@@ -64,5 +64,5 @@ test "captured maps read the entries present at capture":
 	var values = Map[Int, Int]()
 	values.add(1, 10)
 
-	callback := fn() Int: values.get(1) or panic("called Optional.get() on null")
+	callback := fn() Int => values.get(1) or panic("called Optional.get() on null")
 	callback() | expect_equal(10)?

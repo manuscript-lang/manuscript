@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tleft from \"./left.ms\",\n\tright from \"./right.ms\",\n)\n\nfn result() Int: return left() + right()\n"
+    "fmt": "import (\n\tleft from \"./left.ms\",\n\tright from \"./right.ms\",\n)\n\nfn result() Int => return left() + right()\n"
   }
 }

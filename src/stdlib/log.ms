@@ -53,13 +53,13 @@ export interface Transport:
 // no record reaches.
 fn level_value(level LogLevel) Int:
 	match level:
-		Trace: return 10
-		Debug: return 20
-		Info: return 30
-		Warn: return 40
-		Error: return 50
-		Fatal: return 60
-		Silent: return 70
+		Trace => return 10
+		Debug => return 20
+		Info => return 30
+		Warn => return 40
+		Error => return 50
+		Fatal => return 60
+		Silent => return 70
 
 fn level_at(value Int) LogLevel:
 	if value == 10: return LogLevel.Trace

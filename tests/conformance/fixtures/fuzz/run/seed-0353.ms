@@ -75,7 +75,7 @@ export fn main() Int:
     b7 := (not b1)
     say(f"b7 = {b7}")
 
-    l8 := l2.map(fn x: x * 4)
+    l8 := l2.map(x => x * 4)
     say(f"l8 = {l8} len {l8.length()}")
     say(f"collatz(1533) = {collatz(1533)}")
 

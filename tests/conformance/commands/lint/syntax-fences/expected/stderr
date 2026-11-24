@@ -1,8 +1,0 @@
-guide.md:7:8: MSL107: Nested match obscures control flow; bind the outer payload with an early exit, use a compatible trailing '?', or call a small helper
-   |
- 7 |     1: match b:
-   |        ^
-guide.md:18:12: MSL107: Nested match obscures control flow; bind the outer payload with an early exit, use a compatible trailing '?', or call a small helper
-    |
- 18 |         1: match b:
-    |            ^

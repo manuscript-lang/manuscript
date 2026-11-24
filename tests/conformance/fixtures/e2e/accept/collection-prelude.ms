@@ -12,9 +12,9 @@ type Point:
 	x Int
 	y Int
 
-fn roll(i Int) Int!Error: ok(i)
+fn roll(i Int) Int!Error => ok(i)
 
-fn count(values List[String]) Int: values.length()
+fn count(values List[String]) Int => values.length()
 
 fn update[K Hashable, V Clonable](var values Map[K, V], key K, value V) Map[K, V]:
 	values.add(key, value)
@@ -89,7 +89,7 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				visits = 1
 				1
-			null: 0
+			null => 0
 		,
 		2,
 	)
@@ -102,7 +102,7 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				key = 4
 				5
-			null: 0
+			null => 0
 	)
 	expect_false(original[3] != 5 or original.contains(4))?
 
@@ -112,14 +112,14 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				order = 1
 				7
-			null: 0
+			null => 0
 		,
 		key: match present(1):
 			_value:
 				expect_equal(order, 1)?
 				order = 2
 				6
-			null: 0
+			null => 0
 	)
 	expect_false(order != 2 or original[6] != 7)?
 

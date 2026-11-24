@@ -413,7 +413,7 @@ export fn harvest(root String, corpus String, args Args) Int:
 		dir := scratch.path().clone()
 		base := bases[index]
 		mine := chunks[index].clone()
-		tasks.append(promise(fn: ok(check_chunk(tool, dir, base, mine))))
+		tasks.append(promise(() => ok(check_chunk(tool, dir, base, mine))))
 
 	var verdicts = List[Verdict]()
 	for task in tasks:

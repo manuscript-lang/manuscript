@@ -18,8 +18,8 @@ fn square(n Int) Int:
     return n * n
 
 test "run work at once and collect it":
-    first := promise(fn: ok(square(3)))
-    second := promise(fn: ok(square(4)))
+    first := promise(() => ok(square(3)))
+    second := promise(() => ok(square(4)))
     results := wait_all([first, second])?
     expect_equal(results, [9, 16])?
 ```

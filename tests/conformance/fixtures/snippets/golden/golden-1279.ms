@@ -8,4 +8,4 @@ type Box:
 impl Read for Box:
     fn get() Int:
         return self.value
-fn neighbor() Int: 1
+fn neighbor() Int => 1

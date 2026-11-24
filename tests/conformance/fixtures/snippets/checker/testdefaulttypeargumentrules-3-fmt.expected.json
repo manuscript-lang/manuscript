@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f[A = B, B = Int](value B) B: value\n"
+    "fmt": "fn f[A = B, B = Int](value B) B => value\n"
   }
 }

@@ -112,7 +112,7 @@ fn syscalls(pid String, seconds Int, file String) Int:
 
 	for line in read_text(file).split("\n"):
 		if line.contains(" total"):
-			cells := line.split(" ").filter(fn c: c != "")
+			cells := line.split(" ").filter(c => c != "")
 			return cells[3].parse_int() or 0
 
 	return 0
@@ -199,7 +199,7 @@ fn measure_server(p Plan, name String, port Int, seconds Int, ms_threads String)
 		var total = 0
 		for line in read_text(f"{p.w}/busy").split("\n"):
 			if line.contains(" total"): total = (
-				line.split(" ").filter(fn c: c != "")[3].parse_int()
+				line.split(" ").filter(c => c != "")[3].parse_int()
 				or 0
 			)
 

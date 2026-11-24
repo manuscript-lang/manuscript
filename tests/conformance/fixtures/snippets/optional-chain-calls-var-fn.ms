@@ -14,7 +14,7 @@ fn var C.bump() Int:
 fn var C.note(move s String) Void:
 	self.log.append(s)
 
-fn C.get() Int: self.n
+fn C.get() Int => self.n
 
 type H:
 	c C?

@@ -6,6 +6,6 @@ fn compute() Int:
     return 1
 
 export fn main() Int!:
-    p := promise(fn: compute())
+    p := promise(() => compute())
     print(p.wait()?)
     return 0

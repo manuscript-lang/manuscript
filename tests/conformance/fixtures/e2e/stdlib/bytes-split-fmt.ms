@@ -70,7 +70,7 @@ test "Bytes split bound methods and generic forwarding retain contracts":
 			split_then[Bool](
 				Bytes([1, 0, 2]),
 				Bytes([0]),
-				fn value: value.length() == 2
+				value => value.length() == 2
 			) != true
 		)
 	)?

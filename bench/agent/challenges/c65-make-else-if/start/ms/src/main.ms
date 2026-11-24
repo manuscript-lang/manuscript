@@ -72,7 +72,7 @@ fn bs(s String, a Int, b Int) String:
 
 	return ""
 
-fn is_ws(c String) Bool: c == " " or c == "\t" or c == "\n" or c == "\r"
+fn is_ws(c String) Bool => c == " " or c == "\t" or c == "\n" or c == "\r"
 
 fn words(s String) List[String]:
 	var out = List[String]()
@@ -268,7 +268,7 @@ fn sub(cs List[String], a Int, b Int) String:
 
 	return r
 
-fn join_sp(xs List[String]) String: xs.join(" ")
+fn join_sp(xs List[String]) String => xs.join(" ")
 
 fn Ctx.fatal(msg String) Error:
 	if self.line > 0: return Error(f"Makefile:{self.line}: *** {msg}.  Stop.")
@@ -366,7 +366,7 @@ fn var Ctx.expand(text String) String!:
 	return ok(res)
 
 fn var Ctx.eval_ref(inner String) String!:
-	k := inner.find_char(fn c: c == " " or c == "\t")
+	k := inner.find_char(c => c == " " or c == "\t")
 
 	if k != null:
 		fname := bs(inner, 0, k)
@@ -718,7 +718,7 @@ fn var Ctx.parse(src List[String]) Void!:
 		if text.length() == 0: continue
 
 		var fw = text.clone()
-		sp := text.find_char(fn c: c == " " or c == "\t")
+		sp := text.find_char(c => c == " " or c == "\t")
 		if sp != null:
 			fw = bs(text, 0, sp)
 

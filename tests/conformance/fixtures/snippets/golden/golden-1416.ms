@@ -17,7 +17,7 @@ fn exercise() Result[Int, Error]:
 
 export fn main() Int:
     match exercise():
-        ok(status): return status
+        ok(status) => return status
         error(cause):
             written := stderr().write(f"{cause.message()}\n")
             return 1

@@ -10,8 +10,8 @@ fn apply[T](operation fn(T) T, value T) T:
     return operation(value)
 
 test "inline callbacks survive contextual rechecking":
-    applied := apply(value: 3, fn value: return value + 1)
+    applied := apply(value: 3, value => return value + 1)
     expect_equal(applied, 4)?
 
-    transform := Transform(fn value: return value + 2)
+    transform := Transform(value => return value + 2)
     expect_equal(transform.operation(3), 5)?

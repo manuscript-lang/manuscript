@@ -180,7 +180,7 @@ fn path_name(name String) Bool:
 // recorded dropped.
 fn normalized(value JsonValue, work String) JsonValue:
 	match value:
-		StringValue(text): return JsonValue.StringValue(normalize_text(text, work))
+		StringValue(text) => return JsonValue.StringValue(normalize_text(text, work))
 		ArrayValue(items):
 			var out = List[JsonValue]()
 			for item in items: out.append(normalized(item, work))
@@ -194,7 +194,7 @@ fn normalized(value JsonValue, work String) JsonValue:
 				out.add(field.key.clone(), normalized(field.value, work))
 
 			return JsonValue.ObjectValue(out)
-		_: return value.clone()
+		_ => return value.clone()
 
 // A JSON report read from standard output and normalized, or a record of why it could
 // not be read.
@@ -340,7 +340,7 @@ fn without_member(value JsonValue, name String) JsonValue:
 				out.add(field.key.clone(), without_member(field.value, name))
 
 			return JsonValue.ObjectValue(out)
-		_: return value.clone()
+		_ => return value.clone()
 
 // The key paths of a report, so a missing or extra field is a protocol break.
 fn shape(value JsonValue, path String, var out List[String]) Void:
@@ -352,7 +352,7 @@ fn shape(value JsonValue, path String, var out List[String]) Void:
 				shape(field.value, next, out)
 		ArrayValue(items):
 			for item in items: shape(item, f"{path}[]", out)
-		_: return
+		_ => return
 
 fn test_phase(ms String, fx Fixture, work String, build_type String) JsonValue:
 	var args = ["test", fx.entry.clone(), "--json", "--build-type", build_type.clone()]

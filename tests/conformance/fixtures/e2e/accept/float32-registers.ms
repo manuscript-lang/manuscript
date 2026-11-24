@@ -32,7 +32,7 @@ test "Float32 crosses calls, fields, closures and lists":
 	expect_equal(sum_pair(Pair(0.25, 0.5)).to_float(), 0.75)?
 
 	scale Float32 := 1.5
-	apply fn(Float32) Float32 := fn x: x * scale
+	apply fn(Float32) Float32 := x => x * scale
 	expect_equal(apply(4.0).to_float(), 6.0)?
 
 	xs List[Float32] := [1.0, 2.0, 3.0]

@@ -4,4 +4,4 @@
 type S:
     x Int
 
-fn S.m() Int: return 1
+fn S.m() Int => return 1

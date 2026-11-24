@@ -58,14 +58,14 @@ fn case_part(move log String) Int:
 	slot := Full(latch(log, 6))
 
 	n := match slot:
-		Full(inner): inner.id
-		Empty: 0
+		Full(inner) => inner.id
+		Empty => 0
 
 	return n
 
 fn make_closure(move log String) fn() Int:
 	held := latch(log, 7)
-	return fn: held.id
+	return () => held.id
 
 fn closure_capture(move log String) Int:
 	f := make_closure(log)
@@ -199,14 +199,14 @@ test "map values close in place":
 test "a fault closes a holder's part from the cleanup stack":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
 	log := f"{temporary.path()}/log"
-	message := expect_fault(fn: fault_through_holder(log.clone()))?
+	message := expect_fault(() => fault_through_holder(log.clone()))?
 	expect_equal(message, "holder fault")?
 	expect_equal(closed(log), "9,")?
 
 test "a fault closes a plain binding from the cleanup stack":
 	temporary := temporary("manuscript-close-in-place-") | expect_ok?
 	log := f"{temporary.path()}/log"
-	message := expect_fault(fn: fault_plain(log.clone()))?
+	message := expect_fault(() => fault_plain(log.clone()))?
 	expect_equal(message, "plain fault")?
 	expect_equal(closed(log), "10,")?
 

@@ -3,5 +3,5 @@
 type E:
     text String
 impl Error for E:
-    fn message() String: self.text
-fn error_value() Error: E("bad input")
+    fn message() String => self.text
+fn error_value() Error => E("bad input")

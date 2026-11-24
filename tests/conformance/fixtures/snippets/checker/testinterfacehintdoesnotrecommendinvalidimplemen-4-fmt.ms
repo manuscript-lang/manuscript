@@ -4,4 +4,4 @@
 interface Shape:
     fn area() Int
 
-fn f(value fn() Int) Shape: value
+fn f(value fn() Int) Shape => value

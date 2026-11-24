@@ -34,8 +34,8 @@ fn mk(depth Int, v Int) Tree:
 
 fn sum(t Tree) Int:
 	match t:
-		Leaf(v): return v
-		Node(l, r): return (sum(l) + sum(r)) % 1000003
+		Leaf(v) => return v
+		Node(l, r) => return (sum(l) + sum(r)) % 1000003
 
 fn build_list(n Int) Cons:
 	var c = Cons.Nil
@@ -49,7 +49,7 @@ fn total(c Cons) Int:
 
 	while true:
 		match cur:
-			Nil: break
+			Nil => break
 			Cell(h, rest):
 				t += h
 				cur = rest
@@ -83,7 +83,7 @@ fn q_small_list_map() Int:
 
 	for i in 0..2000000:
 		k := i % 5 + 1
-		t += [i, i + 1, i + 2].map(fn v: v * k).sum()
+		t += [i, i + 1, i + 2].map(v => v * k).sum()
 
 	return t
 
@@ -92,7 +92,7 @@ fn q_closure_capture_list() Int:
 
 	for i in 0..1000000:
 		k := i % 9
-		fs.append(fn v: v + k)
+		fs.append(v => v + k)
 
 	var t = 0
 	for r in 0..10:

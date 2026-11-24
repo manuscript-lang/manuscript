@@ -22,7 +22,7 @@ test "typed operands retain evaluation order and generic boundaries":
     value += 1
     value -= 1
 
-    snapshot := fn() Int: return value * 2
+    snapshot := fn() Int => return value * 2
     expect_false(snapshot() != 18 or value != 9)?
     expect_equal(-9223372036854775808 % -1, 0)?
     expect_false(-7 / 2 != -3 or - 7 % 3 != -1)?

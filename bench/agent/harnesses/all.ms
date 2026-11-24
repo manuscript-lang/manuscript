@@ -6,7 +6,7 @@ import (
 	Pi from "./pi.ms",
 )
 
-export fn names() List[String]: ["claude_code", "codex", "oracle", "pi"]
+export fn names() List[String] => ["claude_code", "codex", "oracle", "pi"]
 
 // The harness registered under `name`.
 export fn find(name String) Harness?:

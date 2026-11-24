@@ -74,11 +74,11 @@ fn hold(fails Bool) Int:
 	return 2
 
 test "a function that cannot return an error faults on a failed close":
-	message := expect_fault(fn: void plain(true))?
+	message := expect_fault(() => void plain(true))?
 	expect_equal(message, "a resource could not be closed: its close returned an error")?
 	expect_equal(plain(false), 1)?
 
 test "a holder closing a part faults on a failed close":
-	message := expect_fault(fn: void hold(true))?
+	message := expect_fault(() => void hold(true))?
 	expect_equal(message, "a resource could not be closed: its close returned an error")?
 	expect_equal(hold(false), 2)?

@@ -31,26 +31,26 @@
           "file": "golden-0407.ms",
           "line": 10,
           "column": 10,
-          "offset": 272
+          "offset": 274
         },
         "end": {
           "file": "golden-0407.ms",
           "line": 10,
           "column": 11,
-          "offset": 273
+          "offset": 275
         },
         "fix": {
           "position": {
             "file": "golden-0407.ms",
             "line": 10,
             "column": 10,
-            "offset": 272
+            "offset": 274
           },
           "end": {
             "file": "golden-0407.ms",
             "line": 10,
             "column": 11,
-            "offset": 273
+            "offset": 275
           },
           "replacement": ""
         }

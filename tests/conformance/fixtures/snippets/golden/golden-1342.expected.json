@@ -13,8 +13,8 @@
         "position": {
           "file": "golden-1342.ms",
           "line": 7,
-          "column": 25,
-          "offset": 147
+          "column": 27,
+          "offset": 149
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "golden-1342.ms",
           "line": 8,
-          "column": 22,
-          "offset": 174
+          "column": 24,
+          "offset": 178
         },
         "fix": {
           "position": {
@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1342.ms:7:25: resolution: Box has no member value; a type name is followed only by an enum case\n   |\n 7 |         box: return Box.value\n   |                         ^\n<DIR>/golden-1342.ms:8:22: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 8 |         null: return panic(message: \"empty\")\n   |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1342.ms:7:27: resolution: Box has no member value; a type name is followed only by an enum case\n   |\n 7 |         box => return Box.value\n   |                           ^\n<DIR>/golden-1342.ms:8:24: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 8 |         null => return panic(message: \"empty\")\n   |                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

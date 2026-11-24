@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn both[T, E](cause E, r T!E) Void: return\n\nfn first(cause Error) Void: both[Int, Error](cause: cause, r: f())\n"
+    "fmt": "fn both[T, E](cause E, r T!E) Void => return\n\nfn first(cause Error) Void => both[Int, Error](cause: cause, r: f())\n"
   }
 }

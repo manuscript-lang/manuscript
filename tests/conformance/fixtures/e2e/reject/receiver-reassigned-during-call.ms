@@ -8,7 +8,7 @@ interface Subtract:
 type Offset:
 	value Int
 
-fn Offset.subtract(amount Int) Int: amount - self.value
+fn Offset.subtract(amount Int) Int => amount - self.value
 
 fn present[T](value T) T?:
 	return value
@@ -20,5 +20,5 @@ export fn main() Int:
 			_value:
 				receiver = Offset(9)
 				10
-			null: 10
+			null => 10
 	)

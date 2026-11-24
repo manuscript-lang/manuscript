@@ -7,9 +7,9 @@ type Box:
 
 fn describe(n Int) String:
 	return match n:
-		0: "zero"
-		-1: "minus"
-		_: "other"
+		0 => "zero"
+		-1 => "minus"
+		_ => "other"
 
 fn pick(flag Bool) Int:
 	return (if flag: 1 else: 2)

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn compare(left Node, right Node) Bool: return left == right\n"
+    "fmt": "fn compare(left Node, right Node) Bool => return left == right\n"
   }
 }

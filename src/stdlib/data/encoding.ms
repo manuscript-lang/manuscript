@@ -217,7 +217,7 @@ fn narrow(text String, maximum Int) Bytes!:
 
 // Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value.
 export fn latin1_decode(data Bytes) String:
-	return text_of(data.values().map(fn b: b.to_int()))
+	return text_of(data.values().map(b => b.to_int()))
 
 // Encodes text as 7-bit ASCII. A scalar above U+007F returns `EBADMSG`.
 export fn ascii_encode(text String) Bytes!:

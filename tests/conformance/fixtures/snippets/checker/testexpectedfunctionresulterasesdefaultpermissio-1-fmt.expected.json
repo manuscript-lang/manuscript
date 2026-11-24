@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn from_callback[T](factory fn() T) T: factory()\n\nfn first() Void:\n\t_callback fn(Int) Int := from_callback(fn: fn(value Int = 4): value)\n"
+    "fmt": "fn from_callback[T](factory fn() T) T => factory()\n\nfn first() Void:\n\t_callback fn(Int) Int := from_callback(() => fn(value Int = 4) => value)\n"
   }
 }

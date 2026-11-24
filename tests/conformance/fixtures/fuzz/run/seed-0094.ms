@@ -53,7 +53,7 @@ export fn main() Int:
     f10 := 581.004
     say(f"f10 = {f10}")
 
-    l11 := l9.filter(fn x: x > 4)
+    l11 := l9.filter(x => x > 4)
     say(f"l11 = {l11} len {l11.length()}")
 
     var l12 = l11.clone()

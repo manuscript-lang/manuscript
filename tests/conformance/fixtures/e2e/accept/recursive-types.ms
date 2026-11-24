@@ -12,9 +12,9 @@ enum Expr:
 
 fn evaluate(expr Expr) Int:
 	match expr:
-		Num(value): return value
-		Add(left, right): return evaluate(left) + evaluate(right)
-		Neg(inner): return -evaluate(inner)
+		Num(value) => return value
+		Add(left, right) => return evaluate(left) + evaluate(right)
+		Neg(inner) => return -evaluate(inner)
 
 enum Tree[T]:
 	Leaf(value T)
@@ -43,7 +43,7 @@ type Link:
 fn Link.equals(other Link) Bool:
 	return self.value == other.value
 
-fn Link.hash() Int: return self.value
+fn Link.hash() Int => return self.value
 
 test "recursive alternatives construct match compare and clone":
 	expr := Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
@@ -64,7 +64,7 @@ test "recursive alternatives construct match compare and clone":
 	match forest:
 		More(first):
 			((first.value != 3 or first.rest != Forest.Empty) | expect_false?)
-		Empty: return fail("lost mutual tree")
+		Empty => return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
 	child := Node(value: 2, next: null)
@@ -205,13 +205,13 @@ test "finite nested generic composition constructs and extracts values":
 	result := NestedResult(ok(ok(5)))
 
 	inner := match result.value:
-		ok(inner): inner.clone()
-		error(_): return fail("unexpected outer result error")
+		ok(inner) => inner.clone()
+		error(_) => return fail("unexpected outer result error")
 
 	match inner:
 		ok(value):
 			expect_equal(value, 5)?
-		error(_): return fail("unexpected inner result error")
+		error(_) => return fail("unexpected inner result error")
 
 	box := Box(Box(6))
 	box.value.value | expect_equal(6)?

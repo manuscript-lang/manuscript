@@ -152,16 +152,16 @@ export enum HttpMethod:
 // Returns the method token; outgoing requests reject malformed Custom tokens.
 fn HttpMethod.to_string() String:
 	match self:
-		Get: return "GET"
-		Head: return "HEAD"
-		Post: return "POST"
-		Put: return "PUT"
-		Patch: return "PATCH"
-		Delete: return "DELETE"
-		Connect: return "CONNECT"
-		Options: return "OPTIONS"
-		Trace: return "TRACE"
-		Custom(value): return value.clone()
+		Get => return "GET"
+		Head => return "HEAD"
+		Post => return "POST"
+		Put => return "PUT"
+		Patch => return "PATCH"
+		Delete => return "DELETE"
+		Connect => return "CONNECT"
+		Options => return "OPTIONS"
+		Trace => return "TRACE"
+		Custom(value) => return value.clone()
 
 // The runtime handle behind a `HttpClient`.
 export extern type NativeHttpClient
@@ -653,7 +653,7 @@ export fn redirect(location String, status Int = 303) HttpResponse!:
 // Adapts a handler that maps a whole request to a whole response into an exchange
 // handler for `serve`. The request body is read in full first.
 export fn buffered(handler fn(HttpRequest) HttpResponse) fn(var HttpExchange) Void!:
-	return fn(var exchange HttpExchange): serve_buffered(handler, exchange)
+	return fn(var exchange HttpExchange) => serve_buffered(handler, exchange)
 
 fn serve_buffered(handler fn(HttpRequest) HttpResponse, var exchange HttpExchange) Void!:
 	body := read_body(exchange)?

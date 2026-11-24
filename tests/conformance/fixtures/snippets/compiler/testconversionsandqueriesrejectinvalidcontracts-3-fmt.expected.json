@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Optional[T]:\n\tT\n\tnull\n\nfn wrong(value Int?) Int!String: ok_or(value, \"missing\")\n"
+    "fmt": "enum Optional[T]:\n\tT\n\tnull\n\nfn wrong(value Int?) Int!String => ok_or(value, \"missing\")\n"
   }
 }

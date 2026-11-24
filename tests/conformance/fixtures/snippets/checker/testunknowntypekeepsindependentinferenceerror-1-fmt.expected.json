@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn broken(value Missing) Void: return\n\nfn empty[T]() T?: null\n\nfn first() Void:\n\tvalue := empty()\n"
+    "fmt": "fn broken(value Missing) Void => return\n\nfn empty[T]() T? => null\n\nfn first() Void:\n\tvalue := empty()\n"
   }
 }

@@ -239,15 +239,15 @@ fn no_result(id Int) Error:
 // Stores how the work ended (its result or error) in the promise `id`.
 export fn complete[U](id Int, move result U!) Void:
 	match result:
-		ok(value): msrt_promise_put(id, value, 0)
-		error(cause): msrt_promise_put(id, cause, 1)
+		ok(value) => msrt_promise_put(id, value, 0)
+		error(cause) => msrt_promise_put(id, cause, 1)
 
 // Starts `entry` like a `Placement.Here` promise, except that when no other task is
 // running it runs in the task that first waits on it, which saves the cost of a task
 // of its own. Use it for operations that do not block for long, such as reading a
 // file. The work follows the capture rules of `promise`.
 export fn promise_when_idle[U](entry fn() U!, site String = caller_frame()) Promise[U]:
-	id := msrt_promise_start_idle(fn id: complete(id, entry()), site)
+	id := msrt_promise_start_idle(id => complete(id, entry()), site)
 	return Promise[U](id: id)
 
 // Returns where the call that omitted this argument is, as a fault report shows a
@@ -272,9 +272,9 @@ export fn promise[U](
 	site String = caller_frame()
 ) Promise[U]:
 	id := match options.placement:
-		Placement.Any: msrt_promise_start(fn id: complete(id, entry()), site)
-		Placement.Spread: msrt_promise_start_spread(fn id: complete(id, entry()), site)
-		Placement.Here: msrt_promise_start_here(fn id: complete(id, entry()), site)
+		Placement.Any => msrt_promise_start(id => complete(id, entry()), site)
+		Placement.Spread => msrt_promise_start_spread(id => complete(id, entry()), site)
+		Placement.Here => msrt_promise_start_here(id => complete(id, entry()), site)
 
 	limit(id, options)
 	return Promise[U](id: id)
@@ -298,8 +298,8 @@ fn first_failure[T](set Int, pending List[Promise[T]], taken List[Bool], head In
 			result := pending[at].wait()
 
 			match result:
-				ok(_): at = msrt_group_poll(set)
-				error(cause): return cause.clone()
+				ok(_) => at = msrt_group_poll(set)
+				error(cause) => return cause.clone()
 		else:
 			at = msrt_group_poll(set)
 
@@ -307,13 +307,13 @@ fn first_failure[T](set Int, pending List[Promise[T]], taken List[Bool], head In
 
 // Internal: the results of `msrt_promise_run_watched`: nothing ran, a promise ran, or
 // a failure ended the run.
-fn ran_nothing(result Int) Bool: result == 0
+fn ran_nothing(result Int) Bool => result == 0
 
-fn run_interrupted(result Int) Bool: result == 2
+fn run_interrupted(result Int) Bool => result == 2
 
 // Internal: the result of `msrt_group_join` when some promises belong to another
 // thread and are polled.
-fn joined_partly(result Int) Bool: result == 2
+fn joined_partly(result Int) Bool => result == 2
 
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are
@@ -410,7 +410,7 @@ export fn wait_first[T](promises List[Promise[T]]) T!:
 	var pending = promises
 	if pending.is_empty(): return error(Error("promise: nothing to wait for"))
 
-	var ids = pending.map(fn p: p.id)
+	var ids = pending.map(p => p.id)
 	which := msrt_promise_wait_any(ids, -1)
 	return pending[which].wait()
 
@@ -419,7 +419,7 @@ export fn wait_first[T](promises List[Promise[T]]) T!:
 // promise's id and must finish with `complete(id, ...)`. This is for stream
 // implementations. Dropping the promise before any wait discards the work unrun.
 export fn deferred[U](work fn(Int) Void) Promise[U]:
-	id := msrt_promise_defer(fn id: work(id))
+	id := msrt_promise_defer(id => work(id))
 	return Promise[U](id: id)
 
 // Wraps the runtime promise `id`, which a native operation completes (a stream read

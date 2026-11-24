@@ -4,7 +4,7 @@
 import expect_equal from "@std/test/test.ms"
 
 fn positives(values List[Int]) List[Int]:
-    var result = values.filter(fn value: value > 0)
+    var result = values.filter(value => value > 0)
     return result
 
 test "dynamic mutable data and explicit copies":

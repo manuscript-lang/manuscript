@@ -5,9 +5,9 @@ import (
 	expect_contains, expect_fault from "@std/test/test.ms",
 )
 
-fn optional(value Int) Int?: return value
+fn optional(value Int) Int? => return value
 
-fn result(value Int) Int!: return ok(value)
+fn result(value Int) Int! => return ok(value)
 
 fn then_branch() Int:
 	while true:

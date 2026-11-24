@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/map_transforms_test.go:37 TestMapTransformContracts
 fn allowed(values Map[String, Int]) Map[String, Float]:
-    return values.map(fn key, value: value.to_float())
+    return values.map((key, value) => value.to_float())

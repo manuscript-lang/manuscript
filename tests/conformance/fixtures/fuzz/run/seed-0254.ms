@@ -24,7 +24,7 @@ export fn main() Int:
     l4 := [2]
     say(f"l4 = {l4} len {l4.length()}")
 
-    l5 := l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l5 := l4.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l5 = {l5} len {l5.length()}")
 
     b6 := s1.is_empty()

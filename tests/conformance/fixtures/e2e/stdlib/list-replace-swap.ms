@@ -75,7 +75,7 @@ test "swap exchanges plain records and optional scalars in line":
 
 test "swap faults on an index outside the list and leaves the list unchanged":
 	var numbers = [1, 2, 3]
-	void expect_fault(fn: numbers.swap(0, 3))?
-	void expect_fault(fn: numbers.swap(-4, 1))?
-	void expect_fault(fn: numbers.swap(5, 0))?
+	void expect_fault(() => numbers.swap(0, 3))?
+	void expect_fault(() => numbers.swap(-4, 1))?
+	void expect_fault(() => numbers.swap(5, 0))?
 	expect_equal(numbers, [1, 2, 3])?

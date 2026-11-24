@@ -31,7 +31,7 @@ test "update matches get_or and add for String keys":
 
 	for index in 0..words.length():
 		w := words[index]
-		once.update(w.clone(), 1, fn v: v * 2 - index)
+		once.update(w.clone(), 1, v => v * 2 - index)
 		twice.add(w.clone(), twice.get_or(w, 1) * 2 - index)
 
 	expect_equal(once.length(), twice.length())?
@@ -43,7 +43,7 @@ test "update matches get_or and add for Int keys and Float values":
 	var twice Map[Int, Float] = {}
 
 	for key in [3, 1, 3, 2, 1, 3]:
-		once.update(key, 0.5, fn v: v * 3.0)
+		once.update(key, 0.5, v => v * 3.0)
 		twice.add(key, twice.get_or(key, 0.5) * 3.0)
 
 	for key in [1, 2, 3, 4]:
@@ -54,7 +54,7 @@ test "update matches get_or and add for source-defined key types":
 	var twice Map[Tag, Int] = {}
 
 	for name in ["x", "y", "x", "x", "z", "y"]:
-		once.update(Tag(name: name.clone()), 0, fn v: v + 1)
+		once.update(Tag(name: name.clone()), 0, v => v + 1)
 		twice.add(Tag(name: name.clone()), twice.get_or(Tag(name: name.clone()), 0) + 1)
 
 	expect_equal(once.length(), twice.length())?
@@ -73,7 +73,7 @@ test "update replaces owned values and keeps insertion order":
 
 test "update evaluates initial eagerly and drops it when the key exists":
 	var once Map[Int, String] = {1: "x"}
-	once.update(1, "unused", fn v: v + "y")
-	once.update(2, "new", fn v: v + "y")
+	once.update(1, "unused", v => v + "y")
+	once.update(2, "new", v => v + "y")
 	expect_equal(once.get(1), "xy")?
 	expect_equal(once.get(2), "newy")?

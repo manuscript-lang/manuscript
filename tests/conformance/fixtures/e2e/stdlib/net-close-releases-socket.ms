@@ -25,7 +25,7 @@ fn read_one(address String) Int:
 		ok(chunk):
 			if chunk != null: return chunk.length()
 			return -1
-		error(_): return -1
+		error(_) => return -1
 
 fn receive_one(address String) Int:
 	var socket = bind_datagram(address).get()
@@ -40,7 +40,7 @@ fn rebound_datagram(address String) Int:
 			var again = bound
 			void again.close()
 			return 1
-		error(_): return 0
+		error(_) => return 0
 
 fn rebound(address String) Int:
 	match listen(address):
@@ -48,26 +48,26 @@ fn rebound(address String) Int:
 			var again = bound
 			void again.close()
 			return 1
-		error(_): return 0
+		error(_) => return 0
 
 fn cancel_accept(address String) Void:
-	work := promise(fn: ok(accept_one(address.clone())))
+	work := promise(() => ok(accept_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_read(address String) Void:
-	work := promise(fn: ok(read_one(address.clone())))
+	work := promise(() => ok(read_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_receive(address String) Void:
-	work := promise(fn: ok(receive_one(address.clone())))
+	work := promise(() => ok(receive_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
 fn cancel_receive_within(address String, ns Int) Void:
-	work := promise(fn: ok(receive_one(address.clone())))
+	work := promise(() => ok(receive_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(ns))).wait()
 
 fn cancel_accept_within(address String, ns Int) Void:
-	work := promise(fn: ok(accept_one(address.clone())))
+	work := promise(() => ok(accept_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(ns))).wait()
 
 // A limit short enough to pass while the work is still binding: the wait returns only

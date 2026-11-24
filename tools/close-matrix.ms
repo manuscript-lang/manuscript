@@ -535,13 +535,13 @@ fn main() Int:
 	tallies := map_concurrent(
 		cells,
 		system_info().cpu_count,
-		fn cell: verify(
+		cell => verify(
 			ms.clone(),
 			scratch_path.clone(),
 			cell,
 			show,
 			filter.clone(),
-		)
+		),
 	).get()
 	var checked = 0
 	var rejected = 0

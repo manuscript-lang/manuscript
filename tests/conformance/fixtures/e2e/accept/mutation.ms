@@ -96,7 +96,7 @@ test "for loop iterates a snapshot while the source changes":
 
 test "callbacks over a snapshot leave the source writable":
 	var values = [1, 2, 3]
-	result := values.clone().map(fn value: return value + 1)
+	result := values.clone().map(value => return value + 1)
 	values.fill(9, 0, 3)
 	expect_false(not (result == [2, 3, 4] and values == [9, 9, 9]))?
 

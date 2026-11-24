@@ -45,7 +45,7 @@ export fn main() Int:
     )
     say(f"f9 = {f9}")
 
-    l10 := l4.sorted(fn a, b: a.compare(b))
+    l10 := l4.sorted((a, b) => a.compare(b))
     say(f"l10 = {l10} len {l10.length()}")
 
     s11 := s6.clone()

@@ -31,7 +31,7 @@ fn main() Void:
 	var total = 0
 	var running List[Promise[Int]] = []
 	for i in 0..conns:
-		running.append(promise(fn: ok(worker(url.clone(), secs * 1000000000))))
+		running.append(promise(() => ok(worker(url.clone(), secs * 1000000000))))
 	for r in wait_all(running).get():
 		total += r
 	void stdout().write(f"req/s {total / secs}\n")

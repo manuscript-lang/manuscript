@@ -208,7 +208,7 @@
     {
       "code": "MSL124",
       "severity": "warning",
-      "message": "Build the list with `xs.map(fn x: ...)` or `xs.filter(fn x: ...)` instead of a loop that appends",
+      "message": "Build the list with `xs.map(x =\u003e ...)` or `xs.filter(x =\u003e ...)` instead of a loop that appends",
       "position": {
         "file": "main.ms",
         "line": 42,

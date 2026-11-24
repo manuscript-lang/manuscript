@@ -9,14 +9,14 @@ fn var C.bump() Int:
 	self.n += 1
 	return self.n
 
-fn C.get() Int: self.n
+fn C.get() Int => self.n
 
 fn show(x Int?) Void:
 	stdout().write(f"{(x or (-1))}\n").get()
 
 fn closure() Void:
 	var c C? = C(1)
-	f := fn() Int?: c?.bump()
+	f := fn() Int? => c?.bump()
 	show(f())
 	show(f())
 	show(c?.get())

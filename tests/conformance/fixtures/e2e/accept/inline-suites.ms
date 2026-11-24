@@ -3,9 +3,9 @@
 // conform: origin=tests/e2e/testdata/accept/inline-suites.ms
 import expect_equal from "@std/test/test.ms"
 
-fn double(value Int) Int: value * 2
+fn double(value Int) Int => value * 2
 
-fn apply(value Int, transform fn(Int) Int) Int: transform(value)
+fn apply(value Int, transform fn(Int) Int) Int => transform(value)
 
 fn choose(value Int) Int:
     if value > 0: return double(value)
@@ -23,10 +23,10 @@ test "inline functions and branches":
     expect_equal(alternate(0), 0)?
     expect_equal(alternate(3), 1)?
 
-    increment := fn(value Int): value + 1
+    increment := fn(value Int) => value + 1
     expect_equal(increment(2), 3)?
 
-    result := apply(4, fn value: value * 3)
+    result := apply(4, value => value * 3)
     expect_equal(result, 12)?
 
     var count = 0

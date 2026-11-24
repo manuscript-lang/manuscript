@@ -60,7 +60,7 @@ test "a room owner pushes each line to every connected websocket":
 	var room = pipe[Command](capacity: 16)
 	var inbox = room.reader()
 	var gate = room.writer()
-	owner := promise(fn: room_owner(inbox))
+	owner := promise(() => room_owner(inbox))
 
 	handler := fn(var exchange HttpExchange) Void!:
 		socket := exchange.upgrade(

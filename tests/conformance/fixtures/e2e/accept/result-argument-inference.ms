@@ -9,15 +9,15 @@ import (
 type Failure:
 	code Int
 
-fn erase[T, E](r Result[T, E]) Result[T, E]: r
+fn erase[T, E](r Result[T, E]) Result[T, E] => r
 
-fn optional[T Clonable](r T!?) T!: (r or panic("called Optional.get() on null")).clone()
+fn optional[T Clonable](r T!?) T! => (r or panic("called Optional.get() on null")).clone()
 
-fn same[T, E](r T!E) T!E: r
+fn same[T, E](r T!E) T!E => r
 
-fn both[T, E](cause E, r T!E) T!E: r
+fn both[T, E](cause E, r T!E) T!E => r
 
-fn number() Int!Failure: ok(7)
+fn number() Int!Failure => ok(7)
 
 type Events:
 	values List[Int]

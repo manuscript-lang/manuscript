@@ -10,15 +10,15 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-fn positive(value Int) Bool: value > 0
+fn positive(value Int) Bool => value > 0
 
-fn twice(value Int) Int: value * 2
+fn twice(value Int) Int => value * 2
 
-fn duplicate(value Int) List[Int]: [value, value]
+fn duplicate(value Int) List[Int] => [value, value]
 
-fn sum(accumulator Int, value Int) Int: accumulator + value
+fn sum(accumulator Int, value Int) Int => accumulator + value
 
-fn parity(value Int) Int: value % 2
+fn parity(value Int) Int => value % 2
 
 test "list search callbacks empty identities and folding":
 	list := [-1, 2, 0, 3]
@@ -39,7 +39,7 @@ test "list search callbacks empty identities and folding":
 
 test "group_by keeps first-seen key order and element order across few and many buckets":
 	values := 0..600
-	few := values.group_by(fn(x Int) Int: x % 3)
+	few := values.group_by(fn(x Int) Int => x % 3)
 	expect_equal(few.keys(), [0, 1, 2])?
 
 	var total = 0
@@ -54,12 +54,12 @@ test "group_by keeps first-seen key order and element order across few and many 
 
 	expect_equal(total, 599 * 600 / 2)?
 
-	words := ["b", "a", "b", "c", "a", "b"].group_by(fn(w String) String: w.clone())
+	words := ["b", "a", "b", "c", "a", "b"].group_by(fn(w String) String => w.clone())
 	expect_equal(words.keys(), ["b", "a", "c"])?
 	expect_equal(words.get("b"), ["b", "b", "b"])?
 	expect_equal(words.get("c"), ["c"])?
 
-	unique := values.group_by(fn(x Int) Int: x)
+	unique := values.group_by(fn(x Int) Int => x)
 	expect_equal(unique.length(), 600)?
 	expect_equal(unique.get(599), [599])?
 
@@ -188,8 +188,8 @@ test "for over range counts without a list":
 
 	var callbacks List[fn() Int] = []
 	for index in 0..3:
-		callbacks.append(fn: index)
-	expect_equal(callbacks.map(fn call: call()), [0, 1, 2])?
+		callbacks.append(() => index)
+	expect_equal(callbacks.map(call => call()), [0, 1, 2])?
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
 	limited List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))

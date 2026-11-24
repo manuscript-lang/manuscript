@@ -29,7 +29,7 @@ export fn main() Int:
     else:
         say("naïve")
 
-    l6 := l3.sorted(fn a, b: a.compare(b))
+    l6 := l3.sorted((a, b) => a.compare(b))
     say(f"l6 = {l6} len {l6.length()}")
 
     b7 := "delta".replace(s5, s5).is_empty()

@@ -18,7 +18,7 @@ export fn main() Int:
     l3 := l2.reversed()
     say(f"l3 = {l3} len {l3.length()}")
 
-    l4 := l2.sorted(fn a, b: a.compare(b))
+    l4 := l2.sorted((a, b) => a.compare(b))
     say(f"l4 = {l4} len {l4.length()}")
 
     i5 := ((((-1) + 20) * ((-671578) % 36)) * 20)

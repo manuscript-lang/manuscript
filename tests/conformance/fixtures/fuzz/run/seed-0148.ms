@@ -36,7 +36,7 @@ export fn main() Int:
     s7 := "delta"
     say(f"s7 = [{s7}]")
 
-    l8 := l1.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l8 := l1.map(x => x + 4).filter(x => x % 2 == 0)
     say(f"l8 = {l8} len {l8.length()}")
 
     if true:

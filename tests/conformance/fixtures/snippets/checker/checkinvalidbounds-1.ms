@@ -7,4 +7,4 @@ interface Named:
 type Box[Named Named]:
     cause Named
 
-fn Box[Named].name() String: self.cause.name()
+fn Box[Named].name() String => self.cause.name()

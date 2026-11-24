@@ -4,4 +4,4 @@
 enum Other:
     Missing(value Int)
 
-fn get() Other: Missing(1)
+fn get() Other => Missing(1)

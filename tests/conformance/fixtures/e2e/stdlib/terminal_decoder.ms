@@ -29,14 +29,14 @@ fn merged(events List[TerminalEvent]) List[TerminalEvent]:
 						)
 						continue
 				out.append(TerminalEvent.Text(more.clone()))
-			_: out.append(event.clone())
+			_ => out.append(event.clone())
 
 	return out
 
 fn text_of(event TerminalEvent) String?:
 	match event:
-		Text(text): return text.clone()
-		_: return null
+		Text(text) => return text.clone()
+		_ => return null
 
 test "text, controls and named keys":
 	var d = terminal_decoder()

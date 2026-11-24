@@ -13,15 +13,15 @@
         "position": {
           "file": "golden-0635.ms",
           "line": 4,
-          "column": 19,
-          "offset": 101
+          "column": 21,
+          "offset": 105
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0635.ms:4:19: type: unknown argument other; parameters of f: value\n   |\n 4 | fn call() Void: f(other: 4)\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0635.ms:4:21: type: unknown argument other; parameters of f: value\n   |\n 4 | fn call() Void => f(other: 4)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

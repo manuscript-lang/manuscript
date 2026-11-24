@@ -45,8 +45,8 @@ export enum ArchiveFormat:
 
 fn archive_format_name(format ArchiveFormat) String:
 	match format:
-		Zip: return "zip"
-		Tar: return "tar"
+		Zip => return "zip"
+		Tar => return "tar"
 
 // Encodes `entries` as `format`. When `max_bytes` is supplied, it bounds the encoded
 // output.
@@ -79,9 +79,9 @@ export enum CompressionFormat:
 
 fn compression_format_name(format CompressionFormat) String:
 	match format:
-		Gzip: return "gzip"
-		Zlib: return "zlib"
-		Deflate: return "deflate"
+		Gzip => return "gzip"
+		Zlib => return "zlib"
+		Deflate => return "deflate"
 
 // Settings for `compress`: the DEFLATE level (0 to 9, default 6) and an optional limit
 // on the encoded output bytes.

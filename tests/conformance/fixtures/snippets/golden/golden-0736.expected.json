@@ -14,13 +14,13 @@
           "file": "golden-0736.ms",
           "line": 5,
           "column": 1,
-          "offset": 80
+          "offset": 81
         },
         "end": {
           "file": "golden-0736.ms",
           "line": 5,
           "column": 5,
-          "offset": 84
+          "offset": 85
         }
       },
       {
@@ -31,26 +31,26 @@
           "file": "golden-0736.ms",
           "line": 7,
           "column": 12,
-          "offset": 148
+          "offset": 151
         },
         "end": {
           "file": "golden-0736.ms",
           "line": 7,
           "column": 13,
-          "offset": 149
+          "offset": 152
         },
         "fix": {
           "position": {
             "file": "golden-0736.ms",
             "line": 7,
             "column": 12,
-            "offset": 148
+            "offset": 151
           },
           "end": {
             "file": "golden-0736.ms",
             "line": 7,
             "column": 13,
-            "offset": 149
+            "offset": 152
           },
           "replacement": ""
         }
@@ -63,26 +63,26 @@
           "file": "golden-0736.ms",
           "line": 11,
           "column": 13,
-          "offset": 262
+          "offset": 265
         },
         "end": {
           "file": "golden-0736.ms",
           "line": 11,
           "column": 14,
-          "offset": 263
+          "offset": 266
         },
         "fix": {
           "position": {
             "file": "golden-0736.ms",
             "line": 11,
             "column": 13,
-            "offset": 262
+            "offset": 265
           },
           "end": {
             "file": "golden-0736.ms",
             "line": 11,
             "column": 14,
-            "offset": 263
+            "offset": 266
           },
           "replacement": ""
         }
@@ -95,26 +95,26 @@
           "file": "golden-0736.ms",
           "line": 14,
           "column": 11,
-          "offset": 344
+          "offset": 347
         },
         "end": {
           "file": "golden-0736.ms",
           "line": 14,
           "column": 12,
-          "offset": 345
+          "offset": 348
         },
         "fix": {
           "position": {
             "file": "golden-0736.ms",
             "line": 14,
             "column": 11,
-            "offset": 344
+            "offset": 347
           },
           "end": {
             "file": "golden-0736.ms",
             "line": 14,
             "column": 12,
-            "offset": 345
+            "offset": 348
           },
           "replacement": ""
         }

@@ -45,7 +45,7 @@ test "a var parameter of a scalar type changes the caller's variable":
 test "a var parameter passes through a function parameter":
 	var values = [5]
 	apply(push_one, values)
-	apply(fn(var xs List[Int]): xs.append(2), values)
+	apply(fn(var xs List[Int]) => xs.append(2), values)
 	values | expect_equal([5, 1, 2])?
 
 test "a var parameter changes a field in place":

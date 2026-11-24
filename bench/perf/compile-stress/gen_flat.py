@@ -39,8 +39,8 @@ elif kind=="generic":
     out.append(s)
 elif kind=="closure":
     s="fn main() Void:\n\tf := "+"fn a: ".join(["" for _ in range(1)])
-    s="fn main() Void:\n\tvar f: fn(Int) Int = fn x: x\n"
-    for i in range(n): s+=f"\tf = fn x: x + {i}\n"
+    s="fn main() Void:\n\tvar f fn(Int) Int = x => x\n"
+    for i in range(n): s+=f"\tf = x => x + {i}\n"
     s+="\tprint(f\"{f(1)}\")\n"
     out.append(s)
 elif kind=="record":

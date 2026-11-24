@@ -47,7 +47,7 @@ fn observe[T Clonable](
 			values
 			.clone()
 			.for_each(
-				fn(value T): step(
+				fn(value T) => step(
 					seen,
 					visits,
 					values,
@@ -191,8 +191,8 @@ enum Choice:
 
 fn score(value Choice) Int:
 	match value:
-		number(count): return count
-		label(text): return text.length()
+		number(count) => return count
+		label(text) => return text.length()
 
 test "alternative consumers retain tags and payloads after shrink":
 	for callback in [false, true]:
@@ -316,7 +316,7 @@ test "map and folds consume snapshots of the live list":
 interface ReadValue:
 	fn read() Int
 
-fn Payload.read() Int: self.value
+fn Payload.read() Int => self.value
 
 test "interface view consumers dispatch after shrink":
 	for callback in [false, true]:

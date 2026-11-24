@@ -39,7 +39,7 @@ test "propagation with try forwards the same Error":
 	cause := match propagate_generic():
 		ok(_):
 			return fail(message: "invalid data succeeded")
-		error(cause): cause
+		error(cause) => cause
 
 	cause.kind | expect_equal("EBADMSG")?
 	cause.message | expect_equal("encoding: invalid data")?
@@ -70,7 +70,7 @@ test "a domain record is still a legal error value":
 	cause := match propagate_read():
 		ok(_):
 			return fail(message: "failed read succeeded")
-		error(cause): cause
+		error(cause) => cause
 
 	(
 		(

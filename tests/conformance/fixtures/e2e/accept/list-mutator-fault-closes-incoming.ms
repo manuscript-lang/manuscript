@@ -32,21 +32,21 @@ fn events(log String) String!:
 test "set bounds fault closes the incoming resource first":
 	temp := temporary("list-set-cleanup-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: set_out(log.clone()))?
+	fault := expect_fault(() => set_out(log.clone()))?
 	expect_contains(fault, "index")?
 	expect_equal(events(log)?, "2,1,")?
 
 test "insert bounds fault closes the incoming resource first":
 	temp := temporary("list-insert-cleanup-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: insert_out(log.clone()))?
+	fault := expect_fault(() => insert_out(log.clone()))?
 	expect_contains(fault, "index")?
 	expect_equal(events(log)?, "2,1,")?
 
 test "replace bounds fault closes the incoming resource first":
 	temp := temporary("list-replace-cleanup-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: replace_out(log.clone()))?
+	fault := expect_fault(() => replace_out(log.clone()))?
 	expect_contains(fault, "index")?
 	expect_equal(events(log)?, "2,1,")?
 
@@ -60,7 +60,7 @@ fn set_operand_fault(log String) Void:
 test "a failing later operand closes the incoming resource":
 	temp := temporary("list-operand-cleanup-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: set_operand_fault(log.clone()))?
+	fault := expect_fault(() => set_operand_fault(log.clone()))?
 	expect_contains(fault, "index operand failed")?
 	expect_equal(events(log)?, "2,1,")?
 
@@ -79,6 +79,6 @@ fn remove_out(move log String) Void:
 test "remove bounds fault still closes the list's existing resource":
 	temp := temporary("list-remove-cleanup-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: remove_out(log.clone()))?
+	fault := expect_fault(() => remove_out(log.clone()))?
 	expect_contains(fault, "index")?
 	expect_equal(events(log)?, "1,")?

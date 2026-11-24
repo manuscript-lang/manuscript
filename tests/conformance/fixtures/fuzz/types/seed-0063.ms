@@ -12,7 +12,7 @@ export fn main() Int:
     l1 := [(-16), (-14), (-23)]
     say(f"l1 = {l1} len {l1.length()}")
 
-    l2 := l1.filter(fn x: x > 2)
+    l2 := l1.filter(x => x > 2)
     say(f"l2 = {l2} len {l2.length()}")
 
     bad := [1, 2].get("x")

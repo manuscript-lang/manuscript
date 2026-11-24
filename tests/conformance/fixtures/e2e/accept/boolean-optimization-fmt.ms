@@ -32,7 +32,7 @@ test "boolean optimization preserves source evaluation order":
     right_or := (not true) or touch(counter)
     (not right_and or not right_or or counter.calls != 4) | expect_false?
 
-    callback := fn: not (true and false)
+    callback := () => not (true and false)
     (not defaulted() or not callback()) | expect_false?
 
 test "bindings read only by a folded-away operand still compile":

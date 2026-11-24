@@ -112,7 +112,7 @@ fn extend_permutations[T Clonable](
 	var out List[List[T]],
 ) Void:
 	if chosen.length() == k:
-		out.append(chosen.map(fn i: values[i].clone()))
+		out.append(chosen.map(i => values[i].clone()))
 		return
 
 	for i in 0..values.length():
@@ -137,7 +137,7 @@ export fn combinations[T Clonable](values List[T], size Int) List[List[T]]:
 		chosen.append(i)
 
 	while true:
-		out.append(chosen.map(fn i: values[i].clone()))
+		out.append(chosen.map(i => values[i].clone()))
 
 		// Advance the rightmost position with room, then reset its suffix.
 		var pivot = size - 1

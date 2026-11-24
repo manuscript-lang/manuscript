@@ -6,5 +6,5 @@ import (
 
 export fn main() Int:
 	match safe():
-		Safe: return 0
-		_: return 1
+		Safe => return 0
+		_ => return 1

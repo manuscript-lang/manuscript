@@ -12,7 +12,7 @@ export fn main() Int:
     l1 := [24, (-24), (-16)]
     say(f"l1 = {l1} len {l1.length()}")
 
-    l2 := l1.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l2 := l1.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l2 = {l2} len {l2.length()}")
 
     f3 := ((559.724 * 329.840) / ((839.150 / 0.0) - (547.347 + 67.159)))

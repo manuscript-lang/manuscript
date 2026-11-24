@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/data-function.ms:13:12: type: Handler does not satisfy Data; field run is fn() Int, a function; send the data the function would compute\n    |\n 13 |     return need(Handler(\"h\", fn() Int: 1))\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/data-function.ms:13:12: type: Handler does not satisfy Data; field run is fn() Int, a function; send the data the function would compute\n    |\n 13 |     return need(Handler(\"h\", fn() Int => 1))\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

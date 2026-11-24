@@ -138,7 +138,7 @@ test "a scope exited by break still returns its close error":
 test "a close error still faults when the function cannot return Error":
 	dir := temporary("close-infallible-error-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: ok(infallible(log)))
+	work := promise(() => ok(infallible(log)))
 	cause := work.wait() | expect_error?
 	expect_equal(cause.kind, "EIO")?
 	expect_equal(events(log), "close 1\n")?
@@ -252,7 +252,7 @@ test "a pending borrowed custom error retains the caller value":
 test "an incompatible close error still faults after pending success":
 	dir := temporary("close-custom-success-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: ok(custom(log, false)))
+	work := promise(() => ok(custom(log, false)))
 	cause := work.wait() | expect_error?
 	expect_equal(cause.kind, "EIO")?
 	expect_equal(events(log), "close 1\n")?
@@ -456,7 +456,7 @@ fn replacement_exit(log String) Int!:
 
 fn captured_result[T](log String, source T!) T!:
 	resource := Failing(log.clone(), 1, fail: false)
-	_callbacks List[fn() Int] := [fn: resource.id]
+	_callbacks List[fn() Int] := [() => resource.id]
 	return source
 
 test "handled replacement lifetimes preserve whole Result borrowing":

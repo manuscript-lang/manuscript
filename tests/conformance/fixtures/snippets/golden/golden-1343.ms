@@ -5,5 +5,5 @@ enum Flag:
 fn use(value Int?) Int:
     Flag := 2
     match value:
-        ready: return Ready
-        null: return 0
+        ready => return Ready
+        null => return 0

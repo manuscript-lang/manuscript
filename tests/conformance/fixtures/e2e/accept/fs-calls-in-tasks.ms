@@ -44,8 +44,8 @@ test "file-system calls from concurrent tasks":
 	root := temporary_directory("ms-fs-tasks-")?
 	first := root.clone()
 	second := root.clone()
-	a := promise(fn: ok(churn(first.clone(), "one")))
-	b := promise(fn: ok(churn(second.clone(), "two")))
+	a := promise(() => ok(churn(first.clone(), "one")))
+	b := promise(() => ok(churn(second.clone(), "two")))
 	a.wait()? | expect_equal(2)?
 	b.wait()? | expect_equal(2)?
 

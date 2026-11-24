@@ -51,13 +51,13 @@ fn report(mir String) List[String]:
 				counts.add(key.clone(), counts.get_or(key, 0) + 1)
 
 	// uniq -c | sort -rn: count descending, ties in descending text order.
-	var rows = counts.keys().map(fn k: Row(counts.get_or(k, 0), k.clone()))
+	var rows = counts.keys().map(k => Row(counts.get_or(k, 0), k.clone()))
 	rows = rows.sorted(
-		fn(a Row, b Row) Int: if a.count != b.count: b.count - a.count else: b.text.compare(
+		fn(a Row, b Row) Int => if a.count != b.count: b.count - a.count else: b.text.compare(
 			a.text
 		)
 	)
-	return rows.map(fn r: right(f"{r.count}", 7) + " " + r.text)
+	return rows.map(r => right(f"{r.count}", 7) + " " + r.text)
 
 type Row:
 	count Int

@@ -64,7 +64,7 @@ fn plus(x Int) Int:
 
 bench "io.stages.map3_fold" per 10:
 	stream := map(map(map(from_list(fixture.xs.clone()), plus), plus), plus)
-	total := fold(stream, 0, fn(a Int, b Int) Int: return a + b)?
+	total := fold(stream, 0, fn(a Int, b Int) Int => return a + b)?
 	total
 
 bench "io.lines long fragmented":

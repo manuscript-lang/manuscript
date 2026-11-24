@@ -36,7 +36,7 @@ export fn main() Int:
     i9 := i7
     say(f"i9 = {i9}")
 
-    l10 := l3.filter(fn x: x > 3)
+    l10 := l3.filter(x => x > 3)
     say(f"l10 = {l10} len {l10.length()}")
 
     if ((-i4) >= (-i7)):

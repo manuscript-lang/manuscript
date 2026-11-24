@@ -4,4 +4,4 @@
 enum Other:
     OutOfRange
 
-fn get() Other: OutOfRange
+fn get() Other => OutOfRange

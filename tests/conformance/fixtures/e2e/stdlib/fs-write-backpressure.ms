@@ -8,7 +8,7 @@ import (
 )
 
 fn write_one(move path String,move data Bytes) fn() Void!:
-	return fn: write_file(path.clone(), data, replace: true).wait()
+	return () => write_file(path.clone(), data, replace: true).wait()
 
 test "more large writes than pool slots all complete":
 	dir := temporary("manuscript-backpressure-") | expect_ok?

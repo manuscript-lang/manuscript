@@ -11,12 +11,12 @@ type Pair[A, B]:
     a A
     b B
 
-fn id[T](x T) T: x
+fn id[T](x T) T => x
 
 fn name(s Shape) String:
     match s:
-        Circle(_): return "circle"
-        Dot: return "dot"
+        Circle(_) => return "circle"
+        Dot => return "dot"
 
 fn main() Void:
     p := Pair(Circle(1), Dot)

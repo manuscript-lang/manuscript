@@ -95,7 +95,7 @@ test "tail Results preserve cleanup on success and failure":
 	read_file(second).wait().is_ok() | expect_true?
 
 test "function Result payloads keep their calling convention":
-	original := fn() Int: 42
+	original := fn() Int => 42
 	wrapped := Result[fn() Int, Error].ok(original)
 	value := function_tail(wrapped)?
 	value() | expect_equal(42)?

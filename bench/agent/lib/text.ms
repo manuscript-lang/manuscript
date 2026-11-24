@@ -36,11 +36,11 @@ export fn write_text(path String, text String) Void:
 // compare output.
 export fn norm(text String) String:
 	if text.trim().is_empty(): return ""
-	return text.trim_end().split("\n").map(fn line: line.trim_end()).join("\n")
+	return text.trim_end().split("\n").map(line => line.trim_end()).join("\n")
 
 // The nonblank lines of `text`.
 export fn nonblank_lines(text String) List[String]:
-	return text.split("\n").filter(fn l: not l.trim().is_empty())
+	return text.split("\n").filter(l => not l.trim().is_empty())
 
 // What a finished shell command left behind.
 export type Ran:

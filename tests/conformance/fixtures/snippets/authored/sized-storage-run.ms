@@ -17,16 +17,16 @@ enum Tok:
 
 fn kind(t Tok) Int:
 	match t:
-		Num(v, s): return v.to_int64() + (s.truncate_to_int() or 0)
-		Word(text, k): return text.length() + k.to_int64()
-		End: return 0
+		Num(v, s) => return v.to_int64() + (s.truncate_to_int() or 0)
+		Word(text, k) => return text.length() + k.to_int64()
+		End => return 0
 
 fn main() Void:
 	var l List[Int32] = []
 	for i in 0..1000:
 		l.append((1000 - i).to_int32() or 0)
 
-	sorted := l.sorted(fn a, b: a.compare(b))
+	sorted := l.sorted((a, b) => a.compare(b))
 	void stdout().write(f"{sorted[0]} {sorted[999]} {l.length()}\n")
 
 	var m = Map[Int16, Int8]()
@@ -45,7 +45,7 @@ fn main() Void:
 
 	k Int8 := -4
 	f Float32 := 1.25
-	cl fn(Int) Int := fn x: ((x.to_int8() or 0) + k).to_int64()
+	cl fn(Int) Int := x => ((x.to_int8() or 0) + k).to_int64()
 	void stdout().write(f"{cl(10)} {f * 2.0 + 0.5}\n")
 
 	var cells List[Cell] = []
@@ -63,5 +63,5 @@ fn main() Void:
 
 	ints List[Int8] := [5, 3, -9, 1]
 	void stdout().write(
-		f"{ints.sorted(fn a, b: a.compare(b))} {ints.map(fn x: x + 1)} {ints.fold(0, fn a, x: a + x.to_int64())}\n"
+		f"{ints.sorted((a, b) => a.compare(b))} {ints.map(x => x + 1)} {ints.fold(0, (a, x) => a + x.to_int64())}\n"
 	)

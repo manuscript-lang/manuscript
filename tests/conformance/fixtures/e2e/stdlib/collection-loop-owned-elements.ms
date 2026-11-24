@@ -24,7 +24,7 @@ fn capture_keys(source Map[String, Int]) List[fn() String]:
 
 	for key in source.keys():
 		owned := key.clone()
-		out.append(fn: owned.clone())
+		out.append(() => owned.clone())
 
 	return out
 

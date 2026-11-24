@@ -10,6 +10,6 @@ fn pair(handlers List[Handler]) List[Handler]:
 	return handlers.concat(handlers)
 
 export fn main() Int:
-	first := Handler(name: "double", run: fn x: x * 2)
+	first := Handler(name: "double", run: x => x * 2)
 	again := first.clone()
 	return again.run(2) + pair([first]).length()

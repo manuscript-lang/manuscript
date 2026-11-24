@@ -57,10 +57,10 @@ test "repr quotes strings and spells out collections":
 	expect_equal(repr(7), "7")?
 
 test "catch_fault returns a fault message and none for a normal return":
-	message := expect_some(catch_fault(fn: panic("boom")))?
+	message := expect_some(catch_fault(() => panic("boom")))?
 	expect_equal(message, "boom")?
-	expect_none(catch_fault(fn: void))?
-	expect_equal(expect_fault(fn: panic("again"))?, "again")?
+	expect_none(catch_fault(() => void))?
+	expect_equal(expect_fault(() => panic("again"))?, "again")?
 
 test "fail builds an error with a site":
 	failure := expect_error(fail("custom"))?

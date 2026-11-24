@@ -11,13 +11,13 @@ type Reading:
 enum Sample:
 	Value(value Float32?)
 
-fn tiny() Int8?: 100 + 27
+fn tiny() Int8? => 100 + 27
 
-fn rounded() Float32?: + (1.0000000596046448 + 0.0)
+fn rounded() Float32? => + (1.0000000596046448 + 0.0)
 
-fn large() UInt64?: 9223372036854775807 + 1
+fn large() UInt64? => 9223372036854775807 + 1
 
-fn take(value Int8?) Int8?: value
+fn take(value Int8?) Int8? => value
 
 test "optional sized arithmetic keeps payload values":
 	expect_equal((tiny() or panic("called Optional.get() on null")).to_int(), 127)?
@@ -55,7 +55,7 @@ test "optional sized arithmetic keeps payload values":
 	sample := Sample.Value(0.25 + 0.5)
 
 	match sample:
-		Sample.Value(value): expect_equal(
+		Sample.Value(value) => expect_equal(
 			(value or panic("called Optional.get() on null")).to_float64(),
 			0.75,
 		)?

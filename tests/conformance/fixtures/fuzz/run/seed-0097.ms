@@ -41,7 +41,7 @@ export fn main() Int:
     s7 := ((f"{44}:" + s4).upper() + "hello world")
     say(f"s7 = [{s7}]")
 
-    l8 := l1.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l8 := l1.map(x => x + 1).filter(x => x % 2 == 0)
     say(f"l8 = {l8} len {l8.length()}")
 
     b9 := "back\\slash".upper().is_empty()
@@ -62,7 +62,7 @@ export fn main() Int:
     l14 := [(-16), 18]
     say(f"l14 = {l14} len {l14.length()}")
 
-    l15 := l8.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l15 := l8.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l15 = {l15} len {l15.length()}")
 
     l16 := l1.concat(l1)

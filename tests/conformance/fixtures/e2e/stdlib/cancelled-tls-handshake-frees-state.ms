@@ -35,7 +35,7 @@ fn main() Void!:
 
 	for round in 0..6:
 		stop := cancel_switch()
-		client := promise(fn: upgrade_silent(address.clone()), options: PromiseOptions(cancel: stop.signal()))
+		client := promise(() => upgrade_silent(address.clone()), options: PromiseOptions(cancel: stop.signal()))
 		void sleep(milliseconds(20 + round * 5)).wait()?
 		stop.cancel()
 		void client.wait()
@@ -44,7 +44,7 @@ fn main() Void!:
 	where := other.address()
 	for round in 0..6:
 		stop := cancel_switch()
-		server := promise(fn: serve_silent(other), options: PromiseOptions(cancel: stop.signal()))
+		server := promise(() => serve_silent(other), options: PromiseOptions(cancel: stop.signal()))
 		var raw = connect(where.clone(), timeout: seconds(5)).wait()?
 		void sleep(milliseconds(20 + round * 5)).wait()?
 		stop.cancel()

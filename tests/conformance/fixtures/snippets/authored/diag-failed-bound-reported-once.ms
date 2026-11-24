@@ -4,7 +4,7 @@
 interface Named:
     fn name() String
 
-fn describe[E Named](item E) String: item.name()
+fn describe[E Named](item E) String => item.name()
 
 fn main() Void:
     _message := describe("missing")

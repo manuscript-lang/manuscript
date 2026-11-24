@@ -121,9 +121,9 @@ The expected result (return type, annotation, field, argument, or callback) fill
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn fail[T](message String) Result[T, Error]: error(Error(message))
+fn fail[T](message String) Result[T, Error] => error(Error(message))
 
-fn first() Result[Int, Error]: fail("empty")  // T = Int
+fn first() Result[Int, Error] => fail("empty")  // T = Int
 failed Result[Int, Error] := fail("empty")
 ```
 

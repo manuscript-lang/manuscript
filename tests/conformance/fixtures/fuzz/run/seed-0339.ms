@@ -65,7 +65,7 @@ export fn main() Int:
     s10 := ("héllo" + s5).upper().lower()
     say(f"s10 = [{s10}]")
 
-    l11 := l8.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l11 := l8.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l11 = {l11} len {l11.length()}")
 
     i12 := ((l8.length() - (-(-49))) / 16)

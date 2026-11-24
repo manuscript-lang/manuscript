@@ -46,7 +46,7 @@ export fn read_cases(output String) List[Bench]!:
 	doc := parsed.get_or(Document(List[Bench](), null))
 	diagnostics := doc.diagnostics.clone() or []
 	if not diagnostics.is_empty(): return invalid(
-		diagnostics.map(fn d: d.message.clone()).join("; ")
+		diagnostics.map(d => d.message.clone()).join("; ")
 	)
 
 	var seen = Set[String]()

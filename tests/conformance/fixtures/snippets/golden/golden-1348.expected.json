@@ -31,26 +31,26 @@
           "file": "golden-1348.ms",
           "line": 8,
           "column": 22,
-          "offset": 180
+          "offset": 182
         },
         "end": {
           "file": "golden-1348.ms",
           "line": 8,
           "column": 23,
-          "offset": 181
+          "offset": 183
         },
         "fix": {
           "position": {
             "file": "golden-1348.ms",
             "line": 8,
             "column": 22,
-            "offset": 180
+            "offset": 182
           },
           "end": {
             "file": "golden-1348.ms",
             "line": 8,
             "column": 23,
-            "offset": 181
+            "offset": 183
           },
           "replacement": ""
         }
@@ -63,26 +63,26 @@
           "file": "golden-1348.ms",
           "line": 12,
           "column": 19,
-          "offset": 286
+          "offset": 292
         },
         "end": {
           "file": "golden-1348.ms",
           "line": 12,
           "column": 20,
-          "offset": 287
+          "offset": 293
         },
         "fix": {
           "position": {
             "file": "golden-1348.ms",
             "line": 12,
             "column": 19,
-            "offset": 286
+            "offset": 292
           },
           "end": {
             "file": "golden-1348.ms",
             "line": 12,
             "column": 20,
-            "offset": 287
+            "offset": 293
           },
           "replacement": ""
         }

@@ -6,5 +6,5 @@ impl TestHooks for State:
 fn make_fixture() State:
     return State(value: 1)
 test "closure captures fixture":
-    read := fn() Int: fixture.value
+    read := fn() Int => fixture.value
     value: Int := read()

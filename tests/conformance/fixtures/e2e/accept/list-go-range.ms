@@ -207,13 +207,13 @@ test "clone slice and nested values keep their own contracts":
 
 test "function values can replace later backing elements":
 	var seen List[Int] = []
-	var functions = [fn() Int: 7, fn() Int: 7]
+	var functions = [fn() Int => 7, fn() Int => 7]
 
 	(
 		[0, 1].for_each(
 			fn index:
 				seen.append(functions[index]())
-				functions.set(index, fn() Int: 9)
+				functions.set(index, fn() Int => 9)
 		)
 	)
 

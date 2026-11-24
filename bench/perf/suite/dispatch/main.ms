@@ -52,10 +52,10 @@ fn shapes(n Int) Int:
 fn closures(n Int) Int:
 	offset := 3
 	steps List[fn(Int) Int] := [
-		fn(x Int) Int: return x + offset,
-		fn(x Int) Int: return x * 2,
-		fn(x Int) Int: return x - 1,
-		fn(x Int) Int: return x % 1000003
+		fn(x Int) Int => return x + offset,
+		fn(x Int) Int => return x * 2,
+		fn(x Int) Int => return x - 1,
+		fn(x Int) Int => return x % 1000003
 	]
 	var acc = 1
 	for i in 0..n:
@@ -89,7 +89,7 @@ fn generics(n Int) Int:
 			v := s.pop()
 			if v != null: t += v
 
-	return t + fold_with(s.items, 0, fn(a Int, x Int) Int: return a + x * 2)
+	return t + fold_with(s.items, 0, fn(a Int, x Int) Int => return a + x * 2)
 
 fn main() Void:
 	print(f"shapes {shapes(1000000)}")

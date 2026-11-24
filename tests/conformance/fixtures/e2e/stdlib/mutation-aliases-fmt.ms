@@ -39,8 +39,8 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     trigger Int? := 1
     first.remove(
         match trigger:
-            key: key
-            null: 0
+            key => key
+            null => 0
     )
     expect_false(not first.is_empty())?
 
@@ -54,7 +54,7 @@ type MapAdapter:
 fn var MapAdapter.remove(key Int) Void:
     self.values.remove(key)
 
-fn MapAdapter.keys() List[Int]: self.values.keys()
+fn MapAdapter.keys() List[Int] => self.values.keys()
 
 test "Map explicit and bound interface views remove through the adapter":
     var values = Map[Int, String]()
@@ -120,7 +120,7 @@ type ListAdapter:
 fn var ListAdapter.splice(start Int, delete_count Int, replacement List[Int]) Void:
     self.values.splice(start, delete_count, replacement.clone())
 
-fn ListAdapter.contents() List[Int]: self.values.clone()
+fn ListAdapter.contents() List[Int] => self.values.clone()
 
 test "List explicit and bound interface views splice through the adapter":
     var adapter = ListAdapter([1, 2, 3])

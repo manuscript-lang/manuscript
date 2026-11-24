@@ -141,8 +141,8 @@ fn Fetcher.fetch(
 	owned_url := url.clone()
 	owned_options := options.clone()
 	return promise(
-		fn: sent(native, owned_url, owned_options),
-		options: PromiseOptions(placement: Placement.Here)
+		() => sent(native, owned_url, owned_options),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // Sends the request and returns the response with its body as a stream. The default
@@ -167,11 +167,7 @@ fn move Fetcher.close() Void!:
 fn drain(body RawResponse, options FetchOptions, started Instant) FetchResponse!:
 	open := body
 	metadata := open.metadata()
-	whole := (
-		open
-		.read_all()
-		.map_error(fn cause: read_failure(cause, options, started))?
-	)
+	whole := open.read_all().map_error(cause => read_failure(cause, options, started))?
 	if limit_exceeded(whole.length(), options.max_response_bytes):
 		return error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
@@ -211,7 +207,7 @@ fn outgoing(options FetchOptions) Outgoing:
 	var data = "".to_bytes()
 
 	match options.body:
-		Empty: kind = ""
+		Empty => kind = ""
 		Text(value):
 			kind = "text/plain; charset=utf-8"
 			data = value.to_bytes()
@@ -261,8 +257,8 @@ export fn fetch(
 	owned_url := url.clone()
 	owned_options := options.clone()
 	return promise(
-		fn: fetched(owned_url, owned_options),
-		options: PromiseOptions(placement: Placement.Here)
+		() => fetched(owned_url, owned_options),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 fn fetched(url String, options FetchOptions) FetchResponse!:

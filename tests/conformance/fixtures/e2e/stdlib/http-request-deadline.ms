@@ -18,7 +18,7 @@ import (
 )
 
 fn within(var input ReadStream[Bytes], timeout Duration) Bytes?!:
-	return promise(fn: input.next()).with(
+	return promise(() => input.next()).with(
 		options: PromiseOptions(timeout: timeout.clone())
 	).wait()
 

@@ -13,15 +13,15 @@
         "position": {
           "file": "golden-0732.ms",
           "line": 4,
-          "column": 24,
-          "offset": 123
+          "column": 26,
+          "offset": 127
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0732.ms:4:24: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 4 | fn first() Void: twice(f())\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0732.ms:4:26: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 4 | fn first() Void => twice(f())\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

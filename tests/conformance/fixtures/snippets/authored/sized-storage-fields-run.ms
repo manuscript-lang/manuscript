@@ -18,9 +18,9 @@ enum Shape:
 
 fn area(s Shape) Int:
 	match s:
-		Dot(x): return x.to_int64()
-		Box(w, h, c): return (w.to_int64() + c.to_int64() + (h.truncate_to_int() or 0))
-		Big(v): return v
+		Dot(x) => return x.to_int64()
+		Box(w, h, c) => return (w.to_int64() + c.to_int64() + (h.truncate_to_int() or 0))
+		Big(v) => return v
 
 fn main() Void:
 	var l List[Int8] = []

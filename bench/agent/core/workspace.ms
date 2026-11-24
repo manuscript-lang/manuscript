@@ -113,8 +113,8 @@ export fn read_log(ws String) BuildLog:
 
 		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
-	builds := rows.filter(fn r: r.phase == "build")
-	checks := rows.filter(fn r: r.phase == "check")
+	builds := rows.filter(r => r.phase == "build")
+	checks := rows.filter(r => r.phase == "check")
 	var first_ok = false
 	first := builds.first()
 	if first != null: first_ok = first.ok
@@ -130,7 +130,7 @@ export fn read_log(ws String) BuildLog:
 	var codes = List[String]()
 	var errors = List[String]()
 
-	for failed in builds.filter(fn r: not r.ok):
+	for failed in builds.filter(r => not r.ok):
 		if not failed.msg.is_empty(): errors.append(failed.msg.clone())
 		for code in failed.codes.split(" "):
 			if not code.is_empty(): codes.append(code.clone())

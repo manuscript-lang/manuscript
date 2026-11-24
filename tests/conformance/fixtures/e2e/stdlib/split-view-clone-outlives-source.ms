@@ -47,7 +47,7 @@ fn spread(lo Int, hi Int) Int!:
 
 	mid := (lo + hi) / 2
 	upper := promise(
-		fn: spread(mid, hi),
+		() => spread(mid, hi),
 		options: PromiseOptions(placement: Placement.Spread)
 	)
 	low := spread(lo, mid)?

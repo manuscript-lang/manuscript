@@ -88,18 +88,18 @@ test "closed cell updates preserve each operation":
     sum() | expect_equal(1000)?
 
 test "closed cells retain prefix overflow":
-    (expect_fault(fn: _ignored := prefix())?) | expect_contains(
+    (expect_fault(() => _ignored := prefix())?) | expect_contains(
         "Int overflow"
     )?
 
 test "peer cells and scalar carries are not initial invariants":
-    (expect_fault(fn: _ignored := peer())?) | expect_contains("Int overflow")?
-    (expect_fault(fn: _ignored := scalar_peer())?) | expect_contains(
+    (expect_fault(() => _ignored := peer())?) | expect_contains("Int overflow")?
+    (expect_fault(() => _ignored := scalar_peer())?) | expect_contains(
         "Int overflow"
     )?
 
 test "field resets keep ordinary overflow checks":
-    (expect_fault(fn: _ignored := reset())?) | expect_contains("Int overflow")?
+    (expect_fault(() => _ignored := reset())?) | expect_contains("Int overflow")?
 
 test "record arguments execute exactly once before the update":
     var visits List[Int] = []

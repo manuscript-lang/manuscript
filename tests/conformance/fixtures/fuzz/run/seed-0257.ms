@@ -39,7 +39,7 @@ export fn main() Int:
     say(f"s4 = [{s4}]")
     say(f"collatz(2631) = {collatz(2631)}")
 
-    l5 := l2.filter(fn x: x > (-4))
+    l5 := l2.filter(x => x > (-4))
     say(f"l5 = {l5} len {l5.length()}")
 
     s6 := "x"

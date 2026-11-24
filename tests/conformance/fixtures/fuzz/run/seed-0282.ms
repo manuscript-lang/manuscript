@@ -49,7 +49,7 @@ export fn main() Int:
     s5 := ((s3 + "line\nbreak").upper() + (f"{(-18)}:" + "x".reverse()))
     say(f"s5 = [{s5}]")
 
-    l6 := l1.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l6 := l1.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "Tab\there".reverse().replace(s5, "").lower()
@@ -58,7 +58,7 @@ export fn main() Int:
     f8 := (601.971 / ((375.276 / 229.315) * 112.317))
     say(f"f8 = {f8}")
 
-    l9 := l6.map(fn x: x * 2)
+    l9 := l6.map(x => x * 2)
     say(f"l9 = {l9} len {l9.length()}")
 
     s10 := "line\nbreak"

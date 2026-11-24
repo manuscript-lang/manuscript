@@ -70,8 +70,8 @@ export enum Crc64Polynomial:
 // The reflected polynomial as an Int bit pattern.
 fn Crc64Polynomial.reflected() Int:
 	match self:
-		Ecma: return -3932672073523589310
-		Iso: return -2882303761517117440
+		Ecma => return -3932672073523589310
+		Iso => return -2882303761517117440
 
 // Slicing tables for a reflected CRC-64: `tables[k * 256 + b]` is the register after
 // byte `b` followed by `k` zero bytes. Building one table costs about as much as

@@ -218,7 +218,7 @@ fn serve_one_tls(listener Listener) Int:
 		ok(accepted):
 			var connection = accepted
 			return answer_ping(connection)
-		error(_): return 0
+		error(_) => return 0
 
 test "raw TLS listeners and clients handshake and report negotiated details":
 	server_tls := TlsOptions(
@@ -239,7 +239,7 @@ test "raw TLS listeners and clients handshake and report negotiated details":
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
-	served := promise(fn: ok(serve_one_tls(listener)))
+	served := promise(() => ok(serve_one_tls(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 3.seconds()).wait()?
 	send(client, "ping")?
 	expect_equal(
@@ -272,7 +272,7 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
-	served := promise(fn: ok(serve_one_tls(listener)))
+	served := promise(() => ok(serve_one_tls(listener)))
 	_failure := expect_error(
 		connect(
 			address.clone(),
@@ -324,7 +324,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 5.seconds())?
 	address := listener.address()
-	served := promise(fn: ok(count_until_eof(listener)))
+	served := promise(() => ok(count_until_eof(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 5.seconds()).wait()?
 	send(client, "y".repeat(20000000))?
 
@@ -353,7 +353,7 @@ test "start_tls upgrades a plain connection in place on both sides":
 	client_tls := TlsOptions(server_name: "stdlib.test", roots_pem: certificate())
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	served := promise(fn: ok(starttls_server(listener, server_tls)))
+	served := promise(() => ok(starttls_server(listener, server_tls)))
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
 	expect_false(plain.info.tls_info().is_ok())?
 	send(plain, "STARTTLS")?
@@ -389,7 +389,7 @@ test "start_tls rejects an untrusted server and an empty server name":
 	)
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	served := promise(fn: ok(starttls_server(listener, server_tls)))
+	served := promise(() => ok(starttls_server(listener, server_tls)))
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
 	_unnamed := expect_error(start_tls(plain, TlsOptions(), 3.seconds()))?
 	send(plain, "STARTTLS")?

@@ -158,8 +158,8 @@ fn connection(move native NativeConnection) Connection:
 	var tls TlsInfo? = null
 
 	match msstd_net_connection_tls_info(native):
-		ok(found): tls = found
-		error(_): tls = null
+		ok(found) => tls = found
+		error(_) => tls = null
 
 	other := msstd_net_connection_share(native)
 	upgradable := msstd_net_connection_alias(native)
@@ -289,8 +289,8 @@ fn move Listener.close() Void!:
 fn Listener.accept(timeout Duration? = null) Promise[Connection]:
 	native := msstd_net_listener_share(self.native)
 	return promise(
-		fn: accepted(native, timeout),
-		options: PromiseOptions(placement: Placement.Here)
+		() => accepted(native, timeout),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // Starts waiting for the next incoming connection without binding it to a thread, and
@@ -300,8 +300,8 @@ fn Listener.accept(timeout Duration? = null) Promise[Connection]:
 fn Listener.accept_pending(timeout Duration? = null) Promise[PendingConnection]:
 	native := msstd_net_listener_share(self.native)
 	return promise(
-		fn: accepted_pending(native, timeout),
-		options: PromiseOptions(placement: Placement.Here)
+		() => accepted_pending(native, timeout),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // Returns the bound local address as `host:port` text, which reveals the port
@@ -574,8 +574,8 @@ export fn connect(
 	owned_address := address.clone()
 	owned_tls := tls.clone()
 	return promise(
-		fn: host_network().connect(owned_address, owned_tls, timeout),
-		options: PromiseOptions(placement: Placement.Here)
+		() => host_network().connect(owned_address, owned_tls, timeout),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // Starts connecting to the Unix domain socket at `path` and returns its promise. Any
@@ -585,8 +585,8 @@ export fn connect(
 export fn connect_unix(path String, timeout Duration? = null) Promise[Connection]:
 	owned_path := path.clone()
 	return promise(
-		fn: host_network().connect_unix(owned_path, timeout),
-		options: PromiseOptions(placement: Placement.Here)
+		() => host_network().connect_unix(owned_path, timeout),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // Creates a reusable HTTP client with connection pooling that dials through this
@@ -707,7 +707,7 @@ export fn serve(
 	// The accept loop owns the listener; each worker owns a share of the options and
 	// handler and a pipe of accepted connections.
 	workers := workers_for(options)
-	accepting := promise(fn: accept_loop(listening, workers))
+	accepting := promise(() => accept_loop(listening, workers))
 	return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
 
 // The number of worker promises: `options.cores`, else one per core.
@@ -796,8 +796,8 @@ fn start_worker(
 	move input Pipe[NativeAccepted],
 ) Promise[Void]:
 	return promise(
-		fn: serve_worker(spec, input),
-		options: PromiseOptions(placement: Placement.Spread)
+		() => serve_worker(spec, input),
+		options: PromiseOptions(placement: Placement.Spread),
 	)
 
 // Runs one worker on the thread the runtime placed this promise on: it adopts each

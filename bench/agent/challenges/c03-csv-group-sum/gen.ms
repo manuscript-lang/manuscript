@@ -11,7 +11,7 @@ fn cents(amt String) Int?:
 	if parts.length() > 2: return null
 
 	whole := parts[0].clone()
-	if whole.is_empty() or not whole.chars().all(fn c: "0123456789".contains(c)): return null
+	if whole.is_empty() or not whole.chars().all(c => "0123456789".contains(c)): return null
 
 	var fraction = ""
 
@@ -20,7 +20,7 @@ fn cents(amt String) Int?:
 		if (
 			fraction.length() < 1
 			or fraction.length() > 2
-			or not fraction.chars().all(fn c: "0123456789".contains(c))
+			or not fraction.chars().all(c => "0123456789".contains(c))
 		): return null
 
 	return (
@@ -85,7 +85,7 @@ fn solve(s String) String:
 	if bad > 0: out += f"skipped: {bad}\n"
 	return out
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 export fn gen_c03() Void:
 	var rnd = seeded(3)

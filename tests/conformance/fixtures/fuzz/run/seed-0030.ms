@@ -34,7 +34,7 @@ export fn main() Int:
     say(f"f6 = {f6}")
     say(f"fact(9) = {fact(9)}")
 
-    l7 := l2.sorted(fn a, b: a.compare(b))
+    l7 := l2.sorted((a, b) => a.compare(b))
     say(f"l7 = {l7} len {l7.length()}")
 
     b8 := (("a" + "42") + "beta").is_empty()

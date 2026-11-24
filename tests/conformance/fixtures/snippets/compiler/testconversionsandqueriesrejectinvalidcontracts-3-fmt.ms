@@ -5,4 +5,4 @@ enum Optional[T]:
 	T
 	null
 
-fn wrong(value Int?) Int!String: ok_or(value, "missing")
+fn wrong(value Int?) Int!String => ok_or(value, "missing")

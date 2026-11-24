@@ -394,7 +394,7 @@ fn SortedSet[T].floor(value T) T?:
 // Returns a new list of the members with `low` <= member < `high`, in ascending
 // order.
 fn SortedSet[T].range(low T, high T) List[T]:
-	return self.members.range(low, high).map(fn entry: entry.key.clone())
+	return self.members.range(low, high).map(entry => entry.key.clone())
 
 // Returns a new list of the members in ascending order.
 fn SortedSet[T].values() List[T]:

@@ -14,7 +14,7 @@ type Key:
 fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
-fn Key.hash() Int: self.id
+fn Key.hash() Int => self.id
 
 fn Key.compare(other Key) Int:
 	return self.id - other.id

@@ -30,6 +30,6 @@ export fn main() Int:
     i5 := (i2 / (8 + (i2 * i2)))
     say(f"i5 = {i5}")
 
-    l6 := l3.filter(fn x: x > (-3))
+    l6 := l3.filter(x => x > (-3))
     say(f"l6 = {l6} len {l6.length()}")
     return 0

@@ -127,6 +127,6 @@ test "a failed entry close preserves its owner and closes the remaining siblings
 	tmp := temporary("resource-place-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	var calls = 0
-	message := expect_fault(fn: failing_remove(log.clone(), calls))?
+	message := expect_fault(() => failing_remove(log.clone(), calls))?
 	expect_contains(message, "a resource could not be closed")?
 	expect_equal(logged(log), "1,3,2,")?

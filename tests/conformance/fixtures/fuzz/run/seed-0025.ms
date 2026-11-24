@@ -43,7 +43,7 @@ export fn main() Int:
     l7 := [(-14), (-13)]
     say(f"l7 = {l7} len {l7.length()}")
 
-    l8 := l7.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l8 := l7.map(x => x + 2).filter(x => x % 2 == 0)
     say(f"l8 = {l8} len {l8.length()}")
     say(f"fib(48) = {fib(48)}")
 

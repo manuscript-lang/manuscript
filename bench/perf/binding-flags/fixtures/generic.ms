@@ -25,8 +25,8 @@ fn main() Void:
 	var total = first(a) + first(b).length()
 
 	payload := match c:
-		Empty: 0
-		Value(value): value.first
+		Empty => 0
+		Value(value) => value.first
 
 	total += payload
 

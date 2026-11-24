@@ -9,9 +9,9 @@ enum Shape:
 
 fn area(shape Shape) Int:
 	match shape:
-		Circle(r): return 3 * r * r
-		Rect(w, h): return w * h
-		Dot: return 0
+		Circle(r) => return 3 * r * r
+		Rect(w, h) => return w * h
+		Dot => return 0
 
 	return -1
 
@@ -23,7 +23,7 @@ fn first_positive(values List[Int?]) Int:
 		index += 1
 
 		match item:
-			null: continue
+			null => continue
 			value:
 				if value > 0: return value
 
@@ -35,8 +35,8 @@ fn nested(rows List[List[Int?]]) Int:
 	for row in rows:
 		for item in row:
 			match item:
-				null: break
-				value: total += value
+				null => break
+				value => total += value
 
 		total += 1000
 

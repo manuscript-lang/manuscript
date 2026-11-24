@@ -22,14 +22,14 @@ fn build(depth Int) Tree:
 
 fn count(tree Tree) Int:
     match tree:
-        Leaf: return 1
-        Gap: return 0
-        Node(left, right): return count(left) + count(right)
+        Leaf => return 1
+        Gap => return 0
+        Node(left, right) => return count(left) + count(right)
 
 fn sum(move chain Chain) Int:
     match chain:
-        End: return 0
-        Link(value, rest): return value + sum(rest)
+        End => return 0
+        Link(value, rest) => return value + sum(rest)
 
 test "payloadless cases survive clone, equality and drop":
     tree := build(10)

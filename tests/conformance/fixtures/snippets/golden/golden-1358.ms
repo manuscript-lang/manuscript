@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn operation() Result[Void, Error]: ok()
+fn operation() Result[Void, Error] => ok()
 fn caller() Void:
     operation()

@@ -143,7 +143,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 			timeout: 2.seconds(),
 		),
 	):
-		ok(_): return fail("HTTP output budget ignored")
+		ok(_) => return fail("HTTP output budget ignored")
 		error(cause):
 			expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))?
 
@@ -309,7 +309,7 @@ test "HTTP requests reject an empty method":
 			timeout: 1.seconds(),
 		),
 	):
-		ok(_): return fail("empty method accepted")
+		ok(_) => return fail("empty method accepted")
 		error(cause):
 			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
 
@@ -352,7 +352,7 @@ test "a promise cancelled while it owns a WebSocket closes it without ending the
 
 	// The closure takes the socket; its close at the end of the cancelled task parks,
 	// which a cancel still pending on that task used to turn into a process exit.
-	read := promise(fn: socket.input.next()).with(
+	read := promise(() => socket.input.next()).with(
 		options: PromiseOptions(timeout: 50.milliseconds())
 	).wait()
 	expect_true(read.is_error())?

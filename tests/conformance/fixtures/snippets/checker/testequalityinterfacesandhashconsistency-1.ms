@@ -4,6 +4,6 @@
 type Key:
     id Int
 
-fn Key.equals(other Key) Bool: return true
+fn Key.equals(other Key) Bool => return true
 
-fn keys() Map[Key, Int]: return Map[Key, Int]()
+fn keys() Map[Key, Int] => return Map[Key, Int]()

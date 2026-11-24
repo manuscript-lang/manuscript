@@ -19,17 +19,17 @@ fn sub(s String, a Int, b Int) String:
 	if b <= a: return ""
 	return s.view(a, b).clone()
 
-fn is_digit(c Int) Bool: c >= 48 and c <= 57
+fn is_digit(c Int) Bool => c >= 48 and c <= 57
 
-fn is_ident_start(c Int) Bool: (
+fn is_ident_start(c Int) Bool => (
 	(c >= 65 and c <= 90)
 	or (c >= 97 and c <= 122)
 	or c == 95
 )
 
-fn is_word(c Int) Bool: is_ident_start(c) or is_digit(c) or c == 46
+fn is_word(c Int) Bool => is_ident_start(c) or is_digit(c) or c == 46
 
-fn is_ws(c Int) Bool: c == 32 or c == 9 or c == 13
+fn is_ws(c Int) Bool => c == 32 or c == 9 or c == 13
 
 fn is_ident(t String) Bool:
 	if t.length() == 0: return false
@@ -146,7 +146,7 @@ type Sym:
 	text String
 	state Int
 
-fn bad_op(t String) Error: Error(f"invalid operand '{t}'")
+fn bad_op(t String) Error => Error(f"invalid operand '{t}'")
 
 fn split_terms(inner String) List[Term]:
 	var out = List[Term]()
@@ -273,7 +273,7 @@ fn var Asm.define(name String, sym Sym) Void!:
 
 	self.syms[name.clone()] = sym.clone()
 
-fn inval(disp String) Error: Error(f"invalid expression '{disp}'")
+fn inval(disp String) Error => Error(f"invalid expression '{disp}'")
 
 fn var Asm.sym_value(name String) Int!:
 	var found = false

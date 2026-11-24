@@ -46,7 +46,7 @@ export fn main() Int:
     l4 := [1, 2, 3].take(0)
     say(f"l4 = {l4} len {l4.length()}")
 
-    l5 := l4.sorted(fn a, b: a.compare(b))
+    l5 := l4.sorted((a, b) => a.compare(b))
     say(f"l5 = {l5} len {l5.length()}")
 
     var acc6 = 0

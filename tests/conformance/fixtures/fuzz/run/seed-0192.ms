@@ -32,7 +32,7 @@ export fn main() Int:
     l6 := [1, 2, 3].take(0)
     say(f"l6 = {l6} len {l6.length()}")
 
-    l7 := l6.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l7 := l6.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l7 = {l7} len {l7.length()}")
 
     i8 := l6.length()

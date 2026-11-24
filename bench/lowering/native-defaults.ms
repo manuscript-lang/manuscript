@@ -9,9 +9,9 @@ import (
 	Duration from "@std/time.ms",
 )
 
-fn direct_explicit(data Bytes) String: base64_encode(data, false)
+fn direct_explicit(data Bytes) String => base64_encode(data, false)
 
-fn direct_omitted(data Bytes) String: base64_encode(data)
+fn direct_omitted(data Bytes) String => base64_encode(data)
 
 fn bound_explicit(data Bytes) String:
 	encode := base64_encode
@@ -21,11 +21,11 @@ fn bound_omitted(data Bytes) String:
 	encode := base64_encode
 	return encode(data)
 
-fn encode_bind() fn(Bytes, Bool) String: base64_encode
+fn encode_bind() fn(Bytes, Bool) String => base64_encode
 
-fn csv_explicit() CsvOptions: CsvOptions(",", "\n")
+fn csv_explicit() CsvOptions => CsvOptions(",", "\n")
 
-fn csv_omitted() CsvOptions: CsvOptions()
+fn csv_omitted() CsvOptions => CsvOptions()
 
 fn command_explicit() Result[CommandOutput, Error]:
 	return run("", [], RunOptions(input: "".to_bytes())).wait()

@@ -522,8 +522,8 @@ export fn redirect_to_null(stream StdStream) Void!:
 	var which = 2
 
 	match stream:
-		Input: which = 0
-		Output: which = 1
-		Error: which = 2
+		Input => which = 0
+		Output => which = 1
+		Error => which = 2
 
 	return msstd_io_redirect_null(which)

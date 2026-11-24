@@ -61,7 +61,7 @@ For several file reads, give each promise the same signal (this fragment assumes
 ```manuscript
 stop := cancel_switch()
 options := PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
-reads := paths.map(fn path: read_file(path).with(options: options.clone()))
+reads := paths.map(path => read_file(path).with(options: options.clone()))
 stop.cancel()
 ```
 

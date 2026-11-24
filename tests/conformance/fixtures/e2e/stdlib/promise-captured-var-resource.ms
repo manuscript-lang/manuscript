@@ -20,5 +20,5 @@ fn use(var door Door) Int!:
 // when `main` ends and drops its names (`make leak-check` reports a block left behind).
 fn main() Void:
     var door = Door(["front", "back"])
-    moved := promise(fn: use(door))
+    moved := promise(() => use(door))
     print(f"{moved.wait().get_or(0)}")

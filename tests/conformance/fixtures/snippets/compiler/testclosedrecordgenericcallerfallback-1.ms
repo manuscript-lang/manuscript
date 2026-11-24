@@ -11,4 +11,4 @@ fn count[T](value T) Int:
 
     return cell.total
 
-fn probe() Int: return count[String]("unused")
+fn probe() Int => return count[String]("unused")

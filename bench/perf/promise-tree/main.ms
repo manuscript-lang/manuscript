@@ -14,7 +14,7 @@ fn pfib(n Int, cutoff Int) Int!:
 	if n < cutoff: return ok(fib(n))
 
 	m := n - 1
-	p := promise[Int](fn: pfib(m, cutoff))
+	p := promise[Int](() => pfib(m, cutoff))
 	b := pfib(n - 2, cutoff)?
 	a := p.wait()?
 	return ok(a + b)
@@ -33,7 +33,7 @@ fn main() Void:
 	if mode == "fan":
 		var ps List[Promise[Int]] = []
 		for i in 0..k:
-			ps.append(promise[Int](fn: work(n)))
+			ps.append(promise[Int](() => work(n)))
 
 		rs := wait_all(ps).get()
 		for x in rs:

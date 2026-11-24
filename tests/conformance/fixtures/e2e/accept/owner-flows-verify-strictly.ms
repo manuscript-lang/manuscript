@@ -10,7 +10,7 @@ type Lang:
 	id String
 	context List[String]
 
-fn identity[T](result T!) T!: result
+fn identity[T](result T!) T! => result
 
 fn unreadable(path String) String:
 	read := read_file(path).wait()

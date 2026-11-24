@@ -46,7 +46,7 @@ export fn main() Int:
     f9 := ((f5 + (153.711 * f5)) + ((f5 + 44.25) / (0.5 * 0.0)))
     say(f"f9 = {f9}")
 
-    l10 := l4.filter(fn x: x > 5)
+    l10 := l4.filter(x => x > 5)
     say(f"l10 = {l10} len {l10.length()}")
 
     f11 := (f9 + ((f5 * 837.305) * (f5 / f9)))

@@ -34,7 +34,7 @@ On `ok`, `value` holds the `Decimal`. On `error`, the function returns that erro
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn prepare() Void!: ok()
+fn prepare() Void! => ok()
 
 fn ready_label() String!:
     prepare()?

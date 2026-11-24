@@ -8,4 +8,4 @@ type CustomerKey:
 fn CustomerKey.equals(other CustomerKey) Bool:
     return self.id == other.id
 
-fn CustomerKey.hash() Int: self.id
+fn CustomerKey.hash() Int => self.id

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn identity(n Int = 0) Int: return n\n"
+    "fmt": "fn identity(n Int = 0) Int => return n\n"
   }
 }

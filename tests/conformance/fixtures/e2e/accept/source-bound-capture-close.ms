@@ -16,17 +16,17 @@ fn move Marker.close() Void!:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?
 
-fn Marker.status() Int: self.id
+fn Marker.status() Int => self.id
 
-fn Marker.with_default(offset Int = 10) Int: self.id + offset
+fn Marker.with_default(offset Int = 10) Int => self.id + offset
 
-fn Marker.generic[T](_value T) Int: self.id
+fn Marker.generic[T](_value T) Int => self.id
 
 fn var Marker.bump(delta Int = 1) Int:
 	self.id += delta
 	return self.id
 
-fn marker(id Int, log String) Marker: Marker(id, log.clone())
+fn marker(id Int, log String) Marker => Marker(id, log.clone())
 
 fn ordinary(log String) Void!:
 	status := marker(1, log).status

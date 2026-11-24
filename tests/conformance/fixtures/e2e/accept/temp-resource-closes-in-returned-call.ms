@@ -18,7 +18,7 @@ fn through() Int!:
 	return read(make())
 
 fn main() Void!:
-	f := fn() Int!: return read(make())
+	f := fn() Int! => return read(make())
 	void through()
 	print("after through")
 	void f()

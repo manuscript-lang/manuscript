@@ -6,6 +6,6 @@ fn read(values List[Int]) Int:
         number:
             doubled := number * 2
             doubled
-        null: return 0
+        null => return 0
 
     return result

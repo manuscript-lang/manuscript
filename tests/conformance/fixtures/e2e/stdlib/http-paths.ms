@@ -24,8 +24,8 @@ fn route(request HttpRequest) HttpResponse:
 	cookies.add("set-cookie", "b=2")
 
 	fields := match text_headers(cookies):
-		ok(found): found
-		error(cause): return HttpResponse(
+		ok(found) => found
+		error(cause) => return HttpResponse(
 			status: 500,
 			headers: headers(),
 			body: (cause.message.to_bytes()),
@@ -102,7 +102,7 @@ test "streaming routes validate original input and decode once":
 
 fn expect_http_error[T](outcome T!) Void!:
 	match outcome:
-		ok(_): return error(Error("invalid URL succeeded"))
+		ok(_) => return error(Error("invalid URL succeeded"))
 		error(cause):
 			if cause.kind != "EINVAL": return error(
 				Error("malformed URL leaked transport error")

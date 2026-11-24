@@ -114,7 +114,7 @@ fn first_number(text String?) Int?:
 
 An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give away. Bind it with `v := xs.first()` and test `v != null`, or `.clone()` it first.
 
-A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `null:`; `v:` binds the payload. `ms lint` reports a two-arm match as MSL108.
+A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `null =>`; `v =>` binds the payload. `ms lint` reports a two-arm match as MSL108.
 
 Use [Result](../errors/results.md) when a failure needs an explanation.
 

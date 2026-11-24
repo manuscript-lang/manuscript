@@ -1,7 +1,7 @@
 // conform: tags=faults,formatter,parser,tier-core
 // conform: phase=parse
 // conform: origin=tests/e2e/match_bounds_test.go:67 TestBoundedMatchNative
-fn unknown(s Shape) Int: return area(s)
+fn unknown(s Shape) Int => return area(s)
 
 export fn main() Int:
     shapes := [Shape.Circle(2)]

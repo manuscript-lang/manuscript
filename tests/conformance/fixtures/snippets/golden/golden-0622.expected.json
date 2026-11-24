@@ -13,15 +13,15 @@
         "position": {
           "file": "golden-0622.ms",
           "line": 4,
-          "column": 19,
-          "offset": 103
+          "column": 21,
+          "offset": 107
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0622.ms:4:19: type: expected Float?, found Int (in argument 'value' of f)\n   |\n 4 | fn call() Void: f(4)\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0622.ms:4:21: type: expected Float?, found Int (in argument 'value' of f)\n   |\n 4 | fn call() Void => f(4)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

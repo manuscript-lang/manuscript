@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
 fn f() Void:
-    spawn(fn: 1)
+    spawn(() => 1)

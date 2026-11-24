@@ -86,6 +86,6 @@ export fn main() Int:
     f17 := f11
     say(f"f17 = {f17}")
 
-    l18 := l7.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l18 := l7.map(x => x + 2).filter(x => x % 2 == 0)
     say(f"l18 = {l18} len {l18.length()}")
     return 0

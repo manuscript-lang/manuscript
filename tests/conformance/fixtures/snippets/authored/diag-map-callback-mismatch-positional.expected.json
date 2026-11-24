@@ -13,15 +13,15 @@
         "position": {
           "file": "diag-map-callback-mismatch-positional.ms",
           "line": 6,
-          "column": 64,
-          "offset": 228
+          "column": 66,
+          "offset": 232
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-map-callback-mismatch-positional.ms:6:64: type: expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)\n   |\n 6 | fn wrong(values Map[String, Int]) Map[String, Int]: values.map(transform)\n   |                                                                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-map-callback-mismatch-positional.ms:6:66: type: expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)\n   |\n 6 | fn wrong(values Map[String, Int]) Map[String, Int] => values.map(transform)\n   |                                                                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

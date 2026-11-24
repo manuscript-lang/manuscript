@@ -58,7 +58,7 @@ export fn main() Int:
     b10 := ((s8 != s8) or false)
     say(f"b10 = {b10}")
 
-    l11 := l7.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l11 := l7.map(x => x + 1).filter(x => x % 2 == 0)
     say(f"l11 = {l11} len {l11.length()}")
 
     if ((-44) >= (48 * i2)):

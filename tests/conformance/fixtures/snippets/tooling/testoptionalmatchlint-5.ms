@@ -7,5 +7,5 @@ enum Shape:
 
 fn use(value Shape) Int:
     return match value:
-        Dot: 0
-        Line: 1
+        Dot => 0
+        Line => 1

@@ -19,11 +19,11 @@ interface Sink:
 type Counter:
 	base Int
 
-fn Counter.put(item Item, n Int) Int: n + self.base
+fn Counter.put(item Item, n Int) Int => n + self.base
 
-fn keep(item Item, n Int) Int: n + item.id
+fn keep(item Item, n Int) Int => n + item.id
 
-fn pass(item Item, n Int) Item: Item(item.id + n, item.log.clone())
+fn pass(item Item, n Int) Item => Item(item.id + n, item.log.clone())
 
 fn failing(log String) Int:
 	panic("operand failed")
@@ -45,20 +45,20 @@ fn interface_call(log String) Void:
 test "a failing later operand closes a borrowed resource argument":
 	temp := temporary("call-borrowed-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: borrowed_call(log.clone()))?
+	fault := expect_fault(() => borrowed_call(log.clone()))?
 	expect_contains(fault, "operand failed")?
 	expect_equal(events(log)?, "2,")?
 
 test "a failing later operand closes a consumed resource argument":
 	temp := temporary("call-consumed-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: consuming_call(log.clone()))?
+	fault := expect_fault(() => consuming_call(log.clone()))?
 	expect_contains(fault, "operand failed")?
 	expect_equal(events(log)?, "3,")?
 
 test "a failing later operand closes an interface call argument":
 	temp := temporary("call-interface-")?
 	log := f"{temp.path()}/log"
-	fault := expect_fault(fn: interface_call(log.clone()))?
+	fault := expect_fault(() => interface_call(log.clone()))?
 	expect_contains(fault, "operand failed")?
 	expect_equal(events(log)?, "4,")?

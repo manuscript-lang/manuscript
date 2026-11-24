@@ -56,8 +56,8 @@ Manuscript is written tersely: one idea per line, the standard form for each tas
 ```manuscript
 fn check(rows List[String], limit Int) String:
     if rows.is_empty(): return "empty"
-    if rows.any(fn r: r.length() > limit): return "too long"
-    blanks := rows.count(fn r: r.is_empty())
+    if rows.any(r => r.length() > limit): return "too long"
+    blanks := rows.count(r => r.is_empty())
     kind := if blanks == 0: "dense" else: "sparse"
     for i in 0..rows.length():
         if rows[i] == "stop": return f"stopped at {i}"

@@ -16,15 +16,15 @@ fn label(n Int) String:
 	return f"a-long-made-up-place-{n}.ms:{n} in somewhere"
 
 test "a built site string is copied and freed when the work ends":
-	p := promise[Int](fn: fine(3), site: label(7))
+	p := promise[Int](() => fine(3), site: label(7))
 	expect_equal(p.wait()?, 3)?
 
 test "a built site string is freed when the promise is dropped unwaited":
-	_p := promise[Int](fn: fine(3), site: label(8))
+	_p := promise[Int](() => fine(3), site: label(8))
 	expect_equal(1, 1)?
 
 test "a built site string shows in the report":
-	p := promise[Int](fn: boom(3), site: label(9))
+	p := promise[Int](() => boom(3), site: label(9))
 	reason := p.wait() | expect_error?
 	expect_equal(
 		reason.details["report"].contains(

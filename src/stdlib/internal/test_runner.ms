@@ -64,8 +64,8 @@ fn run_range(
 
 	middle := (low + high) / 2
 	upper := promise(
-		fn: ok(run_range(files, middle, high, selected, results)),
-		options: PromiseOptions(placement: Placement.Spread)
+		() => ok(run_range(files, middle, high, selected, results)),
+		options: PromiseOptions(placement: Placement.Spread),
 	)
 	run_range(files, low, middle, selected, results)
 	upper.wait().get()
@@ -79,8 +79,8 @@ fn run_file(
 ) Void:
 	capture := msrt_test_capture_new()
 	result := promise(
-		fn: run_captured(files, position, selected, results, capture),
-		options: PromiseOptions(placement: Placement.Spread)
+		() => run_captured(files, position, selected, results, capture),
+		options: PromiseOptions(placement: Placement.Spread),
 	).wait()
 
 	if result.is_error():

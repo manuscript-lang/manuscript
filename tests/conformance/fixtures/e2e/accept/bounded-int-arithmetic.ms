@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn identity[T](value T) T: return value
+fn identity[T](value T) T => return value
 
 fn bounded_sum() Int:
 	var sum = 0
@@ -87,7 +87,7 @@ fn expression_overflow() Int:
 			n:
 				sum = 9223372036854775807
 				n
-			null: 0
+			null => 0
 
 		sum += value
 		i += 1
@@ -112,30 +112,30 @@ test "bounded scalar sums preserve values":
 
 test "intermediate carry updates still fault":
 	(
-		(expect_fault(fn: _ignored := prefix_overflow())?)
+		(expect_fault(() => _ignored := prefix_overflow())?)
 		| expect_contains("Int overflow;")?
 	)
-	(expect_fault(fn: _ignored := peer_overflow())?) | expect_contains("Int overflow;")?
+	(expect_fault(() => _ignored := peer_overflow())?) | expect_contains("Int overflow;")?
 
 test "counter phases and optional updates still fault":
 	(
-		(expect_fault(fn: _ignored := after_step_overflow())?)
+		(expect_fault(() => _ignored := after_step_overflow())?)
 		| expect_contains("Int overflow;")?
 	)
 	(
 		(
-			expect_fault(fn: _ignored := optional_overflow(flag: true))?
+			expect_fault(() => _ignored := optional_overflow(flag: true))?
 		) | expect_contains("Int overflow;")?
 	)
 	(
 		(
-			expect_fault(fn: _ignored := descending_overflow())?
+			expect_fault(() => _ignored := descending_overflow())?
 		) | expect_contains("Int overflow;")?
 	)
 
 test "statement expression writes discard scalar bounds":
 	(
-		(expect_fault(fn: _ignored := expression_overflow())?)
+		(expect_fault(() => _ignored := expression_overflow())?)
 		| expect_contains("Int overflow;")?
 	)
 

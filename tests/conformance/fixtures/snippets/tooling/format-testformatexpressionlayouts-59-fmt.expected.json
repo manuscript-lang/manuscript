@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Bool:\n\treturn (\n\t\t[[1, 2], [3]].flat_map(\n\t\t\ttransform: fn(value List[Int]) List[Int]: return value\n\t\t) == [1, 2, 3]\n\t)\n"
+    "fmt": "fn work() Bool:\n\treturn (\n\t\t[[1, 2], [3]].flat_map(\n\t\t\ttransform: fn(value List[Int]) List[Int] => return value\n\t\t) == [1, 2, 3]\n\t)\n"
   }
 }

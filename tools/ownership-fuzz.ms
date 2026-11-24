@@ -287,7 +287,7 @@ fn program(seed Int) String:
 	for i in 0..g.rng.int(8, 18): g.step()
 	g.finish()
 
-	body := g.lines.map(fn line: f"\t{line}").join("\n")
+	body := g.lines.map(line => f"\t{line}").join("\n")
 	return f"{HEADER}fn main() Void:\n{body}\n"
 
 // Whether `line` has the shape every value prints with.

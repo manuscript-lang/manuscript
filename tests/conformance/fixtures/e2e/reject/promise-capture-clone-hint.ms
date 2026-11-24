@@ -4,4 +4,4 @@ import Promise, promise from "@std/concurrency/promise.ms"
 
 fn later() fn() Promise[Int]:
     xs := [1, 2, 3]
-    return fn: promise(fn: ok(xs.length()))
+    return () => promise(() => ok(xs.length()))

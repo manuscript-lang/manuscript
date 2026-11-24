@@ -76,7 +76,7 @@ export fn main() Int:
 
     say(f"fib(30) = {fib(30)}")
 
-    l11 := l4.sorted(fn a, b: a.compare(b))
+    l11 := l4.sorted((a, b) => a.compare(b))
     say(f"l11 = {l11} len {l11.length()}")
 
     s12 := s10

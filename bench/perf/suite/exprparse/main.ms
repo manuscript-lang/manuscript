@@ -58,8 +58,8 @@ fn tokenize(text String) List[Tok]:
 
 fn symbol(t Tok) Int:
 	match t:
-		Sym(c): return c
-		Num(_): return 0
+		Sym(c) => return c
+		Num(_) => return 0
 
 fn var Parser.expr() Expr:
 	match self.toks[self.pos]:
@@ -79,7 +79,7 @@ fn var Parser.expr() Expr:
 
 fn eval(e Expr) Int:
 	match e:
-		Lit(v): return v
+		Lit(v) => return v
 		Bin(op, l, r):
 			a := eval(l)
 			b := eval(r)

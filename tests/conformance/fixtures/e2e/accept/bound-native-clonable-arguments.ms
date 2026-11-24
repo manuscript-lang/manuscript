@@ -57,7 +57,7 @@ fn invalid(value String, index Int) Void:
 
 test "invalid bound mutation of a clone leaves the caller payload":
 	text := f"survives-{3}"
-	fault := expect_fault(fn: invalid(text, 2))?
+	fault := expect_fault(() => invalid(text, 2))?
 	expect_contains(fault, "index")?
 	expect_equal(text, "survives-3")?
 

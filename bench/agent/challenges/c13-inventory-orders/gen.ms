@@ -10,9 +10,9 @@ SKU := "[A-Z0-9-]+"
 OID := "[a-z0-9-]+"
 NUM := "[0-9]{1,7}"
 
-fn money(c Int) String: f"{c / 100}.{f"{c % 100}".pad_start(2, "0")}"
+fn money(c Int) String => f"{c / 100}.{f"{c % 100}".pad_start(2, "0")}"
 
-fn qty_ok(s String) Bool: (
+fn qty_ok(s String) Bool => (
 	full_match(NUM, s)
 	and (s.parse_int() or 0) >= 1
 	and (s.parse_int() or 0) <= 100000
@@ -185,23 +185,23 @@ fn solve(s String) String:
 					f"{sku} stock={stock.get_or(sku, 0)} price={money(price.get_or(sku, 0))} reserved={reserved.get_or(sku, 0)}"
 				)
 
-			placed := order_ids.count(fn o: order_status.get_or(o, "") == "placed")
-			shipped := order_ids.count(fn o: order_status.get_or(o, "") == "shipped")
+			placed := order_ids.count(o => order_status.get_or(o, "") == "placed")
+			shipped := order_ids.count(o => order_status.get_or(o, "") == "shipped")
 			cancelled := order_ids.count(
-				fn o: (order_status.get_or(o, "") == "cancelled")
+				o => (order_status.get_or(o, "") == "cancelled")
 			)
 			out.append(
 				f"orders placed={placed} shipped={shipped} cancelled={cancelled}"
 			)
 
 			revenue := order_ids.filter(
-				fn o: order_status.get_or(o, "") == "shipped"
-			).map(fn o: order_total.get_or(o, 0)).sum()
+				o => order_status.get_or(o, "") == "shipped"
+			).map(o => order_total.get_or(o, 0)).sum()
 			out.append(f"revenue={money(revenue)}")
 
-	return out.map(fn x: x + "\n").join("")
+	return out.map(x => x + "\n").join("")
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 export fn gen_c13() Void:
 	var rnd = seeded(13)

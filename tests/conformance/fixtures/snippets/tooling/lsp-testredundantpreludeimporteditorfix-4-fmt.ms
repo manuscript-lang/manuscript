@@ -6,4 +6,4 @@ import (
     ListEntry,
 ) from "@std/collections/collections.ms"
 
-fn count() Int: List[Int]().length() + List[Int]().length()
+fn count() Int => List[Int]().length() + List[Int]().length()

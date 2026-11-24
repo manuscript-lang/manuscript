@@ -13,13 +13,13 @@ import (
 
 fn children(node HtmlNode) List[HtmlNode]:
 	match node:
-		Document(items): return items.clone()
-		Element(_, _, _, items): return items.clone()
-		_: return []
+		Document(items) => return items.clone()
+		Element(_, _, _, items) => return items.clone()
+		_ => return []
 
 fn text_content(node HtmlNode) String:
 	match node:
-		Text(text): return text.clone()
+		Text(text) => return text.clone()
 		Document(items):
 			var text = ""
 			for item in items: text = f"{text}{text_content(item)}"
@@ -28,7 +28,7 @@ fn text_content(node HtmlNode) String:
 			var text = ""
 			for item in items: text = f"{text}{text_content(item)}"
 			return text
-		_: return ""
+		_ => return ""
 
 fn body_nodes(node HtmlNode) List[HtmlNode]:
 	html := children(node).get(0).clone()
@@ -74,7 +74,7 @@ test "HTML parses nested elements attributes entities and comments":
 					)
 				)
 			)?
-		_: return fail("expected element")
+		_ => return fail("expected element")
 
 	expect_equal(text_content(doc), "Hello é🙂 <world>")?
 
@@ -93,7 +93,7 @@ test "HTML recovers unclosed tags and inserts document and table structure":
 	match children(nodes.get(1).clone()).get(0).clone():
 		Element(tag, _, _, _):
 			expect_equal(tag, "tbody")?
-		_: return fail("expected tbody")
+		_ => return fail("expected tbody")
 
 	expect_equal(text_content(nodes.get(1).clone()), "cell")?
 
@@ -122,7 +122,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 		Element(tag, namespace, _, items):
 			expect_false(tag != "svg" or namespace != "svg")?
 			items.clone()
-		_: return fail("expected SVG")
+		_ => return fail("expected SVG")
 
 	match svg_items.get(0):
 		Element(_, child_namespace, attributes, _):
@@ -136,7 +136,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 					)
 				)
 			)?
-		_: return fail("expected SVG anchor")
+		_ => return fail("expected SVG anchor")
 
 	expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")?
 

@@ -13,7 +13,7 @@ test "list elements read before a later match assigns them":
             value:
                 x = 50
                 value
-            null: 0
+            null => 0
         ,
         x
     ]
@@ -25,7 +25,7 @@ test "list elements read before a later match assigns them":
             value:
                 y = "z"
                 value
-            null: ""
+            null => ""
     ]
     expect_equal(texts, ["a", "b"])?
 
@@ -36,7 +36,7 @@ test "map keys read before a later match assigns them":
             value:
                 key = 50
                 value
-            null: 0
+            null => 0
         ,
         key: key
     }
@@ -49,7 +49,7 @@ test "generic binary operands read before a later match assigns them":
         value:
             amount = 100d
             value
-        null: 0d
+        null => 0d
     expect_equal(sum, 4d)?
 
 type Cell:
@@ -63,7 +63,7 @@ test "field assignment keeps sibling field writes made while evaluating the valu
         value:
             cell.s = "changed"
             value
-        null: 0
+        null => 0
 
     expect_equal(cell.n, 2)?
     expect_equal(cell.s, "changed")?

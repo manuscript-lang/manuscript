@@ -3,7 +3,7 @@
 // conform: origin=bench/language/calls.ms
 import panic from "@std/core.ms"
 
-fn add(a Int, b Int) Int: a + b
+fn add(a Int, b Int) Int => a + b
 
 export fn main() Int:
     var sum = 0

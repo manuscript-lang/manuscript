@@ -14,13 +14,13 @@
           "file": "golden-1352.ms",
           "line": 15,
           "column": 1,
-          "offset": 233
+          "offset": 236
         },
         "end": {
           "file": "golden-1352.ms",
           "line": 15,
           "column": 5,
-          "offset": 237
+          "offset": 240
         }
       },
       {
@@ -31,26 +31,26 @@
           "file": "golden-1352.ms",
           "line": 18,
           "column": 11,
-          "offset": 337
+          "offset": 342
         },
         "end": {
           "file": "golden-1352.ms",
           "line": 18,
           "column": 12,
-          "offset": 338
+          "offset": 343
         },
         "fix": {
           "position": {
             "file": "golden-1352.ms",
             "line": 18,
             "column": 11,
-            "offset": 337
+            "offset": 342
           },
           "end": {
             "file": "golden-1352.ms",
             "line": 18,
             "column": 12,
-            "offset": 338
+            "offset": 343
           },
           "replacement": ""
         }

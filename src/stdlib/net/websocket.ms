@@ -66,9 +66,9 @@ type WebSocketSink:
 // payload over `max_message_bytes` returns EOVERFLOW.
 fn var WebSocketSink.write(move value WebSocketMessage) Void!:
 	match value.kind:
-		Text: return msstd_websocket_send_bytes(self.native, value.data, true)
-		Binary: return msstd_websocket_send_bytes(self.native, value.data, false)
-		Ping: return msstd_websocket_ping_bytes(self.native, value.data)
+		Text => return msstd_websocket_send_bytes(self.native, value.data, true)
+		Binary => return msstd_websocket_send_bytes(self.native, value.data, false)
+		Ping => return msstd_websocket_ping_bytes(self.native, value.data)
 
 fn var WebSocketSink.flush() Void!:
 	return ok()

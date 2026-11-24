@@ -31,26 +31,26 @@
           "file": "golden-0193.ms",
           "line": 7,
           "column": 19,
-          "offset": 164
+          "offset": 166
         },
         "end": {
           "file": "golden-0193.ms",
           "line": 7,
           "column": 20,
-          "offset": 165
+          "offset": 167
         },
         "fix": {
           "position": {
             "file": "golden-0193.ms",
             "line": 7,
             "column": 19,
-            "offset": 164
+            "offset": 166
           },
           "end": {
             "file": "golden-0193.ms",
             "line": 7,
             "column": 20,
-            "offset": 165
+            "offset": 167
           },
           "replacement": ""
         }

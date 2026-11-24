@@ -19,7 +19,7 @@ type Key:
 fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
-fn Key.hash() Int: self.id
+fn Key.hash() Int => self.id
 
 type Resource:
 	dir String
@@ -41,7 +41,7 @@ fn propagate(result Int!) Int!:
 	return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-	create := fn() Int?: 42
+	create := fn() Int? => 42
 	present Int? := 0
 	missing Int? := null
 	expect_equal((present or create()) or panic("called Optional.get() on null"), 0)?

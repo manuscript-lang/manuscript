@@ -7,6 +7,6 @@ interface Read:
 type Box:
     value Int
 
-fn Box.get() Int: self.value
+fn Box.get() Int => self.value
 
-fn first() Read: identity(Box(1))
+fn first() Read => identity(Box(1))

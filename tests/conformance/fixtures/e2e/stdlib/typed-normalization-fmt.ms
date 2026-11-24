@@ -22,10 +22,10 @@ test "typed Unicode forms retain normalization and bound dispatch":
         NormalizationForm.Nfkd
     ]:
         spelling := match form:
-            Nfc: "NFC"
-            Nfd: "NFD"
-            Nfkc: "NFKC"
-            Nfkd: "NFKD"
+            Nfc => "NFC"
+            Nfd => "NFD"
+            Nfkc => "NFKC"
+            Nfkd => "NFKD"
 
         expect_equal(form.normalize("ﬁé").get(), "ﬁé".normalize(spelling).get())?
 

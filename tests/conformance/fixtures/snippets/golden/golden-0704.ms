@@ -7,4 +7,4 @@ fn count[T](value T) Int:
         cell.bump(1)
         i += 1
     return cell.total
-fn probe() Int: return count[String]("unused")
+fn probe() Int => return count[String]("unused")

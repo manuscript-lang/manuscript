@@ -144,5 +144,5 @@ fn run(names List[String]) Result[String, Error]:
 fn main() Int:
 	names := env("NAMES", "small twitter canada citm_catalog records").split(
 		" "
-	).filter(fn s: (s != ""))
+	).filter(s => (s != ""))
 	return finish(run(names))

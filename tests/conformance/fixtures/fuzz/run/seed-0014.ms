@@ -48,7 +48,7 @@ export fn main() Int:
     say(f"f3 = {f3}")
     say(f"fib(14) = {fib(14)}")
 
-    l4 := l2.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l4 := l2.map(x => x + 2).filter(x => x % 2 == 0)
     say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (43728392264 % ((-9) * 25))

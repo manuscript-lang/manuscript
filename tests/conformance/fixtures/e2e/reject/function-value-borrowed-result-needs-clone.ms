@@ -12,4 +12,4 @@ fn named(s String) String:
 	return apply(identity, s)
 
 fn wrapped(s String) String:
-	return apply(fn text: identity(text).clone(), s)
+	return apply(text => identity(text).clone(), s)

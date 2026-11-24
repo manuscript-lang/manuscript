@@ -386,9 +386,9 @@ fn move FileSink.close() Void!:
 
 fn seek_origin(origin Seek) Int:
 	match origin:
-		Start: return 0
-		Current: return 1
-		End: return 2
+		Start => return 0
+		Current => return 1
+		End => return 2
 
 // The runtime handle behind a `Directory`.
 export extern type NativeDirectory
@@ -652,9 +652,9 @@ fn copy_flags(options CopyOptions) Int:
 
 fn clone_text(mode CloneMode) String:
 	match mode:
-		Off: return "none"
-		Prefer: return "try"
-		Require: return "force"
+		Off => return "none"
+		Prefer => return "try"
+		Require => return "force"
 
 /*
 Copies a file or, with `options.recursive`, a directory tree.
@@ -732,7 +732,7 @@ fn invalid_input() Error:
 // ms: effect std.fs.read
 export fn read_file(path String, max_bytes Int? = null) Promise[Bytes]:
 	owned := path.clone()
-	return promise_when_idle(fn: msstd_fs_read_file(owned, max_bytes))
+	return promise_when_idle(() => msstd_fs_read_file(owned, max_bytes))
 
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
 // A path that is not a link returns EINVAL.
@@ -793,8 +793,8 @@ export fn write_file(path String, data Writable, replace Bool = false) Promise[V
 	held := msstd_fs_admit(payload.length())
 	owned := path.clone()
 	return promise(
-		fn: write_held(owned, payload, replace, held),
-		options: PromiseOptions(placement: Placement.Here)
+		() => write_held(owned, payload, replace, held),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // The work of `write_file`. The task runs at once, so the slot frees the moment the
@@ -821,8 +821,8 @@ export fn append_file(path String, data Writable) Promise[Void]:
 	held := msstd_fs_admit(payload.length())
 	owned := path.clone()
 	return promise(
-		fn: append_held(owned, payload, held),
-		options: PromiseOptions(placement: Placement.Here)
+		() => append_held(owned, payload, held),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 fn append_held(path String, data Bytes, held Bool) Void!:
@@ -871,12 +871,12 @@ export fn create_hard_link(source String, destination String) Void!:
 // The runtime's mode text: `x` after the first letter makes creation exclusive.
 fn open_flags(mode OpenMode, exclusive Bool) String:
 	match mode:
-		Read: return "r"
-		ReadWrite: return "r+"
-		Write: return if exclusive: "wx" else: "w"
-		WriteRead: return if exclusive: "wx+" else: "w+"
-		Append: return if exclusive: "ax" else: "a"
-		AppendRead: return if exclusive: "ax+" else: "a+"
+		Read => return "r"
+		ReadWrite => return "r+"
+		Write => return if exclusive: "wx" else: "w"
+		WriteRead => return if exclusive: "wx+" else: "w+"
+		Append => return if exclusive: "ax" else: "a"
+		AppendRead => return if exclusive: "ax+" else: "a+"
 
 /*
 Opens `path` in `mode` (default `Read`). `options.exclusive` makes creation fail with EEXIST when the file exists;
@@ -919,8 +919,8 @@ export fn write_atomic(path String, data Writable) Promise[Void]:
 	payload := data.as_bytes()
 	owned := path.clone()
 	return promise(
-		fn: replace_atomically(owned, payload),
-		options: PromiseOptions(placement: Placement.Here)
+		() => replace_atomically(owned, payload),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // The file a write to `path` replaces: the target of a symbolic link, so the link

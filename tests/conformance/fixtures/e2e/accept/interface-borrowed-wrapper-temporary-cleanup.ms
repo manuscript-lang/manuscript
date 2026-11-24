@@ -47,19 +47,19 @@ fn Reader.change(var value Resource) Void:
 fn Reader.fault_with_var(var value Resource) Void:
 	_bad := [value.id].get(3)
 
-fn Reader.result(value Result[Resource, String]) Bool: value.is_ok()
+fn Reader.result(value Result[Resource, String]) Bool => value.is_ok()
 
-fn present(path String, id Int) Resource?: Resource(id, path.clone())
+fn present(path String, id Int) Resource? => Resource(id, path.clone())
 
 fn log_text(path String) String!:
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
 
-fn rejected() Int!: error(Error("expected"))
+fn rejected() Int! => error(Error("expected"))
 
-fn accepted() Int!: ok(1)
+fn accepted() Int! => ok(1)
 
-fn faulted() Int: [1].get(3)
+fn faulted() Int => [1].get(3)
 
 fn later_error(reader Observer, path String) Void!:
 	_used := reader.observe(present(path, 10), present(path, 11), rejected()?)
@@ -107,7 +107,7 @@ test "interface arguments retain cleanup through later try and faults":
 	expect_equal(later_error(reader, path).is_error(), true)?
 	later_success(reader, path)?
 
-	_fault := expect_fault(fn: later_fault(reader, path))?
+	_fault := expect_fault(() => later_fault(reader, path))?
 	expect_equal(log_text(path)?, "11,10,13,12,15,14,")?
 
 test "interface callee errors faults and new owners preserve cleanup":
@@ -118,8 +118,8 @@ test "interface callee errors faults and new owners preserve cleanup":
 	reader Observer := Reader(1)
 	expect_equal(reader.reject(present(path, 20)).is_error(), true)?
 
-	_fault := expect_fault(fn: reader.broken(present(path, 21)))?
-	_new := expect_fault(fn: new_owner_fault(reader, path))?
+	_fault := expect_fault(() => reader.broken(present(path, 21)))?
+	_new := expect_fault(() => new_owner_fault(reader, path))?
 	expect_equal(log_text(path)?, "20,21,49,50,")?
 
 test "interface resource var arguments preserve their owners":
@@ -139,7 +139,7 @@ test "interface failed temporary close leaves older owner registered":
 	write_file(path, "").wait()?
 
 	reader Observer := Reader(1)
-	_fault := expect_fault(fn: failed_close(reader, path))?
+	_fault := expect_fault(() => failed_close(reader, path))?
 	expect_equal(log_text(path)?, "98,99,")?
 
 fn named_var_fault(reader Observer, path String) Void:
@@ -155,7 +155,7 @@ test "interface var fault retains the caller cleanup":
 	write_file(path, "").wait()?
 
 	reader Observer := Reader(1)
-	_fault := expect_fault(fn: named_var_fault(reader, path))?
+	_fault := expect_fault(() => named_var_fault(reader, path))?
 	expect_equal(log_text(path)?, "60,")?
 
 test "interface Result temporaries and loop conditions keep cleanup bounded":

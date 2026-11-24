@@ -40,18 +40,18 @@ fn nested_try(var rows List[List[Int]], var events List[Int]) Void!:
 
 test "an earlier list fault prevents a later index":
 	var rows = [[0]]
-	message := expect_fault(fn: rows[9][later_fault()] = 7)?
+	message := expect_fault(() => rows[9][later_fault()] = 7)?
 	expect_contains(message, "out of range")?
 
 test "an earlier map fault prevents a later index":
 	var rows Map[String, List[Int]] = {"present": [0]}
-	message := expect_fault(fn: rows["missing"][later_fault()] = 7)?
+	message := expect_fault(() => rows["missing"][later_fault()] = 7)?
 	expect_contains(message, "map key not found")?
 
 test "an earlier receiver fault precedes a later try exit":
 	var rows = [[0]]
 	var events List[Int] = []
-	void expect_fault(fn: void nested_try(rows, events))?
+	void expect_fault(() => void nested_try(rows, events))?
 	expect_equal(events, [])?
 
 test "a changing source receiver selects its cell once":
@@ -83,12 +83,12 @@ test "implicit and explicit changing arguments retain their own selections":
 
 test "a native receiver fault precedes its argument":
 	var rows = [[0]]
-	message := expect_fault(fn: rows[9].append(later_fault()))?
+	message := expect_fault(() => rows[9].append(later_fault()))?
 	expect_contains(message, "out of range")?
 
 test "a source receiver fault precedes its argument":
 	var cells = [Cell(1)]
-	message := expect_fault(fn: cells[9].add(later_fault()))?
+	message := expect_fault(() => cells[9].add(later_fault()))?
 	expect_contains(message, "out of range")?
 
 interface Change:
@@ -130,7 +130,7 @@ test "an indexed map fast path evaluates its receiver before its key":
 test "an indexed map fast path faults before evaluating its key":
 	var maps List[Map[String, Int]] = [{}]
 	var events List[Int] = []
-	void expect_fault(fn: maps[9].add(key(events), 9))?
+	void expect_fault(() => maps[9].add(key(events), 9))?
 	expect_equal(events, [])?
 
 fn owned_key(var calls Int) String:
@@ -160,17 +160,17 @@ test "a nested mutable call inside an index keeps both selections":
 
 test "a nested field assignment stops at its first invalid receiver":
 	var cells = [[Cell(1)]]
-	message := expect_fault(fn: cells[9][later_fault()].value = 7)?
+	message := expect_fault(() => cells[9][later_fault()].value = 7)?
 	expect_contains(message, "out of range")?
 
 test "an explicit var argument stops at the first invalid receiver":
 	var rows = [[0]]
-	message := expect_fault(fn: bump(rows[9][later_fault()], 7))?
+	message := expect_fault(() => bump(rows[9][later_fault()], 7))?
 	expect_contains(message, "out of range")?
 
 test "an implicit nested source receiver stops before its later index":
 	var cells = [[Cell(1)]]
-	message := expect_fault(fn: cells[9][later_fault()].add(7))?
+	message := expect_fault(() => cells[9][later_fault()].add(7))?
 	expect_contains(message, "out of range")?
 
 test "a borrowed key fast path selects its indexed receiver first":
@@ -184,7 +184,7 @@ test "a borrowed key fast path selects its indexed receiver first":
 test "a borrowed key fast path faults before its value argument":
 	var maps List[Map[String, Int]] = [{}]
 	key := "key"
-	message := expect_fault(fn: maps[9].add(key.clone(), later_fault()))?
+	message := expect_fault(() => maps[9].add(key.clone(), later_fault()))?
 	expect_contains(message, "out of range")?
 
 fn later_fault() Int:

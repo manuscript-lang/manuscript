@@ -21,7 +21,7 @@ export fn main() Int:
     l4 := [4, 1, (-29), (-8)]
     say(f"l4 = {l4} len {l4.length()}")
 
-    l5 := l4.sorted(fn a, b: a.compare(b))
+    l5 := l4.sorted((a, b) => a.compare(b))
     say(f"l5 = {l5} len {l5.length()}")
 
     i6 := i1

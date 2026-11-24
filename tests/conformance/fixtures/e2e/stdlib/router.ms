@@ -39,7 +39,7 @@ fn request(method HttpMethod, path String) HttpRequest:
 	)
 
 fn say(label String) fn(var HttpExchange, RouteParams) Void!:
-	return fn var exchange, params: reply(exchange, text(200, label.clone()))
+	return (var exchange, params) => reply(exchange, text(200, label.clone()))
 
 fn show(var exchange HttpExchange, params RouteParams) Void!:
 	id := params.get_or("id", "-")
@@ -159,7 +159,7 @@ test "invalid and duplicate patterns are rejected":
 	r.post("/a/:y", say("y")).get()
 
 fn tag(label String) fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
-	return fn var exchange, next: tagged(label.clone(), exchange, next)
+	return (var exchange, next) => tagged(label.clone(), exchange, next)
 
 fn tagged(
 	label String,
@@ -208,7 +208,7 @@ test "a handler error comes back from call":
 
 test "a handler that sends nothing answers 204":
 	var r = Router()
-	r.get("/n", fn var exchange, params: ok()).get()
+	r.get("/n", (var exchange, params) => ok()).get()
 	expect_equal((r.call(get("/n"))?).status, 204)?
 
 fn whole_response(var exchange HttpExchange, params RouteParams) Void!:

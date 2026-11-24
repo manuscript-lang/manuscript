@@ -38,7 +38,7 @@ export fn main() Int:
     l5 := [(-10), (-8)]
     say(f"l5 = {l5} len {l5.length()}")
 
-    l6 := l5.map(fn x: x * 4)
+    l6 := l5.map(x => x * 4)
     say(f"l6 = {l6} len {l6.length()}")
 
     l7 := [(-8), (-16), 20, (-6), (-23)]

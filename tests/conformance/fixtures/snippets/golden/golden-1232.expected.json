@@ -13,21 +13,21 @@
         "position": {
           "file": "golden-1232.ms",
           "line": 4,
-          "column": 20,
-          "offset": 105
+          "column": 22,
+          "offset": 109
         },
         "fix": {
           "position": {
             "file": "golden-1232.ms",
             "line": 4,
-            "column": 20,
-            "offset": 105
+            "column": 22,
+            "offset": 109
           },
           "end": {
             "file": "golden-1232.ms",
             "line": 4,
-            "column": 31,
-            "offset": 116
+            "column": 33,
+            "offset": 120
           },
           "replacement": "f\"{identity(1)}\""
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1232.ms:4:20: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 4 | fn first() String: identity(1)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1232.ms:4:22: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 4 | fn first() String => identity(1)\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

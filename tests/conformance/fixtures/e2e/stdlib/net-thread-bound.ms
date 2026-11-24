@@ -14,7 +14,7 @@ fn open_one(net Network) String!:
 
 test "a network used in a promise on another thread keeps working":
 	net := with_resolver("127.0.0.1:53") | expect_ok?
-	p := promise(fn: open_one(net))
+	p := promise(() => open_one(net))
 	var n = 0
 	for i in 0..1500000000:
 		n += i % 7

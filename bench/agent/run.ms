@@ -67,7 +67,7 @@ type Options:
 	out String = f"{root()}/results/runs.jsonl"
 
 fn split_ids(text String) List[String]:
-	return text.split(",").filter(fn x: not x.is_empty())
+	return text.split(",").filter(x => not x.is_empty())
 
 // Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none
 // without tiktoken.
@@ -250,7 +250,7 @@ fn cmd_list(o Options) Int!:
 		)
 	(
 		stdout().write(
-			f"languages: {load_languages([]).map(fn l: l.id.clone()).join(", ")}\n"
+			f"languages: {load_languages([]).map(l => l.id.clone()).join(", ")}\n"
 		).get()
 	)
 	print(f"harnesses: {names().join(", ")}")
@@ -293,8 +293,8 @@ fn cmd_run(opts Options, oracle Bool) Int!:
 	for w in 0..jobs:
 		running.append(
 			spawn(
-				todo.entries().filter(fn e: e.index % jobs == w).map(
-					fn e: (e.value.clone())
+				todo.entries().filter(e => e.index % jobs == w).map(
+					e => (e.value.clone())
 				),
 				h.name(),
 				o.clone(),
@@ -306,7 +306,7 @@ fn cmd_run(opts Options, oracle Bool) Int!:
 	return ok(if bad > 0 and oracle: 1 else: 0)
 
 fn spawn(mine List[Job], me String, own Options, label String) Promise[Int]:
-	return promise(fn: ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
+	return promise(() => ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
 
 fn main() Int:
 	flags := [
@@ -350,19 +350,19 @@ fn main() Int:
 			command[Options](
 				name: "list",
 				about: "list challenges and languages",
-				run: fn o: cmd_list(o)
+				run: o => cmd_list(o),
 			),
 			command[Options](
 				name: "run",
 				about: "run agents on challenges",
 				flags: run_flags,
-				run: fn o: cmd_run(o, false)
+				run: o => cmd_run(o, false),
 			),
 			command[Options](
 				name: "oracle",
 				about: "run reference solutions through the grader (validates tests)",
 				flags: flags,
-				run: fn o: cmd_run(o, true)
+				run: o => cmd_run(o, true),
 			),
 		],
 	)

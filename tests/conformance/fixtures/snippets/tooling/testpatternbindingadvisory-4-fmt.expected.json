@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Flag:\n\tReady\n\nfn use(value Int?) Int:\n\tmatch value:\n\t\tready: return Ready\n\t\tnull: return 0\n"
+    "fmt": "enum Flag:\n\tReady\n\nfn use(value Int?) Int:\n\tmatch value:\n\t\tready => return Ready\n\t\tnull => return 0\n"
   }
 }

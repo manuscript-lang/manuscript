@@ -38,10 +38,11 @@ fn main() Void:
 	each_cell(data, visit).get()
 	print(f"rows: {rows}")
 	print(f"quoted: {quoted}")
-	for e in regions.entries().sorted(fn a, b: a.key.compare(b.key)):
+	for e in regions.entries().sorted((a, b) => a.key.compare(b.key)):
 		print(f"{e.key} {e.value.rows} {e.value.cents}")
 	for e in products.entries().sorted(
-		fn a,
-		b: if a.value != b.value: b.value - a.value else: a.key.compare(b.key)
+		(a, b) => if a.value != b.value: b.value - a.value else: a.key.compare(
+			b.key
+		)
 	).slice(0, 5).get():
 		print(f"{e.key} {e.value}")

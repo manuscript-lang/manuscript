@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import List, Map, Set from \"@std/collections/collections.ms\"\n\nfn get() Int: List[Int]().length() + Map[Int, Int]().length() + Set[Int]().length()\n"
+    "fmt": "import List, Map, Set from \"@std/collections/collections.ms\"\n\nfn get() Int => List[Int]().length() + Map[Int, Int]().length() + Set[Int]().length()\n"
   }
 }

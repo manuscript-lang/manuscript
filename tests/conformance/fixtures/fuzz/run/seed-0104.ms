@@ -45,7 +45,7 @@ export fn main() Int:
     l2 := [(-14), 26]
     say(f"l2 = {l2} len {l2.length()}")
 
-    l3 := l2.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l3 := l2.map(x => x + 4).filter(x => x % 2 == 0)
     say(f"l3 = {l3} len {l3.length()}")
 
     l4 := [0, 5, (-24), 6]
@@ -100,6 +100,6 @@ export fn main() Int:
     else:
         say("日本語")
 
-    l14 := l4.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l14 := l4.map(x => x + 2).filter(x => x % 2 == 0)
     say(f"l14 = {l14} len {l14.length()}")
     return 0

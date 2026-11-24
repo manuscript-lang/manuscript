@@ -61,7 +61,7 @@ export fn main() Int:
     l9 := l4.concat(l5)
     say(f"l9 = {l9} len {l9.length()}")
 
-    l10 := l9.filter(fn x: x > (-2))
+    l10 := l9.filter(x => x > (-2))
     say(f"l10 = {l10} len {l10.length()}")
 
     s11 := (f"{l9.length()}:" + "beta").trim()

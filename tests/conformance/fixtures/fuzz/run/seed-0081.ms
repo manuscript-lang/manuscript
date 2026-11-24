@@ -18,7 +18,7 @@ export fn main() Int:
     l3 := [1, 2, 3].take(0)
     say(f"l3 = {l3} len {l3.length()}")
 
-    l4 := l3.map(fn x: x * 8)
+    l4 := l3.map(x => x * 8)
     say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (((i1 + i1) - (29 - (-8))) + (((-50858) - (-25)) - (-24)))

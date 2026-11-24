@@ -64,8 +64,8 @@ type Shape_Circle:
 
 fn side(shape Shape) Int:
     match shape:
-        Circle(radius): return radius
-        Square(side): return side
+        Circle(radius) => return radius
+        Square(side) => return side
 
 test "declared names stay apart from instantiation and case names":
     boxed := Box[Int](1)

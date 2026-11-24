@@ -64,7 +64,7 @@ No identifier character may follow a numeric token except the `d` suffix. Leadin
 
 ### Anonymous-function suites inside delimiters
 
-Inside a call, list, or grouping, a function expression may have an inline suite (ending at the enclosing comma or closer) or an indented suite, which is the exception to newline suppression. At the header's `:`:
+Inside a call, list, or grouping, a function expression may have an inline `=>` body (ending at the enclosing comma or closer) or an indented suite after `:`, which is the exception to newline suppression. At the header's `:`:
 
 1. Record the delimiter depth and the line's leading indentation (not the column of `fn`).
 2. The next significant line must add exactly four spaces.
@@ -97,7 +97,7 @@ fn offset() Int:
     )
 ```
 
-Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value (it can be a conditional expression: `fn value: if value > 0: value else: 0`), while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
+Use `value => value - 1` when context supplies the parameter type; a `=>` body is one expression and returns its value (it can be a conditional expression: `value => if value > 0: value else: 0`), while indented bodies after `fn value:` use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
 <!-- manuscript-example: {"mode":"fragment","context":"fn apply(value Int, transform fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
 ```manuscript
@@ -148,7 +148,11 @@ ReceiverArgument = Name, [ Bound ] | Type ;
 (* The receiver names the declared type, with one argument per type parameter: its name, optionally bounded, or a concrete type. *)
 ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
-FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
+FunctionSuite = "=>", (Expression | SimpleStatement)
+              | ":", ("...", NEWLINE | NEWLINE, INDENT, { Statement }, DEDENT) ;
+ArrowFunction = (Name | "(", [ ParameterNames ], ")"), "=>", (Expression | SimpleStatement) ;
+ParameterNames = ParameterName, { ",", ParameterName } ;
+ParameterName = [ "var" | "move" ], Name | Pattern ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 (* A test body behaves as if it returns Result[Void, Error]: completing, bare return, or `return` succeeds; a postfix `?` or return error(...) fails it. *)
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
@@ -173,7 +177,7 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
 - A `type Name = Type` declares an [alias](../types/named-types.md#aliases): another name for the same type, or with `|` a [type set](../types/generics.md#type-sets) that bounds a type parameter. A `type Name:` declares record fields; an `enum` declares one or more variants. Their methods are receiver methods, `fn Type.name(...)`, written beside the type; a type satisfies an interface by having methods that match it. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
-- A result type follows the parameter list with no arrow (`fn double(value Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value Int) Int: value * 2`).
+- A result type follows the parameter list with no arrow (`fn double(value Int) Int:`); `->` is rejected with the remedy. An anonymous function with untyped parameters is written `value => value * 2`, `(a, b) => a + b` or `() => 1`; typing a parameter or declaring a result keeps `fn` (`fn(value Int) Int => value * 2`). A longer body follows `fn value:` or `fn(value Int) Int:` on indented lines.
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/named-types.md#construction), and `= null` on Optional interface parameters. Function types and enum payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
 - A named function or method body may be `...` (`fn read_bytes(count Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. In the standard library, a property interface uses `interface Name: ...`; an empty implementation may supply a marker interface. Test, bench, and control-flow suites are nonempty.
@@ -210,8 +214,8 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
 MatchArm      = (CasePattern | LiteralPattern | "_"), ArmSuite ;
 LiteralPattern = [ "-" ], Number | String | "true" | "false" ;
-ArmSuite      = ":", (SimpleStatement | Expression
-              | NEWLINE, INDENT, { Statement }, [ Expression, NEWLINE ], DEDENT) ;
+ArmSuite      = "=>", (SimpleStatement | Expression)
+              | ":", NEWLINE, INDENT, { Statement }, [ Expression, NEWLINE ], DEDENT ;
 CasePattern   = CasePath, [ "(", PayloadNames, ")" ] ;
 CasePath      = Name, [ TypeArguments ], { ".", Name } ;
 PayloadNames  = (Name | "_"), { ",", (Name | "_") }, [ "," ] ;
@@ -225,20 +229,20 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - `void expression` runs the expression and drops its result on purpose; `void` alone is the Void value. `CallStatement` accepts a call or match and discards the result, or `call()?` when the success type is `Void` ([propagation](../errors/propagation.md)). Bare names and arithmetic are not statements.
 - Assignment replaces a `var` or record field. `target op= value` means `target = target op (value)`; write the operator and `=` adjacent. The target is mutable storage: a name, field path (`box.inner.count += 1`), list index (`values[i] += 1`), or map entry (`stock[line.sku] -= line.qty`). The index of a compound target is a name, field path or literal, so it is read twice without effect; the store takes a clone of the key and the name stays usable. Calls cannot be assignment targets. `+=` appends text; `-=` on text is an error.
 - Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` discards a binding or match payload and is the wildcard match arm; it cannot be read as a value.
-- Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
+- Inline suites (tests, branches, loops) hold one simple statement after `:`, no nested compound statements. A one-line function or method body is written `=>` and holds one expression, which is returned:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn double(value Int) Int: value * 2
+fn double(value Int) Int => value * 2
 fn positive(value Int) Bool:
     if value > 0: return true
     else: return false
 ```
 
 - `else if` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
-- A match arm holds one statement or value inline, or statements then a value when indented.
+- A match arm is `pattern => value` (or one statement) on one line, or `pattern:` followed by indented statements then a value.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
-- `match` is an expression even when discarded; loops are statements, and `if` is a statement. The conditional expression is `if c: a else: b`; `else:` is required and chains continue with `else if`. An inline function body may start with one, with or without parentheses: `fn x: if x > 0: 1 else: 0`.
+- `match` is an expression even when discarded; loops are statements, and `if` is a statement. The conditional expression is `if c: a else: b`; `else:` is required and chains continue with `else if`. An inline function body may start with one, with or without parentheses: `x => if x > 0: 1 else: 0`.
 - Local type, implementation, import, test, and bench declarations are rejected; a local function is a `fn` statement, sugar for binding a `fn` (it cannot call itself).
 - Resources follow the [scope-end cleanup](../cleanup/scopes.md) contract. There is no borrow, spawn, or deferred-call syntax. The only ownership keyword is `move`, which marks a parameter or receiver the callee takes ([moving into a function](../types/references.md#moving-into-a-function)); the EBNF above omits it.
 

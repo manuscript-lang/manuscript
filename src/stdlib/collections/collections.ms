@@ -23,8 +23,8 @@ fn List[T].get_or(index Int, default T?) T:
 	if position >= 0 and position < count: return self.get(position)
 
 	match default:
-		value: return value
-		null: return self.get(index)
+		value => return value
+		null => return self.get(index)
 
 // Returns the first element, or `null` when the list is empty.
 fn List[T].first() T?:
@@ -205,13 +205,13 @@ fn List[T Clonable].drop(count Int) move List[T]: ...
 // Copies the leading elements for which `predicate` holds, stopping at the first one
 // that fails it. Example: `[1, 2, 5, 1].take_while(fn x: x < 3)` is `[1, 2]`.
 fn List[T Clonable].take_while(predicate fn(T) Bool) List[T]:
-	return self.take(self.find_index(fn x: not predicate(x)) or self.length())
+	return self.take(self.find_index(x => not predicate(x)) or self.length())
 
 // Copies the elements from the first one that fails `predicate` to the end, so it is
 // what `take_while` leaves. Example: `[1, 2, 5, 1].drop_while(fn x: x < 3)` is
 // `[5, 1]`.
 fn List[T Clonable].drop_while(predicate fn(T) Bool) List[T]:
-	return self.drop(self.find_index(fn x: not predicate(x)) or self.length())
+	return self.drop(self.find_index(x => not predicate(x)) or self.length())
 
 // Splits the list into consecutive chunks of `size` elements, as copies. The last
 // chunk may be shorter. An empty list, or a `size` of zero or less, gives an empty
@@ -319,13 +319,13 @@ fn List[T Clonable].group_by[K Hashable](key fn(T) K) move Map[K, List[T]]: ...
 fn List[T Hashable & Clonable].counts() Map[T, Int]:
 	var out = Map[T, Int]()
 	for x in self:
-		out.update(x, 0, fn n: n + 1)
+		out.update(x, 0, n => n + 1)
 	return out
 
 // Reports whether any element equals `value`, using the element type's `Equal`
 // implementation. An empty list returns false.
 fn List[T Equal].contains(value T) Bool:
-	return self.any(fn x: x.equals(value))
+	return self.any(x => x.equals(value))
 
 // Returns the zero-based index of the first element equal to `value`, or `null`.
 // Elements must implement `Equal`.
@@ -380,12 +380,12 @@ Float orders NaN above every other value.
 Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
 */
 fn List[T Comparable & Clonable].sorted() List[T]:
-	return self.sorted(fn a, b: a.compare(b))
+	return self.sorted((a, b) => a.compare(b))
 
 // Sorts the list in place, stably, in the same order as `sorted()`.
 // Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.
 fn var List[T Comparable].sort() Void:
-	self.sort(fn a, b: a.compare(b))
+	self.sort((a, b) => a.compare(b))
 
 /*
 Searches in O(log n) comparisons without copying elements or changing the list.
@@ -535,19 +535,19 @@ Sort first to remove every duplicate, or use `distinct()`, which keeps the first
 Example: `var xs = [1, 1, 2, 2, 1]` then `xs.compact()` leaves `[1, 2, 1]`.
 */
 fn var List[T Equal].compact() Void:
-	self.compact_by(fn a, b: a.equals(b))
+	self.compact_by((a, b) => a.equals(b))
 
 // Reports whether the list is in ascending natural order, the order `sorted()`
 // produces; empty and one-element lists are. Example: `[1, 2, 2, 5].is_sorted()` is
 // `true`.
 fn List[T Comparable].is_sorted() Bool:
-	return self.is_sorted_by(fn a, b: a.compare(b))
+	return self.is_sorted_by((a, b) => a.compare(b))
 
 // Returns a new list ordered by the natural order of `key(element)`. The receiver is
 // unchanged and the sort is stable. `key` runs on every comparison, so keep it cheap.
 // Example: `people.sorted_by_key(fn p: p.age)`.
 fn List[T Clonable].sorted_by_key[K Comparable](key fn(T) K) List[T]:
-	return self.sorted(fn a, b: key(a).compare(key(b)))
+	return self.sorted((a, b) => key(a).compare(key(b)))
 
 // Returns a new list holding the elements `count` times over, in order. A `count` of
 // zero or below gives an empty list. Example: `[1, 2].repeated(2)` is

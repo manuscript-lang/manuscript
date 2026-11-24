@@ -4,7 +4,7 @@ import (
 	Random, seeded from "../../lib/pyrandom.ms",
 )
 
-fn count(text String, ch String) Int: text.chars().count(fn c: c == ch)
+fn count(text String, ch String) Int => text.chars().count(c => c == ch)
 
 fn solve(s String) String:
 	var rows = s.split("\n").clone()
@@ -15,7 +15,7 @@ fn solve(s String) String:
 		for c in 0..cells.length():
 			if not "#.SE".contains(cells[c]): return f"error: bad character at {r + 1},{c + 1}\n"
 
-	if rows.map(fn r: r.length()).distinct().length() > 1: return "error: ragged grid\n"
+	if rows.map(r => r.length()).distinct().length() > 1: return "error: ragged grid\n"
 
 	flat := rows.join("")
 	if count(flat, "S") == 0: return "error: no start\n"
@@ -25,7 +25,7 @@ fn solve(s String) String:
 
 	h := rows.length()
 	w := rows[0].length()
-	cells := rows.map(fn r: r.chars().clone())
+	cells := rows.map(r => r.chars().clone())
 	var start = 0
 	for r in 0..h:
 		for c in 0..w:
@@ -62,7 +62,7 @@ fn solve(s String) String:
 
 	return "no path\n"
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 fn maze(var rnd Random, h Int, w Int, p Float) String:
 	while true:
@@ -76,7 +76,7 @@ fn maze(var rnd Random, h Int, w Int, p Float) String:
 		g[0][0] = "S"
 		g[h - 1][w - 1] = "E"
 
-		t := g.map(fn r: r.join("")).join("\n") + "\n"
+		t := g.map(r => r.join("")).join("\n") + "\n"
 		verdict := solve(t)
 		if "0123456789".contains(verdict.view(0, verdict.length().min(1))): return t
 

@@ -38,7 +38,7 @@ export fn main() Int:
     else:
         say("line\nbreak".replace("hello world", "日本語"))
 
-    l9 := l7.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l9 := l7.map(x => x + 1).filter(x => x % 2 == 0)
     say(f"l9 = {l9} len {l9.length()}")
 
     i10 := i2

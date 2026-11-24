@@ -7,5 +7,5 @@ enum Failure[T]:
 
 fn use[T](value Result[Int, Failure[T]]) Int:
     match value:
-        error(_): return 1
-        ok(inner): return inner
+        error(_) => return 1
+        ok(inner) => return inner

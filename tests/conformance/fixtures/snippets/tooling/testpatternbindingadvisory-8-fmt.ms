@@ -6,5 +6,5 @@ type Box[T]:
 
 fn use[T](value Box[T]?) T:
     match value:
-        box: return Box.value
-        null: return panic(message: "empty")
+        box => return Box.value
+        null => return panic(message: "empty")

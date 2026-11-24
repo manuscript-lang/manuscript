@@ -28,10 +28,10 @@ fn deps(var rng SeededRandom, files Int, p Int, f Int) List[Dep]:
 		low := if chance(rng): (if i - 60 > 0: i - 60 else: 0) else: 0
 		j := low + rng.int(0, i - low)
 		d := Dep(j / files, j % files)
-		if not found.any(fn e: e.pkg == d.pkg and e.file == d.file): found.append(d)
+		if not found.any(e => e.pkg == d.pkg and e.file == d.file): found.append(d)
 
 	return found.sorted(
-		fn(a Dep, b Dep) Int: if a.pkg != b.pkg: a.pkg - b.pkg else: a.file - b.file
+		fn(a Dep, b Dep) Int => if a.pkg != b.pkg: a.pkg - b.pkg else: a.file - b.file
 	)
 
 fn call_of(prefix String, d List[Dep], k Int, own Int, qualified Bool) String:

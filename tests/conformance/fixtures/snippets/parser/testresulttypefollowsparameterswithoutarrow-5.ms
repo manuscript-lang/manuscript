@@ -4,4 +4,4 @@
 type Box:
     value Int
 
-fn Box.get() Int: self.value
+fn Box.get() Int => self.value

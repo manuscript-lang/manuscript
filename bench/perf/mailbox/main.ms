@@ -33,7 +33,7 @@ fn main() Void:
 
 			for i in 0..window:
 				value := done + i
-				promises.append(promise[Int](fn: work(value)))
+				promises.append(promise[Int](() => work(value)))
 
 			for p in promises:
 				total += p.wait().get()

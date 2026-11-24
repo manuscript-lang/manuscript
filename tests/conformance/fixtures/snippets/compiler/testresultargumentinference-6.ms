@@ -4,4 +4,4 @@
 enum Wrapped[T]:
     value(r T!)
 
-fn first() Wrapped[Int]: Wrapped.value(f())
+fn first() Wrapped[Int] => Wrapped.value(f())

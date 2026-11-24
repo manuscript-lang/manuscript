@@ -62,7 +62,7 @@ export fn main() Int:
     s9 := (("back\\slash".lower() + s5.lower()) + "beta".trim())
     say(f"s9 = [{s9}]")
 
-    l10 := l7.sorted(fn a, b: a.compare(b))
+    l10 := l7.sorted((a, b) => a.compare(b))
     say(f"l10 = {l10} len {l10.length()}")
 
     s11 := s5.clone()

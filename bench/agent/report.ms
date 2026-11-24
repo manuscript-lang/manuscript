@@ -71,40 +71,40 @@ fn table(runs List[Run], title String, key fn(Run) String) String:
 	out += "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n"
 
 	for k in runs.map(key).distinct().sorted():
-		rs := runs.filter(fn r: key(r) == k)
-		ok := rs.filter(fn r: r.pass)
+		rs := runs.filter(r => key(r) == k)
+		ok := rs.filter(r => r.pass)
 		n := rs.length()
 
 		// Runs whose agent never ran ./check.sh have no first build to count.
-		built := rs.filter(fn r: r.builds > 0)
-		first_ok := built.filter(fn r: r.first_build_ok).length()
+		built := rs.filter(r => r.builds > 0)
+		first_ok := built.filter(r => r.first_build_ok).length()
 		fixed_ok := built.filter(
-			fn r: r.first_build_ok or r.first_build_fixed_ok
+			r => r.first_build_ok or r.first_build_fixed_ok
 		).length()
-		spent := rs.map(fn r: r.usage.cost_usd).sum()
+		spent := rs.map(r => r.usage.cost_usd).sum()
 		per_pass := if ok.is_empty(): "n/a" else: fmt_g(
 			spent / ok.length().to_float(),
 			3,
 		)
-		out += f"| {k} | {n} | {rate(ok.length(), n)} | {mean_text(ok.map(fn r: r.builds.to_float()), 3)} "
-		out += f"| {mean_text(ok.map(fn r: r.usage.turns.to_float()), 3)} | {mean_text(ok.map(tokens_of), 3)} "
-		out += f"| {mean_text(ok.map(fn r: r.wall_s), 3)} | {mean_text(ok.map(fn r: r.usage.cost_usd), 3)} | {per_pass} "
+		out += f"| {k} | {n} | {rate(ok.length(), n)} | {mean_text(ok.map(r => r.builds.to_float()), 3)} "
+		out += f"| {mean_text(ok.map(r => r.usage.turns.to_float()), 3)} | {mean_text(ok.map(tokens_of), 3)} "
+		out += f"| {mean_text(ok.map(r => r.wall_s), 3)} | {mean_text(ok.map(r => r.usage.cost_usd), 3)} | {per_pass} "
 		out += f"| {rate(first_ok, built.length())} | {rate(fixed_ok, built.length())} |\n"
 
 	return out
 
 // One row per challenge, one column per language: passing trials out of all trials.
 fn matrix(runs List[Run]) String:
-	langs := runs.map(fn r: r.language.clone()).distinct().sorted()
+	langs := runs.map(r => r.language.clone()).distinct().sorted()
 	var out = f"\n### Passing trials per challenge\n\n| challenge | {langs.join(" | ")} |\n"
-	out += f"|---|{langs.map(fn l: "---:").join("|")}|\n"
+	out += f"|---|{langs.map(l => "---:").join("|")}|\n"
 
-	for c in runs.map(fn r: r.challenge.clone()).distinct().sorted():
+	for c in runs.map(r => r.challenge.clone()).distinct().sorted():
 		out += f"| {c} "
 
 		for l in langs:
-			cell := runs.filter(fn r: r.challenge == c and r.language == l)
-			out += f"| {cell.filter(fn r: r.pass).length()}/{cell.length()} "
+			cell := runs.filter(r => r.challenge == c and r.language == l)
+			out += f"| {cell.filter(r => r.pass).length()}/{cell.length()} "
 
 		out += "|\n"
 
@@ -115,24 +115,24 @@ fn matrix(runs List[Run]) String:
 // to compare with the language's mean over all runs (challenge mix confounds the
 // comparison, so read it as a rough price, not a measurement).
 fn codes_table(runs List[Run], lang String) String:
-	mine := runs.filter(fn r: r.language == lang)
-	overall := mean_ci(mine.map(fn r: r.usage.turns.to_float())).mid
-	overall_builds := mean_ci(mine.map(fn r: r.builds.to_float())).mid
-	failing := mine.filter(fn r: not r.first_build_ok).length()
+	mine := runs.filter(r => r.language == lang)
+	overall := mean_ci(mine.map(r => r.usage.turns.to_float())).mid
+	overall_builds := mean_ci(mine.map(r => r.builds.to_float())).mid
+	failing := mine.filter(r => not r.first_build_ok).length()
 	var out = f"\n### {lang}: diagnostic codes in failed builds\n\n"
 	out += f"{failing} of {mine.length()} runs failed their first build. "
 	out += f"All runs average {fmt_g(overall, 3)} turns and {fmt_g(overall_builds, 3)} builds.\n\n"
 	out += "| code | occurrences | runs | turns in those runs | builds in those runs |\n|---|---:|---:|---:|---:|\n"
 
-	all := mine.flat_map(fn r: r.build_codes.clone())
-	stats := all.distinct().map(fn c: CodeStat(c.clone(), all.count(fn x: x == c)))
-	ranked := stats.sorted_by_key(fn s: 0 - s.count)
+	all := mine.flat_map(r => r.build_codes.clone())
+	stats := all.distinct().map(c => CodeStat(c.clone(), all.count(x => x == c)))
+	ranked := stats.sorted_by_key(s => 0 - s.count)
 
 	for entry in ranked.take(15):
 		code := entry.code
-		hit := mine.filter(fn r: r.build_codes.contains(code))
-		turns := mean_ci(hit.map(fn r: r.usage.turns.to_float())).mid
-		builds := mean_ci(hit.map(fn r: r.builds.to_float())).mid
+		hit := mine.filter(r => r.build_codes.contains(code))
+		turns := mean_ci(hit.map(r => r.usage.turns.to_float())).mid
+		builds := mean_ci(hit.map(r => r.builds.to_float())).mid
 		out += f"| {code} | {entry.count} | {hit.length()} | {fmt_g(turns, 3)} | {fmt_g(builds, 3)} |\n"
 
 	return out
@@ -146,20 +146,20 @@ fn cut(text String, limit Int) String:
 fn errors_table(runs List[Run], lang String) String:
 	place := compile("^\\S+:\\d+:\\d+: ").get()
 	quoted := compile("'[^']*'").get()
-	mine := runs.filter(fn r: r.language == lang)
+	mine := runs.filter(r => r.language == lang)
 	all := mine.flat_map(
-		fn r: r.build_errors.map(
-			fn e: quoted.replace_all(
+		r => r.build_errors.map(
+			e => quoted.replace_all(
 				place.replace_all(e, "", null).get_or(e.clone()),
 				"'X'",
 				null,
 			).get_or(e)
 		)
 	)
-	stats := all.distinct().map(fn m: CodeStat(m.clone(), all.count(fn x: x == m)))
+	stats := all.distinct().map(m => CodeStat(m.clone(), all.count(x => x == m)))
 	var out = f"\n### {lang}: most common first error line of failed builds\n\n"
 	out += "| message | occurrences |\n|---|---:|\n"
-	for entry in stats.sorted_by_key(fn s: 0 - s.count).take(15):
+	for entry in stats.sorted_by_key(s => 0 - s.count).take(15):
 		out += f"| {cut(entry.code, 110)} | {entry.count} |\n"
 	return out
 
@@ -179,20 +179,16 @@ fn main() Int:
 	text += table(
 		runs,
 		"By model, harness and language",
-		fn r: f"{r.model} / {r.harness} / {r.language}"
+		r => f"{r.model} / {r.harness} / {r.language}",
 	)
-	text += table(
-		runs,
-		"By language and category",
-		fn r: f"{r.language} / {r.category}"
-	)
-	text += table(runs, "By language and tier", fn r: f"{r.language} / tier {r.tier}")
+	text += table(runs, "By language and category", r => f"{r.language} / {r.category}")
+	text += table(runs, "By language and tier", r => f"{r.language} / tier {r.tier}")
 	text += matrix(runs)
 
-	for lang in runs.map(fn r: r.language.clone()).distinct().sorted():
-		if runs.any(fn r: r.language == lang and not r.build_codes.is_empty()):
+	for lang in runs.map(r => r.language.clone()).distinct().sorted():
+		if runs.any(r => r.language == lang and not r.build_codes.is_empty()):
 			text += codes_table(runs, lang)
-		if runs.any(fn r: r.language == lang and not r.build_errors.is_empty()):
+		if runs.any(r => r.language == lang and not r.build_errors.is_empty()):
 			text += errors_table(runs, lang)
 
 	stdout().write(text).get()

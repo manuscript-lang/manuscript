@@ -48,7 +48,7 @@ export fn summarize(lines List[String], repeats Int) String!:
 	var sinks = Map[String, Int]()
 
 	for line in lines:
-		parts := line.trim().split(" ").filter(fn p: p != "")
+		parts := line.trim().split(" ").filter(p => p != "")
 		if parts.length() < 2 or not VERSIONS.contains(parts[0]):
 			return invalid(f"invalid sample: {line.trim()}")
 
@@ -106,9 +106,9 @@ export fn summarize(lines List[String], repeats Int) String!:
 		):
 			return invalid(f"expected {repeats} complete {v} samples")
 
-	others := seen.filter(fn v: v != "ms" and v != "go")
+	others := seen.filter(v => v != "ms" and v != "go")
 	order := ["ms", "go"].concat(others)
-	var heads = order.map(fn v: title(v))
+	var heads = order.map(v => title(v))
 	heads.append("ms / Go")
 	for v in others:
 		heads.append(f"ms / {title(v)}")
@@ -120,14 +120,14 @@ export fn summarize(lines List[String], repeats Int) String!:
 		for v in seen:
 			med.add(v.clone(), median(samples.get_or(f"{v} {op.name}", [])))
 
-		var cells = order.map(fn v: fixed(med.get_or(v, 0.0), 2))
+		var cells = order.map(v => fixed(med.get_or(v, 0.0), 2))
 		ms := med.get_or("ms", 0.0)
 		cells.append(fixed(ms / med.get_or("go", 1.0), 2) + "x")
 		for v in others:
 			cells.append(fixed(ms / med.get_or(v, 1.0), 2) + "x")
 		rows.append(f"| {op.name} | {op.count} | " + cells.join(" | ") + " |")
 
-	rule := heads.map(fn _h: "---:|").join("")
+	rule := heads.map(_h => "---:|").join("")
 	return ok(f"""
         Median of {repeats} alternating runs; ns/op. Checksums and operation counts verified.
 

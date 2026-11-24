@@ -40,7 +40,7 @@ export fn main() Int:
     f7 := (((f5 + 880.037) * (f2 + f2)) * f5)
     say(f"f7 = {f7}")
 
-    l8 := l3.filter(fn x: x > 0)
+    l8 := l3.filter(x => x > 0)
     say(f"l8 = {l8} len {l8.length()}")
 
     s9 := ((("gamma" + "brace{s}") + "  padded  ") + "Tab\there".upper().upper())

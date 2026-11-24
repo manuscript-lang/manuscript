@@ -122,7 +122,7 @@ fn run(work String, n Int) Result[String, Error]:
 			),
 		)?
 		input := largest_input(f"{source}/hidden/cases.json")?
-		measured := measure(n, name, fn v: sample(f"{dir}/{v}/app", [], input))?
+		measured := measure(n, name, v => sample(f"{dir}/{v}/app", [], input))?
 		evidence(dir, name.clone(), n, input, measured)
 		rows.append(row(name, measured.samples))
 

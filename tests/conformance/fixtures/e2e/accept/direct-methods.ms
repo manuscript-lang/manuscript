@@ -15,14 +15,14 @@ interface Bumper:
 interface Scaler:
 	fn scale(factor Int, offset Int?) Int
 
-fn Counter.bump(by Int) Int: self.n + by
+fn Counter.bump(by Int) Int => self.n + by
 
-fn Counter.scale(factor Int, offset Int?) Int: (self.n * factor + (offset or 0))
+fn Counter.scale(factor Int, offset Int?) Int => (self.n * factor + (offset or 0))
 
 fn Shape.bump(by Int) Int:
 	match self:
-		Circle(r): return r + by
-		Square(side): return side * by
+		Circle(r) => return r + by
+		Square(side) => return side * by
 
 fn through_view(b Bumper, by Int) Int:
 	return b.bump(by)

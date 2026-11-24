@@ -48,7 +48,7 @@ fn days_in_month(year Int, month Int) Int:
 	if month == 2: return if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0: 29 else: 28
 	return if month == 4 or month == 6 or month == 9 or month == 11: 30 else: 31
 
-fn pad(n Int, width Int) String: f"{n}".pad_start(width, "0")
+fn pad(n Int, width Int) String => f"{n}".pad_start(width, "0")
 
 // `YYYY-MM-DD HH:MM` for a count of minutes since the epoch, with `sep` between date and time.
 fn stamp(minutes Int, sep String) String:
@@ -209,9 +209,9 @@ fn solve(s String) String:
 		out.append(f"{pre} {runs.length()} runs")
 		for r in runs: out.append(stamp(r, " "))
 
-	return out.map(fn x: x + "\n").join("")
+	return out.map(x => x + "\n").join("")
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 fn rand_field(var rnd Random, lo Int, hi Int) String:
 	a := f"*/{rnd.randint(1, 7)}"

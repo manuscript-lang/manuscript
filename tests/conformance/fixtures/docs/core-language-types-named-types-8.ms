@@ -9,8 +9,8 @@ enum Expr:
 
 fn evaluate(expr Expr) Int:
     match expr:
-        Num(value): return value
-        Add(left, right): return evaluate(left) + evaluate(right)
+        Num(value) => return value
+        Add(left, right) => return evaluate(left) + evaluate(right)
 
 test "recursive expression":
     expr := Expr.Add(Expr.Num(1), Expr.Num(2))

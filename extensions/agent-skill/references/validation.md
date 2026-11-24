@@ -8,7 +8,7 @@ After the final edit, run `ms check app.ms`, then `ms run app.ms` and verify beh
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn twice(value Int) Int: value * 2
+fn twice(value Int) Int => value * 2
 
 test "twice":
 	expect_equal(twice(21), 42)?
@@ -47,7 +47,7 @@ Each row is a shape agents wrote that fails; the right column compiles.
 | `s.parse_int()?` in a function returning `Int!` (it returns `Int?`, and `?` on an Optional needs an Optional or `Void` return) | `s.parse_int().ok_or(Error("bad number"))?` or `s.parse_int().get_or(0)` |
 | `List<Int>`, `Map<K, V>` | `List[Int]`, `Map[K, V]` |
 | `m.contains_key(k)`, `xs.remove_last()` | `m.contains(k)`, `xs.pop()` |
-| `xs.sort_by(f)`, `for b in s.as_bytes()` | `xs.sort(fn a, b: a.compare(b))`, `for b in values(s.as_bytes())` with `import values from "@std/bytes.ms"` |
+| `xs.sort_by(f)`, `for b in s.as_bytes()` | `xs.sort((a, b) => a.compare(b))`, `for b in values(s.as_bytes())` with `import values from "@std/bytes.ms"` |
 | `set.insert(x)`, `r.is_err()`, `s.find(t)` | `set.add(x)`, `r.is_error()`, `s.index_of(t)` |
 
 The right-hand forms of this table, in one compiling program:
@@ -84,7 +84,7 @@ fn main() Void!:
 	brace := r"{}"
 	esc := "\u{1}"
 	var stack = [2, 1]
-	stack.sort(fn a, b: a.compare(b))
+	stack.sort((a, b) => a.compare(b))
 	for b in values("ab".as_bytes()):
 		void b
 	void stack.pop()

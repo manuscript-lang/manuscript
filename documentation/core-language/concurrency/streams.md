@@ -61,7 +61,7 @@ import lines, filter, map from "@std/io/steps.ms"
 import expect_equal from "@std/test/test.ms"
 
 fn line_lengths(move input ReadStream[Bytes]) ReadStream[Int]:
-    return input | lines | filter(fn line: line != "") | map(fn line: line.length())
+    return input | lines | filter(line => line != "") | map(line => line.length())
 
 test "measure lines":
     input := from_bytes("first\n\nok\n".to_bytes())
@@ -103,7 +103,7 @@ fn send_numbers(var out WriteStream[Int]) Void!:
 test "sum values from a producer":
     var p = pipe[Int](capacity: 64)
     var out = p.writer()
-    producer := promise(fn: send_numbers(out))
+    producer := promise(() => send_numbers(out))
     var total = 0
     for n in p.reader():
         total += n

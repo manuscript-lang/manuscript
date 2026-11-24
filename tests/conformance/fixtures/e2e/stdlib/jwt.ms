@@ -26,8 +26,8 @@ type Session:
 
 fn failure[T](result T!) Error!:
 	match result:
-		ok(_): return error(Error("accepted"))
-		error(cause): return ok(cause)
+		ok(_) => return error(Error("accepted"))
+		error(cause) => return ok(cause)
 
 fn session(exp Int) Session:
 	return Session(sub: "42", exp: exp, iss: "me")

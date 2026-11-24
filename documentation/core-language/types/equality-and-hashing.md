@@ -65,7 +65,7 @@ type CustomerKey:
 fn CustomerKey.equals(other CustomerKey) Bool:
     return self.id == other.id
 
-fn CustomerKey.hash() Int: self.id
+fn CustomerKey.hash() Int => self.id
 ```
 
 These implementations apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so write a matching `hash` before using the type as a key. Visibility follows the [contract rules](contracts.md#coherence-and-visibility).

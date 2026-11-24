@@ -64,7 +64,7 @@ export fn main() Int:
 
     say(f"acc7 = {acc7}")
 
-    l8 := l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l8 := l4.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l8 = {l8} len {l8.length()}")
 
     f9 := 252.799

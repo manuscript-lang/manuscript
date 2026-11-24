@@ -69,13 +69,13 @@ fn failure_cases() List[Failure]:
 	return out
 
 fn stats_line(label String, values List[Float]) String:
-	low := values.fold(values[0], fn(a Float, v Float) Float: if v < a: v else: a)
-	high := values.fold(values[0], fn(a Float, v Float) Float: if v > a: v else: a)
+	low := values.fold(values[0], fn(a Float, v Float) Float => if v < a: v else: a)
+	high := values.fold(values[0], fn(a Float, v Float) Float => if v > a: v else: a)
 	return f"{label} [{low.to_fixed(3)},{high.to_fixed(3)}] {median(values).to_fixed(3)}"
 
 fn triple(values List[Float]) String:
-	low := values.fold(values[0], fn(a Float, v Float) Float: if v < a: v else: a)
-	high := values.fold(values[0], fn(a Float, v Float) Float: if v > a: v else: a)
+	low := values.fold(values[0], fn(a Float, v Float) Float => if v < a: v else: a)
+	high := values.fold(values[0], fn(a Float, v Float) Float => if v > a: v else: a)
 	return f"{low} {median(values)} {high}"
 
 fn decode(before String, after String, out String, pairs Int) Result[Void, Error]:
@@ -107,7 +107,7 @@ fn decode(before String, after String, out String, pairs Int) Result[Void, Error
 					[f"{c.size}", f"{c.count}", f"{c.rounds}"],
 					"",
 				)?
-				parts := text.replace("\n", " ").split(" ").filter(fn p: p != "")
+				parts := text.replace("\n", " ").split(" ").filter(p => p != "")
 				if parts.length() != 5: return invalid(f"invalid output {name}: {text}")
 
 				observed := all_ints(parts)?
@@ -183,7 +183,7 @@ fn json_failure(before String, after String, out String, pairs Int) Result[Void,
 					[f"{c.size}", f"{c.rounds}", c.shape.clone()],
 					"",
 				)?
-				fields := text.replace("\n", " ").split(" ").filter(fn p: p != "")
+				fields := text.replace("\n", " ").split(" ").filter(p => p != "")
 				if (
 					fields.length() != 6
 					or fields[0] != f"{c.size}"

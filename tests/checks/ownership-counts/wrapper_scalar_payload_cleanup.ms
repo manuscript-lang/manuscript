@@ -16,41 +16,41 @@ type Marker:
 fn move Marker.close() Void!:
 	print(f"close {self.id}")
 
-fn present(id Int) Marker?: Marker(id)
+fn present(id Int) Marker? => Marker(id)
 
-fn success(id Int) Marker!Int: ok(Marker(id))
+fn success(id Int) Marker!Int => ok(Marker(id))
 
-fn failure(id Int) Int!Marker: error(Marker(id))
+fn failure(id Int) Int!Marker => error(Marker(id))
 
 fn optional_cause() Void:
 	_kept := ok_or(present(1), 0)
 
 fn result_error_map() Void:
-	_kept := success(3).map_error(fn cause: cause + 1)
+	_kept := success(3).map_error(cause => cause + 1)
 
 fn result_optional() Void:
 	_kept := success(4).to_optional()
 
 fn result_map() Void:
-	_kept := failure(5).map(fn item: item + 1)
+	_kept := failure(5).map(item => item + 1)
 
 fn result_then() Void:
-	_kept := failure(6).and_then(fn item: ok(item + 1))
+	_kept := failure(6).and_then(item => ok(item + 1))
 
 fn transformed_map() Void:
-	_mapped := success(7).map(fn item: item.id)
+	_mapped := success(7).map(item => item.id)
 
 fn transformed_error() Void:
-	_mapped := failure(8).map_error(fn item: item.id)
+	_mapped := failure(8).map_error(item => item.id)
 
 fn transformed_then() Void:
-	_mapped Int!Int := success(9).and_then(fn item: ok(item.id))
+	_mapped Int!Int := success(9).and_then(item => ok(item.id))
 
 fn optional_or_else() Void:
 	_kept := present(13) or null
 
 fn result_or_else() Void:
-	_kept := success(14).or_else(fn cause: error(cause))
+	_kept := success(14).or_else(cause => error(cause))
 
 fn main() Void:
 	optional_cause()

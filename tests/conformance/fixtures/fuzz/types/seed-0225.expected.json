@@ -14,20 +14,20 @@
           "file": "seed-0225.ms",
           "line": 34,
           "column": 16,
-          "offset": 852
+          "offset": 850
         },
         "fix": {
           "position": {
             "file": "seed-0225.ms",
             "line": 34,
             "column": 18,
-            "offset": 854
+            "offset": 852
           },
           "end": {
             "file": "seed-0225.ms",
             "line": 34,
             "column": 19,
-            "offset": 855
+            "offset": 853
           },
           "replacement": "2.0"
         }

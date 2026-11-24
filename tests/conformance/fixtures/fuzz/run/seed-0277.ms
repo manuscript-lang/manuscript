@@ -68,7 +68,7 @@ export fn main() Int:
     s12 := "naïve"
     say(f"s12 = [{s12}]")
 
-    l13 := l10.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l13 := l10.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l13 = {l13} len {l13.length()}")
     say(f"fib(33) = {fib(33)}")
     return 0

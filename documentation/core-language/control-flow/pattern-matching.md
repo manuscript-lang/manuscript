@@ -40,7 +40,7 @@ Each arm handles one case and gives its payload a local name. A newly added case
 Nested `match` is an anti-pattern. Bind the outer payload with an early exit, propagate with `?`, use Optional methods, or call a small helper (the contract handler below shows a helper).
 
 - `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
-- An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `null:` (`v:` binds the payload). A two-arm payload/`null` match is **MSL108**. Use [`if v := x`](conditionals.md#unwrapping-an-optional-or-result), `get_or(default)`, or `map`.
+- An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `null =>` (`v =>` binds the payload). A two-arm payload/`null` match is **MSL108**. Use [`if v := x`](conditionals.md#unwrapping-an-optional-or-result), `get_or(default)`, or `map`.
 
 Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `?`, `if value := result:` with `else:`, or a Result method such as `get_or(default)`, `is_error`, or `err`.
 
@@ -52,9 +52,9 @@ A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (
 ```manuscript
 fn name(count Int) String:
     match count:
-        0: return "none"
-        1: return "one"
-        _: return "many"
+        0 => return "none"
+        1 => return "one"
+        _ => return "many"
 ```
 
 Computed values, interpolated text, ranges, and `Float` scrutinees are not literal patterns; use `if` and `else if`.
@@ -102,7 +102,7 @@ fn horizontal(position Position) Int:
             return 0
 ```
 
-- `Point(x: local, y: other):` is a parse error; `Point(x):` is an arity error. Repeated names are rejected; `_` may repeat.
+- `Point(x: local, y: other) =>` is a parse error; `Point(x) =>` is an arity error. Repeated names are rejected; `_` may repeat.
 - Payload bindings and the arm body share a nested scope.
 - An unqualified case resolves within the scrutinee's type; a qualified case must belong to that exact type (`Other.Point(...)` never matches `Position`). Constructors resolve per [alternative construction](../types/alternatives.md).
 - Payload names always bind fresh. `error(NotFound)` matches every error and does not test for `NotFound`; bind `error(cause)` and pass `cause` to a helper that matches the cases.
@@ -111,7 +111,7 @@ fn horizontal(position Position) Int:
 
 ## Exhaustiveness
 
-Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
+Arms never fall through, and a missing case is a compile error. `_ =>` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
 <!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt String)\n    Declined(reason String)","given":[]} -->
 ```manuscript
@@ -131,7 +131,7 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 
 ## Contract type patterns
 
-A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
+A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_ =>` handles the rest. This is not a constructor call.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -141,11 +141,11 @@ interface Shape:
 type Square:
     side Int
 
-fn Square.area() Int: return self.side * self.side
+fn Square.area() Int => return self.side * self.side
 
 fn describe(shape Shape) String:
     match shape:
-        Square(square): return f"square {square.side}"
+        Square(square) => return f"square {square.side}"
         _:
             return f"area {shape.area()}"
 ```

@@ -44,7 +44,7 @@ export fn main() Int:
     b7 := ("日本語" + "back\\slash".lower()).starts_with("42")
     say(f"b7 = {b7}")
 
-    l8 := l3.map(fn x: x * 7)
+    l8 := l3.map(x => x * 7)
     say(f"l8 = {l8} len {l8.length()}")
 
     i9 := i6

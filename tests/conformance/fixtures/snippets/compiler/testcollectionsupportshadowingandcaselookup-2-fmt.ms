@@ -11,8 +11,8 @@ import (
 import Error, category from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 
-fn bytes() Bytes: Bytes([1])
+fn bytes() Bytes => Bytes([1])
 
-fn build() List[Int]: List[Int]()
+fn build() List[Int] => List[Int]()
 
-fn text_error(message String) Error: Error(message)
+fn text_error(message String) Error => Error(message)

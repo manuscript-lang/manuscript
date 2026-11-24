@@ -94,8 +94,8 @@ export fn close_matches(
 		if score >= cutoff:
 			scored.append(Scored(text: candidate.clone(), score: score))
 
-	ranked := scored.sorted(fn a, b: compare_scores(a.score, b.score))
-	return ranked.take(limit).map(fn s: s.text.clone())
+	ranked := scored.sorted((a, b) => compare_scores(a.score, b.score))
+	return ranked.take(limit).map(s => s.text.clone())
 
 fn compare_scores(left Float, right Float) Int:
 	if left > right: return -1
@@ -116,7 +116,7 @@ type Step:
 // Walks the longest common subsequence table to list the steps that turn `old` into
 // `new`, deletions before insertions within a change.
 fn middle_steps(old List[String], new List[String], shift Int) List[Step]:
-	var table = (0..old.length() + 1).map(fn _row: [0].repeated(new.length() + 1))
+	var table = (0..old.length() + 1).map(_row => [0].repeated(new.length() + 1))
 	var i = old.length() - 1
 
 	while i >= 0:

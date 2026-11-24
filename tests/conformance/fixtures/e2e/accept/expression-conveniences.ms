@@ -17,9 +17,9 @@ type Resource:
 fn move Resource.close() Void!:
 	_written := write_file(self.marker, "closed", true).wait()
 
-fn closed(marker String) Bool: read_file(marker).wait().is_ok()
+fn closed(marker String) Bool => read_file(marker).wait().is_ok()
 
-fn identity[T](value T) T: return value
+fn identity[T](value T) T => return value
 
 fn amount(text String, marker String) Int!Error:
 	_resource := Resource(marker: marker.clone())
@@ -34,15 +34,15 @@ fn amount(text String, marker String) Int!Error:
 
 fn early(value Int?) Int:
 	number := match value:
-		number: number
-		null: return 9
+		number => number
+		null => return 9
 
 	return number + 1
 
 fn all_return(value Int?) Int:
 	_unreachable := match value:
-		number: return number
-		null: return 9
+		number => return number
+		null => return 9
 
 fn tick(var counter Counter) Int!:
 	counter.count | expect_equal(1)?
@@ -136,29 +136,29 @@ test "match expressions preserve returns and cleanup":
 		value:
 			// manuscript:allow-nested-match regression for nested expression values and the absent branch
 			match absent:
-				other: value + other
-				null: value
-		null: 0
+				other => value + other
+				null => value
+		null => 0
 
 	nested | expect_equal(4)?
 
 	contextual List[Int] := match absent:
-		value: [value]
-		null: []
+		value => [value]
+		null => []
 
 	contextual.length() | expect_equal(0)?
 
 	result := identity[Int](
 		match present:
-			value: value
-			null: 0
+			value => value
+			null => 0
 	)
 	result | expect_equal(4)?
 
 	callback := fn(value Int?) Int:
 		number := match value:
-			number: number
-			null: return 42
+			number => number
+			null => return 42
 
 		return number
 
@@ -179,7 +179,7 @@ test "match blocks produce their final value":
 		value:
 			doubled := value * 2
 			doubled + 1
-		null: 0
+		null => 0
 
 	result | expect_equal(11)?
 
@@ -193,7 +193,7 @@ test "match blocks produce their final value":
 				if count < value: continue
 
 				break
-			null: break
+			null => break
 
 	count | expect_equal(5)?
 
@@ -201,14 +201,14 @@ test "contextual values infer from later arms":
 	present Int? := 5
 
 	optional Int? := match present:
-		null: null
-		value: value
+		null => null
+		value => value
 
 	(optional or panic("called Optional.get() on null")) | expect_equal(5)?
 
 	list := match present:
-		null: []
-		value: [value]
+		null => []
+		value => [value]
 
 	list[0] | expect_equal(5)?
 
@@ -217,14 +217,14 @@ fn returned_argument(var counter Counter) Int!:
 	return ok(
 		combine(
 			first: match absent:
-				value: value
-				null: return ok(17)
+				value => value
+				null => return ok(17)
 			,
 			second: (tick(counter)?),
 		)
 	)
 
-fn combine(first Int, second Int) Int: return first + second
+fn combine(first Int, second Int) Int => return first + second
 
 fn propagated(text String) Int!Error:
 	result := match text.parse_int():
@@ -245,7 +245,7 @@ fn returned_loop(value Int?) Int:
 			_number:
 				index += 1
 				continue
-			null: break
+			null => break
 
 	return 24
 
@@ -269,7 +269,7 @@ test "expression exits preserve caller boundaries and evaluation order":
 					if iterations == 2: continue
 					if iterations == 3: break
 				number
-			null: break
+			null => break
 
 		if value == 1: break
 
@@ -279,8 +279,8 @@ fn condition_exit(value Int?) Int:
 	while true:
 		while (
 			match value:
-				_number: true
-				null: break
+				_number => true
+				null => break
 		):
 			return 1
 
@@ -319,23 +319,23 @@ test "match evaluates its input once and only the selected arm":
 
 	(result != 6 or counter.count != 11) | expect_false?
 
-fn inline_match(value Int?) Int: match value:
-	number: number
-	null: 0
+fn inline_match(value Int?) Int => match value:
+	number => number
+	null => 0
 
 test "match composes with inferred callbacks and map literals":
 	values List[Int?] := [3, null]
 	mapped := values.map(
-		fn value: match value:
-			number: number + 1
-			null: 0
+		value => match value:
+			number => number + 1
+			null => 0
 	)
 	(mapped[0] != 4 or mapped[1] != 0) | expect_false?
 
 	lookup := {
 		"value": match values[0]:
-			number: number
-			null: 0
+			number => number
+			null => 0
 	}
 	lookup["value"] | expect_equal(3)?
 	(inline_match(null) != 0 or inline_match(5) != 5) | expect_false?

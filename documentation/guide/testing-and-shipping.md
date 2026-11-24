@@ -28,7 +28,7 @@ test "big orders ship free":
     expect_equal(order_total([2500, 2500]), 5000)?
 
 test "the order of items never changes the total":
-    check("any order", lists(ints(0, 5000), 0, 20), fn prices: expect_equal(order_total(prices.reversed()), order_total(prices)))?
+    check("any order", lists(ints(0, 5000), 0, 20), prices => expect_equal(order_total(prices.reversed()), order_total(prices)))?
 ```
 
 ```text

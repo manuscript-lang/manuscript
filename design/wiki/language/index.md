@@ -23,6 +23,7 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Interface conversion rules](interface-conversion-rules.md): Implicit interface conversion, no construction syntax, borrowed values becoming views.
 - [Infer local callback signatures from context](infer-local-callback-signatures-from-context.md): the user explicitly permits callback parameter and result inference.
 - [A name is followed by its type with no colon](a-name-is-followed-by-its-type-with-no-colon.md): `name Type` in fields, params, payloads, locals and bounds; labels and `:` elsewhere stay for now.
+- [One-line bodies and arms use a fat arrow](one-line-bodies-and-arms-use-a-fat-arrow.md): `=>` for one-line functions, arms and closures; `:` keeps longer bodies.
 - [Invalid bounds must not survive recovery](invalid-bounds-must-not-survive-recovery.md): reporting an invalid bound without removing it lets implementation substitution turn a variable bound into a self-referential graph.
 - [Keep short bodies available without a second function kind](keep-short-bodies-available-without-a-second-function-kind.md): the user requested a terse language with single-line functions and conditions.
 - [Local implementations must remain selected across module boundaries](local-implementations-must-remain-selected-across-module-bou.md): accepting an implementation for an imported source type requires more than relaxing receiver ownership.

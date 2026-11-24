@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/map_transforms_test.go:18 TestMapTransformContracts
 fn wrong(values Map[String, Int]) Void:
-    found := values.find_last(fn k, v: v)
+    found := values.find_last((k, v) => v)

@@ -57,7 +57,7 @@ fn BitSet.length() Int:
 
 // Reports whether the set has no members.
 fn BitSet.is_empty() Bool:
-	return not self.words.any(fn word: word != 0)
+	return not self.words.any(word => word != 0)
 
 // Removes every member and releases the bitmap.
 fn var BitSet.clear() Void:

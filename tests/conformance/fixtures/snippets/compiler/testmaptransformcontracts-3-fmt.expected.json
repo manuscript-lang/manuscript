@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn transform(value Int, key String) Int: value\n\nfn wrong(values Map[String, Int]) Map[String, Int]: values.map(transform)\n"
+    "fmt": "fn transform(value Int, key String) Int => value\n\nfn wrong(values Map[String, Int]) Map[String, Int] => values.map(transform)\n"
   }
 }

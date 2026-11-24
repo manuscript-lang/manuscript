@@ -13,21 +13,21 @@
         "position": {
           "file": "golden-0944.ms",
           "line": 3,
-          "column": 21,
-          "offset": 73
+          "column": 23,
+          "offset": 75
         },
         "end": {
           "file": "golden-0944.ms",
           "line": 3,
-          "column": 27,
-          "offset": 79
+          "column": 29,
+          "offset": 81
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0944.ms:3:21: parse: expected an expression, found 'return'; write a value, name, call, or literal here\n   |\n 3 | fn f() Void: return return\n   |                     ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0944.ms:3:23: parse: expected an expression, found 'return'; write a value, name, call, or literal here\n   |\n 3 | fn f() Void => return return\n   |                       ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

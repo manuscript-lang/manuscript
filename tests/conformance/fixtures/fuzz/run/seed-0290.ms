@@ -16,7 +16,7 @@ export fn main() Int:
     l1 := [(-12)]
     say(f"l1 = {l1} len {l1.length()}")
 
-    l2 := l1.filter(fn x: x > 4)
+    l2 := l1.filter(x => x > 4)
     say(f"l2 = {l2} len {l2.length()}")
 
     f3 := 6.5

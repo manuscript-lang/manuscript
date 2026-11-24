@@ -25,7 +25,7 @@ fn eager(var counter Counter) Int:
 	counter.calls += 1
 	return 99
 
-fn key_length(key String) Int: key.length()
+fn key_length(key String) Int => key.length()
 
 test "default insertion keeps eager and lazy calls and receiver identity":
 	var values = Map[String, Int]()

@@ -3,12 +3,12 @@
 import expect_equal from "@std/test/test.ms"
 
 fn chain(xs List[Int], k Int) Int:
-	return xs.map(fn x: x * k).filter(fn x: x % 3 == 0).map(fn x: x + 1).sum()
+	return xs.map(x => x * k).filter(x => x % 3 == 0).map(x => x + 1).sum()
 
 fn counted(n Int) Int:
 	var total = 0
 	for r in 0..n:
-		total += (0..r).map(fn x: x * 2).filter(fn x: x % 4 == 0).length()
+		total += (0..r).map(x => x * 2).filter(x => x % 4 == 0).length()
 	return total
 
 test "a map, filter and sum chain gives the staged answer":

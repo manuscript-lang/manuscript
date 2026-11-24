@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn call[T](operation fn() T) T:\n\treturn operation()\n\nfn get() Int!: return ok(value: 1)\n\nfn note() Void: return\n\nfn run() Void:\n\tcall(\n\t\toperation: fn() Int:\n\t\t\tmatch get():\n\t\t\t\tok(_n): note()\n\t\t\t\terror(_e): note()\n\n\t\t\treturn 0\n\t)\n"
+    "fmt": "fn call[T](operation fn() T) T:\n\treturn operation()\n\nfn get() Int! => return ok(value: 1)\n\nfn note() Void => return\n\nfn run() Void:\n\tcall(\n\t\toperation: fn() Int:\n\t\t\tmatch get():\n\t\t\t\tok(_n) => note()\n\t\t\t\terror(_e) => note()\n\n\t\t\treturn 0\n\t)\n"
   }
 }

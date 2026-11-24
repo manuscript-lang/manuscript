@@ -5,13 +5,13 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn text(value Int) String?: f"dynamic optional payload {value}"
+fn text(value Int) String? => f"dynamic optional payload {value}"
 
-fn texts(value Int) List[String]?: [f"dynamic optional payload {value}"]
+fn texts(value Int) List[String]? => [f"dynamic optional payload {value}"]
 
-fn unexpected_text() String?: panic("present Optional must not call fallback")
+fn unexpected_text() String? => panic("present Optional must not call fallback")
 
-fn unexpected_texts() List[String]?: panic("present Optional must not call fallback")
+fn unexpected_texts() List[String]? => panic("present Optional must not call fallback")
 
 type Fallback:
 	calls Int
@@ -86,7 +86,7 @@ test "or_else permits a fallback that stays absent":
 
 test "a closure over or_else copies its captured Optional for each call":
 	held := text(7)
-	bound := fn(fallback fn() String?) String?: held.clone() or fallback()
+	bound := fn(fallback fn() String?) String? => held.clone() or fallback()
 	first := bound(unexpected_text)
 	second := bound(unexpected_text)
 	expect_equal(

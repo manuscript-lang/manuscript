@@ -16,11 +16,11 @@ fn use_it(marker Marker) Void:
 	return
 
 fn make_from_parameter(move marker Marker) fn() Void:
-	return fn(): use_it(marker)
+	return () => use_it(marker)
 
 fn make_from_local() fn() Void:
 	marker := Marker(id: 2)
-	return fn(): use_it(marker)
+	return () => use_it(marker)
 
 fn bound_temporary() Int:
 	read := Marker(id: 3).status

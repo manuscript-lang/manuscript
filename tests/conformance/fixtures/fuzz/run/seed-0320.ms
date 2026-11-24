@@ -47,7 +47,7 @@ export fn main() Int:
     l6 := [(-17), 14, 12, 0, (-15)]
     say(f"l6 = {l6} len {l6.length()}")
 
-    l7 := l6.filter(fn x: x > 4)
+    l7 := l6.filter(x => x > 4)
     say(f"l7 = {l7} len {l7.length()}")
 
     if b4:

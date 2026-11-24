@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use(value Int?) Int:\n\tpresent := match value:\n\t\tn: n\n\t\tnull: return 0\n\n\treturn match value:\n\t\tn: present + n\n\t\tnull: 0\n"
+    "fmt": "fn use(value Int?) Int:\n\tpresent := match value:\n\t\tn => n\n\t\tnull => return 0\n\n\treturn match value:\n\t\tn => present + n\n\t\tnull => 0\n"
   }
 }

@@ -10,7 +10,7 @@ fn count(lines List[String]) Map[String, Int]:
 	for line in lines:
 		key := line.trim()
 		if line.length() > 3:
-			counts.update(key, 0, fn n: n + 1)
+			counts.update(key, 0, n => n + 1)
 
 	return counts
 
@@ -21,7 +21,7 @@ fn count_or_keep(lines List[String]) Map[String, Int]:
 		key := line.trim()
 
 		if line.length() > 3:
-			counts.update(key, 0, fn n: n + 1)
+			counts.update(key, 0, n => n + 1)
 		else:
 			counts[key] = 100
 

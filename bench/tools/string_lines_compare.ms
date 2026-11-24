@@ -57,7 +57,7 @@ export fn run_rows(
 	cpu String,
 ) List[Row]!:
 	text := run_pinned(executable, [], cpu)?
-	lines := text.split("\n").filter(fn l: l.trim() != "")
+	lines := text.split("\n").filter(l => l.trim() != "")
 	if (
 		lines.is_empty()
 		or lines[0].trim() != "case,input_bytes,iterations,elapsed_ns,checksum"

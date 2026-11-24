@@ -27,19 +27,19 @@ fn sum(fs List[fn() Int]) Int:
 fn d1(text String) Int:
 	var fs List[fn() Int] = []
 	for p in text.split(",").clone():
-		relay(fs, fn() Int: return p.length())
+		relay(fs, fn() Int => return p.length())
 	return sum(fs)
 
 fn d2(text String) Int:
 	var fs List[fn() Int] = []
 	for p in text.split(",").clone():
-		deep(fs, fn() Int: return p.length(), 3)
+		deep(fs, fn() Int => return p.length(), 3)
 	return sum(fs)
 
 fn d3(text String) Int:
 	var fs List[fn() Int] = []
 	for p in text.split(",").clone():
-		keep(fs, fn() Int: return p.length())
+		keep(fs, fn() Int => return p.length())
 	return sum(fs)
 
 fn d4(text String) Int:
@@ -49,7 +49,7 @@ fn d4(text String) Int:
 	for p in text.split(",").clone():
 		n := p.length()
 		at := i
-		g := fn() Int: return n + at
+		g := fn() Int => return n + at
 		relay(fs, g)
 		i += 1
 
@@ -59,8 +59,8 @@ fn d5(text String) Int:
 	var fs List[fn() Int] = []
 
 	for p in text.split(",").clone():
-		g := fn() Int: return p.length()
-		h := fn() Int: return g() + 1
+		g := fn() Int => return p.length()
+		h := fn() Int => return g() + 1
 		relay(fs, h)
 
 	return sum(fs)

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn hidden() Int: 0\n"
+    "fmt": "fn hidden() Int => 0\n"
   }
 }

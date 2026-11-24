@@ -27,7 +27,7 @@ fn main() Void:
 		if i != null: found += i
 		padded += t.pad_start(20, ".").length() + t.lower().pad_end(24, "*").length()
 
-	joined := words.map(fn w: w.trim().clone()).sorted(fn a, b: a.compare(b))
+	joined := words.map(w => w.trim().clone()).sorted((a, b) => a.compare(b))
 	var sorted_sample = 0
 	for i in 0..joined.length():
 		if i % 1000 == 0: sorted_sample += joined[i].length() + joined[i].scalar_at(5)

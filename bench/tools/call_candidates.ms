@@ -58,7 +58,7 @@ fn measure(
 		"examples/hello/ms.toml", "tools/conform.ms", "bench/perf/stdlib/ms.toml"
 	]:
 		files.append(absolute(file.clone()))
-	if filter != "": files = files.filter(fn file: file.ends_with(f"/{filter}"))
+	if filter != "": files = files.filter(file => file.ends_with(f"/{filter}"))
 	if files.is_empty(): return invalid("no matching inputs")
 
 	write_text(

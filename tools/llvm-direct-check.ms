@@ -143,7 +143,7 @@ fn parse_kernels(text String) List[List[String]]:
 	return rows
 
 fn checksums(rows List[List[String]]) String:
-	return rows.map(fn r: f"{r[0]} {r[2]}").join("\n")
+	return rows.map(r => f"{r[0]} {r[2]}").join("\n")
 
 fn row(name String, old Built, new Built) String:
 	share := if new.functions == 0: 0.0 else: new.direct.to_float() * 100.0 / new.functions.to_float()
@@ -166,7 +166,7 @@ fn kernel_times(old String, new String, runs Int) List[List[String]]!:
 	for n in 0..runs:
 		old_rows := parse_kernels(output(old)?)
 		new_rows := parse_kernels(output(new)?)
-		if n == 0: names = old_rows.map(fn r: r[0].clone())
+		if n == 0: names = old_rows.map(r => r[0].clone())
 		for r in old_rows:
 			keep_min(best_old, r[0].clone(), r[1].parse_int() or 0)
 		for r in new_rows:
@@ -174,7 +174,7 @@ fn kernel_times(old String, new String, runs Int) List[List[String]]!:
 
 	return ok(
 		names.map(
-			fn k: [
+			k => [
 				k.clone(),
 				f"{best_old.get_or(k, 0)}",
 				f"{best_new.get_or(k, 0)}",

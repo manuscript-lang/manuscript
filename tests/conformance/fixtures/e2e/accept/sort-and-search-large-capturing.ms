@@ -38,7 +38,7 @@ test "a captured list orders owning records stably":
 	for i in 0..20:
 		weights.append(i % 5)
 
-	sorted := rows(700).sorted(fn a, b: weights[a.key] - weights[b.key])
+	sorted := rows(700).sorted((a, b) => weights[a.key] - weights[b.key])
 	expect_equal(sorted.length(), 700)?
 	expect_equal(ordered_stably(sorted, weights), true)?
 
@@ -62,7 +62,7 @@ test "a captured scalar orders plain integers, and a counter it updates is visib
 
 test "sorted_by_key orders large lists by a captured key":
 	offset := 5
-	sorted := rows(400).sorted_by_key(fn r: (r.key + offset) % 7)
+	sorted := rows(400).sorted_by_key(r => (r.key + offset) % 7)
 
 	for i in 1..sorted.length():
 		a := (sorted[i - 1].key + offset) % 7

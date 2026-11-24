@@ -34,4 +34,4 @@ test "an interface that outlives the call keeps its own copy":
 	kept := keep(tag)
 	expect_equal(kept.label(), "short-1")?
 	items List[Named] := [tag, Tag("b", 2)]
-	expect_equal(items.map(fn n: n.label()), ["short-1", "b-2"])?
+	expect_equal(items.map(n => n.label()), ["short-1", "b-2"])?

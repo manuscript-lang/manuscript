@@ -7,5 +7,5 @@ fn choose(value Choice) Int:
             second_payload_name,
             third_payload_name,
             fourth_payload_name
-        ): return 1
-        _: return 0
+        ) => return 1
+        _ => return 0

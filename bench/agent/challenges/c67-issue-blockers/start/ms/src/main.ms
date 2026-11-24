@@ -85,13 +85,13 @@ type SortKey:
 
 // ---------- string helpers ----------
 
-fn is_ws(c String) Bool: c == " " or c == "\t" or c == "\r" or c == "\n"
+fn is_ws(c String) Bool => c == " " or c == "\t" or c == "\r" or c == "\n"
 
 fn digit(c String) Int:
 	if c.length() != 1: return -1
 	return "0123456789".index_of(c) or (-1)
 
-fn is_lower(c String) Bool: c.length() == 1 and c >= "a" and c <= "z"
+fn is_lower(c String) Bool => c.length() == 1 and c >= "a" and c <= "z"
 
 fn join_range(cs List[String], a Int, b Int) String:
 	var r = ""
@@ -131,7 +131,7 @@ fn valid_int(s String) Bool:
 
 	return (s.parse_int() or 2000000) <= 1000000
 
-fn to_int(s String) Int: s.parse_int() or 0
+fn to_int(s String) Int => s.parse_int() or 0
 
 fn valid_date(s String) Bool:
 	cs := s.chars()
@@ -239,7 +239,7 @@ fn prio_rank(s String) Int:
 
 	return -1
 
-fn opt_s(x String?) String: x.clone() or "-"
+fn opt_s(x String?) String => x.clone() or "-"
 
 fn opt_i(x Int?) String:
 	v := x
@@ -356,7 +356,7 @@ fn norm_labels(parts List[String]) List[String]!:
 	return ok(sort_unique(out))
 
 fn sort_unique(xs List[String]) List[String]:
-	var s = xs.sorted(fn a, b: a.compare(b))
+	var s = xs.sorted((a, b) => a.compare(b))
 	var out = List[String]()
 	for x in s:
 		if out.length() == 0 or out[out.length() - 1] != x:
@@ -477,7 +477,7 @@ fn sort_field(s String) Int:
 		"id", "created", "updated", "priority", "points", "state", "title", "assignee",
 		"reporter", "due"
 	]
-	return names.find_index(fn x: x == s) or (-1)
+	return names.find_index(x => x == s) or (-1)
 
 fn field_code(s String) Int:
 	names := [
@@ -486,7 +486,7 @@ fn field_code(s String) Int:
 	]
 	if s == "labels": return 11
 
-	return names.find_index(fn x: x == s) or (-1)
+	return names.find_index(x => x == s) or (-1)
 
 fn op_ok(field Int, op Int) Bool:
 	if field <= 3 or field == 9 or field == 10: return op <= 5
@@ -629,7 +629,7 @@ fn var Parser.advance() Void!:
 
 	return ok()
 
-fn is_lower_or_us(c String) Bool: is_lower(c) or c == "_"
+fn is_lower_or_us(c String) Bool => is_lower(c) or c == "_"
 
 fn parse_filter(st State, text String, var nodes List[Node], var refs List[String]) Int!:
 	if text.trim() == "": return ok(-1)
@@ -757,7 +757,7 @@ fn build_term(
 
 			vals.append(v.clone())
 		else if fc == 8:
-			if st.wf.states.find_index(fn x: x == v) == null: return error(
+			if st.wf.states.find_index(x => x == v) == null: return error(
 				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
@@ -812,7 +812,7 @@ fn cmp_op(op Int, a Int, b Int) Bool:
 
 	return false
 
-fn is_open(st State, iss Issue) Bool: not st.wf.finals[iss.state]
+fn is_open(st State, iss Issue) Bool => not st.wf.finals[iss.state]
 
 fn opt_match(x String?, op Int, v String) Bool:
 	s := x
@@ -996,7 +996,7 @@ fn State.run_list(
 		limit = limit_override
 
 	keys := parse_sort(sort_text or "")?
-	idxs.sort(fn a, b: cmp_issue(keys, self.issues[a], self.issues[b]))
+	idxs.sort((a, b) => cmp_issue(keys, self.issues[a], self.issues[b]))
 
 	var lines = List[String]()
 	var count = 0
@@ -1017,7 +1017,7 @@ fn var State.emit(s String) Void:
 	self.out.append(s.clone())
 
 fn State.find(id Int) Int:
-	return self.issues.find_index(fn i: i.id == id) or (-1)
+	return self.issues.find_index(i => i.id == id) or (-1)
 
 fn State.id_arg(arg String) Int!:
 	id := parse_id_syntax(arg)?
@@ -1094,7 +1094,7 @@ fn var State.do_move(id Int, target String, comment String) String!:
 	idx := self.find(id)
 	self.final_check(idx)?
 
-	ti := self.wf.states.find_index(fn x: x == target) or (-1)
+	ti := self.wf.states.find_index(x => x == target) or (-1)
 	if ti < 0: return error(Error(f"unknown state '{target}'"))
 
 	cur := self.issues[idx].state
@@ -1496,7 +1496,7 @@ type LC:
 	name String
 	n Int
 
-fn issues_word(n Int) String: if n == 1: "issue" else: "issues"
+fn issues_word(n Int) String => if n == 1: "issue" else: "issues"
 
 fn State.cmd_report(rest String) String!:
 	ws := rest.fields()
@@ -1564,7 +1564,7 @@ fn State.cmd_report(rest String) String!:
 
 			if a != null:
 				key := a.lower()
-				gi := groups.find_index(fn g: g.key == key) or (-1)
+				gi := groups.find_index(g => g.key == key) or (-1)
 
 				if gi < 0:
 					groups.append(Grp(a.clone(), key, 1, pts))
@@ -1577,7 +1577,7 @@ fn State.cmd_report(rest String) String!:
 
 		if not any_open: return ok("(no open issues)")
 
-		groups.sort(fn a, b: grp_cmp(a, b))
+		groups.sort((a, b) => grp_cmp(a, b))
 
 		var lines = List[String]()
 		for g in groups:
@@ -1593,7 +1593,7 @@ fn State.cmd_report(rest String) String!:
 
 		for i in idxs:
 			for l in self.issues[i].f.labels:
-				gi := counts.find_index(fn c: c.name == l) or (-1)
+				gi := counts.find_index(c => c.name == l) or (-1)
 
 				if gi < 0:
 					counts.append(LC(l.clone(), 1))
@@ -1602,7 +1602,7 @@ fn State.cmd_report(rest String) String!:
 
 		if counts.length() == 0: return ok("(no labels)")
 
-		counts.sort(fn a, b: lc_cmp(a, b))
+		counts.sort((a, b) => lc_cmp(a, b))
 
 		var lines = List[String]()
 		for c in counts:
@@ -1641,7 +1641,7 @@ fn lc_cmp(a LC, b LC) Int:
 // ---------- workflow ----------
 
 fn reg(var states List[String], name String) Int:
-	gi := states.find_index(fn x: x == name) or (-1)
+	gi := states.find_index(x => x == name) or (-1)
 	if gi >= 0: return gi
 
 	states.append(name.clone())

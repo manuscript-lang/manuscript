@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/record-constructors-with-defaults-match-dynamic-construction.ms
 import expect_true from "@std/test/test.ms"
 
-fn twice(n Int) Int: n * 2
+fn twice(n Int) Int => n * 2
 
 type Options:
     count Int

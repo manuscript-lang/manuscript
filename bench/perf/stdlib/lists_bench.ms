@@ -91,9 +91,9 @@ fn make_fixture() BenchData:
 	data_19 := ints(100000)
 	data_20 := ints(100000)
 	data_21 := ints(100000)
-	small_points := data_21.map(fn(x Int) Point: Point(x, (x * 7) % 1000))
+	small_points := data_21.map(fn(x Int) Point => Point(x, (x * 7) % 1000))
 	data_22 := ints(100000)
-	small_points_22 := data_22.map(fn(x Int) Point: Point(x, (x * 7) % 1000))
+	small_points_22 := data_22.map(fn(x Int) Point => Point(x, (x * 7) % 1000))
 	data_23 := ints(100000)
 	values List[Int] := []
 	values_25 := [1, 2, 3, 4]
@@ -129,7 +129,7 @@ fn make_fixture() BenchData:
 	)
 
 bench "list.callable_key" per 100000:
-	best_index(fixture.points, fn(p Point) Int: p.y * fixture.scale)
+	best_index(fixture.points, fn(p Point) Int => p.y * fixture.scale)
 
 bench "list.callable_key_loop" per 100000:
 	best_index_loop(fixture.points_2, fixture.scale_2)
@@ -153,10 +153,10 @@ bench "list.for_in" per 100000:
 	n
 
 bench "list.map" per 100000:
-	fixture.data_6.map(fn(x Int) Int: x * 2).length()
+	fixture.data_6.map(fn(x Int) Int => x * 2).length()
 
 bench "list.filter" per 100000:
-	fixture.data_7.filter(fn(x Int) Bool: x % 2 == 0).length()
+	fixture.data_7.filter(fn(x Int) Bool => x % 2 == 0).length()
 
 bench "list.zip" per 100000:
 	fixture.data_8.zip(fixture.data_8).length()
@@ -168,13 +168,13 @@ bench "list.windows" per 100000:
 	fixture.data_10.windows(4).length()
 
 bench "list.partition" per 100000:
-	fixture.data_11.partition(fn(x Int) Bool: x % 2 == 0).matching.length()
+	fixture.data_11.partition(fn(x Int) Bool => x % 2 == 0).matching.length()
 
 bench "list.fold" per 100000:
-	fixture.data_12.fold(0, fn(acc Int, x Int) Int: acc + x)
+	fixture.data_12.fold(0, fn(acc Int, x Int) Int => acc + x)
 
 bench "list.sorted" per 100000:
-	sorted := fixture.data_13.sorted(fn(left Int, right Int) Int: left - right)
+	sorted := fixture.data_13.sorted(fn(left Int, right Int) Int => left - right)
 	sorted.length()
 
 bench "list.sorted_natural" per 100000:
@@ -201,14 +201,14 @@ bench "list.concat_reverse" per 100000:
 bench "list.any_early_exit" per 100000:
 	var n = 0
 	for i in 0..100000:
-		if fixture.data_20.any(fn(x Int) Bool: x == 0): n += 1
+		if fixture.data_20.any(fn(x Int) Bool => x == 0): n += 1
 	n
 
 bench "list.max_by" per 100:
 	var n = 0
 
 	for i in 0..100:
-		best := fixture.small_points.max_by(fn(p Point) Int: p.y)
+		best := fixture.small_points.max_by(fn(p Point) Int => p.y)
 		if best != null: n += best.x
 
 	n
@@ -225,8 +225,8 @@ bench "list.max_by_loop" per 100:
 	n
 
 bench "list.records_map" per 100000:
-	mapped := fixture.data_23.map(fn(x Int) Point: Point(x, x + 1))
-	mapped.fold(0, fn(acc Int, p Point) Int: acc + p.y)
+	mapped := fixture.data_23.map(fn(x Int) Point => Point(x, x + 1))
+	mapped.fold(0, fn(acc Int, p Point) Int => acc + p.y)
 
 bench "list.repeated empty":
 	fixture.values.repeated(1000000).length()

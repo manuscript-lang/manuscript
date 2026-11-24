@@ -21,5 +21,5 @@ export fn main() Void:
 	print(items.length())
 
 	match items[0]:
-		Num(n): print(n)
-		_: print("not a number")
+		Num(n) => print(n)
+		_ => print("not a number")

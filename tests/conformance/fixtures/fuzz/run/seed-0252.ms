@@ -70,6 +70,6 @@ export fn main() Int:
     f8 := (((f4 + 401.106) + (f4 + f4)) + f4)
     say(f"f8 = {f8}")
 
-    l9 := l7.map(fn x: x * 3)
+    l9 := l7.map(x => x * 3)
     say(f"l9 = {l9} len {l9.length()}")
     return 0

@@ -16,13 +16,13 @@ test "List operations written in Manuscript apply without an import":
 
 test "a comparator-less call and a comparator call share a name":
 	items := [Plain(3), Plain(1), Plain(2)]
-	ordered := items.sorted(fn a, b: a.n - b.n)
-	expect_equal(ordered.map(fn p: p.n), [1, 2, 3])?
+	ordered := items.sorted((a, b) => a.n - b.n)
+	expect_equal(ordered.map(p => p.n), [1, 2, 3])?
 
 	var numbers = [2, 3, 1]
 	numbers.sort()
 	expect_equal(numbers, [1, 2, 3])?
-	numbers.sort(fn a, b: b - a)
+	numbers.sort((a, b) => b - a)
 	expect_equal(numbers, [3, 2, 1])?
 
 test "the bound is carried through a generic function":

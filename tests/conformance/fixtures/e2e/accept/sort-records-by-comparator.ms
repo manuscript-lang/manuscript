@@ -17,7 +17,7 @@ fn entries(count Int) List[Entry]:
 	return out
 
 test "sorting plain records by a comparator orders by key and keeps equal keys in input order":
-	sorted := entries(500).sorted(compare: fn(a Entry, b Entry) Int: (a.key - b.key))
+	sorted := entries(500).sorted(compare: fn(a Entry, b Entry) Int => (a.key - b.key))
 	var ordered = true
 
 	for i in 1..sorted.length():
@@ -31,7 +31,7 @@ test "sorting plain records by a comparator orders by key and keeps equal keys i
 
 test "sorting in place by a descending comparator reverses the key order":
 	var list = entries(200)
-	list.sort(compare: fn(a Entry, b Entry) Int: b.key - a.key)
+	list.sort(compare: fn(a Entry, b Entry) Int => b.key - a.key)
 
 	var ordered = true
 	for i in 1..list.length():
@@ -56,7 +56,7 @@ test "ascending, descending and interleaved inputs sort stably at every size":
 	for shape in 0..3:
 		for count in [0, 1, 2, 3, 12, 13, 24, 25, 100, 127, 128, 129, 1000]:
 			sorted := shaped(count, shape).sorted(
-				compare: fn(a Entry, b Entry) Int: (a.key - b.key)
+				compare: fn(a Entry, b Entry) Int => (a.key - b.key)
 			)
 			var ordered = true
 			var seen = 0

@@ -32,7 +32,7 @@ export fn main() Int:
     l1 := [1, 2, 3].take(0)
     say(f"l1 = {l1} len {l1.length()}")
 
-    l2 := l1.map(fn x: x * 7)
+    l2 := l1.map(x => x * 7)
     say(f"l2 = {l2} len {l2.length()}")
     say(f"gcd(2865, 4945) = {gcd(2865, 4945)}")
 

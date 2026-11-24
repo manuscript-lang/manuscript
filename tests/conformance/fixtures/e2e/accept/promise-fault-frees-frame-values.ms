@@ -14,7 +14,7 @@ test "a promise that faults releases the values its frames own":
 	before := (memory_usage() | expect_ok?).resident
 
 	for i in 0..60:
-		void promise[Int](fn: faulting()).wait()
+		void promise[Int](() => faulting()).wait()
 
 	// Each leaked fault kept 1 MB, so 60 faults would grow the process by 60 MB.
 	grown := (memory_usage() | expect_ok?).resident - before

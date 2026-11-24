@@ -89,10 +89,10 @@ export enum NormalizationForm:
 // bounded; a supplied bound counts UTF-8 bytes.
 fn NormalizationForm.normalize(text String, max_bytes Int?) String!:
 	name := match self:
-		Nfc: "NFC"
-		Nfd: "NFD"
-		Nfkc: "NFKC"
-		Nfkd: "NFKD"
+		Nfc => "NFC"
+		Nfd => "NFD"
+		Nfkc => "NFKC"
+		Nfkd => "NFKD"
 
 	return text.normalize(name, max_bytes)
 
@@ -424,7 +424,7 @@ fn String.find_char(predicate fn(String) Bool) Int?:
 fn String.replace_each(pairs Map[String, String]) String:
 	if pairs.is_empty(): return self.clone()
 
-	keys := pairs.keys().map(fn key: key.as_bytes())
+	keys := pairs.keys().map(key => key.as_bytes())
 	news := pairs.values()
 	bytes := self.as_bytes()
 	n := bytes.length()

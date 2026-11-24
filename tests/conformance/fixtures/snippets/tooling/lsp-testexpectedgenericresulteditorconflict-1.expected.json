@@ -13,21 +13,21 @@
         "position": {
           "file": "lsp-testexpectedgenericresulteditorconflict-1.ms",
           "line": 6,
-          "column": 20,
-          "offset": 239
+          "column": 22,
+          "offset": 243
         },
         "fix": {
           "position": {
             "file": "lsp-testexpectedgenericresulteditorconflict-1.ms",
             "line": 6,
-            "column": 20,
-            "offset": 239
+            "column": 22,
+            "offset": 243
           },
           "end": {
             "file": "lsp-testexpectedgenericresulteditorconflict-1.ms",
             "line": 6,
-            "column": 31,
-            "offset": 250
+            "column": 33,
+            "offset": 254
           },
           "replacement": "f\"{identity(1)}\""
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lsp-testexpectedgenericresulteditorconflict-1.ms:6:20: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 6 | fn first() String: identity(1)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lsp-testexpectedgenericresulteditorconflict-1.ms:6:22: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 6 | fn first() String => identity(1)\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

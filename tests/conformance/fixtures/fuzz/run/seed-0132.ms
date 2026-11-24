@@ -39,7 +39,7 @@ export fn main() Int:
     b5 := (((-(-5)) - (47 % 48)) <= (-((-36) % i4)))
     say(f"b5 = {b5}")
 
-    l6 := l2.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l6 := l2.map(x => x + 2).filter(x => x % 2 == 0)
     say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "delta".upper()

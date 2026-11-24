@@ -24,14 +24,14 @@ export enum DnsKind:
 // Returns the uppercase wire category.
 fn DnsKind.to_string() String:
 	match self:
-		A: return "A"
-		AAAA: return "AAAA"
-		CNAME: return "CNAME"
-		MX: return "MX"
-		NS: return "NS"
-		TXT: return "TXT"
-		PTR: return "PTR"
-		SRV: return "SRV"
+		A => return "A"
+		AAAA => return "AAAA"
+		CNAME => return "CNAME"
+		MX => return "MX"
+		NS => return "NS"
+		TXT => return "TXT"
+		PTR => return "PTR"
+		SRV => return "SRV"
 
 // Numeric address families reported by IP values and host interfaces.
 export enum IpFamily:
@@ -41,8 +41,8 @@ export enum IpFamily:
 // Returns IPv4 or IPv6.
 fn IpFamily.to_string() String:
 	match self:
-		IPv4: return "IPv4"
-		IPv6: return "IPv6"
+		IPv4 => return "IPv4"
+		IPv6 => return "IPv6"
 
 // A validated numeric IPv4/IPv6 address without a port or zone.
 // ms: data

@@ -672,13 +672,13 @@ fn after_word(body String) String:
 
 fn trailing_filter(expr TemplateExpr) String:
 	match expr:
-		Call(name, _): return name.clone()
-		_: return ""
+		Call(name, _) => return name.clone()
+		_ => return ""
 
 fn strip_filter(expr TemplateExpr) TemplateExpr:
 	match expr:
-		Call(_, args): return args[0].clone()
-		_: return expr.clone()
+		Call(_, args) => return args[0].clone()
+		_ => return expr.clone()
 
 // ---- rendering -----------------------------------------------------------------------------
 
@@ -715,10 +715,10 @@ fn Run.lookup(parts List[String]) JsonValue?:
 
 fn Run.eval(expr TemplateExpr, strict Bool) JsonValue!Error:
 	match expr:
-		Literal(value): return ok(value.clone())
-		Path(parts): return self.path_value(parts, strict)
-		Call(name, args): return self.call(name, args, strict)
-		Op(op, args): return self.operator(op, args)
+		Literal(value) => return ok(value.clone())
+		Path(parts) => return self.path_value(parts, strict)
+		Call(name, args) => return self.call(name, args, strict)
+		Op(op, args) => return self.operator(op, args)
 
 fn Run.path_value(parts List[String], strict Bool) JsonValue!Error:
 	found := self.lookup(parts)
@@ -770,10 +770,10 @@ fn var Run.nodes(items List[TemplateNode], depth Int) Void!Error:
 
 fn var Run.node(node TemplateNode, depth Int) Void!Error:
 	match node:
-		Text(text): return self.write(text)
-		Emit(expr, escape_output): return self.emit(expr, escape_output)
-		If(branches, otherwise): return self.branch(branches, otherwise, depth)
-		Each(first, second, source, body, otherwise): return self.each(
+		Text(text) => return self.write(text)
+		Emit(expr, escape_output) => return self.emit(expr, escape_output)
+		If(branches, otherwise) => return self.branch(branches, otherwise, depth)
+		Each(first, second, source, body, otherwise) => return self.each(
 			first,
 			second,
 			source,
@@ -781,7 +781,7 @@ fn var Run.node(node TemplateNode, depth Int) Void!Error:
 			otherwise,
 			depth,
 		)
-		Include(name): return self.include(name, depth)
+		Include(name) => return self.include(name, depth)
 
 fn var Run.emit(expr TemplateExpr, escape_output Bool) Void!Error:
 	value := self.eval(expr, self.strict)?
@@ -1163,8 +1163,8 @@ fn to_text(value JsonValue) String:
 
 fn number_text(value JsonValue) String?:
 	match value:
-		NumberValue(text): return text
-		_: return null
+		NumberValue(text) => return text
+		_ => return null
 
 // 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are
 // never equal.

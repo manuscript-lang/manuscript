@@ -41,8 +41,8 @@ fn ask(c Fetcher, base String, path String) Promise[FetchResponse]:
 
 fn answered(promise Promise[FetchResponse]) Bool:
 	match promise.wait():
-		ok(response): return finished(response)
-		error(_): return false
+		ok(response) => return finished(response)
+		error(_) => return false
 
 fn finished(response FetchResponse) Bool:
 	text := response.text().get_or("")

@@ -294,8 +294,8 @@ enum Event:
 
 fn Event.to_json() JsonValue:
 	match self:
-		Created(id): return tagged("created", id)
-		Deleted(id): return tagged("deleted", id)
+		Created(id) => return tagged("created", id)
+		Deleted(id) => return tagged("deleted", id)
 
 fn tagged(kind String, id Int) JsonValue:
 	var fields = Map[String, JsonValue]()

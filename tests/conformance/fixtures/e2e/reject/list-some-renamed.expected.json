@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/list-some-renamed.ms:5:11: resolution: unknown or ambiguous member some on List[Int]; some(predicate) is now any(predicate)\n   |\n 5 |     if xs.some(fn(x Int) Bool: x > 2): return 1\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/list-some-renamed.ms:5:11: resolution: unknown or ambiguous member some on List[Int]; some(predicate) is now any(predicate)\n   |\n 5 |     if xs.some(fn(x Int) Bool => x > 2): return 1\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

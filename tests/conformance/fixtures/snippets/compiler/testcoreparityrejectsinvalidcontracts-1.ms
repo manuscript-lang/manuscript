@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/core_parity_test.go:17 TestCoreParityRejectsInvalidContracts
 fn wrong(value Set[Int]) Void:
-    output := value.map(fn n: n.to_float())
+    output := value.map(n => n.to_float())

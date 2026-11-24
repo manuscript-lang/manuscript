@@ -6,7 +6,7 @@ fn use(value Int?) Int:
         _value:
             callback := fn() Int:
                 return match value:
-                    n: n
-                    null: 0
+                    n => n
+                    null => 0
             callback()
-        null: 0
+        null => 0

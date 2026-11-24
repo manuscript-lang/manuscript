@@ -19,7 +19,7 @@ fn delayed(id Int) Void:
 
 test "wait_first prefers an already completed input over unstarted deferred work":
 	pending := deferred[Int](immediate)
-	ready := promise(fn: ok(2))
+	ready := promise(() => ok(2))
 	while not ready.done():
 		void sleep(milliseconds(1)).wait()
 	expect_equal((wait_first([pending, ready])?), 2)?

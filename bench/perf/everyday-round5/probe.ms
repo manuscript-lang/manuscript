@@ -94,7 +94,7 @@ fn c_chain_capture() Int:
 
 	for r in 0..10:
 		k := r + 2
-		t += xs.filter(fn v: v % k != 0).map(fn v: v * k).sum()
+		t += xs.filter(v => v % k != 0).map(v => v * k).sum()
 
 	return t
 
@@ -103,7 +103,7 @@ fn c_zip_dot() Int:
 	b := ints(1000000)
 	var t = 0
 	for r in 0..10:
-		t += a.zip(b).map(fn p: p.first * p.second).sum()
+		t += a.zip(b).map(p => p.first * p.second).sum()
 	return t
 
 fn c_any_all_count() Int:
@@ -112,9 +112,9 @@ fn c_any_all_count() Int:
 
 	for r in 0..20:
 		k := r + 1
-		if xs.any(fn v: v == 1000 + k): t += 1
-		if xs.all(fn v: v < 2000): t += 2
-		t += xs.count(fn v: v % k == 0)
+		if xs.any(v => v == 1000 + k): t += 1
+		if xs.all(v => v < 2000): t += 2
+		t += xs.count(v => v % k == 0)
 
 	return t
 
@@ -123,7 +123,7 @@ fn c_fold_record() Int:
 	var t = 0
 
 	for r in 0..10:
-		a := xs.fold(V3(0, 0, 0), fn acc, v: V3(acc.x + v, acc.y + 1, acc.z + v % 5))
+		a := xs.fold(V3(0, 0, 0), (acc, v) => V3(acc.x + v, acc.y + 1, acc.z + v % 5))
 		t += a.x + a.y + a.z
 
 	return t
@@ -139,7 +139,7 @@ fn c_flat_map() Int:
 	xs := ints(500000)
 	var t = 0
 	for r in 0..5:
-		t += xs.flat_map(fn v: [v, v + 1, v + 2]).length()
+		t += xs.flat_map(v => [v, v + 1, v + 2]).length()
 	return t
 
 fn c_chunks_windows() Int:
@@ -156,7 +156,7 @@ fn c_closure_list() Int:
 
 	for i in 0..16:
 		k := i
-		fs.append(fn v: v * k + 1)
+		fs.append(v => v * k + 1)
 
 	var t = 0
 	for i in 0..20000000:
@@ -169,7 +169,7 @@ fn c_closure_mut() Int:
 	xs := ints(2000000)
 
 	for r in 0..10:
-		xs.for_each(fn v: cnt += 1)
+		xs.for_each(v => cnt += 1)
 		for v in xs:
 			sum += v
 
@@ -183,7 +183,7 @@ fn apply_n(f fn(Int) Int, n Int) Int:
 
 fn c_closure_passed() Int:
 	k := 7
-	return apply_n(fn v: v * k + 1, 50000000)
+	return apply_n(v => v * k + 1, 50000000)
 
 fn max_of[T Comparable & Clonable](xs List[T]) T:
 	var best = xs[0].clone()
@@ -220,7 +220,7 @@ fn g_user_map() Int:
 	xs := ints(2000000)
 	var t = 0
 	for r in 0..10:
-		t += g_map_user(xs, fn v: v * 2).length()
+		t += g_map_user(xs, v => v * 2).length()
 	return t
 
 fn i_shapes() Int:
@@ -254,7 +254,7 @@ fn e_rpn() Int:
 
 		for op in prog:
 			match op:
-				Push(v): st.append(v)
+				Push(v) => st.append(v)
 				Add:
 					b := st.pop() or panic("called Optional.get() on null")
 					a := st.pop() or panic("called Optional.get() on null")
@@ -263,8 +263,8 @@ fn e_rpn() Int:
 					b := st.pop() or panic("called Optional.get() on null")
 					a := st.pop() or panic("called Optional.get() on null")
 					st.append(a * b)
-				Dup: st.append(st[st.length() - 1])
-				Pop: st.pop()
+				Dup => st.append(st[st.length() - 1])
+				Pop => st.pop()
 
 		t += st.length() + st[0]
 
@@ -315,7 +315,7 @@ fn r_sort_field() Int:
 		x = lcg(x)
 		xs.append(V3(x % 1000, i, 0))
 
-	ys := xs.sorted_by_key(fn p: p.x)
+	ys := xs.sorted_by_key(p => p.x)
 	return ys[0].y + ys[999999].y
 
 fn r_min_by() Int:
@@ -330,11 +330,11 @@ fn r_min_by() Int:
 	for r in 0..10:
 		t += (
 			(
-				xs.min_by(fn p: p.x)
+				xs.min_by(p => p.x)
 				or panic("called Optional.get() on null")
 			).y
 			+ (
-				xs.max_by(fn p: p.x)
+				xs.max_by(p => p.x)
 				or panic("called Optional.get() on null")
 			).y
 		)
@@ -353,7 +353,7 @@ fn m_distinct_set() Int:
 
 fn m_partition() Int:
 	xs := ints(2000000)
-	p := xs.partition(fn v: v % 2 == 0)
+	p := xs.partition(v => v % 2 == 0)
 	return p.matching.length() + p.rest.length()
 
 fn m_set_ops() Int:

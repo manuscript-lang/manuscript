@@ -12,4 +12,4 @@ impl Counter for Cell:
     fn lower(by: Int) Int:
         self.total -= by
         return self.total
-fn take(value: Cell) Int: return value.total
+fn take(value: Cell) Int => return value.total

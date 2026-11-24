@@ -10,7 +10,7 @@ fn done() Void!:
 	return ok()
 
 fn main() Void!:
-	ok := fn: 7
+	ok := () => 7
 	print(apply(ok).to_string())
 	print(ok().to_string())
 	done()?

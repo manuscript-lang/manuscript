@@ -12,5 +12,5 @@ fn apply(xs List[Int], f fn(Int) Int) Int:
 export fn main() Int:
 	xs := [1, 2, 3]
 	k := 5
-	r := apply(xs, fn x: x + k)
+	r := apply(xs, x => x + k)
 	return r - 21

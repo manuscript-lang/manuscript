@@ -21,7 +21,7 @@ export fn main() Int:
     f4 := ((f3 * (f3 * 979.285)) - (f3 - (f3 * f3)))
     say(f"f4 = {f4}")
 
-    l5 := l2.filter(fn x: x > 5)
+    l5 := l2.filter(x => x > 5)
     say(f"l5 = {l5} len {l5.length()}")
 
     f6 := 264.284

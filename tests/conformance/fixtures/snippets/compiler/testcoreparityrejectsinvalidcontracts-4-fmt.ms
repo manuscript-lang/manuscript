@@ -5,4 +5,4 @@ enum T!E:
     ok(value: T)
     error(cause: E)
 
-fn wrong(value: Int!String) Int: value.get()
+fn wrong(value: Int!String) Int => value.get()

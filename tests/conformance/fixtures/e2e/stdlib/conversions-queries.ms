@@ -53,22 +53,22 @@ test "conversions and collection queries are callable":
 	(failed.to_optional() == null) | expect_true?
 
 	entries Map[String, Int] := {"b": 2, "a": 1}
-	expect_equal(entries.fold(0, fn acc, k, v: acc + v), 3)?
+	expect_equal(entries.fold(0, (acc, k, v) => acc + v), 3)?
 	expect_equal(
 		(
-			entries.find(fn k, v: v == 1)
+			entries.find((k, v) => v == 1)
 			or panic("called Optional.get() on null")
 		).key,
 		"a",
 	)?
-	expect_true((entries.any(fn k, v: v == 1)))?
-	expect_true((entries.all(fn k, v: v > 0)))?
+	expect_true((entries.any((k, v) => v == 1)))?
+	expect_true((entries.all((k, v) => v > 0)))?
 
 	values := Set[Int]([2, 1])
-	expect_equal(values.fold(0, fn acc, n: acc + n), 3)?
-	expect_equal(values.find(fn n: n == 1) or panic("called Optional.get() on null"), 1)?
-	expect_true((values.any(fn n: n == 1)))?
-	expect_true((values.all(fn n: n > 0)))?
+	expect_equal(values.fold(0, (acc, n) => acc + n), 3)?
+	expect_equal(values.find(n => n == 1) or panic("called Optional.get() on null"), 1)?
+	expect_true((values.any(n => n == 1)))?
+	expect_true((values.all(n => n > 0)))?
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
 	var counter = Counter(0)
@@ -85,7 +85,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	cause.calls = 2
 	counter.calls | expect_equal(1)?
 
-	create := fn() Counter: Counter(10)
+	create := fn() Counter => Counter(10)
 	(require_lazy(create, present).get() != 0 or counter.calls != 1) | expect_false?
 
 	error_result := require_lazy(create, missing)
@@ -99,7 +99,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	(success_only(failure) == null) | expect_true?
 
 	success Counter!Error := ok(counter.clone())
-	extract := fn: success.clone().to_optional()
+	extract := () => success.clone().to_optional()
 	var extracted = (extract() or panic("called Optional.get() on null")).clone()
 	extracted.calls = 7
 	counter.calls | expect_equal(1)?
@@ -173,7 +173,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 	var chain_1 = Map[String, Int]()
 	chain_1.add("a", 3)
 
-	nested := (chain_1.fold(success, fn acc, k, v: acc.map(fn n: (n + v))))
+	nested := (chain_1.fold(success, (acc, k, v) => acc.map(n => (n + v))))
 	nested.get() | expect_equal(5)?
 	empty_calls.is_empty() | expect_true?
 
@@ -202,7 +202,7 @@ test "Map find returns fresh entry shells with copied payloads":
 	source.add("b", counter.clone())
 
 	find := source.clone().find
-	var original = (find(fn k, v: true) or panic("called Optional.get() on null")).clone()
+	var original = (find((k, v) => true) or panic("called Optional.get() on null")).clone()
 	var edited = original.value.clone()
 	edited.calls = 5
 	counter.calls | expect_equal(2)?
@@ -211,12 +211,12 @@ test "Map find returns fresh entry shells with copied payloads":
 	(not (source.contains("b")) or source["b"].calls != 2) | expect_false?
 	expect_equal(
 		(
-			source.find(fn k, v: true)
+			source.find((k, v) => true)
 			or panic("called Optional.get() on null")
 		).key,
 		"b",
 	)?
-	expect_true((source.find(fn k, v: false) == null))?
+	expect_true((source.find((k, v) => false) == null))?
 
 	empty := Map[String, Counter]()
 	expect_false(
@@ -300,7 +300,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
 	)?
 
 	complete Map[String, Int] := {"b": 2, "a": 1, "c": 3}
-	expect_false((complete.any(fn k, v: false) or not (complete.all(fn k, v: true))))?
+	expect_false((complete.any((k, v) => false) or not (complete.all((k, v) => true))))?
 	empty_calls.is_empty() | expect_true?
 
 type Key:
@@ -310,7 +310,7 @@ type Key:
 fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
-fn Key.hash() Int: 0
+fn Key.hash() Int => 0
 
 test "Set fold and find preserve ordered snapshots and copied payloads":
 	var empty_calls List[Int] = []
@@ -380,7 +380,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	)?
 
 	flags := Set[Bool]([false])
-	expect_false(flags.find(fn v: true) or panic("called Optional.get() on null"))?
+	expect_false(flags.find(v => true) or panic("called Optional.get() on null"))?
 	empty_calls.is_empty() | expect_true?
 
 test "Set predicates short circuit over snapshots and keep empty identities":
@@ -444,8 +444,8 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 	)?
 
 	complete := Set[Int]([2, 1])
-	expect_false(complete.any(fn v: false) or not (complete.all(fn v: true)))?
-	expect_true((complete.find(fn v: false) == null))?
+	expect_false(complete.any(v => false) or not (complete.all(v => true)))?
+	expect_true((complete.find(v => false) == null))?
 	empty_calls.is_empty() | expect_true?
 
 test "nonmatching queries and all-true predicates visit the complete snapshot":

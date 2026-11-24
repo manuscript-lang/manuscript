@@ -96,13 +96,13 @@ export fn median(values List[Float]) Float:
 // Median absolute deviation.
 export fn mad(values List[Float]) Float:
 	m := median(values)
-	return median(values.map(fn v: if v > m: v - m else: m - v))
+	return median(values.map(v => if v > m: v - m else: m - v))
 
 export fn minimum(values List[Float]) Float:
-	return values.fold(values[0], fn(a Float, v Float) Float: if v < a: v else: a)
+	return values.fold(values[0], fn(a Float, v Float) Float => if v < a: v else: a)
 
 export fn maximum(values List[Float]) Float:
-	return values.fold(values[0], fn(a Float, v Float) Float: if v > a: v else: a)
+	return values.fold(values[0], fn(a Float, v Float) Float => if v > a: v else: a)
 
 // Rotates `items` left by `by` positions.
 export fn rotate[T Clonable](items List[T], by Int) List[T]:

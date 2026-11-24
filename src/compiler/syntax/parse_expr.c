@@ -393,8 +393,23 @@ MS_NODISCARD bool parse_if_expression(Parser *p, MsToken t, MsExpr **out) {
 /* An arm's final expression supplies its value; a statement-only arm yields Void. */
 MS_NODISCARD static bool value_arm_inner(Parser *p, MsArm *a) {
   p->inline_return = false;
-  if (!parse_need(p, MS_T_Colon))
+  MsToken opener = parse_peek(p);
+  bool arrow = parse_take(p, MS_T_FatArrow);
+  if (!arrow && !parse_need(p, MS_T_Colon))
     return false;
+  if (arrow && parse_kind(p) == MS_T_Newline) {
+    parse_fail(p, parse_peek(p),
+               ms_span_of_text("'=>' takes one statement or expression on the same line; write a longer arm "
+                               "body after ':' on the next lines"));
+    return false;
+  }
+  if (!arrow && parse_kind(p) != MS_T_Newline) {
+    parse_fail_fix(p, opener,
+                   ms_span_of_text("a one-line match arm is written 'pattern => value'; a ':' arm's body "
+                                   "goes on the next lines"),
+                   ms_span_of_text(" =>"));
+    return false;
+  }
   bool indented = parse_take(p, MS_T_Newline);
   if (indented) {
     if (!parse_need(p, MS_T_Indent))
@@ -560,7 +575,7 @@ MS_NODISCARD bool parse_match_arms(Parser *p, MsToken header, MsExpr *m) {
     MsToken prefix;
     if (parse_legacy_case_prefix(p, &prefix)) {
       parse_fail_fix(p, prefix,
-                     ms_span_of_text("match arms use bare variant names, e.g. Paid(receipt): or Missing:; "
+                     ms_span_of_text("match arms use bare variant names, e.g. Paid(receipt) => value or Missing => value; "
                                      "remove the legacy 'case' prefix"),
                      ms_span_of_text(""));
       return false;

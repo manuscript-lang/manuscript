@@ -52,7 +52,7 @@ fn hold_fault_and_break(move dir String,id Int) Void:
 	void holder.id
 
 fn cancel_a_holder(dir String, id Int, pause Bool) Void:
-	work := promise(fn: ok(hold_and_wait(dir.clone(), id, pause)))
+	work := promise(() => ok(hold_and_wait(dir.clone(), id, pause)))
 	_ignored := work.with(
 		options: PromiseOptions(timeout: nanoseconds(20000000))
 	).wait()
@@ -72,7 +72,7 @@ fn pop_and_discard(move dir String,id Int) Int:
 
 fn cancel_a_discard(dir String, id Int) Void:
 	stop := cancel_switch()
-	work := promise(fn: ok(pop_and_discard(dir.clone(), id))).with(
+	work := promise(() => ok(pop_and_discard(dir.clone(), id))).with(
 		options: PromiseOptions(cancel: stop.signal())
 	)
 	var waited = 0
@@ -102,28 +102,28 @@ test "cancellation does not interrupt a close that suspends":
 test "a fault unwinding the scope closes the binding":
 	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
-	message := expect_fault(fn: hold_and_fault(dir.clone(), 3))?
+	message := expect_fault(() => hold_and_fault(dir.clone(), 3))?
 	expect_equal(message, "body fault")?
 	expect_true(closed(dir, "3"))?
 
 test "a faulted promise closes its binding before wait reports":
 	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
-	work := promise(fn: faulting_holder(dir.clone(), 4))
+	work := promise(() => faulting_holder(dir.clone(), 4))
 	_reason := work.wait() | expect_error?
 	expect_true(closed(dir, "4"))?
 
 test "a fault in close on a normal return is the fault":
 	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
-	message := expect_fault(fn: hold_then_break(dir.clone(), 5))?
+	message := expect_fault(() => hold_then_break(dir.clone(), 5))?
 	expect_equal(message, "close fault")?
 	expect_true(closed(dir, "5"))?
 
 test "a fault in close does not replace a pending fault":
 	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
-	message := expect_fault(fn: hold_fault_and_break(dir.clone(), 6))?
+	message := expect_fault(() => hold_fault_and_break(dir.clone(), 6))?
 	expect_equal(message, "body fault")?
 	expect_true(closed(dir, "6"))?
 

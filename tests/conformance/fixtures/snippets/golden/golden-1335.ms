@@ -7,4 +7,4 @@ enum Envelope:
     Pair(left Failure, right Failure)
 fn use(value Envelope) Int:
     match value:
-        Pair(payload, NotFound): return 1
+        Pair(payload, NotFound) => return 1

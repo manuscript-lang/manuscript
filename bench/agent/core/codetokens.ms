@@ -34,7 +34,7 @@ export fn count_workspace(root String, suffix String) Int:
 		path := entry.path.clone()
 		parts := path.split("/")
 		dirs := parts.take(parts.length() - 1)
-		if dirs.any(fn d: SKIP_DIRS.contains(d)): continue
+		if dirs.any(d => SKIP_DIRS.contains(d)): continue
 
 		total += count_text(read_text(f"{root}/{path}"))
 

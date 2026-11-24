@@ -21,7 +21,7 @@ fn start() Void!:
 fn main() Void!:
 	for round in 0..30:
 		stop := cancel_switch()
-		starting := promise(fn: start(), options: PromiseOptions(cancel: stop.signal()))
+		starting := promise(() => start(), options: PromiseOptions(cancel: stop.signal()))
 		void sleep(microseconds(round * 150)).wait()?
 		stop.cancel()
 		void starting.wait()

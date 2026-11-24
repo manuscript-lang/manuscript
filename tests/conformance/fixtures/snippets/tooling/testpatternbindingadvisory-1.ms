@@ -10,4 +10,4 @@ enum Envelope:
 
 fn use(value Envelope) Int:
     match value:
-        Pair(_payload, NotFound): return 1
+        Pair(_payload, NotFound) => return 1

@@ -32,7 +32,7 @@ test "retry runs the operation once when attempts is below one":
 	expect_equal(failure, "try 1")?
 
 test "map_concurrent with a limit below one is EINVAL":
-	failure := expect_error(map_concurrent([1, 2], 0, fn n: n))?
+	failure := expect_error(map_concurrent([1, 2], 0, n => n))?
 	expect_equal(failure.kind, "EINVAL")?
 
 test "close matches and unified diff accept any limit and context":

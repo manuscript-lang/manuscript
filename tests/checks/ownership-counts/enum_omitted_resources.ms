@@ -56,8 +56,8 @@ fn scalar_omitted() Void:
 	value := Full(Token(1), Token(2), Token(3), 7)
 
 	code := match value:
-		Full(_, _, _, code): code
-		Empty: 0
+		Full(_, _, _, code) => code
+		Empty => 0
 
 	print(f"code {code}")
 
@@ -70,8 +70,8 @@ fn heap_omitted() Void:
 	)
 
 	code := match value:
-		NamedFull(_, _, _, code): code
-		NamedEmpty: 0
+		NamedFull(_, _, _, code) => code
+		NamedEmpty => 0
 
 	print(f"code {code}")
 
@@ -81,30 +81,30 @@ fn mixed() Void:
 	void match value:
 		Full(first, _, third, _):
 			print(f"kept {first.id} {third.id}")
-		Empty: void
+		Empty => void
 
 fn borrowed() Void:
 	value := Full(Token(10), Token(11), Token(12), 9)
 
 	code := match value:
-		Full(first, _, _, code): code + first.id
-		Empty: 0
+		Full(first, _, _, code) => code + first.id
+		Empty => 0
 
 	original := match value:
-		Full(_, _, _, saved): saved
-		Empty: 0
+		Full(_, _, _, saved) => saved
+		Empty => 0
 
 	print(f"borrowed {code - original} {original}")
 
 	void match value:
-		Full(first, _, _, _): first.id
-		Empty: 0
+		Full(first, _, _, _) => first.id
+		Empty => 0
 
 fn wildcard() Void:
 	value := Full(Token(13), Token(14), Token(15), 0)
 
 	code := match value:
-		_: 0
+		_ => 0
 
 	print(f"wildcard {code}")
 
@@ -112,8 +112,8 @@ fn generic() Void:
 	value := GenericFull(Token(16), Token(17), 11)
 
 	code := match value:
-		GenericFull(_, _, code): code
-		GenericEmpty: 0
+		GenericFull(_, _, code) => code
+		GenericEmpty => 0
 
 	print(f"generic {code}")
 
@@ -121,8 +121,8 @@ fn empty() Void:
 	value Choice := Empty
 
 	code := match value:
-		Full(_, _, _, code): code
-		Empty: 0
+		Full(_, _, _, code) => code
+		Empty => 0
 
 	print(f"empty {code}")
 

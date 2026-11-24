@@ -7,10 +7,10 @@ enum Failure:
 
 fn failure_code(cause Failure) Int:
     match cause:
-        NotFound: return 1
-        Denied(_): return 2
+        NotFound => return 1
+        Denied(_) => return 2
 
 fn classify(result Int!Failure) Int:
     match result:
-        error(cause): return failure_code(cause)
-        ok(value): return value
+        error(cause) => return failure_code(cause)
+        ok(value) => return value

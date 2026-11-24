@@ -64,7 +64,7 @@ fn hidden(n Int) Int!Error:
                 match present(n):
                     _value:
                         return ok(9223372036854775807)
-                    null: "negative"
+                    null => "negative"
             )
         )
 
@@ -111,18 +111,18 @@ test "bounded successful Results preserve both branch budgets":
     total(false) | expect_equal(-500502)?
 
 test "Result payload bounds retain intermediate overflow":
-    (expect_fault(fn: _ignored := prefix())?) | expect_contains(
+    (expect_fault(() => _ignored := prefix())?) | expect_contains(
         "Int overflow"
     )?
-    (expect_fault(fn: _ignored := peer())?) | expect_contains("Int overflow")?
+    (expect_fault(() => _ignored := peer())?) | expect_contains("Int overflow")?
 
 test "Result helper overflow still occurs in the original call":
-    (expect_fault(fn: _ignored := checked(9223372036854775807))?) | expect_contains(
+    (expect_fault(() => _ignored := checked(9223372036854775807))?) | expect_contains(
         "Int overflow"
     )?
 
 test "hidden successful returns in error construction keep checks":
-    (expect_fault(fn: _ignored := hidden_success())?) | expect_contains(
+    (expect_fault(() => _ignored := hidden_success())?) | expect_contains(
         "Int overflow"
     )?
 

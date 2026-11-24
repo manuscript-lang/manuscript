@@ -250,7 +250,7 @@ fn measure(
 						"binary": jstr(binary.clone()),
 						"command": jlist(
 							command.map(
-								fn s: jstr(s.clone())
+								s => jstr(s.clone())
 							)
 						),
 						"exit": jint(ran.code),
@@ -298,7 +298,7 @@ fn run(args List[String]) String!:
 						file_sha256(binaries[1])
 					),
 					"arguments": jlist(
-						args.map(fn s: jstr(s.clone()))
+						args.map(s => jstr(s.clone()))
 					)
 				}
 			)

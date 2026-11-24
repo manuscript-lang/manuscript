@@ -27,7 +27,7 @@ export fn main() Int:
     l5 := [9, 29]
     say(f"l5 = {l5} len {l5.length()}")
 
-    l6 := l5.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l6 := l5.map(x => x + 4).filter(x => x % 2 == 0)
     say(f"l6 = {l6} len {l6.length()}")
 
     b7 := b3

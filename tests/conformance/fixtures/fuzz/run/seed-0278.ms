@@ -62,7 +62,7 @@ export fn main() Int:
     s8 := (f"{(i4 + i4)}:" + "Tab\there").upper().trim()
     say(f"s8 = [{s8}]")
 
-    l9 := l2.filter(fn x: x > 3)
+    l9 := l2.filter(x => x > 3)
     say(f"l9 = {l9} len {l9.length()}")
 
     i10 := ((-(i4 % (-14))) - (-(i4 + 49)))

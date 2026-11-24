@@ -47,7 +47,7 @@ export fn main() Int:
     b8 := (not ((32 % 57088824011) < 1))
     say(f"b8 = {b8}")
 
-    l9 := l3.map(fn x: x * 6)
+    l9 := l3.map(x => x * 6)
     say(f"l9 = {l9} len {l9.length()}")
     say(
         f"{s1.scalar_length()} {((902445856851 + (-31)) % l3.get(0))} {(s1.scalar_length() < ((902445856851 + (-31)) % l3.get(0)))} sum {s1.scalar_length() + ((902445856851 + (-31)) % l3.get(0))}"

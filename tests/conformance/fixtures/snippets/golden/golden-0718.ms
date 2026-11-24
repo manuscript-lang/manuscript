@@ -2,4 +2,4 @@
 // conform: phase=check
 type Box[T]:
     value T
-fn hash(box Box[Box[Int]]) Int: return box.hash()
+fn hash(box Box[Box[Int]]) Int => return box.hash()

@@ -48,7 +48,7 @@ test "resources registered together close once when the function returns":
 test "resources registered together close once when a later call faults":
 	temp := temporary("unwind-order-")?
 	log := f"{temp.path()}/log"
-	message := expect_fault(fn: void run(log.clone(), true))?
+	message := expect_fault(() => void run(log.clone(), true))?
 	expect_equal(message, "touch failed")?
 
 	text := closed(log)?

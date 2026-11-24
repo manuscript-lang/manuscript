@@ -164,7 +164,7 @@ export type Command:
 	// Subcommands in help order; their names must be unique, nonempty and not `help`.
 	children List[Command] = []
 	// Runs after a successful parse; the returned Int is the exit status.
-	exec fn(Matches) Int! = fn m: ok(0)
+	exec fn(Matches) Int! = m => ok(0)
 
 // Checks the command tree, resolves the subcommand chain, and validates flags and
 // arguments. Returns `Help` for `-h`, `--help`, a leading `help` word, or a group
@@ -301,17 +301,17 @@ export fn command[T Data](
 		about: about,
 		flags: flags,
 		args: args,
-		exec: fn matches: run(decode[T](matches)?)
+		exec: matches => run(decode[T](matches)?),
 	)
 
 // Builds `T` from the JSON literals of the supplied values.
 fn decode[T Data](matches Matches) T!:
 	var members = matches.fields.entries().map(
-		fn entry: (stringify(entry.key.clone()).get() + ":" + entry.value)
+		entry => (stringify(entry.key.clone()).get() + ":" + entry.value)
 	)
 	parsed := parse[T]("{" + members.join(",") + "}")
 	return parsed.map_error(
-		fn cause: cli_invalid_schema(
+		cause => cli_invalid_schema(
 			f"options record does not match the declared flags and arguments: {cause.message}"
 		)
 	)
@@ -319,10 +319,10 @@ fn decode[T Data](matches Matches) T!:
 // Renders one supplied value as the JSON literal for its kind.
 fn literal(kind FlagKind, text String) String:
 	match kind:
-		Bool: return text.clone()
-		Int: return f"{(text.parse_int() or 0)}"
-		Float: return f"{(text.parse_float() or 0.0)}"
-		_: return stringify(text.clone()).get_or("\"\"")
+		Bool => return text.clone()
+		Int => return f"{(text.parse_int() or 0)}"
+		Float => return f"{(text.parse_float() or 0.0)}"
+		_ => return stringify(text.clone()).get_or("\"\"")
 
 // Collects the JSON literal of every supplied flag and argument for `command`.
 fn collect_fields(
@@ -356,52 +356,52 @@ fn field_name(name String) String:
 
 // Keeps the flags that descendants also accept.
 fn persistent_flags(flags List[Flag]) List[Flag]:
-	return flags.filter(fn flag: flag.persistent)
+	return flags.filter(flag => flag.persistent)
 
 // Describes what a flag accepts, for errors.
 fn expected_text(kind FlagKind, choices List[String]) String:
 	if not choices.is_empty(): return "one of " + choices.join(", ")
 
 	match kind:
-		Bool: return "true or false"
-		Int: return "an integer"
-		Float: return "a number"
-		_: return "text"
+		Bool => return "true or false"
+		Int => return "an integer"
+		Float => return "a number"
+		_ => return "text"
 
 // Names the value a flag takes in help, such as `int` or `dev|prod`.
 fn value_hint(flag Flag) String:
 	if not flag.choices.is_empty(): return flag.choices.join("|")
 
 	match flag.kind:
-		Int: return "int"
-		Float: return "float"
-		_: return "text"
+		Int => return "int"
+		Float => return "float"
+		_ => return "text"
 
 // Returns whether the kind is Bool.
 fn is_bool(kind FlagKind) Bool:
 	match kind:
-		Bool: return true
-		_: return false
+		Bool => return true
+		_ => return false
 
 // Returns whether the kind is List.
 fn is_list(kind FlagKind) Bool:
 	match kind:
-		List: return true
-		_: return false
+		List => return true
+		_ => return false
 
 // Returns whether `value` fits the flag's kind and choices.
 fn fits(kind FlagKind, choices List[String], value String) Bool:
 	if not choices.is_empty() and not choices.contains(value): return false
 
 	match kind:
-		Bool: return value == "true" or value == "false"
-		Int: return value.parse_int() != null
+		Bool => return value == "true" or value == "false"
+		Int => return value.parse_int() != null
 		Float:
 			number := value.parse_float()
 			if number != null: return number.is_finite()
 
 			return false
-		_: return true
+		_ => return true
 
 // Checks one flag name or short against names already seen.
 fn claim(var seen List[String], key String, label String) Void!:
@@ -758,7 +758,7 @@ fn flag_section(title String, flags List[Flag]) String:
 // Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row
 // with other controls is omitted.
 fn help_row(var table Table, row List[String]) Void:
-	var cells = row.map(fn cell: cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
+	var cells = row.map(cell => cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
 	if table.add(cells).is_error(): return
 
 fn cli_unknown_flag(name String) Error:

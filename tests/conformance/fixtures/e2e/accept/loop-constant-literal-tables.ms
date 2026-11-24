@@ -60,5 +60,5 @@ test "a table iterated in a loop gives the same results as building it each time
 test "a loop variable that changes or escapes owns its list":
 	expect_equal(mutated_copy(3), 30)?
 	expect_equal(escapes(2), [[1, 2], [3, 4], [1, 2], [3, 4]])?
-	closure_total := [1, 2, 3].map(fn x: x + 1).filter(fn x: x > 0).sum()
+	closure_total := [1, 2, 3].map(x => x + 1).filter(x => x > 0).sum()
 	expect_equal(closure_total, 9)?

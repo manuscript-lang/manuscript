@@ -84,7 +84,7 @@ fn y_vm() Int:
 			Xor(a, b):
 				regs[a] = (regs[a] + regs[b]) % 1000000007
 				pc += 1
-			Halt: break
+			Halt => break
 
 	return regs[1] + steps
 
@@ -94,7 +94,7 @@ fn y_state_machine() Int:
 
 	for i in 0..20000000:
 		match s:
-			Idle: s = State.Running(0)
+			Idle => s = State.Running(0)
 			Running(k):
 				if k > 5: s = State.Blocked(i % 7)
 				else: s = State.Running(k + 1)
@@ -109,14 +109,14 @@ fn y_state_machine() Int:
 
 fn cmd_code(s String) Int:
 	match s:
-		"push": return 1
-		"pop": return 2
-		"add": return 3
-		"sub": return 4
-		"dup": return 5
-		"swap": return 6
-		"jump": return 7
-		_: return 0
+		"push" => return 1
+		"pop" => return 2
+		"add" => return 3
+		"sub" => return 4
+		"dup" => return 5
+		"swap" => return 6
+		"jump" => return 7
+		_ => return 0
 
 fn y_match_string() Int:
 	words := ["push", "pop", "add", "sub", "dup", "swap", "jump", "nop"]
@@ -249,7 +249,7 @@ fn y_stats() Int:
 	for r in 0..10:
 		mean := xs.sum() / xs.length().to_float()
 		v := (
-			xs.fold(0.0, fn acc, e: acc + (e - mean) * (e - mean))
+			xs.fold(0.0, (acc, e) => acc + (e - mean) * (e - mean))
 			/ xs.length().to_float()
 		)
 		t += sqrt(v)

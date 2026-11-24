@@ -8,9 +8,9 @@ type Pair:
     right List[String]
     tag String
 
-fn left_of(p Pair) List[String]: p.left.clone()
+fn left_of(p Pair) List[String] => p.left.clone()
 
-fn tag_of(p Pair) String: p.tag.clone()
+fn tag_of(p Pair) String => p.tag.clone()
 
 fn make(n Int) Pair:
     var l = List[String]()

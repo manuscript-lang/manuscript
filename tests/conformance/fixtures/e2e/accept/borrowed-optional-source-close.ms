@@ -12,7 +12,7 @@ type Resource:
 fn move Resource.close() Void!:
 	append_file(self.path, "closed,").wait()?
 
-fn observed(value Resource?) Bool: value != null
+fn observed(value Resource?) Bool => value != null
 
 fn use_named(path String) Void!:
 	named := Resource(path.clone())

@@ -38,8 +38,8 @@ fn generic_remove(path String) Void!:
 
 fn rejected(result Void!) Void!:
 	match result:
-		error(_): return ok()
-		ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
+		error(_) => return ok()
+		ok(_) => return error(Error("exclusive or nonrecursive operation succeeded"))
 
 fn text(path String) String!:
 	return ok(
@@ -182,7 +182,7 @@ test "filesystem tree copies reject empty and disjoint existing directories":
 		destination,
 		CopyOptions(
 			recursive: true,
-			filter: fn(s String, d String) Bool: false
+			filter: fn(s String, d String) Bool => false
 		),
 	)?
 	expect_equal((list(destination)?).length(), 1)?

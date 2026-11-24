@@ -15,10 +15,10 @@ import (
 
 fn canon(value YamlValue) String:
 	match value:
-		Null: return "n"
-		BoolValue(flag): return if flag: "t" else: "f"
-		NumberValue(text): return f"N{number(text)}"
-		StringValue(text): return f"s{text.length()}:{text}"
+		Null => return "n"
+		BoolValue(flag) => return if flag: "t" else: "f"
+		NumberValue(text) => return f"N{number(text)}"
+		StringValue(text) => return f"s{text.length()}:{text}"
 		ArrayValue(items):
 			var parts List[String] = []
 			for item in items:
