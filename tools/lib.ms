@@ -69,7 +69,7 @@ export fn run_program_in(program: String, arguments: List[String], cwd: String?)
 			stdin: Stdio.Null,
 			stdout: Stdio.Inherit,
 			stderr: Stdio.Inherit,
-			cwd: cwd,
+			cwd: cwd.clone(),
 		),
 	):
 		return status(child.wait().clone().get_or(125))

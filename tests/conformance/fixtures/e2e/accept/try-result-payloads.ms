@@ -54,7 +54,7 @@ fn move TailCleanup.close() Void!:
 	_written := write_file(self.marker, "closed", true).wait()
 
 fn tail_cleanup(result: Int!Error, var visits: List[Int], marker: String) Int!Error:
-	_resource := TailCleanup(marker)
+	_resource := TailCleanup(marker.clone())
 	value := visit(result, visits).clone()?
 	return ok(value)
 

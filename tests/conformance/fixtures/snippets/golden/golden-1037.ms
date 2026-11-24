@@ -9,4 +9,4 @@ type Options:
     state: State
     count: Int = increment(state)
 fn construct(state: State) Options:
-    return Options(state: state)
+    return Options(state: state.clone())

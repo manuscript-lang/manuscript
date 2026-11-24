@@ -17,7 +17,7 @@ import (
 // fails the write anyway.
 fn start(ms: String) Result[Subprocess, Error]:
 	if host() == "windows": return spawn(ms, ["doc"])
-	return spawn("sh", ["-c", "trap '' PIPE; exec \"$0\" doc", ms])
+	return spawn("sh", ["-c", "trap '' PIPE; exec \"$0\" doc", ms.clone()])
 
 fn main() Void!:
 	ms := tool_ms(working_directory().get().clone())

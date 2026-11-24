@@ -11,7 +11,7 @@ type Rec:
 	id: Int
 
 fn say(text: String) Void:
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 
 fn since(started: Instant) Int:
 	return monotonic().difference(started).to_nanoseconds()

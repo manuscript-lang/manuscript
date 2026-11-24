@@ -131,7 +131,7 @@ fn var Router.route(
 		self.routes,
 		Route(
 			method: method.to_string(),
-			pattern: pattern,
+			pattern: pattern.clone(),
 			segments: segments,
 			around: [],
 			handler: handler,
@@ -281,7 +281,7 @@ fn insert(var routes: List[Route], route: Route) Void!:
 					},
 				)
 			)
-	routes.append(route)
+	routes.append(route.clone())
 
 // Rewrites a route moved out of a mounted router: its pattern under `base`, the mounted
 // router's middleware group `own` outermost, and its own groups moved up by `offset`.

@@ -271,7 +271,7 @@ fn var Asm.define(name: String, sym: Sym) Void!:
 	if reg_index(name) >= 0: return error(Error(f"reserved name '{name}'"))
 	if self.syms.get(name) != null: return error(Error(f"duplicate symbol '{name}'"))
 
-	self.syms[name.clone()] = sym
+	self.syms[name.clone()] = sym.clone()
 
 fn inval(disp: String) Error: Error(f"invalid expression '{disp}'")
 

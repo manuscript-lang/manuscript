@@ -462,9 +462,9 @@ fn plain(text: String) YamlValue:
 	if (text == "false" or text == "False" or text == "FALSE"): return YamlValue.BoolValue(
 		false
 	)
-	if numeric(text.clone()): return YamlValue.NumberValue(text)
+	if numeric(text.clone()): return YamlValue.NumberValue(text.clone())
 
-	return YamlValue.StringValue(text)
+	return YamlValue.StringValue(text.clone())
 
 fn anchor_name(var flow: Flow) String!:
 	var name = ""
@@ -787,7 +787,7 @@ fn flow_entry(
 
 		return error(flow_invalid(flow, reason, cursor: end - trailing))
 	else:
-		entries.add(name.clone(), value)
+		entries.add(name.clone(), value.clone())
 
 	return ok()
 

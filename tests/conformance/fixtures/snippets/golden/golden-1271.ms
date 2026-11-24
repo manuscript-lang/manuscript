@@ -8,4 +8,4 @@ fn work(value: Val) Void:
     callback()
     copy := value.clone()
     list := [copy]
-    list.clone().append(value)
+    list.clone().append(value.clone())

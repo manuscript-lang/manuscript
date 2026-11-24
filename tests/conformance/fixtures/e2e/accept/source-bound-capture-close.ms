@@ -26,7 +26,7 @@ fn var Marker.bump(delta: Int = 1) Int:
 	self.id += delta
 	return self.id
 
-fn marker(id: Int, log: String) Marker: Marker(id, log)
+fn marker(id: Int, log: String) Marker: Marker(id, log.clone())
 
 fn ordinary(log: String) Void!:
 	status := marker(1, log).status

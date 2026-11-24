@@ -128,7 +128,7 @@ fn build_huffman(counts: List[Int], values: List[Int]) JpegHuffman!:
 
 		code *= 2
 
-	return ok(JpegHuffman(true, mincode, maxcode, valptr, values))
+	return ok(JpegHuffman(true, mincode, maxcode, valptr, values.clone()))
 
 fn empty_huffman() JpegHuffman:
 	return JpegHuffman(false, List[Int](), List[Int](), List[Int](), List[Int]())

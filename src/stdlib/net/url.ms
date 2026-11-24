@@ -50,7 +50,7 @@ export type Url:
 // Writes the formatted URL as a JSON string; components `format` rejects fault.
 fn Url.to_json() JsonValue:
 	text := format(self).get_or_else(fn cause: panic(f"Url.to_json: {cause.message}"))
-	return JsonValue.StringValue(text)
+	return JsonValue.StringValue(text.clone())
 
 // Decodes one percent-encoded URL component. `+` is not treated as a space.
 export fn decode_component(text: String) String!:

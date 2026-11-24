@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`self.rows[0]` belongs to `self`, so a new owner would get a hidden copy; write `self.rows[0].clone()` to copy it",
+        "position": {
+          "file": "record-field-from-borrowed-part.ms",
+          "line": 11,
+          "column": 21,
+          "offset": 295
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/record-field-from-borrowed-part.ms:11:21: type: `self.rows[0]` belongs to `self`, so a new owner would get a hidden copy; write `self.rows[0].clone()` to copy it\n    |\n 11 |     return Box(self.rows[0])\n    |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

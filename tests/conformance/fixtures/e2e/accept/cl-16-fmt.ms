@@ -15,7 +15,7 @@ test "data constructor context":
 	failure: Int!Error := error(Error("unavailable"))
 	_absent: Int? := null
 	_nested: List[List[Int]] := [[], [1]]
-	expect_equal(outcome_value(success), 3)?
+	expect_equal(outcome_value(success.clone()), 3)?
 	expect_equal(outcome_value(failure), -1)?
 
 type Box[T]:

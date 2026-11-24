@@ -530,4 +530,4 @@ fn report[T](
     property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})
     counterexample: {shown}
     {reason.message}
-    """, kind: "EIO", details: reason.details))
+    """, kind: "EIO", details: reason.details.clone()))

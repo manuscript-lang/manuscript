@@ -40,7 +40,7 @@ fn move Whole.close() Void!:
 	return ok()
 
 fn count_events(data: Bytes) Int:
-	var events = sse_events(ReadStream[Bytes](Whole(data, false)))
+	var events = sse_events(ReadStream[Bytes](Whole(data.clone(), false)))
 	var count = 0
 
 	while true:
@@ -64,7 +64,7 @@ fn make_fixture() BenchData:
 	list_2 := entries(2000)
 	data := sse_stream(2000)
 	packed := pack(entries(2000), ArchiveFormat.Zip).get()
-	return BenchData(list: list, list_2: list_2, data: data, packed: packed)
+	return BenchData(list: list, list_2: list_2, data: data, packed: packed.clone())
 
 bench "archive.zip_pack" per 2000:
 	pack(fixture.list, ArchiveFormat.Zip).get().length()

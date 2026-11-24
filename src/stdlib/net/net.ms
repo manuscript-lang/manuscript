@@ -501,7 +501,7 @@ fn Network.web_socket(
 	subprotocols := options.subprotocols.clone()
 	wire := WebSocketWire(
 		max_message_bytes: options.max_message_bytes,
-		timeout: options.timeout,
+		timeout: options.timeout.clone(),
 		tls: options.tls.clone(),
 		compression: options.compression,
 	)

@@ -22,7 +22,7 @@ fn make_fixture() BenchData:
 	return BenchData(
 		rows: rows,
 		rows_2: rows_2,
-		csv_text: csv_text,
+		csv_text: csv_text.clone(),
 		value: value,
 		text: text,
 	)

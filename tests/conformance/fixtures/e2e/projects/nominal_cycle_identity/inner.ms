@@ -13,4 +13,4 @@ export type Node:
 	door: Door
 
 export fn make_inner(path: String) Node:
-	return Node(Door(path))
+	return Node(Door(path.clone().clone()))

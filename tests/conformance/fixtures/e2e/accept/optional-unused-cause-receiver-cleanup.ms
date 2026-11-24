@@ -18,7 +18,7 @@ fn move Marker.close() Void!:
 fn source(move log: String) Marker?: Marker(1, log, false)
 
 fn discard(log: String) Void:
-	_kept := ok_or(source(log.clone()), Marker(2, log, true))
+	_kept := ok_or(source(log.clone()), Marker(2, log.clone(), true))
 
 test "closing an unused cause does not lose the retained receiver on fault":
 	tmp := temporary("cause-fault-") | expect_ok?

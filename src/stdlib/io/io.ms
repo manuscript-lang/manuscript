@@ -192,7 +192,7 @@ fn var DescriptorSource.next() move Bytes?!:
 	if data != null: return ok(data)
 
 	message := msrt_streams_error(self.id)
-	if not message.is_empty(): return error(Error(message, kind: "EIO"))
+	if not message.is_empty(): return error(Error(message.clone(), kind: "EIO"))
 
 	return ok(null)
 
@@ -246,7 +246,7 @@ fn move DescriptorSink.close() Void!:
 // must not hide it.
 fn descriptor_write_result(id: Int) Void!:
 	message := msrt_streams_error(id)
-	if message.length() > 0: return error(Error(message, kind: "EIO"))
+	if message.length() > 0: return error(Error(message.clone(), kind: "EIO"))
 
 	return ok()
 

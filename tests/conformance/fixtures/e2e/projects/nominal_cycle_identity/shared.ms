@@ -10,5 +10,5 @@ export fn exercise_shared(
 	third: String,
 	fourth: String,
 ) Void:
-	held := Pair(Pair(Door(first), Door(second)), Pair(Door(third), Door(fourth)))
+	held := Pair(Pair(Door(first.clone().clone()), Door(second.clone())), Pair(Door(third.clone()), Door(fourth.clone())))
 	_borrowed_path := held.first.first.path

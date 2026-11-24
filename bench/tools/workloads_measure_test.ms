@@ -29,7 +29,7 @@ fn var Producer.run(version: String) String!:
 	return ok("correct")
 
 fn producer(bad: String, mode: String) Producer:
-	return Producer(bad, mode, Map[String, Int](), List[String]())
+	return Producer(bad.clone(), mode.clone(), Map[String, Int](), List[String]())
 
 test "every trial rotates and retains samples":
 	var p = producer("", "valid")

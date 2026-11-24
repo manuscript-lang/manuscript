@@ -486,7 +486,7 @@ export fn json_reader[T: Data = JsonValue](
 	return through[Bytes, T](
 		input,
 		JsonReading[T](
-			options: options,
+			options: options.clone(),
 			pending: BytesBuilder(),
 			size: 0,
 			depth: 0,

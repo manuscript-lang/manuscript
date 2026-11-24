@@ -18,7 +18,7 @@ fn exercise() Int!:
 			return ok(1)
 		ok(output):
 			output.exit_code | expect_equal(0)?
-			void stdout_bytes().write(value: output.stdout)
+			void stdout_bytes().write(value: output.stdout.clone())
 			return ok(0)
 
 export fn main() Int:

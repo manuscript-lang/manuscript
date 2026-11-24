@@ -102,7 +102,7 @@ fn merge_context(child: String, parent: String?) String!:
 
 	var merged = (members).clone()
 	for entry in (added).entries():
-		merged.add(entry.key, entry.value.clone())
+		merged.add(entry.key.clone(), entry.value.clone())
 
 	text := stringify(JsonValue.ObjectValue(merged))
 	if text.is_error(): return error(Error("logging: invalid data", kind: "EBADMSG"))

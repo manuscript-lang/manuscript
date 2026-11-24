@@ -39,7 +39,7 @@ fn generic[T](value: T) T:
 	return value
 
 fn hold(item: Item) List[Item]:
-	return [item]
+	return [item.clone()]
 
 fn optional_name(item: Item) String?:
 	return item.name
@@ -75,7 +75,7 @@ fn Item.copied(value: Int8) Int8:
 	return value
 
 fn Item.boxed(item: Item) List[Item]:
-	return [item]
+	return [item.clone()]
 
 fn named(item: Item) Named:
 	return item

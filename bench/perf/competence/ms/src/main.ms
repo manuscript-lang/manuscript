@@ -41,7 +41,7 @@ type P:
 	vy: Int
 
 fn say(text: String) Void:
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 
 fn fib(n: Int) Int:
 	if n < 2: return n

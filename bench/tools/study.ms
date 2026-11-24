@@ -26,7 +26,7 @@ export type Labeled:
 	path: String
 
 export fn labeled(label: String, path: String) Labeled:
-	return Labeled(label, absolute(path))
+	return Labeled(label.clone(), absolute(path))
 
 // Creates `path` and fails when it already exists (a study never overwrites earlier
 // evidence).

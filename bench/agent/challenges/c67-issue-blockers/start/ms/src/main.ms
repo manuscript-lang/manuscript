@@ -648,7 +648,7 @@ fn parse_filter(
 	return ok(root)
 
 fn add_node(var nodes: List[Node], n: Node) Int:
-	nodes.append(n)
+	nodes.append(n.clone())
 	return nodes.length() - 1
 
 fn var Parser.parse_or(st: State, var nodes: List[Node], var refs: List[String]) Int!:
@@ -744,7 +744,7 @@ fn build_term(
 	if (op == 0 or op == 1 or op == 6) and not quoted:
 		alts = value.split("|").clone()
 	else:
-		alts = [value]
+		alts = [value.clone()]
 
 	var vals = List[String]()
 

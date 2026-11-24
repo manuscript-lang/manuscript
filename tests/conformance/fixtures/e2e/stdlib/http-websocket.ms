@@ -55,7 +55,7 @@ fn echo(var exchange: HttpExchange) Void!:
 			http_result(
 				socket.output.write(
 					WebSocketMessage(
-						data: message.data,
+						data: message.data.clone(),
 						kind: message.kind,
 					)
 				)

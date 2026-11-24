@@ -9,7 +9,7 @@ export fn main() Int:
 	root := XmlNode.XmlElement("root", [], [XmlNode.XmlText(text.clone())])
 	if stringify(root) != f"<root>{text}</root>": return 1
 
-	mixed := XmlNode.XmlElement("root", [], [XmlNode.XmlText("text"), root])
+	mixed := XmlNode.XmlElement("root", [], [XmlNode.XmlText("text"), root.clone()])
 	if stringify(mixed, "  ") != f"<root>text<root>{text}</root></root>\n": return 2
 
 	return 0

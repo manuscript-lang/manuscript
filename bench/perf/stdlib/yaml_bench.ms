@@ -19,7 +19,7 @@ fn make_fixture() BenchData:
 	yaml := yaml_doc(2000)
 	yaml_2 := yaml_doc(2000)
 	tree := parse(yaml_doc(2000)).get()
-	return BenchData(yaml: yaml, yaml_2: yaml_2, tree: tree)
+	return BenchData(yaml: yaml, yaml_2: yaml_2, tree: tree.clone())
 
 bench "yaml.parse" per 2000:
 	parse(fixture.yaml).is_ok()

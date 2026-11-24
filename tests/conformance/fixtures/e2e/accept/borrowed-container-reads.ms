@@ -183,7 +183,7 @@ test "an entry read from a temporary map is an owned copy":
 	var kept = Map[String, Order]()
 	o := build().get("b")
 	if o != null:
-		kept.add("b", o)
+		kept.add("b", o.clone())
 	expect_equal((kept.get("b") or panic("called Optional.get() on null")).id, "b")?
 	expect_equal(
 		(

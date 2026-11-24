@@ -255,7 +255,7 @@ fn int_leaf(var g: Gen) IntExpr:
 
 fn binary(code: String, left: IntExpr, right: IntExpr, result: Checked) IntExpr:
 	return IntExpr(
-		code: code,
+		code: code.clone(),
 		ok: left.ok and right.ok and result.ok,
 		value: result.value,
 	)

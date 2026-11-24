@@ -6,7 +6,7 @@ import (
 // ns per interface call. One line per case: `name ns checksum`.
 
 fn say(text: String) Void:
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 
 fn report(name: String, n: Int, start: Instant, sum: Int) Void:
 	ns := monotonic().difference(start).to_nanoseconds()

@@ -32,7 +32,7 @@ fn move Chunks.close() Void!:
 	return ok()
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-	return ReadStream[Bytes](Chunks(data, size, 0))
+	return ReadStream[Bytes](Chunks(data.clone(), size, 0))
 
 fn read_parts(body: Bytes, size: Int, max_part_bytes: Int? = null) List[Part]!:
 	var parts = multipart_parts(chunked(body, size), "XyZ", max_part_bytes)

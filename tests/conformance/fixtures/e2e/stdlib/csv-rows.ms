@@ -45,7 +45,7 @@ fn read_raw(
 	options: CsvOptions = CsvOptions(),
 	max_record_bytes: Int? = null,
 ) List[List[String]]!:
-	var rows = csv_rows(chunked(data, size), options, max_record_bytes)
+	var rows = csv_rows(chunked(data.clone(), size), options, max_record_bytes)
 	var out: List[List[String]] = []
 
 	while true:

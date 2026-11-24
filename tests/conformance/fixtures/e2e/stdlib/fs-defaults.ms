@@ -50,7 +50,7 @@ fn text(path: String) String!:
 	)
 
 fn argument(var log: List[String], mark: String, path: String) String:
-	log.append(mark)
+	log.append(mark.clone())
 	return path
 
 fn data_argument(var log: List[String]) Bytes:

@@ -606,7 +606,7 @@ fn var Builder.conditional(cond: String, line: Int, depth: Int) TemplateNode!Err
 
 	while true:
 		done := self.block(depth + 1)?
-		branches.append(TemplateBranch(cond: guard, body: done.nodes))
+		branches.append(TemplateBranch(cond: guard, body: done.nodes.clone()))
 		if done.end == "end": break
 
 		if done.end == "else if":
@@ -1221,7 +1221,7 @@ fn compare_values(left: JsonValue, right: JsonValue) Int:
 	return 2
 
 fn text_value(text: String) JsonValue:
-	return JsonValue.StringValue(text)
+	return JsonValue.StringValue(text.clone())
 
 fn invalid(name: String, reason: String) Error:
 	return invalid_filter_error(name: name, reason: reason)
@@ -1348,26 +1348,26 @@ fn missing_value_error(path: String) Error:
 	return Error(
 		f"template: no value for {path}",
 		kind: "ENOENT",
-		details: {"path": path},
+		details: {"path": path.clone()},
 	)
 
 fn invalid_filter_error(name: String, reason: String) Error:
 	return Error(
 		f"template: filter {name}: {reason}",
 		kind: "EINVAL",
-		details: {"filter": name},
+		details: {"filter": name.clone()},
 	)
 
 fn partial_depth_error(name: String) Error:
 	return Error(
 		f"template: partial {name} is nested more than {MAX_DEPTH} deep; a partial may include itself",
 		kind: "EOVERFLOW",
-		details: {"partial": name},
+		details: {"partial": name.clone()},
 	)
 
 fn unknown_partial_error(name: String) Error:
 	return Error(
 		f"template: unknown partial {name}",
 		kind: "ENOENT",
-		details: {"partial": name},
+		details: {"partial": name.clone()},
 	)

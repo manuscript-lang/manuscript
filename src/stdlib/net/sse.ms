@@ -178,7 +178,7 @@ export fn sse_events(
 	return through[Bytes, SseEvent](
 		input,
 		Decoder(
-			limits: limits,
+			limits: limits.clone(),
 			retry_ms: null,
 			last_id: null,
 			line: BytesBuilder(),

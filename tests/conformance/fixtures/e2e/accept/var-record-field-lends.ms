@@ -12,7 +12,7 @@ type Scanner:
 
 fn spend(var budget: Budget, note: String) Void:
 	budget.left -= 1
-	budget.notes.append(note)
+	budget.notes.append(note.clone())
 
 fn describe(scanner: Scanner) String:
 	return f"{scanner.label}@{scanner.pos}/{scanner.budget.left}"

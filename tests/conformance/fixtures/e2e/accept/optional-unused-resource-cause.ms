@@ -16,9 +16,9 @@ fn present() Int?: 7
 
 fn absent() Int?: null
 
-fn marker(id: Int, log: String) Marker: Marker(id, log)
+fn marker(id: Int, log: String) Marker: Marker(id, log.clone())
 
-fn optional_marker(id: Int, log: String) Marker?: Marker(id, log)
+fn optional_marker(id: Int, log: String) Marker?: Marker(id, log.clone())
 
 fn owned(log: String) Void!:
 	kept := ok_or(present(), marker(1, log.clone()))
