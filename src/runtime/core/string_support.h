@@ -21,10 +21,16 @@ MS_NORETURN void msrt_string_limit_fault(void);
 /* Posts the same fault and returns: the caller releases what it owns and returns at once. */
 void msrt_string_limit_post(void);
 
-/* a + b, faulting past the string limit. */
+/* a + b, raising the fault past the string limit (for callers compiled code reaches; natives use the _post forms). */
 size_t msrt_string_total(size_t a, size_t b);
 
-/* A new string holding a copy of `text`. */
+/* a + b into *out, posting the limit fault and returning false past the string limit. */
+bool msrt_string_total_post(size_t a, size_t b, size_t *out);
+
+/* msrt_string_block that posts the limit fault instead: returns NULL with *out empty. */
+uint8_t *msrt_string_block_post(size_t length, MsString *out);
+
+/* A new string holding a copy of `text`; past the limit it posts the fault and gives the empty string. */
 MsString msrt_string_make(MsSpan text);
 
 /* The bytes of a live string as a string: an inline copy when they fit, otherwise a view that borrows them.
