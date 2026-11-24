@@ -64,9 +64,7 @@ export fn read_cases(output String) List[Bench]! {
 
 		seen.add(bench.name.clone())
 		if bench.status != "passed" {
-			return invalid(
-				f"{bench.name}: {bench.status}: {(bench.failure or "")}"
-			)
+			return invalid(f"{bench.name}: {bench.status}: {(bench.failure or "")}")
 		}
 
 		stats := (
