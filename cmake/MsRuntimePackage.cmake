@@ -77,7 +77,7 @@ function(ms_package_runtime executable runtime)
     list(JOIN musl_paths "${separator}" musl_joined)
     add_dependencies(${executable} runtime_musl)
   endif()
-  # Where tools/fetch-llvm-lib.ms puts the pinned shared LLVM library for this host (`make build` runs it), so a build
+  # Where cmake/FetchLlvmLib.cmake puts the pinned shared LLVM library for this host (`make build` runs it), so a build
   # tree loads it in-process as an install does; MS_LLVM still overrides, and `none` selects the child processes.
   file(STRINGS "${CMAKE_SOURCE_DIR}/cmake/toolchain/llvm-lib.lock" llvm_tag_line REGEX "^tag ")
   string(REGEX REPLACE "^tag +" "" llvm_tag "${llvm_tag_line}")
