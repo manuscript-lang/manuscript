@@ -1,5 +1,5 @@
 /* The host's local-zone setting for the @std/time natives: how it names its zone, and the system zone file.
- * stdlib/internal/zone.ms turns the answer into rules. */
+ * src/stdlib/internal/zone.ms turns the answer into rules. */
 #ifndef __APPLE__               /* Apple hides some of its names once _POSIX_C_SOURCE is set */
 #define _POSIX_C_SOURCE 200809L // NOLINT(cert-dcl37-c,cert-dcl51-cpp): readlink under -std=c17
 #endif

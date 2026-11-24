@@ -107,16 +107,16 @@ fn full_markdown(modules: List[Module]) String:
 
 // ---- the book's tree ----
 
-// `core.ms` and its siblings live in stdlib/core; everything else mirrors its import path.
+// `core.ms` and its siblings live in src/stdlib/core; everything else mirrors its import path.
 fn source_of(path: String, source_path: String) String:
-	if path == "prelude": return "stdlib/core/core.ms"
+	if path == "prelude": return "src/stdlib/core/core.ms"
 	if (
 		source_path == "core.ms"
 		or source_path == "intrinsics.ms"
 		or source_path == "string.ms"
-	): return f"stdlib/core/{source_path}"
+	): return f"src/stdlib/core/{source_path}"
 
-	return f"stdlib/{source_path}"
+	return f"src/stdlib/{source_path}"
 
 packages := ["collections", "concurrency", "data", "io", "math", "net", "os"]
 

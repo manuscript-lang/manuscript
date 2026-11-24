@@ -2,7 +2,7 @@
  * passed by value. A Timestamp (seconds since the Unix epoch and a nanosecond part) and an Instant (a clock
  * domain and a tick) are passed by pointer, and a result record is written through the trailing `out`. A
  * function that can fail returns an MsStatus and writes *out only on success; arithmetic that overflows
- * faults with a message. Zones are resolved in Manuscript (stdlib/internal/zone.ms), which reads the bundled
+ * faults with a message. Zones are resolved in Manuscript (src/stdlib/internal/zone.ms), which reads the bundled
  * database through msstd_time_zone_data: the natives here take the offset east of UTC and the zone's name. */
 #ifndef MS_RUNTIME_STD_TIME_H
 #define MS_RUNTIME_STD_TIME_H
