@@ -1,0 +1,86 @@
+# Fetches the pinned shared LLVM library for this host (cmake/toolchain/llvm-lib.lock: release tag, version and the SHA-256
+# of each platform's archive) from manuscript-lang/llvm-bundle into .artifacts/llvm-lib (LLVM_LIB_WORK overrides it) and
+# prints the absolute path of the library, which is what `MS_LLVM` takes. When GITHUB_ENV is set it also appends
+# `MS_LLVM=<path>` there, so the later steps of a CI job use the library. Does nothing but print when the library is
+# already there. With -DTOOLS=ON it fetches the same release's opt and llc instead (`llvm-tools`), prints their paths and
+# exports MS_OPT and MS_LLC, so the process route can be timed against the library.
+#
+#   cmake -DROOT=<source dir> -DARCH=<amd64|arm64> [-DTOOLS=ON] -P cmake/FetchLlvmLib.cmake
+#
+# This is CMake and not a Manuscript program because it runs before any ms can compile one: compiling needs either this
+# library or a system opt and llc, so a Manuscript fetcher needed the thing it fetches (#6843).
+cmake_minimum_required(VERSION 3.25)
+
+file(STRINGS "${ROOT}/cmake/toolchain/llvm-lib.lock" lock)
+foreach(line IN LISTS lock)
+  if(line MATCHES "^tag +(.+)$")
+    set(tag "${CMAKE_MATCH_1}")
+  elseif(line MATCHES "^version +(.+)$")
+    set(version "${CMAKE_MATCH_1}")
+  elseif(line MATCHES "^([0-9a-f]+)  (.+)$")
+    set(digest_${CMAKE_MATCH_2} "${CMAKE_MATCH_1}")
+  endif()
+endforeach()
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+  set(os darwin)
+  set(library lib/libLLVM.dylib)
+elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+  set(os windows)
+  set(library bin/LLVM-C.dll)
+  set(exe .exe)
+else()
+  set(os linux)
+  set(library lib/libLLVM.so)
+endif()
+
+if(TOOLS)
+  set(kind llvm-tools)
+  set(here_infix tools-)
+  set(library "bin/opt${exe}")
+else()
+  set(kind llvm-lib)
+endif()
+set(asset "${kind}-${version}-${os}-${ARCH}.tar.gz")
+if(NOT DEFINED digest_${asset})
+  message(FATAL_ERROR "cmake/toolchain/llvm-lib.lock has no digest for ${asset}")
+endif()
+
+if(DEFINED ENV{LLVM_LIB_WORK} AND NOT "$ENV{LLVM_LIB_WORK}" STREQUAL "")
+  set(work "$ENV{LLVM_LIB_WORK}")
+else()
+  set(work "${ROOT}/.artifacts/llvm-lib")
+endif()
+set(here "${work}/${tag}-${here_infix}${os}-${ARCH}")
+
+if(NOT EXISTS "${here}/${library}")
+  set(partial "${here}.tmp")
+  file(REMOVE_RECURSE "${partial}")
+  file(MAKE_DIRECTORY "${partial}")
+  set(url "https://github.com/manuscript-lang/llvm-bundle/releases/download/${tag}/${asset}")
+  file(DOWNLOAD "${url}" "${partial}/${asset}" EXPECTED_HASH "SHA256=${digest_${asset}}" STATUS download TLS_VERIFY ON)
+  list(GET download 0 code)
+  if(NOT code EQUAL 0)
+    file(REMOVE_RECURSE "${partial}")
+    message(FATAL_ERROR "cannot fetch ${url}: ${download}")
+  endif()
+  file(ARCHIVE_EXTRACT INPUT "${partial}/${asset}" DESTINATION "${partial}")
+  file(REMOVE "${partial}/${asset}")
+  file(REMOVE_RECURSE "${here}")
+  file(RENAME "${partial}" "${here}")
+endif()
+
+file(REAL_PATH "${here}/${library}" path)
+set(exports "MS_LLVM=${path}\n")
+if(TOOLS)
+  get_filename_component(bin "${path}" DIRECTORY)
+  set(llc "${bin}/llc${exe}")
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${path}")
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${llc}")
+  set(exports "MS_OPT=${path}\nMS_LLC=${llc}\n")
+else()
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${path}")
+endif()
+if(DEFINED ENV{GITHUB_ENV} AND NOT "$ENV{GITHUB_ENV}" STREQUAL "")
+  file(APPEND "$ENV{GITHUB_ENV}" "${exports}")
+endif()

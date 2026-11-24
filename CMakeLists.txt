@@ -71,11 +71,14 @@ ms_conform_target(conform "" "Replaying the conformance corpus and the command f
 ms_conform_target(conform-commands commands "Replaying the command fixtures")
 
 # Downloads the pinned shared LLVM library (cmake/toolchain/llvm-lib.lock) and, in CI, exports MS_LLVM for the later steps
-# (tools/fetch-llvm-lib.ms).
+# (cmake/FetchLlvmLib.cmake). It does not need ms, so it can run before anything is built, on a machine with no LLVM.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|ARM64|aarch64|AARCH64)$")
+  set(MS_LLVM_ARCH arm64)
+else()
+  set(MS_LLVM_ARCH amd64)
+endif()
 add_custom_target(llvm-lib
-  COMMAND $<TARGET_FILE:ms> run tools/fetch-llvm-lib.ms
-  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-  DEPENDS ms
+  COMMAND ${CMAKE_COMMAND} "-DROOT=${CMAKE_SOURCE_DIR}" "-DARCH=${MS_LLVM_ARCH}" -P "${CMAKE_SOURCE_DIR}/cmake/FetchLlvmLib.cmake"
   USES_TERMINAL
 )
 
