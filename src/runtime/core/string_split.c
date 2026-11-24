@@ -79,22 +79,44 @@ void msrt_string_split_view(const MsString *s, const MsString *sep, MsList *out)
   split_into(s, sep, out, PIECE_VIEW);
 }
 
-/* Splits at a one-byte separator into `buffer` (room for SPLIT_FRAME_PIECES); false when it fills up. */
+/* Splits at a one-byte separator into `buffer` (room for SPLIT_FRAME_PIECES); false when it fills up. The text is
+ * scanned once, eight bytes at a time: every separator in a word is found from its mask, so a piece costs no search
+ * call of its own. */
 static bool split_into_buffer(MsSpan text, uint8_t separator, MsString *buffer, size_t *count) {
-  size_t start = 0;
-  *count = 0;
-  for (;;) {
-    const size_t hit = ms_find_byte(separator, text.ptr + start, text.len - start);
-    const size_t end = hit == SIZE_MAX ? text.len : start + hit;
-    if (*count == SPLIT_FRAME_PIECES) {
-      return false;
+  const uint64_t lo = UINT64_C(0x0101010101010101), low7 = UINT64_C(0x7f7f7f7f7f7f7f7f);
+  const uint64_t pattern = lo * separator;
+  size_t start = 0, at = 0, pieces = 0;
+  for (; at < text.len; at += 8) {
+    uint64_t mask;
+    if (at + 8 <= text.len) {
+      const uint64_t x = ms_load64(text.ptr + at) ^ pattern;
+      mask = ~(((x & low7) + low7) | x | low7); /* the high bit of each byte equal to the separator */
+    } else if (text.len >= 8) { /* the last word overlaps the one before: only its bytes from `at` on are new */
+      const uint64_t x = ms_load64(text.ptr + text.len - 8) ^ pattern;
+      mask = ~(((x & low7) + low7) | x | low7);
+      mask &= ~UINT64_C(0) << ((8 - (text.len - at)) * 8);
+      at = text.len - 8;
+    } else {
+      mask = 0;
+      for (size_t k = 0; k < text.len; k++) {
+        mask |= (uint64_t)(text.ptr[k] == separator) << (k * 8 + 7);
+      }
     }
-    buffer[(*count)++] = make_piece(PIECE_VIEW, between(text, start, end));
-    if (hit == SIZE_MAX) {
-      return true;
+    for (; mask != 0; mask &= mask - 1) {
+      const size_t end = at + (size_t)__builtin_ctzll(mask) / 8;
+      if (pieces == SPLIT_FRAME_PIECES) {
+        return false;
+      }
+      buffer[pieces++] = make_piece(PIECE_VIEW, between(text, start, end));
+      start = end + 1;
     }
-    start = end + 1;
   }
+  if (pieces == SPLIT_FRAME_PIECES) {
+    return false;
+  }
+  buffer[pieces++] = make_piece(PIECE_VIEW, between(text, start, text.len));
+  *count = pieces;
+  return true;
 }
 
 /* The view split into the caller's frame buffer when the text is short and has at most eight pieces at a
