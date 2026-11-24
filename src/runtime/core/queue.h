@@ -3,8 +3,7 @@
  * promise(fn) puts the promise here instead of starting a task: the waiter usually runs the work inline on its own
  * stack (cheaper than a task), and an idle isolate takes the oldest entry once it has seen it wait a short beat. An
  * entry's age counts from the first look that finds it, by any isolate, so a start reads no clock. The
- * owner pushes and removes at the newest end; thieves take from the oldest end. A spin lock guards the few
- * instructions of each operation. An entry is a promise id and the work (an opaque pointer the thief runs); the
+ * owner pushes and removes without a lock; thieves and looks take a spin lock for their few instructions. An entry is a promise id and the work (an opaque pointer the thief runs); the
  * queue knows nothing else. */
 #ifndef MS_CORE_QUEUE_H
 #define MS_CORE_QUEUE_H
@@ -26,7 +25,7 @@ MS_NODISCARD bool ms_queue_remove(uint32_t isolate, uint64_t id, uint64_t sequen
  * `*work` if it was first seen `beat_ns` ago or earlier. A negative `beat_ns` takes the oldest whatever its age. */
 MS_NODISCARD bool ms_queue_steal(uint32_t isolate, int64_t now_ns, int64_t beat_ns, uint64_t *id, void **work)
     MS_NONNULL_ARGS(4, 5);
-/* How many entries wait on `isolate`. */
+/* At least how many entries wait on `isolate`: one the owner removed is counted until the next look passes it. */
 size_t ms_queue_length(uint32_t isolate);
 /* A look at `now_ns`: dates the entries no look has seen and answers when the oldest was first seen (INT64_MAX when
  * none). */

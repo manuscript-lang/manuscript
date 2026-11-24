@@ -22,12 +22,12 @@ import (
 PROGRAMS := ["interp", "strings", "lz", "graph"]
 // Small programs of bench/perf/guards, one per recent speed fix (signature tables,
 // regex prefilter, image codecs, fused chains, map probes, scope-end close, string
-// append). Each is counted as
+// append, a string appended in a loop after a split). Each is counted as
 // `guard-<name>`.
 GUARDS := [
 	"crypto", "regex", "image", "chains", "maps", "cleanup", "resultvar", "csvcells",
 	"mapinsert", "http-request", "splitfirst", "splitbuf", "findshort", "append",
-	"strcmp", "iterchain"
+	"strcmp", "iterchain", "append-lines"
 ]
 // Guards that take their own path as the argument (they start themselves as a child,
 // which valgrind does not follow, so only the part under test is counted).

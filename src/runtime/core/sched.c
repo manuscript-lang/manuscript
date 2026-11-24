@@ -45,8 +45,10 @@ void ms_sched_post_completion(uint64_t id, int32_t result, uint32_t kind) {
   ms_token_post(id, (uint64_t)(int64_t)result); /* the result sign-extends; the taker casts it back to int32_t */
 }
 
+/* A sequentially consistent read (a plain load on x86): a task that just opened its shield orders it against a
+ * concurrent stop, see shield_lower. */
 uint8_t ms_sched_stop_request(void) {
-  return ms_thread_sched == NULL ? 0 : atomic_load_explicit(&ms_thread_sched->stop_request, memory_order_relaxed);
+  return ms_thread_sched == NULL ? 0 : atomic_load(&ms_thread_sched->stop_request);
 }
 
 /* Raises the cancel flag of `hdr` to at least `signal`, unless a shield holds the stop back. */

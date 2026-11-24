@@ -72,6 +72,8 @@ bool ms_promise_done(MsPromise id);
 /* Waits up to `timeout_ns` (negative: no limit) and returns an outcome code. A cancel arriving while it waits ends
  * the promise and answers MS_WAITER_CANCELLED. */
 int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns);
+/* Waits for `id` without a limit and, when it ended with a value, moves it out; `*taken` says whether it did. */
+int64_t ms_promise_result(MsPromise id, const MsTypeDesc *desc, uint8_t *out, bool *taken);
 /* Makes the promise listen to the cancel switch `cancel`: when it fires the promise is cancelled. Call it once the work
  * has started. Replaces an earlier switch. */
 void ms_promise_on_cancel(MsPromise id, int64_t cancel);

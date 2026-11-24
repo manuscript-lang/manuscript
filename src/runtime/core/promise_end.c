@@ -171,7 +171,7 @@ static bool has_result(size_t row) {
 }
 
 /* Whether the row finished and its work is gone, so there is nothing to end. */
-static bool row_settled(size_t row) {
+MS_ALWAYS_INLINE bool promise_row_settled(size_t row) {
   const Hot *const hot = &promise_table.hot.ptr[row];
   const Cold *const cold = &promise_table.cold.ptr[row];
   return hot->state != STATE_PENDING && cold->closure == NULL && cold->cancel == 0 &&
@@ -188,7 +188,7 @@ bool ms_promise_end(MsPromise id) {
   }
   Hot *hot = &promise_table.hot.ptr[found];
   Cold *const cold = &promise_table.cold.ptr[found];
-  if (row_settled((size_t)found)) {
+  if (promise_row_settled((size_t)found)) {
     return has_result((size_t)found);
   }
   if (cold->cancel != 0) {
@@ -228,7 +228,7 @@ bool ms_promise_end(MsPromise id) {
 }
 
 /* Frees the settled row: its result, start line, report and watches. */
-static void free_row(size_t row) {
+MS_ALWAYS_INLINE void promise_free_row(size_t row) {
   promise_release_result(row);
   promise_release_started(&promise_table.cold.ptr[row]);
   ms_fault_text_free(&promise_table.cold.ptr[row].report);
@@ -236,7 +236,9 @@ static void free_row(size_t row) {
     promise_post_watches(row);
   }
   promise_table.hot.ptr[row].state = STATE_FREE;
-  row_list_push(&promise_table.free_rows, (uint32_t)row);
+  if (promise_table.hot.ptr[row].generation < GENERATION_MASK) {
+    row_list_push(&promise_table.free_rows, (uint32_t)row);
+  } /* else the row has used every generation: it is never reused, so an old id of it can never match a new promise */
 }
 
 void ms_promise_drop(MsPromise id) {
@@ -245,19 +247,22 @@ void ms_promise_drop(MsPromise id) {
     return;
   }
   ptrdiff_t found = promise_row_of(id);
-  if (found >= 0 && !row_settled((size_t)found)) {
+  if (found >= 0 && !promise_row_settled((size_t)found)) {
     (void)ms_promise_end(id);
     found = promise_row_of(id);
   }
   if (found >= 0) {
-    free_row((size_t)found);
+    promise_free_row((size_t)found);
   }
 }
 
-bool ms_promise_close(MsPromise id) {
+MS_ALWAYS_INLINE bool ms_promise_close(MsPromise id) {
   const ptrdiff_t found = promise_row_of(id);
-  if (found >= 0 && row_settled((size_t)found) && !has_result((size_t)found)) {
-    free_row((size_t)found); /* the usual end: the result was taken, so one call frees the row */
+  if (found < 0 && !promise_is_foreign(id)) {
+    return false; /* the usual end: taking the result freed the row */
+  }
+  if (found >= 0 && promise_row_settled((size_t)found) && !has_result((size_t)found)) {
+    promise_free_row((size_t)found);
     return false;
   }
   if (ms_promise_end(id)) {
