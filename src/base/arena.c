@@ -42,7 +42,7 @@ static void *bump(MsArena *arena, size_t size, size_t alignment) {
   return (void *)at;
 }
 
-void *ms_arena_alloc(MsArena *arena, size_t size, size_t alignment) {
+void *ms_arena_alloc_slow(MsArena *arena, size_t size, size_t alignment) {
   if (alignment == 0 || alignment > MS_ARENA_MAX_ALIGNMENT || (alignment & (alignment - 1)) != 0) {
     ms_fatal(MS_FATAL_INVARIANT, "bad arena alignment");
   }
