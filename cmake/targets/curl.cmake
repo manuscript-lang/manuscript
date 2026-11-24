@@ -12,7 +12,9 @@ set(CURL_LIB ${CURL_BUILD}/lib/libcurl${CMAKE_STATIC_LIBRARY_SUFFIX})
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CURL_CONFIG)
 set(CURL_C_FLAGS "${CMAKE_C_FLAGS}")
 # OpenSSL builds out of tree, so its generated headers (opensslv.h, configuration.h) sit beside, not inside, the source include directory.
-string(APPEND CURL_C_FLAGS " -isystem ${OPENSSL_BUILD}/include")
+# Both are plain -I: macOS clang searches /usr/local/include (Homebrew's OpenSSL) before any -isystem directory, and curl would then
+# compile its ENGINE code against headers that do not match the no-engine library it links.
+string(APPEND CURL_C_FLAGS " -I${OPENSSL_DIR}/include -I${OPENSSL_BUILD}/include")
 # zlib and nghttp2 do the same: zconf.h and nghttp2ver.h are generated into their build directories.
 string(APPEND CURL_C_FLAGS " -isystem ${MS_TP_BIN}/zlib -isystem ${MS_TP_BIN}/nghttp2/lib/includes")
 # nghttp2 is a static archive: without this its headers declare every symbol dllimport on Windows.
@@ -27,7 +29,7 @@ set(CURL_ARGS
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_DEBUG_POSTFIX=
   -DBUILD_CURL_EXE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF
   -DBUILD_LIBCURL_DOCS=OFF -DBUILD_MISC_DOCS=OFF -DENABLE_CURL_MANUAL=OFF
-  -DCURL_DISABLE_INSTALL=ON -DCURL_ENABLE_EXPORT_TARGET=OFF -DCMAKE_DISABLE_FIND_PACKAGE_Perl=ON
+  -DPICKY_COMPILER=OFF -DCURL_DISABLE_INSTALL=ON -DCURL_ENABLE_EXPORT_TARGET=OFF -DCMAKE_DISABLE_FIND_PACKAGE_Perl=ON
   -DCURL_USE_OPENSSL=ON -DCURL_USE_SCHANNEL=OFF -DOPENSSL_USE_STATIC_LIBS=ON
   -DOPENSSL_INCLUDE_DIR=${OPENSSL_DIR}/include -DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL}
   -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO}

@@ -374,7 +374,7 @@ static void spill_arguments(EmitCx *cx, const MirInst *inst, uint32_t block, uin
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
     if (emit_is_indirect(cx, value_type(cx, inst->args[arg])) && !emit_wide_held(cx, inst->args[arg])) {
       arg_slot_name(cx, inst, slot, 'x', block, index, arg);
-      emit_leaves_at(cx, inst->args[arg], slot, false);
+      emit_store_value(cx, inst->args[arg], slot);
     }
   }
 }
@@ -432,7 +432,7 @@ static void rt_argument(EmitCx *cx, MsStrBuild *args, MirTy type, MirValue value
       ms_strbuild_printf(args, "%sptr %s", separator, held);
       return;
     }
-    emit_leaves_at(cx, value, area, false);
+    emit_store_value(cx, value, area);
     ms_strbuild_printf(args, "%sptr %s", separator, area);
     return;
   }

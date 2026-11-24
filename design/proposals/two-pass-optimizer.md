@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-24, checked against `eeedac8f`.
+Proposal, 2026-11-24, checked against `eeedac8f`. After stage 0 landed (#6845) the optimizer is 4.4% of a Debug build (533M of 12.16G instructions; was 9.6%) and `ms emit --opt` on the yaml import is 1.16G (was 2.2G); the remaining stages are on hold pending a decision whether up to about 2 more points of Debug build justify the rewrite.
 
 ## Problem
 

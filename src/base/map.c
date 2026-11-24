@@ -16,7 +16,7 @@ static bool int_equal(const void *context, const uint8_t *stored, const uint8_t 
 
 static uint64_t string_hash(const void *context, const uint8_t *key) {
   (void)context;
-  return ms_string_hash((const MsString *)(const void *)key);
+  return ms_hash_span(ms_string_span((const MsString *)(const void *)key));
 }
 
 static bool string_equal(const void *context, const uint8_t *stored, const uint8_t *key) {
@@ -50,8 +50,8 @@ static const MsKeyOps string_keys = {.cheap_equal = false, .hash = string_hash, 
 static const MsKeyOps blob_keys = {.cheap_equal = true, .hash = blob_hash, .equal = blob_equal};
 static const MsKeyOps desc_keys = {.cheap_equal = false, .hash = desc_hash, .equal = desc_equal};
 
-MsMapProbe ms_map_probe(const MsMap *map, const MsTypeDesc *key, const MsMapLayout *layout,
-                        const uint8_t *key_slot) {
+static inline MS_ALWAYS_INLINE MsMapProbe probe_inline(const MsMap *map, const MsTypeDesc *key,
+                                                       const MsMapLayout *layout, const uint8_t *key_slot) {
   MsMapProbe probe = {0, MS_MAP_NO_ENTRY};
   if (key->kind == MS_KIND_INT) {
     probe.hash = ms_table_hash(&int_keys, key, key_slot);
@@ -69,12 +69,17 @@ MsMapProbe ms_map_probe(const MsMap *map, const MsTypeDesc *key, const MsMapLayo
   return probe;
 }
 
+MsMapProbe ms_map_probe(const MsMap *map, const MsTypeDesc *key, const MsMapLayout *layout,
+                        const uint8_t *key_slot) {
+  return probe_inline(map, key, layout, key_slot);
+}
+
 bool ms_map_has(const MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, const uint8_t *key_slot) {
   if (map->len == 0) {
     return false;
   }
   const MsMapLayout layout = ms_map_layout(key, value);
-  return ms_map_probe(map, key, &layout, key_slot).entry != MS_MAP_NO_ENTRY;
+  return probe_inline(map, key, &layout, key_slot).entry != MS_MAP_NO_ENTRY;
 }
 
 const uint8_t *ms_map_get(const MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value,
@@ -83,7 +88,7 @@ const uint8_t *ms_map_get(const MsMap *map, const MsTypeDesc *key, const MsTypeD
     return NULL;
   }
   const MsMapLayout layout = ms_map_layout(key, value);
-  const MsMapProbe probe = ms_map_probe(map, key, &layout, key_slot);
+  const MsMapProbe probe = probe_inline(map, key, &layout, key_slot);
   return probe.entry == MS_MAP_NO_ENTRY ? NULL
                                         : ms_table_entry(map, &layout, probe.entry) + layout.value_offset;
 }
@@ -137,7 +142,7 @@ void ms_map_insert(MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, u
     return;
   }
   const MsMapLayout layout = ms_map_layout(key, value);
-  const MsMapProbe probe = ms_map_probe(map, key, &layout, key_slot);
+  const MsMapProbe probe = probe_inline(map, key, &layout, key_slot);
   if (probe.entry != MS_MAP_NO_ENTRY) { /* the key exists: the new key is dropped and the value replaced */
     uint8_t *stored = ms_table_entry(map, &layout, probe.entry) + layout.value_offset;
     ms_slot_drop(key, key_slot);
@@ -161,7 +166,7 @@ bool ms_map_remove(MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, c
     return false;
   }
   const MsMapLayout layout = ms_map_layout(key, value);
-  const MsMapProbe probe = ms_map_probe(map, key, &layout, key_slot);
+  const MsMapProbe probe = probe_inline(map, key, &layout, key_slot);
   if (probe.entry == MS_MAP_NO_ENTRY) {
     return false;
   }
@@ -227,7 +232,7 @@ bool ms_map_equal(const MsMap *a, const MsMap *b, const MsTypeDesc *key, const M
     if (!ms_table_entry_is_live(entry)) {
       continue;
     }
-    const MsMapProbe probe = ms_map_probe(b, key, &layout, entry + layout.key_offset);
+    const MsMapProbe probe = probe_inline(b, key, &layout, entry + layout.key_offset);
     if (probe.entry == MS_MAP_NO_ENTRY) {
       return false;
     }

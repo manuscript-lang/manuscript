@@ -870,6 +870,11 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   }
   const MsSpan operation = declared != NULL ? ms_names_span(fn->cx->program->names, declared->source->func.name)
                                             : ms_names_span(fn->cx->program->names, callee->u.member.name);
+  /* A copy is the language's own `clone`, which the optimizer sees through (a copy of a last use becomes a move). */
+  if (call->arg_count == 1 && ret == mir_b_ty(&fn->b, args[0]) && ms_span_is_text(operation, "clone") &&
+      mir_needs_drop(fn->cx->module, ret)) {
+    return fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, ret);
+  }
   MsTy owner = call->callee.owner;
   const bool via_bound = generic_receiver(fn, call);
   if (via_bound) {

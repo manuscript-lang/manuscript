@@ -335,6 +335,9 @@ static void indirect_get(EmitCx *cx, const MirInst *inst, const EmitSite *site) 
     return;
   }
   uint32_t count = (uint32_t)emit_leaves(cx, block.def->fields[field].ty).len;
+  if (emit_wide_fill(cx, inst->res, base, block.offsets + block.starts[field])) {
+    return;
+  }
   for (uint32_t leaf = 0; leaf < count; leaf++) {
     uint32_t slot = block.starts[field] + leaf;
     emit_load_leaf(cx, block.leaves.ptr[slot], inst->res, leaf, emit_address(cx, base, block.offsets[slot]));

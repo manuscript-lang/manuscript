@@ -166,6 +166,42 @@ static void make_releases(LowerCx *cx, size_t nfuncs) {
   }
 }
 
+/* A closure kept in its maker's frame (mir_framed_closures) whose captures own nothing has nothing to release, so
+ * its `drop` is removed rather than lowered to a call of the runtime. */
+static void drop_empty_framed_closures(LowerCx *cx, MirFunc *func) {
+  MsArena scratch = ms_arena_new();
+  const bool *framed = mir_framed_closures(&scratch, cx->module, func);
+  if (framed != NULL) {
+    bool *empty = MS_ARENA_NEW_ARRAY(&scratch, bool, func->values.len + 1);
+    for (size_t bi = 0; bi < func->blocks.len; bi++) {
+      const MirInstList *insts = &func->blocks.ptr[bi].insts;
+      for (size_t ii = 0; ii < insts->len; ii++) {
+        const MirInst *inst = &insts->ptr[ii];
+        if (inst->op != MOP_ClosureNew || inst->res == MIR_NONE || !framed[inst->res]) {
+          continue;
+        }
+        bool owns = false;
+        for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+          owns = owns || mir_needs_drop(cx->module, mir_value_ty(func, inst->args[arg]));
+        }
+        empty[inst->res] = !owns;
+      }
+    }
+    for (size_t bi = 0; bi < func->blocks.len; bi++) {
+      MirInstList *insts = &func->blocks.ptr[bi].insts;
+      size_t kept = 0;
+      for (size_t ii = 0; ii < insts->len; ii++) {
+        const bool gone = insts->ptr[ii].op == MOP_Drop && empty[insts->ptr[ii].args[0]];
+        if (!gone) {
+          insts->ptr[kept++] = insts->ptr[ii];
+        }
+      }
+      insts->len = kept;
+    }
+  }
+  ms_arena_free(&scratch);
+}
+
 static void lower_function(LowerCx *cx, MirFunc *func) {
   mirlo_list_drops(cx, func);
   mirlo_str_eq_lits(cx, func);
@@ -173,6 +209,7 @@ static void lower_function(LowerCx *cx, MirFunc *func) {
   mirlo_block_clones(cx, func);
   mirlo_expand_sets(cx, func);
   mirlo_split_drop_ifs(cx->module, func);
+  drop_empty_framed_closures(cx, func);
   for (size_t bi = 0; bi < func->blocks.len; bi++) {
     MirInstList *insts = &func->blocks.ptr[bi].insts;
     size_t kept = 0;

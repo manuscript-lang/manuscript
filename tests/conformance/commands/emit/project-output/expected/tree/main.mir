@@ -13,7 +13,6 @@ extern @msstd_value_to_string(ptr, ptr) -> str fresh
 extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
 extern @msrt_io_write_stdout(str) -> void
 extern @msrt_string_parse_int(str, ptr) -> uint8 string_parse_int
-extern @msrt_string_clone(str) -> str fresh
 extern @msrt_panic(str) -> void
 entry @main
 
@@ -214,12 +213,12 @@ b6():
 b7():
   br b8() !2:13:30
 b8():
-  %16: str = call.rt @msrt_string_clone (%0) !2:15:35
+  %16: str = clone %0 !2:15:35
   %17: bool = call.rt @msrt_unwinding () !2:15:35
   br_if %17, b9(), b10() !2:15:35
 b9():
-  forget %16 !2:15:35
   %18: void = call.rt @msrt_unwinding_pause () !2:15:35
+  drop %16
   %19: void = call.rt @msrt_unwinding_resume () !2:15:35
   %20: Result[Int, Failure] = undef !2:15:35
   ret %20 !2:15:35

@@ -66,7 +66,7 @@ static bool closure_new(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
     }
     char at[24];
     emit_offset_pointer(cx, object, layout.captures[capture].offset, at, sizeof at);
-    emit_leaves_at(cx, inst->args[capture], at, false);
+    emit_store_value(cx, inst->args[capture], at);
   }
   return true;
 }
@@ -91,7 +91,7 @@ static bool closure_capture(EmitCx *cx, const MirInst *inst) {
   char at[24];
   emit_pointer(cx, inst->args[0], env, sizeof env);
   emit_offset_pointer(cx, env, offset, at, sizeof at);
-  emit_leaves_at(cx, inst->res, at, true);
+  emit_load_value(cx, inst->res, at);
   return true;
 }
 
