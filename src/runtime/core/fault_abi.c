@@ -21,7 +21,7 @@ void msrt_fault_string(const MsString *message) {
 }
 
 void msrt_panic(const MsString *message) {
-  msrt_fault_string(message);
+  ms_fault_post(MS_FAULT_KIND_FAULT, ms_string_span(message)); /* returns: the caller leaves by its exit */
 }
 
 void msrt_fault_depth(void) {
@@ -77,40 +77,61 @@ void msrt_fault_div_overflow(int64_t a, int64_t b) {
   ms_fault_built(MS_FAULT_KIND_OVERFLOW, &text);
 }
 
-/* ---- cleanups ---- */
+void msrt_post_int_overflow(void) {
+  ms_fault_post_text(MS_FAULT_KIND_OVERFLOW,
+                     "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt");
+}
 
-size_t msrt_cleanup_push(MsCleanupFn run, uint8_t *arg) { return ms_cleanup_push(run, arg); }
-void msrt_cleanup_run(size_t handle) { ms_cleanup_run(handle); }
-void msrt_cleanup_discard(size_t handle) { ms_cleanup_discard(handle); }
-void msrt_cleanup_remove(size_t handle) { ms_cleanup_remove(handle); }
-void msrt_cleanup_cancel(size_t handle) { ms_cleanup_cancel(handle); }
-size_t msrt_cleanup_base(void) { return ms_cleanup_base(); }
-void msrt_cleanup_unwind_to(size_t base) { ms_cleanup_unwind_to(base); }
-void msrt_cleanup_truncate(size_t base) { ms_cleanup_truncate(base); }
-uint8_t msrt_unwind_drops(void) { return ms_unwind_drops() ? 1 : 0; }
+void msrt_post_int_range(void) {
+  ms_fault_post_text(MS_FAULT_KIND_OVERFLOW,
+                     "Int overflow; the result does not fit the sized integer type's range, so bound the operands or "
+                     "use a wider type");
+}
+
+void msrt_post_div_zero(void) {
+  ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "division by zero; right must be nonzero, found 0");
+}
+
+void msrt_post_rem_zero(void) {
+  ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "remainder by zero; right must be nonzero, found 0");
+}
+
+void msrt_post_div_overflow(int64_t a, int64_t b) {
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "division overflow; found left ");
+  ms_strbuild_append_i64(&text, a);
+  ms_strbuild_append_text(&text, " and right ");
+  ms_strbuild_append_i64(&text, b);
+  ms_strbuild_append_text(&text, "; result must be between -9223372036854775808 and 9223372036854775807");
+  ms_fault_post_built(MS_FAULT_KIND_OVERFLOW, &text);
+}
+
+void msrt_post_unwrap_none(void) {
+  ms_fault_post_text(MS_FAULT_KIND_FAULT, "called Optional.get() on none; check is_some first, or use get_or(default)");
+}
+
+/* A posted fault that nothing can leave by (a check inside an exit, or in a function that only unwinds): the program
+ * ends with its report. */
+void msrt_fault_posted(void) {
+  MsUnwind *const unwind = &ms_task_running()->unwind;
+  MsFaultText text = unwind->pending;
+  unwind->pending = (MsFaultText){0};
+  ms_fault_exit(&text);
+}
 
 /* ---- shields and cancellation ---- */
 
 void msrt_shield_enter(void) { ms_shield_enter(); }
 void msrt_shield_exit(void) { ms_shield_exit(); }
-void msrt_cancel_edges(void) { ms_sched()->cancel_edges = true; }
+
 void msrt_unwinding_pause(void) { (void)ms_unwinding_take(); }
 void msrt_unwinding_resume(void) { ms_cancel_deliver(); }
 uint8_t msrt_unwinding(void) { return ms_unwinding() ? 1 : 0; }
-void msrt_cancelled(void) { ms_cancelled(); }
 MsTaskHdr *msrt_isolate_hdr(void) { return &running()->hdr; }
-
-void ms_sched_cancel_return(void) {
-  if (ms_sched()->cancel_edges) {
-    ms_cancel_deliver();
-  } else {
-    ms_cancelled();
-  }
-}
 
 void msrt_native_failed(uint8_t status) {
   if (status == MS_STATUS_CANCELLED || ms_cancel_flag() != 0) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
   }
 }
 

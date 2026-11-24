@@ -136,8 +136,8 @@ typedef struct MirImm {
 } MirImm;
 
 typedef enum MirFault {
-  MF_INT_OVERFLOW, MF_DIV_BY_ZERO, MF_INDEX_OUT_OF_RANGE, MF_NONE_UNWRAP, MF_CANCELLED, MF_CALL_DEPTH,
-  MF_UNREACHABLE, MF_MESSAGE /* str */
+  MF_POSTED, /* a fault already posted that nothing can leave by: the program ends with its report */
+  MF_UNREACHABLE
 } MirFault;
 
 typedef struct MirLoc {
@@ -196,7 +196,6 @@ typedef struct MirTerm {
   MirCase *cases;      /* SWITCH: in the module arena */
   uint32_t ncases;
   uint8_t fault;       /* a MirFault */
-  uint32_t fault_str;  /* MF_MESSAGE: string id */
 } MirTerm;
 
 typedef struct MirBlockData {
@@ -249,7 +248,8 @@ typedef struct MirFunc {
   bool ret_borrowed, ret_view;
   /* Set by passes: a function made only to run while a cancellation unwinds; one whose lists are raw slot
    * copies (they own no elements). */
-  bool unwind_only, raw_scratch;
+  bool raw_scratch;
+  bool closer; /* a consuming `close` method: its callers run it shielded, so it runs to its end and has no exit sites */
   /* A function that leaves a cancel by its own explicit exits; the indexes of its pointer parameters no
    * other memory overlaps (`var` parameters); on a `slot_close` thunk, the function running the same close
    * for its result; on a function with fallible closing owners, the (plain, pending) functions that turn a
@@ -361,12 +361,13 @@ typedef enum MirRole {
   MR_NONE, MR_BORROWS_ARGUMENT, MR_STRING_CONCAT,
   MR_STRING_JOIN, MR_STRING_JOIN_GROW, MR_STRING_APPEND, MR_INT_TO_STRING, MR_LIST_SORTED, MR_RAW_SLOTS, MR_RAW_FREE,
   MR_LIST_SORT_INTS, MR_LIST_SORTED_BY_DIFFERENCE, MR_LIST_NEW, MR_MAP_NEW, MR_BYTES_VALUES, MR_STRING_EQ,
-  MR_CLEANUP_DISCARD, MR_CLEANUP_CANCEL, MR_BYTES_APPEND, MR_BYTES_CONCAT, MR_BYTES_CONCAT_GROW, MR_VIEW_RESULT, MR_TAKES_DYING, MR_SPAWNS_TASK, MR_SHIELD_ENTER,
+  MR_BYTES_APPEND, MR_BYTES_CONCAT, MR_BYTES_CONCAT_GROW, MR_VIEW_RESULT, MR_TAKES_DYING, MR_SHIELD_ENTER,
   MR_SHIELD_EXIT, MR_UNWINDING, MR_MAP_PROBE_INT, MR_MAP_PROBE_STR, MR_SET_PROBE_INT, MR_STRING_SLICE,
   MR_BYTES_READ_WORD, MR_BYTES_INDEX_OF_BYTE, MR_STRING_PARSE_INT, MR_STRING_CONTAINS,
   MR_STRING_STARTS_WITH, MR_STRING_ENDS_WITH, MR_STRING_COMPARE, MR_STRING_SCALAR_STEP,
   MR_STRING_SCALAR_AT, MR_SET_PROBE_STR, MR_STRING_SCALAR_TEXT,
-  MR_KEEPS_SLOT
+  MR_KEEPS_SLOT,
+  MR_POSTS_FAULT /* posts a fault: the block then leaves by its exit, and each post keeps its own location */
 } MirRole;
 
 /* The family of borrowing twins an extern declares: other runtime functions that answer the same call without
@@ -379,7 +380,6 @@ typedef struct MirExtern {
   uint32_t nparams;
   MirTy ret;
   bool noreturn, pure, fresh, leaf, reads, retains;
-  bool handle; /* keeps its pointer arguments until the last use of its result (`msrt_cleanup_push` and its handle) */
   uint8_t role; /* a MirRole */
   uint8_t twin; /* a MirTwin */
 } MirExtern;

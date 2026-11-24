@@ -20,6 +20,12 @@ enum { SV_FRAME_PIECES = 8 };
 
 typedef enum SvPlan { SV_KEEP, SV_FIRST, SV_FRAME } SvPlan;
 
+/* A read of element 0: the block and the index in it. */
+typedef struct SvGet {
+  MirBlock block;
+  uint32_t index;
+} SvGet;
+
 typedef struct SvUses {
   MirValue list;
   bool escapes;
@@ -53,11 +59,35 @@ static bool only_computes(const MirBlockData *blk, uint32_t from, uint32_t to) {
   return true;
 }
 
+/* The block the straight line goes on in after the call at `blk.insts[call]`, when the call is followed by an unwind
+ * site (the byte test and the branch to the exit): the site's fall-through block, which only this block enters.
+ * MIR_NONE when no site follows. */
+static MirBlock site_continuation(const MirModule *m, const MirFunc *f, MirBlock blk_index, uint32_t call) {
+  const MirBlockData *blk = &f->blocks.ptr[blk_index];
+  if (call + 2 != blk->insts.len || blk->term.kind != MT_CONDBR) {
+    return MIR_NONE;
+  }
+  const MirInst *test = &blk->insts.ptr[call + 1];
+  if (test->op != MOP_CallRt || test->imm.tag != MI_EXT || m->externs.ptr[test->imm.a].role != MR_UNWINDING ||
+      test->res != blk->term.value) {
+    return MIR_NONE;
+  }
+  const MirBlock next = blk->term.b.block;
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirTerm *term = &f->blocks.ptr[b].term;
+    if (b != blk_index && ((term->kind == MT_BR && term->a.block == next) || (term->kind == MT_CONDBR && (term->a.block == next || term->b.block == next)))) {
+      return MIR_NONE;
+    }
+  }
+  return next;
+}
+
 /* How the list `l` made by the call at `blk.insts[call]` is used: the plan, and for SV_FIRST the instructions that read
  * element 0 (in `gets`, `*nget` of them, at most `max`). */
-static SvPlan plan_of(const MirFunc *f, MirBlock blk_index, uint32_t call, MirValue l, uint32_t *gets, uint32_t *nget,
-                      uint32_t max) {
+static SvPlan plan_of(const MirModule *m, const MirFunc *f, MirBlock blk_index, uint32_t call, MirValue l,
+                      SvGet *gets, uint32_t *nget, uint32_t max) {
   SvUses uses = {.list = l};
+  const MirBlock after = site_continuation(m, f, blk_index, call);
   bool first_only = true;
   *nget = 0;
   for (uint32_t b = 0; b < f->blocks.len && !uses.escapes; b++) {
@@ -71,8 +101,8 @@ static SvPlan plan_of(const MirFunc *f, MirBlock blk_index, uint32_t call, MirVa
       if (!mentions) {
         continue;
       }
-      if (inst->op == MOP_Drop && inst->nargs == 1) {
-        continue;
+      if ((inst->op == MOP_Drop || inst->op == MOP_Forget) && inst->nargs == 1) {
+        continue; /* the list's release, on the normal path or on an exit */
       }
       if (inst->op == MOP_ListLen && inst->nargs == 1) {
         first_only = false;
@@ -85,9 +115,10 @@ static SvPlan plan_of(const MirFunc *f, MirBlock blk_index, uint32_t call, MirVa
       }
       if ((inst->op == MOP_ListGet || inst->op == MOP_ListGetNn) && inst->nargs == 2 && inst->args[0] == l &&
           inst->args[1] != l) {
-        if (b == blk_index && i > call && *nget < max && is_zero_const(f, inst->args[1]) &&
-            only_computes(blk, call + 1, i)) {
-          gets[(*nget)++] = i;
+        const bool here = b == blk_index && i > call && only_computes(blk, call + 1, i);
+        const bool past_site = after != MIR_NONE && b == after && only_computes(blk, 0, i);
+        if ((here || past_site) && *nget < max && is_zero_const(f, inst->args[1])) {
+          gets[(*nget)++] = (SvGet){.block = b, .index = i};
         } else {
           first_only = false;
         }
@@ -131,9 +162,9 @@ static bool rewrite_one(MirModule *m, MirFunc *f) {
       if (list->kind != MK_LIST || list->elem != MIR_STR) {
         continue;
       }
-      uint32_t gets[8];
+      SvGet gets[8];
       uint32_t nget = 0;
-      const SvPlan plan = plan_of(f, b, i, call->res, gets, &nget, 8);
+      const SvPlan plan = plan_of(m, f, b, i, call->res, gets, &nget, 8);
       if (plan == SV_KEEP) {
         continue;
       }
@@ -162,18 +193,28 @@ static bool rewrite_one(MirModule *m, MirFunc *f) {
       call->imm = mir_imm_ext(first);
       /* Element 0 reads become the piece, and the drops of the list drop it. */
       for (uint32_t k = 0; k < nget; k++) {
-        mir_func_replace_uses(f, blk->insts.ptr[gets[k]].res, piece);
+        mir_func_replace_uses(f, f->blocks.ptr[gets[k].block].insts.ptr[gets[k].index].res, piece);
       }
-      uint32_t *dead = MS_ARENA_NEW_ARRAY(&m->arena, uint32_t, (size_t)nget + 1);
-      for (uint32_t k = 0; k < nget; k++) {
-        dead[k] = gets[k];
+      for (uint32_t k = 0; k < nget; k++) { /* the reads leave their blocks, a block at a time */
+        if (gets[k].index == UINT32_MAX) {
+          continue;
+        }
+        uint32_t *dead = MS_ARENA_NEW_ARRAY(&m->arena, uint32_t, nget);
+        uint32_t ndead = 0;
+        for (uint32_t j = k; j < nget; j++) {
+          if (gets[j].block == gets[k].block) {
+            dead[ndead++] = gets[j].index;
+            gets[j].index = j == k ? gets[j].index : UINT32_MAX;
+          }
+        }
+        mir_block_remove(&f->blocks.ptr[gets[k].block], dead, ndead);
+        gets[k].index = UINT32_MAX;
       }
-      mir_block_remove(blk, dead, nget);
       for (uint32_t x = 0; x < f->blocks.len; x++) {
         MirBlockData *other = &f->blocks.ptr[x];
         for (uint32_t y = 0; y < other->insts.len; y++) {
           MirInst *inst = &other->insts.ptr[y];
-          if (inst->op == MOP_Drop && inst->nargs == 1 && inst->args[0] == l) {
+          if ((inst->op == MOP_Drop || inst->op == MOP_Forget) && inst->nargs == 1 && inst->args[0] == l) {
             inst->args[0] = piece; /* the piece is the call's own result, dropped where the list was */
           }
         }

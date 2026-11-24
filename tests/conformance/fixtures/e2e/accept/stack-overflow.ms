@@ -1,7 +1,5 @@
-// conform: tags=testing,tier-stdlib
-// conform: phase=test
-import expect_contains, expect_fault from "@std/test/test.ms"
-
+// conform: tags=control-flow,tier-core
+// conform: phase=run
 // Every call keeps 1500 locals live across the recursive call, so the frame is large
 // enough that the 1 GiB main stack runs out after only a few hundred thousand calls.
 fn fat(n: Int) Int:
@@ -3012,9 +3010,5 @@ fn fat(n: Int) Int:
 		) % 7
 	)
 
-test "stack exhaustion is reported as a stack overflow":
-	message := expect_fault(
-		fn:
-			_ignored := fat(0)
-	)?
-	message | expect_contains("stack overflow")?
+fn main() Int:
+	return fat(0)

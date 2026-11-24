@@ -71,7 +71,10 @@ static MsString map_ascii(const MsString *s, bool to_upper) {
   }
   uint8_t small[MS_STRING_INLINE_MAX + 1];
   MsString result = ms_string_empty();
-  uint8_t *destination = text.len <= MS_STRING_INLINE_MAX ? small : msrt_string_block(text.len, &result);
+  uint8_t *destination = text.len <= MS_STRING_INLINE_MAX ? small : msrt_string_block_post(text.len, &result);
+  if (destination == NULL) {
+    return result;
+  }
   flip_ascii_into(destination, text.ptr, text.len, to_upper);
   return text.len <= MS_STRING_INLINE_MAX ? msrt_string_make(ms_span_of(small, text.len)) : result;
 }
@@ -142,7 +145,8 @@ static MsString map_text(const MsString *s, bool to_upper) {
   for (size_t at = 0; at < text.len;) {
     if (ms_strbuild_length(&out) > MSRT_STRING_LIMIT) {
       ms_strbuild_free(&out);
-      msrt_string_limit_fault();
+      msrt_string_limit_post();
+      return ms_string_empty();
     }
     const uint8_t byte = text.ptr[at];
     if (byte < 0x80) {

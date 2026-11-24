@@ -134,48 +134,7 @@ static bool lower_inst(LowerCx *cx, MirFunc *func, MirInst *inst) {
   }
 }
 
-/* ---- thunks and release functions, made before any function is rewritten ---- */
-
-/* The function `cleanup.thunk` the runtime calls with the address of a spilled value: it loads the value and
- * calls closer `closer`. */
-static void make_thunk(LowerCx *cx, uint32_t closer) {
-  if (cx->thunks.ptr[closer] != MIR_NONE) {
-    return;
-  }
-  MirModule *module = cx->module;
-  const MirTy ty = module->funcs.ptr[closer].params[0].ty;
-  const MirParam param = {MIR_PTR, MM_BORROW};
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_printf(&text, "cleanup.thunk.%u", closer);
-  MirBuilder b;
-  mir_b_init(&b, module, mir_name(module, ms_strbuild_span(&text)), &param, 1, MIR_VOID);
-  ms_strbuild_free(&text);
-  mir_b_func(&b)->linkage = ML_INTERNAL;
-  MirValue pointer = 0;
-  mir_b_params(&b, &pointer, 1);
-  const MirValue value = mir_b_emit(&b, MOP_Load, &pointer, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
-  (void)mir_b_call(&b, closer, &value, 1);
-  mir_b_ret(&b, mir_b_unit(&b));
-  uint32_t id = MIR_NONE;
-  if (mir_b_finish(&b, &id)) {
-    cx->thunks.ptr[closer] = id;
-  }
-}
-
-/* The thunk of every closer a `cleanup.push` registers. Adding one may move the function table, so the
- * function is fetched again after each. */
-static void make_thunks(LowerCx *cx, size_t nfuncs) {
-  for (size_t fi = 0; fi < nfuncs; fi++) {
-    for (size_t bi = 0; bi < cx->module->funcs.ptr[fi].blocks.len; bi++) {
-      for (size_t ii = 0; ii < cx->module->funcs.ptr[fi].blocks.ptr[bi].insts.len; ii++) {
-        const MirInst inst = cx->module->funcs.ptr[fi].blocks.ptr[bi].insts.ptr[ii];
-        if (inst.op == MOP_CleanupPush) {
-          make_thunk(cx, inst.imm.a);
-        }
-      }
-    }
-  }
-}
+/* ---- release functions, made before any function is rewritten ---- */
 
 static bool release_known(const LowerCx *cx, MirTy ty) {
   for (size_t index = 0; index < cx->release_tys.len; index++) {
@@ -250,8 +209,6 @@ static void lower_function(LowerCx *cx, MirFunc *func) {
   mirlo_block_clones(cx, func);
   mirlo_expand_sets(cx, func);
   mirlo_split_drop_ifs(cx->module, func);
-  mirlo_expand_cleanups(cx, func);
-  mirlo_fault_messages(cx, func);
   drop_empty_framed_closures(cx, func);
   for (size_t bi = 0; bi < func->blocks.len; bi++) {
     MirInstList *insts = &func->blocks.ptr[bi].insts;
@@ -268,13 +225,8 @@ static void lower_function(LowerCx *cx, MirFunc *func) {
 void mir_lower_ops(MirModule *module, const MirGlue *glue) {
   LowerCx cx = {.module = module, .glue = glue, .string_clone = MIR_NONE, .string_free = MIR_NONE,
                 .obj_clone = MIR_NONE, .obj_drop = MIR_NONE, .string_length = MIR_NONE,
-                .cleanup_push = MIR_NONE, .cleanup_run = MIR_NONE, .fault_string = MIR_NONE,
                 .string_eq = MIR_NONE};
   const size_t nfuncs = module->funcs.len;
-  for (size_t index = 0; index < nfuncs; index++) {
-    mir_idlist_push(&cx.thunks, MIR_NONE);
-  }
-  make_thunks(&cx, nfuncs);
   make_releases(&cx, nfuncs);
   mir_layouts_init(&cx.layouts, module);
   for (size_t index = 0; index < nfuncs; index++) {
@@ -284,7 +236,6 @@ void mir_lower_ops(MirModule *module, const MirGlue *glue) {
     lower_function(&cx, &module->funcs.ptr[cx.release_fns.ptr[index]]);
   }
   mir_layouts_free(&cx.layouts);
-  mir_idlist_free(&cx.thunks);
   mir_tylist_free(&cx.release_tys);
   mir_idlist_free(&cx.release_fns);
 }

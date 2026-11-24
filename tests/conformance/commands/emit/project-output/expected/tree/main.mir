@@ -5,6 +5,9 @@ file 2 "src/shapes.ms"
 type Shape { width: int, height: int }
 alt Result[Int, Failure] { ok(value: int), error(cause: Failure) } result
 alt Failure { Bad(text: str) }
+extern @msrt_unwinding() -> bool leaf unwinding
+extern @msrt_unwinding_pause() -> void
+extern @msrt_unwinding_resume() -> void
 extern @msrt_string_join(str, int) -> str fresh leaf string_join
 extern @msstd_value_to_string(ptr, ptr) -> str fresh
 extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
@@ -23,16 +26,36 @@ b0:
   %5: str = clone %4 !0:8:5
   %6: list<str> = list.lit %1, %3, %5 !0:8:26
   %7: int = call @parse_total (%6) !0:8:14
-  %8: str = str "total " !0:9:5
-  %9: str = call.rt @msrt_string_join (%8, %7) !0:9:11
-  %10: str = str "\n" !0:9:11:1
-  %11: str = clone %10 !0:9:11:1
-  %12: void = call @print[String] (%9, %11) !0:9:5
-  %13: int = iconst 0 !0:10:5
-  drop %11
-  drop %9
+  %8: bool = call.rt @msrt_unwinding () !0:8:14
+  br_if %8, b1(), b2() !0:8:14
+b1():
+  %9: void = call.rt @msrt_unwinding_pause () !0:8:14
   drop %6
-  ret %13 !0:10:5
+  %10: void = call.rt @msrt_unwinding_resume () !0:8:14
+  %11: int = undef !0:8:14
+  ret %11 !0:8:14
+b2():
+  %12: str = str "total " !0:9:5
+  %13: str = call.rt @msrt_string_join (%12, %7) !0:9:11
+  %14: str = str "\n" !0:9:11:1
+  %15: str = clone %14 !0:9:11:1
+  %16: void = call @print[String] (%13, %15) !0:9:5
+  %17: bool = call.rt @msrt_unwinding () !0:9:5
+  br_if %17, b3(), b4() !0:9:5
+b3():
+  %18: void = call.rt @msrt_unwinding_pause () !0:9:5
+  drop %15
+  drop %13
+  drop %6
+  %19: void = call.rt @msrt_unwinding_resume () !0:9:5
+  %20: int = undef !0:9:5
+  ret %20 !0:9:5
+b4():
+  %21: int = iconst 0 !0:10:5
+  drop %15
+  drop %13
+  drop %6
+  ret %21 !0:10:5
   scope "print" 1 0 9
 }
 
@@ -48,24 +71,81 @@ b1(%5: int, %6: int):
   br_if %7, b2(), b4() !2:19:5
 b2():
   %8: str = list.get %0, %5 !2:19:5
-  %9: Result[Int, Failure] = call @read_number (%8) !2:20:18
-  %10: int = iconst 0 !2:20:18
-  %11: opt<int> = opt.some %10 !2:20:18
-  %12: int = call @get_or[Int,Failure] (%9, %11) !2:20:36
-  %13: int = iadd.chk %6, %12 !2:20:36
-  br b3() !2:20:36
+  %9: bool = fault.site %8 !2:19:5
+  br_if %9, b5(), b6() !2:19:5
 b3():
-  %14: int = iadd %5, %4 !2:19:5
-  br b1(%14, %13) !2:19:5
+  %10: int = iadd %5, %4 !2:19:5
+  br b1(%10, %31) !2:19:5
 b4():
-  %15: int = iconst 1 !2:21:5
-  %16: int = iconst 1 !2:21:5
-  %17: Shape = type.new Shape %15, %16 !2:21:25
-  %18: int = call @area (%17) !2:21:20
-  %19: int = iadd.chk %6, %18 !2:21:20
-  %20: int = iconst 1 !2:21:20
-  %21: int = isub.chk %19, %20 !2:21:20
-  ret %21 !2:21:20
+  %11: int = iconst 1 !2:21:5
+  %12: int = iconst 1 !2:21:5
+  %13: Shape = type.new Shape %11, %12 !2:21:25
+  %14: int = call @area (%13) !2:21:20
+  %15: bool = call.rt @msrt_unwinding () !2:21:20
+  br_if %15, b13(), b14() !2:21:20
+b5():
+  %16: void = call.rt @msrt_unwinding_pause () !2:19:5
+  %17: void = call.rt @msrt_unwinding_resume () !2:19:5
+  %18: int = undef !2:19:5
+  ret %18 !2:19:5
+b6():
+  %19: Result[Int, Failure] = call @read_number (%8) !2:20:18
+  %20: bool = call.rt @msrt_unwinding () !2:20:18
+  br_if %20, b7(), b8() !2:20:18
+b7():
+  forget %19 !2:20:18
+  %21: void = call.rt @msrt_unwinding_pause () !2:20:18
+  %22: void = call.rt @msrt_unwinding_resume () !2:20:18
+  %23: int = undef !2:20:18
+  ret %23 !2:20:18
+b8():
+  %24: int = iconst 0 !2:20:18
+  %25: opt<int> = opt.some %24 !2:20:18
+  %26: int = call @get_or[Int,Failure] (%19, %25) !2:20:36
+  %27: bool = call.rt @msrt_unwinding () !2:20:36
+  br_if %27, b9(), b10() !2:20:36
+b9():
+  %28: void = call.rt @msrt_unwinding_pause () !2:20:36
+  %29: void = call.rt @msrt_unwinding_resume () !2:20:36
+  %30: int = undef !2:20:36
+  ret %30 !2:20:36
+b10():
+  %31: int = iadd.chk %6, %26 !2:20:36
+  %32: bool = fault.site %31 !2:20:36
+  br_if %32, b11(), b12() !2:20:36
+b11():
+  %33: void = call.rt @msrt_unwinding_pause () !2:20:36
+  %34: void = call.rt @msrt_unwinding_resume () !2:20:36
+  %35: int = undef !2:20:36
+  ret %35 !2:20:36
+b12():
+  br b3() !2:20:36
+b13():
+  %36: void = call.rt @msrt_unwinding_pause () !2:21:20
+  %37: void = call.rt @msrt_unwinding_resume () !2:21:20
+  %38: int = undef !2:21:20
+  ret %38 !2:21:20
+b14():
+  %39: int = iadd.chk %6, %14 !2:21:20
+  %40: bool = fault.site %39 !2:21:20
+  br_if %40, b15(), b16() !2:21:20
+b15():
+  %41: void = call.rt @msrt_unwinding_pause () !2:21:20
+  %42: void = call.rt @msrt_unwinding_resume () !2:21:20
+  %43: int = undef !2:21:20
+  ret %43 !2:21:20
+b16():
+  %44: int = iconst 1 !2:21:20
+  %45: int = isub.chk %39, %44 !2:21:20
+  %46: bool = fault.site %45 !2:21:20
+  br_if %46, b17(), b18() !2:21:20
+b17():
+  %47: void = call.rt @msrt_unwinding_pause () !2:21:20
+  %48: void = call.rt @msrt_unwinding_resume () !2:21:20
+  %49: int = undef !2:21:20
+  ret %49 !2:21:20
+b18():
+  ret %45 !2:21:20
   name %0 "items" param 0
 }
 
@@ -75,9 +155,26 @@ b0:
   %3: ptr = slot str !1:198:32
   store %3, %0 !1:198:32
   %4: str = call.rt @msstd_value_to_string (%2, %3) !1:198:32
-  %5: str = call.rt @msrt_string_concat (%4, %1) !1:198:32
-  %6: void = call.rt @msrt_io_write_stdout (%5) !1:198:5
-  drop %5
+  %5: bool = call.rt @msrt_unwinding () !1:198:32
+  br_if %5, b1(), b2() !1:198:32
+b1():
+  forget %4 !1:198:32
+  %6: void = call.rt @msrt_unwinding_pause () !1:198:32
+  %7: void = call.rt @msrt_unwinding_resume () !1:198:32
+  ret !1:198:32
+b2():
+  %8: str = call.rt @msrt_string_concat (%4, %1) !1:198:32
+  %9: void = call.rt @msrt_io_write_stdout (%8) !1:198:5
+  %10: bool = call.rt @msrt_unwinding () !1:198:5
+  br_if %10, b3(), b4() !1:198:5
+b3():
+  %11: void = call.rt @msrt_unwinding_pause () !1:198:5
+  drop %8
+  drop %4
+  %12: void = call.rt @msrt_unwinding_resume () !1:198:5
+  ret !1:198:5
+b4():
+  drop %8
   drop %4
   ret !1:198:5
   name %0 "value" param 0
@@ -99,19 +196,36 @@ b2():
   %7: opt<int> = opt.none !2:12:19
   br b3(%7) !2:12:19
 b3(%8: move opt<int>):
-  %9: bool = opt.is_some %8 !2:13:5
-  br_if %9, b4(), b5() !2:13:5
+  %9: bool = call.rt @msrt_unwinding () !2:12:19
+  br_if %9, b4(), b5() !2:12:19
 b4():
-  %10: int = opt.get %8 !2:13:23
-  %11: Result[Int, Failure] = alt.new Result[Int, Failure].ok %10 !2:13:30
-  ret %11 !2:13:30
+  %10: void = call.rt @msrt_unwinding_pause () !2:12:19
+  %11: void = call.rt @msrt_unwinding_resume () !2:12:19
+  %12: Result[Int, Failure] = undef !2:12:19
+  ret %12 !2:12:19
 b5():
-  br b6() !2:13:30
+  %13: bool = opt.is_some %8 !2:13:5
+  br_if %13, b6(), b7() !2:13:5
 b6():
-  %12: str = clone %0 !2:15:35
-  %13: Failure = alt.new Failure.Bad %12 !2:15:26
-  %14: Result[Int, Failure] = alt.new Result[Int, Failure].error %13 !2:15:12
-  ret %14 !2:15:12
+  %14: int = opt.get %8 !2:13:23
+  %15: Result[Int, Failure] = alt.new Result[Int, Failure].ok %14 !2:13:30
+  ret %15 !2:13:30
+b7():
+  br b8() !2:13:30
+b8():
+  %16: str = clone %0 !2:15:35
+  %17: bool = call.rt @msrt_unwinding () !2:15:35
+  br_if %17, b9(), b10() !2:15:35
+b9():
+  %18: void = call.rt @msrt_unwinding_pause () !2:15:35
+  drop %16
+  %19: void = call.rt @msrt_unwinding_resume () !2:15:35
+  %20: Result[Int, Failure] = undef !2:15:35
+  ret %20 !2:15:35
+b10():
+  %21: Failure = alt.new Failure.Bad %16 !2:15:26
+  %22: Result[Int, Failure] = alt.new Result[Int, Failure].error %21 !2:15:12
+  ret %22 !2:15:12
   name %0 "text" param 0
 }
 
@@ -139,7 +253,13 @@ b5():
 b6():
   %8: str = str "called Result.get_or with a none default" !1:295:5
   %9: void = call.rt @msrt_panic (%8) !1:295:5
-  unreachable !1:295:5
+  %10: void = call.rt @msrt_unwinding_pause () !1:295:5
+  drop %0
+  %11: void = call.rt @msrt_unwinding_resume () !1:295:5
+  %12: int = undef !1:295:5
+  ret %12 !1:295:5
+b7():
+  unreachable
   name %0 "self" param 0
   name %1 "default" param 0
 }
@@ -149,6 +269,14 @@ b0:
   %1: int = type.get Shape.width %0 !2:9:5
   %2: int = type.get Shape.height %0 !2:9:5
   %3: int = imul.chk %1, %2 !2:9:5
+  %4: bool = fault.site %3 !2:9:5
+  br_if %4, b1(), b2() !2:9:5
+b1():
+  %5: void = call.rt @msrt_unwinding_pause () !2:9:5
+  %6: void = call.rt @msrt_unwinding_resume () !2:9:5
+  %7: int = undef !2:9:5
+  ret %7 !2:9:5
+b2():
   ret %3 !2:9:5
   name %0 "shape" param 0
 }

@@ -237,7 +237,8 @@ uint8_t msstd_bigint_remainder(const MsBigCell *a, const MsBigCell *other, MsBig
 MsBigCell *msstd_bigint_quotient(const MsBigCell *a, const MsBigCell *other) {
   static const char message[] = "BigInt./: division by zero; right must be nonzero, found 0";
   if (ms_big_is_zero(&other->value)) {
-    ms_fault_text(MS_FAULT_KIND_DIVISION_BY_ZERO, message);
+    ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, message);
+    return NULL;
   }
   MsBig quotient = MS_BIG_ZERO;
   ms_big_divmod(&quotient, NULL, &a->value, &other->value);
@@ -248,7 +249,8 @@ MsBigCell *msstd_bigint_quotient(const MsBigCell *a, const MsBigCell *other) {
 MsBigCell *msstd_bigint_modulo(const MsBigCell *a, const MsBigCell *other) {
   static const char message[] = "BigInt.%: division by zero; right must be nonzero, found 0";
   if (ms_big_is_zero(&other->value)) {
-    ms_fault_text(MS_FAULT_KIND_DIVISION_BY_ZERO, message);
+    ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, message);
+    return NULL;
   }
   MsBig remainder = MS_BIG_ZERO;
   ms_big_divmod(NULL, &remainder, &a->value, &other->value);
@@ -374,7 +376,8 @@ void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, MsString *o
     char message[128];
     (void)snprintf(message, sizeof message,
                    "BigInt.to_string_radix: radix must be between 2 and 36, found %lld", (long long)radix);
-    ms_fault_text(MS_FAULT_KIND_FAULT, message);
+    ms_fault_post(MS_FAULT_KIND_FAULT, ms_span_of_text(message));
+    return;
   }
   size_t digit_count = 0;
   uint8_t *const digits = ms_big_digits_new(&a->value, (unsigned)radix, &digit_count);

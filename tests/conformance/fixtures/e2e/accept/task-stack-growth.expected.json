@@ -21,31 +21,26 @@
         },
         {
           "index": 2,
-          "name": "task-stack-growth.ms::a runaway recursion in a task still faults",
-          "status": "passed"
-        },
-        {
-          "index": 3,
           "name": "task-stack-growth.ms::a fault inside a grown segment unwinds to its guard",
           "status": "passed"
         },
         {
-          "index": 4,
+          "index": 3,
           "name": "task-stack-growth.ms::many tasks recurse past their first slot and park on several threads",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 5,
-        "selected": 5,
-        "passed": 5,
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN task-stack-growth.ms::a promise task recurses far past its first stack slot\nPASS task-stack-growth.ms::a promise task recurses far past its first stack slot\nRUN task-stack-growth.ms::a loop at a segment boundary runs in bounded time\nPASS task-stack-growth.ms::a loop at a segment boundary runs in bounded time\nRUN task-stack-growth.ms::a runaway recursion in a task still faults\nPASS task-stack-growth.ms::a runaway recursion in a task still faults\nRUN task-stack-growth.ms::a fault inside a grown segment unwinds to its guard\nPASS task-stack-growth.ms::a fault inside a grown segment unwinds to its guard\nRUN task-stack-growth.ms::many tasks recurse past their first slot and park on several threads\nPASS task-stack-growth.ms::many tasks recurse past their first slot and park on several threads\n5 tests, 0 failed\n",
+      "stdout": "RUN task-stack-growth.ms::a promise task recurses far past its first stack slot\nPASS task-stack-growth.ms::a promise task recurses far past its first stack slot\nRUN task-stack-growth.ms::a loop at a segment boundary runs in bounded time\nPASS task-stack-growth.ms::a loop at a segment boundary runs in bounded time\nRUN task-stack-growth.ms::a fault inside a grown segment unwinds to its guard\nPASS task-stack-growth.ms::a fault inside a grown segment unwinds to its guard\nRUN task-stack-growth.ms::many tasks recurse past their first slot and park on several threads\nPASS task-stack-growth.ms::many tasks recurse past their first slot and park on several threads\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

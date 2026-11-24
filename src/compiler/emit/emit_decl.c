@@ -87,10 +87,22 @@ static void declare_faults(const EmitCx *cx) {
     const char *name;
     const char *params;
   } faults[] = {
-      {"msrt_fault_int_overflow", ""}, {"msrt_fault_int_range", ""},          {"msrt_fault_div_zero", ""},
-      {"msrt_fault_rem_zero", ""},     {"msrt_fault_div_overflow", "i64, i64"}, {"msrt_index_fault", "i64, i64"},
-      {"msrt_fault_unwrap_none", ""},  {"msrt_cancelled", ""},                {"msrt_fault_depth", ""},
+      {"msrt_fault_posted", ""},
   };
+  static const struct {
+    const char *name;
+    const char *params;
+  } posts[] = {
+      {"msrt_post_int_overflow", ""}, {"msrt_post_int_range", ""},          {"msrt_post_div_zero", ""},
+      {"msrt_post_rem_zero", ""},     {"msrt_post_div_overflow", "i64, i64"}, {"msrt_post_index", "i64, i64"},
+      {"msrt_post_unwrap_none", ""},
+  };
+  for (size_t index = 0; index < MS_COUNT_OF(posts); index++) {
+    if (extern_named(cx, posts[index].name) != MIR_NONE) {
+      continue;
+    }
+    ms_strbuild_printf(cx->out, "declare void @%s(%s) cold nounwind\n", posts[index].name, posts[index].params);
+  }
   for (size_t index = 0; index < MS_COUNT_OF(faults); index++) {
     if (extern_named(cx, faults[index].name) == MIR_NONE) {
       ms_strbuild_printf(cx->out, "declare void @%s(%s) cold noreturn nounwind\n", faults[index].name,

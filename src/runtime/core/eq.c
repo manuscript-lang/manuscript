@@ -1,7 +1,6 @@
 /* The equality cycle guard: while a comparison of two objects runs, the pair is registered, so a comparison that
  * reaches the same pair again (a cycle) assumes equal instead of recursing forever. The pairs live in the running
- * task's unwind state, so a task switch needs no copy and a guard that catches a fault drops what the fault left
- * behind (ms_guard_leave). */
+ * task's unwind state, so a task switch needs no copy. */
 #include "runtime/core/eq.h"
 #include "runtime/core/fault.h"
 #include "runtime/core/scheduler.h"
@@ -18,7 +17,8 @@ uint8_t msrt_eq_enter(const uint8_t *a, const uint8_t *b) {
     }
   }
   if (unwind->eq_pairs.len >= MAX_EQ_DEPTH) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "equality comparison is nested too deeply");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "equality comparison is nested too deeply");
+    return 0; /* nothing was registered, so there is nothing to leave */
   }
   ms_eq_pair_list_push(&unwind->eq_pairs, (MsEqPair){.a = left, .b = right});
   return 1;

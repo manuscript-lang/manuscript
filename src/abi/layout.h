@@ -25,6 +25,8 @@
 /* The cell: the header pointer sits this many bytes below the region's end, the recursion limit this many. */
 #define MS_STACK_CELL_HDR 16
 #define MS_STACK_CELL_LIMIT 8
+/* Byte offset of the `unwinding` byte in the header the cell points to (MsTaskHdr, checked in runtime/core/unwind.h). */
+#define MS_HDR_UNWINDING 16
 /* Slots per region: the last page holds the cell, so the top slot is left out. */
 #define MS_STACK_SLOTS_PER_REGION ((MS_STACK_REGION - MS_STACK_PAGE) / MS_STACK_SLOT)
 

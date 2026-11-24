@@ -12,7 +12,7 @@ void msrt_list_sort_in_place(MsList *v, const MsTypeDesc *d, MsCompareFn cmp, ui
   if (v->len < 2) {
     return;
   }
-  const size_t bytes = msrt_list_buffer_bytes(v->len, d->size);
+  const size_t bytes = v->len * d->size; /* the list exists, so its bytes fit */
   uint8_t *work = ms_alloc(bytes);
   __builtin_memcpy(work, v->ptr, bytes);
   ms_sort(work, v->len, d->size, cmp, env);

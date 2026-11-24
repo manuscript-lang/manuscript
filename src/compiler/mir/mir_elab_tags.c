@@ -228,7 +228,6 @@ void el_tags(ElCx *cx) {
     cx->tag_kind[i] = -1;
   }
   cx->nvalues0 = (uint32_t)nvalues;
-  cx->cancel_end = mir_bits_new(cx->ma, (uint32_t)nvalues + 1);
   read_scopes(cx, func);
   MirBits disowned = mir_bits_new(cx->ma, (uint32_t)nvalues);
   const MirBlock *idom = NULL;
@@ -240,9 +239,6 @@ void el_tags(ElCx *cx) {
         mir_bits_set(&disowned, inst->args[0]);
       }
       if (inst->op == MOP_ScopeOwn) {
-        if (inst->imm.c != 0) {
-          mir_bits_set(&cx->cancel_end, inst->args[0]);
-        }
         tag_owner(cx, &idom, &disowned, inst);
       }
     }

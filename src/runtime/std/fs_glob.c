@@ -85,10 +85,6 @@ static void walk_free(GlobWalk *walk) {
   values_free(walk);
 }
 
-static void walk_cleanup(uint8_t *argument) {
-  walk_free((GlobWalk *)__builtin_assume_aligned(argument, _Alignof(GlobWalk)));
-}
-
 static bool fail_status(GlobWalk *walk, uint8_t status) {
   ms_fail_status(&walk->fail, status);
   return false;
@@ -634,11 +630,9 @@ uint8_t msstd_fs_glob_entries(const MsString *path, const MsList *patterns, cons
     ms_fail_status(&walk.fail, MS_STATUS_INVALID_INPUT);
     return ms_fail_finish_at(&walk.fail, given, err);
   }
-  const size_t handle = msrt_cleanup_push(walk_cleanup, (uint8_t *)&walk);
   if (prepare(&walk, given, patterns, exclude)) {
     (void)walk_starts(&walk, patterns);
   }
-  msrt_cleanup_discard(handle);
   if (!ms_fail_failed(&walk.fail)) {
     write_found(&walk, out);
   }

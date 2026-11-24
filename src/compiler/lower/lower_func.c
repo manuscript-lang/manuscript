@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "base/fatal.h"
+#include "base/env.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/own/closers.h"
 #include "compiler/mir/mir_layout.h"
@@ -389,6 +390,8 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   MirFunc func;
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
   func.display = lower_trace_name(cx, target->receiver, target->name);
+  func.closer = target->receiver != MS_TY_NONE && (target->receiver_flags & MS_PARAM_MOVE) != 0 &&
+                ms_span_is_text(ms_names_span(cx->program->names, target->name), "close");
   func.ret_borrowed = borrows_result(cx, target, ret, mir_params, count);
   const MirTyData *ret_kind = mir_ty_data(cx->module, ret);
   if (func.ret_borrowed && (ret_kind->kind == MK_IFACE ||
@@ -640,6 +643,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
                 .ret_checked = ms_ty_subst(&cx->program->types, ms_ty_result(&cx->program->types, target->ty), vars, instance.args, instance.nargs)};
   mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
   fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  fn.b.func.closer = stub.closer;
   (void)fn_scope_begin(&fn);
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
@@ -661,6 +665,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   built.ret_borrowed = slot->ret_borrowed;
   built.ret_view = slot->ret_view;
   built.display = slot->display;
+  built.closer = slot->closer;
   mir_func_release(slot);
   *slot = built;
   cx->instances.ptr[index].lowered = true;
@@ -692,7 +697,7 @@ void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuil
   if (program->lazy_std) {
     ms_fatal(MS_FATAL_INVARIANT, "a program checked for analysis only was lowered");
   }
-  *cx = (Lower){.program = program, .module = module, .error = error};
+  *cx = (Lower){.program = program, .module = module, .error = error, .unwinding = MIR_NONE};
   ms_names_init(&cx->instance_keys);
   ms_names_init(&cx->vtable_keys);
   (void)ms_names_intern(&cx->vtable_keys, ms_span_of_text(""));

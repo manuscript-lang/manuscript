@@ -15,8 +15,7 @@ typedef struct LowerCx {
   MirLayouts layouts;
   /* Runtime functions the pass declares on first use; MIR_NONE until then. */
   uint32_t string_clone, string_free, obj_clone, obj_drop, string_length;
-  uint32_t cleanup_push, cleanup_run, fault_string, string_eq;
-  MirIdList thunks;       /* by function: the cleanup thunk that calls it, MIR_NONE until made */
+  uint32_t string_eq;
   MirTyList release_tys;  /* the list types `list.release` is applied to */
   MirIdList release_fns;  /* and the function made for each */
 } LowerCx;
@@ -35,7 +34,5 @@ void mirlo_str_drops(LowerCx *cx, MirFunc *func);
 void mirlo_block_clones(LowerCx *cx, MirFunc *func);
 void mirlo_expand_sets(LowerCx *cx, MirFunc *func);
 void mirlo_split_drop_ifs(MirModule *module, MirFunc *func);
-void mirlo_expand_cleanups(LowerCx *cx, MirFunc *func);
-void mirlo_fault_messages(LowerCx *cx, MirFunc *func);
 
 #endif

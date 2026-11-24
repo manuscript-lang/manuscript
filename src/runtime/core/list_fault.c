@@ -6,24 +6,24 @@
 #include "base/alloc.h"
 #include "base/strbuild.h"
 
-MS_NORETURN void msrt_list_overflow_fault(void) {
-  ms_fault_text(MS_FAULT_KIND_OVERFLOW, "list size overflow");
+void msrt_post_list_overflow(void) {
+  ms_fault_post_text(MS_FAULT_KIND_OVERFLOW, "list size overflow");
 }
 
-size_t msrt_list_buffer_bytes(size_t count, size_t slot_size) {
-  size_t bytes = 0;
-  if (!ms_size_mul(count, slot_size == 0 ? 1 : slot_size, &bytes)) {
-    msrt_list_overflow_fault();
+bool msrt_list_buffer_bytes(size_t count, size_t slot_size, size_t *bytes) {
+  if (!ms_size_mul(count, slot_size == 0 ? 1 : slot_size, bytes)) {
+    msrt_post_list_overflow();
+    return false;
   }
-  return bytes;
+  return true;
 }
 
-size_t msrt_list_checked_add(size_t a, size_t b) {
-  size_t sum = 0;
-  if (!ms_size_add(a, b, &sum)) {
-    msrt_list_overflow_fault();
+bool msrt_list_checked_add(size_t a, size_t b, size_t *sum) {
+  if (!ms_size_add(a, b, sum)) {
+    msrt_post_list_overflow();
+    return false;
   }
-  return sum;
+  return true;
 }
 
 void msrt_list_copy_range(const MsTypeDesc *d, const uint8_t *src, uint8_t *dst, size_t count) {
@@ -40,11 +40,14 @@ void msrt_list_copy_range(const MsTypeDesc *d, const uint8_t *src, uint8_t *dst,
 }
 
 MsList msrt_list_with_slots(const MsTypeDesc *d, size_t count, size_t capacity) {
-  uint8_t *buffer = ms_alloc(msrt_list_buffer_bytes(capacity, d->size));
-  return (MsList){.ptr = buffer, .len = count, .cap = capacity};
+  size_t bytes = 0;
+  if (!msrt_list_buffer_bytes(capacity, d->size, &bytes)) {
+    return (MsList){0}; /* a fault was posted: the caller leaves */
+  }
+  return (MsList){.ptr = ms_alloc(bytes), .len = count, .cap = capacity};
 }
 
-MS_NORETURN void msrt_splice_fault(const char *what, int64_t found, size_t high) {
+void msrt_post_splice(const char *what, int64_t found, size_t high) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, "List.splice: ");
   ms_strbuild_append_text(&message, what);
@@ -52,10 +55,10 @@ MS_NORETURN void msrt_splice_fault(const char *what, int64_t found, size_t high)
   ms_strbuild_append_i64(&message, (int64_t)high);
   ms_strbuild_append_text(&message, ", found ");
   ms_strbuild_append_i64(&message, found);
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
 }
 
-MS_NORETURN void msrt_bounds_fault(const char *operation, size_t length, int64_t start, int64_t end) {
+void msrt_post_bounds(const char *operation, size_t length, int64_t start, int64_t end) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, operation);
   ms_strbuild_append_text(&message, ": start/end must satisfy 0 <= start <= end <= ");
@@ -64,22 +67,24 @@ MS_NORETURN void msrt_bounds_fault(const char *operation, size_t length, int64_t
   ms_strbuild_append_i64(&message, start);
   ms_strbuild_append_text(&message, " and end ");
   ms_strbuild_append_i64(&message, end);
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
 }
 
-void msrt_check_bounds(const char *operation, size_t length, int64_t start, int64_t end) {
+bool msrt_check_bounds(const char *operation, size_t length, int64_t start, int64_t end) {
   if (start < 0 || end < start || (uint64_t)end > length) {
-    msrt_bounds_fault(operation, length, start, end);
+    msrt_post_bounds(operation, length, start, end);
+    return false;
   }
+  return true;
 }
 
-MS_NORETURN void msrt_copy_target_fault(size_t length, int64_t target) {
+void msrt_post_copy_target(size_t length, int64_t target) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, "List.copy_within: target must be between 0 and ");
   ms_strbuild_append_i64(&message, (int64_t)length);
   ms_strbuild_append_text(&message, ", found ");
   ms_strbuild_append_i64(&message, target);
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 MsString msrt_list_slice_error(int64_t start, int64_t end, size_t length) {
@@ -96,12 +101,12 @@ MsString msrt_list_slice_error(int64_t start, int64_t end, size_t length) {
   return ms_strbuild_finish(&message);
 }
 
-MS_NORETURN void msrt_fault_destructure(int64_t names, int64_t elements) {
+void msrt_post_destructure(int64_t names, int64_t elements) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, "destructuring length mismatch; the pattern binds ");
   ms_strbuild_append_i64(&message, names);
   ms_strbuild_append_text(&message, " names but the list has ");
   ms_strbuild_append_i64(&message, elements);
   ms_strbuild_append_text(&message, " elements");
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
 }

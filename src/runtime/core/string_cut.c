@@ -198,14 +198,14 @@ void msrt_string_slice(const MsString *s, int64_t start, int64_t end, MsString *
   }
 }
 
-MS_NORETURN static void fault_view_bounds(int64_t start, int64_t end) {
+static void post_view_bounds(int64_t start, int64_t end) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, "String.view: bounds ");
   ms_strbuild_append_i64(&message, start);
   ms_strbuild_append_text(&message, "..");
   ms_strbuild_append_i64(&message, end);
   ms_strbuild_append_text(&message, " are outside the text or inside a scalar");
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 /* `String.view(start, end)`: the bytes [start, end) borrowed from the receiver, nothing allocated. A bound
@@ -217,7 +217,8 @@ void msrt_string_view(const MsString *s, int64_t start, int64_t end, MsString *o
   const int64_t last = resolve_bound(end, length);
   if (first < 0 || last < first || last > length || !is_boundary(text, (size_t)first) ||
       !is_boundary(text, (size_t)last)) {
-    fault_view_bounds(start, end);
+    post_view_bounds(start, end);
+    return;
   }
   *out = last == first ? ms_string_empty()
                        : msrt_string_view_of(ms_span_of(text.ptr + first, (size_t)(last - first)));

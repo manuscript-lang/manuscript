@@ -161,6 +161,13 @@ typedef struct LowerFn {
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  MirValue sited; /* one more than the call result whose unwind site is already emitted; 0 for none */
+  bool leaving; /* an exit's closes and write-backs are being emitted: a check there repeats one the normal path passed, so it has no exit of its own */
+  /* The result the last unwind site followed and where its instruction is, so that a later look at "the value just
+   * made" still finds it behind the site's test. */
+  MirValue site_value;
+  MirBlock site_block;
+  uint32_t site_index;
   MirValue receiver_slot; /* a native call's fresh receiver, in the closing slot its arguments were evaluated after (MIR_NONE: none) */
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   MirTy native_value_ty; /* the element or value type of the collection the native being called reads, else MIR_NONE */
@@ -383,6 +390,22 @@ bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out);
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
+/* After a call: test the unwinding byte and leave through the scope exit when it is set (lower_unwind.c). */
+/* The instruction that made `value` when nothing but unwind-site tests came after it, else NULL. */
+const MirInst *fn_just_made(const LowerFn *fn, MirValue value);
+bool fn_made_by_call(const LowerFn *fn, MirValue value);
+void fn_unwind_site(LowerFn *fn, MirValue result);
+/* A value taken out of its closing slot for a call that has not run yet. */
+typedef struct LowerTaken {
+  MirValue slot;
+  MirValue value;
+} LowerTaken;
+/* The same, the exit putting each taken value back in its slot first, so the slot closes it. */
+void fn_unwind_site_forgetting(LowerFn *fn, MirValue result, const LowerTaken *forget, uint32_t nforget);
+/* Ends the current block with the exit of a pending cancel or posted fault (every open scope closed, undefined result). */
+void fn_unwind_exit(LowerFn *fn);
+void fn_fault_site(LowerFn *fn, MirValue result);
+MirValue fn_checked_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty);
 MirValue fn_missing_value(LowerFn *fn, MsPos at);
 bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key);
 bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);

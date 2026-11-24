@@ -37,17 +37,6 @@ typedef struct Copier {
   MsFsArguments arguments;
 } Copier;
 
-static void copier_free(Copier *copier) {
-  ms_fail_free(&copier->fail);
-  ms_strbuild_free(&copier->destination);
-  ms_strbuild_free(&copier->ancestors);
-  ms_fs_arguments_free(&copier->arguments);
-}
-
-static void copier_cleanup(uint8_t *argument) {
-  copier_free((Copier *)__builtin_assume_aligned(argument, _Alignof(Copier)));
-}
-
 static bool has_flag(const Copier *copier, int64_t flag) { return (copier->flags & flag) != 0; }
 
 /* ---- failures ---- */
@@ -651,11 +640,9 @@ uint8_t msstd_fs_copy(const MsString *source, const MsString *destination, int64
   }
   const MsSpan from = ms_string_span(source);
   const MsSpan to = ms_string_span(destination);
-  const size_t handle = msrt_cleanup_push(copier_cleanup, (uint8_t *)&copier);
   if (check_destination(&copier, from, to)) {
     (void)copy_entry(&copier, from, to, 0);
   }
-  msrt_cleanup_discard(handle);
   ms_fs_arguments_free(&copier.arguments);
   ms_strbuild_free(&copier.destination);
   ms_strbuild_free(&copier.ancestors);

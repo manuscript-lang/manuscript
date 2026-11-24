@@ -98,7 +98,7 @@ uint8_t msstd_fs_admit(int64_t bytes) {
   bool cancelled = false;
   const bool held = ms_pool_admit(bytes > 0 ? (size_t)bytes : 0, &cancelled);
   if (cancelled) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
     return 0;
   }
   return held ? 1 : 0;

@@ -2,14 +2,11 @@
 #include "compiler/mir/mir_pipeline.h"
 #include "compiler/mir/mir_desc_glue.h"
 
-#include "compiler/mir/mir_cancel_edges.h"
 #include "compiler/mir/mir_count_ops.h"
 #include "compiler/mir/mir_depth.h"
 #include "compiler/mir/mir_elab.h"
 #include "compiler/mir/mir_expand.h"
 #include "compiler/mir/mir_lower_ops.h"
-#include "compiler/mir/mir_shed.h"
-#include "compiler/mir/mir_unwind.h"
 #include "compiler/mir/mir_verify.h"
 
 /* Verifies the module and reports `module does not verify after <pass>: ...` on failure. */
@@ -36,18 +33,6 @@ bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, M
   if (options->count_ops) {
     mir_count_ops(module);
   }
-  /* Not an optimization: it keeps cancellation from leaking, so every profile runs it. */
-  if (mir_unwind(module) && options->verify && !verified(module, "unwind", error)) {
-    return false;
-  }
-  /* A program that starts no task ends at its first fault, so entries that only free memory are not needed. */
-  if (mir_shed(module) && options->verify && !verified(module, "shed", error)) {
-    return false;
-  }
-  /* The hybrid cancel exits run the cleanups unwind registered, so they go in after it. */
-  if (options->cancel_edges && mir_cancel_edges(module) && options->verify && !verified(module, "cancel_edges", error)) {
-    return false;
-  }
   /* The checks and list growth the emitter prints are explicit MIR from here on. */
   (void)mir_expand(module, options->checks);
   if (options->verify && !verified(module, "expand", error)) {
@@ -56,7 +41,7 @@ bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, M
   /* Drop and clone functions are made here; the emitter prints only primitives. */
   mir_desc_glue(module); /* its functions only call the runtime, so glue and lowering need nothing more */
   mir_glue_run_and_expand(module, glue);
-  /* After unwind, which looks for the check as the first instruction of a function, and after every pass that adds
+  /* After every pass that adds
    * slots (expand, glue): a frame is measured once they are there. */
   (void)mir_depth_lower(module); /* not verified here: glue functions are checked by their own builder */
   return true;

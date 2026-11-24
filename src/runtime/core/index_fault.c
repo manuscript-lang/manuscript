@@ -1,20 +1,20 @@
-/* runtime/core/index_fault.c: the faults of a bad index. The messages are part of the observable behaviour. */
+/* runtime/core/index_fault.c: the faults of a bad index, posted: each returns, and its caller leaves. The messages are part of the observable behaviour. */
 #include "runtime/core/index_fault.h"
 
 #include "base/strbuild.h"
 #include "runtime/core/fault.h"
 
-MS_NORETURN void msrt_index_fault(int64_t index, int64_t length) {
+void msrt_post_index(int64_t index, int64_t length) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, "index ");
   ms_strbuild_append_i64(&message, index);
   ms_strbuild_append_text(&message, " out of range for length ");
   ms_strbuild_append_i64(&message, length);
   ms_strbuild_append_text(&message, "; use get_or(index, default) to avoid the fault");
-  ms_fault_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
+  ms_fault_post_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
 }
 
-MS_NORETURN void msrt_collection_index_fault(const char *operation, int64_t length, int64_t index) {
+void msrt_post_collection_index(const char *operation, int64_t length, int64_t index) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, operation);
   if (length == 0) {
@@ -27,7 +27,7 @@ MS_NORETURN void msrt_collection_index_fault(const char *operation, int64_t leng
     ms_strbuild_append_text(&message, " (negative indexes count from the end), found ");
   }
   ms_strbuild_append_i64(&message, index);
-  ms_fault_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
+  ms_fault_post_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
 }
 
 /* The name of a list mutator and the highest index it accepts. */
@@ -48,11 +48,12 @@ static const char *mutator_name(int64_t operation, int64_t length, int64_t *high
   }
 }
 
-MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t length) {
+void msrt_post_list_index(int64_t operation, int64_t index, int64_t length) {
   int64_t highest = 0;
   const char *name = mutator_name(operation, length, &highest);
   if (operation != 0 && length == 0) {
-    msrt_collection_index_fault(name, 0, index);
+    msrt_post_collection_index(name, 0, index);
+    return;
   }
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, name);
@@ -62,5 +63,5 @@ MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t
   ms_strbuild_append_i64(&message, highest);
   ms_strbuild_append_text(&message, " (negative indexes count from the end), found ");
   ms_strbuild_append_i64(&message, index);
-  ms_fault_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
+  ms_fault_post_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
 }

@@ -259,19 +259,15 @@ void fn_own_result(LowerFn *fn, MirValue result) {
 }
 
 MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty) {
-  const MirValue result = mir_b_emit(&fn->b, op, args, nargs, imm, ty);
+  const MirValue result = fn_checked_emit(fn, op, args, nargs, imm, ty); /* a check that can fault gets its exit here */
   fn_own_result(fn, result);
   return result;
 }
 
 bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  if (insts->len == 0) {
-    return false;
-  }
-  const MirInst *last = &insts->ptr[insts->len - 1];
+  const MirInst *last = fn_just_made(fn, value);
   MirMode mode = MM_MOVE;
-  return last->res == value && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_BORROW;
+  return last != NULL && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_BORROW;
 }
 
 /* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error.
@@ -316,30 +312,44 @@ bool fn_owns_result(LowerFn *fn, MirValue value) {
   return true;
 }
 
-bool fn_fresh_owner(LowerFn *fn, MirValue value) {
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  /* Walk back to the instruction that made `value`: a call that wrote its `var` receiver back, or took other
-   * values out of their slots, leaves instructions after the result (and its scope.own). */
+/* Walks `insts` back from its end to the instruction that made `value`: 1 when a scope owns it or it is a fresh result,
+ * 0 when it was disowned or is a borrow, -1 when the walk did not meet it. */
+static int fresh_in(const LowerFn *fn, const MirInstList *insts, MirValue value) {
   for (size_t at = insts->len; at-- > 0;) {
     const MirInst *inst = &insts->ptr[at];
     if (inst->op == MOP_ScopeDisown && inst->nargs == 1 && inst->args[0] == value) {
-      return false;
+      return 0;
     }
     if (inst->op == MOP_ScopeOwn && inst->nargs == 1 && inst->args[0] == value) {
-      return true;
+      return 1;
     }
     if (inst->res == value) {
       if (inst->op == MOP_OptNone || inst->op == MOP_OptNoneOwned) {
-        return true; /* `none` holds nothing: whoever takes it owns an empty value, so no copy is made */
+        return 1; /* `none` holds nothing: whoever takes it owns an empty value, so no copy is made */
       }
       MirMode mode = MM_BORROW;
       return mir_result_mode(fn->cx->module, &fn->b.func, inst, &mode) && mode == MM_MOVE;
     }
   }
+  return -1;
+}
+
+bool fn_fresh_owner(LowerFn *fn, MirValue value) {
+  /* Walk back to the instruction that made `value`: a call that wrote its `var` receiver back, or took other
+   * values out of their slots, leaves instructions after the result (and its scope.own). An unwind site's test
+   * after the result puts the continuation in a new block, so the walk goes on in the block the result is in. */
+  int found = fresh_in(fn, &fn->b.func.blocks.ptr[fn->b.cur].insts, value);
+  if (found < 0 && fn->site_value == value && fn->site_block != fn->b.cur) {
+    found = fresh_in(fn, &fn->b.func.blocks.ptr[fn->site_block].insts, value);
+  }
+  if (found >= 0) {
+    return found != 0;
+  }
   /* Made in a block above this one (a `move` parameter, an owner declared before an `if`): the scope that owns it
    * registered it there, and a disown in a sibling block is not on this path. */
   for (uint32_t block = 0; block < fn->b.func.blocks.len; block++) {
-    if (block == fn->b.cur) {
+    /* A block that returns leads nowhere: the owns on an early exit (an unwind site's) are not the value's registration. */
+    if (block == fn->b.cur || fn->b.func.blocks.ptr[block].term.kind == MT_RET) {
       continue;
     }
     const MirInstList *list = &fn->b.func.blocks.ptr[block].insts;

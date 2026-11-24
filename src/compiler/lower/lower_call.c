@@ -290,7 +290,7 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
                          .params = mir_params,
                          .nparams = count,
                          .ret = ret,
-                         .role = (uint8_t)(sig != NULL && sig->spawns ? MR_SPAWNS_TASK : sig != NULL && sig->keeps ? MR_KEEPS_SLOT : MR_NONE)};
+                         .role = (uint8_t)(sig != NULL && sig->keeps ? MR_KEEPS_SLOT : MR_NONE)};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -782,6 +782,14 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   fn->call_exit = saved_call;
   fn->default_exit = saved_default;
   fn->nwritebacks = lent;
+  /* A fault the operation posted leaves while the held slots still own their values: the exit closes them. */
+  bool holding = false;
+  for (uint32_t at = 0; at < count; at++) {
+    holding |= bufs.held[at] != MIR_NONE;
+  }
+  if (holding) {
+    fn_unwind_site(fn, result);
+  }
   for (uint32_t at = 0; at < count && !fn->terminated; at++) {
     if (bufs.held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &bufs.held[at], 1, (MirImm){0}, MIR_NONE);
@@ -831,7 +839,10 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
   const MirValue result = call_expr(fn, expr);
   if (!fn->failed && !fn->terminated && fn_call_never(fn, expr)) {
-    mir_b_unreachable(&fn->b);
+    fn_unwind_exit(fn); /* a call that does not return leaves by a posted fault */
+    const MirBlock dead = mir_b_new_block(&fn->b); /* what the rest of the expression emits goes nowhere */
+    mir_b_seal_block(&fn->b, dead);
+    mir_b_switch_to(&fn->b, dead);
     fn->terminated = true;
   }
   return result;

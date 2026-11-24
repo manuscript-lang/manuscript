@@ -1,13 +1,10 @@
 /* runtime/core/fault.h: raising a fault, the one way runtime code ends a task it cannot continue.
  *
- * A fault ends the task that raised it: ms_fault captures the source frames, runs the task's cleanups last in,
- * first out, and leaves by the innermost guard (ms_guard_call in unwind.h) with the report, or, with no guard open,
- * prints the report, writes the record and ends the process with the status of its kind (abi/fault.h). A fault
- * raised by a cleanup is added to the report of the fault being handled, and the remaining cleanups still run.
- * The natives in core, io, net and std call these and never return.
+ * A raised fault (ms_fault) is terminal: it captures the source frames, prints the report, writes the record and ends
+ * the process with the status of its kind (abi/fault.h). A fault a program can recover from is posted instead
+ * (ms_fault_post): the frames return and a guard or task reports it.
  *
- * The state of a fault in progress lives in the frame of the function that raised it, reached from the task's
- * unwind state, so nothing is global and two tasks can be reporting at once. The text on standard error is for
+ * The report is built in the frame of the raiser, so nothing is global. The text on standard error is for
  * people and is never parsed; the record (record.h) is written once, as the process ends. */
 #ifndef MS_RUNTIME_CORE_FAULT_H
 #define MS_RUNTIME_CORE_FAULT_H
@@ -72,6 +69,14 @@ MS_NORETURN void ms_fault_built(MsFaultKind kind, MsStrBuild *message) MS_NONNUL
 
 /* Raises a plain fault with a C string literal as the message. */
 MS_NORETURN void ms_fault_text(MsFaultKind kind, const char *message);
+
+/* Posting a fault: the report is built now (message and frames), the running task's `unwinding` byte is set, and the
+ * call RETURNS. The caller releases what it owns and returns at once with a zero result; every compiled caller tests
+ * the byte after the call and leaves through its scope exit. The guard, task or main that the frames return to
+ * reports it. A fault posted while one is pending is added to it as a note. */
+void ms_fault_post(MsFaultKind kind, MsSpan message);
+void ms_fault_post_built(MsFaultKind kind, MsStrBuild *message) MS_NONNULL; /* releases the builder */
+void ms_fault_post_text(MsFaultKind kind, const char *message);
 
 /* An allocation of `bytes` bytes was refused: the full fault path with the size in the message. Reporting can need
  * memory too, so a refusal while reporting one falls back to ms_fault_fatal. */

@@ -11,7 +11,7 @@
 #include "compiler/opt/opt_simplify.h"
 
 /* Extra allowance when the callee has a single call site, and per constant argument. */
-#define IL_SINGLE_CALLER_BONUS 25u
+#define IL_SINGLE_CALLER_BONUS 400u
 #define IL_CONST_ARG_BONUS 5u
 /* Largest self-recursive function unrolled once into itself. */
 #define IL_SELF_UNROLL_MAX_SIZE 40u
@@ -231,7 +231,7 @@ bool opt_inline_cancel_mismatch(const MirFunc *caller, const MirFunc *callee) {
   for (uint32_t b = 0; b < callee->blocks.len; b++) {
     for (uint32_t i = 0; i < callee->blocks.ptr[b].insts.len; i++) {
       const uint8_t op = callee->blocks.ptr[b].insts.ptr[i].op;
-      if (op == MOP_Call || op == MOP_CallInd || op == MOP_CallMethod || op == MOP_Poll ||
+      if (op == MOP_Call || op == MOP_CallInd || op == MOP_CallMethod ||
         op == MOP_CallRt) {
         return true;
       }

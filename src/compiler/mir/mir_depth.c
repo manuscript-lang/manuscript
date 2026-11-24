@@ -294,7 +294,7 @@ bool mir_depth_lower(MirModule *m) {
     MirFunc *f = &m->funcs.ptr[fi];
     /* A function with a large frame checks too, recursive or not: the check of the recursive function above it leaves
      * only the headroom, and a callee whose frame is larger would step over the guard page. */
-    if (f->blocks.len > 0 && !f->unwind_only && dp_frame_bound(m, f) > DP_LARGE_FRAME) {
+    if (f->blocks.len > 0 && dp_frame_bound(m, f) > DP_LARGE_FRAME) {
       (void)dp_insert_enter(f);
     }
     if (f->blocks.len > 0 && f->blocks.ptr[0].insts.len > 0 && f->blocks.ptr[0].insts.ptr[0].op == MOP_DepthEnter) {
@@ -445,7 +445,7 @@ bool mir_depth_mark(MirModule *m) {
   bool changed = false;
   for (uint32_t f = 0; f < count; f++) {
     MirFunc *func = &m->funcs.ptr[f];
-    if (func->blocks.len == 0 || func->unwind_only || !(g.recursive[f] || dp_calls_indirectly(func))) {
+    if (func->blocks.len == 0 || !(g.recursive[f] || dp_calls_indirectly(func))) {
       continue;
     }
     changed = dp_insert_enter(func) || changed;

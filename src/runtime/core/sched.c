@@ -137,8 +137,6 @@ void ms_task_destroy(MsSched *sched, MsTask *task) {
     ms_teb_list_free(&task->extra->segment_teb);
     ms_free(task->extra);
   }
-  ms_cleanup_list_free(&task->unwind.hdr.cleanups);
-  ms_guard_list_free(&task->unwind.guards);
   ms_eq_pair_list_free(&task->unwind.eq_pairs);
   ms_fault_text_free(&task->message);
   ms_free(task);
@@ -157,15 +155,9 @@ void ms_task_recycle(MsSched *sched, MsTask *task) {
     ms_stacks_release(&sched->stacks, task->stack, task->stack_length);
   }
   ms_fault_text_free(&task->message);
-  MsCleanupList cleanups = task->unwind.hdr.cleanups;
-  MsGuardList guards = task->unwind.guards;
   MsEqPairList eq_pairs = task->unwind.eq_pairs;
-  cleanups.len = 0;
-  guards.len = 0;
   eq_pairs.len = 0;
   *task = (MsTask){0};
-  task->unwind.hdr.cleanups = cleanups;
-  task->unwind.guards = guards;
   task->unwind.eq_pairs = eq_pairs;
   task->argument = sched->spare_tasks;
   sched->spare_tasks = task;

@@ -287,8 +287,8 @@ static void render_into(const MsDecimal *d, MsStrBuild *text) {
   ms_strbuild_printf(text, "e%s%lld", exponent >= 0 ? "+" : "", (long long)exponent);
 }
 
-/* Raises the overflow fault of an operator, naming both operands. */
-MS_NORETURN static void overflow_fault(const char *operation, const MsDecimal *left, const MsDecimal *right) {
+/* Posts the overflow fault of an operator, naming both operands; the caller returns without touching its output. */
+static void overflow_fault(const char *operation, const MsDecimal *left, const MsDecimal *right) {
   MsStrBuild left_text = ms_strbuild_new();
   MsStrBuild right_text = ms_strbuild_new();
   render_into(left, &left_text);
@@ -302,7 +302,7 @@ MS_NORETURN static void overflow_fault(const char *operation, const MsDecimal *l
                      (const char *)ms_strbuild_span(&right_text).ptr);
   ms_strbuild_free(&left_text);
   ms_strbuild_free(&right_text);
-  ms_fault_built(MS_FAULT_KIND_OVERFLOW, &message);
+  ms_fault_post_built(MS_FAULT_KIND_OVERFLOW, &message);
 }
 
 /* ---- arithmetic ---- */
@@ -422,7 +422,8 @@ void msstd_decimal_multiply(const MsDecimal *a, const MsDecimal *b, MsDecimal *o
 void msstd_decimal_divide(const MsDecimal *a, const MsDecimal *b, MsDecimal *out) {
   static const char zero_message[] = "Decimal./: division by zero; right must be nonzero, found 0";
   if (ms_dec_is_zero(b)) {
-    ms_fault_text(MS_FAULT_KIND_DIVISION_BY_ZERO, zero_message);
+    ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, zero_message);
+    return;
   }
   if (ms_dec_is_zero(a)) {
     *out = ms_dec_pack(0, 0);
