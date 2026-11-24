@@ -58,6 +58,11 @@ uv_loop_t *ms_net_loop(void);
  * operation ever ran. No operation may start afterwards. */
 void ms_net_release_all(void);
 
+/* Returns once every operation queued before the call has started, so an abandoned one has been freed by the loop. A
+ * worker calls it as it ends (core/release.h): blocks it allocated and the loop freed afterwards would stay counted
+ * live. A no-op when no operation ever ran. */
+void ms_net_quiesce(void);
+
 /* The relative timeout of a native's optional timeout argument; negative for none. */
 int64_t ms_net_timeout(uint8_t has_timeout, int64_t timeout);
 

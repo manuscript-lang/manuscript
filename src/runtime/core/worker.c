@@ -5,6 +5,7 @@
 
 #include "base/alloc.h"
 #include "runtime/core/isolate.h"
+#include "runtime/core/release.h"
 #include "runtime/core/scheduler.h"
 #include "runtime/core/stats.h"
 #include "runtime/sys/sys.h"
@@ -88,6 +89,7 @@ static void worker_main(void *argument) {
   (void)ms_task_run_main(root_entry, NULL, 0, &outcome, &message);
   ms_fault_text_free(&message);
   ms_sched_teardown();
+  ms_quiesce_run();
   if (config.finish != NULL) {
     config.finish();
   }
