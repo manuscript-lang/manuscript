@@ -15,8 +15,8 @@
 MS_NORETURN void msrt_fault(const uint8_t *msg, size_t len);
 /* ms-sig: msrt_fault_string(s: *const StrVal) -> ! @end */
 MS_NORETURN void msrt_fault_string(const MsString *message);
-/* ms-sig: msrt_panic(message: *const StrVal) -> ! @end */
-MS_NORETURN void msrt_panic(const MsString *message);
+/* ms-sig: msrt_panic(message: *const StrVal) @end */
+void msrt_panic(const MsString *message);
 /* ms-sig: msrt_fault_depth() -> ! @end */
 MS_NORETURN void msrt_fault_depth(void);
 /* ms-sig: msrt_fault_unwrap_none() -> ! @end */

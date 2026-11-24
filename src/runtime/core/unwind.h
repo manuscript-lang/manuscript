@@ -80,7 +80,9 @@ typedef struct MsUnwind {
   uintptr_t stack_high;
   uintptr_t stack_chain; /* chain cell of the segment below, or 0 on the home segment */
   uint8_t task_cancel;   /* a cancel aimed at this task; 0 when none */
+  MsFaultText pending;   /* a posted fault (ms_fault_post) the frames are returning with; empty when none */
   struct MsFaultFlight *flight; /* the fault being reported on this task, in its raiser's frame, or NULL */
+  bool held_unwinding;   /* an unwind was delivered or posted inside a shield: shown when the outermost shield exits */
   bool unwind_drops;     /* a guarded task is being left: drop cleanups act now */
   uint32_t cleanup_serial; /* the serial of the latest cleanup entry pushed */
   MsEqPairList eq_pairs; /* the object pairs an equality comparison of this task is inside (cycle guard) */

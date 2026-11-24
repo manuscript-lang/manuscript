@@ -40,7 +40,10 @@ uint8_t ms_cancel_flag(void) { return atomic_load_explicit(&running()->hdr.cance
 
 void ms_shield_enter(void) {
   MsUnwind *const unwind = running();
-  atomic_fetch_add_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
+  /* Inside a shield the closes run as on a normal exit: a delivered unwind is out of their sight until it ends. */
+  if (atomic_fetch_add_explicit(&unwind->hdr.shield, 1, memory_order_relaxed) == 0 && ms_unwinding_take()) {
+    unwind->held_unwinding = true;
+  }
   atomic_store_explicit(&unwind->hdr.cancel, 0, memory_order_relaxed);
 }
 
@@ -50,6 +53,10 @@ void ms_shield_exit(void) {
     atomic_fetch_sub_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
   }
   refresh_flag(unwind);
+  if (unwind->held_unwinding && atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) == 0) {
+    unwind->held_unwinding = false;
+    ms_cancel_deliver();
+  }
 }
 
 void ms_stop_shield_enter(void) {
@@ -68,9 +75,18 @@ void ms_stop_shield_exit(void) {
 
 bool ms_shielded(void) { return atomic_load_explicit(&running()->hdr.shield, memory_order_relaxed) > 0; }
 
-void ms_cancel_deliver(void) { atomic_store_explicit(&running()->hdr.unwinding, 1, memory_order_relaxed); }
+void ms_cancel_deliver(void) {
+  MsUnwind *const unwind = running();
+  if (atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) > 0) {
+    unwind->held_unwinding = true;
+    return;
+  }
+  atomic_store_explicit(&unwind->hdr.unwinding, 1, memory_order_relaxed);
+}
 
-bool ms_unwinding_take(void) { return atomic_exchange_explicit(&running()->hdr.unwinding, 0, memory_order_relaxed) != 0; }
+bool ms_unwinding_take(void) {
+  return atomic_exchange_explicit(&running()->hdr.unwinding, 0, memory_order_relaxed) != 0;
+}
 
 bool ms_unwinding(void) { return atomic_load_explicit(&running()->hdr.unwinding, memory_order_relaxed) != 0; }
 
@@ -104,13 +120,10 @@ static size_t guard_base(const MsUnwind *unwind) {
 
 /* Runs `function(argument)` with cancellation shielded: a cleanup is not cancelled half way. */
 static void run_shielded(MsUnwind *unwind, MsCleanupFn function, uint8_t *argument) {
-  atomic_fetch_add_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
-  atomic_store_explicit(&unwind->hdr.cancel, 0, memory_order_relaxed);
+  (void)unwind;
+  ms_shield_enter();
   function(argument);
-  atomic_fetch_sub_explicit(&unwind->hdr.shield, 1, memory_order_relaxed);
-  if (atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) == 0) {
-    atomic_store_explicit(&unwind->hdr.cancel, unshielded_flag(unwind), memory_order_relaxed);
-  }
+  ms_shield_exit();
 }
 
 /* Pops and runs the innermost cleanup above the innermost guard; false when none remain. */
@@ -269,7 +282,8 @@ bool ms_guard_leave(MsGuardStatus status, MsFaultText message) {
 
 /* A cancel delivered by return ends the call like one delivered by jump: the frames above have taken their
  * cancel exits and returned. Cleanups still registered since entry belong to hold-outs that did not unwind. */
-static MsGuardStatus finish_unwound_call(MsUnwind *unwind) {
+static MsGuardStatus finish_unwound_call(MsUnwind *unwind, MsFaultText *message) {
+  unwind->held_unwinding = false;
   unwind->unwind_drops = unwind->guards.len > 0;
   end_started(guard_base(unwind));
   while (run_one_cleanup(unwind)) {
@@ -277,6 +291,15 @@ static MsGuardStatus finish_unwound_call(MsUnwind *unwind) {
   unwind->unwind_drops = false;
   MsGuardFrame frame = {0};
   (void)guards_pop(unwind, &frame);
+  if (unwind->pending.detail != NULL) { /* a posted fault, not a cancel, ended the call */
+    if (message != NULL) {
+      *message = unwind->pending;
+    } else {
+      ms_fault_text_release(&unwind->pending);
+    }
+    unwind->pending = (MsFaultText){0};
+    return MS_GUARD_FAULT;
+  }
   return MS_GUARD_CANCELLED;
 }
 
@@ -299,7 +322,7 @@ MsGuardStatus ms_guard_call(void (*code)(void *), void *data, MsFaultText *messa
   const uintptr_t landed = ms_guard_enter(&slot, code, data);
   if (landed == 0) {
     if (ms_unwinding_take()) {
-      return finish_unwound_call(unwind);
+      return finish_unwound_call(unwind, message);
     }
     MsGuardFrame frame = {0};
     (void)guards_pop(unwind, &frame);

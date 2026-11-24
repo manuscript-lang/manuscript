@@ -21,7 +21,7 @@ void msrt_fault_string(const MsString *message) {
 }
 
 void msrt_panic(const MsString *message) {
-  msrt_fault_string(message);
+  ms_fault_post(MS_FAULT_KIND_FAULT, ms_string_span(message)); /* returns: the caller leaves by its exit */
 }
 
 void msrt_fault_depth(void) {

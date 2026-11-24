@@ -392,6 +392,8 @@ bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 /* The instruction that made `value` when nothing but unwind-site tests came after it, else NULL. */
 const MirInst *fn_just_made(const LowerFn *fn, MirValue value);
 void fn_unwind_site(LowerFn *fn, MirValue result);
+/* Ends the current block with the exit of a pending cancel or posted fault (every open scope closed, undefined result). */
+void fn_unwind_exit(LowerFn *fn);
 MirValue fn_missing_value(LowerFn *fn, MsPos at);
 bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key);
 bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);

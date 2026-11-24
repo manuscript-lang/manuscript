@@ -254,6 +254,37 @@ MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message
   finish(unwind, &flight);
 }
 
+/* Builds the report of a fault that is posted instead of raised, and leaves it with the task. */
+MS_NOINLINE static void post_fault(MsFaultKind kind, MsSpan message, void *owned) {
+  MsUnwind *const unwind = &ms_task_running()->unwind;
+  if (unwind->pending.detail != NULL) {
+    add_note(unwind->pending.detail, message); /* a fault of a close that ran for the posted one */
+    ms_free(owned);
+    ms_cancel_deliver(); /* the exit that ran the close may return without resuming */
+    return;
+  }
+  MsFaultFlight flight = {.text = ms_strbuild_new()};
+  flight.detail = ms_alloc_zeroed(sizeof *flight.detail);
+  flight.detail->kind = kind;
+  flight.detail->message_length = message.len;
+  ms_strbuild_append(&flight.text, message);
+  ms_free(owned);
+  ms_frames_collect((uintptr_t)__builtin_frame_address(0), (uintptr_t)post_fault, window_of(unwind),
+                    &flight.detail->frames);
+  drop_trailing_library_frames(&flight.detail->frames);
+  render_frames(&flight.text, &flight.detail->frames);
+  unwind->pending = seal(&flight);
+  ms_cancel_deliver();
+}
+
+void ms_fault_post(MsFaultKind kind, MsSpan message) { post_fault(kind, message, NULL); }
+
+void ms_fault_post_built(MsFaultKind kind, MsStrBuild *message) {
+  post_fault(kind, ms_strbuild_span(message), message->bytes.ptr);
+}
+
+void ms_fault_post_text(MsFaultKind kind, const char *message) { post_fault(kind, ms_span_of_text(message), NULL); }
+
 void ms_fault(MsFaultKind kind, MsSpan message) { raise_fault(kind, message, false, NULL); }
 
 void ms_fault_built(MsFaultKind kind, MsStrBuild *message) {

@@ -73,6 +73,14 @@ MS_NORETURN void ms_fault_built(MsFaultKind kind, MsStrBuild *message) MS_NONNUL
 /* Raises a plain fault with a C string literal as the message. */
 MS_NORETURN void ms_fault_text(MsFaultKind kind, const char *message);
 
+/* Posting a fault: the report is built now (message and frames), the running task's `unwinding` byte is set, and the
+ * call RETURNS. The caller releases what it owns and returns at once with a zero result; every compiled caller tests
+ * the byte after the call and leaves through its scope exit. The guard, task or main that the frames return to
+ * reports it. A fault posted while one is pending is added to it as a note. */
+void ms_fault_post(MsFaultKind kind, MsSpan message);
+void ms_fault_post_built(MsFaultKind kind, MsStrBuild *message) MS_NONNULL; /* releases the builder */
+void ms_fault_post_text(MsFaultKind kind, const char *message);
+
 /* An allocation of `bytes` bytes was refused: the full fault path with the size in the message. Reporting can need
  * memory too, so a refusal while reporting one falls back to ms_fault_fatal. */
 MS_NORETURN void ms_fault_out_of_memory(size_t bytes);

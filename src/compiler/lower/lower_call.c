@@ -831,7 +831,10 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
   const MirValue result = call_expr(fn, expr);
   if (!fn->failed && !fn->terminated && fn_call_never(fn, expr)) {
-    mir_b_unreachable(&fn->b);
+    fn_unwind_exit(fn); /* a call that does not return leaves by a posted fault */
+    const MirBlock dead = mir_b_new_block(&fn->b); /* what the rest of the expression emits goes nowhere */
+    mir_b_seal_block(&fn->b, dead);
+    mir_b_switch_to(&fn->b, dead);
     fn->terminated = true;
   }
   return result;

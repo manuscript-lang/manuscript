@@ -22,6 +22,23 @@ const MirInst *fn_just_made(const LowerFn *fn, MirValue value) {
   return NULL;
 }
 
+
+/* Leaves the function as a delivered cancel or a posted fault does: the closes run as on any exit, with the pending
+ * state set aside while they do, so a close may park and its own calls do not leave; it is delivered again before the
+ * function returns. The result is undefined. The current block ends here. */
+void fn_unwind_exit(LowerFn *fn) {
+  const uint32_t pause = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_pause"), NULL, 0, MIR_VOID, false, MR_NONE);
+  const uint32_t resume = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_resume"), NULL, 0, MIR_VOID, false, MR_NONE);
+  (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = pause}, MIR_VOID);
+  fn_scope_unwind(fn, 0);
+  (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = resume}, MIR_VOID);
+  MirValue undef = MIR_NONE;
+  if (fn->b.func.ret != MIR_VOID) {
+    undef = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, fn->returns_borrow ? mir_imm_int(1) : mir_imm_none(), fn->b.func.ret);
+  }
+  mir_b_ret(&fn->b, undef);
+}
+
 void fn_unwind_site(LowerFn *fn, MirValue result) {
   const MirInstList *before = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   size_t at = before->len;
@@ -66,18 +83,7 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
     (void)mir_b_emit(&fn->b, MOP_Forget, &result, 1, (MirImm){0}, MIR_NONE); /* dead: nothing to release */
   }
-  /* The closes on the way out run as on any exit: the pending state is set aside while they do, so a close may park and
-   * its own calls do not leave, and is delivered again before this function returns. */
-  const uint32_t pause = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_pause"), NULL, 0, MIR_VOID, false, MR_NONE);
-  const uint32_t resume = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_resume"), NULL, 0, MIR_VOID, false, MR_NONE);
-  (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = pause}, MIR_VOID);
-  fn_scope_unwind(fn, 0);
-  (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = resume}, MIR_VOID);
-  MirValue undef = MIR_NONE;
-  if (fn->b.func.ret != MIR_VOID) {
-    undef = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, fn->returns_borrow ? mir_imm_int(1) : mir_imm_none(), fn->b.func.ret);
-  }
-  mir_b_ret(&fn->b, undef);
+  fn_unwind_exit(fn);
   mir_b_switch_to(&fn->b, next);
   fn->site_value = made ? result : MIR_NONE;
   fn->site_block = made_in;
