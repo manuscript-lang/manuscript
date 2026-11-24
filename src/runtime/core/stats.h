@@ -1,5 +1,5 @@
 /* runtime/core/stats.h: the counters of the counting runtime (`cmake --preset stats`, MS_STATS) behind the leak,
- * cancel and count gates (proposals/c-runtime-stats-variant.md). Every call is a no-op that compiles away in a build
+ * cancel and count gates (design/proposals/c-runtime-stats-variant.md). Every call is a no-op that compiles away in a build
  * without MS_STATS. */
 #ifndef MS_RUNTIME_CORE_STATS_H
 #define MS_RUNTIME_CORE_STATS_H

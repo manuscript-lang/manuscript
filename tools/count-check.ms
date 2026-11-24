@@ -1,5 +1,5 @@
 // Ownership count gate (`make count-check`): runs the programs of
-// tests/ownership-counts in Debug and Release against the counting runtime
+// tests/checks/ownership-counts in Debug and Release against the counting runtime
 // (`cmake --preset stats`) and compares what they report with the `// expect-debug:`
 // and
 // `// expect-release:` headers (`key=value` pairs from the runtime's "ms-rt counts:" line; absent keys are not checked)
@@ -43,10 +43,10 @@ fn main() Int:
 	var files = List[String]()
 	for f in arguments(): files.append(f.clone())
 	if files.is_empty():
-		for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get_or(
+		for f in glob("tests/checks/ownership-counts", GlobOptions(patterns: ["*.ms"])).get_or(
 			[]
 		):
-			files.append(f"tests/ownership-counts/{f.path}")
+			files.append(f"tests/checks/ownership-counts/{f.path}")
 
 	ms := tool_ms(root.clone())
 	scratch := temporary("ms-counts-").get()

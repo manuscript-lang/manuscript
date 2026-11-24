@@ -300,9 +300,9 @@ never-started lint/conformance phase in continuation cell `61939`. That continua
 finished with actual exit **0**, as root confirmed from its tool transcript.
 `The continuation launch record`
 explicitly labels this as an **after-run transcript handoff**, not a
-producer-generated overall status. The [original check script](full-rollback/protocol/check-normalization-full-revert.py),
-[continuation script](full-rollback/protocol/continue-normalization-full-revert.py),
-[paired analyzer](full-rollback/protocol/analyze-pairs.py), and
+producer-generated overall status. The original check script,
+continuation script,
+paired analyzer, and
 `execution status` preserve this boundary.
 These scripts document the protocol; do not run the check scripts from this
 archive because they contain the original worktree/state-changing commands.
@@ -386,13 +386,13 @@ its exact function change using `cargo xtask runtime`; build the normal CLI and
 harness using `cargo build --release --locked -p ms-cli -p ms-conform`. Build the
 unchanged `bench/perf/string-normalize-ascii/main.ms` with that CLI, its corresponding
 native state and `--build-type Release`, preserving each output and companion
-metadata. The complete input snapshot is [here](inputs/normalize-full.ms) and
+metadata. The complete input snapshot is here and
 its identity oracle is `here`.
 
 The recorded paired command is `taskset -c 0 python3 bench/perf/string-lines/compare.py
 BEFORE_PROGRAM AFTER_PROGRAM NEW_SAMPLES.csv --pairs 7 --identity-file
 bench/perf/string-normalize-ascii/identities.json`, using the preserved
-[shared comparison driver](inputs/shared-compare.py). Use a fresh output path for
+shared comparison driver. Use a fresh output path for
 any authorized reproduction; preserve old failures and samples. This packaging
 work executed no builds, native-state changes, timings or reruns. Run
 `python3 verify_evidence.py` from this report directory for read-only local hash,

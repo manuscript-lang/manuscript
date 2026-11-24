@@ -53,7 +53,7 @@ when its halves exceed 65520. Python zlib normalizes that state on an empty inpu
 so the independent oracle explicitly retains the seed in this documented case.
 No production behavior was changed to fit the oracle.
 
-[Raw data, executable hashes, source provenance, page faults and assembly](results-2026-11-12/)
+Raw data, executable hashes, source provenance, page faults and assembly
 retain all final cases. Historical raw columns are named `ms` and `c`: the metadata
 explicitly maps `base` to MS/C, `candidate` to baseline MS/candidate MS, and `aa` to
 identical baseline binaries. C flags and the C barrier apply only to `base`.

@@ -9,7 +9,7 @@ calendar calculations, zone resolution, error precedence and the byte-oriented
 internal formatter are unchanged. No unsafe code or public API changes.
 
 Baseline: `4394064393f99970880086caebd1945c7fdfc314`. The exact production diff,
-binary hashes and machine metadata are in [metadata](results-2026-11-12/metadata.json).
+binary hashes and machine metadata are in metadata.
 Both versions rebuild the GNU and musl runtime archives and embed them in the
 Release CLI. Generated programs use the default LLVM and explicit Cranelift
 backends on Linux x86_64, Rust 1.99.1. The latest whole-suite
@@ -26,7 +26,7 @@ All 696 paired checksums agree. No other builds or benchmarks ran during timing.
 
 The table reports medians of paired candidate/baseline times; lower is faster.
 It measures formatting, not whole-application speed. Full samples are retained in
-[samples.json](results-2026-11-12/samples.json).
+samples.json.
 
 | Pattern | LLVM UTC | LLVM New York | Cranelift UTC | Cranelift New York |
 | --- | ---: | ---: | ---: | ---: |
@@ -49,12 +49,12 @@ The script writes raw samples there. Do not run builds concurrently with timers.
 Longer empty-pattern confirmation (2,000,000 calls per process, 25 measured pairs)
 found LLVM UTC A/B **0.976**, A/A **1.009**; New York A/B **1.011**, A/A **1.012**.
 The initial small New York shift did not exceed identical-binary noise; no empty
-speedup or regression is claimed. [Raw confirmation](results-2026-11-12/confirm.json)
+speedup or regression is claimed. Raw confirmation
 is reproducible with `python confirm.py SCRATCH_DIRECTORY`.
 
 Separate untimed binaries printed the exact result for all twelve measured
 pattern/zone combinations; baseline/candidate outputs matched byte for byte
-([outputs](results-2026-11-12/text.json)). The public conformance test additionally
+(outputs). The public conformance test additionally
 pins Unicode, empty patterns, leap-day/New York output, years 0/10000 from offset
 edges, and invalid-zone errors on empty patterns. Internal format tests retain
 their raw invalid-UTF-8 coverage. Hardware instruction counters were unavailable

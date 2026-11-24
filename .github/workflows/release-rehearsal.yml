@@ -96,7 +96,7 @@ jobs:
           server=$!
           trap 'kill $server' EXIT
           sleep 2
-          sh toolchain/package-skill.sh release
+          sh cmake/toolchain/package-skill.sh release
           export MS_RELEASE_URL=http://127.0.0.1:8765
           cd "$RUNNER_TEMP" && rm -rf skill-app && mkdir skill-app && cd skill-app
           if [ "$OS" = windows ]; then

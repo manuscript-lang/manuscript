@@ -3,7 +3,7 @@
 #   -DMS_EXE=<ms> -DFILES=<startup-files dir> -DLIST=<generated/ms_runtime_list.cmake> -DSOURCE_DIR=<repo>
 #   -DBINARY_DIR=<build dir> -DOS=<Linux|Darwin|Windows> -DARCH=<processor> -DOUT=<directory for the archive>
 # Writes <OUT>/manuscript-<os>-<arch>.tar.gz (.zip on Windows) and its .sha256. The tools are downloaded once into <BINARY_DIR>/llvm-bundle
-# and checked against the digests in toolchain/lld.lock.
+# and checked against the digests in cmake/toolchain/lld.lock.
 cmake_minimum_required(VERSION 3.25)
 include("${LIST}") # MS_RUNTIME_ARCHIVES, MS_RUNTIME_STATIC_ARCHIVES
 
@@ -42,9 +42,9 @@ foreach(variant runtime runtime-static)
   file(WRITE "${lib}/${variant}/archives" "${order}")
 endforeach()
 
-# The pinned lld and llc (it makes the glibc stubs), per toolchain/lld.lock, and the shared LLVM library ms optimizes and
-# generates code with in-process, per toolchain/llvm-lib.lock.
-file(STRINGS "${SOURCE_DIR}/toolchain/lld.lock" lock)
+# The pinned lld and llc (it makes the glibc stubs), per cmake/toolchain/lld.lock, and the shared LLVM library ms optimizes and
+# generates code with in-process, per cmake/toolchain/llvm-lib.lock.
+file(STRINGS "${SOURCE_DIR}/cmake/toolchain/lld.lock" lock)
 foreach(line IN LISTS lock)
   if(line MATCHES "^tag +(.+)$")
     set(tag "${CMAKE_MATCH_1}")
@@ -59,7 +59,7 @@ file(MAKE_DIRECTORY "${cache}")
 foreach(bundle lld llvm-tools)
   set(asset "${bundle}-${version}-${os}-${arch}.tar.gz")
   if(NOT DEFINED digest_of_${asset})
-    message(FATAL_ERROR "toolchain/lld.lock has no ${asset}")
+    message(FATAL_ERROR "cmake/toolchain/lld.lock has no ${asset}")
   endif()
   file(DOWNLOAD "https://github.com/manuscript-lang/llvm-bundle/releases/download/${tag}/${asset}" "${cache}/${asset}"
     EXPECTED_HASH SHA256=${digest_of_${asset}} STATUS result)
@@ -76,7 +76,7 @@ endif()
 file(COPY "${cache}/llvm-tools-${os}-${arch}/bin/llc${suffix}" DESTINATION "${lib}/bin")
 file(COPY "${cache}/lld-${os}-${arch}/bin/lld${suffix}" DESTINATION "${lib}/bin")
 
-file(STRINGS "${SOURCE_DIR}/toolchain/llvm-lib.lock" lib_lock)
+file(STRINGS "${SOURCE_DIR}/cmake/toolchain/llvm-lib.lock" lib_lock)
 foreach(line IN LISTS lib_lock)
   if(line MATCHES "^tag +(.+)$")
     set(lib_tag "${CMAKE_MATCH_1}")
@@ -88,7 +88,7 @@ foreach(line IN LISTS lib_lock)
 endforeach()
 set(lib_asset "llvm-lib-${lib_version}-${os}-${arch}.tar.gz")
 if(NOT DEFINED lib_digest_of_${lib_asset})
-  message(FATAL_ERROR "toolchain/llvm-lib.lock has no ${lib_asset}")
+  message(FATAL_ERROR "cmake/toolchain/llvm-lib.lock has no ${lib_asset}")
 endif()
 file(DOWNLOAD "https://github.com/manuscript-lang/llvm-bundle/releases/download/${lib_tag}/${lib_asset}" "${cache}/${lib_asset}"
   EXPECTED_HASH SHA256=${lib_digest_of_${lib_asset}} STATUS result)

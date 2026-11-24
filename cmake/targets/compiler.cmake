@@ -36,15 +36,15 @@ ms_library(ms_syntax compiler/syntax
     partial_recover.c token.c walk.c
   LINK ms_base)
 
-# The bundled standard library is generated from stdlib/ at build time.
+# The bundled standard library is generated from src/stdlib/ at build time.
 set(std_embedded ${MS_GEN}/std_embedded.c)
-file(GLOB_RECURSE std_files CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/stdlib/*.ms)
+file(GLOB_RECURSE std_files CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/stdlib/*.ms)
 add_custom_command(
   OUTPUT ${std_embedded}
-  COMMAND ${CMAKE_COMMAND} -DSTDLIB_DIR=${CMAKE_SOURCE_DIR}/stdlib -DOUTPUT=${std_embedded}
+  COMMAND ${CMAKE_COMMAND} -DSTDLIB_DIR=${CMAKE_SOURCE_DIR}/src/stdlib -DOUTPUT=${std_embedded}
           -P ${CMAKE_SOURCE_DIR}/cmake/EmbedStdlib.cmake
   DEPENDS ${std_files} ${CMAKE_SOURCE_DIR}/cmake/EmbedStdlib.cmake
-  COMMENT "Embedding stdlib/*.ms")
+  COMMENT "Embedding src/stdlib/*.ms")
 ms_library(ms_project compiler/project
   SOURCES
     discover.c edit.c embed.c files.c lock.c load.c manifest.c manifest_packages.c project.c package.c resolve.c

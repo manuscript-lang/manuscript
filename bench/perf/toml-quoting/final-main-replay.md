@@ -71,7 +71,7 @@ Use two clean worktrees at main 09e0. Restore only `stdlib/toml.ms` to 3cf in on
 keep the merged helper in the other. In each run `cargo xtask runtime`,
 `cargo build --release --locked -p ms-cli`, then the unchanged source producer
 build from the original report. Use Rust 1.99.1, LLVM 23.1.1 and the same pinned
-Rust TOML 0.9.8 control. The [full run driver](run.py) and [focused driver](focused.py)
+Rust TOML 0.9.8 control. The full run driver and focused driver
 reject changed bytes, semantic mismatches and invalid counts/checksums.
 Use a fresh output directory and regenerated provenance from the actual builds.
 

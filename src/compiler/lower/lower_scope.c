@@ -39,8 +39,8 @@ uint32_t fn_scope_begin(LowerFn *fn) {
   (void)mir_b_emit(&fn->b, MOP_ScopeBegin, NULL, 0, imm, MIR_NONE);
   uint32_t closes_cap = fn->open_cap; /* both arrays grow together, from the same capacity */
   fn->open = fn_grow(fn, fn->open, &closes_cap, fn->nopen, sizeof(uint32_t));
-  fn->open_closes = fn_grow(fn, fn->open_closes, &fn->open_cap, fn->nopen, sizeof(bool));
-  fn->open_closes[fn->nopen] = false;
+  fn->open_closes = fn_grow(fn, fn->open_closes, &fn->open_cap, fn->nopen, sizeof(uint32_t));
+  fn->open_closes[fn->nopen] = 0;
   fn->open[fn->nopen++] = id;
   return id;
 }
@@ -66,9 +66,12 @@ static void own_vars(LowerFn *fn, uint32_t scope) {
 
 /* A record that handed a field on closes the resources it still holds, last field first, and releases the rest. It does
  * so after the scope's other owners ended: the record is declared before what it handed its field to. */
-static void settle_moved_vars(LowerFn *fn, uint32_t scope) {
+static void settle_moved_vars(LowerFn *fn, uint32_t scope, uint32_t closes_seq, bool before) {
   for (uint32_t at = fn->nowned_vars; at > 0; at--) {
     const LowerOwnedVar *entry = &fn->owned_vars[at - 1];
+    if ((closes_seq != 0 && entry->seq > closes_seq) != before) {
+      continue; /* settled by the other call */
+    }
     if (entry->scope != scope || entry->released || entry->pinned != MIR_NONE || (entry->moved == 0 && !entry->leaves)) {
       continue;
     }
@@ -88,7 +91,7 @@ static void settle_moved_vars(LowerFn *fn, uint32_t scope) {
 bool fn_scope_own_var(LowerFn *fn, MirVar var, MsTy leaves) {
   fn->owned_vars = fn_grow(fn, fn->owned_vars, &fn->owned_vars_cap, fn->nowned_vars, sizeof(LowerOwnedVar));
   LowerOwnedVar *entry = &fn->owned_vars[fn->nowned_vars++];
-  *entry = (LowerOwnedVar){.scope = fn_scope(fn), .var = var, .checked = leaves, .leaves = leaves != MS_TY_NONE, .pinned = MIR_NONE};
+  *entry = (LowerOwnedVar){.scope = fn_scope(fn), .seq = ++fn->own_seq, .var = var, .checked = leaves, .leaves = leaves != MS_TY_NONE, .pinned = MIR_NONE};
   if (mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->kind == MK_TYPE) {
     entry->mask = mir_b_declare_var(&fn->b, MIR_INT, MM_MOVE);
     entry->has_mask = true;
@@ -178,9 +181,14 @@ static void emit_end(LowerFn *fn, uint32_t scope, uint32_t keep) {
   if (fn->open_closes[depth]) {
     pin_outer_vars(fn, depth);
   }
+  /* A close that fails leaves the function from the scope end, before any code after it. A record declared after
+   * the scope's last closing owner closes before that owner, so it settles before the end and that exit has nothing
+   * left to release; the others settle after it, once the scope's owners are done. */
+  const uint32_t closes_seq = fn->open_closes[depth];
+  settle_moved_vars(fn, scope, closes_seq, true);
   const MirImm imm = {.tag = MI_SCOPE, .a = scope, .b = 0};
   (void)mir_b_emit(&fn->b, MOP_ScopeEnd, NULL, 0, imm, MIR_NONE);
-  settle_moved_vars(fn, scope);
+  settle_moved_vars(fn, scope, closes_seq, false);
   for (uint32_t at = 0; at < fn->nowned_vars; at++) {
     LowerOwnedVar *entry = &fn->owned_vars[at];
     if (entry->pinned != MIR_NONE && scope_depth(fn, entry->scope) < keep) {

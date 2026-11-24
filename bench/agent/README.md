@@ -1,6 +1,6 @@
 # agent-bench
 
-Not the performance benchmark: for compiler/runtime speed against hand-written Go, see [`bench/perf/`](../bench/perf/README.md). Results here never mix with those.
+Not the performance benchmark: for compiler/runtime speed against hand-written Go, see [`bench/perf/`](../perf/README.md). Results here never mix with those.
 
 Agent benchmark: measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
@@ -13,7 +13,7 @@ Report source size as LLM tokens (`llm_tokens` in each run, from `pip install ti
 
 1. A fresh workspace is created outside the repo: language template, `TASK.md` (the spec), a few visible
    examples in `examples/`, and `check.sh`. For Manuscript the tutorials and standard declarations are copied
-   to `docs/` when a language lists `context` in `languages.json`; Manuscript lists none. Its `setup` command installs the latest released Manuscript agent skill (`install-skill.sh`) into the workspace, so the agent sees what a user's agent sees; to try an unreleased skill, build it with `sh toolchain/package-skill.sh <dir>`, serve `<dir>` and set `MS_RELEASE_URL`; `ms search_symbol` finds standard-library APIs.
+   to `docs/` when a language lists `context` in `languages.json`; Manuscript lists none. Its `setup` command installs the latest released Manuscript agent skill (`install-skill.sh`) into the workspace, so the agent sees what a user's agent sees; to try an unreleased skill, build it with `sh cmake/toolchain/package-skill.sh <dir>`, serve `<dir>` and set `MS_RELEASE_URL`; `ms search_symbol` finds standard-library APIs.
 2. The harness runs the agent non-interactively in that workspace. The agent is told to use `./check.sh`,
    which builds and runs the examples and logs each attempt to `.bench/log.jsonl`. That log gives
    harness-independent build counts, a first-build-success flag, and the diagnostic codes of each failed build (the language's `codes` command in `languages.json`; Go has none and reports its error class, TypeScript has no build step so it never fails a first build).

@@ -37,7 +37,7 @@ and preserve their version labels. Pin both versions to the same allowed CPU
 where supported, without concurrent builds or benchmarks.
 
 For neighboring Map controls, build
-[`maps-control.ms`](../set-empty-relations/maps-control.ms) with both compilers
+`maps-control.ms` with both compilers
 and build [`map_lookup_audit.ms`](../../tools/map_lookup_audit.ms) once. Its
 arguments are `BEFORE AFTER OUTPUT PAIRS MODE SIZE REPEATS PREFIX_WIDTH`;
 for example, `before after /tmp/map-control 24 string_update 65536 11 256`.
