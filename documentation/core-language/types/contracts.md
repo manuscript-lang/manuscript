@@ -153,7 +153,7 @@ fn Scores.best_by[K: Comparable](key: fn(Int) K) Int?:
 
 A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface.
 
-An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known. Converting to it is rejected. The standard `List` uses generic operations for `max_by` and `min_by` (`stdlib/collections/collections.ms`).
+An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known. Converting to it is rejected. The standard `List` uses generic operations for `max_by` and `min_by` (`src/stdlib/collections/collections.ms`).
 
 ## Interface conversion
 

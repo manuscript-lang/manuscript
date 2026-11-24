@@ -20,7 +20,7 @@ ms build bench/perf/async-primitives/main.ms -o async && MS_THREADS=4 ./async in
 
 ## 2026-11-23 (x86-64 Linux sandbox, 4 cores, release `ms`)
 
-Change: `proposals/fast-tasks-and-promises.md` (queue at one thread, wait parks on the row, wake a thread only when none is looking, sleeping threads in one word, start site in the row). Before is main at 3122af1e plus `claude/web-request-path` at 1d6d0683; after is that plus the change. Median of 9 interleaved runs, ns per operation at 1 / 4 threads.
+Change: `design/proposals/fast-tasks-and-promises.md` (queue at one thread, wait parks on the row, wake a thread only when none is looking, sleeping threads in one word, start site in the row). Before is main at 3122af1e plus `claude/web-request-path` at 1d6d0683; after is that plus the change. Median of 9 interleaved runs, ns per operation at 1 / 4 threads.
 
 | mode | before | after | Go 1.24 | tokio |
 | --- | ---: | ---: | ---: | ---: |
@@ -99,7 +99,7 @@ The optimizer fuses the closure the standard library wraps around the work with 
 | `inline` | 204 / 215 | 186 / 180 | 33 |
 | `batch` | 173 / 173 | 143 / 154 | 26 |
 
-Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tests/ownership-counts/promise_wrapper_closure.ms`).
+Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tests/checks/ownership-counts/promise_wrapper_closure.ms`).
 
 ### Later the same day: the start line is a constant
 

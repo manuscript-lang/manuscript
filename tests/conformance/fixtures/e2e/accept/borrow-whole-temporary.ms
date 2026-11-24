@@ -1,6 +1,6 @@
 // conform: tags=mutation,records,lists,tier-io
 // conform: phase=run
-// conform: origin=proposals/reference-ownership.md
+// conform: origin=design/proposals/reference-ownership.md
 // A lender that hands a temporary back whole (`id(mk(3))`) gives the caller that temporary: no copy, one owner.
 import stdout from "@std/io/io.ms"
 

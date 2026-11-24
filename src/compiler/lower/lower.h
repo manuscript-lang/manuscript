@@ -18,12 +18,12 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
 
 /* Lowers the program's tests under a test entry instead of `main`: one runner per test file of the program's own
  * modules (not the bundled standard library, no `bench` blocks), in module order, handed to `run_test_files` of
- * stdlib/internal/test_runner.ms. A test's index is its position among the tests in module order and then
+ * src/stdlib/internal/test_runner.ms. A test's index is its position among the tests in module order and then
  * declaration order. Needs the runner module in `program`. */
 bool ms_lower_tests(MsCheckProgram *program, MirModule *module, MsStrBuild *error);
 
 /* The same for the program's `bench` blocks: each runs as a test whose body is `run_bench_block(body, operations)`
- * of stdlib/test/bench.ms, which repeats and times it. Needs the runner and the bench driver modules in `program`. */
+ * of src/stdlib/test/bench.ms, which repeats and times it. Needs the runner and the bench driver modules in `program`. */
 bool ms_lower_benches(MsCheckProgram *program, MirModule *module, MsStrBuild *error);
 
 #endif

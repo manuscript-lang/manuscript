@@ -1,6 +1,6 @@
 # Inline `first` and `last`
 
-Evidence for emitting `List.first()` and `last()` inline (`ms-lower/src/native/list.rs`) instead of calling the runtime or `ms-rt-hot`; see `proposals/retire-ms-rt-hot.md`.
+Evidence for emitting `List.first()` and `last()` inline (`ms-lower/src/native/list.rs`) instead of calling the runtime or `ms-rt-hot`; see `design/proposals/retire-ms-rt-hot.md`.
 
 ```sh
 ms build --build-type Release bench/perf/rt-hot-moves/hot.ms -o /tmp/hot && /tmp/hot

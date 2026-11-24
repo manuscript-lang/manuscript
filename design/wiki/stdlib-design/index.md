@@ -1,0 +1,29 @@
+[Wiki](../index.md) › Standard-library design
+
+# Standard-library design
+
+Stdlib API shape, failure modes, naming, construction.
+
+- [Strings grow in place, so there is no StringBuilder](strings-grow-in-place-so-there-is-no-string-builder.md): `+=` on a `var` String matches the builder's speed; `drain` is move-then-reassign; `BytesBuilder` stays; `Bytes.concat` onto a dying value grows in place.
+- [Stdlib effects are tagged by logical capability](stdlib-effects-are-tagged-by-logical-capability.md): tags follow what a function lets callers do, not which extern it calls; handles inherit; a golden lists every tag.
+- [Buffering, pipes and virtual file trees reuse existing primitives](buffering-pipes-and-virtual-file-trees-reuse-existing-primitives.md): `buffered.ms`, channel-backed pipes, `section`, and the `FileTree` interface with `MemoryTree` and `walk`; `embed` awaits a language decision.
+- [Calls that fail only on a programmer's constant return plain values; fixed-width codecs are methods](calls-that-fail-only-on-a-programmer-s-constant-return-plain.md): `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponential` return `String`.
+- [Every public module needs a fixture, a guide comment, and a doc comment with an example](every-public-module-needs-a-fixture-a-guide-comment-and-a-do.md): public modules have a fixture in `tests/conformance/fixtures/e2e/stdlib/*.ms`, and all stdlib prose lives in `src/stdlib/*.ms` (book Markdown is generated b…
+- [Errors are plain values with a fixed shape](../language/errors-are-plain-values-with-a-fixed-shape.md): stdlib failures are `Error` records; branch on `kind`.
+- [Host operations are module functions, not getter handles](host-operations-are-module-functions-not-getter-handles.md): ambient host operations are module functions (`read_file(path)`); types only for configured or stateful values.
+- [Identifiers, config text and tokens are written in Manuscript, and a verifier pins its algorithm](identifiers-and-tokens-pin-the-algorithm-and-keep-formats-in-manuscript.md): uuid, ulid, token, dotenv/INI and JWT live in `.ms`; `verify_token` accepts only the caller's algorithm.
+- [List operations that need an element bound are written in Manuscript](list-operations-that-need-an-element-bound-are-written-in-ma.md): `sum`, `min`, `max` and the comparator-less `sorted()`/`sort()` live in the source half of [collections.ms](../../../src/stdlib/collections/collections.ms), a…
+- [List structure ops: `entries()` already is `indexed`; piece lists come from one runtime call](list-structure-ops-entries-already-is-indexed-piece-lists-co.md): `List.entries()` (`ListEntry` with `index`, `value`) covers the "walk with an index" need, so no `indexed()` alias was added.
+- [Go collections parity: existing ops, small in-place ones, no lazy iterator adapters](go-parity-collections-map-to-existing-ops-or-small-in-place-ones.md): `retain`, `compact`, `rotate`, `sorted_by_key`, `is_sorted`, `repeated`, Map/Set `retain`, `Deque.rotate` added; the rest of Go's set maps to existing ops; lazy adapters not built.
+- [Each logger owns its transport; there is no lock](log-transports-own-their-locking-the-logger-has-none.md): `child` duplicates the transport, so loggers on several threads share nothing.
+- [One spelling per operation; consolidate by domain](one-spelling-per-operation-consolidate-by-domain.md): the stdlib reorganization (#659) removed duplicate routes: `cli` moved into `process` (`process.arguments`, `process.control().environment()…
+- [Net is split by seam; duplex ends and promise captures still need a shared handle](net-is-split-by-seam-and-duplex-ends-need-a-shared-handle.md): `ip`, `url`, `tls`, `websocket`, `net`; `connect(tls:)`; `share`/`close_if_last` and `*Args` stay until owning captures land.
+- [Options records as plain defaults; fetch helpers are methods](options-records-as-plain-defaults-fetch-helpers-are-methods.md): a function that takes a settings record declares it `options: FetchOptions = FetchOptions()`, never `FetchOptions? = none`, so callers write…
+- [Pick the failure mode by cause, then the shape](pick-the-failure-mode-by-cause-then-the-shape.md): absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults.
+- [Text formats and templates are pure Manuscript over JsonValue](text-formats-are-pure-manuscript-data-in-data-out.md): templates, XML, PEM, MIME and mail live in `.ms`; no Rust parser or crate, data is `JsonValue`.
+- [Text in, bytes by explicit sibling](text-in-bytes-by-explicit-sibling.md): write-like operations accept `String`; the raw form is a `_bytes` sibling (`send_bytes`, `request_bytes`); file writes take `Writable` instead.
+- [fs completion rule, closed enums and the owned-promise pattern](fs-completion-rule-closed-enums-and-owned-tasks.md): whole-file ops return `Promise`, the rest block; modes, origins and kinds are enums; promise-returning wrappers return `promise(fn:)` over owned clones.
+- [Glob relative results use path components](glob-relative-results-use-path-components.md): anchor the query root once; subtract components for dot roots, parents, and Windows volume roots without changing the parallel test runner's cwd.
+- [Path text is Manuscript; only the glob matcher stays native](path-text-is-manuscript-and-only-the-glob-matcher-stays-native.md): `os/path.ms` holds the lexical path rules; a recorded 9.7k-case corpus replays them as a `.ms` test.
+- [Python shapes are adopted where they remove unwrapping or index arithmetic](python-shapes-adopted-where-they-remove-unwrapping-or-index-math.md): `split_once`, `counts`, `pow_int`, `divmod`, `gcd/lcm/isqrt`, `path.stem/with_extension`, `fs.exists`, plain `repeat`; bad values give `none` or an error.
+- [`mean` and `Closeable.close` keep their current shape](mean-and-close-keep-their-current-shape.md): `mean` stays as is and `close` returns `Void!`.

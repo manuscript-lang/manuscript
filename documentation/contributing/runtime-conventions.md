@@ -9,7 +9,7 @@ The C runtime under `src/runtime/` is what generated code links against, and eac
 
 ## The contract comes from declarations
 
-`stdlib/*.ms` holds the `@std` declarations, with `extern type` for opaque types and `extern fn` for native symbols. They are the signature authority. `compiler/lower` reads them to emit native calls; the layouts and symbol catalogue are in `src/abi/README.md`, and the compiler reads layout constants from `src/abi` so the two cannot drift. A wrong-looking signature is a declaration or lowering issue, not something to patch in the runtime.
+`src/stdlib/*.ms` holds the `@std` declarations, with `extern type` for opaque types and `extern fn` for native symbols. They are the signature authority. `compiler/lower` reads them to emit native calls; the layouts and symbol catalogue are in `src/abi/README.md`, and the compiler reads layout constants from `src/abi` so the two cannot drift. A wrong-looking signature is a declaration or lowering issue, not something to patch in the runtime.
 
 ## Naming and shape
 

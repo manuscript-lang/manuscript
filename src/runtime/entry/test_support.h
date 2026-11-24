@@ -1,4 +1,4 @@
-/* entry/test_support.h: what the test runner (stdlib/internal/test_runner.ms) asks of the runtime besides the
+/* entry/test_support.h: what the test runner (src/stdlib/internal/test_runner.ms) asks of the runtime besides the
  * output captures of io/stdout.h: bounding a test's waits, appending its result records and reporting a
  * failed expectation. */
 #ifndef MS_RUNTIME_ENTRY_TEST_SUPPORT_H

@@ -79,7 +79,7 @@ function(ms_package_runtime executable runtime)
   endif()
   # Where tools/fetch-llvm-lib.ms puts the pinned shared LLVM library for this host (`make build` runs it), so a build
   # tree loads it in-process as an install does; MS_LLVM still overrides, and `none` selects the child processes.
-  file(STRINGS "${CMAKE_SOURCE_DIR}/toolchain/llvm-lib.lock" llvm_tag_line REGEX "^tag ")
+  file(STRINGS "${CMAKE_SOURCE_DIR}/cmake/toolchain/llvm-lib.lock" llvm_tag_line REGEX "^tag ")
   string(REGEX REPLACE "^tag +" "" llvm_tag "${llvm_tag_line}")
   string(TOLOWER "${CMAKE_SYSTEM_NAME}" llvm_os)
   string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" llvm_processor)

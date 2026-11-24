@@ -1,5 +1,5 @@
 /* abi/prelude.h: the type names every module sees without importing them: the primitives, and the interfaces and
- * collections the prelude declares (stdlib/core). The checker, the tooling and the editor all read these lists. */
+ * collections the prelude declares (src/stdlib/core). The checker, the tooling and the editor all read these lists. */
 #ifndef MS_ABI_PRELUDE_H
 #define MS_ABI_PRELUDE_H
 

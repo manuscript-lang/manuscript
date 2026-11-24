@@ -64,7 +64,7 @@ endfunction()
 ms_conform_target(conform "" "Replaying the conformance corpus and the command fixtures")
 ms_conform_target(conform-commands commands "Replaying the command fixtures")
 
-# Downloads the pinned shared LLVM library (toolchain/llvm-lib.lock) and, in CI, exports MS_LLVM for the later steps
+# Downloads the pinned shared LLVM library (cmake/toolchain/llvm-lib.lock) and, in CI, exports MS_LLVM for the later steps
 # (tools/fetch-llvm-lib.ms).
 add_custom_target(llvm-lib
   COMMAND $<TARGET_FILE:ms> run tools/fetch-llvm-lib.ms

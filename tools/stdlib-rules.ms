@@ -1,19 +1,19 @@
 // The standard-library rules of `make repo-check` (tools/repo-check.ms), read from the
-// declaration files in stdlib/ by their shape, not by a full parse:
+// declaration files in src/stdlib/ by their shape, not by a full parse:
 //   - option parameters: an exported function never requires a caller to write `Options()`, so a parameter
 //     named `options` or `limits` declares a default; a `T?` parameter defaults to `none` on its own
-//     (stdlib/internal is extern glue);
+//     (src/stdlib/internal is extern glue);
 //   - stream names: no exported type has a method named `next`, `receive`, `feed` or `write_bytes` outside the
 //     stream modules, because anything that yields values over time is a ReadStream or WriteStream;
 //   - adjacency: the methods of a type follow its declaration or another method of the same type;
-//   - internal externs: every `extern fn` in stdlib/internal is named by another standard-library file.
+//   - internal externs: every `extern fn` in src/stdlib/internal is named by another standard-library file.
 // optional-defaults-allowed.txt and stream-names-allowed.txt list what predates a rule;
 // they only shrink.
 import read_file from "@std/os/fs.ms"
 
 stream_modules := [
-	"stdlib/io/io.ms", "stdlib/io/streams.ms", "stdlib/io/steps.ms",
-	"stdlib/io/forward.ms"
+	"src/stdlib/io/io.ms", "src/stdlib/io/streams.ms", "src/stdlib/io/steps.ms",
+	"src/stdlib/io/forward.ms"
 ]
 banned_methods := ["next", "receive", "feed", "write_bytes"]
 type_words := ["type", "enum", "interface", "namespace"]
@@ -377,7 +377,7 @@ fn internal_externs(sources: Map[String, String]) List[String]:
 	var issues = List[String]()
 
 	for path in sources.keys():
-		if not path.starts_with("stdlib/internal/"): continue
+		if not path.starts_with("src/stdlib/internal/"): continue
 
 		for line in sources[path].split("\n"):
 			rest := without_words(line.trim(), ["export"])
@@ -403,22 +403,22 @@ fn internal_externs(sources: Map[String, String]) List[String]:
 export fn stdlib_issues(files: List[String]) List[String]:
 	var sources = Map[String, String]()
 	for path in files:
-		if path.starts_with("stdlib/") and path.ends_with(".ms"): sources[path.clone()] = text_of(
+		if path.starts_with("src/stdlib/") and path.ends_with(".ms"): sources[
 			path.clone()
-		)
+		] = text_of(path.clone())
 
 	var optional_found = List[String]()
 	var stream_found = List[String]()
 	var issues = List[String]()
 	if sources.length() == 0: issues.append(
-		f"no stdlib/*.ms file was found among {files.length()} listed files (first: `{files.first().get_or("")}`)"
+		f"no src/stdlib/*.ms file was found among {files.length()} listed files (first: `{files.first().get_or("")}`)"
 	)
 
 	for path in sources.keys():
 		text := sources[path].clone()
 		declared := declarations(text.clone())
 		exported_types := type_names(text.clone(), true)
-		if not path.starts_with("stdlib/internal/"): optional_found = optional_found.concat(
+		if not path.starts_with("src/stdlib/internal/"): optional_found = optional_found.concat(
 			optional_defaults(
 				path.clone(),
 				declared.clone(),
@@ -443,7 +443,7 @@ export fn stdlib_issues(files: List[String]) List[String]:
 			allow_list("tools/stream-names-allowed.txt"),
 			stream_found,
 			"tools/stream-names-allowed.txt",
-			"has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see proposals/stream-redesign.md)",
+			"has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see design/proposals/stream-redesign.md)",
 		)
 	)
 	return issues.concat(internal_externs(sources))

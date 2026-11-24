@@ -1,6 +1,6 @@
 /* cli/test_run.h: running the test executable and reading its records. Port of `Runner`, `RecordReader` and
  * `run_all_together` in crates/ms-cli/src/engine/testing.rs. The protocol is documented in
- * stdlib/internal/test_runner.ms. */
+ * src/stdlib/internal/test_runner.ms. */
 #ifndef MS_CLI_TEST_RUN_H
 #define MS_CLI_TEST_RUN_H
 

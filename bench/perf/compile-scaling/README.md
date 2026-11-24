@@ -21,4 +21,4 @@ One 8000-statement function 3.5 s / 3.7 s; a 8000-arm `match` on `Int` 0.8 s / 1
 
 ## Result
 
-No superlinear growth and no case over 1.5x Go's time or size on the Cranelift path found. The only notable cost is Release at very large size (8 ms per function), already split across units ([wiki](../../../wiki/benchmarks-and-performance/release-llvm-builds-split-into-parallel-units.md)); nothing was changed.
+No superlinear growth and no case over 1.5x Go's time or size on the Cranelift path found. The only notable cost is Release at very large size (8 ms per function), already split across units ([wiki](../../../design/wiki/benchmarks-and-performance/release-llvm-builds-split-into-parallel-units.md)); nothing was changed.
