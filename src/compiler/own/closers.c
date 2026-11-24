@@ -248,13 +248,7 @@ static void add_params(Closers *pass, MsParams params, uint32_t taken) {
 }
 
 static const MsMethodEntry *entry_of(const Closers *pass, const MsMethod *method) {
-  for (size_t index = 0; index < pass->program->methods.len; index++) {
-    const MsMethodEntry *entry = &pass->program->methods.ptr[index];
-    if (entry->module == pass->module && entry->source == method) {
-      return entry;
-    }
-  }
-  return NULL;
+  return ms_check_method_at(pass->program, pass->module, method->id);
 }
 
 /* Whether a field of `ty` holds a resource. */
