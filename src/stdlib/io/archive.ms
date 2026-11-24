@@ -133,7 +133,7 @@ fn var Compressing.step(move value: Bytes, var out: List[Bytes]) Void!:
 
 	if encoder != null:
 		packed := msstd_compress_encoder_push(encoder, value)
-		if not packed.is_empty(): out.append(packed)
+		if not packed.is_empty(): out.append(packed.clone())
 
 fn var Compressing.finish(var out: List[Bytes]) Void!:
 	failure := self.failure
@@ -385,7 +385,7 @@ fn var TarEntries.admit(path: String, directory: Bool) Void!:
 		self.parents.add(dir.clone())
 
 	if not directory: self.files.add(path.clone())
-	self.names.add(path)
+	self.names.add(path.clone())
 
 // Internal: emits the members the buffer holds completely. `ended` means no more
 // input will come.
@@ -460,7 +460,7 @@ export fn tar_entries(
 	return through[Bytes, ArchiveEntry](
 		input,
 		TarEntries(
-			options: options,
+			options: options.clone(),
 			buffer: join([]),
 			count: 0,
 			total: 0,

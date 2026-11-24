@@ -4,7 +4,7 @@ import (
 )
 
 fn say(text: String) Void:
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 
 fn k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Void:
 	for i in 0..n:

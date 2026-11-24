@@ -714,7 +714,7 @@ export fn ticker(period: Duration) ReadStream[Instant]:
 		panic("ticker: period must be positive")
 
 	due := monotonic().shift(period.clone())
-	return ReadStream[Instant](TickSource(period: period, due: due))
+	return ReadStream[Instant](TickSource(period: period.clone(), due: due))
 
 // `n.milliseconds()`, `n.seconds()` and `n.minutes()` are the constructors above on the
 // receiver. A count whose nanoseconds do not fit in Int faults and names the range.

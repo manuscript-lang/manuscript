@@ -20,7 +20,7 @@ fn TextOwner.read() String: self.text
 fn TextOwner.read_default(_tag: Int = 0) String: self.text
 
 fn owner(id: Int, log: String) TextOwner:
-	return TextOwner(f"payload-{id}", log, id)
+	return TextOwner(f"payload-{id}", log.clone(), id)
 
 fn ordinary(log: String) String:
 	read := owner(1, log).read

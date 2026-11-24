@@ -19,7 +19,7 @@ import (
 
 fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
 	return promise(fn: input.next()).with(
-		options: PromiseOptions(timeout: timeout)
+		options: PromiseOptions(timeout: timeout.clone())
 	).wait()
 
 fn send(var conn: Connection, text: String) Void!:

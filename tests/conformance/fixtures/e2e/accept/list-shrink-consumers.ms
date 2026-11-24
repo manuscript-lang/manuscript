@@ -204,7 +204,7 @@ test "alternative consumers retain tags and payloads after shrink":
 			var values = [first.clone(), second.clone(), last.clone()]
 			want := remaining(mode, values.clone(), fill.clone())
 			seen := (observe(values, mode, fill, callback)?)
-			snapshot := [first, second, last]
+			snapshot := [first.clone(), second.clone(), last.clone()]
 			var total = 0
 			var wanted = 0
 			for value in seen: total += score(value.clone())

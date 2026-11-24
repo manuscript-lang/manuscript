@@ -48,7 +48,7 @@ fn make_fixture() BenchData:
 	doc := json_doc(5000)
 	doc_2 := json_doc(5000)
 	tree := parse(json_doc(5000)).get()
-	return BenchData(doc: doc, doc_2: doc_2, tree: tree)
+	return BenchData(doc: doc, doc_2: doc_2, tree: tree.clone())
 
 bench "json.parse" per 5000:
 	parse(fixture.doc).is_ok()

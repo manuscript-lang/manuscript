@@ -56,7 +56,7 @@ export fn invoke(
 		RunOptions(
 			cwd: work.clone(),
 			timeout: seconds(limit),
-			input: input,
+			input: input.clone(),
 			env: {"MS_UNDER_TEST": ms.clone()},
 		),
 	).wait()

@@ -460,8 +460,8 @@ export fn csv_rows(
 		input,
 		CsvRows(
 			options: CsvOptions(
-				delimiter: options.delimiter,
-				line_ending: options.line_ending,
+				delimiter: options.delimiter.clone(),
+				line_ending: options.line_ending.clone(),
 			),
 			max_record_bytes: max_record_bytes,
 			pending: [],
@@ -567,4 +567,6 @@ export fn csv_writer(
 	move output: WriteStream[Bytes],
 	options: CsvOptions = CsvOptions(),
 ) WriteStream[List[String]]:
-	return WriteStream[List[String]](CsvRowsSink(output: output, options: options))
+	return WriteStream[List[String]](
+		CsvRowsSink(output: output, options: options.clone())
+	)

@@ -942,7 +942,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	var reader = Reader(
 		data: normalized.to_bytes(),
 		pos: 0,
-		options: options,
+		options: options.clone(),
 		values: 0,
 		tables: [],
 		entries: [],

@@ -24,7 +24,7 @@ fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
 	return sorted.get(sorted.length() / 2)
 
 fn say(text: String) Void:
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 
 // The typed case: a list of records, written without building a `JsonValue` first. The
 // size is the text produced, the same 10,000 rows in `node.js` and `rust/`.

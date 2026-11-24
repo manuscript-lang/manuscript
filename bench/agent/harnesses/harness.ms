@@ -43,7 +43,7 @@ export fn events(transcript: String) List[JsonValue]:
 
 	for line in transcript.split("\n"):
 		event := parse(line).to_optional()
-		if event != null: out.append(event)
+		if event != null: out.append(event.clone().clone())
 
 	return out
 

@@ -8,7 +8,7 @@ type Index:
 fn remember(var index: Index, name: String) Void:
 	index.hits += 1
 	index.names[name.clone()] = index.hits
-	index.order.append(name)
+	index.order.append(name.clone())
 
 fn copy_from(var index: Index, other: Index) Void:
 	index.hits = other.hits

@@ -16,7 +16,7 @@ fn mk(n: Int) Big:
 		xs.append(i)
 	return Big("a name that is long enough to live on the heap", xs)
 
-fn wrap(b: Big) Wrap: Wrap(b, "a tag that is long enough to live on the heap")
+fn wrap(b: Big) Wrap: Wrap(b.clone(), "a tag that is long enough to live on the heap")
 
 fn id(b: Big) Big: b
 

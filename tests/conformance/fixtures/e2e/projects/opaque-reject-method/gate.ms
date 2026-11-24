@@ -19,7 +19,7 @@ fn Counter.value() Int:
 	return self.count
 
 export fn approve(entity: String) Approved:
-	return Approved(entity: entity, nonce: "n1")
+	return Approved(entity: entity.clone(), nonce: "n1")
 
 export fn entity(a: Approved) String:
 	return a.entity.clone()

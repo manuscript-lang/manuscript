@@ -17,7 +17,7 @@ fn tick(var counter: Counter) Int:
 	counter.calls += 1
 	return 7
 
-fn widen(cause: Error) Wrapped: Wrapped(cause.message)
+fn widen(cause: Error) Wrapped: Wrapped(cause.message.clone())
 
 fn parse(ok_value: Bool) Int!Error:
 	if ok_value: return ok(5)

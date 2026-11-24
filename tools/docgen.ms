@@ -301,11 +301,11 @@ fn entry_of(
 	doc: String,
 ) Entry:
 	draft := Entry(
-		module: module,
-		declaration: declaration,
-		kind: kind,
-		name: name,
-		contract: contract,
+		module: module.clone(),
+		declaration: declaration.clone(),
+		kind: kind.clone(),
+		name: name.clone(),
+		contract: contract.clone(),
 		described: doc.trim() != "",
 		qualified: false,
 		problem: "",

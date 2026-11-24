@@ -517,11 +517,11 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 
 	if is_list(flag.kind):
 		var items = values.get_or(flag.name, [])
-		items.append(value)
+		items.append(value.clone())
 		values[flag.name.clone()] = items
 		return ok()
 
-	values[flag.name.clone()] = [value]
+	values[flag.name.clone()] = [value.clone()]
 	return ok()
 
 // Resolves subcommands, flags and positionals from `argv`.

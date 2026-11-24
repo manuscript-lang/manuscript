@@ -16,9 +16,9 @@ fn move Marker.close() Void!:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?
 
-fn result(id: Int, log: String) Marker!Error: ok(Marker(id, log))
+fn result(id: Int, log: String) Marker!Error: ok(Marker(id, log.clone()))
 
-fn optional(id: Int, log: String) Marker?: Marker(id, log)
+fn optional(id: Int, log: String) Marker?: Marker(id, log.clone())
 
 fn transfer_result_local(log: String) Void:
 	original := result(1, log)
@@ -47,7 +47,7 @@ test "native wrapper passthrough transfers resources without duplicating owners"
 
 // `or_else` takes the Result; its callback reads the error, which closes after the call.
 fn recover_resource_error(log: String) Void!:
-	original: Int!Marker := error(Marker(5, log))
+	original: Int!Marker := error(Marker(5, log.clone()))
 	recovered := original.or_else(fn cause: ok(cause.id))
 	expect_equal(recovered.get(), 5)?
 
@@ -102,7 +102,7 @@ fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
 	return ok(fn cause: ok(cause.id))
 
 fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Void!:
-	original: Int!Marker := error(Marker(id, log))
+	original: Int!Marker := error(Marker(id, log.clone()))
 	recovered := original.or_else(borrowed_error_callback(fail)?)
 	expect_equal(recovered.get(), id)?
 

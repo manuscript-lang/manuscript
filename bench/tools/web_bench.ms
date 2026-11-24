@@ -37,7 +37,7 @@ fn tail(text: String) String:
 // The command line with CPU pinning when `cpus` is set.
 fn pinned(cpus: String, argv: List[String]) List[String]:
 	if cpus == "": return argv.clone()
-	return ["taskset", "-c", cpus].concat(argv)
+	return ["taskset", "-c", cpus.clone()].concat(argv)
 
 // Runs `argv` after raising the open-file limit, as the shell scripts did.
 fn raised(argv: List[String]) Ran:
@@ -73,7 +73,7 @@ fn plan(w: String) Plan:
 		server = ""
 		load = ""
 
-	return Plan(w, server, load)
+	return Plan(w.clone(), server, load)
 
 fn load_cmd(p: Plan, port: Int, args: List[String]) List[String]:
 	return pinned(p.load_cpus.clone(), [f"{p.w}/load/load", f"{port}"].concat(args))
@@ -92,13 +92,22 @@ fn wait_started(p: Plan, port: Int) Bool:
 	return false
 
 fn first_pid(pattern: String) String:
-	return capture("pgrep", ["-f", pattern]).stdout.split("\n")[0].trim()
+	return capture("pgrep", ["-f", pattern.clone()]).stdout.split("\n")[0].trim()
 
 // Total system calls of all threads while strace is attached for `seconds`.
 fn syscalls(pid: String, seconds: Int, file: String) Int:
 	void capture(
 		"timeout",
-		[f"{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()],
+		[
+			f"{seconds}",
+			"strace",
+			"-f",
+			"-c",
+			"-p",
+			pid.clone(),
+			"-o",
+			file.clone(),
+		],
 	)
 
 	for line in read_text(file).split("\n"):
@@ -109,7 +118,7 @@ fn syscalls(pid: String, seconds: Int, file: String) Int:
 	return 0
 
 fn rss_kb(pid: String) String:
-	return capture("ps", ["-o", "rss=", "-p", pid]).stdout.trim()
+	return capture("ps", ["-o", "rss=", "-p", pid.clone()]).stdout.trim()
 
 fn threads(pid: String) Int:
 	return list(f"/proc/{pid}/task").get_or([]).length()

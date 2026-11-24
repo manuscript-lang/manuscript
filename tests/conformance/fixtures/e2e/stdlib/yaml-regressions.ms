@@ -605,7 +605,7 @@ test "YAML long multiline flow retains every scalar":
 	]:
 		expect_equal(
 			parse(control.input)?,
-			YamlValue.ArrayValue([YamlValue.StringValue(control.output)]),
+			YamlValue.ArrayValue([YamlValue.StringValue(control.output.clone())]),
 		)?
 
 test "YAML flow scanner carries anchors and quoted markers across lines":
@@ -654,10 +654,10 @@ test "YAML flow comment offsets remain scalar based":
 // Regressions: block indentation.
 
 fn text(source: String, expected: String) Void!:
-	expect_equal((parse(source)?), YamlValue.StringValue(expected))?
+	expect_equal((parse(source)?), YamlValue.StringValue(expected.clone()))?
 
 fn field(source: String, expected: String) Void!:
-	want := YamlValue.ObjectValue({"value": YamlValue.StringValue(expected)})
+	want := YamlValue.ObjectValue({"value": YamlValue.StringValue(expected.clone())})
 	expect_equal((parse(source)?), want)?
 
 test "YAML root indentation indicators start at column zero":

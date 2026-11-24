@@ -299,7 +299,7 @@ fn Event.to_json() JsonValue:
 
 fn tagged(kind: String, id: Int) JsonValue:
 	var fields = Map[String, JsonValue]()
-	fields.add("type", JsonValue.StringValue(kind))
+	fields.add("type", JsonValue.StringValue(kind.clone()))
 	fields.add("id", JsonValue.NumberValue(f"{id}"))
 
 	all := fields

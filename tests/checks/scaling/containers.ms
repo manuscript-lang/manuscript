@@ -10,7 +10,7 @@ import (
 )
 
 fn say(text: String) Void:
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 
 fn report(name: String, started: Instant) Void:
 	say(f"{name} {monotonic().difference(started).to_nanoseconds()}\n")

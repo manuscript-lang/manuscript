@@ -182,7 +182,7 @@ fn inner_close(log: String, cause: Error) Int!:
 	return error(cause)
 
 fn consume(value: Failing) Int:
-	_values := [value]
+	_values := [value.clone()]
 	return 1
 
 fn consumed_parameter(move value: Failing, payload: String, take: Bool) String!:

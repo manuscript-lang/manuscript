@@ -234,7 +234,7 @@ test "decompressed streams reject bytes after the payload as decompress does":
 // One member of a tar archive: a file's header and data block, or a directory's header.
 fn member(path: String, directory: Bool) Bytes!:
 	data := if directory: "".to_bytes() else: "x".to_bytes()
-	archive := pack([ArchiveEntry(path, data, directory)], ArchiveFormat.Tar)?
+	archive := pack([ArchiveEntry(path.clone(), data, directory)], ArchiveFormat.Tar)?
 	return archive.slice(0, if directory: 512 else: 1024)
 
 // Paths ending in `/` are directories.

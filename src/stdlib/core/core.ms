@@ -394,7 +394,7 @@ added to `details["cause"]`.
 export fn wrap_error(context: String, cause: Error) Error:
 	var details = cause.details.clone()
 	details.add("cause", cause.message.clone())
-	return Error(context + ": " + cause.message, cause.kind, details)
+	return Error(context + ": " + cause.message, cause.kind.clone(), details)
 
 // Combines `errors` into one error whose message holds theirs, one per line, and whose
 // `count` detail is how many there were. Returns null when the list is empty.

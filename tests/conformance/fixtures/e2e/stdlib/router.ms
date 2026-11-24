@@ -31,8 +31,8 @@ fn get(path: String) HttpRequest:
 
 fn request(method: HttpMethod, path: String) HttpRequest:
 	return HttpRequest(
-		method: method,
-		path: path,
+		method: method.clone(),
+		path: path.clone(),
 		query: "",
 		headers: headers(),
 		body: "".to_bytes(),

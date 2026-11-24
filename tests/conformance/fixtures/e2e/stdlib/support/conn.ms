@@ -25,7 +25,7 @@ export fn recv(var connection: Connection, timeout: Duration) Bytes?!:
 export fn within[T](var input: ReadStream[T], timeout: Duration) T?!:
 	return promise(
 		fn: input.next(),
-		options: PromiseOptions(timeout: timeout, placement: Placement.Here)
+		options: PromiseOptions(timeout: timeout.clone().clone().clone(), placement: Placement.Here)
 	).wait()
 
 // Reads `input` to its end and joins the chunks.

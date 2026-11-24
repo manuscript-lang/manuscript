@@ -151,7 +151,7 @@ fn var MemoryTree.link(path: String) Void:
 // Forgets `path` as a child of its parent directory.
 fn var MemoryTree.unlink(path: String) Void:
 	if var set = self.kids[parent_of(path)]?:
-		set.remove(path)
+		set.remove(path.clone())
 	return
 
 // True when `path` names a file or directory.

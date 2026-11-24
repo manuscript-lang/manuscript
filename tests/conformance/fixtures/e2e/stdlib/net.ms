@@ -226,7 +226,7 @@ fn answer_mx(var served: DatagramSocket) Int!:
 	served.output.write(
 		Datagram(
 			header.concat(question).concat(record).concat(name),
-			query.address,
+			query.address.clone(),
 		)
 	)?
 	served.output.flush()?

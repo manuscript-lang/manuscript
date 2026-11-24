@@ -345,7 +345,7 @@ fn SortedSet[T].contains(value: T) Bool:
 // Adds a member; an equal member already present is kept.
 fn var SortedSet[T].add(value: T) Void:
 	if not self.members.contains(value):
-		self.members.add(value, true)
+		self.members.add(value.clone(), true)
 
 // Removes an equal member; an absent value changes nothing.
 fn var SortedSet[T].remove(value: T) Void:

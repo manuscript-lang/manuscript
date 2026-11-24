@@ -33,7 +33,7 @@ type Case:
 
 fn plain(data: Bytes) Case:
 	return Case(
-		data: data,
+		data: data.clone(),
 		text: "",
 		expected_text: "",
 		expected: ok(Bytes([])),

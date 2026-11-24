@@ -9,7 +9,7 @@ type Bucket:
 
 fn var Bucket.add(key: Int, name: String) Void:
 	self.keys.append(key)
-	self.names.append(name)
+	self.names.append(name.clone())
 	self.size += 1
 
 type Shelf:

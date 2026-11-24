@@ -22,7 +22,7 @@ export fn count_text(text: String) Int:
 	token := compile(
 		"\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|`[^`]*`|[A-Za-z_]\\w*|\\d[\\w.]*|[^\\s\\w]"
 	).get()
-	bare := comments.replace_all(text, " ", null).get_or(text)
+	bare := comments.replace_all(text, " ", null).get_or(text.clone().clone())
 	return token.find_all(bare, null).get_or([]).length()
 
 // Tokens over every `*suffix` file under `root`, skipping build output and the bundled

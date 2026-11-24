@@ -63,7 +63,11 @@ export fn capture(
 	input: String = "",
 	cwd: String? = null,
 ) Ran:
-	if out := run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
+	if out := run(
+		program,
+		arguments,
+		RunOptions(input: input.to_bytes(), cwd: cwd.clone()),
+	).wait():
 		return Ran(
 			true,
 			out.exit_code,
@@ -118,7 +122,7 @@ export fn read_text(path: String) String:
 
 // Fails with `text`.
 export fn invalid[T](text: String) T!:
-	return error(Error(text))
+	return error(Error(text.clone()))
 
 // `text` unless it is longer than `width`; padded on the left to `width` columns.
 export fn right(text: String, width: Int) String:
@@ -159,7 +163,7 @@ export fn repeats(text: String) Int!:
 // The absolute form of `path`, relative to the working directory.
 export fn absolute(path: String) String:
 	if is_absolute(path): return path.clone()
-	return join([working_directory().get_or("."), path])
+	return join([working_directory().get_or("."), path.clone().clone().clone().clone()])
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so
 // tasks may run children in different directories.
@@ -179,7 +183,11 @@ export fn ms_binary() String:
 // fine; pass an absolute path).
 export fn build_ms(dir: String, out: String) Void!:
 	_stale := remove(f"{dir}/ms.lock")
-	ran := run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
+	ran := run_in(
+		dir,
+		ms_binary(),
+		["build", "ms.toml", "-o", out.clone().clone().clone().clone()],
+	)
 	void must(f"ms build {dir}", ran)?
 
 // Builds the Go module in `dir` as a static binary.
@@ -191,8 +199,13 @@ export fn build_go(dir: String, out: String) Void!:
 		dir,
 		go,
 		[
-			"build", "-buildvcs=false", "-trimpath", "-ldflags=-s -w -buildid=", "-o",
-			out, "."
+			"build",
+			"-buildvcs=false",
+			"-trimpath",
+			"-ldflags=-s -w -buildid=",
+			"-o",
+			out.clone().clone().clone().clone(),
+			".",
 		],
 	)
 	void must(f"go build {dir}", ran)?
@@ -301,7 +314,7 @@ export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:
 // Workaround for #2167 (Map fields in stringify). JSON construction helpers; a record
 // holding a Map is not Data, so reports are built as JsonValue objects.
 export fn jstr(text: String) JsonValue:
-	return JsonValue.StringValue(text)
+	return JsonValue.StringValue(text.clone())
 
 export fn jint(n: Int) JsonValue:
 	return JsonValue.NumberValue(f"{n}")
@@ -313,10 +326,10 @@ export fn jbool(b: Bool) JsonValue:
 	return JsonValue.BoolValue(b)
 
 export fn jobject(members: Map[String, JsonValue]) JsonValue:
-	return JsonValue.ObjectValue(members)
+	return JsonValue.ObjectValue(members.clone())
 
 export fn jlist(items: List[JsonValue]) JsonValue:
-	return JsonValue.ArrayValue(items)
+	return JsonValue.ArrayValue(items.clone())
 
 // `value` as indented JSON followed by a newline.
 export fn dump(value: JsonValue) String:
@@ -334,7 +347,7 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 			stdin: Stdio.Null,
 			stdout: Stdio.Inherit,
 			stderr: Stdio.Inherit,
-			cwd: dir,
+			cwd: dir.clone(),
 		),
 	):
 		code = child.wait().get_or(125)
