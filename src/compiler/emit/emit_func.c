@@ -259,6 +259,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->out = module_out;
   if (ok) {
     emit_forward_copies(&body);
+    emit_drop_dead_definitions(&body);
     emit_header(cx, index, subprogram);
     ms_strbuild_append(module_out, ms_strbuild_span(&body));
     ms_strbuild_append_text(module_out, "}\n\n");
