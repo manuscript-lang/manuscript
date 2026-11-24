@@ -24,7 +24,8 @@ typedef struct SdCtx {
   const MirModule *m;
   const MirFunc *f;
   bool *cand;
-  MirBits owned; /* values that hold something to drop */
+  MirBits owned; /* values that hold something to drop; valid once `have_owned` */
+  bool have_owned;
   bool changed;
 } SdCtx;
 
@@ -65,6 +66,9 @@ static void sd_sweep(SdCtx *c) {
           continue;
         }
         if (self && modes[k] == MM_MOVE) {
+          if (!c->have_owned) {
+            continue; /* the first sweeps leave this rule out: it only clears more */
+          }
           /* The constructor stays dead only if everything it takes is dead too. */
           if (!c->cand[v] && mir_bits_test(&c->owned, v)) {
             sd_clear(c, i->res);
@@ -101,14 +105,22 @@ bool opt_simplify_dead_owned(MirModule *m, MirFunc *f) {
     ms_arena_free(&arena);
     return false;
   }
-  SdCtx c = {.m = m, .f = f, .cand = cand, .owned = mir_owned_values(&arena, m, f, true)};
-  do {
-    c.changed = false;
-    sd_sweep(&c);
-  } while (c.changed);
-  any = false;
-  for (uint32_t v = 0; v < f->values.len && !any; v++) {
-    any = cand[v];
+  SdCtx c = {.m = m, .f = f, .cand = cand};
+  /* Clearing only ever grows, so the cheap rule alone finds a superset of what is left. Most functions have none
+   * left, and then the ownership analysis below is never needed. */
+  for (int pass = 0; pass < 2 && any; pass++) {
+    if (pass == 1) {
+      c.owned = mir_owned_values(&arena, m, f, true);
+      c.have_owned = true;
+    }
+    do {
+      c.changed = false;
+      sd_sweep(&c);
+    } while (c.changed);
+    any = false;
+    for (uint32_t v = 0; v < f->values.len && !any; v++) {
+      any = cand[v];
+    }
   }
   if (any) {
     for (uint32_t bi = 0; bi < f->blocks.len; bi++) {

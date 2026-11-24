@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "map-get-or-inline-probe.ms::get_or on an Int-keyed map",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "map-get-or-inline-probe.ms::get_or on a String-keyed map counts words",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "map-get-or-inline-probe.ms::get_or on a Float-valued map",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN map-get-or-inline-probe.ms::get_or on an Int-keyed map\nPASS map-get-or-inline-probe.ms::get_or on an Int-keyed map\nRUN map-get-or-inline-probe.ms::get_or on a String-keyed map counts words\nPASS map-get-or-inline-probe.ms::get_or on a String-keyed map counts words\nRUN map-get-or-inline-probe.ms::get_or on a Float-valued map\nPASS map-get-or-inline-probe.ms::get_or on a Float-valued map\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

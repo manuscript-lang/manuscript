@@ -369,6 +369,10 @@ typedef enum MirRole {
   MR_KEEPS_SLOT
 } MirRole;
 
+/* The family of borrowing twins an extern declares: other runtime functions that answer the same call without
+ * building its result (`opt_splitview`). */
+typedef enum MirTwin { MTW_NONE, MTW_SPLIT_VIEW } MirTwin;
+
 typedef struct MirExtern {
   MsName name;
   MirParam *params; /* in the module arena */
@@ -377,6 +381,7 @@ typedef struct MirExtern {
   bool noreturn, pure, fresh, leaf, reads, retains;
   bool handle; /* keeps its pointer arguments until the last use of its result (`msrt_cleanup_push` and its handle) */
   uint8_t role; /* a MirRole */
+  uint8_t twin; /* a MirTwin */
 } MirExtern;
 
 MS_LIST_DEFINE(MirExternList, mir_extern_list, MirExtern)
@@ -507,7 +512,19 @@ uint32_t mir_extern_by_name(const MirModule *module, MsName name);
 
 /* The targets of a terminator in order: br has one, condbr two (then, else), switch its cases then the default,
  * the rest none. */
-uint32_t mir_term_ntargets(const MirTerm *term);
+static inline uint32_t mir_term_ntargets(const MirTerm *term) {
+  switch ((MirTermKind)term->kind) {
+  case MT_BR:
+    return 1;
+  case MT_CONDBR:
+    return 2;
+  case MT_SWITCH:
+    return term->ncases + 1;
+  case MT_RET: case MT_FAULT: case MT_UNREACHABLE:
+    return 0;
+  }
+  return 0;
+}
 /* Removes argument `k` of the edge. */
 void mir_target_remove_arg(MirTarget *t, uint32_t k);
 MirTarget *mir_term_target(MirTerm *term, uint32_t index);

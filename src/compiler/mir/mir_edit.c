@@ -20,7 +20,10 @@ static bool same_signature(const MirExtern *a, const MirExtern *b) {
 
 uint32_t mir_extern_intern(MirModule *module, const MirExtern *def) {
   for (size_t index = 0; index < module->externs.len; index++) {
-    if (same_signature(&module->externs.ptr[index], def)) {
+    MirExtern *have = &module->externs.ptr[index];
+    if (same_signature(have, def)) {
+      /* One declaration serves every caller, so a role the first caller did not name is not lost to it. */
+      have->role = have->role == MR_NONE ? def->role : have->role;
       return (uint32_t)index;
     }
   }
