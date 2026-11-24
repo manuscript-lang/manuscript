@@ -155,6 +155,31 @@ static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int6
   return at;
 }
 
+/* A list native that takes an owned argument and faults on a bad one (`@checks=`) would leave the argument owned by
+ * no one: the check runs first, in lowering, while the caller still covers it. The check is the native's own, called
+ * with the list's length and the call's integer arguments. A resource argument is left alone: its closing slot
+ * covers it, and a second drop would double close. */
+void fn_native_precheck(LowerFn *fn, const MsNativeSig *sig, MsTy owner, uint32_t argc, const MirValue *args) {
+  MsTyTable *types = &fn->cx->program->types;
+  if (sig == NULL || sig->checks == NULL || argc < 2 || !ms_ty_is(types, owner, MS_BUILTIN_List)) {
+    return;
+  }
+  const MsTy elem = ms_ty_subst(types, ms_ty_args(types, owner)[0], fn->subst.vars, fn->subst.args, fn->subst.count);
+  if (!mir_needs_drop(fn->cx->module, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->elem) ||
+      fn_temp_closes(fn, elem)) {
+    return;
+  }
+  MirValue checked[4];
+  uint32_t count = 0;
+  checked[count++] = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
+  for (uint32_t at = 1; at < argc && count < 4; at++) {
+    if (mir_b_ty(&fn->b, args[at]) == MIR_INT) {
+      checked[count++] = args[at];
+    }
+  }
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(sig->checks)), checked, count, MIR_VOID);
+}
+
 /* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the
  * old one): the receiver is taken out of its place or slot, the index is checked with the runtime's `List.set`
  * fault, the element is stored by `list.set.u`, and the updated list goes back. */

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Sort of 1M records by a comparator, Manuscript against Rust (`rustc -O`, clone then sort_by),
 # microseconds, min of N, checksums compared.
-# MS=./target/release/ms sh bench/perf/collections-round3/run.sh 7
+# MS=.artifacts/build/release/src/cli/ms sh bench/perf/collections-round3/run.sh 7
 set -e
 N=${1:-5}
 MS=${MS:-ms}

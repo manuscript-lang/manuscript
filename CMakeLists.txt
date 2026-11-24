@@ -10,6 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(MsTarget)
 include(MsSysroot)
+include(MsLld)
 
 # Program links use lld without libgcc or compiler-rt, so no archive may call the out-of-line atomic helpers
 # (`__aarch64_swp8_relax` and friends) that clang uses on Linux arm64 by default.

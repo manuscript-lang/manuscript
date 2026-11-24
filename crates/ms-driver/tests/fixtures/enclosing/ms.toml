@@ -1,6 +1,0 @@
-[project]
-name = "bench"
-source = "."
-
-[aliases]
-"@lib" = "lib.ms"

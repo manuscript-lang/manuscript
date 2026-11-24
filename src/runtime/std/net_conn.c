@@ -414,14 +414,6 @@ static ssize_t read_direct(MsNetCore *core, size_t capacity, MsBytes *out) {
   return count;
 }
 
-static bool would_block(void) {
-#ifdef _WIN32
-  return WSAGetLastError() == WSAEWOULDBLOCK;
-#else
-  return errno == EAGAIN || errno == EWOULDBLOCK;
-#endif
-}
-
 void ms_net_conn_wake_readers(MsNetCore *core) {
 #ifndef _WIN32
   uv_os_fd_t fd;
@@ -432,6 +424,13 @@ void ms_net_conn_wake_readers(MsNetCore *core) {
   (void)core;
 #endif
 }
+
+#ifndef _WIN32
+/* Whether the last failed read found nothing to take; only the edge reads ask, and they are not built on Windows. */
+static bool would_block(void) {
+  return errno == EAGAIN || errno == EWOULDBLOCK;
+}
+#endif
 
 /* A plain connection of a program with one scheduler thread has nobody to take it from this thread, and the network
  * loop thread would only be a hand-off between the task and the socket. */
@@ -512,7 +511,7 @@ static bool read_edge(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBy
   }
   atomic_fetch_sub(&core->direct, 1);
   if (ended != MS_NET_WAIT_DONE) {
-    *result = ms_net_finish(ended, 0, "read", err); /* a cancel unwinds here, after the fence is released */
+    *result = ms_net_finish(ended, 0, "read", err);
   }
   return handled;
 #endif

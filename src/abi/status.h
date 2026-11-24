@@ -28,7 +28,10 @@ typedef enum MsStatus {
   MS_STATUS_NO_SPACE = 21,              /* the device is full */
   MS_STATUS_READ_ONLY = 22,             /* a read-only file system */
   MS_STATUS_CROSS_DEVICE = 23,          /* a link or rename across devices */
-  MS_STATUS_TOO_MANY_OPEN = 24          /* the process or system has no file descriptors left */
+  MS_STATUS_TOO_MANY_OPEN = 24,         /* the process or system has no file descriptors left */
+  /* The calling task was cancelled while the native waited. Runtime C returns it like any failure, freeing what it
+   * holds; compiled code never sees it as an error: the task ends where the status arrives (msstd_status_error). */
+  MS_STATUS_CANCELLED = 25
 } MsStatus;
 
 #endif

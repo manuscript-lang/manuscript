@@ -191,6 +191,33 @@ void msrt_bytes_concat(const MsBytes *a, const MsBytes *b, MsBytes *out) {
   *out = (MsBytes){.ptr = buffer, .len = total, .cap = total};
 }
 
+/* `a.concat(b)` where the caller gives `a` up: appends `b` to `a`'s block, which grows in place when `a` owns one.
+ * A view or empty `a` is copied into a new block first. A `b` that points into `a`'s block is copied before the
+ * block can move. */
+void msrt_bytes_concat_grow(MsBytes *a, const MsBytes *b, MsBytes *out) {
+  if (b->len == 0) {
+    /* A view does not own its block: the result must be a copy, as it is for a non-empty `b`. */
+    *out = (a->cap != 0 || a->len == 0) ? *a : ms_bytes_from_span(ms_bytes_span(a));
+    return;
+  }
+  size_t total = 0;
+  if (!ms_size_add(a->len, b->len, &total)) {
+    bytes_overflow_fault();
+  }
+  const bool inside = a->cap != 0 && b->ptr >= a->ptr && b->ptr < a->ptr + a->cap;
+  MsBytes held = {0};
+  const MsBytes *piece = b;
+  if (inside) {
+    held = ms_bytes_from_span(ms_bytes_span(b));
+    piece = &held;
+  }
+  __builtin_memcpy(ms_list_extend_grow(a, 1, piece->len), piece->ptr, piece->len);
+  if (inside) {
+    ms_bytes_free(&held);
+  }
+  *out = *a;
+}
+
 /* Pushes a fresh copy of `part` onto `parts`, a list of Bytes. */
 static void push_part(MsList *parts, MsSpan part) {
   const MsBytes item = ms_bytes_from_span(part);

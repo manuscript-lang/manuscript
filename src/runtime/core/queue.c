@@ -9,9 +9,12 @@
 
 typedef struct Entry {
   uint64_t id; /* 0: removed from the middle, skipped */
-  int64_t at;
+  int64_t at;  /* when a looker first saw it; NOT_SEEN until one has */
   void *work;
 } Entry;
+
+static const int64_t NOT_SEEN = 0;
+static const int64_t AGED = INT64_MIN; /* older than any beat */
 
 /* A ring of entries, `head` the oldest. Every field but `live` is guarded by `lock`. */
 typedef struct Queue {
@@ -20,6 +23,7 @@ typedef struct Queue {
   size_t capacity;
   size_t head;
   size_t length;       /* slots in use, removed ones included */
+  uint64_t head_sequence; /* the sequence number of the entry at `head`: entry `sequence` is at `sequence - head_sequence` */
   _Atomic size_t live; /* entries still wanting to run; thieves read it without the lock to skip an empty queue */
 } Queue;
 
@@ -27,13 +31,15 @@ static Queue queues[MS_MAX_ISOLATES];
 
 static Queue *queue_of(uint32_t isolate) { return isolate < MS_MAX_ISOLATES ? &queues[isolate] : NULL; }
 
-static size_t slot(const Queue *queue, size_t index) { return (queue->head + index) % queue->capacity; }
+/* The capacity is a power of two (16, doubled), so a position wraps with a mask, not a division. */
+static size_t slot(const Queue *queue, size_t index) { return (queue->head + index) & (queue->capacity - 1); }
 
 /* Drops removed entries at both ends. */
 static void trim(Queue *queue) {
   while (queue->length > 0 && queue->items[queue->head].id == 0) {
-    queue->head = (queue->head + 1) % queue->capacity;
+    queue->head = slot(queue, 1);
     queue->length--;
+    queue->head_sequence++;
   }
   while (queue->length > 0 && queue->items[slot(queue, queue->length - 1)].id == 0) {
     queue->length--;
@@ -52,7 +58,19 @@ static void grow(Queue *queue) {
   queue->head = 0;
 }
 
-bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns) {
+/* Dates the entries no looker has seen with `now_ns`. They are the newest ones, since every look dates all it finds,
+ * so this stops at the first dated entry. */
+static void date_unseen(Queue *queue, int64_t now_ns) {
+  for (size_t index = queue->length; index > 0; index--) {
+    Entry *const entry = &queue->items[slot(queue, index - 1)];
+    if (entry->at != NOT_SEEN) {
+      return;
+    }
+    entry->at = now_ns;
+  }
+}
+
+bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, bool aged, uint64_t *sequence) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL || id == 0) {
     return false;
@@ -61,37 +79,36 @@ bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns) {
   if (queue->length == queue->capacity) {
     grow(queue);
   }
-  queue->items[slot(queue, queue->length)] = (Entry){id, now_ns, work};
+  queue->items[slot(queue, queue->length)] = (Entry){id, aged ? AGED : NOT_SEEN, work};
+  *sequence = queue->head_sequence + queue->length;
   queue->length++;
-  atomic_fetch_add_explicit(&queue->live, 1, memory_order_relaxed);
+  atomic_fetch_add(&queue->live, 1); /* ordered against a looker's last look (ms_workers_nudge) */
   ms_spin_unlock(&queue->lock);
   return true;
 }
 
-bool ms_queue_remove(uint32_t isolate, uint64_t id) {
+bool ms_queue_remove(uint32_t isolate, uint64_t id, uint64_t sequence) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL) {
     return false;
   }
   bool found = false;
   ms_spin_lock(&queue->lock);
-  /* Waiters mostly want the newest promise: search from that end. */
-  for (size_t i = queue->length; i > 0 && !found; i--) {
-    Entry *const entry = &queue->items[slot(queue, i - 1)];
+  const uint64_t offset = sequence - queue->head_sequence; /* wraps to a huge value for an entry already trimmed */
+  if (offset < queue->length) {
+    Entry *const entry = &queue->items[slot(queue, (size_t)offset)];
     if (entry->id == id) {
       entry->id = 0;
       atomic_fetch_sub_explicit(&queue->live, 1, memory_order_relaxed);
       found = true;
+      trim(queue);
     }
-  }
-  if (found) {
-    trim(queue);
   }
   ms_spin_unlock(&queue->lock);
   return found;
 }
 
-bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id, void **work) {
+bool ms_queue_steal(uint32_t isolate, int64_t now_ns, int64_t beat_ns, uint64_t *id, void **work) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL || atomic_load_explicit(&queue->live, memory_order_relaxed) == 0) {
     return false; /* a stale read only delays a steal */
@@ -99,7 +116,10 @@ bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id, void *
   bool taken = false;
   ms_spin_lock(&queue->lock);
   trim(queue);
-  if (queue->length > 0 && queue->items[queue->head].at <= not_after_ns) {
+  if (beat_ns >= 0) {
+    date_unseen(queue, now_ns);
+  }
+  if (queue->length > 0 && (beat_ns < 0 || queue->items[queue->head].at <= now_ns - beat_ns)) {
     Entry *const oldest = &queue->items[queue->head];
     *id = oldest->id;
     *work = oldest->work;
@@ -114,16 +134,17 @@ bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id, void *
 
 size_t ms_queue_length(uint32_t isolate) {
   const Queue *const queue = queue_of(isolate);
-  return queue == NULL ? 0 : atomic_load_explicit(&queue->live, memory_order_relaxed);
+  return queue == NULL ? 0 : atomic_load(&queue->live);
 }
 
-int64_t ms_queue_oldest(uint32_t isolate) {
+int64_t ms_queue_oldest(uint32_t isolate, int64_t now_ns) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL) {
     return INT64_MAX;
   }
   ms_spin_lock(&queue->lock);
   trim(queue);
+  date_unseen(queue, now_ns);
   const int64_t oldest = queue->length > 0 ? queue->items[queue->head].at : INT64_MAX;
   ms_spin_unlock(&queue->lock);
   return oldest;
@@ -145,6 +166,7 @@ void ms_queue_release(uint32_t isolate, void (*drop)(void *work)) {
   queue->items = NULL;
   queue->capacity = 0;
   queue->head = 0;
+  queue->head_sequence += queue->length;
   queue->length = 0;
   atomic_store_explicit(&queue->live, 0, memory_order_relaxed);
   ms_spin_unlock(&queue->lock);

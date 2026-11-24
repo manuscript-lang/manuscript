@@ -756,6 +756,8 @@ bool opt_inline(MirModule *m) {
   changed |= il_inline_calls(m);
   /* A call that inlining just moved into its caller may now pass a closure the caller makes. */
   changed |= opt_inline_specialize_closure_args(m);
+  /* Before the closures are opened: a fused wrapper calls the inner code directly, which the next round inlines. */
+  changed |= opt_inline_fuse_captured(m);
   changed |= opt_inline_closures(m);
   changed |= il_strip_depth(m, false);
   changed |= opt_inline_remove_dead(m);

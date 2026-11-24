@@ -11,16 +11,16 @@ Use this map to locate the stage responsible for a compiler bug. A rejected vali
 
 | Pass | Crate | Decides | Writes |
 | --- | --- | --- | --- |
-| Resolve modules | `ms-driver` | Module identity, cycles, overlays | Module graph in dependency order |
-| Parse | `ms-syntax` | Layout, structure, positions | Syntax tree, strict or recovered |
-| Check | `ms-check` | Symbols, types, bounds, implementations, flow, captures, cleanup, effects, ownership | Typed HIR and diagnostics |
-| Ownership | `ms-check` (`ownership`) | Moves, borrows, `var` modes, drops | Facts lowering reads |
-| Lower | `ms-lower` | Evaluation order, exit cleanup, defaults, call shape | MIR |
-| Optimize and verify | `ms-mir` | Inlining, copy elimination, range facts, verification | Optimized MIR |
-| Generate code | `ms-clif` | Machine code, line tables | Object file |
-| Link | `ms-build`, `ms-native` | Runtime and standard crates | Native executable |
+| Resolve modules | `compiler/project` | Module identity, cycles, overlays | Module graph in dependency order |
+| Parse | `compiler/syntax` | Layout, structure, positions | Syntax tree, strict or recovered |
+| Check | `compiler/check` | Symbols, types, bounds, implementations, flow, captures, cleanup, effects, ownership | Typed HIR and diagnostics |
+| Ownership | `compiler/own` | Moves, borrows, `var` modes, drops | Facts lowering reads |
+| Lower | `compiler/lower` | Evaluation order, exit cleanup, defaults, call shape | MIR |
+| Optimize and verify | `compiler/mir`, `compiler/opt` | Inlining, copy elimination, range facts, verification | Optimized MIR |
+| Generate code | `compiler/emit` | LLVM IR, line tables | Object file |
+| Link | `compiler/link` | Runtime archive and C library stubs | Native executable |
 
-Consumers go through the checker's public API (the HIR and its ownership facts), so storage can change freely. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) records the crates and their order.
+Consumers go through the checker's public API (the HIR and its ownership facts), so storage can change freely. The [architecture guide](../architecture.md) records the layers and their order.
 
 ## Checking each module once
 

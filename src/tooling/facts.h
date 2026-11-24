@@ -22,14 +22,7 @@ struct MsViewNode {
 };
 
 typedef enum MsParamMode { MS_MODE_BORROW, MS_MODE_COPY, MS_MODE_MOVE, MS_MODE_UNSPECIFIED } MsParamMode;
-typedef enum MsResultOwnership {
-  MS_RESULT_OWNED,
-  MS_RESULT_BORROW,
-  MS_RESULT_VIEW,
-  MS_RESULT_BORROWED_OK,
-  MS_RESULT_BORROWED_ERROR,
-  MS_RESULT_BORROWED_BOTH
-} MsResultOwnership;
+typedef enum MsResultOwnership { MS_RESULT_OWNED, MS_RESULT_BORROW } MsResultOwnership;
 
 /* One typed position: a field, a case payload, a parameter, or a result. */
 typedef struct MsSlot {

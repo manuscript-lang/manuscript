@@ -7,6 +7,9 @@ void emit_name_symbols(MirModule *module) {
   MsStrBuild text = ms_strbuild_new();
   for (uint32_t index = 0; index < module->funcs.len; index++) {
     MirFunc *func = &module->funcs.ptr[index];
+    if (func->display == MS_NAME_EMPTY) {
+      func->display = func->name; /* the source name survives for the debugger */
+    }
     if (index == module->entry) {
       func->name = mir_name(module, ms_span_of_text(EMIT_ENTRY_SYMBOL));
     } else if (func->linkage != ML_EXPORT) {

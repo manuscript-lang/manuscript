@@ -1,5 +1,9 @@
 /* cli/pipeline.c: see pipeline.h. */
+#define _POSIX_C_SOURCE 200809L
+
 #include "cli/pipeline.h"
+
+#include <stdio.h>
 
 #include "base/env.h"
 #include "base/file.h"
@@ -10,7 +14,11 @@
 #include "compiler/link/object.h"
 #include "cli/backend.h"
 #include "cli/install_layout.h"
+#include "compiler/emit/emit.h"
 #include "ms_runtime_paths.h"
+
+/* Last: on Windows uv.h brings in windows.h, whose MK_ALT macro would break the MIR header. */
+#include <uv.h>
 
 #if defined(_WIN32)
 enum { LIST_SEPARATOR = ';' };
@@ -50,7 +58,8 @@ static MsSpan setting(const char *name, MsSpan fallback, MsString *storage) {
 
 /* The shared LLVM library to optimize and generate code with in-process, or empty for the opt and llc child processes.
  * `MS_LLVM` names a library (a library that does not load is an error) or `none` for the child processes. Unset, the
- * library installed beside ms is used when it loads, and the child processes otherwise. */
+ * library installed beside ms (a build tree: the one `make build` fetched, MS_BUILD_LLVM) is used when it loads, and the
+ * child processes otherwise. */
 static MsSpan choose_llvm(MsSpan installed, MsString *storage) {
   const MsSpan named = setting("MS_LLVM", ms_span_of_text(""), storage);
   if (ms_span_is_text(named, "none")) {
@@ -102,9 +111,9 @@ static bool poison_from_environment(void) {
   return on;
 }
 
-/* The `MS_RUNTIME` archives followed by the request's own files. */
-static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *inputs) {
-  size_t count = 0;
+/* The `MS_RUNTIME` archives followed by the request's own files, after the `count` inputs already in `inputs` (the
+ * objects of the program's other modules). */
+static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *inputs, size_t count) {
   size_t start = 0;
   for (size_t at = 0; at <= list.len; at++) {
     if (at == list.len || list.ptr[at] == LIST_SEPARATOR) {
@@ -120,32 +129,140 @@ static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *
   return count;
 }
 
-static bool make_object(const MsLinkRequest *request, const BackendProgram *program, MsSpan ir, MsSpan directory,
-                        MsSpan opt, MsSpan llc, MsSpan llvm, MsSpan object, MsSpan *error) {
-  const bool debug = request->build_type == MS_BUILD_DEBUG;
-  const ObjectOptions options = {.opt = opt, .llc = llc, .llvm = llvm, .directory = directory, .speed = true, .debug = debug,
-                                 .vectorize = !debug,
-                                 .module = &program->module, .tables = &program->tables};
-  MsStrBuild why = ms_strbuild_new();
-  const bool ok = link_make_object(&options, ir, object, &why);
-  if (!ok) {
-    (void)fail(error, "", ms_strbuild_span(&why));
+/* One module of the program on its way to an object, run on a thread of its own. */
+typedef struct UnitJob {
+  ObjectOptions options;
+  MsSpan ir;
+  MsSpan object;
+  ObjectCode code;
+  MsStrBuild why;
+  bool ok;
+} UnitJob;
+
+static void generate_unit(void *arg) {
+  UnitJob *const job = arg;
+  job->ok = link_generate(&job->options, job->ir, job->object, &job->code, &job->why);
+}
+
+static void finish_unit(void *arg) {
+  UnitJob *const job = arg;
+  job->ok = link_finish(&job->options, job->object, &job->code, &job->why);
+}
+
+enum { THREAD_STACK_BYTES = 8 << 20 };
+
+/* Runs `phase` on every job at once (the first on this thread) and returns when all are done. */
+static void run_phase(UnitJob *jobs, uint32_t units, void (*phase)(void *)) {
+  uv_thread_t threads[EMIT_MAX_UNITS];
+  bool started[EMIT_MAX_UNITS] = {false};
+  for (uint32_t unit = 1; unit < units; unit++) {
+    /* LLVM recurses deep on a big function: a stack as large as the main thread's, not the system's default */
+    const uv_thread_options_t stack = {.flags = UV_THREAD_HAS_STACK_SIZE, .stack_size = THREAD_STACK_BYTES};
+    started[unit] = uv_thread_create_ex(&threads[unit], &stack, phase, &jobs[unit]) == 0;
   }
-  ms_strbuild_free(&why);
+  phase(&jobs[0]);
+  for (uint32_t unit = 1; unit < units; unit++) {
+    if (started[unit]) {
+      (void)uv_thread_join(&threads[unit]);
+    } else {
+      phase(&jobs[unit]); /* no thread to be had: this one runs here */
+    }
+  }
+}
+
+/* How many modules a program may be written as: `MS_UNITS` (and exactly that many, however small the program), or
+ * one per core. A module below UNIT_BYTES of function text is not worth a thread: it loses the calls LLVM inlines
+ * across modules and parses the debug metadata again. */
+enum { UNIT_BYTES = 256 << 10 };
+
+static void unit_limits(BackendOptions *backend) {
+  MsString value = ms_string_empty();
+  const bool set = ms_env_get("MS_UNITS", &value) && ms_string_span(&value).len != 0;
+  uint32_t forced = 0;
+  for (size_t at = 0; set && at < ms_string_span(&value).len && ms_string_span(&value).ptr[at] >= '0' &&
+                      ms_string_span(&value).ptr[at] <= '9' && forced < 1000;
+       at++) {
+    forced = forced * 10 + (uint32_t)(ms_string_span(&value).ptr[at] - '0');
+  }
+  ms_string_release(&value);
+  if (set) {
+    backend->units = forced < 1 ? 1 : forced > EMIT_MAX_UNITS ? EMIT_MAX_UNITS : forced;
+    backend->unit_bytes = 0;
+    return;
+  }
+  const unsigned cores = uv_available_parallelism();
+  backend->units = cores > EMIT_MAX_UNITS ? EMIT_MAX_UNITS : cores;
+  backend->unit_bytes = UNIT_BYTES;
+}
+
+/* The objects of the program's modules, compiled at once: module `unit` goes to `objects[unit]`. */
+static bool make_objects(const MsLinkRequest *request, const BackendProgram *program, const MsStrBuild *irs,
+                         uint32_t units, MsSpan directory, MsSpan opt, MsSpan llc, MsSpan llvm,
+                         const MsStrBuild *objects, MsSpan *error) {
+  const bool debug = request->build_type == MS_BUILD_DEBUG;
+  if (llvm.len != 0) {
+    MsStrBuild load_why = ms_strbuild_new();
+    const bool loaded = llvm_load(llvm, &load_why);
+    if (!loaded) {
+      (void)fail(error, "", ms_strbuild_span(&load_why));
+    }
+    ms_strbuild_free(&load_why);
+    if (!loaded) {
+      return false;
+    }
+  }
+  UnitJob jobs[EMIT_MAX_UNITS];
+  for (uint32_t unit = 0; unit < units; unit++) {
+    jobs[unit] = (UnitJob){.options = {.opt = opt, .llc = llc, .llvm = llvm, .directory = directory, .speed = true,
+                                      .debug = debug, .vectorize = !debug, .module = &program->module,
+                                      .tables = &program->tables, .unit = unit, .units = units},
+                           .ir = ms_strbuild_span(&irs[unit]), .object = ms_strbuild_span(&objects[unit]),
+                           .why = ms_strbuild_new()};
+  }
+  /* LLVM's code generator reads process-wide options that differ between the phases, so no module starts the second
+   * phase before all have finished the first. */
+  run_phase(jobs, units, generate_unit);
+  bool generated = true;
+  for (uint32_t unit = 0; unit < units; unit++) {
+    generated = generated && jobs[unit].ok;
+  }
+  if (generated) {
+    run_phase(jobs, units, finish_unit);
+  } else {
+    for (uint32_t unit = 0; unit < units; unit++) {
+      link_discard(&jobs[unit].code); /* the assembly of the modules that did generate */
+    }
+  }
+  bool ok = true;
+  MsSpan failure = ms_span_of(NULL, 0);
+  for (uint32_t unit = 0; unit < units; unit++) {
+    if (!jobs[unit].ok && ok) {
+      ok = false;
+      failure = ms_strbuild_span(&jobs[unit].why);
+    }
+  }
+  if (!ok) {
+    (void)fail(error, "", failure);
+  }
+  for (uint32_t unit = 0; unit < units; unit++) {
+    ms_strbuild_free(&jobs[unit].why);
+  }
   return ok;
 }
 
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
-  MsStrBuild ir = ms_strbuild_new();
+  MsStrBuild ir[EMIT_MAX_UNITS] = {ms_strbuild_new()};
+  uint32_t units = 1;
   MsStrBuild why = ms_strbuild_new();
-  const BackendOptions backend = {.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG, .verify = true,
+  BackendOptions backend = {.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG, .verify = true,
                                   .tests = request->tests, .bench = request->bench,
                                   .count_ops = request->count_ops || ops_from_environment(),
                                   .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
                                   .wide_hide = request->build_type == MS_BUILD_DEBUG,
                                   .poison_slots = poison_from_environment()};
+  unit_limits(&backend);
   BackendProgram program;
-  bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
+  bool ok = ms_backend_compile(request->program, request->entry, &backend, ir, &units, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
   MsString opt_storage, llc_storage, lld_storage, files_storage, runtime_storage;
   MsStrBuild opt_installed = ms_strbuild_new(), llc_installed = ms_strbuild_new(), lld_installed = ms_strbuild_new();
@@ -176,26 +293,38 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild llvm_installed = ms_strbuild_new();
   if (installed) {
     ms_install_llvm(root_span, &llvm_installed);
+  } else {
+    ms_strbuild_append_text(&llvm_installed, MS_BUILD_LLVM); /* a build tree: the library `make build` fetched */
   }
   const MsSpan llvm = choose_llvm(ms_strbuild_span(&llvm_installed), &llvm_storage);
   const MsSpan lld = setting("MS_LLD", lld_fallback, &lld_storage);
   const MsSpan files = setting("MS_FILES", files_fallback, &files_storage);
   const MsSpan runtime = setting("MS_RUNTIME", runtime_fallback, &runtime_storage);
-  MsSpan inputs[MAX_INPUTS];
-  const size_t count = ok ? collect_inputs(request, runtime, inputs) : 0;
   if (ok && !ms_dir_make_temp(scratch_parent(request->output), ms_span_of_text(".ms-build-"), &scratch)) {
     ok = fail(error, "cannot make a scratch directory beside the output", ms_span_of(NULL, 0));
   }
-  MsStrBuild object = ms_strbuild_new();
+  MsStrBuild object[EMIT_MAX_UNITS];
+  for (uint32_t unit = 0; unit < units; unit++) {
+    object[unit] = ms_strbuild_new();
+    char name[32];
+    snprintf(name, sizeof name, units > 1 ? "program.%u.o" : "program.o", unit);
+    if (ok) {
+      ms_path_append_joined(&object[unit], ms_string_span(&scratch), ms_span_of_text(name));
+    }
+  }
+  MsSpan inputs[MAX_INPUTS];
+  size_t count = 0;
+  for (uint32_t unit = 1; ok && unit < units; unit++) {
+    inputs[count++] = ms_strbuild_span(&object[unit]);
+  }
+  count = ok ? collect_inputs(request, runtime, inputs, count) : 0;
   if (ok) {
-    ms_path_append_joined(&object, ms_string_span(&scratch), ms_span_of_text("program.o"));
-    ok = make_object(request, &program, ms_strbuild_span(&ir), ms_string_span(&scratch), opt, llc, llvm, ms_strbuild_span(&object),
-                     error);
+    ok = make_objects(request, &program, ir, units, ms_string_span(&scratch), opt, llc, llvm, object, error);
   }
   if (ok) {
     const LinkOptions link = {.lld = lld, .llc = llc, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
                               .musl = request->static_libc};
-    const LinkRequest job = {.object = ms_strbuild_span(&object), .inputs = inputs, .input_count = count,
+    const LinkRequest job = {.object = ms_strbuild_span(&object[0]), .inputs = inputs, .input_count = count,
                              .output = request->output};
     MsStrBuild link_why = ms_strbuild_new();
     ok = link_executable(&link, &job, &link_why) || fail(error, "", ms_strbuild_span(&link_why));
@@ -205,7 +334,9 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
     ms_path_remove_tree(ms_string_span(&scratch));
   }
   ms_string_release(&scratch);
-  ms_strbuild_free(&object);
+  for (uint32_t unit = 0; unit < units; unit++) {
+    ms_strbuild_free(&object[unit]);
+  }
   ms_string_release(&runtime_storage);
   ms_strbuild_free(&root);
   ms_strbuild_free(&runtime_installed);
@@ -221,6 +352,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   ms_string_release(&opt_storage);
   ms_backend_program_free(&program);
   ms_strbuild_free(&why);
-  ms_strbuild_free(&ir);
+  for (uint32_t unit = 0; unit < units; unit++) {
+    ms_strbuild_free(&ir[unit]);
+  }
   return ok;
 }

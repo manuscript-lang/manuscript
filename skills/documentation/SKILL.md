@@ -5,7 +5,7 @@ description: Write, revamp, or audit Manuscript documentation: tutorials, canoni
 
 # Documentation
 
-Use for `README.md`, `documentation/`, `crates/ms-tooling/src/guide/`, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../wiki/tooling-and-docs/index.md).
+Use for `README.md`, `documentation/`, `stdlib/*.ms` guide comment blocks, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../wiki/tooling-and-docs/index.md).
 
 - Start with the reader's task. Explain one concept at a time in plain language with a small example; describe Equal/Hashable through comparison, lookup, and deduplication. Introduce dependencies before use.
 - Keep only simple, focused examples and alternatives. Avoid contrived domain models, error hierarchies, and helper layers added just to make an example work. Keep control flow shallow; simplify the scenario instead of spreading deep nesting across more helpers. See the [example simplicity lesson](../../wiki/language/error-translation-does-not-need-a-dedicated-standard-helper.md).
@@ -25,7 +25,7 @@ Use for `README.md`, `documentation/`, `crates/ms-tooling/src/guide/`, or `websi
 
 For a docs revamp, onboarding, reading order, or landing page, read [VISION.md](../../VISION.md) for positioning. Name the reader's task, the obstacle, and the observable result that removes it. Improve through structure, examples, and deletion as well as prose.
 
-1. **Establish what ships.** Compare with current `main`; use the agent skill sources (`crates/ms-tooling/data/agent-skill`), `ms search_symbol`, source, and tests as evidence (a vision is not proof). Trace changed concepts through the README, tutorials, rules, library comments, CLI help, and agent cheat sheet; searching an old spelling misses stale explanations. Check incoming links before deleting records.
+1. **Establish what ships.** Compare with current `main`; use the agent skill sources (`agent-skill`), `ms search_symbol`, source, and tests as evidence (a vision is not proof). Trace changed concepts through the README, tutorials, rules, library comments, CLI help, and agent cheat sheet; searching an old spelling misses stale explanations. Check incoming links before deleting records.
 2. **Audit the journey.** Read homepage, hub, quickstart, tour, recipes, and indexes in order, with [navigation](../../website/data/navigation.toml), titles, weights, and previous/next links. Learning, building, and reference are distinct intents; keep one reading order everywhere and preserve useful routes with redirects.
 3. **Homepage.** A focused hero: headline, short description, primary trial action, secondary tour link, and a compact runnable program with its actual output. Claims about speed or adoption need evidence; mark aspirations. Work in project-owned Hugo overrides.
 4. **Teach a finishable path.** First successful run before manifest internals; state directories, prerequisites, and platform differences; confirm the installed release supports the syntax shown. Trim filler and bookkeeping from reader pages.

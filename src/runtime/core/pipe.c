@@ -402,8 +402,8 @@ static void after_consume(PipeCell *cell) {
 /* ---- cancellation points ---- */
 
 /* Every 256th transfer on a thread passes a scheduler point and a cancellation check, so a task that always finds work
- * still sees timers, time limits and cancellation. Call it where the operation holds nothing; true means the caller
- * returns its zero result now. */
+ * still sees timers, time limits and cancellation. True when a cancel is pending: the entry that holds nothing ends its
+ * call with ms_sched_cancel_return. */
 static bool cancellation_point(void) {
   static _Thread_local uint32_t operations; /* per scheduler thread */
   operations++;
@@ -411,14 +411,7 @@ static bool cancellation_point(void) {
     return false;
   }
   ms_task_yield();
-  if (ms_cancel_flag() == 0) {
-    return false;
-  }
-  if (ms_sched()->cancel_edges) {
-    ms_cancel_deliver(); /* the caller's compiled code leaves on the `unwinding` byte */
-    return true;
-  }
-  ms_cancelled(); /* a program without cancel edges is left by a jump */
+  return ms_cancel_flag() != 0;
 }
 
 /* ---- the program ABI ---- */
@@ -496,7 +489,9 @@ int64_t msrt_pipe_write(int64_t pipe, uint8_t *value, const MsTypeDesc *desc) {
   if (reader == 0) {
     const int64_t status = backlog(cell) > cell->capacity ? MS_PIPE_FULL : MS_PIPE_WRITTEN;
     cell_unlock(cell);
-    (void)cancellation_point();
+    if (cancellation_point()) {
+      ms_sched_cancel_return();
+    }
     return status;
   }
   /* The reader was parked, so the queue held nothing else. */
@@ -567,6 +562,7 @@ int64_t msrt_pipe_read(int64_t pipe) {
 
 uint8_t msrt_pipe_try(int64_t pipe, const MsTypeDesc *desc, uint8_t *out) {
   if (cancellation_point()) {
+    ms_sched_cancel_return();
     return 0;
   }
   PipeCell *cell = cell_for(pipe);

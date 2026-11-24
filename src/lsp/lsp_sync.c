@@ -61,10 +61,9 @@ bool lsp_sync_change(LspDocList *docs, bool open, const MsJson *params) {
   if (bundled && !open) return true; /* a bundled module is read-only */
   if (open && bundled) {
     /* The client's text is not trusted: the module is what this executable carries. */
-    const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
+    MsSpan name = {0};
     MsStdSource source;
-    if (!ms_span_starts_with(uri->text, prefix) ||
-        !ms_std_source_find(ms_span_of(uri->text.ptr + prefix.len, uri->text.len - prefix.len), &source)) {
+    if (!lsp_uri_standard_module(uri->text, &name) || !ms_std_source_find(name, &source)) {
       return true;
     }
     lsp_doc_set(docs, uri->text, (int64_t)version, source.text);

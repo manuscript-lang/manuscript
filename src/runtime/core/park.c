@@ -16,6 +16,9 @@ enum {
   IDLE_TRIM_WARM = 256, /* pooled stacks kept with their pages when the scheduler idles */
 };
 
+/* The bits of a waiter's events that say what the waiter is; the poller never sees them. */
+#define WAITER_PRIVATE ((uint32_t)MS_WAIT_PROMISE | MS_WAIT_NOTIFY | ((uint32_t)(MS_FD_NOTIFY_KINDS - 1) << MS_WAIT_KIND_SHIFT))
+
 static const char deadlock_message[] =
   "deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, "
   "I/O or cancellation";
@@ -76,7 +79,7 @@ static void unlink_node(MsSched *sched, MsFdQueue *queue, MsNode node) {
  * if every waiter keeps it. */
 static uint32_t combined_events(const MsSched *sched, const MsFdQueue *queue, uint32_t asked) {
   for (MsNode node = queue->oldest; node != 0; node = sched->waiters.ptr[node - 1].next) {
-    const uint32_t other = sched->waiters.ptr[node - 1].events & ~(uint32_t)MS_WAIT_PROMISE;
+    const uint32_t other = sched->waiters.ptr[node - 1].events & ~WAITER_PRIVATE;
     asked = ((asked | other) & ~(MS_WAIT_KEEP | MS_WAIT_EDGE)) | (asked & other & (MS_WAIT_KEEP | MS_WAIT_EDGE));
   }
   return asked;
@@ -143,7 +146,8 @@ static void leave_descriptor(MsSched *sched, MsTask *task) {
   task->wait_fd = -1;
 }
 
-int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events) {
+/* Registers a waiter of `fd` that is not a task: `tag` (MS_WAIT_PROMISE, or MS_WAIT_NOTIFY with a kind) says whose. */
+static int wait_begin(uint64_t id, int fd, uint32_t events, uint32_t tag) {
   MsSched *const sched = ms_sched();
   MsFdQueue *const queue = queue_of(sched, fd);
   const int armed = sched->poll.watch(fd, combined_events(sched, queue, events));
@@ -151,23 +155,55 @@ int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events) {
     return armed;
   }
   const MsNode node = node_alloc(sched);
-  sched->waiters.ptr[node - 1] = (MsWaiter){.owner = id, .events = events | MS_WAIT_PROMISE, .fd = fd};
+  sched->waiters.ptr[node - 1] = (MsWaiter){.owner = id, .events = events | tag, .fd = fd};
   append_node(sched, queue, node);
   sched->fd_waiting++;
   return MS_POLL_ARMED;
 }
 
-void ms_sched_fd_wait_end(uint64_t id, int fd) {
+static void wait_end(uint64_t id, int fd, uint32_t tag) {
   MsSched *const sched = ms_sched();
   if (fd < 0 || (size_t)fd >= sched->fd_queues.len) {
     return;
   }
   for (MsNode node = sched->fd_queues.ptr[fd].oldest; node != 0; node = sched->waiters.ptr[node - 1].next) {
     const MsWaiter *const waiter = &sched->waiters.ptr[node - 1];
-    if (waiter->owner == id && (waiter->events & MS_WAIT_PROMISE) != 0) {
+    if (waiter->owner == id && (waiter->events & WAITER_PRIVATE) == tag) {
       leave_node(sched, fd, node);
       return;
     }
+  }
+}
+
+int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events) { return wait_begin(id, fd, events, MS_WAIT_PROMISE); }
+
+void ms_sched_fd_wait_end(uint64_t id, int fd) { wait_end(id, fd, MS_WAIT_PROMISE); }
+
+static uint32_t notify_tag(int kind) { return MS_WAIT_NOTIFY | (uint32_t)kind << MS_WAIT_KIND_SHIFT; }
+
+int ms_sched_fd_notify_kind(MsFdNotify notify) {
+  MsSched *const sched = ms_sched();
+  for (int kind = 0; kind < MS_FD_NOTIFY_KINDS; kind++) {
+    if (sched->notify[kind] == NULL) {
+      sched->notify[kind] = notify;
+    }
+    if (sched->notify[kind] == notify) {
+      return kind;
+    }
+  }
+  return -1;
+}
+
+int ms_sched_fd_notify(int kind, uint64_t id, int fd, uint32_t events) {
+  if (kind < 0 || kind >= MS_FD_NOTIFY_KINDS || fd < 0) {
+    return MS_POLL_FAILED;
+  }
+  return wait_begin(id, fd, events & ~WAITER_PRIVATE, notify_tag(kind));
+}
+
+void ms_sched_fd_notify_end(int kind, uint64_t id, int fd) {
+  if (kind >= 0 && kind < MS_FD_NOTIFY_KINDS) {
+    wait_end(id, fd, notify_tag(kind));
   }
 }
 
@@ -316,9 +352,13 @@ static void deliver(MsSched *sched, int fd, uint32_t bits) {
     const MsWaiter waiter = sched->waiters.ptr[node - 1];
     const MsNode this_node = node;
     node = waiter.next;
-    if ((waiter.events & MS_WAIT_PROMISE) != 0) {
-      const uint32_t wanted = bits & (waiter.events | MS_WAIT_HUP) & ~(uint32_t)MS_WAIT_PROMISE;
-      if (wanted != 0 && sched->hooks.fd_ready(waiter.owner, wanted)) {
+    if ((waiter.events & (MS_WAIT_PROMISE | MS_WAIT_NOTIFY)) != 0) {
+      /* A promise or a notify function: it answers whether it is done with the descriptor. */
+      const uint32_t wanted = bits & (waiter.events | MS_WAIT_HUP) & (MS_WAIT_READ | MS_WAIT_WRITE | MS_WAIT_HUP);
+      const MsFdNotify notify = (waiter.events & MS_WAIT_PROMISE) != 0
+                                  ? sched->hooks.fd_ready
+                                  : sched->notify[waiter.events >> MS_WAIT_KIND_SHIFT & (MS_FD_NOTIFY_KINDS - 1)];
+      if (wanted != 0 && notify != NULL && notify(waiter.owner, wanted)) {
         leave_node(sched, fd, this_node);
       }
       continue;
@@ -430,7 +470,7 @@ bool ms_park_drain_mail(MsSched *sched) {
   return stopped || sched->ready_len != before; /* a stop request is acted on by the idle loop's next turn */
 }
 
-void ms_park_idle(MsSched *sched) {
+static void idle_until_ready(MsSched *sched) {
   for (;;) {
     /* Tasks in a shielded cleanup keep waiting; they see the stop request afterwards. */
     if (ms_sched_stop_request() != 0 && ms_park_cancel_all(sched)) {
@@ -474,6 +514,13 @@ void ms_park_idle(MsSched *sched) {
     }
     ms_park_poll(sched, timeout_ns);
     ms_isolate_idle_leave();
+  }
+}
+
+void ms_park_idle(MsSched *sched) {
+  idle_until_ready(sched);
+  if (sched->hooks.idle_over != NULL) {
+    sched->hooks.idle_over();
   }
 }
 

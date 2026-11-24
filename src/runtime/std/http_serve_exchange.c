@@ -6,6 +6,7 @@
 
 #include "base/alloc.h"
 #include "base/chars.h"
+#include "runtime/core/unwind.h"
 #include "runtime/std/http_serve_internal.h"
 #include "runtime/std/time_internal.h"
 

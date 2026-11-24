@@ -2,9 +2,8 @@ name: Nightly safety
 
 # Slow safety checks that do not fit the pull request budget. They run on main only, once a night, and on demand.
 # A failure here is a real bug: file an issue and fix the cause, never skip the check.
-#   miri          the runtime and the native crates under Miri, one job, crate by crate (needs nightly; see documentation/contributing/rust-toolchain.md)
+#   conform-release  replays the run and test phases with the Release build (CI replays Debug)
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
-#   drift-check   runs the corpus under LLVM and Cranelift and fails on any difference
 #   poison-check  runs the corpus under both backends with dead stack slots filled with a pattern
 #   ownership-fuzz  random move/borrow/closure programs, leak-counted, Debug vs Release
 #   view-matrix   generated view programs (trim, slice, split) with temporaries after them, poisoned, in Debug and Release
@@ -22,34 +21,7 @@ permissions:
   contents: read
   issues: write
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  miri:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install nightly Rust with Miri
-        run: rustup toolchain install nightly --profile minimal -c miri
-      - name: Miri on the runtime and the native crates
-        # One job, the crates in sequence; every crate runs even when an earlier one fails, and the
-        # step fails at the end. `ms-std-fs`, `ms-std-net` and `ms-std-process` need real files,
-        # sockets and processes, which Miri cannot provide, so they stay out. `ms-rt-abi` reads its
-        # header file in a test, which Miri's isolation forbids.
-        run: |
-          failed=""
-          for crate in ms-rt ms-rt-abi ms-std-core ms-std-bigint ms-std-crypto ms-std-url ms-std-json ms-std-regex ms-std-archive ms-std-system ms-std-terminal; do
-            flags="-Zmiri-ignore-leaks"
-            [ "$crate" = ms-rt-abi ] && flags="$flags -Zmiri-disable-isolation"
-            echo "::group::miri $crate"
-            MIRIFLAGS="$flags" cargo +nightly miri test -p "$crate" --lib || failed="$failed $crate"
-            echo "::endgroup::"
-          done
-          if [ -n "$failed" ]; then echo "::error::Miri failed:$failed"; exit 1; fi
-
   sweeps:
     if: github.ref == 'refs/heads/main'
     name: ${{ matrix.check }}
@@ -58,13 +30,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, drift-check, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate]
+        check: [cancel-sweep, conform-release, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate]
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/rust-env
-        with:
-          os: linux
-          arch: amd64
+      - uses: ./.github/actions/toolchain
       - run: make ${{ matrix.check }}
 
   perf-counts:
@@ -75,10 +44,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/rust-env
-        with:
-          os: linux
-          arch: amd64
+      - uses: ./.github/actions/toolchain
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends valgrind
       - name: Count instructions
         id: counts

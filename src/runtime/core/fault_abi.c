@@ -1,6 +1,8 @@
 /* The exported fault, cleanup, shield and guard entry points. See fault_abi.h. */
 #include "runtime/core/fault_abi.h"
 
+#include "abi/status.h"
+
 #include "base/strbuild.h"
 #include "runtime/core/scheduler.h"
 
@@ -103,6 +105,12 @@ void ms_sched_cancel_return(void) {
     ms_cancel_deliver();
   } else {
     ms_cancelled();
+  }
+}
+
+void msrt_native_failed(uint8_t status) {
+  if (status == MS_STATUS_CANCELLED || ms_cancel_flag() != 0) {
+    ms_sched_cancel_return();
   }
 }
 

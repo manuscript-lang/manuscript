@@ -7,6 +7,8 @@
  */
 #include "runtime/core/promise_table.h"
 
+#include <stdatomic.h>
+
 #include "runtime/core/cancel.h"
 #include "runtime/core/fault.h"
 #include "runtime/core/fault_kept.h"
@@ -27,31 +29,6 @@ void promise_fail(const char *text) { ms_fault_text(MS_FAULT_KIND_FAULT, text); 
 
 static void drop_closure(uint8_t *closure) { msrt_obj_drop((MsObj *)__builtin_assume_aligned(closure, _Alignof(MsObj))); }
 
-static uint64_t own_isolate(void) { return (uint64_t)(ms_sched()->isolate & 0x3fu); }
-
-MsPromise promise_make_id(size_t row) {
-  return (MsPromise)(own_isolate() << ISOLATE_SHIFT | (uint64_t)promise_table.hot.ptr[row].generation << 32 | (uint64_t)(row + 1));
-}
-
-/* Whether `id` belongs to another isolate's promise_table. */
-bool promise_is_foreign(MsPromise id) { return ((uint64_t)id >> ISOLATE_SHIFT) != own_isolate(); }
-
-/* The row of `id`, or -1 for a stale, closed or foreign id. */
-ptrdiff_t promise_row_of(MsPromise id) {
-  if (promise_is_foreign(id)) {
-    return -1;
-  }
-  const uint64_t low = (uint64_t)id & 0xffffffffu;
-  if (low == 0 || low > promise_table.hot.len) {
-    return -1;
-  }
-  const size_t row = (size_t)low - 1;
-  if (promise_table.hot.ptr[row].state == STATE_FREE || (uint64_t)promise_table.hot.ptr[row].generation != (((uint64_t)id >> 32) & GENERATION_MASK)) {
-    return -1;
-  }
-  return (ptrdiff_t)row;
-}
-
 size_t promise_row_or_fault(MsPromise id) {
   const ptrdiff_t row = promise_row_of(id);
   if (row < 0) {
@@ -60,37 +37,30 @@ size_t promise_row_or_fault(MsPromise id) {
   return (size_t)row;
 }
 
-enum { STARTED_CAPTURE_MAX = 64 };
-
-/* Remembers where the running code is, so a fault in the work can say what started it. */
-static void capture_started(Cold *cold) {
-  uintptr_t found[STARTED_CAPTURE_MAX];
-  const size_t count = ms_fault_capture_frames(found, STARTED_CAPTURE_MAX);
-  cold->started = count == 0 ? NULL : ms_alloc(count * sizeof found[0]);
-  if (cold->started != NULL) {
-    __builtin_memcpy(cold->started, found, count * sizeof found[0]);
-    cold->started_count = count;
+/* Remembers the program line that started the work (`site`, or NULL for none), so a fault in the work can name it.
+ * The compiler passes a literal, whose bytes live forever; any other string is copied. */
+static void keep_started(Cold *cold, const MsString *site) {
+  if (site == NULL) {
+    return;
   }
-}
-
-void promise_release_started(Cold *cold) {
-  ms_free(cold->started);
-  cold->started = NULL;
-  cold->started_count = 0;
+  const uint64_t tag = site->tagged >> MS_STRING_TAG_SHIFT;
+  cold->started = tag == MS_STRING_TAG_STATIC || tag == MS_STRING_TAG_INLINE ? *site : ms_string_clone(site);
 }
 
 void promise_release_result(size_t row) {
   Cold *const cold = &promise_table.cold.ptr[row];
-  if (cold->result != NULL) {
-    ms_slot_drop_owned(cold->desc, cold->result);
+  uint8_t *const bytes = promise_result_bytes(cold);
+  if (bytes != NULL) {
+    ms_slot_drop_owned(cold->desc, bytes);
     ms_free(cold->result);
   }
   cold->result = NULL;
+  cold->small_result = false;
   cold->desc = NULL;
 }
 
 static void reset_row(size_t row) {
-  promise_table.cold.ptr[row] = (Cold){.deadline = NO_TIME, .limit = NO_TIME, .fd = -1};
+  promise_table.cold.ptr[row] = (Cold){.deadline = NO_TIME, .limit = NO_TIME, .fd = -1, .started = ms_string_empty()};
   Hot *const hot = &promise_table.hot.ptr[row];
   hot->flags = 0;
   hot->token = 0;
@@ -169,6 +139,18 @@ static void drop_block(void *block, const MsTypeDesc *desc, int64_t pipe) {
   ms_free(block);
 }
 
+/* The row has its result: it finishes now, or once its work's task has ended. */
+static void settle(Hot *hot, Cold *cold, size_t row, bool failed) {
+  cold->retry = NULL;
+  if (cold->closure != NULL || (hot->flags & FLAG_REMOTE) != 0) {
+    /* The work's task is still ending: its owned resources close first. */
+    hot->flags |= (uint16_t)(FLAG_HELD | (failed ? FLAG_HELD_ERROR : 0));
+    return;
+  }
+  hot->state = failed ? STATE_ERROR : STATE_OK;
+  promise_wake(row);
+}
+
 /* Completes `row` with `block` unless it already finished; `block` is taken either way. */
 static void complete(size_t row, void *block, const MsTypeDesc *desc, bool failed, int64_t pipe) {
   Hot *const hot = &promise_table.hot.ptr[row];
@@ -182,14 +164,25 @@ static void complete(size_t row, void *block, const MsTypeDesc *desc, bool faile
   cold->result = block;
   cold->desc = desc;
   cold->pipe = pipe;
-  cold->retry = NULL;
-  if (cold->closure != NULL || (hot->flags & FLAG_REMOTE) != 0) {
-    /* The work's task is still ending: its owned resources close first. */
-    hot->flags |= (uint16_t)(FLAG_HELD | (failed ? FLAG_HELD_ERROR : 0));
+  settle(hot, cold, row, failed);
+}
+
+/* Completes `row` with the `desc` value at `value`, which fits the row; the value is taken either way. */
+static void complete_small(size_t row, const uint8_t *value, const MsTypeDesc *desc, bool failed) {
+  Hot *const hot = &promise_table.hot.ptr[row];
+  Cold *const cold = &promise_table.cold.ptr[row];
+  if (hot->state != STATE_PENDING || (hot->flags & FLAG_HELD) != 0) {
+    uint64_t copy[PROMISE_SMALL_WORDS];
+    __builtin_memcpy(copy, value, desc->size);
+    ms_slot_drop_owned(desc, (uint8_t *)copy);
     return;
   }
-  hot->state = failed ? STATE_ERROR : STATE_OK;
-  promise_wake(row);
+  __builtin_memcpy(cold->small, value, desc->size);
+  cold->small_result = true;
+  cold->result = NULL;
+  cold->desc = desc;
+  cold->pipe = 0;
+  settle(hot, cold, row, failed);
 }
 
 /* Mails a result to the isolate that owns `id`; a stale id, or an owner that is gone, drops it. */
@@ -214,6 +207,10 @@ static void send_done(MsPromise id, void *block, const MsTypeDesc *desc, bool fa
 void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool failed) {
   const ptrdiff_t row = promise_row_of(id);
   const size_t size = desc->size;
+  if (row >= 0 && size <= sizeof promise_table.cold.ptr[row].small) {
+    complete_small((size_t)row, value, desc, failed);
+    return;
+  }
   uint8_t *const block = ms_alloc(size > 0 ? size : 1);
   __builtin_memcpy(block, value, size);
   if (row < 0) {
@@ -242,6 +239,11 @@ void ms_promise_io_done(MsPromise id) {
 }
 
 void ms_promise_io_done_int(MsPromise id, int64_t value) {
+  const ptrdiff_t row = promise_row_of(id);
+  if (row >= 0) {
+    complete_small((size_t)row, (const uint8_t *)&value, &ms_desc_int, false);
+    return;
+  }
   int64_t *const block = ms_alloc(sizeof value);
   *block = value;
   ms_promise_io_done_block(id, block, &ms_desc_int, 0);
@@ -254,13 +256,14 @@ bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
     return ms_remote_take(id, desc, out);
   }
   const ptrdiff_t row = promise_row_of(id);
-  if (row < 0 || promise_table.cold.ptr[row].result == NULL) {
+  if (row < 0 || promise_result_bytes(&promise_table.cold.ptr[row]) == NULL) {
     return false;
   }
   Cold *const cold = &promise_table.cold.ptr[row];
-  __builtin_memcpy(out, cold->result, desc->size);
+  __builtin_memcpy(out, promise_result_bytes(cold), desc->size);
   ms_free(cold->result);
   cold->result = NULL;
+  cold->small_result = false;
   cold->desc = NULL;
   promise_table.hot.ptr[row].state = STATE_TAKEN;
   return true;
@@ -326,9 +329,9 @@ static void work_ended(MsPromise id, MsGuardStatus status, MsFaultText message) 
   Hot *const hot = &promise_table.hot.ptr[row];
   Cold *const cold = &promise_table.cold.ptr[row];
   MsObj *const closure = cold->closure;
-  if (status == MS_GUARD_FAULT && cold->started != NULL) {
+  if (status == MS_GUARD_FAULT && !ms_string_is_empty(&cold->started)) {
     /* The work ran on another isolate, whose report cannot name where this one started it. */
-    ms_fault_text_add_started(&message, cold->started, cold->started_count);
+    ms_fault_text_add_started(&message, ms_string_span(&cold->started));
   }
   promise_release_started(cold);
   if (closure != NULL) {
@@ -384,8 +387,8 @@ static void finish_report(size_t row, MsGuardStatus status, MsFaultText *message
     return;
   }
   Cold *const cold = &promise_table.cold.ptr[row];
-  if (cold->started != NULL) {
-    ms_fault_text_add_started(message, cold->started, cold->started_count);
+  if (!ms_string_is_empty(&cold->started)) {
+    ms_fault_text_add_started(message, ms_string_span(&cold->started));
     promise_release_started(cold);
   }
   const uint64_t capture = ms_task_capture();
@@ -410,7 +413,7 @@ static void work_entry(void *argument) {
   ms_shield_exit();
 }
 
-static void start_task(MsPromise id, MsObj *closure, bool rooted) {
+static void start_task(MsPromise id, MsObj *closure, const MsString *site, bool rooted) {
   const size_t row = promise_row_or_fault(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   if (cold->closure != NULL || (promise_table.hot.ptr[row].flags & FLAG_DEFERRED) != 0) {
@@ -419,7 +422,7 @@ static void start_task(MsPromise id, MsObj *closure, bool rooted) {
   cold->closure = closure;
   cold->creator = rooted ? 0 : ms_task_current();
   cold->started_at = ms_cleanup_base();
-  capture_started(cold);
+  keep_started(cold, site);
   if (!rooted) {
     link_started(row);
   }
@@ -441,48 +444,48 @@ static void start_task(MsPromise id, MsObj *closure, bool rooted) {
 
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
-static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
-  if (ms_workers_limit() <= 1) {
-    return false;
-  }
+static bool queue_work(MsPromise id, MsObj *closure, const MsString *site) {
   const size_t row = promise_row_or_fault(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
   if (cold->closure != NULL || (hot->flags & (FLAG_DEFERRED | FLAG_REMOTE)) != 0) {
     promise_fail("promise: already started");
   }
-  const int64_t now = ms_sched_now();
-  if (ms_workers_stress() && age_ns < MS_WORKER_BEAT_NS) {
-    age_ns = MS_WORKER_BEAT_NS; /* stress mode queues every start aged, so any idle isolate may take it */
-  }
-  if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, now - age_ns)) {
+  /* Stress mode queues every start aged, so any idle isolate may take it. */
+  if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, ms_workers_stress(), &cold->queue_sequence)) {
     return false;
   }
   cold->closure = closure;
   cold->creator = ms_task_current();
   cold->started_at = ms_cleanup_base();
-  capture_started(cold);
+  keep_started(cold, site);
   link_started(row);
+  if (ms_workers_limit() <= 1) {
+    /* No other thread can take it: it reads as deferred work its waiter runs, and starts at the next switch. */
+    hot->flags |= FLAG_DEFERRED | FLAG_QUEUED;
+    ms_sched_note_queued();
+    return true;
+  }
   hot->flags |= FLAG_DEFERRED | FLAG_QUEUED | FLAG_REMOTE_WAKE;
   ms_workers_nudge();
   return true;
 }
 
-void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closure, false); }
+void ms_promise_start_here(MsPromise id, MsObj *closure, const MsString *site) { start_task(id, closure, site, false); }
 
 /* For work the runtime starts from the scheduler's own contexts, which run on whichever task last switched away: no task
  * owns it, so it is on no task's list of started promises (a task that ends cancels the promises on its list). */
-void ms_promise_start_detached(MsPromise id, MsObj *closure) { start_task(id, closure, true); }
+void ms_promise_start_detached(MsPromise id, MsObj *closure) { start_task(id, closure, NULL, true); }
 
-void ms_promise_start(MsPromise id, MsObj *closure) {
-  if (!queue_work(id, closure, 0)) {
-    start_task(id, closure, false);
+void ms_promise_start(MsPromise id, MsObj *closure, const MsString *site) {
+  if (!queue_work(id, closure, site)) {
+    start_task(id, closure, site, false);
   }
 }
 
 /* Sends the work of `id` to run as a task on `target`, as if that isolate had taken it from the queue: the row reads as
  * queued work no queue holds, so its waiter finds it remote. False when the mail cannot be sent. */
-static bool send_work(MsPromise id, MsObj *closure, uint32_t target) {
+static bool send_work(MsPromise id, MsObj *closure, const MsString *site, uint32_t target) {
   const size_t row = promise_row_or_fault(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
@@ -498,20 +501,20 @@ static bool send_work(MsPromise id, MsObj *closure, uint32_t target) {
   cold->closure = closure;
   cold->creator = ms_task_current();
   cold->started_at = ms_cleanup_base();
-  capture_started(cold);
+  keep_started(cold, site);
   link_started(row);
   hot->flags |= FLAG_DEFERRED | FLAG_QUEUED | FLAG_REMOTE_WAKE;
   return true;
 }
 
-void ms_promise_start_spread(MsPromise id, MsObj *closure) {
+void ms_promise_start_spread(MsPromise id, MsObj *closure, const MsString *site) {
   const uint32_t target = ms_workers_spread_pick();
   if (target == MS_NO_ISOLATE || target == ms_sched()->isolate) {
-    start_task(id, closure, false);
+    start_task(id, closure, site, false);
     return;
   }
-  if (!send_work(id, closure, target)) {
-    start_task(id, closure, false);
+  if (!send_work(id, closure, site, target)) {
+    start_task(id, closure, site, false);
   }
 }
 
@@ -521,7 +524,7 @@ bool promise_claim_queued(size_t row) {
   Hot *const hot = &promise_table.hot.ptr[row];
   Cold *const cold = &promise_table.cold.ptr[row];
   hot->flags &= (uint16_t)~FLAG_QUEUED;
-  const bool ours = ms_queue_remove(ms_sched()->isolate, (uint64_t)promise_make_id(row));
+  const bool ours = ms_queue_remove(ms_sched()->isolate, (uint64_t)promise_make_id(row), cold->queue_sequence);
   if (cold->creator != 0 && ours) {
     unlink_started(row, cold->creator);
     cold->creator = 0;
@@ -540,11 +543,11 @@ void ms_promise_defer(MsPromise id, MsObj *closure) {
   promise_table.cold.ptr[row].closure = closure;
 }
 
-void ms_promise_start_idle(MsPromise id, MsObj *closure) {
+void ms_promise_start_idle(MsPromise id, MsObj *closure, const MsString *site) {
   if (ms_task_count() <= 1) {
     ms_promise_defer(id, closure);
   } else {
-    start_task(id, closure, false);
+    start_task(id, closure, site, false);
   }
 }
 
@@ -697,38 +700,121 @@ static bool run_own(MsPromise id) {
   return cold->task != 0;
 }
 
+/* This thread's looking state (see ms_isolate_look_begin): on from the first timed rest for queued work until the
+ * thread takes work, runs something of its own, or has seen the queues empty for MS_WORKER_EMPTY_LOOKS looks. */
+typedef struct Look {
+  bool on;
+  uint32_t empty;  /* looks in a row that found every queue empty */
+  int64_t rest_ns; /* the shortest rest before the next look */
+} Look;
+static _Thread_local Look look;
+
+static void look_start(void) {
+  if (!look.on) {
+    look = (Look){.on = true, .rest_ns = MS_WORKER_BEAT_NS};
+    ms_isolate_look_begin();
+  }
+}
+
+static void look_stop(void) {
+  if (look.on) {
+    look.on = false;
+    ms_isolate_look_end();
+  }
+}
+
+/* Whether any queue this isolate may take from holds work. */
+static bool queues_hold_work(uint32_t self) {
+  for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
+    if ((other == self || ms_isolate_live(other)) && ms_queue_length(other) != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* The scheduler is about to block: take the oldest queued work of this isolate (its owner is idle) or of another that
- * waited out the beat. */
+ * waited out the beat. Otherwise say how long to rest: until the oldest entry may be taken, and while this isolate
+ * is looking, at least its look rest, which doubles with every look that takes nothing. */
 static bool idle_work(int64_t *wait_ns) {
   const uint32_t self = ms_sched()->isolate;
+  *wait_ns = -1;
+  if (ms_workers_limit() <= 1 && ms_queue_length(self) == 0) {
+    return false; /* one thread and nothing queued: no clock, no other queue to look at */
+  }
   const int64_t now = ms_sched_now();
   int64_t wait = -1;
   for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
     const bool own = other == self;
-    if (!own && !ms_isolate_live(other)) {
+    if ((!own && !ms_isolate_live(other)) || ms_queue_length(other) == 0) {
       continue;
     }
     const int64_t beat = own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS;
     uint64_t id = 0;
     void *work = NULL;
-    if (ms_queue_steal(other, now - beat, &id, &work)) {
+    if (ms_queue_steal(other, now, beat, &id, &work)) {
       if (own ? run_own((MsPromise)id) : run_taken((MsPromise)id, work)) {
+        look_stop();
+        if (queues_hold_work(self)) {
+          ms_workers_nudge_next(); /* this isolate is busy now: the rest needs another one looking */
+        }
         return true;
       }
       continue;
     }
-    const int64_t oldest = ms_queue_oldest(other);
+    const int64_t oldest = ms_queue_oldest(other, now);
     if (oldest != INT64_MAX) {
       const int64_t left = oldest + beat - now;
       wait = wait < 0 || left < wait ? left : wait;
     }
   }
-  if (wait > 0 || wait < 0) {
-    *wait_ns = wait;
+  const bool nudged = ms_isolate_take_nudge();
+  if (wait < 0) {
+    /* Nothing is queued. An isolate woken for work that its waiter ran first keeps looking for a while, so the next
+     * starts of the burst wake nobody. */
+    if (nudged) {
+      look_start();
+    }
+    if (!look.on) {
+      return false;
+    }
+    look.empty++;
+    if (look.empty > MS_WORKER_EMPTY_LOOKS) {
+      look_stop();
+      if (!queues_hold_work(self)) {
+        return false; /* a start from here on finds nobody looking and wakes an isolate */
+      }
+      look_start();
+    }
+    wait = look.rest_ns;
   } else {
-    *wait_ns = 0;
+    look_start();
+    look.empty = 0;
+    if (wait < look.rest_ns && ms_workers_limit() > 1) {
+      wait = look.rest_ns;
+    }
   }
+  look.rest_ns = look.rest_ns * 2 < MS_WORKER_LOOK_MAX_NS ? look.rest_ns * 2 : MS_WORKER_LOOK_MAX_NS;
+  *wait_ns = wait > 0 ? wait : 0;
   return false;
+}
+
+/* The scheduler left its idle path with something of its own to run: this isolate is not looking for work. */
+static void idle_over(void) { look_stop(); }
+
+/* One thread runs everything: its queued work starts as tasks, oldest first, before the next switch, which is when
+ * a task started at once would first have run. With more threads the queue is left to waiters, the idle turn and
+ * thieves. */
+static void start_queued(void) {
+  if (ms_workers_limit() > 1) {
+    return;
+  }
+  const uint32_t self = ms_sched()->isolate;
+  uint64_t id = 0;
+  void *work = NULL;
+  while (ms_queue_steal(self, 0, -1, &id, &work)) {
+    (void)run_own((MsPromise)id);
+  }
 }
 
 /* Whether work this isolate would take now is waiting (checked once the isolate is marked sleeping). */
@@ -737,8 +823,8 @@ static bool work_pending(void) {
   const int64_t now = ms_sched_now();
   for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
     const bool own = other == self;
-    if ((own || ms_isolate_live(other)) &&
-      ms_queue_oldest(other) <= now - (own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS)) {
+    if ((own || ms_isolate_live(other)) && ms_queue_length(other) != 0 &&
+      ms_queue_oldest(other, now) <= now - (own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS)) {
       return true;
     }
   }
@@ -844,6 +930,8 @@ void ms_promise_hooks(MsSchedHooks *hooks) {
   hooks->fd_ready = promise_fd_ready;
   hooks->mail = promise_mail;
   hooks->idle = idle_work;
+  hooks->idle_over = idle_over;
+  hooks->start_queued = start_queued;
   hooks->pending = work_pending;
   ms_group_hooks(hooks);
   hooks->teardown = ms_promises_teardown;

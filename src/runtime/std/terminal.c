@@ -4,6 +4,7 @@
 #define _DARWIN_C_SOURCE 1 /* <signal.h> hides SIGWINCH under a strict POSIX level */
 #endif
 
+#include "runtime/core/fault_abi.h"
 #include "runtime/std/terminal.h"
 
 #include <signal.h>
@@ -375,18 +376,14 @@ static bool terminal_size(MsTerminal *terminal, int *columns, int *rows) {
          uv_tty_get_winsize(&terminal->input, columns, rows) == 0;
 }
 
-/* A stop request ends a native that has no error to return by cancelling the task. */
-static void cancel_if_requested(void) {
-  if (ms_fail_cancel_requested()) {
-    ms_cancelled();
-  }
-}
-
 uint8_t msstd_terminal_raw_terminal_size_status(const MsObj *handle) {
   MsTerminal *terminal = terminal_of(handle);
   int columns = 0;
   int rows = 0;
-  cancel_if_requested();
+  if (ms_fail_cancel_requested()) {
+    ms_sched_cancel_return();
+    return MS_STATUS_CANCELLED;
+  }
   if (atomic_load(&terminal->closed)) {
     return MS_STATUS_CLOSED;
   }
@@ -410,20 +407,30 @@ int64_t msstd_terminal_raw_terminal_size_rows(const MsObj *handle) {
 uint8_t msstd_terminal_raw_terminal_write(const MsObj *handle, const MsString *text, MsString *err) {
   MsTerminal *terminal = terminal_of(handle);
   *err = ms_string_empty();
-  cancel_if_requested();
+  if (ms_fail_cancel_requested()) {
+    ms_sched_cancel_return();
+    return MS_STATUS_CANCELLED;
+  }
   if (atomic_load(&terminal->closed)) {
     return MS_STATUS_CLOSED;
   }
   if (terminal_write(terminal, ms_string_span(text), true)) {
     return MS_STATUS_OK;
   }
-  cancel_if_requested();
+  if (ms_fail_cancel_requested()) {
+    ms_sched_cancel_return();
+    return MS_STATUS_CANCELLED;
+  }
   *err = ms_string_from_span(ms_span_of_text("cannot write to the terminal"));
   return MS_STATUS_FAILED;
 }
 
 uint8_t msstd_terminal_raw_terminal_read(const MsObj *handle, uint8_t quick) {
-  return ms_terminal_read(terminal_of(handle), quick != 0);
+  const uint8_t status = ms_terminal_read(terminal_of(handle), quick != 0);
+  if (status == MS_STATUS_CANCELLED) {
+    ms_sched_cancel_return();
+  }
+  return status;
 }
 
 void msstd_terminal_input_text(MsString *out) {

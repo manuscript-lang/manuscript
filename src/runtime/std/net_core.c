@@ -172,19 +172,24 @@ MsObj *ms_net_handle_new(MsNetCore *core) {
   return &handle->header;
 }
 
-/* What a handle that an upgrade consumed finds: a closed connection. */
+/* What a handle that an upgrade consumed finds: a closed connection. It lives in static storage, so a program that
+ * touched a consumed handle ends with no block of the runtime's still allocated. */
 static MsNetCore *consumed_core(void) {
-  static _Atomic(MsNetCore *) dead;
-  static atomic_int once;
-  if (atomic_exchange(&once, 1) == 0) {
-    MsNetCore *core = ms_net_core_new(MS_NET_CONNECTION, false);
-    atomic_store(&core->closed, true);
-    atomic_store(&core->references, 1 << 30); /* never freed */
-    atomic_store(&dead, core);
+  static MsNetCore dead;
+  static atomic_int state; /* 0 untouched, 1 being set up, 2 ready */
+  int expected = 0;
+  if (atomic_compare_exchange_strong(&state, &expected, 1)) {
+    dead.kind = MS_NET_CONNECTION;
+    dead.local = ms_string_empty();
+    dead.peer = ms_string_empty();
+    atomic_store(&dead.ends, 1);
+    atomic_store(&dead.closed, true);
+    atomic_store(&dead.references, 1 << 30); /* never released */
+    atomic_store(&state, 2);
   }
-  while (atomic_load(&dead) == NULL) {
+  while (atomic_load(&state) != 2) {
   }
-  return atomic_load(&dead);
+  return &dead;
 }
 
 MsNetCore *ms_net_handle_core(const MsObj *handle) {
@@ -284,7 +289,7 @@ void ms_net_core_discard(MsNetCore *core) {
 uint8_t ms_net_finish(MsNetWait wait, int status, const char *operation, MsString *err) {
   *err = ms_string_empty();
   if (wait == MS_NET_WAIT_CANCELLED) {
-    ms_cancelled();
+    return MS_STATUS_CANCELLED;
   }
   if (wait == MS_NET_WAIT_TIMED_OUT) {
     return MS_STATUS_TIMED_OUT;

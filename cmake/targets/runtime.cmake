@@ -21,6 +21,13 @@ ms_library(ms_core runtime/core
     segment.c park.c token.c task.c eq.c fault_kept.c fault_abi.c task_abi.c obj.c promise.c promise_end.c
     promise_wait.c promise_abi.c promise_remote.c group.c pipe.c cancel.c worker.c drop_queue.c release.c
   LINK ms_sys ms_base mimalloc)
+# Tasks, promises and the queue call each other on every start and wait: they compile as one unit so those calls
+# inline. The other core files stay separate, so a file-local name there never meets one here.
+set(ms_core_hot queue.c sched.c token.c timers.c task.c task_abi.c promise.c promise_end.c promise_wait.c promise_abi.c
+    promise_remote.c cancel.c worker.c isolate.c)
+list(TRANSFORM ms_core_hot PREPEND "${CMAKE_SOURCE_DIR}/src/runtime/core/")
+set_target_properties(ms_core PROPERTIES UNITY_BUILD ON UNITY_BUILD_MODE GROUP)
+set_source_files_properties(${ms_core_hot} PROPERTIES UNITY_GROUP scheduling)
 
 # Value natives of the runtime core: strings, bytes, lists, maps, numbers and text formatting.
 ms_library(ms_values runtime/core
@@ -170,6 +177,10 @@ else()
 endif()
 ms_executable(shape_unit runtime/std SOURCES shape_unit.c LINK ${shape_libs} m)
 add_test(NAME std_shape COMMAND shape_unit)
+
+# The public suffix list is in the binary and libcurl uses it (cookies for `co.uk` are refused).
+ms_executable(http_psl_unit runtime/std SOURCES http_psl_unit.c LINK curl psl_static zlib nghttp2 openssl_ssl openssl_crypto)
+add_test(NAME std_psl COMMAND http_psl_unit)
 
 # Everything a program links, in one name.
 add_library(ms_runtime INTERFACE)

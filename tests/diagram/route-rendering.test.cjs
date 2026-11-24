@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {test} = require('node:test');
-const page = fs.readFileSync(path.join(__dirname, '../../crates/ms-tooling/src/page.html'), 'utf8');
+const page = fs.readFileSync(path.join(__dirname, '../../src/tooling/data/page.html'), 'utf8');
 const start = page.indexOf('function route(){'), end = page.indexOf('const VIEWS=', start);
 assert.ok(start >= 0 && end > start);
 const route = new Function('E', 'S', 'esc', 'empty', page.slice(start, end) + 'return route();');

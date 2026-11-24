@@ -61,6 +61,15 @@ _Static_assert(sizeof(MsFuncEntry) == 24 && sizeof(MsLineEntry) == 16 && sizeof(
          "the compiler emits these entry sizes");
 _Static_assert(sizeof(MsTables) == 8 + 9 * sizeof(void *), "the compiler passes this table block");
 
+/* ABI version 4: a program built in several units has one complete table block per unit (each with its own strings and
+ * scopes), and passes the set instead. `ms_frames_install` joins them into one block. */
+enum { MS_TABLES_SET = 4 };
+typedef struct MsTableSet {
+  uint32_t abi_version; /* MS_TABLES_SET: the same place as MsTables.abi_version */
+  uint32_t count;
+  const MsTables *parts[]; /* `count` blocks */
+} MsTableSet;
+
 enum {
   MS_TABLES_WITH_SCOPES = 3,
   MS_FRAMES_REPORT_MAX = 32,    /* frames a report names before it says the rest were omitted */
@@ -96,7 +105,7 @@ typedef bool (*MsFrameVisit)(uintptr_t return_address, void *context);
 
 /* ---- tables ---- */
 
-/* Installs the tables of the program, once at start. The linker may order functions differently from the
+/* Installs the tables of the program, once at start (a block, or an MsTableSet when its abi_version is MS_TABLES_SET). The linker may order functions differently from the
  * compiler (macOS arm64 moves functions that only reach a noreturn call), and the lookups search by address, so
  * out-of-order tables are copied and sorted. A null pointer leaves reports without frames. The copy
  * is allocated with ms_alloc. */
@@ -142,12 +151,8 @@ bool ms_frames_collector_add(uintptr_t return_address, void *collector);
 void ms_frames_visit(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameVisit visit, void *context);
 /* Walks from `fp` and collects the source frames into `list`, which must be zeroed. */
 void ms_frames_collect(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameList *list) MS_NONNULL;
-/* Collects the source frames of previously captured return addresses into `list`, which must be zeroed. */
+/* Collects the source frames of the return addresses `addresses` into `list`, which must be zeroed. */
 void ms_frames_describe(const uintptr_t *addresses, size_t count, MsFrameList *list) MS_NONNULL;
-/* Writes the return addresses up the chain from `fp` into `out` (at most `capacity`); returns how many. Nothing
- * is allocated. */
-size_t ms_frames_capture(uintptr_t fp, uintptr_t anchor, MsStackWindow window, uintptr_t *out, size_t capacity)
-  MS_NONNULL_ARGS(4);
 
 /* ---- lookups (exposed for tests) ---- */
 

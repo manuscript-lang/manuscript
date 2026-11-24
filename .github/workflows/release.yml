@@ -15,32 +15,32 @@ concurrency:
 jobs:
   test:
     name: Distribution checks
-    needs: rust
+    needs: dist
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every Rust distribution on a release tag
+      - name: Require every distribution on a release tag
         env:
-          RUST_RESULT: ${{ needs.rust.result }}
+          DIST_RESULT: ${{ needs.dist.result }}
         run: |
-          case "$RUST_RESULT" in
+          case "$DIST_RESULT" in
             success|skipped) ;;
             *) exit 1 ;;
           esac
 
-  # The shipped binary is the Rust `ms`: rust-dist.yml builds, packages and smoke-tests it
+  # The shipped binary is the C `ms`: dist.yml builds, packages and smoke-tests it
   # on a native runner of each of the six targets, and every target gates on a tag.
-  rust:
-    name: Rust distributions
+  dist:
+    name: Distributions
     if: startsWith(github.ref, 'refs/tags/v')
-    uses: ./.github/workflows/rust-dist.yml
+    uses: ./.github/workflows/dist.yml
 
   # Plain list loops must keep vectorizing: the release's own `ms` runs the benchmark and the
   # table is kept with the run, to compare against the committed result page.
   listloops:
     name: List loop benchmark
-    needs: rust
+    needs: dist
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -48,13 +48,13 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          name: manuscript-rust-linux-amd64
+          name: manuscript-linux-amd64
           path: dist
       - name: Run bench/perf/listloops
         run: |
           set -eu
-          tar -xzf dist/manuscript-rust-linux-amd64.tar.gz -C dist
-          ms="$PWD/dist/manuscript-rust-linux-amd64/ms"
+          tar -xzf dist/manuscript-linux-amd64.tar.gz -C dist
+          ms="$PWD/dist/manuscript-linux-amd64/bin/ms"
           MS="$ms" "$ms" run bench/tools/listloops.ms -- 5 | tee listloops.txt
       - uses: actions/upload-artifact@v7
         with:
@@ -62,7 +62,7 @@ jobs:
           path: listloops.txt
 
   publish:
-    needs: rust
+    needs: dist
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -70,10 +70,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: manuscript-rust-*
+          pattern: manuscript-*
           path: dist
           merge-multiple: true
-      - name: Publish Rust release archives
+      - name: Publish release archives
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -92,10 +92,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/rust-env
-        with:
-          os: linux
-          arch: amd64
+      - uses: ./.github/actions/toolchain
       - uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: '0.146.7'

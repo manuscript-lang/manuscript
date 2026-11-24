@@ -1,4 +1,4 @@
-M=/home/user/manuscript/target/release/ms
+M=.artifacts/build/release/src/cli/ms
 t(){ s=$(date +%s.%N); "$@" >/dev/null 2>&1; e=$(date +%s.%N); printf "%.1fs" $(echo "$e - $s" | bc); }
 for n in "$@"; do
  echo "== n=$n"

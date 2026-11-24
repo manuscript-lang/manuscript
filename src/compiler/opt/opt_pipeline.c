@@ -92,10 +92,12 @@ static const Step early_steps[] = {
 };
 
 static const Step late_steps[] = {
+    {"strfuse", strfuse_step}, /* the simplified bodies hold `take`/`drop` of a variable's slot, which the early run does not see */
     {"fuse", opt_fuse_step},
     {"exit_drops", opt_exit_drops},
     {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
+    {"thread", opt_thread},
     {"bytetake", opt_bytetake},
     {"copyelim takes", opt_copyelim_takes},
     {"simplify", opt_simplify},

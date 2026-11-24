@@ -8,7 +8,8 @@
  * Rules for a job: it runs on a pool thread, where it may allocate with ms_alloc but must not fault, park, or touch
  * task or scheduler state. A task cancelled while it waits abandons a running job: the pool keeps the job's data and
  * calls its release function inside the reactor's after-work callback once the job ends, so release only frees
- * memory. After a pool call returns cancelled, release what the call holds and end the task with ms_cancelled.
+ * memory. After a pool call returns cancelled, release what the call holds and
+ * return MS_STATUS_CANCELLED.
  */
 #ifndef MS_RUNTIME_IO_POOL_H
 #define MS_RUNTIME_IO_POOL_H

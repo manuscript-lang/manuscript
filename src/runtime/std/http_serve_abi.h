@@ -50,14 +50,15 @@ uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOption
 MsObj *msstd_http_serving_spec(const MsObj *serving);
 /* ms-sig: msstd_http_serving_address(handle s: *const ObjCell<ServingH>, out: *mut StrVal) @domain=HTTP */
 void msstd_http_serving_address(const MsObj *serving, MsString *out);
-/* ms-sig: msstd_http_serving_accept(handle s: *const ObjCell<ServingH>, out: *mut i64, err: ErrSlot) -> u8
- * @domain=HTTP */
-uint8_t msstd_http_serving_accept(const MsObj *serving, int64_t *out, MsString *err);
+/* ms-sig: msstd_http_serving_accept(handle s: *const ObjCell<ServingH>, out: *mut *mut ObjCell<AcceptedH>, err:
+ * ErrSlot) -> u8 @domain=HTTP */
+uint8_t msstd_http_serving_accept(const MsObj *serving, MsObj **out, MsString *err);
 /* ms-sig: msstd_http_serving_worker(handle s: *const ObjCell<SpecH>, out: *mut *mut ObjCell<WorkerH>, err:
  * ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_http_serving_worker(const MsObj *spec, MsObj **out, MsString *err);
-/* ms-sig: msstd_http_worker_adopt(handle w: *const ObjCell<WorkerH>, connection: i64) @domain=HTTP */
-void msstd_http_worker_adopt(const MsObj *worker, int64_t connection);
+/* ms-sig: msstd_http_worker_adopt(handle w: *const ObjCell<WorkerH>, handle a: *const ObjCell<AcceptedH>)
+ * @domain=HTTP */
+void msstd_http_worker_adopt(const MsObj *worker, const MsObj *accepted);
 /* ms-sig: msstd_http_worker_close(handle w: *const ObjCell<WorkerH>) @domain=HTTP */
 void msstd_http_worker_close(const MsObj *worker);
 /* ms-sig: msstd_http_serving_release(handle s: *const ObjCell<ServingH>) @domain=HTTP */

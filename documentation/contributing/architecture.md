@@ -7,50 +7,48 @@ weight = 1
 
 `ms` is implemented in C under `src/`, in layers an include may cross only downward (`src/layers.txt`, enforced by `ms_lint`): `base`, `abi`, `runtime`, then the compiler stages `compiler/syntax`, `project`, `check`, `own`, `lower`, `mir`, `opt`, `emit`, `link`, then `tooling` and `cli`. The conformance corpus and publication checks live in `tests/`. See [src/README.md](https://github.com/manuscript-lang/manuscript/blob/main/src/README.md) for building and testing.
 
-> The sections below were written for the Rust implementation in `crates/`, which is frozen at `660429d4` and serves only as the oracle for conformance fixtures. Crate names there map to the C layers above; check `src/` before relying on a detail.
-
 ## Follow one compilation
 
 ```text
-.ms -> ms-syntax  (lex, parse, syntax tree, format)
-    -> ms-check   (resolve, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics)
-    -> ms-lower   (checked HIR to MIR, including native standard calls)
-    -> ms-mir     (optimizer, verifier)
-    -> ms-clif    (MIR to Cranelift object code; line tables; perf map)
-    -> ms-mir-llvm (MIR to LLVM IR for release builds; ms-build drives it)
-    -> link with ms-native (ms-rt and the ms-std-* crates) -> executable
+.ms -> compiler/syntax   (lex, parse, syntax tree, format)
+    -> compiler/project  (ms.toml, aliases, import resolution, module graph)
+    -> compiler/check    (resolve, types, generics, contracts, effects, cleanup; typed HIR; diagnostics)
+    -> compiler/own      (moves, borrows, mutation and drop facts)
+    -> compiler/lower    (checked HIR and ownership facts to MIR, native standard calls)
+    -> compiler/mir, opt (representation, ownership elaboration, optimizer, verifier)
+    -> compiler/emit     (MIR to LLVM IR text; the pinned opt and llc make the object file)
+    -> compiler/link     (pinned lld, the C library stubs, the runtime archive) -> executable
 ```
 
-1. `ms-cli` validates options and picks a command; `ms-driver` loads and checks, `ms-build` lowers, generates code and links.
-2. `ms-driver`'s `project` module reads `ms.toml` and `[aliases]` and resolves imports to canonical, root-confined paths, including editor overlays.
-3. `ms-driver` loads the module graph: it follows imports, detects cycles, and returns the modules in dependency order.
-4. `ms-syntax` parses strictly, or with recovery for editor analysis. Standard declarations use the same parser.
-5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
-6. Check, lint, inspect, diagram, and review stop after checking. Formatting uses only the syntax crate.
-7. `ms-lower` turns checked HIR into MIR; `ms-mir` optimizes and verifies it. See [lowering](compiler/lowering/_index.md).
-8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime. Supported platforms use the pinned, cached `lld`, with these C-library inputs: stubs of glibc 2.28 on Linux (musl with `--static`), generated SDK stubs on macOS, and the mingw-w64 CRT on Windows.
+1. `cli/` validates options and picks a command; the command drives the stages below it.
+2. `compiler/project` reads `ms.toml` and `[aliases]`, resolves imports to canonical, root-confined paths (including editor overlays), follows imports, detects cycles and returns the modules in dependency order.
+3. `compiler/syntax` parses strictly, or with recovery for editor analysis. Standard declarations (`stdlib/*.ms`, embedded at build time) use the same parser.
+4. `compiler/check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup and effects; `compiler/own` adds ownership. The result keeps what lowering, docs and editors need.
+5. Check, lint, inspect, diagram and review stop after checking. Formatting uses only the syntax layer.
+6. `compiler/lower` turns checked HIR into MIR; `compiler/mir` and `compiler/opt` elaborate ownership, optimize and verify it. See [lowering](compiler/lowering/_index.md).
+7. `compiler/emit` writes LLVM IR text and `compiler/link` links the object with the runtime archive. Supported platforms use the pinned, cached `lld`, with these C-library inputs: stubs of glibc 2.28 on Linux (musl with `--static`), generated SDK stubs on macOS, and the mingw import libraries on Windows.
 
-## Know what each crate owns
+## Know what each layer owns
 
-| Crate | Responsibility |
+An include crosses layers only downward (`src/layers.txt`, enforced by `ms_lint`); [src/README.md](https://github.com/manuscript-lang/manuscript/blob/main/src/README.md) lists them and each directory has a README.
+
+| Directory | Responsibility |
 | --- | --- |
-| `ms-syntax` | Lexer, parser, syntax tree, formatter |
-| `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics; editor queries |
-| `ms-lower`, `ms-mir`, `ms-mir-llvm`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift and LLVM code generation |
-| `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime (with the `ffi` and `glue` helpers the native crates build on), C-layout ABI types, and the static library embedded in `ms` |
-| `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
-| `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
-| `ms-build` | Lowering seam, optimization, native codegen and link |
-| `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, agent skill, docgen; language server |
-| `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
+| `src/base`, `src/abi` | Safe wrappers, arena, strings, files, JSON; layouts, symbol names and fault kinds the compiler and runtime share |
+| `src/runtime` | The runtime: `core` (allocation, lists, maps, strings, faults, cancellation), `io`, `sys`, `std` (one file group per native standard module), `entry` |
+| `src/compiler` | `syntax`, `project`, `check`, `own`, `lower`, `mir`, `opt`, `emit`, `link`, `natives` (generated native signatures) |
+| `src/tooling` | Lint, inspect, review, diagram, `search_symbol`, docgen input, guide pages |
+| `src/lsp`, `src/cli` | The language server behind `ms lsp`; the `ms` binary and its commands |
+| `src/lint` | `ms_lint`: banned calls and layering |
+| `src/third_party` | Vendored libraries pinned by `c-libs.lock` |
 
-`stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority and the Rust implementation embeds it unchanged.
+`stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority.
 
 ## Keep shared behavior in one implementation
 
 - One syntax visitor owns traversal; passes pick callbacks.
 - Semantic lint uses the checker's resolved identities, never re-lexing source.
-- `ms-driver`'s `project` module owns import path identity; graph loading uses that shared implementation.
+- `compiler/project` owns import path identity; graph loading uses that shared implementation.
 - The CLI classifies commands once and shares one build path.
 
 ## Keep source and generated output distinct
@@ -62,16 +60,17 @@ weight = 1
 | `website/` | Hugo config, layouts, assets, version archives, vendored Hugo Book theme |
 | `website/static/stdlib.md`, `stdlib.json` | Generated API downloads; not committed |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads |
-| `crates/` | The Rust implementation; `crates/DESIGN.md` is the design contract |
-| `tools/` | Repository tools written in Manuscript (`ms run tools/<name>.ms`): conform, e2e, leak and count checks, packaging, doctor |
-| `toolchain/` | Pinned lld and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) read by the build before `ms` exists |
-| `tests/` | `conformance/` (frozen corpus), `docs/` (book checks), `e2e/testdata` (fixtures) |
+| `src/` | The C implementation; `src/abi/README.md` records layouts and symbols |
+| `agent-skill/` | The agent skill (`SKILL.md` and references) packed into `manuscript-skill.tar.gz` by `toolchain/package-skill.sh` |
+| `tools/` | Repository tools written in Manuscript (`ms run tools/<name>.ms`): conform, leak and count checks, repo-check, doctor |
+| `toolchain/` | Pinned lld, LLVM and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) and the glibc 2.28 symbol tables, read by the build before `ms` exists |
+| `tests/` | `conformance/` (the corpus), `docs/` (book checks), and fixtures for the language server, ownership counts and scaling |
 | `bench/` | `perf/` (kernels, workloads, JSON, web, workers, stdlib, each with a run script and a dated result page) and `agent/` (the agent benchmark and its results) |
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets |
-| `.github/workflows/` | CI, book publishing, six-target release packaging |
+| `.github/workflows/` | CI, book publishing, six-platform release packaging |
 | `skills/`, `wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
-| `.artifacts/`, `dist/`, `target/` | Ignored local reports, releases, build output |
+| `.artifacts/` | Ignored build output, reports and archives |
 
 Fix generated output through its generator, never by editing HTML or copying standard signatures into another catalog.
 
@@ -79,17 +78,17 @@ Fix generated output through its generator, never by editing HTML or copying sta
 
 | Change | Trace and validation |
 | --- | --- |
-| Syntax or type rules | Guide, `ms-syntax`, `ms-check`, `ms-lower`, formatting and LSP, accepted/rejected fixtures |
-| Standard operation | `.ms` declaration, `ms-lower` native call, `ms-std-*` implementation, generated reference; test in a called test block |
+| Syntax or type rules | Guide, `compiler/syntax`, `compiler/check`, `compiler/lower`, formatting and LSP, accepted/rejected fixtures |
+| Standard operation | `.ms` declaration, `compiler/lower` native call, `src/runtime/std` implementation, generated reference; test in a called test block |
 | Resource work | Checking, acquisition, cancellation, close; verify exit ordering |
-| Manifest, alias, or import | `ms-driver` `project`, module graph, overlays; test equivalent paths, escapes, malformed input |
-| CLI command | `ms-cli`, relevant crate, status/output contract; failed checking preserves outputs |
+| Manifest, alias, or import | `compiler/project`, module graph, overlays; test equivalent paths, escapes, malformed input |
+| CLI command | `src/cli`, the layer it drives, status/output contract; failed checking preserves outputs |
 | Documentation | Markdown or generator, `make docs-check`, `make book-check`, `make book` |
-| Build packaging | `tools/package.ms`; `make dist-check` runs the packaged binary |
+| Build packaging | `cmake/MsPackage.cmake`; `make dist-check` runs the packaged binary |
 
 ## Read the evidence correctly
 
-- Crate tests cover narrow contracts. The conformance corpus in `tests/conformance/` checks program behavior through the built `ms`; declaration-only fixtures show acceptance, not execution.
+- C tests (`ctest`) cover narrow contracts. The conformance corpus in `tests/conformance/` checks program behavior through the built `ms`; declaration-only fixtures show acceptance, not execution.
 - `tests/docs` checks highlighting and published book pages.
 - Passing tests find regressions, not language completeness. See [development checks](development.md).
-- `make repo-check` enforces nested-match rules, `.ms` formatting, standard-library syntax, release pins and workflow triggers, and the Rust `unsafe` boundary.
+- `make repo-check` enforces nested-match rules, `.ms` formatting, standard-library syntax, release pins and workflow triggers.

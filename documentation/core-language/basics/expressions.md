@@ -141,7 +141,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 
 ## Source location
 
-`__LINE__` is the `Int` line number of the token and `__FILE__` is the `String` name of the file being compiled; both are constants filled in at the use site, so inside a function they name where it is written, not where it is called. A local binding or declaration with either name shadows the constant. To report a caller's position, use a parameter default of `caller_site()` from `@std/test/test.ms` instead.
+`__LINE__` is the `Int` line number of the token and `__FILE__` is the `String` name of the file being compiled; both are constants filled in at the use site, so inside a function they name where it is written, not where it is called. A local binding or declaration with either name shadows the constant. To report a caller's position, use a parameter default of `caller_site()` from `@std/test/test.ms` (`file:line:col`) or `caller_frame()` from `@std/concurrency/promise.ms` (`file:line in function`, the form a fault report shows) instead.
 
 ```ms
 fn main() Void:

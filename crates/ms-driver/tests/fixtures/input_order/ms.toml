@@ -1,7 +1,0 @@
-[project]
-name = "input-order"
-source = "."
-entry = "main.ms"
-
-[embed]
-"@assets" = "."

@@ -4,15 +4,16 @@
 #   curl -fsSL https://manuscript-lang.github.io/manuscript/install.sh | sh
 #
 # It downloads the release archive for this machine, checks its SHA-256, and copies `ms`
-# into a bin directory. Settings, all optional:
+# into `<prefix>/bin` and the runtime and linker files it needs into `<prefix>/lib/ms`.
+# Settings, all optional:
 #   MS_VERSION      a release such as 2026.11.0 (default: the latest release)
-#   MS_INSTALL_DIR  where `ms` goes (default: $HOME/.local/bin)
+#   MS_INSTALL_DIR  the prefix (default: $HOME/.local, so `ms` is $HOME/.local/bin/ms)
 #   MS_RELEASE_URL  a directory URL that holds the archives (default: GitHub releases)
 set -eu
 
 repo="manuscript-lang/manuscript"
 version="${MS_VERSION:-latest}"
-dir="${MS_INSTALL_DIR:-$HOME/.local/bin}"
+prefix="${MS_INSTALL_DIR:-$HOME/.local}"
 
 fail() {
 	echo "install: $1" >&2
@@ -39,7 +40,7 @@ else
 	base="https://github.com/$repo/releases/download/v${version#v}"
 fi
 
-name="manuscript-rust-$os-$arch"
+name="manuscript-$os-$arch"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -61,9 +62,14 @@ fi
 [ "$expected" = "$actual" ] || fail "checksum mismatch: expected $expected, got $actual"
 
 tar -xzf "$work/$name.tar.gz" -C "$work"
-mkdir -p "$dir"
-cp "$work/$name/ms" "$dir/ms.new"
+dir="$prefix/bin"
+mkdir -p "$dir" "$prefix/lib"
+rm -rf "$prefix/lib/ms.new"
+cp -R "$work/$name/lib/ms" "$prefix/lib/ms.new"
+cp "$work/$name/bin/ms" "$dir/ms.new"
 chmod 755 "$dir/ms.new"
+rm -rf "$prefix/lib/ms"
+mv "$prefix/lib/ms.new" "$prefix/lib/ms"
 mv "$dir/ms.new" "$dir/ms"
 
 echo "Installed $("$dir/ms" --version) to $dir/ms"

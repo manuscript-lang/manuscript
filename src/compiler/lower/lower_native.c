@@ -298,7 +298,7 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
   return fn_emit(fn, mir_needs_drop(fn->cx->module, ret) ? MOP_Take : MOP_Load, &slot, 1, of_type, ret);
 }
 
-uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
+static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, bool pure) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
   for (uint32_t index = 0; index < nargs; index++) {
     params[index] = (MirParam){mir_b_ty(&fn->b, args[index]),
@@ -309,12 +309,23 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   const MsNativeSig *sig = ms_native_sig_find(text);
   const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
-                         .fresh = !views && mir_needs_drop(fn->cx->module, ret),
+                         .fresh = !views && mir_needs_drop(fn->cx->module, ret), .pure = pure,
                          .role = (uint8_t)(views ? MR_VIEW_RESULT
                                            : sig != NULL && sig->spawns ? MR_SPAWNS_TASK
                                            : sig != NULL && sig->keeps ? MR_KEEPS_SLOT
                                            : fn_native_role(fn->cx->module, text, nargs > 0 ? params[0].ty : MIR_VOID))};
   return mir_extern_intern(fn->cx->module, &def);
+}
+
+uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
+  return runtime_extern(fn, name, args, nargs, ret, false);
+}
+
+MirValue fn_empty_map(LowerFn *fn, MirTy ty) {
+  const MsName name = mir_name(fn->cx->module, ms_span_of_text("msrt_map_new"));
+  const MirValue result = mir_b_call_rt(&fn->b, runtime_extern(fn, name, NULL, 0, ty, true), NULL, 0);
+  fn_own_result(fn, result);
+  return result;
 }
 
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
@@ -773,6 +784,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
   }
   MsName name;
   const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
+  fn_native_precheck(fn, sig, owner, argc, args);
   const char *op = ms_native_op_find(ms_names_span(&fn->cx->module->names, name));
   if (op != NULL && fn_inline_scalar_op(fn, op, args, argc, ret, out)) {
     return true;

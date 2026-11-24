@@ -10,8 +10,8 @@ enum { SLOT_FREE = 0, SLOT_STARTING = 1, SLOT_LIVE = 2 };
 
 typedef struct Slot {
   _Atomic uint32_t state;
-  _Atomic uint32_t sleeping;       /* the poller is (about to be) blocked and needs a wake */
   _Atomic uint32_t load;           /* tasks the isolate runs, read by thieves picking a place */
+  _Atomic uint32_t nudged;         /* woken by ms_isolate_wake_one and has not asked since */
   _Atomic(MsMail *) mail;          /* stack of mail, newest first; producers push, the owner swaps it out */
   MsWakeFn wake;                   /* written before `state` goes live, read-only after */
   void *wake_argument;
@@ -21,6 +21,11 @@ typedef struct Slot {
  * atomic, and `wake` is published by the release store of `state`. */
 static Slot slots[MS_MAX_ISOLATES];
 static _Atomic uint32_t live_count;
+static _Atomic uint32_t looking_count;
+/* One bit per isolate whose poller is (about to be) blocked and needs a wake: one word, so a start that finds
+ * nobody asleep reads it once instead of visiting every slot. */
+static _Atomic uint64_t asleep;
+_Static_assert(MS_MAX_ISOLATES <= 64, "one asleep bit per isolate");
 static _Atomic(const MsMailKindOps *) kind_ops[MS_MAIL_KIND_COUNT];
 
 void ms_isolate_set_mail_kind(uint32_t kind, const MsMailKindOps *ops) {
@@ -42,8 +47,9 @@ uint32_t ms_isolate_register(MsWakeFn wake, void *argument) {
     }
     slots[i].wake = wake;
     slots[i].wake_argument = argument;
-    atomic_store(&slots[i].sleeping, 0);
+    atomic_fetch_and(&asleep, ~(UINT64_C(1) << i));
     atomic_store(&slots[i].load, 0);
+    atomic_store(&slots[i].nudged, 0);
     atomic_store(&slots[i].mail, NULL);
     atomic_store_explicit(&slots[i].state, SLOT_LIVE, memory_order_release);
     atomic_fetch_add(&live_count, 1);
@@ -104,10 +110,10 @@ bool ms_isolate_post(uint32_t target, MsMail *mail) {
     mail->next = head;
   } while (!atomic_compare_exchange_weak_explicit(&slot->mail, &head, mail, memory_order_release,
                           memory_order_relaxed));
-  /* The sleeper sets `sleeping`, then looks at the mail; this side pushes, then looks at `sleeping`: with
+  /* The sleeper sets its `asleep` bit, then looks at the mail; this side pushes, then looks at the bit: with
    * sequentially consistent accesses one of the two sees the other. */
   atomic_thread_fence(memory_order_seq_cst);
-  if (atomic_load(&slot->sleeping) != 0 && slot->wake != NULL) {
+  if ((atomic_load(&asleep) >> target & 1) != 0 && slot->wake != NULL) {
     slot->wake(slot->wake_argument);
   }
   return true;
@@ -136,10 +142,10 @@ bool ms_isolate_idle_enter(void) {
   if (self_index >= MS_MAX_ISOLATES) {
     return true;
   }
-  atomic_store(&slots[self_index].sleeping, 1);
+  atomic_fetch_or(&asleep, UINT64_C(1) << self_index);
   atomic_thread_fence(memory_order_seq_cst);
   if (atomic_load(&slots[self_index].mail) != NULL) {
-    atomic_store(&slots[self_index].sleeping, 0);
+    atomic_fetch_and(&asleep, ~(UINT64_C(1) << self_index));
     return false;
   }
   return true;
@@ -147,24 +153,20 @@ bool ms_isolate_idle_enter(void) {
 
 void ms_isolate_idle_leave(void) {
   if (self_index < MS_MAX_ISOLATES) {
-    atomic_store(&slots[self_index].sleeping, 0);
+    atomic_fetch_and(&asleep, ~(UINT64_C(1) << self_index));
     ms_watch_stir();
   }
 }
 
 uint64_t ms_isolate_resting(uint64_t *live) {
-  uint64_t resting = 0;
   *live = 0;
   for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
     if (atomic_load(&slots[i].state) != SLOT_LIVE) {
       continue;
     }
     *live |= UINT64_C(1) << i;
-    if (atomic_load(&slots[i].sleeping) != 0) {
-      resting |= UINT64_C(1) << i;
-    }
   }
-  return resting;
+  return atomic_load(&asleep) & *live;
 }
 
 void ms_token_post_remote(uint64_t token, uint64_t value) {
@@ -177,16 +179,30 @@ void ms_token_post_remote(uint64_t token, uint64_t value) {
 }
 
 bool ms_isolate_wake_one(uint32_t except) {
-  for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
+  const uint64_t self = except < MS_MAX_ISOLATES ? UINT64_C(1) << except : 0;
+  for (uint64_t left = atomic_load(&asleep) & ~self; left != 0; left &= left - 1) {
+    const uint32_t i = (uint32_t)__builtin_ctzll(left);
     Slot *const slot = &slots[i];
-    if (i == except || atomic_load(&slot->state) != SLOT_LIVE || slot->wake == NULL) {
+    if (atomic_load(&slot->state) != SLOT_LIVE || slot->wake == NULL) {
       continue;
     }
-    uint32_t expected = 1;
-    if (atomic_compare_exchange_strong(&slot->sleeping, &expected, 0)) {
+    const uint64_t bit = UINT64_C(1) << i;
+    if ((atomic_fetch_and(&asleep, ~bit) & bit) != 0) {
+      atomic_store(&slot->nudged, 1);
       slot->wake(slot->wake_argument);
       return true;
     }
   }
   return false;
 }
+
+bool ms_isolate_take_nudge(void) {
+  return self_index < MS_MAX_ISOLATES && atomic_load_explicit(&slots[self_index].nudged, memory_order_relaxed) != 0 &&
+         atomic_exchange(&slots[self_index].nudged, 0) != 0;
+}
+
+void ms_isolate_look_begin(void) { atomic_fetch_add(&looking_count, 1); }
+
+void ms_isolate_look_end(void) { atomic_fetch_sub(&looking_count, 1); }
+
+bool ms_isolate_any_looking(void) { return atomic_load(&looking_count) != 0; }

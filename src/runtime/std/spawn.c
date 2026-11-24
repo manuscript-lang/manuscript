@@ -123,7 +123,9 @@ uint8_t msstd_process_replace(const MsString *program, const MsList *arguments, 
                               const MsList *env_values, MsString *err) {
   MsFail fail = ms_fail_new();
   MsCommand command = {0};
-  if (arguments->len == 0) {
+  if (!ms_sys_process_can_exec()) {
+    ms_fail_status(&fail, MS_STATUS_UNSUPPORTED);
+  } else if (arguments->len == 0) {
     ms_fail_status(&fail, MS_STATUS_INVALID_INPUT);
   } else if (ms_command_build(&command, program, arguments, false, NULL, env_names, env_values, false, &fail)) {
     const int error = ms_sys_process_exec(command.program, command.argv, command.env);

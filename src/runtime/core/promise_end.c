@@ -137,21 +137,15 @@ uint32_t promise_park_on(MsPromise id, int64_t at_ns) {
   if (row < 0) {
     return 0;
   }
-  const bool remote = (promise_table.hot.ptr[row].flags & FLAG_REMOTE_WAKE) != 0;
-  const uint64_t token = ms_token_new(remote ? MS_TOKEN_REMOTE : 0);
-  if (token == 0) {
-    promise_fail("promise: out of wait tokens");
-  }
-  promise_table.hot.ptr[row].token = token;
-  uint64_t value = 0;
-  uint32_t result = 0;
-  const MsTokenStatus status = ms_token_park_at(token, at_ns, &value, &result);
+  /* The row names the parked task itself: no token is made for a wait on one promise. */
+  const uint64_t word = ms_task_wait_word();
+  promise_table.hot.ptr[row].token = word;
+  const uint32_t result = ms_task_park_word(at_ns, (promise_table.hot.ptr[row].flags & FLAG_REMOTE_WAKE) != 0);
   const ptrdiff_t after = promise_row_of(id);
-  if (after >= 0 && promise_table.hot.ptr[after].token == token) {
+  if (after >= 0 && promise_table.hot.ptr[after].token == word) {
     promise_table.hot.ptr[after].token = 0;
   }
-  (void)ms_token_free(token);
-  return status == MS_TOKEN_OK ? result : 0;
+  return result;
 }
 
 /* Ends the work of a pending promise: a promise with a drain switch is told first and cancelled only when its grace
@@ -171,6 +165,19 @@ static void give_notice(MsPromise id, size_t row) {
   ms_cancel_fire(drain);
 }
 
+/* Whether the row holds a result nobody took. */
+static bool has_result(size_t row) {
+  return promise_table.hot.ptr[row].state == STATE_OK && promise_result_bytes(&promise_table.cold.ptr[row]) != NULL;
+}
+
+/* Whether the row finished and its work is gone, so there is nothing to end. */
+static bool row_settled(size_t row) {
+  const Hot *const hot = &promise_table.hot.ptr[row];
+  const Cold *const cold = &promise_table.cold.ptr[row];
+  return hot->state != STATE_PENDING && cold->closure == NULL && cold->cancel == 0 &&
+         (hot->flags & (FLAG_QUEUED | FLAG_DEFERRED | FLAG_REMOTE)) == 0;
+}
+
 bool ms_promise_end(MsPromise id) {
   if (promise_is_foreign(id)) {
     return ms_remote_end(id);
@@ -181,6 +188,9 @@ bool ms_promise_end(MsPromise id) {
   }
   Hot *hot = &promise_table.hot.ptr[found];
   Cold *const cold = &promise_table.cold.ptr[found];
+  if (row_settled((size_t)found)) {
+    return has_result((size_t)found);
+  }
   if (cold->cancel != 0) {
     ms_cancel_unregister(cold->cancel, id);
     cold->cancel = 0;
@@ -214,7 +224,7 @@ bool ms_promise_end(MsPromise id) {
     ms_shield_exit();
   }
   found = promise_row_of(id);
-  return found >= 0 && promise_table.hot.ptr[found].state == STATE_OK && promise_table.cold.ptr[found].result != NULL;
+  return found >= 0 && has_result((size_t)found);
 }
 
 void ms_promise_drop(MsPromise id) {
@@ -222,8 +232,11 @@ void ms_promise_drop(MsPromise id) {
     ms_remote_drop(id);
     return;
   }
-  (void)ms_promise_end(id);
-  const ptrdiff_t found = promise_row_of(id);
+  ptrdiff_t found = promise_row_of(id);
+  if (found >= 0 && !row_settled((size_t)found)) {
+    (void)ms_promise_end(id);
+    found = promise_row_of(id);
+  }
   if (found < 0) {
     return;
   }

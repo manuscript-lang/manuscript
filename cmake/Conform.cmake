@@ -1,7 +1,7 @@
 # The conformance corpus and the command fixtures, replayed against the ms built here. Nothing else is needed:
 # the runners are Manuscript programs (tools/conform-run.ms, tools/command-fixtures.ms) and ms runs them.
 # Called as: cmake -DMS=<built ms> -DSOURCE_DIR=<repo> [-DONLY=commands] [-DENFORCE=ON] -P Conform.cmake
-# Programs build with the Debug backend (Cranelift): about 2x faster than Release across run and test, same counts.
+# Programs build as Debug (light LLVM optimization): faster than Release across run and test, same counts.
 # Prints `phase: passed/total` for parse, check, run and test, then `commands: passed/total`, and each failure.
 # The command fixtures must all pass. The corpus phases are reported; ENFORCE makes any difference fail the run
 # (turn it on when the port is complete).
@@ -14,7 +14,7 @@ endforeach()
 # Runs one runner and returns its `<name>: passed/total` line in `counted`, printing the failures it listed.
 function(replay name)
   execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS}" CONFORM_BUILD_TYPE=Debug "${MS}" run ${ARGN}
+    COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS}" CONFORM_BUILD_TYPE=Debug ${REPLAY_ENV} "${MS}" run ${ARGN}
     WORKING_DIRECTORY "${SOURCE_DIR}"
     OUTPUT_VARIABLE output
     ERROR_VARIABLE errors)
@@ -46,10 +46,36 @@ if(NOT ONLY STREQUAL "commands")
   endforeach()
 endif()
 
+# The fault fixtures again with each program written as three LLVM modules (large programs are; src/cli/pipeline.c), so a
+# trace that crosses modules is checked on every run, not only for a program big enough to split.
+if(NOT ONLY STREQUAL "commands")
+  set(REPLAY_ENV MS_UNITS=3)
+  replay(run tools/conform-run.ms -- --phase run --filter fault)
+  unset(REPLAY_ENV)
+  message("${counted} (three modules)")
+  if(NOT matches)
+    set(all_match OFF)
+  endif()
+endif()
+
 replay(commands tools/command-fixtures.ms -- check)
 message("${counted}")
 if(NOT matches)
   message(FATAL_ERROR "conform: the command fixtures above do not match")
+endif()
+
+# Fixture metadata and expectation files are well formed (tools/conform.ms lint).
+if(NOT ONLY STREQUAL "commands")
+execute_process(
+  COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS}" "${MS}" run tools/conform.ms -- lint
+  WORKING_DIRECTORY "${SOURCE_DIR}"
+  OUTPUT_VARIABLE lint_output
+  RESULT_VARIABLE lint_status)
+string(STRIP "${lint_output}" lint_output)
+message("${lint_output}")
+if(NOT lint_status EQUAL 0)
+  message(FATAL_ERROR "conform: the corpus lint above found problems")
+endif()
 endif()
 if(ENFORCE AND NOT all_match)
   message(FATAL_ERROR "conform: the corpus phases above do not match")

@@ -1,1 +1,0 @@
-error parse 2:5:17 "'_ := value' was removed; write 'void value' to run an expression and drop its result on purpose"

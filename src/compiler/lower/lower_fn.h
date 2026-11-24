@@ -12,6 +12,7 @@ typedef enum LowerWant { LW_BORROW, LW_MOVE } LowerWant;
 /* A `var` local that owns its current value: the scope that declared it owns that value where the scope ends. */
 typedef struct LowerOwnedVar {
   uint32_t scope;
+  uint32_t seq; /* its place among the closing owners, in declaration order */
   MirVar var;
   uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
   MsTy checked;   /* the record's checked type once a field moved, so the scope end can close the fields left */
@@ -107,7 +108,9 @@ typedef struct LowerFn {
   MirTy default_record_ty;
   uint32_t shared_params; /* bit i: a lambda changes the `var` parameter i */
   uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
-  bool *holds_value;     /* by local id: the body assigns the whole local or moves a field out of it, so it stays a variable, not a cell */
+  bool *holds_value;    /* by local id: a field of the local is moved out, so it stays a variable that keeps the mask of what is left */
+  uint32_t cell_old_at;  /* local + 1 while `x = rhs` is lowered: the cell of `x` has given its value up, and `rhs` reads it as `cell_old` */
+  MirValue cell_old;
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
@@ -128,7 +131,8 @@ typedef struct LowerFn {
   MsTy ret_checked; /* the checked result type of a named function (MS_TY_NONE for a lambda): a pending result closes through it */
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t *open;   /* the scopes open now, outermost first (grown in the module arena) */
-  bool *open_closes; /* whether the scope at that depth owns a slot that closes where it ends */
+  uint32_t *open_closes; /* the scope at that depth owns a slot that closes where it ends: the sequence number of the latest such owner, else 0 */
+  uint32_t own_seq;      /* counts closing owners and owned `var` locals in declaration order */
   uint32_t nopen, open_cap;
   LowerOwnedVar *owned_vars;
   uint32_t nowned_vars, owned_vars_cap;
@@ -337,6 +341,12 @@ bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent);
 /* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
 void fn_init_closing(LowerFn *fn);
 /* The index in the closing tables of the `var` variable (local or parameter) `ref` names that lives in a slot, or UINT32_MAX. */
+/* `x = rhs` on a record local that lives in a cell: the cell gives the old record up before `rhs` is lowered, and `rhs`
+ * reads it as a value (`fn_cell_old_read`), so a dying receiver is a value the optimizer can move from, as for a variable.
+ * `fn_cell_takes_back` drops what `rhs` did not move and stores the new value. */
+bool fn_cell_gives_up(LowerFn *fn, const MsRef *ref, MsName name, MsTy checked);
+bool fn_cell_old_read(const LowerFn *fn, const MsRef *ref, MsName name, MirValue *value);
+void fn_cell_takes_back(LowerFn *fn, const MsRef *ref, MsName name, MirValue value);
 uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name);
 /* A value an assignment replaced: the innermost scope closes it where it ends. */
 bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old);
@@ -369,6 +379,7 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 /* As `fn_place_changeable`, or a member path through the `?` of such a place (`n?.next`): the receiver of `n?.next?.change()`. */
 bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
+bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out);
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 /* After a call: test the unwinding byte and leave through the scope exit when it is set (lower_unwind.c). */
 /* The instruction that made `value` when nothing but unwind-site tests came after it, else NULL. */
@@ -395,6 +406,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+/* A new empty map or set of type `ty`: a pure, fresh runtime call, so an unused one is removed. */
+MirValue fn_empty_map(LowerFn *fn, MirTy ty);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
 bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first);
@@ -425,6 +438,8 @@ MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
 bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out);
 bool fn_list_swap(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+struct MsNativeSig;
+void fn_native_precheck(LowerFn *fn, const struct MsNativeSig *sig, MsTy owner, uint32_t argc, const MirValue *args);
 bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,
                          const MirValue *args, MirValue *out);

@@ -301,7 +301,7 @@ static MirValue own_slot_in(LowerFn *fn, uint32_t scope, MirTy ty, MirValue valu
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
   for (uint32_t depth = fn->nopen; depth > 0; depth--) {
     if (fn->open[depth - 1] == scope) {
-      fn->open_closes[depth - 1] = true;
+      fn->open_closes[depth - 1] = ++fn->own_seq;
       break;
     }
   }
@@ -492,9 +492,15 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, 
 
 bool fn_bind_closing_in(LowerFn *fn, uint32_t scope, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
-  if (fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !mir_needs_drop(fn->cx->module, ty)) {
-    /* A variable of plain data that a lambda changes: a slot nothing closes. */
-    fn->shared[local] = LOWER_SHARED_PLAIN;
+  MsCloser plain_closer;
+  const bool closes = checked != MS_TY_NONE && ms_own_closer_of(fn->cx->program, checked, &plain_closer);
+  const bool shared_plain = fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !closes;
+  const bool plain_record = is_var && local < fn->nvars && mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE && !closes;
+  if ((shared_plain || plain_record) && !mir_needs_drop(fn->cx->module, ty)) {
+    /* A variable of plain data that a lambda changes, or a `var` record: a slot nothing closes. */
+    if (shared_plain) {
+      fn->shared[local] = LOWER_SHARED_PLAIN;
+    }
     const MirValue plain = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, imm_ty(ty), MIR_PTR);
     const MirValue stored[2] = {plain, value};
     (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
@@ -571,7 +577,8 @@ MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty) {
   return fn_emit(fn, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &slot, 1, imm_ty(ty), ty);
 }
 
-uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name) {
+/* The index in `closing` a local reference names, whether or not it has a slot. */
+static uint32_t closing_index(const LowerFn *fn, const MsRef *ref, MsName name) {
   if (fn->closing == NULL || ref == NULL) {
     return UINT32_MAX;
   }
@@ -588,7 +595,59 @@ uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name) {
   } else if (ref->kind == MS_REF_PARAM && ref->local < LOWER_MAX_CLOSING_PARAMS) {
     at = fn->nvars + ref->local; /* a `var` parameter a lambda changes stays in the caller's slot */
   }
-  return at != UINT32_MAX && fn->closing_var[at] ? at : UINT32_MAX;
+  return at;
+}
+
+uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name) {
+  const uint32_t at = closing_index(fn, ref, name);
+  return at != UINT32_MAX && fn->closing_var[at] && fn->cell_old_at != at + 1 ? at : UINT32_MAX;
+}
+
+bool fn_cell_old_read(const LowerFn *fn, const MsRef *ref, MsName name, MirValue *value) {
+  const uint32_t at = fn->cell_old_at == 0 ? UINT32_MAX : closing_index(fn, ref, name);
+  *value = fn->cell_old;
+  return at != UINT32_MAX && fn->cell_old_at == at + 1;
+}
+
+bool fn_cell_gives_up(LowerFn *fn, const MsRef *ref, MsName name, MsTy checked) {
+  const uint32_t at = fn_closing_at(fn, ref, name);
+  const MirTy ty = at == UINT32_MAX ? MIR_VOID : fn->closing_types[at];
+  MsCloser closer;
+  const MsTy instance = checked == MS_TY_NONE ? checked : ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars,
+                                                                     fn->subst.args, fn->subst.count);
+  if (at == UINT32_MAX || ref->kind != MS_REF_LOCAL || (fn->shared != NULL && fn->shared[ref->local] != 0) ||
+      mir_ty_data(fn->cx->module, ty)->kind != MK_TYPE || !mir_needs_drop(fn->cx->module, ty) ||
+      (instance != MS_TY_NONE && ms_own_closer_of(fn->cx->program, instance, &closer))) {
+    return false;
+  }
+  /* The record leaves its cell for the statement, as an owned variable's value does: what `x = f(x)` hands on moves,
+   * and what it does not is dropped once the new value is known. */
+  const MirValue slot = fn->closing[at];
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
+  fn->cell_old = mir_b_emit(&fn->b, MOP_Take, &slot, 1, imm_ty(ty), ty);
+  fn_own(fn, fn_scope(fn), fn->cell_old);
+  fn->cell_old_at = at + 1;
+  return true;
+}
+
+void fn_cell_takes_back(LowerFn *fn, const MsRef *ref, MsName name, MirValue value) {
+  const uint32_t at = closing_index(fn, ref, name);
+  const MirValue old = fn->cell_old;
+  const MirTy ty = mir_b_ty(&fn->b, old);
+  fn->cell_old_at = 0;
+  fn_disown(fn, old);
+  bool handed_on = false; /* `x = f(x)` moved the old value into the new one */
+  for (uint32_t index = 0; index < fn->nmoved_names; index++) {
+    handed_on |= fn->moved_names[index] == old;
+  }
+  if (!handed_on) {
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+  }
+  const MirValue slot = fn->closing[at];
+  const MirImm refill = {.tag = MI_INT, .i = 3}; /* the lent value comes back */
+  (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
+  const MirValue stored[2] = {slot, value};
+  (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
 }
 
 /* The slot of the `var` resource a local reference names, or MIR_NONE. */
@@ -615,6 +674,9 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MsTy checked,
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
   const bool owns = mir_needs_drop(fn->cx->module, ty);
+  MsCloser slot_closer;
+  /* A plain-data cell nothing closes keeps no scope entry to refill; a resource's slot always has one. */
+  const bool scoped = owns || (checked != MS_TY_NONE && ms_own_closer_of(fn->cx->program, ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count), &slot_closer));
   if (owns) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   }
@@ -632,7 +694,7 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MsTy checked,
     } else {
       (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
     }
-  } else if (kind != LOWER_SHARED_PLAIN && kind != LOWER_SHARED_BORROWED) {
+  } else if (scoped && kind != LOWER_SHARED_PLAIN && kind != LOWER_SHARED_BORROWED) {
     /* The slot closes what it holds, and holds the new value from here. */
     const MirImm refill = {.tag = MI_INT, .i = 2};
     (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
@@ -649,6 +711,14 @@ bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *tak
   const uint32_t at = ref->kind == MS_REF_LOCAL ? ref->local : fn->nvars + ref->local;
   if (at >= fn->nvars + LOWER_MAX_CLOSING_PARAMS || fn->closing[at] == MIR_NONE) {
     return false;
+  }
+  if (fn->cell_old_at == at + 1) {
+    /* `x = f(x)` already took the value out of the cell: the consumer takes that. */
+    if (fn->nmoved_names < 8) {
+      fn->moved_names[fn->nmoved_names++] = fn->cell_old;
+    }
+    *taken = fn->cell_old;
+    return true;
   }
   /* The slot gives its value up: its scope no longer closes it, the consumer owns what is taken. */
   const MirValue slot = fn->closing[at];
@@ -685,4 +755,48 @@ void fn_locals_restore(LowerFn *fn, const LowerFnLocals *saved) {
   fn->holds_value = saved->holds_value;
   fn->closing_types = saved->closing_types;
   fn->nvars = saved->nvars;
+}
+
+/* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
+ * back by `fn_put_place`), a member or element path's value is copied. */
+bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
+  uint32_t position;
+  if (fn_default_param_place(fn, base, &position)) {
+    *out = fn->default_args[position]; /* the value the call passes: the default changes it and `fn_put_place` hands the change back */
+    return true;
+  }
+  MirVar var;
+  if (fn_owned_local(fn, base, &var)) {
+    *out = mir_b_use_var(&fn->b, var);
+    return true;
+  }
+  MirValue slot;
+  MirTy slot_ty;
+  if (fn_closing_local(fn, base, &slot, &slot_ty)) {
+    if (mir_needs_drop(fn->cx->module, slot_ty)) {
+      /* The value is lent out: its owner now is whoever holds it, and the slot closes it again once `fn_put_place`
+       * refills it. A cancellation while it is out must not close the bytes the borrower is changing. */
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
+    }
+    *out = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Take : MOP_Load, &slot, 1,
+                      (MirImm){.tag = MI_TY, .a = slot_ty}, slot_ty);
+    return true;
+  }
+  if (fn_closing_param(fn, base, &slot, &var)) {
+    const MirTy ty = fn->b.vars.ptr[var].ty; /* the declared type: reading the variable would carry it through every loop */
+    *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+    return true;
+  }
+  MsExpr *index_left = NULL;
+  MsExpr *index_key = NULL;
+  if (base->kind != MS_E_MEMBER && !ms_expr_index(base, &index_left, &index_key)) {
+    return fn_fail(fn, "assignment into this place is not lowered yet (expression kind %d at %u:%u)", (int)base->kind, base->pos.line, base->pos.column);
+  }
+  const MirValue inner = fn_expr(fn, base, LW_BORROW);
+  if (inner == MIR_NONE) {
+    return false;
+  }
+  *out = fn_implicit_clone(fn, inner, true);
+  fn_disown(fn, *out);
+  return true;
 }

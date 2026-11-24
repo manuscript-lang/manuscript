@@ -36,6 +36,8 @@ uint32_t ms_sched_attach(MsWakeFn wake, void *argument) {
   return index;
 }
 
+void ms_sched_note_queued(void) { ms_sched()->starts_queued = true; }
+
 int64_t ms_sched_now(void) { return ms_sys_monotonic_ns(); }
 
 void ms_sched_post_completion(uint64_t id, int32_t result, uint32_t kind) {

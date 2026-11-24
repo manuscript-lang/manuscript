@@ -3,10 +3,10 @@
 
 #include <mimalloc.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 #ifdef MS_STATS
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #endif
 
 #include "base/fatal.h"
@@ -93,6 +93,22 @@ static _Thread_local LiveStripe *my_stripe = NULL;
 void ms_alloc_track_live(void) {
   atomic_store_explicit(&tracking, true, memory_order_relaxed);
   refresh_hooked();
+}
+
+/* mimalloc is built with MI_NO_GETENV (cmake/targets/third_party.cmake): reading each of its ~60 options from the
+ * environment scanned every variable per option, about 500K instructions in every process. The two options a person
+ * sets to look at the allocator are read here, once, before the first allocation. */
+__attribute__((constructor(101))) static void read_allocator_environment(void) {
+  static const struct {
+    const char *name;
+    mi_option_t option;
+  } settable[] = {{"MIMALLOC_SHOW_STATS", mi_option_show_stats}, {"MIMALLOC_VERBOSE", mi_option_verbose}};
+  for (size_t i = 0; i < sizeof settable / sizeof settable[0]; i++) {
+    const char *value = getenv(settable[i].name); // NOLINT(concurrency-mt-unsafe): runs before main
+    if (value != NULL) {
+      mi_option_set(settable[i].option, value[0] == '0' ? 0 : 1);
+    }
+  }
 }
 
 static void refresh_hooked(void) {

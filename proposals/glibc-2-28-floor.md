@@ -28,7 +28,7 @@ So the language needs nothing newer than 2.28. The newer versions come from the 
 
 ## Design
 
-- **Tables.** `toolchain/glibc/<arch>.symbols` holds lines of the form `<soname> <version> <symbol> <F|D> [size]`.
+- **Tables.** `toolchain/glibc/<arch>.symbols` holds lines of the form `<soname> <version> <symbol> <F|D> [size [alias-of]]`; a data symbol with `alias-of` is emitted as an alias of that symbol, because glibc exports `environ`, `_environ` and `__environ` as one object and a copy relocation of one name must move them all.
   - The data comes from glibc 2.28's `*.abilist` files, via `toolchain/glibc/generate.sh`.
   - Each symbol gets its newest version up to 2.28.
   - Each symbol is assigned to the first library that exports it, in the order libc, libm, libpthread, libdl, librt, loader.

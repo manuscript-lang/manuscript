@@ -19,16 +19,23 @@ licenses-check: repo-check
 # Each of these runs tools/<name>.ms with the built ms; the tool's header comment says what it checks.
 TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check removed-check
 
-.PHONY: build conform verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
+.PHONY: build conform conform-release verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
 
 # Configures and builds the `ci` preset (src/README.md); `ms` lands in $(MS).
 build:
 	cmake --preset ci
 	cmake --build --preset ci
+	@$(MS) run tools/fetch-llvm-lib.ms >/dev/null || echo "warning: the shared LLVM library was not fetched; ms uses the opt and llc child processes (make llvm-lib retries)"
 
 # The conformance corpus replayed with the ms just built (tools/conform-run.ms).
 conform: build
 	cmake --build --preset ci --target conform
+
+# The run and test phases replayed with the Release (optimizing) build; CI replays Debug, so a difference between the two
+# builds of one program fails here. Nightly on main.
+conform-release: build
+	CONFORM_BUILD_TYPE=Release $(MS) run tools/conform-run.ms -- --phase run
+	CONFORM_BUILD_TYPE=Release $(MS) run tools/conform-run.ms -- --phase test
 
 # Routine feedback; the merge gate adds the conformance corpus, removed spellings, the book and the package.
 verify: repo-check bench-check docs-check licenses-check
@@ -38,7 +45,7 @@ verify-full: verify conform removed-check book-check dist-check
 $(TOOLS): build
 	HUGO="$(HUGO)" $(MS) run tools/$@.ms
 
-# The corpus with every dead statement slot poisoned (MS_POISON_SLOTS=1), under the default backend and Cranelift.
+# The corpus with every dead statement slot poisoned (MS_POISON_SLOTS=1), under the default build type.
 # The corpus with dead stack cells filled with 0xDD (the compiler reads MS_POISON_SLOTS): a view that outlives its slot
 # prints garbage in every build.
 poison-check: build
@@ -53,11 +60,11 @@ count-check: build
 	MS=$(MS) $(MS) run tools/count-check-selftest.ms
 
 dist: build
-	$(MS) run tools/package.ms
+	cmake --build --preset ci --target dist
 
 # Extracts the archive for this host and runs the packaged binary on the hello example.
-dist-check: dist
-	$(MS) run tools/dist-check.ms
+dist-check: build
+	cmake --build --preset ci --target dist-smoke
 
 # Use the locked editor dependencies; packaging runs the extension checks and bundle.
 vscode-package:

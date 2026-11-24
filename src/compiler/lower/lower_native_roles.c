@@ -8,6 +8,7 @@ static MirRole string_role(MsSpan name) {
     const char *name;
     MirRole role;
   } table[] = {{"msrt_bytes_append", MR_BYTES_APPEND},
+               {"msrt_bytes_concat", MR_BYTES_CONCAT},
                {"msrt_list_sorted", MR_LIST_SORTED},
                {"msrt_bytes_read_word", MR_BYTES_READ_WORD},
                {"msrt_bytes_index_of_byte", MR_BYTES_INDEX_OF_BYTE},

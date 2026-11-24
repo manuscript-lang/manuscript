@@ -156,6 +156,14 @@ uint32_t ms_workers_spread_pick(void) {
 }
 
 void ms_workers_nudge(void) {
+  /* The queue push before this call and a looker's last look after it stops looking are sequentially consistent
+   * (the queue's count and the looking count): the push sees the looker, or the looker sees the push. */
+  if (!ms_isolate_any_looking()) {
+    ms_workers_nudge_next();
+  }
+}
+
+void ms_workers_nudge_next(void) {
   if (ms_workers_limit() <= 1 || ms_isolate_wake_one(ms_isolate_self())) {
     return;
   }

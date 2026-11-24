@@ -3,7 +3,7 @@
 // ms: allow_effect std.random.read
 
 import (
-	Promise, promise, wait_all from "@std/concurrency/promise.ms",
+	Promise, caller_frame, promise, wait_all from "@std/concurrency/promise.ms",
 	panic from "@std/core.ms",
 	float from "@std/random.ms",
 	Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
@@ -232,7 +232,12 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // doubled := map_concurrent([1, 2, 3], 2, fn n: n * 2)?  // [2, 4, 6]
 // print(doubled.length())
 // ```
-export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
+export fn map_concurrent[T, U](
+	items: List[T],
+	limit: Int,
+	work: fn(T) U,
+	site: String = caller_frame()
+) List[U]!:
 	if limit < 1:
 		return error(
 			Error(
@@ -246,7 +251,12 @@ export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U
 
 	for stripe in 0..stripes:
 		mine := items.clone()
-		running.append(promise(fn: stripe_results(mine, stripe, stripes, work)))
+		running.append(
+			promise(
+				fn: stripe_results(mine, stripe, stripes, work),
+				site: site
+			)
+		)
 
 	var parts = wait_all(running)?
 	var results: List[U] = []

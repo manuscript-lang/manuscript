@@ -1,2 +1,0 @@
-export fn double(n: Int) Int:
-    return n * 2

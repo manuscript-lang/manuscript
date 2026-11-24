@@ -4,7 +4,7 @@
 
 Stdlib API shape, failure modes, naming, construction.
 
-- [Strings grow in place, so there is no StringBuilder](strings-grow-in-place-so-there-is-no-string-builder.md): `+=` on a `var` String matches the builder's speed; `drain` is move-then-reassign; `BytesBuilder` stays.
+- [Strings grow in place, so there is no StringBuilder](strings-grow-in-place-so-there-is-no-string-builder.md): `+=` on a `var` String matches the builder's speed; `drain` is move-then-reassign; `BytesBuilder` stays; `Bytes.concat` onto a dying value grows in place.
 - [Stdlib effects are tagged by logical capability](stdlib-effects-are-tagged-by-logical-capability.md): tags follow what a function lets callers do, not which extern it calls; handles inherit; a golden lists every tag.
 - [Buffering, pipes and virtual file trees reuse existing primitives](buffering-pipes-and-virtual-file-trees-reuse-existing-primitives.md): `buffered.ms`, channel-backed pipes, `section`, and the `FileTree` interface with `MemoryTree` and `walk`; `embed` awaits a language decision.
 - [Calls that fail only on a programmer's constant return plain values; fixed-width codecs are methods](calls-that-fail-only-on-a-programmer-s-constant-return-plain.md): `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponential` return `String`.
@@ -24,7 +24,6 @@ Stdlib API shape, failure modes, naming, construction.
 - [Text in, bytes by explicit sibling](text-in-bytes-by-explicit-sibling.md): write-like operations accept `String`; the raw form is a `_bytes` sibling (`send_bytes`, `request_bytes`); file writes take `Writable` instead.
 - [fs completion rule, closed enums and the owned-promise pattern](fs-completion-rule-closed-enums-and-owned-tasks.md): whole-file ops return `Promise`, the rest block; modes, origins and kinds are enums; promise-returning wrappers return `promise(fn:)` over owned clones.
 - [Glob relative results use path components](glob-relative-results-use-path-components.md): anchor the query root once; subtract components for dot roots, parents, and Windows volume roots without changing the parallel test runner's cwd.
-- [A native moves to Manuscript only when nothing calls it from Rust and a bench shows no loss](a-native-moves-to-manuscript-only-when-no-rust-code-calls-it.md): `reverse_bits`, `reverse_bytes` and `filled` moved faster; BigInt number theory and pure float helpers were slower and stayed native.
 - [Path text is Manuscript; only the glob matcher stays native](path-text-is-manuscript-and-only-the-glob-matcher-stays-native.md): `os/path.ms` holds the lexical path rules; a recorded 9.7k-case corpus replays them as a `.ms` test.
 - [Python shapes are adopted where they remove unwrapping or index arithmetic](python-shapes-adopted-where-they-remove-unwrapping-or-index-math.md): `split_once`, `counts`, `pow_int`, `divmod`, `gcd/lcm/isqrt`, `path.stem/with_extension`, `fs.exists`, plain `repeat`; bad values give `none` or an error.
 - [`mean` and `Closeable.close` keep their current shape](mean-and-close-keep-their-current-shape.md): `mean` stays as is and `close` returns `Void!`.

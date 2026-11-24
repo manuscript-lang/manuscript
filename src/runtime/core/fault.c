@@ -53,6 +53,18 @@ static void add_note(MsFaultDetail *detail, MsSpan message) {
   ms_fault_note_list_push(&detail->notes, (MsFaultNote){.bytes = copy, .length = message.len});
 }
 
+/* Points the started frame of `detail` at an owned copy of `file` and `function`. */
+static void set_started(MsFaultDetail *detail, MsSpan file, uint32_t line, MsSpan function) {
+  char *const names = ms_alloc(file.len + function.len + 2);
+  __builtin_memcpy(names, file.ptr, file.len);
+  names[file.len] = 0;
+  __builtin_memcpy(names + file.len + 1, function.ptr, function.len);
+  names[file.len + 1 + function.len] = 0;
+  ms_free(detail->started_names);
+  detail->started_names = names;
+  detail->started = (MsFrameList){.frames = {{.file = names, .function = names + file.len + 1, .line = line}}, .count = 1};
+}
+
 static void detail_free(MsFaultDetail *detail) {
   if (detail == NULL) {
     return;
@@ -61,10 +73,14 @@ static void detail_free(MsFaultDetail *detail) {
     ms_free(detail->notes.ptr[i].bytes);
   }
   ms_fault_note_list_free(&detail->notes);
+  ms_free(detail->started_names);
   ms_free(detail);
 }
 
 void ms_fault_text_free(MsFaultText *text) {
+  if (text->bytes == NULL && text->detail == NULL) {
+    return;
+  }
   ms_free(text->bytes);
   detail_free(text->detail);
   *text = (MsFaultText){0};
@@ -80,6 +96,11 @@ MsFaultText ms_fault_text_clone(const MsFaultText *text) {
     copy.detail = ms_alloc_zeroed(sizeof *copy.detail);
     *copy.detail = *text->detail;
     copy.detail->notes = (MsFaultNoteList){0};
+    copy.detail->started_names = NULL;
+    if (text->detail->started.count != 0 && text->detail->started_names != NULL) {
+      const MsFrame *const frame = &text->detail->started.frames[0];
+      set_started(copy.detail, ms_span_of_text(frame->file), frame->line, ms_span_of_text(frame->function));
+    }
     for (size_t i = 0; i < text->detail->notes.len; i++) {
       add_note(copy.detail, ms_span_of(text->detail->notes.ptr[i].bytes, text->detail->notes.ptr[i].length));
     }
@@ -285,42 +306,49 @@ void ms_fault_install_base_hook(void) { ms_fatal_install(raise_base_fatal); }
 
 /* ---- reports that outlive the fault ---- */
 
-size_t ms_fault_capture_frames(uintptr_t *out, size_t capacity) {
-  return ms_frames_capture((uintptr_t)__builtin_frame_address(0), (uintptr_t)ms_fault_capture_frames,
-                           window_of(&ms_task_running()->unwind), out, capacity);
+/* Splits `site` (`file:line in function`, or `file:line:col` with no function) into a frame's parts. False when
+ * it names no line. */
+static bool site_parts(MsSpan site, MsSpan *file, uint32_t *line, MsSpan *function) {
+  size_t colon = 0;
+  while (colon < site.len && site.ptr[colon] != ':') {
+    colon++;
+  }
+  size_t at = colon + 1;
+  uint64_t number = 0;
+  while (at < site.len && site.ptr[at] >= '0' && site.ptr[at] <= '9' && number <= UINT32_MAX) {
+    number = number * 10 + (uint64_t)(site.ptr[at++] - '0');
+  }
+  if (colon == 0 || at <= colon + 1 || number > UINT32_MAX) {
+    return false;
+  }
+  static const char in[] = " in ";
+  const size_t in_len = sizeof in - 1;
+  const bool named = site.len - at > in_len && __builtin_memcmp(site.ptr + at, in, in_len) == 0;
+  *file = ms_span_of(site.ptr, colon);
+  *line = (uint32_t)number;
+  *function = named ? ms_span_of(site.ptr + at + in_len, site.len - at - in_len) : ms_span_of_text("?");
+  return true;
 }
 
-/* The frames a task was started from begin inside the standard library's `promise`; the report names where the
- * program started it, so those leading frames are left out. */
-static void drop_library_frames(MsFrameList *list) {
-  size_t skip = 0;
-  while (skip < list->count && is_library_frame(&list->frames[skip])) {
-    skip++;
-  }
-  if (skip == 0) {
+void ms_fault_text_add_started(MsFaultText *text, MsSpan site) {
+  MsSpan file;
+  MsSpan function;
+  uint32_t line = 0;
+  /* The report names a line of the program: one of the standard library's own starts is left out. */
+  if (!site_parts(site, &file, &line, &function) || ms_span_starts_with(file, ms_span_of_text("@std/"))) {
     return;
   }
-  list->count -= skip;
-  __builtin_memmove(list->frames, list->frames + skip, list->count * sizeof list->frames[0]);
-}
-
-void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, size_t count) {
   if (text->detail == NULL) {
     text->detail = ms_alloc_zeroed(sizeof *text->detail);
     text->detail->kind = MS_FAULT_KIND_FAULT;
     text->detail->message_length = text->length;
   }
-  MsFrameList *const started = &text->detail->started;
-  ms_frames_describe(addresses, count, started);
-  drop_library_frames(started);
-  if (started->count == 0) {
-    return;
-  }
+  set_started(text->detail, file, line, function);
   /* The report's bytes are an owned block: rebuild it with the new lines on the end. */
   MsStrBuild grown = ms_strbuild_new();
   ms_strbuild_append(&grown, ms_span_of(text->bytes, text->length));
   ms_strbuild_append_text(&grown, "\n  task started by:");
-  render_frames(&grown, started);
+  render_frames(&grown, &text->detail->started);
   ms_free(text->bytes);
   text->bytes = grown.bytes.ptr;
   text->length = grown.bytes.len;
