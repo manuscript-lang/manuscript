@@ -215,7 +215,7 @@ This is typically implemented with a jump through a register.
 
 The ‘`invoke`’ instruction causes control to transfer to a specified function, with the possibility of control flow transfer to either the ‘`normal`’ label or the ‘`exception`’ label. If the callee function returns with the “`ret`” instruction, control flow will return to the “normal” label. If the callee (or any indirect callees) returns via the “[resume](#i-resume)” instruction or other exception handling mechanism, control is interrupted and continued at the dynamically nearest “exception” label.
 
-The ‘`exception`’ label is a [landing pad](ExceptionHandling.html#overview) for the exception. As such, ‘`exception`’ label is required to have the “[landingpad](instructions-other.md#i-landingpad)” instruction, which contains the information about the behavior of the program after unwinding happens, as its first non-PHI instruction. The restrictions on the “`landingpad`” instruction’s tightly couples it to the “`invoke`” instruction, so that the important information contained within the “`landingpad`” instruction can’t be lost through normal code motion.
+The ‘`exception`’ label is a landing pad for the exception. As such, ‘`exception`’ label is required to have the “[landingpad](instructions-other.md#i-landingpad)” instruction, which contains the information about the behavior of the program after unwinding happens, as its first non-PHI instruction. The restrictions on the “`landingpad`” instruction’s tightly couples it to the “`invoke`” instruction, so that the important information contained within the “`landingpad`” instruction can’t be lost through normal code motion.
 
 <a id="id53"></a>
 
@@ -410,7 +410,7 @@ The ‘`resume`’ instruction resumes propagation of an existing (in-flight) ex
 
 ##### Overview:
 
-The ‘`catchswitch`’ instruction is used by [LLVM’s exception handling system](ExceptionHandling.html#overview) to describe the set of possible catch handlers that may be executed by the [EH personality routine](high-level-structure.md#personalityfn).
+The ‘`catchswitch`’ instruction is used by LLVM’s exception handling system to describe the set of possible catch handlers that may be executed by the [EH personality routine](high-level-structure.md#personalityfn).
 
 <a id="id68"></a>
 
@@ -418,7 +418,7 @@ The ‘`catchswitch`’ instruction is used by [LLVM’s exception handling syst
 
 The `parent` argument is the token of the funclet that contains the `catchswitch` instruction. If the `catchswitch` is not inside a funclet, this operand may be the token `none`.
 
-The `default` argument is the label of another basic block beginning with either a `cleanuppad` or `catchswitch` instruction. This unwind destination must be a legal target with respect to the `parent` links, as described in the [exception handling documentation](ExceptionHandling.html#wineh-constraints).
+The `default` argument is the label of another basic block beginning with either a `cleanuppad` or `catchswitch` instruction. This unwind destination must be a legal target with respect to the `parent` links, as described in the exception handling documentation.
 
 The `handlers` are a nonempty list of successor blocks that each begin with a [catchpad](instructions-other.md#i-catchpad) instruction.
 
@@ -469,7 +469,7 @@ The first argument to a ‘`catchret`’ indicates which `catchpad` it exits. It
 
 The ‘`catchret`’ instruction ends an existing (in-flight) exception whose unwinding was interrupted with a [catchpad](instructions-other.md#i-catchpad) instruction. The [personality function](high-level-structure.md#personalityfn) gets a chance to execute arbitrary code to, for example, destroy the active exception. Control then transfers to `normal`.
 
-The `token` argument must be a token produced by a `catchpad` instruction. If the specified `catchpad` is not the most-recently-entered not-yet-exited funclet pad (as described in the [EH documentation](ExceptionHandling.html#wineh-constraints)), the `catchret`’s behavior is undefined.
+The `token` argument must be a token produced by a `catchpad` instruction. If the specified `catchpad` is not the most-recently-entered not-yet-exited funclet pad (as described in the EH documentation), the `catchret`’s behavior is undefined.
 
 <a id="id75"></a>
 
@@ -500,9 +500,9 @@ The ‘`cleanupret`’ instruction is a terminator instruction that has an optio
 
 ##### Arguments:
 
-The ‘`cleanupret`’ instruction requires one argument, which indicates which `cleanuppad` it exits, and must be a [cleanuppad](instructions-other.md#i-cleanuppad). If the specified `cleanuppad` is not the most-recently-entered not-yet-exited funclet pad (as described in the [EH documentation](ExceptionHandling.html#wineh-constraints)), the `cleanupret`’s behavior is undefined.
+The ‘`cleanupret`’ instruction requires one argument, which indicates which `cleanuppad` it exits, and must be a [cleanuppad](instructions-other.md#i-cleanuppad). If the specified `cleanuppad` is not the most-recently-entered not-yet-exited funclet pad (as described in the EH documentation), the `cleanupret`’s behavior is undefined.
 
-The ‘`cleanupret`’ instruction also has an optional successor, `continue`, which must be the label of another basic block beginning with either a `cleanuppad` or `catchswitch` instruction. This unwind destination must be a legal target with respect to the `parent` links, as described in the [exception handling documentation](ExceptionHandling.html#wineh-constraints).
+The ‘`cleanupret`’ instruction also has an optional successor, `continue`, which must be the label of another basic block beginning with either a `cleanuppad` or `catchswitch` instruction. This unwind destination must be a legal target with respect to the `parent` links, as described in the exception handling documentation.
 
 <a id="id79"></a>
 

@@ -140,7 +140,7 @@ These aren’t inherently debug info centric, but currently all the specialized 
                         enums: !2, retainedTypes: !3, globals: !4, imports: !5,
                         macros: !6, dwoId: 0x0abcd)
 
-The optional `dialect:` field encodes the source-language *dialect* of the compile unit as an enum. It corresponds to the `DW_AT_LLVM_language_dialect` attribute emitted on `DW_TAG_compile_unit` and is intended for language dialects that represent different execution models. When specified, the field must name one of the known dialects, either symbolically or with the matching numeric value; see [LLVM Language Dialect](SourceLevelDebugging.html#llvm-language-dialect) for the list of supported values.
+The optional `dialect:` field encodes the source-language *dialect* of the compile unit as an enum. It corresponds to the `DW_AT_LLVM_language_dialect` attribute emitted on `DW_TAG_compile_unit` and is intended for language dialects that represent different execution models. When specified, the field must name one of the known dialects, either symbolically or with the matching numeric value; see LLVM Language Dialect for the list of supported values.
 
 Omitting the `dialect:` field is the only way to express “no dialect” in textual IR.
 
@@ -414,7 +414,7 @@ Finally, `DISubrangeType` may have a bias. In Ada, a program can request that a 
 
 ##### DIGlobalVariableExpression
 
-`DIGlobalVariableExpression` nodes tie a [DIGlobalVariable](#diglobalvariable) together with a [DIExpression](SourceLevelDebugging.html#diexpression).
+`DIGlobalVariableExpression` nodes tie a [DIGlobalVariable](#diglobalvariable) together with a DIExpression.
 
     @lower = global i32, !dbg !0
     @upper = global i32, !dbg !1
@@ -507,9 +507,9 @@ Usually lexical blocks are `distinct` to prevent node merging based on operands.
 
 ##### DIExpression
 
-`DIExpression` nodes represent expressions that are inspired by the DWARF expression language. They are used in [debug records](SourceLevelDebugging.html#debug-records) (such as `#dbg_declare` and `#dbg_value`) to describe how the referenced LLVM variable relates to the source language variable.
+`DIExpression` nodes represent expressions that are inspired by the DWARF expression language. They are used in debug records (such as `#dbg_declare` and `#dbg_value`) to describe how the referenced LLVM variable relates to the source language variable.
 
-See [DIExpression](SourceLevelDebugging.html#diexpression) for details.
+See DIExpression for details.
 
 Note
 
@@ -529,7 +529,7 @@ Some examples of expressions:
 
 ##### DIAssignID
 
-`DIAssignID` nodes have no operands and are always distinct. They are used to link together ([#dbg_assign records](instructions-vector-aggregate.md#debugrecords)) and instructions that store in IR. See [Debug Info Assignment Tracking](AssignmentTracking.html) for more info.
+`DIAssignID` nodes have no operands and are always distinct. They are used to link together ([#dbg_assign records](instructions-vector-aggregate.md#debugrecords)) and instructions that store in IR. See Debug Info Assignment Tracking for more info.
 
     store i32 %a, ptr %a.addr, align 4, !DIAssignID !2
     #dbg_assign(%a, !1, !DIExpression(), !2, %a.addr, !DIExpression(), !3)
@@ -721,7 +721,7 @@ Scalar type descriptors are represented as an `MDNode` s with two operands. The 
 
 Struct type descriptors are represented as `MDNode` s with an odd number of operands greater than 1. The first operand is an `MDString` denoting the name of the struct type. Like in scalar type descriptors the actual value of this name operand is irrelevant to LLVM. After the name operand, the struct type descriptors have a sequence of alternating `MDNode` and `ConstantInt` operands. With N starting from 1, the 2N - 1 th operand, an `MDNode`, denotes a contained field, and the 2N th operand, a `ConstantInt`, is the offset of the said contained field. The offsets must be in non-decreasing order.
 
-Access tags are represented as `MDNode` s with either 3 or 4 operands. The first operand is an `MDNode` pointing to the node representing the base type. The second operand is an `MDNode` pointing to the node representing the access type. The third operand is a `ConstantInt` that states the offset of the access. If a fourth field is present, it must be a `ConstantInt` valued at 0 or 1. If it is 1 then the access tag states that the location being accessed is “constant” (meaning `pointsToConstantMemory` should return true; see [other useful AliasAnalysis methods](AliasAnalysis.html#other-useful-aliasanalysis-methods)). The TBAA root of the access type and the base type of an access tag must be the same, and that is the TBAA root of the access tag.
+Access tags are represented as `MDNode` s with either 3 or 4 operands. The first operand is an `MDNode` pointing to the node representing the base type. The second operand is an `MDNode` pointing to the node representing the access type. The third operand is a `ConstantInt` that states the offset of the access. If a fourth field is present, it must be a `ConstantInt` valued at 0 or 1. If it is 1 then the access tag states that the location being accessed is “constant” (meaning `pointsToConstantMemory` should return true; see other useful AliasAnalysis methods). The TBAA root of the access type and the base type of an access tag must be the same, and that is the TBAA root of the access tag.
 
 <a id="tbaa-struct-metadata"></a>
 
@@ -1035,7 +1035,7 @@ This metadata disables all optional loop transformations unless explicitly instr
 
 It is recommended to use this metadata in addition to any `llvm.loop.*` transformation directive. Also, any loop should have at most one directive applied to it (and a sequence of transformations built using followup-attributes). Otherwise, which transformation will be applied depends on implementation details such as the pass pipeline order.
 
-See [Code Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+See Code Transformation Metadata for details.
 
 <a id="llvm-loop-vectorize-and-llvm-loop-interleave"></a>
 
@@ -1096,19 +1096,19 @@ Note that setting `llvm.loop.vectorize.width` to 1 disables vectorization of the
 
 #### ‘`llvm.loop.vectorize.followup_vectorized`’ Metadata
 
-This metadata defines which loop attributes the vectorized loop will have. See [Code Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which loop attributes the vectorized loop will have. See Code Transformation Metadata for details.
 
 <a id="llvm-loop-vectorize-followup-epilogue-metadata"></a>
 
 #### ‘`llvm.loop.vectorize.followup_epilogue`’ Metadata
 
-This metadata defines which loop attributes the epilogue will have. The epilogue is not vectorized and is executed when either the vectorized loop is not known to preserve semantics (because e.g., it processes two arrays that are found to alias by a runtime check) or for the last iterations that do not fill a complete set of vector lanes. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which loop attributes the epilogue will have. The epilogue is not vectorized and is executed when either the vectorized loop is not known to preserve semantics (because e.g., it processes two arrays that are found to alias by a runtime check) or for the last iterations that do not fill a complete set of vector lanes. See Transformation Metadata for details.
 
 <a id="llvm-loop-vectorize-followup-all-metadata"></a>
 
 #### ‘`llvm.loop.vectorize.followup_all`’ Metadata
 
-Attributes in the metadata will be added to both the vectorized and epilogue loop. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+Attributes in the metadata will be added to both the vectorized and epilogue loop. See Transformation Metadata for details.
 
 <a id="llvm-loop-vectorize-body-metadata"></a>
 
@@ -1192,13 +1192,13 @@ This metadata suggests that the loop should be unrolled fully. The metadata has 
 
 #### ‘`llvm.loop.unroll.followup`’ Metadata
 
-This metadata defines which loop attributes the unrolled loop will have. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which loop attributes the unrolled loop will have. See Transformation Metadata for details.
 
 <a id="llvm-loop-unroll-followup-remainder-metadata"></a>
 
 #### ‘`llvm.loop.unroll.followup_remainder`’ Metadata
 
-This metadata defines which loop attributes the remainder loop after partial/runtime unrolling will have. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which loop attributes the remainder loop after partial/runtime unrolling will have. See Transformation Metadata for details.
 
 <a id="llvm-loop-unroll-and-jam"></a>
 
@@ -1238,31 +1238,31 @@ This metadata suggests that the loop should be fully unroll and jammed if the tr
 
 #### ‘`llvm.loop.unroll_and_jam.followup_outer`’ Metadata
 
-This metadata defines which loop attributes the outer unrolled loop will have. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which loop attributes the outer unrolled loop will have. See Transformation Metadata for details.
 
 <a id="llvm-loop-unroll-and-jam-followup-inner-metadata"></a>
 
 #### ‘`llvm.loop.unroll_and_jam.followup_inner`’ Metadata
 
-This metadata defines which loop attributes the inner jammed loop will have. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which loop attributes the inner jammed loop will have. See Transformation Metadata for details.
 
 <a id="llvm-loop-unroll-and-jam-followup-remainder-outer-metadata"></a>
 
 #### ‘`llvm.loop.unroll_and_jam.followup_remainder_outer`’ Metadata
 
-This metadata defines which attributes the epilogue of the outer loop will have. This loop is usually unrolled, meaning there is no such loop. This attribute will be ignored in this case. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which attributes the epilogue of the outer loop will have. This loop is usually unrolled, meaning there is no such loop. This attribute will be ignored in this case. See Transformation Metadata for details.
 
 <a id="llvm-loop-unroll-and-jam-followup-remainder-inner-metadata"></a>
 
 #### ‘`llvm.loop.unroll_and_jam.followup_remainder_inner`’ Metadata
 
-This metadata defines which attributes the inner loop of the epilogue will have. The outer epilogue will usually be unrolled, meaning there can be multiple inner remainder loops. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which attributes the inner loop of the epilogue will have. The outer epilogue will usually be unrolled, meaning there can be multiple inner remainder loops. See Transformation Metadata for details.
 
 <a id="llvm-loop-unroll-and-jam-followup-all-metadata"></a>
 
 #### ‘`llvm.loop.unroll_and_jam.followup_all`’ Metadata
 
-Attributes specified in the metadata is added to all `llvm.loop.unroll_and_jam.*` loops. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+Attributes specified in the metadata is added to all `llvm.loop.unroll_and_jam.*` loops. See Transformation Metadata for details.
 
 <a id="llvm-loop-licm-versioning-disable-metadata"></a>
 
@@ -1289,31 +1289,31 @@ This metadata should be used in conjunction with `llvm.loop` loop identification
 
 #### ‘`llvm.loop.distribute.followup_coincident`’ Metadata
 
-This metadata defines which attributes extracted loops with no cyclic dependencies will have (i.e., can be vectorized). See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which attributes extracted loops with no cyclic dependencies will have (i.e., can be vectorized). See Transformation Metadata for details.
 
 <a id="llvm-loop-distribute-followup-sequential-metadata"></a>
 
 #### ‘`llvm.loop.distribute.followup_sequential`’ Metadata
 
-This metadata defines which attributes the isolated loops with unsafe memory dependencies will have. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+This metadata defines which attributes the isolated loops with unsafe memory dependencies will have. See Transformation Metadata for details.
 
 <a id="llvm-loop-distribute-followup-fallback-metadata"></a>
 
 #### ‘`llvm.loop.distribute.followup_fallback`’ Metadata
 
-If loop versioning is necessary, this metadata defined the attributes the non-distributed fallback version will have. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+If loop versioning is necessary, this metadata defined the attributes the non-distributed fallback version will have. See Transformation Metadata for details.
 
 <a id="llvm-loop-distribute-followup-all-metadata"></a>
 
 #### ‘`llvm.loop.distribute.followup_all`’ Metadata
 
-The attributes in this metadata are added to all followup loops of the loop distribution pass. See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+The attributes in this metadata are added to all followup loops of the loop distribution pass. See Transformation Metadata for details.
 
 <a id="llvm-loop-isdistributed-metadata"></a>
 
 #### ‘`llvm.loop.isdistributed`’ Metadata
 
-If a loop was successfully processed by the loop distribution pass, this metadata is added (i.e., has been distributed). See [Transformation Metadata](TransformMetadata.html#transformation-metadata) for details.
+If a loop was successfully processed by the loop distribution pass, this metadata is added (i.e., has been distributed). See Transformation Metadata for details.
 
 <a id="llvm-loop-estimated-trip-count-metadata"></a>
 
@@ -1529,7 +1529,7 @@ Note that this is an experimental feature, which means that its semantics might 
 
 #### ‘`type`’ Metadata
 
-See [Type Metadata](TypeMetadata.html).
+See Type Metadata.
 
 <a id="callee-type-metadata"></a>
 
@@ -1539,7 +1539,7 @@ See [Type Metadata](TypeMetadata.html).
 
 The `!callee_type` metadata is introduced to support the generation of a call graph section in the object file. The `!callee_type` metadata is used to identify the types of the intended callees of indirect call instructions. The `!callee_type` metadata is a list of one or more generalized `!callgraph` metadata objects (See the [‘callgraph’ Metadata](#metadata-callgraph) section) with each `!callgraph` metadata pointing to a callee’s [type identifier](#calleetype-type-identifier).
 
-While `!callee_type` and `!callgraph` are private to the Call Graph Section pipeline and contain no offsets, LLVM’s [Control Flow Integrity (CFI)](https://clang.org/docs/ControlFlowIntegrity.html) uses a structurally similar `!type` metadata in its implementation (See [Type Metadata](TypeMetadata.html)), which shares the same type identifier format but includes a leading offset for vtable compatibility.
+While `!callee_type` and `!callgraph` are private to the Call Graph Section pipeline and contain no offsets, LLVM’s [Control Flow Integrity (CFI)](https://clang.org/docs/ControlFlowIntegrity.html) uses a structurally similar `!type` metadata in its implementation (See Type Metadata), which shares the same type identifier format but includes a leading offset for vtable compatibility.
 
 <a id="type-identifier"></a>
 
@@ -1586,7 +1586,7 @@ While `!callgraph` metadata is structurally similar to LLVM’s `!type` metadata
 
 - `!callgraph` (Call Graph Section): Does not contain an offset. This is private to the Call Graph Section pipeline.
 
-The generalized type identifier format used by both is identical. For more details on the generalized type identifier format and CFI’s metadata, see [Type Metadata](TypeMetadata.html) and [‘callee_type’ Metadata](#metadata-callee-type).
+The generalized type identifier format used by both is identical. For more details on the generalized type identifier format and CFI’s metadata, see Type Metadata and [‘callee_type’ Metadata](#metadata-callee-type).
 
 <a id="associated-metadata"></a>
 
@@ -1625,7 +1625,7 @@ The `prof` metadata is used to record profile data in the IR. The first operand 
 
 ##### branch_weights
 
-Branch weight metadata attached to a branch, select, switch or call instruction represents the likeliness of the associated branch being taken. For more information, see [LLVM Branch Weight Metadata](BranchWeightMetadata.html).
+Branch weight metadata attached to a branch, select, switch or call instruction represents the likeliness of the associated branch being taken. For more information, see LLVM Branch Weight Metadata.
 
 <a id="function-entry-count"></a>
 
@@ -1633,7 +1633,7 @@ Branch weight metadata attached to a branch, select, switch or call instruction 
 
 ##### function_entry_count
 
-Function entry count metadata can be attached to function definitions to record the number of times the function is called. Used with BFI information, it is also used to derive the basic block profile count. For more information, see [LLVM Branch Weight Metadata](BranchWeightMetadata.html).
+Function entry count metadata can be attached to function definitions to record the number of times the function is called. Used with BFI information, it is also used to derive the basic block profile count. For more information, see LLVM Branch Weight Metadata.
 
 <a id="vp"></a>
 
@@ -1708,7 +1708,7 @@ Clang emits `kcfi_type` metadata nodes for address-taken functions with `-fsanit
 
 #### ‘`pcsections`’ Metadata
 
-The `pcsections` metadata can be attached to instructions and functions, for which addresses, viz. program counters (PCs), are to be emitted in specially encoded binary sections. More details can be found in the [PC Sections Metadata](PCSectionsMetadata.html) documentation.
+The `pcsections` metadata can be attached to instructions and functions, for which addresses, viz. program counters (PCs), are to be emitted in specially encoded binary sections. More details can be found in the PC Sections Metadata documentation.
 
 <a id="memprof-metadata"></a>
 
@@ -1778,7 +1778,7 @@ This is intended for use on targets with a notion of generic address spaces, whi
 
 The `mmra` metadata represents target-defined properties on instructions that can be used to selectively relax constraints placed by the memory model.
 
-Refer to [Memory Model Relaxation Annotations](MemoryModelRelaxationAnnotations.html) for more information on how this metadata affects the memory model of a given target.
+Refer to Memory Model Relaxation Annotations for more information on how this metadata affects the memory model of a given target.
 
 It is attached to memory instructions such as: [atomicrmw](instructions-memory.md#i-atomicrmw), [cmpxchg](instructions-memory.md#i-cmpxchg), [load](instructions-memory.md#i-load), [store](instructions-memory.md#i-store), [fence](instructions-memory.md#i-fence) and [call](instructions-other.md#i-call) instructions that read or write memory.
 

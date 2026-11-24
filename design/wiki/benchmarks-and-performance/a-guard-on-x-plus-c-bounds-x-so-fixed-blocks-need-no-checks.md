@@ -8,5 +8,5 @@ Verified (2026-11-12): `while i + 32 <= n:` with an inner `for j in 0..32` readi
 - `Bytes.int64_le` and the other fixed-width readers inline now (generated MIR `read_word_fn` in `rtinline.rs`; `msrt_bytes_read_word` remains the fallback twin). Check `MS_KEEP_LL=1 MS_BACKEND=llvm ms build` for a remaining `call` and `declare`.
 
 Apply when: moving a scan, compare or checksum from `ms-rt` into `.ms`.
-Evidence: [results](../../../bench/perf/native-fallbacks/README.md), [range pass](../../crates/ms-mir/src/opt/range/prove.rs), [fixture](../../crates/ms-mir/tests/fixtures-opt/block_window.mir).
+Evidence: [results](../../../bench/perf/native-fallbacks/README.md), range pass, fixture.
 Verify: `MS_EMIT_OPT=1 ms emit` shows `list.get.u` in the block and no `list.get.nn`; `gaps.ms` blocked cases within 3x of native.

@@ -395,7 +395,7 @@ The ‘`call`’ instruction represents a simple function call.
 
 This instruction requires several arguments:
 
-1.  The optional `tail` and `musttail` markers indicate that the optimizers should perform tail call optimization. The `tail` marker is a hint that [can be ignored](CodeGenerator.html#tail-call-section). The `musttail` marker means that the call must be tail call optimized in order for the program to be correct. This is true even in the presence of attributes like “disable-tail-calls”. The `musttail` marker provides these guarantees:
+1.  The optional `tail` and `musttail` markers indicate that the optimizers should perform tail call optimization. The `tail` marker is a hint that can be ignored. The `musttail` marker means that the call must be tail call optimized in order for the program to be correct. This is true even in the presence of attributes like “disable-tail-calls”. The `musttail` marker provides these guarantees:
 
     - The call will not cause unbounded stack growth if it is part of a recursive cycle in the call graph.
 
@@ -493,7 +493,7 @@ This instruction requires several arguments:
 
     - Option `-tailcallopt` is enabled, `llvm::GuaranteedTailCallOpt` is `true`, or the calling convention is `tailcc`.
 
-    - [Platform-specific constraints are met.](CodeGenerator.html#tail-call-section)
+    - Platform-specific constraints are met.
 
 2.  The optional `notail` marker indicates that the optimizers should not add `tail` or `musttail` markers to the call. It is used to prevent tail call optimization from being performed on the call.
 
@@ -608,7 +608,7 @@ Note that the code generator does not yet fully support `va_arg` on many targets
 
 ##### Overview:
 
-The ‘`landingpad`’ instruction is used by [LLVM’s exception handling system](ExceptionHandling.html#overview) to specify that a basic block is a landing pad — one where the exception lands, and corresponds to the code found in the `catch` portion of a `try`/`catch` sequence. It defines values supplied by the [personality function](high-level-structure.md#personalityfn) upon re-entry to the function. The `resultval` has the type `resultty`.
+The ‘`landingpad`’ instruction is used by LLVM’s exception handling system to specify that a basic block is a landing pad — one where the exception lands, and corresponds to the code found in the `catch` portion of a `try`/`catch` sequence. It defines values supplied by the [personality function](high-level-structure.md#personalityfn) upon re-entry to the function. The `resultval` has the type `resultty`.
 
 <a id="id346"></a>
 
@@ -667,7 +667,7 @@ The `landingpad` instruction has several restrictions:
 
 ##### Overview:
 
-The ‘`catchpad`’ instruction is used by [LLVM’s exception handling system](ExceptionHandling.html#overview) to specify that a basic block begins a catch handler — one where a personality routine attempts to transfer control to catch an exception.
+The ‘`catchpad`’ instruction is used by LLVM’s exception handling system to specify that a basic block begins a catch handler — one where a personality routine attempts to transfer control to catch an exception.
 
 <a id="id351"></a>
 
@@ -687,9 +687,9 @@ When the call stack is being unwound due to an exception being thrown, the excep
 
 Like the [landingpad](#i-landingpad) instruction, the `catchpad` instruction must be the first non-phi of its parent basic block.
 
-The meaning of the tokens produced and consumed by `catchpad` and other “pad” instructions is described in the [Windows exception handling documentation](ExceptionHandling.html#wineh).
+The meaning of the tokens produced and consumed by `catchpad` and other “pad” instructions is described in the Windows exception handling documentation.
 
-When a `catchpad` has been “entered” but not yet “exited” (as described in the [EH documentation](ExceptionHandling.html#wineh-constraints)), it is undefined behavior to execute a [call](#i-call) or [invoke](instructions-terminators.md#i-invoke) that does not carry an appropriate [“funclet” bundle](high-level-structure.md#ob-funclet).
+When a `catchpad` has been “entered” but not yet “exited” (as described in the EH documentation), it is undefined behavior to execute a [call](#i-call) or [invoke](instructions-terminators.md#i-invoke) that does not carry an appropriate [“funclet” bundle](high-level-structure.md#ob-funclet).
 
 <a id="id353"></a>
 
@@ -717,7 +717,7 @@ When a `catchpad` has been “entered” but not yet “exited” (as described 
 
 ##### Overview:
 
-The ‘`cleanuppad`’ instruction is used by [LLVM’s exception handling system](ExceptionHandling.html#overview) to specify that a basic block is a cleanup block — one where a personality routine attempts to transfer control to run cleanup actions. The `args` correspond to whatever additional information the [personality function](high-level-structure.md#personalityfn) requires to execute the cleanup. The `resultval` has the type [token](type-system.md#t-token) and is used to match the `cleanuppad` to corresponding [cleanuprets](instructions-terminators.md#i-cleanupret). The `parent` argument is the token of the funclet that contains the `cleanuppad` instruction. If the `cleanuppad` is not inside a funclet, this operand may be the token `none`.
+The ‘`cleanuppad`’ instruction is used by LLVM’s exception handling system to specify that a basic block is a cleanup block — one where a personality routine attempts to transfer control to run cleanup actions. The `args` correspond to whatever additional information the [personality function](high-level-structure.md#personalityfn) requires to execute the cleanup. The `resultval` has the type [token](type-system.md#t-token) and is used to match the `cleanuppad` to corresponding [cleanuprets](instructions-terminators.md#i-cleanupret). The `parent` argument is the token of the funclet that contains the `cleanuppad` instruction. If the `cleanuppad` is not inside a funclet, this operand may be the token `none`.
 
 <a id="id356"></a>
 
@@ -741,7 +741,7 @@ The `cleanuppad` instruction has several restrictions:
 
 - A basic block that is not a cleanup block may not include a ‘`cleanuppad`’ instruction.
 
-When a `cleanuppad` has been “entered” but not yet “exited” (as described in the [EH documentation](ExceptionHandling.html#wineh-constraints)), it is undefined behavior to execute a [call](#i-call) or [invoke](instructions-terminators.md#i-invoke) that does not carry an appropriate [“funclet” bundle](high-level-structure.md#ob-funclet).
+When a `cleanuppad` has been “entered” but not yet “exited” (as described in the EH documentation), it is undefined behavior to execute a [call](#i-call) or [invoke](instructions-terminators.md#i-invoke) that does not carry an appropriate [“funclet” bundle](high-level-structure.md#ob-funclet).
 
 <a id="id358"></a>
 

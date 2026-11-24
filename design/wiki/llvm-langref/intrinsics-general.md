@@ -8,7 +8,7 @@ LLVM 23.1.0 Language Reference, part of the [index](index.md). Source: <https://
 
 ### Convergence Intrinsics
 
-The LLVM convergence intrinsics for controlling the semantics of `convergent` operations, which all start with the `llvm.experimental.convergence.` prefix, are described in the [Convergent Operation Semantics](ConvergentOperations.html) document.
+The LLVM convergence intrinsics for controlling the semantics of `convergent` operations, which all start with the `llvm.experimental.convergence.` prefix, are described in the Convergent Operation Semantics document.
 
 <a id="debugger-intrinsics"></a>
 
@@ -16,19 +16,19 @@ The LLVM convergence intrinsics for controlling the semantics of `convergent` op
 
 ### Debugger Intrinsics
 
-The LLVM debugger intrinsics (which all start with `llvm.dbg.` prefix), are described in the [LLVM Source Level Debugging](SourceLevelDebugging.html#format-common-intrinsics) document.
+The LLVM debugger intrinsics (which all start with `llvm.dbg.` prefix), are described in the LLVM Source Level Debugging document.
 
 <a id="exception-handling-intrinsics"></a>
 
 ### Exception Handling Intrinsics
 
-The LLVM exception handling intrinsics (which all start with `llvm.eh.` prefix), are described in the [LLVM Exception Handling](ExceptionHandling.html#exception-handling-intrinsics) document.
+The LLVM exception handling intrinsics (which all start with `llvm.eh.` prefix), are described in the LLVM Exception Handling document.
 
 <a id="pointer-authentication-intrinsics"></a>
 
 ### Pointer Authentication Intrinsics
 
-The LLVM pointer authentication intrinsics (which all start with `llvm.ptrauth.` prefix), are described in the [Pointer Authentication](PointerAuth.html#intrinsics) document.
+The LLVM pointer authentication intrinsics (which all start with `llvm.ptrauth.` prefix), are described in the Pointer Authentication document.
 
 <a id="trampoline-intrinsics"></a>
 
@@ -744,7 +744,7 @@ The `llvm.ssa.copy` intrinsic can be used to attach information to operations by
 
 ##### Arguments:
 
-The first argument is a pointer to be tested. The second argument is a metadata object representing a [type identifier](TypeMetadata.html).
+The first argument is a pointer to be tested. The second argument is a metadata object representing a type identifier.
 
 <a id="id1879"></a>
 
@@ -768,7 +768,7 @@ The `llvm.type.test` intrinsic tests whether the given pointer is associated wit
 
 ##### Arguments:
 
-The first argument is a pointer from which to load a function pointer. The second argument is the byte offset from which to load the function pointer. The third argument is a metadata object representing a [type identifier](TypeMetadata.html).
+The first argument is a pointer from which to load a function pointer. The second argument is the byte offset from which to load the function pointer. The third argument is a metadata object representing a type identifier.
 
 <a id="id1882"></a>
 
@@ -945,7 +945,7 @@ This intrinsic, together with [deoptimization operand bundles](high-level-struct
       ret void
     }
 
-with the optional `[, !make.implicit !{}]` present if and only if it is present on the call site. For more details on `!make.implicit`, see [FaultMaps and implicit checks](FaultMaps.html).
+with the optional `[, !make.implicit !{}]` present if and only if it is present on the call site. For more details on `!make.implicit`, see FaultMaps and implicit checks.
 
 In words, `@llvm.experimental.guard` executes the attached `"deopt"` continuation if (but **not** only if) its first argument is `false`. Since the optimizer is allowed to replace the `undef` with an arbitrary value, it can optimize guard to fail “spuriously”, i.e., without the original condition being false (hence the “not only if”); and this allows for “check widening” type optimizations.
 
@@ -1385,7 +1385,7 @@ This intrinsic emits a no-op relocation for the symbol at the location of the in
 
 ### Stack Map Intrinsics
 
-LLVM provides experimental intrinsics to support runtime patching mechanisms commonly desired in dynamic language JITs. These intrinsics are described in [Stack maps and patch points in LLVM](StackMaps.html).
+LLVM provides experimental intrinsics to support runtime patching mechanisms commonly desired in dynamic language JITs. These intrinsics are described in Stack maps and patch points in LLVM.
 
 <a id="element-wise-atomic-memory-intrinsics"></a>
 
@@ -1444,7 +1444,7 @@ This intrinsic does not provide any additional ordering guarantees over those pr
 
 ##### Lowering:
 
-In the most general case call to the ‘`llvm.memcpy.element.unordered.atomic.*`’ is lowered to a call to the symbol `__llvm_memcpy_element_unordered_atomic_*`. Where ‘\*’ is replaced with an actual element size. See [RewriteStatepointsForGC intrinsic lowering](Statepoints.html#rewritestatepointsforgc-intrinsic-lowering) for details on GC specific lowering.
+In the most general case call to the ‘`llvm.memcpy.element.unordered.atomic.*`’ is lowered to a call to the symbol `__llvm_memcpy_element_unordered_atomic_*`. Where ‘\*’ is replaced with an actual element size. See RewriteStatepointsForGC intrinsic lowering for details on GC specific lowering.
 
 Optimizer is allowed to inline memory copy when it’s profitable to do so.
 
@@ -1497,7 +1497,7 @@ This intrinsic does not provide any additional ordering guarantees over those pr
 
 ##### Lowering:
 
-In the most general case call to the ‘`llvm.memmove.element.unordered.atomic.*`’ is lowered to a call to the symbol `__llvm_memmove_element_unordered_atomic_*`. Where ‘\*’ is replaced with an actual element size. See [RewriteStatepointsForGC intrinsic lowering](Statepoints.html#rewritestatepointsforgc-intrinsic-lowering) for details on GC specific lowering.
+In the most general case call to the ‘`llvm.memmove.element.unordered.atomic.*`’ is lowered to a call to the symbol `__llvm_memmove_element_unordered_atomic_*`. Where ‘\*’ is replaced with an actual element size. See RewriteStatepointsForGC intrinsic lowering for details on GC specific lowering.
 
 The optimizer is allowed to inline the memory copy when it’s profitable to do so.
 

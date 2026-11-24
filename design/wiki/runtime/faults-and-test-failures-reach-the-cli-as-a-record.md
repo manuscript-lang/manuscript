@@ -10,4 +10,4 @@ Exit status (2026-11, Chinmay's request "change 67 to the one C uses"): a fault 
 Out of memory: an allocation the system refuses calls `fault::out_of_memory(bytes)`, which takes the full fault path (kind `OutOfMemory`, source frames, cleanups). Reporting can itself need memory, so a nested failure falls back to `fatal` (bare message, no frames) through the `OOM_REPORTING` flag, cleared when a report finishes. The kernel OOM killer after overcommit cannot be reported.
 
 Apply when: adding a fault, changing the fault report, or touching `ms test` result handling. Keep `MS_FAULT_RECORD` unset for nothing else; a nested program inherits it, which is why the CLI ignores a record whose pid is not the child's.
-Evidence: [record](../../crates/ms-rt-abi/src/record.rs), [runtime writer](../../crates/ms-rt/src/fault.rs) (`fault_kind`, `write_record`), [CLI reader](../../crates/ms-cli/src/fault.rs), [test failure site](../../crates/ms-lower/src/testing.rs).
+Evidence: record, runtime writer (`fault_kind`, `write_record`), CLI reader, test failure site.

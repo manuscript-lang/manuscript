@@ -12,7 +12,7 @@ optional length omitted the type for these responses, unlike HTTP/1. Infer from
 the first bytes independently of framing, while retaining an explicit type.
 
 Apply when: changing HTTP response serialization or streaming writes.
-Evidence: [`streaming_response_content_types`](../../crates/ms-std-net/src/http/server/h2serve/tests.rs).
+Evidence: `streaming_response_content_types`.
 Verify: streamed text and HTML receive their inferred types, explicit types stay
 unchanged, and empty/bodyless responses do not acquire a type.
 
@@ -41,7 +41,7 @@ automatic Referer on every hop so carrying headers forward cannot leak a prior o
 
 
 Apply when: changing redirect policy or outgoing request header propagation.
-Evidence: [loopback redirect regressions](../../crates/ms-std-net/src/http/client.rs), [called fetch chain regression](../../../tests/conformance/fixtures/e2e/stdlib/fetch.ms).
+Evidence: loopback redirect regressions, [called fetch chain regression](../../../tests/conformance/fixtures/e2e/stdlib/fetch.ms).
 Verify: a cross-origin redirect followed by a same-origin redirect sends no original credentials; a 302 then 307 sends neither a body nor its original entity headers; automatic Referer stays local.
 
 ## Transfer coding validation also covers close-delimited responses
@@ -49,7 +49,7 @@ Verify: a cross-origin redirect followed by a same-origin redirect sends no orig
 Verified: checking unsupported response transfer codings only inside the `chunked` branch lets `Transfer-Encoding: gzip` reach the caller still encoded when the connection closes. Reject unsupported codings before choosing framing, and keep transfer coding separate from supported `Content-Encoding` decompression.
 
 Apply when: changing HTTP/1 response framing or client decompression.
-Evidence: [`response_framing_rules`](../../crates/ms-std-net/src/http/h1.rs) covers unsupported codings with and without chunked, plus retained identity framing.
+Evidence: `response_framing_rules` covers unsupported codings with and without chunked, plus retained identity framing.
 Verify: `cargo test -p ms-std-net http::h1::tests::response_framing_rules` rejects `gzip` alone as well as `gzip, chunked`.
 
 ## Rejected uploads need a bounded half-close before socket retirement
@@ -61,7 +61,7 @@ Check the deadline during read retries as well as the reactor's timeout sweep.
 
 
 Apply when: changing HTTP rejection responses or connection retirement.
-Evidence: [rejection drain and socket regressions](../../crates/ms-std-net/src/http/server.rs), [source header-cap regression](../../../tests/conformance/fixtures/e2e/stdlib/http-limits.ms).
+Evidence: rejection drain and socket regressions, [source header-cap regression](../../../tests/conformance/fixtures/e2e/stdlib/http-limits.ms).
 Verify: a 2 MB header upload receives the complete 431 response without a reset; a peer that keeps its write half open cannot retain the rejected connection indefinitely.
 
 ## Networking completeness includes interruption and shutdown

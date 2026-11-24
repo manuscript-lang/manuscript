@@ -32,5 +32,5 @@ The watcher keeps two modes (a look every 2 ms, every 100 µs for 0.1 s after a 
 CPU scales with the look count; 1 ms costs what the two modes cost, but its slow-mix p50 is about 0.07 ms and p90 about 0.15 ms above the two modes (a ready request waits up to a look longer behind a held-up thread), with p99 and p99.9 the same, and the fixed 100 µs and 250 µs forms cost 20 to 45% more CPU. A thread awake for a whole interval is the test for "held up" (`watch::stirred`): a thread that only just woke also has an old turn. Each wake of a sleeping watcher is a system call on the thread that leaves its rest, which is why it sleeps only after a run of quiet looks (20 looks, 40 ms; 100 looks left a 200 ms burst of 100 wakes after every sleep that ended a rest).
 
 Apply when: changing the HTTP reactor loop, connection ownership, or the scheduler's idle states.
-Evidence: [steal.rs](../../crates/ms-std-net/src/http/server/steal.rs), [watch.rs](../../crates/ms-rt/src/watch.rs), [proposal](../../proposals/http-connection-stealing.md), [results](../../../bench/perf/http-tail/README.md).
+Evidence: steal.rs, watch.rs, [proposal](../../proposals/http-connection-stealing.md), [results](../../../bench/perf/http-tail/README.md).
 Verify: fixture `http-long-handler-does-not-hold-others`; `bench/perf/http-tail` slow mix p99 and fixed-load CPU against the dated baseline.

@@ -5,7 +5,7 @@
 Verified: after the concurrency simplification, source declarations and generated Markdown were current while the checked-in website still exposed retired bounds and a removed module route. The user found this in the API reference. A source-generation check alone cannot verify the HTML, downloadable schemas, or search index that readers receive.
 
 Apply when: removing or renaming public language/API surface, or reporting a documentation update complete.
-Evidence: the user's follow-up to [the concurrency change](https://github.com/manuscript-lang/manuscript/pull/24); [publication checks](../../../tests/docs/publication.test.cjs); [publishing workflow](../../.github/workflows/cicd.yml).
+Evidence: the user's follow-up to [the concurrency change](https://github.com/manuscript-lang/manuscript/pull/24); [publication checks](../../../tests/docs/publication.test.cjs); publishing workflow.
 Verify: regenerate both reference sources and the website with destination cleanup; compare shipped schema downloads against current generated sources, reject obsolete module routes, and search rendered pages and search data for retired terminology. Confirm publication separately from a successful source merge.
 
 Artifact cleanup must also retain explicitly requested reports inside the generated tree. Validate a coverage destination before retiring existing pages, and restore the report if cleanup removed it. `tools/docgen.ms` writes the coverage report before retiring pages and rewrites it after, so a report destination inside the artifacts tree survives; the Rust test that pinned this left with the Rust docgen binary.

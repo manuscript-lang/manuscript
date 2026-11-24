@@ -26,7 +26,7 @@ Verified (adversarial review, 41 programs under valgrind): a view local handed o
 Verified (bug bash, 2026-11-01): an interface value has no `.clone()` (an interface such as `Reportable` offers only its declared operations), so a remedy that says `e.clone()` is a dead end and its machine fix breaks the build. Ownership diagnostics for interface and function values (`no_clone` in `walk.rs`) say to use the value in place or convert a clone of the concrete value. Probed ~60 adversarial programs under valgrind (Debug and Release) over wrapped borrows, view locals, conditionals, closures, tasks and resources; the checker held.
 
 Apply when: changing interface conversion, `fit_ty`, borrow-returning view function, the vtable layout, `copyelim`/`lastuse` on owned results, or adding `var fn` to a stdlib interface (its conversions start copying again; say so in the PR).
-Evidence: [OWNERSHIP.md](../../crates/ms-check/OWNERSHIP.md), [DESIGN.md](../../crates/DESIGN.md), [interface_views](../../crates/ms-check/tests/ownership/accept/interface_views.ms), [interface_view_held](../../crates/ms-check/tests/ownership/reject/interface_view_held.ms), [e2e interface-views](../../../tests/conformance/fixtures/e2e/accept/interface-views.ms).
+Evidence: OWNERSHIP.md, DESIGN.md, interface_views, interface_view_held, [e2e interface-views](../../../tests/conformance/fixtures/e2e/accept/interface-views.ms).
 Verify: `fn first_error(cause: Cause) Reportable: return cause` compiles with no copy and `first_error(c).message()` after `c.code = 5` sees 5; `e: Reportable = cause; return [e]` is rejected with a `.clone()` remedy; `make leak-check` passes with `io-generic-streams.ms` swept.
 
 ## A type's own methods satisfy an interface by shape

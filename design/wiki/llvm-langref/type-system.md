@@ -203,7 +203,7 @@ The semantics of non-zero address spaces are target-specific. Memory access thro
 
 If an object can be proven accessible through a pointer with a different address space, the access may be modified to use that address space. Exceptions apply if the operation is `volatile`.
 
-Prior to LLVM 15, pointer types also specified a pointee type, such as `i8*`, `[4 x i32]*` or `i32 (i32*)*`. In LLVM 15, such “typed pointers” are still supported under non-default options. See the [opaque pointers document](OpaquePointers.html) for more information.
+Prior to LLVM 15, pointer types also specified a pointee type, such as `i8*`, `[4 x i32]*` or `i32 (i32*)*`. In LLVM 15, such “typed pointers” are still supported under non-default options. See the opaque pointers document for more information.
 
 <a id="target-extension-type"></a>
 

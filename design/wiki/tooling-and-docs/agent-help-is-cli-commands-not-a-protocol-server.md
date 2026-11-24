@@ -8,9 +8,9 @@ Decision: the Manuscript skill is a concise writing reference for agents, not a 
 
 Apply when: adding agent-facing commands, changing search ranking, or touching the agent skill or standard-library index.
 
-Verified: supplemental standard-library matches must share the CLI's result budget with project matches. Reserving a minimum of two library results made `--limit 1` return two matches and a full ten-project-result list grow to twelve. The [CLI limit regression](../../crates/ms-cli/tests/search_symbol.rs) checks library-only and project-filled lists, text output, and the cap at ten.
+Verified: supplemental standard-library matches must share the CLI's result budget with project matches. Reserving a minimum of two library results made `--limit 1` return two matches and a full ten-project-result list grow to twelve. The CLI limit regression checks library-only and project-filled lists, text output, and the cap at ten.
 
-Evidence: [search](../../crates/ms-tooling/src/guide/search.rs), [workspace queries](../../crates/ms-lsp/src/workspace.rs), [project search regressions](../../crates/ms-lsp/tests/search_symbol.rs), [skill](../../crates/ms-tooling/data/agent-skill/SKILL.md), [search_symbol CLI tests](../../crates/ms-cli/tests/search_symbol.rs), [agent commands](../../../documentation/developer-tooling/implementation.md#commands-for-agents).
+Evidence: search, workspace queries, project search regressions, skill, search_symbol CLI tests, [agent commands](../../../documentation/developer-tooling/implementation.md#commands-for-agents).
 Verify: `cargo nextest run -p ms-lsp -p ms-tooling -p ms-cli`; search tests pin typo, synonym, partial, and dedup behavior; compare release timings and output for project, standard-library and no-match queries in a large source tree. The skill's complete examples must check; its entry point stays short.
 
 Superseded (2026-11-18, Chinmay): the `ms skill` command is removed. The skill ships separately from the compiler as a release asset, `manuscript-skill.tar.gz` (built by `toolchain/package-skill.sh`, stamped with `.msversion`), installed with `install-skill.sh` or `install-skill.ps1` on the site, with no compiler needed. The notes below describe the removed command; the bench found agents mostly read the skill by running it as one document (58 of 63), so a run now relies on the folder install.
