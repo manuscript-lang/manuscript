@@ -1,5 +1,5 @@
-// expect-debug: allocs=33
-// expect-release: allocs=33
+// expect-debug: allocs=32
+// expect-release: allocs=32
 // `promise(fn: ...)` wraps the work in a closure that stores the result. The wrapper
 // takes the work's captures and calls its code directly, so a start builds one closure
 // object, not two: each promise past the first tables adds one allocation (20 promises:

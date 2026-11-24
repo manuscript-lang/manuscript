@@ -74,6 +74,9 @@ jobs:
         run: cmake --build --preset ci --target docs-check
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target conform
+      # Live blocks and cleanup order of tests/checks/ownership-counts, on every platform the build job runs.
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target count-check
       - if: always()
         uses: ./.github/actions/save-caches
 

@@ -15,6 +15,11 @@ set(MS_MINGW_DIR "" CACHE PATH "llvm-mingw root for Windows links (default: the 
 include(MsRuntimePackage)
 ms_add_musl_runtime()
 ms_package_runtime(ms ms_runtime)
+# The runtime archives of this project (not the vendored libraries): `cmake --preset stats` builds only these for the
+# leak, cancel and count gates, which link programs with them and the ci build's compiler and vendored libraries.
+ms_collect_archives(ms_runtime ms_runtime_archives)
+list(FILTER ms_runtime_archives INCLUDE REGEX "^ms_")
+add_custom_target(stats-runtime DEPENDS ${ms_runtime_archives})
 
 # Build and run a one-line program: packaging, pipeline and linker together on this platform.
 get_filename_component(MS_COMPILER_BIN "${CMAKE_C_COMPILER}" DIRECTORY)

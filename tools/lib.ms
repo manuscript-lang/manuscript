@@ -95,10 +95,15 @@ export fn file_sha256(path: String) String:
 
 // Builds the counting runtime (`cmake --preset stats`: live blocks, parks and copies
 // printed on standard error at exit, see design/proposals/c-runtime-stats-variant.md)
-// and points MS at its ms, which the tools then run the programs with. Returns a
-// nonzero status when a build fails.
+// and points MS_RUNTIME at it, so the tools run the programs with the ci build's ms
+// linked against the counting archives. Only the project's own runtime archives are
+// rebuilt: the vendored libraries come from the ci tree. Returns a nonzero status when
+// a build fails.
 export fn use_stats_runtime() Int:
-	for step in [["--preset", "stats"], ["--build", "--preset", "stats"]]:
+	for step in [
+		["--preset", "stats"],
+		["--build", "--preset", "stats", "--target", "stats-runtime"],
+	]:
 		out := run("cmake", step.clone()).wait()
 
 		if out.is_error() or out.get().exit_code != 0:
@@ -112,7 +117,36 @@ export fn use_stats_runtime() Int:
 			return 1
 
 	root := working_directory().get()
-	set_environment("MS", f"{root}/.artifacts/build/stats/src/cli/ms{exe()}").get()
+	stats := f"{root}/.artifacts/build/stats"
+	paths := (
+		read_file(
+			f"{stats}/generated/ms_runtime_paths.h"
+		).wait().get().decode_utf8()
+		or ""
+	)
+	var separator = ":"
+	if host() == "windows": separator = ";"
+
+	var archives = List[String]()
+
+	for line in paths.split("\n"):
+		prefix := "#define MS_BUILD_RUNTIME \""
+		if not line.starts_with(prefix): continue
+
+		list := line.slice(prefix.length(), line.length() - 1)
+
+		for archive in list.split(separator):
+			name := archive.slice(
+				(archive.last_index_of("/") or - 1) + 1,
+				archive.length(),
+			)
+
+			if name.starts_with("libms_"):
+				archives.append(archive.clone())
+			else:
+				archives.append(archive.replace(stats, f"{root}/.artifacts/build/ci"))
+
+	set_environment("MS_RUNTIME", archives.join(separator)).get()
 	return 0
 
 // The ms that runs the programs under test: `MS` (resolved against `root` when
