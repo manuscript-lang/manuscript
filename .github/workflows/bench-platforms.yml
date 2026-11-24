@@ -37,12 +37,14 @@ jobs:
       - run: CCACHE_DISABLE=1 cmake --build --preset ci
       - if: failure() && runner.os == 'macOS'
         run: |
-          which -a clang cc ar ranlib pkg-config pkgconf || true
           cd .artifacts/build/ci/src/third_party/curl_build
-          grep -in "openssl" CMakeCache.txt | head -40
-          grep -n "ENGINE" lib/curl_config.h || true
-          ninja -t commands lib/CMakeFiles/libcurl_static.dir/vtls/openssl.c.o | tail -1
-          grep -n "OPENSSL\|OpenSSL" CMakeFiles/CMakeConfigureLog.yaml | head -20 || true
+          cmd="$(ninja -t commands lib/CMakeFiles/libcurl_static.dir/vtls/openssl.c.o | tail -1)"
+          cmd="${cmd#/usr/local/bin/ccache }"
+          cmd="${cmd%% -MD *} -E -H"
+          cmd="$cmd /Users/runner/work/manuscript/manuscript/src/third_party/curl/lib/vtls/openssl.c"
+          eval "$cmd" 2>&1 >/dev/null | grep -E "configuration.h|opensslconf.h|opensslv.h|engine.h|ui.h" | head -20 || true
+          ls -la /Users/runner/work/manuscript/manuscript/.artifacts/build/ci/src/third_party/openssl_build/include/openssl | head -30
+          ls /usr/local/include/openssl 2>&1 | head -5
       - run: cmake --build --preset ci --target llvm-lib
       - name: Record the CPU
         run: |
