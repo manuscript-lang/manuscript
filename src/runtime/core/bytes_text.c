@@ -48,7 +48,8 @@ uint8_t msrt_bytes_decode_utf8_range(const MsBytes *b, int64_t start, int64_t en
     ms_strbuild_append_i64(&message, end);
     ms_strbuild_append_text(&message, " are outside 0..");
     ms_strbuild_append_i64(&message, (int64_t)b->len);
-    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+    ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
+    return 0;
   }
   const MsSpan part = ms_span_of(b->ptr + start, (size_t)(end - start));
   if (!ms_utf8_is_valid(part.ptr, part.len)) {

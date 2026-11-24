@@ -2,7 +2,8 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
-/* Ends the current block with the fault of a missing map key: `key` is the slot holding the key of type `key_ty`. */
+/* Ends the current block with the fault of a missing map key, posted and left by the function's exit: `key` is the slot
+ * holding the key of type `key_ty`. */
 void fn_fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
   const MirImm of_key = {.tag = MI_TY, .a = key_ty};
   const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, of_key, key_ty);
@@ -12,8 +13,8 @@ void fn_fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
                                          MIR_STR);
   const MirValue parts[2] = {prefix_lit, text};
   const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
-  mir_b_unreachable(&fn->b);
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_panic")), &message, 1, MIR_VOID);
+  fn_unwind_exit(fn);
 }
 
 /* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */

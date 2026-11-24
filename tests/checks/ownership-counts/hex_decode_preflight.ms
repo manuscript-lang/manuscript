@@ -1,5 +1,5 @@
-// expect-debug: allocs=6 alloc_bytes=8484
-// expect-release: allocs=6 alloc_bytes=8484
+// expect-debug: allocs=5 alloc_bytes=8376
+// expect-release: allocs=5 alloc_bytes=8376
 // Rejected hexadecimal input must not materialize temporary byte and byte-list copies.
 // The Error is one 88-byte block (allocs and bytes include it).
 import hex_decode from "@std/data/encoding.ms"

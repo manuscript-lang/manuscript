@@ -51,11 +51,13 @@ ExternalProject_Add(openssl_build
   BUILD_BYPRODUCTS ${OPENSSL_CRYPTO} ${OPENSSL_SSL}
   USES_TERMINAL_BUILD OFF)
 
+# Plain -I, not -isystem: macOS clang searches /usr/local/include (Homebrew's openssl headers) before any -isystem directory, so the
+# vendored headers would lose to a different OpenSSL (curl then compiles its ENGINE code and fails to link against our no-engine build).
 add_library(openssl_crypto STATIC IMPORTED GLOBAL)
-set_target_properties(openssl_crypto PROPERTIES IMPORTED_LOCATION ${OPENSSL_CRYPTO}
+set_target_properties(openssl_crypto PROPERTIES SYSTEM OFF IMPORTED_LOCATION ${OPENSSL_CRYPTO}
   INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_DIR}/include;${OPENSSL_BUILD}/include")
 add_library(openssl_ssl STATIC IMPORTED GLOBAL)
-set_target_properties(openssl_ssl PROPERTIES IMPORTED_LOCATION ${OPENSSL_SSL}
+set_target_properties(openssl_ssl PROPERTIES SYSTEM OFF IMPORTED_LOCATION ${OPENSSL_SSL}
   INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_DIR}/include;${OPENSSL_BUILD}/include")
 add_dependencies(openssl_crypto openssl_build)
 add_dependencies(openssl_ssl openssl_build)

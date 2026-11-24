@@ -7,6 +7,7 @@
  * cannot establish success. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include "runtime/core/fault.h"
 #include "runtime/std/streams.h"
 #include "runtime/std/fs_job.h"
 
@@ -277,7 +278,7 @@ static bool read_retry(MsPromise id, uintptr_t stream, uint32_t bits) {
   return true;
 }
 
-static void fault_text(const char *message) { msrt_fault((const uint8_t *)message, __builtin_strlen(message)); }
+static void fault_text(const char *message) { ms_fault_post_text(MS_FAULT_KIND_FAULT, message); }
 
 int64_t msrt_streams_read(int64_t stream) {
   const MsPromise id = ms_promise_new();
@@ -295,6 +296,8 @@ int64_t msrt_streams_read(int64_t stream) {
   if (entry->reading != 0) {
     entry_unlock();
     fault_text("stream: a read is already waiting");
+    ms_promise_io_done(id); /* a posted fault: the caller leaves, and the promise ends empty */
+    return id;
   }
   entry_clear_error(entry);
   const Step step = try_read(entry);
@@ -317,9 +320,9 @@ int64_t msrt_streams_read(int64_t stream) {
 }
 
 /* Grows the buffer to hold `needed` bytes (the table lock held). */
-static void out_reserve(Entry *entry, size_t needed) {
+static bool out_reserve(Entry *entry, size_t needed) {
   if (needed <= entry->out_cap) {
-    return;
+    return true;
   }
   size_t cap = entry->out_cap == 0 ? READ_CHUNK : entry->out_cap;
   while (cap < needed && cap <= SIZE_MAX / 2) {
@@ -328,9 +331,11 @@ static void out_reserve(Entry *entry, size_t needed) {
   if (cap < needed) {
     entry_unlock();
     fault_text("stream: write buffer limit exceeded");
+    return false;
   }
   entry->out = ms_realloc(entry->out, cap);
   entry->out_cap = cap;
+  return true;
 }
 
 int64_t msrt_streams_write(int64_t stream, const MsList *data) {
@@ -350,8 +355,11 @@ int64_t msrt_streams_write(int64_t stream, const MsList *data) {
   if (!ms_size_add(entry->out_len, data->len, &needed)) {
     entry_unlock();
     fault_text("stream: write buffer limit exceeded");
+    return 0;
   }
-  out_reserve(entry, needed);
+  if (!out_reserve(entry, needed)) {
+    return 0;
+  }
   if (data->len > 0) {
     __builtin_memcpy(entry->out + entry->out_len, data->ptr, data->len);
   }

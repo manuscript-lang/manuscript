@@ -56,7 +56,6 @@ static bool close_infallible(ElEm *em, uint32_t at, MirValue value) {
   if (!em_closer(em, value, &close) || !shield_ready(em)) {
     return false;
   }
-  em_discard(em, at, value);
   em_push(em, at, MOP_CallRt, NULL, 0, mir_imm_ext(em->cx->shield_enter), MIR_VOID);
   em_push(em, at, MOP_Call, &value, 1, em_imm_func(close), MIR_VOID);
   em_push(em, at, MOP_CallRt, NULL, 0, mir_imm_ext(em->cx->shield_exit), MIR_VOID);
@@ -114,7 +113,6 @@ static bool cleanup_slot_flagged(ElEm *em, uint32_t *at, MirValue value, MirValu
     return false;
   }
   em_br(em, yes, join, NULL, 0);
-  em_discard(em, no, value);
   em_br(em, no, join, NULL, 0);
   *at = join;
   return true;
@@ -177,8 +175,6 @@ static bool close_maybe_closed(ElEm *em, uint32_t *at, MirValue value, uint32_t 
   }
   MirBlock yes = 0, no = 0, join = 0;
   split(em, *at, flag, &yes, &no, &join);
-  em_discard(em, yes, value);
-  em_discard(em, no, value);
   MirValue again = MIR_NONE, none = MIR_NONE, real = MIR_NONE;
   if (!em_close_result(em, yes, value, close, &again)) {
     return false;
@@ -214,10 +210,7 @@ static bool close_flagged(ElEm *em, uint32_t *at, MirValue value, ElSt kind, uin
       return false;
     }
     em_br(em, end, join, &closed, 1);
-    em_discard(em, no, value);
   } else {
-    em_discard(em, yes, value);
-    em_discard(em, no, value);
     if (!em_close_result(em, yes, value, close, &closed)) {
       return false;
     }
@@ -258,7 +251,6 @@ static bool cleanup_fallible(ElEm *em, uint32_t *at, MirValue value, ElSt kind, 
   bool ok = true;
   if (kind == EL_CLOSED) {
     /* Closed by the program: close again to release the rest, drop that result. */
-    em_discard(em, *at, value);
     ok = em_close_result(em, *at, value, close, &result);
     if (ok) {
       em_drop_owned(em, *at, result);
@@ -268,7 +260,6 @@ static bool cleanup_fallible(ElEm *em, uint32_t *at, MirValue value, ElSt kind, 
   if (kind == EL_MAYBE_CLOSED) {
     ok = close_maybe_closed(em, at, value, close, &result);
   } else if (kind == EL_LIVE) {
-    em_discard(em, *at, value);
     ok = em_close_result(em, *at, value, close, &result);
   } else {
     ok = close_flagged(em, at, value, kind, close, &result);
@@ -299,7 +290,6 @@ static bool close_where_held(ElEm *em, uint32_t *at, MirValue value, MirValue fl
   const MirValue args[2] = {flag, value};
   MirBlock yes = 0, no = 0, join = 0;
   split(em, *at, flag, &yes, &no, &join);
-  em_discard(em, yes, value);
   if (!em_closer(em, value, &close)) {
     return false;
   }
@@ -333,7 +323,6 @@ static bool close_code(ElEm *em, uint32_t *at, MirValue value, ElSt kind, MirVal
     return true;
   }
   if (kind == EL_LIVE) {
-    em_discard(em, *at, value);
     if (!em_closer(em, value, &close)) {
       return false;
     }
@@ -429,12 +418,8 @@ static bool cleanup_scope(ElEm *em, uint32_t *at, ElState *state, int64_t scope,
     if (owners[i].v == kept) {
       continue;
     }
-    if (owners[i].s == EL_MOVED && !mh_has(&em->flagged, owners[i].v)) {
-      /* A slot owner's cancelled entry leaves the stack now. */
-      if (el_is_slot_owner(cx, owners[i].v)) {
-        em_discard(em, *at, owners[i].v);
-      }
-    } else if (!em_cleanup_one(em, at, owners[i].v, owners[i].s, outcome)) {
+    const bool moved_out = owners[i].s == EL_MOVED && !mh_has(&em->flagged, owners[i].v); /* nothing is left to close */
+    if (!moved_out && !em_cleanup_one(em, at, owners[i].v, owners[i].s, outcome)) {
       return false;
     }
   }

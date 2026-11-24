@@ -726,8 +726,13 @@ fn Map[T: Hashable, U: Clonable].values() List[U]: ...
 // key and value without copying them.
 fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 	var out = List[MapEntry[T, U]]()
-	for key in self.keys():
-		out.append(MapEntry(key: key.clone(), value: self[key].clone()))
+	keys := self.keys()
+	var at = 0
+
+	for value in self.values():
+		out.append(MapEntry(key: keys[at].clone(), value: value))
+		at += 1
+
 	return out
 
 // Copies every entry of `other` into this map in place. Existing keys keep their

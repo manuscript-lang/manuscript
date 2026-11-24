@@ -16,7 +16,7 @@ static bool is_float(MirTy ty) {
 }
 
 static MirValue emit1(LowerFn *fn, MirOp op, MirValue operand, MirTy ty) {
-  return mir_b_emit(&fn->b, op, &operand, 1, (MirImm){0}, ty);
+  return fn_checked_emit(fn, op, &operand, 1, (MirImm){0}, ty);
 }
 
 static MirValue float_const(LowerFn *fn, double value, MirTy ty) {
@@ -254,7 +254,7 @@ static bool bit_op(LowerFn *fn, MirOp op, uint32_t operands, const MirValue *arg
   if (argc != operands || ret != MIR_INT || mir_b_ty(&fn->b, args[0]) != MIR_INT) {
     return false;
   }
-  *out = argc == 2 ? mir_b_binop(&fn->b, op, args[0], args[1]) : emit1(fn, op, args[0], MIR_INT);
+  *out = argc == 2 ? fn_checked_emit(fn, op, args, 2, (MirImm){0}, mir_b_ty(&fn->b, args[0])) : emit1(fn, op, args[0], MIR_INT);
   return true;
 }
 

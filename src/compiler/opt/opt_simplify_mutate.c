@@ -155,7 +155,7 @@ static uint8_t sm_role(const MirModule *m, const MirInst *inst) {
 /* Whether no stop request can arrive inside `inst`: plain operations and leaf runtime calls. */
 static bool sm_quiet(const MirModule *m, const MirInst *inst) {
   switch ((MirOp)inst->op) {
-  case MOP_Poll: case MOP_CallInd: case MOP_CallMethod: case MOP_Call:
+  case MOP_CallInd: case MOP_CallMethod: case MOP_Call:
     return false;
   case MOP_CallRt:
     if (inst->imm.tag == MI_EXT) {

@@ -11,7 +11,7 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 
-typedef enum Access { ACCESS_READ, ACCESS_WRITE, ACCESS_DERIVE, ACCESS_HANDLE, ACCESS_ESCAPE } Access;
+typedef enum Access { ACCESS_READ, ACCESS_WRITE, ACCESS_DERIVE, ACCESS_ESCAPE } Access;
 
 /* Whether a runtime call keeps the address of an argument beyond the call. */
 bool mir_extern_pins_argument(const MirExtern *external) {
@@ -32,9 +32,6 @@ static Access access_of(const MirModule *module, const MirInst *inst, uint32_t a
   case MOP_Call: case MOP_CallInd: case MOP_CallMethod:
     return ACCESS_WRITE;
   case MOP_CallRt:
-    if (inst->imm.tag == MI_EXT && module->externs.ptr[inst->imm.a].handle) {
-      return ACCESS_HANDLE; /* kept while the result is used: the result stands for the slot */
-    }
     return inst->imm.tag == MI_EXT && !mir_extern_pins_argument(&module->externs.ptr[inst->imm.a]) ? ACCESS_WRITE
                                                                                         : ACCESS_ESCAPE;
   default:
@@ -108,13 +105,6 @@ static void derive_owners(const MirModule *module, const MirFunc *func, Scan *sc
         } else if (owner[inst->args[0]] != MIR_NONE && access_of(module, inst, 0) == ACCESS_DERIVE) {
           owner[inst->res] = owner[inst->args[0]];
           grew = true;
-        } else if ((MirOp)inst->op == MOP_CallRt && access_of(module, inst, 0) == ACCESS_HANDLE) {
-          for (uint32_t arg = 0; arg < inst->nargs; arg++) { /* the handle stands for the slot it keeps */
-            if (owner[inst->args[arg]] != MIR_NONE && owner[inst->res] == MIR_NONE) {
-              owner[inst->res] = owner[inst->args[arg]];
-              grew = true;
-            }
-          }
         }
       }
     }
@@ -308,45 +298,13 @@ bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *
       object_value[nobjects++] = (uint32_t)value;
     }
   }
-  /* A handle keeps its slot until the cleanup is discarded; a path that leaves without discarding it leaves the
-   * cleanup pending, so only a handle used in the block that makes it bounds the slot's life. */
-  uint32_t *handle_block = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  for (size_t value = 0; value < count; value++) {
-    handle_block[value] = MIR_NONE;
-  }
-  for (size_t block = 0; block < func->blocks.len; block++) {
-    const MirInstList *insts = &func->blocks.ptr[block].insts;
-    for (size_t index = 0; index < insts->len; index++) {
-      const MirInst *inst = &insts->ptr[index];
-      if (inst->res != MIR_NONE && (MirOp)inst->op == MOP_CallRt && access_of(module, inst, 0) == ACCESS_HANDLE) {
-        handle_block[inst->res] = (uint32_t)block;
-      }
-    }
-  }
-  /* A handle nobody uses is popped in bulk by an earlier handle's discard, somewhere the slot's life does not see. */
-  bool *handle_used = MS_ARENA_NEW_ARRAY(arena, bool, count);
-  for (size_t value = 0; value < count; value++) {
-    handle_used[value] = false;
-  }
   for (size_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
     for (size_t index = 0; index < data->insts.len; index++) {
       const MirInst *inst = &data->insts.ptr[index];
       scan_inst(module, &scan, inst);
-      for (uint32_t arg = 0; arg < inst->nargs; arg++) {
-        const MirValue value = inst->args[arg];
-        handle_used[value] = true;
-        if (handle_block[value] != MIR_NONE && handle_block[value] != block && owner[value] != MIR_NONE) {
-          bad[owner[value]] = true;
-        }
-      }
     }
     mir_term_each_value(&data->term, term_use, &scan);
-  }
-  for (size_t value = 0; value < count; value++) {
-    if (handle_block[value] != MIR_NONE && !handle_used[value] && owner[value] != MIR_NONE) {
-      bad[owner[value]] = true;
-    }
   }
   Live live = {.words = (nobjects + 63) / 64};
   if ((live.words + 1) * (func->blocks.len + nobjects + 1) > MAX_LIVE_WORDS) {

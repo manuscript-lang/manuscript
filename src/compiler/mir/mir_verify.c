@@ -315,9 +315,6 @@ static void mv_check_term_kind(Mv *v, MirBlock bi) {
     break;
   }
   case MT_FAULT:
-    if (t->fault == MF_MESSAGE && t->fault_str >= ms_names_count(&v->cx.m->strings)) {
-      mv_err(v, bi, "fault message literal out of range");
-    }
     break;
   case MT_BR: case MT_UNREACHABLE:
     break;
@@ -365,6 +362,42 @@ static void mv_check_blocks(Mv *v, const MvDef *defs) {
   }
 }
 
+/* Whether `op` is a check whose fault posts and leaves: the lowering follows it with a `fault.site`. */
+static bool mv_faulting(MirOp op) {
+  switch (op) {
+  case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
+  case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk:
+  case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
+  case MOP_NarrowChk:
+  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListAddr: case MOP_OptUnwrap:
+    return true;
+  default:
+    return false;
+  }
+}
+
+/* A fault leaves the function by the exit its `fault.site` names: a check without one would have nowhere to go.
+ */
+static void mv_fault_sites(Mv *v) {
+  const MirFunc *f = v->cx.f;
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirBlockData *block = &f->blocks.ptr[b];
+    for (uint32_t i = 0; i < block->insts.len; i++) {
+      const MirInst *in = &block->insts.ptr[i];
+      if (!mv_faulting((MirOp)in->op) || in->res == MIR_NONE) {
+        continue;
+      }
+      bool found = false;
+      for (uint32_t k = i + 1; k < block->insts.len && !found; k++) {
+        found = block->insts.ptr[k].op == MOP_FaultSite && block->insts.ptr[k].args[0] == in->res;
+      }
+      if (!found) {
+        mv_err(v, b, "%s has no fault.site: its fault has no exit", mv_op_name(in));
+      }
+    }
+  }
+}
+
 static void mv_run(Mv *v) {
   const MirFunc *f = v->cx.f;
   if (f->blocks.len == 0) {
@@ -380,6 +413,7 @@ static void mv_run(Mv *v) {
     return;
   }
   mv_check_blocks(v, defs);
+  mv_fault_sites(v);
 }
 
 static void mv_function(MirVerifyErrors *errs, const MirModule *m, const MirFunc *f, const bool *drops,

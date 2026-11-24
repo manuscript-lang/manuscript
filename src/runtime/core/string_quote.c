@@ -54,7 +54,8 @@ void msrt_string_quote(const MsString *s, MsString *out) {
   ms_strbuild_append_byte(&quoted, '"');
   if (ms_strbuild_length(&quoted) > MSRT_STRING_LIMIT) {
     ms_strbuild_free(&quoted);
-    msrt_string_limit_fault();
+    msrt_string_limit_post();
+    return;
   }
   *out = ms_strbuild_finish(&quoted);
   ms_strbuild_free(&quoted);

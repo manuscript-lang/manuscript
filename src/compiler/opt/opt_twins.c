@@ -207,7 +207,7 @@ static bool same_shape(const Twins *t, MirBlock x, MirBlock y) {
     }
   }
   const MirTerm *ta = &bx->term, *tb = &by->term;
-  return ta->fault == tb->fault && ta->fault_str == tb->fault_str && (ta->value == MIR_NONE) == (tb->value == MIR_NONE) &&
+  return ta->fault == tb->fault && (ta->value == MIR_NONE) == (tb->value == MIR_NONE) &&
        mir_term_ntargets(ta) == mir_term_ntargets(tb);
 }
 

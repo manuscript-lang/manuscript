@@ -6,7 +6,7 @@
 
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
   const MirValue args[2] = {list, index}; /* the op counts a negative index from the end */
-  return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
+  return fn_checked_emit(fn, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 
 /* A native that changes a list receiver in line: the list is taken out of its slot or place, and `list_put` puts
@@ -63,7 +63,7 @@ static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
     return MIR_NONE;
   }
   const MirValue operands[2] = {list, at};
-  return mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+  return fn_checked_emit(fn, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
 }
 
 /* `list.append(value)`: the list grows in line (a full list calls the grow block) and the updated list goes back. */
@@ -149,24 +149,22 @@ static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int6
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
   const MirValue fault_args[3] = {mir_b_iconst(&fn->b, kind), index, length};
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_list_index_fault")), fault_args, 3, MIR_VOID);
-  mir_b_unreachable(&fn->b);
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_post_list_index")), fault_args, 3, MIR_VOID);
+  fn_unwind_exit(fn); /* the posted fault leaves by the exit that closes what is owned here */
   mir_b_switch_to(&fn->b, hit);
   return at;
 }
 
 /* A list native that takes an owned argument and faults on a bad one (`@checks=`) would leave the argument owned by
  * no one: the check runs first, in lowering, while the caller still covers it. The check is the native's own, called
- * with the list's length and the call's integer arguments. A resource argument is left alone: its closing slot
- * covers it, and a second drop would double close. */
+ * with the list's length and the call's integer arguments. A resource argument stays owned by its closing slot, which
+ * the exit of a failed check closes. */
 void fn_native_precheck(LowerFn *fn, const MsNativeSig *sig, MsTy owner, uint32_t argc, const MirValue *args) {
   MsTyTable *types = &fn->cx->program->types;
   if (sig == NULL || sig->checks == NULL || argc < 2 || !ms_ty_is(types, owner, MS_BUILTIN_List)) {
     return;
   }
-  const MsTy elem = ms_ty_subst(types, ms_ty_args(types, owner)[0], fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (!mir_needs_drop(fn->cx->module, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->elem) ||
-      fn_temp_closes(fn, elem)) {
+  if (!mir_needs_drop(fn->cx->module, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->elem)) {
     return;
   }
   MirValue checked[4];
@@ -178,6 +176,23 @@ void fn_native_precheck(LowerFn *fn, const MsNativeSig *sig, MsTy owner, uint32_
     }
   }
   (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(sig->checks)), checked, count, MIR_VOID);
+  /* A bad bound posts: the exit closes the incoming element before the list's own. An argument taken out of its
+   * closing slot goes back into it, so that slot closes it. */
+  LowerTaken taken[LOWER_MAX_ARGS];
+  uint32_t ntaken = 0;
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  for (uint32_t at = 1; at < argc && ntaken < LOWER_MAX_ARGS; at++) {
+    for (size_t index = insts->len; index > 0; index--) {
+      const MirInst *inst = &insts->ptr[index - 1];
+      if (inst->res == args[at]) {
+        if ((MirOp)inst->op == MOP_Take) {
+          taken[ntaken++] = (LowerTaken){.slot = inst->args[0], .value = args[at]};
+        }
+        break;
+      }
+    }
+  }
+  fn_unwind_site_forgetting(fn, MIR_NONE, taken, ntaken);
 }
 
 /* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the
@@ -256,7 +271,11 @@ bool fn_list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy o
   }
   MirValue old = MIR_NONE;
   if (!native_on(fn, place, slot, owner, ms_span_of_text("replace"), argc, args, mir_b_ty(&fn->b, args[2]), &old) ||
-      old == MIR_NONE || !fn_close_replaced(fn, elem, old)) {
+      old == MIR_NONE) {
+    return false;
+  }
+  fn_unwind_site(fn, old); /* a bad index posts: the incoming value is still owned, and the result is dead */
+  if (!fn_close_replaced(fn, elem, old)) {
     return false;
   }
   *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
@@ -306,8 +325,11 @@ bool fn_native_closing_take(LowerFn *fn, const MsExpr *place, MirValue slot, MsT
                      : ms_span_is_text(operation, "add")    ? "add_take"
                                                             : "clear_take";
   MirValue taken = MIR_NONE;
-  if (!native_on(fn, place, slot, owner, ms_span_of_text(name), argc, args, taken_ty, &taken) || taken == MIR_NONE ||
-      !fn_close_replaced(fn, removed, taken)) {
+  if (!native_on(fn, place, slot, owner, ms_span_of_text(name), argc, args, taken_ty, &taken) || taken == MIR_NONE) {
+    return false;
+  }
+  fn_unwind_site(fn, taken); /* before the removed values are owned: a fault leaves them dead */
+  if (!fn_close_replaced(fn, removed, taken)) {
     return false;
   }
   *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);

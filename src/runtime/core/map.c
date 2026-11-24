@@ -360,7 +360,7 @@ static void collect(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, 
   }
   const MsMapLayout layout = ms_map_layout(kd, vd);
   const size_t offset = keys ? layout.key_offset : layout.value_offset;
-  MsList list = {.ptr = ms_alloc(msrt_list_buffer_bytes(m->len, d->size)), .len = 0, .cap = m->len};
+  MsList list = {.ptr = ms_alloc(m->len * d->size), .len = 0, .cap = m->len};
   for (size_t number = 0; number < m->used; number++) {
     const uint8_t *entry = ms_table_entry(m, &layout, number);
     if (ms_table_entry_is_live(entry)) {

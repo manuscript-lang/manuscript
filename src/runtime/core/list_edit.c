@@ -6,20 +6,32 @@
 
 /* The argument check of `splice`, apart from the native: lowering calls it first, so a bad range faults while the
  * caller still owns the replacement. */
-void msrt_list_check_splice(int64_t length, int64_t start, int64_t count) {
+static bool splice_inside(int64_t length, int64_t start, int64_t count) {
   if (start < 0 || start > length) {
-    msrt_splice_fault("start", start, (size_t)length);
+    msrt_post_splice("start", start, (size_t)length);
+    return false;
   }
   if (count < 0 || count > length - start) {
-    msrt_splice_fault("delete_count", count, (size_t)(length - start));
+    msrt_post_splice("delete_count", count, (size_t)(length - start));
+    return false;
   }
+  return true;
+}
+
+void msrt_list_check_splice(int64_t length, int64_t start, int64_t count) {
+  (void)splice_inside(length, start, count);
 }
 
 /* `splice(start, delete_count, replacement)`: the replacement is consumed and its buffer freed. */
 static void splice_into(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement,
                         MsList *taken) {
   const size_t length = v->len;
-  msrt_list_check_splice((int64_t)length, start, count);
+  if (!splice_inside((int64_t)length, start, count)) {
+    if (taken != NULL) {
+      *taken = (MsList){0};
+    }
+    return; /* nothing is consumed: the caller still holds the replacement */
+  }
   const size_t from = (size_t)start;
   const size_t removed = (size_t)count;
   if (taken != NULL) { /* the deleted elements move out, for the caller to close */
@@ -34,7 +46,10 @@ static void splice_into(MsList *v, const MsTypeDesc *d, int64_t start, int64_t c
       ms_slot_drop(d, ms_list_slot(v, d, i));
     }
   }
-  const size_t new_len = msrt_list_checked_add(length - removed, replacement->len);
+  size_t new_len = 0;
+  if (!msrt_list_checked_add(length - removed, replacement->len, &new_len)) {
+    return;
+  }
   if (new_len > v->cap) {
     ms_list_reserve(v, d->size, new_len - length);
   }
@@ -62,12 +77,14 @@ void msrt_list_splice_take(MsList *v, const MsTypeDesc *d, int64_t start, int64_
 
 /* The argument check of `fill`, apart from the native (see `msrt_list_check_splice`). */
 void msrt_list_check_fill(int64_t length, int64_t start, int64_t end) {
-  msrt_check_bounds("List.fill", (size_t)length, start, end);
+  (void)msrt_check_bounds("List.fill", (size_t)length, start, end);
 }
 
 /* `fill(value, start, end)`: `value` is consumed, copied into each slot but the last, which takes it. */
 void msrt_list_fill(MsList *v, const MsTypeDesc *d, uint8_t *value, int64_t start, int64_t end) {
-  msrt_list_check_fill((int64_t)v->len, start, end);
+  if (!msrt_check_bounds("List.fill", v->len, start, end)) {
+    return; /* nothing is consumed: the caller still holds the value */
+  }
   if (start == end) {
     ms_slot_drop(d, value);
     return;
@@ -98,9 +115,12 @@ static void copy_within_owned(MsList *list, const MsTypeDesc *d, size_t to, size
 
 void msrt_list_copy_within(MsList *v, const MsTypeDesc *d, int64_t target, int64_t start, int64_t end) {
   const size_t length = v->len;
-  msrt_check_bounds("List.copy_within", length, start, end);
+  if (!msrt_check_bounds("List.copy_within", length, start, end)) {
+    return;
+  }
   if (target < 0 || (uint64_t)target > length) {
-    msrt_copy_target_fault(length, target);
+    msrt_post_copy_target(length, target);
+    return;
   }
   const size_t to = (size_t)target;
   if (start == end || to == length) {

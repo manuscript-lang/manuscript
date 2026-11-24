@@ -381,7 +381,7 @@ uint8_t msstd_terminal_raw_terminal_size_status(const MsObj *handle) {
   int columns = 0;
   int rows = 0;
   if (ms_fail_cancel_requested()) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
     return MS_STATUS_CANCELLED;
   }
   if (atomic_load(&terminal->closed)) {
@@ -408,7 +408,7 @@ uint8_t msstd_terminal_raw_terminal_write(const MsObj *handle, const MsString *t
   MsTerminal *terminal = terminal_of(handle);
   *err = ms_string_empty();
   if (ms_fail_cancel_requested()) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
     return MS_STATUS_CANCELLED;
   }
   if (atomic_load(&terminal->closed)) {
@@ -418,7 +418,7 @@ uint8_t msstd_terminal_raw_terminal_write(const MsObj *handle, const MsString *t
     return MS_STATUS_OK;
   }
   if (ms_fail_cancel_requested()) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
     return MS_STATUS_CANCELLED;
   }
   *err = ms_string_from_span(ms_span_of_text("cannot write to the terminal"));
@@ -428,7 +428,7 @@ uint8_t msstd_terminal_raw_terminal_write(const MsObj *handle, const MsString *t
 uint8_t msstd_terminal_raw_terminal_read(const MsObj *handle, uint8_t quick) {
   const uint8_t status = ms_terminal_read(terminal_of(handle), quick != 0);
   if (status == MS_STATUS_CANCELLED) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
   }
   return status;
 }

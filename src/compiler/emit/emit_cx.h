@@ -28,6 +28,9 @@ typedef struct EmitPoison {
   uint32_t block, index, cell, bytes;
 } EmitPoison;
 
+/* The empty metadata node `!invariant.load` points to: a load marked so never changes while its function runs. */
+#define EMIT_METADATA_EMPTY 900005
+
 typedef struct EmitCx {
   const MirModule *module;
   const MirFunc *func;     /* the function being written; NULL for module-level text */
@@ -41,6 +44,7 @@ typedef struct EmitCx {
   const uint32_t *pool;    /* per value: the shared cell a one-block `slot` lives in, UINT32_MAX for any other value; NULL when none */
   const bool *borrowed;    /* per value: an `iface.borrow` kept in the frame; NULL when none */
   const bool *is_iconst;   /* per value: defined by an `iconst`; NULL outside a function */
+  bool unwind_byte;        /* the function tests the `unwinding` byte: its address is `%ubp`, made once in the entry block */
   const int64_t *iconst;   /* per value: that constant */
   uint32_t wide_leaves;    /* a value of more leaves than this lives in a stack cell (emit_wide.c); 0 for never */
   bool wide_hide;          /* those cells are hidden from LLVM: volatile leaf loads and an opaque `asm` */
@@ -151,7 +155,7 @@ bool emit_record_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool 
 bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_list_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_string_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
-bool emit_task_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
+bool emit_task_op(EmitCx *cx, const MirInst *inst, bool *handled);
 /* How many pieces `inst` ends: one per check or branch it writes. */
 uint32_t emit_pieces(const MirModule *module, const MirFunc *func, const MirInst *inst);
 uint32_t emit_record_pieces(const MirModule *module, const MirFunc *func, const MirInst *inst);
@@ -160,6 +164,7 @@ uint32_t emit_record_pieces(const MirModule *module, const MirFunc *func, const 
 void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, const char *fault,
                    const MirValue *args, uint32_t arg_count);
 void emit_frame_slots(EmitCx *cx);
+void emit_unwinding_address(EmitCx *cx);
 /* Gives each slot confined to its own block the cell of its rank among that block's confined slots, so blocks share
  * storage; per value, UINT32_MAX for the rest. NULL when no slot is confined. */
 const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held);
@@ -175,6 +180,7 @@ void emit_wide_start(EmitCx *cx, MirValue defining);
 /* After a value is made: writes it to its cell. */
 void emit_wide_store(EmitCx *cx, MirValue value);
 void emit_store_value(EmitCx *cx, MirValue value, const char *base);
+bool emit_wide_zero(EmitCx *cx, MirValue value);
 bool emit_wide_fill(EmitCx *cx, MirValue value, const char *from, const uint32_t *at);
 void emit_load_value(EmitCx *cx, MirValue value, const char *base);
 bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, uint32_t from, uint32_t count);

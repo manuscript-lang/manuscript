@@ -1,5 +1,5 @@
-// expect-debug: allocs=22 alloc_bytes=74149
-// expect-release: allocs=22 alloc_bytes=74149
+// expect-debug: allocs=21 alloc_bytes=70053
+// expect-release: allocs=21 alloc_bytes=70053
 // Compact output skips the text-classification copy; mixed content stops inspecting
 // later siblings.
 import XmlNode, stringify from "@std/data/xml.ms"

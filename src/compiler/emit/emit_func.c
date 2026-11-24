@@ -35,7 +35,7 @@ static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *si
     ok = emit_iface_op(cx, inst, site, &handled);
   }
   if (!handled) {
-    ok = emit_task_op(cx, inst, site, &handled);
+    ok = emit_task_op(cx, inst, &handled);
   }
   if (!handled) {
     ok = emit_string_op(cx, inst, site, &handled);
@@ -74,7 +74,7 @@ static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *si
                      number, inst->res, (long long)lo, number, inst->res, (long long)hi, number, number, number);
   char bad[24];
   emit_text_name(bad, sizeof bad, "l", number, "s", MIR_NONE);
-  emit_fault_if(cx, site, bad, "msrt_fault_int_range", NULL, 0);
+  emit_fault_if(cx, site, bad, "msrt_post_int_range", NULL, 0);
   return true;
 }
 
@@ -116,6 +116,9 @@ static void emit_entry(EmitCx *cx) {
     char from[24];
     emit_register_name(from, sizeof from, "in", value);
     emit_leaves_at(cx, value, from, true);
+  }
+  if (cx->unwind_byte) {
+    emit_unwinding_address(cx);
   }
   emit_debug_params(cx);
 }
@@ -257,6 +260,10 @@ bool emit_function(EmitCx *cx, uint32_t index) {
         is_iconst[inst->res] = true;
         iconst[inst->res] = inst->imm.i;
       }
+      if (inst->op == MOP_CallRt && inst->res != MIR_NONE && inst->imm.tag == MI_EXT &&
+        cx->module->externs.ptr[inst->imm.a].role == MR_UNWINDING) {
+        cx->unwind_byte = true;
+      }
     }
   }
   cx->is_iconst = is_iconst;
@@ -285,6 +292,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->framed = NULL;
   cx->borrowed = NULL;
   cx->is_iconst = NULL;
+  cx->unwind_byte = false;
   cx->iconst = NULL;
   cx->pool = NULL;
   cx->cell_bytes = NULL;

@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "promise-runtime-faults-return.ms::a call on a wait group that does not exist faults the work",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "promise-runtime-faults-return.ms::a second waiter on one promise faults and leaves the promise waitable",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "promise-runtime-faults-return.ms::groups and promises work after the faults",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN promise-runtime-faults-return.ms::a call on a wait group that does not exist faults the work\nPASS promise-runtime-faults-return.ms::a call on a wait group that does not exist faults the work\nRUN promise-runtime-faults-return.ms::a second waiter on one promise faults and leaves the promise waitable\nPASS promise-runtime-faults-return.ms::a second waiter on one promise faults and leaves the promise waitable\nRUN promise-runtime-faults-return.ms::groups and promises work after the faults\nPASS promise-runtime-faults-return.ms::groups and promises work after the faults\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

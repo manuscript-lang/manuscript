@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_pass.h"
 #include "compiler/check/properties.h"
 #include "compiler/own/closers.h"
 
@@ -22,6 +23,25 @@ static MsName named(Lower *cx, const char *base, uint32_t first, uint32_t second
   const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   return name;
+}
+
+/* Ends a generated function with a posted fault: the message is posted and an undefined value returned, so the
+ * caller finds the fault pending and leaves by its own exit. */
+static void post_fault(MirBuilder *b) {
+  const MirTy one[1] = {MIR_STR};
+  const MirImm text = {.tag = MI_STR, .a = (uint32_t)ms_names_intern(&b->module->strings, ms_span_of_text(NO_ERROR_MESSAGE))};
+  const MirValue message = mir_b_emit(b, MOP_StrLit, NULL, 0, text, MIR_STR);
+  const uint32_t post = mir_extern_get(b->module, ms_span_of_text("msrt_panic"), one, 1, MIR_VOID, false, MR_NONE);
+  (void)mir_b_emit(b, MOP_CallRt, &message, 1, mir_imm_ext(post), MIR_VOID);
+}
+
+static void fault_return(MirBuilder *b) {
+  post_fault(b);
+  MirValue undef = MIR_NONE;
+  if (b->func.ret != MIR_VOID) {
+    undef = mir_b_emit(b, MOP_Undef, NULL, 0, mir_imm_none(), b->func.ret);
+  }
+  mir_b_ret(b, undef);
 }
 
 /* ---- close thunks: `fn(slot: ptr)` ---- */
@@ -178,9 +198,7 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MsTy ret_checked, MirTy outcome_t
     }
     if (keeps_pending) {
       drop_owned(&b, module, values[0]);
-      const MirBlock block = b.cur;
-      mir_b_fault(&b, MF_MESSAGE);
-      b.func.blocks.ptr[block].term.fault_str = (uint32_t)ms_names_intern(&module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
+      fault_return(&b);
       uint32_t built = MIR_NONE;
       return mir_b_finish(&b, &built) ? built : MIR_NONE;
     }
@@ -193,9 +211,7 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MsTy ret_checked, MirTy outcome_t
         drop_owned(&b, module, values[at]);
       }
     }
-    const MirBlock block = b.cur;
-    mir_b_fault(&b, MF_MESSAGE);
-    b.func.blocks.ptr[block].term.fault_str = (uint32_t)ms_names_intern(&module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
+    fault_return(&b);
   }
   uint32_t id = MIR_NONE;
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
@@ -217,7 +233,8 @@ static bool ensure_exits(LowerFn *fn, MirTy outcome_ty) {
   return true;
 }
 
-/* After the close of a part returned `result`: faults when it is an error, else drops it. */
+/* After the close of a part returned `result`: a failure posts a fault, and the code goes on closing what it still
+ * holds; the fault leaves by the next exit site. The result is dropped. */
 void lower_close_check(MirBuilder *b, MirValue result) {
   const MirAltDef *def = NULL;
   if (result == MIR_NONE || !result_def(b->module, mir_b_ty(b, result), &def)) {
@@ -229,12 +246,10 @@ void lower_close_check(MirBuilder *b, MirValue result) {
   const MirBlock ok = mir_b_new_block(b);
   mir_b_br_if(b, mir_b_icmp(b, MCC_EQ, tag, mir_b_iconst(b, ERR_CASE)), failed, NULL, 0, ok, NULL, 0);
   mir_b_seal_block(b, failed);
-  mir_b_seal_block(b, ok);
   mir_b_switch_to(b, failed);
-  const MirBlock block = b->cur;
-  mir_b_fault(b, MF_MESSAGE);
-  b->func.blocks.ptr[block].term.fault_str =
-      (uint32_t)ms_names_intern(&b->module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
+  post_fault(b);
+  mir_b_br(b, ok, NULL, 0);
+  mir_b_seal_block(b, ok);
   mir_b_switch_to(b, ok);
   if (mir_needs_drop(b->module, mir_b_ty(b, result))) {
     (void)mir_b_emit(b, MOP_Drop, &result, 1, none, MIR_NONE);
@@ -396,9 +411,7 @@ static uint32_t fault_thunk(Lower *cx, uint32_t method, MirTy ty) {
     mir_b_seal_block(&b, good);
     mir_b_switch_to(&b, bad);
     (void)mir_b_emit(&b, MOP_Drop, &closed, 1, none, MIR_NONE);
-    const MirBlock block = b.cur;
-    mir_b_fault(&b, MF_MESSAGE);
-    b.func.blocks.ptr[block].term.fault_str = (uint32_t)ms_names_intern(&module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
+    fault_return(&b);
     mir_b_switch_to(&b, good);
   }
   if (closed != MIR_NONE && mir_needs_drop(module, method_ret)) {

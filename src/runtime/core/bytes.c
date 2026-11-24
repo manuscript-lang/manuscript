@@ -14,20 +14,21 @@ _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__,
 
 static const MsBytes empty_bytes = {0};
 
-static MS_NORETURN void bytes_overflow_fault(void) {
-  ms_fault_text(MS_FAULT_KIND_OVERFLOW, "bytes size overflow");
+static void post_bytes_overflow(void) {
+  ms_fault_post_text(MS_FAULT_KIND_OVERFLOW, "bytes size overflow");
 }
 
-/* Faults when `value` is not a byte; `what` names the operation for the message. */
-static void check_byte(const char *what, int64_t value) {
+/* Whether `value` is a byte; otherwise a fault is posted. `what` names the operation for the message. */
+static bool check_byte(const char *what, int64_t value) {
   if (value >= 0 && value <= UINT8_MAX) {
-    return;
+    return true;
   }
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, what);
   ms_strbuild_append_text(&message, ": value must be between 0 and 255, found ");
   ms_strbuild_append_i64(&message, value);
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
+  return false;
 }
 
 void msrt_bytes_drop(MsBytes *b) {
@@ -114,7 +115,8 @@ int64_t msrt_bytes_get(const MsBytes *b, int64_t index, uint8_t has_default, int
     return b->ptr[position];
   }
   if (has_default == 0) {
-    msrt_index_fault(index, (int64_t)b->len);
+    msrt_post_index(index, (int64_t)b->len);
+    return 0;
   }
   return default_value;
 }
@@ -129,7 +131,7 @@ uint8_t msrt_bytes_slice(const MsBytes *b, int64_t start, int64_t end, MsBytes *
   return MS_STATUS_OK;
 }
 
-static MS_NORETURN void view_bounds_fault(int64_t start, int64_t end, size_t length) {
+static void post_view_bounds(int64_t start, int64_t end, size_t length) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, "Bytes.view: bounds ");
   ms_strbuild_append_i64(&message, start);
@@ -137,7 +139,7 @@ static MS_NORETURN void view_bounds_fault(int64_t start, int64_t end, size_t len
   ms_strbuild_append_i64(&message, end);
   ms_strbuild_append_text(&message, " are outside a length of ");
   ms_strbuild_append_i64(&message, (int64_t)length);
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 /* `view(start, end)`: borrows `[start, end)` of the receiver's storage (a view, `cap == 0`, never freed). */
@@ -145,7 +147,8 @@ void msrt_bytes_view(const MsBytes *b, int64_t start, int64_t end, MsBytes *out)
   size_t from = 0;
   size_t to = 0;
   if (!ms_resolve_bounds(b->len, start, end, &from, &to)) {
-    view_bounds_fault(start, end, b->len);
+    post_view_bounds(start, end, b->len);
+    return;
   }
   *out = from == to ? empty_bytes : ms_bytes_view(ms_span_of(b->ptr + from, to - from));
 }
@@ -163,9 +166,12 @@ void msrt_bytes_reversed(const MsBytes *b, MsBytes *out) {
 void msrt_bytes_with_value(const MsBytes *b, int64_t index, int64_t value, MsBytes *out) {
   size_t position = 0;
   if (!ms_resolve_index(b->len, index, &position)) {
-    msrt_collection_index_fault("Bytes.with_value", (int64_t)b->len, index);
+    msrt_post_collection_index("Bytes.with_value", (int64_t)b->len, index);
+    return;
   }
-  check_byte("Bytes.with_value", value);
+  if (!check_byte("Bytes.with_value", value)) {
+    return;
+  }
   msrt_bytes_copy(b, out);
   out->ptr[position] = (uint8_t)value;
 }
@@ -175,7 +181,8 @@ void msrt_bytes_with_value(const MsBytes *b, int64_t index, int64_t value, MsByt
 void msrt_bytes_concat(const MsBytes *a, const MsBytes *b, MsBytes *out) {
   size_t total = 0;
   if (!ms_size_add(a->len, b->len, &total)) {
-    bytes_overflow_fault();
+    post_bytes_overflow();
+    return;
   }
   if (total == 0) {
     *out = empty_bytes;
@@ -202,7 +209,8 @@ void msrt_bytes_concat_grow(MsBytes *a, const MsBytes *b, MsBytes *out) {
   }
   size_t total = 0;
   if (!ms_size_add(a->len, b->len, &total)) {
-    bytes_overflow_fault();
+    post_bytes_overflow();
+    return;
   }
   const bool inside = a->cap != 0 && b->ptr >= a->ptr && b->ptr < a->ptr + a->cap;
   MsBytes held = {0};
@@ -278,7 +286,8 @@ void msrt_bytes_join(const MsList *parts, MsBytes *out) {
   size_t total = 0;
   for (size_t i = 0; i < parts->len; i++) {
     if (!ms_size_add(total, part_at(parts, i).len, &total)) {
-      bytes_overflow_fault();
+      post_bytes_overflow();
+      return;
     }
   }
   if (total == 0) {
@@ -299,7 +308,9 @@ void msrt_bytes_join(const MsList *parts, MsBytes *out) {
 
 /* `BytesBuilder.append(value)`. */
 void msrt_bytes_append(MsBytes *b, int64_t value) {
-  check_byte("BytesBuilder.append", value);
+  if (!check_byte("BytesBuilder.append", value)) {
+    return;
+  }
   const uint8_t byte = (uint8_t)value;
   ms_list_push(b, 1, &byte);
 }

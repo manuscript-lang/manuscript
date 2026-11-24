@@ -164,7 +164,7 @@ void msrt_list_sorted_by_difference(const MsList *v, const MsTypeDesc *d, MsComp
 /* ms-sig: msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 @domain=collection @end */
 int64_t msrt_hash_list(const MsList *v, const MsTypeDesc *d);
 
-/* ms-sig: msrt_fault_destructure(names: i64, elements: i64) -> ! @domain=collection @end */
-MS_NORETURN void msrt_fault_destructure(int64_t names, int64_t elements);
+/* ms-sig: msrt_post_destructure(names: i64, elements: i64) -> void @domain=collection @end */
+void msrt_post_destructure(int64_t names, int64_t elements);
 
 #endif

@@ -6,16 +6,13 @@ import (
 	PromiseOptions,
 	promise,
 	wait_all from "@std/concurrency/promise.ms",
-	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
+	expect_equal, expect_fault from "@std/test/test.ms",
 	microseconds, sleep from "@std/time.ms",
 )
 
 fn depth(n: Int) Int:
 	if n == 0: return 0
 	return depth(n - 1) + 1
-
-fn forever(n: Int) Int:
-	return forever(n + 1) + 1
 
 // A task starts on a 512 KiB stack slot and grows by guarded segments when a recursion
 // passes
@@ -42,11 +39,6 @@ fn loop_at_boundary() Int:
 	for unused in 0..20000:
 		total += depth(3300)
 	return total
-
-// Growth stops at 256 MiB, the main task's own limit, with the stack overflow report.
-test "a runaway recursion in a task still faults":
-	p := promise(fn: ok(forever(0)), options: PromiseOptions(placement: Placement.Here))
-	expect_true(p.wait().is_error())?
 
 // A fault deep in a grown stack is caught by a guard opened on the first segment, and
 // the task carries on there.

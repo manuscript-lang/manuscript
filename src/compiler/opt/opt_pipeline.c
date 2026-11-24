@@ -123,11 +123,13 @@ static bool opt_fuse_step(MirModule *m) {
 }
 
 static const Step early_steps[] = {
+    {"unwind sites", opt_unwind_sites},
     {"simplify", opt_simplify},
     {"copyelim", opt_copyelim},
     {"probe", opt_probe},
     {"inline", opt_inline},
     {"splitview", opt_splitview},
+    {"unwind thread", opt_unwind_thread},
     {"strfuse", strfuse_step},
     {"loopslot", opt_loopslot},
 };
@@ -138,6 +140,7 @@ static const Step late_steps[] = {
     {"exit_drops", opt_exit_drops},
     {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
+    {"unwind pairs", opt_unwind_pairs},
     {"thread", opt_thread},
     {"bytetake", opt_bytetake},
     {"copyelim takes", opt_copyelim_takes},

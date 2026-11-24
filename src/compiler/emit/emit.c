@@ -36,10 +36,10 @@
 static void write_tbaa(MsStrBuild *out) {
   ms_strbuild_printf(out,
                      "!%d = !{!\"ms.tbaa\"}\n!%d = !{!\"ms.scalar-elem\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n"
-                     "!%d = !{!\"ms.list-header\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n",
+                     "!%d = !{!\"ms.list-header\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n!%d = !{}\n",
                      EMIT_TBAA_ROOT, EMIT_TBAA_SCALAR, EMIT_TBAA_ROOT, EMIT_TBAA_SCALAR_TAG, EMIT_TBAA_SCALAR,
                      EMIT_TBAA_SCALAR, EMIT_TBAA_HEADER, EMIT_TBAA_ROOT, EMIT_TBAA_HEADER_TAG, EMIT_TBAA_HEADER,
-                     EMIT_TBAA_HEADER);
+                     EMIT_TBAA_HEADER, EMIT_METADATA_EMPTY);
 }
 
 /* The file name the compile unit shows: the base name of the first function's file. */

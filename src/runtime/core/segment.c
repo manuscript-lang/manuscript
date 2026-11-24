@@ -74,7 +74,6 @@ void ms_task_segment_teb(uint32_t segment, uintptr_t out[MS_CTX_TEB_WORDS]) {
   }
 }
 
-static void free_block(uint8_t *block) { ms_free(block); }
 
 /* Makes sure the task holds a slot for segment `k` (counted from 1). */
 static bool ensure_segment(MsSched *sched, MsTask *task, uint32_t k) {
@@ -114,9 +113,6 @@ MsTaskStatus ms_task_grow(void (*shim)(void *), void *block) {
   MsTask *const task = ms_task_running();
   MsUnwind *const unwind = &task->unwind;
   const uint32_t k = task->segment + 1;
-  /* A cancellation or fault inside the shim leaves by a jump that skips the caller's free of `block`, so a
-   * cleanup releases it; the normal return discards the cleanup. */
-  const size_t release = ms_cleanup_push(free_block, block);
   if (task->stack == NULL || task->stack_length == MS_STACK_REGION || k > (uint32_t)MAX_SEGMENTS ||
     !ensure_segment(sched, task, k)) {
     return MS_TASK_STACK_OVERFLOW;
@@ -139,7 +135,6 @@ MsTaskStatus ms_task_grow(void (*shim)(void *), void *block) {
   remember_teb(task, teb);
   uintptr_t left_at = 0; /* the stack pointer the call leaves this segment at; lives in this frame */
   ms_ctx_call_on_stack(bounds.high, shim, block, &left_at, teb);
-  ms_cleanup_discard(release);
   task->segment = k - 1;
   task->extra->segment_teb.len = k - 1;
   unwind->hdr.limit = outer_limit;

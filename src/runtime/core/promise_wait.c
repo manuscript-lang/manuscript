@@ -210,7 +210,9 @@ static ptrdiff_t first_done(const MsPromise *ids, size_t count) {
   return -1;
 }
 
-static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64_t to) {
+/* Moves the wait token of every local promise in `ids` from `from` to `to`. Setting a token (`to` != 0) on a
+ * promise another task waits on takes back the ones already set, posts a fault and answers false. */
+static bool set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64_t to) {
   for (size_t at = 0; at < count; at++) {
     if (promise_is_foreign(ids[at])) {
       continue;
@@ -220,12 +222,15 @@ static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64
       continue;
     }
     if (to != 0 && promise_table.hot.ptr[row].token != 0) {
+      (void)set_tokens(ids, at, to, 0);
       promise_fail("promise: another task is already waiting on this promise");
+      return false;
     }
     if (to != 0 || promise_table.hot.ptr[row].token == from) {
       promise_table.hot.ptr[row].token = to;
     }
   }
+  return true;
 }
 
 static bool is_queued(MsPromise id) {
@@ -278,8 +283,12 @@ static int64_t wait_any_mixed(const MsPromise *ids, size_t count, int64_t timeou
     const uint64_t token = ms_token_new(MS_TOKEN_REMOTE);
     if (token == 0) {
       promise_fail("promise: out of wait tokens");
+      return 0;
     }
-    set_tokens(ids, count, 0, token);
+    if (!set_tokens(ids, count, 0, token)) {
+      (void)ms_token_free(token);
+      return 0;
+    }
     for (size_t at = 0; at < count; at++) {
       if (promise_is_foreign(ids[at])) {
         (void)ms_remote_watch_post(ids[at], token);
@@ -288,7 +297,7 @@ static int64_t wait_any_mixed(const MsPromise *ids, size_t count, int64_t timeou
     uint64_t value = 0;
     uint32_t result = 0;
     (void)ms_token_park_at(token, deadline == NO_TIME ? -1 : deadline, &value, &result);
-    set_tokens(ids, count, token, 0);
+    (void)set_tokens(ids, count, token, 0);
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
       return MS_WAITER_CANCELLED;
@@ -326,8 +335,12 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
     const uint64_t token = ms_token_new(elsewhere ? MS_TOKEN_REMOTE : 0);
     if (token == 0) {
       promise_fail("promise: out of wait tokens");
+      return 0;
     }
-    set_tokens(ids, count, 0, token);
+    if (!set_tokens(ids, count, 0, token)) {
+      (void)ms_token_free(token);
+      return 0;
+    }
     for (size_t at = 0; at < count; at++) {
       if (promise_is_foreign(ids[at])) {
         (void)ms_remote_watch_post(ids[at], token); /* an owner that is gone reads as done below */
@@ -336,7 +349,7 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
     uint64_t value = 0;
     uint32_t result = 0;
     (void)ms_token_park_at(token, deadline == NO_TIME ? -1 : deadline, &value, &result);
-    set_tokens(ids, count, token, 0);
+    (void)set_tokens(ids, count, token, 0);
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
       return MS_WAITER_CANCELLED;
@@ -355,7 +368,7 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
 
 MsPromise ms_promise_sleep(int64_t ns) {
   const MsPromise id = ms_promise_new();
-  const size_t row = promise_row_or_fault(id);
+  const size_t row = promise_new_row(id);
   const int64_t at = ms_sched_now() + (ns > 0 ? ns : 0);
   promise_table.cold.ptr[row].deadline = at;
   ms_sched_arm((uint64_t)id, at);
@@ -422,7 +435,7 @@ MsPromise ms_promise_ready(int fd, uint32_t events, int64_t timeout_ns) {
     ms_promise_io_done_int(id, events & (MS_WAIT_READ | MS_WAIT_WRITE));
     return id;
   }
-  const size_t row = promise_row_or_fault(id);
+  const size_t row = promise_new_row(id);
   promise_table.cold.ptr[row].fd = fd;
   promise_table.cold.ptr[row].events = events;
   arm_timeout(id, row, timeout_ns);

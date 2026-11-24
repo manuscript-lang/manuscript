@@ -80,7 +80,8 @@ export fn invoke(
 	)
 
 // `text` with the work directory (as given and with forward slashes) as <DIR> and its
-// parent as <SCRATCH>, and the line number of a standard-library frame as <LINE>.
+// parent as <SCRATCH>, the line number of a standard-library frame as <LINE>, and the
+// count of a repeated frame as <COUNT>.
 fn normalize_text(text: String, work: String) String:
 	var out = text.replace(work, "<DIR>").replace(work.replace("\\", "/"), "<DIR>")
 	parent_end := parent_length(work)
@@ -92,7 +93,37 @@ fn normalize_text(text: String, work: String) String:
 			"<SCRATCH>",
 		)
 
-	return mask_stdlib_lines(out)
+	return mask_repeat_counts(mask_stdlib_lines(out))
+
+// A recursive frame repeated `N more times` names its count <COUNT>: how deep a
+// recursion gets before the stack ends depends on the platform's frame sizes.
+fn mask_repeat_counts(text: String) String:
+	marker := "repeated "
+	if not text.contains(marker): return text.clone()
+
+	var out = ""
+	var rest = text.clone()
+
+	while true:
+		at := rest.index_of(marker) or (-1)
+		if at < 0: break
+
+		after := rest.slice(at + marker.length(), rest.length())
+		digits := leading_digits(after)
+		out += rest.slice(0, at + marker.length())
+
+		if (
+			digits > 0
+			and after.slice(digits, after.length()).starts_with(
+				" more times"
+			)
+		):
+			out += "<COUNT>"
+			rest = after.slice(digits, after.length()).clone()
+		else:
+			rest = after.clone()
+
+	return out + rest
 
 // A standard-library frame (`@std/concurrency/promise.ms:312`) names its line as
 // <LINE>, so editing a standard-library file does not change the expectation of every

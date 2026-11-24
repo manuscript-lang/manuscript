@@ -26,9 +26,7 @@ typedef struct FaultCall {
 } FaultCall;
 
 static const FaultCall fault_calls[] = {
-    {"msrt_fault_int_overflow", 0, MF_INT_OVERFLOW}, {"msrt_fault_div_zero", 0, MF_DIV_BY_ZERO},
-    {"msrt_index_fault", 2, MF_INDEX_OUT_OF_RANGE},  {"msrt_fault_unwrap_none", 0, MF_NONE_UNWRAP},
-    {"msrt_cancelled", 0, MF_CANCELLED},             {"msrt_fault_depth", 0, MF_CALL_DEPTH},
+    {"msrt_fault_posted", 0, MF_POSTED},
 };
 
 uint32_t emit_edge_count(const MirTerm *term) {

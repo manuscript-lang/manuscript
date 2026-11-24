@@ -18,7 +18,6 @@ typedef enum MirGlueKind {
   MG_CLONE,
   MG_CLOSURE_DROP,
   MG_CLOSURE_DROP_FRAMED,
-  MG_CLOSURE_DROP_FROM,
   MG_CLOSURE_CLONE,
   MG_BLOCK_DROP,
   MG_BLOCK_CLONE,
@@ -27,7 +26,7 @@ typedef enum MirGlueKind {
 } MirGlueKind;
 
 /* One made function. `ty` is the type it works on (MIR_VOID for the closure kinds, which carry the closure
- * function in `a` and, for MG_CLOSURE_DROP_FROM, the capture in `b`). */
+ * function in `a`). */
 typedef struct MirGlueEntry {
   uint8_t kind; /* a MirGlueKind */
   uint32_t a, b;

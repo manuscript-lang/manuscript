@@ -79,22 +79,44 @@ void msrt_string_split_view(const MsString *s, const MsString *sep, MsList *out)
   split_into(s, sep, out, PIECE_VIEW);
 }
 
-/* Splits at a one-byte separator into `buffer` (room for SPLIT_FRAME_PIECES); false when it fills up. */
+/* Splits at a one-byte separator into `buffer` (room for SPLIT_FRAME_PIECES); false when it fills up. The text is
+ * scanned once, eight bytes at a time: every separator in a word is found from its mask, so a piece costs no search
+ * call of its own. */
 static bool split_into_buffer(MsSpan text, uint8_t separator, MsString *buffer, size_t *count) {
-  size_t start = 0;
-  *count = 0;
-  for (;;) {
-    const size_t hit = ms_find_byte(separator, text.ptr + start, text.len - start);
-    const size_t end = hit == SIZE_MAX ? text.len : start + hit;
-    if (*count == SPLIT_FRAME_PIECES) {
-      return false;
+  const uint64_t lo = UINT64_C(0x0101010101010101), low7 = UINT64_C(0x7f7f7f7f7f7f7f7f);
+  const uint64_t pattern = lo * separator;
+  size_t start = 0, at = 0, pieces = 0;
+  for (; at < text.len; at += 8) {
+    uint64_t mask;
+    if (at + 8 <= text.len) {
+      const uint64_t x = ms_load64(text.ptr + at) ^ pattern;
+      mask = ~(((x & low7) + low7) | x | low7); /* the high bit of each byte equal to the separator */
+    } else if (text.len >= 8) { /* the last word overlaps the one before: only its bytes from `at` on are new */
+      const uint64_t x = ms_load64(text.ptr + text.len - 8) ^ pattern;
+      mask = ~(((x & low7) + low7) | x | low7);
+      mask &= ~UINT64_C(0) << ((8 - (text.len - at)) * 8);
+      at = text.len - 8;
+    } else {
+      mask = 0;
+      for (size_t k = 0; k < text.len; k++) {
+        mask |= (uint64_t)(text.ptr[k] == separator) << (k * 8 + 7);
+      }
     }
-    buffer[(*count)++] = make_piece(PIECE_VIEW, between(text, start, end));
-    if (hit == SIZE_MAX) {
-      return true;
+    for (; mask != 0; mask &= mask - 1) {
+      const size_t end = at + (size_t)__builtin_ctzll(mask) / 8;
+      if (pieces == SPLIT_FRAME_PIECES) {
+        return false;
+      }
+      buffer[pieces++] = make_piece(PIECE_VIEW, between(text, start, end));
+      start = end + 1;
     }
-    start = end + 1;
   }
+  if (pieces == SPLIT_FRAME_PIECES) {
+    return false;
+  }
+  buffer[pieces++] = make_piece(PIECE_VIEW, between(text, start, text.len));
+  *count = pieces;
+  return true;
 }
 
 /* The view split into the caller's frame buffer when the text is short and has at most eight pieces at a
@@ -120,7 +142,9 @@ void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *o
   size_t end = 0;
   if (separator.len == 0) {
     if (text.len == 0) {
-      msrt_index_fault(0, 0);
+      msrt_post_index(0, 0);
+      *out = make_piece(PIECE_VIEW, between(text, 0, 0)); /* the caller leaves */
+      return;
     }
     end = ms_utf8_decode(text.ptr, text.len).width;
   } else {
@@ -198,9 +222,9 @@ uint8_t msrt_split_next(MsSplitIter *iter, MsString *out) {
 
 /* ---- replace ---- */
 
-/* The length of text after replacing `count` matches of old_len bytes by replacement_len bytes; faults over
- * the string limit. */
-static size_t replaced_length(size_t text_len, size_t count, size_t old_len, size_t replacement_len) {
+/* The length of text after replacing `count` matches of old_len bytes by replacement_len bytes; posts the limit
+ * fault and returns false over the string limit. */
+static bool replaced_length(size_t text_len, size_t count, size_t old_len, size_t replacement_len, size_t *out) {
   size_t added = 0;
   size_t removed = 0;
   size_t grown = 0;
@@ -208,9 +232,11 @@ static size_t replaced_length(size_t text_len, size_t count, size_t old_len, siz
   if (!ms_size_mul(count, replacement_len, &added) || !ms_size_mul(count, old_len, &removed) ||
       !ms_size_add(text_len, added, &grown) || !ms_size_sub(grown, removed, &total) ||
       total > MSRT_STRING_LIMIT) {
-    msrt_string_limit_fault();
+    msrt_string_limit_post();
+    return false;
   }
-  return total;
+  *out = total;
+  return true;
 }
 
 static uint8_t *write_bytes(uint8_t *destination, MsSpan source) {
@@ -267,7 +293,10 @@ typedef void (*FillFn)(uint8_t *destination, const void *context);
 static MsString build_exact(size_t length, FillFn fill, const void *context) {
   uint8_t small[MS_STRING_INLINE_MAX + 1];
   MsString result = ms_string_empty();
-  uint8_t *destination = length <= MS_STRING_INLINE_MAX ? small : msrt_string_block(length, &result);
+  uint8_t *destination = length <= MS_STRING_INLINE_MAX ? small : msrt_string_block_post(length, &result);
+  if (destination == NULL) {
+    return result;
+  }
   fill(destination, context);
   return length <= MS_STRING_INLINE_MAX ? msrt_string_make(ms_span_of(small, length)) : result;
 }
@@ -316,7 +345,7 @@ static bool replace_shrinking(const MsString *s, const MsNeedle *needle, MsSpan 
   return true;
 }
 
-/* Replaces every match; a result over the string limit faults like concat. The input is only read. */
+/* Replaces every match; a result over the string limit posts the fault like concat. The input is only read. */
 void msrt_string_replace(const MsString *s, const MsString *old, const MsString *replacement, MsString *out) {
   const MsSpan text = msrt_text(s);
   const MsSpan old_text = msrt_text(old);
@@ -333,7 +362,10 @@ void msrt_string_replace(const MsString *s, const MsString *old, const MsString 
     }
     job.matches = count_matches(&job.needle, text);
   }
-  const size_t total = replaced_length(text.len, job.matches, old_text.len, job.replacement.len);
+  size_t total = 0;
+  if (!replaced_length(text.len, job.matches, old_text.len, job.replacement.len, &total)) {
+    return;
+  }
   *out = job.matches == 0 ? ms_string_clone(s) : build_exact(total, fill_job, &job);
 }
 
@@ -364,7 +396,10 @@ void msrt_string_replace_first(const MsString *s, const MsString *old, const MsS
       return;
     }
   }
-  *out = build_exact(replaced_length(text.len, 1, old_text.len, job.replacement.len), fill_first, &job);
+  size_t total = 0;
+  if (replaced_length(text.len, 1, old_text.len, job.replacement.len, &total)) {
+    *out = build_exact(total, fill_first, &job);
+  }
 }
 
 /* replace of a string that dies at the call: a replacement no longer than its match is written over the same

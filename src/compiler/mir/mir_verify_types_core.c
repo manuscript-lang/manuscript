@@ -63,6 +63,11 @@ static const char *mvt_overflow_flag(const MvtCx *c) {
           "overflow flag takes two ints and yields bool");
 }
 
+static const char *mvt_fault_site(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 1));
+  return mvt_want(mvt_res_is(c, MIR_BOOL), "a fault site yields bool");
+}
+
 static const char *mvt_overflow_if(const MvtCx *c) {
   MVT_TRY(mvt_arity(c, 1));
   return mvt_want(mvt_t(c, 0) == MIR_BOOL && !c->has_res,
@@ -420,7 +425,7 @@ const MvtRule mvt_rules_core[MOP_COUNT] = {
   [MOP_SDiv] = mvt_int_binary, [MOP_SRem] = mvt_int_binary, [MOP_Shl] = mvt_int_binary,
   [MOP_Sshr] = mvt_int_binary, [MOP_Ushr] = mvt_int_binary, [MOP_Rotl] = mvt_int_binary,
   [MOP_Rotr] = mvt_int_binary, [MOP_UMulHi] = mvt_int_binary, [MOP_IAddOverflow] = mvt_overflow_flag,
-  [MOP_IMulOverflow] = mvt_overflow_flag, [MOP_IntOverflowIf] = mvt_overflow_if,
+  [MOP_IMulOverflow] = mvt_overflow_flag, [MOP_IntOverflowIf] = mvt_overflow_if, [MOP_FaultSite] = mvt_fault_site,
   [MOP_NarrowChk] = mvt_narrow_chk, [MOP_Conv] = mvt_conv, [MOP_INarrowOpt] = mvt_inarrow_opt,
   [MOP_F32Round] = mvt_f32_round, [MOP_INeg] = mvt_ineg, [MOP_INegChk] = mvt_ineg, [MOP_And] = mvt_bitwise,
   [MOP_Or] = mvt_bitwise, [MOP_Xor] = mvt_bitwise, [MOP_Clz] = mvt_bit_count, [MOP_Ctz] = mvt_bit_count,

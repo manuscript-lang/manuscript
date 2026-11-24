@@ -42,10 +42,6 @@ void mir_func_replace_uses(MirFunc *func, MirValue from, MirValue to);
  * result borrows. */
 MirFunc mir_func_stand_in(MirModule *module, const MirFunc *func);
 
-/* Whether the module starts tasks (some extern has the `spawns_task` role): only then do the cancellation
- * passes rewrite anything. */
-bool mir_starts_tasks(const MirModule *module);
-
 /* Per function: whether it can reach a cancellation point (a poll, an indirect call, a runtime call that is
  * not a known leaf), directly or through a callee. One entry per function, in `arena`. */
 bool *mir_parking_funcs(MsArena *arena, const MirModule *module);

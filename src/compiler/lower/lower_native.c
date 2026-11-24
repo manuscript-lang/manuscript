@@ -328,8 +328,8 @@ static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, u
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .twin = (uint8_t)fn_native_twin(sig),
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret), .pure = pure,
+                         .leaf = sig != NULL && sig->leaf,
                          .role = (uint8_t)(views ? MR_VIEW_RESULT
-                                           : sig != NULL && sig->spawns ? MR_SPAWNS_TASK
                                            : sig != NULL && sig->keeps ? MR_KEEPS_SLOT
                                            : fn_native_role(fn->cx->module, text, nargs > 0 ? params[0].ty : MIR_VOID))};
   return mir_extern_intern(fn->cx->module, &def);
@@ -426,7 +426,7 @@ bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
   const MirValue at = fn_expr(fn, key, LW_BORROW);
   if (at != MIR_NONE) {
     const MirValue operands[2] = {list, at};
-    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+    *addr = fn_checked_emit(fn, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
   }
   return true;
 }
@@ -492,7 +492,7 @@ bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *t
       return false;
     }
     const MirValue operands[2] = {holder, at};
-    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+    *addr = fn_checked_emit(fn, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
     *ty = data->elem;
     return true;
   }

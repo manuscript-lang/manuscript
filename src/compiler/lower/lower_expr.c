@@ -652,7 +652,9 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
   if (operand == MIR_UINT64) {
     return unsigned_binary(fn, &ops, left, right);
   }
-  return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
+  const MirValue pair[2] = {left, right};
+  return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right)
+                     : fn_checked_emit(fn, ops.op, pair, 2, (MirImm){0}, mir_b_ty(&fn->b, left));
 }
 
 /* The literal `null`, as written (not a local that happens to be named so). */
@@ -822,9 +824,8 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   ms_walk_block(&visitor, callee->body);
   const bool whole = counts.returns != 0 && counts.returns == counts.params && counts.same;
   const bool payload = counts.returns != 0 && counts.returns == counts.payload_returns && call->callee.kind == MS_REF_METHOD;
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  const MirInst *last = insts->len == 0 ? NULL : &insts->ptr[insts->len - 1];
-  if (last == NULL || last->res != value) {
+  const MirInst *last = fn_just_made(fn, value);
+  if (last == NULL) {
     return MIR_NONE;
   }
   const uint32_t position = whole ? counts.local + (call->callee.kind == MS_REF_METHOD ? 1u : 0u) : 0;
@@ -981,7 +982,15 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       return fn->presolved[at].value;
     }
   }
-  const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
+  const MirValue made = expr_value(fn, expr, want);
+  /* An operator that resolves to a call (`a / b` on a BigInt, `+` on a Decimal or a Duration) can post a fault like any call. */
+  const bool operator_call = (expr->kind == MS_E_BINARY || expr->kind == MS_E_UNARY) && fn_made_by_call(fn, made);
+  if (expr->kind == MS_E_CALL || operator_call) {
+    fn_unwind_site(fn, made); /* before the result changes hands: the exit still owns it */
+  } else if (made != MIR_NONE) {
+    fn_fault_site(fn, made);
+  }
+  const MirValue value = take_ownership(fn, expr, made, want);
   fn->read_moves = want == LW_MOVE;
   const MirValue converted = fn_convert(fn, expr, value);
   fn->read_moves = false;

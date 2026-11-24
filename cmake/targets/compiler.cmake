@@ -1,9 +1,8 @@
 ms_library(ms_mir compiler/mir
   SOURCES
     mir_pipeline.c mir_verify.c mir_verify_own.c mir_verify_types.c mir_verify_types_core.c mir_verify_types_data.c
-    mir_verify_types_ops.c mir_count_ops.c mir_depth.c mir_cancel_edges.c mir_shed.c mir_unwind.c mir_unwind_closers.c
-    mir_unwind_flow.c mir_unwind_hash.c mir_unwind_loops.c mir_unwind_own.c mir_unwind_slots.c mir_unwind_cells.c
-    mir_unwind_walk.c mir_elab.c mir_elab_state.c mir_elab_tags.c mir_elab_emit.c mir_elab_edge.c mir_elab_block.c
+    mir_verify_types_ops.c mir_count_ops.c mir_depth.c
+    mir_elab.c mir_elab_implicit.c mir_elab_state.c mir_elab_tags.c mir_elab_emit.c mir_elab_edge.c mir_elab_block.c
     mir_elab_close.c mir_hash.c mir_persist.c mir_print.c mir_print_func.c mir_print_ty.c mir_lower_ops.c
     mir_lower_ops_blocks.c mir_expand.c mir_expand_owned.c mir_tables.c mir_data.c mir_desc_glue.c mir_json_tree.c
     mir_data_const.c mir_desc.c mir_glue.c mir_glue_alt.c mir_glue_alt_clone.c mir_glue_build.c mir_glue_clone.c
@@ -95,13 +94,13 @@ ms_library(ms_opt compiler/opt
     opt_fuse.c opt_inline_dead.c opt_lastuse.c opt_lastuse_region.c opt_loopslot.c opt_optparam.c opt_pipeline.c opt_probe.c
     opt_range.c opt_range_eval.c opt_range_len.c opt_range_prove.c opt_range_refine.c opt_reserve.c opt_simplify.c
     opt_simplify_cfg.c opt_simplify_dead.c opt_simplify_fold.c opt_simplify_mutate.c opt_simplify_phis.c opt_simplify_probes.c
-    opt_sortgen.c opt_sortgen_drift.c opt_sortgen_emit.c opt_sortgen_merge.c opt_splitview.c opt_strfast.c opt_strfuse.c opt_util.c
+    opt_sortgen.c opt_sortgen_drift.c opt_sortgen_emit.c opt_sortgen_merge.c opt_splitview.c opt_strfast.c opt_strfuse.c opt_unwind_sites.c opt_unwind_thread.c opt_util.c
     opt_viewfast.c
   LINK ms_mir ms_base m)
 
 ms_library(ms_lower compiler/lower
   SOURCES
-    lower_types.c lower_scope.c lower_func.c lower_expr.c lower_stmt.c lower_destructure.c lower_field.c lower_call.c lower_var_slot.c lower_native.c
+    lower_types.c lower_scope.c lower_unwind.c lower_func.c lower_expr.c lower_stmt.c lower_destructure.c lower_field.c lower_call.c lower_var_slot.c lower_native.c
     lower_native_list.c lower_native_roles.c lower_scalar_ops.c lower_object.c lower_extern.c lower_conv.c lower_for.c lower_close.c lower_parts.c
     lower_temp.c lower_text.c lower_match.c lower_list.c lower_iflet.c lower_closure.c lower_captures.c
     lower_map_entry.c lower_or.c lower_assign_take.c lower_funcval.c lower_default.c lower_glue.c lower_hooks.c lower_result.c lower_tests.c lower_entry.c

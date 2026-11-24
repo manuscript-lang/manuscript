@@ -86,6 +86,9 @@ void msrt_list_shadow(const MsList *v, const MsTypeDesc *d, MsList *out) {
     return;
   }
   *out = msrt_list_with_slots(d, v->len, v->len);
+  if (out->ptr == NULL) {
+    return;
+  }
   __builtin_memcpy(out->ptr, v->ptr, v->len * d->size);
 }
 
@@ -111,6 +114,10 @@ uint8_t msrt_list_is_empty(const MsList *v) {
   return v->len == 0;
 }
 
+static bool insert_inside(int64_t length, int64_t index);
+static bool set_inside(int64_t length, int64_t index);
+static bool replace_inside(int64_t length, int64_t index);
+
 void msrt_list_reserve(MsList *v, const MsTypeDesc *d, int64_t extra) {
   ms_list_reserve(v, d->size, extra > 0 ? (size_t)extra : 0);
 }
@@ -125,14 +132,19 @@ const uint8_t *msrt_list_at(const MsList *v, const MsTypeDesc *d, int64_t index,
     return ms_list_slot(v, d, position);
   }
   if (default_value == NULL) {
-    msrt_index_fault(index, (int64_t)v->len);
+    msrt_post_index(index, (int64_t)v->len);
   }
-  return default_value;
+  return default_value; /* NULL after a posted fault */
 }
 
 void msrt_list_get(const MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *default_value,
                    uint8_t *out) {
-  ms_slot_copy(d, msrt_list_at(v, d, index, default_value), out);
+  const uint8_t *element = msrt_list_at(v, d, index, default_value);
+  if (element == NULL) {
+    __builtin_memset(out, 0, d->size); /* a fault was posted: the caller leaves, and a zero slot drops */
+    return;
+  }
+  ms_slot_copy(d, element, out);
 }
 
 static int64_t load_i64(const uint8_t *slot) {
@@ -211,7 +223,9 @@ int64_t msrt_hash_list(const MsList *v, const MsTypeDesc *d) {
 /* ---- element mutators ---- */
 
 void msrt_list_insert(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
-  msrt_list_check_insert((int64_t)v->len, index);
+  if (!insert_inside((int64_t)v->len, index)) {
+    return; /* a posted fault consumes nothing: the caller still holds the element and closes it when it leaves */
+  }
   size_t position = 0;
   (void)ms_resolve_insert_index(v->len, index, &position);
   ms_list_reserve(v, d->size, 1);
@@ -229,7 +243,8 @@ void msrt_list_prepend(MsList *v, const MsTypeDesc *d, const uint8_t *e) {
 void msrt_list_insert_copy(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
   size_t position = 0;
   if (!ms_resolve_insert_index(v->len, index, &position)) { /* before the copy: nothing to release when it faults */
-    msrt_list_index_fault(0, index, (int64_t)v->len);
+    msrt_post_list_index(0, index, (int64_t)v->len);
+    return;
   }
   _Alignas(16) uint8_t scratch[INLINE_COPY_BYTES];
   const bool on_stack = d->size <= sizeof scratch;
@@ -254,29 +269,49 @@ uint8_t msrt_list_pop(MsList *v, const MsTypeDesc *d, uint8_t *out) {
 /* Replaces the element at `index` with `e` (consumed); the old element is dropped. */
 /* The index checks of the natives that take an owned element, apart from the natives: lowering calls them first, so
  * a bad index faults while the caller still owns the element. */
-void msrt_list_check_set(int64_t length, int64_t index) {
+static bool set_inside(int64_t length, int64_t index) {
   size_t position = 0;
-  if (!ms_resolve_index((size_t)length, index, &position)) {
-    msrt_list_index_fault(2, index, length);
+  const bool inside = ms_resolve_index((size_t)length, index, &position);
+  if (!inside) {
+    msrt_post_list_index(2, index, length);
   }
+  return inside;
+}
+
+void msrt_list_check_set(int64_t length, int64_t index) {
+  (void)set_inside(length, index);
+}
+
+static bool replace_inside(int64_t length, int64_t index) {
+  size_t position = 0;
+  const bool inside = ms_resolve_index((size_t)length, index, &position);
+  if (!inside) {
+    msrt_post_list_index(4, index, length);
+  }
+  return inside;
 }
 
 void msrt_list_check_replace(int64_t length, int64_t index) {
+  (void)replace_inside(length, index);
+}
+
+static bool insert_inside(int64_t length, int64_t index) {
   size_t position = 0;
-  if (!ms_resolve_index((size_t)length, index, &position)) {
-    msrt_list_index_fault(4, index, length);
+  const bool inside = ms_resolve_insert_index((size_t)length, index, &position);
+  if (!inside) {
+    msrt_post_list_index(0, index, length);
   }
+  return inside;
 }
 
 void msrt_list_check_insert(int64_t length, int64_t index) {
-  size_t position = 0;
-  if (!ms_resolve_insert_index((size_t)length, index, &position)) {
-    msrt_list_index_fault(0, index, length);
-  }
+  (void)insert_inside(length, index);
 }
 
 void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
-  msrt_list_check_set((int64_t)v->len, index);
+  if (!set_inside((int64_t)v->len, index)) {
+    return; /* a posted fault consumes nothing: the caller still holds the element and closes it when it leaves */
+  }
   size_t position = 0;
   (void)ms_resolve_index(v->len, index, &position);
   uint8_t *slot = ms_list_slot(v, d, position);
@@ -293,7 +328,10 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
 /* Moves the element at `index` into `out` and stores `e` (consumed) in its place; nothing is copied or
  * dropped. */
 void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e, uint8_t *out) {
-  msrt_list_check_replace((int64_t)v->len, index);
+  if (!replace_inside((int64_t)v->len, index)) {
+    __builtin_memset(out, 0, d->size); /* no value: the caller's exit closes the incoming element */
+    return;
+  }
   size_t position = 0;
   (void)ms_resolve_index(v->len, index, &position);
   uint8_t *slot = ms_list_slot(v, d, position);
@@ -319,10 +357,12 @@ void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j) {
   size_t first = 0;
   size_t second = 0;
   if (!ms_resolve_index(v->len, i, &first)) {
-    msrt_list_index_fault(3, i, (int64_t)v->len);
+    msrt_post_list_index(3, i, (int64_t)v->len);
+    return;
   }
   if (!ms_resolve_index(v->len, j, &second)) {
-    msrt_list_index_fault(3, j, (int64_t)v->len);
+    msrt_post_list_index(3, j, (int64_t)v->len);
+    return;
   }
   if (first != second) {
     swap_slots(ms_list_slot(v, d, first), ms_list_slot(v, d, second), d->size);
@@ -333,7 +373,9 @@ void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j) {
 void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList *taken) {
   size_t position = 0;
   if (!ms_resolve_index(v->len, index, &position)) {
-    msrt_list_index_fault(1, index, (int64_t)v->len);
+    msrt_post_list_index(1, index, (int64_t)v->len);
+    *taken = empty_list;
+    return;
   }
   uint8_t *slot = ms_list_slot(v, d, position);
   *taken = empty_list;
@@ -347,7 +389,8 @@ void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList
 void msrt_list_remove(MsList *v, const MsTypeDesc *d, int64_t index) {
   size_t position = 0;
   if (!ms_resolve_index(v->len, index, &position)) {
-    msrt_list_index_fault(1, index, (int64_t)v->len);
+    msrt_post_list_index(1, index, (int64_t)v->len);
+    return;
   }
   uint8_t *slot = ms_list_slot(v, d, position);
   ms_slot_drop(d, slot);

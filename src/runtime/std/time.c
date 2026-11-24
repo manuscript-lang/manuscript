@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "runtime/core/fault.h"
+#include "runtime/core/unwind.h"
 #include "runtime/std/time_internal.h"
 
 enum {
@@ -15,9 +16,10 @@ enum {
   MONOTONIC_DOMAIN = 1, /* time.clock() */
 };
 
-MS_NORETURN static void fault_with(const char *format, ...) MS_PRINTF(1, 2);
+/* Posts the fault and returns: the caller returns a zero value at once. */
+static void fault_with(const char *format, ...) MS_PRINTF(1, 2);
 
-MS_NORETURN static void fault_with(const char *format, ...) {
+static void fault_with(const char *format, ...) {
   char message[MS_FAULT_MESSAGE_MAX];
   va_list arguments;
   va_start(arguments, format);
@@ -26,7 +28,7 @@ MS_NORETURN static void fault_with(const char *format, ...) {
   if (length < 0) {
     message[0] = 0;
   }
-  ms_fault_text(MS_FAULT_KIND_FAULT, message);
+  ms_fault_post_text(MS_FAULT_KIND_FAULT, message);
 }
 
 /* The operands of a binary operation, as the overflow message names them. */
@@ -36,7 +38,7 @@ typedef struct Operation {
   const char *right_label;
 } Operation;
 
-MS_NORETURN static void overflow(Operation op, int64_t left, int64_t right) {
+static void overflow(Operation op, int64_t left, int64_t right) {
   const MsSpan label = ms_span_of_text(op.right_label);
   const bool scale = ms_span_is_text(label, "factor") || ms_span_is_text(label, "divisor");
   fault_with("%s: overflow; found %s (nanoseconds) %" PRId64 " and %s%s %" PRId64
@@ -45,7 +47,7 @@ MS_NORETURN static void overflow(Operation op, int64_t left, int64_t right) {
              INT64_MAX);
 }
 
-MS_NORETURN static void range_fault(const char *operation, int64_t value) {
+static void range_fault(const char *operation, int64_t value) {
   fault_with("%s: value (nanoseconds) must be between %" PRId64 " and %" PRId64 ", found %" PRId64, operation,
              INT64_MIN + 1, INT64_MAX, value);
 }
@@ -54,6 +56,7 @@ static int64_t checked_add(Operation op, int64_t left, int64_t right) {
   int64_t sum = 0;
   if (__builtin_add_overflow(left, right, &sum)) {
     overflow(op, left, right);
+    return 0;
   }
   return sum;
 }
@@ -62,6 +65,7 @@ static int64_t checked_subtract(Operation op, int64_t left, int64_t right) {
   int64_t difference = 0;
   if (__builtin_sub_overflow(left, right, &difference)) {
     overflow(op, left, right);
+    return 0;
   }
   return difference;
 }
@@ -86,6 +90,7 @@ int64_t msstd_time_duration_multiply(int64_t value, int64_t factor) {
   int64_t product = 0;
   if (__builtin_mul_overflow(value, factor, &product)) {
     overflow((Operation){"Duration.multiply", "value", "factor"}, value, factor);
+    return 0;
   }
   return product;
 }
@@ -93,9 +98,11 @@ int64_t msstd_time_duration_multiply(int64_t value, int64_t factor) {
 int64_t msstd_time_duration_divide(int64_t value, int64_t divisor) {
   if (divisor == 0) {
     fault_with("Duration.divide: division by zero; divisor must be nonzero, found 0");
+    return 0;
   }
   if (value == INT64_MIN && divisor == -1) {
     overflow((Operation){"Duration.divide", "value", "divisor"}, value, divisor);
+    return 0;
   }
   return value / divisor;
 }
@@ -103,6 +110,7 @@ int64_t msstd_time_duration_divide(int64_t value, int64_t divisor) {
 int64_t msstd_time_duration_negate(int64_t value) {
   if (value == INT64_MIN) {
     range_fault("Duration.negate", value);
+    return 0;
   }
   return -value;
 }
@@ -110,6 +118,7 @@ int64_t msstd_time_duration_negate(int64_t value) {
 int64_t msstd_time_duration_abs(int64_t value) {
   if (value == INT64_MIN) {
     range_fault("Duration.abs", value);
+    return 0;
   }
   return value < 0 ? -value : value;
 }
@@ -140,34 +149,51 @@ double msstd_time_duration_to_hours(int64_t value) {
 
 /* ---- instants and clocks ---- */
 
-static void same_clock(const MsInstant *a, const MsInstant *b) {
+/* False after posting the fault when the clocks differ. */
+static bool same_clock(const MsInstant *a, const MsInstant *b) {
   if (a->domain != b->domain) {
     fault_with("instants belong to different clock domains");
+    return false;
   }
+  return true;
 }
 
 void msstd_time_instant_shift(const MsInstant *value, int64_t duration, MsInstant *out) {
   const int64_t tick = checked_add((Operation){"Instant.shift", "value", "duration"}, value->tick, duration);
+  if (ms_unwinding()) {
+    *out = (MsInstant){0};
+    return;
+  }
   *out = (MsInstant){.domain = value->domain, .tick = tick};
 }
 
 void msstd_time_instant_unshift(const MsInstant *value, int64_t duration, MsInstant *out) {
   const int64_t tick = checked_subtract((Operation){"Instant.-", "value", "duration"}, value->tick, duration);
+  if (ms_unwinding()) {
+    *out = (MsInstant){0};
+    return;
+  }
   *out = (MsInstant){.domain = value->domain, .tick = tick};
 }
 
 int64_t msstd_time_instant_difference(const MsInstant *left, const MsInstant *other) {
-  same_clock(left, other);
+  if (!same_clock(left, other)) {
+    return 0;
+  }
   return checked_subtract((Operation){"Instant.difference", "value", "other"}, left->tick, other->tick);
 }
 
 int64_t msstd_time_instant_compare(const MsInstant *left, const MsInstant *other) {
-  same_clock(left, other);
+  if (!same_clock(left, other)) {
+    return 0;
+  }
   return (left->tick > other->tick) - (left->tick < other->tick);
 }
 
 uint8_t msstd_time_instant_equal(const MsInstant *left, const MsInstant *other) {
-  same_clock(left, other);
+  if (!same_clock(left, other)) {
+    return 0;
+  }
   return left->tick == other->tick;
 }
 

@@ -66,7 +66,7 @@ static bool lu_leaks(const LuRun *run) {
           return true;
         }
         break;
-      case MOP_GlobalSet: case MOP_CleanupPush: case MOP_DropIf: case MOP_ClosureNew:
+      case MOP_GlobalSet: case MOP_DropIf: case MOP_ClosureNew:
       case MOP_IfaceNew:
         return true;
       default:

@@ -71,7 +71,7 @@ typedef struct MsSchedHooks {
   /* Output buffered for a pipe or file must be visible before the scheduler blocks. May be NULL. */
   void (*flush_output)(void);
   /* The promise table ends the promises the running task started above cleanup height `base`. May be NULL. */
-  void (*end_started)(size_t base);
+  void (*end_started)(uint64_t base);
   /* A task started with MS_SPAWN_FATAL faulted: the main isolate reports and exits the process; a worker records
    * the report and cancels itself, so this may return. May be NULL. */
   void (*task_fault)(const MsFaultText *message);

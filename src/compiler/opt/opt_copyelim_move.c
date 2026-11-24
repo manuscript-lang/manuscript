@@ -92,7 +92,7 @@ static void cpe_term_reads(void *ctx, MirValue v) {
 
 /* The owned values of `f`, where each is defined, and what borrows from each (an owned result
  * that is a view borrows from its operands too). */
-static CpeFlow cpe_flow(MsArena *arena, const MirModule *m, const MirFunc *f) {
+CpeFlow cpe_flow(MsArena *arena, const MirModule *m, const MirFunc *f) {
   CpeFlow fl = {cpe_new_flags(arena, f), MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)f->values.len + 1), {0},
         NULL, {0}};
   for (uint32_t v = 0; v <= f->values.len; v++) {
@@ -122,7 +122,7 @@ static CpeFlow cpe_flow(MsArena *arena, const MirModule *m, const MirFunc *f) {
 
 /* The paths from the copy `(bc, i)` of `v`: each ends in a drop of `v` and reads nothing borrowed
  * from it. Collects the drops; `*seen` marks the blocks reached. False when a path is not clean. */
-static bool cpe_paths(MsArena *arena, const MirFunc *f, const CpeFlow *fl, uint32_t bc, uint32_t i,
+bool cpe_paths(MsArena *arena, const MirFunc *f, const CpeFlow *fl, uint32_t bc, uint32_t i,
           MirValue v, const bool *held, bool *seen, CpeDead *drops) {
   CpePos *work = MS_ARENA_NEW_ARRAY(arena, CpePos, (size_t)f->blocks.len * 2 + 2);
   uint32_t top = 0;
@@ -159,7 +159,7 @@ static bool cpe_paths(MsArena *arena, const MirFunc *f, const CpeFlow *fl, uint3
 }
 
 /* Whether a block reached by the paths is also entered from outside them. */
-static bool cpe_entered_elsewhere(const MirFunc *f, const CpeFlow *fl, uint32_t bc,
+bool cpe_entered_elsewhere(const MirFunc *f, const CpeFlow *fl, uint32_t bc,
                 const bool *seen) {
   for (uint32_t x = 0; x < f->blocks.len; x++) {
     if (!seen[x]) {

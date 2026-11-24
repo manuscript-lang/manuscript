@@ -553,6 +553,12 @@ static bool ic_inline_call(IcInline *w, const IcKnown *known, uint32_t bi, uint3
   call->nargs = ncaps + call->nargs - 1;
   if (big) {
     body.kind = MFK_NORMAL;
+    /* Under a name of its own: ic_closure_body gave it the captures where the closure took its environment. */
+    MsStrBuild plain_name = ms_strbuild_new();
+    ms_strbuild_append(&plain_name, ms_names_span(&m->names, callee->name));
+    ms_strbuild_printf(&plain_name, ".direct.%u", (unsigned)m->funcs.len);
+    body.name = mir_name(m, ms_strbuild_span(&plain_name));
+    ms_strbuild_free(&plain_name);
     const uint32_t plain = mir_add_func(m, &body);
     m->funcs.ptr[w->fi].blocks.ptr[bi].insts.ptr[ii].imm.a = plain;
     return true;

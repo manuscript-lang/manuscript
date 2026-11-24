@@ -55,13 +55,7 @@ static void put_target(PrintCx *cx, const MirTarget *target) {
 }
 
 static void put_fault(PrintCx *cx, const MirTerm *term) {
-  static const char *const names[] = {"int_overflow", "div_by_zero",       "index_out_of_range",
-                                      "none_unwrap",  "cancelled",         "call_depth",
-                                      "unreachable_code"};
-  if (term->fault == MF_MESSAGE) {
-    mir_print_quoted(cx->out, ms_names_span(&cx->module->strings, term->fault_str));
-    return;
-  }
+  static const char *const names[] = {"posted", "unreachable_code"};
   put(cx, names[term->fault]);
 }
 
@@ -345,7 +339,6 @@ static void put_flag_attrs(PrintCx *cx, const MirFunc *func) {
   put(cx, func->ret_view ? " ret_view" : "");
   put(cx, func->scoped ? " scoped" : "");
   put(cx, func->keeps_scoped ? " keeps_scoped" : "");
-  put(cx, func->unwind_only ? " unwind_only" : "");
   put(cx, func->raw_scratch ? " raw_scratch" : "");
   if (func->has_slot_close) {
     put(cx, " slot_close(");
