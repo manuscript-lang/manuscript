@@ -6,7 +6,7 @@ const path = require('node:path');
 const {execFileSync} = require('node:child_process');
 const {purePage, embeddedData} = require('./pure-page.cjs');
 
-const root = path.join(__dirname, '../..');
+const root = path.join(__dirname, '../../..');
 const binary = process.env.MS_BIN
   ? path.resolve(root, process.env.MS_BIN)
   : path.resolve(root, '.artifacts/build/ci/src/cli', process.platform === 'win32' ? 'ms.exe' : 'ms');
