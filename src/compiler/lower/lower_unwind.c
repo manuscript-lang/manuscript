@@ -44,6 +44,15 @@ bool fn_made_by_call(const LowerFn *fn, MirValue value) {
   return op == MOP_Call || op == MOP_CallInd || op == MOP_CallRt || op == MOP_CallMethod;
 }
 
+/* Returns the undefined result: what a function that leaves on a fault hands back. */
+static void leave_with_undef(LowerFn *fn) {
+  MirValue undef = MIR_NONE;
+  if (fn->b.func.ret != MIR_VOID) {
+    undef = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, fn->returns_borrow ? mir_imm_int(1) : mir_imm_none(), fn->b.func.ret);
+  }
+  mir_b_ret(&fn->b, undef);
+}
+
 /* Leaves the function as a delivered cancel or a posted fault does: the closes run as on any exit, with the pending
  * state set aside while they do, so a close may park and its own calls do not leave; it is delivered again before the
  * function returns. The result is undefined. The current block ends here. */
@@ -56,11 +65,7 @@ void fn_unwind_exit(LowerFn *fn) {
   fn_scope_unwind(fn, 0);
   fn->leaving = was_leaving;
   (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = resume}, MIR_VOID);
-  MirValue undef = MIR_NONE;
-  if (fn->b.func.ret != MIR_VOID) {
-    undef = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, fn->returns_borrow ? mir_imm_int(1) : mir_imm_none(), fn->b.func.ret);
-  }
-  mir_b_ret(&fn->b, undef);
+  leave_with_undef(fn);
 }
 
 void fn_unwind_site(LowerFn *fn, MirValue result) {
@@ -87,8 +92,7 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
     dead_result = (call->op == MOP_Call || call->op == MOP_CallInd || call->op == MOP_CallMethod) &&
                   mir_result_mode(fn->cx->module, &fn->b.func, call, &mode) && mode == MM_MOVE;
   }
-  if (fn->terminated || fn->failed || fn->b.func.unwind_only ||
-      fn->b.func.closer) {
+  if (fn->terminated || fn->failed || fn->b.func.unwind_only || fn->b.func.closer) {
     return;
   }
   if (fn->cx->unwinding == MIR_NONE) {
@@ -128,12 +132,25 @@ static bool has_fault_site(MirOp op) {
   }
 }
 
+/* The fault kind the program ends with when a check inside an exit fails. */
+static MirFault fault_of(uint32_t op) {
+  switch (op) {
+  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListAddr:
+    return MF_INDEX_OUT_OF_RANGE;
+  case MOP_OptUnwrap:
+    return MF_NONE_UNWRAP;
+  case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
+    return MF_DIV_BY_ZERO;
+  default:
+    return MF_INT_OVERFLOW;
+  }
+}
+
 /* After a checked instruction: the fault the check posts leaves by an exit that closes what is owned here, as a
  * call's does. The test is constant false on the normal path: only the check's cold path reaches `leave`. */
 void fn_fault_site(LowerFn *fn, MirValue result) {
   const MirInst *made = fn_just_made(fn, result);
-  if (made == NULL || !has_fault_site((MirOp)made->op) || fn->leaving || fn->terminated || fn->failed || fn->b.func.unwind_only ||
-      fn->b.func.closer) {
+  if (made == NULL || !has_fault_site((MirOp)made->op) || fn->terminated || fn->failed || fn->b.func.unwind_only) {
     return;
   }
   const MirValue site = mir_b_emit(&fn->b, MOP_FaultSite, &result, 1, (MirImm){0}, MIR_BOOL);
@@ -144,7 +161,13 @@ void fn_fault_site(LowerFn *fn, MirValue result) {
   mir_b_seal_block(&fn->b, next);
   mir_b_switch_to(&fn->b, leave);
   fn->b.func.blocks.ptr[leave].cold = true;
-  fn_unwind_exit(fn);
+  if (fn->leaving) {
+    /* A check inside an exit repeats one the normal path passed. Failing now is a fault while leaving on a fault: the
+     * program ends there, as a panic while unwinding does elsewhere. */
+    mir_b_fault(&fn->b, fault_of(made->op));
+  } else {
+    fn_unwind_exit(fn);
+  }
   mir_b_switch_to(&fn->b, next);
 }
 

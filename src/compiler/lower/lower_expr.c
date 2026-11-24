@@ -652,7 +652,9 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
   if (operand == MIR_UINT64) {
     return unsigned_binary(fn, &ops, left, right);
   }
-  return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
+  const MirValue pair[2] = {left, right};
+  return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right)
+                     : fn_checked_emit(fn, ops.op, pair, 2, (MirImm){0}, mir_b_ty(&fn->b, left));
 }
 
 /* The literal `null`, as written (not a local that happens to be named so). */

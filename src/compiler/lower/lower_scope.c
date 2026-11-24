@@ -259,7 +259,7 @@ void fn_own_result(LowerFn *fn, MirValue result) {
 }
 
 MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty) {
-  const MirValue result = mir_b_emit(&fn->b, op, args, nargs, imm, ty);
+  const MirValue result = fn_checked_emit(fn, op, args, nargs, imm, ty); /* a check that can fault gets its exit here */
   fn_own_result(fn, result);
   return result;
 }
