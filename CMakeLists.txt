@@ -93,6 +93,16 @@ add_custom_target(repo-check
   USES_TERMINAL
   COMMENT "Checking repository invariants")
 
+# Ownership counts (tools/count-check.ms): builds the `stats` preset itself, runs tests/checks/ownership-counts in Debug
+# and Release against it, and fails on a live block or a changed cleanup order.
+add_custom_target(count-check
+  COMMAND $<TARGET_FILE:ms> run tools/count-check.ms
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/count-check-selftest.ms
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  DEPENDS ms
+  USES_TERMINAL
+  COMMENT "Checking ownership counts")
+
 # Every standard declaration and member has a description that passes the structural checks (tools/docgen.ms).
 add_custom_target(docs-check
   COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/docgen.ms -- --check
