@@ -10,5 +10,5 @@ Apply when: touching the lexer, the formatter, doc extraction, or any tool that 
 - Magic headers in fixtures are `// conform:`, `// expect-mir:`, `// expect-stdout:`, `// error:`. Rewriting `#` to `//` shifts byte offsets, so recorded conformance diagnostics need `ms-conform record` and a check that only `offset` and comment text changed.
 - A mechanical rewrite must be lexer-aware (text, interpolation, `r"""`); Rust string literals that hold `.ms` and extra extensions (`.src`, `.source`, `.expected`, `.ms.ref`) need their own pass.
 
-Evidence: [proposal](../../proposals/comment-syntax.md), [syntax tests](../../crates/ms-syntax/tests/comments.rs).
+Evidence: [proposal](../../proposals/comment-syntax.md), syntax tests.
 Verify: `cargo test -p ms-syntax --test it -- comments::`, `make conform`, `make repo-check`.

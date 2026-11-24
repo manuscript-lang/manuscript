@@ -9,5 +9,5 @@ Numbers (callgrind, `MS_THREADS=1`, 10,000 requests, server only): six headers 2
 Rules that follow: an API that reads a received head by name must not enumerate it; a write to a raw table first builds the ordered one (`own`); a name's first spelling is kept for built tables, canonical for received ones. `std::thread::current()` clones an `Arc` per call (132 instructions), so a per-use thread check uses a counter (`bound.rs`).
 
 Apply when: touching `Headers`, request parsing, or any per-request work in `ms-std-net`.
-Evidence: [headers.rs](../../crates/ms-std-net/src/http/headers.rs), [proposal](../../proposals/http-request-allocations.md).
+Evidence: headers.rs, [proposal](../../proposals/http-request-allocations.md).
 Verify: `make perf-counts` guard-http-request and guard-http-request-small.

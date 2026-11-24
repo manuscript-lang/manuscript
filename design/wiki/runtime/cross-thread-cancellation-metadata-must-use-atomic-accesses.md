@@ -8,5 +8,5 @@ with `msrt_shield_enter` and `msrt_shield_exit`. The depth now uses `AtomicU32` 
 reads and writes; only the owner changes it, so relaxed loads/stores suffice.
 
 Apply when: publishing task metadata to signal handlers or worker cancellation callers.
-Evidence: [concurrent shield regression and ABI checks](../../crates/ms-rt/src/fault.rs).
+Evidence: concurrent shield regression and ABI checks.
 Verify: `cargo +nightly miri test -p ms-rt concurrent_shield_updates_and_signal_reads` passes; ordinary shielded cancellation tests still pass. Volatile is not synchronization.

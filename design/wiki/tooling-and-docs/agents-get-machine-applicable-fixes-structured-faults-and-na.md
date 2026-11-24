@@ -5,7 +5,7 @@
 Decision: diagnostics carry a `fix` field when the repair is mechanical (nearest-name misspellings, missing imports), and `ms check --fix` / `ms lint --fix` apply them in place and report what remains (no `--watch`). `ms run --json` and `ms test --json` report a runtime fault as data (versioned result with the fault location) instead of text on stderr.
 
 Apply when: adding or rewording diagnostics, or changing JSON output.
-Evidence: [CLI help](../../crates/ms-cli/src/help_text.rs), [diagnostics](../../../documentation/developer-tooling/source/diagnostics.md), [fault report](../../crates/ms-cli/src/fault.rs).
+Evidence: CLI help, [diagnostics](../../../documentation/developer-tooling/source/diagnostics.md), fault report.
 
 Lesson (collection paths, [#3301](https://github.com/manuscript-lang/manuscript/issues/3301)): moving a diagnostic from a source root to invocation-relative paths must also move its embedded fix boundaries. Test separate roots with identical basenames by applying the emitted edits and rechecking; comparing the surrounding diagnostic alone misses an edit aimed at another file.
 
@@ -17,4 +17,4 @@ Decision (no clone fixes): ownership errors carry prose, never a `.clone()` fix.
 
 Import repairs must retain declaration kind (#3288). A function or constant with the requested name cannot repair an unknown type; an exported `fn Bytes` previously replaced the valid standard `Bytes` import. Filter standard symbols and project export headers by type kind before selecting compiler fixes or editor actions. Keep value-reference imports available, and apply each offered repair then recheck the resulting source (`ms-driver` import-hint and `ms-lsp` editing regression tests).
 
-Lesson (fix I/O, [#3295](https://github.com/manuscript-lang/manuscript/issues/3295)): warning-only lint can succeed even when a requested source write fails unless the operational error participates in status and JSON diagnostics. Retain failures across fix passes while rechecking successful edits; verify read-only and mixed inputs with [the CLI regression](../../crates/ms-cli/tests/check_fix.rs).
+Lesson (fix I/O, [#3295](https://github.com/manuscript-lang/manuscript/issues/3295)): warning-only lint can succeed even when a requested source write fails unless the operational error participates in status and JSON diagnostics. Retain failures across fix passes while rechecking successful edits; verify read-only and mixed inputs with the CLI regression.

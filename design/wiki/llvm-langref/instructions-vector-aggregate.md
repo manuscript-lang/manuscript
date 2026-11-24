@@ -234,4 +234,4 @@ Debug records appear interleaved with instructions, but are not instructions; th
       #dbg_value(%inst1, !10, !DIExpression(), !11)
     %inst2 = op2 %inst1, %c
 
-These debug records replace the prior [debug intrinsics](intrinsics-general.md#dbg-intrinsics). Debug records will be disabled if `--experimental-debuginfo-iterators=false` is passed to LLVM; it is an error for both records and intrinsics to appear in the same module. More information about debug records can be found in the [LLVM Source Level Debugging](SourceLevelDebugging.html#format-common-intrinsics) document.
+These debug records replace the prior [debug intrinsics](intrinsics-general.md#dbg-intrinsics). Debug records will be disabled if `--experimental-debuginfo-iterators=false` is passed to LLVM; it is an error for both records and intrinsics to appear in the same module. More information about debug records can be found in the LLVM Source Level Debugging document.

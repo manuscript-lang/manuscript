@@ -95,7 +95,7 @@ LLVM [functions](#functionstructure), [calls](instructions-other.md#i-call) and 
 This calling convention (the default if no other calling convention is specified) matches the target C calling conventions. This calling convention supports varargs function calls and tolerates some mismatch in the declared prototype and implemented declaration of the function (as does normal C).
 
 “`fastcc`” - The fast calling convention  
-This calling convention attempts to make calls as fast as possible (e.g., by passing things in registers). This calling convention allows the target to use whatever tricks it wants to produce fast code for the target, without having to conform to an externally specified ABI (Application Binary Interface). Targets may use different implementations according to different features. In this case, a TTI interface `useFastCCForInternalCall` must return false when any caller functions and the callee belong to different implementations. [Tail calls](CodeGenerator.html#tail-call-section) can only be optimized when this, the tailcc, the GHC or the HiPE convention is used. This calling convention does not support varargs and requires the prototype of all callees to exactly match the prototype of the function definition.
+This calling convention attempts to make calls as fast as possible (e.g., by passing things in registers). This calling convention allows the target to use whatever tricks it wants to produce fast code for the target, without having to conform to an externally specified ABI (Application Binary Interface). Targets may use different implementations according to different features. In this case, a TTI interface `useFastCCForInternalCall` must return false when any caller functions and the callee belong to different implementations. Tail calls can only be optimized when this, the tailcc, the GHC or the HiPE convention is used. This calling convention does not support varargs and requires the prototype of all callees to exactly match the prototype of the function definition.
 
 “`coldcc`” - The cold calling convention  
 This calling convention attempts to make code in the caller as efficient as possible under the assumption that the call is not commonly executed. As such, these calls often preserve all registers so that the call does not break any live ranges in the caller side. This calling convention does not support varargs and requires the prototype of all callees to exactly match the prototype of the function definition. Furthermore the inliner doesn’t consider such function calls for inlining.
@@ -111,13 +111,13 @@ This calling convention has been implemented specifically for use by the [Glasgo
 
 - *RISCV64* only supports up to 11 bit type parameters, 4 32-bit floating-point parameters, and 4 64-bit floating-point parameters.
 
-This calling convention supports [tail call optimization](CodeGenerator.html#tail-call-section) but requires both the caller and callee to use it.
+This calling convention supports tail call optimization but requires both the caller and callee to use it.
 
 “`cc 11`” - The HiPE calling convention  
-This calling convention has been implemented specifically for use by the [High-Performance Erlang (HiPE)](http://www.it.uu.se/research/group/hipe/) compiler, *the* native code compiler of the [Ericsson’s Open Source Erlang/OTP system](http://www.erlang.org/download.shtml). It uses more registers for argument passing than the ordinary C calling convention and defines no callee-saved registers. The calling convention properly supports [tail call optimization](CodeGenerator.html#tail-call-section) but requires that both the caller and the callee use it. It uses a *register pinning* mechanism, similar to GHC’s convention, for keeping frequently accessed runtime components pinned to specific hardware registers. At the moment only X86 supports this convention (both 32 and 64 bit).
+This calling convention has been implemented specifically for use by the [High-Performance Erlang (HiPE)](http://www.it.uu.se/research/group/hipe/) compiler, *the* native code compiler of the [Ericsson’s Open Source Erlang/OTP system](http://www.erlang.org/download.shtml). It uses more registers for argument passing than the ordinary C calling convention and defines no callee-saved registers. The calling convention properly supports tail call optimization but requires that both the caller and the callee use it. It uses a *register pinning* mechanism, similar to GHC’s convention, for keeping frequently accessed runtime components pinned to specific hardware registers. At the moment only X86 supports this convention (both 32 and 64 bit).
 
 “`anyregcc`” - Dynamic calling convention for code patching  
-This is a special convention that supports patching an arbitrary code sequence in place of a call site. This convention forces the call arguments into registers but allows them to be dynamically allocated. This can currently only be used with calls to `llvm.experimental.patchpoint` because only this intrinsic records the location of its arguments in a side table. See [Stack maps and patch points in LLVM](StackMaps.html).
+This is a special convention that supports patching an arbitrary code sequence in place of a call site. This convention forces the call arguments into registers but allows them to be dynamically allocated. This can currently only be used with calls to `llvm.experimental.patchpoint` because only this intrinsic records the location of its arguments in a side table. See Stack maps and patch points in LLVM.
 
 “`preserve_mostcc`” - The `PreserveMost` calling convention  
 This calling convention attempts to make the code in the caller as unintrusive as possible. This convention behaves identically to the `C` calling convention on how arguments and return values are passed, but it uses a different set of caller/callee-saved registers. This alleviates the burden of saving and recovering a large register set before and after the call in the caller. If the arguments are passed in callee-saved registers, then they will be preserved by the callee across the call. This doesn’t apply for values returned in callee-saved registers.
@@ -160,7 +160,7 @@ Given that each platform has its own lowering sequence, hence its own set of pre
 - On X86-64 the callee preserves all general purpose registers, except for RDI and RAX.
 
 “`tailcc`” - Tail callable calling convention  
-This calling convention ensures that calls in tail position will always be tail call optimized. This calling convention is equivalent to fastcc, except for an additional guarantee that tail calls will be produced whenever possible. [Tail calls](CodeGenerator.html#tail-call-section) can only be optimized when this, the fastcc, the GHC or the HiPE convention is used. This calling convention does not support varargs and requires the prototype of all callees to exactly match the prototype of the function definition.
+This calling convention ensures that calls in tail position will always be tail call optimized. This calling convention is equivalent to fastcc, except for an additional guarantee that tail calls will be produced whenever possible. Tail calls can only be optimized when this, the fastcc, the GHC or the HiPE convention is used. This calling convention does not support varargs and requires the prototype of all callees to exactly match the prototype of the function definition.
 
 “`swiftcc`” - This calling convention is used for Swift language.  
 - On X86-64 RCX and R8 are available for additional integer returns, and XMM2 and XMM3 are available for additional FP/vector returns.
@@ -424,7 +424,7 @@ The following example defines a thread-local global with the `initialexec` TLS m
 
 ### Functions
 
-LLVM function definitions consist of the “`define`” keyword, an optional [linkage type](#linkage), an optional [runtime preemption specifier](#runtime-preemption-model), an optional [visibility style](BitCodeFormat.html#visibility), an optional [DLL storage class](#dllstorageclass), an optional [calling convention](#callingconv), an optional `unnamed_addr` attribute, a return type, an optional [parameter attribute](#paramattrs) for the return type, a function name, a (possibly empty) argument list (each with optional [parameter attributes](#paramattrs)), optional [function attributes](#fnattrs), an optional address space, an optional section, an optional partition, an optional minimum alignment, an optional preferred alignment, an optional [comdat](#langref-comdats), an optional [garbage collector name](#gc), an optional [prefix](#prefixdata), an optional [prologue](#prologuedata), an optional [personality](#personalityfn), an optional list of attached [metadata](metadata.md#metadata), an opening curly brace, a list of basic blocks, and a closing curly brace.
+LLVM function definitions consist of the “`define`” keyword, an optional [linkage type](#linkage), an optional [runtime preemption specifier](#runtime-preemption-model), an optional visibility style, an optional [DLL storage class](#dllstorageclass), an optional [calling convention](#callingconv), an optional `unnamed_addr` attribute, a return type, an optional [parameter attribute](#paramattrs) for the return type, a function name, a (possibly empty) argument list (each with optional [parameter attributes](#paramattrs)), optional [function attributes](#fnattrs), an optional address space, an optional section, an optional partition, an optional minimum alignment, an optional preferred alignment, an optional [comdat](#langref-comdats), an optional [garbage collector name](#gc), an optional [prefix](#prefixdata), an optional [prologue](#prologuedata), an optional [personality](#personalityfn), an optional list of attached [metadata](metadata.md#metadata), an opening curly brace, a list of basic blocks, and a closing curly brace.
 
 Syntax:
 
@@ -442,7 +442,7 @@ Syntax:
 
     <type> [parameter Attrs] [name]
 
-LLVM function declarations consist of the “`declare`” keyword, an optional [linkage type](#linkage), an optional [visibility style](BitCodeFormat.html#visibility), an optional [DLL storage class](#dllstorageclass), an optional [calling convention](#callingconv), an optional `unnamed_addr` or `local_unnamed_addr` attribute, an optional address space, a return type, an optional [parameter attribute](#paramattrs) for the return type, a function name, a possibly empty list of arguments, an optional alignment, an optional [garbage collector name](#gc), an optional [prefix](#prefixdata), and an optional [prologue](#prologuedata).
+LLVM function declarations consist of the “`declare`” keyword, an optional [linkage type](#linkage), an optional visibility style, an optional [DLL storage class](#dllstorageclass), an optional [calling convention](#callingconv), an optional `unnamed_addr` or `local_unnamed_addr` attribute, an optional address space, a return type, an optional [parameter attribute](#paramattrs) for the return type, a function name, a possibly empty list of arguments, an optional alignment, an optional [garbage collector name](#gc), an optional [prefix](#prefixdata), and an optional [prologue](#prologuedata).
 
 Syntax:
 
@@ -478,7 +478,7 @@ Aliases, unlike function or variables, don’t create any new data. They are jus
 
 Aliases have a name and an aliasee that is either a global value or a constant expression.
 
-Aliases may have an optional [linkage type](#linkage), an optional [runtime preemption specifier](#runtime-preemption-model), an optional [visibility style](BitCodeFormat.html#visibility), an optional [DLL storage class](#dllstorageclass) and an optional [tls model](#tls-model).
+Aliases may have an optional [linkage type](#linkage), an optional [runtime preemption specifier](#runtime-preemption-model), an optional visibility style, an optional [DLL storage class](#dllstorageclass) and an optional [tls model](#tls-model).
 
 Syntax:
 
@@ -511,7 +511,7 @@ IFuncs, like aliases, don’t create any new data or func. They are just a new s
 
 On ELF platforms, IFuncs are resolved by the dynamic linker at load time. On Mach-O platforms, they are lowered in terms of `.symbol_resolver` functions, which lazily resolve the callee the first time they are called.
 
-IFunc may have an optional [linkage type](#linkage), an optional [visibility style](BitCodeFormat.html#visibility), an option partition, and an optional list of attached [metadata](metadata.md#metadata).
+IFunc may have an optional [linkage type](#linkage), an optional visibility style, an option partition, and an optional list of attached [metadata](metadata.md#metadata).
 
 Syntax:
 
@@ -692,7 +692,7 @@ When the call site is reached, the argument allocation must have been the most r
 
 The `inalloca` attribute requires a type argument.
 
-See [Design and Usage of the InAlloca Attribute](InAlloca.html) for more information on how to use this attribute.
+See Design and Usage of the InAlloca Attribute for more information on how to use this attribute.
 
 `sret(<ty>)`  
 This indicates that the pointer parameter specifies the address of a structure that is the return value of the function in the source program. This pointer must be guaranteed by the caller to be valid: loads and stores to the structure may be assumed by the callee not to trap and to be properly aligned.
@@ -704,7 +704,7 @@ A function that accepts an `sret` argument must return `void`. A return value ma
 <a id="attr-elementtype"></a>
 
 `elementtype(<ty>)`  
-The `elementtype` argument attribute can be used to specify a pointer element type in a way that is compatible with [opaque pointers](OpaquePointers.html).
+The `elementtype` argument attribute can be used to specify a pointer element type in a way that is compatible with opaque pointers.
 
 The `elementtype` attribute by itself does not carry any specific semantics. However, certain intrinsics may require this attribute to be present and assign it particular semantics. This will be documented on individual intrinsics.
 
@@ -720,7 +720,7 @@ Note that this attribute has additional semantics when combined with the `byval`
 <a id="noalias"></a>
 
 `noalias`  
-This indicates that memory locations accessed via pointer values [based](#pointeraliasing) on the argument or return value are not also accessed, during the execution of the function, via pointer values not *based* on the argument or return value. This guarantee only holds for memory locations that are *modified*, by any means, during the execution of the function. If there are other accesses not based on the argument or return value, the behavior is undefined. The attribute on a return value also has additional semantics, as described below. Both the caller and the callee share the responsibility of ensuring that these requirements are met. For further details, please see the discussion of the NoAlias response in [alias analysis](AliasAnalysis.html#must-may-or-no).
+This indicates that memory locations accessed via pointer values [based](#pointeraliasing) on the argument or return value are not also accessed, during the execution of the function, via pointer values not *based* on the argument or return value. This guarantee only holds for memory locations that are *modified*, by any means, during the execution of the function. If there are other accesses not based on the argument or return value, the behavior is undefined. The attribute on a return value also has additional semantics, as described below. Both the caller and the callee share the responsibility of ensuring that these requirements are met. For further details, please see the discussion of the NoAlias response in alias analysis.
 
 Note that this definition of `noalias` is intentionally similar to the definition of `restrict` in C99 for function arguments.
 
@@ -889,7 +889,7 @@ This attribute is only meaningful in conjunction with `dereferenceable(N)` or an
 
 In that case, the attribute indicates that the first `N` bytes will be (non-atomically) loaded and stored back on entry to the function.
 
-This implies that it’s possible to introduce spurious stores on entry to the function without introducing traps or data races. This does not necessarily hold throughout the whole function, as the pointer may escape to a different thread during the execution of the function. See also the [atomic optimization guide](Atomics.html#optimization-outside-atomic)
+This implies that it’s possible to introduce spurious stores on entry to the function without introducing traps or data races. This does not necessarily hold throughout the whole function, as the pointer may escape to a different thread during the execution of the function. See also the atomic optimization guide
 
 The “other attributes” that imply dereferenceability are `dereferenceable_or_null` (if the pointer is non-null) and the `sret`, `byval`, `byref`, `inalloca`, `preallocated` family of attributes. Note that not all of these combinations are useful, e.g. `byval` arguments are known to be writable even without this attribute.
 
@@ -961,7 +961,7 @@ Each function may specify a garbage collector strategy name, which is simply a s
 
     define void @f() gc "name" { ... }
 
-The supported values of *name* include those [built in to LLVM](GarbageCollection.html#builtin-gc-strategies) and any provided by loaded plugins. Specifying a GC strategy will cause the compiler to alter its output in order to support the named garbage collection algorithm. Note that LLVM itself does not contain a garbage collector, this functionality is restricted to generating machine code which can interoperate with a collector provided externally.
+The supported values of *name* include those built in to LLVM and any provided by loaded plugins. Specifying a GC strategy will cause the compiler to alter its output in order to support the named garbage collection algorithm. Note that LLVM itself does not contain a garbage collector, this functionality is restricted to generating machine code which can interoperate with a collector provided externally.
 
 <a id="prefix-data"></a>
 
@@ -1100,9 +1100,9 @@ This attribute indicates that this function is rarely called. When computing edg
 `convergent`  
 This attribute indicates that this function is convergent. When it appears on a call/invoke, the convergent attribute indicates that we should treat the call as though we’re calling a convergent function. This is particularly useful on indirect calls; without this we may treat such calls as though the target is non-convergent.
 
-See [Convergent Operation Semantics](ConvergentOperations.html) for further details.
+See Convergent Operation Semantics for further details.
 
-It is an error to call [llvm.experimental.convergence.entry](ConvergentOperations.html#llvm-experimental-convergence-entry) from a function that does not have this attribute.
+It is an error to call llvm.experimental.convergence.entry from a function that does not have this attribute.
 
 `disable_sanitizer_instrumentation`  
 When instrumenting code with sanitizers, it can be important to skip certain functions to ensure no instrumentation is applied to them.
@@ -1637,7 +1637,7 @@ It is the frontend’s responsibility to structure or encode the deoptimization 
 
 Funclet operand bundles are characterized by the `"funclet"` operand bundle tag. These operand bundles indicate that a call site is within a particular funclet. There can be at most one `"funclet"` operand bundle attached to a call site and it must have exactly one bundle operand.
 
-If any funclet EH pads have been “entered” but not “exited” (per the [description in the EH doc](ExceptionHandling.html#wineh-constraints)), it is undefined behavior to execute a `call` or `invoke` which:
+If any funclet EH pads have been “entered” but not “exited” (per the description in the EH doc), it is undefined behavior to execute a `call` or `invoke` which:
 
 - does not have a `"funclet"` bundle and is not a `call` to a nounwind intrinsic, or
 
@@ -1649,7 +1649,7 @@ Similarly, if no funclet EH pads have been entered-but-not-yet-exited, executing
 
 #### GC Transition Operand Bundles
 
-GC transition operand bundles are characterized by the `"gc-transition"` operand bundle tag. These operand bundles mark a call as a transition between a function with one GC strategy to a function with a different GC strategy. If coordinating the transition between GC strategies requires additional code generation at the call site, these bundles may contain any values that are needed by the generated code. For more details, see [GC Transitions](Statepoints.html#gc-transition-args).
+GC transition operand bundles are characterized by the `"gc-transition"` operand bundle tag. These operand bundles mark a call as a transition between a function with one GC strategy to a function with a different GC strategy. If coordinating the transition between GC strategies requires additional code generation at the call site, these bundles may contain any values that are needed by the generated code. For more details, see GC Transitions.
 
 The bundle contains an arbitrary list of Values which need to be passed to GC transition code. They will be lowered and passed as operands to the appropriate `GC_TRANSITION` nodes in the selection DAG. It is assumed that these arguments must be available before and after (but not necessarily during) the execution of the callee.
 
@@ -1736,7 +1736,7 @@ Preallocated operand bundles are characterized by the `"preallocated"` operand b
 
 A “gc-live” operand bundle is only valid on a [gc.statepoint](intrinsics-overview-and-basic.md#gc-statepoint) intrinsic. The operand bundle must contain every pointer to a garbage collected object which potentially needs to be updated by the garbage collector.
 
-When lowered, any relocated value will be recorded in the corresponding [stackmap entry](Statepoints.html#statepoint-stackmap-format). See the intrinsic description for further details.
+When lowered, any relocated value will be recorded in the corresponding stackmap entry. See the intrinsic description for further details.
 
 <a id="objc-arc-attached-call-operand-bundles"></a>
 
@@ -1757,7 +1757,7 @@ The operand bundle is needed to ensure the call is immediately followed by the m
 
 #### Pointer Authentication Operand Bundles
 
-Pointer Authentication operand bundles are characterized by the `"ptrauth"` operand bundle tag. They are described in the [Pointer Authentication](PointerAuth.html#operand-bundle) document.
+Pointer Authentication operand bundles are characterized by the `"ptrauth"` operand bundle tag. They are described in the Pointer Authentication document.
 
 <a id="kcfi-operand-bundles"></a>
 
@@ -1777,7 +1777,7 @@ Clang emits KCFI operand bundles and the necessary metadata with `-fsanitize=kcf
 
 #### Convergence Control Operand Bundles
 
-A “convergencectrl” operand bundle is only valid on a `convergent` operation. When present, the operand bundle must contain exactly one value of token type. See the [Convergent Operation Semantics](ConvergentOperations.html) document for details.
+A “convergencectrl” operand bundle is only valid on a `convergent` operation. When present, the operand bundle must contain exactly one value of token type. See the Convergent Operation Semantics document for details.
 
 <a id="deactivation-symbol-operand-bundles"></a>
 
@@ -2188,7 +2188,7 @@ Platforms may rely on volatile loads and stores of natively supported data width
 
 The LLVM IR does not define any way to start parallel threads of execution or to register signal handlers. Nonetheless, there are platform-specific ways to create them, and we define LLVM IR’s behavior in their presence. This model is inspired by the C++ memory model.
 
-For a more informal introduction to this model, see the [LLVM Atomic Instructions and Concurrency Guide](Atomics.html).
+For a more informal introduction to this model, see the LLVM Atomic Instructions and Concurrency Guide.
 
 We define a *happens-before* partial order as the least partial order that
 
@@ -2226,9 +2226,9 @@ Note that in cases where none of the atomic intrinsics are used, this model plac
 
 ### Atomic Memory Ordering Constraints
 
-Atomic instructions ([cmpxchg](instructions-memory.md#i-cmpxchg), [atomicrmw](instructions-memory.md#i-atomicrmw), [fence](instructions-memory.md#i-fence), [atomic load](instructions-memory.md#i-load), and [atomic store](instructions-memory.md#i-store)) take ordering parameters that determine which other atomic instructions on the same address they *synchronize with*. These semantics implement the Java or C++ memory models; if these descriptions aren’t precise enough, check those specs (see spec references in the [atomics guide](Atomics.html)). [fence](instructions-memory.md#i-fence) instructions treat these orderings somewhat differently since they don’t take an address. See that instruction’s documentation for details.
+Atomic instructions ([cmpxchg](instructions-memory.md#i-cmpxchg), [atomicrmw](instructions-memory.md#i-atomicrmw), [fence](instructions-memory.md#i-fence), [atomic load](instructions-memory.md#i-load), and [atomic store](instructions-memory.md#i-store)) take ordering parameters that determine which other atomic instructions on the same address they *synchronize with*. These semantics implement the Java or C++ memory models; if these descriptions aren’t precise enough, check those specs (see spec references in the atomics guide). [fence](instructions-memory.md#i-fence) instructions treat these orderings somewhat differently since they don’t take an address. See that instruction’s documentation for details.
 
-For a simpler introduction to the ordering constraints, see the [LLVM Atomic Instructions and Concurrency Guide](Atomics.html).
+For a simpler introduction to the ordering constraints, see the LLVM Atomic Instructions and Concurrency Guide.
 
 `unordered`  
 The set of values that can be read is governed by the happens-before partial order. A value cannot be read unless some operation wrote it. This is intended to provide a guarantee strong enough to model Java’s non-volatile shared variables. This ordering cannot be specified for read-modify-write operations; it is not strong enough to make them atomic in any interesting way.

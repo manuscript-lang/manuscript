@@ -7,5 +7,5 @@ Verified (2026-11-15, 4-core x86-64 sandbox, #3961): `wait_all` called `wait_any
 The same change fixed a hidden cost: `remove_pending` scanned the whole queue of unstarted promises whenever the id was already gone (taken by an idle thread), under the lock the thieves need. Starts now carry a `seq`, the queue is sorted by it, and the lookup is a front check or binary search. An experiment that only added the group made 100k tiny promises on 4 threads slower (50 to 150 ms) until this was fixed, and instruction counts under callgrind did not show it; the signature was 1,700 futex calls against 12 in `strace -c -f`.
 
 Apply when: changing `wait_all`, `wait_first`, `msrt_promise_wait_any`, or the unstarted-promise queue in `sched.rs`.
-Evidence: [`promise.ms`](../../../src/stdlib/concurrency/promise.ms), [`promise.rs`](../../crates/ms-rt/src/promise.rs), [`promise-semantics.ms`](../../../tests/conformance/fixtures/e2e/stdlib/promise-semantics.ms).
+Evidence: [`promise.ms`](../../../src/stdlib/concurrency/promise.ms), `promise.rs`, [`promise-semantics.ms`](../../../tests/conformance/fixtures/e2e/stdlib/promise-semantics.ms).
 Verify: ten thousand promises sleeping 1 s, `wait_all` on `MS_THREADS=4` finishes in about 1.06 s; compare 100k small promises at 1 and 4 threads with `strace -c -f` and expect single-digit futex calls.
