@@ -4,7 +4,7 @@ import (
 	PromiseOptions, cancel_switch, promise from "@std/concurrency/promise.ms",
 	WriteStream, pipe from "@std/io/io.ms",
 	WatchOptions, create_directory, temporary, watch from "@std/os/fs.ms",
-	expect_ok, expect_true from "@std/test/test.ms",
+	expect_ok, expect_true, fail, repr from "@std/test/test.ms",
 )
 
 // The burst raises more events than the default queue holds on a host that reports
@@ -40,13 +40,19 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 	work := promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
 		options: PromiseOptions(cancel: switch.signal())
 	)
-	_registered := reader.next()?
+	registered := reader.next()
+	if registered.is_error():
+		switch.cancel()
+		return fail(f"first read failed, follow: {repr(work.wait())}")
 	var i = 0
 
 	while i < 20:
 		create_directory(f"{path}/d{i}/e/f", recursive: true)?
 		i += 1
 
-	_arrived := reader.next()?
+	arrived := reader.next()
+	if arrived.is_error():
+		switch.cancel()
+		return fail(f"second read failed, follow: {repr(work.wait())}")
 	switch.cancel()
 	expect_true(work.wait().is_error())?
