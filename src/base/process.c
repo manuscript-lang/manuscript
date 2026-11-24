@@ -201,6 +201,11 @@ static bool spawn_and_wait(const MsProcessSpec *spec, const int fds[2], int *exi
   code = uv_spawn(&loop, &process, &options);
   if (code < 0) {
     fail_at("start", ms_span_of_text(options.file), code, error);
+    /* A failed spawn leaves the process handle on the loop, and with it the SIGCHLD watcher in libuv's process-wide
+     * signal tree. Closing the handle lets the loop close; a loop left open keeps a watcher whose memory is this frame,
+     * and the next signal handled or registered by any thread walks freed stack. */
+    uv_close((uv_handle_t *)&process, NULL);
+    (void)uv_run(&loop, UV_RUN_DEFAULT);
   } else {
     if (spec->supervise != NULL && uv_timer_init(&loop, &done.timer) == 0) {
       done.supervised = true;

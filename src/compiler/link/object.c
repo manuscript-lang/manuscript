@@ -65,7 +65,7 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   argv[argc++] = input;
   argv[argc++] = ms_span_of_text("-o");
   argv[argc++] = bitcode;
-  return run_tool(ms_span_of_text("opt (LLVM optimizer)"), argv, argc, log, why);
+  return run_tool(ms_span_of_text("opt (LLVM optimizer; put it on PATH, or set MS_OPT to it or MS_LLVM to the LLVM library)"), argv, argc, log, why);
 }
 
 /* `llc` over `input`, writing the object. */
@@ -89,7 +89,7 @@ static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   argv[argc++] = input;
   argv[argc++] = ms_span_of_text("-o");
   argv[argc++] = object;
-  return run_tool(ms_span_of_text("llc (LLVM code generator)"), argv, argc, log, why);
+  return run_tool(ms_span_of_text("llc (LLVM code generator; put it on PATH, or set MS_LLC to it or MS_LLVM to the LLVM library)"), argv, argc, log, why);
 }
 
 /* The assembly `text` as an IR module of `module asm` lines, which `llc` assembles into the object. */
