@@ -60,7 +60,7 @@ static bool alt_block(EmitCx *cx, const MirInst *inst, const MirAltFields *field
                      mir_mem_layout(shape->block, NULL).size);
   char base[24];
   emit_pointer(cx, inst->res, base, sizeof base);
-  ms_strbuild_printf(cx->out, "  store i64 %u, ptr %%a%u\n", case_index, emit_address(cx, base, offsets[0]));
+  ms_strbuild_printf(cx->out, "  store i64 %u, ptr %s\n", case_index, emit_address(cx, base, offsets[0]).text);
   uint32_t first = fields->case_start[case_index];
   for (uint32_t field = first; field < fields->case_start[case_index + 1]; field++) {
     for (uint32_t leaf = 0; leaf < fields->fields[field].nleaves; leaf++) {
