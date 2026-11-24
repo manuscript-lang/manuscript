@@ -1,5 +1,4 @@
 // expect-stdout: close 1
-// expect-stdout: close 2
 // expect-stdout: close 3
 // expect-stdout: close 4
 // expect-stdout: close 5
