@@ -12,6 +12,7 @@ typedef enum LowerWant { LW_BORROW, LW_MOVE } LowerWant;
 /* A `var` local that owns its current value: the scope that declared it owns that value where the scope ends. */
 typedef struct LowerOwnedVar {
   uint32_t scope;
+  uint32_t seq; /* its place among the closing owners, in declaration order */
   MirVar var;
   uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
   MsTy checked;   /* the record's checked type once a field moved, so the scope end can close the fields left */
@@ -130,7 +131,8 @@ typedef struct LowerFn {
   MsTy ret_checked; /* the checked result type of a named function (MS_TY_NONE for a lambda): a pending result closes through it */
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t *open;   /* the scopes open now, outermost first (grown in the module arena) */
-  bool *open_closes; /* whether the scope at that depth owns a slot that closes where it ends */
+  uint32_t *open_closes; /* the scope at that depth owns a slot that closes where it ends: the sequence number of the latest such owner, else 0 */
+  uint32_t own_seq;      /* counts closing owners and owned `var` locals in declaration order */
   uint32_t nopen, open_cap;
   LowerOwnedVar *owned_vars;
   uint32_t nowned_vars, owned_vars_cap;
