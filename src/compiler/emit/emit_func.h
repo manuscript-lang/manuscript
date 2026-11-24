@@ -20,6 +20,9 @@ void emit_phis(EmitCx *cx, uint32_t block, const uint32_t *last);
 /* Replaces every use of a value that only copies another register by the register, and drops the copy. */
 void emit_forward_copies(MsStrBuild *body);
 
+/* Drops the lines that define a register by a pure operation when nothing names the register. */
+void emit_drop_dead_definitions(MsStrBuild *body);
+
 /* Writes function `index` of the module; false with `cx->why` set when it cannot. */
 bool emit_function(EmitCx *cx, uint32_t index);
 

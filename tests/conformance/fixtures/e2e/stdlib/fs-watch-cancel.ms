@@ -3,14 +3,16 @@
 import (
 	PromiseOptions, cancel_switch, promise from "@std/concurrency/promise.ms",
 	WriteStream, pipe from "@std/io/io.ms",
-	create_directory, temporary, watch from "@std/os/fs.ms",
+	WatchOptions, create_directory, temporary, watch from "@std/os/fs.ms",
 	expect_ok, expect_true from "@std/test/test.ms",
 )
 
-// Tells the test the watch is registered, reads events until `last` shows up, tells the
-// test again, then waits for more inside the native watcher.
+// The burst raises more events than the default queue holds on a host that reports
+// every level of a new directory (Windows), so the queue is sized for it. Tells the
+// test the watch is registered, reads events until `last` shows up, tells the test
+// again, then waits for more inside the native watcher.
 fn follow(root: String, last: String, seen: WriteStream[Int]) Void!:
-	var events = watch(root, recursive: true)?
+	var events = watch(root, recursive: true, options: WatchOptions(max_events: 4096))?
 	var out = seen
 	out.write(0)?
 
