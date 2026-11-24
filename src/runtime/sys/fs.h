@@ -45,6 +45,9 @@ int ms_sys_fs_clone_file(int output, int input);
 bool ms_sys_fs_watch_recursive(void);
 /* Whether the host names a change to a watched directory by the directory's own name (FSEvents, inotify). */
 bool ms_sys_fs_watch_names_self(void);
+/* Whether the host reports a batch of changes it dropped (its fixed change buffer filled) as one change with no name
+ * (Windows, 4 KiB per handle), so the watcher must list the tree again to find what happened. */
+bool ms_sys_fs_watch_drops_batches(void);
 /* The name prefix of the file a new watcher touches until the host's event stream reports it (FSEvents starts its
  * stream late); empty where watches are live at once. */
 const char *ms_sys_fs_watch_ready_prefix(void);
