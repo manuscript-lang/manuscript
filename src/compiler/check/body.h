@@ -50,6 +50,7 @@ typedef struct Body {
   size_t narrow_len;
   uint32_t *local_latest; /* owned: per name, the position + 1 of its innermost local, 0 for none */
   size_t nlocal_latest;
+  MsSymbolId *decl_symbol; /* owned, built on first use: per node of a declaration of this module, its symbol (0 for none) */
   uint32_t next_local;
   MsTy result;  /* the enclosing function's result type; MS_TY_NONE inside no function */
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */

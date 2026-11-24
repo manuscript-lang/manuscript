@@ -13,7 +13,7 @@ uint64_t msrt_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t st
   MsTaskStatus status = MS_TASK_OK;
   const MsTaskHandle handle = ms_task_spawn(entry, arg, flags, stack_bytes, &status);
   if (handle == 0) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "cannot start a task: out of address space or mappings");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "cannot start a task: out of address space or mappings");
   }
   return handle;
 }
@@ -22,7 +22,8 @@ void msrt_task_yield(void) { ms_task_yield(); }
 
 static uint32_t checked_wait(uint32_t result) {
   if ((result & MS_WAIT_FAILED) != 0) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "cannot wait on this file descriptor");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "cannot wait on this file descriptor");
+    return 0;
   }
   return result;
 }
@@ -74,7 +75,9 @@ uint8_t msrt_task_join(uint64_t handle, MsString *message) {
   MsFaultText text = {0};
   const MsTaskStatus status = ms_task_join(handle, &outcome, &text);
   if (status != MS_TASK_OK) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, join_failure(status));
+    ms_fault_text_free(&text);
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, join_failure(status));
+    return 0;
   }
   if (message != NULL) {
     *message = ms_string_from_span(ms_span_of(text.bytes, text.length));
@@ -93,10 +96,12 @@ uint64_t msrt_token_new(uint32_t flags) { return ms_token_new(flags); }
 
 static uint32_t checked_park(MsTokenStatus status, uint32_t result) {
   if (status == MS_TOKEN_NO_SUCH_TOKEN) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "park on a token that does not exist");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "park on a token that does not exist");
+    return 0;
   }
   if (status == MS_TOKEN_BUSY) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "another task is already waiting on this token");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "another task is already waiting on this token");
+    return 0;
   }
   return result;
 }
@@ -117,7 +122,7 @@ void msrt_token_post(uint64_t id, uint64_t value) { ms_token_post(id, value); }
 
 void msrt_token_free(uint64_t id) {
   if (ms_token_free(id) == MS_TOKEN_WAITED_ON) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "a token was freed while a task waits on it");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "a token was freed while a task waits on it");
   }
 }
 

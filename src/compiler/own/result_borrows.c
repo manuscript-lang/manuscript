@@ -1,6 +1,7 @@
 /* compiler/own/result_borrows.c: see borrows.h. */
 #include "compiler/own/result_borrows.h"
 
+#include "base/alloc.h"
 #include "compiler/check/properties.h"
 #include "compiler/natives/native_sigs.h"
 #include "compiler/own/class.h"
@@ -58,6 +59,7 @@ typedef struct Pass {
   uint32_t self_module;
   bool method;
   MsName self_name;
+  const MsTy *written; /* by node of this module: the type a written type resolved to (MS_TY_NONE, which is 0, if none) */
 } Pass;
 
 static Reach join(Reach left, Reach right) {
@@ -291,18 +293,24 @@ static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
 }
 
 /* A callable that returns a part of its arguments on one path and a new value on another cannot say who owns its result. */
-static MsTy written_type(const Pass *pass, uint32_t module, const MsTypeRef *ref) {
-  for (size_t index = 0; ref != NULL && index < pass->program->type_refs.len; index++) {
-    const MsTypeRefRecord *record = &pass->program->type_refs.ptr[index];
-    if (record->module == module && record->node == ref->id) {
-      return record->ty;
+static MsTy written_type(const Pass *pass, const MsTypeRef *ref) {
+  return ref != NULL && ref->id < pass->facts->node_count ? pass->written[ref->id] : MS_TY_NONE;
+}
+
+/* The resolved types of a module's written types, by node: one pass over the records, not one scan per function. */
+static MsTy *written_types(const MsCheckProgram *program, uint32_t module, uint32_t node_count) {
+  MsTy *written = ms_alloc_zeroed(((size_t)node_count + 1) * sizeof *written);
+  for (size_t index = 0; index < program->type_refs.len; index++) {
+    const MsTypeRefRecord *record = &program->type_refs.ptr[index];
+    if (record->module == module && record->node < node_count) {
+      written[record->node] = record->ty;
     }
   }
-  return MS_TY_NONE;
+  return written;
 }
 
 static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body, const MsTypeRef *result_ref) {
-  const MsTy result = written_type(pass, module, result_ref);
+  const MsTy result = written_type(pass, result_ref);
   const Reached reached = reached_by(pass, params, body, result);
   if (!reached.known || reached.borrowed == NULL || reached.fresh == NULL) {
     return;
@@ -324,8 +332,9 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
   for (uint32_t module = 0; module < program->user_modules && module < program->modules.len; module++) {
     MsFacts *facts = &program->modules.ptr[module].facts;
     const MsModule *tree = program->modules.ptr[module].tree;
+    MsTy *written = written_types(program, module, facts->node_count);
     Pass pass = {.program = program, .classes = &classes, .facts = facts, .self_module = module,
-                 .self_name = ms_names_intern(program->names, ms_span_of_text("self"))};
+                 .self_name = ms_names_intern(program->names, ms_span_of_text("self")), .written = written};
     for (uint32_t index = 0; facts->result_borrows != NULL && index < tree->ndecls; index++) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
@@ -340,6 +349,7 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
         report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result);
       }
     }
+    ms_free(written);
   }
 }
 

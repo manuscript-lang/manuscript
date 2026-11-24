@@ -87,6 +87,10 @@ bool ms_sys_fs_watch_names_self(void) {
   return false;
 }
 
+bool ms_sys_fs_watch_drops_batches(void) {
+  return true;
+}
+
 const char *ms_sys_fs_watch_ready_prefix(void) {
   return "";
 }

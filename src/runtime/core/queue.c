@@ -17,18 +17,18 @@ static const int64_t NOT_SEEN = 0;
 static const int64_t AGED = INT64_MIN; /* older than any beat */
 
 /* A ring of entries indexed by sequence number: entry `sequence` sits at `sequence & (capacity - 1)`, and the
- * entries in use are `head_sequence` up to `head_sequence + length`. `lock` guards every field but `live` and an
- * entry's `id`. Only the owner pushes, so only the owner changes `items` and `capacity`, and it may read them
- * without the lock. */
+ * slots in use are `head` up to `tail`.
+ *
+ * The owner pushes without the lock: it writes the slot at `tail` and then publishes it by storing `tail`, which only
+ * it writes. `head` moves only under `lock`, past entries that were taken or removed, so a slot is not written again
+ * while a looker can reach it. The owner takes the lock only when the ring looks full, to move `head` itself or to
+ * replace the ring. Only the owner changes `items` and `capacity` (under the lock), so it reads them without it. */
 typedef struct Queue {
   MsSpin lock;
   Entry *items;
   size_t capacity;
-  size_t length;          /* slots in use, removed ones included */
-  uint64_t head_sequence; /* the sequence number of the oldest slot in use */
-  /* At least the entries still wanting to run (a removal by the owner is counted off at the next push or look);
-   * thieves read it without the lock to skip an empty queue. */
-  _Atomic size_t live;
+  _Atomic uint64_t head; /* the oldest slot in use */
+  _Atomic uint64_t tail; /* one past the newest */
 } Queue;
 
 static Queue queues[MS_MAX_ISOLATES];
@@ -36,43 +36,50 @@ static Queue queues[MS_MAX_ISOLATES];
 static Queue *queue_of(uint32_t isolate) { return isolate < MS_MAX_ISOLATES ? &queues[isolate] : NULL; }
 
 /* The capacity is a power of two (16, doubled), so a position wraps with a mask, not a division. */
-static size_t slot(const Queue *queue, size_t index) {
-  return (size_t)(queue->head_sequence + index) & (queue->capacity - 1);
+static Entry *entry_at(const Queue *queue, uint64_t sequence) {
+  return &queue->items[(size_t)sequence & (queue->capacity - 1)];
 }
 
 static uint64_t id_of(const Entry *entry) { return atomic_load_explicit(&entry->id, memory_order_relaxed); }
+static uint64_t head_of(const Queue *queue) { return atomic_load_explicit(&queue->head, memory_order_relaxed); }
+static uint64_t tail_of(const Queue *queue) { return atomic_load_explicit(&queue->tail, memory_order_acquire); }
 
-/* Drops removed entries at both ends. */
-static void trim(Queue *queue) {
-  while (queue->length > 0 && id_of(&queue->items[slot(queue, 0)]) == 0) {
-    queue->length--;
-    queue->head_sequence++;
+/* Moves `head` past the entries that were taken or removed. Under the lock. Answers the new head. */
+static uint64_t trim(Queue *queue, uint64_t tail) {
+  uint64_t head = head_of(queue);
+  while (head < tail && id_of(entry_at(queue, head)) == 0) {
+    head++;
   }
-  while (queue->length > 0 && id_of(&queue->items[slot(queue, queue->length - 1)]) == 0) {
-    queue->length--;
-  }
+  atomic_store_explicit(&queue->head, head, memory_order_relaxed);
+  return head;
 }
 
-static void grow(Queue *queue) {
-  const size_t capacity = queue->capacity == 0 ? 16 : queue->capacity * 2;
-  Entry *const items = ms_alloc(capacity * sizeof *items);
-  for (size_t i = 0; i < queue->length; i++) {
-    const Entry *const from = &queue->items[slot(queue, i)];
-    Entry *const to = &items[(size_t)(queue->head_sequence + i) & (capacity - 1)];
-    atomic_init(&to->id, id_of(from));
-    to->at = from->at;
-    to->work = from->work;
+/* The owner found the ring full: under the lock, drops what was removed and doubles the ring if that freed nothing. */
+static void make_room(Queue *queue, uint64_t tail) {
+  ms_spin_lock(&queue->lock);
+  const uint64_t head = trim(queue, tail);
+  if (tail - head == queue->capacity) {
+    const size_t capacity = queue->capacity == 0 ? 16 : queue->capacity * 2;
+    Entry *const items = ms_alloc(capacity * sizeof *items);
+    for (uint64_t at = head; at < tail; at++) {
+      const Entry *const from = entry_at(queue, at);
+      Entry *const to = &items[(size_t)at & (capacity - 1)];
+      atomic_init(&to->id, id_of(from));
+      to->at = from->at;
+      to->work = from->work;
+    }
+    ms_free(queue->items);
+    queue->items = items;
+    queue->capacity = capacity;
   }
-  ms_free(queue->items);
-  queue->items = items;
-  queue->capacity = capacity;
+  ms_spin_unlock(&queue->lock);
 }
 
 /* Dates the entries no looker has seen with `now_ns`. They are the newest ones, since every look dates all it finds,
  * so this stops at the first dated entry. */
-static void date_unseen(Queue *queue, int64_t now_ns) {
-  for (size_t index = queue->length; index > 0; index--) {
-    Entry *const entry = &queue->items[slot(queue, index - 1)];
+static void date_unseen(Queue *queue, uint64_t head, uint64_t tail, int64_t now_ns) {
+  for (uint64_t at = tail; at > head; at--) {
+    Entry *const entry = entry_at(queue, at - 1);
     if (entry->at != NOT_SEEN) {
       return;
     }
@@ -80,28 +87,25 @@ static void date_unseen(Queue *queue, int64_t now_ns) {
   }
 }
 
-bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, bool aged, uint64_t *sequence) {
+MS_ALWAYS_INLINE bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, bool aged, uint64_t *sequence) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL || id == 0) {
     return false;
   }
-  ms_spin_lock(&queue->lock);
-  trim(queue); /* what the owner removed since its last push */
-  if (queue->length == queue->capacity) {
-    grow(queue);
+  const uint64_t tail = atomic_load_explicit(&queue->tail, memory_order_relaxed);
+  if (tail - head_of(queue) >= queue->capacity) { /* a stale head only sends the owner to the lock early */
+    make_room(queue, tail);
   }
-  Entry *const entry = &queue->items[slot(queue, queue->length)];
+  Entry *const entry = entry_at(queue, tail);
   entry->at = aged ? AGED : NOT_SEEN;
   entry->work = work;
   atomic_store_explicit(&entry->id, id, memory_order_relaxed);
-  *sequence = queue->head_sequence + queue->length;
-  queue->length++;
-  atomic_store(&queue->live, queue->length); /* ordered against a looker's last look (ms_workers_nudge) */
-  ms_spin_unlock(&queue->lock);
+  *sequence = tail;
+  atomic_store(&queue->tail, tail + 1); /* publishes the slot; ordered against a looker's last look (ms_workers_nudge) */
   return true;
 }
 
-bool ms_queue_remove(uint32_t isolate, uint64_t id, uint64_t sequence) {
+MS_ALWAYS_INLINE bool ms_queue_remove(uint32_t isolate, uint64_t id, uint64_t sequence) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL || queue->capacity == 0) {
     return false;
@@ -109,43 +113,46 @@ bool ms_queue_remove(uint32_t isolate, uint64_t id, uint64_t sequence) {
   /* The owner's own entry: its slot holds `id` until a thief takes it, and no other entry can hold `id` there (a
    * later push to the slot carries another promise's id). One compare-and-swap decides between owner and thief. */
   uint64_t expected = id;
-  return atomic_compare_exchange_strong_explicit(&queue->items[(size_t)sequence & (queue->capacity - 1)].id, &expected, 0,
-                                                 memory_order_acq_rel, memory_order_relaxed);
+  return atomic_compare_exchange_strong_explicit(&entry_at(queue, sequence)->id, &expected, 0, memory_order_acq_rel,
+                                                 memory_order_relaxed);
 }
 
 bool ms_queue_steal(uint32_t isolate, int64_t now_ns, int64_t beat_ns, uint64_t *id, void **work) {
   Queue *const queue = queue_of(isolate);
-  if (queue == NULL || atomic_load_explicit(&queue->live, memory_order_relaxed) == 0) {
+  if (queue == NULL || ms_queue_length(isolate) == 0) {
     return false; /* a stale read only delays a steal */
   }
   bool taken = false;
   ms_spin_lock(&queue->lock);
-  trim(queue);
+  const uint64_t tail = tail_of(queue);
+  uint64_t head = trim(queue, tail);
   if (beat_ns >= 0) {
-    date_unseen(queue, now_ns);
+    date_unseen(queue, head, tail, now_ns);
   }
-  while (queue->length > 0 && (beat_ns < 0 || queue->items[slot(queue, 0)].at <= now_ns - beat_ns)) {
-    Entry *const oldest = &queue->items[slot(queue, 0)];
+  while (!taken && head < tail && (beat_ns < 0 || entry_at(queue, head)->at <= now_ns - beat_ns)) {
+    Entry *const oldest = entry_at(queue, head);
     uint64_t found = id_of(oldest);
     taken = found != 0 && atomic_compare_exchange_strong_explicit(&oldest->id, &found, 0, memory_order_acq_rel,
                                                                   memory_order_relaxed);
     if (taken) {
+      /* The slot is not written again before `head` passes it, which needs this lock. */
       *id = found;
       *work = oldest->work;
     }
-    trim(queue); /* the entry is gone either way: taken here, or removed by its owner a moment ago */
-    if (taken) {
-      break;
-    }
+    head = trim(queue, tail); /* the entry is gone either way: taken here, or removed by its owner a moment ago */
   }
-  atomic_store_explicit(&queue->live, queue->length, memory_order_relaxed);
   ms_spin_unlock(&queue->lock);
   return taken;
 }
 
 size_t ms_queue_length(uint32_t isolate) {
   const Queue *const queue = queue_of(isolate);
-  return queue == NULL ? 0 : atomic_load(&queue->live);
+  if (queue == NULL) {
+    return 0;
+  }
+  const uint64_t tail = atomic_load(&queue->tail);
+  const uint64_t head = head_of(queue);
+  return tail > head ? (size_t)(tail - head) : 0;
 }
 
 int64_t ms_queue_oldest(uint32_t isolate, int64_t now_ns) {
@@ -154,10 +161,10 @@ int64_t ms_queue_oldest(uint32_t isolate, int64_t now_ns) {
     return INT64_MAX;
   }
   ms_spin_lock(&queue->lock);
-  trim(queue);
-  date_unseen(queue, now_ns);
-  const int64_t oldest = queue->length > 0 ? queue->items[slot(queue, 0)].at : INT64_MAX;
-  atomic_store_explicit(&queue->live, queue->length, memory_order_relaxed);
+  const uint64_t tail = tail_of(queue);
+  const uint64_t head = trim(queue, tail);
+  date_unseen(queue, head, tail, now_ns);
+  const int64_t oldest = head < tail ? entry_at(queue, head)->at : INT64_MAX;
   ms_spin_unlock(&queue->lock);
   return oldest;
 }
@@ -168,8 +175,9 @@ void ms_queue_release(uint32_t isolate, void (*drop)(void *work)) {
     return;
   }
   ms_spin_lock(&queue->lock);
-  for (size_t i = 0; drop != NULL && i < queue->length; i++) {
-    const Entry *const entry = &queue->items[slot(queue, i)];
+  const uint64_t tail = tail_of(queue);
+  for (uint64_t at = head_of(queue); drop != NULL && at < tail; at++) {
+    const Entry *const entry = entry_at(queue, at);
     if (id_of(entry) != 0) {
       drop(entry->work);
     }
@@ -177,8 +185,6 @@ void ms_queue_release(uint32_t isolate, void (*drop)(void *work)) {
   ms_free(queue->items);
   queue->items = NULL;
   queue->capacity = 0;
-  queue->head_sequence += queue->length;
-  queue->length = 0;
-  atomic_store_explicit(&queue->live, 0, memory_order_relaxed);
+  atomic_store_explicit(&queue->head, tail, memory_order_relaxed);
   ms_spin_unlock(&queue->lock);
 }

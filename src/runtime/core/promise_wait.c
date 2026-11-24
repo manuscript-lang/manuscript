@@ -47,21 +47,26 @@ void ms_promise_watch(MsPromise id, uint64_t token) {
   promise_table.hot.ptr[row].flags |= FLAG_WATCHED;
 }
 
-int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
+/* ms_promise_wait, which also says in `*settled` the row the outcome was read from (-1 when there is none). */
+static inline MS_ALWAYS_INLINE int64_t wait_row(MsPromise id, int64_t timeout_ns, ptrdiff_t *settled) {
+  *settled = -1;
   if (promise_is_foreign(id)) {
     return ms_remote_wait(id, timeout_ns);
   }
-  const size_t first = promise_row_or_fault(id);
+  const ptrdiff_t first = promise_row_of(id);
+  if (first < 0) {
+    return MS_PROMISE_CLOSED; /* its result was taken, which freed the row */
+  }
   const int64_t asked = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
   int64_t deadline = earliest(asked, earliest(promise_table.cold.ptr[first].limit, ms_task_defer_deadline()));
-  (void)promise_run_deferred(id, deadline, false);
-  for (;;) {
-    const ptrdiff_t row = promise_row_of(id);
+  ptrdiff_t row = promise_run_row(id, (size_t)first, deadline);
+  for (;; row = promise_row_of(id)) {
     if (row < 0) {
       return MS_PROMISE_CLOSED;
     }
     const int64_t code = outcome((size_t)row);
     if (code >= 0) {
+      *settled = row;
       return code;
     }
     const uint32_t woke = promise_park_on(id, deadline == NO_TIME ? -1 : deadline);
@@ -75,6 +80,7 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
     }
     const int64_t done = outcome((size_t)after);
     if (done >= 0) {
+      *settled = after;
       return done;
     }
     if (woke == MS_WAIT_TIMEOUT) {
@@ -90,6 +96,21 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
       return MS_PROMISE_TIMEOUT;
     }
   }
+}
+
+int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
+  ptrdiff_t settled = -1;
+  return wait_row(id, timeout_ns, &settled);
+}
+
+MS_ALWAYS_INLINE int64_t ms_promise_result(MsPromise id, const MsTypeDesc *desc, uint8_t *out, bool *taken) {
+  ptrdiff_t settled = -1;
+  const int64_t code = wait_row(id, -1, &settled);
+  *taken = false;
+  if (code == MS_PROMISE_OK) {
+    *taken = settled >= 0 ? promise_take_row((size_t)settled, desc, out) : ms_promise_take(id, desc, out);
+  }
+  return code;
 }
 
 bool ms_promise_finished(MsPromise id) {
@@ -189,7 +210,9 @@ static ptrdiff_t first_done(const MsPromise *ids, size_t count) {
   return -1;
 }
 
-static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64_t to) {
+/* Moves the wait token of every local promise in `ids` from `from` to `to`. Setting a token (`to` != 0) on a
+ * promise another task waits on takes back the ones already set, posts a fault and answers false. */
+static bool set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64_t to) {
   for (size_t at = 0; at < count; at++) {
     if (promise_is_foreign(ids[at])) {
       continue;
@@ -199,12 +222,15 @@ static void set_tokens(const MsPromise *ids, size_t count, uint64_t from, uint64
       continue;
     }
     if (to != 0 && promise_table.hot.ptr[row].token != 0) {
+      (void)set_tokens(ids, at, to, 0);
       promise_fail("promise: another task is already waiting on this promise");
+      return false;
     }
     if (to != 0 || promise_table.hot.ptr[row].token == from) {
       promise_table.hot.ptr[row].token = to;
     }
   }
+  return true;
 }
 
 static bool is_queued(MsPromise id) {
@@ -257,8 +283,12 @@ static int64_t wait_any_mixed(const MsPromise *ids, size_t count, int64_t timeou
     const uint64_t token = ms_token_new(MS_TOKEN_REMOTE);
     if (token == 0) {
       promise_fail("promise: out of wait tokens");
+      return 0;
     }
-    set_tokens(ids, count, 0, token);
+    if (!set_tokens(ids, count, 0, token)) {
+      (void)ms_token_free(token);
+      return 0;
+    }
     for (size_t at = 0; at < count; at++) {
       if (promise_is_foreign(ids[at])) {
         (void)ms_remote_watch_post(ids[at], token);
@@ -267,7 +297,7 @@ static int64_t wait_any_mixed(const MsPromise *ids, size_t count, int64_t timeou
     uint64_t value = 0;
     uint32_t result = 0;
     (void)ms_token_park_at(token, deadline == NO_TIME ? -1 : deadline, &value, &result);
-    set_tokens(ids, count, token, 0);
+    (void)set_tokens(ids, count, token, 0);
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
       return MS_WAITER_CANCELLED;
@@ -305,8 +335,12 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
     const uint64_t token = ms_token_new(elsewhere ? MS_TOKEN_REMOTE : 0);
     if (token == 0) {
       promise_fail("promise: out of wait tokens");
+      return 0;
     }
-    set_tokens(ids, count, 0, token);
+    if (!set_tokens(ids, count, 0, token)) {
+      (void)ms_token_free(token);
+      return 0;
+    }
     for (size_t at = 0; at < count; at++) {
       if (promise_is_foreign(ids[at])) {
         (void)ms_remote_watch_post(ids[at], token); /* an owner that is gone reads as done below */
@@ -315,7 +349,7 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
     uint64_t value = 0;
     uint32_t result = 0;
     (void)ms_token_park_at(token, deadline == NO_TIME ? -1 : deadline, &value, &result);
-    set_tokens(ids, count, token, 0);
+    (void)set_tokens(ids, count, token, 0);
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
       return MS_WAITER_CANCELLED;
@@ -334,7 +368,7 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
 
 MsPromise ms_promise_sleep(int64_t ns) {
   const MsPromise id = ms_promise_new();
-  const size_t row = promise_row_or_fault(id);
+  const size_t row = promise_new_row(id);
   const int64_t at = ms_sched_now() + (ns > 0 ? ns : 0);
   promise_table.cold.ptr[row].deadline = at;
   ms_sched_arm((uint64_t)id, at);
@@ -401,7 +435,7 @@ MsPromise ms_promise_ready(int fd, uint32_t events, int64_t timeout_ns) {
     ms_promise_io_done_int(id, events & (MS_WAIT_READ | MS_WAIT_WRITE));
     return id;
   }
-  const size_t row = promise_row_or_fault(id);
+  const size_t row = promise_new_row(id);
   promise_table.cold.ptr[row].fd = fd;
   promise_table.cold.ptr[row].events = events;
   arm_timeout(id, row, timeout_ns);
