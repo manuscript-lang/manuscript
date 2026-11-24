@@ -47,13 +47,24 @@ typedef struct Watch {
   bool interrupted;
 } Watch;
 
-static void fail(const char *text) { ms_fault_text(MS_FAULT_KIND_FAULT, text); }
+/* Posts a fault and returns: the caller releases what it holds and returns at once. */
+static void fail(const char *text) { ms_fault_post_text(MS_FAULT_KIND_FAULT, text); }
 
-static Group *group_of(int64_t id) {
+/* The live group `id`, or NULL when there is none. */
+static Group *find_group(int64_t id) {
   if (id <= 0 || (size_t)id > groups.items.len || !groups.items.ptr[id - 1].live) {
-    fail("promise: no such wait group");
+    return NULL;
   }
   return &groups.items.ptr[id - 1];
+}
+
+/* The group of an id the program passed: NULL after posting a fault when there is none. */
+static Group *group_of(int64_t id) {
+  Group *const group = find_group(id);
+  if (group == NULL) {
+    fail("promise: no such wait group");
+  }
+  return group;
 }
 
 int64_t ms_group_new(void) {
@@ -107,6 +118,9 @@ static Member *member_row(MsPromise id) {
 
 bool ms_group_add(int64_t group_id, MsPromise id, int64_t tag) {
   Group *const group = group_of(group_id);
+  if (group == NULL) {
+    return false;
+  }
   const MsPromiseProbe probe = ms_promise_probe(id);
   if (probe == MS_PROMISE_GONE) {
     push_done(group, (uint32_t)tag);
@@ -134,6 +148,9 @@ bool ms_group_add(int64_t group_id, MsPromise id, int64_t tag) {
 
 int64_t ms_group_join(int64_t group_id, const MsPromise *ids, size_t count, size_t from) {
   Group *group = group_of(group_id);
+  if (group == NULL) {
+    return 0;
+  }
   if (group->joined != 0) {
     return group->joined;
   }
@@ -143,7 +160,7 @@ int64_t ms_group_join(int64_t group_id, const MsPromise *ids, size_t count, size
       mode = MS_GROUP_JOINED_PARTLY;
     }
   }
-  group = group_of(group_id);
+  group = find_group(group_id); /* ms_group_add may have moved the table */
   group->joined = mode;
   return mode;
 }
@@ -187,6 +204,9 @@ static bool members_elsewhere(const Group *group) {
 int64_t ms_group_next(int64_t group_id) {
   for (;;) {
     Group *const group = group_of(group_id);
+    if (group == NULL) {
+      return 0;
+    }
     uint32_t tag = 0;
     if (pop_done(group, &tag)) {
       return tag;
@@ -197,12 +217,16 @@ int64_t ms_group_next(int64_t group_id) {
     const uint64_t token = ms_token_new(members_elsewhere(group) ? MS_TOKEN_REMOTE : 0);
     if (token == 0) {
       fail("promise: out of wait tokens");
+      return 0;
     }
     group->token = token;
     uint64_t value = 0;
     uint32_t result = 0;
     (void)ms_token_park(token, -1, &value, &result);
-    group_of(group_id)->token = 0;
+    Group *const after = find_group(group_id); /* the wait may have moved the table, or another task freed the group */
+    if (after != NULL) {
+      after->token = 0;
+    }
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
       return MS_WAITER_CANCELLED;
@@ -211,12 +235,16 @@ int64_t ms_group_next(int64_t group_id) {
 }
 
 int64_t ms_group_poll(int64_t group_id) {
+  Group *const group = group_of(group_id);
   uint32_t tag = 0;
-  return pop_done(group_of(group_id), &tag) ? (int64_t)tag : -1;
+  return group != NULL && pop_done(group, &tag) ? (int64_t)tag : -1;
 }
 
 void ms_group_free(int64_t group_id) {
   Group *const group = group_of(group_id);
+  if (group == NULL) {
+    return;
+  }
   for (size_t i = 0; i < group->members.len; i++) {
     Member *const member = member_row(group->members.ptr[i]);
     if (member->id == group->members.ptr[i] && member->group == (uint32_t)group_id) {
@@ -240,11 +268,14 @@ void ms_group_free(int64_t group_id) {
 
 static bool park_begin(uint64_t token) {
   Watch *const watch = ms_task_watch();
+  if (find_group(watch->group) == NULL) {
+    return false; /* the caller's next call on the group reports it; a park is no place to post a fault */
+  }
   if (!watch->parked) {
     watch->parked = true;
     (void)ms_group_join(watch->group, watch->ids, watch->count, watch->from);
   }
-  Group *const group = group_of(watch->group);
+  Group *const group = find_group(watch->group);
   if (group->failed) {
     group->failed = false;
     watch->interrupted = true;
@@ -256,7 +287,10 @@ static bool park_begin(uint64_t token) {
 
 static bool park_end(void) {
   Watch *const watch = ms_task_watch();
-  Group *const group = group_of(watch->group);
+  Group *const group = find_group(watch->group);
+  if (group == NULL) {
+    return false;
+  }
   group->interrupt = 0;
   watch->interrupted = group->failed;
   group->failed = false;

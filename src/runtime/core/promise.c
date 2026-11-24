@@ -25,17 +25,10 @@ void ms_promise_set_unread(MsPromiseUnread unread) { unread_hook = unread; }
 
 /* ---- rows ---- */
 
-void promise_fail(const char *text) { ms_fault_text(MS_FAULT_KIND_FAULT, text); }
+/* Posts a fault and returns: the caller releases what it holds and returns at once. */
+void promise_fail(const char *text) { ms_fault_post_text(MS_FAULT_KIND_FAULT, text); }
 
 static void drop_closure(uint8_t *closure) { msrt_obj_drop((MsObj *)__builtin_assume_aligned(closure, _Alignof(MsObj))); }
-
-size_t promise_row_or_fault(MsPromise id) {
-  const ptrdiff_t row = promise_row_of(id);
-  if (row < 0) {
-    promise_fail("promise: no such promise");
-  }
-  return (size_t)row;
-}
 
 /* Remembers the program line that started the work (`site`, or NULL for none), so a fault in the work can name it.
  * The compiler passes a literal, whose bytes live forever; any other string is copied. */
@@ -452,11 +445,10 @@ static void work_entry(void *argument) {
   ms_shield_exit();
 }
 
-/* The row of an id ms_promise_new just returned. */
-static size_t new_row(MsPromise id) { return (size_t)((uint64_t)id & 0xffffffffu) - 1; }
-
-static void start_task(MsPromise id, MsObj *closure, const MsString *site) {
-  const size_t row = new_row(id);
+/* Starts the work as a task on this thread. When no task can be made it releases the work and the promise, posts
+ * a fault and answers false: the caller returns no promise. */
+static bool start_task(MsPromise id, MsObj *closure, const MsString *site) {
+  const size_t row = promise_new_row(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   cold->closure = closure;
   cold->creator = ms_task_current();
@@ -472,15 +464,18 @@ static void start_task(MsPromise id, MsObj *closure, const MsString *site) {
     cold->creator = 0;
     promise_release_started(cold);
     msrt_obj_drop(closure);
+    ms_promise_drop(id);
     promise_fail("promise: cannot start the work: out of stacks");
+    return false;
   }
   promise_table.cold.ptr[row].task = task;
+  return true;
 }
 
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
 static inline MS_ALWAYS_INLINE bool queue_work(MsPromise id, MsObj *closure, const MsString *site) {
-  const size_t row = new_row(id);
+  const size_t row = promise_new_row(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
   /* Stress mode queues every start aged, so any idle isolate may take it. */
@@ -505,14 +500,13 @@ static inline MS_ALWAYS_INLINE bool queue_work(MsPromise id, MsObj *closure, con
 
 MsPromise ms_promise_start_here(MsObj *closure, const MsString *site) {
   const MsPromise id = ms_promise_new();
-  start_task(id, closure, site);
-  return id;
+  return start_task(id, closure, site) ? id : 0;
 }
 
 MS_ALWAYS_INLINE MsPromise ms_promise_start(MsObj *closure, const MsString *site) {
   const MsPromise id = new_promise();
-  if (!queue_work(id, closure, site)) {
-    start_task(id, closure, site);
+  if (!queue_work(id, closure, site) && !start_task(id, closure, site)) {
+    return 0;
   }
   return id;
 }
@@ -520,7 +514,7 @@ MS_ALWAYS_INLINE MsPromise ms_promise_start(MsObj *closure, const MsString *site
 /* Sends the work of `id` to run as a task on `target`, as if that isolate had taken it from the queue: the row reads as
  * queued work no queue holds, so its waiter finds it remote. False when the mail cannot be sent. */
 static bool send_work(MsPromise id, MsObj *closure, const MsString *site, uint32_t target) {
-  const size_t row = new_row(id);
+  const size_t row = promise_new_row(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
   MsMail *const mail = ms_alloc(sizeof *mail);
@@ -542,7 +536,7 @@ MsPromise ms_promise_start_spread(MsObj *closure, const MsString *site) {
   const MsPromise id = ms_promise_new();
   const uint32_t target = ms_workers_spread_pick();
   if (target == MS_NO_ISOLATE || target == ms_sched()->isolate || !send_work(id, closure, site, target)) {
-    start_task(id, closure, site);
+    return start_task(id, closure, site) ? id : 0;
   }
   return id;
 }
@@ -570,7 +564,7 @@ bool promise_claim_queued(size_t row) { return claim_row(row, promise_make_id(ro
 
 MsPromise ms_promise_defer(MsObj *closure) {
   const MsPromise id = ms_promise_new();
-  const size_t row = new_row(id);
+  const size_t row = promise_new_row(id);
   promise_table.hot.ptr[row].flags |= FLAG_DEFERRED;
   promise_table.cold.ptr[row].closure = closure;
   return id;

@@ -138,7 +138,8 @@ static inline MS_ALWAYS_INLINE MsPromise promise_make_id(size_t row) {
                      (uint64_t)(row + 1));
 }
 
-size_t promise_row_or_fault(MsPromise id);
+/* The row of an id ms_promise_new just returned. */
+static inline size_t promise_new_row(MsPromise id) { return (size_t)((uint64_t)id & 0xffffffffu) - 1; }
 void promise_wake(size_t row);
 bool promise_claim_queued(size_t row);
 bool promise_run_deferred(MsPromise id, int64_t deadline, bool guarded);
