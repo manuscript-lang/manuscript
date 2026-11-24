@@ -28,6 +28,9 @@ runs:
       run: |
         mkdir -p .artifacts/apt/partial
         sudo apt-get install -y -o Dir::Cache::archives="$PWD/.artifacts/apt" ninja-build ccache llvm lld gdb
+        # apt wrote the archives as root; the cache action's tar runs as the runner user.
+        sudo chown -R "$(id -u):$(id -g)" .artifacts/apt
+        rm -f .artifacts/apt/lock
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2, which brings the perl and make
     # pair OpenSSL's Configure needs.
     - if: runner.os == 'Windows'
