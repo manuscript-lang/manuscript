@@ -3,7 +3,7 @@ cmake_policy(SET CMP0009 NEW)
 # Called as: cmake -DMS_LINT=<ms_lint> -DSOURCE_DIR=<repo> -DLIST_FILE=<out> -P RunLint.cmake
 file(GLOB_RECURSE found RELATIVE "${SOURCE_DIR}"
   "${SOURCE_DIR}/src/*" "${SOURCE_DIR}/cmake/*" "${SOURCE_DIR}/.github/*"
-  "${SOURCE_DIR}/tools/*" "${SOURCE_DIR}/toolchain/*" "${SOURCE_DIR}/bench/*"
+  "${SOURCE_DIR}/tools/*" "${SOURCE_DIR}/cmake/toolchain/*" "${SOURCE_DIR}/bench/*"
   "${SOURCE_DIR}/extensions/*" "${SOURCE_DIR}/website/*" "${SOURCE_DIR}/examples/*"
   "${SOURCE_DIR}/documentation/*" "${SOURCE_DIR}/skills/*" "${SOURCE_DIR}/tests/*" "${SOURCE_DIR}/src/stdlib/*" "${SOURCE_DIR}/*.sh" "${SOURCE_DIR}/*.py")
 list(FILTER found EXCLUDE REGEX "(^|/)(node_modules|target|\\.artifacts)/")
