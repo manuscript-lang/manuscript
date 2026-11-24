@@ -12,13 +12,44 @@
 #include "base/sort.h"
 #include "compiler/check/resolve_internal.h"
 
+MS_MAP_DEFINE(MsNameHeads, ms_name_heads, uint64_t, uint32_t, ms_hash_u64_key, ms_equal_u64_key)
+
+/* The entries this call registers, which the program's index does not cover yet, chained by name and receiver type
+ * (forms of other types are never related), so that finding the earlier forms costs the entries of that name on that
+ * type, not all of them: `heads` maps the key to its latest pending entry, `next[entry - first]` to the one before it
+ * (or NO_ENTRY). */
+typedef struct Pending {
+  MsNameHeads heads;
+  uint32_t *next;
+  size_t first, len, cap;
+} Pending;
+
+#define NO_ENTRY UINT32_MAX
+
 typedef struct Context {
   Resolver resolver;
   MsCheckProgram *program;
   uint32_t module;
   MsTyList fresh;       /* the receiver form's variables, in step with the symbol's */
   MsTyList open;        /* the ones the receiver mentions */
+  Pending pending;
 } Context;
+
+static uint64_t pending_key(const MsCheckProgram *program, MsName name, MsTy receiver) {
+  return (uint64_t)name << 32 | ms_ty_row(&program->types, receiver)->id;
+}
+
+/* Notes entry `entry` (just pushed) under `key`. */
+static void pending_add(Pending *pending, uint64_t key, size_t entry) {
+  if (pending->len == pending->cap) {
+    pending->cap = pending->cap == 0 ? 64 : pending->cap * 2;
+    pending->next = ms_realloc(pending->next, pending->cap * sizeof *pending->next);
+  }
+  const uint32_t *head = ms_name_heads_get(&pending->heads, key);
+  pending->next[entry - pending->first] = head != NULL ? *head : NO_ENTRY;
+  pending->len++;
+  ms_name_heads_put(&pending->heads, key, (uint32_t)entry);
+}
 
 static void report(const Context *context, MsPos pos, const char *prefix, MsName name, const char *suffix) {
   MsStrBuild text = ms_strbuild_new();
@@ -270,18 +301,30 @@ static FormRelation relate_forms(MsCheckProgram *program, MsTy mine, const MsMet
   return same ? FORM_SAME : FORM_OVERLAP;
 }
 
-/* The relation of the strongest earlier form of this module that declares `name`. */
-static FormRelation earlier_form(MsCheckProgram *program, MsTy receiver, MsName name, uint32_t module) {
+static size_t lower_bound(const MsMethodKeyList *list, uint64_t key);
+
+/* The strongest relation of `receiver` to one earlier entry of this module that declares the name. */
+static FormRelation relate_entry(MsCheckProgram *program, MsTy receiver, const MsMethodEntry *entry, FormRelation best) {
+  const FormRelation relation = entry->receiver == receiver ? FORM_SAME : relate_forms(program, receiver, entry);
+  return relation > best ? relation : best;
+}
+
+/* The relation of the strongest earlier form of this module that declares `name`: the entries the index covers, then
+ * the ones this call registered before. */
+static FormRelation earlier_form(Context *context, MsTy receiver, MsName name) {
+  MsCheckProgram *program = context->program;
   FormRelation result = FORM_DISJOINT;
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->name != name || entry->module != module) {
-      continue;
+  const MsMethodKeyList *named = &program->method_index.by_name;
+  for (size_t slot = lower_bound(named, name); slot < named->len && named->ptr[slot].key == name; slot++) {
+    const MsMethodEntry *entry = &program->methods.ptr[named->ptr[slot].entry];
+    if (entry->module == context->module && ms_ty_row(&program->types, entry->receiver)->id == ms_ty_row(&program->types, receiver)->id) {
+      result = relate_entry(program, receiver, entry, result);
     }
-    const FormRelation relation = entry->receiver == receiver ? FORM_SAME : relate_forms(program, receiver, entry);
-    if (relation > result) {
-      result = relation;
-    }
+  }
+  const uint32_t *head = ms_name_heads_get(&context->pending.heads, pending_key(program, name, receiver));
+  for (uint32_t entry = head != NULL ? *head : NO_ENTRY; entry != NO_ENTRY;
+       entry = context->pending.next[entry - context->pending.first]) {
+    result = relate_entry(program, receiver, &program->methods.ptr[entry], result);
   }
   return result;
 }
@@ -331,7 +374,7 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
     MsTyList own = {0};
     enter_own_variables(context, method, &own);
     const MsTy signature = resolver_function(resolver, method->func.params, method->func.result);
-    const FormRelation relation = earlier_form(program, receiver, method->func.name, context->module);
+    const FormRelation relation = earlier_form(context, receiver, method->func.name);
     if (relation == FORM_SAME) {
       report(context, method->pos, "duplicate operation ", method->func.name, "; rename or remove one of them");
     } else if (relation == FORM_OVERLAP) {
@@ -354,6 +397,7 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
       ms_ty_list_push(&entry.variables, own.ptr[at]);
     }
     ms_method_list_push(&program->methods, entry);
+    pending_add(&context->pending, pending_key(program, method->func.name, receiver), program->methods.len - 1);
     ms_ty_list_free(&own);
     ms_name_list_truncate(&resolver->names, form_mark);
     ms_ty_list_truncate(&resolver->types, form_mark);
@@ -549,7 +593,7 @@ const MsMethodEntry *ms_check_method_at(const MsCheckProgram *program, uint32_t 
 }
 
 void ms_check_methods(MsCheckProgram *program, uint32_t module) {
-  Context context = {.program = program, .module = module};
+  Context context = {.program = program, .module = module, .pending = {.first = program->methods.len}};
   resolver_init(&context.resolver, program, module);
   const MsModule *tree = program->modules.ptr[module].tree;
   for (uint32_t index = 0; index < tree->ndecls; index++) {
@@ -560,6 +604,8 @@ void ms_check_methods(MsCheckProgram *program, uint32_t module) {
   ms_ty_list_free(&context.fresh);
   ms_ty_list_free(&context.open);
   resolver_free(&context.resolver);
+  ms_name_heads_free(&context.pending.heads);
+  ms_free(context.pending.next);
   index_methods(program);
 }
 
