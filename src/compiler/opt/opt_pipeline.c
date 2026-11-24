@@ -10,14 +10,54 @@
 /* Rounds of the per-function passes. */
 #define OPT_FUNCTION_ROUNDS 3
 
-/* One round of the passes that read the module but rewrite only their own function. */
-static bool function_round(MirModule *m, MirFunc *f) {
-  bool changed = opt_optparam_func(m, f);
-  changed |= opt_simplify_func(m, f);
-  changed |= opt_copyelim_func(m, f);
-  changed |= opt_range_func(m, f);
-  changed |= opt_ifconv_func(m, f);
-  changed |= opt_twins_func(m, f);
+/* The per-function passes, in the order a round runs them. A pass runs again in a later round only when a pass that
+ * can give it new work changed the function since it last ran. `simplify` is the cleanup that consumes every other
+ * pass's output. `range` and `twins` found nothing on a second run in any of 480 programs (the benchmark suite, the
+ * yaml library, fixtures): the second and third `range` runs were a quarter of the per-function time. The rest go
+ * again after `simplify` changed the function. */
+typedef enum FuncPass { FP_OPTPARAM, FP_SIMPLIFY, FP_COPYELIM, FP_RANGE, FP_IFCONV, FP_TWINS, FP_COUNT } FuncPass;
+
+#define FP_BIT(p) (1u << (p))
+#define FP_ALL (FP_BIT(FP_COUNT) - 1u)
+
+static const uint32_t func_pass_enabled_by[FP_COUNT] = {
+    [FP_OPTPARAM] = FP_BIT(FP_SIMPLIFY),
+    [FP_SIMPLIFY] = FP_ALL & ~FP_BIT(FP_SIMPLIFY),
+    [FP_COPYELIM] = FP_BIT(FP_SIMPLIFY),
+    [FP_RANGE] = 0,
+    [FP_IFCONV] = FP_BIT(FP_SIMPLIFY) | FP_BIT(FP_RANGE),
+    [FP_TWINS] = 0,
+};
+
+static bool run_func_pass(MirModule *m, MirFunc *f, FuncPass pass) {
+  switch (pass) {
+  case FP_OPTPARAM: return opt_optparam_func(m, f);
+  case FP_SIMPLIFY: return opt_simplify_func(m, f);
+  case FP_COPYELIM: return opt_copyelim_func(m, f);
+  case FP_RANGE: return opt_range_func(m, f);
+  case FP_IFCONV: return opt_ifconv_func(m, f);
+  case FP_TWINS: return opt_twins_func(m, f);
+  case FP_COUNT: break;
+  }
+  return false;
+}
+
+/* One round: every pass that has work. `dirty[p]` holds the passes that changed the function since `p` last ran;
+ * the first round runs everything. */
+static bool function_round(MirModule *m, MirFunc *f, uint32_t *dirty, bool first) {
+  bool changed = false;
+  for (uint32_t p = 0; p < FP_COUNT; p++) {
+    if (!first && (dirty[p] & func_pass_enabled_by[p]) == 0) {
+      continue;
+    }
+    dirty[p] = 0;
+    if (run_func_pass(m, f, (FuncPass)p)) {
+      changed = true;
+      for (uint32_t q = 0; q < FP_COUNT; q++) {
+        dirty[q] |= q == p ? 0 : FP_BIT(p);
+      }
+    }
+  }
   return changed;
 }
 
@@ -30,8 +70,9 @@ static void function_passes(MirModule *m) {
   bool *changed = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)count + 1);
   for (uint32_t fi = 0; fi < count; fi++) {
     opt_func_deep_clone(m, &m->funcs.ptr[fi], &results[fi]);
+    uint32_t dirty[FP_COUNT] = {0};
     for (int round = 0; round < OPT_FUNCTION_ROUNDS; round++) {
-      if (!function_round(m, &results[fi])) {
+      if (!function_round(m, &results[fi], dirty, round == 0)) {
         break;
       }
       changed[fi] = true;
