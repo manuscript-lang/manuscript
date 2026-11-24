@@ -266,7 +266,7 @@ export fn random_seed() Int {
 Reads `input` to the end and returns the CRC-64 of all its bytes with the given polynomial, as `crc64` does for
 bytes in hand. Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
-export fn crc64_of(input ReadStream[Bytes], polynomial Crc64Polynomial) UInt64! {
+export fn crc64_of(move input ReadStream[Bytes], polynomial Crc64Polynomial) UInt64! {
 	var sum = Crc64(polynomial: polynomial)
 	var source = input
 	for chunk in source {

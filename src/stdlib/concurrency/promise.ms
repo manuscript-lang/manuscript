@@ -465,7 +465,7 @@ export fn wait_all[T](move promises List[Promise[T]]) move List[T]! {
 // Waits for the first promise to finish and returns its result; the others are
 // cancelled and waited for. Errors are those of `wait`, and an empty list is an
 // error.
-export fn wait_first[T](promises List[Promise[T]]) T! {
+export fn wait_first[T](move promises List[Promise[T]]) T! {
 	var pending = promises
 	if pending.is_empty() { return error(Error("promise: nothing to wait for")) }
 

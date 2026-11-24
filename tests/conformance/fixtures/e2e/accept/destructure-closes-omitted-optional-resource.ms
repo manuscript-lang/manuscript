@@ -17,13 +17,13 @@ type Job {
 	spare Handle?
 }
 
-fn keep(job Job, var out List[Handle]) Void {
+fn keep(move job Job, var out List[Handle]) Void {
 	{input} := job
 	out.append(input)
 	print("keep end")
 }
 
-fn take(job Job) Handle {
+fn take(move job Job) Handle {
 	{input} := job
 	return input
 }

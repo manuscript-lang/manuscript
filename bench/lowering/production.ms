@@ -8,12 +8,12 @@ fn move Resource.close() Void! => return ok()
 
 fn empty(value Int) Int => value
 
-fn kept(resource Resource) Int {
+fn kept(move resource Resource) Int {
 	_active := resource
 	return 1
 }
 
-fn ints(left Int, right Int, limit Int, resource Resource) Int {
+fn ints(left Int, right Int, limit Int, move resource Resource) Int {
 	_active := resource
 	var count = 0
 	for index in 0..limit {
@@ -22,7 +22,7 @@ fn ints(left Int, right Int, limit Int, resource Resource) Int {
 	return count
 }
 
-fn floats(left Float, right Float, limit Int, resource Resource) Int {
+fn floats(left Float, right Float, limit Int, move resource Resource) Int {
 	_active := resource
 	var count = 0
 	for index in 0..limit {
@@ -31,7 +31,7 @@ fn floats(left Float, right Float, limit Int, resource Resource) Int {
 	return count
 }
 
-fn bools(left Bool, right Bool, limit Int, resource Resource) Int {
+fn bools(left Bool, right Bool, limit Int, move resource Resource) Int {
 	_active := resource
 	var count = 0
 	for index in 0..limit {
@@ -40,7 +40,7 @@ fn bools(left Bool, right Bool, limit Int, resource Resource) Int {
 	return count
 }
 
-fn strings(left String, right String, limit Int, resource Resource) Int {
+fn strings(left String, right String, limit Int, move resource Resource) Int {
 	_active := resource
 	var count = 0
 	for index in 0..limit {

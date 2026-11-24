@@ -26,7 +26,7 @@ fn make(name String) Res!Error {
 	return ok(Res(name.clone()))
 }
 
-fn keep(r Res) Res {
+fn keep(move r Res) Res {
 	return r
 }
 

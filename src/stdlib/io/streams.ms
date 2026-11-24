@@ -61,7 +61,7 @@ export fn from_bytes(move data Bytes, chunk_bytes Int = 65536) ReadStream[Bytes]
 
 // Combines the items of `input` in order into one value: `f` takes the value so far
 // and the next item, starting from `start`. A failed read returns its error.
-export fn fold[T, S](input ReadStream[T], start S, f fn(S, T) S) S! {
+export fn fold[T, S](move input ReadStream[T], start S, f fn(S, T) S) S! {
 	var source = input
 	var total = start
 	for item in source {
@@ -72,7 +72,7 @@ export fn fold[T, S](input ReadStream[T], start S, f fn(S, T) S) S! {
 
 // Returns every item of `input`, in order. More than `max_items` items returns
 // `EOVERFLOW`.
-export fn collect[T](input ReadStream[T], max_items Int?) List[T]! {
+export fn collect[T](move input ReadStream[T], max_items Int?) List[T]! {
 	var source = input
 	var items List[T] = []
 
@@ -91,7 +91,7 @@ export fn collect[T](input ReadStream[T], max_items Int?) List[T]! {
 }
 
 // Returns all bytes of `input`. More than `max_bytes` bytes returns `EOVERFLOW`.
-export fn read_all(input ReadStream[Bytes], max_bytes Int?) Bytes! {
+export fn read_all(move input ReadStream[Bytes], max_bytes Int?) Bytes! {
 	var source = input
 	var all = BytesBuilder()
 	var first Bytes? = null
@@ -128,7 +128,7 @@ export fn read_all(input ReadStream[Bytes], max_bytes Int?) Bytes! {
 
 // Moves every item of `input` to `output`, pulling the next item only after `write`
 // accepts the last, then flushes `output`. Returns the number of items moved.
-export fn copy[T](input ReadStream[T], output WriteStream[T]) Int! {
+export fn copy[T](move input ReadStream[T], move output WriteStream[T]) Int! {
 	var source = input
 	var sink = output
 	var count = 0

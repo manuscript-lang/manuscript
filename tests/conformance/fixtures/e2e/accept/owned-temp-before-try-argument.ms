@@ -36,7 +36,7 @@ fn make() Holder! {
 	return ok(Holder(Door()))
 }
 
-fn both(first Holder, second Holder) Int! {
+fn both(move first Holder, move second Holder) Int! {
 	var a = first
 	var b = second
 	a.gate.put(1)?

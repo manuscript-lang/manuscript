@@ -325,7 +325,10 @@ export fn strings(
 }
 
 // Generates a 2-element `Pair`.
-export fn pairs[A Clonable, B Clonable](first Gen[A], second Gen[B]) Gen[Pair[A, B]] {
+export fn pairs[A Clonable, B Clonable](
+	move first Gen[A],
+	move second Gen[B],
+) Gen[Pair[A, B]] {
 	return first.zip(second, (a, b) => Pair(a, b))
 }
 

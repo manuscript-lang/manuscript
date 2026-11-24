@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn fail_cause[T, E](cause E) T!E => error(cause)\n\nfn first() Int! => fail_cause(Error(\"empty\"))\n"
+    "fmt": "fn fail_cause[T, E](move cause E) T!E => error(cause)\n\nfn first() Int! => fail_cause(Error(\"empty\"))\n"
   }
 }

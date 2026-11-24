@@ -22,7 +22,7 @@ fn require_value[T, E](cause E, value T?) T!E {
 	return ok_or(value, cause)
 }
 
-fn require_lazy[T, E](create fn() E, value T?) T!E {
+fn require_lazy[T, E](create fn() E, move value T?) T!E {
 	if value != null { return ok(value) }
 	return error(create())
 }

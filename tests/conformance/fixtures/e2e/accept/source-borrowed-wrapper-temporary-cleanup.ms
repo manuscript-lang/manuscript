@@ -97,7 +97,7 @@ test "borrowed wrapper temporaries close on expected errors and source faults" {
 	expect_equal(log_text(path)?, "8,9,")?
 }
 
-fn pick(first Resource?, second Resource?) Resource? {
+fn pick(move first Resource?, second Resource?) Resource? {
 	if second != null { return first }
 	return first
 }
@@ -369,7 +369,7 @@ test "borrowed optional transport copies leave fault cleanup with original owner
 	expect_equal(log_text(path)?, "123,124,")?
 }
 
-fn optional_identity(value Resource?) Resource? => value
+fn optional_identity(move value Resource?) Resource? => value
 
 fn with_borrowed_default(value Resource?, same Resource? = value) Bool {
 	return (value != null) or (same != null)

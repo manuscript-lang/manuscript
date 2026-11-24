@@ -44,7 +44,7 @@ fn chunked(move data Bytes, size Int) ReadStream[Bytes] {
 	return ReadStream[Bytes](Chunks(data, size, 0))
 }
 
-fn read_all(input ReadStream[Bytes]) Bytes! {
+fn read_all(move input ReadStream[Bytes]) Bytes! {
 	var source = input
 	var out List[Bytes] = []
 

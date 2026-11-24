@@ -180,7 +180,7 @@ fn move Fetcher.close() Void! {
 }
 
 // Reads the body to its end within the options' size limit, then closes it.
-fn drain(body RawResponse, options FetchOptions, started Instant) FetchResponse! {
+fn drain(move body RawResponse, options FetchOptions, started Instant) FetchResponse! {
 	open := body
 	metadata := open.metadata()
 	whole := open.read_all().map_error(cause => read_failure(cause, options, started))?

@@ -45,7 +45,7 @@ fn events(log String) String {
 	return ""
 }
 
-fn read_one(input ReadStream[Token]) Void! {
+fn read_one(move input ReadStream[Token]) Void! {
 	var owned = input
 	token := owned.next()?
 	if token != null {
@@ -53,7 +53,7 @@ fn read_one(input ReadStream[Token]) Void! {
 	}
 }
 
-fn wait_one(input ReadStream[Token]) Void! {
+fn wait_one(move input ReadStream[Token]) Void! {
 	var owned = input
 
 	for item in owned {
@@ -86,7 +86,7 @@ fn use_token(token Token) Void! {
 	append_file(token.log, f"body {token.id}\n").wait()?
 }
 
-fn close_item(input Token) Void! {
+fn close_item(move input Token) Void! {
 	var token = input
 	use_token(token)?
 	return token.close()

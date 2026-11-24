@@ -6,11 +6,11 @@ import (
 )
 
 // `ok(value)` into a `T?` field builds a new `some(value)` once `T` is known; it is not a view of `value`.
-fn lifted[T](value T) Result[T?, String] {
+fn lifted[T](move value T) Result[T?, String] {
 	return ok(value)
 }
 
-fn passed[T](value T?) Result[T?, String] {
+fn passed[T](move value T?) Result[T?, String] {
 	return ok(value)
 }
 

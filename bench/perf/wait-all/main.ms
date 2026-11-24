@@ -14,7 +14,7 @@ fn work(i Int, jitter Bool) Int! {
 
 // The list-order implementation before #2915, retained only as a performance control.
 // Unlike wait_all it does not report a later input's error promptly.
-fn ordered_wait_all[T](promises List[Promise[T]]) List[T]! {
+fn ordered_wait_all[T](move promises List[Promise[T]]) List[T]! {
 	var pending = promises
 	var results List[T] = []
 	for index in 0..pending.length() {

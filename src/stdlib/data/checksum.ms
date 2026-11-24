@@ -85,7 +85,7 @@ fn Adler32.value() UInt32 {
 Reads `input` to the end and returns the CRC-32 of all its bytes, as `crc32` does for bytes in hand.
 Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
-export fn crc32_of(input ReadStream[Bytes]) UInt32! {
+export fn crc32_of(move input ReadStream[Bytes]) UInt32! {
 	var sum = Crc32()
 	var source = input
 	for chunk in source {
@@ -99,7 +99,7 @@ export fn crc32_of(input ReadStream[Bytes]) UInt32! {
 Reads `input` to the end and returns the Adler-32 of all its bytes, as `adler32` does for bytes in hand.
 Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
-export fn adler32_of(input ReadStream[Bytes]) UInt32! {
+export fn adler32_of(move input ReadStream[Bytes]) UInt32! {
 	var sum = Adler32()
 	var source = input
 	for chunk in source {

@@ -26,7 +26,7 @@ fn logged(path String) String {
 	return ""
 }
 
-fn put(var slot Slot, door Door) Void {
+fn put(var slot Slot, move door Door) Void {
 	slot.door = door
 }
 
