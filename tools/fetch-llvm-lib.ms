@@ -54,7 +54,7 @@ fn library_path(target_os: String) String:
 fn main() Int:
 	root := working_directory().get()
 	lock := (
-		read_file(f"{root}/toolchain/llvm-lib.lock")
+		read_file(f"{root}/cmake/toolchain/llvm-lib.lock")
 		.wait()
 		.get()
 		.decode_utf8()
