@@ -94,7 +94,7 @@ fn scan_tree(repo: String) List[Candidate]:
 	for entry in glob(repo, GlobOptions(patterns: ["**/*.ms"])).get_or([]):
 		if skipped(entry.path): continue
 		if (
-			entry.path.starts_with("stdlib/")
+			entry.path.starts_with("src/stdlib/")
 			or entry.path.starts_with("tests/conformance/")
 		): continue
 

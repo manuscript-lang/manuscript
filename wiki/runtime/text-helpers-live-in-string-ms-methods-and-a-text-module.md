@@ -4,7 +4,7 @@
 
 Verified: Go text-parity sweep (workstream 1); tests `tests/conformance/fixtures/e2e/stdlib/string-text.ms`, `text.ms`, `unicode-categories.ms`.
 
-- Whole-string helpers (`fields_by`, `equal_fold`, `count`, `trim_chars`, `contains_any`, `index_any`, `split_after`, `title`, `capitalize`, `map_chars`, `find_char`, `replace_each`) are plain `.ms` methods in `stdlib/string.ms`, no import needed. `fields` and scalar predicates already exist (`@std/unicode.ms`, `@std/data/utf8.ms`); a parallel PR landed them, so re-run `ms search_symbol` right before building.
+- Whole-string helpers (`fields_by`, `equal_fold`, `count`, `trim_chars`, `contains_any`, `index_any`, `split_after`, `title`, `capitalize`, `map_chars`, `find_char`, `replace_each`) are plain `.ms` methods in `src/stdlib/string.ms`, no import needed. `fields` and scalar predicates already exist (`@std/unicode.ms`, `@std/data/utf8.ms`); a parallel PR landed them, so re-run `ms search_symbol` right before building.
 - `@std/text.ms` holds `parse_bool`, `quote`, `quote_ascii`, `unquote`. Go's `FormatFloat` is `Float.to_fixed`/`to_exponential`/`to_precision`.
 - Category predicates (`is_punctuation`, `is_symbol`, `is_mark`) use the regex `\p{..}` tables from `.ms`; no Rust added.
 - `replace_each(Map[String, String])`: first key in map order wins at each position, replacements are not rescanned. An empty map can clone the input without materializing scalar lists; keep the explicit clone so the result remains independently owned. Test exact Unicode/NUL bytes and source reassignment, and measure small nonempty-map hit/miss controls before changing this shortcut.

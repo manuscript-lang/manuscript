@@ -12,6 +12,6 @@ Decision (Chinmay, 2026-11-06, superseding 2026-11-03): one stream type for memo
 - Push codecs (JSON, CSV, SSE, base64, tar, compression) keep `Transform` and `through`; `step` and `finish` append to a `List[B]`.
 - Rejected: a promise per stage per item, `Promise[T]` items for waiting sources, `Iterator`-shaped stream with `Result` items, owner-and-view streams (the checker cannot hold a borrowed owner), interface `ReadStream` that owns resources (needs a `close` operation or a new ownership marker).
 
-Apply when: changing `stdlib/io/io.ms`, `streams.ms`, `steps.ms` or `forward.ms`, a `Source` or `Sink` implementation, or a loop over a stream.
+Apply when: changing `src/stdlib/io/io.ms`, `streams.ms`, `steps.ms` or `forward.ms`, a `Source` or `Sink` implementation, or a loop over a stream.
 Evidence: [proposal](../../proposals/stream-interface.md), [cancel fixture](../../tests/conformance/fixtures/e2e/stdlib/stream-cancel.ms), [loops fixture](../../tests/conformance/fixtures/e2e/stdlib/stream-loops.ms), [suite](../../bench/perf/streams/README.md).
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/stream-loops.ms tests/conformance/fixtures/e2e/stdlib/stream-cancel.ms`.

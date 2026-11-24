@@ -1,7 +1,7 @@
 /* runtime/std/terminal.h: the raw terminal of @std/io. libuv's uv_tty does the terminal work on every platform: raw mode
  * and its restore, the window size, and writes that Windows consoles understand. Reading is one libuv loop per terminal
  * that runs on a pool thread for the length of one wait, so a task that waits for a key parks no scheduler thread
- * (terminal_read.c). Decoding keys and pastes from the text is Manuscript (stdlib/cli/terminal.ms).
+ * (terminal_read.c). Decoding keys and pastes from the text is Manuscript (src/stdlib/cli/terminal.ms).
  *
  * One raw terminal holds the host terminal at a time. Closing it (explicitly, by the last handle's drop, or at process
  * exit) writes the text the program registered (leaving the alternate screen and so on) and puts the saved settings

@@ -2,7 +2,7 @@
 
 # Time zones come from one bundled database that `zone.ms` reads
 
-`@std/time` resolves zones in Manuscript (`stdlib/internal/zone.ms`) and hands the C natives a resolved offset and abbreviation (`msstd_time_timestamp_calendar`, `_format`, `_from_local`). The data is the same on Linux, macOS and Windows: `src/runtime/std/tzdata.bin`, embedded by `cmake/EmbedBlob.cmake`, read through `msstd_time_zone_data(name)`.
+`@std/time` resolves zones in Manuscript (`src/stdlib/internal/zone.ms`) and hands the C natives a resolved offset and abbreviation (`msstd_time_timestamp_calendar`, `_format`, `_from_local`). The data is the same on Linux, macOS and Windows: `src/runtime/std/tzdata.bin`, embedded by `cmake/EmbedBlob.cmake`, read through `msstd_time_zone_data(name)`.
 
 - **Format.** Only the TZif version 2+ block of each zone, plus `windows/<key>` entries (CLDR `windowsZones.xml`, territory 001) whose data is the IANA name. Rebuild it with `tools/tzdata/pack.c` (steps in its header) when IANA publishes a release; the file records the version.
 - **Fat, not slim.** zic 2.39 with `-b slim` stopped Gaza's Ramadan rules in 2072 (the system file carries them to 2086), so the database is built with `-b fat`. The footer (POSIX rule) still governs the time after the last transition.

@@ -28,7 +28,7 @@ domains:
       - "src/runtime/core/**"
       - "src/abi/**"
       - "src/runtime/std/**"
-      - "stdlib/**"
+      - "src/stdlib/**"
       - "documentation/core-language/cleanup/**"
       - "documentation/core-language/types/references.md"
       - "tests/conformance/fixtures/e2e/projects/**"
@@ -42,7 +42,7 @@ domains:
       - "extensions/**"
       - "documentation/**"
       - "website/**"
-      - "stdlib/**"
+      - "src/stdlib/**"
       - "README.md"
   - id: repository
     file: repository/index.md
@@ -60,7 +60,7 @@ domains:
     file: stdlib-design/index.md
     topics: [stdlib API shape, failure modes, Result and Error, write and write_bytes, Set construction, module consolidation]
     paths:
-      - "stdlib/**"
+      - "src/stdlib/**"
       - "tests/conformance/fixtures/e2e/stdlib/**"
   - id: testing-and-conformance
     file: testing-and-conformance/index.md
