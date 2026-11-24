@@ -1,5 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
+import panic from "@std/core.ms"
+
 enum DomainError:
 	Invalid
 
@@ -21,7 +23,7 @@ fn unrelated_boundary() Int!OtherError:
 	return ok(value)
 
 fn optional_result(value: Int!String?) Int:
-	return value.get().get_or(-1)
+	return (value or panic("called Optional.get() on null")).get_or(-1)
 
 fn unrelated_optional_error() Int:
 	return optional_result(error(7))

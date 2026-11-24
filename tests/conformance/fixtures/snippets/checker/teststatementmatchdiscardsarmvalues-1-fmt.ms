@@ -5,5 +5,5 @@ fn f(var counts: Map[String, Int], var names: List[String], found: Int?) Void:
     match found:
         n:
             counts.add(key: "a", value: n)
-        none:
+        null:
             names.append("x")

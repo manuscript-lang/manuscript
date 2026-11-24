@@ -191,7 +191,7 @@ static bool source_range(LowerFn *fn, const MsExpr *iter, ForSource *src) {
  * of a set. MIR_NONE when `value` is neither. */
 static MirValue collection_items(LowerFn *fn, const MsExpr *iter, MirValue value) {
   MsTyTable *types = &fn->cx->program->types;
-  const MsTy type = ms_ty_subst(types, ms_facts_type(fn->facts, iter->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  const MsTy type = ms_ty_subst(types, fn_read_type(fn, iter), fn->subst.vars, fn->subst.args, fn->subst.count);
   const bool map = ms_ty_is(types, type, MS_BUILTIN_Map);
   if (!map && !ms_ty_is(types, type, MS_BUILTIN_Set)) {
     return MIR_NONE;
@@ -234,14 +234,16 @@ static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
   const bool place = iter->kind == MS_E_NAME || iter->kind == MS_E_MEMBER;
   const bool fresh = !place && fn_fresh_owner(fn, list);
   *src = (ForSource){.elem = elem, .list_ty = list_ty, .list = list};
-  src->has_var = !moved && !fresh && items == MIR_NONE && fn_owned_local(fn, iter, &src->var);
+  /* A narrowed local reads as its payload, which the variable itself does not hold. */
+  const bool narrowed = fn_read_type(fn, iter) != ms_facts_type(fn->facts, iter->id);
+  src->has_var = !moved && !fresh && !narrowed && items == MIR_NONE && fn_owned_local(fn, iter, &src->var);
   if ((moved || fresh) && mir_needs_drop(module, elem)) {
     if (fresh) {
       const MirImm none = {0};
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &list, 1, none, MIR_NONE);
     }
     uint32_t close = 0;
-    const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, iter->id), fn->subst.vars, fn->subst.args,
+    const MsTy checked = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, iter), fn->subst.vars, fn->subst.args,
                                      fn->subst.count);
     const MsTyTable *types = &fn->cx->program->types;
     const uint32_t part_close = ms_ty_is(types, checked, MS_BUILTIN_List) && ms_ty_arg_count(types, checked) == 1
@@ -311,7 +313,7 @@ static bool for_body(LowerFn *fn, const MsStmt *stmt, const ForSource *src, MirV
   bool ok = item != MIR_NONE;
   if (ok) {
     MsTyTable *types = &fn->cx->program->types;
-    const MsTy list = ms_ty_subst(types, ms_facts_type(fn->facts, stmt->u.each.iter->id), fn->subst.vars, fn->subst.args,
+    const MsTy list = ms_ty_subst(types, fn_read_type(fn, stmt->u.each.iter), fn->subst.vars, fn->subst.args,
                                   fn->subst.count);
     const bool closes = src->cursor && ms_ty_arg_count(types, list) == 1 &&
                         fn_closer_for(fn, ms_facts_closer(fn->facts, stmt->id), ms_ty_args(types, list)[0]);
@@ -373,7 +375,7 @@ static uint32_t drop_close_for(Lower *cx, MirTy ty) {
  * which the round owns. */
 static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) {
   const MsExpr *iter = stmt->u.each.iter;
-  const MsTy type = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, iter->id), fn->subst.vars,
+  const MsTy type = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, iter), fn->subst.vars,
                                 fn->subst.args, fn->subst.count);
   const MirTyData *iterator_data = mir_ty_data(fn->cx->module, fn_type(fn, type));
   /* An iterator behind an interface is advanced through its vtable: `next` is found in the interface by name. */
@@ -567,7 +569,7 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *iter = stmt->u.each.iter;
   (void)fn_scope_begin(fn);
   const MsExpr *chars = chars_receiver(fn, iter);
-  const MirTy iter_ty = is_range(fn, iter) || chars != NULL ? MIR_INT : fn_type(fn, ms_facts_type(fn->facts, iter->id));
+  const MirTy iter_ty = is_range(fn, iter) || chars != NULL ? MIR_INT : fn_type(fn, fn_read_type(fn, iter));
   const MirTyData *iter_data = mir_ty_data(fn->cx->module, iter_ty);
   const bool collection = iter_data->kind == MK_OBJ && iter_data->obj_class == MIR_OBJ_COLLECTION;
   if (iter_ty != MIR_INT && iter_data->kind != MK_LIST && !collection) {

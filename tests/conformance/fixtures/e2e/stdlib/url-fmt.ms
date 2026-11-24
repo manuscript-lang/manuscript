@@ -71,12 +71,12 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
     for scheme in [
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
     ]:
-        bad := Url(scheme.clone(), "host", "/path", "", none, none)
+        bad := Url(scheme.clone(), "host", "/path", "", null, null)
         if format(bad) != invalid_text: return fail(f"invalid scheme accepted: {scheme}")
 
         expect_equal(resolve(bad, "/next"), invalid_url)?
 
-    relative := Url("custom", "", "relative", "", none, none)
+    relative := Url("custom", "", "relative", "", null, null)
     expect_equal(format(relative), invalid_text)?
     expect_equal(resolve(relative, "/next"), invalid_url)?
 
@@ -86,6 +86,6 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
             f"hierarchical URL round trip: {text}"
         )
 
-    uppercase := Url("HTTP", "host", "/path", "", none, none)
+    uppercase := Url("HTTP", "host", "/path", "", null, null)
     expect_equal((uppercase | format? | parse?).scheme, "http")?
     expect_equal((resolve(uppercase, "/next")?).scheme, "http")?

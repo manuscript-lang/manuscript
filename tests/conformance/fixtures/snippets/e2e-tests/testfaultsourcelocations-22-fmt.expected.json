@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn extract[T](value: T?) T:\n\treturn value.get()\n\nexport fn main() Int:\n\treturn extract[Int](none)\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\nfn extract[T](value: T?) T:\n\treturn value or panic(\"called Optional.get() on null\")\n\nexport fn main() Int:\n\treturn extract[Int](null)\n"
   }
 }

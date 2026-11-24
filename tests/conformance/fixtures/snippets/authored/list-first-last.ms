@@ -9,8 +9,8 @@ fn make(n: Int) List[Int]:
 	return xs
 
 test "first and last of scalar lists":
-	expect_equal(List[Int]().first(), none)?
-	expect_equal(List[Int]().last(), none)?
+	expect_equal(List[Int]().first(), null)?
+	expect_equal(List[Int]().last(), null)?
 	expect_equal([4, 5, 6].first(), 4)?
 	expect_equal([4, 5, 6].last(), 6)?
 	expect_equal([1.5, 2.5].last(), 2.5)?
@@ -20,7 +20,7 @@ test "first and last of scalar lists":
 	expect_equal(small.last(), nine)?
 
 test "first and last of a temporary list":
-	expect_equal(make(0).first(), none)?
+	expect_equal(make(0).first(), null)?
 	expect_equal(make(3).first(), 1)?
 	expect_equal(make(3).last(), 3)?
 

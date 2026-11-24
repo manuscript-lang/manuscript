@@ -120,26 +120,31 @@ fn split_args(s: String) List[String]:
 
 fn stem_of(pat: String, w: String, nonempty: Bool) String?:
 	pi := pat.index_of("%")
+	p := pi
 
-	if p := pi:
+	if p != null:
 		pre := bs(pat, 0, p)
 		suf := bs(pat, p + 1, pat.length())
 		need := pre.length() + suf.length() + (if nonempty: 1 else: 0)
-		if w.length() < need: return none
-		if not w.starts_with(pre): return none
-		if not w.ends_with(suf): return none
+		if w.length() < need: return null
+		if not w.starts_with(pre): return null
+		if not w.ends_with(suf): return null
 
 		return bs(w, pre.length(), w.length() - suf.length())
 
-	return none
+	return null
 
 fn subst_pct(s: String, stem: String) String:
-	if p := s.index_of("%"): return bs(s, 0, p) + stem + bs(s, p + 1, s.length())
+	p := s.index_of("%")
+	if p != null: return bs(s, 0, p) + stem + bs(s, p + 1, s.length())
+
 	return s.clone()
 
 fn pat_word(pat: String, rep: String, w: String) String:
 	if pat.contains("%"):
-		if st := stem_of(pat, w, false): return subst_pct(rep, st)
+		st := stem_of(pat, w, false)
+		if st != null: return subst_pct(rep, st)
+
 		return w.clone()
 
 	if pat == w: return rep.clone()
@@ -149,7 +154,7 @@ fn pat_word(pat: String, rep: String, w: String) String:
 fn matches_any(pats: List[String], w: String) Bool:
 	for p in pats:
 		if p.contains("%"):
-			if stem_of(p, w, false).is_some(): return true
+			if stem_of(p, w, false) != null: return true
 		else if p == w: return true
 
 	return false
@@ -279,8 +284,9 @@ fn var Ctx.lookup(name: String) String!:
 
 	var val = ""
 	var simple = true
+	v := self.vars.get(name)
 
-	if v := self.vars.get(name):
+	if v != null:
 		val = v.val.clone()
 		simple = v.simple
 	else:
@@ -360,7 +366,9 @@ fn var Ctx.expand(text: String) String!:
 	return ok(res)
 
 fn var Ctx.eval_ref(inner: String) String!:
-	if k := inner.find_char(fn c: c == " " or c == "\t"):
+	k := inner.find_char(fn c: c == " " or c == "\t")
+
+	if k != null:
 		fname := bs(inner, 0, k)
 
 		if is_func(fname):
@@ -368,12 +376,14 @@ fn var Ctx.eval_ref(inner: String) String!:
 			return self.call_func(fname, rest)
 
 	name := (self.expand(inner)?).trim()
+	ci := name.index_of(":")
 
-	if ci := name.index_of(":"):
+	if ci != null:
 		if ci > 0:
 			rest := bs(name, ci + 1, name.length())
+			ei := rest.index_of("=")
 
-			if ei := rest.index_of("="):
+			if ei != null:
 				vname := bs(name, 0, ci).trim()
 				var from = bs(rest, 0, ei)
 				var to = bs(rest, ei + 1, rest.length())
@@ -442,7 +452,8 @@ fn var Ctx.call_func(fname: String, rest: String) String!:
 	if fname == "word":
 		nn := (self.arg(args, 0)?).trim()
 		t := words(self.arg(args, 1)?)
-		if k := nn.parse_int():
+		k := nn.parse_int()
+		if k != null:
 			if k >= 1 and k <= t.length(): return ok(t[k - 1].clone())
 		return ok("")
 
@@ -450,9 +461,12 @@ fn var Ctx.call_func(fname: String, rest: String) String!:
 		s := (self.arg(args, 0)?).trim().parse_int()
 		e := (self.arg(args, 1)?).trim().parse_int()
 		t := words(self.arg(args, 2)?)
+		a := s
 
-		if a := s:
-			if b := e:
+		if a != null:
+			b := e
+
+			if b != null:
 				if a < 1 or b < a or a > t.length(): return ok("")
 
 				var o = List[String]()
@@ -629,7 +643,7 @@ fn Ctx.is_active() Bool:
 
 fn split_cond(s: String) List[String]?:
 	// s is "(A,B)" ; returns [A, B] or none
-	if not s.starts_with("(") or not s.ends_with(")"): return none
+	if not s.starts_with("(") or not s.ends_with(")"): return null
 
 	inner := bs(s, 1, s.length() - 1)
 	var parts = List[String]()
@@ -650,7 +664,7 @@ fn split_cond(s: String) List[String]?:
 			cur += c
 
 	parts.append(cur.clone())
-	if parts.length() != 2: return none
+	if parts.length() != 2: return null
 
 	return parts
 
@@ -704,7 +718,8 @@ fn var Ctx.parse(src: List[String]) Void!:
 		if text.length() == 0: continue
 
 		var fw = text.clone()
-		if sp := text.find_char(fn c: c == " " or c == "\t"):
+		sp := text.find_char(fn c: c == " " or c == "\t")
+		if sp != null:
 			fw = bs(text, 0, sp)
 
 		rest := bs(text, fw.length(), text.length()).trim()
@@ -748,13 +763,15 @@ fn var Ctx.parse(src: List[String]) Void!:
 				if fw == "ifdef" or fw == "ifndef":
 					name := (self.expand(rest)?).trim()
 					var defined = false
-					if v := self.vars.get(name):
+					v := self.vars.get(name)
+					if v != null:
 						defined = v.val.length() > 0
 					cond = if fw == "ifdef": defined else: not defined
 				else:
 					parts := split_cond(rest)
+					ps := parts
 
-					if ps := parts:
+					if ps != null:
 						a := (self.expand(ps[0].trim())?).trim()
 						b := (self.expand(ps[1].trim())?).trim()
 						eqv := a == b
@@ -812,8 +829,9 @@ fn var Ctx.parse(src: List[String]) Void!:
 				var old = ""
 				var osimple = false
 				var had = false
+				v := self.vars.get(name)
 
-				if v := self.vars.get(name):
+				if v != null:
 					old = v.val.clone()
 					osimple = v.simple
 					had = true
@@ -846,8 +864,9 @@ fn var Ctx.parse(src: List[String]) Void!:
 			pt := self.expand(pre_text)?
 			var normal = pt.clone()
 			var oo = ""
+			bi := pt.index_of("|")
 
-			if bi := pt.index_of("|"):
+			if bi != null:
 				normal = bs(pt, 0, bi)
 				oo = bs(pt, bi + 1, pt.length())
 
@@ -907,7 +926,9 @@ fn Ctx.find_pat(t: String, d: Int) Int:
 		p := self.pats[i]
 		if p.cmds.length() == 0: continue
 
-		if st := stem_of(p.pat, t, true):
+		st := stem_of(p.pat, t, true)
+
+		if st != null:
 			var good = true
 
 			for q in p.pre:
@@ -941,20 +962,22 @@ fn Ctx.resolve(t: String) Resolved:
 
 	if pi >= 0:
 		p := self.pats[pi]
-		st := stem_of(p.pat, t, true).get_or("")
+		st := stem_of(p.pat, t, true) or ""
 		var pre = List[String]()
 		var oo = List[String]()
 		for q in p.pre: pre.append(subst_pct(q, st))
 		for q in p.oo: oo.append(subst_pct(q, st))
 
-		if r := self.rules.get(t):
+		r := self.rules.get(t)
+
+		if r != null:
 			for q in r.pre: pre.append(q.clone())
 			for q in r.oo: oo.append(q.clone())
 
 		return Resolved(true, pre, oo, self.copy_cmds(p.cmds), st)
 
-	if r := self.rules.get(t):
-		return Resolved(true, r.pre.clone(), r.oo.clone(), List[Cmd](), "")
+	r := self.rules.get(t)
+	if r != null: return Resolved(true, r.pre.clone(), r.oo.clone(), List[Cmd](), "")
 
 	return Resolved(false, List[String](), List[String](), List[Cmd](), "")
 
@@ -966,7 +989,7 @@ fn var Ctx.simulate(cmd: String) Int:
 	if first == "false": return 1
 
 	if first == "exit":
-		if ws.length() > 1: return ws[1].parse_int().get_or(2)
+		if ws.length() > 1: return ws[1].parse_int() or 2
 		return 0
 
 	if first == "touch":
@@ -1017,9 +1040,12 @@ fn var Ctx.run_recipe(
 	for p in pre:
 		var inc = not was_in
 		if self.memo.get_or(p, false): inc = true
+
 		if was_in:
-			if m := self.files.get(p):
+			m := self.files.get(p)
+			if m != null:
 				if m > mt: inc = true
+
 		if inc: upd.append(p.clone())
 
 	self.auto = Map[String, String]()
@@ -1129,8 +1155,10 @@ fn var Ctx.update(t: String, needed: String) Bool!:
 	for p in pre:
 		ch := self.update(p, t)?
 		if ch: any = true
+
 		if was_in:
-			if m := self.files.get(p):
+			m := self.files.get(p)
+			if m != null:
 				if m > mt: newer = true
 
 	for p in dedup(r.oo):
@@ -1237,7 +1265,7 @@ fn fmt_rule(name: String, pre: List[String], oo: List[String]) String:
 // ms: allow_effect std.console.write
 fn main() Void!:
 	b := read_all(stdin())?
-	text := b.decode_utf8().get_or("")
+	text := b.decode_utf8() or ""
 	all := text.lines()
 	var sec = 0
 	var mk = List[String]()
@@ -1259,7 +1287,9 @@ fn main() Void!:
 		ws := words(l)
 
 		if ws.length() == 2:
-			if m := ws[1].parse_int():
+			m := ws[1].parse_int()
+
+			if m != null:
 				if m >= 0:
 					ctx.files[ws[0].clone()] = m
 					if m > ctx.clock: ctx.clock = m
@@ -1282,8 +1312,9 @@ fn main() Void!:
 			for a in rest:
 				ei := a.index_of("=")
 				var isv = false
+				e := ei
 
-				if e := ei:
+				if e != null:
 					if e > 0:
 						cv[bs(a, 0, e)] = bs(a, e + 1, a.length())
 						isv = true
@@ -1322,9 +1353,12 @@ fn main() Void!:
 			else:
 				d := ctx.default_goal()
 				if d.length() > 0: ctx.out.append("default: " + d)
+
 				for t in ctx.order:
-					if r := ctx.rules.get(t):
+					r := ctx.rules.get(t)
+					if r != null:
 						ctx.out.append(fmt_rule(t, r.pre, r.oo))
+
 				for p in ctx.pats:
 					ctx.out.append(fmt_rule("pattern " + p.pat, p.pre, p.oo))
 				if ctx.phony_order.length() > 0:
@@ -1350,7 +1384,9 @@ fn main() Void!:
 				tv := ctx.tick()
 				ctx.files[rest[0].clone()] = tv
 			else if rest.length() == 2:
-				if nn := rest[1].parse_int():
+				nn := rest[1].parse_int()
+
+				if nn != null:
 					ctx.files[rest[0].clone()] = nn
 					if nn > ctx.clock: ctx.clock = nn
 				else:

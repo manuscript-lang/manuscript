@@ -125,7 +125,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	report.add("runs", jint(runs))
 	report.add(
 		"cpu_affinity",
-		if cpu == "": JsonValue.Null else: jint(cpu.parse_int().get_or(0)),
+		if cpu == "": JsonValue.Null else: jint(cpu.parse_int() or 0),
 	)
 
 	var names = Map[String, JsonValue]()
@@ -147,7 +147,7 @@ fn main() Int:
 	if parsed.is_error(): return fail(parsed.err().message)
 
 	opts := parsed.get_or(Map[String, String]())
-	runs := opts.get_or("runs", "3").parse_int().get_or(0)
+	runs := opts.get_or("runs", "3").parse_int() or 0
 	if runs < 1: return fail("--runs must be positive")
 
 	return finish(run(opts, runs))

@@ -19,7 +19,7 @@ export type Usage:
 	tokens_out: Int = 0
 	turns: Int = 0
 	cost_usd: Float = 0.0
-	// `harness`, `estimated` or `none`.
+	// `harness`, `estimated` or `null`.
 	cost_source: String = "none"
 
 // What one agent run produced.
@@ -40,12 +40,17 @@ export interface Harness:
 // The JSON event on each line of `transcript` that parses.
 export fn events(transcript: String) List[JsonValue]:
 	var out = List[JsonValue]()
+
 	for line in transcript.split("\n"):
-		if event := parse(line).to_optional(): out.append(event)
+		event := parse(line).to_optional()
+		if event != null: out.append(event)
+
 	return out
 
 export fn int_at(doc: JsonValue, key: String) Int:
-	if value := doc.get(key): return value.as_int().get_or(0)
+	value := doc.get(key)
+	if value != null: return value.as_int() or 0
+
 	return 0
 
 // Runs the agent in `workspace`, saves its output to `transcript` and returns the
@@ -70,7 +75,7 @@ export fn run_agent(
 			usage.tokens_in,
 			usage.tokens_cached,
 			usage.tokens_out,
-			model.get_or("default"),
+			model or "default",
 		)
 		usage.cost_source = "estimated"
 

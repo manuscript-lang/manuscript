@@ -1,6 +1,9 @@
 // conform: tags=lists,maps,tier-core,testing
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 // A key that is not a plain variable runs before the value, so each reads the optional
 // in order and the last read takes it.
@@ -14,7 +17,10 @@ test "a key and a value both read an owned optional":
 
 	while queue.length() > 0:
 		p := queue.pop()
-		by_id[p.get().id] = p.get()
+		by_id[(p or panic("called Optional.get() on null")).id] = (
+			p
+			or panic("called Optional.get() on null")
+		)
 
 	expect_equal(by_id.length(), 1)?
 	expect_equal(by_id.get_or(1, Person(id: 0, name: "")).name, "ada")?

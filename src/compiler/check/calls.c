@@ -859,6 +859,9 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy result = MS_TY_NONE;
   const size_t diagnostics_before = body->program->diagnostics.len;
   const MsExpr *callee = expr->u.call.callee;
+  if (body_present_get(body, expr, &result)) {
+    return result;
+  }
   target.name_text = ms_strbuild_new();
   append_callee_name(body, &target.name_text, callee);
   target.name = ms_strbuild_span(&target.name_text);
@@ -869,6 +872,7 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
       return MS_TY_NONE;
     }
     body_deny_opaque_build(body, expr, &target);
+    body_reject_nullable_method(body, expr, &target);
     const size_t count = ms_ty_param_count(&body->program->types, target.sig);
     Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1),
                        .state = MS_ARENA_NEW_ARRAY(&body->program->arena, uint8_t, expr->u.call.args.len + 1),
@@ -915,6 +919,7 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   } else if (report_builtin_constructor(body, expr)) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {
+    body_fix_removed_nullable_call(body, expr);
     const bool quiet = body->quiet; /* an unknown callee gives its arguments no context to report against */
     for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
       const MsExpr *value = expr->u.call.args.ptr[index].value;

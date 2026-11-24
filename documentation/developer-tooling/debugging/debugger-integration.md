@@ -19,7 +19,7 @@ fn count_words(text: String) Int:
     return text.split(" ").length()
 
 fn main() Void:
-    repeats := arguments().get_or(0, "1000000").parse_int().get_or(1000000)
+    repeats := arguments().get_or(0, "1000000").parse_int() or 1000000
     var total = 0
     for index in 0..repeats:
         total += count_words("small programs are easy to review")
@@ -132,7 +132,7 @@ Native builds keep frame pointers and DWARF file and line mappings. These suppor
 
 ## Print a value as Manuscript shows it {#print-values}
 
-In GDB, `ptype struct Point` lists a record's fields, and `print *(struct Shape*)$rsp` reads the bytes at an address as that type. Load the display helper from the repository to print strings as text, lists with their elements, optionals as `some` or `none`, and enums as the case with its fields:
+In GDB, `ptype struct Point` lists a record's fields, and `print *(struct Shape*)$rsp` reads the bytes at an address as that type. Load the display helper from the repository to print strings as text, lists with their elements, optionals as `some` or `null`, and enums as the case with its fields:
 
 ```text
 source tools/debugger/manuscript_gdb.py

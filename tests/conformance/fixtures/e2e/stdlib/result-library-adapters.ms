@@ -20,7 +20,7 @@ fn read_duration(text: String) Duration!InputFailure:
 	return parse_duration(text).map_error(fn cause: InputFailure.Time(cause.clone()))
 
 fn read_prefixed(text: String) String!InputFailure:
-	return text.cut_prefix("name=").ok_or(InputFailure.MissingPrefix)
+	return ok_or(text.cut_prefix("name="), InputFailure.MissingPrefix)
 
 fn sorted_index(values: List[Int], target: Int) Int!InputFailure:
 	position := values.binary_search(target)

@@ -20,7 +20,7 @@ fn read_head(path: String) Bytes?!:
     return file.read(max_bytes: 4096)
 ```
 
-`open` returns an owned `FileHandle`; `read` returns bytes or `none` at end of file, with an error on failure.
+`open` returns an owned `FileHandle`; `read` returns bytes or `null` at end of file, with an error on failure.
 
 ## What happens, step by step
 

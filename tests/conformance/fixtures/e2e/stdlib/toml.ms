@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	TomlOptions, TomlValue, parse, stringify from "@std/data/toml.ms",
 	expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
 	monotonic from "@std/time.ms",
@@ -53,16 +54,23 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
 	root["basic"] | expect_equal(TomlValue.StringValue("hello world!"))?
 	root["literal"] | expect_equal(TomlValue.StringValue("raw\\text\nnext"))?
 
-	array := (items(root.get("array").get())?)
+	array := (items(root.get("array") or panic("called Optional.get() on null"))?)
 	array.length() | expect_equal(3)?
 
 	person := (entries(array.get(2).clone())?)
 	person["name"] | expect_equal(TomlValue.StringValue("Ada"))?
 	expect_false(
 		(
-			(entries(person.get("meta").get())?).get(
-				"age"
-			).get() != TomlValue.IntValue(37)
+			(
+				(
+					entries(
+						person.get("meta") or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("age")
+				or panic("called Optional.get() on null")
+			) != TomlValue.IntValue(37)
 		)
 	)?
 
@@ -73,29 +81,53 @@ test "TOML implicit parents dotted keys and arrays of tables":
 		| expect_ok?
 		| entries?
 	)
-	owner := (entries(root.get("owner").get())?)
+	owner := (entries(root.get("owner") or panic("called Optional.get() on null"))?)
 	expect_false(
 		(
-			(entries(owner.get("details").get())?).get(
-				"name"
-			).get() != TomlValue.StringValue("Ada")
+			(
+				(
+					entries(
+						owner.get("details") or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("name")
+				or panic("called Optional.get() on null")
+			) != TomlValue.StringValue("Ada")
 		)
 	)?
 
-	products := (items(root.get("products").get())?)
+	products := (items(root.get("products") or panic("called Optional.get() on null"))?)
 	products.length() | expect_equal(2)?
 	expect_false(
 		(
 			(
 				entries(
-					(entries(products.first().get())?).get(
-						"meta"
-					).get()
+					(
+						entries(
+							products.first() or panic(
+								"called Optional.get() on null"
+							)
+						)?
+					).get("meta") or panic("called Optional.get() on null")
 				)?
 			)["stock"] != TomlValue.IntValue(3)
 		)
 	)?
-	(items((entries(products.last().get())?)["variants"])?).length() | expect_equal(2)?
+	(
+		(
+			items(
+				(
+					entries(
+						products.last() or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				)["variants"]
+			)?
+		).length()
+		| expect_equal(2)?
+	)
 
 	dotted := (
 		parse(text: "a.b.c = 1\na.b.d = 2\n")
@@ -104,7 +136,15 @@ test "TOML implicit parents dotted keys and arrays of tables":
 	)
 	(
 		(
-			entries((entries(dotted.get("a").get())?).get("b").get())?
+			entries(
+				(
+					entries(
+						dotted.get("a") or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("b") or panic("called Optional.get() on null")
+			)?
 		).length() | expect_equal(2)?
 	)
 
@@ -118,7 +158,7 @@ test "TOML parses a long array of tables in order":
 		| expect_ok?
 		| entries?
 	)
-	rows := items(root.get("items").get())?
+	rows := items(root.get("items") or panic("called Optional.get() on null"))?
 	rows.length() | expect_equal(30000)?
 
 	last := entries(rows.get(29999).clone())?
@@ -158,18 +198,29 @@ test "TOML untouched implicit parents can still receive table headers":
 test "TOML rejects malformed data redefinitions and closed inline tables":
 	for text in [
 		"a=1\na=2", "[a]\n[a]", "a=1\n[a]", "a={b=1}\na.c=2", "a.b=1\n[a]", "a=[1 2]",
-		"a=[,]", "a={b=1,}", "a={b=1\nb=2}", "a=01", "a=1_", "a=_1", "a=1__2",
-		"a=+0x1", "a=1.", "a=.1", "a=1e", "a=9223372036854775808", "a=2023-02-29",
-		"a=24:00:00", "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false",
-		"a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
+		"a=[,]", "a={b=1,}", "a={b=1\nb=2}", "a=01", "a=1_", "a=_1", "a=1__2", "a=+0x1",
+		"a=1.", "a=.1", "a=1e", "a=9223372036854775808", "a=2023-02-29", "a=24:00:00",
+		"a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false", "a=1\rb=2",
+		"[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
 	]:
 		cause := match parse(text: text):
 			ok(_): return fail(f"invalid TOML accepted: {text}")
 			error(cause): cause
 
 		cause.kind | expect_equal("EBADMSG")?
-		cause.details["line"].parse_int().get() < 1 | expect_false?
-		cause.details["column"].parse_int().get() < 1 | expect_false?
+		(
+			(
+				cause.details["line"].parse_int()
+				or panic("called Optional.get() on null")
+			) < 1
+			| expect_false?
+		)
+		(
+			(
+				cause.details["column"].parse_int()
+				or panic("called Optional.get() on null")
+			) < 1 | expect_false?
+		)
 		((cause.message.starts_with("TOML ")) | expect_true?)
 
 test "TOML optional limits include implicit tables and zero":
@@ -179,7 +230,7 @@ test "TOML optional limits include implicit tables and zero":
 		(
 			parse(
 				text: "a=1",
-				options: limits(bytes: 2, depth: none, values: none),
+				options: limits(bytes: 2, depth: null, values: null),
 			) != limited
 		)
 	)?
@@ -187,7 +238,7 @@ test "TOML optional limits include implicit tables and zero":
 		(
 			parse(
 				text: "a.b=1",
-				options: limits(bytes: none, depth: 2, values: none),
+				options: limits(bytes: null, depth: 2, values: null),
 			) != limited
 		)
 	)?
@@ -195,7 +246,7 @@ test "TOML optional limits include implicit tables and zero":
 		(
 			parse(
 				text: "a.b=1",
-				options: limits(bytes: none, depth: none, values: 2),
+				options: limits(bytes: null, depth: null, values: 2),
 			) != limited
 		)
 	)?
@@ -210,14 +261,14 @@ test "TOML optional limits include implicit tables and zero":
 	(
 		parse(
 			text: "",
-			options: limits(bytes: none, depth: none, values: 0),
+			options: limits(bytes: null, depth: null, values: 0),
 		) | expect_equal(limited)?
 	)
 	expect_false(
 		(
 			parse(
 				text: "",
-				options: limits(bytes: none, depth: -1, values: none),
+				options: limits(bytes: null, depth: -1, values: null),
 			) != invalid
 		)
 	)?
@@ -373,5 +424,5 @@ test "TOML parse without options stops deep nesting and none lifts it":
 	deep := "a = " + "[".repeat(20000) + "]".repeat(20000)
 	if parse(deep).is_ok(): return fail("nesting over the default depth was accepted")
 
-	lifted := parse(deep, TomlOptions(max_depth: none, max_values: none))
+	lifted := parse(deep, TomlOptions(max_depth: null, max_values: null))
 	expect_true(lifted.is_ok())?

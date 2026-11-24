@@ -34,7 +34,7 @@ void body_check_try(Body *body, const MsExpr *expr, MsTy operand) {
     if (!returns_optional && !ms_ty_is(types, enclosing, MS_BUILTIN_Void)) {
       ms_strbuild_append_text(&text, "'?' on an Optional leaves the function when the value is absent, so the "
                                      "function must return an Optional or Void; declare it to return T?, or use "
-                                     "'if value := x', '.get_or(default)', or '.get()'");
+                                     "'if x != null', or 'x or default'");
       report(body, expr, &text);
       return;
     }

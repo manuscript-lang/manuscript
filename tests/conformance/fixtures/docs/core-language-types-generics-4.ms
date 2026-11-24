@@ -6,7 +6,7 @@ type Pair[A, B = A]:
     second: B
 
 fn parse[T = String](text: String) T?:
-    return none
+    return null
 
 same: Pair[Int] := Pair[Int](1, 2)  // Pair[Int, Int]
 mixed := Pair[Int, String](1, "x")

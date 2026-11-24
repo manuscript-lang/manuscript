@@ -1,6 +1,10 @@
 // Bash's built-in timer supplies child user/system CPU time without an external time
 // binary.
-import Ran, capture, invalid from "./lib.ms"
+import (
+	panic from "@std/core.ms",
+
+	Ran, capture, invalid from "./lib.ms",
+)
 
 export type Timed:
 	result: Ran
@@ -26,8 +30,14 @@ export fn timed(program: String, arguments: List[String]) Timed!:
 		return ok(
 			Timed(
 				ran,
-				parts[1].parse_float().get() * 1000000000.0,
-				parts[2].parse_float().get() * 1000000000.0,
+				(
+					parts[1].parse_float()
+					or panic("called Optional.get() on null")
+				) * 1000000000.0,
+				(
+					parts[2].parse_float()
+					or panic("called Optional.get() on null")
+				) * 1000000000.0,
 				"bash\n" + command.join("\n") + "\n",
 			)
 		)

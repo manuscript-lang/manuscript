@@ -1,17 +1,18 @@
 // conform: tags=stdlib-bytes,stdlib-testing,testing,tier-stdlib
 // conform: phase=test
 import (
-	Bytes from "@std/bytes.ms",
-	BytesBuilder from "@std/bytes.ms",
+	Bytes, BytesBuilder from "@std/bytes.ms",
 	expect_equal from "@std/test/test.ms",
 )
 
 fn build(n: Int) Bytes:
 	var b = BytesBuilder()
 	var i = 0
+
 	while i < n:
-		b.append((i % 251).to_uint8().get_or(0))
+		b.append((i % 251).to_uint8() or 0)
 		i += 1
+
 	return b.build()
 
 test "appends across capacity growth keep every byte":

@@ -24,7 +24,7 @@ export fn main() Int:
         data:
             if data.decode_utf8() != "d":
                 return 5
-        none:
+        null:
             return 6
 
     original := Holder(file: file, label: "original")

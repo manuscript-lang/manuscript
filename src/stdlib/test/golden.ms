@@ -18,7 +18,8 @@ A missing golden file fails with a hint to update; it is created only when updat
 */
 fn updating() Bool:
 	env := environment().get_or(Map[String, String]())
-	if value := env.get("MS_UPDATE_GOLDEN"): return value != "" and value != "0"
+	value := env.get("MS_UPDATE_GOLDEN")
+	if value != null: return value != "" and value != "0"
 
 	return false
 
@@ -57,8 +58,9 @@ export fn expect_golden(path: String, actual: String) Void!:
 		)
 
 	text := stored.get().decode_utf8()
+	expected := text
 
-	if expected := text:
+	if expected != null:
 		if expected == actual: return ok()
 		return fail(
 			f"{path} differs from the output at {first_difference(expected, actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"

@@ -23,6 +23,6 @@ test "numeric boundary rules":
     third := 1d / 3d
     expect_equal(f"{third}", "0.3333333333333333333333333333333333")?
 
-    absent: Int? := none
+    absent: Int? := null
     expect_equal(1e300.truncate_to_int(), absent)?
     expect_equal(2.seconds().add(1.seconds()), 3.seconds())?

@@ -47,11 +47,11 @@ export enum TomlValue:
 	)
 
 // Limits for `parse` on input bytes, nesting depth and parsed values. A field set to
-// none adds no limit. The defaults, depth 10,000 and 1,000,000 values, guard against
+// null adds no limit. The defaults, depth 10,000 and 1,000,000 values, guard against
 // deeply nested or very large documents. A negative limit returns `EINVAL`.
 export type TomlOptions:
-	// Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
-	max_bytes: Int? = none
+	// Maximum UTF-8 input bytes before CRLF normalization; null adds no budget.
+	max_bytes: Int? = null
 	// Maximum value depth, including scalar leaves and implicit tables, with the root
 	// at one.
 	max_depth: Int? = 10000
@@ -181,7 +181,7 @@ fn invalid(reader: Reader, reason: String) Error:
 
 // The text between two byte offsets of the document.
 fn slice_text(reader: Reader, start: Int, end: Int) String:
-	return reader.data.slice(start, end).get().decode_utf8().get_or("").clone()
+	return (reader.data.slice(start, end).get().decode_utf8() or "").clone()
 
 fn space(var reader: Reader, multiline: Bool) Void:
 	var pos = cursor(reader)
@@ -201,7 +201,9 @@ fn space(var reader: Reader, multiline: Bool) Void:
 	reader.pos = pos
 
 fn within(value: Int, limit: Int?) Bool:
-	if maximum := limit: return value <= maximum
+	maximum := limit
+	if maximum != null: return value <= maximum
+
 	return true
 
 fn allocate(var reader: Reader) Void!:
@@ -390,8 +392,9 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 	)
 
 	existing := lookup(reader, parent, key).clone()
+	node := existing
 
-	if node := existing:
+	if node != null:
 		match node:
 			TableNode(value):
 				var state = flags(reader, value).clone()
@@ -415,7 +418,9 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 						"dotted key extends a table array",
 					)
 				)
-				if last := reader.arrays[slot].last(): return ok(last)
+
+				last := reader.arrays[slot].last()
+				if last != null: return ok(last)
 
 				return error(invalid(reader, "table array is empty"))
 			_: return error(invalid(reader, "key is already a value"))
@@ -431,8 +436,9 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	Error,
 ]:
 	existing := lookup(reader, parent, key).clone()
+	node := existing
 
-	if node := existing:
+	if node != null:
 		match node:
 			TableArray(slot):
 				reader.arrays[slot].append(next)
@@ -462,7 +468,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], move value: Node)
 	return assign_one(
 		reader: reader,
 		parent: current,
-		key: keys.last().clone().get_or(""),
+		key: keys.last().clone() or "",
 		value: value,
 	)
 
@@ -491,7 +497,7 @@ fn simple_key(var reader: Reader) String?:
 	start := cursor(reader)
 	var end = start
 	while bare_key_byte(byte_at(reader.data, end)): end += 1
-	if end == start: return none
+	if end == start: return null
 
 	var after = end
 	var b = byte_at(reader.data, after)
@@ -500,14 +506,16 @@ fn simple_key(var reader: Reader) String?:
 		after += 1
 		b = byte_at(reader.data, after)
 
-	if b != EQUALS: return none
+	if b != EQUALS: return null
 
 	reader.pos = after + 1
 	return slice_text(reader, start, end)
 
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
 fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
-	if key := simple_key(reader):
+	key := simple_key(reader)
+
+	if key != null:
 		value := read_value(reader, depth + 1)?
 		return assign_one(reader: reader, parent: table, key: key, value: value)
 
@@ -575,14 +583,14 @@ fn date_valid(text: String) Bool:
 	day := text.slice(8, 10)
 	if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
 
-	m := month.parse_int().get_or(0)
+	m := month.parse_int() or 0
 	var maximum = 31
 	if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
 	if m == 2:
 		maximum = 28
 
-		y := year.parse_int().get_or(0)
+		y := year.parse_int() or 0
 		if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
 	return date_number(day, 1, maximum)
@@ -623,8 +631,8 @@ fn datetime_valid(text: String) Bool:
 	if rest.ends_with("Z") or rest.ends_with("z"):
 		rest = rest.slice(0, rest.length() - 1)
 	else if rest.contains("+") or rest.contains("-"):
-		var index = rest.index_of("+").get_or(-1)
-		if index < 0: index = rest.index_of("-").get_or(-1)
+		var index = rest.index_of("+") or (-1)
+		if index < 0: index = rest.index_of("-") or (-1)
 
 		zone := rest.slice(index + 1, rest.length())
 		if zone.length() != 5 or zone.view(2, 3) != ":": return false
@@ -698,10 +706,10 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 					invalid_at(reader, at, "invalid exponent")
 				)
 
-			fraction := parts.first().clone().get_or("").split(".")
+			fraction := (parts.first().clone() or "").split(".")
 			if (
 				fraction.length() > 2
-				or not decimal_part(fraction.first().clone().get_or(""))
+				or not decimal_part(fraction.first().clone() or "")
 			): return error(invalid_at(reader, at, "invalid float"))
 			if fraction.length() == 2 and not decimal_digits(fraction[1]): return error(
 				invalid_at(reader, at, "invalid fraction")
@@ -918,8 +926,10 @@ fn control_pattern() Regex:
 // column. A limit in `options` that the document exceeds returns `EOVERFLOW`.
 export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
-		if value := limit:
+		value := limit
+		if value != null:
 			if value < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
+
 	if not within(text.length(), options.max_bytes): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
@@ -938,8 +948,9 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 		entries: [],
 		arrays: [],
 	)
+	span := control_pattern().find_span(normalized)
 
-	if span := control_pattern().find_span(normalized):
+	if span != null:
 		place := locate(reader.data, span.start)
 		reason := if reader.data.get(span.start) == 13: "bare carriage return" else: "invalid control character"
 		return error(toml_invalid(line: place[0], column: place[1], reason: reason))
@@ -981,7 +992,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				)?
 				index += 1
 
-			key := keys.last().clone().get_or("")
+			key := keys.last().clone() or ""
 			if flags(reader, parent).sealed: return error(
 				invalid(reader, "inline table is closed")
 			)
@@ -1177,8 +1188,9 @@ fn datetimes_valid(value: TomlValue) Bool:
 // other values are written inline. A `value` that is not a `TableValue`, or that holds
 // a malformed date or time, returns `EINVAL`. Output longer than `max_bytes` returns
 // `EOVERFLOW`.
-export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
-	if limit := max_bytes:
+export fn stringify(value: TomlValue, max_bytes: Int? = null) String!:
+	limit := max_bytes
+	if limit != null:
 		if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 
 	root := match value:

@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	join_errors, wrap_error from "@std/core.ms",
+	join_errors, panic, wrap_error from "@std/core.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 	deadline_after, monotonic, nanoseconds, sleep, ticker from "@std/time.ms",
 )
@@ -16,11 +16,12 @@ test "wrap_error adds context and keeps the kind":
 
 test "join_errors reports each error and none for empty":
 	none_joined := join_errors([])
-	expect_true(none_joined.is_none())?
+	expect_true(none_joined == null)?
 
 	both := join_errors([Error("a"), Error("b")])
+	joined := both
 
-	if joined := both:
+	if joined != null:
 		expect_equal(joined.message, "a\nb")?
 		expect_equal(joined.details["count"], "2")?
 
@@ -37,7 +38,7 @@ test "deadline expires and ticker paces":
 
 	while count < 3:
 		tick := ticks.next()?
-		expect_true(tick.is_some())?
+		expect_true(tick != null)?
 		count += 1
 
 	expect_true(monotonic().difference(start).to_milliseconds() >= 29)?
@@ -47,7 +48,7 @@ test "ticker keeps its original cadence when the consumer misses ticks":
 	// assumed.
 	period := nanoseconds(10000019)
 	var ticks = ticker(period.clone())
-	first := (ticks.next()?).get().clone()
+	first := ((ticks.next()?) or panic("called Optional.get() on null")).clone()
 
 	for pause in [
 		period.multiply(4).add(nanoseconds(1)),
@@ -55,8 +56,8 @@ test "ticker keeps its original cadence when the consumer misses ticks":
 	]:
 		sleep(pause).wait()?
 
-		pending := (ticks.next()?).get().clone()
-		next := (ticks.next()?).get().clone()
+		pending := ((ticks.next()?) or panic("called Optional.get() on null")).clone()
+		next := ((ticks.next()?) or panic("called Optional.get() on null")).clone()
 		pending_offset := pending.difference(first).to_nanoseconds()
 		next_offset := next.difference(first).to_nanoseconds()
 		expect_equal(pending_offset % period.to_nanoseconds(), 0)?

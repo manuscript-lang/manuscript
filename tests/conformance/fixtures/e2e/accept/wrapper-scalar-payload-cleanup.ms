@@ -17,10 +17,10 @@ fn success() Marker!Int: ok(Marker(2))
 fn failure() Int!Marker: error(Marker(3))
 
 fn optional_cause() Void:
-	_kept := present().ok_or(0)
+	_kept := ok_or(present(), 0)
 
 fn optional_callback() Void:
-	_kept := present().ok_or_else(fn: 0)
+	_kept := ok_or(present(), 0)
 
 fn result_error_map() Void:
 	_kept := success().map_error(fn cause: cause + 1)
@@ -63,7 +63,7 @@ test "direct transforming callbacks close their owned scalar input":
 	(expect_fault(transformed_then)?) | expect_contains("resource could not be closed")?
 
 fn optional_or_else() Void:
-	_kept := present().or_else(fn: none)
+	_kept := present() or null
 
 fn result_or_else() Void:
 	_kept := success().or_else(fn cause: error(cause))

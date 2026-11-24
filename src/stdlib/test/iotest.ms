@@ -18,17 +18,19 @@ type OneByte:
 
 fn var OneByte.next() move Bytes?!:
 	var data = "".to_bytes()
+	held := self.held.clone()
 
-	if held := self.held:
-		data = held.clone()
+	if held != null:
+		data = held
 	else:
 		fresh := self.input.next()?
+		next := fresh
 
-		if next := fresh: data = next.clone()
-		else: return ok(none)
+		if next != null: data = next.clone()
+		else: return ok(null)
 
 	if data.length() <= 1:
-		self.held = none
+		self.held = null
 		return ok(data)
 
 	self.held = data.slice(1, data.length())?.clone()
@@ -40,7 +42,7 @@ fn move OneByte.close() Void!:
 // Returns `input` limited to one byte per read. This exposes code that assumes a read
 // fills its buffer.
 export fn one_byte(move input: ReadStream[Bytes]) ReadStream[Bytes]:
-	return ReadStream[Bytes](OneByte(input, none))
+	return ReadStream[Bytes](OneByte(input, null))
 
 type FailAfter:
 	input: ReadStream[Bytes]
@@ -51,8 +53,9 @@ fn var FailAfter.next() move Bytes?!:
 	if self.remaining <= 0: return error(self.cause.clone())
 
 	chunk := self.input.next()?
+	data := chunk
 
-	if data := chunk:
+	if data != null:
 		if data.length() > self.remaining:
 			head := data.slice(0, self.remaining)?
 			self.remaining = 0
@@ -134,11 +137,13 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 		chunk := again.next()
 		if chunk.is_error(): return fail("check_reader: a read failed")
 
-		if piece := chunk.get(): total += piece.length()
+		piece := chunk.get()
+
+		if piece != null: total += piece.length()
 		else: break
 
 	after_end := again.next()
-	if after_end.is_error() or after_end.get().is_some():
+	if after_end.is_error() or (after_end.get() != null):
 		return fail("check_reader: a read after end of input must return none again")
 	if total != expected.length():
 		return fail(

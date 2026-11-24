@@ -13,7 +13,7 @@ type Count:
 
 fn var Count.next() Int?!:
 	self.n += 1
-	if self.n > 3: return ok(none)
+	if self.n > 3: return ok(null)
 
 	return ok(self.n)
 

@@ -7,7 +7,7 @@ fn lookup(m: Map[String, Int], key: String) Int:
     match m.get(key: key):
         v:
             return v
-        none:
+        null:
             return -1
 
 test "string map":

@@ -2,7 +2,6 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:77
 fn greet(name: String?) String:
-    if value := name:
-        return "Hello, " + value
-
-    return "Hello!"
+	if name != null:
+		return "Hello, " + name
+	return "Hello!"

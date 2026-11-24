@@ -15,6 +15,6 @@ fn leaf(id: Int) Node:
 	return Node(val: Res(id), kids: [])
 
 export fn main() Int:
-	root := Node(val: Res(1), kids: [leaf(2), Node(val: none, kids: [leaf(3), leaf(4)])])
+	root := Node(val: Res(1), kids: [leaf(2), Node(val: null, kids: [leaf(3), leaf(4)])])
 	print(f"kids {root.kids.length()}")
 	return 0

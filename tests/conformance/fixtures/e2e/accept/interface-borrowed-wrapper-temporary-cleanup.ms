@@ -17,7 +17,7 @@ fn move Resource.close() Void!:
 	self.path = "closed"
 
 interface Observer:
-	fn observe(first: Resource?, second: Resource?, tail: Int? = none) Bool
+	fn observe(first: Resource?, second: Resource?, tail: Int? = null) Bool
 	fn reject(value: Resource?) Void!
 	fn broken(value: Resource?) Void
 	fn create(path: String, value: Resource?) Resource
@@ -28,17 +28,17 @@ interface Observer:
 type Reader:
 	tag: Int
 
-fn Reader.observe(first: Resource?, second: Resource?, tail: Int? = none) Bool:
-	return first.is_some() or second.is_some() or tail.get_or(0) > 0
+fn Reader.observe(first: Resource?, second: Resource?, tail: Int? = null) Bool:
+	return (first != null) or (second != null) or (tail or 0) > 0
 
 fn Reader.reject(value: Resource?) Void!:
-	if value.is_some(): return error(Error("expected"))
+	if value != null: return error(Error("expected"))
 
 fn Reader.broken(value: Resource?) Void:
-	if value.is_some(): _bad := [1].get(3)
+	if value != null: _bad := [1].get(3)
 
 fn Reader.create(path: String, value: Resource?) Resource:
-	if value.is_some(): return Resource(50, path.clone())
+	if value != null: return Resource(50, path.clone())
 	return Resource(51, path.clone())
 
 fn Reader.change(var value: Resource) Void:
@@ -76,7 +76,7 @@ fn new_owner_fault(reader: Observer, path: String) Void:
 
 fn failed_close(reader: Observer, path: String) Void:
 	owner := Resource(99, path.clone())
-	_used := reader.observe(present(path, 98), none)
+	_used := reader.observe(present(path, 98), null)
 	_id := owner.id
 
 test "interface borrows intact temporary wrappers in written order":
@@ -94,8 +94,8 @@ test "interface borrows intact temporary wrappers in written order":
 	expect_equal(log_text(path)?, "2,1,4,3,")?
 
 	named := present(path, 5)
-	expect_equal(reader.observe(named, none), true)?
-	expect_equal(reader.observe(named, none), true)?
+	expect_equal(reader.observe(named, null), true)?
+	expect_equal(reader.observe(named, null), true)?
 	expect_equal(log_text(path)?, "2,1,4,3,")?
 
 test "interface arguments retain cleanup through later try and faults":
@@ -169,7 +169,7 @@ test "interface Result temporaries and loop conditions keep cleanup bounded":
 
 	var count = 0
 
-	while count < 3 and reader.observe(present(path, 80), none):
+	while count < 3 and reader.observe(present(path, 80), null):
 		count += 1
 		if count == 1: continue
 		if count == 3: break

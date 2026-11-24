@@ -19,10 +19,10 @@ The standard library picks the failure by its cause. Your own functions can foll
 
 | Cause | Result | Examples |
 | --- | --- | --- |
-| A value is missing | `none` from a `T?` | `first()` on an empty list, `Map.get(key)`, `parse_int` on text that is not a number |
-| The caller passes a bad value: a size, count, radix, budget or other argument | An `Error` of kind `EINVAL` when the function already returns `Error`, else `none` when it already returns an optional | `rate_limiter` with a nonpositive rate, `to_string_radix(1)`, `weighted_choice` with all-zero weights |
+| A value is missing | `null` from a `T?` | `first()` on an empty list, `Map.get(key)`, `parse_int` on text that is not a number |
+| The caller passes a bad value: a size, count, radix, budget or other argument | An `Error` of kind `EINVAL` when the function already returns `Error`, else `null` when it already returns an optional | `rate_limiter` with a nonpositive rate, `to_string_radix(1)`, `weighted_choice` with all-zero weights |
 | A count has a natural meaning at zero | That meaning, not a failure | `take(0)`, `chunks(0)` and `repeated(0)` give nothing; a shift count of 64 or more shifts every bit out |
 | The environment refuses: files, network, processes | An `Error` with the matching kind (`ENOENT`, `ETIMEDOUT`) | `read_file`, `connect` |
 | The code is wrong | A fault | an index out of range with `[]`, integer overflow, a negative shift count, `clamp` with `low` above `high`, reading a flag the schema never declared |
 
-A function does not change its return type to report a bad argument. If it returns a plain value, a bad argument is a bug and faults; if it already returns `T?` or `T!`, a bad argument returns `none` or `EINVAL`. A caller who cannot tell whether a value is valid checks it first or calls the form that returns an error, such as `get(index, default: x)` for `[]`.
+A function does not change its return type to report a bad argument. If it returns a plain value, a bad argument is a bug and faults; if it already returns `T?` or `T!`, a bad argument returns `null` or `EINVAL`. A caller who cannot tell whether a value is valid checks it first or calls the form that returns an error, such as `get(index, default: x)` for `[]`.

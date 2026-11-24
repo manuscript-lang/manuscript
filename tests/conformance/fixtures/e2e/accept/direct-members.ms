@@ -32,7 +32,7 @@ test "map and set members":
 
 	updated := m
 	expect_equal(updated["a"], 2)?
-	expect_false(updated.get("z").is_some())?
+	expect_false(updated.get("z") != null)?
 	expect_false(not updated.contains("b"))?
 
 	var s: Set[Int] = Set()

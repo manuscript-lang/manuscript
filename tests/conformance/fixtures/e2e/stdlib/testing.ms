@@ -29,7 +29,7 @@ test "testing assertions":
 	"Manuscript" | expect_contains("script")?
 
 	present: Int? := 7
-	absent: Int? := none
+	absent: Int? := null
 	((present | expect_some?)) | expect_equal(7)?
 	absent | expect_none?
 

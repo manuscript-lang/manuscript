@@ -18,7 +18,7 @@ const MsLintRule MS_LINT_RULES[] = {
      "rename the binding to a lowercase name, or write the case with its payload in a helper"},
     {"MSL107", "Nested match", MS_LINT_ERROR,
      "bind the outer payload with an early exit, use a compatible trailing `?`, or call a small helper"},
-    {"MSL108", "Optional matched with only a payload arm and none", MS_LINT_WARNING,
+    {"MSL108", "Optional matched with only a payload arm and null", MS_LINT_WARNING,
      "use `if value := ...:` with `else:`, or an Optional method such as `get_or(default)` or `map`"},
     {"MSL109", "Result matched with only ok and error", MS_LINT_WARNING,
      "use a trailing `?`, `if value := ...:` with `else:`, or a Result method such as `get_or(default)`, `is_error` or `err`"},
@@ -58,7 +58,7 @@ const MsLintRule MS_LINT_RULES[] = {
      "write `m[k] -= v` (or `+=`, `*=`, `/=`, `%=`)"},
     {"MSL128", "Final return the end of the function already makes", MS_LINT_ERROR,
      "delete the final `return ok()` (`Void!`) or `return` (`Void`)"},
-    {"MSL129", "Void! outcome ignored with get_or(none)", MS_LINT_ERROR,
+    {"MSL129", "Void! outcome ignored with get_or(null)", MS_LINT_ERROR,
      "write `void call()`; `ms lint --fix` does it"},
     {"MSL130", "Statement get() on a Result", MS_LINT_WARNING,
      "write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome"},
@@ -71,7 +71,7 @@ const MsLintRule MS_LINT_RULES[] = {
     {"MSL134", "Void value bound or printed", MS_LINT_WARNING,
      "call `xs.sort()` or `xs.reverse()` as a statement, or use `sorted()` or `reversed()` for a new list"},
     {"MSL135", "`to_string()` on Bytes", MS_LINT_WARNING,
-     "`bytes.to_string()` renders `Bytes(104, 105)`; write `bytes.decode_utf8().ok_or(Error(\"not UTF-8\", kind: \"EBADMSG\"))?` for the text"},
+     "`bytes.to_string()` renders `Bytes(104, 105)`; write `ok_or(bytes.decode_utf8(), Error(\"not UTF-8\", kind: \"EBADMSG\"))?` for the text"},
 };
 
 const size_t MS_LINT_RULE_COUNT = sizeof MS_LINT_RULES / sizeof MS_LINT_RULES[0];

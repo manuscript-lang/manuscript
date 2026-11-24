@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	CopyOptions,
 	copy,
 	create_directory,
@@ -41,7 +42,12 @@ fn rejected(result: Void!) Void!:
 		ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
 
 fn text(path: String) String!:
-	return ok((read_file(path).wait() | expect_ok?).decode_utf8().get())
+	return ok(
+		(
+			(read_file(path).wait() | expect_ok?).decode_utf8()
+			or panic("called Optional.get() on null")
+		)
+	)
 
 fn argument(var log: List[String], mark: String, path: String) String:
 	log.append(mark)
@@ -234,16 +240,8 @@ test "filesystem default preparation retains written argument order":
 	copy := copy
 	(
 		copy(
-			argument(
-				log,
-				"source",
-				f"{temporary.path()}/ordered",
-			),
-			argument(
-				log,
-				"destination",
-				f"{temporary.path()}/copy",
-			),
+			argument(log, "source", f"{temporary.path()}/ordered"),
+			argument(log, "destination", f"{temporary.path()}/copy"),
 		) | expect_ok?
 	)
 	log | expect_equal(["data", "path", "source", "destination"])?

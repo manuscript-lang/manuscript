@@ -6,6 +6,7 @@
 // `ms run bench/perf/mailbox/main.ms -- 100000 5 [window]`: promises per round, rounds, window (default 64).
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
 )
@@ -15,9 +16,12 @@ fn work(a: Int) Int!:
 
 fn main() Void:
 	args := arguments()
-	n := args[0].parse_int().get()
-	rounds := args[1].parse_int().get()
-	window := if args.length() > 2: args[2].parse_int().get() else: 64
+	n := args[0].parse_int() or panic("called Optional.get() on null")
+	rounds := args[1].parse_int() or panic("called Optional.get() on null")
+	window := if args.length() > 2: (
+		args[2].parse_int()
+		or panic("called Optional.get() on null")
+	) else: 64
 	var total = 0
 	t0 := monotonic()
 

@@ -15,7 +15,7 @@ import read_file from "@std/os/fs.ms"
 
 fn read_text(path: String) String!:
     bytes := read_file(path).wait()?
-    return bytes.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
+    return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 ```
 
 For a local test, create a certificate and key with `openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -keyout server.key -out server.pem -days 30 -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost"`.
@@ -34,7 +34,7 @@ import TlsOptions from "@std/net/tls.ms"
 
 fn read_text(path: String) String!:
     bytes := read_file(path).wait()?
-    return bytes.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
+    return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 
 fn hello(var exchange: HttpExchange) Void!:
     return reply(exchange, text(200, "hello over TLS"))
@@ -63,7 +63,7 @@ import TlsOptions from "@std/net/tls.ms"
 
 fn read_text(path: String) String!:
     bytes := read_file(path).wait()?
-    return bytes.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
+    return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 
 fn main() Void!:
     ca := read_text(arguments().get_or(0, "ca.pem"))?
@@ -85,11 +85,11 @@ import now from "@std/time.ms"
 
 fn read_text(path: String) String!:
     bytes := read_file(path).wait()?
-    return bytes.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
+    return ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))
 
 fn main() Void!:
     pem := read_text(arguments().get_or(0, "server.pem"))?
-    for certificate in parse_certificates(pem, none)?:
+    for certificate in parse_certificates(pem, null)?:
         left := certificate.not_after.difference(now())?
         print(f"{certificate.subject} expires {certificate.not_after}, in {left}")
 ```

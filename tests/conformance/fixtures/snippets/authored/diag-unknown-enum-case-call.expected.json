@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown alternative case Circel of Shape; cases: Circle, Square",
+        "position": {
+          "file": "diag-unknown-enum-case-call.ms",
+          "line": 12,
+          "column": 26,
+          "offset": 258
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-unknown-enum-case-call.ms:12:26: resolution: unknown alternative case Circel of Shape; cases: Circle, Square\n    |\n 12 |     print(describe(Shape.Circel(1)))\n    |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

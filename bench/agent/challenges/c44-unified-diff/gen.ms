@@ -66,9 +66,9 @@ fn solve(s: String) String:
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
 	head := words(lines[0])
-	c := head[2].parse_int().get_or(0)
-	n := head[3].parse_int().get_or(0)
-	m := head[4].parse_int().get_or(0)
+	c := head[2].parse_int() or 0
+	n := head[3].parse_int() or 0
+	m := head[4].parse_int() or 0
 	a := lines.slice(1, 1 + n).get_or([])
 	b := lines.slice(1 + n, 1 + n + m).get_or([])
 	ops := script(a, b)

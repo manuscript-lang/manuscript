@@ -14,7 +14,9 @@ test "int keys with string values find every key":
 	expect_equal(names[2], "two")?
 	expect_equal(names.get_or(key: 2, fallback: ""), "two")?
 	expect_equal(names.get_or(key: 3, fallback: "none"), "none")?
-	if found := names.get(1):
+
+	found := names.get(1)
+	if found != null:
 		expect_equal(found, "one")?
 
 test "string keys with string values find every key":

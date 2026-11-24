@@ -43,17 +43,18 @@ export type RawWebSocketMessage:
 type WebSocketSource:
 	native: NativeWebSocket
 
-// Waits for the next complete message; none once the peer closes normally. A message
+// Waits for the next complete message; null once the peer closes normally. A message
 // over `max_message_bytes` is `EOVERFLOW` and a text message that is not valid UTF-8 is
 // `EBADMSG`; after any failure the connection is closed.
 fn var WebSocketSource.next() move WebSocketMessage?!:
 	raw := msstd_websocket_receive(self.native)?
+	message := raw
 
-	if message := raw:
+	if message != null:
 		kind := if message.text: WebSocketKind.Text else: WebSocketKind.Binary
 		return ok(WebSocketMessage(message.data.clone(), kind))
 
-	return ok(none)
+	return ok(null)
 
 fn move WebSocketSource.close() Void!:
 	msstd_websocket_close_if_last(self.native)
@@ -81,7 +82,7 @@ receive and send at once. The connection closes, after a normal-closure frame, w
 `WebSocket` closes both.
 */
 export type WebSocket:
-	// Messages from the peer; none once the peer closes normally.
+	// Messages from the peer; null once the peer closes normally.
 	input: ReadStream[WebSocketMessage]
 	// Messages to the peer.
 	output: WriteStream[WebSocketMessage]
@@ -112,11 +113,11 @@ export type WebSocketOptions:
 	headers: HttpHeaders = headers()
 	// Subprotocols to offer, in preference order.
 	subprotocols: List[String] = []
-	// Largest message accepted or sent, in bytes. Must be positive; none sets no limit.
-	max_message_bytes: Int? = none
-	// Time budget for connecting and completing the opening handshake. none waits
+	// Largest message accepted or sent, in bytes. Must be positive; null sets no limit.
+	max_message_bytes: Int? = null
+	// Time budget for connecting and completing the opening handshake. null waits
 	// indefinitely and a negative duration is rejected.
-	timeout: Duration? = none
+	timeout: Duration? = null
 	// TLS settings for `wss` URLs: trusted roots, client identity, and protocols.
 	tls: TlsOptions = TlsOptions()
 	// When True, offers per-message compression during the handshake; it applies only

@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes, join from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	base64_decode, base64_encode, hex_encode from "@std/data/encoding.ms",
 	base64_decoded,
 	base64_encoded,
@@ -18,7 +19,7 @@ type Chunks:
 	at: Int
 
 fn var Chunks.next() Bytes?!:
-	if self.at >= self.data.length(): return ok(none)
+	if self.at >= self.data.length(): return ok(null)
 
 	var end = self.at + self.size
 	if end > self.data.length(): end = self.data.length()
@@ -38,7 +39,7 @@ type Texts:
 	at: Int
 
 fn var Texts.next() String?!:
-	if self.at >= self.parts.length(): return ok(none)
+	if self.at >= self.parts.length(): return ok(null)
 
 	part := self.parts[self.at].clone()
 	self.at += 1
@@ -66,8 +67,9 @@ fn join_text(input: ReadStream[String]) String!:
 
 	while true:
 		next := source.next()?
+		text := next
 
-		if text := next:
+		if text != null:
 			out = out.concat(text)
 		else:
 			break
@@ -80,8 +82,9 @@ fn join_bytes(input: ReadStream[Bytes]) Bytes!:
 
 	while true:
 		next := source.next()?
+		data := next
 
-		if data := next:
+		if data != null:
 			out.append(data)
 		else:
 			break
@@ -160,15 +163,18 @@ test "base64 terminal padding survives a rejected read":
 	)
 	expect_equal(same_chunk.next().err().kind, "EBADMSG")?
 	expect_equal(same_chunk.next().err().kind, "EBADMSG")?
-	expect_equal(same_chunk.next()?, none)?
+	expect_equal(same_chunk.next()?, null)?
 
 	var later_chunk = base64_decoded(
 		ReadStream[String](Texts(["Zg==", "A", "", "", "AAA", "", ""], 0))
 	)
-	expect_equal((later_chunk.next()?).get(), "f".to_bytes())?
+	expect_equal(
+		(later_chunk.next()?) or panic("called Optional.get() on null"),
+		"f".to_bytes(),
+	)?
 	expect_equal(later_chunk.next().err().kind, "EBADMSG")?
 	expect_equal(later_chunk.next().err().kind, "EBADMSG")?
-	expect_equal(later_chunk.next()?, none)?
+	expect_equal(later_chunk.next()?, null)?
 
 test "hex steps round trip under every chunk size":
 	data := "hex \u{0}\u{ff} data".to_bytes()

@@ -76,9 +76,11 @@ fn oracle_version(ms: String) String:
 // Why `observed` cannot be recorded, or "".
 fn unrecordable(observed: JsonValue) String:
 	for key in ["harness_error", "spawn_error", "timed_out", "unparsable_json"]:
-		if observed.get(key).is_some(): return f"observation has {key}"
-	if report := observed.get("report"):
-		if report.get("unparsable_json").is_some(): return "ms test did not print JSON"
+		if observed.get(key) != null: return f"observation has {key}"
+
+	report := observed.get("report")
+	if report != null:
+		if report.get("unparsable_json") != null: return "ms test did not print JSON"
 	return ""
 
 // Records each fixture of `chunk`: one `wrote`, `same`, `kept` or `REJECT <id>: <why>`
@@ -160,7 +162,7 @@ fn main() Int:
 			phase = words[at].clone()
 		else if words[at] == "--jobs":
 			at += 1
-			jobs = words[at].parse_int().get_or(jobs)
+			jobs = words[at].parse_int() or jobs
 		else if words[at] == "--record": recording = true
 		else if words[at] == "--only-missing": only_missing = true
 		else if words[at] == "--no-stable-check": stable = false
@@ -175,13 +177,10 @@ fn main() Int:
 
 	ms := tool_ms(root.clone())
 	var build_type = "Release"
-	if configured := environment().get_or(
-		Map[String, String]()
-	).get("CONFORM_BUILD_TYPE"): build_type = configured.clone()
+	configured := environment().get_or(Map[String, String]()).get("CONFORM_BUILD_TYPE")
+	if configured != null: build_type = configured.clone()
 
-	show_diff := environment().get_or(
-		Map[String, String]()
-	).get("CONFORM_DIFF").is_some()
+	show_diff := environment().get_or(Map[String, String]()).get("CONFORM_DIFF") != null
 	var chosen = List[Fixture]()
 
 	for fx in fixtures(f"{root}/tests/conformance/fixtures", phase, filters):
@@ -238,13 +237,13 @@ fn main() Int:
 			for line in task.wait().get_or(List[String]()):
 				if line.starts_with("REJECT"):
 					print(line)
-					counts.add("rejected", counts.get("rejected").get_or(0) + 1)
-				else: counts.add(line.clone(), counts.get(line).get_or(0) + 1)
+					counts.add("rejected", (counts.get("rejected") or 0) + 1)
+				else: counts.add(line.clone(), (counts.get(line) or 0) + 1)
 
 		print(
-			f"{phase}: wrote {counts.get("wrote").get_or(0)}, same {counts.get("same").get_or(0)}, kept {counts.get("kept").get_or(0)}, rejected {counts.get("rejected").get_or(0)}"
+			f"{phase}: wrote {(counts.get("wrote") or 0)}, same {(counts.get("same") or 0)}, kept {(counts.get("kept") or 0)}, rejected {(counts.get("rejected") or 0)}"
 		)
-		if counts.get("rejected").get_or(0) > 0: return 1
+		if (counts.get("rejected") or 0) > 0: return 1
 
 		return 0
 

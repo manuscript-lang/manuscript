@@ -20,7 +20,7 @@ import (
 // `by design:` is a permanent decision. Case ids are `<table>#<index>`.
 
 fn text(tree: FileTree, path: String) String:
-	return tree.read(path, none).get_or("".to_bytes()).decode_utf8().get_or("")
+	return tree.read(path, null).get_or("".to_bytes()).decode_utf8() or ""
 
 fn field(item: Case, key: String) String:
 	return item.fields.get_or(key, "")
@@ -29,7 +29,9 @@ fn flag(item: Case, key: String) Bool:
 	return item.flags.get_or(key, false)
 
 fn port_text(url: Url) String:
-	if port := url.port: return port.to_string()
+	port := url.port
+	if port != null: return port.to_string()
+
 	return ""
 
 // `parse` table: the URL parses to the expected parts and formats back to the expected text;
@@ -40,7 +42,7 @@ fn parse_ok(item: Case) Bool:
 	if flag(item, "has_user") or flag(item, "opaque"): return parsed.is_error()
 	if parsed.is_error(): return false
 
-	url := parsed.get_or(Url("", "", "", "", none, none))
+	url := parsed.get_or(Url("", "", "", "", null, null))
 	if url.scheme != field(item, "scheme") or url.host != field(item, "host"): return false
 	if port_text(url) != field(item, "port"): return false
 
@@ -56,12 +58,12 @@ fn resolve_ok(item: Case) Bool:
 	if base.is_error(): return false
 
 	resolved := resolve(
-		base.get_or(Url("", "", "", "", none, none)),
+		base.get_or(Url("", "", "", "", null, null)),
 		field(item, "rel"),
 	)
 	if resolved.is_error(): return false
 
-	formatted := format(resolved.get_or(Url("", "", "", "", none, none)))
+	formatted := format(resolved.get_or(Url("", "", "", "", null, null)))
 	return formatted.is_ok() and formatted.get_or("") == field(item, "expected")
 
 fn unescape_ok(item: Case) Bool:
@@ -77,14 +79,16 @@ fn escape_ok(item: Case) Bool:
 	return decoded.is_ok() and decoded.get_or("") == original
 
 fn query_ok(item: Case) Bool:
-	parsed := parse_query(field(item, "query"), none)
+	parsed := parse_query(field(item, "query"), null)
 	if not flag(item, "ok"): return parsed.is_error()
 	if parsed.is_error(): return false
 
 	var grouped = Map[String, List[String]]()
 
 	for entry in parsed.get_or([]):
-		if values := grouped.get(entry.key):
+		values := grouped.get(entry.key)
+
+		if values != null:
 			var more = values.clone()
 			more.append(entry.value.clone())
 			grouped.add(entry.key.clone(), more)

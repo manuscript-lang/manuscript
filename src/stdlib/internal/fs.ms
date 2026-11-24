@@ -20,7 +20,7 @@ import (
 
 // Copies a file or tree. `flags` has recursive 1, replace 2, error on an existing
 // destination 4, dereference 8, preserve timestamps 16 and verbatim symlinks 32;
-// `clone` is "none", "try" or "force"; `filter` is called with the source and
+// `clone` is "null", "try" or "force"; `filter` is called with the source and
 // destination of each entry and skips it when it returns False.
 export extern fn msstd_fs_copy(
 	source: String,

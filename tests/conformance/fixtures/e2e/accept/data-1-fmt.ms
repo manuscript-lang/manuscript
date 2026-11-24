@@ -10,7 +10,7 @@ fn positives(values: List[Int]) List[Int]:
 test "dynamic mutable data and explicit copies":
     expect_equal(positives([3, -1, 2]), [3, 2])?
 
-    _absent: Int? := none
+    _absent: Int? := null
     expect_equal([1].get_or(5, -1), -1)?
 
     var original = Map[String, Int]()

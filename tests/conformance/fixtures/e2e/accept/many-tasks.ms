@@ -55,7 +55,7 @@ test "forty thousand concurrent file reads complete":
 
 	var reads: List[Promise[Bytes]] = []
 	for unused in 0..40000:
-		reads.append(read_file(path, none))
+		reads.append(read_file(path, null))
 
 	results := wait_all(reads)?
 	var total = 0

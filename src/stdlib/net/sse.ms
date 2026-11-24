@@ -13,20 +13,20 @@ export type SseEvent:
 	// Every `data:` line of the event joined with LF; a bare `data:` line gives an
 	// empty line.
 	data: String
-	// The last event ID in effect when the event was dispatched, or none if the stream
+	// The last event ID in effect when the event was dispatched, or null if the stream
 	// never set one.
 	id: String?
 	// The latest valid `retry:` reconnection time in milliseconds sent up to this
-	// event, or none if the stream sent none.
+	// event, or null if the stream sent null.
 	retry: Int?
 
 // Optional byte limits for one line and for one event. A supplied limit must be
 // positive.
 export type SseLimits:
-	// Largest line in bytes, excluding its line ending; none sets no limit.
+	// Largest line in bytes, excluding its line ending; null sets no limit.
 	max_line_bytes: Int?
 	// Largest total of all field lines in one event, excluding line endings and
-	// comments; none sets no limit.
+	// comments; null sets no limit.
 	max_event_bytes: Int?
 
 // Internal transform state behind `sse_events`.
@@ -53,7 +53,7 @@ type Decoder:
 	data: List[String]
 	// Internal: True after `finish`.
 	closed: Bool
-	// The latest valid `retry:` value in milliseconds, or none if the stream sent none.
+	// The latest valid `retry:` value in milliseconds, or null if the stream sent null.
 	retry_ms: Int?
 	// Internal: the last event ID, which persists across events.
 	last_id: String?
@@ -62,14 +62,15 @@ type Decoder:
 
 fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 	var events = List[SseEvent]()
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
 	chunk := value
 	total := chunk.length()
 	var start = 0
-	var lf = chunk.index_of_byte(10, 0).get_or(total)
-	var cr = chunk.index_of_byte(13, 0).get_or(total)
+	var lf = chunk.index_of_byte(10, 0) or total
+	var cr = chunk.index_of_byte(13, 0) or total
 
 	while start < total:
 		var end = lf
@@ -90,8 +91,8 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 				return error(failure)
 
 		start = end + 1
-		if lf < start: lf = chunk.index_of_byte(10, start).get_or(total)
-		if cr < start: cr = chunk.index_of_byte(13, start).get_or(total)
+		if lf < start: lf = chunk.index_of_byte(10, start) or total
+		if cr < start: cr = chunk.index_of_byte(13, start) or total
 
 	if start < total:
 		self.carriage = false
@@ -106,7 +107,8 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 	for event in events: out.append(event.clone())
 
 fn var Decoder.finish(var out: List[SseEvent]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
 	self.closed = true
@@ -137,7 +139,7 @@ fn var Decoder.apply(line: String) Void:
 
 // Lines without a colon name a field with an empty value; other names are ignored.
 fn var Decoder.apply_other(line: String) Void:
-	if line.index_of(":").is_some(): return
+	if line.index_of(":") != null: return
 
 	if line == "data": self.data.append("")
 	else if line == "event": self.event_type = ""
@@ -155,7 +157,7 @@ fn var Decoder.reconnect(value: String) Void:
 	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return
 
 	milliseconds := value.parse_int()
-	if milliseconds.is_some(): self.retry_ms = milliseconds
+	if milliseconds != null: self.retry_ms = milliseconds
 
 /*
 Decodes a Server-Sent Events byte stream into events, in order.
@@ -170,15 +172,15 @@ export fn sse_events(
 	move input: ReadStream[Bytes],
 	limits: SseLimits = SseLimits(),
 ) ReadStream[SseEvent]:
-	var failure: Error? = none
+	var failure: Error? = null
 	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
 		failure = Error("SSE invalid input", kind: "EINVAL")
 	return through[Bytes, SseEvent](
 		input,
 		Decoder(
 			limits: limits,
-			retry_ms: none,
-			last_id: none,
+			retry_ms: null,
+			last_id: null,
 			line: BytesBuilder(),
 			line_bytes: 0,
 			event_bytes: 0,
@@ -193,11 +195,15 @@ export fn sse_events(
 	)
 
 fn positive(limit: Int?) Bool:
-	if maximum := limit: return maximum > 0
+	maximum := limit
+	if maximum != null: return maximum > 0
+
 	return true
 
 fn exceeds(value: Int, limit: Int?) Bool:
-	if maximum := limit: return value > maximum
+	maximum := limit
+	if maximum != null: return value > maximum
+
 	return false
 
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any
@@ -238,10 +244,10 @@ fn end_line(
 		dispatch(decoder, events)
 		return ok()
 
-	line := bytes.decode_utf8_range(
-		from,
-		end,
-	).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))?
+	line := ok_or(
+		bytes.decode_utf8_range(from, end),
+		Error("SSE line is not valid UTF-8", kind: "EBADMSG"),
+	)?
 	if line.starts_with(":"): return ok()
 
 	decoder.event_bytes += end - from

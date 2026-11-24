@@ -14,7 +14,7 @@ test "Adler32 RFC vectors and zlib trailer agree":
 
 	var binary = BytesBuilder()
 	for byte in 0..256:
-		binary.append(byte.to_uint8().get_or(0))
+		binary.append(byte.to_uint8() or 0)
 	expect_equal(adler32(binary.build()).to_int(), 2918612865)?
 
 	input := "a checksum without compressing the input".to_bytes()
@@ -74,7 +74,7 @@ test "checksum clones advance independently from the same prefix":
 test "whole and incremental checksums agree across binary chunk boundaries":
 	var builder = BytesBuilder()
 	for index in 0..4097:
-		builder.append(((index * 73 + index / 7) % 256).to_uint8().get_or(0))
+		builder.append(((index * 73 + index / 7) % 256).to_uint8() or 0)
 
 	data := builder.build()
 

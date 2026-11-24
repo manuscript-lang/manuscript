@@ -33,7 +33,8 @@ fn canon(value: YamlValue) String:
 
 // The value of a YAML core-schema number spelling.
 fn number(text: String) Float:
-	if f := text.parse_float(): return f
+	f := text.parse_float()
+	if f != null: return f
 
 	digits := text.slice(2, text.length())
 	if text.starts_with("0x"): return parse_int(digits, 16).get_or(0).to_float()
@@ -42,21 +43,17 @@ fn number(text: String) Float:
 	return 0.0
 
 fn exists(tree: FileTree, path: String) Bool:
-	return tree.read(path, none).is_ok()
+	return tree.read(path, null).is_ok()
 
 // Whether the parser agrees with the suite on one case directory.
 fn passes(tree: FileTree, id: String) Bool:
-	text := tree.read(f"{id}/in.yaml", none).get_or(
-		"".to_bytes()
-	).decode_utf8().get_or("")
+	text := tree.read(f"{id}/in.yaml", null).get_or("".to_bytes()).decode_utf8() or ""
 	parsed := parse_all(text)
 	if exists(tree, f"{id}/error"): return parsed.is_error()
 	if parsed.is_error(): return false
 	if not exists(tree, f"{id}/in.json"): return true
 
-	json := tree.read(f"{id}/in.json", none).get_or(
-		"".to_bytes()
-	).decode_utf8().get_or("")
+	json := tree.read(f"{id}/in.json", null).get_or("".to_bytes()).decode_utf8() or ""
 	want := canon_json_stream(json)
 	if want.is_error(): return false
 
@@ -77,9 +74,10 @@ test "the official YAML suite agrees with the parser except for the listed cases
 		if not passes(tree, id): failing.append(id.clone())
 	failing.sort()
 
-	listed := tree.read("expect-fail.txt", none).get_or(
-		"".to_bytes()
-	).decode_utf8().get_or("")
+	listed := (
+		tree.read("expect-fail.txt", null).get_or("".to_bytes()).decode_utf8()
+		or ""
+	)
 	var expected: List[String] = []
 
 	for line in listed.split("\n"):

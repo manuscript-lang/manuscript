@@ -90,7 +90,7 @@ export type UserInfo:
 	gid: Int
 	// Absolute path of the user's home directory from the account database.
 	home: String
-	// Path of the user's login shell, or an empty string when the host records none.
+	// Path of the user's login shell, or an empty string when the host records null.
 	shell: String
 
 // Address and link metadata for one host network interface.

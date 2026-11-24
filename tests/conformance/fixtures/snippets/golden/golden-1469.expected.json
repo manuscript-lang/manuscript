@@ -3,13 +3,25 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "format": 1,
-    "diagnostics": [],
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a nullable has no method `and_then`; write `if x != null:` and use `x`",
+        "position": {
+          "file": "golden-1469.ms",
+          "line": 10,
+          "column": 18,
+          "offset": 189
+        }
+      }
+    ],
     "text": {
-      "exit_code": 0,
-      "stdout": "Checked golden-1469.ms\n",
-      "stderr": ""
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1469.ms:10:18: type: a nullable has no method `and_then`; write `if x != null:` and use `x`\n    |\n 10 |     return value.and_then(crash) or panic(\"called Optional.get() on null\")\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -15,13 +15,13 @@ or option violation is. Use `escape` before putting text in markup and `unescape
 character references back.
 */
 
-// Limits for `parse` on input bytes, tree depth and node count. A field set to none
+// Limits for `parse` on input bytes, tree depth and node count. A field set to null
 // adds no limit. The defaults are a depth of 10,000 and 1,000,000 nodes, with no limit
 // on input bytes. A negative limit returns `EINVAL`, and input that exceeds a limit
 // returns `EOVERFLOW`.
 export type HtmlOptions:
-	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-	max_bytes: Int? = none
+	// Maximum UTF-8 input bytes before parsing; null adds no input-size budget.
+	max_bytes: Int? = null
 	// Maximum normalized node depth; the document is depth zero and direct children
 	// depth one.
 	max_depth: Int? = 10000
@@ -273,7 +273,7 @@ type Parser:
 	ans: List[String] = []
 	// Open elements. For each entry, `oe_p` and `oe_stop` hold the index plus one of
 	// the nearest open `p` and of the nearest button-scope boundary at or below that
-	// entry (0 for none), so "is a `p` open in button scope" needs no stack walk.
+	// entry (0 for null), so "is a `p` open in button scope" needs no stack walk.
 	oe: List[Int] = []
 	oe_p: List[Int] = []
 	oe_stop: List[Int] = []
@@ -611,13 +611,13 @@ fn var Parser.read_until_close_angle() Void:
 
 	idx := self.src.index_of_byte(62, self.raw_end)
 
-	if idx.is_none():
+	if idx == null:
 		self.raw_end = self.size
 		self.eof = true
 		self.data_end = self.raw_end
 		return
 
-	self.raw_end = idx.get_or(0) + 1
+	self.raw_end = (idx) + 1
 	self.data_end = self.raw_end - 1
 
 fn var Parser.read_markup_declaration() Int:
@@ -854,20 +854,20 @@ fn var Parser.read_tag_attr_val() Void:
 	else if quote == 39 or quote == 34:
 		self.pv_s = self.raw_end
 
-		var idx: Int? = none
+		var idx: Int? = null
 
 		if quote == 39:
 			idx = self.src.index_of_byte(39, self.raw_end)
 		else:
 			idx = self.src.index_of_byte(34, self.raw_end)
 
-		if idx.is_none():
+		if idx == null:
 			self.raw_end = self.size
 			self.eof = true
 			self.pv_e = self.raw_end
 			return
 
-		self.raw_end = idx.get_or(0) + 1
+		self.raw_end = (idx or 0) + 1
 		self.pv_e = self.raw_end - 1
 	else:
 		self.pv_s = self.raw_end - 1
@@ -919,12 +919,12 @@ fn var Parser.next_token() Int:
 		// Skip to the next `<`; the bytes before it are text.
 		idx := self.src.index_of_byte(60, self.raw_end)
 
-		if idx.is_none():
+		if idx == null:
 			self.raw_end = self.size
 			self.eof = true
 			break
 
-		self.raw_end = idx.get_or(0) + 1
+		self.raw_end = (idx) + 1
 
 		c := self.read_byte()
 		if self.eof: break
@@ -999,7 +999,7 @@ fn var Parser.next_token() Int:
 // handling.
 fn var Parser.token_text() String:
 	var s = convert_newlines(
-		self.src.decode_utf8_range(self.data_start, self.data_end).get_or("")
+		self.src.decode_utf8_range(self.data_start, self.data_end) or ""
 	)
 	if (self.convert_nul or self.tt == T_COMMENT) and s.contains("\u{0}"):
 		s = s.replace("\u{0}", "\u{FFFD}")
@@ -1033,7 +1033,7 @@ fn var Parser.load_token() Void:
 			self.src.decode_utf8_range(
 				self.attr_vs[i],
 				self.attr_ve[i],
-			).get_or("")
+			) or ""
 		)
 		if value.contains("&"): value = msstd_html_decode(value, true)
 
@@ -1202,7 +1202,7 @@ fn var Parser.oe_pop() Int:
 
 	self.oe_p.pop()
 	self.oe_stop.pop()
-	return self.oe.pop().get_or(-1)
+	return self.oe.pop() or (-1)
 
 fn var Parser.oe_truncate(len: Int) Void:
 	while self.oe.length() > len:
@@ -1252,7 +1252,7 @@ fn var Parser.afe_remove(n: Int) Void:
 
 fn var Parser.afe_truncate_pop() Int:
 	r := self.afe.pop()
-	return r.get_or(-1)
+	return r or (-1)
 
 // Whether an HTML element with the atom is open.
 fn Parser.oe_contains(atom: Int) Bool:
@@ -1347,7 +1347,7 @@ fn var Parser.parse_generic_raw_text_element() Void:
 	self.im = IM_TEXT
 
 // Pops elements whose end tags are implied, stopping before an element with atom
-// `skip_atom` (-1 for none).
+// `skip_atom` (-1 for null).
 fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
 	var i = self.oe.length()
 
@@ -1438,7 +1438,7 @@ fn var Parser.append_doc_comment() Void:
 	n := self.alloc(K_COMMENT, 0, self.tok_data.clone())
 	self.append_child(1, n)
 
-// Copies the current token's attributes onto node `id`, which has none yet.
+// Copies the current token's attributes onto node `id`, which has null yet.
 fn var Parser.set_token_attributes(id: Int) Void:
 	self.attr_start[id] = self.akey.length()
 
@@ -3068,8 +3068,8 @@ fn var Parser.adjust_foreign_attributes() Void:
 
 		colon := key.index_of(":")
 
-		if colon.is_some():
-			at := colon.get_or(0)
+		if colon != null:
+			at := colon
 			self.tok_nss[i] = key.view(0, at).clone()
 			self.tok_keys[i] = key.view(at + 1, key.length()).clone()
 
@@ -3272,7 +3272,7 @@ fn var Parser.add_doctype(text: String) Bool:
 	while space < size and not is_html_whitespace(b.get(space).to_int()):
 		space += 1
 
-	name := b.decode_utf8_range(0, space).get_or("")
+	name := b.decode_utf8_range(0, space) or ""
 	if name != "html": quirks = true
 
 	node := self.alloc(K_DOCTYPE, 0, go_lower(name))
@@ -3283,7 +3283,7 @@ fn var Parser.add_doctype(text: String) Bool:
 		pos += 1
 	if size - pos < 6: return quirks or pos < size
 
-	var key = go_lower(b.decode_utf8_range(pos, pos + 6).get_or(""))
+	var key = go_lower(b.decode_utf8_range(pos, pos + 6) or "")
 	pos += 6
 	if not valid_boundary(b, pos): pos = size
 	if key == "": key = "?"
@@ -3314,7 +3314,7 @@ fn var Parser.add_doctype(text: String) Bool:
 			scan += 1
 
 		keys.append(key.clone())
-		values.append(b.decode_utf8_range(pos, end).get_or(""))
+		values.append(b.decode_utf8_range(pos, end) or "")
 		pos = next
 
 		if key == "public":
@@ -3406,7 +3406,7 @@ fn needs_ascii_lowering(src: Bytes, start: Int, end: Int) Bool:
 // The text of `src[start, end)` with ASCII capitals lower-cased (other scalars
 // unchanged).
 fn lowered_text(src: Bytes, start: Int, end: Int) String:
-	text := src.decode_utf8_range(start, end).get_or("")
+	text := src.decode_utf8_range(start, end) or ""
 	if not needs_ascii_lowering(src, start, end): return text
 
 	var out = ""
@@ -4677,7 +4677,7 @@ fn is_end_ok_in_body(atom: Int) Bool:
 		115: return true
 		_: return false
 
-// In-body start-tag rule for an atom, as one of the `S_*` constants (0 for none).
+// In-body start-tag rule for an atom, as one of the `S_*` constants (0 for null).
 fn body_start_class(atom: Int) Int:
 	match atom:
 		115: return 1  // html
@@ -4789,7 +4789,7 @@ fn body_start_class(atom: Int) Int:
 		352: return 32  // tr
 		_: return 0
 
-// In-body end-tag rule for an atom, as one of the `E_*` constants (0 for none).
+// In-body end-tag rule for an atom, as one of the `E_*` constants (0 for null).
 fn body_end_class(atom: Int) Int:
 	match atom:
 		35: return 1  // body
@@ -4960,11 +4960,11 @@ fn svg_attribute(name: String) String:
 fn limit_error() Error:
 	return Error("HTML: limit exceeded", kind: "EOVERFLOW")
 
-// A limit as a count: none is unlimited and a negative limit is an `EINVAL` error.
+// A limit as a count: null is unlimited and a negative limit is an `EINVAL` error.
 fn budget(limit: Int?) Int!:
-	if limit.is_none(): return ok(9223372036854775807)
+	if limit == null: return ok(9223372036854775807)
 
-	n := limit.get_or(0)
+	n := limit
 	if n < 0: return error(Error("HTML: invalid input", kind: "EINVAL"))
 
 	return ok(n)
@@ -4977,8 +4977,8 @@ fn within_limits(p: Parser, max_depth: Int, max_nodes: Int) Bool:
 	var count = 0
 
 	while stack.length() > 0:
-		id := stack.pop().get_or(1)
-		depth := depths.pop().get_or(0)
+		id := stack.pop() or 1
+		depth := depths.pop() or 0
 		count += 1
 		if count > max_nodes or depth > max_depth: return false
 

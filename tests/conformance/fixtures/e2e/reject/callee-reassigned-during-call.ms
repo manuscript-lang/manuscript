@@ -15,7 +15,7 @@ export fn main() Int:
 			_value:
 				selected = fn(amount: Int, deduction: Int) Int: amount + deduction
 				10
-			none: 10
+			null: 10
 		,
 		3
 	)

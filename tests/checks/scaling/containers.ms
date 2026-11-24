@@ -139,7 +139,7 @@ export fn main() Int:
 	args := arguments()
 	var n = 10000
 	if args.length() > 0:
-		n = args[0].parse_int().get_or(10000)
+		n = args[0].parse_int() or 10000
 
 	var total = 0
 	total += list_append(n)

@@ -246,10 +246,10 @@ export pi: Float := 3.141592653589793
 export fn pow(base: Float, exponent: Float) Float:
 	return msstd_math_pow(base, exponent)
 
-// Returns `base` raised to a nonnegative integer `exponent`, or none when the exponent
+// Returns `base` raised to a nonnegative integer `exponent`, or null when the exponent
 // is negative or the result does not fit in Int. Example: `pow_int(2, 10)` is 1024.
 export fn pow_int(base: Int, exponent: Int) Int?:
-	if exponent < 0: return none
+	if exponent < 0: return null
 
 	var result = 1
 	var factor = base
@@ -258,28 +258,28 @@ export fn pow_int(base: Int, exponent: Int) Int?:
 	while left > 0:
 		if left % 2 == 1:
 			next_result := checked_multiply(result, factor)
-			if next_result.is_none(): return none
+			if next_result == null: return null
 
-			result = next_result.get_or(0)
+			result = next_result
 
 		left /= 2
 
 		if left > 0:
 			next_factor := checked_multiply(factor, factor)
-			if next_factor.is_none(): return none
+			if next_factor == null: return null
 
-			factor = next_factor.get_or(0)
+			factor = next_factor
 
 	return result
 
-// Multiplies two Ints, or returns none when the product does not fit in Int.
+// Multiplies two Ints, or returns null when the product does not fit in Int.
 fn checked_multiply(left: Int, right: Int) Int?:
 	if left == 0 or right == 0: return 0
 
 	product := wrapping_multiply(left, right)
-	if left == min_int and right == -1: return none
-	if right == min_int and left == -1: return none
-	if product / right != left: return none
+	if left == min_int and right == -1: return null
+	if right == min_int and left == -1: return null
+	if product / right != left: return null
 
 	return product
 
@@ -292,13 +292,13 @@ export type DivMod:
 
 // Divides rounding toward negative infinity, like Python's `divmod`: the remainder
 // has the divisor's sign and `quotient * divisor + remainder` is the dividend. Returns
-// none for a zero divisor or the one overflowing case, `min_int` by -1.
+// null for a zero divisor or the one overflowing case, `min_int` by -1.
 // Example: `divmod(-7, 2)` is quotient -4, remainder 1.
 export fn divmod(dividend: Int, divisor: Int) DivMod?:
-	if divisor == 0: return none
+	if divisor == 0: return null
 
 	if divisor == -1:
-		if dividend == min_int: return none
+		if dividend == min_int: return null
 		return DivMod(quotient: -dividend, remainder: 0)
 
 	var quotient = dividend / divisor
@@ -329,10 +329,10 @@ export fn lcm(left: Int, right: Int) Int:
 	if left == 0 or right == 0: return 0
 	return (left / gcd(left, right) * right).abs()
 
-// Returns the floor of the square root, or none for a negative value.
+// Returns the floor of the square root, or null for a negative value.
 // Example: `isqrt(17)` is 4.
 export fn isqrt(value: Int) Int?:
-	if value < 0: return none
+	if value < 0: return null
 	if value < 2: return value
 
 	var low = 1
@@ -697,7 +697,7 @@ fn BigInt.pow_mod(exponent: BigInt, modulus: BigInt) BigInt!:
 	return msstd_bigint_pow_mod(self, exponent, modulus)
 
 // Returns the multiplicative inverse modulo a positive modulus, in 0 through
-// modulus - 1; a non-positive modulus returns EINVAL. No inverse gives ok(none);
+// modulus - 1; a non-positive modulus returns EINVAL. No inverse gives ok(null);
 // modulus 1 gives zero. Variable-time; unsuitable for secret operands.
 fn BigInt.inverse_mod(modulus: BigInt) BigInt?!:
 	if modulus.sign() <= 0: return error(
@@ -789,22 +789,22 @@ fn BigInt.shift_left(count: Int) BigInt!:
 fn BigInt.shift_right(count: Int) BigInt!:
 	return msstd_bigint_shift_right(self, count)
 
-// Converts to the nearest Float, or returns none when the magnitude exceeds the
+// Converts to the nearest Float, or returns null when the magnitude exceeds the
 // Float range.
 fn BigInt.to_float() Float?:
 	value := msstd_bigint_to_float(self)
 	if value.is_finite(): return value
 
-	return none
+	return null
 
-// Returns the value as an Int, or none when it is outside Int's range.
+// Returns the value as an Int, or null when it is outside Int's range.
 fn BigInt.to_int() Int?:
 	return msstd_bigint_to_int(self)
 
 // Formats the value in a radix from 2 through 36 using lowercase digits and a
-// leading `-` for negatives, or none when the radix is outside 2 through 36.
+// leading `-` for negatives, or null when the radix is outside 2 through 36.
 fn BigInt.to_string_radix(radix: Int) String?:
-	if radix < 2 or radix > 36: return none
+	if radix < 2 or radix > 36: return null
 	return msstd_bigint_to_string_radix(self, radix)
 
 // Formats the value in base 16 using lowercase digits and a leading `-` for
@@ -829,9 +829,9 @@ fn BigInt.is_probable_prime(rounds: Int = 13) Bool:
 	return bigint_probable_prime(self, rounds)
 
 /*
-Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
+Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or null when the value is not a square there.
 The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns EINVAL.
-A composite modulus is not reliably detected: the call may return EINVAL, none, or a valid root, so only a prime modulus gives a trustworthy none.
+A composite modulus is not reliably detected: the call may return EINVAL, null, or a valid root, so only a prime modulus gives a trustworthy null.
 */
 fn BigInt.mod_sqrt(modulus: BigInt) BigInt?!:
 	return bigint_mod_sqrt(self, modulus)
@@ -923,7 +923,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 	// The first 13 prime bases decide every value below this bound exactly. Above it,
 	// fixed bases can be fooled by a composite built for them, so the requested rounds
 	// are repeated with secret random bases.
-	bound := msstd_bigint_parse("3317044064679887385961981", 10, none).get_or(
+	bound := msstd_bigint_parse("3317044064679887385961981", 10, null).get_or(
 		bigint_zero()
 	)
 	if n.compare(bound) < 0: return true
@@ -979,7 +979,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 	if target.sign() < 0:
 		target += modulus
 
-	absent: BigInt? := none
+	absent: BigInt? := null
 	if target.sign() == 0: return ok(bigint_zero())
 
 	minus_one := modulus - one

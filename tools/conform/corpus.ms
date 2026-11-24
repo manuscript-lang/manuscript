@@ -40,10 +40,12 @@ export type Meta:
 	deterministic: Bool
 
 export fn text_of(data: Bytes) String:
-	return data.decode_utf8().get_or("").clone()
+	return (data.decode_utf8() or "").clone()
 
 export fn string_member(value: JsonValue, key: String) String:
-	if found := value.get(key): return found.as_string().get_or("")
+	found := value.get(key)
+	if found != null: return found.as_string() or ""
+
 	return ""
 
 export fn parent_length(path: String) Int:
@@ -80,7 +82,7 @@ export fn parse_meta(text: String) Meta:
 			break
 
 		rest := trimmed.slice("// conform:".length(), trimmed.length()).trim()
-		at := rest.index_of("=").get_or(-1)
+		at := rest.index_of("=") or (-1)
 		if at < 0: continue
 
 		key := rest.slice(0, at).trim()
@@ -90,15 +92,14 @@ export fn parse_meta(text: String) Meta:
 			for tag in value.split(","):
 				if tag.trim() != "": meta.tags.append(tag.trim().clone())
 		else if key == "phase": meta.phase = value.clone()
-		else if key == "timeout": meta.timeout = value.parse_int().get_or(0)
+		else if key == "timeout": meta.timeout = value.parse_int() or 0
 		else if key == "entry": meta.entry = value.clone()
 		else if key == "origin": meta.origin = value.clone()
 		else if key == "deterministic": meta.deterministic = value == "true"
 		else if key == "args":
-			if document := parse(value).get_or(JsonValue.Null).as_list():
-				for item in document: meta.args.append(
-					item.as_string().get_or("").clone()
-				)
+			document := parse(value).get_or(JsonValue.Null).as_list()
+			if document != null:
+				for item in document: meta.args.append((item.as_string() or "").clone())
 
 	return meta
 
@@ -161,7 +162,8 @@ export fn fixtures(root: String, phase: String, filters: List[String]) List[Fixt
 
 		sidecar := if is_dir: f"{path}/expected.json" else: f"{root}/{id}.expected.json"
 		var expected = JsonValue.Null
-		if recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected"):
+		recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected")
+		if recorded != null:
 			expected = recorded.clone()
 
 		if meta.entry == "":

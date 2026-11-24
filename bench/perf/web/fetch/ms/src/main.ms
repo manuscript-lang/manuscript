@@ -1,5 +1,6 @@
 import (
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	stdout from "@std/io/io.ms",
 	FetcherOptions, fetcher from "@std/net/fetch.ms",
 	arguments from "@std/os/env.ms",
@@ -25,8 +26,8 @@ fn worker(url: String, nanos: Int) Int:
 fn main() Void:
 	args := arguments()
 	url := args.get(0)
-	conns := args.get(1).parse_int().get()
-	secs := args.get(2).parse_int().get()
+	conns := args.get(1).parse_int() or panic("called Optional.get() on null")
+	secs := args.get(2).parse_int() or panic("called Optional.get() on null")
 	var total = 0
 	var running: List[Promise[Int]] = []
 	for i in 0..conns:

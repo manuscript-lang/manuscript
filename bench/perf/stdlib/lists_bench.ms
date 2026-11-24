@@ -1,4 +1,8 @@
-import Point, ints from "./src/harness.ms"
+import (
+	panic from "@std/core.ms",
+
+	Point, ints from "./src/harness.ms",
+)
 
 // Index of the greatest key; `key` is a known lambda at every call site (see
 // design/proposals/specialize-closure-args.md).
@@ -180,7 +184,7 @@ bench "list.sum" per 100000:
 	fixture.data_15.sum()
 
 bench "list.max" per 100000:
-	fixture.data_16.max().get()
+	fixture.data_16.max() or panic("called Optional.get() on null")
 
 bench "list.contains" per 100:
 	var n = 0
@@ -202,8 +206,11 @@ bench "list.any_early_exit" per 100000:
 
 bench "list.max_by" per 100:
 	var n = 0
+
 	for i in 0..100:
-		if best := fixture.small_points.max_by(fn(p: Point) Int: p.y): n += best.x
+		best := fixture.small_points.max_by(fn(p: Point) Int: p.y)
+		if best != null: n += best.x
+
 	n
 
 bench "list.max_by_loop" per 100:

@@ -55,9 +55,9 @@ export fn run_ints(path: String, args: List[String]) List[Int]!:
 
 	for part in parts:
 		n := part.parse_int()
-		if n.is_none(): return invalid(f"not an integer: {part}")
+		if n == null: return invalid(f"not an integer: {part}")
 
-		out.append(n.get_or(0))
+		out.append(n)
 
 	return ok(out)
 
@@ -115,17 +115,18 @@ export fn read_json(path: String) JsonValue!:
 // The `median_ns` of `before` in the summary row for `case` (summary lists
 // `{case, distributions: {before: {median_ns}}}`).
 export fn before_median(summary: JsonValue, name: String, operation: String) Float!:
-	for row in summary.as_list().get_or([]):
-		c := row.get("case").get_or(JsonValue.Null).as_string().get_or("")
+	for row in (summary.as_list() or []):
+		c := (row.get("case") or JsonValue.Null).as_string() or ""
 		op := row.get("operation")
 		same_op := (
 			operation == ""
-			or op.is_none()
-			or op.get_or(JsonValue.Null).as_string().get_or("") == operation
+			or (op == null)
+			or ((op).as_string() or "") == operation
 		)
+
 		if c == name and same_op:
-			if v := row.get_in(["distributions", "before", "median_ns"]):
-				return ok(v.as_float().get_or(0.0))
+			v := row.get_in(["distributions", "before", "median_ns"])
+			if v != null: return ok(v.as_float() or 0.0)
 
 	return invalid(f"no summary row for {name}")
 
@@ -144,9 +145,9 @@ export fn all_ints(values: List[String]) List[Int]!:
 
 	for v in values:
 		n := v.trim().parse_int()
-		if n.is_none(): return invalid(f"not an integer: {v}")
+		if n == null: return invalid(f"not an integer: {v}")
 
-		out.append(n.get_or(0))
+		out.append(n)
 
 	return ok(out)
 

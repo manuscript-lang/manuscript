@@ -112,8 +112,8 @@ fn measure[F](operations: Int, work: fn(var F) Void!, var state: F) Void!:
 // Called by the entry that `ms bench` builds, with each block's body; programs do not
 // call it. The body is one iteration to repeat and time.
 export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
-	var none = 0
-	return measure(operations, fn var unused: body(), none)
+	var null = 0
+	return measure(operations, fn var unused: body(), null)
 
 // Called by the entry that `ms bench` builds for a file with a `make_fixture`, with
 // each block's body, which takes the file's fixture; programs do not call it. The
@@ -129,12 +129,17 @@ export fn run_bench_fixture[F](
 fn settings() Settings:
 	environment := environment().get_or(Map[String, String]())
 	var found = Settings(100 * 1000000, 10, 0)
-	if text := environment.get("MS_BENCH_TIME_MS"):
-		found.target_nanoseconds = max(text.parse_int().get_or(100), 1) * 1000000
-	if text := environment.get("MS_BENCH_SAMPLES"):
-		found.samples = max(text.parse_int().get_or(10), 1)
-	if text := environment.get("MS_BENCH_ITERATIONS"):
-		found.iterations = max(text.parse_int().get_or(0), 0)
+	text := environment.get("MS_BENCH_TIME_MS")
+	if text != null:
+		found.target_nanoseconds = max(text.parse_int() or 100, 1) * 1000000
+
+	text := environment.get("MS_BENCH_SAMPLES")
+	if text != null:
+		found.samples = max(text.parse_int() or 10, 1)
+
+	text := environment.get("MS_BENCH_ITERATIONS")
+	if text != null:
+		found.iterations = max(text.parse_int() or 0, 0)
 	return found
 
 // Internal: runs `body` `count` times and returns the elapsed nanoseconds. The first

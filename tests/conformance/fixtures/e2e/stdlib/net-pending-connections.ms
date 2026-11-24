@@ -18,7 +18,8 @@ import (
 fn echo(var pending: PendingConnection) Void!:
 	var conn = pending.adopt()?
 	chunk := recv(conn, 2.seconds())?
-	if data := chunk:
+	data := chunk
+	if data != null:
 		conn.output.write(data)?
 	return conn.close()
 
@@ -43,7 +44,9 @@ fn ask(address: String, text: String) String!:
 
 	reply := recv(client, 2.seconds())?
 	void client.close()
-	if data := reply: return ok(data.decode_utf8().get_or(""))
+
+	data := reply
+	if data != null: return ok(data.decode_utf8() or "")
 
 	return ok("")
 
@@ -52,6 +55,7 @@ test "pending connections are served by promises spread over the threads":
 	address := listener.address()
 	serving := promise(fn: serve_spread(listener, 16))
 	var asking: List[Promise[String]] = []
+
 	for i in 0..16:
 		target := address.clone()
 		asking.append(promise(fn: ask(target, f"hello {i}")))
@@ -73,7 +77,7 @@ test "a pending connection adopts once and closing it unadopted closes the socke
 	var second = connect(listener.address(), timeout: 2.seconds()).wait()?
 	var dropped = listener.accept_pending(2.seconds()).wait()?
 	dropped.close()?
-	expect_true((recv(second, 2.seconds())?).is_none())?
+	expect_true((recv(second, 2.seconds())?) == null)?
 	client.close()?
 
 test "accepting a pending connection on a closed listener reports it":

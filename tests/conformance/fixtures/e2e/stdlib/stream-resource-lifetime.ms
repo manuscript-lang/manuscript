@@ -29,18 +29,19 @@ fn var Tokens.next() Token?!:
 	if self.at == self.fail_at: return error(Error("source failed", kind: "EIO"))
 	if self.at <= 2: return ok(Token(self.at, self.log.clone()))
 
-	return ok(none)
+	return ok(null)
 
 fn move Tokens.close() Void!:
 	return ok()
 
 fn events(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
 fn read_one(input: ReadStream[Token]) Void!:
 	var owned = input
-	if token := owned.next()?:
+	token := owned.next()?
+	if token != null:
 		use_token(token)?
 
 fn wait_one(input: ReadStream[Token]) Void!:
@@ -144,8 +145,9 @@ test "a source error relays through try after closing earlier items":
 
 fn direct_next(log: String) Void!:
 	var input = ReadStream[Token](Tokens(log.clone()))
+	item := input.next()?
 
-	if item := input.next()?:
+	if item != null:
 		token := item
 		use_token(token)?
 
@@ -163,7 +165,7 @@ fn var PlainTokens.next() Token?:
 	self.at += 1
 	if self.at <= 2: return Token(self.at, self.log.clone())
 
-	return none
+	return null
 
 fn plain(log: String) Void!:
 	for token in PlainTokens(log.clone()):
@@ -175,41 +177,13 @@ test "a custom Iterator transfers each freshly produced resource":
 	plain(log)?
 	expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")?
 
-type OptionalTokens:
-	log: String
-	at: Int = 0
-
-fn var OptionalTokens.next() Token??!:
-	self.at += 1
-	if self.at > 1: return ok(none)
-
-	inner: Token? := Token(1, self.log.clone())
-	return ok(inner)
-
-fn move OptionalTokens.close() Void!:
-	return ok()
-
-fn optional_payload(log: String) Void!:
-	var input = ReadStream[Token?](OptionalTokens(log.clone()))
-
-	for item in input:
-		maybe := item
-		if token := maybe:
-			use_token(token)?
-
-test "a nested optional payload transfers its resource":
-	dir := temporary("resource-optional-") | expect_ok?
-	log := f"{dir.path()}/events"
-	optional_payload(log)?
-	expect_equal(events(log), "body 1\nclose 1\n")?
-
 type ResultTokens:
 	log: String
 	at: Int = 0
 
 fn var ResultTokens.next() Result[Result[Token, Error]?, Error]:
 	self.at += 1
-	if self.at > 1: return ok(none)
+	if self.at > 1: return ok(null)
 
 	inner: Token! := ok(Token(1, self.log.clone()))
 	return ok(inner)
@@ -297,7 +271,8 @@ fn resume_after_break(log: String) Void!:
 		use_token(token)?
 		break
 
-	if token := input.next()?:
+	token := input.next()?
+	if token != null:
 		use_token(token)?
 
 test "breaking returns the source so its next resource can be read":

@@ -20,5 +20,5 @@ export fn main() Int:
 			_value:
 				receiver = Offset(9)
 				10
-			none: 10
+			null: 10
 	)

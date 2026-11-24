@@ -20,7 +20,7 @@ import WebSocketKind, WebSocketMessage from "@std/net/websocket.ms"
 fn echo(var exchange: HttpExchange) Void!:
     var socket = upgrade(exchange)?
     message := socket.input.next()?
-    if message.is_none(): return ok()
+    if message == null: return ok()
     echoed := message.get()
     socket.output.write(echoed)?
     socket.close()?
@@ -30,12 +30,12 @@ fn main() Void!:
     var client = web_socket(f"ws://{server.address()}/")?
     client.output.write(WebSocketMessage(data: "hello".to_bytes(), kind: WebSocketKind.Text))?
     reply := client.input.next()?
-    print(reply.get().data.decode_utf8().get_or(""))
+    print(reply.get().data.decode_utf8() or "")
     client.close()?
     server.close()?
 ```
 
-- `input.next()` returns `none` when the peer closes normally, so a loop over `socket.input` ends by itself.
+- `input.next()` returns `null` when the peer closes normally, so a loop over `socket.input` ends by itself.
 - `upgrade` checks the `Origin` header against `allowed_origins`, offers `subprotocols`, and bounds a message with `max_message_bytes`. Set the last one for any server that faces the internet.
 - Use `wss://` with the client's `WebSocketOptions(tls: ...)` for TLS: see [HTTPS and certificates](tls.md).
 

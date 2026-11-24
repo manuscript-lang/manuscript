@@ -9,7 +9,7 @@ fn first[T](left: T, right: T) T: left
 fn pick[T](items: List[T], keep: fn(T) Bool) T?:
 	for item in items:
 		if keep(item): return item
-	return none
+	return null
 
 type Counter:
 	value: Int = 0
@@ -48,7 +48,7 @@ fn Offset.subtract(amount: Int, deduction: Int = self.value) Int: amount - deduc
 
 fn apply(callback: fn(Int, Int) Int, input: Int) Int: callback(input, 2)
 
-fn optional(value: Int?, fallback: Int = 0) Int: value.get_or(fallback)
+fn optional(value: Int?, fallback: Int = 0) Int: value or fallback
 
 fn required_before_default(second: Int, first: Int = 9) Int: first - second
 
@@ -76,8 +76,8 @@ test "positional labeled mixed and identifier calls":
 
 test "generic calls constructors and callback inference":
 	expect_false(first(3, 4) != 3 or first[Int](right: 4, 3) != 3)?
-	expect_equal(pick([1, 2], fn item: item > 1).get_or(0), 2)?
-	expect_equal(pick(keep: fn item: item > 1, [1, 2]).get_or(0), 2)?
+	expect_equal(pick([1, 2], fn item: item > 1) or 0, 2)?
+	expect_equal(pick(keep: fn item: item > 1, [1, 2]) or 0, 2)?
 
 	record := Record(3)
 	explicit := Record[Int](second: 4, 3)
@@ -100,7 +100,7 @@ test "generic calls constructors and callback inference":
 	reordered_sum := [1, 2, 3].fold(step: fn total, item: total + item, 0)
 	explicit_sum := [1, 2, 3].fold[Int](0, fn total, item: total + item)
 	expect_false((sum != 6 or reordered_sum != 6 or explicit_sum != 6))?
-	expect_false(optional(4) != 4 or optional(none, 2) != 2)?
+	expect_false(optional(4) != 4 or optional(null, 2) != 2)?
 
 test "methods native APIs function values and contextual labels":
 	offset := Offset(3)
@@ -156,7 +156,7 @@ test "written order before omitted defaults and body":
 			_value:
 				early = 9
 				0
-			none: 0
+			null: 0
 	)
 	expect_equal(selected, 7)?
 

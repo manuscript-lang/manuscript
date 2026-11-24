@@ -81,7 +81,7 @@ cases and first-build success. Harbor records tokens and cost per trial. Use `-a
 - **Long challenge**: a challenge that needs more than the run's agent limit sets `agent_timeout_s` in its `challenge.json` (c55 uses 3600).
 - **Language**: add an entry to `languages.json`, a `templates/<id>/` dir, and a reference solution per challenge.
 - **Harness**: implement the `Harness` interface from `harnesses/harness.ms` in a new file (`command()` builds argv, `parse()` returns `Usage`) and register it
-  in `harnesses/all.ms`. If the CLI reports no cost, leave `cost_source` as `none` and the base class estimates it.
+  in `harnesses/all.ms`. If the CLI reports no cost, leave `cost_source` as `null` and the base class estimates it.
 
 ## Results
 

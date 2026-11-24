@@ -64,7 +64,7 @@ fn hidden(n: Int) Int!Error:
                 match present(n):
                     _value:
                         return ok(9223372036854775807)
-                    none: "negative"
+                    null: "negative"
             )
         )
 

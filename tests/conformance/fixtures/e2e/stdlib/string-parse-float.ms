@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	infinity, parse_float from "@std/math/math.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 )
@@ -16,14 +17,16 @@ test "parse_float accepts the special spellings of math.parse_float":
 	"Infinity".parse_float() | expect_equal(infinity)?
 	"-Infinity".parse_float() | expect_equal(-infinity)?
 	"+Infinity".parse_float() | expect_equal(infinity)?
-	expect_true("NaN".parse_float().get().is_nan())?
+	expect_true(
+		("NaN".parse_float() or panic("called Optional.get() on null")).is_nan()
+	)?
 
 test "parse_float returns none for invalid or out-of-range text":
 	for text in [
 		"", " 1.0", "1.0 ", "1_0", "1.", ".5", "0x1p2", "nan", "inf", "abc", "1e999",
 		"+NaN"
 	]:
-		text.parse_float() | expect_equal(none)?
+		text.parse_float() | expect_equal(null)?
 
 test "parse_float agrees with math.parse_float":
 	for text in ["7", "-2.5e3", "1.", "oops", "1e999"]:

@@ -22,11 +22,14 @@ fn else_branch() Int:
 
 fn optional_then_branch() Int:
 	while true:
-		if _value := optional(panic("stop")): break
+		_value := optional(panic("stop"))
+		if _value != null: break
 
 fn optional_else_branch() Int:
 	while true:
-		if _value := optional(panic("stop")):
+		_value := optional(panic("stop"))
+
+		if _value != null:
 			continue
 		else:
 			break

@@ -1,5 +1,5 @@
 CALLS VIEW
-`- parse_total  [fn] src/shapes.ms:15
+`- parse_total  [fn] src/shapes.ms:17
    |- area  [fn] src/shapes.ms:8
    |- read_number  [fn] src/shapes.ms:11
    |  |- Failure

@@ -46,4 +46,4 @@ test "float shuffle and choice use operating system entropy":
         shuffled.sorted(fn(left: Int, right: Int) Int: left - right), [1, 2, 3, 4, 5]
     )?
     expect_equal(choice([7])?, 7)?
-    expect_equal(choice(List[Int]())?, none)?
+    expect_equal(choice(List[Int]())?, null)?

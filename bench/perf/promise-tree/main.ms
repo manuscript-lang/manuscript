@@ -1,5 +1,6 @@
 import (
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
 )
@@ -24,8 +25,8 @@ fn work(n: Int) Int!:
 fn main() Void:
 	args := arguments()
 	mode := args[0].clone()
-	n := args[1].parse_int().get()
-	k := args[2].parse_int().get()
+	n := args[1].parse_int() or panic("called Optional.get() on null")
+	k := args[2].parse_int() or panic("called Optional.get() on null")
 	t0 := monotonic()
 	var r = 0
 

@@ -4,7 +4,7 @@ Use `.clone()` for an independent deque when its elements are Clonable; assignin
 Use `Queue` for plain first-in, first-out work, and `Deque` when either end is pushed or popped, such as a sliding window or work stealing.
 */
 export type Deque[T]:
-	// Ring-buffer storage; `none` marks unused slots. Internal state: use the
+	// Ring-buffer storage; `null` marks unused slots. Internal state: use the
 	// operations, not this field.
 	slots: List[T?] = []
 	// Index in `slots` of the front value. Internal state.
@@ -27,13 +27,13 @@ fn var Deque[T].grow() Void:
 
 	shift := next - capacity
 	for slot in capacity..next:
-		self.slots.append(none)
+		self.slots.append(null)
 
 	// Growth moves every value, including resource owners; slices would copy.
 	var at = capacity - 1
 
 	while at >= self.start:
-		moved := self.slots.replace(at, none)
+		moved := self.slots.replace(at, null)
 		self.slots.set(at + shift, moved)
 		at -= 1
 
@@ -66,34 +66,34 @@ fn var Deque[T].push_front(move value: T) Void:
 	self.slots.set(self.start, value)
 	self.size += 1
 
-// Removes and returns the first value, or `none` when empty.
+// Removes and returns the first value, or `null` when empty.
 fn var Deque[T].pop_front() T?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 
-	value := self.slots.replace(self.start, none)
+	value := self.slots.replace(self.start, null)
 	self.start += 1
 	if self.start == self.slots.length():
 		self.start = 0
 	self.size -= 1
 	return value
 
-// Removes and returns the last value, or `none` when empty.
+// Removes and returns the last value, or `null` when empty.
 fn var Deque[T].pop_back() T?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 
 	index := self.slot_of(self.size - 1)
-	value := self.slots.replace(index, none)
+	value := self.slots.replace(index, null)
 	self.size -= 1
 	return value
 
-// Returns the first value without removing it, or `none` when empty.
+// Returns the first value without removing it, or `null` when empty.
 fn Deque[T].front() T?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 	return self.slots.get(self.start)
 
-// Returns the last value without removing it, or `none` when empty.
+// Returns the last value without removing it, or `null` when empty.
 fn Deque[T].back() T?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 	return self.slots.get(self.slot_of(self.size - 1))
 
 // Removes every value and releases the storage.
@@ -120,31 +120,36 @@ fn var Deque[T].rotate(by: Int) Void:
 		steps += self.size
 
 	while steps > 0:
-		if value := self.pop_front():
+		value := self.pop_front()
+		if value != null:
 			self.push_back(value)
 		steps -= 1
 
 	while steps < 0:
-		if value := self.pop_back():
+		value := self.pop_back()
+		if value != null:
 			self.push_front(value)
 		steps += 1
 
 // Returns a new list of copies of the values from front to back.
 fn Deque[T: Clonable].to_list() List[T]:
 	var out: List[T] = []
+
 	for index in 0..self.size:
-		if value := self.slots.get(self.slot_of(index)):
+		value := self.slots.get(self.slot_of(index))
+		if value != null:
 			out.append(value.clone())
+
 	return out
 
 // Returns the number of values in the deque.
 fn Deque[T].length() Int:
 	return self.size
 
-// Returns the value at `index` counted from the front, or `none` when out of range;
+// Returns the value at `index` counted from the front, or `null` when out of range;
 // negative indexes count from the back, as `List.get` does.
 fn Deque[T].get(index: Int) T?:
 	at := if index < 0: index + self.size else: index
-	if at < 0 or at >= self.size: return none
+	if at < 0 or at >= self.size: return null
 
 	return self.slots.get(self.slot_of(at))

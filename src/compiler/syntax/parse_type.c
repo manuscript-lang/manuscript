@@ -257,13 +257,13 @@ MS_NODISCARD bool parse_typ(Parser *p, MsTypeRef **out) {
   return true;
 }
 
-/* The default of a `T?` parameter or field written without one: `none`. */
+/* The default of a `T?` parameter or field written without one: `null`. */
 MsExpr *parse_implicit_none(Parser *p, const MsTypeRef *t) {
   if (t->kind != MS_TYPE_NAMED) {
     return NULL;
   }
   if (ms_span_is_text(ms_names_span(p->names, t->name), "Optional") && t->args.len == 1) {
-    return parse_mk_name(p, t->pos, parse_intern(p, "none"));
+    return parse_mk_name(p, t->pos, parse_intern(p, "null"));
   }
   return NULL;
 }
@@ -365,6 +365,7 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
     return false;
   MsTypeRef *ty = NULL;
   MsExpr *def = NULL;
+  bool implied = false;
   if (parse_take(p, MS_T_Colon)) {
     if (parse_kind(p) == MS_T_Var) {
       MsToken t = parse_peek(p);
@@ -392,8 +393,11 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
       return false;
   } else if (defaults && ty != NULL) {
     def = parse_implicit_none(p, ty);
+    implied = def != NULL;
   }
-  parse_push_ptr(p, parse_mk_param(p, name.pos, parse_sym(p, name), ty, def, is_mutable, moving));
+  MsParam *param = parse_mk_param(p, name.pos, parse_sym(p, name), ty, def, is_mutable, moving);
+  param->implied_default = implied;
+  parse_push_ptr(p, param);
   return true;
 }
 

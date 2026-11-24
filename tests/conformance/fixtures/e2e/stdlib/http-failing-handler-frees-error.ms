@@ -27,7 +27,9 @@ fn fetch(address: String) Bool:
 		while true:
 			read := conn.input.next()
 			if read.is_error(): return false
-			if _data := read.get(): continue
+
+			_data := read.get()
+			if _data != null: continue
 
 			return true
 

@@ -18,7 +18,7 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
 
 ## `?` on Results and Optionals
 
-- `?` applies to a Result or an Optional. On a Result it returns the error; on an [Optional](../types/optionals.md#unwrapping-with-) it returns `none` (or just returns, from a `Void` function) when the value is absent.
+- `?` applies to a Result or an Optional. On a Result it returns the error; on an [Optional](../types/optionals.md#unwrapping-with-) it returns `null` (or just returns, from a `Void` function) when the value is absent.
 - A function cannot mix the two: a Result needs a Result return, an Optional needs an Optional or `Void` return.
 - `load()?.name` is `(load()?).name`: unwrap, then read `name`. There is no `?.` operator.
 - `?` does not repeat: `f()??` is rejected.

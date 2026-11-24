@@ -7,4 +7,4 @@ fn f(x: Int?) Result[Void, Error]:
         n:
             p()?
             return ok()
-        none: return ok()
+        null: return ok()

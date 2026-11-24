@@ -34,9 +34,12 @@ static void scan_expr(void *ctx, const MsExpr *expr) {
   scan_payload(ctx, expr);
 }
 
-/* `param.get()` handed on (the call carries the move): the payload leaves the parameter. */
+/* `param.get()` or `param or d` handed on (the expression carries the move): the payload leaves the parameter. */
 static void scan_payload(void *ctx, const MsExpr *expr) {
   Scan *scan = ctx;
+  if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE) {
+    scan->found |= names_param(scan, expr->u.bin.left);
+  }
   if (expr->kind == MS_E_CALL && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE &&
       expr->u.call.callee->kind == MS_E_MEMBER) {
     scan->found |= names_param(scan, expr->u.call.callee->u.member.left);

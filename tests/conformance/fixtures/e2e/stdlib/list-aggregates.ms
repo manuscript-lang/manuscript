@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+)
 
 type Version:
 	major: Int
@@ -78,19 +81,19 @@ test "min and max return the first of equal elements and none when empty":
 	numbers := [3, 9, 2, 9, 2]
 	expect_equal(numbers.min(), 2)?
 	expect_equal(numbers.max(), 9)?
-	expect_true(List[Int]().min().is_none())?
-	expect_true(List[String]().max().is_none())?
+	expect_true(List[Int]().min() == null)?
+	expect_true(List[String]().max() == null)?
 	expect_equal(["pear", "apple", "fig"].min(), "apple")?
 	expect_equal([0.5, 2.5, -1.0].max(), 2.5)?
 
 test "min and max over user Comparable types keep the first equal element":
 	versions := [Version(2, "b"), Version(1, "x"), Version(2, "a"), Version(1, "y")]
-	expect_equal(versions.min().get().label, "x")?
-	expect_equal(versions.max().get().label, "b")?
+	expect_equal((versions.min() or panic("called Optional.get() on null")).label, "x")?
+	expect_equal((versions.max() or panic("called Optional.get() on null")).label, "b")?
 
 test "min and max copy the element":
 	versions := [Version(1, "x")]
-	var copy = versions.max().get().clone()
+	var copy = (versions.max() or panic("called Optional.get() on null")).clone()
 	copy.major = 9
 	expect_equal(versions[0].major, 1)?
 

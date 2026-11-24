@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	BigInt, binomial, factorial, big_int_of_int, parse_big_int from "@std/math/math.ms",
+	BigInt, big_int_of_int, binomial, factorial, parse_big_int from "@std/math/math.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
@@ -15,10 +15,7 @@ test "factorial and binomial are exact":
 	expect_equal((binomial(60, 30)?).to_string(), "118264581564861424")?
 	expect_equal((binomial(5, 0)?).to_string(), "1")?
 	expect_equal((binomial(5, 6)?).to_string(), "0")?
-	expect_equal(
-		(binomial(100, 50)?).to_string(),
-		"100891344545564193334812497256",
-	)?
+	expect_equal((binomial(100, 50)?).to_string(), "100891344545564193334812497256")?
 
 test "factorial and binomial reject negative inputs":
 	bad: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
@@ -51,21 +48,21 @@ test "probable primes":
 
 test "modular square roots":
 	p := big_int_of_int(13)
-	root := (big_int_of_int(10).mod_sqrt(p)?).get_or(big_int_of_int(-1))
+	root := (big_int_of_int(10).mod_sqrt(p)?) or big_int_of_int(-1)
 	expect_equal((root * root % p).to_int(), 10)?
 
-	absent: BigInt?! := ok(none)
+	absent: BigInt?! := ok(null)
 	expect_equal(big_int_of_int(5).mod_sqrt(p), absent)?
-	expect_equal((big_int_of_int(0).mod_sqrt(p)?).get_or(big_int_of_int(-1)).to_int(), 0)?
+	expect_equal(((big_int_of_int(0).mod_sqrt(p)?) or big_int_of_int(-1)).to_int(), 0)?
 
 	q := big_int_of_int(41)
-	other := (big_int_of_int(-1).mod_sqrt(q)?).get_or(big_int_of_int(-1))
+	other := (big_int_of_int(-1).mod_sqrt(q)?) or big_int_of_int(-1)
 	expect_equal((other * other % q).to_int(), 40)?
 
 	big_p := parse_big_int("170141183460469231731687303715884105727", 10)?
 	n := big_int_of_int(123456789)
 	square := n * n % big_p
-	big_root := (square.mod_sqrt(big_p)?).get_or(big_int_of_int(-1))
+	big_root := (square.mod_sqrt(big_p)?) or big_int_of_int(-1)
 	expect_equal((big_root * big_root % big_p).compare(square), 0)?
 
 	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
@@ -116,7 +113,7 @@ test "modular square root searches beyond a thousand quadratic residues":
 
 	for value in [4, -4]:
 		a := big_int_of_int(value)
-		root := (a.mod_sqrt(p)?).get_or(big_int_of_int(-1))
+		root := (a.mod_sqrt(p)?) or big_int_of_int(-1)
 		expect_true(root.sign() >= 0 and root.compare(p) < 0)?
 		expect_equal((root * root - a) % p, big_int_of_int(0))?
 

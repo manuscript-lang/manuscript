@@ -14,7 +14,7 @@ type Chunks:
 	at: Int
 
 fn var Chunks.next() Bytes?!:
-	if self.at >= self.data.length(): return ok(none)
+	if self.at >= self.data.length(): return ok(null)
 
 	var end = self.at + self.size
 	if end > self.data.length(): end = self.data.length()
@@ -30,14 +30,19 @@ fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 // Reads every value as text, or the first error.
-fn decode(move input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[String]!:
+fn decode(
+	move input: Bytes,
+	size: Int,
+	limits: JsonOptions = JsonOptions(),
+) List[String]!:
 	var values = json_reader[JsonValue](chunked(input, size), limits)
 	var out: List[String] = []
 
 	while true:
 		next := values.next()?
+		item := next
 
-		if item := next:
+		if item != null:
 			out.append(stringify(item)?)
 		else:
 			break
@@ -47,8 +52,8 @@ fn decode(move input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) Lis
 test "values split at every chunk size are preserved":
 	source := "{\"a\":\"é🙂\\u00e9\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}\n\"s\"[1]{\"b\":2}  42"
 	expected := [
-		"{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}",
-		"\"s\"", "[1]", "{\"b\":2}", "42"
+		"{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}", "\"s\"",
+		"[1]", "{\"b\":2}", "42"
 	]
 	input := source.to_bytes()
 	for size in 1..input.length() + 1:
@@ -60,8 +65,9 @@ test "typed values decode as parse does":
 
 	while true:
 		next := numbers.next()?
+		n := next
 
-		if n := next:
+		if n != null:
 			sum += n
 		else:
 			break

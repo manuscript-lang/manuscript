@@ -1,13 +1,13 @@
 fs.FileHandle.read_file  operation  std:@std/os/fs.ms
-  fn read_file(max_bytes: Int? = none) Result[Bytes, Error]:
+  fn read_file(max_bytes: Int? = null) Result[Bytes, Error]:
   // Reads the remaining bytes from the current position; at the end of the file it
   details: ms search_symbol fs.FileHandle.read_file
 fs.read_file  fn  std:@std/os/fs.ms
-  fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
+  fn read_file(path: String, max_bytes: Int? = null) Promise[Bytes]:
   // Starts reading a file fully into memory and returns its promise. Supply `max_bytes`
   effects: std.fs.read
   details: ms search_symbol fs.read_file
 fs.FileHandle.read_lines  operation  std:@std/os/fs.ms
-  fn read_lines(max_bytes: Int? = none, max_lines: Int? = none) Result[List[String], Error]:
+  fn read_lines(max_bytes: Int? = null, max_lines: Int? = null) Result[List[String], Error]:
   // Reads from the current position to the end and returns the lines with their `\n`
   details: ms search_symbol fs.FileHandle.read_lines

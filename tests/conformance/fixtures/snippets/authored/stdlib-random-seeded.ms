@@ -33,7 +33,7 @@ test "shuffle keeps the items and choice picks one":
     shuffled := rng.shuffle([1, 2, 3, 4, 5, 6])
     expect_equal(shuffled.sorted(fn(a: Int, b: Int) Int: a - b), [1, 2, 3, 4, 5, 6])?
     expect_equal(seeded(5).shuffle([1, 2, 3, 4, 5, 6]), shuffled)?
-    expect_equal(rng.choice(List[Int]()), none)?
+    expect_equal(rng.choice(List[Int]()), null)?
     expect_equal(seeded(2).choice([7]), 7)?
 
 fn draw_from_empty_range() Void:

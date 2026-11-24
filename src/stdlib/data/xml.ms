@@ -65,15 +65,15 @@ fn XmlNode.tag() String:
 		XmlElement(name, _, _): return name.clone()
 		_: return ""
 
-// Returns the value of the attribute `name`, or none when it is absent or the node is
+// Returns the value of the attribute `name`, or null when it is absent or the node is
 // not an element.
 fn XmlNode.attribute(name: String) String?:
 	match self:
 		XmlElement(_, attributes, _):
 			for attribute in attributes:
 				if attribute.name == name: return attribute.value.clone()
-			return none
-		_: return none
+			return null
+		_: return null
 
 // Returns the child nodes of an element, or an empty list. The result is an owned
 // copy.
@@ -88,15 +88,15 @@ fn XmlNode.text() String:
 	collect_text(self, out)
 	return out
 
-// Returns the first direct child element named `name`, or none. The result is an
+// Returns the first direct child element named `name`, or null. The result is an
 // owned copy.
 fn XmlNode.find(name: String) XmlNode?:
 	match self:
 		XmlElement(_, _, children):
 			for child in children:
 				if child.tag() == name: return child.clone()
-			return none
-		_: return none
+			return null
+		_: return null
 
 // Returns every direct child element named `name`, in order.
 fn XmlNode.find_all(name: String) List[XmlNode]:
@@ -721,11 +721,11 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 		ampersand += 1 + tail.scalar_length()
 
 		end := tail.index_of(";")
-		if end.is_none(): return error(
+		if end == null: return error(
 			invalid_at(chars, here, "an entity reference must end with `;`")
 		)
 
-		entity := tail.view(0, end.get_or(0))
+		entity := tail.view(0, end)
 
 		if entity == "lt": out += "<"
 		else if entity == "gt": out += ">"
@@ -739,17 +739,17 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 		else:
 			return error(invalid_at(chars, here, f"unknown entity `&{entity};`"))
 
-		out += tail.view(end.get_or(0) + 1, tail.length())
+		out += tail.view((end) + 1, tail.length())
 
 	return ok(out)
 
-// The value of a character reference's digits, or none for an empty run, a sign, or any
+// The value of a character reference's digits, or null for an empty run, a sign, or any
 // non-digit.
 fn digits(text: String, radix: Int) Int?:
-	if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return none
+	if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return null
 
 	value := parse_int(text, radix)
-	if value.is_error(): return none
+	if value.is_error(): return null
 
 	return value.get_or(0)
 
@@ -764,11 +764,11 @@ fn is_xml_char(code: Int) Bool:
 	)
 
 fn scalar(chars: List[String], at: Int, value: Int?) String!:
-	if value.is_none() or not is_xml_char(value.get_or(0)): return error(
+	if (value == null) or not is_xml_char(value): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)
 
-	text := from_scalars([value.get_or(0)])
+	text := from_scalars([(value)])
 	if text.is_error(): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)

@@ -36,12 +36,11 @@ fn handle(request: HttpRequest) HttpResponse:
 fn main() Void!:
 	var options = HttpServerOptions()
 	env := environment()?
+	directory := env.get("HTTP_TAIL_TLS")
 
-	if directory := env.get("HTTP_TAIL_TLS"):
-		certificate := (read_file(f"{directory}/cert.pem").wait()?).decode_utf8().get_or(
-			""
-		)
-		key := (read_file(f"{directory}/key.pem").wait()?).decode_utf8().get_or("")
+	if directory != null:
+		certificate := (read_file(f"{directory}/cert.pem").wait()?).decode_utf8() or ""
+		key := (read_file(f"{directory}/key.pem").wait()?).decode_utf8() or ""
 		options = HttpServerOptions(
 			tls: TlsOptions(
 				certificate_pem: certificate,
@@ -50,7 +49,8 @@ fn main() Void!:
 			)
 		)
 
-	if cores := env.get("HTTP_TAIL_CORES"): options.cores = cores.parse_int()
+	cores := env.get("HTTP_TAIL_CORES")
+	if cores != null: options.cores = cores.parse_int()
 
 	server := serve(
 		address: "127.0.0.1:8081",

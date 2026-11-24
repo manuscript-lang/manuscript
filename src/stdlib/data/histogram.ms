@@ -71,14 +71,14 @@ fn var Histogram.time[T](work: fn() T) T:
 fn Histogram.count() Int:
 	return self.total
 
-// Smallest observation, or none when empty.
+// Smallest observation, or null when empty.
 fn Histogram.min() Int?:
-	if self.total == 0: return none
+	if self.total == 0: return null
 	return self.low
 
-// Largest observation, or none when empty.
+// Largest observation, or null when empty.
 fn Histogram.max() Int?:
-	if self.total == 0: return none
+	if self.total == 0: return null
 	return self.high
 
 // Mean of the observations, or 0.0 when empty. It is exact, not bucketed.
@@ -89,12 +89,12 @@ fn Histogram.mean() Float:
 	return sum / self.total.to_float()
 
 // Value at or below which `p` percent of observations fall, for `p` in 0.0 through
-// 100.0; none when empty. The answer is the top of the matching bucket, never above
-// the largest observation. A `p` outside the range gives none.
+// 100.0; null when empty. The answer is the top of the matching bucket, never above
+// the largest observation. A `p` outside the range gives null.
 fn Histogram.percentile(p: Float) Int?:
-	if not (p >= 0.0 and p <= 100.0) or self.total == 0: return none
+	if not (p >= 0.0 and p <= 100.0) or self.total == 0: return null
 
-	var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int().get_or(1)
+	var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int() or 1
 	if rank < 1: rank = 1
 
 	var seen = 0

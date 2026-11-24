@@ -60,7 +60,7 @@ Create `assets/message.txt` containing `hello from assets` followed by a newline
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
     tree := files()
-    text := tree.read("message.txt", none).get().decode_utf8().get()
+    text := tree.read("message.txt", null).get().decode_utf8().get()
     print(text.trim())
     return 0
 ```

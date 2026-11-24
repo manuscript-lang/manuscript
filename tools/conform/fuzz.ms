@@ -744,7 +744,7 @@ export fn type_error(seed: Int) Generated:
 
 // `line` without its first `text`.
 fn without_first(line: String, text: String) String:
-	at := line.index_of(text).get_or(-1)
+	at := line.index_of(text) or (-1)
 	if at < 0: return line.clone()
 
 	return line.slice(0, at) + line.slice(at + text.length(), line.length())

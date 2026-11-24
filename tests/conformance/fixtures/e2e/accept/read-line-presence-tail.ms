@@ -12,7 +12,7 @@ import (
 // stream is none.
 fn present(var input: ReadStream[String]) Bool!:
 	line := input.next()?
-	return ok(line.is_some())
+	return ok(line != null)
 
 test "presence keeps empty CRLF lines and following text":
 	var input = lines(from_bytes("\r\nλ\nlast".to_bytes(), 2))

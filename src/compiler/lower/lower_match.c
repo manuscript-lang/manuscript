@@ -23,7 +23,7 @@ static bool is_literal(const MsExpr *path) {
                           (path->kind == MS_E_UNARY && path->op == MS_U_NEG));
 }
 
-/* The case number an arm names: the facts' case for an alternative, `none` 0 and `some` 1 for an Optional. False
+/* The case number an arm names: the facts' case for an alternative, `null` 0 and `some` 1 for an Optional. False
  * for the wildcard (and for a literal). */
 static bool arm_case(const LowerFn *fn, const Match *match, const MsArm *arm, uint32_t *index) {
   if (match->kind == MK_OPT) {
@@ -37,7 +37,7 @@ static bool arm_case(const LowerFn *fn, const Match *match, const MsArm *arm, ui
       return false;
     }
     const MsSpan text = ms_names_span(fn->cx->program->names, name);
-    if (ms_span_is_text(text, "none") || ms_span_is_text(text, "some")) {
+    if (ms_span_is_text(text, "null") || ms_span_is_text(text, "some")) {
       *index = ms_span_is_text(text, "some") ? 1 : 0;
       return true;
     }
@@ -146,8 +146,17 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
   if (match->kind == MK_OPT) {
     if (arm->bindings.len > 0 && kase == 1) {
-      const MirTy elem = mir_ty_data(module, match->ty)->elem;
-      const MirValue item = mir_b_emit(&fn->b, MOP_OptGet, &match->scrutinee, 1, (MirImm){0}, elem);
+      MirTy elem = mir_ty_data(module, match->ty)->elem;
+      MirValue item;
+      const MsTyTable *types = &fn->cx->program->types;
+      const bool whole = match->checked != MS_TY_NONE && ms_ty_arg_count(types, match->checked) == 1 &&
+                         fn_type(fn, ms_ty_args(types, match->checked)[0]) == match->ty;
+      if (whole) { /* `T?` of a nullable `T` is `T`: the value is its own payload */
+        elem = match->ty;
+        item = match->scrutinee;
+      } else {
+        item = mir_b_emit(&fn->b, MOP_OptGet, &match->scrutinee, 1, (MirImm){0}, elem);
+      }
       mir_b_def_var(&fn->b, fn_local(fn, ref->local, elem), item);
       view_binding(fn, ref->local, elem);
     }

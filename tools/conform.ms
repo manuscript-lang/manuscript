@@ -1,3 +1,4 @@
+import panic from "@std/core.ms"
 // The conformance corpus commands that are not a replay: `list`, `stats`, `lint`,
 // `retag`, `diff`,
 // `fuzz-gen`, `fuzz` and `harvest`. The replay and recording of expectations is tools/conform-run.ms.
@@ -59,7 +60,7 @@ fn list_command(corpus: String, filter: Filter) Int:
 	return 0
 
 fn count_of(counts: Map[String, Int], key: String) Int:
-	return counts.get(key).get_or(0)
+	return counts.get(key) or 0
 
 fn stats_command(corpus: String, filter: Filter) Int:
 	chosen := select(corpus, filter)
@@ -109,7 +110,7 @@ fn lint_command(corpus: String) Int:
 
 	for fx in everything:
 		known_ids.append(fx.id.clone())
-		if seen.get(fx.id).is_some(): problems.append(f"{fx.id}: duplicate id")
+		if seen.get(fx.id) != null: problems.append(f"{fx.id}: duplicate id")
 		seen.add(fx.id.clone(), true)
 		if fx.tags.is_empty(): problems.append(f"{fx.id}: no tags")
 		for tag in fx.tags:
@@ -132,9 +133,9 @@ fn lint_command(corpus: String) Int:
 			continue
 
 		recorded := document.get("phase")
-		if recorded.is_none() or recorded.get().as_string().get_or("") != fx.phase:
+		if recorded == null or (recorded.as_string() or "") != fx.phase:
 			problems.append(f"{fx.id}: expectation phase differs from fixture")
-		if document.get("expected").is_none(): problems.append(
+		if document.get("expected") == null: problems.append(
 			f"{fx.id}: expectation has no `expected` value"
 		)
 

@@ -222,7 +222,7 @@ static void report_duplicate(MsCheckProgram *program, uint32_t module, const MsD
 /* Whether `name` is declared by the prelude, which every module sees under that name. */
 static bool is_prelude_name(const MsCheckProgram *program, MsName name) {
   const MsSpan text = ms_names_span(program->names, name);
-  return ms_is_prelude_type(text) || ms_span_is_text(text, "print");
+  return ms_is_prelude_type(text) || ms_span_is_text(text, "print") || ms_span_is_text(text, "ok_or");
 }
 
 static void report_prelude_reuse(MsCheckProgram *program, uint32_t module, const MsDecl *decl, MsName name) {
@@ -239,7 +239,7 @@ static void report_prelude_reuse(MsCheckProgram *program, uint32_t module, const
 /* The prelude's constructor names: a module declaration cannot reuse one. */
 static bool is_prelude_constructor(const MsCheckProgram *program, MsName name) {
   const MsSpan text = ms_names_span(program->names, name);
-  return ms_span_is_text(text, "some") || ms_span_is_text(text, "none") || ms_span_is_text(text, "ok") ||
+  return ms_span_is_text(text, "some") || ms_span_is_text(text, "null") || ms_span_is_text(text, "ok") ||
          ms_span_is_text(text, "error");
 }
 

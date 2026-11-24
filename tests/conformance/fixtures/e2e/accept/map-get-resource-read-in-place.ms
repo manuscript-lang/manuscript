@@ -9,13 +9,15 @@ fn move Handle.close() Void!:
 	print(f"closed {self.id}")
 
 fn read(m: Map[String, Handle]) Int:
-	if found := m.get("a"):
-		return found.id
+	found := m.get("a")
+	if found != null: return found.id
+
 	return 0
 
 export fn main() Int:
 	var m: Map[String, Handle] = {}
 	m["a"] = Handle(1)
+
 	first := read(m)
 	second := read(m)
 	print(f"read {first} {second}")

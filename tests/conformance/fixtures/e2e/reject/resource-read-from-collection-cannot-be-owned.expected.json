@@ -12,9 +12,9 @@
         "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 16,
+          "line": 18,
           "column": 20,
-          "offset": 475
+          "offset": 509
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 19,
+          "line": 21,
           "column": 20,
-          "offset": 557
+          "offset": 591
         }
       },
       {
@@ -34,31 +34,20 @@
         "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 24,
+          "line": 26,
           "column": 26,
-          "offset": 674
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
-        "position": {
-          "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 25,
-          "column": 30,
           "offset": 708
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "`handles.last(..).get(..)` reads an element that `handles.last(..)` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
+        "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 27,
-          "column": 32,
-          "offset": 771
+          "line": 28,
+          "column": 30,
+          "offset": 743
         }
       },
       {
@@ -67,16 +56,16 @@
         "message": "`names.get(..)` reads an element that `names` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 33,
+          "line": 45,
           "column": 22,
-          "offset": 1083
+          "offset": 1256
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/resource-read-from-collection-cannot-be-owned.ms:16:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 16 |     return handles.get(i)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:19:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 19 |     return handles.get(key)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:24:26: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 24 |     moved.append(handles.get(0))\n    |                          ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:25:30: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 25 |     holder := Holder(handles.get(1))\n    |                              ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:27:32: type: `handles.last(..).get(..)` reads an element that `handles.last(..)` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 27 |     last.append(handles.last().get())\n    |                                ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:33:22: type: `names.get(..)` reads an element that `names` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 33 |     out.append(names.get(0))\n    |                      ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/resource-read-from-collection-cannot-be-owned.ms:18:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 18 |     return handles.get(i)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:21:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 21 |     return handles.get(key)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:26:26: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 26 |     moved.append(handles.get(0))\n    |                          ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:28:30: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 28 |     holder := Holder(handles.get(1))\n    |                              ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:45:22: type: `names.get(..)` reads an element that `names` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 45 |     out.append(names.get(0))\n    |                      ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

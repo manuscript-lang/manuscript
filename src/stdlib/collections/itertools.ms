@@ -44,9 +44,9 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
 	count := if values.is_empty() or times < 0: 0 else: times
 	return values.repeated(count)
 
-// Pairs items by position and pads the shorter list with none, so the result is as long
+// Pairs items by position and pads the shorter list with null, so the result is as long
 // as the longer list. Example: `zip_longest([1, 2, 3], ["a"])` pairs `(1, "a")`,
-// `(2, none)` and `(3, none)`.
+// `(2, null)` and `(3, null)`.
 export fn zip_longest[A: Clonable, B: Clonable](
 	left: List[A],
 	right: List[B],
@@ -55,8 +55,8 @@ export fn zip_longest[A: Clonable, B: Clonable](
 	longest := left.length().max(right.length())
 
 	for i in 0..longest:
-		var first: A? = none
-		var second: B? = none
+		var first: A? = null
+		var second: B? = null
 		if i < left.length():
 			first = left[i].clone()
 		if i < right.length():
@@ -92,9 +92,9 @@ Returns every ordering of `size` items chosen from the list, in lexicographic or
 Omit `size` for full-length orderings. A `size` outside 0 through the list length has no orderings and gives an empty list.
 Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]`.
 */
-export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[List[T]]:
+export fn permutations[T: Clonable](values: List[T], size: Int? = null) List[List[T]]:
 	n := values.length()
-	k := size.get_or(n)
+	k := size or n
 	if k == 0: return [[]]
 	if k < 0 or k > n: return []
 

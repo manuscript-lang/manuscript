@@ -15,13 +15,13 @@ fn move Door.close() Void!:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get_or("")
+	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
 fn keep_if(d: Door, keep: Bool) Door?:
 	if keep: return d
-	return none
+	return null
 
 test "a parameter the callee drops on some path is closed there":
 	tmp := temporary("ms-log-") | expect_ok?
@@ -31,7 +31,7 @@ test "a parameter the callee drops on some path is closed there":
 
 	dropped := keep_if(Door(2, log.clone()), false)
 	logged(log.clone()) | expect_equal("2,")?
-	if kept.is_some() and dropped.is_none():
+	if (kept != null) and (dropped == null):
 		logged(log.clone()) | expect_equal("2,")?
 
 test "a bound resource passed to such a callee closes once":
@@ -40,5 +40,5 @@ test "a bound resource passed to such a callee closes once":
 	door := Door(3, log.clone())
 	dropped := keep_if(door, false)
 	logged(log.clone()) | expect_equal("3,")?
-	if dropped.is_none():
+	if dropped == null:
 		logged(log.clone()) | expect_equal("3,")?

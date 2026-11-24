@@ -33,7 +33,9 @@ fn finite(value: Float) Bool:
 	return value >= 0.0 and value < 1.0e300
 
 fn valid_optional(value: Float?) Bool:
-	if v := value: return finite(v)
+	v := value
+	if v != null: return finite(v)
+
 	return true
 
 // The passed cases of one `ms bench --json` document, in order.
@@ -41,8 +43,8 @@ export fn read_cases(output: String) List[Bench]!:
 	parsed := parse[Document](output)
 	if parsed.is_error(): return invalid("invalid benchmark document")
 
-	doc := parsed.get_or(Document(List[Bench](), none))
-	diagnostics := doc.diagnostics.get_or([])
+	doc := parsed.get_or(Document(List[Bench](), null))
+	diagnostics := doc.diagnostics or []
 	if not diagnostics.is_empty(): return invalid(
 		diagnostics.map(fn d: d.message.clone()).join("; ")
 	)
@@ -54,23 +56,24 @@ export fn read_cases(output: String) List[Bench]!:
 
 		seen.add(bench.name.clone())
 		if bench.status != "passed": return invalid(
-			f"{bench.name}: {bench.status}: {bench.failure.get_or("")}"
+			f"{bench.name}: {bench.status}: {(bench.failure or "")}"
 		)
 
-		stats := bench.stats.get_or(
-			Stats(
+		stats := (
+			bench.stats
+			or Stats(
 				operations: 0,
-				iterations: none,
-				samples: none,
+				iterations: null,
+				samples: null,
 				median_ns: -1.0,
-				min_ns: none,
-				max_ns: none,
-				mean_ns: none,
-				stddev_ns: none,
+				min_ns: null,
+				max_ns: null,
+				mean_ns: null,
+				stddev_ns: null,
 			)
 		)
 		if stats.operations <= 0: return invalid(f"invalid operations: {bench.name}")
-		if (stats.iterations.get_or(1) <= 0) or (stats.samples.get_or(1) <= 0):
+		if ((stats.iterations or 1) <= 0) or ((stats.samples or 1) <= 0):
 			return invalid(f"invalid iterations or samples: {bench.name}")
 		if not finite(stats.median_ns): return invalid(
 			f"invalid median_ns: {bench.name}"
@@ -83,10 +86,10 @@ export fn read_cases(output: String) List[Bench]!:
 		):
 			return invalid(f"invalid timing: {bench.name}")
 
-		if stats.min_ns.is_some() and stats.max_ns.is_some():
+		if (stats.min_ns != null) and (stats.max_ns != null):
 			if not (
-				stats.min_ns.get_or(0.0) <= stats.median_ns
-				and stats.median_ns <= stats.max_ns.get_or(0.0)
+				(stats.min_ns or 0.0) <= stats.median_ns
+				and stats.median_ns <= (stats.max_ns or 0.0)
 			):
 				return invalid(f"inconsistent timing range: {bench.name}")
 

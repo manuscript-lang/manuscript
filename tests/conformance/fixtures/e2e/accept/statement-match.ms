@@ -23,7 +23,7 @@ fn first_positive(values: List[Int?]) Int:
 		index += 1
 
 		match item:
-			none: continue
+			null: continue
 			value:
 				if value > 0: return value
 
@@ -35,7 +35,7 @@ fn nested(rows: List[List[Int?]]) Int:
 	for row in rows:
 		for item in row:
 			match item:
-				none: break
+				null: break
 				value: total += value
 
 		total += 1000
@@ -59,11 +59,11 @@ test "statement match returns from the enclosing function":
 	expect_equal(area(Shape.Dot), 0)?
 
 test "statement match controls the nearest loop":
-	values: List[Int?] := [none, 0, 5, 9]
+	values: List[Int?] := [null, 0, 5, 9]
 	expect_equal(first_positive(values), 5)?
-	expect_equal(first_positive([none, -1]), -1)?
+	expect_equal(first_positive([null, -1]), -1)?
 
-	rows: List[List[Int?]] := [[1, none, 100], [2, 3]]
+	rows: List[List[Int?]] := [[1, null, 100], [2, 3]]
 	expect_equal(nested(rows), 2006)?
 
 test "statement match arms assign enclosing locals":

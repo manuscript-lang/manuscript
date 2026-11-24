@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
 
 fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
 
@@ -8,7 +11,10 @@ fn first[T](left: T, right: T) T: left
 
 fn size(values: Map[String, Int]) Int: values.length()
 
-fn optional_size(values: Map[String, Int]?) Int: values.get().length()
+fn optional_size(values: Map[String, Int]?) Int: (
+	values
+	or panic("called Optional.get() on null")
+).length()
 
 fn mark(var log: List[Int], value: Int) Int:
 	log.append(value)
@@ -40,8 +46,8 @@ test "map literals and positional identifier arguments":
 	nested: Map[String, Map[String, Int]] := {"a": {}, "b": {"c": 1}}
 	expect_equal(nested["b"]["c"], 1)?
 
-	optional: Map[String, Int?] := {"a": none, "b": 2}
-	expect_false(not optional["a"].is_none())?
+	optional: Map[String, Int?] := {"a": null, "b": 2}
+	expect_false(not (optional["a"] == null))?
 
 	key := "c"
 	value := 5
@@ -54,7 +60,7 @@ test "map literals and positional identifier arguments":
 
 	shared := {"x": values.clone()}
 	values.add("d", 6)
-	expect_false(shared["x"].get("d").is_some())?
+	expect_false(shared["x"].get("d") != null)?
 	expect_equal(values["d"], 6)?
 
 type Key:

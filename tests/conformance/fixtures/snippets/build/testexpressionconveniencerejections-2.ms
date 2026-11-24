@@ -6,6 +6,6 @@ fn f(x: Int?) Int:
         while (
             match x:
                 n: true
-                none: break
+                null: break
         ):
             break

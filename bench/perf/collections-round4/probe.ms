@@ -16,7 +16,7 @@ fn n_sort_floats() Int:
 		xs.append(x.to_float() / 7.0)
 
 	xs.sort(fn a, b: if a < b: -1 else if a > b: 1 else: 0)
-	return xs[0].truncate_to_int().get_or(0) + xs[1999999].truncate_to_int().get_or(0)
+	return (xs[0].truncate_to_int() or 0) + (xs[1999999].truncate_to_int() or 0)
 
 fn n_sort_strings_default() Int:
 	var xs: List[String] = []
@@ -36,7 +36,7 @@ fn n_index_of_strings() Int:
 
 	var t = 0
 	for i in 0..20000:
-		t += xs.index_of(f"item-number-{i % 2000}").get_or(0)
+		t += xs.index_of(f"item-number-{i % 2000}") or 0
 	return t
 
 fn n_remove_front() Int:

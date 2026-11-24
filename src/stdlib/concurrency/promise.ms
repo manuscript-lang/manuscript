@@ -2,6 +2,7 @@ import (
 	Closeable, panic from "@std/core.ms",
 	Duration from "@std/time.ms",
 
+	Slot,
 	msrt_cancel_fire,
 	msrt_cancel_fired,
 	msrt_cancel_free,
@@ -104,7 +105,7 @@ fn Promise[T].done() Bool:
 // result nobody took is dropped, which closes what it holds.
 fn move Promise[T].close() Void!:
 	if msrt_promise_end(self.id):
-		_leftover := msrt_promise_take[T](self.id)
+		_leftover := msrt_promise_take[Slot[T]](self.id)
 	msrt_promise_drop(self.id)
 
 // Which thread runs a promise's work.
@@ -123,12 +124,12 @@ export enum Placement:
 // is enforced whether or not anyone waits; when it passes, the work is cancelled and
 // `wait` reports `ETIMEDOUT`. A negative timeout means no time at all.
 export type PromiseOptions:
-	// How long the work may run, counted from construction; `none` means no limit.
-	timeout: Duration? = none
+	// How long the work may run, counted from construction; `null` means no limit.
+	timeout: Duration? = null
 	// When this signal's `Cancel` fires, the work is cancelled and `wait` reports
 	// `ECANCELED`. Applying a signal to an existing promise replaces its previous
-	// signal; none leaves it unchanged.
-	cancel: Signal? = none
+	// signal; null leaves it unchanged.
+	cancel: Signal? = null
 	// Which thread runs the work.
 	placement: Placement = Placement.Any
 
@@ -168,10 +169,12 @@ export opaque type Signal:
 fn Signal.cancelled() Bool:
 	return msrt_cancel_fired(self.id)
 
-// Internal: a limit in nanoseconds, or -1 for none. A negative duration means no time
-// at all, not "none".
+// Internal: a limit in nanoseconds, or -1 for null. A negative duration means no time
+// at all, not "null".
 fn nanos(limit: Duration?) Int:
-	if own := limit:
+	own := limit
+
+	if own != null:
 		total := own.to_nanoseconds()
 		if total < 0: return 0
 
@@ -195,9 +198,11 @@ fn outcome(id: Int, code: Int) Error:
 
 // Internal: applies `options` to the promise `id`.
 fn limit(id: Int, options: PromiseOptions) Void:
-	if options.timeout.is_some():
+	if options.timeout != null:
 		msrt_promise_limit(id, nanos(options.timeout))
-	if signal := options.cancel:
+
+	signal := options.cancel
+	if signal != null:
 		msrt_promise_on_cancel(id, signal.id)
 
 // Applies `options` to a promise in place, for an owner that keeps the promise (such
@@ -211,14 +216,16 @@ export fn set_options[T](
 
 // Internal: the result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
-	taken := msrt_promise_take[V](id)
-	if value := taken: return ok(value)
+	taken := msrt_promise_take[Slot[V]](id)
+	if taken != null: return ok(taken.value)
 
 	return error(outcome(id, 4))
 
 // Internal: the error in the slot of `id`, moved out.
 fn taken_error(id: Int) Error:
-	if cause := msrt_promise_take[Error](id): return cause
+	cause := msrt_promise_take[Error](id)
+	if cause != null: return cause
+
 	return outcome(id, 4)
 
 // Internal: the error of a `wait` whose runtime outcome `code` is not success: the
@@ -392,14 +399,19 @@ export fn wait_all[T](move promises: List[Promise[T]]) move List[T]!:
 					taken[at] = true
 
 	var reversed: List[T] = []
+
 	for at in 0..count:
-		if slot := slots.pop():
+		slot := slots.pop()
+		if slot != null:
 			reversed.append(slot?)
 
 	var results: List[T] = []
+
 	for at in 0..count:
-		if value := reversed.pop():
+		value := reversed.pop()
+		if value != null:
 			results.append(value)
+
 	return ok(results)
 
 // Waits for the first promise to finish and returns its result; the others are

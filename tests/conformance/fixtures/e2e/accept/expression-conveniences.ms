@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
 )
@@ -27,7 +27,7 @@ fn amount(text: String, marker: String) Int!Error:
 	cents := match text.parse_int():
 		value:
 			value
-		none:
+		null:
 			return error(cause: Error("Invalid amount"))
 
 	return ok(value: cents + 1)
@@ -35,14 +35,14 @@ fn amount(text: String, marker: String) Int!Error:
 fn early(value: Int?) Int:
 	number := match value:
 		number: number
-		none: return 9
+		null: return 9
 
 	return number + 1
 
 fn all_return(value: Int?) Int:
 	_unreachable := match value:
 		number: return number
-		none: return 9
+		null: return 9
 
 fn tick(var counter: Counter) Int!:
 	counter.count | expect_equal(1)?
@@ -106,7 +106,7 @@ test "string concatenation and scalar ordering":
 
 test "match expressions preserve returns and cleanup":
 	present: Int? := 4
-	absent: Int? := none
+	absent: Int? := null
 	(
 		(
 			early(present) != 5
@@ -137,28 +137,28 @@ test "match expressions preserve returns and cleanup":
 			// manuscript:allow-nested-match regression for nested expression values and the absent branch
 			match absent:
 				other: value + other
-				none: value
-		none: 0
+				null: value
+		null: 0
 
 	nested | expect_equal(4)?
 
 	contextual: List[Int] := match absent:
 		value: [value]
-		none: []
+		null: []
 
 	contextual.length() | expect_equal(0)?
 
 	result := identity[Int](
 		match present:
 			value: value
-			none: 0
+			null: 0
 	)
 	result | expect_equal(4)?
 
 	callback := fn(value: Int?) Int:
 		number := match value:
 			number: number
-			none: return 42
+			null: return 42
 
 		return number
 
@@ -179,7 +179,7 @@ test "match blocks produce their final value":
 		value:
 			doubled := value * 2
 			doubled + 1
-		none: 0
+		null: 0
 
 	result | expect_equal(11)?
 
@@ -193,7 +193,7 @@ test "match blocks produce their final value":
 				if count < value: continue
 
 				break
-			none: break
+			null: break
 
 	count | expect_equal(5)?
 
@@ -201,24 +201,24 @@ test "contextual values infer from later arms":
 	present: Int? := 5
 
 	optional: Int? := match present:
-		none: none
+		null: null
 		value: value
 
-	optional.get() | expect_equal(5)?
+	(optional or panic("called Optional.get() on null")) | expect_equal(5)?
 
 	list := match present:
-		none: []
+		null: []
 		value: [value]
 
 	list[0] | expect_equal(5)?
 
 fn returned_argument(var counter: Counter) Int!:
-	absent: Int? := none
+	absent: Int? := null
 	return ok(
 		combine(
 			first: match absent:
 				value: value
-				none: return ok(17)
+				null: return ok(17)
 			,
 			second: (tick(counter)?),
 		)
@@ -230,7 +230,7 @@ fn propagated(text: String) Int!Error:
 	result := match text.parse_int():
 		value:
 			Result[Int, Error].ok(value: value)?
-		none:
+		null:
 			Result[Int, Error].error(cause: Error("missing"))?
 
 	return ok(value: result)
@@ -245,7 +245,7 @@ fn returned_loop(value: Int?) Int:
 			_number:
 				index += 1
 				continue
-			none: break
+			null: break
 
 	return 24
 
@@ -256,7 +256,7 @@ test "expression exits preserve caller boundaries and evaluation order":
 	propagated("no") | expect_equal(Result[Int, Error].error(cause: Error("missing")))?
 
 	present: Int? := 1
-	absent: Int? := none
+	absent: Int? := null
 	(returned_loop(present) != 23 or returned_loop(absent) != 24) | expect_false?
 
 	var iterations = 0
@@ -269,7 +269,7 @@ test "expression exits preserve caller boundaries and evaluation order":
 					if iterations == 2: continue
 					if iterations == 3: break
 				number
-			none: break
+			null: break
 
 		if value == 1: break
 
@@ -280,22 +280,27 @@ fn condition_exit(value: Int?) Int:
 		while (
 			match value:
 				_number: true
-				none: break
+				null: break
 		):
 			return 1
 
 	return 2
 
 test "match in a loop header exits its lexical enclosing loop":
-	absent: Int? := none
+	absent: Int? := null
 	condition_exit(absent) | expect_equal(2)?
 
 test "indexing preserves zero and nested optionals":
 	numbers := [0]
 	(numbers[0] != 0 or numbers.get_or(0, 99) != 0) | expect_false?
 
-	nested: List[Int?] := [none, 0]
-	(nested[0].is_some() or nested[1].get() != 0) | expect_false?
+	nested: List[Int?] := [null, 0]
+	(
+		(
+			(nested[0] != null)
+			or (nested[1] or panic("called Optional.get() on null")) != 0
+		) | expect_false?
+	)
 
 fn observed_optional(var counter: Counter) Int?:
 	counter.count += 1
@@ -308,7 +313,7 @@ test "match evaluates its input once and only the selected arm":
 		value:
 			counter.count += 10
 			value + 1
-		none:
+		null:
 			counter.count += 100
 			0
 
@@ -316,21 +321,21 @@ test "match evaluates its input once and only the selected arm":
 
 fn inline_match(value: Int?) Int: match value:
 	number: number
-	none: 0
+	null: 0
 
 test "match composes with inferred callbacks and map literals":
-	values: List[Int?] := [3, none]
+	values: List[Int?] := [3, null]
 	mapped := values.map(
 		fn value: match value:
 			number: number + 1
-			none: 0
+			null: 0
 	)
 	(mapped[0] != 4 or mapped[1] != 0) | expect_false?
 
 	lookup := {
 		"value": match values[0]:
 			number: number
-			none: 0
+			null: 0
 	}
 	lookup["value"] | expect_equal(3)?
-	(inline_match(none) != 0 or inline_match(5) != 5) | expect_false?
+	(inline_match(null) != 0 or inline_match(5) != 5) | expect_false?

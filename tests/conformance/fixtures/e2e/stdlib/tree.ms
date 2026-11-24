@@ -18,7 +18,7 @@ fn paths(found: List[WalkEntry]) List[String]:
 fn total_size(tree: FileTree, names: List[String]) Int!:
 	var total = 0
 	for name in names:
-		total += (tree.read(name, none)?).length()
+		total += (tree.read(name, null)?).length()
 	return ok(total)
 
 fn sample() MemoryTree:
@@ -31,13 +31,13 @@ fn sample() MemoryTree:
 
 test "memory tree lists and reads":
 	tree := sample()
-	top := tree.children("", none) | expect_ok?
+	top := tree.children("", null) | expect_ok?
 	if top.map(fn e: e.name.clone()) != ["docs", "empty", "main.ms"]: return panic(
 		"top"
 	)
 	if not top[0].directory: return panic("docs is a directory")
 	if top[2].directory: return panic("main.ms is a file")
-	if ((tree.read("docs/./api/../guide.md", none) | expect_ok?) != "guide".to_bytes()): return panic(
+	if ((tree.read("docs/./api/../guide.md", null) | expect_ok?) != "guide".to_bytes()): return panic(
 		"clean path"
 	)
 	if (total_size(tree, ["main.ms", "docs/guide.md"]) | expect_ok?) != 9: return panic(
@@ -47,25 +47,25 @@ test "memory tree lists and reads":
 test "memory tree reports precise errors":
 	var tree = sample()
 	if (
-		tree.read("nope", none).err() != Error(
+		tree.read("nope", null).err() != Error(
 			"filesystem: file or directory not found",
 			kind: "ENOENT",
 		)
 	): return panic("missing")
 	if (
-		tree.read("docs", none).err() != Error(
+		tree.read("docs", null).err() != Error(
 			"filesystem: invalid input",
 			kind: "EINVAL",
 		)
 	): return panic("read directory")
 	if (
-		tree.children("main.ms", none).err() != Error(
+		tree.children("main.ms", null).err() != Error(
 			"filesystem: invalid input",
 			kind: "EINVAL",
 		)
 	): return panic("list file")
 	if (
-		tree.read("../x", none).err() != Error(
+		tree.read("../x", null).err() != Error(
 			"filesystem: invalid input",
 			kind: "EINVAL",
 		)
@@ -124,11 +124,11 @@ test "host tree walks the same way":
 	if paths(walk(tree) | expect_ok?) != ["b/", "b/two.txt", "one.txt"]: return panic(
 		"host walk"
 	)
-	if (tree.read("b/two.txt", none) | expect_ok?) != "22".to_bytes(): return panic(
+	if (tree.read("b/two.txt", null) | expect_ok?) != "22".to_bytes(): return panic(
 		"host read"
 	)
 	if (
-		tree.read("../etc", none).err() != Error(
+		tree.read("../etc", null).err() != Error(
 			"filesystem: invalid input",
 			kind: "EINVAL",
 		)
@@ -144,13 +144,13 @@ test "host tree follows links inside the root and refuses links that leave it":
 	create_symlink(f"{base.path()}/root/out", f"{base.path()}/outside") | expect_ok?
 
 	tree := host_tree(f"{base.path()}/root")
-	if (tree.read("inner/a.txt", none) | expect_ok?) != "a".to_bytes(): return panic(
+	if (tree.read("inner/a.txt", null) | expect_ok?) != "a".to_bytes(): return panic(
 		"inner link"
 	)
 	invalid := Error("filesystem: invalid input", kind: "EINVAL")
-	if tree.read("out/s.txt", none).err() != invalid: return panic("outer file")
-	if tree.children("out", none).err() != invalid: return panic("outer directory")
-	if tree.read("missing", none).err() == invalid: return panic("missing is not escape")
+	if tree.read("out/s.txt", null).err() != invalid: return panic("outer file")
+	if tree.children("out", null).err() != invalid: return panic("outer directory")
+	if tree.read("missing", null).err() == invalid: return panic("missing is not escape")
 
 test "memory tree listing follows writes and removals":
 	var tree = memory_tree()
@@ -158,9 +158,9 @@ test "memory tree listing follows writes and removals":
 	tree.write_file("a/two.txt", "2".to_bytes())?
 	tree.remove("a/b", true)?
 
-	names := (tree.children("a", none)?).map(fn e: e.name.clone())
+	names := (tree.children("a", null)?).map(fn e: e.name.clone())
 	if names != ["two.txt"]: return panic(f"children {names}")
-	if (tree.children("", none)?).length() != 1: return panic("root")
+	if (tree.children("", null)?).length() != 1: return panic("root")
 
 test "a file cannot be an ancestor of a directory or file":
 	var tree = memory_tree()
@@ -173,4 +173,4 @@ test "a file cannot be an ancestor of a directory or file":
 	if made.is_ok() or made.err().kind != "EINVAL": return panic("directory below a file")
 
 	if paths(walk(tree)?) != ["a"]: return panic(f"walk {paths(walk(tree)?)}")
-	if (tree.read("a", none)?).length() != 1: return panic("file replaced")
+	if (tree.read("a", null)?).length() != 1: return panic("file replaced")

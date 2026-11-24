@@ -66,9 +66,7 @@ fn remote_group() Command:
 		],
 		run: fn options: ok(
 			options.extra.length() + (if options.dry_run: 100 else: 0) + (
-				if options
-				.url
-				.is_some(): 10 else: 0
+				if options.url != null: 10 else: 0
 			)
 		)
 	)
@@ -136,7 +134,7 @@ test "flags take values in every spelling and persistent flags work on both side
 test "optional and rest arguments":
 	matches := (run(["remote", "add", "origin"]) | expect_ok?)
 	matches.string("name") | expect_equal("origin")?
-	matches.string_or_none("url") | expect_equal(none)?
+	matches.string_or_none("url") | expect_equal(null)?
 
 	full := (run(["remote", "add", "origin", "u", "x", "y"]) | expect_ok?)
 	full.list("extra") | expect_equal(["x", "y"])?
@@ -181,7 +179,7 @@ test "help is generated for groups, leaves and the help word":
 	leaf | expect_contains("Usage:\n  tool serve [flags] <root>")?
 	leaf | expect_contains("-p, --port <int>       Listen port (default 8080)")?
 	leaf | expect_contains("Global Flags:")?
-	app().help(["nope"]) | expect_equal(none)?
+	app().help(["nope"]) | expect_equal(null)?
 
 	via_word := (run(["help", "serve"]) | expect_ok?)
 	via_word.path[0] | expect_contains("tool serve")?
@@ -199,8 +197,8 @@ test "float flags reject NaN and infinities":
 			(ratio.parse(["--ratio", text.clone()]) | expect_error?).message
 			| expect_equal(f"cli: flag ratio: {text} is not a number")?
 		)
-
 	void expect_ok(ratio.parse(["--ratio", "1e5"]))?
+
 	bad_default := Command(
 		name: "x",
 		flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")],

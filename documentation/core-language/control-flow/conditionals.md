@@ -72,7 +72,7 @@ The branches are one-line expressions on the same line. For statements in a bran
 
 ## Unwrapping an Optional or Result
 
-`if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
+`if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `null` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -112,7 +112,7 @@ test "increment a visit count":
     expect_equal(counts.get_or("visits", 0), 3)?
 ```
 
-A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if v := x` to a two-arm `match` on a payload name and `none` (**MSL108**).
+A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if v := x` to a two-arm `match` on a payload name and `null` (**MSL108**).
 
 ## Validating inputs
 
