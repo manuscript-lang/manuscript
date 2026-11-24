@@ -46,30 +46,119 @@ static bool mentions(const MirInst *inst, MirValue v) {
   return count_uses(inst, v) > 0;
 }
 
-/* One slot update `s = s + piece` in `blk`, rewritten so the string it replaces is owned when the concat runs:
+/* Whether `inst` reads, writes or hands out the slot `s` other than by loading it. */
+static bool disturbs(const MirInst *inst, MirValue s) {
+  return inst->op != MOP_Load && mentions(inst, s);
+}
+
+static bool blocks_disturb(const MirBlockData *blk, uint32_t from, uint32_t to, MirValue s) {
+  for (uint32_t i = from; i < to && i < blk->insts.len; i++) {
+    if (disturbs(&blk->insts.ptr[i], s)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Whether the slot `s` is left alone on every path from the instruction at `load_at` in block `from` to the one at
+ * `call_at` in block `to` (not passing through the load again): the blocks that are reachable from `from` and reach
+ * `to` hold no use of `s` but loads, and neither does the rest of `from` or the start of `to`. A path that runs through
+ * `to` before arriving there would run the slot update too, so such a `to` is refused. */
+static bool slot_untouched(MsArena *arena, const MirFunc *f, MirBlock from, uint32_t load_at, MirBlock to,
+                           uint32_t call_at, MirValue s) {
+  const uint32_t n = (uint32_t)f->blocks.len;
+  bool *forward = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)n + 1);
+  bool *backward = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)n + 1);
+  uint32_t *work = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)n + 1);
+  uint32_t top = 0;
+  for (uint32_t pass = 0; pass < 2; pass++) {
+    bool *seen = pass == 0 ? forward : backward;
+    top = 0;
+    work[top++] = pass == 0 ? from : to;
+    seen[work[0]] = true;
+    while (top > 0) {
+      const uint32_t b = work[--top];
+      for (uint32_t c = 0; c < n; c++) {
+        bool edge = false;
+        const MirTerm *term = &f->blocks.ptr[pass == 0 ? b : c].term;
+        for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
+          edge |= mir_term_target_const(term, t)->block == (pass == 0 ? c : b);
+        }
+        if (edge && !seen[c] && c != from) {
+          seen[c] = true;
+          work[top++] = c;
+        }
+      }
+    }
+  }
+  for (uint32_t b = 0; b < n; b++) {
+    if (b == from || b == to || !forward[b] || !backward[b]) {
+      continue;
+    }
+    if (blocks_disturb(&f->blocks.ptr[b], 0, (uint32_t)f->blocks.ptr[b].insts.len, s)) {
+      return false;
+    }
+  }
+  /* `to` reached again from itself (a loop that skips the load) would run its slot update first. */
+  const MirTerm *own = &f->blocks.ptr[to].term;
+  for (uint32_t t = 0; t < mir_term_ntargets(own); t++) {
+    const uint32_t next = mir_term_target_const(own, t)->block;
+    if (next != from && forward[next] && backward[next]) {
+      return false;
+    }
+  }
+  return !blocks_disturb(&f->blocks.ptr[from], load_at + 1, (uint32_t)f->blocks.ptr[from].insts.len, s) &&
+         !blocks_disturb(&f->blocks.ptr[to], 0, call_at, s);
+}
+
+/* One slot update `s = s + piece` in block `b`, rewritten so the string it replaces is owned when the concat runs:
  *
  *     a = load str S; ...; r = concat(a, piece); drops; y = take str S; drop y; put S, r
  *  => ...; y = take str S; r = concat(y, piece); drops; drop y; put S, r
  *
  * which is the shape the fusion below grows in place. A variable that lives in a slot (because a call may fault
  * while it is live) otherwise copies the whole string on every append, so a loop that builds a string is quadratic.
- * Nothing between the load and the new `take` may touch the slot; the drops between the call and the old `take`
- * only release other values. False when no site is left in the block. */
-static bool lift_slot_take(MirModule *m, MirFunc *f, MirBlock b, const uint32_t *uses) {
+ * The load may be in an earlier block than the concat (the piece came out of an inlined call); the slot must be
+ * left alone on every path between them. The drops between the call and the old `take` only release other values.
+ * False when no site is left in the block. */
+static bool lift_slot_take(MirModule *m, MirFunc *f, MirBlock b, const uint32_t *uses, MsArena *arena) {
   MirBlockData *blk = &f->blocks.ptr[b];
-  for (uint32_t i = 0; i < blk->insts.len; i++) {
-    const MirInst *load = &blk->insts.ptr[i];
-    if (load->op != MOP_Load || load->nargs != 1 || mir_value_ty(f, load->res) != MIR_STR || uses[load->res] != 1) {
+  for (uint32_t j = 0; j < blk->insts.len; j++) {
+    bool join = false, bytes = false;
+    if (!twin_position(m, f, &blk->insts.ptr[j], &join, &bytes) || bytes) {
       continue;
     }
-    const MirValue slot = load->args[0], a = load->res;
-    uint32_t j = i + 1;
-    while (j < blk->insts.len && !mentions(&blk->insts.ptr[j], a) && !mentions(&blk->insts.ptr[j], slot)) {
-      j++;
+    const MirValue a = blk->insts.ptr[j].args[0];
+    if (uses[a] != 1) {
+      continue;
     }
-    bool join = false, bytes = false;
-    if (j >= blk->insts.len || !twin_position(m, f, &blk->insts.ptr[j], &join, &bytes) || bytes ||
-        blk->insts.ptr[j].args[0] != a || mentions(&blk->insts.ptr[j], slot)) {
+    uint32_t lb = MIR_NONE, li = 0;
+    for (uint32_t x = 0; x < f->blocks.len && lb == MIR_NONE; x++) {
+      for (uint32_t y = 0; y < f->blocks.ptr[x].insts.len; y++) {
+        const MirInst *def = &f->blocks.ptr[x].insts.ptr[y];
+        if (def->res == a) {
+                      lb = def->op == MOP_Load && def->nargs == 1 && mir_value_ty(f, a) == MIR_STR ? x : MIR_NONE;
+          li = y;
+          break;
+        }
+      }
+    }
+    if (lb == MIR_NONE || (lb == b && li >= j)) {
+      continue;
+    }
+    const MirValue slot = f->blocks.ptr[lb].insts.ptr[li].args[0];
+    if (mentions(&blk->insts.ptr[j], slot)) {
+      continue;
+    }
+    if (lb == b) {
+      bool clear = true;
+      for (uint32_t x = li + 1; x < j; x++) {
+        clear &= !mentions(&blk->insts.ptr[x], a) && !mentions(&blk->insts.ptr[x], slot);
+      }
+      if (!clear) {
+        continue;
+      }
+    } else if (!slot_untouched(arena, f, lb, li, b, j, slot)) {
       continue;
     }
     uint32_t k = j + 1;
@@ -85,7 +174,7 @@ static bool lift_slot_take(MirModule *m, MirFunc *f, MirBlock b, const uint32_t 
     MirInst *out = MS_ARENA_NEW_ARRAY(&m->arena, MirInst, (size_t)blk->insts.len + 1);
     uint32_t n = 0;
     for (uint32_t x = 0; x < blk->insts.len; x++) {
-      if (x == i || x == k) {
+      if (x == k || (lb == b && x == li)) {
         continue;
       }
       if (x == j) {
@@ -97,6 +186,17 @@ static bool lift_slot_take(MirModule *m, MirFunc *f, MirBlock b, const uint32_t 
       out[n++] = blk->insts.ptr[x];
     }
     opt_block_set_insts(blk, out, n);
+    if (lb != b) {
+      MirBlockData *from = &f->blocks.ptr[lb];
+      MirInst *kept = MS_ARENA_NEW_ARRAY(&m->arena, MirInst, (size_t)from->insts.len + 1);
+      uint32_t count = 0;
+      for (uint32_t x = 0; x < from->insts.len; x++) {
+        if (x != li) {
+          kept[count++] = from->insts.ptr[x];
+        }
+      }
+      opt_block_set_insts(from, kept, count);
+    }
     return true;
   }
   return false;
@@ -108,7 +208,7 @@ static bool lift_slot_takes(MirModule *m, MirFunc *f) {
     for (;;) {
       MsArena arena = ms_arena_new();
       const uint32_t *uses = mir_use_counts(&arena, f);
-      const bool lifted = lift_slot_take(m, f, b, uses);
+      const bool lifted = lift_slot_take(m, f, b, uses, &arena);
       ms_arena_free(&arena);
       if (!lifted) {
         break;
