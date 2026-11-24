@@ -47,7 +47,7 @@ test "seeded hash is deterministic per seed and differs between seeds":
 test "CRC64 table paths equal the bitwise path":
 	for polynomial in [Crc64Polynomial.Ecma, Crc64Polynomial.Iso]:
 		for length in [255, 256, 257, 4095, 4096, 4103, 9001]:
-			var raw: List[UInt8] = []
+			var raw List[UInt8] = []
 			for index in 0..length:
 				raw.append(
 					(
@@ -58,7 +58,7 @@ test "CRC64 table paths equal the bitwise path":
 
 			data := Bytes(raw.clone())
 			var chunked = Crc64(polynomial: polynomial)
-			var chunk: List[UInt8] = []
+			var chunk List[UInt8] = []
 
 			for byte in raw:
 				chunk.append(byte)

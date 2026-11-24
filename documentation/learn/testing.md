@@ -13,7 +13,7 @@ Save this complete file as `test.ms`:
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn add(a: Int, b: Int) Int:
+fn add(a Int, b Int) Int:
     return a + b
 
 test "addition":
@@ -133,7 +133,7 @@ import check, ints, lists from "@std/test/property.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "reversing twice restores a list":
-    check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))?
+    check("reverse twice", lists(ints(-100, 100)), xs => expect_equal(xs.reversed().reversed(), xs))?
 ```
 
 Test output:
@@ -153,7 +153,7 @@ expected true, got false
 ```
 
 - Generators: `ints(low, high)`, `bools()`, `floats(low, high)`, `strings(alphabet, max_length)`, `lists(gen, min_length, max_length)`, `optionals(gen)`, `pairs(a, b)`, `element_of(values)`, `one_of(gens)`, and `constant(value)`.
-- Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(fn n: n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
+- Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(n => n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
 - Shrinking is automatic for every generator, including your own compositions: generators draw from a recorded stream of integers and shrinking edits and replays it. Integers shrink toward 0, lists toward fewer elements, `optionals` toward `null`, `bools` toward `false`.
 - A generator value moves into the generator that uses it, so build a fresh `ints(...)` for each use rather than reusing one binding.
 - A `panic` inside a property counts as a failing case and shrinks like a returned error; each case runs under `expect_fault`.
@@ -189,7 +189,7 @@ A `bench "name":` block works like a `test` block, but `ms bench` times it inste
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn sum_to(n: Int) Int:
+fn sum_to(n Int) Int:
     var total = 0
     for i in 0..n:
         total += i
@@ -238,7 +238,7 @@ Without `make_fixture`, no hooks run. Define `fn make_fixture() T` for a record 
 import expect_equal from "@std/test/test.ms"
 
 type Counter:
-    count: Int
+    count Int
 
 fn make_fixture() Counter:
     return Counter(0)
@@ -295,7 +295,7 @@ import skip from "@std/test/test.ms"
 import os, Os from "@std/os/system.ms"
 
 type WindowsOnly:
-    ok: Bool
+    ok Bool
 
 fn make_fixture() WindowsOnly:
     return WindowsOnly(os() == Os.Windows)

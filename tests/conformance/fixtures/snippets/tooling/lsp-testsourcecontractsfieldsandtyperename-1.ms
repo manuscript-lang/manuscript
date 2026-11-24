@@ -5,12 +5,12 @@ interface Reader:
     fn read() String
 
 type Box:
-    label: String
+    label String
 
 fn Box.read() String:
     return self.label.clone()
 
-fn message(value: Reader) String:
+fn message(value Reader) String:
     return value.read()
 
 fn make() Box:

@@ -16,7 +16,7 @@ Save as `stop.ms`. `watch_signals` turns signals into a stream of numbers. The p
 import watch_signals from "@std/os/process.ms"
 
 type Worker:
-    name: String
+    name String
 
 fn move Worker.close() Void!:
     print(f"{self.name} stopped")

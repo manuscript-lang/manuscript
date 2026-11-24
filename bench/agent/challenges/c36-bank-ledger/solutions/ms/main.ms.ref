@@ -3,25 +3,25 @@ import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
 type Account:
-    bal: Int
-    lim: Int
-    ops: Int
-    rej: Int
-    frozen: Bool
+    bal Int
+    lim Int
+    ops Int
+    rej Int
+    frozen Bool
 
 type Ledger:
-    accounts: Map[String, Account]
-    fees: Int
+    accounts Map[String, Account]
+    fees Int
 
-fn reject(var l: Ledger, id: String, msg: String) String:
+fn reject(var l Ledger, id String, msg String) String:
     if var a = l.accounts[id]?: a.rej += 1
     return msg
 
-fn report(l: Ledger) String:
+fn report(l Ledger) String:
     rows := l.accounts.keys().sorted(fn a, b: a.compare(b)).map(fn id: f"{id} balance={l.accounts.get(id).get().bal} limit={l.accounts.get(id).get().lim} ops={l.accounts.get(id).get().ops} rejected={l.accounts.get(id).get().rej} frozen={if l.accounts.get(id).get().frozen: "yes" else: "no"}")
     return f"{rows.map(fn r: r + "\n").join("")}total balance={l.accounts.values().map(fn a: a.bal).sum()} fees={l.fees}"
 
-fn money(var l: Ledger, cmd: String, t: List[String]) String:
+fn money(var l Ledger, cmd String, t List[String]) String:
     ids := t.slice(1, t.length() - 1).get()
     for id in ids:
         if not l.accounts.contains(id): return f"error: unknown account {id}"
@@ -55,7 +55,7 @@ fn money(var l: Ledger, cmd: String, t: List[String]) String:
         to_bal = b.bal
     return f"ok {old - n - fee} {to_bal}{suffix}"
 
-fn step(var l: Ledger, t: List[String]) String:
+fn step(var l Ledger, t List[String]) String:
     arity := {"open": 3, "deposit": 3, "withdraw": 3, "transfer": 4, "freeze": 2, "unfreeze": 2, "report": 1}.get(t[0]).get_or(0)
     if arity != t.length(): return "error: bad command"
     if t[0] == "report": return report(l)

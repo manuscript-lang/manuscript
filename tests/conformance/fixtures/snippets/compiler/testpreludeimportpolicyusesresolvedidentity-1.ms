@@ -4,7 +4,7 @@
 import List, Set, ListEntry from "@types"
 import Map, MapEntry from "@domain/types.ms"
 
-fn get() Int: (
+fn get() Int => (
     List(1).value
     + Set(2).value
     + Map[String, Int](3).value
@@ -12,6 +12,6 @@ fn get() Int: (
     + MapEntry[String, Int](5).value
 )
 
-fn cause() CollectionError: CollectionError("local")
+fn cause() CollectionError => CollectionError("local")
 
-export fn main() Int: get() - 15
+export fn main() Int => get() - 15

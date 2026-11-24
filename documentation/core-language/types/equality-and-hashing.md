@@ -15,10 +15,10 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected.
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 interface Equal:
-    fn equals(other: Self) Bool
+    fn equals(other Self) Bool
 
 interface Comparable:
-    fn compare(other: Self) Int
+    fn compare(other Self) Int
 
 interface Hashable:
     fn hash() Int
@@ -59,13 +59,13 @@ An explicit implementation can select identity instead of every field:
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type CustomerKey:
-    id: Int
-    label: String
+    id Int
+    label String
 
-fn CustomerKey.equals(other: CustomerKey) Bool:
+fn CustomerKey.equals(other CustomerKey) Bool:
     return self.id == other.id
 
-fn CustomerKey.hash() Int: self.id
+fn CustomerKey.hash() Int => self.id
 ```
 
 These implementations apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so write a matching `hash` before using the type as a key. Visibility follows the [contract rules](contracts.md#coherence-and-visibility).

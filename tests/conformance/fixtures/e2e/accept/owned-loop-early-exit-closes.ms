@@ -7,25 +7,25 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
-fn first_even(log: String) Int:
+fn first_even(log String) Int:
 	doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
 	for d in doors:
 		if d.id % 2 == 0: return d.id
 	return -1
 
-fn until_two(log: String) Int:
+fn until_two(log String) Int:
 	doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
 	var n = 0
 

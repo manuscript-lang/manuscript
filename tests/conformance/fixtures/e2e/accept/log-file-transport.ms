@@ -8,12 +8,12 @@ import (
 )
 
 type Service:
-	service: String
+	service String
 
 type Request:
-	request: Int
+	request Int
 
-fn lines(path: String) String!:
+fn lines(path String) String!:
 	data := read_file(path).wait()?
 	return ok(data.decode_utf8() or "")
 
@@ -52,10 +52,10 @@ test "limits, invalid levels, and closed transports are errors":
 	)?
 	logger.info("x")?
 
-	limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(logger.info("xx"), limited)?
 
-	invalid: Void! := error(Error("logging: invalid input", kind: "EINVAL"))
+	invalid Void! := error(Error("logging: invalid input", kind: "EINVAL"))
 	expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)?
 	expect_equal(
 		expect_error(

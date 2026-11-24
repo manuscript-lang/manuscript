@@ -11,18 +11,18 @@ import (
 // unterminated last line comes at the end. `data` is the current chunk, `start` is
 // the first unread byte in it, and `pending` holds earlier unfinished fragments.
 type Lines:
-	input: ReadStream[Bytes]
-	data: Bytes
-	start: Int
-	ended: Bool
-	pending: List[Bytes]
-	pending_size: Int
-	pending_cr: Bool
-	max_bytes: Int?
+	input ReadStream[Bytes]
+	data Bytes
+	start Int
+	ended Bool
+	pending List[Bytes]
+	pending_size Int
+	pending_cr Bool
+	max_bytes Int?
 
 // Internal: fails with `EOVERFLOW` when a line of `size` bytes is longer than the
 // limit.
-fn Lines.check(size: Int) Void!:
+fn Lines.check(size Int) Void!:
 	limit := self.max_bytes
 	if limit != null:
 		if size > limit: return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
@@ -30,7 +30,7 @@ fn Lines.check(size: Int) Void!:
 // Internal: decodes the held bytes in `[start, stop)` as one line. Bytes that are not
 // UTF-8 fail with `EBADMSG` rather than becoming an empty line. The range is decoded
 // in place, without first copying the line into a `Bytes`.
-fn Lines.decode(start: Int, stop: Int) String!:
+fn Lines.decode(start Int, stop Int) String!:
 	text := self.data.decode_utf8_range(start, stop)
 	if text != null: return ok(text)
 
@@ -38,7 +38,7 @@ fn Lines.decode(start: Int, stop: Int) String!:
 
 // Internal: joins only a completed line. Incomplete chunks are copied once, not as a
 // growing prefix.
-fn var Lines.take(stop: Int, terminated: Bool) String!:
+fn var Lines.take(stop Int, terminated Bool) String!:
 	if self.pending_size == 0:
 		var end = stop
 		if terminated and end > self.start and self.data.get_or(end - 1, 0) == 13:
@@ -118,17 +118,14 @@ fn move Lines.close() Void!:
 // Reads lines of text from a byte stream such as `stdin()`. It splits `input` at
 // `\n` and removes a trailing `\r`. A line longer than `max_bytes` returns
 // `EOVERFLOW`, and a line that is not valid UTF-8 returns `EBADMSG`.
-export fn lines(
-	move input: ReadStream[Bytes],
-	max_bytes: Int? = null,
-) ReadStream[String]:
+export fn lines(move input ReadStream[Bytes], max_bytes Int? = null) ReadStream[String]:
 	return ReadStream[String](
 		Lines(input, "".to_bytes(), 0, false, [], 0, false, max_bytes)
 	)
 
 type Mapped[T, U]:
-	input: ReadStream[T]
-	f: fn(T) U
+	input ReadStream[T]
+	f fn(T) U
 
 fn var Mapped[T, U].next() move U?!:
 	item := self.input.next()?
@@ -142,12 +139,12 @@ fn move Mapped[T, U].close() Void!:
 
 // Returns a stream of `f` applied to each item of `input`. Closing it closes
 // `input`.
-export fn map[T, U](move input: ReadStream[T], move f: fn(T) U) ReadStream[U]:
+export fn map[T, U](move input ReadStream[T], move f fn(T) U) ReadStream[U]:
 	return ReadStream[U](Mapped[T, U](input, f))
 
 type Filtered[T]:
-	input: ReadStream[T]
-	keep: fn(T) Bool
+	input ReadStream[T]
+	keep fn(T) Bool
 
 fn var Filtered[T].next() move T?!:
 	while true:
@@ -164,13 +161,13 @@ fn move Filtered[T].close() Void!:
 
 // Returns a stream of the items of `input` for which `keep` is true, in order.
 // Closing it closes `input`.
-export fn filter[T](move input: ReadStream[T], move keep: fn(T) Bool) ReadStream[T]:
+export fn filter[T](move input ReadStream[T], move keep fn(T) Bool) ReadStream[T]:
 	return ReadStream[T](Filtered[T](input, keep))
 
 // Internal: the first `left` items of another stream; it never pulls past them.
 type Taker[T]:
-	input: ReadStream[T]
-	left: Int
+	input ReadStream[T]
+	left Int
 
 fn var Taker[T].next() move T?!:
 	if self.left <= 0: return ok(null)
@@ -186,5 +183,5 @@ fn move Taker[T].close() Void!:
 // items are never read, so `take` can end an endless stream. A failed read does not
 // count as an item. A `count` of 0 or less gives an empty stream. Closing it closes
 // `input`.
-export fn take[T](move input: ReadStream[T], count: Int) ReadStream[T]:
+export fn take[T](move input ReadStream[T], count Int) ReadStream[T]:
 	return ReadStream[T](Taker[T](input, count))

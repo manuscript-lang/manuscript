@@ -7,12 +7,12 @@ import (
 
 FEE := 5
 
-fn digits(t: String) Bool: (
+fn digits(t String) Bool => (
 	not t.is_empty()
-	and t.chars().all(fn c: "0123456789".contains(c))
+	and t.chars().all(c => "0123456789".contains(c))
 )
 
-fn arity(c: String) Int:
+fn arity(c String) Int:
 	if c == "open" or c == "deposit" or c == "withdraw": return 3
 	if c == "transfer": return 4
 	if c == "freeze" or c == "unfreeze": return 2
@@ -20,7 +20,7 @@ fn arity(c: String) Int:
 
 	return 0
 
-fn solve(s: String) String:
+fn solve(s String) String:
 	var out = List[String]()
 	var fees = 0
 	var bal = Map[String, Int]()
@@ -150,11 +150,11 @@ fn solve(s: String) String:
 			ops[to.clone()] = ops.get_or(to, 0) + 1
 			out.append(f"ok {new} {bal.get_or(to, 0)}{sfx}")
 
-	return out.map(fn o: o + "\n").join("")
+	return out.map(o => o + "\n").join("")
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
-fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
+fn rand_script(var rnd Random, n Int, ids List[String]) String:
 	var lines = List[String]()
 
 	for i in ids:

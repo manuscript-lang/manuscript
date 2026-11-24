@@ -4,8 +4,8 @@
 interface ReadValue[T]:
     fn get() T
 
-type Box[T: Clonable]:
-    value: T
+type Box[T Clonable]:
+    value T
 
 fn Box[T].get() T:
     return self.value.clone()

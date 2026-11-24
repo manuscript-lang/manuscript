@@ -2,7 +2,7 @@
 // conform: phase=check
 import Closeable from "@std/cleanup.ms"
 type AggregateResource:
-    visits: List[Int]
+    visits List[Int]
 impl Closeable for AggregateResource:
     fn close() Void:
         self.visits.append(1)
@@ -18,4 +18,4 @@ impl AggregateCounter for AggregateCell:
     fn lower(by: Int) Int:
         self.total -= by
         return self.total
-fn identity[T](value: T) T: return value
+fn identity[T](value: T) T => return value

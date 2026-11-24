@@ -9,12 +9,12 @@ import (
 	expect_some from "@std/test/test.ms",
 )
 
-fn pairs(spans: List[RegexSpan]) List[List[Int]]:
+fn pairs(spans List[RegexSpan]) List[List[Int]]:
 	var out = List[List[Int]](reserve: spans.length())
 	for span in spans: out.append([span.start, span.end])
 	return out
 
-fn slots(spans: List[RegexSpan?]) List[List[Int]?]:
+fn slots(spans List[RegexSpan?]) List[List[Int]?]:
 	var out = List[List[Int]?](reserve: spans.length())
 
 	for span in spans:
@@ -67,7 +67,7 @@ test "capture spans distinguish no match absent groups and empty captures":
 		| expect_ok?
 		| expect_some?
 	)
-	expected: List[List[Int]?] := [[0, 0], null, [0, 0]]
+	expected List[List[Int]?] := [[0, 0], null, [0, 0]]
 	first | slots | expect_equal(expected)?
 
 	absent := compile("(x)") | expect_ok?
@@ -79,7 +79,7 @@ test "capture spans distinguish no match absent groups and empty captures":
 	re.capture("") | expect_equal(["", "", ""])?
 
 	plain := compile("é") | expect_ok?
-	plain_expected: List[List[Int]?] := [[1, 3]]
+	plain_expected List[List[Int]?] := [[1, 3]]
 	(
 		plain.capture_spans(
 			"aé",
@@ -97,12 +97,12 @@ test "capture rows clear absent groups and retain all group indices":
 	rows := re.capture_all_spans("é🙂é", 3, 9) | expect_ok?
 	rows.length() | expect_equal(3)?
 
-	left: List[List[Int]?] := [[0, 2], [0, 2], null]
-	right: List[List[Int]?] := [[2, 6], null, [2, 6]]
+	left List[List[Int]?] := [[0, 2], [0, 2], null]
+	right List[List[Int]?] := [[2, 6], null, [2, 6]]
 	rows[0] | slots | expect_equal(left)?
 	rows[1] | slots | expect_equal(right)?
 
-	last: List[List[Int]?] := [[6, 8], [6, 8], null]
+	last List[List[Int]?] := [[6, 8], [6, 8], null]
 	rows[2] | slots | expect_equal(last)?
 
 	bytes := "é🙂é".to_bytes()

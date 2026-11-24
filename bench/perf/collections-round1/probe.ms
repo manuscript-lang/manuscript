@@ -2,23 +2,23 @@
 import monotonic from "@std/time.ms"
 
 type Node:
-	left: Node?
-	right: Node?
+	left Node?
+	right Node?
 
 type P:
-	x: Int
-	y: Int
-	name: String
+	x Int
+	y Int
+	name String
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Void:
+fn stop(name String, t0 Int, chk Int) Void:
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 
 fn big_int_map() Int:
-	var m: Map[Int, Int] = {}
+	var m Map[Int, Int] = {}
 	var x = 1
 
 	for i in 0..2000000:
@@ -36,7 +36,7 @@ fn big_int_map() Int:
 	return t + m.length()
 
 fn string_key_map() Int:
-	var m: Map[String, Int] = {}
+	var m Map[String, Int] = {}
 	for i in 0..500000:
 		m[f"key-number-{i}"] = i
 
@@ -46,7 +46,7 @@ fn string_key_map() Int:
 	return t
 
 fn map_remove_churn() Int:
-	var m: Map[Int, Int] = {}
+	var m Map[Int, Int] = {}
 	var t = 0
 
 	for i in 0..1000000:
@@ -72,29 +72,29 @@ fn set_ops() Int:
 	return u.length() + n.length() + d.length()
 
 fn sort_ints() Int:
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	var x = 1
 
 	for i in 0..3000000:
 		x = lcg(x)
 		xs.append(x)
 
-	ys := xs.sorted(fn a, b: a - b)
+	ys := xs.sorted((a, b) => a - b)
 	return ys[0] + ys[1500000] + ys[2999999]
 
 fn sort_strings() Int:
-	var xs: List[String] = []
+	var xs List[String] = []
 	var x = 1
 
 	for i in 0..500000:
 		x = lcg(x)
 		xs.append(f"s{x}")
 
-	xs.sort(fn a, b: a.compare(b))
+	xs.sort((a, b) => a.compare(b))
 	return xs[0].length() + xs[250000].length()
 
 fn struct_list() Int:
-	var xs: List[P] = []
+	var xs List[P] = []
 	for i in 0..1000000:
 		xs.append(P(i, i * 2, "n"))
 
@@ -102,14 +102,14 @@ fn struct_list() Int:
 	for p in xs:
 		t += p.x + p.y
 
-	ys := xs.map(fn p: p.x + 1)
+	ys := xs.map(p => p.x + 1)
 	return t + ys.length()
 
-fn make_tree(d: Int) Node?:
+fn make_tree(d Int) Node?:
 	if d == 0: return Node(null, null)
 	return Node(make_tree(d - 1), make_tree(d - 1))
 
-fn count(n: Node?) Int:
+fn count(n Node?) Int:
 	if n == null: return 0
 
 	nn := n
@@ -122,10 +122,10 @@ fn trees() Int:
 	return t
 
 fn list_of_lists() Int:
-	var g: List[List[Int]] = []
+	var g List[List[Int]] = []
 
 	for i in 0..1500:
-		var row: List[Int] = []
+		var row List[Int] = []
 		for j in 0..1500:
 			row.append(i * 31 + j)
 		g.append(row)
@@ -137,13 +137,13 @@ fn list_of_lists() Int:
 	return t
 
 fn list_ops() Int:
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..2000000:
 		xs.append(i % 1000)
 
 	d := xs.distinct()
 	r := xs.reversed()
-	s := xs.filter(fn v: v % 2 == 0).map(fn v: v * 3)
+	s := xs.filter(v => v % 2 == 0).map(v => v * 3)
 	var t = 0
 	for i in 0..200:
 		if xs.contains(999 + i): t += 1

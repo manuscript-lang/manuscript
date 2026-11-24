@@ -13,7 +13,7 @@ import (
 	wild from "./gate.ms",
 )
 
-fn show[T](value: T) String:
+fn show[T](value T) String:
 	return f"{value}"
 
 test "module functions and methods work on an opaque value":
@@ -52,7 +52,7 @@ test "an opaque value lives in collections and optionals":
 	all.length() | expect_equal(2)?
 	entity(all[1]) | expect_equal("u2")?
 
-	maybe: Approved? := approve("u3")
+	maybe Approved? := approve("u3")
 	found := maybe
 
 	if found != null:

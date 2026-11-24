@@ -13,32 +13,32 @@ import (
 
 export type Usage:
 	// Uncached input tokens.
-	tokens_in: Int = 0
+	tokens_in Int = 0
 	// Cache reads (and writes, where the harness reports them together).
-	tokens_cached: Int = 0
-	tokens_out: Int = 0
-	turns: Int = 0
-	cost_usd: Float = 0.0
+	tokens_cached Int = 0
+	tokens_out Int = 0
+	turns Int = 0
+	cost_usd Float = 0.0
 	// `harness`, `estimated` or `null`.
-	cost_source: String = "none"
+	cost_source String = "none"
 
 // What one agent run produced.
 export type AgentRun:
-	usage: Usage
-	wall_s: Float
-	exit_code: Int
-	timed_out: Bool
+	usage Usage
+	wall_s Float
+	exit_code Int
+	timed_out Bool
 
 export interface Harness:
 	fn name() String
 	// The argv that runs the agent non-interactively in `workspace` and exits when
 	// done.
-	fn command(prompt: String, workspace: String, model: String?) List[String]
+	fn command(prompt String, workspace String, model String?) List[String]
 	// Extracts usage from the harness's raw standard output.
-	fn parse(transcript: String) Usage
+	fn parse(transcript String) Usage
 
 // The JSON event on each line of `transcript` that parses.
-export fn events(transcript: String) List[JsonValue]:
+export fn events(transcript String) List[JsonValue]:
 	var out = List[JsonValue]()
 
 	for line in transcript.split("\n"):
@@ -47,7 +47,7 @@ export fn events(transcript: String) List[JsonValue]:
 
 	return out
 
-export fn int_at(doc: JsonValue, key: String) Int:
+export fn int_at(doc JsonValue, key String) Int:
 	value := doc.get(key)
 	if value != null: return value.as_int() or 0
 
@@ -56,12 +56,12 @@ export fn int_at(doc: JsonValue, key: String) Int:
 // Runs the agent in `workspace`, saves its output to `transcript` and returns the
 // measured run.
 export fn run_agent(
-	h: Harness,
-	prompt: String,
-	workspace: String,
-	timeout_s: Int,
-	transcript: String,
-	model: String?,
+	h Harness,
+	prompt String,
+	workspace String,
+	timeout_s Int,
+	transcript String,
+	model String?,
 ) AgentRun:
 	argv := h.command(prompt, workspace, model)
 	wrapper := ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)

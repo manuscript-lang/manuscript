@@ -8,30 +8,30 @@
 import Closeable from "@std/core.ms"
 
 type Door:
-    name: String
+    name String
 
 fn move Door.close() Void!:
     print(f"closed {self.name}")
 
-fn ignore(move d: Door) Int:
+fn ignore(move d Door) Int:
     return 1
 
-fn read(move d: Door) Int:
+fn read(move d Door) Int:
     return d.name.length()
 
 fn move Door.consume() Int:
     return 2
 
-fn ignore_view(move c: Closeable) Int:
+fn ignore_view(move c Closeable) Int:
     return 3
 
-fn ignore_generic[T](move x: T) Int:
+fn ignore_generic[T](move x T) Int:
     return 4
 
-fn identity[T](move x: T) T:
+fn identity[T](move x T) T:
     return x
 
-fn second[T](move x: T, move y: T) T:
+fn second[T](move x T, move y T) T:
     return y
 
 fn main() Void:

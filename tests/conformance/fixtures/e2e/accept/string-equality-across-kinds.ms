@@ -2,10 +2,10 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn same(a: String, b: String) Bool:
+fn same(a String, b String) Bool:
 	return a == b
 
-fn built(parts: List[String]) String:
+fn built(parts List[String]) String:
 	var s = ""
 	for p in parts:
 		s += p
@@ -46,8 +46,8 @@ test "different text is different at every length and kind":
 	expect_equal(same(long, short), false)?
 	expect_equal(same(built(["ab\u{0}", "c"]), "ab"), false)?
 
-fn filled(n: Int, at: Int) String:
-	var parts: List[String] = []
+fn filled(n Int, at Int) String:
+	var parts List[String] = []
 
 	for i in 0..n:
 		if i == at:

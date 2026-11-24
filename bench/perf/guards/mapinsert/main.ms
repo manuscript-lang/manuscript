@@ -8,7 +8,7 @@ fn main() Void:
 
 	for i in 0..60000:
 		key := f"record-{i % 45000}-payload"
-		counts.update(key.clone(), 0, fn v: v + 1)
+		counts.update(key.clone(), 0, v => v + 1)
 		seen.add_default(key.clone(), i)
 		total += 1
 

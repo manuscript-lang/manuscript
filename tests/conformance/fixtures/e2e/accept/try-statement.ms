@@ -3,47 +3,47 @@
 // conform: origin=tests/e2e/testdata/accept/try-statement.ms
 import expect_equal from "@std/test/test.ms"
 
-fn parse(n: Int) Int!Error:
+fn parse(n Int) Int!Error:
     if n < 0:
         return error(Error("neg"))
 
     return ok(n)
 
-fn bound(n: Int) Int!Error:
+fn bound(n Int) Int!Error:
     v := parse(n)?
     return ok(v + 1)
 
-fn reassigned(n: Int) Int!Error:
+fn reassigned(n Int) Int!Error:
     var total = 1
     total = parse(n)?
     return ok(total * 2)
 
-fn check(n: Int) Void!Error:
+fn check(n Int) Void!Error:
     if n < 0:
         return error(Error("neg"))
 
-fn discarded(n: Int) Int!Error:
+fn discarded(n Int) Int!Error:
     check(n)?
     return ok(7)
 
-fn code(r: Int!Error) Int:
+fn code(r Int!Error) Int:
     return r.clone().get_or(-1)
 
-fn nested(n: Int) Int!Error:
+fn nested(n Int) Int!Error:
     return ok((parse(n)?) + (parse(n - 5)?))
 
-fn chained(n: Int) Int!Error:
+fn chained(n Int) Int!Error:
     a := bound(n)?
     b := reassigned(a - 10)?
     return ok(b)
 
-fn in_loop(values: List[Int]) Int!Error:
+fn in_loop(values List[Int]) Int!Error:
     var sum = 0
     for v in values:
         sum += parse(v)?
     return ok(sum)
 
-fn in_lambda(n: Int) Int!Error:
+fn in_lambda(n Int) Int!Error:
     inner := fn() Int!Error:
         v := parse(n)?
         return ok(v * 10)

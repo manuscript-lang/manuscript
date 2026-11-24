@@ -1,2 +1,2 @@
 fn main() Void:
-	x: Int := "no"
+	x Int := "no"

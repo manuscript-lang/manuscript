@@ -65,10 +65,10 @@ import stdout from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 
 type Greeting:
-    name: String
-    times: Int
+    name String
+    times Int
 
-fn greet(options: Greeting) Result[Int, Error]:
+fn greet(options Greeting) Result[Int, Error]:
     for round in 0..options.times:
         stdout().write(f"Hello, {options.name}!\n")?
     stdout().flush()?
@@ -80,7 +80,7 @@ fn main() Int:
         about: "Print a greeting",
         flags: [Flag("times", FlagKind.Int, "n", "1", "Repeat count")],
         args: [Arg("name", "Who to greet")],
-        run: fn options: greet(options)
+        run: options => greet(options)
     )
     return Command(name: "tool", about: "Example tool", children: [hello]).execute(arguments())
 ```

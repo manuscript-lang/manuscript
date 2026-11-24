@@ -5,7 +5,7 @@ import expect_equal from "@std/test/test.ms"
 fn bump() Int:
 	return 1000
 
-fn pick(i: Int) Int!:
+fn pick(i Int) Int!:
 	return ok(i)
 
 fn pairs() Map[Int, List[Int]]:

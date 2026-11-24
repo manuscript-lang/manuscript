@@ -5,7 +5,7 @@ import (
 	lines from "@std/io/steps.ms",
 )
 
-fn shown(text: String) Int:
+fn shown(text String) Int:
 	if stdout().write(text.clone()).is_error(): return 1
 	return 0
 

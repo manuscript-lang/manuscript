@@ -23,7 +23,7 @@ import (
 )
 
 // The text after `prefix` on every line that starts with it.
-fn after(text: String, prefix: String) List[String]:
+fn after(text String, prefix String) List[String]:
 	var found = List[String]()
 	for line in text.split("\n"):
 		if line.starts_with(prefix): found.append(

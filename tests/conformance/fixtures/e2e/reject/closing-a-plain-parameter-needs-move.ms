@@ -6,11 +6,11 @@
 import Closeable from "@std/core.ms"
 
 type Res:
-	id: Int
-	label: String
+	id Int
+	label String
 
 fn move Res.close() Void!:
 	print(f"close {self.id}")
 
-fn consume(res: Res) Void!:
+fn consume(res Res) Void!:
 	res.close()?

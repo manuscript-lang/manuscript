@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/cl-12.ms
 import expect_equal from "@std/test/test.ms"
 
-fn map_total(values: Map[String, Int]) Int:
+fn map_total(values Map[String, Int]) Int:
     var total = 0
 
     for entry in values:
@@ -12,7 +12,7 @@ fn map_total(values: Map[String, Int]) Int:
 
     return total
 
-fn set_total(values: Set[Int]) Int:
+fn set_total(values Set[Int]) Int:
     var total = 0
     for value in values:
         total += value

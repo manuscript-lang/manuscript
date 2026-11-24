@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter: Counter, n: Int) Void:'",
+        "message": "'fn var' marks a method that changes its receiver, as in 'fn var Counter.add(n Int) Void:'; a free function takes 'var' on the parameter instead: 'fn add(var counter Counter, n Int) Void:'",
         "position": {
           "file": "foreign-fn-var-free.ms",
           "line": 4,

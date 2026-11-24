@@ -3,9 +3,9 @@
 // A join whose first part is an owned string that dies at the join grows it in place; the same join reached on another
 // path builds a new string and drops every part. Both must leave no owned part behind.
 type Note:
-	message: String
+	message String
 
-fn text(words: String, domain: String, move said: String) Note:
+fn text(words String, domain String, move said String) Note:
 	if words == "-":
 		if said.length() > 0:
 			return Note(said)

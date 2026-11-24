@@ -1,4 +1,4 @@
-fn pair(key: Int, other: Int) Int:
+fn pair(key Int, other Int) Int:
 	return key + other
 
 fn main() Void:

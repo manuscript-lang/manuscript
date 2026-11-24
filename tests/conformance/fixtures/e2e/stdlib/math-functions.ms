@@ -43,7 +43,7 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-fn near(actual: Float, expected: Float) Bool:
+fn near(actual Float, expected Float) Bool:
 	return (actual - expected).abs() < 0.000000001
 
 test "inverse trigonometric functions return radians":
@@ -73,9 +73,9 @@ test "float remainder takes the sign of the dividend":
 	expect_false(not remainder(5.0, 0.0).is_nan())?
 
 type Ranked:
-	rank: Int
+	rank Int
 
-fn Ranked.compare(other: Ranked) Int:
+fn Ranked.compare(other Ranked) Int:
 	if self.rank < other.rank: return -9223372036854775808
 	if self.rank > other.rank: return 9223372036854775807
 

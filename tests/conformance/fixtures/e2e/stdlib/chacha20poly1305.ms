@@ -10,7 +10,7 @@ import (
 	expect_equal, expect_error, expect_true from "@std/test/test.ms",
 )
 
-fn bytes_of(hex: String) Bytes:
+fn bytes_of(hex String) Bytes:
 	return hex_decode(hex, null).get_or(Bytes([]))
 
 key_hex := "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"

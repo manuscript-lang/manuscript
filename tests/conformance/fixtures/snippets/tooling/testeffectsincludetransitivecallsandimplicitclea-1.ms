@@ -5,7 +5,7 @@ import Closeable from "@std/core.ms"
 import Queue from "@std/collections/queue.ms"
 
 type Resource:
-    state: Queue[Int]
+    state Queue[Int]
 
 fn move Resource.close() Void!:
     self.state.dequeue()
@@ -13,19 +13,19 @@ fn move Resource.close() Void!:
 fn pure() Int:
     return 1
 
-fn direct(move resource: Resource) Void:
+fn direct(move resource Resource) Void:
     _item := resource
     return
 
-fn transitive(move resource: Resource) Void:
+fn transitive(move resource Resource) Void:
     direct(resource: resource)
 
-fn nested(move resource: Resource) Void:
-    callback := fn(move item: Resource) Void:
+fn nested(move resource Resource) Void:
+    callback := fn(move item Resource) Void:
         _held := item
         return
 
     callback(resource)
 
-fn indirect(callback: fn() Void) Void:
+fn indirect(callback fn() Void) Void:
     callback()

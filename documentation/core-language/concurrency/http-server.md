@@ -17,7 +17,7 @@ import fetch from "@std/net/fetch.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "serve a greeting":
-    handler := buffered(fn request: text(200, "Hello, Manuscript!"))
+    handler := buffered(request => text(200, "Hello, Manuscript!"))
     server := serve("127.0.0.1:0", handler)?
     response := fetch(f"http://{server.address()}/").wait()?
     expect_equal(response.head.status, 200)?

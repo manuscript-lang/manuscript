@@ -49,7 +49,7 @@ const MsLintRule MS_LINT_RULES[] = {
     {"MSL123", "Index loop that only reads xs[i]", MS_LINT_WARNING,
      "write `for item in xs:` and use `item`"},
     {"MSL124", "Loop that appends or adds into a fresh accumulator", MS_LINT_WARNING,
-     "write `xs.map(fn x: ...)`, `xs.filter(fn x: ...)` or `xs.sum()`"},
+     "write `xs.map(x => ...)`, `xs.filter(x => ...)` or `xs.sum()`"},
     {"MSL125", "Loop that appends every element", MS_LINT_WARNING,
      "write `out.extend(xs)`"},
     {"MSL126", "Binding returned on the next line", MS_LINT_ERROR,

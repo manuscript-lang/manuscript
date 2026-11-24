@@ -13,7 +13,7 @@ import (
 	certificate, private_key from "./support/certificates.ms",
 )
 
-fn handler(var exchange: HttpExchange) Void!:
+fn handler(var exchange HttpExchange) Void!:
 	if exchange.path() == "/hang":
 		sleep(30.seconds()).wait()?
 		return ok()

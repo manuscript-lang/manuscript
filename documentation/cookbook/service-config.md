@@ -18,18 +18,18 @@ import environment from "@std/os/env.ms"
 import read_file from "@std/os/fs.ms"
 
 type Settings:
-    host: String = "0.0.0.0"
-    port: Int = 8080
-    level: String = "info"
+    host String = "0.0.0.0"
+    port Int = 8080
+    level String = "info"
 
-fn from_file(path: String) Settings!:
+fn from_file(path String) Settings!:
     bytes := read_file(path).wait()
     if bytes.is_error() and bytes.err().kind == "ENOENT":
         return ok(Settings())
     text := ok_or((bytes?).decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))?
     return parse[Settings](text)
 
-fn apply_environment(var settings: Settings) Void!:
+fn apply_environment(var settings Settings) Void!:
     env := environment()?
     if value := env.get("PORT"):
         settings.port = ok_or(value.parse_int(), Error("PORT is not a number", kind: "EINVAL"))?

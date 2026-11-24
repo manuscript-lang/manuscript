@@ -7,12 +7,12 @@ Storage in records/collections can move ownership, invalidating the old name. Cl
 <!-- complete: ownership.ms -->
 ```manuscript
 type User:
-	name: String
+	name String
 
-fn name(user: User) String:
+fn name(user User) String:
 	return user.name
 
-fn add(var names: List[String], user: User) Void:
+fn add(var names List[String], user User) Void:
 	names.append(user.name.clone())
 
 fn main() Int:
@@ -34,13 +34,13 @@ Closeable closes at scope end unless moved. Declare `fn move Type.close() Void!`
 A loop variable, a parameter and an element read are borrowed, so storing one needs `.clone()`; reading one needs nothing. The error `cannot move x out: it is borrowed` means write `x.clone()`, or use `x` only where it is read.
 
 ```manuscript
-fn copy_all(items: List[String]) List[String]:
+fn copy_all(items List[String]) List[String]:
 	var out = List[String]()
 	for s in items:
 		out.append(s.clone())
 	return out
 
-fn has(items: List[String], want: String) Bool:
+fn has(items List[String], want String) Bool:
 	for s in items:
 		if s == want: return true
 	return false
@@ -48,22 +48,22 @@ fn has(items: List[String], want: String) Bool:
 
 Pieces of a value are borrows too: `line.split(" ")`, `s.slice(a, b)` and `xs[i]` borrow their source, so store them with `.clone()`: `out.append(line.split(" ").clone())`. A store `m[key] = v` takes `key` after `v` ran, so `v` may read it: `counts[key] = counts.get_or(key, 0) + 1`. Do not use `key` after the store; store `key.clone()` to keep it.
 
-Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs: List[Int]` and called `add(xs)`; otherwise copy it into a `var` local first.
+Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A list parameter changes only if declared `var xs List[Int]` and called `add(xs)`; otherwise copy it into a `var` local first.
 
 ## Trees and linked lists change through `fn var` methods
 
 A recursive type holds its child as `Node?`. An `Optional` payload cannot be mutably borrowed with `if var n = slot:` or `var n = slot.get()`, and a field cannot move out of its owner (`m.left = insert(m.left, k)` fails). Change a child in place with a `fn var` method and call it through the field with `?.`: the call does nothing when the child is absent. Walk with a plain function that borrows (`if n := node:`).
 
-A `T?` parameter defaults to `null`, so it must come after the required parameters: write `find(key: Int, node: Node?)`, not `find(node: Node?, key: Int)`.
+A `T?` parameter defaults to `null`, so it must come after the required parameters: write `find(key Int, node Node?)`, not `find(node Node?, key Int)`.
 
 <!-- complete: bst-insert.ms -->
 ```manuscript
 type Node:
-	key: Int
-	left: Node?
-	right: Node?
+	key Int
+	left Node?
+	right Node?
 
-fn var Node.insert(key: Int) Void:
+fn var Node.insert(key Int) Void:
 	if key < self.key:
 		if self.left == null:
 			self.left = Node(key, null, null)
@@ -75,7 +75,7 @@ fn var Node.insert(key: Int) Void:
 		else:
 			self.right?.insert(key)
 
-fn keys(var out: List[Int], node: Node?) Void:
+fn keys(var out List[Int], node Node?) Void:
 	if n := node:
 		keys(out, n.left)
 		out.append(n.key)
@@ -93,4 +93,4 @@ fn main() Int:
 	return 1
 ```
 
-An empty tree is a `Node?` that is `null` (or an enum with an `Empty` case); give the owner a type with a `var root: Node?` and make its `insert` method create the first node.
+An empty tree is a `Node?` that is `null` (or an enum with an `Empty` case); give the owner a type with a `var root Node?` and make its `insert` method create the first node.

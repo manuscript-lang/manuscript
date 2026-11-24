@@ -7,18 +7,18 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn q(text: String) String:
+fn q(text String) String:
 	return text.replace("‹", "{").replace("›", "}")
 
 // Whether the next draw picks a nearby dependency (70% of draws).
-fn chance(var rng: SeededRandom) Bool:
+fn chance(var rng SeededRandom) Bool:
 	return rng.int(0, 100) < 70
 
 type Dep:
-	pkg: Int
-	file: Int
+	pkg Int
+	file Int
 
-fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
+fn deps(var rng SeededRandom, files Int, p Int, f Int) List[Dep]:
 	i := p * files + f
 	var found = List[Dep]()
 
@@ -28,23 +28,23 @@ fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
 		low := if chance(rng): (if i - 60 > 0: i - 60 else: 0) else: 0
 		j := low + rng.int(0, i - low)
 		d := Dep(j / files, j % files)
-		if not found.any(fn e: e.pkg == d.pkg and e.file == d.file): found.append(d)
+		if not found.any(e => e.pkg == d.pkg and e.file == d.file): found.append(d)
 
 	return found.sorted(
-		fn(a: Dep, b: Dep) Int: if a.pkg != b.pkg: a.pkg - b.pkg else: a.file - b.file
+		fn(a Dep, b Dep) Int => if a.pkg != b.pkg: a.pkg - b.pkg else: a.file - b.file
 	)
 
-fn call_of(prefix: String, d: List[Dep], k: Int, own: Int, qualified: Bool) String:
+fn call_of(prefix String, d List[Dep], k Int, own Int, qualified Bool) String:
 	if d.is_empty(): return "0"
 
 	dep := d[k % d.length()]
 	pk := if qualified and dep.pkg != own: f"p{dep.pkg}." else: ""
 	return f"{pk}{prefix}_{dep.pkg}_{dep.file}_0(acc % 1000)"
 
-fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
+fn ms_fn(p Int, f Int, k Int, d List[Dep]) String:
 	call := call_of("w", d, k, p, false)
 	shape := k % 4
-	var b = [f"export fn w_{p}_{f}_{k}(x: Int) Int:"]
+	var b = [f"export fn w_{p}_{f}_{k}(x Int) Int:"]
 
 	if shape == 0:
 		b = b.concat(
@@ -90,7 +90,7 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 
 	return b.join("\n") + "\n"
 
-fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
+fn go_fn(p Int, f Int, k Int, d List[Dep]) String:
 	call := call_of("W", d, k, p, true)
 	shape := k % 4
 	var b = [q(f"func W_{p}_{f}_{k}(x int) int ‹")]
@@ -156,13 +156,13 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	b.append("›")
 	return q(b.join("\n")) + "\n"
 
-fn rs_call(d: List[Dep], k: Int) String:
+fn rs_call(d List[Dep], k Int) String:
 	if d.is_empty(): return "0"
 
 	dep := d[k % d.length()]
 	return f"crate::p{dep.pkg}::f{dep.file}::w_{dep.pkg}_{dep.file}_0(acc % 1000)"
 
-fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
+fn rs_fn(p Int, f Int, k Int, d List[Dep]) String:
 	call := rs_call(d, k)
 	shape := k % 4
 	var b = [q(f"pub fn w_{p}_{f}_{k}(x: i64) -> i64 ‹")]
@@ -228,7 +228,7 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	b.append("›")
 	return q(b.join("\n")) + "\n"
 
-export fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
+export fn generate(out String, packages Int, files Int, fns Int) Void:
 	var rng = seeded(1)
 	create_directory(f"{out}/ms/src", recursive: true).get()
 	create_directory(f"{out}/go", recursive: true).get()
@@ -251,11 +251,11 @@ export fn generate(out: String, packages: Int, files: Int, fns: Int) Void:
 				m.append(f"import w_{dep.pkg}_{dep.file}_0 from \"{path}\"\n")
 
 			m.append(
-				f"\nexport type R_{p}_{f}:\n    a: Int\n    b: String\n    c: List[Int]\n\nfn R_{p}_{f}.score() Int:\n    var t = self.a + self.b.length()\n    for v in self.c:\n        t += v\n    return t\n\n"
+				f"\nexport type R_{p}_{f}:\n    a Int\n    b String\n    c List[Int]\n\nfn R_{p}_{f}.score() Int:\n    var t = self.a + self.b.length()\n    for v in self.c:\n        t += v\n    return t\n\n"
 			)
 			for k in 0..fns:
 				m.append(ms_fn(p, f, k, d) + "\n")
-			m.append(f"export fn all_{p}_{f}(x: Int) Int:\n    var t = 0\n")
+			m.append(f"export fn all_{p}_{f}(x Int) Int:\n    var t = 0\n")
 			for k in 0..fns:
 				m.append(f"    t += w_{p}_{f}_{k}(x)\n")
 			m.append("    return t % 100000\n")

@@ -3,17 +3,17 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 
 enum Expr:
-	Num(n: Int)
-	Var(name: String)
-	Keep(name: String)
-	Add(l: Expr, r: Expr)
+	Num(n Int)
+	Var(name String)
+	Keep(name String)
+	Add(l Expr, r Expr)
 
 // `Keep` moves its payload out, so `eval` consumes `e`. The recursive calls pass the
 // payloads on; an early `?` return from the second one must not drop it again.
-fn eval(e: Expr) Int!:
+fn eval(e Expr) Int!:
 	match e:
-		Num(n): return ok(n)
-		Var(name): return error(Error(f"unbound {name}"))
+		Num(n) => return ok(n)
+		Var(name) => return error(Error(f"unbound {name}"))
 		Keep(name):
 			xs := [name.clone()]
 			return ok(xs.length())

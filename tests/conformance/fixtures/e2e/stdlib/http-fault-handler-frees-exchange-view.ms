@@ -5,8 +5,8 @@ import HttpExchange from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 import milliseconds, sleep from "@std/time.ms"
 
-fn faulting(var exchange: HttpExchange) Void!:
-    xs: List[Int] := []
+fn faulting(var exchange HttpExchange) Void!:
+    xs List[Int] := []
     n := xs[5]
     if n > 5: return ok()
 

@@ -15,21 +15,21 @@ import (
 )
 
 type Profile:
-	sub: String
-	name: String
-	iat: Int
+	sub String
+	name String
+	iat Int
 
 type Session:
-	sub: String
-	exp: Int
-	iss: String
+	sub String
+	exp Int
+	iss String
 
-fn failure[T](result: T!) Error!:
+fn failure[T](result T!) Error!:
 	match result:
-		ok(_): return error(Error("accepted"))
-		error(cause): return ok(cause)
+		ok(_) => return error(Error("accepted"))
+		error(cause) => return ok(cause)
 
-fn session(exp: Int) Session:
+fn session(exp Int) Session:
 	return Session(sub: "42", exp: exp, iss: "me")
 
 test "hs256 matches the published token":
@@ -180,11 +180,11 @@ test "verify enforces exp, nbf, iss and aud":
 	((doc.get("exp").clone() or JsonValue.Null).as_int() or 0) | expect_equal(1000)?
 
 type Timed:
-	nbf: Int
-	aud: List[String]
+	nbf Int
+	aud List[String]
 
 type Audience:
-	aud: String
+	aud String
 
 test "verify checks nbf and audience claims":
 	secret := "secret".to_bytes()
@@ -554,12 +554,12 @@ test "verify rejects missing and nonstring algorithm names":
 		)
 
 // Sign NumberValue directly so JSON retains every decimal/exponent digit.
-fn dated_token(name: String, number: String) String!:
+fn dated_token(name String, number String) String!:
 	var claims = Map[String, JsonValue]()
 	claims.add(name.clone(), JsonValue.NumberValue(number.clone()))
 	return sign_token(JsonValue.ObjectValue(claims), "secret".to_bytes())
 
-fn expect_date_order(number: String, at: Int, order: Int) Void!:
+fn expect_date_order(number String, at Int, order Int) Void!:
 	secret := "secret".to_bytes()
 	exp := dated_token("exp", number)?
 	nbf := dated_token("nbf", number)?

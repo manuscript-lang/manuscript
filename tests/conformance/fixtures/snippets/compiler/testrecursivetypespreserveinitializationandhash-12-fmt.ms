@@ -2,12 +2,12 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/recursive_types_test.go:21 TestRecursiveTypesPreserveInitializationAndHashing
 interface I[T]:
-    fn f(x: I[List[T]]) Int
+    fn f(x I[List[T]]) Int
 
 type Box[T]:
-    v: T
+    v T
 
-fn Box[T].f(x: I[List[T]]) Int:
+fn Box[T].f(x I[List[T]]) Int:
     return 1
 
 fn main() Void:

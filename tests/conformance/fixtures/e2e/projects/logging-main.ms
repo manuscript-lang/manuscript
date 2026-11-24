@@ -14,7 +14,7 @@ import arguments from "@std/os/env.ms"
 import stderr from "@std/io/io.ms"
 import emit from "./records.ms"
 
-fn exercise(mode: String, path: String) Void!:
+fn exercise(mode String, path String) Void!:
     if (mode == "file" or mode == "missing"):
         var root = create(file_transport(path)?, timestamp: false)?
         logger := root.child_json("{\"service\":\"api\"}")?

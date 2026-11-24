@@ -3,18 +3,18 @@
 // conform: origin=tests/e2e/testdata/accept/record-constructors-with-defaults-match-dynamic-construction.ms
 import expect_true from "@std/test/test.ms"
 
-fn twice(n: Int) Int: n * 2
+fn twice(n Int) Int => n * 2
 
 type Options:
-    count: Int
-    total: Int = count + 1
-    label: String = "x"
-    scale: Float = 1.5
-    scaled: Int = twice(n: total)
+    count Int
+    total Int = count + 1
+    label String = "x"
+    scale Float = 1.5
+    scaled Int = twice(n: total)
 
 type Plain:
-    name: String = "p"
-    size: Int = 3
+    name String = "p"
+    size Int = 3
 
 test "constructors":
     a := Options(count: 5)

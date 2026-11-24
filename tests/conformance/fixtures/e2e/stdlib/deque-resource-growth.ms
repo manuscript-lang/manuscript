@@ -8,17 +8,17 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Door.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
-fn events(log: String) String!:
+fn events(log String) String!:
 	return ok((read_file(log).wait()?).decode_utf8() or "")
 
 // A nonzero start is required to exercise the old copying growth path.
-fn grow(log: String, front: Bool, wrapped: Bool) Void!:
+fn grow(log String, front Bool, wrapped Bool) Void!:
 	var queue = Deque[Door]()
 	for id in 0..4:
 		queue.push_back(Door(id, log.clone()))
@@ -52,9 +52,9 @@ fn grow(log: String, front: Bool, wrapped: Bool) Void!:
 	expect_equal(first.id, if front: 5 else: (if wrapped: 1 else: 0))?
 	expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)?
 
-fn expect_once(log: String, ids: List[Int]) Void!:
-	actual := (events(log)?).split(",").filter(fn value: value != "").sorted()
-	expect_equal(actual, ids.map(fn id: f"{id}").sorted())?
+fn expect_once(log String, ids List[Int]) Void!:
+	actual := (events(log)?).split(",").filter(value => value != "").sorted()
+	expect_equal(actual, ids.map(id => f"{id}").sorted())?
 
 test "deque growth moves resource owners from either end":
 	for front in [false, true]:
@@ -66,10 +66,10 @@ test "deque growth moves resource owners from either end":
 			expect_once(log, if wrapped: [0, 1, 2, 3, 4, 5] else: [0, 1, 2, 3, 5])?
 
 type Holder:
-	door: Door
-	label: String
+	door Door
+	label String
 
-fn nested(log: String) Void!:
+fn nested(log String) Void!:
 	var queue = Deque[Holder?]()
 	queue.push_back(Holder(Door(0, log.clone()), "first"))
 	queue.push_back(null)
@@ -81,7 +81,7 @@ fn nested(log: String) Void!:
 	expect_equal((events(log)?), "0,")?
 	expect_equal(queue.length(), 5)?
 
-	var popped: List[Int] = []
+	var popped List[Int] = []
 
 	while not queue.is_empty():
 		item := queue.pop_front()
@@ -101,7 +101,7 @@ test "deque growth keeps absent optional slots and nested resource owners":
 	nested(log.clone())?
 	expect_once(log, [0, 1, 2, 3])?
 
-fn interrupted(log: String, fault: Bool) Void!:
+fn interrupted(log String, fault Bool) Void!:
 	var queue = Deque[Door]()
 	for id in 0..4:
 		queue.push_front(Door(id, log.clone()))
@@ -124,7 +124,7 @@ test "grown resource deques close each owner once on error and fault exits":
 	other := f"{tmp.path()}/fault"
 	append_file(other, "").wait()?
 	expect_contains(
-		(expect_fault(fn: interrupted(other.clone(), true).get())?),
+		(expect_fault(() => interrupted(other.clone(), true).get())?),
 		"after deque growth",
 	)?
 	expect_once(other, [0, 1, 2, 3, 4, 5])?

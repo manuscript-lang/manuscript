@@ -34,7 +34,7 @@
 ```manuscript
 // @std/io/channels.ms
 interface Transport[In, Out]:
-    var fn send(value: In) Result[Unit, ChannelError]
+    var fn send(value In) Result[Unit, ChannelError]
     var fn receive() Result[Optional[Out], ChannelError]   // ok(none): closed and drained
     var fn close() Unit
 
@@ -62,7 +62,7 @@ fn spawn(entry: fn(Channel[Out, In]) T) Task[T, In, Out]   // handle.channel: Ch
 - Because the entry type is concrete, an untyped lambda infers: `group.spawn(lambda ch: fetch(url.clone()))` works for fan-out (built and run with `ms build`, 2026-10-24).
 
 ```manuscript
-fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+fn square_all(ch Channel[Int, Int]) Result[Unit, ChannelError]:
     var c = ch                       // issue #1191: a var parameter cannot be a Callable today
     var open = true
     while open:

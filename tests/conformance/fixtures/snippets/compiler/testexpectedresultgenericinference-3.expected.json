@@ -24,15 +24,15 @@
         "position": {
           "file": "testexpectedresultgenericinference-3.ms",
           "line": 4,
-          "column": 33,
-          "offset": 213
+          "column": 35,
+          "offset": 215
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpectedresultgenericinference-3.ms:4:18: resolution: unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 4 | fn failed[T]() T!Failure: error(Failure(\"empty\"))\n   |                  ^\n<DIR>/testexpectedresultgenericinference-3.ms:4:33: resolution: unknown binding Failure; declare it with 'Failure := ...' before use, define 'fn Failure(...) T:', or import it from a module\n   |\n 4 | fn failed[T]() T!Failure: error(Failure(\"empty\"))\n   |                                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpectedresultgenericinference-3.ms:4:18: resolution: unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 4 | fn failed[T]() T!Failure => error(Failure(\"empty\"))\n   |                  ^\n<DIR>/testexpectedresultgenericinference-3.ms:4:35: resolution: unknown binding Failure; declare it with 'Failure := ...' before use, define 'fn Failure(...) T:', or import it from a module\n   |\n 4 | fn failed[T]() T!Failure => error(Failure(\"empty\"))\n   |                                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

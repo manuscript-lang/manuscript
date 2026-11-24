@@ -3,7 +3,7 @@
 interface Crash:
     fn run() Int
 type Item:
-    value: Int
+    value Int
 impl Crash for Item:
     fn run() Int:
         return 1 / self.value

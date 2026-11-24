@@ -13,21 +13,21 @@
         "position": {
           "file": "extern-body.ms",
           "line": 3,
-          "column": 31,
-          "offset": 89
+          "column": 30,
+          "offset": 88
         },
         "end": {
           "file": "extern-body.ms",
           "line": 3,
-          "column": 32,
-          "offset": 90
+          "column": 31,
+          "offset": 89
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/extern-body.ms:3:31: parse: an extern fn has no body; remove the ':'\n   |\n 3 | extern fn labs(value: Int) Int:\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/extern-body.ms:3:30: parse: an extern fn has no body; remove the ':'\n   |\n 3 | extern fn labs(value Int) Int:\n   |                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

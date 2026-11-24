@@ -12,10 +12,10 @@ import (
 	expect_ok from "@std/test/test.ms",
 )
 
-fn paths(found: List[WalkEntry]) List[String]:
-	return found.map(fn e: if e.directory: f"{e.path}/" else: e.path.clone())
+fn paths(found List[WalkEntry]) List[String]:
+	return found.map(e => if e.directory: f"{e.path}/" else: e.path.clone())
 
-fn total_size(tree: FileTree, names: List[String]) Int!:
+fn total_size(tree FileTree, names List[String]) Int!:
 	var total = 0
 	for name in names:
 		total += (tree.read(name, null)?).length()
@@ -32,7 +32,7 @@ fn sample() MemoryTree:
 test "memory tree lists and reads":
 	tree := sample()
 	top := tree.children("", null) | expect_ok?
-	if top.map(fn e: e.name.clone()) != ["docs", "empty", "main.ms"]: return panic(
+	if top.map(e => e.name.clone()) != ["docs", "empty", "main.ms"]: return panic(
 		"top"
 	)
 	if not top[0].directory: return panic("docs is a directory")
@@ -158,7 +158,7 @@ test "memory tree listing follows writes and removals":
 	tree.write_file("a/two.txt", "2".to_bytes())?
 	tree.remove("a/b", true)?
 
-	names := (tree.children("a", null)?).map(fn e: e.name.clone())
+	names := (tree.children("a", null)?).map(e => e.name.clone())
 	if names != ["two.txt"]: return panic(f"children {names}")
 	if (tree.children("", null)?).length() != 1: return panic("root")
 

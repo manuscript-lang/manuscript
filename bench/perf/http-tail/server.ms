@@ -10,7 +10,7 @@ import (
 	read_file from "@std/os/fs.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	var spun = 0
 
 	if request.path.starts_with("/slow"):

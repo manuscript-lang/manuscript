@@ -1,9 +1,9 @@
 // conform: phase=check
 // conform: tags=alternatives,diagnostics,match,tier-core
 enum Outcome:
-    Success(value: Int)
+    Success(value Int)
     Failure
 
-fn value(outcome: Outcome) Int:
+fn value(outcome Outcome) Int:
     return match outcome:
-        Success(number): number
+        Success(number) => number

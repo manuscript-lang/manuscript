@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
-fn pad(n: Int) String:
+fn pad(n Int) String:
 	return "x".repeat(n)
 
 test "string order agrees across inline, static and heap forms":

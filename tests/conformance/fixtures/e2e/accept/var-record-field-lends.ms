@@ -1,23 +1,23 @@
 // conform: tags=ownership,var-parameters
 // conform: phase=run
 type Budget:
-	left: Int
-	notes: List[String]
+	left Int
+	notes List[String]
 
 type Scanner:
-	pos: Int
-	budget: Budget
-	done: Bool
-	label: String
+	pos Int
+	budget Budget
+	done Bool
+	label String
 
-fn spend(var budget: Budget, note: String) Void:
+fn spend(var budget Budget, note String) Void:
 	budget.left -= 1
 	budget.notes.append(note.clone())
 
-fn describe(scanner: Scanner) String:
+fn describe(scanner Scanner) String:
 	return f"{scanner.label}@{scanner.pos}/{scanner.budget.left}"
 
-fn step(var scanner: Scanner, note: String) String:
+fn step(var scanner Scanner, note String) String:
 	scanner.pos += 1
 	spend(scanner.budget, note)
 	scanner.budget.left -= 1

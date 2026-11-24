@@ -10,17 +10,17 @@ Orders have a customer, an amount, and a status, and the status carries differen
 <!-- manuscript-example: {"mode":"run","stdout":"#1 Sam: waiting to ship\n#2 Ada: shipped, tracking ZX81\n#3 Sam: cancelled: out of stock\n#4 Lin: waiting to ship\n3 customers\nSam spent 4350 cents\n"} -->
 ```manuscript {filename="orders.ms"}
 type Order:
-    id: Int
-    customer: String
-    cents: Int
-    status: Status = Status.Open
+    id Int
+    customer String
+    cents Int
+    status Status = Status.Open
 
 enum Status:
     Open
-    Shipped(tracking: String)
-    Cancelled(reason: String)
+    Shipped(tracking String)
+    Cancelled(reason String)
 
-fn label(status: Status) String:
+fn label(status Status) String:
     match status:
         Open:
             return "waiting to ship"
@@ -59,7 +59,7 @@ Sam spent 4350 cents
 
 ## What to notice
 
-- `type Order` groups named fields. `status: Status = Status.Open` is a default, so `Order(1, "Sam", 1250)` needs no status. Pass a field by name to override it.
+- `type Order` groups named fields. `status Status = Status.Open` is a default, so `Order(1, "Sam", 1250)` needs no status. Pass a field by name to override it.
 - `enum Status` lists the cases an order can be in. `Shipped` and `Cancelled` carry a value; `Open` does not.
 - `match` must cover every case. Add a fourth case to `Status` and the compiler points at `label` until you handle it.
 - Lists, maps and sets need no import. `spent.get(name)` returns an optional, a value or nothing, and `or 0` supplies a fallback for a missing key.

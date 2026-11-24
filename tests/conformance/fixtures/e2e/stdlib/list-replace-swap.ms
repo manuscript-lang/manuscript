@@ -3,8 +3,8 @@
 import expect_equal, expect_fault from "@std/test/test.ms"
 
 type Entry:
-	name: String
-	weight: Int
+	name String
+	weight Int
 
 test "replace returns the old element and stores the new one":
 	var names = ["a", "b", "c"]
@@ -20,7 +20,7 @@ test "replace moves owned records":
 	expect_equal(entries.length(), 2)?
 
 test "replace takes an optional slot":
-	var slots: List[String?] = ["a", "b"]
+	var slots List[String?] = ["a", "b"]
 	taken := slots.replace(0, null)
 	expect_equal(taken, "a")?
 	expect_equal(slots, [null, "b"])?
@@ -41,7 +41,7 @@ test "swap moves records without copying":
 	expect_equal(entries.get(1).weight, 1)?
 
 test "replace takes a scalar optional slot":
-	var slots: List[Int?] = [1, 2]
+	var slots List[Int?] = [1, 2]
 	expect_equal(slots.replace(1, null), 2)?
 	expect_equal(slots, [1, null])?
 
@@ -59,8 +59,8 @@ test "swap exchanges scalars, counting negative indexes from the end":
 	expect_equal(flags, [false, true])?
 
 type Point:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
 test "swap exchanges plain records and optional scalars in line":
 	var points = [Point(x: 1, y: 2), Point(x: 3, y: 4), Point(x: 5, y: 6)]
@@ -68,14 +68,14 @@ test "swap exchanges plain records and optional scalars in line":
 	points.swap(1, 1)
 	points.swap(-2, 0)
 	expect_equal(points, [Point(x: 3, y: 4), Point(x: 5, y: 6), Point(x: 1, y: 2)])?
-	var slots: List[Int?] = [1, null, 3]
+	var slots List[Int?] = [1, null, 3]
 	slots.swap(0, 1)
 	slots.swap(2, 2)
 	expect_equal(slots, [null, 1, 3])?
 
 test "swap faults on an index outside the list and leaves the list unchanged":
 	var numbers = [1, 2, 3]
-	void expect_fault(fn: numbers.swap(0, 3))?
-	void expect_fault(fn: numbers.swap(-4, 1))?
-	void expect_fault(fn: numbers.swap(5, 0))?
+	void expect_fault(() => numbers.swap(0, 3))?
+	void expect_fault(() => numbers.swap(-4, 1))?
+	void expect_fault(() => numbers.swap(5, 0))?
 	expect_equal(numbers, [1, 2, 3])?

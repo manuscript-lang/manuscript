@@ -16,7 +16,7 @@ fn String.as_bytes() Bytes:
 
 // Returns the text without `prefix`, or `null` when the text does not start with it.
 // An empty prefix succeeds and returns the text unchanged.
-fn String.cut_prefix(prefix: String) String?:
+fn String.cut_prefix(prefix String) String?:
 	if self.starts_with(prefix): return self.view(
 		prefix.length(),
 		self.length(),
@@ -25,7 +25,7 @@ fn String.cut_prefix(prefix: String) String?:
 
 // Returns the text without `suffix`, or `null` when the text does not end with it.
 // An empty suffix succeeds and returns the text unchanged.
-fn String.cut_suffix(suffix: String) String?:
+fn String.cut_suffix(suffix String) String?:
 	if self.ends_with(suffix): return self.view(
 		0,
 		self.length() - suffix.length(),
@@ -36,14 +36,14 @@ fn String.cut_suffix(suffix: String) String?:
 // `split_once` and `rsplit_once`.
 export type SplitParts:
 	// The text before the separator.
-	before: String
+	before String
 	// The text after the separator.
-	after: String
+	after String
 
 // Splits at the first exact separator. Returns `null` when the separator is empty or
 // does not occur.
 // Example: `"key=a=b".split_once("=")` is `before: "key"`, `after: "a=b"`.
-fn String.split_once(separator: String) SplitParts?:
+fn String.split_once(separator String) SplitParts?:
 	if separator.is_empty(): return null
 
 	at := self.index_of(separator)
@@ -58,7 +58,7 @@ fn String.split_once(separator: String) SplitParts?:
 // Splits at the last exact separator. Returns `null` when the separator is empty or
 // does not occur.
 // Example: `"a/b/c".rsplit_once("/")` is `before: "a/b"`, `after: "c"`.
-fn String.rsplit_once(separator: String) SplitParts?:
+fn String.rsplit_once(separator String) SplitParts?:
 	if separator.is_empty(): return null
 
 	at := self.last_index_of(separator)
@@ -87,17 +87,17 @@ export enum NormalizationForm:
 // Normalizes `text` to this form, with the same budget and errors as
 // `String.normalize`. When `max_bytes` is omitted or `null` the output is not
 // bounded; a supplied bound counts UTF-8 bytes.
-fn NormalizationForm.normalize(text: String, max_bytes: Int?) String!:
+fn NormalizationForm.normalize(text String, max_bytes Int?) String!:
 	name := match self:
-		Nfc: "NFC"
-		Nfd: "NFD"
-		Nfkc: "NFKC"
-		Nfkd: "NFKD"
+		Nfc => "NFC"
+		Nfd => "NFD"
+		Nfkc => "NFKC"
+		Nfkd => "NFKD"
 
 	return text.normalize(name, max_bytes)
 
 // Builds text from Unicode scalar values. Invalid scalars return `EINVAL`.
-export fn from_scalars(values: List[Int]) String!:
+export fn from_scalars(values List[Int]) String!:
 	return msrt_string_from_scalars(values)
 
 // Splits on runs of Unicode White_Space and omits empty fields, so empty or
@@ -115,7 +115,7 @@ fn String.display_width() Int!:
 	return msstd_unicode_display_width(self)
 
 // Bytes of the UTF-8 encoding of the scalar value `code`; zero for a negative value.
-fn scalar_width(code: Int) Int:
+fn scalar_width(code Int) Int:
 	if code < 0: return 0
 	if code < 0x80: return 1
 	if code < 0x800: return 2
@@ -125,7 +125,7 @@ fn scalar_width(code: Int) Int:
 
 // Splits around runs of characters (one-scalar strings) for which `is_separator`
 // returns true. The result has no empty items.
-fn String.fields_by(is_separator: fn(String) Bool) List[String]:
+fn String.fields_by(is_separator fn(String) Bool) List[String]:
 	var out = List[String]()
 
 	// ASCII text: a scalar index is a byte offset, so each field is one copy of its run
@@ -169,7 +169,7 @@ fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 // Unicode full case mapping, without locale or normalization, so "Straße" equals
 // "STRASSE". This is not Unicode default case folding: the dotless "ı" (U+0131)
 // uppercases to "I", so it compares equal to "i" and "I".
-fn String.equal_fold(other: String) Bool:
+fn String.equal_fold(other String) Bool:
 	// While both texts are ASCII the keys match byte for byte after ASCII lowercasing,
 	// so the first difference decides and no key is built. A non-ASCII byte on either
 	// side hands the whole comparison to the full case mapping.
@@ -198,32 +198,32 @@ fn String.equal_fold(other: String) Bool:
 
 // Capital sharp s (U+1E9E) uppercases to itself but is the capital form of "ß", so it
 // is written as "ß" before the comparison.
-fn fold_key(text: String) String:
+fn fold_key(text String) String:
 	return text.replace("ẞ", "ß").upper().lower()
 
 // Removes every leading and trailing scalar that occurs in `set`.
-fn String.trim_chars(set: String) String:
+fn String.trim_chars(set String) String:
 	return msrt_string_trim_chars(self, set, true, true)
 
 // Removes every leading scalar that occurs in `set`.
-fn String.trim_start_chars(set: String) String:
+fn String.trim_start_chars(set String) String:
 	return msrt_string_trim_chars(self, set, true, false)
 
 // Removes every trailing scalar that occurs in `set`.
-fn String.trim_end_chars(set: String) String:
+fn String.trim_end_chars(set String) String:
 	return msrt_string_trim_chars(self, set, false, true)
 
 // Reports whether any scalar of `set` occurs in the text.
-fn String.contains_any(set: String) Bool:
+fn String.contains_any(set String) Bool:
 	return self.index_any(set) != null
 
 // Returns the byte offset of the first scalar that occurs in `set`, or `null`.
-fn String.index_any(set: String) Int?:
+fn String.index_any(set String) Int?:
 	return msrt_string_index_any(self, set)
 
 // Splits after each separator and keeps the separator at the end of each piece. An
 // empty separator splits into scalars.
-fn String.split_after(separator: String) List[String]:
+fn String.split_after(separator String) List[String]:
 	if separator.is_empty(): return self.chars().clone()
 
 	var out = List[String]()
@@ -288,7 +288,7 @@ fn String.title() String:
 	return out
 
 // `title` for text with any non-ASCII scalar, one word at a time.
-fn title_scalars(text: String) String:
+fn title_scalars(text String) String:
 	var out = ""
 	var word = ""
 	var in_word = false
@@ -307,7 +307,7 @@ fn title_scalars(text: String) String:
 	return out
 
 // The word with its first scalar titlecased and the rest lowercased in context.
-fn title_word(word: String) String:
+fn title_word(word String) String:
 	n := scalar_width(word.scalar_at(0, -1))
 	first := word.view(0, n)
 	lowered := word.lower()
@@ -320,7 +320,7 @@ fn title_word(word: String) String:
 
 // Whether the scalar is one of the Greek titlecase letters (ᾈ to ᾏ, ᾘ to ᾟ, ᾨ to ᾯ, ᾼ,
 // ῌ, ῼ).
-fn greek_titlecase(code: Int) Bool:
+fn greek_titlecase(code Int) Bool:
 	return (
 		(code >= 0x1F88 and code <= 0x1F8F)
 		or (code >= 0x1F98 and code <= 0x1F9F)
@@ -332,7 +332,7 @@ fn greek_titlecase(code: Int) Bool:
 
 // Whether the scalar is a Greek letter whose uppercase ends in capital iota but whose
 // titlecase ends in U+0345 (ᾲ ᾴ ᾷ ῂ ῄ ῇ ῲ ῴ ῷ).
-fn greek_iota_tail(code: Int) Bool:
+fn greek_iota_tail(code Int) Bool:
 	return (
 		code == 0x1FB2
 		or code == 0x1FB4
@@ -347,7 +347,7 @@ fn greek_iota_tail(code: Int) Bool:
 
 // The Greek titlecase letter of a lowercase letter with ypogegrammeni (ᾀ gives ᾈ), or
 // 0.
-fn greek_titlecase_of(code: Int) Int:
+fn greek_titlecase_of(code Int) Int:
 	if (
 		(code >= 0x1F80 and code <= 0x1F87)
 		or (code >= 0x1F90 and code <= 0x1F97)
@@ -363,7 +363,7 @@ fn greek_titlecase_of(code: Int) Int:
 // mixed-case letter, and any other scalar takes its full uppercase mapping with every
 // cased scalar after the first lowercased (`ß` gives `Ss`, `ﬁ` gives `Fi`, `ŉ` gives
 // `ʼN`).
-fn title_scalar(c: String) String:
+fn title_scalar(c String) String:
 	code := c.scalar_at(0, -1)
 	if code >= 0x01C4 and code <= 0x01CC:
 		return "ǅǅǅǈǈǈǋǋǋ".chars()[code - 0x01C4].clone()
@@ -398,7 +398,7 @@ fn title_scalar(c: String) String:
 
 // Replaces each scalar (a one-scalar string) with the result of `transform`; an
 // empty result deletes it.
-fn String.map_chars(transform: fn(String) String) String:
+fn String.map_chars(transform fn(String) String) String:
 	var out = ""
 	for c in self.chars():
 		out += transform(c)
@@ -406,7 +406,7 @@ fn String.map_chars(transform: fn(String) String) String:
 
 // Returns the byte offset of the first scalar (passed as a one-scalar string) for
 // which `predicate` returns true, or `null`.
-fn String.find_char(predicate: fn(String) Bool) Int?:
+fn String.find_char(predicate fn(String) Bool) Int?:
 	var at = 0
 	n := self.length()
 
@@ -421,10 +421,10 @@ fn String.find_char(predicate: fn(String) Bool) Int?:
 // Replaces many patterns in one pass. At each position the first pair, in map
 // order, whose key matches wins, and its replacement is not rescanned. Empty keys
 // are ignored.
-fn String.replace_each(pairs: Map[String, String]) String:
+fn String.replace_each(pairs Map[String, String]) String:
 	if pairs.is_empty(): return self.clone()
 
-	keys := pairs.keys().map(fn key: key.as_bytes())
+	keys := pairs.keys().map(key => key.as_bytes())
 	news := pairs.values()
 	bytes := self.as_bytes()
 	n := bytes.length()
@@ -479,5 +479,5 @@ fn String.replace_each(pairs: Map[String, String]) String:
 	out += self.view(copied, n)
 	return out
 
-fn is_word_scalar(c: String) Bool:
+fn is_word_scalar(c String) Bool:
 	return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"

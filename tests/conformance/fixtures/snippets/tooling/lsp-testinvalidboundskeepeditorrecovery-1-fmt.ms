@@ -4,12 +4,12 @@
 interface Named:
     fn name() String
 
-type Box[Named: Named]:
-    cause: Named
+type Box[Named Named]:
+    cause Named
 
-fn Box[Named].name() String: self.cause.name()
+fn Box[Named].name() String => self.cause.name()
 
 type Neighbor:
-    value: Int
+    value Int
 
-fn read(item: Neighbor) Int: item.value
+fn read(item Neighbor) Int => item.value

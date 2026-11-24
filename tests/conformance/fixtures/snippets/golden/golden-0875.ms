@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
 fn f() Int:
-    x := 
+    x = 
     return 1

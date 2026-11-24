@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/lsp/http_header_test.go:23 TestLocalHttpHeadersDoesNotAcquireNativeLookup
 type HttpHeaders:
-    value: String
+    value String
 
-fn lookup(fields: HttpHeaders) Void:
+fn lookup(fields HttpHeaders) Void:
     fields.values("content-type")

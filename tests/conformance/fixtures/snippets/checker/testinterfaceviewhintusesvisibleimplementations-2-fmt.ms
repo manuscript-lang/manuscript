@@ -4,4 +4,4 @@
 import Sq from "data.ms"
 import Shape from "extension.ms"
 
-fn shape() Shape: Sq(2)
+fn shape() Shape => Sq(2)

@@ -4,14 +4,14 @@ import YamlValue, parse from "@std/data/yaml.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
 // `-` and `?` followed directly by the mapping colon are plain keys, not indicators.
-fn number_at(doc: YamlValue, key: String) String:
+fn number_at(doc YamlValue, key String) String:
     match doc:
         ObjectValue(m):
             value := m.get_or(key, YamlValue.Null)
             match value:
-                NumberValue(text): return text.clone()
-                _: return "not a number"
-        _: return "not a mapping"
+                NumberValue(text) => return text.clone()
+                _ => return "not a number"
+        _ => return "not a mapping"
 
 test "a lone dash or question mark can be a mapping key":
     block := parse("-: 1\n?: 2\nname: 3\n") | expect_ok?

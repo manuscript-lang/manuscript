@@ -310,6 +310,11 @@ bool fmt_token_space(const MsToken *tokens, size_t at) {
   }
   if (current == MS_T_LParen && (previous == MS_T_Name || previous == MS_T_RParen ||
                                  previous == MS_T_RBracket || previous == MS_T_Fn)) {
+    if (previous == MS_T_Name) {
+      // `limit (fn() Int)?` is a name and its parenthesized type, `limit(1)` a call: per-line spacing
+      // cannot tell them apart, so the authored gap decides.
+      return tokens[at].lo != tokens[at - 1].hi;
+    }
     if (previous != MS_T_RParen) {
       return false;
     }

@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn count_up(limit: Int) Int:
+fn count_up(limit Int) Int:
     var i = limit - 3
     var steps = 0
 
@@ -13,7 +13,7 @@ fn count_up(limit: Int) Int:
 
     return steps
 
-fn count_down(limit: Int) Int:
+fn count_down(limit Int) Int:
     var i = limit + 3
     var steps = 0
 
@@ -32,7 +32,7 @@ fn reset_then_step() Int:
 
     return i
 
-fn nested_reset(flag: Bool) Int:
+fn nested_reset(flag Bool) Int:
     var i = 0
 
     while i < 1:

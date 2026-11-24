@@ -17,9 +17,9 @@ Example: `(parse_rat("1/3")?).add(parse_rat("1/6")?).to_string()` is `"1/2"`.
 */
 export opaque type BigRat:
 	// The signed numerator in lowest terms.
-	num: BigInt
+	num BigInt
 	// The positive denominator in lowest terms.
-	den: BigInt
+	den BigInt
 
 // Returns the numerator, which carries the sign.
 fn BigRat.numerator() BigInt:
@@ -34,19 +34,19 @@ fn BigRat.clone() move BigRat:
 	return BigRat(num: self.num.clone(), den: self.den.clone())
 
 // Returns the exact sum.
-fn BigRat.add(other: BigRat) BigRat:
+fn BigRat.add(other BigRat) BigRat:
 	return reduced(self.num * other.den + other.num * self.den, self.den * other.den)
 
 // Returns the exact difference.
-fn BigRat.subtract(other: BigRat) BigRat:
+fn BigRat.subtract(other BigRat) BigRat:
 	return reduced(self.num * other.den - other.num * self.den, self.den * other.den)
 
 // Returns the exact product.
-fn BigRat.multiply(other: BigRat) BigRat:
+fn BigRat.multiply(other BigRat) BigRat:
 	return reduced(self.num * other.num, self.den * other.den)
 
 // Returns the exact quotient; a zero divisor returns EINVAL.
-fn BigRat.divide(other: BigRat) BigRat!:
+fn BigRat.divide(other BigRat) BigRat!:
 	return rat(self.num * other.den, self.den * other.num)
 
 // Returns `1 / self`; zero returns EINVAL.
@@ -70,23 +70,23 @@ fn BigRat.is_integer() Bool:
 	return self.den.compare(big(1)) == 0
 
 // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-fn BigRat.compare(other: BigRat) Int:
+fn BigRat.compare(other BigRat) Int:
 	return (self.num * other.den).compare(other.num * self.den)
 
 // Returns the lesser value, or this value when they compare equal.
-fn BigRat.min(other: BigRat) BigRat:
+fn BigRat.min(other BigRat) BigRat:
 	if other.compare(self) < 0: return other.clone()
 	return self.clone()
 
 // Returns the greater value, or this value when they compare equal.
-fn BigRat.max(other: BigRat) BigRat:
+fn BigRat.max(other BigRat) BigRat:
 	if other.compare(self) > 0: return other.clone()
 	return self.clone()
 
 // Returns the exact power. A negative exponent returns the reciprocal power, so zero
 // with a negative exponent returns EINVAL. A numerator or denominator above 16777216
 // bits returns EOVERFLOW.
-fn BigRat.pow(exponent: Int) BigRat!:
+fn BigRat.pow(exponent Int) BigRat!:
 	// `abs` faults on the minimum Int, so take its magnitude as `max + 1` powers.
 	extra := exponent == -9223372036854775807 - 1
 	count := if extra: 9223372036854775807 else: exponent.abs()
@@ -130,7 +130,7 @@ fn BigRat.to_float() Float?:
 // Formats in plain decimal notation with exactly `digits` fractional digits, rounding
 // ties to even. A negative digit count returns EINVAL; a result that rounds to zero
 // has no minus sign.
-fn BigRat.to_fixed(digits: Int) String!:
+fn BigRat.to_fixed(digits Int) String!:
 	if digits < 0: return error(Error("bigrat: invalid input", kind: "EINVAL"))
 
 	scaled := self.num.abs() * pow10(digits)
@@ -159,7 +159,7 @@ fn BigRat.to_string() String:
 	return f"{self.num.to_string()}/{self.den.to_string()}"
 
 // Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
-export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
+export fn rat(numerator BigInt, denominator BigInt) BigRat!:
 	if denominator.sign() == 0:
 		return error(Error("bigrat: invalid input", kind: "EINVAL"))
 	if numerator.sign() == 0: return ok(BigRat(num: big(0), den: big(1)))
@@ -167,17 +167,17 @@ export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
 	return ok(reduced(numerator, denominator))
 
 // Returns the integer `value` as a fraction.
-export fn rat_of_int(value: Int) BigRat:
+export fn rat_of_int(value Int) BigRat:
 	return BigRat(num: big(value), den: big(1))
 
 // Returns an integer as a fraction.
-export fn rat_of_big_int(value: BigInt) BigRat:
+export fn rat_of_big_int(value BigInt) BigRat:
 	return BigRat(num: value.clone(), den: big(1))
 
 // Returns the exact value of a Float as a fraction: 1/2 for 0.5, and
 // 3602879701896397/36028797018963968 for 0.1, which a Float stores inexactly. Returns
 // null for NaN and infinities.
-export fn rat_of_float(value: Float) BigRat?:
+export fn rat_of_float(value Float) BigRat?:
 	if not value.is_finite(): return null
 	if value == 0.0: return rat_of_int(0)
 
@@ -187,11 +187,11 @@ export fn rat_of_float(value: Float) BigRat?:
 
 // Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216
 // bits faults.
-export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
+export fn rat_of_binary(mantissa BigInt, exponent Int) BigRat:
 	if exponent >= 0: return BigRat(num: shl(mantissa, exponent), den: big(1))
 	return reduced(mantissa.clone(), shl(big(1), -exponent))
 
-fn parse_digits(text: String) BigInt!:
+fn parse_digits(text String) BigInt!:
 	value := parse_big(text)
 	if value != null: return ok(value)
 
@@ -200,7 +200,7 @@ fn parse_digits(text: String) BigInt!:
 // Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`,
 // `1.25`, `6.02e23`, `5e-3`. A zero denominator returns EINVAL, malformed text EBADMSG
 // and an exponent beyond 100000 in magnitude EOVERFLOW.
-export fn parse_rat(text: String) BigRat!:
+export fn parse_rat(text String) BigRat!:
 	slash := text.split("/")
 	if slash.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
@@ -243,7 +243,7 @@ export fn parse_rat(text: String) BigRat!:
 	return rat(numerator, pow10(scale))
 
 // Keep malformed decimal syntax distinct from an exponent exceeding the integer range.
-fn parse_exponent(text: String) Int!:
+fn parse_exponent(text String) Int!:
 	parsed := parse_int(text, 10)
 	if value := parsed: return ok(value)
 	if parsed.err().kind == "ERANGE":
@@ -252,7 +252,7 @@ fn parse_exponent(text: String) Int!:
 	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 // The largest supported precision in bits.
-export max_big_float_precision: Int := 1000000
+export max_big_float_precision Int := 1000000
 
 /*
 An arbitrary-precision binary floating-point number, `mantissa * 2^exponent`, whose mantissa holds at most `precision` bits.
@@ -262,11 +262,11 @@ Example: `big_float_of_int(2, 100).sqrt()` returns the square root of two to 100
 */
 export opaque type BigFloat:
 	// The signed integer mantissa, at most `prec` bits; zero when the value is zero.
-	mant: BigInt
+	mant BigInt
 	// The power of two multiplying the mantissa.
-	exp: Int
+	exp Int
 	// The precision in bits, 1 through 1000000.
-	prec: Int
+	prec Int
 
 // Returns the precision in bits.
 fn BigFloat.precision() Int:
@@ -278,7 +278,7 @@ fn BigFloat.clone() move BigFloat:
 
 // Returns this value rounded to `precision` bits; a precision outside 1 through
 // 1000000 is a fault.
-fn BigFloat.with_precision(precision: Int) BigFloat:
+fn BigFloat.with_precision(precision Int) BigFloat:
 	bits := checked(precision)
 	return make(round_to(self.mant, self.exp, false, bits), bits)
 
@@ -296,7 +296,7 @@ fn BigFloat.abs() BigFloat:
 	return BigFloat(mant: self.mant.abs(), exp: self.exp, prec: self.prec)
 
 // Returns the sum, rounded once at the larger operand precision.
-fn BigFloat.add(other: BigFloat) BigFloat:
+fn BigFloat.add(other BigFloat) BigFloat:
 	bits := larger(self.prec, other.prec)
 	if self.mant.sign() == 0:
 		return make(round_to(other.mant, other.exp, false, bits), bits)
@@ -315,11 +315,11 @@ fn BigFloat.add(other: BigFloat) BigFloat:
 	return make(round_to(total, low, false, bits), bits)
 
 // Returns the difference, rounded once at the larger operand precision.
-fn BigFloat.subtract(other: BigFloat) BigFloat:
+fn BigFloat.subtract(other BigFloat) BigFloat:
 	return self.add(other.negate())
 
 // Returns the product, rounded once at the larger operand precision.
-fn BigFloat.multiply(other: BigFloat) BigFloat:
+fn BigFloat.multiply(other BigFloat) BigFloat:
 	bits := larger(self.prec, other.prec)
 	return make(
 		round_to(self.mant * other.mant, self.exp + other.exp, false, bits),
@@ -328,7 +328,7 @@ fn BigFloat.multiply(other: BigFloat) BigFloat:
 
 // Returns the quotient, rounded once at the larger operand precision; a zero
 // divisor returns EINVAL.
-fn BigFloat.divide(other: BigFloat) BigFloat!:
+fn BigFloat.divide(other BigFloat) BigFloat!:
 	if other.mant.sign() == 0:
 		return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
@@ -373,7 +373,7 @@ fn BigFloat.sqrt() BigFloat!:
 
 // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`,
 // ignoring precision.
-fn BigFloat.compare(other: BigFloat) Int:
+fn BigFloat.compare(other BigFloat) Int:
 	if self.mant.sign() != other.mant.sign():
 		return self.mant.sign().compare(other.mant.sign())
 	if self.mant.sign() == 0: return 0
@@ -388,12 +388,12 @@ fn BigFloat.compare(other: BigFloat) Int:
 	return shl(self.mant, self.exp - low).compare(shl(other.mant, other.exp - low))
 
 // Returns the lesser value, or this value when they compare equal.
-fn BigFloat.min(other: BigFloat) BigFloat:
+fn BigFloat.min(other BigFloat) BigFloat:
 	if other.compare(self) < 0: return other.clone()
 	return self.clone()
 
 // Returns the greater value, or this value when they compare equal.
-fn BigFloat.max(other: BigFloat) BigFloat:
+fn BigFloat.max(other BigFloat) BigFloat:
 	if other.compare(self) > 0: return other.clone()
 	return self.clone()
 
@@ -417,35 +417,35 @@ fn BigFloat.to_float() Float?:
 
 // Formats in plain decimal notation with exactly `digits` fractional digits, rounding
 // ties to even. A negative digit count returns EINVAL.
-fn BigFloat.to_fixed(digits: Int) String!:
+fn BigFloat.to_fixed(digits Int) String!:
 	if text := self.to_rat().to_fixed(digits): return ok(text)
 	return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
-fn checked(precision: Int) Int:
+fn checked(precision Int) Int:
 	if precision < 1 or precision > max_big_float_precision:
 		panic(f"precision must be 1 through 1000000, got {precision}")
 	return precision
 
-fn make(value: Binary, precision: Int) BigFloat:
+fn make(value Binary, precision Int) BigFloat:
 	return BigFloat(mant: value.mant.clone(), exp: value.exp, prec: precision)
 
-fn binary_of(value: BigFloat) Binary:
+fn binary_of(value BigFloat) Binary:
 	return Binary(mant: value.mant.clone(), exp: value.exp)
 
 // Returns `value` rounded to `precision` bits; a precision outside 1 through 1000000 is
 // a fault.
-export fn big_float_of_big_int(value: BigInt, precision: Int) BigFloat:
+export fn big_float_of_big_int(value BigInt, precision Int) BigFloat:
 	bits := checked(precision)
 	return make(round_to(value, 0, false, bits), bits)
 
 // Returns `value` rounded to `precision` bits; a precision outside 1 through 1000000 is
 // a fault.
-export fn big_float_of_int(value: Int, precision: Int) BigFloat:
+export fn big_float_of_int(value Int, precision Int) BigFloat:
 	return big_float_of_big_int(big(value), precision)
 
 // Returns a Float rounded to `precision` bits (exact when precision is at least 53), or
 // null for NaN and infinities.
-export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
+export fn big_float_of_float(value Float, precision Int) BigFloat?:
 	bits := checked(precision)
 	if not value.is_finite(): return null
 	if value == 0.0: return big_float_of_int(0, bits)
@@ -455,36 +455,36 @@ export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
 	return make(round_to(big(mantissa), parts.exponent - 53, false, bits), bits)
 
 // Returns the rational rounded once to `precision` bits.
-export fn big_float_of_rat(value: BigRat, precision: Int) BigFloat:
+export fn big_float_of_rat(value BigRat, precision Int) BigFloat:
 	bits := checked(precision)
 	return make(div_round(value.numerator(), value.denominator(), bits), bits)
 
 // Parses an integer or decimal with optional exponent (`2`, `-0.1`, `6.02e23`) and
 // rounds once to `precision` bits. Malformed text returns EBADMSG and an exponent
 // beyond 100000 in magnitude EOVERFLOW.
-export fn parse_big_float(text: String, precision: Int) BigFloat!:
+export fn parse_big_float(text String, precision Int) BigFloat!:
 	bits := checked(precision)
 	if text.contains("/"):
 		return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 	if value := parse_rat(text): return ok(big_float_of_rat(value, bits))
 
-	too_large: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
+	too_large BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 	if parse_rat(text) == too_large:
 		return error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
 
 	return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 
-fn larger(left: Int, right: Int) Int:
+fn larger(left Int, right Int) Int:
 	if left >= right: return left
 	return right
 
-fn smaller(left: Int, right: Int) Int:
+fn smaller(left Int, right Int) Int:
 	if left <= right: return left
 	return right
 
 // Adds a nonzero value too small to reach `prec` bits of `leading`: nudges `leading` by
 // a quarter unit toward the small value's sign.
-fn absorb(leading: BigInt, exp: Int, nudge: Int, prec: Int) Binary:
+fn absorb(leading BigInt, exp Int, nudge Int, prec Int) Binary:
 	padding := prec + 4 - bit_length(leading)
 	var widened = leading.clone()
 	var low = exp
@@ -498,38 +498,38 @@ fn absorb(leading: BigInt, exp: Int, nudge: Int, prec: Int) Binary:
 
 // A binary floating-point value `mant * 2^exp` with a signed integer mantissa.
 type Binary:
-	mant: BigInt
-	exp: Int
+	mant BigInt
+	exp Int
 
-fn big(value: Int) BigInt:
+fn big(value Int) BigInt:
 	return big_int_of_int(value)
 
-fn parse_big(text: String) BigInt?:
+fn parse_big(text String) BigInt?:
 	if value := parse_big_int(text, 10): return value
 	return null
 
-fn shl(value: BigInt, count: Int) BigInt:
+fn shl(value BigInt, count Int) BigInt:
 	if result := value.shift_left(count): return result
 
 	panic("bigrat: shift count out of range")
 
-fn shr(value: BigInt, count: Int) BigInt:
+fn shr(value BigInt, count Int) BigInt:
 	if result := value.shift_right(count): return result
 
 	panic("bigrat: shift count out of range")
 
-fn pow10(count: Int) BigInt:
+fn pow10(count Int) BigInt:
 	if result := big_int_of_int(10).pow(count): return result
 
 	panic("pow10: negative or oversized exponent")
 
 // Returns the number of bits in the magnitude, 0 for zero.
-fn bit_length(value: BigInt) Int:
+fn bit_length(value BigInt) Int:
 	if value.sign() == 0: return 0
 	return value.abs().to_binary().length()
 
 // Returns the floor of `numerator / denominator` for a positive denominator.
-fn floor_div(numerator: BigInt, denominator: BigInt) BigInt:
+fn floor_div(numerator BigInt, denominator BigInt) BigInt:
 	quotient := numerator / denominator
 	if (numerator % denominator).sign() < 0: return quotient - big_int_of_int(1)
 
@@ -538,7 +538,7 @@ fn floor_div(numerator: BigInt, denominator: BigInt) BigInt:
 // Rounds `mant * 2^exp` to `prec` significant bits, ties to even. `sticky` says nonzero
 // bits lie below `mant`; when set, `mant` must carry at least `prec + 2` bits so the
 // discarded tail can only break a tie upward.
-fn round_to(mant: BigInt, exp: Int, sticky: Bool, prec: Int) Binary:
+fn round_to(mant BigInt, exp Int, sticky Bool, prec Int) Binary:
 	magnitude := mant.abs()
 	bits := bit_length(magnitude)
 	if bits <= prec: return Binary(mant: mant.clone(), exp: exp)
@@ -563,10 +563,10 @@ fn round_to(mant: BigInt, exp: Int, sticky: Bool, prec: Int) Binary:
 // A quotient truncated toward zero with at least `prec + 2` bits, and whether a nonzero
 // remainder lay below it.
 type Quotient:
-	value: Binary
-	sticky: Bool
+	value Binary
+	sticky Bool
 
-fn div_parts(numerator: BigInt, denominator: BigInt, prec: Int) Quotient:
+fn div_parts(numerator BigInt, denominator BigInt, prec Int) Quotient:
 	if numerator.sign() == 0:
 		return Quotient(value: Binary(mant: big_int_of_int(0), exp: 0), sticky: false)
 
@@ -580,7 +580,7 @@ fn div_parts(numerator: BigInt, denominator: BigInt, prec: Int) Quotient:
 	return Quotient(value: Binary(mant: quotient, exp: -shift), sticky: sticky)
 
 // Divides `numerator` by a positive `denominator`, rounding once to `prec` bits.
-fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
+fn div_round(numerator BigInt, denominator BigInt, prec Int) Binary:
 	parts := div_parts(numerator, denominator, prec)
 	return round_to(parts.value.mant, parts.value.exp, parts.sticky, prec)
 
@@ -588,7 +588,7 @@ fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
 // Rounds once, onto the binary64 grid: 53 significant bits for a normal result, fewer
 // as the value falls into the subnormal range.
 // `sticky` says nonzero bits lie below `value`, which then must carry at least 55 bits.
-fn binary_to_float(value: Binary, sticky: Bool) Float?:
+fn binary_to_float(value Binary, sticky Bool) Float?:
 	if value.mant.sign() == 0: return 0.0
 
 	magnitude := value.mant.abs()
@@ -623,7 +623,7 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
 	return null
 
 // Reduces `numerator / denominator` for a nonzero denominator.
-fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
+fn reduced(numerator BigInt, denominator BigInt) BigRat:
 	divisor := numerator.gcd(denominator)
 	var top = numerator / divisor
 	var bottom = denominator / divisor

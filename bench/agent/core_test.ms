@@ -34,8 +34,8 @@ test "every challenge is complete":
 		expect_true(not ch.cases("examples").is_empty())?
 		expect_true(ch.cases("hidden").length() > ch.cases("examples").length() - 1)?
 
-		visible := ch.cases("examples").map(fn c: c.stdin.clone())
-		if not ch.cases("hidden").any(fn c: not visible.contains(c.stdin)): fail(
+		visible := ch.cases("examples").map(c => c.stdin.clone())
+		if not ch.cases("hidden").any(c => not visible.contains(c.stdin)): fail(
 			f"{ch.id}: hidden cases add nothing"
 		)?
 

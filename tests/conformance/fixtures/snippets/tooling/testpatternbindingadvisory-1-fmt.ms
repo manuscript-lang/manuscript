@@ -6,8 +6,8 @@ enum Failure:
     Denied
 
 enum Envelope:
-    Pair(left: Failure, right: Failure)
+    Pair(left Failure, right Failure)
 
-fn use(value: Envelope) Int:
+fn use(value Envelope) Int:
     match value:
-        Pair(_payload, NotFound): return 1
+        Pair(_payload, NotFound) => return 1

@@ -5,24 +5,24 @@ import (
 )
 
 enum Instr:
-	Load(r: Int, v: Int)
-	AddR(a: Int, b: Int)
-	SubR(a: Int, b: Int)
-	MulR(a: Int, b: Int)
-	Jnz(r: Int, target: Int)
-	Dec(r: Int)
-	Xor(a: Int, b: Int)
+	Load(r Int, v Int)
+	AddR(a Int, b Int)
+	SubR(a Int, b Int)
+	MulR(a Int, b Int)
+	Jnz(r Int, target Int)
+	Dec(r Int)
+	Xor(a Int, b Int)
 	Halt
 
 enum State:
 	Idle
-	Running(ticks: Int)
-	Blocked(on: Int)
+	Running(ticks Int)
+	Blocked(on Int)
 	Done
 
 type Shape2:
-	w: Int
-	h: Int
+	w Int
+	h Int
 
 fn Shape2.area() Int:
 	return self.w * self.h
@@ -31,14 +31,14 @@ interface Sized:
 	fn area() Int
 
 type Inventory:
-	name: String
-	counts: List[Int]
-	tags: List[String]
+	name String
+	counts List[Int]
+	tags List[String]
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Void:
+fn stop(name String, t0 Int, chk Int) Void:
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 
@@ -55,7 +55,7 @@ fn y_vm() Int:
 		Instr.Jnz(0, 2),
 		Instr.Halt,
 	]
-	var regs: List[Int] = [0, 0, 0, 0]
+	var regs List[Int] = [0, 0, 0, 0]
 	var pc = 0
 	var steps = 0
 
@@ -84,7 +84,7 @@ fn y_vm() Int:
 			Xor(a, b):
 				regs[a] = (regs[a] + regs[b]) % 1000000007
 				pc += 1
-			Halt: break
+			Halt => break
 
 	return regs[1] + steps
 
@@ -94,7 +94,7 @@ fn y_state_machine() Int:
 
 	for i in 0..20000000:
 		match s:
-			Idle: s = State.Running(0)
+			Idle => s = State.Running(0)
 			Running(k):
 				if k > 5: s = State.Blocked(i % 7)
 				else: s = State.Running(k + 1)
@@ -107,16 +107,16 @@ fn y_state_machine() Int:
 
 	return t
 
-fn cmd_code(s: String) Int:
+fn cmd_code(s String) Int:
 	match s:
-		"push": return 1
-		"pop": return 2
-		"add": return 3
-		"sub": return 4
-		"dup": return 5
-		"swap": return 6
-		"jump": return 7
-		_: return 0
+		"push" => return 1
+		"pop" => return 2
+		"add" => return 3
+		"sub" => return 4
+		"dup" => return 5
+		"swap" => return 6
+		"jump" => return 7
+		_ => return 0
 
 fn y_match_string() Int:
 	words := ["push", "pop", "add", "sub", "dup", "swap", "jump", "nop"]
@@ -127,12 +127,12 @@ fn y_match_string() Int:
 
 fn y_matmul() Int:
 	n := 200
-	var a: List[List[Float]] = []
-	var b: List[List[Float]] = []
+	var a List[List[Float]] = []
+	var b List[List[Float]] = []
 
 	for i in 0..n:
-		var ra: List[Float] = []
-		var rb: List[Float] = []
+		var ra List[Float] = []
+		var rb List[Float] = []
 
 		for j in 0..n:
 			ra.append((i + j).to_float() * 0.5)
@@ -141,10 +141,10 @@ fn y_matmul() Int:
 		a.append(ra)
 		b.append(rb)
 
-	var c: List[List[Float]] = []
+	var c List[List[Float]] = []
 
 	for i in 0..n:
-		var rc: List[Float] = []
+		var rc List[Float] = []
 
 		for j in 0..n:
 			var s = 0.0
@@ -158,7 +158,7 @@ fn y_matmul() Int:
 
 fn y_sieve() Int:
 	n := 20000000
-	var sieve: List[Bool] = []
+	var sieve List[Bool] = []
 	for i in 0..n + 1:
 		sieve.append(true)
 
@@ -192,14 +192,14 @@ fn y_sorted_map() Int:
 		t += m.get_or(i * 5, 0)
 	return t + m.length()
 
-fn total_area[T: Sized](xs: List[T]) Int:
+fn total_area[T Sized](xs List[T]) Int:
 	var t = 0
 	for v in xs:
 		t += v.area()
 	return t
 
 fn y_generic_bound() Int:
-	var xs: List[Shape2] = []
+	var xs List[Shape2] = []
 	for i in 0..1000000:
 		xs.append(Shape2(i % 10, i % 7))
 
@@ -220,7 +220,7 @@ fn y_clone_records() Int:
 	return t
 
 fn y_optional_ints() Int:
-	var xs: List[Int?] = []
+	var xs List[Int?] = []
 
 	for i in 0..2000000:
 		if i % 3 == 0: xs.append(null)
@@ -237,7 +237,7 @@ fn y_optional_ints() Int:
 	return t
 
 fn y_stats() Int:
-	var xs: List[Float] = []
+	var xs List[Float] = []
 	var x = 1
 
 	for i in 0..2000000:
@@ -249,14 +249,14 @@ fn y_stats() Int:
 	for r in 0..10:
 		mean := xs.sum() / xs.length().to_float()
 		v := (
-			xs.fold(0.0, fn acc, e: acc + (e - mean) * (e - mean))
+			xs.fold(0.0, (acc, e) => acc + (e - mean) * (e - mean))
 			/ xs.length().to_float()
 		)
 		t += sqrt(v)
 
 	return t.truncate_to_int() or 0
 
-fn run(name: String, f: fn() Int) Void:
+fn run(name String, f fn() Int) Void:
 	t0 := monotonic().tick
 	c := f()
 	stop(name, t0, c)

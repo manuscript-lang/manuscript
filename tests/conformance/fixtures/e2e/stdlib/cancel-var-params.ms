@@ -9,18 +9,18 @@ fn tick() Void!:
 	return sleep(milliseconds(1)).wait()
 
 type Bag:
-	names: List[String]
-	index: Map[String, List[Int]]
-	note: String?
+	names List[String]
+	index Map[String, List[Int]]
+	note String?
 
-fn fill(n: Int) Bag!:
+fn fill(n Int) Bag!:
 	var bag = Bag(names: [], index: Map[String, List[Int]](), note: null)
 
 	for i in 0..n:
 		name := f"name-{i}"
 		bag.names.append(name.clone())
 
-		var slots: List[Int] = []
+		var slots List[Int] = []
 
 		for j in 0..3:
 			slots.append(i * j)
@@ -30,7 +30,7 @@ fn fill(n: Int) Bag!:
 
 	return ok(bag)
 
-fn merge(var a: Bag, var b: Bag) Bag!:
+fn merge(var a Bag, var b Bag) Bag!:
 	for name in b.names:
 		tick()?
 		a.names.append(name.clone())

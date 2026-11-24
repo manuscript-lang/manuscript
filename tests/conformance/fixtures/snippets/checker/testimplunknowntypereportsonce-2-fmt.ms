@@ -2,6 +2,6 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/impl_unknown_type_test.go:17 TestImplUnknownTypeReportsOnce
 type S:
-    x: Int
+    x Int
 
-fn S.m() Int: return 1
+fn S.m() Int => return 1

@@ -47,12 +47,12 @@ test "seeded weighted_choice follows the weights":
 			heavy += 1
 	expect_true(heavy > 140)?
 
-fn discard[T](value: T) Void:
+fn discard[T](value T) Void:
 	return
 
 test "seeded invalid arguments fault":
 	var rng = seeded(1)
-	_first := expect_fault(fn: discard(rng.sample([1], 2)))?
+	_first := expect_fault(() => discard(rng.sample([1], 2)))?
 	expect_none(rng.weighted_choice([1, 2], [1.0]))?
 	expect_none(rng.weighted_choice([1, 2], [0.0, 0.0]))?
 	expect_none(rng.weighted_choice([1, 2], [-1.0, 2.0]))?
@@ -79,19 +79,19 @@ test "secure_int covers wide and empty ranges":
 	low := secure_int(-9223372036854775807 - 1, -9223372036854775807)?
 	expect_equal(low, -9223372036854775807 - 1)?
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	expect_equal(choice(empty)?, null)?
 	expect_equal(shuffle([5])?, [5])?
 
-fn draw_wide(min: Int, max_exclusive: Int) Void:
+fn draw_wide(min Int, max_exclusive Int) Void:
 	var rng = seeded(1)
 	discard(rng.int(min, max_exclusive))
 
 test "seeded int names a range wider than the largest Int":
-	message := expect_fault(fn: draw_wide(-9223372036854775807, 9223372036854775807))?
+	message := expect_fault(() => draw_wide(-9223372036854775807, 9223372036854775807))?
 	expect_true(message.contains("wider than the largest Int"))?
 
-	edge := expect_fault(fn: draw_wide(-1, 9223372036854775807))?
+	edge := expect_fault(() => draw_wide(-1, 9223372036854775807))?
 	expect_true(edge.contains("wider than the largest Int"))?
 
 	var rng = seeded(1)

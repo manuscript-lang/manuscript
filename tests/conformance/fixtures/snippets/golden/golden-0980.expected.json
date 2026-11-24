@@ -9,6 +9,70 @@
       {
         "code": "MS1000",
         "phase": "parse",
+        "message": "remove the ':' between 'value' and its type; write value Type",
+        "position": {
+          "file": "golden-0980.ms",
+          "line": 7,
+          "column": 6,
+          "offset": 113
+        },
+        "end": {
+          "file": "golden-0980.ms",
+          "line": 7,
+          "column": 7,
+          "offset": 114
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0980.ms",
+            "line": 7,
+            "column": 6,
+            "offset": 113
+          },
+          "end": {
+            "file": "golden-0980.ms",
+            "line": 7,
+            "column": 7,
+            "offset": 114
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'left' and its type; write left Type",
+        "position": {
+          "file": "golden-0980.ms",
+          "line": 13,
+          "column": 5,
+          "offset": 168
+        },
+        "end": {
+          "file": "golden-0980.ms",
+          "line": 13,
+          "column": 6,
+          "offset": 169
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0980.ms",
+            "line": 13,
+            "column": 5,
+            "offset": 168
+          },
+          "end": {
+            "file": "golden-0980.ms",
+            "line": 13,
+            "column": 6,
+            "offset": 169
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
         "message": "unterminated delimiter '(' opened at line 17:10; add the matching ')' before the end of the file",
         "position": {
           "file": "golden-0980.ms",
@@ -21,7 +85,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0980.ms:20:1: parse: unterminated delimiter '(' opened at line 17:10; add the matching ')' before the end of the file\n    |\n 20 | \n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0980.ms:7:6: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 7 | value: String,\n   |      ^\n<DIR>/golden-0980.ms:13:5: parse: remove the ':' between 'left' and its type; write left Type\n    |\n 13 | left: Int,\n    |     ^\n<DIR>/golden-0980.ms:20:1: parse: unterminated delimiter '(' opened at line 17:10; add the matching ')' before the end of the file\n    |\n 20 | \n    | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -4,7 +4,7 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 LOW := 1
-HIGH: Int := LOW + 9
+HIGH Int := LOW + 9
 export LABEL := f"range {LOW}..{HIGH}"
 
 test "a constant group declares each constant":
@@ -13,7 +13,7 @@ test "a constant group declares each constant":
 test "a var group declares mutable locals":
     var (
         total = 0
-        step = fn(value: Int) Int:
+        step = fn(value Int) Int:
             return value + 1
     )
     total = step(total)

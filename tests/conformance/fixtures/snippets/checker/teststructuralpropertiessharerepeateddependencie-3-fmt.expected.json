@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn hash(value: Layer32) Int: return value.hash()\n"
+    "fmt": "fn hash(value Layer32) Int => return value.hash()\n"
   }
 }

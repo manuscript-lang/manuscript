@@ -15,22 +15,22 @@ import (
 )
 
 type LogRow:
-	phase: String
-	ok: Bool
-	codes: String = ""
-	msg: String = ""
-	fixed: String = ""
+	phase String
+	ok Bool
+	codes String = ""
+	msg String = ""
+	fixed String = ""
 
 type Detail:
-	built: Bool
-	passed: Int
-	total: Int
-	failed: List[String]
-	builds: Int
-	first_build_ok: Bool
-	checks: Int
-	code_tokens: Int?
-	error: String?
+	built Bool
+	passed Int
+	total Int
+	failed List[String]
+	builds Int
+	first_build_ok Bool
+	checks Int
+	code_tokens Int?
+	error String?
 
 fn main() Void:
 	args := arguments()
@@ -47,8 +47,8 @@ fn main() Void:
 	for line in nonblank_lines(read_text(f"{app}/.bench/log.jsonl")):
 		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
-	builds := rows.filter(fn r: r.phase == "build")
-	var tokens: Int? = null
+	builds := rows.filter(r => r.phase == "build")
+	var tokens Int? = null
 	if suffix != "": tokens = count_workspace(app, suffix)
 
 	var first_ok = false
@@ -63,7 +63,7 @@ fn main() Void:
 		code_tokens: tokens,
 		builds: builds.length(),
 		first_build_ok: first_ok,
-		checks: rows.count(fn r: (r.phase == "check")),
+		checks: rows.count(r => (r.phase == "check")),
 		error: null,
 	)
 	built := bash(build, app, 600, "")

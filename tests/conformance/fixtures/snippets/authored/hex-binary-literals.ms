@@ -8,7 +8,7 @@ fn main() Void:
     b := 0b1010_0101
     c := 1_000_000
     d := -0x10
-    e: Int32 := 0x7FFF_FFFF
+    e Int32 := 0x7FFF_FFFF
     m := {0xFF: "x"}
     f := 3.141_592
     void stdout().write(

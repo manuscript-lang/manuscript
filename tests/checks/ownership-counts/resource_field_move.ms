@@ -36,38 +36,38 @@ import (
 )
 
 type Door:
-	name: String
+	name String
 
 fn move Door.close() Void!:
 	stdout().write(f"close {self.name}\n").get()
 
 type Room:
-	first: Door
-	second: Door
-	tag: String
+	first Door
+	second Door
+	tag String
 
 type Wrap:
-	room: Room
-	extra: Door
+	room Room
+	extra Door
 
-fn say(s: String) Void:
+fn say(s String) Void:
 	stdout().write(f"{s}\n").get()
 
-fn both(r: Room) List[Door]:
-	var xs: List[Door] = []
+fn both(move r Room) List[Door]:
+	var xs List[Door] = []
 	xs.append(r.second)
 	say("both: moved second")
 	return xs
 
-fn branch(r: Room, flag: Bool) List[Door]:
-	var xs: List[Door] = []
+fn branch(move r Room, flag Bool) List[Door]:
+	var xs List[Door] = []
 	if flag:
 		xs.append(r.first)
 	say("branch: end")
 	return xs
 
-fn early(r: Room, flag: Bool) List[Door]:
-	var xs: List[Door] = []
+fn early(move r Room, flag Bool) List[Door]:
+	var xs List[Door] = []
 
 	if flag:
 		xs.append(r.first)
@@ -76,14 +76,14 @@ fn early(r: Room, flag: Bool) List[Door]:
 	say("early: kept")
 	return xs
 
-fn nested(w: Wrap) List[Door]:
-	var xs: List[Door] = []
+fn nested(move w Wrap) List[Door]:
+	var xs List[Door] = []
 	xs.append(w.room.second)
 	say("nested: moved")
 	return xs
 
-fn looped(r: Room, n: Int) List[Door]:
-	var xs: List[Door] = []
+fn looped(move r Room, n Int) List[Door]:
+	var xs List[Door] = []
 
 	for i in 0..n:
 		if i == n - 1:
@@ -95,7 +95,7 @@ fn looped(r: Room, n: Int) List[Door]:
 
 fn local() Void:
 	r := Room(Door("l1"), Door("l2"), "t")
-	var xs: List[Door] = []
+	var xs List[Door] = []
 	xs.append(r.first)
 	say("local: end")
 

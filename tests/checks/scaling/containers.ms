@@ -9,16 +9,16 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text.clone())
 
-fn report(name: String, started: Instant) Void:
+fn report(name String, started Instant) Void:
 	say(f"{name} {monotonic().difference(started).to_nanoseconds()}\n")
 
-fn next(x: Int) Int:
+fn next(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn list_append(n: Int) Int:
+fn list_append(n Int) Int:
 	t := monotonic()
 	var xs = List[Int]()
 	for i in 0..n:
@@ -30,7 +30,7 @@ fn list_append(n: Int) Int:
 	report("list_append_get", t)
 	return sum
 
-fn list_sort(n: Int) Int:
+fn list_sort(n Int) Int:
 	t := monotonic()
 	var xs = List[Int]()
 	var x = 1
@@ -43,7 +43,7 @@ fn list_sort(n: Int) Int:
 	report("list_sort", t)
 	return xs[0]
 
-fn map_int(n: Int) Int:
+fn map_int(n Int) Int:
 	t := monotonic()
 	var m = Map[Int, Int]()
 	for i in 0..n:
@@ -56,7 +56,7 @@ fn map_int(n: Int) Int:
 	report("map_int", t)
 	return hits
 
-fn map_string(n: Int) Int:
+fn map_string(n Int) Int:
 	t := monotonic()
 	var m = Map[String, Int]()
 	for i in 0..n:
@@ -69,7 +69,7 @@ fn map_string(n: Int) Int:
 	report("map_string", t)
 	return hits
 
-fn set_int(n: Int) Int:
+fn set_int(n Int) Int:
 	t := monotonic()
 	var s = Set[Int]()
 	for i in 0..n:
@@ -77,7 +77,7 @@ fn set_int(n: Int) Int:
 	report("set_int", t)
 	return s.length()
 
-fn sorted_map(n: Int) Int:
+fn sorted_map(n Int) Int:
 	t := monotonic()
 	var m = SortedMap[Int, Int]()
 	var x = 1
@@ -97,7 +97,7 @@ fn sorted_map(n: Int) Int:
 	report("sorted_map", t)
 	return hits
 
-fn string_build(n: Int) Int:
+fn string_build(n Int) Int:
 	t := monotonic()
 	var s = ""
 	for i in 0..n:
@@ -109,7 +109,7 @@ fn string_build(n: Int) Int:
 	report("string_build", t)
 	return s.length() + b.length()
 
-fn string_scan(n: Int) Int:
+fn string_scan(n Int) Int:
 	t := monotonic()
 	var s = ""
 	for i in 0..n:
@@ -125,7 +125,7 @@ fn string_scan(n: Int) Int:
 	report("string_scan", t)
 	return words + sum
 
-fn string_replace(n: Int) Int:
+fn string_replace(n Int) Int:
 	t := monotonic()
 	var s = ""
 	for i in 0..n:

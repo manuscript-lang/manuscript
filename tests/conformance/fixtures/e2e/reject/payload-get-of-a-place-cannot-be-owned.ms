@@ -6,17 +6,17 @@
 import panic from "@std/core.ms"
 
 type Handle:
-	id: Int
-	note: String
+	id Int
+	note String
 
 fn move Handle.close() Void!:
 	print("closed")
 
 type Slot[T]:
-	value: T?
+	value T?
 
-fn unwrap_field(s: Slot[Handle]) Handle:
+fn unwrap_field(s Slot[Handle]) Handle:
 	return s.value or panic("called Optional.get() on null")
 
-fn unwrap_generic[T](s: Slot[T]) T:
+fn unwrap_generic[T](s Slot[T]) T:
 	return s.value or panic("called Optional.get() on null")

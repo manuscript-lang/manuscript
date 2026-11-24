@@ -6,44 +6,44 @@ import (
 )
 
 enum Expr:
-	Num(value: Int)
-	Add(left: Expr, right: Expr)
-	Neg(inner: Expr)
+	Num(value Int)
+	Add(left Expr, right Expr)
+	Neg(inner Expr)
 
-fn evaluate(expr: Expr) Int:
+fn evaluate(expr Expr) Int:
 	match expr:
-		Num(value): return value
-		Add(left, right): return evaluate(left) + evaluate(right)
-		Neg(inner): return -evaluate(inner)
+		Num(value) => return value
+		Add(left, right) => return evaluate(left) + evaluate(right)
+		Neg(inner) => return -evaluate(inner)
 
 enum Tree[T]:
-	Leaf(value: T)
-	Branch(left: Tree[T], right: Tree[T])
+	Leaf(value T)
+	Branch(left Tree[T], right Tree[T])
 
 enum Forest:
 	Empty
-	More(tree: MutualTree)
+	More(tree MutualTree)
 
 type MutualTree:
-	value: Int
-	rest: Forest
+	value Int
+	rest Forest
 
 type Node:
-	value: Int
-	next: Node?
+	value Int
+	next Node?
 
 type DefaultNode:
-	value: Int
-	next: DefaultNode?
+	value Int
+	next DefaultNode?
 
 type Link:
-	value: Int
-	next: Link?
+	value Int
+	next Link?
 
-fn Link.equals(other: Link) Bool:
+fn Link.equals(other Link) Bool:
 	return self.value == other.value
 
-fn Link.hash() Int: return self.value
+fn Link.hash() Int => return self.value
 
 test "recursive alternatives construct match compare and clone":
 	expr := Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
@@ -64,7 +64,7 @@ test "recursive alternatives construct match compare and clone":
 	match forest:
 		More(first):
 			((first.value != 3 or first.rest != Forest.Empty) | expect_false?)
-		Empty: return fail("lost mutual tree")
+		Empty => return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
 	child := Node(value: 2, next: null)
@@ -163,24 +163,24 @@ test "recursive defaults construct independent complete objects":
 	)
 
 type Entry:
-	name: String
-	nickname: String?
+	name String
+	nickname String?
 
 type Person:
-	primary: Entry?
+	primary Entry?
 
 enum NestedOptional:
-	Value(value: Int??)
+	Value(value Int??)
 
 type NestedResult:
-	value: Int!Error!Error
+	value Int!Error!Error
 
 type Box[T]:
-	value: T
+	value T
 
 type Pair[T, U]:
-	first: T
-	second: U
+	first T
+	second U
 
 test "finite nested generic composition constructs and extracts values":
 	person := Person(Entry(name: "Ada", nickname: "A"))
@@ -194,8 +194,8 @@ test "finite nested generic composition constructs and extracts values":
 		) | expect_equal("A")?
 	)
 
-	four: Int? := 4
-	nested_four: Int?? := four
+	four Int? := 4
+	nested_four Int?? := four
 	optional := NestedOptional.Value(nested_four)
 
 	match optional:
@@ -205,19 +205,19 @@ test "finite nested generic composition constructs and extracts values":
 	result := NestedResult(ok(ok(5)))
 
 	inner := match result.value:
-		ok(inner): inner.clone()
-		error(_): return fail("unexpected outer result error")
+		ok(inner) => inner.clone()
+		error(_) => return fail("unexpected outer result error")
 
 	match inner:
 		ok(value):
 			expect_equal(value, 5)?
-		error(_): return fail("unexpected inner result error")
+		error(_) => return fail("unexpected inner result error")
 
 	box := Box(Box(6))
 	box.value.value | expect_equal(6)?
 
-	inner_text: String? := "nested"
-	pair: Pair[Int?, String??] := Pair(first: 7, second: inner_text)
+	inner_text String? := "nested"
+	pair Pair[Int?, String??] := Pair(first: 7, second: inner_text)
 	(
 		(
 			(pair.first or panic("called Optional.get() on null")) != 7

@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn bump(var xs: List[Int], i: Int) Bool:
+fn bump(var xs List[Int], i Int) Bool:
 	if var n = xs[i]?:
 		n += 1
 		return true

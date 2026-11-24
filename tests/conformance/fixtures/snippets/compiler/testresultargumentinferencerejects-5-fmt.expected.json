@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn twice[T](r: T!??) Void: return\n\nfn first() Void: twice(f())\n"
+    "fmt": "fn twice[T](r T!??) Void => return\n\nfn first() Void => twice(f())\n"
   }
 }

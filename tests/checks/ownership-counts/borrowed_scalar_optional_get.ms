@@ -6,17 +6,17 @@
 import Closeable, panic, print from "@std/core.ms"
 
 type Marker:
-	id: Int
+	id Int
 
 fn move Marker.close() Void!:
 	print(f"close {self.id}")
 
-fn inspect(value: Marker?) Void:
+fn inspect(value Marker?) Void:
 	print(f"value {(value or panic("called Optional.get() on null")).id}")
 	print(f"still present {(value != null)}")
 
 fn main() Void:
-	value: Marker? := Marker(5)
+	value Marker? := Marker(5)
 	inspect(value)
 	print("after inspect")
 	print(f"original present {(value != null)}")

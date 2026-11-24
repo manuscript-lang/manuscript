@@ -25,103 +25,103 @@ import (
 export type PathParts:
 	// Root prefix under the chosen path rules, including a POSIX slash or Windows
 	// drive/UNC root.
-	root: String
+	root String
 	// Directory portion, including the root when present; `format` prefers it over
 	// `root`.
-	directory: String
+	directory String
 	// Final component with its extension; `format` prefers it over `name` plus
 	// `extension`.
-	base: String
+	base String
 	// Final extension including its dot; simple dotfiles and dot/dot-dot components
 	// have no extension.
-	extension: String
+	extension String
 	// Final component with its extension removed, retaining the original spelling.
-	name: String
+	name String
 
 // Path operations using either POSIX or Windows path conventions.
 export interface PathOperations:
 	// Returns the last component after ignoring trailing separators under this view's
 	// path rules.
-	fn basename(path: String) move String
+	fn basename(path String) move String
 	// Returns the basename with `suffix` removed when it matches exactly. It is not an
 	// extension stripper: a suffix equal to the whole basename is not removed.
-	fn basename_without(path: String, suffix: String) move String
+	fn basename_without(path String, suffix String) move String
 	// Returns the directory component using the selected POSIX or Windows convention.
-	fn dirname(path: String) move String
+	fn dirname(path String) move String
 	// Returns the final dot extension, or empty text for extensionless names and simple
 	// dotfiles.
-	fn extension(path: String) move String
+	fn extension(path String) move String
 	// Tests absolute-root syntax; a Windows drive-relative spelling is not absolute.
-	fn is_absolute(path: String) Bool
+	fn is_absolute(path String) Bool
 	// Joins nonempty parts and normalizes separators/dot segments without filesystem
 	// access.
-	fn join(parts: List[String]) move String
+	fn join(parts List[String]) move String
 	// Cleans repeated separators and dot segments lexically; it does not resolve
 	// symlinks.
-	fn normalize(path: String) move String
+	fn normalize(path String) move String
 	// Computes the lexical relative path from `base` to `target`, both absolute. Paths
 	// with different roots, such as Windows drives, return `target` normalized. A
 	// relative argument or a NUL byte returns EINVAL.
-	fn relative(base: String, target: String) move String!
+	fn relative(base String, target String) move String!
 	// Resolves `parts` against the absolute `base`, without consulting the process
 	// working directory. A relative `base` or a NUL byte returns EINVAL.
-	fn resolve(base: String, parts: List[String]) move String!
+	fn resolve(base String, parts List[String]) move String!
 	// Splits the original spelling into root, directory, base, extension and name
 	// without filesystem access.
-	fn parse(path: String) move PathParts
+	fn parse(path String) move PathParts
 	// Builds a path from `parts`, preferring `directory` over `root` and `base` over
 	// `name` plus `extension`.
-	fn format(parts: PathParts) move String
+	fn format(parts PathParts) move String
 	// Returns slash for POSIX or backslash for Windows path components.
 	fn separator() move String
 	// Returns colon for POSIX or semicolon for Windows path-list entries.
 	fn delimiter() move String
 	// Returns a Windows namespaced absolute path when applicable; POSIX paths are
 	// unchanged.
-	fn to_namespaced_path(path: String) move String
+	fn to_namespaced_path(path String) move String
 	// Tests one lexical path against the supported glob syntax; malformed patterns
 	// return EINVAL.
-	fn matches_glob(path: String, pattern: String) Bool!
+	fn matches_glob(path String, pattern String) Bool!
 	// Compiles a glob pattern once for matching many paths under this dialect's rules;
 	// malformed patterns return EINVAL.
-	fn compile_glob(pattern: String) move Glob!
+	fn compile_glob(pattern String) move Glob!
 
 // One dialect's rules; the interface implementation forwards to the functions below
 // with its flag.
 type Dialect:
-	windows: Bool
+	windows Bool
 
-fn Dialect.basename(path: String) String:
+fn Dialect.basename(path String) String:
 	return basename_in(self.windows, path)
 
-fn Dialect.basename_without(path: String, suffix: String) String:
+fn Dialect.basename_without(path String, suffix String) String:
 	return basename_without_in(self.windows, path, suffix)
 
-fn Dialect.dirname(path: String) String:
+fn Dialect.dirname(path String) String:
 	return dirname_in(self.windows, path)
 
-fn Dialect.extension(path: String) String:
+fn Dialect.extension(path String) String:
 	return extension_in(self.windows, path)
 
-fn Dialect.is_absolute(path: String) Bool:
+fn Dialect.is_absolute(path String) Bool:
 	return is_absolute_in(self.windows, path)
 
-fn Dialect.join(parts: List[String]) String:
+fn Dialect.join(parts List[String]) String:
 	return join_in(self.windows, parts)
 
-fn Dialect.normalize(path: String) String:
+fn Dialect.normalize(path String) String:
 	return normalize_in(self.windows, path)
 
-fn Dialect.relative(base: String, target: String) String!:
+fn Dialect.relative(base String, target String) String!:
 	return relative_in(self.windows, base, target)
 
-fn Dialect.resolve(base: String, parts: List[String]) String!:
+fn Dialect.resolve(base String, parts List[String]) String!:
 	return resolve_in(self.windows, base, parts)
 
-fn Dialect.parse(path: String) PathParts:
+fn Dialect.parse(path String) PathParts:
 	return parse_in(self.windows, path)
 
-fn Dialect.format(parts: PathParts) String:
+fn Dialect.format(parts PathParts) String:
 	return format_in(self.windows, parts)
 
 fn Dialect.separator() String:
@@ -130,13 +130,13 @@ fn Dialect.separator() String:
 fn Dialect.delimiter() String:
 	return if self.windows: ";" else: ":"
 
-fn Dialect.to_namespaced_path(path: String) String:
+fn Dialect.to_namespaced_path(path String) String:
 	return namespaced_in(self.windows, path)
 
-fn Dialect.matches_glob(path: String, pattern: String) Bool!:
+fn Dialect.matches_glob(path String, pattern String) Bool!:
 	return glob_in(self.windows, path, pattern)
 
-fn Dialect.compile_glob(pattern: String) Glob!:
+fn Dialect.compile_glob(pattern String) Glob!:
 	return msstd_path_compile_glob(self.windows, pattern)
 
 fn host_windows() Bool:
@@ -145,23 +145,23 @@ fn host_windows() Bool:
 fn invalid_input() Error:
 	return Error("path: invalid input", kind: "EINVAL")
 
-fn is_letter(text: String) Bool:
+fn is_letter(text String) Bool:
 	code := text.scalar_at(0, -1)
 	return (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
 
 // The path with every backslash read as a slash under Windows rules; POSIX text is
 // unchanged.
-fn slash(windows: Bool, text: String) String:
+fn slash(windows Bool, text String) String:
 	if windows: return text.replace("\\", "/")
 	return text.clone()
 
 // The path with slashes written as the dialect's separator.
-fn native(windows: Bool, text: String) String:
+fn native(windows Bool, text String) String:
 	if windows: return text.replace("/", "\\")
 	return text.clone()
 
 // Removes every trailing slash.
-fn trim_end_slashes(text: String) String:
+fn trim_end_slashes(text String) String:
 	if not text.ends_with("/"): return text.clone()
 	if not text.ends_with("//"): return text.view(0, text.length() - 1).clone()
 
@@ -171,7 +171,7 @@ fn trim_end_slashes(text: String) String:
 	return text_of(data, 0, end)
 
 // Removes every leading slash.
-fn trim_start_slashes(text: String) String:
+fn trim_start_slashes(text String) String:
 	if not text.starts_with("/"): return text.clone()
 	if not text.starts_with("//"): return text.view(1, text.length()).clone()
 
@@ -183,7 +183,7 @@ fn trim_start_slashes(text: String) String:
 
 // The root of an already slash-normalized path: a Windows drive or UNC share, `/`, or
 // empty.
-fn root_of(windows: Bool, text: String) String:
+fn root_of(windows Bool, text String) String:
 	if windows:
 		count := text.length()
 
@@ -213,12 +213,12 @@ fn root_of(windows: Bool, text: String) String:
 
 // Whether a slash-normalized Windows path starts with a `//?/` or `//./` namespace
 // prefix.
-fn is_device(text: String) Bool:
+fn is_device(text String) Bool:
 	return text.starts_with("//?/") or text.starts_with("//./")
 
 // The `//server/share` root of a slash-normalized UNC path, or empty when the text is
 // not one.
-fn unc_root(text: String) String:
+fn unc_root(text String) String:
 	data := text.to_bytes()
 	count := data.length()
 	var start = 2
@@ -240,33 +240,33 @@ fn unc_root(text: String) String:
 
 // A `//server//share/` root with its repeated separators collapsed to `//server/share`
 // plus the trailing separator the root already had.
-fn canonical_unc_root(root: String) String:
-	parts := root.split("/").filter(fn part: not part.is_empty())
+fn canonical_unc_root(root String) String:
+	parts := root.split("/").filter(part => not part.is_empty())
 	joined := "//" + parts.join("/")
 	if root.ends_with("/"): return joined + "/"
 
 	return joined
 
-fn root_in(windows: Bool, text: String) String:
+fn root_in(windows Bool, text String) String:
 	if not windows: return root_of(false, text)
 	return root_of(true, slash(true, text))
 
-fn is_absolute_in(windows: Bool, text: String) Bool:
+fn is_absolute_in(windows Bool, text String) Bool:
 	root := root_in(windows, text)
 	return root.ends_with("/") or (windows and root.starts_with("//"))
 
 // A segment of the bytes being normalized, packed as `start * 2^32 + end`.
-fn span(start: Int, end: Int) Int:
+fn span(start Int, end Int) Int:
 	return start * 4294967296 + end
 
-fn span_start(packed: Int) Int:
+fn span_start(packed Int) Int:
 	return packed / 4294967296
 
-fn span_end(packed: Int) Int:
+fn span_end(packed Int) Int:
 	return packed % 4294967296
 
 // True when the segment is `..`.
-fn span_is_parent(data: Bytes, packed: Int) Bool:
+fn span_is_parent(data Bytes, packed Int) Bool:
 	start := span_start(packed)
 	return (
 		span_end(packed) - start == 2
@@ -274,7 +274,7 @@ fn span_is_parent(data: Bytes, packed: Int) Bool:
 		and data.get_or(start + 1, null).to_int() == 46
 	)
 
-fn normalize_in(windows: Bool, raw: String) String:
+fn normalize_in(windows Bool, raw String) String:
 	if windows:
 		text := slash(true, raw)
 		if is_device(text) and text.view(4, text.length()).starts_with("/"): return normalize_core(
@@ -289,7 +289,7 @@ fn normalize_in(windows: Bool, raw: String) String:
 // A POSIX path that normalizing would leave unchanged: no empty, `.` or `..` segment
 // and no trailing separator (the root alone is clean). One scan, so already-clean paths
 // skip the span list and the rebuild.
-fn is_clean(data: Bytes) Bool:
+fn is_clean(data Bytes) Bool:
 	count := data.length()
 	if count == 1: return data.get_or(0, null).to_int() == 47
 
@@ -311,7 +311,7 @@ fn is_clean(data: Bytes) Bool:
 	return true
 
 // `text` already reads backslashes as slashes under Windows rules.
-fn normalize_core(windows: Bool, text: String) String:
+fn normalize_core(windows Bool, text String) String:
 	if text.is_empty(): return "."
 
 	root := root_of(windows, text)
@@ -332,7 +332,7 @@ fn normalize_core(windows: Bool, text: String) String:
 	count := data.length()
 	if not windows and is_clean(data): return text.clone()
 
-	var stack: List[Int] = []
+	var stack List[Int] = []
 	var start = root_bytes
 
 	while start <= count:
@@ -410,7 +410,7 @@ fn normalize_core(windows: Bool, text: String) String:
 
 // The final extension of a basename that holds no slash: a leading dot alone and `..`
 // have null.
-fn extension_of_base(base: String) String:
+fn extension_of_base(base String) String:
 	dot := base.last_index_of(".")
 	if dot == null: return ""
 
@@ -419,13 +419,13 @@ fn extension_of_base(base: String) String:
 
 	return base.view(at, base.length()).clone()
 
-fn parse_in(windows: Bool, original: String) PathParts:
+fn parse_in(windows Bool, original String) PathParts:
 	if windows: return parse_core(true, slash(true, original), original)
 	return parse_core(false, original, original)
 
 // Splits by byte positions, so every field is one view of `original` decoded; `text` is
 // `original` with backslashes read as slashes (the same positions).
-fn parse_core(windows: Bool, text: String, original: String) PathParts:
+fn parse_core(windows Bool, text String, original String) PathParts:
 	root_len := root_of(windows, text).length()
 	data := text.to_bytes()
 	source := original.to_bytes()
@@ -475,11 +475,11 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 	)
 
 // The text of bytes [start, end) of `data`.
-fn text_of(data: Bytes, start: Int, end: Int) String:
+fn text_of(data Bytes, start Int, end Int) String:
 	if start >= end: return ""
 	return data.view(start, end).decode_utf8() or ""
 
-fn extension_in(windows: Bool, text: String) String:
+fn extension_in(windows Bool, text String) String:
 	if windows: return parse_in(true, text).extension.clone()
 
 	trimmed := trim_end_slashes(text)
@@ -490,20 +490,20 @@ fn extension_in(windows: Bool, text: String) String:
 	)
 	return extension_of_base(base)
 
-fn equal_fold(left: String, right: String) Bool:
+fn equal_fold(left String, right String) Bool:
 	if left == right: return true
 	return lowercase_path(left) == lowercase_path(right)
 
 // Path comparisons retain the original per-scalar lowercase mapping. Whole-string
 // lowercasing makes a capital sigma contextual (Σ -> ς at word end), unlike that
 // mapping (Σ -> σ).
-fn lowercase_path(text: String) String:
+fn lowercase_path(text String) String:
 	if text.contains("Σ"): return text.replace("Σ", "σ").lower()
 	return text.lower()
 
 // Resolves `parts` against the absolute `base`; null when `base` is not absolute or any
 // text holds NUL.
-fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
+fn resolve_inner(windows Bool, base String, parts List[String]) String?:
 	if not is_absolute_in(windows, base) or base.contains("\u{0}"): return null
 
 	for part in parts:
@@ -594,19 +594,19 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 
 	return normalized
 
-fn resolve_in(windows: Bool, base: String, parts: List[String]) String!:
+fn resolve_in(windows Bool, base String, parts List[String]) String!:
 	value := resolve_inner(windows, base, parts)
 	if value != null: return ok(value)
 
 	return error(invalid_input())
 
-fn basename_in(windows: Bool, raw: String) String:
+fn basename_in(windows Bool, raw String) String:
 	return basename_inner(windows, raw, "", false)
 
-fn basename_without_in(windows: Bool, raw: String, suffix: String) String:
+fn basename_without_in(windows Bool, raw String, suffix String) String:
 	return basename_inner(windows, raw, suffix, true)
 
-fn basename_inner(windows: Bool, raw: String, suffix: String, strip: Bool) String:
+fn basename_inner(windows Bool, raw String, suffix String, strip Bool) String:
 	var text = slash(windows, raw)
 	var prefix = 0
 
@@ -633,7 +633,7 @@ fn basename_inner(windows: Bool, raw: String, suffix: String, strip: Bool) Strin
 
 	return base
 
-fn dirname_in(windows: Bool, original: String) String:
+fn dirname_in(windows Bool, original String) String:
 	text := slash(windows, original)
 	root := root_of(windows, text)
 	trimmed := trim_end_slashes(text)
@@ -647,7 +647,7 @@ fn dirname_in(windows: Bool, original: String) String:
 
 	return original.view(0, at).clone()
 
-fn join_in(windows: Bool, items: List[String]) String:
+fn join_in(windows Bool, items List[String]) String:
 	var first = ""
 	var has_empty = false
 
@@ -686,7 +686,7 @@ fn join_in(windows: Bool, items: List[String]) String:
 
 	return normalize_in(windows, joined)
 
-fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
+fn relative_in(windows Bool, base_arg String, target_arg String) String!:
 	base_resolved := resolve_inner(windows, base_arg, [])
 	target_resolved := resolve_inner(windows, target_arg, [])
 	if (base_resolved == null) or (target_resolved == null): return error(
@@ -749,13 +749,13 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 
 	return ok(native(windows, out))
 
-fn same_text(windows: Bool, left: String, right: String) Bool:
+fn same_text(windows Bool, left String, right String) Bool:
 	if windows: return equal_fold(left, right)
 	return left == right
 
 // Builds a path from `parts`: `directory` (else `root`), then `base` (else `name` plus
 // `extension`), joined by the dialect's separator.
-fn format_in(windows: Bool, parts: PathParts) String:
+fn format_in(windows Bool, parts PathParts) String:
 	directory := if parts.directory.is_empty(): parts.root.clone() else: parts.directory.clone()
 	var base = parts.base.clone()
 
@@ -772,7 +772,7 @@ fn format_in(windows: Bool, parts: PathParts) String:
 
 	return f"{directory}{native(windows, "/")}{base}"
 
-fn namespaced_in(windows: Bool, text: String) String:
+fn namespaced_in(windows Bool, text String) String:
 	root := root_in(windows, text)
 	if (
 		not windows
@@ -790,7 +790,7 @@ fn namespaced_in(windows: Bool, text: String) String:
 
 	return f"\\\\?\\{value}"
 
-fn glob_in(windows: Bool, path: String, pattern: String) Bool!:
+fn glob_in(windows Bool, path String, pattern String) Bool!:
 	glob := msstd_path_compile_glob(windows, pattern)?
 	return msstd_path_glob_matches(glob, path)
 
@@ -803,60 +803,60 @@ export fn win32() PathOperations:
 	return Dialect(windows: true)
 
 // Returns the final path component, excluding trailing separators.
-export fn basename(path: String) String:
+export fn basename(path String) String:
 	return basename_in(host_windows(), path)
 
 // Returns the basename with `suffix` removed when it matches exactly. A suffix equal to
 // the whole basename is not removed.
-export fn basename_without(path: String, suffix: String) String:
+export fn basename_without(path String, suffix String) String:
 	return basename_without_in(host_windows(), path, suffix)
 
 // Returns the directory portion of a path, or `.` when it has null.
-export fn dirname(path: String) String:
+export fn dirname(path String) String:
 	return dirname_in(host_windows(), path)
 
 // Returns the final extension, including its leading dot, or an empty string.
-export fn extension(path: String) String:
+export fn extension(path String) String:
 	return extension_in(host_windows(), path)
 
 // Reports whether a path is absolute according to the host path rules.
-export fn is_absolute(path: String) Bool:
+export fn is_absolute(path String) Bool:
 	return is_absolute_in(host_windows(), path)
 
 // Joins path parts using the host separator and normalizes the result.
-export fn join(parts: List[String]) String:
+export fn join(parts List[String]) String:
 	return join_in(host_windows(), parts)
 
 // Normalizes separators and dot segments without accessing the filesystem.
-export fn normalize(path: String) String:
+export fn normalize(path String) String:
 	return normalize_in(host_windows(), path)
 
 // Computes a relative path from `base` to `target` using host path rules.
-export fn relative(base: String, target: String) String!:
+export fn relative(base String, target String) String!:
 	return relative_in(host_windows(), base, target)
 
 // Resolves path parts against a base using host path conventions.
-export fn resolve(base: String, parts: List[String]) String!:
+export fn resolve(base String, parts List[String]) String!:
 	return resolve_in(host_windows(), base, parts)
 
 // Splits a path into its root, directory, base, extension, and name.
-export fn parse(path: String) PathParts:
+export fn parse(path String) PathParts:
 	return parse_in(host_windows(), path)
 
 // Formats parsed path components as a path string.
-export fn format(parts: PathParts) String:
+export fn format(parts PathParts) String:
 	return format_in(host_windows(), parts)
 
 // Returns the final component without its extension: `stem("a/b.tar.gz")` is `"b.tar"`
 // and a dotfile such as `.bashrc` keeps its whole name.
-export fn stem(path: String) String:
+export fn stem(path String) String:
 	return parse(path).name
 
 // Replaces the final extension, or adds one when there is null, keeping the directory:
 // `with_extension("a/b.txt", "md")` is `"a/b.md"`. A leading dot in `extension` is
 // optional and an empty `extension` removes the current one. A path with no final
 // component, such as `"/"`, comes back unchanged.
-export fn with_extension(path: String, extension: String) String:
+export fn with_extension(path String, extension String) String:
 	parts := parse(path)
 	if parts.name.is_empty(): return path.clone()
 
@@ -880,12 +880,12 @@ export fn delimiter() String:
 
 // On Windows, returns the `\\?\` namespaced form of an absolute path; elsewhere, and
 // for other paths, returns the path unchanged.
-export fn to_namespaced_path(path: String) String:
+export fn to_namespaced_path(path String) String:
 	return namespaced_in(host_windows(), path)
 
 // Tests a path against a glob pattern. To test many paths against one pattern, compile
 // it once with `compile_glob`.
-export fn matches_glob(path: String, pattern: String) Bool!:
+export fn matches_glob(path String, pattern String) Bool!:
 	return glob_in(host_windows(), path, pattern)
 
 // A compiled glob pattern that can be reused across paths. It matches `*`, `?`, `[...]`
@@ -895,9 +895,9 @@ export extern type Glob
 
 // Tests one lexical path against the compiled pattern; a path with a NUL byte returns
 // EINVAL.
-fn Glob.matches(path: String) Bool!:
+fn Glob.matches(path String) Bool!:
 	return msstd_path_glob_matches(self, path)
 
 // Compiles a glob pattern under the host path rules. Malformed patterns return EINVAL.
-export fn compile_glob(pattern: String) Glob!:
+export fn compile_glob(pattern String) Glob!:
 	return msstd_path_compile_glob(host_windows(), pattern)

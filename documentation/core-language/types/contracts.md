@@ -12,15 +12,15 @@ Save as `adjust.ms` and run `ms run adjust.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"12\n"} -->
 ```manuscript
 interface Increment:
-    fn apply(value: Int) Int
+    fn apply(value Int) Int
 
 type Offset:
-    delta: Int
+    delta Int
 
-fn Offset.apply(value: Int) Int:
+fn Offset.apply(value Int) Int:
     return value + self.delta
 
-fn adjusted(value: Int, operation: Increment) Int:
+fn adjusted(value Int, operation Increment) Int:
     return operation.apply(value)
 
 fn main() Void:
@@ -39,11 +39,11 @@ A type's methods are declared beside it, never inside the `type`. A receiver met
 
 `self` is an implicit binding of the receiver type in each method. It is not a parameter and cannot be redeclared.
 
-A method is declared in the module that declares its type, and it travels with the type wherever the type is used. To add operations to another module's type, write a free function or a wrapper type. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called as `reset(counter)`, never `counter.reset()`.
+A method is declared in the module that declares its type, and it travels with the type wherever the type is used. To add operations to another module's type, write a free function or a wrapper type. There is no inheritance and no default implementation. A free function `fn reset(counter Counter)` is called as `reset(counter)`, never `counter.reset()`.
 
 A type has one method per name. A second method of the same name on one receiver is an error, so one `close` or one `read` serves every interface that asks for it.
 
-A receiver may add bounds, as in `fn Box[T: Equal].same(other: T) Bool`, so the method exists only where the arguments satisfy them. It may also fix an argument, as in `fn List[Int].sum() Int`. Methods of one name on receivers with different bounds or arguments are separate declarations, and a call picks the one whose receiver matches.
+A receiver may add bounds, as in `fn Box[T Equal].same(other T) Bool`, so the method exists only where the arguments satisfy them. It may also fix an argument, as in `fn List[Int].sum() Int`. Methods of one name on receivers with different bounds or arguments are separate declarations, and a call picks the one whose receiver matches.
 
 A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) to its parameters. A call on the concrete receiver uses them. A call through an interface value uses the interface's signature, with the interface's own defaults.
 
@@ -60,15 +60,15 @@ A type satisfies an interface when it has one own method for each operation, wit
 <!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
 ```manuscript
 interface Increment:
-    fn apply(value: Int) Int
+    fn apply(value Int) Int
 
 type Offset:
-    delta: Int
+    delta Int
 
-fn Offset.apply(value: Int) Int:
+fn Offset.apply(value Int) Int:
     return value + self.delta
 
-fn adjusted(value: Int, operation: Increment) Int:
+fn adjusted(value Int, operation Increment) Int:
     return operation.apply(value)
 
 fn main() Void:
@@ -90,7 +90,7 @@ fn main() Void:
 
 ```text
 // Rejected: amount does not match the interface's value label.
-fn Offset.apply(amount: Int) Int:
+fn Offset.apply(amount Int) Int:
     return amount + self.delta
 ```
 
@@ -114,26 +114,26 @@ A receiver names its declaration's generic parameters; matching the receiver det
 interface ReadValue[T]:
     fn get() T
 
-type Box[T: Clonable]:
-    value: T
+type Box[T Clonable]:
+    value T
 
 fn Box[T].get() T:
     return self.value.clone()
 ```
 
-This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and from any bound written on the receiver. The body is checked once under them with `self: Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them.
+This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and from any bound written on the receiver. The body is checked once under them with `self Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them.
 
 A bound written on the receiver restricts one method without restricting the data type:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-interface SameValue[T: Equal]:
-    fn same(other: T) Bool
+interface SameValue[T Equal]:
+    fn same(other T) Bool
 
 type Box[T]:
-    value: T
+    value T
 
-fn Box[T: Equal].same(other: T) Bool:
+fn Box[T Equal].same(other T) Bool:
     return self.value == other
 ```
 
@@ -165,18 +165,18 @@ The conversion follows the [ownership rules](https://github.com/manuscript-lang/
 
 A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
-<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount: Int) Int\n\ntype Offset:\n    delta: Int\n\nfn Offset.apply(amount: Int) Int:\n    return amount + self.delta","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount Int) Int\n\ntype Offset:\n    delta Int\n\nfn Offset.apply(amount Int) Int:\n    return amount + self.delta","given":[]} -->
 ```manuscript
-fn use_increment(operation: Increment) Int:
+fn use_increment(operation Increment) Int:
     return operation.apply(1)
 
 offset := Offset(2)
 result := use_increment(offset)
 again := offset.delta
-kept: Increment := offset.clone()
+kept Increment := offset.clone()
 ```
 
-An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment := offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
+An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view Increment := offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
 
 ### Selecting an operation
 
@@ -184,10 +184,10 @@ A type has one method per name, so a call on a concrete receiver, a generic para
 
 An interface type satisfies its own exact generic bound: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
-<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount: Int) Int\n\ntype Offset:\n    delta: Int\n\nfn Offset.apply(amount: Int) Int:\n    return amount + self.delta","given":["offset: Offset","view: Increment"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"interface Increment:\n    fn apply(amount Int) Int\n\ntype Offset:\n    delta Int\n\nfn Offset.apply(amount Int) Int:\n    return amount + self.delta","given":["offset Offset","view Increment"]} -->
 ```manuscript
-fn invoke[T: Increment](operation: T) Int:
-    view: Increment := operation
+fn invoke[T Increment](operation T) Int:
+    view Increment := operation
     return view.apply(1)
 
 from_concrete := invoke(offset)

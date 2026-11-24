@@ -7,9 +7,9 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
-	swings: Int
+	id Int
+	log String
+	swings Int
 
 fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
@@ -21,13 +21,13 @@ fn var Door.swing() Int:
 fn Door.peek() Int:
 	return self.swings
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
-fn open_door(id: Int, move log: String) Door:
+fn open_door(id Int, move log String) Door:
 	return Door(id, log, 0)
 
 // A temporary that a `var fn` changes in place is still a temporary: it closes when its

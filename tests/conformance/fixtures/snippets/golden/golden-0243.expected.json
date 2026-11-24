@@ -13,8 +13,8 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 6,
-          "column": 49,
-          "offset": 171
+          "column": 47,
+          "offset": 169
         },
         "fix": {
           "position": {
@@ -39,8 +39,8 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 6,
-          "column": 74,
-          "offset": 196
+          "column": 72,
+          "offset": 194
         },
         "fix": {
           "position": {
@@ -65,8 +65,8 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 6,
-          "column": 84,
-          "offset": 206
+          "column": 82,
+          "offset": 204
         }
       },
       {
@@ -76,8 +76,8 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 7,
-          "column": 53,
-          "offset": 272
+          "column": 50,
+          "offset": 267
         },
         "fix": {
           "position": {
@@ -102,8 +102,8 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 7,
-          "column": 84,
-          "offset": 303
+          "column": 81,
+          "offset": 298
         }
       },
       {
@@ -113,8 +113,8 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 8,
-          "column": 25,
-          "offset": 341
+          "column": 24,
+          "offset": 335
         },
         "fix": {
           "position": {
@@ -139,8 +139,8 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 8,
-          "column": 58,
-          "offset": 374
+          "column": 55,
+          "offset": 366
         },
         "fix": {
           "position": {
@@ -165,15 +165,15 @@
         "position": {
           "file": "golden-0243.ms",
           "line": 8,
-          "column": 89,
-          "offset": 405
+          "column": 86,
+          "offset": 397
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0243.ms:6:49: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 6 |     fn receive(max_bytes: Int? = null, timeout: Duration? = null) Result[Datagram, NetworkError]\n   |                                                 ^\n<DIR>/golden-0243.ms:6:74: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n   |\n 6 |     fn receive(max_bytes: Int? = null, timeout: Duration? = null) Result[Datagram, NetworkError]\n   |                                                                          ^\n<DIR>/golden-0243.ms:6:84: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 6 |     fn receive(max_bytes: Int? = null, timeout: Duration? = null) Result[Datagram, NetworkError]\n   |                                                                                    ^\n<DIR>/golden-0243.ms:7:53: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 7 |     fn send(data: String, address: String, timeout: Duration? = null) Result[Void, NetworkError]\n   |                                                     ^\n<DIR>/golden-0243.ms:7:84: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 7 |     fn send(data: String, address: String, timeout: Duration? = null) Result[Void, NetworkError]\n   |                                                                                    ^\n<DIR>/golden-0243.ms:8:25: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 8 |     fn send_bytes(data: Bytes, address: String, timeout: Duration? = null) Result[Void, NetworkError]\n   |                         ^\n<DIR>/golden-0243.ms:8:58: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 8 |     fn send_bytes(data: Bytes, address: String, timeout: Duration? = null) Result[Void, NetworkError]\n   |                                                          ^\n<DIR>/golden-0243.ms:8:89: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 8 |     fn send_bytes(data: Bytes, address: String, timeout: Duration? = null) Result[Void, NetworkError]\n   |                                                                                         ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0243.ms:6:47: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 6 |     fn receive(max_bytes Int? = null, timeout Duration? = null) Result[Datagram, NetworkError]\n   |                                               ^\n<DIR>/golden-0243.ms:6:72: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n   |\n 6 |     fn receive(max_bytes Int? = null, timeout Duration? = null) Result[Datagram, NetworkError]\n   |                                                                        ^\n<DIR>/golden-0243.ms:6:82: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 6 |     fn receive(max_bytes Int? = null, timeout Duration? = null) Result[Datagram, NetworkError]\n   |                                                                                  ^\n<DIR>/golden-0243.ms:7:50: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 7 |     fn send(data String, address String, timeout Duration? = null) Result[Void, NetworkError]\n   |                                                  ^\n<DIR>/golden-0243.ms:7:81: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 7 |     fn send(data String, address String, timeout Duration? = null) Result[Void, NetworkError]\n   |                                                                                 ^\n<DIR>/golden-0243.ms:8:24: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 8 |     fn send_bytes(data Bytes, address String, timeout Duration? = null) Result[Void, NetworkError]\n   |                        ^\n<DIR>/golden-0243.ms:8:55: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 8 |     fn send_bytes(data Bytes, address String, timeout Duration? = null) Result[Void, NetworkError]\n   |                                                       ^\n<DIR>/golden-0243.ms:8:86: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 8 |     fn send_bytes(data Bytes, address String, timeout Duration? = null) Result[Void, NetworkError]\n   |                                                                                      ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

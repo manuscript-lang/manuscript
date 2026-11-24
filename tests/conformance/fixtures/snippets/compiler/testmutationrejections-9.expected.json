@@ -14,22 +14,7 @@
           "file": "testmutationrejections-9.ms",
           "line": 5,
           "column": 5,
-          "offset": 165
-        },
-        "fix": {
-          "position": {
-            "file": "testmutationrejections-9.ms",
-            "line": 4,
-            "column": 6,
-            "offset": 143
-          },
-          "end": {
-            "file": "testmutationrejections-9.ms",
-            "line": 4,
-            "column": 11,
-            "offset": 148
-          },
-          "replacement": "var value"
+          "offset": 164
         }
       }
     ],

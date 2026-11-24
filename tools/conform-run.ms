@@ -40,12 +40,7 @@ import (
 )
 
 // Observes each fixture of `chunk`: one `ok` or `FAIL <id>` line apiece.
-fn sweep(
-	ms: String,
-	build_type: String,
-	chunk: List[Fixture],
-	detail: Bool,
-) List[String]:
+fn sweep(ms String, build_type String, chunk List[Fixture], detail Bool) List[String]:
 	var lines = List[String]()
 
 	for fx in chunk:
@@ -60,21 +55,21 @@ fn sweep(
 	return lines
 
 // The first 2500 characters of a value, for `CONFORM_DIFF=1` failure reports.
-fn clipped(value: JsonValue) String:
+fn clipped(value JsonValue) String:
 	text := stringify(value).get()
 	if text.length() <= 2500: return text.clone()
 
 	return f"{text.slice(0, 2500)}..."
 
 // The text of `ms version`, stored in each expectation for provenance.
-fn oracle_version(ms: String) String:
+fn oracle_version(ms String) String:
 	result := run(ms, ["version"], RunOptions(timeout: seconds(30))).wait()
 	if out := result: return text_of(out.stdout).trim().clone()
 
 	return ""
 
 // Why `observed` cannot be recorded, or "".
-fn unrecordable(observed: JsonValue) String:
+fn unrecordable(observed JsonValue) String:
 	for key in ["harness_error", "spawn_error", "timed_out", "unparsable_json"]:
 		if observed.get(key) != null: return f"observation has {key}"
 
@@ -86,13 +81,13 @@ fn unrecordable(observed: JsonValue) String:
 // Records each fixture of `chunk`: one `wrote`, `same`, `kept` or `REJECT <id>: <why>`
 // line apiece.
 fn record_chunk(
-	ms: String,
-	build_type: String,
-	chunk: List[Fixture],
-	version: String,
-	stable: Bool,
-	only_missing: Bool,
-	prune: Bool,
+	ms String,
+	build_type String,
+	chunk List[Fixture],
+	version String,
+	stable Bool,
+	only_missing Bool,
+	prune Bool,
 ) List[String]:
 	var lines = List[String]()
 
@@ -217,7 +212,7 @@ fn main() Int:
 			release := version.clone()
 			recorders.append(
 				promise(
-					fn: ok(
+					() => ok(
 						record_chunk(
 							tool,
 							kind,
@@ -254,7 +249,7 @@ fn main() Int:
 		kind := build_type.clone()
 		mine := chunks[worker].clone()
 		detail := show_diff
-		tasks.append(promise(fn: ok(sweep(tool, kind, mine, detail))))
+		tasks.append(promise(() => ok(sweep(tool, kind, mine, detail))))
 
 	var passed = 0
 

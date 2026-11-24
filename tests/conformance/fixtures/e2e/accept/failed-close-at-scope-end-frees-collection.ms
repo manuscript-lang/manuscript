@@ -8,8 +8,8 @@ import (
 // A close that fails where its scope ends faults. The fault must still free the collection
 // that held the failing resource: the buffer and the elements the close never reached.
 type Item:
-	id: Int
-	label: String
+	id Int
+	label String
 
 fn move Item.close() Void!:
 	return error(Error("close failed"))
@@ -25,18 +25,18 @@ fn list_at_scope_end() Void:
 		items.append(Item(id, f"item-{id}-with-a-label-long-enough-to-allocate"))
 
 fn optionals_at_scope_end() Void:
-	var items: List[Item?] = []
+	var items List[Item?] = []
 	for id in 0..3:
 		items.append(Item(id, f"item-{id}-with-a-label-long-enough-to-allocate"))
 
 test "a failed close of a deque element at scope end faults":
-	message := expect_fault(fn: deque_at_scope_end())?
+	message := expect_fault(() => deque_at_scope_end())?
 	expect_contains(message, "could not be closed")?
 
 test "a failed close of a list element at scope end faults":
-	message := expect_fault(fn: list_at_scope_end())?
+	message := expect_fault(() => list_at_scope_end())?
 	expect_contains(message, "could not be closed")?
 
 test "a failed close of an optional element at scope end faults":
-	message := expect_fault(fn: optionals_at_scope_end())?
+	message := expect_fault(() => optionals_at_scope_end())?
 	expect_contains(message, "could not be closed")?

@@ -2,7 +2,7 @@
 // conform: phase=run
 // `s = s + pieces` in a loop grows `s` in place: the text stays right when a piece is an
 // integer, a wide character, `s` itself, or more pieces than one join takes.
-fn rows(n: Int) String:
+fn rows(n Int) String:
 	var out = "["
 	for i in 0..n:
 		if i > 0: out += ","
@@ -10,13 +10,13 @@ fn rows(n: Int) String:
 	out += "]"
 	return out
 
-fn wide(n: Int) String:
+fn wide(n Int) String:
 	var out = "start"
 	for i in 0..n:
 		out += f"{i}:{i + 1}:{i + 2}:{i + 3}:é:{i + 4}|"
 	return out
 
-fn doubled(seed: String) String:
+fn doubled(seed String) String:
 	var out = seed.clone()
 	for i in 0..3:
 		out = out + f"<{out}>{i}"

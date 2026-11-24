@@ -11,13 +11,13 @@ import (
 )
 
 type ServeOptions:
-	port: Int
-	mode: String
-	root: String
-	verbose: Bool
-	tags: List[String]
+	port Int
+	mode String
+	root String
+	verbose Bool
+	tags List[String]
 
-fn serve(options: ServeOptions) Int!:
+fn serve(options ServeOptions) Int!:
 	return ok(options.port)
 
 fn common_flags() List[Flag]:
@@ -46,14 +46,14 @@ fn serve_command() Command:
 			Flag("tags", FlagKind.List),
 		],
 		args: [Arg("root", "Directory to serve")],
-		run: fn options: serve(options)
+		run: options => serve(options)
 	)
 
 type AddOptions:
-	name: String
-	extra: List[String]
-	dry_run: Bool
-	url: String?
+	name String
+	extra List[String]
+	dry_run Bool
+	url String?
 
 fn remote_group() Command:
 	add := command[AddOptions](
@@ -64,7 +64,7 @@ fn remote_group() Command:
 			Arg("url", required: false),
 			Arg("extra", required: false, rest: true),
 		],
-		run: fn options: ok(
+		run: options => ok(
 			options.extra.length() + (if options.dry_run: 100 else: 0) + (
 				if options.url != null: 10 else: 0
 			)
@@ -80,15 +80,15 @@ fn app() Command:
 		children: [serve_command(), remote_group()],
 	)
 
-fn run(argv: List[String]) Matches!:
+fn run(argv List[String]) Matches!:
 	parsed := app().parse(argv)
 	if parsed.is_error(): return error(parsed.err().clone())
 
 	match parsed.get():
-		Run(matches): return ok(matches.clone())
-		Help(text): return ok(Matches(path: [text.clone()]))
+		Run(matches) => return ok(matches.clone())
+		Help(text) => return ok(Matches(path: [text.clone()]))
 
-fn failure(argv: List[String]) String!:
+fn failure(argv List[String]) String!:
 	result := app().parse(argv)
 	if result.is_ok(): return error(Error("accepted", kind: "EIO"))
 
@@ -103,8 +103,8 @@ test "nested command resolves path and typed options":
 	matches.bool("verbose") | expect_equal(false)?
 
 test "run rejects paths outside this command root":
-	leaf := Command(name: "build", exec: fn matches: ok(29))
-	tool := Command(name: "tool", exec: fn matches: ok(17), children: [leaf])
+	leaf := Command(name: "build", exec: matches => ok(29))
+	tool := Command(name: "tool", exec: matches => ok(17), children: [leaf])
 	expect_equal(tool.run(Matches(path: [])).is_error(), true)?
 	expect_equal(tool.run(Matches(path: ["other"])).is_error(), true)?
 	expect_equal(tool.run(Matches(path: ["other", "build"])).is_error(), true)?
@@ -242,14 +242,14 @@ test "schema mistakes are reported before parsing":
 		)?
 	)
 
-fn handled(argv: List[String]) Int!:
+fn handled(argv List[String]) Int!:
 	tool := app()
 	parsed := tool.parse(argv)
 	if parsed.is_error(): return error(parsed.err().clone())
 
 	match parsed.get():
-		Run(matches): return tool.run(matches)
-		Help(_): return ok(-1)
+		Run(matches) => return tool.run(matches)
+		Help(_) => return ok(-1)
 
 test "handlers receive the decoded options record":
 	(handled(["serve", "site", "-p", "9090"]) | expect_ok?) | expect_equal(9090)?
@@ -268,7 +268,7 @@ test "optional, rest and dashed names decode into record fields":
 	)
 
 test "a record that does not match the schema is reported when the handler runs":
-	mismatched := command[ServeOptions](name: "bad", run: fn options: ok(0))
+	mismatched := command[ServeOptions](name: "bad", run: options => ok(0))
 	tool := Command(name: "tool", children: [mismatched])
 	parsed := (tool.parse(["bad"]) | expect_ok?)
 
@@ -277,7 +277,7 @@ test "a record that does not match the schema is reported when the handler runs"
 			(tool.run(matches) | expect_error?).message | expect_contains(
 				"does not match"
 			)?
-		Help(_): return fail("help")
+		Help(_) => return fail("help")
 
 test "help rows without text carry no trailing spaces":
 	quiet := Command(

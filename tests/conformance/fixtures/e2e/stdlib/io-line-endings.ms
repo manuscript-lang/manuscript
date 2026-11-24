@@ -21,7 +21,7 @@ test "an unterminated carriage return remains line content":
 		expect_equal(found, [text])?
 
 test "file and memory line readers agree on endings and byte limits":
-	limits: List[Int?] := [null, 0, 1, 2, 3, 8]
+	limits List[Int?] := [null, 0, 1, 2, 3, 8]
 	temporary := temporary("manuscript-line-parity-")?
 	path := f"{temporary.path()}/lines.txt"
 
@@ -51,7 +51,7 @@ test "a line that is not valid UTF-8 is an error, not an empty line":
 
 test "lines decode in place across chunks with non-ASCII text and a final unterminated line":
 	var source = ""
-	var expected: List[String] = []
+	var expected List[String] = []
 
 	for i in 0..3000:
 		text := f"ligne {i} é日本"

@@ -111,7 +111,7 @@ test "duration parser round trips formatter branches and signed extrema":
 	)?
 
 test "duration overflow is an expected range error":
-	invalid: Duration! := error(Error("time: value out of range", kind: "ERANGE"))
+	invalid Duration! := error(Error("time: value out of range", kind: "ERANGE"))
 	for text in [
 		"9223372036854775808ns", "-9223372036854775809ns", "9223372036.854775808s",
 		"-9223372036.854775809s", "2562047h47m16.854775808s",
@@ -122,7 +122,7 @@ test "duration overflow is an expected range error":
 		expect_equal(parse_duration(text), invalid)?
 
 test "duration parser rejects malformed input and gives syntax errors precedence":
-	invalid: Duration! := error(Error("time: invalid data", kind: "EBADMSG"))
+	invalid Duration! := error(Error("time: invalid data", kind: "EBADMSG"))
 	for text in [
 		"", "+", "-", ".", ".s", "00", "1", "0.0", "1d", "1S", "1e3s", "1_000s", "--1s",
 		"1s-2s", "1s+2s", "1..0s", "1.2.3s", "1s.", "1msx", "ns", "1u", "1µ", "1μ",
@@ -140,11 +140,11 @@ test "duration parsing stays exact for long leading zeros and fractions":
 	expect_equal(parse_duration(f"1.{zeros}1s"), ok(nanoseconds(1000000000)))?
 	expect_equal(parse_duration(f"0.{zeros}1h"), ok(nanoseconds(0)))?
 
-	invalid: Duration! := error(Error("time: invalid data", kind: "EBADMSG"))
+	invalid Duration! := error(Error("time: invalid data", kind: "EBADMSG"))
 	expect_equal(parse_duration(f"0.{zeros}1h!"), invalid)?
 
 	nines := "9".repeat(10000)
 	expect_equal(parse_duration(f"{nines}ns!"), invalid)?
 
-	overflow: Duration! := error(Error("time: value out of range", kind: "ERANGE"))
+	overflow Duration! := error(Error("time: value out of range", kind: "ERANGE"))
 	expect_equal(parse_duration(f"{nines}ns"), overflow)?

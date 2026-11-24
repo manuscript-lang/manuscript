@@ -5,11 +5,11 @@ import (
 )
 
 export type ClaudeCode:
-	placeholder: Bool = true
+	placeholder Bool = true
 
-fn ClaudeCode.name() String: "claude_code"
+fn ClaudeCode.name() String => "claude_code"
 
-fn ClaudeCode.command(prompt: String, workspace: String, model: String?) List[String]:
+fn ClaudeCode.command(prompt String, workspace String, model String?) List[String]:
 	var cmd = [
 		"claude",
 		"-p",
@@ -24,7 +24,7 @@ fn ClaudeCode.command(prompt: String, workspace: String, model: String?) List[St
 	if m != null: cmd = cmd.concat(["--model", m.clone()])
 	return cmd
 
-fn ClaudeCode.parse(transcript: String) Usage:
+fn ClaudeCode.parse(transcript String) Usage:
 	for ev in events(transcript).reversed():
 		if ((ev.get("type") or JsonValue.Null).as_string() or "") != "result": continue
 

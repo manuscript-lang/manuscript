@@ -13,7 +13,7 @@ elif kind=="nestfor":
     s+=T+'print(f"{x}")\n'
 elif kind=="nestlist":
     ty="List["*n+"Int"+"]"*n
-    s=f"fn main() Void:\n\tvar x: {ty} = []\n\tprint(f\"{{x.length()}}\")\n"
+    s=f"fn main() Void:\n\tvar x {ty} = []\n\tprint(f\"{{x.length()}}\")\n"
 elif kind=="nestclosure":
     s="fn main() Void:\n\tf := "+"fn: ".join([""]*1)
     s="fn main() Void:\n"
@@ -28,7 +28,7 @@ elif kind=="nestclosure":
         s+=cur+f"return g{i}() + 1\n" if False else ""
     s+="\tprint(\"ok\")\n"
 elif kind=="rec":
-    s=f"fn f(n: Int) Int:\n\tif n == 0: return 0\n\treturn 1 + f(n - 1)\n\nfn main() Void:\n\tprint(f\"{{f({n})}}\")\n"
+    s=f"fn f(n Int) Int:\n\tif n == 0: return 0\n\treturn 1 + f(n - 1)\n\nfn main() Void:\n\tprint(f\"{{f({n})}}\")\n"
 elif kind=="nestmatch":
     s="fn main() Void:\n\tx := 1\n"
     for i in range(n): s+=T*(i+1)+"match x:\n"+T*(i+2)+"1:\n"

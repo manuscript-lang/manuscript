@@ -4,16 +4,16 @@
 import expect_equal from "@std/test/test.ms"
 
 type CustomerId:
-    value: String
+    value String
 
 type OrderId:
-    value: String
+    value String
 
 type Customer:
-    id: CustomerId
-    name: String
+    id CustomerId
+    name String
 
-fn customer_name(customer: Customer) String:
+fn customer_name(customer Customer) String:
     {id: {value}, name: display_name} := customer
     return f"{value}: {display_name}"
 

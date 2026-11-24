@@ -3,10 +3,10 @@
 // conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
 
 enum Cents:
-    Valid(amount: Int)
+    Valid(amount Int)
     Invalid
 
-fn total(cents: Cents) Result[Int, Error]:
+fn total(cents Cents) Result[Int, Error]:
     amount := match cents:
         Valid(value):
             value

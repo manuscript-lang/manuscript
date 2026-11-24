@@ -30,10 +30,10 @@ test "URL query retains duplicate keys empty values and spaces":
 	expect_false(entries.length() != 4 or entries.get(3).value != "hello world")?
 	expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")?
 
-	limited: List[QueryEntry]! := error(Error("URL: limit exceeded", kind: "EOVERFLOW"))
+	limited List[QueryEntry]! := error(Error("URL: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse_query("a=1&b=2", 1), limited)?
 
-	invalid: String! := error(Error("URL: invalid data", kind: "EBADMSG"))
+	invalid String! := error(Error("URL: invalid data", kind: "EBADMSG"))
 	expect_equal(decode_component("%zz"), invalid)?
 
 test "URL query skips empty segments":
@@ -45,7 +45,7 @@ test "URL query skips empty segments":
 
 test "URL format rejects queries that would not round trip":
 	base := parse("http://h/p")?
-	invalid: String! := error(Error("URL: invalid input", kind: "EINVAL"))
+	invalid String! := error(Error("URL: invalid input", kind: "EINVAL"))
 
 	for query in ["a#b", "a b", "%zz", "a%2"]:
 		bad := Url(base.scheme.clone(), base.host.clone(), base.path.clone(), "", query.clone(), base.port, )
@@ -55,7 +55,7 @@ test "URL format rejects queries that would not round trip":
 	expect_equal((format(good)?), "http://h/p?a=%41&b")?
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
-	invalid: Url! := error(Error("URL: invalid data", kind: "EBADMSG"))
+	invalid Url! := error(Error("URL: invalid data", kind: "EBADMSG"))
 	for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
 		if parse(text) != invalid: return fail(f"accepted {text}")
 
@@ -64,8 +64,8 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
 	expect_equal((empty | format? | parse?), empty)?
 
 test "URL format and resolve reject invalid schemes and hostless relative paths":
-	invalid_text: String! := error(Error("URL: invalid input", kind: "EINVAL"))
-	invalid_url: Url! := error(Error("URL: invalid input", kind: "EINVAL"))
+	invalid_text String! := error(Error("URL: invalid input", kind: "EINVAL"))
+	invalid_url Url! := error(Error("URL: invalid input", kind: "EINVAL"))
 
 	for scheme in [
 		"", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
@@ -104,9 +104,9 @@ test "URLs without an authority format without one and an IPv6 zone keeps its ca
 test "URL keeps an empty query through parse, format and resolve":
 	for text in ["http://a/b?", "http://a/b?#f", "http://a/?", "mailto:?"]:
 		expect_equal(format(parse(text)?), ok(text))?
-	empty: String? := ""
-	filled: String? := "x=1"
-	absent: String? := null
+	empty String? := ""
+	filled String? := "x=1"
+	absent String? := null
 	expect_equal((parse("http://a/b?")?).query, empty)?
 	expect_equal((parse("http://a/b?x=1")?).query, filled)?
 	expect_equal((parse("http://a/b")?).query, absent)?

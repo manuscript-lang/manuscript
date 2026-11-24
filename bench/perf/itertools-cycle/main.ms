@@ -4,9 +4,9 @@ import (
 )
 
 type BenchData:
-	values: List[Int]
-	values_2: List[Int]
-	values_3: List[Int]
+	values List[Int]
+	values_2 List[Int]
+	values_3 List[Int]
 
 fn make_fixture() BenchData:
 	values := List[Int]()

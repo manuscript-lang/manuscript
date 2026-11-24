@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe(value: Int) Int:\n\tvar sum = 0\n\tsum = value\n\n\tcallback := fn() Int:\n\t\treturn sum + value\n\treturn callback()\n"
+    "fmt": "fn probe(value Int) Int:\n\tvar sum = 0\n\tsum = value\n\n\tcallback := fn() Int:\n\t\treturn sum + value\n\treturn callback()\n"
   }
 }

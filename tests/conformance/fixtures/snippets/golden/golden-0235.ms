@@ -3,8 +3,8 @@
 interface I:
     fn n() Int
 type Pair[A, B]:
-    a: A
-    b: B
+    a A
+    b B
 impl I for Pair[A, A]:
     fn n() Int:
         return 1

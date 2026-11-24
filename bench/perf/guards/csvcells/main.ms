@@ -9,7 +9,7 @@ fn main() Void:
 
 	var cells = 0
 	var total = 0
-	count := fn(row: Int, col: Int, cell: String) Void:
+	count := fn(row Int, col Int, cell String) Void:
 		if col == 3: total += cell.parse_int() or 0
 		else: cells += cell.length()
 	each_cell(out, count).get()

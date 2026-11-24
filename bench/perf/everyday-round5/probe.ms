@@ -4,28 +4,28 @@ import (
 )
 
 type V3:
-	x: Int
-	y: Int
-	z: Int
+	x Int
+	y Int
+	z Int
 
-fn V3.add(o: V3) V3:
+fn V3.add(o V3) V3:
 	return V3(self.x + o.x, self.y + o.y, self.z + o.z)
 
-fn V3.dot(o: V3) Int:
+fn V3.dot(o V3) Int:
 	return self.x * o.x + self.y * o.y + self.z * o.z
 
 interface Shape:
 	fn area() Int
 
 type Sq:
-	s: Int
+	s Int
 
 type Rc:
-	w: Int
-	h: Int
+	w Int
+	h Int
 
 type Ci:
-	r: Int
+	r Int
 
 fn Sq.area() Int:
 	return self.s * self.s
@@ -37,36 +37,36 @@ fn Ci.area() Int:
 	return 3 * self.r * self.r
 
 enum Tok:
-	Num(v: Int)
+	Num(v Int)
 	Plus
 	Times
 	Neg
 
 enum Op:
-	Push(v: Int)
+	Push(v Int)
 	Add
 	Mul
 	Dup
 	Pop
 
 type Stack[T]:
-	items: List[T]
+	items List[T]
 
-fn var Stack[T].push(v: T) Void:
+fn var Stack[T].push(v T) Void:
 	self.items.append(v)
 
 fn var Stack[T].pop() T?:
 	return self.items.pop()
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Void:
+fn stop(name String, t0 Int, chk Int) Void:
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 
-fn ints(n: Int) List[Int]:
-	var xs: List[Int] = []
+fn ints(n Int) List[Int]:
+	var xs List[Int] = []
 	var x = 1
 
 	for i in 0..n:
@@ -75,10 +75,10 @@ fn ints(n: Int) List[Int]:
 
 	return xs
 
-fn keep(v: Int) Bool:
+fn keep(v Int) Bool:
 	return v % 3 != 0
 
-fn scale(v: Int) Int:
+fn scale(v Int) Int:
 	return v * 3 + 1
 
 fn c_chain_calls() Int:
@@ -94,7 +94,7 @@ fn c_chain_capture() Int:
 
 	for r in 0..10:
 		k := r + 2
-		t += xs.filter(fn v: v % k != 0).map(fn v: v * k).sum()
+		t += xs.filter(v => v % k != 0).map(v => v * k).sum()
 
 	return t
 
@@ -103,7 +103,7 @@ fn c_zip_dot() Int:
 	b := ints(1000000)
 	var t = 0
 	for r in 0..10:
-		t += a.zip(b).map(fn p: p.first * p.second).sum()
+		t += a.zip(b).map(p => p.first * p.second).sum()
 	return t
 
 fn c_any_all_count() Int:
@@ -112,9 +112,9 @@ fn c_any_all_count() Int:
 
 	for r in 0..20:
 		k := r + 1
-		if xs.any(fn v: v == 1000 + k): t += 1
-		if xs.all(fn v: v < 2000): t += 2
-		t += xs.count(fn v: v % k == 0)
+		if xs.any(v => v == 1000 + k): t += 1
+		if xs.all(v => v < 2000): t += 2
+		t += xs.count(v => v % k == 0)
 
 	return t
 
@@ -123,7 +123,7 @@ fn c_fold_record() Int:
 	var t = 0
 
 	for r in 0..10:
-		a := xs.fold(V3(0, 0, 0), fn acc, v: V3(acc.x + v, acc.y + 1, acc.z + v % 5))
+		a := xs.fold(V3(0, 0, 0), (acc, v) => V3(acc.x + v, acc.y + 1, acc.z + v % 5))
 		t += a.x + a.y + a.z
 
 	return t
@@ -139,7 +139,7 @@ fn c_flat_map() Int:
 	xs := ints(500000)
 	var t = 0
 	for r in 0..5:
-		t += xs.flat_map(fn v: [v, v + 1, v + 2]).length()
+		t += xs.flat_map(v => [v, v + 1, v + 2]).length()
 	return t
 
 fn c_chunks_windows() Int:
@@ -152,11 +152,11 @@ fn c_chunks_windows() Int:
 	return t
 
 fn c_closure_list() Int:
-	var fs: List[fn(Int) Int] = []
+	var fs List[fn(Int) Int] = []
 
 	for i in 0..16:
 		k := i
-		fs.append(fn v: v * k + 1)
+		fs.append(v => v * k + 1)
 
 	var t = 0
 	for i in 0..20000000:
@@ -169,13 +169,13 @@ fn c_closure_mut() Int:
 	xs := ints(2000000)
 
 	for r in 0..10:
-		xs.for_each(fn v: cnt += 1)
+		xs.for_each(v => cnt += 1)
 		for v in xs:
 			sum += v
 
 	return cnt + sum
 
-fn apply_n(f: fn(Int) Int, n: Int) Int:
+fn apply_n(f fn(Int) Int, n Int) Int:
 	var t = 0
 	for i in 0..n:
 		t += f(i)
@@ -183,9 +183,9 @@ fn apply_n(f: fn(Int) Int, n: Int) Int:
 
 fn c_closure_passed() Int:
 	k := 7
-	return apply_n(fn v: v * k + 1, 50000000)
+	return apply_n(v => v * k + 1, 50000000)
 
-fn max_of[T: Comparable & Clonable](xs: List[T]) T:
+fn max_of[T Comparable & Clonable](xs List[T]) T:
 	var best = xs[0].clone()
 	for v in xs:
 		if v.compare(best) > 0: best = v.clone()
@@ -210,8 +210,8 @@ fn g_stack() Int:
 
 	return t
 
-fn g_map_user[T, U](xs: List[T], f: fn(T) U) List[U]:
-	var out: List[U] = []
+fn g_map_user[T, U](xs List[T], f fn(T) U) List[U]:
+	var out List[U] = []
 	for v in xs:
 		out.append(f(v))
 	return out
@@ -220,11 +220,11 @@ fn g_user_map() Int:
 	xs := ints(2000000)
 	var t = 0
 	for r in 0..10:
-		t += g_map_user(xs, fn v: v * 2).length()
+		t += g_map_user(xs, v => v * 2).length()
 	return t
 
 fn i_shapes() Int:
-	var xs: List[Shape] = []
+	var xs List[Shape] = []
 
 	for i in 0..1000000:
 		if i % 3 == 0: xs.append(Sq(i % 10))
@@ -238,7 +238,7 @@ fn i_shapes() Int:
 	return t
 
 fn e_rpn() Int:
-	var prog: List[Op] = []
+	var prog List[Op] = []
 
 	for i in 0..1000:
 		prog.append(Op.Push(i % 10))
@@ -250,11 +250,11 @@ fn e_rpn() Int:
 	var t = 0
 
 	for r in 0..2000:
-		var st: List[Int] = []
+		var st List[Int] = []
 
 		for op in prog:
 			match op:
-				Push(v): st.append(v)
+				Push(v) => st.append(v)
 				Add:
 					b := st.pop() or panic("called Optional.get() on null")
 					a := st.pop() or panic("called Optional.get() on null")
@@ -263,14 +263,14 @@ fn e_rpn() Int:
 					b := st.pop() or panic("called Optional.get() on null")
 					a := st.pop() or panic("called Optional.get() on null")
 					st.append(a * b)
-				Dup: st.append(st[st.length() - 1])
-				Pop: st.pop()
+				Dup => st.append(st[st.length() - 1])
+				Pop => st.pop()
 
 		t += st.length() + st[0]
 
 	return t
 
-fn parse_val(s: Int) Int!:
+fn parse_val(s Int) Int!:
 	if s % 1000 == 999: return error(Error("bad"))
 	return ok(s * 2)
 
@@ -288,7 +288,7 @@ fn e_result_chain() Int:
 	return t
 
 fn e_optional_chain() Int:
-	var m: Map[Int, Int] = {}
+	var m Map[Int, Int] = {}
 	for e in ints(1000).entries():
 		m[e.index] = e.value
 
@@ -308,18 +308,18 @@ fn r_v3_math() Int:
 	return acc.dot(V3(1, 2, 3))
 
 fn r_sort_field() Int:
-	var xs: List[V3] = []
+	var xs List[V3] = []
 	var x = 1
 
 	for i in 0..1000000:
 		x = lcg(x)
 		xs.append(V3(x % 1000, i, 0))
 
-	ys := xs.sorted_by_key(fn p: p.x)
+	ys := xs.sorted_by_key(p => p.x)
 	return ys[0].y + ys[999999].y
 
 fn r_min_by() Int:
-	var xs: List[V3] = []
+	var xs List[V3] = []
 	var x = 1
 
 	for i in 0..1000000:
@@ -330,11 +330,11 @@ fn r_min_by() Int:
 	for r in 0..10:
 		t += (
 			(
-				xs.min_by(fn p: p.x)
+				xs.min_by(p => p.x)
 				or panic("called Optional.get() on null")
 			).y
 			+ (
-				xs.max_by(fn p: p.x)
+				xs.max_by(p => p.x)
 				or panic("called Optional.get() on null")
 			).y
 		)
@@ -353,12 +353,12 @@ fn m_distinct_set() Int:
 
 fn m_partition() Int:
 	xs := ints(2000000)
-	p := xs.partition(fn v: v % 2 == 0)
+	p := xs.partition(v => v % 2 == 0)
 	return p.matching.length() + p.rest.length()
 
 fn m_set_ops() Int:
 	a := ints(500000).to_set()
-	var b: Set[Int] = Set()
+	var b Set[Int] = Set()
 	for i in 0..300:
 		b.add(i * 3)
 
@@ -379,7 +379,7 @@ fn m_binary_search() Int:
 
 fn m_group_sum() Int:
 	xs := ints(2000000)
-	var m: Map[Int, Int] = {}
+	var m Map[Int, Int] = {}
 	for v in xs:
 		m[v % 500] = m.get_or(v % 500, 0) + v
 
@@ -390,7 +390,7 @@ fn m_group_sum() Int:
 
 fn m_map_of_lists() Int:
 	xs := ints(1000000)
-	var m: Map[Int, List[Int]] = {}
+	var m Map[Int, List[Int]] = {}
 
 	for v in xs:
 		k := v % 1000
@@ -402,7 +402,7 @@ fn m_map_of_lists() Int:
 		t += e.value.length()
 	return t
 
-fn run(name: String, f: fn() Int) Void:
+fn run(name String, f fn() Int) Void:
 	t0 := monotonic().tick
 	c := f()
 	stop(name, t0, c)

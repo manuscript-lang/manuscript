@@ -2,7 +2,7 @@
 // conform: phase=check
 import panic from "@std/faults.ms"
 import filesystem from "@std/os/fs.ms"
-export fn other() Int: return 4
+export fn other() Int => return 4
 test "source":
     if other() != 4: return panic("bad other")
     if data := filesystem().read_file(path: "fixture.txt", max_bytes: 1024):

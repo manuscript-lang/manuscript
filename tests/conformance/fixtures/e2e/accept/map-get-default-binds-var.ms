@@ -4,7 +4,7 @@ import expect_equal from "@std/test/test.ms"
 
 // `map.get(k).get(default)` copies the value out, so it can start a `var` and be changed
 // without touching the map (only a lent slice keeps its borrow through `get(default)`).
-fn lookup(table: Map[String, String], key: String) String:
+fn lookup(table Map[String, String], key String) String:
 	var found = table.get_or("default", "")
 	own := table.get(key)
 	if own != null: found = own.clone()

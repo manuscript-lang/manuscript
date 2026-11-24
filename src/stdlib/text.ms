@@ -20,7 +20,7 @@ print(quote("a\tb"))           // a double-quoted literal with the escape writte
 // Parses a boolean after trimming whitespace and ignoring case. `true`, `t`, `1`,
 // `yes` and `on` give true; `false`, `f`, `0`, `no` and `off` give false. Anything
 // else is `null`.
-export fn parse_bool(text: String) Bool?:
+export fn parse_bool(text String) Bool?:
 	word := text.trim().lower()
 	if ["true", "t", "1", "yes", "on"].contains(word): return true
 	if ["false", "f", "0", "no", "off"].contains(word): return false
@@ -32,15 +32,15 @@ Quotes text as a double-quoted literal, using the escapes of Manuscript string l
 Printable Unicode stays as is; controls, bidi controls and U+2028/U+2029 become `\u{..}`.
 Braces stay as they are, because plain `"..."` text never interpolates. The result is valid source text for the same string.
 */
-export fn quote(text: String) String:
+export fn quote(text String) String:
 	return quote_with(text, false)
 
 // Like `quote`, but every non-ASCII scalar is written as `\u{..}`, so the result is
 // pure ASCII.
-export fn quote_ascii(text: String) String:
+export fn quote_ascii(text String) String:
 	return quote_with(text, true)
 
-fn quote_with(text: String, ascii_only: Bool) String:
+fn quote_with(text String, ascii_only Bool) String:
 	var out = ""
 	out += "\""
 
@@ -77,7 +77,7 @@ Supported escapes are `\"`, `\\`, `\n`, `\r`, `\t`, `\0`, `\u{hex}` with 1 to 6 
 and `\{` and `\}` (the escaped braces of `f"..."` text, which `quote` never writes).
 Any other escape, or text that is not fully quoted, returns `EINVAL`.
 */
-export fn unquote(text: String) String!:
+export fn unquote(text String) String!:
 	cs := text.scalar_values()
 	if cs.length() < 2 or cs[0] != 34 or cs[cs.length() - 1] != 34:
 		return error(Error("string: invalid input", kind: "EINVAL"))
@@ -149,9 +149,9 @@ export fn unquote(text: String) String!:
 // Reads a string's scalars one at a time, decoding its UTF-8 bytes where it stands.
 type ScalarSource:
 	// The UTF-8 text, encoded once by `scalars`.
-	bytes: Bytes
+	bytes Bytes
 	// Byte offset of the next scalar, always on a scalar boundary.
-	at: Int
+	at Int
 
 // The next scalar as a one-scalar String, or null at the end.
 fn var ScalarSource.next() move String?!:
@@ -167,7 +167,7 @@ fn move ScalarSource.close() Void!:
 	return ok()
 
 // Bytes in the scalar a lead byte starts.
-fn scalar_width(lead: Int) Int:
+fn scalar_width(lead Int) Int:
 	if lead < 128: return 1
 	if lead < 224: return 2
 	if lead < 240: return 3
@@ -177,5 +177,5 @@ fn scalar_width(lead: Int) Int:
 // A stream of the text's scalars, each as a one-scalar String. Unlike `get(index)`,
 // which walks from the start every time, the stream decodes the next scalar where it
 // stopped, so scanning long non-ASCII text is linear.
-export fn scalars(text: String) ReadStream[String]:
+export fn scalars(text String) ReadStream[String]:
 	return ReadStream[String](ScalarSource(text.to_bytes(), 0))

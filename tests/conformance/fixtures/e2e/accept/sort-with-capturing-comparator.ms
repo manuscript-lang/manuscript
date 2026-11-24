@@ -7,10 +7,10 @@ import expect_equal from "@std/test/test.ms"
 // Capturing lambdas, nested functions and capture-free comparators must all sort the
 // same way.
 type Task:
-	name: String
-	priority: Int
+	name String
+	priority Int
 
-fn by_length(a: String, b: String) Int:
+fn by_length(a String, b String) Int:
 	return a.length() - b.length()
 
 test "a lambda that captures a map orders by the looked-up counts":
@@ -20,13 +20,13 @@ test "a lambda that captures a map orders by the looked-up counts":
 	freq.add("dog", 2)
 
 	words := ["fox", "the", "dog"].sorted(
-		compare: fn(a: String, b: String) Int: return (freq[b] - freq[a])
+		compare: fn(a String, b String) Int => return (freq[b] - freq[a])
 	)
 	expect_equal(words, ["the", "dog", "fox"])?
 
 test "a nested function that captures a scalar sorts strings":
 	direction := -1
-	fn by_len(a: String, b: String) Int:
+	fn by_len(a String, b String) Int:
 		return (a.length() - b.length()) * direction
 	words := ["a", "ccc", "bb"].sorted(compare: by_len)
 	expect_equal(words, ["ccc", "bb", "a"])?
@@ -34,7 +34,7 @@ test "a nested function that captures a scalar sorts strings":
 test "a captured weight orders records and integers":
 	weight := 10
 	tasks := [Task(name: "b", priority: 2), Task(name: "a", priority: 1)].sorted(
-		compare: fn(x: Task, y: Task) Int: return (
+		compare: fn(x Task, y Task) Int => return (
 			x.priority * weight
 			- y.priority * weight
 		)
@@ -43,7 +43,7 @@ test "a captured weight orders records and integers":
 
 	offset := 100
 	ints := [3, 1, 2].sorted(
-		compare: fn(x: Int, y: Int) Int: return ((y + offset) - (x + offset))
+		compare: fn(x Int, y Int) Int => return ((y + offset) - (x + offset))
 	)
 	expect_equal(ints, [3, 2, 1])?
 
@@ -51,6 +51,6 @@ test "a capture-free comparator still sorts":
 	expect_equal(["ccc", "a", "bb"].sorted(compare: by_length), ["a", "bb", "ccc"])?
 
 	plain := ["b", "a"].sorted(
-		compare: fn(a: String, b: String) Int: return a.compare(b)
+		compare: fn(a String, b String) Int => return a.compare(b)
 	)
 	expect_equal(plain, ["a", "b"])?

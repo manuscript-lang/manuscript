@@ -5,20 +5,20 @@ import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 
 interface File:
-    fn read(max_bytes: Int?) Bytes?!
+    fn read(max_bytes Int?) Bytes?!
     fn close() Void
 
 type ClosedFile:
-    marker: Void
+    marker Void
 
-fn ClosedFile.read(max_bytes: Int?) Bytes?!:
+fn ClosedFile.read(max_bytes Int?) Bytes?!:
     return error(Error("I/O: resource is closed", kind: "EBADF"))
 
 fn ClosedFile.close() Void:
     return
 
 test "contract-valued cleanup":
-    opened: File := ClosedFile(void)
+    opened File := ClosedFile(void)
     file := opened
     read := file.read(1)
     expect_false(read.is_ok())?

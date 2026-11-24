@@ -5,12 +5,12 @@ import expect_equal, expect_false from "@std/test/test.ms"
 
 LIMIT := 10
 DOUBLE := LIMIT * 2
-NAMES: List[String] := ["a", "b"]
+NAMES List[String] := ["a", "b"]
 GREETING := f"limit {LIMIT}"
-NOTHING: Int? := null
+NOTHING Int? := null
 from := 4
 
-fn limit_plus(extra: Int) Int:
+fn limit_plus(extra Int) Int:
 	return LIMIT + extra
 
 test "constants stand for their initializers":
@@ -31,12 +31,12 @@ test "a local binding shadows a constant":
 
 enum Phase:
 	Idle
-	Active(count: Int)
+	Active(count Int)
 
 START := Phase.Idle
-NEXT: Phase := Idle
+NEXT Phase := Idle
 
-fn phase_name(phase: Phase) String:
+fn phase_name(phase Phase) String:
 	match phase:
 		Idle:
 			return "idle"

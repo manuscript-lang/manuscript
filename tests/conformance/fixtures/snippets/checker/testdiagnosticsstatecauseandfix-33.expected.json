@@ -14,7 +14,7 @@
           "file": "testdiagnosticsstatecauseandfix-33.ms",
           "line": 10,
           "column": 9,
-          "offset": 283
+          "offset": 281
         }
       },
       {
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-33.ms:10:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 10 |         Choice[String].Found(v): return 1\n    |         ^\n<DIR>/testdiagnosticsstatecauseandfix-33.ms:11:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 11 |         Choice[String].Missing: return 0\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-33.ms:10:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 10 |         Choice[String].Found(v) => return 1\n    |         ^\n<DIR>/testdiagnosticsstatecauseandfix-33.ms:11:9: type: pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>\n    |\n 11 |         Choice[String].Missing => return 0\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

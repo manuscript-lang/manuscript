@@ -11,14 +11,14 @@ export fn case_names() List[String]:
 		names.append(f"list{count}")
 	return names
 
-export fn checksum(name: String) Int:
+export fn checksum(name String) Int:
 	if name.starts_with("append"):
 		size := name.slice(6, name.length()).parse_int() or 1
 		return 40 * size * (1000000 / size)
 
 	return 40 * (name.slice(4, name.length()).parse_int() or 0)
 
-export fn summarize(lines: List[String], repeats: Int) String!:
+export fn summarize(lines List[String], repeats Int) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 
 	names := case_names()
@@ -26,7 +26,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 	var best = Map[String, Int]()
 
 	for line in lines:
-		f := line.replace("\t", " ").trim().split(" ").filter(fn p: p != "")
+		f := line.replace("\t", " ").trim().split(" ").filter(p => p != "")
 		if f.length() != 6 or f[4] != "#": return invalid(
 			f"invalid sample: {line.trim()}"
 		)
@@ -65,7 +65,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 	if (
 		seen.length() != repeats * 2
-		or seen.values().any(fn c: (c.length() != names.length()))
+		or seen.values().any(c => (c.length() != names.length()))
 	):
 		return invalid("missing benchmark samples")
 

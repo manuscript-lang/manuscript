@@ -2,13 +2,13 @@
 // conform: phase=run
 // conform: origin=ms-check/tests/messages.rs
 type Ch:
-    buf: List[String]
+    buf List[String]
 
-fn child(var c: Ch) Int:
+fn child(var c Ch) Int:
     c.buf.append("a")
     return 1
 
-fn run(entry: fn(var Ch) Int) Int:
+fn run(entry fn(var Ch) Int) Int:
     var c = Ch(buf: [])
     n := entry(c) + entry(c)
     return n + c.buf.length()

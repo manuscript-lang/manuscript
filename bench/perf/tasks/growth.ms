@@ -8,17 +8,17 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn depth(n: Int) Int:
+fn depth(n Int) Int:
 	if n == 0: return 0
 	return depth(n - 1) + 1
 
-fn loop_depth(n: Int, rounds: Int) Int:
+fn loop_depth(n Int, rounds Int) Int:
 	var total = 0
 	for unused in 0..rounds:
 		total += depth(n)
 	return total
 
-fn status(label: String) Void:
+fn status(label String) Void:
 	text := (
 		read_file("/proc/self/status", null).wait().get().decode_utf8()
 		or panic("called Optional.get() on null")
@@ -27,10 +27,10 @@ fn status(label: String) Void:
 		if line.contains("VmRSS") or line.contains("VmPTE"):
 			print(label + " " + line)
 
-fn in_task(n: Int, rounds: Int) Int:
+fn in_task(n Int, rounds Int) Int:
 	p := promise(
-		fn: ok(loop_depth(n, rounds)),
-		options: PromiseOptions(placement: Placement.Here)
+		() => ok(loop_depth(n, rounds)),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	return p.wait().get()
 

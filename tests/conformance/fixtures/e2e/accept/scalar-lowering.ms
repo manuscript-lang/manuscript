@@ -11,28 +11,28 @@ import (
 )
 
 type Counter:
-	value: Int = 0
+	value Int = 0
 
 type Resource:
-	marker: String
+	marker String
 
 // Cleanup runs on the resource's own copy, so a marker file is how a caller observes
 // it.
 fn move Resource.close() Void!:
 	_written := write_file(self.marker, "closed", true).wait()
 
-fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
+fn closed(marker String) Bool => read_file(marker).wait().is_ok()
 
-fn mark(var counter: Counter, digit: Int) Int:
+fn mark(var counter Counter, digit Int) Int:
 	counter.value = counter.value * 10 + digit
 	return digit
 
-fn generic[T: Equal](left: T, right: T) Bool: left == right
+fn generic[T Equal](left T, right T) Bool => left == right
 
 fn returning_match() Bool:
 	return true == match present(1):
-		_value: return false
-		null: false
+		_value => return false
+		null => false
 
 test "primitive equality captures operands once in order":
 	var counter = Counter()
@@ -44,7 +44,7 @@ test "primitive equality captures operands once in order":
 		value:
 			original = 2
 			value
-		null: 0
+		null => 0
 	expect_false(not captured or original != 2)?
 
 	skipped := false and mark(counter, 3) == 3
@@ -54,42 +54,42 @@ test "primitive equality captures operands once in order":
 	expect_false(not generic(left: true, right: true))?
 	expect_false(returning_match())?
 
-fn conditional(marker: String, take: Bool) Int:
+fn conditional(marker String, take Bool) Int:
 	if take:
 		_resource := Resource(marker.clone())
 		return 7
 
 	return 8
 
-fn matched(marker: String) Int:
+fn matched(marker String) Int:
 	return match present(1):
 		value:
 			var _resource = Resource(marker.clone())
 			return value
 			0
-		null: 0
+		null => 0
 
 fn defaulted(
-	marker: String,
-	value: Int = match present(2):
+	marker String,
+	value Int = match present(2):
 		number:
 			var _resource = Resource(marker.clone())
 			_used := void
 			void _resource.close()
 			number
-		null: 0
-) Int: value
+		null => 0
+) Int => value
 
-fn nested(marker: String) Void:
+fn nested(marker String) Void:
 	callback := fn() Void:
 		_resource := Resource(marker.clone())
 		return
 
 	callback()
 
-fn failed() Int!Error: error(Error("expected"))
+fn failed() Int!Error => error(Error("expected"))
 
-fn propagate(marker: String) Int!Error:
+fn propagate(marker String) Int!Error:
 	var _resource = Resource(marker.clone())
 	value := failed()?
 	return ok(value)
@@ -103,9 +103,9 @@ fn equality_propagate() Bool!Error:
 	matches := (failed()?) == 0
 	return ok(matches)
 
-fn bool_failed() Bool!Error: error(Error("expected"))
+fn bool_failed() Bool!Error => error(Error("expected"))
 
-fn nested_results(marker: String) Int!Error:
+fn nested_results(marker String) Int!Error:
 	child := fn() Bool!Error:
 		var _resource = Resource(marker.clone())
 		value := bool_failed()?
@@ -116,17 +116,17 @@ fn nested_results(marker: String) Int!Error:
 	value := failed()?
 	return ok(value)
 
-fn statement_match_try(marker: String) Int!Error:
+fn statement_match_try(marker String) Int!Error:
 	match present(1):
 		_value:
 			_resource := Resource(marker.clone())
 			value := failed()?
 			return ok(value)
-		null: return ok(0)
+		null => return ok(0)
 
 	return ok(-1)
 
-fn value_match_loop_try(marker: String) Int!Error:
+fn value_match_loop_try(marker String) Int!Error:
 	var index = 0
 
 	while index < 2:
@@ -136,7 +136,7 @@ fn value_match_loop_try(marker: String) Int!Error:
 				_value := failed()?
 				void _resource.close()
 				number
-			null: 0
+			null => 0
 
 		index += 1
 
@@ -189,5 +189,5 @@ test "cleanup remains owned by its source callable":
 	expect_true(closed(f"{dir}/loop2"))?
 	expect_false(closed(f"{dir}/loop3"))?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
 	return value

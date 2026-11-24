@@ -7,31 +7,31 @@ import (
 )
 
 type Marker:
-	id: Int
-	log: String
-	closed: Bool = false
+	id Int
+	log String
+	closed Bool = false
 
 fn move Marker.close() Void!:
 	if not self.closed:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?
 
-fn result(id: Int, log: String) Marker!Error: ok(Marker(id, log.clone()))
+fn result(id Int, log String) Marker!Error => ok(Marker(id, log.clone()))
 
-fn optional(id: Int, log: String) Marker?: Marker(id, log.clone())
+fn optional(id Int, log String) Marker? => Marker(id, log.clone())
 
-fn transfer_result_local(log: String) Void:
+fn transfer_result_local(log String) Void:
 	original := result(1, log)
-	_kept := original.or_else(fn cause: error(cause))
+	_kept := original.or_else(cause => error(cause))
 
-fn transfer_result_temporary(log: String) Void:
-	_kept := result(2, log).or_else(fn cause: error(cause))
+fn transfer_result_temporary(log String) Void:
+	_kept := result(2, log).or_else(cause => error(cause))
 
-fn transfer_optional_local(log: String) Void:
+fn transfer_optional_local(log String) Void:
 	original := optional(3, log)
 	_kept := original or null
 
-fn transfer_optional_temporary(log: String) Void:
+fn transfer_optional_temporary(log String) Void:
 	_kept := optional(4, log) or null
 
 test "native wrapper passthrough transfers resources without duplicating owners":
@@ -46,9 +46,9 @@ test "native wrapper passthrough transfers resources without duplicating owners"
 	expect_equal(events, "1,2,3,4,")?
 
 // `or_else` takes the Result; its callback reads the error, which closes after the call.
-fn recover_resource_error(log: String) Void!:
-	original: Int!Marker := error(Marker(5, log.clone()))
-	recovered := original.or_else(fn cause: ok(cause.id))
+fn recover_resource_error(log String) Void!:
+	original Int!Marker := error(Marker(5, log.clone()))
+	recovered := original.or_else(cause => ok(cause.id))
 	expect_equal(recovered.get(), 5)?
 
 test "or_else takes a Result holding a resource error and closes it once":
@@ -59,25 +59,25 @@ test "or_else takes a Result holding a resource error and closes it once":
 	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "5,")?
 
-fn optional_callback(fail: Bool) (fn() Marker?)!:
+fn optional_callback(fail Bool) (fn() Marker?)!:
 	if fail: return error(Error("callback unavailable"))
-	return ok(fn: null)
+	return ok(() => null)
 
-fn result_callback(fail: Bool) (fn(Error) Marker!Error)!:
+fn result_callback(fail Bool) (fn(Error) Marker!Error)!:
 	if fail: return error(Error("callback unavailable"))
-	return ok(fn cause: error(cause))
+	return ok(cause => error(cause))
 
-fn held_result_temporary(id: Int, log: String, fail: Bool) Void!:
+fn held_result_temporary(id Int, log String, fail Bool) Void!:
 	_kept := result(id, log).or_else(result_callback(fail)?)
 
-fn held_result_local(id: Int, log: String, fail: Bool) Void!:
+fn held_result_local(id Int, log String, fail Bool) Void!:
 	original := result(id, log)
 	_kept := original.or_else(result_callback(fail)?)
 
-fn held_optional_temporary(id: Int, log: String, fail: Bool) Void!:
+fn held_optional_temporary(id Int, log String, fail Bool) Void!:
 	_kept := optional(id, log) or (optional_callback(fail)?)()
 
-fn held_optional_local(id: Int, log: String, fail: Bool) Void!:
+fn held_optional_local(id Int, log String, fail Bool) Void!:
 	original := optional(id, log)
 	_kept := original or (optional_callback(fail)?)()
 
@@ -97,12 +97,12 @@ test "owned native receivers stay closeable until later try arguments succeed":
 	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "1,2,3,4,5,6,7,8,")?
 
-fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
+fn borrowed_error_callback(fail Bool) (fn(Marker) Int!Marker)!:
 	if fail: return error(Error("callback unavailable"))
-	return ok(fn cause: ok(cause.id))
+	return ok(cause => ok(cause.id))
 
-fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Void!:
-	original: Int!Marker := error(Marker(id, log.clone()))
+fn borrowed_error_before_try(id Int, log String, fail Bool) Void!:
+	original Int!Marker := error(Marker(id, log.clone()))
 	recovered := original.or_else(borrowed_error_callback(fail)?)
 	expect_equal(recovered.get(), id)?
 

@@ -13,8 +13,8 @@
         "position": {
           "file": "testsuccessfulresultboundsrejectdifferentreturn-5.ms",
           "line": 4,
-          "column": 23,
-          "offset": 230
+          "column": 22,
+          "offset": 229
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "testsuccessfulresultboundsrejectdifferentreturn-5.ms",
           "line": 7,
           "column": 13,
-          "offset": 285
+          "offset": 284
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testsuccessfulresultboundsrejectdifferentreturn-5.ms:4:23: resolution: unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import it\n   |\n 4 | fn affine(n: Int) Int!Cause:\n   |                       ^\n<DIR>/testsuccessfulresultboundsrejectdifferentreturn-5.ms:7:13: resolution: unknown binding Cause; declare it with 'Cause := ...' before use, define 'fn Cause(...) T:', or import it from a module\n   |\n 7 |             Cause(\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testsuccessfulresultboundsrejectdifferentreturn-5.ms:4:22: resolution: unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import it\n   |\n 4 | fn affine(n Int) Int!Cause:\n   |                      ^\n<DIR>/testsuccessfulresultboundsrejectdifferentreturn-5.ms:7:13: resolution: unknown binding Cause; declare it with 'Cause := ...' before use, define 'fn Cause(...) T:', or import it from a module\n   |\n 7 |             Cause(\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

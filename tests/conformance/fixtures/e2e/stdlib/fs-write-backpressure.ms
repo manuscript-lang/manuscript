@@ -7,13 +7,13 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-fn write_one(move path: String,move data: Bytes) fn() Void!:
-	return fn: write_file(path.clone(), data, replace: true).wait()
+fn write_one(move path String,move data Bytes) fn() Void!:
+	return () => write_file(path.clone(), data, replace: true).wait()
 
 test "more large writes than pool slots all complete":
 	dir := temporary("manuscript-backpressure-") | expect_ok?
 	data := ("x".repeat(256 * 1024)).to_bytes()
-	var writers: List[Promise[Void]] = []
+	var writers List[Promise[Void]] = []
 	for index in 0..24:
 		writers.append(promise(write_one(f"{dir.path()}/f{index}", data.clone())))
 

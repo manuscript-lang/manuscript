@@ -22,11 +22,11 @@ import (
 // websocket output (shared with `forward`), moved through the room's pipe, so the owner
 // can push to it later.
 enum Command:
-	Join(out: WriteStream[WebSocketMessage])
-	Say(text: String)
+	Join(out WriteStream[WebSocketMessage])
+	Say(text String)
 
-fn room_owner(var inbox: ReadStream[Command]) Void!:
-	var members: List[WriteStream[WebSocketMessage]] = []
+fn room_owner(var inbox ReadStream[Command]) Void!:
+	var members List[WriteStream[WebSocketMessage]] = []
 
 	for command in inbox:
 		match command:
@@ -60,9 +60,9 @@ test "a room owner pushes each line to every connected websocket":
 	var room = pipe[Command](capacity: 16)
 	var inbox = room.reader()
 	var gate = room.writer()
-	owner := promise(fn: room_owner(inbox))
+	owner := promise(() => room_owner(inbox))
 
-	handler := fn(var exchange: HttpExchange) Void!:
+	handler := fn(var exchange HttpExchange) Void!:
 		socket := exchange.upgrade(
 			allowed_origins: [],
 			subprotocols: [],
@@ -135,7 +135,7 @@ test "a room owner pushes each line to every connected websocket":
 	server.close()?
 	owner.wait()?
 
-fn heard(var socket: WebSocket) String!:
+fn heard(var socket WebSocket) String!:
 	message := (
 		(within(socket.input, 3.seconds())?)
 		or panic("called Optional.get() on null")

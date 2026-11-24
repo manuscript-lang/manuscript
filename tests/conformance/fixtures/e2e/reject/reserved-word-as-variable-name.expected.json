@@ -14,13 +14,13 @@
           "file": "reserved-word-as-variable-name.ms",
           "line": 6,
           "column": 29,
-          "offset": 263
+          "offset": 262
         },
         "end": {
           "file": "reserved-word-as-variable-name.ms",
           "line": 6,
           "column": 33,
-          "offset": 267
+          "offset": 266
         }
       }
     ],

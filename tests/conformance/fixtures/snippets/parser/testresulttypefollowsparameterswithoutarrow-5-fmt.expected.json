@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box:\n\tvalue: Int\n\nfn Box.get() Int: self.value\n"
+    "fmt": "type Box:\n\tvalue Int\n\nfn Box.get() Int => self.value\n"
   }
 }

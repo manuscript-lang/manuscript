@@ -6,7 +6,7 @@ Prelude constructors: `[1, 2]`, `List[Int](reserve: 8)`, `Map[String, Int]()`, `
 ```manuscript
 fn main() Int:
 	values := [1, 2, 3, 4]
-	total := values | .filter(fn x: x > 2) | .map(fn x: x * 2) | .sum()
+	total := values | .filter(x => x > 2) | .map(x => x * 2) | .sum()
 	var counts = Map[String, Int]()
 	counts["total"] = total
 	if var n = counts["total"]?:

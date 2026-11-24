@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Grow[T]:
-    next: Bridge
+    next Bridge
 type Bridge:
-    next: Grow[Int]
+    next Grow[Int]

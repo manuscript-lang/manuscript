@@ -20,7 +20,7 @@ import (
 )
 
 // The text after `// <key>: ` on a header line, or empty.
-fn header(source: String, key: String) String:
+fn header(source String, key String) String:
 	prefix := f"// {key}: "
 	for line in source.lines():
 		if line.starts_with(prefix): return line.slice(
@@ -30,7 +30,7 @@ fn header(source: String, key: String) String:
 	return ""
 
 // The snippet without its header lines, so a header cannot satisfy a text check.
-fn body(source: String) String:
+fn body(source String) String:
 	var kept = List[String]()
 
 	for line in source.lines():

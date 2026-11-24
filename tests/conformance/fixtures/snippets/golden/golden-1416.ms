@@ -4,7 +4,7 @@ import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 import stderr from "@std/io/io.ms"
 
-fn write_line(text: String) Result[Void, Error]:
+fn write_line(text String) Result[Void, Error]:
     stdout().write(data: f"{text}\n")?
 
 fn exercise() Result[Int, Error]:
@@ -17,7 +17,7 @@ fn exercise() Result[Int, Error]:
 
 export fn main() Int:
     match exercise():
-        ok(status): return status
+        ok(status) => return status
         error(cause):
             written := stderr().write(f"{cause.message()}\n")
             return 1

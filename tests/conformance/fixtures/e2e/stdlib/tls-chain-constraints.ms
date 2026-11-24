@@ -9,7 +9,7 @@ import (
 
 // Chains made with Ed25519 keys, valid 2020 to 2100: a root, an intermediate that may carry
 // a CA constraint, and a leaf. Each is checked at 2030-01-01 for the name it was made for.
-fn verify(chain: String, root: String, name: String) Void!:
+fn verify(chain String, root String, name String) Void!:
 	now := timestamp(seconds: 1893456000, nanoseconds: 0)?
 	return verify_certificates(chain, root, name, now)
 

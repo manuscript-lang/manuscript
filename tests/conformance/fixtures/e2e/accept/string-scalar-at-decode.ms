@@ -2,8 +2,8 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn walk(text: String) List[Int]:
-	var codes: List[Int] = []
+fn walk(text String) List[Int]:
+	var codes List[Int] = []
 	var offset = 0
 	while offset < text.length():
 		code := text.scalar_at(offset, -1)

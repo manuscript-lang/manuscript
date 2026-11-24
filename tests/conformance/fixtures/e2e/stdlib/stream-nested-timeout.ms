@@ -8,8 +8,8 @@ import (
 
 // Forwards one read of `input`, itself bounded by `limit`.
 type Forward:
-	input: ReadStream[Int]
-	limit: Int
+	input ReadStream[Int]
+	limit Int
 
 fn var Forward.next() Int?!:
 	return self.input.next(timeout: milliseconds(self.limit))
@@ -19,8 +19,8 @@ fn move Forward.close() Void!:
 
 // Reads one value that is ready, then waits for a second that never comes.
 type ReadyThenStall:
-	input: ReadStream[Int]
-	reads: Int = 0
+	input ReadStream[Int]
+	reads Int = 0
 
 fn var ReadyThenStall.next() Int?!:
 	self.reads += 1
@@ -60,7 +60,7 @@ test "a nested read that finishes at once leaves the outer deadline in force":
 
 	var input = ReadStream[Int](ReadyThenStall(queue.reader()))
 	first := input.next(timeout: milliseconds(600))?
-	expected: Int? := 7
+	expected Int? := 7
 	expect_equal(first, expected)?
 
 	started := monotonic()
@@ -78,5 +78,5 @@ test "a bound does not leak into a later unbounded wait":
 	gate.write(5)?
 
 	value := input.next()?
-	expected: Int? := 5
+	expected Int? := 5
 	expect_equal(value, expected)?

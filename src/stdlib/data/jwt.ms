@@ -41,23 +41,23 @@ export enum JwtAlgorithm:
 export type JwtCheck:
 	// The only algorithm accepted; a token whose header names another returns an Error
 	// with kind `EBADMSG`.
-	algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
+	algorithm JwtAlgorithm = JwtAlgorithm.Hs256
 	// When set, the `iss` claim must equal it.
-	issuer: String? = null
+	issuer String? = null
 	// When set, the `aud` claim, a string or a list of strings, must include it.
-	audience: String? = null
+	audience String? = null
 	// Seconds of clock skew tolerated when checking `exp` and `nbf`.
-	leeway: Int = 0
+	leeway Int = 0
 	// The Unix time in seconds to judge `exp` and `nbf` against; null uses the current
 	// time.
-	at: Int? = null
+	at Int? = null
 	// The largest token in bytes accepted before any decoding; larger tokens return an
 	// Error with kind `EBADMSG`.
-	max_bytes: Int = 16384
+	max_bytes Int = 16384
 
 type JwtHeader:
-	alg: String
-	typ: String
+	alg String
+	typ String
 
 /*
 Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
@@ -66,24 +66,24 @@ The result is the compact `header.claims.signature` form, ready for an `Authoriz
 Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library adds null, so set `exp` yourself.
 A key that does not suit the algorithm, or claims that cannot be encoded as JSON (a `NumberValue` whose text is not a JSON number, say), return an `Error` with kind `EINVAL`; the message says which.
 
-<!-- manuscript-example: {"mode":"fragment","given":["secret: Bytes"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["secret Bytes"]} -->
 ```manuscript
 import Bytes from "@std/bytes.ms"
 import sign_token, verify_token from "@std/data/jwt.ms"
 
 type Session:
-    sub: String
-    exp: Int
+    sub String
+    exp Int
 
 token := sign_token(Session(sub: "42", exp: 1900000000), secret)?
 session := verify_token[Session](token, secret)?
 print(session.sub)
 ```
 */
-export fn sign_token[T: Data](
-	claims: T,
-	key: Bytes,
-	algorithm: JwtAlgorithm = JwtAlgorithm.Hs256,
+export fn sign_token[T Data](
+	claims T,
+	key Bytes,
+	algorithm JwtAlgorithm = JwtAlgorithm.Hs256,
 ) String!:
 	header := stringify(JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"))
 	payload := stringify(claims)
@@ -110,10 +110,10 @@ When present, `exp` and `nbf` (seconds since the Unix epoch, fractions allowed) 
 `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
 A failure returns an `Error` that says which check failed. Show callers one generic message, because the specific cause helps an attacker.
 */
-export fn verify_token[T: Data = JsonValue](
-	token: String,
-	key: Bytes,
-	check: JwtCheck = JwtCheck(),
+export fn verify_token[T Data = JsonValue](
+	token String,
+	key Bytes,
+	check JwtCheck = JwtCheck(),
 ) T!:
 	if token.length() > check.max_bytes: return error(
 		Error("jwt: malformed token", kind: "EBADMSG")
@@ -162,21 +162,21 @@ export fn verify_token[T: Data = JsonValue](
 	check_claims(claims, check)?
 	return decode_json[T](parts[1], check.max_bytes)
 
-fn header_algorithm_matches(value: JsonValue, algorithm: JwtAlgorithm) Bool:
+fn header_algorithm_matches(value JsonValue, algorithm JwtAlgorithm) Bool:
 	match value:
-		StringValue(name): return name == algorithm_name(algorithm)
-		_: return false
+		StringValue(name) => return name == algorithm_name(algorithm)
+		_ => return false
 
-fn algorithm_name(algorithm: JwtAlgorithm) String:
+fn algorithm_name(algorithm JwtAlgorithm) String:
 	match algorithm:
-		Hs256: return "HS256"
-		Hs384: return "HS384"
-		Hs512: return "HS512"
-		Rs256: return "RS256"
-		Es256: return "ES256"
-		EdDsa: return "EdDSA"
+		Hs256 => return "HS256"
+		Hs384 => return "HS384"
+		Hs512 => return "HS512"
+		Rs256 => return "RS256"
+		Es256 => return "ES256"
+		EdDsa => return "EdDSA"
 
-fn decode_json[T: Data](part: String, limit: Int) T!:
+fn decode_json[T Data](part String, limit Int) T!:
 	raw := base64_decode(part, url_safe: true, max_bytes: limit, padded: false)
 	if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
@@ -188,14 +188,14 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
 
 	return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-fn hmac_hash(algorithm: JwtAlgorithm) HashAlgorithm?:
+fn hmac_hash(algorithm JwtAlgorithm) HashAlgorithm?:
 	match algorithm:
-		Hs256: return HashAlgorithm.Sha256
-		Hs384: return HashAlgorithm.Sha384
-		Hs512: return HashAlgorithm.Sha512
-		_: return null
+		Hs256 => return HashAlgorithm.Sha256
+		Hs384 => return HashAlgorithm.Sha384
+		Hs512 => return HashAlgorithm.Sha512
+		_ => return null
 
-fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!:
+fn sign_bytes(algorithm JwtAlgorithm, key Bytes, data Bytes) Bytes!:
 	hash := hmac_hash(algorithm)
 
 	if hash != null:
@@ -221,12 +221,7 @@ fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!:
 
 	return error(jwt_invalid_key())
 
-fn verify_bytes(
-	algorithm: JwtAlgorithm,
-	key: Bytes,
-	data: Bytes,
-	signature: Bytes,
-) Bool!:
+fn verify_bytes(algorithm JwtAlgorithm, key Bytes, data Bytes, signature Bytes) Bool!:
 	hash := hmac_hash(algorithm)
 
 	if hash != null:
@@ -246,10 +241,10 @@ fn verify_bytes(
 
 	return ok(verify(key, data, signature))
 
-fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
+fn check_claims(claims JsonValue, check JwtCheck) Void!:
 	match claims:
-		ObjectValue(_): void
-		_: return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
+		ObjectValue(_) => void
+		_ => return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
 
 	var moment = 0
 	given := check.at
@@ -292,7 +287,7 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 			many := aud.as_list()
 
 			if many != null:
-				if many.any(fn item: item.as_string() == null): return error(
+				if many.any(item => item.as_string() == null): return error(
 					Error(
 						"jwt: aud must hold only strings",
 						kind: "EBADMSG",
@@ -314,16 +309,16 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is
 // malformed.
-fn numeric_date(claim: JsonValue, name: String) String!:
+fn numeric_date(claim JsonValue, name String) String!:
 	match claim:
-		NumberValue(text): return ok(text)
-		_: void
+		NumberValue(text) => return ok(text)
+		_ => void
 
 	return error(Error(f"jwt: {name} must be a number", kind: "EBADMSG"))
 
 // Both inputs come from validated JSON or an exact integer conversion. The
 // boundary is moment +/- leeway: at most 20 magnitude digits, even at Int limits.
-fn date_compare(text: String, boundary: String) Int:
+fn date_compare(text String, boundary String) Int:
 	bytes := text.to_bytes()
 	target := boundary.to_bytes()
 	negative := bytes.get(0) == 45
@@ -409,17 +404,17 @@ fn date_compare(text: String, boundary: String) Int:
 
 	return if negative: -comparison else: comparison
 
-fn includes_audience(claim: JsonValue, audience: String) Bool:
+fn includes_audience(claim JsonValue, audience String) Bool:
 	single := claim.as_string()
 	if single != null: return single == audience
 
 	many := claim.as_list()
-	if many != null: return many.any(fn item: (item.as_string() or "") == audience)
+	if many != null: return many.any(item => (item.as_string() or "") == audience)
 
 	return false
 
 // Converts an ASN.1 DER ECDSA signature to the fixed-width `r || s` form JWS uses.
-fn der_to_raw(der: Bytes, width: Int) Bytes!:
+fn der_to_raw(der Bytes, width Int) Bytes!:
 	if der.length() < 8 or der.get(0).to_int() != 48: return error(jwt_invalid_key())
 
 	var at = 2
@@ -451,7 +446,7 @@ fn der_to_raw(der: Bytes, width: Int) Bytes!:
 	return ok(out.build())
 
 // Converts a fixed-width `r || s` signature to ASN.1 DER.
-fn raw_to_der(raw: Bytes) Bytes:
+fn raw_to_der(raw Bytes) Bytes:
 	half := raw.length() / 2
 	var body = BytesBuilder()
 

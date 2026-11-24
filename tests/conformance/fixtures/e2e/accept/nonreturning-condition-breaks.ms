@@ -5,9 +5,9 @@ import (
 	expect_contains, expect_fault from "@std/test/test.ms",
 )
 
-fn optional(value: Int) Int?: return value
+fn optional(value Int) Int? => return value
 
-fn result(value: Int) Int!: return ok(value)
+fn result(value Int) Int! => return ok(value)
 
 fn then_branch() Int:
 	while true:
@@ -41,7 +41,7 @@ fn nested_loop() Int:
 		if panic("stop"): break
 
 fn callback() Int:
-	f: fn() Int := fn() Int:
+	f fn() Int := fn() Int:
 		while true:
 			if panic("stop"): break
 	return f()

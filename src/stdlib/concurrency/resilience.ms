@@ -13,7 +13,7 @@ import (
 How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`.
 With `jitter`, the wait is a random share of that, so many callers do not retry in step.
 
-<!-- manuscript-example: {"mode":"fragment","given":["url: String"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["url String"]} -->
 ```manuscript
 import RetryPolicy, retry from "@std/concurrency/resilience.ms"
 import fetch from "@std/net/fetch.ms"
@@ -26,17 +26,17 @@ if body.is_error(): print("gave up")
 */
 export type RetryPolicy:
 	// Total tries, including the first; at least 1.
-	attempts: Int = 3
+	attempts Int = 3
 	// Wait before the second attempt.
-	delay: Duration = milliseconds(100)
+	delay Duration = milliseconds(100)
 	// Upper bound on any wait.
-	max_delay: Duration = seconds(30)
+	max_delay Duration = seconds(30)
 	// Whether each wait is a random share (0 to 1) of its computed length.
-	jitter: Bool = true
+	jitter Bool = true
 
 // Internal: the wait after failed attempt number `attempt` (1 for the first), before
 // jitter.
-fn RetryPolicy.wait_after(attempt: Int) Duration:
+fn RetryPolicy.wait_after(attempt Int) Duration:
 	var wait = Duration(nanos: self.delay.nanos)
 
 	for round in 1..attempt:
@@ -57,10 +57,10 @@ Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.at
 `E` must be `Clonable`, because `retryable` borrows the error and `retry` then returns it.
 Waiting uses `sleep`, so cancelling the task ends the wait. The operation always runs once, so a policy with fewer than one attempt still runs it once.
 */
-export fn retry[T, E: Clonable](
-	policy: RetryPolicy,
-	operation: fn(Int) T!E,
-	retryable: (fn(E) Bool)? = null
+export fn retry[T, E Clonable](
+	policy RetryPolicy,
+	operation fn(Int) T!E,
+	retryable(fn(E) Bool)? = null
 ) T!E:
 	var attempt = 1
 
@@ -77,7 +77,7 @@ export fn retry[T, E: Clonable](
 		else:
 			return result
 
-fn jittered(policy: RetryPolicy, attempt: Int) Duration:
+fn jittered(policy RetryPolicy, attempt Int) Duration:
 	wait := policy.wait_after(attempt)
 	if not policy.jitter: return wait
 
@@ -87,7 +87,7 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
 
-<!-- manuscript-example: {"mode":"fragment","given":["urls: List[String]"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["urls List[String]"]} -->
 ```manuscript
 import rate_limiter from "@std/concurrency/resilience.ms"
 import fetch from "@std/net/fetch.ms"
@@ -100,13 +100,13 @@ for url in urls:
 */
 export type RateLimiter:
 	// Most tokens held at once; at least 1.
-	burst: Int
+	burst Int
 	// Time to gain one token.
-	interval: Duration
+	interval Duration
 	// Internal state: tokens available as of `stamp`.
-	tokens: Int
+	tokens Int
 	// Internal state: the reading up to which refills are counted.
-	stamp: Instant
+	stamp Instant
 
 // Internal: adds the tokens earned since the last refill.
 fn var RateLimiter.refill() Void:
@@ -140,7 +140,7 @@ fn var RateLimiter.acquire() Void:
 
 // Returns a rate limiter that allows `count` uses per second, with room for `burst`
 // uses at once. It starts full. A `count` or `burst` below 1 returns `EINVAL`.
-export fn rate_limiter(count: Int, burst: Int) RateLimiter!:
+export fn rate_limiter(count Int, burst Int) RateLimiter!:
 	if count < 1 or burst < 1:
 		return error(
 			Error(
@@ -165,14 +165,14 @@ export enum CircuitError[E]:
 	// The call ran and failed with this error.
 	Failed(
 		// The error the call returned.
-		error: E
+		error E
 	)
 
 /*
 Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens, and calls fail at once with `Open`.
 After `cooldown`, one call is let through: success closes the circuit, and failure opens it again.
 
-<!-- manuscript-example: {"mode":"fragment","given":["request: String"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["request String"]} -->
 ```manuscript
 import CircuitBreaker from "@std/concurrency/resilience.ms"
 import fetch from "@std/net/fetch.ms"
@@ -185,13 +185,13 @@ if reply.is_error(): print("circuit open or call failed")
 */
 export type CircuitBreaker:
 	// Consecutive failures that open the circuit; at least 1.
-	threshold: Int
+	threshold Int
 	// How long the circuit stays open before a trial call.
-	cooldown: Duration
+	cooldown Duration
 	// Internal state: the current run of failures.
-	failures: Int = 0
+	failures Int = 0
 	// Internal state: when the circuit opened, or `null` while closed.
-	opened: Instant? = null
+	opened Instant? = null
 
 // Reports whether the circuit is open and still cooling down, so a call fails at
 // once. It is false while the circuit is closed, and once the cooldown has passed,
@@ -205,9 +205,7 @@ fn CircuitBreaker.is_open() Bool:
 // Runs `operation` unless the circuit is open, and records the outcome. An open
 // circuit returns `CircuitError.Open` without calling it; a failed call returns
 // `CircuitError.Failed` with the error.
-fn var CircuitBreaker.call[T: Clonable, E: Clonable](
-	operation: fn() T!E
-) T!CircuitError[E]:
+fn var CircuitBreaker.call[T Clonable, E Clonable](operation fn() T!E) T!CircuitError[E]:
 	if self.is_open(): return error(CircuitError.Open)
 
 	result := operation()
@@ -235,10 +233,10 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 // print(doubled.length())
 // ```
 export fn map_concurrent[T, U](
-	items: List[T],
-	limit: Int,
-	work: fn(T) U,
-	site: String = caller_frame()
+	items List[T],
+	limit Int,
+	work fn(T) U,
+	site String = caller_frame()
 ) List[U]!:
 	if limit < 1:
 		return error(
@@ -249,19 +247,19 @@ export fn map_concurrent[T, U](
 		)
 
 	stripes := limit.min(items.length())
-	var running: List[Promise[List[U]]] = []
+	var running List[Promise[List[U]]] = []
 
 	for stripe in 0..stripes:
 		mine := items.clone()
 		running.append(
 			promise(
-				fn: stripe_results(mine, stripe, stripes, work),
-				site: site
+				() => stripe_results(mine, stripe, stripes, work),
+				site: site,
 			)
 		)
 
 	var parts = wait_all(running)?
-	var results: List[U] = []
+	var results List[U] = []
 	var index = items.length()
 
 	while index > 0:
@@ -276,8 +274,8 @@ export fn map_concurrent[T, U](
 
 // Internal: the results of `work` for the items at `first`, `first + step`, and so
 // on.
-fn stripe_results[T, U](items: List[T], first: Int, step: Int, work: fn(T) U) List[U]!:
-	var out: List[U] = []
+fn stripe_results[T, U](items List[T], first Int, step Int, work fn(T) U) List[U]!:
+	var out List[U] = []
 	var index = first
 
 	while index < items.length():
@@ -289,7 +287,7 @@ fn stripe_results[T, U](items: List[T], first: Int, step: Int, work: fn(T) U) Li
 /*
 A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
 
-<!-- manuscript-example: {"mode":"fragment","given":["events: List[String]"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["events List[String]"]} -->
 ```manuscript
 import Throttle from "@std/concurrency/resilience.ms"
 import milliseconds from "@std/time.ms"
@@ -302,9 +300,9 @@ for event in events:
 */
 export type Throttle:
 	// The least time between two allowed actions.
-	interval: Duration
+	interval Duration
 	// Internal state: when the last action was allowed, or `null` before the first.
-	last: Instant? = null
+	last Instant? = null
 
 // Reports whether an action may happen now, and if so counts it. It never waits.
 fn var Throttle.allow() Bool:

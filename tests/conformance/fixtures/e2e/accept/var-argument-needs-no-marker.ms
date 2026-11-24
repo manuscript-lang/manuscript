@@ -6,16 +6,16 @@ import expect_equal from "@std/test/test.ms"
 // changes it.
 
 type Bag:
-	items: List[Int]
+	items List[Int]
 
-fn push_one(var values: List[Int]) Void:
+fn push_one(var values List[Int]) Void:
 	values.append(1)
 
-fn apply(change: fn(var List[Int]) Void, var values: List[Int]) Void:
+fn apply(change fn(var List[Int]) Void, var values List[Int]) Void:
 	change(values)
 
 test "var parameters take plain arguments":
-	var values: List[Int] = []
+	var values List[Int] = []
 	push_one(values)
 	apply(push_one, values)
 

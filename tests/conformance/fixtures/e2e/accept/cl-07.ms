@@ -4,10 +4,10 @@
 import expect_equal from "@std/test/test.ms"
 
 enum Outcome:
-    Ready(value: Int)
-    Failed(reason: String)
+    Ready(value Int)
+    Failed(reason String)
 
-fn score(outcome: Outcome) Int:
+fn score(outcome Outcome) Int:
     match outcome:
         Ready(value):
             return value

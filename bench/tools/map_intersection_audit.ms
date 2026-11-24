@@ -8,7 +8,7 @@ import (
 	capture, ensure_directory, finish, invalid, write_text from "./lib.ms",
 )
 
-fn checksum(mode: String, pattern: String, n: Int) Int:
+fn checksum(mode String, pattern String, n Int) Int:
 	all := n * (n + 1) / 2
 	one := if n > 0: n / 2 + 1 else: 0
 
@@ -28,7 +28,7 @@ fn checksum(mode: String, pattern: String, n: Int) Int:
 
 	return all
 
-fn run(args: List[String]) String!:
+fn run(args List[String]) String!:
 	if args.length() < 5 or args.length() > 8: return invalid(
 		"expected BEFORE AFTER_OR_DASH OUTPUT PAIRS WORK [MODE [PATTERN [SIZE]]]"
 	)

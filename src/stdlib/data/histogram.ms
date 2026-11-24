@@ -24,20 +24,20 @@ Example: `latency.time(fn: handle(request))` records one span, and
 */
 export opaque type Histogram:
 	// Observation count per bucket.
-	counts: List[Int]
+	counts List[Int]
 	// Observations recorded since creation or the last reset.
-	total: Int
+	total Int
 	// Exact sum of every observation, as `sum_wraps` times 2^63 plus `sum`.
-	sum: Int
-	sum_wraps: Int
+	sum Int
+	sum_wraps Int
 	// Smallest observation; meaningful only when `total` is above zero.
-	low: Int
+	low Int
 	// Largest observation; meaningful only when `total` is above zero.
-	high: Int
+	high Int
 
 // Adds one observation. A negative value is recorded as 0, so a clock that steps back
 // counts as an instant measurement.
-fn var Histogram.record(value: Int) Void:
+fn var Histogram.record(value Int) Void:
 	observed := value.max(0)
 	index := bucket_of(observed)
 	self.counts[index] += 1
@@ -55,13 +55,13 @@ fn var Histogram.record(value: Int) Void:
 
 // Adds one duration as nanoseconds. A negative duration is recorded as 0, like
 // `record`.
-fn var Histogram.record_duration(elapsed: Duration) Void:
+fn var Histogram.record_duration(elapsed Duration) Void:
 	self.record(elapsed.to_nanoseconds())
 
 // Runs `work`, records how long it took in nanoseconds on the monotonic clock, and
 // returns its result. A normal return, including an error Result, is recorded; a
 // fault or cancellation that prevents returning is not.
-fn var Histogram.time[T](work: fn() T) T:
+fn var Histogram.time[T](work fn() T) T:
 	started := monotonic()
 	result := work()
 	self.record_duration(monotonic().difference(started))
@@ -91,7 +91,7 @@ fn Histogram.mean() Float:
 // Value at or below which `p` percent of observations fall, for `p` in 0.0 through
 // 100.0; null when empty. The answer is the top of the matching bucket, never above
 // the largest observation. A `p` outside the range gives null.
-fn Histogram.percentile(p: Float) Int?:
+fn Histogram.percentile(p Float) Int?:
 	if not (p >= 0.0 and p <= 100.0) or self.total == 0: return null
 
 	var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int() or 1
@@ -123,14 +123,14 @@ fn zeros() List[Int]:
 	for _index in 0..BUCKETS: counts.append(0)
 	return counts
 
-fn bucket_of(value: Int) Int:
+fn bucket_of(value Int) Int:
 	if value < EXACT: return value
 
 	shift := 64 - leading_zeros(value) - 6
 	return EXACT + (shift - 1) * 32 + (shift_right(value, shift) - 32)
 
 // The largest value that falls in bucket `index`.
-fn bucket_top(index: Int) Int:
+fn bucket_top(index Int) Int:
 	if index < EXACT: return index
 
 	offset := index - EXACT

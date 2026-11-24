@@ -25,13 +25,13 @@ test "bound list mutators take their arguments, so a caller keeps a clone":
 	expect_equal(next, "new-1")?
 	expect_equal(values, ["new-1", "new-1", "new-1"])?
 
-fn fill[T: Clonable](var target: List[T], item: T) Void:
+fn fill[T Clonable](var target List[T], item T) Void:
 	append := target.append
 	append(item.clone())
 	append(item.clone())
 
 test "a generic bound mutator stores clones independent of the caller":
-	var target: List[List[String]] = []
+	var target List[List[String]] = []
 	var item = [f"original-{1}"]
 	fill(target, item)
 	item[0] = "changed"
@@ -41,37 +41,37 @@ test "a generic bound mutator stores clones independent of the caller":
 	expect_equal(item[0], "changed")?
 
 test "optional native adapter handles supplied and absent payloads":
-	var values: List[String?] = ["first"]
+	var values List[String?] = ["first"]
 	set := values.set
-	text: String? := f"next-{2}"
+	text String? := f"next-{2}"
 	set(0, text.clone())
 	set(0, null)
 	set(0, text.clone())
 	expect_equal(values[0], text)?
 	expect_equal(text or panic("called Optional.get() on null"), "next-2")?
 
-fn invalid(value: String, index: Int) Void:
+fn invalid(value String, index Int) Void:
 	var values = ["old"]
 	set := values.set
 	set(index, value.clone())
 
 test "invalid bound mutation of a clone leaves the caller payload":
 	text := f"survives-{3}"
-	fault := expect_fault(fn: invalid(text, 2))?
+	fault := expect_fault(() => invalid(text, 2))?
 	expect_contains(fault, "index")?
 	expect_equal(text, "survives-3")?
 
-fn supplied(log: String) String!:
+fn supplied(log String) String!:
 	append_file(log, "value,").wait()?
 	return ok("supplied")
 
-fn picked(log: String, fail: Bool) Int!:
+fn picked(log String, fail Bool) Int!:
 	append_file(log, "index,").wait()?
 	if fail: return error(Error("index failure"))
 
 	return ok(0)
 
-fn ordered(log: String, fail: Bool) List[String]!:
+fn ordered(log String, fail Bool) List[String]!:
 	var values = ["old"]
 	set := values.set
 	set(value: supplied(log)?, index: picked(log, fail)?)

@@ -5,6 +5,6 @@ import PriorityQueue from "@std/collections/queue.ms"
 
 fn f() Int:
     var q = PriorityQueue(
-        compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0
+        compare: fn(left HttpMethod, right HttpMethod) Int => return 0
     )
     return 0

@@ -27,12 +27,12 @@ Type positions use [ordinary name resolution](../modules/declarations.md#names-a
 
 <!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","given":[]} -->
 ```manuscript
-fn identity(value: Int) Int:
+fn identity(value Int) Int:
     return value
 
-exact: fn(Int) Int := identity
+exact fn(Int) Int := identity
 // Rejected: the result type differs.
-wrong: fn(Int) String := identity
+wrong fn(Int) String := identity
 ```
 
 An expected `T?` accepts a plain `T` and wraps it as the present case. This works in arguments, constructor fields, enum payloads, annotated bindings, assignments, returns, defaults, and collection elements ([optional values](optionals.md#passing-optional-arguments)). It wraps one layer and never changes a numeric type.
@@ -48,12 +48,12 @@ It also supplies missing type arguments for a uniquely identified `null`, `ok`, 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
 type Input:
-    names: List[String?]
+    names List[String?]
 
 input := Input([null, "Ada"])
-nested: List[List[Int]] := [[], [1]]
-success: Result[Int, Error] := ok(1)
-failure: Result[Int, Error] := error(Error("unavailable"))
+nested List[List[Int]] := [[], [1]]
+success Result[Int, Error] := ok(1)
+failure Result[Int, Error] := error(Error("unavailable"))
 // Rejected: the result error type cannot be inferred from ok's payload.
 incomplete := ok(1)
 ```
@@ -74,12 +74,12 @@ Operators and `?` normally require operands to determine their own types first. 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
 fn known() Result[Int, Error]:
-    number: Int := Result[Int, Error].ok(1)?
+    number Int := Result[Int, Error].ok(1)?
     return ok(number)
 
 fn unknown() Result[Int, Error]:
     // Rejected: the `?` operand's error type is undetermined.
-    number: Int := ok(1)?
+    number Int := ok(1)?
     return ok(number)
 ```
 

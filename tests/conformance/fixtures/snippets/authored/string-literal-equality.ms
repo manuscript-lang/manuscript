@@ -3,7 +3,7 @@
 // conform: origin=string == short literal compiled inline
 import stdout from "@std/io/io.ms"
 
-fn score(s: String) Int:
+fn score(s String) Int:
     var n = 0
     if s == "a":
         n += 1

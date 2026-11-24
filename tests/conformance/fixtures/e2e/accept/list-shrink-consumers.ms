@@ -6,9 +6,9 @@ import (
 )
 
 type Visits:
-	count: Int
+	count Int
 
-fn mutate[T: Clonable](var values: List[T], mode: String, move fill: List[T]) Void:
+fn mutate[T Clonable](var values List[T], mode String, move fill List[T]) Void:
 	if mode == "remove":
 		values.remove(0)
 	if mode == "splice":
@@ -20,26 +20,26 @@ fn mutate[T: Clonable](var values: List[T], mode: String, move fill: List[T]) Vo
 		values.splice(start: 0, delete_count: 0, replacement: fill.clone())
 		values.splice(start: 0, delete_count: 0, replacement: fill)
 
-fn step[T: Clonable](
-	var seen: List[T],
-	var visits: Visits,
-	var values: List[T],
-	move value: T,
-	mode: String,
-	move fill: List[T],
+fn step[T Clonable](
+	var seen List[T],
+	var visits Visits,
+	var values List[T],
+	move value T,
+	mode String,
+	move fill List[T],
 ) Void:
 	seen.append(value)
 	if visits.count == 0:
 		mutate(values: values, mode: mode, fill: fill)
 	visits.count += 1
 
-fn observe[T: Clonable](
-	var values: List[T],
-	mode: String,
-	fill: List[T],
-	callback: Bool,
+fn observe[T Clonable](
+	var values List[T],
+	mode String,
+	fill List[T],
+	callback Bool,
 ) List[T]!:
-	var seen: List[T] = []
+	var seen List[T] = []
 	var visits = Visits(0)
 
 	if callback:
@@ -47,7 +47,7 @@ fn observe[T: Clonable](
 			values
 			.clone()
 			.for_each(
-				fn(value: T): step(
+				fn(value T) => step(
 					seen,
 					visits,
 					values,
@@ -64,7 +64,7 @@ fn observe[T: Clonable](
 	visits.count | expect_equal(3)?
 	return ok(seen)
 
-fn remaining[T: Clonable](mode: String, move items: List[T], move fill: List[T]) List[T]:
+fn remaining[T Clonable](mode String, move items List[T], move fill List[T]) List[T]:
 	var out = items
 	if mode == "remove": out.remove(0)
 	if mode == "splice": out.splice(
@@ -149,7 +149,7 @@ test "String consumers see the full snapshot while the live list shrinks":
 			)
 
 type Payload:
-	value: Int
+	value Int
 
 test "record consumers keep independent copies after shrink":
 	for callback in [false, true]:
@@ -186,21 +186,21 @@ test "record consumers keep independent copies after shrink":
 			)
 
 enum Choice:
-	number(value: Int)
-	label(value: String)
+	number(value Int)
+	label(value String)
 
-fn score(value: Choice) Int:
+fn score(value Choice) Int:
 	match value:
-		number(count): return count
-		label(text): return text.length()
+		number(count) => return count
+		label(text) => return text.length()
 
 test "alternative consumers retain tags and payloads after shrink":
 	for callback in [false, true]:
 		for mode in ["remove", "splice", "clear", "clear_append"]:
-			first: Choice := number(1)
-			second: Choice := label("bb")
-			last: Choice := number(3)
-			fill: List[Choice] := [label("replacement")]
+			first Choice := number(1)
+			second Choice := label("bb")
+			last Choice := number(3)
+			fill List[Choice] := [label("replacement")]
 			var values = [first.clone(), second.clone(), last.clone()]
 			want := remaining(mode, values.clone(), fill.clone())
 			seen := (observe(values, mode, fill, callback)?)
@@ -316,7 +316,7 @@ test "map and folds consume snapshots of the live list":
 interface ReadValue:
 	fn read() Int
 
-fn Payload.read() Int: self.value
+fn Payload.read() Int => self.value
 
 test "interface view consumers dispatch after shrink":
 	for callback in [false, true]:
@@ -483,7 +483,7 @@ test "find returns the value passed to a mutating predicate":
 test "preferred List mutators and explicit reversed copy iterate snapshots":
 	var values = [1, 2, 3]
 	clone := values.clone()
-	var seen: List[Int] = []
+	var seen List[Int] = []
 
 	for value in values.clone():
 		seen.append(value)

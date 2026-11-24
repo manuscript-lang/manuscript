@@ -7,21 +7,21 @@ import (
 )
 
 type Counter:
-	count: Int
+	count Int
 
 type Resource:
-	marker: String
+	marker String
 
 // Cleanup runs on the resource's own copy, so a marker file is how a caller observes
 // it.
 fn move Resource.close() Void!:
 	_written := write_file(self.marker, "closed", true).wait()
 
-fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
+fn closed(marker String) Bool => read_file(marker).wait().is_ok()
 
-fn identity[T](value: T) T: return value
+fn identity[T](value T) T => return value
 
-fn amount(text: String, marker: String) Int!Error:
+fn amount(text String, marker String) Int!Error:
 	_resource := Resource(marker: marker.clone())
 
 	cents := match text.parse_int():
@@ -32,24 +32,24 @@ fn amount(text: String, marker: String) Int!Error:
 
 	return ok(value: cents + 1)
 
-fn early(value: Int?) Int:
+fn early(value Int?) Int:
 	number := match value:
-		number: number
-		null: return 9
+		number => number
+		null => return 9
 
 	return number + 1
 
-fn all_return(value: Int?) Int:
+fn all_return(value Int?) Int:
 	_unreachable := match value:
-		number: return number
-		null: return 9
+		number => return number
+		null => return 9
 
-fn tick(var counter: Counter) Int!:
+fn tick(var counter Counter) Int!:
 	counter.count | expect_equal(1)?
 	counter.count += 1
 	return ok(0)
 
-fn values(var counter: Counter) List[Int]:
+fn values(var counter Counter) List[Int]:
 	counter.count += 1
 	return [7, 8]
 
@@ -64,12 +64,12 @@ test "indexing and generic applications coexist":
 	((values(counter)[(tick(counter)?)] != 7 or counter.count != 2) | expect_false?)
 	identity[Int](items[0]) | expect_equal(10)?
 
-	callbacks: List[fn(Int) Int] := [identity[Int]]
+	callbacks List[fn(Int) Int] := [identity[Int]]
 	(callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | expect_false?
 
 test "empty list constructors have fresh typed storage":
 	var empty = List[String]()
-	contextual: List[Int] := List()
+	contextual List[Int] := List()
 	other := List[String]()
 	empty.append("a")
 	(
@@ -95,7 +95,7 @@ test "string concatenation and scalar ordering":
 	("\u{e000}" < "\u{10000}") | expect_true?
 
 	sorted := ["z", "a", "b"].sorted(
-		fn(left: String, right: String) Int:
+		fn(left String, right String) Int:
 			if left < right: return -1
 			if left > right: return 1
 
@@ -105,8 +105,8 @@ test "string concatenation and scalar ordering":
 	sorted | expect_equal(["a", "b", "z"])?
 
 test "match expressions preserve returns and cleanup":
-	present: Int? := 4
-	absent: Int? := null
+	present Int? := 4
+	absent Int? := null
 	(
 		(
 			early(present) != 5
@@ -136,29 +136,29 @@ test "match expressions preserve returns and cleanup":
 		value:
 			// manuscript:allow-nested-match regression for nested expression values and the absent branch
 			match absent:
-				other: value + other
-				null: value
-		null: 0
+				other => value + other
+				null => value
+		null => 0
 
 	nested | expect_equal(4)?
 
-	contextual: List[Int] := match absent:
-		value: [value]
-		null: []
+	contextual List[Int] := match absent:
+		value => [value]
+		null => []
 
 	contextual.length() | expect_equal(0)?
 
 	result := identity[Int](
 		match present:
-			value: value
-			null: 0
+			value => value
+			null => 0
 	)
 	result | expect_equal(4)?
 
-	callback := fn(value: Int?) Int:
+	callback := fn(value Int?) Int:
 		number := match value:
-			number: number
-			null: return 42
+			number => number
+			null => return 42
 
 		return number
 
@@ -173,13 +173,13 @@ test "indexes read elements and get supplies defaults":
 	List[Int]().get_or(0, 7) | expect_equal(7)?
 
 test "match blocks produce their final value":
-	present: Int? := 5
+	present Int? := 5
 
 	result := match present:
 		value:
 			doubled := value * 2
 			doubled + 1
-		null: 0
+		null => 0
 
 	result | expect_equal(11)?
 
@@ -193,40 +193,40 @@ test "match blocks produce their final value":
 				if count < value: continue
 
 				break
-			null: break
+			null => break
 
 	count | expect_equal(5)?
 
 test "contextual values infer from later arms":
-	present: Int? := 5
+	present Int? := 5
 
-	optional: Int? := match present:
-		null: null
-		value: value
+	optional Int? := match present:
+		null => null
+		value => value
 
 	(optional or panic("called Optional.get() on null")) | expect_equal(5)?
 
 	list := match present:
-		null: []
-		value: [value]
+		null => []
+		value => [value]
 
 	list[0] | expect_equal(5)?
 
-fn returned_argument(var counter: Counter) Int!:
-	absent: Int? := null
+fn returned_argument(var counter Counter) Int!:
+	absent Int? := null
 	return ok(
 		combine(
 			first: match absent:
-				value: value
-				null: return ok(17)
+				value => value
+				null => return ok(17)
 			,
 			second: (tick(counter)?),
 		)
 	)
 
-fn combine(first: Int, second: Int) Int: return first + second
+fn combine(first Int, second Int) Int => return first + second
 
-fn propagated(text: String) Int!Error:
+fn propagated(text String) Int!Error:
 	result := match text.parse_int():
 		value:
 			Result[Int, Error].ok(value: value)?
@@ -235,7 +235,7 @@ fn propagated(text: String) Int!Error:
 
 	return ok(value: result)
 
-fn returned_loop(value: Int?) Int:
+fn returned_loop(value Int?) Int:
 	var index = 0
 
 	while true:
@@ -245,7 +245,7 @@ fn returned_loop(value: Int?) Int:
 			_number:
 				index += 1
 				continue
-			null: break
+			null => break
 
 	return 24
 
@@ -255,8 +255,8 @@ test "expression exits preserve caller boundaries and evaluation order":
 	propagated("3") | expect_equal(Result[Int, Error].ok(value: 3))?
 	propagated("no") | expect_equal(Result[Int, Error].error(cause: Error("missing")))?
 
-	present: Int? := 1
-	absent: Int? := null
+	present Int? := 1
+	absent Int? := null
 	(returned_loop(present) != 23 or returned_loop(absent) != 24) | expect_false?
 
 	var iterations = 0
@@ -269,32 +269,32 @@ test "expression exits preserve caller boundaries and evaluation order":
 					if iterations == 2: continue
 					if iterations == 3: break
 				number
-			null: break
+			null => break
 
 		if value == 1: break
 
 	iterations | expect_equal(3)?
 
-fn condition_exit(value: Int?) Int:
+fn condition_exit(value Int?) Int:
 	while true:
 		while (
 			match value:
-				_number: true
-				null: break
+				_number => true
+				null => break
 		):
 			return 1
 
 	return 2
 
 test "match in a loop header exits its lexical enclosing loop":
-	absent: Int? := null
+	absent Int? := null
 	condition_exit(absent) | expect_equal(2)?
 
 test "indexing preserves zero and nested optionals":
 	numbers := [0]
 	(numbers[0] != 0 or numbers.get_or(0, 99) != 0) | expect_false?
 
-	nested: List[Int?] := [null, 0]
+	nested List[Int?] := [null, 0]
 	(
 		(
 			(nested[0] != null)
@@ -302,7 +302,7 @@ test "indexing preserves zero and nested optionals":
 		) | expect_false?
 	)
 
-fn observed_optional(var counter: Counter) Int?:
+fn observed_optional(var counter Counter) Int?:
 	counter.count += 1
 	return 5
 
@@ -319,23 +319,23 @@ test "match evaluates its input once and only the selected arm":
 
 	(result != 6 or counter.count != 11) | expect_false?
 
-fn inline_match(value: Int?) Int: match value:
-	number: number
-	null: 0
+fn inline_match(value Int?) Int => match value:
+	number => number
+	null => 0
 
 test "match composes with inferred callbacks and map literals":
-	values: List[Int?] := [3, null]
+	values List[Int?] := [3, null]
 	mapped := values.map(
-		fn value: match value:
-			number: number + 1
-			null: 0
+		value => match value:
+			number => number + 1
+			null => 0
 	)
 	(mapped[0] != 4 or mapped[1] != 0) | expect_false?
 
 	lookup := {
 		"value": match values[0]:
-			number: number
-			null: 0
+			number => number
+			null => 0
 	}
 	lookup["value"] | expect_equal(3)?
 	(inline_match(null) != 0 or inline_match(5) != 5) | expect_false?

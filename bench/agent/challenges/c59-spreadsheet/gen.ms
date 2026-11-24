@@ -3,10 +3,10 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c59
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-fn add(var cs: Cases, name: String, script: String) Void:
+fn add(var cs Cases, name String, script String) Void:
 	cs.push(name, strip_nl(script))
 
-fn strip_nl(text: String) String:
+fn strip_nl(text String) String:
 	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
@@ -17,7 +17,7 @@ fn strip_nl(text: String) String:
 	return chars.slice(start, end).get_or([]).join("") + "\n"
 
 // `set KEY VALUE` lines for the flat list `pairs` of keys and values.
-fn sets(pairs: List[String]) String:
+fn sets(pairs List[String]) String:
 	var out = ""
 	var k = 0
 

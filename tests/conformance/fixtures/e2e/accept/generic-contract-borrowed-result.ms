@@ -9,9 +9,9 @@ interface Label:
 	fn checked() String!
 
 type Pet:
-	name: String
-	labels: List[String]
-	alias: String?
+	name String
+	labels List[String]
+	alias String?
 
 fn Pet.text() String:
 	return self.name
@@ -25,20 +25,20 @@ fn Pet.nick() String?:
 fn Pet.checked() String!:
 	return ok(self.name.clone())
 
-fn text_of[T: Label](item: T) String:
+fn text_of[T Label](item T) String:
 	return item.text()
 
-fn first_text[T: Label](items: List[T]) String:
+fn first_text[T Label](items List[T]) String:
 	return items[0].text()
 
-fn tag_count[T: Label](item: T) Int:
+fn tag_count[T Label](item T) Int:
 	tags := item.tags()
 	return tags.length()
 
-fn nick_of[T: Label](item: T) String?:
+fn nick_of[T Label](item T) String?:
 	return item.nick()
 
-fn checked_of[T: Label](item: T) String!:
+fn checked_of[T Label](item T) String!:
 	return item.checked()
 
 test "a generic body copies what a bound operation borrows from its receiver":
@@ -51,7 +51,7 @@ test "a generic body copies what a bound operation borrows from its receiver":
 	expect_equal(pet.name, "rex")?
 
 test "the copy outlives the value it came from":
-	var out: List[String] = []
+	var out List[String] = []
 
 	for i in 0..3:
 		pet := Pet(f"p{i}", [], null)

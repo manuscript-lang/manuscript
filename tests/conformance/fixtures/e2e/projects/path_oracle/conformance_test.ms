@@ -12,22 +12,22 @@ import (
 // the hex of its UTF-8 bytes; a list is `[x61,x62]`; path parts are five texts
 // separated by spaces.
 
-fn text(token: String) String:
+fn text(token String) String:
 	digits := token.view(1, token.length())
 	bytes := hex_decode(digits, null) | .get_or("".to_bytes())
 	return bytes.decode_utf8() or ""
 
-fn hex(value: String) String:
+fn hex(value String) String:
 	return f"x{hex_encode(value.to_bytes())}"
 
-fn list_of(token: String) List[String]:
+fn list_of(token String) List[String]:
 	inner := token.slice(1, token.length() - 1)
 	if inner.is_empty(): return []
 
-	return inner.split(",").map(fn item: text(item))
+	return inner.split(",").map(item => text(item))
 
-fn parts_of(token: String) PathParts:
-	f := token.split(" ").map(fn item: text(item))
+fn parts_of(token String) PathParts:
+	f := token.split(" ").map(item => text(item))
 	return PathParts(
 		root: f[0].clone(),
 		directory: f[1].clone(),
@@ -36,7 +36,7 @@ fn parts_of(token: String) PathParts:
 		name: f[4].clone(),
 	)
 
-fn parts_text(parts: PathParts) String:
+fn parts_text(parts PathParts) String:
 	return (
 		[
 			parts.root.clone(),
@@ -45,15 +45,15 @@ fn parts_text(parts: PathParts) String:
 			parts.extension.clone(),
 			parts.name.clone(),
 		]
-		.map(fn item: hex(item))
+		.map(item => hex(item))
 		.join(" ")
 	)
 
-fn result(outcome: String!) String:
+fn result(outcome String!) String:
 	if value := outcome: return f"ok {hex(value)}"
 	return "err InvalidInput"
 
-fn answer(rules: PathOperations, f: List[String]) String:
+fn answer(rules PathOperations, f List[String]) String:
 	op := f[0]
 	if op == "basename": return hex(rules.basename(text(f[2])))
 	if op == "basename_without": return hex(

@@ -2,5 +2,5 @@
 // use: get_or
 // fix: .get_or(
 fn main() Int:
-	o: Int? := null
+	o Int? := null
 	return o.get(1)

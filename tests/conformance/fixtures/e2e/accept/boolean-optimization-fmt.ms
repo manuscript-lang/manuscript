@@ -4,17 +4,17 @@
 import expect_false from "@std/test/test.ms"
 
 type Counter:
-    calls: Int
+    calls Int
 
-fn touch(var counter: Counter) Bool:
+fn touch(var counter Counter) Bool:
     counter.calls = counter.calls + 1
     return true
 
-fn unexpected(var counter: Counter) Bool:
+fn unexpected(var counter Counter) Bool:
     counter.calls = counter.calls + 1
     return false
 
-fn defaulted(flag: Bool = not (false or false)) Bool:
+fn defaulted(flag Bool = not (false or false)) Bool:
     return flag
 
 test "boolean optimization preserves source evaluation order":
@@ -32,7 +32,7 @@ test "boolean optimization preserves source evaluation order":
     right_or := (not true) or touch(counter)
     (not right_and or not right_or or counter.calls != 4) | expect_false?
 
-    callback := fn: not (true and false)
+    callback := () => not (true and false)
     (not defaulted() or not callback()) | expect_false?
 
 test "bindings read only by a folded-away operand still compile":

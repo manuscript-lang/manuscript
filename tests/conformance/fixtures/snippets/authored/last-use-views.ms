@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 // Churn that reuses freed memory, so a view of a value freed too early reads garbage.
-fn churn(n: Int) Int:
+fn churn(n Int) Int:
     var total = 0
 
     for i in 0..n:

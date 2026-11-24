@@ -4,37 +4,37 @@
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type Counter:
-	value: Int = 0
+	value Int = 0
 
-fn mark(var counter: Counter, value: Int) Int:
+fn mark(var counter Counter, value Int) Int:
 	counter.value = counter.value * 10 + value
 	return value
 
 type Ordered:
-	counter: Counter
-	first: Int = mark(counter: counter, value: 3)
-	second: Int = mark(counter: counter, value: 4)
-	third: Int = first + second
+	counter Counter
+	first Int = mark(counter: counter, value: 3)
+	second Int = mark(counter: counter, value: 4)
+	third Int = first + second
 
 type Data:
-	number: Int = 5
-	values: List[Int] = [number]
-	callback: fn() Int = (
+	number Int = 5
+	values List[Int] = [number]
+	callback fn() Int = (
 		fn:
 			return number
 	)
 
 type Box[T]:
-	value: T
-	copy: T = value
+	value T
+	copy T = value
 
-fn unit_default(var calls: List[Int]) Void:
+fn unit_default(var calls List[Int]) Void:
 	calls.append(1)
 
 type Explicit:
-	calls: List[Int]
-	nothing: Void = unit_default(calls)
-	option: Int? = 9
+	calls List[Int]
+	nothing Void = unit_default(calls)
+	option Int? = 9
 
 test "record defaults and explicit overrides":
 	data := Data()
@@ -57,7 +57,7 @@ test "record defaults and explicit overrides":
 		) | expect_false?
 	)
 
-	calls: List[Int] := []
+	calls List[Int] := []
 	explicit := Explicit(calls: calls.clone(), nothing: void, option: null)
 	calls.is_empty() | expect_true?
 	(explicit.option == null) | expect_true?
@@ -96,12 +96,12 @@ test "mutable defaults have fresh storage":
 	(first.values.length() != 2 or second.values.length() != 1) | expect_false?
 
 interface ReadWithDefault:
-	fn get(fallback: Int?) Int
+	fn get(fallback Int?) Int
 
 type Reader:
-	number: Int = 5
+	number Int = 5
 
-fn Reader.get(fallback: Int?) Int:
+fn Reader.get(fallback Int?) Int:
 	return fallback or self.number
 
 type Marker: ...
@@ -112,5 +112,5 @@ test "ordinary empty declarations and interface omission":
 	no_op()
 
 	_marker := Marker()
-	view: ReadWithDefault := Reader()
+	view ReadWithDefault := Reader()
 	(view.get() != 5 or view.get(fallback: 7) != 7) | expect_false?

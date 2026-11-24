@@ -5,12 +5,12 @@ import (
 )
 
 enum Expr:
-	Num(value: Int)
-	Add(left: Expr, right: Expr)
-	Mul(left: Expr, right: Expr)
-	Neg(inner: Expr)
+	Num(value Int)
+	Add(left Expr, right Expr)
+	Mul(left Expr, right Expr)
+	Neg(inner Expr)
 
-fn build(depth: Int, seed: Int) Expr:
+fn build(depth Int, seed Int) Expr:
 	if depth == 0: return Expr.Num(seed % 10)
 	if seed % 3 == 0: return Expr.Add(
 		build(depth - 1, seed * 7 + 1),
@@ -23,38 +23,38 @@ fn build(depth: Int, seed: Int) Expr:
 
 	return Expr.Neg(build(depth - 1, seed + 9))
 
-fn eval(e: Expr) Int:
+fn eval(e Expr) Int:
 	match e:
-		Num(value): return value
-		Add(left, right): return (eval(left) + eval(right)) % 1000003
-		Mul(left, right): return (eval(left) * eval(right)) % 1000003
-		Neg(inner): return 0 - eval(inner)
+		Num(value) => return value
+		Add(left, right) => return (eval(left) + eval(right)) % 1000003
+		Mul(left, right) => return (eval(left) * eval(right)) % 1000003
+		Neg(inner) => return 0 - eval(inner)
 
-fn count(e: Expr) Int:
+fn count(e Expr) Int:
 	match e:
-		Num(_): return 1
-		Add(left, right): return 1 + count(left) + count(right)
-		Mul(left, right): return 1 + count(left) + count(right)
-		Neg(inner): return 1 + count(inner)
+		Num(_) => return 1
+		Add(left, right) => return 1 + count(left) + count(right)
+		Mul(left, right) => return 1 + count(left) + count(right)
+		Neg(inner) => return 1 + count(inner)
 
 type Item:
-	score: Int
-	id: Int
+	score Int
+	id Int
 
-fn Item.compare(other: Item) Int:
+fn Item.compare(other Item) Int:
 	if self.score != other.score: return self.score - other.score
 	return self.id - other.id
 
 type Particle:
-	x: Float
-	y: Float
-	vx: Float
-	vy: Float
+	x Float
+	y Float
+	vx Float
+	vy Float
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn stop(name: String, t0: Int, chk: Int) Void:
+fn stop(name String, t0 Int, chk Int) Void:
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 
@@ -66,7 +66,7 @@ fn x_expr() Int:
 	return t
 
 fn x_sort_custom() Int:
-	var xs: List[Item] = []
+	var xs List[Item] = []
 	var x = 1
 
 	for i in 0..1000000:
@@ -76,7 +76,7 @@ fn x_sort_custom() Int:
 	ys := xs.sorted()
 	return ys[0].id + ys[999999].id
 
-fn collatz(n: Int, var memo: Map[Int, Int]) Int:
+fn collatz(n Int, var memo Map[Int, Int]) Int:
 	if n == 1: return 0
 	if memo.contains(n): return memo[n]
 
@@ -85,24 +85,24 @@ fn collatz(n: Int, var memo: Map[Int, Int]) Int:
 	return r
 
 fn x_memo() Int:
-	var memo: Map[Int, Int] = {}
+	var memo Map[Int, Int] = {}
 	var t = 0
 	for s in 1..300000:
 		t += collatz(s, memo)
 	return t
 
-fn compose(f: fn(Int) Int, g: fn(Int) Int) fn(Int) Int:
-	return fn v: g(f(v))
+fn compose(f fn(Int) Int, g fn(Int) Int) fn(Int) Int:
+	return v => g(f(v))
 
 fn x_compose() Int:
-	h := compose(compose(fn v: v + 1, fn v: v * 3), fn v: v - 2)
+	h := compose(compose(v => v + 1, v => v * 3), v => v - 2)
 	var t = 0
 	for i in 0..30000000:
 		t += h(i)
 	return t
 
 fn x_particles() Int:
-	var ps: List[Particle] = []
+	var ps List[Particle] = []
 	for i in 0..100000:
 		ps.append(Particle(i.to_float(), 0.0, 1.0, 0.5))
 
@@ -119,10 +119,10 @@ fn x_particles() Int:
 
 fn x_grid_stencil() Int:
 	n := 1000
-	var g: List[List[Int]] = []
+	var g List[List[Int]] = []
 
 	for i in 0..n:
-		var row: List[Int] = []
+		var row List[Int] = []
 		for j in 0..n:
 			row.append((i * j) % 17)
 		g.append(row)
@@ -136,18 +136,18 @@ fn x_grid_stencil() Int:
 
 fn x_graph_bfs() Int:
 	n := 200000
-	var adj: Map[Int, List[Int]] = {}
+	var adj Map[Int, List[Int]] = {}
 	for i in 0..n:
 		adj[i] = [(i * 7 + 1) % n, (i * 13 + 5) % n, (i + 1) % n]
 
-	var seen: Set[Int] = Set()
-	var frontier: List[Int] = [0]
+	var seen Set[Int] = Set()
+	var frontier List[Int] = [0]
 	seen.add(0)
 
 	var t = 0
 
 	while frontier.length() > 0:
-		var next: List[Int] = []
+		var next List[Int] = []
 
 		for v in frontier:
 			for w in adj[v]:
@@ -162,7 +162,7 @@ fn x_graph_bfs() Int:
 
 fn x_dijkstra() Int:
 	n := 400
-	var dist: List[Int] = []
+	var dist List[Int] = []
 	for i in 0..n * n:
 		dist.append(1000000000)
 
@@ -195,7 +195,7 @@ fn x_dijkstra() Int:
 	return dist[n * n - 1]
 
 fn x_map_records() Int:
-	var m: Map[String, Item] = {}
+	var m Map[String, Item] = {}
 
 	for i in 0..300000:
 		k := f"key-{i % 5000}"
@@ -211,18 +211,18 @@ fn x_map_records() Int:
 		t += e.value.score * e.value.id
 	return t
 
-fn stage1(v: Int) Int!:
+fn stage1(v Int) Int!:
 	if v % 100003 == 0: return error(Error("s1"))
 	return ok(v + 1)
 
-fn stage2(v: Int) Int!:
+fn stage2(v Int) Int!:
 	if v % 100019 == 0: return error(Error("s2"))
 	return ok(v * 2)
 
-fn stage3(v: Int) Int!:
+fn stage3(v Int) Int!:
 	return ok(v - 3)
 
-fn pipeline(v: Int) Int!:
+fn pipeline(v Int) Int!:
 	a := stage1(v)?
 	b := stage2(a)?
 	return stage3(b)
@@ -241,20 +241,20 @@ fn x_result_pipeline() Int:
 	return t
 
 fn x_find_first() Int:
-	var xs: List[Item] = []
+	var xs List[Item] = []
 	for i in 0..1000:
 		xs.append(Item(i, i))
 
 	var t = 0
 
 	for i in 0..20000:
-		f := xs.find(fn it: it.score == i % 1000)
+		f := xs.find(it => it.score == i % 1000)
 		if f != null:
 			t += f.id
 
 	return t
 
-fn run(name: String, f: fn() Int) Void:
+fn run(name String, f fn() Int) Void:
 	t0 := monotonic().tick
 	c := f()
 	stop(name, t0, c)

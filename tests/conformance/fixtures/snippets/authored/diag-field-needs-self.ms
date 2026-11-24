@@ -1,7 +1,7 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 type P:
-    name: String
+    name String
 
 fn P.greet() String:
     return "hi " + name

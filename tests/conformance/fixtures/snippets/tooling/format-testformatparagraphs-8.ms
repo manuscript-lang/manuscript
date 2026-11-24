@@ -1,7 +1,7 @@
 // conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
 // conform: phase=check
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:101 TestFormatParagraphs
-fn work(enabled: Bool) Int:
+fn work(enabled Bool) Int:
     count := 2
 
     if enabled:

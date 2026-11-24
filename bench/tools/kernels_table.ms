@@ -5,7 +5,7 @@
 // rather than used in ratios.
 import invalid, minimum from "./lib.ms"
 
-export fn suite_names(suite: String) List[String]:
+export fn suite_names(suite String) List[String]:
 	if suite == "kernels": return [
 		"sieve_5M", "nbody_200k", "life_128x128_50", "matmul_200", "trees_d16_x20",
 		"collatz_1M", "map_count_2M", "mandel_400", "particles_1k_5k", "vm_5M",
@@ -26,27 +26,27 @@ export fn c_versions() List[String]:
 // Kernels a version does not implement. Plain C has no map_count: a hand-rolled int64
 // open-addressing table is not a like-for-like comparison with the general
 // insertion-ordered `Map`.
-export fn omitted(version: String) List[String]:
+export fn omitted(version String) List[String]:
 	if version == "c": return ["map_count_2M"]
 	return []
 
 export fn ablations() List[String]:
 	return ["c-ms-no-poll", "c-ms-no-overflow", "c-ms-no-bounds", "c-ms-unchecked"]
 
-fn ratio(num: Float, den: Float) String:
+fn ratio(num Float, den Float) String:
 	low := if num < den: num else: den
 	if low < 2.0: return "folded"
 
 	return (num / den).to_fixed(2) + "x"
 
-fn same(a: List[String], b: List[String]) Bool:
+fn same(a List[String], b List[String]) Bool:
 	return a == b
 
 export fn summarize(
-	lines: List[String],
-	suite: String,
-	repeats: Int,
-	versions: List[String],
+	lines List[String],
+	suite String,
+	repeats Int,
+	versions List[String],
 ) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 
@@ -56,7 +56,7 @@ export fn summarize(
 			base_versions().concat(c_versions()),
 			base_versions().concat(c_versions()).concat(ablations()),
 		]
-	if not allowed.any(fn a: same(a, versions)):
+	if not allowed.any(a => same(a, versions)):
 		return invalid(f"unexpected versions for {suite}: {versions.join(" ")}")
 
 	names := suite_names(suite)
@@ -70,7 +70,7 @@ export fn summarize(
 	var active = ""
 
 	for line in lines:
-		parts := line.trim().split(" ").filter(fn p: p != "")
+		parts := line.trim().split(" ").filter(p => p != "")
 		if parts.length() < 2 or not versions.contains(parts[0]):
 			return invalid(f"invalid sample: {line.trim()}")
 
@@ -83,10 +83,10 @@ export fn summarize(
 		active = version.clone()
 
 		if parts.length() == 3 and parts[1] == "#" and parts[2] == "end":
-			expected := names.filter(fn n: not omitted(active).contains(n))
+			expected := names.filter(n => not omitted(active).contains(n))
 			if (
 				pending.length() != expected.length()
-				or not expected.all(fn n: pending.contains(n))
+				or not expected.all(n => pending.contains(n))
 			):
 				return invalid(f"incomplete {version} trial")
 
@@ -120,21 +120,21 @@ export fn summarize(
 		checks.add(name.clone(), seen)
 		pending.add(name.clone())
 
-	if active != "" or versions.any(fn v: trials.get_or(v, 0) != repeats):
+	if active != "" or versions.any(v => trials.get_or(v, 0) != repeats):
 		return invalid(f"expected {repeats} complete trials of every version")
 
 	for name in names:
 		if checks.get_or(name, Set[Int]()).length() != 1:
 			return invalid(f"{name}: checksums differ between runs or versions")
 
-	others := versions.filter(fn v: v != "go")
-	extra := others.filter(fn v: v.starts_with("rust")).map(fn v: "ms / " + v)
-	var head = others.map(fn v: f"{v} us | {v} / go").join(" | ")
-	var rule = others.map(fn _v: "---:|---:|").join("")
+	others := versions.filter(v => v != "go")
+	extra := others.filter(v => v.starts_with("rust")).map(v => "ms / " + v)
+	var head = others.map(v => f"{v} us | {v} / go").join(" | ")
+	var rule = others.map(_v => "---:|---:|").join("")
 	var rows = [
 		f"Minimum of {repeats} rotating runs; microseconds. Complete trials and checksums verified.\n",
 		"| kernel | go us | " + head + " | " + extra.join(" | ") + " |",
-		"|---|---:|" + rule + extra.map(fn _e: "---:|").join(""),
+		"|---|---:|" + rule + extra.map(_e => "---:|").join(""),
 	]
 
 	for name in names:
@@ -145,7 +145,7 @@ export fn summarize(
 
 		go := times.get_or("go", 0.0)
 		var cells = others.map(
-			fn v: if omitted(v).contains(
+			v => if omitted(v).contains(
 				name
 			): "n/a | n/a" else: f"{times.get_or(v, 0.0).to_fixed(0)} | {ratio(times.get_or(v, 0.0), go)}"
 		)

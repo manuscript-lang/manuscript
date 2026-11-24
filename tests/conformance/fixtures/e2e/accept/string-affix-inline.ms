@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn both(text: String, part: String) Int:
+fn both(text String, part String) Int:
 	var r = 0
 	if text.starts_with(part): r += 1
 	if text.ends_with(part): r += 2

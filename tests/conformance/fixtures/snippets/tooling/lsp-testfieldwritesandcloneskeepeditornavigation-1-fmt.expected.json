@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Val:\n\tval: Int\n\nfn work(var value: Val) Void:\n\tcallback := fn() Void:\n\t\tvalue.val += 1\n\tcallback()\n\n\tcopy := value.clone()\n\tlist := [copy]\n\tlist.clone().append(value)\n"
+    "fmt": "type Val:\n\tval Int\n\nfn work(var value Val) Void:\n\tcallback := fn() Void:\n\t\tvalue.val += 1\n\tcallback()\n\n\tcopy := value.clone()\n\tlist := [copy]\n\tlist.clone().append(value)\n"
   }
 }

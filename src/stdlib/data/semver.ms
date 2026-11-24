@@ -1,20 +1,20 @@
 // A parsed semantic version as defined by Semantic Versioning 2.0.0.
 export type Version:
 	// Major version number; incremented for incompatible changes.
-	major: Int
+	major Int
 	// Minor version number; incremented for compatible additions.
-	minor: Int
+	minor Int
 	// Patch version number; incremented for compatible fixes.
-	patch: Int
+	patch Int
 	// Dot-separated pre-release identifiers in input order; empty for a release
 	// version.
-	prerelease: List[String] = []
+	prerelease List[String] = []
 	// Dot-separated build metadata identifiers in input order; ignored by compare.
-	build: List[String] = []
+	build List[String] = []
 
 // Compares two versions by SemVer precedence, returning -1, 0 or 1. Build metadata is
 // ignored, and a pre-release sorts before its release (`1.0.0-rc.1` before `1.0.0`).
-fn Version.compare(other: Version) Int:
+fn Version.compare(other Version) Int:
 	core := compare_ints(self.major, other.major)
 	if core != 0: return core
 
@@ -48,7 +48,7 @@ fn Version.to_string() String:
 // Parses strict Semantic Versioning 2.0.0 text. A leading `v` or surrounding space is
 // rejected with kind `EBADMSG`, like any other malformed text. A numeric part too large
 // for `Int` returns kind `ERANGE`.
-export fn parse(text: String) Version!:
+export fn parse(text String) Version!:
 	build_parts := split_first(text, "+")
 	core_and_pre := split_first(build_parts[0].clone(), "-")
 	numbers := core_and_pre[0].split(".")
@@ -109,7 +109,7 @@ export fn parse(text: String) Version!:
 	)
 
 // Splits at the first separator only, keeping the rest in the second piece.
-fn split_first(text: String, separator: String) List[String]:
+fn split_first(text String, separator String) List[String]:
 	at := text.index_of(separator)
 	if at != null: return [
 		text.view(0, at).clone(),
@@ -118,7 +118,7 @@ fn split_first(text: String, separator: String) List[String]:
 
 	return [text.clone()]
 
-fn compare_ints(left: Int, right: Int) Int:
+fn compare_ints(left Int, right Int) Int:
 	if left < right: return -1
 	if left > right: return 1
 
@@ -126,18 +126,18 @@ fn compare_ints(left: Int, right: Int) Int:
 
 // Digits only, at least one; the caller has already rejected non-ASCII through scalar
 // values.
-fn all_digits(scalars: List[Int]) Bool:
+fn all_digits(scalars List[Int]) Bool:
 	if scalars.is_empty(): return false
 
 	for scalar in scalars:
 		if scalar < 48 or scalar > 57: return false
 	return true
 
-fn has_leading_zero(scalars: List[Int]) Bool:
+fn has_leading_zero(scalars List[Int]) Bool:
 	return scalars.length() > 1 and scalars[0] == 48
 
 // ASCII letters, digits and hyphen, at least one.
-fn valid_identifier(scalars: List[Int]) Bool:
+fn valid_identifier(scalars List[Int]) Bool:
 	if scalars.is_empty(): return false
 
 	for scalar in scalars:
@@ -150,7 +150,7 @@ fn valid_identifier(scalars: List[Int]) Bool:
 
 // Numeric identifiers sort numerically and before alphanumeric ones; others sort
 // bytewise.
-fn compare_identifier(left: String, right: String) Int:
+fn compare_identifier(left String, right String) Int:
 	left_numeric := all_digits(left.scalar_values())
 	right_numeric := all_digits(right.scalar_values())
 

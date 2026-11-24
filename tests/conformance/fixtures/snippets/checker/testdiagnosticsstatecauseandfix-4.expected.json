@@ -13,21 +13,21 @@
         "position": {
           "file": "testdiagnosticsstatecauseandfix-4.ms",
           "line": 4,
-          "column": 9,
-          "offset": 151
+          "column": 8,
+          "offset": 150
         },
         "fix": {
           "position": {
             "file": "testdiagnosticsstatecauseandfix-4.ms",
             "line": 4,
-            "column": 9,
-            "offset": 151
+            "column": 8,
+            "offset": 150
           },
           "end": {
             "file": "testdiagnosticsstatecauseandfix-4.ms",
             "line": 4,
-            "column": 14,
-            "offset": 156
+            "column": 13,
+            "offset": 155
           },
           "replacement": "String"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-4.ms:4:9: resolution: unknown type Strin; did you mean 'String'?\n   |\n 4 | fn f(x: Strin) Void:\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-4.ms:4:8: resolution: unknown type Strin; did you mean 'String'?\n   |\n 4 | fn f(x Strin) Void:\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

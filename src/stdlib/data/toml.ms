@@ -13,37 +13,37 @@ export enum TomlValue:
 	// Text decoded from TOML basic or literal string syntax.
 	StringValue(
 		// Unicode contents after the applicable escapes and multiline rules.
-		value: String
+		value String
 	)
 	// A parsed whole number; out-of-range input is rejected rather than truncated.
 	IntValue(
 		// Exact signed integer value of the accepted TOML numeric token.
-		value: Int
+		value Int
 	)
 	// A parsed floating-point number, including TOML infinity and NaN spellings.
 	FloatValue(
 		// Numeric value of the accepted floating token, preserving signed zero.
-		value: Float
+		value Float
 	)
 	// A TOML true or false value; other capitalizations are invalid.
 	BoolValue(
 		// The decoded boolean from the lowercase TOML token.
-		value: Bool
+		value Bool
 	)
 	// A validated local/offset date or time token, retained as text.
 	DateTimeValue(
 		// Original accepted TOML date/time spelling, without a timezone conversion.
-		text: String
+		text String
 	)
 	// An ordered array; elements can have different TOML value kinds.
 	ArrayValue(
 		// Element values in document order, with ordinary mutable list storage.
-		values: List[TomlValue]
+		values List[TomlValue]
 	)
 	// An insertion-ordered table; parse returns this case even for an empty document.
 	TableValue(
 		// String-keyed entries produced by assignments, dotted keys and table headers.
-		values: Map[String, TomlValue]
+		values Map[String, TomlValue]
 	)
 
 // Limits for `parse` on input bytes, nesting depth and parsed values. A field set to
@@ -51,62 +51,62 @@ export enum TomlValue:
 // deeply nested or very large documents. A negative limit returns `EINVAL`.
 export type TomlOptions:
 	// Maximum UTF-8 input bytes before CRLF normalization; null adds no budget.
-	max_bytes: Int? = null
+	max_bytes Int? = null
 	// Maximum value depth, including scalar leaves and implicit tables, with the root
 	// at one.
-	max_depth: Int? = 10000
+	max_depth Int? = 10000
 	// Maximum containers and leaves, excluding keys; checked during parsing and
 	// materialization.
-	max_values: Int? = 1000000
+	max_values Int? = 1000000
 
 // The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are
 // derived from it only when an error is reported.
 type Reader:
-	data: Bytes
-	pos: Int
-	options: TomlOptions
-	values: Int
-	tables: List[Table]
-	entries: List[Map[String, Node]]
+	data Bytes
+	pos Int
+	options TomlOptions
+	values Int
+	tables List[Table]
+	entries List[Map[String, Node]]
 	// Table-array contents by slot: appending a table extends one list in place.
-	arrays: List[List[Int]]
+	arrays List[List[Int]]
 
 // Table flags. A table's entries live at the same index of `Reader.entries`.
 type Table:
-	explicit: Bool
-	dotted: Bool
-	sealed: Bool
+	explicit Bool
+	dotted Bool
+	sealed Bool
 
 // Tables are stored in the reader and referenced by index, so a parent can name a child
 // that later keys keep extending without two copies of the same table.
 enum Node:
-	Leaf(value: TomlValue)
-	TableNode(id: Int)
-	ArrayNode(values: List[Node])
-	TableArray(slot: Int)
+	Leaf(value TomlValue)
+	TableNode(id Int)
+	ArrayNode(values List[Node])
+	TableArray(slot Int)
 
-fn new_table(var reader: Reader, explicit: Bool, dotted: Bool) Int:
+fn new_table(var reader Reader, explicit Bool, dotted Bool) Int:
 	reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: false))
 	reader.entries.append(Map[String, Node]())
 	return reader.tables.length() - 1
 
-fn flags(reader: Reader, id: Int) Table:
+fn flags(reader Reader, id Int) Table:
 	return reader.tables[id]
 
-fn store_flags(var reader: Reader, id: Int, move flags: Table) Void:
+fn store_flags(var reader Reader, id Int, move flags Table) Void:
 	reader.tables.set(id, flags)
 
-fn lookup(reader: Reader, id: Int, key: String) Node?:
+fn lookup(reader Reader, id Int, key String) Node?:
 	return reader.entries[id].get(key)
 
-fn contains_key(reader: Reader, id: Int, key: String) Bool:
+fn contains_key(reader Reader, id Int, key String) Bool:
 	return reader.entries[id].contains(key)
 
 // Adds an entry to the table's map in place.
-fn put(var reader: Reader, id: Int, move key: String, move node: Node) Void:
+fn put(var reader Reader, id Int, move key String, move node Node) Void:
 	reader.entries[id].add(key, node)
 
-fn put_array(var reader: Reader, id: Int, key: String, first: Int) Void:
+fn put_array(var reader Reader, id Int, key String, first Int) Void:
 	reader.arrays.append([first])
 	put(reader, id, key.clone(), Node.TableArray(reader.arrays.length() - 1))
 
@@ -127,29 +127,29 @@ LEFT_BRACE := 123
 RIGHT_BRACE := 125
 
 // The byte at `pos` as an Int, or -1 past either end of the document.
-fn byte_at(data: Bytes, pos: Int) Int:
+fn byte_at(data Bytes, pos Int) Int:
 	if pos < 0 or pos >= data.length(): return -1
 	return data.get(pos).to_int()
 
 // The cursor as its own value, which stays valid while the reader moves.
-fn cursor(reader: Reader) Int:
+fn cursor(reader Reader) Int:
 	return reader.pos
 
 // The byte at the cursor, or -1 at the end of the document.
-fn peek(reader: Reader) Int:
+fn peek(reader Reader) Int:
 	return byte_at(reader.data, reader.pos)
 
-fn ahead(reader: Reader, offset: Int) Int:
+fn ahead(reader Reader, offset Int) Int:
 	return byte_at(reader.data, reader.pos + offset)
 
 // Consumes one byte and returns it, or returns -1 without moving at the end.
-fn advance(var reader: Reader) Int:
+fn advance(var reader Reader) Int:
 	b := byte_at(reader.data, reader.pos)
 	if b >= 0: reader.pos += 1
 	return b
 
 // The 1-based line and scalar column of the byte offset.
-fn locate(data: Bytes, pos: Int) List[Int]:
+fn locate(data Bytes, pos Int) List[Int]:
 	var line = 1
 	var column = 1
 
@@ -165,25 +165,25 @@ fn locate(data: Bytes, pos: Int) List[Int]:
 	return [line, column]
 
 // A malformed-input error at a one-based source position.
-fn toml_invalid(line: Int, column: Int, reason: String) Error:
+fn toml_invalid(line Int, column Int, reason String) Error:
 	return Error(
 		f"TOML {line}:{column}: {reason}",
 		kind: "EBADMSG",
 		details: {"line": line.to_string(), "column": column.to_string()},
 	)
 
-fn invalid_at(reader: Reader, pos: Int, reason: String) Error:
+fn invalid_at(reader Reader, pos Int, reason String) Error:
 	place := locate(reader.data, pos)
 	return toml_invalid(line: place[0], column: place[1], reason: reason)
 
-fn invalid(reader: Reader, reason: String) Error:
+fn invalid(reader Reader, reason String) Error:
 	return invalid_at(reader, reader.pos, reason)
 
 // The text between two byte offsets of the document.
-fn slice_text(reader: Reader, start: Int, end: Int) String:
+fn slice_text(reader Reader, start Int, end Int) String:
 	return (reader.data.slice(start, end).get().decode_utf8() or "").clone()
 
-fn space(var reader: Reader, multiline: Bool) Void:
+fn space(var reader Reader, multiline Bool) Void:
 	var pos = cursor(reader)
 
 	while true:
@@ -200,34 +200,34 @@ fn space(var reader: Reader, multiline: Bool) Void:
 
 	reader.pos = pos
 
-fn within(value: Int, limit: Int?) Bool:
+fn within(value Int, limit Int?) Bool:
 	maximum := limit
 	if maximum != null: return value <= maximum
 
 	return true
 
-fn allocate(var reader: Reader) Void!:
+fn allocate(var reader Reader) Void!:
 	reader.values += 1
 	if not within(reader.values, reader.options.max_values): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
 
-fn budget(reader: Reader, depth: Int) Void!:
+fn budget(reader Reader, depth Int) Void!:
 	if not within(depth, reader.options.max_depth): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
 
 // Whether a byte is a control character that a string may not contain unescaped.
-fn string_control(b: Int, multiline: Bool) Bool:
+fn string_control(b Int, multiline Bool) Bool:
 	return (b < 32 and b != TAB and not (multiline and b == NEWLINE)) or b == 127
 
-fn quote_char(quote: Int) String:
+fn quote_char(quote Int) String:
 	if quote == DOUBLE_QUOTE: return "\""
 	return "'"
 
 // Basic and literal strings, including multiline delimiters and escaped newline
 // folding.
-fn string_value(var reader: Reader, key: Bool) String!:
+fn string_value(var reader Reader, key Bool) String!:
 	quote := advance(reader)
 	var multiline = false
 
@@ -349,10 +349,10 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
 		run = reader.pos
 
-fn hex_digit(b: Int) Bool:
+fn hex_digit(b Int) Bool:
 	return (b >= 48 and b <= 57) or (b >= 65 and b <= 70) or (b >= 97 and b <= 102)
 
-fn bare_key_byte(b: Int) Bool:
+fn bare_key_byte(b Int) Bool:
 	return (
 		(b >= 97 and b <= 122)
 		or (b >= 65 and b <= 90)
@@ -361,8 +361,8 @@ fn bare_key_byte(b: Int) Bool:
 		or b == 45
 	)
 
-fn key_path(var reader: Reader) List[String]!:
-	var keys: List[String] = []
+fn key_path(var reader Reader) List[String]!:
+	var keys List[String] = []
 
 	while true:
 		space(reader, multiline: false)
@@ -386,7 +386,7 @@ fn key_path(var reader: Reader) List[String]!:
 
 		advance(reader)
 
-fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int, Error]:
+fn child(var reader Reader, parent Int, key String, dotted Bool) Result[Int, Error]:
 	if flags(reader, parent).sealed: return error(
 		invalid(reader, "inline table is closed")
 	)
@@ -423,7 +423,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 				if last != null: return ok(last)
 
 				return error(invalid(reader, "table array is empty"))
-			_: return error(invalid(reader, "key is already a value"))
+			_ => return error(invalid(reader, "key is already a value"))
 
 	allocate(reader)?
 
@@ -431,10 +431,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 	put(reader, parent, key.clone(), Node.TableNode(created))
 	return ok(created)
 
-fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
-	Void,
-	Error,
-]:
+fn append_table(var reader Reader, parent Int, key String, next Int) Result[Void, Error]:
 	existing := lookup(reader, parent, key).clone()
 	node := existing
 
@@ -443,13 +440,13 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 			TableArray(slot):
 				reader.arrays[slot].append(next)
 				return ok()
-			_: return error(invalid(reader, "table array conflicts with value"))
+			_ => return error(invalid(reader, "table array conflicts with value"))
 
 	allocate(reader)?
 	put_array(reader, parent, key, next)
 	return ok()
 
-fn assign(var reader: Reader, parent: Int, keys: List[String], move value: Node) Result[
+fn assign(var reader Reader, parent Int, keys List[String], move value Node) Result[
 	Void,
 	Error,
 ]:
@@ -473,7 +470,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], move value: Node)
 	)
 
 // Adds a key that must not exist yet to an open table.
-fn assign_one(var reader: Reader, parent: Int, key: String, move value: Node) Result[
+fn assign_one(var reader Reader, parent Int, key String, move value Node) Result[
 	Void,
 	Error,
 ]:
@@ -491,7 +488,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, move value: Node) Re
 
 // Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where
 // it was.
-fn simple_key(var reader: Reader) String?:
+fn simple_key(var reader Reader) String?:
 	space(reader, multiline: false)
 
 	start := cursor(reader)
@@ -512,7 +509,7 @@ fn simple_key(var reader: Reader) String?:
 	return slice_text(reader, start, end)
 
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
-fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
+fn key_value(var reader Reader, table Int, depth Int) Void!:
 	key := simple_key(reader)
 
 	if key != null:
@@ -525,7 +522,7 @@ fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
 	value := read_value(reader, depth + keys.length())?
 	return assign(reader: reader, parent: table, keys: keys, value: value)
 
-fn seal(var reader: Reader, value: Node) Void:
+fn seal(var reader Reader, value Node) Void:
 	match value:
 		TableNode(id):
 			var state = flags(reader, id).clone()
@@ -536,9 +533,9 @@ fn seal(var reader: Reader, value: Node) Void:
 			for entry in reader.entries[id].clone(): seal(reader, entry.value.clone())
 		ArrayNode(values):
 			for item in values: seal(reader, item)
-		_: return
+		_ => return
 
-fn digits(text: String, alphabet: String) Bool:
+fn digits(text String, alphabet String) Bool:
 	if text == "": return false
 
 	var previous = false
@@ -555,22 +552,22 @@ fn digits(text: String, alphabet: String) Bool:
 
 	return previous
 
-fn decimal_digits(text: String) Bool:
+fn decimal_digits(text String) Bool:
 	return digits(text, "0123456789")
 
-fn decimal_part(text: String) Bool:
+fn decimal_part(text String) Bool:
 	if not decimal_digits(text): return false
 
 	clean := text.replace("_", "")
 	return clean == "0" or not clean.starts_with("0")
 
-fn date_number(text: String, minimum: Int, maximum: Int) Bool:
+fn date_number(text String, minimum Int, maximum Int) Bool:
 	if not digits(text, "0123456789") or text.contains("_"): return false
 	if value := parse_int(text, 10): return value >= minimum and value <= maximum
 
 	return false
 
-fn date_valid(text: String) Bool:
+fn date_valid(text String) Bool:
 	if (
 		text.length() != 10
 		or text.scalar_length() != 10
@@ -595,7 +592,7 @@ fn date_valid(text: String) Bool:
 
 	return date_number(day, 1, maximum)
 
-fn time_valid(text: String) Bool:
+fn time_valid(text String) Bool:
 	if (
 		text.length() < 8
 		or text.scalar_length() != text.length()
@@ -614,7 +611,7 @@ fn time_valid(text: String) Bool:
 		and not fraction.contains("_")
 	)
 
-fn datetime_valid(text: String) Bool:
+fn datetime_valid(text String) Bool:
 	if date_valid(text): return true
 	if time_valid(text): return true
 	if (
@@ -643,7 +640,7 @@ fn datetime_valid(text: String) Bool:
 
 	return time_valid(rest)
 
-fn scalar(reader: Reader, text: String, at: Int) Node!:
+fn scalar(reader Reader, text String, at Int) Node!:
 	if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(true)))
 	if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(false)))
 	if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text.clone())))
@@ -737,7 +734,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 	return error(invalid_at(reader, at, "integer out of range"))
 
 // Whether a byte ends a bare value token.
-fn token_end(b: Int) Bool:
+fn token_end(b Int) Bool:
 	return (
 		b < 0
 		or b == NEWLINE
@@ -750,7 +747,7 @@ fn token_end(b: Int) Bool:
 	)
 
 // The byte offset after `count` scalars from the cursor.
-fn scalar_offset(reader: Reader, count: Int) Int:
+fn scalar_offset(reader Reader, count Int) Int:
 	var pos = cursor(reader)
 	var left = count
 
@@ -761,7 +758,7 @@ fn scalar_offset(reader: Reader, count: Int) Int:
 
 	return pos
 
-fn read_value(var reader: Reader, depth: Int) Node!:
+fn read_value(var reader Reader, depth Int) Node!:
 	allocate(reader)?
 	budget(reader, depth)?
 	space(reader, multiline: false)
@@ -774,7 +771,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 	if c == LEFT_BRACKET:
 		advance(reader)
 
-		var values: List[Node] = []
+		var values List[Node] = []
 		space(reader, multiline: true)
 
 		while peek(reader) != RIGHT_BRACKET:
@@ -861,16 +858,16 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 
 // Counts the values of the finished document against the limits.
 type Budget:
-	values: Int
-	max_depth: Int?
-	max_values: Int?
+	values Int
+	max_depth Int?
+	max_values Int?
 
 fn materialize(
-	tables: List[Map[String, Node]],
-	arrays: List[List[Int]],
-	node: Node,
-	depth: Int,
-	var budget: Budget,
+	tables List[Map[String, Node]],
+	arrays List[List[Int]],
+	node Node,
+	depth Int,
+	var budget Budget,
 ) TomlValue!:
 	if not within(depth, budget.max_depth): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
@@ -882,7 +879,7 @@ fn materialize(
 	)
 
 	match node:
-		Leaf(value): return ok(value.clone())
+		Leaf(value) => return ok(value.clone())
 		TableNode(id):
 			var entries = Map[String, TomlValue]()
 			for entry in tables[id]:
@@ -898,13 +895,13 @@ fn materialize(
 				)
 			return ok(TomlValue.TableValue(entries))
 		ArrayNode(values):
-			var result: List[TomlValue] = []
+			var result List[TomlValue] = []
 			for value in values: result.append(
 				materialize(tables, arrays, value, (depth + 1), budget)?
 			)
 			return ok(TomlValue.ArrayValue(result))
 		TableArray(slot):
-			var result: List[TomlValue] = []
+			var result List[TomlValue] = []
 			for id in arrays[slot]: result.append(
 				materialize(
 					tables,
@@ -924,7 +921,7 @@ fn control_pattern() Regex:
 // Parses a TOML document into a `TableValue`, which is empty for an empty document.
 // Invalid TOML returns an `Error` with kind `EBADMSG` that reports the source line and
 // column. A limit in `options` that the document exceeds returns `EOVERFLOW`.
-export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
+export fn parse(text String, options TomlOptions = TomlOptions()) TomlValue!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		value := limit
 		if value != null:
@@ -1045,10 +1042,10 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	return materialize(reader.entries, reader.arrays, Node.TableNode(root), 1, budget)
 
 type Writer:
-	out: String
-	started: Bool
+	out String
+	started Bool
 
-fn format_key(key: String) String:
+fn format_key(key String) String:
 	var bare = key != ""
 	for c in key.chars():
 		if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
@@ -1058,7 +1055,7 @@ fn format_key(key: String) String:
 
 	return quote_text(key, escape_c1: false)
 
-fn format_float(value: Float) String:
+fn format_float(value Float) String:
 	if value.is_nan(): return "nan"
 
 	if not value.is_finite():
@@ -1070,19 +1067,19 @@ fn format_float(value: Float) String:
 
 	return text.concat(".0")
 
-fn inline_value(value: TomlValue) String:
+fn inline_value(value TomlValue) String:
 	match value:
-		StringValue(text): return quote_text(text, escape_c1: false)
-		IntValue(number): return number.to_string()
-		FloatValue(number): return format_float(number)
-		BoolValue(flag): return flag.to_string()
-		DateTimeValue(text): return text.clone()
+		StringValue(text) => return quote_text(text, escape_c1: false)
+		IntValue(number) => return number.to_string()
+		FloatValue(number) => return format_float(number)
+		BoolValue(flag) => return flag.to_string()
+		DateTimeValue(text) => return text.clone()
 		ArrayValue(values):
-			var parts: List[String] = []
+			var parts List[String] = []
 			for item in values: parts.append(inline_value(item))
 			return "[".concat(parts.join(", ")).concat("]")
 		TableValue(values):
-			var parts: List[String] = []
+			var parts List[String] = []
 			for entry in values.entries(): parts.append(
 				format_key(entry.key).concat(" = ").concat(
 					inline_value(entry.value)
@@ -1092,59 +1089,55 @@ fn inline_value(value: TomlValue) String:
 
 			return "{ ".concat(parts.join(", ")).concat(" }")
 
-fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
-	var tables: List[Map[String, TomlValue]] = []
+fn table_items(values List[TomlValue]) List[Map[String, TomlValue]]:
+	var tables List[Map[String, TomlValue]] = []
 
 	for item in values:
 		match item:
-			TableValue(table): tables.append(table.clone())
-			_: return []
+			TableValue(table) => tables.append(table.clone())
+			_ => return []
 
 	return tables
 
-fn dotted(path: List[String]) String:
-	var parts: List[String] = []
+fn dotted(path List[String]) String:
+	var parts List[String] = []
 	for key in path: parts.append(format_key(key))
 	return parts.join(".")
 
-fn emit_header(var writer: Writer, header: String) Void:
+fn emit_header(var writer Writer, header String) Void:
 	if writer.started: writer.out += "\n"
 	writer.out += header
 	writer.out += "\n"
 	writer.started = true
 
-fn all_tables(values: List[TomlValue]) Bool:
+fn all_tables(values List[TomlValue]) Bool:
 	for item in values:
 		match item:
-			TableValue(_): void
-			_: return false
+			TableValue(_) => void
+			_ => return false
 
 	return true
 
-fn section_kind(value: TomlValue) Int:
+fn section_kind(value TomlValue) Int:
 	match value:
-		TableValue(_): return 1
+		TableValue(_) => return 1
 		ArrayValue(elements):
 			if not elements.is_empty() and all_tables(elements): return 2
 			return 0
-		_: return 0
+		_ => return 0
 
 fn emit_one(
-	var writer: Writer,
-	path: List[String],
-	brackets: String,
-	table: Map[String, TomlValue],
+	var writer Writer,
+	path List[String],
+	brackets String,
+	table Map[String, TomlValue],
 ) Void:
 	if brackets == "[[": emit_header(writer, "[[".concat(dotted(path)).concat("]]"))
 	else: emit_header(writer, "[".concat(dotted(path)).concat("]"))
 
 	emit_table(writer, path, table)
 
-fn emit_table(
-	var writer: Writer,
-	path: List[String],
-	values: Map[String, TomlValue],
-) Void:
+fn emit_table(var writer Writer, path List[String], values Map[String, TomlValue]) Void:
 	for entry in values.entries():
 		if section_kind(entry.value) == 0: writer.out += format_key(entry.key).concat(
 			" = "
@@ -1155,7 +1148,7 @@ fn emit_table(
 		child.append(entry.key.clone())
 
 		match entry.value:
-			TableValue(table): emit_one(
+			TableValue(table) => emit_one(
 				writer: writer,
 				path: child,
 				brackets: "[",
@@ -1169,11 +1162,11 @@ fn emit_table(
 						brackets: "[[",
 						table: table,
 					)
-			_: void
+			_ => void
 
-fn datetimes_valid(value: TomlValue) Bool:
+fn datetimes_valid(value TomlValue) Bool:
 	match value:
-		DateTimeValue(text): return datetime_valid(text)
+		DateTimeValue(text) => return datetime_valid(text)
 		ArrayValue(values):
 			for item in values:
 				if not datetimes_valid(item): return false
@@ -1182,20 +1175,20 @@ fn datetimes_valid(value: TomlValue) Bool:
 			for entry in values.entries():
 				if not datetimes_valid(entry.value): return false
 			return true
-		_: return true
+		_ => return true
 
 // Writes a table value as a TOML document. Tables and arrays of tables use headers;
 // other values are written inline. A `value` that is not a `TableValue`, or that holds
 // a malformed date or time, returns `EINVAL`. Output longer than `max_bytes` returns
 // `EOVERFLOW`.
-export fn stringify(value: TomlValue, max_bytes: Int? = null) String!:
+export fn stringify(value TomlValue, max_bytes Int? = null) String!:
 	limit := max_bytes
 	if limit != null:
 		if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 
 	root := match value:
-		TableValue(values): values.clone()
-		_: return error(Error("invalid TOML input", kind: "EINVAL"))
+		TableValue(values) => values.clone()
+		_ => return error(Error("invalid TOML input", kind: "EINVAL"))
 
 	if not datetimes_valid(value): return error(
 		Error("invalid TOML input", kind: "EINVAL")

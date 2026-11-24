@@ -25,19 +25,19 @@ Implemented 2026-11-06 at `HEAD` ec9d9027: checker, MSL116 warning and stdlib ta
 ## Examples
 
 ```manuscript
-fn total(items: List[Item]) Decimal:      // pure
+fn total(items List[Item]) Decimal:      // pure
     print(items.length())                 // error: reaches std.console.write: total -> print
     return items.map(fn(i): i.price).sum()
 ```
 
 ```manuscript
 // ms: allow_effect std.fs.read           (reads only; as a file header it covers the file)
-fn load(path: String) Config!:
+fn load(path String) Config!:
     return try parse(try read_file(path).wait())
 ```
 
 ```manuscript
-fn index(tree: FileTree) Index!:          // pure: takes the capability
+fn index(tree FileTree) Index!:          // pure: takes the capability
     return build(try walk(tree))
 
 fn main() Unit!:
@@ -52,7 +52,7 @@ Custom effect: `effect` declares it, `allow_effect` permits what the body needs,
 ```manuscript
 // ms: effect db.write                    (declared: callers see db.write)
 // ms: allow_effect std.net.connect       (permitted: the body may reach it)
-fn exec(sql: String) Unit!:
+fn exec(sql String) Unit!:
     return try pg_client().run(sql)
 
 // ms: allow_effect db.*                  (domain file: may use the database, not the network)
@@ -76,11 +76,11 @@ fn report(tree: FileTree) Text!:          // elsewhere, pure; read_file(...) her
 
 ```manuscript
 // ms: effect std.fs.read
-export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]: ...
+export fn read_file(path String, max_bytes Int? = none) Promise[Bytes]: ...
 // ms: effect std.clock.read
 export fn now() Timestamp: ...
 // ms: effect std.console.write
-export fn print(value: Printable) Unit: ...
+export fn print(value Printable) Unit: ...
 ```
 
 - Vocabulary: `std.fs.{read,write,delete}`, `std.net.{connect,listen}`, `std.process.{run,signal,read,write}`, `std.env.{read,write}`, `std.clock.{read,sleep}`, `std.random.read`, `std.console.{read,write}`, `std.system.read`. User effects are unprefixed (`db.write`); `std.*` is reserved.

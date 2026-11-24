@@ -3,5 +3,5 @@
 // conform: origin=pkg/compiler/mutation_test.go:36 TestMutationRejections
 import Connection from "@std/net/net.ms"
 
-fn f(socket: Connection) Void:
+fn f(socket Connection) Void:
     socket.clone()

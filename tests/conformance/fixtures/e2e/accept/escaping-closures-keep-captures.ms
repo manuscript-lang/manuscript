@@ -6,16 +6,16 @@ import (
 )
 
 type Box:
-	f: fn() Int
+	f fn() Int
 
 interface Sink:
-	var fn put(move f: fn() Int) Void
+	var fn put(move f fn() Int) Void
 	fn total() Int
 
 type ListSink:
-	fs: List[fn() Int]
+	fs List[fn() Int]
 
-fn var ListSink.put(move f: fn() Int) Void:
+fn var ListSink.put(move f fn() Int) Void:
 	self.fs.append(f)
 
 fn ListSink.total() Int:
@@ -24,22 +24,22 @@ fn ListSink.total() Int:
 		t += f()
 	return t
 
-fn mk(move f: fn() Int) Box:
+fn mk(move f fn() Int) Box:
 	return Box(f: f)
 
-fn c1(move text: String) Int:
-	var out = text.split(",").map(fn(move p: String): mk(fn() Int: return p.length()))
+fn c1(move text String) Int:
+	var out = text.split(",").map(fn(move p String) => mk(fn() Int => return p.length()))
 	var t = 0
 	for b in out:
 		t += b.f()
 	return t
 
-fn c2(text: String) Int:
-	var m: Map[Int, fn() Int] = {}
+fn c2(text String) Int:
+	var m Map[Int, fn() Int] = {}
 	var i = 0
 
 	for p in text.split(",").clone():
-		m[i] = fn() Int: return p.length()
+		m[i] = fn() Int => return p.length()
 		i += 1
 
 	var t = 0
@@ -47,37 +47,37 @@ fn c2(text: String) Int:
 		t += (m.get(k) or panic("called Optional.get() on null"))()
 	return t
 
-fn c3(text: String) Int:
-	var g: fn() Int = fn() Int: 0
+fn c3(text String) Int:
+	var g fn() Int = fn() Int => 0
 	for p in text.split(",").clone():
-		g = fn() Int: return p.length()
+		g = fn() Int => return p.length()
 	return g()
 
-fn c4(text: String) Int:
-	var b = Box(f: fn() Int: 0)
+fn c4(text String) Int:
+	var b = Box(f: fn() Int => 0)
 	for p in text.split(",").clone():
-		b.f = fn() Int: return p.length()
+		b.f = fn() Int => return p.length()
 	return b.f()
 
-fn c5(text: String) Int:
+fn c5(text String) Int:
 	var sink = ListSink(fs: [])
 	for p in text.split(",").clone():
-		sink.put(fn() Int: return p.length())
+		sink.put(fn() Int => return p.length())
 	return sink.total()
 
-fn outer(move text: String) fn() Int:
+fn outer(move text String) fn() Int:
 	var held = text.split(",").length()
-	inner := fn() Int: return held + text.length()
-	return fn() Int: return inner()
+	inner := fn() Int => return held + text.length()
+	return fn() Int => return inner()
 
-fn c6(move text: String) Int:
+fn c6(move text String) Int:
 	return outer(text)()
 
-fn c7(text: String) Int:
-	var fs: List[fn() Int] = []
+fn c7(text String) Int:
+	var fs List[fn() Int] = []
 
 	for p in text.split(",").clone():
-		f := fn() Int: return p.length()
+		f := fn() Int => return p.length()
 		fs.append(f)
 
 	var t = 0
@@ -85,18 +85,18 @@ fn c7(text: String) Int:
 		t += f()
 	return t
 
-fn maker(move text: String) fn() fn() Int:
+fn maker(move text String) fn() fn() Int:
 	return fn() fn() Int:
 		n := text.length()
-		return fn() Int: return n + n
+		return fn() Int => return n + n
 
-fn c8(move text: String) Int:
+fn c8(move text String) Int:
 	return maker(text)()()
 
-fn c9(text: String) (fn() Int)?:
-	var r: (fn() Int)? = null
+fn c9(text String) (fn() Int)?:
+	var r (fn() Int)? = null
 	for p in text.split(",").clone():
-		r = fn() Int: return p.length()
+		r = fn() Int => return p.length()
 	return r
 
 test "closures that outlive their statement keep what they captured":

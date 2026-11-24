@@ -6,7 +6,7 @@ import (
 	RenderOptions, Template, compile, render, to_data from "@std/text/template.ms",
 )
 
-fn data(text: String) JsonValue:
+fn data(text String) JsonValue:
 	return parse(text).get()
 
 test "values paths and filters":
@@ -175,8 +175,8 @@ test "typed data converts":
 	expect_equal(page.render(d).get(), "4:x,y")?
 
 type Row:
-	id: Int
-	tags: List[String]
+	id Int
+	tags List[String]
 
 test "lexing handles openers inside actions and large sources":
 	d := data("{\"x\":\"v\"}")

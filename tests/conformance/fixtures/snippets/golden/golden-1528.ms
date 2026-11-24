@@ -11,10 +11,10 @@ test "bound remove":
     remove := [1].remove
     remove(-2)
 test "empty set":
-    items: List[Int] := []
+    items List[Int] := []
     items.set(0, 2)
 test "empty remove":
-    items: List[Int] := []
+    items List[Int] := []
     items.remove(0)
 test "old replace":
     "a".replace("a", "b", -1)

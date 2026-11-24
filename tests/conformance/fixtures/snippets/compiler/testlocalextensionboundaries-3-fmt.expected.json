@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import invoke from \"./domain.ms\"\n\nfn use(value: Box[Int]) Int:\n\treturn invoke(value)\n"
+    "fmt": "import invoke from \"./domain.ms\"\n\nfn use(value Box[Int]) Int:\n\treturn invoke(value)\n"
   }
 }

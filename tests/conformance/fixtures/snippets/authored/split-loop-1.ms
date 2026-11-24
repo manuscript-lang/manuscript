@@ -3,21 +3,21 @@
 // conform: origin=perf: split loops yield pieces one at a time; a kept piece must stay intact
 import stdout from "@std/io/io.ms"
 
-fn say(text: String) Void:
+fn say(text String) Void:
     _ignored := stdout().write(text.clone())
 
-fn keep(text: String) List[String]:
-    var out: List[String] = []
+fn keep(text String) List[String]:
+    var out List[String] = []
     out.extend(text.split(","))
     return out
 
-fn first_long(text: String) String:
+fn first_long(text String) String:
     for p in text.split(","):
         if p.length() > 3:
             return p.clone()
     return "none"
 
-fn count(text: String) Int:
+fn count(text String) Int:
     var n = 0
 
     for p in text.split(","):
@@ -58,32 +58,32 @@ fn main() Void:
 
     say("\n")
 
-fn let_form(text: String) Int:
+fn let_form(text String) Int:
     parts := text.split(",")
     var total = 0
     for p in parts:
         total += p.length()
     return total
 
-fn let_kept(text: String) Int:
+fn let_kept(text String) Int:
     parts := text.split(",")
     var total = 0
     for p in parts:
         total += p.length()
     return total + parts.length()
 
-fn nested(text: String) Int:
+fn nested(text String) Int:
     var total = 0
     for line in text.split(";"):
         for cell in line.split(","):
             total += cell.length()
     return total
 
-fn closure_keeps(text: String) Int:
+fn closure_keeps(text String) Int:
     var fs = text.split(",").map(
         fn p:
             kept := p.clone()
-            return fn() Int: return kept.length()
+            return fn() Int => return kept.length()
     )
     var t = 0
     for f in fs:

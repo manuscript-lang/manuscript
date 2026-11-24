@@ -7,11 +7,11 @@ Tabs indent a body after `:`; dedent ends it. Fields belong inside `type`; recei
 <!-- complete: counter.ms -->
 ```manuscript
 type Counter:
-	n: Int = 0
+	n Int = 0
 
-fn Counter.value() Int: self.n
+fn Counter.value() Int => self.n
 
-fn var Counter.add(n: Int) Void:
+fn var Counter.add(n Int) Void:
 	self.n += n
 
 fn main() Int:

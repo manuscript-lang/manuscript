@@ -7,65 +7,65 @@ import (
 )
 
 type Counter:
-	calls: Int
+	calls Int
 
 type Pending:
-	values: List[Int]
+	values List[Int]
 
-fn bump(var counter: Counter) Int:
+fn bump(var counter Counter) Int:
 	counter.calls += 1
 	return 9
 
-fn map_result[T, E, U](value: T!E, transform: fn(T) U) U!E:
+fn map_result[T, E, U](value T!E, transform fn(T) U) U!E:
 	return value.map(transform)
 
-fn chain_result[T, E, U](value: T!E, transform: fn(T) U!E) U!E:
+fn chain_result[T, E, U](value T!E, transform fn(T) U!E) U!E:
 	return value.and_then(transform)
 
-fn map_optional[T, U](transform: fn(T) U, value: T?) U?:
+fn map_optional[T, U](transform fn(T) U, value T?) U?:
 	if value == null: return null
 	return transform(value)
 
-fn then_optional[T, U](transform: fn(T) U?, value: T?) U?:
+fn then_optional[T, U](transform fn(T) U?, value T?) U?:
 	if value == null: return null
 	return transform(value)
 
-fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
+fn map_set[T Hashable, U Hashable](values Set[T], transform fn(T) U) Set[U]:
 	return values.map[U](transform)
 
 test "core parity operations are callable":
-	success: Int!Error := ok(2)
-	failure: Int!Error := error(Error("failed"))
+	success Int!Error := ok(2)
+	failure Int!Error := error(Error("failed"))
 	expect_false(not (success.is_ok()) or success.is_error())?
 	expect_false(success.get() != 2 or failure.err().message != "failed")?
 	expect_equal(failure.clone().get_or(7), 7)?
-	expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)?
-	expect_equal(success.clone().map(fn n: n + 1).get(), 3)?
+	expect_equal(failure.get_or_else(cause => cause.message.scalar_length()), 6)?
+	expect_equal(success.clone().map(n => n + 1).get(), 3)?
 
-	chained: String!Error := success.and_then(fn n: ok(n.to_string()))
+	chained String!Error := success.and_then(n => ok(n.to_string()))
 	expect_equal(chained.get(), "2")?
 
-	missing: Int? := null
+	missing Int? := null
 	expect_equal(missing or 4, 4)?
 
-	values: Map[String, Int] := {"a": 1, "b": 2}
+	values Map[String, Int] := {"a": 1, "b": 2}
 	expect_false(values.is_empty() or values.get_or("absent", 8) != 8)?
-	expect_equal(values.filter(fn k, v: k == "b" and v == 2).length(), 1)?
+	expect_equal(values.filter((k, v) => k == "b" and v == 2).length(), 1)?
 
 	members := Set[Int]([2, 3])
-	expect_false(members.is_empty() or members.filter(fn n: n == 2).length() != 1)?
-	expect_equal(members.map(fn n: n.to_string()).values(), ["2", "3"])?
+	expect_false(members.is_empty() or members.filter(n => n == 2).length() != 1)?
+	expect_equal(members.map(n => n.to_string()).values(), ["2", "3"])?
 
-fn unexpected_text(value: Int) String:
+fn unexpected_text(value Int) String:
 	return panic("transform must not run for errors")
 
-fn unexpected_chain(value: Int) String!Counter:
+fn unexpected_chain(value Int) String!Counter:
 	return panic("chain must not run for errors")
 
 test "Result preserves unconstrained payloads and success-only composition":
 	counter := Counter(0)
-	failure: Int!Counter := error(counter.clone())
-	success: Int!Counter := ok(0)
+	failure Int!Counter := error(counter.clone())
+	success Int!Counter := ok(0)
 	skipped := map_result(failure.clone(), unexpected_text)
 	expect_false(not (skipped.is_error()) or skipped.is_ok())?
 
@@ -74,7 +74,7 @@ test "Result preserves unconstrained payloads and success-only composition":
 	expect_equal(counter.calls, 0)?
 	expect_equal(skipped.err().calls, 0)?
 
-	mapped := success.clone().map(fn value: value.to_string())
+	mapped := success.clone().map(value => value.to_string())
 	expect_equal(mapped.get(), "0")?
 
 	propagated := chain_result(failure.clone(), unexpected_chain)
@@ -87,7 +87,7 @@ test "Result preserves unconstrained payloads and success-only composition":
 	produced := (
 		success
 		.clone()
-		.and_then(fn value: Result[String, Counter].error(counter.clone()))
+		.and_then(value => Result[String, Counter].error(counter.clone()))
 	)
 	expect_false(not (produced.is_error()))?
 
@@ -96,41 +96,41 @@ test "Result preserves unconstrained payloads and success-only composition":
 	expect_equal(counter.calls, 0)?
 	expect_equal(produced.err().calls, 0)?
 
-	collection_error: Bool!Pending := error(Pending([1]))
+	collection_error Bool!Pending := error(Pending([1]))
 	var pending = Pending(
-		collection_error.clone().map(fn flag: not flag).err().values.clone()
+		collection_error.clone().map(flag => not flag).err().values.clone()
 	)
 	pending.values.append(2)
 	expect_equal(pending.values, [1, 2])?
 	expect_equal(collection_error.err().values, [1])?
 
 	limits := JsonOptions(max_bytes: -1)
-	record: JsonOptions!Error := ok(limits.clone())
-	var changed = record.clone().map(fn value: value).get().clone()
+	record JsonOptions!Error := ok(limits.clone())
+	var changed = record.clone().map(value => value).get().clone()
 	changed.max_values = 7
 	expect_equal(changed.max_values or panic("called Optional.get() on null"), 7)?
 	expect_false(limits.max_values != null)?
 
-	nested := success.clone().map(fn(n: Int) Int?: n)
+	nested := success.clone().map(fn(n Int) Int? => n)
 	expect_equal(nested.get() or panic("called Optional.get() on null"), 0)?
 
-	unit_result: Void!Error := ok()
+	unit_result Void!Error := ok()
 	expect_false(not (unit_result.is_ok()))?
 
-	bool_result: Bool!Error := ok(false)
+	bool_result Bool!Error := ok(false)
 	expect_false(bool_result.get_or(true))?
 
 test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	var counter = Counter(0)
-	success: Int!Counter := ok(0)
-	failure: Int!Counter := error(counter.clone())
+	success Int!Counter := ok(0)
+	failure Int!Counter := error(counter.clone())
 	expect_false(success.clone().get_or(bump(counter)) != 0 or counter.calls != 1)?
 
-	create := fn(cause: Counter) Int: 12
-	unexpected := fn(cause: Counter) Int: panic("fallback must stay lazy")
+	create := fn(cause Counter) Int => 12
+	unexpected := fn(cause Counter) Int => panic("fallback must stay lazy")
 
 	// `get_or_else` takes its receiver, so a reusable value states the copy.
-	lazy := fn(fallback: fn(Counter) Int) Int: success.clone().get_or_else(fallback)
+	lazy := fn(fallback fn(Counter) Int) Int => success.clone().get_or_else(fallback)
 	expect_false(lazy(unexpected) != 0)?
 	expect_false(failure.clone().get_or_else(create) != 12)?
 
@@ -139,16 +139,16 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	extracted.calls = 3
 	expect_equal(failure.err().calls, 0)?
 	expect_equal(extracted.calls, 3)?
-	expect_equal(success.clone().map(fn n: n.to_string()).get(), "0")?
-	expect_equal(success.clone().and_then(fn n: ok(n.to_string())).get(), "0")?
+	expect_equal(success.clone().map(n => n.to_string()).get(), "0")?
+	expect_equal(success.clone().and_then(n => ok(n.to_string())).get(), "0")?
 
 test "Optional composition keeps nesting identity and lazy callback counts":
 	counter := Counter(0)
-	present: Counter? := counter.clone()
-	missing: Counter? := null
-	transform := fn(value: Counter) Counter:
+	present Counter? := counter.clone()
+	missing Counter? := null
+	transform := fn(value Counter) Counter:
 		return Counter(value.calls + 1)
-	unexpected := fn(value: Counter) Counter: panic("map must not run for none")
+	unexpected := fn(value Counter) Counter => panic("map must not run for none")
 	expect_false(not (map_optional(unexpected, missing.clone()) == null))?
 
 	mapped := map_optional(transform, present.clone())
@@ -159,14 +159,14 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	edited.calls = 2
 	expect_equal((mapped or panic("called Optional.get() on null")).calls, 1)?
 
-	chained := then_optional(fn(value: Counter) Counter?: value, present.clone())
+	chained := then_optional(fn(value Counter) Counter? => value, present.clone())
 	expect_equal((chained or panic("called Optional.get() on null")).calls, 0)?
 
-	absent := then_optional(fn(unused: Counter) Int?: null, present.clone())
+	absent := then_optional(fn(unused Counter) Int? => null, present.clone())
 	expect_false(not (absent == null))?
 
-	create := fn() Counter?: Counter(5)
-	unexpected_create := fn() Counter?: panic("fallback must stay lazy")
+	create := fn() Counter? => Counter(5)
+	unexpected_create := fn() Counter? => panic("fallback must stay lazy")
 	expect_equal(
 		(
 			(present.clone() or unexpected_create())
@@ -178,11 +178,11 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	fallback := missing.clone() or create()
 	expect_equal((fallback or panic("called Optional.get() on null")).calls, 5)?
 
-	nested := map_optional(fn(unused: Counter) Int?: null, present.clone())
+	nested := map_optional(fn(unused Counter) Int? => null, present.clone())
 	expect_true(nested == null)?
 	expect_equal(
 		map_optional(
-			fn value: value.calls.to_string(),
+			value => value.calls.to_string(),
 			mapped.clone()
 		) or panic("called Optional.get() on null"),
 		"1",
@@ -190,7 +190,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	expect_false(
 		not (
 			then_optional(
-				fn(unused: Counter) String?: "unexpected",
+				fn(unused Counter) String? => "unexpected",
 				missing.clone()
 			) == null
 		)
@@ -198,12 +198,12 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 
 test "Map filter copies ordered membership and get_or never inserts":
 	var counter = Counter(0)
-	values: Map[String, Counter] := {
+	values Map[String, Counter] := {
 		"b": counter.clone(),
 		"a": Counter(2),
 		"c": Counter(3)
 	}
-	var selected = values.clone().filter(fn k, v: k != "a" and v.calls >= 0)
+	var selected = values.clone().filter((k, v) => k != "a" and v.calls >= 0)
 	expect_false(selected.keys() != ["b", "c"] or values.length() != 3)?
 
 	var changed = selected.get_or("b", Counter(9)).clone()
@@ -225,41 +225,41 @@ test "Map filter copies ordered membership and get_or never inserts":
 		)
 	)?
 
-	var empty = values.clone().filter(fn unused_key, unused_value: false)
+	var empty = values.clone().filter((unused_key, unused_value) => false)
 	expect_false(not (empty.is_empty()))?
 	empty.add("new", counter.clone())
 	expect_false(values.contains("new"))?
 
 	bound_filter := values.clone().filter
-	expect_equal(bound_filter(fn k, v: k == "a").keys(), ["a"])?
+	expect_equal(bound_filter((k, v) => k == "a").keys(), ["a"])?
 
-	snapshot: Map[String, Int] := {"b": 2, "a": 1, "c": 3}
-	copied := snapshot.clone().filter(fn k, v: v != 1)
+	snapshot Map[String, Int] := {"b": 2, "a": 1, "c": 3}
+	copied := snapshot.clone().filter((k, v) => v != 1)
 	expect_false(copied.keys() != ["b", "c"] or copied.values() != [2, 3])?
 	expect_equal(snapshot.keys(), ["b", "a", "c"])?
 
 type Key:
-	id: Int
-	label: String
+	id Int
+	label String
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
-fn Key.hash() Int: 0
+fn Key.hash() Int => 0
 
 test "Set filter and map copy snapshots and deduplicate in first-result order":
 	values := Set[Int]([3, 1, 2])
-	var copied = values.clone().filter(fn n: n != 1)
+	var copied = values.clone().filter(n => n != 1)
 	expect_false(copied.values() != [3, 2])?
 	copied.remove(3)
 	copied.add(8)
 	expect_equal(values.values(), [3, 1, 2])?
 
 	bound_filter := copied.clone().filter
-	expect_equal(bound_filter(fn n: n == 8).values(), [8])?
+	expect_equal(bound_filter(n => n == 8).values(), [8])?
 
 	input := Set[Int]([2, 3, 4])
-	mapped := map_set(input.clone(), fn n: Key(n % 2, n.to_string()))
+	mapped := map_set(input.clone(), n => Key(n % 2, n.to_string()))
 	expect_false(
 		(
 			mapped.length() != 2
@@ -269,19 +269,19 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
 	)?
 
 	bound := input.clone().map[String]
-	var mapped_snapshot = bound(fn n: n.to_string())
+	var mapped_snapshot = bound(n => n.to_string())
 	expect_false(mapped_snapshot.values() != ["2", "3", "4"])?
 	mapped_snapshot.add("8")
 	expect_equal(input.length(), 3)?
 
 	key := Key(5, "shared")
 	keys := Set[Key]([key.clone()])
-	var first = keys.clone().filter(fn unused: true).values().get(0).clone()
+	var first = keys.clone().filter(unused => true).values().get(0).clone()
 	first.label = "changed"
 
-	var second = keys.clone().map(fn value: value.clone()).values().get(0).clone()
+	var second = keys.clone().map(value => value.clone()).values().get(0).clone()
 	second.label = "again"
 	expect_equal(key.label, "shared")?
 	expect_equal(keys.values().get(0).label, "shared")?
-	expect_false(not (Set[Int]().map(fn n: n.to_string()).is_empty()))?
-	expect_false(not (keys.filter(fn unused: false).is_empty()))?
+	expect_false(not (Set[Int]().map(n => n.to_string()).is_empty()))?
+	expect_false(not (keys.filter(unused => false).is_empty()))?

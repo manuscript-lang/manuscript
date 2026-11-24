@@ -5,7 +5,7 @@ import HttpRequest, HttpResponse, headers, buffered from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 import milliseconds, sleep from "@std/time.ms"
 
-fn route(request: HttpRequest) HttpResponse:
+fn route(request HttpRequest) HttpResponse:
     void sleep(milliseconds(2000)).wait()
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 

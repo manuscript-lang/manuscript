@@ -10,13 +10,13 @@ import (
 	Ran, must from "./lib.ms",
 )
 
-fn trial(version: String, suite: String, micros: Int) List[String]:
-	names := suite_names(suite).filter(fn n: not omitted(version).contains(n))
-	var lines = names.map(fn name: f"{version} {name} {micros} 1")
+fn trial(version String, suite String, micros Int) List[String]:
+	names := suite_names(suite).filter(n => not omitted(version).contains(n))
+	var lines = names.map(name => f"{version} {name} {micros} 1")
 	lines.append(f"{version} # end")
 	return lines
 
-fn trials(versions: List[String], suite: String, micros: Int) List[String]:
+fn trials(versions List[String], suite String, micros Int) List[String]:
 	var lines = List[String]()
 	for v in versions:
 		lines = lines.concat(trial(v, suite, micros))
@@ -66,8 +66,8 @@ test "rejects invalid evidence":
 	var truncated = good.clone()
 	truncated.remove(last)
 
-	var no_omitted = good.filter(fn l: not l.contains(omitted))
-	var no_c = good.filter(fn l: not l.starts_with("c "))
+	var no_omitted = good.filter(l => not l.contains(omitted))
+	var no_c = good.filter(l => not l.starts_with("c "))
 	var cases = [
 		List[String](),
 		truncated,

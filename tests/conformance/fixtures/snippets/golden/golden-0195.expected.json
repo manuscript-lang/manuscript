@@ -30,8 +30,8 @@
         "position": {
           "file": "golden-0195.ms",
           "line": 4,
-          "column": 39,
-          "offset": 130
+          "column": 38,
+          "offset": 129
         }
       },
       {
@@ -42,7 +42,7 @@
           "file": "golden-0195.ms",
           "line": 5,
           "column": 24,
-          "offset": 191
+          "offset": 192
         }
       },
       {
@@ -52,15 +52,15 @@
         "position": {
           "file": "golden-0195.ms",
           "line": 4,
-          "column": 57,
-          "offset": 148
+          "column": 58,
+          "offset": 149
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0195.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0195.ms:4:39: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 4 | fn fail[T](message: String) Result[T, TextError]: error(TextError(message))\n   |                                       ^\n<DIR>/golden-0195.ms:5:24: resolution: unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 5 | fn first() Result[Int, Missing]: fail(\"empty\")\n   |                        ^\n<DIR>/golden-0195.ms:4:57: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module\n   |\n 4 | fn fail[T](message: String) Result[T, TextError]: error(TextError(message))\n   |                                                         ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0195.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0195.ms:4:38: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 4 | fn fail[T](message String) Result[T, TextError] => error(TextError(message))\n   |                                      ^\n<DIR>/golden-0195.ms:5:24: resolution: unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 5 | fn first() Result[Int, Missing] => fail(\"empty\")\n   |                        ^\n<DIR>/golden-0195.ms:4:58: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module\n   |\n 4 | fn fail[T](message String) Result[T, TextError] => error(TextError(message))\n   |                                                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

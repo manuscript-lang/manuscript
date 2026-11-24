@@ -26,65 +26,65 @@ import (
 
 // One line of `results/runs.jsonl`.
 type RunRecord:
-	run_id: String
-	ts: Int
-	tag: String
-	challenge: String
-	category: String
-	tier: Int
-	language: String
-	harness: String
-	usage: Usage
-	wall_s: Float
-	exit_code: Int
-	timed_out: Bool
-	builds: Int
-	first_build_ok: Bool
-	first_build_fixed_ok: Bool
-	checks: Int
-	examples_pass: Bool
-	build_codes: List[String]
-	build_errors: List[String]
-	suspect_peek: Bool
-	grade: Grade
-	pass: Bool
-	model: String?
+	run_id String
+	ts Int
+	tag String
+	challenge String
+	category String
+	tier Int
+	language String
+	harness String
+	usage Usage
+	wall_s Float
+	exit_code Int
+	timed_out Bool
+	builds Int
+	first_build_ok Bool
+	first_build_fixed_ok Bool
+	checks Int
+	examples_pass Bool
+	build_codes List[String]
+	build_errors List[String]
+	suspect_peek Bool
+	grade Grade
+	pass Bool
+	model String?
 	// `<language>`'s version command output, and a hash of the skill files in the workspace,
 	// so a result names the compiler and the teaching text it measured.
-	toolchain: String = ""
-	skill: String = ""
+	toolchain String = ""
+	skill String = ""
 
 type Options:
-	harness: String = "oracle"
-	model: String?
-	challenges: String = ""
-	languages: String = ""
-	repeat: Int = 1
-	jobs: Int = 1
-	timeout: Int = 900
-	keep: Bool = false
-	tag: String = ""
-	out: String = f"{root()}/results/runs.jsonl"
+	harness String = "oracle"
+	model String?
+	challenges String = ""
+	languages String = ""
+	repeat Int = 1
+	jobs Int = 1
+	timeout Int = 900
+	keep Bool = false
+	tag String = ""
+	out String = f"{root()}/results/runs.jsonl"
 
-fn split_ids(text: String) List[String]:
-	return text.split(",").filter(fn x: not x.is_empty())
+fn split_ids(text String) List[String]:
+	return text.split(",").filter(x => not x.is_empty())
 
 // Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none
 // without tiktoken.
-fn llm_tokens(path: String) Int?:
+fn llm_tokens(path String) Int?:
 	program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
 	ran := bash(f"python3 -c \"{program}\" \"{path}\"", ".", 60, "")
 	if ran.code != 0: return null
 
 	return ran.out.trim().parse_int()
 
-fn reference_for(ch: Challenge, lang: Lang) String:
+fn reference_for(ch Challenge, lang Lang) String:
 	return f"{ch.solution(lang.template)}/{lang.reference()}"
 
 // Whether a trial hit a compiler crash. Such a trial keeps its whole workspace,
 // so the crash has a reproducer: the transcript, the last build output, or the
 // grading build mentions an internal error or a Rust panic.
-fn keep_ice(said: String, ws: String, g: Grade) Bool:
+fn keep_ice(said String, ws String, g Grade) Bool:
 	last := read_text(f"{ws}/.bench/build.out")
 	text := f"{said}\n{last}\n{(g.error or "")}"
 	return (
@@ -94,14 +94,14 @@ fn keep_ice(said: String, ws: String, g: Grade) Bool:
 	)
 
 fn run_one(
-	ch: Challenge,
-	lang: Lang,
-	h: Harness,
-	timeout_s: Int,
-	keep: Bool,
-	out_file: String,
-	tag: String,
-	model: String?,
+	ch Challenge,
+	lang Lang,
+	h Harness,
+	timeout_s Int,
+	keep Bool,
+	out_file String,
+	tag String,
+	model String?,
 ) RunRecord:
 	run_id := uuid_v4().get_or("").replace("-", "").view(0, 10).clone()
 	base := temporary_directory("agent-bench-").get()
@@ -208,11 +208,11 @@ fn run_one(
 	return rec
 
 type Job:
-	challenge: Challenge
-	language: Lang
+	challenge Challenge
+	language Lang
 
 // Runs every job in `items`, printing one verdict line each; returns how many failed.
-fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
+fn work(items List[Job], harness String, o Options, tag String) Int:
 	h := find(harness) or panic("called Optional.get() on null")
 	var bad = 0
 
@@ -239,7 +239,7 @@ fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
 
 	return bad
 
-fn cmd_list(o: Options) Int!:
+fn cmd_list(o Options) Int!:
 	for c in load_challenges([]):
 		(
 			stdout()
@@ -250,13 +250,13 @@ fn cmd_list(o: Options) Int!:
 		)
 	(
 		stdout().write(
-			f"languages: {load_languages([]).map(fn l: l.id.clone()).join(", ")}\n"
+			f"languages: {load_languages([]).map(l => l.id.clone()).join(", ")}\n"
 		).get()
 	)
 	print(f"harnesses: {names().join(", ")}")
 	return ok(0)
 
-fn cmd_run(opts: Options, oracle: Bool) Int!:
+fn cmd_run(opts Options, oracle Bool) Int!:
 	var o = opts.clone()
 
 	if oracle:
@@ -289,12 +289,12 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 	jobs := if oracle: 1 else: if o.jobs < 1: 1 else: o.jobs
 	tag := if oracle: "oracle" else: o.tag.clone()
 	var bad = 0
-	var running: List[Promise[Int]] = []
+	var running List[Promise[Int]] = []
 	for w in 0..jobs:
 		running.append(
 			spawn(
-				todo.entries().filter(fn e: e.index % jobs == w).map(
-					fn e: (e.value.clone())
+				todo.entries().filter(e => e.index % jobs == w).map(
+					e => (e.value.clone())
 				),
 				h.name(),
 				o.clone(),
@@ -305,8 +305,8 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 	if oracle: remove(o.out, recursive: false).to_optional()
 	return ok(if bad > 0 and oracle: 1 else: 0)
 
-fn spawn(mine: List[Job], me: String, own: Options, label: String) Promise[Int]:
-	return promise(fn: ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
+fn spawn(mine List[Job], me String, own Options, label String) Promise[Int]:
+	return promise(() => ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
 
 fn main() Int:
 	flags := [
@@ -350,19 +350,19 @@ fn main() Int:
 			command[Options](
 				name: "list",
 				about: "list challenges and languages",
-				run: fn o: cmd_list(o)
+				run: o => cmd_list(o),
 			),
 			command[Options](
 				name: "run",
 				about: "run agents on challenges",
 				flags: run_flags,
-				run: fn o: cmd_run(o, false)
+				run: o => cmd_run(o, false),
 			),
 			command[Options](
 				name: "oracle",
 				about: "run reference solutions through the grader (validates tests)",
 				flags: flags,
-				run: fn o: cmd_run(o, true)
+				run: o => cmd_run(o, true),
 			),
 		],
 	)

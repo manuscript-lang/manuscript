@@ -2,7 +2,7 @@
 
 # Each logger owns its transport; there is no lock
 
-Decision: `Logger` (a concrete type, so `info[F: Data = Void](message, fields: F? = none)`, `log` and `child` can be generic) never locks. `Transport` has `duplicate()`: `child` gives the child its own transport onto the same destination (a file transport opens its own handle), so loggers on several threads share nothing and a transport needs no locking. Records are single appends, so the OS keeps them whole.
+Decision: `Logger` (a concrete type, so `info[F: Data = Void](message, fields F? = none)`, `log` and `child` can be generic) never locks. `Transport` has `duplicate()`: `child` gives the child its own transport onto the same destination (a file transport opens its own handle), so loggers on several threads share nothing and a transport needs no locking. Records are single appends, so the OS keeps them whole.
 
 Why: promises only read their captures and there is no `Shared`, so one transport cannot be mutated from several threads. Closing a logger closes only its own transport. `Logger` is `Closeable`: `close()` returns `Void!` and moving_params it, and a scope that owns a logger closes its transport on every exit (a dropped child closes only its own duplicate).
 

@@ -6,7 +6,7 @@ import Bytes from "@std/bytes.ms"
 // `Result[T, Error]`.
 export type Error:
 	// Human-readable description of the failure.
-	message: String
+	message String
 	// A short code for what went wrong, or `null` when no code fits. The kind itself
 	// never allocates when it is a literal or at most 15 bytes. The standard library
 	// reports POSIX errno names (`EAUTH` is Manuscript's own), so
@@ -37,9 +37,9 @@ export type Error:
 	// - `EAUTH`: authentication failed
 	//
 	// Your own code uses its own prefix, such as `"EQUOTA"`.
-	kind: String? = null
+	kind String? = null
 	// Extra facts about the failure, such as the path or operation, keyed by name.
-	details: Map[String, String] = Map[String, String]()
+	details Map[String, String] = Map[String, String]()
 
 // The runtime reports a failed native as a status number; lowering builds the `Error`
 // from these rows (`// ms: status <number> <kind> <words>`, built by
@@ -72,7 +72,7 @@ export type Error:
 // ms: status 24 EMFILE too many open files
 
 // The kind of the `Error` a runtime status stands for (see the rows above).
-fn status_kind(status: Int) String:
+fn status_kind(status Int) String:
 	if status == 1: return "EINVAL"
 	if status == 2: return "ERANGE"
 	if status == 3: return "EOVERFLOW"
@@ -99,7 +99,7 @@ fn status_kind(status: Int) String:
 	return "EAUTH"
 
 // The words of a status; `-` means the native's own text is the whole message.
-fn status_words(status: Int) String:
+fn status_words(status Int) String:
 	if status == 1: return "invalid input"
 	if status == 2: return "value out of range"
 	if status == 3: return "limit exceeded"
@@ -132,10 +132,10 @@ fn status_words(status: Int) String:
 // the status's usual words. Lowering calls this for every `extern fn` that returns
 // `T!`.
 fn msstd_status_error(
-	status: UInt8,
-	domain: String,
-	move said: String,
-	overrides: String,
+	status UInt8,
+	domain String,
+	move said String,
+	overrides String,
 ) Error:
 	number := status.to_int()
 
@@ -148,7 +148,7 @@ fn msstd_status_error(
 	return status_error_text(words, kind, domain, said)
 
 // The words `overrides` gives `number`, if any.
-fn override_words(overrides: String, number: Int) String?:
+fn override_words(overrides String, number Int) String?:
 	for line in overrides.split("\n"):
 		words := line.cut_prefix(f"{number} ")
 		if words != null: return words
@@ -156,10 +156,10 @@ fn override_words(overrides: String, number: Int) String?:
 	return null
 
 fn status_error_text(
-	words: String,
-	move kind: String,
-	domain: String,
-	move said: String,
+	words String,
+	move kind String,
+	domain String,
+	move said String,
 ) Error:
 	if words == "-":
 		if said.length() > 0: return Error(said, kind: kind)
@@ -171,15 +171,15 @@ fn status_error_text(
 	return Error(f"{domain}: {words}", kind: kind)
 
 // Raises a programming fault with the supplied message and stops the current operation.
-export fn panic(message: String) Never: ...
+export fn panic(message String) Never: ...
 
 // The process-wide output buffer; standard output is flushed at exit
 // (crates/ms-rt/src/io.rs).
-extern fn msrt_io_write_stdout(text: String) Void
+extern fn msrt_io_write_stdout(text String) Void
 
 // Ends the calling task as cancelled when `status` is a cancelled wait or the task was
 // asked to stop.
-extern fn msrt_native_failed(status: UInt8) Void
+extern fn msrt_native_failed(status UInt8) Void
 
 /*
 Writes `value` as text, followed by `end` (a newline unless given), to standard output. `print(chunk, end: "")` streams text without a newline.
@@ -187,14 +187,14 @@ A type that declares its own `to_string()` prints that text, also when nested in
 `print` returns `Void`. Output to a terminal is flushed at each newline. Output to a pipe or file is flushed when the program blocks or exits, so a line printed before a wait is visible while it waits.
 Use `stdout()` from `@std/io/io.ms` to write text with no appended newline, or `stdout_bytes()` for bytes.
 
-<!-- manuscript-example: {"mode":"fragment","given":["total: Int","order: String"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["total Int","order String"]} -->
 ```manuscript
 print(f"total: {total}")
 print(order)
 ```
 */
 // ms: effect std.console.write
-export fn print[T](value: T, end: String = "\n") Void:
+export fn print[T](value T, end String = "\n") Void:
 	msrt_io_write_stdout(value.to_string() + end)
 
 /*
@@ -241,14 +241,14 @@ export enum Optional[T]:
 	// A present payload, retained by reference when T is mutable.
 	some(
 		// The contained value; unwrap and matching return this original payload.
-		value: T
+		value T
 	)
 	// An absent value with no payload; no T needs to be constructed.
 	null
 
 // Returns `ok` with the value, or `error` with `cause` when `value` is `null`. The
 // cause is built before the call whether or not it is used.
-export fn ok_or[T, E](move value: T?, move cause: E) T!E:
+export fn ok_or[T, E](move value T?, move cause E) T!E:
 	if value == null: return error(cause)
 	return ok(value)
 
@@ -257,38 +257,38 @@ export enum Result[T, E]:
 	// A successful result, retaining its payload without a deep copy.
 	ok(
 		// The successful value returned by unwrap, matching, or propagation.
-		value: T
+		value T
 	)
 	// An expected failure value; it is distinct from faults and cancellation.
 	error(
 		// The original domain error, retained through compatible Result propagation.
-		cause: E
+		cause E
 	)
 
 // Reports whether this result contains a successful value.
 fn Result[T, E].is_ok() Bool:
 	match self:
-		ok(_): return true
-		error(_): return false
+		ok(_) => return true
+		error(_) => return false
 
 // Reports whether this result contains an expected error.
 fn Result[T, E].is_error() Bool:
 	match self:
-		ok(_): return false
-		error(_): return true
+		ok(_) => return false
+		error(_) => return true
 
 // Returns the successful payload; an error raises a fault, so use it only when
 // failure is a bug. Prefer `?`, `if value := result:` or `get_or(default)`.
 fn Result[T, E].get() T:
 	match self:
-		ok(value): return value
-		error(cause): panic(
+		ok(value) => return value
+		error(cause) => panic(
 			f"called Result.get() on error: {cause}; check is_ok first, or use get_or(default)"
 		)
 
 // Returns the successful payload, or `default` when this is an error. The default is
 // always evaluated; use `get_or_else` when it costs work.
-fn move Result[T, E].get_or(move default: T?) T:
+fn move Result[T, E].get_or(move default T?) T:
 	if value := self: return value
 	if default != null: return default
 
@@ -298,59 +298,59 @@ fn move Result[T, E].get_or(move default: T?) T:
 // raises a fault.
 fn Result[T, E].err() E:
 	match self:
-		ok(_): panic("called Result.err() on ok; check is_error first")
-		error(cause): return cause
+		ok(_) => panic("called Result.err() on ok; check is_error first")
+		error(cause) => return cause
 
 // Returns the successful payload; for an error, calls `create` once with that error
 // and returns its value.
-fn move Result[T, E].get_or_else(create: fn(E) T) T:
+fn move Result[T, E].get_or_else(create fn(E) T) T:
 	match self:
-		ok(value): return value
-		error(cause): return create(cause)
+		ok(value) => return value
+		error(cause) => return create(cause)
 
 // Returns this result when it is successful; for an error, calls `create` once with
 // that error and returns the Result it produces.
-fn move Result[T, E].or_else(create: fn(move E) T!E) T!E:
+fn move Result[T, E].or_else(create fn(move E) T!E) T!E:
 	match self:
-		ok(value): return ok(value)
-		error(cause): return create(cause)
+		ok(value) => return ok(value)
+		error(cause) => return create(cause)
 
 // Transforms only an error, preserving a successful payload unchanged.
-fn move Result[T, E].map_error[F](transform: fn(move E) F) T!F:
+fn move Result[T, E].map_error[F](transform fn(move E) F) T!F:
 	match self:
-		ok(value): return ok(value)
-		error(cause): return error(transform(cause))
+		ok(value) => return ok(value)
+		error(cause) => return error(transform(cause))
 
 // Transforms only a successful payload, preserving an error unchanged.
-fn move Result[T, E].map[U](transform: fn(move T) U) U!E:
+fn move Result[T, E].map[U](transform fn(move T) U) U!E:
 	match self:
-		ok(value): return ok(transform(value))
-		error(cause): return error(cause)
+		ok(value) => return ok(transform(value))
+		error(cause) => return error(cause)
 
 // Calls `transform` only on success and returns the Result it produces; an error
 // passes through. The error type stays the same.
-fn move Result[T, E].and_then[U](transform: fn(move T) U!E) U!E:
+fn move Result[T, E].and_then[U](transform fn(move T) U!E) U!E:
 	match self:
-		ok(value): return transform(value)
-		error(cause): return error(cause)
+		ok(value) => return transform(value)
+		error(cause) => return error(cause)
 
 // Returns some with the original success payload, or null for an error.
 fn move Result[T, E].to_optional() T?:
 	match self:
-		ok(value): return value
-		error(_cause): return null
+		ok(value) => return value
+		error(_cause) => return null
 
 // A type that can be compared for equality. Built-in data keeps its value
 // semantics; an explicit implementation chooses what counts as the same value.
 export interface Equal:
 	// Compares this value with another value of the same type.
-	fn equals(other: Self) Bool
+	fn equals(other Self) Bool
 
 // A type with a total order; `compare` agrees with `equals` when both are implemented.
 export interface Comparable:
 	// Orders this value against another of the same type: negative when it sorts
 	// before, zero when neither sorts first, positive when it sorts after.
-	fn compare(other: Self) Int
+	fn compare(other Self) Int
 
 // A type whose values can be duplicated. Plain data is Clonable; resource handles,
 // natives without a `clone` of their own (a `Regex`, a `Pipe`), function values, and
@@ -391,14 +391,14 @@ Returns a copy of `cause` with `context` in front of its message, as in
 `error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
 added to `details["cause"]`.
 */
-export fn wrap_error(context: String, cause: Error) Error:
+export fn wrap_error(context String, cause Error) Error:
 	var details = cause.details.clone()
 	details.add("cause", cause.message.clone())
 	return Error(context + ": " + cause.message, cause.kind.clone(), details)
 
 // Combines `errors` into one error whose message holds theirs, one per line, and whose
 // `count` detail is how many there were. Returns null when the list is empty.
-export fn join_errors(errors: List[Error]) Error?:
+export fn join_errors(errors List[Error]) Error?:
 	if errors.is_empty(): return null
 
 	var text = ""
@@ -411,10 +411,10 @@ export fn join_errors(errors: List[Error]) Error?:
 	return Error(text, null, {"count": errors.length().to_string()})
 
 // An Optional copies its payload; `null` stays `null`.
-fn Optional[T: Clonable].clone() move T?:
+fn Optional[T Clonable].clone() move T?:
 	match self:
-		value: return value.clone()
-		null: return null
+		value => return value.clone()
+		null => return null
 
 // A String is its own text.
 fn String.to_string() String:
@@ -422,14 +422,14 @@ fn String.to_string() String:
 
 // Pads on the left (`pad_start`) or the right (`pad_end`) until the scalar length
 // reaches `target_length`, repeating `padding` and cutting its last copy.
-fn String.pad_start(target_length: Int, padding: String) String:
+fn String.pad_start(target_length Int, padding String) String:
 	return padding_for(self, target_length, padding) + self
 
 // Pads on the right until the scalar length reaches `target_length`; see `pad_start`.
-fn String.pad_end(target_length: Int, padding: String) String:
+fn String.pad_end(target_length Int, padding String) String:
 	return self + padding_for(self, target_length, padding)
 
-fn padding_for(text: String, target_length: Int, padding: String) String:
+fn padding_for(text String, target_length Int, padding String) String:
 	missing := target_length - text.scalar_length()
 	if missing <= 0 or padding.is_empty(): return ""
 

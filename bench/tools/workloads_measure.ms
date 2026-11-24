@@ -3,26 +3,26 @@
 import invalid, left, now_ns, right, rotate from "./lib.ms"
 
 export type Sample:
-	trial: Int
-	version: String
-	elapsed_ns: Int
+	trial Int
+	version String
+	elapsed_ns Int
 
 export fn versions() List[String]:
 	return ["ms", "go", "rs"]
 
 // The samples of every trial plus the expected output (produced by the Go reference).
 export type Measured:
-	samples: List[Sample]
-	expected: String
+	samples List[Sample]
+	expected String
 
-fn best(samples: List[Sample], version: String) Float:
+fn best(samples List[Sample], version String) Float:
 	var low = 0
 	for s in samples:
 		if s.version == version and (low == 0 or s.elapsed_ns < low): low = s.elapsed_ns
 	return low.to_float() / 1000000.0
 
 // `run(version)` executes one program with the workload's input and returns its standard output, or an error when it fails.
-export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!:
+export fn measure(repeats Int, name String, run fn(String) String!) Measured!:
 	if repeats < 1: return invalid("repeats must be positive")
 
 	// One untimed run of each version warms executable and input pages. The Go
@@ -51,7 +51,7 @@ export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!
 
 	return ok(Measured(samples, expected))
 
-export fn row(name: String, samples: List[Sample]) String:
+export fn row(name String, samples List[Sample]) String:
 	m := best(samples, "ms")
 	g := best(samples, "go")
 	r := best(samples, "rs")

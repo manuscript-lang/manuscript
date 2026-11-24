@@ -5,7 +5,7 @@ import expect_equal, expect_true from "@std/test/test.ms"
 // `pop` runs in line: the last element moves out, an empty list answers none, and a list
 // held in a field or inside another list changes in place.
 type Bag:
-	items: List[String]
+	items List[String]
 
 fn var Bag.take_last() String?:
 	return self.items.pop()

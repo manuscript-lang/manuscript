@@ -36,12 +36,12 @@ A borrow is a handle to a value that another binding owns. Until the borrow's la
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Box:
-    items: List[Int]
+    items List[Int]
 
 fn Box.list() List[Int]:
     return self.items
 
-fn grow(var b: Box) Int:
+fn grow(var b Box) Int:
     var xs = b.list()
     xs.append(1)
     return b.items.length()
@@ -56,33 +56,31 @@ The standard library follows the same rule: `List.first`, `List.last` and `Map.g
 
 ## Moving into a function
 
-The compiler infers how a function with a body treats each argument. A parameter that the body stores, returns, or hands to another owner is taken from the caller, and the caller's name is dead after the call.
-
-A signature with no body to read (an interface operation, a function type, or a standard-library native) borrows each argument unless it says `move`:
+A signature says how a function treats each argument; the compiler never reads the body to find out. A parameter borrows its argument unless the signature says `move`. A body that stores, returns, or hands on a parameter without `move` is an error: write `move`, or keep `.clone()` of it. A `move` parameter is taken from the caller, and the caller's name is dead after the call:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Item:
-    name: String
+    name String
 
 interface Sink:
-    fn add(move item: Item) Int
+    fn add(move item Item) Int
 
 type Log:
-    count: Int
+    count Int
 
-fn Log.add(move item: Item) Int:
+fn Log.add(move item Item) Int:
     return item.name.length()
 
-fn send(s: Sink, move item: Item) Int:
+fn send(s Sink, move item Item) Int:
     return s.add(item)
 ```
 
-- `move name: Type` says the callee takes the argument; `fn move Type.name` takes the receiver (`move fn name` in an interface). A caller writes nothing: the argument moves at its last use, and using it afterwards is an error.
-- `move` may be written on any function. Written on one with a body, it is the declared mode: a `move` parameter the body only reads is dropped when the body ends.
+- `move name Type` says the callee takes the argument; `fn move Type.name` takes the receiver (`move fn name` in an interface). A caller writes nothing: the argument moves at its last use, and using it afterwards is an error.
+- `move` may be written on any function. A `move` parameter the body only reads is dropped when the body ends.
 - A type meets an interface operation only when its method writes `move` exactly where the operation does, as with `var` parameters.
-- A function type carries `move`: `fn(move Item) Int` and `fn(Item) Int` are different types, and an anonymous function takes its modes from the expected type (`fn move x: ...`).
-- The standard collections declare what they keep: `fn var List[T].append(move value: T)`, `Map.add(move key: T, move value: U)`, `fn move BytesBuilder.build()`. A method value has the same modes as the call, so `xs.append` is a `fn(move T) Void` and `append(name)` takes `name` just as `xs.append(name)` does.
+- A function type carries `move`: `fn(move Item) Int` and `fn(Item) Int` are different types, and an anonymous function takes its modes from the expected type (`(move x) => ...`).
+- The standard collections declare what they keep: `fn var List[T].append(move value T)`, `Map.add(move key T, move value U)`, `fn move BytesBuilder.build()`. A method value has the same modes as the call, so `xs.append` is a `fn(move T) Void` and `append(name)` takes `name` just as `xs.append(name)` does.
 - A function without a body returns a new value. A call through an interface or a function value always owns its result, so a method that returns its own field (`return self.name`) cannot meet an interface operation; return `self.name.clone()`.
 - `move` and `var` do not combine on one parameter.
 

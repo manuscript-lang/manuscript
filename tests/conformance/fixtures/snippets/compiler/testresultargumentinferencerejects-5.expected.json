@@ -13,15 +13,15 @@
         "position": {
           "file": "testresultargumentinferencerejects-5.ms",
           "line": 6,
-          "column": 24,
-          "offset": 255
+          "column": 26,
+          "offset": 258
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresultargumentinferencerejects-5.ms:6:24: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first() Void: twice(f())\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresultargumentinferencerejects-5.ms:6:26: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first() Void => twice(f())\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

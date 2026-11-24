@@ -6,19 +6,19 @@ import (
 
 // ---------- values ----------
 type Val:
-	k: Int = 0
-	n: Int = 0
-	s: String = ""
+	k Int = 0
+	n Int = 0
+	s String = ""
 
-fn vnull() Val: Val()
+fn vnull() Val => Val()
 
-fn vint(n: Int) Val: Val(k: 1, n: n)
+fn vint(n Int) Val => Val(k: 1, n: n)
 
-fn vtext(s: String) Val: Val(k: 2, s: s)
+fn vtext(s String) Val => Val(k: 2, s: s)
 
-fn vbool(b: Bool) Val: Val(k: 3, n: if b: 1 else: 0)
+fn vbool(b Bool) Val => Val(k: 3, n: if b: 1 else: 0)
 
-fn val_str(v: Val) String:
+fn val_str(v Val) String:
 	if v.k == 0: return "NULL"
 	if v.k == 1: return f"{v.n}"
 	if v.k == 2: return v.s.clone()
@@ -26,28 +26,28 @@ fn val_str(v: Val) String:
 
 	return "false"
 
-fn vkey(v: Val) String:
+fn vkey(v Val) String:
 	return f"{v.k}:{v.n}:{v.s.length()}:{v.s}|"
 
-fn rowkey(row: List[Val], idxs: List[Int]) String:
+fn rowkey(row List[Val], idxs List[Int]) String:
 	var out = ""
 	for i in idxs:
 		out += vkey(row[i])
 	return out
 
-fn err(msg: String) Error: Error(msg)
+fn err(msg String) Error => Error(msg)
 
-fn syn() Error: Error("syntax error")
+fn syn() Error => Error("syntax error")
 
 // ---------- tokens ----------
 type Token:
-	kind: Int = 0
-	text: String = ""
-	n: Int = 0
+	kind Int = 0
+	text String = ""
+	n Int = 0
 
 type Chunk:
-	toks: List[Token]
-	bad: Bool = false
+	toks List[Token]
+	bad Bool = false
 
 fn keywords() Set[String]:
 	var s = Set[String]()
@@ -58,13 +58,13 @@ fn keywords() Set[String]:
 		s.add(w.clone())
 	return s
 
-fn is_alpha(c: Int) Bool: (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
+fn is_alpha(c Int) Bool => (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
 
-fn is_digit(c: Int) Bool: c >= 48 and c <= 57
+fn is_digit(c Int) Bool => c >= 48 and c <= 57
 
-fn sub(src: Bytes, a: Int, b: Int) String: src.decode_utf8_range(a, b) or ""
+fn sub(src Bytes, a Int, b Int) String => src.decode_utf8_range(a, b) or ""
 
-fn lex(src: Bytes) List[Chunk]:
+fn lex(src Bytes) List[Chunk]:
 	kws := keywords()
 	var out = List[Chunk]()
 	var toks = List[Token]()
@@ -213,101 +213,101 @@ FUNC := 9
 AGG := 10
 
 type Node:
-	kind: Int = 0
-	op: String = ""
-	neg: Bool = false
-	lit: Val = Val()
-	qual: String = ""
-	name: String = ""
-	col: Int = -1
-	args: List[Int] = List[Int]()
-	star: Bool = false
-	distinct: Bool = false
+	kind Int = 0
+	op String = ""
+	neg Bool = false
+	lit Val = Val()
+	qual String = ""
+	name String = ""
+	col Int = -1
+	args List[Int] = List[Int]()
+	star Bool = false
+	distinct Bool = false
 
 type Item:
-	star: Bool = false
-	qual: String = ""
-	expr: Int = -1
-	alias: String = ""
-	has_alias: Bool = false
+	star Bool = false
+	qual String = ""
+	expr Int = -1
+	alias String = ""
+	has_alias Bool = false
 
 type Tref:
-	name: String = ""
-	alias: String = ""
+	name String = ""
+	alias String = ""
 
 type JoinSpec:
-	left: Bool = false
-	on: Int = -1
+	left Bool = false
+	on Int = -1
 
 type OrderSpec:
-	expr: Int = -1
-	desc: Bool = false
-	ref: Int = -1
+	expr Int = -1
+	desc Bool = false
+	ref Int = -1
 
 type Stmt:
-	kind: Int = 0
-	nodes: List[Node] = List[Node]()
-	table: String = ""
-	colnames: List[String] = List[String]()
-	coltypes: List[Int] = List[Int]()
-	colnn: List[Bool] = List[Bool]()
-	colpk: List[Bool] = List[Bool]()
-	cols: List[String] = List[String]()
-	hascols: Bool = false
-	rows: List[List[Int]] = List[List[Int]]()
-	setcols: List[String] = List[String]()
-	setexprs: List[Int] = List[Int]()
-	where: Int = -1
-	distinct: Bool = false
-	items: List[Item] = List[Item]()
-	trefs: List[Tref] = List[Tref]()
-	joins: List[JoinSpec] = List[JoinSpec]()
-	groupby: List[Int] = List[Int]()
-	having: Int = -1
-	orderby: List[OrderSpec] = List[OrderSpec]()
-	limit: Int = -1
-	offset: Int = 0
+	kind Int = 0
+	nodes List[Node] = List[Node]()
+	table String = ""
+	colnames List[String] = List[String]()
+	coltypes List[Int] = List[Int]()
+	colnn List[Bool] = List[Bool]()
+	colpk List[Bool] = List[Bool]()
+	cols List[String] = List[String]()
+	hascols Bool = false
+	rows List[List[Int]] = List[List[Int]]()
+	setcols List[String] = List[String]()
+	setexprs List[Int] = List[Int]()
+	where Int = -1
+	distinct Bool = false
+	items List[Item] = List[Item]()
+	trefs List[Tref] = List[Tref]()
+	joins List[JoinSpec] = List[JoinSpec]()
+	groupby List[Int] = List[Int]()
+	having Int = -1
+	orderby List[OrderSpec] = List[OrderSpec]()
+	limit Int = -1
+	offset Int = 0
 
 // ---------- parser ----------
 type Parser:
-	toks: List[Token]
-	pos: Int = 0
-	nodes: List[Node] = List[Node]()
+	toks List[Token]
+	pos Int = 0
+	nodes List[Node] = List[Node]()
 
-fn Parser.k(off: Int = 0) Int:
+fn Parser.k(off Int = 0) Int:
 	var i = self.pos + off
 	if i >= self.toks.length(): i = self.toks.length() - 1
 	return self.toks[i].kind
 
-fn Parser.t(off: Int = 0) String:
+fn Parser.t(off Int = 0) String:
 	var i = self.pos + off
 	if i >= self.toks.length(): i = self.toks.length() - 1
 	return self.toks[i].text.clone()
 
-fn Parser.num() Int: self.toks[self.pos].n
+fn Parser.num() Int => self.toks[self.pos].n
 
-fn Parser.is_kw(w: String, off: Int = 0) Bool: self.k(off) == 2 and self.t(off) == w
+fn Parser.is_kw(w String, off Int = 0) Bool => self.k(off) == 2 and self.t(off) == w
 
-fn Parser.is_op(o: String, off: Int = 0) Bool: self.k(off) == 5 and self.t(off) == o
+fn Parser.is_op(o String, off Int = 0) Bool => self.k(off) == 5 and self.t(off) == o
 
-fn var Parser.accept_kw(w: String) Bool:
+fn var Parser.accept_kw(w String) Bool:
 	if self.is_kw(w):
 		self.pos += 1
 		return true
 
 	return false
 
-fn var Parser.accept_op(o: String) Bool:
+fn var Parser.accept_op(o String) Bool:
 	if self.is_op(o):
 		self.pos += 1
 		return true
 
 	return false
 
-fn var Parser.expect_kw(w: String) Void!:
+fn var Parser.expect_kw(w String) Void!:
 	if not self.accept_kw(w): return error(syn())
 
-fn var Parser.expect_op(o: String) Void!:
+fn var Parser.expect_op(o String) Void!:
 	if not self.accept_op(o): return error(syn())
 
 fn var Parser.name() String!:
@@ -317,12 +317,12 @@ fn var Parser.name() String!:
 	self.pos += 1
 	return ok(s)
 
-fn var Parser.add(n: Node) Int:
+fn var Parser.add(n Node) Int:
 	id := self.nodes.length()
 	self.nodes.append(n)
 	return id
 
-fn var Parser.bin(op: String, l: Int, r: Int) Int:
+fn var Parser.bin(op String, l Int, r Int) Int:
 	var a = List[Int]()
 	a.append(l)
 	a.append(r)
@@ -457,7 +457,7 @@ fn var Parser.parse_unary() Int!:
 
 	return self.parse_primary()
 
-fn is_agg_name(s: String) Bool: s == "COUNT" or s == "SUM" or s == "MIN" or s == "MAX"
+fn is_agg_name(s String) Bool => s == "COUNT" or s == "SUM" or s == "MIN" or s == "MAX"
 
 fn var Parser.parse_primary() Int!:
 	kd := self.k()
@@ -727,13 +727,13 @@ fn var Parser.parse_stmt() Stmt!:
 
 // ---------- tables ----------
 type Table:
-	cols: List[String] = List[String]()
-	types: List[Int] = List[Int]()
-	nn: List[Bool] = List[Bool]()
-	pk: Int = -1
-	rows: List[List[Val]] = List[List[Val]]()
+	cols List[String] = List[String]()
+	types List[Int] = List[Int]()
+	nn List[Bool] = List[Bool]()
+	pk Int = -1
+	rows List[List[Val]] = List[List[Val]]()
 
-fn get_table(db: Map[String, Table], name: String) Table!:
+fn get_table(db Map[String, Table], name String) Table!:
 	t := db.get(name)
 	if t != null: return ok(t.clone())
 
@@ -741,25 +741,25 @@ fn get_table(db: Map[String, Table], name: String) Table!:
 
 // ---------- resolve ----------
 type ScopeCol:
-	alias: String
-	name: String
-	idx: Int
-	tbl: Int
+	alias String
+	name String
+	idx Int
+	tbl Int
 
 type Rctx:
-	cols: List[ScopeCol]
-	allow_agg: Bool = false
-	aggregated: Bool = false
-	gb: List[Int] = List[Int]()
+	cols List[ScopeCol]
+	allow_agg Bool = false
+	aggregated Bool = false
+	gb List[Int] = List[Int]()
 
-fn has_agg(nodes: List[Node], id: Int) Bool:
+fn has_agg(nodes List[Node], id Int) Bool:
 	if nodes[id].kind == AGG: return true
 
 	for a in nodes[id].args:
 		if has_agg(nodes, a): return true
 	return false
 
-fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
+fn resolve(var nodes List[Node], id Int, rc Rctx, in_agg Bool) Void!:
 	kind := nodes[id].kind
 	if kind == LIT: return
 
@@ -813,9 +813,9 @@ fn resolve(var nodes: List[Node], id: Int, rc: Rctx, in_agg: Bool) Void!:
 		resolve(nodes, a, rc, in_agg)?
 
 // ---------- eval ----------
-fn type_error() Error: Error("type error")
+fn type_error() Error => Error("type error")
 
-fn cmp_vals(a: Val, b: Val) Int!:
+fn cmp_vals(a Val, b Val) Int!:
 	if a.k == 1 and b.k == 1:
 		if a.n < b.n: return ok(-1)
 		if a.n > b.n: return ok(1)
@@ -827,25 +827,25 @@ fn cmp_vals(a: Val, b: Val) Int!:
 	return error(type_error())
 
 // three-valued compare: returns boolean/null Val
-fn cmp_op(op: String, a: Val, b: Val) Val!:
+fn cmp_op(op String, a Val, b Val) Val!:
 	if a.k == 0 or b.k == 0: return ok(vnull())
 
 	c := cmp_vals(a, b)?
 	r := if op == "=": c == 0 else if op == "<>": c != 0 else if op == "<": c < 0 else if op == "<=": c <= 0 else if op == ">": c > 0 else: c >= 0
 	return ok(vbool(r))
 
-fn tern(v: Val) Int!:
+fn tern(v Val) Int!:
 	// -1 null, 0 false, 1 true
 	if v.k == 0: return ok(-1)
 	if v.k == 3: return ok(v.n)
 
 	return error(type_error())
 
-fn from_tern(t: Int) Val:
+fn from_tern(t Int) Val:
 	if t < 0: return vnull()
 	return vbool(t == 1)
 
-fn like_match(t: Bytes, p: Bytes) Bool:
+fn like_match(t Bytes, p Bytes) Bool:
 	tl := t.length()
 	pl := p.length()
 	var ti = 0
@@ -878,7 +878,7 @@ fn like_match(t: Bytes, p: Bytes) Bool:
 		pi += 1
 	return pi == pl
 
-fn ascii_map(s: String, up: Bool) String:
+fn ascii_map(s String, up Bool) String:
 	var parts = List[String]()
 
 	for ch in s.chars():
@@ -889,7 +889,7 @@ fn ascii_map(s: String, up: Bool) String:
 
 	return parts.join("")
 
-fn eval(nodes: List[Node], id: Int, row: List[Val], grp: List[List[Val]]) Val!:
+fn eval(nodes List[Node], id Int, row List[Val], grp List[List[Val]]) Val!:
 	kind := nodes[id].kind
 	if kind == LIT: return ok(nodes[id].lit.clone())
 	if kind == COL: return ok(row[nodes[id].col].clone())
@@ -1021,7 +1021,7 @@ fn eval(nodes: List[Node], id: Int, row: List[Val], grp: List[List[Val]]) Val!:
 
 	return eval_agg(nodes, id, grp)
 
-fn eval_func(nodes: List[Node], id: Int, row: List[Val], grp: List[List[Val]]) Val!:
+fn eval_func(nodes List[Node], id Int, row List[Val], grp List[List[Val]]) Val!:
 	opn := nodes[id].op.clone()
 	var vals = List[Val]()
 	for a in nodes[id].args:
@@ -1063,7 +1063,7 @@ fn eval_func(nodes: List[Node], id: Int, row: List[Val], grp: List[List[Val]]) V
 
 	return ok(vtext(""))
 
-fn eval_agg(nodes: List[Node], id: Int, grp: List[List[Val]]) Val!:
+fn eval_agg(nodes List[Node], id Int, grp List[List[Val]]) Val!:
 	opn := nodes[id].op.clone()
 	if nodes[id].star: return ok(vint(grp.length()))
 
@@ -1109,11 +1109,11 @@ fn eval_agg(nodes: List[Node], id: Int, grp: List[List[Val]]) Val!:
 
 	return ok(best)
 
-fn cond_true(v: Val) Bool!:
+fn cond_true(v Val) Bool!:
 	t := tern(v)?
 	return ok(t == 1)
 
-fn sort_cmp(a: Val, b: Val) Int:
+fn sort_cmp(a Val, b Val) Int:
 	if a.k != b.k: return if a.k < b.k: -1 else: 1
 
 	if a.k == 1 or a.k == 3:
@@ -1128,10 +1128,10 @@ fn sort_cmp(a: Val, b: Val) Int:
 
 // ---------- select ----------
 type OutRow:
-	vals: List[Val]
-	keys: List[Val]
+	vals List[Val]
+	keys List[Val]
 
-fn concat(a: List[Val], b: List[Val]) List[Val]:
+fn concat(a List[Val], b List[Val]) List[Val]:
 	var out = List[Val]()
 	for v in a:
 		out.append(v.clone())
@@ -1140,11 +1140,11 @@ fn concat(a: List[Val], b: List[Val]) List[Val]:
 	return out
 
 fn project(
-	nodes: List[Node],
-	outn: List[Int],
-	ords: List[OrderSpec],
-	row: List[Val],
-	grp: List[List[Val]],
+	nodes List[Node],
+	outn List[Int],
+	ords List[OrderSpec],
+	row List[Val],
+	grp List[List[Val]],
 ) OutRow!:
 	var vals = List[Val]()
 	for n in outn:
@@ -1160,7 +1160,7 @@ fn project(
 
 	return ok(OutRow(vals: vals, keys: keys))
 
-fn exec_select(db: Map[String, Table], var st: Stmt) String!:
+fn exec_select(db Map[String, Table], var st Stmt) String!:
 	var tables = List[Table]()
 	var scope = List[ScopeCol]()
 	var widths = List[Int]()
@@ -1393,7 +1393,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 		outrows = uniq
 
 	if ords.length() > 0:
-		outrows.sort(fn a, b: order_cmp(a, b, ords))
+		outrows.sort((a, b) => order_cmp(a, b, ords))
 
 	var lines = List[String]()
 	lines.append(outnames.join("|"))
@@ -1418,7 +1418,7 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 	lines.append(f"({count} rows)")
 	return ok(lines.join("\n"))
 
-fn order_cmp(a: OutRow, b: OutRow, ords: List[OrderSpec]) Int:
+fn order_cmp(a OutRow, b OutRow, ords List[OrderSpec]) Int:
 	var i = 0
 
 	while i < ords.length():
@@ -1430,7 +1430,7 @@ fn order_cmp(a: OutRow, b: OutRow, ords: List[OrderSpec]) Int:
 	return 0
 
 // ---------- DML ----------
-fn check_row(t: Table, row: List[Val]) Void!:
+fn check_row(t Table, row List[Val]) Void!:
 	var i = 0
 
 	while i < t.cols.length():
@@ -1443,7 +1443,7 @@ fn check_row(t: Table, row: List[Val]) Void!:
 
 		i += 1
 
-fn check_pk(t: Table, rows: List[List[Val]]) Void!:
+fn check_pk(t Table, rows List[List[Val]]) Void!:
 	if t.pk < 0: return
 
 	var seen = Set[String]()
@@ -1456,7 +1456,7 @@ fn check_pk(t: Table, rows: List[List[Val]]) Void!:
 
 		seen.add(key)
 
-fn table_scope(name: String, t: Table) List[ScopeCol]:
+fn table_scope(name String, t Table) List[ScopeCol]:
 	var sc = List[ScopeCol]()
 	var i = 0
 
@@ -1466,7 +1466,7 @@ fn table_scope(name: String, t: Table) List[ScopeCol]:
 
 	return sc
 
-fn col_index(t: Table, name: String) Int:
+fn col_index(t Table, name String) Int:
 	var i = 0
 
 	for c in t.cols:
@@ -1476,7 +1476,7 @@ fn col_index(t: Table, name: String) Int:
 
 	return -1
 
-fn exec_insert(var db: Map[String, Table], var st: Stmt) String!:
+fn exec_insert(var db Map[String, Table], var st Stmt) String!:
 	t := get_table(db, st.table)?
 	var colmap = List[Int]()
 
@@ -1527,7 +1527,7 @@ fn exec_insert(var db: Map[String, Table], var st: Stmt) String!:
 	db[st.table.clone()] = nt
 	return ok(f"inserted {n}")
 
-fn exec_update(var db: Map[String, Table], var st: Stmt) String!:
+fn exec_update(var db Map[String, Table], var st Stmt) String!:
 	t := get_table(db, st.table)?
 	var idxs = List[Int]()
 
@@ -1576,7 +1576,7 @@ fn exec_update(var db: Map[String, Table], var st: Stmt) String!:
 	db[st.table.clone()] = nt
 	return ok(f"updated {count}")
 
-fn exec_delete(var db: Map[String, Table], var st: Stmt) String!:
+fn exec_delete(var db Map[String, Table], var st Stmt) String!:
 	t := get_table(db, st.table)?
 	rc := Rctx(cols: table_scope(st.table, t), allow_agg: false)
 	if st.where >= 0:
@@ -1603,7 +1603,7 @@ fn exec_delete(var db: Map[String, Table], var st: Stmt) String!:
 	db[st.table.clone()] = nt
 	return ok(f"deleted {count}")
 
-fn exec_create(var db: Map[String, Table], st: Stmt) String!:
+fn exec_create(var db Map[String, Table], st Stmt) String!:
 	if db.contains(st.table): return error(err(f"table {st.table} already exists"))
 
 	var t = Table()
@@ -1626,13 +1626,13 @@ fn exec_create(var db: Map[String, Table], st: Stmt) String!:
 	db[st.table.clone()] = t
 	return ok("ok")
 
-fn exec_drop(var db: Map[String, Table], st: Stmt) String!:
+fn exec_drop(var db Map[String, Table], st Stmt) String!:
 	if not db.contains(st.table): return error(err(f"no such table: {st.table}"))
 
 	db.remove(st.table)
 	return ok("ok")
 
-fn run_chunk(var db: Map[String, Table], ch: Chunk) String!:
+fn run_chunk(var db Map[String, Table], ch Chunk) String!:
 	if ch.bad: return error(syn())
 
 	var p = Parser(toks: ch.toks.clone())

@@ -13,8 +13,8 @@
         "position": {
           "file": "golden-1048.ms",
           "line": 3,
-          "column": 24,
-          "offset": 76
+          "column": 23,
+          "offset": 75
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "golden-1048.ms",
           "line": 3,
-          "column": 50,
-          "offset": 102
+          "column": 49,
+          "offset": 101
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "golden-1048.ms",
           "line": 3,
-          "column": 74,
-          "offset": 126
+          "column": 73,
+          "offset": 125
         }
       },
       {
@@ -46,15 +46,15 @@
         "position": {
           "file": "golden-1048.ms",
           "line": 3,
-          "column": 101,
-          "offset": 153
+          "column": 100,
+          "offset": 152
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1048.ms:3:24: resolution: unknown binding initial_account_balance; declare it with 'initial_account_balance := ...' before use, define 'fn initial_account_balance(...) T:', or import it from a module\n   |\n 3 | fn work(balance: Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                        ^\n<DIR>/golden-1048.ms:3:50: resolution: unknown binding pending_deposit_total; declare it with 'pending_deposit_total := ...' before use, define 'fn pending_deposit_total(...) T:', or import it from a module\n   |\n 3 | fn work(balance: Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                                                  ^\n<DIR>/golden-1048.ms:3:74: resolution: unknown binding applicable_exchange_rate; declare it with 'applicable_exchange_rate := ...' before use, define 'fn applicable_exchange_rate(...) T:', or import it from a module\n   |\n 3 | fn work(balance: Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                                                                          ^\n<DIR>/golden-1048.ms:3:101: resolution: unknown binding pending_withdrawal_total; declare it with 'pending_withdrawal_total := ...' before use, define 'fn pending_withdrawal_total(...) T:', or import it from a module\n   |\n 3 | fn work(balance: Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                                                                                                     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1048.ms:3:23: resolution: unknown binding initial_account_balance; declare it with 'initial_account_balance := ...' before use, define 'fn initial_account_balance(...) T:', or import it from a module\n   |\n 3 | fn work(balance Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                       ^\n<DIR>/golden-1048.ms:3:49: resolution: unknown binding pending_deposit_total; declare it with 'pending_deposit_total := ...' before use, define 'fn pending_deposit_total(...) T:', or import it from a module\n   |\n 3 | fn work(balance Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                                                 ^\n<DIR>/golden-1048.ms:3:73: resolution: unknown binding applicable_exchange_rate; declare it with 'applicable_exchange_rate := ...' before use, define 'fn applicable_exchange_rate(...) T:', or import it from a module\n   |\n 3 | fn work(balance Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                                                                         ^\n<DIR>/golden-1048.ms:3:100: resolution: unknown binding pending_withdrawal_total; declare it with 'pending_withdrawal_total := ...' before use, define 'fn pending_withdrawal_total(...) T:', or import it from a module\n   |\n 3 | fn work(balance Int = initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total) Int:\n   |                                                                                                    ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

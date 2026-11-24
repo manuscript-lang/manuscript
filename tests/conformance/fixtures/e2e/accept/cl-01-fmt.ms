@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/cl-01.ms
 import expect_equal from "@std/test/test.ms"
 
-fn subtract(amount: Int, deduction: Int) Int:
+fn subtract(amount Int, deduction Int) Int:
     return amount - deduction
 
 test "named multiline call":

@@ -15,65 +15,65 @@ export fn root() String:
 
 // Documentation for the Manuscript context bundle comes from here; override to pin a
 // different checkout.
-export fn repo() String: env("MSBENCH_REPO", if root() == ".": "../.." else: ".")
+export fn repo() String => env("MSBENCH_REPO", if root() == ".": "../.." else: ".")
 
 // One input and the exact output expected for it.
 export type Case:
-	stdin: String
-	stdout: String
-	name: String = "?"
+	stdin String
+	stdout String
+	name String = "?"
 
 type Meta:
-	title: String
-	category: String
-	tier: Int
-	timeout_s: Int = 5
+	title String
+	category String
+	tier Int
+	timeout_s Int = 5
 	// Agent wall-clock limit for this challenge when longer than the run's; 0 for none.
-	agent_timeout_s: Int = 0
+	agent_timeout_s Int = 0
 
 export type Challenge:
-	id: String
-	title: String
-	category: String
-	tier: Int
-	timeout_s: Int
-	agent_timeout_s: Int
-	dir: String
+	id String
+	title String
+	category String
+	tier Int
+	timeout_s Int
+	agent_timeout_s Int
+	dir String
 
-fn Challenge.spec() String: (
+fn Challenge.spec() String => (
 	read_file(f"{self.dir}/spec.md").wait().get().decode_utf8()
 	or ""
 )
 
 // `which` is `examples` (visible to the agent) or `hidden`.
-fn Challenge.cases(which: String) List[Case]:
+fn Challenge.cases(which String) List[Case]:
 	text := (
 		read_file(f"{self.dir}/{which}/cases.json").wait().get().decode_utf8()
 		or ""
 	)
 	return parse[List[Case]](text).get_or([])
 
-fn Challenge.solution(lang: String) String: f"{self.dir}/solutions/{lang}"
+fn Challenge.solution(lang String) String => f"{self.dir}/solutions/{lang}"
 
 // A language the benchmark can be solved in, as `languages.json` describes it.
 export type Lang:
-	id: String
-	name: String
-	solution: String
-	build: String
-	run: String
-	notes: String
-	template: String
-	context: List[String]
+	id String
+	name String
+	solution String
+	build String
+	run String
+	notes String
+	template String
+	context List[String]
 	// Shell command run in the new workspace, such as installing the agent skill.
-	setup: String
+	setup String
 	// Shell command that prints the diagnostic codes of the last build, one per line.
-	codes: String
+	codes String
 	// Shell command applying the language's machine-applicable fixes in place; empty
 	// when it has none.
-	fix: String
+	fix String
 	// Shell command that prints the toolchain's version.
-	version: String
+	version String
 
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String:
@@ -84,12 +84,12 @@ fn Lang.suffix() String:
 	return ""
 
 // The file name of the reference solution, such as `main.ms.ref`.
-fn Lang.reference() String: f"{(self.solution.split("/").last() or "")}.ref"
+fn Lang.reference() String => f"{(self.solution.split("/").last() or "")}.ref"
 
-fn text_of(file: String) String:
+fn text_of(file String) String:
 	return read_file(file).wait().get().decode_utf8() or ""
 
-fn field(doc: JsonValue, key: String) String:
+fn field(doc JsonValue, key String) String:
 	value := doc.get(key)
 	if value != null: return value.as_string() or ""
 
@@ -97,7 +97,7 @@ fn field(doc: JsonValue, key: String) String:
 
 // Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty),
 // in id order.
-export fn load_challenges(ids: List[String]) List[Challenge]:
+export fn load_challenges(ids List[String]) List[Challenge]:
 	var out = List[Challenge]()
 	var names = List[String]()
 	for entry in list(f"{root()}/challenges").get_or([]):
@@ -113,7 +113,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 		)
 		wanted := (
 			ids.is_empty()
-			or ids.any(fn i: (name == i or name.starts_with(f"{i}-")))
+			or ids.any(i => (name == i or name.starts_with(f"{i}-")))
 		)
 		if wanted: out.append(
 			Challenge(
@@ -131,7 +131,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 
 // Languages named in `ids` (all when empty), in file order; an unknown id stops the
 // program.
-export fn load_languages(ids: List[String]) List[Lang]:
+export fn load_languages(ids List[String]) List[Lang]:
 	doc := parse(text_of(f"{root()}/languages.json")).get_or(JsonValue.Null)
 	var out = List[Lang]()
 	var known = List[String]()
@@ -167,16 +167,16 @@ export fn load_languages(ids: List[String]) List[Lang]:
 			)
 		)
 
-	unknown := ids.filter(fn i: not known.contains(i))
+	unknown := ids.filter(i => not known.contains(i))
 	if not unknown.is_empty(): panic(f"unknown languages: {unknown.join(", ")}")
 	return out
 
 // Estimated USD from `pricing.json`; `tokens_in` excludes cached tokens.
 export fn cost_from_tokens(
-	tokens_in: Int,
-	cached: Int,
-	tokens_out: Int,
-	model: String,
+	tokens_in Int,
+	cached Int,
+	tokens_out Int,
+	model String,
 ) Float:
 	table := parse(text_of(f"{root()}/pricing.json")).get_or(JsonValue.Null)
 	var p = table.get("default") or JsonValue.Null

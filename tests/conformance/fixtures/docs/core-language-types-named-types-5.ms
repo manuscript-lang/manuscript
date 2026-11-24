@@ -5,7 +5,7 @@ interface Counter:
     var fn increment() Void
 
 type Val:
-    val: Int
+    val Int
 
 fn var Val.increment() Void:
     self.val = self.val + 1

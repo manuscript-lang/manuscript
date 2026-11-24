@@ -13,15 +13,15 @@
         "position": {
           "file": "golden-0323.ms",
           "line": 7,
-          "column": 19,
-          "offset": 127
+          "column": 20,
+          "offset": 128
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0323.ms:7:19: type: expected B, found A (in the return value); use a concrete value implementing B\n   |\n 7 | fn f(value: A) B: value\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0323.ms:7:20: type: expected B, found A (in the return value); use a concrete value implementing B\n   |\n 7 | fn f(value A) B => value\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

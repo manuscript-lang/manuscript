@@ -9,9 +9,9 @@ interface Label:
 	fn checked() String!
 
 type Pet:
-	name: String
-	labels: List[String]
-	alias: String?
+	name String
+	labels List[String]
+	alias String?
 
 fn Pet.text() String:
 	return self.name.clone()
@@ -25,12 +25,12 @@ fn Pet.nick() String?:
 fn Pet.checked() String!:
 	return ok(self.name.clone())
 
-fn describe(label: Label) String:
+fn describe(label Label) String:
 	return label.text() + "/" + label.tags().length().to_string()
 
 test "an interface operation returns the clone its method writes":
 	pet := Pet("rex", ["a", "b"], "r")
-	view: Label := pet
+	view Label := pet
 	expect_equal(view.text(), "rex")?
 	expect_equal(view.tags(), ["a", "b"])?
 	expect_equal(view.nick(), "r")?
@@ -39,11 +39,11 @@ test "an interface operation returns the clone its method writes":
 	expect_equal(pet.name, "rex")?
 
 test "a result of an operation outlives the value it was read from":
-	var out: List[String] = []
+	var out List[String] = []
 
 	for i in 0..3:
 		pet := Pet(f"p{i}", [], null)
-		view: Label := pet
+		view Label := pet
 		out.append(view.text())
 
 	expect_equal(out, ["p0", "p1", "p2"])?

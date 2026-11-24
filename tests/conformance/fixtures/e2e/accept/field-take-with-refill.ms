@@ -5,15 +5,15 @@
 import Closeable from "@std/core.ms"
 
 type Half:
-	id: Int
-	done: Bool = false
+	id Int
+	done Bool = false
 
 fn move Half.close() Void!:
 	if not self.done: print(f"close {self.id}")
 
 type Pair:
-	first: Half
-	second: Half
+	first Half
+	second Half
 
 fn var Pair.end_first() Void!:
 	half := self.first

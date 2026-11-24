@@ -6,4 +6,4 @@ fn caller() Int!:
         ok(value):
             operation()
             operation()
-        error(cause): operation()
+        error(cause) => operation()

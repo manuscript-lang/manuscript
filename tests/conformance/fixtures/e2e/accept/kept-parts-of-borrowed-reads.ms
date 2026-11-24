@@ -7,7 +7,7 @@ import expect_equal from "@std/test/test.ms"
 fn failed() String!:
 	return error(Error("boom"))
 
-fn names(suite: String) List[String]:
+fn names(suite String) List[String]:
 	if suite == "kernels": return ["sieve", "nbody"]
 	return ["call"]
 

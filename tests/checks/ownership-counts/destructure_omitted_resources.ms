@@ -20,31 +20,31 @@ import (
 )
 
 type Token:
-	id: Int
+	id Int
 
 fn move Token.close() Void!:
 	return stdout().write(f"close {self.id}\n")
 
 type Triple:
-	first: Token
-	second: Token
-	third: Token
+	first Token
+	second Token
+	third Token
 
 type Nested:
-	kept: Token
-	omitted: Triple
+	kept Token
+	omitted Triple
 
 type NamedToken:
-	id: Int
-	name: String
+	id Int
+	name String
 
 fn move NamedToken.close() Void!:
 	return stdout().write(f"close {self.id}\n")
 
 type NamedTriple:
-	first: NamedToken
-	second: NamedToken
-	third: NamedToken
+	first NamedToken
+	second NamedToken
+	third NamedToken
 
 fn local() Void:
 	tokens := Triple(Token(1), Token(2), Token(3))

@@ -26,7 +26,7 @@ import (
 // below `max_exclusive`. When `max_exclusive` is `null`, the upper bound is the
 // largest Int. A `min` that is not below the bound returns `EINVAL`.
 // ms: effect std.random.read
-export fn secure_int(min: Int, max_exclusive: Int?) Int!:
+export fn secure_int(min Int, max_exclusive Int?) Int!:
 	return draw_int(min, max_exclusive)
 
 /*
@@ -74,7 +74,7 @@ The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API ke
 `size` follows `random_bytes`: 0 through 16 MiB, otherwise `EINVAL`.
 */
 // ms: effect std.random.read
-export fn token(size: Int = 32) String!:
+export fn token(size Int = 32) String!:
 	data := random_bytes(size)?
 	return ok(base64_encode(data, url_safe: true, padded: false))
 
@@ -86,24 +86,24 @@ export fn float() Float!:
 
 // Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
 // ms: effect std.random.read
-export fn shuffle[T](move values: List[T]) List[T]!:
+export fn shuffle[T](move values List[T]) List[T]!:
 	return draw_shuffle(values)
 
 // Returns a uniformly chosen item, or null for an empty list.
 // ms: effect std.random.read
-export fn choice[T: Clonable](values: List[T]) T?!:
+export fn choice[T Clonable](values List[T]) T?!:
 	return draw_choice(values)
 
 // Returns `count` items chosen uniformly without replacement, in random order, as
 // copies; the input is unchanged. A `count` outside 0 through the list length returns
 // `EINVAL`.
 // ms: effect std.random.read
-export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
+export fn sample[T Clonable](values List[T], count Int) List[T]!:
 	if count < 0 or count > values.length():
 		return error(Error("random: invalid input", kind: "EINVAL"))
 
 	var order = positions(if count == 0: 0 else: values.length())
-	var out: List[T] = []
+	var out List[T] = []
 
 	for i in 0..count:
 		at := secure_int(i, values.length())?
@@ -116,7 +116,7 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 // empty list. `weights` must match `values` in length, hold no negative or non-finite
 // weight, and not all be zero; otherwise this returns `EINVAL`.
 // ms: effect std.random.read
-export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
+export fn weighted_choice[T Clonable](values List[T], weights List[Float]) T?!:
 	if values.is_empty() and weights.is_empty(): return ok(null)
 
 	total := weight_total(values.length(), weights)
@@ -125,8 +125,8 @@ export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?
 	point := float()?
 	return ok(values[weighted_position(weights, point, total)].clone())
 
-fn positions(count: Int) List[Int]:
-	var out: List[Int] = []
+fn positions(count Int) List[Int]:
+	var out List[Int] = []
 	for i in 0..count:
 		out.append(i)
 	return out
@@ -136,7 +136,7 @@ Returns the total, or zero for an invalid length, weight or all-zero total. An i
 valid when all individual weights are finite; selection scales it before use. A loop rather than
 `List.sum`, because the collection extensions cannot be used by modules `math.ms` imports.
 */
-fn weight_total(count: Int, weights: List[Float]) Float:
+fn weight_total(count Int, weights List[Float]) Float:
 	if weights.length() != count: return 0.0
 
 	var total = 0.0
@@ -150,7 +150,7 @@ fn weight_total(count: Int, weights: List[Float]) Float:
 
 // Selects a positive-weight position from a unit draw, keeping ordinary sums on their
 // original scale.
-fn weighted_position(weights: List[Float], unit_draw: Float, total: Float) Int:
+fn weighted_position(weights List[Float], unit_draw Float, total Float) Int:
 	if not total.is_finite() or total < 2.2250738585072014e-308:
 		return scaled_weighted_position(weights, unit_draw)
 
@@ -168,7 +168,7 @@ fn weighted_position(weights: List[Float], unit_draw: Float, total: Float) Int:
 
 // A largest-weight scale keeps an overflowing or subnormal total in a safe range,
 // without allocation.
-fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
+fn scaled_weighted_position(weights List[Float], unit_draw Float) Int:
 	var scale = 0.0
 	for weight in weights:
 		if weight > scale:
@@ -195,7 +195,7 @@ fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
 // source failure returns `EIO`. The call observes task cancellation between 64 KiB
 // chunks.
 // ms: effect std.random.read
-export fn random_bytes(count: Int) Bytes!:
+export fn random_bytes(count Int) Bytes!:
 	return msstd_random_os_bytes(count)
 
 /*
@@ -205,7 +205,7 @@ After `var rng = seeded(1)`, `rng.int(0, 10)` returns the same value on every ru
 */
 export type SeededRandom:
 	// Internal state: the SplitMix64 counter, advanced on every draw.
-	state: Int
+	state Int
 
 // Returns the next 64 random bits as a signed Int.
 fn var SeededRandom.next_bits() Int:
@@ -218,7 +218,7 @@ fn var SeededRandom.next_bits() Int:
 
 // Returns an Int at least `min` and below `max_exclusive`, uniformly. A `min` not
 // below `max_exclusive`, or a range wider than the largest Int, faults.
-fn var SeededRandom.int(min: Int, max_exclusive: Int) Int:
+fn var SeededRandom.int(min Int, max_exclusive Int) Int:
 	if min >= max_exclusive:
 		panic("random int: min must be below max_exclusive")
 
@@ -245,7 +245,7 @@ fn var SeededRandom.float() Float:
 	return bits.to_float() / 9007199254740992.0
 
 // Shuffles `values` with an unbiased Fisher-Yates shuffle and returns it.
-fn var SeededRandom.shuffle[T](move values: List[T]) List[T]:
+fn var SeededRandom.shuffle[T](move values List[T]) List[T]:
 	var out = values
 	var index = out.length() - 1
 
@@ -256,19 +256,19 @@ fn var SeededRandom.shuffle[T](move values: List[T]) List[T]:
 	return out
 
 // Returns a uniformly chosen item, or null for an empty list.
-fn var SeededRandom.choice[T](values: List[T]) T?:
+fn var SeededRandom.choice[T](values List[T]) T?:
 	if values.is_empty(): return null
 	return values.get(self.int(0, values.length()))
 
 // Returns `count` items chosen uniformly without replacement, in random order, as
 // copies; `values` is unchanged. A `count` outside 0 through the list length
 // faults.
-fn var SeededRandom.sample[T: Clonable](values: List[T], count: Int) List[T]:
+fn var SeededRandom.sample[T Clonable](values List[T], count Int) List[T]:
 	if count < 0 or count > values.length():
 		panic("random sample: count must be from 0 to the list length")
 
 	var order = positions(if count == 0: 0 else: values.length())
-	var out: List[T] = []
+	var out List[T] = []
 
 	for i in 0..count:
 		order.swap(i, self.int(i, values.length()))
@@ -279,10 +279,7 @@ fn var SeededRandom.sample[T: Clonable](values: List[T], count: Int) List[T]:
 // Returns an item chosen with probability proportional to its weight, or null for
 // an empty list. `weights` must match `values` in length, hold no negative or
 // non-finite weight, and not all be zero; otherwise the result is null.
-fn var SeededRandom.weighted_choice[T: Clonable](
-	values: List[T],
-	weights: List[Float],
-) T?:
+fn var SeededRandom.weighted_choice[T Clonable](values List[T], weights List[Float]) T?:
 	if values.is_empty() and weights.is_empty(): return null
 
 	total := weight_total(values.length(), weights)
@@ -303,16 +300,16 @@ fn var SeededRandom.exponential() Float:
 
 // Returns a shuffled list of the Ints 0 through `count - 1`. A negative `count`
 // faults.
-fn var SeededRandom.permutation(count: Int) List[Int]:
+fn var SeededRandom.permutation(count Int) List[Int]:
 	if count < 0:
 		panic("random permutation: count must not be negative")
 
-	var items: List[Int] = []
+	var items List[Int] = []
 	for index in 0..count:
 		items.append(index)
 	return self.shuffle(items)
 
 // Returns a generator that starts from `seed`. Equal seeds give equal sequences. The
 // algorithm is SplitMix64.
-export fn seeded(seed: Int) SeededRandom:
+export fn seeded(seed Int) SeededRandom:
 	return SeededRandom(state: seed)

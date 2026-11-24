@@ -4,13 +4,13 @@
 // round: `body` is a function value, which is shared, so the promise gets its own copy (#3845).
 import Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms"
 
-fn ten(k: Int) Int!:
+fn ten(k Int) Int!:
 	return ok(k * 10)
 
 fn main() Int:
 	var bodies = List[fn() Int!]()
 	for k in 0..4:
-		bodies.append(fn: ten(k))
+		bodies.append(() => ten(k))
 
 	var running = List[Promise[Int]]()
 
@@ -18,7 +18,7 @@ fn main() Int:
 		body := bodies[k]
 		running.append(
 			promise(
-				fn: body(),
+				() => body(),
 				options: PromiseOptions(placement: Placement.Spread)
 			)
 		)

@@ -3,16 +3,16 @@
 // conform: origin=lent-split
 // A lent `split` result used in place, and a `.clone()` that keeps it.
 type Row:
-	fields: List[String]
+	fields List[String]
 
-fn latency(line: String) Int:
+fn latency(line String) Int:
 	f := line.split(" ")
 	return f[1].length() + f.length()
 
-fn keep(line: String) Row:
+fn keep(line String) Row:
 	return Row(line.split(" ").clone())
 
-fn longest(text: String) String:
+fn longest(text String) String:
 	var best = ""
 	for p in text.split(","):
 		if p.length() > best.length():
@@ -21,7 +21,7 @@ fn longest(text: String) String:
 
 // The pieces are views of `rest`, which dies when the function returns: the clone must
 // own them.
-fn components(text: String) List[String]:
+fn components(text String) List[String]:
 	rest := text.cut_prefix("/") or text
 	return rest.split("/").clone()
 

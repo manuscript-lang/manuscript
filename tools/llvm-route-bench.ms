@@ -18,10 +18,10 @@ import (
 // One build: seconds, and the exit status and standard output of running the
 // executable.
 type Built:
-	seconds: Float
-	behavior: String
+	seconds Float
+	behavior String
 
-fn route_env(inproc: Bool) Map[String, String]:
+fn route_env(inproc Bool) Map[String, String]:
 	var vars = Map[String, String]()
 
 	if inproc:
@@ -31,7 +31,7 @@ fn route_env(inproc: Bool) Map[String, String]:
 
 	return vars
 
-fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) Built!:
+fn build(ms String, source String, level String, dir String, inproc Bool) Built!:
 	path := canonicalize(source)?
 	output := f"{dir}/prog{exe()}"
 	started := monotonic()
@@ -56,11 +56,11 @@ fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) B
 		)
 	)
 
-fn median(values: List[Float]) Float:
+fn median(values List[Float]) Float:
 	sorted := values.sorted()
 	return sorted[sorted.length() / 2]
 
-fn report(ms: String, source: String, level: String, runs: Int) Int:
+fn report(ms String, source String, level String, runs Int) Int:
 	dir := temporary_directory("ms-route-bench-").get()
 	var process = List[Float]()
 	var inproc = List[Float]()

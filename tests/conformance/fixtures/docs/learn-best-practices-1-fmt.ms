@@ -5,9 +5,9 @@ import expect_equal, expect_error from "@std/test/test.ms"
 import parse from "@std/data/json.ms"
 
 type Config:
-    port: Int = 8080
+    port Int = 8080
 
-fn port_of(text: String) Result[Int, Error]:
+fn port_of(text String) Result[Int, Error]:
     return ok(parse[Config](text)? | .port)
 
 test "configuration defaults":

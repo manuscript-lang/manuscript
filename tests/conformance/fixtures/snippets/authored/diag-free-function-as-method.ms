@@ -2,9 +2,9 @@
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
 type P:
-    n: Int = 1
+    n Int = 1
 
-fn label(p: P) String:
+fn label(p P) String:
     return "x"
 
 fn main() Void:

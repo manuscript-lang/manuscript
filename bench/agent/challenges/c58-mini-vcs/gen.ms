@@ -10,7 +10,7 @@ import (
 
 // The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a
 // dummy id finds them.
-fn resolve_hashes(oracle: String, script: String) String:
+fn resolve_hashes(oracle String, script String) String:
 	if not script.contains("{c"): return script.clone()
 
 	marker := compile("\\{c[0-9]+\\}").to_optional()
@@ -36,10 +36,10 @@ fn resolve_hashes(oracle: String, script: String) String:
 
 	return resolved
 
-fn add(var cs: Cases, name: String, script: String) Void:
+fn add(var cs Cases, name String, script String) Void:
 	cs.push(name, resolve_hashes(cs.oracle, strip_nl(script)))
 
-fn strip_nl(text: String) String:
+fn strip_nl(text String) String:
 	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
@@ -49,7 +49,7 @@ fn strip_nl(text: String) String:
 		end -= 1
 	return chars.slice(start, end).get_or([]).join("") + "\n"
 
-fn W(name: String, lines: List[String] = []) String:
+fn W(name String, lines List[String] = []) String:
 	if lines.is_empty(): return f"write {name}\n.\n"
 	return f"write {name}\n" + lines.join("\n") + "\n.\n"
 

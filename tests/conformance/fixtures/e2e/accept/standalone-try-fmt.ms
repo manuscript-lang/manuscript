@@ -6,34 +6,34 @@ import Closeable from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
 
 type State:
-    calls: Int
-    marker: String
+    calls Int
+    marker String
 
 type Failure:
-    code: Int
+    code Int
 
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 fn move State.close() Void!:
     _written := write_file(self.marker, "closed", true).wait()
 
-fn operation(var state: State, fail: Bool) Void!Failure:
+fn operation(var state State, fail Bool) Void!Failure:
     state.calls += 1
     if fail: return error(Failure(42))
 
-fn exact(state: State, fail: Bool) String!Failure:
+fn exact(move state State, fail Bool) String!Failure:
     resource := state
     var work = State(resource.calls, resource.marker.clone())
     operation(work, fail)?
     work.calls += 10
     return ok(f"done {work.calls}")
 
-fn widened(var state: State) Int!:
+fn widened(var state State) Int!:
     operation(state, fail: true).map_error(
-        fn cause: Error("failed", details: {"code": cause.code.to_string()})
+        cause => Error("failed", details: {"code": cause.code.to_string()})
     )?
     return ok(0)
 
-fn closed(marker: String) Bool:
+fn closed(marker String) Bool:
     return read_file(marker).wait().is_ok()
 
 test "standalone evaluates? once and continues on Void success":

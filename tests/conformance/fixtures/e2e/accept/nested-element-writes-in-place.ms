@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn grid(n: Int) List[List[Int]]:
+fn grid(n Int) List[List[Int]]:
 	var g = List[List[Int]]()
 	var i = 0
 	while i < n:

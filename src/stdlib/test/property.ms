@@ -34,17 +34,17 @@ Example: `check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.
 // generators call `draw`.
 export type Source:
 	// Every draw so far, in order, each within its bound.
-	choices: List[Int]
+	choices List[Int]
 	// How many entries of `choices` the current generation has read.
-	pos: Int
+	pos Int
 	// Pseudo-random state; fresh draws past the recorded prefix come from it.
-	state: Int
+	state Int
 	// True while generating new input, false while replaying a recorded prefix (missing
 	// draws read as 0).
-	fresh: Bool
+	fresh Bool
 	// Set by `filter` when it cannot satisfy its predicate; `check` discards such cases
 	// instead of running them.
-	invalid: Bool
+	invalid Bool
 
 // Internal: returns the next 64 random bits as a signed Int (SplitMix64).
 fn var Source.next_bits() Int:
@@ -56,20 +56,20 @@ fn var Source.next_bits() Int:
 	return bit_xor(z, shift_right_unsigned(z, 31))
 
 // Returns a source that generates fresh input from `seed`.
-export fn source(seed: Int) Source:
+export fn source(seed Int) Source:
 	return Source([], 0, seed, true, false)
 
 // A generated value and the source after the draws that made it.
 export type Drawn[T]:
 	// The value a generator built from the draws it read.
-	value: T
+	value T
 	// The source to continue drawing from; draws already made are recorded in it.
-	source: Source
+	source Source
 
 // Draws an integer from 0 through `max`, both included, and returns it with the
 // advanced source; `max` must not be negative. Fresh draws favor the two ends.
 // Shrinking lowers each draw toward 0, so 0 is the simplest outcome.
-export fn draw(source: Source, max: Int) Drawn[Int]:
+export fn draw(source Source, max Int) Drawn[Int]:
 	var s = source
 	var value = 0
 
@@ -103,35 +103,35 @@ export fn draw(source: Source, max: Int) Drawn[Int]:
 // with `check`.
 export type Gen[T]:
 	// Reads draws from the source and builds a value.
-	make: fn(Source) Drawn[T]
+	make fn(Source) Drawn[T]
 
 // Returns a generator that applies `transform` to every generated value.
-fn Gen[T].map[B](transform: fn(T) B) Gen[B]:
-	return Gen[B](fn s: map_draw(self, transform, s))
+fn Gen[T].map[B](transform fn(T) B) Gen[B]:
+	return Gen[B](s => map_draw(self, transform, s))
 
 // Generates a value, then generates again with the generator that `next` returns for
 // it (dependent generation).
-fn Gen[T].flat_map[B](next: fn(T) Gen[B]) Gen[B]:
-	return Gen[B](fn s: flat_map_draw(self, next, s))
+fn Gen[T].flat_map[B](next fn(T) Gen[B]) Gen[B]:
+	return Gen[B](s => flat_map_draw(self, next, s))
 
 // Keeps only the values for which `keep` is true. After 50 consecutive rejections the
 // case is marked invalid and discarded.
-fn Gen[T].filter(move keep: fn(T) Bool) Gen[T]:
+fn Gen[T].filter(move keep fn(T) Bool) Gen[T]:
 	source := self.clone()
-	return Gen[T](fn s: filter_draw(source, keep, s.clone()))
+	return Gen[T](s => filter_draw(source, keep, s.clone()))
 
 // Generates one value from this generator and one from `other`, and combines them
 // with `combine`.
-fn Gen[T].zip[B, C](other: Gen[B], combine: fn(T, B) C) Gen[C]:
-	return Gen[C](fn s: zip_draw(self, other, combine, s))
+fn Gen[T].zip[B, C](other Gen[B], combine fn(T, B) C) Gen[C]:
+	return Gen[C](s => zip_draw(self, other, combine, s))
 
 // Generates integers from `low` through `high`, both included, shrinking toward the
 // value nearest 0. When the range spans 0, a sign draw comes first and the magnitude
 // after it. `high - low` must fit in Int.
-export fn ints(low: Int, high: Int) Gen[Int]:
-	return Gen[Int](fn s: ints_draw(s.clone(), low, high))
+export fn ints(low Int, high Int) Gen[Int]:
+	return Gen[Int](s => ints_draw(s.clone(), low, high))
 
-fn ints_draw(s: Source, low: Int, high: Int) Drawn[Int]:
+fn ints_draw(s Source, low Int, high Int) Drawn[Int]:
 	if low >= 0:
 		{value, source} := draw(s, high - low)
 		return Drawn(low + value, source)
@@ -151,18 +151,18 @@ fn ints_draw(s: Source, low: Int, high: Int) Drawn[Int]:
 
 // Generates `true` and `false`, shrinking toward `false`.
 export fn bools() Gen[Bool]:
-	return Gen[Bool](fn s: bool_draw(s.clone()))
+	return Gen[Bool](s => bool_draw(s.clone()))
 
-fn bool_draw(s: Source) Drawn[Bool]:
+fn bool_draw(s Source) Drawn[Bool]:
 	{value, source} := draw(s, 1)
 	return Drawn(value == 1, source)
 
 // Generates floats from `low` through `high` at 2^-53 resolution, shrinking toward
 // `low`. The bounds may be as far apart as the largest finite Floats.
-export fn floats(low: Float, high: Float) Gen[Float]:
-	return Gen[Float](fn s: float_draw(s.clone(), low, high))
+export fn floats(low Float, high Float) Gen[Float]:
+	return Gen[Float](s => float_draw(s.clone(), low, high))
 
-fn float_draw(s: Source, low: Float, high: Float) Drawn[Float]:
+fn float_draw(s Source, low Float, high Float) Drawn[Float]:
 	{value, source} := draw(s, 9007199254740992)
 	fraction := value.to_float() / 9007199254740992.0
 	span := high - low
@@ -174,35 +174,35 @@ fn float_draw(s: Source, low: Float, high: Float) Drawn[Float]:
 	return Drawn(low + span * fraction, source)
 
 // Always generates a copy of `value`, consuming no draws, so it never shrinks.
-export fn constant[T: Clonable](value: T) Gen[T]:
-	return Gen[T](fn s: Drawn(value.clone(), s.clone()))
+export fn constant[T Clonable](value T) Gen[T]:
+	return Gen[T](s => Drawn(value.clone(), s.clone()))
 
 // Generates one of `values`, shrinking toward the first. `values` must not be empty.
-export fn element_of[T: Clonable](values: List[T]) Gen[T]:
-	return Gen[T](fn s: element_draw(values, s.clone()))
+export fn element_of[T Clonable](values List[T]) Gen[T]:
+	return Gen[T](s => element_draw(values, s.clone()))
 
-fn element_draw[T: Clonable](values: List[T], s: Source) Drawn[T]:
+fn element_draw[T Clonable](values List[T], s Source) Drawn[T]:
 	{value, source} := draw(s, values.length() - 1)
 	return Drawn(values[value].clone(), source)
 
 // Generates by picking one of `gens`, shrinking toward the first. `gens` must not be
 // empty.
-export fn one_of[T](gens: List[Gen[T]]) Gen[T]:
-	return Gen[T](fn s: one_draw(gens, s.clone()))
+export fn one_of[T](gens List[Gen[T]]) Gen[T]:
+	return Gen[T](s => one_draw(gens, s.clone()))
 
-fn one_draw[T](gens: List[Gen[T]], s: Source) Drawn[T]:
+fn one_draw[T](gens List[Gen[T]], s Source) Drawn[T]:
 	{value, source} := draw(s, gens.length() - 1)
 	return gens[value].make(source)
 
-fn map_draw[A, B](gen: Gen[A], transform: fn(A) B, s: Source) Drawn[B]:
+fn map_draw[A, B](gen Gen[A], transform fn(A) B, s Source) Drawn[B]:
 	{value, source} := gen.make(s)
 	return Drawn(transform(value), source)
 
-fn flat_map_draw[A, B](gen: Gen[A], next: fn(A) Gen[B], s: Source) Drawn[B]:
+fn flat_map_draw[A, B](gen Gen[A], next fn(A) Gen[B], s Source) Drawn[B]:
 	{value, source} := gen.make(s)
 	return next(value).make(source)
 
-fn filter_draw[T](gen: Gen[T], keep: fn(T) Bool, s: Source) Drawn[T]:
+fn filter_draw[T](gen Gen[T], keep fn(T) Bool, s Source) Drawn[T]:
 	var cursor = s
 	var tries = 0
 
@@ -218,21 +218,16 @@ fn filter_draw[T](gen: Gen[T], keep: fn(T) Bool, s: Source) Drawn[T]:
 
 		cursor = source
 
-fn zip_draw[A, B, C](
-	first: Gen[A],
-	second: Gen[B],
-	combine: fn(A, B) C,
-	s: Source
-) Drawn[C]:
+fn zip_draw[A, B, C](first Gen[A], second Gen[B], combine fn(A, B) C, s Source) Drawn[C]:
 	{value: a, source: middle} := first.make(s)
 	{value: b, source} := second.make(middle)
 	return Drawn(combine(a, b), source)
 
 // Generates a value or `null`, shrinking toward `null`.
-export fn optionals[T](move gen: Gen[T]) Gen[T?]:
-	return Gen[T?](fn s: optional_draw(gen, s.clone()))
+export fn optionals[T](move gen Gen[T]) Gen[T?]:
+	return Gen[T?](s => optional_draw(gen, s.clone()))
 
-fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
+fn optional_draw[T](gen Gen[T], s Source) Drawn[T?]:
 	{value: flag, source: middle} := draw(s, 3)
 	if flag == 0: return Drawn(null, middle)
 
@@ -242,13 +237,13 @@ fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
 // Generates lists of `min_length` through `max_length` elements, shrinking toward fewer
 // and simpler elements.
 export fn lists[T](
-	move gen: Gen[T],
-	min_length: Int = 0,
-	max_length: Int = 20,
+	move gen Gen[T],
+	min_length Int = 0,
+	max_length Int = 20,
 ) Gen[List[T]]:
-	return Gen[List[T]](fn s: list_draw(gen, min_length, max_length, s.clone()))
+	return Gen[List[T]](s => list_draw(gen, min_length, max_length, s.clone()))
 
-fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[List[T]]:
+fn list_draw[T](gen Gen[T], min_length Int, max_length Int, s Source) Drawn[List[T]]:
 	var items = List[T]()
 	var cursor = s
 
@@ -275,31 +270,34 @@ fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[
 // Generates strings of up to `max_length` characters drawn from `alphabet`, shrinking
 // toward shorter text of its first characters. `alphabet` must not be empty.
 export fn strings(
-	alphabet: String = "abcdefghijklmnopqrstuvwxyz0123456789 ",
-	max_length: Int = 20,
+	alphabet String = "abcdefghijklmnopqrstuvwxyz0123456789 ",
+	max_length Int = 20,
 ) Gen[String]:
 	var letters = List[String]()
 	letters.extend(alphabet.chars())
-	return lists(element_of(letters), 0, max_length).map(fn cs: cs.join(""))
+	return lists(element_of(letters), 0, max_length).map(cs => cs.join(""))
 
 // Generates a 2-element `Pair`.
-export fn pairs[A: Clonable, B: Clonable](first: Gen[A], second: Gen[B]) Gen[Pair[A, B]]:
-	return first.zip(second, fn a, b: Pair(a, b))
+export fn pairs[A Clonable, B Clonable](
+	move first Gen[A],
+	move second Gen[B],
+) Gen[Pair[A, B]]:
+	return first.zip(second, (a, b) => Pair(a, b))
 
 // Run settings. `ms test` fills them from `--runs`, `--seed` and `--fuzz` through
 // environment variables.
 export type Settings:
 	// Cases to run when not fuzzing.
-	runs: Int
+	runs Int
 	// Time budget in milliseconds; above 0, cases run until it expires instead of
 	// stopping at `runs`.
-	fuzz_milliseconds: Int
+	fuzz_milliseconds Int
 	// First case seed, or null for a random one that failures report.
-	seed: Int?
+	seed Int?
 
 // Returns the run settings, with `runs` as the default case count, after applying the
 // `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`, `MS_TEST_FUZZ_MS`).
-export fn settings(runs: Int = 100) Settings:
+export fn settings(runs Int = 100) Settings:
 	var found = Settings(runs, 0, null)
 	environment := environment().get_or(Map[String, String]())
 	text := environment.get("MS_TEST_RUNS")
@@ -318,10 +316,10 @@ export fn settings(runs: Int = 100) Settings:
 // Internal: the result of running one case: the replayed source, and the failure when
 // the property did not hold.
 type Outcome:
-	source: Source
-	failure: Error?
+	source Source
+	failure Error?
 
-fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
+fn run_case[T](gen Gen[T], property fn(T) Void!, s Source) Outcome:
 	{value, source} := gen.make(s)
 	if source.invalid: return Outcome(source, null)
 
@@ -330,7 +328,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
     It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
     on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
     */
-	faulted := expect_fault(fn: run_property(property, value))
+	faulted := expect_fault(() => run_property(property, value))
 	if faulted.is_error(): return Outcome(source, null)
 
 	message := faulted.get_or("")
@@ -343,13 +341,13 @@ fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
 
 property_failed := "property returned an error"
 
-fn run_property[T](property: fn(T) Void!, value: T) Void:
+fn run_property[T](property fn(T) Void!, value T) Void:
 	if property(value).is_error():
 		panic(property_failed)
 
 // Internal: the order that guarantees shrinking terminates: fewer draws first, then
 // lexicographically smaller.
-fn simpler(candidate: List[Int], current: List[Int]) Bool:
+fn simpler(candidate List[Int], current List[Int]) Bool:
 	if candidate.length() != current.length():
 		return candidate.length() < current.length()
 
@@ -357,16 +355,16 @@ fn simpler(candidate: List[Int], current: List[Int]) Bool:
 		if candidate[i] != current[i]: return candidate[i] < current[i]
 	return false
 
-fn replay[T](gen: Gen[T], property: fn(T) Void!, choices: List[Int]) Outcome:
+fn replay[T](gen Gen[T], property fn(T) Void!, choices List[Int]) Outcome:
 	return run_case(gen, property, Source(choices.clone(), 0, 0, false, false))
 
 // Tries `candidate`; returns the used draws when it still fails and is simpler than
 // `current`.
 fn attempt[T](
-	gen: Gen[T],
-	property: fn(T) Void!,
-	candidate: List[Int],
-	current: List[Int]
+	gen Gen[T],
+	property fn(T) Void!,
+	candidate List[Int],
+	current List[Int]
 ) List[Int]?:
 	outcome := replay(gen, property, candidate)
 	if outcome.failure == null: return null
@@ -378,12 +376,7 @@ fn attempt[T](
 
 // Shrinks failing `choices`: deletes spans, then lowers values, until a full pass makes
 // no progress or `budget` replays run.
-fn shrink[T](
-	gen: Gen[T],
-	property: fn(T) Void!,
-	choices: List[Int],
-	budget: Int
-) List[Int]:
+fn shrink[T](gen Gen[T], property fn(T) Void!, choices List[Int], budget Int) List[Int]:
 	var best = choices.clone()
 	var spent = 0
 	var progress = true
@@ -431,9 +424,9 @@ fn shrink[T](
 // seed that replays a failing run.
 export type PropertyOptions:
 	// Number of generated cases (default 100).
-	runs: Int = 100
+	runs Int = 100
 	// Fixes the random seed to replay a failure; `null` picks a fresh seed.
-	seed: Int? = null
+	seed Int? = null
 
 /*
 Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
@@ -441,10 +434,10 @@ A property returns a `Result`, like a test assertion; write it with `expect_*` c
 A fault (`panic`) inside a property counts as a failing case and shrinks like an error.
 */
 export fn check[T](
-	name: String,
-	gen: Gen[T],
-	property: fn(T) Void!,
-	options: PropertyOptions = PropertyOptions()
+	name String,
+	gen Gen[T],
+	property fn(T) Void!,
+	options PropertyOptions = PropertyOptions()
 ) Void!:
 	config := settings(options.runs)
 	var chosen = options.seed
@@ -510,13 +503,13 @@ export fn check[T](
 	return ok()
 
 fn report[T](
-	name: String,
-	gen: Gen[T],
-	property: fn(T) Void!,
-	failing: Source,
-	message: Error,
-	seed: Int,
-	executed: Int
+	name String,
+	gen Gen[T],
+	property fn(T) Void!,
+	failing Source,
+	message Error,
+	seed Int,
+	executed Int
 ) Void!:
 	used := failing.choices.take(failing.pos)
 	small := shrink(gen, property, used, 2000)

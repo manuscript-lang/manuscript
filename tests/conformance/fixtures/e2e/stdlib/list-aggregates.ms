@@ -6,16 +6,16 @@ import (
 )
 
 type Version:
-	major: Int
-	label: String
+	major Int
+	label String
 
-fn Version.compare(other: Version) Int:
+fn Version.compare(other Version) Int:
 	if self.major < other.major: return -1
 	if self.major > other.major: return 1
 
 	return 0
 
-fn ordered[T: Comparable & Clonable](values: List[T]) List[T]:
+fn ordered[T Comparable & Clonable](values List[T]) List[T]:
 	return values.sorted()
 
 test "sorted orders Int, Float and String ascending without a comparator":
@@ -26,8 +26,8 @@ test "sorted orders Int, Float and String ascending without a comparator":
 	expect_equal(["pear", "apple", "fig"].sorted(), ["apple", "fig", "pear"])?
 	expect_equal(List[Int]().sorted(), List[Int]())?
 
-	small: List[Int8] := [3, 1, 2]
-	expected: List[Int8] := [1, 2, 3]
+	small List[Int8] := [3, 1, 2]
+	expected List[Int8] := [1, 2, 3]
 	expect_equal(small.sorted(), expected)?
 
 test "sorted puts Float NaN last":
@@ -37,11 +37,11 @@ test "sorted puts Float NaN last":
 	expect_true(ordered_floats[3].is_nan())?
 
 test "sorted with a comparator":
-	expect_equal([1, 3, 2].sorted(fn a, b: b - a), [3, 2, 1])?
+	expect_equal([1, 3, 2].sorted((a, b) => b - a), [3, 2, 1])?
 
 test "sorted is stable for user Comparable types":
 	versions := [Version(2, "b"), Version(1, "x"), Version(2, "a"), Version(1, "y")]
-	labels := versions.sorted().map(fn v: v.label.clone())
+	labels := versions.sorted().map(v => v.label.clone())
 	expect_equal(labels, ["x", "y", "b", "a"])?
 
 test "sorted works through a generic Comparable bound":
@@ -52,12 +52,12 @@ test "sort orders the list in place":
 	var numbers = [3, 1, 2]
 	numbers.sort()
 	expect_equal(numbers, [1, 2, 3])?
-	numbers.sort(fn a, b: b - a)
+	numbers.sort((a, b) => b - a)
 	expect_equal(numbers, [3, 2, 1])?
 
 	var versions = [Version(2, "b"), Version(1, "x"), Version(2, "a")]
 	versions.sort()
-	expect_equal(versions.map(fn v: v.label.clone()), ["x", "b", "a"])?
+	expect_equal(versions.map(v => v.label.clone()), ["x", "b", "a"])?
 
 	var words = ["b", "c", "a"]
 	words.sort()
@@ -69,12 +69,12 @@ test "sum adds Int, Float and sized numerics":
 	expect_equal([0.5, 1.5].sum(), 2.0)?
 	expect_equal(List[Float]().sum(), 0.0)?
 
-	small: List[Int8] := [100, 20, -3]
-	total: Int8 := 117
+	small List[Int8] := [100, 20, -3]
+	total Int8 := 117
 	expect_equal(small.sum(), total)?
 
-	narrow: List[Float32] := [1.5, 2.5]
-	narrow_total: Float32 := 4.0
+	narrow List[Float32] := [1.5, 2.5]
+	narrow_total Float32 := 4.0
 	expect_equal(narrow.sum(), narrow_total)?
 
 test "min and max return the first of equal elements and none when empty":

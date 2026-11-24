@@ -12,7 +12,7 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-fn echo(var exchange: HttpExchange) Void!:
+fn echo(var exchange HttpExchange) Void!:
 	if exchange.path() == "/ws":
 		var socket = upgrade(
 			exchange,

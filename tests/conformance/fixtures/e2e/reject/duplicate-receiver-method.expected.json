@@ -14,7 +14,7 @@
           "file": "duplicate-receiver-method.ms",
           "line": 9,
           "column": 6,
-          "offset": 106
+          "offset": 105
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "duplicate-receiver-method.ms",
           "line": 13,
           "column": 16,
-          "offset": 154
+          "offset": 153
         }
       }
     ],

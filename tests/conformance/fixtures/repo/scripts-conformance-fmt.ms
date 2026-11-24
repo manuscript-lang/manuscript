@@ -17,31 +17,31 @@ import parse from "@std/data/json.ms"
 // Run from the repository root: ms run scripts/conformance.ms -- /absolute/path/to/ms all 0 1.
 // Each source file keeps its own compiler graph, process, host roots and test report.
 type Summary:
-    available: Int
-    selected: Int
-    passed: Int
-    failed: Int
-    skipped: Int
-    not_run: Int
+    available Int
+    selected Int
+    passed Int
+    failed Int
+    skipped Int
+    not_run Int
 
 type Case:
-    name: String
-    status: String
+    name String
+    status String
 
 type FixtureError:
-    file: String
-    phase: String
-    failure: String
+    file String
+    phase String
+    failure String
 
 type Report:
-    format: Int
-    completed: Bool
-    exit_code: Int
-    tests: List[Case]
-    summary: Summary
-    fixture_errors: List[FixtureError] = []
+    format Int
+    completed Bool
+    exit_code Int
+    tests List[Case]
+    summary Summary
+    fixture_errors List[FixtureError] = []
 
-fn validate(report: Report) Result[Void, Error]:
+fn validate(report Report) Result[Void, Error]:
     report.format | expect_equal(expected: 1)?
     report.completed | expect_true?
     report.exit_code | expect_equal(expected: 0)?
@@ -69,8 +69,8 @@ fn validate(report: Report) Result[Void, Error]:
     passed | expect_equal(expected: report.summary.passed)?
     skipped | expect_equal(expected: report.summary.skipped)?
 
-fn inventory(suite: String) Result[List[String], Error]:
-    var files: List[String] = []
+fn inventory(suite String) Result[List[String], Error]:
+    var files List[String] = []
 
     if suite == "all" or suite == "core":
         core := glob(
@@ -100,12 +100,12 @@ fn inventory(suite: String) Result[List[String], Error]:
         for file in library: files.append(f"tests/e2e/testdata/stdlib/{file.path}")
 
     files.is_empty() | expect_false?
-    return ok(files.sorted(fn left, right: left.compare(right)))
+    return ok(files.sorted((left, right) => left.compare(right)))
 
-fn selected(index: Int, shard: Int, count: Int) Bool:
+fn selected(index Int, shard Int, count Int) Bool:
     return index % count == shard
 
-fn run_conformance(args: List[String]) Result[Void, Error]:
+fn run_conformance(args List[String]) Result[Void, Error]:
     if args.length() != 4:
         return fail(
             "usage: conformance <ms executable> <all|core|stdlib> <shard> <count>"
@@ -132,7 +132,7 @@ fn run_conformance(args: List[String]) Result[Void, Error]:
             result := run_file(ms, file.clone())
 
             match result:
-                ok(_): emit(f"PASS {file}")?
+                ok(_) => emit(f"PASS {file}")?
                 error(cause):
                     emit(f"FAIL {file}: {cause.message}")?
                     failed = failed + 1
@@ -142,7 +142,7 @@ fn run_conformance(args: List[String]) Result[Void, Error]:
     emit(f"{ran} files, {failed} failed")?
     failed | expect_equal(expected: 0)?
 
-fn run_file(ms: String, file: String) Result[Void, Error]:
+fn run_file(ms String, file String) Result[Void, Error]:
     output := run(
         ms,
         ["test", file.clone(), "--json", "--timeout=30s"],
@@ -152,12 +152,12 @@ fn run_file(ms: String, file: String) Result[Void, Error]:
     stderr := output.stderr.decode_utf8() | expect_some?
 
     match check_output(output.exit_code, text):
-        ok(_): return ok()
+        ok(_) => return ok()
         error(cause):
             emit(f"{text}\n{stderr}")?
             return error(cause)
 
-fn check_output(status: Int, text: String) Result[Void, Error]:
+fn check_output(status Int, text String) Result[Void, Error]:
     status | expect_equal(expected: 0)?
 
     report := parse[Report](text)?
@@ -165,7 +165,7 @@ fn check_output(status: Int, text: String) Result[Void, Error]:
 
 export fn main() Int:
     match run_conformance(arguments()):
-        ok(_): return 0
+        ok(_) => return 0
         error(cause):
             _written := stdout().write(f"{cause.message}\n")
             return 1
@@ -203,7 +203,7 @@ test "shards cover every inventory entry exactly once":
             hits | expect_equal(expected: 1)?
             index = index + 1
 
-fn emit(text: String) Result[Void, Error]:
+fn emit(text String) Result[Void, Error]:
     stdout().write(f"{text}\n")?
 
 test "invalid suite and shard arguments fail before running children":

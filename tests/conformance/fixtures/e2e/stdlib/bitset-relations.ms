@@ -6,7 +6,7 @@ import (
 )
 
 test "bitset predicates agree with algebra for unequal and trailing zero words":
-	cases: List[List[Int]] := [
+	cases List[List[Int]] := [
 		[],
 		[0],
 		[1],

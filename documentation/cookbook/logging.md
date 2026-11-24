@@ -16,13 +16,13 @@ Save as `logs.ms`. Each record has a level, a message and optional fields of any
 import LoggerOptions, create, stdout_transport from "@std/log.ms"
 
 type Started:
-    port: Int
+    port Int
 
 type Slow:
-    ms: Int
+    ms Int
 
 type Request:
-    request: Int
+    request Int
 
 fn main() Void!:
     log := create(stdout_transport(), LoggerOptions(timestamp: false))?

@@ -5,11 +5,11 @@ weight = 1
 
 # Declarations and calls
 
-A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body returns its expression implicitly: `fn double(value: Int) Int: value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
+A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body is written `=>` and returns its expression implicitly: `fn double(value Int) Int => value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn decrement(value: Int) Int:
+fn decrement(value Int) Int:
     return value - 1
 
 remaining := decrement(3)
@@ -44,7 +44,7 @@ Labels are optional. An unlabeled argument fills the first parameter not yet fil
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn reduce(amount: Int, deduction: Int) Int:
+fn reduce(amount Int, deduction Int) Int:
     return amount - deduction
 
 remaining := reduce(10, 3)
@@ -78,7 +78,7 @@ Write `= expression` after a parameter's type to supply a default:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn subtract(amount: Int, deduction: Int = 1) Int:
+fn subtract(amount Int, deduction Int = 1) Int:
     return amount - deduction
 
 fn example() Int:
@@ -89,7 +89,7 @@ fn example() Int:
 
 `usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`.
 
-- Optional parameters come last: a parameter with a default, or of type `T?`, may not precede a required one, and the checker rejects `fn choose(first: Int = 1, second: Int) Int`. Constructor fields follow the same rule. Write `fn choose(second: Int, first: Int = 1) Int` and skip `first` by omitting it; to skip an earlier optional, label a later argument.
+- Optional parameters come last: a parameter with a default, or of type `T?`, may not precede a required one, and the checker rejects `fn choose(first Int = 1, second Int) Int`. Constructor fields follow the same rule. Write `fn choose(second Int, first Int = 1) Int` and skip `first` by omitting it; to skip an earlier optional, label a later argument.
 - A default is checked against its parameter type in the function's scope. It may use imports, module declarations, earlier parameters, and `self`; current and later parameters are not in scope. Anonymous functions may use captures.
 - Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `null`, `void`, `false`, and zero are supplied values.
 - A failing default stops later defaults and the body. `?` in a default propagates under the function's result type.
@@ -104,7 +104,7 @@ To accept a variable number of values, declare an ordinary list parameter:
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn sum(values: List[Int]) Int:
+fn sum(values List[Int]) Int:
     total := values.sum()
 
     return total
@@ -136,7 +136,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 ```manuscript
 import panic from "@std/core.ms"
 
-fn check_positive(value: Int) Void:
+fn check_positive(value Int) Void:
     if not (value > 0):
         return panic(message: "check failed")
 
@@ -164,7 +164,7 @@ Typing is separate: `1 + panic(message: "stop")` has type `Int` ([operators](../
 
 <!-- manuscript-example: {"mode":"error","contains":"reachable fallthrough","given":[]} -->
 ```manuscript
-fn incomplete(active: Bool) Int:
+fn incomplete(active Bool) Int:
     if active:
         return 1
     // Rejected: the false path reaches the end without returning Int.

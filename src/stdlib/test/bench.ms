@@ -34,11 +34,11 @@ bytes allocated, list copies and string clones, with their bytes), taken from on
 type Settings:
 	// Target duration of one sample in nanoseconds; calibration grows the iteration
 	// count until a sample takes this long.
-	target_nanoseconds: Int
+	target_nanoseconds Int
 	// Timed samples to take.
-	samples: Int
+	samples Int
 	// Fixed iterations per sample; 0 calibrates from the target duration.
-	iterations: Int
+	iterations Int
 
 // Calibration never runs more iterations than this per sample.
 max_iterations := 100000000
@@ -46,7 +46,7 @@ max_iterations := 100000000
 /*
 Runs `work` repeatedly and writes the statistics line, per operation, where each run performs `operations` operations (at least 1).
 */
-fn measure[F](operations: Int, work: fn(var F) Void!, var state: F) Void!:
+fn measure[F](operations Int, work fn(var F) Void!, var state F) Void!:
 	if operations < 1: return fail("measure: operations must be at least 1")
 
 	body := work
@@ -80,11 +80,11 @@ fn measure[F](operations: Int, work: fn(var F) Void!, var state: F) Void!:
 		* 1000.0
 		/ (count * config.samples * operations).to_float()
 	)
-	sorted := times.sorted(fn a, b: (if a < b: -1 else: (if a > b: 1 else: 0)))
+	sorted := times.sorted((a, b) => (if a < b: -1 else: (if a > b: 1 else: 0)))
 	n := sorted.length().to_float()
-	mean := sorted.fold(0.0, fn total, t: total + t) / n
-	deviations := sorted.map(fn t: (t - mean) * (t - mean))
-	variance := deviations.fold(0.0, fn total, d: total + d) / n
+	mean := sorted.fold(0.0, (total, t) => total + t) / n
+	deviations := sorted.map(t => (t - mean) * (t - mean))
+	variance := deviations.fold(0.0, (total, d) => total + d) / n
 	last := sorted.length() - 1
 	median := (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
 
@@ -111,19 +111,15 @@ fn measure[F](operations: Int, work: fn(var F) Void!, var state: F) Void!:
 
 // Called by the entry that `ms bench` builds, with each block's body; programs do not
 // call it. The body is one iteration to repeat and time.
-export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
+export fn run_bench_block(body fn() Void!, operations Int) Void!:
 	var null = 0
-	return measure(operations, fn var unused: body(), null)
+	return measure(operations, (var unused) => body(), null)
 
 // Called by the entry that `ms bench` builds for a file with a `make_fixture`, with
 // each block's body, which takes the file's fixture; programs do not call it. The
 // fixture is made, and `before_all` and `before_each` have run, before the timing
 // starts, and `after_each` and `after_all` run after it.
-export fn run_bench_fixture[F](
-	body: fn(var F) Void!,
-	operations: Int,
-	var state: F
-) Void!:
+export fn run_bench_fixture[F](body fn(var F) Void!, operations Int, var state F) Void!:
 	return measure(operations, body, state)
 
 fn settings() Settings:
@@ -144,7 +140,7 @@ fn settings() Settings:
 
 // Internal: runs `body` `count` times and returns the elapsed nanoseconds. The first
 // failure stops the run and is returned.
-fn time_batch[F](body: fn(var F) Void!, var state: F, count: Int) Int!:
+fn time_batch[F](body fn(var F) Void!, var state F, count Int) Int!:
 	started := monotonic()
 	for unused in 0..count:
 		body(state)?
@@ -152,6 +148,6 @@ fn time_batch[F](body: fn(var F) Void!, var state: F, count: Int) Int!:
 
 // Internal: returns the iteration count whose sample should take about `target`
 // nanoseconds, given that `count` took `elapsed`.
-fn next_count(count: Int, elapsed: Int, target: Int) Int:
+fn next_count(count Int, elapsed Int, target Int) Int:
 	scaled := count * target / max(elapsed, 1) * 12 / 10
 	return min(max(scaled, count + 1), min(count * 100, max_iterations))

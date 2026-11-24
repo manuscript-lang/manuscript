@@ -22,7 +22,7 @@ fn unrelated_boundary() Int!OtherError:
 	value := domain_failure()?
 	return ok(value)
 
-fn optional_result(value: Int!String?) Int:
+fn optional_result(value Int!String?) Int:
 	return (value or panic("called Optional.get() on null")).get_or(-1)
 
 fn unrelated_optional_error() Int:

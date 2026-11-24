@@ -14,7 +14,7 @@
           "file": "bound-method-mutated-in-closure.ms",
           "line": 15,
           "column": 13,
-          "offset": 482
+          "offset": 480
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "bound-method-mutated-in-closure.ms",
           "line": 12,
           "column": 9,
-          "offset": 442
+          "offset": 440
         }
       }
     ],

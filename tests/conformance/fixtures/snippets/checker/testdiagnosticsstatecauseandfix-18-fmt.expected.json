@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(o: Int?) Int:\n\tmatch o:\n\t\tSome(v):\n\t\t\treturn v\n\t\tNone:\n\t\t\treturn 0\n"
+    "fmt": "fn f(o Int?) Int:\n\tmatch o:\n\t\tSome(v):\n\t\t\treturn v\n\t\tNone:\n\t\t\treturn 0\n"
   }
 }

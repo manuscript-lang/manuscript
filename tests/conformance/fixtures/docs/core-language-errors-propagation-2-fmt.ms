@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/errors/propagation.md:24
 
-fn prepare() Result[Void, Error]: ok()
+fn prepare() Result[Void, Error] => ok()
 
 fn ready_label() Result[String, Error]:
     prepare()?

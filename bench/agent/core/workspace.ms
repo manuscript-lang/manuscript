@@ -11,39 +11,39 @@ import (
 
 // The benchmark's verdict on one finished workspace.
 export type Grade:
-	built: Bool
-	passed: Int
-	total: Int
-	pass: Bool
-	code_tokens: Int
-	error: String?
-	failed: List[String]?
-	llm_tokens: Int?
+	built Bool
+	passed Int
+	total Int
+	pass Bool
+	code_tokens Int
+	error String?
+	failed List[String]?
+	llm_tokens Int?
 
 // Build counts the agent's own `./check.sh` runs left in `.bench/log.jsonl`.
 export type BuildLog:
-	builds: Int
-	first_build_ok: Bool
+	builds Int
+	first_build_ok Bool
 	// The first build passed, or would have after the language's machine fixes
 	// (`ms check --fix`).
-	first_build_fixed_ok: Bool
-	checks: Int
-	examples_pass: Bool
+	first_build_fixed_ok Bool
+	checks Int
+	examples_pass Bool
 	// Diagnostic codes seen in the agent's failed builds, one entry per occurrence.
-	build_codes: List[String]
+	build_codes List[String]
 	// The first diagnostic line of each failed build.
-	build_errors: List[String]
+	build_errors List[String]
 
 type LogRow:
-	phase: String
-	ok: Bool
-	codes: String = ""
-	msg: String = ""
-	fixed: String = ""
+	phase String
+	ok Bool
+	codes String = ""
+	msg String = ""
+	fixed String = ""
 
 // Creates `dest` with the language template, spec, examples and `check.sh`. Returns the
 // agent prompt.
-export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
+export fn make_workspace(ch Challenge, lang Lang, dest String) String:
 	create_directory(dest, recursive: true).get()
 	copy(
 		f"{root()}/templates/{lang.template}",
@@ -105,7 +105,7 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	)
 
 // Reads the build and check counts the workspace's `./check.sh` logged.
-export fn read_log(ws: String) BuildLog:
+export fn read_log(ws String) BuildLog:
 	var rows = List[LogRow]()
 
 	for line in read_text(f"{ws}/.bench/log.jsonl").split("\n"):
@@ -113,8 +113,8 @@ export fn read_log(ws: String) BuildLog:
 
 		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
-	builds := rows.filter(fn r: r.phase == "build")
-	checks := rows.filter(fn r: r.phase == "check")
+	builds := rows.filter(r => r.phase == "build")
+	checks := rows.filter(r => r.phase == "check")
 	var first_ok = false
 	first := builds.first()
 	if first != null: first_ok = first.ok
@@ -130,7 +130,7 @@ export fn read_log(ws: String) BuildLog:
 	var codes = List[String]()
 	var errors = List[String]()
 
-	for failed in builds.filter(fn r: not r.ok):
+	for failed in builds.filter(r => not r.ok):
 		if not failed.msg.is_empty(): errors.append(failed.msg.clone())
 		for code in failed.codes.split(" "):
 			if not code.is_empty(): codes.append(code.clone())
@@ -146,7 +146,7 @@ export fn read_log(ws: String) BuildLog:
 	)
 
 // Builds the workspace's solution and runs the hidden cases.
-export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
+export fn grade(ch Challenge, lang Lang, ws String) Grade:
 	cases := ch.cases("hidden")
 	tokens := count_workspace(ws, lang.suffix())
 	built := bash(lang.build, ws, 600, "")

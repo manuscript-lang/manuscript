@@ -3,7 +3,7 @@
 // conform: origin=bug bash: `if var n = m.get(k): n += 1` dropped the write for scalar values
 import stdout from "@std/io/io.ms"
 
-fn bump(var counts: Map[String, Int], key: String) Void:
+fn bump(var counts Map[String, Int], key String) Void:
     if var n = counts.get(key):
         n += 1
     else:

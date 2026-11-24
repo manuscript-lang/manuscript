@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Key:\n\tid: Int\n\nfn Key.equals(other: Key) Bool:\n\treturn true\n\nfn accepts(value: Equal) Void:\n\treturn\n\nfn use_view() Void:\n\taccepts(Key(1))\n"
+    "fmt": "type Key:\n\tid Int\n\nfn Key.equals(other Key) Bool:\n\treturn true\n\nfn accepts(value Equal) Void:\n\treturn\n\nfn use_view() Void:\n\taccepts(Key(1))\n"
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Config:\n\tValue(value: Int??)\n"
+    "fmt": "enum Config:\n\tValue(value Int??)\n"
   }
 }

@@ -185,15 +185,15 @@ bool parse_foreign_declaration(Parser *p, MsToken t, MsSpan *message, const char
   if (ms_span_is_text(w, "function") || ms_span_is_text(w, "def") || ms_span_is_text(w, "func") ||
       ms_span_is_text(w, "fun") || ms_span_is_text(w, "sub")) {
     rep = "fn";
-    advice = "declare a function as 'fn name(a: Int) Int:' with the result type after the parameters";
+    advice = "declare a function as 'fn name(a Int) Int:' with the result type after the parameters";
   } else if (ms_span_is_text(w, "class") || ms_span_is_text(w, "struct") || ms_span_is_text(w, "record") ||
              ms_span_is_text(w, "data")) {
     rep = "type";
-    advice = "declare a type with 'type Name:' and 'field: Type' lines, then add methods as 'fn "
+    advice = "declare a type with 'type Name:' and 'field Type' lines, then add methods as 'fn "
              "Name.method(...)' after it";
   } else if (ms_span_is_text(w, "union") || ms_span_is_text(w, "variant") || ms_span_is_text(w, "sealed")) {
     rep = "enum";
-    advice = "declare an enum with 'enum Name:' and one 'Variant' or 'Variant(field: Type)' line each";
+    advice = "declare an enum with 'enum Name:' and one 'Variant' or 'Variant(field Type)' line each";
   } else if (ms_span_is_text(w, "trait") || ms_span_is_text(w, "protocol") ||
              ms_span_is_text(w, "abstract")) {
     rep = "interface";

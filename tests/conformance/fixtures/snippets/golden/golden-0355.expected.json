@@ -14,7 +14,7 @@
           "file": "golden-0355.ms",
           "line": 6,
           "column": 5,
-          "offset": 97
+          "offset": 96
         }
       },
       {
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0355.ms:6:5: type: recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle\n   |\n 6 |     a: A[U]\n   |     ^\n<DIR>/golden-0355.ms:4:5: type: recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle\n   |\n 4 |     b: B[List[T]]\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0355.ms:6:5: type: recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle\n   |\n 6 |     a A[U]\n   |     ^\n<DIR>/golden-0355.ms:4:5: type: recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle\n   |\n 4 |     b B[List[T]]\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

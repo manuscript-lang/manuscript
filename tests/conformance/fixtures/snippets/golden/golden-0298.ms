@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type S:
-    x: Int
+    x Int
 impl Missing for S:
-    fn m() Int: return 1
+    fn m() Int => return 1

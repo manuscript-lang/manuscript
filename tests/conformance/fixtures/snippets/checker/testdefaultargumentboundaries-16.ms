@@ -4,7 +4,7 @@
 fn f() Void:
     var outer = 1
     _callback := fn(
-        value: Int = (
+        value Int = (
             fn() Int:
                 outer = 2
                 return outer

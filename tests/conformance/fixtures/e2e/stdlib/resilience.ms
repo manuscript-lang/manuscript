@@ -13,11 +13,11 @@ import (
 	Duration, milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
-fn flaky(attempt: Int) Int!String:
+fn flaky(attempt Int) Int!String:
 	if attempt < 3: return error("try again")
 	return ok(attempt)
 
-fn never_retry(failure: String) Bool:
+fn never_retry(failure String) Bool:
 	return false
 
 test "retry succeeds after failures":
@@ -32,7 +32,7 @@ test "retry gives up after the last attempt":
 
 test "retry stops when the error is not retryable":
 	policy := RetryPolicy(attempts: 5, delay: milliseconds(1))
-	result := retry(policy, fn n: flaky(n), never_retry)
+	result := retry(policy, n => flaky(n), never_retry)
 	failure := expect_error(result)?
 	expect_equal(failure, "try again")?
 
@@ -117,10 +117,10 @@ test "circuit opens after threshold and recovers after cooldown":
 	expect_equal(value, 1)?
 
 test "map_concurrent keeps order and respects the limit":
-	doubled := expect_ok(map_concurrent([1, 2, 3, 4, 5], 2, fn n: n * 2))?
+	doubled := expect_ok(map_concurrent([1, 2, 3, 4, 5], 2, n => n * 2))?
 	expect_equal(doubled, [2, 4, 6, 8, 10])?
 
-	none_left := expect_ok(map_concurrent(List[Int](), 3, fn n: n))?
+	none_left := expect_ok(map_concurrent(List[Int](), 3, n => n))?
 	expect_equal(none_left.length(), 0)?
 
 test "throttle allows one action per interval":

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn start[T](operation: fn() T) Int:\n\treturn 0\n\nfn work(n: Int) Int:\n\treturn n\n\nfn f() Int:\n\treturn start(work)\n"
+    "fmt": "fn start[T](operation fn() T) Int:\n\treturn 0\n\nfn work(n Int) Int:\n\treturn n\n\nfn f() Int:\n\treturn start(work)\n"
   }
 }

@@ -1,7 +1,7 @@
 // conform: tags=formatter,parser,sets,tier-core
 // conform: phase=parse
 // conform: origin=tests/e2e/fault_locations_test.go:124 TestFaultSourceLocations
-fn crash(value: Int) Int:
+fn crash(value Int) Int:
     return 1 / value
 
 export fn main() Int:

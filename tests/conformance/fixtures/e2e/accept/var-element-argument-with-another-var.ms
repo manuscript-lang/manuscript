@@ -11,10 +11,10 @@ import (
 // on every call is the same mistake as a cost (a JPEG decode was quadratic in the image
 // size).
 type Holder:
-	handles: List[FileHandle] = []
-	label: String = ""
+	handles List[FileHandle] = []
+	label String = ""
 
-fn adopt(var holder: Holder, var count: Int, move handle: FileHandle) Void:
+fn adopt(var holder Holder, var count Int, move handle FileHandle) Void:
 	holder.handles.append(handle)
 	count += 1
 
@@ -30,10 +30,10 @@ test "an element and a local are both passed as var":
 	count | expect_equal(1)?
 
 type Plane:
-	cells: List[Int]
-	steps: Int
+	cells List[Int]
+	steps Int
 
-fn advance(var plane: Plane, var total: Int, at: Int) Void:
+fn advance(var plane Plane, var total Int, at Int) Void:
 	plane.cells[at] += 1
 	plane.steps += 1
 	total += plane.cells[at]

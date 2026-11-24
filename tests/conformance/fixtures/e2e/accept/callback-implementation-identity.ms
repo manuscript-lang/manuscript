@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 type Box[T]:
-	value: T
+	value T
 
 interface Forward:
 	fn forward() Int
@@ -11,23 +11,23 @@ interface Forward:
 interface Reverse:
 	fn reverse() Int
 
-fn Box[fn(Int) Int].forward() Int: 1
+fn Box[fn(Int) Int].forward() Int => 1
 
-fn Box[fn(var Int) Int].forward() Int: 2
+fn Box[fn(var Int) Int].forward() Int => 2
 
-fn Box[fn(var Int) Int].reverse() Int: 4
+fn Box[fn(var Int) Int].reverse() Int => 4
 
-fn Box[fn(Int) Int].reverse() Int: 3
+fn Box[fn(Int) Int].reverse() Int => 3
 
-fn identity(value: Int) Int: value
+fn identity(value Int) Int => value
 
-fn increment(var value: Int) Int:
+fn increment(var value Int) Int:
 	value += 1
 	return value
 
-fn forward[T: Forward](value: T) Int: value.forward()
+fn forward[T Forward](value T) Int => value.forward()
 
-fn reverse[T: Reverse](value: T) Int: value.reverse()
+fn reverse[T Reverse](value T) Int => value.reverse()
 
 test "callback modes select their exact implementation in either declaration order":
 	plain := Box[fn(Int) Int](identity)
@@ -44,10 +44,10 @@ test "callback modes select their exact implementation in either declaration ord
 test "interface views and method values retain exact callback identity":
 	plain := Box[fn(Int) Int](identity)
 	changing := Box[fn(var Int) Int](increment)
-	first: Forward := plain
-	second: Forward := changing
-	third: Reverse := plain
-	fourth: Reverse := changing
+	first Forward := plain
+	second Forward := changing
+	third Reverse := plain
+	fourth Reverse := changing
 	expect_equal(first.forward(), 1)?
 	expect_equal(second.forward(), 2)?
 	expect_equal(third.reverse(), 3)?

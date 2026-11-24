@@ -22,27 +22,27 @@ import (
 )
 
 type Options:
-	out: String
-	challenges: String = ""
-	languages: String = ""
-	ms_binary: String = ""
-	agent_timeout: Int = 900
+	out String
+	challenges String = ""
+	languages String = ""
+	ms_binary String = ""
+	agent_timeout Int = 900
 
-fn base_image(lang_id: String) String:
+fn base_image(lang_id String) String:
 	if lang_id == "ts": return "node:22-bookworm"
 	if lang_id == "go": return "golang:1.25-bookworm"
 	if lang_id == "rust": return "rust:1-bookworm"
 
 	return "ubuntu:24.04"
 
-fn dockerfile(lang_id: String) String:
+fn dockerfile(lang_id String) String:
 	install := "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git && rm -rf /var/lib/apt/lists/*"
 	return [
 		f"FROM {base_image(lang_id)}", f"RUN {install}", "COPY ms /usr/local/bin/ms",
 		"WORKDIR /app", "COPY workspace /app", ""
 	].join("\n")
 
-fn task_toml(name: String, ch: Challenge, agent_timeout: Int) String:
+fn task_toml(name String, ch Challenge, agent_timeout Int) String:
 	return read_text(f"{root()}/harbor/task.toml.tmpl").replace("{name}", name).replace(
 		"{title}",
 		ch.title,
@@ -51,9 +51,9 @@ fn task_toml(name: String, ch: Challenge, agent_timeout: Int) String:
 		f"{agent_timeout}.0",
 	)
 
-fn quote(text: String) String: dumps(JsonValue.StringValue(text.clone()), 0)
+fn quote(text String) String => dumps(JsonValue.StringValue(text.clone()), 0)
 
-fn put(from: String, to: String) Void:
+fn put(from String, to String) Void:
 	create_directory(
 		to.split("/").take(to.split("/").length() - 1).join("/"),
 		recursive: true,
@@ -61,11 +61,11 @@ fn put(from: String, to: String) Void:
 	copy(from, to, CopyOptions(replace: true)).get()
 
 fn export_one(
-	ch: Challenge,
-	lang: Lang,
-	out: String,
-	ms_binary: String,
-	agent_timeout: Int,
+	ch Challenge,
+	lang Lang,
+	out String,
+	ms_binary String,
+	agent_timeout Int,
 ) Void:
 	name := f"{ch.id}-{lang.id}"
 	d := f"{out}/{name}"
@@ -116,10 +116,10 @@ fn export_one(
 	chmod(f"{d}/tests/test.sh", 493).get()
 	chmod(f"{d}/solution/solve.sh", 493).get()
 
-fn split_ids(text: String) List[String]:
-	return text.split(",").filter(fn x: not x.is_empty())
+fn split_ids(text String) List[String]:
+	return text.split(",").filter(x => not x.is_empty())
 
-fn run_export(o: Options) Int!:
+fn run_export(o Options) Int!:
 	create_directory(o.out, recursive: true).get()
 
 	var n = 0
@@ -143,6 +143,6 @@ fn main() Int:
 			Flag("ms-binary", default: ""),
 			Flag("agent-timeout", FlagKind.Int, default: "900"),
 		],
-		run: fn o: run_export(o)
+		run: o => run_export(o),
 	)
 	return root.execute(arguments())

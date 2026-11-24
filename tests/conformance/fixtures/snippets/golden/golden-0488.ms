@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn required(value: Int) Int: value
+fn required(value Int) Int => value
 fn first() Void:
-    var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
+    var callback fn(Int) Int = from_callback(() => fn(value Int = 4) => value)
     callback = required
     callback()

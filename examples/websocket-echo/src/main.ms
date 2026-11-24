@@ -4,7 +4,7 @@ import (
 )
 
 // Echoes every message back until the peer closes the connection.
-fn echo(var exchange: HttpExchange) Void!:
+fn echo(var exchange HttpExchange) Void!:
 	var socket = exchange.upgrade(
 		allowed_origins: [],
 		subprotocols: [],

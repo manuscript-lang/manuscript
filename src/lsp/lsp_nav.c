@@ -198,7 +198,7 @@ static bool hover_expression(const LspAnalysis *analysis, const LspDoc *doc, siz
     MsStrBuild value = ms_strbuild_new();
     ms_strbuild_append_text(&value, "```manuscript\n");
     ms_strbuild_append(&value, found.text);
-    ms_strbuild_append_text(&value, ": ");
+    ms_strbuild_append_text(&value, " ");
     ms_strbuild_append(&value, ms_strbuild_span(&shown));
     ms_strbuild_append_text(&value, "\n```");
     const MsSpan text = program->modules.ptr[m].source;
@@ -233,7 +233,7 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   MsStrBuild value = ms_strbuild_new();
   ms_strbuild_append_text(&value, "```manuscript\n");
   ms_strbuild_append(&value, selected->name);
-  ms_strbuild_append_text(&value, ": ");
+  ms_strbuild_append_text(&value, " ");
   ms_strbuild_append(&value, ms_strbuild_span(&shown));
   ms_strbuild_append_text(&value, "\n```");
   const MsOccurrence *declaration = declaration_of(&analysis, selected);
@@ -841,7 +841,7 @@ void lsp_nav_inlay_hints(const LspDocList *docs, const LspDoc *doc, LspRange ran
     const bool before_end = at.line < range.end.line || (at.line == range.end.line && at.character <= range.end.character);
     if (!after_start || !before_end) continue;
     MsStrBuild label = ms_strbuild_new();
-    ms_strbuild_append_text(&label, ": ");
+    ms_strbuild_append_text(&label, " ");
     ms_ty_show_plain(&label, program->names, &program->types, entry->ty);
     hint_list_push(&hints, (Hint){at, ms_arena_copy(analysis.arena, ms_strbuild_span(&label))});
     ms_strbuild_free(&label);

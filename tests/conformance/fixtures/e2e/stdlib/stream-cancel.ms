@@ -8,7 +8,7 @@ import (
 )
 
 // Sums a stream that never delivers: the loop waits inside the source.
-fn sum(input: ReadStream[Int]) Int!:
+fn sum(move input ReadStream[Int]) Int!:
 	var source = input
 	var total = 0
 	for n in source:
@@ -18,7 +18,7 @@ fn sum(input: ReadStream[Int]) Int!:
 test "a time limit on the loop cancels a source that waits forever":
 	var p = pipe[Int](4)
 	gate := p.writer()
-	work := promise(fn: sum(p.reader())).with(
+	work := promise(() => sum(p.reader())).with(
 		options: PromiseOptions(timeout: milliseconds(100))
 	)
 	result := work.wait()
@@ -30,7 +30,7 @@ test "a cancel switch ends a loop that waits for an item":
 	var p = pipe[Int](4)
 	gate := p.writer()
 	switch := cancel_switch()
-	work := promise(fn: sum(p.reader())).with(
+	work := promise(() => sum(p.reader())).with(
 		options: PromiseOptions(cancel: switch.signal())
 	)
 	sleep(milliseconds(50)).wait()?

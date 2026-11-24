@@ -5,22 +5,22 @@ import (
 )
 
 type Edge:
-	to: Int
-	w: Int
+	to Int
+	w Int
 
 type Item:
-	dist: Int
-	node: Int
+	dist Int
+	node Int
 
-fn Item.compare(other: Item) Int:
+fn Item.compare(other Item) Int:
 	if self.dist != other.dist: return self.dist - other.dist
 	return self.node - other.node
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn build(n: Int, m: Int) List[List[Edge]]:
-	var adj: List[List[Edge]] = []
+fn build(n Int, m Int) List[List[Edge]]:
+	var adj List[List[Edge]] = []
 	for i in 0..n:
 		adj.append([])
 
@@ -41,7 +41,7 @@ fn build(n: Int, m: Int) List[List[Edge]]:
 
 	return adj
 
-fn bfs(adj: List[List[Edge]], start: Int) Int:
+fn bfs(adj List[List[Edge]], start Int) Int:
 	var level = List[Int]()
 	for i in 0..adj.length():
 		level.append(-1)
@@ -68,7 +68,7 @@ fn bfs(adj: List[List[Edge]], start: Int) Int:
 
 	return reached * 1000 + depth_sum % 1000
 
-fn dijkstra(adj: List[List[Edge]], start: Int) Int:
+fn dijkstra(adj List[List[Edge]], start Int) Int:
 	var dist = List[Int]()
 	for i in 0..adj.length():
 		dist.append(1000000000)
@@ -101,13 +101,13 @@ fn dijkstra(adj: List[List[Edge]], start: Int) Int:
 
 	return total % 1000003 * 1000 + far
 
-fn find(parent: List[Int], x: Int) Int:
+fn find(parent List[Int], x Int) Int:
 	var r = x
 	while parent[r] != r:
 		r = parent[r]
 	return r
 
-fn components(n: Int, m: Int) Int:
+fn components(n Int, m Int) Int:
 	var parent = List[Int]()
 	for i in 0..n:
 		parent.append(i)

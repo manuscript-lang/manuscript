@@ -2,7 +2,7 @@
 // conform: phase=run
 // A string grown by `+=` records spare room after its text. Equal strings compare, hash and
 // look up the same whether or not they carry it.
-fn grown(n: Int) String:
+fn grown(n Int) String:
 	var s = "prefix-that-is-not-inline-"
 	for i in 0..n: s += "ab"
 	return s
@@ -12,7 +12,7 @@ fn main() Void:
 	b := "prefix-that-is-not-inline-" + "ab".repeat(40)
 	print(a == b)
 	print(a.length())
-	var seen: Map[String, Int] = {}
+	var seen Map[String, Int] = {}
 	seen[a.clone()] = 1
 	print(seen.get_or(b, 0))
 	var c = grown(3)

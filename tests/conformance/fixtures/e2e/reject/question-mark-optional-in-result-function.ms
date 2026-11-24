@@ -1,8 +1,8 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-fn first(items: List[Int]) Int?:
+fn first(items List[Int]) Int?:
 	return items.first()
 
-fn total(items: List[Int]) Int!:
+fn total(items List[Int]) Int!:
 	value := first(items)?
 	return ok(value)

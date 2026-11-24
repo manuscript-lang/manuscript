@@ -2,9 +2,9 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/lsp/mutation_test.go:11 TestFieldWritesAndClonesKeepEditorNavigation
 type Val:
-    val: Int
+    val Int
 
-fn work(var value: Val) Void:
+fn work(var value Val) Void:
     callback := fn() Void:
         value.val = value.val + 1
     callback()

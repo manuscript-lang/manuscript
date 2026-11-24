@@ -2,21 +2,21 @@
 // with payloads, recursive values.
 
 enum Tok:
-	Num(v: Int)
-	Sym(c: Int)
+	Num(v Int)
+	Sym(c Int)
 
 enum Expr:
-	Lit(v: Int)
-	Bin(op: Int, left: Expr, right: Expr)
+	Lit(v Int)
+	Bin(op Int, left Expr, right Expr)
 
 type Parser:
-	toks: List[Tok]
-	pos: Int = 0
+	toks List[Tok]
+	pos Int = 0
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn gen(depth: Int, var x: Int, var out: String) Void:
+fn gen(depth Int, var x Int, var out String) Void:
 	x = lcg(x)
 
 	if depth == 0 or x % 5 == 0:
@@ -32,8 +32,8 @@ fn gen(depth: Int, var x: Int, var out: String) Void:
 	gen(depth - 1, x, out)
 	out += ")"
 
-fn tokenize(text: String) List[Tok]:
-	var toks: List[Tok] = []
+fn tokenize(text String) List[Tok]:
+	var toks List[Tok] = []
 	n := text.length()
 	var i = 0
 
@@ -56,10 +56,10 @@ fn tokenize(text: String) List[Tok]:
 
 	return toks
 
-fn symbol(t: Tok) Int:
+fn symbol(t Tok) Int:
 	match t:
-		Sym(c): return c
-		Num(_): return 0
+		Sym(c) => return c
+		Num(_) => return 0
 
 fn var Parser.expr() Expr:
 	match self.toks[self.pos]:
@@ -77,9 +77,9 @@ fn var Parser.expr() Expr:
 			self.pos += 1  // ")"
 			return Expr.Bin(op, left, right)
 
-fn eval(e: Expr) Int:
+fn eval(e Expr) Int:
 	match e:
-		Lit(v): return v
+		Lit(v) => return v
 		Bin(op, l, r):
 			a := eval(l)
 			b := eval(r)

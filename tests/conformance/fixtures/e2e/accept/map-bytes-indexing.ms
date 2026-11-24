@@ -2,10 +2,10 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn total(scores: Map[String, Int]) Int:
+fn total(scores Map[String, Int]) Int:
 	return scores["a"] + scores["b"]
 
-fn sizes(var table: Map[Int, String]) Int:
+fn sizes(var table Map[Int, String]) Int:
 	table[1] = "one"
 	return table[1].length()
 
@@ -26,7 +26,7 @@ test "map index assignment keeps insertion position":
 	m["y"] | expect_equal(20)?
 
 test "map index with Int keys and String values":
-	var table: Map[Int, String] = {}
+	var table Map[Int, String] = {}
 	sizes(table) | expect_equal(3)?
 
 	var counts = {1: 10, 2: 20}

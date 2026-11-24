@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn count[T](values: List[T]) Int: return values.length()
+fn count[T](values List[T]) Int => return values.length()
 fn probe() Int:
     values := [1, 2, 3]
     var sum = 0

@@ -1,9 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Cause:
-    text: String
+    text String
 impl Error for Cause:
-    fn message() String: self.text
+    fn message() String => self.text
 fn affine(n: Int) Result[Int, Cause]:
     if n < 0:
         return error(Cause("negative"))

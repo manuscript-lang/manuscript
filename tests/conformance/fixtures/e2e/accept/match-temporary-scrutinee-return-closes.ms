@@ -7,22 +7,22 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
-fn open(id: Int, log: String) Door?:
+fn open(id Int, log String) Door?:
 	return Door(id, log.clone())
 
-fn early(log: String) Int:
+fn early(log String) Int:
 	match open(1, log.clone()):
 		d:
 			if d.id == 1: return 10
@@ -30,17 +30,17 @@ fn early(log: String) Int:
 		null:
 			return 0
 
-fn late(log: String) Int:
+fn late(log String) Int:
 	n := match open(2, log.clone()):
-		d: d.id
-		null: 0
+		d => d.id
+		null => 0
 
 	return n
 
-fn hand_on(log: String) Door?:
+fn hand_on(log String) Door?:
 	match open(3, log.clone()):
-		d: return d
-		null: return null
+		d => return d
+		null => return null
 
 test "a payload moved out of the arm is not closed by the match":
 	tmp := temporary("ms-log-") | expect_ok?

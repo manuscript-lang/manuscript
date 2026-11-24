@@ -5,4 +5,4 @@ interface Shape:
     fn area() Int
 
 type Sq:
-    s: Int
+    s Int

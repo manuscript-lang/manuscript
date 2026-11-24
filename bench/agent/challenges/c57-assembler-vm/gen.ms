@@ -5,7 +5,7 @@ import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 JT := "\n.data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n"
 
-fn strip_nl(text: String) String:
+fn strip_nl(text String) String:
 	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
@@ -15,7 +15,7 @@ fn strip_nl(text: String) String:
 		end -= 1
 	return chars.slice(start, end).get_or([]).join("")
 
-fn add(var cs: Cases, name: String, prog: String, inp: String? = null) Void:
+fn add(var cs Cases, name String, prog String, inp String? = null) Void:
 	var s = strip_nl(prog) + "\n"
 	text := inp
 	if text != null:

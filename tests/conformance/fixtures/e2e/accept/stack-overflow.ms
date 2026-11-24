@@ -2,7 +2,7 @@
 // conform: phase=run
 // Every call keeps 1500 locals live across the recursive call, so the frame is large
 // enough that the 1 GiB main stack runs out after only a few hundred thousand calls.
-fn fat(n: Int) Int:
+fn fat(n Int) Int:
 	a0 := n + 0
 	a1 := n + 1
 	a2 := n + 2

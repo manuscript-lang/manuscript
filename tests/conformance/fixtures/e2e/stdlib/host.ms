@@ -53,7 +53,7 @@ test "process environment reflects live changes":
 	set_environment(name, before)?
 
 test "subprocess validation returns expected domain errors":
-	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
+	invalid CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)?
 
 	missing := run(
@@ -99,7 +99,7 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
 	expect_false((output.next()?) != null)?
 
 test "run and spawn pass the environment to the child":
-	var env: Map[String, String] = Map[String, String]()
+	var env Map[String, String] = Map[String, String]()
 	env.add("MS_CHILD_VALUE", "from-parent")
 
 	output := run(

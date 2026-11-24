@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn inner(value: Int?) Int:\n\treturn match value:\n\t\tn: n\n\t\tnull: 0\n\nfn use(value: Int?) Int:\n\treturn match value:\n\t\t_value: inner(value)\n\t\tnull: 0\n"
+    "fmt": "fn inner(value Int?) Int:\n\treturn match value:\n\t\tn => n\n\t\tnull => 0\n\nfn use(value Int?) Int:\n\treturn match value:\n\t\t_value => inner(value)\n\t\tnull => 0\n"
   }
 }

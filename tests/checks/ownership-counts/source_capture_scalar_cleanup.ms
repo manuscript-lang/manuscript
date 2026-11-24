@@ -13,22 +13,22 @@
 import Closeable, print from "@std/core.ms"
 
 type Marker:
-	id: Int
+	id Int
 
 fn move Marker.close() Void!:
 	print(f"close {self.id}")
 
-fn Marker.status() Int: self.id
+fn Marker.status() Int => self.id
 
-fn Marker.with_default(offset: Int = 10) Int: self.id + offset
+fn Marker.with_default(offset Int = 10) Int => self.id + offset
 
-fn Marker.generic[T](_tag: T) Int: self.id
+fn Marker.generic[T](_tag T) Int => self.id
 
-fn var Marker.bump(delta: Int = 1) Int:
+fn var Marker.bump(delta Int = 1) Int:
 	self.id += delta
 	return self.id
 
-fn marker(id: Int) Marker: Marker(id)
+fn marker(id Int) Marker => Marker(id)
 
 fn ordinary() Int:
 	read := marker(1).status
@@ -45,7 +45,7 @@ fn generic() Int:
 	first := read(10)
 	return first + read(20)
 
-fn borrow(value: Marker) Int:
+fn borrow(value Marker) Int:
 	read := value.status
 	first := read()
 	return first + read()
@@ -57,7 +57,7 @@ fn borrowed_owner() Void:
 
 	_still_present := value.id
 
-fn shared(var value: Marker) Int:
+fn shared(var value Marker) Int:
 	bump := value.bump
 	first := bump()
 	return first + bump(1)

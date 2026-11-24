@@ -4,8 +4,8 @@ import promise, wait_first, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
 // Holds heap values across waits so a cancelled promise has something to release.
-fn hold(label: String) Int:
-    var parts: List[String] = []
+fn hold(label String) Int:
+    var parts List[String] = []
 
     for i in 0..600:
         parts.append(f"{label} {i}")
@@ -15,9 +15,9 @@ fn hold(label: String) Int:
     return parts.length()
 
 fn main() Void:
-    slow := promise(fn: ok(hold("timed out")))
+    slow := promise(() => ok(hold("timed out")))
     timed_out := slow.with(options: PromiseOptions(timeout: milliseconds(20))).wait()
-    first := wait_first([promise(fn: ok(hold("loser"))), promise(fn: ok(4))])
-    pending := promise(fn: ok(hold("dropped")))
+    first := wait_first([promise(() => ok(hold("loser"))), promise(() => ok(4))])
+    pending := promise(() => ok(hold("dropped")))
     void pending
     print(f"{timed_out.is_error()} {first.get_or(0)}")

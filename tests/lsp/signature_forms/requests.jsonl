@@ -1,8 +1,8 @@
-{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
-{"jsonrpc": "2.0", "method": "initialized", "params": {}}
-{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "fn first[T](left: T, right: T) T:\n    return left\n\ntype Pair:\n    left: Int\n\nfn Pair.combine(left: Int, right: Int) Int:\n    return self.left + left + right\n\nfn use(pair: Pair) Int:\n    return first[Int](1, 2) + (pair).combine(3, 4) + f\"{first[Int](5, 6)}\".length()\n"}}}
-{"jsonrpc": "2.0", "id": 2, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 10, "character": 24}}}
-{"jsonrpc": "2.0", "id": 3, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 10, "character": 47}}}
-{"jsonrpc": "2.0", "id": 4, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 10, "character": 69}}}
-{"jsonrpc": "2.0", "id": 9, "method": "shutdown"}
-{"jsonrpc": "2.0", "method": "exit"}
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":"$ROOT_URI","capabilities":{}}}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"fn first[T](left T, right T) T:\n    return left\n\ntype Pair:\n    left Int\n\nfn Pair.combine(left Int, right Int) Int:\n    return self.left + left + right\n\nfn use(pair Pair) Int:\n    return first[Int](1, 2) + (pair).combine(3, 4) + f\"{first[Int](5, 6)}\".length()\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":10,"character":24}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":10,"character":47}}}
+{"jsonrpc":"2.0","id":4,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":10,"character":69}}}
+{"jsonrpc":"2.0","id":9,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}

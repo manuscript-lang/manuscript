@@ -5,6 +5,6 @@ interface Shape:
     fn area() Int
 
 type Sq:
-    s: Int
+    s Int
 
-fn Sq.area() Int: self.s * self.s
+fn Sq.area() Int => self.s * self.s

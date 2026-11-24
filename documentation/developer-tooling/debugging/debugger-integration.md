@@ -15,7 +15,7 @@ Save this as `words.ms`. It splits a short line repeatedly and prints the number
 ```manuscript
 import arguments from "@std/os/env.ms"
 
-fn count_words(text: String) Int:
+fn count_words(text String) Int:
     return text.split(" ").length()
 
 fn main() Void:

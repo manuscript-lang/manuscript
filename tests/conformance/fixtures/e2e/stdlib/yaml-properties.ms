@@ -7,7 +7,7 @@ import (
 	Rng, mutate, next, text from "./support/generator.ms",
 )
 
-fn generated(var rng: Rng, depth: Int) YamlValue:
+fn generated(var rng Rng, depth Int) YamlValue:
 	var choices = 6
 	if depth > 2: choices = 4
 
@@ -18,21 +18,21 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
 	if kind == 3: return YamlValue.StringValue(text(rng))
 
 	if kind == 4:
-		var items: List[YamlValue] = []
+		var items List[YamlValue] = []
 		for item in 0..next(rng, 4):
 			items.append(generated(rng, depth + 1))
 		return YamlValue.ArrayValue(items)
 
-	var entries: Map[String, YamlValue] = {}
+	var entries Map[String, YamlValue] = {}
 	for item in 0..next(rng, 4):
 		entries.add(text(rng), generated(rng, depth + 1))
 	return YamlValue.ObjectValue(entries)
 
-fn check_round_trip(seed: Int, original: YamlValue) Void!:
+fn check_round_trip(seed Int, original YamlValue) Void!:
 	rendered := stringify(original)?
 	if (parse(rendered)?) != original: return fail(f"seed {seed}: changed\n{rendered}")
 
-fn check_stable(seed: Int, mutated: String, first: YamlValue) Void!:
+fn check_stable(seed Int, mutated String, first YamlValue) Void!:
 	again := stringify(first)?
 	if (parse(again)?) != first: return fail(
 		f"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"

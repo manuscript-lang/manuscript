@@ -6,11 +6,11 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn supplied(var log: List[String], data: Bytes) Bytes:
+fn supplied(var log List[String], data Bytes) Bytes:
 	log.append("data")
 	return data
 
-fn chosen(var log: List[String], format: CompressionFormat) CompressionFormat:
+fn chosen(var log List[String], format CompressionFormat) CompressionFormat:
 	log.append("format")
 	return format
 
@@ -46,8 +46,8 @@ test "compression omission equals explicit level six for every format":
 
 test "compression defaults retain invalid levels and output budgets":
 	data := "abc".to_bytes()
-	invalid: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
-	limited: Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
+	invalid Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
+	limited Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
 
 	for format in [
 		CompressionFormat.Gzip,
@@ -60,7 +60,7 @@ test "compression defaults retain invalid levels and output budgets":
 		expect_equal(compress(data, format, CompressOptions(max_bytes: 0)), limited)?
 
 test "compression default preparation retains supplied argument order":
-	var log: List[String] = []
+	var log List[String] = []
 	data := "data".to_bytes()
 	encoded := compress(
 		format: chosen(log, CompressionFormat.Gzip),

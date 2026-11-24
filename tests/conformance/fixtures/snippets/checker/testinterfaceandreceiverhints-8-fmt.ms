@@ -5,6 +5,6 @@ interface Named:
     fn name() String
 
 type E:
-    text: String
+    text String
 
-fn E.name() String: this.text
+fn E.name() String => this.text

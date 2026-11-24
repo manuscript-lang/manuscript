@@ -7,23 +7,23 @@ import (
 )
 
 type Resource:
-	id: Int
-	path: String
+	id Int
+	path String
 
 fn move Resource.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
 
-fn accepted() Int!: ok(1)
+fn accepted() Int! => ok(1)
 
-fn failing() Int!: error(Error("stop"))
+fn failing() Int! => error(Error("stop"))
 
-fn observed(value: Resource?, tail: Int = accepted()?) Bool!:
+fn observed(value Resource?, tail Int = accepted()?) Bool!:
 	return ok((value != null) or tail > 0)
 
-fn refused(value: Resource?, tail: Int = failing()?) Bool!:
+fn refused(value Resource?, tail Int = failing()?) Bool!:
 	return ok((value != null) or tail > 0)
 
-fn log_text(path: String) String!:
+fn log_text(path String) String!:
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
 

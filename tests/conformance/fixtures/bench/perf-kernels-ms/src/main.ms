@@ -4,28 +4,28 @@ import (
 )
 
 type Body:
-	x: Float
-	y: Float
-	z: Float
-	vx: Float
-	vy: Float
-	vz: Float
-	mass: Float
+	x Float
+	y Float
+	z Float
+	vx Float
+	vy Float
+	vz Float
+	mass Float
 
 type Grid:
-	width: Int
-	height: Int
-	cells: List[Int]
+	width Int
+	height Int
+	cells List[Int]
 
 enum Tree:
 	Leaf
-	Node(left: Tree, right: Tree)
+	Node(left Tree, right Tree)
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text.clone())
 
-fn sieve(n: Int) Int:
-	var flags: List[Bool] = List[Bool]()
+fn sieve(n Int) Int:
+	var flags List[Bool] = List[Bool]()
 	var i = 0
 
 	while i <= n:
@@ -49,7 +49,7 @@ fn sieve(n: Int) Int:
 
 	return count
 
-fn advance(var bodies: List[Body], steps: Int) Float:
+fn advance(var bodies List[Body], steps Int) Float:
 	n := bodies.length()
 	var s = 0
 
@@ -101,12 +101,12 @@ fn advance(var bodies: List[Body], steps: Int) Float:
 
 	return e
 
-fn cell(g: Grid, x: Int, y: Int) Int:
+fn cell(g Grid, x Int, y Int) Int:
 	wx := (x + g.width) % g.width
 	wy := (y + g.height) % g.height
 	return g.cells.get(wy * g.width + wx)
 
-fn neighbors(g: Grid, x: Int, y: Int) Int:
+fn neighbors(g Grid, x Int, y Int) Int:
 	var n = 0
 	var dy = -1
 
@@ -122,7 +122,7 @@ fn neighbors(g: Grid, x: Int, y: Int) Int:
 
 	return n
 
-fn step(g: Grid) Grid:
+fn step(g Grid) Grid:
 	var next = List[Int]()
 	var y = 0
 
@@ -144,7 +144,7 @@ fn step(g: Grid) Grid:
 
 	return Grid(g.width, g.height, next)
 
-fn life(gens: Int) Int:
+fn life(gens Int) Int:
 	var cells = List[Int]()
 	var i = 0
 
@@ -163,9 +163,9 @@ fn life(gens: Int) Int:
 		g = step(g)
 		n += 1
 
-	return g.cells.fold(0, fn(acc: Int, v: Int) Int: return acc + v)
+	return g.cells.fold(0, fn(acc Int, v Int) Int => return acc + v)
 
-fn matmul(n: Int) Float:
+fn matmul(n Int) Float:
 	var a = List[List[Float]]()
 	var b = List[List[Float]]()
 	var i = 0
@@ -205,18 +205,18 @@ fn matmul(n: Int) Float:
 
 	return total
 
-fn make(depth: Int) Tree:
+fn make(depth Int) Tree:
 	if depth == 0: return Leaf
 	return Node(make(depth - 1), make(depth - 1))
 
-fn check(t: Tree) Int:
+fn check(t Tree) Int:
 	match t:
 		Leaf:
 			return 1
 		Node(l, r):
 			return 1 + check(l) + check(r)
 
-fn trees(rounds: Int) Int:
+fn trees(rounds Int) Int:
 	var total = 0
 	var r = 0
 
@@ -226,7 +226,7 @@ fn trees(rounds: Int) Int:
 
 	return total
 
-fn collatz(limit: Int) Int:
+fn collatz(limit Int) Int:
 	var best = 0
 	var n = 1
 
@@ -248,24 +248,24 @@ fn collatz(limit: Int) Int:
 
 	return best
 
-fn wordfreq(n: Int) Int:
+fn wordfreq(n Int) Int:
 	var m = Map[Int, Int]()
 	var i = 0
 
 	while i < n:
 		k := (i * 7919) % 5003
-		m.update(k, 0, fn count: count + 1)
+		m.update(k, 0, count => count + 1)
 		i += 1
 
 	return m.length()
 
-fn timed(name: String, run: fn() Int) Void:
+fn timed(name String, run fn() Int) Void:
 	t := monotonic()
 	r := run()
 	say(f"{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 fn main() Int:
-	timed("sieve_5M", fn() Int: return sieve(5000000))
+	timed("sieve_5M", fn() Int => return sieve(5000000))
 
 	timed(
 		"nbody_200k",
@@ -280,9 +280,9 @@ fn main() Int:
 			return (advance(bodies, 200000) * 1000.0).truncate_to_int() or 0
 	)
 
-	timed("life_128x128_50", fn() Int: return life(50))
-	timed("matmul_200", fn() Int: return matmul(200).truncate_to_int() or 0)
-	timed("trees_d16_x20", fn() Int: return trees(20))
-	timed("collatz_1M", fn() Int: return collatz(1000000))
-	timed("map_count_2M", fn() Int: return wordfreq(2000000))
+	timed("life_128x128_50", fn() Int => return life(50))
+	timed("matmul_200", fn() Int => return matmul(200).truncate_to_int() or 0)
+	timed("trees_d16_x20", fn() Int => return trees(20))
+	timed("collatz_1M", fn() Int => return collatz(1000000))
+	timed("map_count_2M", fn() Int => return wordfreq(2000000))
 	return 0

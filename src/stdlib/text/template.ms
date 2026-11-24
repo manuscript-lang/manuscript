@@ -51,34 +51,34 @@ export opaque enum TemplateExpr:
 	// A literal string, number, boolean or null written in the template.
 	Literal(
 		// The literal as a JSON value.
-		value: JsonValue
+		value JsonValue
 	)
 	// A dotted path whose first name is a loop variable or a root member.
 	Path(
 		// The names between the dots, in order.
-		parts: List[String]
+		parts List[String]
 	)
 	// A filter applied to its first argument; later arguments are the filter's own.
 	Call(
 		// The filter name, one of the documented filters.
-		name: String,
+		name String,
 		// The filtered value followed by the filter arguments.
-		args: List[TemplateExpr]
+		args List[TemplateExpr]
 	)
 	// A comparison or logical operator over one or two operands.
 	Op(
 		// One of `and or not == != < <= > >=`.
-		op: String,
+		op String,
 		// The operands, in source order.
-		args: List[TemplateExpr]
+		args List[TemplateExpr]
 	)
 
 // One `if` or `else if` arm of a conditional node. Internal to the engine.
 export opaque type TemplateBranch:
 	// Condition that selects this arm when true.
-	cond: TemplateExpr
+	cond TemplateExpr
 	// Nodes rendered when the condition holds.
-	body: List[TemplateNode]
+	body List[TemplateNode]
 
 // A parsed template node: text, a printed value, a conditional, a loop or an include.
 // Internal to the engine.
@@ -86,54 +86,51 @@ export opaque enum TemplateNode:
 	// Literal text copied to the output.
 	Text(
 		// The text between actions, after trim markers.
-		text: String
+		text String
 	)
 	// A value printed to the output.
 	Emit(
 		// The expression whose value is printed.
-		expr: TemplateExpr,
+		expr TemplateExpr,
 		// True when the printed text is HTML-escaped.
-		escape: Bool
+		escape Bool
 	)
 	// A conditional with its arms and optional final branch.
 	If(
 		// Arms tried in order; the first true condition renders.
-		branches: List[TemplateBranch],
+		branches List[TemplateBranch],
 		// Nodes rendered when no arm holds.
-		otherwise: List[TemplateNode]
+		otherwise List[TemplateNode]
 	)
 	// A loop over a list or object.
 	Each(
 		// First loop name: the item, or the position or key when `second` is set.
-		first: String,
+		first String,
 		// Second loop name, or empty text for a single-name loop.
-		second: String,
+		second String,
 		// Expression that yields the list or object being walked.
-		source: TemplateExpr,
+		source TemplateExpr,
 		// Nodes rendered once per element.
-		body: List[TemplateNode],
+		body List[TemplateNode],
 		// Nodes rendered when the collection is empty.
-		otherwise: List[TemplateNode]
+		otherwise List[TemplateNode]
 	)
 	// Renders a named partial in the current scope.
 	Include(
 		// Expression that yields the partial's name.
-		name: TemplateExpr
+		name TemplateExpr
 	)
 
 // A compiled template; render it any number of times.
 export opaque type Template:
 	// The parsed nodes in source order.
-	nodes: List[TemplateNode]
+	nodes List[TemplateNode]
 	// True when printed values are HTML-escaped by default.
-	html: Bool
+	html Bool
 
 // Renders the template with `data` and the settings in `options`. When `data` is an
 // object, its members supply the root names.
-fn Template.render(
-	data: JsonValue,
-	options: RenderOptions = RenderOptions(),
-) String!Error:
+fn Template.render(data JsonValue, options RenderOptions = RenderOptions()) String!Error:
 	var frames = List[Map[String, JsonValue]]()
 	frames.append(root_names(data))
 
@@ -150,13 +147,13 @@ fn Template.render(
 	return ok(run.out.clone())
 
 type Token:
-	action: Bool
-	body: String
-	line: Int
+	action Bool
+	body String
+	line Int
 
 type Tok:
-	kind: String
-	text: String
+	kind String
+	text String
 
 FILTERS := [
 	"upper", "lower", "trim", "title", "length", "join", "json", "default", "escape",
@@ -166,7 +163,7 @@ MAX_DEPTH := 64
 
 // Compiles template source. With `html: true`, printed values are HTML-escaped unless
 // the action ends in `| raw`.
-export fn compile(source: String, html: Bool = false) Template!Error:
+export fn compile(source String, html Bool = false) Template!Error:
 	tokens := tokenize(source)?
 	var builder = Builder(tokens: tokens, at: 0, html: html)
 	done := builder.block(0)?
@@ -178,13 +175,13 @@ export fn compile(source: String, html: Bool = false) Template!Error:
 
 // Compiles and renders in one call, with default `RenderOptions`. Use `compile` when
 // rendering more than once.
-export fn render(source: String, data: JsonValue, html: Bool = false) String!Error:
+export fn render(source String, data JsonValue, html Bool = false) String!Error:
 	template := compile(source, html: html)?
 	return template.render(data)
 
 // Converts any `Data` value (records, lists, scalars) to the `JsonValue` that a
 // template reads.
-export fn to_data[T: Data](value: T) JsonValue!Error:
+export fn to_data[T Data](value T) JsonValue!Error:
 	text := stringify(value: value)
 	if text.is_error(): return error(
 		Error("template: data is not JSON", kind: "EBADMSG")
@@ -200,26 +197,26 @@ export fn to_data[T: Data](value: T) JsonValue!Error:
 // Settings for `Template.render` and `render_to`.
 export type RenderOptions:
 	// Templates that `include` can name.
-	partials: Map[String, Template] = Map[String, Template]()
+	partials Map[String, Template] = Map[String, Template]()
 	// When true, a missing printed path fails the render; when false, it prints as
 	// empty.
-	strict: Bool = true
+	strict Bool = true
 	// Maximum text length in bytes (default 16 MiB).
-	max_output: Int = 16777216
+	max_output Int = 16777216
 
 // Renders `template` as its `render` method does and writes the text to `output`. The
 // caller keeps `output` and closes it. A failed render writes nothing; a failed write
 // returns the stream's error.
 export fn render_to(
-	template: Template,
-	data: JsonValue,
-	var output: WriteStream[String],
-	options: RenderOptions = RenderOptions(),
+	template Template,
+	data JsonValue,
+	var output WriteStream[String],
+	options RenderOptions = RenderOptions(),
 ) Void!Error:
 	text := template.render(data, options)?
 	return output.write(text)
 
-fn root_names(data: JsonValue) Map[String, JsonValue]:
+fn root_names(data JsonValue) Map[String, JsonValue]:
 	members := data.as_map()
 	if members != null: return members
 
@@ -227,10 +224,10 @@ fn root_names(data: JsonValue) Map[String, JsonValue]:
 
 // ---- lexing -------------------------------------------------------------------------------
 
-fn count_lines(text: String) Int:
+fn count_lines(text String) Int:
 	return text.count("\n")
 
-fn tokenize(source: String) List[Token]!Error:
+fn tokenize(source String) List[Token]!Error:
 	var tokens = List[Token]()
 
 	// Splitting once keeps lexing linear: each piece starts right after an opening
@@ -306,20 +303,20 @@ fn tokenize(source: String) List[Token]!Error:
 	return ok(tokens)
 
 // Whether the scalar that starts at byte `at` is a space, tab or line break.
-fn is_blank_at(text: String, at: Int) Bool:
+fn is_blank_at(text String, at Int) Bool:
 	code := text.scalar_at(at, -1)
 	return code == 32 or code == 9 or code == 10 or code == 13
 
-fn is_blank(c: String) Bool:
+fn is_blank(c String) Bool:
 	return c == " " or c == "\t" or c == "\n" or c == "\r"
 
-fn is_word_start(c: String) Bool:
+fn is_word_start(c String) Bool:
 	return c == "_" or (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
 
-fn is_digit(c: String) Bool:
+fn is_digit(c String) Bool:
 	return c >= "0" and c <= "9"
 
-fn lex(text: String, line: Int) List[Tok]!Error:
+fn lex(text String, line Int) List[Tok]!Error:
 	var toks = List[Tok]()
 	chars := text.chars()
 	var i = 0
@@ -401,22 +398,22 @@ fn lex(text: String, line: Int) List[Tok]!Error:
 // ---- expression parsing --------------------------------------------------------------------
 
 type ExprParser:
-	toks: List[Tok]
-	at: Int
-	line: Int
+	toks List[Tok]
+	at Int
+	line Int
 
 fn ExprParser.peek() Tok:
 	return self.toks.get_or(self.at, Tok(kind: "end", text: ""))
 
-fn ExprParser.is_sym(text: String) Bool:
+fn ExprParser.is_sym(text String) Bool:
 	t := self.peek()
 	return t.kind == "sym" and t.text == text
 
-fn ExprParser.is_word(text: String) Bool:
+fn ExprParser.is_word(text String) Bool:
 	t := self.peek()
 	return t.kind == "word" and t.text == text
 
-fn ExprParser.fail(reason: String) Error:
+fn ExprParser.fail(reason String) Error:
 	return syntax_error(line: self.line, reason: reason)
 
 fn var ExprParser.or_expr() TemplateExpr!Error:
@@ -516,7 +513,7 @@ fn var ExprParser.primary() TemplateExpr!Error:
 
 	return error(self.fail("expected a value"))
 
-fn parse_expr(text: String, line: Int) TemplateExpr!Error:
+fn parse_expr(text String, line Int) TemplateExpr!Error:
 	toks := lex(text, line)?
 	var parser = ExprParser(toks: toks, at: 0, line: line)
 	if parser.toks.is_empty(): return error(
@@ -533,18 +530,18 @@ fn parse_expr(text: String, line: Int) TemplateExpr!Error:
 // ---- block parsing -------------------------------------------------------------------------
 
 type BlockEnd:
-	nodes: List[TemplateNode]
+	nodes List[TemplateNode]
 	// "" at end of input, otherwise "end", "else" or "else if".
-	end: String
-	cond: String
-	line: Int
+	end String
+	cond String
+	line Int
 
 type Builder:
-	tokens: List[Token]
-	at: Int
-	html: Bool
+	tokens List[Token]
+	at Int
+	html Bool
 
-fn var Builder.block(depth: Int) BlockEnd!Error:
+fn var Builder.block(depth Int) BlockEnd!Error:
 	var nodes = List[TemplateNode]()
 	if depth > MAX_DEPTH: return error(
 		syntax_error(line: 0, reason: "nested too deeply")
@@ -586,7 +583,7 @@ fn var Builder.block(depth: Int) BlockEnd!Error:
 
 	return ok(BlockEnd(nodes: nodes, end: "", cond: "", line: 0))
 
-fn Builder.emit(body: String, line: Int) TemplateNode!Error:
+fn Builder.emit(body String, line Int) TemplateNode!Error:
 	var expr = parse_expr(body, line)?
 	var escape_output = self.html
 	last := trailing_filter(expr)
@@ -599,7 +596,7 @@ fn Builder.emit(body: String, line: Int) TemplateNode!Error:
 
 	return ok(Emit(expr, escape_output))
 
-fn var Builder.conditional(cond: String, line: Int, depth: Int) TemplateNode!Error:
+fn var Builder.conditional(cond String, line Int, depth Int) TemplateNode!Error:
 	var branches = List[TemplateBranch]()
 	var otherwise = List[TemplateNode]()
 	var guard = parse_expr(cond, line)?
@@ -626,7 +623,7 @@ fn var Builder.conditional(cond: String, line: Int, depth: Int) TemplateNode!Err
 
 	return ok(If(branches, otherwise))
 
-fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
+fn var Builder.for_block(header String, line Int, depth Int) TemplateNode!Error:
 	at := header.index_of(" in ")
 	if at == null: return error(
 		syntax_error(line: line, reason: "for needs `name in value`")
@@ -667,34 +664,34 @@ fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Err
 
 	return ok(Each(first, second, source, body.nodes, otherwise))
 
-fn first_word(body: String) String:
+fn first_word(body String) String:
 	return body.split(" ")[0].trim()
 
-fn after_word(body: String) String:
+fn after_word(body String) String:
 	return body.view(first_word(body).length(), body.length()).trim().clone()
 
-fn trailing_filter(expr: TemplateExpr) String:
+fn trailing_filter(expr TemplateExpr) String:
 	match expr:
-		Call(name, _): return name.clone()
-		_: return ""
+		Call(name, _) => return name.clone()
+		_ => return ""
 
-fn strip_filter(expr: TemplateExpr) TemplateExpr:
+fn strip_filter(expr TemplateExpr) TemplateExpr:
 	match expr:
-		Call(_, args): return args[0].clone()
-		_: return expr.clone()
+		Call(_, args) => return args[0].clone()
+		_ => return expr.clone()
 
 // ---- rendering -----------------------------------------------------------------------------
 
 type Run:
-	out: String
-	written: Int
-	frames: List[Map[String, JsonValue]]
-	partials: Map[String, Template]
-	strict: Bool
-	limit: Int
-	html: Bool
+	out String
+	written Int
+	frames List[Map[String, JsonValue]]
+	partials Map[String, Template]
+	strict Bool
+	limit Int
+	html Bool
 
-fn var Run.write(text: String) Void!Error:
+fn var Run.write(text String) Void!Error:
 	self.written += text.length()
 	if self.written > self.limit: return error(
 		Error("template: output limit exceeded", kind: "EOVERFLOW")
@@ -702,7 +699,7 @@ fn var Run.write(text: String) Void!Error:
 
 	self.out += text
 
-fn Run.lookup(parts: List[String]) JsonValue?:
+fn Run.lookup(parts List[String]) JsonValue?:
 	var i = self.frames.length() - 1
 
 	while i >= 0:
@@ -716,21 +713,21 @@ fn Run.lookup(parts: List[String]) JsonValue?:
 
 	return null
 
-fn Run.eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
+fn Run.eval(expr TemplateExpr, strict Bool) JsonValue!Error:
 	match expr:
-		Literal(value): return ok(value.clone())
-		Path(parts): return self.path_value(parts, strict)
-		Call(name, args): return self.call(name, args, strict)
-		Op(op, args): return self.operator(op, args)
+		Literal(value) => return ok(value.clone())
+		Path(parts) => return self.path_value(parts, strict)
+		Call(name, args) => return self.call(name, args, strict)
+		Op(op, args) => return self.operator(op, args)
 
-fn Run.path_value(parts: List[String], strict: Bool) JsonValue!Error:
+fn Run.path_value(parts List[String], strict Bool) JsonValue!Error:
 	found := self.lookup(parts)
 	if found != null: return ok(found)
 	if strict: return error(missing_value_error(path: parts.join(".")))
 
 	return ok(JsonValue.Null)
 
-fn Run.operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
+fn Run.operator(op String, args List[TemplateExpr]) JsonValue!Error:
 	left := self.eval(args[0], false)?
 	if op == "not": return ok(JsonValue.BoolValue(not truthy(left)))
 	if op == "and" and not truthy(left): return ok(JsonValue.BoolValue(false))
@@ -748,7 +745,7 @@ fn Run.operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
 
 	return ok(JsonValue.BoolValue(order >= 0 and order != 2))
 
-fn Run.call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Error:
+fn Run.call(name String, args List[TemplateExpr], strict Bool) JsonValue!Error:
 	if name == "default":
 		input := self.eval(args[0], false)?
 		if truthy(input): return ok(input)
@@ -767,16 +764,16 @@ fn Run.call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Erro
 		values.append(self.eval(args[i], strict)?)
 	return apply_filter(name.clone(), input, values)
 
-fn var Run.nodes(items: List[TemplateNode], depth: Int) Void!Error:
+fn var Run.nodes(items List[TemplateNode], depth Int) Void!Error:
 	for node in items:
 		self.node(node, depth)?
 
-fn var Run.node(node: TemplateNode, depth: Int) Void!Error:
+fn var Run.node(node TemplateNode, depth Int) Void!Error:
 	match node:
-		Text(text): return self.write(text)
-		Emit(expr, escape_output): return self.emit(expr, escape_output)
-		If(branches, otherwise): return self.branch(branches, otherwise, depth)
-		Each(first, second, source, body, otherwise): return self.each(
+		Text(text) => return self.write(text)
+		Emit(expr, escape_output) => return self.emit(expr, escape_output)
+		If(branches, otherwise) => return self.branch(branches, otherwise, depth)
+		Each(first, second, source, body, otherwise) => return self.each(
 			first,
 			second,
 			source,
@@ -784,9 +781,9 @@ fn var Run.node(node: TemplateNode, depth: Int) Void!Error:
 			otherwise,
 			depth,
 		)
-		Include(name): return self.include(name, depth)
+		Include(name) => return self.include(name, depth)
 
-fn var Run.emit(expr: TemplateExpr, escape_output: Bool) Void!Error:
+fn var Run.emit(expr TemplateExpr, escape_output Bool) Void!Error:
 	value := self.eval(expr, self.strict)?
 	text := to_text(value)
 	if escape_output: return self.write(escape(text))
@@ -794,9 +791,9 @@ fn var Run.emit(expr: TemplateExpr, escape_output: Bool) Void!Error:
 	return self.write(text)
 
 fn var Run.branch(
-	branches: List[TemplateBranch],
-	otherwise: List[TemplateNode],
-	depth: Int,
+	branches List[TemplateBranch],
+	otherwise List[TemplateNode],
+	depth Int,
 ) Void!Error:
 	for branch in branches:
 		verdict := self.eval(branch.cond, false)?
@@ -805,15 +802,15 @@ fn var Run.branch(
 	return self.nodes(otherwise, depth + 1)
 
 fn var Run.each(
-	first: String,
-	second: String,
-	source: TemplateExpr,
-	body: List[TemplateNode],
-	otherwise: List[TemplateNode],
-	depth: Int,
+	first String,
+	second String,
+	source TemplateExpr,
+	body List[TemplateNode],
+	otherwise List[TemplateNode],
+	depth Int,
 ) Void!Error:
 	collection := self.eval(source, false)?
-	var keys: List[String] = []
+	var keys List[String] = []
 	var items = collection_items(collection, keys)
 	count := items.length() + keys.length()
 	if count == 0: return self.nodes(otherwise, depth + 1)
@@ -830,7 +827,7 @@ fn var Run.each(
 
 	return ok()
 
-fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
+fn var Run.include(name TemplateExpr, depth Int) Void!Error:
 	key := to_text(self.eval(name, true)?)
 	if depth > MAX_DEPTH: return error(partial_depth_error(name: key))
 
@@ -843,7 +840,7 @@ fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 
 // Walks `parts[1..]` below `root`, copying only the member each step reaches, never the
 // unused siblings.
-fn descend(root: JsonValue, parts: List[String]) JsonValue?:
+fn descend(root JsonValue, parts List[String]) JsonValue?:
 	first := member(root, parts[1])
 	if first == null: return null
 
@@ -857,7 +854,7 @@ fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 
 	return value
 
-fn member(value: JsonValue, key: String) JsonValue?:
+fn member(value JsonValue, key String) JsonValue?:
 	found := value.get(key)
 	if found != null: return found
 
@@ -866,7 +863,7 @@ fn member(value: JsonValue, key: String) JsonValue?:
 
 	return null
 
-fn loop_info(index: Int, length: Int) JsonValue:
+fn loop_info(index Int, length Int) JsonValue:
 	var fields = Map[String, JsonValue]()
 	fields.add("index", JsonValue.NumberValue(f"{index}"))
 	fields.add("first", JsonValue.BoolValue(index == 0))
@@ -876,7 +873,7 @@ fn loop_info(index: Int, length: Int) JsonValue:
 
 // The items of a list loop, last first so each can be moved out with `pop` instead of
 // copied; for an object loop `keys` receives its keys in order and the result is empty.
-fn collection_items(collection: JsonValue, var keys: List[String]) List[JsonValue]:
+fn collection_items(collection JsonValue, var keys List[String]) List[JsonValue]:
 	found := collection.as_list()
 
 	if found != null:
@@ -892,13 +889,13 @@ fn collection_items(collection: JsonValue, var keys: List[String]) List[JsonValu
 // Binds the variables of iteration `i` into `frame`: the list item (moved out of
 // `items`), or an object's key and value.
 fn bind_row(
-	var frame: Map[String, JsonValue],
-	collection: JsonValue,
-	var items: List[JsonValue],
-	first: String,
-	second: String,
-	keys: List[String],
-	i: Int,
+	var frame Map[String, JsonValue],
+	collection JsonValue,
+	var items List[JsonValue],
+	first String,
+	second String,
+	keys List[String],
+	i Int,
 ) Void:
 	if keys.is_empty():
 		item := items.pop() or JsonValue.Null
@@ -923,25 +920,25 @@ fn bind_row(
 // Keep validated coefficient bytes and a small decimal-order offset. Only
 // exponent-bearing comparisons need arbitrary signed decimal-order arithmetic.
 type ExactNumber:
-	negative: Bool
-	coefficient: Bytes
-	first: Int
-	end: Int
-	offset: Int
-	exponent: String
+	negative Bool
+	coefficient Bytes
+	first Int
+	end Int
+	offset Int
+	exponent String
 
-fn unsigned_digits(text: String) String:
+fn unsigned_digits(text String) String:
 	chars := text.chars()
 	var first = 0
 	while first < chars.length() and chars[first] == "0": first += 1
 	return if first == chars.length(): "0" else: text.view(first, text.length()).clone()
 
-fn magnitude_compare(a: String, b: String) Int:
+fn magnitude_compare(a String, b String) Int:
 	if a.length() != b.length(): return if a.length() < b.length(): -1 else: 1
 	return a.compare(b)
 
 // Add or subtract unsigned decimal magnitudes. Subtraction requires a >= b.
-fn magnitude_sum(a: String, b: String, subtract: Bool) String:
+fn magnitude_sum(a String, b String, subtract Bool) String:
 	left := a.chars()
 	right := b.chars()
 	var i = left.length() - 1
@@ -969,7 +966,7 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 	if carry > 0: out += "1"
 	return unsigned_digits(out.reverse())
 
-fn decimal_order(exponent: String, offset: Int) String:
+fn decimal_order(exponent String, offset Int) String:
 	if exponent == "0": return f"{offset}"
 
 	negative := exponent.starts_with("-")
@@ -994,7 +991,7 @@ fn decimal_order(exponent: String, offset: Int) String:
 
 	return if result_negative and result != "0": f"-{result}" else: result
 
-fn order_compare(a: String, b: String) Int:
+fn order_compare(a String, b String) Int:
 	an := a.starts_with("-")
 	bn := b.starts_with("-")
 	if an != bn: return if an: -1 else: 1
@@ -1005,10 +1002,10 @@ fn order_compare(a: String, b: String) Int:
 	)
 	return if an: -comparison else: comparison
 
-fn number_digit(byte: UInt8) Bool:
+fn number_digit(byte UInt8) Bool:
 	return byte >= 48 and byte <= 57
 
-fn exact_number(text: String) ExactNumber?:
+fn exact_number(text String) ExactNumber?:
 	// Validate a JSON number while locating its coefficient and exponent. Raw
 	// NumberValue constructors need not have passed through the JSON parser.
 	chars := text.to_bytes()
@@ -1072,7 +1069,7 @@ fn exact_number(text: String) ExactNumber?:
 		exponent: exponent,
 	)
 
-fn number_compare(a: ExactNumber, b: ExactNumber) Int:
+fn number_compare(a ExactNumber, b ExactNumber) Int:
 	if a.negative != b.negative: return if a.negative: -1 else: 1
 
 	az := a.first == a.end
@@ -1094,14 +1091,14 @@ fn number_compare(a: ExactNumber, b: ExactNumber) Int:
 
 // Most unequal coefficients differ immediately. For a shared prefix, use the
 // native string comparison instead of inspecting every byte in Manuscript.
-fn coefficient_compare(a: ExactNumber, b: ExactNumber) Int:
+fn coefficient_compare(a ExactNumber, b ExactNumber) Int:
 	x := a.coefficient.get(a.first)
 	y := b.coefficient.get(b.first)
 	if x != y: return if x < y: -1 else: 1
 
 	return coefficient_text(a).compare(coefficient_text(b))
 
-fn coefficient_text(number: ExactNumber) String:
+fn coefficient_text(number ExactNumber) String:
 	var end = number.end
 
 	while end > number.first + 1:
@@ -1118,13 +1115,13 @@ fn coefficient_text(number: ExactNumber) String:
 
 // Common integer tokens compare directly without losing precision. Noncanonical
 // or out-of-range text continues through the general exact-number path.
-fn exact_integer(text: String) Int?:
+fn exact_integer(text String) Int?:
 	integer := text.parse_int()
 	if integer != null:
 		if text == f"{integer}" or text == "-0": return integer
 	return null
 
-fn truthy(value: JsonValue) Bool:
+fn truthy(value JsonValue) Bool:
 	if value.is_null(): return false
 
 	flag := value.as_bool()
@@ -1150,7 +1147,7 @@ fn truthy(value: JsonValue) Bool:
 
 	return true
 
-fn to_text(value: JsonValue) String:
+fn to_text(value JsonValue) String:
 	if value.is_null(): return ""
 
 	text := value.as_string()
@@ -1164,14 +1161,14 @@ fn to_text(value: JsonValue) String:
 
 	return stringify(value: value).get_or("")
 
-fn number_text(value: JsonValue) String?:
+fn number_text(value JsonValue) String?:
 	match value:
-		NumberValue(text): return text
-		_: return null
+		NumberValue(text) => return text
+		_ => return null
 
 // 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are
 // never equal.
-fn kind_of(value: JsonValue) Int:
+fn kind_of(value JsonValue) Int:
 	if value.is_null(): return 0
 	if value.as_bool() != null: return 1
 	if number_text(value) != null: return 2
@@ -1180,14 +1177,14 @@ fn kind_of(value: JsonValue) Int:
 
 	return 5
 
-fn equal(left: JsonValue, right: JsonValue) Bool:
+fn equal(left JsonValue, right JsonValue) Bool:
 	if kind_of(left) != kind_of(right): return false
 	if number_text(left) != null: return compare_values(left, right) == 0
 
 	return to_text(left) == to_text(right) and left.is_null() == right.is_null()
 
 // -1, 0, 1 for numbers or strings of the same kind; 2 when the values cannot be ordered.
-fn compare_values(left: JsonValue, right: JsonValue) Int:
+fn compare_values(left JsonValue, right JsonValue) Int:
 	text := number_text(left)
 
 	if text != null:
@@ -1220,17 +1217,17 @@ fn compare_values(left: JsonValue, right: JsonValue) Int:
 
 	return 2
 
-fn text_value(text: String) JsonValue:
+fn text_value(text String) JsonValue:
 	return JsonValue.StringValue(text.clone())
 
-fn invalid(name: String, reason: String) Error:
+fn invalid(name String, reason String) Error:
 	return invalid_filter_error(name: name, reason: reason)
 
-fn arg_text(name: String, args: List[JsonValue], at: Int) String!Error:
+fn arg_text(name String, args List[JsonValue], at Int) String!Error:
 	if at >= args.length(): return error(invalid(name.clone(), "missing argument"))
 	return ok(to_text(args[at]))
 
-fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue!Error:
+fn apply_filter(name String, input JsonValue, args List[JsonValue]) JsonValue!Error:
 	text := to_text(input)
 	if name == "upper": return ok(text_value(text.upper()))
 	if name == "lower": return ok(text_value(text.lower()))
@@ -1270,7 +1267,7 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
 
 // Keeps at most `limit` bytes of `text` and adds `...` when it cut anything. The cut
 // backs up to the start of a scalar, so a multi-byte character is dropped whole.
-fn truncated(text: String, limit: Int) String:
+fn truncated(text String, limit Int) String:
 	if text.length() <= limit: return text.clone()
 
 	raw := text.as_bytes()
@@ -1279,7 +1276,7 @@ fn truncated(text: String, limit: Int) String:
 		end -= 1
 	return f"{text.view(0, end)}..."
 
-fn length_of(value: JsonValue) Int:
+fn length_of(value JsonValue) Int:
 	list := value.as_list()
 	if list != null: return list.length()
 
@@ -1288,13 +1285,13 @@ fn length_of(value: JsonValue) Int:
 
 	return to_text(value).length()
 
-fn reverse_value(value: JsonValue) JsonValue!Error:
+fn reverse_value(value JsonValue) JsonValue!Error:
 	list := value.as_list()
 	if list != null: return ok(JsonValue.ArrayValue(list.reversed().clone()))
 
 	return ok(text_value(to_text(value).reverse()))
 
-fn end_of(value: JsonValue, first: Bool) JsonValue:
+fn end_of(value JsonValue, first Bool) JsonValue:
 	list := value.as_list()
 
 	if list != null:
@@ -1303,7 +1300,7 @@ fn end_of(value: JsonValue, first: Bool) JsonValue:
 
 	return JsonValue.Null
 
-fn keys_of(value: JsonValue) JsonValue:
+fn keys_of(value JsonValue) JsonValue:
 	var keys = List[JsonValue]()
 	members := value.as_map()
 	if members != null:
@@ -1311,7 +1308,7 @@ fn keys_of(value: JsonValue) JsonValue:
 			keys.append(JsonValue.StringValue(key.clone()))
 	return JsonValue.ArrayValue(keys)
 
-fn join_values(value: JsonValue, sep: String) String:
+fn join_values(value JsonValue, sep String) String:
 	var parts = List[String]()
 	list := value.as_list()
 
@@ -1322,7 +1319,7 @@ fn join_values(value: JsonValue, sep: String) String:
 
 	return to_text(value)
 
-fn contains_value(haystack: JsonValue, needle: JsonValue) Bool:
+fn contains_value(haystack JsonValue, needle JsonValue) Bool:
 	list := haystack.as_list()
 
 	if list != null:
@@ -1337,35 +1334,35 @@ fn contains_value(haystack: JsonValue, needle: JsonValue) Bool:
 
 // Builds a template error. Each message names the line, path, filter or partial but
 // never echoes values.
-fn syntax_error(line: Int, reason: String) Error:
+fn syntax_error(line Int, reason String) Error:
 	return Error(
 		f"template: line {line}: {reason}",
 		kind: "EBADMSG",
 		details: {"line": f"{line}"},
 	)
 
-fn missing_value_error(path: String) Error:
+fn missing_value_error(path String) Error:
 	return Error(
 		f"template: no value for {path}",
 		kind: "ENOENT",
 		details: {"path": path.clone()},
 	)
 
-fn invalid_filter_error(name: String, reason: String) Error:
+fn invalid_filter_error(name String, reason String) Error:
 	return Error(
 		f"template: filter {name}: {reason}",
 		kind: "EINVAL",
 		details: {"filter": name.clone()},
 	)
 
-fn partial_depth_error(name: String) Error:
+fn partial_depth_error(name String) Error:
 	return Error(
 		f"template: partial {name} is nested more than {MAX_DEPTH} deep; a partial may include itself",
 		kind: "EOVERFLOW",
 		details: {"partial": name.clone()},
 	)
 
-fn unknown_partial_error(name: String) Error:
+fn unknown_partial_error(name String) Error:
 	return Error(
 		f"template: unknown partial {name}",
 		kind: "ENOENT",

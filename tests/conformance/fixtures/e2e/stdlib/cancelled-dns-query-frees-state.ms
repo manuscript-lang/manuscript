@@ -18,7 +18,7 @@ fn main() Void!:
 	for round in 0..8:
 		stop := cancel_switch()
 		asking := promise(
-			fn: network.resolve_dns(
+			() => network.resolve_dns(
 				"example.test",
 				DnsKind.A,
 				DnsOptions(timeout: seconds(30)),

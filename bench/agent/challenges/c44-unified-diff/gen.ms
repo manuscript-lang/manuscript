@@ -7,10 +7,10 @@ import (
 
 // One line of an edit script: a mark (space, `-` or `+`) and the text.
 type Op:
-	mark: String
-	text: String
+	mark String
+	text String
 
-fn script(a: List[String], b: List[String]) List[Op]:
+fn script(a List[String], b List[String]) List[Op]:
 	n := a.length()
 	m := b.length()
 	var table = List[List[Int]]()
@@ -57,11 +57,11 @@ fn script(a: List[String], b: List[String]) List[Op]:
 
 	return ops
 
-fn rng(start: Int, ln: Int) String:
+fn rng(start Int, ln Int) String:
 	s := start + (if ln > 0: 1 else: 0)
 	return if ln == 1: f"{s}" else: f"{s},{ln}"
 
-fn solve(s: String) String:
+fn solve(s String) String:
 	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
@@ -95,23 +95,23 @@ fn solve(s: String) String:
 		lo := if g[0] - c > 0: g[0] - c else: 0
 		hi := if g[g.length() - 1] + 1 + c < ops.length(): g[g.length() - 1] + 1 + c else: ops.length()
 		before := ops.slice(0, lo).get_or([])
-		sa := before.count(fn o: o.mark != "+")
-		sb := before.count(fn o: o.mark != "-")
+		sa := before.count(o => o.mark != "+")
+		sb := before.count(o => o.mark != "-")
 		body := ops.slice(lo, hi).get_or([])
-		la := body.count(fn o: o.mark != "+")
-		lb := body.count(fn o: o.mark != "-")
+		la := body.count(o => o.mark != "+")
+		lb := body.count(o => o.mark != "-")
 		out.append(f"@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
 		for o in body: out.append(o.mark + o.text)
 
-	return out.map(fn x: x + "\n").join("")
+	return out.map(x => x + "\n").join("")
 
-fn mk(a: List[String], b: List[String], c: Int, na: String, nb: String) String:
+fn mk(a List[String], b List[String], c Int, na String, nb String) String:
 	return (
 		f"{na} {nb} {c} {a.length()} {b.length()}\n"
-		+ a.concat(b).map(fn x: x + "\n").join("")
+		+ a.concat(b).map(x => x + "\n").join("")
 	)
 
-fn case3(name: String, a: List[String], b: List[String], c: Int) GenCase:
+fn case3(name String, a List[String], b List[String], c Int) GenCase:
 	s := mk(a, b, c, "a.txt", "b.txt")
 	return make_case(name, s, solve(s))
 
@@ -122,13 +122,13 @@ fn words_pool() List[String]:
 		"--- x", " ", "a b  c"
 	]
 
-fn doc(var rnd: Random, n: Int) List[String]:
+fn doc(var rnd Random, n Int) List[String]:
 	var out = List[String]()
 	pool := words_pool()
 	for _i in 0..n: out.append(rnd.choice(pool))
 	return out
 
-fn edit(var rnd: Random, a: List[String], k: Int) List[String]:
+fn edit(var rnd Random, a List[String], k Int) List[String]:
 	var b = a.clone()
 	pool := words_pool()
 
@@ -147,15 +147,15 @@ fn edit(var rnd: Random, a: List[String], k: Int) List[String]:
 	return b
 
 // `base` with the lines at `changes[k].0` replaced by `changes[k].1`.
-fn at(base: List[String], places: List[Int], values: List[String]) List[String]:
+fn at(base List[String], places List[Int], values List[String]) List[String]:
 	var out = base.clone()
 	for k in 0..places.length(): out[places[k]] = values[k].clone()
 	return out
 
 export fn gen_c44() Void:
 	var rnd = seeded(44)
-	nums := (1..41).map(fn i: f"line {i}")
-	base20 := (1..21).map(fn i: f"l{i}")
+	nums := (1..41).map(i => f"line {i}")
+	base20 := (1..21).map(i => f"l{i}")
 	ex_a := ["one", "two", "three", "four", "five", "six"]
 	ex_b := ["one", "two", "3", "four", "five", "seven"]
 	examples := [

@@ -7,7 +7,7 @@ import (
 	capture, env, host, works from "./lib.ms",
 )
 
-fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
+fn say(ok Bool, ok_text String, missing_text String) Bool:
 	if ok: print(f"OK      {ok_text}")
 	else: print(f"MISSING {missing_text}")
 
@@ -15,7 +15,7 @@ fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
 
 // Whether `version` ("0.146.7") is at least 0.146.7.
 // Whether `hugo version` output names an extended build new enough for the book.
-fn hugo_usable(output: String) Bool:
+fn hugo_usable(output String) Bool:
 	fields := output.split(" ")
 	return (
 		output.contains("extended")
@@ -23,7 +23,7 @@ fn hugo_usable(output: String) Bool:
 		and hugo_new_enough(fields[1].replace("v", ""))
 	)
 
-fn hugo_new_enough(version: String) Bool:
+fn hugo_new_enough(version String) Bool:
 	parts := version.split("-")[0].split("+")[0].split(".")
 	if parts.length() < 3: return false
 

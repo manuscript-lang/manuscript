@@ -24,14 +24,14 @@ export enum DnsKind:
 // Returns the uppercase wire category.
 fn DnsKind.to_string() String:
 	match self:
-		A: return "A"
-		AAAA: return "AAAA"
-		CNAME: return "CNAME"
-		MX: return "MX"
-		NS: return "NS"
-		TXT: return "TXT"
-		PTR: return "PTR"
-		SRV: return "SRV"
+		A => return "A"
+		AAAA => return "AAAA"
+		CNAME => return "CNAME"
+		MX => return "MX"
+		NS => return "NS"
+		TXT => return "TXT"
+		PTR => return "PTR"
+		SRV => return "SRV"
 
 // Numeric address families reported by IP values and host interfaces.
 export enum IpFamily:
@@ -41,8 +41,8 @@ export enum IpFamily:
 // Returns IPv4 or IPv6.
 fn IpFamily.to_string() String:
 	match self:
-		IPv4: return "IPv4"
-		IPv6: return "IPv6"
+		IPv4 => return "IPv4"
+		IPv6 => return "IPv6"
 
 // A validated numeric IPv4/IPv6 address without a port or zone.
 // ms: data
@@ -76,31 +76,31 @@ fn Cidr.to_json() JsonValue:
 // DNS record data returned by a typed lookup.
 export type DnsRecord:
 	// The same typed category used by the query.
-	kind: DnsKind
+	kind DnsKind
 	// The record's answer: an IP address for A and AAAA, the target host name for
 	// CNAME, MX, NS, PTR, and SRV, or the text for TXT.
-	value: String
+	value String
 	// The preference of an MX record or the priority of an SRV record, where lower
 	// values are tried first; 0 for other kinds.
-	priority: Int
+	priority Int
 	// The relative weight of an SRV record among targets with the same priority; 0 for
 	// other kinds.
-	weight: Int
+	weight Int
 	// The service port of an SRV record; 0 for other kinds.
-	port: Int
+	port Int
 
 // Reports whether an IP address belongs to a CIDR range. The families must match: an
 // address written `::ffff:1.2.3.4` is normalized to IPv4, so an IPv4 range contains it
 // and a range written in `::ffff:` form (which keeps its IPv6 spelling) contains no
 // IPv4 address.
-export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!:
+export fn contains_ip(cidr Cidr, address IpAddress) Bool!:
 	return msstd_net_contains_ip(cidr, address)
 
 // Validates and canonicalizes an IPv4 or IPv6 CIDR range: host bits are cleared, so
 // `10.1.2.3/8` is `10.0.0.0/8`, and the prefix length has no sign or leading zero.
-export fn parse_cidr(text: String) Cidr!:
+export fn parse_cidr(text String) Cidr!:
 	return msstd_net_parse_cidr(text)
 
 // Validates and canonicalizes an IPv4 or IPv6 address.
-export fn parse_ip(text: String) IpAddress!:
+export fn parse_ip(text String) IpAddress!:
 	return msstd_net_parse_ip(text)

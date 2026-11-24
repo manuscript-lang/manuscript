@@ -8,10 +8,10 @@ import (
 test "map update counts and transforms":
 	var counts = Map[String, Int]()
 	for word in ["a", "b", "a"]:
-		counts.update(word, 0, fn n: n + 1)
+		counts.update(word, 0, n => n + 1)
 	expect_equal(counts["a"], 2)?
 	expect_equal(counts["b"], 1)?
-	counts.update("c", 10, fn n: n * 2)
+	counts.update("c", 10, n => n * 2)
 	expect_equal(counts["c"], 20)?
 	expect_equal(counts.length(), 3)?
 

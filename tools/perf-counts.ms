@@ -44,11 +44,11 @@ SHAPES := [["http-request-small", "http-request", "small"]]
 TIGHT := ["guard-http-request", "guard-http-request-small"]
 COUNTS := "bench/perf/counts.txt"
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	stdout().write(text.clone()).get()
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
-fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
+fn count(program String, out_file String, own_path Bool, shape String) Int:
 	var command = [
 		"--tool=callgrind",
 		f"--callgrind-out-file={out_file}",
@@ -80,7 +80,7 @@ fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
 	return -1
 
 // The committed counts: one `name instructions` pair per line.
-fn committed(path: String) Map[String, Int]:
+fn committed(path String) Map[String, Int]:
 	var known = Map[String, Int]()
 	text := read_file(path).wait().get_or("".to_bytes()).decode_utf8() or ""
 
@@ -102,7 +102,7 @@ fn main() Int:
 	scratch := temporary("ms-perf-counts-").get()
 	var failures = 0
 	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
-	var targets: List[List[String]] = []
+	var targets List[List[String]] = []
 	for name in PROGRAMS: targets.append(
 		[name.clone(), f"{root}/bench/perf/suite/{name}/main.ms", ""]
 	)

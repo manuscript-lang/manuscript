@@ -2,16 +2,16 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn make(i: Int) Int!:
+fn make(i Int) Int!:
 	if i % 5 == 0: return error(Error("bad"))
 	return ok(i)
 
 // A Result built on each arm and tested after the join.
-fn total(n: Int) Int:
+fn total(n Int) Int:
 	var total = 0
 
 	for i in 0..n:
-		var r: Int! = ok(0)
+		var r Int! = ok(0)
 
 		if i % 2 == 0: r = make(i)
 		else: r = make(i + 1)
@@ -20,8 +20,8 @@ fn total(n: Int) Int:
 
 	return total
 
-fn pick(flag: Bool, a: Int) Int?:
-	var o: Int? = null
+fn pick(flag Bool, a Int) Int?:
+	var o Int? = null
 	if flag: o = a
 
 	v := o

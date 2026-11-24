@@ -16,7 +16,7 @@ import (
 	usage from "./lib.ms",
 )
 
-fn run(work: String, n: Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error]:
 	here := "bench/perf/datastructures"
 	for dir in ["go", "ms"]:
 		copy(

@@ -7,17 +7,17 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn entries(value: TomlValue) Map[String, TomlValue]!:
+fn entries(value TomlValue) Map[String, TomlValue]!:
 	match value:
-		TableValue(values): return ok(values.clone())
-		_: return error(Error("expected TOML table"))
+		TableValue(values) => return ok(values.clone())
+		_ => return error(Error("expected TOML table"))
 
-fn items(value: TomlValue) List[TomlValue]!:
+fn items(value TomlValue) List[TomlValue]!:
 	match value:
-		ArrayValue(values): return ok(values.clone())
-		_: return error(Error("expected TOML array"))
+		ArrayValue(values) => return ok(values.clone())
+		_ => return error(Error("expected TOML array"))
 
-fn limits(bytes: Int?, depth: Int?, values: Int?) TomlOptions:
+fn limits(bytes Int?, depth Int?, values Int?) TomlOptions:
 	return TomlOptions(max_bytes: bytes, max_depth: depth, max_values: values)
 
 test "TOML scalars quoted keys comments exact integers and dates":
@@ -204,8 +204,8 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
 		"[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
 	]:
 		cause := match parse(text: text):
-			ok(_): return fail(f"invalid TOML accepted: {text}")
-			error(cause): cause
+			ok(_) => return fail(f"invalid TOML accepted: {text}")
+			error(cause) => cause
 
 		cause.kind | expect_equal("EBADMSG")?
 		(
@@ -224,8 +224,8 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
 		((cause.message.starts_with("TOML ")) | expect_true?)
 
 test "TOML optional limits include implicit tables and zero":
-	limited: TomlValue! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
-	invalid: TomlValue! := error(Error("invalid TOML input", kind: "EINVAL"))
+	limited TomlValue! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+	invalid TomlValue! := error(Error("invalid TOML input", kind: "EINVAL"))
 	expect_false(
 		(
 			parse(
@@ -296,24 +296,24 @@ test "TOML nonfinite floats CRLF and repeated separators":
 	match root["positive"]:
 		FloatValue(number):
 			((number.is_finite() or number < 0.0) | expect_false?)
-		_: return fail("expected float")
+		_ => return fail("expected float")
 
 	match root["negative"]:
 		FloatValue(number):
 			((number.is_finite() or number > 0.0) | expect_false?)
-		_: return fail("expected float")
+		_ => return fail("expected float")
 
 	match root["nan"]:
 		FloatValue(number):
 			((number.is_nan()) | expect_true?)
-		_: return fail("expected float")
+		_ => return fail("expected float")
 
 	root["integer"] | expect_equal(TomlValue.IntValue(1000000))?
 
-fn failure(text: String) String:
+fn failure(text String) String:
 	match parse(text: text):
-		ok(_): return "accepted"
-		error(cause): return cause.message
+		ok(_) => return "accepted"
+		error(cause) => return cause.message
 
 test "TOML errors report the offending line and column":
 	(
@@ -330,7 +330,7 @@ test "TOML errors report the offending line and column":
 	failure("x = 1\ny = 1e") | expect_equal("TOML 2:5: invalid exponent")?
 
 test "TOML option fields default to none or the depth and value guards":
-	limited: TomlValue! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+	limited TomlValue! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
 	parse(text: "a=1", options: TomlOptions(max_bytes: 2)) | expect_equal(limited)?
 	parse(text: "a=1", options: TomlOptions()) | expect_equal(parse(text: "a=1"))?
 
@@ -363,18 +363,18 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 	expect_equal(stringify(parse("[[single]]\nx=2")?)?, "[[single]]\nx = 2\n")?
 
 test "TOML stringify requires a table root and honors max_bytes":
-	wrong: String! := error(Error("invalid TOML input", kind: "EINVAL"))
-	limited: String! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+	wrong String! := error(Error("invalid TOML input", kind: "EINVAL"))
+	limited String! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
 	stringify(value: TomlValue.IntValue(1)) | expect_equal(wrong)?
 
 	root := (parse(text: "a = 1") | expect_ok?)
 	stringify(value: root, max_bytes: 3) | expect_equal(limited)?
 
-	exact: String! := ok("a = 1\n")
+	exact String! := ok("a = 1\n")
 	stringify(value: root, max_bytes: 6) | expect_equal(exact)?
 	stringify(value: root, max_bytes: -1) | expect_equal(wrong)?
 
-fn repeated(text: String, count: Int) String:
+fn repeated(text String, count Int) String:
 	if count <= 0: return ""
 	if count == 1: return text.clone()
 
@@ -395,7 +395,7 @@ test "TOML long strings parse and stringify in linear time":
 	(parse(text: text) | expect_ok? | expect_equal(root)?)
 
 test "TOML stringify rejects invalid date-time text":
-	invalid: String! := error(Error("invalid TOML input", kind: "EINVAL"))
+	invalid String! := error(Error("invalid TOML input", kind: "EINVAL"))
 
 	for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
 		var table = Map[String, TomlValue]()

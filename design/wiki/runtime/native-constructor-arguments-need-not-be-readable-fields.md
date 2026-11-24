@@ -2,7 +2,7 @@
 
 # Native constructor arguments need not be readable fields
 
-Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Keep the constructor signature separate from the native `values() -> List[Int]` operation, and keep editor constructor parameters (signature help) separate from receiver declarations. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
+Verified: `Bytes(values List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Keep the constructor signature separate from the native `values() -> List[Int]` operation, and keep editor constructor parameters (signature help) separate from receiver declarations. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
 
 
 Apply when: describing native schemas or replacing bogus native fields with operations.

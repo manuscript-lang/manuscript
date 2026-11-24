@@ -22,33 +22,33 @@ import (
 // ---- JPEG ----
 
 type JpegHuffman:
-	present: Bool
-	mincode: List[Int]
-	maxcode: List[Int]
-	valptr: List[Int]
-	values: List[Int]
+	present Bool
+	mincode List[Int]
+	maxcode List[Int]
+	valptr List[Int]
+	values List[Int]
 
 type JpegComponent:
-	id: Int
-	h: Int
-	v: Int
-	tq: Int
+	id Int
+	h Int
+	v Int
+	tq Int
 	// Block grid padded to whole MCUs.
-	blocks_wide: Int
-	blocks_high: Int
+	blocks_wide Int
+	blocks_high Int
 	// 64 coefficients per block, natural order, quantized until the final pass.
-	coef: List[Int]
-	quant: List[Int]
-	pred: Int
+	coef List[Int]
+	quant List[Int]
+	pred Int
 
 type JpegBits:
-	pos: Int
-	acc: Int
-	count: Int
-	failed: Bool
-	eobrun: Int
+	pos Int
+	acc Int
+	count Int
+	failed Bool
+	eobrun Int
 
-fn var JpegBits.bit(data: Bytes) Int:
+fn var JpegBits.bit(data Bytes) Int:
 	if self.count == 0:
 		if self.pos >= data.length():
 			self.failed = true
@@ -77,14 +77,14 @@ fn var JpegBits.bit(data: Bytes) Int:
 	self.count -= 1
 	return bit_and(shift_right_unsigned(self.acc, self.count), 1)
 
-fn var JpegBits.receive(data: Bytes, n: Int) Int:
+fn var JpegBits.receive(data Bytes, n Int) Int:
 	var v = 0
 	for i in 0..n:
 		v = v * 2 + self.bit(data)
 	return v
 
 // Decodes one symbol, or -1 after setting `failed`.
-fn var JpegBits.symbol(data: Bytes, table: JpegHuffman) Int:
+fn var JpegBits.symbol(data Bytes, table JpegHuffman) Int:
 	var code = 0
 
 	for length in 1..17:
@@ -100,16 +100,16 @@ fn var JpegBits.symbol(data: Bytes, table: JpegHuffman) Int:
 	self.failed = true
 	return -1
 
-fn jpeg_extend(value: Int, size: Int) Int:
+fn jpeg_extend(value Int, size Int) Int:
 	if size == 0: return 0
 	if value < shift_left(1, size - 1): return value - shift_left(1, size) + 1
 
 	return value
 
-fn be16(data: Bytes, at: Int) Int:
+fn be16(data Bytes, at Int) Int:
 	return data.get(at).to_int() * 256 + data.get(at + 1).to_int()
 
-fn build_huffman(counts: List[Int], values: List[Int]) JpegHuffman!:
+fn build_huffman(counts List[Int], values List[Int]) JpegHuffman!:
 	var mincode = [0].repeated(17)
 	var maxcode = [-1].repeated(17)
 	var valptr = [0].repeated(17)
@@ -136,21 +136,21 @@ fn empty_huffman() JpegHuffman:
 // The parameters of one scan: the indexes of the components it codes, its spectral
 // selection `ss` through `se`, and its successive approximation bits `ah` and `al`.
 type JpegScan:
-	members: List[Int]
-	ss: Int
-	se: Int
-	ah: Int
-	al: Int
-	progressive: Bool
+	members List[Int]
+	ss Int
+	se Int
+	ah Int
+	al Int
+	progressive Bool
 
 fn jpeg_block(
-	data: Bytes,
-	var bits: JpegBits,
-	var comp: JpegComponent,
-	base: Int,
-	dc: JpegHuffman,
-	ac: JpegHuffman,
-	scan: JpegScan,
+	data Bytes,
+	var bits JpegBits,
+	var comp JpegComponent,
+	base Int,
+	dc JpegHuffman,
+	ac JpegHuffman,
+	scan JpegScan,
 ) Void:
 	if not scan.progressive:
 		t := bits.symbol(data, dc)
@@ -297,7 +297,7 @@ fn jpeg_block(
 		bits.eobrun -= 1
 
 // Dequantizes and inverse-transforms every block of `comp` into a padded sample plane.
-fn jpeg_plane(comp: JpegComponent) List[UInt8]:
+fn jpeg_plane(comp JpegComponent) List[UInt8]:
 	stride := comp.blocks_wide * 8
 	var plane = zeroed(stride * comp.blocks_high * 8)
 	var tmp = [0].repeated(64)
@@ -360,7 +360,7 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
 // data returns EBADMSG. An unsupported feature, such as arithmetic coding or another
 // sample precision, returns ENOTSUP, and dimensions past `max_pixels` or the hard
 // ceiling return EOVERFLOW.
-export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
+export fn decode_jpeg(data Bytes, max_pixels Int?) Raster!:
 	n := data.length()
 	if n < 4 or data.get(0).to_int() != 255 or data.get(1).to_int() != 216:
 		return error(bad("not a JPEG"))
@@ -875,7 +875,7 @@ export fn decode_jpeg(data: Bytes, max_pixels: Int?) Raster!:
 
 // First offset at or after `from` that starts a marker other than a stuffed zero, fill
 // or restart.
-fn scan_end(data: Bytes, from: Int) Int:
+fn scan_end(data Bytes, from Int) Int:
 	var at = from
 
 	while at + 1 < data.length():
@@ -893,15 +893,15 @@ fn scan_end(data: Bytes, from: Int) Int:
 
 // Fills `row` with component samples of row `y` of the full-resolution grid.
 fn jpeg_fill_row(
-	plane: List[UInt8],
-	stride: Int,
-	span: List[Int],
-	y: Int,
-	width: Int,
-	hr: Int,
-	vr: Int,
-	exact: Bool,
-	var row: List[Int],
+	plane List[UInt8],
+	stride Int,
+	span List[Int],
+	y Int,
+	width Int,
+	hr Int,
+	vr Int,
+	exact Bool,
+	var row List[Int],
 ) Void:
 	if hr == 1 and vr == 1:
 		base := y * stride
@@ -935,14 +935,14 @@ fn jpeg_fill_row(
 // triangle filter ("fancy" upsampling) so output matches libjpeg; other ratios
 // replicate the nearest sample.
 fn jpeg_sample(
-	plane: List[UInt8],
-	stride: Int,
-	span: List[Int],
-	y: Int,
-	x: Int,
-	hr: Int,
-	vr: Int,
-	exact: Bool,
+	plane List[UInt8],
+	stride Int,
+	span List[Int],
+	y Int,
+	x Int,
+	hr Int,
+	vr Int,
+	exact Bool,
 ) Int:
 	// libjpeg replicates, without the triangle filter, a horizontally halved plane that
 	// is two samples wide or less.
@@ -982,11 +982,11 @@ fn jpeg_sample(
 	near := 3 * plane[py * stride + nx].to_int() + plane[ny * stride + nx].to_int()
 	return (3 * here + near + (if x % 2 == 0: 8 else: 7)) / 16
 
-fn ycc_red(y: Int, cr: Int) Int:
+fn ycc_red(y Int, cr Int) Int:
 	return y + shift_right(91881 * (cr - 128) + 32768, 16)
 
-fn ycc_green(y: Int, cb: Int, cr: Int) Int:
+fn ycc_green(y Int, cb Int, cr Int) Int:
 	return y - shift_right(22554 * (cb - 128) + 46802 * (cr - 128) + 32768, 16)
 
-fn ycc_blue(y: Int, cb: Int) Int:
+fn ycc_blue(y Int, cb Int) Int:
 	return y + shift_right(116130 * (cb - 128) + 32768, 16)

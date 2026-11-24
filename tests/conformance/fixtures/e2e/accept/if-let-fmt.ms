@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/if-let.ms
 import expect_true, fail from "@std/test/test.ms"
 
-fn describe(name: String?) String:
+fn describe(name String?) String:
 	value := name
 
 	if value != null:
@@ -11,7 +11,7 @@ fn describe(name: String?) String:
 	else:
 		return "Hello!"
 
-fn total(items: List[Int?]) Int:
+fn total(items List[Int?]) Int:
 	var sum = 0
 
 	for item in items:
@@ -21,7 +21,7 @@ fn total(items: List[Int?]) Int:
 
 	return sum
 
-fn check(value: Bool, message: String) Void!:
+fn check(value Bool, message String) Void!:
 	(value) | expect_true?
 
 test "if let unwraps a present optional":
@@ -36,14 +36,14 @@ test "if let takes else when absent and keeps falsy payloads":
 	(check(value: describe(null) == "Hello!", message: "none")?)
 	(check(value: describe("Ada") == "Hello, Ada", message: "some")?)
 
-	items: List[Int?] := [1, null, 0, 2]
+	items List[Int?] := [1, null, 0, 2]
 	(check(value: total(items) == 3, message: "total")?)
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	value := empty.first()
 	if value != null: return fail(message: f"unexpected {value}")
 
-fn parse(text: String) Int!Error:
+fn parse(text String) Int!Error:
 	if text == "": return error(Error("empty"))
 	return ok(text.length())
 

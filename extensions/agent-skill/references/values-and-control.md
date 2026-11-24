@@ -1,6 +1,6 @@
 # Values and control
 
-Immutable: `x := value`, or `x: Int := value`. Mutable: `var x = value`; assignments require var. Name a deliberately unused binding with a leading `_`, such as `_i`; a bare `_` is not a name, so `for _ in xs` fails.
+Immutable: `x := value`, or `x Int := value`. Mutable: `var x = value`; assignments require var. Name a deliberately unused binding with a leading `_`, such as `_i`; a bare `_` is not a name, so `for _ in xs` fails.
 
 Types: Int, Float, Bool, String, Void. Literals: `true`, `false`, `void`. Numeric conversions are explicit. `f"hello {name}"` interpolates; in `f` text `\{`/`\}` write literal braces. Plain `"..."` never interpolates, so `"{"` and JSON like `"{\"a\": 1}"` need no escape. Raw `r"\d+"` keeps backslashes literal, including before a quote.
 

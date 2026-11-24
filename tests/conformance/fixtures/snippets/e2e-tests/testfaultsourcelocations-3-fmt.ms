@@ -2,13 +2,13 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/fault_locations_test.go:35 TestFaultSourceLocations
 
-fn checked(n: Int) Int!Error:
+fn checked(n Int) Int!Error:
     if n < 0:
         return error(Error("negative"))
 
     return ok(n + 1)
 
-fn chain(n: Int) Int!Error:
+fn chain(n Int) Int!Error:
     value := checked(n)?
     return ok(value)
 

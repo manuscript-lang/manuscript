@@ -21,19 +21,19 @@ import RouteParams, Router from "@std/net/router.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Greeting:
-    message: String
+    message String
 
 type Numbers:
-    values: List[Int]
+    values List[Int]
 
 type Total:
-    total: Int
+    total Int
 
-fn greet(var exchange: HttpExchange, params: RouteParams) Void!:
+fn greet(var exchange HttpExchange, params RouteParams) Void!:
     name := params.get_or("name", "world")
     return reply(exchange, json(200, Greeting(message: f"Hello, {name}!"))?)
 
-fn sum(var exchange: HttpExchange, params: RouteParams) Void!:
+fn sum(var exchange HttpExchange, params RouteParams) Void!:
     body := read_body(exchange)?
     numbers := parse[Numbers](ok_or(body.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))?)
     if numbers.is_error():
@@ -46,10 +46,10 @@ fn api() Router:
     router.post("/sum", sum).get()
     return router
 
-fn request(method: HttpMethod, path: String, body: String) HttpRequest:
+fn request(method HttpMethod, path String, body String) HttpRequest:
     return HttpRequest(method: method, path: path, query: "", headers: headers(), body: body.to_bytes())
 
-fn body_of(response: HttpResponse) String:
+fn body_of(response HttpResponse) String:
     return response.body.decode_utf8() or ""
 
 test "greet by name":

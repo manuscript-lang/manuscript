@@ -517,7 +517,7 @@ static void accumulate_loop(const TerseScan *scan, MsStmts body, size_t at) {
                        only->u.branch.body.len == 1 && appends_to(scan, only->u.branch.body.ptr[0], name);
   if (empty_list && (appends_to(scan, only, name) || guarded)) {
     terse_note(scan, "MSL124",
-               text_of("Build the list with `xs.map(fn x: ...)` or `xs.filter(fn x: ...)` instead of a loop that "
+               text_of("Build the list with `xs.map(x => ...)` or `xs.filter(x => ...)` instead of a loop that "
                        "appends"),
                first->pos);
   } else if (value->kind == MS_E_NUMBER && only->kind == MS_S_ASSIGN && !only->u.assign.member_target &&

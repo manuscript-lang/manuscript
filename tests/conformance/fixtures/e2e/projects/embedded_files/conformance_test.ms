@@ -25,7 +25,7 @@ test "embedded files read back byte for byte":
 test "embedded tree walks in name order":
 	found := walk(files()) | expect_ok?
 	(
-		found.map(fn e: e.path.clone())
+		found.map(e => e.path.clone())
 		| expect_equal(["data.bin", "hello.txt", "nested", "nested/deep.txt"])?
 	)
 

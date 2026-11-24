@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn note(var dir: TemporaryDirectory, name: String = "note", text: String = "hi") Void!:
+fn note(var dir TemporaryDirectory, name String = "note", text String = "hi") Void!:
 	write_file(f"{dir.path()}/{name}", text).wait()?
 	return ok()
 

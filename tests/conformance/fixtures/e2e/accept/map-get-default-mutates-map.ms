@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn replace(var values: Map[Int, Int]) Int:
+fn replace(var values Map[Int, Int]) Int:
 	values.add(1, 9)
 	return 0
 

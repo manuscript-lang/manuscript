@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Equal:\n\tfn equals(other: Equal) Bool\n\ninterface Hashable:\n\tfn hash() Int\n"
+    "fmt": "interface Equal:\n\tfn equals(other Equal) Bool\n\ninterface Hashable:\n\tfn hash() Int\n"
   }
 }

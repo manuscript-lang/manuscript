@@ -14,20 +14,52 @@
           "file": "golden-0150.ms",
           "line": 7,
           "column": 1,
-          "offset": 135
+          "offset": 134
         },
         "end": {
           "file": "golden-0150.ms",
           "line": 7,
           "column": 5,
-          "offset": 139
+          "offset": 138
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'value' and its type; write value Type",
+        "position": {
+          "file": "golden-0150.ms",
+          "line": 10,
+          "column": 15,
+          "offset": 232
+        },
+        "end": {
+          "file": "golden-0150.ms",
+          "line": 10,
+          "column": 16,
+          "offset": 233
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0150.ms",
+            "line": 10,
+            "column": 15,
+            "offset": 232
+          },
+          "end": {
+            "file": "golden-0150.ms",
+            "line": 10,
+            "column": 16,
+            "offset": 233
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0150.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Diagnostic for LocalError:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0150.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Diagnostic for LocalError:\n   | ^^^^\n<DIR>/golden-0150.ms:10:15: parse: remove the ':' between 'value' and its type; write value Type\n    |\n 10 | fn wrong(value: LocalError) Diagnostic:\n    |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

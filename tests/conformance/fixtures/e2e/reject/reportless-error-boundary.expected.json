@@ -47,20 +47,20 @@
           "file": "reportless-error-boundary.ms",
           "line": 29,
           "column": 34,
-          "offset": 619
+          "offset": 618
         },
         "fix": {
           "position": {
             "file": "reportless-error-boundary.ms",
             "line": 29,
             "column": 34,
-            "offset": 619
+            "offset": 618
           },
           "end": {
             "file": "reportless-error-boundary.ms",
             "line": 29,
             "column": 35,
-            "offset": 620
+            "offset": 619
           },
           "replacement": "\"7\""
         }

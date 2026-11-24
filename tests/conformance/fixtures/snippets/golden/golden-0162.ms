@@ -1,18 +1,18 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn poll_literal_up(log: List[Int], start: Int) Void:
+fn poll_literal_up(log List[Int], start Int) Void:
     var i = -137
     while i < 1000:
         log.append(i)
         i += 1
 
-fn poll_literal_down(log: List[Int], start: Int) Void:
+fn poll_literal_down(log List[Int], start Int) Void:
     var i = 500
     while i > 0:
         log.append(i)
         i -= 1
 
-fn poll_literal_nested(log: List[Int], start: Int) Void:
+fn poll_literal_nested(log List[Int], start Int) Void:
     var outer = 0
     while outer < 3:
         var i = 0
@@ -21,19 +21,19 @@ fn poll_literal_nested(log: List[Int], start: Int) Void:
             i += 1
         outer += 1
 
-fn poll_up(log: List[Int], start: Int) Void:
+fn poll_up(log List[Int], start Int) Void:
     var i = start
     while i < 1000:
         log.append(i)
         i += 1
 
-fn poll_down(log: List[Int], start: Int) Void:
+fn poll_down(log List[Int], start Int) Void:
     var i = start
     while i > 0:
         log.append(i)
         i -= 1
 
-fn poll_continue(log: List[Int], start: Int) Void:
+fn poll_continue(log List[Int], start Int) Void:
     var i = start
     var skips = 0
     while i < 1000:
@@ -43,7 +43,7 @@ fn poll_continue(log: List[Int], start: Int) Void:
         log.append(i)
         i += 1
 
-fn poll_reset(log: List[Int], start: Int) Void:
+fn poll_reset(log List[Int], start Int) Void:
     var i = start
     while i < 1000:
         log.append(i)
@@ -51,7 +51,7 @@ fn poll_reset(log: List[Int], start: Int) Void:
         if i == 5:
             i = 0
 
-fn poll_nested(log: List[Int], start: Int) Void:
+fn poll_nested(log List[Int], start Int) Void:
     var outer = 0
     while outer < 3:
         var i = outer

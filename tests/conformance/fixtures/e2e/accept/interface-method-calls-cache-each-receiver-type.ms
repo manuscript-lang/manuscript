@@ -4,29 +4,29 @@
 import expect_true from "@std/test/test.ms"
 
 interface Shape:
-    fn area(scale: Int) Int
+    fn area(scale Int) Int
 
 type Sq:
-    side: Int
+    side Int
 
 type Rect:
-    w: Int
-    h: Int
+    w Int
+    h Int
 
 type Tri:
-    b: Int
-    h: Int
+    b Int
+    h Int
 
-fn Sq.area(scale: Int) Int: self.side * self.side * scale
+fn Sq.area(scale Int) Int => self.side * self.side * scale
 
-fn Rect.area(scale: Int) Int: self.w * self.h * scale
+fn Rect.area(scale Int) Int => self.w * self.h * scale
 
-fn Tri.area(scale: Int) Int: self.b * self.h * scale / 2
+fn Tri.area(scale Int) Int => self.b * self.h * scale / 2
 
-fn measure(shape: Shape, scale: Int) Int: shape.area(scale: scale)
+fn measure(shape Shape, scale Int) Int => shape.area(scale: scale)
 
 test "three receiver types alternate at one site":
-    shapes: List[Shape] := [Sq(side: 3), Rect(w: 2, h: 5), Tri(b: 4, h: 5)]
+    shapes List[Shape] := [Sq(side: 3), Rect(w: 2, h: 5), Tri(b: 4, h: 5)]
     var total = 0
     var round = 0
 

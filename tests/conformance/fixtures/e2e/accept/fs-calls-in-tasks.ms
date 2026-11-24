@@ -16,7 +16,7 @@ import (
 
 // With several tasks alive, file-system calls run on the blocking pool; the results
 // must match the single-task behaviour.
-fn churn(root: String, name: String) Int:
+fn churn(root String, name String) Int:
 	dir := f"{root}/{name}"
 	made := create_directory(dir)
 	if made.is_error(): print(f"create_directory: {made.err()}")
@@ -44,8 +44,8 @@ test "file-system calls from concurrent tasks":
 	root := temporary_directory("ms-fs-tasks-")?
 	first := root.clone()
 	second := root.clone()
-	a := promise(fn: ok(churn(first.clone(), "one")))
-	b := promise(fn: ok(churn(second.clone(), "two")))
+	a := promise(() => ok(churn(first.clone(), "one")))
+	b := promise(() => ok(churn(second.clone(), "two")))
 	a.wait()? | expect_equal(2)?
 	b.wait()? | expect_equal(2)?
 

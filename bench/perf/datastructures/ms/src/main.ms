@@ -7,31 +7,31 @@ import (
 )
 
 type Rec:
-	key: Int
-	id: Int
+	key Int
+	id Int
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text.clone())
 
-fn since(started: Instant) Int:
+fn since(started Instant) Int:
 	return monotonic().difference(started).to_nanoseconds()
 
-fn report(name: String, ops: Int, started: Instant) Void:
+fn report(name String, ops Int, started Instant) Void:
 	say(f"{name} {ops} {since(started)}\n")
 
-fn next_rand(x: Int) Int:
+fn next_rand(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn bench_list_append(n: Int) Int:
+fn bench_list_append(n Int) Int:
 	t := monotonic()
-	var l: List[Int] = []
+	var l List[Int] = []
 	for i in 0..n:
 		l.append(i)
 	report("list_append", n, t)
 	return l.length()
 
-fn bench_list_get(n: Int) Int:
-	var l: List[Int] = []
+fn bench_list_get(n Int) Int:
+	var l List[Int] = []
 	for i in 0..n:
 		l.append(i)
 
@@ -46,8 +46,8 @@ fn bench_list_get(n: Int) Int:
 	report("list_get_random", n, t)
 	return sum
 
-fn bench_list_sort(n: Int) Int:
-	var l: List[Int] = []
+fn bench_list_sort(n Int) Int:
+	var l List[Int] = []
 	var x = 1
 
 	for i in 0..n:
@@ -59,8 +59,8 @@ fn bench_list_sort(n: Int) Int:
 	report("list_sort_int", n, t)
 	return s[0]
 
-fn bench_list_sort_cmp(n: Int) Int:
-	var l: List[Rec] = []
+fn bench_list_sort_cmp(n Int) Int:
+	var l List[Rec] = []
 	var x = 1
 
 	for i in 0..n:
@@ -68,11 +68,11 @@ fn bench_list_sort_cmp(n: Int) Int:
 		l.append(Rec(key: x % 100000, id: i))
 
 	t := monotonic()
-	s := l.sorted(compare: fn(a: Rec, b: Rec) Int: a.key - b.key)
+	s := l.sorted(compare: fn(a Rec, b Rec) Int => a.key - b.key)
 	report("list_sort_cmp", n, t)
 	return s[0].id
 
-fn bench_map_int(n: Int) Int:
+fn bench_map_int(n Int) Int:
 	t := monotonic()
 	var m = Map[Int, Int]()
 	var x = 1
@@ -91,8 +91,8 @@ fn bench_map_int(n: Int) Int:
 	report("map_int_put_get", n * 2, t)
 	return hits
 
-fn bench_map_str(n: Int) Int:
-	var keys: List[String] = []
+fn bench_map_str(n Int) Int:
+	var keys List[String] = []
 	for i in 0..n:
 		keys.append(f"key{i}")
 
@@ -107,7 +107,7 @@ fn bench_map_str(n: Int) Int:
 	report("map_str_put_get", n * 2, t)
 	return hits
 
-fn bench_set(n: Int) Int:
+fn bench_set(n Int) Int:
 	t := monotonic()
 	var s = Set[Int]()
 	var x = 1
@@ -127,7 +127,7 @@ fn bench_set(n: Int) Int:
 	report("set_int_add_contains", n * 2, t)
 	return hits
 
-fn bench_string(n: Int) Int:
+fn bench_string(n Int) Int:
 	t := monotonic()
 	var sb = ""
 
@@ -142,7 +142,7 @@ fn bench_string(n: Int) Int:
 	report("string_build_split_join_replace", n, t)
 	return replaced.length() + parts.length()
 
-fn bench_bytes(n: Int) Int:
+fn bench_bytes(n Int) Int:
 	t := monotonic()
 	var bb = BytesBuilder()
 	for i in 0..n:
@@ -152,7 +152,7 @@ fn bench_bytes(n: Int) Int:
 	report("bytes_append", n, t)
 	return b.length()
 
-fn bench_pq(n: Int) Int:
+fn bench_pq(n Int) Int:
 	t := monotonic()
 	var q = PriorityQueue[Int]()
 	var x = 1
@@ -167,7 +167,7 @@ fn bench_pq(n: Int) Int:
 	report("pq_int_enqueue_dequeue", n * 2, t)
 	return sum
 
-fn bench_sorted_map(n: Int) Int:
+fn bench_sorted_map(n Int) Int:
 	t := monotonic()
 	var m = SortedMap[Int, Int]()
 	var x = 1

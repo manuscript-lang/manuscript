@@ -3,7 +3,7 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-fn measure(start: Int) Int:
+fn measure(start Int) Int:
 	t := monotonic()
 	var i = start
 	var hits = 0

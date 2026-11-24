@@ -6,7 +6,7 @@ import (
 )
 
 type Failure:
-	message_text: String
+	message_text String
 
 fn success() Int?!:
 	return ok(7)
@@ -18,9 +18,9 @@ fn propagated() Int!Failure:
 	return ok(failure()?)
 
 test "prelude cases and optional methods need no imports":
-	inferred: Int? := 3
-	absent: Int? := null
-	qualified: Int? := 5
+	inferred Int? := 3
+	absent Int? := null
+	qualified Int? := 5
 	expect_false((inferred == null) or (absent != null))?
 	expect_false(
 		(inferred or panic("called Optional.get() on null")) != 3 or (

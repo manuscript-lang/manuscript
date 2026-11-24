@@ -3,23 +3,23 @@
 // Destructuring closes the resource fields it does not name, also when the field is an
 // `Optional` or a `List` of resources, in a local, a parameter and a returning function.
 type Handle:
-	id: Int
+	id Int
 
 fn move Handle.close() Void!:
 	print(f"close {self.id}")
 
 type Job:
-	label: String
-	input: Handle
-	more: List[Handle]
-	spare: Handle?
+	label String
+	input Handle
+	more List[Handle]
+	spare Handle?
 
-fn keep(job: Job, var out: List[Handle]) Void:
+fn keep(move job Job, var out List[Handle]) Void:
 	{input} := job
 	out.append(input)
 	print("keep end")
 
-fn take(job: Job) Handle:
+fn take(move job Job) Handle:
 	{input} := job
 	return input
 

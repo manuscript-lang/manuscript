@@ -9,7 +9,7 @@ interface Read:
     fn get() Int
 
 type Val:
-    val: Int
+    val Int
 
 fn Val.get() Int:
     return self.val

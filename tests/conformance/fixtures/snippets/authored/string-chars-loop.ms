@@ -3,7 +3,7 @@
 // conform: origin=for over String.chars scans bytes: ASCII, multibyte, break, continue, return, nesting
 import stdout from "@std/io/io.ms"
 
-fn show(s: String) Void:
+fn show(s String) Void:
     var out = ""
     var n = 0
 
@@ -13,7 +13,7 @@ fn show(s: String) Void:
 
     _i := stdout().write(f"{out} {n}\n")
 
-fn first_o(s: String) Int:
+fn first_o(s String) Int:
     var at = 0
 
     for c in s.chars():
@@ -30,7 +30,7 @@ fn main() Void:
     show("abc")
 
     _i := stdout().write(f"{first_o("héllo wörld")} {first_o("xyz")}\n")
-    var kept: List[String] = []
+    var kept List[String] = []
 
     for c in "añb".chars():
         kept.append(c.clone())

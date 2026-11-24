@@ -1,9 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
 interface Same[V]:
-    fn same(other: V) Bool
-type Box[T: Equal]:
-    value: T
+    fn same(other V) Bool
+type Box[T Equal]:
+    value T
 impl Same[T] for Box[T]:
     fn same(other: T) Bool:
         return self.value == other

@@ -6,7 +6,7 @@ import (
 )
 
 type Repo:
-	n: Int = 1
+	n Int = 1
 
 // A `to_json` that is not `fn to_json() JsonValue` is an ordinary method, not the JSON encoder,
 // so `stringify(self)` inside it encodes the fields instead of recursing.

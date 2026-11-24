@@ -1,6 +1,6 @@
 // conform: tags=functions,tier-core
 // conform: phase=run
-fn step(n: Int) Void!:
+fn step(n Int) Void!:
     if n > 2:
         return error(Error("too big"))
     print(f"step {n}")

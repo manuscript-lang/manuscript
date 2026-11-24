@@ -2,6 +2,6 @@
 // conform: phase=check
 enum A:
     End
-    Next(value: B)
+    Next(value B)
 type B:
-    a: A
+    a A

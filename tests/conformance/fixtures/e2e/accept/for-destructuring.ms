@@ -3,8 +3,8 @@
 import expect_equal from "@std/test/test.ms"
 
 type Point:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
 test "for destructures list and record elements":
 	pairs := [[1, 2], [3, 4]]
@@ -32,5 +32,5 @@ test "for destructures list and record elements":
 
 test "a lambda parameter destructures":
 	rows := [[1, 2], [3, 4]]
-	expect_equal(rows.map(fn [a, b]: a - b), [-1, -1])?
-	expect_equal(rows.fold(0, fn total, [a, b]: total + a * b), 14)?
+	expect_equal(rows.map(([a, b]) => a - b), [-1, -1])?
+	expect_equal(rows.fold(0, (total, [a, b]) => total + a * b), 14)?

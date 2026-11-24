@@ -100,7 +100,7 @@ static void check_result(Body *body, const MsFunc *func, MsTy result) {
     } else if (!reportable_error(body, error)) {
       ms_strbuild_append_text(&text, "extern error type ");
       type_name(body, &text, error);
-      ms_strbuild_append_text(&text, " must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or "
+      ms_strbuild_append_text(&text, " must be an alternative whose cases carry nothing, `code Int`, `message String`, or "
                                      "both; the native returns the status 1 + the case index and fills code_out and "
                                      "message_out");
       report(body, pos, text);

@@ -35,7 +35,7 @@ test "indexed reads follow the front":
 
 test "wraps around and grows past the first buffer":
 	var d = Deque[Int]()
-	var expected: List[Int] = []
+	var expected List[Int] = []
 
 	for i in 0..100:
 		d.push_back(i)
@@ -71,6 +71,6 @@ test "optional elements keep none distinct from absent":
 	d.push_back(null)
 	expect_equal(d.length(), 1)?
 
-	present_none: Int? := null
+	present_none Int? := null
 	expect_equal(d.pop_front(), present_none)?
 	expect_equal(d.pop_front(), null)?

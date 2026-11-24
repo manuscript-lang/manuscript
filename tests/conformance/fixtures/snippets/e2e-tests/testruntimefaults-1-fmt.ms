@@ -4,5 +4,5 @@
 import panic from "@std/core.ms"
 
 test "fault":
-	missing: Int? := null
+	missing Int? := null
 	_impossible := missing or panic("called Optional.get() on null")

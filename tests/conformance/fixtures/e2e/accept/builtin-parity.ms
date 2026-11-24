@@ -11,31 +11,31 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-fn positive(value: Int) Bool:
+fn positive(value Int) Bool:
 	return value > 0
 
-fn negative(value: Int) Bool:
+fn negative(value Int) Bool:
 	return value < 0
 
-fn stringify(value: Int) String:
+fn stringify(value Int) String:
 	return value.to_string()
 
-fn expand(value: Int) List[String]:
+fn expand(value Int) List[String]:
 	return [stringify(value: value), "x"]
 
-fn total(accumulator: Int, value: Int) Int:
+fn total(accumulator Int, value Int) Int:
 	return accumulator + value
 
-fn ordered(accumulator: String, value: Int) String:
+fn ordered(accumulator String, value Int) String:
 	return f"{accumulator}{value}"
 
-fn compare(left: Int, right: Int) Int:
+fn compare(left Int, right Int) Int:
 	if left < right: return -1
 	if left > right: return 1
 
 	return 0
 
-fn common_result[T](result: T!) T!:
+fn common_result[T](result T!) T!:
 	match result:
 		ok(value):
 			return ok(value)
@@ -97,13 +97,13 @@ test "list methods mutate explicit clones and remain typed":
 	alias := original.clone()
 	original.get(index: -1) | expect_equal(1)?
 
-	absent: Int? := null
+	absent Int? := null
 	original.get_or(index: -9223372036854775808, default: -1) | expect_equal(-1)?
 	original.get_or(index: 9223372036854775807, default: -1) | expect_equal(-1)?
 	original.first() | expect_equal(3)?
 	original.last() | expect_equal(1)?
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	empty.first() | expect_equal(absent)?
 	empty.last() | expect_equal(absent)?
 	(empty.is_empty()) | expect_true?
@@ -148,7 +148,7 @@ test "list methods mutate explicit clones and remain typed":
 	(not empty.any(predicate: positive)) | expect_true?
 	(empty.all(predicate: positive)) | expect_true?
 
-	var observed_original: List[Int] = []
+	var observed_original List[Int] = []
 	original.for_each(
 		fn(value) Void:
 			observed_original.append(value)
@@ -201,7 +201,7 @@ test "list methods mutate explicit clones and remain typed":
 	original.entries().get(index: 0) | expect_equal(ListEntry(index: 0, value: 3))?
 	original.to_set().values() | expect_equal([3, 1, 2])?
 	expect_equal(
-		[[1, 2], [], [3]].flat_map(transform: fn value: value.clone()),
+		[[1, 2], [], [3]].flat_map(transform: value => value.clone()),
 		[1, 2, 3],
 	)?
 	alias | expect_equal([3, 1, 2, 1])?
@@ -246,8 +246,8 @@ test "map enumeration, merge, and clear preserve insertion order":
 		| expect_false?
 	)
 
-	var observed_keys: List[String] = []
-	var observed_values: List[Int] = []
+	var observed_keys List[String] = []
+	var observed_values List[Int] = []
 
 	merged.for_each(
 		fn key,
@@ -287,7 +287,7 @@ test "set algebra and enumeration preserve source values":
 	(left.is_superset_of(other: empty)) | expect_true?
 	(empty.is_disjoint_from(other: left)) | expect_true?
 
-	var observed_left: List[Int] = []
+	var observed_left List[Int] = []
 	left.for_each(
 		fn(value) Void:
 			observed_left.append(value)
@@ -303,7 +303,7 @@ test "string methods use Unicode scalars":
 	"é🙂é".view(start: -2, end: 8) | expect_equal("é")?
 	"é🙂é".scalar_at(offset: 2) | expect_equal(128578)?
 
-	_missing: String? := null
+	_missing String? := null
 	"".scalar_at(offset: 0, default: 63) | expect_equal(63)?
 	"é".scalar_at(offset: -9223372036854775808, default: 63) | expect_equal(63)?
 	"é".scalar_at(offset: 1, default: 63) | expect_equal(63)?
@@ -312,7 +312,7 @@ test "string methods use Unicode scalars":
 	"é🙂é".last_index_of(value: "") | expect_equal(8)?
 	"é🙂é".index_of(value: "") | expect_equal(0)?
 
-	absent: Int? := null
+	absent Int? := null
 	"é🙂é".index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".last_index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".slice(start: 2, end: 8) | expect_equal("🙂é")?
@@ -345,7 +345,7 @@ test "bytes have analogous immutable operations":
 	data := Bytes([1, 2, 3, 2])
 	data.get(index: -1) | expect_equal(2)?
 
-	missing: Int? := null
+	missing Int? := null
 	data.get_or(index: -9223372036854775808, default: 255) | expect_equal(255)?
 	(data.contains(value: Bytes([2, 3]))) | expect_true?
 	data.index_of(value: Bytes([2])) | expect_equal(1)?
@@ -369,10 +369,10 @@ test "growth limits and invalid inputs return values":
 	"x".pad_start(target_length: -1, padding: " ") | expect_equal("x")?
 	"x".pad_end(target_length: 4, padding: "") | expect_equal("x")?
 
-	list_limit: List[Int]! := error(
+	list_limit List[Int]! := error(
 		Error("collection: limit exceeded", kind: "EOVERFLOW")
 	)
-	list_invalid: List[Int]! := error(
+	list_invalid List[Int]! := error(
 		Error("collection: invalid input", kind: "EINVAL")
 	)
 	(
@@ -393,10 +393,10 @@ test "growth limits and invalid inputs return values":
 	)
 	filled(value: 1, count: 2, max_items: 1) | expect_equal(list_limit)?
 
-fn parity(value: Int) Int:
+fn parity(value Int) Int:
 	return value % 2
 
-fn default_value(key: String) Int:
+fn default_value(key String) Int:
 	if key != "c": return -1
 	return 3
 
@@ -413,9 +413,9 @@ test "grouping and lazy map defaults":
 	original.add_default(key: "a", value: 9)
 	original | expect_equal(original)?
 
-	var calls: List[Int] = []
+	var calls List[Int] = []
 
-	create := fn(key: String):
+	create := fn(key String):
 		calls.append(1)
 		return 0
 
@@ -471,14 +471,14 @@ test "normalization, empty separators, and precision formatting":
 
 	"é🙂".split(separator: "") | expect_equal(["é", "🙂"])?
 
-	empty_texts: List[String] := []
+	empty_texts List[String] := []
 	"".split(separator: "") | expect_equal(empty_texts)?
 	"é🙂".replace_first(old: "", new: "-") | expect_equal("-é🙂")?
 	"".replace_first(old: "", new: "-") | expect_equal("-")?
 	"é".concat(other: "🙂") | expect_equal("é🙂")?
 
-	invalid: String! := error(Error("string: invalid input", kind: "EINVAL"))
-	limit: String! := error(Error("string: limit exceeded", kind: "EOVERFLOW"))
+	invalid String! := error(Error("string: invalid input", kind: "EINVAL"))
+	limit String! := error(Error("string: limit exceeded", kind: "EOVERFLOW"))
 	"é".normalize(form: "invalid", max_bytes: 8) | expect_equal(invalid)?
 	"é".normalize(form: "NFD", max_bytes: 2) | expect_equal(limit)?
 
@@ -544,7 +544,7 @@ test "generic native methods accept omitted single-parameter labels":
 	convert := values.map[String]
 	convert(stringify) | expect_equal(["1", "2"])?
 
-	var observed_values: List[Int] = []
+	var observed_values List[Int] = []
 	values.for_each(
 		fn(value) Void:
 			observed_values.append(value)

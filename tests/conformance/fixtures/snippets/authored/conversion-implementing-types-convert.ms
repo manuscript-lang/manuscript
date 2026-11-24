@@ -4,21 +4,21 @@ interface Shape:
     fn label() String
 
 type Sq:
-    name: String
+    name String
 
 fn Sq.label() String:
     return self.name.clone()
 
 type Holder:
-    s: Shape
+    s Shape
 
-fn describe(s: Shape) String:
+fn describe(s Shape) String:
     return s.label()
 
-fn count(items: List[Shape]) Int:
+fn count(items List[Shape]) Int:
     return items.length()
 
-fn through[T: Shape](x: T) String:
+fn through[T Shape](x T) String:
     return describe(x)
 
 export fn main() Int:
@@ -31,7 +31,7 @@ export fn main() Int:
         return 3
 
     // Stored positions move at the last use or take a clone.
-    s: Shape := q.clone()
+    s Shape := q.clone()
     h := Holder(s: q.clone())
     if s.label() + h.s.label() != "sqsq":
         return 4

@@ -2,4 +2,4 @@
 // conform: phase=check
 fn main() Void:
 	var xs = [1, 2]
-	xs.for_each(fn var n: xs.append(n))
+	xs.for_each((var n) => xs.append(n))

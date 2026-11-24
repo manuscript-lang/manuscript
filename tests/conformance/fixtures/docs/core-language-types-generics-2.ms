@@ -2,12 +2,12 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/types/generics.md:32
 type Key:
-    id: Int
+    id Int
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
     return true
 
-fn accepts(value: Equal) Void:
+fn accepts(value Equal) Void:
     return
 
 fn use_view() Void:

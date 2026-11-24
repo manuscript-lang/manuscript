@@ -7,40 +7,40 @@ import (
 )
 
 type Acc:
-	items: List[Int]
+	items List[Int]
 
 // An interface operation changes a caller's value through a `var` parameter.
 interface Step:
-	var fn step(value: Int, var out: Acc) Void!
+	var fn step(value Int, var out Acc) Void!
 
 type Doubler:
-	count: Int
+	count Int
 
-fn var Doubler.step(value: Int, var out: Acc) Void!:
+fn var Doubler.step(value Int, var out Acc) Void!:
 	self.count += 1
 	out.items.append(value * 2)
 
 // Declares `var` but only reads it: the caller's value is unchanged.
 type Reader:
-	seen: Int
+	seen Int
 
-fn var Reader.step(value: Int, var out: Acc) Void!:
+fn var Reader.step(value Int, var out Acc) Void!:
 	self.seen += out.items.length() + value
 
 type Holder:
-	step: Step
-	acc: Acc
+	step Step
+	acc Acc
 
 // The argument is a field of the receiver's owner: it changes in place.
-fn var Holder.run(value: Int) Void!:
+fn var Holder.run(value Int) Void!:
 	return self.step.step(value, self.acc)
 
 test "a var parameter on an interface operation writes back to a local":
 	var acc = Acc([])
-	var d: Step = Doubler(0)
+	var d Step = Doubler(0)
 	for i in 0..3: d.step(i, acc)?
 
-	var r: Step = Reader(0)
+	var r Step = Reader(0)
 	r.step(5, acc)?
 	expect_equal(acc.items, [0, 2, 4])?
 
@@ -52,14 +52,14 @@ test "a var field argument writes back to its record":
 
 // Writes each word of a line, and the count of words at the end.
 type Words:
-	count: Int
+	count Int
 
-fn var Words.step(move value: String, var out: List[String]) Void!:
+fn var Words.step(move value String, var out List[String]) Void!:
 	for word in value.split(" "):
 		self.count += 1
 		out.append(word.clone())
 
-fn var Words.finish(var out: List[String]) Void!:
+fn var Words.finish(var out List[String]) Void!:
 	out.append(f"{self.count}")
 
 test "a transform writes zero or more items per input and more at the end":
@@ -68,18 +68,18 @@ test "a transform writes zero or more items per input and more at the end":
 
 // Writes an item, then fails on a negative input.
 type Checked:
-	unused: Bool = false
+	unused Bool = false
 
-fn var Checked.step(move value: Int, var out: List[Int]) Void!:
+fn var Checked.step(move value Int, var out List[Int]) Void!:
 	out.append(value)
 	if value < 0: return error(Error("negative", kind: "EBADMSG"))
 
-fn var Checked.finish(var out: List[Int]) Void!:
+fn var Checked.finish(var out List[Int]) Void!:
 	return ok()
 
 test "a failed step's partial output is dropped and the failure is the next item":
 	var s = through[Int, Int](from_list([1, -2, 3]), Checked())
-	var seen: List[Int] = []
+	var seen List[Int] = []
 	var failed = false
 
 	while true:

@@ -3,7 +3,7 @@
 // conform: origin=retire-ms-rt-hot
 // parse_int, a one-byte contains and scalar_at give the same answers for inline, heap,
 // ASCII and non-ASCII text on every backend.
-fn show(text: String) Void:
+fn show(text String) Void:
 	v := text.parse_int()
 
 	if v != null:

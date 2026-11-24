@@ -18,7 +18,7 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
 	if request.path == "/hold":
 		started := monotonic()
 		while monotonic().difference(started).to_milliseconds() < 400:
@@ -26,10 +26,10 @@ fn handle(request: HttpRequest) HttpResponse:
 
 	return HttpResponse(200, f"ok {request.path} done\n".to_bytes())
 
-fn ask(var conn: Connection, path: String) Void!:
+fn ask(var conn Connection, path String) Void!:
 	return send(conn, f"GET {path} HTTP/1.1\r\nHost: t\r\n\r\n")
 
-fn answer(var conn: Connection) Bool:
+fn answer(var conn Connection) Bool:
 	var text = ""
 
 	while not text.ends_with("done\n"):
@@ -44,19 +44,19 @@ fn answer(var conn: Connection) Bool:
 
 	return text.starts_with("HTTP/1.1 200 OK")
 
-fn ask_two(var x: Connection, var y: Connection) Void!:
+fn ask_two(var x Connection, var y Connection) Void!:
 	ask(x, "/fast")?
 	return ask(y, "/fast")
 
 // Holds the thread of `held` and answers whether the others were served meanwhile.
 // `pair` is the connection the server dealt to the same thread as `held`.
 fn round(
-	var held: Connection,
-	var pair: Connection,
-	var w: Connection,
-	var x: Connection,
-	var y: Connection,
-	var z: Connection,
+	var held Connection,
+	var pair Connection,
+	var w Connection,
+	var x Connection,
+	var y Connection,
+	var z Connection,
 ) Bool!:
 	started := monotonic()
 	ask(held, "/hold")?
@@ -70,7 +70,7 @@ fn round(
 	held_ms := monotonic().difference(started).to_milliseconds()
 	return ok(served and held_ok and others_ms * 2 < held_ms)
 
-fn warm(var conn: Connection) Bool!:
+fn warm(var conn Connection) Bool!:
 	ask(conn, "/warm")?
 	return ok(answer(conn))
 

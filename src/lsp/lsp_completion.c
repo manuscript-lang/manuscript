@@ -295,7 +295,7 @@ static const char *keyword_template(const char *word) {
   static const char *const TEMPLATES[][2] = {
       {"interface", "interface ${1:Name}:\n    ${0:fn operation() Void}"},
       {"fn", "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return}"},
-      {"type", "type ${1:Name}:\n    ${0:field: String}"},
+      {"type", "type ${1:Name}:\n    ${0:field String}"},
       {"enum", "enum ${1:Name}:\n    ${0:Ready}"},
       {"if", "if ${1:condition}:\n    $0"},
       {"for", "for ${1:item} in ${2:items}:\n    $0"},

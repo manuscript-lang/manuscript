@@ -14,14 +14,14 @@
           "file": "testclosedbuildergrouping-5.ms",
           "line": 7,
           "column": 1,
-          "offset": 213
+          "offset": 215
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testclosedbuildergrouping-5.ms:7:1: type: reachable fallthrough in function returning String; end every path with 'return <String>' (or make the last branch return)\n   |\n 7 | fn probe(flag: Bool) String:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testclosedbuildergrouping-5.ms:7:1: type: reachable fallthrough in function returning String; end every path with 'return <String>' (or make the last branch return)\n   |\n 7 | fn probe(flag Bool) String:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

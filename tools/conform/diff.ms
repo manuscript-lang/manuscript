@@ -12,11 +12,11 @@ import (
 
 // One line per fixture of `chunk`: `ok`, or `DIFF <id>`.
 fn compare_chunk(
-	ms_a: String,
-	type_a: String,
-	ms_b: String,
-	type_b: String,
-	chunk: List[Fixture],
+	ms_a String,
+	type_a String,
+	ms_b String,
+	type_b String,
+	chunk List[Fixture],
 ) List[String]:
 	var lines = List[String]()
 
@@ -30,12 +30,12 @@ fn compare_chunk(
 
 // The ids of the fixtures of `chosen` that the two sides observe differently.
 export fn differing(
-	ms_a: String,
-	type_a: String,
-	ms_b: String,
-	type_b: String,
-	chosen: List[Fixture],
-	jobs_wanted: Int,
+	ms_a String,
+	type_a String,
+	ms_b String,
+	type_b String,
+	chosen List[Fixture],
+	jobs_wanted Int,
 ) List[String]:
 	var jobs = jobs_wanted
 	if jobs > 8: jobs = 8
@@ -59,7 +59,7 @@ export fn differing(
 		mine := chunks[worker].clone()
 		tasks.append(
 			promise(
-				fn: ok(
+				() => ok(
 					compare_chunk(
 						first,
 						first_type,
@@ -78,7 +78,7 @@ export fn differing(
 	found.sort()
 	return found
 
-export fn run_diff(root: String, corpus: String, filter: Filter, args: Args) Int:
+export fn run_diff(root String, corpus String, filter Filter, args Args) Int:
 	ms_a := one(args, "ms-a", tool_ms(root))
 	ms_b := one(args, "ms-b", ms_a)
 	type_a := one(args, "build-type-a", "Release")

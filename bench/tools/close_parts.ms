@@ -16,14 +16,14 @@ import (
 	absolute, run_in, usage from "./lib.ms",
 )
 
-fn same_bytes(a: String, b: String) Bool:
+fn same_bytes(a String, b String) Bool:
 	left := read_file(a).wait()
 	right := read_file(b).wait()
 	if left.is_error() or right.is_error(): return false
 
 	return left.get_or("".to_bytes()) == right.get_or("".to_bytes())
 
-fn ok_status(program: String, args: List[String], dir: String) Bool:
+fn ok_status(program String, args List[String], dir String) Bool:
 	ran := run_in(dir, program, args)
 	return ran.ok and ran.code == 0
 
@@ -40,7 +40,7 @@ fn main() Int:
 	var skipped = 0
 	projects := glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get_or(
 		[]
-	).map(fn e: e.path.clone())
+	).map(e => e.path.clone())
 
 	for toml in projects.sorted():
 		dir := ("bench/perf/" + toml.slice(0, toml.length() - "ms.toml".length()))

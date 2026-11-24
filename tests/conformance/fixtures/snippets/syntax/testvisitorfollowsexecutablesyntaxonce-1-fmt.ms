@@ -1,12 +1,12 @@
 // conform: tags=closures,control-flow,formatter,interfaces,interpolation,match,parser,records,strings,tier-core
 // conform: phase=parse
 // conform: origin=pkg/syntax/walk_test.go:12 TestVisitorFollowsExecutableSyntaxOnce
-fn choose(value: Int) Int:
+fn choose(value Int) Int:
     return value
 
-fn collect(fallback: Int = choose(1)) String:
+fn collect(fallback Int = choose(1)) String:
     _callbacks := [
-        fn(value: Int = choose(2)) Int:
+        fn(value Int = choose(2)) Int:
             if value > 0:
                 return choose(3)
             else:
@@ -19,10 +19,10 @@ fn collect(fallback: Int = choose(1)) String:
             return f"{choose(6)}"
 
 interface Read:
-    fn read(value: Int) Int
+    fn read(value Int) Int
 
 type Box:
-    value: Int = choose(7)
+    value Int = choose(7)
 
-fn Box.read(value: Int = choose(8)) Int:
+fn Box.read(value Int = choose(8)) Int:
     return choose(9)

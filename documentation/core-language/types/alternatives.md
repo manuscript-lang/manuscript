@@ -10,9 +10,9 @@ Use an enum (a tagged union) when a value is exactly one of several declared cas
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Payment:
-    Paid(receipt: String)
-    Declined(reason: String)
-    Pending(reference: String)
+    Paid(receipt String)
+    Declined(reason String)
+    Pending(reference String)
 ```
 
 Enums are tagged and exhaustively matched.
@@ -24,14 +24,14 @@ Enums are tagged and exhaustively matched.
 
 Migration from the old syntax: replace `type Choice:` with `enum Choice:` when its body declares cases, then remove `case` before each case name. The compiler rejects both old spellings with a diagnostic that names the new one. Constructors and exhaustive matching behave as before, and `type` still declares types.
 
-`enum` is a reserved word, so rename any existing identifier spelled `enum`. `case` is no longer reserved: `case`, `case(value: Int)`, and a field `case: Int` are ordinary names in their contexts.
+`enum` is a reserved word, so rename any existing identifier spelled `enum`. `case` is no longer reserved: `case`, `case(value Int)`, and a field `case Int` are ordinary names in their contexts.
 
 ## Construction and identity
 
-<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt: String)\n    Declined(reason: String)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt String)\n    Declined(reason String)","given":[]} -->
 ```manuscript
 payment := Payment.Paid("receipt-42")
-declined: Payment := Declined("Card rejected")
+declined Payment := Declined("Card rejected")
 ```
 
 - `Type.Case` names a case of that nominal type. It is not a module path: import the type, then qualify its case.
@@ -51,13 +51,13 @@ enum LeftState:
 enum RightState:
     Ready
 
-left: LeftState := LeftState.Ready
+left LeftState := LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.
-annotated: LeftState := Ready
+annotated LeftState := Ready
 // Rejected: two visible Ready cases.
 ambiguous := Ready
 // Rejected: a different nominal enum.
-wrong: LeftState := RightState.Ready
+wrong LeftState := RightState.Ready
 ```
 
 After `Ready := LeftState.Ready`, `Ready` refers to that binding, not case lookup.

@@ -5,8 +5,8 @@ interface Shape:
     fn area() Int
 
 type Rect:
-    w: Int
-    h: Int
+    w Int
+    h Int
 
 fn Rect.area() Int:
     return self.w * self.h

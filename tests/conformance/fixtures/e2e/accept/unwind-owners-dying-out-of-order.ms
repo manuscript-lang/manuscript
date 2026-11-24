@@ -11,17 +11,17 @@ import (
 // registered, so every resource closes exactly once whether the function returns or
 // faults.
 type Res:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Res.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
-fn touch(r: Res, fail: Bool) Int:
+fn touch(r Res, fail Bool) Int:
 	if fail: panic("touch failed")
 	return r.id
 
-fn run(log: String, fail: Bool) Int:
+fn run(log String, fail Bool) Int:
 	a := Res(1, log.clone())
 	b := Res(2, log.clone())
 	c := Res(3, log.clone())
@@ -31,7 +31,7 @@ fn run(log: String, fail: Bool) Int:
 	z := touch(a, fail)
 	return x + y + z + touch(c, false)
 
-fn closed(log: String) String!:
+fn closed(log String) String!:
 	bytes := read_file(log).wait()?
 	return ok(bytes.decode_utf8() or "")
 
@@ -48,7 +48,7 @@ test "resources registered together close once when the function returns":
 test "resources registered together close once when a later call faults":
 	temp := temporary("unwind-order-")?
 	log := f"{temp.path()}/log"
-	message := expect_fault(fn: void run(log.clone(), true))?
+	message := expect_fault(() => void run(log.clone(), true))?
 	expect_equal(message, "touch failed")?
 
 	text := closed(log)?

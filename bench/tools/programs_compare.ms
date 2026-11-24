@@ -16,10 +16,10 @@ import (
 	summarize from "./programs_table.ms",
 )
 
-fn lines_of(version: String, content: String) List[String]:
-	return content.split("\n").filter(fn l: l != "").map(fn l: f"{version} {l}")
+fn lines_of(version String, content String) List[String]:
+	return content.split("\n").filter(l => l != "").map(l => f"{version} {l}")
 
-fn run(opts: Map[String, String], n: Int) Result[String, Error]:
+fn run(opts Map[String, String], n Int) Result[String, Error]:
 	names := ["go", "before", "after"]
 	var programs = Map[String, String]()
 	for name in names:
@@ -52,7 +52,7 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
 
 	for revision in ["before", "after"]:
 		lines := raw.get_or(revision, [])
-		write_text(f"{out}/programs-{revision}.txt", lines.map(fn l: l + "\n").join(""))
+		write_text(f"{out}/programs-{revision}.txt", lines.map(l => l + "\n").join(""))
 
 		table := summarize(lines, n)?
 		write_text(f"{out}/programs-{revision}.md", table + "\n")

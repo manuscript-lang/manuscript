@@ -20,9 +20,9 @@ import (
 
 // Hands out the chunks in order, then ends.
 type Chunks:
-	data: Bytes
-	size: Int
-	at: Int
+	data Bytes
+	size Int
+	at Int
 
 fn var Chunks.next() Bytes?!:
 	if self.at >= self.data.length(): return ok(null)
@@ -37,12 +37,12 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
+fn chunked(move data Bytes, size Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
-fn read_all(input: ReadStream[Bytes]) Bytes!:
+fn read_all(move input ReadStream[Bytes]) Bytes!:
 	var source = input
-	var out: List[Bytes] = []
+	var out List[Bytes] = []
 
 	while true:
 		next := source.next()?
@@ -122,11 +122,11 @@ fn sample() List[ArchiveEntry]:
 	]
 
 fn read_entries(
-	move input: ReadStream[Bytes],
-	options: ArchiveOptions = ArchiveOptions(),
+	move input ReadStream[Bytes],
+	options ArchiveOptions = ArchiveOptions(),
 ) List[ArchiveEntry]!:
 	var entries = tar_entries(input, options)
-	var out: List[ArchiveEntry] = []
+	var out List[ArchiveEntry] = []
 
 	while true:
 		next := entries.next()?
@@ -170,8 +170,8 @@ test "tar entries enforce limits and report truncation":
 // Sends its bytes once, then fails every read, so a reader that waits for data it
 // should have refused sees `EIO`.
 type HeaderThenFail:
-	head: Bytes
-	sent: Bool
+	head Bytes
+	sent Bool
 
 fn var HeaderThenFail.next() Bytes?!:
 	if self.sent: return error(Error("pulled past the header", kind: "EIO"))
@@ -232,13 +232,13 @@ test "decompressed streams reject bytes after the payload as decompress does":
 			expect_equal(got.err().kind, "EBADMSG")?
 
 // One member of a tar archive: a file's header and data block, or a directory's header.
-fn member(path: String, directory: Bool) Bytes!:
+fn member(path String, directory Bool) Bytes!:
 	data := if directory: "".to_bytes() else: "x".to_bytes()
 	archive := pack([ArchiveEntry(path.clone(), data, directory)], ArchiveFormat.Tar)?
 	return archive.slice(0, if directory: 512 else: 1024)
 
 // Paths ending in `/` are directories.
-fn members(paths: List[String]) Bytes!:
+fn members(paths List[String]) Bytes!:
 	var archive = join([])
 
 	for path in paths:
@@ -275,8 +275,8 @@ test "tar entries accept distinct paths and sibling directories":
 	expect_equal(read_entries(chunked(archive, 700))?, expected)?
 
 // A ustar header block with a valid checksum.
-fn header(name: String, size: Int, flag: Int) Bytes:
-	var block: List[Int] = []
+fn header(name String, size Int, flag Int) Bytes:
+	var block List[Int] = []
 	for index in 0..512:
 		block.append(0)
 
@@ -316,7 +316,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 	return out.build()
 
 // Zero-pads `data` to a whole 512-byte block.
-fn padded(data: Bytes) Bytes:
+fn padded(data Bytes) Bytes:
 	var out = BytesBuilder()
 	out.append_bytes(data.clone())
 	for index in 0..(512 - data.length() % 512) % 512:
@@ -341,7 +341,7 @@ test "tar entries frame members by a PAX size override as unpack does":
 		expect_equal(read_entries(chunked(bytes.clone(), size))?, expected)?
 
 // Replaces the byte at `at` with `value`.
-fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
+fn with_byte(data Bytes, at Int, value Int) Bytes:
 	var out = BytesBuilder()
 	out.append_bytes(data.slice(0, at).get_or("".to_bytes()))
 	out.append(value.to_uint8() or 0)
@@ -383,7 +383,7 @@ test "gzip rejects reserved flags in whole and fragmented member headers":
 				expect_equal(streamed.err().kind, "EBADMSG")?
 
 // "ok" with the entries' paths and sizes, or the error kind.
-fn outcome(entries: List[ArchiveEntry]!) String:
+fn outcome(entries List[ArchiveEntry]!) String:
 	if entries.is_error(): return entries.err().kind.clone() or "none"
 
 	var text = "ok"
@@ -393,7 +393,7 @@ fn outcome(entries: List[ArchiveEntry]!) String:
 
 test "tar entries and unpack agree on corrupted and truncated archives":
 	archive := pack(sample(), ArchiveFormat.Tar)?
-	var cases: List[Bytes] = []
+	var cases List[Bytes] = []
 
 	// Header fields (name, size, checksum, type) and data bytes of each member, set to
 	// boundary values.

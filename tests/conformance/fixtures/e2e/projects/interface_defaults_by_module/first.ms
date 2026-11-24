@@ -15,18 +15,18 @@ export fn padding() Int:
 	return total
 
 export type Echo:
-	code: Int
+	code Int
 
 fn Echo.run(
-	program: String,
-	arguments: List[String],
-	options: RunOptions = RunOptions(),
+	program String,
+	arguments List[String],
+	options RunOptions = RunOptions(),
 ) CommandOutput!:
 	return ok(CommandOutput(self.code, options.input.clone(), "".to_bytes(), 0))
 
 fn Echo.spawn(
-	program: String,
-	arguments: List[String],
-	options: SpawnOptions,
+	program String,
+	arguments List[String],
+	options SpawnOptions,
 ) Subprocess!:
 	return error(Error("process: service unavailable", kind: "EAGAIN"))

@@ -5,21 +5,21 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn fib(n: Int) Int:
+fn fib(n Int) Int:
 	if n < 2: return n
 	return fib(n - 1) + fib(n - 2)
 
 // promise-per-level fib: spawn one half as a promise, compute other inline
-fn pfib(n: Int, cutoff: Int) Int!:
+fn pfib(n Int, cutoff Int) Int!:
 	if n < cutoff: return ok(fib(n))
 
 	m := n - 1
-	p := promise[Int](fn: pfib(m, cutoff))
+	p := promise[Int](() => pfib(m, cutoff))
 	b := pfib(n - 2, cutoff)?
 	a := p.wait()?
 	return ok(a + b)
 
-fn work(n: Int) Int!:
+fn work(n Int) Int!:
 	return ok(fib(n))
 
 fn main() Void:
@@ -31,9 +31,9 @@ fn main() Void:
 	var r = 0
 
 	if mode == "fan":
-		var ps: List[Promise[Int]] = []
+		var ps List[Promise[Int]] = []
 		for i in 0..k:
-			ps.append(promise[Int](fn: work(n)))
+			ps.append(promise[Int](() => work(n)))
 
 		rs := wait_all(ps).get()
 		for x in rs:

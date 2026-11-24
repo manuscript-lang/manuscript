@@ -3,6 +3,6 @@
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:31 TestDiagnosticFixes
 import Queue from "@std/collections/queue.ms"
 
-fn f(q: Queue[Int]) Int:
+fn f(q Queue[Int]) Int:
     q.capacity = 5
     return q.capacity

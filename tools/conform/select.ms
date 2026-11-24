@@ -5,18 +5,18 @@ import (
 	Fixture, fixtures from "./corpus.ms",
 )
 
-PHASES: List[String] := ["parse", "check", "run", "test"]
+PHASES List[String] := ["parse", "check", "run", "test"]
 
 export type Filter:
-	tags: List[String]
-	exclude_tags: List[String]
-	phases: List[String]
-	ids: List[String]
-	shard_index: Int
-	shard_count: Int
-	problem: String
+	tags List[String]
+	exclude_tags List[String]
+	phases List[String]
+	ids List[String]
+	shard_index Int
+	shard_count Int
+	problem String
 
-export fn filter_of(args: Args) Filter:
+export fn filter_of(args Args) Filter:
 	var filter = Filter(
 		tags: many(args, "tag"),
 		exclude_tags: many(args, "exclude-tag"),
@@ -46,7 +46,7 @@ export fn filter_of(args: Args) Filter:
 
 	return filter
 
-fn wanted(fx: Fixture, filter: Filter) Bool:
+fn wanted(fx Fixture, filter Filter) Bool:
 	if not filter.tags.is_empty():
 		var any = false
 		for tag in fx.tags:
@@ -58,7 +58,7 @@ fn wanted(fx: Fixture, filter: Filter) Bool:
 	return true
 
 // The fixtures under `root` that `filter` selects, in id order.
-export fn select(root: String, filter: Filter) List[Fixture]:
+export fn select(root String, filter Filter) List[Fixture]:
 	var phases = filter.phases.clone()
 	if phases.is_empty(): phases = PHASES.clone()
 
@@ -66,7 +66,7 @@ export fn select(root: String, filter: Filter) List[Fixture]:
 	for phase in phases:
 		for fx in fixtures(root, phase, filter.ids):
 			if wanted(fx, filter): found.append(fx.clone())
-	found = found.sorted_by_key(fn fx: fx.id)
+	found = found.sorted_by_key(fx => fx.id)
 	if filter.shard_count == 1: return found
 
 	var mine = List[Fixture]()
