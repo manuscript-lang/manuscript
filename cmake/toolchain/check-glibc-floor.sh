@@ -2,7 +2,7 @@
 # (CI: a change here starts the LLVM jobs of a pull request: one corpus job on amd64, the gates on arm64.)
 # Fails when an ELF executable needs glibc newer than 2.28, or a shared library other than glibc's own
 # and libgcc_s (every glibc distribution ships it; Rust's unwinder links it, and AlmaLinux 8 has GCC 8's):
-# `sh toolchain/check-glibc-floor.sh <file>...`. It reads the binary's version requirements, the ones the
+# `sh cmake/toolchain/check-glibc-floor.sh <file>...`. It reads the binary's version requirements, the ones the
 # loader enforces at start, so weak references count. MS_GLIBC_FLOOR overrides the floor, as `major.minor`;
 # MS_GCC_FLOOR the newest libgcc_s version allowed (default 8.0, AlmaLinux 8's).
 set -eu

@@ -1,21 +1,21 @@
 #!/bin/sh
 # Packs the agent skill into manuscript-skill.tar.gz and its checksum. Needs no compiler.
 #
-#   sh toolchain/package-skill.sh <output-directory>
+#   sh cmake/toolchain/package-skill.sh <output-directory>
 #
-# The archive holds one folder, `manuscript/`, copied from agent-skill and
+# The archive holds one folder, `manuscript/`, copied from extensions/agent-skill and
 # stamped with the version in .msversion. Every release attaches it under the same file name, so
 # releases/latest/download/ is a stable URL.
 set -eu
 
 [ $# -eq 1 ] || { echo "usage: package-skill.sh <output-directory>" >&2; exit 2; }
 out="$1"
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(cd "$(dirname "$0")/../.." && pwd)"
 version="$(cat "$root/.msversion")"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-cp -R "$root/agent-skill" "$work/manuscript"
+cp -R "$root/extensions/agent-skill" "$work/manuscript"
 find "$work/manuscript" -name '*.md' | while read -r file; do
 	sed "s/{{MS_VERSION}}/$version/g" "$file" >"$file.new"
 	mv "$file.new" "$file"

@@ -1,4 +1,4 @@
-# Links every executable and shared library of this build with the pinned lld (toolchain/lld.lock): the same linker
+# Links every executable and shared library of this build with the pinned lld (cmake/toolchain/lld.lock): the same linker
 # the programs ms builds are linked with, on every platform, in every preset. The release asset for the host is
 # downloaded once per build directory and checked against the lock's digest; lld is one multi-call binary that picks its
 # flavor from the name it is run as, so it is copied as `ld.lld` (ld64.lld on macOS), and the compiler driver is
@@ -9,7 +9,7 @@ if(MS_SYSTEM_LINKER OR MSVC)
   return()
 endif()
 
-file(STRINGS "${CMAKE_SOURCE_DIR}/toolchain/lld.lock" ms_lld_lock)
+file(STRINGS "${CMAKE_SOURCE_DIR}/cmake/toolchain/lld.lock" ms_lld_lock)
 foreach(line IN LISTS ms_lld_lock)
   if(line MATCHES "^tag +(.+)$")
     set(ms_lld_tag "${CMAKE_MATCH_1}")
@@ -31,7 +31,7 @@ else()
 endif()
 set(ms_lld_asset "lld-${ms_lld_version}-${ms_lld_os}-${ms_lld_arch}.tar.gz")
 if(NOT DEFINED ms_lld_digest_of_${ms_lld_asset})
-  message(FATAL_ERROR "toolchain/lld.lock has no ${ms_lld_asset}")
+  message(FATAL_ERROR "cmake/toolchain/lld.lock has no ${ms_lld_asset}")
 endif()
 
 set(ms_lld_dir "${CMAKE_BINARY_DIR}/lld")
