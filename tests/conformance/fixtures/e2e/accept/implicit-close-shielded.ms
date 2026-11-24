@@ -59,11 +59,13 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Void:
 
 // A statement that discards a popped resource closes it in place, shielded too. The
 // marker `started` says the body is running, so the cancel below lands during the close
-// and not before the body began.
+// and not before the body began. The holder exists before the marker is written: on
+// another thread the canceller can see the marker while this task still waits for the
+// write, and that cancel must close the holder too.
 fn pop_and_discard(move dir: String,id: Int) Int:
+	var held = [Holder(dir.clone(), id, true, false)]
 	void write_file(f"{dir}/started", "started", true).wait()
 
-	var held = [Holder(dir, id, true, false)]
 	held.pop()
 	void sleep(nanoseconds(5000000000)).wait()
 	return held.length()

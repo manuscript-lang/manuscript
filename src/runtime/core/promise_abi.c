@@ -30,10 +30,10 @@ int64_t msrt_group_join(int64_t group, const MsList *ids, int64_t from) {
 }
 
 void msrt_promise_cancel(int64_t id) { ms_promise_cancel(id); }
-void msrt_promise_defer(int64_t id, MsObj *work) { ms_promise_defer(id, work); }
+int64_t msrt_promise_defer(MsObj *work) { return ms_promise_defer(work); }
 uint8_t msrt_promise_done(int64_t id) { return ms_promise_done(id) ? 1 : 0; }
 void msrt_promise_drop(int64_t id) { ms_promise_drop(id); }
-uint8_t msrt_promise_end(int64_t id) { return ms_promise_end(id) ? 1 : 0; }
+uint8_t msrt_promise_close(int64_t id) { return ms_promise_close(id) ? 1 : 0; }
 
 void msrt_promise_fault_report(int64_t id, MsString *out) {
   MsFaultText report = ms_promise_fault_report(id);
@@ -48,7 +48,6 @@ int64_t msrt_promise_finished(void) {
 }
 
 void msrt_promise_limit(int64_t id, int64_t timeout_ns) { ms_promise_limit(id, timeout_ns); }
-int64_t msrt_promise_new(void) { return ms_promise_new(); }
 void msrt_promise_on_cancel(int64_t id, int64_t cancel) { ms_promise_on_cancel(id, cancel); }
 
 void msrt_promise_drain(int64_t id, int64_t drain, int64_t grace_ns) { ms_promise_drain(id, drain, grace_ns); }
@@ -66,10 +65,10 @@ int64_t msrt_promise_run_watched(int64_t id, int64_t group, const MsList *ids, i
 }
 
 int64_t msrt_promise_sleep(int64_t ns) { return ms_promise_sleep(ns); }
-void msrt_promise_start(int64_t id, MsObj *work, const MsString *site) { ms_promise_start(id, work, site); }
-void msrt_promise_start_here(int64_t id, MsObj *work, const MsString *site) { ms_promise_start_here(id, work, site); }
-void msrt_promise_start_idle(int64_t id, MsObj *work, const MsString *site) { ms_promise_start_idle(id, work, site); }
-void msrt_promise_start_spread(int64_t id, MsObj *work, const MsString *site) { ms_promise_start_spread(id, work, site); }
+int64_t msrt_promise_start(MsObj *work, const MsString *site) { return ms_promise_start(work, site); }
+int64_t msrt_promise_start_here(MsObj *work, const MsString *site) { return ms_promise_start_here(work, site); }
+int64_t msrt_promise_start_idle(MsObj *work, const MsString *site) { return ms_promise_start_idle(work, site); }
+int64_t msrt_promise_start_spread(MsObj *work, const MsString *site) { return ms_promise_start_spread(work, site); }
 
 uint8_t msrt_promise_take(int64_t id, const MsTypeDesc *d, uint8_t *out) { return ms_promise_take(id, d, out) ? 1 : 0; }
 int64_t msrt_promise_wait(int64_t id, int64_t timeout_ns) { return msrt_end_wait(ms_promise_wait(id, timeout_ns)); }

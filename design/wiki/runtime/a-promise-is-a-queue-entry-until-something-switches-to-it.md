@@ -8,7 +8,7 @@ Wake rule: a start wakes a thread only when no thread is looking for work (`ms_w
 
 A start reads no clock (2026-11-23). A queue entry has no push time: the first look that finds it (`ms_queue_steal` or `ms_queue_oldest`, by any thread) dates it, and it may be taken a beat after that. The clock read per start was about 40 ns of a 246 ns start and wait. Stress mode pushes entries already aged. Do not put a time back into `ms_queue_push`.
 
-The task, promise and queue files compile as one unit (`UNITY_GROUP scheduling` in `cmake/targets/runtime.cmake`), which inlines the calls between them (8% of the instructions of a start and wait). A file-local name in one of those files must not repeat in another; the other core files are outside the group. Merging two runtime entries into one (wait plus take, end plus drop) saved nothing: measure before adding an entry for speed.
+The task, promise and queue files compile as one unit (`UNITY_GROUP scheduling` in `cmake/targets/runtime.cmake`), which inlines the calls between them (8% of the instructions of a start and wait). A file-local name in one of those files must not repeat in another; the other core files are outside the group. A promise costs five runtime calls (start, wait, put, take, close): the start makes the row and passes its id to the work (`fn(Int) Void`), and `msrt_promise_close` ends and frees in one call unless a result is left. Folding new into start and end into drop saved 124 of 1,750 instructions, about 5% of the time; an earlier try that only wrapped two calls in one saved nothing, so a fold must remove a row lookup, not just a call.
 
 A wait parks on the promise row with the task's wait word (`ms_task_park_word`), not a token; tokens remain for `wait_any`, groups and waits another thread ends.
 
@@ -19,3 +19,7 @@ A result of at most three words stays in the row (`small`), so start and wait al
 A descriptor waiter that is not a promise: `ms_sched_fd_notify(kind, id, fd, events)` calls a function registered once per kind; use it where a `new`, `io_on_ready`, `fd_ready`, `drop` promise only watched a descriptor.
 
 Apply when: changing promise start, wait, the unstarted-work queue, worker wakes, or the fault report's start site. Check `bench/perf/async-primitives` at 1 and 4 threads, `promise-tree` and a program where one background promise must get its own thread.
+
+The owner removes its own queue entry with one compare-and-swap on the entry's id and takes no lock (2026-11-23): the ring is indexed by sequence number, so the owner finds the slot from the sequence it kept in the row, and only the owner pushes, so only it replaces the ring. A thief, under the lock, takes an entry with the same compare-and-swap, which decides between the two. `live` is therefore an upper bound until the next push or look trims. Keep it that way: do not add a field the owner must read under the lock to remove.
+
+Keep the closure's cleanup entry around a guarded inline run (2026-11-23, #6821). It looks redundant, since every way out of the guard returns to the caller, but a guard ends the promises started at or above its cleanup height, and the entry is what lifts that height above the ones the waiting frame started. Removing it passed every Linux and macOS check and made `yaml` and `http-fault-leak` time out on windows-amd64 in 3 of 3 runs.

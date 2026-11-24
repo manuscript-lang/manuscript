@@ -121,13 +121,14 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  ms build ms.toml -o hello\n"
     "  ms build main.ms --build-type MinSizeRel\n"},
     {"emit",
-    "Usage: ms emit <file.ms|ms.toml> [--opt] [--ir] [-o output] [--json]\n"
+    "Usage: ms emit <file.ms|ms.toml> [--opt] [--ir] [--tests] [-o output] [--json]\n"
     "\n"
     "Emit the lowered intermediate code of the program as text.\n"
     "\n"
     "Options:\n"
     "  --opt                Run the optimization passes first, so the output is what the back end receives\n"
     "  --ir                 Print the LLVM IR of the back end instead of the intermediate code (with --opt, optimized)\n"
+    "  --tests              Emit the test executable (the program's test blocks) instead of main\n"
     "  -o, --output <path>  Write output to a file (default: stdout)\n"
     "  --json               On failure, emit versioned JSON diagnostics instead of terminal messages\n"
     "  -h, --help  Show this help without executing the command\n"

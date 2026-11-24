@@ -107,7 +107,7 @@ typedef struct Table {
 
 typedef struct MsClosure {
   MsObj header;
-  void (*code)(struct MsClosure *);
+  void (*code)(struct MsClosure *, int64_t); /* called with the promise's id */
 } MsClosure;
 
 extern _Thread_local Table promise_table; /* per-thread state, like the scheduler's */
@@ -148,7 +148,13 @@ void promise_end_started(size_t base);
 bool promise_timer_live(uint64_t id, int64_t deadline);
 void promise_timer_fire(uint64_t id, int64_t deadline);
 bool promise_fd_ready(uint64_t id, uint32_t bits);
-static inline void promise_release_started(Cold *cold) { ms_string_release(&cold->started); }
+/* Forgets the start line. Only a copied string owns bytes: a literal's are the program's. */
+static inline void promise_release_started(Cold *cold) {
+  if ((cold->started.tagged >> MS_STRING_TAG_SHIFT) == MS_STRING_TAG_OWNED) {
+    ms_string_release(&cold->started);
+  }
+  cold->started = ms_string_empty();
+}
 void promise_release_result(size_t row);
 /* The stored result's bytes, or NULL when the row holds none. */
 static inline uint8_t *promise_result_bytes(Cold *cold) {
