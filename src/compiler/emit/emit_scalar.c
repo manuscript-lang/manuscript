@@ -42,6 +42,12 @@ static bool is_float32(EmitCx *cx, MirValue value) {
 static void binary_inst(EmitCx *cx, const MirInst *inst, const Binary *binary) {
   const char *type = emit_value_register_type(cx, inst->res);
   uint32_t number = cx->next++;
+  if (binary->masked && cx->is_iconst != NULL && cx->is_iconst[inst->args[1]]) {
+    /* A shift by a constant: the amount is masked here, not by an `and` of two constants. */
+    ms_strbuild_printf(cx->out, "  %%v%u = %s %s %%v%u, %lld\n", inst->res, binary->mnemonic, type, inst->args[0],
+                       (long long)(cx->iconst[inst->args[1]] & 63));
+    return;
+  }
   if (binary->masked) {
     ms_strbuild_printf(cx->out, "  %%m%u = and %s %%v%u, 63\n  %%v%u = %s %s %%v%u, %%m%u\n", number, type,
                        inst->args[1], inst->res, binary->mnemonic, type, inst->args[0], number);
