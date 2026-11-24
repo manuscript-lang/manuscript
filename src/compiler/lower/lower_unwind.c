@@ -74,7 +74,9 @@ void fn_unwind_exit(LowerFn *fn) {
   leave_with_undef(fn);
 }
 
-void fn_unwind_site(LowerFn *fn, MirValue result) {
+void fn_unwind_site(LowerFn *fn, MirValue result) { fn_unwind_site_forgetting(fn, result, NULL, 0); }
+
+void fn_unwind_site_forgetting(LowerFn *fn, MirValue result, const LowerTaken *forget, uint32_t nforget) {
   if (result != MIR_NONE && fn->sited == result + 1) {
     return; /* the call's own lowering put the site where its held values were still owned */
   }
@@ -102,7 +104,7 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
     dead_result = (call->op == MOP_Call || call->op == MOP_CallInd || call->op == MOP_CallMethod || call->op == MOP_CallRt) &&
                   mir_result_mode(fn->cx->module, &fn->b.func, call, &mode) && mode == MM_MOVE;
   }
-  if (fn->terminated || fn->failed || fn->b.func.unwind_only || fn->b.func.closer) {
+  if (fn->terminated || fn->failed || fn->b.func.closer) {
     return;
   }
   if (fn->cx->unwinding == MIR_NONE) {
@@ -117,6 +119,12 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
   mir_b_seal_block(&fn->b, next);
   mir_b_switch_to(&fn->b, leave);
   fn->b.func.blocks.ptr[leave].cold = true; /* the exit is out of line: the byte is almost never set */
+  for (uint32_t each = 0; each < nforget; each++) { /* a value taken out of its slot goes back: the slot closes it */
+    const MirValue put[2] = {forget[each].slot, forget[each].value};
+    (void)mir_b_emit(&fn->b, MOP_Store, put, 2, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &forget[each].value, 1, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(&fn->b, MOP_Forget, &forget[each].value, 1, (MirImm){0}, MIR_NONE);
+  }
   if (dead_result) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
     (void)mir_b_emit(&fn->b, MOP_Forget, &result, 1, (MirImm){0}, MIR_NONE); /* dead: nothing to release */
@@ -146,7 +154,7 @@ static bool has_fault_site(MirOp op) {
  * call's does. The test is constant false on the normal path: only the check's cold path reaches `leave`. */
 void fn_fault_site(LowerFn *fn, MirValue result) {
   const MirInst *made = fn_just_made(fn, result);
-  if (made == NULL || !has_fault_site((MirOp)made->op) || fn->terminated || fn->failed || fn->b.func.unwind_only) {
+  if (made == NULL || !has_fault_site((MirOp)made->op) || fn->terminated || fn->failed) {
     return;
   }
   const MirValue site = mir_b_emit(&fn->b, MOP_FaultSite, &result, 1, (MirImm){0}, MIR_BOOL);

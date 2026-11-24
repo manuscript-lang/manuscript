@@ -315,9 +315,6 @@ static void mv_check_term_kind(Mv *v, MirBlock bi) {
     break;
   }
   case MT_FAULT:
-    if (t->fault == MF_MESSAGE && t->fault_str >= ms_names_count(&v->cx.m->strings)) {
-      mv_err(v, bi, "fault message literal out of range");
-    }
     break;
   case MT_BR: case MT_UNREACHABLE:
     break;
@@ -383,9 +380,6 @@ static bool mv_faulting(MirOp op) {
  */
 static void mv_fault_sites(Mv *v) {
   const MirFunc *f = v->cx.f;
-  if (f->unwind_only) {
-    return;
-  }
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     const MirBlockData *block = &f->blocks.ptr[b];
     for (uint32_t i = 0; i < block->insts.len; i++) {

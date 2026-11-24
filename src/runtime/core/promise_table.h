@@ -64,7 +64,7 @@ typedef struct Cold {
   MsObj *closure;             /* the work while its task may still run (or the deferred work), else NULL */
   MsTaskHandle task;          /* the task running the work, else 0 */
   MsTaskHandle creator;       /* the task that started the work, else 0 */
-  size_t started_at;          /* the creator's cleanup height when it started the work */
+  uint64_t started_at;        /* the creator's count of started promises when it started this one */
   int64_t deadline;           /* when a sleep ends, or NO_TIME */
   int64_t limit;              /* when the limit ends the promise, or NO_TIME */
   MsPromiseRetry retry;       /* the continuation of an I/O promise */
@@ -149,7 +149,7 @@ ptrdiff_t promise_run_row(MsPromise id, size_t row, int64_t deadline);
 bool promise_take_row(size_t row, const MsTypeDesc *desc, uint8_t *out);
 void promise_request_cancel(size_t row);
 uint32_t promise_park_on(MsPromise id, int64_t at_ns);
-void promise_end_started(size_t base);
+void promise_end_started(uint64_t base);
 bool promise_timer_live(uint64_t id, int64_t deadline);
 void promise_timer_fire(uint64_t id, int64_t deadline);
 bool promise_fd_ready(uint64_t id, uint32_t bits);

@@ -491,7 +491,7 @@ int64_t msrt_pipe_write(int64_t pipe, uint8_t *value, const MsTypeDesc *desc) {
     const int64_t status = backlog(cell) > cell->capacity ? MS_PIPE_FULL : MS_PIPE_WRITTEN;
     cell_unlock(cell);
     if (cancellation_point()) {
-      ms_sched_cancel_return();
+      ms_cancel_deliver();
     }
     return status;
   }
@@ -565,7 +565,7 @@ int64_t msrt_pipe_read(int64_t pipe) {
 
 uint8_t msrt_pipe_try(int64_t pipe, const MsTypeDesc *desc, uint8_t *out) {
   if (cancellation_point()) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
     return 0;
   }
   PipeCell *cell = cell_for(pipe);

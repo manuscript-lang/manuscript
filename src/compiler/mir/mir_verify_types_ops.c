@@ -255,25 +255,6 @@ static const char *mvt_stack_near(const MvtCx *c) {
           "stack.near N yields whether the stack pointer is within N bytes of the stack segment's limit");
 }
 
-static const char *mvt_cleanup_run(const MvtCx *c) {
-  MVT_TRY(mvt_arity(c, 1));
-  return mvt_want(mvt_t(c, 0) == MIR_INT, "cleanup.run takes the handle returned by cleanup.push");
-}
-
-static const char *mvt_cleanup_push(const MvtCx *c) {
-  MVT_TRY(mvt_arity(c, 1));
-  if (c->in->imm.tag != MI_FUNC) {
-    return "missing closer";
-  }
-  if (c->in->imm.a >= c->m->funcs.len) {
-    return "bad closer";
-  }
-  const MirFunc *callee = &c->m->funcs.ptr[c->in->imm.a];
-  return mvt_want(callee->nparams == 1 && callee->params[0].ty == mvt_t(c, 0) &&
-            mvt_res_is(c, MIR_INT),
-          "closer takes the registered value; cleanup.push yields an int handle");
-}
-
 static const char *mvt_global_get(const MvtCx *c) {
   if (c->in->imm.tag != MI_GLOBAL) {
     return "missing global";
@@ -334,9 +315,9 @@ const MvtRule mvt_rules_ops[MOP_COUNT] = {
   [MOP_PtrAdd] = mvt_ptr_add, [MOP_PtrNull] = mvt_ptr_null, [MOP_PtrLoadU] = mvt_ptr_load_u,
   [MOP_PtrStoreU] = mvt_ptr_store_u, [MOP_PtrField] = mvt_ptr_field, [MOP_Load] = mvt_load,
   [MOP_Take] = mvt_take, [MOP_Put] = mvt_put, [MOP_Store] = mvt_store, [MOP_FuncAddr] = mvt_func_addr,
-  [MOP_TypeDesc] = mvt_type_desc, [MOP_Shape] = mvt_type_desc, [MOP_Poll] = mvt_no_operands, [MOP_DepthEnter] = mvt_no_operands,
+  [MOP_TypeDesc] = mvt_type_desc, [MOP_Shape] = mvt_type_desc, [MOP_DepthEnter] = mvt_no_operands,
   [MOP_DepthLeave] = mvt_no_operands, [MOP_StackLow] = mvt_stack_low, [MOP_StackNear] = mvt_stack_near,
-  [MOP_CleanupRun] = mvt_cleanup_run, [MOP_CleanupPush] = mvt_cleanup_push,
+ 
   [MOP_GlobalGet] = mvt_global_get, [MOP_GlobalSet] = mvt_global_set, [MOP_ScopeBegin] = mvt_scope_marker,
   [MOP_ScopeOwn] = mvt_scope_marker, [MOP_ScopeEnd] = mvt_scope_marker,
   [MOP_ScopeDisown] = mvt_scope_disown, [MOP_ScopeUnpin] = mvt_scope_disown, [MOP_ScopeMark] = mvt_scope_mark,

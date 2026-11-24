@@ -116,14 +116,14 @@ static void build_closures(MirModule *module, MirGlue *glue, const GlPlan *plan)
     const bool is_framed = next_framed < next_heap;
     const uint32_t func = is_framed ? next_framed : next_heap;
     const MirGlueKind kind = is_framed ? MG_CLOSURE_DROP_FRAMED : MG_CLOSURE_DROP;
-    mirgl_record(glue, kind, MIR_VOID, func, 0, mirgl_make_closure_drop(module, glue, func, is_framed));
+    mirgl_record(glue, kind, MIR_VOID, func, 0, mirgl_make_closure_drop(module, func, is_framed));
     heap += !is_framed;
     framed += is_framed;
   }
   for (size_t index = 0; index < plan->closure_clones.len; index++) {
     const uint32_t func = plan->closure_clones.ptr[index];
     if (mir_glue_find(glue, MG_CLOSURE_DROP, MIR_VOID, func, 0) == MIR_NONE) {
-      mirgl_record(glue, MG_CLOSURE_DROP, MIR_VOID, func, 0, mirgl_make_closure_drop(module, glue, func, false));
+      mirgl_record(glue, MG_CLOSURE_DROP, MIR_VOID, func, 0, mirgl_make_closure_drop(module, func, false));
     }
     mirgl_record(glue, MG_CLOSURE_CLONE, MIR_VOID, func, 0, mirgl_make_closure_clone(module, glue, func));
   }

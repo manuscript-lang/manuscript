@@ -175,9 +175,9 @@ static void subst(void *context, MirValue *v) {
 
 static bool op_cloneable(const Th *t, const MirInst *in) {
   switch (in->op) {
-  case MOP_CleanupPush: case MOP_CleanupRun: case MOP_Slot: case MOP_ScopeBegin: case MOP_ScopeOwn:
+  case MOP_Slot: case MOP_ScopeBegin: case MOP_ScopeOwn:
   case MOP_ScopeEnd: case MOP_ScopeDisown: case MOP_ScopeUnpin: case MOP_ScopeMark: case MOP_DepthEnter:
-  case MOP_DepthLeave: case MOP_StackLow: case MOP_StackNear: case MOP_Poll:
+  case MOP_DepthLeave: case MOP_StackLow: case MOP_StackNear:
     return false;
   default:
     (void)t;

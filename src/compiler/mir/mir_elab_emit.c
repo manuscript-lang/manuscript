@@ -61,19 +61,7 @@ bool em_flag_of(const MirHash *map, MirValue key, MirValue *out) {
   return true;
 }
 
-/* ---- cleanup entries ---- */
-
-void em_discard(ElEm *em, uint32_t at, MirValue value) {
-  MirValue handle = MIR_NONE, key = MIR_NONE;
-  /* Cancel, not discard, for an entry a newer entry of an outer scope (a name bound by the statement that ends) sits above. */
-  const bool late = value < em->cx->nvalues0 && mir_bits_test(&em->cx->cancel_end, value);
-  const uint32_t drop = late && em->cx->cancel != MIR_NONE ? em->cx->cancel : em->cx->discard;
-  /* A refilled slot owner's live entry is the one its flag carries, not the first it registered. */
-  const bool refilled = em_flag_of(&em->hkeys, value, &key) && em_flag_of(&em->flags, key, &handle);
-  if ((refilled || em_flag_of(&em->handles, value, &handle)) && drop != MIR_NONE) {
-    em_push(em, at, MOP_CallRt, &handle, 1, mir_imm_ext(drop), MIR_VOID);
-  }
-}
+/* ---- closers ---- */
 
 /* The function that closes `value`: the module's `close` for kind 1 (it returns the failure code), else the
  * owner's own function, `fn(borrow T) -> unit`, named by kind - 2. */
@@ -87,77 +75,6 @@ bool em_closer(ElEm *em, MirValue value, uint32_t *close) {
   return *close != MIR_NONE || el_fail(em->cx, "a closing owner needs a `close` function");
 }
 
-bool em_register(ElEm *em, uint32_t at, MirValue value) {
-  uint32_t close = 0;
-  if (!em_closer(em, value, &close)) {
-    return false;
-  }
-  const MirValue handle = em_push(em, at, MOP_CleanupPush, &value, 1, em_imm_func(close), MIR_INT);
-  (void)mh_put(em->cx->ma, &em->handles, value, handle);
-  return true;
-}
-
-/* Whether `value`'s entry was cancelled earlier in block `at` and nothing since can leave the function except by
- * a refused allocation: the entry then stays registered across the gap, and the cancel and the new entry go. */
-static bool cancelled_then_quiet(const ElEm *em, uint32_t at, MirValue value) {
-  if (em->cancelled.value != value || em->cancelled.block != at) {
-    return false;
-  }
-  const MirInstList *insts = &em->f->blocks.ptr[at].insts;
-  const size_t was = em->cancelled.index;
-  if (was >= insts->len || insts->ptr[was].op != MOP_CallRt || insts->ptr[was].nargs != 1 ||
-      insts->ptr[was].args[0] != em->cancelled.handle) {
-    return false;
-  }
-  for (size_t i = em->cancelled.index + 1; i < insts->len; i++) {
-    const uint8_t fx = mir_op_info[insts->ptr[i].op].effects;
-    if ((fx & (MIR_E_FAULTS | MIR_E_IO)) != 0 && (fx & MIR_E_OOM) == 0) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/* Registers a new cleanup entry for the refilled slot owner `value`; returns its handle. */
-bool em_reregister(ElEm *em, uint32_t at, MirValue value, MirValue key, MirValue *handle) {
-  uint32_t close = 0;
-  if (!em_closer(em, value, &close)) {
-    return false;
-  }
-  if (cancelled_then_quiet(em, at, value)) {
-    *handle = em->cancelled.handle;
-    MirInstList *insts = &em->f->blocks.ptr[at].insts;
-    __builtin_memmove(&insts->ptr[em->cancelled.index], &insts->ptr[em->cancelled.index + 1],
-                      (insts->len - em->cancelled.index - 1) * sizeof insts->ptr[0]);
-    insts->len--;
-  } else {
-    *handle = em_push(em, at, MOP_CleanupPush, &value, 1, em_imm_func(close), MIR_INT);
-  }
-  em->cancelled.value = MIR_NONE;
-  if (key != MIR_NONE) {
-    (void)mh_put(em->cx->ma, &em->flags, key, *handle);
-  }
-  return true;
-}
-
-/* Cancels the cleanup entry of a slot owner whose value moved out, and clears its flag: newer entries stay,
- * and the scope end discards this one. */
-void em_cancel(ElEm *em, uint32_t at, MirValue value) {
-  MirValue handle = MIR_NONE, key = MIR_NONE;
-  const bool live = (em_flag_of(&em->hkeys, value, &key) && em_flag_of(&em->flags, key, &handle)) ||
-                    em_flag_of(&em->handles, value, &handle);
-  if (live && em->cx->cancel != MIR_NONE) {
-    em_push(em, at, MOP_CallRt, &handle, 1, mir_imm_ext(em->cx->cancel), MIR_VOID);
-    em->cancelled.value = value;
-    em->cancelled.handle = handle;
-    em->cancelled.block = at;
-    em->cancelled.index = em->f->blocks.ptr[at].insts.len - 1;
-  }
-  if (mh_has(&em->flagged, value)) {
-    (void)mh_put(em->cx->ma, &em->flags, value, em_bconst(em, at, false));
-  }
-}
-
 /* The refilled owner holds a value again. */
 void em_set_held(ElEm *em, uint32_t at, MirValue value) {
   if (mh_has(&em->flagged, value)) {
@@ -165,36 +82,16 @@ void em_set_held(ElEm *em, uint32_t at, MirValue value) {
   }
 }
 
-static bool is_block_param(const MirFunc *func, MirValue value) {
-  for (size_t b = 0; b < func->blocks.len; b++) {
-    const MirBlockParamList *params = &func->blocks.ptr[b].params;
-    for (size_t i = 0; i < params->len; i++) {
-      if (params->ptr[i].value == value) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-/* Initializes the flag of a new flagged owner, and registers a closing owner that arrives as a block
- * parameter where it is defined. */
+/* Initializes the flag of a new flagged owner. */
 void em_birth(ElEm *em, uint32_t at, MirValue value) {
   if (mh_has(&em->flagged, value)) {
     (void)mh_put(em->cx->ma, &em->flags, value, em_bconst(em, at, true));
   }
-  if (!el_tagged(em->cx, value) || em->cx->tag_kind[value] < 1 || mh_has(&em->handles, value)) {
-    return;
-  }
-  if (is_block_param(em->f, value)) {
-    (void)em_register(em, at, value); /* an error here surfaces at the scope end */
-  }
 }
 
 /* The operand for a consuming position: a flagged owner stays live and its operand is a `move.out` of it;
- * the flag turns false. A closing owner retires its cleanup entry. */
+ * the flag turns false. */
 MirValue em_move_arg(ElEm *em, uint32_t at, MirValue arg) {
-  em_discard(em, at, arg);
   if (!mh_has(&em->flagged, arg)) {
     return arg;
   }
@@ -205,8 +102,7 @@ MirValue em_move_arg(ElEm *em, uint32_t at, MirValue arg) {
 
 /* ---- slot refill ---- */
 
-/* Closes what the slot owner `value` holds, shielded, and releases what the close leaves; its cleanup entry
- * stays for the value stored next. */
+/* Closes what the slot owner `value` holds, shielded, and releases what the close leaves. */
 static bool close_replaced(ElEm *em, uint32_t at, MirValue value) {
   uint32_t close = 0;
   if (!em_closer(em, value, &close)) {
@@ -235,9 +131,9 @@ static bool close_replaced(ElEm *em, uint32_t at, MirValue value) {
   return true;
 }
 
-/* The slot owner may have moved out on some paths: the flag says which, and the join carries the new
- * cleanup entry's handle when the owner has a key for it. */
-static bool refill_flagged(ElEm *em, uint32_t *at, MirValue value, MirValue flag, MirValue key) {
+/* The slot owner may have moved out on some paths: the flag says which, and only a path that still holds a value
+ * closes it. */
+static bool refill_flagged(ElEm *em, uint32_t *at, MirValue value, MirValue flag) {
   if (flag == MIR_NONE) {
     return el_fail(em->cx, "a moved slot owner without a drop flag");
   }
@@ -248,40 +144,24 @@ static bool refill_flagged(ElEm *em, uint32_t *at, MirValue value, MirValue flag
   if (!close_replaced(em, yes, value)) {
     return false;
   }
-  MirValue kept = MIR_NONE, handle = MIR_NONE;
-  if (key != MIR_NONE) {
-    (void)em_flag_of(&em->flags, key, &kept);
-  }
-  em_br(em, yes, join, &kept, kept != MIR_NONE ? 1 : 0);
-  if (!em_reregister(em, no, value, key, &handle)) {
-    return false;
-  }
-  const MirValue fresh = key != MIR_NONE ? handle : MIR_NONE;
-  em_br(em, no, join, &fresh, fresh != MIR_NONE ? 1 : 0);
-  if (key != MIR_NONE) {
-    (void)mh_put(em->cx->ma, &em->flags, key, em_block_param(em, join, MIR_INT, MM_BORROW));
-  }
+  em_br(em, yes, join, NULL, 0);
+  em_br(em, no, join, NULL, 0);
   em_set_held(em, join, value);
   *at = join;
   return true;
 }
 
 /* The program is about to store a new value in the slot owner `value` (`scope.mark 2`): what it still holds
- * is closed shielded (the replaced value), and a slot whose value moved out registers a fresh cleanup entry
- * for the value stored next. `*at` becomes the block to continue in. */
+ * is closed shielded (the replaced value). `*at` becomes the block to continue in. */
 bool em_refill(ElEm *em, uint32_t *at, MirValue value, bool has_state, ElSt was) {
-  MirValue flag = MIR_NONE, key = MIR_NONE, handle = MIR_NONE;
+  MirValue flag = MIR_NONE;
   (void)em_flag_of(&em->flags, value, &flag);
-  (void)em_flag_of(&em->hkeys, value, &key);
   if (has_state && was == EL_MOVED) {
-    if (!em_reregister(em, *at, value, key, &handle)) {
-      return false;
-    }
     em_set_held(em, *at, value);
     return true;
   }
   if (!has_state || (was != EL_MAYBE && was != EL_CLOSED_OR_MOVED)) {
     return close_replaced(em, *at, value);
   }
-  return refill_flagged(em, at, value, flag, key);
+  return refill_flagged(em, at, value, flag);
 }

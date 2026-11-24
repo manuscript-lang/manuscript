@@ -1,9 +1,8 @@
 /* Raising a fault and reporting it. See fault.h.
  *
  * ms_fault does the work in this order: capture the source frames, build the report (the message, then the
- * frames as lines), run the cleanups, and leave by the innermost guard or end the process. A fault raised by a
- * cleanup adds a note to the report in progress and runs the cleanups that are left, so one failing cleanup
- * does not stop the others. */
+ * frames as lines) and end the process. Faults a program can recover from are posted instead (post_fault) and leave
+ * by return. */
 #include "base/alloc.h"
 #include "base/fatal.h"
 #include "base/strbuild.h"
@@ -38,9 +37,8 @@ static void render_frames(MsStrBuild *out, const MsFrameList *list) {
 
 typedef struct MsFaultFlight MsFaultFlight;
 
-/* The state of the fault a task is reporting; it lives in the frame of ms_fault, which never returns. */
+/* The report being built; it lives in the frame of the raiser. */
 struct MsFaultFlight {
-  bool out_of_memory;    /* an allocation was refused while reporting: the next refusal is fatal */
   MsStrBuild text;       /* the report so far */
   MsFaultDetail *detail; /* owned until the report is sealed; NULL while the process is ending */
 };
@@ -155,8 +153,7 @@ static void write_report_record(const MsFaultText *text) {
 void ms_fault_exit(MsFaultText *text) {
   MsSched *const sched = ms_sched();
   /* Reporting allocates; a refusal now must end the process, not start another report. */
-  MsFaultFlight reporting = {.out_of_memory = true};
-  ms_task_running()->unwind.flight = &reporting;
+  ms_task_running()->unwind.reporting = true;
   const MsFaultKind kind = text->detail == NULL ? MS_FAULT_KIND_FAULT : text->detail->kind;
   MsStrBuild line = ms_strbuild_new();
   ms_strbuild_append(&line, ms_span_of(text->bytes, text->length));
@@ -181,31 +178,7 @@ void ms_fault_fatal(MsFaultKind kind, MsSpan message) {
   ms_sys_exit_now(ms_fault_exit_status(kind));
 }
 
-/* Hands the sealed report to the innermost guard, or ends the process when none is open. */
-MS_NORETURN static void finish(MsUnwind *unwind, MsFaultFlight *flight) {
-  MsFaultText text = seal(flight);
-  unwind->flight = NULL;
-  if (unwind->guards.len > 0) {
-    (void)ms_guard_leave(MS_GUARD_FAULT, text);
-  }
-  ms_fault_exit(&text);
-}
-
 /* ---- raising ---- */
-
-/* A fault raised by a cleanup while `flight` is being reported. */
-MS_NORETURN static void fault_in_cleanup(MsUnwind *unwind, MsFaultKind kind, MsSpan message, bool out_of_memory,
-                                         void *owned) {
-  MsFaultFlight *const flight = unwind->flight;
-  if (flight->detail == NULL || (out_of_memory && flight->out_of_memory)) {
-    ms_fault_fatal(kind, message);
-  }
-  flight->out_of_memory = flight->out_of_memory || out_of_memory;
-  add_note(flight->detail, message);
-  ms_free(owned);
-  ms_cleanup_run_pending();
-  finish(unwind, flight);
-}
 
 /* Whether a frame belongs to the standard library, whose files are shown as `@std/...`. */
 static bool is_library_frame(const MsFrame *frame) {
@@ -233,11 +206,12 @@ static void drop_trailing_library_frames(MsFrameList *list) {
 MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message, bool out_of_memory,
                                                 void *owned) {
   MsUnwind *const unwind = &ms_task_running()->unwind;
-  if (unwind->flight != NULL) {
-    fault_in_cleanup(unwind, kind, message, out_of_memory, owned);
+  (void)out_of_memory;
+  if (unwind->reporting) {
+    ms_fault_fatal(kind, message); /* a fault while one is being reported: end outright */
   }
-  MsFaultFlight flight = {.out_of_memory = out_of_memory, .text = ms_strbuild_new()};
-  unwind->flight = &flight;
+  unwind->reporting = true;
+  MsFaultFlight flight = {.text = ms_strbuild_new()};
   flight.detail = ms_alloc_zeroed(sizeof *flight.detail);
   flight.detail->kind = kind;
   flight.detail->message_length = message.len;
@@ -247,11 +221,9 @@ MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message
                     &flight.detail->frames);
   drop_trailing_library_frames(&flight.detail->frames);
   render_frames(&flight.text, &flight.detail->frames);
-  /* A fault that leaves a guarded task abandons its frames, so drop cleanups release what they own; an
-   * unguarded fault ends the process. */
-  unwind->unwind_drops = unwind->guards.len > 0;
-  ms_cleanup_run_pending();
-  finish(unwind, &flight);
+  MsFaultText text = seal(&flight);
+  unwind->reporting = false;
+  ms_fault_exit(&text);
 }
 
 /* Builds the report of a fault that is posted instead of raised, and leaves it with the task. */

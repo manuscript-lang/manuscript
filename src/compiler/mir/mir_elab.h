@@ -61,14 +61,13 @@ typedef struct ElCx {
   const MirFunc *f;      /* the function being walked (its stand-in is in the module) */
   uint32_t nvalues0;     /* values the function had before the pass */
   int64_t *tag_scope;    /* per value: the scope that owns it, -1 when untagged */
-  MirBits cancel_end;    /* owners whose entry is cancelled, not discarded, where their scope ends: an outer scope pushed after them */
   int64_t *tag_kind;     /* the owner's kind (0 drop, 1 close, k >= 2 slot closed by k - 2) */
   MirIdList *owners;     /* per scope: the values it owns, in tag order */
   int64_t *parent;       /* per scope; -1 for the root */
   bool *has_parent;
   uint32_t nscopes;
   uint32_t close;        /* the module's `close` function or MIR_NONE */
-  uint32_t discard, cancel, shield_enter, shield_exit; /* extern ids or MIR_NONE */
+  uint32_t shield_enter, shield_exit; /* extern ids or MIR_NONE */
   MirHash param_owned;   /* values that are owning block parameters */
   MirHash disown_moves;  /* flagged owners: they stay tracked as moved once an op consumes them */
   MirHash unpin_live;    /* owning results a `scope.unpin` hands back to their variable: still live after it */
@@ -127,16 +126,8 @@ typedef struct ElEm {
   MirFunc *f;
   MirHash flagged; /* owners that carry a drop flag */
   MirHash ckeys;   /* owner -> the key of its closed-by-hand flag */
-  MirHash hkeys;   /* owner -> the key of its live cleanup entry, when it can be refilled */
   MirHash flags;   /* the current flag value of each flagged owner (reset per block) */
-  MirHash handles; /* owner -> the `cleanup.push` handle of each closing owner */
   MirValue pending; /* the value the block returns, still to be returned after its scope ends */
-  /* The last cancel emitted: a refill right after it, with nothing between that can exit, reuses the entry. */
-  struct {
-    MirValue value, handle;
-    uint32_t block;
-    size_t index;
-  } cancelled;
   bool counts_depth;
 } ElEm;
 
@@ -161,9 +152,7 @@ MirValue em_block_param(ElEm *em, MirBlock block, MirTy ty, MirMode mode);
 MirBlock em_new_block(ElEm *em); /* an empty block with no source position */
 MirImm em_imm_func(uint32_t id);
 MirImm em_imm_case(uint32_t alt, uint32_t cs);
-void em_discard(ElEm *em, uint32_t at, MirValue value);
 bool em_closer(ElEm *em, MirValue value, uint32_t *close);
-bool em_register(ElEm *em, uint32_t at, MirValue value);
 void em_drop_owned(ElEm *em, uint32_t at, MirValue value);
 MirValue em_is_error(ElEm *em, uint32_t at, MirValue result);
 /* Runs the fallible close `close` of slot owner `value`, shielded; `*result` is its `Result`. */
@@ -177,8 +166,6 @@ bool em_cleanup_one(ElEm *em, uint32_t *at, MirValue value, ElSt state, MirValue
 /* Edge, flag and slot-refill code (mir_elab_edge.c, mir_elab_flags.c). */
 bool em_edges(ElEm *em, uint32_t cur, const ElState *state, MirTerm *term, const ElFparams *fparams);
 bool em_refill(ElEm *em, uint32_t *at, MirValue value, bool has_state, ElSt was);
-bool em_reregister(ElEm *em, uint32_t at, MirValue value, MirValue key, MirValue *handle);
-void em_cancel(ElEm *em, uint32_t at, MirValue value);
 void em_set_held(ElEm *em, uint32_t at, MirValue value);
 void em_birth(ElEm *em, uint32_t at, MirValue value);
 MirValue em_move_arg(ElEm *em, uint32_t at, MirValue arg);

@@ -112,7 +112,7 @@ uint32_t mirgl_make_block_clone(MirModule *module, MirTy ty);
 uint32_t mirgl_wrap_deep_drop(MirModule *module, MirGlue *glue, MirTy ty, uint32_t body);
 uint32_t mirgl_wrap_deep_clone(MirModule *module, MirGlue *glue, MirTy ty, uint32_t body);
 
-uint32_t mirgl_make_closure_drop(MirModule *module, MirGlue *glue, uint32_t closure, bool framed);
+uint32_t mirgl_make_closure_drop(MirModule *module, uint32_t closure, bool framed);
 uint32_t mirgl_make_closure_clone(MirModule *module, MirGlue *glue, uint32_t closure);
 
 #endif

@@ -16,18 +16,6 @@ static bool edge_flag(ElEm *em, uint32_t at, MirValue owner, const MirValue *mov
   if (em_flag_of(&em->flags, owner, flag)) {
     return true;
   }
-  /* The entry of an owner that no path has refilled yet is its first. */
-  MirValue first = MIR_NONE;
-  const uint64_t *keys = mh_keys(em->cx->ma, &em->hkeys);
-  for (uint32_t i = 0; i < em->hkeys.n && first == MIR_NONE; i++) {
-    uint64_t key = 0;
-    if (mh_get(&em->hkeys, keys[i], &key) && key == owner) {
-      first = (MirValue)keys[i];
-    }
-  }
-  if (first != MIR_NONE && em_flag_of(&em->handles, first, flag)) {
-    return true;
-  }
   /* An owner this path no longer holds. */
   if (mh_has(&em->flagged, owner)) {
     *flag = em_bconst(em, at, false);
@@ -66,7 +54,7 @@ static uint32_t moved_args(ElEm *em, const MirTarget *target, const ElFparams *f
     const MirValue arg = args[used++];
     if (dest->params.ptr[p].mode == MM_MOVE && mir_needs_drop(em->m, mir_value_ty(em->f, arg))) {
       moved[nmoved++] = arg;
-      *per_edge = *per_edge || mh_has(&em->handles, arg) || mh_has(&em->flagged, arg);
+      *per_edge = *per_edge || mh_has(&em->flagged, arg);
     }
   }
   return nmoved;

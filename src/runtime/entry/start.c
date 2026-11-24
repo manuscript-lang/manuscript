@@ -171,7 +171,8 @@ static void main_task(void *argument) {
     return; /* main left by a posted fault or a cancel: its result is undefined, and the guard above reports it */
   }
   if (ms_cancel_flag() != 0) {
-    ms_cancelled(); /* the main task's own boundary: nothing above it takes an exit */
+    ms_cancel_deliver(); /* the main task's own boundary: the guard above reports the cancel */
+    return;
   }
   if (value < 0 || value > MAX_MAIN_EXIT) {
     ms_fault(MS_FAULT_KIND_FAULT,

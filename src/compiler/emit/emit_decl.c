@@ -87,7 +87,7 @@ static void declare_faults(const EmitCx *cx) {
     const char *name;
     const char *params;
   } faults[] = {
-      {"msrt_cancelled", ""}, {"msrt_fault_depth", ""}, {"msrt_fault_posted", ""},
+      {"msrt_fault_posted", ""},
   };
   static const struct {
     const char *name;

@@ -231,7 +231,7 @@ bool opt_inline_cancel_mismatch(const MirFunc *caller, const MirFunc *callee) {
   for (uint32_t b = 0; b < callee->blocks.len; b++) {
     for (uint32_t i = 0; i < callee->blocks.ptr[b].insts.len; i++) {
       const uint8_t op = callee->blocks.ptr[b].insts.ptr[i].op;
-      if (op == MOP_Call || op == MOP_CallInd || op == MOP_CallMethod || op == MOP_Poll ||
+      if (op == MOP_Call || op == MOP_CallInd || op == MOP_CallMethod ||
         op == MOP_CallRt) {
         return true;
       }

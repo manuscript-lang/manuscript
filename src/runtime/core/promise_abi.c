@@ -18,7 +18,7 @@ static int64_t msrt_end_wait(int64_t answer) {
   if (answer != MS_WAITER_CANCELLED) {
     return answer;
   }
-  ms_sched_cancel_return();
+  ms_cancel_deliver();
   return -1;
 }
 

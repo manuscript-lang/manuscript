@@ -28,7 +28,6 @@ void ms_promise_set_unread(MsPromiseUnread unread) { unread_hook = unread; }
 /* Posts a fault and returns: the caller releases what it holds and returns at once. */
 void promise_fail(const char *text) { ms_fault_post_text(MS_FAULT_KIND_FAULT, text); }
 
-static void drop_closure(uint8_t *closure) { msrt_obj_drop((MsObj *)__builtin_assume_aligned(closure, _Alignof(MsObj))); }
 
 /* Remembers the program line that started the work (`site`, or NULL for none), so a fault in the work can name it.
  * The compiler passes a literal, whose bytes live forever; any other string is copied. */
@@ -452,7 +451,7 @@ static bool start_task(MsPromise id, MsObj *closure, const MsString *site) {
   Cold *const cold = &promise_table.cold.ptr[row];
   cold->closure = closure;
   cold->creator = ms_task_current();
-  cold->started_at = ms_cleanup_base();
+  cold->started_at = ms_started_next();
   keep_started(cold, site);
   link_started(row);
   MsTaskStatus status = MS_TASK_OK;
@@ -484,7 +483,7 @@ static inline MS_ALWAYS_INLINE bool queue_work(MsPromise id, MsObj *closure, con
   }
   cold->closure = closure;
   cold->creator = ms_task_current();
-  cold->started_at = ms_cleanup_base();
+  cold->started_at = ms_started_next();
   keep_started(cold, site);
   link_started(row);
   if (ms_workers_limit() <= 1) {
@@ -525,7 +524,7 @@ static bool send_work(MsPromise id, MsObj *closure, const MsString *site, uint32
   }
   cold->closure = closure;
   cold->creator = ms_task_current();
-  cold->started_at = ms_cleanup_base();
+  cold->started_at = ms_started_next();
   keep_started(cold, site);
   link_started(row);
   hot->flags |= FLAG_DEFERRED | FLAG_QUEUED | FLAG_REMOTE_WAKE;
@@ -633,15 +632,11 @@ static inline MS_ALWAYS_INLINE bool run_row(MsPromise id, size_t row, int64_t de
   MsFaultText message = {0};
   MsGuardStatus status = MS_GUARD_OK;
   Work work = {.id = id, .closure = closure};
-  /* Registered around the guard too: the entry puts the guard's base above the promises this frame started, so a
-   * fault or a cancel inside the work ends only what the work started (promise_end_started compares heights). */
-  const size_t handle = ms_cleanup_push(drop_closure, (uint8_t *)closure);
   if (guarded) {
     status = ms_guard_call(run_work, &work, &message);
   } else {
     run_work(&work);
   }
-  ms_cleanup_discard(handle);
   msrt_obj_drop(closure);
   if (tighter) {
     (void)ms_task_set_defer_deadline(inherited);

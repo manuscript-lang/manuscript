@@ -22,7 +22,6 @@ uint32_t emit_pieces(const MirModule *module, const MirFunc *func, const MirInst
   case MOP_URemChk:
   case MOP_NarrowChk:
   case MOP_IntOverflowIf:
-  case MOP_Poll:
   case MOP_ListNew:
   case MOP_BytesPush:
     return sized + 1;

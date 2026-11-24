@@ -26,8 +26,6 @@ typedef struct FaultCall {
 } FaultCall;
 
 static const FaultCall fault_calls[] = {
-    {"msrt_cancelled", 0, MF_CANCELLED},
-    {"msrt_fault_depth", 0, MF_CALL_DEPTH},
     {"msrt_fault_posted", 0, MF_POSTED},
 };
 

@@ -2,13 +2,11 @@
 #include "compiler/mir/mir_pipeline.h"
 #include "compiler/mir/mir_desc_glue.h"
 
-#include "compiler/mir/mir_cancel_edges.h"
 #include "compiler/mir/mir_count_ops.h"
 #include "compiler/mir/mir_depth.h"
 #include "compiler/mir/mir_elab.h"
 #include "compiler/mir/mir_expand.h"
 #include "compiler/mir/mir_lower_ops.h"
-#include "compiler/mir/mir_shed.h"
 #include "compiler/mir/mir_verify.h"
 
 /* Verifies the module and reports `module does not verify after <pass>: ...` on failure. */
@@ -34,14 +32,6 @@ bool mir_pipeline_prepare(MirModule *module, const MirPipelineOptions *options, 
 bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, MirGlue *glue, MsStrBuild *error) {
   if (options->count_ops) {
     mir_count_ops(module);
-  }
-  /* A program that starts no task ends at its first fault, so entries that only free memory are not needed. */
-  if (mir_shed(module) && options->verify && !verified(module, "shed", error)) {
-    return false;
-  }
-  /* Every function exits on a delivered cancel by returning: a program that starts tasks says so at its entry. */
-  if (mir_cancel_edges(module) && options->verify && !verified(module, "cancel_edges", error)) {
-    return false;
   }
   /* The checks and list growth the emitter prints are explicit MIR from here on. */
   (void)mir_expand(module, options->checks);

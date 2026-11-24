@@ -283,15 +283,15 @@ MsFaultText ms_promise_fault_report(MsPromise id) {
   return ms_fault_text_clone(&promise_table.cold.ptr[row].report);
 }
 
-/* A cancelled frame ends the promises it started at or above its cleanup height `base`, newest first: the work
+/* A cancelled frame ends the promises it started at or above its start number above `base`, newest first: the work
  * borrows the frame's values, so it must end before they do. Work on this task's own stack (a deferred promise)
  * ends with it, and joining it would wait on itself. */
-static ptrdiff_t next_to_end(MsTaskHandle me, size_t base) {
+static ptrdiff_t next_to_end(MsTaskHandle me, uint64_t base) {
   for (uint32_t at = ms_task_started_head(me); at != 0; at = promise_table.cold.ptr[at - 1].next_started) {
     const Cold *const cold = &promise_table.cold.ptr[at - 1];
     const uint16_t flags = promise_table.hot.ptr[at - 1].flags;
     const bool elsewhere = (flags & (FLAG_QUEUED | FLAG_REMOTE)) != 0;
-    if (cold->started_at >= base &&
+    if (cold->started_at > base &&
       (elsewhere || (cold->closure != NULL && cold->task != 0 && cold->task != me))) {
       return (ptrdiff_t)at - 1;
     }
@@ -299,7 +299,7 @@ static ptrdiff_t next_to_end(MsTaskHandle me, size_t base) {
   return -1;
 }
 
-void promise_end_started(size_t base) {
+void promise_end_started(uint64_t base) {
   const MsTaskHandle me = ms_task_current();
   ptrdiff_t row = 0;
   while ((row = next_to_end(me, base)) >= 0) {

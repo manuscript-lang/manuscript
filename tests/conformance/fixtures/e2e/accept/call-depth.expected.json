@@ -11,36 +11,26 @@
       "tests": [
         {
           "index": 0,
-          "name": "call-depth.ms::runaway recursion is a fault",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "call-depth.ms::runaway method recursion faults like function recursion",
-          "status": "passed"
-        },
-        {
-          "index": 2,
           "name": "call-depth.ms::recursion below the limit runs normally",
           "status": "passed"
         },
         {
-          "index": 3,
+          "index": 1,
           "name": "call-depth.ms::method recursion below the limit runs normally",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 2,
+        "selected": 2,
+        "passed": 2,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN call-depth.ms::runaway recursion is a fault\nPASS call-depth.ms::runaway recursion is a fault\nRUN call-depth.ms::runaway method recursion faults like function recursion\nPASS call-depth.ms::runaway method recursion faults like function recursion\nRUN call-depth.ms::recursion below the limit runs normally\nPASS call-depth.ms::recursion below the limit runs normally\nRUN call-depth.ms::method recursion below the limit runs normally\nPASS call-depth.ms::method recursion below the limit runs normally\n4 tests, 0 failed\n",
+      "stdout": "RUN call-depth.ms::recursion below the limit runs normally\nPASS call-depth.ms::recursion below the limit runs normally\nRUN call-depth.ms::method recursion below the limit runs normally\nPASS call-depth.ms::method recursion below the limit runs normally\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

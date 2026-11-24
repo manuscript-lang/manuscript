@@ -17,7 +17,7 @@ static void known_flags(ElEm *em, uint32_t block, const ElState *state) {
   }
 }
 
-/* `scope.own`: the owner joins its scope; a closing owner registers its cleanup entry. */
+/* `scope.own`: the owner joins its scope. */
 static bool own_marker(ElEm *em, uint32_t cur, ElState *state, const MirInst *inst, MirValue value) {
   ElCx *cx = em->cx;
   ElSt was = EL_LIVE;
@@ -25,17 +25,10 @@ static bool own_marker(ElEm *em, uint32_t cur, ElState *state, const MirInst *in
   if (!el_apply(cx, state, inst)) {
     return false;
   }
-  MirValue key = MIR_NONE, handle = MIR_NONE;
-  (void)em_flag_of(&em->hkeys, value, &key);
+  MirValue handle = MIR_NONE;
   if (had && was == EL_MOVED && el_is_slot_owner(cx, value)) {
-    if (!em_reregister(em, cur, value, key, &handle)) {
-      return false;
-    }
     em_set_held(em, cur, value);
     return true;
-  }
-  if (cx->tag_kind[value] >= 1 && !em_register(em, cur, value)) {
-    return false;
   }
   if (mh_has(&em->flagged, value) && el_is_slot_owner(cx, value)) {
     (void)mh_put(cx->ma, &em->flags, value, em_bconst(em, cur, true));
@@ -43,20 +36,19 @@ static bool own_marker(ElEm *em, uint32_t cur, ElState *state, const MirInst *in
   if (em_flag_of(&em->ckeys, value, &handle)) {
     (void)mh_put(cx->ma, &em->flags, handle, em_bconst(em, cur, false));
   }
-  if (key != MIR_NONE && em_flag_of(&em->handles, value, &handle)) {
-    (void)mh_put(cx->ma, &em->flags, key, handle);
-  }
   return true;
 }
 
+/* `scope.disown`: the owner's value moved out; a flagged slot owner's flag turns false, so the scope end closes
+ * nothing for it on this path. */
 static bool disown_marker(ElEm *em, uint32_t cur, ElState *state, const MirInst *inst, MirValue value) {
   ElSt was = EL_LIVE;
   const bool had = el_get(state, value, &was);
   if (!el_apply(em->cx, state, inst)) {
     return false;
   }
-  if (el_is_slot_owner(em->cx, value) && had && (was == EL_LIVE || was == EL_CLOSED)) {
-    em_cancel(em, cur, value);
+  if (el_is_slot_owner(em->cx, value) && had && (was == EL_LIVE || was == EL_CLOSED) && mh_has(&em->flagged, value)) {
+    (void)mh_put(em->cx->ma, &em->flags, value, em_bconst(em, cur, false));
   }
   return true;
 }
@@ -85,8 +77,9 @@ static bool marker(ElEm *em, uint32_t *cur, ElState *state, const MirInst *inst,
   const MirValue value = inst->nargs > 0 ? inst->args[0] : MIR_NONE;
   switch ((MirOp)inst->op) {
   case MOP_ScopeDisown:
-  case MOP_ScopeUnpin:
     return disown_marker(em, *cur, state, inst, value);
+  case MOP_ScopeUnpin:
+    return el_apply(em->cx, state, inst);
   case MOP_ScopeMark:
     return mark_marker(em, cur, state, inst, value);
   case MOP_ScopeBegin:
@@ -187,7 +180,6 @@ bool el_emit_block(ElEm *em, uint32_t block, const ElState *entry, const ElFpara
   bool ok = emit_insts(em, block, &old, &state, defined, &cur);
   if (ok && returned != MIR_NONE) {
     ok = !mh_has(&em->flagged, returned) || el_fail(em->cx, "a drop-flagged owner is returned directly");
-    em_discard(em, cur, returned);
   }
   MirTerm term = old.term;
   ok = ok && em_edges(em, cur, &state, &term, fparams);

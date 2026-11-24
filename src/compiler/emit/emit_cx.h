@@ -151,7 +151,7 @@ bool emit_record_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool 
 bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_list_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_string_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
-bool emit_task_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
+bool emit_task_op(EmitCx *cx, const MirInst *inst, bool *handled);
 /* How many pieces `inst` ends: one per check or branch it writes. */
 uint32_t emit_pieces(const MirModule *module, const MirFunc *func, const MirInst *inst);
 uint32_t emit_record_pieces(const MirModule *module, const MirFunc *func, const MirInst *inst);

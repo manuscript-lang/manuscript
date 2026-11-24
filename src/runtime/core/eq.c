@@ -1,7 +1,6 @@
 /* The equality cycle guard: while a comparison of two objects runs, the pair is registered, so a comparison that
  * reaches the same pair again (a cycle) assumes equal instead of recursing forever. The pairs live in the running
- * task's unwind state, so a task switch needs no copy and a guard that catches a fault drops what the fault left
- * behind (ms_guard_leave). */
+ * task's unwind state, so a task switch needs no copy. */
 #include "runtime/core/eq.h"
 #include "runtime/core/fault.h"
 #include "runtime/core/scheduler.h"

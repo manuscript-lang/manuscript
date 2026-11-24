@@ -20,8 +20,7 @@
  *
  * Conditions: the list has scalar elements and one push site; the reader reads it only by the counter, drops
  * it once and carries only scalars; neither loop calls out, writes memory other than its own lists, or
- * waits (so the order of their effects cannot be seen); the setup between the loops only allocates and
- * registers cleanups. If both loops can fault, the fault reported first may now come from the reader: the
+ * waits (so the order of their effects cannot be seen); the setup between the loops only allocates. If both loops can fault, the fault reported first may now come from the reader: the
  * program faults either way, and the owner chose that over keeping the producer's fault first.
  *
  * Chains fuse stage by stage: the first fusion leaves a loop that builds the next stage's list. The pass
@@ -49,7 +48,7 @@ typedef struct Fusion {
   MirBlock pre;      /* the builder loop's only entry edge's source */
   MirBlock site;     /* the block with the push */
   uint32_t take_at;  /* the push triple in `site` */
-  MirValue list, count, handle, slot, element;
+  MirValue list, count, slot, element;
   uint32_t nacc;
   MirValue acc[FUSE_MAX_ACC]; /* R's parameters after the counter */
   MirValue init[FUSE_MAX_ACC];
@@ -89,23 +88,18 @@ static bool dominates(const Ctx *c, MirBlock a, MirBlock b) {
   return true;
 }
 
-static bool extern_role_is(const Ctx *c, const MirInst *i, MirRole role) {
-  return is_op(i, MOP_CallRt) && i->imm.tag == MI_EXT && c->m->externs.ptr[i->imm.a].role == role;
-}
-
 static bool const_int_is(const Ctx *c, MirValue v, int64_t want) {
   const MirInst *d = def_inst(c, v);
   return d != NULL && is_op(d, MOP_IConst) && d->imm.i == want;
 }
 
-/* An instruction that may sit between two loops without anyone seeing it move: it allocates, registers a
- * cleanup, makes a slot or is pure. */
+/* An instruction that may sit between two loops without anyone seeing it move: it allocates, makes a slot or is
+ * pure. */
 static bool movable_setup(const MirInst *i) {
   switch ((MirOp)i->op) {
   case MOP_Slot:
   case MOP_Put:
   case MOP_ListNew:
-  case MOP_CleanupPush:
     return true;
   default: return (mir_op_info[i->op].effects & ~MIR_E_ALLOC) == 0;
   }
@@ -267,9 +261,9 @@ static bool builder_loop(MsArena *arena, Ctx *c, MirBlock header, MirBlock *pre)
 }
 
 /* Finds the push triple `take S; list.push; put S` of slot `s` in the loop and checks that nothing else
- * touches the slot but its one initial put, its cleanup and the final take. */
+ * touches the slot but its one initial put and the final take. */
 static bool builder_slot(const Ctx *c, Fusion *fu, MirValue s) {
-  uint32_t triples = 0, initial = 0, finals = 0, cleanups = 0, others = 0;
+  uint32_t triples = 0, initial = 0, finals = 0, others = 0;
   for (uint32_t b = 0; b < c->f->blocks.len; b++) {
     const MirBlockData *blk = &c->f->blocks.ptr[b];
     const bool in_loop = mir_bits_test(&c->loop, b);
@@ -282,9 +276,7 @@ static bool builder_slot(const Ctx *c, Fusion *fu, MirValue s) {
       if (!touches) {
         continue;
       }
-      if (is_op(inst, MOP_CleanupPush) && inst->args[0] == s) {
-        cleanups++;
-      } else if (is_op(inst, MOP_Take) && inst->args[0] == s && in_loop && i + 2 < blk->insts.len &&
+      if (is_op(inst, MOP_Take) && inst->args[0] == s && in_loop && i + 2 < blk->insts.len &&
                  is_op(&blk->insts.ptr[i + 1], MOP_ListPush) && blk->insts.ptr[i + 1].args[0] == inst->res &&
                  is_op(&blk->insts.ptr[i + 2], MOP_Put) && blk->insts.ptr[i + 2].args[0] == s &&
                  blk->insts.ptr[i + 2].args[1] == blk->insts.ptr[i + 1].res &&
@@ -307,7 +299,7 @@ static bool builder_slot(const Ctx *c, Fusion *fu, MirValue s) {
       }
     }
   }
-  return triples == 1 && initial == 1 && finals == 1 && cleanups == 1 && others == 0;
+  return triples == 1 && initial == 1 && finals == 1 && others == 0;
 }
 
 /* The setup in `entry` must be hoistable above the builder loop: it reads nothing the loop makes. */
@@ -315,8 +307,7 @@ static bool setup_hoistable(const Ctx *c, const Fusion *fu) {
   const MirBlockData *e = &c->f->blocks.ptr[fu->entry];
   for (uint32_t i = 0; i < e->insts.len; i++) {
     const MirInst *inst = &e->insts.ptr[i];
-    if (extern_role_is(c, inst, MR_CLEANUP_CANCEL) || extern_role_is(c, inst, MR_CLEANUP_DISCARD) ||
-        (is_op(inst, MOP_Take) && inst->res == fu->list) || inst->res == fu->count) {
+    if ((is_op(inst, MOP_Take) && inst->res == fu->list) || inst->res == fu->count) {
       continue;
     }
     if (!movable_setup(inst)) {
@@ -324,7 +315,7 @@ static bool setup_hoistable(const Ctx *c, const Fusion *fu) {
     }
     for (uint32_t a = 0; a < inst->nargs; a++) {
       const MirValue v = inst->args[a];
-      if (v == fu->list || v == fu->count || v == fu->handle) {
+      if (v == fu->list || v == fu->count) {
         return false;
       }
       const Def d = c->defs[v];
@@ -412,7 +403,7 @@ static bool match(MsArena *arena, Ctx *c, MirBlock r, Fusion *fu) {
       f->blocks.ptr[fu->pre].term.kind != MT_BR) {
     return false;
   }
-  /* The list is `take S` in E, with S's cleanup retired around it. */
+  /* The list is `take S` in E. */
   const MirInst *take = def_inst(c, fu->list);
   if (take == NULL || !is_op(take, MOP_Take) || c->defs[fu->list].block != fu->entry) {
     return false;
@@ -422,18 +413,7 @@ static bool match(MsArena *arena, Ctx *c, MirBlock r, Fusion *fu) {
   if (push == NULL || !is_op(push, MOP_Slot)) {
     return false;
   }
-  /* The cleanup handle of S: pushed once, cancelled and discarded in E. */
-  fu->handle = MIR_NONE;
-  for (uint32_t b = 0; b < f->blocks.len && fu->handle == MIR_NONE; b++) {
-    for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
-      const MirInst *inst = &f->blocks.ptr[b].insts.ptr[i];
-      if (is_op(inst, MOP_CleanupPush) && inst->args[0] == fu->slot) {
-        fu->handle = inst->res;
-        break;
-      }
-    }
-  }
-  if (fu->handle == MIR_NONE || c->uses[fu->handle] != 2 || !builder_slot(c, fu, fu->slot) ||
+  if (!builder_slot(c, fu, fu->slot) ||
       !mir_bits_test(&c->loop, fu->site) || !setup_hoistable(c, fu)) {
     return false;
   }
@@ -499,14 +479,13 @@ static void mark_dead(const MirFunc *f, const Ctx *c, const Fusion *fu, bool *co
     const MirBlockData *blk = &f->blocks.ptr[b];
     for (uint32_t i = 0; i < blk->insts.len; i++) {
       const MirInst *inst = &blk->insts.ptr[i];
-      const bool cleanup = is_op(inst, MOP_CleanupPush) && inst->args[0] == fu->slot;
       const bool made = is_op(inst, MOP_Slot) && inst->res == fu->slot;
       const bool initial = is_op(inst, MOP_Put) && inst->args[0] == fu->slot && !mir_bits_test(&c->loop, b);
       const bool read = mir_bits_test(&c->body, b) &&
                         (((inst->op == MOP_ListGet || inst->op == MOP_ListGetNn || inst->op == MOP_ListGetU) &&
                           inst->args[0] == fu->list) ||
                          (is_op(inst, MOP_IAdd) && inst->args[0] == counter));
-      dead[b][i] = dead[b][i] || cleanup || made || initial || read || (is_op(inst, MOP_Drop) && inst->args[0] == fu->list);
+      dead[b][i] = dead[b][i] || made || initial || read || (is_op(inst, MOP_Drop) && inst->args[0] == fu->list);
       if (initial) {
         /* The first list, found through its only use. */
         const MirInst *first = def_inst(c, inst->args[1]);
@@ -525,8 +504,7 @@ static void apply(MirModule *m, MirFunc *f, MsArena *arena, const Ctx *c, const 
   const MirBlockData *e = &f->blocks.ptr[fu->entry];
   for (uint32_t i = 0; i < e->insts.len; i++) {
     const MirInst *inst = &e->insts.ptr[i];
-    if (extern_role_is(c, inst, MR_CLEANUP_CANCEL) || extern_role_is(c, inst, MR_CLEANUP_DISCARD) ||
-        (is_op(inst, MOP_Take) && inst->res == fu->list) || inst->res == fu->count) {
+    if ((is_op(inst, MOP_Take) && inst->res == fu->list) || inst->res == fu->count) {
       continue;
     }
     hoisted[nhoisted++] = *inst;

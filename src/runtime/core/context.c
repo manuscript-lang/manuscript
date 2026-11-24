@@ -1,4 +1,4 @@
-/* Stack switching for tasks and guards: one assembly block per target, and the C that builds a first frame.
+/* Stack switching for tasks: one assembly block per target, and the C that builds a first frame.
  * See context.h. Owns no memory.
  *
  * Every block saves exactly the callee-saved registers of its calling convention, so the compiler treats a
@@ -23,8 +23,6 @@ __asm__(".text\n"
         ".globl " MS_SYM(ms_ctx_switch) "\n"
         ".globl " MS_SYM(ms_ctx_trampoline) "\n"
         ".globl " MS_SYM(ms_ctx_call_on_stack) "\n"
-        ".globl " MS_SYM(ms_guard_enter) "\n"
-        ".globl " MS_SYM(ms_guard_jump) "\n"
         MS_SYM(ms_ctx_switch) ":\n"
         "  push %rbp\n  push %rbx\n  push %r12\n  push %r13\n  push %r14\n  push %r15\n"
         "  mov %rsp, (%rdi)\n"
@@ -50,23 +48,7 @@ __asm__(".text\n"
         "  pop %rbp\n"
         "  .cfi_def_cfa %rsp, 8\n"
         "  ret\n"
-        "  .cfi_endproc\n"
-        MS_SYM(ms_guard_enter) ":\n"
-        "  push %rbp\n  push %rbx\n  push %r12\n  push %r13\n  push %r14\n  push %r15\n"
-        "  sub $8, %rsp\n"
-        "  mov %rsp, (%rdi)\n"
-        "  mov %rsi, %rax\n"
-        "  mov %rdx, %rdi\n"
-        "  call *%rax\n"
-        "  xor %eax, %eax\n"
-        "1:\n"
-        "  add $8, %rsp\n"
-        "  pop %r15\n  pop %r14\n  pop %r13\n  pop %r12\n  pop %rbx\n  pop %rbp\n"
-        "  ret\n"
-        MS_SYM(ms_guard_jump) ":\n"
-        "  mov (%rdi), %rsp\n"
-        "  mov %rsi, %rax\n"
-        "  jmp 1b\n");
+        "  .cfi_endproc\n");
 
 /* Initial frame: six saved registers (r15 r14 r13 r12 rbx rbp) then the return address. `ret` leaves the
  * stack pointer at `top`, so the trampoline's call sees the ABI alignment. Entry travels in r12. */
@@ -90,8 +72,6 @@ __asm__(".text\n"
         ".globl ms_ctx_switch\n"
         ".globl ms_ctx_trampoline\n"
         ".globl ms_ctx_call_on_stack\n"
-        ".globl ms_guard_enter\n"
-        ".globl ms_guard_jump\n"
         "ms_ctx_switch:\n"
         "  push %rbp\n  push %rbx\n  push %rdi\n  push %rsi\n  push %r12\n  push %r13\n  push %r14\n  push %r15\n"
         "  sub $160, %rsp\n"
@@ -135,36 +115,7 @@ __asm__(".text\n"
         "  mov 32(%rax), %r10\n  mov %r10, %gs:0x10\n"
         "  mov 40(%rax), %r10\n  mov %r10, %gs:0x1478\n"
         "  pop %rbp\n"
-        "  ret\n"
-        "ms_guard_enter:\n"
-        "  push %rbp\n  push %rbx\n  push %rdi\n  push %rsi\n  push %r12\n  push %r13\n  push %r14\n  push %r15\n"
-        "  sub $168, %rsp\n"
-        "  movups %xmm6, 0(%rsp)\n  movups %xmm7, 16(%rsp)\n  movups %xmm8, 32(%rsp)\n"
-        "  movups %xmm9, 48(%rsp)\n  movups %xmm10, 64(%rsp)\n  movups %xmm11, 80(%rsp)\n"
-        "  movups %xmm12, 96(%rsp)\n  movups %xmm13, 112(%rsp)\n  movups %xmm14, 128(%rsp)\n"
-        "  movups %xmm15, 144(%rsp)\n"
-        "  mov %rsp, (%rcx)\n"
-        "  mov %rdx, %rax\n"
-        "  mov %r8, %rcx\n"
-        "  sub $32, %rsp\n"
-        "  call *%rax\n"
-        "  add $32, %rsp\n"
-        "  xor %eax, %eax\n"
-        "1:\n"
-        "  movups 0(%rsp), %xmm6\n  movups 16(%rsp), %xmm7\n  movups 32(%rsp), %xmm8\n"
-        "  movups 48(%rsp), %xmm9\n  movups 64(%rsp), %xmm10\n  movups 80(%rsp), %xmm11\n"
-        "  movups 96(%rsp), %xmm12\n  movups 112(%rsp), %xmm13\n  movups 128(%rsp), %xmm14\n"
-        "  movups 144(%rsp), %xmm15\n"
-        "  add $168, %rsp\n"
-        "  pop %r15\n  pop %r14\n  pop %r13\n  pop %r12\n  pop %rsi\n  pop %rdi\n  pop %rbx\n  pop %rbp\n"
-        "  ret\n"
-        "ms_guard_jump:\n"
-        "  mov (%rcx), %rsp\n"
-        "  mov (%r8), %rax\n  mov %rax, %gs:0x08\n"
-        "  mov 8(%r8), %rax\n  mov %rax, %gs:0x10\n"
-        "  mov 16(%r8), %rax\n  mov %rax, %gs:0x1478\n"
-        "  mov %rdx, %rax\n"
-        "  jmp 1b\n");
+        "  ret\n");
 
 /* Ten vector registers (160 bytes), eight saved registers (r15 r14 r13 r12 rsi rdi rbx rbp), the return
  * address. Entry travels in r12. */
@@ -193,12 +144,10 @@ uintptr_t ms_ctx_initial_sp(uint8_t *top, MsCtxEntry entry) {
 #define MS_A64_LEAVE \
     "  ldr x9, [sp, #16]\n  ldr x10, [x9, #24]\n  str x10, [x18, #0x08]\n  ldr x10, [x9, #32]\n" \
     "  str x10, [x18, #0x10]\n  ldr x10, [x9, #40]\n  str x10, [x18, #0x1478]\n"
-#define MS_A64_GUARD_INSTALL MS_A64_INSTALL_X2
 #else
 #define MS_A64_INSTALL_X2 ""
 #define MS_A64_ENTER_X4 ""
 #define MS_A64_LEAVE ""
-#define MS_A64_GUARD_INSTALL ""
 #endif
 
 #define MS_A64_SAVE \
@@ -217,8 +166,6 @@ __asm__(".text\n"
         ".globl " MS_SYM(ms_ctx_switch) "\n"
         ".globl " MS_SYM(ms_ctx_trampoline) "\n"
         ".globl " MS_SYM(ms_ctx_call_on_stack) "\n"
-        ".globl " MS_SYM(ms_guard_enter) "\n"
-        ".globl " MS_SYM(ms_guard_jump) "\n"
         MS_SYM(ms_ctx_switch) ":\n"
         MS_A64_SAVE
         "  mov x3, sp\n"
@@ -251,23 +198,7 @@ __asm__(".text\n"
         "  ldp x29, x30, [sp], #32\n"
         "  .cfi_def_cfa sp, 0\n"
         "  ret\n"
-        "  .cfi_endproc\n"
-        MS_SYM(ms_guard_enter) ":\n"
-        MS_A64_SAVE
-        "  mov x3, sp\n"
-        "  str x3, [x0]\n"
-        "  mov x0, x2\n"
-        "  blr x1\n"
-        "  mov x0, #0\n"
-        "1:\n"
-        MS_A64_RESTORE
-        "  ret\n"
-        MS_SYM(ms_guard_jump) ":\n"
-        "  ldr x3, [x0]\n"
-        "  mov sp, x3\n"
-        MS_A64_GUARD_INSTALL
-        "  mov x0, x1\n"
-        "  b 1b\n");
+        "  .cfi_endproc\n");
 
 /* The frame ms_ctx_switch restores: x29 x30 at the bottom, then x19-x28 and d8-d15. Entry travels in x19. */
 uintptr_t ms_ctx_initial_sp(uint8_t *top, MsCtxEntry entry) {

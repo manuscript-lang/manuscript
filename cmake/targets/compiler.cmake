@@ -1,7 +1,7 @@
 ms_library(ms_mir compiler/mir
   SOURCES
     mir_pipeline.c mir_verify.c mir_verify_own.c mir_verify_types.c mir_verify_types_core.c mir_verify_types_data.c
-    mir_verify_types_ops.c mir_count_ops.c mir_depth.c mir_cancel_edges.c mir_shed.c
+    mir_verify_types_ops.c mir_count_ops.c mir_depth.c
     mir_elab.c mir_elab_implicit.c mir_elab_state.c mir_elab_tags.c mir_elab_emit.c mir_elab_edge.c mir_elab_block.c
     mir_elab_close.c mir_hash.c mir_persist.c mir_print.c mir_print_func.c mir_print_ty.c mir_lower_ops.c
     mir_lower_ops_blocks.c mir_expand.c mir_expand_owned.c mir_tables.c mir_data.c mir_desc_glue.c mir_json_tree.c

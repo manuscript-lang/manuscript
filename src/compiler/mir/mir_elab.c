@@ -53,35 +53,6 @@ static MirHash closed_keys(ElCx *cx, MirFunc *func, const ElState *entry, const 
   return keys;
 }
 
-/* A slot owner refilled after a move, or handed on to another scope, registers a new cleanup entry: the
- * entry a later move cancels travels in a block parameter under a key of its own. */
-static MirHash handle_keys(ElCx *cx, MirFunc *func) {
-  MirHash keys = {0}, owned_at = {0};
-  for (size_t b = 0; b < func->blocks.len; b++) {
-    const MirInstList *insts = &func->blocks.ptr[b].insts;
-    for (size_t i = 0; i < insts->len; i++) {
-      const MirInst *inst = &insts->ptr[i];
-      uint64_t seen = 0;
-      if (inst->op == MOP_ScopeOwn) {
-        (void)mh_get(&owned_at, inst->args[0], &seen);
-        (void)mh_put(cx->ma, &owned_at, inst->args[0], seen + 1);
-      }
-      if (inst->op == MOP_ScopeMark && inst->imm.tag == MI_INT && (inst->imm.i == 2 || inst->imm.i == 3) && !mh_has(&keys, inst->args[0])) {
-        (void)mh_put(cx->ma, &keys, inst->args[0], mir_new_value(func, MIR_INT));
-      }
-    }
-  }
-  const uint64_t *owners = mh_keys(cx->ma, &owned_at);
-  for (uint32_t i = 0; i < owned_at.n; i++) {
-    uint64_t seen = 0;
-    (void)mh_get(&owned_at, owners[i], &seen);
-    if (seen > 1 && el_is_slot_owner(cx, (MirValue)owners[i]) && !mh_has(&keys, owners[i])) {
-      (void)mh_put(cx->ma, &keys, owners[i], mir_new_value(func, MIR_INT));
-    }
-  }
-  return keys;
-}
-
 static void add_flag_param(ElCx *cx, MirFunc *func, uint32_t block, ElFparams *out, MirValue key, MirTy ty) {
   (void)cx;
   const MirValue param = mir_new_value(func, ty);
@@ -113,8 +84,8 @@ static uint32_t live_candidates(ElCx *cx, const ElState *entry, const uint64_t *
 static void flag_params(ElCx *cx, MirFunc *func, const ElEm *em, const MirBlock *order, uint32_t norder,
                         const ElState *entry, const bool *has, ElFparams *out) {
   MirHash all = {0};
-  const MirHash *sets[3] = {&em->flagged, &em->ckeys, &em->hkeys};
-  for (uint32_t s = 0; s < 3; s++) {
+  const MirHash *sets[2] = {&em->flagged, &em->ckeys};
+  for (uint32_t s = 0; s < 2; s++) {
     const uint64_t *keys = mh_keys(cx->ma, sets[s]);
     for (uint32_t i = 0; i < sets[s]->n; i++) {
       (void)mh_put(cx->ma, &all, keys[i], 0);
@@ -135,9 +106,6 @@ static void flag_params(ElCx *cx, MirFunc *func, const ElEm *em, const MirBlock 
       }
       if ((live[i].st == EL_MAYBE_CLOSED || live[i].st == EL_CLOSED_OR_MOVED) && mh_get(&em->ckeys, live[i].v, &key)) {
         add_flag_param(cx, func, block, &out[block], (MirValue)key, MIR_BOOL);
-      }
-      if (mh_get(&em->hkeys, live[i].v, &key)) {
-        add_flag_param(cx, func, block, &out[block], (MirValue)key, MIR_INT);
       }
     }
   }
@@ -235,7 +203,6 @@ static bool function_blocks(ElCx *cx, MirFunc *func, ElEm *em) {
     return false;
   }
   em->ckeys = closed_keys(cx, func, entry, has);
-  em->hkeys = handle_keys(cx, func);
   ElFparams *fparams = MS_ARENA_NEW_ARRAY(cx->ma, ElFparams, nblocks + 1);
   flag_params(cx, func, em, order, norder, entry, has, fparams);
   em->counts_depth = counts_depth(func);
@@ -253,7 +220,7 @@ static bool elaborate_function(ElCx *cx, MirModule *module, MirFunc *func) {
   }
   cx->f = func;
   el_tags(cx);
-  ElEm em = {.cx = cx, .m = module, .f = func, .pending = MIR_NONE, .cancelled = {.value = MIR_NONE}};
+  ElEm em = {.cx = cx, .m = module, .f = func, .pending = MIR_NONE};
   const bool ok = function_blocks(cx, func, &em);
   if (ok) {
     el_prune_undominated_drops(cx);
@@ -310,10 +277,6 @@ static bool run_one(MirModule *module, uint32_t index, const ElCx *shared, MsAre
 
 /* Declares the runtime entries scope closing calls. */
 static void declare_runtime(MirModule *module, ElCx *shared) {
-  const MirTy one = MIR_INT;
-  shared->discard = mir_extern_get(module, ms_span_of_text("msrt_cleanup_discard"), &one, 1, MIR_VOID, true,
-                                   MR_CLEANUP_DISCARD);
-  shared->cancel = mir_extern_get(module, ms_span_of_text("msrt_cleanup_cancel"), &one, 1, MIR_VOID, true, MR_CLEANUP_CANCEL);
   shared->shield_enter = mir_extern_get(module, ms_span_of_text("msrt_shield_enter"), NULL, 0, MIR_VOID, true,
                                         MR_SHIELD_ENTER);
   shared->shield_exit = mir_extern_get(module, ms_span_of_text("msrt_shield_exit"), NULL, 0, MIR_VOID, true,
@@ -339,8 +302,6 @@ static bool scan(const MirModule *module, bool *closes) {
 
 bool mir_elaborate(MirModule *module, MsStrBuild *error) {
   ElCx shared = {.close = module->close,
-                 .discard = MIR_NONE,
-                 .cancel = MIR_NONE,
                  .shield_enter = MIR_NONE,
                  .shield_exit = MIR_NONE};
   bool closes = false;

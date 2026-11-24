@@ -57,13 +57,13 @@ int64_t msrt_promise_ready(int64_t fd, int64_t events, int64_t timeout_ns);
 int64_t msrt_promise_run_watched(int64_t id, int64_t group, const MsList *ids, int64_t from);
 /* ms-sig: msrt_promise_sleep(ns: i64) -> i64 @domain=promise */
 int64_t msrt_promise_sleep(int64_t ns);
-/* ms-sig: msrt_promise_start(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+/* ms-sig: msrt_promise_start(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise */
 int64_t msrt_promise_start(MsObj *work, const MsString *site);
-/* ms-sig: msrt_promise_start_here(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+/* ms-sig: msrt_promise_start_here(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise */
 int64_t msrt_promise_start_here(MsObj *work, const MsString *site);
-/* ms-sig: msrt_promise_start_idle(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+/* ms-sig: msrt_promise_start_idle(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise */
 int64_t msrt_promise_start_idle(MsObj *work, const MsString *site);
-/* ms-sig: msrt_promise_start_spread(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+/* ms-sig: msrt_promise_start_spread(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise */
 int64_t msrt_promise_start_spread(MsObj *work, const MsString *site);
 /* Waits for `id` without a limit and moves its value out: 0 when it ended any other way, which a wait then names. */
 /* ms-sig: msrt_promise_result(id: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=promise */

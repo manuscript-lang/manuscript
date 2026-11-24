@@ -395,6 +395,13 @@ bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 const MirInst *fn_just_made(const LowerFn *fn, MirValue value);
 bool fn_made_by_call(const LowerFn *fn, MirValue value);
 void fn_unwind_site(LowerFn *fn, MirValue result);
+/* A value taken out of its closing slot for a call that has not run yet. */
+typedef struct LowerTaken {
+  MirValue slot;
+  MirValue value;
+} LowerTaken;
+/* The same, the exit putting each taken value back in its slot first, so the slot closes it. */
+void fn_unwind_site_forgetting(LowerFn *fn, MirValue result, const LowerTaken *forget, uint32_t nforget);
 /* Ends the current block with the exit of a pending cancel or posted fault (every open scope closed, undefined result). */
 void fn_unwind_exit(LowerFn *fn);
 void fn_fault_site(LowerFn *fn, MirValue result);

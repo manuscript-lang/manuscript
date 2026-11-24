@@ -119,43 +119,19 @@ void msrt_fault_posted(void) {
   ms_fault_exit(&text);
 }
 
-/* ---- cleanups ---- */
-
-size_t msrt_cleanup_push(MsCleanupFn run, uint8_t *arg) { return ms_cleanup_push(run, arg); }
-void msrt_cleanup_run(size_t handle) { ms_cleanup_run(handle); }
-void msrt_cleanup_discard(size_t handle) { ms_cleanup_discard(handle); }
-void msrt_cleanup_remove(size_t handle) { ms_cleanup_remove(handle); }
-void msrt_cleanup_cancel(size_t handle) { ms_cleanup_cancel(handle); }
-size_t msrt_cleanup_base(void) { return ms_cleanup_base(); }
-void msrt_cleanup_unwind_to(size_t base) { ms_cleanup_unwind_to(base); }
-void msrt_cleanup_truncate(size_t base) { ms_cleanup_truncate(base); }
-uint8_t msrt_unwind_drops(void) { return ms_unwind_drops() ? 1 : 0; }
-
 /* ---- shields and cancellation ---- */
 
 void msrt_shield_enter(void) { ms_shield_enter(); }
 void msrt_shield_exit(void) { ms_shield_exit(); }
-/* A property of the program, not of one scheduler: every thread that runs its tasks takes the exits. */
-static _Atomic bool cancel_edges;
 
-void msrt_cancel_edges(void) { atomic_store_explicit(&cancel_edges, true, memory_order_relaxed); }
 void msrt_unwinding_pause(void) { (void)ms_unwinding_take(); }
 void msrt_unwinding_resume(void) { ms_cancel_deliver(); }
 uint8_t msrt_unwinding(void) { return ms_unwinding() ? 1 : 0; }
-void msrt_cancelled(void) { ms_cancelled(); }
 MsTaskHdr *msrt_isolate_hdr(void) { return &running()->hdr; }
-
-void ms_sched_cancel_return(void) {
-  if (atomic_load_explicit(&cancel_edges, memory_order_relaxed)) {
-    ms_cancel_deliver();
-  } else {
-    ms_cancelled();
-  }
-}
 
 void msrt_native_failed(uint8_t status) {
   if (status == MS_STATUS_CANCELLED || ms_cancel_flag() != 0) {
-    ms_sched_cancel_return();
+    ms_cancel_deliver();
   }
 }
 

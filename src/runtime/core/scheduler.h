@@ -171,7 +171,6 @@ typedef struct MsSched {
   size_t peer_tokens;   /* those another isolate will post */
 
   bool timed_out; /* the last join found the task cancelled for running too long */
-  MsFaultText guard_message; /* the fault message ms_guard_leave hands to the landing of ms_guard_call */
 } MsSched;
 
 /* This thread's scheduler; NULL until the first ms_sched. Read through ms_sched, which creates it. */
