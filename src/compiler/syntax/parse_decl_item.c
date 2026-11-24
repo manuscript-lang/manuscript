@@ -402,20 +402,31 @@ MS_NODISCARD static bool member_signature(Parser *p, MsToken token, MsName name,
 
 /* One `name: Type [= default]` field of a type, pushed on the scratch stack. */
 MS_NODISCARD static bool type_field(Parser *p) {
-  MsToken fname = {0};
-  if (!parse_member_name(p, &fname))
+  MsToken names[MS_GROUP_MAX];
+  size_t nnames = 1;
+  if (!parse_member_name(p, &names[0]))
     return false;
-  MsTypeRef *ty = NULL;
-  if (!parse_name_type(p, fname, &ty))
+  if (!parse_group_names(p, names, &nnames))
     return false;
-  MsExpr *def = NULL;
-  if (parse_take(p, MS_T_Assign)) {
-    if (!parse_expression(p, 0, &def))
+  const size_t type_at = p->at;
+  size_t end = type_at;
+  for (size_t i = 0; i < nnames; i++) {
+    /* `width, height Int = 0`: every name reads the same type and default. */
+    p->at = type_at;
+    MsTypeRef *ty = NULL;
+    if (!parse_name_type(p, names[i], &ty))
       return false;
-  } else {
-    def = parse_implicit_none(p, ty);
+    MsExpr *def = NULL;
+    if (parse_take(p, MS_T_Assign)) {
+      if (!parse_expression(p, 0, &def))
+        return false;
+    } else {
+      def = parse_implicit_none(p, ty);
+    }
+    end = p->at;
+    parse_push_ptr(p, parse_mk_param(p, names[i].pos, parse_sym(p, names[i]), ty, def, false, false));
   }
-  parse_push_ptr(p, parse_mk_param(p, fname.pos, parse_sym(p, fname), ty, def, false, false));
+  p->at = end;
   return parse_end(p);
 }
 

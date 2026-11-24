@@ -17,6 +17,17 @@ type Customer:
 
 Field types are explicit and field names are unique. An empty type is `type Marker:`. A field may have a default expression, which is checked against the field's type.
 
+Names that share a type are written together: `width, height Int` declares two fields of type `Int`, and a default (`x, y Float = 0.0`) applies to each. Function parameters and enum payloads group the same way (`fn area(width, height Int) Int`, `Box(width, height Int)`).
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+type Rect:
+    width, height Int
+    x, y Float = 0.0
+
+fn area(width, height Int) Int => width * height
+```
+
 ## Construction
 
 Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors.

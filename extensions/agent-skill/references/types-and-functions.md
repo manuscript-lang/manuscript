@@ -1,6 +1,6 @@
 # Types and functions
 
-Declare parameter/return types: `fn f(value Int, offset Int = 1) Int:`. Call labels are optional: `f(2, offset: 3)`. Generics follow the name. Callback type: `fn(Int) Int`; closures: `x => x + 1` or `fn(x Int) Int: x + 1`.
+Declare parameter/return types: `fn f(value Int, offset Int = 1) Int:`. Call labels are optional: `f(2, offset: 3)`. Generics follow the name. Callback type: `fn(Int) Int`; closures: `x => x + 1` or `fn(x Int) Int: x + 1`. Names of one type may share it: `width, height Int`.
 
 <!-- complete: types.ms -->
 ```manuscript
