@@ -372,7 +372,10 @@ MirBlock *mir_dominators(MsArena *arena, const MirFunc *func, const MirBlock *or
 uint32_t mir_inst_count(const MirFunc *func) {
   uint32_t count = 0;
   for (size_t block = 0; block < func->blocks.len; block++) {
-    count += (uint32_t)func->blocks.ptr[block].insts.len;
+    /* Out-of-line blocks (an unwind site's exit, a check's fault) are not the code a caller pays to inline. */
+    if (!func->blocks.ptr[block].cold) {
+      count += (uint32_t)func->blocks.ptr[block].insts.len;
+    }
   }
   return count;
 }

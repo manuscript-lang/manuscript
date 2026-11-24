@@ -51,19 +51,17 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
     return;
   }
   if (fn->cx->unwinding == MIR_NONE) {
-    fn->cx->unwinding = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding"), NULL, 0, MIR_UINT8, true, MR_UNWINDING);
+    fn->cx->unwinding = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding"), NULL, 0, MIR_BOOL, true, MR_UNWINDING);
   }
   /* A fresh result is not owned by any scope yet: it is, for the exit, and the next branch disowns it again. */
-  const MirValue byte = mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = fn->cx->unwinding}, MIR_UINT8);
-  const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, mir_imm_int(0), MIR_UINT8);
-  const MirValue pair[2] = {byte, zero};
-  const MirValue set = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, mir_imm_cc(MCC_NE), MIR_BOOL);
+  const MirValue set = mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = fn->cx->unwinding}, MIR_BOOL);
   const MirBlock leave = mir_b_new_block(&fn->b);
   const MirBlock next = mir_b_new_block(&fn->b);
   mir_b_br_if(&fn->b, set, leave, NULL, 0, next, NULL, 0);
   mir_b_seal_block(&fn->b, leave);
   mir_b_seal_block(&fn->b, next);
   mir_b_switch_to(&fn->b, leave);
+  fn->b.func.blocks.ptr[leave].cold = true; /* the exit is out of line: the byte is almost never set */
   if (dead_result) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
     (void)mir_b_emit(&fn->b, MOP_Forget, &result, 1, (MirImm){0}, MIR_NONE); /* dead: nothing to release */

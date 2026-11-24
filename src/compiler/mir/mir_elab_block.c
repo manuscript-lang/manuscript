@@ -172,6 +172,7 @@ bool el_emit_block(ElEm *em, uint32_t block, const ElState *entry, const ElFpara
   MirBlockData old = func->blocks.ptr[block];
   func->blocks.ptr[block] = mir_block_empty();
   func->blocks.ptr[block].params = old.params;
+  func->blocks.ptr[block].cold = old.cold;
   func->blocks.ptr[block].term_loc = MIR_LOC_NONE;
   em->flags = (MirHash){0};
   for (size_t i = 0; i < fparams[block].key.len; i++) {

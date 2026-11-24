@@ -30,8 +30,8 @@ bool opt_unwind_sites(MirModule *m) {
         if (!is_site_test(m, test) || !is_call(call) || mir_inst_parks(m, parks, call)) {
           continue;
         }
-        test->op = MOP_IConst;
-        test->imm = (MirImm){.tag = MI_INT, .i = 0};
+        test->op = MOP_BConst;
+        test->imm = (MirImm){.tag = MI_BOOL, .a = 0};
         changed = true;
       }
     }
