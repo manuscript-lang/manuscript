@@ -574,27 +574,44 @@ static bool sm_dce(MirModule *m, MirFunc *f) {
 
 /* ---- the pass ---- */
 
+/* The structural passes: each one's output feeds the others (a folded branch merges blocks, a merged block exposes a
+ * common subexpression), so they run to a fixed point together. */
+static bool sm_core_round(MirModule *m, MirFunc *f) {
+  bool c = opt_simplify_fold(m, f);
+  c |= opt_simplify_phis_func(m, f);
+  c |= opt_simplify_branches(m, f);
+  c |= opt_simplify_cse(m, f);
+  c |= sm_dce(m, f);
+  return c;
+}
+
+/* The pattern passes: each looks for one shape (`known_*`, `dropped_*`, a round trip, a dead owned tree) that is
+ * rare and does not enable the structural passes much. On a yaml-importing program they changed the function in
+ * 2 of 441 first rounds and none of the later ones, yet cost a third of the rounds' time. */
+static bool sm_pattern_round(MirModule *m, MirFunc *f) {
+  bool c = sm_known_alts(m, f);
+  c |= sm_dropped_somes(f);
+  c |= sm_dropped_nones(f);
+  c |= sm_known_ifaces(m, f);
+  c |= sm_known_lists(m, f);
+  c |= opt_simplify_roundtrips(f);
+  c |= opt_simplify_shields(m, f);
+  c |= opt_simplify_put_takes(f);
+  c |= opt_simplify_map_probes(m, f);
+  c |= opt_simplify_fuse_contains(m, f);
+  c |= opt_simplify_dead_owned(m, f);
+  return c;
+}
+
+/* Structural passes to a fixed point, then the pattern passes once; a pattern that fires starts over. */
 static bool sm_rounds(MirModule *m, MirFunc *f) {
   bool any = false;
   for (uint32_t round = 0; round < 24; round++) {
-    bool c = false;
-    c |= opt_simplify_fold(m, f);
-    c |= sm_known_alts(m, f);
-    c |= sm_dropped_somes(f);
-    c |= sm_dropped_nones(f);
-    c |= sm_known_ifaces(m, f);
-    c |= sm_known_lists(m, f);
-    c |= opt_simplify_phis_func(m, f);
-    c |= opt_simplify_roundtrips(f);
-    c |= opt_simplify_shields(m, f);
-    c |= opt_simplify_put_takes(f);
-    c |= opt_simplify_branches(m, f);
-    c |= opt_simplify_cse(m, f);
-    c |= opt_simplify_map_probes(m, f);
-    c |= opt_simplify_fuse_contains(m, f);
-    c |= sm_dce(m, f);
-    c |= opt_simplify_dead_owned(m, f);
-    if (!c) {
+    uint32_t inner = 0;
+    while (inner++ < 24 && sm_core_round(m, f)) {
+      any = true;
+    }
+    if (!sm_pattern_round(m, f)) {
       break;
     }
     any = true;
