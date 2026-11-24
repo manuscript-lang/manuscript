@@ -301,7 +301,7 @@ static MirValue own_slot_in(LowerFn *fn, uint32_t scope, MirTy ty, MirValue valu
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
   for (uint32_t depth = fn->nopen; depth > 0; depth--) {
     if (fn->open[depth - 1] == scope) {
-      fn->open_closes[depth - 1] = true;
+      fn->open_closes[depth - 1] = ++fn->own_seq;
       break;
     }
   }
