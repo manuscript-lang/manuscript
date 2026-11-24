@@ -39,6 +39,11 @@ fn main() Int:
 	// asks for.
 	set_environment("MS_HEAP_FACTS", "off").get()
 
+	// The runtime keeps per-worker tables, so its block count grows with the worker
+	// count, which defaults to the core count (26 blocks at 1, 28 at 2, 32 at 4 for
+	// promise_wrapper_closure). Pin it so every machine reports the same counts.
+	set_environment("MS_THREADS", "4").get()
+
 	root := working_directory().get()
 	var files = List[String]()
 	for f in arguments(): files.append(f.clone())
