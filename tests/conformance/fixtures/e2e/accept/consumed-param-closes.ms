@@ -19,7 +19,7 @@ fn logged(path String) String:
 
 	return ""
 
-fn keep_if(d Door, keep Bool) Door?:
+fn keep_if(move d Door, keep Bool) Door?:
 	if keep: return d
 	return null
 

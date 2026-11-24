@@ -12,7 +12,7 @@ type Marker:
 
 fn move Marker.close() Void! => append_file(self.log, f"{self.id},").wait()
 
-fn keep_or_drop[T](drop Bool, value T?) T?:
+fn keep_or_drop[T](drop Bool, move value T?) T?:
 	if drop: return null
 	return value or panic("called Optional.get() on null")
 

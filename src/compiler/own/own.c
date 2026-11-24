@@ -32,6 +32,9 @@ void ms_own_check(MsCheckProgram *program) {
   if (checked_clean) {
     ms_own_mixed_returns(program);
   }
+  if (checked_clean) {
+    ms_own_taken_report(program);
+  }
   ms_own_uses_report(program);
   ms_own_closers(program);
   ms_own_changes(program);

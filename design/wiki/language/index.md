@@ -68,3 +68,4 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Plain text never interpolates; `f"..."` text does](plain-text-never-interpolates-f-text-does.md): `"..."` keeps braces as written, `f"..."` interpolates, `r"..."` is raw; no forgotten-f warning.
 - [A `Char` type is deferred until after the release](a-char-type-is-deferred-until-after-the-release.md): characters stay `Int` until after the release, then `Char` is revisited (recommended, with a `'a'` literal).
 - [`?` has one meaning, follows lexical scope, and grants no access](question-mark-has-one-meaning-and-grants-no-access.md): `?` returns by lexical scope and inherits access from the variable, default `let`; `match` with `_` for one case.
+- [A signature states how each parameter is treated](a-signature-states-how-each-parameter-is-treated.md): a kept parameter must be `move`; the compiler no longer infers it from the body.

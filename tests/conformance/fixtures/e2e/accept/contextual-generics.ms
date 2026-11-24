@@ -5,7 +5,7 @@ import expect_equal, expect_false from "@std/test/test.ms"
 
 fn fail[T](move message String) T!Error => error(Error(message))
 
-fn fail_cause[T, E](cause E) T!E => error(cause)
+fn fail_cause[T, E](move cause E) T!E => error(cause)
 
 fn absent[T]() T? => null
 

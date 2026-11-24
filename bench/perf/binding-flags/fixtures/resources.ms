@@ -28,7 +28,7 @@ fn conditional(flag Bool) Void:
 
 	_after := Res(2)
 
-fn move_through(value Res) Res:
+fn move_through(move value Res) Res:
 	return value
 
 fn conditional_move(flag Bool) Void:

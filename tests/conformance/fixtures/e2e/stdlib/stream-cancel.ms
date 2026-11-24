@@ -8,7 +8,7 @@ import (
 )
 
 // Sums a stream that never delivers: the loop waits inside the source.
-fn sum(input ReadStream[Int]) Int!:
+fn sum(move input ReadStream[Int]) Int!:
 	var source = input
 	var total = 0
 	for n in source:

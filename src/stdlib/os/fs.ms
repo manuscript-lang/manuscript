@@ -997,7 +997,7 @@ fn replace_atomically(link String, data Bytes) Void!:
 // Writes, syncs, closes and renames the temporary file, removing it when any step
 // fails.
 fn finish_atomic(
-	file FileHandle,
+	move file FileHandle,
 	temporary String,
 	path String,
 	data Bytes,

@@ -12,7 +12,7 @@ fn move Res.close() Void!:
 fn make(move name String) Res!Error:
 	return ok(Res(name))
 
-fn keep(r Res) Res:
+fn keep(move r Res) Res:
 	return r
 
 fn via_try() Void!Error:
