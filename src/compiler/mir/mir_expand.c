@@ -111,7 +111,7 @@ static const MirInst *site_of(const Expander *e, const MirInst *inst) {
 
 static uint32_t post_fn(Expander *e, uint32_t *cached, const char *name, const MirTy *params, uint32_t count) {
   if (*cached == MIR_NONE) {
-    *cached = mir_extern_get(e->module, ms_span_of_text(name), params, count, MIR_VOID, false, MR_NONE);
+    *cached = mir_extern_get(e->module, ms_span_of_text(name), params, count, MIR_VOID, false, MR_POSTS_FAULT);
   }
   return *cached;
 }

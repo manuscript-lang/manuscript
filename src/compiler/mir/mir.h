@@ -368,7 +368,8 @@ typedef enum MirRole {
   MR_BYTES_READ_WORD, MR_BYTES_INDEX_OF_BYTE, MR_STRING_PARSE_INT, MR_STRING_CONTAINS,
   MR_STRING_STARTS_WITH, MR_STRING_ENDS_WITH, MR_STRING_COMPARE, MR_STRING_SCALAR_STEP,
   MR_STRING_SCALAR_AT, MR_SET_PROBE_STR, MR_STRING_SCALAR_TEXT,
-  MR_KEEPS_SLOT
+  MR_KEEPS_SLOT,
+  MR_POSTS_FAULT /* posts a fault: the block then leaves by its exit, and each post keeps its own location */
 } MirRole;
 
 /* The family of borrowing twins an extern declares: other runtime functions that answer the same call without

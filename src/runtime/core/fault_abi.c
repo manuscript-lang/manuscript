@@ -135,7 +135,10 @@ uint8_t msrt_unwind_drops(void) { return ms_unwind_drops() ? 1 : 0; }
 
 void msrt_shield_enter(void) { ms_shield_enter(); }
 void msrt_shield_exit(void) { ms_shield_exit(); }
-void msrt_cancel_edges(void) { ms_sched()->cancel_edges = true; }
+/* A property of the program, not of one scheduler: every thread that runs its tasks takes the exits. */
+static _Atomic bool cancel_edges;
+
+void msrt_cancel_edges(void) { atomic_store_explicit(&cancel_edges, true, memory_order_relaxed); }
 void msrt_unwinding_pause(void) { (void)ms_unwinding_take(); }
 void msrt_unwinding_resume(void) { ms_cancel_deliver(); }
 uint8_t msrt_unwinding(void) { return ms_unwinding() ? 1 : 0; }
@@ -143,7 +146,7 @@ void msrt_cancelled(void) { ms_cancelled(); }
 MsTaskHdr *msrt_isolate_hdr(void) { return &running()->hdr; }
 
 void ms_sched_cancel_return(void) {
-  if (ms_sched()->cancel_edges) {
+  if (atomic_load_explicit(&cancel_edges, memory_order_relaxed)) {
     ms_cancel_deliver();
   } else {
     ms_cancelled();

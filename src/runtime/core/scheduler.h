@@ -131,7 +131,6 @@ typedef struct MsSched {
   _Atomic uint8_t stop_request; /* a stop aimed at this scheduler, 0 when none; set from any thread */
   _Atomic(MsTaskHdr *) published_hdr; /* the running task's header, for a stop raised from another thread */
   bool starts_queued;           /* ms_sched_note_queued: the hooks' start_queued runs at the next switch */
-  bool cancel_edges;            /* the program's modules branch on `unwinding` after a call that can park */
 
   MsSlotList slots;       /* the handle table */
   MsIndexList free_slots; /* indices of free slots */
