@@ -18,9 +18,7 @@ runs:
         key: apt-${{ runner.arch }}-${{ hashFiles('.github/actions/toolchain/action.yml') }}
     - if: runner.os == 'macOS'
       shell: bash
-      run: brew install ninja ccache llvm lld
-    # Homebrew's llvm is keg-only: release builds run its opt and llc from PATH. The lld formula installs llvm anyway, and
-    # a darwin-amd64 build with it off PATH failed to link ms (undefined OpenSSL ENGINE symbols from curl), so macOS keeps it.
+      run: brew install ninja ccache lld
     - if: runner.os == 'macOS'
       shell: bash
       run: cmake -P cmake/CiMacosEnv.cmake
