@@ -95,8 +95,8 @@ fn normalize_text(text: String, work: String) String:
 
 	return mask_repeat_counts(mask_stdlib_lines(out))
 
-// A recursive frame repeated `N more times` names its count <COUNT>: how deep a recursion
-// gets before the stack ends depends on the platform's frame sizes.
+// A recursive frame repeated `N more times` names its count <COUNT>: how deep a
+// recursion gets before the stack ends depends on the platform's frame sizes.
 fn mask_repeat_counts(text: String) String:
 	marker := "repeated "
 	if not text.contains(marker): return text.clone()
@@ -112,7 +112,12 @@ fn mask_repeat_counts(text: String) String:
 		digits := leading_digits(after)
 		out += rest.slice(0, at + marker.length())
 
-		if digits > 0 and after.slice(digits, after.length()).starts_with(" more times"):
+		if (
+			digits > 0
+			and after.slice(digits, after.length()).starts_with(
+				" more times"
+			)
+		):
 			out += "<COUNT>"
 			rest = after.slice(digits, after.length()).clone()
 		else:
