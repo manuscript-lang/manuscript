@@ -17,9 +17,36 @@ static void alt_inline(EmitCx *cx, const MirInst *inst, const MirAltFields *fiel
   uint32_t case_index = inst->imm.b;
   MsSpan leaves = emit_value_leaves(cx, inst->res);
   ms_strbuild_printf(cx->out, "  %%v%u = add i64 %u, 0\n", inst->res, case_index);
+  /* A payload that comes whole from one held operand, in order, moves as a block. */
+  uint32_t run_first = 0;
+  uint32_t run_end = 0;
+  uint32_t run_operand = 0;
+  uint32_t run_source = 0;
   for (uint32_t leaf = 1; leaf < leaves.len; leaf++) {
     uint32_t operand = 0;
     uint32_t source = 0;
+    if (!mir_alt_slot_source(fields, case_index, leaf, &operand, &source)) {
+      continue;
+    }
+    if (run_end == leaf && operand == run_operand && source == run_source + (leaf - run_first)) {
+      run_end++;
+    } else if (run_end == 0 || run_end - run_first < 2) {
+      run_first = leaf;
+      run_end = leaf + 1;
+      run_operand = operand;
+      run_source = source;
+    }
+  }
+  if (run_end - run_first < 2 ||
+      !emit_wide_move_leaves(cx, inst->res, run_first, inst->args[run_operand], run_source, run_end - run_first)) {
+    run_first = run_end = 0;
+  }
+  for (uint32_t leaf = 1; leaf < leaves.len; leaf++) {
+    uint32_t operand = 0;
+    uint32_t source = 0;
+    if (leaf >= run_first && leaf < run_end) {
+      continue;
+    }
     if (mir_alt_slot_source(fields, case_index, leaf, &operand, &source)) {
       emit_copy_leaf(cx, inst->res, leaf, inst->args[operand], source);
     } else {
@@ -89,6 +116,13 @@ static void alt_get(EmitCx *cx, const MirInst *inst) {
   const MirAltFields *fields = mir_alt_fields(cx->layouts, inst->imm.a);
   const MirAltField *field = &fields->fields[fields->case_start[inst->imm.b] + inst->imm.c];
   if (shape->alt != MIR_ALT_BOXED) {
+    bool contiguous = field->nleaves >= 2;
+    for (uint32_t leaf = 1; leaf < field->nleaves; leaf++) {
+      contiguous = contiguous && field->leaves[leaf] == field->leaves[0] + leaf;
+    }
+    if (contiguous && emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], field->leaves[0], field->nleaves)) {
+      return;
+    }
     for (uint32_t leaf = 0; leaf < field->nleaves; leaf++) {
       emit_copy_leaf(cx, inst->res, leaf, inst->args[0], field->leaves[leaf]);
     }
@@ -118,6 +152,9 @@ static void alt_tag(EmitCx *cx, const MirInst *inst) {
 /* `alt.plain`: the same leaves under the plain alternative type. */
 static void alt_plain(EmitCx *cx, const MirInst *inst) {
   uint32_t count = (uint32_t)emit_value_leaves(cx, inst->res).len;
+  if (emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], 0, count)) {
+    return;
+  }
   for (uint32_t leaf = 0; leaf < count; leaf++) {
     emit_copy_leaf(cx, inst->res, leaf, inst->args[0], leaf);
   }
@@ -176,6 +213,9 @@ static void opt_some(EmitCx *cx, const MirInst *inst) {
     at = 1;
   }
   uint32_t count = (uint32_t)emit_value_leaves(cx, inst->args[0]).len;
+  if (emit_wide_move_leaves(cx, inst->res, at, inst->args[0], 0, count)) {
+    return;
+  }
   for (uint32_t leaf = 0; leaf < count; leaf++) {
     emit_copy_leaf(cx, inst->res, at + leaf, inst->args[0], leaf);
   }
@@ -192,6 +232,9 @@ static void opt_get(EmitCx *cx, const MirInst *inst) {
   }
   uint32_t skip = mir_opt_has_flag(cx->layouts, value_type(cx, inst->args[0])) ? 1 : 0;
   uint32_t count = (uint32_t)emit_value_leaves(cx, inst->res).len;
+  if (emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], skip, count)) {
+    return;
+  }
   for (uint32_t leaf = 0; leaf < count; leaf++) {
     emit_copy_leaf(cx, inst->res, leaf, inst->args[0], skip + leaf);
   }
