@@ -57,6 +57,7 @@ Ownership and range fit the two walks because both are dominator-ordered (range,
 
 ## Stages
 
+0. Tried and dropped: fusing fold and CSE into one dominator-order walk cost 2213M instructions against 2202M before, so walks are not the cost; per-instruction work is (about 320 instructions per fold+CSE visit on functions of up to 5.8K instructions: hashing 100, operand sort, `mir_needs_drop`, instruction copies).
 1. Simplify revisits only what changed: per-block dirty bits through the core rounds, so the confirming second round touches changed blocks only; gate: byte-identical `ms emit --opt` on the 483-program set, simplify instruction count down.
 2. Forward walk replacing simplify core and CSE (dominator-scoped); gate: perf suite instruction counts no worse than the latest `bench/perf` baseline.
 3. Range folded into the forward walk; gate: count of proofs lost against the fixpoint, each regained or justified.
