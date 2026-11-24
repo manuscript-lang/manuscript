@@ -62,9 +62,9 @@ void msrt_string_slice(const MsString *s, int64_t start, int64_t end, MsString *
 void msrt_string_view(const MsString *s, int64_t start, int64_t end, MsString *out);
 /* ms-sig: msrt_string_hash(s: *const StrVal) -> i64 @domain=map @end */
 int64_t msrt_string_hash(const MsString *s);
-/* ms-sig: msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8 @domain=string @end */
+/* ms-sig: msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8 @domain=string @leaf @end */
 uint8_t msrt_string_eq(const MsString *a, const MsString *b);
-/* ms-sig: msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 @domain=map @end */
+/* ms-sig: msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 @domain=map @leaf @end */
 int64_t msrt_string_compare(const MsString *a, const MsString *b);
 /* ms-sig: msrt_string_is_empty(s: *const StrVal) -> u8 @domain=string @end */
 /* ms-op: msrt_string_is_empty str_is_empty */
