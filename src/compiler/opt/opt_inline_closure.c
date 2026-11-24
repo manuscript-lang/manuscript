@@ -553,16 +553,7 @@ static bool ic_inline_call(IcInline *w, const IcKnown *known, uint32_t bi, uint3
   call->nargs = ncaps + call->nargs - 1;
   if (big) {
     body.kind = MFK_NORMAL;
-    /* The copy takes the captures where the closure took its environment, under a name of its own. */
-    MirParam *params = MS_ARENA_NEW_ARRAY(&m->arena, MirParam, (size_t)body.nparams + callee->ncaptures + 1);
-    for (uint32_t k = 0; k < callee->ncaptures; k++) {
-      params[k] = (MirParam){callee->captures[k], MM_BORROW};
-    }
-    for (uint32_t j = 1; j < body.nparams; j++) {
-      params[callee->ncaptures + j - 1] = body.params[j];
-    }
-    body.params = params;
-    body.nparams = body.nparams - 1 + callee->ncaptures;
+    /* Under a name of its own: ic_closure_body gave it the captures where the closure took its environment. */
     MsStrBuild plain_name = ms_strbuild_new();
     ms_strbuild_append(&plain_name, ms_names_span(&m->names, callee->name));
     ms_strbuild_printf(&plain_name, ".direct.%u", (unsigned)m->funcs.len);

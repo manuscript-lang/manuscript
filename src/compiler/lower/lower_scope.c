@@ -348,7 +348,8 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value) {
   /* Made in a block above this one (a `move` parameter, an owner declared before an `if`): the scope that owns it
    * registered it there, and a disown in a sibling block is not on this path. */
   for (uint32_t block = 0; block < fn->b.func.blocks.len; block++) {
-    if (block == fn->b.cur) {
+    /* A block that returns leads nowhere: the owns on an early exit (an unwind site's) are not the value's registration. */
+    if (block == fn->b.cur || fn->b.func.blocks.ptr[block].term.kind == MT_RET) {
       continue;
     }
     const MirInstList *list = &fn->b.func.blocks.ptr[block].insts;

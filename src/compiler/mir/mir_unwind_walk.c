@@ -44,15 +44,47 @@ bool uw_exits_at(const UwCx *cx, const MirInst *inst) {
   return (mir_op_info[inst->op].effects & MIR_E_FAULTS) != 0;
 }
 
-/* The values calls and constructors make. A move-out of one takes a whole value, which no projection of an owner is
- * left holding a hole for: nothing fills it back. */
+/* Whether every edge into `block` passes a whole value (one in `calls`) for parameter `index`. */
+static bool uw_param_whole(const MirFunc *f, const UwHash *calls, MirBlock block, uint32_t index) {
+  bool any = false;
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirBlockData *from = &f->blocks.ptr[b];
+    for (uint32_t t = 0; t < mir_term_ntargets(&from->term); t++) {
+      const MirTarget *target = mir_term_target_const(&from->term, t);
+      if (target->block != block) {
+        continue;
+      }
+      if (index >= target->nargs || !uh_has(calls, target->args[index])) {
+        return false;
+      }
+      any = true;
+    }
+  }
+  return any;
+}
+
+/* The values calls and constructors make, and the block parameters only they reach (an exit that leaves a call's
+ * result undefined joins the path that made it). A move-out of one takes a whole value, which no projection of an
+ * owner is left holding a hole for: nothing fills it back. */
 UwHash uw_call_defs(MsArena *a, const MirFunc *f) {
   UwHash calls = {0};
   UW_INSTS(f, b, i, inst) {
     const bool whole = inst->op == MOP_Call || inst->op == MOP_CallRt || inst->op == MOP_TypeNew || inst->op == MOP_AltNew ||
-                       inst->op == MOP_Clone || inst->op == MOP_ListLit || inst->op == MOP_OptSome;
+                       inst->op == MOP_Clone || inst->op == MOP_ListLit || inst->op == MOP_OptSome || inst->op == MOP_Undef;
     if (whole && inst->res != MIR_NONE) {
       (void)uh_put(a, &calls, inst->res, 0);
+    }
+  }
+  for (bool changed = true; changed;) {
+    changed = false;
+    for (uint32_t b = 1; b < f->blocks.len; b++) {
+      const MirBlockParamList *params = &f->blocks.ptr[b].params;
+      for (uint32_t p = 0; p < params->len; p++) {
+        if (!uh_has(&calls, params->ptr[p].value) && uw_param_whole(f, &calls, (MirBlock)b, p)) {
+          (void)uh_put(a, &calls, params->ptr[p].value, 0);
+          changed = true;
+        }
+      }
     }
   }
   return calls;
