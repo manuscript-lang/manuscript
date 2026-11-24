@@ -437,6 +437,14 @@ static void watch_event(uv_fs_event_t *handle, const char *filename, int events,
     set_terminal(watcher, MS_STATUS_FAILED, uv_strerror(status));
     return;
   }
+  if (filename == NULL && ms_sys_fs_watch_drops_batches()) {
+    /* The host dropped a batch of changes: what happened is unknown, so report the directory and what it holds. */
+    queue_event(watcher, ms_string_span(&row->path), false);
+    if (watcher->recursive && row->is_directory) {
+      report_existing(watcher, ms_string_span(&row->path), 0);
+    }
+    return;
+  }
   if (is_ready_file(filename)) {
     watcher_lock(watcher);
     watcher->ready = true;
