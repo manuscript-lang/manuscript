@@ -136,7 +136,8 @@ typedef struct MirImm {
 } MirImm;
 
 typedef enum MirFault {
-  MF_INT_OVERFLOW, MF_DIV_BY_ZERO, MF_INDEX_OUT_OF_RANGE, MF_NONE_UNWRAP, MF_CANCELLED, MF_CALL_DEPTH,
+  MF_CANCELLED, MF_CALL_DEPTH,
+  MF_POSTED, /* a fault already posted that nothing can leave by: the program ends with its report */
   MF_UNREACHABLE, MF_MESSAGE /* str */
 } MirFault;
 

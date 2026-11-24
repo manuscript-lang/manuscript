@@ -161,6 +161,7 @@ typedef struct LowerFn {
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  MirValue sited; /* one more than the call result whose unwind site is already emitted; 0 for none */
   bool leaving; /* an exit's closes and write-backs are being emitted: a check there repeats one the normal path passed, so it has no exit of its own */
   /* The result the last unwind site followed and where its instruction is, so that a later look at "the value just
    * made" still finds it behind the site's test. */

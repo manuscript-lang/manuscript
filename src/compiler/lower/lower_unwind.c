@@ -57,6 +57,12 @@ static void leave_with_undef(LowerFn *fn) {
  * state set aside while they do, so a close may park and its own calls do not leave; it is delivered again before the
  * function returns. The result is undefined. The current block ends here. */
 void fn_unwind_exit(LowerFn *fn) {
+  if (fn->leaving) {
+    /* A fault while leaving on a fault (a check in a write-back, say) repeats one the normal path passed: the program
+     * ends there, as a panic while unwinding does elsewhere. */
+    mir_b_fault(&fn->b, MF_POSTED);
+    return;
+  }
   const uint32_t pause = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_pause"), NULL, 0, MIR_VOID, false, MR_NONE);
   const uint32_t resume = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_resume"), NULL, 0, MIR_VOID, false, MR_NONE);
   (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = pause}, MIR_VOID);
@@ -69,6 +75,10 @@ void fn_unwind_exit(LowerFn *fn) {
 }
 
 void fn_unwind_site(LowerFn *fn, MirValue result) {
+  if (result != MIR_NONE && fn->sited == result + 1) {
+    return; /* the call's own lowering put the site where its held values were still owned */
+  }
+  fn->sited = result == MIR_NONE ? 0 : result + 1;
   const MirInstList *before = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   size_t at = before->len;
   while (result != MIR_NONE && at > 0 && before->ptr[at - 1].res != result && before->ptr[at - 1].res == MIR_NONE) {
@@ -83,13 +93,13 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
       return;
     }
   }
-  /* A compiled callee that leaves this way returns `undef`: its result is dead and nothing here may close it. A
-   * native hands back a value that is still its caller's to drop. */
+  /* A callee that leaves this way hands back no value: a compiled one returns `undef`, a native an empty result. The
+   * result is dead and nothing here may close or drop it. */
   bool dead_result = false;
   if (made) {
     const MirInst *call = &before->ptr[made_at];
     MirMode mode = MM_BORROW;
-    dead_result = (call->op == MOP_Call || call->op == MOP_CallInd || call->op == MOP_CallMethod) &&
+    dead_result = (call->op == MOP_Call || call->op == MOP_CallInd || call->op == MOP_CallMethod || call->op == MOP_CallRt) &&
                   mir_result_mode(fn->cx->module, &fn->b.func, call, &mode) && mode == MM_MOVE;
   }
   if (fn->terminated || fn->failed || fn->b.func.unwind_only || fn->b.func.closer) {
@@ -132,20 +142,6 @@ static bool has_fault_site(MirOp op) {
   }
 }
 
-/* The fault kind the program ends with when a check inside an exit fails. */
-static MirFault fault_of(uint32_t op) {
-  switch (op) {
-  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListAddr:
-    return MF_INDEX_OUT_OF_RANGE;
-  case MOP_OptUnwrap:
-    return MF_NONE_UNWRAP;
-  case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
-    return MF_DIV_BY_ZERO;
-  default:
-    return MF_INT_OVERFLOW;
-  }
-}
-
 /* After a checked instruction: the fault the check posts leaves by an exit that closes what is owned here, as a
  * call's does. The test is constant false on the normal path: only the check's cold path reaches `leave`. */
 void fn_fault_site(LowerFn *fn, MirValue result) {
@@ -161,13 +157,7 @@ void fn_fault_site(LowerFn *fn, MirValue result) {
   mir_b_seal_block(&fn->b, next);
   mir_b_switch_to(&fn->b, leave);
   fn->b.func.blocks.ptr[leave].cold = true;
-  if (fn->leaving) {
-    /* A check inside an exit repeats one the normal path passed. Failing now is a fault while leaving on a fault: the
-     * program ends there, as a panic while unwinding does elsewhere. */
-    mir_b_fault(&fn->b, fault_of(made->op));
-  } else {
-    fn_unwind_exit(fn);
-  }
+  fn_unwind_exit(fn);
   mir_b_switch_to(&fn->b, next);
 }
 

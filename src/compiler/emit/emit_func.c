@@ -74,7 +74,7 @@ static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *si
                      number, inst->res, (long long)lo, number, inst->res, (long long)hi, number, number, number);
   char bad[24];
   emit_text_name(bad, sizeof bad, "l", number, "s", MIR_NONE);
-  emit_fault_if(cx, site, bad, "msrt_fault_int_range", NULL, 0);
+  emit_fault_if(cx, site, bad, "msrt_post_int_range", NULL, 0);
   return true;
 }
 

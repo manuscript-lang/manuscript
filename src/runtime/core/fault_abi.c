@@ -110,14 +110,13 @@ void msrt_post_unwrap_none(void) {
   ms_fault_post_text(MS_FAULT_KIND_FAULT, "called Optional.get() on none; check is_some first, or use get_or(default)");
 }
 
-void msrt_post_index(int64_t index, int64_t length) {
-  MsStrBuild message = ms_strbuild_new();
-  ms_strbuild_append_text(&message, "index ");
-  ms_strbuild_append_i64(&message, index);
-  ms_strbuild_append_text(&message, " out of range for length ");
-  ms_strbuild_append_i64(&message, length);
-  ms_strbuild_append_text(&message, "; use get_or(index, default) to avoid the fault");
-  ms_fault_post_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
+/* A posted fault that nothing can leave by (a check inside an exit, or in a function that only unwinds): the program
+ * ends with its report. */
+void msrt_fault_posted(void) {
+  MsUnwind *const unwind = &ms_task_running()->unwind;
+  MsFaultText text = unwind->pending;
+  unwind->pending = (MsFaultText){0};
+  ms_fault_exit(&text);
 }
 
 /* ---- cleanups ---- */

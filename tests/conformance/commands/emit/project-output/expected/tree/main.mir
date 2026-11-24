@@ -159,8 +159,8 @@ b0:
   %5: bool = call.rt @msrt_unwinding () !1:198:32
   br_if %5, b1(), b2() !1:198:32
 b1():
+  forget %4 !1:198:32
   %6: void = call.rt @msrt_unwinding_pause () !1:198:32
-  drop %4
   %7: void = call.rt @msrt_unwinding_resume () !1:198:32
   ret !1:198:32
 b2():
@@ -218,8 +218,8 @@ b8():
   %17: bool = call.rt @msrt_unwinding () !2:15:35
   br_if %17, b9(), b10() !2:15:35
 b9():
+  forget %16 !2:15:35
   %18: void = call.rt @msrt_unwinding_pause () !2:15:35
-  drop %16
   %19: void = call.rt @msrt_unwinding_resume () !2:15:35
   %20: Result[Int, Failure] = undef !2:15:35
   ret %20 !2:15:35

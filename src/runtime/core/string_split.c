@@ -120,7 +120,9 @@ void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *o
   size_t end = 0;
   if (separator.len == 0) {
     if (text.len == 0) {
-      msrt_index_fault(0, 0);
+      msrt_post_index(0, 0);
+      *out = make_piece(PIECE_VIEW, between(text, 0, 0)); /* the caller leaves */
+      return;
     }
     end = ms_utf8_decode(text.ptr, text.len).width;
   } else {

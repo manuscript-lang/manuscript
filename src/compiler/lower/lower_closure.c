@@ -658,6 +658,9 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   body.native_arg_moves = 0; /* the operands the closure was handed to own: the native takes them */
   for (uint32_t at = 1; at < reserved.nparams && at < 32; at++) {
     body.native_arg_moves |= reserved.params[at].mode == MM_MOVE ? 1u << at : 0u;
+    if (reserved.params[at].mode == MM_MOVE && mir_needs_drop(cx->module, reserved.params[at].ty)) {
+      fn_own(&body, fn_scope(&body), values[at]); /* owned until the native takes it: a fault before that exit closes it */
+    }
   }
   bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
                       : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);

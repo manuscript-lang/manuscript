@@ -115,7 +115,8 @@ int64_t msrt_bytes_get(const MsBytes *b, int64_t index, uint8_t has_default, int
     return b->ptr[position];
   }
   if (has_default == 0) {
-    msrt_index_fault(index, (int64_t)b->len);
+    msrt_post_index(index, (int64_t)b->len);
+    return 0;
   }
   return default_value;
 }
@@ -165,7 +166,7 @@ void msrt_bytes_reversed(const MsBytes *b, MsBytes *out) {
 void msrt_bytes_with_value(const MsBytes *b, int64_t index, int64_t value, MsBytes *out) {
   size_t position = 0;
   if (!ms_resolve_index(b->len, index, &position)) {
-    msrt_collection_index_fault("Bytes.with_value", (int64_t)b->len, index);
+    msrt_post_collection_index("Bytes.with_value", (int64_t)b->len, index);
     return;
   }
   if (!check_byte("Bytes.with_value", value)) {

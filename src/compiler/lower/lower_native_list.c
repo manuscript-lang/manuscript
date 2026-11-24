@@ -149,8 +149,8 @@ static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int6
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
   const MirValue fault_args[3] = {mir_b_iconst(&fn->b, kind), index, length};
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_list_index_fault")), fault_args, 3, MIR_VOID);
-  mir_b_unreachable(&fn->b);
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_post_list_index")), fault_args, 3, MIR_VOID);
+  fn_unwind_exit(fn); /* the posted fault leaves by the exit that closes what is owned here */
   mir_b_switch_to(&fn->b, hit);
   return at;
 }
@@ -178,6 +178,7 @@ void fn_native_precheck(LowerFn *fn, const MsNativeSig *sig, MsTy owner, uint32_
     }
   }
   (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(sig->checks)), checked, count, MIR_VOID);
+  fn_unwind_site(fn, MIR_NONE); /* a bad bound posts: the exit closes the incoming element before the list's own */
 }
 
 /* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the

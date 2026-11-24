@@ -22,7 +22,8 @@ void msrt_post_div_zero(void);
 void msrt_post_rem_zero(void);
 void msrt_post_div_overflow(int64_t a, int64_t b);
 void msrt_post_unwrap_none(void);
-void msrt_post_index(int64_t index, int64_t length);
+
+MS_NORETURN void msrt_fault_posted(void);
 
 /* ms-sig: msrt_panic(message: *const StrVal) @end */
 void msrt_panic(const MsString *message);

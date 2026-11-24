@@ -45,7 +45,6 @@ typedef struct Expander {
   MirModule *module;
   MirFunc *func;
   bool checks;
-  uint32_t index_fault;
   uint32_t join_open, join_extend, join_close, join_format; /* the string primitives, interned on first use */
   MirBlockList out;
   MirBlockList faults;
@@ -169,19 +168,24 @@ static void expand_unwrap(Expander *e, const MirInst *inst, MirBlockData *cur) {
                         *inst);
       return;
     }
-    MirBlockData fault = mir_block_empty();
-    fault.term = (MirTerm){.kind = MT_FAULT, .value = MIR_NONE, .fault = MF_NONE_UNWRAP};
+    MirBlockData fault = mir_block_empty(); /* a function that only unwinds has no exit: its fault ends the program */
+    (void)emit(e, &fault, MOP_CallRt, NULL, 0, mir_imm_ext(post_fn(e, &e->post_unwrap, "msrt_post_unwrap_none", NULL, 0)),
+               MIR_VOID, inst->loc);
+    fault.term = (MirTerm){.kind = MT_FAULT, .value = MIR_NONE, .fault = MF_POSTED};
     fault.term_loc = inst->loc;
     guard(e, cur, some, fault);
   }
   mir_inst_list_push(&cur->insts, *inst);
 }
 
-/* The block that reports an index outside the list: `msrt_index_fault(index, length)`. */
+/* The block that reports an index outside the list in a function with no exit (one that only unwinds): it posts the
+ * fault and ends the program. */
 static MirBlockData index_fault_block(Expander *e, MirValue index, MirValue len, MirLoc loc) {
   MirBlockData fault = mir_block_empty();
   const MirValue args[2] = {index, len};
-  (void)emit(e, &fault, MOP_CallRt, args, 2, mir_imm_ext(e->index_fault), MIR_VOID, loc);
+  const MirTy ints[2] = {MIR_INT, MIR_INT};
+  (void)emit(e, &fault, MOP_CallRt, args, 2, mir_imm_ext(post_fn(e, &e->post_index, "msrt_post_index", ints, 2)), MIR_VOID, loc);
+  fault.term = (MirTerm){.kind = MT_FAULT, .value = MIR_NONE, .fault = MF_POSTED};
   fault.term_loc = loc;
   return fault;
 }
@@ -478,24 +482,13 @@ static bool func_expands(const MirModule *module, const MirFunc *func) {
   return false;
 }
 
-static uint32_t add_index_fault(MirModule *module) {
-  const MirTy ints[2] = {MIR_INT, MIR_INT};
-  const uint32_t id = mir_extern_get(module, ms_span_of_text("msrt_index_fault"), ints, 2, MIR_VOID, true, MR_NONE);
-  module->externs.ptr[id].noreturn = true;
-  return id;
-}
-
 bool mir_expand(MirModule *module, bool checks) {
-  uint32_t index_fault = MIR_NONE;
   bool changed = false;
   for (size_t index = 0; index < module->funcs.len; index++) {
     if (!func_expands(module, &module->funcs.ptr[index])) {
       continue;
     }
-    if (index_fault == MIR_NONE) {
-      index_fault = add_index_fault(module);
-    }
-    Expander e = {.module = module, .func = &module->funcs.ptr[index], .checks = checks, .index_fault = index_fault,
+    Expander e = {.module = module, .func = &module->funcs.ptr[index], .checks = checks,
                   .join_open = MIR_NONE, .join_extend = MIR_NONE, .join_close = MIR_NONE, .join_format = MIR_NONE,
                   .post_index = MIR_NONE, .post_unwrap = MIR_NONE};
     expand_func(&e);

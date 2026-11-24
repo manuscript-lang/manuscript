@@ -87,9 +87,7 @@ static void declare_faults(const EmitCx *cx) {
     const char *name;
     const char *params;
   } faults[] = {
-      {"msrt_fault_int_overflow", ""}, {"msrt_fault_int_range", ""},          {"msrt_fault_div_zero", ""},
-      {"msrt_fault_rem_zero", ""},     {"msrt_fault_div_overflow", "i64, i64"}, {"msrt_index_fault", "i64, i64"},
-      {"msrt_fault_unwrap_none", ""},  {"msrt_cancelled", ""},                {"msrt_fault_depth", ""},
+      {"msrt_cancelled", ""}, {"msrt_fault_depth", ""}, {"msrt_fault_posted", ""},
   };
   static const struct {
     const char *name;

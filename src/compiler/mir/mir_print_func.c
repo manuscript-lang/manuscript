@@ -55,9 +55,7 @@ static void put_target(PrintCx *cx, const MirTarget *target) {
 }
 
 static void put_fault(PrintCx *cx, const MirTerm *term) {
-  static const char *const names[] = {"int_overflow", "div_by_zero",       "index_out_of_range",
-                                      "none_unwrap",  "cancelled",         "call_depth",
-                                      "unreachable_code"};
+  static const char *const names[] = {"cancelled", "call_depth", "posted", "unreachable_code"};
   if (term->fault == MF_MESSAGE) {
     mir_print_quoted(cx->out, ms_names_span(&cx->module->strings, term->fault_str));
     return;

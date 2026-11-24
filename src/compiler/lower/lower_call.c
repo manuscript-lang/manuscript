@@ -782,6 +782,14 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   fn->call_exit = saved_call;
   fn->default_exit = saved_default;
   fn->nwritebacks = lent;
+  /* A fault the operation posted leaves while the held slots still own their values: the exit closes them. */
+  bool holding = false;
+  for (uint32_t at = 0; at < count; at++) {
+    holding |= bufs.held[at] != MIR_NONE;
+  }
+  if (holding) {
+    fn_unwind_site(fn, result);
+  }
   for (uint32_t at = 0; at < count && !fn->terminated; at++) {
     if (bufs.held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &bufs.held[at], 1, (MirImm){0}, MIR_NONE);

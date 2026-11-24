@@ -51,43 +51,24 @@ static bool fault_exit(const EmitCx *cx, const EmitSite *site, uint32_t *exit) {
   return false;
 }
 
-/* The runtime function that posts the fault `fault` raises: same arguments, and it returns. */
-static const char *posting(const char *fault) {
-  static const struct {
-    const char *raise;
-    const char *post;
-  } pairs[] = {
-      {"msrt_fault_int_overflow", "msrt_post_int_overflow"}, {"msrt_fault_int_range", "msrt_post_int_range"},
-      {"msrt_fault_div_zero", "msrt_post_div_zero"},         {"msrt_fault_rem_zero", "msrt_post_rem_zero"},
-      {"msrt_fault_div_overflow", "msrt_post_div_overflow"}, {"msrt_fault_unwrap_none", "msrt_post_unwrap_none"},
-      {"msrt_index_fault", "msrt_post_index"},
-  };
-  for (size_t index = 0; index < MS_COUNT_OF(pairs); index++) {
-    if (ms_span_equal(ms_span_of_text(fault), ms_span_of_text(pairs[index].raise))) {
-      return pairs[index].post;
-    }
-  }
-  return NULL;
-}
-
 void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, const char *fault,
                    const MirValue *args, uint32_t arg_count) {
   MsStrBuild *out = cx->out;
   uint32_t number = cx->next++;
   uint32_t exit = 0;
-  const char *post = posting(fault);
-  const bool leaves = post != NULL && fault_exit(cx, site, &exit);
+  const bool leaves = fault_exit(cx, site, &exit);
   *site->part += 1;
   ms_strbuild_printf(out, "  br i1 %s, label %%f%u, label %%", condition, number);
   emit_label(out, site->block, *site->part);
-  ms_strbuild_printf(out, "\nf%u:\n  call void @%s(", number, leaves ? post : fault);
+  ms_strbuild_printf(out, "\nf%u:\n  call void @%s(", number, fault);
   for (uint32_t arg = 0; arg < arg_count; arg++) {
     ms_strbuild_printf(out, "%si64 %%v%u", arg == 0 ? "" : ", ", args[arg]);
   }
   if (leaves) {
     ms_strbuild_printf(out, ") nomerge\n  br label %%b%u\n", exit);
   } else {
-    ms_strbuild_append_text(out, ") nomerge\n  unreachable\n");
+    /* No exit to leave by (a function that only unwinds): the posted fault ends the program. */
+    ms_strbuild_append_text(out, ") nomerge\n  call void @msrt_fault_posted() noreturn\n  unreachable\n");
   }
   emit_label(out, site->block, *site->part);
   ms_strbuild_append_text(out, ":\n");
@@ -103,10 +84,10 @@ typedef struct Overflow {
 } Overflow;
 
 static const Overflow overflows[] = {
-    {"sadd", "msrt_fault_int_overflow", MOP_IAddChk}, {"ssub", "msrt_fault_int_overflow", MOP_ISubChk},
-    {"smul", "msrt_fault_int_overflow", MOP_IMulChk}, {"ssub", "msrt_fault_int_overflow", MOP_INegChk},
-    {"uadd", "msrt_fault_int_range", MOP_UAddChk},    {"usub", "msrt_fault_int_range", MOP_USubChk},
-    {"umul", "msrt_fault_int_range", MOP_UMulChk},
+    {"sadd", "msrt_post_int_overflow", MOP_IAddChk}, {"ssub", "msrt_post_int_overflow", MOP_ISubChk},
+    {"smul", "msrt_post_int_overflow", MOP_IMulChk}, {"ssub", "msrt_post_int_overflow", MOP_INegChk},
+    {"uadd", "msrt_post_int_range", MOP_UAddChk},    {"usub", "msrt_post_int_range", MOP_USubChk},
+    {"umul", "msrt_post_int_range", MOP_UMulChk},
 };
 
 static const Overflow *find_overflow(MirOp op) {
@@ -135,7 +116,7 @@ static void checked_arith(EmitCx *cx, const MirInst *inst, const Overflow *kind,
   int64_t lo = 0;
   int64_t hi = 0;
   bool sized = mir_sized_result_range(cx->module, cx->func, inst, &lo, &hi);
-  emit_fault_if(cx, site, flag, sized ? "msrt_fault_int_range" : kind->fault, NULL, 0);
+  emit_fault_if(cx, site, flag, sized ? "msrt_post_int_range" : kind->fault, NULL, 0);
 }
 
 /* A check's result is defined before its fault branch, so the exit it leaves by may be joined by code that uses the
@@ -152,7 +133,7 @@ static void checked_unsigned_div(EmitCx *cx, const MirInst *inst, const EmitSite
                      args[1], number, number, args[1]);
   ms_strbuild_printf(cx->out, "  %%v%u = %s i64 %%v%u, %%d%u\n", inst->res, is_div ? "udiv" : "urem", args[0], number);
   emit_register_name(name, sizeof name, "z", number);
-  emit_fault_if(cx, site, name, is_div ? "msrt_fault_div_zero" : "msrt_fault_rem_zero", NULL, 0);
+  emit_fault_if(cx, site, name, is_div ? "msrt_post_div_zero" : "msrt_post_rem_zero", NULL, 0);
 }
 
 /* `sdiv.chk` faults on a zero divisor and on the one quotient that does not fit, `Int.min / -1`; `srem.chk`
@@ -173,9 +154,9 @@ static void checked_div(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
     ms_strbuild_printf(out, "  %%d%u = select i1 %%bad%u, i64 1, i64 %%v%u\n", number, number, args[1]);
     ms_strbuild_printf(out, "  %%v%u = sdiv i64 %%v%u, %%d%u\n", inst->res, args[0], number);
     emit_register_name(name, sizeof name, "z", number);
-    emit_fault_if(cx, site, name, "msrt_fault_div_zero", NULL, 0);
+    emit_fault_if(cx, site, name, "msrt_post_div_zero", NULL, 0);
     emit_register_name(name, sizeof name, "ob", number);
-    emit_fault_if(cx, site, name, "msrt_fault_div_overflow", args, 2);
+    emit_fault_if(cx, site, name, "msrt_post_div_overflow", args, 2);
     return;
   }
   ms_strbuild_printf(out, "  %%m%u = icmp eq i64 %%v%u, -1\n  %%bad%u = or i1 %%z%u, %%m%u\n", number, args[1], number,
@@ -184,7 +165,7 @@ static void checked_div(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
   ms_strbuild_printf(out, "  %%r%u = srem i64 %%v%u, %%d%u\n  %%v%u = select i1 %%m%u, i64 0, i64 %%r%u\n", number,
                      args[0], number, inst->res, number, number);
   emit_register_name(name, sizeof name, "z", number);
-  emit_fault_if(cx, site, name, "msrt_fault_rem_zero", NULL, 0);
+  emit_fault_if(cx, site, name, "msrt_post_rem_zero", NULL, 0);
 }
 
 /* The width and signedness of the sized integer kinds `narrow.chk` checks against. */
@@ -217,7 +198,7 @@ static void narrow_chk(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
     emit_copy_leaf(cx, inst->res, 0, inst->args[0], 0); /* defined before the fault branch, as every check's is */
     char flag[24];
     emit_register_name(flag, sizeof flag, "z", number);
-    emit_fault_if(cx, site, flag, "msrt_fault_int_range", NULL, 0);
+    emit_fault_if(cx, site, flag, "msrt_post_int_range", NULL, 0);
     return;
   }
   emit_copy_leaf(cx, inst->res, 0, inst->args[0], 0);
@@ -237,7 +218,7 @@ static void overflow_flag(EmitCx *cx, const MirInst *inst) {
 static void overflow_if(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
   char flag[24];
   emit_register_name(flag, sizeof flag, "v", inst->args[0]);
-  emit_fault_if(cx, site, flag, "msrt_fault_int_overflow", NULL, 0);
+  emit_fault_if(cx, site, flag, "msrt_post_int_overflow", NULL, 0);
 }
 
 /* `inarrow.opt`, `f2i.opt`: the optional is [fits, value]. The value leaf is the integer register itself (or
