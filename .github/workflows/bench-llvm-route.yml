@@ -40,9 +40,7 @@ jobs:
       - run: cmake --build --preset ci --target llvm-lib
       - name: Fetch the matching opt and llc
         run: |
-          ms=.artifacts/build/ci/src/cli/ms
-          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          "$PWD/$ms" run tools/fetch-llvm-lib.ms -- tools
+          cmake -DROOT="$PWD" -DARCH="$(case "$(uname -m)" in arm64|aarch64) echo arm64;; *) echo amd64;; esac)" -DTOOLS=ON -P cmake/FetchLlvmLib.cmake
       - name: Record the CPU
         run: |
           case "$RUNNER_OS" in
@@ -52,8 +50,6 @@ jobs:
           esac
       - name: Time the two routes
         run: |
-          ms=.artifacts/build/ci/src/cli/ms
-          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
           MS="$PWD/$ms" RUNS=7 "$PWD/$ms" run tools/llvm-route-bench.ms | tee route-${{ matrix.name }}.md
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
