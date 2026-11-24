@@ -208,8 +208,8 @@ fn Reader.line_end_after(at: Int) Int:
 
 	return at
 
-// The cells of a line without quotes: the delimiter-separated pieces, with the one call of `f`
-// the whole line shares.
+// The cells of a line without quotes: the delimiter-separated pieces, with the one call
+// of `f` the whole line shares.
 fn var Reader.read_plain_record(row: Int, line: Int, f: fn(Int, Int, String) Void) Int:
 	var col = 0
 	var last = line
@@ -247,7 +247,6 @@ fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 	// A line without quotes is one record whose cells are the delimiter-separated
 	// pieces.
 	line := self.next_line(self.at)
-
 	if self.next_quote(self.at) > line: return ok(self.read_plain_record(row, line, f))
 
 	while true:
