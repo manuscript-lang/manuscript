@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Int:\n\tfor mode in [1]:\n\t\tif not (mode == 2): return 2\n\treturn 3\n"
+    "fmt": "fn f() Int {\n\tfor mode in [1] {\n\t\tif not (mode == 2) {\n\t\t\treturn 2\n\t\t}\n\t}\n\treturn 3\n}\n"
   }
 }

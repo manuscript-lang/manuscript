@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn caller() Void:\n\tcallback := fn() Void:\n\t\tif true:\n\t\t\toperation()\n\tcallback()\n"
+    "fmt": "fn caller() Void {\n\tcallback := fn() Void {\n\t\tif true {\n\t\t\toperation()\n\t\t}\n\t}\n\tcallback()\n}\n"
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn count_down(start Int) Int:\n\tvar remaining = start\n\twhile remaining > 0:\n\t\tremaining -= 1\n\treturn remaining\n"
+    "fmt": "fn count_down(start Int) Int {\n\tvar remaining = start\n\twhile remaining > 0 {\n\t\tremaining -= 1\n\t}\n\treturn remaining\n}\n"
   }
 }

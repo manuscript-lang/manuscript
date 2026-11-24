@@ -4,150 +4,186 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-type Rec:
+type Rec {
 	id Int
 	name String
 	tags List[String]
+}
 
-fn lcg(x Int) Int:
+fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
+}
 
-fn stop(name String, t0 Int, chk Int) Void:
+fn stop(name String, t0 Int, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
+}
 
-fn base() List[Int]:
+fn base() List[Int] {
 	var xs List[Int] = []
-	for i in 0..2000000:
+	for i in 0..2000000 {
 		xs.append(i % 1000)
+	}
 	return xs
+}
 
-fn l_distinct() Int:
+fn l_distinct() Int {
 	return base().distinct().length()
+}
 
-fn l_reversed() Int:
+fn l_reversed() Int {
 	return base().reversed()[0]
+}
 
-fn l_filter_map() Int:
+fn l_filter_map() Int {
 	return base().filter(v => v % 2 == 0).map(v => v * 3).length()
+}
 
-fn l_contains() Int:
+fn l_contains() Int {
 	xs := base()
 	var t = 0
-	for i in 0..200:
-		if xs.contains(999 + i): t += 1
+	for i in 0..200 {
+		if xs.contains(999 + i) { t += 1 }
+	}
 	return t
+}
 
-fn l_clone_nested() Int:
+fn l_clone_nested() Int {
 	var rs List[Rec] = []
-	for i in 0..200000:
+	for i in 0..200000 {
 		rs.append(Rec(i, f"name-{i}", ["a", "b", "c"]))
+	}
 
 	var t = 0
 
-	for k in 0..5:
+	for k in 0..5 {
 		c := rs.clone()
 		t += c.length() + c[k].tags.length()
+	}
 
 	return t
+}
 
-fn l_insert_remove() Int:
+fn l_insert_remove() Int {
 	var xs List[Int] = []
-	for i in 0..50000:
+	for i in 0..50000 {
 		xs.insert(xs.length() / 2, i)
+	}
 
 	var t = 0
 
-	while xs.length() > 0:
+	while xs.length() > 0 {
 		xs.remove(xs.length() / 3)
 		t += 1
+	}
 
 	return t
+}
 
-fn l_sort_records_str() Int:
+fn l_sort_records_str() Int {
 	var rs List[Rec] = []
 	var x = 1
 
-	for i in 0..300000:
+	for i in 0..300000 {
 		x = lcg(x)
 		rs.append(Rec(i, f"user-name-{x}", []))
+	}
 
 	rs.sort((a, b) => a.name.compare(b.name))
 	return rs[0].id + rs[299999].id
+}
 
-fn l_group_words() Int:
+fn l_group_words() Int {
 	var m Map[String, List[Int]] = {}
 	var x = 1
 
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		x = lcg(x)
 
 		k := f"w{x % 20000}"
-		if not m.contains(k): m[k.clone()] = []
+		if not m.contains(k) { m[k.clone()] = [] }
 		m[k].append(i)
+	}
 
 	var t = 0
-	for k in m.keys():
+	for k in m.keys() {
 		t += m[k].length()
+	}
 	return t
+}
 
-fn l_map_keys_sorted() Int:
+fn l_map_keys_sorted() Int {
 	var m Map[Int, Int] = {}
-	for i in 0..500000:
+	for i in 0..500000 {
 		m[i * 7 % 1000003] = i
+	}
 
 	ks := m.keys().sorted((a, b) => a - b)
 	return ks[0] + ks[499999]
+}
 
-fn l_pq() Int:
+fn l_pq() Int {
 	var q = PriorityQueue[Int]()
 	var x = 1
 
-	for i in 0..500000:
+	for i in 0..500000 {
 		x = lcg(x)
 		q.enqueue(x)
+	}
 
 	var t = 0
-	while q.length() > 0:
+	while q.length() > 0 {
 		t += (q.dequeue() or panic("called Optional.get() on null")) % 7
+	}
 	return t
+}
 
-fn l_join_split() Int:
+fn l_join_split() Int {
 	var parts List[String] = []
-	for i in 0..500000:
+	for i in 0..500000 {
 		parts.append(f"item{i}")
+	}
 
 	s := parts.join(",")
 	back := s.split(",")
 	return back.length() + s.length()
+}
 
-fn l_slices() Int:
+fn l_slices() Int {
 	xs := base()
 	var t = 0
-	for i in 0..2000:
+	for i in 0..2000 {
 		t += xs.slice(i, i + 5000).get_or([]).length()
+	}
 	return t
+}
 
-fn l_enumerate_zip() Int:
+fn l_enumerate_zip() Int {
 	xs := base()
 	var t = 0
-	for e in xs.entries():
+	for e in xs.entries() {
 		t += e.index * e.value % 7
+	}
 	return t
+}
 
-fn l_set_strings() Int:
+fn l_set_strings() Int {
 	var s = Set[String]()
-	for i in 0..500000:
+	for i in 0..500000 {
 		s.add(f"str-{i % 100000}")
+	}
 	return s.length()
+}
 
-fn l_flatten() Int:
+fn l_flatten() Int {
 	var ll List[List[Int]] = []
-	for i in 0..200000:
+	for i in 0..200000 {
 		ll.append([i, i + 1, i + 2, i + 3])
+	}
 	return ll.flat_map(r => r).length()
+}
 
-fn main() Void:
+fn main() Void {
 	t_l_distinct := monotonic().tick
 	stop("l_distinct", t_l_distinct, l_distinct())
 
@@ -192,3 +228,4 @@ fn main() Void:
 
 	t_l_flatten := monotonic().tick
 	stop("l_flatten", t_l_flatten, l_flatten())
+}

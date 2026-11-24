@@ -3,7 +3,7 @@
 # status must be 7. The LLVM tools (opt, llc, lld) come from TOOL_DIR (the compiler's own directory), PATH, or from Homebrew's keg-only prefixes on macOS.
 cmake_minimum_required(VERSION 3.25)
 file(MAKE_DIRECTORY "${WORK}")
-file(WRITE "${WORK}/smoke.ms" "fn main() Int:\n    return 7\n")
+file(WRITE "${WORK}/smoke.ms" "fn main() Int {\n    return 7\n}\n")
 if(WIN32)
   set(separator ";")
 else()

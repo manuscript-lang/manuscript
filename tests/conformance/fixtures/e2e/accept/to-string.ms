@@ -7,44 +7,57 @@ import (
 	fail from "@std/test/test.ms",
 )
 
-type Person:
+type Person {
 	name String
 	age Int
+}
 
-enum Outcome:
+enum Outcome {
 	Ready(value Person)
 	Waiting
+}
 
-interface Named:
+interface Named {
 	fn title() String
+}
 
-fn Person.title() String:
+fn Person.title() String {
 	return self.name.clone()
+}
 
-fn stringify[T](value T) String:
+fn stringify[T](value T) String {
 	return value.to_string()
+}
 
-fn interpolate[T](value T) String:
+fn interpolate[T](value T) String {
 	return f"{value}"
+}
 
-fn bound_stringify[T Named](value T) String:
+fn bound_stringify[T Named](value T) String {
 	return value.to_string()
+}
 
-fn check(value String, expected String) Void!:
-	if value != expected: return fail(message: f"expected {expected}, received {value}")
+fn check(value String, expected String) Void! {
+	if value != expected {
+		return fail(message: f"expected {expected}, received {value}")
+	}
+}
 
-fn answer() Int:
+fn answer() Int {
 	return 42
+}
 
-type Counter:
+type Counter {
 	value Int
+}
 
-fn next(var state Counter) Person:
+fn next(var state Counter) Person {
 	value := state.value
 	state.value = value + 1
 	return Person(name: "Ada", age: value)
+}
 
-test "every scalar has to_string":
+test "every scalar has to_string" {
 	(check(value: "hello".to_string(), expected: "hello")?)
 	(check(value: true.to_string(), expected: "true")?)
 	(check(value: false.to_string(), expected: "false")?)
@@ -56,8 +69,9 @@ test "every scalar has to_string":
 	(check(value: (1.0 / 0.0).to_string(), expected: "Infinity")?)
 	(check(value: (0.0 / 0.0).to_string(), expected: "NaN")?)
 	(check(value: (1.00d).to_string(), expected: "1")?)
+}
 
-test "records alternatives and collections convert":
+test "records alternatives and collections convert" {
 	person := Person(name: "Ada", age: 37)
 	(check(value: person.to_string(), expected: "Person(age: 37, name: Ada)")?)
 	(check(value: f"{person}", expected: person.to_string())?)
@@ -102,8 +116,9 @@ test "records alternatives and collections convert":
 			expected: "Map(b: 2, a: 1)|Set(2, 1)|Bytes(0, 65, 255)",
 		)?
 	)
+}
 
-test "generics views bound methods functions and resources":
+test "generics views bound methods functions and resources" {
 	person := Person(name: "Ada", age: 37)
 	(check(value: stringify(person), expected: person.to_string())?)
 	(check(value: interpolate(person), expected: person.to_string())?)
@@ -125,8 +140,9 @@ test "generics views bound methods functions and resources":
 			expected: "Queue(capacity: some(1), head: 0, items: [])",
 		)?
 	)
+}
 
-test "interpolation and bound conversion evaluate each receiver once":
+test "interpolation and bound conversion evaluate each receiver once" {
 	var state = Counter(value: 1)
 	(
 		check(
@@ -139,3 +155,4 @@ test "interpolation and bound conversion evaluate each receiver once":
 	(check(value: convert(), expected: "Person(age: 3, name: Ada)")?)
 	(check(value: convert(), expected: "Person(age: 3, name: Ada)")?)
 	(check(value: state.value.to_string(), expected: "4")?)
+}

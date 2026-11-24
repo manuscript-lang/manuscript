@@ -1,6 +1,7 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=pkg/checker/hints_test.go:57 TestDiagnosticsStateCauseAndFix
-fn f() Int:
-    n := "abc".len()
-    return 0
+fn f() Int {
+	n := "abc".len()
+	return 0
+}

@@ -7,21 +7,47 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
-        "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "golden-1015.ms",
-          "line": 3,
-          "column": 5,
-          "offset": 57
+          "line": 4,
+          "column": 22,
+          "offset": 88
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type HttpResponse; add: import HttpResponse from \"@std/net/http.ms\"",
+        "position": {
+          "file": "golden-1015.ms",
+          "line": 6,
+          "column": 26,
+          "offset": 142
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1015.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1015.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import HttpResponse from \"@std/net/http.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1015.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 3 |     values := [0]\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1015.ms:4:22: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | _server := network().serve(\n   |                      ^\n<DIR>/golden-1015.ms:6:26: resolution: unknown type HttpResponse; add: import HttpResponse from \"@std/net/http.ms\"\n   |\n 6 |     handler: fn(request) HttpResponse {\n   |                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

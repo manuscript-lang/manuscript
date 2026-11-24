@@ -6,11 +6,12 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-fn size(path String) Int!:
+fn size(path String) Int! {
 	data := read_file(path).wait()?
 	return ok(data.length())
+}
 
-test "blocking file reads work from promises on any thread":
+test "blocking file reads work from promises on any thread" {
 	dir := temporary("manuscript-promise-") | expect_ok?
 	path := f"{dir.path()}/data"
 	write_file(path, "0123456789").wait()?
@@ -22,5 +23,7 @@ test "blocking file reads work from promises on any thread":
 			promise(() => size(path)),
 		]
 	)
-	for n in all.get_or([]):
+	for n in all.get_or([]) {
 		expect_equal(n, 10)?
+	}
+}

@@ -12,16 +12,16 @@
         "message": "'?' requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_error",
         "position": {
           "file": "golden-0764.ms",
-          "line": 5,
+          "line": 6,
           "column": 5,
-          "offset": 125
+          "offset": 124
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0764.ms:5:5: type: '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_error\n   |\n 5 |     operation()?\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0764.ms:6:5: type: '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_error\n   |\n 6 |     operation()?\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

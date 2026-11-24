@@ -12,37 +12,44 @@ import (
 	monotonic, seconds, sleep from "@std/time.ms",
 )
 
-fn status(label String) Void:
+fn status(label String) Void {
 	text := (
 		read_file("/proc/self/status", null).wait().get().decode_utf8()
 		or panic("called Optional.get() on null")
 	)
-	for line in text.lines():
-		if line.contains("VmRSS") or line.contains("VmHWM") or line.contains("VmPTE"):
+	for line in text.lines() {
+		if line.contains("VmRSS") or line.contains("VmHWM") or line.contains("VmPTE") {
 			print(label + " " + line)
+		}
+	}
+}
 
-fn park_sleep(a Int) Int!:
+fn park_sleep(a Int) Int! {
 	sleep(seconds(1000)).wait()?
 	return ok(a)
+}
 
-fn descend(depth Int, acc Int) Int:
-	if depth == 0: return acc
+fn descend(depth Int, acc Int) Int {
+	if depth == 0 { return acc }
 
 	scratch List[Int] := [acc, depth, acc + depth]
 	below := descend(depth - 1, acc + scratch[1])
 	return below + scratch.length()
+}
 
-fn park_deep(a Int) Int!:
+fn park_deep(a Int) Int! {
 	sum := descend(256, a)
 	sleep(seconds(1000)).wait()?
 	return ok(sum)
+}
 
-fn park_read(a Int) Int!:
+fn park_read(a Int) Int! {
 	data := read_file("/proc/self/stat", null).wait()?
 	sleep(seconds(1000)).wait()?
 	return ok(data.length() + a)
+}
 
-fn main() Void:
+fn main() Void {
 	args := arguments()
 	n := args[0].parse_int() or panic("called Optional.get() on null")
 	mode := args[1].clone()
@@ -51,8 +58,8 @@ fn main() Void:
 	t0 := monotonic()
 	var promises List[Promise[Int]] = []
 
-	for i in 0..n:
-		if mode == "sleep":
+	for i in 0..n {
+		if mode == "sleep" {
 			promises.append(
 				promise(
 					() => park_sleep(i),
@@ -61,7 +68,7 @@ fn main() Void:
 					),
 				)
 			)
-		else if mode == "deep":
+		} else if mode == "deep" {
 			promises.append(
 				promise(
 					() => park_deep(i),
@@ -70,7 +77,7 @@ fn main() Void:
 					),
 				)
 			)
-		else:
+		} else {
 			promises.append(
 				promise(
 					() => park_read(i),
@@ -79,6 +86,8 @@ fn main() Void:
 					),
 				)
 			)
+		}
+	}
 
 	t1 := monotonic()
 
@@ -90,8 +99,10 @@ fn main() Void:
 
 	t2 := monotonic()
 	print("spawn ms " + (t1.difference(t0).to_nanoseconds() / 1000000).to_string())
-	for p in promises:
+	for p in promises {
 		p.cancel()
+	}
 
 	t3 := monotonic()
 	print("cancel ms " + (t3.difference(t2).to_nanoseconds() / 1000000).to_string())
+}

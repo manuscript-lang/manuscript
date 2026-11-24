@@ -1,6 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type Data:
+type Data {
     count Int = 3
-impl Data:
-    fn read() Int: ...
+}
+impl Data {
+    fn read() Int { ... }
+}

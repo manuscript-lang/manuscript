@@ -2,68 +2,85 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn classify(text String) Int:
+fn classify(text String) Int {
 	var n = 0
 
-	for c in text.chars():
-		if c == "é":
+	for c in text.chars() {
+		if c == "é" {
 			n += 100
-		else if c >= "a" and c <= "z":
+		} else if c >= "a" and c <= "z" {
 			n += 1
-		else if "0" < c:
+		} else if "0" < c {
 			n += 10
+		}
+	}
 
 	return n
+}
 
-fn echo(text String) String:
+fn echo(text String) String {
 	c := text.chars()[0].clone()
-	if c == "x": return c
+	if c == "x" { return c }
 
 	return c + "!"
+}
 
-fn not_a(text String) Int:
+fn not_a(text String) Int {
 	var n = 0
-	for c in text.chars():
-		if c != "a":
+	for c in text.chars() {
+		if c != "a" {
 			n += 1
+		}
+	}
 	return n
+}
 
-fn keep(text String) List[String]:
+fn keep(text String) List[String] {
 	var out List[String] = []
-	for c in text.chars():
-		if c == "b":
+	for c in text.chars() {
+		if c == "b" {
 			out.append(c.clone())
+		}
+	}
 	return out
+}
 
-test "get compared with one-character literals":
+test "get compared with one-character literals" {
 	classify("abé9 Z") | expect_equal(122)?
 	("aé".chars()[1] == "é") | expect_equal(true)?
 	("€".chars()[0] > "z") | expect_equal(true)?
 	("a".chars()[0] <= "a") | expect_equal(true)?
+}
 
-test "a name that is also used as a String stays a String":
+test "a name that is also used as a String stays a String" {
 	echo("xy") | expect_equal("x")?
 	echo("yz") | expect_equal("y!")?
+}
 
-test "chars elements compared and kept":
+test "chars elements compared and kept" {
 	not_a("aéb") | expect_equal(2)?
 	keep("abcb") | expect_equal(["b", "b"])?
+}
 
-fn digits(text String) Int:
+fn digits(text String) Int {
 	var n = 0
-	for c in text.chars():
+	for c in text.chars() {
 		n = n * 10 + (c.parse_int() or 0)
+	}
 	return n
+}
 
-fn both(text String) Int:
+fn both(text String) Int {
 	c := text.chars()[0].clone()
-	if c == "7": return (c.parse_int() or (-1)) + c.length()
+	if c == "7" { return (c.parse_int() or (-1)) + c.length() }
 
 	return -1
+}
 
-test "parse_int of a one-character string":
+test "parse_int of a one-character string" {
 	digits("4096") | expect_equal(4096)?
 	digits("1a2") | expect_equal(102)?
 	digits("é+") | expect_equal(0)?
 	both("7") | expect_equal(8)?
 	"x5".chars()[1].parse_int() | expect_equal(5)?
+}

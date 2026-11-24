@@ -5,11 +5,13 @@ import (
 	expect_equal, expect_none from "@std/test/test.ms",
 )
 
-type Reading:
+type Reading {
 	value Int8?
+}
 
-enum Sample:
+enum Sample {
 	Value(value Float32?)
+}
 
 fn tiny() Int8? => 100 + 27
 
@@ -19,7 +21,7 @@ fn large() UInt64? => 9223372036854775807 + 1
 
 fn take(value Int8?) Int8? => value
 
-test "optional sized arithmetic keeps payload values":
+test "optional sized arithmetic keeps payload values" {
 	expect_equal((tiny() or panic("called Optional.get() on null")).to_int(), 127)?
 	expect_equal(
 		(rounded() or panic("called Optional.get() on null")).to_float64(),
@@ -54,8 +56,10 @@ test "optional sized arithmetic keeps payload values":
 
 	sample := Sample.Value(0.25 + 0.5)
 
-	match sample:
+	match sample {
 		Sample.Value(value) => expect_equal(
 			(value or panic("called Optional.get() on null")).to_float64(),
 			0.75,
 		)?
+	}
+}

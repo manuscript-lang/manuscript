@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn text[T](value T) String:\n\treturn value.to_string()\n"
+    "fmt": "fn text[T](value T) String {\n\treturn value.to_string()\n}\n"
   }
 }

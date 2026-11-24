@@ -1,23 +1,32 @@
 // conform: tags=control-flow,faults,formatter,interfaces,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-io,strings,tier-stdlib,try-result
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/stdlib/support/streams.ms
-import ReadStream, Source from "@std/io/io.ms"
-import from_bytes from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
+import (
+	Bytes from "@std/bytes.ms",
+	ReadStream, Source from "@std/io/io.ms",
+	from_bytes from "@std/io/streams.ms",
+)
 
-// A reader over `text` in chunks of `chunk` bytes, so line and scalar boundaries fall inside reads.
-export fn memory(text String, chunk Int = 3) ReadStream[Bytes]:
-    return from_bytes(text.to_bytes(), chunk)
+// A reader over `text` in chunks of `chunk` bytes, so line and scalar boundaries fall
+// inside reads.
+export fn memory(text String, chunk Int = 3) ReadStream[Bytes] {
+	return from_bytes(text.to_bytes(), chunk)
+}
 
-// A reader whose every read fails with `Closed`, like a stream that was closed under its reader.
-type ClosedSource:
-    unused Int
+// A reader whose every read fails with `Closed`, like a stream that was closed under
+// its reader.
+type ClosedSource {
+	unused Int
+}
 
-fn var ClosedSource.next() Bytes?!:
-    return error(Error("I/O: resource is closed", kind: "EBADF"))
+fn var ClosedSource.next() Bytes?! {
+	return error(Error("I/O: resource is closed", kind: "EBADF"))
+}
 
-fn move ClosedSource.close() Void!:
-    return ok()
+fn move ClosedSource.close() Void! {
+	return ok()
+}
 
-export fn closed_reader() ReadStream[Bytes]:
-    return ReadStream[Bytes](ClosedSource(0))
+export fn closed_reader() ReadStream[Bytes] {
+	return ReadStream[Bytes](ClosedSource(0))
+}

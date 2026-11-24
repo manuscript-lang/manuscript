@@ -2,8 +2,9 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/compatibility.md:43
 
-type Input:
-    names List[String?]
+type Input {
+	names List[String?]
+}
 
 input := Input([null, "Ada"])
 nested List[List[Int]] := [[], [1]]

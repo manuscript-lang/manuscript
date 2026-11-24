@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n\tread_file from \"@std/os/fs.ms\",\n)\n\nfn run() Result[Void, Error]:\n\tpath := ok_or(\n\t\targuments().first(),\n\t\tError(\"filesystem: invalid input\", kind: \"EINVAL\"),\n\t)?\n\ttext := ok_or(\n\t\tread_file(path, max_bytes: 1048576).wait()? | .decode_utf8(),\n\t\tError(\"filesystem: invalid data\", kind: \"EBADMSG\"),\n\t)?\n\tstdout().write(text)?\n\treturn stdout().flush()\n\nfn main() Void!:\n\trun()?\n"
+    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n\tread_file from \"@std/os/fs.ms\",\n)\n\nfn run() Result[Void, Error] {\n\tpath := ok_or(\n\t\targuments().first(),\n\t\tError(\"filesystem: invalid input\", kind: \"EINVAL\"),\n\t)?\n\ttext := ok_or(\n\t\tread_file(path, max_bytes: 1048576).wait()? | .decode_utf8(),\n\t\tError(\"filesystem: invalid data\", kind: \"EBADMSG\"),\n\t)?\n\tstdout().write(text)?\n\treturn stdout().flush()\n}\n\nfn main() Void! {\n\trun()?\n}\n"
   }
 }

@@ -15,11 +15,12 @@ initial register 0xFFFFFFFF and final XOR 0xFFFFFFFF. Empty input returns zero.
 Reads the input without copying it. Detects accidental corruption only; it does not authenticate data.
 `crc32("123456789".to_bytes())` returns 3421780262 (0xCBF43926).
 */
-export fn crc32(data Bytes) UInt32:
+export fn crc32(data Bytes) UInt32 {
 	return (
 		msstd_checksum_crc32(data).to_uint32()
 		or panic("called Optional.get() on null")
 	)
+}
 
 /*
 Computes the RFC 1950 Adler-32 checksum used by zlib. Empty input returns one.
@@ -27,72 +28,83 @@ Starting with a = 1 and b = 0, adds each byte to a and each a to b, modulo 65521
 the result is b * 65536 + a. Reads the input without copying it.
 `adler32("Wikipedia".to_bytes())` returns 300286872 (0x11E60398).
 */
-export fn adler32(data Bytes) UInt32:
+export fn adler32(data Bytes) UInt32 {
 	return (
 		msstd_checksum_adler32_update(1, data).to_uint32()
 		or panic("called Optional.get() on null")
 	)
+}
 
 /*
 An IEEE CRC-32 checksum built from ordered chunks, retaining no input bytes.
 `var sum = Crc32()` then `sum.update("123456789".to_bytes())` gives `sum.value()` = 3421780262.
 Reading the value does not reset it; create a new Crc32 to start over.
 */
-export type Crc32:
+export type Crc32 {
 	// Accumulator state, initially the empty checksum. Use update() to append data.
 	state UInt32 = 0
+}
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-fn var Crc32.update(data Bytes) Void:
+fn var Crc32.update(data Bytes) Void {
 	self.state = (
 		msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32()
 		or panic("called Optional.get() on null")
 	)
+}
 
 // Returns the current checksum without resetting or otherwise changing it.
-fn Crc32.value() UInt32:
+fn Crc32.value() UInt32 {
 	return self.state
+}
 
 /*
 An RFC 1950 Adler-32 checksum built from ordered chunks, retaining no input bytes.
 `var sum = Adler32()` then `sum.update("Wikipedia".to_bytes())` gives `sum.value()` = 300286872.
 Reading the value does not reset it; create a new Adler32 to start over.
 */
-export type Adler32:
+export type Adler32 {
 	// Accumulator state, initially the empty checksum. Use update() to append data.
 	state UInt32 = 1
+}
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-fn var Adler32.update(data Bytes) Void:
+fn var Adler32.update(data Bytes) Void {
 	self.state = (
 		msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32()
 		or panic("called Optional.get() on null")
 	)
+}
 
 // Returns the current checksum without resetting or otherwise changing it.
-fn Adler32.value() UInt32:
+fn Adler32.value() UInt32 {
 	return self.state
+}
 
 /*
 Reads `input` to the end and returns the CRC-32 of all its bytes, as `crc32` does for bytes in hand.
 Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
-export fn crc32_of(input ReadStream[Bytes]) UInt32!:
+export fn crc32_of(input ReadStream[Bytes]) UInt32! {
 	var sum = Crc32()
 	var source = input
-	for chunk in source:
+	for chunk in source {
 		sum.update(chunk)
+	}
 	source.close()?
 	return ok(sum.value())
+}
 
 /*
 Reads `input` to the end and returns the Adler-32 of all its bytes, as `adler32` does for bytes in hand.
 Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
-export fn adler32_of(input ReadStream[Bytes]) UInt32!:
+export fn adler32_of(input ReadStream[Bytes]) UInt32! {
 	var sum = Adler32()
 	var source = input
-	for chunk in source:
+	for chunk in source {
 		sum.update(chunk)
+	}
 	source.close()?
 	return ok(sum.value())
+}

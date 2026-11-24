@@ -1,7 +1,10 @@
-fn make() fn(String) Void:
-	return fn(text String) Void:
+fn make() fn(String) Void {
+	return fn(text String) Void {
 		print(text)
+	}
+}
 
-fn main() Int:
+fn main() Int {
 	make()("a")
 	return 0
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Increment:\n\tfn apply(value Int) Int\n\ntype Offset:\n\tdelta Int\n\nfn Offset.apply(value Int) Int:\n\treturn value + self.delta\n"
+    "fmt": "interface Increment {\n\tfn apply(value Int) Int\n}\n\ntype Offset {\n\tdelta Int\n}\n\nfn Offset.apply(value Int) Int {\n\treturn value + self.delta\n}\n"
   }
 }

@@ -11,12 +11,14 @@ Save as `greeting.ms` and run `ms run greeting.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\nHello, guest!\n"} -->
 ```manuscript
-fn greeting(name String?) String:
+fn greeting(name String?) String {
     return f"Hello, {name or "guest"}!"
+}
 
-fn main() Void:
+fn main() Void {
     print(greeting("Ada"))
     print(greeting())
+}
 ```
 
 ```text
@@ -51,9 +53,10 @@ An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as t
 ```manuscript
 import Queue from "@std/collections/queue.ms"
 
-fn main() Void:
+fn main() Void {
     var _bounded = Queue[Int](capacity: 4)
     var _unbounded = Queue[Int]()
+}
 ```
 
 - Applies to functions, methods, function values, constructor fields, and enum payloads.
@@ -79,16 +82,18 @@ Fallback for routine absence:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn display_name(move name String?) String:
+fn display_name(move name String?) String {
     return name or "Anonymous"
+}
 ```
 
 The right side of `or` is evaluated only when the left is `null`, so a fallback that costs work is written directly:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn display_name(create fn() String, move name String?) String:
+fn display_name(create fn() String, move name String?) String {
     return name or create()
+}
 ```
 
 For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when the key is absent) instead of `m.get(key) or fallback`. `ms lint --fix` rewrites the first form.
@@ -97,19 +102,22 @@ After `if v != null`, an immutable binding or parameter `v` reads as its payload
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn greet(name String?) String:
-    if name != null:
+fn greet(name String?) String {
+    if name != null {
         return "Hello, " + name
+    }
     return "Hello!"
+}
 ```
 
 To test a value that is produced by a call, bind it first:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn first_number(text String?) Int?:
-    if text == null: return null
+fn first_number(text String?) Int? {
+    if text == null { return null }
     return text.trim().parse_int()
+}
 ```
 
 An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give away. Bind it with `v := xs.first()` and test `v != null`, or `.clone()` it first.
@@ -124,33 +132,39 @@ Postfix `?` gives the present value, or leaves the function when the value is ab
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Address:
+type Address {
     city String?
+}
 
-type User:
+type User {
     address Address?
+}
 
-fn city_length(user User?) Int?:
+fn city_length(user User?) Int? {
     return user?.address?.city?.length()
+}
 ```
 
 `user?.address` is `(user?).address`. If `user` is `null`, the function returns `null` at that point; nothing after it on the line runs, so `a?.f(args)` evaluates `args` only when `a` is present. There is no separate chaining operator.
 
-A function cannot mix the two kinds: `?` on a Result needs a Result return, and `?` on an Optional needs an Optional or `Void` return. Convert explicitly with `ok_or(x, cause)`, an `if x != null:` test, or `x or default`.
+A function cannot mix the two kinds: `?` on a Result needs a Result return, and `?` on an Optional needs an Optional or `Void` return. Convert explicitly with `ok_or(x, cause)`, an `if x != null { ... }` test, or `x or default`.
 
 `?` takes its access from the value it is applied to. It borrows the optional it starts from; when that place is a `var` (a `var` binding or parameter, or a field of one), a `var fn` called through it, or a change to the payload, lands in the optional itself, in place:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Counter:
+type Counter {
     n Int
+}
 
-fn var Counter.bump() Int:
+fn var Counter.bump() Int {
     self.n += 1
     return self.n
+}
 
-fn tick(var counter Counter?) Int?:
+fn tick(var counter Counter?) Int? {
     return counter?.bump()
+}
 ```
 
 Through a `:=` binding or a parameter not declared `var`, `counter?.bump()` is rejected like any other change to that binding. `?` cannot move a field out of the optional it reads, so end the expression with `.clone()` to get an owned `String` or other field value.
@@ -164,9 +178,10 @@ Pass the error explicitly. Any function whose error type is `Error` can `?` the 
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn port_number(text String) Int!:
+fn port_number(text String) Int! {
     port := ok_or(text.parse_int(), Error("missing port"))?
     return ok(port)
+}
 ```
 
 To keep the success value and discard the error, use [Result.to_optional](../errors/results.md#converting-success-to-an-optional).

@@ -15,19 +15,24 @@ Save as `settings.ms`. One small function per `match` keeps the flow flat. `pars
 ```manuscript
 import YamlValue, parse from "@std/data/yaml.ms"
 
-fn number_text(value YamlValue) String:
-    match value:
+fn number_text(value YamlValue) String {
+    match value {
         NumberValue(text) => return text.clone()
         _ => return "not a number"
+    }
+}
 
-fn port_of(doc YamlValue) String:
-    match doc:
+fn port_of(doc YamlValue) String {
+    match doc {
         ObjectValue(fields) => return number_text(fields.get("port") or Null)
         _ => return "not a mapping"
+    }
+}
 
-fn main() Void!:
+fn main() Void! {
     doc := parse("name: api\nport: 8080\ntags:\n  - web\n  - internal\n")?
     print(f"port {port_of(doc)}")
+}
 ```
 
 - `parse_all` reads a file with several `---` documents. `stringify` writes a value back.
@@ -42,10 +47,14 @@ Save as `feed.ms`. `parse` returns the root `XmlNode`. `find_all` lists the matc
 ```manuscript
 import parse from "@std/data/xml.ms"
 
-fn main() Void!:
-    doc := parse("<feed><item id=\"1\">Hi &amp; bye</item><item id=\"2\">Bye</item></feed>")?
-    for item in doc.find_all("item"):
+fn main() Void! {
+    doc := parse(
+        "<feed><item id=\"1\">Hi &amp; bye</item><item id=\"2\">Bye</item></feed>"
+    )?
+    for item in doc.find_all("item") {
         print(f"{item.attribute("id") or "?"}: {item.text()}")
+    }
+}
 ```
 
 - A DOCTYPE is skipped and no entity it defines is expanded, so a hostile document cannot pull in files or grow without bound. `max_depth` bounds nesting.

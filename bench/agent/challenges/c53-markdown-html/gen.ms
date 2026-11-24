@@ -3,7 +3,7 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c53
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-export fn gen_c53() Void:
+export fn gen_c53() Void {
 	var cs = Cases(build_oracle("c53-markdown-html"))
 	cs.push(
 		"headings",
@@ -175,13 +175,15 @@ export fn gen_c53() Void:
 	)
 
 	var inline = ""
-	for i in 0..30:
+	for i in 0..30 {
 		inline += f"*a{i}* **b{i}** `c{i}` [d{i}](u{i}) ![e{i}](v{i}) \\*f_{i}_g\n"
+	}
 	cs.push("stress-inline", inline)
 
 	var nested = ""
-	for i in 0..40:
+	for i in 0..40 {
 		nested += "  ".repeat(i % 4) + f"- item {i}\n"
+	}
 	cs.push("stress-nested-lists", nested)
 	cs.push("stress-quotes", ">".repeat(20) + " deep\n" + "> ".repeat(5) + "x\n")
 
@@ -200,3 +202,4 @@ export fn gen_c53() Void:
 		),
 	]
 	write_cases("c53-markdown-html", examples, examples.concat(cs.list))
+}

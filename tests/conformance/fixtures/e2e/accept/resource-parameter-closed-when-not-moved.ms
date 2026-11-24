@@ -1,25 +1,30 @@
 // conform: tags=scope-cleanup,tier-core
 // conform: phase=run
-type Handle:
+type Handle {
 	id Int
+}
 
-fn move Handle.close() Void!:
+fn move Handle.close() Void! {
 	print(f"close {self.id}")
+}
 
 // The callee owns the handle only on the path that returns it; the other paths close
 // it.
-fn keep(h Handle, flag Bool) Handle?:
-	if flag: return h
+fn keep(h Handle, flag Bool) Handle? {
+	if flag { return h }
 	return null
+}
 
-fn id_or_zero(h Handle, flag Bool) Int:
-	if flag:
+fn id_or_zero(h Handle, flag Bool) Int {
+	if flag {
 		moved := h
 		return moved.id
+	}
 
 	return 0
+}
 
-export fn main() Int:
+export fn main() Int {
 	print("keep none")
 
 	a := keep(Handle(1), false)
@@ -33,3 +38,4 @@ export fn main() Int:
 	print(id_or_zero(Handle(4), true))
 	print("end")
 	return 0
+}

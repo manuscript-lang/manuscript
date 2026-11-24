@@ -1,5 +1,7 @@
-fn number() Int:
-    return "wrong"
+fn number() Int {
+	return "wrong"
+}
 
-fn text() String:
-    return 1
+fn text() String {
+	return 1
+}

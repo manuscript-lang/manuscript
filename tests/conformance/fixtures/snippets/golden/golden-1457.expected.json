@@ -29,9 +29,9 @@
         "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-1457.ms",
-          "line": 4,
+          "line": 5,
           "column": 31,
-          "offset": 122
+          "offset": 123
         }
       },
       {
@@ -40,27 +40,27 @@
         "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-1457.ms",
-          "line": 8,
+          "line": 12,
           "column": 29,
-          "offset": 241
+          "offset": 238
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module",
+        "message": "unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1457.ms",
-          "line": 6,
+          "line": 7,
           "column": 22,
-          "offset": 169
+          "offset": 163
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1457.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1457.ms:4:31: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 4 | fn checked(n Int) Result[Int, TextError]:\n   |                               ^\n<DIR>/golden-1457.ms:8:29: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 8 | fn chain(n Int) Result[Int, TextError]:\n   |                             ^\n<DIR>/golden-1457.ms:6:22: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module\n   |\n 6 |         return error(TextError(\"negative\"))\n   |                      ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1457.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1457.ms:5:31: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 5 | fn checked(n Int) Result[Int, TextError] {\n   |                               ^\n<DIR>/golden-1457.ms:12:29: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n    |\n 12 | fn chain(n Int) Result[Int, TextError] {\n    |                             ^\n<DIR>/golden-1457.ms:7:22: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T { ... }', or import it from a module\n   |\n 7 |         return error(TextError(\"negative\"))\n   |                      ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

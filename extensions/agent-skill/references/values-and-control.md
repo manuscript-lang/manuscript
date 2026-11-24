@@ -6,19 +6,28 @@ Types: Int, Float, Bool, String, Void. Literals: `true`, `false`, `void`. Numeri
 
 <!-- complete: control.ms -->
 ```manuscript
-fn main() Int:
-	var total = 0
-	for n in 0..5:
-		if n == 2: continue
-		total += n
-	while total < 10:
-		total += 1
-	label := if total == 10: "ready" else: "wrong"
-	if label == "ready" and not (total < 10):
-		return 0
-	return 1
+fn main() Int {
+    var total = 0
+
+    for n in 0..5 {
+        if n == 2 { continue }
+
+        total += n
+    }
+
+    while total < 10 {
+        total += 1
+    }
+
+    label := if total == 10 { "ready" } else { "wrong" }
+    if label == "ready" and not (total < 10) {
+        return 0
+    }
+
+    return 1
+}
 ```
 
 `0..n` excludes n. `break` exits a loop; `continue` advances it. Boolean operators: `and`, `or`, `not`.
 
-Statements use `if`/`else if`/`else`; align else with if. Inline `if c: return x` exits early. Expressions use `if c: a else: b`. `+=`, `-=` and other assignments require mutable targets.
+Statements use `if`/`else if`/`else`; align else with if. Inline `if c { return x }` exits early. Expressions use `if c { a } else { b }`. `+=`, `-=` and other assignments require mutable targets.

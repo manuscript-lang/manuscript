@@ -7,27 +7,44 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration",
+        "message": "a block cannot be empty; add at least one statement, or write '...' inside the braces for a runtime-bound declaration",
         "position": {
           "file": "golden-1394.ms",
           "line": 4,
           "column": 1,
-          "offset": 70
+          "offset": 71
         },
         "end": {
           "file": "golden-1394.ms",
           "line": 4,
+          "column": 2,
+          "offset": 72
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type",
+        "position": {
+          "file": "golden-1394.ms",
+          "line": 5,
           "column": 1,
-          "offset": 70
+          "offset": 73
+        },
+        "end": {
+          "file": "golden-1394.ms",
+          "line": 5,
+          "column": 4,
+          "offset": 76
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1394.ms:4:1: parse: suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration\n   |\n 4 | var invalid = 3\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1394.ms:4:1: parse: a block cannot be empty; add at least one statement, or write '...' inside the braces for a runtime-bound declaration\n   |\n 4 | }\n   | ^\n<DIR>/golden-1394.ms:5:1: parse: module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type\n   |\n 5 | var invalid = 3\n   | ^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -58,110 +58,143 @@ jpeg_ac_chroma_values := [
 ]
 
 // The Huffman code and its bit length for each of the 256 possible symbols.
-type JpegCodes:
+type JpegCodes {
 	code List[Int]
 	size List[Int]
+}
 
-fn jpeg_codes(counts List[Int], values List[Int]) JpegCodes:
+fn jpeg_codes(counts List[Int], values List[Int]) JpegCodes {
 	var code = jpeg_zeros(256)
 	var size = jpeg_zeros(256)
 	var next = 0
 	var index = 0
 
-	for length in 1..17:
-		for _slot in 0..counts[length - 1]:
+	for length in 1..17 {
+		for _slot in 0..counts[length - 1] {
 			code[values[index]] = next
 			size[values[index]] = length
 			next += 1
 			index += 1
+		}
 
 		next *= 2
+	}
 
 	return JpegCodes(code, size)
+}
 
-type JpegWriter:
+type JpegWriter {
 	out BytesBuilder
 	acc Int
 	count Int
+}
 
-fn var JpegWriter.put(code Int, size Int) Void:
+fn var JpegWriter.put(code Int, size Int) Void {
 	self.acc = bit_or(shift_left(self.acc, size), code)
 	self.count += size
 
-	while self.count >= 8:
+	while self.count >= 8 {
 		b := bit_and(shift_right_unsigned(self.acc, self.count - 8), 255)
 		self.out.append(byte(b))
-		if b == 255: self.out.append(byte(0))
+		if b == 255 { self.out.append(byte(0)) }
 		self.count -= 8
+	}
 
 	self.acc = bit_and(self.acc, shift_left(1, self.count) - 1)
+}
 
 // Pads the partial byte with 1-bits, as the format requires before a marker.
-fn var JpegWriter.align() Void:
-	if self.count > 0: self.put(shift_left(1, 8 - self.count) - 1, 8 - self.count)
+fn var JpegWriter.align() Void {
+	if self.count > 0 {
+		self.put(shift_left(1, 8 - self.count) - 1, 8 - self.count)
+	}
+}
 
-fn bit_length(value Int) Int:
-	var v = if value < 0: 0 - value else: value
+fn bit_length(value Int) Int {
+	var v = if value < 0 { 0 - value } else { value }
 	var n = 0
 
-	while v > 0:
+	while v > 0 {
 		n += 1
 		v /= 2
+	}
 
 	return n
+}
 
 // Forward DCT and quantization of the 8x8 block at (x0, y0); returns 64 levels in
 // jpeg_zigzag order.
-fn jpeg_forward(plane List[Int], stride Int, x0 Int, y0 Int, quant List[Int]) List[Int]:
+fn jpeg_forward(
+	plane List[Int],
+	stride Int,
+	x0 Int,
+	y0 Int,
+	quant List[Int],
+) List[Int] {
 	// The matrix is symmetric: row 7 - k is row k with the sign of odd columns flipped.
 	// So a column's sum over eight inputs is a sum over four sums (even columns) or
 	// four differences (odd columns) of mirrored inputs, half the multiplications.
 	var tmp = jpeg_zeros(64)
 	var mirror = jpeg_zeros(8)
 
-	for y in 0..8:
+	for y in 0..8 {
 		row := (y0 + y) * stride + x0
 
-		for k in 0..4:
+		for k in 0..4 {
 			a := plane[row + k] - 128
 			b := plane[row + 7 - k] - 128
 			mirror[k] = a + b
 			mirror[4 + k] = a - b
+		}
 
-		for u in 0..8:
+		for u in 0..8 {
 			off := (u % 2) * 4
 			var sum = 0
-			for k in 0..4:
+			for k in 0..4 {
 				sum += jpeg_dct_matrix[k * 8 + u] * mirror[off + k]
+			}
 			tmp[y * 8 + u] = sum
+		}
+	}
 
 	// Sums (indices 0..31) and differences (32..63) of rows k and 7 - k, per column.
 	var folded = jpeg_zeros(64)
 
-	for k in 0..4:
-		for u in 0..8:
+	for k in 0..4 {
+		for u in 0..8 {
 			a := tmp[k * 8 + u]
 			b := tmp[(7 - k) * 8 + u]
 			folded[k * 8 + u] = a + b
 			folded[32 + k * 8 + u] = a - b
+		}
+	}
 
 	var levels = jpeg_zeros(64)
 
-	for zi in 0..64:
+	for zi in 0..64 {
 		at := jpeg_zigzag[zi]
 		v := at / 8
 		u := at % 8
 		off := (v % 2) * 32
 		var sum = 0
-		for k in 0..4:
+		for k in 0..4 {
 			sum += jpeg_dct_matrix[k * 8 + v] * folded[off + k * 8 + u]
+		}
 
 		q := quant[zi]
 		half := q * 8388608
 		scale := q * 16777216
-		levels[zi] = if sum >= 0: (sum + half) / scale else: 0 - ((half - sum) / scale)
+		levels[zi] = (
+			if sum >= 0 {
+				(sum + half) / scale
+			} else {
+				0 - ((half - sum) / scale)
+			}
+		)
+	}
 
 	return levels
+}
 
 fn jpeg_emit(
 	var w JpegWriter,
@@ -169,59 +202,77 @@ fn jpeg_emit(
 	previous Int,
 	dc JpegCodes,
 	ac JpegCodes,
-) Void:
+) Void {
 	diff := levels[0] - previous
 	size := bit_length(diff)
 	w.put(dc.code[size], dc.size[size])
-	if size > 0: w.put(if diff >= 0: diff else: diff + shift_left(1, size) - 1, size)
+	if size > 0 {
+		w.put(if diff >= 0 { diff } else { diff + shift_left(1, size) - 1 }, size)
+	}
 
 	var run = 0
 
-	for zi in 1..64:
+	for zi in 1..64 {
 		v := levels[zi]
 
-		if v == 0:
+		if v == 0 {
 			run += 1
-		else:
-			while run > 15:
+		} else {
+			while run > 15 {
 				w.put(ac.code[240], ac.size[240])
 				run -= 16
+			}
 
 			n := bit_length(v)
 			symbol := run * 16 + n
 			w.put(ac.code[symbol], ac.size[symbol])
-			w.put(if v >= 0: v else: v + shift_left(1, n) - 1, n)
+			w.put(if v >= 0 { v } else { v + shift_left(1, n) - 1 }, n)
 			run = 0
+		}
+	}
 
-	if run > 0: w.put(ac.code[0], ac.size[0])
+	if run > 0 { w.put(ac.code[0], ac.size[0]) }
+}
 
-fn put16_be(var out BytesBuilder, value Int) Void:
+fn put16_be(var out BytesBuilder, value Int) Void {
 	out.append(byte(bit_and(shift_right_unsigned(value, 8), 255)))
 	out.append(byte(bit_and(value, 255)))
+}
 
-fn jpeg_marker(var out BytesBuilder, marker Int, body Bytes) Void:
+fn jpeg_marker(var out BytesBuilder, marker Int, body Bytes) Void {
 	out.append(byte(255))
 	out.append(byte(marker))
 	put16_be(out, body.length() + 2)
 	out.append_bytes(body)
+}
 
-fn jpeg_dht(var out BytesBuilder, class_id Int, counts List[Int], values List[Int]) Void:
+fn jpeg_dht(
+	var out BytesBuilder,
+	class_id Int,
+	counts List[Int],
+	values List[Int],
+) Void {
 	var body = BytesBuilder()
 	body.append(byte(class_id))
-	for c in counts:
+	for c in counts {
 		body.append(byte(c))
-	for v in values:
+	}
+	for v in values {
 		body.append(byte(v))
+	}
 	jpeg_marker(out, 196, body.build())
+}
 
 // Scales a base quantization table for `quality` (1 through 100) with the libjpeg
 // formula, keeping each entry in 1 through 255.
-fn jpeg_scaled(base List[Int], quality Int) List[Int]:
-	scale := if quality < 50: 5000 / quality else: 200 - quality * 2
+fn jpeg_scaled(base List[Int], quality Int) List[Int] {
+	scale := if quality < 50 { 5000 / quality } else { 200 - quality * 2 }
 	var table = List[Int]()
-	for zi in 0..64:
+	for zi in 0..64 {
 		table.append(jpeg_clamp(max_of((base[zi] * scale + 50) / 100, 1), 255))
+	}
 	return table
+}
 
 // Encodes baseline JPEG of `pixels`, which hold `channels` 1 (gray) or 3 (RGB) bytes
 // per pixel. `quarter` subsamples chroma 4:2:0, and `restart_interval` is the MCUs
@@ -236,29 +287,33 @@ export fn jpeg_encode(
 	quality Int,
 	quarter Bool,
 	restart_interval Int,
-) Bytes!:
-	if channels % 2 == 0:
+) Bytes! {
+	if channels % 2 == 0 {
 		return error(
 			Error(
 				"image: JPEG cannot store alpha; convert to Rgb or Gray first",
 				kind: "EINVAL",
 			)
 		)
-	if quality < 1 or quality > 100:
+	}
+	if quality < 1 or quality > 100 {
 		return error(Error("image: JPEG quality must be 1 to 100", kind: "EINVAL"))
-	if restart_interval < 0 or restart_interval > 65535:
+	}
+	if restart_interval < 0 or restart_interval > 65535 {
 		return error(
 			Error(
 				"image: JPEG restart interval must be 0 to 65535",
 				kind: "EINVAL",
 			)
 		)
-	if width > 65535 or height > 65535:
+	}
+	if width > 65535 or height > 65535 {
 		return error(too_big("JPEG dimensions are limited to 65535"))
+	}
 
 	color := channels == 3
 	sub := color and quarter
-	unit_size := if sub: 16 else: 8
+	unit_size := if sub { 16 } else { 8 }
 	mcus_x := (width + unit_size - 1) / unit_size
 	mcus_y := (height + unit_size - 1) / unit_size
 	pw := mcus_x * unit_size
@@ -266,17 +321,17 @@ export fn jpeg_encode(
 
 	// Full-resolution planes, edge-replicated to whole MCUs.
 	var luma = jpeg_zeros(pw * ph)
-	var cb = jpeg_zeros(if color: pw * ph else: 0)
-	var cr = jpeg_zeros(if color: pw * ph else: 0)
+	var cb = jpeg_zeros(if color { pw * ph } else { 0 })
+	var cr = jpeg_zeros(if color { pw * ph } else { 0 })
 	n := channels
 
-	for y in 0..ph:
+	for y in 0..ph {
 		sy := min_of(y, height - 1)
 
-		for x in 0..pw:
+		for x in 0..pw {
 			at := (sy * width + min_of(x, width - 1)) * n
 
-			if color:
+			if color {
 				r := pixels[at].to_int()
 				g := pixels[at + 1].to_int()
 				b := pixels[at + 2].to_int()
@@ -292,19 +347,22 @@ export fn jpeg_encode(
 					32768 * r - 27439 * g - 5329 * b + 8421376,
 					16,
 				)
-			else:
+			} else {
 				luma[y * pw + x] = pixels[at].to_int()
+			}
+		}
+	}
 
 	var cw = pw
 
-	if sub:
+	if sub {
 		cw = pw / 2
 
 		var small_cb = jpeg_zeros(cw * (ph / 2))
 		var small_cr = jpeg_zeros(cw * (ph / 2))
 
-		for y in 0..ph / 2:
-			for x in 0..cw:
+		for y in 0..ph / 2 {
+			for x in 0..cw {
 				i := 2 * y * pw + 2 * x
 				small_cb[y * cw + x] = (
 					(
@@ -326,9 +384,12 @@ export fn jpeg_encode(
 					)
 					/ 4
 				)
+			}
+		}
 
 		cb = small_cb
 		cr = small_cr
+	}
 
 	q_luma := jpeg_scaled(jpeg_base_luma, quality)
 	q_chroma := jpeg_scaled(jpeg_base_chroma, quality)
@@ -339,57 +400,64 @@ export fn jpeg_encode(
 
 	var table_bytes = BytesBuilder()
 	table_bytes.append(byte(0))
-	for q in q_luma:
+	for q in q_luma {
 		table_bytes.append(byte(q))
+	}
 	jpeg_marker(out, 219, table_bytes.build())
 
-	if color:
+	if color {
 		var chroma_table = BytesBuilder()
 		chroma_table.append(byte(1))
-		for q in q_chroma:
+		for q in q_chroma {
 			chroma_table.append(byte(q))
+		}
 		jpeg_marker(out, 219, chroma_table.build())
+	}
 
 	var frame = BytesBuilder()
 	frame.append(byte(8))
 	put16_be(frame, height)
 	put16_be(frame, width)
-	frame.append(byte(if color: 3 else: 1))
+	frame.append(byte(if color { 3 } else { 1 }))
 	frame.append(byte(1))
-	frame.append(byte(if sub: 34 else: 17))
+	frame.append(byte(if sub { 34 } else { 17 }))
 	frame.append(byte(0))
 
-	if color:
+	if color {
 		frame.append(byte(2))
 		frame.append(byte(17))
 		frame.append(byte(1))
 		frame.append(byte(3))
 		frame.append(byte(17))
 		frame.append(byte(1))
+	}
 
 	jpeg_marker(out, 192, frame.build())
 	jpeg_dht(out, 0, jpeg_dc_luma_counts, jpeg_dc_values)
 	jpeg_dht(out, 16, jpeg_ac_luma_counts, jpeg_ac_luma_values)
 
-	if color:
+	if color {
 		jpeg_dht(out, 1, jpeg_dc_chroma_counts, jpeg_dc_values)
 		jpeg_dht(out, 17, jpeg_ac_chroma_counts, jpeg_ac_chroma_values)
+	}
 
-	if restart_interval > 0:
+	if restart_interval > 0 {
 		var dri = BytesBuilder()
 		put16_be(dri, restart_interval)
 		jpeg_marker(out, 221, dri.build())
+	}
 
 	var scan = BytesBuilder()
-	scan.append(byte(if color: 3 else: 1))
+	scan.append(byte(if color { 3 } else { 1 }))
 	scan.append(byte(1))
 	scan.append(byte(0))
 
-	if color:
+	if color {
 		scan.append(byte(2))
 		scan.append(byte(17))
 		scan.append(byte(3))
 		scan.append(byte(17))
+	}
 
 	scan.append(byte(0))
 	scan.append(byte(63))
@@ -406,20 +474,21 @@ export fn jpeg_encode(
 	var p_cr = 0
 	var mcu = 0
 
-	for my in 0..mcus_y:
-		for mx in 0..mcus_x:
-			if (restart_interval > 0 and mcu > 0 and mcu % restart_interval == 0):
+	for my in 0..mcus_y {
+		for mx in 0..mcus_x {
+			if (restart_interval > 0 and mcu > 0 and mcu % restart_interval == 0) {
 				w.align()
 				w.out.append(byte(255))
 				w.out.append(byte(208 + (mcu / restart_interval - 1) % 8))
 				p_y = 0
 				p_cb = 0
 				p_cr = 0
+			}
 
-			blocks_y := if sub: 2 else: 1
+			blocks_y := if sub { 2 } else { 1 }
 
-			for by in 0..blocks_y:
-				for bx in 0..blocks_y:
+			for by in 0..blocks_y {
+				for bx in 0..blocks_y {
 					levels := jpeg_forward(
 						luma,
 						pw,
@@ -429,8 +498,10 @@ export fn jpeg_encode(
 					)
 					jpeg_emit(w, levels, p_y, dc_luma, ac_luma)
 					p_y = levels[0]
+				}
+			}
 
-			if color:
+			if color {
 				x0 := mx * 8
 				y0 := my * 8
 				lb := jpeg_forward(cb, cw, x0, y0, q_chroma)
@@ -440,10 +511,14 @@ export fn jpeg_encode(
 				lr := jpeg_forward(cr, cw, x0, y0, q_chroma)
 				jpeg_emit(w, lr, p_cr, dc_chroma, ac_chroma)
 				p_cr = lr[0]
+			}
 
 			mcu += 1
+		}
+	}
 
 	w.align()
 	w.out.append(byte(255))
 	w.out.append(byte(217))
 	return ok(w.out.build())
+}

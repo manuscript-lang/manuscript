@@ -293,14 +293,14 @@ static void scope_items(Completer *c) {
 
 static const char *keyword_template(const char *word) {
   static const char *const TEMPLATES[][2] = {
-      {"interface", "interface ${1:Name}:\n    ${0:fn operation() Void}"},
-      {"fn", "fn ${1:name}(${2}) ${3:Void}:\n    ${0:return}"},
-      {"type", "type ${1:Name}:\n    ${0:field String}"},
-      {"enum", "enum ${1:Name}:\n    ${0:Ready}"},
-      {"if", "if ${1:condition}:\n    $0"},
-      {"for", "for ${1:item} in ${2:items}:\n    $0"},
-      {"test", "test \"${1:name}\":\n    ${0:return}"},
-      {"bench", "bench \"${1:name}\":\n    ${0:return}"}};
+      {"interface", "interface ${1:Name} {\n    ${0:fn operation() Void}\n}"},
+      {"fn", "fn ${1:name}(${2}) ${3:Void} {\n    ${0:return}\n}"},
+      {"type", "type ${1:Name} {\n    ${0:field String}\n}"},
+      {"enum", "enum ${1:Name} {\n    ${0:Ready}\n}"},
+      {"if", "if ${1:condition} {\n    $0\n}"},
+      {"for", "for ${1:item} in ${2:items} {\n    $0\n}"},
+      {"test", "test \"${1:name}\" {\n    ${0:return}\n}"},
+      {"bench", "bench \"${1:name}\" {\n    ${0:return}\n}"}};
   for (size_t i = 0; i < sizeof TEMPLATES / sizeof TEMPLATES[0]; i++) {
     if (ms_cstr_equal(TEMPLATES[i][0], word)) return TEMPLATES[i][1];
   }
@@ -330,7 +330,7 @@ static void keyword_items(Completer *c) {
       add(c, ms_span_of_text(words[i]), 14, MS_TY_NONE, 5, ms_strbuild_span(&insert), (MsSpan){0});
       ms_strbuild_free(&insert);
     }
-    if (!top && c->snippets) add_text(c, "if :=", 14, MS_TY_NONE, 5, "if ${1:value} := ${2:optional}:\n    $0");
+    if (!top && c->snippets) add_text(c, "if :=", 14, MS_TY_NONE, 5, "if ${1:value} := ${2:optional} {\n    $0\n}");
   }
   if (!c->type_context) {
     static const char *const VALUES[] = {"true", "false", "void", "fn", "not"};
@@ -405,7 +405,7 @@ static bool in_type_position(MsSpan source, size_t start) {
                         (ms_span_equal(ms_span_of(line.ptr + first->start, first->end - first->start), ms_span_of_text("fn")) ||
                          ms_span_equal(ms_span_of(line.ptr + first->start, first->end - first->start), ms_span_of_text("export")) ||
                          ms_span_equal(ms_span_of(line.ptr + first->start, first->end - first->start), ms_span_of_text("extern")));
-    if (last->kind == LSP_TOKEN_CHAR && line.ptr[last->start] == ':') {
+    if (last->kind == LSP_TOKEN_CHAR && line.ptr[last->start] == '{') {
       result = header || (tokens.len == 2 && tokens.ptr[0].kind == LSP_TOKEN_NAME);
     } else if (last->kind == LSP_TOKEN_CHAR && line.ptr[last->start] == ')') {
       result = header;

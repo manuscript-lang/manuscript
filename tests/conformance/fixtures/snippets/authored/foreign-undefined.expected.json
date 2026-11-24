@@ -14,20 +14,20 @@
           "file": "foreign-undefined.ms",
           "line": 5,
           "column": 10,
-          "offset": 138
+          "offset": 136
         },
         "fix": {
           "position": {
             "file": "foreign-undefined.ms",
             "line": 5,
             "column": 10,
-            "offset": 138
+            "offset": 136
           },
           "end": {
             "file": "foreign-undefined.ms",
             "line": 5,
             "column": 19,
-            "offset": 147
+            "offset": 145
           },
           "replacement": "null"
         }

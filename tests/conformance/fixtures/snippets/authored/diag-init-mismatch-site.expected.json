@@ -14,20 +14,20 @@
           "file": "diag-init-mismatch-site.ms",
           "line": 5,
           "column": 17,
-          "offset": 147
+          "offset": 145
         },
         "fix": {
           "position": {
             "file": "diag-init-mismatch-site.ms",
             "line": 5,
             "column": 17,
-            "offset": 147
+            "offset": 145
           },
           "end": {
             "file": "diag-init-mismatch-site.ms",
             "line": 5,
             "column": 18,
-            "offset": 148
+            "offset": 146
           },
           "replacement": "\"1\""
         }

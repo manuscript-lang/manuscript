@@ -25,12 +25,14 @@ Measured (`23477392`, the 70 `.clone()` lines #2199 added removed, debug `ms che
 | interface implementation returning a lent value | 3 | `stdlib/collections/ordering.ms:196` `return lesser(self, other)` |
 
 ```manuscript
-fn named(r Row) String!Missing:
+fn named(r Row) String!Missing {
     return ok(r.name)               // moved `r.name`; callers wrote ok(r.name.clone())
+}
 
-fn tail(result Row!Bad) String!Bad:
+fn tail(result Row!Bad) String!Bad {
     row := try relay(result)     // `relay` lends; the try's error path moved it
     return ok(row.name)
+}
 ```
 
 Lowering already had the first half: `opt.view` lends a container entry as an optional. The checker's move was what made the payload owned.

@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "",
-    "stderr": "index -1 out of range for length 0; use get_or(index, default) to avoid the fault\n  at bounds-fault-empty.ms:10 in last_after_loop\n  at bounds-fault-empty.ms:13 in main\n"
+    "stderr": "index -1 out of range for length 0; use get_or(index, default) to avoid the fault\n  at bounds-fault-empty.ms:11 in last_after_loop\n  at bounds-fault-empty.ms:15 in main\n"
   }
 }

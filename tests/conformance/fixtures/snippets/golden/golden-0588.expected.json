@@ -12,16 +12,16 @@
         "message": "expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)",
         "position": {
           "file": "golden-0588.ms",
-          "line": 4,
+          "line": 5,
           "column": 66,
-          "offset": 167
+          "offset": 168
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0588.ms:4:66: type: expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)\n   |\n 4 | fn wrong(values Map[String, Int]) Map[String, Int] => values.map(transform)\n   |                                                                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0588.ms:5:66: type: expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)\n   |\n 5 | fn wrong(values Map[String, Int]) Map[String, Int] => values.map(transform)\n   |                                                                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

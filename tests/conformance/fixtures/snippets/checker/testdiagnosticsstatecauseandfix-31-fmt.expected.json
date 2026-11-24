@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import PriorityQueue from \"@std/collections/queue.ms\"\n\nfn f() Int:\n\tvar q = PriorityQueue(\n\t\tcompare: fn(left HttpMethod, right HttpMethod) Int => return 0\n\t)\n\treturn 0\n"
+    "fmt": "import PriorityQueue from \"@std/collections/queue.ms\"\n\nfn f() Int {\n\tvar q = PriorityQueue(\n\t\tcompare: fn(left HttpMethod, right HttpMethod) Int => return 0\n\t)\n\treturn 0\n}\n"
   }
 }

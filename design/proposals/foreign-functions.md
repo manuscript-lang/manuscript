@@ -299,13 +299,17 @@ export extern type Loop
 export extern type Timer
 
 // A failed libuv call, with libuv's description.
-export type UvError:
+export type UvError {
     case Failed(message: String)
+}
 
-impl Error for UvError:
-    fn message() String:
-        match self:
+impl Error for UvError {
+    fn message() String {
+        match self {
             Failed(message): return f"libuv: {message}"
+        }
+    }
+}
 
 extern fn msuv_loop_new() Loop!UvError
 extern fn msuv_loop_run(loop: Loop) Unit!UvError
@@ -314,31 +318,37 @@ extern fn msuv_timer_new(loop: Loop) Timer!UvError
 extern fn msuv_timer_start(timer: Timer, every_ms: UInt64, on_tick: fn() Bool) Unit!UvError
 extern fn msuv_timer_close(timer: Timer) Unit
 
-impl Closeable for Loop:
+impl Closeable for Loop {
     // Runs the loop until every closed handle has finished, then frees it.
-    var fn close() Unit!:
+    var fn close() Unit! {
         try msuv_loop_close(self)
         return ok(unit)
+    }
+}
 
-impl Closeable for Timer:
-    var fn close() Unit!:
+impl Closeable for Timer {
+    var fn close() Unit! {
         msuv_timer_close(self)
         return ok(unit)
+    }
+}
 
 // Adds one tick; the timer keeps firing while this returns true.
-fn tick(count: Shared[Int], limit: Int) Bool:
+fn tick(count: Shared[Int], limit: Int) Bool {
     var guard = lock(count)
     guard.value += 1
     return guard.value < limit
+}
 
 // Fires every `every_ms` until `limit` ticks, then returns the count.
-export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
+export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError {
     loop := try msuv_loop_new()
     timer := try msuv_timer_new(loop)
     count := share(0)
     try msuv_timer_start(timer, every_ms, fn: tick(count, limit))
     try msuv_loop_run(loop)
     return ok(count.get())
+}
 ```
 
 C side, `uv_shim.c`, using only `ms_abi.h` and `uv.h`. It is illustrative; stage 3 compiles it on all three platforms.

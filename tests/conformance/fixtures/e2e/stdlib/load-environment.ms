@@ -7,7 +7,7 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-test "load_environment keeps existing values and takes the last duplicate":
+test "load_environment keeps existing values and takes the last duplicate" {
 	dir := temporary("ms-env-")?
 	path := join([dir.path(), "a.env"])
 	write_file(path, "MS_LOAD_A=1\nMS_LOAD_B='two'\nMS_LOAD_D=1\nMS_LOAD_D='2'\n").wait()?
@@ -20,8 +20,9 @@ test "load_environment keeps existing values and takes the last duplicate":
 	expect_equal(env.get_or("MS_LOAD_A", ""), "kept")?
 	expect_equal(env.get_or("MS_LOAD_B", ""), "two")?
 	expect_equal(env.get_or("MS_LOAD_D", ""), "2")?
+}
 
-test "load_environment errors change nothing":
+test "load_environment errors change nothing" {
 	dir := temporary("ms-env-")?
 	path := join([dir.path(), "b.env"])
 	write_file(path, "MS_LOAD_C=1\nexport  =bad\n").wait()?
@@ -30,3 +31,4 @@ test "load_environment errors change nothing":
 	expect_false((environment()?).contains("MS_LOAD_C"))?
 	expect_equal(load_environment(path, 3).err().kind.clone() or "", "EOVERFLOW")?
 	expect_equal(load_environment(dir.path()).err().kind.clone() or "", "EINVAL")?
+}

@@ -6,12 +6,14 @@ import (
 	write_file from "@std/os/fs.ms",
 )
 
-fn run() Result[Void, Error]:
+fn run() Result[Void, Error] {
 	path := ok_or(
 		arguments().first(),
 		Error("filesystem: invalid input", kind: "EINVAL"),
 	)?
 	return write_file(path, "saved notes\n", replace: false).wait()
+}
 
-fn main() Void!:
+fn main() Void! {
 	run()?
+}

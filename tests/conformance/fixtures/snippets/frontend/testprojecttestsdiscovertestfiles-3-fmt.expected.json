@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"b\":\n\treturn\n"
+    "fmt": "test \"b\" {\n\treturn\n}\n"
   }
 }

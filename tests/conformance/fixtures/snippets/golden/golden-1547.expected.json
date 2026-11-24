@@ -14,20 +14,20 @@
           "file": "golden-1547.ms",
           "line": 6,
           "column": 32,
-          "offset": 142
+          "offset": 143
         },
         "end": {
           "file": "golden-1547.ms",
           "line": 6,
           "column": 33,
-          "offset": 143
+          "offset": 144
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1547.ms:6:32: parse: expected an expression, found '%'; write a value, name, call, or literal here\n   |\n 6 |     match stdout().write(data: %q):\n   |                                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1547.ms:6:32: parse: expected an expression, found '%'; write a value, name, call, or literal here\n   |\n 6 |     match stdout().write(data: %q) {\n   |                                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

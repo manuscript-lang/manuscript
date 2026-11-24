@@ -17,7 +17,7 @@ and `after_all`, and the file's later tests do not run.
 
 For a server fixture, start the server in `before_all` and close it in `after_all`.
 */
-export interface TestHooks:
+export interface TestHooks {
 	// Runs once, after the fixture factory, before the file's first test.
 	var fn before_all() Void!
 	// Runs before each test, including repetitions.
@@ -26,65 +26,78 @@ export interface TestHooks:
 	var fn after_each() Void!
 	// Runs once after the file's last test, and after a fault.
 	var fn after_all() Void!
+}
 
 // Returns the position (`file:line:col`) of the call that omitted this argument. Use
 // it only as a parameter default, in a function that is called directly.
-export fn caller_site() String:
+export fn caller_site() String {
 	panic("caller_site() is only valid as a parameter default")
+}
 
 // Internal: builds a failed expectation: an `Error` with `message`, kind `EIO`, and
 // the failing call's position in `details["site"]`.
-fn failure(message String, site String) Error:
+fn failure(message String, site String) Error {
 	var details = Map[String, String]()
 	details.add("site", site.clone())
 	return Error(message.clone(), kind: "EIO", details: details)
+}
 
 // Returns the debug text of a value, with strings quoted and records and collections
 // spelled out.
-export fn repr[T](value T) String:
+export fn repr[T](value T) String {
 	return msstd_test_repr(value)
+}
 
 // Runs `operation` once behind the fault trap and returns the fault message, or
 // `null` when it returns normally.
-export fn catch_fault(operation fn() Void, site String = caller_frame()) String?:
+export fn catch_fault(operation fn() Void, site String = caller_frame()) String? {
 	result := promise(
 		() => ok(operation()),
 		options: PromiseOptions(placement: Placement.Here),
 		site: site,
 	).wait()
-	if not result.is_error(): return null
+	if not result.is_error() { return null }
 
 	cause := result.err()
-	if cause.kind != "EIO": return null
+	if cause.kind != "EIO" { return null }
 
 	return cause.details["report"].split("\n").get(0).clone()
+}
 
 // Fails unless `actual` is true. `site` names the call in the failure and defaults to
 // the caller's position.
-export fn expect_true(actual Bool, site String = caller_site()) Void!:
-	if actual: return ok()
+export fn expect_true(actual Bool, site String = caller_site()) Void! {
+	if actual { return ok() }
 	return error(failure("expected true, got false", site))
+}
 
 // Fails unless `actual` is false. `site` names the call in the failure and defaults
 // to the caller's position.
-export fn expect_false(actual Bool, site String = caller_site()) Void!:
-	if not actual: return ok()
+export fn expect_false(actual Bool, site String = caller_site()) Void! {
+	if not actual { return ok() }
 	return error(failure("expected false, got true", site))
+}
 
 // Fails unless `actual` equals `expected` under `Equal`; the failure shows both
 // values.
-export fn expect_equal[T Equal](actual T, expected T, site String = caller_site()) Void!:
-	if actual == expected: return ok()
+export fn expect_equal[T Equal](
+	actual T,
+	expected T,
+	site String = caller_site(),
+) Void! {
+	if actual == expected { return ok() }
 	return error(failure(f"expected {repr(expected)}, got {repr(actual)}", site))
+}
 
 // Fails when `actual` and `expected` are equal under `Equal`.
 export fn expect_not_equal[T Equal](
 	actual T,
 	expected T,
 	site String = caller_site(),
-) Void!:
-	if actual != expected: return ok()
+) Void! {
+	if actual != expected { return ok() }
 	return error(failure(f"expected different values, got {repr(actual)}", site))
+}
 
 // Fails unless the absolute difference between `actual` and `expected` is at most
 // `tolerance`, which must be finite and not negative. NaN fails; identical infinities
@@ -94,20 +107,22 @@ export fn expect_close(
 	expected Float,
 	tolerance Float,
 	site String = caller_site(),
-) Void!:
-	if not (tolerance >= 0.0 and tolerance - tolerance == 0.0):
+) Void! {
+	if not (tolerance >= 0.0 and tolerance - tolerance == 0.0) {
 		return error(
 			failure(
 				"expect_close: tolerance must be finite and nonnegative",
 				site,
 			)
 		)
-	if actual == expected: return ok()
+	}
+	if actual == expected { return ok() }
 
 	var spread = actual - expected
-	if spread < 0.0:
+	if spread < 0.0 {
 		spread = 0.0 - spread
-	if spread <= tolerance: return ok()
+	}
+	if spread <= tolerance { return ok() }
 
 	return error(
 		failure(
@@ -115,6 +130,7 @@ export fn expect_close(
 			site,
 		)
 	)
+}
 
 // Fails unless `actual` contains `expected` as an exact substring, without Unicode
 // normalization.
@@ -122,41 +138,48 @@ export fn expect_contains(
 	actual String,
 	expected String,
 	site String = caller_site(),
-) Void!:
-	if actual.contains(expected): return ok()
+) Void! {
+	if actual.contains(
+		expected
+	) { return ok() }
 	return error(failure(f"expected {repr(actual)} to contain {repr(expected)}", site))
+}
 
 // Fails on `null`; otherwise returns the payload.
-export fn expect_some[T](move actual T?, site String = caller_site()) T!:
+export fn expect_some[T](move actual T?, site String = caller_site()) T! {
 	value := actual
-	if value != null: return ok(value)
+	if value != null { return ok(value) }
 
 	return error(failure("expected some, got none", site))
+}
 
 // Fails when a value is present; passes on `null`.
-export fn expect_none[T](actual T?, site String = caller_site()) Void!:
+export fn expect_none[T](actual T?, site String = caller_site()) Void! {
 	value := actual
-	if value != null: return error(failure(f"expected none, got {repr(value)}", site))
+	if value != null { return error(failure(f"expected none, got {repr(value)}", site)) }
+}
 
 // Fails on an error, showing it; otherwise returns the `ok` payload.
-export fn expect_ok[T, E](move actual T!E, site String = caller_site()) T!:
-	if actual.is_error(): return error(
-		failure(f"expected ok, got {repr(actual)}", site)
-	)
-	if value := actual: return ok(value)
+export fn expect_ok[T, E](move actual T!E, site String = caller_site()) T! {
+	if actual.is_error() {
+		return error(failure(f"expected ok, got {repr(actual)}", site))
+	}
+	if value := actual { return ok(value) }
 
 	return error(failure("expected ok, got an error", site))
+}
 
 // Fails on success; otherwise returns a copy of the error's cause.
-export fn expect_error[T, E Clonable](actual T!E, site String = caller_site()) E!:
-	if actual.is_error(): return ok(actual.err().clone())
+export fn expect_error[T, E Clonable](actual T!E, site String = caller_site()) E! {
+	if actual.is_error() { return ok(actual.err().clone()) }
 	return error(failure(f"expected error, got {repr(actual)}", site))
+}
 
 // Calls `operation` once and requires it to raise a programming fault; returns the
 // fault message. Fails if the operation returns normally. Cancellation propagates.
-export fn expect_fault(operation fn() Void, site String = caller_site()) String!:
+export fn expect_fault(operation fn() Void, site String = caller_site()) String! {
 	message := catch_fault(operation)
-	if message != null: return ok(message)
+	if message != null { return ok(message) }
 
 	return error(
 		failure(
@@ -164,12 +187,15 @@ export fn expect_fault(operation fn() Void, site String = caller_site()) String!
 			site,
 		)
 	)
+}
 
 // Returns an error carrying `message`; `fail(message)?` fails the current test.
-export fn fail(message String, site String = caller_site()) Void!:
+export fn fail(message String, site String = caller_site()) Void! {
 	return error(failure(message, site))
+}
 
 // Skips the current test. It returns an error of kind `ESKIP` with `reason`, which
 // `skip(reason)?` passes up; the test is reported as skipped, not failed.
-export fn skip(move reason String) Void!:
+export fn skip(move reason String) Void! {
 	return error(Error(reason, kind: "ESKIP"))
+}

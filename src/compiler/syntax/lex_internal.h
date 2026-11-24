@@ -10,17 +10,12 @@
 #include "compiler/syntax/lex.h"
 #include "base/message.h"
 
-typedef struct Level {
-  size_t indent, depth;
-} Level;
-
 typedef struct LinePos {
   size_t at;
   MsPos pos;
 } LinePos;
 
 MS_LIST_DEFINE(TokenList, token_list, MsToken)
-MS_LIST_DEFINE(LevelList, level_list, Level)
 MS_LIST_DEFINE(ByteList, byte_list, uint8_t)
 MS_LIST_DEFINE(SizeList, size_list, size_t)
 MS_LIST_DEFINE(PosList, pos_list, MsPos)
@@ -34,11 +29,9 @@ typedef struct Scanner {
   size_t offset;
   uint32_t line, column;
   TokenList tokens;
-  LevelList levels;
   ByteList delimiters;
   SizeList groups;
   PosList opened;
-  SizeList function_depths;
   PosList interpolations;
   const uint32_t *line_offsets;       /* NULL when the source had no CRLF */
   RangeList strings, interps, blocks; /* discovered boundaries */
@@ -49,27 +42,9 @@ typedef struct Scanner {
   MsDiag *diag;
 } Scanner;
 
-/* What the layout rules carry from one line to the next. */
-typedef struct LineLayout {
-  size_t header_indent;    /* indentation of the line that ended with ':' */
-  size_t header_start;     /* where that header's statement began, when it spans lines */
-  size_t pending_depth;    /* delimiter depth at that header */
-  size_t statement_indent; /* indentation of the statement being scanned */
-  bool pending;            /* the previous line ended with ':' and a suite may start */
-  bool continuing;         /* the next line starts with '.' or '|' and continues this statement */
-} LineLayout;
-
-/* What the token scan of one line needs to know about its indentation. */
-typedef struct LineInfo {
-  size_t leading;
-  size_t top_indent; /* indentation of the innermost open suite */
-  size_t top_depth;  /* delimiter depth at which that suite opened */
-} LineInfo;
-
 /* ---- shared by the lexer files (each is defined in the file named by its group) ---- */
 
 uint8_t lex_advance(Scanner *s);
-bool lex_apply_layout(Scanner *s, LineLayout *layout, size_t leading);
 bool lex_at_block_comment(const Scanner *s);
 bool lex_at_line_comment(const Scanner *s);
 bool lex_bidi_control_at(const Scanner *s, size_t i);
@@ -117,6 +92,8 @@ bool lex_fail_text(Scanner *s, const char *message);
 bool lex_fail_at_text(Scanner *s, MsPos pos, const char *message);
 bool lex_fail_range(Scanner *s, MsPos start, MsSpan message);
 bool lex_is_binary_digit(uint8_t byte);
-bool lex_scan_line_tokens(Scanner *s, const LineInfo *info);
+bool lex_scan_line_tokens(Scanner *s);
+bool lex_statement_level(const Scanner *s);
+uint8_t lex_open_char(uint8_t delimiter);
 
 #endif

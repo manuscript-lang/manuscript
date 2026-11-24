@@ -3,19 +3,25 @@
 // conform: origin=value-semantics-audit
 import Closeable from "@std/core.ms"
 
-// A resource with only scalar fields has no storage to free, but a temporary of it is still closed.
-type Counter:
-    id Int
+// A resource with only scalar fields has no storage to free, but a temporary of it is
+// still closed.
+type Counter {
+	id Int
+}
 
-fn move Counter.close() Void!:
-    print(f"closed {self.id}")
+fn move Counter.close() Void! {
+	print(f"closed {self.id}")
+}
 
-fn Counter.value() Int:
-    return self.id
+fn Counter.value() Int {
+	return self.id
+}
 
-fn open_counter(id Int) Counter:
-    return Counter(id)
+fn open_counter(id Int) Counter {
+	return Counter(id)
+}
 
-fn main() Void:
-    a := open_counter(7).value()
-    print(f"read {a}")
+fn main() Void {
+	a := open_counter(7).value()
+	print(f"read {a}")
+}

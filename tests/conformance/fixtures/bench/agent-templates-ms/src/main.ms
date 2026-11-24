@@ -1,2 +1,3 @@
-fn main() Void:
-    return
+fn main() Void {
+	return
+}

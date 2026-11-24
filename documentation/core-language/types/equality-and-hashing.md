@@ -14,14 +14,17 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected.
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-interface Equal:
+interface Equal {
     fn equals(other Self) Bool
+}
 
-interface Comparable:
+interface Comparable {
     fn compare(other Self) Int
+}
 
-interface Hashable:
+interface Hashable {
     fn hash() Int
+}
 ```
 
 `Self` is the implementing type. An implementation writes its own type for `other`, as `CustomerKey.equals` does below, so it never has to check the argument's type.
@@ -58,12 +61,14 @@ An explicit implementation can select identity instead of every field:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type CustomerKey:
+type CustomerKey {
     id Int
     label String
+}
 
-fn CustomerKey.equals(other CustomerKey) Bool:
+fn CustomerKey.equals(other CustomerKey) Bool {
     return self.id == other.id
+}
 
 fn CustomerKey.hash() Int => self.id
 ```

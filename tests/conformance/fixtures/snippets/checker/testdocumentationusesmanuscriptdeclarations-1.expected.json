@@ -14,7 +14,7 @@
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 7,
           "column": 40,
-          "offset": 311
+          "offset": 303
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 7,
           "column": 51,
-          "offset": 322
+          "offset": 314
         },
         "fix": {
           "position": {
@@ -66,7 +66,7 @@
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 8,
           "column": 50,
-          "offset": 381
+          "offset": 370
         },
         "fix": {
           "position": {
@@ -92,7 +92,7 @@
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 9,
           "column": 24,
-          "offset": 421
+          "offset": 407
         },
         "fix": {
           "position": {
@@ -118,7 +118,7 @@
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 9,
           "column": 55,
-          "offset": 452
+          "offset": 438
         },
         "fix": {
           "position": {

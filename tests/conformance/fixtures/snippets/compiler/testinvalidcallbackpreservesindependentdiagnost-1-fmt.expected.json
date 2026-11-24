@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn example() Void:\n\tnames := [1, 2].map(item => missing).join(other_missing)\n\tconflict := apply(value: 1, transform: fn(item String) => missing_result)\n\twrong Int := \"text\"\n\tcallback fn(Int) Int := () => missing_too\n"
+    "fmt": "fn example() Void {\n\tnames := [1, 2].map(item => missing).join(other_missing)\n\tconflict := apply(value: 1, transform: fn(item String) => missing_result)\n\twrong Int := \"text\"\n\tcallback fn(Int) Int := () => missing_too\n}\n"
   }
 }

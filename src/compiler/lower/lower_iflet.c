@@ -1,4 +1,4 @@
-/* compiler/lower/lower_iflet.c: `if x := value:`. The test says whether the value holds a payload (an Optional is
+/* compiler/lower/lower_iflet.c: `if x := value { ... }`. The test says whether the value holds a payload (an Optional is
  * some, a Result is ok); the then branch binds the payload to the pattern's local. */
 #include "compiler/lower/lower_fn.h"
 
@@ -121,7 +121,7 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   return !fn->failed;
 }
 
-/* The container and key an `if` that edits an entry names: `if var name = place[key]?:`, or `if var name =
+/* The container and key an `if` that edits an entry names: `if var name = place[key]? { ... }`, or `if var name =
  * place.operation(key):` where the operation is a native that answers the entry the key selects in a list or map (an
  * Optional of the container's value type, given the container's key type): its binding edits the entry itself. */
 bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr **index) {
@@ -159,7 +159,7 @@ bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr
   return true;
 }
 
-/* `if var name = place[key]?:` tests whether the entry exists. `address` is the entry's address (null when absent) and
+/* `if var name = place[key]? { ... }` tests whether the entry exists. `address` is the entry's address (null when absent) and
  * `cond` says it is not. */
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty) {
   MsExpr *left = NULL;

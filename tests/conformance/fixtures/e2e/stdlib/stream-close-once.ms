@@ -8,26 +8,32 @@ import (
 
 // A stream closes its source or sink once, whether the stream is closed by hand or
 // dropped.
-type Counted:
+type Counted {
 	log String
+}
 
-fn var Counted.next() Int?!:
+fn var Counted.next() Int?! {
 	return ok(null)
+}
 
-fn var Counted.write(move value Int) Void!:
+fn var Counted.write(move value Int) Void! {
 	return ok()
+}
 
-fn var Counted.flush() Void!:
+fn var Counted.flush() Void! {
 	return ok()
+}
 
-fn move Counted.close() Void!:
+fn move Counted.close() Void! {
 	void append_file(self.log, "x").wait()
+}
 
-fn closes(log String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
+fn closes(log String) String {
+	if bytes := read_file(log).wait() { return bytes.decode_utf8() or "" }
 	return ""
+}
 
-test "a read stream closes its source once":
+test "a read stream closes its source once" {
 	dir := temporary("stream-close-") | expect_ok?
 	log := f"{dir.path()}/r.log"
 	void append_file(log, "").wait()
@@ -35,8 +41,9 @@ test "a read stream closes its source once":
 	var by_hand = ReadStream[Int](Counted(log.clone()))
 	by_hand.close()?
 	expect_equal(closes(log), "x")?
+}
 
-test "a write stream closes its sink once":
+test "a write stream closes its sink once" {
 	dir := temporary("stream-close-") | expect_ok?
 	log := f"{dir.path()}/w.log"
 	void append_file(log, "").wait()
@@ -44,18 +51,23 @@ test "a write stream closes its sink once":
 	var out = WriteStream[Int](Counted(log.clone()))
 	out.close()?
 	expect_equal(closes(log), "x")?
+}
 
-type Failing:
+type Failing {
 	unused Int
+}
 
-fn var Failing.next() Int?!:
+fn var Failing.next() Int?! {
 	return ok(null)
+}
 
-fn move Failing.close() Void!:
+fn move Failing.close() Void! {
 	return error(Error("close failed", kind: "EIO"))
+}
 
-test "an explicit close returns the source's close error":
+test "an explicit close returns the source's close error" {
 	var input = ReadStream[Int](Failing(0))
 	result := input.close()
 	expect_equal(result.is_error(), true)?
 	expect_equal(result.err().message, "close failed")?
+}

@@ -7,18 +7,25 @@ fn result[T](transform fn() Result[T, TextError]) Result[T, TextError] => transf
 fn checked() Result[Int, TextError] => ok(3)
 fn choose[T](first fn() T, second fn() T) T => second()
 fn optional(transform (fn(Int) Int)? = null) Void => return
-type Box[T]:
+type Box[T] {
     value T
-type Callback[T, U]:
+}
+type Callback[T, U] {
     transform fn(T) U
-enum Choice[T]:
+}
+enum Choice[T] {
     Payload(value T)
-type Pair:
+}
+type Pair {
     first Int
     second Int = 2
-enum TwoPayloads:
+}
+enum TwoPayloads {
     Pair(first Int, second Int)
-interface Read:
+}
+interface Read {
     fn get() Int
-impl Read for Box[Int]:
+}
+impl Read for Box[Int] {
     fn get() Int => self.value
+}

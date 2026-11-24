@@ -15,43 +15,52 @@ import (
 )
 
 // Reads `input` to its end and joins the chunks.
-fn read_to_end(var input ReadStream[Bytes]) Bytes!:
+fn read_to_end(var input ReadStream[Bytes]) Bytes! {
 	var chunks List[Bytes] = []
 
-	while true:
+	while true {
 		chunk := input.next()?
 		bytes := chunk
 
-		if bytes != null:
+		if bytes != null {
 			chunks.append(bytes)
-		else:
+		} else {
 			break
+		}
+	}
 
 	return ok(join(chunks))
+}
 
 // Hands out its parts one chunk at a time, then reports the end of the stream.
-type Chunks:
+type Chunks {
 	parts List[String]
 	at Int = 0
 	failure String?
+}
 
-fn move Chunks.close() Void!:
+fn move Chunks.close() Void! {
 	return ok()
+}
 
-fn var Chunks.next() Bytes?!:
-	if self.at == self.parts.length():
-		match self.failure:
+fn var Chunks.next() Bytes?! {
+	if self.at == self.parts.length() {
+		match self.failure {
 			message => return error(Error(message.clone(), kind: "EIO"))
 			null => return ok(null)
+		}
+	}
 
 	chunk := self.parts[self.at]
 	self.at += 1
 	return ok(chunk.to_bytes())
+}
 
-fn echo(request HttpRequest) HttpResponse:
+fn echo(request HttpRequest) HttpResponse {
 	return HttpResponse(status: 200, headers: headers(), body: request.body.clone())
+}
 
-test "request_stream uploads each chunk of a ReadStream":
+test "request_stream uploads each chunk of a ReadStream" {
 	server := serve("127.0.0.1:0", buffered(echo))?
 	client := http_client(HttpClientOptions())?
 	upload := ReadStream[Bytes](Chunks(parts: ["alpha ", "beta ", "gamma"]))
@@ -65,8 +74,9 @@ test "request_stream uploads each chunk of a ReadStream":
 
 	body := read_to_end(response.body)?
 	expect_equal(body, "alpha beta gamma".to_bytes())?
+}
 
-test "request_stream reports a failing ReadStream":
+test "request_stream reports a failing ReadStream" {
 	server := serve("127.0.0.1:0", buffered(echo))?
 	client := http_client(HttpClientOptions())?
 	upload := ReadStream[Bytes](Chunks(parts: ["partial"], failure: "disk gone"))
@@ -77,3 +87,4 @@ test "request_stream reports a failing ReadStream":
 		upload,
 	)
 	expect_equal(sent.is_error(), true)?
+}

@@ -1,9 +1,10 @@
 import Logger from "@std/log.ms"
 
-type Request:
+type Request {
 	request String
+}
 
-type Payload:
+type Payload {
 	count Int
 	ok Bool
 	nested List[Bool?]
@@ -11,8 +12,9 @@ type Payload:
 	level Int
 	msg String
 	time Int
+}
 
-export fn emit(logger Logger) Void!:
+export fn emit(logger Logger) Void! {
 	child := logger.child(Request("req-1"))?
 	fields := Payload(
 		count: 9007199254740993,
@@ -26,3 +28,4 @@ export fn emit(logger Logger) Void!:
 	child.debug("filtered")?
 	child.info("received \"payload\"\nnext", fields)?
 	logger.warn("complete")?
+}

@@ -12,22 +12,22 @@
         "message": "argument labels use a colon; write x: value",
         "position": {
           "file": "golden-0886.ms",
-          "line": 6,
+          "line": 7,
           "column": 16,
-          "offset": 110
+          "offset": 114
         },
         "end": {
           "file": "golden-0886.ms",
-          "line": 6,
+          "line": 7,
           "column": 17,
-          "offset": 111
+          "offset": 115
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0886.ms:6:16: parse: argument labels use a colon; write x: value\n   |\n 6 |     return g(x = 1)\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0886.ms:7:16: parse: argument labels use a colon; write x: value\n   |\n 7 |     return g(x = 1)\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

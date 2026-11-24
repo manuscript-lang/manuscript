@@ -1,6 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
-value := result(fn():
+value := result(fn() {
         n := checked()?
         return ok(n)
     )
+}

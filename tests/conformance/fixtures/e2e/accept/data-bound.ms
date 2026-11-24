@@ -6,28 +6,34 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-type Plain:
+type Plain {
 	name String
 	tags List[String]
 	note String?
+}
 
-type Money:
+type Money {
 	cents Int
+}
 
-fn Money.to_json() JsonValue:
+fn Money.to_json() JsonValue {
 	return JsonValue.StringValue(f"usd:{self.cents}")
+}
 
-enum Mode:
+enum Mode {
 	Fast
 	Slow
+}
 
-fn text[T Data](value T) String:
+fn text[T Data](value T) String {
 	return stringify(value).get_or("")
+}
 
-test "Data accepts plain records, lists, codecs, and JSON documents":
+test "Data accepts plain records, lists, codecs, and JSON documents" {
 	plain := Plain("a", ["x"], null)
 	expect_equal(text(plain), "{\"name\":\"a\",\"tags\":[\"x\"]}")?
 	expect_equal(text(Money(5)), "\"usd:5\"")?
 	expect_equal(text(Mode.Fast), "\"Fast\"")?
 	expect_equal(text(JsonValue.Null), "null")?
 	expect_equal(text([1, 2, 3]), "[1,2,3]")?
+}

@@ -7,21 +7,42 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step",
         "position": {
           "file": "golden-0754.ms",
-          "line": 4,
-          "column": 5,
-          "offset": 77
+          "line": 3,
+          "column": 11,
+          "offset": 63
+        },
+        "end": {
+          "file": "golden-0754.ms",
+          "line": 3,
+          "column": 20,
+          "offset": 72
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0754.ms",
+            "line": 3,
+            "column": 11,
+            "offset": 63
+          },
+          "end": {
+            "file": "golden-0754.ms",
+            "line": 3,
+            "column": 20,
+            "offset": 72
+          },
+          "replacement": "value?"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0754.ms:4:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 4 |     unrelated := 1\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0754.ms:3:11: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 3 | output := try value\n   |           ^^^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -12,16 +12,16 @@
         "message": "missing argument value: Int in call to f; add 'value: <Int>'",
         "position": {
           "file": "golden-0210.ms",
-          "line": 6,
+          "line": 8,
           "column": 12,
-          "offset": 131
+          "offset": 130
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0210.ms:6:12: type: missing argument value: Int in call to f; add 'value: <Int>'\n   |\n 6 |     return f()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0210.ms:8:12: type: missing argument value: Int in call to f; add 'value: <Int>'\n   |\n 8 |     return f()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

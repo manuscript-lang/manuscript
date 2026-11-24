@@ -9,20 +9,20 @@
         "file": "main.ms",
         "line": 7,
         "column": 20,
-        "offset": 156
+        "offset": 157
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 7,
           "column": 5,
-          "offset": 144
+          "offset": 145
         },
         "end": {
           "file": "main.ms",
           "line": 7,
           "column": 21,
-          "offset": 160
+          "offset": 161
         },
         "replacement": "xs.is_empty()"
       }
@@ -35,20 +35,20 @@
         "file": "main.ms",
         "line": 8,
         "column": 19,
-        "offset": 189
+        "offset": 193
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 8,
           "column": 5,
-          "offset": 178
+          "offset": 182
         },
         "end": {
           "file": "main.ms",
           "line": 8,
           "column": 19,
-          "offset": 192
+          "offset": 196
         },
         "replacement": "not m.is_empty()"
       }
@@ -61,20 +61,20 @@
         "file": "main.ms",
         "line": 10,
         "column": 26,
-        "offset": 230
+        "offset": 237
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 10,
           "column": 9,
-          "offset": 216
+          "offset": 223
         },
         "end": {
           "file": "main.ms",
           "line": 10,
           "column": 27,
-          "offset": 234
+          "offset": 241
         },
         "replacement": "text.is_empty()"
       }
@@ -85,22 +85,22 @@
       "message": "Index the list with xs[i] instead of xs.get(i)",
       "position": {
         "file": "main.ms",
-        "line": 13,
+        "line": 14,
         "column": 15,
-        "offset": 275
+        "offset": 285
       },
       "fix": {
         "position": {
           "file": "main.ms",
-          "line": 13,
+          "line": 14,
           "column": 11,
-          "offset": 274
+          "offset": 284
         },
         "end": {
           "file": "main.ms",
-          "line": 13,
+          "line": 14,
           "column": 18,
-          "offset": 281
+          "offset": 291
         },
         "replacement": "[0]"
       }
@@ -111,9 +111,9 @@
       "message": "`counts` reaches std.console.write: counts -\u003e print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter",
       "position": {
         "file": "main.ms",
-        "line": 19,
+        "line": 21,
         "column": 5,
-        "offset": 445
+        "offset": 458
       }
     },
     {
@@ -122,22 +122,22 @@
       "message": "Write the default and the override as one `x := if c: b else: a`",
       "position": {
         "file": "main.ms",
-        "line": 22,
+        "line": 25,
         "column": 5,
-        "offset": 484
+        "offset": 500
       },
       "fix": {
         "position": {
           "file": "main.ms",
-          "line": 22,
+          "line": 25,
           "column": 2,
-          "offset": 484
+          "offset": 500
         },
         "end": {
           "file": "main.ms",
-          "line": 24,
+          "line": 27,
           "column": 8,
-          "offset": 511
+          "offset": 528
         },
         "replacement": "x := if flag: 2 else: 1"
       }
@@ -148,50 +148,24 @@
       "message": "Return the value directly instead of binding it first",
       "position": {
         "file": "main.ms",
-        "line": 28,
+        "line": 33,
         "column": 5,
-        "offset": 544
+        "offset": 567
       },
       "fix": {
         "position": {
           "file": "main.ms",
-          "line": 28,
+          "line": 33,
           "column": 2,
-          "offset": 544
+          "offset": 567
         },
         "end": {
           "file": "main.ms",
-          "line": 29,
+          "line": 34,
           "column": 10,
-          "offset": 564
+          "offset": 587
         },
         "replacement": "return n + 1"
-      }
-    },
-    {
-      "code": "MSL122",
-      "severity": "error",
-      "message": "Count with `for i in start..end:` instead of a `var` and a `while` with `i += 1`",
-      "position": {
-        "file": "main.ms",
-        "line": 32,
-        "column": 5,
-        "offset": 594
-      },
-      "fix": {
-        "position": {
-          "file": "main.ms",
-          "line": 32,
-          "column": 1,
-          "offset": 593
-        },
-        "end": {
-          "file": "main.ms",
-          "line": 37,
-          "column": 9,
-          "offset": 652
-        },
-        "replacement": "\tvar sum = 0\n\n\tfor i in 0..10:\n\t\tsum += i"
       }
     },
     {
@@ -200,9 +174,9 @@
       "message": "Loop over the list directly: `for item in xs:` instead of indexing xs[j]",
       "position": {
         "file": "main.ms",
-        "line": 39,
+        "line": 46,
         "column": 5,
-        "offset": 655
+        "offset": 685
       }
     },
     {
@@ -211,9 +185,9 @@
       "message": "Build the list with `xs.map(x =\u003e ...)` or `xs.filter(x =\u003e ...)` instead of a loop that appends",
       "position": {
         "file": "main.ms",
-        "line": 42,
+        "line": 50,
         "column": 5,
-        "offset": 697
+        "offset": 731
       }
     },
     {
@@ -222,9 +196,9 @@
       "message": "Append every element with `out.extend(xs)` instead of a loop",
       "position": {
         "file": "main.ms",
-        "line": 43,
+        "line": 51,
         "column": 5,
-        "offset": 721
+        "offset": 755
       }
     },
     {
@@ -233,9 +207,9 @@
       "message": "`ys` would hold Void: the call returns nothing, and sort() and reverse() change their receiver in place; call it as a statement, or use sorted() or reversed() for a new list",
       "position": {
         "file": "main.ms",
-        "line": 48,
+        "line": 58,
         "column": 14,
-        "offset": 807
+        "offset": 848
       }
     },
     {
@@ -244,9 +218,9 @@
       "message": "`sorted` reaches std.console.write: sorted -\u003e print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter",
       "position": {
         "file": "main.ms",
-        "line": 49,
+        "line": 59,
         "column": 5,
-        "offset": 815
+        "offset": 856
       }
     },
     {
@@ -255,9 +229,9 @@
       "message": "this prints `void`: the call returns nothing, and sort() and reverse() change their receiver in place; call it as a statement, then print the list",
       "position": {
         "file": "main.ms",
-        "line": 49,
+        "line": 59,
         "column": 14,
-        "offset": 824
+        "offset": 865
       }
     },
     {
@@ -266,9 +240,9 @@
       "message": "`nothing` reaches std.console.write: nothing -\u003e print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter",
       "position": {
         "file": "main.ms",
-        "line": 53,
+        "line": 64,
         "column": 5,
-        "offset": 868
+        "offset": 912
       }
     },
     {
@@ -277,9 +251,9 @@
       "message": "`to_string()` on Bytes gives `Bytes(104, 105)`, not the text; `decode_utf8()` returns the text as a `String?`, so write `ok_or(x.decode_utf8(), Error(\"not UTF-8\", kind: \"EBADMSG\"))?`",
       "position": {
         "file": "main.ms",
-        "line": 57,
+        "line": 69,
         "column": 14,
-        "offset": 934
+        "offset": 981
       }
     },
     {
@@ -288,9 +262,9 @@
       "message": "`slice(..).get_or(..)` returns the fallback for any bad range, including an end past the length; use `?` to report it, or clamp the end with `min(end, xs.length())` first",
       "position": {
         "file": "main.ms",
-        "line": 66,
+        "line": 81,
         "column": 35,
-        "offset": 1087
+        "offset": 1143
       }
     },
     {
@@ -299,9 +273,9 @@
       "message": "A statement `result.get()` faults when the call fails; write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome",
       "position": {
         "file": "main.ms",
-        "line": 70,
+        "line": 86,
         "column": 7,
-        "offset": 1135
+        "offset": 1194
       }
     },
     {
@@ -310,22 +284,22 @@
       "message": "Use `void result` to ignore a Void! outcome instead of result.get_or(null)",
       "position": {
         "file": "main.ms",
-        "line": 71,
+        "line": 87,
         "column": 12,
-        "offset": 1149
+        "offset": 1208
       },
       "fix": {
         "position": {
           "file": "main.ms",
-          "line": 71,
+          "line": 87,
           "column": 2,
-          "offset": 1142
+          "offset": 1201
         },
         "end": {
           "file": "main.ms",
-          "line": 71,
+          "line": 87,
           "column": 21,
-          "offset": 1161
+          "offset": 1220
         },
         "replacement": "void unit()"
       }
@@ -336,20 +310,20 @@
       "message": "`run` reaches std.console.write: run -\u003e print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter",
       "position": {
         "file": "main.ms",
-        "line": 72,
+        "line": 88,
         "column": 5,
-        "offset": 1163
+        "offset": 1222
       }
     },
     {
       "code": "MSL131",
       "severity": "warning",
-      "message": "`print` of a Result shows the `ok(...)` wrapper; write `call()?` in a function that returns a Result, or `if value := call():` to read the success",
+      "message": "`print` of a Result shows the `ok(...)` wrapper; write `call()?` in a function that returns a Result, or `if value := call() { ... }` to read the success",
       "position": {
         "file": "main.ms",
-        "line": 72,
+        "line": 88,
         "column": 5,
-        "offset": 1163
+        "offset": 1222
       }
     }
   ]

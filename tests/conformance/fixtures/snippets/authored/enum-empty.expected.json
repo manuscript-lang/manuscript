@@ -13,21 +13,21 @@
         "position": {
           "file": "enum-empty.ms",
           "line": 3,
-          "column": 13,
-          "offset": 95
+          "column": 14,
+          "offset": 96
         },
         "end": {
           "file": "enum-empty.ms",
           "line": 3,
-          "column": 16,
-          "offset": 98
+          "column": 17,
+          "offset": 99
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/enum-empty.ms:3:13: parse: an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field Type)'\n   |\n 3 | enum Wrong: ...\n   |             ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/enum-empty.ms:3:14: parse: an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field Type)'\n   |\n 3 | enum Wrong { ... }\n   |              ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

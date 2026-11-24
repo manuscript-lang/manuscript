@@ -2,48 +2,59 @@
 // stringify it back.
 import JsonValue, parse, stringify from "@std/data/json.ms"
 
-fn lcg(x Int) Int:
+fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
+}
 
 // Keys are in sorted order so every language writes members the same way.
-fn make_text(n Int) String:
+fn make_text(n Int) String {
 	var sb = ""
 	var x = 1
 	sb += "["
 
-	for i in 0..n:
+	for i in 0..n {
 		x = lcg(x)
-		if i > 0: sb += ","
+		if i > 0 { sb += "," }
 		sb += f"\{\"id\":{i},\"name\":\"item-{x % 1000}\",\"score\":{x / 7 % 10000},\"tags\":[\"t{x % 7}\",\"t{x % 11}\"],\"nested\":\{\"a\":{x % 5},\"b\":[{x % 3},{x % 13}]\}\}"
+	}
 
 	sb += "]"
 	return sb
+}
 
-fn walk(v JsonValue) Int:
-	match v:
+fn walk(v JsonValue) Int {
+	match v {
 		Null => return 1
 		BoolValue(_) => return 1
 		NumberValue(t) => return t.parse_int() or 0
 		StringValue(s) => return s.length()
-		ArrayValue(items):
+		ArrayValue(items) => {
 			var t = 0
-			for item in items:
+			for item in items {
 				t += walk(item)
+			}
 			return t
-		ObjectValue(members):
+		}
+		ObjectValue(members) => {
 			var t = 0
-			for e in members.entries():
+			for e in members.entries() {
 				t += e.key.length() + walk(e.value)
+			}
 			return t
+		}
+	}
+}
 
-fn main() Void:
+fn main() Void {
 	text := make_text(120000)
 	var total = 0
 	var out_len = 0
 
-	for pass in 0..3:
+	for pass in 0..3 {
 		doc := parse[JsonValue](text).get()
 		total += walk(doc)
 		out_len += stringify(doc).get_or("").length()
+	}
 
 	print(f"text {text.length()} walk {total} out {out_len}")
+}

@@ -33,8 +33,8 @@ typedef enum MsTyKind {
   MS_TY_INVALID,     /* the `<invalid>` marker of an unresolved or erroneous type */
   MS_TY_INFERRED,    /* the `<inferred>` placeholder of a result not yet known */
   MS_TY_VARIABLE,    /* a type parameter */
-  MS_TY_TYPE,        /* `type T:` with fields */
-  MS_TY_ALTERNATIVE, /* `enum T:` with cases */
+  MS_TY_TYPE,        /* `type T { ... }` with fields */
+  MS_TY_ALTERNATIVE, /* `enum T { ... }` with cases */
   MS_TY_CONTRACT,    /* an interface */
   MS_TY_FUNCTION,    /* a function type */
   MS_TY_NATIVE       /* an opaque runtime-implemented type */

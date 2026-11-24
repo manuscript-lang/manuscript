@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-enum F:
+enum F {
     Value(value Int = 1)
+}

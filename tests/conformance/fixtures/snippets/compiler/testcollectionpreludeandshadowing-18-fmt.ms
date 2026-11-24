@@ -2,4 +2,3 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/prelude_test.go:80 TestCollectionPreludeAndShadowing
 import Set from "@std/collections/collections.ms"
-import Set from "@std/collections/collections.ms"

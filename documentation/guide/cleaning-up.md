@@ -9,20 +9,26 @@ Files, sockets and processes need closing, even when the function leaves early b
 
 <!-- manuscript-example: {"mode":"run","files":{"orders.csv":"id,customer,cents\n1,Sam,1250\n2,Ada,4000\n"},"stdout":"2 orders\n","cases":[{"files":{"orders.csv":""},"stdout":"","exit_code":1}]} -->
 ```manuscript {filename="count.ms"}
-import open from "@std/os/fs.ms"
-import collect from "@std/io/streams.ms"
-import lines from "@std/io/steps.ms"
+import (
+    lines from "@std/io/steps.ms",
+    collect from "@std/io/streams.ms",
+    open from "@std/os/fs.ms",
+)
 
-fn count_orders(path String) Int!:
+fn count_orders(path String) Int! {
     file := open(path)?
     rows := collect(file.reader()? | lines)?
-    if rows.is_empty():
+    if rows.is_empty() {
         return error(Error(f"{path} is empty", kind: "EBADMSG"))
-    return ok(rows.length() - 1)
+    }
 
-fn main() Void!:
+    return ok(rows.length() - 1)
+}
+
+fn main() Void! {
     count := count_orders("orders.csv")?
     print(f"{count} orders")
+}
 ```
 
 ```text
@@ -42,7 +48,7 @@ Run it next to an `orders.csv` file containing a header and two rows. With an em
 
 Declare the binding with `var` and call `close()` when you are done reading but not yet done with the function. A second close is harmless:
 
-<!-- manuscript-example: {"mode":"fragment","context":"import open from \"@std/os/fs.ms\"\n\nfn slow_work(head List[String]) Void:\n    return","given":["path String"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import open from \"@std/os/fs.ms\"\n\nfn slow_work(head List[String]) Void {\n    return\n}","given":["path String"]} -->
 ```manuscript
 var file = open(path)?
 head := file.read_lines(max_lines: 1)?

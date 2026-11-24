@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding box; declare it with 'box := ...' before use, define 'fn box(...) T:', or import it from a module",
+        "message": "unknown binding box; declare it with 'box := ...' before use, define 'fn box(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1074.ms",
           "line": 7,
           "column": 5,
-          "offset": 122
+          "offset": 109
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "golden-1074.ms",
           "line": 7,
           "column": 9,
-          "offset": 126
+          "offset": 113
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1074.ms:7:5: resolution: unknown binding box; declare it with 'box := ...' before use, define 'fn box(...) T:', or import it from a module\n   |\n 7 |     box.count -=  total\n   |     ^\n<DIR>/golden-1074.ms:7:9: type: assignment requires a type field; only fields of a type value can be assigned with 'x.field = ...'\n   |\n 7 |     box.count -=  total\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1074.ms:7:5: resolution: unknown binding box; declare it with 'box := ...' before use, define 'fn box(...) T { ... }', or import it from a module\n   |\n 7 |     box.count -= total\n   |     ^\n<DIR>/golden-1074.ms:7:9: type: assignment requires a type field; only fields of a type value can be assigned with 'x.field = ...'\n   |\n 7 |     box.count -= total\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

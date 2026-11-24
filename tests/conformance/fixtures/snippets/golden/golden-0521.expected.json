@@ -12,9 +12,9 @@
         "message": "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])",
         "position": {
           "file": "golden-0521.ms",
-          "line": 7,
+          "line": 9,
           "column": 13,
-          "offset": 148
+          "offset": 144
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "golden-0521.ms",
           "line": 5,
           "column": 16,
-          "offset": 97
+          "offset": 92
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0521.ms:7:13: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 7 |     item := Growing(value: value)\n   |             ^\n<DIR>/golden-0521.ms:5:16: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 5 |     next Int = grow([value])\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0521.ms:9:13: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 9 |     item := Growing(value: value)\n   |             ^\n<DIR>/golden-0521.ms:5:16: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 5 |     next Int = grow([value])\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

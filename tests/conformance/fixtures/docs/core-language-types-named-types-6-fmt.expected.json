@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type CustomerId:\n\tvalue String\n\ntype OrderId:\n\tvalue String\n"
+    "fmt": "type CustomerId {\n\tvalue String\n}\n\ntype OrderId {\n\tvalue String\n}\n"
   }
 }

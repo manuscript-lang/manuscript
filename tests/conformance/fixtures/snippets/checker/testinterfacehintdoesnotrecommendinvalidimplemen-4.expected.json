@@ -12,7 +12,7 @@
         "message": "expected Shape, found fn() Int (in the return value); use a concrete value implementing Shape",
         "position": {
           "file": "testinterfacehintdoesnotrecommendinvalidimplemen-4.ms",
-          "line": 7,
+          "line": 8,
           "column": 31,
           "offset": 271
         }
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinterfacehintdoesnotrecommendinvalidimplemen-4.ms:7:31: type: expected Shape, found fn() Int (in the return value); use a concrete value implementing Shape\n   |\n 7 | fn f(value fn() Int) Shape => value\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinterfacehintdoesnotrecommendinvalidimplemen-4.ms:8:31: type: expected Shape, found fn() Int (in the return value); use a concrete value implementing Shape\n   |\n 8 | fn f(value fn() Int) Shape => value\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

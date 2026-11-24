@@ -9,42 +9,42 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export commands; did you mean 'Commands'?",
+        "message": "module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/process.ms\"'",
         "position": {
           "file": "golden-0165.ms",
-          "line": 5,
-          "column": 8,
-          "offset": 174
+          "line": 7,
+          "column": 5,
+          "offset": 196
         },
         "end": {
           "file": "golden-0165.ms",
-          "line": 5,
-          "column": 16,
-          "offset": 182
+          "line": 7,
+          "column": 17,
+          "offset": 208
         }
       },
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/process.ms\"'",
+        "message": "module does not export commands; did you mean 'Commands'?",
         "position": {
           "file": "golden-0165.ms",
-          "line": 5,
-          "column": 43,
-          "offset": 209
+          "line": 7,
+          "column": 44,
+          "offset": 235
         },
         "end": {
           "file": "golden-0165.ms",
-          "line": 5,
-          "column": 55,
-          "offset": 221
+          "line": 7,
+          "column": 52,
+          "offset": 243
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0165.ms:5:8: resolution: module does not export commands; did you mean 'Commands'?\n   |\n 5 | import commands, Commands, CommandOutput, CommandError from \"@std/os/process.ms\"\n   |        ^^^^^^^^\n<DIR>/golden-0165.ms:5:43: resolution: module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/process.ms\"'\n   |\n 5 | import commands, Commands, CommandOutput, CommandError from \"@std/os/process.ms\"\n   |                                           ^^^^^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0165.ms:7:5: resolution: module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/process.ms\"'\n   |\n 7 |     CommandError, CommandOutput, Commands, commands from \"@std/os/process.ms\",\n   |     ^^^^^^^^^^^^\n<DIR>/golden-0165.ms:7:44: resolution: module does not export commands; did you mean 'Commands'?\n   |\n 7 |     CommandError, CommandOutput, Commands, commands from \"@std/os/process.ms\",\n   |                                            ^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

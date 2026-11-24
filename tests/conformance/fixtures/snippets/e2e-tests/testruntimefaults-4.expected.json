@@ -13,7 +13,7 @@
           "index": 0,
           "name": "testruntimefaults-4.ms::fault",
           "status": "failed",
-          "failure": "division by zero; right must be nonzero, found 0\n  at testruntimefaults-4.ms:5 in divide\n  at testruntimefaults-4.ms:8 in test fault"
+          "failure": "division by zero; right must be nonzero, found 0\n  at testruntimefaults-4.ms:5 in divide\n  at testruntimefaults-4.ms:9 in test fault"
         }
       ],
       "summary": {
@@ -26,7 +26,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testruntimefaults-4.ms::fault\nFAIL testruntimefaults-4.ms::fault: division by zero; right must be nonzero, found 0\n  at testruntimefaults-4.ms:5 in divide\n  at testruntimefaults-4.ms:8 in test fault\n1 tests, 1 failed\n",
+      "stdout": "RUN testruntimefaults-4.ms::fault\nFAIL testruntimefaults-4.ms::fault: division by zero; right must be nonzero, found 0\n  at testruntimefaults-4.ms:5 in divide\n  at testruntimefaults-4.ms:9 in test fault\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

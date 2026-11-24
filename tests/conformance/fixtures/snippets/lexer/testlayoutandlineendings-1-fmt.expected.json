@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "// module\nfn value() Int:\n\t// comment\n\tif true:\n\t\treturn 3\n\telse:\n\t\treturn 4\n"
+    "fmt": "// module\nfn value() Int {\n\t// comment\n\tif true {\n\t\treturn 3\n\t} else {\n\t\treturn 4\n\t}\n}\n"
   }
 }

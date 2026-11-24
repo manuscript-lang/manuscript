@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn caller() Int!:\n\treturn match operation():\n\t\tok(value):\n\t\t\toperation()\n\t\t\toperation()\n\t\terror(cause) => operation()\n"
+    "fmt": "fn caller() Int! {\n\treturn match operation() {\n\t\tok(value) => {\n\t\t\toperation()\n\t\t\toperation()\n\t\t}\n\t\terror(cause) => operation()\n\t}\n}\n"
   }
 }

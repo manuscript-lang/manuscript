@@ -6,15 +6,17 @@ import (
 	median, read_text from "./lib.ms",
 )
 
-export fn main() Void:
+export fn main() Void {
 	args := arguments()
 	var groups = Map[String, List[Float]]()
 
-	for row in read_text(args[0]).split("\n"):
-		if row == "" or row.starts_with("round\t"): continue
+	for row in read_text(args[0]).split("\n") {
+		if row == "" or row.starts_with(
+			"round\t"
+		) { continue }
 
 		fields := row.split("\t")
-		if fields[0] == "0": continue
+		if fields[0] == "0" { continue }
 
 		key := f"{fields[2]} {fields[1]}"
 		value := (
@@ -25,13 +27,17 @@ export fn main() Void:
 			/ 1000000.0
 		)
 
-		if var values = groups[key]?:
+		if var values = groups[key]? {
 			values.append(value)
-		else:
+		} else {
 			groups.add(key, [value])
+		}
+	}
 
-	for key in groups.keys().sorted():
+	for key in groups.keys().sorted() {
 		values := groups[key]
 		print(
 			f"{key} n={values.length()} median_ms={median(values)} min_ms={(values.min() or panic("called Optional.get() on null"))} max_ms={(values.max() or panic("called Optional.get() on null"))}"
 		)
+	}
+}

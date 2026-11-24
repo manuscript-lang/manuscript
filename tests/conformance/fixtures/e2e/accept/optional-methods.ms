@@ -6,22 +6,25 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-type Counter:
+type Counter {
 	calls Int
+}
 
-fn fallback(var counter Counter) Int:
+fn fallback(var counter Counter) Int {
 	counter.calls += 1
 	return 42
+}
 
-fn value_or[T](fallback T, value T?) T:
+fn value_or[T](fallback T, value T?) T {
 	inner := value
-	if inner != null: return inner
+	if inner != null { return inner }
 
 	return fallback
+}
 
 fn increment(value Int) Int => value + 1
 
-test "Optional presence and extraction preserve false and zero":
+test "Optional presence and extraction preserve false and zero" {
 	present Int? := 0
 	missing Int? := null
 	expect_false(not (present != null))?
@@ -35,8 +38,9 @@ test "Optional presence and extraction preserve false and zero":
 	expect_equal(value_or(7, missing), 7)?
 	expect_equal(value_or(7, present), 0)?
 	expect_false(missing != null)?
+}
 
-test "the fallback of or runs only when the value is null":
+test "the fallback of or runs only when the value is null" {
 	present Int? := 0
 	missing Int? := null
 	var counter = Counter(0)
@@ -48,8 +52,9 @@ test "the fallback of or runs only when the value is null":
 	create := fn() Int? => 42
 	expect_equal((present or create()) or panic("called Optional.get() on null"), 0)?
 	expect_equal((missing or create()) or panic("called Optional.get() on null"), 42)?
+}
 
-test "Optional methods retain generic payload and receiver identity":
+test "Optional methods retain generic payload and receiver identity" {
 	inner Int? := null
 	outer Int?? := inner
 	expect_true(outer == null)?  // `Int??` is `Int?`: a nullable of a nullable has no second layer
@@ -63,8 +68,9 @@ test "Optional methods retain generic payload and receiver identity":
 
 	snapshot := outer.clone()
 	expect_equal(snapshot, outer)?
+}
 
-test "Optional fallbacks preserve standard option records":
+test "Optional fallbacks preserve standard option records" {
 	limits := JsonOptions(max_bytes: -1)
 	missing JsonOptions? := null
 	var extracted = (missing or limits).clone()
@@ -72,8 +78,10 @@ test "Optional fallbacks preserve standard option records":
 	expect_false(not (extracted.max_depth == null))?
 	extracted.max_values = 7
 	expect_equal(extracted.max_values or panic("called Optional.get() on null"), 7)?
+}
 
-test "Optional methods work on inferred library return values":
+test "Optional methods work on inferred library return values" {
 	values := [1, 2]
 	expect_equal(values.get(0), 1)?
 	expect_equal(values.get_or(5, 9), 9)?
+}

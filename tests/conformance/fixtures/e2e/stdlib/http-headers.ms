@@ -19,7 +19,7 @@ import (
 	read_to_end, recv, send, send_bytes from "./support/conn.ms",
 )
 
-fn repeated_headers() HttpHeaders!:
+fn repeated_headers() HttpHeaders! {
 	var fields = headers()
 	_first := fields.append("x-dup", "first") | expect_ok?
 	_second := fields.append("X-Dup", "second") | expect_ok?
@@ -32,25 +32,29 @@ fn repeated_headers() HttpHeaders!:
 	)
 	_other := fields.append("set-cookie", "b=2") | expect_ok?
 	return ok(fields)
+}
 
-fn header_failure(message String) HttpResponse:
+fn header_failure(message String) HttpResponse {
 	return HttpResponse(status: 500, headers: headers(), body: message.to_bytes())
+}
 
-fn handle_headers(request HttpRequest) HttpResponse:
-	if request.method != HttpMethod.Get: return header_failure("typed request method")
+fn handle_headers(request HttpRequest) HttpResponse {
+	if request.method != HttpMethod.Get { return header_failure("typed request method") }
 
 	received := request.headers.get_all("X-DUP")
-	if received != ["first", "second"]: return header_failure(
-		"case-insensitive received fields"
-	)
+	if received != ["first", "second"] {
+		return header_failure("case-insensitive received fields")
+	}
 
-	var fields = match repeated_headers():
+	var fields = match repeated_headers() {
 		ok(found) => found
 		error(cause) => return header_failure(cause.message)
+	}
 
 	return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
+}
 
-test "one header type preserves repeated values through buffered requests":
+test "one header type preserves repeated values through buffered requests" {
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -83,19 +87,21 @@ test "one header type preserves repeated values through buffered requests":
 	expect_false(
 		((response.metadata().headers.get_all("X-Dup")) != ["first", "second"])
 	)?
+}
 
-fn echo_headers(var exchange HttpExchange) Void!:
+fn echo_headers(var exchange HttpExchange) Void! {
 	received := exchange.headers()
-	if received.get_all("X-DUP") != ["first", "second"]: return error(
-		Error("HTTP: invalid data", kind: "EBADMSG")
-	)
+	if received.get_all("X-DUP") != ["first", "second"] {
+		return error(Error("HTTP: invalid data", kind: "EBADMSG"))
+	}
 
 	var output = received.clone()
 	output.remove("Connection")
 	output.remove("Content-Length")
 	return exchange.send_headers(status: 200, headers: output)
+}
 
-test "streaming proxy uses the same byte-valued header type":
+test "streaming proxy uses the same byte-valued header type" {
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -113,8 +119,9 @@ test "streaming proxy uses the same byte-valued header type":
 	expect_false(
 		((response.metadata().headers.get_all("x-DUP")) != ["first", "second"])
 	)?
+}
 
-test "lookup returns membership and clone separates it":
+test "lookup returns membership and clone separates it" {
 	var fields = (repeated_headers()?)
 	_appended := fields.append("x-dup", "third") | expect_ok?
 	values := fields.get_all("X-DUP")
@@ -131,8 +138,9 @@ test "lookup returns membership and clone separates it":
 
 	_new_field := fields.append("X-Dup", "new") | expect_ok?
 	(fields.get_all("x-dup").length() != 1) | expect_false?
+}
 
-test "string lookup leaves out values that are not UTF-8":
+test "string lookup leaves out values that are not UTF-8" {
 	var fields = headers()
 	_valid := fields.append("Raw", "first") | expect_ok?
 	_invalid := fields.append_bytes("raw", Bytes(values: [255])) | expect_ok?
@@ -147,12 +155,15 @@ test "string lookup leaves out values that are not UTF-8":
 		| expect_equal(2)?
 	)
 
-	match fields.append("bad name", "value"):
+	match fields.append("bad name", "value") {
 		ok(_) => return fail("malformed name accepted")
-		error(cause):
+		error(cause) => {
 			expect_equal(cause, Error("HTTP: invalid input", kind: "EINVAL"))?
+		}
+	}
+}
 
-test "empty options and an omitted request body use checked defaults":
+test "empty options and an omitted request body use checked defaults" {
 	client_options := HttpClientOptions()
 	(client_options.decompress or client_options.cookies) | expect_false?
 	(HttpServerOptions().tls == null) | expect_true?
@@ -174,38 +185,43 @@ test "empty options and an omitted request body use checked defaults":
 		| expect_ok?
 	)
 	response.metadata.status | expect_equal(200)?
+}
 
-fn cookie_handler(var exchange HttpExchange) Void!:
+fn cookie_handler(var exchange HttpExchange) Void! {
 	var fields = headers()
 
-	if exchange.path() == "/set":
+	if exchange.path() == "/set" {
 		_added := fields.append(
 			"Set-Cookie",
 			"a=live; Path=/; Expires=Fri Jan  1 00:00:00 2100",
 		)?
-	else if exchange.path() == "/rfc850":
+	} else if exchange.path() == "/rfc850" {
 		_added := fields.append(
 			"Set-Cookie",
 			"a=gone; Path=/; Expires=Thursday, 01-Jan-1970 00:00:01 GMT",
 		)?
-	else if exchange.path() == "/asctime":
+	} else if exchange.path() == "/asctime" {
 		_added := fields.append(
 			"Set-Cookie",
 			"a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970",
 		)?
+	}
 
 	cookie := exchange.headers().get_all("Cookie").join("; ")
 	return exchange.send(200, fields, cookie.to_bytes())
+}
 
-fn echoed_cookie(client HttpClient, url String) String!:
+fn echoed_cookie(client HttpClient, url String) String! {
 	var response = client.request(HttpMethod.Get, url, headers(), timeout: 3.seconds())?
 	var text = ""
-	for chunk in response.body:
+	for chunk in response.body {
 		text += (chunk.decode_utf8() or panic("called Optional.get() on null"))
+	}
 	response.close()?
 	return ok(text)
+}
 
-test "legacy Expires removes a cookie before the next request":
+test "legacy Expires removes a cookie before the next request" {
 	server := serve(
 		"127.0.0.1:0",
 		cookie_handler,
@@ -214,7 +230,9 @@ test "legacy Expires removes a cookie before the next request":
 	client := http_client(HttpClientOptions(cookies: true))?
 	url := f"http://{server.address()}"
 
-	for path in ["/rfc850", "/asctime"]:
+	for path in ["/rfc850", "/asctime"] {
 		_set := echoed_cookie(client, f"{url}/set")?
 		(echoed_cookie(client, f"{url}{path}")?) | expect_equal("a=live")?
 		(echoed_cookie(client, f"{url}/echo")?) | expect_equal("")?
+	}
+}

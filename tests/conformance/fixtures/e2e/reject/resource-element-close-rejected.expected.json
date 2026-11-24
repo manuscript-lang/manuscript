@@ -12,16 +12,16 @@
         "message": "cannot move the resource `members[..]` out of `members`: a resource cannot be cloned, and it leaves `members` only when `members` is a `let` or a parameter and no type on the path has a `close` of its own; use `members[..]` in place, move the whole `members`, or take it with `part := members[..]` and refill `members[..] = ...` in the next statement",
         "position": {
           "file": "resource-element-close-rejected.ms",
-          "line": 13,
+          "line": 14,
           "column": 5,
-          "offset": 390
+          "offset": 388
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/resource-element-close-rejected.ms:13:5: type: cannot move the resource `members[..]` out of `members`: a resource cannot be cloned, and it leaves `members` only when `members` is a `let` or a parameter and no type on the path has a `close` of its own; use `members[..]` in place, move the whole `members`, or take it with `part := members[..]` and refill `members[..] = ...` in the next statement\n    |\n 13 |     members[0].close()?\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/resource-element-close-rejected.ms:14:5: type: cannot move the resource `members[..]` out of `members`: a resource cannot be cloned, and it leaves `members` only when `members` is a `let` or a parameter and no type on the path has a `close` of its own; use `members[..]` in place, move the whole `members`, or take it with `part := members[..]` and refill `members[..] = ...` in the next statement\n    |\n 14 |     members[0].close()?\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

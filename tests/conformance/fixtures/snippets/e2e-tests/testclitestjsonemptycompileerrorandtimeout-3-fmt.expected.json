@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import nanoseconds, sleep from \"@std/time.ms\"\n\ntest \"timeout\":\n\tsleep(nanoseconds(1000000000)).wait()\n\ntest \"after\":\n\treturn\n"
+    "fmt": "import nanoseconds, sleep from \"@std/time.ms\"\n\ntest \"timeout\" {\n\tsleep(nanoseconds(1000000000)).wait()\n}\n\ntest \"after\" {\n\treturn\n}\n"
   }
 }

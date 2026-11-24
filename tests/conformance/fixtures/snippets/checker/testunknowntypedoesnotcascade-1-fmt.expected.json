@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn peek() Missing:\n\treturn 0\n\nfn f() Int:\n\tmatch peek():\n\t\tx:\n\t\t\treturn x\n\t\tnull:\n\t\t\treturn 0\n"
+    "fmt": "fn peek() Missing {\n\treturn 0\n}\n\nfn f() Int {\n\tmatch peek() {\n\t\tx => {\n\t\t\treturn x\n\t\t}\n\t\tnull => {\n\t\t\treturn 0\n\t\t}\n\t}\n}\n"
   }
 }

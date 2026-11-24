@@ -15,32 +15,41 @@ Save as `notify_test.ms` and run `ms test notify_test.ms`. `notify_all` depends 
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-interface Mailer:
+interface Mailer {
     fn send(to String, subject String) Void!
+}
 
-fn notify_all(mailer Mailer, users List[String]) List[String]:
+fn notify_all(mailer Mailer, users List[String]) List[String] {
     var failed List[String] = []
-    for user in users:
-        if mailer.send(user, "Welcome").is_error():
+    for user in users {
+        if mailer.send(user, "Welcome").is_error() {
             failed.append(user.clone())
+        }
+    }
     return failed
+}
 
-type FakeMailer:
+type FakeMailer {
     broken Set[String] = Set[String]()
+}
 
-fn FakeMailer.send(to String, subject String) Void!:
-    if self.broken.contains(to):
+fn FakeMailer.send(to String, subject String) Void! {
+    if self.broken.contains(to) {
         return error(Error("mailbox full", kind: "EDQUOT"))
+    }
     return ok()
+}
 
-test "every user gets a message":
+test "every user gets a message" {
     failed := notify_all(FakeMailer(), ["ada", "sam"])
     expect_equal(failed, [])?
+}
 
-test "a failing mailbox is reported":
+test "a failing mailbox is reported" {
     mailer := FakeMailer(broken: ["sam"].to_set())
     failed := notify_all(mailer, ["ada", "sam", "lin"])
     expect_equal(failed, ["sam"])?
+}
 ```
 
 ```text
@@ -63,12 +72,14 @@ Save as `clock_test.ms`. Pass the current time in instead of reading it inside t
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn is_expired(issued_at Int, now Int, lifetime Int) Bool:
+fn is_expired(issued_at Int, now Int, lifetime Int) Bool {
     return now - issued_at >= lifetime
+}
 
-test "a token expires at the end of its lifetime":
+test "a token expires at the end of its lifetime" {
     expect_equal(is_expired(100, 159, 60), false)?
     expect_equal(is_expired(100, 160, 60), true)?
+}
 ```
 
 ```text

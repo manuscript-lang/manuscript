@@ -1,17 +1,23 @@
 // conform: tags=diagnostics
 // conform: phase=check
-import expect_equal from "@std/test/test.ms"
-import panic from "@std/faults.ms"
+import (
+	panic from "@std/faults.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
-fn positive(value Int) Int:
-    if value > 0:
-        return value
-    else:
-        panic(message: "positive value required")
+fn positive(value Int) Int {
+	if value > 0 {
+		return value
+	} else {
+		panic(message: "positive value required")
+	}
+}
 
-fn discard(value Int) Void:
-    return
+fn discard(value Int) Void {
+	return
+}
 
-test "return contracts":
-    positive(value: 3) | expect_equal(expected: 3)?
-    discard(value: 1) | expect_equal(expected: void)?
+test "return contracts" {
+	positive(value: 3) | expect_equal(expected: 3)?
+	discard(value: 1) | expect_equal(expected: void)?
+}

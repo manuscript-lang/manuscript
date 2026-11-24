@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void:",
+        "message": "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void { ... }",
         "position": {
           "file": "foreign-arrow-result.ms",
           "line": 4,

@@ -1,9 +1,10 @@
 // conform: tags=formatter,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/parser/empty_declarations_test.go:49 TestEmptyDeclarationsPreserveFollowingPositions
-type Empty: ...
+type Empty { ... }
 
-fn empty() Void: ...
+fn empty() Void { ... }
 
-fn kept() Int:
-    return 3
+fn kept() Int {
+	return 3
+}

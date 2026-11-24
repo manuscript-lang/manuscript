@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-export type Sq:
-    s Int
+export type Sq {
+	s Int
+}

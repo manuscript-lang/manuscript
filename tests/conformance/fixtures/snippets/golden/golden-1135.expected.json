@@ -14,26 +14,26 @@
           "file": "golden-1135.ms",
           "line": 4,
           "column": 5,
-          "offset": 70
+          "offset": 71
         },
         "end": {
           "file": "golden-1135.ms",
           "line": 4,
           "column": 16,
-          "offset": 81
+          "offset": 82
         },
         "fix": {
           "position": {
             "file": "golden-1135.ms",
             "line": 4,
             "column": 5,
-            "offset": 70
+            "offset": 71
           },
           "end": {
             "file": "golden-1135.ms",
             "line": 4,
             "column": 16,
-            "offset": 81
+            "offset": 82
           },
           "replacement": "values :="
         }

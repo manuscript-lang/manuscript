@@ -9,25 +9,29 @@ import (
 	expect_some from "@std/test/test.ms",
 )
 
-fn pairs(spans List[RegexSpan]) List[List[Int]]:
+fn pairs(spans List[RegexSpan]) List[List[Int]] {
 	var out = List[List[Int]](reserve: spans.length())
-	for span in spans: out.append([span.start, span.end])
+	for span in spans { out.append([span.start, span.end]) }
 	return out
+}
 
-fn slots(spans List[RegexSpan?]) List[List[Int]?]:
+fn slots(spans List[RegexSpan?]) List[List[Int]?] {
 	var out = List[List[Int]?](reserve: spans.length())
 
-	for span in spans:
+	for span in spans {
 		present := span
 
-		if present != null:
+		if present != null {
 			out.append([present.start, present.end])
-		else:
+		} else {
 			out.append(null)
+		}
+	}
 
 	return out
+}
 
-test "match spans use UTF8 byte offsets and existing empty adjacency":
+test "match spans use UTF8 byte offsets and existing empty adjacency" {
 	unicode := compile("é|🙂") | expect_ok?
 	(
 		unicode.find_all_spans("aé🙂")
@@ -59,8 +63,9 @@ test "match spans use UTF8 byte offsets and existing empty adjacency":
 		| pairs
 		| expect_equal(List[List[Int]]())?
 	)
+}
 
-test "capture spans distinguish no match absent groups and empty captures":
+test "capture spans distinguish no match absent groups and empty captures" {
 	re := compile("(a)?()") | expect_ok?
 	first := (
 		re.capture_spans("")
@@ -91,8 +96,9 @@ test "capture spans distinguish no match absent groups and empty captures":
 			Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 		)?
 	)
+}
 
-test "capture rows clear absent groups and retain all group indices":
+test "capture rows clear absent groups and retain all group indices" {
 	re := compile("(?P<left>é)|(🙂)") | expect_ok?
 	rows := re.capture_all_spans("é🙂é", 3, 9) | expect_ok?
 	rows.length() | expect_equal(3)?
@@ -112,8 +118,9 @@ test "capture rows clear absent groups and retain all group indices":
 		| expect_some?
 		| expect_equal("🙂")?
 	)
+}
 
-test "span budgets cover whole and unmatched capture slots":
+test "span budgets cover whole and unmatched capture slots" {
 	re := compile("(a)|(b)") | expect_ok?
 	(
 		re.find_all_spans("ab", 2)
@@ -158,7 +165,7 @@ test "span budgets cover whole and unmatched capture slots":
 		)?
 	)
 
-	for cap in [-1, -9223372036854775808]:
+	for cap in [-1, -9223372036854775808] {
 		(
 			re.find_all_spans("", cap)
 			| expect_error?
@@ -201,8 +208,10 @@ test "span budgets cover whole and unmatched capture slots":
 				)
 			)?
 		)
+	}
+}
 
-test "span methods support bound calls and preserve anchor context":
+test "span methods support bound calls and preserve anchor context" {
 	re := compile("(?m)(^a)|(b$)") | expect_ok?
 	find := re.find_all_spans
 	(
@@ -222,8 +231,9 @@ test "span methods support bound calls and preserve anchor context":
 	all := re.capture_all_spans
 	rows := all("za b\na b", null, null) | expect_ok?
 	rows.length() | expect_equal(3)?
+}
 
-test "span results remain bounded for dense matches":
+test "span results remain bounded for dense matches" {
 	text := "é🙂".repeat(32768)
 	re := compile("(é)|(🙂)") | expect_ok?
 	(
@@ -244,3 +254,4 @@ test "span results remain bounded for dense matches":
 			3,
 		) | expect_ok? | expect_some? | slots | expect_equal([[0, 2], [0, 2], null])?
 	)
+}

@@ -2,5 +2,6 @@
 // conform: phase=check
 import json from "@std/data/json.ms"
 
-export fn main() Int:
-    return 0
+export fn main() Int {
+	return 0
+}

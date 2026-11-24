@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn apply(value Int, transform fn(Int) Int) Int:\n\treturn transform(value: value)\n\noffset := 1\ndecrement := fn(value Int) Int:\n\treturn value - offset\nresult := apply(value: 3, transform: decrement)\n"
+    "fmt": "fn apply(value Int, transform fn(Int) Int) Int {\n\treturn transform(value: value)\n}\n\noffset := 1\ndecrement := fn(value Int) Int {\n\treturn value - offset\n}\nresult := apply(value: 3, transform: decrement)\n"
   }
 }

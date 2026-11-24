@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "// é😀\nfn value() String:\n\t// comment\n\tif true: return \"é😀\"\n\treturn \"\"\n"
+    "fmt": "// é😀\nfn value() String {\n\t// comment\n\tif true {\n\t\treturn \"é😀\"\n\t}\n\treturn \"\"\n}\n"
   }
 }

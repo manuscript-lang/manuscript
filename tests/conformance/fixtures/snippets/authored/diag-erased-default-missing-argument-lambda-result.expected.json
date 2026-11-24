@@ -12,16 +12,16 @@
         "message": "missing argument 1: Int; pass it positionally, without a label",
         "position": {
           "file": "diag-erased-default-missing-argument-lambda-result.ms",
-          "line": 15,
+          "line": 16,
           "column": 12,
-          "offset": 363
+          "offset": 345
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-erased-default-missing-argument-lambda-result.ms:15:12: type: missing argument 1: Int; pass it positionally, without a label\n    |\n 15 |     return factory(false)()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-erased-default-missing-argument-lambda-result.ms:16:12: type: missing argument 1: Int; pass it positionally, without a label\n    |\n 16 |     return factory(false)()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

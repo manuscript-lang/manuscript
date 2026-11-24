@@ -1,4 +1,5 @@
 import expect_equal from "@std/test/test.ms"
 
-test "getting started":
+test "getting started" {
 	(2 + 3) | expect_equal(expected: 5)?
+}

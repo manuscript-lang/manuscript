@@ -1,21 +1,27 @@
-type Item:
+type Item {
 	value Int
+}
 
-enum Choice[T]:
+enum Choice[T] {
 	missing
 	found(value T)
 	paired(left Item, right List[T])
+}
 
-interface Reader:
+interface Reader {
 	fn read() Int
+}
 
-type Box:
+type Box {
 	choice Choice[Int]
 	reader Reader
 	kind Int
+}
 
-fn case(value Int) Int:
+fn case(value Int) Int {
 	return value
+}
 
-fn inspect(box Box) Int:
+fn inspect(box Box) Int {
 	return case(box.case)
+}

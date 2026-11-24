@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn operation() Void! => ok()\n\ntest \"valid\":\n\toperation()?\n"
+    "fmt": "fn operation() Void! => ok()\n\ntest \"valid\" {\n\toperation()?\n}\n"
   }
 }

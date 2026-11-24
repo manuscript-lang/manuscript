@@ -66,12 +66,13 @@
 Before and after for an unannotated program:
 
 ```manuscript
-big := 3_000_000_000      // accepted before; compile error after: Int is Int32
+big := 3_000_000_000  // accepted before; compile error after: Int is Int32
 ok Int64 := 3_000_000_000
 samples List[Int8] := [1, 2, 3]
 total Int32 := 0
-for s in samples:
-    total = total + s.to_int32()   // no implicit widening
+for s in samples {
+    total += s.to_int32()  // no implicit widening
+}
 ```
 
 Rejected, with the intended diagnostic:

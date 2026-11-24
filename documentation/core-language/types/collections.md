@@ -84,13 +84,16 @@ Save as `pairs.ms` and run `ms run pairs.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"ann: 90\nbo: 72\n2\n2\n1\n"} -->
 ```manuscript
-fn main() Void:
+fn main() Void {
     names := ["ann", "bo", "cy"]
     scores := [90, 72]
-    for pair in names.zip(scores):
+    for pair in names.zip(scores) {
         print(f"{pair.first}: {pair.second}")
-    for part in [1, 2, 3, 4, 5].chunks(2):
+    }
+    for part in [1, 2, 3, 4, 5].chunks(2) {
         print(part.length())
+    }
+}
 ```
 
 ```text
@@ -242,15 +245,20 @@ List `sorted()` returns a new list in ascending natural order, and `sort()` orde
 ```manuscript
 import panic from "@std/core.ms"
 
-test "sorting and aggregates":
+test "sorting and aggregates" {
     var scores = [3, 1, 2]
-    if scores.sorted() != [1, 2, 3]:
+    if scores.sorted() != [1, 2, 3] {
         return panic("check failed")
+    }
+
     scores.sort((a, b) => b - a)
-    if scores != [3, 2, 1]:
+    if scores != [3, 2, 1] {
         return panic("check failed")
-    if scores.sum() != 6 or scores.max() != 3 or List[Int]().min() != null:
+    }
+    if scores.sum() != 6 or scores.max() != 3 or List[Int]().min() != null {
         return panic("check failed")
+    }
+}
 ```
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
@@ -259,25 +267,32 @@ Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in
 ```manuscript
 import panic from "@std/core.ms"
 
-
-fn positives(values List[Int]) List[Int]:
+fn positives(values List[Int]) List[Int] {
     result := values.filter(value => value > 0)
     return result
+}
 
-test "dynamic mutable data and explicit copies":
-    if not (positives([3, -1, 2]) == [3, 2]):
+test "dynamic mutable data and explicit copies" {
+    if not (positives([3, -1, 2]) == [3, 2]) {
         return panic("check failed")
-    if [1].get_or(5, -1) != -1:
+    }
+    if [1].get_or(5, -1) != -1 {
         return panic("check failed")
+    }
+
     var original = Map[String, Int]()
     original.add("a", 1)
+
     var updated = original.clone()
     updated.add("b", 2)
     updated.add("a", 3)
-    if not (original.get("a") == 1):
+    if not (original.get("a") == 1) {
         return panic("check failed")
-    if not (updated.get("a") == 3):
+    }
+    if not (updated.get("a") == 3) {
         return panic("check failed")
+    }
+}
 ```
 
 Map `get_or` evaluates its fallback eagerly and never inserts.
@@ -292,8 +307,9 @@ Callbacks run sequentially in the caller's context, and faults and cancellation 
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn increment_scores(scores Map[String, Int]) Map[String, Int]:
+fn increment_scores(scores Map[String, Int]) Map[String, Int] {
     return scores.map((name, score) => score + 1)
+}
 ```
 
 ## Reducing and querying

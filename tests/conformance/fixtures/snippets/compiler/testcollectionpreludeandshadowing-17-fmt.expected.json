@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Void:\n\tvalues := Set()\n"
+    "fmt": "fn f() Void {\n\tvalues := Set()\n}\n"
   }
 }

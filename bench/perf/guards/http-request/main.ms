@@ -11,5 +11,6 @@ REQUEST := "GET /x?c=1 HTTP/1.1\r\nHost: b\r\nUser-Agent: curl/8.5.0\r\nAccept: 
 SMALL := "GET /x?c=1 HTTP/1.1\r\nHost: b\r\n\r\n"
 
 // `main <own path> [small]`: the request with one header when `small` is given.
-fn main() Int:
-	return guard(if arguments().contains("small"): SMALL else: REQUEST)
+fn main() Int {
+	return guard(if arguments().contains("small") { SMALL } else { REQUEST })
+}

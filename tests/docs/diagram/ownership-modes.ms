@@ -1,15 +1,19 @@
-type Item:
+type Item {
 	name String
+}
 
-type Count:
+type Count {
 	value Int
+}
 
-enum Flag:
+enum Flag {
 	off
 	on
+}
 
-enum Number:
+enum Number {
 	value(n Int)
+}
 
 fn inputs(
 	a Int8,
@@ -26,62 +30,79 @@ fn inputs(
 	item Item,
 	count Count,
 	var changed Int,
-) Void:
+) Void {
 	return
+}
 
-fn item_name(item Item) String:
+fn item_name(item Item) String {
 	return item.name
+}
 
-fn fresh_name(item Item) String:
+fn fresh_name(item Item) String {
 	return item.name + "!"
+}
 
-fn generic[T](value T) T:
+fn generic[T](value T) T {
 	return value
+}
 
-fn hold(item Item) List[Item]:
+fn hold(item Item) List[Item] {
 	return [item.clone()]
+}
 
-fn optional_name(item Item) String?:
+fn optional_name(item Item) String? {
 	return item.name
+}
 
-fn result_name(item Item) String!:
+fn result_name(item Item) String! {
 	return ok(item.name.clone())
+}
 
-fn maybe_name(item Item, found Bool) String!:
-	if found: return ok(item.name.clone())
+fn maybe_name(item Item, found Bool) String! {
+	if found { return ok(item.name.clone()) }
 	return error(Error("missing"))
+}
 
-fn either(item Item, issue Error, failed Bool) String!:
-	if failed: return error(issue.clone())
+fn either(item Item, issue Error, failed Bool) String! {
+	if failed { return error(issue.clone()) }
 	return ok(item.name.clone())
+}
 
-fn mixed_both(item Item, issue Error, mode Int) String!:
-	if mode == 0: return ok(item.name.clone())
-	if mode == 1: return error(issue.clone())
-	if mode == 2: return ok("fresh")
+fn mixed_both(item Item, issue Error, mode Int) String! {
+	if mode == 0 { return ok(item.name.clone()) }
+	if mode == 1 { return error(issue.clone()) }
+	if mode == 2 { return ok("fresh") }
 
 	return error(Error("missing"))
+}
 
-interface Named:
+interface Named {
 	fn label() String
+}
 
-fn Item.label() String:
+fn Item.label() String {
 	return self.name.clone()
+}
 
-fn Item.borrowed() String:
+fn Item.borrowed() String {
 	return self.name
+}
 
-fn Item.copied(value Int8) Int8:
+fn Item.copied(value Int8) Int8 {
 	return value
+}
 
-fn Item.boxed(item Item) List[Item]:
+fn Item.boxed(item Item) List[Item] {
 	return [item.clone()]
+}
 
-fn named(item Item) Named:
+fn named(item Item) Named {
 	return item
+}
 
-fn maybe_count(issue Error, failed Bool) Int!:
-	if failed: return error(issue.clone())
+fn maybe_count(issue Error, failed Bool) Int! {
+	if failed { return error(issue.clone()) }
 	return ok(1)
+}
 
 extern fn ms_ownership_scalar(value Int8) Int8

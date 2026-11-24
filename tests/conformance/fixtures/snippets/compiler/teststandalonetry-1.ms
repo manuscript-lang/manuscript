@@ -3,6 +3,7 @@
 // conform: origin=pkg/compiler/standalone_try_test.go:10 TestStandaloneTry
 fn operation() Void! => ok()
 
-fn f() Int!:
-    operation()?
-    return ok(1)
+fn f() Int! {
+	operation()?
+	return ok(1)
+}

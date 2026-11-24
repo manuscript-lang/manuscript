@@ -3,40 +3,48 @@
 // conform: origin=tests/e2e/testdata/accept/field-defaults.ms
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
-type Counter:
+type Counter {
 	value Int = 0
+}
 
-fn mark(var counter Counter, value Int) Int:
+fn mark(var counter Counter, value Int) Int {
 	counter.value = counter.value * 10 + value
 	return value
+}
 
-type Ordered:
+type Ordered {
 	counter Counter
 	first Int = mark(counter: counter, value: 3)
 	second Int = mark(counter: counter, value: 4)
 	third Int = first + second
+}
 
-type Data:
+type Data {
 	number Int = 5
 	values List[Int] = [number]
 	callback fn() Int = (
-		fn:
+		() => {
 			return number
+		}
 	)
+}
 
-type Box[T]:
+type Box[T] {
 	value T
 	copy T = value
+}
 
-fn unit_default(var calls List[Int]) Void:
+fn unit_default(var calls List[Int]) Void {
 	calls.append(1)
+}
 
-type Explicit:
+type Explicit {
 	calls List[Int]
 	nothing Void = unit_default(calls)
 	option Int? = 9
+}
 
-test "record defaults and explicit overrides":
+test "record defaults and explicit overrides" {
 	data := Data()
 	(
 		(
@@ -67,8 +75,9 @@ test "record defaults and explicit overrides":
 
 	specified := Box[Int](value: 7, copy: 0)
 	specified.copy | expect_equal(0)?
+}
 
-test "supplied fields precede defaults in field order":
+test "supplied fields precede defaults in field order" {
 	var log = Counter()
 	ordered := Ordered(
 		counter: Counter(),
@@ -88,29 +97,35 @@ test "supplied fields precede defaults in field order":
 
 	again := Ordered(counter: Counter())
 	(again.third != 7) | expect_false?
+}
 
-test "mutable defaults have fresh storage":
+test "mutable defaults have fresh storage" {
 	var first = Data()
 	second := Data()
 	first.values.append(8)
 	(first.values.length() != 2 or second.values.length() != 1) | expect_false?
+}
 
-interface ReadWithDefault:
+interface ReadWithDefault {
 	fn get(fallback Int?) Int
+}
 
-type Reader:
+type Reader {
 	number Int = 5
+}
 
-fn Reader.get(fallback Int?) Int:
+fn Reader.get(fallback Int?) Int {
 	return fallback or self.number
+}
 
-type Marker: ...
+type Marker { ... }
 
-fn no_op() Void: ...
+fn no_op() Void { ... }
 
-test "ordinary empty declarations and interface omission":
+test "ordinary empty declarations and interface omission" {
 	no_op()
 
 	_marker := Marker()
 	view ReadWithDefault := Reader()
 	(view.get() != 5 or view.get(fallback: 7) != 7) | expect_false?
+}

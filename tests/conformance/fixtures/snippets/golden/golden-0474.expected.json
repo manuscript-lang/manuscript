@@ -9,18 +9,18 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "unknown standard module @std/compress.ms; compress is exported by another standard module, so write: import compress from \"@std/io/archive.ms\"",
+        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
         "position": {
           "file": "golden-0474.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
+          "line": 5,
+          "column": 5,
+          "offset": 92
         },
         "end": {
           "file": "golden-0474.ms",
-          "line": 3,
-          "column": 16,
-          "offset": 68
+          "line": 5,
+          "column": 21,
+          "offset": 108
         }
       },
       {
@@ -29,39 +29,39 @@
         "message": "unknown standard module @std/compress.ms; CompressionFormat is exported by another standard module, so write: import CompressionFormat from \"@std/io/archive.ms\"",
         "position": {
           "file": "golden-0474.ms",
-          "line": 3,
-          "column": 18,
-          "offset": 70
+          "line": 5,
+          "column": 23,
+          "offset": 110
         },
         "end": {
           "file": "golden-0474.ms",
-          "line": 3,
-          "column": 35,
-          "offset": 87
+          "line": 5,
+          "column": 40,
+          "offset": 127
         }
       },
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
+        "message": "unknown standard module @std/compress.ms; compress is exported by another standard module, so write: import compress from \"@std/io/archive.ms\"",
         "position": {
           "file": "golden-0474.ms",
-          "line": 3,
-          "column": 37,
-          "offset": 89
+          "line": 5,
+          "column": 42,
+          "offset": 129
         },
         "end": {
           "file": "golden-0474.ms",
-          "line": 3,
-          "column": 53,
-          "offset": 105
+          "line": 5,
+          "column": 50,
+          "offset": 137
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0474.ms:3:8: resolution: unknown standard module @std/compress.ms; compress is exported by another standard module, so write: import compress from \"@std/io/archive.ms\"\n   |\n 3 | import compress, CompressionFormat, CompressionError from \"@std/compress.ms\"\n   |        ^^^^^^^^\n<DIR>/golden-0474.ms:3:18: resolution: unknown standard module @std/compress.ms; CompressionFormat is exported by another standard module, so write: import CompressionFormat from \"@std/io/archive.ms\"\n   |\n 3 | import compress, CompressionFormat, CompressionError from \"@std/compress.ms\"\n   |                  ^^^^^^^^^^^^^^^^^\n<DIR>/golden-0474.ms:3:37: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 3 | import compress, CompressionFormat, CompressionError from \"@std/compress.ms\"\n   |                                     ^^^^^^^^^^^^^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0474.ms:5:5: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 5 |     CompressionError, CompressionFormat, compress from \"@std/compress.ms\",\n   |     ^^^^^^^^^^^^^^^^\n<DIR>/golden-0474.ms:5:23: resolution: unknown standard module @std/compress.ms; CompressionFormat is exported by another standard module, so write: import CompressionFormat from \"@std/io/archive.ms\"\n   |\n 5 |     CompressionError, CompressionFormat, compress from \"@std/compress.ms\",\n   |                       ^^^^^^^^^^^^^^^^^\n<DIR>/golden-0474.ms:5:42: resolution: unknown standard module @std/compress.ms; compress is exported by another standard module, so write: import compress from \"@std/io/archive.ms\"\n   |\n 5 |     CompressionError, CompressionFormat, compress from \"@std/compress.ms\",\n   |                                          ^^^^^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -6,34 +6,42 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-type Counter:
+type Counter {
 	calls Int
+}
 
-type Pending:
+type Pending {
 	values List[Int]
+}
 
-fn bump(var counter Counter) Int:
+fn bump(var counter Counter) Int {
 	counter.calls += 1
 	return 9
+}
 
-fn map_result[T, E, U](value T!E, transform fn(T) U) U!E:
+fn map_result[T, E, U](value T!E, transform fn(T) U) U!E {
 	return value.map(transform)
+}
 
-fn chain_result[T, E, U](value T!E, transform fn(T) U!E) U!E:
+fn chain_result[T, E, U](value T!E, transform fn(T) U!E) U!E {
 	return value.and_then(transform)
+}
 
-fn map_optional[T, U](transform fn(T) U, value T?) U?:
-	if value == null: return null
+fn map_optional[T, U](transform fn(T) U, value T?) U? {
+	if value == null { return null }
 	return transform(value)
+}
 
-fn then_optional[T, U](transform fn(T) U?, value T?) U?:
-	if value == null: return null
+fn then_optional[T, U](transform fn(T) U?, value T?) U? {
+	if value == null { return null }
 	return transform(value)
+}
 
-fn map_set[T Hashable, U Hashable](values Set[T], transform fn(T) U) Set[U]:
+fn map_set[T Hashable, U Hashable](values Set[T], transform fn(T) U) Set[U] {
 	return values.map[U](transform)
+}
 
-test "core parity operations are callable":
+test "core parity operations are callable" {
 	success Int!Error := ok(2)
 	failure Int!Error := error(Error("failed"))
 	expect_false(not (success.is_ok()) or success.is_error())?
@@ -55,14 +63,17 @@ test "core parity operations are callable":
 	members := Set[Int]([2, 3])
 	expect_false(members.is_empty() or members.filter(n => n == 2).length() != 1)?
 	expect_equal(members.map(n => n.to_string()).values(), ["2", "3"])?
+}
 
-fn unexpected_text(value Int) String:
+fn unexpected_text(value Int) String {
 	return panic("transform must not run for errors")
+}
 
-fn unexpected_chain(value Int) String!Counter:
+fn unexpected_chain(value Int) String!Counter {
 	return panic("chain must not run for errors")
+}
 
-test "Result preserves unconstrained payloads and success-only composition":
+test "Result preserves unconstrained payloads and success-only composition" {
 	counter := Counter(0)
 	failure Int!Counter := error(counter.clone())
 	success Int!Counter := ok(0)
@@ -84,10 +95,8 @@ test "Result preserves unconstrained payloads and success-only composition":
 	propagated_cause.calls = 4
 	expect_equal(counter.calls, 0)?
 
-	produced := (
-		success
-		.clone()
-		.and_then(value => Result[String, Counter].error(counter.clone()))
+	produced := success.clone().and_then(
+		value => Result[String, Counter].error(counter.clone())
 	)
 	expect_false(not (produced.is_error()))?
 
@@ -119,8 +128,9 @@ test "Result preserves unconstrained payloads and success-only composition":
 
 	bool_result Bool!Error := ok(false)
 	expect_false(bool_result.get_or(true))?
+}
 
-test "Result fallbacks are eager or lazy, and closures copy their receivers":
+test "Result fallbacks are eager or lazy, and closures copy their receivers" {
 	var counter = Counter(0)
 	success Int!Counter := ok(0)
 	failure Int!Counter := error(counter.clone())
@@ -141,13 +151,15 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	expect_equal(extracted.calls, 3)?
 	expect_equal(success.clone().map(n => n.to_string()).get(), "0")?
 	expect_equal(success.clone().and_then(n => ok(n.to_string())).get(), "0")?
+}
 
-test "Optional composition keeps nesting identity and lazy callback counts":
+test "Optional composition keeps nesting identity and lazy callback counts" {
 	counter := Counter(0)
 	present Counter? := counter.clone()
 	missing Counter? := null
-	transform := fn(value Counter) Counter:
+	transform := fn(value Counter) Counter {
 		return Counter(value.calls + 1)
+	}
 	unexpected := fn(value Counter) Counter => panic("map must not run for none")
 	expect_false(not (map_optional(unexpected, missing.clone()) == null))?
 
@@ -183,7 +195,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	expect_equal(
 		map_optional(
 			value => value.calls.to_string(),
-			mapped.clone()
+			mapped.clone(),
 		) or panic("called Optional.get() on null"),
 		"1",
 	)?
@@ -195,8 +207,9 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 			) == null
 		)
 	)?
+}
 
-test "Map filter copies ordered membership and get_or never inserts":
+test "Map filter copies ordered membership and get_or never inserts" {
 	var counter = Counter(0)
 	values Map[String, Counter] := {
 		"b": counter.clone(),
@@ -237,17 +250,20 @@ test "Map filter copies ordered membership and get_or never inserts":
 	copied := snapshot.clone().filter((k, v) => v != 1)
 	expect_false(copied.keys() != ["b", "c"] or copied.values() != [2, 3])?
 	expect_equal(snapshot.keys(), ["b", "a", "c"])?
+}
 
-type Key:
+type Key {
 	id Int
 	label String
+}
 
-fn Key.equals(other Key) Bool:
+fn Key.equals(other Key) Bool {
 	return self.id == other.id
+}
 
 fn Key.hash() Int => 0
 
-test "Set filter and map copy snapshots and deduplicate in first-result order":
+test "Set filter and map copy snapshots and deduplicate in first-result order" {
 	values := Set[Int]([3, 1, 2])
 	var copied = values.clone().filter(n => n != 1)
 	expect_false(copied.values() != [3, 2])?
@@ -285,3 +301,4 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
 	expect_equal(keys.values().get(0).label, "shared")?
 	expect_false(not (Set[Int]().map(n => n.to_string()).is_empty()))?
 	expect_false(not (keys.filter(unused => false).is_empty()))?
+}

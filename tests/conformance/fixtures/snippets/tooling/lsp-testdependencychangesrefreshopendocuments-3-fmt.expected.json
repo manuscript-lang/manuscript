@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn answer() String:\n\treturn \"changed\"\n"
+    "fmt": "export fn answer() String {\n\treturn \"changed\"\n}\n"
   }
 }

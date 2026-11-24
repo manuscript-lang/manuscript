@@ -13,14 +13,16 @@ import (
 	certificate, private_key from "./support/certificates.ms",
 )
 
-fn handler(var exchange HttpExchange) Void!:
-	if exchange.path() == "/hang":
+fn handler(var exchange HttpExchange) Void! {
+	if exchange.path() == "/hang" {
 		sleep(30.seconds()).wait()?
 		return ok()
+	}
 
 	return reply(exchange, text(200, "ok"))
+}
 
-test "requests cancelled on a shared HTTP/2 connection release their streams":
+test "requests cancelled on a shared HTTP/2 connection release their streams" {
 	server_tls := TlsOptions(
 		certificate_pem: certificate(),
 		private_key_pem: private_key(),
@@ -41,10 +43,11 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 
 	// Each cancelled request used to stay open on the connection, so the peer's stream
 	// limit filled and later requests failed.
-	for i in 0..400:
+	for i in 0..400 {
 		void client.fetch(f"{base}/hang", FetchOptions(timeout: null)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
+	}
 
 	after := (
 		client.fetch(f"{base}/ok", FetchOptions(timeout: 5.seconds())).wait()
@@ -53,16 +56,18 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 	(after.text() | expect_ok? | expect_equal("ok")?)
 
 	before := (memory_usage() | expect_ok?).heap_used
-	for i in 0..1000:
+	for i in 0..1000 {
 		void client.fetch(f"{base}/hang", FetchOptions(timeout: null)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
+	}
 
-	// A cancelled stream's queue and headers leaked about 600 bytes each. A request that
-	// leaks nothing still costs up to about 60 bytes here: the timer of each handler's
-	// 30 second sleep stays queued until it is due, and the lists that hold such entries
-	// double as they grow. The limit sits between the two.
+	// A cancelled stream's queue and headers leaked about 600 bytes each. A request
+	// that leaks nothing still costs up to about 60 bytes here: the timer of each
+	// handler's 30 second sleep stays queued until it is due, and the lists that hold
+	// such entries double as they grow. The limit sits between the two.
 	grown := (memory_usage() | expect_ok?).heap_used - before
-	if grown > 1000 * 200: return error(
-		Error(f"heap grew {grown} bytes over 1000 cancelled requests")
-	)
+	if grown > 1000 * 200 {
+		return error(Error(f"heap grew {grown} bytes over 1000 cancelled requests"))
+	}
+}

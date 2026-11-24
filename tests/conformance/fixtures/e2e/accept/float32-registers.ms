@@ -2,24 +2,28 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type Pair:
+type Pair {
 	left Float32
 	right Float32
+}
 
-fn sum_pair(p Pair) Float32:
+fn sum_pair(p Pair) Float32 {
 	return p.left + p.right
+}
 
-fn dot(a List[Float32], b List[Float32]) Float32:
+fn dot(a List[Float32], b List[Float32]) Float32 {
 	var acc Float32 = 0.0
 	var i = 0
 
-	while i < a.length():
+	while i < a.length() {
 		acc += a[i] * b[i]
 		i += 1
+	}
 
 	return acc
+}
 
-test "arithmetic rounds to binary32 at every step":
+test "arithmetic rounds to binary32 at every step" {
 	a Float32 := 16777216.0
 	b Float32 := 1.0
 	expect_equal((a + b).to_float(), 16777216.0)?
@@ -27,8 +31,9 @@ test "arithmetic rounds to binary32 at every step":
 	tenth Float32 := 0.1
 	expect_equal((tenth + tenth + tenth).to_float(), 0.30000001192092896)?
 	expect_equal((tenth * tenth).to_float(), 0.010000000707805157)?
+}
 
-test "Float32 crosses calls, fields, closures and lists":
+test "Float32 crosses calls, fields, closures and lists" {
 	expect_equal(sum_pair(Pair(0.25, 0.5)).to_float(), 0.75)?
 
 	scale Float32 := 1.5
@@ -38,8 +43,9 @@ test "Float32 crosses calls, fields, closures and lists":
 	xs List[Float32] := [1.0, 2.0, 3.0]
 	ys List[Float32] := [0.5, 0.25, 0.125]
 	expect_equal(dot(xs, ys).to_float(), 1.375)?
+}
 
-test "Float32 compares and formats":
+test "Float32 compares and formats" {
 	a Float32 := 0.1
 	b Float32 := 0.2
 	expect_equal(a < b, true)?
@@ -48,3 +54,4 @@ test "Float32 compares and formats":
 
 	widened := a.to_float()
 	expect_equal(widened > 0.1, true)?
+}

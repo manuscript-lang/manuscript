@@ -12,22 +12,22 @@
         "message": "the callback returns Int, but this parameter needs a function returning Result[U, Error]; a Result-returning callback reports failure as a value, so wrap the value in ok(...), e.g. fn: ok(value)",
         "position": {
           "file": "diag-promise-entry-needs-result.ms",
-          "line": 9,
+          "line": 10,
           "column": 18,
-          "offset": 186
+          "offset": 184
         },
         "fix": {
           "position": {
             "file": "diag-promise-entry-needs-result.ms",
-            "line": 9,
+            "line": 10,
             "column": 24,
-            "offset": 192
+            "offset": 190
           },
           "end": {
             "file": "diag-promise-entry-needs-result.ms",
-            "line": 9,
+            "line": 10,
             "column": 33,
-            "offset": 201
+            "offset": 199
           },
           "replacement": "ok(compute())"
         }
@@ -38,16 +38,16 @@
         "message": "expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?",
         "position": {
           "file": "diag-promise-entry-needs-result.ms",
-          "line": 11,
+          "line": 12,
           "column": 12,
-          "offset": 235
+          "offset": 227
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-promise-entry-needs-result.ms:9:18: type: the callback returns Int, but this parameter needs a function returning Result[U, Error]; a Result-returning callback reports failure as a value, so wrap the value in ok(...), e.g. fn: ok(value)\n   |\n 9 |     p := promise(() => compute())\n   |                  ^\n<DIR>/diag-promise-entry-needs-result.ms:11:12: type: expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?\n    |\n 11 |     return 0\n    |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-promise-entry-needs-result.ms:10:18: type: the callback returns Int, but this parameter needs a function returning Result[U, Error]; a Result-returning callback reports failure as a value, so wrap the value in ok(...), e.g. fn: ok(value)\n    |\n 10 |     p := promise(() => compute())\n    |                  ^\n<DIR>/diag-promise-entry-needs-result.ms:12:12: type: expected Result[Int, Error], found Int (in the return value); wrap the value in ok(...) to return it as a success, e.g. return ok(value); when another argument is a Result call, unwrap that call with ? instead, e.g. expect_equal(f()?, value)?\n    |\n 12 |     return 0\n    |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

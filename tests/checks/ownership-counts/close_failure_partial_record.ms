@@ -8,28 +8,34 @@ import (
 	stdout from "@std/io/io.ms",
 )
 
-type Gate:
+type Gate {
 	name String
+}
 
-fn move Gate.close() Void!:
+fn move Gate.close() Void! {
 	stdout().write("close gate\n").get()
 	return error(Error("gate"))
+}
 
-type Message:
+type Message {
 	data Bytes
 	kind Int
+}
 
-fn make() Message:
+fn make() Message {
 	return Message(data: Bytes(), kind: 1)
+}
 
-fn leaves() Void!:
+fn leaves() Void! {
 	var _gate = Gate("g")
 	message := make()
 	forwarded := Message(data: message.data.clone(), kind: message.kind)
-	if forwarded.kind == 0: return ok()
+	if forwarded.kind == 0 { return ok() }
 
 	return ok()
+}
 
-fn main() Void:
+fn main() Void {
 	r := leaves()
 	stdout().write(f"leaves: {r.is_error()}\n").get()
+}

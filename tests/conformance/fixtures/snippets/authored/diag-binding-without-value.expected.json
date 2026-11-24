@@ -14,13 +14,13 @@
           "file": "diag-binding-without-value.ms",
           "line": 4,
           "column": 5,
-          "offset": 89
+          "offset": 90
         },
         "end": {
           "file": "diag-binding-without-value.ms",
           "line": 4,
           "column": 6,
-          "offset": 90
+          "offset": 91
         }
       }
     ],

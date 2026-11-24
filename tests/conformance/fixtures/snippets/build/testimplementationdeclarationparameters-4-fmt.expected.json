@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Read[V]:\n\tfn get() V\n\ntype Pair[A, B]:\n\tleft A\n\tright B\n\nfn Pair[Int, B].get() B:\n\treturn self.right\n"
+    "fmt": "interface Read[V] {\n\tfn get() V\n}\n\ntype Pair[A, B] {\n\tleft A\n\tright B\n}\n\nfn Pair[Int, B].get() B {\n\treturn self.right\n}\n"
   }
 }

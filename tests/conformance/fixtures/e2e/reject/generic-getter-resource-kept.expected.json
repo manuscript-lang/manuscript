@@ -12,16 +12,16 @@
         "message": "`get` returns a reference into `cell`, which this position would keep; store `.clone()` of it, or use it in place",
         "position": {
           "file": "generic-getter-resource-kept.ms",
-          "line": 20,
+          "line": 25,
           "column": 22,
-          "offset": 327
+          "offset": 343
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/generic-getter-resource-kept.ms:20:22: type: `get` returns a reference into `cell`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 20 |     return keep(cell.get())\n    |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/generic-getter-resource-kept.ms:25:22: type: `get` returns a reference into `cell`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 25 |     return keep(cell.get())\n    |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

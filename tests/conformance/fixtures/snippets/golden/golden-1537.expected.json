@@ -14,18 +14,7 @@
           "file": "golden-1537.ms",
           "line": 4,
           "column": 27,
-          "offset": 103
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
-        "position": {
-          "file": "golden-1537.ms",
-          "line": 6,
-          "column": 9,
-          "offset": 141
+          "offset": 101
         }
       },
       {
@@ -35,6 +24,17 @@
         "position": {
           "file": "golden-1537.ms",
           "line": 8,
+          "column": 9,
+          "offset": 140
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
+        "position": {
+          "file": "golden-1537.ms",
+          "line": 12,
           "column": 20,
           "offset": 207
         }
@@ -45,9 +45,9 @@
         "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
         "position": {
           "file": "golden-1537.ms",
-          "line": 11,
+          "line": 17,
           "column": 8,
-          "offset": 273
+          "offset": 271
         }
       },
       {
@@ -56,16 +56,16 @@
         "message": "unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?",
         "position": {
           "file": "golden-1537.ms",
-          "line": 13,
+          "line": 21,
           "column": 23,
-          "offset": 336
+          "offset": 335
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1537.ms:4:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n   |\n 4 |     \"a\".replace(\"a\", \"b\", -1)\n   |                           ^\n<DIR>/golden-1537.ms:6:9: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n   |\n 6 |     \"a\".replace_n(\"a\", \"b\", -1)\n   |         ^\n<DIR>/golden-1537.ms:8:20: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n   |\n 8 |     replace := \"a\".replace_n\n   |                    ^\n<DIR>/golden-1537.ms:11:8: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n    |\n 11 |     \"\".replace_n(\"\", \"b\", -1)\n    |        ^\n<DIR>/golden-1537.ms:13:23: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n    |\n 13 |     _unchanged := \"a\".replace_n(\"a\", \"b\", 0)\n    |                       ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1537.ms:4:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n   |\n 4 |     \"a\".replace(\"a\", \"b\", -1)\n   |                           ^\n<DIR>/golden-1537.ms:8:9: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n   |\n 8 |     \"a\".replace_n(\"a\", \"b\", -1)\n   |         ^\n<DIR>/golden-1537.ms:12:20: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n    |\n 12 |     replace := \"a\".replace_n\n    |                    ^\n<DIR>/golden-1537.ms:17:8: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n    |\n 17 |     \"\".replace_n(\"\", \"b\", -1)\n    |        ^\n<DIR>/golden-1537.ms:21:23: resolution: unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?\n    |\n 21 |     _unchanged := \"a\".replace_n(\"a\", \"b\", 0)\n    |                       ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

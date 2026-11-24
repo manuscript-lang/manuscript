@@ -2,60 +2,76 @@
 // conform: phase=test
 import expect_equal, expect_false from "@std/test/test.ms"
 
-type Cell:
+type Cell {
 	value Int
+}
 
-fn increment(value Int = 3) Int:
+fn increment(value Int = 3) Int {
 	return value + 1
+}
 
-fn combine(second Int, first Int = 2, third Int = first + second) Int:
+fn combine(second Int, first Int = 2, third Int = first + second) Int {
 	return first + second + third
+}
 
-fn identity[T](value T, fallback T = value) T:
+fn identity[T](value T, fallback T = value) T {
 	return fallback
+}
 
 fn ordered(
 	seed Int,
 	first Int = seed * 10 + 3,
 	second Int = first * 10 + 4,
 	third Int = 0,
-) Int:
+) Int {
 	return second * 10 + 5 + third
+}
 
-fn unit_default() Void:
+fn unit_default() Void {
 	return
+}
 
-fn unit_value(value Void = unit_default()) Void:
+fn unit_value(value Void = unit_default()) Void {
 	return value
+}
 
-fn optional(value Int? = 3) Int?:
+fn optional(value Int? = 3) Int? {
 	return value
+}
 
-fn fail() Int!Error:
+fn fail() Int!Error {
 	return error(Error("default failure"))
+}
 
-fn propagate(value Int = fail()?) Int!Error:
+fn propagate(value Int = fail()?) Int!Error {
 	return ok(value)
+}
 
-interface Add:
+interface Add {
 	fn add(value Int) Int
+}
 
-type Offset:
+type Offset {
 	value Int
+}
 
-fn Offset.add(value Int = self.value) Int:
+fn Offset.add(value Int = self.value) Int {
 	return self.value + value
+}
 
-interface Read[T]:
+interface Read[T] {
 	fn read(value T) T
+}
 
-type Box[T Clonable]:
+type Box[T Clonable] {
 	value T
+}
 
-fn Box[T].read(value T = self.value.clone()) T:
+fn Box[T].read(value T = self.value.clone()) T {
 	return value
+}
 
-test "omitted and explicit defaults":
+test "omitted and explicit defaults" {
 	(increment() != 4 or increment(7) != 8 or increment(value: 0) != 1) | expect_false?
 	(
 		(
@@ -79,15 +95,17 @@ test "omitted and explicit defaults":
 		)
 		| expect_false?
 	)
+}
 
-test "default evaluation order and repeated calls":
+test "default evaluation order and repeated calls" {
 	ordered(0) | expect_equal(345)?
 	ordered(0, third: 1) | expect_equal(346)?
 	ordered(0, second: 7) | expect_equal(75)?
 	ordered(1, first: 2) | expect_equal(245)?
 	ordered(0) | expect_equal(345)?
+}
 
-test "function values and captures":
+test "function values and captures" {
 	copy := increment
 	copied := copy
 	copied() | expect_equal(4)?
@@ -96,15 +114,17 @@ test "function values and captures":
 	typed(2) | expect_equal(3)?
 
 	offset := 5
-	callback := fn(value Int = offset):
+	callback := fn(value Int = offset) {
 		return value
+	}
 	(callback() != 5 or callback(0) != 0) | expect_false?
-
-	nested := fn(first Int = 6, second Int = first + 1):
+	nested := fn(first Int = 6, second Int = first + 1) {
 		return second
+	}
 	nested() | expect_equal(7)?
+}
 
-test "implementation and bound method defaults":
+test "implementation and bound method defaults" {
 	offset := Offset(4)
 	bound := offset.add
 	(offset.add() != 8 or bound() != 8 or bound(0) != 4) | expect_false?
@@ -114,3 +134,4 @@ test "implementation and bound method defaults":
 
 	box := Box[String]("boxed")
 	box.read() | expect_equal("boxed")?
+}

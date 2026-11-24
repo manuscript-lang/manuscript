@@ -3,7 +3,7 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
       "repeat": 1,
       "format": 1,
@@ -12,20 +12,21 @@
         {
           "index": 0,
           "name": "lsp-restart.ms::a killed worker is replaced and the open document is replayed",
-          "status": "passed"
+          "status": "failed",
+          "failure": "promise: timed out"
         }
       ],
       "summary": {
         "available": 1,
         "selected": 1,
-        "passed": 1,
-        "failed": 0,
+        "passed": 0,
+        "failed": 1,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN lsp-restart.ms::a killed worker is replaced and the open document is replayed\nPASS lsp-restart.ms::a killed worker is replaced and the open document is replayed\n1 tests, 0 failed\n",
+      "exit_code": 1,
+      "stdout": "RUN lsp-restart.ms::a killed worker is replaced and the open document is replayed\nFAIL lsp-restart.ms::a killed worker is replaced and the open document is replayed: promise: timed out\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [
@@ -46,6 +47,7 @@
       "summary.skipped",
       "tests",
       "tests[].duration_ns",
+      "tests[].failure",
       "tests[].index",
       "tests[].name",
       "tests[].status"

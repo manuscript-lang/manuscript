@@ -7,15 +7,17 @@ import (
 	expect_equal, expect_error from "@std/test/test.ms",
 )
 
-test "typed JSON Base64 decodes every byte and preserves strict syntax":
+test "typed JSON Base64 decodes every byte and preserves strict syntax" {
 	var bytes = BytesBuilder()
-	for value in 0..256: bytes.append(
-		value.to_uint8() or panic("called Optional.get() on null")
-	)
+	for value in 0..256 {
+		bytes.append(value.to_uint8() or panic("called Optional.get() on null"))
+	}
 
 	expected := [Bytes([]), Bytes([0]), Bytes([251, 255]), bytes.build()]
 	text := stringify(expected)?
 	expect_equal((parse[List[Bytes]](text)?), expected)?
 	expect_equal((parse[Bytes]("\"+/8=\"")?), Bytes([251, 255]))?
-	for encoded in ["-_8=", "Zh==", "Zm9=", "=AAA", "AA=A", "éAA", "Zg== "]:
+	for encoded in ["-_8=", "Zh==", "Zm9=", "=AAA", "AA=A", "éAA", "Zg== "] {
 		expect_equal((expect_error(parse[Bytes](f"\"{encoded}\""))?).kind, "EBADMSG")?
+	}
+}

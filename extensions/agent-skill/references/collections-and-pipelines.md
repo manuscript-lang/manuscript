@@ -4,15 +4,23 @@ Prelude constructors: `[1, 2]`, `List[Int](reserve: 8)`, `Map[String, Int]()`, `
 
 <!-- complete: collections.ms -->
 ```manuscript
-fn main() Int:
-	values := [1, 2, 3, 4]
-	total := values | .filter(x => x > 2) | .map(x => x * 2) | .sum()
-	var counts = Map[String, Int]()
-	counts["total"] = total
-	if var n = counts["total"]?:
-		n += 1
-	if counts.get_or("total", 0) == 15 and values.length() == 4: return 0
-	return 1
+fn main() Int {
+    values := [1, 2, 3, 4]
+    total := (
+        values
+        | .filter(x => x > 2)
+        | .map(x => x * 2)
+        | .sum()
+    )
+    var counts = Map[String, Int]()
+    counts["total"] = total
+    if var n = counts["total"]? {
+        n += 1
+    }
+    if counts.get_or("total", 0) == 15 and values.length() == 4 { return 0 }
+
+    return 1
+}
 ```
 
 `values.length()` counts a List, Map, Set or String; always call it with parentheses. Map `.get(key)` returns Optional; `.get_or(key, default)` supplies a fallback. Iterate `.entries()` and read `.key`/`.value`. List `.slice(start, end)` returns Result; `.get_or(index, default)` supplies a fallback.

@@ -1,17 +1,21 @@
 // conform: tags=closures,control-flow,formatter,interfaces,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/capture_lint_test.go:79 TestConcurrentCaptureLintDoesNotGuessMethodNames
-interface Starter:
-    fn start(operation fn() Void) Void
+interface Starter {
+	fn start(operation fn() Void) Void
+}
 
-type Sequential: ...
+type Sequential { ... }
 
-fn Sequential.start(operation fn() Void) Void:
-    operation()
+fn Sequential.start(operation fn() Void) Void {
+	operation()
+}
 
-fn run() Void:
-    var values = [0]
-    Sequential().start(
-        fn:
-            values.append(1)
-    )
+fn run() Void {
+	var values = [0]
+	Sequential().start(
+		() => {
+			values.append(1)
+		}
+	)
+}

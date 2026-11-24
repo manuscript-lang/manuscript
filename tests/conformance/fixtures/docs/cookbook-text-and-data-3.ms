@@ -8,15 +8,16 @@ import (
 	arguments from "@std/os/env.ms",
 )
 
-fn run() Result[Void, Error]:
+fn run() Result[Void, Error] {
 	url := ok_or(arguments().first(), Error("HTTP: invalid input", kind: "EINVAL"))?
 	response := request(
 		HttpMethod.Get,
 		url,
 		options: RequestOptions(headers: headers(), max_bytes: 1048576),
 	)?
-	if response.metadata().status != 200:
+	if response.metadata().status != 200 {
 		return error(Error("HTTP: invalid data", kind: "EBADMSG"))
+	}
 
 	text := ok_or(
 		response.body.decode_utf8(),
@@ -24,6 +25,8 @@ fn run() Result[Void, Error]:
 	)?
 	stdout().write(text)?
 	return stdout().flush()
+}
 
-fn main() Void!:
+fn main() Void! {
 	run()?
+}

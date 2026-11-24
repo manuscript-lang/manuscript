@@ -7,7 +7,7 @@ import (
 )
 
 // Parsed certificate identity, validity range, and original DER bytes.
-export type CertificateInfo:
+export type CertificateInfo {
 	// The certificate subject as a distinguished-name string, such as
 	// `CN=example.com,O=Example`.
 	subject String
@@ -23,9 +23,10 @@ export type CertificateInfo:
 	not_after Timestamp
 	// The certificate's binary DER encoding, as a copy independent of the PEM text.
 	der Bytes
+}
 
 // Negotiated TLS version, cipher, protocol, and peer certificate information.
-export type TlsInfo:
+export type TlsInfo {
 	// Negotiated protocol version as its numeric wire code, such as 771 (0x0303) for
 	// TLS 1.2 or 772 (0x0304) for TLS 1.3.
 	version Int
@@ -41,9 +42,10 @@ export type TlsInfo:
 	// True when the peer's certificate chain was verified against the configured roots;
 	// False when no peer chain was verified.
 	verified Bool
+}
 
 // Client or server TLS settings, including roots, certificates, and ALPN protocols.
-export type TlsOptions:
+export type TlsOptions {
 	// Host name a TLS client sends for server name indication and matches against the
 	// server certificate; it must be non-empty for `connect_tls_config`. HTTP and
 	// WebSocket clients take the name from the URL host and ignore this field, and
@@ -65,12 +67,14 @@ export type TlsOptions:
 	// Servers only: when True, a client must present a certificate that verifies
 	// against `roots_pem`. Setting it on a client configuration is rejected.
 	require_client_certificate Bool = false
+}
 
 // Parses PEM certificates. When `max_certificates` is given and the text holds more,
 // the call returns `EOVERFLOW` rather than a truncated list; a negative limit returns
 // `EINVAL`, and text that is not a PEM certificate returns `EBADMSG`.
-export fn parse_certificates(pem String, max_certificates Int?) List[CertificateInfo]!:
+export fn parse_certificates(pem String, max_certificates Int?) List[CertificateInfo]! {
 	return msstd_tls_parse_certificates(pem, max_certificates)
+}
 
 // Verifies a PEM certificate chain for `server_name` against the roots and name
 // constraints, as of `now`. An empty `roots_pem` reads the system roots. An empty
@@ -81,5 +85,6 @@ export fn verify_certificates(
 	roots_pem String,
 	server_name String,
 	now Timestamp,
-) Void!:
+) Void! {
 	return msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
+}

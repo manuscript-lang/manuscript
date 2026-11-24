@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn consume(value Int!) Void => void\n\nfn caller() Void:\n\tconsume(operation())\n"
+    "fmt": "fn consume(value Int!) Void => void\n\nfn caller() Void {\n\tconsume(operation())\n}\n"
   }
 }

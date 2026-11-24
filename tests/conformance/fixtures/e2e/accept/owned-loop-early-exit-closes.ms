@@ -6,43 +6,52 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-type Door:
+type Door {
 	id Int
 	log String
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
 	void append_file(self.log, f"{self.id},").wait()
+}
 
-fn logged(path String) String:
+fn logged(path String) String {
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8() or ""
+	if bytes := read { return bytes.decode_utf8() or "" }
 
 	return ""
+}
 
-fn first_even(log String) Int:
+fn first_even(log String) Int {
 	doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
-	for d in doors:
-		if d.id % 2 == 0: return d.id
+	for d in doors {
+		if d.id % 2 == 0 { return d.id }
+	}
 	return -1
+}
 
-fn until_two(log String) Int:
+fn until_two(log String) Int {
 	doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
 	var n = 0
 
-	for d in doors:
+	for d in doors {
 		n += d.id
-		if d.id == 2: break
+		if d.id == 2 { break }
+	}
 
 	return n
+}
 
-test "return out of an owned loop closes every element once":
+test "return out of an owned loop closes every element once" {
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	first_even(log.clone()) | expect_equal(2)?
 	logged(log.clone()) | expect_equal("1,2,3,")?
+}
 
-test "break closes the elements it never reached":
+test "break closes the elements it never reached" {
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	until_two(log.clone()) | expect_equal(3)?
 	logged(log.clone()) | expect_equal("1,2,3,")?
+}

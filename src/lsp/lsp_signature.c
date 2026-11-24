@@ -117,14 +117,13 @@ MS_LIST_DEFINE(ArgumentList, argument_list, Argument)
 
 static void collect_arguments(MsSpan source, const LspTokenList *tokens, size_t open, size_t offset, ArgumentList *arguments) {
   size_t depth = 0, count = 0;
-  bool lambda = false;
   const LspEditorToken *segment[2] = {NULL, NULL};
   for (size_t i = 0; i < tokens->len; i++) {
     const LspEditorToken *token = &tokens->ptr[i];
     if (token->start <= open || token->kind == LSP_TOKEN_COMMENT) continue;
     if (token->start > offset && starts_declaration(source, token)) break;
     const bool close = depth == 0 && is_char(source, token, ')');
-    if (close || (depth == 0 && is_char(source, token, ',') && !lambda)) {
+    if (close || (depth == 0 && is_char(source, token, ','))) {
       Argument argument = {0};
       if (count >= 2 && segment[0]->kind == LSP_TOKEN_NAME && !token_is(source, segment[0], "fn") && is_char(source, segment[1], ':')) {
         argument.label = ms_span_of(source.ptr + segment[0]->start, segment[0]->end - segment[0]->start);
@@ -139,10 +138,6 @@ static void collect_arguments(MsSpan source, const LspTokenList *tokens, size_t 
       depth++;
     } else if (is_char(source, token, ')') || is_char(source, token, ']') || is_char(source, token, '}')) {
       depth = depth > 0 ? depth - 1 : 0;
-    } else if (depth == 0 && token_is(source, token, "fn")) {
-      lambda = true;
-    } else if (depth == 0 && is_char(source, token, ':')) {
-      lambda = false;
     }
     if (is_char(source, token, '\n')) continue;
     if (count < 2) segment[count] = token;

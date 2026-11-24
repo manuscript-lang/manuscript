@@ -1,13 +1,16 @@
 // conform: tags=closures,diagnostics,mutation,tier-core
 // conform: phase=check
 // conform: origin=pkg/checker/defaults_test.go:29 TestDefaultArgumentBoundaries
-fn f() Void:
-    var outer = 1
-    _callback := fn(
-        value Int = (
-            fn() Int:
-                outer = 2
-                return outer
-        )()
-    ) Int:
-        return value
+fn f() Void {
+	var outer = 1
+	_callback := fn(
+		value Int = (
+			fn() Int {
+				outer = 2
+				return outer
+			}
+		)()
+	) Int {
+		return value
+	}
+}

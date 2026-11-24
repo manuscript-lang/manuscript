@@ -9,24 +9,32 @@ Orders arrive as one file per day. Reading them one after another wastes time wh
 
 <!-- manuscript-example: {"mode":"run","files":{"a.csv":"1,Sam,1250\n","b.csv":"2,Ada,4000\n3,Lin,900\n"},"stdout":"3 rows from 2 files\n"} -->
 ```manuscript {filename="rows.ms"}
-import read_file from "@std/os/fs.ms"
-import wait_all from "@std/concurrency/promise.ms"
+import (
+    wait_all from "@std/concurrency/promise.ms",
+    read_file from "@std/os/fs.ms",
+)
 
-fn count_rows(text String) Int:
+fn count_rows(text String) Int {
     return text.split("\n").filter(line => not line.is_empty()).length()
+}
 
-fn run(paths List[String]) Int!:
+fn run(paths List[String]) Int! {
     reads := paths.map(path => read_file(path))
     files := wait_all(reads)?
     var rows = 0
-    for file in files:
+
+    for file in files {
         text := ok_or(file.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))?
         rows += count_rows(text)
-    return ok(rows)
+    }
 
-fn main() Void!:
+    return ok(rows)
+}
+
+fn main() Void! {
     rows := run(["a.csv", "b.csv"])?
     print(f"{rows} rows from 2 files")
+}
 ```
 
 ```text

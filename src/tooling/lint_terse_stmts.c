@@ -317,7 +317,7 @@ static size_t counter_bind(MsStmts body, size_t at, MsName name) {
   return SIZE_MAX;
 }
 
-/* `var i = 0` / `while i < n:` ... `i += 1` is `for i in 0..n:`. */
+/* `var i = 0` / `while i < n { ... }` ... `i += 1` is `for i in 0..n { ... }`. */
 static void counter_while(const TerseScan *scan, MsStmts body, size_t at) {
   const MsStmt *loop = body.ptr[at];
   if (loop->kind != MS_S_WHILE || loop->u.loop.cond->kind != MS_E_BINARY || loop->u.loop.cond->op != MS_B_LT ||
@@ -404,7 +404,7 @@ static void counter_while(const TerseScan *scan, MsStmts body, size_t at) {
   ms_strbuild_free(&text);
   /* The line's own `\r` stays in place, so the break keeps its CRLF. */
   terse_report(scan, "MSL122",
-               text_of("Count with `for i in start..end:` instead of a `var` and a `while` with `i += 1`"), first->pos,
+               text_of("Count with `for i in start..end { ... }` instead of a `var` and a `while` with `i += 1`"), first->pos,
                bind_line, tail, replacement);
 }
 
@@ -443,7 +443,7 @@ static size_t count_in(MsSpan text, MsSpan pattern) {
   return count;
 }
 
-/* `for i in 0..xs.length():` that only reads `xs[i]` is `for x in xs:`. */
+/* `for i in 0..xs.length() { ... }` that only reads `xs[i]` is `for x in xs { ... }`. */
 static void index_loop(const TerseScan *scan, const MsStmt *s) {
   if (s->kind != MS_S_FOR) {
     return;

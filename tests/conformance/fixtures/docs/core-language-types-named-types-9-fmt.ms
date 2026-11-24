@@ -3,11 +3,12 @@
 // conform: origin=documentation/core-language/types/named-types.md:120
 import panic from "@std/core.ms"
 
-type Node:
+type Node {
 	value Int
 	next Node?
+}
 
-test "recursive links":
+test "recursive links" {
 	var node = Node(value: 1, next: null)
 	node.next = Node(value: 5, next: null)
 
@@ -16,5 +17,7 @@ test "recursive links":
 	if (
 		(node.next or panic("called Optional.get() on null")).value != 5
 		or (copy.next or panic("called Optional.get() on null")).value != 2
-	):
+	) {
 		panic("clones must be independent")
+	}
+}

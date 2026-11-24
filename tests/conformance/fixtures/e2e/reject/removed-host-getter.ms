@@ -1,5 +1,6 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-export fn main() Int:
+export fn main() Int {
 	host := filesystem()
 	return host.read_file("a.txt").length()
+}

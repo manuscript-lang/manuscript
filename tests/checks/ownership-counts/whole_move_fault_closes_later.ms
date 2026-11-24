@@ -9,13 +9,15 @@ import (
 	stdout from "@std/io/io.ms",
 )
 
-type Door:
+type Door {
 	name String
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
 	stdout().write(f"close {self.name}\n").get()
+}
 
-fn faulting() Void:
+fn faulting() Void {
 	var xs List[Door] = []
 	a := Door("a")
 	b := Door("b")
@@ -23,8 +25,10 @@ fn faulting() Void:
 
 	_n := b.name.length()
 	panic("fault after the move")
+}
 
-fn main() Void:
+fn main() Void {
 	work := promise(() => ok(faulting()))
 	waited := work.wait()
 	stdout().write(f"waited: {waited.is_error()}\n").get()
+}

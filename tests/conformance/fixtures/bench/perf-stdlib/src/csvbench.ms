@@ -1,29 +1,34 @@
-import bench from "./harness.ms"
-import parse, stringify from "@std/data/csv.ms"
+import (
+	parse, stringify from "@std/data/csv.ms",
 
-export fn bench_csv() Void:
-    var rows List[List[String]] = []
-    for i in 0..5000:
-        rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
+	bench from "./harness.ms",
+)
 
-    csv_text := stringify(rows).get_or("")
+export fn bench_csv() Void {
+	var rows List[List[String]] = []
+	for i in 0..5000 {
+		rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
+	}
 
-    bench(
-        "csv.stringify",
-        5000,
-        fn() Int:
-            if s := stringify(rows):
-                return s.length()
+	csv_text := stringify(rows).get_or("")
 
-            return 0
-    )
+	bench(
+		"csv.stringify",
+		5000,
+		fn() Int {
+			if s := stringify(rows) {
+				return s.length()
+			} return 0
+		}
+	)
 
-    bench(
-        "csv.parse",
-        5000,
-        fn() Int:
-            if r := parse(csv_text):
-                return r.length()
-
-            return 0
-    )
+	bench(
+		"csv.parse",
+		5000,
+		fn() Int {
+			if r := parse(csv_text) {
+				return r.length()
+			} return 0
+		}
+	)
+}

@@ -68,7 +68,7 @@ first := data[0]           // 104
 In `stdlib/json.ms`, written in Manuscript:
 
 ```manuscript
-impl JsonValue:
+impl JsonValue {
     fn get(key: String) Optional[JsonValue]      // ObjectValue member, else none
     fn at(index: Int) Optional[JsonValue]        // ArrayValue element, else none
     fn as_string() Optional[String]
@@ -77,6 +77,7 @@ impl JsonValue:
     fn as_bool() Optional[Bool]
     fn as_list() Optional[List[JsonValue]]
     fn as_map() Optional[Map[String, JsonValue]]
+}
 ```
 
 `doc.get("user").and_then(lambda u: u.get("name")).and_then(lambda n: n.as_string()).get("")` replaces three nested matches. Results borrow where the payload is a String, List or Map (`-> ref Optional[...]`) if the checker allows it for alternative payloads; otherwise they clone and the doc comment says so.

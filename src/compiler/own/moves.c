@@ -27,7 +27,7 @@ typedef struct Moves {
   MsClassifier *classes;
   MsArena *arena;
   MsBindingList vars;   /* binding sites of `var` locals of the body */
-  MsBindingList reads;  /* `if p := name:` scrutinees that are not resources: the payload is a view, the name stays whole */
+  MsBindingList reads;  /* `if p := name { ... }` scrutinees that are not resources: the payload is a view, the name stays whole */
   MsBindingList moving; /* binding sites of `move` parameters of the body */
   MsBindingList taking; /* binding sites of parameters the body hands on without declaring them `move`: it owns them too */
   uint32_t assigning; /* the binding the statement being visited assigns whole, or UINT32_MAX */
@@ -693,7 +693,7 @@ static void note_var(void *ctx, const MsStmt *stmt) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");
     ms_own_expr_text(&text, pass->program->names, stmt->u.branch.cond);
-    ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value:`, then use `var copy = x.clone()` for an "
+    ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value { ... }`, then use `var copy = x.clone()` for an "
                                    "independent mutable copy, or write the changed value back");
     ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }

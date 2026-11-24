@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Pair:\n\tValues(first Int, second Int)\n"
+    "fmt": "enum Pair {\n\tValues(first Int, second Int)\n}\n"
   }
 }

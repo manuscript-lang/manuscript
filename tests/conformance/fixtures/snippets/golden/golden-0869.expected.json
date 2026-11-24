@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS1002",
-        "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
-        "position": {
-          "file": "golden-0869.ms",
-          "line": 4,
-          "column": 3,
-          "offset": 67
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/golden-0869.ms:4:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n   |\n 4 |   return 1\n   |   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked golden-0869.ms\n",
+      "stderr": ""
     }
   }
 }

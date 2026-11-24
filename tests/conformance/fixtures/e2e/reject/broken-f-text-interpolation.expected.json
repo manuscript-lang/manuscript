@@ -14,13 +14,13 @@
           "file": "broken-f-text-interpolation.ms",
           "line": 4,
           "column": 21,
-          "offset": 105
+          "offset": 106
         },
         "end": {
           "file": "broken-f-text-interpolation.ms",
           "line": 4,
           "column": 21,
-          "offset": 105
+          "offset": 106
         }
       }
     ],

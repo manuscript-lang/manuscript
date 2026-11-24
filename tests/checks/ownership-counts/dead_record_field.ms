@@ -3,19 +3,22 @@
 // The caller's `p` is dead after the call, but `left_of` reads it borrowed, so its
 // clone still allocates. Passing a dead argument by move to a function that only clones
 // from it should lower both counts.
-type Big:
+type Big {
 	name String
 	items List[Int]
+}
 
-type Pair:
+type Pair {
 	left Big
 	right Big
+}
 
-fn left_of(p Pair) Big:
+fn left_of(p Pair) Big {
 	l := p.left.clone()
 	return l
+}
 
-export fn main() Int:
+export fn main() Int {
 	p := Pair(
 		left: Big(
 			name: "a name that is long enough to live on the heap",
@@ -28,3 +31,4 @@ export fn main() Int:
 	)
 	l := left_of(p)
 	return l.items.length() - 3
+}

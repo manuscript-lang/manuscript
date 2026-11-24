@@ -3,84 +3,103 @@
 // conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
 import expect_true, fail from "@std/test/test.ms"
 
-interface Shape:
-    fn area() Int
-    fn scaled(by Int) Int
-    fn checked(limit Int) Int!Error
-    fn grow(depth Int) Int
+interface Shape {
+	fn area() Int
+	fn scaled(by Int) Int
+	fn checked(limit Int) Int!Error
+	fn grow(depth Int) Int
+}
 
-type Rect:
-    w Int
-    h Int
+type Rect {
+	w Int
+	h Int
+}
 
-enum Sign:
-    Plus(n Int)
-    Minus(n Int)
+enum Sign {
+	Plus(n Int)
+	Minus(n Int)
+}
 
-fn Rect.area() Int:
-    return self.w * self.h
+fn Rect.area() Int {
+	return self.w * self.h
+}
 
-fn Rect.scaled(by Int) Int:
-    return self.area() * by
+fn Rect.scaled(by Int) Int {
+	return self.area() * by
+}
 
-fn Rect.checked(limit Int) Int!Error:
-    if self.area() > limit:
-        return error(cause: Error("too big"))
+fn Rect.checked(limit Int) Int!Error {
+	if self.area() > limit {
+		return error(cause: Error("too big"))
+	}
+	return ok(value: self.area())
+}
 
-    return ok(value: self.area())
+fn Rect.grow(depth Int) Int {
+	if depth == 0 {
+		return self.w
+	}
+	return self.grow(depth: depth - 1) + 1
+}
 
-fn Rect.grow(depth Int) Int:
-    if depth == 0:
-        return self.w
+fn Sign.area() Int {
+	match self {
+		Plus(n) => return n
+		Minus(n) => return 0 - n
+	}
+}
 
-    return self.grow(depth: depth - 1) + 1
+fn Sign.scaled(by Int) Int {
+	return self.area() * by
+}
 
-fn Sign.area() Int:
-    match self:
-        Plus(n) => return n
-        Minus(n) => return 0 - n
+fn Sign.checked(limit Int) Int!Error {
+	return ok(value: self.area())
+}
 
-fn Sign.scaled(by Int) Int:
-    return self.area() * by
+fn Sign.grow(depth Int) Int {
+	return depth
+}
 
-fn Sign.checked(limit Int) Int!Error:
-    return ok(value: self.area())
+fn through(shape Shape) Int {
+	return shape.scaled(by: 2)
+}
 
-fn Sign.grow(depth Int) Int:
-    return depth
+fn tried(rect Rect, limit Int) Int!Error {
+	first := rect.checked(limit: limit)?
+	return ok(value: first + (rect.checked(limit: limit + 100)?))
+}
 
-fn through(shape Shape) Int:
-    return shape.scaled(by: 2)
+fn order(rect Rect, var log List[String]) Int {
+	log.append(value: "receiver")
+	return rect.scaled(by: id(log: log))
+}
 
-fn tried(rect Rect, limit Int) Int!Error:
-    first := rect.checked(limit: limit)?
-    return ok(value: first + (rect.checked(limit: limit + 100)?))
+fn id(var log List[String]) Int {
+	log.append(value: "argument")
+	return 1
+}
 
-fn order(rect Rect, var log List[String]) Int:
-    log.append(value: "receiver")
-    return rect.scaled(by: id(log: log))
+test "direct methods" {
+	rect := Rect(w: 3, h: 4)
+	(rect.area() == 12) | expect_true?
+	(rect.scaled(by: 3) == 36) | expect_true?
+	(through(shape: rect) == 24) | expect_true?
+	(through(shape: Plus(n: 5)) == 10) | expect_true?
+	(Minus(n: 4).area() == 0 - 4) | expect_true?
+	(rect.grow(depth: 10) == 13) | expect_true?
 
-fn id(var log List[String]) Int:
-    log.append(value: "argument")
-    return 1
+	match tried(rect: rect, limit: 12) {
+		ok(value) => (value == 24) | expect_true?
+		error(cause) => return fail(cause.message)
+	}
 
-test "direct methods":
-    rect := Rect(w: 3, h: 4)
-    (rect.area() == 12) | expect_true?
-    (rect.scaled(by: 3) == 36) | expect_true?
-    (through(shape: rect) == 24) | expect_true?
-    (through(shape: Plus(n: 5)) == 10) | expect_true?
-    (Minus(n: 4).area() == 0 - 4) | expect_true?
-    (rect.grow(depth: 10) == 13) | expect_true?
+	match tried(rect: rect, limit: 11) {
+		ok(_value) => return fail("expected failure")
+		error(cause) => (cause.message == "too big") | expect_true?
+	}
 
-    match tried(rect: rect, limit: 12):
-        ok(value) => (value == 24) | expect_true?
-        error(cause) => return fail(cause.message)
-
-    match tried(rect: rect, limit: 11):
-        ok(_value) => return fail("expected failure")
-        error(cause) => (cause.message == "too big") | expect_true?
-
-    var log = List[String]()
-    (order(rect: rect, log: log) == 12) | expect_true?
-    (log.join(separator: ",") == "receiver,argument") | expect_true?
+	var log = List[String]()
+	(order(rect: rect, log: log) == 12) | expect_true?
+	(log.join(separator: ",") == "receiver,argument") | expect_true?
+}

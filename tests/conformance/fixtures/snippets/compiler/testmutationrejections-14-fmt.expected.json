@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(file File) Void:\n\tfile.clone()\n"
+    "fmt": "fn f(file File) Void {\n\tfile.clone()\n}\n"
   }
 }

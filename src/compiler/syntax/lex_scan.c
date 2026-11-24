@@ -218,7 +218,7 @@ bool lex_names_a_member(const Scanner *s, size_t hi) {
     return true;
   }
   bool label_start = prev == MS_T_LParen || prev == MS_T_Comma || prev == MS_T_Newline ||
-                     prev == MS_T_Indent || prev == MS_T_Dedent || prev == -1;
+                     prev == MS_T_LBrace || prev == MS_T_RBrace || prev == -1;
   size_t j = hi;
   while (lex_peek(s, j) == ' ') {
     j++;

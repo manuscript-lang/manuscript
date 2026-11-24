@@ -8,7 +8,7 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-test "byte updates retain relative bounds and immutable storage":
+test "byte updates retain relative bounds and immutable storage" {
 	bytes := Bytes([0, 255])
 	expect_equal(bytes.with_value(-2, 255), Bytes([255, 255]))?
 	expect_equal(bytes.with_value(1, 0), Bytes([0, 0]))?
@@ -21,8 +21,9 @@ test "byte updates retain relative bounds and immutable storage":
 	builder.append(0)
 	builder.append(255)
 	expect_equal(builder.build(), bytes)?
+}
 
-test "list boundaries retain mutation truncation and empty ranges":
+test "list boundaries retain mutation truncation and empty ranges" {
 	var list = [1, 2]
 	list.set(-2, 0)
 	expect_equal(list, [0, 2])?
@@ -40,8 +41,9 @@ test "list boundaries retain mutation truncation and empty ranges":
 	list.splice(0, 0, [])
 	expect_equal(list.length(), 0)?
 	expect_equal(list.get_or(0, -1), -1)?
+}
 
-test "radix formatting retains inclusive boundaries and parse errors":
+test "radix formatting retains inclusive boundaries and parse errors" {
 	expect_false(
 		((35).to_string_radix(2) != "100011" or (35).to_string_radix(36) != "z")
 	)?
@@ -52,8 +54,9 @@ test "radix formatting retains inclusive boundaries and parse errors":
 	invalid Int! := error(Error("number: invalid input", kind: "EINVAL"))
 	expect_equal(parse_int("1", 1), invalid)?
 	expect_false(not ("invalid".parse_int() == null))?
+}
 
-test "queue capacities retain omission none minimum maximum and full results":
+test "queue capacities retain omission none minimum maximum and full results" {
 	var queue = Queue[Int](1)
 	expect_false(not queue.enqueue(1) or queue.enqueue(2))?
 	expect_false(queue.dequeue() != 1 or not (queue.dequeue() == null))?
@@ -68,3 +71,4 @@ test "queue capacities retain omission none minimum maximum and full results":
 	var unlimited = PriorityQueue[Int](null)
 	var large_priority = PriorityQueue[Int](9223372036854775807)
 	expect_false(not unlimited.enqueue(1) or not large_priority.enqueue(1))?
+}

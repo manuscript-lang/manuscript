@@ -12,16 +12,16 @@
         "message": "unterminated delimiter '(' opened at line 5:9; add the matching ')' before the end of the file",
         "position": {
           "file": "golden-1257.ms",
-          "line": 5,
-          "column": 20,
-          "offset": 140
+          "line": 6,
+          "column": 2,
+          "offset": 143
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1257.ms:5:20: parse: unterminated delimiter '(' opened at line 5:9; add the matching ')' before the end of the file\n   |\n 5 | fn check(receiver: \n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1257.ms:6:2: parse: unterminated delimiter '(' opened at line 5:9; add the matching ')' before the end of the file\n   |\n 6 | }\n   |  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

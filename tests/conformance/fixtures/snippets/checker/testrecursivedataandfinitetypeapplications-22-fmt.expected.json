@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Grow[T]:\n\tfn next() Grow[List[T]]\n"
+    "fmt": "interface Grow[T] {\n\tfn next() Grow[List[T]]\n}\n"
   }
 }

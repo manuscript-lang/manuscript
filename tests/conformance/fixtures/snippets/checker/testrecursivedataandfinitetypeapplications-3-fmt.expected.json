@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum A:\n\tEnd\n\tNext(value B)\n\ntype B:\n\ta A\n"
+    "fmt": "enum A {\n\tEnd\n\tNext(value B)\n}\n\ntype B {\n\ta A\n}\n"
   }
 }

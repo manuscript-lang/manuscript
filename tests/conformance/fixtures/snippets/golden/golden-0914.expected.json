@@ -14,14 +14,31 @@
           "file": "golden-0914.ms",
           "line": 6,
           "column": 14,
-          "offset": 114
+          "offset": 115
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
+        "position": {
+          "file": "golden-0914.ms",
+          "line": 9,
+          "column": 1,
+          "offset": 180
+        },
+        "end": {
+          "file": "golden-0914.ms",
+          "line": 9,
+          "column": 2,
+          "offset": 181
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0914.ms:6:14: parse: unknown text escape \\q; valid escapes are \\n \\t \\r \\\\ \\\" and \\u{H}\n   |\n 6 |     if not (\"\\q\" == \"\"):\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0914.ms:6:14: parse: unknown text escape \\q; valid escapes are \\n \\t \\r \\\\ \\\" and \\u{H}\n   |\n 6 |     if not (\"\\q\" == \"\") {\n   |              ^\n<DIR>/golden-0914.ms:9:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 9 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

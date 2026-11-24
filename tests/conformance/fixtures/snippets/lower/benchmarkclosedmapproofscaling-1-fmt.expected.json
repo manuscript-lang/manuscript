@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Tag:\n\tfn tag() Int\n"
+    "fmt": "interface Tag {\n\tfn tag() Int\n}\n"
   }
 }

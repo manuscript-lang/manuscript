@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Flip[T, U]:\n\tnext Flip[U, T]\n"
+    "fmt": "type Flip[T, U] {\n\tnext Flip[U, T]\n}\n"
   }
 }

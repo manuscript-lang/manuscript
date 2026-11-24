@@ -13,7 +13,7 @@
           "index": 0,
           "name": "testlocalclosurefaultnamesthelambda-1.ms::fault",
           "status": "failed",
-          "failure": "closure failed\n  at testlocalclosurefaultnamesthelambda-1.ms:7 in run.closure\n  at testlocalclosurefaultnamesthelambda-1.ms:8 in run\n  at testlocalclosurefaultnamesthelambda-1.ms:11 in test fault"
+          "failure": "closure failed\n  at testlocalclosurefaultnamesthelambda-1.ms:7 in run.closure\n  at testlocalclosurefaultnamesthelambda-1.ms:8 in run\n  at testlocalclosurefaultnamesthelambda-1.ms:12 in test fault"
         }
       ],
       "summary": {
@@ -26,7 +26,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testlocalclosurefaultnamesthelambda-1.ms::fault\nFAIL testlocalclosurefaultnamesthelambda-1.ms::fault: closure failed\n  at testlocalclosurefaultnamesthelambda-1.ms:7 in run.closure\n  at testlocalclosurefaultnamesthelambda-1.ms:8 in run\n  at testlocalclosurefaultnamesthelambda-1.ms:11 in test fault\n1 tests, 1 failed\n",
+      "stdout": "RUN testlocalclosurefaultnamesthelambda-1.ms::fault\nFAIL testlocalclosurefaultnamesthelambda-1.ms::fault: closure failed\n  at testlocalclosurefaultnamesthelambda-1.ms:7 in run.closure\n  at testlocalclosurefaultnamesthelambda-1.ms:8 in run\n  at testlocalclosurefaultnamesthelambda-1.ms:12 in test fault\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

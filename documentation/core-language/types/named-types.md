@@ -10,20 +10,22 @@ A type groups related data into named fields. Use it when a function should rece
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Customer:
+type Customer {
     name String
     email String?
+}
 ```
 
-Field types are explicit and field names are unique. An empty type is `type Marker:`. A field may have a default expression, which is checked against the field's type.
+Field types are explicit and field names are unique. An empty type is `type Marker { ... }`. A field may have a default expression, which is checked against the field's type.
 
 Names that share a type are written together: `width, height Int` declares two fields of type `Int`, and a default (`x, y Float = 0.0`) applies to each. Function parameters and enum payloads group the same way (`fn area(width, height Int) Int`, `Box(width, height Int)`).
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Rect:
+type Rect {
     width, height Int
     x, y Float = 0.0
+}
 
 fn area(width, height Int) Int => width * height
 ```
@@ -34,7 +36,7 @@ Supply each required field exactly once, by position or label; fields with defau
 
 Supplied expressions evaluate in written order, then omitted defaults evaluate in declaration order. Each is checked against its field type, so `null` and `[]` get their expected type.
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name String\n    email String?","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    email String?\n}","given":[]} -->
 ```manuscript
 customer := Customer(name: "Ada", email: null)
 name := customer.name
@@ -42,7 +44,7 @@ name := customer.name
 
 Positional arguments follow declaration order, and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Customer("Ada", null)` equals `Customer(name: "Ada", email: null)`. To handle an optional field such as `email`, see [optional values](optionals.md).
 
-<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer:\n    name String\n    email String? = null","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer {\n    name String\n    email String? = null\n}","given":[]} -->
 ```manuscript
 // An omitted optional field is null.
 without_email := Customer(name: "Ada")
@@ -50,13 +52,14 @@ without_email := Customer(name: "Ada")
 customer.name = "Grace"
 ```
 
-Generic types declare parameters (`type Box[T]:`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
+Generic types declare parameters (`type Box[T] { ... }`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-type Options:
+type Options {
     count Int = 3
     total Int = count + 1
+}
 
 options := Options(count: 5)  // total defaults to 6
 ```
@@ -73,16 +76,18 @@ Save as `customers.ms` and run `ms run customers.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Ada\nGrace\n"} -->
 ```manuscript
-type Customer:
+type Customer {
     name String
     email String?
+}
 
-fn main() Void:
+fn main() Void {
     original := Customer("Ada")
     var updated = original.clone()
     updated.name = "Grace"
     print(original.name)
     print(updated.name)
+}
 ```
 
 ```text
@@ -94,14 +99,17 @@ Methods are receiver methods, `fn Type.name(...)` ([methods](contracts.md#method
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-interface Counter:
+interface Counter {
     var fn increment() Void
+}
 
-type Val:
+type Val {
     val Int
+}
 
-fn var Val.increment() Void:
-    self.val = self.val + 1
+fn var Val.increment() Void {
+    self.val += 1
+}
 ```
 
 A field write keeps the field's declared type, and the receiver evaluates once, before the new value. A type follows the same move and borrow rules as any other owner, and only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
@@ -118,15 +126,17 @@ Save as `batches.ms` and run `ms run batches.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"scores\n[3, 4]\n"} -->
 ```manuscript
-type Report:
+type Report {
     title String
     rows List[Int]
+}
 
-fn main() Void:
+fn main() Void {
     report := Report("scores", [3, 4])
     batches := [report.rows]
     print(report.title)
     print(batches[0])
+}
 ```
 
 ```text
@@ -140,10 +150,11 @@ scores
 
 Reading a field is different from moving it: `rows := report.rows` borrows the field. A function that returns the field also returns an inferred borrow:
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Report:\n    rows List[Int]","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Report {\n    rows List[Int]\n}","given":[]} -->
 ```manuscript
-fn rows_of(report Report) List[Int]:
+fn rows_of(report Report) List[Int] {
     return report.rows
+}
 ```
 
 Calling `rows_of(report)` leaves `report.rows` readable, and `report` must stay available while the returned borrow is in use. See [borrow-returning functions](references.md#borrowing).
@@ -154,20 +165,24 @@ A resource field moves without a copy, and the new owner closes it. The type clo
 ```manuscript
 import Closeable from "@std/core.ms"
 
-type Door:
+type Door {
     id Int
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
     return ok()
+}
 
-type Room:
+type Room {
     door Door
     spare Door
+}
 
-fn open_door(r Room) List[Door]:
+fn open_door(r Room) List[Door] {
     var doors List[Door] = []
     doors.append(r.door)
     return doors
+}
 ```
 
 Here `r.spare` closes when `open_door` returns, and `r.door` closes with its new owner, `doors`. A place and a part of it (such as `r.door` and `r.door.id`) cannot both be moved out of one binding.
@@ -178,14 +193,16 @@ Wrap identifiers in their own types so they cannot be mixed up.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type CustomerId:
+type CustomerId {
     value String
+}
 
-type OrderId:
+type OrderId {
     value String
+}
 ```
 
-<!-- manuscript-example: {"mode":"error","contains":"","context":"type CustomerId:\n    value String\n\ntype OrderId:\n    value String","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type CustomerId {\n    value String\n}\n\ntype OrderId {\n    value String\n}","given":[]} -->
 ```manuscript
 customer_id := CustomerId("42")
 // Rejected: equal field shapes do not make nominal types interchangeable.
@@ -208,19 +225,24 @@ Types and enums may refer to themselves or each other directly, with no box. Giv
 ```manuscript
 import panic from "@std/core.ms"
 
-enum Expr:
+enum Expr {
     Num(value Int)
     Add(left Expr, right Expr)
+}
 
-fn evaluate(expr Expr) Int:
-    match expr:
+fn evaluate(expr Expr) Int {
+    match expr {
         Num(value) => return value
         Add(left, right) => return evaluate(left) + evaluate(right)
+    }
+}
 
-test "recursive expression":
+test "recursive expression" {
     expr := Expr.Add(Expr.Num(1), Expr.Num(2))
-    if evaluate(expr) != 3:
+    if evaluate(expr) != 3 {
         panic("unexpected expression value")
+    }
+}
 ```
 
 A linked type ends with an absent successor; a link owns its successor, so a clone copies the whole chain:
@@ -229,17 +251,21 @@ A linked type ends with an absent successor; a link owns its successor, so a clo
 ```manuscript
 import panic from "@std/core.ms"
 
-type Node:
+type Node {
     value Int
     next Node?
+}
 
-test "recursive links":
+test "recursive links" {
     var node = Node(value: 1, next: null)
     node.next = Node(value: 5, next: null)
+
     var copy = node.clone()
     copy.next = Node(value: 2, next: null)
-    if node.next.get().value != 5 or copy.next.get().value != 2:
+    if node.next.get().value != 5 or copy.next.get().value != 2 {
         panic("clones must be independent")
+    }
+}
 ```
 
 Constructors still need every required field, and a binding is unavailable in its own initializer, so `node := Node(value: 1, next: node)` is rejected. Recursive shapes get no automatic `Hashable`; a key needs an explicit implementation ([equality and hashing](equality-and-hashing.md)).
@@ -248,7 +274,7 @@ Generic recursion must preserve type parameters along every cycle; see [finite r
 
 ## Opaque types
 
-`export opaque type Approved:` hides fields outside the declaring file; `export opaque enum Choice:` hides enum cases in the same way. The module exports functions and methods that build and read the value; other files can hold it, pass it, call its methods, and clone it when its fields are clonable.
+`export opaque type Approved { ... }` hides fields outside the declaring file; `export opaque enum Choice { ... }` hides enum cases in the same way. The module exports functions and methods that build and read the value; other files can hold it, pass it, call its methods, and clone it when its fields are clonable.
 
 ```text
 # gate.ms
@@ -286,8 +312,9 @@ type Rows = List[Int]
 type Handler = fn(Int) Int
 type Maybe[T] = T?
 
-fn total(rows Rows) Int:
+fn total(rows Rows) Int {
     return rows.fold(0, (sum, x) => sum + x)
+}
 
 numbers List[Int] := [1, 2, 3]
 sum := total(numbers)
@@ -300,38 +327,48 @@ sum := total(numbers)
 
 ## Growing a tree
 
-A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node:`. A `T?` parameter has no default: write `= null` to make it omittable.
+A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node { ... }`. A `T?` parameter has no default: write `= null` to make it omittable.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
-type Branch:
+type Branch {
     key Int
     left Branch?
     right Branch?
+}
 
-fn var Branch.insert(key Int) Void:
-    if key < self.key:
-        if self.left == null:
+fn var Branch.insert(key Int) Void {
+    if key < self.key {
+        if self.left == null {
             self.left = Branch(key, null, null)
-        else:
+        } else {
             self.left?.insert(key)
-    else:
-        if self.right == null:
+        }
+    } else {
+        if self.right == null {
             self.right = Branch(key, null, null)
-        else:
+        } else {
             self.right?.insert(key)
+        }
+    }
+}
 
-fn count(node Branch?) Int:
-    if n := node:
+fn count(node Branch?) Int {
+    if n := node {
         return 1 + count(n.left) + count(n.right)
+    }
     return 0
+}
 
-test "a tree inserts through its children":
+test "a tree inserts through its children" {
     var root = Branch(50, null, null)
-    for key in [30, 70, 20, 40]:
+    for key in [30, 70, 20, 40] {
         root.insert(key)
-    if count(root) != 5:
+    }
+    if count(root) != 5 {
         panic("every key must be inserted")
+    }
+}
 ```

@@ -12,16 +12,16 @@
         "message": "operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-21.ms",
-          "line": 8,
+          "line": 9,
           "column": 16,
-          "offset": 212
+          "offset": 210
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-21.ms:8:16: type: operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'\n   |\n 8 |     return p() + 1\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-21.ms:9:16: type: operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'\n   |\n 9 |     return p() + 1\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

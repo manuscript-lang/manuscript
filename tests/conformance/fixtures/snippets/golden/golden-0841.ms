@@ -1,7 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
-enum Optional[T]:
+enum Optional[T] {
     null
     T
-impl T?:
-    fn get() T: ...
+}
+impl T? {
+    fn get() T { ... }
+}

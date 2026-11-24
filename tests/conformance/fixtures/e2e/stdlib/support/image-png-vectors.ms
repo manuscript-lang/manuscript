@@ -4,14 +4,15 @@ import (
 	hex_decode from "@std/data/encoding.ms",
 )
 
-export type PngVector:
+export type PngVector {
 	name String
 	width Int
 	height Int
 	png String
 	rgba List[Int]
+}
 
-export fn vectors() List[PngVector]:
+export fn vectors() List[PngVector] {
 	return [
 		PngVector(
 			"gray1",
@@ -730,3 +731,4 @@ export fn vectors() List[PngVector]:
 			],
 		),
 	]
+}

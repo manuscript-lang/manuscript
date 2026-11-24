@@ -7,7 +7,7 @@ import (
 	read_file from "@std/os/fs.ms",
 )
 
-fn run() Result[Void, Error]:
+fn run() Result[Void, Error] {
 	path := ok_or(
 		arguments().first(),
 		Error("filesystem: invalid input", kind: "EINVAL"),
@@ -18,6 +18,8 @@ fn run() Result[Void, Error]:
 	)?
 	stdout().write(text)?
 	return stdout().flush()
+}
 
-fn main() Void!:
+fn main() Void! {
 	run()?
+}

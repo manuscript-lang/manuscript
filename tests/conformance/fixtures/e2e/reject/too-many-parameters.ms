@@ -1,6 +1,7 @@
 // conform: tags=functions,tier-core
 // conform: phase=check
-// A function declares at most 32 parameters; the 33rd is reported where it is written, not by the lowerer.
+// A function declares at most 32 parameters; the 33rd is reported where it is written,
+// not by the lowerer.
 fn f(
 	a0 Int,
 	a1 Int,
@@ -35,8 +36,46 @@ fn f(
 	a30 Int,
 	a31 Int,
 	a32 Int,
-) Int:
+) Int {
 	return a0 + a32
+}
 
-fn main() Void:
-	print(f(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32))
+fn main() Void {
+	print(
+		f(
+			0,
+			1,
+			2,
+			3,
+			4,
+			5,
+			6,
+			7,
+			8,
+			9,
+			10,
+			11,
+			12,
+			13,
+			14,
+			15,
+			16,
+			17,
+			18,
+			19,
+			20,
+			21,
+			22,
+			23,
+			24,
+			25,
+			26,
+			27,
+			28,
+			29,
+			30,
+			31,
+			32,
+		)
+	)
+}

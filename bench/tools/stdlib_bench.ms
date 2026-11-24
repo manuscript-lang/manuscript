@@ -18,14 +18,15 @@ import (
 	Stats, case_labels, read_cases from "./stdlib_results.ms",
 )
 
-export fn stdlib_table(output String) String!:
+export fn stdlib_table(output String) String! {
 	cases := read_cases(output)?
 	labels := case_labels(cases.map(c => c.name.clone()))
 	var width = 4
 
-	for c in cases:
+	for c in cases {
 		n := labels.get_or(c.name, "").length()
-		if n > width: width = n
+		if n > width { width = n }
+	}
 
 	var rows = [
 		left("case", width) + "  " + right("median ns/op", 12) + "  " + right(
@@ -34,7 +35,7 @@ export fn stdlib_table(output String) String!:
 		) + "  " + right("max", 10)
 	]
 
-	for c in cases:
+	for c in cases {
 		s := (
 			c.stats.clone()
 			or Stats(
@@ -57,25 +58,30 @@ export fn stdlib_table(output String) String!:
 				10,
 			)
 		)
+	}
 
 	return ok(rows.join("\n"))
+}
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
-	if not args.is_empty() and args[0] == "--table": return finish(
-		stdlib_table(read_stdin())
-	)
+	if not args.is_empty() and args[0] == "--table" {
+		return finish(stdlib_table(read_stdin()))
+	}
 
 	var n = 5
 
-	if not args.is_empty():
-		if parsed := repeats(args[0]):
+	if not args.is_empty() {
+		if parsed := repeats(args[0]) {
 			n = parsed
-		else:
+		} else {
 			return usage("samples must be a positive integer")
+		}
+	}
 
-	filter := if args.length() > 1: args[1].clone() else: ""
+	filter := if args.length() > 1 { args[1].clone() } else { "" }
 	output := stdlib_bench(ms_binary(), n, filter)
-	if output.is_error(): return finish(output)
+	if output.is_error() { return finish(output) }
 
 	return finish(stdlib_table(output.get_or("")))
+}

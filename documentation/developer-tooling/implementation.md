@@ -287,17 +287,17 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL118 | error | A `length()` of a string, list, map or set compared with zero, such as `xs.length() == 0`. Write `xs.is_empty()`, or `not xs.is_empty()` for `!= 0` and `> 0` in a condition. `ms lint --fix` rewrites it |
 | MSL119 | error | A list in a name or field read with `xs.get(i)`. Write `xs[i]`. `ms lint --fix` rewrites it |
 | MSL120 | error | `map.get(key).get_or(default)` on a map. Write `map.get_or(key, default)`. `ms lint --fix` rewrites it |
-| MSL121 | error | `var x = a` followed by `if c: x = b`, where `a` is a literal or name and `c` does not read `x`. Write `x := if c: b else: a`. `ms lint --fix` rewrites it |
-| MSL122 | error | `var i = 0` and `while i < n:` whose last statement is `i += 1`, with `i` unused afterwards and no `continue`. Write `for i in 0..n:`. `ms lint --fix` rewrites it |
-| MSL123 | warning | `for i in 0..xs.length():` where the body only reads `xs[i]`. Write `for item in xs:` |
+| MSL121 | error | `var x = a` followed by `if c { x = b }`, where `a` is a literal or name and `c` does not read `x`. Write `x := if c { b } else { a }`. `ms lint --fix` rewrites it |
+| MSL122 | error | `var i = 0` and `while i < n { ... }` whose last statement is `i += 1`, with `i` unused afterwards and no `continue`. Write `for i in 0..n { ... }`. `ms lint --fix` rewrites it |
+| MSL123 | warning | `for i in 0..xs.length() { ... }` where the body only reads `xs[i]`. Write `for item in xs { ... }` |
 | MSL124 | warning | A fresh list or total filled by a loop whose body is one `append` or `+=`. Write `map`, `filter` or `sum` |
-| MSL125 | warning | `for x in xs: out.append(x)` (or `x.clone()`). Write `out.extend(xs)` |
+| MSL125 | warning | `for x in xs { out.append(x) }` (or `x.clone()`). Write `out.extend(xs)` |
 | MSL126 | error | `x := e` directly followed by `return x`. Write `return e` |
 | MSL127 | error | `m[k.clone()] = m.get(k).get() - v`. Write `m[k] -= v` |
 | MSL128 | error | A final `return ok()` in a `Void!` function, or `return` in a `Void` one, after other statements. The end of the body already returns it; delete the line |
 | MSL129 | error | A statement `result.get_or(null)` on a `Void!`. Write `void result`. `ms lint --fix` rewrites it |
 | MSL130 | warning | A statement `result.get()` on a Result faults when the call fails. Write `call()?` where the function returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome |
-| MSL131 | warning | `print(call())` where the call returns a Result prints the wrapper (`ok(2)`), not the value. Write `call()?` in a function that returns a Result, or `if value := call():` |
+| MSL131 | warning | `print(call())` where the call returns a Result prints the wrapper (`ok(2)`), not the value. Write `call()?` in a function that returns a Result, or `if value := call() { ... }` |
 | MSL132 | warning | `xs.slice(a, b).get_or(fallback)` returns the fallback for any bad range, including an end past the length, with no error. Write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` first |
 | MSL133 | warning | `mid := (lo + hi) // 2` compiles as `(lo + hi)` because `//` starts a comment, so the number after it is ignored. Int `/` already truncates: write `(lo + hi) / 2` |
 | MSL134 | warning | `ys := xs.sort()` binds Void and `print(xs.reverse())` prints `void`: `sort` and `reverse` change the list in place and return nothing. Call them as statements, or use `sorted()` or `reversed()` for a new list |
@@ -325,10 +325,10 @@ Format code as paragraphs: keep related steps together and put space between new
 
 Expression layout uses a soft limit of 88 columns:
 
-- Calls and signatures stay on one line when they fit (including the return type, excluding callback bodies). An anonymous function with a multi-statement suite always expands its call.
-- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(() => return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
+- Calls and signatures stay on one line when they fit (including the return type, excluding callback bodies). An anonymous function with a multi-statement block always expands its call.
+- A callback containing one explicit `return` joins its header when it has no nested blocks or intervening comments, so short calls such as `queue.enqueue(() => return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
 - Lists, grouped imports, and maps stay compact when they fit. Wrapped lists pack simple elements into rows; nested groups, expressions, and commented items get their own lines.
-- When a group expands, each item goes on its own line, indented one level, closing delimiter aligned with the opening line. An authored multiline group collapses if it fits and has no comment or suite.
+- When a group expands, each item goes on its own line, indented one level, closing delimiter aligned with the opening line. An authored multiline group collapses if it fits and has no comment or block.
 - Long conditions break at the lowest-precedence logical operator, keeping comparison operands together. Long arithmetic and member chains gain continuation lines, with grouping parentheses where needed.
 - Inside calls, collections, and parameter lists, use the existing delimiters for continuation; do not add grouping parentheses just to wrap an item.
 - Comments force expansion and stay with their opener, argument, or item.

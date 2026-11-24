@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,parser,tier-core
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
-fn f() Void:
-    a := this
+fn f() Void {
+	a := this
+}

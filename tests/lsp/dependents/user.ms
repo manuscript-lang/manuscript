@@ -1,4 +1,5 @@
 import answer from "./shared.ms"
 
-fn main() Int:
+fn main() Int {
 	return answer()
+}

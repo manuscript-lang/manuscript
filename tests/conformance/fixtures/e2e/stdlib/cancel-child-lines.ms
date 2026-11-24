@@ -7,7 +7,8 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "lines over a child's stdout with temporaries":
+test "lines over a child's stdout with temporaries" {
 	child := spawn("sh", ["-c", "printf 'a\\nbb\\nccc\\n'; sleep 0.05"])?
 	got := collect(lines(child.stdout()), null)?
 	expect_equal(got.length(), 3)?
+}

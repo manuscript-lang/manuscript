@@ -14,7 +14,7 @@
           "file": "golden-1103.ms",
           "line": 5,
           "column": 51,
-          "offset": 145
+          "offset": 140
         },
         "fix": {
           "position": {
@@ -35,19 +35,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding enabled; declare it with 'enabled := ...' before use, define 'fn enabled(...) T:', or import it from a module",
+        "message": "unknown binding enabled; declare it with 'enabled := ...' before use, define 'fn enabled(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1103.ms",
           "line": 6,
           "column": 8,
-          "offset": 229
+          "offset": 221
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1103.ms:5:51: resolution: unknown binding format; add: import format from \"@std/net/url.ms\"\n   |\n 5 |     text := f\"# A deliberately long literal with {format(value: \"nested text\")} that must retain its exact original spelling.\"\n   |                                                   ^\n<DIR>/golden-1103.ms:6:8: resolution: unknown binding enabled; declare it with 'enabled := ...' before use, define 'fn enabled(...) T:', or import it from a module\n   |\n 6 |     if enabled: return text\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1103.ms:5:51: resolution: unknown binding format; add: import format from \"@std/net/url.ms\"\n   |\n 5 |     text := f\"# A deliberately long literal with {format(value: \"nested text\")} that must retain its exact original spelling.\"\n   |                                                   ^\n<DIR>/golden-1103.ms:6:8: resolution: unknown binding enabled; declare it with 'enabled := ...' before use, define 'fn enabled(...) T { ... }', or import it from a module\n   |\n 6 |     if enabled { return text }\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -4,7 +4,7 @@
 
 const char PARSE_HIDDEN_ITEM[] = "for item";
 
-static const char IS_HINT[] = "; there is no 'is' operator: write '==' to compare values, or 'match value:' "
+static const char IS_HINT[] = "; there is no 'is' operator: write '==' to compare values, or 'match value { ... }' "
                               "to test which alternative a "
                               "value is";
 
@@ -160,10 +160,10 @@ MsSpan parse_describe(Parser *p, MsToken t) {
   switch (t.kind) {
   case MS_T_Newline:
     return ms_span_of_text("end of line");
-  case MS_T_Indent:
-    return ms_span_of_text("an unexpected indented block");
-  case MS_T_Dedent:
-    return ms_span_of_text("the end of the block");
+  case MS_T_BlockOpen:
+    return ms_span_of_text("an unexpected '{'");
+  case MS_T_BlockClose:
+    return ms_span_of_text("'}'");
   case MS_T_Eof:
     return ms_span_of_text("end of file");
   case MS_T_Name:
@@ -181,10 +181,10 @@ static MsSpan describe_kind(Parser *p, MsTok k) {
   switch (k) {
   case MS_T_Newline:
     return ms_span_of_text("end of line");
-  case MS_T_Indent:
-    return ms_span_of_text("an indented block");
-  case MS_T_Dedent:
-    return ms_span_of_text("the end of the block");
+  case MS_T_BlockOpen:
+    return ms_span_of_text("'{'");
+  case MS_T_BlockClose:
+    return ms_span_of_text("'}'");
   case MS_T_Eof:
     return ms_span_of_text("end of file");
   case MS_T_Name:
@@ -211,7 +211,7 @@ static MsSpan need_name_hint(Parser *p, MsToken found) {
                            "parameter list and write self.field in the body");
   }
   if (fk == MS_T_LParen) {
-    return ms_span_of_text("; give it a name, e.g. fn add(a Int, b Int) Int:");
+    return ms_span_of_text("; give it a name, e.g. fn add(a Int, b Int) Int { ... }");
   }
   if (ms_span_is_text(found_text, "_")) {
     return ms_span_of_text("; '_' is a reserved word and cannot be used as a name: loops, parameters and "
@@ -230,12 +230,16 @@ static MsSpan need_name_hint(Parser *p, MsToken found) {
 static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
   MsSpan found_text = parse_text(p, found);
   MsTok fk = (MsTok)found.kind;
-  if (kind_is(kd, ":")) {
+  if (kind_is(kd, "{")) {
     if (fk == MS_T_Name && ms_span_is_text(found_text, "is")) {
       return ms_span_of_text(IS_HINT);
     }
+    if (fk == MS_T_Colon) {
+      return ms_span_of_text("; a ':' no longer opens a block: write the body in braces on the same line as its "
+                             "header, as in if c { ... } or fn f() Int { ... }");
+    }
     return ms_span_of_text("; block headers (fn, if, else, for, while, match, type, enum, interface, test) end "
-                           "with ':' before their indented body");
+                           "with '{' on the same line, and the block closes with '}'");
   }
   if (kind_is(kd, ")"))
     return ms_span_of_text("; close the parenthesis, separating items with commas");
@@ -247,10 +251,10 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
     return ms_span_of_text("; close the bracket, separating items with commas");
   }
   if (kind_is(kd, "}"))
-    return ms_span_of_text("; close the brace, separating items with commas");
+    return ms_span_of_text("; close the block or map with '}'; map entries are separated with commas");
   if (kind_is(kd, "(")) {
     if (fk == MS_T_Lt) {
-      return ms_span_of_text("; type parameters use square brackets, e.g. fn identity[T](value T) T:");
+      return ms_span_of_text("; type parameters use square brackets, e.g. fn identity[T](value T) T { ... }");
     }
     return ms_span_of_text("; a call or parameter list starts with '('");
   }
@@ -262,7 +266,7 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
     return ms_span_of_text("; imports read: import name from \"path.ms\"");
   }
   if (kind_is(kd, "in"))
-    return ms_span_of_text("; loops read: for item in items:");
+    return ms_span_of_text("; loops read: for item in items { ... }");
   if (kind_is(kd, "=") && fk == MS_T_Newline) {
     return ms_span_of_text("; every binding needs an initial value, e.g. var count Int = 0");
   }
@@ -275,8 +279,6 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
   }
   if (kind_is(kd, "NEWLINE"))
     return ms_span_of_text("; end the statement with a line break");
-  if (kind_is(kd, "INDENT"))
-    return ms_span_of_text("; indent the block body by four spaces under its header");
   return ms_span_of_text("");
 }
 
@@ -338,27 +340,6 @@ MS_NODISCARD bool parse_need_token(Parser *p, MsTok k, MsToken *out) {
     return true;
   }
   if (p->speculative > 0) {
-    return false;
-  }
-  if (k == MS_T_Colon && t.kind == MS_T_LBrace) {
-    MsDiag *d = parse_diag(
-        p, t.pos,
-        ms_span_of_text("expected ':', found '{'; blocks are not braced: end the header with ':', indent the "
-                        "body four spaces on the following lines, and remove the closing '}'"));
-    /* The colon attaches to the header, so the edit also takes the spaces before the brace. */
-    MsPos start = t.pos;
-    if (p->at > 0) {
-      MsPos e = p->tokens[p->at - 1].end;
-      if (e.line == t.pos.line) {
-        start = e;
-      }
-    }
-    d->has_end = true;
-    d->end = t.end;
-    d->has_fix = true;
-    d->fix_pos = start;
-    d->fix_end = t.end;
-    d->replacement = ms_span_of_text(":");
     return false;
   }
   MsSpan hint = need_hint(p, ms_tok_str(k), t);
@@ -439,28 +420,27 @@ static const char *end_hint(Parser *p, MsToken t) {
   MsSpan prev_word = p->at > 0 ? parse_text(p, parse_previous(p)) : ms_span_of_text("");
   const char *hint;
   if (ms_span_is_text(prev_word, "def") && t.kind == MS_T_Name) {
-    hint = "; there is no 'def': declare a function with 'fn name(a Int) Int:'";
+    hint = "; there is no 'def': declare a function with 'fn name(a Int) Int { ... }'";
   } else if (ms_span_is_text(prev_word, "lambda")) {
     hint = "; there is no 'lambda': write an anonymous function as 'x => x + 1'";
   } else if (ms_span_is_text(prev_word, "elif")) {
-    hint = "; there is no 'elif': write 'else if <condition>:' for a further branch";
+    hint = "; there is no 'elif': write 'else if <condition> { ... }' for a further branch";
   } else if (t.kind == MS_T_Name && parse_text_is(p, t, "is")) {
     hint = IS_HINT;
   } else if (t.kind == MS_T_Name && prev_new) {
     hint = "; there is no 'new': construct a value by calling the type, Name(field: value)";
   } else if (t.kind == MS_T_If) {
-    hint = "; there is no inline conditional expression 'a if c else b': write 'if c: a else: b', or use an "
+    hint = "; there is no inline conditional expression 'a if c else b': write 'if c { a } else { b }', or use an "
            "if statement";
   } else if (t.kind == MS_T_Question) {
     hint = "; '?' after a Result call propagates its error, and is not '?\?' or 'c ? a : b': unwrap an "
-           "Optional with 'if x := v:' or give it a default with 'v.get_or(default)', chain with 'a?.b', and "
-           "write a conditional as 'if c: a else: b'";
+           "Optional with 'if x := v { ... }' or give it a default with 'v.get_or(default)', chain with 'a?.b', and "
+           "write a conditional as 'if c { a } else { b }'";
   } else if (t.kind == MS_T_Comma) {
     hint = "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own "
            "line";
   } else if (t.kind == MS_T_LBrace) {
-    hint = "; '{' does not open a block: end the header with ':' and indent the body (an interface method is "
-           "just its signature)";
+    hint = "; a '{' here would be a map literal; a block opens after a header, as in if c { ... }";
   } else {
     hint = "; put one statement per line, and join operands with an operator or a comma inside brackets";
   }
@@ -469,12 +449,16 @@ static const char *end_hint(Parser *p, MsToken t) {
 
 MS_NODISCARD bool parse_end(Parser *p) {
   if (p->inline_statement) {
+    if (p->at > 0 && parse_previous(p).kind == MS_T_BlockClose) {
+      return true;
+    }
     switch (parse_kind(p)) {
     case MS_T_Newline:
     case MS_T_Comma:
     case MS_T_RParen:
     case MS_T_RBracket:
     case MS_T_RBrace:
+    case MS_T_BlockClose:
       return true;
     default:
       break;
@@ -484,9 +468,8 @@ MS_NODISCARD bool parse_end(Parser *p) {
     const char *is = (t.kind == MS_T_Name && parse_text_is(p, t, "is")) ? IS_HINT : "";
     parse_fail(p, t,
                parse_fmt(p,
-                         "expected end of inline statement, found %S; an inline body holds one simple "
-                         "statement; for more statements or an `else`, put the body on indented lines and "
-                         "start `else:` on its own line at the `if`'s indentation%s",
+                         "expected end of expression, found %S; '=>' takes one expression; for more "
+                         "statements, write the body in braces%s",
                          dt, is));
     return false;
   }
@@ -494,18 +477,10 @@ MS_NODISCARD bool parse_end(Parser *p) {
     parse_newlines(p);
     return true;
   }
-  if (p->at > 0 && parse_previous(p).kind == MS_T_Dedent) {
+  if (parse_kind(p) == MS_T_BlockClose || (p->at > 0 && parse_previous(p).kind == MS_T_BlockClose)) {
     return true;
   }
   MsToken t = parse_peek(p);
-  if (p->block_lambda && t.kind == MS_T_Comma) {
-    parse_fail(
-        p, t,
-        ms_span_of_text(
-            "a comma cannot end a statement in an indented function body; to separate enclosing arguments, "
-            "put the comma on its own line dedented to the fn header, or group the function in parentheses"));
-    return false;
-  }
   if (t.kind == MS_T_Amp) {
     parse_and_and(p, t);
     return false;

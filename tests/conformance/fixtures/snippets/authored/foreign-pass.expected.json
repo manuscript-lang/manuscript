@@ -12,26 +12,26 @@
           "file": "foreign-pass.ms",
           "line": 5,
           "column": 5,
-          "offset": 133
+          "offset": 134
         },
         "end": {
           "file": "foreign-pass.ms",
           "line": 5,
           "column": 9,
-          "offset": 137
+          "offset": 138
         },
         "fix": {
           "position": {
             "file": "foreign-pass.ms",
             "line": 5,
             "column": 5,
-            "offset": 133
+            "offset": 134
           },
           "end": {
             "file": "foreign-pass.ms",
             "line": 5,
             "column": 9,
-            "offset": 137
+            "offset": 138
           },
           "replacement": "void"
         }

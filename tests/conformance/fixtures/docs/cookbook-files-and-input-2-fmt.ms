@@ -6,19 +6,23 @@ import (
 	lines from "@std/io/steps.ms",
 )
 
-fn run() Result[Void, Error]:
+fn run() Result[Void, Error] {
 	var input = lines(stdin())
 
-	while true:
+	while true {
 		line := input.next()?
 		text := line
 
-		if text != null:
+		if text != null {
 			stdout().write(f"{text}\n")?
-		else:
+		} else {
 			break
+		}
+	}
 
 	return stdout().flush()
+}
 
-fn main() Void!:
+fn main() Void! {
 	run()?
+}

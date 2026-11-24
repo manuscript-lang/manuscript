@@ -4,20 +4,23 @@ import (
 	SINK, ops, summarize from "./programs_table.ms",
 )
 
-fn sample(version String) List[String]:
+fn sample(version String) List[String] {
 	var lines = ops().map(op => f"{version} {op.name} {op.count} {op.count * 2}")
 	lines.append(f"{version} # sink " + SINK.map(n => f"{n}").join(" "))
 	return lines
+}
 
-fn both() List[String]:
+fn both() List[String] {
 	return sample("ms").concat(sample("go"))
+}
 
-test "complete equivalent work":
+test "complete equivalent work" {
 	result := summarize(both(), 1)?
 	expect_contains(result, "1.00x")?
 	expect_contains(result, "Checksums and operation counts verified")?
+}
 
-test "extra versions add columns":
+test "extra versions add columns" {
 	lines := both().concat(sample("rust")).concat(sample("rust-checked"))
 	result := summarize(lines, 1)?
 	expect_contains(
@@ -25,8 +28,9 @@ test "extra versions add columns":
 		"| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |",
 	)?
 	expect_equal(result.split("1.00x").length() - 1, 3 * ops().length())?
+}
 
-test "rejects invalid evidence":
+test "rejects invalid evidence" {
 	valid := both()
 	last := valid.length() - 1
 	var cut = valid.clone()
@@ -46,5 +50,7 @@ test "rejects invalid evidence":
 
 	extra_first := [valid[0].clone()].concat(valid)
 	junk := ["unrecognized output"].concat(valid)
-	for lines in [cut, doubled, short_count, zero_time, bad_sink, extra_first, junk]:
+	for lines in [cut, doubled, short_count, zero_time, bad_sink, extra_first, junk] {
 		_cause := expect_error(summarize(lines, 1))?
+	}
+}

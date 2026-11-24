@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn café() Void:
+fn café() Void {
     return
+}

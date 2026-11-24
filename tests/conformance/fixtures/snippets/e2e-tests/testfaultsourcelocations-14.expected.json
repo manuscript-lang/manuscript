@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "",
-    "stderr": "division by zero; right must be nonzero, found 0\n  at testfaultsourcelocations-14.ms:5 in crash\n  at @std/collections/collections.ms:<LINE> in Set.map\n  at testfaultsourcelocations-14.ms:10 in main\n"
+    "stderr": "division by zero; right must be nonzero, found 0\n  at testfaultsourcelocations-14.ms:5 in crash\n  at @std/collections/collections.ms:<LINE> in Set.map\n  at testfaultsourcelocations-14.ms:11 in main\n"
   }
 }

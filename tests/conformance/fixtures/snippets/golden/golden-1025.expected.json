@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "a closure without parameter types is written without 'fn': x => { ... }, (a, b) => { ... } or () => { ... }",
         "position": {
           "file": "golden-1025.ms",
           "line": 3,
-          "column": 5,
-          "offset": 57
+          "column": 85,
+          "offset": 137
+        },
+        "end": {
+          "file": "golden-1025.ms",
+          "line": 3,
+          "column": 86,
+          "offset": 138
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1025.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 3 |     _server := network().serve_stream(address: \"127.0.0.1:0\", handler: fn(exchange):\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1025.ms:3:85: parse: a closure without parameter types is written without 'fn': x => { ... }, (a, b) => { ... } or () => { ... }\n   |\n 3 |     _server := network().serve_stream(address: \"127.0.0.1:0\", handler: fn(exchange) {\n   |                                                                                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

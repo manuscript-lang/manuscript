@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[T]:\n\tvalue T\n\nfn use[T](value Box[T]?) T:\n\tmatch value:\n\t\tbox => return Box.value\n\t\tnull => return panic(message: \"empty\")\n"
+    "fmt": "type Box[T] {\n\tvalue T\n}\n\nfn use[T](value Box[T]?) T {\n\tmatch value {\n\t\tbox => return Box.value\n\t\tnull => return panic(message: \"empty\")\n\t}\n}\n"
   }
 }

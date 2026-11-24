@@ -8,26 +8,31 @@ CFILES := ["main.c", "10", "util.c", "12", "util.h", "5"]
 
 // The oracle input: the makefile (with `<T>` standing for a tab), the file times as a
 // flat list of name and mtime, and the requests.
-fn mk(makefile String, files List[String], reqs List[String]) String:
+fn mk(makefile String, files List[String], reqs List[String]) String {
 	mf := strip_nl(makefile.replace("<T>", "\t"))
 	var file_lines = ""
 	var k = 0
 
-	while k < files.length():
+	while k < files.length() {
 		file_lines += files[k] + " " + files[k + 1] + "\n"
 		k += 2
+	}
 
 	return mf + "====\n" + file_lines + "====\n" + reqs.join("\n") + "\n"
+}
 
-fn strip_nl(text String) String:
+fn strip_nl(text String) String {
 	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
-	while start < end and chars[start] == "\n":
+	while start < end and chars[start] == "\n" {
 		start += 1
-	while end > start and chars[end - 1] == "\n":
+	}
+	while end > start and chars[end - 1] == "\n" {
 		end -= 1
+	}
 	return chars.slice(start, end).get_or([]).join("") + "\n"
+}
 
 fn add(
 	var cs Cases,
@@ -35,10 +40,11 @@ fn add(
 	makefile String,
 	files List[String],
 	reqs List[String],
-) Void:
+) Void {
 	cs.push(name, mk(makefile, files, reqs))
+}
 
-export fn gen_c56() Void:
+export fn gen_c56() Void {
 	var cs = Cases(build_oracle("c56-make-lite"))
 	add(
 		cs,
@@ -549,3 +555,4 @@ export fn gen_c56() Void:
 		),
 	]
 	write_cases("c56-make-lite", examples, cs.list)
+}

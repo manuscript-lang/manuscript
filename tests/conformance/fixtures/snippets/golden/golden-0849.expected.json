@@ -14,20 +14,20 @@
           "file": "golden-0849.ms",
           "line": 4,
           "column": 5,
-          "offset": 71
+          "offset": 72
         },
         "end": {
           "file": "golden-0849.ms",
           "line": 4,
           "column": 7,
-          "offset": 73
+          "offset": 74
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0849.ms:4:5: parse: a type declares only fields; write its methods after it as 'fn List[T].name(...)'\n   |\n 4 |     fn get() T:\n   |     ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0849.ms:4:5: parse: a type declares only fields; write its methods after it as 'fn List[T].name(...)'\n   |\n 4 |     fn get() T {\n   |     ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

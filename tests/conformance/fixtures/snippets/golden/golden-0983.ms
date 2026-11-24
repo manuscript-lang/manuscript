@@ -1,6 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn broken(a ) Int:
+fn broken(a ) Int {
     return 1
-fn ok() Int:
+}
+fn ok() Int {
     return 2
+}

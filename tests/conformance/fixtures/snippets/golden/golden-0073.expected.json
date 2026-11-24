@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 8 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "expected a module declaration or import, found '{'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0073.ms",
-          "line": 4,
-          "column": 9,
-          "offset": 83
+          "line": 3,
+          "column": 1,
+          "offset": 53
+        },
+        "end": {
+          "file": "golden-0073.ms",
+          "line": 3,
+          "column": 2,
+          "offset": 54
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0073.ms:4:9: parse: unexpected indentation, 8 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 4 |         label: Int = key\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0073.ms:3:1: parse: expected a module declaration or import, found '{'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 | {key, value} := entry\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

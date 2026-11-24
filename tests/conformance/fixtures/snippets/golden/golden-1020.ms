@@ -1,5 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-    values := [0]
-    operation := () => values.append(1)
-    _result := operation()
+values := [0]
+operation := () => values.append(1)
+_result := operation()

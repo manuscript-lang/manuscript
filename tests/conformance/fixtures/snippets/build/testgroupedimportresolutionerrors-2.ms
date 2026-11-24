@@ -2,4 +2,3 @@
 // conform: phase=check
 // conform: origin=pkg/build/compiler_test.go:591 TestGroupedImportResolutionErrors
 import ListEntry from "@std/collections/collections.ms"
-import ListEntry from "@std/collections/collections.ms"

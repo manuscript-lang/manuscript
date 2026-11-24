@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Shape:\n\tfn area() Int\n\ntype Sq:\n\ts Int\n\nfn Sq.area() Int => self.s * self.s\n"
+    "fmt": "interface Shape {\n\tfn area() Int\n}\n\ntype Sq {\n\ts Int\n}\n\nfn Sq.area() Int => self.s * self.s\n"
   }
 }

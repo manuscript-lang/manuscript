@@ -1,11 +1,13 @@
 // conform: tags=alternatives,formatter,parser,records,tier-core,scope-cleanup
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/alternatives.md:38
-enum LeftState:
-    Ready
+enum LeftState {
+	Ready
+}
 
-enum RightState:
-    Ready
+enum RightState {
+	Ready
+}
 
 left LeftState := LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.

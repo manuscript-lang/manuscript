@@ -4,48 +4,58 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-type Event:
+type Event {
 	id Int
 	kind Int
 	name String
 	score Int
+}
 
-enum Shape:
+enum Shape {
 	Circle(r Int)
 	Rect(w Int, h Int)
 	Dot
+}
 
-type Pair[A, B]:
+type Pair[A, B] {
 	first A
 	second B
+}
 
-type Job:
+type Job {
 	pri Int
 	id Int
+}
 
-fn Job.compare(other Job) Int:
+fn Job.compare(other Job) Int {
 	return self.pri - other.pri
+}
 
-type Pt:
+type Pt {
 	x Int
 	y Int
+}
 
-fn Pt.equals(other Pt) Bool:
+fn Pt.equals(other Pt) Bool {
 	return self.x == other.x and self.y == other.y
+}
 
-fn Pt.hash() Int:
+fn Pt.hash() Int {
 	return self.x * 1000003 + self.y
+}
 
-fn lcg(x Int) Int:
+fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
+}
 
-fn us(a Int, b Int) Int:
+fn us(a Int, b Int) Int {
 	return (b - a) / 1000
+}
 
 // 1. List of records with a String field: append, field scan.
-fn list_records() Int:
+fn list_records() Int {
 	var xs List[Event] = []
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		xs.append(
 			Event(
 				i,
@@ -54,298 +64,380 @@ fn list_records() Int:
 				i % 13,
 			)
 		)
+	}
 
 	var t = 0
-	for r in 0..5:
-		for e in xs:
-			if e.kind == 3: t += e.score + e.name.length()
+	for r in 0..5 {
+		for e in xs {
+			if e.kind == 3 { t += e.score + e.name.length() }
+		}
+	}
 	return t
+}
 
 // 2. List of payload enums: build, match.
-fn list_enums() Int:
+fn list_enums() Int {
 	var xs List[Shape] = []
 
-	for i in 0..2000000:
+	for i in 0..2000000 {
 		k := i % 3
 
-		if k == 0: xs.append(Shape.Circle(i % 10))
-		else if k == 1: xs.append(Shape.Rect(i % 7, i % 5))
-		else: xs.append(Shape.Dot)
+		if k == 0 {
+			xs.append(Shape.Circle(i % 10))
+		} else if k == 1 {
+			xs.append(Shape.Rect(i % 7, i % 5))
+		} else {
+			xs.append(Shape.Dot)
+		}
+	}
 
 	var t = 0
 
-	for r in 0..5:
-		for s in xs:
-			match s:
+	for r in 0..5 {
+		for s in xs {
+			match s {
 				Circle(rad) => t += 3 * rad * rad
 				Rect(w, h) => t += w * h
 				Dot => t += 1
+			}
+		}
+	}
 
 	return t
+}
 
 // 3. Map[Int, record]: insert and update in place.
-fn map_records() Int:
+fn map_records() Int {
 	var m Map[Int, Event] = {}
 	var x = 1
 
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		x = lcg(x)
 
 		k := x % 50000
-		if not m.contains(k): m[k] = Event(k, 0, "an-event-name-over-sixteen-bytes", 0)
+		if not m.contains(k) { m[k] = Event(k, 0, "an-event-name-over-sixteen-bytes", 0) }
 		m[k].score += i % 5
+	}
 
 	var t = 0
-	for e in m.values():
+	for e in m.values() {
 		t += e.score
+	}
 	return t
+}
 
 // 4. Map[String, List[Int]]: group.
-fn map_groups() Int:
+fn map_groups() Int {
 	var m Map[String, List[Int]] = {}
 	var x = 1
 
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		x = lcg(x)
 
 		k := f"k{x % 5000}"
-		if not m.contains(k): m[k.clone()] = []
+		if not m.contains(k) { m[k.clone()] = [] }
 		m[k].append(i)
+	}
 
 	var t = 0
-	for e in m.entries():
+	for e in m.entries() {
 		t += e.value.length()
+	}
 	return t
+}
 
 // 5. Optional[record]: return an optional record from a lookup, 10M times.
-fn find(xs List[Event], i Int) Event?:
-	if i % 4 == 0: return null
+fn find(xs List[Event], i Int) Event? {
+	if i % 4 == 0 { return null }
 	return xs[i % xs.length()].clone()
+}
 
-fn optional_records() Int:
+fn optional_records() Int {
 	var xs List[Event] = []
-	for i in 0..1000:
+	for i in 0..1000 {
 		xs.append(Event(i, i % 7, "an-event-name-over-sixteen-bytes", i % 13))
+	}
 
 	var t = 0
 
-	for i in 0..5000000:
+	for i in 0..5000000 {
 		e := find(xs, i)
-		if e != null: t += e.score
+		if e != null { t += e.score }
+	}
 
 	return t
+}
 
 // 6. Deque of records.
-fn deque_records() Int:
+fn deque_records() Int {
 	var q = Deque[Job]()
 	var t = 0
 
-	for i in 0..3000000:
+	for i in 0..3000000 {
 		q.push_back(Job(i % 100, i))
 
-		if i % 3 == 2:
+		if i % 3 == 2 {
 			j := q.pop_front()
-			if j != null: t += j.pri
+			if j != null { t += j.pri }
+		}
+	}
 
 	return t
+}
 
 // 7. PriorityQueue of records.
-fn pq_records() Int:
+fn pq_records() Int {
 	var pq = PriorityQueue[Job]()
 	var x = 1
 	var t = 0
 
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		x = lcg(x)
 		pq.enqueue(Job(x % 100000, i))
 
-		if i % 3 == 2:
+		if i % 3 == 2 {
 			j := pq.dequeue()
-			if j != null: t += j.pri
+			if j != null { t += j.pri }
+		}
+	}
 
 	return t
+}
 
 // 8. Generic Pair[Int, String] list and a generic helper.
-fn first_of[A Clonable, B](xs List[Pair[A, B]]) List[A]:
+fn first_of[A Clonable, B](xs List[Pair[A, B]]) List[A] {
 	var out List[A] = []
-	for p in xs:
+	for p in xs {
 		out.append(p.first.clone())
+	}
 	return out
+}
 
-fn generic_pairs() Int:
+fn generic_pairs() Int {
 	var xs List[Pair[Int, String]] = []
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		xs.append(Pair[Int, String](i, f"v{i % 10}"))
+	}
 
 	var t = 0
-	for r in 0..5:
-		for a in first_of(xs):
+	for r in 0..5 {
+		for a in first_of(xs) {
 			t += a % 10
+		}
+	}
 	return t
+}
 
 // 9. Result of a record in a hot call.
-fn make(i Int) Event!:
-	if i % 10 == 0: return error(Error("bad", kind: "EINVAL"))
+fn make(i Int) Event! {
+	if i % 10 == 0 { return error(Error("bad", kind: "EINVAL")) }
 	return ok(Event(i, i % 7, "an-event-name-over-sixteen-bytes", i % 13))
+}
 
-fn results() Int:
+fn results() Int {
 	var t = 0
 
-	for i in 0..5000000:
+	for i in 0..5000000 {
 		r := make(i)
-		if r.is_ok(): t += r.get().score
+		if r.is_ok() { t += r.get().score }
+	}
 
 	return t
+}
 
 // 10. Set of record keys.
-fn set_records() Int:
+fn set_records() Int {
 	var s = Set[Pt]()
 	var x = 1
 	var t = 0
 
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		x = lcg(x)
 
 		p := Pt(x % 1000, (x / 1000) % 1000)
 
-		if s.contains(p): t += 1
-		else: s.add(p)
+		if s.contains(p) {
+			t += 1
+		} else {
+			s.add(p)
+		}
+	}
 
 	return t + s.length()
+}
 
 // 11. Sorting records by a comparator.
-fn sort_records() Int:
+fn sort_records() Int {
 	var xs List[Event] = []
 	var x = 1
 
-	for i in 0..500000:
+	for i in 0..500000 {
 		x = lcg(x)
 		xs.append(Event(i, x % 1000, "an-event-name-over-sixteen-bytes", i % 13))
+	}
 
 	ys := xs.sorted((a, b) => a.kind - b.kind)
 	return ys[0].kind + ys[ys.length() - 1].kind + ys[1000].id % 7
+}
 
-type Order:
+type Order {
 	id Int
 	tags List[String]
 	lines List[Pair[Int, Int]]
+}
 
 // 12. Records holding lists: build, move into a list, scan.
-fn records_of_lists() Int:
+fn records_of_lists() Int {
 	var orders List[Order] = []
 
-	for i in 0..200000:
+	for i in 0..200000 {
 		var lines List[Pair[Int, Int]] = []
-		for k in 0..4:
+		for k in 0..4 {
 			lines.append(Pair[Int, Int](k, i % 7))
+		}
 		orders.append(Order(i, [f"a{i % 3}", "b"], lines))
+	}
 
 	var t = 0
-	for r in 0..5:
-		for o in orders:
-			for l in o.lines:
+	for r in 0..5 {
+		for o in orders {
+			for l in o.lines {
 				t += l.first * l.second + o.tags.length()
+			}
+		}
+	}
 	return t
+}
 
 // 13. Nested generics: Map[Int, List[Pair[Int, String]]] and List[List[Int]].
-fn nested_generics() Int:
+fn nested_generics() Int {
 	var m Map[Int, List[Pair[Int, String]]] = {}
 
-	for i in 0..500000:
+	for i in 0..500000 {
 		k := i % 2000
-		if not m.contains(k): m[k] = []
+		if not m.contains(k) { m[k] = [] }
 		m[k].append(Pair[Int, String](i, "p"))
+	}
 
 	var grid List[List[Int]] = []
-	for y in 0..1000:
+	for y in 0..1000 {
 		grid.append([0].repeated(1000))
+	}
 
 	var t = 0
-	for e in m.entries():
+	for e in m.entries() {
 		t += e.value.length()
-	for y in 0..1000:
-		for x in 0..1000:
+	}
+	for y in 0..1000 {
+		for x in 0..1000 {
 			grid[y][x] = x * 3 + y
-	for y in 0..1000:
-		for x in 0..1000:
+		}
+	}
+	for y in 0..1000 {
+		for x in 0..1000 {
 			t += grid[y][x]
+		}
+	}
 	return t
+}
 
 // 14. A user generic Stack[T] of records with Optional pops.
-type Stack[T]:
+type Stack[T] {
 	items List[T] = []
+}
 
-fn var Stack[T].push(v T) Void:
+fn var Stack[T].push(v T) Void {
 	self.items.append(v)
+}
 
-fn var Stack[T].pop() T?:
+fn var Stack[T].pop() T? {
 	return self.items.pop()
+}
 
-fn generic_stack() Int:
+fn generic_stack() Int {
 	var s = Stack[Event]()
 	var t = 0
 
-	for i in 0..2000000:
+	for i in 0..2000000 {
 		s.push(Event(i, i % 7, "an-event-name-over-sixteen-bytes", i % 13))
 
-		if i % 3 == 2:
+		if i % 3 == 2 {
 			e := s.pop()
-			if e != null: t += e.score
+			if e != null { t += e.score }
+		}
+	}
 
 	return t
+}
 
 // 15. Map with enum-payload values: insert, look up, match.
-fn map_enums() Int:
+fn map_enums() Int {
 	var m Map[Int, Shape] = {}
 
-	for i in 0..200000:
+	for i in 0..200000 {
 		k := i % 3
 
-		if k == 0: m[i] = Shape.Circle(i % 10)
-		else if k == 1: m[i] = Shape.Rect(i % 7, i % 5)
-		else: m[i] = Shape.Dot
+		if k == 0 {
+			m[i] = Shape.Circle(i % 10)
+		} else if k == 1 {
+			m[i] = Shape.Rect(i % 7, i % 5)
+		} else {
+			m[i] = Shape.Dot
+		}
+	}
 
 	var t = 0
 
-	for r in 0..5:
-		for i in 0..200000:
+	for r in 0..5 {
+		for i in 0..200000 {
 			s := m.get(i)
 
-			if s != null:
-				match s:
+			if s != null {
+				match s {
 					Circle(rad) => t += 3 * rad * rad
 					Rect(w, h) => t += w * h
 					Dot => t += 1
+				}
+			}
+		}
+	}
 
 	return t
+}
 
 // 16. String and Optional chains: split, trim, parse, accumulate in a Map.
-fn string_chains() Int:
+fn string_chains() Int {
 	var lines List[String] = []
-	for i in 0..200000:
+	for i in 0..200000 {
 		lines.append(f"  key{i % 500} = {i % 97}  ")
+	}
 
 	var m Map[String, Int] = {}
 	var bad = 0
 
-	for r in 0..3:
-		for line in lines:
+	for r in 0..3 {
+		for line in lines {
 			parts := line.split("=")
 
-			if parts.length() != 2:
+			if parts.length() != 2 {
 				bad += 1
 				continue
+			}
 
 			key := parts[0].trim()
 			v := parts[1].trim().parse_int() or 0
 			m.update(key, 0, n => n + v)
+		}
+	}
 
 	var t = bad
-	for e in m.entries():
+	for e in m.entries() {
 		t += e.value
+	}
 	return t
+}
 
-fn main() Void:
+fn main() Void {
 	t0 := monotonic().tick
 	a := list_records()
 	t1 := monotonic().tick
@@ -410,3 +502,4 @@ fn main() Void:
 	q := string_chains()
 	t16 := monotonic().tick
 	print(f"string-chains {us(t15, t16)} {q}")
+}

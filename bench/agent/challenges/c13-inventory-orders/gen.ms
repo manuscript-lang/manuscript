@@ -18,20 +18,22 @@ fn qty_ok(s String) Bool => (
 	and (s.parse_int() or 0) <= 100000
 )
 
-fn arity(c String) Int:
-	if c == "stock" or c == "price": return 3
-	if c == "cancel" or c == "ship": return 2
-	if c == "report": return 1
+fn arity(c String) Int {
+	if c == "stock" or c == "price" { return 3 }
+	if c == "cancel" or c == "ship" { return 2 }
+	if c == "report" { return 1 }
 
 	return 0
+}
 
-type Item:
+type Item {
 	sku String
 	qty Int
+}
 
-fn solve(s String) String:
+fn solve(s String) String {
 	var lines = s.split("\n").clone()
-	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
+	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 
 	var stock = Map[String, Int]()
 	var price = Map[String, Int]()
@@ -42,148 +44,173 @@ fn solve(s String) String:
 	var order_total = Map[String, Int]()
 	var out = List[String]()
 
-	for l in lines:
-		if l.replace(" ", "") == "": continue
+	for l in lines {
+		if l.replace(" ", "") == "" { continue }
 
 		t := l.split(" ")
 		c := t[0].clone()
 
-		if c != "order" and arity(c) == 0:
+		if c != "order" and arity(c) == 0 {
 			out.append("error: unknown command")
 			continue
+		}
 
 		if (
 			(c == "order" and t.length() < 3)
 			or (c != "order" and t.length() != arity(c))
-		):
+		) {
 			out.append("error: usage")
 			continue
+		}
 
-		if c == "stock":
-			if not full_match(SKU, t[1]):
+		if c == "stock" {
+			if not full_match(SKU, t[1]) {
 				out.append("error: bad sku")
 				continue
+			}
 
-			if not qty_ok(t[2]):
+			if not qty_ok(t[2]) {
 				out.append("error: bad quantity")
 				continue
+			}
 
-			if not stock.contains(t[1]):
+			if not stock.contains(t[1]) {
 				skus.append(t[1].clone())
 				price[t[1].clone()] = 0
+			}
 
 			stock[t[1].clone()] = stock.get_or(t[1], 0) + (t[2].parse_int() or 0)
 			out.append(f"ok {t[1]} stock={stock.get_or(t[1], 0)}")
-		else if c == "price":
-			if not (full_match(NUM, t[2]) and (t[2].parse_int() or 0) <= 10000000):
+		} else if c == "price" {
+			if not (full_match(NUM, t[2]) and (t[2].parse_int() or 0) <= 10000000) {
 				out.append("error: bad price")
 				continue
+			}
 
-			if not stock.contains(t[1]):
+			if not stock.contains(t[1]) {
 				out.append(f"error: unknown sku {t[1]}")
 				continue
+			}
 
 			price[t[1].clone()] = t[2].parse_int() or 0
 			out.append("ok")
-		else if c == "order":
+		} else if c == "order" {
 			oid := t[1].clone()
 
-			if not full_match(OID, oid):
+			if not full_match(OID, oid) {
 				out.append("error: bad order id")
 				continue
+			}
 
-			if order_status.contains(oid):
+			if order_status.contains(oid) {
 				out.append(f"error: order {oid} already exists")
 				continue
+			}
 
 			var items = List[Item]()
 			var bad = ""
 
-			for tok in t.slice(2, t.length()).get_or([]):
+			for tok in t.slice(2, t.length()).get_or([]) {
 				p := tok.split(":")
 
-				if p.length() != 2 or not full_match(SKU, p[0]) or not qty_ok(p[1]):
+				if p.length() != 2 or not full_match(SKU, p[0]) or not qty_ok(p[1]) {
 					bad = tok.clone()
 					break
+				}
 
 				items.append(Item(p[0].clone(), p[1].parse_int() or 0))
+			}
 
-			if bad != "":
+			if bad != "" {
 				out.append(f"error: bad item {bad}")
 				continue
+			}
 
 			var err = ""
 			var seen = Set[String]()
 
-			for item in items:
-				if seen.contains(item.sku):
+			for item in items {
+				if seen.contains(item.sku) {
 					err = f"error: duplicate sku {item.sku}"
-				else if not stock.contains(item.sku):
+				} else if not stock.contains(item.sku) {
 					err = f"error: unknown sku {item.sku}"
-				else if item.qty > stock.get_or(item.sku, 0):
+				} else if item.qty > stock.get_or(item.sku, 0) {
 					err = f"error: insufficient stock for {item.sku} (have {stock.get_or(item.sku, 0)}, need {item.qty})"
+				}
 
-				if err != "": break
+				if err != "" { break }
 
 				seen.add(item.sku.clone())
+			}
 
-			if err != "":
+			if err != "" {
 				out.append(err)
 				continue
+			}
 
 			var total = 0
 
-			for item in items:
+			for item in items {
 				stock[item.sku.clone()] = stock.get_or(item.sku, 0) - item.qty
 
 				p := price.get_or(item.sku, 0)
 				total += (
-					if item.qty >= 10: (
-						item.qty * p * 90
-						+ 50
-					) / 100 else: item.qty * p
+					if item.qty >= 10 {
+						(item.qty * p * 90 + 50) / 100
+					} else {
+						item.qty * p
+					}
 				)
+			}
 
 			order_ids.append(oid.clone())
 			order_items[oid.clone()] = items.clone()
 			order_status[oid.clone()] = "placed"
 			order_total[oid.clone()] = total
 			out.append(f"ok {oid} total={money(total)}")
-		else if c == "cancel" or c == "ship":
-			if not order_status.contains(t[1]):
+		} else if c == "cancel" or c == "ship" {
+			if not order_status.contains(t[1]) {
 				out.append(f"error: unknown order {t[1]}")
 				continue
+			}
 
 			st := order_status.get_or(t[1], "")
 
-			if c == "cancel":
-				if st == "placed":
-					for item in order_items.get_or(t[1], []):
+			if c == "cancel" {
+				if st == "placed" {
+					for item in order_items.get_or(t[1], []) {
 						stock[item.sku.clone()] = stock.get_or(item.sku, 0) + item.qty
+					}
 					order_status[t[1].clone()] = "cancelled"
 					out.append("ok")
-				else:
+				} else {
 					out.append(f"error: order {t[1]} already {st}")
-			else if st == "placed":
+				}
+			} else if st == "placed" {
 				order_status[t[1].clone()] = "shipped"
 				out.append("ok")
-			else if st == "shipped":
+			} else if st == "shipped" {
 				out.append(f"error: order {t[1]} already shipped")
-			else:
+			} else {
 				out.append(f"error: order {t[1]} is cancelled")
-		else:
+			}
+		} else {
 			var reserved = Map[String, Int]()
-			for oid in order_ids:
-				if order_status.get_or(oid, "") == "placed":
-					for item in order_items.get_or(oid, []):
+			for oid in order_ids {
+				if order_status.get_or(oid, "") == "placed" {
+					for item in order_items.get_or(oid, []) {
 						reserved[item.sku.clone()] = (
 							reserved.get_or(item.sku, 0)
 							+ item.qty
 						)
-			for sku in skus.sorted():
+					}
+				}
+			}
+			for sku in skus.sorted() {
 				out.append(
 					f"{sku} stock={stock.get_or(sku, 0)} price={money(price.get_or(sku, 0))} reserved={reserved.get_or(sku, 0)}"
 				)
+			}
 
 			placed := order_ids.count(o => order_status.get_or(o, "") == "placed")
 			shipped := order_ids.count(o => order_status.get_or(o, "") == "shipped")
@@ -198,44 +225,53 @@ fn solve(s String) String:
 				o => order_status.get_or(o, "") == "shipped"
 			).map(o => order_total.get_or(o, 0)).sum()
 			out.append(f"revenue={money(revenue)}")
+		}
+	}
 
 	return out.map(x => x + "\n").join("")
+}
 
 fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
-export fn gen_c13() Void:
+export fn gen_c13() Void {
 	var rnd = seeded(13)
 	skus := ["A1", "B-2", "WIDGET", "GADGET-2", "Z9", "KNOB", "BOLT-10", "NUT"]
 	var big = List[String]()
-	for k in skus: big.append(f"stock {k} {rnd.randint(50, 400)}")
-	for k in skus: big.append(f"price {k} {rnd.randint(1, 5000)}")
+	for k in skus {
+		big.append(f"stock {k} {rnd.randint(50, 400)}")
+	}
+	for k in skus { big.append(f"price {k} {rnd.randint(1, 5000)}") }
 
 	var n = 0
 
-	for _i in 0..900:
+	for _i in 0..900 {
 		r := rnd.random()
 
-		if r < 0.45:
+		if r < 0.45 {
 			n += 1
 
 			count := rnd.randint(1, 3)
 			var parts = List[String]()
-			for k in rnd.sample(skus, count): parts.append(
-				f"{k}:{["1", "2", "3", "5", "9", "10", "12", "25"].get(rnd.below(8))}"
-			)
+			for k in rnd.sample(skus, count) {
+				parts.append(
+					f"{k}:{["1", "2", "3", "5", "9", "10", "12", "25"].get(rnd.below(8))}"
+				)
+			}
 			big.append(f"order o{n} {parts.join(" ")}")
-		else if r < 0.6:
-			big.append(f"cancel o{rnd.randint(1, if n > 1: n else: 1)}")
-		else if r < 0.8:
-			big.append(f"ship o{rnd.randint(1, if n > 1: n else: 1)}")
-		else if r < 0.9:
+		} else if r < 0.6 {
+			big.append(f"cancel o{rnd.randint(1, if n > 1 { n } else { 1 })}")
+		} else if r < 0.8 {
+			big.append(f"ship o{rnd.randint(1, if n > 1 { n } else { 1 })}")
+		} else if r < 0.9 {
 			k := rnd.choice(skus)
 			big.append(f"stock {k} {rnd.randint(1, 100)}")
-		else if r < 0.95:
+		} else if r < 0.95 {
 			k := rnd.choice(skus)
 			big.append(f"price {k} {rnd.randint(1, 5000)}")
-		else:
+		} else {
 			big.append("report")
+		}
+	}
 
 	big.append("report")
 
@@ -299,3 +335,4 @@ export fn gen_c13() Void:
 		]
 	)
 	write_cases("c13-inventory-orders", examples, hidden)
+}

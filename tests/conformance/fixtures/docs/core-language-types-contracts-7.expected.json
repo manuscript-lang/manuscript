@@ -23,7 +23,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-contracts-7.ms",
-          "line": 7,
+          "line": 8,
           "column": 11,
           "offset": 217
         }
@@ -34,7 +34,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-contracts-7.ms",
-          "line": 8,
+          "line": 9,
           "column": 9,
           "offset": 235
         }
@@ -45,7 +45,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-contracts-7.ms",
-          "line": 9,
+          "line": 10,
           "column": 11,
           "offset": 263
         }
@@ -56,7 +56,7 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-contracts-7.ms",
-          "line": 11,
+          "line": 12,
           "column": 10,
           "offset": 352
         }
@@ -65,7 +65,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-contracts-7.ms:4:28: resolution: unknown type Increment; declare it with 'type Increment:' / 'enum Increment:' / 'interface Increment:', declare it as a type parameter, or import it\n   |\n 4 | fn use_increment(operation Increment) Int:\n   |                            ^\n<DIR>/core-language-types-contracts-7.ms:7:11: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | offset := Offset(2)\n   |           ^\n<DIR>/core-language-types-contracts-7.ms:8:9: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | view := Increment(offset)\n   |         ^\n<DIR>/core-language-types-contracts-7.ms:9:11: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | result := use_increment(view)\n   |           ^\n<DIR>/core-language-types-contracts-7.ms:11:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 11 | wrong := use_increment(offset)\n    |          ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-contracts-7.ms:4:28: resolution: unknown type Increment; declare it with 'type Increment:' / 'enum Increment:' / 'interface Increment:', declare it as a type parameter, or import it\n   |\n 4 | fn use_increment(operation Increment) Int {\n   |                            ^\n<DIR>/core-language-types-contracts-7.ms:8:11: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | offset := Offset(2)\n   |           ^\n<DIR>/core-language-types-contracts-7.ms:9:9: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | view := Increment(offset)\n   |         ^\n<DIR>/core-language-types-contracts-7.ms:10:11: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 10 | result := use_increment(view)\n    |           ^\n<DIR>/core-language-types-contracts-7.ms:12:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 12 | wrong := use_increment(offset)\n    |          ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

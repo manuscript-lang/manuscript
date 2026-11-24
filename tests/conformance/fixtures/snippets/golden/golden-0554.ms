@@ -1,5 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
-impl Read[T] for Box[T]:
-    fn get() T:
+impl Read[T] for Box[T] {
+    fn get() T {
         return self.value
+    }
+}

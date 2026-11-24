@@ -10,32 +10,39 @@ import (
 
 mask := 4294967295
 
-fn rotr(x Int, n Int) Int:
+fn rotr(x Int, n Int) Int {
 	return bit_and(bit_or(shift_right_unsigned(x, n), shift_left(x, 32 - n)), mask)
+}
 
-fn crc_table() List[Int]:
+fn crc_table() List[Int] {
 	var t = List[Int]()
 
-	for i in 0..256:
+	for i in 0..256 {
 		var c = i
 
-		for k in 0..8:
-			if bit_and(c, 1) == 1:
+		for k in 0..8 {
+			if bit_and(c, 1) == 1 {
 				c = bit_xor(shift_right_unsigned(c, 1), 3988292384)
-			else:
+			} else {
 				c = shift_right_unsigned(c, 1)
+			}
+		}
 
 		t.append(c)
+	}
 
 	return t
+}
 
-fn crc32(table List[Int], data List[Int]) Int:
+fn crc32(table List[Int], data List[Int]) Int {
 	var c = mask
-	for b in data:
+	for b in data {
 		c = bit_xor(table[bit_and(bit_xor(c, b), 255)], shift_right_unsigned(c, 8))
+	}
 	return bit_xor(c, mask)
+}
 
-fn round_constants() List[Int]:
+fn round_constants() List[Int] {
 	return [
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
 		0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
@@ -49,10 +56,11 @@ fn round_constants() List[Int]:
 		0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
 		0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 	]
+}
 
 // SHA-256 of `data`; the result is the first word of the digest xor-folded with the
 // last.
-fn sha256(k List[Int], data List[Int]) Int:
+fn sha256(k List[Int], data List[Int]) Int {
 	var h = [
 		0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c,
 		0x1f83d9ab, 0x5be0cd19
@@ -60,19 +68,22 @@ fn sha256(k List[Int], data List[Int]) Int:
 	var msg = data.clone()
 	bits := data.length() * 8
 	msg.append(128)
-	while msg.length() % 64 != 56:
+	while msg.length() % 64 != 56 {
 		msg.append(0)
-	for i in 0..8:
+	}
+	for i in 0..8 {
 		msg.append(bit_and(shift_right_unsigned(bits, 56 - 8 * i), 255))
+	}
 
 	var w = List[Int]()
-	for i in 0..64:
+	for i in 0..64 {
 		w.append(0)
+	}
 
 	var block = 0
 
-	while block < msg.length():
-		for i in 0..16:
+	while block < msg.length() {
+		for i in 0..16 {
 			j := block + i * 4
 			w[i] = bit_or(
 				bit_or(
@@ -81,8 +92,9 @@ fn sha256(k List[Int], data List[Int]) Int:
 				),
 				bit_or(shift_left(msg[j + 2], 8), msg[j + 3]),
 			)
+		}
 
-		for i in 16..64:
+		for i in 16..64 {
 			x := w[i - 15]
 			y := w[i - 2]
 			s0 := bit_xor(bit_xor(rotr(x, 7), rotr(x, 18)), shift_right_unsigned(x, 3))
@@ -91,6 +103,7 @@ fn sha256(k List[Int], data List[Int]) Int:
 				shift_right_unsigned(y, 10),
 			)
 			w[i] = bit_and(w[i - 16] + s0 + w[i - 7] + s1, mask)
+		}
 
 		var a = h[0]
 		var b = h[1]
@@ -101,7 +114,7 @@ fn sha256(k List[Int], data List[Int]) Int:
 		var g = h[6]
 		var hh = h[7]
 
-		for i in 0..64:
+		for i in 0..64 {
 			big1 := bit_xor(bit_xor(rotr(e, 6), rotr(e, 11)), rotr(e, 25))
 			ch := bit_xor(bit_and(e, f), bit_and(bit_xor(e, mask), g))
 			t1 := bit_and(hh + big1 + ch + k[i] + w[i], mask)
@@ -116,6 +129,7 @@ fn sha256(k List[Int], data List[Int]) Int:
 			c = b
 			b = a
 			a = bit_and(t1 + t2, mask)
+		}
 
 		h[0] = bit_and(h[0] + a, mask)
 		h[1] = bit_and(h[1] + b, mask)
@@ -126,17 +140,21 @@ fn sha256(k List[Int], data List[Int]) Int:
 		h[6] = bit_and(h[6] + g, mask)
 		h[7] = bit_and(h[7] + hh, mask)
 		block += 64
+	}
 
 	return bit_xor(h[0], h[7])
+}
 
-fn main() Void:
+fn main() Void {
 	var data = List[Int]()
 	var x = 5
 
-	for i in 0..8000000:
+	for i in 0..8000000 {
 		x = bit_and(x * 1103515245 + 12345, 2147483647)
 		data.append(shift_right_unsigned(x, 16) % 256)
+	}
 
 	table := crc_table()
 	print(f"crc32 {crc32(table, data)}")
 	print(f"sha256 {sha256(round_constants(), data)}")
+}

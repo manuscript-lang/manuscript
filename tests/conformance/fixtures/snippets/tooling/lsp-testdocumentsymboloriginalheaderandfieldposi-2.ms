@@ -2,13 +2,16 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/lsp/position_consumers_test.go:61 TestDocumentSymbolOriginalHeaderAndFieldPositions
 // α😀
-interface Read:
-    fn get() Int
+interface Read {
+	fn get() Int
+}
 
-type Box:
-    value Int  // 😀é
+type Box {
+	value Int  // 😀é
+}
 
-fn Box.get() Int:
-    return self.value
+fn Box.get() Int {
+	return self.value
+}
 
 fn neighbor() Int => 1

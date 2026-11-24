@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1435.ms:3:9: parse: expected '(', found '%'; a call or parameter list starts with '('\n   |\n 3 | fn probe%d(visits: List[Int]) Int:\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1435.ms:3:9: parse: expected '(', found '%'; a call or parameter list starts with '('\n   |\n 3 | fn probe%d(visits: List[Int]) Int {\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

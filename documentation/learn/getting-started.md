@@ -54,14 +54,15 @@ Open `src/main.ms`:
 ```manuscript {filename="src/main.ms"}
 import arguments from "@std/os/env.ms"
 
-fn main() Void:
+fn main() Void {
     print(f"Arguments: {arguments().length()}")
+}
 ```
 
 - `import … from "…"` selects the APIs the file uses.
 - `main` starts the program. It returns `Void`, `Void!` (an error prints `error: <message>` and exits 1), `Int?!` (also an exit status), or `Int`; `export` is optional.
 - `print` writes a line and needs no import; `f"...{value}..."` interpolates into text; plain `"..."` text never does.
-- One tab (or four spaces) opens a block; statements need no terminator.
+- Braces open and close a block; statements need no terminator.
 
 `print` never fails. See [print a line](../cookbook/command-line.md#print-a-line) for output and error handling.
 
@@ -71,7 +72,7 @@ Replace the `print` line with:
 
 <!-- manuscript-example: {"mode":"fragment","context":"import arguments from \"@std/os/env.ms\"","given":[]} -->
 ```manuscript
-    print(f"Hello! You passed {arguments().length()} arguments.")
+print(f"Hello! You passed {arguments().length()} arguments.")
 ```
 
 Save the file and run the same command again:

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Void:\n\tsend(  // Delivery settings.\n\t\tfirst: 1,  // First setting.\n\t\t// Second setting.\n\t\tsecond: 2,\n\t)  // Completed settings.\n"
+    "fmt": "fn work() Void {\n\tsend(  // Delivery settings.\n\t\tfirst: 1,  // First setting.\n\t\t// Second setting.\n\t\tsecond: 2,\n\t)  // Completed settings.\n}\n"
   }
 }

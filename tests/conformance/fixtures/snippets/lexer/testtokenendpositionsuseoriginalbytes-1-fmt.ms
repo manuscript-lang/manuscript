@@ -1,5 +1,6 @@
 // conform: tags=formatter,parser,strings,tier-core
 // conform: phase=parse
 // conform: origin=pkg/lexer/lexer_test.go:83 TestTokenEndPositionsUseOriginalBytes
-fn f() String:
-    return "é"  // keep
+fn f() String {
+	return "é"  // keep
+}

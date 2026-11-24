@@ -26,21 +26,27 @@ import (
 	within from "./support/conn.ms",
 )
 
-fn expect_process_error[T](outcome T!, expected Error) Void!:
-	match outcome:
+fn expect_process_error[T](outcome T!, expected Error) Void! {
+	match outcome {
 		ok(_) => return error(Error("process misuse succeeded"))
-		error(cause):
-			if cause.kind != expected.kind: return error(Error("wrong process error"))
+		error(cause) => {
+			if cause.kind != expected.kind { return error(Error("wrong process error")) }
+		}
+	}
+}
 
-fn expect_fs_error[T](outcome T!, expected Error) Void!:
-	match outcome:
+fn expect_fs_error[T](outcome T!, expected Error) Void! {
+	match outcome {
 		ok(_) => return error(Error("filesystem misuse succeeded"))
-		error(cause):
-			if cause.kind != expected.kind: return error(
-				Error("wrong filesystem error")
-			)
+		error(cause) => {
+			if cause.kind != expected.kind {
+				return error(Error("wrong filesystem error"))
+			}
+		}
+	}
+}
 
-test "process usage records report this process":
+test "process usage records report this process" {
 	cpu := cpu_usage()?
 	expect_false(cpu.user_microseconds < 0 or cpu.system_microseconds < 0)?
 
@@ -51,8 +57,9 @@ test "process usage records report this process":
 	memory := memory_usage()?
 	expect_false(memory.heap_used <= 0 or memory.resident <= 0)?
 	expect_false(memory.heap_total < memory.heap_used)?
+}
 
-test "set_identity and set_groups validate input and apply or refuse":
+test "set_identity and set_groups validate input and apply or refuse" {
 	expect_process_error(
 		set_identity(kind: IdentityKind.Uid, id: -1),
 		Error("process: invalid input", kind: "EINVAL"),
@@ -64,7 +71,7 @@ test "set_identity and set_groups validate input and apply or refuse":
 
 	info := process_info()?
 
-	if info.uid < 0:
+	if info.uid < 0 {
 		// Windows has no ids.
 		expect_process_error(
 			set_identity(kind: IdentityKind.Uid, id: 0),
@@ -74,7 +81,7 @@ test "set_identity and set_groups validate input and apply or refuse":
 			set_groups(groups: [0]),
 			Error("process: operation not supported", kind: "ENOTSUP"),
 		)?
-	else:
+	} else {
 		// Setting the identity it already has changes nothing and needs no privilege.
 		set_identity(kind: IdentityKind.Uid, id: info.uid)?
 		set_identity(kind: IdentityKind.Gid, id: info.gid)?
@@ -83,15 +90,18 @@ test "set_identity and set_groups validate input and apply or refuse":
 
 		groups := groups()?
 
-		if info.effective_uid == 0:
+		if info.effective_uid == 0 {
 			set_groups(groups: groups)?
-		else:
+		} else {
 			expect_process_error(
 				set_groups(groups: groups),
 				Error("process: permission denied", kind: "EACCES"),
 			)?
+		}
+	}
+}
 
-test "replace rejects invalid programs before leaving this process":
+test "replace rejects invalid programs before leaving this process" {
 	info := process_info()?
 	empty := replace(program: "", arguments: ["x"], environment: {})
 	missing := replace(
@@ -100,7 +110,7 @@ test "replace rejects invalid programs before leaving this process":
 		environment: {},
 	)
 
-	if info.uid < 0:
+	if info.uid < 0 {
 		// Windows has no exec.
 		expect_process_error(
 			empty,
@@ -110,11 +120,13 @@ test "replace rejects invalid programs before leaving this process":
 			missing,
 			Error("process: operation not supported", kind: "ENOTSUP"),
 		)?
-	else:
+	} else {
 		expect_process_error(empty, Error("process: invalid input", kind: "EINVAL"))?
 		expect_process_error(missing, Error("process: not found", kind: "ENOENT"))?
+	}
+}
 
-test "stat_filesystem describes the filesystem under a path":
+test "stat_filesystem describes the filesystem under a path" {
 	info := stat_filesystem(path: ".")?
 	expect_false(info.block_size <= 0 or info.blocks <= 0)?
 	expect_false(info.blocks_available > info.blocks_free)?
@@ -122,21 +134,25 @@ test "stat_filesystem describes the filesystem under a path":
 		stat_filesystem(path: "/definitely/not/a/path"),
 		Error("filesystem: file or directory not found", kind: "ENOENT"),
 	)?
+}
 
 // Reads events until one has `path` and `kind`, or `tries` events passed.
-fn saw(var events ReadStream[FileEvent], path String, kind String, tries Int) Bool!:
-	for attempt in 0..tries:
+fn saw(var events ReadStream[FileEvent], path String, kind String, tries Int) Bool! {
+	for attempt in 0..tries {
 		next := within(events, 2.seconds())?
 		event := next
 
-		if event != null:
-			if event.path == path and event.kind == kind: return ok(true)
-		else:
+		if event != null {
+			if event.path == path and event.kind == kind { return ok(true) }
+		} else {
 			return ok(false)
+		}
+	}
 
 	return ok(false)
+}
 
-test "polling and native watchers report a created file and close":
+test "polling and native watchers report a created file and close" {
 	temporary := temporary("manuscript-watch-") | expect_ok?
 	root := temporary.path()
 	var polling = watch(
@@ -151,8 +167,9 @@ test "polling and native watchers report a created file and close":
 	var native = watch(path: root, recursive: false)?
 	write_file(path: f"{root}/b.txt", data: "y", replace: false).wait()?
 	expect_true(saw(native, join([root.clone(), "b.txt"]), "rename", 8)?)?
+}
 
-test "native watcher max_entries counts the paths under the root":
+test "native watcher max_entries counts the paths under the root" {
 	t := temporary("ms-me-") | expect_ok?
 	write_file(path: f"{t.path()}/a", data: "x", replace: false).wait()?
 	expect_fs_error(
@@ -170,8 +187,9 @@ test "native watcher max_entries counts the paths under the root":
 		options: WatchOptions(max_entries: 2),
 	)?
 	w.close()?
+}
 
-test "polling options reject native-only settings":
+test "polling options reject native-only settings" {
 	t := temporary("ms-wo-") | expect_ok?
 	polled := WatchOptions(interval: milliseconds(20))
 	expect_fs_error(
@@ -198,8 +216,9 @@ test "polling options reject native-only settings":
 
 	var w = watch(path: t.path(), options: polled)?
 	w.close()?
+}
 
-test "recursive native watch sees a file in a new subdirectory":
+test "recursive native watch sees a file in a new subdirectory" {
 	t := temporary("ms-r2-") | expect_ok?
 	r := t.path()
 	var w = watch(path: r, recursive: true)?
@@ -208,10 +227,14 @@ test "recursive native watch sees a file in a new subdirectory":
 
 	var seen = false
 
-	for i in 0..8:
-		if not seen:
+	for i in 0..8 {
+		if not seen {
 			e := within(w, 2.seconds())?
-			if e != null:
-				if e.path == join([r.clone(), "d", "f"]): seen = true
+			if e != null {
+				if e.path == join([r.clone(), "d", "f"]) { seen = true }
+			}
+		}
+	}
 
 	expect_true(seen)?
+}

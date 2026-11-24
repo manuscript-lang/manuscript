@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "",
-    "stderr": "index 3 out of range for length 3; use get_or(index, default) to avoid the fault\n  at bounds-fault-search.ms:12 in search\n  at bounds-fault-search.ms:23 in main\n"
+    "stderr": "index 3 out of range for length 3; use get_or(index, default) to avoid the fault\n  at bounds-fault-search.ms:12 in search\n  at bounds-fault-search.ms:27 in main\n"
   }
 }

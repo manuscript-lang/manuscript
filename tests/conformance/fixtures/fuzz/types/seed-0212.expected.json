@@ -12,16 +12,16 @@
         "message": "expected Bool, found Int (in the initializer of 'bad')",
         "position": {
           "file": "seed-0212.ms",
-          "line": 31,
+          "line": 35,
           "column": 17,
-          "offset": 710
+          "offset": 674
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0212.ms:31:17: type: expected Bool, found Int (in the initializer of 'bad')\n    |\n 31 |     bad Bool := 1\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0212.ms:35:17: type: expected Bool, found Int (in the initializer of 'bad')\n    |\n 35 |     bad Bool := 1\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

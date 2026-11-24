@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "before\n1\n",
-    "stderr": "n too large: 2\n  at fault-exits-process.ms:7 in checked\n  at fault-exits-process.ms:13 in main\n"
+    "stderr": "n too large: 2\n  at fault-exits-process.ms:9 in checked\n  at fault-exits-process.ms:16 in main\n"
   }
 }

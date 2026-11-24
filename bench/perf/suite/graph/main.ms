@@ -4,29 +4,34 @@ import (
 	PriorityQueue from "@std/collections/queue.ms",
 )
 
-type Edge:
+type Edge {
 	to Int
 	w Int
+}
 
-type Item:
+type Item {
 	dist Int
 	node Int
+}
 
-fn Item.compare(other Item) Int:
-	if self.dist != other.dist: return self.dist - other.dist
+fn Item.compare(other Item) Int {
+	if self.dist != other.dist { return self.dist - other.dist }
 	return self.node - other.node
+}
 
-fn lcg(x Int) Int:
+fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
+}
 
-fn build(n Int, m Int) List[List[Edge]]:
+fn build(n Int, m Int) List[List[Edge]] {
 	var adj List[List[Edge]] = []
-	for i in 0..n:
+	for i in 0..n {
 		adj.append([])
+	}
 
 	var x = 7
 
-	for i in 0..m:
+	for i in 0..m {
 		x = lcg(x)
 
 		a := x % n
@@ -38,13 +43,16 @@ fn build(n Int, m Int) List[List[Edge]]:
 		w := 1 + x % 100
 		adj[a].append(Edge(b, w))
 		adj[b].append(Edge(a, w))
+	}
 
 	return adj
+}
 
-fn bfs(adj List[List[Edge]], start Int) Int:
+fn bfs(adj List[List[Edge]], start Int) Int {
 	var level = List[Int]()
-	for i in 0..adj.length():
+	for i in 0..adj.length() {
 		level.append(-1)
+	}
 
 	var queue = Deque[Int]()
 	level[start] = 0
@@ -53,69 +61,83 @@ fn bfs(adj List[List[Edge]], start Int) Int:
 	var reached = 0
 	var depth_sum = 0
 
-	while true:
+	while true {
 		next := queue.pop_front()
-		if next == null: break
+		if next == null { break }
 
 		u := next
 		reached += 1
 		depth_sum += level[u]
 
-		for e in adj[u]:
-			if level[e.to] < 0:
+		for e in adj[u] {
+			if level[e.to] < 0 {
 				level[e.to] = level[u] + 1
 				queue.push_back(e.to)
+			}
+		}
+	}
 
 	return reached * 1000 + depth_sum % 1000
+}
 
-fn dijkstra(adj List[List[Edge]], start Int) Int:
+fn dijkstra(adj List[List[Edge]], start Int) Int {
 	var dist = List[Int]()
-	for i in 0..adj.length():
+	for i in 0..adj.length() {
 		dist.append(1000000000)
+	}
 
 	var pq = PriorityQueue[Item]()
 	dist[start] = 0
 	pq.enqueue(Item(0, start))
 
-	while true:
+	while true {
 		next := pq.dequeue()
-		if next == null: break
+		if next == null { break }
 
 		it := next
-		if it.dist > dist[it.node]: continue
+		if it.dist > dist[it.node] { continue }
 
-		for e in adj[it.node]:
+		for e in adj[it.node] {
 			nd := it.dist + e.w
 
-			if nd < dist[e.to]:
+			if nd < dist[e.to] {
 				dist[e.to] = nd
 				pq.enqueue(Item(nd, e.to))
+			}
+		}
+	}
 
 	var total = 0
 	var far = 0
 
-	for d in dist:
-		if d < 1000000000:
+	for d in dist {
+		if d < 1000000000 {
 			total += d
-			if d > far: far = d
+			if d > far { far = d }
+		}
+	}
 
 	return total % 1000003 * 1000 + far
+}
 
-fn find(parent List[Int], x Int) Int:
+fn find(parent List[Int], x Int) Int {
 	var r = x
-	while parent[r] != r:
+	while parent[r] != r {
 		r = parent[r]
+	}
 	return r
+}
 
-fn components(n Int, m Int) Int:
+fn components(n Int, m Int) Int {
 	var parent = List[Int]()
-	for i in 0..n:
+	for i in 0..n {
 		parent.append(i)
+	}
 
 	var x = 99
 	var count = n
 
-	for i in 0..m:
+	for i in 0..m {
 		x = lcg(x)
 
 		a := find(parent, x % n)
@@ -123,15 +145,19 @@ fn components(n Int, m Int) Int:
 
 		b := find(parent, x % n)
 
-		if a != b:
+		if a != b {
 			parent[a] = b
 			count -= 1
+		}
+	}
 
 	return count
+}
 
-fn main() Void:
+fn main() Void {
 	n := 200000
 	adj := build(n, 800000)
 	print(f"bfs {bfs(adj, 0)}")
 	print(f"dijkstra {dijkstra(adj, 0)}")
 	print(f"components {components(n, 150000)}")
+}

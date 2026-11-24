@@ -16,20 +16,22 @@ import (
 	absolute, run_in, usage from "./lib.ms",
 )
 
-fn same_bytes(a String, b String) Bool:
+fn same_bytes(a String, b String) Bool {
 	left := read_file(a).wait()
 	right := read_file(b).wait()
-	if left.is_error() or right.is_error(): return false
+	if left.is_error() or right.is_error() { return false }
 
 	return left.get_or("".to_bytes()) == right.get_or("".to_bytes())
+}
 
-fn ok_status(program String, args List[String], dir String) Bool:
+fn ok_status(program String, args List[String], dir String) Bool {
 	ran := run_in(dir, program, args)
 	return ran.ok and ran.code == 0
+}
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
-	if args.length() != 2: return usage("usage: close_parts.ms -- BASE_MS HEAD_MS")
+	if args.length() != 2 { return usage("usage: close_parts.ms -- BASE_MS HEAD_MS") }
 
 	base := absolute(args[0].clone())
 	head := absolute(args[1].clone())
@@ -42,7 +44,7 @@ fn main() Int:
 		[]
 	).map(e => e.path.clone())
 
-	for toml in projects.sorted():
+	for toml in projects.sorted() {
 		dir := ("bench/perf/" + toml.slice(0, toml.length() - "ms.toml".length()))
 		name := dir.slice("bench/perf/".length(), dir.length() - 1)
 
@@ -65,10 +67,11 @@ fn main() Int:
 			)
 		)
 
-		if not lowers:
+		if not lowers {
 			print(f"skip   {name} (does not lower)")
 			skipped += 1
 			continue
+		}
 
 		void remove(f"{w}/p/ms.lock")
 
@@ -80,12 +83,15 @@ fn main() Int:
 		if (
 			same_bytes(f"{w}/a.mir", f"{w}/b.mir")
 			and same_bytes(f"{w}/a.bin", f"{w}/b.bin")
-		):
+		) {
 			print(f"same   {name}")
 			same += 1
-		else:
+		} else {
 			print(f"DIFFER {name}")
 			differ += 1
+		}
+	}
 
 	print(f"{same} identical, {differ} different, {skipped} skipped")
-	return if differ == 0: 0 else: 1
+	return if differ == 0 { 0 } else { 1 }
+}

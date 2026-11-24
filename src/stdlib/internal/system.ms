@@ -10,7 +10,7 @@ import (
 
 // The host's memory, uptime, load, and parallelism numbers in one flat record;
 // `metrics` shapes it into `SystemMetrics`.
-export type MetricsSnapshot:
+export type MetricsSnapshot {
 	total_memory Int
 	free_memory Int
 	available_memory Int
@@ -19,6 +19,7 @@ export type MetricsSnapshot:
 	load_5 Float
 	load_15 Float
 	available_parallelism Int
+}
 
 export extern fn msstd_system_endianness() move String
 

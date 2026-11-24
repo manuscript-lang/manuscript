@@ -1,5 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 import nope from "@std/faults.ms"
-fn f() Void:
-    return
+
+fn f() Void {
+	return
+}

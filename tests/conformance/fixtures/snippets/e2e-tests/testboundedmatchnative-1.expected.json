@@ -12,75 +12,75 @@
         "message": "unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it",
         "position": {
           "file": "testboundedmatchnative-1.ms",
-          "line": 20,
+          "line": 24,
           "column": 14,
-          "offset": 478
+          "offset": 472
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module",
         "position": {
           "file": "testboundedmatchnative-1.ms",
-          "line": 20,
+          "line": 24,
           "column": 35,
-          "offset": 499
+          "offset": 493
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module",
-        "position": {
-          "file": "testboundedmatchnative-1.ms",
-          "line": 23,
-          "column": 16,
-          "offset": 545
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module",
-        "position": {
-          "file": "testboundedmatchnative-1.ms",
-          "line": 23,
-          "column": 33,
-          "offset": 562
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module",
-        "position": {
-          "file": "testboundedmatchnative-1.ms",
-          "line": 23,
-          "column": 50,
-          "offset": 579
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
-        "position": {
-          "file": "testboundedmatchnative-1.ms",
-          "line": 25,
-          "column": 8,
-          "offset": 622
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module",
         "position": {
           "file": "testboundedmatchnative-1.ms",
           "line": 27,
+          "column": 16,
+          "offset": 537
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module",
+        "position": {
+          "file": "testboundedmatchnative-1.ms",
+          "line": 27,
+          "column": 33,
+          "offset": 554
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module",
+        "position": {
+          "file": "testboundedmatchnative-1.ms",
+          "line": 27,
+          "column": 50,
+          "offset": 571
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module",
+        "position": {
+          "file": "testboundedmatchnative-1.ms",
+          "line": 29,
           "column": 8,
-          "offset": 713
+          "offset": 608
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module",
+        "position": {
+          "file": "testboundedmatchnative-1.ms",
+          "line": 31,
+          "column": 8,
+          "offset": 699
         }
       },
       {
@@ -89,22 +89,22 @@
         "message": "unknown binding Shape; did you mean 'shapes'?",
         "position": {
           "file": "testboundedmatchnative-1.ms",
-          "line": 29,
+          "line": 33,
           "column": 16,
-          "offset": 808
+          "offset": 794
         },
         "fix": {
           "position": {
             "file": "testboundedmatchnative-1.ms",
-            "line": 29,
+            "line": 33,
             "column": 16,
-            "offset": 808
+            "offset": 794
           },
           "end": {
             "file": "testboundedmatchnative-1.ms",
-            "line": 29,
+            "line": 33,
             "column": 21,
-            "offset": 813
+            "offset": 799
           },
           "replacement": "shapes"
         }
@@ -112,19 +112,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module",
         "position": {
           "file": "testboundedmatchnative-1.ms",
-          "line": 35,
+          "line": 39,
           "column": 16,
-          "offset": 903
+          "offset": 878
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testboundedmatchnative-1.ms:20:14: resolution: unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n    |\n 20 | fn unknown(s Shape) Int => return area(s)\n    |              ^\n<DIR>/testboundedmatchnative-1.ms:20:35: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n    |\n 20 | fn unknown(s Shape) Int => return area(s)\n    |                                   ^\n<DIR>/testboundedmatchnative-1.ms:23:16: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n    |\n 23 |     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]\n    |                ^\n<DIR>/testboundedmatchnative-1.ms:23:33: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n    |\n 23 |     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]\n    |                                 ^\n<DIR>/testboundedmatchnative-1.ms:23:50: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n    |\n 23 |     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]\n    |                                                  ^\n<DIR>/testboundedmatchnative-1.ms:25:8: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n    |\n 25 |     if area(shapes.get(next(count) * 0)) != 6: return 1\n    |        ^\n<DIR>/testboundedmatchnative-1.ms:27:8: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n    |\n 27 |     if area(shapes.get(next(count))) != 6: return 5\n    |        ^\n<DIR>/testboundedmatchnative-1.ms:29:16: resolution: unknown binding Shape; did you mean 'shapes'?\n    |\n 29 |     if unknown(Shape.Tri(4)) != 4: return 3\n    |                ^\n<DIR>/testboundedmatchnative-1.ms:35:16: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n    |\n 35 |         sum += area(shapes.get(i % 3))\n    |                ^\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testboundedmatchnative-1.ms:24:14: resolution: unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n    |\n 24 | fn unknown(s Shape) Int => return area(s)\n    |              ^\n<DIR>/testboundedmatchnative-1.ms:24:35: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module\n    |\n 24 | fn unknown(s Shape) Int => return area(s)\n    |                                   ^\n<DIR>/testboundedmatchnative-1.ms:27:16: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module\n    |\n 27 |     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]\n    |                ^\n<DIR>/testboundedmatchnative-1.ms:27:33: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module\n    |\n 27 |     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]\n    |                                 ^\n<DIR>/testboundedmatchnative-1.ms:27:50: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module\n    |\n 27 |     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]\n    |                                                  ^\n<DIR>/testboundedmatchnative-1.ms:29:8: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module\n    |\n 29 |     if area(shapes.get(next(count) * 0)) != 6 { return 1 }\n    |        ^\n<DIR>/testboundedmatchnative-1.ms:31:8: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module\n    |\n 31 |     if area(shapes.get(next(count))) != 6 { return 5 }\n    |        ^\n<DIR>/testboundedmatchnative-1.ms:33:16: resolution: unknown binding Shape; did you mean 'shapes'?\n    |\n 33 |     if unknown(Shape.Tri(4)) != 4 { return 3 }\n    |                ^\n<DIR>/testboundedmatchnative-1.ms:39:16: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module\n    |\n 39 |         sum += area(shapes.get(i % 3))\n    |                ^\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

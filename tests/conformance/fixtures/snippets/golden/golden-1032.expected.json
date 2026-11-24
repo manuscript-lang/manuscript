@@ -80,22 +80,22 @@
         "message": "expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-1032.ms",
-          "line": 7,
+          "line": 8,
           "column": 1,
-          "offset": 110
+          "offset": 113
         },
         "end": {
           "file": "golden-1032.ms",
-          "line": 7,
+          "line": 8,
           "column": 2,
-          "offset": 111
+          "offset": 114
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1032.ms:3:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 | --- a/gone.ms\n   | ^\n<DIR>/golden-1032.ms:4:1: parse: expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 4 | +++ /dev/null\n   | ^\n<DIR>/golden-1032.ms:5:1: parse: unexpected source character '@'; this character is not part of Manuscript's syntax outside text\n   |\n 5 | @@ -1,2 +0,0 @@\n   | ^\n<DIR>/golden-1032.ms:6:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | -fn a() Int:\n   | ^\n<DIR>/golden-1032.ms:7:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 7 | -    return 0\n   | ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1032.ms:3:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 | --- a/gone.ms\n   | ^\n<DIR>/golden-1032.ms:4:1: parse: expected a module declaration or import, found '+'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 4 | +++ /dev/null\n   | ^\n<DIR>/golden-1032.ms:5:1: parse: unexpected source character '@'; this character is not part of Manuscript's syntax outside text\n   |\n 5 | @@ -1,2 +0,0 @@\n   | ^\n<DIR>/golden-1032.ms:6:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | -fn a() Int {\n   | ^\n<DIR>/golden-1032.ms:8:1: parse: expected a module declaration or import, found '-'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 8 | -    return 0\n   | ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

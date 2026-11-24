@@ -8,33 +8,40 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn depth(n Int) Int:
-	if n == 0: return 0
+fn depth(n Int) Int {
+	if n == 0 { return 0 }
 	return depth(n - 1) + 1
+}
 
-fn loop_depth(n Int, rounds Int) Int:
+fn loop_depth(n Int, rounds Int) Int {
 	var total = 0
-	for unused in 0..rounds:
+	for unused in 0..rounds {
 		total += depth(n)
+	}
 	return total
+}
 
-fn status(label String) Void:
+fn status(label String) Void {
 	text := (
 		read_file("/proc/self/status", null).wait().get().decode_utf8()
 		or panic("called Optional.get() on null")
 	)
-	for line in text.lines():
-		if line.contains("VmRSS") or line.contains("VmPTE"):
+	for line in text.lines() {
+		if line.contains("VmRSS") or line.contains("VmPTE") {
 			print(label + " " + line)
+		}
+	}
+}
 
-fn in_task(n Int, rounds Int) Int:
+fn in_task(n Int, rounds Int) Int {
 	p := promise(
 		() => ok(loop_depth(n, rounds)),
 		options: PromiseOptions(placement: Placement.Here),
 	)
 	return p.wait().get()
+}
 
-fn main() Int:
+fn main() Int {
 	// Crossing cost: the same loop just below and just above the first slot's boundary.
 	rounds := 20000
 	t0 := monotonic()
@@ -70,3 +77,4 @@ fn main() Int:
 	)
 	status("after")
 	return 0
+}

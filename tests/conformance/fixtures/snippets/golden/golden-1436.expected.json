@@ -9,19 +9,36 @@
       {
         "code": "MS1001",
         "phase": "parse",
-        "message": "unterminated text literal; add the closing '\"' on the same line",
+        "message": "unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break",
         "position": {
           "file": "golden-1436.ms",
           "line": 7,
           "column": 14,
-          "offset": 141
+          "offset": 142
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
+        "position": {
+          "file": "golden-1436.ms",
+          "line": 8,
+          "column": 1,
+          "offset": 144
+        },
+        "end": {
+          "file": "golden-1436.ms",
+          "line": 8,
+          "column": 2,
+          "offset": 145
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1436.ms:7:14: parse: unterminated text literal; add the closing '\"' on the same line\n   |\n 7 |     chunk := \"\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1436.ms:7:14: parse: unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break\n   |\n 7 |     chunk := \"\n   |              ^\n<DIR>/golden-1436.ms:8:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 8 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

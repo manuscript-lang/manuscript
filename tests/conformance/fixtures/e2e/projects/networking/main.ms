@@ -12,8 +12,8 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-fn echo(var exchange HttpExchange) Void!:
-	if exchange.path() == "/ws":
+fn echo(var exchange HttpExchange) Void! {
+	if exchange.path() == "/ws" {
 		var socket = upgrade(
 			exchange,
 			allowed_origins: [],
@@ -21,21 +21,26 @@ fn echo(var exchange HttpExchange) Void!:
 			max_message_bytes: 1024,
 		)?
 
-		match socket.input.next()?:
-			message:
+		match socket.input.next()? {
+			message => {
 				socket.output.write(message)?
-			null:
+			}
+			null => {
 				return ok()
+			}
+		}
 
 		socket.close()?
 		return ok()
+	}
 
 	var fields = headers()
 	_appended := fields.append("X-Test", "stream")?
 	exchange.send_headers(200, fields)?
 	return exchange.write_bytes("hello from streaming Manuscript".to_bytes())
+}
 
-fn exercise() Void!:
+fn exercise() Void! {
 	tls := TlsOptions(
 		server_name: "",
 		roots_pem: "",
@@ -76,11 +81,14 @@ fn exercise() Void!:
 
 	part := response.body.next()?
 
-	match part:
-		data:
+	match part {
+		data => {
 			expect_false(not (data.decode_utf8() == "hello from streaming Manuscript"))?
-		null:
+		}
+		null => {
 			return fail(message: "Unexpected case")
+		}
+	}
 
 	response.close()?
 	client.close()?
@@ -102,18 +110,26 @@ fn exercise() Void!:
 		WebSocketMessage(data: "echo me".to_bytes(), kind: WebSocketKind.Text)
 	)?
 
-	match socket.input.next()?:
-		message:
+	match socket.input.next()? {
+		message => {
 			expect_true(message.kind == WebSocketKind.Text)?
 			expect_equal(message.data.decode_utf8(), "echo me".to_bytes().decode_utf8())?
-		null:
+		}
+		null => {
 			return fail(message: "Unexpected case")
+		}
+	}
 
 	server.close()?
+}
 
-export fn main() Int:
-	match exercise():
-		ok(_):
+export fn main() Int {
+	match exercise() {
+		ok(_) => {
 			return 0
-		error(_):
+		}
+		error(_) => {
 			return 1
+		}
+	}
+}

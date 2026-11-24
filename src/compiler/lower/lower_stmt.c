@@ -734,7 +734,7 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
     cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
     entry = tested;
   }
-  if (fn->terminated) { /* the condition never returns (`if panic(...):`): nothing is tested and nothing follows */
+  if (fn->terminated) { /* the condition never returns (`if panic(...) { ... }`): nothing is tested and nothing follows */
     return !fn->failed;
   }
   if (cond == MIR_NONE) {

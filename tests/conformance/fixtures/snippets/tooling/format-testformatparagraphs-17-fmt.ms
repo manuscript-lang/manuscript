@@ -1,13 +1,14 @@
 // conform: tags=control-flow,formatter,interpolation,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:254 TestFormatParagraphs
-fn example(value Int = choose(first: 1, second: 2)) Int:
-    text := f"# if value: return {value}"
-    next := choose(
-        first: value,
-        // Explain this argument.
-        second: 2
-    )
-    if (next > 0 and value > 0): return next
+fn example(value Int = choose(first: 1, second: 2)) Int {
+	text := f"# if value: return {value}"
+	next := choose(
+		first: value,
+		// Explain this argument.
+		second: 2
+	)
+	if (next > 0 and value > 0) { return next }
 
-    return 0
+	return 0
+}

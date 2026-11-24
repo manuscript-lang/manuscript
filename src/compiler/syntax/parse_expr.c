@@ -333,26 +333,29 @@ MS_NODISCARD static bool case_path(Parser *p, MsExpr **out) {
 
 /* ---- match ---- */
 
-/* `if c: a else: b` (also `else if`) as a match over the Bool `c`. */
+/* `{ expression }`: one branch of an if expression. */
+MS_NODISCARD static bool if_branch(Parser *p, MsExpr **out) {
+  if (!parse_need(p, MS_T_BlockOpen))
+    return false;
+  parse_newlines(p);
+  if (!parse_expression(p, 0, out))
+    return false;
+  parse_newlines(p);
+  return parse_need(p, MS_T_BlockClose);
+}
+
+/* `if c { a } else { b }` (also `else if`) as a match over the Bool `c`. */
 MS_NODISCARD bool parse_if_expression(Parser *p, MsToken t, MsExpr **out) {
   MsExpr *cond = NULL;
   if (!parse_expression(p, 0, &cond))
     return false;
-  if (!parse_need(p, MS_T_Colon))
-    return false;
-  if (parse_kind(p) == MS_T_Newline) {
-    parse_fail(p, parse_peek(p),
-               ms_span_of_text("an if expression writes its branches on one line, 'if c: a else: b'; to run "
-                               "statements, use an if statement that assigns a 'var' or returns"));
-    return false;
-  }
   MsExpr *then = NULL;
-  if (!parse_expression(p, 0, &then))
+  if (!if_branch(p, &then))
     return false;
   if (parse_kind(p) != MS_T_Else) {
     parse_fail(p, parse_peek(p),
-               ms_span_of_text("an if expression needs an else branch; write 'if c: a else: b', or use an if "
-                               "statement when no value is needed"));
+               ms_span_of_text("an if expression needs an else branch; write 'if c { a } else { b }', or use "
+                               "an if statement when no value is needed"));
     return false;
   }
   MsToken else_token = parse_peek(p);
@@ -363,11 +366,8 @@ MS_NODISCARD bool parse_if_expression(Parser *p, MsToken t, MsExpr **out) {
     p->at++;
     if (!parse_if_expression(p, nested, &els))
       return false;
-  } else {
-    if (!parse_need(p, MS_T_Colon))
-      return false;
-    if (!parse_expression(p, 0, &els))
-      return false;
+  } else if (!if_branch(p, &els)) {
+    return false;
   }
   MsArm **arms = MS_ARENA_NEW_ARRAY(p->arena, MsArm *, 2);
   for (int k = 0; k < 2; k++) {
@@ -393,27 +393,24 @@ MS_NODISCARD bool parse_if_expression(Parser *p, MsToken t, MsExpr **out) {
 /* An arm's final expression supplies its value; a statement-only arm yields Void. */
 MS_NODISCARD static bool value_arm_inner(Parser *p, MsArm *a) {
   p->inline_return = false;
-  MsToken opener = parse_peek(p);
-  bool arrow = parse_take(p, MS_T_FatArrow);
-  if (!arrow && !parse_need(p, MS_T_Colon))
-    return false;
-  if (arrow && parse_kind(p) == MS_T_Newline) {
-    parse_fail(p, parse_peek(p),
-               ms_span_of_text("'=>' takes one statement or expression on the same line; write a longer arm "
-                               "body after ':' on the next lines"));
-    return false;
-  }
-  if (!arrow && parse_kind(p) != MS_T_Newline) {
-    parse_fail_fix(p, opener,
-                   ms_span_of_text("a one-line match arm is written 'pattern => value'; a ':' arm's body "
-                                   "goes on the next lines"),
+  if (parse_kind(p) == MS_T_Colon && parse_ahead(p, 1).kind != MS_T_Newline) {
+    parse_fail_fix(p, parse_peek(p),
+                   ms_span_of_text("a one-line match arm is written 'pattern => value'; a longer arm body goes "
+                                   "in braces, 'pattern => { ... }'"),
                    ms_span_of_text(" =>"));
     return false;
   }
-  bool indented = parse_take(p, MS_T_Newline);
+  if (!parse_need(p, MS_T_FatArrow))
+    return false;
+  if (parse_kind(p) == MS_T_Newline) {
+    parse_fail(p, parse_peek(p),
+               ms_span_of_text("'=>' takes one statement or expression on the same line; write a longer arm "
+                               "body in braces, 'pattern => { ... }'"));
+    return false;
+  }
+  bool indented = parse_take(p, MS_T_BlockOpen);
   if (indented) {
-    if (!parse_need(p, MS_T_Indent))
-      return false;
+    parse_newlines(p);
   }
   p->inline_statement = !indented;
   size_t m = parse_mark(p);
@@ -424,7 +421,7 @@ MS_NODISCARD static bool value_arm_inner(Parser *p, MsArm *a) {
       break;
     }
     parse_newlines(p);
-    if (parse_kind(p) == MS_T_Dedent || parse_kind(p) == MS_T_Eof) {
+    if (parse_kind(p) == MS_T_BlockClose || parse_kind(p) == MS_T_Eof) {
       break;
     }
   }
@@ -445,7 +442,8 @@ MS_NODISCARD static bool value_arm_inner(Parser *p, MsArm *a) {
     }
   }
   if (indented) {
-    if (!parse_need(p, MS_T_Dedent))
+    parse_newlines(p);
+    if (!parse_need(p, MS_T_BlockClose))
       return false;
   } else {
     p->inline_statement = false;
@@ -553,17 +551,13 @@ MS_NODISCARD static bool match_arm(Parser *p, MsArm **out) {
 }
 
 MS_NODISCARD bool parse_match_arms(Parser *p, MsToken header, MsExpr *m) {
-  if (!parse_need(p, MS_T_Colon))
-    return false;
-  if (!parse_need(p, MS_T_Newline))
-    return false;
-  if (!parse_need(p, MS_T_Indent))
+  if (!parse_need(p, MS_T_BlockOpen))
     return false;
   size_t arms_start = parse_mark(p);
   uint32_t narms = 0;
   for (;;) {
     parse_newlines(p);
-    if (parse_kind(p) == MS_T_Dedent) {
+    if (parse_kind(p) == MS_T_BlockClose) {
       if (narms == 0) {
         parse_fail(p, header,
                    ms_span_of_text(
@@ -586,7 +580,7 @@ MS_NODISCARD bool parse_match_arms(Parser *p, MsToken header, MsExpr *m) {
     parse_push_ptr(p, arm);
     narms++;
   }
-  if (!parse_need(p, MS_T_Dedent))
+  if (!parse_need(p, MS_T_BlockClose))
     return false;
   uint32_t n = 0;
   MsArm **arms = parse_finish(p, arms_start, &n, sizeof(void *), _Alignof(void *));

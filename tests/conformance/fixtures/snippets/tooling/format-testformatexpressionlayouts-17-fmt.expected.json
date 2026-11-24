@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Void:\n\t_values := [\n\t\t1,  // Keep the first value explained.\n\t\t2,\n\t\t3,\n\t\t4\n\t]\n"
+    "fmt": "fn work() Void {\n\t_values := [\n\t\t1,  // Keep the first value explained.\n\t\t2,\n\t\t3,\n\t\t4\n\t]\n}\n"
   }
 }

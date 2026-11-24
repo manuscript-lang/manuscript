@@ -3,41 +3,48 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn rows_run(re Regex, text String, expected List[String], count Int, width Int) Int!:
+fn rows_run(re Regex, text String, expected List[String], count Int, width Int) Int! {
 	rows := re.capture_all(text)?
 	expect_equal(rows.length(), count)?
 
 	var checksum = 0
 
-	for row in rows:
+	for row in rows {
 		expect_equal(row, expected)?
-		for group in row:
+		for group in row {
 			checksum += group.length()
+		}
+	}
 
 	expect_equal(checksum, count * width)?
 	return ok(checksum)
+}
 
-fn first_run(re Regex, text String, expected List[String]) Int!:
+fn first_run(re Regex, text String, expected List[String]) Int! {
 	out := re.capture(text)
 	expect_equal(out, expected)?
 	return ok(out.length())
+}
 
-fn names_run(re Regex, text String, expected Map[String, String]) Int!:
+fn names_run(re Regex, text String, expected Map[String, String]) Int! {
 	out := re.capture_named(text)
 	expect_equal(out, expected)?
 	return ok(out.length())
+}
 
-fn id_map(present Bool) Map[String, String]:
+fn id_map(present Bool) Map[String, String] {
 	var expected = Map[String, String]()
-	if present: expected.add("id", "123")
+	if present { expected.add("id", "123") }
 	return expected
+}
 
-fn last_map(present Bool) Map[String, String]:
+fn last_map(present Bool) Map[String, String] {
 	var expected = Map[String, String]()
-	if present: expected.add("last", "x")
+	if present { expected.add("last", "x") }
 	return expected
+}
 
-type BenchData:
+type BenchData {
 	re Regex
 	text String
 	expected List[List[String]]
@@ -64,8 +71,9 @@ type BenchData:
 	id_hit Map[String, String]
 	no_names Map[String, String]
 	late_hit Map[String, String]
+}
 
-fn make_fixture() BenchData:
+fn make_fixture() BenchData {
 	re := compile("a+").get()
 	text := "a".repeat(65536)
 	expected := [[text.clone()]]
@@ -120,74 +128,95 @@ fn make_fixture() BenchData:
 		no_names: no_names,
 		late_hit: late_hit,
 	)
+}
 
-bench "regex.cardinality.whole.0":
+bench "regex.cardinality.whole.0" {
 	rows_run(fixture.plain_re, fixture.text_0, fixture.whole_expected, 0, 7)?
+}
 
-bench "regex.cardinality.whole.1":
+bench "regex.cardinality.whole.1" {
 	rows_run(fixture.plain_re, fixture.text_1, fixture.whole_expected, 1, 7)?
+}
 
-bench "regex.cardinality.whole.128":
+bench "regex.cardinality.whole.128" {
 	rows_run(fixture.plain_re, fixture.text_128, fixture.whole_expected, 128, 7)?
+}
 
-bench "regex.cardinality.whole.2000":
+bench "regex.cardinality.whole.2000" {
 	rows_run(fixture.plain_re, fixture.text_2000, fixture.whole_expected, 2000, 7)?
+}
 
-bench "regex.cardinality.grouped.1":
+bench "regex.cardinality.grouped.1" {
 	rows_run(fixture.grouped_re, fixture.text_1, fixture.grouped_expected, 1, 14)?
+}
 
-bench "regex.cardinality.grouped.2000":
+bench "regex.cardinality.grouped.2000" {
 	rows_run(fixture.grouped_re, fixture.text_2000, fixture.grouped_expected, 2000, 14)?
+}
 
-bench "regex.cardinality.whole.long":
+bench "regex.cardinality.whole.long" {
 	rows := fixture.re.capture_all(fixture.text, 1)?
 	expect_equal(rows, fixture.expected)?
 	rows[0][0].length()
+}
 
-bench "regex.cardinality.whole.empty_matches":
+bench "regex.cardinality.whole.empty_matches" {
 	rows := fixture.re_8.capture_all("a🙂🙂a", 3)?
 	expect_equal(rows, [["a"], [""], ["a"]])?
 	rows.length()
+}
 
-bench "regex.cardinality.whole.over_limit":
+bench "regex.cardinality.whole.over_limit" {
 	out := fixture.re_9.capture_all(fixture.text_9, 1)
 	expected Result[List[List[String]], Error] := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
 	expect_equal(out, expected)?
 	out.is_error()
+}
 
-bench "regex.cardinality.first.whole.hit":
+bench "regex.cardinality.first.whole.hit" {
 	first_run(fixture.plain_re, fixture.text_1000g, fixture.whole_expected)?
+}
 
-bench "regex.cardinality.first.whole.miss":
+bench "regex.cardinality.first.whole.miss" {
 	first_run(fixture.plain_re, "none", fixture.none_expected)?
+}
 
-bench "regex.cardinality.first.grouped.hit":
+bench "regex.cardinality.first.grouped.hit" {
 	first_run(fixture.grouped_re, fixture.text_1000g, fixture.grouped_expected)?
+}
 
-bench "regex.cardinality.first.whole.long":
+bench "regex.cardinality.first.whole.long" {
 	out := fixture.re_13.capture(fixture.text_13)
 	expect_equal(out, fixture.expected_13)?
 	out[0].length()
+}
 
-bench "regex.cardinality.named.whole.hit":
+bench "regex.cardinality.named.whole.hit" {
 	names_run(fixture.plain_re, fixture.text_1000g, fixture.no_names)?
+}
 
-bench "regex.cardinality.named.whole.long_miss":
+bench "regex.cardinality.named.whole.long_miss" {
 	names_run(fixture.plain_re, fixture.long_miss, fixture.no_names)?
+}
 
-bench "regex.cardinality.named.named.hit":
+bench "regex.cardinality.named.named.hit" {
 	names_run(fixture.named_re, fixture.text_1000g, fixture.id_hit)?
+}
 
-bench "regex.cardinality.named.anonymous.hit":
+bench "regex.cardinality.named.anonymous.hit" {
 	names_run(fixture.anon_re, fixture.text_1000g, fixture.no_names)?
+}
 
-bench "regex.cardinality.named.anonymous.long_miss":
+bench "regex.cardinality.named.anonymous.long_miss" {
 	names_run(fixture.anon_re, fixture.long_miss, fixture.no_names)?
+}
 
-bench "regex.cardinality.named.late.hit":
+bench "regex.cardinality.named.late.hit" {
 	names_run(fixture.late_re, "x", fixture.late_hit)?
+}
 
-bench "regex.cardinality.named.late.miss":
+bench "regex.cardinality.named.late.miss" {
 	names_run(fixture.late_re, "z", fixture.no_names)?
+}

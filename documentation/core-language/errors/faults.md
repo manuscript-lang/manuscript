@@ -13,15 +13,21 @@ Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import panic from "@std/core.ms"
-import Decimal from "@std/math/decimal.ms"
+import (
+    panic from "@std/core.ms",
+    Decimal from "@std/math/decimal.ms",
+)
 
-fn discount_validated(price Decimal, percent Decimal) Decimal:
-    if price <= 0d:
+fn discount_validated(price Decimal, percent Decimal) Decimal {
+    if price <= 0d {
         return panic("Price must be positive")
-    if percent <= 0d or percent >= 100d:
+    }
+    if percent <= 0d or percent >= 100d {
         return panic("Percent must be positive and below 100")
+    }
+
     return price * (1d - percent / 100d)
+}
 ```
 
 The example treats nonpositive prices and percentages outside (0, 100) as faults. For runtime input, use the validating `discount` in [expected failures](results.md).

@@ -5,9 +5,9 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "rotation preserves order across ring positions and signed boundaries":
-	for size in [0, 1, 2, 3, 4, 7, 8, 9, 17]:
-		for advance in [0, 1, 5]:
+test "rotation preserves order across ring positions and signed boundaries" {
+	for size in [0, 1, 2, 3, 4, 7, 8, 9, 17] {
+		for advance in [0, 1, 5] {
 			for count in [
 				-9223372036854775808,
 				-100,
@@ -27,27 +27,36 @@ test "rotation preserves order across ring positions and signed boundaries":
 				size + 1,
 				100,
 				9223372036854775807,
-			]:
+			] {
 				var q = Deque[Int]()
-				for i in 0..size:
+				for i in 0..size {
 					q.push_back(i)
+				}
 
-				for i in 0..advance:
+				for i in 0..advance {
 					value := q.pop_front()
-					if value != null:
+					if value != null {
 						q.push_back(value)
+					}
+				}
 
 				q.rotate(count)
 				expect_equal(q.length(), size)?
 
-				if size > 0:
+				if size > 0 {
 					shift := (count % size + size + advance % size) % size
-					for i in 0..size:
+					for i in 0..size {
 						expect_equal(q.get(i) or (-1), (i + shift) % size)?
+					}
 					expect_equal(q.front(), q.get(0))?
 					expect_equal(q.back(), q.get(size - 1))?
+				}
+			}
+		}
+	}
+}
 
-test "negative rotation keeps optional values and nested contents":
+test "negative rotation keeps optional values and nested contents" {
 	var q = Deque[List[Int]?]()
 	q.push_back([1, 2])
 	q.push_back(null)
@@ -61,25 +70,32 @@ test "negative rotation keeps optional values and nested contents":
 	expect_equal(q.pop_front(), first)?
 	expect_equal(q.pop_front(), absent)?
 	expect_equal(q.pop_front(), null)?
+}
 
-test "positive near-whole rotations preserve full and partial rings":
-	for size in [8191, 8192]:
+test "positive near-whole rotations preserve full and partial rings" {
+	for size in [8191, 8192] {
 		var q = Deque[Int]()
-		for i in 0..size:
+		for i in 0..size {
 			q.push_back(i)
-		for unused in 0..100:
+		}
+		for unused in 0..100 {
 			q.rotate(size - 1)
+		}
 		expect_equal(q.length(), size)?
-		for i in 0..size:
+		for i in 0..size {
 			expect_equal(q.get(i) or (-1), (i + size - 100) % size)?
+		}
 		q.push_back(size)
 		expect_equal(q.pop_back(), size)?
 		q.rotate(100)
-		for i in 0..size:
+		for i in 0..size {
 			expect_equal(q.pop_front(), i)?
+		}
 		expect_equal(q.is_empty(), true)?
+	}
+}
 
-test "positive near-whole rotation preserves optional nested payloads":
+test "positive near-whole rotation preserves optional nested payloads" {
 	var q = Deque[List[Int]?]()
 	q.push_back([1, 2])
 	q.push_back(null)
@@ -93,3 +109,4 @@ test "positive near-whole rotation preserves optional nested payloads":
 	expect_equal(q.pop_front(), first)?
 	expect_equal(q.pop_front(), absent)?
 	expect_equal(q.is_empty(), true)?
+}

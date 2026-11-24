@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-enum Choice:
+enum Choice {
     Payload(value)
+}

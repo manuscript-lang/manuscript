@@ -12,7 +12,7 @@
         "message": "callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest",
         "position": {
           "file": "golden-0217.ms",
-          "line": 8,
+          "line": 12,
           "column": 16,
           "offset": 179
         }
@@ -23,7 +23,7 @@
         "message": "expected fn() Int, found fn(Int) Int (in argument 'operation' of run)",
         "position": {
           "file": "golden-0217.ms",
-          "line": 8,
+          "line": 12,
           "column": 16,
           "offset": 179
         }
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0217.ms:8:16: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest\n   |\n 8 |     return run(f)\n   |                ^\n<DIR>/golden-0217.ms:8:16: type: expected fn() Int, found fn(Int) Int (in argument 'operation' of run)\n   |\n 8 |     return run(f)\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0217.ms:12:16: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest\n    |\n 12 |     return run(f)\n    |                ^\n<DIR>/golden-0217.ms:12:16: type: expected fn() Int, found fn(Int) Int (in argument 'operation' of run)\n    |\n 12 |     return run(f)\n    |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

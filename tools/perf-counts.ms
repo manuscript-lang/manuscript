@@ -44,20 +44,21 @@ SHAPES := [["http-request-small", "http-request", "small"]]
 TIGHT := ["guard-http-request", "guard-http-request-small"]
 COUNTS := "bench/perf/counts.txt"
 
-fn say(text String) Void:
+fn say(text String) Void {
 	stdout().write(text.clone()).get()
+}
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
-fn count(program String, out_file String, own_path Bool, shape String) Int:
+fn count(program String, out_file String, own_path Bool, shape String) Int {
 	var command = [
 		"--tool=callgrind",
 		f"--callgrind-out-file={out_file}",
 		program.clone(),
 	]
-	if own_path: command.append(program.clone())
-	if shape != "": command.append(shape.clone())
+	if own_path { command.append(program.clone()) }
+	if shape != "" { command.append(shape.clone()) }
 
-	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
+	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait() {
 		// Valgrind prefixes each line with `==pid==`. A program that forks a child (the
 		// http-request guards) also reports the child's count, and the child exits
 		// first: the count wanted is the one of the process valgrind started, the first
@@ -65,34 +66,42 @@ fn count(program String, out_file String, own_path Bool, shape String) Int:
 		lines := (out.stderr.decode_utf8() or "").split("\n")
 		var prefix = ""
 
-		for line in lines:
-			if line.contains("Callgrind, a call-graph"):
+		for line in lines {
+			if line.contains("Callgrind, a call-graph") {
 				prefix = line.slice(0, line.index_of("== ") or 0)
 				break
+			}
+		}
 
-		for line in lines:
+		for line in lines {
 			at := line.index_of("Collected : ")
 
-			if at != null and line.starts_with(prefix):
+			if at != null and line.starts_with(prefix) {
 				digits := line.slice(at + 12, line.length()).trim()
 				return digits.parse_int() or (-1)
+			}
+		}
+	}
 
 	return -1
+}
 
 // The committed counts: one `name instructions` pair per line.
-fn committed(path String) Map[String, Int]:
+fn committed(path String) Map[String, Int] {
 	var known = Map[String, Int]()
 	text := read_file(path).wait().get_or("".to_bytes()).decode_utf8() or ""
 
-	for line in text.split("\n"):
+	for line in text.split("\n") {
 		parts := line.trim().split(" ")
-		if parts.length() != 2 or parts[0].starts_with("#"): continue
+		if parts.length() != 2 or parts[0].starts_with("#") { continue }
 
 		known[parts[0].clone()] = parts[1].parse_int() or 0
+	}
 
 	return known
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
 	bound := env("PERF_COUNTS_BOUND", "3").parse_int() or 3
@@ -103,21 +112,27 @@ fn main() Int:
 	var failures = 0
 	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
 	var targets List[List[String]] = []
-	for name in PROGRAMS: targets.append(
-		[name.clone(), f"{root}/bench/perf/suite/{name}/main.ms", ""]
-	)
-	for name in GUARDS: targets.append(
-		[f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms", ""]
-	)
-	for shape in SHAPES: targets.append(
-		[
-			f"guard-{shape[0]}",
-			f"{root}/bench/perf/guards/{shape[1]}/main.ms",
-			shape[2].clone(),
-		]
-	)
+	for name in PROGRAMS {
+		targets.append([name.clone(), f"{root}/bench/perf/suite/{name}/main.ms", ""])
+	}
+	for name in GUARDS {
+		targets.append(
+			[
+				f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms", ""
+			]
+		)
+	}
+	for shape in SHAPES {
+		targets.append(
+			[
+				f"guard-{shape[0]}",
+				f"{root}/bench/perf/guards/{shape[1]}/main.ms",
+				shape[2].clone(),
+			]
+		)
+	}
 
-	for target in targets:
+	for target in targets {
 		name := target[0].clone()
 		source := target[1].clone()
 		shape := target[2].clone()
@@ -128,10 +143,11 @@ fn main() Int:
 			RunOptions(timeout: seconds(600)),
 		).wait()
 
-		if built.is_error():
+		if built.is_error() {
 			say(f"fail: {name} did not build\n")
 			failures += 1
 			continue
+		}
 
 		now := count(
 			binary.clone(),
@@ -140,42 +156,48 @@ fn main() Int:
 			shape.clone(),
 		)
 
-		if now < 0:
+		if now < 0 {
 			say(f"fail: {name} did not run under valgrind\n")
 			failures += 1
 			continue
+		}
 
 		report += f"{name} {now}\n"
 
 		before := known.get_or(name, 0)
 
-		if before == 0:
+		if before == 0 {
 			say(f"{name}: {now} (no committed count)\n")
-			if not update: failures += 1
+			if not update { failures += 1 }
 			continue
+		}
 
-		limit := if TIGHT.contains(name): 1 else: bound
+		limit := if TIGHT.contains(name) { 1 } else { bound }
 		tenths := (now - before) * 1000 / before
 		say(f"{name}: {now} against {before} ({tenths / 10}.{tenths.abs() % 10}%)\n")
 
-		if tenths > limit * 10:
+		if tenths > limit * 10 {
 			failures += 1
 			say(
 				f"fail: {name} executes more than {limit}% more instructions than the committed count; find the change that made it slower, or refresh {COUNTS} when the cost is deliberate\n"
 			)
-		else if tenths < -limit * 10:
+		} else if tenths < -limit * 10 {
 			say(f"note: {name} got faster; refresh {COUNTS} with --update\n")
+		}
+	}
 
 	// The CI nightly keeps what it measured, whether or not the gate passed, as the
 	// canonical numbers to refresh the committed file from.
 	measured := env("PERF_COUNTS_OUT", "")
-	if measured != "": write_file(measured, report.clone(), true).wait().get()
+	if measured != "" { write_file(measured, report.clone(), true).wait().get() }
 
-	if update:
+	if update {
 		write_file(path, report, true).wait().get()
 		say(f"wrote {COUNTS}\n")
 		return 0
+	}
 
-	if failures > 0: return 1
+	if failures > 0 { return 1 }
 
 	return 0
+}

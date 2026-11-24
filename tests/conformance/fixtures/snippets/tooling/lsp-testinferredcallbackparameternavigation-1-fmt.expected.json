@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn answer() Void:\n\t_values := [1, 2].map(value => value + 1)\n"
+    "fmt": "fn answer() Void {\n\t_values := [1, 2].map(value => value + 1)\n}\n"
   }
 }

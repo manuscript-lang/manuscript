@@ -6,5 +6,6 @@ import ListEntry from "@std/collections/collections.ms"
 A := 1
 B := 2
 
-fn f() Int:
-    return A + B
+fn f() Int {
+	return A + B
+}

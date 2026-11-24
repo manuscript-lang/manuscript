@@ -4,12 +4,13 @@
 // later siblings.
 import XmlNode, stringify from "@std/data/xml.ms"
 
-export fn main() Int:
+export fn main() Int {
 	text := "x".repeat(4096)
 	root := XmlNode.XmlElement("root", [], [XmlNode.XmlText(text.clone())])
-	if stringify(root) != f"<root>{text}</root>": return 1
+	if stringify(root) != f"<root>{text}</root>" { return 1 }
 
 	mixed := XmlNode.XmlElement("root", [], [XmlNode.XmlText("text"), root.clone()])
-	if stringify(mixed, "  ") != f"<root>text<root>{text}</root></root>\n": return 2
+	if stringify(mixed, "  ") != f"<root>text<root>{text}</root></root>\n" { return 2 }
 
 	return 0
+}

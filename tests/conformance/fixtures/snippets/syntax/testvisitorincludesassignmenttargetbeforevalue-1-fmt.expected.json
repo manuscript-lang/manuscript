@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn update() Void:\n\towner().value = replacement()\n"
+    "fmt": "fn update() Void {\n\towner().value = replacement()\n}\n"
   }
 }

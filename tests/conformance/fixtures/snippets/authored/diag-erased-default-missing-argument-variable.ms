@@ -5,7 +5,8 @@ fn original(value Int = 7) Int => value + 1
 
 fn replacement(value Int) Int => value + 2
 
-export fn main() Int:
-    var callback = original
-    callback = replacement
-    return callback()
+export fn main() Int {
+	var callback = original
+	callback = replacement
+	return callback()
+}

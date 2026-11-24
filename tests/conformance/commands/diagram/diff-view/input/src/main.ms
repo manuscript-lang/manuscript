@@ -4,13 +4,16 @@ import (
 	parse_total from "./shapes.ms",
 )
 
-fn main() Int:
+fn main() Int {
 	total := parse_total(["3", "4", "x"])
 	print(f"total {total}")
 	return 0
+}
 
-test "main total":
+test "main total" {
 	expect_equal(parse_total(["1", "2"]), 3)?
+}
 
-test "more":
+test "more" {
 	expect_equal(1, 1)?
+}

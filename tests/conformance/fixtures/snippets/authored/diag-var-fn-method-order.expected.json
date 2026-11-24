@@ -12,28 +12,28 @@
         "message": "a method that changes its receiver is written fn var Type.name(), with var after fn",
         "position": {
           "file": "diag-var-fn-method-order.ms",
-          "line": 6,
+          "line": 7,
           "column": 1,
-          "offset": 88
+          "offset": 91
         },
         "end": {
           "file": "diag-var-fn-method-order.ms",
-          "line": 6,
+          "line": 7,
           "column": 7,
-          "offset": 94
+          "offset": 97
         },
         "fix": {
           "position": {
             "file": "diag-var-fn-method-order.ms",
-            "line": 6,
+            "line": 7,
             "column": 1,
-            "offset": 88
+            "offset": 91
           },
           "end": {
             "file": "diag-var-fn-method-order.ms",
-            "line": 6,
+            "line": 7,
             "column": 7,
-            "offset": 94
+            "offset": 97
           },
           "replacement": "fn var"
         }
@@ -42,7 +42,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-var-fn-method-order.ms:6:1: parse: a method that changes its receiver is written fn var Type.name(), with var after fn\n   |\n 6 | var fn Counter.inc() Void:\n   | ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-var-fn-method-order.ms:7:1: parse: a method that changes its receiver is written fn var Type.name(), with var after fn\n   |\n 7 | var fn Counter.inc() Void {\n   | ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

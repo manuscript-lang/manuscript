@@ -12,16 +12,16 @@
         "message": "Item has no member value; a type name is followed only by an enum case",
         "position": {
           "file": "golden-1336.ms",
-          "line": 7,
+          "line": 9,
           "column": 29,
-          "offset": 148
+          "offset": 142
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1336.ms:7:29: resolution: Item has no member value; a type name is followed only by an enum case\n   |\n 7 |         item => return Item.value\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1336.ms:9:29: resolution: Item has no member value; a type name is followed only by an enum case\n   |\n 9 |         item => return Item.value\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

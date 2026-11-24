@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn label(value Int) String:\n\treturn f\"{value}\"\n\ntest \"methods\":\n\t_labels := [1].map(transform: label)\n\t_convert := [2].map[String]\n\t_text := \" hello \".trim()\n"
+    "fmt": "fn label(value Int) String {\n\treturn f\"{value}\"\n}\n\ntest \"methods\" {\n\t_labels := [1].map(transform: label)\n\t_convert := [2].map[String]\n\t_text := \" hello \".trim()\n}\n"
   }
 }

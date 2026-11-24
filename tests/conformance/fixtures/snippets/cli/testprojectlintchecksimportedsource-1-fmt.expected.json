@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import value from \"./other.ms\"\n\nfn read() Int:\n\treturn value()\n"
+    "fmt": "import value from \"./other.ms\"\n\nfn read() Int {\n\treturn value()\n}\n"
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn read() Int:\n\treturn 1\n\nfn named(value Int = read()) Int:\n\treturn value\n"
+    "fmt": "fn read() Int {\n\treturn 1\n}\n\nfn named(value Int = read()) Int {\n\treturn value\n}\n"
   }
 }

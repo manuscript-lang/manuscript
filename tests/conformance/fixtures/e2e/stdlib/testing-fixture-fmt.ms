@@ -3,20 +3,26 @@
 // conform: origin=tests/e2e/testdata/stdlib/testing-fixture.ms
 import TestHooks, expect_equal from "@std/test/test.ms"
 
-type Counter:
-    value Int
+type Counter {
+	value Int
+}
 
-fn make_fixture() Counter:
-    return Counter(0)
+fn make_fixture() Counter {
+	return Counter(0)
+}
 
-fn var Counter.before_each() Void!:
-    self.value = 1
+fn var Counter.before_each() Void! {
+	self.value = 1
+}
 
-fn var Counter.after_each() Void!:
-    self.value = 10
+fn var Counter.after_each() Void! {
+	self.value = 10
+}
 
-test "first fixture use":
-    expect_equal(fixture.value, 1)?
+test "first fixture use" {
+	expect_equal(fixture.value, 1)?
+}
 
-test "second fixture use starts from clean state":
-    expect_equal(fixture.value, 1)?
+test "second fixture use starts from clean state" {
+	expect_equal(fixture.value, 1)?
+}

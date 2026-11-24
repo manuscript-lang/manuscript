@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\tInstant, monotonic from \"@std/time.ms\",\n)\n\nfn measure(start Int) Int:\n\tt := monotonic()\n\tvar i = start\n\tvar hits = 0\n\n\twhile i < 10000000:\n\t\thits += i % 3\n\t\ti += 1\n\n\telapsed := monotonic().difference(t).to_nanoseconds()\n\tline := f\"{start} {elapsed} {hits}\\n\"\n\tignored := stdout().write(line.to_bytes())\n\treturn hits\n\nfn main() Void:\n\tmeasure(-137)\n\tmeasure(0)\n\tmeasure(5)\n"
+    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\tInstant, monotonic from \"@std/time.ms\",\n)\n\nfn measure(start Int) Int {\n\tt := monotonic()\n\tvar i = start\n\tvar hits = 0\n\n\twhile i < 10000000 {\n\t\thits += i % 3\n\t\ti += 1\n\t}\n\n\telapsed := monotonic().difference(t).to_nanoseconds()\n\tline := f\"{start} {elapsed} {hits}\\n\"\n\tignored := stdout().write(line.to_bytes())\n\treturn hits\n}\n\nfn main() Void {\n\tmeasure(-137)\n\tmeasure(0)\n\tmeasure(5)\n}\n"
   }
 }

@@ -12,21 +12,24 @@ import (
 // the hex of its UTF-8 bytes; a list is `[x61,x62]`; path parts are five texts
 // separated by spaces.
 
-fn text(token String) String:
+fn text(token String) String {
 	digits := token.view(1, token.length())
 	bytes := hex_decode(digits, null) | .get_or("".to_bytes())
 	return bytes.decode_utf8() or ""
+}
 
-fn hex(value String) String:
+fn hex(value String) String {
 	return f"x{hex_encode(value.to_bytes())}"
+}
 
-fn list_of(token String) List[String]:
+fn list_of(token String) List[String] {
 	inner := token.slice(1, token.length() - 1)
-	if inner.is_empty(): return []
+	if inner.is_empty() { return [] }
 
 	return inner.split(",").map(item => text(item))
+}
 
-fn parts_of(token String) PathParts:
+fn parts_of(token String) PathParts {
 	f := token.split(" ").map(item => text(item))
 	return PathParts(
 		root: f[0].clone(),
@@ -35,8 +38,9 @@ fn parts_of(token String) PathParts:
 		extension: f[3].clone(),
 		name: f[4].clone(),
 	)
+}
 
-fn parts_text(parts PathParts) String:
+fn parts_text(parts PathParts) String {
 	return (
 		[
 			parts.root.clone(),
@@ -48,58 +52,72 @@ fn parts_text(parts PathParts) String:
 		.map(item => hex(item))
 		.join(" ")
 	)
+}
 
-fn result(outcome String!) String:
-	if value := outcome: return f"ok {hex(value)}"
+fn result(outcome String!) String {
+	if value := outcome { return f"ok {hex(value)}" }
 	return "err InvalidInput"
+}
 
-fn answer(rules PathOperations, f List[String]) String:
+fn answer(rules PathOperations, f List[String]) String {
 	op := f[0]
-	if op == "basename": return hex(rules.basename(text(f[2])))
-	if op == "basename_without": return hex(
-		rules.basename_without(text(f[2]), text(f[3]))
-	)
-	if op == "dirname": return hex(rules.dirname(text(f[2])))
-	if op == "extension": return hex(rules.extension(text(f[2])))
-	if op == "is_absolute": return if rules.is_absolute(text(f[2])): "1" else: "0"
-	if op == "normalize": return hex(rules.normalize(text(f[2])))
-	if op == "namespaced": return hex(rules.to_namespaced_path(text(f[2])))
-	if op == "parse": return parts_text(rules.parse(text(f[2])))
-	if op == "format": return hex(rules.format(parts_of(f[2])))
-	if op == "join": return hex(rules.join(list_of(f[2])))
+	if op == "basename" { return hex(rules.basename(text(f[2]))) }
+	if op == "basename_without" {
+		return hex(rules.basename_without(text(f[2]), text(f[3])))
+	}
+	if op == "dirname" { return hex(rules.dirname(text(f[2]))) }
+	if op == "extension" { return hex(rules.extension(text(f[2]))) }
+	if op == "is_absolute" {
+		return if rules.is_absolute(
+			text(f[2])
+		) { "1" } else { "0" }
+	}
+	if op == "normalize" { return hex(rules.normalize(text(f[2]))) }
+	if op == "namespaced" { return hex(rules.to_namespaced_path(text(f[2]))) }
+	if op == "parse" { return parts_text(rules.parse(text(f[2]))) }
+	if op == "format" { return hex(rules.format(parts_of(f[2]))) }
+	if op == "join" { return hex(rules.join(list_of(f[2]))) }
 
-	if op == "resolve":
-		parts := if f[3] == "[]": List[String]() else: list_of(f[3])
+	if op == "resolve" {
+		parts := if f[3] == "[]" { List[String]() } else { list_of(f[3]) }
 		return result(rules.resolve(text(f[2]), parts))
+	}
 
-	if op == "relative": return result(rules.relative(text(f[2]), text(f[3])))
+	if op == "relative" { return result(rules.relative(text(f[2]), text(f[3]))) }
 
-	if op == "glob":
-		if matched := rules.matches_glob(text(f[2]), text(f[3])):
-			return f"ok {if matched: 1 else: 0}"
+	if op == "glob" {
+		if matched := rules.matches_glob(text(f[2]), text(f[3])) {
+			return f"ok {if matched { 1 } else { 0 }}"
+		}
 		return "err InvalidInput"
+	}
 
 	return f"unknown case {op}"
+}
 
-test "path operations match the recorded corpus":
+test "path operations match the recorded corpus" {
 	raw := files().read("path.tsv", null).get_or("".to_bytes())
 	data := raw.decode_utf8() or ""
 	var checked = 0
 	var failures = List[String]()
 
-	for line in data.split("\n"):
-		if line.is_empty() or line.starts_with("#"): continue
+	for line in data.split("\n") {
+		if line.is_empty() or line.starts_with("#") { continue }
 
 		f := line.split("\t")
 		want := f[f.length() - 1]
-		rules := if f[1] == "1": win32() else: posix()
+		rules := if f[1] == "1" { win32() } else { posix() }
 		got := answer(rules, f)
 		checked += 1
-		if got != want and failures.length() < 10: failures.append(f"{line} -> {got}")
+		if got != want and failures.length() < 10 {
+			failures.append(f"{line} -> {got}")
+		}
+	}
 
-	if not failures.is_empty(): return fail(
-		f"{failures.length()} mismatches, first:\n{failures.join("\n")}"
-	)
-	if checked < 9000: return fail(f"only {checked} cases")
+	if not failures.is_empty() {
+		return fail(f"{failures.length()} mismatches, first:\n{failures.join("\n")}")
+	}
+	if checked < 9000 { return fail(f"only {checked} cases") }
 
 	return ok()
+}

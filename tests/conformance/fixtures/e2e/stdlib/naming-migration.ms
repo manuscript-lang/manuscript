@@ -5,29 +5,35 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-type Counter:
+type Counter {
 	calls Int
+}
 
-interface Defaults:
+interface Defaults {
 	var fn add_default(move key String, value Int) Void
 	var fn add_default_from(move key String, create fn(String) Int) Void
+}
 
-type DefaultAdapter:
+type DefaultAdapter {
 	values Map[String, Int]
+}
 
-fn var DefaultAdapter.add_default(move key String, value Int) Void:
+fn var DefaultAdapter.add_default(move key String, value Int) Void {
 	self.values.add_default(key, value)
+}
 
-fn var DefaultAdapter.add_default_from(move key String, create fn(String) Int) Void:
+fn var DefaultAdapter.add_default_from(move key String, create fn(String) Int) Void {
 	self.values.add_default_from(key, create)
+}
 
-fn eager(var counter Counter) Int:
+fn eager(var counter Counter) Int {
 	counter.calls += 1
 	return 99
+}
 
 fn key_length(key String) Int => key.length()
 
-test "default insertion keeps eager and lazy calls and receiver identity":
+test "default insertion keeps eager and lazy calls and receiver identity" {
 	var values = Map[String, Int]()
 	values.add("a", 1)
 
@@ -57,8 +63,9 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	values.add_default_from("ff", key_length)
 	expect_false(counter.calls != 1 or values.get("a") != 1)?
 	expect_equal(values.keys(), ["a", "b", "ccc", "d", "ff"])?
+}
 
-test "byte builders keep Void mutation function types":
+test "byte builders keep Void mutation function types" {
 	var bytes = BytesBuilder()
 	append_byte fn(UInt8) Void := bytes.append
 	append_byte(65)
@@ -66,8 +73,9 @@ test "byte builders keep Void mutation function types":
 	concat_bytes fn(Bytes) Void := bytes.append_bytes
 	concat_bytes("B".to_bytes())
 	expect_false(bytes.build() != "AB".to_bytes())?
+}
 
-test "copy names preserve Bytes and collection storage":
+test "copy names preserve Bytes and collection storage" {
 	bytes := Bytes([1, 2, 3])
 	copied := bytes.with_value(0, 9)
 	expect_false(bytes != Bytes([1, 2, 3]) or copied != Bytes([9, 2, 3]))?
@@ -80,3 +88,4 @@ test "copy names preserve Bytes and collection storage":
 	set := Set[Int]([1])
 	set.clone().add(2)
 	expect_equal(set.values(), [1])?
+}

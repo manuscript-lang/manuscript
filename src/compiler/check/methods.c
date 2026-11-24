@@ -139,7 +139,7 @@ static MsSymbolId receiver_symbol(Context *context, const MsDecl *decl, bool *pr
      * receiver form merge into a block, and the block is reported once. */
     if (!receiver_reported(program, context->module, decl, receiver->name)) {
       ms_check_report(context->program, context->module, decl->pos, MS_CHECK_TYPE,
-                      ms_string_from_span(ms_span_of_text("implementation receiver must be nominal source data; declare methods on a type or enum you declare, such as 'fn Point.show() String:', not on built-in or function types")));
+                      ms_string_from_span(ms_span_of_text("implementation receiver must be nominal source data; declare methods on a type or enum you declare, such as 'fn Point.show() String { ... }', not on built-in or function types")));
     }
     return 0;
   }

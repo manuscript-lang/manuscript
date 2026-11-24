@@ -83,15 +83,17 @@ Every value has a built-in `to_string() String`, needing no import or bound. A b
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn text[T](value T) String:
+fn text[T](value T) String {
     return value.to_string()
+}
 
-test "string conversion":
+test "string conversion" {
     count := 3
     convert fn() String := count.to_string
     _direct := count.to_string()
     _bound := convert()
     _embedded := f"{count}"
+}
 ```
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
@@ -102,11 +104,13 @@ A value of that type nested in a list, map, set, optional, record field or paylo
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Money:
+type Money {
     cents Int
+}
 
-fn Money.to_string() String:
+fn Money.to_string() String {
     return f"{self.cents / 100}.{self.cents % 100}"
+}
 ```
 
 ## Indexing and character boundaries
@@ -168,20 +172,27 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import panic from "@std/core.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    panic from "@std/core.ms",
+)
 
-import Bytes from "@std/bytes.ms"
+test "explicit byte conversion" {
+    if not ("é".length() == 2) {
+        return panic("check failed")
+    }
+    if not ("é".to_bytes().decode_utf8() == "é") {
+        return panic("check failed")
+    }
 
-test "explicit byte conversion":
-    if not ("é".length() == 2):
-        return panic("check failed")
-    if not ("é".to_bytes().decode_utf8() == "é"):
-        return panic("check failed")
     invalid String? := null
-    if not (Bytes([255]).decode_utf8() == invalid):
+    if not (Bytes([255]).decode_utf8() == invalid) {
         return panic("check failed")
-    if not ("-007".parse_int() == -7):
+    }
+    if not ("-007".parse_int() == -7) {
         return panic("check failed")
+    }
+}
 ```
 
 ## Repeating and splitting once
@@ -196,11 +207,13 @@ test "explicit byte conversion":
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn row(name String, amount Float) String:
+fn row(name String, amount Float) String {
     return name.pad_end(8, " ") + amount.to_fixed(2).pad_start(8, " ")
+}
 
-test "padding and fixed digits":
+test "padding and fixed digits" {
     expect_equal(row("total", 3.14159), "total       3.14")?
+}
 ```
 
 ## Binary data
@@ -211,16 +224,20 @@ test "padding and fixed digits":
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import BytesBuilder from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    BytesBuilder from "@std/bytes.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
-test "binary codecs":
+test "binary codecs" {
     var out = BytesBuilder()
     out.append_uint16_be(258)
     out.append_float64_le(1.5)
+
     data := out.build()
     expect_equal(data.uint16_be(0)?, 258)?
     expect_equal(data.float64_le(2)?, 1.5)?
+}
 ```
 
 ## Deterministic formatting

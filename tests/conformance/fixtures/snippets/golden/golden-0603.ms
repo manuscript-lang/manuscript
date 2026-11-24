@@ -3,10 +3,14 @@
 import stdout from "@std/io/io.ms"
 import File from "@std/io/io.ms"
 import Queue from "@std/queues.ms"
-interface Read:
+interface Read {
     fn get() Int
-type Val:
+}
+type Val {
     val Int
-impl Read for Val:
-    fn get() Int:
+}
+impl Read for Val {
+    fn get() Int {
         return self.val
+    }
+}

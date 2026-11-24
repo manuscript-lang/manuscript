@@ -2,11 +2,13 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/types/compatibility.md:69
 
-fn known() Result[Int, Error]:
-    number Int := Result[Int, Error].ok(1)?
-    return ok(number)
+fn known() Result[Int, Error] {
+	number Int := Result[Int, Error].ok(1)?
+	return ok(number)
+}
 
-fn unknown() Result[Int, Error]:
-    // Rejected: the operand?'s error type is undetermined.
-    number Int := ok(1)?
-    return ok(number)
+fn unknown() Result[Int, Error] {
+	// Rejected: the operand?'s error type is undetermined.
+	number Int := ok(1)?
+	return ok(number)
+}

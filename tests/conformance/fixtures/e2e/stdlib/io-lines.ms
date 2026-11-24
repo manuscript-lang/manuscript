@@ -11,75 +11,92 @@ import (
 	closed_reader, memory from "./support/streams.ms",
 )
 
-fn gather(move input ReadStream[Bytes], max_bytes Int? = null) List[String]!:
+fn gather(move input ReadStream[Bytes], max_bytes Int? = null) List[String]! {
 	return collect(lines(input, max_bytes), null)
+}
 
-test "an empty stream has no lines":
+test "an empty stream has no lines" {
 	expect_equal(gather(memory("")), ok([]))?
+}
 
-test "lines drop terminators and keep an unterminated last line":
+test "lines drop terminators and keep an unterminated last line" {
 	expect_equal(gather(memory("one\r\ntwo\n\nlast")), ok(["one", "two", "", "last"]))?
+}
 
-test "a final newline adds no empty line":
+test "a final newline adds no empty line" {
 	expect_equal(gather(memory("a\nb\n")), ok(["a", "b"]))?
+}
 
-test "an over-budget line fails the read after the lines before it":
+test "an over-budget line fails the read after the lines before it" {
 	var input = lines(memory("ok\ntoo long line\nnever"), 5)
 	var seen List[String] = []
 	var failure Error? = null
 
-	while true:
+	while true {
 		step := input.next()
 
-		if step.is_error():
+		if step.is_error() {
 			failure = step.err()
 			break
+		}
 
 		line := step.get()
 
-		if line != null:
+		if line != null {
 			seen.append(line.clone())
-		else:
+		} else {
 			break
+		}
+	}
 
 	expect_equal(seen, ["ok"])?
 	expect_equal(failure, Error("I/O: limit exceeded", kind: "EOVERFLOW"))?
+}
 
-test "a closed stream fails the first read with its error":
+test "a closed stream fails the first read with its error" {
 	var input = lines(closed_reader())
 	step := input.next()
 	expect_equal(step, error(Error("I/O: resource is closed", kind: "EBADF")))?
+}
 
-test "break and continue work in a stream loop":
+test "break and continue work in a stream loop" {
 	var seen List[String] = []
 
-	for line in lines(memory("1\nskip\n3\n4\n")):
+	for line in lines(memory("1\nskip\n3\n4\n")) {
 		text := line
-		if text == "skip": continue
-		if text == "4": break
+		if text == "skip" { continue }
+		if text == "4" { break }
 
 		seen.append(text.clone())
+	}
 
 	expect_equal(seen, ["1", "3"])?
+}
 
-type Countdown:
+type Countdown {
 	left Int
+}
 
-fn var Countdown.next() Int?:
-	if self.left == 0: return null
+fn var Countdown.next() Int? {
+	if self.left == 0 { return null }
 
 	self.left -= 1
 	return (self.left + 1)
+}
 
-test "any Iterator implementation works, including a temporary":
+test "any Iterator implementation works, including a temporary" {
 	var total = 0
-	for n in Countdown(3):
+	for n in Countdown(3) {
 		total += n
+	}
 	expect_equal(total, 6)?
+}
 
-test "an iterator behind the Iterator interface works":
+test "an iterator behind the Iterator interface works" {
 	var source Iterator[Int] = Countdown(2)
 	var seen List[Int] = []
-	for n in source:
+	for n in source {
 		seen.append(n)
+	}
 	expect_equal(seen, [2, 1])?
+}

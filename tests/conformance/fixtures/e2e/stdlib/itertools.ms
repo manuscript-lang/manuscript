@@ -12,29 +12,32 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "pairwise pairs neighbors":
+test "pairwise pairs neighbors" {
 	pairs := pairwise([1, 2, 3])
 	expect_equal(pairs.length(), 2)?
 	expect_equal(pairs[1].first, 2)?
 	expect_equal(pairs[1].second, 3)?
 	expect_equal(pairwise([1]).length(), 0)?
 	expect_equal(pairwise(List[Int]()).length(), 0)?
+}
 
-test "accumulate and cycle":
+test "accumulate and cycle" {
 	expect_equal(accumulate([1, 2, 3, 4], (a, b) => a + b), [1, 3, 6, 10])?
 	expect_equal(accumulate(List[Int](), (a, b) => a + b), List[Int]())?
 	expect_equal(cycle([1, 2], 3), [1, 2, 1, 2, 1, 2])?
 	expect_equal(cycle([1, 2], 0), List[Int]())?
+}
 
-test "zip_longest pads with none":
+test "zip_longest pads with none" {
 	zipped := zip_longest([1, 2, 3], ["a"])
 	expect_equal(zipped.length(), 3)?
 	expect_equal(zipped[0].first, 1)?
 	expect_equal(zipped[0].second, "a")?
 	expect_equal(zipped[2].first, 3)?
 	expect_equal(zipped[2].second, null)?
+}
 
-test "group_runs groups adjacent equal keys":
+test "group_runs groups adjacent equal keys" {
 	runs := group_runs([1, 1, 2, 1], n => n)
 	expect_equal(runs.length(), 3)?
 	expect_equal(runs[0].items, [1, 1])?
@@ -44,8 +47,9 @@ test "group_runs groups adjacent equal keys":
 	words := group_runs(["ant", "bee", "cat", "dog"], w => w.length())
 	expect_equal(words.length(), 1)?
 	expect_equal(group_runs(List[Int](), n => n).length(), 0)?
+}
 
-test "permutations and combinations":
+test "permutations and combinations" {
 	expect_equal(
 		permutations([1, 2, 3], 2),
 		[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]],
@@ -56,18 +60,21 @@ test "permutations and combinations":
 	expect_equal(combinations([1, 2, 3], 2), [[1, 2], [1, 3], [2, 3]])?
 	expect_equal(combinations([1, 2, 3], 3), [[1, 2, 3]])?
 	expect_equal(combinations([1, 2, 3], 0), [List[Int]()])?
+}
 
-test "product is the cartesian product":
+test "product is the cartesian product" {
 	expect_equal(product([[1, 2], [3, 4]]), [[1, 3], [1, 4], [2, 3], [2, 4]])?
 	expect_equal(product(List[List[Int]]()), [List[Int]()])?
 	expect_equal(product([[1], List[Int]()]), List[List[Int]]())?
+}
 
-test "sizes with no answer give an empty list":
+test "sizes with no answer give an empty list" {
 	expect_equal(permutations([1, 2], 3), List[List[Int]]())?
 	expect_equal(combinations([1, 2], -1), List[List[Int]]())?
 	expect_equal(cycle([1], -1), List[Int]())?
+}
 
-test "combinations of every size keep their order":
+test "combinations of every size keep their order" {
 	values := [10, 20, 30, 40]
 	expect_equal(combinations(values.clone(), 4), [[10, 20, 30, 40]])?
 	expect_equal(
@@ -79,35 +86,39 @@ test "combinations of every size keep their order":
 	expect_equal(combinations(List[Int](), 0), [[]])?
 
 	var many List[Int] = []
-	for i in 0..30: many.append(i)
+	for i in 0..30 { many.append(i) }
 	expect_equal(combinations(many.clone(), 30), [many.clone()])?
 	expect_equal(combinations(many.clone(), 29).length(), 30)?
+}
 
-test "product with an empty factor is empty wherever the factor sits":
+test "product with an empty factor is empty wherever the factor sits" {
 	some := [1, 2]
 	expect_equal(product([List[Int](), some.clone(), some.clone()]), List[List[Int]]())?
 	expect_equal(product([some.clone(), List[Int](), some.clone()]), List[List[Int]]())?
 	expect_equal(product([some.clone(), some.clone(), List[Int]()]), List[List[Int]]())?
 	expect_equal(product(List[List[Int]]()), [[]])?
 	expect_equal(product([some.clone()]), [[1], [2]])?
+}
 
-test "cycle empty input skips repetition":
+test "cycle empty input skips repetition" {
 	expect_equal(cycle(List[Int](), 9223372036854775807), List[Int]())?
 	expect_equal(cycle(List[Int](), 0), List[Int]())?
-
 	expect_equal(cycle(List[Int](), -1), List[Int]())?
 	expect_equal(cycle(["a", "b"], 2), ["a", "b", "a", "b"])?
+}
 
-test "full-size combinations do not consume call depth":
+test "full-size combinations do not consume call depth" {
 	var values List[Int] = []
-	for i in 0..1000000:
+	for i in 0..1000000 {
 		values.append(i)
+	}
 
 	result := combinations(values, values.length())
 	expect_equal(result.length(), 1)?
 	expect_equal(result[0], values)?
+}
 
-test "combinations distinguish equal positions and own nested copies":
+test "combinations distinguish equal positions and own nested copies" {
 	expect_equal(combinations([1, 1, 2], 2), [[1, 1], [1, 2], [1, 2]])?
 
 	input := [[1], [2], [3]]
@@ -115,10 +126,10 @@ test "combinations distinguish equal positions and own nested copies":
 	result[0][0].append(9)
 	expect_equal(input, [[1], [2], [3]])?
 	expect_equal(result[1], [[1], [3]])?
-
 	expect_equal(combinations([1], 2), List[List[Int]]())?
+}
 
-test "zero-size permutations preserve shape and out-of-range sizes are empty":
+test "zero-size permutations preserve shape and out-of-range sizes are empty" {
 	empty := List[Int]()
 	expect_equal(permutations(empty), [List[Int]()])?
 	expect_equal(permutations(empty, null), [List[Int]()])?
@@ -126,18 +137,19 @@ test "zero-size permutations preserve shape and out-of-range sizes are empty":
 	expect_equal(permutations([[1], [2]], 0), [List[List[Int]]()])?
 
 	var values List[Int] = []
-	for i in 0..100000:
+	for i in 0..100000 {
 		values.append(i)
+	}
 	expect_equal(permutations(values, 0), [List[Int]()])?
 	expect_equal(values.length(), 100000)?
 	expect_equal(values[99999], 99999)?
-
 	expect_equal(permutations(empty, -1), List[List[Int]]())?
 	expect_equal(permutations(empty, 1), List[List[Int]]())?
 	expect_equal(permutations([1], -9223372036854775808), List[List[Int]]())?
 	expect_equal(permutations([1], 9223372036854775807), List[List[Int]]())?
+}
 
-test "nonzero permutations retain position order and own their results":
+test "nonzero permutations retain position order and own their results" {
 	expect_equal(
 		permutations([1, 1, 2], 2),
 		[[1, 1], [1, 2], [1, 1], [1, 2], [2, 1], [2, 1]],
@@ -149,3 +161,4 @@ test "nonzero permutations retain position order and own their results":
 	result[0][0].append(9)
 	expect_equal(input, [[1], [2], [3]])?
 	expect_equal(result[1], [[1], [3]])?
+}

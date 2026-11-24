@@ -1,2 +1,3 @@
-export fn one() Int:
+export fn one() Int {
 	return 1
+}

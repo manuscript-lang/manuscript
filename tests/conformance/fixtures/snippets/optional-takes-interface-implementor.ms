@@ -3,28 +3,33 @@
 // conform: origin=thread/type-checker-bug-bash
 import stdout from "@std/io/io.ms"
 
-interface Shape:
+interface Shape {
 	fn area() Int
+}
 
-type Sq:
+type Sq {
 	n Int
+}
 
 fn Sq.area() Int => self.n * self.n
 
-type Holder:
+type Holder {
 	s Shape?
+}
 
-fn pick(b Bool) Shape?:
-	if b: return Sq(3)
+fn pick(b Bool) Shape? {
+	if b { return Sq(3) }
 	return null
+}
 
-fn take(x Shape?) Int:
+fn take(x Shape?) Int {
 	s := x
-	if s != null: return s.area()
+	if s != null { return s.area() }
 
 	return -1
+}
 
-fn main() Void:
+fn main() Void {
 	h := Holder(Sq(4))
 	t Shape? := Sq(5)
 	var v Shape? = null
@@ -36,3 +41,4 @@ fn main() Void:
 		)
 		.get()
 	)
+}

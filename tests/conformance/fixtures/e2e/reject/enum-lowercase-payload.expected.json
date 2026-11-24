@@ -12,16 +12,16 @@
         "message": "case payload arity mismatch; case has 1 payload fields, found 0 bindings (use _ to ignore one)",
         "position": {
           "file": "enum-lowercase-payload.ms",
-          "line": 8,
+          "line": 9,
           "column": 9,
-          "offset": 135
+          "offset": 140
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/enum-lowercase-payload.ms:8:9: type: case payload arity mismatch; case has 1 payload fields, found 0 bindings (use _ to ignore one)\n   |\n 8 |         case => return 0\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/enum-lowercase-payload.ms:9:9: type: case payload arity mismatch; case has 1 payload fields, found 0 bindings (use _ to ignore one)\n   |\n 9 |         case => return 0\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

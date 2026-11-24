@@ -5,34 +5,41 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-type Row:
+type Row {
 	name String
 	tags List[String]
+}
 
-type Bad:
+type Bad {
 	why String
+}
 
-fn first_tag(r Row) String?:
+fn first_tag(r Row) String? {
 	return r.tags[0]
+}
 
-fn named(r Row) String!Bad:
+fn named(r Row) String!Bad {
 	return ok(r.name.clone())
+}
 
-fn relay(result Row!Bad, var visits List[Int]) Row!Bad:
+fn relay(result Row!Bad, var visits List[Int]) Row!Bad {
 	visits.append(1)
 	return result
+}
 
-fn tail(result Row!Bad, var visits List[Int]) String!Bad:
+fn tail(result Row!Bad, var visits List[Int]) String!Bad {
 	row := relay(result, visits).clone()?
 	return ok(row.name.clone())
+}
 
-fn make(n Int) Row:
+fn make(n Int) Row {
 	return Row(
 		f"row-{n}-with-a-heap-allocated-name",
 		[f"tag-{n}-with-a-heap-allocated-text"],
 	)
+}
 
-test "wrapped parts are references into their arguments":
+test "wrapped parts are references into their arguments" {
 	var visits List[Int] = []
 	r := make(1)
 	o String? := r.name
@@ -61,3 +68,4 @@ test "wrapped parts are references into their arguments":
 		)?
 	)
 	visits | expect_equal([1, 1, 1])?
+}

@@ -27,16 +27,20 @@ Measured on main with `ms build --build-type Release`.
 | `nd = wrap(nd, i)` where `wrap` is too big to inline | 1.8 s / 7.4 s / 33 s | linear |
 
 ```manuscript
-type Tree:
+type Tree {
     case Leaf
     case Node(l: Tree, v: Int, r: Tree)
+}
 
-fn insert(t: Tree, x: Int) Tree:
-    match t:
+fn insert(t: Tree, x: Int) Tree {
+    match t {
         Leaf: return Node(Leaf, x, Leaf)
-        Node(l, v, r):
-            if x < v: return Node(insert(l, x), v, r)
+        Node(l, v, r) => {
+            if x < v { return Node(insert(l, x), v, r) }
             return Node(l, v, insert(r, x))
+        }
+    }
+}
 ```
 
 - Verified: the ownership pass infers `Consume` for such parameters (`crates/ms-check/src/ownership/walk.rs:173-190`, `ParamMode::Consume`, exposed as `facts.parameters`), and `OWNERSHIP.md` says a payload moved out of a parameter makes the scrutinee consume it.

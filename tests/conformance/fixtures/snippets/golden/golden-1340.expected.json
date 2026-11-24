@@ -12,15 +12,15 @@
         "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1340.ms",
-          "line": 6,
+          "line": 7,
           "column": 1,
-          "offset": 104
+          "offset": 107
         },
         "end": {
           "file": "golden-1340.ms",
-          "line": 6,
+          "line": 7,
           "column": 5,
-          "offset": 108
+          "offset": 111
         }
       },
       {
@@ -29,28 +29,28 @@
         "message": "remove the ':' between 'value' and its type; write value Type",
         "position": {
           "file": "golden-1340.ms",
-          "line": 8,
+          "line": 10,
           "column": 16,
-          "offset": 177
+          "offset": 183
         },
         "end": {
           "file": "golden-1340.ms",
-          "line": 8,
+          "line": 10,
           "column": 17,
-          "offset": 178
+          "offset": 184
         },
         "fix": {
           "position": {
             "file": "golden-1340.ms",
-            "line": 8,
+            "line": 10,
             "column": 16,
-            "offset": 177
+            "offset": 183
           },
           "end": {
             "file": "golden-1340.ms",
-            "line": 8,
+            "line": 10,
             "column": 17,
-            "offset": 178
+            "offset": 184
           },
           "replacement": ""
         }
@@ -59,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1340.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Error for Failure[T]:\n   | ^^^^\n<DIR>/golden-1340.ms:8:16: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 | fn use[T](value: Result[Int, Failure[T]]) Int:\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1340.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Error for Failure[T] {\n   | ^^^^\n<DIR>/golden-1340.ms:10:16: parse: remove the ':' between 'value' and its type; write value Type\n    |\n 10 | fn use[T](value: Result[Int, Failure[T]]) Int {\n    |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

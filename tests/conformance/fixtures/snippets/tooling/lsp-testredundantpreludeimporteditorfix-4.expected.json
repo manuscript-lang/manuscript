@@ -14,26 +14,26 @@
           "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
           "line": 5,
           "column": 5,
-          "offset": 209
+          "offset": 206
         },
         "end": {
           "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
           "line": 5,
           "column": 9,
-          "offset": 213
+          "offset": 210
         },
         "fix": {
           "position": {
             "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
             "line": 5,
             "column": 5,
-            "offset": 209
+            "offset": 206
           },
           "end": {
             "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
             "line": 5,
             "column": 10,
-            "offset": 214
+            "offset": 211
           },
           "replacement": ""
         }
@@ -46,28 +46,28 @@
           "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
           "line": 6,
           "column": 5,
-          "offset": 228
+          "offset": 222
         },
         "end": {
           "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
           "line": 6,
           "column": 14,
-          "offset": 237
+          "offset": 231
         },
         "fix": {
           "position": {
             "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
             "line": 5,
             "column": 9,
-            "offset": 213
+            "offset": 210
           },
           "end": {
             "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
             "line": 6,
             "column": 15,
-            "offset": 238
+            "offset": 232
           },
-          "replacement": "  // keep\n    "
+          "replacement": "  // keep\n\t"
         }
       }
     ],

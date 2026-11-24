@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Equal:\n\tfn same() Bool\n"
+    "fmt": "interface Equal {\n\tfn same() Bool\n}\n"
   }
 }

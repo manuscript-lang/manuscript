@@ -5,45 +5,53 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-type Counter:
+type Counter {
 	calls Int
+}
 
-type Pending:
+type Pending {
 	values List[Int]
+}
 
-fn counted(var counter Counter) Counter:
+fn counted(var counter Counter) Counter {
 	counter.calls += 1
 	return counter.clone()
+}
 
-fn require_value[T, E](cause E, value T?) T!E:
+fn require_value[T, E](cause E, value T?) T!E {
 	return ok_or(value, cause)
+}
 
-fn require_lazy[T, E](create fn() E, value T?) T!E:
-	if value != null: return ok(value)
-
+fn require_lazy[T, E](create fn() E, value T?) T!E {
+	if value != null { return ok(value) }
 	return error(create())
+}
 
-fn success_only[T, E](value T!E) T?:
-	if item := value: return item
+fn success_only[T, E](value T!E) T? {
+	if item := value { return item }
 	return null
+}
 
 fn reduce_map[K Hashable, V, A Clonable](
 	values Map[K, V],
 	initial A,
 	step fn(A, K, V) A
-) A:
+) A {
 	return values.fold[A](initial.clone(), step)
+}
 
-fn reduce_set[T Hashable, A Clonable](values Set[T], initial A, step fn(A, T) A) A:
+fn reduce_set[T Hashable, A Clonable](values Set[T], initial A, step fn(A, T) A) A {
 	return values.fold(initial.clone(), step)
+}
 
 fn locate[K Hashable, V Clonable](
 	values Map[K, V],
 	predicate fn(K, V) Bool
-) MapEntry[K, V]?:
+) MapEntry[K, V]? {
 	return values.find(predicate)
+}
 
-test "conversions and collection queries are callable":
+test "conversions and collection queries are callable" {
 	present Int? := 2
 	missing Int? := null
 	ok_or(present, Error("absent")).get() | expect_equal(2)?
@@ -69,8 +77,9 @@ test "conversions and collection queries are callable":
 	expect_equal(values.find(n => n == 1) or panic("called Optional.get() on null"), 1)?
 	expect_true((values.any(n => n == 1)))?
 	expect_true((values.all(n => n > 0)))?
+}
 
-test "conversions retain unconstrained payloads nesting and lazy counts":
+test "conversions retain unconstrained payloads nesting and lazy counts" {
 	var counter = Counter(0)
 	present Int? := 0
 	missing Int? := null
@@ -130,8 +139,9 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 			or panic("called Optional.get() on null")
 		).err().message | expect_equal("nested")?
 	)
+}
 
-test "Map fold uses ordered snapshots and returns independent accumulators":
+test "Map fold uses ordered snapshots and returns independent accumulators" {
 	var empty_calls List[Int] = []
 	values Map[String, Counter] := {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
 	initial List[String] := []
@@ -139,12 +149,11 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 	var visits = reduce_map(
 		values.clone(),
 		initial.clone(),
-		fn acc,
-		k,
-		v:
+		(acc, k, v) => {
 			var next = acc.clone()
 			next.append(k + v.calls.to_string())
 			return next
+		}
 	)
 
 	(visits != ["b2", "a1", "c3"] or not (initial.is_empty())) | expect_false?
@@ -156,11 +165,10 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 
 	var untouched = fold(
 		step: (
-			fn acc,
-			k,
-			v:
+			(acc, k, v) => {
 				empty_calls.append(1)
 				return acc.clone()
+			}
 		),
 		initial: initial.clone(),
 	)
@@ -173,11 +181,12 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 	var chain_1 = Map[String, Int]()
 	chain_1.add("a", 3)
 
-	nested := (chain_1.fold(success, (acc, k, v) => acc.map(n => (n + v))))
+	nested := chain_1.fold(success, (acc, k, v) => acc.map(n => (n + v)))
 	nested.get() | expect_equal(5)?
 	empty_calls.is_empty() | expect_true?
+}
 
-test "Map find returns fresh entry shells with copied payloads":
+test "Map find returns fresh entry shells with copied payloads" {
 	var empty_calls List[Int] = []
 	counter := Counter(2)
 	values Map[String, Counter] := {
@@ -189,10 +198,10 @@ test "Map find returns fresh entry shells with copied payloads":
 	found := (
 		locate(
 			values.clone(),
-			fn k,
-			v:
+			(k, v) => {
 				visits.append(k.clone())
 				return k == "a"
+			}
 		)
 		or panic("called Optional.get() on null")
 	)
@@ -223,17 +232,18 @@ test "Map find returns fresh entry shells with copied payloads":
 		not (
 			empty.find(
 				(
-					fn k,
-					v:
+					(k, v) => {
 						empty_calls.append(1)
 						return false
+					}
 				)
 			) == null
 		)
 	)?
 	empty_calls.is_empty() | expect_true?
+}
 
-test "Map predicates short circuit over snapshots including empty receivers":
+test "Map predicates short circuit over snapshots including empty receivers" {
 	var empty_calls List[Int] = []
 	var values Map[String, Int] = {"b": 2, "a": 1, "c": 3}
 	var seen List[String] = []
@@ -242,13 +252,13 @@ test "Map predicates short circuit over snapshots including empty receivers":
 		(
 			not (
 				any_of(
-					fn k,
-					v:
+					(k, v) => {
 						seen.append(k.clone())
 						values.remove("a")
 						values.add("c", 99)
 						values.add("new", 4)
 						return v == 1
+					}
 				)
 			)
 			or seen != ["b", "a"]
@@ -264,13 +274,13 @@ test "Map predicates short circuit over snapshots including empty receivers":
 	expect_false(
 		(
 			every(
-				predicate: fn k,
-				v:
+				predicate: (k, v) => {
 					seen.append(k.clone())
 					values.remove("a")
 					values.add("c", 99)
 					values.add("new", 4)
 					return v > 1
+				}
 			)
 			or seen != ["b", "a"]
 		)
@@ -279,10 +289,10 @@ test "Map predicates short circuit over snapshots including empty receivers":
 	expect_false(
 		values.any(
 			(
-				fn k,
-				v:
+				(k, v) => {
 					empty_calls.append(1)
 					return false
+				}
 			)
 		)
 	)?
@@ -290,10 +300,10 @@ test "Map predicates short circuit over snapshots including empty receivers":
 		(
 			values.all(
 				(
-					fn k,
-					v:
+					(k, v) => {
 						empty_calls.append(1)
 						return true
+					}
 				)
 			)
 		)
@@ -302,17 +312,20 @@ test "Map predicates short circuit over snapshots including empty receivers":
 	complete Map[String, Int] := {"b": 2, "a": 1, "c": 3}
 	expect_false((complete.any((k, v) => false) or not (complete.all((k, v) => true))))?
 	empty_calls.is_empty() | expect_true?
+}
 
-type Key:
+type Key {
 	id Int
 	label String
+}
 
-fn Key.equals(other Key) Bool:
+fn Key.equals(other Key) Bool {
 	return self.id == other.id
+}
 
 fn Key.hash() Int => 0
 
-test "Set fold and find preserve ordered snapshots and copied payloads":
+test "Set fold and find preserve ordered snapshots and copied payloads" {
 	var empty_calls List[Int] = []
 	a := Key(1, "a")
 	b := Key(2, "b")
@@ -323,11 +336,11 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	var visits = reduce_set(
 		values.clone(),
 		initial.clone(),
-		fn acc,
-		v:
+		(acc, v) => {
 			var next = acc.clone()
 			next.append(v.label.clone())
 			return next
+		}
 	)
 
 	visits | expect_equal(["b", "a", "c"])?
@@ -339,10 +352,10 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	var empty_result = bound_empty(
 		initial.clone(),
 		(
-			fn acc,
-			v:
+			(acc, v) => {
 				empty_calls.append(1)
 				return acc.clone()
+			}
 		),
 	)
 
@@ -357,9 +370,10 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	find := values.clone().find
 	var found = (
 		find(
-			fn v:
+			v => {
 				seen.append(v.id)
 				return v.id == 1
+			}
 		)
 		or panic("called Optional.get() on null")
 	).clone()
@@ -371,9 +385,10 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 		not (
 			values.find(
 				(
-					fn v:
+					v => {
 						empty_calls.append(1)
 						return false
+					}
 				)
 			) == null
 		)
@@ -382,8 +397,9 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	flags := Set[Bool]([false])
 	expect_false(flags.find(v => true) or panic("called Optional.get() on null"))?
 	empty_calls.is_empty() | expect_true?
+}
 
-test "Set predicates short circuit over snapshots and keep empty identities":
+test "Set predicates short circuit over snapshots and keep empty identities" {
 	var empty_calls List[Int] = []
 	var values = Set[Int]([2, 1, 3])
 	var seen List[Int] = []
@@ -392,11 +408,12 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 		(
 			not (
 				any_of(
-					fn v:
+					v => {
 						seen.append(v)
 						values.remove(1)
 						values.add(4)
 						return v == 1
+					}
 				)
 			)
 			or seen != [2, 1]
@@ -412,11 +429,12 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 	expect_false(
 		(
 			every(
-				fn v:
+				v => {
 					seen.append(v)
 					values.remove(1)
 					values.add(4)
 					return v > 1
+				}
 			)
 			or seen != [2, 1]
 		)
@@ -425,9 +443,10 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 	expect_false(
 		values.any(
 			(
-				fn v:
+				v => {
 					empty_calls.append(1)
 					return false
+				}
 			)
 		)
 	)?
@@ -435,9 +454,10 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 		(
 			values.all(
 				(
-					fn v:
+					v => {
 						empty_calls.append(1)
 						return true
+					}
 				)
 			)
 		)
@@ -447,17 +467,18 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 	expect_false(complete.any(v => false) or not (complete.all(v => true)))?
 	expect_true((complete.find(v => false) == null))?
 	empty_calls.is_empty() | expect_true?
+}
 
-test "nonmatching queries and all-true predicates visit the complete snapshot":
+test "nonmatching queries and all-true predicates visit the complete snapshot" {
 	map Map[String, Int] := {"b": 2, "a": 1, "c": 3}
 	var map_visits List[String] = []
 	expect_false(
 		(
 			map.any(
-				fn k,
-				v:
+				(k, v) => {
 					map_visits.append(k.clone())
 					return false
+				}
 			)
 			or map_visits != ["b", "a", "c"]
 		)
@@ -467,10 +488,10 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 		(
 			not (
 				map.all(
-					fn k,
-					v:
+					(k, v) => {
 						map_visits.append(k.clone())
 						return true
+					}
 				)
 			)
 			or map_visits != ["b", "a", "c"]
@@ -481,10 +502,10 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 		(
 			not (
 				map.find(
-					fn k,
-					v:
+					(k, v) => {
 						map_visits.append(k.clone())
 						return false
+					}
 				) == null
 			)
 			or map_visits != ["b", "a", "c"]
@@ -496,9 +517,10 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	expect_false(
 		(
 			set.any(
-				fn v:
+				v => {
 					set_visits.append(v)
 					return false
+				}
 			)
 			or set_visits != [2, 1, 3]
 		)
@@ -508,9 +530,10 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 		(
 			not (
 				set.all(
-					fn v:
+					v => {
 						set_visits.append(v)
 						return true
+					}
 				)
 			)
 			or set_visits != [2, 1, 3]
@@ -521,20 +544,23 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 		(
 			not (
 				set.find(
-					fn v:
+					v => {
 						set_visits.append(v)
 						return false
+					}
 				) == null
 			)
 			or set_visits != [2, 1, 3]
 		)
 	)?
+}
 
-fn find_port(port Int?) Int!:
+fn find_port(port Int?) Int! {
 	value := ok_or(port.clone(), Error("missing"))?
 	return ok(value)
+}
 
-test "ok_or reports its explicit cause":
+test "ok_or reports its explicit cause" {
 	absent Int? := null
 	direct Int! := ok_or(absent, Error("missing"))
 	direct.err().message | expect_equal("missing")?
@@ -543,3 +569,4 @@ test "ok_or reports its explicit cause":
 
 	named Int!Error := ok_or(absent, Error("port"))
 	named.err().message | expect_equal("port")?
+}

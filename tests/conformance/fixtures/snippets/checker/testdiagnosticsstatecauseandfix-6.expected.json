@@ -12,16 +12,16 @@
         "message": "missing argument a: Int in call to g; add 'a: <Int>'",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-6.ms",
-          "line": 8,
+          "line": 9,
           "column": 12,
-          "offset": 197
+          "offset": 195
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-6.ms:8:12: type: missing argument a: Int in call to g; add 'a: <Int>'\n   |\n 8 |     return g()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-6.ms:9:12: type: missing argument a: Int in call to g; add 'a: <Int>'\n   |\n 9 |     return g()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

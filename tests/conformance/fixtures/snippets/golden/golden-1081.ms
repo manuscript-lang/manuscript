@@ -1,4 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn work() Int:
-    return initial_account_balance + pending_deposit_total * applicable_exchange_rate - pending_withdrawal_total
+fn work() Int {
+	return (
+		initial_account_balance
+		+ pending_deposit_total * applicable_exchange_rate
+		- pending_withdrawal_total
+	)
+}

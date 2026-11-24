@@ -12,8 +12,9 @@ export extern fn msrt_promise_take[T](id Int) move T?
 // A result held in a slot of its own: taking `Slot[T]` instead of `T` tells a result
 // that is `null` (`T` nullable) from a result that is gone, which `T?` of a nullable
 // `T` cannot. It has the layout of `T`.
-export type Slot[T]:
+export type Slot[T] {
 	value T
+}
 
 // Waits for the promise without a limit and takes its value. `null` when it ended any
 // other way; `msrt_promise_wait` then says which.

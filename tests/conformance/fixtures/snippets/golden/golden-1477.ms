@@ -1,13 +1,18 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Crash:
+interface Crash {
     fn run() Int
-type Item:
+}
+type Item {
     value Int
-impl Crash for Item:
-    fn run() Int:
+}
+impl Crash for Item {
+    fn run() Int {
         return 1 / self.value
-export fn main() Int:
+    }
+}
+export fn main() Int {
     item := Item(0)
     run := item.run
     return run()
+}

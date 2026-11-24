@@ -1,2 +1,3 @@
-fn g() Int:
+fn g() Int {
     return text{{steps}}
+}

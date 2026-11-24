@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=pkg/build/compiler_test.go:108 TestRejectedConformanceVariants
-fn increase(item Int) Int:
-    return item + 1
+fn increase(item Int) Int {
+	return item + 1
+}

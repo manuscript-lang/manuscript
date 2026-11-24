@@ -54,27 +54,35 @@
 import ProcessGroup from "@std/os/processes.ms"
 import Channel from "@std/concurrency/tasks.ms"
 
-type HashConfig:
+type HashConfig {
     algorithm String
+}
 
-fn hasher(parent Channel[String, Bytes], argument HashConfig):
-    while true:
-        if chunk := parent.receive():
+fn hasher(parent Channel[String, Bytes], argument HashConfig) {
+    while true {
+        if chunk := parent.receive() {
             parent.send(digest(argument.algorithm, chunk))
-        else:
+        } else {
             break
+        }
+    }
+}
 
-fn hash_all(chunks: List[Bytes]) List[String]:
+fn hash_all(chunks: List[Bytes]) List[String] {
     var digests = List[String]()
-    with group := ProcessGroup():
+    with group := ProcessGroup() {
         worker := group.spawn(hasher, HashConfig(algorithm="sha256"))
-        for chunk in chunks:
+        for chunk in chunks {
             worker.send(chunk.clone())
-            if digest := worker.receive():
+            if digest := worker.receive() {
                 digests.append(digest)
+            }
+        }
         worker.close_input()
         worker.wait()
+    }
     return digests
+}
 ```
 
 Illustrative: `digest` is a placeholder; `if let` is the documented unwrap (`documentation/core-language/control-flow/conditionals.md:58`); `receive() -> Optional[T]` follows `design/proposals/taskgroup.md:43`. The parent sends one request and reads one reply per iteration, so neither side blocks on a full buffer. A producer that sends many messages before reading replies must run its sends and receives in different tasks, because both directions are bounded.

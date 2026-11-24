@@ -339,7 +339,7 @@ MS_NODISCARD static bool group_entry(Parser *p, MsToken keyword, const char *kw,
     return false;
   }
   /* A block lambda value ends at its dedent, which also ends the line. */
-  return parse_previous(p).kind == MS_T_Dedent || parse_need(p, MS_T_Newline);
+  return parse_previous(p).kind == MS_T_BlockClose || parse_need(p, MS_T_Newline);
 }
 
 /* The `( ... )` after a consumed `var`. The lexer ends each line of the group with a newline. */

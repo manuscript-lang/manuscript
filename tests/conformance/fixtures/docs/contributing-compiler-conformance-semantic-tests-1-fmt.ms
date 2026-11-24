@@ -3,7 +3,9 @@
 // conform: origin=documentation/contributing/compiler/conformance/semantic-tests.md:14
 import panic from "@std/core.ms"
 
-test "checked decrement":
-    value := 3
-    if not (value - 1 > 0):
-        return panic(message: "check failed")
+test "checked decrement" {
+	value := 3
+	if not (value - 1 > 0) {
+		return panic(message: "check failed")
+	}
+}

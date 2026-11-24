@@ -10,7 +10,7 @@ import (
 	closed_reader, memory from "./support/streams.ms",
 )
 
-test "stream compositions preserve line endings and EOF":
+test "stream compositions preserve line endings and EOF" {
 	found := collect(lines(memory("one\r\ntwo\nlast")), null)?
 	expect_equal(found, ["one", "two", "last"])?
 
@@ -20,15 +20,17 @@ test "stream compositions preserve line endings and EOF":
 	moved := copy(from_bytes("é🙂".to_bytes()), file.writer()?)?
 	expect_equal(moved > 0, true)?
 	expect_equal((read_file(path).wait()?), "é🙂".to_bytes())?
+}
 
-test "streams enforce byte limits and preserve original errors":
+test "streams enforce byte limits and preserve original errors" {
 	limited Bytes! := error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(read_all(memory("abc"), 2), limited)?
 
 	closed Bytes! := error(Error("I/O: resource is closed", kind: "EBADF"))
 	expect_equal(read_all(closed_reader(), null), closed)?
+}
 
-test "a reader keeps the shared file open after the handle closes":
+test "a reader keeps the shared file open after the handle closes" {
 	directory := temporary("manuscript-closed-lines-")?
 	path := f"{directory.path()}/lines.txt"
 	write_file(path, "first\nsecond\nlast").wait()?
@@ -38,3 +40,4 @@ test "a reader keeps the shared file open after the handle closes":
 	expect_equal((input.next()?), "first")?
 	handle.close()?
 	expect_equal((input.next()?), "second")?
+}

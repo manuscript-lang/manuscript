@@ -33,12 +33,14 @@ export type PromiseOptions
 export fn promise[U](entry fn() U!, options PromiseOptions = PromiseOptions()) Promise[U]
 
 export type Cancel                       // the owner: a resource, freed at scope end
-impl Cancel:
+impl Cancel {
     fn signal() Signal                   // a copyable handle (generation + slot index)
     fn cancel() Unit                     // idempotent; never waits
+}
 export type Signal                       // plain data; `.clone()` copies it
-impl Signal:
+impl Signal {
     fn cancelled() Bool                  // for CPU loops that never wait
+}
 
 stop := cancel_switch()          // opaque types are made by a function, like `pipe`
 a := promise(fn: crunch(data), options: PromiseOptions(timeout: seconds(5), cancel: stop.signal()))

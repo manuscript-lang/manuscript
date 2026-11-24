@@ -12,16 +12,16 @@
         "message": "expected Int, found String (in the return value)",
         "position": {
           "file": "seed-0030.ms",
-          "line": 17,
+          "line": 19,
           "column": 12,
-          "offset": 518
+          "offset": 505
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0030.ms:17:12: type: expected Int, found String (in the return value)\n    |\n 17 |     return \"not an int\"\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0030.ms:19:12: type: expected Int, found String (in the return value)\n    |\n 19 |     return \"not an int\"\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

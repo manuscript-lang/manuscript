@@ -15,16 +15,21 @@ There is one stream type for memory and for waiting sources. A source that touch
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import ReadStream from "@std/io/io.ms"
-import Bytes from "@std/bytes.ms"
-import lines from "@std/io/steps.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    ReadStream from "@std/io/io.ms",
+    lines from "@std/io/steps.ms",
+)
 
-fn count_errors(move input ReadStream[Bytes]) Int!:
+fn count_errors(move input ReadStream[Bytes]) Int! {
     var errors = 0
-    for line in input | lines:       // each step may wait for the source
-        if line.contains("ERROR"):
+    for line in input | lines {  // each step may wait for the source
+        if line.contains("ERROR") {
             errors += 1
+        }
+    }
     return ok(errors)
+}
 ```
 
 - `next()` returns `T?!`: `null` marks the end and an error is a failed read. A closed stream is at its end. `next(timeout: d)` bounds one read: it fails with `ETIMEDOUT` once the read has waited `d` in all (a stalled socket, an empty pipe), so a loop can give up on a silent server. The source may be left mid-item, so close the stream after a timeout.
@@ -42,10 +47,12 @@ fn count_errors(move input ReadStream[Bytes]) Int!:
 ```manuscript
 import WriteStream from "@std/io/io.ms"
 
-fn dump(rows List[String], var out WriteStream[String]) Void!:
-    for row in rows:
+fn dump(rows List[String], var out WriteStream[String]) Void! {
+    for row in rows {
         out.write(f"{row}\n")?
+    }
     return out.flush()
+}
 ```
 
 ## Pipelines
@@ -54,19 +61,28 @@ Each step in `@std/io/steps.ms` takes its input first and by move, so a pipeline
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import Bytes from "@std/bytes.ms"
-import ReadStream from "@std/io/io.ms"
-import from_bytes, collect from "@std/io/streams.ms"
-import lines, filter, map from "@std/io/steps.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    ReadStream from "@std/io/io.ms",
+    filter, lines, map from "@std/io/steps.ms",
+    collect, from_bytes from "@std/io/streams.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
-fn line_lengths(move input ReadStream[Bytes]) ReadStream[Int]:
-    return input | lines | filter(line => line != "") | map(line => line.length())
+fn line_lengths(move input ReadStream[Bytes]) ReadStream[Int] {
+    return (
+        input
+        | lines
+        | filter(line => line != "")
+        | map(line => line.length())
+    )
+}
 
-test "measure lines":
+test "measure lines" {
     input := from_bytes("first\n\nok\n".to_bytes())
     lengths := collect(line_lengths(input), max_items: 10)?
     expect_equal(lengths, [5, 2])?
+}
 ```
 
 | Step | Result |
@@ -92,23 +108,29 @@ Save as `pipe_test.ms` and run `ms test pipe_test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import pipe, WriteStream from "@std/io/io.ms"
-import promise from "@std/concurrency/promise.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    promise from "@std/concurrency/promise.ms",
+    WriteStream, pipe from "@std/io/io.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
-fn send_numbers(var out WriteStream[Int]) Void!:
-    for n in [1, 2, 3]:
+fn send_numbers(var out WriteStream[Int]) Void! {
+    for n in [1, 2, 3] {
         out.write(n)?
+    }
+}
 
-test "sum values from a producer":
+test "sum values from a producer" {
     var p = pipe[Int](capacity: 64)
     var out = p.writer()
     producer := promise(() => send_numbers(out))
     var total = 0
-    for n in p.reader():
+    for n in p.reader() {
         total += n
+    }
     producer.wait()?
     expect_equal(total, 6)?
+}
 ```
 
 ```text

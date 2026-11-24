@@ -5,12 +5,14 @@ fn wrap[T](callback (fn(Int) T)?) Void => return
 
 fn apply[T, U](value T, transform fn(T) U) U => transform(value)
 
-fn first() Void:
-    offset := 7
-    _result := apply(
-        value: 1,
-        transform: outer => apply(
-            value: 2, transform: inner => (outer + inner + offset)
-        )
-    )
-    wrap(fn(item Int = 4) => item + offset)
+fn first() Void {
+	offset := 7
+	_result := apply(
+		value: 1,
+		transform: outer => apply(
+			value: 2,
+			transform: inner => (outer + inner + offset),
+		),
+	)
+	wrap(fn(item Int = 4) => item + offset)
+}

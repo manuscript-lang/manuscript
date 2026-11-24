@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn convert[T, U](value T) U? => null\n\nfn first() Void:\n\tvalue := convert(1)\n"
+    "fmt": "fn convert[T, U](value T) U? => null\n\nfn first() Void {\n\tvalue := convert(1)\n}\n"
   }
 }

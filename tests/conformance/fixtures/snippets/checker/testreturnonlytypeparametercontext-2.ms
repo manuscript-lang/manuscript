@@ -4,4 +4,4 @@
 
 fn fail[T](message String) T!Error => error(Error(message))
 
-fn first() Int!Error: ...
+fn first() Int!Error { ... }

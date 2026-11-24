@@ -12,22 +12,22 @@
         "message": "expected a name, found '|'",
         "position": {
           "file": "golden-1171.ms",
-          "line": 5,
+          "line": 6,
           "column": 58,
-          "offset": 160
+          "offset": 163
         },
         "end": {
           "file": "golden-1171.ms",
-          "line": 5,
+          "line": 6,
           "column": 59,
-          "offset": 161
+          "offset": 164
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1171.ms:5:58: parse: expected a name, found '|'\n   |\n 5 | fn compare[T Compare[T]](first T, second T) Int => first.|\n   |                                                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1171.ms:6:58: parse: expected a name, found '|'\n   |\n 6 | fn compare[T Compare[T]](first T, second T) Int => first.|\n   |                                                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

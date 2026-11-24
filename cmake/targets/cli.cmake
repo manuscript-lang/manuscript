@@ -54,7 +54,7 @@ add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIX
   "-DNAMES=${MS_LEAK_FIXTURES}" -DWORK=${CMAKE_BINARY_DIR}/src/cli/leak -P ${CMAKE_SOURCE_DIR}/cmake/LeakCheck.cmake)
 
 # Every bundled standard-library body checks: `ms check` and `ms lint` check only the bodies a program reaches.
-file(WRITE ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms "fn main() Void:\n    return\n")
+file(WRITE ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms "fn main() Void {\n    return\n}\n")
 add_test(NAME std_full COMMAND ms check ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms --std)
 
 # `ms add`, `ms install` and `ms remove` against a local git repository.

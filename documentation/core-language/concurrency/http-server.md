@@ -11,17 +11,20 @@ Save as `server_test.ms` and run `ms test server_test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import serve from "@std/net/net.ms"
-import buffered, text from "@std/net/http.ms"
-import fetch from "@std/net/fetch.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    fetch from "@std/net/fetch.ms",
+    buffered, text from "@std/net/http.ms",
+    serve from "@std/net/net.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
-test "serve a greeting":
+test "serve a greeting" {
     handler := buffered(request => text(200, "Hello, Manuscript!"))
     server := serve("127.0.0.1:0", handler)?
     response := fetch(f"http://{server.address()}/").wait()?
     expect_equal(response.head.status, 200)?
     expect_equal(response.text()?, "Hello, Manuscript!")?
+}
 ```
 
 ```text

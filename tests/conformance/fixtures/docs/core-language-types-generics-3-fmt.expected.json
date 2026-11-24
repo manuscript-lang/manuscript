@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[T]:\n\tvalue T\n\nfn identity[T](value T) T:\n\treturn value\n\nfn same[T Equal](left T, right T) Bool:\n\treturn left == right\n\nbox := Box[Int](1)\nexact := identity[Int](1)\ninferred := identity(1)\n"
+    "fmt": "type Box[T] {\n\tvalue T\n}\n\nfn identity[T](value T) T {\n\treturn value\n}\n\nfn same[T Equal](left T, right T) Bool {\n\treturn left == right\n}\n\nbox := Box[Int](1)\nexact := identity[Int](1)\ninferred := identity(1)\n"
   }
 }

@@ -12,16 +12,16 @@
         "message": "expected Int, found Flag (in the return value)",
         "position": {
           "file": "golden-1343.ms",
-          "line": 8,
+          "line": 11,
           "column": 25,
-          "offset": 153
+          "offset": 145
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1343.ms:8:25: type: expected Int, found Flag (in the return value)\n   |\n 8 |         ready => return Ready\n   |                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1343.ms:11:25: type: expected Int, found Flag (in the return value)\n    |\n 11 |         ready => return Ready\n    |                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

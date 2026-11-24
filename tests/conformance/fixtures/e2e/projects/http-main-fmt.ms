@@ -2,32 +2,41 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/projects/http/main.ms
 import (
-    buffered,
-    headers,
-    HttpRequest,
-    HttpResponse,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import serve from "@std/net/net.ms"
-import stdout from "@std/io/io.ms"
+	stdout from "@std/io/io.ms",
+	HttpRequest,
+	HttpResponse,
+	HttpServerOptions,
+	buffered,
+	headers from "@std/net/http.ms",
+	serve from "@std/net/net.ms",
+)
 
-fn handle(request HttpRequest) HttpResponse:
-    return HttpResponse(200, f"hello {request.path}".to_bytes())
+fn handle(request HttpRequest) HttpResponse {
+	return HttpResponse(200, f"hello {request.path}".to_bytes())
+}
 
-export fn main() Int:
-    options := HttpServerOptions(
-        max_requests: 2, max_body_bytes: 1024, max_response_bytes: 1024,
-        timeout: 2.seconds(), grace: 0.seconds()
-    )
+export fn main() Int {
+	options := HttpServerOptions(
+		max_requests: 2,
+		max_body_bytes: 1024,
+		max_response_bytes: 1024,
+		timeout: 2.seconds(),
+		grace: 0.seconds(),
+	)
 
-    if acquired := serve(
-        address: "127.0.0.1:0", handler: buffered(handle), options: options
-    ):
-        server := acquired
-        if stdout().write(f"{server.address()}\n").is_error():
-            return 1
+	if acquired := serve(
+		address: "127.0.0.1:0",
+		handler: buffered(handle),
+		options: options,
+	) {
+		server := acquired
+		if stdout().write(f"{server.address()}\n").is_error() {
+			return 1
+		}
 
-        _ignored := server.wait()
-        return 0
+		_ignored := server.wait()
+		return 0
+	}
 
-    return 1
+	return 1
+}

@@ -16,11 +16,12 @@ fn optional_size(values Map[String, Int]?) Int => (
 	or panic("called Optional.get() on null")
 ).length()
 
-fn mark(var log List[Int], value Int) Int:
+fn mark(var log List[Int], value Int) Int {
 	log.append(value)
 	return value
+}
 
-test "map literals and positional identifier arguments":
+test "map literals and positional identifier arguments" {
 	amount := 10
 	deduction := 3
 	expect_equal(subtract(amount, deduction), 7)?
@@ -62,18 +63,22 @@ test "map literals and positional identifier arguments":
 	values.add("d", 6)
 	expect_false(shared["x"].get("d") != null)?
 	expect_equal(values["d"], 6)?
+}
 
-type Key:
+type Key {
 	id Int
 	label String
+}
 
-fn Key.equals(other Key) Bool:
+fn Key.equals(other Key) Bool {
 	return self.id == other.id
+}
 
 fn Key.hash() Int => self.id
 
-test "map literal uses custom key equality":
+test "map literal uses custom key equality" {
 	a := Key(1, "first")
 	b := Key(1, "second")
 	values := {a.clone(): "a", b: "b"}
 	expect_false(values.length() != 1 or values[a] != "b")?
+}

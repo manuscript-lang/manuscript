@@ -40,7 +40,7 @@
           "file": "testparsetypeargument-1.ms",
           "line": 5,
           "column": 12,
-          "offset": 198
+          "offset": 196
         },
         "fix": {
           "position": {
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testparsetypeargument-1.ms:4:19: resolution: unknown type JsonValue; add: import JsonValue from \"@std/data/json.ms\"\n   |\n 4 | fn f(text String) JsonValue!:\n   |                   ^\n<DIR>/testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 5 |     return parse(text)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testparsetypeargument-1.ms:4:19: resolution: unknown type JsonValue; add: import JsonValue from \"@std/data/json.ms\"\n   |\n 4 | fn f(text String) JsonValue! {\n   |                   ^\n<DIR>/testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 5 |     return parse(text)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

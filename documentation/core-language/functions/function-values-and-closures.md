@@ -11,15 +11,18 @@ Save as `callback.ms` and run `ms run callback.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
-fn apply(value Int, transform fn(Int) Int) Int:
+fn apply(value Int, transform fn(Int) Int) Int {
     return transform(value)
+}
 
-fn main() Int:
+fn main() Int {
     offset := 1
-    decrement := fn(value Int) Int:
+    decrement := fn(value Int) Int {
         return value - offset
+    }
     print(apply(3, decrement))
     return 0
+}
 ```
 
 ```text
@@ -36,16 +39,19 @@ Function types name no parameters. A parameter the function changes in place is 
 
 Parameter types in order, their `var` and `move` markers, and the result type are function-type identity. Compatibility is invariant except for one adaptation: a function that only reads a parameter may stand in where one that changes it (`var`) is expected ([changing parameters](#changing-parameters)); `move` always matches exactly. Parameter names are not part of it: `fn f(amount Int) Int` and `fn g(value Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
-<!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","context":"fn apply(value Int, transform fn(Int) Int) Int:\n    return transform(value)","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"expected fn(Int) String","context":"fn apply(value Int, transform fn(Int) Int) Int {\n    return transform(value)\n}","given":[]} -->
 ```manuscript
-fn subtract_one(amount Int) Int:
+fn subtract_one(amount Int) Int {
     return amount - 1
+}
 
-fn adapt() Void:
+fn adapt() Void {
     ok fn(Int) Int := subtract_one
+
     // Rejected: the result type differs.
     invalid fn(Int) String := subtract_one
     result := apply(value: 3, transform: ok)
+}
 ```
 
 An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `increment fn(Int) Int = item => item + 1` is called as `increment(3)`.
@@ -80,17 +86,20 @@ The rule is general: any method whose callback type has a `var` position of one 
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn push_one(var values List[Int]) Void:
+fn push_one(var values List[Int]) Void {
     values.append(1)
+}
 
-fn apply(change fn(var List[Int]) Void, var values List[Int]) Void:
+fn apply(change fn(var List[Int]) Void, var values List[Int]) Void {
     change(values)
+}
 
-fn changed() List[Int]:
+fn changed() List[Int] {
     var values List[Int] = []
     apply(push_one, values)
     apply(fn(var xs List[Int]) => xs.append(2), values)
     return values
+}
 ```
 
 The value travels by address, so a value with one owner (a list, a type holding one) is changed where it lives and never copied. A function with both a `var` parameter and a parameter default cannot be a function value; call it from a closure that supplies the default.
@@ -107,12 +116,15 @@ A closure that only reads its captures and is called only in the function that m
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn tag_count() Int:
+fn tag_count() Int {
     var tags = ["docs"]
     tags.append("release")
-    count := fn:
+
+    count := () => {
         return tags.length()
+    }
     return count()
+}
 // tag_count() returns 2.
 ```
 
@@ -120,12 +132,15 @@ A closure that is called only in the function that made it (including a callback
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn total(values List[Int]) Int:
+fn total(values List[Int]) Int {
     var sum = 0
-    values.for_each(fn value:
-        sum += value
+    values.for_each(
+        value => {
+            sum += value
+        }
     )
     return sum
+}
 ```
 
 A function value never changes, so the checker shares it freely: pass it, store it, or capture it in several closures and keep using the original. It has no `.clone()`, so a type or list that holds one is not `Clonable`.
@@ -140,16 +155,19 @@ A bound method keeps its receiver by the same rules. A method that changes its r
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Counter:
+type Counter {
     read fn() Int
+}
 
-fn counter(values List[Int]) Counter:
+fn counter(values List[Int]) Counter {
     return Counter(read: () => values.length())
+}
 
-fn total() Int:
+fn total() Int {
     values := [1, 2]
     c := counter(values.clone())
     return c.read() + values.length()
+}
 ```
 
 ## Resource captures
@@ -158,13 +176,17 @@ Open a resource inside the callback that uses it:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import open from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    open from "@std/os/fs.ms",
+)
 
-fn notes_reader(path String) fn() Bytes!:
-    return fn:
+fn notes_reader(path String) fn() Bytes! {
+    return () => {
         file := open(path: path)?
         return file.read_file(max_bytes: 1048576)
+    }
+}
 ```
 
 `notes_reader("notes.txt")` returns a callback; each call opens, reads, and closes its own file.
@@ -175,8 +197,9 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn names() List[String]:
+fn names() List[String] {
     return [1, 2].map(value => value.to_string())
+}
 ```
 
 The list supplies `Int` for `value`, and the expected `List[String]` supplies the callback result. Other arguments may establish callback inputs in any written order; callbacks are revisited as context appears, and runtime order is unchanged. An unambiguous expected result may establish generic arguments first ([inference](../types/generics.md#inference-from-arguments)). A Result context supplies the error type while the body gives the success type. Otherwise add a specialization or annotation.
