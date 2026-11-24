@@ -1,4 +1,4 @@
-// conform: tags=optionals,tier-core
+// conform: tags=optional,tier-core
 // conform: phase=check
 // conform: origin=nullable-types stage 3
 export fn main() Void:

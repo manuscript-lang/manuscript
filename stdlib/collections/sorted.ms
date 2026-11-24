@@ -1,6 +1,6 @@
-// One key-value pair of a SortedMap.
 import panic from "@std/core.ms"
 
+// One key-value pair of a SortedMap.
 export type SortedEntry[K: Comparable & Clonable, V: Clonable]:
 	// The entry's key, which orders it within the map.
 	key: K

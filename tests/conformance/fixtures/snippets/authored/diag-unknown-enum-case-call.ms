@@ -1,4 +1,4 @@
-// conform: tags=diagnostics,enums,tier-core
+// conform: tags=diagnostics,alternatives,tier-core
 // conform: phase=check
 // conform: origin=issue 6804
 enum Shape:
