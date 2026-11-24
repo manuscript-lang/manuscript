@@ -3,13 +3,25 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "format": 1,
-    "diagnostics": [],
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "the body keeps `value`, so the signature must say so: write `move value Type`, or keep `.clone()` of it",
+        "position": {
+          "file": "golden-1476.ms",
+          "line": 5,
+          "column": 15,
+          "offset": 101
+        }
+      }
+    ],
     "text": {
-      "exit_code": 0,
-      "stdout": "Checked golden-1476.ms\n",
-      "stderr": ""
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1476.ms:5:15: type: the body keeps `value`, so the signature must say so: write `move value Type`, or keep `.clone()` of it\n   |\n 5 | fn extract[T](value T?) T:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

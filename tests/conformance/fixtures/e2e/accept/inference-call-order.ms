@@ -7,7 +7,7 @@ fn identity[T](move value T) T => value
 
 fn first[T](move left T, right T) T => left
 
-fn optional[T](fallback T, value T?) T => value or fallback
+fn optional[T](fallback T, move value T?) T => value or fallback
 
 fn describe[T](value T, cause Error) String => cause.message
 

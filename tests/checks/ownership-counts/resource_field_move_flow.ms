@@ -56,7 +56,7 @@ fn check(fail Bool) Int!Oops:
 	if fail: return error(Oops("no"))
 	return ok(1)
 
-fn after_move(r Room, fail Bool) List[Door]!Oops:
+fn after_move(move r Room, fail Bool) List[Door]!Oops:
 	var xs List[Door] = []
 	xs.append(r.first)
 
@@ -64,13 +64,13 @@ fn after_move(r Room, fail Bool) List[Door]!Oops:
 	say("after_move: ok")
 	return ok(xs)
 
-fn before_move(r Room, fail Bool) List[Door]!Oops:
+fn before_move(move r Room, fail Bool) List[Door]!Oops:
 	_n := check(fail)?
 	var xs List[Door] = []
 	xs.append(r.second)
 	return ok(xs)
 
-fn both_cond(r Room, a Bool, b Bool) List[Door]:
+fn both_cond(move r Room, a Bool, b Bool) List[Door]:
 	var xs List[Door] = []
 	if a:
 		xs.append(r.first)
@@ -79,7 +79,7 @@ fn both_cond(r Room, a Bool, b Bool) List[Door]:
 	say("both_cond: end")
 	return xs
 
-fn whole_or_part(r Room, flag Bool) List[Door]:
+fn whole_or_part(move r Room, flag Bool) List[Door]:
 	var xs List[Door] = []
 
 	if flag:

@@ -158,7 +158,7 @@ export interface Hasher:
 Reads `input` to the end and returns its digest under `algorithm`, as `HashAlgorithm.digest` does for bytes in
 hand. It keeps no input bytes, and it consumes and closes the stream. A failed read returns its error.
 */
-export fn digest(input ReadStream[Bytes], algorithm HashAlgorithm) Bytes!:
+export fn digest(move input ReadStream[Bytes], algorithm HashAlgorithm) Bytes!:
 	var hasher = algorithm.hasher()
 	var source = input
 	for chunk in source:

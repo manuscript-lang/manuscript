@@ -20,7 +20,7 @@ fn operation(var state State, fail Bool) Void!Failure:
     state.calls += 1
     if fail: return error(Failure(42))
 
-fn exact(state State, fail Bool) String!Failure:
+fn exact(move state State, fail Bool) String!Failure:
     resource := state
     var work = State(resource.calls, resource.marker.clone())
     operation(work, fail)?

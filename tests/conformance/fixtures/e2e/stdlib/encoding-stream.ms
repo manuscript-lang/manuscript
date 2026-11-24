@@ -61,7 +61,7 @@ fn pieces(text String, size Int) List[String]:
 
 	return out
 
-fn join_text(input ReadStream[String]) String!:
+fn join_text(move input ReadStream[String]) String!:
 	var source = input
 	var out = ""
 
@@ -76,7 +76,7 @@ fn join_text(input ReadStream[String]) String!:
 
 	return ok(out)
 
-fn join_bytes(input ReadStream[Bytes]) Bytes!:
+fn join_bytes(move input ReadStream[Bytes]) Bytes!:
 	var source = input
 	var out List[Bytes] = []
 
