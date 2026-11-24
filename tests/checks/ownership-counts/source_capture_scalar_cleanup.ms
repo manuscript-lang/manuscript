@@ -18,17 +18,17 @@ type Marker:
 fn move Marker.close() Void!:
 	print(f"close {self.id}")
 
-fn Marker.status() Int: self.id
+fn Marker.status() Int => self.id
 
-fn Marker.with_default(offset Int = 10) Int: self.id + offset
+fn Marker.with_default(offset Int = 10) Int => self.id + offset
 
-fn Marker.generic[T](_tag T) Int: self.id
+fn Marker.generic[T](_tag T) Int => self.id
 
 fn var Marker.bump(delta Int = 1) Int:
 	self.id += delta
 	return self.id
 
-fn marker(id Int) Marker: Marker(id)
+fn marker(id Int) Marker => Marker(id)
 
 fn ordinary() Int:
 	read := marker(1).status

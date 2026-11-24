@@ -22,7 +22,7 @@ fn slow(door Door) Int!:
 
 fn run_with_door(log String) Int!:
 	door := Door(name: "front", log: log.clone())
-	p := promise(fn: size(door))
+	p := promise(() => size(door))
 	return p.wait()
 
 test "a promise that stays in its function reads the resource in place, and the scope closes it":
@@ -41,7 +41,7 @@ test "a promise dropped before waiting leaves the resource to its scope":
 
 	if true:
 		door := Door(name: "back", log: log.clone())
-		_p := promise(fn: slow(door))
+		_p := promise(() => slow(door))
 
 	data := read_file(log, null).wait()?
 	text := data.decode_utf8() or ""

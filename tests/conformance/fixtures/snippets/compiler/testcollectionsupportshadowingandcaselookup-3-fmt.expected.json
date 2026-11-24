@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Other:\n\tOutOfRange\n\nfn get() Other: OutOfRange\n"
+    "fmt": "enum Other:\n\tOutOfRange\n\nfn get() Other => OutOfRange\n"
   }
 }

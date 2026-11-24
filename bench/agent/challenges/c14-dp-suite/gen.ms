@@ -103,9 +103,9 @@ fn solve_line(line String) String:
 		if t.length() < 3: return bad
 
 		rest := t.slice(1, t.length()).get_or([])
-		if not rest.all(fn x: full_match(NUM, x)): return bad
+		if not rest.all(x => full_match(NUM, x)): return bad
 
-		cs := t.slice(2, t.length()).get_or([]).map(fn x: x.parse_int() or 0)
+		cs := t.slice(2, t.length()).get_or([]).map(x => x.parse_int() or 0)
 		if (cs.min() or 0) < 1: return bad
 
 		return coins(t[1].parse_int() or 0, cs)
@@ -115,11 +115,11 @@ fn solve_line(line String) String:
 fn solve(s String) String:
 	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
-	return lines.filter(fn l: l.replace(" ", "") != "").map(
-		fn l: solve_line(l) + "\n"
+	return lines.filter(l => l.replace(" ", "") != "").map(
+		l => solve_line(l) + "\n"
 	).join("")
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 fn word(var rnd Random, n Int, alpha List[String]) String:
 	var out = ""

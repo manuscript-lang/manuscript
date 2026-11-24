@@ -43,7 +43,7 @@ export fn main() Int:
     l5 := [2, 25, 4]
     say(f"l5 = {l5} len {l5.length()}")
 
-    l6 := l1.filter(fn x: x > 3)
+    l6 := l1.filter(x => x > 3)
     say(f"l6 = {l6} len {l6.length()}")
 
     i7 := ((-46) * ((i4 % (-30)) + ((-13) + i4)))

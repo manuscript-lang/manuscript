@@ -9,7 +9,7 @@ import (
 export type Pi:
 	placeholder Bool = true
 
-fn Pi.name() String: "pi"
+fn Pi.name() String => "pi"
 
 fn Pi.command(prompt String, workspace String, model String?) List[String]:
 	var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]

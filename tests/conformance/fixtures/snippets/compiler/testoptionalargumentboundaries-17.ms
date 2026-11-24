@@ -5,6 +5,6 @@ enum Optional[T]:
     T
     null
 
-fn f(value Int?) Void: return
+fn f(value Int?) Void => return
 
-fn call() Void: f(4)
+fn call() Void => f(4)

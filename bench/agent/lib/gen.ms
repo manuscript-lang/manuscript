@@ -19,12 +19,12 @@ export fn make_case(name String, stdin String, stdout String) GenCase:
 	return GenCase(name.clone(), stdin.clone(), stdout.clone())
 
 // The directory of challenge `id`.
-export fn dir(id String) String: f"{root()}/challenges/{id}"
+export fn dir(id String) String => f"{root()}/challenges/{id}"
 
 // Writes examples/cases.json and hidden/cases.json for challenge `id` as
 // `json.dumps(cases, indent=1)` does.
 export fn write_cases(id String, examples List[GenCase], hidden List[GenCase]) Void:
-	names := hidden.map(fn c: c.name.clone())
+	names := hidden.map(c => c.name.clone())
 	if names.distinct().length() != names.length(): panic("duplicate case names")
 	write_text(f"{dir(id)}/examples/cases.json", dumps_data(examples, 1) + "\n")
 	write_text(f"{dir(id)}/hidden/cases.json", dumps_data(hidden, 1) + "\n")

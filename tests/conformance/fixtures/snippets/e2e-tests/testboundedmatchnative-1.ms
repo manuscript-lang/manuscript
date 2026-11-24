@@ -17,7 +17,7 @@ fn next(count Count) Int:
     count.total += 1
     return 0
 
-fn unknown(s Shape) Int: return area(s)
+fn unknown(s Shape) Int => return area(s)
 
 export fn main() Int:
     shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]

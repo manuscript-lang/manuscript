@@ -18,7 +18,7 @@ test "List count calls the predicate once per element":
 	expect_false(even != 2 or seen != values)?
 
 	empty List[Int] := []
-	expect_equal(empty.count(fn(value Int) Bool: true), 0)?
+	expect_equal(empty.count(fn(value Int) Bool => true), 0)?
 
 test "List insert mutates in place":
 	var values = [1, 3]
@@ -92,7 +92,7 @@ test "List parity operations support generic and bound use":
 	pop fn() Int? := values.pop
 	popped := pop()
 	count := values.count
-	expect_false(popped != 3 or count(fn(value Int) Bool: value > 0) != 2)?
+	expect_false(popped != 3 or count(fn(value Int) Bool => value > 0) != 2)?
 
 test "List distinct handles large Int and String lists":
 	var numbers List[Int] = []

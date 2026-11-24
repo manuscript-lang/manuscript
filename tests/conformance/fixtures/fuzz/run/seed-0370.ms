@@ -52,7 +52,7 @@ export fn main() Int:
     i10 := (((i7 + i7) % l3.length()) - ((-25) - (i8 * (-34))))
     say(f"i10 = {i10}")
 
-    l11 := l9.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l11 := l9.map(x => x + 1).filter(x => x % 2 == 0)
     say(f"l11 = {l11} len {l11.length()}")
 
     i12 := ((34 - i8) % ((-12) * l9.length()))

@@ -24,15 +24,15 @@
         "position": {
           "file": "golden-0484.ms",
           "line": 3,
-          "column": 42,
-          "offset": 94
+          "column": 44,
+          "offset": 96
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0484.ms:3:26: resolution: unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 3 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                          ^\n<DIR>/golden-0484.ms:3:42: resolution: unknown binding Failure; declare it with 'Failure := ...' before use, define 'fn Failure(...) T:', or import it from a module\n   |\n 3 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0484.ms:3:26: resolution: unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 3 | fn failed[T]() Result[T, Failure] => error(Failure(\"empty\"))\n   |                          ^\n<DIR>/golden-0484.ms:3:44: resolution: unknown binding Failure; declare it with 'Failure := ...' before use, define 'fn Failure(...) T:', or import it from a module\n   |\n 3 | fn failed[T]() Result[T, Failure] => error(Failure(\"empty\"))\n   |                                            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

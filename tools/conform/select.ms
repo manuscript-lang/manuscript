@@ -66,7 +66,7 @@ export fn select(root String, filter Filter) List[Fixture]:
 	for phase in phases:
 		for fx in fixtures(root, phase, filter.ids):
 			if wanted(fx, filter): found.append(fx.clone())
-	found = found.sorted_by_key(fn fx: fx.id)
+	found = found.sorted_by_key(fx => fx.id)
 	if filter.shard_count == 1: return found
 
 	var mine = List[Fixture]()

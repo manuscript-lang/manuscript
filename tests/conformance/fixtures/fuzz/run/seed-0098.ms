@@ -36,7 +36,7 @@ export fn main() Int:
     f3 := (((f1 * f1) + 219.118) * f1)
     say(f"f3 = {f3}")
 
-    l4 := l2.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l4 := l2.map(x => x + 2).filter(x => x % 2 == 0)
     say(f"l4 = {l4} len {l4.length()}")
 
     i5 := (((5 - (-22)) + (27 - (-3))) + (-22))

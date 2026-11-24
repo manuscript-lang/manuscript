@@ -38,5 +38,5 @@ fn main() Void:
 	l2 := all[Int](p, ["1", "2"])
 	stdout().write(f"{l2.get_or([]).length()}\n").get()
 
-	c := Cb(fn x: ok(x + 1))
+	c := Cb(x => ok(x + 1))
 	stdout().write(f"{apply(c, 1).get_or(0)}\n").get()

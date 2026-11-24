@@ -225,7 +225,7 @@ fn main() Int:
 		root_copy := root.clone()
 		chunk := chunks[worker].clone()
 		most_now := most
-		tasks.append(promise(fn: ok(sweep(ms_copy, root_copy, chunk, most_now))))
+		tasks.append(promise(() => ok(sweep(ms_copy, root_copy, chunk, most_now))))
 
 	var swept = 0
 	var leaks = 0

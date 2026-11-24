@@ -83,7 +83,7 @@ fn closure_keeps(text String) Int:
     var fs = text.split(",").map(
         fn p:
             kept := p.clone()
-            return fn() Int: return kept.length()
+            return fn() Int => return kept.length()
     )
     var t = 0
     for f in fs:

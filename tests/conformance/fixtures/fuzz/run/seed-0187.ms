@@ -48,7 +48,7 @@ export fn main() Int:
     s11 := s1
     say(f"s11 = [{s11}]")
 
-    l12 := l3.filter(fn x: x > (-2))
+    l12 := l3.filter(x => x > (-2))
     say(f"l12 = {l12} len {l12.length()}")
 
     f13 := (((172.125 + 586.117) - (232.488 * f7)) - (f7 / (f7 * f6)))

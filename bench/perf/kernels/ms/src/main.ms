@@ -163,7 +163,7 @@ fn life(gens Int) Int:
 		g = step(g)
 		n += 1
 
-	return g.cells.fold(0, fn(acc Int, v Int) Int: return acc + v)
+	return g.cells.fold(0, fn(acc Int, v Int) Int => return acc + v)
 
 fn matmul(n Int) Float:
 	var a = List[List[Float]]()
@@ -254,7 +254,7 @@ fn wordfreq(n Int) Int:
 
 	while i < n:
 		k := (i * 7919) % 5003
-		m.update(k, 0, fn count: count + 1)
+		m.update(k, 0, count => count + 1)
 		i += 1
 
 	return m.length()
@@ -263,14 +263,14 @@ type Cx:
 	re Float
 	im Float
 
-fn Cx.mul(o Cx) Cx: Cx(
+fn Cx.mul(o Cx) Cx => Cx(
 	re: self.re * o.re - self.im * o.im,
 	im: self.re * o.im + self.im * o.re,
 )
 
-fn Cx.add(o Cx) Cx: Cx(re: self.re + o.re, im: self.im + o.im)
+fn Cx.add(o Cx) Cx => Cx(re: self.re + o.re, im: self.im + o.im)
 
-fn Cx.norm2() Float: self.re * self.re + self.im * self.im
+fn Cx.norm2() Float => self.re * self.re + self.im * self.im
 
 fn mandel(n Int) Int:
 	var total = 0
@@ -408,14 +408,14 @@ fn exprs(d Int, reps Int) Int:
 
 fn closures(n Int) Int:
 	k := 7
-	f := fn(x Int) Int: x * k + 1
+	f := fn(x Int) Int => x * k + 1
 	var t = 0
 	for i in 0..n:
 		t += f(i) % 13
 
-	xs := (0..1000).map(fn x: x * k)
+	xs := (0..1000).map(x => x * k)
 	for _r in 0..(n / 1000):
-		t += xs.map(fn x: x + k).filter(fn x: x % 3 == 0).sum()
+		t += xs.map(x => x + k).filter(x => x % 3 == 0).sum()
 	return t
 
 fn stencil(n Int, iters Int) Int:
@@ -450,7 +450,7 @@ fn timed(name String, run fn() Int) Void:
 	say(f"{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 fn main() Int:
-	timed("sieve_5M", fn() Int: return sieve(5000000))
+	timed("sieve_5M", fn() Int => return sieve(5000000))
 
 	timed(
 		"nbody_200k",
@@ -465,18 +465,18 @@ fn main() Int:
 			return (advance(bodies, 200000) * 1000.0).truncate_to_int() or 0
 	)
 
-	timed("life_128x128_50", fn() Int: return life(50))
-	timed("matmul_200", fn() Int: return matmul(200).truncate_to_int() or 0)
-	timed("trees_d16_x20", fn() Int: return trees(20))
-	timed("collatz_1M", fn() Int: return collatz(1000000))
-	timed("map_count_2M", fn() Int: return wordfreq(2000000))
-	timed("mandel_400", fn() Int: return mandel(400))
+	timed("life_128x128_50", fn() Int => return life(50))
+	timed("matmul_200", fn() Int => return matmul(200).truncate_to_int() or 0)
+	timed("trees_d16_x20", fn() Int => return trees(20))
+	timed("collatz_1M", fn() Int => return collatz(1000000))
+	timed("map_count_2M", fn() Int => return wordfreq(2000000))
+	timed("mandel_400", fn() Int => return mandel(400))
 	timed(
 		"particles_1k_5k",
-		fn() Int: return particles(1000, 5000).truncate_to_int() or 0
+		fn() Int => return particles(1000, 5000).truncate_to_int() or 0
 	)
-	timed("vm_5M", fn() Int: return vm(5000000))
-	timed("expr_d20_x20", fn() Int: return exprs(20, 20))
-	timed("closures_20M", fn() Int: return closures(20000000))
-	timed("stencil_1000_20", fn() Int: return stencil(1000, 20))
+	timed("vm_5M", fn() Int => return vm(5000000))
+	timed("expr_d20_x20", fn() Int => return exprs(20, 20))
+	timed("closures_20M", fn() Int => return closures(20000000))
+	timed("stencil_1000_20", fn() Int => return stencil(1000, 20))
 	return 0

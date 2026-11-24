@@ -40,7 +40,7 @@ fn OrderedReader.read() Int:
 
 type DefaultReader:
     base Int
-    operation fn() Int = fn() Int: base
+    operation fn() Int = fn() Int => base
 
 fn DefaultReader.read() Int:
     return self.operation()
@@ -60,14 +60,14 @@ test "constructor arguments retain written order and capture snapshots":
         last: mark(log, "last;", 3),
         operation: (
             fn() Int:
-                nested := fn() Int: snapshot
+                nested := fn() Int => snapshot
                 return nested()
         ),
         match present(2):
             number:
                 value = 70
                 mark(log, "first;", number)
-            null: 0
+            null => 0
     )
 
     value = 90
@@ -80,7 +80,7 @@ test "explicit nested views and bound methods retain generic dispatch":
 
     view := wrap(
         fn() Int:
-            nested := fn() Int: snapshot
+            nested := fn() Int => snapshot
             return nested()
     )
 
@@ -89,9 +89,9 @@ test "explicit nested views and bound methods retain generic dispatch":
     bound := view.read
     expect_equal(bound(), 5)?
     expect_equal(invoke(view), 5)?
-    expect_equal(Reader(fn() Int: 6).read(), 6)?
-    expect_equal(Reader(fn() Int: 8).read(), 8)?
-    expect_equal(wrap(fn() String: "text").read(), "text")?
+    expect_equal(Reader(fn() Int => 6).read(), 6)?
+    expect_equal(Reader(fn() Int => 8).read(), 8)?
+    expect_equal(wrap(fn() String => "text").read(), "text")?
 
 test "source constructors with callable defaults prepare once":
     var log = Log("")
@@ -105,10 +105,10 @@ test "match receiver side effects and callable body remain ordered":
     view Read[Int] := match present(mark(log, "select;", 1)):
         _value:
             mark(log, "chosen;", 0)
-            Reader(fn() Int: 9)
+            Reader(fn() Int => 9)
         null:
             mark(log, "wrong;", 0)
-            Reader(fn() Int: 0)
+            Reader(fn() Int => 0)
 
     expect_equal(log.events, "select;chosen;")?
     expect_equal(view.read(), 9)?

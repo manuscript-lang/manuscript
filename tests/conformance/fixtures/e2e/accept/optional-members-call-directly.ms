@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal, expect_true from "@std/test/test.ms"
 
-fn fallback() Int: 9
+fn fallback() Int => 9
 
 test "optional members":
 	present Int? := 3

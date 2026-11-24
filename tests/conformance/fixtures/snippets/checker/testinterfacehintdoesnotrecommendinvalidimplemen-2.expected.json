@@ -13,15 +13,15 @@
         "position": {
           "file": "testinterfacehintdoesnotrecommendinvalidimplemen-2.ms",
           "line": 10,
-          "column": 18,
-          "offset": 271
+          "column": 20,
+          "offset": 273
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinterfacehintdoesnotrecommendinvalidimplemen-2.ms:10:18: type: expected B, found A (in the return value); use a concrete value implementing B\n    |\n 10 | fn f(value A) B: value\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinterfacehintdoesnotrecommendinvalidimplemen-2.ms:10:20: type: expected B, found A (in the return value); use a concrete value implementing B\n    |\n 10 | fn f(value A) B => value\n    |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

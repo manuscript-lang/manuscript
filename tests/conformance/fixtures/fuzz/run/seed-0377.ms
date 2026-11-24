@@ -67,7 +67,7 @@ export fn main() Int:
     s11 := (f"{i5}:" + "delta").trim().reverse()
     say(f"s11 = [{s11}]")
 
-    l12 := l7.map(fn x: x * 8)
+    l12 := l7.map(x => x * 8)
     say(f"l12 = {l12} len {l12.length()}")
     say(f"fib(33) = {fib(33)}")
 

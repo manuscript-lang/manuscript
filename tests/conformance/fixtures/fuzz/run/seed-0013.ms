@@ -44,7 +44,7 @@ export fn main() Int:
     b7 := (s4.scalar_length() >= i2)
     say(f"b7 = {b7}")
 
-    l8 := l3.filter(fn x: x > (-4))
+    l8 := l3.filter(x => x > (-4))
     say(f"l8 = {l8} len {l8.length()}")
 
     i9 := ((i2 * (-i2)) % ((i2 - i2) - i2))

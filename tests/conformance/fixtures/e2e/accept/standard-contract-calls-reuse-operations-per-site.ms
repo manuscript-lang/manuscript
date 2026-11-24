@@ -8,9 +8,9 @@ import monotonic from "@std/time.ms"
 type Boom:
     code Int
 
-fn boom_error(boom Boom) Error: Error(f"boom {boom.code}")
+fn boom_error(boom Boom) Error => Error(f"boom {boom.code}")
 
-fn describe(e Error) String: e.message
+fn describe(e Error) String => e.message
 
 test "repeated calls through one site":
     var i = 0

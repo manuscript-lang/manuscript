@@ -85,9 +85,7 @@ export fn parse(text String, options CsvOptions = CsvOptions()) List[List[String
 
 		record := reader.read_record(
 			rows.length(),
-			fn r,
-			c,
-			cell: row.append(cell.clone())
+			(r, c, cell) => row.append(cell.clone()),
 		)
 		if record.is_error(): return error(record.err().clone())
 

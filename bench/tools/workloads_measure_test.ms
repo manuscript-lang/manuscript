@@ -33,23 +33,23 @@ fn producer(bad String, mode String) Producer:
 
 test "every trial rotates and retains samples":
 	var p = producer("", "valid")
-	measured := expect_ok(measure(3, "workload", fn v: p.run(v)))?
+	measured := expect_ok(measure(3, "workload", v => p.run(v)))?
 	expect_equal(
 		p.order,
 		["go", "ms", "rs", "ms", "go", "rs", "go", "rs", "ms", "rs", "ms", "go"],
 	)?
 	expect_equal(measured.samples.length(), 9)?
-	expect_equal(measured.samples.all(fn s: s.elapsed_ns > 0), true)?
+	expect_equal(measured.samples.all(s => s.elapsed_ns > 0), true)?
 	expect_equal(measured.expected, "correct")?
 
 test "wrong or failed warm-up and early trials are rejected for every version":
 	for version in versions():
 		for mode in ["wrong", "wrong_first_trial", "failed", "failed_first_trial"]:
 			var p = producer(version.clone(), mode.clone())
-			_cause := expect_error(measure(2, "workload", fn v: p.run(v)))?
+			_cause := expect_error(measure(2, "workload", v => p.run(v)))?
 
 test "invalid repeat counts are refused":
 	var p = producer("", "valid")
-	_zero := expect_error(measure(0, "workload", fn v: p.run(v)))?
+	_zero := expect_error(measure(0, "workload", v => p.run(v)))?
 	for text in ["0", "00", "abc", "-1"]:
 		_cause := expect_error(repeats(text))?

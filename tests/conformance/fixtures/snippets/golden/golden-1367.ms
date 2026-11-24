@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn caller() Result[Int, Error]: operation()
+fn caller() Result[Int, Error] => operation()

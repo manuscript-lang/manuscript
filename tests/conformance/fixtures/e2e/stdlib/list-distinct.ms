@@ -57,11 +57,11 @@ test "set algebra preserves collision order and first representatives":
 	expect_equal(intersection[0].payload, [10])?
 
 	difference := left.difference(right).values()
-	expect_equal(difference.map(fn(k Key) Int: k.id), [2, 0])?
+	expect_equal(difference.map(fn(k Key) Int => k.id), [2, 0])?
 	expect_equal(difference[0].payload, [20])?
 
 	symmetric := left.symmetric_difference(right).values()
-	expect_equal(symmetric.map(fn(k Key) Int: k.id), [2, 0, 3])?
+	expect_equal(symmetric.map(fn(k Key) Int => k.id), [2, 0, 3])?
 	expect_equal(symmetric[0].payload, [20])?
 	expect_equal(symmetric[2].payload, [30])?
 	expect_equal(left.values()[0].payload, [20])?

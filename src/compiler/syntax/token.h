@@ -21,7 +21,7 @@
                                   X(Plus, "+") X(Minus, "-") X(Star, "*") X(Slash, "/") X(Percent, "%")      \
                                       X(Lt, "<") X(Gt, ">") X(Assign, "=") X(Amp, "&") X(Pipe, "|")          \
                                           X(Ellipsis, "...") X(DotDot, "..") X(Question, "?") X(Bang, "!")   \
-                                              X(ColonAssign, ":=") X(Arrow, "->") X(EqEq, "==")              \
+                                              X(ColonAssign, ":=") X(Arrow, "->") X(FatArrow, "=>") X(EqEq, "==")              \
                                                   X(NotEq, "!=") X(Le, "<=") X(Ge, ">=")
 
 typedef enum MsTok {

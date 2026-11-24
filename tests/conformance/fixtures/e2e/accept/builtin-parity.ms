@@ -201,7 +201,7 @@ test "list methods mutate explicit clones and remain typed":
 	original.entries().get(index: 0) | expect_equal(ListEntry(index: 0, value: 3))?
 	original.to_set().values() | expect_equal([3, 1, 2])?
 	expect_equal(
-		[[1, 2], [], [3]].flat_map(transform: fn value: value.clone()),
+		[[1, 2], [], [3]].flat_map(transform: value => value.clone()),
 		[1, 2, 3],
 	)?
 	alias | expect_equal([3, 1, 2, 1])?

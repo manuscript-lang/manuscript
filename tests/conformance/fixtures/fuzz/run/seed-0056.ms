@@ -44,7 +44,7 @@ export fn main() Int:
     b10 := ((-27) == 10)
     say(f"b10 = {b10}")
 
-    l11 := l8.map(fn x: x * 3)
+    l11 := l8.map(x => x * 3)
     say(f"l11 = {l11} len {l11.length()}")
 
     s12 := ("alpha".replace(s5, "emoji 😀") + s5).upper()

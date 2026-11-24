@@ -30,7 +30,7 @@ fn serve_spread(var listener Listener, count Int) Void!:
 		var pending = listener.accept_pending(2.seconds()).wait()?
 		served.append(
 			promise(
-				fn: echo(pending),
+				() => echo(pending),
 				options: PromiseOptions(placement: Placement.Spread)
 			)
 		)
@@ -53,12 +53,12 @@ fn ask(address String, text String) String!:
 test "pending connections are served by promises spread over the threads":
 	var listener = listen("127.0.0.1:0")?
 	address := listener.address()
-	serving := promise(fn: serve_spread(listener, 16))
+	serving := promise(() => serve_spread(listener, 16))
 	var asking List[Promise[String]] = []
 
 	for i in 0..16:
 		target := address.clone()
-		asking.append(promise(fn: ask(target, f"hello {i}")))
+		asking.append(promise(() => ask(target, f"hello {i}")))
 
 	replies := wait_all(asking)?
 	for i in 0..16:

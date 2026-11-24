@@ -29,8 +29,8 @@ fn status(label String) Void:
 
 fn in_task(n Int, rounds Int) Int:
 	p := promise(
-		fn: ok(loop_depth(n, rounds)),
-		options: PromiseOptions(placement: Placement.Here)
+		() => ok(loop_depth(n, rounds)),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	return p.wait().get()
 

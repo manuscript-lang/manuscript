@@ -14,6 +14,6 @@ fn apply(f fn(Int) move Box) Int:
     return f(1).n
 
 fn main() Void:
-    g := fn(x Int) move Box: Box(n: x)
+    g := fn(x Int) move Box => Box(n: x)
     print(apply(g))
     print(make().n)

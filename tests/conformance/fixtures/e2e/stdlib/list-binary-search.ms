@@ -85,7 +85,7 @@ test "binary search uses Comparable equality and works through a generic bound":
 test "binary search agrees with a linear oracle over sorted duplicate-heavy lists":
 	for length in 0..65:
 		for seed in 0..13:
-			values := (0..length).map(fn i: (i * 17 + seed * 7) % 23 - 11).sorted()
+			values := (0..length).map(i => (i * 17 + seed * 7) % 23 - 11).sorted()
 			for target in - 12..13:
 				check_search(values, target)?
 
@@ -121,7 +121,7 @@ test "binary search uses logarithmically many comparisons":
 	comparisons := f"{tmp.path()}/count"
 
 	for length in [0, 1, 2, 3, 4, 7, 8, 31, 32, 255, 1024, 65536]:
-		values := (0..length).map(fn i: Counted(i / 3 * 2, comparisons.clone()))
+		values := (0..length).map(i => Counted(i / 3 * 2, comparisons.clone()))
 		var budget = 1
 		var remaining = length
 

@@ -16,14 +16,14 @@ fn mk(n Int) Big:
 		xs.append(i)
 	return Big("a name that is long enough to live on the heap", xs)
 
-fn wrap(b Big) Wrap: Wrap(b.clone(), "a tag that is long enough to live on the heap")
+fn wrap(b Big) Wrap => Wrap(b.clone(), "a tag that is long enough to live on the heap")
 
-fn id(b Big) Big: b
+fn id(b Big) Big => b
 
-fn pass[T](x T) T: x
+fn pass[T](x T) T => x
 
 fn cap(b Big) fn() Int:
-	return fn: b.items.length()
+	return () => b.items.length()
 
 export fn main() Int:
 	w := wrap(id(mk(8)))

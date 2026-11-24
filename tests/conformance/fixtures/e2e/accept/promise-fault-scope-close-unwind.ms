@@ -39,7 +39,7 @@ test "consecutive promise faults in an interface read free each scope-closed wra
 	var failed = 0
 
 	for action in [2, 2, 2]:
-		p := promise(fn: run_wrapped(action))
+		p := promise(() => run_wrapped(action))
 		if not p.wait().is_ok(): failed += 1
 
 	expect_equal(failed, 3)?

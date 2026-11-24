@@ -212,7 +212,7 @@ fn main() Int:
 			release := version.clone()
 			recorders.append(
 				promise(
-					fn: ok(
+					() => ok(
 						record_chunk(
 							tool,
 							kind,
@@ -249,7 +249,7 @@ fn main() Int:
 		kind := build_type.clone()
 		mine := chunks[worker].clone()
 		detail := show_diff
-		tasks.append(promise(fn: ok(sweep(tool, kind, mine, detail))))
+		tasks.append(promise(() => ok(sweep(tool, kind, mine, detail))))
 
 	var passed = 0
 

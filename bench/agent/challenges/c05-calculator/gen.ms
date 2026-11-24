@@ -116,11 +116,11 @@ fn evaluate(line String) String:
 	return f"{v}"
 
 fn solve(s String) String:
-	return s.split("\n").filter(fn l: not l.trim().is_empty()).map(
-		fn l: (evaluate(l) + "\n")
+	return s.split("\n").filter(l => not l.trim().is_empty()).map(
+		l => (evaluate(l) + "\n")
 	).join("")
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 fn rexpr(var rnd Random, d Int) String:
 	if d == 0 or rnd.random() < 0.25: return f"{rnd.randint(0, 99)}"

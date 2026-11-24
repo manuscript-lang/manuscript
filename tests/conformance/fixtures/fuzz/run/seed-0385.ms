@@ -41,7 +41,7 @@ export fn main() Int:
     s6 := "alpha"
     say(f"s6 = [{s6}]")
 
-    l7 := l5.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l7 := l5.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l7 = {l7} len {l7.length()}")
     say(
         f"{((-i4) + ((-3) * 33))} {(-98762)} {(((-i4) + ((-3) * 33)) < (-98762))} sum {((-i4) + ((-3) * 33)) + (-98762)}"

@@ -70,7 +70,7 @@ fn accept_all(listener Listener) Void!:
 test "a promise that accepts on a listener runs where the listener lives":
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	_accepting := promise(fn: accept_all(listener))
+	_accepting := promise(() => accept_all(listener))
 
 	// Accepts and connects register their connections with one network, which is not
 	// thread
@@ -181,7 +181,7 @@ fn accept_one(l Listener) Int:
 test "a promise accepts on a listener it owns":
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	a := promise(fn: ok(accept_one(listener)))
+	a := promise(() => ok(accept_one(listener)))
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	expect_equal(a.wait()?, 1)?
 	client.close()?
@@ -198,7 +198,7 @@ fn accept_and_read(listener Listener) Int:
 test "a promise reads a connection it owns":
 	listener := listen("127.0.0.1:0")?
 	address := listener.address()
-	a := promise(fn: ok(accept_and_read(listener)))
+	a := promise(() => ok(accept_and_read(listener)))
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	client.output.write("xy".to_bytes())?
 	client.output.flush()?
@@ -241,7 +241,7 @@ test "resolve returns typed DNS records from the configured resolver":
 	server := bind_datagram("127.0.0.1:0")?
 	derived := with_resolver(server.address.clone())?
 	asking := promise(
-		fn: derived.resolve_dns(
+		() => derived.resolve_dns(
 			"example.test",
 			DnsKind.MX,
 			DnsOptions(timeout: 2.seconds()),

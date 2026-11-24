@@ -75,6 +75,6 @@ export fn main() Int:
     say(f"i13 = {i13}")
     say(f"{i13} {265351} {(i13 < 265351)} sum {i13 + 265351}")
 
-    l14 := l10.filter(fn x: x > 5)
+    l14 := l10.filter(x => x > 5)
     say(f"l14 = {l14} len {l14.length()}")
     return 0

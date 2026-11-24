@@ -13,7 +13,7 @@ elif kind=="nestfor":
     s+=T+'print(f"{x}")\n'
 elif kind=="nestlist":
     ty="List["*n+"Int"+"]"*n
-    s=f"fn main() Void:\n\tvar x: {ty} = []\n\tprint(f\"{{x.length()}}\")\n"
+    s=f"fn main() Void:\n\tvar x {ty} = []\n\tprint(f\"{{x.length()}}\")\n"
 elif kind=="nestclosure":
     s="fn main() Void:\n\tf := "+"fn: ".join([""]*1)
     s="fn main() Void:\n"

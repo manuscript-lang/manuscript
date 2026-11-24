@@ -16,22 +16,22 @@ fn move Resource.close() Void!:
 
 	self.path = "closed"
 
-fn present(path String, id Int) Resource?: Resource(id, path.clone())
+fn present(path String, id Int) Resource? => Resource(id, path.clone())
 
 fn log_text(path String) String!:
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
 
-fn observed(value Resource?) Bool: value != null
+fn observed(value Resource?) Bool => value != null
 
 fn observed_default(value Resource?, tail Int = 0) Bool:
 	return (value != null) or tail > 0
 
-fn rejected() Int!: error(Error("expected"))
+fn rejected() Int! => error(Error("expected"))
 
-fn accepted() Int!: ok(1)
+fn accepted() Int! => ok(1)
 
-fn faulted() Int: [1].get(3)
+fn faulted() Int => [1].get(3)
 
 fn later_error(reader fn(Resource?, Resource?, Int) Bool, path String) Void!:
 	_used := reader(present(path, 10), present(path, 11), rejected()?)
@@ -52,7 +52,7 @@ fn new_owner_fault(path String) Void:
 
 fn failed_close(path String) Void:
 	owner := Resource(99, path.clone())
-	reader := fn(value Resource?) Bool: value != null
+	reader := fn(value Resource?) Bool => value != null
 	_used := reader(present(path, 98))
 	_id := owner.id
 
@@ -61,7 +61,7 @@ test "lambda and source function aliases close temporary wrappers once":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader := fn(value Resource?) Bool: value != null
+	reader := fn(value Resource?) Bool => value != null
 	expect_equal(reader(present(path, 1)), true)?
 
 	source := observed
@@ -83,7 +83,7 @@ test "function arguments remain protected through later try and faults":
 	expect_equal(later_error(reader, path).is_error(), true)?
 	later_success(reader, path)?
 
-	_fault := expect_fault(fn: later_fault(reader, path))?
+	_fault := expect_fault(() => later_fault(reader, path))?
 	expect_equal(log_text(path)?, "11,10,13,12,15,14,")?
 
 test "function dispatch errors and faults retain temporary cleanup":
@@ -99,8 +99,8 @@ test "function dispatch errors and faults retain temporary cleanup":
 		if value != null: _bad := [1].get(3)
 	expect_equal(reject(present(path, 20)).is_error(), true)?
 
-	_fault := expect_fault(fn: broken(present(path, 21)))?
-	_new := expect_fault(fn: new_owner_fault(path))?
+	_fault := expect_fault(() => broken(present(path, 21)))?
+	_new := expect_fault(() => new_owner_fault(path))?
 	expect_equal(log_text(path)?, "20,21,49,50,")?
 
 test "function default adapters retain caller resource ownership":
@@ -122,7 +122,7 @@ test "function failed temporary close retains older caller owner":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	_fault := expect_fault(fn: failed_close(path))?
+	_fault := expect_fault(() => failed_close(path))?
 	expect_equal(log_text(path)?, "98,99,")?
 
 fn wrapped_result(path String) Result[Resource, String]:
@@ -133,11 +133,11 @@ test "function Result and loop condition temporaries close each time":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	result := fn(value Result[Resource, String]) Bool: value.is_ok()
+	result := fn(value Result[Resource, String]) Bool => value.is_ok()
 	expect_equal(result(wrapped_result(path)), true)?
 	expect_equal(result(error("absent")), false)?
 
-	reader := fn(value Resource?) Bool: value != null
+	reader := fn(value Resource?) Bool => value != null
 	var count = 0
 
 	while count < 3 and reader(present(path, 80)):
@@ -149,7 +149,7 @@ test "function Result and loop condition temporaries close each time":
 
 fn named_conversion_calls(path String) Void!:
 	named := Resource(110, path.clone())
-	lambda := fn(value Resource?) Bool: value != null
+	lambda := fn(value Resource?) Bool => value != null
 	source := observed_default
 	expect_equal(lambda(named), true)?
 	expect_equal(lambda(named), true)?

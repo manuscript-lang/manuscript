@@ -48,12 +48,12 @@ fn adapt() Void:
     result := apply(value: 3, transform: ok)
 ```
 
-An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `increment fn(Int) Int = fn item: item + 1` is called as `increment(3)`.
+An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `increment fn(Int) Int = item => item + 1` is called as `increment(3)`.
 
 - An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Void`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.
 - A generic function must be instantiated to be a value: `identity[Int]`, not bare `identity`.
-- A method that takes its receiver (`fn move T.m`, or one whose body keeps `self`) cannot be used as a value: the value could be called again, and each call would need its own receiver. Write the copy in a closure (`fn: item.clone().listed()`), or call the method.
+- A method that takes its receiver (`fn move T.m`, or one whose body keeps `self`) cannot be used as a value: the value could be called again, and each call would need its own receiver. Write the copy in a closure (`() => item.clone().listed()`), or call the method.
 - A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a moving parameter: `find := re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
 - An anonymous function is its own boundary for `return`, `?`, `break`, and `continue`.
 
@@ -68,13 +68,13 @@ A function that changes its caller's variable declares the parameter `var`, and 
 
 A function that takes ownership of a parameter says so in its type: `fn keep(move item Item) Int` has type `fn(move Item) Int`. A call through the value hands the argument over, so the caller's name is dead after it.
 
-- **Anonymous functions** take `move` from the expected type, or declare it as `fn move item: ...`. They then own the argument and may keep it, even a resource. One that only reads it drops the argument (closing a resource) when it returns.
+- **Anonymous functions** take `move` from the expected type, or declare it as `(move item) => ...`. They then own the argument and may keep it, even a resource. One that only reads it drops the argument (closing a resource) when it returns.
 - **Reading is accepted where `move` is expected.** A function that only reads a parameter may stand in for `fn(move T)`: the call drops the argument when it returns.
-- **Keeping is not accepted where borrowing is expected.** A named function that keeps a parameter, used where the function type borrows it (`fn(T)`), would need a hidden copy of every argument. Write the copy in a closure instead: `fn x: keep(x.clone())`.
+- **Keeping is not accepted where borrowing is expected.** A named function that keeps a parameter, used where the function type borrows it (`fn(T)`), would need a hidden copy of every argument. Write the copy in a closure instead: `x => keep(x.clone())`.
 
 See [moving into a function](../types/references.md#moving-into-a-function).
 
-`List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list.
+`List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each((var s) => s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `:=` list.
 
 The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`each := scores.for_each`); call it, or write a closure.
 
@@ -89,7 +89,7 @@ fn apply(change fn(var List[Int]) Void, var values List[Int]) Void:
 fn changed() List[Int]:
     var values List[Int] = []
     apply(push_one, values)
-    apply(fn(var xs List[Int]): xs.append(2), values)
+    apply(fn(var xs List[Int]) => xs.append(2), values)
     return values
 ```
 
@@ -144,7 +144,7 @@ type Counter:
     read fn() Int
 
 fn counter(values List[Int]) Counter:
-    return Counter(read: fn: values.length())
+    return Counter(read: () => values.length())
 
 fn total() Int:
     values := [1, 2]
@@ -176,7 +176,7 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn names() List[String]:
-    return [1, 2].map(fn value: value.to_string())
+    return [1, 2].map(value => value.to_string())
 ```
 
 The list supplies `Int` for `value`, and the expected `List[String]` supplies the callback result. Other arguments may establish callback inputs in any written order; callbacks are revisited as context appears, and runtime order is unchanged. An unambiguous expected result may establish generic arguments first ([inference](../types/generics.md#inference-from-arguments)). A Result context supplies the error type while the body gives the success type. Otherwise add a specialization or annotation.

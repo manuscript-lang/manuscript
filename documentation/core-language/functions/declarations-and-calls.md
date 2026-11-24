@@ -5,7 +5,7 @@ weight = 1
 
 # Declarations and calls
 
-A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body returns its expression implicitly: `fn double(value Int) Int: value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
+A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body is written `=>` and returns its expression implicitly: `fn double(value Int) Int => value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript

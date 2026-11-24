@@ -22,7 +22,7 @@ test "flows compose stream transforms":
 	expect_equal((read_file(path: path).wait() | expect_ok?), "HELLO WORLD".to_bytes())?
 
 test "from_list and collect bridge lists and streams":
-	doubled := map(from_list([1, 2, 3]), fn(n Int) Int: n * 2)
+	doubled := map(from_list([1, 2, 3]), fn(n Int) Int => n * 2)
 	expect_equal((collect(doubled, null)?), [2, 4, 6])?
 
 	limited := collect(from_list([1, 2, 3]), 2)

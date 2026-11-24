@@ -5,14 +5,14 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn apply[T, U](value T, transform fn(T) U) U: transform(value)
+fn apply[T, U](value T, transform fn(T) U) U => transform(value)
 
-fn choose[T](first fn() T, second fn() T) T: first()
+fn choose[T](first fn() T, second fn() T) T => first()
 
 fn optional[T, U](value T, transform (fn(T) U)?) U:
 	return (transform or panic("called Optional.get() on null"))(value)
 
-fn with_result[T](transform fn() T!Error) T!Error: transform()
+fn with_result[T](transform fn() T!Error) T!Error => transform()
 
 type Callback[T, U]:
 	transform fn(T) U
@@ -22,20 +22,20 @@ type Failure[T]:
 
 test "callback inference retains captures and contextual metadata":
 	offset := 7
-	values := [1, 2].map(fn outer: [3, 4].map(fn inner: return outer + inner + offset))
+	values := [1, 2].map(outer => [3, 4].map(inner => return outer + inner + offset))
 	expect_equal(values, [[11, 12], [12, 13]])?
 
 	callable fn(Int) fn(Int) Int := apply(
 		value: 1,
-		transform: fn base: fn item: fn extra: item + extra + base
+		transform: base => item => extra => item + extra + base
 	)
 	expect_equal(callable(3)(4), 8)?
 
-	callback := Callback(fn(item Int = 4): item + offset)
+	callback := Callback(fn(item Int = 4) => item + offset)
 	expect_equal(callback.transform(3), 10)?
-	expect_equal(optional(value: 5, transform: fn item: item + offset), 12)?
+	expect_equal(optional(value: 5, transform: item => item + offset), 12)?
 
-	missing := choose(first: fn: null, second: fn() Int?: 3)
+	missing := choose(first: () => null, second: fn() Int? => 3)
 	expect_false(missing != null)?
 
 	failure := with_result(
@@ -48,14 +48,14 @@ test "callback inference retains captures and contextual metadata":
 
 	failed Int!Failure[Int] := apply(
 		value: 9,
-		transform: fn item: error(Failure(item))
+		transform: item => error(Failure(item))
 	)
 	expect_false(failed.is_ok())?
 	expect_equal(failed.err().detail, 9)?
 
-fn absent[T]() T?: null
+fn absent[T]() T? => null
 
-fn from_callback[T](factory fn() T) T: factory()
+fn from_callback[T](factory fn() T) T => factory()
 
 test "later returns repair incomplete and convertible evidence":
 	value := from_callback(
@@ -76,7 +76,7 @@ test "later returns repair incomplete and convertible evidence":
 
 	expect_equal(cause.detail, 2)?
 
-fn operation() Int!Error: ok(4)
+fn operation() Int!Error => ok(4)
 
 test "try rechecks the inferred enclosing result":
 	value := from_callback(

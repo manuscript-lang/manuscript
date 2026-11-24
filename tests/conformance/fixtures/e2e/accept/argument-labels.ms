@@ -76,7 +76,7 @@ test "optional labels on single-parameter functions":
 	closure(3) | expect_equal(6)?
 	apply(closure) | expect_equal(8)?
 
-	result := apply(fn value: return value + 2)
+	result := apply(value => return value + 2)
 	result | expect_equal(6)?
 	subtract(deduction: increment(1), amount: increment(8)) | expect_equal(7)?
 

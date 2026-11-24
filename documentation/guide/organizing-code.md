@@ -44,7 +44,7 @@ fn largest[T Clonable](items List[T], score fn(T) Int) T?:
 fn main() Void:
     items List[Priced] := [Book("Manuscript", 120), Subscription(6)]
     print(f"Cart: {total(items)} cents")
-    top := largest([3, 9, 4], fn n: n)
+    top := largest([3, 9, 4], n => n)
     print(f"Largest: {top or 0}")
 ```
 

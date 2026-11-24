@@ -5,8 +5,12 @@ import Harness, Usage from "./harness.ms"
 export type Oracle:
 	placeholder Bool = true
 
-fn Oracle.name() String: "oracle"
+fn Oracle.name() String => "oracle"
 
-fn Oracle.command(prompt String, workspace String, model String?) List[String]: ["true"]
+fn Oracle.command(
+	prompt String,
+	workspace String,
+	model String?,
+) List[String] => ["true"]
 
-fn Oracle.parse(transcript String) Usage: Usage()
+fn Oracle.parse(transcript String) Usage => Usage()

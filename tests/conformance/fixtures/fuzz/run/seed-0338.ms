@@ -71,7 +71,7 @@ export fn main() Int:
     l8 := [(-7), (-11)]
     say(f"l8 = {l8} len {l8.length()}")
 
-    l9 := l8.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l9 := l8.map(x => x + 4).filter(x => x % 2 == 0)
     say(f"l9 = {l9} len {l9.length()}")
 
     l10 := [1, 2, 3].take(0)

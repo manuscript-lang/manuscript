@@ -83,15 +83,15 @@ fn Image.pixel(x Int, y Int) Rgba?:
 	p := self.pixels
 
 	match self.mode:
-		Gray: return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
-		GrayAlpha: return Rgba(
+		Gray => return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
+		GrayAlpha => return Rgba(
 			p[at].to_int(),
 			p[at].to_int(),
 			p[at].to_int(),
 			p[at + 1].to_int(),
 		)
-		Rgb: return Rgba(p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(), 255)
-		Rgba: return Rgba(
+		Rgb => return Rgba(p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(), 255)
+		Rgba => return Rgba(
 			p[at].to_int(),
 			p[at + 1].to_int(),
 			p[at + 2].to_int(),
@@ -367,10 +367,10 @@ export enum Resampling:
 // Number of byte channels in `mode`.
 export fn color_channels(mode ColorMode) Int:
 	match mode:
-		Gray: return 1
-		GrayAlpha: return 2
-		Rgb: return 3
-		Rgba: return 4
+		Gray => return 1
+		GrayAlpha => return 2
+		Rgb => return 3
+		Rgba => return 4
 
 // Creates an opaque black image: alpha modes are fully opaque. A non-positive size
 // returns EINVAL, and a pixel count past `max_pixels` or the 2^30 hard ceiling returns
@@ -432,10 +432,10 @@ export fn decode_image(data Bytes, max_pixels Int? = null) Image!:
 
 	if f != null:
 		match f:
-			Jpeg: return decode_jpeg(data, max_pixels).map(image_of)
-			Png: return decode_png(data, max_pixels).map(image_of)
-			Ppm: return decode_ppm(data, max_pixels).map(image_of)
-			Bmp: return decode_bmp(data, max_pixels).map(image_of)
+			Jpeg => return decode_jpeg(data, max_pixels).map(image_of)
+			Png => return decode_png(data, max_pixels).map(image_of)
+			Ppm => return decode_ppm(data, max_pixels).map(image_of)
+			Bmp => return decode_bmp(data, max_pixels).map(image_of)
 
 	return error(unsupported("unrecognized image format"))
 
@@ -444,20 +444,20 @@ export fn decode_image(data Bytes, max_pixels Int? = null) Image!:
 // `GrayAlpha` and `Rgba` images; convert them first.
 export fn encode_image(image Image, format ImageFormat) Bytes!:
 	match format:
-		Jpeg: return encode_jpeg(image, JpegOptions())
-		Png: return encode_png(
+		Jpeg => return encode_jpeg(image, JpegOptions())
+		Png => return encode_png(
 			image.width,
 			image.height,
 			color_channels(image.mode),
 			image.pixels,
 		)
-		Ppm: return encode_ppm(
+		Ppm => return encode_ppm(
 			image.width,
 			image.height,
 			color_channels(image.mode),
 			image.pixels,
 		)
-		Bmp: return encode_bmp(
+		Bmp => return encode_bmp(
 			image.width,
 			image.height,
 			color_channels(image.mode),

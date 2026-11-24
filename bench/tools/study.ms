@@ -49,7 +49,7 @@ export fn trial_order(labels List[String], trial Int) List[String]:
 export fn run_ints(path String, args List[String]) List[Int]!:
 	text := sample(path, args)?
 	parts := text.replace("\n", " ").replace("\t", " ").split(" ").filter(
-		fn p: (p != "")
+		p => (p != "")
 	)
 	var out = List[Int]()
 
@@ -65,13 +65,13 @@ export fn distribution(values List[Float]) JsonValue:
 	m := median(values)
 	var d = Map[String, JsonValue]()
 	d.add("median_ns", jfloat(m))
-	d.add("mad_ns", jfloat(median(values.map(fn v: if v > m: v - m else: m - v))))
+	d.add("mad_ns", jfloat(median(values.map(v => if v > m: v - m else: m - v))))
 	d.add(
 		"min_ns",
 		jfloat(
 			values.fold(
 				values[0],
-				fn(a Float, v Float) Float: if v < a: v else: a
+				fn(a Float, v Float) Float => if v < a: v else: a
 			)
 		),
 	)
@@ -80,7 +80,7 @@ export fn distribution(values List[Float]) JsonValue:
 		jfloat(
 			values.fold(
 				values[0],
-				fn(a Float, v Float) Float: if v > a: v else: a
+				fn(a Float, v Float) Float => if v > a: v else: a
 			)
 		),
 	)

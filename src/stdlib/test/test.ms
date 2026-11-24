@@ -48,9 +48,9 @@ export fn repr[T](value T) String:
 // `null` when it returns normally.
 export fn catch_fault(operation fn() Void, site String = caller_frame()) String?:
 	result := promise(
-		fn: ok(operation()),
+		() => ok(operation()),
 		options: PromiseOptions(placement: Placement.Here),
-		site: site
+		site: site,
 	).wait()
 	if not result.is_error(): return null
 

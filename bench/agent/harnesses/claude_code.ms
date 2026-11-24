@@ -7,7 +7,7 @@ import (
 export type ClaudeCode:
 	placeholder Bool = true
 
-fn ClaudeCode.name() String: "claude_code"
+fn ClaudeCode.name() String => "claude_code"
 
 fn ClaudeCode.command(prompt String, workspace String, model String?) List[String]:
 	var cmd = [

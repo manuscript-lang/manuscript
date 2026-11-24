@@ -72,6 +72,6 @@ export fn main() Int:
     i11 := ((-302590) * ((-7) - ((-84274) * 17)))
     say(f"i11 = {i11}")
 
-    l12 := l10.filter(fn x: x > 3)
+    l12 := l10.filter(x => x > 3)
     say(f"l12 = {l12} len {l12.length()}")
     return 0

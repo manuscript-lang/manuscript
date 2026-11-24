@@ -31,7 +31,7 @@ export fn main() Int:
     s6 := "42"
     say(f"s6 = [{s6}]")
 
-    l7 := l1.filter(fn x: x > 4)
+    l7 := l1.filter(x => x > 4)
     say(f"l7 = {l7} len {l7.length()}")
     say(
         f"{((i3 - 49) + (i2 / i2))} {i3} {(((i3 - 49) + (i2 / i2)) < i3)} sum {((i3 - 49) + (i2 / i2)) + i3}"

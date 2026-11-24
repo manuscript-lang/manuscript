@@ -18,7 +18,7 @@ type Sized:
     width Int
     height Int = 2
 
-fn area(shape Sized) Int: shape.width * shape.height
+fn area(shape Sized) Int => shape.width * shape.height
 
 fn shifted(point Point, by Int) Point:
     return Point(point.x + by, point.y + by)

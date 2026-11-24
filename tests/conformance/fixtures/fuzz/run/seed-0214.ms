@@ -70,7 +70,7 @@ export fn main() Int:
     i13 := i11
     say(f"i13 = {i13}")
 
-    l14 := l7.filter(fn x: x > 2)
+    l14 := l7.filter(x => x > 2)
     say(f"l14 = {l14} len {l14.length()}")
 
     f15 := (503.026 - ((f10 - f10) / f8))

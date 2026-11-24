@@ -84,7 +84,7 @@ fn sweep(ms String, root String, files List[String]) List[String]:
 
 			lines.append("swept")
 
-			total := counts.fold(0, fn(a Int, b Int) Int: a + b)
+			total := counts.fold(0, fn(a Int, b Int) Int => a + b)
 			if total != 0: lines.append(f"leak: {absolute} left {total} live blocks")
 
 	return lines
@@ -146,7 +146,7 @@ fn main() Int:
 		ms_copy := ms.clone()
 		root_copy := root.clone()
 		chunk := chunks[worker].clone()
-		tasks.append(promise(fn: ok(sweep(ms_copy, root_copy, chunk))))
+		tasks.append(promise(() => ok(sweep(ms_copy, root_copy, chunk))))
 
 	var swept = 0
 	var leaks = 0

@@ -11,6 +11,6 @@ fn size(door Door) Int:
 
 fn main() Void:
 	door := Door(name: "front".clone())
-	f := fn: size(door)
+	f := () => size(door)
 	print(f())
 	print("end")

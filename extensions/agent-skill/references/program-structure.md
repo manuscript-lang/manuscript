@@ -9,7 +9,7 @@ Tabs indent a body after `:`; dedent ends it. Fields belong inside `type`; recei
 type Counter:
 	n Int = 0
 
-fn Counter.value() Int: self.n
+fn Counter.value() Int => self.n
 
 fn var Counter.add(n Int) Void:
 	self.n += n

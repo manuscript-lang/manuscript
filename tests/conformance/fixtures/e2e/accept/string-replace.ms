@@ -34,7 +34,7 @@ test "replace_first handles early and late matches across output sizes":
 	expect_equal("abcdefghijklmno".replace_first("o", "世界"), "abcdefghijklmn世界")?
 	expect_equal("abcdefghijklmno".replace_first("missing", "世界"), "abcdefghijklmno")?
 
-fn forward[T](value T) T: value
+fn forward[T](value T) T => value
 
 test "bound typed and generic calls keep the all-versus-first split":
 	text := "aaaa"

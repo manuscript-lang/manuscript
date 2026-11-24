@@ -374,7 +374,7 @@ fn long_function() Int:
 
 test "a long function runs in a promise that starts here":
 	p := promise(
-		fn: ok(long_function()),
+		() => ok(long_function()),
 		options: PromiseOptions(placement: Placement.Here)
 	)
 	expect_equal(p.wait().get_or(0), 579186)?

@@ -61,7 +61,7 @@ export fn main() Int:
 
     say(f"collatz(2254) = {collatz(2254)}")
 
-    l7 := l6.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l7 := l6.map(x => x + 1).filter(x => x % 2 == 0)
     say(f"l7 = {l7} len {l7.length()}")
 
     b8 := (

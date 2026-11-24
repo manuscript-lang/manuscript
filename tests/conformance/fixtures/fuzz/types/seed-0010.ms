@@ -26,7 +26,7 @@ export fn main() Int:
     s4 := "日本語"
     say(f"s4 = [{s4}]")
 
-    l5 := l1.map(fn x: x * 9)
+    l5 := l1.map(x => x * 9)
     say(f"l5 = {l5} len {l5.length()}")
 
     s6 := ((f"{(17 + (-665647))}:" + s4.lower()) + "quote\"d".lower())

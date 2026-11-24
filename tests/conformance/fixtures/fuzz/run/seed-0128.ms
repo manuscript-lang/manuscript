@@ -52,7 +52,7 @@ export fn main() Int:
     say(f"b5 = {b5}")
     say(f"fib(53) = {fib(53)}")
 
-    l6 := l4.sorted(fn a, b: a.compare(b))
+    l6 := l4.sorted((a, b) => a.compare(b))
     say(f"l6 = {l6} len {l6.length()}")
     say(f"{i1} {i1} {(i1 < i1)} sum {i1 + i1}")
 

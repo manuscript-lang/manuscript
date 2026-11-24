@@ -62,7 +62,7 @@ fn decode(move parts List[Bytes], limits SseLimits = SseLimits()) List[SseEvent]
 
 fn summary(events List[SseEvent]) String:
 	return events.map(
-		fn event: f"{event.event}|{event.data}|{(event.id or "-")}"
+		event => f"{event.event}|{event.data}|{(event.id or "-")}"
 	).join(";")
 
 fn expect(source String, want String) Void!:

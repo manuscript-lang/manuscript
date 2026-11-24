@@ -65,10 +65,10 @@ fn split_values(text String) List[String]:
 
 fn canon(value JsonValue) String:
 	match value:
-		Null: return "n"
-		BoolValue(flag): return if flag: "t" else: "f"
-		NumberValue(text): return f"N{(text.parse_float() or 0.0)}"
-		StringValue(text): return f"s{text.length()}:{text}"
+		Null => return "n"
+		BoolValue(flag) => return if flag: "t" else: "f"
+		NumberValue(text) => return f"N{(text.parse_float() or 0.0)}"
+		StringValue(text) => return f"s{text.length()}:{text}"
 		ArrayValue(items):
 			var parts List[String] = []
 			for item in items:

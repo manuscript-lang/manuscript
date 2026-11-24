@@ -20,7 +20,7 @@ fn median_ns(body fn() Int, budget Int, runs Int) Int:
 		samples.append(elapsed)
 		total += elapsed
 
-	sorted := samples.sorted(fn(a Int, b Int) Int: a.compare(b))
+	sorted := samples.sorted(fn(a Int, b Int) Int => a.compare(b))
 	return sorted.get(sorted.length() / 2)
 
 fn say(text String) Void:

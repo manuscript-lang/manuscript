@@ -21,7 +21,7 @@ fn main() Void!:
 	for round in 0..12:
 		stop := cancel_switch()
 		target := path.clone()
-		reading := promise(fn: read_many(target), options: PromiseOptions(cancel: stop.signal()))
+		reading := promise(() => read_many(target), options: PromiseOptions(cancel: stop.signal()))
 		void sleep(microseconds(round * 500)).wait()?
 		stop.cancel()
 		void reading.wait()

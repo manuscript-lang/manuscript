@@ -40,8 +40,8 @@ fn dump(node HtmlNode, var out String) Void:
 			out += "}["
 			for child in children: dump(child, out)
 			out += "]"
-		Text(text): out += f"T{hx(text)};"
-		Comment(text): out += f"C{hx(text)};"
+		Text(text) => out += f"T{hx(text)};"
+		Comment(text) => out += f"C{hx(text)};"
 		Doctype(name, public_id, system_id):
 			out += f"Y{hx(name)},{hx(public_id)},{hx(system_id)};"
 

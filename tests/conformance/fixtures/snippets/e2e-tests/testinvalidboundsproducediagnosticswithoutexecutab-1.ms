@@ -7,6 +7,6 @@ interface Named:
 type Box[Named Named]:
     cause Named
 
-fn Box[Named].name() String: self.cause.name()
+fn Box[Named].name() String => self.cause.name()
 
-export fn main() Int: 0
+export fn main() Int => 0

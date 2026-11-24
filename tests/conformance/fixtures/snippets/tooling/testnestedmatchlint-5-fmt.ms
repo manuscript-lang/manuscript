@@ -4,8 +4,8 @@
 fn use(value Int?) Int:
     return match (
         match value:
-            x: x
-            null: 0
+            x => x
+            null => 0
     ):
-        x: x
-        null: 0
+        x => x
+        null => 0

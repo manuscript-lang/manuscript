@@ -217,8 +217,8 @@ fn var MemoryTree.remove(path String, recursive Bool = false) Void!:
 	)
 
 	prefix := f"{inside}/"
-	below_files := self.files.keys().filter(fn k: k.starts_with(prefix)).clone()
-	below_dirs := self.directories.values().filter(fn k: k.starts_with(prefix)).clone()
+	below_files := self.files.keys().filter(k => k.starts_with(prefix)).clone()
+	below_dirs := self.directories.values().filter(k => k.starts_with(prefix)).clone()
 	if not recursive and (below_files.length() + below_dirs.length()) > 0: return error(
 		Error("filesystem: directory not empty", kind: "ENOTEMPTY")
 	)

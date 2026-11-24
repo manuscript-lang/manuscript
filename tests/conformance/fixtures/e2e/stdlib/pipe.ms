@@ -51,7 +51,7 @@ test "a write waits while the pipe holds more than its capacity, so the reader s
 	var p = pipe[Int](1)
 	var input = p.reader()
 	var gate = p.writer()
-	producer := promise(fn: fill(p, 20))
+	producer := promise(() => fill(p, 20))
 
 	// The producer cannot finish 20 writes into a pipe of capacity 1 until the reader
 	// takes values.
@@ -93,7 +93,7 @@ test "a promise that owns a pipe writes to it through a writer of its own":
 	// Holds the pipe open until the producer is done, since the reader ends when the
 	// last writer closes.
 	var gate = p.writer()
-	producer := promise(fn: produce(p, 5))
+	producer := promise(() => produce(p, 5))
 	producer.wait()?
 	gate.close()?
 	expect_equal(drain(input)?, [0, 1, 2, 3, 4])?
@@ -110,7 +110,7 @@ fn send_range(var out WriteStream[Int], base Int) Void!:
 	return out.flush()
 
 fn send_from(move out WriteStream[Int], base Int) Promise[Void]:
-	return promise(fn: send_range(out, base))
+	return promise(() => send_range(out, base))
 
 test "several promises each move a writer of their own into a fan-in":
 	var p = pipe[Int](2)
@@ -132,7 +132,7 @@ test "several promises each move a writer of their own into a fan-in":
 
 fn start_sender(p Pipe[Int]) Promise[Void]:
 	var w = p.writer()
-	return promise(fn: send_range(w, 0))
+	return promise(() => send_range(w, 0))
 
 // The promise owns the writer from the capture on: the function that made it returning
 // does not close it.
@@ -151,7 +151,7 @@ fn send_many(var out WriteStream[Int], from Int, count Int) Void!:
 	return out.flush()
 
 fn send_many_from(move out WriteStream[Int], from Int, count Int) Promise[Void]:
-	return promise(fn: send_many(out, from, count))
+	return promise(() => send_many(out, from, count))
 
 test "a reader takes queued values directly and still waits and ends in order":
 	var p = pipe[Int](8)
@@ -193,8 +193,8 @@ test "a consumer that always finds a value queued still meets its timeout":
 	var r = p.reader()
 	p.close()?
 
-	_prod := promise(fn: endless(w))
-	cons := promise(fn: sum_mod(r)).with(
+	_prod := promise(() => endless(w))
+	cons := promise(() => sum_mod(r)).with(
 		options: PromiseOptions(timeout: milliseconds(200))
 	)
 	expect_true(cons.wait().is_error())?
@@ -226,7 +226,7 @@ test "a pipe carries a writer by move, so its owner can push to the sender":
 	var gate = cmds.writer()
 	var first = pipe[String](4)
 	var firstIn = first.reader()
-	owner := promise(fn: room(inbox))
+	owner := promise(() => room(inbox))
 	join_room(cmds, 1, first)?
 	gate.close()?
 	owner.wait()?

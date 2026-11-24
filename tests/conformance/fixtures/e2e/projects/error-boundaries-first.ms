@@ -22,4 +22,4 @@ export fn first_generic(cause DomainFailure) Error:
     return generic(cause, first_error)
 
 export fn first_box(cause DomainFailure) Error:
-    return box_error(BoxFailure(cause), fn inner: f"first {inner.code}")
+    return box_error(BoxFailure(cause), inner => f"first {inner.code}")

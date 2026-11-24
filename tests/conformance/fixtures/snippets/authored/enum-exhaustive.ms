@@ -6,4 +6,4 @@ enum Outcome:
 
 fn value(outcome Outcome) Int:
     return match outcome:
-        Success(number): number
+        Success(number) => number

@@ -7,7 +7,7 @@ fn inner() Int!:
 	return ok(7)
 
 fn outer() Int!:
-	r := promise(fn: inner()).wait()
+	r := promise(() => inner()).wait()
 	return r
 
 fn main() Void!:

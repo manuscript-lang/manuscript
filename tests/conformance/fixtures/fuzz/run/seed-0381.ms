@@ -64,6 +64,6 @@ export fn main() Int:
 
     say(f"acc12 = {acc12}")
 
-    l13 := l6.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l13 := l6.map(x => x + 3).filter(x => x % 2 == 0)
     say(f"l13 = {l13} len {l13.length()}")
     return 0

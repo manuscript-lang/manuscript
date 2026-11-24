@@ -114,7 +114,7 @@ fn run(paths Map[String, String], out String, cpu String) Result[Void, Error]:
 	record.add("expected_cases", jint(expected.length()))
 	record.add(
 		"executables",
-		binaries_json(names.map(fn n: labeled(n.clone(), paths.get_or(n, "")))),
+		binaries_json(names.map(n => labeled(n.clone(), paths.get_or(n, "")))),
 	)
 	record.add("validated_producers", jlist(validated))
 	write_json(f"{out}/record.json", jobject(record))

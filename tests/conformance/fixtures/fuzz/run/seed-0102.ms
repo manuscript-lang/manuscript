@@ -61,7 +61,7 @@ export fn main() Int:
 
     say(f"acc12 = {acc12}")
 
-    l13 := l6.sorted(fn a, b: a.compare(b))
+    l13 := l6.sorted((a, b) => a.compare(b))
     say(f"l13 = {l13} len {l13.length()}")
     say(
         f"{((-i10) * i8)} {355222} {(((-i10) * i8) < 355222)} sum {((-i10) * i8) + 355222}"

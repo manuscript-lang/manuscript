@@ -29,7 +29,7 @@ fn l_reversed() Int:
 	return base().reversed()[0]
 
 fn l_filter_map() Int:
-	return base().filter(fn v: v % 2 == 0).map(fn v: v * 3).length()
+	return base().filter(v => v % 2 == 0).map(v => v * 3).length()
 
 fn l_contains() Int:
 	xs := base()
@@ -72,7 +72,7 @@ fn l_sort_records_str() Int:
 		x = lcg(x)
 		rs.append(Rec(i, f"user-name-{x}", []))
 
-	rs.sort(fn a, b: a.name.compare(b.name))
+	rs.sort((a, b) => a.name.compare(b.name))
 	return rs[0].id + rs[299999].id
 
 fn l_group_words() Int:
@@ -96,7 +96,7 @@ fn l_map_keys_sorted() Int:
 	for i in 0..500000:
 		m[i * 7 % 1000003] = i
 
-	ks := m.keys().sorted(fn a, b: a - b)
+	ks := m.keys().sorted((a, b) => a - b)
 	return ks[0] + ks[499999]
 
 fn l_pq() Int:
@@ -145,7 +145,7 @@ fn l_flatten() Int:
 	var ll List[List[Int]] = []
 	for i in 0..200000:
 		ll.append([i, i + 1, i + 2, i + 3])
-	return ll.flat_map(fn r: r).length()
+	return ll.flat_map(r => r).length()
 
 fn main() Void:
 	t_l_distinct := monotonic().tick

@@ -31,26 +31,26 @@
           "file": "golden-0175.ms",
           "line": 7,
           "column": 21,
-          "offset": 175
+          "offset": 177
         },
         "end": {
           "file": "golden-0175.ms",
           "line": 7,
           "column": 22,
-          "offset": 176
+          "offset": 178
         },
         "fix": {
           "position": {
             "file": "golden-0175.ms",
             "line": 7,
             "column": 21,
-            "offset": 175
+            "offset": 177
           },
           "end": {
             "file": "golden-0175.ms",
             "line": 7,
             "column": 22,
-            "offset": 176
+            "offset": 178
           },
           "replacement": ""
         }
@@ -63,26 +63,26 @@
           "file": "golden-0175.ms",
           "line": 8,
           "column": 20,
-          "offset": 208
+          "offset": 212
         },
         "end": {
           "file": "golden-0175.ms",
           "line": 8,
           "column": 21,
-          "offset": 209
+          "offset": 213
         },
         "fix": {
           "position": {
             "file": "golden-0175.ms",
             "line": 8,
             "column": 20,
-            "offset": 208
+            "offset": 212
           },
           "end": {
             "file": "golden-0175.ms",
             "line": 8,
             "column": 21,
-            "offset": 209
+            "offset": 213
           },
           "replacement": ""
         }
@@ -91,7 +91,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0175.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Cause[T]:\n   | ^^^^\n<DIR>/golden-0175.ms:7:21: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 7 | fn identity[T](value: T) T: value\n   |                     ^\n<DIR>/golden-0175.ms:8:20: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 | fn consume[T](value: T, cause: Error, optional: T?) Void: return\n   |                    ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0175.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Cause[T]:\n   | ^^^^\n<DIR>/golden-0175.ms:7:21: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 7 | fn identity[T](value: T) T => value\n   |                     ^\n<DIR>/golden-0175.ms:8:20: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 | fn consume[T](value: T, cause: Error, optional: T?) Void => return\n   |                    ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

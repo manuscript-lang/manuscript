@@ -64,7 +64,7 @@ export fn main() Int:
     i13 := ((35 + i3) / ((13 + (-5)) - 44))
     say(f"i13 = {i13}")
 
-    l14 := l5.filter(fn x: x > 2)
+    l14 := l5.filter(x => x > 2)
     say(f"l14 = {l14} len {l14.length()}")
 
     i15 := s9.scalar_length()

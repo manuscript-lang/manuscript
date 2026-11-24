@@ -37,7 +37,7 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 	var reader = ready.reader()
 	switch := cancel_switch()
 	last := f"{path}/d19"
-	work := promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
+	work := promise(() => follow(path.clone(), last.clone(), ready.writer())).with(
 		options: PromiseOptions(cancel: switch.signal())
 	)
 	_registered := reader.next()?

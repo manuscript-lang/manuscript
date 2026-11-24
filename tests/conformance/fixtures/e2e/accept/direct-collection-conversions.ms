@@ -41,7 +41,7 @@ test "direct append preserves checked argument conversions":
 	expect_true(nested.get(0) == null)?
 
 	var callbacks List[(fn(Int) Int)?] = []
-	callbacks.append(fn value: value + 1)
+	callbacks.append(value => value + 1)
 	expect_equal((callbacks.get(0) or panic("called Optional.get() on null"))(7), 8)?
 
 	var errors List[Error] = []
@@ -89,7 +89,7 @@ test "direct calls capture receiver and arguments in written order":
 				value:
 					receiver = second.clone()
 					value
-				null: 0
+				null => 0
 		) + 0
 	)
 	expect_false(not first.is_empty() or not second.is_empty())?
@@ -103,7 +103,7 @@ test "direct calls capture receiver and arguments in written order":
 				value:
 					key = 2
 					value
-				null: 0
+				null => 0
 		) + 0,
 	)
 	expect_false(

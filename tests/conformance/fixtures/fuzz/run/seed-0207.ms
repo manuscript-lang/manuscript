@@ -51,7 +51,7 @@ export fn main() Int:
     s9 := "héllo"
     say(f"s9 = [{s9}]")
 
-    l10 := l2.sorted(fn a, b: a.compare(b))
+    l10 := l2.sorted((a, b) => a.compare(b))
     say(f"l10 = {l10} len {l10.length()}")
 
     f11 := (((f7 + 8.0e8) * (0.0 + 490.066)) - ((7.5 / f7) - (89.010 + f1)))

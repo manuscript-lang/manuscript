@@ -15,7 +15,7 @@ fn n_sort_floats() Int:
 		x = lcg(x)
 		xs.append(x.to_float() / 7.0)
 
-	xs.sort(fn a, b: if a < b: -1 else if a > b: 1 else: 0)
+	xs.sort((a, b) => if a < b: -1 else if a > b: 1 else: 0)
 	return (xs[0].truncate_to_int() or 0) + (xs[1999999].truncate_to_int() or 0)
 
 fn n_sort_strings_default() Int:
@@ -86,7 +86,7 @@ fn n_dedupe_sorted() Int:
 		x = lcg(x)
 		xs.append(x % 50000)
 
-	ys := xs.sorted(fn a, b: a - b)
+	ys := xs.sorted((a, b) => a - b)
 	var out List[Int] = []
 	for v in ys:
 		if out.length() == 0 or out[out.length() - 1] != v: out.append(v)
@@ -113,7 +113,7 @@ fn n_list_clone_modify() Int:
 fn n_closure_list() Int:
 	var fs List[fn(Int) Int] = []
 	for i in 0..1000:
-		fs.append(fn v: v + i)
+		fs.append(v => v + i)
 
 	var t = 0
 	for r in 0..2000:

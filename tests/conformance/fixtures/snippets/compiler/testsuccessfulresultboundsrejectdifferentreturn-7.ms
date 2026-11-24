@@ -7,4 +7,4 @@ type Cause:
 interface Named:
     fn name() String
 
-fn Cause.name() String: self.text.clone()
+fn Cause.name() String => self.text.clone()

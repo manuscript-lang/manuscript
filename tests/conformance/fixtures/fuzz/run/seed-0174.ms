@@ -56,10 +56,10 @@ export fn main() Int:
     say(f"l6 = {l6} len {l6.length()}")
     say(f"fib(47) = {fib(47)}")
 
-    l7 := l6.filter(fn x: x > (-3))
+    l7 := l6.filter(x => x > (-3))
     say(f"l7 = {l7} len {l7.length()}")
 
-    l8 := l3.map(fn x: x * 2)
+    l8 := l3.map(x => x * 2)
     say(f"l8 = {l8} len {l8.length()}")
     say(f"fib(36) = {fib(36)}")
 

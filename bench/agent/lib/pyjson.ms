@@ -41,16 +41,16 @@ fn quote(text String) String:
 
 fn emit(value JsonValue, indent Int, level Int) String:
 	match value:
-		Null: return "null"
-		BoolValue(flag): return if flag: "true" else: "false"
-		NumberValue(text): return text.clone()
-		StringValue(text): return quote(text)
+		Null => return "null"
+		BoolValue(flag) => return if flag: "true" else: "false"
+		NumberValue(text) => return text.clone()
+		StringValue(text) => return quote(text)
 		ArrayValue(items):
 			if items.is_empty(): return "[]"
 
 			pad := " ".repeat((level + 1) * indent)
 			end := " ".repeat(level * indent)
-			parts := items.map(fn item: emit(item, indent, level + 1))
+			parts := items.map(item => emit(item, indent, level + 1))
 			if indent == 0: return "[" + parts.join(", ") + "]"
 
 			return "[\n" + pad + parts.join(",\n" + pad) + "\n" + end + "]"

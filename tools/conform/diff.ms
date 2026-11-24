@@ -59,7 +59,7 @@ export fn differing(
 		mine := chunks[worker].clone()
 		tasks.append(
 			promise(
-				fn: ok(
+				() => ok(
 					compare_chunk(
 						first,
 						first_type,

@@ -44,8 +44,8 @@ fn syntax(var items List[Int], doc Document, state State) Int:
 	var exclusive = items[0]
 	[first, second] := [1, 2]
 	{value: label} := doc
-	callback := fn value: value + 1
-	typed fn(Int) Int := fn(value Int) Int: value * 2
+	callback := value => value + 1
+	typed fn(Int) Int := fn(value Int) Int => value * 2
 	specialized := identity[List[Int]](items)
 	mapping := {"count": COUNT, "ratio": RATIO}
 	plain := "Literal {braces}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
@@ -82,9 +82,9 @@ fn syntax(var items List[Int], doc Document, state State) Int:
 	guard.close()
 
 	result := match state:
-		Ready: 0
-		Data(value): value
-		_: -1
+		Ready => 0
+		Data(value) => value
+		_ => - 1
 
 	parsed := "42" | parse? | normalize
 	return result + parsed

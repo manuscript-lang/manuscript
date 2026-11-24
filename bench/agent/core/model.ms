@@ -15,7 +15,7 @@ export fn root() String:
 
 // Documentation for the Manuscript context bundle comes from here; override to pin a
 // different checkout.
-export fn repo() String: env("MSBENCH_REPO", if root() == ".": "../.." else: ".")
+export fn repo() String => env("MSBENCH_REPO", if root() == ".": "../.." else: ".")
 
 // One input and the exact output expected for it.
 export type Case:
@@ -40,7 +40,7 @@ export type Challenge:
 	agent_timeout_s Int
 	dir String
 
-fn Challenge.spec() String: (
+fn Challenge.spec() String => (
 	read_file(f"{self.dir}/spec.md").wait().get().decode_utf8()
 	or ""
 )
@@ -53,7 +53,7 @@ fn Challenge.cases(which String) List[Case]:
 	)
 	return parse[List[Case]](text).get_or([])
 
-fn Challenge.solution(lang String) String: f"{self.dir}/solutions/{lang}"
+fn Challenge.solution(lang String) String => f"{self.dir}/solutions/{lang}"
 
 // A language the benchmark can be solved in, as `languages.json` describes it.
 export type Lang:
@@ -84,7 +84,7 @@ fn Lang.suffix() String:
 	return ""
 
 // The file name of the reference solution, such as `main.ms.ref`.
-fn Lang.reference() String: f"{(self.solution.split("/").last() or "")}.ref"
+fn Lang.reference() String => f"{(self.solution.split("/").last() or "")}.ref"
 
 fn text_of(file String) String:
 	return read_file(file).wait().get().decode_utf8() or ""
@@ -113,7 +113,7 @@ export fn load_challenges(ids List[String]) List[Challenge]:
 		)
 		wanted := (
 			ids.is_empty()
-			or ids.any(fn i: (name == i or name.starts_with(f"{i}-")))
+			or ids.any(i => (name == i or name.starts_with(f"{i}-")))
 		)
 		if wanted: out.append(
 			Challenge(
@@ -167,7 +167,7 @@ export fn load_languages(ids List[String]) List[Lang]:
 			)
 		)
 
-	unknown := ids.filter(fn i: not known.contains(i))
+	unknown := ids.filter(i => not known.contains(i))
 	if not unknown.is_empty(): panic(f"unknown languages: {unknown.join(", ")}")
 	return out
 

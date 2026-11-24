@@ -198,14 +198,14 @@ test "new direct keyed calls evaluate arguments after the receiver is chosen":
 	var items = Set[Int]([1])
 	items.add(
 		match present(0):
-			_value: 2
-			null: 3
+			_value => 2
+			null => 3
 	)
 	expect_equal(items.values(), [1, 2])?
 	items.remove(
 		match present(0):
-			_value: 1
-			null: 2
+			_value => 1
+			null => 2
 	)
 	expect_equal(items.values(), [2])?
 

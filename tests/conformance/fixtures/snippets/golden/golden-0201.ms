@@ -2,4 +2,4 @@
 // conform: phase=check
 type Trio[A, B, C = A]:
     first A
-fn use(t Trio[Int]) Void: void
+fn use(t Trio[Int]) Void => void

@@ -62,7 +62,7 @@ fn exercise() Void!:
     response.metadata().status | expect_equal(200)?
 
     part := match response.read(max_bytes: 1024):
-        ok(part): part
+        ok(part) => part
         error(_):
             return fail(message: "Unexpected case")
 

@@ -68,9 +68,9 @@ fn op(
 ) Operation:
 	return Operation(name, setup, receiver, method, arguments, binds, uses)
 
-fn list_setup() String: return "var items = [mk(1)]"
+fn list_setup() String => return "var items = [mk(1)]"
 
-fn map_setup() String: return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
+fn map_setup() String => return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
 
 fn optional_setup(present Bool) String:
 	if present: return "held: Marker? := mk(1)"

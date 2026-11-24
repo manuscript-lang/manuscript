@@ -68,7 +68,7 @@ fn bench_list_sort_cmp(n Int) Int:
 		l.append(Rec(key: x % 100000, id: i))
 
 	t := monotonic()
-	s := l.sorted(compare: fn(a Rec, b Rec) Int: a.key - b.key)
+	s := l.sorted(compare: fn(a Rec, b Rec) Int => a.key - b.key)
 	report("list_sort_cmp", n, t)
 	return s[0].id
 

@@ -26,7 +26,7 @@ fn main() Int:
 	before := monotonic()
 	var promises List[Promise[Int]] = []
 	for i in 0..count:
-		promises.append(promise[Int](fn: work(i, jitter)))
+		promises.append(promise[Int](() => work(i, jitter)))
 
 	spawned := monotonic()
 	results := if args.length() > 2 and args[2] == "ordered": ordered_wait_all(promises).get() else: wait_all(

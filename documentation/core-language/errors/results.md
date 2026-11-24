@@ -145,7 +145,7 @@ This fragment uses `discount` above:
 <!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason String\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
 ```manuscript
 price := discount(price: 20d, percent: 10d).get_or(0d)
-text := discount(price: 20d, percent: 10d).map(fn value: value.to_string())
+text := discount(price: 20d, percent: 10d).map(value => value.to_string())
 ```
 
 Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the whole error; use it only when success is established. Routine failures use a fallback, `if v := x`, or `?`.

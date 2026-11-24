@@ -10,7 +10,7 @@
     |
  33 |     for j in 0..xs.length():
     |     ^
-<DIR>/main.ms:36:5: warning MSL124: Build the list with `xs.map(fn x: ...)` or `xs.filter(fn x: ...)` instead of a loop that appends
+<DIR>/main.ms:36:5: warning MSL124: Build the list with `xs.map(x => ...)` or `xs.filter(x => ...)` instead of a loop that appends
     |
  36 |     var out List[Int] = []
     |     ^

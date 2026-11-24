@@ -49,7 +49,7 @@ fn keep(move door Door) Int:
 
 fn main() Void:
 	var kept List[Door] = []
-	print(f"lambda reads {apply(fn move d: d.id, Door(1))}")
+	print(f"lambda reads {apply((move d) => d.id, Door(1))}")
 
 	stored := apply(
 		fn move d:

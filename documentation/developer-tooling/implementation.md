@@ -326,7 +326,7 @@ Format code as paragraphs: keep related steps together and put space between new
 Expression layout uses a soft limit of 88 columns:
 
 - Calls and signatures stay on one line when they fit (including the return type, excluding callback bodies). An anonymous function with a multi-statement suite always expands its call.
-- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(fn: return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
+- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(() => return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
 - Lists, grouped imports, and maps stay compact when they fit. Wrapped lists pack simple elements into rows; nested groups, expressions, and commented items get their own lines.
 - When a group expands, each item goes on its own line, indented one level, closing delimiter aligned with the opening line. An authored multiline group collapses if it fits and has no comment or suite.
 - Long conditions break at the lowest-precedence logical operator, keeping comparison operands together. Long arithmetic and member chains gain continuation lines, with grouping parentheses where needed.

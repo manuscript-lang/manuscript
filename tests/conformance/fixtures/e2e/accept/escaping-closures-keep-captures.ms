@@ -28,7 +28,7 @@ fn mk(move f fn() Int) Box:
 	return Box(f: f)
 
 fn c1(move text String) Int:
-	var out = text.split(",").map(fn(move p String): mk(fn() Int: return p.length()))
+	var out = text.split(",").map(fn(move p String) => mk(fn() Int => return p.length()))
 	var t = 0
 	for b in out:
 		t += b.f()
@@ -39,7 +39,7 @@ fn c2(text String) Int:
 	var i = 0
 
 	for p in text.split(",").clone():
-		m[i] = fn() Int: return p.length()
+		m[i] = fn() Int => return p.length()
 		i += 1
 
 	var t = 0
@@ -48,27 +48,27 @@ fn c2(text String) Int:
 	return t
 
 fn c3(text String) Int:
-	var g fn() Int = fn() Int: 0
+	var g fn() Int = fn() Int => 0
 	for p in text.split(",").clone():
-		g = fn() Int: return p.length()
+		g = fn() Int => return p.length()
 	return g()
 
 fn c4(text String) Int:
-	var b = Box(f: fn() Int: 0)
+	var b = Box(f: fn() Int => 0)
 	for p in text.split(",").clone():
-		b.f = fn() Int: return p.length()
+		b.f = fn() Int => return p.length()
 	return b.f()
 
 fn c5(text String) Int:
 	var sink = ListSink(fs: [])
 	for p in text.split(",").clone():
-		sink.put(fn() Int: return p.length())
+		sink.put(fn() Int => return p.length())
 	return sink.total()
 
 fn outer(move text String) fn() Int:
 	var held = text.split(",").length()
-	inner := fn() Int: return held + text.length()
-	return fn() Int: return inner()
+	inner := fn() Int => return held + text.length()
+	return fn() Int => return inner()
 
 fn c6(move text String) Int:
 	return outer(text)()
@@ -77,7 +77,7 @@ fn c7(text String) Int:
 	var fs List[fn() Int] = []
 
 	for p in text.split(",").clone():
-		f := fn() Int: return p.length()
+		f := fn() Int => return p.length()
 		fs.append(f)
 
 	var t = 0
@@ -88,7 +88,7 @@ fn c7(text String) Int:
 fn maker(move text String) fn() fn() Int:
 	return fn() fn() Int:
 		n := text.length()
-		return fn() Int: return n + n
+		return fn() Int => return n + n
 
 fn c8(move text String) Int:
 	return maker(text)()()
@@ -96,7 +96,7 @@ fn c8(move text String) Int:
 fn c9(text String) (fn() Int)?:
 	var r (fn() Int)? = null
 	for p in text.split(",").clone():
-		r = fn() Int: return p.length()
+		r = fn() Int => return p.length()
 	return r
 
 test "closures that outlive their statement keep what they captured":

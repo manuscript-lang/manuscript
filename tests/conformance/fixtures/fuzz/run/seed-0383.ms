@@ -34,7 +34,7 @@ export fn main() Int:
     i5 := (-147596)
     say(f"i5 = {i5}")
 
-    l6 := l1.map(fn x: x * 5)
+    l6 := l1.map(x => x * 5)
     say(f"l6 = {l6} len {l6.length()}")
 
     var acc7 = 0

@@ -27,7 +27,7 @@ export fn main() Int:
     l4 := [16]
     say(f"l4 = {l4} len {l4.length()}")
 
-    l5 := l4.filter(fn x: x > (-2))
+    l5 := l4.filter(x => x > (-2))
     say(f"l5 = {l5} len {l5.length()}")
 
     s6 := ("hello world" + "42".reverse())

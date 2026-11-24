@@ -96,6 +96,6 @@ export fn main() Int:
     b13 := (((f10 - f9) + f9) < ((316.060 * 316.133) - f10))
     say(f"b13 = {b13}")
 
-    l14 := l6.map(fn x: x * 9)
+    l14 := l6.map(x => x * 9)
     say(f"l14 = {l14} len {l14.length()}")
     return 0

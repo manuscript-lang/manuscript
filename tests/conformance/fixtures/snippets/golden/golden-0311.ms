@@ -5,5 +5,5 @@ interface Read[T]:
 type Box[T]:
     item T
 impl Read[T] for Box[T]:
-    fn get() T: self.item
-fn read() Read[Int]: Box(1)
+    fn get() T => self.item
+fn read() Read[Int] => Box(1)

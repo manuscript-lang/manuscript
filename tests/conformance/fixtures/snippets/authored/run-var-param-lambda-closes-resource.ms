@@ -25,6 +25,6 @@ export fn main() Int:
     h := make(p)
     var total = 0
     for f in h.items:
-        f(total, 5).get_or_else(fn e: void)
+        f(total, 5).get_or_else(e => void)
     print(f"{total}")
     return 0

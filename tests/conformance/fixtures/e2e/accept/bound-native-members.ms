@@ -34,7 +34,7 @@ test "custom equality is kept for bound members":
 	a.add(value: Folded(name: "y"))
 	(a.length() == 1) | expect_true?
 
-	mapped := a.map(transform: fn(value Folded) Folded: return Folded(name: "z"))
+	mapped := a.map(transform: fn(value Folded) Folded => return Folded(name: "z"))
 	(mapped.length() == 1) | expect_true?
 
 test "list append":
@@ -90,7 +90,7 @@ interface IntList:
 test "sorted as a value":
 	view IntList := [3, 1, 2]
 	sort := view.sorted
-	ordered := sort(compare: fn a, b: a - b)
+	ordered := sort(compare: (a, b) => a - b)
 	(ordered.get(index: 0) == 1) | expect_true?
 	(ordered.get(index: 2) == 3) | expect_true?
 

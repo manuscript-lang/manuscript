@@ -3,4 +3,4 @@
 value := choose(first: fn():
         value := checked()?
         return Result[Int, TextError].ok(value)
-    , second: fn(): ok(4))
+    , second: () => ok(4))

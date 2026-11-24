@@ -2,5 +2,5 @@
 // conform: phase=check
 fn f(command String) Int:
     match command:
-        "réport": return 1
+        "réport" => return 1
     return 0

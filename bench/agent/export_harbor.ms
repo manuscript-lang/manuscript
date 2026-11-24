@@ -51,7 +51,7 @@ fn task_toml(name String, ch Challenge, agent_timeout Int) String:
 		f"{agent_timeout}.0",
 	)
 
-fn quote(text String) String: dumps(JsonValue.StringValue(text.clone()), 0)
+fn quote(text String) String => dumps(JsonValue.StringValue(text.clone()), 0)
 
 fn put(from String, to String) Void:
 	create_directory(
@@ -117,7 +117,7 @@ fn export_one(
 	chmod(f"{d}/solution/solve.sh", 493).get()
 
 fn split_ids(text String) List[String]:
-	return text.split(",").filter(fn x: not x.is_empty())
+	return text.split(",").filter(x => not x.is_empty())
 
 fn run_export(o Options) Int!:
 	create_directory(o.out, recursive: true).get()
@@ -143,6 +143,6 @@ fn main() Int:
 			Flag("ms-binary", default: ""),
 			Flag("agent-timeout", FlagKind.Int, default: "900"),
 		],
-		run: fn o: run_export(o)
+		run: o => run_export(o),
 	)
 	return root.execute(arguments())

@@ -17,7 +17,7 @@ fn main() Void:
 		if counts.contains(i): hits += 1
 
 	text := "the quick brown fox jumps over the lazy dog ".repeat(200)
-	digits := rows.any(fn(r Row) Bool: r.name.starts_with("name3") and r.id > 19990)
-	every := rows.all(fn(r Row) Bool: r.name.length() > 4)
-	lower := text.chars().all(fn(c String) Bool: c != "Z")
+	digits := rows.any(fn(r Row) Bool => r.name.starts_with("name3") and r.id > 19990)
+	every := rows.all(fn(r Row) Bool => r.name.length() > 4)
+	lower := text.chars().all(fn(c String) Bool => c != "Z")
 	print(f"{hits} {digits} {every} {lower}")

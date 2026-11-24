@@ -74,7 +74,7 @@ test "Float Bool and String preserve mutation traversal and width":
 
 test "stable sort and strict Result slice preserve separate storage":
 	values := [7, 1, 4, 8, 2, 5]
-	var sorted = values.sorted(fn left, right: return left % 3 - right % 3)
+	var sorted = values.sorted((left, right) => return left % 3 - right % 3)
 	sorted.set(0, 99)
 	expect_equal(values[0], 7)?
 

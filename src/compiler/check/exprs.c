@@ -739,7 +739,7 @@ static void report_uninferred_callback(Body *body, const MsParam *param) {
   ms_strbuild_append_text(&text, "cannot infer callback parameter ");
   ms_strbuild_append(&text, ms_names_span(body->program->names, param->name));
   ms_strbuild_append_text(&text, "; provide a type or a known function context: a closure bound to a variable has none, "
-                                 "so write the parameter types and result, as in `fn(n Int) Int: n * 2`");
+                                 "so write the parameter types and result, as in `fn(n Int) Int => n * 2`");
   ms_check_report(body->program, body->module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 

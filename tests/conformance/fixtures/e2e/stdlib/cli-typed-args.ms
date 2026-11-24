@@ -23,7 +23,7 @@ fn done_command() Command:
 					Arg("id", kind: FlagKind.Int),
 					Arg("weight", kind: FlagKind.Float),
 				],
-				run: fn options: ok(
+				run: options => ok(
 					options.id + (
 						options.weight.truncate_to_int()
 						or 0
@@ -38,8 +38,8 @@ test "a typed positional argument fills an Int or Float field":
 	parsed := (tool.parse(["done", "7", "2.5"]) | expect_ok?)
 
 	match parsed:
-		Run(matches): (tool.run(matches) | expect_ok?) | expect_equal(9)?
-		Help(_): return fail("help")
+		Run(matches) => (tool.run(matches) | expect_ok?) | expect_equal(9)?
+		Help(_) => return fail("help")
 
 test "a positional argument that does not fit its kind names the argument":
 	message := (done_command().parse(["done", "x", "1.0"]) | expect_error?).message

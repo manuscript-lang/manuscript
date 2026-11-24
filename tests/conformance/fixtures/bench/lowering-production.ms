@@ -6,9 +6,9 @@ import Closeable from "@std/core.ms"
 type Resource:
     value Int
 
-fn move Resource.close() Void!: return ok()
+fn move Resource.close() Void! => return ok()
 
-fn empty(value Int) Int: value
+fn empty(value Int) Int => value
 
 fn kept(resource Resource) Int:
     _active := resource

@@ -33,7 +33,7 @@ fn caesar_key(key String) Bool:
 	return (
 		digits.length() >= 1
 		and digits.length() <= 7
-		and digits.chars().all(fn c: DIGITS.contains(c))
+		and digits.chars().all(c => DIGITS.contains(c))
 	)
 
 fn solve_line(line String) String:
@@ -53,19 +53,19 @@ fn solve_line(line String) String:
 		if not caesar_key(key): return "error: bad key"
 		return shift(text, [], key.parse_int() or 0, false, sign)
 
-	if key.is_empty() or not key.chars().all(fn c: LETTERS.contains(c)): return "error: bad key"
+	if key.is_empty() or not key.chars().all(c => LETTERS.contains(c)): return "error: bad key"
 
-	ks := key.lower().scalar_values().map(fn c: c - 97)
+	ks := key.lower().scalar_values().map(c => c - 97)
 	return shift(text, ks, 0, true, sign)
 
 fn solve(s String) String:
 	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
-	return lines.filter(fn l: l.replace(" ", "") != "").map(
-		fn l: solve_line(l) + "\n"
+	return lines.filter(l => l.replace(" ", "") != "").map(
+		l => solve_line(l) + "\n"
 	).join("")
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 export fn gen_c09() Void:
 	var rnd = seeded(9)

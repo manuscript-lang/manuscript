@@ -11,13 +11,13 @@ enum Outcome[T = Int]:
 
 fn Outcome[T].succeeded() Bool:
 	return match self:
-		Success(_): true
-		Failure: false
+		Success(_) => true
+		Failure => false
 
 fn score(value Outcome[Int]) Int:
 	return match value:
-		Success(number): number
-		Failure: -1
+		Success(number) => number
+		Failure => -1
 
 test "enum cases retain payload construction and exhaustive matching":
 	success Outcome := Success(7)
@@ -30,5 +30,5 @@ test "enum cases retain payload construction and exhaustive matching":
 	named := Outcome[Label].Success(Label("ready"))
 
 	match named:
-		Success(label): expect_equal(label.text, "ready")?
-		Failure: expect_equal(false, true)?
+		Success(label) => expect_equal(label.text, "ready")?
+		Failure => expect_equal(false, true)?

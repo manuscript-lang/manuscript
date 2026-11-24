@@ -18,8 +18,9 @@ fn main() Void:
 		recs.append(Rec(f[0].clone(), f[1].parse_int() or 0))
 
 	sorted := recs.sorted(
-		fn a,
-		b: if a.score != b.score: b.score - a.score else: a.name.compare(b.name)
+		(a, b) => if a.score != b.score: b.score - a.score else: a.name.compare(
+			b.name
+		)
 	)
 	var check = 0
 	for i in 0..sorted.length():

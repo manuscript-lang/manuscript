@@ -33,7 +33,7 @@ export fn main() Int:
     i4 := (((38 % (-36)) + (-47)) * (-47))
     say(f"i4 = {i4}")
 
-    l5 := l1.map(fn x: x * 9)
+    l5 := l1.map(x => x * 9)
     say(f"l5 = {l5} len {l5.length()}")
 
     s6 := ("héllo" + "emoji 😀".trim())

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Expr:\n\tNum(value Int)\n\tAdd(left Expr, right Expr)\n\nfn value(expr Expr) Int:\n\tmatch expr:\n\t\tNum(value): return value\n"
+    "fmt": "enum Expr:\n\tNum(value Int)\n\tAdd(left Expr, right Expr)\n\nfn value(expr Expr) Int:\n\tmatch expr:\n\t\tNum(value) => return value\n"
   }
 }

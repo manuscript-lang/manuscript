@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Trio[A, B, C = A]:\n\tfirst A\n\nfn use(t Trio[Int]) Void: void\n"
+    "fmt": "type Trio[A, B, C = A]:\n\tfirst A\n\nfn use(t Trio[Int]) Void => void\n"
   }
 }

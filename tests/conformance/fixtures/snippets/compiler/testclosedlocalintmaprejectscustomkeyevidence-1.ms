@@ -4,9 +4,9 @@
 type Key:
     value Int
 
-fn Key.equals(other Key) Bool: true
+fn Key.equals(other Key) Bool => true
 
-fn Key.hash() Int: 0
+fn Key.hash() Int => 0
 
 fn probe() Int:
     var values = Map[Key, Int]()

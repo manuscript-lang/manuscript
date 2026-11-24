@@ -59,6 +59,6 @@ export fn main() Int:
     s6 := s5
     say(f"s6 = [{s6}]")
 
-    l7 := l1.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l7 := l1.map(x => x + 4).filter(x => x % 2 == 0)
     say(f"l7 = {l7} len {l7.length()}")
     return 0

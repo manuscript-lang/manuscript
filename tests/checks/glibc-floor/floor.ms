@@ -18,7 +18,7 @@ fn square(n Int) Int:
 	return n * n
 
 fn main() Void:
-	squared := promise(fn: ok(square(12))).wait().get_or(-1)
+	squared := promise(() => ok(square(12))).wait().get_or(-1)
 	file := stat("/etc/hosts", follow_links: true).is_ok()
 	child := run("true", []).wait().is_ok()
 	entropy := secure_int(0, max_exclusive: 10).is_ok()

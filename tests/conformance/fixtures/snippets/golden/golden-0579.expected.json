@@ -31,13 +31,13 @@
           "file": "golden-0579.ms",
           "line": 7,
           "column": 1,
-          "offset": 136
+          "offset": 138
         },
         "end": {
           "file": "golden-0579.ms",
           "line": 7,
           "column": 5,
-          "offset": 140
+          "offset": 142
         }
       }
     ],

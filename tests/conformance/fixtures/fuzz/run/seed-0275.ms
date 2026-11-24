@@ -48,13 +48,13 @@ export fn main() Int:
     s10 := s6
     say(f"s10 = [{s10}]")
 
-    l11 := l5.map(fn x: x * 7)
+    l11 := l5.map(x => x * 7)
     say(f"l11 = {l11} len {l11.length()}")
 
     i12 := ((18 % (i9 % 48)) + i9)
     say(f"i12 = {i12}")
 
-    l13 := l5.sorted(fn a, b: a.compare(b))
+    l13 := l5.sorted((a, b) => a.compare(b))
     say(f"l13 = {l13} len {l13.length()}")
 
     l14 := l11.reversed()

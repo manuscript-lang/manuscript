@@ -13,15 +13,15 @@
         "position": {
           "file": "golden-0631.ms",
           "line": 4,
-          "column": 17,
-          "offset": 107
+          "column": 19,
+          "offset": 111
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0631.ms:4:17: type: cannot infer type argument T for f; write f[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 4 | fn call() Void: f()\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0631.ms:4:19: type: cannot infer type argument T for f; write f[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 4 | fn call() Void => f()\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

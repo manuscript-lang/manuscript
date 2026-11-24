@@ -51,7 +51,7 @@ export fn main() Int:
     f8 := (((1.0e8 + 634.614) - (4.5 + 121.25)) + 0.0)
     say(f"f8 = {f8}")
 
-    l9 := l7.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l9 := l7.map(x => x + 4).filter(x => x % 2 == 0)
     say(f"l9 = {l9} len {l9.length()}")
 
     f10 := (((f8 - 600.25) - f8) + f8)

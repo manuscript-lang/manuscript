@@ -3,7 +3,7 @@
 // conform: origin=pkg/build/expression_conveniences_test.go:23 TestExpressionConvenienceRejections
 fn f(x Int?) Int:
     y := match x:
-        n: n
-        null: 0
+        n => n
+        null => 0
 
     return n

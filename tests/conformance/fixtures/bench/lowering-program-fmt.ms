@@ -8,7 +8,7 @@ fn scalar(limit Int) Int:
         total += index
     return total
 
-fn add(left Int, right Int) Int: left + right
+fn add(left Int, right Int) Int => left + right
 
 fn calls(limit Int) Int:
     var total = 0

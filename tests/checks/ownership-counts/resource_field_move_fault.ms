@@ -26,6 +26,6 @@ fn faulting() Void:
 	panic("fault after the move")
 
 fn main() Void:
-	work := promise(fn: ok(faulting()))
+	work := promise(() => ok(faulting()))
 	waited := work.wait()
 	stdout().write(f"waited: {waited.is_error()}\n").get()

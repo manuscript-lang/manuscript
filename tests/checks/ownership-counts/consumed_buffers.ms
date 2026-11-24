@@ -9,7 +9,7 @@ fn fill(n Int) List[Int]:
 	return xs
 
 fn doubled(xs List[Int]) List[Int]:
-	return xs.map(fn x: x * 2)
+	return xs.map(x => x * 2)
 
 fn sorted_copy(xs List[Int]) List[Int]:
 	var out = xs.clone()

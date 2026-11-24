@@ -7,15 +7,15 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn number(value Int?) Int: value or (-1)
+fn number(value Int?) Int => value or (-1)
 
-fn present[T](value T?) T?: value
+fn present[T](value T?) T? => value
 
-fn nested(value Int??) Bool: value == null
+fn nested(value Int??) Bool => value == null
 
-fn list_size(value List[Int]?) Int: (value or panic("called Optional.get() on null")).length()
+fn list_size(value List[Int]?) Int => (value or panic("called Optional.get() on null")).length()
 
-fn flag(value Bool?) Bool: value or panic("called Optional.get() on null")
+fn flag(value Bool?) Bool => value or panic("called Optional.get() on null")
 
 fn success(value Int!Error?) Int:
 	return (value or panic("called Optional.get() on null")).get_or(-1)
@@ -44,7 +44,7 @@ interface Read:
 type Reader:
 	offset Int
 
-fn Reader.read(value Int?) Int: (value or 0) + self.offset
+fn Reader.read(value Int?) Int => (value or 0) + self.offset
 
 type Counter:
 	calls Int
@@ -59,13 +59,13 @@ fn ordered(first Int?, second Int?) Int:
 		+ (second or panic("called Optional.get() on null"))
 	)
 
-fn invoke(value (fn(Int) Int)?) Int: (value or panic("called Optional.get() on null"))(
+fn invoke(value (fn(Int) Int)?) Int => (value or panic("called Optional.get() on null"))(
 	4
 )
 
-fn increment(value Int) Int: value + 1
+fn increment(value Int) Int => value + 1
 
-fn calls_of(value Counter?) Int: (value or panic("called Optional.get() on null")).calls
+fn calls_of(value Counter?) Int => (value or panic("called Optional.get() on null")).calls
 
 test "plain values and explicit optionals share the call contract":
 	expect_equal(number(4), 4)?
@@ -97,7 +97,7 @@ test "plain values and explicit optionals share the call contract":
 	expect_false(flag(false))?
 	expect_false(flag(true and false))?
 	expect_equal(invoke(increment), 5)?
-	expect_equal(invoke(fn value: value + 2), 6)?
+	expect_equal(invoke(value => value + 2), 6)?
 
 test "constructor fields and methods use optional arguments":
 	defaulted := DefaultBox()

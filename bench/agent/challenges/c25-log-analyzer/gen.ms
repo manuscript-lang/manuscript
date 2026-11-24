@@ -7,9 +7,9 @@ import (
 LEVELS := ["DEBUG", "INFO", "WARN", "ERROR"]
 METHODS := ["DELETE", "GET", "POST", "PUT"]
 
-fn digits(s String) Bool: (
+fn digits(s String) Bool => (
 	not s.is_empty()
-	and s.chars().all(fn c: "0123456789".contains(c))
+	and s.chars().all(c => "0123456789".contains(c))
 )
 
 type Entry:
@@ -83,8 +83,7 @@ fn solve(s String) String:
 	out.append("top:")
 
 	order := counts.keys().sorted(
-		fn a,
-		b: if counts.get_or(a, 0) != counts.get_or(b, 0): counts.get_or(
+		(a, b) => if counts.get_or(a, 0) != counts.get_or(b, 0): counts.get_or(
 			b,
 			0,
 		) - counts.get_or(a, 0) else: a.compare(b)
@@ -93,9 +92,9 @@ fn solve(s String) String:
 		out.append(
 			f"{p} {counts.get_or(p, 0)} avg={totals.get_or(p, 0) / counts.get_or(p, 0)}"
 		)
-	return out.map(fn o: o + "\n").join("")
+	return out.map(o => o + "\n").join("")
 
-fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
 
 fn good(var rnd Random, i Int) String:
 	level := rnd.choice(LEVELS)

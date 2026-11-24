@@ -12,7 +12,7 @@ export fn main() Int:
                 value:
                     number += 1
                     value
-                null: 0
+                null => 0
         )
     )
     if total != 2:

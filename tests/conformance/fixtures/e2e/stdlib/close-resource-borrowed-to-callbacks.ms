@@ -28,11 +28,11 @@ fn main() Void:
 	var name String? = null
 	if door != null: name = door.name.clone()
 
-	size := open("result").map(fn d: d.name.length())
+	size := open("result").map(d => d.name.length())
 	say("--fallback")
 
 	failed Door!Error := error(Error("no"))
-	fallback := failed.get_or_else(fn cause: Door("fallback"))
+	fallback := failed.get_or_else(cause => Door("fallback"))
 	say(
 		f"end {doors.length()} {(name or panic("called Optional.get() on null"))} {size.get()} {fallback.name}"
 	)

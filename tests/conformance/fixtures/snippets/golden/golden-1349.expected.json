@@ -31,26 +31,26 @@
           "file": "golden-1349.ms",
           "line": 9,
           "column": 10,
-          "offset": 193
+          "offset": 195
         },
         "end": {
           "file": "golden-1349.ms",
           "line": 9,
           "column": 11,
-          "offset": 194
+          "offset": 196
         },
         "fix": {
           "position": {
             "file": "golden-1349.ms",
             "line": 9,
             "column": 10,
-            "offset": 193
+            "offset": 195
           },
           "end": {
             "file": "golden-1349.ms",
             "line": 9,
             "column": 11,
-            "offset": 194
+            "offset": 196
           },
           "replacement": ""
         }

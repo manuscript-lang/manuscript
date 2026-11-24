@@ -21,7 +21,7 @@ export fn main() Int:
     l4 := [13]
     say(f"l4 = {l4} len {l4.length()}")
 
-    l5 := l4.map(fn x: x * 3)
+    l5 := l4.map(x => x * 3)
     say(f"l5 = {l5} len {l5.length()}")
 
     b6 := (((-(-262003)) + 572648243236) == ((-22) + (-i3)))

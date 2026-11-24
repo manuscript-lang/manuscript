@@ -18,5 +18,5 @@ export fn list_headers(fields Map[String, List[String]]) HttpHeaders!:
 // another operation.
 export fn http_result[T](move outcome T!) T!:
 	match outcome:
-		ok(found): return ok(found)
-		error(cause): return error(Error(cause.message.clone(), kind: "EIO"))
+		ok(found) => return ok(found)
+		error(cause) => return error(Error(cause.message.clone(), kind: "EIO"))

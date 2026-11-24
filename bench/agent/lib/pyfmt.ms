@@ -49,11 +49,11 @@ export fn fmt_g(x Float, digits Int) String:
 	return strip_zeros(fixed(x, digits - 1 - exp))
 
 // `format(x, ".0%")`.
-export fn pct0(x Float) String: fixed(x * 100.0, 0) + "%"
+export fn pct0(x Float) String => fixed(x * 100.0, 0) + "%"
 
 // The mean of values that carry at most `scale`-ths of precision (wall times to 0.1 s
 // use 10.0), computed from exact integer sums so the result is the correctly rounded
 // quotient, as CPython's `statistics.mean` gives.
 export fn mean_scaled(values List[Float], scale Float) Float:
-	total := values.map(fn v: round(v * scale).truncate_to_int() or 0).sum()
+	total := values.map(v => round(v * scale).truncate_to_int() or 0).sum()
 	return total.to_float() / (values.length().to_float() * scale)

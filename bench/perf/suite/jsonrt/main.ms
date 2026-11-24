@@ -21,10 +21,10 @@ fn make_text(n Int) String:
 
 fn walk(v JsonValue) Int:
 	match v:
-		Null: return 1
-		BoolValue(_): return 1
-		NumberValue(t): return t.parse_int() or 0
-		StringValue(s): return s.length()
+		Null => return 1
+		BoolValue(_) => return 1
+		NumberValue(t) => return t.parse_int() or 0
+		StringValue(s) => return s.length()
 		ArrayValue(items):
 			var t = 0
 			for item in items:

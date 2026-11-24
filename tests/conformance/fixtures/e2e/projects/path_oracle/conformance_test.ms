@@ -24,10 +24,10 @@ fn list_of(token String) List[String]:
 	inner := token.slice(1, token.length() - 1)
 	if inner.is_empty(): return []
 
-	return inner.split(",").map(fn item: text(item))
+	return inner.split(",").map(item => text(item))
 
 fn parts_of(token String) PathParts:
-	f := token.split(" ").map(fn item: text(item))
+	f := token.split(" ").map(item => text(item))
 	return PathParts(
 		root: f[0].clone(),
 		directory: f[1].clone(),
@@ -45,7 +45,7 @@ fn parts_text(parts PathParts) String:
 			parts.extension.clone(),
 			parts.name.clone(),
 		]
-		.map(fn item: hex(item))
+		.map(item => hex(item))
 		.join(" ")
 	)
 

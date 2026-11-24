@@ -110,7 +110,7 @@ fn run(opts Map[String, String], runs Int) Result[String, Error]:
 		for label in ["before", "after"]:
 			seconds.add(
 				label.clone(),
-				jlist(samples.get_or(label, []).map(fn s: jfloat(s))),
+				jlist(samples.get_or(label, []).map(s => jfloat(s))),
 			)
 		medians.add("before", jfloat(before))
 		medians.add("after", jfloat(after))

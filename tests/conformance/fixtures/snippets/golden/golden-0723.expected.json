@@ -24,15 +24,15 @@
         "position": {
           "file": "golden-0723.ms",
           "line": 4,
-          "column": 51,
-          "offset": 161
+          "column": 53,
+          "offset": 165
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0723.ms:3:14: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n   |\n 3 | fn both[T, E Error](cause E, r Result[T, E]) Void: return\n   |              ^\n<DIR>/golden-0723.ms:4:51: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 4 | fn first(cause Error) Void: both(cause: cause, r: f())\n   |                                                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0723.ms:3:14: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n   |\n 3 | fn both[T, E Error](cause E, r Result[T, E]) Void => return\n   |              ^\n<DIR>/golden-0723.ms:4:53: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 4 | fn first(cause Error) Void => both(cause: cause, r: f())\n   |                                                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

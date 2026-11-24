@@ -55,28 +55,28 @@ fn main() Void:
 		if mode == "sleep":
 			promises.append(
 				promise(
-					fn: park_sleep(i),
+					() => park_sleep(i),
 					options: PromiseOptions(
 						placement: Placement.Here
-					)
+					),
 				)
 			)
 		else if mode == "deep":
 			promises.append(
 				promise(
-					fn: park_deep(i),
+					() => park_deep(i),
 					options: PromiseOptions(
 						placement: Placement.Here
-					)
+					),
 				)
 			)
 		else:
 			promises.append(
 				promise(
-					fn: park_read(i),
+					() => park_read(i),
 					options: PromiseOptions(
 						placement: Placement.Here
-					)
+					),
 				)
 			)
 

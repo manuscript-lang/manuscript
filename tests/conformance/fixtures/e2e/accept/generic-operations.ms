@@ -25,21 +25,21 @@ fn Bag.pick[K Comparable](key fn(Int) K) Int?:
 	return self.items[at]
 
 fn Bag.mapped[U](transform fn(Int) U) List[U]:
-	var out = self.items.map(fn x: transform(x))
+	var out = self.items.map(x => transform(x))
 	return out
 
 fn Bag.paired[U Clonable](other U) List[U]:
-	var out = self.items.map(fn item: other.clone())
+	var out = self.items.map(item => other.clone())
 	return out
 
 fn pick_with[B Picker[Int]](bag B) Int?:
-	return bag.pick(fn(x Int) Int: 0 - x)
+	return bag.pick(fn(x Int) Int => 0 - x)
 
 test "an interface operation takes type parameters of its own":
 	bag := Bag(items: [3, 1, 2])
-	bag.pick(fn(x Int) Int: x) | expect_equal(3)?
-	bag.pick(fn(x Int) String: "{x}") | expect_equal(3)?
-	bag.mapped(fn(x Int) String: "n") | expect_equal(["n", "n", "n"])?
+	bag.pick(fn(x Int) Int => x) | expect_equal(3)?
+	bag.pick(fn(x Int) String => "{x}") | expect_equal(3)?
+	bag.mapped(fn(x Int) String => "n") | expect_equal(["n", "n", "n"])?
 
 test "a bounded type parameter calls a generic operation":
 	pick_with(Bag(items: [3, 1, 2])) | expect_equal(1)?
@@ -50,8 +50,8 @@ test "an inherent method takes type parameters of its own":
 
 test "List max_by and min_by are source methods":
 	words := ["bb", "a", "ccc", "dd"]
-	words.max_by(fn(w String) Int: w.length()) | expect_equal("ccc")?
-	words.min_by(fn(w String) Int: w.length()) | expect_equal("a")?
+	words.max_by(fn(w String) Int => w.length()) | expect_equal("ccc")?
+	words.min_by(fn(w String) Int => w.length()) | expect_equal("a")?
 
 fn main() Void:
 	return

@@ -17,6 +17,6 @@ fn var Door.open() Int:
 
 fn main() Void!:
 	var door = Door(id: 3, opened: false)
-	work := promise(fn: ok(door.open()))
+	work := promise(() => ok(door.open()))
 	work.cancel()
 	void work.wait()

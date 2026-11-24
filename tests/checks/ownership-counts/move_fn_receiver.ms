@@ -8,11 +8,11 @@ type Name:
 interface Taken:
 	move fn take() Int
 
-fn sink(move s Name) Int: s.text.length()
+fn sink(move s Name) Int => s.text.length()
 
-fn move Name.take() Int: sink(self)
+fn move Name.take() Int => sink(self)
 
-fn took(move x Taken) Int: x.take()
+fn took(move x Taken) Int => x.take()
 
 fn main() Void:
 	print(

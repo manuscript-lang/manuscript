@@ -28,8 +28,8 @@ export fn versions() List[String]:
 
 // Go has no sorted-map producer; all other rows are required in every version.
 fn required(version String) List[String]:
-	names := operations().map(fn o: o.name.clone())
-	if version == "go": return names.filter(fn n: n != "sorted_map_add_contains")
+	names := operations().map(o => o.name.clone())
+	if version == "go": return names.filter(n => n != "sorted_map_add_contains")
 
 	return names
 
@@ -62,7 +62,7 @@ export fn summarize(lines List[String], repeats Int) String!:
 	var pending = Set[String]()
 
 	for line in lines:
-		parts := line.trim().split(" ").filter(fn p: p != "")
+		parts := line.trim().split(" ").filter(p => p != "")
 		if parts.length() < 2 or not versions().contains(parts[0]):
 			return invalid(f"invalid sample: {line.trim()}")
 
@@ -78,7 +78,7 @@ export fn summarize(lines List[String], repeats Int) String!:
 			need := required(version)
 			if (
 				pending.length() != need.length()
-				or not need.all(fn n: pending.contains(n))
+				or not need.all(n => pending.contains(n))
 			):
 				return invalid(f"incomplete {version} trial")
 
@@ -110,7 +110,7 @@ export fn summarize(lines List[String], repeats Int) String!:
 
 		pending.add(name.clone())
 
-	if active != "" or versions().any(fn v: trials.get_or(v, 0) != repeats):
+	if active != "" or versions().any(v => trials.get_or(v, 0) != repeats):
 		return invalid(f"expected {repeats} complete trials of every version")
 
 	var rows = [

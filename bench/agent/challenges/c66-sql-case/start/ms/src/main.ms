@@ -10,13 +10,13 @@ type Val:
 	n Int = 0
 	s String = ""
 
-fn vnull() Val: Val()
+fn vnull() Val => Val()
 
-fn vint(n Int) Val: Val(k: 1, n: n)
+fn vint(n Int) Val => Val(k: 1, n: n)
 
-fn vtext(s String) Val: Val(k: 2, s: s)
+fn vtext(s String) Val => Val(k: 2, s: s)
 
-fn vbool(b Bool) Val: Val(k: 3, n: if b: 1 else: 0)
+fn vbool(b Bool) Val => Val(k: 3, n: if b: 1 else: 0)
 
 fn val_str(v Val) String:
 	if v.k == 0: return "NULL"
@@ -35,9 +35,9 @@ fn rowkey(row List[Val], idxs List[Int]) String:
 		out += vkey(row[i])
 	return out
 
-fn err(msg String) Error: Error(msg)
+fn err(msg String) Error => Error(msg)
 
-fn syn() Error: Error("syntax error")
+fn syn() Error => Error("syntax error")
 
 // ---------- tokens ----------
 type Token:
@@ -58,11 +58,11 @@ fn keywords() Set[String]:
 		s.add(w.clone())
 	return s
 
-fn is_alpha(c Int) Bool: (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
+fn is_alpha(c Int) Bool => (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
 
-fn is_digit(c Int) Bool: c >= 48 and c <= 57
+fn is_digit(c Int) Bool => c >= 48 and c <= 57
 
-fn sub(src Bytes, a Int, b Int) String: src.decode_utf8_range(a, b) or ""
+fn sub(src Bytes, a Int, b Int) String => src.decode_utf8_range(a, b) or ""
 
 fn lex(src Bytes) List[Chunk]:
 	kws := keywords()
@@ -284,11 +284,11 @@ fn Parser.t(off Int = 0) String:
 	if i >= self.toks.length(): i = self.toks.length() - 1
 	return self.toks[i].text.clone()
 
-fn Parser.num() Int: self.toks[self.pos].n
+fn Parser.num() Int => self.toks[self.pos].n
 
-fn Parser.is_kw(w String, off Int = 0) Bool: self.k(off) == 2 and self.t(off) == w
+fn Parser.is_kw(w String, off Int = 0) Bool => self.k(off) == 2 and self.t(off) == w
 
-fn Parser.is_op(o String, off Int = 0) Bool: self.k(off) == 5 and self.t(off) == o
+fn Parser.is_op(o String, off Int = 0) Bool => self.k(off) == 5 and self.t(off) == o
 
 fn var Parser.accept_kw(w String) Bool:
 	if self.is_kw(w):
@@ -457,7 +457,7 @@ fn var Parser.parse_unary() Int!:
 
 	return self.parse_primary()
 
-fn is_agg_name(s String) Bool: s == "COUNT" or s == "SUM" or s == "MIN" or s == "MAX"
+fn is_agg_name(s String) Bool => s == "COUNT" or s == "SUM" or s == "MIN" or s == "MAX"
 
 fn var Parser.parse_primary() Int!:
 	kd := self.k()
@@ -813,7 +813,7 @@ fn resolve(var nodes List[Node], id Int, rc Rctx, in_agg Bool) Void!:
 		resolve(nodes, a, rc, in_agg)?
 
 // ---------- eval ----------
-fn type_error() Error: Error("type error")
+fn type_error() Error => Error("type error")
 
 fn cmp_vals(a Val, b Val) Int!:
 	if a.k == 1 and b.k == 1:
@@ -1393,7 +1393,7 @@ fn exec_select(db Map[String, Table], var st Stmt) String!:
 		outrows = uniq
 
 	if ords.length() > 0:
-		outrows.sort(fn a, b: order_cmp(a, b, ords))
+		outrows.sort((a, b) => order_cmp(a, b, ords))
 
 	var lines = List[String]()
 	lines.append(outnames.join("|"))

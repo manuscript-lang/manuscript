@@ -25,7 +25,7 @@ fn trials(per Int) List[String]:
 fn row(report String, name String) List[String]:
 	for line in report.split("\n"):
 		if line.starts_with(name + " "):
-			parts := line.split(" ").filter(fn p: p != "")
+			parts := line.split(" ").filter(p => p != "")
 			return parts.slice(1, parts.length()).get_or([])
 
 	return []
@@ -62,10 +62,10 @@ test "rejects invalid evidence":
 	cases.add("empty", List[String]())
 	cases.add("unfinished", good.slice(0, good.length() - 1).get_or([]))
 	cases.add("extra trial", good.concat(trial("ms", 100)))
-	cases.add("missing everywhere", good.filter(fn l: not l.contains("list_append")))
+	cases.add("missing everywhere", good.filter(l => not l.contains("list_append")))
 	cases.add("duplicate", [good[0].clone()].concat(good))
-	cases.add("missing version", good.filter(fn l: not l.starts_with("go ")))
-	cases.add("missing boundary", good.filter(fn l: l != "ms # end"))
+	cases.add("missing version", good.filter(l => not l.starts_with("go ")))
+	cases.add("missing boundary", good.filter(l => l != "ms # end"))
 	cases.add(
 		"unknown operation",
 		[good[0].replace("list_append", "unknown")].concat(rest),

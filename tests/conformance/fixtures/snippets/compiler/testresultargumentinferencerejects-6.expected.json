@@ -14,7 +14,7 @@
           "file": "testresultargumentinferencerejects-6.ms",
           "line": 6,
           "column": 16,
-          "offset": 237
+          "offset": 239
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "testresultargumentinferencerejects-6.ms",
           "line": 6,
           "column": 19,
-          "offset": 240
+          "offset": 242
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresultargumentinferencerejects-6.ms:6:16: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 6 | fn first(r Int!E1!E2) Void: nested(r)\n   |                ^\n<DIR>/testresultargumentinferencerejects-6.ms:6:19: resolution: unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 6 | fn first(r Int!E1!E2) Void: nested(r)\n   |                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresultargumentinferencerejects-6.ms:6:16: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 6 | fn first(r Int!E1!E2) Void => nested(r)\n   |                ^\n<DIR>/testresultargumentinferencerejects-6.ms:6:19: resolution: unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 6 | fn first(r Int!E1!E2) Void => nested(r)\n   |                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

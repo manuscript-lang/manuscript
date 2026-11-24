@@ -8,7 +8,7 @@ import (
 export type Codex:
 	placeholder Bool = true
 
-fn Codex.name() String: "codex"
+fn Codex.name() String => "codex"
 
 fn Codex.command(prompt String, workspace String, model String?) List[String]:
 	var cmd = [

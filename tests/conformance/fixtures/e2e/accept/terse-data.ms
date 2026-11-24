@@ -5,13 +5,13 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn subtract(amount Int, deduction Int = 1) Int: amount - deduction
+fn subtract(amount Int, deduction Int = 1) Int => amount - deduction
 
-fn first[T](left T, right T) T: left
+fn first[T](left T, right T) T => left
 
-fn size(values Map[String, Int]) Int: values.length()
+fn size(values Map[String, Int]) Int => values.length()
 
-fn optional_size(values Map[String, Int]?) Int: (
+fn optional_size(values Map[String, Int]?) Int => (
 	values
 	or panic("called Optional.get() on null")
 ).length()
@@ -70,7 +70,7 @@ type Key:
 fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
-fn Key.hash() Int: self.id
+fn Key.hash() Int => self.id
 
 test "map literal uses custom key equality":
 	a := Key(1, "first")

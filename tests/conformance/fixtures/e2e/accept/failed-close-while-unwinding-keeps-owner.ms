@@ -42,13 +42,13 @@ fn list_then_fault(move log String) Void:
 test "a failed close of a deque element while unwinding keeps the body fault":
 	temp := temporary("failed-close-")?
 	log := f"{temp.path()}/log"
-	message := expect_fault(fn: deque_then_fault(log.clone()))?
+	message := expect_fault(() => deque_then_fault(log.clone()))?
 	expect_equal(message, "body fault")?
 	expect_equal(events(log)?, "2,1,")?
 
 test "a failed close of an optional element while unwinding keeps the body fault":
 	temp := temporary("failed-close-")?
 	log := f"{temp.path()}/log"
-	message := expect_fault(fn: list_then_fault(log.clone()))?
+	message := expect_fault(() => list_then_fault(log.clone()))?
 	expect_equal(message, "body fault")?
 	expect_equal(events(log)?, "2,1,")?

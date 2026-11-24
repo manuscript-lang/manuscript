@@ -94,21 +94,21 @@ test "closed list reads preserve defaults and evaluation order":
 	visits | expect_equal([7, 0, 8, 9])?
 
 test "recursive appends keep overflow checks":
-	(expect_fault(fn: _ignored := self_overflow())?) | expect_contains("Int overflow;")?
-	(expect_fault(fn: _ignored := peer_overflow())?) | expect_contains("Int overflow;")?
+	(expect_fault(() => _ignored := self_overflow())?) | expect_contains("Int overflow;")?
+	(expect_fault(() => _ignored := peer_overflow())?) | expect_contains("Int overflow;")?
 
 test "list prefixes and Optional defaults keep overflow checks":
 	(
-		(expect_fault(fn: _ignored := prefix_overflow())?)
+		(expect_fault(() => _ignored := prefix_overflow())?)
 		| expect_contains("Int overflow;")?
 	)
 	(
 		(
-			expect_fault(fn: _ignored := optional_overflow(null))?
+			expect_fault(() => _ignored := optional_overflow(null))?
 		) | expect_contains("Int overflow;")?
 	)
 	(
-		(expect_fault(fn: _ignored := optional_overflow(0))?) | expect_contains(
+		(expect_fault(() => _ignored := optional_overflow(0))?) | expect_contains(
 			"Int overflow;"
 		)?
 	)
@@ -154,7 +154,7 @@ fn match_length() Int:
 		n:
 			values.append(n)
 			n
-		null: 0
+		null => 0
 
 	return values.length()
 
@@ -164,18 +164,18 @@ fn singleton(var values List[Int]) List[Int]:
 
 fn default_length() Int:
 	var values List[Int] = []
-	callback := fn(value List[Int] = singleton(values)) Int: value.length()
+	callback := fn(value List[Int] = singleton(values)) Int => value.length()
 	_ignored := callback()
 	return values.length()
 
 test "reordered defaults and scalar append dependencies keep overflow checks":
 	(
-		(expect_fault(fn: _ignored := reordered_default_overflow())?)
+		(expect_fault(() => _ignored := reordered_default_overflow())?)
 		| expect_contains("Int overflow;")?
 	)
 	(
 		(
-			expect_fault(fn: _ignored := scalar_append_overflow())?
+			expect_fault(() => _ignored := scalar_append_overflow())?
 		) | expect_contains("Int overflow;")?
 	)
 

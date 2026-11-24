@@ -44,7 +44,7 @@ export fn main() Int:
     s7 := "MiXeD CaSe"
     say(f"s7 = [{s7}]")
 
-    l8 := l6.filter(fn x: x > 1)
+    l8 := l6.filter(x => x > 1)
     say(f"l8 = {l8} len {l8.length()}")
 
     l9 := [3]
@@ -56,7 +56,7 @@ export fn main() Int:
     f11 := ((f3 - 585.231) * ((f3 - f3) * (f3 * 149.857)))
     say(f"f11 = {f11}")
 
-    l12 := l6.sorted(fn a, b: a.compare(b))
+    l12 := l6.sorted((a, b) => a.compare(b))
     say(f"l12 = {l12} len {l12.length()}")
 
     s13 := s7.upper().replace("42", "héllo").trim()

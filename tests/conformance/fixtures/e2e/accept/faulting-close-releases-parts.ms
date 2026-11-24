@@ -40,7 +40,7 @@ fn move Door.close() Void!:
 
 fn captured(move label String) fn() Int:
 	door := Door(label, true)
-	return fn: door.label.length()
+	return () => door.label.length()
 
 type Envelope:
 	label String
@@ -48,7 +48,7 @@ type Envelope:
 
 fn replace_old_capture(move label String) Void:
 	var items = [Envelope(label.clone(), captured(label.clone()))]
-	items.set(0, Envelope(label, fn: 4))
+	items.set(0, Envelope(label, () => 4))
 
 fn drop_capture(move label String) Void:
 	action := captured(label)
@@ -79,89 +79,89 @@ fn optional_close_during_fault(move label String) Void:
 	void held
 
 fn faults(work fn() Void) Bool:
-	return promise(fn: ok(work()), options: PromiseOptions(placement: Placement.Here)).wait().is_error()
+	return promise(() => ok(work()), options: PromiseOptions(placement: Placement.Here)).wait().is_error()
 
 test "a fault in close on a normal return releases the value":
-	expect_true(faults(fn: hold_then_break("a holder label that needs a heap block")))?
+	expect_true(faults(() => hold_then_break("a holder label that needs a heap block")))?
 
 test "a fault in close during a pending fault releases the value":
 	expect_true(
 		faults(
-			fn: hold_fault_and_break(
+			() => hold_fault_and_break(
 				"a holder label that needs a heap block"
 			)
 		)
 	)?
 
 test "a captured resource whose close faults releases its parts":
-	expect_true(faults(fn: drop_capture("a capture label that needs a heap block")))?
+	expect_true(faults(() => drop_capture("a capture label that needs a heap block")))?
 
 test "replacing a list element whose capture close faults keeps the new owner":
-	expect_true(faults(fn: replace_old_capture("a list label that needs a heap block")))?
+	expect_true(faults(() => replace_old_capture("a list label that needs a heap block")))?
 
 test "a temporary list whose element close faults releases the list":
-	expect_true(faults(fn: temporary_list("a temporary label that needs a heap block")))?
+	expect_true(faults(() => temporary_list("a temporary label that needs a heap block")))?
 
 test "a faulting close of an optional payload releases it":
-	expect_true(faults(fn: shelf_close("a shelf label that needs a heap block")))?
+	expect_true(faults(() => shelf_close("a shelf label that needs a heap block")))?
 
 test "a faulting close of an alternative case releases its other fields":
-	expect_true(faults(fn: choice_close("a choice label that needs a heap block")))?
+	expect_true(faults(() => choice_close("a choice label that needs a heap block")))?
 
 test "a faulting optional close during a pending fault releases the payload":
 	expect_true(
 		faults(
-			fn: optional_close_during_fault(
+			() => optional_close_during_fault(
 				"an optional label that needs a heap block"
 			)
 		)
 	)?
 
 fn remove_out_of_range(move label String) Void:
-	var items = [Envelope(label, fn: 1)]
+	var items = [Envelope(label, () => 1)]
 	items.remove(5)
 
 test "an index fault of an in-place list edit releases the list":
-	expect_true(faults(fn: remove_out_of_range("a remove label that needs a heap block")))?
+	expect_true(faults(() => remove_out_of_range("a remove label that needs a heap block")))?
 
 fn set_out_of_range(move label String) Void:
-	var items = [Envelope(label.clone(), fn: 1)]
-	items.set(5, Envelope(label, fn: 2))
+	var items = [Envelope(label.clone(), () => 1)]
+	items.set(5, Envelope(label, () => 2))
 
 test "an index fault of set releases the incoming element":
-	expect_true(faults(fn: set_out_of_range("a set label that needs a heap block")))?
+	expect_true(faults(() => set_out_of_range("a set label that needs a heap block")))?
 
 fn insert_out_of_range(move label String) Void:
-	var items = [Envelope(label.clone(), fn: 1)]
-	items.insert(5, Envelope(label, fn: 2))
+	var items = [Envelope(label.clone(), () => 1)]
+	items.insert(5, Envelope(label, () => 2))
 
 test "an index fault of insert releases the incoming element":
-	expect_true(faults(fn: insert_out_of_range("an insert label that needs a heap block")))?
+	expect_true(faults(() => insert_out_of_range("an insert label that needs a heap block")))?
 
 fn replace_out_of_range(move label String) Void:
 	var items = [label.clone()]
 	void items.replace(5, label)
 
 test "an index fault of replace releases the incoming element":
-	expect_true(faults(fn: replace_out_of_range("a replace label that needs a heap block")))?
+	expect_true(faults(() => replace_out_of_range("a replace label that needs a heap block")))?
 
 fn splice_out_of_range(move label String) Void:
 	var items = [label.clone()]
 	items.splice(5, 0, [label])
 
 test "a range fault of splice releases the replacement":
-	expect_true(faults(fn: splice_out_of_range("a splice label that needs a heap block")))?
+	expect_true(faults(() => splice_out_of_range("a splice label that needs a heap block")))?
 
 fn fill_out_of_range(move label String) Void:
 	var items = [label.clone()]
 	items.fill(label, 0, 9)
 
 test "a range fault of fill releases the value":
-	expect_true(faults(fn: fill_out_of_range("a fill label that needs a heap block")))?
+	expect_true(faults(() => fill_out_of_range("a fill label that needs a heap block")))?
 
 fn fill_empty_range(move label String) Void:
 	var items = [label.clone()]
 	items.fill(label, 0, 0)
 
 test "fill over an empty range releases the value":
-	expect_true(not faults(fn: fill_empty_range("a fill label that needs a heap block")))?
+	expect_true(not faults(() => fill_empty_range("a fill label that needs a heap block")))?

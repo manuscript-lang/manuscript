@@ -157,7 +157,7 @@ fn tree_size(value YamlValue) Int:
 			for item in values: total += tree_size(item)
 		ObjectValue(values):
 			for entry in values: total += tree_size(entry.value.clone())
-		_: void
+		_ => void
 
 	return total
 
@@ -525,13 +525,13 @@ fn tag_token(var flow Flow) String!:
 // The mapping key a scalar node stands for: its text. A collection cannot be a key.
 fn key_text(value YamlValue) String?:
 	match value:
-		StringValue(text): return text.clone()
-		NumberValue(text): return text.clone()
+		StringValue(text) => return text.clone()
+		NumberValue(text) => return text.clone()
 		BoolValue(flag):
 			if flag: return "true"
 			return "false"
-		Null: return "null"
-		_: return null
+		Null => return "null"
+		_ => return null
 
 // Whether a tag makes a scalar a string whatever its spelling.
 fn string_tag(tag String) Bool:
@@ -546,8 +546,8 @@ fn merge(line Int, column Int, var target Map[String, YamlValue], value YamlValu
 					entry.value.clone(),
 				)
 			return ok()
-		ArrayValue(values): values
-		_: return error(
+		ArrayValue(values) => values
+		_ => return error(
 			yaml_invalid(
 				line: line,
 				column: column,
@@ -557,13 +557,13 @@ fn merge(line Int, column Int, var target Map[String, YamlValue], value YamlValu
 
 	for item in values:
 		match item:
-			ObjectValue(_): merge(
+			ObjectValue(_) => merge(
 				line: line,
 				column: column,
 				target: target,
 				value: item,
 			)?
-			_: return error(
+			_ => return error(
 				yaml_invalid(
 					line: line,
 					column: column,
@@ -757,8 +757,8 @@ fn flow_entry(
 			target: entries,
 			value: value,
 		):
-			ok(_): return ok()
-			error(cause): cause
+			ok(_) => return ok()
+			error(cause) => cause
 
 		if cause.kind != "EBADMSG": return error(cause)
 
@@ -2575,7 +2575,7 @@ fn validate(var context Context, value YamlValue, depth Int) Void!:
 			for item in values: validate(context, item, (depth + 1))?
 		ObjectValue(values):
 			for entry in values: validate(context, entry.value, (depth + 1))?
-		_: void
+		_ => void
 
 fn open_stream(text String, options YamlOptions) Context!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
@@ -2803,9 +2803,9 @@ fn valid_number(text String) Bool:
 
 fn scalar_text(value YamlValue) String!:
 	match value:
-		Null: return ok("null")
-		BoolValue(flag): return ok(flag.to_string())
-		StringValue(text): return ok(quote_text(text, escape_c1: true))
+		Null => return ok("null")
+		BoolValue(flag) => return ok(flag.to_string())
+		StringValue(text) => return ok(quote_text(text, escape_c1: true))
 		NumberValue(text):
 			if not valid_number(text.clone()): return error(
 				Error("invalid YAML input", kind: "EINVAL")
@@ -2820,9 +2820,9 @@ fn scalar_text(value YamlValue) String!:
 
 fn is_block(value YamlValue) Bool:
 	match value:
-		ArrayValue(values): return not values.is_empty()
-		ObjectValue(values): return not values.is_empty()
-		_: return false
+		ArrayValue(values) => return not values.is_empty()
+		ObjectValue(values) => return not values.is_empty()
+		_ => return false
 
 fn emit_block(var out String, value YamlValue, indent String) Result[Void, Error]:
 	match value:
@@ -2855,7 +2855,7 @@ fn emit_block(var out String, value YamlValue, indent String) Result[Void, Error
 					out += "\n"
 
 			return ok()
-		_: return ok()
+		_ => return ok()
 
 // Writes a YAML value in block style with double-quoted strings. Output longer than
 // `max_bytes` returns `EOVERFLOW`, and a negative `max_bytes` returns `EINVAL`.

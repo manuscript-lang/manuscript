@@ -163,7 +163,7 @@ fn life(gens Int) Int:
 		g = step(g)
 		n += 1
 
-	return g.cells.fold(0, fn(acc Int, v Int) Int: return acc + v)
+	return g.cells.fold(0, fn(acc Int, v Int) Int => return acc + v)
 
 fn matmul(n Int) Float:
 	var a = List[List[Float]]()
@@ -254,7 +254,7 @@ fn wordfreq(n Int) Int:
 
 	while i < n:
 		k := (i * 7919) % 5003
-		m.update(k, 0, fn count: count + 1)
+		m.update(k, 0, count => count + 1)
 		i += 1
 
 	return m.length()
@@ -265,7 +265,7 @@ fn timed(name String, run fn() Int) Void:
 	say(f"{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 fn main() Int:
-	timed("sieve_5M", fn() Int: return sieve(5000000))
+	timed("sieve_5M", fn() Int => return sieve(5000000))
 
 	timed(
 		"nbody_200k",
@@ -280,9 +280,9 @@ fn main() Int:
 			return (advance(bodies, 200000) * 1000.0).truncate_to_int() or 0
 	)
 
-	timed("life_128x128_50", fn() Int: return life(50))
-	timed("matmul_200", fn() Int: return matmul(200).truncate_to_int() or 0)
-	timed("trees_d16_x20", fn() Int: return trees(20))
-	timed("collatz_1M", fn() Int: return collatz(1000000))
-	timed("map_count_2M", fn() Int: return wordfreq(2000000))
+	timed("life_128x128_50", fn() Int => return life(50))
+	timed("matmul_200", fn() Int => return matmul(200).truncate_to_int() or 0)
+	timed("trees_d16_x20", fn() Int => return trees(20))
+	timed("collatz_1M", fn() Int => return collatz(1000000))
+	timed("map_count_2M", fn() Int => return wordfreq(2000000))
 	return 0

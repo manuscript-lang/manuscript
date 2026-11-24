@@ -1,4 +1,4 @@
 // conform: tags=formatter,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/build/expression_conveniences_test.go:16 TestExpressionConvenienceRejections
-fn f() Void: xs := List()
+fn f() Void => xs := List()

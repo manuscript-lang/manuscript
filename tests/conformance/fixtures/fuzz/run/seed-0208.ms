@@ -22,7 +22,7 @@ export fn main() Int:
     l2 := [1, 2, 3].take(0)
     say(f"l2 = {l2} len {l2.length()}")
 
-    l3 := l2.map(fn x: x * 4)
+    l3 := l2.map(x => x * 4)
     say(f"l3 = {l3} len {l3.length()}")
 
     if ("x" + "ms").is_empty():

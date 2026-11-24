@@ -242,7 +242,7 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
   if (kind_is(kd, "]")) {
     if (fk == MS_T_For) {
       return ms_span_of_text("; there are no comprehensions: build the list with map and filter, e.g. "
-                             "items.filter(fn x: x > 0).map(fn x: x * 2)");
+                             "items.filter(x => x > 0).map(x => x * 2)");
     }
     return ms_span_of_text("; close the bracket, separating items with commas");
   }
@@ -268,7 +268,7 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
   }
   if (kind_is(kd, ":=") && fk == MS_T_Newline) {
     return ms_span_of_text("; a binding needs a value: write name := value, or name Type := value; closure "
-                           "parameters with a type go in parentheses, as in fn(n Int): n + 1");
+                           "parameters with a type go in parentheses, as in fn(n Int) Int => n + 1");
   }
   if (kind_is(kd, "NAME")) {
     return need_name_hint(p, found);
@@ -441,7 +441,7 @@ static const char *end_hint(Parser *p, MsToken t) {
   if (ms_span_is_text(prev_word, "def") && t.kind == MS_T_Name) {
     hint = "; there is no 'def': declare a function with 'fn name(a Int) Int:'";
   } else if (ms_span_is_text(prev_word, "lambda")) {
-    hint = "; there is no 'lambda': write an anonymous function as 'fn x: x + 1'";
+    hint = "; there is no 'lambda': write an anonymous function as 'x => x + 1'";
   } else if (ms_span_is_text(prev_word, "elif")) {
     hint = "; there is no 'elif': write 'else if <condition>:' for a further branch";
   } else if (t.kind == MS_T_Name && parse_text_is(p, t, "is")) {
@@ -510,9 +510,8 @@ MS_NODISCARD bool parse_end(Parser *p) {
     parse_and_and(p, t);
     return false;
   }
-  if (t.kind == MS_T_Arrow || (t.kind == MS_T_Assign && parse_ahead(p, 1).kind == MS_T_Gt)) {
-    parse_fail(p, t,
-               ms_span_of_text("there is no arrow function; anonymous functions are written fn x: x + 1"));
+  if (t.kind == MS_T_Arrow) {
+    parse_fail(p, t, ms_span_of_text("there is no '->'; a closure is written x => x + 1"));
     return false;
   }
   const char *hint = end_hint(p, t);

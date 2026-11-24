@@ -60,7 +60,7 @@ fn bench_unpack(packed Bytes) Void:
 
 fn bench_sse() Void:
 	stream := sse_stream(2000)
-	bench("sse.feed", 2000, fn() Int: return count_events(stream.clone()))
+	bench("sse.feed", 2000, fn() Int => return count_events(stream.clone()))
 
 // Hands out its bytes as one chunk.
 type Whole:

@@ -39,8 +39,8 @@ fn Box[T].get() T:
 
 fn Shape.area() Int:
     match self:
-        Circle(r): return r * r * 3
-        Square(s): return s * s
+        Circle(r) => return r * r * 3
+        Square(s) => return s * s
 
 fn check(ok Bool, name String) Void:
     if not ok:

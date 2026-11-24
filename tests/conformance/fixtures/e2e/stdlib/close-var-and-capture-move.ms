@@ -47,9 +47,9 @@ fn var_move_reassign(c Bool) Int:
 fn captured(c Bool) fn() Int:
     h := open_handle("captured")
     if c:
-        return fn: h.id()
+        return () => h.id()
 
-    return fn: 0
+    return () => 0
 
 fn main() Void:
     var_unmoved()

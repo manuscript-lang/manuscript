@@ -13,15 +13,15 @@ fn heap(label String, n Int) String:
 
 fn by_match(value String!String) Int:
 	match grow(value):
-		ok(text): return text.length()
-		error(cause): return cause.length()
+		ok(text) => return text.length()
+		error(cause) => return cause.length()
 
 fn by_binding(value String!String) Int:
 	result := grow(value)
 
 	match result:
-		ok(text): return text.length()
-		error(cause): return cause.length()
+		ok(text) => return text.length()
+		error(cause) => return cause.length()
 
 fn relay(value String!String) String!String:
 	text := grow(value)?

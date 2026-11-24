@@ -79,7 +79,7 @@ fn sort_ints() Int:
 		x = lcg(x)
 		xs.append(x)
 
-	ys := xs.sorted(fn a, b: a - b)
+	ys := xs.sorted((a, b) => a - b)
 	return ys[0] + ys[1500000] + ys[2999999]
 
 fn sort_strings() Int:
@@ -90,7 +90,7 @@ fn sort_strings() Int:
 		x = lcg(x)
 		xs.append(f"s{x}")
 
-	xs.sort(fn a, b: a.compare(b))
+	xs.sort((a, b) => a.compare(b))
 	return xs[0].length() + xs[250000].length()
 
 fn struct_list() Int:
@@ -102,7 +102,7 @@ fn struct_list() Int:
 	for p in xs:
 		t += p.x + p.y
 
-	ys := xs.map(fn p: p.x + 1)
+	ys := xs.map(p => p.x + 1)
 	return t + ys.length()
 
 fn make_tree(d Int) Node?:
@@ -143,7 +143,7 @@ fn list_ops() Int:
 
 	d := xs.distinct()
 	r := xs.reversed()
-	s := xs.filter(fn v: v % 2 == 0).map(fn v: v * 3)
+	s := xs.filter(v => v % 2 == 0).map(v => v * 3)
 	var t = 0
 	for i in 0..200:
 		if xs.contains(999 + i): t += 1

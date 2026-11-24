@@ -2,4 +2,4 @@
 // conform: phase=check
 interface Shape:
     fn area() Int
-fn f() Shape: 1
+fn f() Shape => 1

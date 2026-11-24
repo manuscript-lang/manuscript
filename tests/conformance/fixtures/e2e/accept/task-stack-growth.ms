@@ -19,7 +19,7 @@ fn depth(n Int) Int:
 // it: this chain is about 28 MB of frames in a release build, 80 MB in a debug build.
 test "a promise task recurses far past its first stack slot":
 	p := promise(
-		fn: ok(depth(200000)),
+		() => ok(depth(200000)),
 		options: PromiseOptions(placement: Placement.Here)
 	)
 	expect_equal(p.wait().get_or(0), 200000)?
@@ -29,7 +29,7 @@ test "a promise task recurses far past its first stack slot":
 // the first pass.
 test "a loop at a segment boundary runs in bounded time":
 	p := promise(
-		fn: ok(loop_at_boundary()),
+		() => ok(loop_at_boundary()),
 		options: PromiseOptions(placement: Placement.Here)
 	)
 	expect_equal(p.wait().get_or(0), 3300 * 20000)?
@@ -44,13 +44,13 @@ fn loop_at_boundary() Int:
 // the task carries on there.
 test "a fault inside a grown segment unwinds to its guard":
 	p := promise(
-		fn: ok(catch_in_task()),
+		() => ok(catch_in_task()),
 		options: PromiseOptions(placement: Placement.Here)
 	)
 	expect_equal(p.wait().get_or(0), 10000)?
 
 fn catch_in_task() Int:
-	message := expect_fault(fn: faulting_depth(10000))
+	message := expect_fault(() => faulting_depth(10000))
 	if message.is_error(): return -1
 
 	return depth(10000)
@@ -77,7 +77,7 @@ fn parked_depth(n Int) Int:
 test "many tasks recurse past their first slot and park on several threads":
 	var tasks List[Promise[Int]] = []
 	for i in 0..64:
-		tasks.append(promise(fn: ok(parked_depth(20000 + i))))
+		tasks.append(promise(() => ok(parked_depth(20000 + i))))
 
 	results := wait_all(tasks)?
 	for i in 0..64:

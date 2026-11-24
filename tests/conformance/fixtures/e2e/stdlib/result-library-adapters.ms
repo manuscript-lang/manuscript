@@ -13,11 +13,11 @@ enum InputFailure:
 	MissingKey(value Int)
 
 fn read_number(data Bytes) UInt64!InputFailure:
-	decoded := data.uvarint(0).map_error(fn cause: InputFailure.Binary(cause.clone()))?
+	decoded := data.uvarint(0).map_error(cause => InputFailure.Binary(cause.clone()))?
 	return ok(decoded.value)
 
 fn read_duration(text String) Duration!InputFailure:
-	return parse_duration(text).map_error(fn cause: InputFailure.Time(cause.clone()))
+	return parse_duration(text).map_error(cause => InputFailure.Time(cause.clone()))
 
 fn read_prefixed(text String) String!InputFailure:
 	return ok_or(text.cut_prefix("name="), InputFailure.MissingPrefix)

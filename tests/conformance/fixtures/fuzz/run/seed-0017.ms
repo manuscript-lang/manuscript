@@ -56,10 +56,10 @@ export fn main() Int:
     f7 := 0.5
     say(f"f7 = {f7}")
 
-    l8 := l3.sorted(fn a, b: a.compare(b))
+    l8 := l3.sorted((a, b) => a.compare(b))
     say(f"l8 = {l8} len {l8.length()}")
 
-    l9 := l8.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l9 := l8.map(x => x + 2).filter(x => x % 2 == 0)
     say(f"l9 = {l9} len {l9.length()}")
 
     l10 := l9.concat(l9)

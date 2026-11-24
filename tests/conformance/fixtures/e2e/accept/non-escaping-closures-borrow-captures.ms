@@ -18,7 +18,7 @@ fn total(m Matrix, f fn(Int) Int) Int:
 	return sum
 
 fn scaled(m Matrix) Int:
-	return total(m, fn x: x + m.data.length())
+	return total(m, x => x + m.data.length())
 
 fn nested(m Matrix, names List[String]) Int:
 	outer := fn(x Int) Int:
@@ -38,13 +38,13 @@ fn each(f fn(Int) Void) Void:
 
 fn collect() List[Int]:
 	var out List[Int] = []
-	each(fn i: push(out, i))
+	each(i => push(out, i))
 	return out
 
 fn make_reader() fn() Int:
 	var tags = ["a"]
 	tags.append("b")
-	return fn: tags.length()
+	return () => tags.length()
 
 type Box:
 	f fn() Int
@@ -53,7 +53,7 @@ fn lit(text String) Int:
 	var t = 0
 
 	for p in text.split(",").clone():
-		fs := [fn() Int: return p.length()]
+		fs := [fn() Int => return p.length()]
 		t += fs[0]()
 
 	return t
@@ -61,7 +61,7 @@ fn lit(text String) Int:
 fn keep_rec(text String) List[Box]:
 	var out List[Box] = []
 	for p in text.split(",").clone():
-		out.append(Box(f: fn() Int: return p.length()))
+		out.append(Box(f: fn() Int => return p.length()))
 	return out
 
 fn keep_map(text String) Int:
@@ -69,7 +69,7 @@ fn keep_map(text String) Int:
 	var i = 0
 
 	for p in text.split(",").clone():
-		m.add(i, fn() Int: return p.length())
+		m.add(i, fn() Int => return p.length())
 		i += 1
 
 	var t = 0
@@ -80,7 +80,7 @@ fn keep_map(text String) Int:
 fn keep_opt(text String) Int:
 	var os List[(fn() Int)?] = []
 	for p in text.split(",").clone():
-		os.append((fn() Int: return p.length()))
+		os.append((fn() Int => return p.length()))
 
 	var t = 0
 	for o in os:
@@ -93,7 +93,7 @@ fn store(var fs List[fn() Int], move f fn() Int) Void:
 fn keep_user(text String) Int:
 	var fs List[fn() Int] = []
 	for p in text.split(",").clone():
-		store(fs, fn() Int: return p.length())
+		store(fs, fn() Int => return p.length())
 
 	var t = 0
 	for f in fs:
@@ -122,7 +122,7 @@ test "closure made in a loop sees each iteration":
 		for unused in 0..i:
 			names.append("n")
 
-		count := fn: names.length()
+		count := () => names.length()
 		results.append(count())
 
 	expect_equal(results, [1, 2, 3])?

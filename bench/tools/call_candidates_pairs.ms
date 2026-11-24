@@ -122,7 +122,7 @@ export fn summarize(text String, swap Bool = false, cpu Bool = false) String!:
 	for key in groups.keys().sorted():
 		values := groups[key]
 		interval := median_interval(values)?
-		slower := values.filter(fn value: value > 1.0).length()
+		slower := values.filter(value => value > 1.0).length()
 		report += f"{key} n={values.length()} median_candidate_ratio={median(values)} median95_lower={interval[0]} median95_upper={interval[1]} min_ratio={(values.min() or panic("called Optional.get() on null"))} max_ratio={(values.max() or panic("called Optional.get() on null"))} candidate_slower={slower}\n"
 
 	return ok(report)

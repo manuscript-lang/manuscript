@@ -12,8 +12,8 @@ enum Expr:
 // payloads on; an early `?` return from the second one must not drop it again.
 fn eval(e Expr) Int!:
 	match e:
-		Num(n): return ok(n)
-		Var(name): return error(Error(f"unbound {name}"))
+		Num(n) => return ok(n)
+		Var(name) => return error(Error(f"unbound {name}"))
 		Keep(name):
 			xs := [name.clone()]
 			return ok(xs.length())

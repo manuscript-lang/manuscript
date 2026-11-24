@@ -39,4 +39,4 @@ test "an interface operation declared move takes its argument":
 
 test "a function type declared move takes its argument":
 	expect_equal(through(size, Item("ab")), 2)?
-	expect_equal(through(fn move x: x.name.length() + 1, Item("ab")), 3)?
+	expect_equal(through((move x) => x.name.length() + 1, Item("ab")), 3)?

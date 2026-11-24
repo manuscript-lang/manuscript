@@ -53,7 +53,7 @@ export fn main() Int:
     l11 := [(-19), (-10), (-28), 3]
     say(f"l11 = {l11} len {l11.length()}")
 
-    l12 := l11.sorted(fn a, b: a.compare(b))
+    l12 := l11.sorted((a, b) => a.compare(b))
     say(f"l12 = {l12} len {l12.length()}")
 
     f13 := (((988.700 / f1) + (f1 - f1)) + (f1 + f1))

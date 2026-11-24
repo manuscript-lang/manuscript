@@ -204,8 +204,8 @@ fn CaptureTransport.write_bytes(move data Bytes) Void!:
 	)
 
 	match append_file(self.path, data).wait():
-		ok(_): return ok()
-		error(cause): return error(cause)
+		ok(_) => return ok()
+		error(cause) => return error(cause)
 
 fn CaptureTransport.flush() Void!:
 	if read_file(f"{self.path}{self.suffix}").wait().is_ok(): return error(
@@ -279,8 +279,8 @@ test "loggers on several threads never interleave a record":
 	logger := create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
 	first := logger.child("a")?
 	second := logger.child("b")?
-	a := promise(fn: chatter(first, "a"))
-	b := promise(fn: chatter(second, "b"))
+	a := promise(() => chatter(first, "a"))
+	b := promise(() => chatter(second, "b"))
 	a.wait() | expect_ok?
 	b.wait() | expect_ok?
 	logger.flush()?

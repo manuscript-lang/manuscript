@@ -8,7 +8,7 @@ fn walked(s String) List[Int]:
 	return out
 
 fn digits_only(s String) Bool:
-	return not s.scalar_values().any(fn c: c < 48 or c > 57)
+	return not s.scalar_values().any(c => c < 48 or c > 57)
 
 test "a scalar walk yields what the list holds":
 	for s in ["", "abc", "héllo wörld ✓ 😀!", "añb"]:

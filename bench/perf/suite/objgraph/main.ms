@@ -63,8 +63,8 @@ fn make(depth Int) Tree:
 
 fn count(t Tree) Int:
 	match t:
-		Leaf: return 1
-		Branch(l, r): return 1 + count(l) + count(r)
+		Leaf => return 1
+		Branch(l, r) => return 1 + count(l) + count(r)
 
 type Link:
 	value Int

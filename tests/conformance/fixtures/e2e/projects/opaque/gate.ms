@@ -35,8 +35,8 @@ export fn wild(level Int) Mode:
 
 export fn level(m Mode) Int:
 	match m:
-		Safe: return 0
-		Wild(level): return level
+		Safe => return 0
+		Wild(level) => return level
 
 export fn nonce_of(a Approved) String:
 	return a.nonce.clone()

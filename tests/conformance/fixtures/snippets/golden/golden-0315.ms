@@ -5,4 +5,4 @@ interface Shape:
 type Sq:
     s Int
 impl Shape for Sq:
-    fn area() Int: self.s * self.s
+    fn area() Int => self.s * self.s

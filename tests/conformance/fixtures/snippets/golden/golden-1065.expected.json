@@ -31,13 +31,13 @@
           "file": "golden-1065.ms",
           "line": 9,
           "column": 5,
-          "offset": 185
+          "offset": 187
         },
         "end": {
           "file": "golden-1065.ms",
           "line": 9,
           "column": 6,
-          "offset": 186
+          "offset": 188
         }
       }
     ],

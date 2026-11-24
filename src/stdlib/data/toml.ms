@@ -423,7 +423,7 @@ fn child(var reader Reader, parent Int, key String, dotted Bool) Result[Int, Err
 				if last != null: return ok(last)
 
 				return error(invalid(reader, "table array is empty"))
-			_: return error(invalid(reader, "key is already a value"))
+			_ => return error(invalid(reader, "key is already a value"))
 
 	allocate(reader)?
 
@@ -440,7 +440,7 @@ fn append_table(var reader Reader, parent Int, key String, next Int) Result[Void
 			TableArray(slot):
 				reader.arrays[slot].append(next)
 				return ok()
-			_: return error(invalid(reader, "table array conflicts with value"))
+			_ => return error(invalid(reader, "table array conflicts with value"))
 
 	allocate(reader)?
 	put_array(reader, parent, key, next)
@@ -533,7 +533,7 @@ fn seal(var reader Reader, value Node) Void:
 			for entry in reader.entries[id].clone(): seal(reader, entry.value.clone())
 		ArrayNode(values):
 			for item in values: seal(reader, item)
-		_: return
+		_ => return
 
 fn digits(text String, alphabet String) Bool:
 	if text == "": return false
@@ -879,7 +879,7 @@ fn materialize(
 	)
 
 	match node:
-		Leaf(value): return ok(value.clone())
+		Leaf(value) => return ok(value.clone())
 		TableNode(id):
 			var entries = Map[String, TomlValue]()
 			for entry in tables[id]:
@@ -1069,11 +1069,11 @@ fn format_float(value Float) String:
 
 fn inline_value(value TomlValue) String:
 	match value:
-		StringValue(text): return quote_text(text, escape_c1: false)
-		IntValue(number): return number.to_string()
-		FloatValue(number): return format_float(number)
-		BoolValue(flag): return flag.to_string()
-		DateTimeValue(text): return text.clone()
+		StringValue(text) => return quote_text(text, escape_c1: false)
+		IntValue(number) => return number.to_string()
+		FloatValue(number) => return format_float(number)
+		BoolValue(flag) => return flag.to_string()
+		DateTimeValue(text) => return text.clone()
 		ArrayValue(values):
 			var parts List[String] = []
 			for item in values: parts.append(inline_value(item))
@@ -1094,8 +1094,8 @@ fn table_items(values List[TomlValue]) List[Map[String, TomlValue]]:
 
 	for item in values:
 		match item:
-			TableValue(table): tables.append(table.clone())
-			_: return []
+			TableValue(table) => tables.append(table.clone())
+			_ => return []
 
 	return tables
 
@@ -1113,18 +1113,18 @@ fn emit_header(var writer Writer, header String) Void:
 fn all_tables(values List[TomlValue]) Bool:
 	for item in values:
 		match item:
-			TableValue(_): void
-			_: return false
+			TableValue(_) => void
+			_ => return false
 
 	return true
 
 fn section_kind(value TomlValue) Int:
 	match value:
-		TableValue(_): return 1
+		TableValue(_) => return 1
 		ArrayValue(elements):
 			if not elements.is_empty() and all_tables(elements): return 2
 			return 0
-		_: return 0
+		_ => return 0
 
 fn emit_one(
 	var writer Writer,
@@ -1148,7 +1148,7 @@ fn emit_table(var writer Writer, path List[String], values Map[String, TomlValue
 		child.append(entry.key.clone())
 
 		match entry.value:
-			TableValue(table): emit_one(
+			TableValue(table) => emit_one(
 				writer: writer,
 				path: child,
 				brackets: "[",
@@ -1162,11 +1162,11 @@ fn emit_table(var writer Writer, path List[String], values Map[String, TomlValue
 						brackets: "[[",
 						table: table,
 					)
-			_: void
+			_ => void
 
 fn datetimes_valid(value TomlValue) Bool:
 	match value:
-		DateTimeValue(text): return datetime_valid(text)
+		DateTimeValue(text) => return datetime_valid(text)
 		ArrayValue(values):
 			for item in values:
 				if not datetimes_valid(item): return false
@@ -1175,7 +1175,7 @@ fn datetimes_valid(value TomlValue) Bool:
 			for entry in values.entries():
 				if not datetimes_valid(entry.value): return false
 			return true
-		_: return true
+		_ => return true
 
 // Writes a table value as a TOML document. Tables and arrays of tables use headers;
 // other values are written inline. A `value` that is not a `TableValue`, or that holds
@@ -1187,8 +1187,8 @@ export fn stringify(value TomlValue, max_bytes Int? = null) String!:
 		if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 
 	root := match value:
-		TableValue(values): values.clone()
-		_: return error(Error("invalid TOML input", kind: "EINVAL"))
+		TableValue(values) => values.clone()
+		_ => return error(Error("invalid TOML input", kind: "EINVAL"))
 
 	if not datetimes_valid(value): return error(
 		Error("invalid TOML input", kind: "EINVAL")

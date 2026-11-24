@@ -24,4 +24,4 @@ fn var AggregateCell.lower(by Int) Int:
     self.total -= by
     return self.total
 
-fn identity[T](value T) T: return value
+fn identity[T](value T) T => return value

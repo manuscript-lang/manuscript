@@ -5,4 +5,4 @@ enum Expr:
     Add(left Expr, right Expr)
 fn value(expr Expr) Int:
     match expr:
-        Num(value): return value
+        Num(value) => return value

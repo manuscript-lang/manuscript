@@ -24,21 +24,21 @@
         "position": {
           "file": "testpatternbindingadvisory-12.ms",
           "line": 6,
-          "column": 23,
-          "offset": 238
+          "column": 25,
+          "offset": 240
         },
         "fix": {
           "position": {
             "file": "testpatternbindingadvisory-12.ms",
             "line": 6,
-            "column": 23,
-            "offset": 238
+            "column": 25,
+            "offset": 240
           },
           "end": {
             "file": "testpatternbindingadvisory-12.ms",
             "line": 6,
-            "column": 28,
-            "offset": 243
+            "column": 30,
+            "offset": 245
           },
           "replacement": "value"
         }
@@ -50,8 +50,8 @@
         "position": {
           "file": "testpatternbindingadvisory-12.ms",
           "line": 7,
-          "column": 22,
-          "offset": 265
+          "column": 24,
+          "offset": 269
         },
         "fix": {
           "position": {
@@ -73,7 +73,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testpatternbindingadvisory-12.ms:6:9: type: binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 6 |         value: return Value\n   |         ^\n<DIR>/testpatternbindingadvisory-12.ms:6:23: resolution: unknown binding Value; did you mean 'value'?\n   |\n 6 |         value: return Value\n   |                       ^\n<DIR>/testpatternbindingadvisory-12.ms:7:22: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 7 |         null: return panic(message: \"empty\")\n   |                      ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testpatternbindingadvisory-12.ms:6:9: type: binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 6 |         value => return Value\n   |         ^\n<DIR>/testpatternbindingadvisory-12.ms:6:25: resolution: unknown binding Value; did you mean 'value'?\n   |\n 6 |         value => return Value\n   |                         ^\n<DIR>/testpatternbindingadvisory-12.ms:7:24: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 7 |         null => return panic(message: \"empty\")\n   |                        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

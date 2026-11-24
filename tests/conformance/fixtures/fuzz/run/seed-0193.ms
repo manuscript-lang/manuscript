@@ -53,7 +53,7 @@ export fn main() Int:
     b8 := (not ((f6 / 749.25) < (f6 + 666.860)))
     say(f"b8 = {b8}")
 
-    l9 := l7.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l9 := l7.map(x => x + 1).filter(x => x % 2 == 0)
     say(f"l9 = {l9} len {l9.length()}")
 
     var acc10 = 0

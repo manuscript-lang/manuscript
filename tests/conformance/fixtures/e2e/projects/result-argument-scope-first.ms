@@ -4,12 +4,12 @@
 import Cause, make from "./domain.ms"
 import erase, forward from "./helper.ms"
 
-fn first_error(cause Cause[Int]) Error: Error(f"first {cause.value}")
+fn first_error(cause Cause[Int]) Error => Error(f"first {cause.value}")
 
-export fn first() Int!: erase(
+export fn first() Int! => erase(
     Result[Int, Cause[Int]].error(make()).map_error(first_error)
 )
 
-export fn first_generic() Int!: forward(
+export fn first_generic() Int! => forward(
     Result[Int, Cause[Int]].error(make()).map_error(first_error)
 )

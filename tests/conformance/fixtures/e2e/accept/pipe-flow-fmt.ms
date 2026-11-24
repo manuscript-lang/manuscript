@@ -11,9 +11,9 @@ fn parse(text String) Int!Error:
 
     return ok(text.length())
 
-fn double(n Int) Int: n * 2
+fn double(n Int) Int => n * 2
 
-fn add(n Int, by Int) Int: n + by
+fn add(n Int, by Int) Int => n + by
 
 fn check(n Int) Int!Error:
     if n > 100:
@@ -61,7 +61,7 @@ test "bare unwraps? the value so far":
     expect_equal(code(bare("-")), -1)?
 
 test "pipe passes a Result through a step without try":
-    r := parse("abcd") | .map(fn(value Int) Int: value * 2)
+    r := parse("abcd") | .map(fn(value Int) Int => value * 2)
     expect_equal(r.get(), 8)?
 
 test "leading dot after a step applies to its result":

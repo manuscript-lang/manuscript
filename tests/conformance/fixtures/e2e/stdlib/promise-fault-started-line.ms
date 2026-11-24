@@ -11,7 +11,7 @@ fn boom(n Int) Int!:
 	return ok(xs[n])
 
 fn inner(n Int) Int!:
-	p := promise[Int](fn: boom(n))
+	p := promise[Int](() => boom(n))
 	return p.wait()
 
 fn middle(n Int) Int!:
@@ -29,7 +29,7 @@ test "a fault in a promise names the one line that started it":
 
 // A helper that starts a promise for its caller passes its caller's line on.
 fn started_for(n Int, site String = caller_frame()) Int!:
-	p := promise[Int](fn: boom(n), site: site)
+	p := promise[Int](() => boom(n), site: site)
 	return p.wait()
 
 fn outer(n Int) Int!:
@@ -44,7 +44,7 @@ fn doubled(n Int) Int:
 	return xs[n] * 2
 
 fn mapped() List[Int]!:
-	return map_concurrent([5, 6], 2, fn n: doubled(n))
+	return map_concurrent([5, 6], 2, n => doubled(n))
 
 test "map_concurrent names the line that called it":
 	reason := mapped() | expect_error?

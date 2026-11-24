@@ -69,7 +69,7 @@ export fn main() Int:
     f12 := f8
     say(f"f12 = {f12}")
 
-    l13 := l1.filter(fn x: x > (-3))
+    l13 := l1.filter(x => x > (-3))
     say(f"l13 = {l13} len {l13.length()}")
 
     b14 := b2

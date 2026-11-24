@@ -228,7 +228,7 @@ fn var Router.use(
 // 405 with `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *`
 // answers 204 with the `Allow` of every registered method.
 fn Router.handler() fn(var HttpExchange) Void!:
-	return fn(var exchange HttpExchange): dispatch(
+	return fn(var exchange HttpExchange) => dispatch(
 		self.routes,
 		self.middleware,
 		self.groups,
@@ -344,25 +344,25 @@ fn segment_of(part String) Segment:
 
 fn segment_name(segment Segment) String?:
 	match segment:
-		Literal(_): return null
-		Param(name): return name.clone()
-		Rest(name): return name.clone()
+		Literal(_) => return null
+		Param(name) => return name.clone()
+		Rest(name) => return name.clone()
 
 fn valid_segment(segment Segment, names List[String], last Bool) Bool:
 	match segment:
-		Literal(text): return not text.is_empty() or last
-		Param(name): return not name.is_empty() and not names.contains(name)
-		Rest(name): return (last and not name.is_empty() and not names.contains(name))
+		Literal(text) => return not text.is_empty() or last
+		Param(name) => return not name.is_empty() and not names.contains(name)
+		Rest(name) => return (last and not name.is_empty() and not names.contains(name))
 
 // Patterns with the same shape match the same paths, whatever their parameter names.
 fn shape_of(segments List[Segment]) String:
-	return segments.map(fn segment: shape_text(segment)).join("/")
+	return segments.map(segment => shape_text(segment)).join("/")
 
 fn shape_text(segment Segment) String:
 	match segment:
-		Literal(text): return f"={text}"
-		Param(_): return ":"
-		Rest(_): return "*"
+		Literal(text) => return f"={text}"
+		Param(_) => return ":"
+		Rest(_) => return "*"
 
 // What the routes say about one request path.
 type Lookup:
@@ -412,7 +412,7 @@ fn serves(registered String, requested String) Bool:
 	return registered == requested or (registered == "GET" and requested == "HEAD")
 
 fn names_of(segments List[Segment]) List[String]:
-	return segments.flat_map(fn segment: name_list(segment))
+	return segments.flat_map(segment => name_list(segment))
 
 fn name_list(segment Segment) List[String]:
 	name := segment_name(segment)
@@ -438,19 +438,19 @@ fn capture(segments List[Segment], parts List[String]) List[String]?:
 
 fn take_rest(segment Segment) Bool:
 	match segment:
-		Rest(_): return true
-		_: return false
+		Rest(_) => return true
+		_ => return false
 
 // Whether `segment` matches `part`; a parameter adds the text to `values`.
 fn accepts(segment Segment, part String, var values List[String]) Bool:
 	match segment:
-		Literal(text): return text == part
+		Literal(text) => return text == part
 		Param(_):
 			if part.is_empty(): return false
 
 			values.append(part.clone())
 			return true
-		Rest(_): return true
+		Rest(_) => return true
 
 // What `finish` needs from the routes: the method, the lookup, and, for `OPTIONS *`,
 // the method of every registered route. These are copies of the little the request
@@ -477,14 +477,14 @@ fn dispatch(
 	) else: unrouted()
 	var every List[String] = []
 	if method == "OPTIONS" and exchange.path() == "*":
-		every = routes.map(fn route: route.method.clone())
+		every = routes.map(route => route.method.clone())
 
 	target := Target(method: method, found: found, every: every)
 	return chain(
 		middleware,
 		0,
 		exchange,
-		fn(var last HttpExchange): finish(routes, groups, target, last)
+		fn(var last HttpExchange) => finish(routes, groups, target, last)
 	)
 
 // Runs `middleware` from `at` on, then `last`.
@@ -497,7 +497,7 @@ fn chain(
 	if at >= middleware.length(): return last(exchange)
 	return middleware[at](
 		exchange,
-		fn(var next HttpExchange): chain(middleware, at + 1, next, last)
+		fn(var next HttpExchange) => chain(middleware, at + 1, next, last)
 	)
 
 // Runs the middleware groups `around` from `at` on, then `last`.
@@ -513,7 +513,7 @@ fn chain_groups(
 		groups[around[at]],
 		0,
 		exchange,
-		fn(var next HttpExchange): chain_groups(
+		fn(var next HttpExchange) => chain_groups(
 			groups,
 			around,
 			at + 1,
@@ -540,7 +540,7 @@ fn finish(
 			route.around,
 			0,
 			exchange,
-			fn(var last HttpExchange): route.handler(last, found.params)
+			fn(var last HttpExchange) => route.handler(last, found.params)
 		)
 
 	if method == "OPTIONS" and exchange.path() == "*":
@@ -811,10 +811,10 @@ fn with_extra(sent HttpHeaders, extra HttpHeaders) HttpHeaders:
 // on the request headers the wrapped exchange reports, where handlers and later
 // middleware read it, and added to the response as `X-Request-Id`.
 export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
-	return fn(var exchange HttpExchange, next fn(var HttpExchange) Void!): with_request_id(
-		exchange,
-		next,
-	)
+	return fn(
+		var exchange HttpExchange,
+		next fn(var HttpExchange) Void!
+	) => with_request_id(exchange, next)
 
 fn with_request_id(var exchange HttpExchange, next fn(var HttpExchange) Void!) Void!:
 	var request = exchange.headers()
@@ -834,7 +834,7 @@ fn usable_id(id String) Bool:
 	return (
 		id.length() >= 1
 		and id.length() <= 128
-		and id.scalar_values().all(fn c: (c > 32 and c < 127))
+		and id.scalar_values().all(c => (c > 32 and c < 127))
 	)
 
 fn new_id() String!:
@@ -859,11 +859,10 @@ type AccessEntry:
 export fn access_log(
 	logger Logger
 ) fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
-	return fn(var exchange HttpExchange, next fn(var HttpExchange) Void!): with_access_log(
-		logger,
-		exchange,
-		next,
-	)
+	return fn(
+		var exchange HttpExchange,
+		next fn(var HttpExchange) Void!
+	) => with_access_log(logger, exchange, next)
 
 fn with_access_log(
 	logger Logger,

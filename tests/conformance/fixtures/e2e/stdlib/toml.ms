@@ -9,13 +9,13 @@ import (
 
 fn entries(value TomlValue) Map[String, TomlValue]!:
 	match value:
-		TableValue(values): return ok(values.clone())
-		_: return error(Error("expected TOML table"))
+		TableValue(values) => return ok(values.clone())
+		_ => return error(Error("expected TOML table"))
 
 fn items(value TomlValue) List[TomlValue]!:
 	match value:
-		ArrayValue(values): return ok(values.clone())
-		_: return error(Error("expected TOML array"))
+		ArrayValue(values) => return ok(values.clone())
+		_ => return error(Error("expected TOML array"))
 
 fn limits(bytes Int?, depth Int?, values Int?) TomlOptions:
 	return TomlOptions(max_bytes: bytes, max_depth: depth, max_values: values)
@@ -204,8 +204,8 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
 		"[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
 	]:
 		cause := match parse(text: text):
-			ok(_): return fail(f"invalid TOML accepted: {text}")
-			error(cause): cause
+			ok(_) => return fail(f"invalid TOML accepted: {text}")
+			error(cause) => cause
 
 		cause.kind | expect_equal("EBADMSG")?
 		(
@@ -296,24 +296,24 @@ test "TOML nonfinite floats CRLF and repeated separators":
 	match root["positive"]:
 		FloatValue(number):
 			((number.is_finite() or number < 0.0) | expect_false?)
-		_: return fail("expected float")
+		_ => return fail("expected float")
 
 	match root["negative"]:
 		FloatValue(number):
 			((number.is_finite() or number > 0.0) | expect_false?)
-		_: return fail("expected float")
+		_ => return fail("expected float")
 
 	match root["nan"]:
 		FloatValue(number):
 			((number.is_nan()) | expect_true?)
-		_: return fail("expected float")
+		_ => return fail("expected float")
 
 	root["integer"] | expect_equal(TomlValue.IntValue(1000000))?
 
 fn failure(text String) String:
 	match parse(text: text):
-		ok(_): return "accepted"
-		error(cause): return cause.message
+		ok(_) => return "accepted"
+		error(cause) => return cause.message
 
 test "TOML errors report the offending line and column":
 	(

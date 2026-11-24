@@ -59,7 +59,7 @@ export fn main() Int:
     i10 := (-((i8 + 617123) * (i8 + i8)))
     say(f"i10 = {i10}")
 
-    l11 := l2.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l11 := l2.map(x => x + 1).filter(x => x % 2 == 0)
     say(f"l11 = {l11} len {l11.length()}")
 
     i12 := (-((i8 + 45) / i10))

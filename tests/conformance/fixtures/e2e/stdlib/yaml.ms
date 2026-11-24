@@ -14,13 +14,13 @@ import (
 
 fn entries(value YamlValue) Map[String, YamlValue]!:
 	match value:
-		ObjectValue(values): return ok(values.clone())
-		_: return error(Error("expected YAML mapping"))
+		ObjectValue(values) => return ok(values.clone())
+		_ => return error(Error("expected YAML mapping"))
 
 fn items(value YamlValue) List[YamlValue]!:
 	match value:
-		ArrayValue(values): return ok(values.clone())
-		_: return error(Error("expected YAML sequence"))
+		ArrayValue(values) => return ok(values.clone())
+		_ => return error(Error("expected YAML sequence"))
 
 fn limits(bytes Int?, depth Int?, values Int?) YamlOptions:
 	return YamlOptions(max_bytes: bytes, max_depth: depth, max_values: values)
@@ -222,8 +222,8 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 		"a: >2\n  x\n y"
 	]:
 		cause := match parse(text: malformed):
-			ok(_): return fail(f"malformed multiline scalar accepted: {malformed}")
-			error(cause): cause
+			ok(_) => return fail(f"malformed multiline scalar accepted: {malformed}")
+			error(cause) => cause
 
 		cause.kind | expect_equal("EBADMSG")?
 		(
@@ -242,8 +242,8 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 		)
 
 	cause := match parse(text: "a: x\n\n  b: y"):
-		error(cause): cause
-		ok(_): return fail("indented mapping accepted as plain continuation")
+		error(cause) => cause
+		ok(_) => return fail("indented mapping accepted as plain continuation")
 
 	cause.kind | expect_equal("EBADMSG")?
 	((cause.details["line"] != "3" or cause.details["column"] != "1") | expect_false?)
@@ -477,8 +477,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 		"*missing", "a: &loop [*loop]", "<<: 1", "---\na: 1\n---\nb: 2", "a: |0\n  text"
 	]:
 		cause := match parse(text: text):
-			ok(_): return fail(f"invalid YAML accepted: {text}")
-			error(cause): cause
+			ok(_) => return fail(f"invalid YAML accepted: {text}")
+			error(cause) => cause
 
 		cause.kind | expect_equal("EBADMSG")?
 		(
@@ -499,8 +499,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 
 	for text in ["? - complex\n: value", "[a]: 1"]:
 		cause := match parse(text: text):
-			ok(_): return fail("unsupported YAML accepted")
-			error(cause): cause
+			ok(_) => return fail("unsupported YAML accepted")
+			error(cause) => cause
 
 		cause.kind | expect_equal("ENOTSUP")?
 
@@ -593,8 +593,8 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
 
 fn failure(text String) String:
 	match parse(text: text):
-		ok(_): return "accepted"
-		error(cause): return cause.message
+		ok(_) => return "accepted"
+		error(cause) => return cause.message
 
 test "YAML merge and block header errors name their own line":
 	failure("<<: 1") | expect_equal("YAML 1:1: merge requires mappings")?
@@ -829,8 +829,8 @@ test "YAML long plain scalars and large mappings parse in linear time":
 	(entries((parse(text: keys) | expect_ok?))?).length() | expect_equal(30000)?
 
 	match parse(text: keys.concat("k7: 2\n")):
-		ok(_): return fail("duplicate key after many keys")
-		error(_): return
+		ok(_) => return fail("duplicate key after many keys")
+		error(_) => return
 
 test "YAML flow mapping keys without a colon map to null":
 	root := (
@@ -848,14 +848,14 @@ test "YAML flow mapping keys without a colon map to null":
 	second["q"] | expect_equal(YamlValue.Null)?
 
 	match parse(text: "{x, x}"):
-		ok(_): return fail("duplicate null keys")
-		error(_): _ignored := void
+		ok(_) => return fail("duplicate null keys")
+		error(_) => _ignored := void
 
 	limited := limits(bytes: null, depth: null, values: 2)
 
 	match parse(text: "{a, b, c}", options: limited):
-		ok(_): return fail("null keys count against the value limit")
-		error(_): _ignored := void
+		ok(_) => return fail("null keys count against the value limit")
+		error(_) => _ignored := void
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
 	long := repeated(text: "x", count: 300000)

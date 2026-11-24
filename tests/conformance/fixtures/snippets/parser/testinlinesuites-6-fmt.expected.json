@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Void:\n\tg := fn(x Int) Int: return x\n\tuse(fn(x Int) Int: return x, other: 1)\n\n\tgs := [fn() Void: return, fn() Int: return 2]\n"
+    "fmt": "fn f() Void:\n\tg := fn(x Int) Int => return x\n\tuse(fn(x Int) Int => return x, other: 1)\n\n\tgs := [fn() Void => return, fn() Int => return 2]\n"
   }
 }

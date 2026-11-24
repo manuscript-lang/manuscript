@@ -26,8 +26,8 @@ interface Priced:
 
 fn Item.cents() Int:
     match self:
-        Book(pages): return 500 + pages * 2
-        Coffee(grams): return grams * 3
+        Book(pages) => return 500 + pages * 2
+        Coffee(grams) => return grams * 3
 
 fn sum_by[T](items List[T], price fn(T) Int) Int:
     var total = 0
@@ -37,7 +37,7 @@ fn sum_by[T](items List[T], price fn(T) Int) Int:
 
 fn main() Void:
     cart := [Item.Book(pages: 200), Item.Coffee(grams: 250)]
-    total := sum_by(cart, fn item: item.cents())
+    total := sum_by(cart, item => item.cents())
     print(f"{total} cents")
 ```
 

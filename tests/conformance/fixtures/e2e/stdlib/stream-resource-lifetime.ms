@@ -225,7 +225,7 @@ fn wait_cancelled(log String) Void!:
 test "cancelling an active body closes the delivered item once":
 	dir := temporary("resource-body-cancel-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: wait_cancelled(log))
+	work := promise(() => wait_cancelled(log))
 	wait_for_event(log, "body 1\n")?
 	work.cancel()
 
@@ -255,7 +255,7 @@ fn next_cancelled(log String) Void!:
 test "cancelling a source step closes its undelivered item once":
 	dir := temporary("resource-next-cancel-") | expect_ok?
 	log := f"{dir.path()}/events"
-	work := promise(fn: next_cancelled(log))
+	work := promise(() => next_cancelled(log))
 	wait_for_event(log, "ready\n")?
 	work.cancel()
 

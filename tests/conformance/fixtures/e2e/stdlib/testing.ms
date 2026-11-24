@@ -42,7 +42,7 @@ test "testing assertions":
 	mismatch_cause := (mismatch | expect_error?)
 	mismatch_cause.message | expect_contains("expected 2, got 1")?
 
-	quiet := expect_fault(fn: void)
+	quiet := expect_fault(() => void)
 	quiet_cause := (quiet | expect_error?)
 	quiet_cause.message | expect_contains("returned normally")?
 

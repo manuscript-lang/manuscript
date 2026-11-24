@@ -103,7 +103,7 @@ MS_NODISCARD bool parse_result_type(Parser *p, MsTypeRef **out, bool *moves) {
                                "returns nothing), and remove the closing '}'"));
     return false;
   }
-  if (t.kind == MS_T_Colon || t.kind == MS_T_Newline) {
+  if (t.kind == MS_T_Colon || t.kind == MS_T_FatArrow || t.kind == MS_T_Newline) {
     if (p->speculative > 0) {
       return false;
     }

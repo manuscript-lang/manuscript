@@ -3,9 +3,9 @@
 "
 fn use() Int:
     match fail():
-        error(NotFound): return 1
-        ok(value): return value
+        error(NotFound) => return 1
+        ok(value) => return value
 fn record(value: Item?) Int:
     match value:
-        item: return Item.value
-        null: return 0
+        item => return Item.value
+        null => return 0

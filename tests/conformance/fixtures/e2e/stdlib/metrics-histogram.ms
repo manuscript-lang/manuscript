@@ -32,7 +32,7 @@ test "histogram buckets large values within three percent and caps at the maximu
 
 test "histogram times a span and returns its result":
 	var h = histogram()
-	answer := h.time(fn: 42)
+	answer := h.time(() => 42)
 	expect_equal(answer, 42)?
 	expect_equal(h.count(), 1)?
 	h.record_duration(milliseconds(2))

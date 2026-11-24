@@ -23,7 +23,7 @@ fn chunk_checksum(chunk Int) Int!:
 
 // A promise a function returns owns the values it captured.
 fn start_chunk(chunk Int) Promise[Int]:
-	return promise[Int](fn: chunk_checksum(chunk))
+	return promise[Int](() => chunk_checksum(chunk))
 
 fn main() Void:
 	var ps List[Promise[Int]] = []

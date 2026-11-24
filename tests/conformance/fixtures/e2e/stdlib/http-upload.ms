@@ -41,8 +41,8 @@ fn move Chunks.close() Void!:
 fn var Chunks.next() Bytes?!:
 	if self.at == self.parts.length():
 		match self.failure:
-			message: return error(Error(message.clone(), kind: "EIO"))
-			null: return ok(null)
+			message => return error(Error(message.clone(), kind: "EIO"))
+			null => return ok(null)
 
 	chunk := self.parts[self.at]
 	self.at += 1

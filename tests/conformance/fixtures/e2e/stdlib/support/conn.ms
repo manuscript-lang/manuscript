@@ -24,7 +24,7 @@ export fn recv(var connection Connection, timeout Duration) Bytes?!:
 // The next item of `input`; a wait longer than `timeout` fails and cancels the read.
 export fn within[T](var input ReadStream[T], timeout Duration) T?!:
 	return promise(
-		fn: input.next(),
+		() => input.next(),
 		options: PromiseOptions(timeout: timeout.clone().clone().clone(), placement: Placement.Here)
 	).wait()
 

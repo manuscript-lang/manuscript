@@ -49,7 +49,7 @@ fn run(work String, n Int) Result[String, Error]:
 			exe := if v == "ms": f"{work}/ms/bench" else: f"{work}/{v}"
 
 			for line in (sample(exe, [])?).split("\n"):
-				f := line.split(" ").filter(fn p: p != "")
+				f := line.split(" ").filter(p => p != "")
 				if f.length() < 2 or f[0] == "check": continue
 
 				key := f"{f[0]} {v}"
@@ -59,7 +59,7 @@ fn run(work String, n Int) Result[String, Error]:
 					value,
 				)
 
-	var rows = best.keys().sorted().map(fn k: f"{k} {best.get_or(k, 0.0).to_fixed(2)}")
+	var rows = best.keys().sorted().map(k => f"{k} {best.get_or(k, 0.0).to_fixed(2)}")
 	return ok(rows.join("\n"))
 
 fn main() Int:

@@ -31,26 +31,26 @@
           "file": "golden-0196.ms",
           "line": 8,
           "column": 14,
-          "offset": 211
+          "offset": 215
         },
         "end": {
           "file": "golden-0196.ms",
           "line": 8,
           "column": 15,
-          "offset": 212
+          "offset": 216
         },
         "fix": {
           "position": {
             "file": "golden-0196.ms",
             "line": 8,
             "column": 14,
-            "offset": 211
+            "offset": 215
           },
           "end": {
             "file": "golden-0196.ms",
             "line": 8,
             "column": 15,
-            "offset": 212
+            "offset": 216
           },
           "replacement": ""
         }
@@ -59,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0196.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Failure:\n   | ^^^^\n<DIR>/golden-0196.ms:8:14: parse: remove the ':' between 'r' and its type; write r Type\n   |\n 8 | fn count[T](r: Result[T, Error]) Int: 1\n   |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0196.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Failure:\n   | ^^^^\n<DIR>/golden-0196.ms:8:14: parse: remove the ':' between 'r' and its type; write r Type\n   |\n 8 | fn count[T](r: Result[T, Error]) Int => 1\n   |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

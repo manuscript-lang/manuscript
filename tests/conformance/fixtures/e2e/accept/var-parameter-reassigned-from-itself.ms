@@ -54,8 +54,8 @@ test "the concrete receiver is recovered by a contract type match":
 	wrapped(b, twice)
 
 	match b:
-		Wrap(w): w.calls | expect_equal(2)?
-		_: 0 | expect_equal(1)?
+		Wrap(w) => w.calls | expect_equal(2)?
+		_ => 0 | expect_equal(1)?
 
 test "a var parameter of a one-owner type is rebuilt from itself":
 	var xs = [7, 2, 3]

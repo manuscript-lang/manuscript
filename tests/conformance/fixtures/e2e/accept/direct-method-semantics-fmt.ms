@@ -37,8 +37,8 @@ fn Rect.grow(depth Int) Int:
 
 fn Sign.area() Int:
     match self:
-        Plus(n): return n
-        Minus(n): return 0 - n
+        Plus(n) => return n
+        Minus(n) => return 0 - n
 
 fn Sign.scaled(by Int) Int:
     return self.area() * by
@@ -74,12 +74,12 @@ test "direct methods":
     (rect.grow(depth: 10) == 13) | expect_true?
 
     match tried(rect: rect, limit: 12):
-        ok(value): (value == 24) | expect_true?
-        error(cause): return fail(cause.message)
+        ok(value) => (value == 24) | expect_true?
+        error(cause) => return fail(cause.message)
 
     match tried(rect: rect, limit: 11):
-        ok(_value): return fail("expected failure")
-        error(cause): (cause.message == "too big") | expect_true?
+        ok(_value) => return fail("expected failure")
+        error(cause) => (cause.message == "too big") | expect_true?
 
     var log = List[String]()
     (order(rect: rect, log: log) == 12) | expect_true?

@@ -7,7 +7,7 @@ type Handler = fn(Int) Int
 type Maybe[T] = T?
 
 fn total(rows Rows) Int:
-	return rows.fold(0, fn sum, x: sum + x)
+	return rows.fold(0, (sum, x) => sum + x)
 
 fn twice(step Handler, x Int) Int:
 	return step(step(x))
@@ -24,6 +24,6 @@ test "an alias and its target are the same type":
 
 	rows Rows := [4, 5]
 	expect_equal(rows.length(), 2)?
-	expect_equal(twice(fn x: x * 3, 2), 18)?
+	expect_equal(twice(x => x * 3, 2), 18)?
 	expect_equal(first(7), 7)?
 	expect_equal(first(null), -1)?

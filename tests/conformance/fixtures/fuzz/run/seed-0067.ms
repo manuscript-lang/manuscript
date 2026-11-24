@@ -50,6 +50,6 @@ export fn main() Int:
     i10 := i6
     say(f"i10 = {i10}")
 
-    l11 := l4.filter(fn x: x > 5)
+    l11 := l4.filter(x => x > 5)
     say(f"l11 = {l11} len {l11.length()}")
     return 0

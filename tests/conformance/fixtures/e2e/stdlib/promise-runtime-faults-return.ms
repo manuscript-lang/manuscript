@@ -19,7 +19,7 @@ import (
 // thread, so a promise made by the test is the work's own too.
 fn report_of(move work fn() Int!) String!:
 	here := PromiseOptions(placement: Placement.Here)
-	reason := promise[Int](fn: work(), options: here).wait() | expect_error?
+	reason := promise[Int](() => work(), options: here).wait() | expect_error?
 	expect_equal(reason.kind, "EIO")?
 	return ok(reason.details["report"].clone())
 
@@ -47,7 +47,7 @@ test "a call on a wait group that does not exist faults the work":
 
 test "a second waiter on one promise faults and leaves the promise waitable":
 	id := msrt_promise_sleep(60000000000)
-	report := report_of(fn: wait_twice_on(id))?
+	report := report_of(() => wait_twice_on(id))?
 	expect_true(report.contains("another task is already waiting on this promise"))?
 
 	// The wait token the failed call had set is taken back: a wait works and times out.
@@ -63,4 +63,4 @@ test "groups and promises work after the faults":
 	msrt_group_free(group)
 	expect_equal(msrt_promise_wait_any([id], -1), 0)?
 	msrt_promise_drop(id)
-	expect_equal(promise[Int](fn: ok(3)).wait()?, 3)?
+	expect_equal(promise[Int](() => ok(3)).wait()?, 3)?

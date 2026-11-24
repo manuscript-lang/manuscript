@@ -255,12 +255,12 @@ fn move SignalSource.close() Void!:
 
 // The names of an environment map, in the order of its values.
 fn environment_names(environment Map[String, String]) List[String]:
-	var names = environment.entries().map(fn entry: entry.key.clone())
+	var names = environment.entries().map(entry => entry.key.clone())
 	return names
 
 // The values of an environment map, in the order of its names.
 fn environment_values(environment Map[String, String]) List[String]:
-	var values = environment.entries().map(fn entry: entry.value.clone())
+	var values = environment.entries().map(entry => entry.value.clone())
 	return values
 
 // The work of `run`.
@@ -295,8 +295,8 @@ export fn run(
 	owned_arguments := arguments.clone()
 	owned_options := options.clone()
 	return promise(
-		fn: run_command(owned_program, owned_arguments, owned_options),
-		options: PromiseOptions(placement: Placement.Here)
+		() => run_command(owned_program, owned_arguments, owned_options),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 
 // Starts `program` directly, without a shell, searching the PATH, and returns a live

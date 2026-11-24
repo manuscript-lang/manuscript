@@ -100,7 +100,7 @@ fn inventory(suite String) Result[List[String], Error]:
         for file in library: files.append(f"tests/e2e/testdata/stdlib/{file.path}")
 
     files.is_empty() | expect_false?
-    return ok(files.sorted(fn left, right: left.compare(right)))
+    return ok(files.sorted((left, right) => left.compare(right)))
 
 fn selected(index Int, shard Int, count Int) Bool:
     return index % count == shard
@@ -132,7 +132,7 @@ fn run_conformance(args List[String]) Result[Void, Error]:
             result := run_file(ms, file.clone())
 
             match result:
-                ok(_): emit(f"PASS {file}")?
+                ok(_) => emit(f"PASS {file}")?
                 error(cause):
                     emit(f"FAIL {file}: {cause.message}")?
                     failed = failed + 1
@@ -151,7 +151,7 @@ fn run_file(ms String, file String) Result[Void, Error]:
     stderr := output.stderr.decode_utf8() | expect_some?
 
     match check_output(output.exit_code, text):
-        ok(_): return ok()
+        ok(_) => return ok()
         error(cause):
             emit(f"{text}\n{stderr}")?
             return error(cause)
@@ -164,7 +164,7 @@ fn check_output(status Int, text String) Result[Void, Error]:
 
 export fn main() Int:
     match run_conformance(arguments()):
-        ok(_): return 0
+        ok(_) => return 0
         error(cause):
             _written := stdout().write(f"{cause.message}\n")
             return 1

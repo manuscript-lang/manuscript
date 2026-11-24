@@ -7,5 +7,5 @@ fn forever(n Int) Int:
 	return forever(n + 1) + 1
 
 fn main() Int:
-	p := promise(fn: ok(forever(0)), options: PromiseOptions(placement: Placement.Here))
+	p := promise(() => ok(forever(0)), options: PromiseOptions(placement: Placement.Here))
 	return p.wait().get_or(0)

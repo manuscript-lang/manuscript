@@ -6,7 +6,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn pair(a Int, b Int) Int: a * 10 + b
+fn pair(a Int, b Int) Int => a * 10 + b
 
 test "arguments":
 	var value = 1
@@ -17,15 +17,15 @@ test "arguments":
 			i:
 				value = 9
 				i
-			null: 0
+			null => 0
 	)
 	expect_equal(result, 12)?
 
-fn optional(value Int?) Int: value or panic("called Optional.get() on null")
+fn optional(value Int?) Int => value or panic("called Optional.get() on null")
 
-fn defaulted(value Int = 3) Int: value
+fn defaulted(value Int = 3) Int => value
 
-fn identity[T](value T) T: value
+fn identity[T](value T) T => value
 
 test "source call dispatch contracts":
 	expect_equal(optional(4), 4)?

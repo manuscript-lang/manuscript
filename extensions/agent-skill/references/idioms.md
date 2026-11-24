@@ -50,7 +50,7 @@ fn main() Void:
 		Order(2, "Ada", 4000, status: Status.Shipped("ZX81")),
 		Order(3, "Sam", 3100, status: Status.Cancelled("out of stock")),
 	]
-	open_cents := orders | .filter(is_open) | .map(fn o: o.cents) | .sum()
+	open_cents := orders | .filter(is_open) | .map(o => o.cents) | .sum()
 	spent := spent_by_customer(orders)
 	for order in orders:
 		print(f"#{order.id} {order.customer}: {label(order.status)}")
@@ -90,18 +90,18 @@ fn totals_by_region(sales List[Sale]) Map[String, Int]:
 	return totals
 
 fn report(totals Map[String, Int]) List[String]:
-	regions := totals.keys().sorted(fn a, b: a.compare(b))
-	return regions.map(fn region: f"{region}: {money(totals.get_or(region, 0))}")
+	regions := totals.keys().sorted((a, b) => a.compare(b))
+	return regions.map(region => f"{region}: {money(totals.get_or(region, 0))}")
 
 fn main() Void:
 	lines := ["north,1250", "south,800", "north,2505", "bad line", "south,x"]
-	sales := lines | .map(parse_sale) | .filter(fn s: s != null) | .map(fn s: s.get())
+	sales := lines | .map(parse_sale) | .filter(s => s != null) | .map(s => s.get())
 	skipped := lines.length() - sales.length()
 	print(report(totals_by_region(sales)).join("\n"))
 	print(f"skipped {skipped} lines")
 ```
 
-- `sorted(fn a, b: a.compare(b))` sorts a copy; compare Ints, Floats and Strings with `compare`.
+- `sorted((a, b) => a.compare(b))` sorts a copy; compare Ints, Floats and Strings with `compare`.
 - Money and fixed-width output are small helper functions (`money`), not inline arithmetic.
 
 ## 3. Errors are values: `T!` and `?`
@@ -355,11 +355,11 @@ fn run_command(var shop Shop, line String) String:
 fn main() Void!:
 	var shop = Shop(Map[String, Int](), [])
 	text := stdin() | lines | collect(null)?
-	for line in text.filter(fn l: not l.is_empty()):
+	for line in text.filter(l => not l.is_empty()):
 		print(run_command(shop, line))
 ```
 
-- `match` on a String works; the `_:` arm catches unknown commands.
+- `match` on a String works; the `_ =>` arm catches unknown commands.
 - A method that only reads is `fn Shop.name()`; one that changes the receiver is `fn var Shop.add()`.
 
 ## 8. Interfaces and generics
@@ -379,10 +379,10 @@ type Rect:
 type Circle:
 	radius Float
 
-fn Rect.area() Float: self.width * self.height
-fn Rect.name() String: "rect"
-fn Circle.area() Float: 3.0 * self.radius * self.radius
-fn Circle.name() String: "circle"
+fn Rect.area() Float => self.width * self.height
+fn Rect.name() String => "rect"
+fn Circle.area() Float => 3.0 * self.radius * self.radius
+fn Circle.name() String => "circle"
 
 fn largest[T Clonable](items List[T], score fn(T) Float) T?:
 	var best T? = null
@@ -401,7 +401,7 @@ fn main() Void:
 	print(describe(Rect(2.0, 3.0)))
 	print(describe(Circle(1.0)))
 	rects := [Rect(2.0, 3.0), Rect(4.0, 1.5), Rect(1.0, 1.0)]
-	if big := largest(rects, fn r: r.area()):
+	if big := largest(rects, r => r.area()):
 		print(f"largest: {big.width} x {big.height}")
 ```
 
@@ -418,14 +418,14 @@ import lines from "@std/io/steps.ms"
 fn word_counts(text List[String]) Map[String, Int]:
 	var counts = Map[String, Int]()
 	for line in text:
-		for word in line.split(" ").filter(fn w: not w.is_empty()):
+		for word in line.split(" ").filter(w => not w.is_empty()):
 			counts.add(word.clone(), counts.get_or(word, 0) + 1)
 	return counts
 
 fn main() Void!:
 	text := stdin() | lines | collect(null)?
 	counts := word_counts(text)
-	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3) or null
+	top := counts.entries().sorted((a, b) => b.value.compare(a.value)).slice(0, 3) or null
 	for entry in top:
 		print(f"{entry.key} {entry.value}")
 ```
@@ -489,10 +489,10 @@ import read_file from "@std/os/fs.ms"
 import wait_all from "@std/concurrency/promise.ms"
 
 fn count_rows(text String) Int:
-	return text.split("\n").filter(fn line: not line.is_empty()).length()
+	return text.split("\n").filter(line => not line.is_empty()).length()
 
 fn run(paths List[String]) Int!:
-	reads := paths.map(fn path: read_file(path))
+	reads := paths.map(path => read_file(path))
 	files := wait_all(reads)?
 	var rows = 0
 	for file in files:

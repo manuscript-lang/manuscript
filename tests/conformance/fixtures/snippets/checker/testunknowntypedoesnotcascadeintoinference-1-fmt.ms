@@ -6,6 +6,6 @@ fn collect[T, U](items List[T], step fn(T) List[U]!MissingError) List[U]!Missing
 
 fn first() Void:
     result := collect(
-        items: [1, 2], step: fn(value Int) List[Int]!MissingError: ok([value])
+        items: [1, 2], step: fn(value Int) List[Int]!MissingError => ok([value])
     )
     unrelated Int := "wrong"

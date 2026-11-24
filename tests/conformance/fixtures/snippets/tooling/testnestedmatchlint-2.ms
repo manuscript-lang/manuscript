@@ -5,6 +5,6 @@ fn use(value Int?) Int:
     return match value:
         _value:
             match value:
-                n: n
-                null: 0
-        null: 0
+                n => n
+                null => 0
+        null => 0

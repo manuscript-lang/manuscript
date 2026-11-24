@@ -268,21 +268,21 @@ export enum Result[T, E]:
 // Reports whether this result contains a successful value.
 fn Result[T, E].is_ok() Bool:
 	match self:
-		ok(_): return true
-		error(_): return false
+		ok(_) => return true
+		error(_) => return false
 
 // Reports whether this result contains an expected error.
 fn Result[T, E].is_error() Bool:
 	match self:
-		ok(_): return false
-		error(_): return true
+		ok(_) => return false
+		error(_) => return true
 
 // Returns the successful payload; an error raises a fault, so use it only when
 // failure is a bug. Prefer `?`, `if value := result:` or `get_or(default)`.
 fn Result[T, E].get() T:
 	match self:
-		ok(value): return value
-		error(cause): panic(
+		ok(value) => return value
+		error(cause) => panic(
 			f"called Result.get() on error: {cause}; check is_ok first, or use get_or(default)"
 		)
 
@@ -298,47 +298,47 @@ fn move Result[T, E].get_or(move default T?) T:
 // raises a fault.
 fn Result[T, E].err() E:
 	match self:
-		ok(_): panic("called Result.err() on ok; check is_error first")
-		error(cause): return cause
+		ok(_) => panic("called Result.err() on ok; check is_error first")
+		error(cause) => return cause
 
 // Returns the successful payload; for an error, calls `create` once with that error
 // and returns its value.
 fn move Result[T, E].get_or_else(create fn(E) T) T:
 	match self:
-		ok(value): return value
-		error(cause): return create(cause)
+		ok(value) => return value
+		error(cause) => return create(cause)
 
 // Returns this result when it is successful; for an error, calls `create` once with
 // that error and returns the Result it produces.
 fn move Result[T, E].or_else(create fn(move E) T!E) T!E:
 	match self:
-		ok(value): return ok(value)
-		error(cause): return create(cause)
+		ok(value) => return ok(value)
+		error(cause) => return create(cause)
 
 // Transforms only an error, preserving a successful payload unchanged.
 fn move Result[T, E].map_error[F](transform fn(move E) F) T!F:
 	match self:
-		ok(value): return ok(value)
-		error(cause): return error(transform(cause))
+		ok(value) => return ok(value)
+		error(cause) => return error(transform(cause))
 
 // Transforms only a successful payload, preserving an error unchanged.
 fn move Result[T, E].map[U](transform fn(move T) U) U!E:
 	match self:
-		ok(value): return ok(transform(value))
-		error(cause): return error(cause)
+		ok(value) => return ok(transform(value))
+		error(cause) => return error(cause)
 
 // Calls `transform` only on success and returns the Result it produces; an error
 // passes through. The error type stays the same.
 fn move Result[T, E].and_then[U](transform fn(move T) U!E) U!E:
 	match self:
-		ok(value): return transform(value)
-		error(cause): return error(cause)
+		ok(value) => return transform(value)
+		error(cause) => return error(cause)
 
 // Returns some with the original success payload, or null for an error.
 fn move Result[T, E].to_optional() T?:
 	match self:
-		ok(value): return value
-		error(_cause): return null
+		ok(value) => return value
+		error(_cause) => return null
 
 // A type that can be compared for equality. Built-in data keeps its value
 // semantics; an explicit implementation chooses what counts as the same value.
@@ -413,8 +413,8 @@ export fn join_errors(errors List[Error]) Error?:
 // An Optional copies its payload; `null` stays `null`.
 fn Optional[T Clonable].clone() move T?:
 	match self:
-		value: return value.clone()
-		null: return null
+		value => return value.clone()
+		null => return null
 
 // A String is its own text.
 fn String.to_string() String:

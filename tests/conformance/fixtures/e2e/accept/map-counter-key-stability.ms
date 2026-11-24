@@ -50,7 +50,7 @@ test "immutable scalar and literal keys keep counter updates":
 test "stable counter updates keep checked integer overflow":
 	key := 1
 	var values = {1: 9223372036854775807}
-	message := expect_fault(fn: values.add(key, values.get_or(key, 0) + 1))?
+	message := expect_fault(() => values.add(key, values.get_or(key, 0) + 1))?
 	expect_contains(message, "overflow")?
 
 test "counter keys apply their checked Optional conversion":
@@ -163,7 +163,7 @@ fn FaultingCounterKey.clone() FaultingCounterKey:
 test "counter fusion preserves faults from an equal-valued source clone":
 	key := FaultingCounterKey(9223372036854775807)
 	var values = {FaultingCounterKey(9223372036854775807): 1}
-	message := expect_fault(fn: values.add(key.clone(), values.get_or(key, 0) + 1))?
+	message := expect_fault(() => values.add(key.clone(), values.get_or(key, 0) + 1))?
 	expect_contains(message, "overflow")?
 
 test "native borrowers retain owned arguments after a later try":

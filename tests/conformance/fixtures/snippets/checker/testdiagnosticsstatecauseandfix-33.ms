@@ -7,5 +7,5 @@ enum Choice[T]:
 
 fn f(c Choice[Int]) Int:
     match c:
-        Choice[String].Found(v): return 1
-        Choice[String].Missing: return 0
+        Choice[String].Found(v) => return 1
+        Choice[String].Missing => return 0

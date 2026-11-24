@@ -4,5 +4,5 @@ enum Flag:
     Ready
 fn use(value Int?) Int:
     match value:
-        ready: return Ready
-        null: return 0
+        ready => return Ready
+        null => return 0

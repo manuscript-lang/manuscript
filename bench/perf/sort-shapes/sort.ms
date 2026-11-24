@@ -43,7 +43,7 @@ fn main() Void:
 	n := 1000000
 	a := events(n, 1000)
 	t0 := monotonic().tick
-	b := a.sorted(fn p, q: p.kind - q.kind)
+	b := a.sorted((p, q) => p.kind - q.kind)
 	t1 := monotonic().tick
 	print(
 		f"owned-dups-sorted {us(t0, t1)} {b[0].kind + b[n - 1].kind + b[1000].id % 7}"
@@ -51,7 +51,7 @@ fn main() Void:
 
 	var c = events(n, 1000)
 	t2 := monotonic().tick
-	c.sort(fn p, q: p.kind - q.kind)
+	c.sort((p, q) => p.kind - q.kind)
 
 	t3 := monotonic().tick
 	print(
@@ -60,7 +60,7 @@ fn main() Void:
 
 	d := events(n, 1000000000)
 	t4 := monotonic().tick
-	e := d.sorted(fn p, q: p.kind - q.kind)
+	e := d.sorted((p, q) => p.kind - q.kind)
 	t5 := monotonic().tick
 	print(
 		f"owned-distinct-sorted {us(t4, t5)} {e[0].kind + e[n - 1].kind + e[1000].id % 7}"
@@ -68,7 +68,7 @@ fn main() Void:
 
 	f := plains(n, 1000)
 	t6 := monotonic().tick
-	g := f.sorted(fn p, q: p.kind - q.kind)
+	g := f.sorted((p, q) => p.kind - q.kind)
 	t7 := monotonic().tick
 	print(
 		f"plain-dups-sorted {us(t6, t7)} {g[0].kind + g[n - 1].kind + g[1000].id % 7}"
@@ -76,7 +76,7 @@ fn main() Void:
 
 	h := plains(n, 1000000000)
 	t8 := monotonic().tick
-	i := h.sorted(fn p, q: p.kind - q.kind)
+	i := h.sorted((p, q) => p.kind - q.kind)
 	t9 := monotonic().tick
 	print(
 		f"plain-distinct-sorted {us(t8, t9)} {i[0].kind + i[n - 1].kind + i[1000].id % 7}"
@@ -87,7 +87,7 @@ fn main() Void:
 		s.append(Plain(k, k / 4 + (k % 3), 0))
 
 	t10 := monotonic().tick
-	r := s.sorted(fn p, q: p.kind - q.kind)
+	r := s.sorted((p, q) => p.kind - q.kind)
 	t11 := monotonic().tick
 	print(
 		f"plain-nearly-sorted {us(t10, t11)} {r[0].kind + r[n - 1].kind + r[1000].id % 7}"

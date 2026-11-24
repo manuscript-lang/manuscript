@@ -6,9 +6,9 @@ fn pick(code Int) String:
         1:
             word := "one"
             match word.length():
-                3: return word
-                _: return "other"
-        _: return "none"
+                3 => return word
+                _ => return "other"
+        _ => return "none"
 
 export fn main() Int:
     print(pick(1))

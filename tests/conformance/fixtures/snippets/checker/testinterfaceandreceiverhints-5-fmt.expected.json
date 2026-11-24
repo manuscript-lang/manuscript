@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn area(shape Shape) Int: shape.area()\n\nfn run() Int: area(Sq(2))\n"
+    "fmt": "fn area(shape Shape) Int => shape.area()\n\nfn run() Int => area(Sq(2))\n"
   }
 }

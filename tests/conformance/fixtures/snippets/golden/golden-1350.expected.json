@@ -25,26 +25,26 @@
           "file": "golden-1350.ms",
           "line": 8,
           "column": 16,
-          "offset": 168
+          "offset": 172
         },
         "end": {
           "file": "golden-1350.ms",
           "line": 8,
           "column": 17,
-          "offset": 169
+          "offset": 173
         },
         "fix": {
           "position": {
             "file": "golden-1350.ms",
             "line": 8,
             "column": 16,
-            "offset": 168
+            "offset": 172
           },
           "end": {
             "file": "golden-1350.ms",
             "line": 8,
             "column": 17,
-            "offset": 169
+            "offset": 173
           },
           "replacement": ""
         }

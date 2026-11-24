@@ -11,19 +11,19 @@ type Person:
 
 test "retain keeps matching elements in order":
 	var xs = [1, 2, 3, 4, 5, 6]
-	xs.retain(fn x: x % 2 == 0)
+	xs.retain(x => x % 2 == 0)
 	expect_equal(xs, [2, 4, 6])?
 
 	var words = ["a", "bb", "c", "dd"]
-	words.retain(fn w: w.length() == 2)
+	words.retain(w => w.length() == 2)
 	expect_equal(words, ["bb", "dd"])?
 
 	var none_left = [1, 3]
-	none_left.retain(fn x: x > 5)
+	none_left.retain(x => x > 5)
 	expect_equal(none_left, List[Int]())?
 
 	var empty = List[Int]()
-	empty.retain(fn x: true)
+	empty.retain(x => true)
 	expect_equal(empty, List[Int]())?
 
 test "compact collapses runs only":
@@ -36,7 +36,7 @@ test "compact collapses runs only":
 	expect_equal(one, [7])?
 
 	var words = ["a", "A", "b"]
-	words.compact_by(fn a, b: a.lower() == b.lower())
+	words.compact_by((a, b) => a.lower() == b.lower())
 	expect_equal(words, ["a", "b"])?
 
 test "rotate wraps in both directions":
@@ -58,12 +58,12 @@ test "is_sorted and is_sorted_by":
 	expect_true([1, 2, 2, 5].is_sorted())?
 	expect_false([2, 1].is_sorted())?
 	expect_true(List[Int]().is_sorted())?
-	expect_true([3, 2, 1].is_sorted_by(fn a, b: b - a))?
+	expect_true([3, 2, 1].is_sorted_by((a, b) => b - a))?
 
 test "sorted_by_key is stable":
 	people := [Person("a", 30), Person("b", 20), Person("c", 30), Person("d", 10)]
-	ordered := people.sorted_by_key(fn p: p.age)
-	expect_equal(ordered.map(fn p: p.name.clone()), ["d", "b", "a", "c"])?
+	ordered := people.sorted_by_key(p => p.age)
+	expect_equal(ordered.map(p => p.name.clone()), ["d", "b", "a", "c"])?
 	expect_equal(people[0].name, "a")?
 
 test "repeated copies the list":
@@ -85,11 +85,11 @@ test "extend appends copies and leaves the argument":
 
 test "retain on Map and Set":
 	var counts = {"a": 0, "b": 2, "c": 0, "d": 5}
-	counts.retain(fn key, n: n != 0)
+	counts.retain((key, n) => n != 0)
 	expect_equal(counts.keys(), ["b", "d"])?
 
 	var seen = Set([3, -1, 4, -5])
-	seen.retain(fn n: n >= 0)
+	seen.retain(n => n >= 0)
 	expect_equal(seen.values(), [3, 4])?
 
 test "Deque rotate turns the ring":

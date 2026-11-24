@@ -7,4 +7,4 @@ enum Expr:
 
 fn value(expr Expr) Int:
     match expr:
-        Num(value): return value
+        Num(value) => return value

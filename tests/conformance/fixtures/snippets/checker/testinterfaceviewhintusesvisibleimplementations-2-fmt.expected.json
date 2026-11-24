@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tSq from \"data.ms\",\n\tShape from \"extension.ms\",\n)\n\nfn shape() Shape: Sq(2)\n"
+    "fmt": "import (\n\tSq from \"data.ms\",\n\tShape from \"extension.ms\",\n)\n\nfn shape() Shape => Sq(2)\n"
   }
 }

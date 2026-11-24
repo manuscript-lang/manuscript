@@ -13,7 +13,7 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn forward[T](item T) T: item
+fn forward[T](item T) T => item
 
 type Capture:
 	tag Bytes

@@ -147,7 +147,7 @@ fn indexed_to_ansi(index Int) Int:
 // background.
 fn color_codes(color Color, base Int, colors Int) String:
 	match color:
-		Default: return ""
+		Default => return ""
 		Ansi(index):
 			i := clamp(index, 0, 15)
 			if i < 8: return f"{base + i}"

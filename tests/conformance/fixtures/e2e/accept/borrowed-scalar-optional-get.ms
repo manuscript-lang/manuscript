@@ -8,7 +8,7 @@ import (
 type Marker:
 	id Int
 
-fn move Marker.close() Void!: error(Error("scalar marker closed"))
+fn move Marker.close() Void! => error(Error("scalar marker closed"))
 
 fn inspect(value Marker?) Void:
 	_id := (value or panic("called Optional.get() on null")).id
@@ -22,13 +22,13 @@ fn collection(values List[Marker]) Void:
 
 test "a borrowed scalar Optional getter leaves its owner alive":
 	(
-		(expect_fault(fn: inspect(Marker(1)))?)
+		(expect_fault(() => inspect(Marker(1)))?)
 		| expect_contains("borrowed owner remains alive")?
 	)
 
 test "a scalar collection lend leaves its owner alive":
 	(
-		(expect_fault(fn: collection([Marker(2)]))?)
+		(expect_fault(() => collection([Marker(2)]))?)
 		| expect_contains("collection owner remains alive")?
 	)
 
@@ -36,7 +36,7 @@ fn owned_result() Void:
 	value Marker!Int := ok(Marker(3))
 	_id := value.get().id
 
-fn scalar_optional() Marker?: Marker(4)
+fn scalar_optional() Marker? => Marker(4)
 
 fn owned_optional() Void:
 	_id := (scalar_optional() or panic("called Optional.get() on null")).id
@@ -48,7 +48,7 @@ test "owned scalar getter results still close their temporary":
 type HeapMarker:
 	text String
 
-fn move HeapMarker.close() Void!: error(Error("heap marker closed"))
+fn move HeapMarker.close() Void! => error(Error("heap marker closed"))
 
 fn inspect_heap(value HeapMarker?) Void:
 	_length := (value or panic("called Optional.get() on null")).text.length()
@@ -57,7 +57,7 @@ fn inspect_heap(value HeapMarker?) Void:
 
 test "heap resource Optional getters retain their existing borrow":
 	(
-		(expect_fault(fn: inspect_heap(HeapMarker("heap")))?)
+		(expect_fault(() => inspect_heap(HeapMarker("heap")))?)
 		| expect_contains("heap owner remains alive")?
 	)
 
@@ -94,7 +94,7 @@ fn read_generic[T](values List[T], read fn(T) Int) Int:
 	return read(values.first() or panic("called Optional.get() on null"))
 
 fn generic_collection(values List[Marker]) Void:
-	_id := read_generic(values, fn value: value.id)
+	_id := read_generic(values, value => value.id)
 	_still_present := values.length()
 	panic("generic owner remains alive")
 
@@ -103,36 +103,36 @@ fn temporary_text() String:
 
 test "an inline last lend leaves its scalar owner alive":
 	(
-		(expect_fault(fn: collection_last([Marker(7)]))?)
+		(expect_fault(() => collection_last([Marker(7)]))?)
 		| expect_contains("last owner remains alive")?
 	)
 
 test "an inline map lend leaves its scalar owner alive":
 	(
-		(expect_fault(fn: map_entry(make_map()))?)
+		(expect_fault(() => map_entry(make_map()))?)
 		| expect_contains("map owner remains alive")?
 	)
 
 test "named and inline scalar collection lends keep the same borrow":
 	(
-		(expect_fault(fn: collection_named([Marker(9)]))?)
+		(expect_fault(() => collection_named([Marker(9)]))?)
 		| expect_contains("named owner remains alive")?
 	)
 
 test "missing collection lends still report Optional get faults":
 	(
-		(expect_fault(fn: collection_missing(List[Marker]()))?)
+		(expect_fault(() => collection_missing(List[Marker]()))?)
 		| expect_contains("called Optional.get() on null")?
 	)
 	(
 		(
-			expect_fault(fn: map_missing(Map[String, Marker]()))?
+			expect_fault(() => map_missing(Map[String, Marker]()))?
 		) | expect_contains("called Optional.get() on null")?
 	)
 
 test "generic inline collection reads lend to their callback":
 	(
-		(expect_fault(fn: generic_collection([Marker(10)]))?)
+		(expect_fault(() => generic_collection([Marker(10)]))?)
 		| expect_contains("generic owner remains alive")?
 	)
 
@@ -158,19 +158,19 @@ fn labeled_map_missing(values Map[String, Marker]) Void:
 
 test "a labeled map lend leaves its scalar owner alive":
 	(
-		(expect_fault(fn: labeled_map_entry(make_map()))?)
+		(expect_fault(() => labeled_map_entry(make_map()))?)
 		| expect_contains("labeled map owner remains alive")?
 	)
 
 test "a labeled map binding leaves its scalar owner alive":
 	(
-		(expect_fault(fn: labeled_map_binding(make_map()))?)
+		(expect_fault(() => labeled_map_binding(make_map()))?)
 		| expect_contains("labeled binding owner remains alive")?
 	)
 
 test "a missing labeled map lend still reports the Optional fault":
 	(
-		(expect_fault(fn: labeled_map_missing(make_map()))?)
+		(expect_fault(() => labeled_map_missing(make_map()))?)
 		| expect_contains("called Optional.get() on null")?
 	)
 

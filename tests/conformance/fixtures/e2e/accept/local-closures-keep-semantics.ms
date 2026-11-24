@@ -7,7 +7,7 @@ fn bump(factor Int) Int:
     var offset = 10
     offset = 99
 
-    scale := fn(value Int) Int: value * factor + offset
+    scale := fn(value Int) Int => value * factor + offset
     return scale(value: 2)
 
 fn lookup(limit Int) Int:
@@ -42,20 +42,20 @@ fn parse(text String) Int!Error:
     return Result[Int, Error].ok(checked + 1)
 
 fn labels(prefix String) String:
-    join := fn(left String, right String) String: f"{prefix}{left}-{right}"
+    join := fn(left String, right String) String => f"{prefix}{left}-{right}"
     return join(left: "a", right: "b")
 
 fn reordered() Int:
-    subtract := fn(left Int, right Int) Int: left - right
+    subtract := fn(left Int, right Int) Int => left - right
     return subtract(right: 2, left: 7)
 
 fn passed() List[Int]:
-    double := fn(value Int) Int: value * 2
+    double := fn(value Int) Int => value * 2
     return [1, 2, 3].map(double)
 
 fn nested(n Int) Int:
-    inner := fn(x Int) Int: x + 1
-    outer := fn(y Int) Int: inner(x: y) * 2
+    inner := fn(x Int) Int => x + 1
+    outer := fn(y Int) Int => inner(x: y) * 2
     return outer(y: n)
 
 test "local closures":

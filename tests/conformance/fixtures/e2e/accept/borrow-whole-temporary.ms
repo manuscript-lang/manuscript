@@ -14,11 +14,11 @@ fn mk(n Int) Big:
         xs.append(i)
     return Big("a name that is long enough to live on the heap", xs)
 
-fn id(b Big) Big: b
+fn id(b Big) Big => b
 
-fn pass[T](x T) T: x
+fn pass[T](x T) T => x
 
-fn Big.me() Big: return self
+fn Big.me() Big => return self
 
 fn first_of(b Big) Int:
     return b.items[0]

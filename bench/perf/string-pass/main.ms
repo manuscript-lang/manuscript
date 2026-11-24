@@ -26,14 +26,14 @@ fn main() Void:
 	t = monotonic()
 
 	var freq Map[String, Int] = Map[String, Int]()
-	for w in words: freq.update(w.clone(), 0, fn v: v + 1)
+	for w in words: freq.update(w.clone(), 0, v => v + 1)
 	report("freq_short", t, freq.length())
 
 	// string-keyed map, heap keys
 	t = monotonic()
 
 	var freq2 Map[String, Int] = Map[String, Int]()
-	for w in longs: freq2.update(w.clone(), 0, fn v: v + 1)
+	for w in longs: freq2.update(w.clone(), 0, v => v + 1)
 	report("freq_long", t, freq2.length())
 
 	// lookups

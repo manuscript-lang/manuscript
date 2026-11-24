@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrong() Int:\n\tvalues := [fn() Int: 1]\n\treturn values.distinct().length()\n"
+    "fmt": "fn wrong() Int:\n\tvalues := [fn() Int => 1]\n\treturn values.distinct().length()\n"
   }
 }

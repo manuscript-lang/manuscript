@@ -13,7 +13,7 @@ export fn main() Int:
 	var total = 0
 
 	for index in 0..20:
-		started := promise[Int](fn: double(index))
+		started := promise[Int](() => double(index))
 		total += started.wait().get()
 
 	return total - 380

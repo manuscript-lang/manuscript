@@ -5,4 +5,4 @@ enum Keyword:
 
 fn read(value Keyword) Int:
 	match value:
-		case: return 0
+		case => return 0

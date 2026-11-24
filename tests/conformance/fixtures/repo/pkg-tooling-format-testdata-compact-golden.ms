@@ -3,7 +3,7 @@
 // conform: origin=pkg/tooling/format/testdata/compact.golden.ms
 import expect_equal from "@std/test/test.ms"
 
-fn apply(value Int, transform fn(Int) Int) Int: transform(value)
+fn apply(value Int, transform fn(Int) Int) Int => transform(value)
 
 enum Choice:
     Zero
@@ -22,7 +22,7 @@ fn choose(value Choice) String:
 
 fn count() Int:
     return apply(
-        value: 2, transform: fn(value Int) Int: return (value + 10 + 20 + 30 + 40)
+        value: 2, transform: fn(value Int) Int => return (value + 10 + 20 + 30 + 40)
     )
 
 test "compact formatting preserves behavior":
@@ -30,7 +30,7 @@ test "compact formatting preserves behavior":
     nested := [[1, 2], [3, 4]]
     invalid := ["", "[1,", "{\"a\" 1}", "tru", "[1] x", "\"abc"]
     mapped := [1, 2, 3, 4, 5, 6].map(
-        transform: fn(value Int) Int: return (value + 1)
+        transform: fn(value Int) Int => return (value + 1)
     )
     values | expect_equal(expected: [1, 2, 2, 4, 3, 6])?
     nested | expect_equal(expected: [[1, 2], [3, 4]])?

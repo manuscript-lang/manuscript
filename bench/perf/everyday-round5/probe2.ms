@@ -25,17 +25,17 @@ fn build(depth Int, seed Int) Expr:
 
 fn eval(e Expr) Int:
 	match e:
-		Num(value): return value
-		Add(left, right): return (eval(left) + eval(right)) % 1000003
-		Mul(left, right): return (eval(left) * eval(right)) % 1000003
-		Neg(inner): return 0 - eval(inner)
+		Num(value) => return value
+		Add(left, right) => return (eval(left) + eval(right)) % 1000003
+		Mul(left, right) => return (eval(left) * eval(right)) % 1000003
+		Neg(inner) => return 0 - eval(inner)
 
 fn count(e Expr) Int:
 	match e:
-		Num(_): return 1
-		Add(left, right): return 1 + count(left) + count(right)
-		Mul(left, right): return 1 + count(left) + count(right)
-		Neg(inner): return 1 + count(inner)
+		Num(_) => return 1
+		Add(left, right) => return 1 + count(left) + count(right)
+		Mul(left, right) => return 1 + count(left) + count(right)
+		Neg(inner) => return 1 + count(inner)
 
 type Item:
 	score Int
@@ -92,10 +92,10 @@ fn x_memo() Int:
 	return t
 
 fn compose(f fn(Int) Int, g fn(Int) Int) fn(Int) Int:
-	return fn v: g(f(v))
+	return v => g(f(v))
 
 fn x_compose() Int:
-	h := compose(compose(fn v: v + 1, fn v: v * 3), fn v: v - 2)
+	h := compose(compose(v => v + 1, v => v * 3), v => v - 2)
 	var t = 0
 	for i in 0..30000000:
 		t += h(i)
@@ -248,7 +248,7 @@ fn x_find_first() Int:
 	var t = 0
 
 	for i in 0..20000:
-		f := xs.find(fn it: it.score == i % 1000)
+		f := xs.find(it => it.score == i % 1000)
 		if f != null:
 			t += f.id
 

@@ -37,7 +37,7 @@ test "a var binding closes the value it ended with":
 	logged(log.clone()) | expect_equal("5,")?
 
 fn cancel_counter(log String) Void:
-	work := promise(fn: ok(count_then_wait(log.clone())))
+	work := promise(() => ok(count_then_wait(log.clone())))
 	_ignored := work.with(
 		options: PromiseOptions(timeout: nanoseconds(20000000))
 	).wait()

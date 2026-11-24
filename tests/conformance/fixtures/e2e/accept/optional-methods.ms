@@ -19,7 +19,7 @@ fn value_or[T](fallback T, value T?) T:
 
 	return fallback
 
-fn increment(value Int) Int: value + 1
+fn increment(value Int) Int => value + 1
 
 test "Optional presence and extraction preserve false and zero":
 	present Int? := 0
@@ -45,7 +45,7 @@ test "the fallback of or runs only when the value is null":
 	expect_equal(missing or fallback(counter), 42)?
 	expect_equal(counter.calls, 1)?
 
-	create := fn() Int?: 42
+	create := fn() Int? => 42
 	expect_equal((present or create()) or panic("called Optional.get() on null"), 0)?
 	expect_equal((missing or create()) or panic("called Optional.get() on null"), 42)?
 

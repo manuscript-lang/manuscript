@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() String: "é {1 + * 2}"
+fn f() String => "é {1 + * 2}"

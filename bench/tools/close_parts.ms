@@ -40,7 +40,7 @@ fn main() Int:
 	var skipped = 0
 	projects := glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get_or(
 		[]
-	).map(fn e: e.path.clone())
+	).map(e => e.path.clone())
 
 	for toml in projects.sorted():
 		dir := ("bench/perf/" + toml.slice(0, toml.length() - "ms.toml".length()))

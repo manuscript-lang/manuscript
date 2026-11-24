@@ -253,8 +253,8 @@ export fn map_concurrent[T, U](
 		mine := items.clone()
 		running.append(
 			promise(
-				fn: stripe_results(mine, stripe, stripes, work),
-				site: site
+				() => stripe_results(mine, stripe, stripes, work),
+				site: site,
 			)
 		)
 

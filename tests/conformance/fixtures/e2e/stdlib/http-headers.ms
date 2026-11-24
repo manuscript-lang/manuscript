@@ -45,8 +45,8 @@ fn handle_headers(request HttpRequest) HttpResponse:
 	)
 
 	var fields = match repeated_headers():
-		ok(found): found
-		error(cause): return header_failure(cause.message)
+		ok(found) => found
+		error(cause) => return header_failure(cause.message)
 
 	return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
@@ -148,7 +148,7 @@ test "string lookup leaves out values that are not UTF-8":
 	)
 
 	match fields.append("bad name", "value"):
-		ok(_): return fail("malformed name accepted")
+		ok(_) => return fail("malformed name accepted")
 		error(cause):
 			expect_equal(cause, Error("HTTP: invalid input", kind: "EINVAL"))?
 

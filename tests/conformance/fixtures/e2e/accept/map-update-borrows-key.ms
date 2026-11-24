@@ -8,9 +8,9 @@ test "a key stays usable after update, new or existing":
 	var counts Map[String, Int] = {}
 	key := "a key that is longer than fifteen bytes"
 
-	counts.update(key, 0, fn n: n + 1)
-	counts.update(key, 0, fn n: n + 1)
-	counts.update(key.clone(), 0, fn n: n + 1)
+	counts.update(key, 0, n => n + 1)
+	counts.update(key, 0, n => n + 1)
+	counts.update(key.clone(), 0, n => n + 1)
 
 	expect_equal(counts.length(), 1)?
 	expect_equal(counts[key], 3)?
@@ -21,7 +21,7 @@ test "distinct long keys each get their own copy":
 	for round in 0..3:
 		for n in 0..4:
 			label := f"a label that is longer than inline {n}"
-			counts.update(label, 10, fn v: v + round)
+			counts.update(label, 10, v => v + round)
 
 	expect_equal(counts.length(), 4)?
 	expect_equal(counts["a label that is longer than inline 2"], 13)?

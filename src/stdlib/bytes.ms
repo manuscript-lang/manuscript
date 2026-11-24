@@ -64,8 +64,8 @@ fn Bytes.get_or(index Int, default UInt8?) UInt8:
 	if position >= 0 and position < count: return self.get(position)
 
 	match default:
-		value: return value
-		null: return self.get(index)
+		value => return value
+		null => return self.get(index)
 
 // Returns the first matching byte offset or `null`; empty `value` matches at zero.
 fn Bytes.index_of(value Bytes) Int?: ...

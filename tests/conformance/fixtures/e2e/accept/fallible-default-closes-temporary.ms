@@ -13,9 +13,9 @@ type Resource:
 fn move Resource.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
 
-fn accepted() Int!: ok(1)
+fn accepted() Int! => ok(1)
 
-fn failing() Int!: error(Error("stop"))
+fn failing() Int! => error(Error("stop"))
 
 fn observed(value Resource?, tail Int = accepted()?) Bool!:
 	return ok((value != null) or tail > 0)

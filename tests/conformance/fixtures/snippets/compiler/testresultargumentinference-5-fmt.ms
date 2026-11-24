@@ -4,4 +4,4 @@
 type Holder[T]:
     r T!
 
-fn first() Holder[Int]: Holder(f())
+fn first() Holder[Int] => Holder(f())

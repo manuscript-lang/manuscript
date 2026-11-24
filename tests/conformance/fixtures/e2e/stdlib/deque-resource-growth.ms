@@ -53,8 +53,8 @@ fn grow(log String, front Bool, wrapped Bool) Void!:
 	expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)?
 
 fn expect_once(log String, ids List[Int]) Void!:
-	actual := (events(log)?).split(",").filter(fn value: value != "").sorted()
-	expect_equal(actual, ids.map(fn id: f"{id}").sorted())?
+	actual := (events(log)?).split(",").filter(value => value != "").sorted()
+	expect_equal(actual, ids.map(id => f"{id}").sorted())?
 
 test "deque growth moves resource owners from either end":
 	for front in [false, true]:
@@ -124,7 +124,7 @@ test "grown resource deques close each owner once on error and fault exits":
 	other := f"{tmp.path()}/fault"
 	append_file(other, "").wait()?
 	expect_contains(
-		(expect_fault(fn: interrupted(other.clone(), true).get())?),
+		(expect_fault(() => interrupted(other.clone(), true).get())?),
 		"after deque growth",
 	)?
 	expect_once(other, [0, 1, 2, 3, 4, 5])?

@@ -24,7 +24,7 @@ type WideValue:
 	fourth String
 	fifth String
 
-fn key(i Int) WideKey: WideKey(i, i, i, i, i, i, i, i, i, i)
+fn key(i Int) WideKey => WideKey(i, i, i, i, i, i, i, i, i, i)
 
 fn value(i Int) WideValue:
 	text := "a long independently owned runtime value " + i.to_string()
@@ -49,7 +49,7 @@ fn merged_wide() Map[WideKey, WideValue]:
 
 test "wide Map merge preserves order and owns values after the source drops":
 	merged := merged_wide()
-	expect_equal(merged.keys().map(fn k: k.a), [2, -1, 0, 1, 4, 5, 7])?
+	expect_equal(merged.keys().map(k => k.a), [2, -1, 0, 1, 4, 5, 7])?
 
 	for i in [2, -1, 0, 1, 4, 5, 7]:
 		found := merged.get(key(i)) or panic("called Optional.get() on null")

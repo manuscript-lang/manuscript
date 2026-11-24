@@ -15,7 +15,7 @@ type Key:
 fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
-fn Key.hash() Int: 0
+fn Key.hash() Int => 0
 
 fn map_values[K Hashable, V, W](values Map[K, V], transform fn(K, V) W) Map[K, W]:
 	return values.map[W](transform)
@@ -38,26 +38,26 @@ fn reverse_set[T Hashable, A Clonable](values Set[T], initial A, step fn(A, T) A
 
 test "Map transformations and directional queries are callable":
 	source Map[String, Int] := {"b": 2, "a": 1}
-	mapped := source.map(fn k, v: v.to_string())
+	mapped := source.map((k, v) => v.to_string())
 	mapped["b"] | expect_equal("2")?
 
-	keyed := source.map_keys(fn k, v: v)
+	keyed := source.map_keys((k, v) => v)
 	keyed[2] | expect_equal(2)?
 	expect_equal(
 		(
-			source.find_last(fn k, v: true)
+			source.find_last((k, v) => true)
 			or panic("called Optional.get() on null")
 		).key,
 		"a",
 	)?
-	expect_equal(source.fold_right("", fn acc, k, v: acc + k), "ab")?
+	expect_equal(source.fold_right("", (acc, k, v) => acc + k), "ab")?
 
 	values := Set[Int]([2, 1])
 	expect_equal(
-		values.find_last(fn v: true) or panic("called Optional.get() on null"),
+		values.find_last(v => true) or panic("called Optional.get() on null"),
 		1,
 	)?
-	expect_equal(values.fold_right("", fn acc, v: acc + v.to_string()), "12")?
+	expect_equal(values.fold_right("", (acc, v) => acc + v.to_string()), "12")?
 
 test "Map value transformation copies ordered snapshots and keeps independent values":
 	first := Key(2, "b")
@@ -79,7 +79,7 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 	)
 
 	seen | expect_equal(["b2", "a1", "c3"])?
-	expect_equal(mapped.keys().map(fn k: k.id), [2, 1, 3])?
+	expect_equal(mapped.keys().map(k => k.id), [2, 1, 3])?
 
 	var edited = mapped[first].clone()
 	edited.count = 7
@@ -112,8 +112,8 @@ test "Map key transformation retains first equal keys and last values":
 	)
 
 	(created.length() != 4 or mapped.length() != 2) | expect_false?
-	expect_equal(mapped.keys().map(fn k: k.label.clone()), ["2", "1"])?
-	expect_equal(mapped.values().map(fn v: v.count), [3, 4])?
+	expect_equal(mapped.keys().map(k => k.label.clone()), ["2", "1"])?
+	expect_equal(mapped.values().map(v => v.count), [3, 4])?
 
 	var first_key = mapped.keys().get(0).clone()
 	first_key.label = "first copy"
@@ -143,9 +143,9 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
 	values Map[String, Int] := {"a": 0}
 	map := values.clone().map[Int?]
-	expect_true((map(fn k, v: null)["a"] == null))?
+	expect_true((map((k, v) => null)["a"] == null))?
 
-	nested := values.map(fn k, v: Result[Int, Error].error(Error("nested")))
+	nested := values.map((k, v) => Result[Int, Error].error(Error("nested")))
 	nested["a"].err().message | expect_equal("nested")?
 
 test "empty transformations skip callbacks and allocate independent storage":

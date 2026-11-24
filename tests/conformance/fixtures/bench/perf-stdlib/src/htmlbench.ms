@@ -25,5 +25,5 @@ export fn bench_html() Void:
     text := words(2000).join(" <&> ")
     bench(
         "html.escape_unescape", 2000,
-        fn() Int: return text | escape | unescape | .length()
+        fn() Int => return text | escape | unescape | .length()
     )

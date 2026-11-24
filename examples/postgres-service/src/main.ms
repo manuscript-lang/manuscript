@@ -32,8 +32,8 @@ fn record_visit(path String) Int!:
 	count := rows.rows[0][0]
 
 	match count:
-		Value.Int(total): return ok(total)
-		_: return error(Error("count(*) was not an integer", kind: "EBADMSG"))
+		Value.Int(total) => return ok(total)
+		_ => return error(Error("count(*) was not an integer", kind: "EBADMSG"))
 
 fn visit(request HttpRequest) HttpResponse:
 	result := record_visit(request.path)

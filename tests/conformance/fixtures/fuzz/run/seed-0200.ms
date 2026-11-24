@@ -55,7 +55,7 @@ export fn main() Int:
 
     say(f"acc10 = {acc10}")
 
-    l11 := l1.map(fn x: x * 9)
+    l11 := l1.map(x => x * 9)
     say(f"l11 = {l11} len {l11.length()}")
 
     i12 := (((i3 / 36) + i5) + i5)

@@ -95,20 +95,20 @@ fn solve(s String) String:
 		lo := if g[0] - c > 0: g[0] - c else: 0
 		hi := if g[g.length() - 1] + 1 + c < ops.length(): g[g.length() - 1] + 1 + c else: ops.length()
 		before := ops.slice(0, lo).get_or([])
-		sa := before.count(fn o: o.mark != "+")
-		sb := before.count(fn o: o.mark != "-")
+		sa := before.count(o => o.mark != "+")
+		sb := before.count(o => o.mark != "-")
 		body := ops.slice(lo, hi).get_or([])
-		la := body.count(fn o: o.mark != "+")
-		lb := body.count(fn o: o.mark != "-")
+		la := body.count(o => o.mark != "+")
+		lb := body.count(o => o.mark != "-")
 		out.append(f"@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
 		for o in body: out.append(o.mark + o.text)
 
-	return out.map(fn x: x + "\n").join("")
+	return out.map(x => x + "\n").join("")
 
 fn mk(a List[String], b List[String], c Int, na String, nb String) String:
 	return (
 		f"{na} {nb} {c} {a.length()} {b.length()}\n"
-		+ a.concat(b).map(fn x: x + "\n").join("")
+		+ a.concat(b).map(x => x + "\n").join("")
 	)
 
 fn case3(name String, a List[String], b List[String], c Int) GenCase:
@@ -154,8 +154,8 @@ fn at(base List[String], places List[Int], values List[String]) List[String]:
 
 export fn gen_c44() Void:
 	var rnd = seeded(44)
-	nums := (1..41).map(fn i: f"line {i}")
-	base20 := (1..21).map(fn i: f"l{i}")
+	nums := (1..41).map(i => f"line {i}")
+	base20 := (1..21).map(i => f"l{i}")
 	ex_a := ["one", "two", "three", "four", "five", "six"]
 	ex_b := ["one", "two", "3", "four", "five", "seven"]
 	examples := [

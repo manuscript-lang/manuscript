@@ -111,7 +111,7 @@ test "plain records of every shape sort stably at sizes around the small-sort an
 	]:
 		for shape in 0..10:
 			sorted := plains(shape, count).sorted(
-				compare: fn(a Plain, b Plain) Int: (a.key - b.key)
+				compare: fn(a Plain, b Plain) Int => (a.key - b.key)
 			)
 			expect_equal(plain_ok(sorted, count), true)?
 
@@ -120,18 +120,18 @@ test "records that own strings of every shape sort stably, sorted and in place":
 		for shape in 0..10:
 			original := entries(shape, count)
 			sorted := original.sorted(
-				compare: fn(a Entry, b Entry) Int: a.key - b.key
+				compare: fn(a Entry, b Entry) Int => a.key - b.key
 			)
 			expect_equal(entry_ok(sorted, count), true)?
 			expect_equal(original.length(), count)?
 
 			var list = entries(shape, count)
-			list.sort(compare: fn(a Entry, b Entry) Int: a.key - b.key)
+			list.sort(compare: fn(a Entry, b Entry) Int => a.key - b.key)
 			expect_equal(entry_ok(list, count), true)?
 
 test "a descending comparator sorts ties in input order":
 	sorted := plains(7, 20000).sorted(
-		compare: fn(a Plain, b Plain) Int: b.key - a.key
+		compare: fn(a Plain, b Plain) Int => b.key - a.key
 	)
 	var ok = true
 

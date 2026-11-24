@@ -3,7 +3,7 @@
 type Cause:
     text String
 impl Error for Cause:
-    fn message() String: self.text
+    fn message() String => self.text
 fn affine(n: Int) Result[Int, Cause]:
     if n < 0:
         return error(Cause("negative"))

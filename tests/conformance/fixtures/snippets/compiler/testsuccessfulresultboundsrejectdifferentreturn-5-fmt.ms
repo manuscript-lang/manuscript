@@ -8,7 +8,7 @@ fn affine(n Int) Int!Cause:
                 match n:
                     value:
                         return ok(9223372036854775807)
-                    null: "negative"
+                    null => "negative"
             )
         )
 

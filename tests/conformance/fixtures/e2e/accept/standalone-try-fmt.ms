@@ -29,7 +29,7 @@ fn exact(state State, fail Bool) String!Failure:
 
 fn widened(var state State) Int!:
     operation(state, fail: true).map_error(
-        fn cause: Error("failed", details: {"code": cause.code.to_string()})
+        cause => Error("failed", details: {"code": cause.code.to_string()})
     )?
     return ok(0)
 

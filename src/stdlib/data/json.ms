@@ -93,8 +93,8 @@ export enum JsonValue:
 // is not an object. The result borrows from the receiver.
 fn JsonValue.get(key String) JsonValue?:
 	match self:
-		ObjectValue(values): return values.get(key)
-		_: return null
+		ObjectValue(values) => return values.get(key)
+		_ => return null
 
 /*
 Returns the value reached by reading each object member of `keys` in turn, or `null` when a
@@ -112,54 +112,54 @@ fn JsonValue.get_index(index Int) JsonValue?:
 		ArrayValue(values):
 			if index >= values.length() or index < 0 - values.length(): return null
 			return values.get(index)
-		_: return null
+		_ => return null
 
 // Returns the text of a string value, or `null` for any other value. The result is
 // an owned copy.
 fn JsonValue.as_string() String?:
 	match self:
-		StringValue(value): return value.clone()
-		_: return null
+		StringValue(value) => return value.clone()
+		_ => return null
 
 // Returns a number value as an Int, or `null` when the value is not a number or its
 // text has a fraction, an exponent, or digits that do not fit in Int.
 fn JsonValue.as_int() Int?:
 	match self:
-		NumberValue(text): return text.parse_int()
-		_: return null
+		NumberValue(text) => return text.parse_int()
+		_ => return null
 
 // Returns a number value as a Float, or `null` when the value is not a number or
 // its text does not parse to a finite number.
 fn JsonValue.as_float() Float?:
 	match self:
-		NumberValue(text): return parse_float(text).to_optional()
-		_: return null
+		NumberValue(text) => return parse_float(text).to_optional()
+		_ => return null
 
 // Returns a boolean value, or `null` for any other value.
 fn JsonValue.as_bool() Bool?:
 	match self:
-		BoolValue(value): return value
-		_: return null
+		BoolValue(value) => return value
+		_ => return null
 
 // Returns the elements of an array value, or `null` for any other value. The result
 // is an owned copy.
 fn JsonValue.as_list() List[JsonValue]?:
 	match self:
-		ArrayValue(values): return values.clone()
-		_: return null
+		ArrayValue(values) => return values.clone()
+		_ => return null
 
 // Returns the members of an object value, or `null` for any other value. The result
 // is an owned copy.
 fn JsonValue.as_map() Map[String, JsonValue]?:
 	match self:
-		ObjectValue(values): return values.clone()
-		_: return null
+		ObjectValue(values) => return values.clone()
+		_ => return null
 
 // Returns true only for the Null case; any other value returns false.
 fn JsonValue.is_null() Bool:
 	match self:
-		Null: return true
-		_: return false
+		Null => return true
+		_ => return false
 
 /*
 Parses one JSON value and applies the supplied input, depth, and value limits.

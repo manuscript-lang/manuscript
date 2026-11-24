@@ -84,12 +84,12 @@ bench "fused chains":
 	for i in 0..5000:
 		rows.append(Row(i, f"name{i % 311}"))
 
-	total := rows.filter(fn(r Row) Bool: r.id % 3 == 0).map(
-		fn(r Row) Int: (r.name.length())
+	total := rows.filter(fn(r Row) Bool => r.id % 3 == 0).map(
+		fn(r Row) Int => (r.name.length())
 	).sum()
 	text := "the quick brown fox jumps over the lazy dog ".repeat(100)
-	words := text.split(" ").filter(fn(w String) Bool: w.length() > 3).map(
-		fn(w String) Int: w.length()
+	words := text.split(" ").filter(fn(w String) Bool => w.length() > 3).map(
+		fn(w String) Int => w.length()
 	).sum()
 	total + words
 
@@ -107,7 +107,7 @@ bench "map probes and predicates":
 		if counts.contains(i): hits += 1
 
 	text := "the quick brown fox jumps over the lazy dog ".repeat(100)
-	any_row := rows.any(fn(r Row) Bool: r.name.starts_with("name3") and r.id > 4990)
-	every := rows.all(fn(r Row) Bool: r.name.length() > 4)
-	lower := text.chars().all(fn(c String) Bool: c != "Z")
+	any_row := rows.any(fn(r Row) Bool => r.name.starts_with("name3") and r.id > 4990)
+	every := rows.all(fn(r Row) Bool => r.name.length() > 4)
+	lower := text.chars().all(fn(c String) Bool => c != "Z")
 	hits + (if any_row: 1 else: 0) + (if every: 1 else: 0) + (if lower: 1 else: 0)

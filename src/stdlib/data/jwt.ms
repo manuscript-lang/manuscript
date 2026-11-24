@@ -164,17 +164,17 @@ export fn verify_token[T Data = JsonValue](
 
 fn header_algorithm_matches(value JsonValue, algorithm JwtAlgorithm) Bool:
 	match value:
-		StringValue(name): return name == algorithm_name(algorithm)
-		_: return false
+		StringValue(name) => return name == algorithm_name(algorithm)
+		_ => return false
 
 fn algorithm_name(algorithm JwtAlgorithm) String:
 	match algorithm:
-		Hs256: return "HS256"
-		Hs384: return "HS384"
-		Hs512: return "HS512"
-		Rs256: return "RS256"
-		Es256: return "ES256"
-		EdDsa: return "EdDSA"
+		Hs256 => return "HS256"
+		Hs384 => return "HS384"
+		Hs512 => return "HS512"
+		Rs256 => return "RS256"
+		Es256 => return "ES256"
+		EdDsa => return "EdDSA"
 
 fn decode_json[T Data](part String, limit Int) T!:
 	raw := base64_decode(part, url_safe: true, max_bytes: limit, padded: false)
@@ -190,10 +190,10 @@ fn decode_json[T Data](part String, limit Int) T!:
 
 fn hmac_hash(algorithm JwtAlgorithm) HashAlgorithm?:
 	match algorithm:
-		Hs256: return HashAlgorithm.Sha256
-		Hs384: return HashAlgorithm.Sha384
-		Hs512: return HashAlgorithm.Sha512
-		_: return null
+		Hs256 => return HashAlgorithm.Sha256
+		Hs384 => return HashAlgorithm.Sha384
+		Hs512 => return HashAlgorithm.Sha512
+		_ => return null
 
 fn sign_bytes(algorithm JwtAlgorithm, key Bytes, data Bytes) Bytes!:
 	hash := hmac_hash(algorithm)
@@ -243,8 +243,8 @@ fn verify_bytes(algorithm JwtAlgorithm, key Bytes, data Bytes, signature Bytes) 
 
 fn check_claims(claims JsonValue, check JwtCheck) Void!:
 	match claims:
-		ObjectValue(_): void
-		_: return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
+		ObjectValue(_) => void
+		_ => return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
 
 	var moment = 0
 	given := check.at
@@ -287,7 +287,7 @@ fn check_claims(claims JsonValue, check JwtCheck) Void!:
 			many := aud.as_list()
 
 			if many != null:
-				if many.any(fn item: item.as_string() == null): return error(
+				if many.any(item => item.as_string() == null): return error(
 					Error(
 						"jwt: aud must hold only strings",
 						kind: "EBADMSG",
@@ -311,8 +311,8 @@ fn check_claims(claims JsonValue, check JwtCheck) Void!:
 // malformed.
 fn numeric_date(claim JsonValue, name String) String!:
 	match claim:
-		NumberValue(text): return ok(text)
-		_: void
+		NumberValue(text) => return ok(text)
+		_ => void
 
 	return error(Error(f"jwt: {name} must be a number", kind: "EBADMSG"))
 
@@ -409,7 +409,7 @@ fn includes_audience(claim JsonValue, audience String) Bool:
 	if single != null: return single == audience
 
 	many := claim.as_list()
-	if many != null: return many.any(fn item: (item.as_string() or "") == audience)
+	if many != null: return many.any(item => (item.as_string() or "") == audience)
 
 	return false
 

@@ -20,7 +20,7 @@ fn drain(input Pipe[Int]) Void!:
 			break
 
 fn start(move input Pipe[Int]) Promise[Void]:
-	return promise(fn: drain(input))
+	return promise(() => drain(input))
 
 export fn main() Int:
 	queue := pipe[Int](4)

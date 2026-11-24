@@ -5,8 +5,8 @@ enum Choice[T]:
     Missing
 fn f(c Choice[Int], o Int?) Int:
     match o:
-        Optional.some(n): return n
-        Optional.null: return 0
+        Optional.some(n) => return n
+        Optional.null => return 0
     match c:
-        Choice.Found(v): return v
-        Choice.Missing: return 0
+        Choice.Found(v) => return v
+        Choice.Missing => return 0

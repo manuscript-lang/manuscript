@@ -10,7 +10,7 @@ fn ten(k Int) Int!:
 fn main() Int:
 	var bodies = List[fn() Int!]()
 	for k in 0..4:
-		bodies.append(fn: ten(k))
+		bodies.append(() => ten(k))
 
 	var running = List[Promise[Int]]()
 
@@ -18,7 +18,7 @@ fn main() Int:
 		body := bodies[k]
 		running.append(
 			promise(
-				fn: body(),
+				() => body(),
 				options: PromiseOptions(placement: Placement.Spread)
 			)
 		)

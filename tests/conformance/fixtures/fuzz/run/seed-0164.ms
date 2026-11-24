@@ -18,7 +18,7 @@ export fn main() Int:
     l3 := [19, 10]
     say(f"l3 = {l3} len {l3.length()}")
 
-    l4 := l1.filter(fn x: x > (-3))
+    l4 := l1.filter(x => x > (-3))
     say(f"l4 = {l4} len {l4.length()}")
 
     if (not (true and true)):

@@ -71,6 +71,6 @@ export fn main() Int:
     f11 := (324.25 * 537.417)
     say(f"f11 = {f11}")
 
-    l12 := l6.sorted(fn a, b: a.compare(b))
+    l12 := l6.sorted((a, b) => a.compare(b))
     say(f"l12 = {l12} len {l12.length()}")
     return 0

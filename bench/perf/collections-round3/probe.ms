@@ -84,9 +84,9 @@ fn m_enum_list() Int:
 
 	for s in xs:
 		match s:
-			Circle(r): t += 3 * r * r
-			Rect(w, h): t += w * h
-			Tri(a, b, c): t += a + b + c
+			Circle(r) => t += 3 * r * r
+			Rect(w, h) => t += w * h
+			Tri(a, b, c) => t += a + b + c
 
 	return t
 
@@ -132,7 +132,7 @@ fn m_sort_keyed() Int:
 		x = lcg(x)
 		xs.append(Pt(x % 1000, i))
 
-	ys := xs.sorted(fn a, b: if a.x != b.x: a.x - b.x else: a.y - b.y)
+	ys := xs.sorted((a, b) => if a.x != b.x: a.x - b.x else: a.y - b.y)
 	return ys[0].y + ys[999999].y
 
 fn m_group_by() Int:
@@ -140,7 +140,7 @@ fn m_group_by() Int:
 	for i in 0..1000000:
 		xs.append(i * 7 % 1000)
 
-	g := xs.group_by(fn v: v % 100)
+	g := xs.group_by(v => v % 100)
 	return g.length() + g[5].length()
 
 fn m_fold_sum() Int:
@@ -148,8 +148,8 @@ fn m_fold_sum() Int:
 	for i in 0..3000000:
 		xs.append(i)
 
-	a := xs.fold(0, fn acc, v: acc + v % 3)
-	b := xs.map(fn v: v * 2).filter(fn v: v % 3 == 0).length()
+	a := xs.fold(0, (acc, v) => acc + v % 3)
+	b := xs.map(v => v * 2).filter(v => v % 3 == 0).length()
 	return a + b
 
 fn m_list_of_strings() Int:
@@ -161,7 +161,7 @@ fn m_list_of_strings() Int:
 	for s in xs:
 		t += s.length()
 
-	ys := xs.map(fn s: s.upper())
+	ys := xs.map(s => s.upper())
 	return t + ys[499999].length()
 
 fn m_set_of_pts() Int:

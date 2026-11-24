@@ -203,8 +203,8 @@ enum Expr:
 
 fn evaluate(expr Expr) Int:
     match expr:
-        Num(value): return value
-        Add(left, right): return evaluate(left) + evaluate(right)
+        Num(value) => return value
+        Add(left, right) => return evaluate(left) + evaluate(right)
 
 test "recursive expression":
     expr := Expr.Add(Expr.Num(1), Expr.Num(2))
@@ -276,7 +276,7 @@ type Handler = fn(Int) Int
 type Maybe[T] = T?
 
 fn total(rows Rows) Int:
-    return rows.fold(0, fn sum, x: sum + x)
+    return rows.fold(0, (sum, x) => sum + x)
 
 numbers List[Int] := [1, 2, 3]
 sum := total(numbers)

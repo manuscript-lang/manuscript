@@ -30,7 +30,7 @@ export fn main() Int:
     l5 := [27, 27, (-10)]
     say(f"l5 = {l5} len {l5.length()}")
 
-    l6 := l5.sorted(fn a, b: a.compare(b))
+    l6 := l5.sorted((a, b) => a.compare(b))
     say(f"l6 = {l6} len {l6.length()}")
 
     s7 := "hello world"

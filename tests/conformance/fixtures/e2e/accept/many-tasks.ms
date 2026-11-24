@@ -24,7 +24,7 @@ test "fifty thousand parked promise tasks fit and cancel in bounded time":
 	for i in 0..50000:
 		promises.append(
 			promise(
-				fn: park(i),
+				() => park(i),
 				options: PromiseOptions(placement: Placement.Here)
 			)
 		)
@@ -41,8 +41,8 @@ test "fifty thousand parked promise tasks fit and cancel in bounded time":
 
 	for p in promises:
 		match p.wait():
-			ok(_): cancelled += 0
-			error(_): cancelled += 1
+			ok(_) => cancelled += 0
+			error(_) => cancelled += 1
 
 	expect_equal(cancelled, 50000)?
 

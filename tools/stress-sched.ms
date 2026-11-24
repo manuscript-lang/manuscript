@@ -122,7 +122,7 @@ fn main() Int:
 	for worker in 0..jobs:
 		ms_copy := ms.clone()
 		chunk := chunks[worker].clone()
-		tasks.append(promise(fn: ok(sweep(ms_copy, chunk))))
+		tasks.append(promise(() => ok(sweep(ms_copy, chunk))))
 
 	var ran = 0
 	var broken = 0

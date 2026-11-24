@@ -73,7 +73,7 @@ fn drain(source Source[Int]) Int!:
 
 fn stdlib_map(xs List[Int]) Int!:
 	var total = 0
-	for item in from_list(xs) | map(fn x: x + 1):
+	for item in from_list(xs) | map(x => x + 1):
 		total += item
 	return ok(total)
 
@@ -81,15 +81,15 @@ fn stdlib_map3(xs List[Int]) Int!:
 	var total = 0
 	for item in (
 		from_list(xs)
-		| map(fn x: x + 1)
-		| map(fn x: x * 3)
-		| map(fn x: x - 2)
+		| map(x => x + 1)
+		| map(x => x * 3)
+		| map(x => x - 2)
 	):
 		total += item
 	return ok(total)
 
 fn stdlib_collect(xs List[Int]) Int!:
-	all := collect(from_list(xs) | map(fn x: x + 1), null)?
+	all := collect(from_list(xs) | map(x => x + 1), null)?
 	return ok(all.length())
 
 fn plain_filter(xs List[Int]) Int:
@@ -101,7 +101,7 @@ fn plain_filter(xs List[Int]) Int:
 
 fn stdlib_filter(xs List[Int]) Int!:
 	var total = 0
-	for item in from_list(xs) | filter(fn x: x % 2 == 0):
+	for item in from_list(xs) | filter(x => x % 2 == 0):
 		total += item
 	return ok(total)
 
@@ -124,7 +124,7 @@ fn stdlib_take(xs List[Int], count Int) Int!:
 	return ok(total)
 
 fn stdlib_fold(xs List[Int]) Int!:
-	return fold(from_list(xs), 0, fn total, x: total + x)
+	return fold(from_list(xs), 0, (total, x) => total + x)
 
 fn hand_lines(data Bytes) Int!:
 	var count = 0
@@ -168,7 +168,7 @@ fn main() Void:
 		"source-map",
 		n,
 		t,
-		drain(MapSource(ListSource(b, 0), fn x: x + 1)).get_or(-1),
+		drain(MapSource(ListSource(b, 0), x => x + 1)).get_or(-1),
 	)
 
 	c := xs.clone()

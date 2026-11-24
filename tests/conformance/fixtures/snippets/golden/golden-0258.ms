@@ -7,8 +7,8 @@ interface J:
 type A:
     n Int
 impl I for A:
-    fn m() Int: return 1
+    fn m() Int => return 1
 impl J for A:
-    fn m() Int: return 2
+    fn m() Int => return 2
 fn f(a: A) Int:
     return a.m()

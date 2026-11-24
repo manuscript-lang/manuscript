@@ -3,30 +3,30 @@
 // conform: origin=tests/e2e/testdata/accept/contextual-generics.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn fail[T](move message String) T!Error: error(Error(message))
+fn fail[T](move message String) T!Error => error(Error(message))
 
-fn fail_cause[T, E](cause E) T!E: error(cause)
+fn fail_cause[T, E](cause E) T!E => error(cause)
 
-fn absent[T]() T?: null
+fn absent[T]() T? => null
 
-fn identity[T](value T) T: value
+fn identity[T](value T) T => value
 
-fn from_callback[T](factory fn() T) T: factory()
+fn from_callback[T](factory fn() T) T => factory()
 
-fn transform[T, U](callback fn(T) U) fn(T) U: callback
+fn transform[T, U](callback fn(T) U) fn(T) U => callback
 
 type Failure:
 	detail String
 
-fn failure_error(cause Failure) Error: Error(cause.detail.clone())
+fn failure_error(cause Failure) Error => Error(cause.detail.clone())
 
-fn first() List[Int]!Error: fail("empty")
+fn first() List[Int]!Error => fail("empty")
 
-fn failed() Int!: fail_cause(failure_error(Failure("domain")))
+fn failed() Int! => fail_cause(failure_error(Failure("domain")))
 
-fn forward[T]() T?: absent()
+fn forward[T]() T? => absent()
 
-fn consume(value Int?) Int: value or 0
+fn consume(value Int?) Int => value or 0
 
 type Events:
 	values List[Int]
@@ -51,14 +51,14 @@ test "expected generic results preserve behavior and call order":
 	empty Int? := forward()
 	expect_false(not (empty == null))?
 
-	values List[Int?] := [1, 2].map(fn item: absent())
+	values List[Int?] := [1, 2].map(item => absent())
 	expect_equal(values.length(), 2)?
 	expect_false(not (values.get(0) == null))?
 
-	callback fn(Int) String := transform(fn item: item.to_string())
+	callback fn(Int) String := transform(item => item.to_string())
 	expect_equal(callback(7), "7")?
 
-	defaulted fn(Int) Int := from_callback(fn: fn(value Int = 4): (value + 1))
+	defaulted fn(Int) Int := from_callback(() => fn(value Int = 4) => (value + 1))
 	expect_equal(defaulted(8), 9)?
 	expect_equal(consume(identity(5)), 5)?
 

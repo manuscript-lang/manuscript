@@ -21,10 +21,10 @@ fn move Counting.close() Void!:
 	return ok()
 
 test "filter keeps matching items in order":
-	kept := collect(from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), null)?
+	kept := collect(from_list([1, 2, 3, 4, 5, 6]) | filter(x => x % 2 == 0), null)?
 	expect_equal(kept, [2, 4, 6])?
 	expect_equal(
-		collect(from_list([1, 3]) | filter(fn x: x % 2 == 0), null)?,
+		collect(from_list([1, 3]) | filter(x => x % 2 == 0), null)?,
 		List[Int](),
 	)?
 
@@ -36,13 +36,13 @@ test "take stops after count items and never reads past them":
 	expect_equal(collect(from_list([1, 2]) | take(-1), null)?, List[Int]())?
 
 test "fold combines items from a start value":
-	expect_equal(fold(from_list([1, 2, 3, 4]), 10, fn s, x: s + x)?, 20)?
-	expect_equal(fold(from_list(List[Int]()), 7, fn s, x: s + x)?, 7)?
+	expect_equal(fold(from_list([1, 2, 3, 4]), 10, (s, x) => s + x)?, 20)?
+	expect_equal(fold(from_list(List[Int]()), 7, (s, x) => s + x)?, 7)?
 
 test "stages compose over an endless stream":
 	out := collect(
-		ReadStream[Int](Counting(0, 0)) | filter(fn x: x > 2) | map(
-			fn x: x * 10
+		ReadStream[Int](Counting(0, 0)) | filter(x => x > 2) | map(
+			x => x * 10
 		) | take(3),
 		null,
 	)?
@@ -72,8 +72,8 @@ test "take does not spend its last item on a failed read":
 test "take preserves its remaining items across errors in composed stages":
 	var source = (
 		ReadStream[Int](Intermittent())
-		| filter(fn x: x % 4 == 0)
-		| map(fn x: x * 10)
+		| filter(x => x % 4 == 0)
+		| map(x => x * 10)
 		| take(2)
 	)
 

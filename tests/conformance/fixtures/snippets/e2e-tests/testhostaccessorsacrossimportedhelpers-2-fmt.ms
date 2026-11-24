@@ -15,7 +15,7 @@ export fn main() Int:
     cause := match stdout().write(""):
         ok(_):
             return 3
-        error(cause): cause
+        error(cause) => cause
 
     match cause:
         Closed:

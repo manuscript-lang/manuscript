@@ -190,9 +190,9 @@ fn with_modifiers(event TerminalEvent, modifier Int) TerminalEvent:
 				bits / 2 % 2 == 1,
 				bits % 2 == 1,
 			)
-		Text(_text): return event.clone()
-		Resize(_columns, _rows): return event.clone()
-		Paste(_text): return event.clone()
+		Text(_text) => return event.clone()
+		Resize(_columns, _rows) => return event.clone()
+		Paste(_text) => return event.clone()
 
 ascii := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 
@@ -617,13 +617,13 @@ fn RawTerminal.show_cursor(visible Bool) Void!:
 // Erases the selected screen region without moving the cursor.
 fn RawTerminal.erase(region EraseRegion) Void!:
 	match region:
-		Screen: return self.write(f"{esc}[2J")
-		Line: return self.write(f"{esc}[2K")
-		LineEnd: return self.write(f"{esc}[K")
-		LineStart: return self.write(f"{esc}[1K")
-		ScreenEnd: return self.write(f"{esc}[J")
-		ScreenStart: return self.write(f"{esc}[1J")
-		Scrollback: return self.write(f"{esc}[3J")
+		Screen => return self.write(f"{esc}[2J")
+		Line => return self.write(f"{esc}[2K")
+		LineEnd => return self.write(f"{esc}[K")
+		LineStart => return self.write(f"{esc}[1K")
+		ScreenEnd => return self.write(f"{esc}[J")
+		ScreenStart => return self.write(f"{esc}[1J")
+		Scrollback => return self.write(f"{esc}[3J")
 
 // Erases the screen and moves the cursor to the top left.
 fn RawTerminal.clear() Void!:

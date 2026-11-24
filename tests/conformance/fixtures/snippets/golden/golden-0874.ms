@@ -2,4 +2,4 @@
 // conform: phase=check
 fn f(a Int) Int:
     match a:
-fn g() Int: return 1
+fn g() Int => return 1

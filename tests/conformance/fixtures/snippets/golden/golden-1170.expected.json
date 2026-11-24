@@ -31,26 +31,26 @@
           "file": "golden-1170.ms",
           "line": 8,
           "column": 10,
-          "offset": 189
+          "offset": 191
         },
         "end": {
           "file": "golden-1170.ms",
           "line": 8,
           "column": 11,
-          "offset": 190
+          "offset": 192
         },
         "fix": {
           "position": {
             "file": "golden-1170.ms",
             "line": 8,
             "column": 10,
-            "offset": 189
+            "offset": 191
           },
           "end": {
             "file": "golden-1170.ms",
             "line": 8,
             "column": 11,
-            "offset": 190
+            "offset": 192
           },
           "replacement": ""
         }
@@ -63,26 +63,26 @@
           "file": "golden-1170.ms",
           "line": 9,
           "column": 13,
-          "offset": 207
+          "offset": 209
         },
         "end": {
           "file": "golden-1170.ms",
           "line": 9,
           "column": 14,
-          "offset": 208
+          "offset": 210
         },
         "fix": {
           "position": {
             "file": "golden-1170.ms",
             "line": 9,
             "column": 13,
-            "offset": 207
+            "offset": 209
           },
           "end": {
             "file": "golden-1170.ms",
             "line": 9,
             "column": 14,
-            "offset": 208
+            "offset": 210
           },
           "replacement": ""
         }
@@ -91,7 +91,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1170.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Box[Error]:\n   | ^^^^\n<DIR>/golden-1170.ms:8:10: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 |     value: Int\n   |          ^\n<DIR>/golden-1170.ms:9:13: parse: remove the ':' between 'item' and its type; write item Type\n   |\n 9 | fn read(item: Neighbor) Int: item.value\n   |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1170.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Box[Error]:\n   | ^^^^\n<DIR>/golden-1170.ms:8:10: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 |     value: Int\n   |          ^\n<DIR>/golden-1170.ms:9:13: parse: remove the ':' between 'item' and its type; write item Type\n   |\n 9 | fn read(item: Neighbor) Int => item.value\n   |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

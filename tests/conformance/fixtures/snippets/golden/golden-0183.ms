@@ -3,4 +3,4 @@
 type Callback:
     value fn(Int) Int
 fn example() Void:
-    callback := Callback(fn value: value + 1)
+    callback := Callback(value => value + 1)

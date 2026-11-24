@@ -52,7 +52,7 @@ export fn main() Int:
     l8 := [(-20), (-30)]
     say(f"l8 = {l8} len {l8.length()}")
 
-    l9 := l8.map(fn x: x * 3)
+    l9 := l8.map(x => x * 3)
     say(f"l9 = {l9} len {l9.length()}")
 
     b10 := b3

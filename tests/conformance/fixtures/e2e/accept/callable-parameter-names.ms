@@ -2,11 +2,11 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn first(amount Int) Int: amount + 1
+fn first(amount Int) Int => amount + 1
 
-fn second(value Int) Int: value + 2
+fn second(value Int) Int => value + 2
 
-fn choose[T](left T, right T) T: left
+fn choose[T](left T, right T) T => left
 
 type Pair[T]:
 	left T

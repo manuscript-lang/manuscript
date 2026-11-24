@@ -9,4 +9,4 @@ fn f(x Int?) Void!:
         n:
             p()?
             return ok()
-        null: return ok()
+        null => return ok()

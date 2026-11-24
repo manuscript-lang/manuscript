@@ -62,8 +62,8 @@ export enum XmlNode:
 // The tag name of an element, or empty text for text and comments.
 fn XmlNode.tag() String:
 	match self:
-		XmlElement(name, _, _): return name.clone()
-		_: return ""
+		XmlElement(name, _, _) => return name.clone()
+		_ => return ""
 
 // Returns the value of the attribute `name`, or null when it is absent or the node is
 // not an element.
@@ -73,14 +73,14 @@ fn XmlNode.attribute(name String) String?:
 			for attribute in attributes:
 				if attribute.name == name: return attribute.value.clone()
 			return null
-		_: return null
+		_ => return null
 
 // Returns the child nodes of an element, or an empty list. The result is an owned
 // copy.
 fn XmlNode.children() List[XmlNode]:
 	match self:
-		XmlElement(_, _, children): return children.clone()
-		_: return List[XmlNode]()
+		XmlElement(_, _, children) => return children.clone()
+		_ => return List[XmlNode]()
 
 // Returns all descendant text joined in document order, without comments.
 fn XmlNode.text() String:
@@ -96,7 +96,7 @@ fn XmlNode.find(name String) XmlNode?:
 			for child in children:
 				if child.tag() == name: return child.clone()
 			return null
-		_: return null
+		_ => return null
 
 // Returns every direct child element named `name`, in order.
 fn XmlNode.find_all(name String) List[XmlNode]:
@@ -106,17 +106,17 @@ fn XmlNode.find_all(name String) List[XmlNode]:
 		XmlElement(_, _, children):
 			for child in children:
 				if child.tag() == name: found.append(child.clone())
-		_: return found
+		_ => return found
 
 	return found
 
 fn collect_text(node XmlNode, var out String) Void:
 	match node:
-		XmlText(text): out += text
+		XmlText(text) => out += text
 		XmlElement(_, _, children):
 			for child in children:
 				collect_text(child, out)
-		_: return
+		_ => return
 
 // A malformed-input error at scalar index `at`, with its line, column and reason.
 fn invalid_at(chars List[String], at Int, reason String) Error:
@@ -866,8 +866,8 @@ fn write(node XmlNode, indent String, level Int, var out String) Void:
 	newline := if indent.is_empty(): "" else: "\n"
 
 	match node:
-		XmlText(text): out += escape_text(text)
-		XmlComment(text): out += f"{pad}<!--{text}-->{newline}"
+		XmlText(text) => out += escape_text(text)
+		XmlComment(text) => out += f"{pad}<!--{text}-->{newline}"
 		XmlElement(name, attributes, children):
 			out += f"{pad}<{name}"
 			for attribute in attributes:

@@ -13,7 +13,7 @@ export type Random:
 	state List[Int]
 	index Int
 
-fn u32(value Int) Int: bit_and(value, MASK)
+fn u32(value Int) Int => bit_and(value, MASK)
 
 fn init_genrand(seed Int) List[Int]:
 	var mt = List[Int](reserve: N)
@@ -107,10 +107,10 @@ fn var Random.below(n Int) Int:
 	return r
 
 // A uniform integer in `low..=high`.
-fn var Random.randint(low Int, high Int) Int: low + self.below(high - low + 1)
+fn var Random.randint(low Int, high Int) Int => low + self.below(high - low + 1)
 
 // A uniform integer in `low..high`.
-fn var Random.randrange(low Int, high Int) Int: low + self.below(high - low)
+fn var Random.randrange(low Int, high Int) Int => low + self.below(high - low)
 
 // A uniform float in `0.0..1.0` from 53 random bits.
 fn var Random.random() Float:

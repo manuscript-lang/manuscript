@@ -241,7 +241,7 @@ fn unc_root(text String) String:
 // A `//server//share/` root with its repeated separators collapsed to `//server/share`
 // plus the trailing separator the root already had.
 fn canonical_unc_root(root String) String:
-	parts := root.split("/").filter(fn part: not part.is_empty())
+	parts := root.split("/").filter(part => not part.is_empty())
 	joined := "//" + parts.join("/")
 	if root.ends_with("/"): return joined + "/"
 
