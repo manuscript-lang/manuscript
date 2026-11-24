@@ -504,25 +504,28 @@ static bool call_runtime_option(EmitCx *cx, const MirInst *inst, const MirExtern
   return true;
 }
 
-/* A call of a runtime function, which follows the C ABI of the runtime: scalars by value, everything else by
- * the address of a copy, and a result that is not a scalar through a trailing output pointer. */
-/* `unwinding`: whether the running task is leaving for a posted fault or a delivered cancel. Read in line, as the
- * depth check reads its limit: the region's cell holds the header pointer, and the byte sits at a fixed offset. */
-static void unwinding_test(EmitCx *cx, const MirInst *inst) {
+/* The address of the running task's `unwinding` byte, into `%ubp`: the region's cell holds the header pointer, and the
+ * byte sits at a fixed offset (read in line, as the depth check reads its limit). The frame, hence its region and the
+ * cell, stay the same while the function runs, so the entry block makes it once and every test is one load. */
+void emit_unwinding_address(EmitCx *cx) {
   MsStrBuild *out = cx->out;
-  const uint32_t number = cx->next++;
-  ms_strbuild_printf(out, "  %%f%u = call ptr @llvm.frameaddress.p0(i32 0)\n  %%sp%u = ptrtoint ptr %%f%u to i64\n", number,
-                     number, number);
-  ms_strbuild_printf(out, "  %%sm%u = and i64 %%sp%u, %lld\n  %%c%u = add i64 %%sm%u, %lld\n", number, number,
-                     -(long long)MS_STACK_REGION, number, number, (long long)(MS_STACK_REGION - MS_STACK_CELL_HDR));
+  ms_strbuild_printf(out, "  %%ubf = call ptr @llvm.frameaddress.p0(i32 0)\n  %%ubs = ptrtoint ptr %%ubf to i64\n");
+  ms_strbuild_printf(out, "  %%ubm = and i64 %%ubs, %lld\n  %%ubc = add i64 %%ubm, %lld\n", -(long long)MS_STACK_REGION,
+                     (long long)(MS_STACK_REGION - MS_STACK_CELL_HDR));
   /* The header pointer of the cell does not change while this activation runs, so loads of it merge. */
-  ms_strbuild_printf(out, "  %%h%up = inttoptr i64 %%c%u to ptr\n  %%h%u = load ptr, ptr %%h%up, !invariant.load !%d\n",
-                     number, number, number, number, EMIT_METADATA_EMPTY);
-  ms_strbuild_printf(out, "  %%ub%u = getelementptr i8, ptr %%h%u, i64 %d\n  %%u%u = load i8, ptr %%ub%u\n", number, number,
-                     MS_HDR_UNWINDING, number, number);
-  ms_strbuild_printf(out, "  %%v%u = icmp ne i8 %%u%u, 0\n", inst->res, number);
+  ms_strbuild_printf(out, "  %%ubhp = inttoptr i64 %%ubc to ptr\n  %%ubh = load ptr, ptr %%ubhp, !invariant.load !%d\n",
+                     EMIT_METADATA_EMPTY);
+  ms_strbuild_printf(out, "  %%ubp = getelementptr i8, ptr %%ubh, i64 %d\n", MS_HDR_UNWINDING);
 }
 
+/* `unwinding`: whether the running task is leaving for a posted fault or a delivered cancel. */
+static void unwinding_test(EmitCx *cx, const MirInst *inst) {
+  const uint32_t number = cx->next++;
+  ms_strbuild_printf(cx->out, "  %%u%u = load i8, ptr %%ubp\n  %%v%u = icmp ne i8 %%u%u, 0\n", number, inst->res, number);
+}
+
+/* A call of a runtime function, which follows the C ABI of the runtime: scalars by value, everything else by
+ * the address of a copy, and a result that is not a scalar through a trailing output pointer. */
 static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index) {
   const MirExtern *def = &cx->module->externs.ptr[inst->imm.a];
   if (def->role == MR_UNWINDING && inst->res != MIR_NONE) {

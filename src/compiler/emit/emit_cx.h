@@ -44,6 +44,7 @@ typedef struct EmitCx {
   const uint32_t *pool;    /* per value: the shared cell a one-block `slot` lives in, UINT32_MAX for any other value; NULL when none */
   const bool *borrowed;    /* per value: an `iface.borrow` kept in the frame; NULL when none */
   const bool *is_iconst;   /* per value: defined by an `iconst`; NULL outside a function */
+  bool unwind_byte;        /* the function tests the `unwinding` byte: its address is `%ubp`, made once in the entry block */
   const int64_t *iconst;   /* per value: that constant */
   uint32_t wide_leaves;    /* a value of more leaves than this lives in a stack cell (emit_wide.c); 0 for never */
   bool wide_hide;          /* those cells are hidden from LLVM: volatile leaf loads and an opaque `asm` */
@@ -163,6 +164,7 @@ uint32_t emit_record_pieces(const MirModule *module, const MirFunc *func, const 
 void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, const char *fault,
                    const MirValue *args, uint32_t arg_count);
 void emit_frame_slots(EmitCx *cx);
+void emit_unwinding_address(EmitCx *cx);
 /* Gives each slot confined to its own block the cell of its rank among that block's confined slots, so blocks share
  * storage; per value, UINT32_MAX for the rest. NULL when no slot is confined. */
 const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held);
