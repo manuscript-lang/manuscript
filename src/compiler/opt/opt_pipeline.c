@@ -82,6 +82,7 @@ static bool opt_fuse_step(MirModule *m) {
 }
 
 static const Step early_steps[] = {
+    {"unwind sites", opt_unwind_sites},
     {"simplify", opt_simplify},
     {"copyelim", opt_copyelim},
     {"probe", opt_probe},

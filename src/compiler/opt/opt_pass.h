@@ -4,6 +4,7 @@
 
 #include "compiler/opt/opt_util.h"
 
+bool opt_unwind_sites(MirModule *m); /* the `unwinding` test after a call that cannot park is dropped */
 bool opt_bytetake(MirModule *m);  /* a result of a dying value reuses its storage */
 bool opt_strfuse(MirModule *m);   /* `s = s + piece` grows `s` in place */
 bool opt_loopslot(MirModule *m);  /* a loop-carried owned value lives in one slot */
