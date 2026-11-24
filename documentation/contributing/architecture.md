@@ -69,7 +69,7 @@ An include crosses layers only downward (`src/layers.txt`, enforced by `ms_lint`
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets |
 | `.github/workflows/` | CI, book publishing, six-platform release packaging |
-| `skills/`, `wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
+| `skills/`, `design/wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
 | `.artifacts/` | Ignored build output, reports and archives |
 
 Fix generated output through its generator, never by editing HTML or copying standard signatures into another catalog.

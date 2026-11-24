@@ -8,7 +8,7 @@ ms build heap.ms -o heap_ms
 valgrind --tool=callgrind ./heap_ms 100000    # and ./heap_rs 100000
 ```
 
-Callgrind needs the smaller allocator reservation ([wiki](../../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)); both programs allocate once. Linux x86-64, LLVM release build, instructions executed (`Ir`):
+Callgrind needs the smaller allocator reservation ([wiki](../../../design/wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)); both programs allocate once. Linux x86-64, LLVM release build, instructions executed (`Ir`):
 
 | program | instructions |
 |---|---:|

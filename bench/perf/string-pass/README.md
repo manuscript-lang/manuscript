@@ -37,11 +37,11 @@ Rust's `HashMap` uses SipHash, so the `freq_*` and `lookup_long` rows are not a 
 
 ## Round 3 check (2026-11-14): builders, concatenation, interpolation
 
-No change needed. Min of 3, ms, same VM: `builder_mixed` 33 (Rust 26 to 39), `concat3` 23 (Rust 59), `interp_strings` 41 (Rust 123), `plus_equals` 16 (Rust 18), `int_hex` 30 (Rust 40). The remaining `trim_chars` gap (15 vs 7) is an owned result against Rust's borrowed slice; closing it needs the checker's borrowed-result rule for `trim` extended to `trim_chars`, which is keyed on the method name today (`ms-lower/src/call.rs`), so it waits for the general borrowed-results design (`proposals/borrowed-results.md`).
+No change needed. Min of 3, ms, same VM: `builder_mixed` 33 (Rust 26 to 39), `concat3` 23 (Rust 59), `interp_strings` 41 (Rust 123), `plus_equals` 16 (Rust 18), `int_hex` 30 (Rust 40). The remaining `trim_chars` gap (15 vs 7) is an owned result against Rust's borrowed slice; closing it needs the checker's borrowed-result rule for `trim` extended to `trim_chars`, which is keyed on the method name today (`ms-lower/src/call.rs`), so it waits for the general borrowed-results design (`design/proposals/borrowed-results.md`).
 
 ## 2026-11-15: byte-offset positions
 
-Positions in `String` are byte offsets (`proposals/byte-offset-strings.md`). Same VM and method, min of 5, milliseconds, Release `ms`, rustc `-O`. Revision: this change on top of `main` after round 3.
+Positions in `String` are byte offsets (`design/proposals/byte-offset-strings.md`). Same VM and method, min of 5, milliseconds, Release `ms`, rustc `-O`. Revision: this change on top of `main` after round 3.
 
 | operation | before | after | rust | change |
 |---|---:|---:|---:|---|
