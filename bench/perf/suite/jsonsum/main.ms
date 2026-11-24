@@ -21,9 +21,9 @@ fn main() Void:
 	var name_bytes = 0
 
 	for r in recs:
-		scores.update(r.user.clone(), 0, fn v: v + r.score)
+		scores.update(r.user, 0, fn v: v + r.score)
 		for t in r.tags:
-			tags.update(t.clone(), 0, fn v: v + 1)
+			tags.update(t, 0, fn v: v + 1)
 		if r.active:
 			active += 1
 		name_bytes += r.name.length()
