@@ -419,7 +419,6 @@ static void sf_compare_bytes(const SfCompare *c, MirValue i) {
   const MirBlock head = c->head, body = c->body, step = c->step, tail = c->tail;
   const MirValue minus = c->minus, plus = c->plus, n = c->n, shorter = c->shorter;
   const SfBytes xs = c->xs, ys = c->ys;
-  const MirValue zero = mir_b_iconst(b, 0);
   mir_b_switch_to(b, head);
   ob_br_if(b, mir_b_icmp(b, MCC_LT, i, n), body, tail);
   mir_b_switch_to(b, body);
@@ -434,6 +433,7 @@ static void sf_compare_bytes(const SfCompare *c, MirValue i) {
   mir_b_seal_block(b, head);
   /* Equal prefixes: the shorter string is smaller. */
   mir_b_switch_to(b, tail);
+  const MirValue zero = mir_b_iconst(b, 0);
   const MirValue tail_cmp = mir_b_select(b, mir_b_icmp(b, MCC_GT, xs.len, ys.len), plus, zero);
   mir_b_ret(b, mir_b_select(b, shorter, minus, tail_cmp));
 }
