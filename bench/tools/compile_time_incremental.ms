@@ -19,15 +19,12 @@ import (
 )
 
 type Edit {
-	label String
-	file String
-	from String
-	to String
+	label, file, from, to String
 	// Appended to the file after the replacement.
 	tail String = ""
 }
 
-fn header(p Int, f Int, k Int) String {
+fn header(p, f, k Int) String {
 	return f"export fn w_{p}_{f}_{k}(x Int) Int:\n    var acc = x\n"
 }
 
@@ -72,7 +69,7 @@ fn edits() List[Edit] {
 	]
 }
 
-fn build(dir String, profile String, output String) Result[Float, Error] {
+fn build(dir, profile, output String) Result[Float, Error] {
 	start := now_ns()
 	void must(
 		"build",
@@ -92,7 +89,7 @@ fn build(dir String, profile String, output String) Result[Float, Error] {
 	return ok((now_ns() - start).to_float() / 1000000000.0)
 }
 
-fn measure(dir String, profile String, output String) Result[Void, Error] {
+fn measure(dir, profile, output String) Result[Void, Error] {
 	void remove(f"{dir}/.ms-cache", recursive: true)
 
 	cold := build(dir, profile, output)?

@@ -48,7 +48,7 @@ export extern type HttpHeaders
 
 // Appends a String value under a valid HTTP name; an invalid name returns EINVAL.
 // Requests and responses validate field values and framing again when they are sent.
-fn var HttpHeaders.append(name String, value String) Void! {
+fn var HttpHeaders.append(name, value String) Void! {
 	return msstd_http_headers_append(self, name, value.to_bytes())
 }
 
@@ -331,7 +331,7 @@ export interface HttpExchange {
 	// must be positive when given. An exchange that already sent headers or upgraded
 	// returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
 	var fn upgrade(
-		allowed_origins List[String] = [],
+		allowed_origins,
 		subprotocols List[String] = [],
 		max_message_bytes Int? = null,
 	) WebSocket!
@@ -391,7 +391,7 @@ fn var ServerExchange.send_headers(status Int, headers HttpHeaders) Void! {
 }
 
 fn var ServerExchange.upgrade(
-	allowed_origins List[String],
+	allowed_origins,
 	subprotocols List[String],
 	max_message_bytes Int?,
 ) WebSocket! {
@@ -747,7 +747,7 @@ fn serve_buffered(
 // `HttpExchange.upgrade` apply.
 export fn upgrade(
 	var exchange HttpExchange,
-	allowed_origins List[String] = [],
+	allowed_origins,
 	subprotocols List[String] = [],
 	max_message_bytes Int? = null,
 ) WebSocket! {

@@ -40,7 +40,7 @@ fn main() Int {
 		cells = next
 	}
 
-	alive := cells.fold(0, fn(a Int, c Int) Int => a + c)
+	alive := cells.fold(0, fn(a, c Int) Int => a + c)
 
 	if alive != 3914 {
 		print(f"unexpected live count {alive}")

@@ -20,16 +20,13 @@ import (
 )
 
 export type Identity {
-	input_bytes Int
-	iterations Int
-	checksum Int
+	input_bytes, iterations, checksum Int
 }
 
 // One validated row of a program's CSV.
 export type Row {
 	name String
-	iterations Int
-	elapsed_ns Int
+	iterations, elapsed_ns Int
 	line String
 }
 
@@ -146,8 +143,8 @@ fn read_identities(path String) Map[String, Identity]! {
 }
 
 fn compare(
-	before String,
-	after String,
+	before,
+	after,
 	output String,
 	pairs Int,
 	expected Map[String, Identity],

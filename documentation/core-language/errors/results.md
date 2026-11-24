@@ -113,7 +113,7 @@ enum DiscountError {
     InvalidPercent
 }
 
-fn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {
+fn discount(price, percent Decimal) Result[Decimal, DiscountError] {
     if price < 0d {
         return error(InvalidPrice)
     }
@@ -133,7 +133,7 @@ This continues the declarations above:
 
 <!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}","given":[]} -->
 ```manuscript
-fn discount_message(price Decimal, percent Decimal) String {
+fn discount_message(price, percent Decimal) String {
     if value := discount(price, percent) {
         return f"Discounted price: {value}"
     }
@@ -205,7 +205,7 @@ fn discount_error(cause DiscountError) Error {
     return Error("discount failed", kind: "EINVAL")
 }
 
-fn discount_checked(price Decimal, percent Decimal) Decimal! {
+fn discount_checked(price, percent Decimal) Decimal! {
     return discount(price, percent).map_error(discount_error)
 }
 ```

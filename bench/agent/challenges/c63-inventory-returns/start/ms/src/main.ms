@@ -41,7 +41,7 @@ fn valid_oid(s String) Bool => return (
 )
 
 // 1 to 7 ASCII digits within lo..hi.
-fn number(s String, lo Int, hi Int) Int? {
+fn number(s String, lo, hi Int) Int? {
 	if (
 		s.length() < 1
 		or s.length() > 7

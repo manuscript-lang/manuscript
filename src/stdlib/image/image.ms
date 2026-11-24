@@ -79,7 +79,7 @@ fn Image.channel_count() Int {
 
 // Returns the pixel at `(x, y)` as RGBA, or null outside the image. Gray modes repeat
 // the luminance in red, green and blue, and modes without alpha report 255.
-fn Image.pixel(x Int, y Int) Rgba? {
+fn Image.pixel(x, y Int) Rgba? {
 	if x < 0 or y < 0 or x >= self.width or y >= self.height { return null }
 
 	n := color_channels(self.mode)
@@ -106,7 +106,7 @@ fn Image.pixel(x Int, y Int) Rgba? {
 
 // Writes `color` at `(x, y)`, converting to the image's mode (gray modes store Rec. 601
 // luma of the color). Returns false, and changes nothing, outside the image.
-fn var Image.set_pixel(x Int, y Int, color Rgba) Bool {
+fn var Image.set_pixel(x, y Int, color Rgba) Bool {
 	if x < 0 or y < 0 or x >= self.width or y >= self.height { return false }
 
 	n := color_channels(self.mode)
@@ -297,7 +297,7 @@ fn Image.convert(target ColorMode) Image {
 // size returns EINVAL, as `new_image` does, and a pixel count past `max_pixels` or the
 // 2^30 hard ceiling returns EOVERFLOW.
 fn Image.resize(
-	width Int,
+	width,
 	height Int,
 	method Resampling = Resampling.Bilinear,
 	max_pixels Int? = null,
@@ -429,12 +429,7 @@ export fn color_channels(mode ColorMode) Int {
 // Creates an opaque black image: alpha modes are fully opaque. A non-positive size
 // returns EINVAL, and a pixel count past `max_pixels` or the 2^30 hard ceiling returns
 // EOVERFLOW.
-export fn new_image(
-	width Int,
-	height Int,
-	mode ColorMode,
-	max_pixels Int? = null,
-) Image! {
+export fn new_image(width, height Int, mode ColorMode, max_pixels Int? = null) Image! {
 	if width < 1 or height < 1 {
 		return error(Error("image: dimensions must be positive", kind: "EINVAL"))
 	}

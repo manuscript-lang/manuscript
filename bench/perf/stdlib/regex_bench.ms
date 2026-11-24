@@ -23,7 +23,7 @@ fn captures_run(re Regex, text String, count Int) Int! {
 	return ok(checksum)
 }
 
-fn template_run(re Regex, text String, expected String, template String) Int! {
+fn template_run(re Regex, text, expected, template String) Int! {
 	out := re.replace_template(text, template)?
 	expect_equal(out, expected)?
 	return ok(out.length())
@@ -50,28 +50,16 @@ fn named_expected(count Int) Map[String, String] {
 
 type BenchData {
 	re Regex
-	first String
-	rest String
-	text String
-	expected_first String
-	expected_rest String
-	expected String
+	first, rest, text, expected_first, expected_rest, expected String
 	re_12 Regex
 	template String
-	capture_re Regex
-	template_re Regex
-	literal_re Regex
-	text_0 String
-	text_1 String
-	text_128 String
-	text_2000 String
-	named_re_1 Regex
-	named_re_8 Regex
+	capture_re, template_re, literal_re Regex
+	text_0, text_1, text_128, text_2000 String
+	named_re_1, named_re_8 Regex
 	named_1 Map[String, String]
 	named_8 Map[String, String]
 	text_15 String
-	re_15 Regex
-	re_16 Regex
+	re_15, re_16 Regex
 	text_17 String
 	re_17 Regex
 	expected_17 String

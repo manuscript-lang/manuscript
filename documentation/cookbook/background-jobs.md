@@ -37,8 +37,7 @@ import (
 )
 
 type Summary {
-    jobs Int
-    total Int
+    jobs, total Int
 }
 
 fn work(var jobs ReadStream[Int]) Summary! {

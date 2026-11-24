@@ -6,8 +6,7 @@ import (
 
 // A token: `n` with a value, or `o` with the operator character.
 type Tok {
-	kind String
-	text String
+	kind, text String
 	value Int
 }
 
@@ -44,8 +43,7 @@ fn tokens(line String) List[Tok] {
 type Parser {
 	toks List[Tok]
 	pos Int = 0
-	div Bool = false
-	bad Bool = false
+	div, bad Bool = false
 }
 
 fn Parser.at_op(text String) Bool {
@@ -140,7 +138,7 @@ fn solve(s String) String {
 	).join("")
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
 fn rexpr(var rnd Random, d Int) String {
 	if d == 0 or rnd.random() < 0.25 { return f"{rnd.randint(0, 99)}" }

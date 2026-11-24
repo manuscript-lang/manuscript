@@ -169,7 +169,7 @@ export fn aliasing_dependent(text String) Bool {
 }
 
 // Feature tags from the source text (conservative keyword rules).
-export fn tags_for(text String, phase String) List[String] {
+export fn tags_for(text, phase String) List[String] {
 	var tags = List[String]()
 	rules List[List[String]] := [
 		["match ", "match"],

@@ -40,14 +40,14 @@ export fn ablations() List[String] {
 	return ["c-ms-no-poll", "c-ms-no-overflow", "c-ms-no-bounds", "c-ms-unchecked"]
 }
 
-fn ratio(num Float, den Float) String {
+fn ratio(num, den Float) String {
 	low := if num < den { num } else { den }
 	if low < 2.0 { return "folded" }
 
 	return (num / den).to_fixed(2) + "x"
 }
 
-fn same(a List[String], b List[String]) Bool {
+fn same(a, b List[String]) Bool {
 	return a == b
 }
 

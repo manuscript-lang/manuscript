@@ -37,7 +37,7 @@ fn text_of(data Bytes) String {
 // Replaces the working directory, spelled as the runtime names it or with
 // forward slashes as ms prints it on Windows, with <DIR> and the digits after
 // `"duration_ns": ` with 0, the only value that varies between runs.
-fn normalize(text String, dir String) String {
+fn normalize(text, dir String) String {
 	marker := "\"duration_ns\": "
 	slashed := dir.replace("\\", "/")
 	parts := text.replace(dir, "<DIR>").replace(slashed, "<DIR>").split(marker)
@@ -59,7 +59,7 @@ fn normalize(text String, dir String) String {
 }
 
 // Every file under `root` as relative path then normalized content.
-fn tree_of(root String, dir String, ignored List[String]) Map[String, String] {
+fn tree_of(root, dir String, ignored List[String]) Map[String, String] {
 	var files = Map[String, String]()
 
 	for found in glob(root, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
@@ -82,19 +82,18 @@ fn tree_of(root String, dir String, ignored List[String]) Map[String, String] {
 	return files
 }
 
-fn write_text(path String, text String) Void {
+fn write_text(path, text String) Void {
 	write_file(path, text, replace: true).wait().get()
 }
 
 // The outcome of one case_dir run in a fresh working directory.
 type Outcome {
-	stdout String
-	stderr String
+	stdout, stderr String
 	status Int
 	files Map[String, String]
 }
 
-fn execute(ms String, case_dir String) Outcome {
+fn execute(ms, case_dir String) Outcome {
 	scratch := temporary("ms-cmd-").get()
 	work := f"{scratch.path()}/work"
 	create_directory(work.clone()).get()
@@ -157,7 +156,7 @@ fn record(case_dir String, outcome Outcome) Void {
 	}
 }
 
-fn expected_text(case_dir String, name String) String {
+fn expected_text(case_dir, name String) String {
 	return text_of(
 		read_file(f"{case_dir}/expected/{name}").wait().get_or("".to_bytes())
 	)
@@ -172,7 +171,7 @@ fn brief(text String) String {
 }
 
 // A failure message naming the stream and showing both texts.
-fn stream_difference(stream String, expected String, observed String) String {
+fn stream_difference(stream, expected, observed String) String {
 	return f"{stream} differs\n  expected: {brief(expected)}\n  observed: {brief(observed)}"
 }
 

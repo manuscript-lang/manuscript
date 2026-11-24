@@ -14,14 +14,7 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn measure(
-	before String,
-	after String,
-	inputs String,
-	directory String,
-	rounds Int,
-	filter String,
-) Void! {
+fn measure(before, after, inputs, directory String, rounds Int, filter String) Void! {
 	ensure_directory(directory)
 	set_environment("MS_CACHE", "off")?
 

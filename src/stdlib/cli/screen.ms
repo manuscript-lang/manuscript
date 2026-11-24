@@ -42,7 +42,7 @@ export type Screen {
 fn var Screen.draw(
 	terminal RawTerminal,
 	rows List[String],
-	cursor_row Int,
+	cursor_row,
 	cursor_column Int,
 ) Void! {
 	return terminal.write(self.render(rows, cursor_row, cursor_column))
@@ -50,7 +50,7 @@ fn var Screen.draw(
 
 // The bytes that turn what was drawn last into `rows`, which also become what was
 // drawn last. `draw` writes them; tests and custom outputs can use them directly.
-fn var Screen.render(rows List[String], cursor_row Int, cursor_column Int) String {
+fn var Screen.render(rows List[String], cursor_row, cursor_column Int) String {
 	var diff = first_difference(self.previous, rows)
 	last := self.previous.length() - 1
 	unreachable := (
@@ -130,7 +130,7 @@ export fn new_screen() Screen {
 	return Screen(previous: List[String](), cursor_row: 0, height: rows)
 }
 
-fn first_difference(before List[String], after List[String]) Int {
+fn first_difference(before, after List[String]) Int {
 	limit := if before.length() < after.length() { before.length() } else { after.length() }
 	var i = 0
 	while i < limit and before[i] == after[i] { i += 1 }
@@ -139,7 +139,7 @@ fn first_difference(before List[String], after List[String]) Int {
 
 // The sequence moving the cursor from row `from` to row `to` within the block, then to
 // the line start.
-fn vertical(from Int, to Int) String {
+fn vertical(from, to Int) String {
 	if from > to { return f"{esc}[{from - to}A\r" }
 	if from < to { return f"{esc}[{to - from}B\r" }
 

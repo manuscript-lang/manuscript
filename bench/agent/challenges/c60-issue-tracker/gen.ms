@@ -26,11 +26,11 @@ fn seeded(extra String) String {
 	return SEED + strip_nl(extra)
 }
 
-fn add(var cs Cases, name String, script String) Void {
+fn add(var cs Cases, name, script String) Void {
 	cs.push(name, strip_nl(script))
 }
 
-fn adds(var cs Cases, name String, extra String) Void {
+fn adds(var cs Cases, name, extra String) Void {
 	cs.push(name, seeded(extra))
 }
 

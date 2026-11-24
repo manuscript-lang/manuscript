@@ -6,7 +6,7 @@ fn scalar(limit Int) Int {
 	return total
 }
 
-fn add(left Int, right Int) Int => left + right
+fn add(left, right Int) Int => left + right
 
 fn calls(limit Int) Int {
 	var total = 0

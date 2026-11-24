@@ -43,7 +43,7 @@ fn finite_counter(text String) Float! {
 	return invalid("expected a finite nonnegative measurement")
 }
 
-export fn summarize(text String, swap Bool = false, cpu Bool = false) String! {
+export fn summarize(text String, swap, cpu Bool = false) String! {
 	lines := text.split("\n")
 	header := "round\tlabel\tinput\twall_ns\tmax_resident_bytes\tinput_sha256"
 	cpu_header := header + "\tuser_ns\tsystem_ns"

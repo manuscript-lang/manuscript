@@ -1,8 +1,7 @@
 import words from "./src/harness.ms"
 
 type Cell {
-	x Int
-	y Int
+	x, y Int
 }
 
 bench "map.int_put_get" per 200000 {

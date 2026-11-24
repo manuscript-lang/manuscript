@@ -8,7 +8,7 @@ CFILES := ["main.c", "10", "util.c", "12", "util.h", "5"]
 
 // The oracle input: the makefile (with `<T>` standing for a tab), the file times as a
 // flat list of name and mtime, and the requests.
-fn mk(makefile String, files List[String], reqs List[String]) String {
+fn mk(makefile String, files, reqs List[String]) String {
 	mf := strip_nl(makefile.replace("<T>", "\t"))
 	var file_lines = ""
 	var k = 0
@@ -34,13 +34,7 @@ fn strip_nl(text String) String {
 	return chars.slice(start, end).get_or([]).join("") + "\n"
 }
 
-fn add(
-	var cs Cases,
-	name String,
-	makefile String,
-	files List[String],
-	reqs List[String],
-) Void {
+fn add(var cs Cases, name, makefile String, files, reqs List[String]) Void {
 	cs.push(name, mk(makefile, files, reqs))
 }
 

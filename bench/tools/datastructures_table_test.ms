@@ -26,7 +26,7 @@ fn trials(per Int) List[String] {
 	return lines
 }
 
-fn row(report String, name String) List[String] {
+fn row(report, name String) List[String] {
 	for line in report.split("\n") {
 		if line.starts_with(name + " ") {
 			parts := line.split(" ").filter(p => p != "")

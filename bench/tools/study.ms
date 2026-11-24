@@ -22,11 +22,10 @@ import (
 
 // A labeled prebuilt binary.
 export type Labeled {
-	label String
-	path String
+	label, path String
 }
 
-export fn labeled(label String, path String) Labeled {
+export fn labeled(label, path String) Labeled {
 	return Labeled(label.clone(), absolute(path))
 }
 
@@ -78,7 +77,7 @@ export fn distribution(values List[Float]) JsonValue {
 		jfloat(
 			values.fold(
 				values[0],
-				fn(a Float, v Float) Float => if v < a { v } else { a }
+				fn(a, v Float) Float => if v < a { v } else { a }
 			)
 		),
 	)
@@ -87,7 +86,7 @@ export fn distribution(values List[Float]) JsonValue {
 		jfloat(
 			values.fold(
 				values[0],
-				fn(a Float, v Float) Float => if v > a { v } else { a }
+				fn(a, v Float) Float => if v > a { v } else { a }
 			)
 		),
 	)
@@ -127,7 +126,7 @@ export fn read_json(path String) JsonValue! {
 
 // The `median_ns` of `before` in the summary row for `case` (summary lists
 // `{case, distributions: {before: {median_ns}}}`).
-export fn before_median(summary JsonValue, name String, operation String) Float! {
+export fn before_median(summary JsonValue, name, operation String) Float! {
 	for row in (summary.as_list() or []) {
 		c := (row.get("case") or JsonValue.Null).as_string() or ""
 		op := row.get("operation")

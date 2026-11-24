@@ -1,7 +1,7 @@
 import expect_equal from "@std/test/test.ms"
 
 // Sum three integer values with explicit named arguments.
-export fn total(first Int, second Int, third Int) Int {
+export fn total(first, second, third Int) Int {
 	return first + second + third
 }
 

@@ -19,23 +19,16 @@ import (
 )
 
 type Usage {
-	tokens_in Int = 0
-	tokens_cached Int = 0
-	tokens_out Int = 0
-	turns Int = 0
+	tokens_in, tokens_cached, tokens_out, turns Int = 0
 	cost_usd Float = 0.0
 }
 
 type Run {
-	challenge String
-	harness String
-	language String
-	category String
+	challenge, harness, language, category String
 	tier Int
 	usage Usage
 	wall_s Float
-	first_build_ok Bool
-	pass Bool
+	first_build_ok, pass Bool
 	model String = ""
 	timed_out Bool = false
 	builds Int = 0
@@ -49,7 +42,7 @@ type CodeStat {
 	count Int
 }
 
-fn rate(ok Int, n Int) String {
+fn rate(ok, n Int) String {
 	if n == 0 { return "-" }
 
 	w := wilson(ok, n)

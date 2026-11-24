@@ -244,7 +244,7 @@ fn exceeds(value Int, limit Int?) Bool {
 fn complete(
 	var decoder Decoder,
 	chunk Bytes,
-	start Int,
+	start,
 	end Int,
 	var events List[SseEvent],
 ) Void! {
@@ -265,7 +265,7 @@ fn complete(
 fn end_line(
 	var decoder Decoder,
 	bytes Bytes,
-	start Int,
+	start,
 	end Int,
 	var events List[SseEvent],
 ) Void! {

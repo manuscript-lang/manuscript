@@ -431,7 +431,7 @@ export fn cpu_usage() CpuUsage! {
 // signal 0 and forced termination with INT, KILL, or TERM. A pid that names no process
 // returns ENOENT.
 // ms: effect std.process.signal
-export fn send_signal(pid Int, signal Int) Void! {
+export fn send_signal(pid, signal Int) Void! {
 	return msstd_process_send_signal(pid, signal)
 }
 
@@ -482,6 +482,6 @@ export fn get_priority(pid Int) Int! {
 // 2147483647 or a priority outside that range returns EINVAL. Unix uses nice values;
 // Windows maps the range to native priority classes.
 // ms: effect std.process.write
-export fn set_priority(pid Int, priority Int) Void! {
+export fn set_priority(pid, priority Int) Void! {
 	return msstd_system_set_priority(pid, priority)
 }

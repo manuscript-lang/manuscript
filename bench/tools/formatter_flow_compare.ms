@@ -54,13 +54,7 @@ fn run_one(binary String, c Case, rounds Int, cpu String) List[Int]! {
 	return all_ints(fields.slice(3, 8).get_or([]))
 }
 
-fn compare(
-	before String,
-	after String,
-	out String,
-	samples Int,
-	cpu String,
-) Result[Void, Error] {
+fn compare(before, after, out String, samples Int, cpu String) Result[Void, Error] {
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())
 	paths.add("after", after.clone())

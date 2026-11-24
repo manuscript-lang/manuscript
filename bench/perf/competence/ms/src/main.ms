@@ -13,13 +13,11 @@ type Sq {
 }
 
 type Rect {
-	w Int
-	h Int
+	w, h Int
 }
 
 type Tri {
-	b Int
-	h Int
+	b, h Int
 }
 
 fn Sq.area() Int {
@@ -44,10 +42,7 @@ type Fail {
 }
 
 type P {
-	x Int
-	y Int
-	vx Int
-	vy Int
+	x, y, vx, vy Int
 }
 
 fn say(text String) Void {
@@ -72,7 +67,7 @@ fn dispatch(n Int) Int {
 	return total
 }
 
-fn compare(left Int, right Int) Int {
+fn compare(left, right Int) Int {
 	if left < right { return -1 }
 	if left > right { return 1 }
 

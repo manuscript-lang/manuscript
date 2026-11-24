@@ -52,7 +52,7 @@ fn Decimal.max(other Decimal) Decimal {
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn Decimal.clamp(low Decimal, high Decimal) Decimal {
+fn Decimal.clamp(low, high Decimal) Decimal {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}

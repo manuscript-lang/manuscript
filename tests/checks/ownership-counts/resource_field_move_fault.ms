@@ -18,8 +18,7 @@ fn move Door.close() Void! {
 }
 
 type Room {
-	first Door
-	second Door
+	first, second Door
 }
 
 fn faulting() Void {

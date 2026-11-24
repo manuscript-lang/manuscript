@@ -8,7 +8,7 @@ enum Tok {
 
 enum Expr {
 	Lit(v Int)
-	Bin(op Int, left Expr, right Expr)
+	Bin(op Int, left, right Expr)
 }
 
 type Parser {

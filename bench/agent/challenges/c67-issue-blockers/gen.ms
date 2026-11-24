@@ -10,7 +10,7 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs Cases, name String, script String) Void {
+fn add(var cs Cases, name, script String) Void {
 	cs.push(name, script)
 }
 

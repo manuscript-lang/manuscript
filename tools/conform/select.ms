@@ -12,8 +12,7 @@ export type Filter {
 	exclude_tags List[String]
 	phases List[String]
 	ids List[String]
-	shard_index Int
-	shard_count Int
+	shard_index, shard_count Int
 	problem String
 }
 

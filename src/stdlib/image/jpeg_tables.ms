@@ -77,7 +77,7 @@ export jpeg_dct_matrix := [
 ]
 
 // Clamps `value` to 0 through `high`.
-export fn jpeg_clamp(value Int, high Int) Int {
+export fn jpeg_clamp(value, high Int) Int {
 	return if value < 0 { 0 } else { (if value > high { high } else { value }) }
 }
 

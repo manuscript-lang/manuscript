@@ -13,7 +13,7 @@ fn depth(n Int) Int {
 	return depth(n - 1) + 1
 }
 
-fn loop_depth(n Int, rounds Int) Int {
+fn loop_depth(n, rounds Int) Int {
 	var total = 0
 	for unused in 0..rounds {
 		total += depth(n)
@@ -33,7 +33,7 @@ fn status(label String) Void {
 	}
 }
 
-fn in_task(n Int, rounds Int) Int {
+fn in_task(n, rounds Int) Int {
 	p := promise(
 		() => ok(loop_depth(n, rounds)),
 		options: PromiseOptions(placement: Placement.Here),

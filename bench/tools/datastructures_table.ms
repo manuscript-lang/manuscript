@@ -44,7 +44,7 @@ fn count_of(name String) Int {
 	return 0
 }
 
-fn ratio(num Float?, den Float?) String {
+fn ratio(num, den Float?) String {
 	if (num == null) or (den == null) { return "-" }
 	if (num) == 0.0 or (den) == 0.0 { return "-" }
 

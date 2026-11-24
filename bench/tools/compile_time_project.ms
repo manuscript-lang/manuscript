@@ -17,11 +17,10 @@ fn chance(var rng SeededRandom) Bool {
 }
 
 type Dep {
-	pkg Int
-	file Int
+	pkg, file Int
 }
 
-fn deps(var rng SeededRandom, files Int, p Int, f Int) List[Dep] {
+fn deps(var rng SeededRandom, files, p, f Int) List[Dep] {
 	i := p * files + f
 	var found = List[Dep]()
 
@@ -38,13 +37,13 @@ fn deps(var rng SeededRandom, files Int, p Int, f Int) List[Dep] {
 
 	return found.sorted(
 		fn(
-			a Dep,
+			a,
 			b Dep,
 		) Int => if a.pkg != b.pkg { a.pkg - b.pkg } else { a.file - b.file }
 	)
 }
 
-fn call_of(prefix String, d List[Dep], k Int, own Int, qualified Bool) String {
+fn call_of(prefix String, d List[Dep], k, own Int, qualified Bool) String {
 	if d.is_empty() { return "0" }
 
 	dep := d[k % d.length()]
@@ -52,7 +51,7 @@ fn call_of(prefix String, d List[Dep], k Int, own Int, qualified Bool) String {
 	return f"{pk}{prefix}_{dep.pkg}_{dep.file}_0(acc % 1000)"
 }
 
-fn ms_fn(p Int, f Int, k Int, d List[Dep]) String {
+fn ms_fn(p, f, k Int, d List[Dep]) String {
 	call := call_of("w", d, k, p, false)
 	shape := k % 4
 	var b = [f"export fn w_{p}_{f}_{k}(x Int) Int:"]
@@ -103,7 +102,7 @@ fn ms_fn(p Int, f Int, k Int, d List[Dep]) String {
 	return b.join("\n") + "\n"
 }
 
-fn go_fn(p Int, f Int, k Int, d List[Dep]) String {
+fn go_fn(p, f, k Int, d List[Dep]) String {
 	call := call_of("W", d, k, p, true)
 	shape := k % 4
 	var b = [q(f"func W_{p}_{f}_{k}(x int) int ‹")]
@@ -178,7 +177,7 @@ fn rs_call(d List[Dep], k Int) String {
 	return f"crate::p{dep.pkg}::f{dep.file}::w_{dep.pkg}_{dep.file}_0(acc % 1000)"
 }
 
-fn rs_fn(p Int, f Int, k Int, d List[Dep]) String {
+fn rs_fn(p, f, k Int, d List[Dep]) String {
 	call := rs_call(d, k)
 	shape := k % 4
 	var b = [q(f"pub fn w_{p}_{f}_{k}(x: i64) -> i64 ‹")]
@@ -246,7 +245,7 @@ fn rs_fn(p Int, f Int, k Int, d List[Dep]) String {
 	return q(b.join("\n")) + "\n"
 }
 
-export fn generate(out String, packages Int, files Int, fns Int) Void {
+export fn generate(out String, packages, files, fns Int) Void {
 	var rng = seeded(1)
 	create_directory(f"{out}/ms/src", recursive: true).get()
 	create_directory(f"{out}/go", recursive: true).get()

@@ -7,7 +7,7 @@ fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn report(name String, t0 Instant, n Int, sum Int) Void {
+fn report(name String, t0 Instant, n, sum Int) Void {
 	ns := monotonic().difference(t0).to_nanoseconds()
 	print(f"{name} {ns / 1000000} ms {sum}")
 }

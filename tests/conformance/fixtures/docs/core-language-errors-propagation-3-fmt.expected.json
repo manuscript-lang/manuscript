@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn discounted_label(price Decimal, percent Decimal) Result[String, DiscountError] {\n\treturn ok(discount(price, percent)? | label)\n}\n"
+    "fmt": "fn discounted_label(price, percent Decimal) Result[String, DiscountError] {\n\treturn ok(discount(price, percent)? | label)\n}\n"
   }
 }

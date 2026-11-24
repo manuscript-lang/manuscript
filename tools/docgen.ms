@@ -18,17 +18,12 @@ import (
 )
 
 type Member {
-	name String
-	kind String
-	signature String
-	doc String = ""
-	contract String = ""
+	name, kind, signature String
+	doc, contract String = ""
 }
 
 type Declaration {
-	name String
-	kind String
-	declaration String
+	name, kind, declaration String
 	doc String = ""
 	opaque Bool = false
 	members List[Member] = []
@@ -130,7 +125,7 @@ fn full_markdown(modules List[Module]) String {
 // ---- the book's tree ----
 
 // `core.ms` and its siblings live in src/stdlib/core; everything else mirrors its import path.
-fn source_of(path String, source_path String) String {
+fn source_of(path, source_path String) String {
 	if path == "prelude" { return "src/stdlib/core/core.ms" }
 	if (
 		source_path == "core.ms"
@@ -178,12 +173,12 @@ type Tree {
 	index String
 }
 
-fn var Tree.put(path String, body String) Void {
+fn var Tree.put(path, body String) Void {
 	if not self.files.contains(path) { self.order.append(path.clone()) }
 	self.files[path.clone()] = body.clone()
 }
 
-fn var Tree.link(parent String, line String) Void {
+fn var Tree.link(parent, line String) Void {
 	if parent == "" {
 		self.index += line
 		return
@@ -256,13 +251,8 @@ fn site_tree(modules List[Module]) Tree {
 // ---- descriptions ----
 
 type Entry {
-	module String
-	declaration String
-	kind String
-	name String
-	contract String
-	described Bool
-	qualified Bool
+	module, declaration, kind, name, contract String
+	described, qualified Bool
 	problem String
 }
 
@@ -353,14 +343,7 @@ fn description_problem(entry Entry, doc String) String {
 	return "description only restates the API name or kind"
 }
 
-fn entry_of(
-	module String,
-	declaration String,
-	kind String,
-	name String,
-	contract String,
-	doc String,
-) Entry {
+fn entry_of(module, declaration, kind, name, contract, doc String) Entry {
 	draft := Entry(
 		module: module.clone(),
 		declaration: declaration.clone(),
@@ -518,7 +501,7 @@ fn parent_of(path String) String {
 	return parts.slice(0, parts.length() - 1).get().join("/")
 }
 
-fn write_text(path String, text String) Void! {
+fn write_text(path, text String) Void! {
 	folder := parent_of(path.clone())
 	if folder != "" { create_directory(folder, recursive: true)? }
 	write_file(path, text, replace: true).wait()?
@@ -526,8 +509,7 @@ fn write_text(path String, text String) Void! {
 }
 
 type Options {
-	check Bool = false
-	downloads Bool = false
+	check, downloads Bool = false
 	coverage String = ""
 	artifacts String = ".artifacts/docs"
 	static_dir String = "website/static"

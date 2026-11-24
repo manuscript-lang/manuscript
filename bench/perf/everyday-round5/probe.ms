@@ -4,9 +4,7 @@ import (
 )
 
 type V3 {
-	x Int
-	y Int
-	z Int
+	x, y, z Int
 }
 
 fn V3.add(o V3) V3 {
@@ -26,8 +24,7 @@ type Sq {
 }
 
 type Rc {
-	w Int
-	h Int
+	w, h Int
 }
 
 type Ci {
@@ -77,7 +74,7 @@ fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn stop(name String, t0 Int, chk Int) Void {
+fn stop(name String, t0, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 }

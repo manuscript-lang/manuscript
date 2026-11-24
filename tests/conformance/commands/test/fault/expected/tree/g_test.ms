@@ -4,7 +4,7 @@ fn deep(n Int) Int {
 	return deep(n + 1) + 1
 }
 
-fn divide(a Int, b Int) Int {
+fn divide(a, b Int) Int {
 	return a / b
 }
 

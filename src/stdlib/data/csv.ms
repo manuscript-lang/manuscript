@@ -182,10 +182,7 @@ type Reader {
 	total Int
 	delimiter UInt8
 	delimiter_text String
-	at Int
-	quote Int
-	delimiter_at Int
-	line_at Int
+	at, quote, delimiter_at, line_at Int
 }
 
 fn var Reader.next_quote(from Int) Int {
@@ -227,7 +224,7 @@ fn Reader.line_end_after(at Int) Int {
 
 // The cells of a line without quotes: the delimiter-separated pieces, with the one call
 // of `f` the whole line shares.
-fn var Reader.read_plain_record(row Int, line Int, f fn(Int, Int, String) Void) Int {
+fn var Reader.read_plain_record(row, line Int, f fn(Int, Int, String) Void) Int {
 	var col = 0
 	var last = line
 	if last > self.at and self.bytes[last - 1] == 13 { last -= 1 }
@@ -585,7 +582,7 @@ export fn stringify(
 	return ok(out)
 }
 
-fn needs_quotes(field String, delimiter String) Bool {
+fn needs_quotes(field, delimiter String) Bool {
 	if field.is_empty() { return false }
 	if (
 		field.contains("\"")
@@ -600,7 +597,7 @@ fn needs_quotes(field String, delimiter String) Bool {
 	return field == "\\."
 }
 
-fn replaced(text String, old String, new String) String {
+fn replaced(text, old, new String) String {
 	return text.replace(old, new)
 }
 

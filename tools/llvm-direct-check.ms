@@ -34,15 +34,13 @@ fn ms_path() String {
 // One release build: what it took, what it emitted and what the program printed.
 type Built {
 	seconds Float
-	lines Int
-	functions Int
-	direct Int
+	lines, functions, direct Int
 	exe String
 }
 
 // The verifier runs only in its own build: it slows `opt`, and the timed builds must
 // not carry it.
-fn build_env(cranelift Bool, verify Bool) Map[String, String] {
+fn build_env(cranelift, verify Bool) Map[String, String] {
 	var vars = Map[String, String]()
 	vars.add("MS_KEEP_LL", "1")
 	if cranelift { vars.add("MS_BACKEND", "cranelift") }
@@ -95,7 +93,7 @@ fn count_functions(ir String) List[Int] {
 	return [functions, direct]
 }
 
-fn build(source String, dir String, cranelift Bool, verify Bool) Built! {
+fn build(source, dir String, cranelift, verify Bool) Built! {
 	ms := absolute_ms()?
 	path := canonicalize(source)?
 	started := monotonic()
@@ -162,7 +160,7 @@ fn checksums(rows List[List[String]]) String {
 	return rows.map(r => f"{r[0]} {r[2]}").join("\n")
 }
 
-fn row(name String, old Built, new Built) String {
+fn row(name String, old, new Built) String {
 	share := if new.functions == 0 { 0.0 } else { new.direct.to_float() * 100.0 / new.functions.to_float() }
 	return f"| {name} | {old.seconds.to_fixed(2)} s | {new.seconds.to_fixed(2)} s | {new.lines} | {new.direct} of {new.functions} ({share.to_fixed(1)}%) |"
 }
@@ -179,7 +177,7 @@ fn keep_min(var best Map[String, Int], name String, micros Int) Void {
 
 // Smallest time of each kernel over `runs` interleaved runs of both builds, in input
 // order.
-fn kernel_times(old String, new String, runs Int) List[List[String]]! {
+fn kernel_times(old, new String, runs Int) List[List[String]]! {
 	var names = List[String]()
 	var best_old = Map[String, Int]()
 	var best_new = Map[String, Int]()
@@ -209,12 +207,7 @@ fn kernel_times(old String, new String, runs Int) List[List[String]]! {
 
 // Builds `source` with both backends and appends its table row; `false` when the two
 // programs print different results.
-fn report_program(
-	source String,
-	kernels Bool,
-	var lines List[String],
-	var slow List[String],
-) Bool! {
+fn report_program(source String, kernels Bool, var lines, slow List[String]) Bool! {
 	root := temporary_directory("ms-llvm-direct-")?
 	create_directory(f"{root}/old")?
 	create_directory(f"{root}/new")?

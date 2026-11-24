@@ -119,7 +119,7 @@ type Parsed {
 	event TerminalEvent?
 }
 
-fn key(name String, ctrl Bool, alt Bool, shift Bool) TerminalEvent {
+fn key(name String, ctrl, alt, shift Bool) TerminalEvent {
 	return TerminalEvent.Key(name.clone(), ctrl, alt, shift)
 }
 
@@ -263,7 +263,7 @@ fn csi_key(params String, last Int) TerminalEvent? {
 	return null
 }
 
-fn parsed(kind Int, used Int) Parsed {
+fn parsed(kind, used Int) Parsed {
 	return Parsed(kind: kind, event: null, used: used)
 }
 
@@ -650,7 +650,7 @@ fn RawTerminal.write(text String) Void! {
 
 // Moves the cursor to a zero-based row and column; negative or very large values
 // return `EINVAL`.
-fn RawTerminal.move_cursor(row Int, column Int) Void! {
+fn RawTerminal.move_cursor(row, column Int) Void! {
 	if row < 0 or column < 0 or row > max_position or column > max_position {
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
 	}
@@ -659,7 +659,7 @@ fn RawTerminal.move_cursor(row Int, column Int) Void! {
 
 // Moves the cursor down by `rows` and right by `columns`; negative values move up
 // and left. The cursor stops at the screen edge.
-fn RawTerminal.move_by(rows Int, columns Int) Void! {
+fn RawTerminal.move_by(rows, columns Int) Void! {
 	var out = ""
 	if rows < 0 { out = f"{out}{esc}[{0 - rows}A" }
 	if rows > 0 { out = f"{out}{esc}[{rows}B" }

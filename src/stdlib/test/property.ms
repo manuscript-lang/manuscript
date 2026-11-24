@@ -141,11 +141,11 @@ fn Gen[T].zip[B, C](other Gen[B], combine fn(T, B) C) Gen[C] {
 // Generates integers from `low` through `high`, both included, shrinking toward the
 // value nearest 0. When the range spans 0, a sign draw comes first and the magnitude
 // after it. `high - low` must fit in Int.
-export fn ints(low Int, high Int) Gen[Int] {
+export fn ints(low, high Int) Gen[Int] {
 	return Gen[Int](s => ints_draw(s.clone(), low, high))
 }
 
-fn ints_draw(s Source, low Int, high Int) Drawn[Int] {
+fn ints_draw(s Source, low, high Int) Drawn[Int] {
 	if low >= 0 {
 		{value, source} := draw(s, high - low)
 		return Drawn(low + value, source)
@@ -179,11 +179,11 @@ fn bool_draw(s Source) Drawn[Bool] {
 
 // Generates floats from `low` through `high` at 2^-53 resolution, shrinking toward
 // `low`. The bounds may be as far apart as the largest finite Floats.
-export fn floats(low Float, high Float) Gen[Float] {
+export fn floats(low, high Float) Gen[Float] {
 	return Gen[Float](s => float_draw(s.clone(), low, high))
 }
 
-fn float_draw(s Source, low Float, high Float) Drawn[Float] {
+fn float_draw(s Source, low, high Float) Drawn[Float] {
 	{value, source} := draw(s, 9007199254740992)
 	fraction := value.to_float() / 9007199254740992.0
 	span := high - low
@@ -285,7 +285,7 @@ export fn lists[T](
 	return Gen[List[T]](s => list_draw(gen, min_length, max_length, s.clone()))
 }
 
-fn list_draw[T](gen Gen[T], min_length Int, max_length Int, s Source) Drawn[List[T]] {
+fn list_draw[T](gen Gen[T], min_length, max_length Int, s Source) Drawn[List[T]] {
 	var items = List[T]()
 	var cursor = s
 
@@ -404,7 +404,7 @@ fn run_property[T](property fn(T) Void!, value T) Void {
 
 // Internal: the order that guarantees shrinking terminates: fewer draws first, then
 // lexicographically smaller.
-fn simpler(candidate List[Int], current List[Int]) Bool {
+fn simpler(candidate, current List[Int]) Bool {
 	if candidate.length() != current.length() {
 		return candidate.length() < current.length()
 	}
@@ -424,7 +424,7 @@ fn replay[T](gen Gen[T], property fn(T) Void!, choices List[Int]) Outcome {
 fn attempt[T](
 	gen Gen[T],
 	property fn(T) Void!,
-	candidate List[Int],
+	candidate,
 	current List[Int]
 ) List[Int]? {
 	outcome := replay(gen, property, candidate)
@@ -593,7 +593,7 @@ fn report[T](
 	property fn(T) Void!,
 	failing Source,
 	message Error,
-	seed Int,
+	seed,
 	executed Int
 ) Void! {
 	used := failing.choices.take(failing.pos)

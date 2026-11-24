@@ -43,7 +43,7 @@ fn quote(text String) String {
 	return out + "\""
 }
 
-fn emit(value JsonValue, indent Int, level Int) String {
+fn emit(value JsonValue, indent, level Int) String {
 	match value {
 		Null => return "null"
 		BoolValue(flag) => return if flag { "true" } else { "false" }

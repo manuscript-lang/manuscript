@@ -17,7 +17,7 @@ fn cat(s String, i Int) Int {
 	return s.scalar_at(i, default: -1)
 }
 
-fn sub(s String, a Int, b Int) String {
+fn sub(s String, a, b Int) String {
 	if b <= a { return "" }
 	return s.view(a, b).clone()
 }
@@ -141,29 +141,23 @@ type Term {
 }
 
 type Opnd {
-	kind Int
-	reg Int
+	kind, reg Int
 	text String
 	terms List[Term]
 }
 
 type Instr {
-	op Int
-	line Int
-	a Opnd
-	b Opnd
+	op, line Int
+	a, b Opnd
 }
 
 type Stmt {
-	kind Int
-	line Int
-	idx Int
+	kind, line, idx Int
 	texts List[String]
 }
 
 type Sym {
-	is_equ Bool
-	text_sec Bool
+	is_equ, text_sec Bool
 	value Int
 	text String
 	state Int
@@ -261,7 +255,7 @@ fn expected_count(op Int) Int {
 	return 1
 }
 
-fn classes_ok(op Int, a Opnd, b Opnd) Bool {
+fn classes_ok(op Int, a, b Opnd) Bool {
 	if op == 0 {
 		if a.kind == 0 { return true }
 		if a.kind == 2 { return b.kind != 2 }
@@ -357,7 +351,7 @@ fn var Asm.sym_value(name String) Int! {
 	return ok(v)
 }
 
-fn var Asm.word_value(word String, disp String) Int! {
+fn var Asm.word_value(word, disp String) Int! {
 	c := cat(word, 0)
 
 	if is_digit(c) {
@@ -401,7 +395,7 @@ fn var Asm.word_value(word String, disp String) Int! {
 	return error(inval(disp))
 }
 
-fn var Asm.eval(text0 String, disp String) Int! {
+fn var Asm.eval(text0, disp String) Int! {
 	text := text0.trim()
 	n := text.length()
 	var i = 0
@@ -539,7 +533,7 @@ fn parse_string(t String) List[Int]! {
 	return ok(out)
 }
 
-fn var Asm.add_data(count Int, value Int) Void! {
+fn var Asm.add_data(count, value Int) Void! {
 	if self.data.length() + count > 4096 { return error(Error("data section too large")) }
 
 	for _k in 0..count {
@@ -548,7 +542,7 @@ fn var Asm.add_data(count Int, value Int) Void! {
 	return ok()
 }
 
-fn var Asm.directive(line Int, word String, args String) Void! {
+fn var Asm.directive(line Int, word, args String) Void! {
 	if word == ".text" or word == ".data" {
 		if args != "" { return error(bad_op(args)) }
 
@@ -728,7 +722,7 @@ fn var Asm.line(line Int, raw String) Void! {
 	return ok()
 }
 
-fn var Asm.pass2(var av List[Int], var bv List[Int]) Void! {
+fn var Asm.pass2(var av, bv List[Int]) Void! {
 	for st in self.stmts.clone() {
 		self.cur_line = st.line
 
@@ -784,12 +778,9 @@ type Vm {
 	pow2 List[Int]
 	out String
 	chars List[String]
-	in_pos Int = 0
-	pc Int = 0
+	in_pos, pc Int = 0
 	trap String = ""
-	halted Bool = false
-	zf Bool = false
-	lf Bool = false
+	halted, zf, lf Bool = false
 	last Int = 10
 	wrote Bool = false
 }
@@ -798,7 +789,7 @@ fn var Vm.fail(msg String) Void {
 	if self.trap == "" { self.trap = msg }
 }
 
-fn var Vm.eff(r Int, v Int) Int {
+fn var Vm.eff(r, v Int) Int {
 	base := if r >= 0 { self.regs[r] } else { 0 }
 	return wrap(base + v)
 }
@@ -812,7 +803,7 @@ fn var Vm.load(addr Int) Int {
 	return self.mem[addr]
 }
 
-fn var Vm.store(addr Int, v Int) Void {
+fn var Vm.store(addr, v Int) Void {
 	if addr < 0 or addr >= 4096 {
 		self.fail(f"memory access out of range: {addr}")
 		return
@@ -821,7 +812,7 @@ fn var Vm.store(addr Int, v Int) Void {
 	self.mem[addr] = v
 }
 
-fn var Vm.rd(k Int, r Int, v Int) Int {
+fn var Vm.rd(k, r, v Int) Int {
 	if k == 0 { return self.regs[r] }
 	if k == 1 { return v }
 
@@ -857,14 +848,14 @@ fn var Vm.emit(s String, lastc Int) Void {
 	self.wrote = true
 }
 
-fn tdiv(d Int, s Int) Int {
+fn tdiv(d, s Int) Int {
 	q := d.abs() / s.abs()
 	if (d < 0) != (s < 0) { return -q }
 
 	return q
 }
 
-fn var Vm.alu(op Int, d Int, s Int) Int {
+fn var Vm.alu(op, d, s Int) Int {
 	if op == 1 { return wrap(d + s) }
 	if op == 2 { return wrap(d - s) }
 	if op == 3 { return wrap(d * s) }

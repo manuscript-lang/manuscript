@@ -11,8 +11,7 @@ Order lines arrive as text such as `pen,2,150`. Some will be wrong: a missing fi
 ```manuscript {filename="lines.ms"}
 type Line {
     name String
-    quantity Int
-    cents Int
+    quantity, cents Int
 }
 
 fn parse_line(text String) Line! {

@@ -87,7 +87,7 @@ fn Crc64Polynomial.reflected() Int {
 // Slicing tables for a reflected CRC-64: `tables[k * 256 + b]` is the register after
 // byte `b` followed by `k` zero bytes. Building one table costs about as much as
 // hashing 256 bytes bit by bit, so `count` is 1 for mid-size inputs.
-fn crc64_tables(poly Int, count Int) List[Int] {
+fn crc64_tables(poly, count Int) List[Int] {
 	var tables = [0].repeated(count * 256)
 
 	for b in 0..256 {

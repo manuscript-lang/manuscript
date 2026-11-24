@@ -44,14 +44,14 @@ Selects [start, end) in bytes; negative bounds are relative to the end.
 Bounds outside 0 <= start <= end <= length() return an `Error` of kind `ERANGE`.
 The result is a new copy; `view` borrows instead.
 */
-fn Bytes.slice(start Int, end Int) Bytes! { ... }
+fn Bytes.slice(start, end Int) Bytes! { ... }
 
 /*
 Borrows [start, end) of the receiver without copying; negative bounds are relative to the end.
 Bounds outside 0 <= start <= end <= length() raise a fault. Like `List.get`, the result borrows
 the receiver, which cannot change while the view is used; `.clone()` keeps the bytes.
 */
-fn Bytes.view(start Int, end Int) Bytes { ... }
+fn Bytes.view(start, end Int) Bytes { ... }
 
 // Returns an unsigned byte; negative indexes are relative to the end. An
 // out-of-range index raises a fault.
@@ -113,7 +113,7 @@ fn Bytes.decode_utf8() move String? { ... }
 
 // Decodes [start, end) as `decode_utf8` does, without copying the range into a new
 // Bytes first. Bounds outside 0 <= start <= end <= length() raise a fault.
-fn Bytes.decode_utf8_range(start Int, end Int) move String? { ... }
+fn Bytes.decode_utf8_range(start, end Int) move String? { ... }
 
 // Reads one signed byte at `at`; a missing byte returns an `Error` of kind
 // `ERANGE`. Offsets are absolute, so a negative `at` is out of range.
@@ -433,7 +433,7 @@ export type VarintRead[T] {
 }
 
 // Appends the low `width` bytes of `value` in the requested byte order.
-fn put_word(var out BytesBuilder, value Int, width Int, little Bool) Void {
+fn put_word(var out BytesBuilder, value, width Int, little Bool) Void {
 	for i in 0..width {
 		place := if little { i } else { width - 1 - i }
 		out.append(
@@ -447,7 +447,7 @@ fn put_word(var out BytesBuilder, value Int, width Int, little Bool) Void {
 
 // Reads a signed value from its unsigned bit pattern: `half` is 2 to the power
 // `bits - 1`.
-fn signed(raw Int, half Int) Int {
+fn signed(raw, half Int) Int {
 	if raw >= half { return raw - half * 2 }
 	return raw
 }

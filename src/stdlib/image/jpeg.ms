@@ -30,13 +30,9 @@ type JpegHuffman {
 }
 
 type JpegComponent {
-	id Int
-	h Int
-	v Int
-	tq Int
+	id, h, v, tq Int
 	// Block grid padded to whole MCUs.
-	blocks_wide Int
-	blocks_high Int
+	blocks_wide, blocks_high Int
 	// 64 coefficients per block, natural order, quantized until the final pass.
 	coef List[Int]
 	quant List[Int]
@@ -44,9 +40,7 @@ type JpegComponent {
 }
 
 type JpegBits {
-	pos Int
-	acc Int
-	count Int
+	pos, acc, count Int
 	failed Bool
 	eobrun Int
 }
@@ -115,7 +109,7 @@ fn var JpegBits.symbol(data Bytes, table JpegHuffman) Int {
 	return -1
 }
 
-fn jpeg_extend(value Int, size Int) Int {
+fn jpeg_extend(value, size Int) Int {
 	if size == 0 { return 0 }
 	if value < shift_left(1, size - 1) { return value - shift_left(1, size) + 1 }
 
@@ -126,7 +120,7 @@ fn be16(data Bytes, at Int) Int {
 	return data.get(at).to_int() * 256 + data.get(at + 1).to_int()
 }
 
-fn build_huffman(counts List[Int], values List[Int]) JpegHuffman! {
+fn build_huffman(counts, values List[Int]) JpegHuffman! {
 	var mincode = [0].repeated(17)
 	var maxcode = [-1].repeated(17)
 	var valptr = [0].repeated(17)
@@ -157,10 +151,7 @@ fn empty_huffman() JpegHuffman {
 // selection `ss` through `se`, and its successive approximation bits `ah` and `al`.
 type JpegScan {
 	members List[Int]
-	ss Int
-	se Int
-	ah Int
-	al Int
+	ss, se, ah, al Int
 	progressive Bool
 }
 
@@ -169,7 +160,7 @@ fn jpeg_block(
 	var bits JpegBits,
 	var comp JpegComponent,
 	base Int,
-	dc JpegHuffman,
+	dc,
 	ac JpegHuffman,
 	scan JpegScan,
 ) Void {
@@ -992,9 +983,9 @@ fn jpeg_fill_row(
 	plane List[UInt8],
 	stride Int,
 	span List[Int],
-	y Int,
-	width Int,
-	hr Int,
+	y,
+	width,
+	hr,
 	vr Int,
 	exact Bool,
 	var row List[Int],
@@ -1040,9 +1031,9 @@ fn jpeg_sample(
 	plane List[UInt8],
 	stride Int,
 	span List[Int],
-	y Int,
-	x Int,
-	hr Int,
+	y,
+	x,
+	hr,
 	vr Int,
 	exact Bool,
 ) Int {
@@ -1088,14 +1079,14 @@ fn jpeg_sample(
 	return (3 * here + near + (if x % 2 == 0 { 8 } else { 7 })) / 16
 }
 
-fn ycc_red(y Int, cr Int) Int {
+fn ycc_red(y, cr Int) Int {
 	return y + shift_right(91881 * (cr - 128) + 32768, 16)
 }
 
-fn ycc_green(y Int, cb Int, cr Int) Int {
+fn ycc_green(y, cb, cr Int) Int {
 	return y - shift_right(22554 * (cb - 128) + 46802 * (cr - 128) + 32768, 16)
 }
 
-fn ycc_blue(y Int, cb Int) Int {
+fn ycc_blue(y, cb Int) Int {
 	return y + shift_right(116130 * (cb - 128) + 32768, 16)
 }

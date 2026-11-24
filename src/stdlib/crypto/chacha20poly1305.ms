@@ -16,7 +16,7 @@ Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same
 Returns EINVAL for a wrong key or nonce length, a `counter` outside 0 through 2^32 - 1, or data that needs more blocks than the 32-bit counter has left.
 Never reuse a key and nonce pair.
 */
-export fn chacha20(key Bytes, nonce Bytes, counter Int, data Bytes) Bytes! {
+export fn chacha20(key, nonce Bytes, counter Int, data Bytes) Bytes! {
 	if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295 {
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 	}
@@ -27,7 +27,7 @@ export fn chacha20(key Bytes, nonce Bytes, counter Int, data Bytes) Bytes! {
 	return ok(xor_stream(key, counter, nonce, data))
 }
 
-fn limbs_load(data Bytes, at Int, shift Int) Int {
+fn limbs_load(data Bytes, at, shift Int) Int {
 	return shift_right_unsigned(le32(data, at), shift)
 }
 
@@ -35,7 +35,7 @@ fn limbs_load(data Bytes, at Int, shift Int) Int {
 // one-time key and returns 16 bytes; a key of any other length returns EINVAL. Use each
 // key for one message only. Prefer `chacha20poly1305_seal` unless you are implementing
 // a protocol that needs the bare authenticator.
-export fn poly1305(key Bytes, data Bytes) Bytes! {
+export fn poly1305(key, data Bytes) Bytes! {
 	if key.length() != 32 { return error(Error("crypto: invalid input", kind: "EINVAL")) }
 
 	mask := 67108863
@@ -213,7 +213,7 @@ fn put_le64(var out BytesBuilder, value Int) Void {
 	}
 }
 
-fn tag_for(key Bytes, nonce Bytes, associated_data Bytes, ciphertext Bytes) Bytes! {
+fn tag_for(key, nonce, associated_data, ciphertext Bytes) Bytes! {
 	one_time := block(key, 0, nonce)
 	var mac = BytesBuilder()
 	mac.append_bytes(associated_data)
@@ -229,12 +229,7 @@ fn tag_for(key Bytes, nonce Bytes, associated_data Bytes, ciphertext Bytes) Byte
 // the ciphertext followed by a 16-byte tag.
 // `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns EINVAL. The caller
 // supplies a nonce that is never reused with the key.
-export fn chacha20poly1305_seal(
-	key Bytes,
-	nonce Bytes,
-	plaintext Bytes,
-	associated_data Bytes,
-) Bytes! {
+export fn chacha20poly1305_seal(key, nonce, plaintext, associated_data Bytes) Bytes! {
 	if not check_key_nonce(key, nonce) or not fits_counter(1, plaintext.length()) {
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 	}
@@ -250,12 +245,7 @@ export fn chacha20poly1305_seal(
 // Authenticates and decrypts a value produced by `chacha20poly1305_seal`. A wrong key,
 // nonce or associated data, or an altered ciphertext, returns EAUTH. A key or nonce of
 // the wrong length, or `sealed` input shorter than the 16-byte tag, returns EINVAL.
-export fn chacha20poly1305_open(
-	key Bytes,
-	nonce Bytes,
-	sealed Bytes,
-	associated_data Bytes,
-) Bytes! {
+export fn chacha20poly1305_open(key, nonce, sealed, associated_data Bytes) Bytes! {
 	if (
 		not check_key_nonce(key, nonce)
 		or sealed.length() < 16
@@ -275,7 +265,7 @@ export fn chacha20poly1305_open(
 	return ok(xor_stream(key, 1, nonce, ciphertext))
 }
 
-fn rotl32(value Int, count Int) Int {
+fn rotl32(value, count Int) Int {
 	return bit_and(
 		bit_or(
 			shift_left(value, count),
@@ -293,7 +283,7 @@ fn le32(data Bytes, at Int) Int {
 	return value
 }
 
-fn quarter(var state List[Int], a Int, b Int, c Int, d Int) Void {
+fn quarter(var state List[Int], a, b, c, d Int) Void {
 	var va = state[a]
 	var vb = state[b]
 	var vc = state[c]
@@ -365,17 +355,17 @@ fn block(key Bytes, counter Int, nonce Bytes) Bytes {
 	return out.build()
 }
 
-fn check_key_nonce(key Bytes, nonce Bytes) Bool {
+fn check_key_nonce(key, nonce Bytes) Bool {
 	return key.length() == 32 and nonce.length() == 12
 }
 
 // Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439
 // counters are 32 bits).
-fn fits_counter(counter Int, length Int) Bool {
+fn fits_counter(counter, length Int) Bool {
 	return (length + 63) / 64 <= 4294967296 - counter
 }
 
-fn xor_stream(key Bytes, counter Int, nonce Bytes, data Bytes) Bytes {
+fn xor_stream(key Bytes, counter Int, nonce, data Bytes) Bytes {
 	var out = BytesBuilder()
 	var state = initial_state(key, counter, nonce)
 	var position = 0

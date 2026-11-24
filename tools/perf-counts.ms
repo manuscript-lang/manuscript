@@ -49,7 +49,7 @@ fn say(text String) Void {
 }
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
-fn count(program String, out_file String, own_path Bool, shape String) Int {
+fn count(program, out_file String, own_path Bool, shape String) Int {
 	var command = [
 		"--tool=callgrind",
 		f"--callgrind-out-file={out_file}",

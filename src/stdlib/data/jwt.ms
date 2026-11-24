@@ -58,8 +58,7 @@ export type JwtCheck {
 }
 
 type JwtHeader {
-	alg String
-	typ String
+	alg, typ String
 }
 
 /*
@@ -210,7 +209,7 @@ fn hmac_hash(algorithm JwtAlgorithm) HashAlgorithm? {
 	}
 }
 
-fn sign_bytes(algorithm JwtAlgorithm, key Bytes, data Bytes) Bytes! {
+fn sign_bytes(algorithm JwtAlgorithm, key, data Bytes) Bytes! {
 	hash := hmac_hash(algorithm)
 
 	if hash != null {
@@ -240,7 +239,7 @@ fn sign_bytes(algorithm JwtAlgorithm, key Bytes, data Bytes) Bytes! {
 	return error(jwt_invalid_key())
 }
 
-fn verify_bytes(algorithm JwtAlgorithm, key Bytes, data Bytes, signature Bytes) Bool! {
+fn verify_bytes(algorithm JwtAlgorithm, key, data, signature Bytes) Bool! {
 	hash := hmac_hash(algorithm)
 
 	if hash != null {
@@ -355,7 +354,7 @@ fn numeric_date(claim JsonValue, name String) String! {
 
 // Both inputs come from validated JSON or an exact integer conversion. The
 // boundary is moment +/- leeway: at most 20 magnitude digits, even at Int limits.
-fn date_compare(text String, boundary String) Int {
+fn date_compare(text, boundary String) Int {
 	bytes := text.to_bytes()
 	target := boundary.to_bytes()
 	negative := bytes.get(0) == 45

@@ -328,8 +328,7 @@ fn tar_is_zero(block Bytes) Bool {
 type TarEntries {
 	options ArchiveOptions
 	buffer Bytes
-	count Int
-	total Int
+	count, total Int
 	done Bool
 	end Bytes
 	// Cleaned paths seen so far, the file paths among them, and every ancestor

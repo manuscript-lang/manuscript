@@ -57,7 +57,7 @@ fn text_of(path String) String {
 // ---- formatting and nested matches ----
 
 // Runs `ms <command> <paths...>` in batches so the command line stays short.
-fn run_in_batches(ms String, head List[String], paths List[String]) Int {
+fn run_in_batches(ms String, head, paths List[String]) Int {
 	var failing = 0
 	var at = 0
 
@@ -76,7 +76,7 @@ fn run_in_batches(ms String, head List[String], paths List[String]) Int {
 }
 
 // The files with one of `extensions` that are ours.
-fn sources(files List[String], extensions List[String]) List[String] {
+fn sources(files, extensions List[String]) List[String] {
 	var found = List[String]()
 
 	for path in files {
@@ -247,7 +247,7 @@ fn quoted(text String) String {
 }
 
 // `key=value` field of a c-libs.lock line, or empty.
-fn field(line String, key String) String {
+fn field(line, key String) String {
 	for part in line.split(" ") {
 		if part.starts_with(f"{key}=") {
 			return part.slice(key.length() + 1, part.length()).clone()
@@ -257,7 +257,7 @@ fn field(line String, key String) String {
 }
 
 // The license file a lock line vendors: the entry of `paths=` that names one.
-fn license_path(name String, line String) String {
+fn license_path(name, line String) String {
 	for entry in field(line.clone(), "paths").split(",") {
 		base := entry.split("/").last() or ""
 		for stem in ["LICENSE", "LICENCE", "COPYING"] {

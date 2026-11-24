@@ -10,7 +10,7 @@ import (
 
 // The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a
 // dummy id finds them.
-fn resolve_hashes(oracle String, script String) String {
+fn resolve_hashes(oracle, script String) String {
 	if not script.contains(
 		"{c"
 	) { return script.clone() }
@@ -41,7 +41,7 @@ fn resolve_hashes(oracle String, script String) String {
 	return resolved
 }
 
-fn add(var cs Cases, name String, script String) Void {
+fn add(var cs Cases, name, script String) Void {
 	cs.push(name, resolve_hashes(cs.oracle, strip_nl(script)))
 }
 

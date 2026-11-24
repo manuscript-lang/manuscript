@@ -36,7 +36,7 @@ export fn caller_site() String {
 
 // Internal: builds a failed expectation: an `Error` with `message`, kind `EIO`, and
 // the failing call's position in `details["site"]`.
-fn failure(message String, site String) Error {
+fn failure(message, site String) Error {
 	var details = Map[String, String]()
 	details.add("site", site.clone())
 	return Error(message.clone(), kind: "EIO", details: details)
@@ -80,18 +80,14 @@ export fn expect_false(actual Bool, site String = caller_site()) Void! {
 
 // Fails unless `actual` equals `expected` under `Equal`; the failure shows both
 // values.
-export fn expect_equal[T Equal](
-	actual T,
-	expected T,
-	site String = caller_site(),
-) Void! {
+export fn expect_equal[T Equal](actual, expected T, site String = caller_site()) Void! {
 	if actual == expected { return ok() }
 	return error(failure(f"expected {repr(expected)}, got {repr(actual)}", site))
 }
 
 // Fails when `actual` and `expected` are equal under `Equal`.
 export fn expect_not_equal[T Equal](
-	actual T,
+	actual,
 	expected T,
 	site String = caller_site(),
 ) Void! {
@@ -103,8 +99,8 @@ export fn expect_not_equal[T Equal](
 // `tolerance`, which must be finite and not negative. NaN fails; identical infinities
 // pass.
 export fn expect_close(
-	actual Float,
-	expected Float,
+	actual,
+	expected,
 	tolerance Float,
 	site String = caller_site(),
 ) Void! {
@@ -134,11 +130,7 @@ export fn expect_close(
 
 // Fails unless `actual` contains `expected` as an exact substring, without Unicode
 // normalization.
-export fn expect_contains(
-	actual String,
-	expected String,
-	site String = caller_site(),
-) Void! {
+export fn expect_contains(actual, expected String, site String = caller_site()) Void! {
 	if actual.contains(
 		expected
 	) { return ok() }

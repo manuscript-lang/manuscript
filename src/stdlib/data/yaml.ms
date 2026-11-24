@@ -65,8 +65,7 @@ export type YamlOptions {
 type Context {
 	lines List[String]
 	final_break Bool
-	index Int
-	values Int
+	index, values Int
 	anchors Map[String, YamlValue]
 	sizes Map[String, Int]
 	/*
@@ -82,8 +81,7 @@ type Context {
 	dash List[Bool]
 	ind List[Int]
 	col List[Int]
-	max_depth Int?
-	max_values Int?
+	max_depth, max_values Int?
 	// Prefixes declared by %TAG directives, keyed by handle (`!`, `!!`, `!name!`).
 	tag_handles Map[String, String] = Map[String, String]()
 	// Whether the document just read ended with an explicit `...` marker.
@@ -94,21 +92,18 @@ type Context {
 	// Diagnostic projection for virtual lines (a line rewritten or split during
 	// parsing): these shift reported line and column numbers back to the source;
 	// parsing continues to use the same bases.
-	split_line Int = -1
-	shift_row Int = -1
+	split_line, shift_row Int = -1
 	shift_column Int = 0
 }
 
 type SourcePosition {
-	line Int
-	column Int
+	line, column Int
 }
 
 type Flow {
 	chars List[String]
 	codes List[Int]
-	pos Int
-	line Int
+	pos, line Int
 	context Context
 	delimited Bool
 	column Int = 1
@@ -209,7 +204,7 @@ fn source_line(context Context, row Int) Int {
 	return row + 1
 }
 
-fn source_column(context Context, row Int, column Int) Int {
+fn source_column(context Context, row, column Int) Int {
 	var result = column
 	if context.split_line >= 0 and row == context.split_line + 1 { result += 4 }
 	if row == context.shift_row { result += context.shift_column }
@@ -217,7 +212,7 @@ fn source_column(context Context, row Int, column Int) Int {
 }
 
 // A malformed-input error at a one-based source position.
-fn yaml_invalid(line Int, column Int, reason String) Error {
+fn yaml_invalid(line, column Int, reason String) Error {
 	return Error(
 		f"YAML {line}:{column}: {reason}",
 		kind: "EBADMSG",
@@ -280,12 +275,7 @@ fn flow_space(var flow Flow) Void {
 // The source line and column of scalar offset `cursor` in `chars`, which starts at
 // `line` and `column`. Called only to build errors, so valid input needs no position
 // scan.
-fn cursor_position(
-	chars List[String],
-	cursor Int,
-	line Int,
-	column Int,
-) SourcePosition {
+fn cursor_position(chars List[String], cursor, line, column Int) SourcePosition {
 	var breaks = 0
 	var width = 0
 	var at = 0
@@ -633,12 +623,7 @@ fn string_tag(tag String) Bool {
 	return tag == "!" or tag == "tag:yaml.org,2002:str"
 }
 
-fn merge(
-	line Int,
-	column Int,
-	var target Map[String, YamlValue],
-	value YamlValue,
-) Void! {
+fn merge(line, column Int, var target Map[String, YamlValue], value YamlValue) Void! {
 	values := match value {
 		ObjectValue(entries) => {
 			for entry in entries {
@@ -917,15 +902,13 @@ fn flow_entry(
 
 // A flow container suspended while its child is read.
 type FlowFrame {
-	kind Int = 0
-	level Int = 0
+	kind, level Int = 0
 	anchors List[String] = []
 	items List[YamlValue] = []
 	entries Map[String, YamlValue] = Map[String, YamlValue]()
 	explicit Set[String] = Set[String]()
 	name String = ""
-	quoted_key Bool = false
-	single Bool = false
+	quoted_key, single Bool = false
 }
 
 /*
@@ -1384,25 +1367,19 @@ type StructureScan {
 
 // State shared by consecutive physical lines of a flow value.
 type StructureState {
-	quote Int = 0
-	depth Int = 0
+	quote, depth Int = 0
 	node_start Bool = true
-	json_node Bool = false
-	tag Bool = false
+	json_node, tag Bool = false
 }
 
-fn scan_structure(text String, target String) StructureScan {
+fn scan_structure(text, target String) StructureScan {
 	var state = StructureState()
 	return scan_structure_part(text, target, state)
 }
 
 // Scans quoted and flow nodes, treating quotes and brackets inside plain text as
 // ordinary characters. `state` carries over between consecutive lines of one value.
-fn scan_structure_part(
-	text String,
-	target String,
-	var state StructureState,
-) StructureScan {
+fn scan_structure_part(text, target String, var state StructureState) StructureScan {
 	chars := text.scalar_values()
 	var quote = state.quote
 	var depth = state.depth
@@ -1751,8 +1728,8 @@ fn structured_lead(code Int, blank Bool = false) Bool {
 fn inline_value(
 	var context Context,
 	text String,
-	depth Int,
-	line Int,
+	depth,
+	line,
 	column Int,
 	as_string Bool = false,
 	parent Int = -1,
@@ -1875,8 +1852,8 @@ fn inline_value(
 fn block_string(
 	var context Context,
 	header String,
-	base Int,
-	header_line Int,
+	base,
+	header_line,
 	header_column Int,
 ) Result[YamlValue, Error] {
 	var mode = ""
@@ -2108,7 +2085,7 @@ fn plain_continuation(var context Context, remainder String, base Int) String! {
 fn block_value(
 	var context Context,
 	text String,
-	base Int,
+	base,
 	depth Int,
 	indentless Bool,
 	column Int,
@@ -2297,7 +2274,7 @@ fn nested_columns(line String, base Int) List[Int] {
 fn sequence_items(
 	var context Context,
 	var values List[YamlValue],
-	base Int,
+	base,
 	depth Int,
 ) Void! {
 	while context.index < context.lines.length() {
@@ -2472,7 +2449,7 @@ type ExplicitEntry {
 
 // One `? key` and `: value` pair of a block mapping, either part optional. The key must
 // be a scalar; a missing value is null and a missing key is the empty string.
-fn explicit_entry(var context Context, base Int, depth Int) ExplicitEntry! {
+fn explicit_entry(var context Context, base, depth Int) ExplicitEntry! {
 	var name = ""
 	var value = YamlValue.Null
 	start := context.lines[context.index].clone()
@@ -2553,8 +2530,8 @@ fn explicit_entry(var context Context, base Int, depth Int) ExplicitEntry! {
 
 fn block(
 	var context Context,
-	base Int,
-	depth Int,
+	base,
+	depth,
 	scalar_base Int,
 	mapping_value Bool = false,
 ) YamlValue! {

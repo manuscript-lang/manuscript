@@ -28,7 +28,7 @@ export fn count_text(text String) Int {
 
 // Tokens over every `*suffix` file under `root`, skipping build output and the bundled
 // docs.
-export fn count_workspace(root String, suffix String) Int {
+export fn count_workspace(root, suffix String) Int {
 	var total = 0
 
 	for entry in glob(root, GlobOptions(patterns: [f"**/*{suffix}"])).get_or([]) {

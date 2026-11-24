@@ -460,7 +460,7 @@ fn fits(kind FlagKind, choices List[String], value String) Bool {
 }
 
 // Checks one flag name or short against names already seen.
-fn claim(var seen List[String], key String, label String) Void! {
+fn claim(var seen List[String], key, label String) Void! {
 	if seen.contains(
 		key
 	) { return error(cli_invalid_schema(f"duplicate {label}")) }
@@ -882,7 +882,7 @@ fn cli_unknown_flag(name String) Error {
 	return Error(f"cli: unknown flag {name}", kind: "EINVAL")
 }
 
-fn cli_unknown_command(name String, path String) Error {
+fn cli_unknown_command(name, path String) Error {
 	return Error(f"cli: unknown command {name} for {path}", kind: "EINVAL")
 }
 
@@ -890,7 +890,7 @@ fn cli_missing_value(name String) Error {
 	return Error(f"cli: flag {name} needs a value", kind: "EINVAL")
 }
 
-fn cli_invalid_value(what String, name String, value String, expected String) Error {
+fn cli_invalid_value(what, name, value, expected String) Error {
 	return Error(f"cli: {what} {name}: {value} is not {expected}", kind: "EINVAL")
 }
 

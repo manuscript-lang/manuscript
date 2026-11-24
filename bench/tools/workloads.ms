@@ -36,8 +36,7 @@ import (
 )
 
 type Case {
-	name String
-	stdin String
+	name, stdin String
 }
 
 fn largest_input(path String) String! {
@@ -54,7 +53,7 @@ fn largest_input(path String) String! {
 	return ok(best.repeat(copies))
 }
 
-fn evidence(dir String, name String, n Int, input String, measured Measured) Void {
+fn evidence(dir, name String, n Int, input String, measured Measured) Void {
 	var samples = List[JsonValue]()
 
 	for s in measured.samples {

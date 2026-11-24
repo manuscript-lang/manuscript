@@ -1,6 +1,5 @@
 type Shape {
-	width Int
-	height Int
+	width, height Int
 }
 
 enum Failure {

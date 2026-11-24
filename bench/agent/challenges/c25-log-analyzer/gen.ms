@@ -13,12 +13,9 @@ fn digits(s String) Bool => (
 )
 
 type Entry {
-	level String
-	path String
-	status Int
-	latency Int
-	method String
-	ts String
+	level, path String
+	status, latency Int
+	method, ts String
 }
 
 fn parse(line String) Entry? {
@@ -109,7 +106,7 @@ fn solve(s String) String {
 	return out.map(o => o + "\n").join("")
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
 fn good(var rnd Random, i Int) String {
 	level := rnd.choice(LEVELS)

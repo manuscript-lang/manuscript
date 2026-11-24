@@ -115,10 +115,7 @@ fn semantic_cases() List[Case] {
 }
 
 type Run {
-	elapsed Int
-	checksum Int
-	size Int
-	rss Int
+	elapsed, checksum, size, rss Int
 }
 
 fn run_harness(binary String, c Case, rounds Int, cpu String) Run! {
@@ -155,9 +152,9 @@ fn run_harness(binary String, c Case, rounds Int, cpu String) Run! {
 }
 
 fn compare(
-	suite String,
-	before String,
-	after String,
+	suite,
+	before,
+	after,
 	out String,
 	samples Int,
 	cpu String,

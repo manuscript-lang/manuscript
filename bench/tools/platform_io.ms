@@ -22,7 +22,7 @@ import (
 // The child of the pipe round trip: echoes every chunk it reads.
 ECHO := "import stdin, stdout_bytes from \"@std/io/io.ms\"\n\nfn main() Void:\n\tvar input = stdin()\n\tvar output = stdout_bytes()\n\twhile true:\n\t\tchunk := input.next().get()\n\t\tif data := chunk:\n\t\t\toutput.write(data).get()\n\t\telse:\n\t\t\treturn\n"
 
-fn report(name String, best_ns Int, ops Int) Void {
+fn report(name String, best_ns, ops Int) Void {
 	print(f"{host()} {name} {best_ns / ops} ns/op ({ops} ops)")
 }
 

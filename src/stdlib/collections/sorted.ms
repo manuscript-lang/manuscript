@@ -179,14 +179,14 @@ fn var SortedMap[K, V].remove(key K) Void {
 
 // Internal: removes the entry at position `at` of chunk `c`, dropping the chunk when
 // it empties.
-fn var SortedMap[K, V].remove_at(c Int, at Int) Void {
+fn var SortedMap[K, V].remove_at(c, at Int) Void {
 	self.key_chunks[c].remove(at)
 	self.value_chunks[c].remove(at)
 	self.mend(c, at)
 }
 
 // Internal: moves the entry at position `at` of chunk `c` out without copying it.
-fn var SortedMap[K, V].take_at(c Int, at Int) move SortedEntry[K, V] {
+fn var SortedMap[K, V].take_at(c, at Int) move SortedEntry[K, V] {
 	entry := SortedEntry(
 		take_item(self.key_chunks[c], at),
 		take_item(self.value_chunks[c], at),
@@ -210,7 +210,7 @@ fn take_item[T](var items List[T], at Int) move T {
 
 // Internal: restores the chunk bookkeeping after an entry left position `at` of chunk
 // `c`.
-fn var SortedMap[K, V].mend(c Int, at Int) Void {
+fn var SortedMap[K, V].mend(c, at Int) Void {
 	self.size -= 1
 
 	if self.key_chunks[c].is_empty() {
@@ -305,7 +305,7 @@ fn SortedMap[K, V].floor(key K) SortedEntry[K, V]? {
 }
 
 // Returns a new list of the entries with `low` <= key < `high`, in ascending order.
-fn SortedMap[K, V].range(low K, high K) List[SortedEntry[K, V]] {
+fn SortedMap[K, V].range(low, high K) List[SortedEntry[K, V]] {
 	var out List[SortedEntry[K, V]] = []
 	if self.size == 0 { return out }
 
@@ -455,7 +455,7 @@ fn SortedSet[T].floor(value T) T? {
 
 // Returns a new list of the members with `low` <= member < `high`, in ascending
 // order.
-fn SortedSet[T].range(low T, high T) List[T] {
+fn SortedSet[T].range(low, high T) List[T] {
 	return self.members.range(low, high).map(entry => entry.key.clone())
 }
 
@@ -467,7 +467,7 @@ fn SortedSet[T].values() List[T] {
 // Internal: orders two keys: negative when `left` sorts first, zero when equal,
 // positive when
 // `right` sorts first.
-fn order[T Comparable](left T, right T) Int {
+fn order[T Comparable](left, right T) Int {
 	return left.compare(right)
 }
 
@@ -475,7 +475,7 @@ fn order[T Comparable](left T, right T) Int {
 // in order.
 // Halving the range copies each element about log2(chunk count) times; folding left
 // with `concat` would recopy every earlier chunk for each later one.
-fn joined[T Clonable](chunks List[List[T]], low Int, high Int) List[T] {
+fn joined[T Clonable](chunks List[List[T]], low, high Int) List[T] {
 	count := high - low
 	if count == 0 { return [] }
 	if count == 1 { return chunks[low].clone() }

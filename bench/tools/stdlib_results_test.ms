@@ -7,7 +7,7 @@ import (
 	Stats, case_labels, read_cases from "./stdlib_results.ms",
 )
 
-fn bench(name String, status String, ops String, median String) String {
+fn bench(name, status, ops, median String) String {
 	return j(
 		f"<'name':'m.ms::{name}','status':'{status}','stats':<'operations':{ops},'median_ns':{median}>>"
 	)

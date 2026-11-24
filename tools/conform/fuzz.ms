@@ -80,7 +80,7 @@ export fn below(var rng Rng, n Int) Int {
 	return (2 * (half % bound) + low) % bound
 }
 
-fn range(var rng Rng, low Int, high Int) Int {
+fn range(var rng Rng, low, high Int) Int {
 	return low + below(rng, high - low + 1)
 }
 
@@ -107,21 +107,21 @@ fn overflow() Checked {
 	return Checked(ok: false, value: 0)
 }
 
-fn checked_sum(x Int, y Int) Checked {
+fn checked_sum(x, y Int) Checked {
 	r := wrapping_add(x, y)
 	if (x >= 0) == (y >= 0) and (r >= 0) != (x >= 0) { return overflow() }
 
 	return checked(r)
 }
 
-fn checked_difference(x Int, y Int) Checked {
+fn checked_difference(x, y Int) Checked {
 	r := wrapping_subtract(x, y)
 	if (x >= 0) != (y >= 0) and (r >= 0) != (x >= 0) { return overflow() }
 
 	return checked(r)
 }
 
-fn checked_product(x Int, y Int) Checked {
+fn checked_product(x, y Int) Checked {
 	if x == 0 or y == 0 { return checked(0) }
 
 	if x == -1 {
@@ -135,12 +135,12 @@ fn checked_product(x Int, y Int) Checked {
 	return checked(r)
 }
 
-fn checked_quotient(x Int, y Int) Checked {
+fn checked_quotient(x, y Int) Checked {
 	if y == 0 or (x == MIN_INT and y == -1) { return overflow() }
 	return checked(x / y)
 }
 
-fn checked_remainder(x Int, y Int) Checked {
+fn checked_remainder(x, y Int) Checked {
 	if y == 0 or (x == MIN_INT and y == -1) { return overflow() }
 	return checked(x % y)
 }
@@ -289,7 +289,7 @@ fn int_leaf(var g Gen) IntExpr {
 	return IntExpr(code: int_code(n), ok: true, value: n)
 }
 
-fn binary(code String, left IntExpr, right IntExpr, result Checked) IntExpr {
+fn binary(code String, left, right IntExpr, result Checked) IntExpr {
 	return IntExpr(
 		code: code.clone(),
 		ok: left.ok and right.ok and result.ok,
@@ -835,7 +835,7 @@ export fn type_error(seed Int) Generated {
 }
 
 // `line` without its first `text`.
-fn without_first(line String, text String) String {
+fn without_first(line, text String) String {
 	at := line.index_of(text) or (-1)
 	if at < 0 { return line.clone() }
 

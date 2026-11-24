@@ -7,7 +7,7 @@ import (
 
 NUM := "[0-9]{1,6}"
 
-fn lcs(a String, b String) Int {
+fn lcs(a, b String) Int {
 	ys := b.chars()
 	var prev = List[Int]()
 	for _j in 0..ys.length() + 1 { prev.append(0) }
@@ -28,7 +28,7 @@ fn lcs(a String, b String) Int {
 	return prev[prev.length() - 1]
 }
 
-fn edit(a String, b String) Int {
+fn edit(a, b String) Int {
 	ys := b.chars()
 	var prev = List[Int]()
 	for j in 0..ys.length() + 1 { prev.append(j) }
@@ -53,8 +53,7 @@ fn edit(a String, b String) Int {
 }
 
 type Thing {
-	weight Int
-	value Int
+	weight, value Int
 }
 
 fn knap(cap Int, items List[Thing]) Int {
@@ -139,7 +138,7 @@ fn solve(s String) String {
 	).join("")
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
 fn word(var rnd Random, n Int, alpha List[String]) String {
 	var out = ""

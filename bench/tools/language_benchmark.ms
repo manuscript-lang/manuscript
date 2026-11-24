@@ -27,7 +27,7 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn execute(binary String, cpu String) Result[Void, Error] {
+fn execute(binary, cpu String) Result[Void, Error] {
 	if cpu == "" {
 		void must(binary, capture(binary, []))?
 		return ok()

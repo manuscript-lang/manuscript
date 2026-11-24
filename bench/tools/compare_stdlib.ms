@@ -60,7 +60,7 @@ export fn parse_sample(output String, expected Map[String, Int]?) Sample! {
 	return ok(Sample(operations, medians))
 }
 
-fn run(opts Map[String, String], repeats Int, samples Int) Result[String, Error] {
+fn run(opts Map[String, String], repeats, samples Int) Result[String, Error] {
 	filter := opts.get_or("filter", "")
 	var binaries = Map[String, String]()
 	var raw = Map[String, List[String]]()

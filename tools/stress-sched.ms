@@ -35,7 +35,7 @@ fn has_tests(source String) Bool {
 }
 
 // One `ms test` run of `file`: its exit status and the last lines of its output.
-fn test_run(ms String, file String, stress Bool) Int {
+fn test_run(ms, file String, stress Bool) Int {
 	var settings = Map[String, String]()
 	if stress { settings["MS_SCHED_STRESS"] = "1" }
 

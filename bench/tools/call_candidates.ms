@@ -40,13 +40,7 @@ fn source(count Int, mode String) String {
 	return text + f"    print(step{count}.value)\n    return 0\n"
 }
 
-fn measure(
-	before String,
-	after String,
-	directory String,
-	rounds Int,
-	filter String,
-) Void! {
+fn measure(before, after, directory String, rounds Int, filter String) Void! {
 	ensure_directory(directory)
 	ensure_directory(f"{directory}/inputs")
 

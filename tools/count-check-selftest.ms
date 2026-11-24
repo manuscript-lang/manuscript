@@ -16,7 +16,7 @@ type Gate {
 	output String
 }
 
-fn gate(root String, compiler String, case_name String) Gate {
+fn gate(root, compiler, case_name String) Gate {
 	var settings = Map[String, String]()
 	settings["MS"] = compiler.clone()
 

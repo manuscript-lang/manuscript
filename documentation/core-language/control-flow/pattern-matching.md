@@ -106,7 +106,7 @@ A lone lowercase arm binds a payload only when matching an `Optional`; on anothe
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Position {
-    Point(x Int, y Int)
+    Point(x, y Int)
     Unknown
 }
 

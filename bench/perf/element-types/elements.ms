@@ -5,15 +5,14 @@ import (
 )
 
 type Event {
-	id Int
-	kind Int
+	id, kind Int
 	name String
 	score Int
 }
 
 enum Shape {
 	Circle(r Int)
-	Rect(w Int, h Int)
+	Rect(w, h Int)
 	Dot
 }
 
@@ -23,8 +22,7 @@ type Pair[A, B] {
 }
 
 type Job {
-	pri Int
-	id Int
+	pri, id Int
 }
 
 fn Job.compare(other Job) Int {
@@ -32,8 +30,7 @@ fn Job.compare(other Job) Int {
 }
 
 type Pt {
-	x Int
-	y Int
+	x, y Int
 }
 
 fn Pt.equals(other Pt) Bool {
@@ -48,7 +45,7 @@ fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn us(a Int, b Int) Int {
+fn us(a, b Int) Int {
 	return (b - a) / 1000
 }
 

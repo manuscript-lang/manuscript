@@ -10,13 +10,11 @@ type Sq {
 }
 
 type Rect {
-	w Int
-	h Int
+	w, h Int
 }
 
 type Tri {
-	b Int
-	h Int
+	b, h Int
 }
 
 fn Sq.area() Int {
@@ -117,7 +115,7 @@ fn generics(n Int) Int {
 		}
 	}
 
-	return t + fold_with(s.items, 0, fn(a Int, x Int) Int => return a + x * 2)
+	return t + fold_with(s.items, 0, fn(a, x Int) Int => return a + x * 2)
 }
 
 fn main() Void {

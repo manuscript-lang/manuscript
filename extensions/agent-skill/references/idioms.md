@@ -149,8 +149,7 @@ A function that can fail returns `T!` (a Result). Inside it, `?` unwraps a succe
 ```manuscript
 type Line {
     name String
-    quantity Int
-    cents Int
+    quantity, cents Int
 }
 
 fn parse_line(text String) Line! {
@@ -244,8 +243,8 @@ A parser is a record holding the input and a position, with `fn var` methods tha
 ```manuscript
 enum Expr {
     Num(value Int)
-    Add(left Expr, right Expr)
-    Mul(left Expr, right Expr)
+    Add(left, right Expr)
+    Mul(left, right Expr)
     Neg(inner Expr)
 }
 
@@ -377,8 +376,7 @@ Breadth-first search is a `List` used as a queue with a `head` index, a `Map` or
 <!-- complete: idiom-bfs.ms -->
 ```manuscript
 type Point {
-    row Int
-    col Int
+    row, col Int
 }
 
 fn neighbors(grid List[String], at Point) List[Point] {
@@ -399,7 +397,7 @@ fn neighbors(grid List[String], at Point) List[Point] {
     return found
 }
 
-fn shortest(grid List[String], start Point, goal Point) Int? {
+fn shortest(grid List[String], start, goal Point) Int? {
     var distance = Map[String, Int]()
     var queue = [start.clone()]
     var head = 0
@@ -515,8 +513,7 @@ interface Shape {
 }
 
 type Rect {
-    width Float
-    height Float
+    width, height Float
 }
 
 type Circle {

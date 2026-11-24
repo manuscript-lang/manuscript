@@ -7,8 +7,7 @@ import (
 )
 
 type Rec {
-	key Int
-	id Int
+	key, id Int
 }
 
 fn say(text String) Void {
@@ -81,7 +80,7 @@ fn bench_list_sort_cmp(n Int) Int {
 	}
 
 	t := monotonic()
-	s := l.sorted(compare: fn(a Rec, b Rec) Int => a.key - b.key)
+	s := l.sorted(compare: fn(a, b Rec) Int => a.key - b.key)
 	report("list_sort_cmp", n, t)
 	return s[0].id
 }

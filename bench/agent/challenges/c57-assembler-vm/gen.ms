@@ -18,7 +18,7 @@ fn strip_nl(text String) String {
 	return chars.slice(start, end).get_or([]).join("")
 }
 
-fn add(var cs Cases, name String, prog String, inp String? = null) Void {
+fn add(var cs Cases, name, prog String, inp String? = null) Void {
 	var s = strip_nl(prog) + "\n"
 	text := inp
 	if text != null {

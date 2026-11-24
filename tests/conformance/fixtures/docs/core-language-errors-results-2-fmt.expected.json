@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn discount_message(price Decimal, percent Decimal) String {\n\tif value := discount(price, percent) {\n\t\treturn f\"Discounted price: {value}\"\n\t}\n\treturn \"Discount could not be calculated.\"\n}\n"
+    "fmt": "fn discount_message(price, percent Decimal) String {\n\tif value := discount(price, percent) {\n\t\treturn f\"Discounted price: {value}\"\n\t}\n\treturn \"Discount could not be calculated.\"\n}\n"
   }
 }

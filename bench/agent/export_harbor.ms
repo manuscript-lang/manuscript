@@ -23,9 +23,7 @@ import (
 
 type Options {
 	out String
-	challenges String = ""
-	languages String = ""
-	ms_binary String = ""
+	challenges, languages, ms_binary String = ""
 	agent_timeout Int = 900
 }
 
@@ -57,7 +55,7 @@ fn task_toml(name String, ch Challenge, agent_timeout Int) String {
 
 fn quote(text String) String => dumps(JsonValue.StringValue(text.clone()), 0)
 
-fn put(from String, to String) Void {
+fn put(from, to String) Void {
 	create_directory(
 		to.split("/").take(to.split("/").length() - 1).join("/"),
 		recursive: true,
@@ -65,13 +63,7 @@ fn put(from String, to String) Void {
 	copy(from, to, CopyOptions(replace: true)).get()
 }
 
-fn export_one(
-	ch Challenge,
-	lang Lang,
-	out String,
-	ms_binary String,
-	agent_timeout Int,
-) Void {
+fn export_one(ch Challenge, lang Lang, out, ms_binary String, agent_timeout Int) Void {
 	name := f"{ch.id}-{lang.id}"
 	d := f"{out}/{name}"
 	remove(d, recursive: true).to_optional()

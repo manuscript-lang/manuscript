@@ -46,7 +46,7 @@ export interface PathOperations {
 	fn basename(path String) move String
 	// Returns the basename with `suffix` removed when it matches exactly. It is not an
 	// extension stripper: a suffix equal to the whole basename is not removed.
-	fn basename_without(path String, suffix String) move String
+	fn basename_without(path, suffix String) move String
 	// Returns the directory component using the selected POSIX or Windows convention.
 	fn dirname(path String) move String
 	// Returns the final dot extension, or empty text for extensionless names and simple
@@ -63,7 +63,7 @@ export interface PathOperations {
 	// Computes the lexical relative path from `base` to `target`, both absolute. Paths
 	// with different roots, such as Windows drives, return `target` normalized. A
 	// relative argument or a NUL byte returns EINVAL.
-	fn relative(base String, target String) move String!
+	fn relative(base, target String) move String!
 	// Resolves `parts` against the absolute `base`, without consulting the process
 	// working directory. A relative `base` or a NUL byte returns EINVAL.
 	fn resolve(base String, parts List[String]) move String!
@@ -82,7 +82,7 @@ export interface PathOperations {
 	fn to_namespaced_path(path String) move String
 	// Tests one lexical path against the supported glob syntax; malformed patterns
 	// return EINVAL.
-	fn matches_glob(path String, pattern String) Bool!
+	fn matches_glob(path, pattern String) Bool!
 	// Compiles a glob pattern once for matching many paths under this dialect's rules;
 	// malformed patterns return EINVAL.
 	fn compile_glob(pattern String) move Glob!
@@ -98,7 +98,7 @@ fn Dialect.basename(path String) String {
 	return basename_in(self.windows, path)
 }
 
-fn Dialect.basename_without(path String, suffix String) String {
+fn Dialect.basename_without(path, suffix String) String {
 	return basename_without_in(self.windows, path, suffix)
 }
 
@@ -122,7 +122,7 @@ fn Dialect.normalize(path String) String {
 	return normalize_in(self.windows, path)
 }
 
-fn Dialect.relative(base String, target String) String! {
+fn Dialect.relative(base, target String) String! {
 	return relative_in(self.windows, base, target)
 }
 
@@ -150,7 +150,7 @@ fn Dialect.to_namespaced_path(path String) String {
 	return namespaced_in(self.windows, path)
 }
 
-fn Dialect.matches_glob(path String, pattern String) Bool! {
+fn Dialect.matches_glob(path, pattern String) Bool! {
 	return glob_in(self.windows, path, pattern)
 }
 
@@ -310,7 +310,7 @@ fn is_absolute_in(windows Bool, text String) Bool {
 }
 
 // A segment of the bytes being normalized, packed as `start * 2^32 + end`.
-fn span(start Int, end Int) Int {
+fn span(start, end Int) Int {
 	return start * 4294967296 + end
 }
 
@@ -505,7 +505,7 @@ fn parse_in(windows Bool, original String) PathParts {
 
 // Splits by byte positions, so every field is one view of `original` decoded; `text` is
 // `original` with backslashes read as slashes (the same positions).
-fn parse_core(windows Bool, text String, original String) PathParts {
+fn parse_core(windows Bool, text, original String) PathParts {
 	root_len := root_of(windows, text).length()
 	data := text.to_bytes()
 	source := original.to_bytes()
@@ -570,7 +570,7 @@ fn parse_core(windows Bool, text String, original String) PathParts {
 }
 
 // The text of bytes [start, end) of `data`.
-fn text_of(data Bytes, start Int, end Int) String {
+fn text_of(data Bytes, start, end Int) String {
 	if start >= end { return "" }
 	return data.view(start, end).decode_utf8() or ""
 }
@@ -588,7 +588,7 @@ fn extension_in(windows Bool, text String) String {
 	return extension_of_base(base)
 }
 
-fn equal_fold(left String, right String) Bool {
+fn equal_fold(left, right String) Bool {
 	if left == right { return true }
 	return lowercase_path(left) == lowercase_path(right)
 }
@@ -717,11 +717,11 @@ fn basename_in(windows Bool, raw String) String {
 	return basename_inner(windows, raw, "", false)
 }
 
-fn basename_without_in(windows Bool, raw String, suffix String) String {
+fn basename_without_in(windows Bool, raw, suffix String) String {
 	return basename_inner(windows, raw, suffix, true)
 }
 
-fn basename_inner(windows Bool, raw String, suffix String, strip Bool) String {
+fn basename_inner(windows Bool, raw, suffix String, strip Bool) String {
 	var text = slash(windows, raw)
 	var prefix = 0
 
@@ -819,7 +819,7 @@ fn join_in(windows Bool, items List[String]) String {
 	return normalize_in(windows, joined)
 }
 
-fn relative_in(windows Bool, base_arg String, target_arg String) String! {
+fn relative_in(windows Bool, base_arg, target_arg String) String! {
 	base_resolved := resolve_inner(windows, base_arg, [])
 	target_resolved := resolve_inner(windows, target_arg, [])
 	if (base_resolved == null) or (target_resolved == null) {
@@ -887,7 +887,7 @@ fn relative_in(windows Bool, base_arg String, target_arg String) String! {
 	return ok(native(windows, out))
 }
 
-fn same_text(windows Bool, left String, right String) Bool {
+fn same_text(windows Bool, left, right String) Bool {
 	if windows { return equal_fold(left, right) }
 	return left == right
 }
@@ -935,7 +935,7 @@ fn namespaced_in(windows Bool, text String) String {
 	return f"\\\\?\\{value}"
 }
 
-fn glob_in(windows Bool, path String, pattern String) Bool! {
+fn glob_in(windows Bool, path, pattern String) Bool! {
 	glob := msstd_path_compile_glob(windows, pattern)?
 	return msstd_path_glob_matches(glob, path)
 }
@@ -957,7 +957,7 @@ export fn basename(path String) String {
 
 // Returns the basename with `suffix` removed when it matches exactly. A suffix equal to
 // the whole basename is not removed.
-export fn basename_without(path String, suffix String) String {
+export fn basename_without(path, suffix String) String {
 	return basename_without_in(host_windows(), path, suffix)
 }
 
@@ -987,7 +987,7 @@ export fn normalize(path String) String {
 }
 
 // Computes a relative path from `base` to `target` using host path rules.
-export fn relative(base String, target String) String! {
+export fn relative(base, target String) String! {
 	return relative_in(host_windows(), base, target)
 }
 
@@ -1016,7 +1016,7 @@ export fn stem(path String) String {
 // `with_extension("a/b.txt", "md")` is `"a/b.md"`. A leading dot in `extension` is
 // optional and an empty `extension` removes the current one. A path with no final
 // component, such as `"/"`, comes back unchanged.
-export fn with_extension(path String, extension String) String {
+export fn with_extension(path, extension String) String {
 	parts := parse(path)
 	if parts.name.is_empty() { return path.clone() }
 
@@ -1049,7 +1049,7 @@ export fn to_namespaced_path(path String) String {
 
 // Tests a path against a glob pattern. To test many paths against one pattern, compile
 // it once with `compile_glob`.
-export fn matches_glob(path String, pattern String) Bool! {
+export fn matches_glob(path, pattern String) Bool! {
 	return glob_in(host_windows(), path, pattern)
 }
 

@@ -26,4 +26,4 @@ export extern fn msrt_test_deadline(on Bool) Void
 export extern fn msrt_test_capture_fault(id Int) move String
 
 // Appends `text` to the file at `path` (the test runner's results file), whole.
-export extern fn msrt_test_record(path String, text String) Void
+export extern fn msrt_test_record(path, text String) Void

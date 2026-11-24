@@ -28,9 +28,7 @@ fn move Token.close() Void! {
 }
 
 type Triple {
-	first Token
-	second Token
-	third Token
+	first, second, third Token
 }
 
 type Nested {
@@ -48,9 +46,7 @@ fn move NamedToken.close() Void! {
 }
 
 type NamedTriple {
-	first NamedToken
-	second NamedToken
-	third NamedToken
+	first, second, third NamedToken
 }
 
 fn local() Void {

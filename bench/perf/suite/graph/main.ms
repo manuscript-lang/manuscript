@@ -5,13 +5,11 @@ import (
 )
 
 type Edge {
-	to Int
-	w Int
+	to, w Int
 }
 
 type Item {
-	dist Int
-	node Int
+	dist, node Int
 }
 
 fn Item.compare(other Item) Int {
@@ -23,7 +21,7 @@ fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn build(n Int, m Int) List[List[Edge]] {
+fn build(n, m Int) List[List[Edge]] {
 	var adj List[List[Edge]] = []
 	for i in 0..n {
 		adj.append([])
@@ -128,7 +126,7 @@ fn find(parent List[Int], x Int) Int {
 	return r
 }
 
-fn components(n Int, m Int) Int {
+fn components(n, m Int) Int {
 	var parent = List[Int]()
 	for i in 0..n {
 		parent.append(i)

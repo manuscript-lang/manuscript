@@ -7,7 +7,7 @@ fn rep(text String, count Int) String {
 	return text.repeat(count)
 }
 
-fn line(cmd String, pat String, subj String = "", repl String? = null) String {
+fn line(cmd, pat String, subj String = "", repl String? = null) String {
 	var fields = [cmd.clone(), pat.clone(), subj.clone()]
 	r := repl
 	if r != null {
@@ -16,27 +16,27 @@ fn line(cmd String, pat String, subj String = "", repl String? = null) String {
 	return fields.join("\t") + "\n"
 }
 
-fn M(pat String, subj String) String {
+fn M(pat, subj String) String {
 	return line("match", pat, subj)
 }
 
-fn T(pat String, subj String) String {
+fn T(pat, subj String) String {
 	return line("test", pat, subj)
 }
 
-fn F(pat String, subj String) String {
+fn F(pat, subj String) String {
 	return line("full", pat, subj)
 }
 
-fn A(pat String, subj String) String {
+fn A(pat, subj String) String {
 	return line("find-all", pat, subj)
 }
 
-fn R(pat String, subj String, repl String) String {
+fn R(pat, subj, repl String) String {
 	return line("replace", pat, subj, repl)
 }
 
-fn S(pat String, subj String) String {
+fn S(pat, subj String) String {
 	return line("split", pat, subj)
 }
 

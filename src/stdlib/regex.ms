@@ -24,11 +24,7 @@ fn Regex.find_all(text String, max_matches Int?) move List[String]! { ... }
 // Replaces every nonoverlapping match with `replacement`, used literally: `$` and
 // capture names are not expanded. `max_bytes` optionally bounds the UTF-8 output; a
 // negative bound returns `EINVAL` and exceeding it returns `EOVERFLOW`.
-fn Regex.replace_all(
-	text String,
-	replacement String,
-	max_bytes Int?,
-) move String! { ... }
+fn Regex.replace_all(text, replacement String, max_bytes Int?) move String! { ... }
 
 // Returns the first match as [whole, group1, ...]; groups that did not participate
 // are "". Empty list when nothing matches.
@@ -71,11 +67,7 @@ fn Regex.split(text String, max_pieces Int?) List[String]! { ... }
 
 // Like `replace_all`, but expands `$1`, `${name}` and `$$` in `template` from each
 // match. The syntax is Rust's: write `${1}x`, not `$1x`.
-fn Regex.replace_template(
-	text String,
-	template String,
-	max_bytes Int?,
-) move String! { ... }
+fn Regex.replace_template(text, template String, max_bytes Int?) move String! { ... }
 
 // Returns the byte range of each match in `find_all` order, without copying the
 // matched text. `max_matches` is a strict output budget: a negative value returns
@@ -109,7 +101,7 @@ A negative budget returns `EINVAL` and exceeding one returns `EOVERFLOW`. These 
 */
 fn Regex.capture_all_spans(
 	text String,
-	max_matches Int?,
+	max_matches,
 	max_captures Int?,
 ) List[List[RegexSpan?]]! {
 	raw := msstd_regex_capture_all_spans(self, text, max_matches, max_captures)?
@@ -144,7 +136,7 @@ export fn compile(pattern String) Regex! {
 	return msstd_regex_compile(pattern)
 }
 
-fn capture_slots(raw List[Int], start Int, count Int) List[RegexSpan?] {
+fn capture_slots(raw List[Int], start, count Int) List[RegexSpan?] {
 	var out = List[RegexSpan?](reserve: count)
 
 	for index in 0..count {

@@ -1,7 +1,6 @@
 // Shared helpers for the standard-library micro-benchmarks in the `*_bench.ms` files.
 export type Point {
-	x Int
-	y Int
+	x, y Int
 }
 
 export fn ints(count Int) List[Int] {

@@ -23,11 +23,7 @@ export type ZoneAt {
 // One yearly transition of a POSIX rule: `Mm.w.d` (kind 0), `Jn` (1) or `n` (2), at
 // `time` local seconds.
 type Rule {
-	kind Int
-	month Int
-	week Int
-	day Int
-	time Int
+	kind, month, week, day, time Int
 }
 
 // A resolved zone. A table zone keeps the TZif block and the byte positions of its
@@ -40,21 +36,14 @@ export type Zone {
 	// The fixed offset in seconds east of UTC.
 	fixed Int
 	data Bytes
-	count Int
-	times Int
-	time_size Int
-	indexes Int
-	types Int
-	abbrevs Int
-	abbrev_size Int
+	count, times, time_size, indexes, types, abbrevs, abbrev_size Int
 	has_footer Bool
 	std_name String
 	std_offset Int
 	dst_name String
 	dst_offset Int
 	has_dst Bool
-	start Rule
-	end Rule
+	start, end Rule
 }
 
 // The transition time of entry `i`.
@@ -158,19 +147,19 @@ fn unknown_zone() Error {
 }
 
 // Division and remainder that round toward negative infinity.
-fn floor_div(a Int, b Int) Int {
+fn floor_div(a, b Int) Int {
 	q := a / b
 	if a % b != 0 and (a < 0) != (b < 0) { return q - 1 }
 
 	return q
 }
 
-fn floor_mod(a Int, b Int) Int {
+fn floor_mod(a, b Int) Int {
 	return a - floor_div(a, b) * b
 }
 
 // Days since 1970-01-01 of a proleptic Gregorian date.
-fn days_from_civil(year Int, month Int, day Int) Int {
+fn days_from_civil(year, month, day Int) Int {
 	y := if month <= 2 { year - 1 } else { year }
 	era := floor_div(y, 400)
 	yoe := y - era * 400
@@ -197,7 +186,7 @@ fn is_leap(year Int) Bool {
 }
 
 // An unsigned big-endian integer of `width` bytes.
-fn be(data Bytes, at Int, width Int) Int {
+fn be(data Bytes, at, width Int) Int {
 	var n = 0
 	for i in 0..width {
 		n = n * 256 + data.get(at + i).to_int()
@@ -211,7 +200,7 @@ fn be_i32(data Bytes, at Int) Int {
 }
 
 // A signed big-endian integer of `width` bytes, 4 or 8.
-fn be_signed(data Bytes, at Int, width Int) Int {
+fn be_signed(data Bytes, at, width Int) Int {
 	if width == 4 { return be_i32(data, at) }
 	return be_i32(data, at) * 4294967296 + be(data, at + 4, 4)
 }
@@ -347,8 +336,7 @@ type Footer {
 	dst_name String
 	dst_offset Int
 	has_dst Bool
-	start Rule
-	end Rule
+	start, end Rule
 }
 
 fn no_rule() Rule {

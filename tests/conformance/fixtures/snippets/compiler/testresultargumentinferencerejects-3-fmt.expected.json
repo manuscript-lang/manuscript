@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn same[T, E](first T!E, second T!E) Void => return\n\nfn first() Void => same(first: f(), second: other())\n"
+    "fmt": "fn same[T, E](first, second T!E) Void => return\n\nfn first() Void => same(first: f(), second: other())\n"
   }
 }

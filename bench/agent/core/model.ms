@@ -23,14 +23,12 @@ export fn repo() String => env(
 
 // One input and the exact output expected for it.
 export type Case {
-	stdin String
-	stdout String
+	stdin, stdout String
 	name String = "?"
 }
 
 type Meta {
-	title String
-	category String
+	title, category String
 	tier Int
 	timeout_s Int = 5
 	// Agent wall-clock limit for this challenge when longer than the run's; 0 for none.
@@ -38,12 +36,8 @@ type Meta {
 }
 
 export type Challenge {
-	id String
-	title String
-	category String
-	tier Int
-	timeout_s Int
-	agent_timeout_s Int
+	id, title, category String
+	tier, timeout_s, agent_timeout_s Int
 	dir String
 }
 
@@ -65,13 +59,7 @@ fn Challenge.solution(lang String) String => f"{self.dir}/solutions/{lang}"
 
 // A language the benchmark can be solved in, as `languages.json` describes it.
 export type Lang {
-	id String
-	name String
-	solution String
-	build String
-	run String
-	notes String
-	template String
+	id, name, solution, build, run, notes, template String
 	context List[String]
 	// Shell command run in the new workspace, such as installing the agent skill.
 	setup String
@@ -195,12 +183,7 @@ export fn load_languages(ids List[String]) List[Lang] {
 }
 
 // Estimated USD from `pricing.json`; `tokens_in` excludes cached tokens.
-export fn cost_from_tokens(
-	tokens_in Int,
-	cached Int,
-	tokens_out Int,
-	model String,
-) Float {
+export fn cost_from_tokens(tokens_in, cached, tokens_out Int, model String) Float {
 	table := parse(text_of(f"{root()}/pricing.json")).get_or(JsonValue.Null)
 	var p = table.get("default") or JsonValue.Null
 	own := table.get(model)

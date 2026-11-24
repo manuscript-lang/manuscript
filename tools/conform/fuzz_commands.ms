@@ -15,9 +15,7 @@ import (
 )
 
 type Kind {
-	name String
-	dir String
-	phase String
+	name, dir, phase String
 }
 
 fn kind_of(args Args) Kind {
@@ -56,7 +54,7 @@ fn padded(seed Int) String {
 }
 
 // Writes `seed-NNNN.ms` for each seed into `dir`; returns how many.
-fn write_generated(dir String, kind Kind, low Int, high Int) Int {
+fn write_generated(dir String, kind Kind, low, high Int) Int {
 	create_directory(dir.clone(), recursive: true).get()
 
 	var written = 0
@@ -88,7 +86,7 @@ fn write_generated(dir String, kind Kind, low Int, high Int) Int {
 	return written
 }
 
-export fn fuzz_gen(root String, corpus String, args Args) Int {
+export fn fuzz_gen(root, corpus String, args Args) Int {
 	kind := kind_of(args)
 	range := seed_range(args)
 

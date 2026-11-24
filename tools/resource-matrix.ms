@@ -49,24 +49,10 @@ fn main() Void:
 // One standard operation: the receiver it runs on, its method, its arguments (`@V@` is
 // the resource argument) and what to do with a result.
 type Operation {
-	name String
-	setup String
-	receiver String
-	method String
-	arguments String
-	binds String
-	uses String
+	name, setup, receiver, method, arguments, binds, uses String
 }
 
-fn op(
-	move name String,
-	move setup String,
-	move receiver String,
-	move method String,
-	move arguments String,
-	move binds String,
-	move uses String,
-) Operation {
+fn op(move name, setup, receiver, method, arguments, binds, uses String) Operation {
 	return Operation(name, setup, receiver, method, arguments, binds, uses)
 }
 
@@ -319,7 +305,7 @@ fn field(entry JsonValue, key String) String {
 
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
-fn declared_operations(ms String, name String) List[String]! {
+fn declared_operations(ms, name String) List[String]! {
 	ran := run(ms, ["search_symbol", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
 	page := parse(ran.stdout.decode_utf8() or "")?
 	var found = List[String]()
@@ -390,7 +376,7 @@ fn uncovered(ms String, ops List[Operation]) Int {
 
 // The program for `o`, called as `call_form` (`direct` or `bound`), with its resource
 // argument made as `arg_form`.
-fn program(o Operation, call_form String, arg_form String) String {
+fn program(o Operation, call_form, arg_form String) String {
 	var lines = [o.setup.clone()]
 	var argument = ""
 

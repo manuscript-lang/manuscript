@@ -31,7 +31,7 @@ The same namespace and name always give the same lowercase UUID, so it makes a s
 `namespace` is any UUID text, such as `namespace_url` or an application's own UUID; malformed text returns an `Error` with kind `EBADMSG`.
 Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
 */
-export fn uuid_v5(namespace String, name String) String! {
+export fn uuid_v5(namespace, name String) String! {
 	space := uuid_to_bytes(namespace)?
 	var input = BytesBuilder()
 	input.append_bytes(space)

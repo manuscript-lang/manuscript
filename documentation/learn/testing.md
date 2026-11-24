@@ -13,7 +13,7 @@ Save this complete file as `test.ms`:
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn add(a Int, b Int) Int {
+fn add(a, b Int) Int {
     return a + b
 }
 

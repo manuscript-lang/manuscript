@@ -24,12 +24,9 @@ fn sample(length Int, zero Bool = false) Bytes {
 // One prepared case: the input, the options and the answer the run must reproduce.
 type Case {
 	data Bytes
-	text String
-	expected_text String
+	text, expected_text String
 	expected Bytes!
-	hex Bool
-	padded Bool
-	url Bool
+	hex, padded, url Bool
 	weight Int
 	limit Int?
 }
@@ -57,7 +54,7 @@ fn prep_unpadded(length Int, url Bool) Case {
 	return c
 }
 
-fn prep_base32(length Int, hex Bool, padded Bool) Case {
+fn prep_base32(length Int, hex, padded Bool) Case {
 	data := sample(length)
 	options := Base32Options(hex_alphabet: hex, padded: padded)
 	expected := base32_encode(data, options)
@@ -70,7 +67,7 @@ fn prep_base32(length Int, hex Bool, padded Bool) Case {
 	return c
 }
 
-fn prep_decode32(length Int, hex Bool, padded Bool, mode Int) Case {
+fn prep_decode32(length Int, hex, padded Bool, mode Int) Case {
 	data := sample(length)
 	var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
 	if mode == 1 or mode == 7 { text = "!" + ("A".repeat(text.length() - 1)) }
@@ -111,13 +108,7 @@ fn prep_encode85(length Int) Case {
 	return c
 }
 
-fn prep_decode85(
-	length Int,
-	bounded Bool,
-	under Bool,
-	zero Bool = false,
-	bad Int = 0,
-) Case {
+fn prep_decode85(length Int, bounded, under Bool, zero Bool = false, bad Int = 0) Case {
 	data := sample(length, zero)
 	var text = ascii85_encode(data)
 	if bad == 1 { text = "v" + text }

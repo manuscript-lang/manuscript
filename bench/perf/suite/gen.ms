@@ -15,11 +15,11 @@ fn var Rng.next(limit Int) Int {
 	return (self.state / 65536) % limit
 }
 
-fn save(dir String, name String, text String) Void {
+fn save(dir, name, text String) Void {
 	write_file(f"{dir}/{name}", text, replace: true).wait().get()
 }
 
-fn logs(n Int, seed Int) String {
+fn logs(n, seed Int) String {
 	var r = Rng(seed)
 	levels := ["DEBUG", "INFO", "INFO", "INFO", "WARN", "ERROR"]
 	methods := ["GET", "GET", "GET", "POST", "PUT", "DELETE"]

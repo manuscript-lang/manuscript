@@ -7,7 +7,7 @@ import (
 	capture, env, host, works from "./lib.ms",
 )
 
-fn say(ok Bool, ok_text String, missing_text String) Bool {
+fn say(ok Bool, ok_text, missing_text String) Bool {
 	if ok {
 		print(f"OK      {ok_text}")
 	} else {

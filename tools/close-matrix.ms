@@ -65,16 +65,11 @@ fn pass[X](x: X) Void: return
 """
 
 type Shape {
-	name String
-	ty String
-	make String
+	name, ty, make String
 }
 
 type Construct {
-	name String
-	defs String
-	body String
-	only String
+	name, defs, body, only String
 }
 
 fn shapes() List[Shape] {
@@ -90,16 +85,11 @@ fn shapes() List[Shape] {
 	]
 }
 
-fn c(move name String, move defs String, move body String) Construct {
+fn c(move name, defs, body String) Construct {
 	return Construct(name, defs, body, "")
 }
 
-fn only(
-	move name String,
-	move shape String,
-	move defs String,
-	move body String,
-) Construct {
+fn only(move name, shape, defs, body String) Construct {
 	return Construct(name, defs, body, shape)
 }
 
@@ -440,15 +430,13 @@ type Cell {
 }
 
 type Tally {
-	checked Int
-	rejected Int
-	failures Int
+	checked, rejected, failures Int
 	lines List[String]
 }
 
 // Runs one combination: `ms check`, then the program in Debug and Release. Independent
 // of every other combination, so the matrix runs them concurrently.
-fn verify(ms String, scratch String, cell Cell, show Bool, filter String) Tally {
+fn verify(ms, scratch String, cell Cell, show Bool, filter String) Tally {
 	var tally = Tally(0, 0, 0, [])
 	name := cell.name.clone()
 	file := f"{scratch}/{name}.ms"

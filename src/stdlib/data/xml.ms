@@ -178,8 +178,7 @@ type Reader {
 	// scalar.
 	text String
 	ascii Bool
-	at Int
-	max_depth Int
+	at, max_depth Int
 }
 
 fn Reader.peek(offset Int = 0) String {
@@ -199,7 +198,7 @@ fn Reader.looking_at(literal String) Bool {
 }
 
 // The document text from scalar `start` up to `end`.
-fn Reader.span(start Int, end Int) String {
+fn Reader.span(start, end Int) String {
 	if self.ascii { return self.text.view(start, end).clone() }
 
 	var out = ""
@@ -234,7 +233,7 @@ fn var Reader.expect(literal String) Void! {
 
 // Returns the text up to `stop` and consumes it, or fails when `stop` never appears;
 // `what` names the construct in that error, which points at `opened`, where it began.
-fn var Reader.take_until(stop String, what String, opened Int) String! {
+fn var Reader.take_until(stop, what String, opened Int) String! {
 	var wanted List[Int] = []
 	for code in stop.scalar_values() { wanted.append(code) }
 
@@ -532,10 +531,7 @@ fn var Reader.doctype() Void! {
 
 // Only the prolog may have a declaration, before any whitespace or other markup.
 // The prolog may also hold one DOCTYPE; it is skipped, never expanded.
-fn var Reader.skip_misc(
-	declaration_allowed Bool = false,
-	doctype_allowed Bool = false,
-) Void! {
+fn var Reader.skip_misc(declaration_allowed, doctype_allowed Bool = false) Void! {
 	start := self.at
 	var doctype_open = doctype_allowed
 

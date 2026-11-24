@@ -13,7 +13,7 @@ enum Op {
 	Halt
 }
 
-fn program(n Int, m Int) List[Op] {
+fn program(n, m Int) List[Op] {
 	// total = 0; i = 0; while i < n: j = 0; while j < m: total += (i * j) % 7; j += 1;
 	// i += 1
 	return [

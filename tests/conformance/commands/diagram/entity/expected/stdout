@@ -1,7 +1,7 @@
 CALLS VIEW
-`- parse_total  [fn] src/shapes.ms:21
-   |- area  [fn] src/shapes.ms:10
-   |- read_number  [fn] src/shapes.ms:14
+`- parse_total  [fn] src/shapes.ms:20
+   |- area  [fn] src/shapes.ms:9
+   |- read_number  [fn] src/shapes.ms:13
    |  |- Failure
    |  |- Result[Int, Failure]
    |  |- String.clone

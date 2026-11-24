@@ -413,12 +413,10 @@ export fn parse_multipart(body Bytes, boundary String) List[Part]! {
 // go into `pending`; only a delimiter-overlap suffix stays in `buffer` between chunks.
 // `in_part` is false until the first delimiter has passed; `done` after the closing delimiter.
 type MultipartParts {
-	delimiter Bytes
-	buffer Bytes
+	delimiter, buffer Bytes
 	pending BytesBuilder
 	pending_size Int
-	in_part Bool
-	done Bool
+	in_part, done Bool
 	max_part_bytes Int?
 }
 
@@ -564,7 +562,7 @@ export fn encode_multipart(parts List[Part], boundary String) Bytes {
 export fn form_part(
 	name String,
 	move data Bytes,
-	filename String = "",
+	filename,
 	content_type String = "",
 ) Part {
 	var disposition = f"form-data; name={quote_value(name)}"

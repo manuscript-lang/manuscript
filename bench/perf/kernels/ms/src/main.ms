@@ -4,24 +4,17 @@ import (
 )
 
 type Body {
-	x Float
-	y Float
-	z Float
-	vx Float
-	vy Float
-	vz Float
-	mass Float
+	x, y, z, vx, vy, vz, mass Float
 }
 
 type Grid {
-	width Int
-	height Int
+	width, height Int
 	cells List[Int]
 }
 
 enum Tree {
 	Leaf
-	Node(left Tree, right Tree)
+	Node(left, right Tree)
 }
 
 fn say(text String) Void {
@@ -116,13 +109,13 @@ fn advance(var bodies List[Body], steps Int) Float {
 	return e
 }
 
-fn cell(g Grid, x Int, y Int) Int {
+fn cell(g Grid, x, y Int) Int {
 	wx := (x + g.width) % g.width
 	wy := (y + g.height) % g.height
 	return g.cells.get(wy * g.width + wx)
 }
 
-fn neighbors(g Grid, x Int, y Int) Int {
+fn neighbors(g Grid, x, y Int) Int {
 	var n = 0
 	var dy = -1
 
@@ -190,7 +183,7 @@ fn life(gens Int) Int {
 		n += 1
 	}
 
-	return g.cells.fold(0, fn(acc Int, v Int) Int => return acc + v)
+	return g.cells.fold(0, fn(acc, v Int) Int => return acc + v)
 }
 
 fn matmul(n Int) Float {
@@ -308,8 +301,7 @@ fn wordfreq(n Int) Int {
 }
 
 type Cx {
-	re Float
-	im Float
+	re, im Float
 }
 
 fn Cx.mul(o Cx) Cx => Cx(
@@ -346,13 +338,10 @@ fn mandel(n Int) Int {
 }
 
 type Particle {
-	x Float
-	y Float
-	vx Float
-	vy Float
+	x, y, vx, vy Float
 }
 
-fn particles(n Int, steps Int) Float {
+fn particles(n, steps Int) Float {
 	var ps = List[Particle]()
 
 	for i in 0..n {
@@ -455,11 +444,11 @@ fn vm(iters Int) Int {
 
 enum Expr {
 	Num(n Int)
-	Add(l Expr, r Expr)
-	Mul(l Expr, r Expr)
+	Add(l, r Expr)
+	Mul(l, r Expr)
 }
 
-fn build(d Int, s Int) Expr {
+fn build(d, s Int) Expr {
 	if d == 0 { return Expr.Num(s % 10) }
 	if d % 2 == 0 {
 		return Expr.Add(build(d - 1, s * 3 + 1), build(d - 1, s * 7 + 2))
@@ -482,7 +471,7 @@ fn eval(e Expr) Int {
 	}
 }
 
-fn exprs(d Int, reps Int) Int {
+fn exprs(d, reps Int) Int {
 	e := build(d, 1)
 	var t = 0
 	for _i in 0..reps {
@@ -506,7 +495,7 @@ fn closures(n Int) Int {
 	return t
 }
 
-fn stencil(n Int, iters Int) Int {
+fn stencil(n, iters Int) Int {
 	var a = [0].repeated(n * n)
 	var b = [0].repeated(n * n)
 	for i in 0..(n * n) {

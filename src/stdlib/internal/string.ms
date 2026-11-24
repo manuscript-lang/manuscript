@@ -5,13 +5,13 @@ export extern fn msrt_string_from_scalars(values List[Int]) move String!
 export extern fn msrt_string_fields(text String) move List[String]
 
 // Byte offset of the first scalar of `text` that occurs in `set`, or null.
-export extern fn msrt_string_index_any(text String, set String) Int?
+export extern fn msrt_string_index_any(text, set String) Int?
 
 // Text without the scalars of `set` at the start and, as selected, the end.
 export extern fn msrt_string_trim_chars(
-	text String,
+	text,
 	set String,
-	from_start Bool,
+	from_start,
 	from_end Bool,
 ) move String
 
@@ -53,6 +53,6 @@ export extern fn msstd_regex_capture_spans(
 export extern fn msstd_regex_capture_all_spans(
 	re Regex,
 	text String,
-	max_matches Int?,
+	max_matches,
 	max_captures Int?,
 ) move List[Int]!

@@ -23,11 +23,11 @@ import (
 // `clone` is "null", "try" or "force"; `filter` is called with the source and
 // destination of each entry and skips it when it returns False.
 export extern fn msstd_fs_copy(
-	source String,
+	source,
 	destination String,
 	flags Int,
 	clone String,
-	max_entries Int?,
+	max_entries,
 	max_bytes Int?,
 	filter(fn(String, String) Bool)?,
 ) Void!
@@ -37,10 +37,10 @@ export extern fn msstd_fs_copy(
 // symlink flag and skips the entry when it returns True.
 export extern fn msstd_fs_glob_entries(
 	path String,
-	patterns List[String],
+	patterns,
 	exclude List[String],
 	follow_links Bool,
-	max_entries Int?,
+	max_entries,
 	max_results Int?,
 	filter(fn(String, String, Bool, Bool) Bool)?,
 ) move List[PathEntry]!
@@ -77,7 +77,7 @@ export extern fn msstd_fs_file_write_vectors(
 	offset Int,
 ) Void!
 
-export extern fn msstd_fs_file_seek(file NativeFile, offset Int, origin Int) Int!
+export extern fn msstd_fs_file_seek(file NativeFile, offset, origin Int) Int!
 
 export extern fn msstd_fs_file_stat(file NativeFile) move FileInfo!
 
@@ -93,17 +93,17 @@ export extern fn msstd_fs_file_unlock(file NativeFile) Void!
 
 export extern fn msstd_fs_file_chmod(file NativeFile, mode Int) Void!
 
-export extern fn msstd_fs_file_chown(file NativeFile, uid Int, gid Int) Void!
+export extern fn msstd_fs_file_chown(file NativeFile, uid, gid Int) Void!
 
 export extern fn msstd_fs_file_set_times(
 	file NativeFile,
-	accessed Timestamp,
+	accessed,
 	modified Timestamp,
 ) Void!
 
 export extern fn msstd_fs_file_read_lines(
 	file NativeFile,
-	max_bytes Int?,
+	max_bytes,
 	max_lines Int?,
 ) move List[String]!
 
@@ -125,7 +125,7 @@ export extern fn msstd_fs_canonicalize(path String) move String!
 
 export extern fn msstd_fs_create_directory(path String, recursive Bool) Void!
 
-export extern fn msstd_fs_create_link(path String, target String) Void!
+export extern fn msstd_fs_create_link(path, target String) Void!
 
 export extern fn msstd_fs_read_file(path String, max_bytes Int?) move Bytes!
 
@@ -133,7 +133,7 @@ export extern fn msstd_fs_read_link(path String) move String!
 
 export extern fn msstd_fs_remove(path String, recursive Bool) Void!
 
-export extern fn msstd_fs_rename(source String, destination String) Void!
+export extern fn msstd_fs_rename(source, destination String) Void!
 
 export extern fn msstd_fs_temporary_root() move String
 
@@ -147,7 +147,7 @@ export extern fn msstd_fs_append_file(path String, data Bytes) Void!
 
 export extern fn msstd_fs_chmod(path String, mode Int, follow Bool) Void!
 
-export extern fn msstd_fs_chown(path String, uid Int, gid Int, follow Bool) Void!
+export extern fn msstd_fs_chown(path String, uid, gid Int, follow Bool) Void!
 
 export extern fn msstd_fs_admit(bytes Int) Bool
 
@@ -155,9 +155,9 @@ export extern fn msstd_fs_release() Void
 
 export extern fn msstd_fs_truncate(path String, size Int) Void!
 
-export extern fn msstd_fs_hard_link(source String, destination String) Void!
+export extern fn msstd_fs_hard_link(source, destination String) Void!
 
-export extern fn msstd_fs_open(path String, flags String, mode Int) move FileHandle!
+export extern fn msstd_fs_open(path, flags String, mode Int) move FileHandle!
 
 export extern fn msstd_fs_directory_open(path String) move Directory!
 
@@ -171,7 +171,7 @@ export extern fn msstd_fs_list(path String, max_entries Int?) move List[Director
 
 export extern fn msstd_fs_set_times(
 	path String,
-	accessed Timestamp,
+	accessed,
 	modified Timestamp,
 	follow Bool,
 ) Void!
@@ -188,7 +188,7 @@ export extern fn msstd_fs_watch(
 export extern fn msstd_fs_watch_native(
 	path String,
 	recursive Bool,
-	max_entries Int?,
+	max_entries,
 	max_events Int?,
 	overflow String,
 ) move RawWatcher!

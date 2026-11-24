@@ -18,12 +18,10 @@ fn zeros(count Int) Bytes {
 // One prepared case: the input, the limit and the answer the run must reproduce.
 type Case {
 	text String
-	data Bytes
-	scalar Bytes
+	data, scalar Bytes
 	expected Bytes!
 	expected_text String!
-	weight Int
-	which Int
+	weight, which Int
 	limit Int?
 }
 

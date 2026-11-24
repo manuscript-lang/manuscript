@@ -49,8 +49,7 @@ fn row_weight(tree JsonValue, index Int) Int {
 }
 
 type BenchData {
-	doc String
-	doc_2 String
+	doc, doc_2 String
 	tree JsonValue
 }
 

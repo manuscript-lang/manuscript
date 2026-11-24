@@ -18,18 +18,18 @@ export extern fn msstd_process_command_run(
 	max_output_bytes Int?,
 	timeout Duration?,
 	cwd String?,
-	env_names List[String],
+	env_names,
 	env_values List[String],
 ) move CommandOutput!
 
 export extern fn msstd_process_command_spawn(
 	program String,
 	arguments List[String],
-	stdin Stdio,
-	stdout Stdio,
+	stdin,
+	stdout,
 	stderr Stdio,
 	cwd String?,
-	env_names List[String],
+	env_names,
 	env_values List[String],
 ) move Subprocess!
 
@@ -61,7 +61,7 @@ export extern fn msstd_process_initialize_groups(username String, gid Int) Void!
 
 export extern fn msstd_process_resource_usage() move ResourceUsage!
 
-export extern fn msstd_process_send_signal(pid Int, signal Int) Void!
+export extern fn msstd_process_send_signal(pid, signal Int) Void!
 
 export extern fn msstd_process_set_groups(groups List[Int]) Void!
 
@@ -82,12 +82,12 @@ export extern fn msstd_process_signal_close(signals NativeSignals) Void
 
 export extern fn msstd_system_get_priority(pid Int) Int!
 
-export extern fn msstd_system_set_priority(pid Int, priority Int) Void!
+export extern fn msstd_system_set_priority(pid, priority Int) Void!
 
 export extern fn msstd_process_replace(
 	program String,
-	arguments List[String],
-	env_names List[String],
+	arguments,
+	env_names,
 	env_values List[String],
 ) Void!
 

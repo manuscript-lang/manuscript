@@ -32,7 +32,7 @@ fn mask_shift(mask Int) Int {
 
 // Extracts a bit-field channel at `shift` with maximum value `peak` and scales it to
 // eight bits.
-fn mask_channel(value Int, shift Int, peak Int) Int {
+fn mask_channel(value, shift, peak Int) Int {
 	return (bit_and(shift_right_unsigned(value, shift), peak) * 255 + peak / 2) / peak
 }
 
@@ -249,7 +249,7 @@ fn put32(var out BytesBuilder, value Int) Void {
 // Encodes pixels as a 24-bit BMP, or as a 32-bit BMP when `channels` is 2 or 4 (alpha).
 // Gray pixels are stored as RGB. A size past the BMP limits (2^31 - 1 per dimension, or
 // 4 GiB in total) returns EOVERFLOW.
-export fn encode_bmp(width Int, height Int, channels Int, pixels List[UInt8]) Bytes! {
+export fn encode_bmp(width, height, channels Int, pixels List[UInt8]) Bytes! {
 	if width > 2147483647 or height > 2147483647 {
 		return error(too_big("BMP dimensions too large"))
 	}

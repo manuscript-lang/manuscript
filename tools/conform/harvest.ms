@@ -35,17 +35,14 @@ type Candidate {
 	// Where it came from, recorded in the fixture header.
 	origin String
 	// Directory (`snippets`, `e2e`, ...) and slug that make the fixture id.
-	category String
-	slug String
+	category, slug String
 	is_project Bool
-	text String
-	dir String
+	text, dir String
 }
 
 // What `ms check` said about a candidate.
 type Verdict {
-	parse_errors Bool
-	type_errors Bool
+	parse_errors, type_errors Bool
 	unusable String
 }
 
@@ -218,7 +215,7 @@ fn unusable(reason String) Verdict {
 
 // Copies the project at `from` into `to` without hidden or build directories and
 // without harness files.
-fn copy_project(from String, to String) Void {
+fn copy_project(from, to String) Void {
 	create_directory(to.slice(0, parent_length(to)).clone(), recursive: true).get()
 	copy(from, to, CopyOptions(recursive: true, replace: true)).get()
 	for pattern in [
@@ -231,7 +228,7 @@ fn copy_project(from String, to String) Void {
 	}
 }
 
-fn check_candidate(ms String, scratch String, index Int, candidate Candidate) Verdict {
+fn check_candidate(ms, scratch String, index Int, candidate Candidate) Verdict {
 	work := f"{scratch}/c{index}"
 	void remove(work, recursive: true)
 
@@ -276,12 +273,7 @@ fn check_candidate(ms String, scratch String, index Int, candidate Candidate) Ve
 	return verdict
 }
 
-fn check_chunk(
-	ms String,
-	scratch String,
-	base Int,
-	chunk List[Candidate],
-) List[Verdict] {
+fn check_chunk(ms, scratch String, base Int, chunk List[Candidate]) List[Verdict] {
 	var verdicts = List[Verdict]()
 	for offset in 0..chunk.length() {
 		verdicts.append(check_candidate(ms, scratch, base + offset, chunk[offset]))
@@ -310,7 +302,7 @@ fn project_text(dir String) String {
 	return text
 }
 
-fn header(origin String, phase String, text String, extra List[String]) Meta {
+fn header(origin, phase, text String, extra List[String]) Meta {
 	var tags = tags_for(text, phase)
 	for tag in extra { tags.append(tag.clone()) }
 	return Meta(
@@ -334,14 +326,7 @@ fn strip_headers(source String) String {
 	return lines.slice(skipped_lines, lines.length()).get_or([]).join("\n")
 }
 
-fn write_source(
-	corpus String,
-	id String,
-	origin String,
-	phase String,
-	body String,
-	extra List[String],
-) Bool {
+fn write_source(corpus, id, origin, phase, body String, extra List[String]) Bool {
 	path := f"{corpus}/{id}.ms"
 	create_directory(path.slice(0, parent_length(path)).clone(), recursive: true).get()
 
@@ -351,7 +336,7 @@ fn write_source(
 }
 
 fn write_single(
-	corpus String,
+	corpus,
 	id String,
 	candidate Candidate,
 	verdict Verdict,
@@ -394,12 +379,7 @@ fn write_single(
 	return written
 }
 
-fn write_project(
-	corpus String,
-	id String,
-	candidate Candidate,
-	verdict Verdict,
-) List[String] {
+fn write_project(corpus, id String, candidate Candidate, verdict Verdict) List[String] {
 	text := project_text(candidate.dir)
 	var phase = "check"
 
@@ -432,7 +412,7 @@ fn write_project(
 	return written
 }
 
-export fn harvest(root String, corpus String, args Args) Int {
+export fn harvest(root, corpus String, args Args) Int {
 	repo := one(args, "repo", root)
 	ms := one(args, "ms", tool_ms(root))
 	var candidates = List[Candidate]()

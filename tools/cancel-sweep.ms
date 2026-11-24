@@ -28,8 +28,7 @@ import (
 // One test's counts as the runtime printed them.
 type Counted {
 	name String
-	parks Int
-	live Int
+	parks, live Int
 	failed Bool
 }
 
@@ -83,13 +82,7 @@ fn has_tests(source String) Bool {
 	return source.starts_with("test \"") or source.contains("\ntest \"")
 }
 
-fn test_run(
-	ms String,
-	file String,
-	filter String,
-	cancel_at Int,
-	threads Int,
-) List[Counted] {
+fn test_run(ms, file, filter String, cancel_at, threads Int) List[Counted] {
 	var settings = Map[String, String]()
 	settings["MS_UNDER_TEST"] = ms.clone()
 	settings["MS_PARK_COUNT"] = "1"
@@ -117,7 +110,7 @@ fn test_run(
 }
 
 // The names of the tests in `file`, as `ms test --list` prints them.
-fn test_names(ms String, file String) List[String] {
+fn test_names(ms, file String) List[String] {
 	var names = List[String]()
 	if out := run(
 		ms.clone(),
@@ -133,7 +126,7 @@ fn test_names(ms String, file String) List[String] {
 
 // Sweeps `files`: one line per cancelled run (`swept`), then one `leak:` report per run
 // that left live blocks.
-fn sweep(ms String, root String, files List[String], most Int) List[String] {
+fn sweep(ms, root String, files List[String], most Int) List[String] {
 	var lines = List[String]()
 
 	for f in files {

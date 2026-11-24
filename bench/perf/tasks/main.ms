@@ -29,7 +29,7 @@ fn park_sleep(a Int) Int! {
 	return ok(a)
 }
 
-fn descend(depth Int, acc Int) Int {
+fn descend(depth, acc Int) Int {
 	if depth == 0 { return acc }
 
 	scratch List[Int] := [acc, depth, acc + depth]

@@ -23,13 +23,13 @@ export extern fn msstd_encoding_base64_decode_unpadded(
 
 export extern fn msstd_encoding_base32_encode(
 	data Bytes,
-	hex_alphabet Bool,
+	hex_alphabet,
 	padded Bool,
 ) move String
 
 export extern fn msstd_encoding_base32_decode(
 	text String,
-	hex_alphabet Bool,
+	hex_alphabet,
 	padded Bool,
 	max_bytes Int?,
 ) move Bytes!

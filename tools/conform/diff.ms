@@ -11,13 +11,7 @@ import (
 )
 
 // One line per fixture of `chunk`: `ok`, or `DIFF <id>`.
-fn compare_chunk(
-	ms_a String,
-	type_a String,
-	ms_b String,
-	type_b String,
-	chunk List[Fixture],
-) List[String] {
+fn compare_chunk(ms_a, type_a, ms_b, type_b String, chunk List[Fixture]) List[String] {
 	var lines = List[String]()
 
 	for fx in chunk {
@@ -33,9 +27,9 @@ fn compare_chunk(
 
 // The ids of the fixtures of `chosen` that the two sides observe differently.
 export fn differing(
-	ms_a String,
-	type_a String,
-	ms_b String,
+	ms_a,
+	type_a,
+	ms_b,
 	type_b String,
 	chosen List[Fixture],
 	jobs_wanted Int,
@@ -91,7 +85,7 @@ export fn differing(
 	return found
 }
 
-export fn run_diff(root String, corpus String, filter Filter, args Args) Int {
+export fn run_diff(root, corpus String, filter Filter, args Args) Int {
 	ms_a := one(args, "ms-a", tool_ms(root))
 	ms_b := one(args, "ms-b", ms_a)
 	type_a := one(args, "build-type-a", "Release")

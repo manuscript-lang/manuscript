@@ -267,7 +267,7 @@ export fn decode_words(text String) String {
 	return out
 }
 
-fn decode_word(charset String, encoding String, payload String) String? {
+fn decode_word(charset, encoding, payload String) String? {
 	set := charset.lower()
 	kind := encoding.upper()
 	var bytes = "".to_bytes()

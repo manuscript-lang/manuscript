@@ -34,7 +34,7 @@ fn route_env(inproc Bool) Map[String, String] {
 	return vars
 }
 
-fn build(ms String, source String, level String, dir String, inproc Bool) Built! {
+fn build(ms, source, level, dir String, inproc Bool) Built! {
 	path := canonicalize(source)?
 	output := f"{dir}/prog{exe()}"
 	started := monotonic()
@@ -66,7 +66,7 @@ fn median(values List[Float]) Float {
 	return sorted[sorted.length() / 2]
 }
 
-fn report(ms String, source String, level String, runs Int) Int {
+fn report(ms, source, level String, runs Int) Int {
 	dir := temporary_directory("ms-route-bench-").get()
 	var process = List[Float]()
 	var inproc = List[Float]()

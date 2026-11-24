@@ -33,7 +33,7 @@ fn Lines.check(size Int) Void! {
 // Internal: decodes the held bytes in `[start, stop)` as one line. Bytes that are not
 // UTF-8 fail with `EBADMSG` rather than becoming an empty line. The range is decoded
 // in place, without first copying the line into a `Bytes`.
-fn Lines.decode(start Int, stop Int) String! {
+fn Lines.decode(start, stop Int) String! {
 	text := self.data.decode_utf8_range(start, stop)
 	if text != null { return ok(text) }
 

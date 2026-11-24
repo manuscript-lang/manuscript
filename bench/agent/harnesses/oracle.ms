@@ -8,10 +8,6 @@ export type Oracle {
 
 fn Oracle.name() String => "oracle"
 
-fn Oracle.command(
-	prompt String,
-	workspace String,
-	model String?,
-) List[String] => ["true"]
+fn Oracle.command(prompt, workspace String, model String?) List[String] => ["true"]
 
 fn Oracle.parse(transcript String) Usage => Usage()

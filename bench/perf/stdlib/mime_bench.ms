@@ -6,7 +6,7 @@ import (
 
 // The input is built by the fixture; each operation includes the source's owned body
 // copy.
-fn consume(body Bytes, chunk Int, count Int, size Int) Int! {
+fn consume(body Bytes, chunk, count, size Int) Int! {
 	var parts = multipart_parts(from_bytes(body.clone(), chunk), "XyZ", null)
 	var seen = 0
 	var bytes = 0
@@ -40,12 +40,7 @@ fn body(size Int, count Int = 1) Bytes {
 }
 
 type BenchData {
-	data Bytes
-	data_2 Bytes
-	data_3 Bytes
-	data_4 Bytes
-	data_5 Bytes
-	data_6 Bytes
+	data, data_2, data_3, data_4, data_5, data_6 Bytes
 }
 
 fn make_fixture() BenchData {

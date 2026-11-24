@@ -148,7 +148,7 @@ fn var Gen.moved() String {
 	return name
 }
 
-fn var Gen.text(prefix String, letters String) String {
+fn var Gen.text(prefix, letters String) String {
 	self.serial += 1
 	return f"f\"{prefix}\{{self.serial}\}-{letters.repeat(30)}\""
 }

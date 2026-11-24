@@ -346,12 +346,8 @@ fn member_path(value JsonValue, keys List[String], from Int) JsonValue? {
 type JsonReading[T Data] {
 	options JsonOptions
 	pending BytesBuilder
-	size Int
-	depth Int
-	mode Int
-	in_string Bool
-	escaped Bool
-	finished Bool
+	size, depth, mode Int
+	in_string, escaped, finished Bool
 	failure Error?
 }
 

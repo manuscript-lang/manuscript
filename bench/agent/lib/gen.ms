@@ -11,12 +11,10 @@ import (
 
 // One input and the exact output expected for it.
 export type GenCase {
-	name String
-	stdin String
-	stdout String
+	name, stdin, stdout String
 }
 
-export fn make_case(name String, stdin String, stdout String) GenCase {
+export fn make_case(name, stdin, stdout String) GenCase {
 	return GenCase(name.clone(), stdin.clone(), stdout.clone())
 }
 
@@ -25,7 +23,7 @@ export fn dir(id String) String => f"{root()}/challenges/{id}"
 
 // Writes examples/cases.json and hidden/cases.json for challenge `id` as
 // `json.dumps(cases, indent=1)` does.
-export fn write_cases(id String, examples List[GenCase], hidden List[GenCase]) Void {
+export fn write_cases(id String, examples, hidden List[GenCase]) Void {
 	names := hidden.map(c => c.name.clone())
 	if names.distinct().length() != names.length() { panic("duplicate case names") }
 	write_text(f"{dir(id)}/examples/cases.json", dumps_data(examples, 1) + "\n")
@@ -55,7 +53,7 @@ export fn build_oracle(id String) String {
 }
 
 // The oracle's output for `stdin`.
-export fn solve_with(oracle String, stdin String) String {
+export fn solve_with(oracle, stdin String) String {
 	ran := bash(f"\"{oracle}\"", ".", 120, stdin)
 	if ran.code != 0 {
 		panic(f"oracle failed (exit {ran.code}): {ran.err.slice(0, 500)}")
@@ -71,11 +69,11 @@ export type Cases {
 }
 
 // Appends a case whose expected output is the oracle's answer for `stdin`.
-fn var Cases.push(name String, stdin String) Void {
+fn var Cases.push(name, stdin String) Void {
 	self.list.append(make_case(name, stdin, solve_with(self.oracle, stdin)))
 }
 
 // The case made from `stdin` without recording it, for the example lists.
-fn Cases.make(name String, stdin String) GenCase {
+fn Cases.make(name, stdin String) GenCase {
 	return make_case(name, stdin, solve_with(self.oracle, stdin))
 }

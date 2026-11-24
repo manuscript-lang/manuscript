@@ -33,8 +33,7 @@ export fn from_list[T Clonable](items List[T]) ReadStream[T] {
 // Internal: chunks of at most `chunk` bytes of `data`.
 type BytesSource {
 	data Bytes
-	at Int
-	chunk Int
+	at, chunk Int
 }
 
 fn var BytesSource.next() move Bytes?! {

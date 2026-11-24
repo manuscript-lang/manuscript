@@ -27,8 +27,7 @@ import (
 // What one run of ms left: its exit status and streams, as text.
 export type Process {
 	code Int
-	stdout String
-	stderr String
+	stdout, stderr String
 	timed_out Bool
 	spawn_error String
 }
@@ -86,7 +85,7 @@ export fn invoke(
 // `text` with the work directory (as given and with forward slashes) as <DIR> and its
 // parent as <SCRATCH>, the line number of a standard-library frame as <LINE>, and the
 // count of a repeated frame as <COUNT>.
-fn normalize_text(text String, work String) String {
+fn normalize_text(text, work String) String {
 	var out = text.replace(work, "<DIR>").replace(work.replace("\\", "/"), "<DIR>")
 	parent_end := parent_length(work)
 
@@ -362,7 +361,7 @@ fn check_phase(ms String, fx Fixture, work String) JsonValue {
 	return JsonValue.ObjectValue(fields)
 }
 
-fn run_phase(ms String, fx Fixture, work String, build_type String) JsonValue {
+fn run_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 	var args = ["run", fx.entry.clone(), "--build-type", build_type.clone()]
 
 	if not fx.args.is_empty() {
@@ -420,7 +419,7 @@ fn shape(value JsonValue, path String, var out List[String]) Void {
 	}
 }
 
-fn test_phase(ms String, fx Fixture, work String, build_type String) JsonValue {
+fn test_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 	var args = ["test", fx.entry.clone(), "--json", "--build-type", build_type.clone()]
 
 	if not fx.args.is_empty() {
@@ -461,6 +460,6 @@ export fn observe(ms String, fx Fixture, build_type String) JsonValue {
 	return test_phase(ms, fx, work.clone(), build_type)
 }
 
-export fn same(left JsonValue, right JsonValue) Bool {
+export fn same(left, right JsonValue) Bool {
 	return stringify(left).get() == stringify(right).get()
 }

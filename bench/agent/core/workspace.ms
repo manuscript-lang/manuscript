@@ -12,8 +12,7 @@ import (
 // The benchmark's verdict on one finished workspace.
 export type Grade {
 	built Bool
-	passed Int
-	total Int
+	passed, total Int
 	pass Bool
 	code_tokens Int
 	error String?
@@ -39,9 +38,7 @@ export type BuildLog {
 type LogRow {
 	phase String
 	ok Bool
-	codes String = ""
-	msg String = ""
-	fixed String = ""
+	codes, msg, fixed String = ""
 }
 
 // Creates `dest` with the language template, spec, examples and `check.sh`. Returns the

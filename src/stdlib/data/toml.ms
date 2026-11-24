@@ -76,9 +76,7 @@ type Reader {
 
 // Table flags. A table's entries live at the same index of `Reader.entries`.
 type Table {
-	explicit Bool
-	dotted Bool
-	sealed Bool
+	explicit, dotted, sealed Bool
 }
 
 // Tables are stored in the reader and referenced by index, so a parent can name a child
@@ -90,7 +88,7 @@ enum Node {
 	TableArray(slot Int)
 }
 
-fn new_table(var reader Reader, explicit Bool, dotted Bool) Int {
+fn new_table(var reader Reader, explicit, dotted Bool) Int {
 	reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: false))
 	reader.entries.append(Map[String, Node]())
 	return reader.tables.length() - 1
@@ -185,7 +183,7 @@ fn locate(data Bytes, pos Int) List[Int] {
 }
 
 // A malformed-input error at a one-based source position.
-fn toml_invalid(line Int, column Int, reason String) Error {
+fn toml_invalid(line, column Int, reason String) Error {
 	return Error(
 		f"TOML {line}:{column}: {reason}",
 		kind: "EBADMSG",
@@ -203,7 +201,7 @@ fn invalid(reader Reader, reason String) Error {
 }
 
 // The text between two byte offsets of the document.
-fn slice_text(reader Reader, start Int, end Int) String {
+fn slice_text(reader Reader, start, end Int) String {
 	return (reader.data.slice(start, end).get().decode_utf8() or "").clone()
 }
 
@@ -591,7 +589,7 @@ fn simple_key(var reader Reader) String? {
 }
 
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
-fn key_value(var reader Reader, table Int, depth Int) Void! {
+fn key_value(var reader Reader, table, depth Int) Void! {
 	key := simple_key(reader)
 
 	if key != null {
@@ -623,7 +621,7 @@ fn seal(var reader Reader, value Node) Void {
 	}
 }
 
-fn digits(text String, alphabet String) Bool {
+fn digits(text, alphabet String) Bool {
 	if text == "" { return false }
 
 	var previous = false
@@ -654,7 +652,7 @@ fn decimal_part(text String) Bool {
 	return clean == "0" or not clean.starts_with("0")
 }
 
-fn date_number(text String, minimum Int, maximum Int) Bool {
+fn date_number(text String, minimum, maximum Int) Bool {
 	if not digits(text, "0123456789") or text.contains(
 		"_"
 	) { return false }
@@ -989,8 +987,7 @@ fn read_value(var reader Reader, depth Int) Node! {
 // Counts the values of the finished document against the limits.
 type Budget {
 	values Int
-	max_depth Int?
-	max_values Int?
+	max_depth, max_values Int?
 }
 
 fn materialize(

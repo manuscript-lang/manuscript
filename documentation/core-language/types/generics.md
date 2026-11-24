@@ -43,7 +43,7 @@ fn Key.equals(other Key) Bool {
     return self.id == other.id
 }
 
-fn same_key(left Equal, right Equal) Bool {
+fn same_key(left, right Equal) Bool {
     return left.equals(right)
 }
 
@@ -118,7 +118,7 @@ A call may omit type arguments when its arguments and expected result uniquely d
 
 <!-- manuscript-example: {"mode":"error","contains":"expected Int","given":[]} -->
 ```manuscript
-fn choose[T](first T, second T) T {
+fn choose[T](first, second T) T {
     return first
 }
 
@@ -161,7 +161,7 @@ A generic body is checked once against its declared bounds, which expose only th
 <!-- manuscript-example: {"mode":"error","contains":"equality requires Equal","given":[]} -->
 ```manuscript
 // Rejected at declaration: missing Equal bound.
-fn unchecked_same[T](left T, right T) Bool {
+fn unchecked_same[T](left, right T) Bool {
     return left == right
 }
 

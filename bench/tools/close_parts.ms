@@ -16,7 +16,7 @@ import (
 	absolute, run_in, usage from "./lib.ms",
 )
 
-fn same_bytes(a String, b String) Bool {
+fn same_bytes(a, b String) Bool {
 	left := read_file(a).wait()
 	right := read_file(b).wait()
 	if left.is_error() or right.is_error() { return false }

@@ -45,8 +45,7 @@ fn move Door.close() Void! {
 }
 
 type Room {
-	first Door
-	second Door
+	first, second Door
 }
 
 type Oops {
@@ -78,7 +77,7 @@ fn before_move(move r Room, fail Bool) List[Door]!Oops {
 	return ok(xs)
 }
 
-fn both_cond(move r Room, a Bool, b Bool) List[Door] {
+fn both_cond(move r Room, a, b Bool) List[Door] {
 	var xs List[Door] = []
 	if a {
 		xs.append(r.first)

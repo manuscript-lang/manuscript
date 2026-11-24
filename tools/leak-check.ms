@@ -58,7 +58,7 @@ fn has_tests(source String) Bool {
 
 // Sweeps `files` and returns one line per swept program (`swept`), followed by one
 // report per leak that starts with `leak:`.
-fn sweep(ms String, root String, files List[String]) List[String] {
+fn sweep(ms, root String, files List[String]) List[String] {
 	var lines = List[String]()
 
 	for f in files {
@@ -94,7 +94,7 @@ fn sweep(ms String, root String, files List[String]) List[String] {
 
 			lines.append("swept")
 
-			total := counts.fold(0, fn(a Int, b Int) Int => a + b)
+			total := counts.fold(0, fn(a, b Int) Int => a + b)
 			if total != 0 {
 				lines.append(f"leak: {absolute} left {total} live blocks")
 			}
