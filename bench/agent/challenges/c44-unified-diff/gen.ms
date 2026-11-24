@@ -7,11 +7,10 @@ import (
 
 // One line of an edit script: a mark (space, `-` or `+`) and the text.
 type Op {
-	mark String
-	text String
+	mark, text String
 }
 
-fn script(a List[String], b List[String]) List[Op] {
+fn script(a, b List[String]) List[Op] {
 	n := a.length()
 	m := b.length()
 	var table = List[List[Int]]()
@@ -67,7 +66,7 @@ fn script(a List[String], b List[String]) List[Op] {
 	return ops
 }
 
-fn rng(start Int, ln Int) String {
+fn rng(start, ln Int) String {
 	s := start + (if ln > 0 { 1 } else { 0 })
 	return if ln == 1 { f"{s}" } else { f"{s},{ln}" }
 }
@@ -123,14 +122,14 @@ fn solve(s String) String {
 	return out.map(x => x + "\n").join("")
 }
 
-fn mk(a List[String], b List[String], c Int, na String, nb String) String {
+fn mk(a, b List[String], c Int, na, nb String) String {
 	return (
 		f"{na} {nb} {c} {a.length()} {b.length()}\n"
 		+ a.concat(b).map(x => x + "\n").join("")
 	)
 }
 
-fn case3(name String, a List[String], b List[String], c Int) GenCase {
+fn case3(name String, a, b List[String], c Int) GenCase {
 	s := mk(a, b, c, "a.txt", "b.txt")
 	return make_case(name, s, solve(s))
 }

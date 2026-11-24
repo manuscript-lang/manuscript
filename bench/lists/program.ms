@@ -40,7 +40,7 @@ fn sorted(values List[Int]) List[Int] {
 	return values.sorted(compare)
 }
 
-fn compare(left Int, right Int) Int {
+fn compare(left, right Int) Int {
 	if left < right { return -1 }
 	if left > right { return 1 }
 

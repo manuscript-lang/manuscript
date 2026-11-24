@@ -9,17 +9,12 @@ import (
 export type Stats {
 	operations Int
 	median_ns Float
-	iterations Int?
-	samples Int?
-	min_ns Float?
-	max_ns Float?
-	mean_ns Float?
-	stddev_ns Float?
+	iterations, samples Int?
+	min_ns, max_ns, mean_ns, stddev_ns Float?
 }
 
 export type Bench {
-	name String
-	status String
+	name, status String
 	failure String?
 	stats Stats?
 }

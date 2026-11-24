@@ -9,7 +9,7 @@ import (
 )
 
 // The value of environment variable `name`, or `fallback`.
-export fn env(name String, fallback String) String {
+export fn env(name, fallback String) String {
 	all := environment().get_or(Map[String, String]())
 	value := all.get(name)
 	if value != null { return value.clone() }
@@ -31,7 +31,7 @@ export fn must_read(path String) String {
 }
 
 // Replaces the file at `path`, creating its directory first.
-export fn write_text(path String, text String) Void {
+export fn write_text(path, text String) Void {
 	create_directory(dirname(path), recursive: true).get()
 	write_file(path, text, replace: true).wait().get()
 }
@@ -51,15 +51,14 @@ export fn nonblank_lines(text String) List[String] {
 // What a finished shell command left behind.
 export type Ran {
 	code Int
-	out String
-	err String
+	out, err String
 	seconds Float
 }
 
 // Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still
 // running after
 // `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
-export fn bash(command String, cwd String, timeout_s Int, input String) Ran {
+export fn bash(command, cwd String, timeout_s Int, input String) Ran {
 	return run_in(
 		"bash",
 		["-c", f"cd \"$0\" && {command}", cwd.clone()],
@@ -97,7 +96,7 @@ export fn run_in(
 }
 
 // `text.split(separator, maxsplit)` as Python defines it: at most `splits` splits, the rest stays in the last piece.
-export fn split_max(text String, separator String, splits Int) List[String] {
+export fn split_max(text, separator String, splits Int) List[String] {
 	var out = List[String]()
 	var rest = text.clone()
 
@@ -130,7 +129,7 @@ export fn strip_spaces(text String) String {
 
 // Whether the regular expression `pattern` matches all of `text`, as Python's
 // `re.fullmatch`.
-export fn full_match(pattern String, text String) Bool {
+export fn full_match(pattern, text String) Bool {
 	re := compile(f"^(?:{pattern})$").to_optional()
 	if re != null { return re.matches(text) }
 

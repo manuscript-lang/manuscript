@@ -3,41 +3,33 @@ import (
 	Curve, HashAlgorithm, NativeHasher from "@std/crypto/crypto.ms",
 )
 
-export extern fn msstd_crypto_constant_time_equal(left Bytes, right Bytes) Bool
+export extern fn msstd_crypto_constant_time_equal(left, right Bytes) Bool
 
-export extern fn msstd_crypto_verify(key Bytes, data Bytes, signature Bytes) Bool
+export extern fn msstd_crypto_verify(key, data, signature Bytes) Bool
 
 export extern fn msstd_crypto_open(
-	key Bytes,
-	nonce Bytes,
-	ciphertext Bytes,
+	key,
+	nonce,
+	ciphertext,
 	associated_data Bytes,
 ) move Bytes!
 
 export extern fn msstd_crypto_public_key(seed Bytes) move Bytes!
 
 export extern fn msstd_crypto_seal(
-	key Bytes,
-	nonce Bytes,
-	plaintext Bytes,
+	key,
+	nonce,
+	plaintext,
 	associated_data Bytes,
 ) move Bytes!
 
-export extern fn msstd_crypto_sign(seed Bytes, data Bytes) move Bytes!
+export extern fn msstd_crypto_sign(seed, data Bytes) move Bytes!
 
-export extern fn msstd_crypto_aes_ctr(key Bytes, iv Bytes, data Bytes) move Bytes!
+export extern fn msstd_crypto_aes_ctr(key, iv, data Bytes) move Bytes!
 
-export extern fn msstd_crypto_aes_cbc_encrypt(
-	key Bytes,
-	iv Bytes,
-	plaintext Bytes,
-) move Bytes!
+export extern fn msstd_crypto_aes_cbc_encrypt(key, iv, plaintext Bytes) move Bytes!
 
-export extern fn msstd_crypto_aes_cbc_decrypt(
-	key Bytes,
-	iv Bytes,
-	ciphertext Bytes,
-) move Bytes!
+export extern fn msstd_crypto_aes_cbc_decrypt(key, iv, ciphertext Bytes) move Bytes!
 
 export extern fn msstd_crypto_ecdsa_generate(curve Curve) move Bytes!
 
@@ -52,12 +44,12 @@ export extern fn msstd_crypto_ecdsa_sign(
 export extern fn msstd_crypto_ecdsa_verify(
 	public_key Bytes,
 	hash HashAlgorithm,
-	data Bytes,
+	data,
 	signature Bytes,
 ) Bool
 
 export extern fn msstd_crypto_ecdh_shared_secret(
-	private_key Bytes,
+	private_key,
 	peer_public_key Bytes,
 ) move Bytes!
 
@@ -72,7 +64,7 @@ export extern fn msstd_crypto_rsa_sign(
 export extern fn msstd_crypto_rsa_verify(
 	public_key Bytes,
 	hash HashAlgorithm,
-	data Bytes,
+	data,
 	signature Bytes,
 ) Bool
 
@@ -85,7 +77,7 @@ export extern fn msstd_crypto_rsa_sign_pss(
 export extern fn msstd_crypto_rsa_verify_pss(
 	public_key Bytes,
 	hash HashAlgorithm,
-	data Bytes,
+	data,
 	signature Bytes,
 ) Bool
 
@@ -103,24 +95,20 @@ export extern fn msstd_crypto_rsa_decrypt(
 
 export extern fn msstd_crypto_digest(value HashAlgorithm, data Bytes) move Bytes
 
-export extern fn msstd_crypto_hmac(
-	value HashAlgorithm,
-	key Bytes,
-	data Bytes,
-) move Bytes!
+export extern fn msstd_crypto_hmac(value HashAlgorithm, key, data Bytes) move Bytes!
 
 export extern fn msstd_crypto_derive_key(
 	value HashAlgorithm,
-	password Bytes,
+	password,
 	salt Bytes,
-	iterations Int,
+	iterations,
 	length Int,
 ) move Bytes!
 
 export extern fn msstd_crypto_hkdf(
 	value HashAlgorithm,
-	secret Bytes,
-	salt Bytes,
+	secret,
+	salt,
 	info Bytes,
 	length Int,
 ) move Bytes!

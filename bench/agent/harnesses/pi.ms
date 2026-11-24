@@ -12,7 +12,7 @@ export type Pi {
 
 fn Pi.name() String => "pi"
 
-fn Pi.command(prompt String, workspace String, model String?) List[String] {
+fn Pi.command(prompt, workspace String, model String?) List[String] {
 	var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]
 	m := model
 	if m != null { cmd = cmd.concat(["--model", m.clone()]) }

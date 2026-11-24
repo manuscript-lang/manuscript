@@ -8,7 +8,7 @@ import (
 	capture, ensure_directory, finish, invalid, write_text from "./lib.ms",
 )
 
-fn checksum(mode String, pattern String, n Int) Int {
+fn checksum(mode, pattern String, n Int) Int {
 	all := n * (n + 1) / 2
 	one := if n > 0 { n / 2 + 1 } else { 0 }
 

@@ -6,12 +6,12 @@ import (
 
 enum Expr {
 	Num(value Int)
-	Add(left Expr, right Expr)
-	Mul(left Expr, right Expr)
+	Add(left, right Expr)
+	Mul(left, right Expr)
 	Neg(inner Expr)
 }
 
-fn build(depth Int, seed Int) Expr {
+fn build(depth, seed Int) Expr {
 	if depth == 0 { return Expr.Num(seed % 10) }
 	if seed % 3 == 0 {
 		return Expr.Add(build(depth - 1, seed * 7 + 1), build(depth - 1, seed * 5 + 2))
@@ -42,8 +42,7 @@ fn count(e Expr) Int {
 }
 
 type Item {
-	score Int
-	id Int
+	score, id Int
 }
 
 fn Item.compare(other Item) Int {
@@ -52,17 +51,14 @@ fn Item.compare(other Item) Int {
 }
 
 type Particle {
-	x Float
-	y Float
-	vx Float
-	vy Float
+	x, y, vx, vy Float
 }
 
 fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn stop(name String, t0 Int, chk Int) Void {
+fn stop(name String, t0, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 }
@@ -107,7 +103,7 @@ fn x_memo() Int {
 	return t
 }
 
-fn compose(f fn(Int) Int, g fn(Int) Int) fn(Int) Int {
+fn compose(f, g fn(Int) Int) fn(Int) Int {
 	return v => g(f(v))
 }
 

@@ -1,8 +1,6 @@
 // Native parse bounds; `parse` and `json_reader` build them from `JsonOptions`.
 export type JsonLimits {
-	max_bytes Int?
-	max_depth Int?
-	max_values Int?
+	max_bytes, max_depth, max_values Int?
 }
 
 // The compiler passes each call the shape table of `T` (src/abi/shape.h) as a hidden
@@ -16,7 +14,7 @@ export extern fn msstd_json_decode[T](
 
 export extern fn msstd_json_stringify[T](
 	value T,
-	max_bytes Int?,
+	max_bytes,
 	indent Int?,
 	strict Bool,
 ) move String!

@@ -121,10 +121,10 @@ fn var Random.below(n Int) Int {
 }
 
 // A uniform integer in `low..=high`.
-fn var Random.randint(low Int, high Int) Int => low + self.below(high - low + 1)
+fn var Random.randint(low, high Int) Int => low + self.below(high - low + 1)
 
 // A uniform integer in `low..high`.
-fn var Random.randrange(low Int, high Int) Int => low + self.below(high - low)
+fn var Random.randrange(low, high Int) Int => low + self.below(high - low)
 
 // A uniform float in `0.0..1.0` from 53 random bits.
 fn var Random.random() Float {

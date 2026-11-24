@@ -56,7 +56,7 @@ export fn run_test_files(files List[fn(List[Int], String) Void]) Int {
 // it.
 fn run_range(
 	files List[fn(List[Int], String) Void],
-	low Int,
+	low,
 	high Int,
 	selected List[Int],
 	results String,
@@ -131,7 +131,7 @@ fn fault_message(cause Error) String {
 export fn run_plain_file(
 	file Int,
 	tests List[fn() Void!],
-	indices List[Int],
+	indices,
 	selected List[Int],
 	results String,
 ) Void {
@@ -151,8 +151,7 @@ export fn run_plain_file(
 // `after_all`, so a fault in a test still tears the fixture down.
 type FixtureScope[F] {
 	state F
-	after_each fn(var F) Void!
-	after_all fn(var F) Void!
+	after_each, after_all fn(var F) Void!
 	in_test Bool
 }
 
@@ -171,12 +170,12 @@ fn move FixtureScope[F].close() Void! {
 export fn run_fixture_file[F](
 	file Int,
 	make fn() F,
-	before_all fn(var F) Void!,
+	before_all,
 	before_each fn(var F) Void!,
-	move after_each fn(var F) Void!,
-	move after_all fn(var F) Void!,
+	move after_each,
+	after_all fn(var F) Void!,
 	tests List[fn(var F) Void!],
-	indices List[Int],
+	indices,
 	selected List[Int],
 	results String
 ) Void {
@@ -225,7 +224,7 @@ fn chosen(selected List[Int], index Int) Bool {
 	return selected.is_empty() or selected.contains(index)
 }
 
-fn start(results String, file Int, index Int) Void {
+fn start(results String, file, index Int) Void {
 	record(results, f"\u{1}MSSTART {index} {file}\n")
 	msrt_test_deadline(true)
 }
@@ -256,19 +255,19 @@ fn line(
 	index Int,
 	status String,
 	nanos Int,
-	message String,
+	message,
 	site String,
 ) Void {
 	record(results, f"\u{1}MSTEST {index} {status} {nanos}\u{1}{message}\u{1}{site}\n")
 }
 
 // Records `text` as the output of `key` (a test index, or `f` and a file number).
-fn output(results String, key String, text String) Void {
+fn output(results, key, text String) Void {
 	if text.length() == 0 { return }
 
 	record(results, f"\u{1}MSOUT {key} {text.length()}\n{text}\n")
 }
 
-fn record(results String, text String) Void {
+fn record(results, text String) Void {
 	msrt_test_record(results, text)
 }

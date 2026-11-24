@@ -60,13 +60,13 @@ fn NativeHasher.finish() Bytes {
 // Reports whether two byte strings are equal, without making the comparison time depend
 // on their contents. Different lengths are unequal, and the length itself is not
 // hidden. Use it to compare secrets such as MACs and tokens instead of `==`.
-export fn constant_time_equal(left Bytes, right Bytes) Bool {
+export fn constant_time_equal(left, right Bytes) Bool {
 	return msstd_crypto_constant_time_equal(left, right)
 }
 
 // Returns `left` if `choice` is 1 and `right` if it is 0, without branching on
 // `choice`. Any other `choice` faults.
-export fn constant_time_select(choice Int, left Int, right Int) Int {
+export fn constant_time_select(choice, left, right Int) Int {
 	if choice != 0 and choice != 1 {
 		panic("crypto: choice must be 0 or 1")
 	}
@@ -77,13 +77,13 @@ export fn constant_time_select(choice Int, left Int, right Int) Int {
 
 // Returns 1 if `left <= right` and 0 otherwise, without branching on the values.
 // Both must be in 0 through 2^62 or the result is unspecified.
-export fn constant_time_less_or_equal(left Int, right Int) Int {
+export fn constant_time_less_or_equal(left, right Int) Int {
 	return 1 + shift_right(right - left, 63)
 }
 
 // Returns the byte-wise exclusive OR of two equal-length byte strings. Strings of
 // different lengths return EINVAL.
-export fn xor_bytes(left Bytes, right Bytes) Bytes! {
+export fn xor_bytes(left, right Bytes) Bytes! {
 	if left.length() != right.length() {
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 	}
@@ -103,7 +103,7 @@ export fn xor_bytes(left Bytes, right Bytes) Bytes! {
 // Derives a key of `length` bytes with PBKDF2-HMAC-SHA-256 and the given iteration
 // count. Returns EINVAL for non-positive iterations or a length outside 1 through
 // 1048576. `HashAlgorithm.derive_key` accepts other hashes.
-export fn derive_key(password Bytes, salt Bytes, iterations Int, length Int) Bytes! {
+export fn derive_key(password, salt Bytes, iterations, length Int) Bytes! {
 	return HashAlgorithm.Sha256.derive_key(password, salt, iterations, length)
 }
 
@@ -111,7 +111,7 @@ export fn derive_key(password Bytes, salt Bytes, iterations Int, length Int) Byt
 // 32-byte key and the same 12-byte nonce and associated data. A key or nonce of the
 // wrong length returns EINVAL. Wrong associated data, an altered or too short
 // ciphertext, or the wrong key returns EAUTH.
-export fn open(key Bytes, nonce Bytes, ciphertext Bytes, associated_data Bytes) Bytes! {
+export fn open(key, nonce, ciphertext, associated_data Bytes) Bytes! {
 	return msstd_crypto_open(key, nonce, ciphertext, associated_data)
 }
 
@@ -125,7 +125,7 @@ export fn public_key(seed Bytes) Bytes! {
 // 12-byte nonce, and returns the ciphertext followed by a 16-byte tag. A key or nonce
 // of the wrong length returns EINVAL. The caller supplies a nonce that is unique for
 // each message under the key.
-export fn seal(key Bytes, nonce Bytes, plaintext Bytes, associated_data Bytes) Bytes! {
+export fn seal(key, nonce, plaintext, associated_data Bytes) Bytes! {
 	return msstd_crypto_seal(key, nonce, plaintext, associated_data)
 }
 
@@ -146,13 +146,13 @@ export fn sha512(data Bytes) Bytes {
 
 // Signs data with a 32-byte Ed25519 private seed and returns the 64-byte signature. A
 // seed of any other length returns EINVAL.
-export fn sign(seed Bytes, data Bytes) Bytes! {
+export fn sign(seed, data Bytes) Bytes! {
 	return msstd_crypto_sign(seed, data)
 }
 
 // Reports whether `signature` is a valid Ed25519 signature of `data` under the 32-byte
 // public key. A malformed key or signature gives `false`.
-export fn verify(key Bytes, data Bytes, signature Bytes) Bool {
+export fn verify(key, data, signature Bytes) Bool {
 	return msstd_crypto_verify(key, data, signature)
 }
 
@@ -191,21 +191,21 @@ export fn digest(move input ReadStream[Bytes], algorithm HashAlgorithm) Bytes! {
 // Encrypts or decrypts data with AES in CTR mode; the same call does both. `key` is 16,
 // 24 or 32 bytes and `iv` is the 16-byte initial counter block. A wrong key or `iv`
 // length returns EINVAL. CTR does not authenticate; use `seal` when tampering matters.
-export fn aes_ctr(key Bytes, iv Bytes, data Bytes) Bytes! {
+export fn aes_ctr(key, iv, data Bytes) Bytes! {
 	return msstd_crypto_aes_ctr(key, iv, data)
 }
 
 // Encrypts with AES in CBC mode and PKCS#7 padding. `key` is 16, 24 or 32 bytes; `iv`
 // is 16 bytes. A wrong key or `iv` length returns EINVAL. CBC does not authenticate;
 // use `seal` when tampering matters.
-export fn aes_cbc_encrypt(key Bytes, iv Bytes, plaintext Bytes) Bytes! {
+export fn aes_cbc_encrypt(key, iv, plaintext Bytes) Bytes! {
 	return msstd_crypto_aes_cbc_encrypt(key, iv, plaintext)
 }
 
 // Decrypts AES-CBC data and removes PKCS#7 padding. Returns EINVAL for a bad key or IV
 // length or a ciphertext length that is not a positive multiple of 16, and EAUTH for
 // invalid padding.
-export fn aes_cbc_decrypt(key Bytes, iv Bytes, ciphertext Bytes) Bytes! {
+export fn aes_cbc_decrypt(key, iv, ciphertext Bytes) Bytes! {
 	return msstd_crypto_aes_cbc_decrypt(key, iv, ciphertext)
 }
 
@@ -233,7 +233,7 @@ export fn ecdsa_sign(private_key Bytes, hash HashAlgorithm, data Bytes) Bytes! {
 export fn ecdsa_verify(
 	public_key Bytes,
 	hash HashAlgorithm,
-	data Bytes,
+	data,
 	signature Bytes,
 ) Bool {
 	return msstd_crypto_ecdsa_verify(public_key, hash, data, signature)
@@ -242,7 +242,7 @@ export fn ecdsa_verify(
 // Computes the shared secret between a PKCS#8 DER private key and a PKIX DER public
 // key. Both keys must use the same curve (P-256, P-384, P-521 or X25519), or the call
 // returns EINVAL.
-export fn ecdh_shared_secret(private_key Bytes, peer_public_key Bytes) Bytes! {
+export fn ecdh_shared_secret(private_key, peer_public_key Bytes) Bytes! {
 	return msstd_crypto_ecdh_shared_secret(private_key, peer_public_key)
 }
 
@@ -260,12 +260,7 @@ export fn rsa_sign(private_key Bytes, hash HashAlgorithm, data Bytes) Bytes! {
 
 // Reports whether an RSASSA-PKCS1-v1_5 signature is valid for `data` under a PKIX DER
 // RSA public key and the same `hash` that signed it.
-export fn rsa_verify(
-	public_key Bytes,
-	hash HashAlgorithm,
-	data Bytes,
-	signature Bytes,
-) Bool {
+export fn rsa_verify(public_key Bytes, hash HashAlgorithm, data, signature Bytes) Bool {
 	return msstd_crypto_rsa_verify(public_key, hash, data, signature)
 }
 
@@ -279,7 +274,7 @@ export fn rsa_sign_pss(private_key Bytes, hash HashAlgorithm, data Bytes) Bytes!
 export fn rsa_verify_pss(
 	public_key Bytes,
 	hash HashAlgorithm,
-	data Bytes,
+	data,
 	signature Bytes,
 ) Bool {
 	return msstd_crypto_rsa_verify_pss(public_key, hash, data, signature)
@@ -322,19 +317,14 @@ fn HashAlgorithm.digest(data Bytes) Bytes {
 
 // Computes HMAC of `data` under `key` with this algorithm. Any key length, including an
 // empty key, is accepted.
-fn HashAlgorithm.hmac(key Bytes, data Bytes) Bytes! {
+fn HashAlgorithm.hmac(key, data Bytes) Bytes! {
 	return msstd_crypto_hmac(self, key, data)
 }
 
 // Derives a key of `length` bytes with PBKDF2-HMAC using this algorithm and the given
 // iteration count. Returns EINVAL for non-positive iterations or a length outside
 // 1 through 1048576.
-fn HashAlgorithm.derive_key(
-	password Bytes,
-	salt Bytes,
-	iterations Int,
-	length Int,
-) Bytes! {
+fn HashAlgorithm.derive_key(password, salt Bytes, iterations, length Int) Bytes! {
 	return msstd_crypto_derive_key(self, password, salt, iterations, length)
 }
 
@@ -343,7 +333,7 @@ Derives `length` bytes from `secret` with HKDF (RFC 5869) using this algorithm.
 An empty `salt` uses the algorithm's zero-filled default. Returns EINVAL when
 `length` is not positive or exceeds 255 times the digest size.
 */
-fn HashAlgorithm.hkdf(secret Bytes, salt Bytes, info Bytes, length Int) Bytes! {
+fn HashAlgorithm.hkdf(secret, salt, info Bytes, length Int) Bytes! {
 	return msstd_crypto_hkdf(self, secret, salt, info, length)
 }
 

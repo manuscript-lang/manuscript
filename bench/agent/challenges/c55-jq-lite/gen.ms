@@ -6,13 +6,7 @@ import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 PEOPLE := "[{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Paris\",\"zip\":\"75001\"}},{\"name\":\"Bob\",\"age\":25,\"tags\":[],\"addr\":{\"city\":\"Rome\",\"zip\":null}},{\"name\":\"Carol\",\"age\":35,\"tags\":[\"c\"],\"addr\":null}]"
 ORDERS := "{\"orders\":[{\"id\":1,\"items\":[{\"sku\":\"a\",\"qty\":2,\"price\":3.5},{\"sku\":\"b\",\"qty\":1,\"price\":10}],\"status\":\"paid\"},{\"id\":2,\"items\":[{\"sku\":\"a\",\"qty\":5,\"price\":3.5}],\"status\":\"open\"},{\"id\":3,\"items\":[],\"status\":\"paid\"}]}"
 
-fn add(
-	var cs Cases,
-	name String,
-	prog String,
-	inputs String = "null",
-	opts String = "",
-) Void {
+fn add(var cs Cases, name, prog String, inputs String = "null", opts String = "") Void {
 	head := if opts.is_empty() { "" } else { opts + " " }
 	tail := if inputs.ends_with("\n") { "" } else { "\n" }
 	cs.push(name, head + prog + "\n" + inputs + tail)

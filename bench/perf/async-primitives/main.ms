@@ -78,7 +78,7 @@ fn run_batch(n Int, here Bool) Int {
 	return total
 }
 
-fn echo_pipe(requests Pipe[Int], replies Pipe[Int]) Void! {
+fn echo_pipe(requests, replies Pipe[Int]) Void! {
 	var out = replies.writer()
 
 	while true {

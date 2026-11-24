@@ -2,8 +2,7 @@
 // churn, and a linked list.
 type Node {
 	key Int
-	left Node?
-	right Node?
+	left, right Node?
 }
 
 fn lcg(x Int) Int {
@@ -64,7 +63,7 @@ fn Node.sum() Int {
 
 enum Tree {
 	Leaf
-	Branch(left Tree, right Tree)
+	Branch(left, right Tree)
 }
 
 fn make(depth Int) Tree {

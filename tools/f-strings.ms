@@ -43,7 +43,7 @@ fn Scan.byte(offset Int) Int {
 }
 
 // The source text from `start` up to `end`.
-fn Scan.part(start Int, end Int) String {
+fn Scan.part(start, end Int) String {
 	return self.text.slice(start, end)
 }
 

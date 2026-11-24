@@ -108,7 +108,7 @@ export fn decode_ppm(data Bytes, max_pixels Int?) Raster! {
 
 // Encodes gray or RGB pixels as 8-bit binary P5 or P6. Pixels with alpha (an even
 // `channels`) return EINVAL.
-export fn encode_ppm(width Int, height Int, channels Int, pixels List[UInt8]) Bytes! {
+export fn encode_ppm(width, height, channels Int, pixels List[UInt8]) Bytes! {
 	if channels % 2 == 0 {
 		return error(
 			Error(

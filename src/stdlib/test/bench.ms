@@ -167,7 +167,7 @@ fn time_batch[F](body fn(var F) Void!, var state F, count Int) Int! {
 
 // Internal: returns the iteration count whose sample should take about `target`
 // nanoseconds, given that `count` took `elapsed`.
-fn next_count(count Int, elapsed Int, target Int) Int {
+fn next_count(count, elapsed, target Int) Int {
 	scaled := count * target / max(elapsed, 1) * 12 / 10
 	return min(max(scaled, count + 1), min(count * 100, max_iterations))
 }

@@ -1,12 +1,7 @@
 import words from "./src/harness.ms"
 
 type BenchData {
-	text String
-	text_5 String
-	text_6 String
-	text_7 String
-	text_9 String
-	text_10 String
+	text, text_5, text_6, text_7, text_9, text_10 String
 }
 
 fn make_fixture() BenchData {

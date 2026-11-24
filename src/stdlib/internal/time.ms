@@ -3,13 +3,13 @@ import (
 	Date, Instant, Timestamp from "@std/time.ms",
 )
 
-export extern fn msstd_time_duration_add(value Int, other Int) Int
+export extern fn msstd_time_duration_add(value, other Int) Int
 
-export extern fn msstd_time_duration_subtract(value Int, other Int) Int
+export extern fn msstd_time_duration_subtract(value, other Int) Int
 
-export extern fn msstd_time_duration_multiply(value Int, factor Int) Int
+export extern fn msstd_time_duration_multiply(value, factor Int) Int
 
-export extern fn msstd_time_duration_divide(value Int, divisor Int) Int
+export extern fn msstd_time_duration_divide(value, divisor Int) Int
 
 export extern fn msstd_time_duration_negate(value Int) Int
 
@@ -41,29 +41,25 @@ export extern fn msstd_time_system_zone_file() move Bytes!
 // Validates calendar fields and returns their local seconds (the fields read as UTC); a
 // field out of its range returns `ERANGE`.
 export extern fn msstd_time_local_from_calendar(
-	year Int,
-	month Int,
-	day Int,
-	hour Int,
-	minute Int,
-	second Int,
+	year,
+	month,
+	day,
+	hour,
+	minute,
+	second,
 	nanosecond Int,
 ) Int!
 
 // The timestamp of local seconds in a zone `offset` seconds east of UTC; outside years
 // 1 to 9999 returns
 // `ERANGE`.
-export extern fn msstd_time_from_local(
-	local Int,
-	nanosecond Int,
-	offset Int,
-) move Timestamp!
+export extern fn msstd_time_from_local(local, nanosecond, offset Int) move Timestamp!
 
 export extern fn msstd_time_instant_shift(value Instant, duration Int) Instant
 
-export extern fn msstd_time_instant_difference(value Instant, other Instant) Int
+export extern fn msstd_time_instant_difference(value, other Instant) Int
 
-export extern fn msstd_time_instant_compare(value Instant, other Instant) Int
+export extern fn msstd_time_instant_compare(value, other Instant) Int
 
 export extern fn msstd_time_timestamp_to_string(value Timestamp) move String
 

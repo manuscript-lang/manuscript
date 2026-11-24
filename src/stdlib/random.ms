@@ -167,7 +167,7 @@ fn weight_total(count Int, weights List[Float]) Float {
 
 // Selects a positive-weight position from a unit draw, keeping ordinary sums on their
 // original scale.
-fn weighted_position(weights List[Float], unit_draw Float, total Float) Int {
+fn weighted_position(weights List[Float], unit_draw, total Float) Int {
 	if not total.is_finite() or total < 2.2250738585072014e-308 {
 		return scaled_weighted_position(weights, unit_draw)
 	}
@@ -248,7 +248,7 @@ fn var SeededRandom.next_bits() Int {
 
 // Returns an Int at least `min` and below `max_exclusive`, uniformly. A `min` not
 // below `max_exclusive`, or a range wider than the largest Int, faults.
-fn var SeededRandom.int(min Int, max_exclusive Int) Int {
+fn var SeededRandom.int(min, max_exclusive Int) Int {
 	if min >= max_exclusive {
 		panic("random int: min must be below max_exclusive")
 	}

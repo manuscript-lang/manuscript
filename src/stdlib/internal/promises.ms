@@ -38,11 +38,11 @@ export extern fn msrt_promise_start_idle(move work fn(Int) Void, site String) In
 // As `msrt_promise_start`, but on the least loaded thread.
 export extern fn msrt_promise_start_spread(move work fn(Int) Void, site String) Int
 
-export extern fn msrt_promise_wait(id Int, timeout_ns Int) Int
+export extern fn msrt_promise_wait(id, timeout_ns Int) Int
 
 // Limits the promise: once `timeout_ns` has passed from now without a result it is
 // cancelled and a wait reports a timeout.
-export extern fn msrt_promise_limit(id Int, timeout_ns Int) Void
+export extern fn msrt_promise_limit(id, timeout_ns Int) Void
 
 // Cancels the promise if it has not finished; a wait then reports a cancellation. It
 // does not wait.
@@ -50,7 +50,7 @@ export extern fn msrt_promise_cancel(id Int) Void
 
 // Makes the promise listen to the cancel switch: when it fires the promise is
 // cancelled. Call it once the work has started.
-export extern fn msrt_promise_on_cancel(id Int, cancel Int) Void
+export extern fn msrt_promise_on_cancel(id, cancel Int) Void
 
 // A new cancel switch that has not fired, as an id.
 export extern fn msrt_cancel_new() Int
@@ -83,12 +83,7 @@ export extern fn msrt_group_next(group Int) Int
 // run at its next wait (the run ends as cancelled), and those from index `from` on join
 // `group` when the run first waits. Answers 0 when nothing ran, 1 when a promise ran, 2
 // when a failure ended the run.
-export extern fn msrt_promise_run_watched(
-	id Int,
-	group Int,
-	ids List[Int],
-	from Int,
-) Int
+export extern fn msrt_promise_run_watched(id, group Int, ids List[Int], from Int) Int
 
 // Adds the promises of `ids` from index `from` on to `group`, tagged by index, unless
 // that was done; answers 1 when all joined, 2 when some belong to another thread.
@@ -144,7 +139,7 @@ export extern fn msrt_pipe_close_reader(pipe Int) Void
 // The native stream table (crates/ms-rt/src/streams.rs): descriptor-backed byte
 // streams. Flags of msrt_streams_open: 1 reads, 2 writes, 4 closing the stream closes
 // the descriptor.
-export extern fn msrt_streams_open(fd Int, flags Int) Int
+export extern fn msrt_streams_open(fd, flags Int) Int
 
 // A promise for the next chunk (take it with msrt_promise_take[Bytes]); no value at the
 // end or after a failure.

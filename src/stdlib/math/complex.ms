@@ -443,13 +443,13 @@ fn Complex.to_string() String {
 }
 
 // Returns the complex number `re + im*i`.
-export fn complex(re Float, im Float) Complex {
+export fn complex(re, im Float) Complex {
 	return Complex(re: re, im: im)
 }
 
 // Returns the number with magnitude `radius` and angle `theta` in radians.
 // `complex_polar(1.0, pi)` is about -1, with a tiny imaginary part from rounding.
-export fn complex_polar(radius Float, theta Float) Complex {
+export fn complex_polar(radius, theta Float) Complex {
 	return Complex(re: radius * cos(theta), im: radius * sin(theta))
 }
 
@@ -625,7 +625,7 @@ fn atan_special(z Complex) Complex? {
 // Multiplies two factors where one may be an overflowed (infinite) trig or hyperbolic
 // value. An exact zero times such an infinity stays a signed zero, where plain `*`
 // would give NaN.
-fn product(left Float, right Float) Float {
+fn product(left, right Float) Float {
 	if left == 0.0 and not right.is_finite() and not right.is_nan() {
 		return left * copy_sign(1.0, right)
 	}
@@ -639,7 +639,7 @@ fn product(left Float, right Float) Float {
 // A finite sinh/cosh argument can overflow before a small trig factor is
 // applied. Grow that factor through exp(|argument|)/2 without materializing
 // the full exponential; its reciprocal term is negligible in this range.
-fn hyperbolic_product(factor Float, argument Float, value Float) Float {
+fn hyperbolic_product(factor, argument, value Float) Float {
 	if value.is_finite() or value.is_nan() or not argument.is_finite() {
 		return product(factor, value)
 	}
@@ -659,7 +659,7 @@ fn sin_double(phase Float) Float {
 }
 
 // Divides by the larger part of the divisor (Smith's algorithm).
-fn smith_divide(numerator Complex, other Complex) Complex {
+fn smith_divide(numerator, other Complex) Complex {
 	abs_re := other.re.abs()
 	abs_im := other.im.abs()
 

@@ -69,8 +69,7 @@ A `T?` parameter defaults to `null`, so it must come after the required paramete
 ```manuscript
 type Node {
     key Int
-    left Node?
-    right Node?
+    left, right Node?
 }
 
 fn var Node.insert(key Int) Void {

@@ -15,9 +15,7 @@ export type Usage {
 	// Uncached input tokens.
 	tokens_in Int = 0
 	// Cache reads (and writes, where the harness reports them together).
-	tokens_cached Int = 0
-	tokens_out Int = 0
-	turns Int = 0
+	tokens_cached, tokens_out, turns Int = 0
 	cost_usd Float = 0.0
 	// `harness`, `estimated` or `null`.
 	cost_source String = "none"
@@ -35,7 +33,7 @@ export interface Harness {
 	fn name() String
 	// The argv that runs the agent non-interactively in `workspace` and exits when
 	// done.
-	fn command(prompt String, workspace String, model String?) List[String]
+	fn command(prompt, workspace String, model String?) List[String]
 	// Extracts usage from the harness's raw standard output.
 	fn parse(transcript String) Usage
 }
@@ -63,7 +61,7 @@ export fn int_at(doc JsonValue, key String) Int {
 // measured run.
 export fn run_agent(
 	h Harness,
-	prompt String,
+	prompt,
 	workspace String,
 	timeout_s Int,
 	transcript String,

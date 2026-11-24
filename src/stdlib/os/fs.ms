@@ -380,13 +380,13 @@ fn FileHandle.chmod(mode Int) Void! {
 
 // Sets the owner and group of the open file by numeric id; -1 leaves that id
 // unchanged. Usually needs privilege.
-fn FileHandle.chown(uid Int, gid Int) Void! {
+fn FileHandle.chown(uid, gid Int) Void! {
 	return msstd_fs_file_chown(self.native, uid, gid)
 }
 
 // Sets the access and modification times of the open file. Returns ENOTSUP on hosts
 // without descriptor timestamps.
-fn FileHandle.set_times(accessed Timestamp, modified Timestamp) Void! {
+fn FileHandle.set_times(accessed, modified Timestamp) Void! {
 	return msstd_fs_file_set_times(self.native, accessed, modified)
 }
 
@@ -394,7 +394,7 @@ fn FileHandle.set_times(accessed Timestamp, modified Timestamp) Void! {
 // or `\r\n` terminators removed. Invalid UTF-8 returns EBADMSG, and more bytes than
 // `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes`
 // or `max_lines` returns EINVAL.
-fn FileHandle.read_lines(max_bytes Int?, max_lines Int?) List[String]! {
+fn FileHandle.read_lines(max_bytes, max_lines Int?) List[String]! {
 	return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 }
 
@@ -696,7 +696,7 @@ fn excluding(
 ) (fn(String, String, Bool, Bool) Bool)? {
 	keep := exclude
 	if keep != null {
-		return fn(path String, name String, directory Bool, symlink Bool) Bool {
+		return fn(path, name String, directory, symlink Bool) Bool {
 			return keep(
 				PathEntry(
 					path: path.clone(),
@@ -748,11 +748,7 @@ copy("a.txt", "b.txt", CopyOptions(replace: true))?
 */
 // ms: effect std.fs.read
 // ms: effect std.fs.write
-export fn copy(
-	source String,
-	destination String,
-	options CopyOptions = CopyOptions(),
-) Void! {
+export fn copy(source, destination String, options CopyOptions = CopyOptions()) Void! {
 	return msstd_fs_copy(
 		source,
 		destination,
@@ -778,7 +774,7 @@ export fn create_directory(path String, recursive Bool = false) Void! {
 
 // Creates a symbolic link at `path` pointing to `target`.
 // ms: effect std.fs.write
-export fn create_symlink(path String, target String) Void! {
+export fn create_symlink(path, target String) Void! {
 	return msstd_fs_create_link(path, target)
 }
 
@@ -842,7 +838,7 @@ export fn remove(path String, recursive Bool = false) Void! {
 // move across devices returns an error.
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
-export fn rename(source String, destination String) Void! {
+export fn rename(source, destination String) Void! {
 	return msstd_fs_rename(source, destination)
 }
 
@@ -896,7 +892,7 @@ export fn write_file(path String, data Writable, replace Bool = false) Promise[V
 // The work of `write_file`. The task runs at once, so the slot frees the moment the
 // write ends, not when the promise is dropped: `permit` is a local that closes at the
 // end of the call.
-fn write_held(path String, data Bytes, replace Bool, held Bool) Void! {
+fn write_held(path String, data Bytes, replace, held Bool) Void! {
 	_permit := WritePermit(held: held)
 	return msstd_fs_write_file(path, data, replace)
 }
@@ -942,7 +938,7 @@ export fn chmod(path String, mode Int, follow_links Bool = true) Void! {
 // itself, with ENOTSUP on hosts lacking this operation.
 // Usually needs privilege, and Windows returns ENOTSUP.
 // ms: effect std.fs.write
-export fn chown(path String, uid Int, gid Int, follow_links Bool = true) Void! {
+export fn chown(path String, uid, gid Int, follow_links Bool = true) Void! {
 	return msstd_fs_chown(path, uid, gid, follow: follow_links)
 }
 
@@ -959,7 +955,7 @@ export fn truncate(path String, size Int) Void! {
 // ms: effect std.fs.write
 export fn set_times(
 	path String,
-	accessed Timestamp,
+	accessed,
 	modified Timestamp,
 	follow_links Bool = true,
 ) Void! {
@@ -969,7 +965,7 @@ export fn set_times(
 // Creates `destination` as another name for the file at `source`. An existing
 // destination returns EEXIST; it must be on the same filesystem as `source`.
 // ms: effect std.fs.write
-export fn create_hard_link(source String, destination String) Void! {
+export fn create_hard_link(source, destination String) Void! {
 	return msstd_fs_hard_link(source, destination)
 }
 
@@ -1045,7 +1041,7 @@ fn through_links(path String) String {
 
 // A sibling name for `path` that stays within the 255-byte file name limit: the file
 // name is cut to 32 characters.
-fn temporary_name(path String, stamp String) String {
+fn temporary_name(path, stamp String) String {
 	var split = 0
 	slash := path.last_index_of("/")
 	if slash != null { split = slash + 1 }
@@ -1118,7 +1114,7 @@ fn replace_atomically(link String, data Bytes) Void! {
 // fails.
 fn finish_atomic(
 	move file FileHandle,
-	temporary String,
+	temporary,
 	path String,
 	data Bytes,
 	mode Int?,
@@ -1159,7 +1155,7 @@ fn finish_atomic(
 // fails. The copy fallback does not replace an existing destination and returns EEXIST.
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
-export fn move(source String, destination String) Void! {
+export fn move(source, destination String) Void! {
 	renamed := rename(source, destination)
 	if renamed.is_ok() { return renamed }
 
@@ -1169,7 +1165,7 @@ export fn move(source String, destination String) Void! {
 	return error(cause.clone())
 }
 
-fn move_by_copy(source String, destination String, cause Error) Void! {
+fn move_by_copy(source, destination String, cause Error) Void! {
 	info := stat(source, follow_links: false)
 	if info.is_error() { return error(cause.clone()) }
 	if stat(destination, follow_links: false).is_ok() { return error(already_exists()) }

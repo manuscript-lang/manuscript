@@ -14,8 +14,7 @@ fn yaml_length(value YamlValue) Int {
 }
 
 type BenchData {
-	yaml String
-	yaml_2 String
+	yaml, yaml_2 String
 	tree YamlValue
 }
 

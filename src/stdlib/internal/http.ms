@@ -22,7 +22,7 @@ export extern fn msstd_http_client_share(handle NativeHttpClient) move NativeHtt
 
 export extern fn msstd_http_client_request_bytes(
 	handle NativeHttpClient,
-	method String,
+	method,
 	url String,
 	headers HttpHeaders,
 	body Bytes,
@@ -100,7 +100,7 @@ export extern fn msstd_http_exchange_write_bytes(
 
 export extern fn msstd_http_exchange_upgrade(
 	handle NativeExchange,
-	allowed_origins List[String],
+	allowed_origins,
 	subprotocols List[String],
 	max_message_bytes Int?,
 ) move NativeWebSocket!

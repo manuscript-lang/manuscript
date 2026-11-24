@@ -24,7 +24,7 @@ fn var Graph.add(label String) Int {
     return self.nodes.length() - 1
 }
 
-fn var Graph.link(a Int, b Int) Void {
+fn var Graph.link(a, b Int) Void {
     self.nodes[a].edges.append(b)
     self.nodes[b].edges.append(a)
 }

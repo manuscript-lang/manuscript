@@ -29,8 +29,7 @@ import (
 )
 
 type Diagnostic {
-	code String
-	severity String
+	code, severity String
 }
 
 type Document {
@@ -39,11 +38,10 @@ type Document {
 
 type Sample {
 	label String
-	trial Int
-	wall_ns Int
+	trial, wall_ns Int
 }
 
-fn report(out String, name String) Void! {
+fn report(out, name String) Void! {
 	rows := parse[List[Sample]](read_text(f"{out}/{name}-samples.json"))?
 	var baseline = Map[Int, Float]()
 	var candidate = Map[Int, Float]()
@@ -153,7 +151,7 @@ export fn probe(size Int, mode String) String {
 	return lines.join("\n")
 }
 
-fn expected_count(size Int, mode String, action String) Int {
+fn expected_count(size Int, mode, action String) Int {
 	if action != "lint" { return 0 }
 	if mode == "none" or mode == "direct" { return 2 * size + 1 }
 	if mode == "sparse" { return 1 }
@@ -167,8 +165,8 @@ fn measure(
 	out String,
 	binaries List[String],
 	repeats Int,
-	name String,
-	input String,
+	name,
+	input,
 	action String,
 	wanted Int,
 ) Void! {

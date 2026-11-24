@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntype Walker {\n\tstep Int\n\tlimit Int\n}\n\ninterface Walk {\n\tfn walk(n Int) Int\n}\n\nfn Walker.walk(n Int) Int {\n\tif n == self.limit {\n\t\treturn 0\n\t}\n\treturn 1 + self.walk(n: n + self.step)\n}\n\nfn bounded(n Int, limit Int) Int {\n\tif n == limit {\n\t\treturn 0\n\t}\n\treturn 1 + bounded(n: n + 1, limit: limit)\n}\n\ntest \"recursion below the limit runs normally\" {\n\t(bounded(n: 0, limit: 100000) - 100000) | expect_equal(0)?\n}\n\ntest \"method recursion below the limit runs normally\" {\n\t(Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?\n}\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntype Walker {\n\tstep, limit Int\n}\n\ninterface Walk {\n\tfn walk(n Int) Int\n}\n\nfn Walker.walk(n Int) Int {\n\tif n == self.limit {\n\t\treturn 0\n\t}\n\treturn 1 + self.walk(n: n + self.step)\n}\n\nfn bounded(n, limit Int) Int {\n\tif n == limit {\n\t\treturn 0\n\t}\n\treturn 1 + bounded(n: n + 1, limit: limit)\n}\n\ntest \"recursion below the limit runs normally\" {\n\t(bounded(n: 0, limit: 100000) - 100000) | expect_equal(0)?\n}\n\ntest \"method recursion below the limit runs normally\" {\n\t(Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?\n}\n"
   }
 }

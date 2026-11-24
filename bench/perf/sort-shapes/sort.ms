@@ -3,27 +3,24 @@
 import monotonic from "@std/time.ms"
 
 type Event {
-	id Int
-	kind Int
+	id, kind Int
 	name String
 	score Int
 }
 
 type Plain {
-	id Int
-	kind Int
-	score Int
+	id, kind, score Int
 }
 
 fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn us(a Int, b Int) Int {
+fn us(a, b Int) Int {
 	return (b - a) / 1000
 }
 
-fn events(n Int, m Int) List[Event] {
+fn events(n, m Int) List[Event] {
 	var xs List[Event] = []
 	var x = 1
 
@@ -35,7 +32,7 @@ fn events(n Int, m Int) List[Event] {
 	return xs
 }
 
-fn plains(n Int, m Int) List[Plain] {
+fn plains(n, m Int) List[Plain] {
 	var xs List[Plain] = []
 	var x = 1
 

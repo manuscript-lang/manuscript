@@ -202,7 +202,7 @@ fn nanos(limit Duration?) Int {
 
 // Internal: the error that a `wait` reports when it produced no result, from the
 // runtime outcome code of the promise `id`.
-fn outcome(id Int, code Int) Error {
+fn outcome(id, code Int) Error {
 	if code == 2 { return Error("promise: timed out", kind: "ETIMEDOUT") }
 	if code == 3 { return Error("promise: cancelled", kind: "ECANCELED") }
 	if code == 4 { return Error("promise: the result was already taken", kind: "EBADF") }
@@ -249,7 +249,7 @@ fn taken_error(id Int) Error {
 // operation's own error for code 1, otherwise the outcome's. One function for every
 // failure keeps the error construction out of `wait`, whose frame stays on the stack
 // while a task parks.
-fn failure(id Int, code Int) Error {
+fn failure(id, code Int) Error {
 	if code == 1 { return taken_error(id) }
 	return outcome(id, code)
 }

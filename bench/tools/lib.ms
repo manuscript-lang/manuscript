@@ -37,7 +37,7 @@ export fn host() String {
 }
 
 // The value of environment variable `name`, or `fallback`.
-export fn env(name String, fallback String) String {
+export fn env(name, fallback String) String {
 	all := environment().get_or(Map[String, String]())
 	value := all.get(name)
 	if value != null { return value.clone() }
@@ -54,8 +54,7 @@ export fn now_ns() Int {
 export type Ran {
 	ok Bool
 	code Int
-	stdout String
-	stderr String
+	stdout, stderr String
 	// The child's peak resident set in bytes, 0 when it did not start or the host
 	// cannot say.
 	max_resident_bytes Int = 0
@@ -110,17 +109,11 @@ export fn mad(values List[Float]) Float {
 }
 
 export fn minimum(values List[Float]) Float {
-	return values.fold(
-		values[0],
-		fn(a Float, v Float) Float => if v < a { v } else { a }
-	)
+	return values.fold(values[0], fn(a, v Float) Float => if v < a { v } else { a })
 }
 
 export fn maximum(values List[Float]) Float {
-	return values.fold(
-		values[0],
-		fn(a Float, v Float) Float => if v > a { v } else { a }
-	)
+	return values.fold(values[0], fn(a, v Float) Float => if v > a { v } else { a })
 }
 
 // Rotates `items` left by `by` positions.
@@ -201,7 +194,7 @@ export fn absolute(path String) String {
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so
 // tasks may run children in different directories.
-export fn run_in(dir String, program String, arguments List[String]) Ran {
+export fn run_in(dir, program String, arguments List[String]) Ran {
 	return capture(program, arguments, cwd: dir.clone())
 }
 
@@ -218,7 +211,7 @@ export fn ms_binary() String {
 
 // Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is
 // fine; pass an absolute path).
-export fn build_ms(dir String, out String) Void! {
+export fn build_ms(dir, out String) Void! {
 	_stale := remove(f"{dir}/ms.lock")
 	ran := run_in(
 		dir,
@@ -229,7 +222,7 @@ export fn build_ms(dir String, out String) Void! {
 }
 
 // Builds the Go module in `dir` as a static binary.
-export fn build_go(dir String, out String) Void! {
+export fn build_go(dir, out String) Void! {
 	set_environment("CGO_ENABLED", "0").get()
 
 	go := env("GO", "go")
@@ -250,7 +243,7 @@ export fn build_go(dir String, out String) Void! {
 }
 
 // Compiles one Rust source at the usual release settings plus `flags`.
-export fn build_rust(source String, out String, flags List[String]) Void! {
+export fn build_rust(source, out String, flags List[String]) Void! {
 	var args = ["--edition", "2021", "-C", "opt-level=3", "-C", "codegen-units=1"]
 	args = args.concat(flags)
 	args = args.concat(["-o", out.clone(), source.clone()])
@@ -275,11 +268,7 @@ export fn finish(result String!) Int {
 
 // Parses `--name value` pairs. A name outside `known` or a missing value is an error;
 // `required` names must be present.
-export fn options(
-	args List[String],
-	known List[String],
-	required List[String],
-) Map[String, String]! {
+export fn options(args, known, required List[String]) Map[String, String]! {
 	var found = Map[String, String]()
 	var i = 0
 
@@ -335,7 +324,7 @@ export fn ensure_directory(path String) Void {
 }
 
 // Writes `text` to `path`.
-export fn write_text(path String, text String) Void {
+export fn write_text(path, text String) Void {
 	write_file(path, text, replace: true).wait().get()
 }
 
@@ -407,7 +396,7 @@ export fn dump(value JsonValue) String {
 
 // Runs `program` in `dir` with the parent's streams and returns its exit status (125
 // when it cannot start).
-export fn run_inherit(dir String, program String, arguments List[String]) Int {
+export fn run_inherit(dir, program String, arguments List[String]) Int {
 	var code = 125
 
 	if child := spawn(

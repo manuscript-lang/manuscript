@@ -10,7 +10,7 @@ export type ClaudeCode {
 
 fn ClaudeCode.name() String => "claude_code"
 
-fn ClaudeCode.command(prompt String, workspace String, model String?) List[String] {
+fn ClaudeCode.command(prompt, workspace String, model String?) List[String] {
 	var cmd = [
 		"claude",
 		"-p",

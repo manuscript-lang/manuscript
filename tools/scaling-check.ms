@@ -119,13 +119,7 @@ fn commands(shape String) List[List[String]] {
 
 // Seconds `ms <command> <file> [extra]` took, or -1.0 when it failed or hit the
 // timeout.
-fn measure(
-	ms String,
-	command String,
-	file String,
-	extra List[String],
-	limit Int,
-) Float {
+fn measure(ms, command, file String, extra List[String], limit Int) Float {
 	var args = [command.clone(), file.clone()]
 
 	for e in extra {
@@ -149,7 +143,7 @@ fn measure(
 
 // The growth ratio of `big` over `mid` once `base` is removed; `floor` keeps a
 // sub-noise `mid` from inflating it.
-fn growth(base Float, mid Float, big Float, floor Float) Float {
+fn growth(base, mid, big, floor Float) Float {
 	var denominator = mid - base
 	if denominator < floor { denominator = floor }
 	return (big - base) / denominator
@@ -356,7 +350,7 @@ fn main() Int {
 
 // Phase name to nanoseconds from one run of the container program at size `n`; empty
 // when it failed.
-fn run_phases(ms String, program String, n Int, limit Int) Map[String, Int] {
+fn run_phases(ms, program String, n, limit Int) Map[String, Int] {
 	var phases = Map[String, Int]()
 	ran := run(
 		ms.clone(),

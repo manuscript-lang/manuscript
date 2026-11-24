@@ -375,6 +375,11 @@ static LineStep format_lines_step(Fmt *f, MsSpan source, MsSpan *out) {
     step = LINE_AGAIN;
     goto done;
   }
+  if (fmt_group_names(f, normalized, lexed.tokens, lexed.ntokens, &changed)) {
+    *out = changed;
+    step = LINE_AGAIN;
+    goto done;
+  }
   if (fmt_group_imports(f, normalized, lexed.tokens, lexed.ntokens, &changed)) {
     *out = changed;
     step = LINE_AGAIN;

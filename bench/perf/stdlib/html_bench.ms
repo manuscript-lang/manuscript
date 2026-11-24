@@ -15,8 +15,7 @@ fn html_doc(count Int) String {
 }
 
 type BenchData {
-	html String
-	text String
+	html, text String
 }
 
 fn make_fixture() BenchData {

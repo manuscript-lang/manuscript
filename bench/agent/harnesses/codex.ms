@@ -11,7 +11,7 @@ export type Codex {
 
 fn Codex.name() String => "codex"
 
-fn Codex.command(prompt String, workspace String, model String?) List[String] {
+fn Codex.command(prompt, workspace String, model String?) List[String] {
 	var cmd = [
 		"codex",
 		"exec",

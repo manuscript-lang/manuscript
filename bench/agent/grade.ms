@@ -17,15 +17,12 @@ import (
 type LogRow {
 	phase String
 	ok Bool
-	codes String = ""
-	msg String = ""
-	fixed String = ""
+	codes, msg, fixed String = ""
 }
 
 type Detail {
 	built Bool
-	passed Int
-	total Int
+	passed, total Int
 	failed List[String]
 	builds Int
 	first_build_ok Bool

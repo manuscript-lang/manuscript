@@ -5,12 +5,7 @@ import (
 )
 
 type Stats {
-	lines Int
-	latency Int
-	c2 Int
-	c3 Int
-	c4 Int
-	c5 Int
+	lines, latency, c2, c3, c4, c5 Int
 }
 
 fn files_under(dir String) List[String] {

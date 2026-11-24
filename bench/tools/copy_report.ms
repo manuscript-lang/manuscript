@@ -60,7 +60,7 @@ fn report(mir String) List[String] {
 	// uniq -c | sort -rn: count descending, ties in descending text order.
 	var rows = counts.keys().map(k => Row(counts.get_or(k, 0), k.clone()))
 	rows = rows.sorted(
-		fn(a Row, b Row) Int => if a.count != b.count {
+		fn(a, b Row) Int => if a.count != b.count {
 			b.count - a.count
 		} else {
 			b.text.compare(a.text)

@@ -155,7 +155,7 @@ fn var RateLimiter.acquire() Void {
 
 // Returns a rate limiter that allows `count` uses per second, with room for `burst`
 // uses at once. It starts full. A `count` or `burst` below 1 returns `EINVAL`.
-export fn rate_limiter(count Int, burst Int) RateLimiter! {
+export fn rate_limiter(count, burst Int) RateLimiter! {
 	if count < 1 or burst < 1 {
 		return error(
 			Error(
@@ -306,7 +306,7 @@ export fn map_concurrent[T, U](
 
 // Internal: the results of `work` for the items at `first`, `first + step`, and so
 // on.
-fn stripe_results[T, U](items List[T], first Int, step Int, work fn(T) U) List[U]! {
+fn stripe_results[T, U](items List[T], first, step Int, work fn(T) U) List[U]! {
 	var out List[U] = []
 	var index = first
 

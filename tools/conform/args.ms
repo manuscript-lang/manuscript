@@ -57,7 +57,7 @@ export fn has(args Args, flag String) Bool {
 }
 
 // The last value of `flag`, or `fallback`.
-export fn one(args Args, flag String, fallback String) String {
+export fn one(args Args, flag, fallback String) String {
 	held := args.values.get(flag)
 	if held != null {
 		if held.length() > 0 { return held[held.length() - 1].clone() }

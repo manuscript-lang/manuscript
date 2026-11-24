@@ -9,8 +9,7 @@ type Big {
 }
 
 type Pair {
-	left Big
-	right Big
+	left, right Big
 }
 
 fn left_of(p Pair) Big {

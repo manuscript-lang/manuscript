@@ -26,7 +26,7 @@ fn updating() Bool {
 
 // Internal: names the first line where two texts differ, with both sides, so a
 // mismatch is readable without a diff tool.
-fn first_difference(expected String, actual String) String {
+fn first_difference(expected, actual String) String {
 	want := expected.split("\n")
 	got := actual.split("\n")
 	var line = 0
@@ -49,7 +49,7 @@ fn first_difference(expected String, actual String) String {
 // Compares `actual` with the text in the golden file at `path`. Under
 // `MS_UPDATE_GOLDEN=1` it rewrites the file instead. A mismatch names the file and the
 // first differing line.
-export fn expect_golden(path String, actual String) Void! {
+export fn expect_golden(path, actual String) Void! {
 	if updating() {
 		create_directory(dirname(path), true)?
 		write_file(path, actual, replace: true).wait()?

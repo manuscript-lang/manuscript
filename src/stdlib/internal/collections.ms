@@ -3,8 +3,8 @@
 export extern fn msrt_list_distinct[T Equal & Clonable](values List[T]) move List[T]
 
 export extern fn msrt_list_range_by(
-	start Int,
-	end Int,
+	start,
+	end,
 	step Int,
 	max_items Int?,
 ) move List[Int]!

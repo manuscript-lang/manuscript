@@ -11,21 +11,20 @@ type Acc {
 }
 
 type Pt {
-	x Int
-	y Int
+	x, y Int
 }
 
 enum Shape {
 	Circle(r Int)
-	Rect(w Int, h Int)
-	Tri(a Int, b Int, c Int)
+	Rect(w, h Int)
+	Tri(a, b, c Int)
 }
 
 fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn stop(name String, t0 Int, chk Int) Void {
+fn stop(name String, t0, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 }

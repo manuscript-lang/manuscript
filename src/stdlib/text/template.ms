@@ -161,8 +161,7 @@ type Token {
 }
 
 type Tok {
-	kind String
-	text String
+	kind, text String
 }
 
 FILTERS := [
@@ -439,8 +438,7 @@ fn lex(text String, line Int) List[Tok]!Error {
 
 type ExprParser {
 	toks List[Tok]
-	at Int
-	line Int
+	at, line Int
 }
 
 fn ExprParser.peek() Tok {
@@ -600,8 +598,7 @@ fn parse_expr(text String, line Int) TemplateExpr!Error {
 type BlockEnd {
 	nodes List[TemplateNode]
 	// "" at end of input, otherwise "end", "else" or "else if".
-	end String
-	cond String
+	end, cond String
 	line Int
 }
 
@@ -675,7 +672,7 @@ fn Builder.emit(body String, line Int) TemplateNode!Error {
 	return ok(Emit(expr, escape_output))
 }
 
-fn var Builder.conditional(cond String, line Int, depth Int) TemplateNode!Error {
+fn var Builder.conditional(cond String, line, depth Int) TemplateNode!Error {
 	var branches = List[TemplateBranch]()
 	var otherwise = List[TemplateNode]()
 	var guard = parse_expr(cond, line)?
@@ -706,7 +703,7 @@ fn var Builder.conditional(cond String, line Int, depth Int) TemplateNode!Error 
 	return ok(If(branches, otherwise))
 }
 
-fn var Builder.for_block(header String, line Int, depth Int) TemplateNode!Error {
+fn var Builder.for_block(header String, line, depth Int) TemplateNode!Error {
 	at := header.index_of(" in ")
 	if at == null {
 		return error(syntax_error(line: line, reason: "for needs `name in value`"))
@@ -918,10 +915,10 @@ fn var Run.branch(
 }
 
 fn var Run.each(
-	first String,
+	first,
 	second String,
 	source TemplateExpr,
-	body List[TemplateNode],
+	body,
 	otherwise List[TemplateNode],
 	depth Int,
 ) Void!Error {
@@ -985,7 +982,7 @@ fn member(value JsonValue, key String) JsonValue? {
 	return null
 }
 
-fn loop_info(index Int, length Int) JsonValue {
+fn loop_info(index, length Int) JsonValue {
 	var fields = Map[String, JsonValue]()
 	fields.add("index", JsonValue.NumberValue(f"{index}"))
 	fields.add("first", JsonValue.BoolValue(index == 0))
@@ -1020,7 +1017,7 @@ fn bind_row(
 	var frame Map[String, JsonValue],
 	collection JsonValue,
 	var items List[JsonValue],
-	first String,
+	first,
 	second String,
 	keys List[String],
 	i Int,
@@ -1054,9 +1051,7 @@ fn bind_row(
 type ExactNumber {
 	negative Bool
 	coefficient Bytes
-	first Int
-	end Int
-	offset Int
+	first, end, offset Int
 	exponent String
 }
 
@@ -1071,13 +1066,13 @@ fn unsigned_digits(text String) String {
 	}
 }
 
-fn magnitude_compare(a String, b String) Int {
+fn magnitude_compare(a, b String) Int {
 	if a.length() != b.length() { return if a.length() < b.length() { - 1 } else { 1 } }
 	return a.compare(b)
 }
 
 // Add or subtract unsigned decimal magnitudes. Subtraction requires a >= b.
-fn magnitude_sum(a String, b String, subtract Bool) String {
+fn magnitude_sum(a, b String, subtract Bool) String {
 	left := a.chars()
 	right := b.chars()
 	var i = left.length() - 1
@@ -1140,7 +1135,7 @@ fn decimal_order(exponent String, offset Int) String {
 	return if result_negative and result != "0" { f"-{result}" } else { result }
 }
 
-fn order_compare(a String, b String) Int {
+fn order_compare(a, b String) Int {
 	an := a.starts_with("-")
 	bn := b.starts_with("-")
 	if an != bn { return if an { - 1 } else { 1 } }
@@ -1229,7 +1224,7 @@ fn exact_number(text String) ExactNumber? {
 	)
 }
 
-fn number_compare(a ExactNumber, b ExactNumber) Int {
+fn number_compare(a, b ExactNumber) Int {
 	if a.negative != b.negative { return if a.negative { - 1 } else { 1 } }
 
 	az := a.first == a.end
@@ -1253,7 +1248,7 @@ fn number_compare(a ExactNumber, b ExactNumber) Int {
 
 // Most unequal coefficients differ immediately. For a shared prefix, use the
 // native string comparison instead of inspecting every byte in Manuscript.
-fn coefficient_compare(a ExactNumber, b ExactNumber) Int {
+fn coefficient_compare(a, b ExactNumber) Int {
 	x := a.coefficient.get(a.first)
 	y := b.coefficient.get(b.first)
 	if x != y { return if x < y { - 1 } else { 1 } }
@@ -1350,7 +1345,7 @@ fn kind_of(value JsonValue) Int {
 	return 5
 }
 
-fn equal(left JsonValue, right JsonValue) Bool {
+fn equal(left, right JsonValue) Bool {
 	if kind_of(left) != kind_of(right) { return false }
 	if number_text(left) != null { return compare_values(left, right) == 0 }
 
@@ -1358,7 +1353,7 @@ fn equal(left JsonValue, right JsonValue) Bool {
 }
 
 // -1, 0, 1 for numbers or strings of the same kind; 2 when the values cannot be ordered.
-fn compare_values(left JsonValue, right JsonValue) Int {
+fn compare_values(left, right JsonValue) Int {
 	text := number_text(left)
 
 	if text != null {
@@ -1401,7 +1396,7 @@ fn text_value(text String) JsonValue {
 	return JsonValue.StringValue(text.clone())
 }
 
-fn invalid(name String, reason String) Error {
+fn invalid(name, reason String) Error {
 	return invalid_filter_error(name: name, reason: reason)
 }
 
@@ -1527,7 +1522,7 @@ fn join_values(value JsonValue, sep String) String {
 	return to_text(value)
 }
 
-fn contains_value(haystack JsonValue, needle JsonValue) Bool {
+fn contains_value(haystack, needle JsonValue) Bool {
 	list := haystack.as_list()
 
 	if list != null {
@@ -1563,7 +1558,7 @@ fn missing_value_error(path String) Error {
 	)
 }
 
-fn invalid_filter_error(name String, reason String) Error {
+fn invalid_filter_error(name, reason String) Error {
 	return Error(
 		f"template: filter {name}: {reason}",
 		kind: "EINVAL",

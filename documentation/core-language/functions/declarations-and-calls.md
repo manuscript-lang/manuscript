@@ -47,7 +47,7 @@ Labels are optional. An unlabeled argument fills the first parameter not yet fil
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn reduce(amount Int, deduction Int) Int {
+fn reduce(amount, deduction Int) Int {
     return amount - deduction
 }
 remaining := reduce(10, 3)

@@ -6,8 +6,7 @@ import (
 
 // ---------- values ----------
 type Val {
-	k Int = 0
-	n Int = 0
+	k, n Int = 0
 	s String = ""
 }
 
@@ -71,7 +70,7 @@ fn is_alpha(c Int) Bool => (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c 
 
 fn is_digit(c Int) Bool => c >= 48 and c <= 57
 
-fn sub(src Bytes, a Int, b Int) String => src.decode_utf8_range(a, b) or ""
+fn sub(src Bytes, a, b Int) String => src.decode_utf8_range(a, b) or ""
 
 fn lex(src Bytes) List[Chunk] {
 	kws := keywords()
@@ -250,12 +249,10 @@ type Node {
 	op String = ""
 	neg Bool = false
 	lit Val = Val()
-	qual String = ""
-	name String = ""
+	qual, name String = ""
 	col Int = -1
 	args List[Int] = List[Int]()
-	star Bool = false
-	distinct Bool = false
+	star, distinct Bool = false
 }
 
 type Item {
@@ -267,8 +264,7 @@ type Item {
 }
 
 type Tref {
-	name String = ""
-	alias String = ""
+	name, alias String = ""
 }
 
 type JoinSpec {
@@ -374,7 +370,7 @@ fn var Parser.add(n Node) Int {
 	return id
 }
 
-fn var Parser.bin(op String, l Int, r Int) Int {
+fn var Parser.bin(op String, l, r Int) Int {
 	var a = List[Int]()
 	a.append(l)
 	a.append(r)
@@ -870,16 +866,13 @@ fn get_table(db Map[String, Table], name String) Table! {
 
 // ---------- resolve ----------
 type ScopeCol {
-	alias String
-	name String
-	idx Int
-	tbl Int
+	alias, name String
+	idx, tbl Int
 }
 
 type Rctx {
 	cols List[ScopeCol]
-	allow_agg Bool = false
-	aggregated Bool = false
+	allow_agg, aggregated Bool = false
 	gb List[Int] = List[Int]()
 }
 
@@ -959,7 +952,7 @@ fn resolve(var nodes List[Node], id Int, rc Rctx, in_agg Bool) Void! {
 // ---------- eval ----------
 fn type_error() Error => Error("type error")
 
-fn cmp_vals(a Val, b Val) Int! {
+fn cmp_vals(a, b Val) Int! {
 	if a.k == 1 and b.k == 1 {
 		if a.n < b.n { return ok(-1) }
 		if a.n > b.n { return ok(1) }
@@ -973,7 +966,7 @@ fn cmp_vals(a Val, b Val) Int! {
 }
 
 // three-valued compare: returns boolean/null Val
-fn cmp_op(op String, a Val, b Val) Val! {
+fn cmp_op(op String, a, b Val) Val! {
 	if a.k == 0 or b.k == 0 { return ok(vnull()) }
 
 	c := cmp_vals(a, b)?
@@ -994,7 +987,7 @@ fn from_tern(t Int) Val {
 	return vbool(t == 1)
 }
 
-fn like_match(t Bytes, p Bytes) Bool {
+fn like_match(t, p Bytes) Bool {
 	tl := t.length()
 	pl := p.length()
 	var ti = 0
@@ -1306,7 +1299,7 @@ fn cond_true(v Val) Bool! {
 	return ok(t == 1)
 }
 
-fn sort_cmp(a Val, b Val) Int {
+fn sort_cmp(a, b Val) Int {
 	if a.k != b.k { return if a.k < b.k { - 1 } else { 1 } }
 
 	if a.k == 1 or a.k == 3 {
@@ -1327,7 +1320,7 @@ type OutRow {
 	keys List[Val]
 }
 
-fn concat(a List[Val], b List[Val]) List[Val] {
+fn concat(a, b List[Val]) List[Val] {
 	var out = List[Val]()
 	for v in a {
 		out.append(v.clone())
@@ -1670,7 +1663,7 @@ fn exec_select(db Map[String, Table], var st Stmt) String! {
 	return ok(lines.join("\n"))
 }
 
-fn order_cmp(a OutRow, b OutRow, ords List[OrderSpec]) Int {
+fn order_cmp(a, b OutRow, ords List[OrderSpec]) Int {
 	var i = 0
 
 	while i < ords.length() {

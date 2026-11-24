@@ -47,9 +47,9 @@
             "message": "Total with `xs.sum()` or `xs.map(...).sum()` instead of a loop that adds",
             "position": {
               "file": "src/shapes.ms",
-              "line": 22,
+              "line": 21,
               "column": 5,
-              "offset": 342
+              "offset": 338
             }
           }
         ]

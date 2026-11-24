@@ -81,8 +81,8 @@ export fn parse_certificates(pem String, max_certificates Int?) List[Certificate
 // `server_name` returns `EINVAL`, and invalid PEM returns `EBADMSG`.
 // ms: effect std.system.read
 export fn verify_certificates(
-	chain_pem String,
-	roots_pem String,
+	chain_pem,
+	roots_pem,
 	server_name String,
 	now Timestamp,
 ) Void! {

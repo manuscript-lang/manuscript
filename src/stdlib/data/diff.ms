@@ -7,7 +7,7 @@ Strings are compared by Unicode scalar and lines by exact equality.
 // Returns the number of single-scalar insertions, deletions and substitutions that turn
 // `left` into `right` (Levenshtein distance). Example:
 // `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
-export fn edit_distance(left String, right String) Int {
+export fn edit_distance(left, right String) Int {
 	if left == right { return 0 }
 
 	a := left.chars()
@@ -36,7 +36,7 @@ export fn edit_distance(left String, right String) Int {
 }
 
 // Returns the length of the longest common subsequence of two lists of text.
-fn common_length(a List[String], b List[String]) Int {
+fn common_length(a, b List[String]) Int {
 	var previous = [0].repeated(b.length() + 1)
 
 	for i in 1..a.length() + 1 {
@@ -61,7 +61,7 @@ Returns how alike two strings are, from 0.0 (nothing shared) to 1.0 (equal): twi
 Two empty strings give 1.0. Use `close_matches` to rank a list of candidates by this score.
 Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
 */
-export fn similarity_ratio(left String, right String) Float {
+export fn similarity_ratio(left, right String) Float {
 	if left == right { return 1.0 }
 
 	a := left.chars()
@@ -111,7 +111,7 @@ export fn close_matches(
 	return ranked.take(limit).map(s => s.text.clone())
 }
 
-fn compare_scores(left Float, right Float) Int {
+fn compare_scores(left, right Float) Int {
 	if left > right { return -1 }
 	if left < right { return 1 }
 
@@ -131,7 +131,7 @@ type Step {
 
 // Walks the longest common subsequence table to list the steps that turn `old` into
 // `new`, deletions before insertions within a change.
-fn middle_steps(old List[String], new List[String], shift Int) List[Step] {
+fn middle_steps(old, new List[String], shift Int) List[Step] {
 	var table = (0..old.length() + 1).map(_row => [0].repeated(new.length() + 1))
 	var i = old.length() - 1
 
@@ -198,7 +198,7 @@ fn middle_steps(old List[String], new List[String], shift Int) List[Step] {
 
 // Lists the steps that turn `old` into `new`. Matches common leading and trailing lines
 // directly, so only the differing middle pays for the quadratic table.
-fn line_steps(old List[String], new List[String]) List[Step] {
+fn line_steps(old, new List[String]) List[Step] {
 	var head = 0
 	while head < old.length() and head < new.length() and old[head] == new[head] {
 		head += 1
@@ -239,7 +239,7 @@ fn line_steps(old List[String], new List[String]) List[Step] {
 
 // Formats a hunk range like unified diff: the 1-based start and length, with an empty
 // range counted from the line before it.
-fn hunk_range(start Int, length Int) String {
+fn hunk_range(start, length Int) String {
 	if length == 1 { return f"{start + 1}" }
 	if length == 0 { return f"{start},0" }
 
@@ -262,7 +262,7 @@ Input lines carry no trailing newline. Each output line, including the last, end
 Example: `unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1))` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
 */
 export fn unified_diff(
-	old List[String],
+	old,
 	new List[String],
 	options UnifiedDiffOptions = UnifiedDiffOptions(),
 ) String {

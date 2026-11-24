@@ -10,7 +10,7 @@ import (
 
 mask := 4294967295
 
-fn rotr(x Int, n Int) Int {
+fn rotr(x, n Int) Int {
 	return bit_and(bit_or(shift_right_unsigned(x, n), shift_left(x, 32 - n)), mask)
 }
 
@@ -34,7 +34,7 @@ fn crc_table() List[Int] {
 	return t
 }
 
-fn crc32(table List[Int], data List[Int]) Int {
+fn crc32(table, data List[Int]) Int {
 	var c = mask
 	for b in data {
 		c = bit_xor(table[bit_and(bit_xor(c, b), 255)], shift_right_unsigned(c, 8))
@@ -60,7 +60,7 @@ fn round_constants() List[Int] {
 
 // SHA-256 of `data`; the result is the first word of the digest xor-folded with the
 // last.
-fn sha256(k List[Int], data List[Int]) Int {
+fn sha256(k, data List[Int]) Int {
 	var h = [
 		0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c,
 		0x1f83d9ab, 0x5be0cd19

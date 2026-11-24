@@ -3,7 +3,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn rows_run(re Regex, text String, expected List[String], count Int, width Int) Int! {
+fn rows_run(re Regex, text String, expected List[String], count, width Int) Int! {
 	rows := re.capture_all(text)?
 	expect_equal(rows.length(), count)?
 
@@ -48,25 +48,17 @@ type BenchData {
 	re Regex
 	text String
 	expected List[List[String]]
-	re_8 Regex
-	re_9 Regex
+	re_8, re_9 Regex
 	text_9 String
 	re_13 Regex
 	text_13 String
 	expected_13 List[String]
-	plain_re Regex
-	grouped_re Regex
+	plain_re, grouped_re Regex
 	whole_expected List[String]
 	grouped_expected List[String]
 	none_expected List[String]
-	text_0 String
-	text_1 String
-	text_128 String
-	text_2000 String
-	text_1000g String
-	named_re Regex
-	anon_re Regex
-	late_re Regex
+	text_0, text_1, text_128, text_2000, text_1000g String
+	named_re, anon_re, late_re Regex
 	long_miss String
 	id_hit Map[String, String]
 	no_names Map[String, String]

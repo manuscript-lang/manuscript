@@ -7,7 +7,7 @@ fn say(text String) Void {
 	_ignored := stdout().write(text.clone())
 }
 
-fn k_fma(a List[Float32], b List[Float32], var out List[Float32], n Int) Void {
+fn k_fma(a, b List[Float32], var out List[Float32], n Int) Void {
 	for i in 0..n {
 		out[i] = a[i] * b[i] + 1.5
 	}
@@ -19,7 +19,7 @@ fn k_scale64(a List[Float], var out List[Float], n Int) Void {
 	}
 }
 
-fn k_intadd(a List[Int], b List[Int], var out List[Int], n Int) Void {
+fn k_intadd(a, b List[Int], var out List[Int], n Int) Void {
 	for i in 0..n {
 		out[i] = a[i] + b[i]
 	}
@@ -31,13 +31,7 @@ fn k_stencil(a List[Float32], var out List[Float32], n Int) Void {
 	}
 }
 
-fn k_base(
-	w List[Float32],
-	x List[Float32],
-	var out List[Float32],
-	base Int,
-	n Int,
-) Void {
+fn k_base(w, x List[Float32], var out List[Float32], base, n Int) Void {
 	for i in 0..n {
 		out[i] = w[base + i] * x[i]
 	}
@@ -56,7 +50,7 @@ fn k_conv(a List[Int], var out List[Float], n Int) Void {
 	}
 }
 
-fn k_dot(a List[Float32], b List[Float32], n Int) Float32 {
+fn k_dot(a, b List[Float32], n Int) Float32 {
 	var acc Float32 = 0.0
 	for i in 0..n {
 		acc += a[i] * b[i]
@@ -64,7 +58,7 @@ fn k_dot(a List[Float32], b List[Float32], n Int) Float32 {
 	return acc
 }
 
-fn report(name String, flops Int, reps Int, t Int) Void {
+fn report(name String, flops, reps, t Int) Void {
 	say(f"{name} {(flops * reps).to_float() / t.to_float()}\n")
 }
 

@@ -1,6 +1,6 @@
 import Decimal, RoundingMode from "@std/math/decimal.ms"
 
-export extern fn msstd_decimal_compare(left Decimal, right Decimal) Int
+export extern fn msstd_decimal_compare(left, right Decimal) Int
 
 export extern fn msstd_decimal_parse(text String) Decimal!
 

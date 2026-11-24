@@ -37,8 +37,8 @@ export extern fn msstd_tls_parse_certificates(
 ) move List[CertificateInfo]!
 
 export extern fn msstd_tls_verify_certificates(
-	chain_pem String,
-	roots_pem String,
+	chain_pem,
+	roots_pem,
 	server_name String,
 	now Timestamp,
 ) Void!
@@ -231,7 +231,7 @@ export extern fn msstd_net_network_lookup(
 
 export extern fn msstd_net_network_request_bytes(
 	net NativeNetwork,
-	method String,
+	method,
 	url String,
 	headers HttpHeaders,
 	body Bytes,
@@ -249,7 +249,7 @@ export extern fn msstd_net_network_resolve(
 
 export extern fn msstd_net_network_restrict(
 	net NativeNetwork,
-	hosts List[String],
+	hosts,
 	cidrs List[String],
 	allow_listen Bool,
 ) move Network!

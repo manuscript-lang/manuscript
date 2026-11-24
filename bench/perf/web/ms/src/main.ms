@@ -23,7 +23,7 @@ fn reply(status Int, text String) HttpResponse {
 }
 
 // Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
-fn pick_after(prev_id Int, prev_score Int) Int {
+fn pick_after(prev_id, prev_score Int) Int {
 	var best = -1
 	var best_score = -1
 	var id = 0
@@ -92,7 +92,7 @@ fn user_reply(path String) HttpResponse {
 }
 
 // Resolve localhost, write 1 MiB to the connection's own file, read it back.
-fn io_reply(dir String, slot String, payload Bytes) HttpResponse {
+fn io_reply(dir, slot String, payload Bytes) HttpResponse {
 	if addresses := lookup("localhost") {
 		path := f"{dir}/m{slot}.bin"
 		if got := write_and_read(path, payload) {
@@ -137,7 +137,7 @@ fn make_handler(dir String) fn(var HttpExchange) Result[Void, Error] {
 
 // Serves the benchmark endpoints on 127.0.0.1:<port> on `threads` scheduler threads
 // until the server stops.
-fn serve_here(port String, dir String, threads Int) Int {
+fn serve_here(port, dir String, threads Int) Int {
 	options := HttpServerOptions(cores: threads)
 
 	if acquired := serve(

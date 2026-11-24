@@ -20,21 +20,21 @@ fn Ordered.max(other Self) Self {
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault. Example: `(15).clamp(0, 10)` is `10`.
-fn Ordered.clamp(low Self, high Self) Self {
+fn Ordered.clamp(low, high Self) Self {
 	return clamped(self, low, high).clone()
 }
 
-fn lesser[T Comparable](left T, right T) T {
+fn lesser[T Comparable](left, right T) T {
 	if right.compare(left) < 0 { return right }
 	return left
 }
 
-fn greater[T Comparable](left T, right T) T {
+fn greater[T Comparable](left, right T) T {
 	if right.compare(left) > 0 { return right }
 	return left
 }
 
-fn clamped[T Comparable](value T, low T, high T) T {
+fn clamped[T Comparable](value, low, high T) T {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}

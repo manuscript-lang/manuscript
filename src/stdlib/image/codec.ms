@@ -45,7 +45,7 @@ export fn byte(value Int) UInt8 {
 
 // Checks dimensions against `max_pixels` and the 2^30 hard ceiling; returns the pixel
 // count or `EBADMSG` or `EOVERFLOW`.
-export fn pixel_count(width Int, height Int, max_pixels Int?) Int! {
+export fn pixel_count(width, height Int, max_pixels Int?) Int! {
 	if width < 1 or height < 1 { return error(bad("dimensions must be positive")) }
 	if width > HARD_MAX_PIXELS / height {
 		return error(too_big(f"{width}x{height} is too large"))
@@ -67,11 +67,11 @@ export fn zeroed(count Int) List[UInt8] {
 }
 
 // Returns the larger of `a` and `b`.
-export fn max_of(a Int, b Int) Int {
+export fn max_of(a, b Int) Int {
 	return if a > b { a } else { b }
 }
 
 // Returns the smaller of `a` and `b`.
-export fn min_of(a Int, b Int) Int {
+export fn min_of(a, b Int) Int {
 	return if a < b { a } else { b }
 }

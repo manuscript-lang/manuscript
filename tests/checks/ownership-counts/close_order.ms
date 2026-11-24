@@ -16,8 +16,7 @@ fn move Res.close() Void! {
 }
 
 type Pair {
-	a Res
-	b Res
+	a, b Res
 }
 
 export fn main() Int {

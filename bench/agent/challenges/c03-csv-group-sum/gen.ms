@@ -104,7 +104,7 @@ fn solve(s String) String {
 	return out
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
 export fn gen_c03() Void {
 	var rnd = seeded(3)

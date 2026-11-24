@@ -34,18 +34,10 @@ fn show(v: String) Void:
 // One view operation on the text `s` (always " ab cd "): the statements that bind the
 // view, the expression that prints it later and the text it must print.
 type Operation {
-	name String
-	binds String
-	shown String
-	expected String
+	name, binds, shown, expected String
 }
 
-fn op(
-	move name String,
-	move binds String,
-	move shown String,
-	move expected String,
-) Operation {
+fn op(move name, binds, shown, expected String) Operation {
 	return Operation(name, binds, shown, expected)
 }
 
@@ -68,10 +60,7 @@ fn operations() List[Operation] {
 
 // A way to hold the text: statements that define `s`, and the function it runs in.
 type Source {
-	name String
-	setup String
-	params String
-	caller String
+	name, setup, params, caller String
 }
 
 fn sources() List[Source] {
@@ -89,8 +78,7 @@ fn sources() List[Source] {
 // Statements after the view that make short temporaries, each printed so none is
 // dropped, and the text they print.
 type Stomp {
-	name String
-	lines String
+	name, lines String
 	expected List[String]
 }
 

@@ -63,6 +63,7 @@ Formatting preserves meaning and comments, indents with one tab per level and al
 - A flow of three or more stages (`a | b? | c?`) wider than 50 columns is parenthesized with one stage per line, each starting with `|`; a line starting with `.` after a flow step becomes its own `| .name(...)` stage.
 - Keep single-step blocks beside adjacent work; separate substantial blocks and guards with blank lines, except that a one-line guard directly before the final `return` of a two-statement body stays together with it. Authored blank lines are discarded, except one kept after a comment-only line so a comment block stays apart from the next comment or declaration.
 - Keep match arms together.
+- Neighbouring fields, parameters and enum payload names with the same type (and default) are joined: `width, height Int`; a comment or blank line between them keeps them apart.
 - One space around operators and after colons and commas; blocks are braced and indented by nesting depth, so a one-line block is expanded; none next to delimiters; two before inline comments.
 - Keep comment text, drop trailing whitespace, round comment-only indentation down to a multiple of four.
 

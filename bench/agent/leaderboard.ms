@@ -27,28 +27,20 @@ CATEGORIES := ["base", "docs", "reads", "build", "writes", "model output"]
 
 // One graded Harbor trial, as a line of `trials-*.jsonl`.
 type Trial {
-	trial String
-	challenge String
-	category String
+	trial, challenge, category String
 	tier Int
 	language String
-	pass Bool
-	errored Bool
-	tokens_in Int
-	tokens_cached Int
-	tokens_out Int
+	pass, errored Bool
+	tokens_in, tokens_cached, tokens_out Int
 	cost_usd Float
 	turns Int
 	wall_s Float
 	input_by_source JsonValue
 	started String
-	agent String?
-	model String?
-	cases_passed Int?
-	cases_total Int?
+	agent, model String?
+	cases_passed, cases_total Int?
 	first_build_ok Bool?
-	code_tokens Int?
-	builds Int?
+	code_tokens, builds Int?
 }
 
 fn lang_name(id String) String {
@@ -306,13 +298,8 @@ fn collect(dirs List[String]) Int {
 // Aggregates of one group of trials; passing trials only for the averages.
 type Agg {
 	n Int
-	pass Float
-	fb Float
-	tokens Float?
-	turns Float?
-	wall Float?
-	cost Float?
-	code Float?
+	pass, fb Float
+	tokens, turns, wall, cost, code Float?
 }
 
 fn mean_of(values List[Float]) Float? {
@@ -385,7 +372,7 @@ fn table(title String, rs List[Trial], key fn(Trial) String, label String) Strin
 
 // Higher pass rate first, then lower cost; trials without a passing run sort last, then
 // input order.
-fn order(a Row, b Row, ai Int, bi Int) Int {
+fn order(a, b Row, ai, bi Int) Int {
 	if a.stats.pass != b.stats.pass { return if a.stats.pass > b.stats.pass { - 1 } else { 1 } }
 
 	ac := a.stats.cost or 1000000000.0

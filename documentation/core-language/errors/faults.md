@@ -18,7 +18,7 @@ import (
     Decimal from "@std/math/decimal.ms",
 )
 
-fn discount_validated(price Decimal, percent Decimal) Decimal {
+fn discount_validated(price, percent Decimal) Decimal {
     if price <= 0d {
         return panic("Price must be positive")
     }

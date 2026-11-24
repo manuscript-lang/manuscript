@@ -70,8 +70,7 @@ fn leading_name(text String) String {
 type Declared {
 	line Int
 	exported Bool
-	owner String
-	name String
+	owner, name String
 	params List[String]
 }
 
@@ -144,8 +143,8 @@ fn header_from(lines List[String], start Int) String {
 fn declared_of(
 	line Int,
 	exported Bool,
-	after_fn String,
-	owner_override String,
+	after_fn,
+	owner_override,
 	params_from String,
 ) Declared {
 	qualified := leading_name(after_fn)
@@ -271,12 +270,7 @@ fn allow_list(path String) List[String] {
 }
 
 // Findings not on the allow list, and allow-list lines that no longer match anything.
-fn shrinking(
-	allowed List[String],
-	found List[String],
-	list_path String,
-	describe String,
-) List[String] {
+fn shrinking(allowed, found List[String], list_path, describe String) List[String] {
 	var issues = List[String]()
 	for entry in found {
 		if not allowed.contains(
@@ -358,7 +352,7 @@ fn stream_names(
 }
 
 // Methods that do not follow their type or another method of it.
-fn adjacency(path String, text String) List[String] {
+fn adjacency(path, text String) List[String] {
 	var issues = List[String]()
 	local := type_names(text, false)
 	var previous = ""
@@ -422,7 +416,7 @@ fn adjacency(path String, text String) List[String] {
 	return issues
 }
 
-fn contains_word(text String, word String) Bool {
+fn contains_word(text, word String) Bool {
 	var from = 0
 
 	while from <= text.length() {

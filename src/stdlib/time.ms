@@ -98,7 +98,7 @@ fn Duration.max(other Duration) Duration {
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn Duration.clamp(low Duration, high Duration) Duration {
+fn Duration.clamp(low, high Duration) Duration {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}
@@ -208,7 +208,7 @@ fn Instant.max(other Instant) Instant {
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn Instant.clamp(low Instant, high Instant) Instant {
+fn Instant.clamp(low, high Instant) Instant {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}
@@ -227,8 +227,7 @@ fn out_of_range() Error {
 // Whole seconds and a nanosecond remainder of a nanosecond count, which may lie
 // outside 0 through 999999999 because Timestamp's fields are public.
 type Split {
-	whole Int
-	rest Int
+	whole, rest Int
 }
 
 // Splits nanos so the remainder is in 0 through 999999999 and nothing overflows.
@@ -245,7 +244,7 @@ fn floor_split(nanos Int) Split {
 // The duration whole * 1e9 + rest, or ERANGE when it does not fit an Int. The bounds
 // are the Int range, -9223372036854775808 through 9223372036854775807, in seconds
 // and nanoseconds.
-fn duration_of(whole Int, rest Int) Duration! {
+fn duration_of(whole, rest Int) Duration! {
 	// Align the signs so the two parts count the same way.
 	var w = whole
 	var r = rest
@@ -409,7 +408,7 @@ fn Timestamp.max(other Timestamp) Timestamp {
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn Timestamp.clamp(low Timestamp, high Timestamp) Timestamp {
+fn Timestamp.clamp(low, high Timestamp) Timestamp {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}
@@ -437,7 +436,7 @@ Tokens are replaced wherever they appear, even inside words (`"Dummy"` becomes `
 To include literal letters that spell a token, format the fields separately and join the pieces yourself.
 An unknown zone returns `EINVAL`.
 */
-fn Timestamp.format(pattern String, zone String) String! {
+fn Timestamp.format(pattern, zone String) String! {
 	resolved := load(zone)?
 	at := resolved.at(self.seconds)
 	return ok(msstd_time_timestamp_format(self, pattern, at.offset, at.abbreviation))
@@ -471,7 +470,7 @@ export type Date {
 
 // Writes `whole` with the digits of a fractional part `frac` of `width` places,
 // trailing zeros dropped.
-fn duration_decimal(whole Int, frac Int, width Int) String {
+fn duration_decimal(whole, frac, width Int) String {
 	if frac == 0 { return f"{whole}" }
 
 	var rest = frac
@@ -688,12 +687,12 @@ Fields outside their calendar range, such as month 13 or February 30, return `ER
 A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
 */
 export fn from_calendar(
-	year Int,
-	month Int,
-	day Int,
-	hour Int,
-	minute Int,
-	second Int,
+	year,
+	month,
+	day,
+	hour,
+	minute,
+	second,
 	nanosecond Int,
 	zone String,
 ) Timestamp! {
@@ -728,7 +727,7 @@ export fn sleep(duration Duration) Promise[Void] {
 // `nanoseconds` must be 0 through 999999999, and `seconds` from -62135596800 (year 1)
 // through 253402300799 (year 9999); anything else returns `ERANGE`. It does not carry
 // extra nanoseconds into the seconds.
-export fn timestamp(seconds Int, nanoseconds Int) Timestamp! {
+export fn timestamp(seconds, nanoseconds Int) Timestamp! {
 	if nanoseconds < 0 or nanoseconds >= 1000000000 {
 		return error(Error("time: value out of range", kind: "ERANGE"))
 	}
@@ -828,7 +827,7 @@ export fn ticker(period Duration) ReadStream[Instant] {
 
 // `n.milliseconds()`, `n.seconds()` and `n.minutes()` are the constructors above on the
 // receiver. A count whose nanoseconds do not fit in Int faults and names the range.
-fn unit_count(operation String, n Int, scale Int) Int {
+fn unit_count(operation String, n, scale Int) Int {
 	low := (-9223372036854775807 - 1) / scale
 	high := 9223372036854775807 / scale
 	if n < low or n > high {

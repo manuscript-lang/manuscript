@@ -77,7 +77,7 @@ fn Queue[T].get(index Int) T? {
 
 // Internal: orders two values: negative when `left` dequeues first, zero when equal
 // and positive when `right` dequeues first.
-fn order[T Comparable](left T, right T) Int {
+fn order[T Comparable](left, right T) Int {
 	return left.compare(right)
 }
 
@@ -107,7 +107,7 @@ export type PriorityQueue[T Comparable] {
 }
 
 // Reports whether the entry at `a` dequeues before the entry at `b`.
-fn PriorityQueue[T].before(a Int, b Int) Bool {
+fn PriorityQueue[T].before(a, b Int) Bool {
 	first := self.heap[a]
 	second := self.heap[b]
 	order := order(first.value, second.value)
@@ -115,13 +115,13 @@ fn PriorityQueue[T].before(a Int, b Int) Bool {
 }
 
 // Exchanges the heap entries at `a` and `b`.
-fn var PriorityQueue[T].swap_entries(a Int, b Int) Void {
+fn var PriorityQueue[T].swap_entries(a, b Int) Void {
 	self.heap.swap(a, b)
 }
 
 // Moves the entry at `start` up, but no higher than `floor`, while it dequeues
 // before its parent.
-fn var PriorityQueue[T].sift_up(start Int, floor Int) Void {
+fn var PriorityQueue[T].sift_up(start, floor Int) Void {
 	var at = start
 
 	while at > floor {

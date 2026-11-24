@@ -227,34 +227,21 @@ E_TEMPLATE := 12
 // generated tables), or its `data` text when the tag is not a known atom.
 type Parser {
 	src Bytes
-	size Int
-	max_open Int
+	size, max_open Int
 	exceeded Bool = false
 	// Tokenizer state.
 	eof Bool = false
-	raw_start Int = 0
-	raw_end Int = 0
-	data_start Int = 0
-	data_end Int = 0
-	tt Int = 0
-	pk_s Int = 0
-	pk_e Int = 0
-	pv_s Int = 0
-	pv_e Int = 0
-	attr_n Int = 0
+	raw_start, raw_end, data_start, data_end, tt, pk_s, pk_e, pv_s, pv_e, attr_n Int = 0
 	attr_ks List[Int] = []
 	attr_ke List[Int] = []
 	attr_vs List[Int] = []
 	attr_ve List[Int] = []
 	raw_tag Int = 0
 	raw_name Bytes = Bytes(values: [])
-	text_is_raw Bool = false
-	convert_nul Bool = false
-	allow_cdata Bool = false
+	text_is_raw, convert_nul, allow_cdata Bool = false
 	// The current token. A tag's name is `tok_atom`, or `tok_data` when it has no atom;
 	// attributes are the first `tok_n` entries of the three lists.
-	tok_ty Int = 0
-	tok_atom Int = 0
+	tok_ty, tok_atom Int = 0
 	tok_data String = ""
 	tok_n Int = 0
 	tok_keys List[String] = []
@@ -283,14 +270,12 @@ type Parser {
 	oe_p List[Int] = []
 	oe_stop List[Int] = []
 	afe List[Int] = []
-	head Int = -1
-	form Int = -1
+	head, form Int = -1
 	frameset_ok Bool = true
 	template_stack List[Int] = []
 	im Int = 0
 	original_im Int = -1
-	foster_parenting Bool = false
-	quirks Bool = false
+	foster_parenting, quirks Bool = false
 }
 
 fn var Parser.read_byte() Int {
@@ -851,7 +836,7 @@ fn Parser.raw_text_tag() Int {
 
 // Whether the `length` bytes at `start` equal the lower-case `word`, ignoring ASCII
 // case.
-fn Parser.name_is(start Int, length Int, word String) Bool {
+fn Parser.name_is(start, length Int, word String) Bool {
 	if length != word.length() { return false }
 	return bytes_equal_fold(self.src, start, word.to_bytes())
 }
@@ -1222,7 +1207,7 @@ fn Parser.tok_name() String {
 	return self.tok_data.clone()
 }
 
-fn var Parser.alloc(kind Int, atom Int, data String) Int {
+fn var Parser.alloc(kind, atom Int, data String) Int {
 	id := self.kind.length()
 	self.kind.append(kind)
 	self.atom.append(atom)
@@ -1239,7 +1224,7 @@ fn var Parser.alloc(kind Int, atom Int, data String) Int {
 }
 
 // Links `child` before `old` under `parent`; `old` of -1 appends.
-fn var Parser.insert_before(parent Int, child Int, old Int) Void {
+fn var Parser.insert_before(parent, child, old Int) Void {
 	var before = self.last[parent]
 	var after = -1
 
@@ -1265,11 +1250,11 @@ fn var Parser.insert_before(parent Int, child Int, old Int) Void {
 	self.next[child] = after
 }
 
-fn var Parser.append_child(parent Int, child Int) Void {
+fn var Parser.append_child(parent, child Int) Void {
 	self.insert_before(parent, child, -1)
 }
 
-fn var Parser.remove_child(parent Int, child Int) Void {
+fn var Parser.remove_child(parent, child Int) Void {
 	before := self.prev[child]
 	after := self.next[child]
 	if self.first[parent] == child { self.first[parent] = after }
@@ -1286,7 +1271,7 @@ fn var Parser.detach(child Int) Void {
 	if p >= 0 { self.remove_child(p, child) }
 }
 
-fn var Parser.reparent_children(dst Int, src Int) Void {
+fn var Parser.reparent_children(dst, src Int) Void {
 	while self.first[src] >= 0 {
 		child := self.first[src]
 		self.remove_child(src, child)
@@ -1396,12 +1381,12 @@ fn var Parser.oe_truncate(len Int) Void {
 	}
 }
 
-fn var Parser.oe_insert(at Int, n Int) Void {
+fn var Parser.oe_insert(at, n Int) Void {
 	self.oe.insert(at, n)
 	self.oe_remark(at)
 }
 
-fn var Parser.oe_set(i Int, n Int) Void {
+fn var Parser.oe_set(i, n Int) Void {
 	self.oe[i] = n
 	self.oe_remark(i)
 }
@@ -1471,7 +1456,7 @@ fn Parser.is_special_element(n Int) Bool {
 
 // The index of the nearest open element matching one of the atoms (-2 as the first atom
 // matches any heading) before a boundary of the scope, or -1.
-fn Parser.scope_index(s Int, m1 Int, m2 Int, m3 Int) Int {
+fn Parser.scope_index(s, m1, m2, m3 Int) Int {
 	if s == SCOPE_BUTTON and m1 == A_P and m2 == -1 {
 		mark_p := self.oe_p.get_or(self.oe.length() - 1, 0)
 		mark_stop := self.oe_stop.get_or(self.oe.length() - 1, 0)
@@ -1509,7 +1494,7 @@ fn Parser.scope_index(s Int, m1 Int, m2 Int, m3 Int) Int {
 	return -1
 }
 
-fn var Parser.pop_until(s Int, m1 Int, m2 Int, m3 Int) Bool {
+fn var Parser.pop_until(s, m1, m2, m3 Int) Bool {
 	i := self.scope_index(s, m1, m2, m3)
 	if i < 0 { return false }
 
@@ -1517,7 +1502,7 @@ fn var Parser.pop_until(s Int, m1 Int, m2 Int, m3 Int) Bool {
 	return true
 }
 
-fn Parser.element_in_scope(s Int, m1 Int, m2 Int, m3 Int) Bool {
+fn Parser.element_in_scope(s, m1, m2, m3 Int) Bool {
 	return self.scope_index(s, m1, m2, m3) >= 0
 }
 
@@ -2510,7 +2495,7 @@ fn var Parser.in_body_start_tag() Bool {
 
 // The `li` / `dd` / `dt` loop of the start-tag rules: closes an open item of the same
 // kind.
-fn var Parser.close_list_item(a1 Int, a2 Int) Void {
+fn var Parser.close_list_item(a1, a2 Int) Void {
 	var i = self.oe.length() - 1
 
 	while i >= 0 {
@@ -3777,7 +3762,7 @@ fn Parser.in_foreign_content() Bool {
 
 // Parses a token the document implies, such as the `html` start tag, then restores the
 // real one.
-fn var Parser.parse_implied_token(ty Int, atom Int) Void {
+fn var Parser.parse_implied_token(ty, atom Int) Void {
 	real_ty := self.tok_ty
 	real_atom := self.tok_atom
 	real_data := self.tok_data.clone()
@@ -3995,7 +3980,7 @@ fn bytes_equal_fold(data Bytes, at Int, name Bytes) Bool {
 // ---- tokenizer ----
 
 // Whether `src[start, end)` has a byte that is an ASCII capital or at least 128.
-fn needs_ascii_lowering(src Bytes, start Int, end Int) Bool {
+fn needs_ascii_lowering(src Bytes, start, end Int) Bool {
 	for i in start..end {
 		b := src.get(i).to_int()
 		if (b >= 65 and b <= 90) or b >= 128 { return true }
@@ -4006,7 +3991,7 @@ fn needs_ascii_lowering(src Bytes, start Int, end Int) Bool {
 
 // The text of `src[start, end)` with ASCII capitals lower-cased (other scalars
 // unchanged).
-fn lowered_text(src Bytes, start Int, end Int) String {
+fn lowered_text(src Bytes, start, end Int) String {
 	text := src.decode_utf8_range(start, end) or ""
 	if not needs_ascii_lowering(src, start, end) { return text }
 
@@ -4027,7 +4012,7 @@ fn lowered_text(src Bytes, start Int, end Int) String {
 
 // The atom of the lower-cased name `src[start, end)`, or 0 when it is not a known tag
 // name.
-fn atom_of_range(src Bytes, start Int, end Int) Int {
+fn atom_of_range(src Bytes, start, end Int) Int {
 	length := end - start
 	if length <= 0 { return 0 }
 
@@ -4068,20 +4053,20 @@ fn convert_newlines(text String) String {
 	return text.replace("\r\n", "\n").replace("\r", "\n")
 }
 
-fn stop_atom(ns Int, atom Int) Bool {
+fn stop_atom(ns, atom Int) Bool {
 	if ns == NS_HTML { return is_scope_stop(atom) }
 	if ns == NS_MATH { return is_math_stop(atom) }
 
 	return is_svg_stop(atom)
 }
 
-fn tag_matches(a Int, m1 Int, m2 Int, m3 Int) Bool {
+fn tag_matches(a, m1, m2, m3 Int) Bool {
 	if a == m1 or a == m2 or a == m3 { return true }
 	return m1 == -2 and is_heading(a)
 }
 
 // Equality ignoring ASCII case.
-fn ascii_equal_fold(a String, b String) Bool {
+fn ascii_equal_fold(a, b String) Bool {
 	ab := a.to_bytes()
 	bb := b.to_bytes()
 	if ab.length() != bb.length() { return false }
@@ -5633,7 +5618,7 @@ fn budget(limit Int?) Int! {
 
 // Whether the tree under the document has at most `max_nodes` reachable nodes and nests
 // at most `max_depth` levels (the document is level zero).
-fn within_limits(p Parser, max_depth Int, max_nodes Int) Bool {
+fn within_limits(p Parser, max_depth, max_nodes Int) Bool {
 	var stack List[Int] = [1]
 	var depths List[Int] = [0]
 	var count = 0

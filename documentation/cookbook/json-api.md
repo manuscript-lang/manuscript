@@ -64,7 +64,7 @@ fn api() Router {
     return router
 }
 
-fn request(method HttpMethod, path String, body String) HttpRequest {
+fn request(method HttpMethod, path, body String) HttpRequest {
     return HttpRequest(
         method: method,
         path: path,

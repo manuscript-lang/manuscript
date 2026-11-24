@@ -27,10 +27,7 @@ type Var {
 }
 
 type Frame {
-	active Bool
-	parent Bool
-	cond Bool
-	seen_else Bool
+	active, parent, cond, seen_else Bool
 	line Int
 }
 
@@ -73,7 +70,7 @@ type Ctx {
 	dres List[String] = List[String]()
 }
 
-fn bs(s String, a Int, b Int) String {
+fn bs(s String, a, b Int) String {
 	if a >= b { return "" }
 	if r := s.slice(a, b) { return r }
 
@@ -137,7 +134,7 @@ fn split_args(s String) List[String] {
 	return out
 }
 
-fn stem_of(pat String, w String, nonempty Bool) String? {
+fn stem_of(pat, w String, nonempty Bool) String? {
 	pi := pat.index_of("%")
 	p := pi
 
@@ -157,14 +154,14 @@ fn stem_of(pat String, w String, nonempty Bool) String? {
 	return null
 }
 
-fn subst_pct(s String, stem String) String {
+fn subst_pct(s, stem String) String {
 	p := s.index_of("%")
 	if p != null { return bs(s, 0, p) + stem + bs(s, p + 1, s.length()) }
 
 	return s.clone()
 }
 
-fn pat_word(pat String, rep String, w String) String {
+fn pat_word(pat, rep, w String) String {
 	if pat.contains("%") {
 		st := stem_of(pat, w, false)
 		if st != null { return subst_pct(rep, st) }
@@ -213,7 +210,7 @@ fn glob(p List[String], i Int, s List[String], j Int) Bool {
 	return c == s[j] and glob(p, i + 1, s, j + 1)
 }
 
-fn last_char_idx(w String, ch String) Int {
+fn last_char_idx(w, ch String) Int {
 	var idx = -1
 	var k = 0
 
@@ -225,7 +222,7 @@ fn last_char_idx(w String, ch String) Int {
 	return idx
 }
 
-fn word_fn(fname String, w String) String {
+fn word_fn(fname, w String) String {
 	if fname == "dir" {
 		i := last_char_idx(w, "/")
 		if i < 0 { return "./" }
@@ -303,7 +300,7 @@ fn find_top(cs List[String], ch String, stop_semi Bool, from Int) Int {
 	return -1
 }
 
-fn sub(cs List[String], a Int, b Int) String {
+fn sub(cs List[String], a, b Int) String {
 	var r = ""
 	var i = a
 
@@ -474,7 +471,7 @@ fn var Ctx.arg(args List[String], i Int) String! {
 	return self.expand(a)
 }
 
-fn var Ctx.call_func(fname String, rest String) String! {
+fn var Ctx.call_func(fname, rest String) String! {
 	args := split_args(rest)
 
 	if fname == "subst" {
@@ -1304,7 +1301,7 @@ fn var Ctx.run_recipe(
 	return ok()
 }
 
-fn var Ctx.update(t String, needed String) Bool! {
+fn var Ctx.update(t, needed String) Bool! {
 	if self.memo.contains(t) { return ok(self.memo.get_or(t, false)) }
 
 	if self.bstack.contains(t) {
@@ -1477,7 +1474,7 @@ fn var Ctx.start(cv Map[String, String], src List[String]) Bool {
 	}
 }
 
-fn fmt_rule(name String, pre List[String], oo List[String]) String {
+fn fmt_rule(name String, pre, oo List[String]) String {
 	var s = name + ": " + join_sp(pre)
 	if oo.length() > 0 {
 		s += " | " + join_sp(oo)

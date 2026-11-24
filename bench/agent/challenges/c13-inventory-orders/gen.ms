@@ -231,7 +231,7 @@ fn solve(s String) String {
 	return out.map(x => x + "\n").join("")
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
 export fn gen_c13() Void {
 	var rnd = seeded(13)

@@ -28,19 +28,15 @@ import (
 type RunRecord {
 	run_id String
 	ts Int
-	tag String
-	challenge String
-	category String
+	tag, challenge, category String
 	tier Int
-	language String
-	harness String
+	language, harness String
 	usage Usage
 	wall_s Float
 	exit_code Int
 	timed_out Bool
 	builds Int
-	first_build_ok Bool
-	first_build_fixed_ok Bool
+	first_build_ok, first_build_fixed_ok Bool
 	checks Int
 	examples_pass Bool
 	build_codes List[String]
@@ -51,17 +47,14 @@ type RunRecord {
 	model String?
 	// `<language>`'s version command output, and a hash of the skill files in the workspace,
 	// so a result names the compiler and the teaching text it measured.
-	toolchain String = ""
-	skill String = ""
+	toolchain, skill String = ""
 }
 
 type Options {
 	harness String = "oracle"
 	model String?
-	challenges String = ""
-	languages String = ""
-	repeat Int = 1
-	jobs Int = 1
+	challenges, languages String = ""
+	repeat, jobs Int = 1
 	timeout Int = 900
 	keep Bool = false
 	tag String = ""
@@ -89,7 +82,7 @@ fn reference_for(ch Challenge, lang Lang) String {
 // Whether a trial hit a compiler crash. Such a trial keeps its whole workspace,
 // so the crash has a reproducer: the transcript, the last build output, or the
 // grading build mentions an internal error or a Rust panic.
-fn keep_ice(said String, ws String, g Grade) Bool {
+fn keep_ice(said, ws String, g Grade) Bool {
 	last := read_text(f"{ws}/.bench/build.out")
 	text := f"{said}\n{last}\n{(g.error.clone() or "")}"
 	return (
@@ -105,7 +98,7 @@ fn run_one(
 	h Harness,
 	timeout_s Int,
 	keep Bool,
-	out_file String,
+	out_file,
 	tag String,
 	model String?,
 ) RunRecord {

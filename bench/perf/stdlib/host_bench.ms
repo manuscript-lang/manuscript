@@ -66,8 +66,7 @@ fn count_events(data Bytes) Int {
 type BenchData {
 	list List[ArchiveEntry]
 	list_2 List[ArchiveEntry]
-	data Bytes
-	packed Bytes
+	data, packed Bytes
 }
 
 fn make_fixture() BenchData {

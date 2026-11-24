@@ -1,5 +1,5 @@
 FLOW VIEW
-`- parse_total  [fn] src/shapes.ms:21
+`- parse_total  [fn] src/shapes.ms:20
    |- for item in items {
    |  |- call read_number
    |  `- native Result[Int, Failure].get_or

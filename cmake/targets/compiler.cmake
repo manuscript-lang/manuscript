@@ -28,7 +28,7 @@ ms_library(ms_native_sigs compiler/natives
 
 ms_library(ms_syntax compiler/syntax
   SOURCES
-    diag_codes.c diag_json.c format.c format_compact.c format_cuts.c format_group.c format_import.c format_layout.c
+    diag_codes.c diag_json.c format.c format_compact.c format_cuts.c format_group.c format_names.c format_import.c format_layout.c
     format_blocks.c format_render.c format_spacing.c format_syntax.c format_text.c format_tree.c lex.c lex_continue.c lex_layout.c
     lex_scan.c lex_text.c lex_token.c lex_unicode.c parse.c parse_bind.c parse_core.c parse_decl.c parse_decl_item.c
     parse_expr.c parse_primary.c parse_stmt.c parse_tables.c parse_text.c parse_type.c partial.c partial_lines.c

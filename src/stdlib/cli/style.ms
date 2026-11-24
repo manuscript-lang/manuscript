@@ -75,7 +75,7 @@ export type Style {
 esc := "\u{1b}"
 csi_final := "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 
-fn clamp(value Int, low Int, high Int) Int {
+fn clamp(value, low, high Int) Int {
 	if value < low { return low }
 	if value > high { return high }
 
@@ -84,7 +84,7 @@ fn clamp(value Int, low Int, high Int) Int {
 
 // The 256-color index nearest to an RGB color: the 6x6x6 cube or the gray ramp,
 // whichever is closer.
-fn rgb_to_indexed(red Int, green Int, blue Int) Int {
+fn rgb_to_indexed(red, green, blue Int) Int {
 	levels := [0, 95, 135, 175, 215, 255]
 
 	fn nearest(value Int) Int {
@@ -153,7 +153,7 @@ fn indexed_to_ansi(index Int) Int {
 
 // The SGR parameters selecting `color`, `base` being 30 for foreground and 40 for
 // background.
-fn color_codes(color Color, base Int, colors Int) String {
+fn color_codes(color Color, base, colors Int) String {
 	match color {
 		Default => return ""
 		Ansi(index) => {

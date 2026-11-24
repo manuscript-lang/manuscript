@@ -4,8 +4,7 @@
 import Iterator from "@std/core.ms"
 
 type Counter {
-	at Int
-	end Int
+	at, end Int
 }
 
 fn var Counter.next() Int? {

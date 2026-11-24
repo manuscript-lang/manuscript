@@ -195,11 +195,11 @@ bench "list.partition" per 100000 {
 }
 
 bench "list.fold" per 100000 {
-	fixture.data_12.fold(0, fn(acc Int, x Int) Int => acc + x)
+	fixture.data_12.fold(0, fn(acc, x Int) Int => acc + x)
 }
 
 bench "list.sorted" per 100000 {
-	sorted := fixture.data_13.sorted(fn(left Int, right Int) Int => left - right)
+	sorted := fixture.data_13.sorted(fn(left, right Int) Int => left - right)
 	sorted.length()
 }
 

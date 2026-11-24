@@ -11,8 +11,7 @@ fn block() Bytes {
 // The directory holds the 200 files that the read, stat, and list cases use; `scratch`
 // is a second directory that the write case overwrites into.
 type BenchData {
-	root String
-	scratch String
+	root, scratch String
 	data Bytes
 	logger Logger
 	scratch_files List[String]

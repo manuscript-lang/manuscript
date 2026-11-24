@@ -11,13 +11,8 @@ import (
 // The host's memory, uptime, load, and parallelism numbers in one flat record;
 // `metrics` shapes it into `SystemMetrics`.
 export type MetricsSnapshot {
-	total_memory Int
-	free_memory Int
-	available_memory Int
-	uptime_nanos Int
-	load_1 Float
-	load_5 Float
-	load_15 Float
+	total_memory, free_memory, available_memory, uptime_nanos Int
+	load_1, load_5, load_15 Float
 	available_parallelism Int
 }
 
@@ -54,7 +49,7 @@ export extern fn msstd_system_home_directory() move String!
 
 export extern fn msstd_system_get_priority(pid Int) Int!
 
-export extern fn msstd_system_set_priority(pid Int, priority Int) Void!
+export extern fn msstd_system_set_priority(pid, priority Int) Void!
 
 export extern fn msstd_process_available_memory() Int!
 

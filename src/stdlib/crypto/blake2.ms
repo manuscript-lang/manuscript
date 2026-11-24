@@ -126,7 +126,7 @@ export fn blake2b(data Bytes, key Bytes = Bytes([]), length Int = 64) Bytes {
 }
 
 // Rotates a 32-bit word toward the low end.
-fn rotr32(value Int, count Int) Int {
+fn rotr32(value, count Int) Int {
 	return bit_and(
 		bit_or(
 			shift_right_unsigned(value, count),
@@ -252,7 +252,7 @@ fn sigma() List[List[Int]] {
 
 // Reads a little-endian word of `width` bytes at `at`, zero padding past the end of
 // `data`.
-fn word(data Bytes, at Int, width Int) Int {
+fn word(data Bytes, at, width Int) Int {
 	var value = 0
 
 	for offset in 0..width {
@@ -267,7 +267,7 @@ fn word(data Bytes, at Int, width Int) Int {
 
 // The padded input: the key block (if any) followed by the data, zero filled to a whole
 // number of blocks (at least one).
-fn padded(key Bytes, data Bytes, block Int) Bytes {
+fn padded(key, data Bytes, block Int) Bytes {
 	var out = BytesBuilder()
 
 	if not key.is_empty() {

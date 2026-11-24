@@ -16,7 +16,7 @@ import (
 	summarize from "./programs_table.ms",
 )
 
-fn lines_of(version String, content String) List[String] {
+fn lines_of(version, content String) List[String] {
 	return content.split("\n").filter(l => l != "").map(l => f"{version} {l}")
 }
 

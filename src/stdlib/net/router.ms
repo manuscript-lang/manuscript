@@ -75,7 +75,7 @@ fn RouteParams.get(name String) String? {
 
 // Returns the text captured for `name`, or `fallback` when the pattern has no such
 // parameter.
-fn RouteParams.get_or(name String, fallback String) String {
+fn RouteParams.get_or(name, fallback String) String {
 	return self.get(name) or fallback
 }
 
@@ -316,7 +316,7 @@ fn insert(var routes List[Route], route Route) Void! {
 
 // Rewrites a route moved out of a mounted router: its pattern under `base`, the mounted
 // router's middleware group `own` outermost, and its own groups moved up by `offset`.
-fn remount(var route Route, base String, own Int, offset Int) Void! {
+fn remount(var route Route, base String, own, offset Int) Void! {
 	tail := if route.pattern == "/" { "" } else { route.pattern.clone() }
 	pattern := if not (base + tail).is_empty() { base + tail } else { "/" }
 	route.segments = parse_pattern(pattern.clone())?
@@ -475,7 +475,7 @@ fn lookup(routes List[Route], method String, parts List[String]) Lookup {
 }
 
 // A GET route also serves HEAD.
-fn serves(registered String, requested String) Bool {
+fn serves(registered, requested String) Bool {
 	return registered == requested or (registered == "GET" and requested == "HEAD")
 }
 
@@ -652,9 +652,7 @@ fn allow_text(methods List[String]) String {
 // What an in-process handler has sent so far.
 type TestState {
 	status Int
-	sent Bool
-	complete Bool
-	closed Bool
+	sent, complete, closed Bool
 	head HttpHeaders
 	body BytesBuilder
 	unread Bytes?
@@ -754,7 +752,7 @@ fn var TestExchange.send(status Int, headers HttpHeaders, body Bytes) Void! {
 }
 
 fn var TestExchange.upgrade(
-	allowed_origins List[String],
+	allowed_origins,
 	subprotocols List[String],
 	max_message_bytes Int?,
 ) WebSocket! {
@@ -803,22 +801,20 @@ fn has_body(status Int) Bool {
 
 // What a wrapped exchange has sent so far.
 type TapState {
-	status Int
-	bytes Int
+	status, bytes Int
 }
 
 // An exchange that passes everything to `inner`, adds `extra` to the headers of its
 // response, and counts the status and body bytes sent.
 type Tap {
 	inner HttpExchange
-	extra HttpHeaders
-	request HttpHeaders
+	extra, request HttpHeaders
 	state Int?
 }
 
 // The body bytes the exchange transmits: null for HEAD or a status that forbids a
 // body.
-fn Tap.sent_length(status Int, length Int) Int {
+fn Tap.sent_length(status, length Int) Int {
 	if self.inner.method() == HttpMethod.Head or not has_body(status) { return 0 }
 	return length
 }
@@ -874,7 +870,7 @@ fn var Tap.send(status Int, headers HttpHeaders, body Bytes) Void! {
 }
 
 fn var Tap.upgrade(
-	allowed_origins List[String],
+	allowed_origins,
 	subprotocols List[String],
 	max_message_bytes Int?,
 ) WebSocket! {
@@ -894,12 +890,7 @@ fn var Tap.write_bytes(move data Bytes) Void! {
 }
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
-fn new_tap(
-	inner HttpExchange,
-	extra HttpHeaders,
-	request HttpHeaders,
-	state Int? = null,
-) Tap {
+fn new_tap(inner HttpExchange, extra, request HttpHeaders, state Int? = null) Tap {
 	return Tap(inner: inner, extra: extra, request: request, state: state)
 }
 
@@ -910,7 +901,7 @@ export fn with_request_headers(var exchange HttpExchange, request HttpHeaders) V
 	exchange = new_tap(exchange, headers(), request)
 }
 
-fn counted(status Int, bytes Int, slot Int?) Void {
+fn counted(status, bytes Int, slot Int?) Void {
 	state := slot
 
 	if state != null {
@@ -926,7 +917,7 @@ fn snapshot(state Int) TapState {
 }
 
 // `sent` plus the `extra` headers it does not already have.
-fn with_extra(sent HttpHeaders, extra HttpHeaders) HttpHeaders {
+fn with_extra(sent, extra HttpHeaders) HttpHeaders {
 	var all = sent.clone()
 	for name in extra.names() {
 		if not all.contains(name) {
@@ -982,12 +973,8 @@ fn new_id() String! {
 
 // One request as `access_log` writes it.
 type AccessEntry {
-	method String
-	path String
-	protocol String
-	status Int
-	bytes Int
-	duration_ms Int
+	method, path, protocol String
+	status, bytes, duration_ms Int
 }
 
 // Middleware that writes one Info record named `request` to `logger` after each

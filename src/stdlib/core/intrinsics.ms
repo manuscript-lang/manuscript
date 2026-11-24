@@ -97,13 +97,13 @@ interface StringOperations {
 	fn repeat(count Int) move String
 	// Replaces the first occurrence of `old`; text without a match is unchanged. An
 	// empty `old` matches at the start, so `new` is inserted there.
-	fn replace_first(old String, new String) move String
+	fn replace_first(old, new String) move String
 	/*
     Replaces every nonoverlapping occurrence of `old`, scanning left to right; inserted text is not rescanned.
     An empty `old` matches at each scalar boundary, so `"ab".replace("", "-")` is `"-a-b-"`.
     Output beyond the string limit faults, as `concat` does; use `Regex.replace_all` for a bounded replacement.
     */
-	fn replace(old String, new String) move String
+	fn replace(old, new String) move String
 	// Counts the Unicode scalar values by scanning the text.
 	fn scalar_length() Int
 	// Returns each Unicode scalar value as an integer.
@@ -146,13 +146,13 @@ interface StringOperations {
 	// outside the text clamp to it, and a start at or past the end gives `""`. A bound
 	// inside a scalar moves inward (start forward, end backward), so the result is
 	// always whole characters. The call never fails and leaves the receiver unchanged.
-	fn slice(start Int, end Int) String
+	fn slice(start, end Int) String
 	// Borrows the bytes [start, end) of the receiver without copying; negative bounds
 	// are relative to the end. Bounds outside 0 <= start <= end <= length(), or inside
 	// a scalar, raise a fault. Like `Bytes.view`, the result borrows the receiver,
 	// which cannot change while the view is used; `.clone()` keeps the text. Use
 	// `slice` for a copy.
-	fn view(start Int, end Int) String
+	fn view(start, end Int) String
 	// Borrows the UTF-8 bytes of the text without copying. Like `view`, the result
 	// borrows the receiver, which cannot change while the bytes are used; `.clone()`
 	// keeps them. Use `to_bytes` for a copy.

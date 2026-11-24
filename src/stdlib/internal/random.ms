@@ -17,7 +17,7 @@ export extern fn msstd_random_os_bytes(count Int) move Bytes!
 // The stamp `millis * 4096 + sequence` of the next version-7 UUID made at `millis`,
 // strictly greater than every earlier one. A new millisecond starts the sequence at
 // `seed` modulo 2048.
-export extern fn msstd_random_v7_next(millis Int, seed Int) Int
+export extern fn msstd_random_v7_next(millis, seed Int) Int
 
 export fn invalid_input() Error {
 	return Error("random: invalid input", kind: "EINVAL")
@@ -26,7 +26,7 @@ export fn invalid_input() Error {
 // Returns an unbiased integer from `min` up to `min + width`, where `width` is the
 // 64-bit pattern of a positive count. Draws big-endian bytes masked to the width's bit
 // length and redraws those at or past the width.
-fn draw_below(min Int, width Int) Int! {
+fn draw_below(min, width Int) Int! {
 	var bits = 0
 	var rest = width
 

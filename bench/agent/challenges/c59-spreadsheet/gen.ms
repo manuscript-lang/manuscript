@@ -3,7 +3,7 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c59
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-fn add(var cs Cases, name String, script String) Void {
+fn add(var cs Cases, name, script String) Void {
 	cs.push(name, strip_nl(script))
 }
 

@@ -8,7 +8,7 @@ import (
 
 // Median-of-runs timing; mirrors node.js: warm-up, then at least `runs` runs and
 // `budget` ns.
-fn median_ns(body fn() Int, budget Int, runs Int) Int {
+fn median_ns(body fn() Int, budget, runs Int) Int {
 	_warm := body()
 	var samples List[Int] = []
 	var total = 0
@@ -21,7 +21,7 @@ fn median_ns(body fn() Int, budget Int, runs Int) Int {
 		total += elapsed
 	}
 
-	sorted := samples.sorted(fn(a Int, b Int) Int => a.compare(b))
+	sorted := samples.sorted(fn(a, b Int) Int => a.compare(b))
 	return sorted.get(sorted.length() / 2)
 }
 
@@ -62,14 +62,14 @@ fn records_body(rows List[Row]) fn() Int {
 	}
 }
 
-fn bench_records(budget Int, runs Int) Void {
+fn bench_records(budget, runs Int) Void {
 	rows := row_list()
 	size := records_body(rows.clone())()
 	s := median_ns(records_body(rows), budget, runs)
 	say(f"records\tstringify\t{s}\t{size}\n")
 }
 
-fn bench_one(name String, op String, budget Int, runs Int) Void {
+fn bench_one(name, op String, budget, runs Int) Void {
 	if name == "records" {
 		bench_records(budget, runs)
 		return
@@ -90,14 +90,7 @@ fn bench_one(name String, op String, budget Int, runs Int) Void {
 	}
 }
 
-fn bench_text(
-	name String,
-	op String,
-	text String,
-	size Int,
-	budget Int,
-	runs Int,
-) Void {
+fn bench_text(name, op, text String, size, budget, runs Int) Void {
 	if tree := parse(text) {
 		if op == "doc" {
 			d := median_ns(doc_body(text.clone()), budget, runs)

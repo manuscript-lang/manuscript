@@ -185,8 +185,7 @@ fn move Door.close() Void! {
 }
 
 type Room {
-    door Door
-    spare Door
+    door, spare Door
 }
 
 fn open_door(r Room) List[Door] {
@@ -238,7 +237,7 @@ import panic from "@std/core.ms"
 
 enum Expr {
     Num(value Int)
-    Add(left Expr, right Expr)
+    Add(left, right Expr)
 }
 
 fn evaluate(expr Expr) Int {
@@ -346,8 +345,7 @@ import panic from "@std/core.ms"
 
 type Branch {
     key Int
-    left Branch?
-    right Branch?
+    left, right Branch?
 }
 
 fn var Branch.insert(key Int) Void {

@@ -8,8 +8,7 @@ import (
 // A producer for `version` that prints "correct" unless `mode` says otherwise for
 // `bad`. Calls are counted per version.
 type Producer {
-	bad String
-	mode String
+	bad, mode String
 	counts Map[String, Int]
 	order List[String]
 }
@@ -30,7 +29,7 @@ fn var Producer.run(version String) String! {
 	return ok("correct")
 }
 
-fn producer(bad String, mode String) Producer {
+fn producer(bad, mode String) Producer {
 	return Producer(bad.clone(), mode.clone(), Map[String, Int](), List[String]())
 }
 

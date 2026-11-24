@@ -1,17 +1,15 @@
 import monotonic from "@std/time.ms"
 
 type P {
-	x Int
-	y Int
+	x, y Int
 	name String
 }
 
 type Q {
-	x Int
-	y Int
+	x, y Int
 }
 
-fn stop(name String, t0 Int, chk Int) Void {
+fn stop(name String, t0, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 }

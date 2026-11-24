@@ -5,8 +5,7 @@ import (
 
 type Comment {
 	t Int
-	actor String
-	text String
+	actor, text String
 }
 
 type Fields {
@@ -22,17 +21,14 @@ type Fields {
 type Issue {
 	id Int
 	f Fields
-	state Int
-	created Int
-	updated Int
+	state, created, updated Int
 	comments List[Comment] = []
 	hist_t List[Int] = []
 	hist_s List[Int] = []
 }
 
 type Trans {
-	src Int
-	dst Int
+	src, dst Int
 	guards List[String]
 }
 
@@ -64,10 +60,8 @@ type State {
 
 type Node {
 	kind Int
-	a Int = -1
-	b Int = -1
-	field Int = 0
-	op Int = 0
+	a, b Int = -1
+	field, op Int = 0
 	vals List[String] = []
 }
 
@@ -75,8 +69,7 @@ type Parser {
 	cs List[String]
 	pos Int = 0
 	kind Int = 7
-	field String = ""
-	opt String = ""
+	field, opt String = ""
 	op Int = 0
 	value String = ""
 	quoted Bool = false
@@ -105,7 +98,7 @@ fn digit(c String) Int {
 
 fn is_lower(c String) Bool => c.length() == 1 and c >= "a" and c <= "z"
 
-fn join_range(cs List[String], a Int, b Int) String {
+fn join_range(cs List[String], a, b Int) String {
 	var r = ""
 	var i = a
 
@@ -439,7 +432,7 @@ fn copy_fields(f Fields) Fields {
 	)
 }
 
-fn diff_fields(a Fields, b Fields) List[String] {
+fn diff_fields(a, b Fields) List[String] {
 	var out = List[String]()
 	if a.title != b.title {
 		out.append(f"title: {a.title} -> {b.title}")
@@ -573,7 +566,7 @@ fn field_code(s String) Int {
 	return names.find_index(x => x == s) or (-1)
 }
 
-fn op_ok(field Int, op Int) Bool {
+fn op_ok(field, op Int) Bool {
 	if field <= 3 or field == 9 or field == 10 { return op <= 5 }
 	if field == 4 or field == 5 or field == 6 or field == 11 {
 		return (op == 0 or op == 1 or op == 6)
@@ -833,7 +826,7 @@ fn var Parser.parse_not(st State, var nodes List[Node], var refs List[String]) I
 
 fn build_term(
 	st State,
-	fname String,
+	fname,
 	opt String,
 	op Int,
 	value String,
@@ -924,14 +917,14 @@ fn build_term(
 	return ok(add_node(nodes, Node(kind: 0, field: fc, op: op, vals: vals)))
 }
 
-fn cmp_int(a Int, b Int) Int {
+fn cmp_int(a, b Int) Int {
 	if a < b { return -1 }
 	if a > b { return 1 }
 
 	return 0
 }
 
-fn cmp_op(op Int, a Int, b Int) Bool {
+fn cmp_op(op, a, b Int) Bool {
 	if op == 0 { return a == b }
 	if op == 2 { return a < b }
 	if op == 3 { return a <= b }
@@ -954,7 +947,7 @@ fn opt_match(x String?, op Int, v String) Bool {
 	return op == 0 and v == "none"
 }
 
-fn match_one(st State, fc Int, op Int, v String, iss Issue) Bool {
+fn match_one(st State, fc, op Int, v String, iss Issue) Bool {
 	if fc <= 2 {
 		x := if fc == 0 { iss.id } else { if fc == 1 { iss.created } else { iss.updated } }
 		return cmp_op(op, x, to_int(v))
@@ -1071,7 +1064,7 @@ fn eval_node(st State, nodes List[Node], i Int, iss Issue) Bool {
 	return if n.op == 1 { not r } else { r }
 }
 
-fn cmp_opt_int(a Int?, b Int?) Int {
+fn cmp_opt_int(a, b Int?) Int {
 	x := a
 
 	if x != null {
@@ -1086,7 +1079,7 @@ fn cmp_opt_int(a Int?, b Int?) Int {
 	return 0
 }
 
-fn cmp_opt_str(a String?, b String?, ci Bool) Int {
+fn cmp_opt_str(a, b String?, ci Bool) Int {
 	x := a
 
 	if x != null {
@@ -1105,7 +1098,7 @@ fn cmp_opt_str(a String?, b String?, ci Bool) Int {
 	return 0
 }
 
-fn cmp_issue(keys List[SortKey], a Issue, b Issue) Int {
+fn cmp_issue(keys List[SortKey], a, b Issue) Int {
 	for k in keys {
 		var c = 0
 
@@ -1283,7 +1276,7 @@ fn var State.do_label(id Int, items List[String]) String! {
 	return ok(self.commit_edit(idx, nf))
 }
 
-fn var State.do_move(id Int, target String, comment String) String! {
+fn var State.do_move(id Int, target, comment String) String! {
 	idx := self.find(id)
 	self.final_check(idx)?
 
@@ -1526,7 +1519,7 @@ fn var State.cmd_log(rest String) String! {
 	return ok(lines.join("\n"))
 }
 
-fn view_refs(st State, name String, q String) List[String] {
+fn view_refs(st State, name, q String) List[String] {
 	var nodes = List[Node]()
 	var refs = List[String]()
 	qs := split_query(q)
@@ -1746,10 +1739,8 @@ fn var State.cmd_bulk(rest String) String! {
 // ---------- reports ----------
 
 type Grp {
-	name String
-	key String
-	n Int = 0
-	pts Int = 0
+	name, key String
+	n, pts Int = 0
 }
 
 type LC {
@@ -1909,14 +1900,14 @@ fn State.cmd_report(rest String) String! {
 	return error(Error(usage))
 }
 
-fn grp_cmp(a Grp, b Grp) Int {
+fn grp_cmp(a, b Grp) Int {
 	if a.pts != b.pts { return cmp_int(b.pts, a.pts) }
 	if a.n != b.n { return cmp_int(b.n, a.n) }
 
 	return a.key.compare(b.key)
 }
 
-fn lc_cmp(a LC, b LC) Int {
+fn lc_cmp(a, b LC) Int {
 	if a.n != b.n { return cmp_int(b.n, a.n) }
 	return a.name.compare(b.name)
 }

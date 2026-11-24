@@ -66,7 +66,7 @@ fn var List[T].replace(index Int, move value T) move T { ... }
 
 // Exchanges the elements at `i` and `j` in place without copying them; equal indexes
 // change nothing. Negative indexes count from the end; invalid indexes fault.
-fn var List[T].swap(i Int, j Int) Void { ... }
+fn var List[T].swap(i, j Int) Void { ... }
 
 /*
 Removes the element at `index` in place; negative indexes count from the end.
@@ -189,11 +189,7 @@ Replaces `delete_count` elements starting at `start` in place with the elements 
 Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault and are not clamped.
 Removed elements are dropped, and replacement elements move into the receiver. The receiver and the replacement cannot be the same list.
 */
-fn var List[T].splice(
-	start Int,
-	delete_count Int,
-	move replacement List[T],
-) Void { ... }
+fn var List[T].splice(start, delete_count Int, move replacement List[T]) Void { ... }
 
 // Returns a new list of the zero-based indexes 0 through length() - 1.
 fn List[T].keys() List[Int] { ... }
@@ -222,7 +218,7 @@ fn List[T Clonable].clone() move List[T] { ... }
 // Returns a new list containing copies of the elements in [start, end).
 // Negative bounds are relative to the end; bounds outside 0 <= start <= end <=
 // length() return an `Error` of kind `ERANGE`.
-fn List[T Clonable].slice(start Int, end Int) List[T]! { ... }
+fn List[T Clonable].slice(start, end Int) List[T]! { ... }
 
 // Returns a new list with copies of the first `count` elements, or of all of them
 // when `count` exceeds the length. The receiver is unchanged; a count of zero or
@@ -323,13 +319,13 @@ fn List[T Clonable].find_last(predicate fn(T) Bool) T? {
 // Sets the elements in [start, end) to copies of `value` in place. Bounds must
 // satisfy 0 <= start <= end <= length(); a negative or larger bound faults instead
 // of counting from the end. An empty range changes nothing.
-fn var List[T Clonable].fill(move value T, start Int, end Int) Void { ... }
+fn var List[T Clonable].fill(move value T, start, end Int) Void { ... }
 
 // Copies the elements in [start, end) to begin at index `target`, in place. The
 // list never grows: copying stops at the end of the list. Source bounds must
 // satisfy 0 <= start <= end <= length() and a target must be within 0 through
 // length(); otherwise the call faults.
-fn var List[T Clonable].copy_within(target Int, start Int, end Int) Void { ... }
+fn var List[T Clonable].copy_within(target, start, end Int) Void { ... }
 
 // Returns a new list of `ListEntry` records pairing each zero-based index with its
 // element, in order.
@@ -1120,7 +1116,7 @@ MAX_LIST_ITEMS := 268435456
 // `end <= start`. A loop such as `for index in 0..count:` runs as a counter without
 // allocating the list. Storing a list of more than about 268 million items is a
 // fault; use `range_by` to bound the size with an error value instead.
-fn range(start Int, end Int) List[Int] {
+fn range(start, end Int) List[Int] {
 	var out = List[Int](reserve: if end > start { end - start } else { 0 })
 	var next = start
 
@@ -1142,8 +1138,8 @@ export type RangeOptions {
 // `step`; a negative step counts down. A zero step returns `EINVAL`, and a list that
 // would exceed `options.max_items` returns `EOVERFLOW`.
 export fn range_by(
-	start Int,
-	end Int,
+	start,
+	end,
 	step Int,
 	options RangeOptions = RangeOptions(),
 ) List[Int]! {
@@ -1172,7 +1168,7 @@ export fn flatten[T Clonable](lists List[List[T]]) List[T] {
 }
 
 // Internal: reverses the elements of `items` in [start, end) in place, for `rotate`.
-fn reverse_span[T](var items List[T], start Int, end Int) Void {
+fn reverse_span[T](var items List[T], start, end Int) Void {
 	var low = start
 	var high = end - 1
 

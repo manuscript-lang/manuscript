@@ -56,7 +56,7 @@ fn clean(path String) String! {
 	return ok(parts.join("/"))
 }
 
-fn child_path(directory String, name String) String {
+fn child_path(directory, name String) String {
 	if directory == "" { return name.clone() }
 	return f"{directory}/{name}"
 }
@@ -71,7 +71,7 @@ fn name_of(path String) String {
 	return parts.get_or(parts.length() - 1, "").clone()
 }
 
-fn by_name(a DirectoryEntry, b DirectoryEntry) Int {
+fn by_name(a, b DirectoryEntry) Int {
 	return a.name.compare(b.name)
 }
 
@@ -85,7 +85,7 @@ fn limited(move entries List[DirectoryEntry], max_entries Int?) List[DirectoryEn
 }
 
 // True when the resolved `target` is the resolved `root` or below it.
-fn below(root String, target String) Bool {
+fn below(root, target String) Bool {
 	if target == root { return true }
 	if not target.starts_with(root) { return false }
 
@@ -478,7 +478,7 @@ fn push_children(tree FileTree, directory String, var pending List[WalkEntry]) V
 	}
 }
 
-fn relative(path String, start String) String {
+fn relative(path, start String) String {
 	if start == "" { return path.clone() }
 	return path.slice(start.length() + 1, path.length()).clone()
 }

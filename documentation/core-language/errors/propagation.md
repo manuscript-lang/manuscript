@@ -11,7 +11,7 @@ The following continues the `discount` and `DiscountError` declarations in [expe
 
 <!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}","given":[]} -->
 ```manuscript
-fn discounted_label(price Decimal, percent Decimal) Result[String, DiscountError] {
+fn discounted_label(price, percent Decimal) Result[String, DiscountError] {
     value := discount(price, percent)?
     return ok(f"Discounted price: {value}")
 }
@@ -63,7 +63,7 @@ A trailing `?` on a pipe step in a [pipe flow](../basics/expressions.md#pipe-flo
 
 <!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}\n\nfn label(value Decimal) String {\n    return value.to_string()\n}","given":[]} -->
 ```manuscript
-fn discounted_label(price Decimal, percent Decimal) Result[String, DiscountError] {
+fn discounted_label(price, percent Decimal) Result[String, DiscountError] {
     return ok(discount(price, percent)? | label)
 }
 ```

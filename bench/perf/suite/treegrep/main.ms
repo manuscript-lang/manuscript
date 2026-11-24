@@ -4,8 +4,7 @@ import (
 )
 
 type Found {
-	files Int
-	matches Int
+	files, matches Int
 }
 
 // Counts the lines containing a pattern in every file under a directory.

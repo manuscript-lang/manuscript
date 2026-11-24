@@ -186,7 +186,7 @@ fn BigRat.to_string() String {
 }
 
 // Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
-export fn rat(numerator BigInt, denominator BigInt) BigRat! {
+export fn rat(numerator, denominator BigInt) BigRat! {
 	if denominator.sign() == 0 {
 		return error(Error("bigrat: invalid input", kind: "EINVAL"))
 	}
@@ -521,7 +521,7 @@ export fn big_float_of_big_int(value BigInt, precision Int) BigFloat {
 
 // Returns `value` rounded to `precision` bits; a precision outside 1 through 1000000 is
 // a fault.
-export fn big_float_of_int(value Int, precision Int) BigFloat {
+export fn big_float_of_int(value, precision Int) BigFloat {
 	return big_float_of_big_int(big(value), precision)
 }
 
@@ -561,19 +561,19 @@ export fn parse_big_float(text String, precision Int) BigFloat! {
 	return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 }
 
-fn larger(left Int, right Int) Int {
+fn larger(left, right Int) Int {
 	if left >= right { return left }
 	return right
 }
 
-fn smaller(left Int, right Int) Int {
+fn smaller(left, right Int) Int {
 	if left <= right { return left }
 	return right
 }
 
 // Adds a nonzero value too small to reach `prec` bits of `leading`: nudges `leading` by
 // a quarter unit toward the small value's sign.
-fn absorb(leading BigInt, exp Int, nudge Int, prec Int) Binary {
+fn absorb(leading BigInt, exp, nudge, prec Int) Binary {
 	padding := prec + 4 - bit_length(leading)
 	var widened = leading.clone()
 	var low = exp
@@ -633,7 +633,7 @@ fn bit_length(value BigInt) Int {
 }
 
 // Returns the floor of `numerator / denominator` for a positive denominator.
-fn floor_div(numerator BigInt, denominator BigInt) BigInt {
+fn floor_div(numerator, denominator BigInt) BigInt {
 	quotient := numerator / denominator
 	if (numerator % denominator).sign() < 0 { return quotient - big_int_of_int(1) }
 
@@ -676,7 +676,7 @@ type Quotient {
 	sticky Bool
 }
 
-fn div_parts(numerator BigInt, denominator BigInt, prec Int) Quotient {
+fn div_parts(numerator, denominator BigInt, prec Int) Quotient {
 	if numerator.sign() == 0 {
 		return Quotient(value: Binary(mant: big_int_of_int(0), exp: 0), sticky: false)
 	}
@@ -693,7 +693,7 @@ fn div_parts(numerator BigInt, denominator BigInt, prec Int) Quotient {
 }
 
 // Divides `numerator` by a positive `denominator`, rounding once to `prec` bits.
-fn div_round(numerator BigInt, denominator BigInt, prec Int) Binary {
+fn div_round(numerator, denominator BigInt, prec Int) Binary {
 	parts := div_parts(numerator, denominator, prec)
 	return round_to(parts.value.mant, parts.value.exp, parts.sticky, prec)
 }
@@ -743,7 +743,7 @@ fn binary_to_float(value Binary, sticky Bool) Float? {
 }
 
 // Reduces `numerator / denominator` for a nonzero denominator.
-fn reduced(numerator BigInt, denominator BigInt) BigRat {
+fn reduced(numerator, denominator BigInt) BigRat {
 	divisor := numerator.gcd(denominator)
 	var top = numerator / divisor
 	var bottom = denominator / divisor

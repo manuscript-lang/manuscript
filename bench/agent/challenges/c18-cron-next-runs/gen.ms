@@ -10,8 +10,7 @@ NUM2 := "[0-9]{1,2}"
 
 type Range {
 	name String
-	low Int
-	high Int
+	low, high Int
 }
 
 fn ranges() List[Range] {
@@ -25,7 +24,7 @@ fn ranges() List[Range] {
 }
 
 // Days since 1970-01-01 of a proleptic Gregorian date.
-fn days_from_civil(year Int, month Int, day Int) Int {
+fn days_from_civil(year, month, day Int) Int {
 	y := if month <= 2 { year - 1 } else { year }
 	era := (if y >= 0 { y } else { y - 399 }) / 400
 	yoe := y - era * 400
@@ -48,12 +47,12 @@ fn civil_from_days(days Int) List[Int] {
 	return [year, month, day]
 }
 
-fn days_in_month(year Int, month Int) Int {
+fn days_in_month(year, month Int) Int {
 	if month == 2 { return if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0 { 29 } else { 28 } }
 	return if month == 4 or month == 6 or month == 9 or month == 11 { 30 } else { 31 }
 }
 
-fn pad(n Int, width Int) String => f"{n}".pad_start(width, "0")
+fn pad(n, width Int) String => f"{n}".pad_start(width, "0")
 
 // `YYYY-MM-DD HH:MM` for a count of minutes since the epoch, with `sep` between date and time.
 fn stamp(minutes Int, sep String) String {
@@ -64,7 +63,7 @@ fn stamp(minutes Int, sep String) String {
 }
 
 // The values a field selects, or none when it is malformed or out of range.
-fn parse_field(text String, lo Int, hi Int) List[Int]? {
+fn parse_field(text String, lo, hi Int) List[Int]? {
 	var vals = Set[Int]()
 
 	for item in text.split(",") {
@@ -234,9 +233,9 @@ fn solve(s String) String {
 	return out.map(x => x + "\n").join("")
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-fn rand_field(var rnd Random, lo Int, hi Int) String {
+fn rand_field(var rnd Random, lo, hi Int) String {
 	a := f"*/{rnd.randint(1, 7)}"
 	b := f"{rnd.randint(lo, hi)}"
 	c := f"{lo}-{rnd.randint(lo, hi)}".replace(f"{lo}-{lo}", f"{lo}")

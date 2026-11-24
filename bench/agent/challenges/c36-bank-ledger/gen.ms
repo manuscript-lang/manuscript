@@ -177,7 +177,7 @@ fn solve(s String) String {
 	return out.map(o => o + "\n").join("")
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
 fn rand_script(var rnd Random, n Int, ids List[String]) String {
 	var lines = List[String]()

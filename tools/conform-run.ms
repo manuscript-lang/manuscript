@@ -40,7 +40,7 @@ import (
 )
 
 // Observes each fixture of `chunk`: one `ok` or `FAIL <id>` line apiece.
-fn sweep(ms String, build_type String, chunk List[Fixture], detail Bool) List[String] {
+fn sweep(ms, build_type String, chunk List[Fixture], detail Bool) List[String] {
 	var lines = List[String]()
 
 	for fx in chunk {
@@ -96,12 +96,12 @@ fn unrecordable(observed JsonValue) String {
 // Records each fixture of `chunk`: one `wrote`, `same`, `kept` or `REJECT <id>: <why>`
 // line apiece.
 fn record_chunk(
-	ms String,
+	ms,
 	build_type String,
 	chunk List[Fixture],
 	version String,
-	stable Bool,
-	only_missing Bool,
+	stable,
+	only_missing,
 	prune Bool,
 ) List[String] {
 	var lines = List[String]()

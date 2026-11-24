@@ -16,9 +16,7 @@ import (
 // A recorded fixture: a single .ms file (with an optional support/ directory beside it)
 // or a project directory.
 export type Fixture {
-	id String
-	phase String
-	path String
+	id, phase, path String
 	is_dir Bool
 	entry String
 	args List[String]
@@ -36,8 +34,7 @@ export type Meta {
 	phase String
 	args List[String]
 	timeout Int
-	entry String
-	origin String
+	entry, origin String
 	deterministic Bool
 }
 
@@ -142,7 +139,7 @@ export fn read_text(path String) String {
 // The recorded fixtures of `phase` under `root`, in id order. A directory named
 // `support` holds shared files, not fixtures, and nothing below a project directory is
 // a fixture.
-export fn fixtures(root String, phase String, filters List[String]) List[Fixture] {
+export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 	var found = List[Fixture]()
 	var projects = List[String]()
 	for entry in glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]) {

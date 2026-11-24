@@ -5,13 +5,13 @@ import (
 )
 
 enum Instr {
-	Load(r Int, v Int)
-	AddR(a Int, b Int)
-	SubR(a Int, b Int)
-	MulR(a Int, b Int)
-	Jnz(r Int, target Int)
+	Load(r, v Int)
+	AddR(a, b Int)
+	SubR(a, b Int)
+	MulR(a, b Int)
+	Jnz(r, target Int)
 	Dec(r Int)
-	Xor(a Int, b Int)
+	Xor(a, b Int)
 	Halt
 }
 
@@ -23,8 +23,7 @@ enum State {
 }
 
 type Shape2 {
-	w Int
-	h Int
+	w, h Int
 }
 
 fn Shape2.area() Int {
@@ -45,7 +44,7 @@ fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648
 }
 
-fn stop(name String, t0 Int, chk Int) Void {
+fn stop(name String, t0, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 }

@@ -4,7 +4,7 @@ import (
 	Random, seeded from "../../lib/pyrandom.ms",
 )
 
-fn count(text String, ch String) Int => text.chars().count(c => c == ch)
+fn count(text, ch String) Int => text.chars().count(c => c == ch)
 
 fn solve(s String) String {
 	var rows = s.split("\n").clone()
@@ -74,9 +74,9 @@ fn solve(s String) String {
 	return "no path\n"
 }
 
-fn mk(name String, s String) GenCase => make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-fn maze(var rnd Random, h Int, w Int, p Float) String {
+fn maze(var rnd Random, h, w Int, p Float) String {
 	while true {
 		var g = List[List[String]]()
 

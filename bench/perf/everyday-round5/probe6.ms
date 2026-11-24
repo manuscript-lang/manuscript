@@ -2,7 +2,7 @@ import monotonic from "@std/time.ms"
 
 enum Tree {
 	Leaf(v Int)
-	Node(l Tree, r Tree)
+	Node(l, r Tree)
 }
 
 enum Cons {
@@ -19,8 +19,7 @@ type Sq {
 }
 
 type Rc {
-	w Int
-	h Int
+	w, h Int
 }
 
 fn Sq.area() Int {
@@ -36,7 +35,7 @@ fn make(i Int) Shape {
 	return Rc(i % 7, i % 5)
 }
 
-fn mk(depth Int, v Int) Tree {
+fn mk(depth, v Int) Tree {
 	if depth == 0 { return Tree.Leaf(v) }
 	return Tree.Node(mk(depth - 1, v * 2), mk(depth - 1, v * 2 + 1))
 }
@@ -73,7 +72,7 @@ fn total(c Cons) Int {
 	return t
 }
 
-fn stop(name String, t0 Int, chk Int) Void {
+fn stop(name String, t0, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 }

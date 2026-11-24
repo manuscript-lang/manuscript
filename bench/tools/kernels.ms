@@ -21,7 +21,7 @@ import (
 	sample from "./lib.ms",
 )
 
-fn build_c(source String, out String, flags List[String]) Result[Void, Error] {
+fn build_c(source, out String, flags List[String]) Result[Void, Error] {
 	var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
 	args = args.concat([source.clone(), "-o", out.clone()])
 	void must(f"cc {source}", capture(env("CC", "cc"), args))?

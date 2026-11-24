@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn first[T](left T, right T) T => return left\n\nfn call(left Int, right Int) Int => return first(right, left)\n"
+    "fmt": "fn first[T](left, right T) T => return left\n\nfn call(left, right Int) Int => return first(right, left)\n"
   }
 }

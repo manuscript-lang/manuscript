@@ -26,7 +26,7 @@ fn count_tokens(paths List[String]) List[Int]? {
 	return counts
 }
 
-fn ratio(top Int, bottom Int) String => (top.to_float() / bottom.to_float()).to_fixed(2)
+fn ratio(top, bottom Int) String => (top.to_float() / bottom.to_float()).to_fixed(2)
 
 fn main() Int {
 	// Each challenge with a reference solution in every language, as a row of file

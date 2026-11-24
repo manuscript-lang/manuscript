@@ -45,17 +45,17 @@ fn move NamedToken.close() Void! {
 }
 
 enum Choice {
-	Full(first Token, second Token, third Token, code Int)
+	Full(first, second, third Token, code Int)
 	Empty
 }
 
 enum NamedChoice {
-	NamedFull(first NamedToken, second NamedToken, third NamedToken, code Int)
+	NamedFull(first, second, third NamedToken, code Int)
 	NamedEmpty
 }
 
 enum GenericChoice[T] {
-	GenericFull(first T, second T, code Int)
+	GenericFull(first, second T, code Int)
 	GenericEmpty
 }
 

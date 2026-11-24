@@ -63,7 +63,7 @@ type JpegCodes {
 	size List[Int]
 }
 
-fn jpeg_codes(counts List[Int], values List[Int]) JpegCodes {
+fn jpeg_codes(counts, values List[Int]) JpegCodes {
 	var code = jpeg_zeros(256)
 	var size = jpeg_zeros(256)
 	var next = 0
@@ -85,11 +85,10 @@ fn jpeg_codes(counts List[Int], values List[Int]) JpegCodes {
 
 type JpegWriter {
 	out BytesBuilder
-	acc Int
-	count Int
+	acc, count Int
 }
 
-fn var JpegWriter.put(code Int, size Int) Void {
+fn var JpegWriter.put(code, size Int) Void {
 	self.acc = bit_or(shift_left(self.acc, size), code)
 	self.count += size
 
@@ -124,13 +123,7 @@ fn bit_length(value Int) Int {
 
 // Forward DCT and quantization of the 8x8 block at (x0, y0); returns 64 levels in
 // jpeg_zigzag order.
-fn jpeg_forward(
-	plane List[Int],
-	stride Int,
-	x0 Int,
-	y0 Int,
-	quant List[Int],
-) List[Int] {
+fn jpeg_forward(plane List[Int], stride, x0, y0 Int, quant List[Int]) List[Int] {
 	// The matrix is symmetric: row 7 - k is row k with the sign of odd columns flipped.
 	// So a column's sum over eight inputs is a sum over four sums (even columns) or
 	// four differences (odd columns) of mirrored inputs, half the multiplications.
@@ -196,13 +189,7 @@ fn jpeg_forward(
 	return levels
 }
 
-fn jpeg_emit(
-	var w JpegWriter,
-	levels List[Int],
-	previous Int,
-	dc JpegCodes,
-	ac JpegCodes,
-) Void {
+fn jpeg_emit(var w JpegWriter, levels List[Int], previous Int, dc, ac JpegCodes) Void {
 	diff := levels[0] - previous
 	size := bit_length(diff)
 	w.put(dc.code[size], dc.size[size])
@@ -246,12 +233,7 @@ fn jpeg_marker(var out BytesBuilder, marker Int, body Bytes) Void {
 	out.append_bytes(body)
 }
 
-fn jpeg_dht(
-	var out BytesBuilder,
-	class_id Int,
-	counts List[Int],
-	values List[Int],
-) Void {
+fn jpeg_dht(var out BytesBuilder, class_id Int, counts, values List[Int]) Void {
 	var body = BytesBuilder()
 	body.append(byte(class_id))
 	for c in counts {
@@ -280,8 +262,8 @@ fn jpeg_scaled(base List[Int], quality Int) List[Int] {
 // outside 1 through 100 and a `restart_interval` outside 0 through 65535 return EINVAL,
 // and a width or height above 65535 returns EOVERFLOW.
 export fn jpeg_encode(
-	width Int,
-	height Int,
+	width,
+	height,
 	channels Int,
 	pixels List[UInt8],
 	quality Int,

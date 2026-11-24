@@ -435,8 +435,7 @@ fn move PipeSource[T].close() Void! {
 
 // One writing end of a pipe; closing it releases that writer.
 type PipeSink[T] {
-	id Int
-	capacity Int
+	id, capacity Int
 }
 
 fn var PipeSink[T].write(move value T) Void! {

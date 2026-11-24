@@ -121,7 +121,7 @@ export fn parse(text String) Version! {
 }
 
 // Splits at the first separator only, keeping the rest in the second piece.
-fn split_first(text String, separator String) List[String] {
+fn split_first(text, separator String) List[String] {
 	at := text.index_of(separator)
 	if at != null {
 		return [text.view(0, at).clone(), text.view(at + 1, text.length()).clone()]
@@ -130,7 +130,7 @@ fn split_first(text String, separator String) List[String] {
 	return [text.clone()]
 }
 
-fn compare_ints(left Int, right Int) Int {
+fn compare_ints(left, right Int) Int {
 	if left < right { return -1 }
 	if left > right { return 1 }
 
@@ -168,7 +168,7 @@ fn valid_identifier(scalars List[Int]) Bool {
 
 // Numeric identifiers sort numerically and before alphanumeric ones; others sort
 // bytewise.
-fn compare_identifier(left String, right String) Int {
+fn compare_identifier(left, right String) Int {
 	left_numeric := all_digits(left.scalar_values())
 	right_numeric := all_digits(right.scalar_values())
 

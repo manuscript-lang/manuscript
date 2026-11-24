@@ -16,7 +16,7 @@ Save as `notify_test.ms` and run `ms test notify_test.ms`. `notify_all` depends 
 import expect_equal from "@std/test/test.ms"
 
 interface Mailer {
-    fn send(to String, subject String) Void!
+    fn send(to, subject String) Void!
 }
 
 fn notify_all(mailer Mailer, users List[String]) List[String] {
@@ -33,7 +33,7 @@ type FakeMailer {
     broken Set[String] = Set[String]()
 }
 
-fn FakeMailer.send(to String, subject String) Void! {
+fn FakeMailer.send(to, subject String) Void! {
     if self.broken.contains(to) {
         return error(Error("mailbox full", kind: "EDQUOT"))
     }
@@ -72,7 +72,7 @@ Save as `clock_test.ms`. Pass the current time in instead of reading it inside t
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn is_expired(issued_at Int, now Int, lifetime Int) Bool {
+fn is_expired(issued_at, now, lifetime Int) Bool {
     return now - issued_at >= lifetime
 }
 

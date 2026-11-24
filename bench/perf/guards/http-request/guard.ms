@@ -28,7 +28,7 @@ fn handle(request HttpRequest) HttpResponse {
 	)
 }
 
-fn client(address String, request String) Int! {
+fn client(address, request String) Int! {
 	var connection = connect(address, timeout: seconds(5)).wait()?
 	var answered = 0
 
@@ -43,7 +43,7 @@ fn client(address String, request String) Int! {
 	return ok(answered)
 }
 
-fn drive(own_path String, request String) Int! {
+fn drive(own_path, request String) Int! {
 	server := serve(
 		address: "127.0.0.1:0",
 		handler: buffered(handle),

@@ -4,8 +4,7 @@ import (
 )
 
 type Counter {
-	at Int
-	end Int
+	at, end Int
 }
 
 fn var Counter.next() Int? {
@@ -46,8 +45,7 @@ fn var Scaled.next() Int? {
 }
 
 type Rec {
-	id Int
-	score Int
+	id, score Int
 }
 
 type RecIter {
@@ -62,7 +60,7 @@ fn var RecIter.next() Rec? {
 	return self.items[self.at - 1].clone()
 }
 
-fn stop(name String, t0 Int, chk Int) Void {
+fn stop(name String, t0, chk Int) Void {
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 }

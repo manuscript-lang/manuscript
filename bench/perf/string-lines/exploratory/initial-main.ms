@@ -12,7 +12,7 @@ fn sum_lines(text String) Int {
 	return checksum
 }
 
-fn measure(name String, text String, expected Int, iterations Int) Int {
+fn measure(name, text String, expected, iterations Int) Int {
 	if sum_lines(text) != expected { return 1 }
 
 	var checksum = 0

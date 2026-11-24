@@ -8,8 +8,7 @@ import (
 
 export type Timed {
 	result Ran
-	user_ns Float
-	system_ns Float
+	user_ns, system_ns Float
 	// Executable followed by one exact argument per line.
 	command String
 }

@@ -11,7 +11,7 @@ fn fib(n Int) Int {
 }
 
 // promise-per-level fib: spawn one half as a promise, compute other inline
-fn pfib(n Int, cutoff Int) Int! {
+fn pfib(n, cutoff Int) Int! {
 	if n < cutoff { return ok(fib(n)) }
 
 	m := n - 1

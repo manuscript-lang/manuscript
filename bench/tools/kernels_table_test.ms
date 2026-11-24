@@ -10,7 +10,7 @@ import (
 	Ran, must from "./lib.ms",
 )
 
-fn trial(version String, suite String, micros Int) List[String] {
+fn trial(version, suite String, micros Int) List[String] {
 	names := suite_names(suite).filter(n => not omitted(version).contains(n))
 	var lines = names.map(name => f"{version} {name} {micros} 1")
 	lines.append(f"{version} # end")

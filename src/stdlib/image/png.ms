@@ -54,7 +54,7 @@ fn png_channels(color Int) Int {
 
 // The total filtered byte count of the image, summed over its passes: each row adds
 // one filter byte to its packed pixel bytes.
-fn png_raw_size(width Int, height Int, bits_per_pixel Int, interlaced Bool) Int {
+fn png_raw_size(width, height, bits_per_pixel Int, interlaced Bool) Int {
 	var total = 0
 
 	for pass in png_passes(interlaced) {
@@ -68,7 +68,7 @@ fn png_raw_size(width Int, height Int, bits_per_pixel Int, interlaced Bool) Int 
 	return total
 }
 
-fn paeth(a Int, b Int, c Int) Int {
+fn paeth(a, b, c Int) Int {
 	p := a + b - c
 	pa := abs_of(p - a)
 	pb := abs_of(p - b)
@@ -412,13 +412,7 @@ fn residual_cost(residual Int) Int {
 // Appends the row filtered with type `filter` to `out` and returns the sum of its
 // residuals' costs. Each type has its own loops: the first `step` bytes have no left
 // neighbour.
-fn filter_with(
-	row List[Int],
-	prev List[Int],
-	step Int,
-	filter Int,
-	var out List[Int],
-) Int {
+fn filter_with(row, prev List[Int], step, filter Int, var out List[Int]) Int {
 	n := row.length()
 	first := if step < n { step } else { n }
 	var cost = 0
@@ -492,7 +486,7 @@ fn filter_with(
 
 // Filters one row with the type whose residuals have the smallest absolute sum (the
 // usual heuristic).
-fn filter_row(row List[Int], prev List[Int], step Int) List[Int] {
+fn filter_row(row, prev List[Int], step Int) List[Int] {
 	var best = List[Int]()
 	var best_cost = -1
 
@@ -514,7 +508,7 @@ fn filter_row(row List[Int], prev List[Int], step Int) List[Int] {
 // Encodes pixels as an 8-bit PNG, choosing a filter for each row. `channels` 1, 2, 3
 // and 4 write gray, gray with alpha, RGB and RGBA. A dimension past 2^31 - 1 returns
 // EOVERFLOW.
-export fn encode_png(width Int, height Int, channels Int, pixels List[UInt8]) Bytes! {
+export fn encode_png(width, height, channels Int, pixels List[UInt8]) Bytes! {
 	if width > 2147483647 or height > 2147483647 {
 		return error(too_big("PNG dimensions too large"))
 	}

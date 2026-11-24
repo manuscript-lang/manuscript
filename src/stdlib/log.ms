@@ -397,8 +397,7 @@ export fn file_transport(path String) Transport! {
 // other's rotations; two loggers rotating at the same instant can lose records.
 type RotatingTransport {
 	path String
-	max_bytes Int
-	keep Int
+	max_bytes, keep Int
 	closed Bool
 }
 
@@ -469,7 +468,7 @@ An existing file is appended to, and its current size counts toward `max_bytes`.
 Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5))`.
 */
 // ms: effect std.fs.write
-export fn rotating_file_transport(path String, max_bytes Int, keep Int) Transport! {
+export fn rotating_file_transport(path String, max_bytes, keep Int) Transport! {
 	if max_bytes <= 0 or keep < 0 {
 		return error(Error("logging: invalid input", kind: "EINVAL"))
 	}

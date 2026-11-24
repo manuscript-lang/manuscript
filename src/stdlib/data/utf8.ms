@@ -61,7 +61,7 @@ fn second_high(lead Int) Int {
 
 // Decodes the scalar starting at start using only bytes before stop.
 // Returns the scalar, INCOMPLETE when the bytes seen are a proper prefix, or INVALID.
-fn decode_at(data Bytes, start Int, stop Int) Int {
+fn decode_at(data Bytes, start, stop Int) Int {
 	if start >= stop { return INCOMPLETE }
 
 	lead := data.get(start).to_int()

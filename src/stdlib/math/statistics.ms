@@ -303,8 +303,7 @@ fn sample_deviation_overflows(values List[Float]) Bool {
 
 // Compensated summation on the bounded fallback coordinates.
 type DeviationSum {
-	total Float = 0.0
-	correction Float = 0.0
+	total, correction Float = 0.0
 }
 
 fn var DeviationSum.add(value Float) Void {
@@ -458,7 +457,7 @@ export fn bin_counts(values List[Float], bins Int) BinCounts? {
 }
 
 // A subnormal width loses bin boundaries. Classify exact binary64 inputs instead.
-fn exact_bin_counts(values List[Float], low Float, high Float, bins Int) List[Int] {
+fn exact_bin_counts(values List[Float], low, high Float, bins Int) List[Int] {
 	origin := finite_bin_rat(low)
 	span := finite_bin_rat(high).subtract(origin)
 	var counts = [0].repeated(bins)
@@ -492,16 +491,12 @@ fn finite_bin_rat(value Float) BigRat {
 // The sums of deviation products (`xy`) and squares (`xx`, `yy`) of two paired lists,
 // with each list's mean.
 type Spread {
-	xy Float
-	xx Float
-	yy Float
-	mean_x Float
-	mean_y Float
+	xy, xx, yy, mean_x, mean_y Float
 }
 
 // Returns the `Spread` of two lists, or null when their lengths differ or there are
 // fewer than two pairs.
-fn spread(xs List[Float], ys List[Float]) Spread? {
+fn spread(xs, ys List[Float]) Spread? {
 	if xs.length() != ys.length() or xs.length() < 2 { return null }
 
 	mean_x := mean(xs) or 0.0
@@ -526,7 +521,7 @@ Returns the Pearson correlation of paired values, from -1.0 to 1.0, or null when
 Lists of different lengths return null.
 Example: `correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])` is `1.0`.
 */
-export fn correlation(xs List[Float], ys List[Float]) Float? {
+export fn correlation(xs, ys List[Float]) Float? {
 	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps
 	// every square and product in range.
 	s := spread(unit_scaled(xs), unit_scaled(ys))
@@ -571,7 +566,7 @@ Returns the least-squares line through paired values, or null when there are few
 Lists of different lengths return null.
 Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` and intercept `1.0`.
 */
-export fn linear_regression(xs List[Float], ys List[Float]) Regression? {
+export fn linear_regression(xs, ys List[Float]) Regression? {
 	s := spread(xs, ys)
 
 	if s != null {
@@ -607,7 +602,7 @@ Whether the plain sum of squared deviations `squares` around `mean` is trustwort
 underflow, and the spread is not lost against a large common offset (mean square deviation above 2^-20 of the squared mean).
 A flat list (`allow_flat`) has no spread to lose. Anything else, including nonfinite input, takes the scaled path or plain Float rules.
 */
-fn well_conditioned(mean Float, squares Float, count Int, allow_flat Bool) Bool {
+fn well_conditioned(mean, squares Float, count Int, allow_flat Bool) Bool {
 	if squares == 0.0 { return allow_flat and mean.is_finite() }
 	if not (squares >= 1e-250 and squares <= 1e250) { return false }
 
@@ -633,8 +628,7 @@ fn unit_exponent(values List[Float]) Int? {
 // Values scaled by a power of two, as offsets from the first one and then from their
 // center.
 type Centered {
-	origin Float
-	center Float
+	origin, center Float
 	deviations List[Float]
 }
 
@@ -657,12 +651,7 @@ fn centered(values List[Float], exponent Int) Centered {
 Each list is scaled by its own power of two and measured from its first value, so squares and products stay in range and a large common
 offset keeps its variation; the deviations are then scaled again, summed with compensation, and the units are restored at the end.
 */
-fn finite_regression(
-	xs List[Float],
-	ys List[Float],
-	x_exponent Int,
-	y_exponent Int,
-) Regression? {
+fn finite_regression(xs, ys List[Float], x_exponent, y_exponent Int) Regression? {
 	x := centered(xs, x_exponent)
 	y := centered(ys, y_exponent)
 	x_unit := unit_exponent(x.deviations) or 0

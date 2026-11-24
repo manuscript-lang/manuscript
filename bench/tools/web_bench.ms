@@ -64,9 +64,7 @@ fn background(argv List[String], out String) Subprocess! {
 }
 
 type Plan {
-	w String
-	server_cpus String
-	load_cpus String
+	w, server_cpus, load_cpus String
 }
 
 fn plan(w String) Plan {
@@ -142,7 +140,7 @@ fn threads(pid String) Int {
 	return list(f"/proc/{pid}/task").get_or([]).length()
 }
 
-fn measure_server(p Plan, name String, port Int, seconds Int, ms_threads String) Void! {
+fn measure_server(p Plan, name String, port, seconds Int, ms_threads String) Void! {
 	data := f"{p.w}/data"
 	var argv = pinned(
 		p.server_cpus.clone(),
@@ -266,7 +264,7 @@ fn measure_server(p Plan, name String, port Int, seconds Int, ms_threads String)
 	return ok()
 }
 
-fn prepare_run(here String, w String) List[String]! {
+fn prepare_run(here, w String) List[String]! {
 	for dir in ["go", "ms", "load", "c"] {
 		copy(f"{here}/{dir}", f"{w}/{dir}", CopyOptions(recursive: true, replace: true)).get()
 	}

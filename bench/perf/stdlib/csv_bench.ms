@@ -3,9 +3,7 @@ import parse, stringify from "@std/data/csv.ms"
 type BenchData {
 	rows List[List[String]]
 	rows_2 List[List[String]]
-	csv_text String
-	value String
-	text String
+	csv_text, value, text String
 }
 
 fn make_fixture() BenchData {

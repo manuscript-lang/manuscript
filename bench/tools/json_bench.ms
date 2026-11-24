@@ -69,8 +69,7 @@ fn fetch_corpora() Void! {
 }
 
 type Rate {
-	nanos Int
-	bytes Int
+	nanos, bytes Int
 }
 
 // Maps `<doc>\t<op>\t<ns>\t<bytes>` lines to rates.
