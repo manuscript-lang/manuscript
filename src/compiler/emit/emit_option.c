@@ -203,7 +203,7 @@ static void opt_some(EmitCx *cx, const MirInst *inst) {
     char base[24];
     emit_pointer(cx, inst->res, base, sizeof base);
     if (leaves.len != 0) {
-      emit_leaves_at(cx, inst->args[0], base, false);
+      emit_store_value(cx, inst->args[0], base);
     }
     return;
   }
@@ -227,7 +227,7 @@ static void opt_get(EmitCx *cx, const MirInst *inst) {
   if (mir_layouts_opt_boxed(cx->layouts, inner)) {
     char base[24];
     emit_pointer(cx, inst->args[0], base, sizeof base);
-    emit_leaves_at(cx, inst->res, base, true);
+    emit_load_value(cx, inst->res, base);
     return;
   }
   uint32_t skip = mir_opt_has_flag(cx->layouts, value_type(cx, inst->args[0])) ? 1 : 0;
