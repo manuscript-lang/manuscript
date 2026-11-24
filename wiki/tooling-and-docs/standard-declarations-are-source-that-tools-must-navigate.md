@@ -2,7 +2,7 @@
 
 # Standard declarations are source that tools must navigate
 
-Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. `stdlib/*.ms` supplies public schemas and signatures; `extern fn` and `extern type` declarations name the native symbols and types. Generated documentation and navigation consume this source-backed contract.
+Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. `src/stdlib/*.ms` supplies public schemas and signatures; `extern fn` and `extern type` declarations name the native symbols and types. Generated documentation and navigation consume this source-backed contract.
 
 Verified: mixed modules keep checked source methods under `<module>+source`, which public module enumeration hides. API extraction must include those methods and preserve their receiver constraints; [discovery regressions](../../crates/ms-tooling/tests/guide_extensions.rs) cover bounded methods, overloads and repeated implementation records.
 

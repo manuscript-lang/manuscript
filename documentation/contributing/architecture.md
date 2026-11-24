@@ -22,7 +22,7 @@ weight = 1
 
 1. `cli/` validates options and picks a command; the command drives the stages below it.
 2. `compiler/project` reads `ms.toml` and `[aliases]`, resolves imports to canonical, root-confined paths (including editor overlays), follows imports, detects cycles and returns the modules in dependency order.
-3. `compiler/syntax` parses strictly, or with recovery for editor analysis. Standard declarations (`stdlib/*.ms`, embedded at build time) use the same parser.
+3. `compiler/syntax` parses strictly, or with recovery for editor analysis. Standard declarations (`src/stdlib/*.ms`, embedded at build time) use the same parser.
 4. `compiler/check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup and effects; `compiler/own` adds ownership. The result keeps what lowering, docs and editors need.
 5. Check, lint, inspect, diagram and review stop after checking. Formatting uses only the syntax layer.
 6. `compiler/lower` turns checked HIR into MIR; `compiler/mir` and `compiler/opt` elaborate ownership, optimize and verify it. See [lowering](compiler/lowering/_index.md).
@@ -42,7 +42,7 @@ An include crosses layers only downward (`src/layers.txt`, enforced by `ms_lint`
 | `src/lint` | `ms_lint`: banned calls and layering |
 | `src/third_party` | Vendored libraries pinned by `c-libs.lock` |
 
-`stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority.
+`src/stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority.
 
 ## Keep shared behavior in one implementation
 

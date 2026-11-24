@@ -19,7 +19,7 @@ make verify
 - `make build` configures and builds the `ci` preset into `.artifacts/build/ci/src/cli/ms`; `cmake --preset release` builds the release `ms` that CI packages.
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
 
-`make repo-check` runs `tools/repo-check.ms` with the built `ms` (it also runs in pull request CI): `ms fmt --check` over the repository's `.ms` files, `ms lint --syntax` for nested matches in `.ms` files and Markdown fences (`manuscript`, `ms`, `text`; a `// manuscript:allow-nested-match <reason>` line before a match allows a fixture), the `.msversion` calendar version and the extension pin, the `ci.yml` triggers, the standard-library rules in `tools/stdlib-rules.ms` (an `options` or `limits` parameter has a default, no stream-shaped method names, methods follow their type, every `stdlib/internal` extern is used; `tools/optional-defaults-allowed.txt` and `tools/stream-names-allowed.txt` only shrink), and the license inventory. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
+`make repo-check` runs `tools/repo-check.ms` with the built `ms` (it also runs in pull request CI): `ms fmt --check` over the repository's `.ms` files, `ms lint --syntax` for nested matches in `.ms` files and Markdown fences (`manuscript`, `ms`, `text`; a `// manuscript:allow-nested-match <reason>` line before a match allows a fixture), the `.msversion` calendar version and the extension pin, the `ci.yml` triggers, the standard-library rules in `tools/stdlib-rules.ms` (an `options` or `limits` parameter has a default, no stream-shaped method names, methods follow their type, every `src/stdlib/internal` extern is used; `tools/optional-defaults-allowed.txt` and `tools/stream-names-allowed.txt` only shrink), and the license inventory. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 
 - Allowance: a deliberate regression puts `// manuscript:allow-nested-match <reason>` before one inner match in a `tests/*.ms` fixture.
 - Each allowance covers one match; implementation and documentation cannot opt out.
@@ -71,7 +71,7 @@ A snippet that leaves names free is marked `"mode":"fragment"`. It is parsed onl
 
 ## Preview and publish the book
 
-Author guides in `documentation/`; standard-library descriptions live above declarations in `stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
+Author guides in `documentation/`; standard-library descriptions live above declarations in `src/stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
 
 ```sh
 make docs
@@ -103,6 +103,6 @@ Release tags package through [`dist.yml`](https://github.com/manuscript-lang/man
 
 ## Generate the standard library reference
 
-`tools/docgen.ms` renders the snapshot `ms doc` prints (`src/tooling/guide.c` reads `stdlib/*.ms`), so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
+`tools/docgen.ms` renders the snapshot `ms doc` prints (`src/tooling/guide.c` reads `src/stdlib/*.ms`), so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
 
 Generated references live in `.artifacts/docs/documentation/standard-library/reference/` and are mounted by Hugo. `website/static/stdlib.md` and `stdlib.json` (versioned, sorted schema) are generated and ignored by Git; `website/static/llms.txt` points to the plain-text API. Change source or generators, then run `make docs` and the book checks; never hand-edit generated output.
