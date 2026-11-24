@@ -43,7 +43,7 @@ export fn events(transcript String) List[JsonValue]:
 
 	for line in transcript.split("\n"):
 		event := parse(line).to_optional()
-		if event != null: out.append(event.clone().clone())
+		if event != null: out.append(event.clone())
 
 	return out
 
@@ -75,7 +75,7 @@ export fn run_agent(
 			usage.tokens_in,
 			usage.tokens_cached,
 			usage.tokens_out,
-			model or "default",
+			model.clone() or "default",
 		)
 		usage.cost_source = "estimated"
 

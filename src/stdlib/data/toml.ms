@@ -431,7 +431,10 @@ fn child(var reader Reader, parent Int, key String, dotted Bool) Result[Int, Err
 	put(reader, parent, key.clone(), Node.TableNode(created))
 	return ok(created)
 
-fn append_table(var reader Reader, parent Int, key String, next Int) Result[Void, Error]:
+fn append_table(var reader Reader, parent Int, key String, next Int) Result[
+	Void,
+	Error,
+]:
 	existing := lookup(reader, parent, key).clone()
 	node := existing
 
@@ -806,7 +809,7 @@ fn read_value(var reader Reader, depth Int) Node!:
 
 		node := Node.TableNode(result)
 		seal(reader, node.clone())
-		return ok(node)
+		return ok(node.clone())
 
 	start := cursor(reader)
 	var end = start
@@ -1137,7 +1140,11 @@ fn emit_one(
 
 	emit_table(writer, path, table)
 
-fn emit_table(var writer Writer, path List[String], values Map[String, TomlValue]) Void:
+fn emit_table(
+	var writer Writer,
+	path List[String],
+	values Map[String, TomlValue],
+) Void:
 	for entry in values.entries():
 		if section_kind(entry.value) == 0: writer.out += format_key(entry.key).concat(
 			" = "

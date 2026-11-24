@@ -133,7 +133,8 @@ export fn use_stats_runtime() Int:
 		prefix := "#define MS_BUILD_RUNTIME \""
 		if not line.starts_with(prefix): continue
 
-		list := line.slice(prefix.length(), line.length() - 1)
+		// Up to the closing quote: a Windows header may end the line with CR LF.
+		list := line.slice(prefix.length(), line.last_index_of("\"") or line.length())
 
 		for archive in list.split(separator):
 			name := archive.slice(

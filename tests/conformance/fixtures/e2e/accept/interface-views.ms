@@ -23,7 +23,7 @@ fn first_error(cause Cause) Reportable:
 	return cause
 
 fn first_failure(cause Cause) Int!Reportable:
-	return error(cause)
+	return error(cause.clone())
 
 fn fresh(cause Cause, make Bool) Reportable:
 	if make: return Cause(9, "fresh and also heap allocated text")
@@ -66,7 +66,7 @@ fn owned_copy(cause Cause) List[Reportable]:
 	return [e]
 
 fn through_result(cause Cause) Int!Reportable:
-	r Int!Reportable := error(cause)
+	r Int!Reportable := error(cause.clone())
 	return r
 
 fn id[T](x T) T:
@@ -85,7 +85,7 @@ fn rebound(cause Cause) Reportable:
 	return e2
 
 fn rebound_result(cause Cause) Int!Reportable:
-	r Int!Reportable := error(cause)
+	r Int!Reportable := error(cause.clone())
 	r2 := r
 	return r2
 

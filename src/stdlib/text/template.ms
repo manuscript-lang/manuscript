@@ -9,7 +9,7 @@ import (
 /*
 Text templates: compile a template once, then render it with `JsonValue` data.
 
-<!-- manuscript-example: {"mode":"fragment","given":["user JsonValue"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["user: JsonValue"]} -->
 ```manuscript
 import JsonValue from "@std/data/json.ms"
 import compile, to_data from "@std/text/template.ms"
@@ -130,7 +130,10 @@ export opaque type Template:
 
 // Renders the template with `data` and the settings in `options`. When `data` is an
 // object, its members supply the root names.
-fn Template.render(data JsonValue, options RenderOptions = RenderOptions()) String!Error:
+fn Template.render(
+	data JsonValue,
+	options RenderOptions = RenderOptions(),
+) String!Error:
 	var frames = List[Map[String, JsonValue]]()
 	frames.append(root_names(data))
 
@@ -144,7 +147,7 @@ fn Template.render(data JsonValue, options RenderOptions = RenderOptions()) Stri
 		html: self.html,
 	)
 	run.nodes(self.nodes, 0)?
-	return ok(run.out)
+	return ok(run.out.clone())
 
 type Token:
 	action Bool

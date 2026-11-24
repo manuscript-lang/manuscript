@@ -45,15 +45,15 @@ fn optional_name(item Item) String?:
 	return item.name
 
 fn result_name(item Item) String!:
-	return ok(item.name)
+	return ok(item.name.clone())
 
 fn maybe_name(item Item, found Bool) String!:
-	if found: return ok(item.name)
+	if found: return ok(item.name.clone())
 	return error(Error("missing"))
 
 fn either(item Item, issue Error, failed Bool) String!:
-	if failed: return error(issue)
-	return ok(item.name)
+	if failed: return error(issue.clone())
+	return ok(item.name.clone())
 
 fn mixed_both(item Item, issue Error, mode Int) String!:
 	if mode == 0: return ok(item.name.clone())
@@ -81,7 +81,7 @@ fn named(item Item) Named:
 	return item
 
 fn maybe_count(issue Error, failed Bool) Int!:
-	if failed: return error(issue)
+	if failed: return error(issue.clone())
 	return ok(1)
 
 extern fn ms_ownership_scalar(value Int8) Int8

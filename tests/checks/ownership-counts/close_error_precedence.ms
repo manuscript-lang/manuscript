@@ -25,20 +25,20 @@ fn owned() Int!:
 
 fn borrowed(cause Error) Int!:
 	_resource := Token(3)
-	return error(cause)
+	return error(cause.clone())
 
 fn main() Void:
 	first := owned()
 	cause := first.err()
 	print(cause.message)
-	print(cause.kind or "")
+	print(cause.kind.clone() or "")
 	print(cause.details["id"])
 
 	original := Error("caller error", kind: "ECALLER", details: {"id": "caller"})
 	second := borrowed(original)
 	returned := second.err()
 	print(returned.message)
-	print(returned.kind or "")
+	print(returned.kind.clone() or "")
 	print(returned.details["id"])
 	print(original.message)
 	print(original.details["id"])

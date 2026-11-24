@@ -239,7 +239,7 @@ fn prio_rank(s String) Int:
 
 	return -1
 
-fn opt_s(x String?) String: x or "-"
+fn opt_s(x String?) String: x.clone() or "-"
 
 fn opt_i(x Int?) String:
 	v := x
@@ -631,7 +631,12 @@ fn var Parser.advance() Void!:
 
 fn is_lower_or_us(c String) Bool: is_lower(c) or c == "_"
 
-fn parse_filter(st State, text String, var nodes List[Node], var refs List[String]) Int!:
+fn parse_filter(
+	st State,
+	text String,
+	var nodes List[Node],
+	var refs List[String],
+) Int!:
 	if text.trim() == "": return ok(-1)
 
 	var p = Parser(cs: text.chars().clone())

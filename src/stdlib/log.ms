@@ -87,8 +87,8 @@ fn encode_fields[F Data](fields F) String!:
 // child's text alone when either side is not an object. This runs once per child, never
 // per record.
 fn merge_context(child String, parent String?) String!:
-	base := parent or ""
-	if base == "": return ok(child)
+	base := parent.clone() or ""
+	if base == "": return ok(child.clone())
 
 	left := parse(base)
 	right := parse(child)
@@ -98,7 +98,7 @@ fn merge_context(child String, parent String?) String!:
 
 	members := left.get().as_map()
 	added := right.get().as_map()
-	if (members == null) or (added == null): return ok(child)
+	if (members == null) or (added == null): return ok(child.clone())
 
 	var merged = (members).clone()
 	for entry in (added).entries():

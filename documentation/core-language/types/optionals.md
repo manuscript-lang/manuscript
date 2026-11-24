@@ -71,7 +71,7 @@ A `T?` has no methods. Compare it with `null`, give a fallback with `or`, and re
 | Written | Meaning |
 | --- | --- |
 | `x == null`, `x != null` | Whether the optional is absent or present, including a present `false`, zero, or empty string |
-| `x or d` | The payload, or `d` when absent; `d` is evaluated only when `x` is absent. With a `T` on the right the result is `T`; with a `T?` on the right it is `T?` |
+| `x or d` | The payload, or `d` when absent; `x` is moved, so a borrowed `x` needs `.clone()` or a `move` parameter; `d` is evaluated only when `x` is absent. With a `T` on the right the result is `T`; with a `T?` on the right it is `T?` |
 | `ok_or(x, cause)` | `Ok(payload)`, or `Error(cause)` when absent |
 | `x?` | The payload, or leave the function with `null` (see below) |
 
@@ -79,7 +79,7 @@ Fallback for routine absence:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn display_name(name String?) String:
+fn display_name(move name String?) String:
     return name or "Anonymous"
 ```
 
@@ -87,7 +87,7 @@ The right side of `or` is evaluated only when the left is `null`, so a fallback 
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn display_name(create fn() String, name String?) String:
+fn display_name(create fn() String, move name String?) String:
     return name or create()
 ```
 

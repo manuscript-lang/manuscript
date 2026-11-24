@@ -7,7 +7,7 @@ export type Point:
     y Int
 
 export fn say(text String) Void:
-    _ignored := stdout().write(text)
+    _ignored := stdout().write(text.clone())
 
 // Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name String, ops Int, body fn() Int) Void:

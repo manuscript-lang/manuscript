@@ -204,7 +204,7 @@ fn read_trial(dir String) Trial?:
 		)
 
 	agent_cfg := (r.get("config") or JsonValue.Null).get("agent") or JsonValue.Null
-	score := (reward or JsonValue.Null).as_float()
+	score := (reward.clone() or JsonValue.Null).as_float()
 	passed := (score or 0.0) == 1.0
 	return Trial(
 		trial: text_at(r, "trial_name"),
@@ -413,7 +413,7 @@ fn source_table(rows List[Trial]) String:
 	return lines.join("\n") + "\n"
 
 fn render(src_arg String?) Int:
-	var src = src_arg or ""
+	var src = src_arg.clone() or ""
 
 	if src == "":
 		found := glob(f"{root()}/results", GlobOptions(patterns: ["trials-*.jsonl"])).get_or(

@@ -67,7 +67,7 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
 	)?
 	expect_equal(
 		(
-			cases[0].stats
+			cases[0].stats.clone()
 			or Stats(
 				operations: 0,
 				iterations: null,

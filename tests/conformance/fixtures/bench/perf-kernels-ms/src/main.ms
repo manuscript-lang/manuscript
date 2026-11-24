@@ -22,7 +22,7 @@ enum Tree:
 	Node(left Tree, right Tree)
 
 fn say(text String) Void:
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 
 fn sieve(n Int) Int:
 	var flags List[Bool] = List[Bool]()
