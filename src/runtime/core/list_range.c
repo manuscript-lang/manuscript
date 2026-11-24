@@ -12,6 +12,9 @@ static const MsList empty_list = {0};
  * complement. */
 static MsList int_list(size_t count, int64_t first, int64_t step) {
   MsList list = msrt_list_with_slots(&ms_desc_int, count, count);
+  if (list.len != count) {
+    return list; /* too large: a fault was posted */
+  }
   uint64_t value = (uint64_t)first;
   for (size_t i = 0; i < count; i++) {
     __builtin_memcpy(list.ptr + i * sizeof value, &value, sizeof value);

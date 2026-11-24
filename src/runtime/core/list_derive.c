@@ -119,18 +119,25 @@ static size_t concat_capacity(size_t a_len, size_t b_len, size_t total) {
   }
   size_t doubled = 0;
   if (!ms_size_mul(a_len, 2, &doubled)) {
-    msrt_list_overflow_fault();
+    return total; /* doubling would overflow: the exact size still fits */
   }
   return doubled > total ? doubled : total;
 }
 
 void msrt_list_concat(const MsList *a, const MsList *b, const MsTypeDesc *d, MsList *out) {
-  const size_t total = msrt_list_checked_add(a->len, b->len);
+  size_t total = 0;
+  if (!msrt_list_checked_add(a->len, b->len, &total)) {
+    *out = empty_list;
+    return;
+  }
   if (total == 0) {
     *out = empty_list;
     return;
   }
   *out = msrt_list_with_slots(d, total, concat_capacity(a->len, b->len, total));
+  if (out->ptr == NULL) {
+    return; /* a fault was posted */
+  }
   msrt_list_copy_range(d, a->ptr, out->ptr, a->len);
   msrt_list_copy_range(d, b->ptr, out->ptr + a->len * d->size, b->len);
 }
@@ -141,13 +148,18 @@ void msrt_list_repeat(const MsList *v, const MsTypeDesc *d, int64_t count, MsLis
   const size_t rounds = count > 0 ? (size_t)count : 0;
   size_t total = 0;
   if (!ms_size_mul(v->len, rounds, &total)) {
-    msrt_list_overflow_fault();
+    msrt_post_list_overflow();
+    *out = empty_list;
+    return;
   }
   if (total == 0) {
     *out = empty_list;
     return;
   }
   *out = msrt_list_with_slots(d, total, total);
+  if (out->ptr == NULL) {
+    return; /* a fault was posted */
+  }
   uint8_t *buffer = out->ptr;
   if (!ms_desc_is_plain(d)) {
     for (size_t round = 0; round < rounds; round++) {

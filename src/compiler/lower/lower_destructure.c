@@ -61,8 +61,8 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
     mir_b_seal_block(&fn->b, bad);
     mir_b_switch_to(&fn->b, bad);
     const MirValue counts[2] = {names, length};
-    (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_destructure")), counts, 2, MIR_VOID);
-    mir_b_unreachable(&fn->b);
+    (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_post_destructure")), counts, 2, MIR_VOID);
+    fn_unwind_exit(fn); /* the posted fault leaves by the exit that closes what is owned here */
     mir_b_switch_to(&fn->b, good);
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
       const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};

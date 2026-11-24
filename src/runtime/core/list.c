@@ -86,6 +86,9 @@ void msrt_list_shadow(const MsList *v, const MsTypeDesc *d, MsList *out) {
     return;
   }
   *out = msrt_list_with_slots(d, v->len, v->len);
+  if (out->ptr == NULL) {
+    return;
+  }
   __builtin_memcpy(out->ptr, v->ptr, v->len * d->size);
 }
 
