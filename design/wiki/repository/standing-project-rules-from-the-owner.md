@@ -19,7 +19,7 @@ Decision (Chinmay): these rules apply to every PR and thread. Each line points t
 - Stdlib externs live in internal modules, with no `...` stubs; types carry methods instead of getter functions. Go parity means the same outcome in an idiomatic Manuscript way, not a 1:1 API.
 - Prefer hardening and polish over new features; a new module gets a fuzz pass ([bug-bash](../../../skills/bug-bash/SKILL.md)).
 - Linux binaries need only libc and libm, linked against glibc 2.28 stubs, with the runtime and Rust std static; static musl only with `--static` ([details](../runtime/linux-programs-link-glibc-unless-static-is-asked.md)).
-- Threads: keep cross-thread state minimal and avoid complex locking. Only a few things cross a thread boundary; everything else runs on one thread ([workers](../runtime/worker-threads-are-isolates-that-share-nothing.md)).
+- Threads: keep cross-thread state minimal and avoid complex locking. Only a few things cross a thread boundary; everything else runs on one thread (workers).
 - No comparison tables: do not put tables comparing Manuscript with Go, Python, Node, Rust or any other language or API in docs, wiki, READMEs or proposals (for example Go-to-Manuscript API mappings). Give idiom guidance as plain prose. Dated benchmark result pages under `bench/` stay as measurement evidence.
 
 Performance and design direction (Chinmay, 2026-11): see also [data-oriented perf](../benchmarks-and-performance/perf-work-follows-data-oriented-design-and-removes-caches.md).

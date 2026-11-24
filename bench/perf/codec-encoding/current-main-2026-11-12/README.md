@@ -4,7 +4,7 @@ Baseline compiler/runtime/stdlib: main `15e35bc8a853b917f7c3c054fd1b95c3337ed633
 
 The original fixture's branch-local setup was rejected by current main's compiler. The revised fixture uses ordinary typed setup helpers selected through documented literal matching. The five timed loops, output/error checks, warmup counts and CSV results are unchanged. Input reads, conversions and dispatch remain outside timing. Supported invocations preserve output and error behavior; unsupported operations now return 2 before file reads and malformed setup may fail in a different order. Those are outside the measured fixture contract. The earlier results remain historical because setup lifetimes may differ.
 
-Same AMD EPYC 9V74 VM, CPU4, GCC 14.2.0 `-O3 -march=x86-64-v3 -mtune=generic`; Manuscript production LLVM Release. Same allocating C exact/growing controls, complete output validation and consumed checksum. Seven alternating paired runs over all 31 cases, equal calibrated counts, no outlier removal. Exact commands and binary/source hashes are in [metadata](metadata.json) and [samples](samples.json).
+Same AMD EPYC 9V74 VM, CPU4, GCC 14.2.0 `-O3 -march=x86-64-v3 -mtune=generic`; Manuscript production LLVM Release. Same allocating C exact/growing controls, complete output validation and consumed checksum. Seven alternating paired runs over all 31 cases, equal calibrated counts, no outlier removal. Exact commands and binary/source hashes are in metadata and samples.
 
 | Case | Baseline ns | Proposed ns | C exact ns | C grow ns | Paired ratio | Range |
 |---|---:|---:|---:|---:|---:|---:|
@@ -42,7 +42,7 @@ Same AMD EPYC 9V74 VM, CPU4, GCC 14.2.0 `-O3 -march=x86-64-v3 -mtune=generic`; M
 
 All case medians improve; individual noisy pairs remain visible. The shortest actual sample was 20.99ms. Nonempty outputs still trail exact-capacity C; this is not C parity.
 
-Seven A/A pairs on four controls: median B/A ratios 0.959–1.030, individual range 0.824–1.205. [Raw A/A](aa.json).
+Seven A/A pairs on four controls: median B/A ratios 0.959–1.030, individual range 0.824–1.205. Raw A/A.
 
 Five paired exec-specific VmHWM controls, using the same protocol as the original report. These are process peaks including setup, not isolated allocations; compare baseline and proposed within this revised fixture.
 
@@ -55,6 +55,6 @@ Five paired exec-specific VmHWM controls, using the same protocol as the origina
 | hex-random-1048576 | 9716 | 9720 |
 | b64-random-1048576 | 7700 | 6596 |
 
-Validation: all 293 independent output/error fixtures pass for **both** newly built executables (586 runs), including UTF/hex invalid-budget and malformed controls retained by the fixture. All 42 focused codec tests pass again in both Debug and LLVM Release on the current compiler. [Correctness records](correctness.json), [test output](tests.json), [RSS records](rss.json).
+Validation: all 293 independent output/error fixtures pass for **both** newly built executables (586 runs), including UTF/hex invalid-budget and malformed controls retained by the fixture. All 42 focused codec tests pass again in both Debug and LLVM Release on the current compiler. Correctness records, test output, RSS records.
 
 Reproduce with the parent directory's commands, using the baseline commit above, the revised `probe.ms` for both compilers and `--pairs 7`. CPU timing and RSS runs remain separate. Independent review approved the fixture equivalence for supported invocations; production source is unchanged from the already reviewed bounded encoding implementation.

@@ -1,6 +1,6 @@
 # Rejected ASCII decoding experiment, 2026-10-31
 
-**No production optimization is retained.** The [unapplied patch](candidate.patch)
+**No production optimization is retained.** The unapplied patch
 is preserved because valid ASCII gains repeatedly accompany a rejection regression.
 The strongest current-main control regresses by 7.8%; the campaign rejects it.
 New benchmark/test coverage and experimental evidence are retained.
@@ -46,7 +46,7 @@ process ranges; those data do not establish a stable bound or an all-clear.
 Moving the empty check to the extracted list, before or after validation, did
 not remove the observed accent penalty; those checks are retained in `results/`.
 
-The [full 68-case comparison](results/final/summary.json) covers 23 ASCII cases,
+The full 68-case comparison covers 23 ASCII cases,
 17 existing regex extraction/replacement cases, 20 existing capture-shape cases,
 and eight existing binary/encoding controls. Every case, operation count,
 successful producer status and sample count agrees. Unchanged regex and binary
@@ -54,7 +54,7 @@ control medians all remain within 5% in this run. Their raw process outputs,
 medians, ranges and CVs are retained; this is a profiling observation, not a CI
 performance threshold.
 
-The [second ASCII comparison](results/optimized-rust/summary.json) uses an
+The second ASCII comparison uses an
 idiomatic optimized Rust control without an inlining restriction. The first
 full run used `#[inline(never)]` at the Rust decode boundary; its source and all
 measurements remain as historical evidence. The second Rust comparison is the
@@ -68,9 +68,9 @@ Baseline main `3cfde58b6` includes four frontend merges after the original
 baseline. Both before/after compilers were rebuilt on that revision with the same
 native archive; local candidate source state was `0aef4769d38623ea8c6a7c14d838a05c2e70d835`.
 That local commit is not a published ref: the exact source is preserved as
-[`candidate-encoding.ms.txt`](candidate-encoding.ms.txt) and `candidate.patch`,
+`candidate-encoding.ms.txt` and `candidate.patch`,
 and its SHA-256 matches the recorded source hash in `environment.json`.
-The [current-main records](results/current-main/summary.json) repeat all 68 cases
+The current-main records repeat all 68 cases
 in five balanced rounds, using unrestricted optimized Rust. The relocatable
 `run.py` was exercised end to end and validates explicit case sets and Rust sample
 counts; its metadata records actual host CPU/quota.
@@ -128,7 +128,7 @@ no allocator or generated-code investigation is claimed.
 
 ## Rejected alternative
 
-The public-API-only [UTF-8/count candidate](rejected-utf8-count.ms.txt) first
+The public-API-only UTF-8/count candidate first
 converts to UTF-8 text and accepts it only when byte length equals scalar length.
 That predicate is correct, and ASCII inputs are much faster, but valid Unicode
 rejection regresses drastically: one MiB of accents changes from about 15.4 us
