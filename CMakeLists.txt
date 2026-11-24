@@ -78,14 +78,6 @@ add_custom_target(llvm-lib
   DEPENDS ms
   USES_TERMINAL
 )
-# The same release's opt and llc, which the glibc stubs still use; in CI exports MS_OPT and MS_LLC. A runner needs no
-# system LLVM: the library, these tools and the pinned lld come from the releases the lock files name.
-add_custom_target(llvm-tools
-  COMMAND $<TARGET_FILE:ms> run tools/fetch-llvm-lib.ms -- tools
-  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-  DEPENDS ms
-  USES_TERMINAL
-)
 
 # Formatting, nested matches, release pins, workflow triggers and the license inventory (tools/repo-check.ms). The tool
 # lists the files with git, which the MSYS2 shell of the Windows runners does not have on PATH: Git for Windows is.

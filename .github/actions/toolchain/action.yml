@@ -1,24 +1,33 @@
 name: Toolchain
 description: Install the build tools for this platform and restore the compiler and OpenSSL caches.
 
-inputs:
-  system-llvm:
-    description: Install the platform's LLVM and lld (opt, llc, lld on PATH). CI sets it to false and uses the pinned releases.
-    default: 'true'
-
 runs:
   using: composite
   steps:
+    # The platform packages come from the Ubuntu mirror and Homebrew, which stall for minutes now and then, so their
+    # downloads are cached. The key follows the runner image and this file; main's scheduled run saves it for pull requests.
+    - if: runner.os == 'macOS'
+      uses: actions/cache@v6
+      with:
+        path: ~/Library/Caches/Homebrew/downloads
+        key: brew-${{ runner.arch }}-${{ env.ImageVersion }}-${{ hashFiles('.github/actions/toolchain/action.yml') }}
+    - if: runner.os == 'Linux'
+      uses: actions/cache@v6
+      with:
+        path: .artifacts/apt
+        key: apt-${{ runner.arch }}-${{ env.ImageVersion }}-${{ hashFiles('.github/actions/toolchain/action.yml') }}
     - if: runner.os == 'macOS'
       shell: bash
-      run: brew install ninja ccache${{ inputs.system-llvm == 'true' && ' llvm lld' || '' }}
+      run: brew install ninja ccache llvm lld
     # Homebrew's llvm is keg-only: release builds run its opt and llc from PATH.
-    - if: runner.os == 'macOS' && inputs.system-llvm == 'true'
+    - if: runner.os == 'macOS'
       shell: bash
       run: cmake -P cmake/CiMacosEnv.cmake
     - if: runner.os == 'Linux'
       shell: bash
-      run: sudo apt-get install -y ninja-build ccache gdb${{ inputs.system-llvm == 'true' && ' llvm lld' || '' }}
+      run: |
+        mkdir -p .artifacts/apt/partial
+        sudo apt-get install -y -o Dir::Cache::archives="$PWD/.artifacts/apt" ninja-build ccache llvm lld gdb
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2, which brings the perl and make
     # pair OpenSSL's Configure needs.
     - if: runner.os == 'Windows'
