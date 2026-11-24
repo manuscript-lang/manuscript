@@ -744,7 +744,7 @@ fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 // absent. The key is probed once, `initial` is always evaluated, and `change` runs once
 // and must not use this map. The key is copied only when it is absent. Example:
 // `counts.update(word, 0, fn n: n + 1)` counts occurrences.
-fn var Map[T: Hashable & Clonable, U: Clonable].update(
+fn var Map[T: Hashable & Clonable, U].update(
 	key: T,
 	move initial: U,
 	change: fn(U) U
