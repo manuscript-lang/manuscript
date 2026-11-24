@@ -1,6 +1,6 @@
 # Closing what containers and fields own: no cost without resources
 
-A record, alternative, `Optional`, `List` or `Map` closes the resources it holds when its scope ends ([proposal](../../../proposals/close-owned-parts.md)). A holder of values that are not resources must pay nothing for that: its class stays `Copy` or `Move`, no binding is registered, and the lowering emits no closer.
+A record, alternative, `Optional`, `List` or `Map` closes the resources it holds when its scope ends ([proposal](../../../design/proposals/close-owned-parts.md)). A holder of values that are not resources must pay nothing for that: its class stays `Copy` or `Move`, no binding is registered, and the lowering emits no closer.
 
 [`bench/tools/close_parts.ms`](../../tools/close_parts.ms) checks it: it lowers every `ms.toml` project under `bench/perf` with a compiler from before the change and one with it, in the same directory, and compares the lowered MIR (`ms emit`) and the linked binaries byte for byte.
 

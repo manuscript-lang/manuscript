@@ -93,9 +93,9 @@ export fn file_sha256(path: String) String:
 	return hex_encode(sha256(data))
 
 // Builds the counting runtime (`cmake --preset stats`: live blocks, parks and copies
-// printed on standard error at exit, see proposals/c-runtime-stats-variant.md) and
-// points MS at its ms, which the tools then run the programs with. Returns a nonzero
-// status when a build fails.
+// printed on standard error at exit, see design/proposals/c-runtime-stats-variant.md)
+// and points MS at its ms, which the tools then run the programs with. Returns a
+// nonzero status when a build fails.
 export fn use_stats_runtime() Int:
 	for step in [["--preset", "stats"], ["--build", "--preset", "stats"]]:
 		out := run("cmake", step.clone()).wait()

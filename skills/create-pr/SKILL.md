@@ -22,14 +22,14 @@ Use these four sections, in this order, then Documentation and Compatibility lin
 - Title: imperative, specific, under about 70 characters.
 - Claims need evidence: link source, tests, or output. Say when something is inferred.
 - Flag public API, diagnostic, manifest, or artifact changes and any migration.
-- Keep skills, `wiki/` pages, and discovery links in sync when the change touches them (see [manuscript-change](../manuscript-change/SKILL.md#record-durable-lessons)).
+- Keep skills, `design/wiki/` pages, and discovery links in sync when the change touches them (see [manuscript-change](../manuscript-change/SKILL.md#record-durable-lessons)).
 - Do not merge with failing checks. Fix the cause; never skip or disable a test.
 
 ## Merging
 
 - Open every PR ready for review, not as a draft, and enable squash auto-merge in the same step so it lands when required checks pass. The owner does not review PRs; an independent reviewer subagent challenges a structural proposal before implementation (see [AGENTS.md](../../AGENTS.md#shared-guidance-and-checks)).
 - Auto-merge only waits for green CI, so keep the PR green: watch it, merge or rebase `main` on conflicts, and fix failures from the cause rather than re-running.
-- PRs run the Linux legs only. For a host-specific change, dispatch `cicd.yml` on the branch (its `os` input picks one platform) ([why](../../wiki/repository/pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
+- PRs run the Linux legs only. For a host-specific change, dispatch `cicd.yml` on the branch (its `os` input picks one platform) ([why](../../design/wiki/repository/pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
 - If the user holds a PR, turn off its auto-merge and say so.
 - Pull requests run the Linux legs and squash auto-merge when they pass; do not merge by hand while checks are pending. The other platform legs run on `main` after merge.
 - Stacked PRs: auto-merge cannot be enabled on a PR whose base is another PR's branch. When the lower PR squash-merges, rebase the next one onto `main` dropping the old commits (`git rebase --onto origin/main <old base>`), retarget it to `main`, then enable auto-merge. Check every open PR for conflicts after each merge.

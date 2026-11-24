@@ -20,7 +20,7 @@ ms build bench/perf/async-primitives/main.ms -o async && MS_THREADS=4 ./async in
 
 ## 2026-11-23 (x86-64 Linux sandbox, 4 cores, release `ms`)
 
-Change: `proposals/fast-tasks-and-promises.md` (queue at one thread, wait parks on the row, wake a thread only when none is looking, sleeping threads in one word, start site in the row). Before is main at 3122af1e plus `claude/web-request-path` at 1d6d0683; after is that plus the change. Median of 9 interleaved runs, ns per operation at 1 / 4 threads.
+Change: `design/proposals/fast-tasks-and-promises.md` (queue at one thread, wait parks on the row, wake a thread only when none is looking, sleeping threads in one word, start site in the row). Before is main at 3122af1e plus `claude/web-request-path` at 1d6d0683; after is that plus the change. Median of 9 interleaved runs, ns per operation at 1 / 4 threads.
 
 | mode | before | after | Go 1.24 | tokio |
 | --- | ---: | ---: | ---: | ---: |
