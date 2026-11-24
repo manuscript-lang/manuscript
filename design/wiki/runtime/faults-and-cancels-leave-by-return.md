@@ -1,0 +1,16 @@
+[Wiki](../index.md) › [Runtime](index.md)
+
+# Faults and cancels leave by return
+
+Decision (Chinmay, 2026-11-24: "can we fault as normal return path so everything works?"): a fault a program can see is posted, not raised. `ms_fault_post*` builds the sealed report in `MsUnwind.pending`, sets the task's `unwinding` byte and returns; a cancel sets the same byte (`ms_cancel_deliver`). Every compiled call site tests the byte (`fn_unwind_site`) and leaves by `fn_unwind_exit`: pause, the scope closes, resume, `ret undef`. A check emits `fault.site`, and the verifier rule `mv_fault_sites` requires one per faulting op. There is no cleanup stack, no `longjmp` and no unwind pass (`mir_unwind*`, `mir_shed` deleted).
+
+Contract: a native or compiled callee that posts consumes nothing the caller still owns and returns an empty or undef result, which the caller treats as dead (`dead_result`). Held arguments stay in their closing slot across the call; a precheck that runs before a taken value is passed puts it back first (`fn_unwind_site_forgetting`).
+
+Terminal faults: `ms_fault`, stack overflow (exit 139), out of memory, and a fault while reporting end the process with the report, the record and the status of their kind. They are not recoverable: Go and Rust make the same choice. Fixtures for them are `run` fixtures (`accept/stack-overflow`, `call-depth-runaway`, `task-stack-overflow`); conform masks `repeated N more times` as `<COUNT>`.
+
+Guards (`ms_guard_call`) are plain calls: they read the byte afterwards, end the promises the code started (numbered by `ms_started_next`, ended above the guard's mark) and hand the report on.
+
+Failure modes found: LLVM tail-merged post calls and moved fault lines, so post calls are `nomerge` (`MR_POSTS_FAULT`); `cancel_edges` must be program-wide (a per-scheduler flag made worker threads take the old path and leak); a flagged slot owner needs its drop flag cleared at `scope.disown`, or a conditional move closes twice.
+
+Apply when: adding a runtime fault, a native that can post, or a lowering that takes values out of closing slots.
+Evidence: `src/runtime/core/unwind.c`, `fault.c`, `src/compiler/lower/lower_unwind.c`, `leak_check` and `tools/cancel-sweep.ms`.

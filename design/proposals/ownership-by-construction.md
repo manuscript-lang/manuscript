@@ -58,3 +58,7 @@ The migration is already under way, and this proposal finishes it rather than st
 ## Stages
 
 1. Cancel edges in the verifier and in `mir_elab` for the park-in-loop class; delete the matching `mir_unwind` registrations. Measure instructions per promise (tasks thread: 6 push/discard pairs, about 260). 2. The other cancel classes, one at a time, moving each closing decision out of lowering; native audit. 3. Struct layout and field drop flags. 4. Faults on the same edges, with the per-call test cost measured first. 5. `fault-sweep`, the runtime lint, delete the cleanup stack when nothing registers into it. Every stage keeps all sweeps green and cites `bench/perf` counts.
+
+## Outcome (2026-11-24, stages 1 and 4)
+
+Faults and cancels leave by return in every compiled program: the cleanup stack (`msrt_cleanup_*`, `Hdr.cleanups`), the guard `longjmp` (`ms_guard_enter`, `ms_guard_jump`), the raise machinery in `fault.c` and the passes `mir_unwind*` and `mir_shed` are deleted. A raised fault (`ms_fault`, stack overflow, out of memory) ends the process; every other fault is posted. Guards are plain calls. Stack overflow is no longer recoverable, so the three fixtures that caught it became `run` fixtures expecting exit 139. Stage 2 (moving closing decisions out of lowering) and stage 3 (struct layout) remain. The wiki page [faults and cancels leave by return](../wiki/runtime/faults-and-cancels-leave-by-return.md) records the contract and the failure modes found on the way.
