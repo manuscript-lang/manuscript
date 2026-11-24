@@ -983,6 +983,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirValue made = expr_value(fn, expr, want);
   if (expr->kind == MS_E_CALL) {
     fn_unwind_site(fn, made); /* before the result changes hands: the exit still owns it */
+  } else if (made != MIR_NONE) {
+    fn_fault_site(fn, made);
   }
   const MirValue value = take_ownership(fn, expr, made, want);
   fn->read_moves = want == LW_MOVE;

@@ -94,6 +94,61 @@ bool cpe_unbox_dead_options(MsArena *arena, MirModule *m, MirFunc *f) {
   return changed;
 }
 
+/* `p = opt.get v; c = clone p`, where every path onward reaches `v` only to drop it, on the way out of the function
+ * as well (the exits an unwind site adds): `c = opt.unbox v`, and each drop of `v` goes. */
+bool cpe_unbox_across(MsArena *arena, MirModule *m, MirFunc *f) {
+  if (!cpe_has_op(f, MOP_OptGet)) {
+    return false;
+  }
+  const CpeFlow fl = cpe_flow(arena, m, f);
+  const uint32_t *uses = mir_use_counts(arena, f);
+  bool *held = cpe_new_flags(arena, f);
+  bool *seen = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)f->blocks.len + 1);
+  MirValue *stack = MS_ARENA_NEW_ARRAY(arena, MirValue, (size_t)f->values.len + (size_t)fl.borrows.start[f->values.len + 1] + 2);
+  CpeDead dead = {0};
+  bool *touched = cpe_new_flags(arena, f);
+  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
+    MirBlockData *b = &f->blocks.ptr[bi];
+    for (uint32_t gi = 0; gi < b->insts.len; gi++) {
+      const MirInst *get = &b->insts.ptr[gi];
+      if (get->op != MOP_OptGet || get->res == MIR_NONE) {
+        continue;
+      }
+      const MirValue p = get->res, v = get->args[0];
+      if (uses[p] != 1 || !fl.owned[v] || fl.tainted[v] || touched[v] || gi + 1 >= b->insts.len) {
+        continue;
+      }
+      uint32_t ci = gi + 1;
+      while (ci < b->insts.len && !(b->insts.ptr[ci].op == MOP_Clone && b->insts.ptr[ci].args[0] == p)) {
+        ci++;
+      }
+      if (ci == b->insts.len) {
+        continue;
+      }
+      cpe_hold(&fl.borrows, v, (uint32_t)f->values.len, held, stack);
+      held[p] = false; /* its one use is the copy */
+      __builtin_memset(seen, 0, sizeof(bool) * f->blocks.len);
+      CpeDead drops = {0};
+      if (!cpe_paths(arena, f, &fl, bi, ci, v, held, seen, &drops) || drops.n == 0 ||
+          cpe_entered_elsewhere(f, &fl, bi, seen)) {
+        continue;
+      }
+      touched[v] = true;
+      b->insts.ptr[ci].op = MOP_OptUnbox;
+      cpe_set_single_arg(m, &b->insts.ptr[ci], v);
+      cpe_dead_push(arena, &dead, bi, gi);
+      for (uint32_t k = 0; k < drops.n; k++) {
+        cpe_dead_push(arena, &dead, drops.at[k].block, drops.at[k].index);
+      }
+    }
+  }
+  if (dead.n == 0) {
+    return false;
+  }
+  cpe_remove_insts(arena, f, &dead);
+  return true;
+}
+
 /* The positions after `gi` that use `v` apart from the copy and the drop: each must be an
  * `alt.get` of a field that needs no drop (those are hoisted above the unbox). Collected in
  * `hoist`; false when another use exists, or one comes after the drop. */

@@ -351,6 +351,7 @@ bool opt_copyelim_func(MirModule *m, MirFunc *f) {
   changed |= cpe_borrow_local_copies(&arena, m, f);
   changed |= cpe_unbox_dead_sources(&arena, m, f);
   changed |= cpe_unbox_dead_options(&arena, m, f);
+  changed |= cpe_unbox_across(&arena, m, f);
   ms_arena_free(&arena);
   return changed;
 }

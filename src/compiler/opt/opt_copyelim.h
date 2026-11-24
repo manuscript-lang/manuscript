@@ -94,6 +94,11 @@ void cpe_remove_insts(MsArena *arena, MirFunc *f, CpeDead *dead);
 void cpe_apply_rename(MirFunc *f, MirValue *rename, bool terms);
 MirValue *cpe_new_values(MsArena *arena, const MirFunc *f, MirValue fill);
 bool *cpe_new_flags(MsArena *arena, const MirFunc *f);
+CpeFlow cpe_flow(MsArena *arena, const MirModule *m, const MirFunc *f);
+bool cpe_paths(MsArena *arena, const MirFunc *f, const CpeFlow *fl, uint32_t bc, uint32_t i, MirValue v, const bool *held,
+               bool *seen, CpeDead *drops);
+bool cpe_entered_elsewhere(const MirFunc *f, const CpeFlow *fl, uint32_t bc, const bool *seen);
+bool cpe_unbox_across(MsArena *arena, MirModule *m, MirFunc *f);
 bool cpe_move_dead_sources(MsArena *arena, const MirModule *m, MirFunc *f);
 bool cpe_move_across(MsArena *arena, const MirModule *m, MirFunc *f);
 bool cpe_borrow_local_copies(MsArena *arena, const MirModule *m, MirFunc *f);

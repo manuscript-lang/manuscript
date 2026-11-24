@@ -15,6 +15,15 @@
 MS_NORETURN void msrt_fault(const uint8_t *msg, size_t len);
 /* ms-sig: msrt_fault_string(s: *const StrVal) -> ! @end */
 MS_NORETURN void msrt_fault_string(const MsString *message);
+/* The faults a compiled check posts when it has an exit to leave by: they build the report and return. */
+void msrt_post_int_overflow(void);
+void msrt_post_int_range(void);
+void msrt_post_div_zero(void);
+void msrt_post_rem_zero(void);
+void msrt_post_div_overflow(int64_t a, int64_t b);
+void msrt_post_unwrap_none(void);
+void msrt_post_index(int64_t index, int64_t length);
+
 /* ms-sig: msrt_panic(message: *const StrVal) @end */
 void msrt_panic(const MsString *message);
 /* ms-sig: msrt_fault_depth() -> ! @end */

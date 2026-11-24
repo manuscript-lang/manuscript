@@ -151,6 +151,8 @@ static bool parks_directly(const MirModule *module, const MirInst *inst) {
   switch ((MirOp)inst->op) {
   case MOP_Poll: case MOP_CallInd: case MOP_CallMethod:
     return true;
+  case MOP_FaultSite: /* a check that faults leaves the function by its exit, as a cancel does */
+    return true;
   case MOP_CallRt:
     return inst->imm.tag == MI_EXT && !leaf_extern(module, inst->imm.a);
   default:

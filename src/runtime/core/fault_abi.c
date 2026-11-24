@@ -77,6 +77,49 @@ void msrt_fault_div_overflow(int64_t a, int64_t b) {
   ms_fault_built(MS_FAULT_KIND_OVERFLOW, &text);
 }
 
+void msrt_post_int_overflow(void) {
+  ms_fault_post_text(MS_FAULT_KIND_OVERFLOW,
+                     "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt");
+}
+
+void msrt_post_int_range(void) {
+  ms_fault_post_text(MS_FAULT_KIND_OVERFLOW,
+                     "Int overflow; the result does not fit the sized integer type's range, so bound the operands or "
+                     "use a wider type");
+}
+
+void msrt_post_div_zero(void) {
+  ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "division by zero; right must be nonzero, found 0");
+}
+
+void msrt_post_rem_zero(void) {
+  ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "remainder by zero; right must be nonzero, found 0");
+}
+
+void msrt_post_div_overflow(int64_t a, int64_t b) {
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "division overflow; found left ");
+  ms_strbuild_append_i64(&text, a);
+  ms_strbuild_append_text(&text, " and right ");
+  ms_strbuild_append_i64(&text, b);
+  ms_strbuild_append_text(&text, "; result must be between -9223372036854775808 and 9223372036854775807");
+  ms_fault_post_built(MS_FAULT_KIND_OVERFLOW, &text);
+}
+
+void msrt_post_unwrap_none(void) {
+  ms_fault_post_text(MS_FAULT_KIND_FAULT, "called Optional.get() on none; check is_some first, or use get_or(default)");
+}
+
+void msrt_post_index(int64_t index, int64_t length) {
+  MsStrBuild message = ms_strbuild_new();
+  ms_strbuild_append_text(&message, "index ");
+  ms_strbuild_append_i64(&message, index);
+  ms_strbuild_append_text(&message, " out of range for length ");
+  ms_strbuild_append_i64(&message, length);
+  ms_strbuild_append_text(&message, "; use get_or(index, default) to avoid the fault");
+  ms_fault_post_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
+}
+
 /* ---- cleanups ---- */
 
 size_t msrt_cleanup_push(MsCleanupFn run, uint8_t *arg) { return ms_cleanup_push(run, arg); }
