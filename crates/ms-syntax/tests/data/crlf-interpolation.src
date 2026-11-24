@@ -1,8 +1,0 @@
-fn head() Int: 1
-text := f"""
-    é {value} and {value + value}
-    plain text
-    {f"inner {value}"}
-    {value}
-    """
-fn tail() Int: 2

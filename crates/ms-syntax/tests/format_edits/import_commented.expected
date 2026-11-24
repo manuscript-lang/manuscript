@@ -1,3 +1,0 @@
-import (
-	b, a from "./a.ms",  // keep
-)

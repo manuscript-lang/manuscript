@@ -59,25 +59,28 @@ static void test_queue(void) {
   uint64_t first = 0;
   uint64_t second = 0;
   uint64_t third = 0;
-  CHECK(!ms_queue_push(0, 0, &a, 1, &first));
-  CHECK(!ms_queue_push(MS_MAX_ISOLATES, 1, &a, 1, &first));
-  CHECK(ms_queue_push(1, 1, &a, 10, &first) && ms_queue_push(1, 2, &b, 20, &second) &&
-        ms_queue_push(1, 3, &c, 30, &third));
+  CHECK(!ms_queue_push(0, 0, &a, false, &first));
+  CHECK(!ms_queue_push(MS_MAX_ISOLATES, 1, &a, false, &first));
+  CHECK(ms_queue_push(1, 1, &a, false, &first) && ms_queue_push(1, 2, &b, false, &second));
+  CHECK(ms_queue_length(1) == 2 && ms_queue_oldest(1, 10) == 10); /* the first look dates both */
+  CHECK(ms_queue_push(1, 3, &c, false, &third));
   CHECK(second == first + 1 && third == first + 2);
-  CHECK(ms_queue_length(1) == 3 && ms_queue_oldest(1) == 10);
   CHECK(!ms_queue_remove(1, 2, third)); /* the sequence of another entry never matches */
   CHECK(ms_queue_remove(1, 2, second) && !ms_queue_remove(1, 2, second));
-  CHECK(!ms_queue_steal(1, 5, &id, &work));
-  CHECK(ms_queue_steal(1, 10, &id, &work) && id == 1 && work == &a);
+  CHECK(!ms_queue_steal(1, 14, 5, &id, &work)); /* seen 4 ago, the beat is 5 */
+  CHECK(ms_queue_steal(1, 15, 5, &id, &work) && id == 1 && work == &a);
   CHECK(!ms_queue_remove(1, 1, first)); /* taken: its sequence is behind the head now */
-  CHECK(ms_queue_oldest(1) == 30 && ms_queue_length(1) == 1);
+  CHECK(ms_queue_oldest(1, 30) == 14 && ms_queue_length(1) == 1); /* the third was first seen by the look at 14 */
   uint64_t sequence = 0;
   for (uint64_t i = 10; i < 60; i++) { /* past the first capacity */
-    CHECK(ms_queue_push(1, i, &a, 40, &sequence));
+    CHECK(ms_queue_push(1, i, &a, i == 10, &sequence));
   }
-  CHECK(ms_queue_remove(1, 59, sequence) && ms_queue_push(1, 59, &a, 40, &sequence)); /* found after a grow */
+  CHECK(ms_queue_remove(1, 59, sequence) && ms_queue_push(1, 59, &a, false, &sequence)); /* found after a grow */
+  CHECK(ms_queue_steal(1, 0, -1, &id, &work) && id == 3); /* any age */
+  CHECK(ms_queue_steal(1, 31, 1000, &id, &work) && id == 10); /* pushed aged: taken at its first look */
+  CHECK(!ms_queue_steal(1, 31, 1000, &id, &work));
   ms_queue_release(1, drop);
-  CHECK(dropped == 51 && ms_queue_length(1) == 0 && ms_queue_oldest(1) == INT64_MAX);
+  CHECK(dropped == 49 && ms_queue_length(1) == 0 && ms_queue_oldest(1, 40) == INT64_MAX);
 }
 
 static bool never(uintptr_t pc, const void *context) {
@@ -113,6 +116,40 @@ static void test_frames(void) {
   CHECK(ms_frames_tables() == NULL);
 }
 
+/* A program built in two units passes one table block per unit; each names its own strings and scopes. */
+static void test_frames_set(void) {
+  static const uint8_t first_strings[] = "\0a.ms\0first\0inner";
+  static const uint8_t second_strings[] = "\0b.ms\0second";
+  const MsFuncEntry first_funcs[] = {{.address = 0x2000, .size = 0x100, .name_offset = 6, .file_offset = 1, .line = 20}};
+  const MsLineEntry first_lines[] = {{.pc = 0x2000, .line = 21, .file_offset = UINT32_MAX},
+                                     {.pc = 0x2040, .line = 5, .file_offset = UINT32_MAX}};
+  const uint32_t first_line_scopes[] = {0, 1};
+  const MsScopeEntry first_scopes[] = {{.name_offset = 12, .file_offset = UINT32_MAX, .parent = 0, .call_line = 22}};
+  const MsFuncEntry second_funcs[] = {{.address = 0x1000, .size = 0x100, .name_offset = 6, .file_offset = 1, .line = 10}};
+  const MsLineEntry second_lines[] = {{.pc = 0x1000, .line = 11, .file_offset = UINT32_MAX}};
+  const uint32_t second_line_scopes[] = {0};
+  const MsTables first = {.abi_version = 3, .funcs = first_funcs, .func_count = 1, .lines = first_lines, .line_count = 2,
+                          .strings = first_strings, .strings_len = sizeof first_strings, .line_scopes = first_line_scopes,
+                          .scopes = first_scopes, .scope_count = 1};
+  const MsTables second = {.abi_version = 3, .funcs = second_funcs, .func_count = 1, .lines = second_lines, .line_count = 1,
+                           .strings = second_strings, .strings_len = sizeof second_strings, .line_scopes = second_line_scopes};
+  /* the layout of an MsTableSet of two parts, which the compiler writes as data */
+  const struct {
+    uint32_t abi_version;
+    uint32_t count;
+    const MsTables *parts[2];
+  } both = {MS_TABLES_SET, 2, {&first, &second}};
+  ms_frames_install((const MsTables *)&both);
+  const uintptr_t addresses[] = {0x2050, 0x1010};
+  MsFrameList list = {0};
+  ms_frames_describe(addresses, 2, &list);
+  /* 0x2050 lies in the inlined `inner` called from line 22 of `first`; 0x1010 in `second` of its own file */
+  CHECK(list.count == 3 && list.frames[0].line == 5 && list.frames[0].function[0] == 'i');
+  CHECK(list.frames[1].line == 22 && list.frames[1].function[0] == 'f' && list.frames[1].file[0] == 'a');
+  CHECK(list.frames[2].line == 11 && list.frames[2].function[0] == 's' && list.frames[2].file[0] == 'b');
+  ms_frames_release();
+}
+
 static void test_record(void) {
   const MsFaultRecord record = {.pid = 7, .kind = MS_FAULT_KIND_DEADLOCK, .message = ms_span_of_text("boom")};
   uint8_t out[128];
@@ -142,6 +179,7 @@ int main(void) {
   test_timers();
   test_queue();
   test_frames();
+  test_frames_set();
   test_record();
   test_release();
   return failures == 0 ? 0 : 1;

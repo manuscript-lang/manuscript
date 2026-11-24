@@ -287,11 +287,6 @@ void ms_net_listen_close_ops(MsNetCore *core) {
   }
 }
 
-static void drop_held_connection(uint8_t *held) {
-  MsObj *connection = *(MsObj **)(void *)held;
-  connection->drop(connection);
-}
-
 /* The next connection, as a handle or (`raw`) as a pending id for msstd_net_connection_adopt. */
 static uint8_t accept_run(const MsObj *handle, int64_t timeout_ns, bool raw, MsObj **handle_out, int64_t *raw_out,
                           MsString *err) {
@@ -320,10 +315,7 @@ static uint8_t accept_run(const MsObj *handle, int64_t timeout_ns, bool raw, MsO
     /* A TLS listener hands out connections whose handshake is done. */
     accepted->tls_ctx = ms_net_tls_ctx_retain(listener->tls_ctx);
     const int64_t left = timeout_ns < 0 ? -1 : timeout_ns - (int64_t)(uv_hrtime() - started);
-    /* A cancel unwinds out of the handshake and never returns, so the new connection is a cleanup entry for it. */
-    const size_t held = ms_cleanup_push(drop_held_connection, (uint8_t *)(void *)handle_out);
     const uint8_t served = ms_net_tls_serve(accepted, timeout_ns < 0 ? -1 : (left > 0 ? left : 0), err);
-    ms_cleanup_discard(held);
     if (served != MS_STATUS_OK) {
       (*handle_out)->drop(*handle_out);
       *handle_out = NULL;

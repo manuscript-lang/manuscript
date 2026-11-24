@@ -13,9 +13,9 @@ The default design is no new syntax, no new type, and no new keyword. Earn each 
 
 Do this before writing any section. A proposal that invents syntax or names without it is rejected.
 
-- Read `crates/ms-tooling/data/agent-skill/SKILL.md` and the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
-- Read `crates/DESIGN.md` for the pipeline, ABI, and recorded decisions, and `wiki/` for the domain (see `wiki/index.yml`).
-- Find existing idioms with `ms search_symbol <words>` and read the nearest `stdlib/*.ms` modules. Copy their naming, argument order, error handling, and ownership style.
+- Read `extensions/agent-skill/SKILL.md` and the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
+- Read [architecture](../../documentation/contributing/architecture.md) for the pipeline, ABI, and recorded decisions, and `wiki/` for the domain (see `wiki/index.yml`).
+- Find existing idioms with `ms search_symbol <words>` and read the nearest `src/stdlib/*.ms` modules. Copy their naming, argument order, error handling, and ownership style.
 - Read `proposals/` for decisions already made (names, direction, rejected ideas). A past proposal is a record of decisions, not a source of syntax; verify anything it shows against the guide.
 - Never contradict a stated user decision (spelling, casing, names, scope). Quote the decision in Status; if the design needs to reverse one, put it in Open questions, do not assume.
 - Do not import syntax from other languages (guards, tuples, records, static methods, lowercase generics, and so on). If Manuscript lacks a construct, the design works without it or proposes it as its own explicit, justified language change.
@@ -38,7 +38,7 @@ Sections, in order. A small change uses Summary, Problem, Design, Components, Al
 
    | Component | Change | Test |
    | --- | --- | --- |
-   | `crates/ms-check` | new rule, diagnostic | conformance reject case |
+   | `src/compiler/check` | new rule, diagnostic | conformance reject case |
 
 6. **Alternatives**: do nothing, the smallest version, and the real runner-up, one or two lines each with the evidence it lost. Drawbacks of the chosen design only if they change the decision.
 7. **Stages**: one line per stage with its check; each lands green. Omit when there is one stage.
@@ -58,7 +58,7 @@ Once implemented, cut the proposal to Summary, Status, and the decisions that ar
 
 Every `.ms` example must pass `ms check` against current main before the proposal is committed.
 
-- Build `ms` from main (`cargo build --release --locked -p ms-cli`), put each example in a scratch project, and run `ms check`.
+- Build `ms` from main (`make build`), put each example in a scratch project, and run `ms check`.
 - For APIs or syntax the proposal adds, check against stubs: write the declaration as a stdlib-style `fn` with a placeholder body so the call sites type-check. Mark only the stubbed lines.
 - A rejected example must fail with the quoted diagnostic. Paste real output, not recollection.
 - If an example needs syntax that does not check, it is a language change: say so in Summary and Open questions.

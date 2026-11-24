@@ -7,7 +7,7 @@ Evidence for [`proposals/c-parity-structure.md`](../../../proposals/c-parity-str
 
 ```sh
 ms build bench/perf/structural-gaps/shapes.ms -o /tmp/shapes && /tmp/shapes
-MS=./target/release/ms BENCH_OUTPUT=/tmp/eng sh bench/perf/suite/run.sh 1
+MS=.artifacts/build/release/src/cli/ms BENCH_OUTPUT=/tmp/eng sh bench/perf/suite/run.sh 1
 ms build bench/perf/structural-gaps/logstats_bytes.ms -o /tmp/logstats_bytes
 head -c 2000000 /tmp/eng/input/access.log > /tmp/small.log
 valgrind --tool=callgrind /tmp/logstats_bytes < /tmp/small.log

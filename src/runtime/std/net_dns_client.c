@@ -55,25 +55,6 @@ static uint16_t random_id(void) {
   return id;
 }
 
-/* What a query holds across a wait. A cancel unwinds out of the datagram and connection natives (`ms_cancelled`
- * never returns), so each resource is registered as a cleanup before the first wait and discarded when the
- * function ends normally; without it a cancelled lookup leaked its socket and buffers. */
-static void close_socket(uint8_t *held) {
-  MsObj *socket = *(MsObj **)(void *)held;
-  msstd_net_datagram_close(socket);
-  socket->drop(socket);
-}
-
-static void close_connection(uint8_t *held) {
-  MsObj *connection = *(MsObj **)(void *)held;
-  msstd_net_connection_close(connection);
-  connection->drop(connection);
-}
-
-static void free_string_held(uint8_t *held) { ms_string_release((MsString *)(void *)held); }
-
-static void free_bytes_held(uint8_t *held) { ms_bytes_free((MsBytes *)(void *)held); }
-
 /* One query over UDP: false on a status other than a matching answer; `*status` is then the reason. */
 static uint8_t exchange_udp(MsSpan server, MsBytes query, uint16_t id, uint64_t deadline, MsBytes *reply, MsString *err) {
   MsSpan host, port;
@@ -87,8 +68,6 @@ static uint8_t exchange_udp(MsSpan server, MsBytes query, uint16_t id, uint64_t 
     return status;
   }
   MsString target = ms_string_from_span(server);
-  const size_t held = ms_cleanup_push(free_string_held, (uint8_t *)(void *)&target);
-  (void)ms_cleanup_push(close_socket, (uint8_t *)(void *)&socket);
   status = msstd_net_datagram_send_bytes(socket, &query, &target, 1, turn(deadline), err);
   while (status == MS_STATUS_OK) {
     MsDatagramWire wire = {0};
@@ -105,7 +84,6 @@ static uint8_t exchange_udp(MsSpan server, MsBytes query, uint16_t id, uint64_t 
     }
     ms_bytes_free(&wire.data);
   }
-  ms_cleanup_discard(held);
   msstd_net_datagram_close(socket);
   socket->drop(socket);
   ms_string_release(&target);
@@ -139,11 +117,8 @@ static uint8_t exchange_tcp(MsSpan server, MsBytes query, uint64_t deadline, MsB
   if (status != MS_STATUS_OK) {
     return status;
   }
-  const size_t held = ms_cleanup_push(close_connection, (uint8_t *)(void *)&connection);
   MsBytes framed = {0};
   MsBytes head = {0};
-  (void)ms_cleanup_push(free_bytes_held, (uint8_t *)(void *)&framed);
-  (void)ms_cleanup_push(free_bytes_held, (uint8_t *)(void *)&head);
   const uint8_t prefix[2] = {(uint8_t)(query.len >> 8), (uint8_t)query.len};
   ms_list_push(&framed, 1, &prefix[0]);
   ms_list_push(&framed, 1, &prefix[1]);
@@ -156,7 +131,6 @@ static uint8_t exchange_tcp(MsSpan server, MsBytes query, uint64_t deadline, MsB
   if (status == MS_STATUS_OK) {
     status = read_exact(connection, (size_t)(head.ptr[0] << 8 | head.ptr[1]), deadline, reply, err);
   }
-  ms_cleanup_discard(held);
   ms_bytes_free(&head);
   msstd_net_connection_close(connection);
   connection->drop(connection);
@@ -180,7 +154,6 @@ static uint8_t ask(MsSpan server, MsSpan name, uint16_t type, int64_t kind, uint
   }
   const MsBytes query = ms_bytes_view(ms_span_of(packet, size));
   MsBytes reply = {0};
-  const size_t held = ms_cleanup_push(free_bytes_held, (uint8_t *)(void *)&reply);
   uint8_t status = exchange_udp(server, query, id, deadline, &reply, err);
   bool parsed = status == MS_STATUS_OK && ms_dns_parse(ms_bytes_span(&reply), type, kind, answer);
   if (parsed && answer->truncated) {
@@ -189,7 +162,6 @@ static uint8_t ask(MsSpan server, MsSpan name, uint16_t type, int64_t kind, uint
     status = exchange_tcp(server, query, deadline, &reply, err);
     parsed = status == MS_STATUS_OK && ms_dns_parse(ms_bytes_span(&reply), type, kind, answer);
   }
-  ms_cleanup_discard(held);
   ms_bytes_free(&reply);
   if (status != MS_STATUS_OK) {
     return status;
@@ -258,10 +230,6 @@ static void free_names(MsList *names) {
   ms_list_free(names);
 }
 
-static void free_names_held(uint8_t *held) { free_names((MsList *)(void *)held); }
-
-static void free_config_held(uint8_t *held) { ms_dns_config_free((MsDnsConfig *)(void *)held); }
-
 #ifdef _WIN32
 /* Windows has no resolv.conf: the servers and the primary domain come from the network parameters. */
 static void read_host_config(MsDnsConfig *config) {
@@ -327,8 +295,6 @@ uint8_t ms_dns_resolve(MsSpan server, MsSpan name, int64_t kind, int64_t timeout
     candidates(name, server.len > 0 ? &own : &config, &names);
   }
   ms_strbuild_free(&reverse);
-  const size_t held = ms_cleanup_push(free_config_held, (uint8_t *)(void *)&config);
-  (void)ms_cleanup_push(free_names_held, (uint8_t *)(void *)&names);
   uint8_t status = MS_STATUS_FAILED;
   bool found = false;
   const MsString *tries = (const MsString *)(const void *)names.ptr;
@@ -342,14 +308,12 @@ uint8_t ms_dns_resolve(MsSpan server, MsSpan name, int64_t kind, int64_t timeout
     found = found || exists;
     if (records.len > 0 || (exists && i + 1 == names.len)) {
       *out = records;
-      ms_cleanup_discard(held);
       free_names(&names);
       ms_dns_config_free(&config);
       return MS_STATUS_OK;
     }
     ms_dns_records_free(&records);
   }
-  ms_cleanup_discard(held);
   free_names(&names);
   ms_dns_config_free(&config);
   if (status == MS_STATUS_OK) {

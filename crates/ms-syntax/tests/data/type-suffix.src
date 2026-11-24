@@ -1,2 +1,0 @@
-fn wrapped() TYPE:
-    return none

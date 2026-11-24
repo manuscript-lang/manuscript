@@ -1,4 +1,0 @@
-fn show(value: Int) String:
-    text := "😀 é"
-    // Unicode before the next line: 😀
-    return f"value {value} {text}"

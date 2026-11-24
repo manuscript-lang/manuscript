@@ -1,5 +1,5 @@
 /* The bundled zone database of @std/time: IANA zones as TZif version 2+ blocks, and Windows zone keys mapped
- * to IANA names. tools/tzdata/pack.py writes tzdata.bin; stdlib/internal/zone.ms reads the zones. */
+ * to IANA names. tools/tzdata/pack.py writes tzdata.bin; src/stdlib/internal/zone.ms reads the zones. */
 #include "base/bytes.h"
 #include "runtime/std/time.h"
 

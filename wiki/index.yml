@@ -4,7 +4,7 @@ domains:
     file: language/index.md
     topics: [syntax, types, imports, arguments, removals, sharing, language decisions]
     paths:
-      - "crates/ms-syntax/**"
+      - "src/compiler/syntax/**"
       - "documentation/core-language/**"
       - "tests/conformance/fixtures/e2e/accept/**"
       - "tests/conformance/fixtures/e2e/reject/**"
@@ -12,22 +12,23 @@ domains:
     file: compiler/index.md
     topics: [checking, lowering, MIR, Cranelift, build, module loading, fault sites, compile-time scaling]
     paths:
-      - "crates/ms-check/**"
-      - "crates/ms-mir/**"
-      - "crates/ms-lower/**"
-      - "crates/ms-clif/**"
-      - "crates/ms-cli/**"
-      - "crates/ms-build/**"
-      - "crates/ms-native/**"
+      - "src/compiler/check/**"
+      - "src/compiler/mir/**"
+      - "src/compiler/lower/**"
+      - "src/compiler/emit/**"
+      - "src/cli/**"
+      - "src/compiler/link/**"
+      - "src/compiler/own/**"
+      - "src/compiler/opt/**"
       - "documentation/contributing/compiler/**"
   - id: runtime
     file: runtime/index.md
     topics: [cancellation, cleanup, resources, networking, native APIs, standard library]
     paths:
-      - "crates/ms-rt/**"
-      - "crates/ms-rt-abi/**"
-      - "crates/ms-std-*/**"
-      - "stdlib/**"
+      - "src/runtime/core/**"
+      - "src/abi/**"
+      - "src/runtime/std/**"
+      - "src/stdlib/**"
       - "documentation/core-language/cleanup/**"
       - "documentation/core-language/types/references.md"
       - "tests/conformance/fixtures/e2e/projects/**"
@@ -35,13 +36,13 @@ domains:
     file: tooling-and-docs/index.md
     topics: [documentation, generated references, editor tooling, navigation, CLI, diagnostics]
     paths:
-      - "crates/ms-tooling/**"
-      - "crates/ms-lsp/**"
-      - "crates/ms-cli/**"
+      - "src/tooling/**"
+      - "src/lsp/**"
+      - "src/cli/**"
       - "extensions/**"
       - "documentation/**"
       - "website/**"
-      - "stdlib/**"
+      - "src/stdlib/**"
       - "README.md"
   - id: repository
     file: repository/index.md
@@ -52,21 +53,21 @@ domains:
       - ".github/workflows/**"
       - "documentation/developer-tooling/implementation.md"
       - "documentation/contributing/**"
-      - "crates/ms-repo-check/**"
-      - "Cargo.toml"
+      - "tools/repo-check.ms"
+      - "CMakeLists.txt"
       - "Makefile"
   - id: stdlib-design
     file: stdlib-design/index.md
     topics: [stdlib API shape, failure modes, Result and Error, write and write_bytes, Set construction, module consolidation]
     paths:
-      - "stdlib/**"
+      - "src/stdlib/**"
       - "tests/conformance/fixtures/e2e/stdlib/**"
   - id: testing-and-conformance
     file: testing-and-conformance/index.md
     topics: [test layers, conformance corpus, ms test, fuzzing, fixture migration]
     paths:
       - "tests/**"
-      - "crates/ms-conform/**"
+      - "tools/conform-run.ms"
   - id: benchmarks-and-performance
     file: benchmarks-and-performance/index.md
     topics: [performance benchmarks, ns/op, profiling guide]
@@ -78,6 +79,4 @@ domains:
     file: llvm-langref/index.md
     topics: [LLVM IR, language reference, instructions, intrinsics, attributes, metadata, direct LLVM emission]
     paths:
-      - "crates/ms-mir-llvm/src/mir_llvm/**"
-      - "crates/ms-mir-llvm/**"
-      - "crates/ms-build/src/llvm/**"
+      - "src/compiler/emit/**"

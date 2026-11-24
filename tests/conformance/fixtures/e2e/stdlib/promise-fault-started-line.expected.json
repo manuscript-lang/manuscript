@@ -13,19 +13,29 @@
           "index": 0,
           "name": "promise-fault-started-line.ms::a fault in a promise names the one line that started it",
           "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "promise-fault-started-line.ms::a helper that forwards its site names its own caller",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "promise-fault-started-line.ms::map_concurrent names the line that called it",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 1,
-        "selected": 1,
-        "passed": 1,
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN promise-fault-started-line.ms::a fault in a promise names the one line that started it\nPASS promise-fault-started-line.ms::a fault in a promise names the one line that started it\n1 tests, 0 failed\n",
+      "stdout": "RUN promise-fault-started-line.ms::a fault in a promise names the one line that started it\nPASS promise-fault-started-line.ms::a fault in a promise names the one line that started it\nRUN promise-fault-started-line.ms::a helper that forwards its site names its own caller\nPASS promise-fault-started-line.ms::a helper that forwards its site names its own caller\nRUN promise-fault-started-line.ms::map_concurrent names the line that called it\nPASS promise-fault-started-line.ms::map_concurrent names the line that called it\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -2,6 +2,7 @@
  * names. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include "runtime/core/fault_abi.h"
 #include "runtime/std/fs_job.h"
 
 #include "base/utf8.h"
@@ -23,7 +24,7 @@ void ms_fs_job_free(MsFsJob *job) {
 uint8_t ms_fs_job_finish(MsFsJob *job, MsSpan detail, MsString *err) {
   MsFail fail = job->fail;
   job->fail = ms_fail_new();
-  ms_fs_job_free(job); /* a stop request unwinds out of the finish below, so nothing may be left for the caller */
+  ms_fs_job_free(job);
   return ms_fail_finish_at(&fail, detail, err);
 }
 
@@ -32,10 +33,6 @@ uint8_t ms_fs_job_finish_pair(MsFsJob *job, MsString *err) {
   ms_strbuild_append(&both, job->path);
   ms_strbuild_append_text(&both, " -> ");
   ms_strbuild_append(&both, job->other);
-  if (ms_fail_cancel_pending(&job->fail)) {
-    ms_strbuild_free(&both);
-    return ms_fs_job_finish(job, ms_span_of(NULL, 0), err);
-  }
   MsFail fail = job->fail;
   job->fail = ms_fail_new();
   ms_fs_job_free(job);
@@ -101,7 +98,8 @@ uint8_t msstd_fs_admit(int64_t bytes) {
   bool cancelled = false;
   const bool held = ms_pool_admit(bytes > 0 ? (size_t)bytes : 0, &cancelled);
   if (cancelled) {
-    ms_cancelled(); /* nothing is held here, so the cancel is delivered at once */
+    ms_sched_cancel_return();
+    return 0;
   }
   return held ? 1 : 0;
 }

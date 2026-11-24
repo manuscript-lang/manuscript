@@ -1,6 +1,6 @@
 # Repository guidance
 
-Manuscript is a statically typed, natively compiled language implemented in C (`src/`). The Rust implementation in `crates/` is frozen at `660429d4`: it is the oracle conformance fixtures were recorded from, so do not change it. Source `.ms` files are parsed and checked, then compiled to native executables.
+Manuscript is a statically typed, natively compiled language implemented in C (`src/`). The earlier Rust implementation was deleted; its last commit is `660429d4` and stays in git history. Source `.ms` files are parsed and checked, then compiled to native executables.
 
 ## Start each session
 
@@ -10,7 +10,7 @@ Manuscript is a statically typed, natively compiled language implemented in C (`
 - Apply [language-design](skills/language-design/SKILL.md) (including its taste rules) for language, standard-library, runtime, compiler, or tooling design choices.
 - The user's latest explicit direction and current canonical design take precedence over remembered preferences. Historical proposals and assistant completion reports do not establish current behavior. Identify material differences between a newer decision and this checkout.
 - Read the [wiki](wiki/index.md) for the domains you touch before changing code. When a correction, user decision, or verified failure would change future work, update the wiki in the same change ([protocol](wiki/README.md), [record durable lessons](skills/manuscript-change/SKILL.md#record-durable-lessons)): edit the closest page, keep it short, and delete superseded advice.
-- Find code and standard-library APIs with `ms search_symbol <name or words>` (project and standard library, fuzzy, bounded output) before reading files or guessing signatures; `ms search_symbol <module>` or `<module>.<Name>` shows a page. `curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh` installs the Manuscript writing skill and concept references for agents (sources: `crates/ms-tooling/data/agent-skill`).
+- Find code and standard-library APIs with `ms search_symbol <name or words>` (project and standard library, fuzzy, bounded output) before reading files or guessing signatures; `ms search_symbol <module>` or `<module>.<Name>` shows a page. `curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh` installs the Manuscript writing skill and concept references for agents (sources: `extensions/agent-skill`).
 
 ## Workflow skills
 
@@ -35,8 +35,8 @@ Syntax changes usually need language-design, the compiler and tooling checklists
 
 ## Repository layout
 
-- Manuscript is implemented in C in `src/`, layered `base`, `abi`, `runtime`, `compiler/{syntax,project,check,own,lower,mir,opt,emit,link}`, `tooling`, `lsp`, `cli`, `lint`; an include crosses layers only downward, as `src/layers.txt` lists and `ms_lint` enforces. Read [src/README.md](src/README.md) for the build (`make build`, or `cmake --preset ci && cmake --build --preset ci`; clang and Ninja) and the conformance target. Lint caps every C file at 1000 lines. `crates/` (frozen Rust) remains for history and for re-recording fixtures; the Go implementation was removed.
-- Standard-library declarations live in `stdlib/` (`*.ms`) and are embedded by the C build. Conformance fixtures live in `tests/conformance/`; `.msversion` holds the release version.
+- Manuscript is implemented in C in `src/`, layered `base`, `abi`, `runtime`, `compiler/{syntax,project,check,own,lower,mir,opt,emit,link}`, `tooling`, `lsp`, `cli`, `lint`; an include crosses layers only downward, as `src/layers.txt` lists and `ms_lint` enforces. Read [src/README.md](src/README.md) for the build (`make build`, or `cmake --preset ci && cmake --build --preset ci`; clang and Ninja) and the conformance target. Lint caps every C file at 1000 lines. The Rust and Go implementations were removed; fixtures are recorded from the C `ms` (`ms run tools/conform-run.ms -- --record`), and `git show 660429d4:<path>` reads the Rust history.
+- Standard-library declarations live in `src/stdlib/` (`*.ms`) and are embedded by the C build. Conformance fixtures live in `tests/conformance/`; `.msversion` holds the release version.
 - Performance and agent evidence lives in `bench/perf/` and `bench/agent/`, each suite with its run script. `bench/perf/` commits dated result pages naming the revision and machine, and a speed claim in the README, website, or vision cites one of them; rerun the suite and add a dated section rather than editing old numbers. Agent-benchmark results are not committed. The one agent claim documents may make is that pass rates match Go, Rust and TypeScript; do not quote first-build rates, which measure model familiarity, not language quality.
 
 ## Shared guidance and checks
@@ -58,6 +58,6 @@ Syntax changes usually need language-design, the compiler and tooling checklists
 - Nested `match` is an anti-pattern. Keep implementation, examples, and diagnostic remedies flat: bind a payload with an early exit, use compatible `?`, or call a small helper. `make repo-check` guards source and Markdown fences; intentional syntax/semantic regressions need a scoped test allowance with a reason. The grammar remains unchanged. See [flat match flow](documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 - Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for Codex and Claude discovery. Read selected `SKILL.md` files and relevant evidence links. Keep discovery links synchronized when adding, renaming, or removing skills.
 - `AGENTS.md` is the sole source of repository guidance. `CLAUDE.md` contains only `@AGENTS.md` so Claude Code, which loads `CLAUDE.md` and not `AGENTS.md`, reads the same file; add no other content to it.
-- Skills describe workflows, `wiki/` ([index](wiki/index.md)) preserves decisions, reasons, and failure modes for agents, and `documentation/` owns exact rules. All standard-library documentation belongs in `stdlib/*.ms`, including guide comment blocks; generate disposable book Markdown with `make docs`.
+- Skills describe workflows, `wiki/` ([index](wiki/index.md)) preserves decisions, reasons, and failure modes for agents, and `documentation/` owns exact rules. All standard-library documentation belongs in `src/stdlib/*.ms`, including guide comment blocks; generate disposable book Markdown with `make docs`.
 - Keep skills concise and specific to Manuscript. Do not reinstall generic collections during routine setup. [Skill maintenance and history](skills/README.md) records why this catalog exists.
 - Run checks appropriate to the changed behavior from the current Makefile; C changes add `ctest --preset ci` and the `lint` target (`cmake --build --preset ci --target lint`); behavior changes add the `conform` target. `make verify` is the routine gate; `make verify-full` adds the conformance corpus, every e2e fixture, book, and distribution checks. Guidance-only edits need reference/discovery validation and license freshness when notices change.

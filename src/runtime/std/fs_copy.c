@@ -628,9 +628,6 @@ static uint8_t finish_pair(Copier *copier, MsSpan from, MsSpan to, MsString *err
   ms_strbuild_append(&both, from);
   ms_strbuild_append_text(&both, " -> ");
   ms_strbuild_append(&both, to);
-  if (ms_fail_cancel_pending(&copier->fail)) {
-    ms_strbuild_free(&both); /* the finish below unwinds */
-  }
   const uint8_t status = ms_fail_finish_at(&copier->fail, ms_strbuild_span(&both), err);
   ms_strbuild_free(&both);
   return status;

@@ -1,8 +1,0 @@
-export type DomainFailure:
-    code: Int
-
-export type BoxFailure[T: Error]:
-    cause: 'T
-
-fn BoxFailure[T].message() String:
-    return self.cause.message()

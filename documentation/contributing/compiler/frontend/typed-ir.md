@@ -18,6 +18,6 @@ Use `Program::hir()` when adding a lowering or tooling query. HIR is a view over
 | Effects and host boundaries | Derive host/service relationships and diagrams |
 | Source locations | Map generated behavior to source |
 
-`Hir::ownership()` exposes move, borrow, mutation, and drop facts for lowering. Ownership checking rejects use after move and overlapping borrows before code generation; see the [ownership contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
+The ownership layer (`compiler/own`) exposes move, borrow, mutation, and drop facts for lowering. Ownership checking rejects use after move and overlapping borrows before code generation; see the [ownership contract](../../ownership-rules.md).
 
 See [pipeline](pipeline.md), [evaluation lowering](../lowering/evaluation-order.md), and [metadata](../../../developer-tooling/debugging/metadata.md).

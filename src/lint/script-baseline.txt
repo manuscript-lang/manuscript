@@ -58,10 +58,10 @@ crates/ms-rt/tests/bench/run.sh
 crates/ms-rt/tests/e2e/run.sh
 tests/conformance/fixtures/e2e/stdlib/support/image-jpeg-vectors.gen.py
 tests/conformance/fixtures/e2e/stdlib/support/image-png-vectors.gen.py
-toolchain/check-glibc-floor.sh
-toolchain/fetch-mingw.sh
-toolchain/glibc/generate.sh
-toolchain/package-skill.sh
+cmake/toolchain/check-glibc-floor.sh
+cmake/toolchain/fetch-mingw.sh
+cmake/toolchain/glibc/generate.sh
+cmake/toolchain/package-skill.sh
 tools/debugger/manuscript_gdb.py
 tools/debugger/manuscript_lldb.py
 tools/debugger/manuscript_values.py

@@ -5,7 +5,7 @@ weight = 3
 
 # Maintain the repository
 
-Keep changes traceable from an observable example to implementation and checks. The [architecture guide](architecture.md) maps ownership; `make repo-check` enforces nested-match rules, `.ms` formatting, release pins, workflow triggers, and the `unsafe` boundary. Change its rules only for an intentional reason, and explain it in the PR.
+Keep changes traceable from an observable example to implementation and checks. The [architecture guide](architecture.md) maps ownership; `make repo-check` enforces nested-match rules, `.ms` formatting, release pins, and workflow triggers. Change its rules only for an intentional reason, and explain it in the PR.
 
 ## Refresh pinned inputs
 
@@ -13,13 +13,12 @@ These changes modify tracked inputs; `make verify` only checks them.
 
 | Change | Command and result |
 | --- | --- |
-| Rust toolchain | Edit `rust-toolchain.toml`; see [Rust toolchain](rust-toolchain.md) |
 | Node | Edit `.node-version`; install it, then `npm ci` in `extensions/vscode` |
-| Cargo dependencies | Edit `Cargo.toml` and refresh `Cargo.lock`; then `make licenses` |
+| C dependencies | Vendor under `src/third_party/` and update `c-libs.lock`; then `make licenses` |
 | Extension dependencies | Edit `extensions/vscode/package.json`, run `npm install --package-lock-only --ignore-scripts`, then `npm ci` and `npm run package -- --allow-missing-repository` |
-| License inventory | `make licenses` records each locked Cargo crate's name, version, and declared SPDX license (from `cargo metadata --locked`) plus SHA-256 hashes of bundled notices; `make licenses-check` detects drift. It is not a legal assessment |
+| License inventory | `make licenses` records each vendored C library's name, version and license file (from `src/third_party/c-libs.lock`) with the notice's SHA-256; `make licenses-check` detects drift. It is not a legal assessment |
 
-Dependabot groups weekly updates (Cargo, npm, GitHub Actions) into PRs with normal verification and no auto-merge; run `make verify-full` before merging.
+Dependabot groups weekly updates (npm, GitHub Actions) into PRs with normal verification and no auto-merge; run `make verify-full` before merging.
 
 ## Public compatibility
 
@@ -28,7 +27,7 @@ The public contracts are syntax, standard signatures, CLI flags and statuses, di
 - Versions are dates, `YYYY.MM.PATCH` with no leading zero on the month.
 - State the affected source or command and its migration in the PR.
 - A deprecation documents the replacement and removal release, and tests both.
-- Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/removed/` in the same change. It starts with `// removed: <old spelling>`, `// use: <text the error must contain>` and `// fix: <text the file holds after `ms check --fix`>`.
+- Every removed or renamed spelling (syntax, method, module, flag) adds a snippet to `tests/checks/removed/` in the same change. It starts with `// removed: <old spelling>`, `// use: <text the error must contain>` and `// fix: <text the file holds after `ms check --fix`>`.
   - `make removed-check` fails unless `ms check` rejects the snippet with an error naming the replacement and `--fix` rewrites it so `ms check` passes. When the check fails, fix the diagnostic, not the snippet.
   - A removal that no mechanical edit can carry writes `// fix: none: <why>`. Reviewers should question each one.
 - List breaking changes with their migration in the release notes. The user-facing list of frozen contracts is [what is frozen](../core-language/stability.md).
@@ -44,7 +43,7 @@ The public contracts are syntax, standard signatures, CLI flags and statuses, di
 
 A version update creates no tag. The release workflow also attaches the release's book as `manuscript-docs-<version>.tar.gz`; a dropdown entry only links to it.
 
-The workflow also attaches the agent skill as `manuscript-skill.tar.gz` and its checksum, packed by `toolchain/package-skill.sh` from `crates/ms-tooling/data/agent-skill` and stamped with `.msversion`, so the file name is the same on every release. `website/static/install-skill.sh` and `install-skill.ps1` download it; the release rehearsal installs it on all six targets.
+The workflow also attaches the agent skill as `manuscript-skill.tar.gz` and its checksum, packed by `cmake/toolchain/package-skill.sh` from `extensions/agent-skill/` and stamped with `.msversion`, so the file name is the same on every release. `website/static/install-skill.sh` and `install-skill.ps1` download it; the release rehearsal installs it on all six targets.
 
 ## Keep the feedback loop healthy
 

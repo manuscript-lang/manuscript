@@ -1,6 +1,10 @@
 /* Owns writing the fault tables as assembly data (see asm_tables.h). */
 #include "compiler/link/asm_tables.h"
 
+#include <stdio.h>
+
+enum { TABLES_SET_VERSION = 4 }; /* MS_TABLES_SET of the runtime */
+
 AsmFormat asm_host_format(void) {
 #if defined(__APPLE__)
   return ASM_MACHO;
@@ -45,25 +49,49 @@ static Slots make_slots(MsArena *arena, const MirTables *tables) {
   return slots;
 }
 
-static void write_section(const AsmScan *scan, MsStrBuild *out) {
-  switch (scan->format) {
+/* The symbol of a table block: `ms_tables` for a program of one module; with several, unit `unit` names its own block
+ * `ms_tables_<unit>` and `ms_tables` is the set of them (`unit` `UINT32_MAX`). */
+static void table_symbol(AsmFormat format, uint32_t units, uint32_t unit, char *out, size_t capacity) {
+  const char *underscore = format == ASM_MACHO ? "_" : "";
+  if (units <= 1 || unit == UINT32_MAX) {
+    snprintf(out, capacity, "%sms_tables", underscore);
+  } else {
+    snprintf(out, capacity, "%sms_tables_%u", underscore, unit);
+  }
+}
+
+static void write_section(AsmFormat format, const char *symbol, MsStrBuild *out) {
+  switch (format) {
   case ASM_MACHO:
-    ms_strbuild_append_text(out, "\t.section\t__DATA,__const\n\t.globl\t_ms_tables\n\t.p2align\t3\n_ms_tables:\n");
+    ms_strbuild_printf(out, "\t.section\t__DATA,__const\n\t.globl\t%s\n\t.p2align\t3\n%s:\n", symbol, symbol);
     break;
   case ASM_COFF:
-    ms_strbuild_append_text(out, "\t.section\t.rdata,\"dr\"\n\t.globl\tms_tables\n\t.p2align\t3\nms_tables:\n");
+    ms_strbuild_printf(out, "\t.section\t.rdata,\"dr\"\n\t.globl\t%s\n\t.p2align\t3\n%s:\n", symbol, symbol);
     break;
   default:
-    ms_strbuild_append_text(out,
-                            "\t.section\t.data.rel.ro.ms_tables,\"aw\",@progbits\n\t.globl\tms_tables\n"
-                            "\t.type\tms_tables,@object\n\t.p2align\t3\nms_tables:\n");
+    ms_strbuild_printf(out,
+                       "\t.section\t.data.rel.ro.%s,\"aw\",@progbits\n\t.globl\t%s\n"
+                       "\t.type\t%s,@object\n\t.p2align\t3\n%s:\n",
+                       symbol, symbol, symbol, symbol);
     break;
   }
 }
 
-static void write_word(const AsmScan *scan, MsStrBuild *out, SlotKind kind, uint32_t arg, const uint32_t *module_of) {
+/* The set a program of several modules hands the runtime (MsTableSet): its version and count, then each block. */
+static void write_set(AsmFormat format, uint32_t units, MsStrBuild *out) {
+  char symbol[40];
+  table_symbol(format, units, UINT32_MAX, symbol, sizeof symbol);
+  write_section(format, symbol, out);
+  ms_strbuild_printf(out, "\t.long\t%u\n\t.long\t%u\n", TABLES_SET_VERSION, units);
+  for (uint32_t unit = 0; unit < units; unit++) {
+    table_symbol(format, units, unit, symbol, sizeof symbol);
+    ms_strbuild_printf(out, "\t.quad\t%s\n", symbol);
+  }
+}
+
+static void write_word(const AsmScan *scan, MsStrBuild *out, SlotKind kind, uint32_t arg, const uint32_t *module_of,
+                       const char *table) {
   const char *prefix = asm_local_prefix(scan->format);
-  const char *table = scan->format == ASM_MACHO ? "_ms_tables" : "ms_tables";
   if (kind == SLOT_SELF) {
     ms_strbuild_printf(out, "\t.quad\t%s+%u\n", table, arg);
   } else if (kind == SLOT_FUNC) {
@@ -81,7 +109,7 @@ static void write_word(const AsmScan *scan, MsStrBuild *out, SlotKind kind, uint
 
 /* Writes the blob: events as symbol expressions, the rest as bytes. */
 static void write_blob(const AsmScan *scan, const MirTables *tables, const Slots *slots, const uint32_t *module_of,
-                       MsStrBuild *out) {
+                       const char *table, MsStrBuild *out) {
   size_t at = 0;
   while (at < tables->size) {
     SlotKind kind = at % 4 == 0 ? (SlotKind)slots->kind[at / 4] : SLOT_BYTES;
@@ -90,7 +118,7 @@ static void write_blob(const AsmScan *scan, const MirTables *tables, const Slots
       continue;
     }
     if (kind != SLOT_BYTES) {
-      write_word(scan, out, kind, slots->arg[at / 4], module_of);
+      write_word(scan, out, kind, slots->arg[at / 4], module_of, table);
       at += kind == SLOT_SIZE ? 4 : 8;
       continue;
     }
@@ -144,7 +172,7 @@ static void attribute_inlined_bodies(MsArena *arena, AsmScan *scan, const EmitTa
 }
 
 bool link_asm_tables(MsArena *arena, const MirModule *module, const EmitTableInfo *info, MsSpan assembly,
-                     MsStrBuild *out, MsStrBuild *why) {
+                     uint32_t unit, uint32_t units, MsStrBuild *out, MsStrBuild *why) {
   AsmScan scan;
   asm_scan_init(&scan, arena, asm_host_format(), module, info);
   bool ok = asm_scan(&scan, assembly, why);
@@ -165,9 +193,14 @@ bool link_asm_tables(MsArena *arena, const MirModule *module, const EmitTableInf
     MirTables tables;
     mir_fault_tables(arena, module, funcs, count, grown.scopes, grown.nscopes, &tables);
     Slots slots = make_slots(arena, &tables);
+    char symbol[40];
+    table_symbol(scan.format, units, unit, symbol, sizeof symbol);
     ms_strbuild_append(out, ms_strbuild_span(&scan.out));
-    write_section(&scan, out);
-    write_blob(&scan, &tables, &slots, scan.order.ptr, out);
+    write_section(scan.format, symbol, out);
+    write_blob(&scan, &tables, &slots, scan.order.ptr, symbol, out);
+    if (unit == 0 && units > 1) {
+      write_set(scan.format, units, out);
+    }
   }
   asm_scan_free(&scan);
   return ok;

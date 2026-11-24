@@ -61,7 +61,7 @@ jobs:
       # The shipped ms must run on glibc 2.28 (the floor of programs it builds, proposals/glibc-2-28-floor.md).
       - name: Check the glibc floor of ms
         if: matrix.os == 'linux'
-        run: sh toolchain/check-glibc-floor.sh .artifacts/build/release/src/cli/ms
+        run: sh cmake/toolchain/check-glibc-floor.sh .artifacts/build/release/src/cli/ms
       - uses: actions/upload-artifact@v7
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}

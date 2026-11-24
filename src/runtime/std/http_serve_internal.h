@@ -99,10 +99,6 @@ uint8_t ms_serve_send(MsServeConn *conn, MsSpan data, int64_t deadline, MsString
 void ms_serve_error_bytes(MsStrBuild *out, uint16_t status, const char *message, bool close);
 bool ms_serve_body_allowed(int64_t status);
 void ms_serve_date_line(MsStrBuild *out);
-/* A cleanup (ms_cleanup_push) for a builder held across a send: a cancelled send leaves by a jump to the task's
- * guard, which would otherwise skip the free. Discard it once the send returned. */
-void ms_serve_free_built(uint8_t *held);
-
 /* Runs the handler in a guard on the running task: 0 it returned, 1 it returned an error, 2 it faulted, 3 it
  * ran out of time or was stopped. */
 int ms_serve_call_handler(MsServeShared *shared, MsExchange *exchange);

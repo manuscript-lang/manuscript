@@ -19,16 +19,23 @@ licenses-check: repo-check
 # Each of these runs tools/<name>.ms with the built ms; the tool's header comment says what it checks.
 TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check removed-check
 
-.PHONY: build conform verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
+.PHONY: build conform conform-release verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
 
 # Configures and builds the `ci` preset (src/README.md); `ms` lands in $(MS).
 build:
 	cmake --preset ci
 	cmake --build --preset ci
+	@$(MS) run tools/fetch-llvm-lib.ms >/dev/null || echo "warning: the shared LLVM library was not fetched; ms uses the opt and llc child processes (make llvm-lib retries)"
 
 # The conformance corpus replayed with the ms just built (tools/conform-run.ms).
 conform: build
 	cmake --build --preset ci --target conform
+
+# The run and test phases replayed with the Release (optimizing) build; CI replays Debug, so a difference between the two
+# builds of one program fails here. Nightly on main.
+conform-release: build
+	CONFORM_BUILD_TYPE=Release $(MS) run tools/conform-run.ms -- --phase run
+	CONFORM_BUILD_TYPE=Release $(MS) run tools/conform-run.ms -- --phase test
 
 # Routine feedback; the merge gate adds the conformance corpus, removed spellings, the book and the package.
 verify: repo-check bench-check docs-check licenses-check

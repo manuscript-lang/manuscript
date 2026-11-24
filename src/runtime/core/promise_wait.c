@@ -67,7 +67,7 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
     const uint32_t woke = promise_park_on(id, deadline == NO_TIME ? -1 : deadline);
     if (woke == MS_WAIT_CANCELLED) {
       (void)ms_promise_end(id);
-      ms_cancelled();
+      return MS_WAITER_CANCELLED;
     }
     const ptrdiff_t after = promise_row_of(id);
     if (after < 0) {
@@ -270,7 +270,7 @@ static int64_t wait_any_mixed(const MsPromise *ids, size_t count, int64_t timeou
     set_tokens(ids, count, token, 0);
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
-      ms_cancelled();
+      return MS_WAITER_CANCELLED;
     }
     done = first_done_mixed(ids, count);
     if (done < 0 && result == MS_WAIT_TIMEOUT) {
@@ -318,7 +318,7 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
     set_tokens(ids, count, token, 0);
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
-      ms_cancelled();
+      return MS_WAITER_CANCELLED;
     }
     const ptrdiff_t after = first_done(ids, count);
     if (after >= 0) {

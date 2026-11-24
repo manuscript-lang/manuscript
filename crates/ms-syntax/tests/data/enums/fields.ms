@@ -1,2 +1,0 @@
-enum Wrong:
-    value: Int

@@ -21,7 +21,7 @@ fn skipped(path: String) Bool:
 		path.starts_with("vendor/")
 		or path.starts_with("website/themes/")
 		or path.starts_with("tests/conformance/")
-		or path.starts_with("tests/removed/")
+		or path.starts_with("tests/checks/removed/")
 		or path.starts_with("bench/perf/formatter-flow/")
 		or path.starts_with("bench/agent/results/sources/")
 		or path.contains("/third_party/")

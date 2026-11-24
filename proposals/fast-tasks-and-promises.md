@@ -9,6 +9,7 @@
 ## Status
 
 - Stages 1, 3 and 4 and the start-site part of stage 2 built 2026-11-23 on main at 3122af1e plus `claude/web-request-path`; results in `bench/perf/async-primitives/README.md`. Results in the row (rest of stage 2) is not built. Direction (Chinmay, 2026-11-23): tasks, promises and the reactor must be the fastest primitive; root causes, data-oriented, portable.
+- Built after the stages (2026-11-23, main at 3b93082f): the scheduling files compile as one unit, and a start reads no clock (design 8); the start line is a compile-time constant (design 5). Results in the same README.
 - Scope split with `proposals/web-request-path.md`: that proposal owns sockets, HTTP and the edge poller. This one owns `core/` tasks, promises, parks, the work queue and the wake rule.
 
 ## Problem
@@ -38,9 +39,10 @@ One rule: work is a row until something must switch to it. A promise is a table 
 2. Rows resolve once. Each `msrt_promise_*` entry validates the id once and passes the row index down; `promise_row_of` is an inline function over a table that holds its isolate tag. The queue entry is found by a sequence number kept in the row, not by a scan.
 3. A wait parks on the row. `Hot.token` holds a wait word: the handle of the parked task with the top bit set, or a token id for `wait_any`, groups and waiters on another thread. `ms_token_post` of a wait word wakes the task. The scheduler counts parks that another thread ends, as it counts remote tokens today, so deadlock detection is unchanged.
 4. Results in the row. A value of at most 24 bytes is stored in the cold row; larger values keep the heap block. `io_done_int` and `io_done_unit` allocate nothing. The pipe unread hook and cross-thread mail keep the block form.
-5. Start site without an allocation. A start reads 12 return addresses off its own frame chain into the cold row; the report shows the first program line among them (decision above). Walking and copying up to 64 frames was 30% of `promise-tree tree 30 10`.
+5. Start site as a constant. `promise` takes `site: String = caller_frame()`; the compiler passes the call's `file:line in function` as a literal and the row keeps it, so a start walks no frames (decision above; Chinmay, 2026-11-23: no cost for it at all). An earlier form read 8 return addresses off the frame chain: 205 of 2,169 instructions. Walking and copying up to 64 frames was 30% of `promise-tree tree 30 10`.
 6. One wake rule. Threads have three rest states: running, looking (a timed wait for queued work to age) and asleep. A start wakes a thread only when none is looking; a looking thread that keeps finding nothing doubles its interval from 20 us up to 200 us and falls asleep after 20 empty looks. A thread that takes work stops looking and wakes the next one if more is queued. Sleeping threads are bits of one word, so a start that finds none asleep reads one word. This is the spinning-thread rule of Go and tokio with a timed wait in place of a spin.
 7. A waiter that is not a promise. `ms_sched_fd_notify(kind, id, fd, events)` adds a descriptor waiter that calls a function registered once per `kind` (a small per-scheduler table; the node stays 24 bytes and holds no pointer). The web path's idle-connection watch uses it in place of `new`, `io_on_ready`, `fd_ready` and `drop`.
+8. A start reads no clock. A queue entry carries no push time. A look (an idle thread reading a queue) dates the entries no look has seen, and takes the oldest once it was first seen a beat ago. A thread woken by a start looks at once, so the work waits one beat as before; a thread already looking takes it up to one rest later than before. The owner pays nothing.
 
 Semantics kept: a promise still starts without a wait (stage 1's switch rule, the looking thread above one thread); dropping a promise cancels and joins; a fault ends only its promise; `Placement.Here` and `Spread` are unchanged.
 

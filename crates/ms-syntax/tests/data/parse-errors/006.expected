@@ -1,1 +1,0 @@
-error parse 4:5:46 "an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' block"

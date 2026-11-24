@@ -50,5 +50,7 @@ bool opt_inline_remove_dead(MirModule *m);
 bool opt_inline_specialize_sort_thunks(MirModule *m);
 bool opt_inline_specialize_closure_args(MirModule *m);
 bool opt_inline_closures(MirModule *m);
+/* opt_inline_capture.c: a closure that captures a known closure and only calls it takes its captures instead. */
+bool opt_inline_fuse_captured(MirModule *m);
 
 #endif
