@@ -426,7 +426,7 @@ bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
   const MirValue at = fn_expr(fn, key, LW_BORROW);
   if (at != MIR_NONE) {
     const MirValue operands[2] = {list, at};
-    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+    *addr = fn_checked_emit(fn, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
   }
   return true;
 }
@@ -492,7 +492,7 @@ bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *t
       return false;
     }
     const MirValue operands[2] = {holder, at};
-    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+    *addr = fn_checked_emit(fn, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
     *ty = data->elem;
     return true;
   }

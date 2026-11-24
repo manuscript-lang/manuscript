@@ -100,6 +100,9 @@ static void declare_faults(const EmitCx *cx) {
       {"msrt_post_unwrap_none", ""},
   };
   for (size_t index = 0; index < MS_COUNT_OF(posts); index++) {
+    if (extern_named(cx, posts[index].name) != MIR_NONE) {
+      continue;
+    }
     ms_strbuild_printf(cx->out, "declare void @%s(%s) cold nounwind\n", posts[index].name, posts[index].params);
   }
   for (size_t index = 0; index < MS_COUNT_OF(faults); index++) {

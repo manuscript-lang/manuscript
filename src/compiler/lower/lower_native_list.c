@@ -6,7 +6,7 @@
 
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
   const MirValue args[2] = {list, index}; /* the op counts a negative index from the end */
-  return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
+  return fn_checked_emit(fn, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 
 /* A native that changes a list receiver in line: the list is taken out of its slot or place, and `list_put` puts
@@ -63,7 +63,7 @@ static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
     return MIR_NONE;
   }
   const MirValue operands[2] = {list, at};
-  return mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+  return fn_checked_emit(fn, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
 }
 
 /* `list.append(value)`: the list grows in line (a full list calls the grow block) and the updated list goes back. */

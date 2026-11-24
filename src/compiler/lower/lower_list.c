@@ -65,7 +65,7 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (data->kind == MK_BYTES) { /* a byte of a Bytes value */
     mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
     const MirValue pair[2] = {list, at};
-    return mir_b_emit(&fn->b, MOP_ListGet, pair, 2, (MirImm){0}, MIR_UINT8);
+    return fn_checked_emit(fn, MOP_ListGet, pair, 2, (MirImm){0}, MIR_UINT8);
   }
   if (data->kind != MK_LIST) {
     (void)fn_fail(fn, "only a list or bytes can be indexed for now");
@@ -73,7 +73,7 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   const MirValue args[2] = {list, at};
-  const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
+  const MirValue element = fn_checked_emit(fn, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
   if (want == LW_MOVE && mir_needs_drop(fn->cx->module, data->elem)) {
     return fn_implicit_clone(fn, element, true);
   }
@@ -111,7 +111,7 @@ MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty) {
   mir_b_seal_block(&fn->b, exit);
   mir_b_switch_to(&fn->b, body);
   const MirValue at[2] = {values, index};
-  const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, at, 2, (MirImm){0}, elem_ty);
+  const MirValue element = fn_checked_emit(fn, MOP_ListGet, at, 2, (MirImm){0}, elem_ty);
   const MirValue key_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, elem_imm, MIR_PTR);
   const MirValue stored[2] = {key_slot, element};
   (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
@@ -161,7 +161,7 @@ bool fn_list_group_by(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *ou
   mir_b_seal_block(&fn->b, exit);
   mir_b_switch_to(&fn->b, body);
   const MirValue at[2] = {args[0], index};
-  const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, at, 2, (MirImm){0}, elem_ty);
+  const MirValue element = fn_checked_emit(fn, MOP_ListGet, at, 2, (MirImm){0}, elem_ty);
   const MirValue call[2] = {args[1], element};
   const MirValue key = mir_b_emit(&fn->b, MOP_CallInd, call, 2, (MirImm){0}, key_ty);
   const MirValue probe = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, key_imm, MIR_PTR);
@@ -250,7 +250,7 @@ bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue 
   mir_b_seal_block(&fn->b, exit);
   mir_b_switch_to(&fn->b, body);
   const MirValue at[2] = {args[0], index};
-  const MirValue entry = mir_b_emit(&fn->b, MOP_ListGet, at, 2, (MirImm){0}, entry_ty);
+  const MirValue entry = fn_checked_emit(fn, MOP_ListGet, at, 2, (MirImm){0}, entry_ty);
   const MirImm key_field = {.tag = MI_FIELD, .a = entry_data->id, .b = 0};
   const MirImm value_field = {.tag = MI_FIELD, .a = entry_data->id, .b = 1};
   MirValue key = mir_b_emit(&fn->b, MOP_TypeGet, &entry, 1, key_field, key_ty);

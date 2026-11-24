@@ -51,7 +51,10 @@ void fn_unwind_exit(LowerFn *fn) {
   const uint32_t pause = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_pause"), NULL, 0, MIR_VOID, false, MR_NONE);
   const uint32_t resume = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_resume"), NULL, 0, MIR_VOID, false, MR_NONE);
   (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = pause}, MIR_VOID);
+  const bool was_leaving = fn->leaving;
+  fn->leaving = true;
   fn_scope_unwind(fn, 0);
+  fn->leaving = was_leaving;
   (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = resume}, MIR_VOID);
   MirValue undef = MIR_NONE;
   if (fn->b.func.ret != MIR_VOID) {
@@ -118,6 +121,7 @@ static bool has_fault_site(MirOp op) {
   case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk:
   case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
   case MOP_NarrowChk:
+  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListAddr: case MOP_OptUnwrap:
     return true;
   default:
     return false;
@@ -128,7 +132,7 @@ static bool has_fault_site(MirOp op) {
  * call's does. The test is constant false on the normal path: only the check's cold path reaches `leave`. */
 void fn_fault_site(LowerFn *fn, MirValue result) {
   const MirInst *made = fn_just_made(fn, result);
-  if (made == NULL || !has_fault_site((MirOp)made->op) || fn->terminated || fn->failed || fn->b.func.unwind_only ||
+  if (made == NULL || !has_fault_site((MirOp)made->op) || fn->leaving || fn->terminated || fn->failed || fn->b.func.unwind_only ||
       fn->b.func.closer) {
     return;
   }
@@ -142,4 +146,11 @@ void fn_fault_site(LowerFn *fn, MirValue result) {
   fn->b.func.blocks.ptr[leave].cold = true;
   fn_unwind_exit(fn);
   mir_b_switch_to(&fn->b, next);
+}
+
+/* An instruction that can fault, and the exit its fault leaves by. */
+MirValue fn_checked_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty) {
+  const MirValue result = mir_b_emit(&fn->b, op, args, nargs, imm, ty);
+  fn_fault_site(fn, result);
+  return result;
 }

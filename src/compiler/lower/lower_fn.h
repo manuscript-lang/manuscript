@@ -161,6 +161,7 @@ typedef struct LowerFn {
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  bool leaving; /* an exit's closes and write-backs are being emitted: a check there repeats one the normal path passed, so it has no exit of its own */
   /* The result the last unwind site followed and where its instruction is, so that a later look at "the value just
    * made" still finds it behind the site's test. */
   MirValue site_value;
@@ -396,6 +397,7 @@ void fn_unwind_site(LowerFn *fn, MirValue result);
 /* Ends the current block with the exit of a pending cancel or posted fault (every open scope closed, undefined result). */
 void fn_unwind_exit(LowerFn *fn);
 void fn_fault_site(LowerFn *fn, MirValue result);
+MirValue fn_checked_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty);
 MirValue fn_missing_value(LowerFn *fn, MsPos at);
 bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key);
 bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);

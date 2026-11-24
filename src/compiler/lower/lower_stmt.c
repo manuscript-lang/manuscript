@@ -470,6 +470,7 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   uint32_t position;
   if (fn_default_param_place(fn, place, &position)) {
+    fn_disown(fn, value);
     fn->default_args[position] = value;
     return true;
   }
@@ -546,9 +547,6 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
     if (value == MIR_NONE) {
       return false;
-    }
-    if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
-      fn_disown(fn, value);
     }
     bool done = false;
     if (stmt->u.assign.has_compound && (!update_map_entry(fn, stmt->u.assign.target, value, &done) || done)) {

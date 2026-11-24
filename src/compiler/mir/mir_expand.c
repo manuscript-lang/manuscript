@@ -11,6 +11,7 @@
  * branch to them as unlikely. */
 #include "compiler/mir/mir_expand.h"
 
+#include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 
 static bool is_join(const MirModule *module, const MirInst *inst) {
@@ -50,6 +51,10 @@ typedef struct Expander {
   MirBlockList faults;
   uint32_t fault_base; /* the number of the first fault block: after every block built in order */
   uint32_t next;       /* the number of the next continuation block of the current block */
+  const MirBlockData *old; /* the block being rebuilt, and the position of the instruction in it */
+  uint32_t at;
+  uint32_t post_index, post_unwrap; /* `msrt_post_index`, `msrt_post_unwrap_none`, interned on first use */
+  MirIdList joined;                 /* the `fault.site` results the flag of a join block stands for */
 } Expander;
 
 static MirValue emit(Expander *e, MirBlockData *block, MirOp op, const MirValue *args, uint32_t nargs,
@@ -90,9 +95,80 @@ static void guard(Expander *e, MirBlockData *cur, MirValue ok, MirBlockData faul
   *cur = mir_block_empty();
 }
 
+
+/* The `fault.site` after the check at `e->at`: the lowering's exit for this check's fault. NULL when it has none. */
+static const MirInst *site_of(const Expander *e, const MirInst *inst) {
+  if (inst->res == MIR_NONE) {
+    return NULL;
+  }
+  for (size_t k = e->at + 1; k < e->old->insts.len; k++) {
+    const MirInst *site = &e->old->insts.ptr[k];
+    if (site->op == MOP_FaultSite && site->args[0] == inst->res) {
+      return site;
+    }
+  }
+  return NULL;
+}
+
+static uint32_t post_fn(Expander *e, uint32_t *cached, const char *name, const MirTy *params, uint32_t count) {
+  if (*cached == MIR_NONE) {
+    *cached = mir_extern_get(e->module, ms_span_of_text(name), params, count, MIR_VOID, false, MR_NONE);
+  }
+  return *cached;
+}
+
+/* A check whose fault has an exit. The check ends `cur`; a block that holds the unchecked instruction and a join
+ * block follow it. The join takes the instruction's result and the flag the lowering's `fault.site` stood for: the
+ * unchecked instruction passes false, the fault block (which posts the fault) an undefined result and true. The
+ * lowering's branch on the flag then leaves by the exit, after the result is defined on every path. */
+static void checked_with_exit(Expander *e, const MirInst *inst, const MirInst *site, MirBlockData *cur, MirValue ok,
+                              uint32_t post, const MirValue *post_args, uint32_t post_count, MirInst unchecked) {
+  const MirLoc loc = inst->loc;
+  const MirTy ty = mir_value_ty(e->func, inst->res);
+  MirMode mode = MM_BORROW;
+  (void)mir_result_mode(e->module, e->func, inst, &mode);
+  const MirBlock good_at = e->next++;
+  const MirBlock join_at = e->next++;
+  MirBlockData bad = mir_block_empty();
+  bad.cold = true;
+  bad.term_loc = loc;
+  (void)emit(e, &bad, MOP_CallRt, post_args, post_count, mir_imm_ext(post), MIR_VOID, loc);
+  MirValue to_join[2];
+  to_join[0] = emit(e, &bad, MOP_Undef, NULL, 0, mode == MM_BORROW ? mir_imm_int(1) : mir_imm_none(), ty, loc);
+  to_join[1] = emit(e, &bad, MOP_BConst, NULL, 0, (MirImm){.tag = MI_BOOL, .a = 1}, MIR_BOOL, loc);
+  bad.term = (MirTerm){.kind = MT_BR, .value = MIR_NONE,
+                       .a = {.block = join_at, .args = mir_args_copy(e->module, to_join, 2), .nargs = 2}};
+  const MirBlock to_bad = e->fault_base + (MirBlock)e->faults.len;
+  mir_block_list_push(&e->faults, bad);
+  cur->term = (MirTerm){.kind = MT_CONDBR, .value = ok, .a = {.block = good_at}, .b = {.block = to_bad}};
+  mir_block_list_push(&e->out, *cur);
+  MirBlockData good = mir_block_empty();
+  good.term_loc = loc;
+  const MirValue made = mir_new_value(e->func, ty);
+  unchecked.res = made;
+  mir_inst_list_push(&good.insts, unchecked);
+  MirValue from_good[2];
+  from_good[0] = made;
+  from_good[1] = emit(e, &good, MOP_BConst, NULL, 0, (MirImm){.tag = MI_BOOL, .a = 0}, MIR_BOOL, loc);
+  good.term = (MirTerm){.kind = MT_BR, .value = MIR_NONE,
+                        .a = {.block = join_at, .args = mir_args_copy(e->module, from_good, 2), .nargs = 2}};
+  mir_block_list_push(&e->out, good);
+  MirBlockData join = mir_block_empty();
+  mir_block_param_list_push(&join.params, (MirBlockParam){inst->res, (uint8_t)mode});
+  mir_block_param_list_push(&join.params, (MirBlockParam){site->res, (uint8_t)MM_BORROW});
+  mir_idlist_push(&e->joined, site->res);
+  *cur = join;
+}
+
 static void expand_unwrap(Expander *e, const MirInst *inst, MirBlockData *cur) {
   if (e->checks) {
     const MirValue some = emit(e, cur, MOP_OptIsSome, inst->args, inst->nargs, mir_imm_none(), MIR_BOOL, inst->loc);
+    const MirInst *site = site_of(e, inst);
+    if (site != NULL) {
+      checked_with_exit(e, inst, site, cur, some, post_fn(e, &e->post_unwrap, "msrt_post_unwrap_none", NULL, 0), NULL, 0,
+                        *inst);
+      return;
+    }
     MirBlockData fault = mir_block_empty();
     fault.term = (MirTerm){.kind = MT_FAULT, .value = MIR_NONE, .fault = MF_NONE_UNWRAP};
     fault.term_loc = inst->loc;
@@ -141,6 +217,16 @@ static void expand_access(Expander *e, const MirInst *inst, MirBlockData *cur) {
   }
   if (e->checks) {
     const MirValue ok = emit_cmp(e, cur, MOP_UICmp, MCC_LT, wrapped_index, len, loc);
+    const MirInst *site = site_of(e, inst);
+    if (site != NULL) {
+      MirValue *checked = mir_args_copy(e->module, inst->args, inst->nargs);
+      checked[1] = wrapped_index;
+      const MirTy ints[2] = {MIR_INT, MIR_INT};
+      const MirValue report[2] = {index, len};
+      checked_with_exit(e, inst, site, cur, ok, post_fn(e, &e->post_index, "msrt_post_index", ints, 2), report, 2,
+                        mir_inst(unchecked_op(op), inst->imm, inst->res, loc, checked, inst->nargs));
+      return;
+    }
     guard(e, cur, ok, index_fault_block(e, index, len, loc));
   }
   MirValue *args = mir_args_copy(e->module, inst->args, inst->nargs);
@@ -308,18 +394,41 @@ static void renumber(MirModule *module, MirTerm *term, const uint32_t *start) {
   }
 }
 
+static bool has_site(const MirBlockData *block, size_t at) {
+  const MirValue res = block->insts.ptr[at].res;
+  for (size_t k = at + 1; res != MIR_NONE && k < block->insts.len; k++) {
+    if (block->insts.ptr[k].op == MOP_FaultSite && block->insts.ptr[k].args[0] == res) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static uint32_t block_continuations(const MirBlockData *block, bool checks) {
   uint32_t count = 0;
   for (size_t index = 0; index < block->insts.len; index++) {
-    count += continuations((MirOp)block->insts.ptr[index].op, checks);
+    const uint32_t more = continuations((MirOp)block->insts.ptr[index].op, checks);
+    /* a check with an exit adds the block of the unchecked instruction and the join */
+    count += more == 1 && has_site(block, index) ? 2 : more;
   }
   return count;
 }
 
 /* Rebuilds the instructions of block `old` into `cur` and any continuation blocks it needs. */
 static void expand_block(Expander *e, MirBlockData *old, MirBlockData *cur) {
+  e->old = old;
   for (size_t index = 0; index < old->insts.len; index++) {
     const MirInst *inst = &old->insts.ptr[index];
+    e->at = (uint32_t)index;
+    if (inst->op == MOP_FaultSite) {
+      bool joined = false;
+      for (size_t k = 0; k < e->joined.len; k++) {
+        joined = joined || e->joined.ptr[k] == inst->res;
+      }
+      if (joined) {
+        continue; /* the flag is a block parameter of the join */
+      }
+    }
     if (expands(e->module, inst)) {
       expand_inst(e, inst, cur);
     } else {
@@ -387,8 +496,10 @@ bool mir_expand(MirModule *module, bool checks) {
       index_fault = add_index_fault(module);
     }
     Expander e = {.module = module, .func = &module->funcs.ptr[index], .checks = checks, .index_fault = index_fault,
-                  .join_open = MIR_NONE, .join_extend = MIR_NONE, .join_close = MIR_NONE, .join_format = MIR_NONE};
+                  .join_open = MIR_NONE, .join_extend = MIR_NONE, .join_close = MIR_NONE, .join_format = MIR_NONE,
+                  .post_index = MIR_NONE, .post_unwrap = MIR_NONE};
     expand_func(&e);
+    mir_idlist_free(&e.joined);
     changed = true;
   }
   return changed;

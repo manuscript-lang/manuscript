@@ -287,7 +287,9 @@ static MirValue element(LowerFn *fn, const ForSource *src, MirValue index, MirVa
   }
   if (!src->cursor) {
     const MirValue args[2] = {src->has_var ? mir_b_use_var(&fn->b, src->var) : src->list, index};
-    return emit(fn, MOP_ListGet, args, 2, (MirImm){0}, src->elem);
+    const MirValue element = emit(fn, MOP_ListGet, args, 2, (MirImm){0}, src->elem);
+    fn_fault_site(fn, element);
+    return element;
   }
   /* The cursor moves past the element before it is taken, so that leaving the loop anywhere after releases
    * only what comes after. */

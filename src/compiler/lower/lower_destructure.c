@@ -66,7 +66,7 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
     mir_b_switch_to(&fn->b, good);
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
       const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};
-      const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
+      const MirValue element = fn_checked_emit(fn, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
       if (!fn_bind_parts(fn, pattern->u.list.ptr[at], element, false, NULL, reassignable, false, MS_TY_NONE)) {
         return false;
       }
