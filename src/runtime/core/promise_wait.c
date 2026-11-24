@@ -47,21 +47,26 @@ void ms_promise_watch(MsPromise id, uint64_t token) {
   promise_table.hot.ptr[row].flags |= FLAG_WATCHED;
 }
 
-int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
+/* ms_promise_wait, which also says in `*settled` the row the outcome was read from (-1 when there is none). */
+static inline MS_ALWAYS_INLINE int64_t wait_row(MsPromise id, int64_t timeout_ns, ptrdiff_t *settled) {
+  *settled = -1;
   if (promise_is_foreign(id)) {
     return ms_remote_wait(id, timeout_ns);
   }
-  const size_t first = promise_row_or_fault(id);
+  const ptrdiff_t first = promise_row_of(id);
+  if (first < 0) {
+    return MS_PROMISE_CLOSED; /* its result was taken, which freed the row */
+  }
   const int64_t asked = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
   int64_t deadline = earliest(asked, earliest(promise_table.cold.ptr[first].limit, ms_task_defer_deadline()));
-  (void)promise_run_deferred(id, deadline, false);
-  for (;;) {
-    const ptrdiff_t row = promise_row_of(id);
+  ptrdiff_t row = promise_run_row(id, (size_t)first, deadline);
+  for (;; row = promise_row_of(id)) {
     if (row < 0) {
       return MS_PROMISE_CLOSED;
     }
     const int64_t code = outcome((size_t)row);
     if (code >= 0) {
+      *settled = row;
       return code;
     }
     const uint32_t woke = promise_park_on(id, deadline == NO_TIME ? -1 : deadline);
@@ -75,6 +80,7 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
     }
     const int64_t done = outcome((size_t)after);
     if (done >= 0) {
+      *settled = after;
       return done;
     }
     if (woke == MS_WAIT_TIMEOUT) {
@@ -90,6 +96,21 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
       return MS_PROMISE_TIMEOUT;
     }
   }
+}
+
+int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
+  ptrdiff_t settled = -1;
+  return wait_row(id, timeout_ns, &settled);
+}
+
+MS_ALWAYS_INLINE int64_t ms_promise_result(MsPromise id, const MsTypeDesc *desc, uint8_t *out, bool *taken) {
+  ptrdiff_t settled = -1;
+  const int64_t code = wait_row(id, -1, &settled);
+  *taken = false;
+  if (code == MS_PROMISE_OK) {
+    *taken = settled >= 0 ? promise_take_row((size_t)settled, desc, out) : ms_promise_take(id, desc, out);
+  }
+  return code;
 }
 
 bool ms_promise_finished(MsPromise id) {
