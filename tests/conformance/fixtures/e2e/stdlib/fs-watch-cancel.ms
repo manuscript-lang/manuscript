@@ -19,6 +19,8 @@ fn follow(root String, last String, move seen WriteStream[Int]) Void!:
 	while true:
 		event := events.next()?
 		found := event
+		if found != null:
+			print(f"EV {found.path.slice(root.length(), found.path.length())} {found.kind}")
 
 		if found != null:
 			if found.path == last:
