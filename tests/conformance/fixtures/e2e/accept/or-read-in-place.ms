@@ -3,19 +3,19 @@
 import expect_equal from "@std/test/test.ms"
 
 type Named:
-    name: String?
-    tags: List[String]?
+    name String?
+    tags List[String]?
 
-fn width(text: String?) Int:
+fn width(text String?) Int:
     return (text or "none").length()
 
-fn same(text: String?, other: String) Bool:
+fn same(text String?, other String) Bool:
     return (text or "none") == other
 
-fn count(items: List[Int]?) Int:
+fn count(items List[Int]?) Int:
     return (items or [1, 2, 3]).length()
 
-fn label(named: Named) Int:
+fn label(named Named) Int:
     return (named.name or "anonymous").length() + (named.tags or ["a", "b"]).length()
 
 test "x or d read in place borrows from x or from the default":
