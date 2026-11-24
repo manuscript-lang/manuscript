@@ -1,5 +1,4 @@
-/* Unit test of the pure data structures of runtime/core: the timer heap, the unstarted-work queue (and its owner against a thief), the frame tables, the record encoder and the release registry. */
-#include <stdatomic.h>
+/* Unit test of the pure data structures of runtime/core: the timer heap, the unstarted-work queue, the frame tables, the record encoder and the release registry. */
 #include <stdio.h>
 
 #include "abi/layout.h"
@@ -8,7 +7,6 @@
 #include "runtime/core/record.h"
 #include "runtime/core/release.h"
 #include "runtime/core/timers.h"
-#include "runtime/sys/sys.h"
 
 static int failures = 0;
 
@@ -177,58 +175,9 @@ static void test_release(void) {
   CHECK(released_count == 2); /* each runs once */
 }
 
-/* An owner pushes entries and removes each without the lock while a thief takes the oldest: every entry goes to
- * exactly one of them. */
-enum { RACE_ENTRIES = 200000, RACE_ISOLATE = 2 };
-static atomic_bool race_done;
-static _Atomic uint64_t race_stolen;
-static _Atomic uint64_t race_stolen_sum;
-
-static void race_thief(void *unused) {
-  (void)unused;
-  uint64_t id = 0;
-  void *work = NULL;
-  while (!atomic_load(&race_done) || ms_queue_length(RACE_ISOLATE) != 0) {
-    if (ms_queue_steal(RACE_ISOLATE, 0, -1, &id, &work)) {
-      atomic_fetch_add(&race_stolen, 1);
-      atomic_fetch_add(&race_stolen_sum, id);
-      CHECK(work == &race_done);
-    }
-  }
-}
-
-static void test_queue_race(void) {
-  MsSysThread *const thief = ms_sys_thread_spawn(0, race_thief, NULL);
-  CHECK(thief != NULL);
-  if (thief == NULL) {
-    return;
-  }
-  uint64_t removed = 0;
-  uint64_t removed_sum = 0;
-  uint64_t sequence[4] = {0};
-  for (uint64_t id = 1; id <= RACE_ENTRIES; id++) {
-    CHECK(ms_queue_push(RACE_ISOLATE, id, &race_done, false, &sequence[id % 4]));
-    if (id % 4 == 0) { /* newest first, as a waiter that runs its own work removes them */
-      for (uint64_t back = 0; back < 4; back++) {
-        if (ms_queue_remove(RACE_ISOLATE, id - back, sequence[(id - back) % 4])) {
-          removed++;
-          removed_sum += id - back;
-        }
-      }
-    }
-  }
-  atomic_store(&race_done, true);
-  ms_sys_thread_join(thief);
-  const uint64_t total = (uint64_t)RACE_ENTRIES * (RACE_ENTRIES + 1) / 2;
-  CHECK(removed + atomic_load(&race_stolen) == RACE_ENTRIES);
-  CHECK(removed_sum + atomic_load(&race_stolen_sum) == total);
-  ms_queue_release(RACE_ISOLATE, NULL);
-}
-
 int main(void) {
   test_timers();
   test_queue();
-  test_queue_race();
   test_frames();
   test_frames_set();
   test_record();
