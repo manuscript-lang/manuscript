@@ -1,7 +1,7 @@
 name: LLVM route benchmark
 
 # Manual runs only: builds `ms` natively on each platform, fetches the pinned LLVM library and the same release's
-# opt and llc (toolchain/llvm-lib.lock), and prints the compile time of tools/llvm-route-bench.ms (the in-process
+# opt and llc (cmake/toolchain/llvm-lib.lock), and prints the compile time of tools/llvm-route-bench.ms (the in-process
 # route against the opt and llc subprocess route, Debug and Release), so that the route can be judged on Linux,
 # macOS and Windows before it becomes the default.
 on:

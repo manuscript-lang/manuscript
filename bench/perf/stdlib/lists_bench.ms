@@ -5,7 +5,7 @@ import (
 )
 
 // Index of the greatest key; `key` is a known lambda at every call site (see
-// proposals/specialize-closure-args.md).
+// design/proposals/specialize-closure-args.md).
 fn best_index(points: List[Point], key: fn(Point) Int) Int:
 	var best = 0
 	var best_key = key(points.get_or(0, Point(x: 0, y: 0)))

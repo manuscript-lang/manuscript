@@ -1,6 +1,7 @@
 // Cancellation sweep (`make cancel-sweep`): cancels each test of the e2e fixtures at
 // every park (await point) in turn and checks that nothing leaks. It builds the
-// counting runtime (`cmake --preset stats`, proposals/c-runtime-stats-variant.md): with
+// counting runtime (`cmake --preset stats`,
+// design/proposals/c-runtime-stats-variant.md): with
 // `MS_PARK_COUNT=1` a process prints how many parks it made, and `MS_CANCEL_AT_PARK=k`
 // makes the k-th one report a cancellation, as if the parking task had been cancelled
 // there. Each test runs alone (`--test`), since a file's tests share a process. The

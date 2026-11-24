@@ -133,7 +133,7 @@ jobs:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
 
-  # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-ten-minute-budget.md): each
+  # The pull request time budget (AGENTS.md, design/wiki/repository/pull-request-ci-has-a-ten-minute-budget.md): each
   # Linux build job of a pull request finishes in under 10 minutes. `Platform checks` requires it, so an
   # over-budget pull request cannot merge.
   budget:

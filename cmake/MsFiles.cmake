@@ -35,7 +35,7 @@ function(ms_strip_debug name)
 endfunction()
 
 if(OS STREQUAL "Linux")
-  ms_copy_file("${SOURCE_DIR}/toolchain/glibc/${arch}.symbols" glibc.symbols)
+  ms_copy_file("${SOURCE_DIR}/cmake/toolchain/glibc/${arch}.symbols" glibc.symbols)
   foreach(name crt1.o crti.o crtn.o libc.a libunwind.a)
     ms_copy_file("${MUSL_SYSROOT}/usr/lib/${name}" ${name})
     if(EXISTS "${FILES}/${name}")

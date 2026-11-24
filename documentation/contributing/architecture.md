@@ -61,15 +61,15 @@ An include crosses layers only downward (`src/layers.txt`, enforced by `ms_lint`
 | `website/static/stdlib.md`, `stdlib.json` | Generated API downloads; not committed |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads |
 | `src/` | The C implementation; `src/abi/README.md` records layouts and symbols |
-| `agent-skill/` | The agent skill (`SKILL.md` and references) packed into `manuscript-skill.tar.gz` by `toolchain/package-skill.sh` |
+| `extensions/agent-skill/` | The agent skill (`SKILL.md` and references) packed into `manuscript-skill.tar.gz` by `cmake/toolchain/package-skill.sh` |
 | `tools/` | Repository tools written in Manuscript (`ms run tools/<name>.ms`): conform, leak and count checks, repo-check, doctor |
-| `toolchain/` | Pinned lld, LLVM and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) and the glibc 2.28 symbol tables, read by the build before `ms` exists |
+| `cmake/toolchain/` | Pinned lld, LLVM and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) and the glibc 2.28 symbol tables, read by the build before `ms` exists |
 | `tests/` | `conformance/` (the corpus), `docs/` (book checks), and fixtures for the language server, ownership counts and scaling |
 | `bench/` | `perf/` (kernels, workloads, JSON, web, workers, stdlib, each with a run script and a dated result page) and `agent/` (the agent benchmark and its results) |
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets |
 | `.github/workflows/` | CI, book publishing, six-platform release packaging |
-| `skills/`, `wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
+| `skills/`, `design/wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
 | `.artifacts/` | Ignored build output, reports and archives |
 
 Fix generated output through its generator, never by editing HTML or copying standard signatures into another catalog.

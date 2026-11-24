@@ -5,7 +5,7 @@ description: Write a Manuscript design proposal grounded in the existing languag
 
 # Author a proposal
 
-Use whenever you write or revise a design proposal. Store it in the repo as `proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design](../language-design/SKILL.md).
+Use whenever you write or revise a design proposal. Store it in the repo as `design/proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design](../language-design/SKILL.md).
 
 The default design is no new syntax, no new type, and no new keyword. Earn each addition.
 
@@ -13,10 +13,10 @@ The default design is no new syntax, no new type, and no new keyword. Earn each 
 
 Do this before writing any section. A proposal that invents syntax or names without it is rejected.
 
-- Read `agent-skill/SKILL.md` and the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
-- Read [architecture](../../documentation/contributing/architecture.md) for the pipeline, ABI, and recorded decisions, and `wiki/` for the domain (see `wiki/index.yml`).
+- Read `extensions/agent-skill/SKILL.md` and the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
+- Read [architecture](../../documentation/contributing/architecture.md) for the pipeline, ABI, and recorded decisions, and `design/wiki/` for the domain (see `design/wiki/index.yml`).
 - Find existing idioms with `ms search_symbol <words>` and read the nearest `src/stdlib/*.ms` modules. Copy their naming, argument order, error handling, and ownership style.
-- Read `proposals/` for decisions already made (names, direction, rejected ideas). A past proposal is a record of decisions, not a source of syntax; verify anything it shows against the guide.
+- Read `design/proposals/` for decisions already made (names, direction, rejected ideas). A past proposal is a record of decisions, not a source of syntax; verify anything it shows against the guide.
 - Never contradict a stated user decision (spelling, casing, names, scope). Quote the decision in Status; if the design needs to reverse one, put it in Open questions, do not assume.
 - Do not import syntax from other languages (guards, tuples, records, static methods, lowercase generics, and so on). If Manuscript lacks a construct, the design works without it or proposes it as its own explicit, justified language change.
 - Reuse existing names. A new name must be plain and say what it does; avoid metaphors and paired terms that need explaining (near/far).
@@ -52,7 +52,7 @@ Cut on sight:
 - implementation detail the code will show (function-by-function walkthroughs, line-number tours); keep the contract and the invariants;
 - stage detail beyond the check that gates it.
 
-Once implemented, cut the proposal to Summary, Status, and the decisions that are not obvious from the code, and move durable lessons to `wiki/`.
+Once implemented, cut the proposal to Summary, Status, and the decisions that are not obvious from the code, and move durable lessons to `design/wiki/`.
 
 ## Step 3: check the syntax
 

@@ -443,7 +443,7 @@ export fn stdlib_issues(files: List[String]) List[String]:
 			allow_list("tools/stream-names-allowed.txt"),
 			stream_found,
 			"tools/stream-names-allowed.txt",
-			"has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see proposals/stream-redesign.md)",
+			"has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see design/proposals/stream-redesign.md)",
 		)
 	)
 	return issues.concat(internal_externs(sources))

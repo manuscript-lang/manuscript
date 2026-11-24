@@ -394,7 +394,7 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   if (func.ret_borrowed && (ret_kind->kind == MK_IFACE ||
                             (ret_kind->kind == MK_OPT && mir_ty_data(cx->module, ret_kind->elem)->kind == MK_IFACE))) {
     /* An interface result that borrows is a view lender: it hands back an owned box (box-only, so dropping it frees the
-     * box and never the payload), and the caller drops it like any owned value (proposals/owned-interface-views.md). */
+     * box and never the payload), and the caller drops it like any owned value (design/proposals/owned-interface-views.md). */
     func.ret_borrowed = false;
     func.ret_view = true;
   }

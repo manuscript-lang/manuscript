@@ -1,4 +1,4 @@
-# Linux sysroots, fetched once at configure time and verified by hash (proposals/glibc-2-28-floor.md).
+# Linux sysroots, fetched once at configure time and verified by hash (design/proposals/glibc-2-28-floor.md).
 #
 # glibc floor: Debian 10's `libc6-dev` and `linux-libc-dev` headers. The runtime is compiled against them so the
 # objects name only symbols glibc 2.28 exports; the host's headers bind newer ones (`__isoc23_strtol`, the `fstat64`

@@ -127,5 +127,5 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           set -eu
-          sh toolchain/package-skill.sh skill-dist
+          sh cmake/toolchain/package-skill.sh skill-dist
           gh release upload "$RELEASE_TAG" skill-dist/manuscript-skill.tar.gz skill-dist/manuscript-skill.tar.gz.sha256 --clobber
