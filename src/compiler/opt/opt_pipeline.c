@@ -129,7 +129,6 @@ static const Step early_steps[] = {
     {"inline", opt_inline},
     {"splitview", opt_splitview},
     {"strfuse", strfuse_step},
-    {"fastpaths", fastpaths_step},
     {"loopslot", opt_loopslot},
 };
 
@@ -143,6 +142,7 @@ static const Step late_steps[] = {
     {"bytetake", opt_bytetake},
     {"copyelim takes", opt_copyelim_takes},
     {"simplify", opt_simplify},
+    {"fastpaths", fastpaths_step}, /* last, with no cleanup: LLVM cleans the expansion, and the passes above never walk it */
 };
 
 static void run_steps(MirModule *m, const Step *steps, size_t count) {
