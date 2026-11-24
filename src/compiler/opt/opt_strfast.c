@@ -237,25 +237,39 @@ static void sf_scalar(MirBuilder *b, uint32_t slow_ext, bool step) {
 
 static void sf_scalar_at(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_ext, false); }
 
-/* `scalar_text(text, offset)`: the scalar at a byte offset inside the text, as a string. An ASCII byte is the inline
- * string of its one byte, built here so its users compare words instead of calling the runtime. */
+/* `scalar_text(text, offset)`: the scalar at a byte offset inside the text, as a string. A scalar is at most four
+ * bytes, so the string is always inline: its two words are built here from the scalar's bytes and length (a
+ * multi-byte scalar asks the runtime for them), with the tag a constant. Its users then compare words and read the
+ * length without testing which kind of string they were given. */
 static void sf_scalar_text(MirBuilder *b, uint32_t slow_ext) {
   MirValue ps[2];
   mir_b_params(b, ps, 2);
-  const MirBlock slow = mir_b_new_block(b), ascii = mir_b_new_block(b);
+  const MirBlock slow = mir_b_new_block(b), ascii = mir_b_new_block(b), join = mir_b_new_block(b);
+  const MirValue bytes = mir_b_add_block_param(b, join, MIR_INT, MM_BORROW);
+  const MirValue length = mir_b_add_block_param(b, join, MIR_INT, MM_BORROW);
   const MirValue b0 = sf_byte_of_text(b, ps[0], ps[1]);
   ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 128), ascii, slow);
   mir_b_switch_to(b, ascii);
-  const MirValue out = mir_b_emit(b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_PTR);
-  const MirValue low[2] = {out, b0};
-  (void)mir_b_emit(b, MOP_Store, low, 2, (MirImm){0}, MIR_NONE);
-  const int64_t tagged = (int64_t)((UINT64_C(1) << SF_TAG_SHIFT) | (UINT64_C(1) << SF_LEN_SHIFT));
-  const MirValue high[2] = {ob_add(b, out, SF_WORD), mir_b_iconst(b, tagged)};
-  (void)mir_b_emit(b, MOP_Store, high, 2, (MirImm){0}, MIR_NONE);
-  mir_b_ret(b, mir_b_emit(b, MOP_Take, &out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR));
+  const MirValue ascii_words[2] = {b0, mir_b_iconst(b, 1)};
+  mir_b_br(b, join, ascii_words, 2);
   mir_b_seal_block(b, slow);
   mir_b_switch_to(b, slow);
-  sf_call_slow(b, slow_ext, ps, 2);
+  const MirValue scalar = mir_b_call_rt(b, slow_ext, ps, 2);
+  const MirValue made = sf_slot_of(b, scalar);
+  const MirValue made_words[2] = {ob_load(b, made, 0, MIR_INT),
+                                  ob_int(b, MOP_And, ob_int(b, MOP_Ushr, ob_load(b, made, SF_WORD, MIR_INT), SF_LEN_SHIFT), 15)};
+  (void)mir_b_emit(b, MOP_Drop, &scalar, 1, (MirImm){0}, MIR_NONE); /* an inline string: its words are copied above */
+  mir_b_br(b, join, made_words, 2);
+  mir_b_seal_block(b, join);
+  mir_b_switch_to(b, join);
+  const MirValue out = mir_b_emit(b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_PTR);
+  const MirValue low[2] = {out, bytes};
+  (void)mir_b_emit(b, MOP_Store, low, 2, (MirImm){0}, MIR_NONE);
+  const MirValue tagged = mir_b_binop(b, MOP_Or, mir_b_iconst(b, (int64_t)(UINT64_C(1) << SF_TAG_SHIFT)),
+                                      ob_int(b, MOP_Shl, length, SF_LEN_SHIFT));
+  const MirValue high[2] = {ob_add(b, out, SF_WORD), tagged};
+  (void)mir_b_emit(b, MOP_Store, high, 2, (MirImm){0}, MIR_NONE);
+  mir_b_ret(b, mir_b_emit(b, MOP_Take, &out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR));
 }
 static void sf_scalar_step(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_ext, true); }
 
