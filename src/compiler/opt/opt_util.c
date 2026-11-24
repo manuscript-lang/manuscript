@@ -28,7 +28,7 @@ bool **opt_dead_flags(MsArena *arena, const MirFunc *f) {
 }
 
 OptSubst opt_subst_new(MsArena *arena, uint32_t nvalues) {
-  OptSubst s = {MS_ARENA_NEW_ARRAY(arena, MirValue, nvalues), nvalues, 0};
+  OptSubst s = {MS_ARENA_NEW_ARRAY_UNINIT(arena, MirValue, nvalues), nvalues, 0}; /* set below */
   for (uint32_t v = 0; v < nvalues; v++) {
     s.to[v] = MIR_NONE;
   }
@@ -68,7 +68,7 @@ void opt_subst_apply(MirFunc *f, OptSubst *s) {
 void opt_inst_vec_push(MsArena *arena, OptInstVec *vec, const MirInst *inst) {
   if (vec->n == vec->cap) {
     const uint32_t cap = vec->cap ? vec->cap * 2 : 8;
-    MirInst *grown = MS_ARENA_NEW_ARRAY(arena, MirInst, cap);
+    MirInst *grown = MS_ARENA_NEW_ARRAY_UNINIT(arena, MirInst, cap); /* [0, n) is copied, the rest written by push */
     if (vec->n > 0) {
       __builtin_memcpy(grown, vec->v, sizeof(MirInst) * vec->n);
     }
@@ -183,7 +183,7 @@ void opt_func_deep_clone(MirModule *m, const MirFunc *f, MirFunc *out) {
 void opt_id_push(MsArena *a, OptIdList *l, uint32_t x) {
   if (l->n == l->cap) {
     const uint32_t cap = l->cap ? l->cap * 2 : 4;
-    uint32_t *grown = MS_ARENA_NEW_ARRAY(a, uint32_t, cap);
+    uint32_t *grown = MS_ARENA_NEW_ARRAY_UNINIT(a, uint32_t, cap);
     if (l->n > 0) {
       __builtin_memcpy(grown, l->v, sizeof(uint32_t) * l->n);
     }
@@ -195,7 +195,7 @@ void opt_id_push(MsArena *a, OptIdList *l, uint32_t x) {
 
 void *opt_grow(MsArena *a, void *arr, uint32_t n, uint32_t *cap, size_t elem) {
   const uint32_t ncap = *cap != 0 ? *cap * 2 : 8;
-  void *p = ms_arena_alloc_array(a, elem, 16, ncap);
+  void *p = ms_arena_alloc_array_uninit(a, elem, 16, ncap); /* callers write an element before reading it */
   if (n != 0) {
     __builtin_memcpy(p, arr, (size_t)n * elem);
   }

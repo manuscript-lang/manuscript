@@ -204,18 +204,16 @@ static bool lift_slot_take(MirModule *m, MirFunc *f, MirBlock b, const uint32_t 
 
 static bool lift_slot_takes(MirModule *m, MirFunc *f) {
   bool changed = false;
+  MsArena arena = ms_arena_new();
+  const uint32_t *uses = mir_use_counts(&arena, f);
   for (uint32_t b = 0; b < f->blocks.len; b++) {
-    for (;;) {
-      MsArena arena = ms_arena_new();
-      const uint32_t *uses = mir_use_counts(&arena, f);
-      const bool lifted = lift_slot_take(m, f, b, uses, &arena);
-      ms_arena_free(&arena);
-      if (!lifted) {
-        break;
-      }
+    while (lift_slot_take(m, f, b, uses, &arena)) {
+      /* A lift changes the counts of the two values it joins: count again, once per lift rather than per block. */
       changed = true;
+      uses = mir_use_counts(&arena, f);
     }
   }
+  ms_arena_free(&arena);
   return changed;
 }
 

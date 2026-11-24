@@ -251,8 +251,8 @@ static SbTable sb_table_new(MsArena *arena, uint32_t expected, uint32_t operands
   SbTable t = {0};
   t.heads = MS_ARENA_NEW_ARRAY(arena, uint32_t, size);
   t.mask = size - 1;
-  t.entries = MS_ARENA_NEW_ARRAY(arena, SbEntry, (size_t)expected + 1);
-  t.operands = MS_ARENA_NEW_ARRAY(arena, MirValue, (size_t)operands + 1);
+  t.entries = MS_ARENA_NEW_ARRAY_UNINIT(arena, SbEntry, (size_t)expected + 1);
+  t.operands = MS_ARENA_NEW_ARRAY_UNINIT(arena, MirValue, (size_t)operands + 1);
   return t;
 }
 

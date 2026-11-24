@@ -30,7 +30,15 @@ bool mir_result_views(const MirModule *module, const MirFunc *func, const MirIns
 
 /* ---- terminators ---- */
 
-const MirTarget *mir_term_target_const(const MirTerm *term, uint32_t index);
+static inline const MirTarget *mir_term_target_const(const MirTerm *term, uint32_t index) {
+  if (term->kind == MT_SWITCH && index < term->ncases) {
+    return &term->cases[index].target;
+  }
+  if (term->kind == MT_SWITCH) {
+    return &term->b; /* a switch keeps its default in `b`, even when it has no cases */
+  }
+  return index == 0 ? &term->a : &term->b;
+}
 
 /* Calls `visit(context, &value)` for every value operand of the terminator (condition, scrutinee, return
  * value, then block arguments of each target), so `visit` may rewrite it. */

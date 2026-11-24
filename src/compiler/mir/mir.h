@@ -511,7 +511,19 @@ uint32_t mir_extern_by_name(const MirModule *module, MsName name);
 
 /* The targets of a terminator in order: br has one, condbr two (then, else), switch its cases then the default,
  * the rest none. */
-uint32_t mir_term_ntargets(const MirTerm *term);
+static inline uint32_t mir_term_ntargets(const MirTerm *term) {
+  switch ((MirTermKind)term->kind) {
+  case MT_BR:
+    return 1;
+  case MT_CONDBR:
+    return 2;
+  case MT_SWITCH:
+    return term->ncases + 1;
+  case MT_RET: case MT_FAULT: case MT_UNREACHABLE:
+    return 0;
+  }
+  return 0;
+}
 /* Removes argument `k` of the edge. */
 void mir_target_remove_arg(MirTarget *t, uint32_t k);
 MirTarget *mir_term_target(MirTerm *term, uint32_t index);

@@ -47,4 +47,12 @@ void ms_arena_free(MsArena *arena);
 MS_RETURNS_NONNULL void *ms_arena_alloc_array(MsArena *arena, size_t element_size, size_t alignment,
                                               size_t count);
 
+/* `count` elements left as they were in the chunk (not cleared): for an array whose entries are written before
+ * they are read, so a large one costs only what is used. */
+#define MS_ARENA_NEW_ARRAY_UNINIT(arena, T, count)                                                           \
+  ((T *)ms_arena_alloc_array_uninit((arena), sizeof(T), _Alignof(T), (count)))
+
+MS_RETURNS_NONNULL void *ms_arena_alloc_array_uninit(MsArena *arena, size_t element_size, size_t alignment,
+                                                     size_t count);
+
 #endif

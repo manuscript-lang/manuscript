@@ -86,6 +86,14 @@ void *ms_arena_alloc_array(MsArena *arena, size_t element_size, size_t alignment
   return ms_arena_alloc_zeroed(arena, bytes, alignment);
 }
 
+void *ms_arena_alloc_array_uninit(MsArena *arena, size_t element_size, size_t alignment, size_t count) {
+  size_t bytes = 0;
+  if (!ms_size_mul(element_size, count, &bytes)) {
+    ms_fatal(MS_FATAL_OVERFLOW, "arena array size overflow");
+  }
+  return ms_arena_alloc(arena, bytes, alignment);
+}
+
 MsSpan ms_arena_copy(MsArena *arena, MsSpan span) {
   uint8_t *copy = ms_arena_alloc(arena, span.len, 1);
   if (span.len != 0) {
