@@ -57,6 +57,7 @@ jobs:
       - run: cmake --build --preset ci --target llvm-lib
       - name: diag variants
         run: |
+          set +e
           ms=.artifacts/build/ci/src/cli/ms
           for f in stdlib/list-predicates stdlib/list-binary-search accept/generic-operations; do
             for v in none L T P S LTPS; do
