@@ -74,7 +74,7 @@ A `T?` has no methods. Compare it with `null`, give a fallback with `or`, and re
 | Written | Meaning |
 | --- | --- |
 | `x == null`, `x != null` | Whether the optional is absent or present, including a present `false`, zero, or empty string |
-| `x or d` | The payload, or `d` when absent; `x` is moved, so a borrowed `x` needs `.clone()` or a `move` parameter; `d` is evaluated only when `x` is absent. With a `T` on the right the result is `T`; with a `T?` on the right it is `T?` |
+| `x or d` | The payload, or `d` when absent; read in place (a receiver, an operand, a borrowed argument) the result borrows from `x` or from `d`; returned, bound or stored it takes `x`'s payload, so a borrowed `x` needs `.clone()` or a `move` parameter; `d` is evaluated only when `x` is absent. With a `T` on the right the result is `T`; with a `T?` on the right it is `T?` |
 | `ok_or(x, cause)` | `Ok(payload)`, or `Error(cause)` when absent |
 | `x?` | The payload, or leave the function with `null` (see below) |
 

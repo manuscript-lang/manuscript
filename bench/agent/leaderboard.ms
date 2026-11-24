@@ -217,7 +217,7 @@ fn read_trial(dir String) Trial? {
 	}
 
 	agent_cfg := (r.get("config") or JsonValue.Null).get("agent") or JsonValue.Null
-	score := (reward.clone() or JsonValue.Null).as_float()
+	score := (reward or JsonValue.Null).as_float()
 	passed := (score or 0.0) == 1.0
 	return Trial(
 		trial: text_at(r, "trial_name"),

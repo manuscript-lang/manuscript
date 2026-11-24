@@ -344,6 +344,26 @@ static void check_place_handed_on(Moves *pass, const MsExpr *value) {
   ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* A value handed to a new owner (a constructor, a `move` parameter, a literal element, a binding or a return). `x or d`
+ * read in place answers a view and copies nothing, but handed to an owner it must give `x`'s payload up: a borrowed `x`
+ * is the same error as a borrowed argument. */
+static void check_new_owner(Moves *pass, const MsExpr *value);
+
+/* The left side of an `x or d` that is handed to a new owner. */
+static void check_or_left(Moves *pass, const MsExpr *value) {
+  if (value->kind == MS_E_BINARY && value->op == MS_B_OR &&
+      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, value->u.bin.left->id), MS_BUILTIN_Optional) &&
+      !ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, value->u.bin.right->id), MS_BUILTIN_Never)) {
+    check_new_owner(pass, value->u.bin.left);
+  }
+}
+
+static void check_new_owner(Moves *pass, const MsExpr *value) {
+  check_handed_on(pass, value, true);
+  check_place_handed_on(pass, value);
+  check_or_left(pass, value);
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
   uint32_t assigned = 0;
@@ -358,6 +378,13 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
                            ms_binding_list_contains(&pass->plainparams, returned);
   if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL && !whole_param) {
     check_handed_on(pass, stmt->u.expr, false);
+    check_or_left(pass, stmt->u.expr);
+  }
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.value != NULL) {
+    check_or_left(pass, stmt->u.bind.value);
+  }
+  if (stmt->kind == MS_S_ASSIGN && stmt->u.assign.value != NULL && !stmt->u.assign.has_compound) {
+    check_or_left(pass, stmt->u.assign.value);
   }
 }
 
@@ -484,8 +511,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
       if (expr->u.call.args.ptr[at].value->id == call->args[index].node.node) {
-        check_handed_on(pass, expr->u.call.args.ptr[at].value, true);
-        check_place_handed_on(pass, expr->u.call.args.ptr[at].value);
+        check_new_owner(pass, expr->u.call.args.ptr[at].value);
       }
     }
   }
@@ -497,22 +523,13 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
       ms_binding_list_push(&pass->borrowed, one->id);
     }
   }
-  /* `x or default` gives the payload of `x` to the result, so `x` is moved, never copied. `x or panic(..)` only reads. */
-  if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR && !ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
-      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
-    check_handed_on(pass, expr->u.bin.left, true);
-    check_place_handed_on(pass, expr->u.bin.left);
-  }
   /* A list or map literal makes a new owner of every element it is given. */
   for (uint32_t at = 0; expr->kind == MS_E_LIST && at < expr->u.list.len; at++) {
-    check_handed_on(pass, expr->u.list.ptr[at], true);
-    check_place_handed_on(pass, expr->u.list.ptr[at]);
+    check_new_owner(pass, expr->u.list.ptr[at]);
   }
   for (uint32_t at = 0; expr->kind == MS_E_MAP && at < expr->u.map.len; at++) {
-    check_handed_on(pass, expr->u.map.ptr[at].key, true);
-    check_place_handed_on(pass, expr->u.map.ptr[at].key);
-    check_handed_on(pass, expr->u.map.ptr[at].value, true);
-    check_place_handed_on(pass, expr->u.map.ptr[at].value);
+    check_new_owner(pass, expr->u.map.ptr[at].key);
+    check_new_owner(pass, expr->u.map.ptr[at].value);
   }
   if (pass->instance) {
     return; /* an instance only reports a view or borrowed parameter that became a resource and moved on */

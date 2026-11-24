@@ -81,7 +81,7 @@ export fn run_agent(
 			usage.tokens_in,
 			usage.tokens_cached,
 			usage.tokens_out,
-			model.clone() or "default",
+			model or "default",
 		)
 		usage.cost_source = "estimated"
 	}

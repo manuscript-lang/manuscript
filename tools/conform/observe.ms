@@ -73,7 +73,7 @@ export fn invoke(
 	}
 
 	cause := result.err()
-	timed := (cause.kind.clone() or "") == "ETIMEDOUT"
+	timed := (cause.kind or "") == "ETIMEDOUT"
 	return Process(
 		code: if timed { 137 } else { 127 },
 		stdout: "",

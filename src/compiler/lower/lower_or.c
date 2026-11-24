@@ -19,7 +19,42 @@ static bool call_views_argument(const LowerFn *fn, const MsExpr *call) {
   return false;
 }
 
-MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr) {
+/* `x or d` read in place, with `x` left where it is: the some branch answers a view of the payload; the null branch moves
+ * `d` into a holder (an optional the enclosing scope owns, empty on the some path) and answers a view of that. */
+static MirValue lower_or_view(LowerFn *fn, const MsExpr *expr, MirValue left, MirValue present, MirTy opt_ty, MirTy result_ty,
+                              MirBlock some_block, MirBlock null_block, MirBlock join) {
+  (void)present;
+  const MirVar either = mir_b_declare_var(&fn->b, opt_ty, MM_BORROW);
+  const MirVar holder = mir_b_declare_var(&fn->b, opt_ty, MM_MOVE);
+  (void)some_block;
+  const MirValue empty = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, opt_ty);
+  mir_b_def_var(&fn->b, either, left);
+  mir_b_def_var(&fn->b, holder, empty);
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_switch_to(&fn->b, null_block);
+  (void)fn_scope_begin(fn);
+  const bool saved_temps = fn->temps;
+  fn->temps = saved_temps || fn_expr_has_temporary(fn, expr->u.bin.right);
+  MirValue other = fn_expr(fn, expr->u.bin.right, LW_MOVE);
+  fn->temps = saved_temps;
+  if (other == MIR_NONE) {
+    return MIR_NONE;
+  }
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &other, 1, (MirImm){0}, MIR_NONE);
+  const MirValue held = mir_b_emit(&fn->b, MOP_OptSome, &other, 1, (MirImm){0}, opt_ty);
+  mir_b_def_var(&fn->b, either, held);
+  mir_b_def_var(&fn->b, holder, held);
+  fn_scope_end(fn);
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  const MirValue kept = mir_b_use_var(&fn->b, holder);
+  fn_own(fn, fn_scope(fn), kept);
+  const MirValue chosen = mir_b_use_var(&fn->b, either);
+  return mir_b_emit(&fn->b, MOP_OptGet, &chosen, 1, (MirImm){0}, result_ty);
+}
+
+MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   /* A name this expression moves, or reads for the last time, gives its payload up as `if v := name { ... }` does. */
   const MsExpr *named = expr->u.bin.left;
@@ -49,6 +84,13 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr) {
   /* `x or panic(..)` read in place: nothing else reaches the join, so the payload stays a view of `x` */
   const bool view_only = !owns && fn->or_view == expr && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
                          ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE;
+  /* Read in place (a receiver, an operand, a borrowed argument): the result is a view of `x`'s payload or of the default,
+   * which a holder owned by the enclosing scope keeps alive, so nothing is copied. */
+  const bool never_rhs = ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never);
+  if (!owns && !view_only && want == LW_BORROW && !never_rhs && mir_ty_data(fn->cx->module, opt_ty)->elem == result_ty &&
+      mir_needs_drop(fn->cx->module, result_ty) && !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, expr->id))) {
+    return lower_or_view(fn, expr, left, present, opt_ty, result_ty, some_block, null_block, join);
+  }
   MirTy payload_ty = MIR_VOID;
   MirValue payload;
   if (owns) {

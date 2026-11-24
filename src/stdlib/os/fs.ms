@@ -1237,7 +1237,7 @@ export fn watch(
 				recursive,
 				options.max_entries,
 				options.max_events,
-				options.overflow.clone() or "error",
+				options.overflow or "error",
 			)?
 		)
 	)

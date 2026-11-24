@@ -481,7 +481,7 @@ void fn_fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty);
 MirValue fn_take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var);
 bool fn_take_field_into_slot(LowerFn *fn, const MsStmt *stmt, const MsRef *ref, MsName name, bool *done);
 /* `x or d` over a nullable `x` (lower_or.c). */
-MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr);
+MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_lower_logical(LowerFn *fn, const MsExpr *expr); /* `a && b`, `a || b` */
 /* A call recorded with a bodiless standard operation as its callee. */
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
