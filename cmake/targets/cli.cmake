@@ -28,7 +28,7 @@ endif()
 
 # A build whose opt cannot start fails with a message naming the tool and its setting, not a crash (#6843).
 add_test(NAME missing_tool COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/missing-tool
-  -DPROGRAM=${CMAKE_SOURCE_DIR}/tools/fetch-llvm-lib.ms -P ${CMAKE_SOURCE_DIR}/cmake/MissingToolRun.cmake)
+  -DPROGRAM=${CMAKE_SOURCE_DIR}/tools/repo-check.ms -P ${CMAKE_SOURCE_DIR}/cmake/MissingToolRun.cmake)
 
 # A debugger stopped in a Debug build's function finds it by name and shows its parameters and the caller's line.
 add_test(NAME debug_info COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/debug-info
