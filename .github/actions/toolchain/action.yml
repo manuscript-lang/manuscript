@@ -5,17 +5,17 @@ runs:
   using: composite
   steps:
     # The platform packages come from the Ubuntu mirror and Homebrew, which stall for minutes now and then, so their
-    # downloads are cached. The key follows the runner image and this file; main's scheduled run saves it for pull requests.
+    # downloads are cached. The key follows this file; main's scheduled run saves it for pull requests.
     - if: runner.os == 'macOS'
       uses: actions/cache@v6
       with:
         path: ~/Library/Caches/Homebrew/downloads
-        key: brew-${{ runner.arch }}-${{ env.ImageVersion }}-${{ hashFiles('.github/actions/toolchain/action.yml') }}
+        key: brew-${{ runner.arch }}-${{ hashFiles('.github/actions/toolchain/action.yml') }}
     - if: runner.os == 'Linux'
       uses: actions/cache@v6
       with:
         path: .artifacts/apt
-        key: apt-${{ runner.arch }}-${{ env.ImageVersion }}-${{ hashFiles('.github/actions/toolchain/action.yml') }}
+        key: apt-${{ runner.arch }}-${{ hashFiles('.github/actions/toolchain/action.yml') }}
     - if: runner.os == 'macOS'
       shell: bash
       run: brew install ninja ccache llvm lld
