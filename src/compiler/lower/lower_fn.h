@@ -391,6 +391,7 @@ bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 /* After a call: test the unwinding byte and leave through the scope exit when it is set (lower_unwind.c). */
 /* The instruction that made `value` when nothing but unwind-site tests came after it, else NULL. */
 const MirInst *fn_just_made(const LowerFn *fn, MirValue value);
+bool fn_made_by_call(const LowerFn *fn, MirValue value);
 void fn_unwind_site(LowerFn *fn, MirValue result);
 /* Ends the current block with the exit of a pending cancel or posted fault (every open scope closed, undefined result). */
 void fn_unwind_exit(LowerFn *fn);

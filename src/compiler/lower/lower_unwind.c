@@ -23,6 +23,27 @@ const MirInst *fn_just_made(const LowerFn *fn, MirValue value) {
 }
 
 
+/* Whether `value` is the result of a call just emitted (ownership markers may follow it). */
+bool fn_made_by_call(const LowerFn *fn, MirValue value) {
+  if (value == MIR_NONE) {
+    return false;
+  }
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  size_t at = insts->len;
+  while (at > 0 && insts->ptr[at - 1].res == MIR_NONE) {
+    at--;
+  }
+  if (at == 0 || insts->ptr[at - 1].res != value) {
+    return false;
+  }
+  const MirInst *call = &insts->ptr[at - 1];
+  if (call->op == MOP_CallRt && call->imm.tag == MI_EXT && fn->cx->module->externs.ptr[call->imm.a].leaf) {
+    return false; /* a leaf runtime call neither parks nor faults */
+  }
+  const MirOp op = (MirOp)call->op;
+  return op == MOP_Call || op == MOP_CallInd || op == MOP_CallRt || op == MOP_CallMethod;
+}
+
 /* Leaves the function as a delivered cancel or a posted fault does: the closes run as on any exit, with the pending
  * state set aside while they do, so a close may park and its own calls do not leave; it is delivered again before the
  * function returns. The result is undefined. The current block ends here. */

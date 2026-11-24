@@ -981,7 +981,9 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     }
   }
   const MirValue made = expr_value(fn, expr, want);
-  if (expr->kind == MS_E_CALL) {
+  /* An operator that resolves to a call (`a / b` on a BigInt, `+` on a Decimal or a Duration) can post a fault like any call. */
+  const bool operator_call = (expr->kind == MS_E_BINARY || expr->kind == MS_E_UNARY) && fn_made_by_call(fn, made);
+  if (expr->kind == MS_E_CALL || operator_call) {
     fn_unwind_site(fn, made); /* before the result changes hands: the exit still owns it */
   } else if (made != MIR_NONE) {
     fn_fault_site(fn, made);
