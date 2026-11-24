@@ -36,6 +36,18 @@ jobs:
       - run: cmake --preset ci
       - run: cmake --build --preset ci
       - run: cmake --build --preset ci --target llvm-lib
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: amd64
+      - name: Point rustc at MSVC's linker
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # Git's `link.exe` shadows MSVC's on the Windows runner, so rustc gets the linker explicitly.
+          linker="$(cygpath -u "$VCToolsInstallDir")/bin/Host${VSCMD_ARG_HOST_ARCH}/${VSCMD_ARG_TGT_ARCH}/link.exe"
+          echo "RUSTC_LINKER=$linker" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$linker" >> "$GITHUB_ENV"
       - name: Record the CPU
         run: |
           case "$RUNNER_OS" in
@@ -44,33 +56,27 @@ jobs:
             Windows) powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name" ;;
           esac
       - name: Run bench/perf/strappend
+        shell: bash
         run: |
           ms=.artifacts/build/ci/src/cli/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
           MS="$PWD/$ms" "$PWD/$ms" run bench/tools/strappend.ms -- 5 | tee strappend-${{ matrix.name }}.txt
       - name: Run bench/perf/json
+        shell: bash
         run: |
           ms=.artifacts/build/ci/src/cli/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
           for _ in 1 2 3; do
             MS="$PWD/$ms" "$PWD/$ms" run bench/tools/json_bench.ms
           done | tee json-${{ matrix.name }}.txt
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: runner.os == 'Windows'
-        with:
-          arch: amd64
       - name: Run the Rust control for platform_io
         shell: bash
         run: |
-          # Git's `link.exe` shadows MSVC's on the Windows runner, so rustc gets the linker explicitly.
-          if [ "$RUNNER_OS" = Windows ]; then
-            CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="$(cygpath -u "$VCToolsInstallDir")/bin/Host${VSCMD_ARG_HOST_ARCH}/${VSCMD_ARG_TGT_ARCH}/link.exe"
-          fi
           ms=.artifacts/build/ci/src/cli/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
           linker=()
-          if [ -n "${CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER:-}" ]; then
-            linker=(-C "linker=$CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER")
+          if [ -n "${RUSTC_LINKER:-}" ]; then
+            linker=(-C "linker=$RUSTC_LINKER")
           fi
           rustc -O "${linker[@]}" -o platform_io_rust bench/perf/platform_io/main.rs
           ./platform_io_rust 2000 "$PWD/$ms" | tee platform-io-rust-${{ matrix.name }}.txt
