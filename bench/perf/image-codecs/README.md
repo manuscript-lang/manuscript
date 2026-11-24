@@ -30,7 +30,7 @@ What is left in JPEG is per-element work in `jpeg_plane` and `jpeg_forward` (abo
 ## 2026-11-16, constant lists read from static data (#4199)
 
 A reference to a constant list of scalars is a borrowed view of static data (`list.const.view`,
-`proposals/constant-list-view.md`) instead of a call that allocates, copies and frees a list on
+`design/proposals/constant-list-view.md`) instead of a call that allocates, copies and frees a list on
 every read. Best of 3, same machine, `main` 2b8a689e against this change:
 
 | Step (2048 by 2048) | Before | After | Go 1.24.7 |

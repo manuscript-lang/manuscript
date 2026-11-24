@@ -8,7 +8,7 @@ ms build heap.ms -o heap_ms
 valgrind --tool=callgrind ./heap_ms 100000    # and ./heap_rs 100000
 ```
 
-Callgrind needs the smaller allocator reservation ([wiki](../../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)); both programs allocate once. Linux x86-64, LLVM release build, instructions executed (`Ir`):
+Callgrind needs the smaller allocator reservation ([wiki](../../../design/wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)); both programs allocate once. Linux x86-64, LLVM release build, instructions executed (`Ir`):
 
 | program | instructions |
 |---|---:|
@@ -27,7 +27,7 @@ The sift-down loop did 27 instructions per level against Rust's 22. Four of the 
 3. **Widening jumped to the type bound.** A growing bound widened to `i64::MAX`, where `2 * at + 1` wraps to top, and the unrelated lower bound was lost in a cycle narrowing cannot repair. A growing bound now widens to `2^56` first and to the type bound only if it outgrows that.
 4. **The guard's offset was pruned.** `child <= len - 2` was recorded as a relation to `len - 2`, which nothing reads later, so the relation was dropped before the use. A relation to `x +/- c` is now kept while `x` is live.
 
-Result: every `heap[...]` in the loop is unchecked (`list.get.u`, `list.set.u`) and the loop is 22 instructions per level. The fixture is [`list_join_walk.mir`](../../../crates/ms-mir/tests/fixtures-opt/list_join_walk.mir).
+Result: every `heap[...]` in the loop is unchecked (`list.get.u`, `list.set.u`) and the loop is 22 instructions per level. The fixture is `list_join_walk.mir`.
 
 ## Remaining differences
 

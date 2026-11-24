@@ -1,6 +1,6 @@
 # Structural gaps
 
-Evidence for [`proposals/c-parity-structure.md`](../../../proposals/c-parity-structure.md): where ordinary Manuscript spends its time against C once single runtime calls are tuned. Two programs.
+Evidence for [`design/proposals/c-parity-structure.md`](../../../design/proposals/c-parity-structure.md): where ordinary Manuscript spends its time against C once single runtime calls are tuned. Two programs.
 
 - `shapes.ms`: the same work in the shape lowering recognizes and in a neighboring shape (a binding, a helper argument, a combinator chain). Prints microseconds per case.
 - `logstats_bytes.ms`: [`suite/logstats/main.ms`](../suite/logstats/main.ms) written as a byte scan with no `split`, the code a C programmer would write. It bounds what removing per-line lists and copies can gain.
@@ -13,7 +13,7 @@ head -c 2000000 /tmp/eng/input/access.log > /tmp/small.log
 valgrind --tool=callgrind /tmp/logstats_bytes < /tmp/small.log
 ```
 
-Compare only runs from one machine. Callgrind sends allocations to glibc `malloc` ([wiki](../../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)), so allocator rows overstate the release cost; allocation counts are exact.
+Compare only runs from one machine. Callgrind sends allocations to glibc `malloc` ([wiki](../../../design/wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)), so allocator rows overstate the release cost; allocation counts are exact.
 
 ## 2026-11-12: Linux x86_64
 
@@ -317,7 +317,7 @@ The map and set C twins did less than `Map` promises: `keyed.c` cases a and f us
 | `keyed.ms` case f (`Set[Int]`) | 92.1M | 176.0M | 182.8M |
 | `intmap.ms` | 136M | 257.4M | 292.9M |
 
-Against the equivalent C the gaps are 1.6x, 1.04x and 1.14x in instructions; `Set[Int]` wall time is at C (58 to 84 ms against 77 ms, min of 5 on a noisy shared VM). Earlier "gap to C" figures for maps and sets in this file and in `proposals/c-parity-structure.md` compare against the old twins and overstate the gap. The `Map[String, Stat]` twin (`containers.c`) is not in the repository, so that row has no equivalent C yet.
+Against the equivalent C the gaps are 1.6x, 1.04x and 1.14x in instructions; `Set[Int]` wall time is at C (58 to 84 ms against 77 ms, min of 5 on a noisy shared VM). Earlier "gap to C" figures for maps and sets in this file and in `design/proposals/c-parity-structure.md` compare against the old twins and overstate the gap. The `Map[String, Stat]` twin (`containers.c`) is not in the repository, so that row has no equivalent C yet.
 ## 2026-11-12: var calls through boxed optional fields
 
 `tree.ms` is `mixed.ms` case c on its own: 200k inserts into a binary tree whose links are `Node?`, through `fn var Node.insert`. Same machine; callgrind instructions, allocations from memcheck, min-of-7 wall time.

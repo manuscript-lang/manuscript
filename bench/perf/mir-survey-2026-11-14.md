@@ -17,7 +17,7 @@ Revision `main` after #3870, direct LLVM emitter, `ms` built from this tree, sha
 
 Every other competence and kernel program is at or ahead of Rust with overflow checks (0.3x to 1.0x).
 
-Callgrind note: under valgrind the allocator reservation cannot be mapped and every block goes to glibc, which made `malloc` look like 40% of c13; lower `PAGES_SIZE` and `GROW_CHUNKS` locally first ([wiki](../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)).
+Callgrind note: under valgrind the allocator reservation cannot be mapped and every block goes to glibc, which made `malloc` look like 40% of c13; lower `PAGES_SIZE` and `GROW_CHUNKS` locally first ([wiki](../../design/wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)).
 
 ## Change: a list literal with elements is sized by the loop that fills it
 

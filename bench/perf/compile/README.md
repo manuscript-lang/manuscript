@@ -16,4 +16,4 @@
 | hello | build Debug / Release, time | 109 / 160 ms | 84 / 116 ms |
 | `tools/conform.ms` | build Debug / Release, time | 289 / 1072 ms | 185 / 804 ms |
 
-The effect scan and the ownership analysis now cover the project's callables and what they reach; the rest of the standard library is analyzed when lowering or a tool asks (`proposals/analyze-the-standard-library-on-demand.md`). What is left in a hello check is parsing and declaring the eager standard modules and checking the bodies of the bundled modules it imports.
+The effect scan and the ownership analysis now cover the project's callables and what they reach; the rest of the standard library is analyzed when lowering or a tool asks (`design/proposals/analyze-the-standard-library-on-demand.md`). What is left in a hello check is parsing and declaring the eager standard modules and checking the bodies of the bundled modules it imports.

@@ -1,6 +1,6 @@
 # Paired kernels against Rust, 2026-11-12
 
-Pairs of programs with the same algorithm, written the way each language writes it (Rust with `rustc -C opt-level=3 -C overflow-checks=on -C codegen-units=1`, Manuscript with `ms build`, Release). Each prints the same checksum. Instructions executed under callgrind (Linux x86-64, LLVM release build, small allocator reservation per the [wiki](../../../wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)).
+Pairs of programs with the same algorithm, written the way each language writes it (Rust with `rustc -C opt-level=3 -C overflow-checks=on -C codegen-units=1`, Manuscript with `ms build`, Release). Each prints the same checksum. Instructions executed under callgrind (Linux x86-64, LLVM release build, small allocator reservation per the [wiki](../../../design/wiki/benchmarks-and-performance/callgrind-needs-a-smaller-allocator-reservation.md)).
 
 | kernel | args | ms | rust | ms / rust |
 |---|---|---:|---:|---:|
