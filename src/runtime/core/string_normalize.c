@@ -140,11 +140,12 @@ static void segment_free(MsSegment *segment) {
   segment->cap = SEGMENT_INLINE;
 }
 
-static void segment_grow(MsSegment *segment) {
+/* False when the segment cannot grow, which the caller reports as the text passing its limit. */
+MS_NODISCARD static bool segment_grow(MsSegment *segment) {
   size_t cap = 0, scalar_bytes = 0, info_bytes = 0;
   if (!ms_size_mul(segment->cap, 2, &cap) || !ms_size_mul(cap, sizeof(uint32_t), &scalar_bytes) ||
       !ms_size_mul(cap, sizeof(uint16_t), &info_bytes)) {
-    msrt_string_limit_fault();
+    return false;
   }
   uint32_t *scalars = ms_alloc(scalar_bytes);
   uint16_t *infos = ms_alloc(info_bytes);
@@ -157,15 +158,17 @@ static void segment_grow(MsSegment *segment) {
   segment->scalars = scalars;
   segment->infos = infos;
   segment->cap = cap;
+  return true;
 }
 
-static void segment_push(MsSegment *segment, uint32_t scalar, uint16_t info) {
-  if (segment->len == segment->cap) {
-    segment_grow(segment);
+MS_NODISCARD static bool segment_push(MsSegment *segment, uint32_t scalar, uint16_t info) {
+  if (segment->len == segment->cap && !segment_grow(segment)) {
+    return false;
   }
   segment->scalars[segment->len] = scalar;
   segment->infos[segment->len] = info;
   segment->len++;
+  return true;
 }
 
 /* Puts the run of marks scalars[from, to) in canonical order: stable by combining class. */
@@ -338,8 +341,7 @@ MS_NODISCARD static bool add_scalar(MsNormState *state, uint32_t scalar, uint16_
   if (starts_segment(&state->form, info) && !flush(state)) {
     return false;
   }
-  segment_push(&state->segment, scalar, info);
-  return true;
+  return segment_push(&state->segment, scalar, info);
 }
 
 /* Normalizes one input scalar into the segment; false when the text passes its limit. */

@@ -28,6 +28,14 @@ size_t msrt_string_total(size_t a, size_t b) {
   return total;
 }
 
+bool msrt_string_total_post(size_t a, size_t b, size_t *out) {
+  if (!ms_size_add(a, b, out) || *out > MSRT_STRING_LIMIT) {
+    msrt_string_limit_post();
+    return false;
+  }
+  return true;
+}
+
 MsString msrt_string_make(MsSpan text) {
   if (text.len == 0) {
     return ms_string_empty();
@@ -36,9 +44,19 @@ MsString msrt_string_make(MsSpan text) {
     return ms_string_from_span(text); /* inline: a short string is its two words */
   }
   if (text.len > MSRT_STRING_LIMIT) {
-    msrt_string_limit_fault();
+    msrt_string_limit_post();
+    return ms_string_empty();
   }
   return ms_string_from_span(text);
+}
+
+uint8_t *msrt_string_block_post(size_t length, MsString *out) {
+  if (length > MSRT_STRING_LIMIT) {
+    msrt_string_limit_post();
+    *out = ms_string_empty();
+    return NULL;
+  }
+  return msrt_string_block(length, out);
 }
 
 MsString msrt_string_view_of(MsSpan text) {
@@ -112,7 +130,9 @@ void msrt_string_free(const MsString *s) {
 MsString msrt_string_join(const MsSpan *parts, size_t count) {
   size_t total = 0;
   for (size_t index = 0; index < count; index++) {
-    total = msrt_string_total(total, parts[index].len);
+    if (!msrt_string_total_post(total, parts[index].len, &total)) {
+      return ms_string_empty();
+    }
   }
   MsString result = ms_string_empty();
   const bool small = total <= MS_STRING_INLINE_MAX; /* an inline string is filled in place: its bytes past the length stay zero */
@@ -199,13 +219,20 @@ MsString msrt_string_append_parts(const MsString *a, const MsSpan *parts, size_t
     return result;
   }
   size_t added = 0;
+  size_t total = 0;
   for (size_t index = 0; index < count; index++) {
-    added = msrt_string_total(added, parts[index].len);
+    if (!msrt_string_total_post(added, parts[index].len, &added)) {
+      msrt_string_free(&first);
+      return ms_string_empty();
+    }
   }
   if (added == 0) {
     return first;
   }
-  const size_t total = msrt_string_total(length, added);
+  if (!msrt_string_total_post(length, added, &total)) {
+    msrt_string_free(&first);
+    return ms_string_empty();
+  }
   uint8_t *block = first.owned;
   size_t spare = recorded_spare(&first);
   if (spare >= added) {
@@ -295,7 +322,11 @@ void msrt_string_repeat(const MsString *s, int64_t count, MsString *out) {
   const size_t total = text.len * (size_t)count;
   uint8_t small[MS_STRING_INLINE_MAX + 1];
   MsString result = ms_string_empty();
-  uint8_t *destination = total <= MS_STRING_INLINE_MAX ? small : msrt_string_block(total, &result);
+  uint8_t *destination = total <= MS_STRING_INLINE_MAX ? small : msrt_string_block_post(total, &result);
+  if (destination == NULL) {
+    *out = result;
+    return;
+  }
   fill_repeated(destination, total, text);
   *out = total <= MS_STRING_INLINE_MAX ? msrt_string_make(ms_span_of(small, total)) : result;
 }
@@ -319,7 +350,11 @@ void msrt_string_reverse(const MsString *a, MsString *out) {
   const MsSpan text = msrt_text(a);
   uint8_t small[MS_STRING_INLINE_MAX + 1];
   MsString result = ms_string_empty();
-  uint8_t *destination = text.len <= MS_STRING_INLINE_MAX ? small : msrt_string_block(text.len, &result);
+  uint8_t *destination = text.len <= MS_STRING_INLINE_MAX ? small : msrt_string_block_post(text.len, &result);
+  if (destination == NULL) {
+    *out = result;
+    return;
+  }
   reverse_into(destination, text);
   *out = text.len <= MS_STRING_INLINE_MAX ? msrt_string_make(ms_span_of(small, text.len)) : result;
 }
