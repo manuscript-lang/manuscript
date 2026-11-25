@@ -2,7 +2,7 @@
 
 * Status: **Approved by Chinmay 2026-11-24, implementing** (checked against `54bac8d7`)
 * Authors: [chinmaymk](https://github.com/chinmaymk)
-* Implementation: stage 1 merged in [#6900](https://github.com/manuscript-lang/manuscript/pull/6900); the rest not yet implemented
+* Implementation: stages 1 to 3 merged ([#6900](https://github.com/manuscript-lang/manuscript/pull/6900), #6908, #6909, #6910, #6913); stage 4 in [#6916](https://github.com/manuscript-lang/manuscript/pull/6916) except the native name list; stage 5 not started
 * Supersedes / Extracted from: result-borrow inference in [borrowed-parts](borrowed-parts.md) rule 2; the body-less rule in [borrowed-results](borrowed-results.md)
 * Direction: Chinmay, 2026-11-24: "functions need self-sufficient signatures: a signature states everything a caller needs; bodies are checked against signatures, never read by callers"; one word means one thing; two questions, two marks (how long to keep the memory, owned or reference); remove result `move`; no copy-on-write; no reference counting; scoped to signatures, fields, iterators and interfaces (shared handles, pools and tasks come later). Advice from a Fable review shaped `&T` as a type form.
 
@@ -84,7 +84,7 @@ fn(hold List[Int]) &Int?                         // function types carry both
 - A `hold` parameter no `&` result component uses is a lint, unless the result is an opaque handle that declares it. `hold` is also allowed with no `&` in the result (`promise` keeps its callback; the result type is an opaque stdlib handle), and then only freezes. `hold` on a parameter whose type owns nothing (`Int`) is an error. `hold` on a bare type parameter always freezes; `List.map` stays `fn(T) U` and owned, so no result depends on an instantiation. `&T` is read-only unless the sole `hold` source is `var`; two `hold` sources of which one is `var` is an error.
 - A plain parameter is read-only. Storing, returning or capturing it in an escaping closure is an error whose fix is `move` (resource and generic parameters, #6900) or `.clone()`. `x or d` can return `d`, so `get_or` holds both.
 
-**Callbacks.** A function-typed parameter the body stores or returns must be `move`, so the closure owns its captures. One the result keeps using is `hold`. Whether a closure passed to a `hold` parameter owns its captures is still decided by the caller from the result's fate (`result_escapes`, `escapes.c`), as `promise.ms:260` documents: `return promise(fn: ...)` owns, a promise waited locally borrows. `catch_fault(operation)` stays plain. This replaces the `kept` and `held` facts read from callee bodies.
+**Callbacks.** A function is not an owned value (owner, 2026-11-25), so a parameter of function type takes no `move`, no `hold`, and `&fn` does not exist; writing one is an error. Whether a closure owns its captures is decided from what the callee does with the function (`kept` and `held` in `escapes.c`, extended so a function parameter handed to a callee that holds it in a kept result is kept) and from the result's fate (`result_escapes`), as `promise.ms:260` documents: `return promise(fn: ...)` owns, a promise waited locally borrows. An extern function keeps every function it is handed. The inference stays for function types only; it never decides a result borrow.
 
 **Interfaces and function types.** Modes and `&` are written positionally and must match exactly, as `var` and `move` do today. A call through a function value or interface whose result type contains `&` uses the borrowed-result ABI, which `references.md:28,84` ("always owns its result") and the static `ret_borrowed` reads in `lower_closure.c` and `lower_call.c` currently exclude; both change, and `&Iface` results go through the existing interface-view wrapper (`owned-interface-views.md`). An implementation that computes a fresh value cannot meet an operation returning `&T`; it returns a clone through a wrapper. A call through either owns its result unless the type contains `&`. Using a `hold` function as a plain function value is rejected, as `relays.c` does today.
 
@@ -142,7 +142,7 @@ No speed claim: code already returning a borrow is unchanged. The gain is that t
 
 ## Compatibility
 
-Programs that return a part of an argument gain `hold` and `&`; callbacks the body keeps gain `move`; result `move` is deleted. The migration command does all three from the old analysis. Until migrated, programs fail with a diagnostic that carries the fix; during stage 2 a written mode wins and an unwritten one still falls back to inference.
+Programs that return a part of an argument gain `hold` and `&`; result `move` is deleted; function parameters carry no mark. The migration command does all three from the old analysis. Until migrated, programs fail with a diagnostic that carries the fix; during stage 2 a written mode wins and an unwritten one still falls back to inference.
 
 ## Alternatives considered
 
@@ -157,9 +157,9 @@ Programs that return a part of an argument gain `hold` and `&`; callbacks the bo
 ## Stages
 
 1. Done (#6900): kept resource and generic parameters must be `move`.
-2. Parse and check `hold`, `&T` and callback `move`. Where a mode is written it wins and a body that disagrees is an error; where unwritten, inference applies as today. Migration command. Gate: `make verify`, `make conform`.
+2. Parse and check `hold` and `&T`. Where a mode is written it wins and a body that disagrees is an error. Migration command (not committed; the generator ran from the old analysis). Gate: `make verify`, `make conform`.
 3. Migrate stdlib, tests, docs. Gate: same; a no-diff `ms emit` of the stdlib for result `hold`, and a reviewed diff for the few callbacks whose capture mode changes.
-4. Delete the inference, `@borrows`, result `move`; rewrite the borrow-pass gate. Gate: same, `make count-check`, a `bench/perf` run against the latest baseline.
+4. Delete the body inference and result `move`; rewrite the borrow-pass gate (done). Delete the native name list and `@borrows` once `Map.keys`, `Map.values`, the payload `get` and `List.slice` state their borrows in signatures (open). Gate: same, `make count-check`, a `bench/perf` run against the latest baseline.
 5. `&` fields, look records, iterators and interface looks (the wider model, items 1 to 3). Gate: reject fixtures for escape, pipe send and temporary sources; the hidden-copy fix lands first or here.
 
 ## Open questions
