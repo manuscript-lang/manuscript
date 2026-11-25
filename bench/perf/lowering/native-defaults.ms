@@ -23,7 +23,7 @@ fn bound_omitted(data Bytes) String {
 	return encode(data)
 }
 
-fn encode_bind() fn(Bytes, Bool) String => base64_encode
+fn encode_bind() fn(Bytes, Bool, Bool) String => base64_encode
 
 fn csv_explicit() CsvOptions => CsvOptions(",", "\n")
 
