@@ -179,6 +179,12 @@ static bool matches_declaration(const MsCheckProgram *program, MsName name, cons
                         : " must not take its receiver with `move`; the interface borrows it");
     return false;
   }
+  const bool want_ref = want->func.result != NULL && want->func.result->is_ref;
+  const bool own_ref = own->func.result != NULL && own->func.result->is_ref;
+  if (want_ref && !own_ref) { /* an implementation may borrow where the interface answers an owned value: the call copies */
+    say(why, name, program, " must return a `&` result, as the interface does");
+    return false;
+  }
   if (!same_parameter_names(own, want)) {
     say(why, name, program, " must name its parameters like the interface");
     return false;

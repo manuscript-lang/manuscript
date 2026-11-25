@@ -158,6 +158,8 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
     const MsMethod *declared = ms_check_operation_declaration(cx->program, ty, operation);
     methods[index].consumes = declared != NULL && declared->consuming;
     methods[index].ret = lower_type(cx, &subst, ms_ty_result(&cx->program->types, fn));
+    methods[index].ret_borrowed = declared != NULL && declared->func.result != NULL && declared->func.result->is_ref &&
+                                  mir_needs_drop(cx->module, methods[index].ret);
   }
   /* The last slot is the text of the payload (`to_string`, `f"{value}"`), which every interface has. */
   const size_t text = def->operations.len;

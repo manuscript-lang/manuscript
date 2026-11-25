@@ -167,7 +167,8 @@ static Reach classify_call(Pass *pass, const MsExpr *call) {
       return OWNED; /* a case of a user enum stores its payload: new storage */
     }
   }
-  if (kind != MS_REF_CASE && kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE && kind != MS_REF_TYPE) {
+  if (kind != MS_REF_CASE && kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE && kind != MS_REF_TYPE &&
+      kind != MS_REF_OPERATION) {
     return OWNED;
   }
   const MsExpr *callee = call->u.call.callee;
@@ -699,7 +700,10 @@ static bool declared_borrow(const MsCheckProgram *program, const MsCall *call, c
 bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint32_t position) {
   const MsRefKind kind = call->callee.kind;
   if (kind == MS_REF_OPERATION) {
-    return false; /* an interface operation answers the clone its implementation writes */
+    /* an interface operation answers what its declaration says: a new value unless it writes `hold` or `&` */
+    const MsMethod *operation = find_method(program, &call->callee);
+    bool written = false;
+    return operation != NULL && declared_borrow(program, call, &operation->func, position, &written) && written;
   }
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE) {
     return kind == MS_REF_CASE || (kind == MS_REF_TYPE && (ms_own_look_field(program, call, position) || ms_own_look_carrier(program, call, position)));

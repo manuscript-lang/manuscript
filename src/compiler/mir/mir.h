@@ -346,6 +346,7 @@ typedef struct MirMethodSig {
   uint32_t nparams;
   uint64_t owned;
   bool consumes; /* a `move fn` operation: it takes the interface value itself */
+  bool ret_borrowed; /* the operation is written with a `&` result: the call answers a view of the payload */
   MirTy ret;
 } MirMethodSig;
 
