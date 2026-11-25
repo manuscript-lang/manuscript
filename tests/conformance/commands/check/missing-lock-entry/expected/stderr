@@ -1,0 +1,5 @@
+<DIR>/app/ms.toml:1:1: resolution: ms.lock has no copy of example.invalid/pkg for @dep = v1; run `ms install` to resolve and pin it
+   |
+ 1 | [project]
+   | ^
+1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

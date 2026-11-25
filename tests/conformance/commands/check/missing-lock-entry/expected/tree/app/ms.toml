@@ -1,0 +1,7 @@
+[project]
+name = "app"
+source = "./src"
+entry = "./src/main.ms"
+
+[dependencies]
+"@dep" = { url = "https://example.invalid/pkg", tag = "v1" }
