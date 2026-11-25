@@ -163,24 +163,20 @@ static void phi_leaf(EmitCx *cx, uint32_t block, uint32_t index, uint32_t leaf, 
   emit_name(out, param, leaf);
   ms_strbuild_printf(out, " = phi %s ", type);
   bool first = true;
-  for (uint32_t source = 0; source < func->blocks.len; source++) {
+  for (uint32_t at = cx->into_start[block]; at < cx->into_start[block + 1]; at++) {
+    const uint32_t source = cx->into_from[at], edge = cx->into_edge[at];
     const MirTerm *term = &func->blocks.ptr[source].term;
-    for (uint32_t edge = 0; edge < emit_edge_count(term); edge++) {
-      const MirTarget *target = emit_edge(term, edge);
-      if (target->block != block) {
-        continue;
-      }
-      ms_strbuild_printf(out, "%s[ ", first ? "" : ", ");
-      emit_name(out, target->args[index], leaf);
-      ms_strbuild_append_text(out, ", %");
-      if (edge_split(cx, term, edge)) {
-        ms_strbuild_printf(out, "t%u_%u", source, edge);
-      } else {
-        emit_label(out, source, last[source]);
-      }
-      ms_strbuild_append_text(out, " ]");
-      first = false;
+    const MirTarget *target = emit_edge(term, edge);
+    ms_strbuild_printf(out, "%s[ ", first ? "" : ", ");
+    emit_name(out, target->args[index], leaf);
+    ms_strbuild_append_text(out, ", %");
+    if (edge_split(cx, term, edge)) {
+      ms_strbuild_printf(out, "t%u_%u", source, edge);
+    } else {
+      emit_label(out, source, last[source]);
     }
+    ms_strbuild_append_text(out, " ]");
+    first = false;
   }
   ms_strbuild_append_byte(out, '\n');
 }
@@ -197,4 +193,33 @@ void emit_phis(EmitCx *cx, uint32_t block, const uint32_t *last) {
       phi_leaf(cx, block, index, leaf, last);
     }
   }
+}
+
+void emit_index_edges(EmitCx *cx, MsArena *arena) {
+  const MirFunc *func = cx->func;
+  const uint32_t blocks = (uint32_t)func->blocks.len;
+  uint32_t *start = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)blocks + 2);
+  for (uint32_t source = 0; source < blocks; source++) {
+    const MirTerm *term = &func->blocks.ptr[source].term;
+    for (uint32_t edge = 0; edge < emit_edge_count(term); edge++) {
+      start[emit_edge(term, edge)->block + 1]++;
+    }
+  }
+  for (uint32_t block = 0; block < blocks; block++) {
+    start[block + 1] += start[block];
+  }
+  uint32_t *fill = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)blocks + 1);
+  uint32_t *from = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, (size_t)start[blocks] + 1);
+  uint32_t *which = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, (size_t)start[blocks] + 1);
+  for (uint32_t source = 0; source < blocks; source++) {
+    const MirTerm *term = &func->blocks.ptr[source].term;
+    for (uint32_t edge = 0; edge < emit_edge_count(term); edge++) {
+      const uint32_t target = emit_edge(term, edge)->block;
+      from[start[target] + fill[target]] = source;
+      which[start[target] + fill[target]++] = edge;
+    }
+  }
+  cx->into_start = start;
+  cx->into_from = from;
+  cx->into_edge = which;
 }

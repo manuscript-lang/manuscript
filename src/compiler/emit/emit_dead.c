@@ -105,11 +105,13 @@ void emit_drop_dead_definitions(MsStrBuild *body) {
   const MsSpan span = ms_strbuild_span(body);
   const uint8_t *text = span.ptr;
   size_t lines = 1;
+  size_t mentions = 0; /* the `%` signs: no more names than these are ever added */
   for (size_t at = 0; at < span.len; at++) {
     lines += text[at] == '\n' ? 1 : 0;
+    mentions += text[at] == '%' ? 1 : 0;
   }
-  Names names = {.entries = ms_alloc((span.len / 2 + 2) * sizeof(Name)), .mask = 1};
-  while (names.mask < span.len + lines) {
+  Names names = {.entries = ms_alloc((mentions + 1) * sizeof(Name)), .mask = 1};
+  while (names.mask < mentions * 2 + 2) {
     names.mask <<= 1;
   }
   names.index = ms_alloc(names.mask * sizeof(size_t));

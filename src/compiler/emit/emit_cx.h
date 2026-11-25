@@ -43,6 +43,9 @@ typedef struct EmitCx {
   const bool *framed;      /* per value: a closure object kept in the frame; NULL when none */
   const uint32_t *pool;    /* per value: the shared cell a one-block `slot` lives in, UINT32_MAX for any other value; NULL when none */
   const bool *borrowed;    /* per value: an `iface.borrow` kept in the frame; NULL when none */
+  /* The edges into each block, in the order of the blocks and their edges: block `b` is entered by `into_from[k]`'s
+   * edge `into_edge[k]` for `k` from `into_start[b]` to `into_start[b + 1]`. Built once per function. */
+  const uint32_t *into_start, *into_from, *into_edge;
   const bool *is_iconst;   /* per value: defined by an `iconst`; NULL outside a function */
   bool unwind_byte;        /* the function tests the `unwinding` byte: its address is `%ubp`, made once in the entry block */
   const int64_t *iconst;   /* per value: that constant */

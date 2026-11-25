@@ -268,6 +268,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   }
   cx->is_iconst = is_iconst;
   cx->iconst = iconst;
+  emit_index_edges(cx, &scratch);
   const bool *held = emit_wide_plan(cx, &scratch);
   cx->pool = emit_slot_pool(&scratch, cx, held);
   uint32_t subprogram = cx->debug != NULL ? emit_debug_subprogram(cx, index) : 0;
@@ -292,6 +293,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->framed = NULL;
   cx->borrowed = NULL;
   cx->is_iconst = NULL;
+  cx->into_start = cx->into_from = cx->into_edge = NULL;
   cx->unwind_byte = false;
   cx->iconst = NULL;
   cx->pool = NULL;
