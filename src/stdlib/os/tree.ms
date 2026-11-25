@@ -14,9 +14,10 @@ up; a path that would leave the root is `EINVAL`.
 ```manuscript
 import FileTree, walk from "@std/os/tree.ms"
 
-fn names(tree FileTree) List[String]:
+fn names(tree FileTree) List[String] {
     found := walk(tree).get_or(List())
-    return found.map(fn e: e.path.clone())
+    return found.map(e => e.path.clone())
+}
 ```
 */
 

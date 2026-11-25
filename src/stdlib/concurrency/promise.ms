@@ -34,7 +34,7 @@ import (
 
 // Promises: operations whose results are taken once with `wait()`.
 //
-// `promise(fn: ...)` starts work eagerly on a thread the runtime picks, and `wait()`
+// `promise(() => ...)` starts work eagerly on a thread the runtime picks, and `wait()`
 // takes its result. Stream reads may defer work until the wait. Any function can wait
 // internally, even if it returns a value directly.
 //
@@ -48,12 +48,13 @@ import (
 // import PromiseOptions, promise from "@std/concurrency/promise.ms"
 // import read_file from "@std/os/fs.ms"
 //
-// fn count_words(text: String) Int!:
+// fn count_words(text String) Int! {
 //     return ok(text.split(" ").length())
+// }
 //
 // config := read_file("config.json")  // Promise[Bytes], already running
 // words := promise(
-//     fn: count_words(text), options: PromiseOptions(timeout: 5.seconds())
+//     () => count_words(text), options: PromiseOptions(timeout: 5.seconds())
 // )  // may run on another thread, ends with ETIMEDOUT after 5 s
 // bytes := config.wait()?
 // total := words.wait()?

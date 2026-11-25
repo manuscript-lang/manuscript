@@ -103,11 +103,14 @@ add_custom_target(count-check
   USES_TERMINAL
   COMMENT "Checking ownership counts")
 
-# Every standard declaration and member has a description that passes the structural checks (tools/docgen.ms).
+# Every standard declaration and member has a description that passes the structural checks (tools/docgen.ms), and every
+# embedded `manuscript` example still parses and checks (tools/example-check.ms), so a syntax change cannot leave one stale.
+# `git` lists the files, as for repo-check.
 add_custom_target(docs-check
   COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/docgen.ms -- --check
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" "GIT=${MS_GIT}" $<TARGET_FILE:ms> run tools/example-check.ms
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   DEPENDS ms
   USES_TERMINAL
-  COMMENT "Checking standard-library descriptions")
+  COMMENT "Checking standard-library descriptions and embedded examples")
 

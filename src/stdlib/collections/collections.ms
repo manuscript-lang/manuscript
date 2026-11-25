@@ -226,13 +226,13 @@ fn List[T Clonable].take(count Int) List[T] { ... }
 fn List[T Clonable].drop(count Int) List[T] { ... }
 
 // Copies the leading elements for which `predicate` holds, stopping at the first one
-// that fails it. Example: `[1, 2, 5, 1].take_while(fn x: x < 3)` is `[1, 2]`.
+// that fails it. Example: `[1, 2, 5, 1].take_while(x => x < 3)` is `[1, 2]`.
 fn List[T Clonable].take_while(predicate fn(T) Bool) List[T] {
 	return self.take(self.find_index(x => not predicate(x)) or self.length())
 }
 
 // Copies the elements from the first one that fails `predicate` to the end, so it is
-// what `take_while` leaves. Example: `[1, 2, 5, 1].drop_while(fn x: x < 3)` is
+// what `take_while` leaves. Example: `[1, 2, 5, 1].drop_while(x => x < 3)` is
 // `[5, 1]`.
 fn List[T Clonable].drop_while(predicate fn(T) Bool) List[T] {
 	return self.drop(self.find_index(x => not predicate(x)) or self.length())
@@ -501,7 +501,7 @@ fn List[T Comparable &Clonable].max() T? {
 /*
 Returns a copy of the element whose `key` is greatest, or `null` when the list is empty.
 `key` is called once per element in order, and ties keep the earlier element.
-Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `"ccc"`.
+Example: `["bb", "a", "ccc"].max_by(w => w.length())` is `"ccc"`.
 */
 fn List[T Clonable].max_by[K Comparable](key fn(T) K) T? {
 	if self.is_empty() { return null }
@@ -524,7 +524,7 @@ fn List[T Clonable].max_by[K Comparable](key fn(T) K) T? {
 /*
 Returns a copy of the element whose `key` is least, or `null` when the list is empty.
 `key` is called once per element in order, and ties keep the earlier element.
-Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `"a"`.
+Example: `["bb", "a", "ccc"].min_by(w => w.length())` is `"a"`.
 */
 fn List[T Clonable].min_by[K Comparable](key fn(T) K) T? {
 	if self.is_empty() { return null }
@@ -547,7 +547,7 @@ fn List[T Clonable].min_by[K Comparable](key fn(T) K) T? {
 /*
 Keeps only the elements for which `keep` is true, in place and in their original order. `keep` is called once per element, in order.
 Dropped elements are closed when they are resources; kept ones are moved, not copied.
-Example: `var xs = [1, 2, 3, 4]` then `xs.retain(fn x: x % 2 == 0)` leaves `[2, 4]`.
+Example: `var xs = [1, 2, 3, 4]` then `xs.retain(x => x % 2 == 0)` leaves `[2, 4]`.
 */
 fn var List[T].retain(keep fn(T) Bool) Void {
 	var kept = 0
@@ -626,7 +626,7 @@ fn List[T Comparable].is_sorted() Bool {
 
 // Returns a new list ordered by the natural order of `key(element)`. The receiver is
 // unchanged and the sort is stable. `key` runs on every comparison, so keep it cheap.
-// Example: `people.sorted_by_key(fn p: p.age)`.
+// Example: `people.sorted_by_key(p => p.age)`.
 fn List[T Clonable].sorted_by_key[K Comparable](key fn(T) K) List[T] {
 	return self.sorted((a, b) => key(a).compare(key(b)))
 }
@@ -850,7 +850,7 @@ fn var Map[T Hashable, U Clonable].merge(other Map[T, U]) Void { ... }
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
 // absent. The key is probed once, `initial` is always evaluated, and `change` runs once
 // and must not use this map. The key is copied only when it is absent. Example:
-// `counts.update(word, 0, fn n: n + 1)` counts occurrences.
+// `counts.update(word, 0, n => n + 1)` counts occurrences.
 fn var Map[T Hashable &Clonable, U].update(
 	key T,
 	move initial U,
@@ -1039,7 +1039,7 @@ fn var Set[T].add(move value T) Void { ... }
 fn var Set[T].remove(move value T) Void { ... }
 
 // Keeps only the values for which `keep` is true, in place, like `List.retain`. The
-// rest keep their insertion order. Example: `seen.retain(fn n: n >= 0)`.
+// rest keep their insertion order. Example: `seen.retain(n => n >= 0)`.
 fn var Set[T Hashable &Clonable].retain(keep fn(T) Bool) Void {
 	var doomed = List[T]()
 	self.for_each(

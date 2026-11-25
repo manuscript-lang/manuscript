@@ -66,8 +66,8 @@ fn api() Router {
 
 fn request(method HttpMethod, path, body String) HttpRequest {
     return HttpRequest(
-        method: method,
-        path: path,
+        method: method.clone(),
+        path: path.clone(),
         query: "",
         headers: headers(),
         body: body.to_bytes(),

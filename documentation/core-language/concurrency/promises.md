@@ -5,7 +5,7 @@ weight = 1
 
 # Promises
 
-A `Promise[T]` represents an operation whose result is taken once with `wait()`. Calls such as `read_file(path)`, `write_file(path, ...)`, `fetch`, `connect`, `sleep`, `exec` and `Listener.accept` return one, and so does `promise(fn: ...)` for your own function.
+A `Promise[T]` represents an operation whose result is taken once with `wait()`. Calls such as `read_file(path)`, `write_file(path, ...)`, `fetch`, `connect`, `sleep`, `exec` and `Listener.accept` return one, and so does `promise(() => ...)` for your own function.
 
 Save this complete program as `read-config.ms` and run `ms run read-config.ms` in a directory containing `config.json`:
 
@@ -31,7 +31,7 @@ For a `config.json` containing exactly `{}` (two bytes), the program prints:
 2
 ```
 
-`promise(fn: ...)` starts work eagerly. Each operation defines when its work begins. For incremental I/O and pipelines, see [Streams and pipes](streams.md).
+`promise(() => ...)` starts work eagerly. Each operation defines when its work begins. For incremental I/O and pipelines, see [Streams and pipes](streams.md).
 
 ## Waiting
 
@@ -44,7 +44,7 @@ For a `config.json` containing exactly `{}` (two bytes), the program prints:
 | `"EBADF"` | An earlier `wait` already took the result. |
 | `"ETIMEDOUT"` | The promise's `timeout` option passed; the work was cancelled. |
 
-`PromiseOptions(timeout: ...)` is given when a promise is made, with `promise(fn: ..., options: ...)`, or to a promise another call returned with `.with(options: ...)`, as in `read_file(path).with(options: PromiseOptions(timeout: 5.seconds()))`. The timeout counts from creation for `promise`, or from applying `.with` to an existing promise, and is enforced whether or not anyone waits; `wait` itself takes no timeout. A negative timeout is no time at all.
+`PromiseOptions(timeout: ...)` is given when a promise is made, with `promise(() => ..., options: ...)`, or to a promise another call returned with `.with(options: ...)`, as in `read_file(path).with(options: PromiseOptions(timeout: 5.seconds()))`. The timeout counts from creation for `promise`, or from applying `.with` to an existing promise, and is enforced whether or not anyone waits; `wait` itself takes no timeout. A negative timeout is no time at all.
 
 `PromiseOptions(placement: ...)` picks the thread:
 
@@ -80,9 +80,9 @@ Cancellation is delivered at the next wait. `cancel()` asks the work to stop the
 
 ## Reading and changing shared values
 
-A promise created with `promise(fn: ...)` reads what it captures, and nothing it captures can be changed from inside it. The exception is a resource (a pipe writer, a file) the promise captures at its last use: the promise owns it from then on, runs once, and may write to it if it is declared `var`, pass it on with `var`, or close it. A promise holding a borrow of a value keeps that value from changing until the promise is dropped or moved into `wait_all`. To change state from several promises, give it one owner and send it values through a [pipe](streams.md#pipes).
+A promise created with `promise(() => ...)` reads what it captures, and nothing it captures can be changed from inside it. The exception is a resource (a pipe writer, a file) the promise captures at its last use: the promise owns it from then on, runs once, and may write to it if it is declared `var`, pass it on with `var`, or close it. A promise holding a borrow of a value keeps that value from changing until the promise is dropped or moved into `wait_all`. To change state from several promises, give it one owner and send it values through a [pipe](streams.md#pipes).
 
-A promise you assign to an existing variable or build into a record or list (`o = promise(fn: ...)`, `a = Acc(promise(fn: ...))`) owns its captures the same way: a closure that outlives its statement owns what it takes. A promise bound to a local and then moved to a holder that outlives a captured value is rejected ("this promise reads `xs`, which ends before `o` does"). A promise a lambda returns owns everything it captures, outer values included, like a closure the lambda returns; clone a shared value inside the lambda (`mine := xs.clone()`) to keep the original.
+A promise you assign to an existing variable or build into a record or list (`o = promise(() => ...)`, `a = Acc(promise(() => ...))`) owns its captures the same way: a closure that outlives its statement owns what it takes. A promise bound to a local and then moved to a holder that outlives a captured value is rejected ("this promise reads `xs`, which ends before `o` does"). A promise a lambda returns owns everything it captures, outer values included, like a closure the lambda returns; clone a shared value inside the lambda (`mine := xs.clone()`) to keep the original.
 
 A promise a function returns outlives the call, so it owns what it captures instead of borrowing it: the function moves the captured parameters and locals into the promise, and a caller that wants to keep a value passes `.clone()`. A promise returned by name, or kept in a record, still borrows what it captured and cannot outlive those values.
 

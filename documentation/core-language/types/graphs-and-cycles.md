@@ -20,7 +20,7 @@ type Graph {
 }
 
 fn var Graph.add(label String) Int {
-    self.nodes.append(Node(label: label, edges: [], parent: null))
+    self.nodes.append(Node(label: label.clone(), edges: [], parent: null))
     return self.nodes.length() - 1
 }
 

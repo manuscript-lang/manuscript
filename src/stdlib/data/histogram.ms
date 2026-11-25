@@ -19,7 +19,7 @@ Values below 64 are exact. Larger values fall in buckets about 3% wide, so a per
 is an upper bound within that error. A histogram has one owner; other promises send
 their observations to that owner over a `pipe`.
 
-Example: `latency.time(fn: handle(request))` records one span, and
+Example: `latency.time(() => handle(request))` records one span, and
 `latency.percentile(99.0)` returns the value that 99% of observations do not exceed.
 */
 export opaque type Histogram {

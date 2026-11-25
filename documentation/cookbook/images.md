@@ -31,7 +31,7 @@ fn main() Void! {
     small := back.resize(2, 1)?
     print(f"{back.width}x{back.height} -> {small.width}x{small.height}")
 
-    red := back.pixel(1, 0).get()
+    red := ok_or(back.pixel(1, 0), Error("pixel is outside the image", kind: "EINVAL"))?
     print(f"{red.red} {red.green} {red.blue}")
 }
 ```

@@ -198,9 +198,8 @@ fn main() Void {
     steps.push_back(11)
     steps.push_back(12)
     for index in 0..steps.length() {
-        if step := steps.get(index) {
-            print(step)
-        }
+        step := steps.get(index)
+        if step != null { print(step) }
     }
 }
 ```

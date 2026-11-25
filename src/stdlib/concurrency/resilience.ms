@@ -20,8 +20,8 @@ import fetch from "@std/net/fetch.ms"
 import milliseconds from "@std/time.ms"
 
 policy := RetryPolicy(attempts: 5, delay: milliseconds(50))
-body := retry(policy, fn attempt: fetch(url).wait())
-if body.is_error(): print("gave up")
+body := retry(policy, attempt => fetch(url).wait())
+if body.is_error() { print("gave up") }
 ```
 */
 export type RetryPolicy {
@@ -102,9 +102,10 @@ import rate_limiter from "@std/concurrency/resilience.ms"
 import fetch from "@std/net/fetch.ms"
 
 var limiter = rate_limiter(10, burst: 20)?
-for url in urls:
+for url in urls {
     limiter.acquire()
     void fetch(url).wait()?
+}
 ```
 */
 export type RateLimiter {
@@ -197,8 +198,8 @@ import fetch from "@std/net/fetch.ms"
 import seconds from "@std/time.ms"
 
 var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
-reply := breaker.call(fn: fetch(request).wait())
-if reply.is_error(): print("circuit open or call failed")
+reply := breaker.call(() => fetch(request).wait())
+if reply.is_error() { print("circuit open or call failed") }
 ```
 */
 export type CircuitBreaker {
@@ -256,7 +257,7 @@ fn var CircuitBreaker.call[T Clonable, E Clonable](
 // ```manuscript
 // import map_concurrent from "@std/concurrency/resilience.ms"
 //
-// doubled := map_concurrent([1, 2, 3], 2, fn n: n * 2)?  // [2, 4, 6]
+// doubled := map_concurrent([1, 2, 3], 2, n => n * 2)?  // [2, 4, 6]
 // print(doubled.length())
 // ```
 export fn map_concurrent[T, U](
@@ -327,9 +328,9 @@ import Throttle from "@std/concurrency/resilience.ms"
 import milliseconds from "@std/time.ms"
 
 var spacing = Throttle(interval: milliseconds(200))
-for event in events:
-    if spacing.allow():
-        print(event)
+for event in events {
+    if spacing.allow() { print(event) }
+}
 ```
 */
 export type Throttle {

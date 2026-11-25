@@ -73,9 +73,10 @@ A key that does not suit the algorithm, or claims that cannot be encoded as JSON
 import Bytes from "@std/bytes.ms"
 import sign_token, verify_token from "@std/data/jwt.ms"
 
-type Session:
+type Session {
     sub String
     exp Int
+}
 
 token := sign_token(Session(sub: "42", exp: 1900000000), secret)?
 session := verify_token[Session](token, secret)?
