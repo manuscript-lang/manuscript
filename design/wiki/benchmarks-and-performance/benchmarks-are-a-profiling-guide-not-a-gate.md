@@ -8,4 +8,4 @@ Verified: validate parser benchmark inputs before timing. Ignoring a parse error
 
 Apply when: claiming a speedup or regression.
 Evidence: [program results](../../../bench/perf/results.md#programs).
-Verify: before/after run on the same host with `make stdlib-bench BENCHREPEATS=5 BENCHFILTER=<case>` or `ms run bench/tools/programs.ms -- 7`.
+Verify: before/after run on the same host with `make stdlib-bench BENCHREPEATS=5 BENCHFILTER=<case>` or `ms run bench/perf/tools/programs.ms -- 7`.

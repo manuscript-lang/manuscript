@@ -4,8 +4,8 @@
 // ms: allow_effect std.process.run
 
 // Compares @std/json against Node (V8) and Rust's serde_json on standard documents
-// (bench/perf/json). Usage: ms run bench/tools/json_bench.ms (NAMES="twitter canada"
-// selects documents; MS picks the compiler) The corpora are downloaded into
+// (bench/perf/json). Usage: ms run bench/perf/tools/json_bench.ms (NAMES="twitter
+// canada" selects documents; MS picks the compiler) The corpora are downloaded into
 // bench/perf/json/data (not committed).
 import (
 	JsonValue, stringify from "@std/data/json.ms",

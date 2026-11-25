@@ -8,7 +8,7 @@
 
 // Times file, directory, process and pipe operations so Linux, macOS and Windows can be
 // compared on one run (the `Platform benchmarks` workflow). Usage:
-// `ms run bench/tools/platform_io.ms [-- files]`; MS names the `ms` binary. Prints one
+// `ms run bench/perf/tools/platform_io.ms [-- files]`; MS names the `ms` binary. Prints one
 // line per measurement, nanoseconds per operation, min of three rounds.
 import (
 	min from "@std/math/math.ms",

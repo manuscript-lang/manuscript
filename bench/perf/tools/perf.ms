@@ -7,9 +7,9 @@
 // The one runner of the performance suite (bench/perf/groups.txt). Usage, from the
 // repository root, with MS naming the ms to measure (default
 // .artifacts/build/release/src/cli/ms):
-//   ms run bench/tools/perf.ms -- list                    every group, its kind, command and results page
-//   ms run bench/tools/perf.ms -- run <group|area|time|count|all> [samples]   run groups (default 5 samples)
-//   ms run bench/tools/perf.ms -- check                   the index is complete and its pages exist
+//   ms run bench/perf/tools/perf.ms -- list                    every group, its kind, command and results page
+//   ms run bench/perf/tools/perf.ms -- run <group|area|time|count|all> [samples]   run groups (default 5 samples)
+//   ms run bench/perf/tools/perf.ms -- check                   the index is complete and its pages exist
 // `make perf-list`, `make perf GROUP=<name> SAMPLES=<n>` and `make perf-check` call these.
 // A `probe` group has no single command: its page holds the protocol.
 import (

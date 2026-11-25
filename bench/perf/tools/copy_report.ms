@@ -4,7 +4,8 @@
 // values, so this is the budget for that change. Copies of `str` literals are static
 // and free in that model (cap 0); the rest are the budget. Set RAW=1 for the
 // unoptimized lowering. Loop membership is not reported. Usage: ms run
-// bench/tools/copy_report.ms -- <project ms.toml|file.ms>... (MS picks the compiler)
+// bench/perf/tools/copy_report.ms -- <project ms.toml|file.ms>... (MS picks the
+// compiler)
 import (
 	arguments, set_environment from "@std/os/env.ms",
 	temporary from "@std/os/fs.ms",

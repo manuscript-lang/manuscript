@@ -105,21 +105,21 @@ bench-check: build
 		while [ $$p != bench/perf ] && [ ! -f $$p/ms.toml ]; do p=$$(dirname $$p); done; \
 		[ -f $$p/ms.toml ] || "$(MS)" check $$f || exit 1; \
 	done
-	@for t in bench/tools/*.ms bench/agent/*.ms; do "$(MS)" check $$t || exit 1; done
+	@for t in bench/perf/tools/*.ms bench/agent/*.ms; do "$(MS)" check $$t || exit 1; done
 	@for t in bench/agent/challenges/*/start/ms/src/main.ms; do "$(MS)" check $$t || exit 1; done
-	@for t in bench/tools/*_test.ms; do "$(MS)" test $$t || exit 1; done
-	@"$(MS)" run bench/tools/perf.ms -- check
+	@for t in bench/perf/tools/*_test.ms; do "$(MS)" test $$t || exit 1; done
+	@"$(MS)" run bench/perf/tools/perf.ms -- check
 
 # The performance suite (bench/perf/groups.txt): `make perf GROUP=<group|time|count> SAMPLES=5` runs a group, `perf-list` names them.
 perf: build
-	MS="$(abspath $(MS))" "$(MS)" run bench/tools/perf.ms -- run $(GROUP) $(SAMPLES)
+	MS="$(abspath $(MS))" "$(MS)" run bench/perf/tools/perf.ms -- run $(GROUP) $(SAMPLES)
 
 perf-list: build
-	"$(MS)" run bench/tools/perf.ms -- list
+	"$(MS)" run bench/perf/tools/perf.ms -- list
 
 perf-check: build
-	"$(MS)" run bench/tools/perf.ms -- check
+	"$(MS)" run bench/perf/tools/perf.ms -- check
 
 # Runs the bench blocks of bench/perf/stdlib; BENCHREPEATS is the sample count per case.
 stdlib-bench: build
-	MS="$(MS)" "$(MS)" run bench/tools/stdlib_bench.ms -- $(BENCHREPEATS) $(BENCHFILTER)
+	MS="$(MS)" "$(MS)" run bench/perf/tools/stdlib_bench.ms -- $(BENCHREPEATS) $(BENCHFILTER)

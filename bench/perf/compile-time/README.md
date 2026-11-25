@@ -37,7 +37,7 @@ Caveat: synthetic code; real programs with heavier generics/closures may shift f
 ## Priority
 Incremental builds first (per-module/function object cache keyed by content hash), then parallel LLVM partitioning and the rest.
 
-Reproduce: `bench/tools/compile_time.ms` (set `SKIP_LLVM=1` to skip the 5-minute release step).
+Reproduce: `bench/perf/tools/compile_time.ms` (set `SKIP_LLVM=1` to skip the 5-minute release step).
 
 ## Contract-indexed `implements` (2026-11-02)
 
@@ -52,7 +52,7 @@ Workload `gen.py 40 25 10` (122k lines; `@std/io/io.ms` import path), `ms check`
 
 ## Parallel LLVM units (2026-11-03)
 
-Base `a460b7ef`, 4-core Linux VM, `ms build --build-type Release`, cold `.ms-cache`, one run each (noisy VM). Workload `bench/tools/compile_time.ms` with `40 25 10` (122k lines) and `6 25 10` (18.6k lines).
+Base `a460b7ef`, 4-core Linux VM, `ms build --build-type Release`, cold `.ms-cache`, one run each (noisy VM). Workload `bench/perf/tools/compile_time.ms` with `40 25 10` (122k lines) and `6 25 10` (18.6k lines).
 
 | Workload | before | after | 
 | --- | --- | --- |
@@ -74,7 +74,7 @@ Before the change the loop (2.36 s) was lower 0.49 s, Cranelift compile 1.41 s w
 
 ## Rust added (2026-11-06)
 
-Base `f3a09110` plus the Rust generator in `bench/tools/compile_time.ms`, 4-core Linux VM, `ms` Release build (`make build`), cold builds, one run each (noisy VM). Command: `ms run bench/tools/compile_time.ms` (122k lines of Manuscript, 156k lines of Go, 151k lines of Rust; `SKIP_RUST=1` skips the Rust steps). All three binaries print the same result (15467800). Go 1.24.7, rustc 1.97.0.
+Base `f3a09110` plus the Rust generator in `bench/perf/tools/compile_time.ms`, 4-core Linux VM, `ms` Release build (`make build`), cold builds, one run each (noisy VM). Command: `ms run bench/perf/tools/compile_time.ms` (122k lines of Manuscript, 156k lines of Go, 151k lines of Rust; `SKIP_RUST=1` skips the Rust steps). All three binaries print the same result (15467800). Go 1.24.7, rustc 1.97.0.
 
 The Rust program is one crate with 40 modules of 25 files, the closest match for Go's 40 packages. Each Rust step starts with `target/` removed.
 

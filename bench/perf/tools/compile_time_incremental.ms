@@ -7,9 +7,9 @@
 // ms: allow_effect std.process.run
 
 // Times rebuilds after small edits. Usage: ms run
-// bench/tools/compile_time_incremental.ms [-- packages files fns] (default 40 25 10,
-// about 122k lines). MS picks the compiler; SKIP_LLVM=1 skips the Release column. Each
-// scenario edits the generated project, builds, and restores the file.
+// bench/perf/tools/compile_time_incremental.ms [-- packages files fns] (default 40 25
+// 10, about 122k lines). MS picks the compiler; SKIP_LLVM=1 skips the Release column.
+// Each scenario edits the generated project, builds, and restores the file.
 import (
 	arguments from "@std/os/env.ms",
 	remove, temporary from "@std/os/fs.ms",

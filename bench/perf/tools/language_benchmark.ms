@@ -7,8 +7,8 @@
 
 // Builds checked native workloads (bench/perf/language/*.ms) with two Manuscript CLIs
 // and compares them, alternating the first runner. Usage: ms run
-// bench/tools/language_benchmark.ms -- --before MS --after MS --output DIR [--runs 3]
-// [--cpu N]
+// bench/perf/tools/language_benchmark.ms -- --before MS --after MS --output DIR [--runs
+// 3] [--cpu N]
 // --cpu pins every execution to one CPU through `taskset` (Linux).
 import (
 	JsonValue from "@std/data/json.ms",

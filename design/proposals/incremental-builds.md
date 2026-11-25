@@ -13,7 +13,7 @@ Proposal, 2026-11-16, checked against `9f09fd55`. Supersedes the earlier mtime w
 
 ## Problem
 
-Measured on 4 cores, `bench/tools/compile_time.ms` workload (40 packages, 1,000 files, 12k functions), release `ms` of `9f09fd55`, `MS_TIMINGS=1`, second run:
+Measured on 4 cores, `bench/perf/tools/compile_time.ms` workload (40 packages, 1,000 files, 12k functions), release `ms` of `9f09fd55`, `MS_TIMINGS=1`, second run:
 
 | Phase | Debug | Release |
 | --- | --- | --- |

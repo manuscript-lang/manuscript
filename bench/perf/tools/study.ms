@@ -4,9 +4,9 @@
 // ms: allow_effect std.process.run
 // ms: allow_effect std.system.read
 
-// Building blocks for the per-experiment paired-trial drivers under bench/tools (names
-// ending in a study topic). A study runs prebuilt producer binaries in rotating order,
-// validates every record, and keeps samples, environment and a summary.
+// Building blocks for the per-experiment paired-trial drivers under bench/perf/tools
+// (names ending in a study topic). A study runs prebuilt producer binaries in rotating
+// order, validates every record, and keeps samples, environment and a summary.
 import (
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	append_file, create_directory from "@std/os/fs.ms",
