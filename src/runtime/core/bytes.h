@@ -77,7 +77,7 @@ uint8_t msrt_bytes_read_word(const MsList *b, int64_t at, int64_t width, uint8_t
  * */
 uint8_t msrt_bytes_decode_utf8(const MsList *b, MsString *out);
 /* The Bytes dies at the call: the string reuses its buffer, and invalid input frees it. */
-/* ms-sig: msrt_bytes_decode_utf8_take(b: *mut VecVal, out: *mut StrVal) -> u8 @domain=binary @end */
+/* ms-sig: msrt_bytes_decode_utf8_take(b: *mut VecVal, out: *mut StrVal) -> u8 @domain=binary @leaf @end */
 uint8_t msrt_bytes_decode_utf8_take(MsList *b, MsString *out);
 /* ms-sig: msrt_bytes_decode_utf8_range(b: *const VecVal, start: i64, end: i64, out: *mut StrVal) -> u8
  * @domain=binary @end */
