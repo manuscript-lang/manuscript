@@ -33,18 +33,6 @@ static bool cpe_block_has_op(const MirBlockData *b, MirOp op) {
   return false;
 }
 
-static bool cpe_has_op(const MirFunc *f, MirOp op) {
-  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
-    const MirInstList *insts = &f->blocks.ptr[bi].insts;
-    for (uint32_t i = 0; i < insts->len; i++) {
-      if (insts->ptr[i].op == op) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 /* Turns `p = opt.get v; c = clone p; ...; drop v` into `c = opt.unbox v` when `v` is not touched in
  * between and `p` has no other use: the payload moves out and the shell is freed instead of the
  * payload being deep-copied and then dropped with its source. This is the shape of unwrapping a
