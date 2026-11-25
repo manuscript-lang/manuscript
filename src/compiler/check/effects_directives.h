@@ -25,8 +25,13 @@ void ms_directives_free(MsDirectives *directives);
  * that runs straight into code belongs to that declaration, not to the file. */
 MsDirectives ms_directives_header(MsSpan source);
 
-/* The directives in the `//` lines directly above the 1-based `line`, up to a blank or code line. */
-MsDirectives ms_directives_above(MsSpan source, uint32_t line);
+/* The byte offset where each line of `source` starts, `*count` of them: built once per file, so finding a
+ * declaration's line costs nothing per declaration. */
+uint32_t *ms_line_starts(MsArena *arena, MsSpan source, uint32_t *count);
+
+/* The directives in the `//` lines directly above the 1-based `line`, up to a blank or code line; `line_starts` is
+ * `ms_line_starts` of `source`. */
+MsDirectives ms_directives_above(MsSpan source, const uint32_t *line_starts, uint32_t line_count, uint32_t line);
 
 /* Whether `effect` matches `pattern`. */
 bool ms_effect_matches(MsSpan pattern, MsSpan effect);
