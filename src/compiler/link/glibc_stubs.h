@@ -1,6 +1,6 @@
 /* compiler/link/glibc_stubs.h: stand-ins for glibc 2.28's shared libraries, so a program links against the
  * 2.28 ABI whatever glibc the build machine has. They are generated once from the table of exports
- * (`glibc.symbols`: `soname version name kind [size [alias-of]]` per line) with `llc` and `lld`. */
+ * (`glibc.symbols`: `soname version name kind [size [alias-of]]` per line) with the loaded LLVM library and `lld`. */
 #ifndef MS_COMPILER_LINK_GLIBC_STUBS_H
 #define MS_COMPILER_LINK_GLIBC_STUBS_H
 

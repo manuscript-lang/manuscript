@@ -2,13 +2,11 @@
 # of each platform's archive) from manuscript-lang/llvm-bundle into .artifacts/llvm-lib (LLVM_LIB_WORK overrides it) and
 # prints the absolute path of the library, which is what `MS_LLVM` takes. When GITHUB_ENV is set it also appends
 # `MS_LLVM=<path>` there, so the later steps of a CI job use the library. Does nothing but print when the library is
-# already there. With -DTOOLS=ON it fetches the same release's opt and llc instead (`llvm-tools`), prints their paths and
-# exports MS_OPT and MS_LLC, so the process route can be timed against the library.
+# already there.#
+#   cmake -DROOT=<source dir> -DARCH=<amd64|arm64> -P cmake/FetchLlvmLib.cmake
 #
-#   cmake -DROOT=<source dir> -DARCH=<amd64|arm64> [-DTOOLS=ON] -P cmake/FetchLlvmLib.cmake
-#
-# This is CMake and not a Manuscript program because it runs before any ms can compile one: compiling needs either this
-# library or a system opt and llc, so a Manuscript fetcher needed the thing it fetches (#6843).
+# This is CMake and not a Manuscript program because it runs before any ms can compile one: compiling needs this
+# library, so a Manuscript fetcher needed the thing it fetches (#6843).
 cmake_minimum_required(VERSION 3.25)
 
 file(STRINGS "${ROOT}/cmake/toolchain/llvm-lib.lock" lock)
@@ -34,14 +32,7 @@ else()
   set(library lib/libLLVM.so)
 endif()
 
-if(TOOLS)
-  set(kind llvm-tools)
-  set(here_infix tools-)
-  set(library "bin/opt${exe}")
-else()
-  set(kind llvm-lib)
-endif()
-set(asset "${kind}-${version}-${os}-${ARCH}.tar.gz")
+set(asset "llvm-lib-${version}-${os}-${ARCH}.tar.gz")
 if(NOT DEFINED digest_${asset})
   message(FATAL_ERROR "cmake/toolchain/llvm-lib.lock has no digest for ${asset}")
 endif()
@@ -51,7 +42,7 @@ if(DEFINED ENV{LLVM_LIB_WORK} AND NOT "$ENV{LLVM_LIB_WORK}" STREQUAL "")
 else()
   set(work "${ROOT}/.artifacts/llvm-lib")
 endif()
-set(here "${work}/${tag}-${here_infix}${os}-${ARCH}")
+set(here "${work}/${tag}-${os}-${ARCH}")
 
 if(NOT EXISTS "${here}/${library}")
   set(partial "${here}.tmp")
@@ -87,15 +78,7 @@ endif()
 
 file(REAL_PATH "${here}/${library}" path)
 set(exports "MS_LLVM=${path}\n")
-if(TOOLS)
-  get_filename_component(bin "${path}" DIRECTORY)
-  set(llc "${bin}/llc${exe}")
-  execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${path}")
-  execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${llc}")
-  set(exports "MS_OPT=${path}\nMS_LLC=${llc}\n")
-else()
-  execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${path}")
-endif()
+execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${path}")
 if(DEFINED ENV{GITHUB_ENV} AND NOT "$ENV{GITHUB_ENV}" STREQUAL "")
   file(APPEND "$ENV{GITHUB_ENV}" "${exports}")
 endif()

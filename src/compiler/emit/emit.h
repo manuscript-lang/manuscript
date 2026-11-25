@@ -1,7 +1,7 @@
 /* compiler/emit/emit.h: MIR to LLVM IR text.
  *
  * The emitter reads a finished MirModule and writes one LLVM module as text, which the object step hands to the
- * pinned `opt` and `llc`. A function it cannot write is reported by name and reason in `why`. */
+ * loaded LLVM library. A function it cannot write is reported by name and reason in `why`. */
 #ifndef MS_COMPILER_EMIT_EMIT_H
 #define MS_COMPILER_EMIT_EMIT_H
 
