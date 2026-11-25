@@ -40,7 +40,7 @@ typedef struct Copy {
 typedef struct Table {
   Copy *copies;
   size_t len;
-  size_t *index; /* open addressing over `copies`, by name; SIZE_MAX empty */
+  uint32_t *index; /* open addressing over `copies`, by name; UINT32_MAX empty */
   size_t mask;
 } Table;
 
@@ -270,17 +270,17 @@ static size_t slot_of(const Table *table, const uint8_t *text, size_t at, size_t
 
 static void insert(Table *table, const uint8_t *text, const Copy *copy) {
   size_t slot = slot_of(table, text, copy->name, copy->name_len);
-  while (table->index[slot] != SIZE_MAX) {
+  while (table->index[slot] != UINT32_MAX) {
     slot = (slot + 1) & table->mask;
   }
   table->copies[table->len] = *copy;
-  table->index[slot] = table->len++;
+  table->index[slot] = (uint32_t)table->len++;
 }
 
 /* The entry defining the register `at..at+length`, or NULL when there is none. */
 static Copy *find_entry(const Table *table, const uint8_t *text, size_t at, size_t length) {
   size_t slot = slot_of(table, text, at, length);
-  while (table->index[slot] != SIZE_MAX) {
+  while (table->index[slot] != UINT32_MAX) {
     Copy *copy = &table->copies[table->index[slot]];
     if (copy->name_len == length && same_text(text, copy->name, length, at, length)) {
       return copy;
@@ -509,10 +509,8 @@ void emit_forward_copies(MsStrBuild *body) {
   while (table.mask < lines * 2) {
     table.mask <<= 1;
   }
-  table.index = ms_alloc(table.mask * sizeof(size_t));
-  for (size_t slot = 0; slot < table.mask; slot++) {
-    table.index[slot] = SIZE_MAX;
-  }
+  table.index = ms_alloc(table.mask * sizeof(uint32_t));
+  __builtin_memset(table.index, 0xff, table.mask * sizeof(uint32_t));
   table.mask -= 1;
   for (size_t at = 0; at < span.len;) {
     const Line line = line_at(text, at, span.len);

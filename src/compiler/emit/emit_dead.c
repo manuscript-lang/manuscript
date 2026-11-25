@@ -14,11 +14,13 @@
 typedef struct Name {
   size_t at, len; /* the register's name in the text, after `%` */
   uint32_t count; /* the times it is named, its definition included */
+  uint32_t line;  /* 1 + the number of the pure line that defines it; 0 when none does */
+  size_t def_at, def_end; /* that line's bytes */
 } Name;
 
 typedef struct Names {
   Name *entries;
-  size_t *index; /* open addressing over `entries`; SIZE_MAX empty */
+  uint32_t *index; /* open addressing over `entries`; UINT32_MAX empty */
   size_t mask, len;
 } Names;
 
@@ -29,7 +31,7 @@ static bool name_byte(uint8_t byte) {
 
 static Name *name_entry(Names *names, const uint8_t *text, size_t at, size_t len, bool add) {
   size_t slot = ms_hash_span(ms_span_of(text + at, len)) & names->mask;
-  while (names->index[slot] != SIZE_MAX) {
+  while (names->index[slot] != UINT32_MAX) {
     Name *entry = &names->entries[names->index[slot]];
     if (entry->len == len && __builtin_memcmp(text + entry->at, text + at, len) == 0) {
       return entry;
@@ -40,7 +42,7 @@ static Name *name_entry(Names *names, const uint8_t *text, size_t at, size_t len
     return NULL;
   }
   names->entries[names->len] = (Name){.at = at, .len = len};
-  names->index[slot] = names->len++;
+  names->index[slot] = (uint32_t)names->len++;
   return &names->entries[names->len - 1];
 }
 
@@ -59,6 +61,27 @@ static void count_line(Names *names, const uint8_t *text, size_t at, size_t end,
       Name *entry = name_entry(names, text, start, stop - start, add);
       if (entry != NULL) {
         entry->count = (uint32_t)((int)entry->count + delta);
+      }
+    }
+    pos = stop - 1;
+  }
+}
+
+/* Takes the line `[at, end)` out of the counts and queues each register it leaves named only by its own definition. */
+static void drop_line(Names *names, const uint8_t *text, size_t at, size_t end, size_t *queue, size_t *queued) {
+  for (size_t pos = at; pos < end; pos++) {
+    if (text[pos] != '%') {
+      continue;
+    }
+    const size_t start = pos + 1;
+    size_t stop = start;
+    while (stop < end && name_byte(text[stop])) {
+      stop++;
+    }
+    if (stop > start) {
+      Name *entry = name_entry(names, text, start, stop - start, false);
+      if (entry != NULL && --entry->count == 1 && entry->line != 0) {
+        queue[(*queued)++] = (size_t)(entry - names->entries);
       }
     }
     pos = stop - 1;
@@ -114,40 +137,43 @@ void emit_drop_dead_definitions(MsStrBuild *body) {
   while (names.mask < mentions * 2 + 2) {
     names.mask <<= 1;
   }
-  names.index = ms_alloc(names.mask * sizeof(size_t));
-  for (size_t slot = 0; slot < names.mask; slot++) {
-    names.index[slot] = SIZE_MAX;
-  }
+  names.index = ms_alloc(names.mask * sizeof(uint32_t));
+  __builtin_memset(names.index, 0xff, names.mask * sizeof(uint32_t));
   names.mask -= 1;
   count_line(&names, text, 0, span.len, true, 1);
-  bool *dead = ms_alloc_zeroed(lines + 1);
-  size_t dropped = 0;
-  for (int round = 0; round < 8; round++) {
-    bool changed = false;
-    size_t number = 0;
-    for (size_t at = 0; at < span.len; number++) {
-      const uint8_t *newline = __builtin_memchr(text + at, '\n', span.len - at);
-      const size_t end = newline == NULL ? span.len : (size_t)(newline - text);
-      size_t name = 0;
-      size_t name_len = 0;
-      if (!dead[number] && pure_definition(text, at, end, &name, &name_len)) {
-        const Name *entry = name_entry(&names, text, name, name_len, false);
-        if (entry != NULL && entry->count == 1) {
-          dead[number] = true;
-          dropped++;
-          changed = true;
-          count_line(&names, text, at, end, false, -1);
+  /* The pure definitions, each found once; those whose register nothing else names start the queue. */
+  size_t *queue = ms_alloc((names.len + 1) * sizeof(size_t));
+  size_t queued = 0;
+  size_t number = 0;
+  for (size_t at = 0; at < span.len; number++) {
+    const uint8_t *newline = __builtin_memchr(text + at, '\n', span.len - at);
+    const size_t end = newline == NULL ? span.len : (size_t)(newline - text);
+    size_t name = 0;
+    size_t name_len = 0;
+    if (pure_definition(text, at, end, &name, &name_len)) {
+      Name *entry = name_entry(&names, text, name, name_len, false);
+      if (entry != NULL && entry->line == 0) {
+        entry->line = (uint32_t)number + 1;
+        entry->def_at = at;
+        entry->def_end = end;
+        if (entry->count == 1) {
+          queue[queued++] = (size_t)(entry - names.entries);
         }
       }
-      at = end + 1;
     }
-    if (!changed) {
-      break;
-    }
+    at = end + 1;
+  }
+  bool *dead = ms_alloc_zeroed(lines + 1);
+  size_t dropped = 0;
+  while (queued > 0) {
+    const Name *entry = &names.entries[queue[--queued]];
+    dead[entry->line - 1] = true;
+    dropped++;
+    drop_line(&names, text, entry->def_at, entry->def_end, queue, &queued);
   }
   if (dropped != 0) {
     MsStrBuild out = ms_strbuild_new();
-    size_t number = 0;
+    number = 0;
     for (size_t at = 0; at < span.len; number++) {
       const uint8_t *newline = __builtin_memchr(text + at, '\n', span.len - at);
       const size_t end = newline == NULL ? span.len : (size_t)(newline - text);
@@ -163,6 +189,7 @@ void emit_drop_dead_definitions(MsStrBuild *body) {
     *body = out;
   }
   ms_free(dead);
+  ms_free(queue);
   ms_free(names.entries);
   ms_free(names.index);
 }
