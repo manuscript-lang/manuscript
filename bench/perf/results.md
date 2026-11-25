@@ -1168,6 +1168,10 @@ Throughput on the shared 4-CPU VM (±25% run to run, so not a result): 1 CPU med
 
 Same machine, min of 5, `ms` before and after the change (`export_all` removed): `sim` 202 to 143 ms (Rust 156 in the same run; the `heat` stencil alone 89 to 43 ms against Rust 40), `jsonsum` 200 to 160 ms, `jsonrt` 1159 to 1091 ms, `pargroup` 59 to 48 ms. Callgrind instructions: `sim` 1945M to 886M (-54%), `hashing` -3.4%, `interp` -2.6%, `dispatch` -2.6%, `lz` -1.8%, `csvgroup`, `exprparse`, `graph`, `logstats` and `objgraph` within 0.1%.
 
+## 2026-11-25: parameters and closure captures start from what every caller passes
+
+`workers` passes `chunk` (the loop variable of `0..128`) through a promise closure into `chunk_checksum`; the range pass took every parameter and capture as any `Int`, so the callee kept signed remainders, a negative-index path and an overflow check on `chunk * 7919`. A step before the range pass now joins what callers and `closure.new` sites pass, and the emitter tells LLVM that interval and the bounds the pass proved for loop parameters. Callgrind instructions, same machine, `ms` before and after, all 23 suite programs: `workers` 1129M to 771M (-31.7%; checked Rust 769M), `graph` 558.7M to 545.5M (-2.4%), every other program within 0.15% (`jsonrt` +0.06%, `pargroup` -0.14%). Recording the bounds in every function instead of only seeded ones gave `exprparse` -1.9% but `wordfreq` +0.7% (one loop phi's assume changed LLVM's loop), so it is limited to seeded functions. `workers` wall time against `-C overflow-checks=on` Rust, min of 5, 4 threads: 33 ms to 31 ms against Rust 29 ms (one thread: 105 to 99 ms).
+
 ## 2026-11-25: `extend` checks room inline and copies plain elements with one memcpy
 
 `msrt_list_extend` called `ms_list_reserve` and `msrt_list_copy_range` (which tests the element descriptor again) even when the list had room. It now tests the room inline and copies plain elements with one `memcpy`. `lz` (520k extends of about 6 elements in `make_input`): 688.1M to 667.8M instructions (-3.0%); other suite programs unchanged.

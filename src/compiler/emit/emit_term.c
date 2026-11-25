@@ -195,6 +195,30 @@ void emit_phis(EmitCx *cx, uint32_t block, const uint32_t *last) {
   }
 }
 
+/* Hands LLVM the interval the range pass proved for each integer parameter of `block`. */
+void emit_block_facts(EmitCx *cx, uint32_t block) {
+  const MirFunc *func = cx->func;
+  if (func->nfacts == 0) {
+    return;
+  }
+  const MirBlockData *data = &func->blocks.ptr[block];
+  for (uint32_t index = 0; index < data->params.len; index++) {
+    const MirValue param = data->params.ptr[index].value;
+    uint32_t lo = 0, hi = func->nfacts;
+    while (lo < hi) {
+      const uint32_t mid = (lo + hi) / 2;
+      if (func->facts[mid].value < param) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    if (lo < func->nfacts && func->facts[lo].value == param) {
+      emit_assume_range(cx, param, func->facts[lo].lo, func->facts[lo].hi);
+    }
+  }
+}
+
 void emit_index_edges(EmitCx *cx, MsArena *arena) {
   const MirFunc *func = cx->func;
   const uint32_t blocks = (uint32_t)func->blocks.len;

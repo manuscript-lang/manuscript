@@ -97,3 +97,4 @@ Perf benchmarks, profiling.
 - [A check made unchecked must not leave its fault exit behind](a-check-made-unchecked-leaves-no-fault-exit.md): dead fault exits were 20% of optimized IR; release build of 500 functions 4.1 to 3.8 s, 267 to 246 MB.
 - [A list of plain records is tagged like a list of scalars](a-list-of-plain-records-is-tagged-like-a-list-of-scalars.md): `graph` -4.0% instructions; swapping heap entries no longer rewrites the list header.
 - [A split loop walks the text and makes no list](a-split-loop-walks-the-text-and-makes-no-list.md): `for piece in text.split(sep)` reads pieces by byte offset; grep -21%, report -19%, treegrep -21% wall time.
+- [A parameter starts from what every caller passes](a-parameter-starts-from-what-every-caller-passes.md): `workers` -31.7% instructions (equal to checked Rust), `graph` -2.3%; range seeded per callee, bounds handed to LLVM as assumes.

@@ -45,6 +45,8 @@ uint32_t opt_inline_at(MirModule *m, MirFunc *f, uint32_t bi, uint32_t ii, const
            bool ret_own);
 /* opt_inline_dead.c: removes the functions no root can reach; whether it removed any. */
 bool opt_inline_remove_dead(MirModule *m);
+/* Sets out[f] for every function named by something other than an instruction. */
+void opt_external_roots(const MirModule *m, bool *out);
 bool opt_inline_specialize_sort_thunks(MirModule *m);
 bool opt_inline_specialize_closure_args(MirModule *m);
 bool opt_inline_closures(MirModule *m);
