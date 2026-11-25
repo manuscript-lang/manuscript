@@ -41,6 +41,10 @@ fn main() Void! {
 }
 ```
 
+## Grouped parameters
+
+Names in a row share one type, as in `fn reduce(amount, deduction Int)`. A mode written before the row (`var`, `move` or `hold`) covers every name in it: `fn max[T Comparable](hold left, right T) &T` holds both, and `var a, b List[Int]` changes both. To give one name a mode, write the names apart: `hold left T, right T`.
+
 ## Argument names
 
 Labels are optional. An unlabeled argument fills the first parameter not yet filled, in declaration order. `name: value` fills that parameter in any order. A bare identifier is an ordinary expression, so renaming a local never changes which parameter it fills.
