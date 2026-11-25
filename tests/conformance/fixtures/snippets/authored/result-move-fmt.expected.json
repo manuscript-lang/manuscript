@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Box {\n\tn Int\n}\n\nfn make() move Box {\n\treturn Box(n: 1)\n}\n\nfn Box.dup() move Box {\n\treturn Box(n: self.n)\n}\n\nfn apply(f fn(Int) move Box) Int {\n\treturn f(1).n\n}\n\nfn main() Void {\n\tg := fn(x Int) move Box => Box(n: x)\n\tprint(apply(g))\n\tprint(make().n)\n}\n"
-  }
-}

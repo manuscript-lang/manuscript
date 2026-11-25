@@ -170,7 +170,7 @@ type ScalarSource {
 }
 
 // The next scalar as a one-scalar String, or null at the end.
-fn var ScalarSource.next() move String?! {
+fn var ScalarSource.next() String?! {
 	if self.at >= self.bytes.length() { return ok(null) }
 
 	stop := self.at + scalar_width(self.bytes.get(self.at).to_int())

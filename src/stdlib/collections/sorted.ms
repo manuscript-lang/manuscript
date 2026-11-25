@@ -177,7 +177,7 @@ fn var SortedMap[K, V].remove_at(c, at Int) Void {
 }
 
 // Internal: moves the entry at position `at` of chunk `c` out without copying it.
-fn var SortedMap[K, V].take_at(c, at Int) move SortedEntry[K, V] {
+fn var SortedMap[K, V].take_at(c, at Int) SortedEntry[K, V] {
 	entry := SortedEntry(
 		take_item(self.key_chunks[c], at),
 		take_item(self.value_chunks[c], at),
@@ -188,7 +188,7 @@ fn var SortedMap[K, V].take_at(c, at Int) move SortedEntry[K, V] {
 
 // Internal: moves the element at `at` out of `items`, shifting the later ones down by
 // swaps.
-fn take_item[T](var items List[T], at Int) move T {
+fn take_item[T](var items List[T], at Int) T {
 	var i = at
 
 	while i < items.length() - 1 {
@@ -237,14 +237,14 @@ fn hold SortedMap[K, V].last() & K? {
 
 // Removes the entry with the smallest key and moves it out, or returns `null` when
 // empty.
-fn var SortedMap[K, V].pop_first() move SortedEntry[K, V]? {
+fn var SortedMap[K, V].pop_first() SortedEntry[K, V]? {
 	if self.size == 0 { return null }
 	return self.take_at(0, 0)
 }
 
 // Removes the entry with the largest key and moves it out, or returns `null` when
 // empty.
-fn var SortedMap[K, V].pop_last() move SortedEntry[K, V]? {
+fn var SortedMap[K, V].pop_last() SortedEntry[K, V]? {
 	if self.size == 0 { return null }
 
 	c := self.key_chunks.length() - 1

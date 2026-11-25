@@ -54,10 +54,6 @@ static bool part_of_place(LowerFn *fn, const MsExpr *call, uint32_t depth) {
   if (fact == NULL || (fact->callee.kind != MS_REF_METHOD && fact->callee.kind != MS_REF_NATIVE && fact->callee.kind != MS_REF_FUNCTION)) {
     return false;
   }
-  const MsFunc *declared = ms_own_find_func(fn->cx->program, &fact->callee);
-  if (declared != NULL && declared->result_moves) {
-    return false; /* a `move` result is a value of its own */
-  }
   const MsExpr *callee = call->u.call.callee;
   const bool has_receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION;
   for (uint32_t position = 0; position <= call->u.call.args.len + (has_receiver ? 1u : 0u); position++) {

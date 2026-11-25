@@ -165,11 +165,7 @@ static Reach classify_call(Pass *pass, const MsExpr *call) {
       return OWNED; /* a case of a user enum stores its payload: new storage */
     }
   }
-  const MsFunc *func = kind == MS_REF_CASE ? NULL : ms_own_find_func(pass->program, &fact->callee);
   if (kind != MS_REF_CASE && kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE) {
-    return OWNED;
-  }
-  if (func != NULL && func->result_moves) {
     return OWNED;
   }
   const MsExpr *callee = call->u.call.callee;
@@ -684,22 +680,14 @@ bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint
     return kind == MS_REF_CASE;
   }
   const MsFunc *declared = ms_own_find_func(program, &call->callee);
-  if (declared != NULL && declared->result_moves) {
-    return false; /* the declaration says the result is new memory, whatever the arguments */
+  if (declared == NULL) {
+    return !native_result_is_fresh(program, call); /* a native the compiler provides itself: its table says */
   }
   bool written = false;
-  if (declared != NULL && declared_borrow(program, call, declared, position, &written)) {
+  if (declared_borrow(program, call, declared, position, &written)) {
     return written;
   }
-  if (kind == MS_REF_NATIVE) {
-    return !native_result_is_fresh(program, call);
-  }
-  const MsFunc *func = declared;
-  if (func == NULL || func->bodiless || func->external) {
-    /* the runtime provides it: its result may be any part of its arguments unless the table says it builds a new one */
-    return !native_result_is_fresh(program, call);
-  }
-  return position < 31 && (ms_own_result_borrow_mask(program, call->callee.decl.module, call->callee.decl.node) >> position & 1u) != 0;
+  return false; /* a signature that writes no `hold` and no `&` answers a new value */
 }
 
 bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, MsNode node) {

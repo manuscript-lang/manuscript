@@ -242,7 +242,7 @@ Returns a second handle over a duplicate of the file's descriptor, which closes 
 Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
 A closed handle returns EBADF.
 */
-fn FileHandle.clone() move FileHandle! {
+fn FileHandle.clone() FileHandle! {
 	return msstd_fs_file_clone(self.native)
 }
 
@@ -403,7 +403,7 @@ type FileSource {
 	file FileHandle
 }
 
-fn var FileSource.next() move Bytes?! {
+fn var FileSource.next() Bytes?! {
 	return self.file.read(null)
 }
 
@@ -465,7 +465,7 @@ fn Directory.read() DirectoryEntry?! {
 // A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path)?)`
 // yields its children in native order, so steps compose:
 // `... | filter(...) | collect(null)`. Closing the stream closes the directory.
-fn var Directory.next() move DirectoryEntry?! {
+fn var Directory.next() DirectoryEntry?! {
 	return msstd_fs_directory_read(self.native)
 }
 
@@ -488,7 +488,7 @@ type WatchSource {
 // Waits for the next change. null once the watched path itself has been removed (its
 // removal event comes first). A stream closed by the caller ends (`null`); a native
 // watcher that overflowed with policy `error` is `EOVERFLOW`.
-fn var WatchSource.next() move FileEvent?! {
+fn var WatchSource.next() FileEvent?! {
 	while true {
 		event := self.pending.pop()
 		if event != null { return ok(event) }

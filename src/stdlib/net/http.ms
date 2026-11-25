@@ -103,7 +103,7 @@ fn var HttpHeaders.remove(name String) Void {
 }
 
 // Copies every name and value into independent headers.
-fn HttpHeaders.clone() move HttpHeaders {
+fn HttpHeaders.clone() HttpHeaders {
 	return msstd_http_headers_clone(self)
 }
 
@@ -296,21 +296,21 @@ export interface HttpExchange {
 	// return EBADF.
 	var fn close() Void
 	// Returns an owned copy of the request headers with every repeated value retained.
-	fn headers() move HttpHeaders
+	fn headers() HttpHeaders
 	// Returns the request method, using the Custom case for extension tokens.
-	fn method() move HttpMethod
+	fn method() HttpMethod
 	// Returns the percent-decoded request path with dot segments resolved.
 	// Requests with an encoded slash or NUL are rejected before the handler runs.
-	fn path() move String
+	fn path() String
 	// Returns the protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`.
-	fn protocol() move String
+	fn protocol() String
 	// Returns the raw query string without the leading `?`; it is empty when there is
 	// null.
-	fn query() move String
+	fn query() String
 	// Returns the next chunk of the request body, at most `max_bytes` and never more
 	// than 65536, or null at the end of the body. Reading past `max_body_bytes` returns
 	// an `Error` of kind `EOVERFLOW`, and a non-positive `max_bytes` returns EINVAL.
-	var fn read(max_bytes Int?) move Bytes?!
+	var fn read(max_bytes Int?) Bytes?!
 	// Sends a whole response: the status line, `headers`, and `body` with its length
 	// known, so the response carries `Content-Length` rather than chunked framing.
 	// Requests with HEAD and statuses without a body get the head alone. The rules of
@@ -378,7 +378,7 @@ fn ServerExchange.query() String {
 	return msstd_http_exchange_query(self.native)
 }
 
-fn var ServerExchange.read(max_bytes Int?) move Bytes?! {
+fn var ServerExchange.read(max_bytes Int?) Bytes?! {
 	return msstd_http_exchange_read(self.native, max_bytes)
 }
 
@@ -609,7 +609,7 @@ type ResponseSource {
 	raw RawResponse
 }
 
-fn var ResponseSource.next() move Bytes?! {
+fn var ResponseSource.next() Bytes?! {
 	return msstd_http_body_read(self.raw.native, null)
 }
 

@@ -266,7 +266,7 @@ fn tagged(kind String, id Int) JsonValue:
 */
 export interface JsonEncode {
 	// Returns the JSON form of this value.
-	fn to_json() move JsonValue
+	fn to_json() JsonValue
 }
 
 /*
@@ -368,7 +368,7 @@ fn var JsonReading[T].fail(cause Error) Void! {
 }
 
 // Parses the buffered value and clears the scanner for the next one.
-fn var JsonReading[T].complete() move T! {
+fn var JsonReading[T].complete() T! {
 	bytes := self.pending.drain()
 	self.reset()
 
@@ -441,7 +441,7 @@ fn var JsonReading[T].scan(byte UInt8) Bool! {
 }
 
 // Consumes one byte and returns the value it completes, if any.
-fn var JsonReading[T].advance(byte UInt8) move T?! {
+fn var JsonReading[T].advance(byte UInt8) T?! {
 	done := self.scan(byte)?
 	if not done { return ok(null) }
 

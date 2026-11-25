@@ -4,7 +4,7 @@ export extern fn msstd_decimal_compare(left, right Decimal) Int
 
 export extern fn msstd_decimal_parse(text String) Decimal!
 
-export extern fn msstd_decimal_to_string(value Decimal) move String
+export extern fn msstd_decimal_to_string(value Decimal) String
 
 export extern fn msstd_decimal_to_float(value Decimal) Float
 
@@ -20,4 +20,4 @@ export extern fn msstd_decimal_to_fixed(
 	value Decimal,
 	digits Int,
 	mode RoundingMode?,
-) move String!
+) String!

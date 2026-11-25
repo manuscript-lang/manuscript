@@ -19,6 +19,6 @@ export extern fn msrt_bits_bit_and(left, right Int) Int
 
 export extern fn msrt_bits_shift_right(value, count Int) Int
 
-export extern fn msrt_bytes_join(parts List[Bytes]) move Bytes
+export extern fn msrt_bytes_join(parts List[Bytes]) Bytes
 
-export extern fn msrt_bytes_values(data Bytes) move List[UInt8]
+export extern fn msrt_bytes_values(data Bytes) List[UInt8]

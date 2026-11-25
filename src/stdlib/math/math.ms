@@ -742,7 +742,7 @@ The named methods below perform the same operations. `divide` and `remainder` re
 export extern type BigInt
 
 // Returns an independent copy, so `var acc = base.clone()` starts an accumulator.
-fn BigInt.clone() move BigInt {
+fn BigInt.clone() BigInt {
 	return msstd_bigint_add(self, msstd_bigint_from_int(0))
 }
 

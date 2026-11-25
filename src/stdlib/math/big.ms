@@ -33,7 +33,7 @@ fn hold BigRat.denominator() & BigInt {
 }
 
 // Returns an independent copy.
-fn BigRat.clone() move BigRat {
+fn BigRat.clone() BigRat {
 	return BigRat(num: self.num.clone(), den: self.den.clone())
 }
 
@@ -318,7 +318,7 @@ fn BigFloat.precision() Int {
 }
 
 // Returns an independent copy.
-fn BigFloat.clone() move BigFloat {
+fn BigFloat.clone() BigFloat {
 	return BigFloat(mant: self.mant.clone(), exp: self.exp, prec: self.prec)
 }
 

@@ -25,7 +25,7 @@ fn Bytes.as_bytes() Bytes {
 }
 
 // Copies byte storage without changing the receiver.
-fn Bytes.clone() move Bytes {
+fn Bytes.clone() Bytes {
 	return self.concat(self.view(0, 0))
 }
 
@@ -89,11 +89,11 @@ fn Bytes.starts_with(prefix Bytes) Bool { ... }
 fn Bytes.ends_with(suffix Bytes) Bool { ... }
 
 // Returns a reversed copy without changing the receiver.
-fn Bytes.reversed() move Bytes { ... }
+fn Bytes.reversed() Bytes { ... }
 
 // Returns a copy with one byte replaced; negative indexes are relative to the end.
 // An out-of-range index faults.
-fn Bytes.with_value(index Int, value UInt8) move Bytes { ... }
+fn Bytes.with_value(index Int, value UInt8) Bytes { ... }
 
 // Tests whether the receiver contains no bytes.
 fn Bytes.is_empty() Bool { ... }
@@ -103,17 +103,17 @@ fn Bytes.is_empty() Bool { ... }
 fn Bytes.values() List[UInt8] { ... }
 
 // Returns concatenated bytes without changing either operand.
-fn Bytes.concat(other Bytes) move Bytes { ... }
+fn Bytes.concat(other Bytes) Bytes { ... }
 
 // Returns the number of bytes, not the number of Unicode characters.
 fn Bytes.length() Int { ... }
 
 // Decodes valid UTF-8 as text, or returns `null` when the bytes are invalid.
-fn Bytes.decode_utf8() move String? { ... }
+fn Bytes.decode_utf8() String? { ... }
 
 // Decodes [start, end) as `decode_utf8` does, without copying the range into a new
 // Bytes first. Bounds outside 0 <= start <= end <= length() raise a fault.
-fn Bytes.decode_utf8_range(start, end Int) move String? { ... }
+fn Bytes.decode_utf8_range(start, end Int) String? { ... }
 
 // Reads one signed byte at `at`; a missing byte returns an `Error` of kind
 // `ERANGE`. Offsets are absolute, so a negative `at` is out of range.
@@ -307,11 +307,11 @@ fn var BytesBuilder.append_bytes(values Bytes) Void { ... }
 
 // Consumes the builder and returns its bytes; the builder cannot be used
 // afterwards.
-fn move BytesBuilder.build() move Bytes { ... }
+fn move BytesBuilder.build() Bytes { ... }
 
 // Returns the bytes appended so far and leaves the builder empty, for a builder
 // held in a field.
-fn var BytesBuilder.drain() move Bytes { ... }
+fn var BytesBuilder.drain() Bytes { ... }
 
 // Appends one signed byte.
 fn var BytesBuilder.append_int8(value Int8) Void {

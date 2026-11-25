@@ -213,7 +213,7 @@ Text is written as its UTF-8 encoding.
 */
 export interface Writable {
 	// The bytes to write, as a new value the writer may keep.
-	fn as_bytes() move Bytes
+	fn as_bytes() Bytes
 }
 
 /*
@@ -397,7 +397,7 @@ export interface Comparable {
 // parameter.
 export interface Clonable {
 	// Returns an independent deep copy of this value.
-	fn clone() move Self
+	fn clone() Self
 }
 
 /*
@@ -418,7 +418,7 @@ export interface Data { ... }
 // declaring `to_string`.
 export interface Stringable {
 	// Returns this value as text.
-	fn to_string() move String
+	fn to_string() String
 }
 
 // A type with a stable hash that is consistent with its `Equal` implementation.
@@ -456,7 +456,7 @@ export fn join_errors(errors List[Error]) Error? {
 }
 
 // An Optional copies its payload; `null` stays `null`.
-fn Optional[T Clonable].clone() move T? {
+fn Optional[T Clonable].clone() T? {
 	match self {
 		value => return value.clone()
 		null => return null
