@@ -77,6 +77,13 @@ MS_NODISCARD static bool method_declaration(Parser *p, MsToken token, MsDecl **o
         ms_span_of_text("a method either takes its receiver with `move` or changes it with `var`, not both"));
     return false;
   }
+  bool holding = parse_take_hold(p, (const MsTok[]){MS_T_Name}, 1);
+  if (holding && consuming) {
+    parse_fail(p, parse_previous(p),
+               ms_span_of_text("a method either takes its receiver with `move` or lets the result keep using it "
+                               "with `hold`, not both"));
+    return false;
+  }
   MsToken receiver_name = {0};
   if (!parse_need_token(p, MS_T_Name, &receiver_name))
     return false;
@@ -94,6 +101,7 @@ MS_NODISCARD static bool method_declaration(Parser *p, MsToken token, MsDecl **o
   if (!parse_method_signature(p, name, true, true, mutating, receiver_name.pos, &method))
     return false;
   method->consuming = consuming;
+  method->holding = holding;
   method->receiver_args = args;
   /* The Rust parser allocates the declaration's id after the method's. */
   MsDecl *d = parse_new_decl(p, token.pos, MS_D_IMPL);

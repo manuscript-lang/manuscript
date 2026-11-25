@@ -173,6 +173,10 @@ bool parse_receiver_method_ahead(const Parser *p) {
   if (parse_ahead(p, at).kind == MS_T_Var) {
     at++;
   }
+  if (parse_ahead(p, at).kind == MS_T_Name && parse_text_is(p, parse_ahead(p, at), "hold") &&
+      parse_ahead(p, at + 1).kind == MS_T_Name) {
+    at++;
+  }
   if (parse_ahead(p, at).kind != MS_T_Name) {
     return false;
   }
@@ -271,9 +275,10 @@ MS_NODISCARD bool parse_empty_declaration(Parser *p, MsToken token, MsName name,
   return true;
 }
 
-/* `move fn` in an interface or type body. */
+/* `move fn` or `hold fn` in an interface or type body. */
 static bool at_move_fn(const Parser *p) {
-  return parse_kind(p) == MS_T_Name && parse_text_is(p, parse_peek(p), "move") &&
+  return parse_kind(p) == MS_T_Name &&
+         (parse_text_is(p, parse_peek(p), "move") || parse_text_is(p, parse_peek(p), "hold")) &&
          parse_ahead(p, 1).kind == MS_T_Fn;
 }
 
@@ -373,6 +378,7 @@ MS_NODISCARD static bool enum_variant(Parser *p) {
 MS_NODISCARD static bool member_signature(Parser *p, MsToken token, MsName name, MsTypeParams tps) {
   bool consuming = parse_take_move(p, (const MsTok[]){MS_T_Fn}, 1);
   bool mutating = parse_take(p, MS_T_Var);
+  bool holding = !consuming && parse_take_hold(p, (const MsTok[]){MS_T_Fn}, 1);
   MsToken fn_token = {0};
   if (!parse_need_token(p, MS_T_Fn, &fn_token))
     return false;
@@ -394,6 +400,7 @@ MS_NODISCARD static bool member_signature(Parser *p, MsToken token, MsName name,
   if (!parse_method_signature(p, mname, true, false, mutating, fn_token.pos, &me))
     return false;
   me->consuming = consuming;
+  me->holding = holding;
   if (!parse_end(p))
     return false;
   parse_push_ptr(p, me);
@@ -439,7 +446,10 @@ MS_NODISCARD bool parse_declaration_member(Parser *p, MsToken token, MsName name
     return enum_variant(p);
   }
   bool starts_signature = parse_kind(p) == MS_T_Fn || at_move_fn(p) ||
-                          (parse_kind(p) == MS_T_Var && parse_ahead(p, 1).kind == MS_T_Fn);
+                          (parse_kind(p) == MS_T_Var && (parse_ahead(p, 1).kind == MS_T_Fn ||
+                                         (parse_ahead(p, 1).kind == MS_T_Name &&
+                                          parse_text_is(p, parse_ahead(p, 1), "hold") &&
+                                          parse_ahead(p, 2).kind == MS_T_Fn)));
   return starts_signature ? member_signature(p, token, name, tps) : type_field(p);
 }
 

@@ -70,6 +70,7 @@ struct MsParam {
   bool implied_default; /* `def` is the `null` a `T?` parameter or field gets without a written default */
   bool is_mutable;
   bool moving;
+  bool holding; /* `hold x T`: the result keeps using the argument */
 };
 
 /* ---- expressions ---- */
@@ -315,6 +316,7 @@ typedef struct MsMethod {
   MsFunc func;
   bool mutating;
   bool consuming;
+  bool holding; /* `fn hold T.m()`: the result keeps using the receiver */
   MsTypeRefs receiver_args;
 } MsMethod;
 
