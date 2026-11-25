@@ -290,25 +290,8 @@ BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
                           .cranelift = request->build_type == MS_BUILD_DEBUG ? cranelift_library() : ms_span_of(NULL, 0)};
 }
 
-/* `MS_BUILD_TIMES` set to anything but 0 prints how long each step of the back end took, in milliseconds. */
-static bool times_from_environment(void) {
-  MsString value = ms_string_empty();
-  const bool set = ms_env_get("MS_BUILD_TIMES", &value) && !ms_span_is_text(ms_string_span(&value), "0");
-  ms_string_release(&value);
-  return set;
-}
-
-static void report_step(bool report, const char *step, int64_t *mark) {
-  if (!report) {
-    return;
-  }
-  const int64_t now = ms_clock_ns();
-  (void)fprintf(stderr, "ms build: %-8s %7.1f ms\n", step, (double)(now - *mark) / 1e6);
-  *mark = now;
-}
-
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
-  const bool report = times_from_environment();
+  const bool report = ms_build_times_enabled();
   int64_t mark = ms_clock_ns();
   MsStrBuild ir[EMIT_MAX_UNITS] = {ms_strbuild_new()};
   uint32_t units = 1;
@@ -318,7 +301,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, ir, &units, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
-  report_step(report, "codegen", &mark);
+  ms_build_time_step(report, "codegen", &mark);
   MsString lld_storage, files_storage, runtime_storage;
   MsStrBuild lld_installed = ms_strbuild_new();
   MsStrBuild files_installed = ms_strbuild_new(), runtime_installed = ms_strbuild_new();
@@ -373,7 +356,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   } else if (ok) {
     ok = make_objects(request, &program, ir, units, llvm, object, error);
   }
-  report_step(report, "object", &mark);
+  ms_build_time_step(report, "object", &mark);
   if (ok) {
     const LinkOptions link = {.lld = lld, .llvm = llvm, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
                               .quick = request->build_type == MS_BUILD_DEBUG,
@@ -384,7 +367,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
     ok = link_executable(&link, &job, &link_why) || fail(error, "", ms_strbuild_span(&link_why));
     ms_strbuild_free(&link_why);
   }
-  report_step(report, "link", &mark);
+  ms_build_time_step(report, "link", &mark);
   if (ms_string_span(&scratch).len != 0) {
     ms_path_remove_tree(ms_string_span(&scratch));
   }
