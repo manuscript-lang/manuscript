@@ -2,7 +2,7 @@
 
 * Status: **Approved by Chinmay 2026-11-24, implementing** (checked against `54bac8d7`)
 * Authors: [chinmaymk](https://github.com/chinmaymk)
-* Implementation: stages 1 to 3 merged ([#6900](https://github.com/manuscript-lang/manuscript/pull/6900), #6908, #6909, #6910, #6913); stage 4 in [#6916](https://github.com/manuscript-lang/manuscript/pull/6916) except the native name list; stage 5 not started
+* Implementation: stages 1 to 3 merged ([#6900](https://github.com/manuscript-lang/manuscript/pull/6900), #6908, #6909, #6910, #6913); stage 4 merged (#6916, #6917, #6918, #6919); only the extern `@borrows` table remains; stage 5 not started
 * Supersedes / Extracted from: result-borrow inference in [borrowed-parts](borrowed-parts.md) rule 2; the body-less rule in [borrowed-results](borrowed-results.md)
 * Direction: Chinmay, 2026-11-24: "functions need self-sufficient signatures: a signature states everything a caller needs; bodies are checked against signatures, never read by callers"; one word means one thing; two questions, two marks (how long to keep the memory, owned or reference); remove result `move`; no copy-on-write; no reference counting; scoped to signatures, fields, iterators and interfaces (shared handles, pools and tasks come later). Advice from a Fable review shaped `&T` as a type form.
 
@@ -90,7 +90,7 @@ fn(hold List[Int]) &Int?                         // function types carry both
 
 **Lowering.** `ret_borrowed` is the type containing `&`, no longer derived from a body walk (`lower_func.c:345-362`). Combinations the ABI cannot honor (a `&` result with a `move` parameter, a `&T?` over a boxed Optional) are check errors, not silent copies; per-component looks in `Result[&T, Error]` need the result ABI to carry which component borrows, since `MS_RESULT_BORROWED` today means every path. Both are stage 2 work with fixtures. `lower_temp.c:58` and the gate below use the predicate "type contains `&`".
 
-**Natives.** A body-less declaration in `src/stdlib/*.ms` writes `hold` and `&` like any function; the `@borrows` comments in `src/runtime/core/*.h` and the name list `native_result_borrows` (`result_borrows.c:440`) are deleted. The `"get"` accessor list in `ms_own_native_get` is a separate fact and stays.
+**Natives.** A body-less declaration in `src/stdlib/*.ms` writes `hold` and `&` like any function; the name list `native_result_borrows` is deleted (done). The `@borrows` comments in `src/runtime/core/*.h` stay for extern functions, whose signatures cannot say it. The `"get"` accessor list in `ms_own_native_get` is a separate fact and stays.
 
 **Borrow-pass gate.** `ms_own_borrows` runs only when the stdlib declares a result `move` (`borrows.c:733`); it becomes "the stdlib declares any `&` result", with a reject fixture proving it fires.
 
@@ -159,7 +159,7 @@ Programs that return a part of an argument gain `hold` and `&`; result `move` is
 1. Done (#6900): kept resource and generic parameters must be `move`.
 2. Parse and check `hold` and `&T`. Where a mode is written it wins and a body that disagrees is an error. Migration command (not committed; the generator ran from the old analysis). Gate: `make verify`, `make conform`.
 3. Migrate stdlib, tests, docs. Gate: same; a no-diff `ms emit` of the stdlib for result `hold`, and a reviewed diff for the few callbacks whose capture mode changes.
-4. Delete the body inference and result `move`; rewrite the borrow-pass gate (done). Delete the native name list and `@borrows` once `Map.keys`, `Map.values`, the payload `get` and `List.slice` state their borrows in signatures (open). Gate: same, `make count-check`, a `bench/perf` run against the latest baseline.
+4. Delete the body inference and result `move`; rewrite the borrow-pass gate (done). Delete the native name list: `Map.keys`, `Map.values`, `Map.get` and `List.slice` state their borrows in signatures (done). `@borrows` stays for externs. Gate: same, `make count-check`, a `bench/perf` run against the latest baseline.
 5. `&` fields, look records, iterators and interface looks (the wider model, items 1 to 3). Gate: reject fixtures for escape, pipe send and temporary sources; the hidden-copy fix lands first or here.
 
 ## Open questions
