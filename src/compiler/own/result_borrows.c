@@ -292,6 +292,106 @@ static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
   return borrowed | (reached.all.owned || reached.all.mask == 0 ? 0 : MS_RESULT_BORROWED);
 }
 
+static bool named_as(const Pass *pass, const MsTypeRef *t, const char *text) {
+  return t->kind == MS_TYPE_NAMED && ms_span_is_text(ms_names_span(pass->program->names, t->name), text);
+}
+
+/* Whether a written type has a `&` anywhere inside it. */
+static bool has_ref(const MsTypeRef *t) {
+  if (t == NULL) {
+    return false;
+  }
+  if (t->is_ref) {
+    return true;
+  }
+  for (uint32_t index = 0; t->kind == MS_TYPE_NAMED && index < t->args.len; index++) {
+    if (has_ref(t->args.ptr[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Whether the result itself is a reference: `&T`, or the payload of `&T?` and `&T!`. */
+static bool ref_result(const Pass *pass, const MsTypeRef *t) {
+  if (t == NULL) {
+    return false;
+  }
+  if (t->is_ref) {
+    return true;
+  }
+  return t->args.len >= 1 && (named_as(pass, t, "Optional") || named_as(pass, t, "Result")) && ref_result(pass, t->args.ptr[0]);
+}
+
+/* A signature that writes `hold` or `&` states the mask itself: the positions it holds, and the borrowed-result bit when
+ * the result is a reference. Returns false for a signature that writes neither, which still gets the inferred mask. */
+static bool declared_mask(const Pass *pass, bool receiver_holds, MsParams params, const MsTypeRef *result, uint32_t *out) {
+  uint32_t mask = receiver_holds && pass->method ? 1u : 0u;
+  bool declared = receiver_holds;
+  for (uint32_t index = 0; index < params.len; index++) {
+    const uint32_t position = index + (pass->method ? 1u : 0u);
+    if (params.ptr[index]->holding && position < 31) {
+      mask |= UINT32_C(1) << position;
+      declared = true;
+    }
+  }
+  if (has_ref(result)) {
+    declared = true;
+    mask |= ref_result(pass, result) ? MS_RESULT_BORROWED : 0;
+  }
+  *out = mask;
+  return declared;
+}
+
+/* A signature's `hold` and `&` against its body: the body may return a part of a held argument only, and a `&` result
+ * must be a part of one. */
+static void report_declared(Pass *pass, uint32_t module, MsPos pos, bool receiver_holds, MsParams params, MsStmts body,
+                            const MsTypeRef *result) {
+  uint32_t declared = 0;
+  if (!declared_mask(pass, receiver_holds, params, result, &declared)) {
+    return;
+  }
+  const uint32_t holds = declared & ~MS_RESULT_BORROWED;
+  if ((declared & MS_RESULT_BORROWED) != 0 && holds == 0) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "a `&` result points into an argument; mark that argument `hold`, or return an owned value");
+    ms_check_report(pass->program, module, pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    return;
+  }
+  const Reached reached = reached_by(pass, params, body, MS_TY_NONE);
+  if (!reached.known) {
+    return;
+  }
+  const uint32_t moved = moved_positions(pass, params);
+  const uint32_t used = reached.all.mask & ~moved & ~MS_RESULT_BORROWED;
+  for (uint32_t position = 0; position < 31; position++) {
+    const uint32_t bit = UINT32_C(1) << position;
+    if ((used & bit) == 0 || (holds & bit) != 0) {
+      continue;
+    }
+    const bool is_self = pass->method && position == 0;
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "the result is a part of `");
+    ms_strbuild_append_text(&text, is_self ? "self" : "");
+    if (!is_self) {
+      const uint32_t index = position - (pass->method ? 1u : 0u);
+      ms_strbuild_append(&text, ms_names_span(pass->program->names, params.ptr[index]->name));
+    }
+    ms_strbuild_append_text(&text, "`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`");
+    ms_check_report(pass->program, module, pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    return;
+  }
+  if ((declared & MS_RESULT_BORROWED) != 0 && used == 0 && !reached.all.owned) {
+    return;
+  }
+  if ((declared & MS_RESULT_BORROWED) != 0 && (used & holds) == 0) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "a `&` result must be a part of a `hold` argument, but this body returns a new value; "
+                                   "remove the `&` or return a part of the held argument");
+    ms_check_report(pass->program, module, pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+}
+
 /* A callable that returns a part of its arguments on one path and a new value on another cannot say who owns its result. */
 static MsTy written_type(const Pass *pass, const MsTypeRef *ref) {
   return ref != NULL && ref->id < pass->facts->node_count ? pass->written[ref->id] : MS_TY_NONE;
@@ -341,12 +441,15 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
         pass.method = false;
         pass.self_node = decl->id;
         report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result);
+        report_declared(&pass, module, decl->pos, false, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result);
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
         pass.self_node = method->id;
         report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result);
+        report_declared(&pass, module, method->pos, method->holding, method->func.params, method->func.body,
+                        method->func.result);
       }
     }
     ms_free(written);
@@ -373,13 +476,21 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes) {
       if (decl->kind == MS_D_FN) {
         pass.method = false;
         pass.self_node = decl->id;
-        changed |= store(facts, decl->id, mask_of(&pass, decl->u.fn.params, decl->u.fn.body));
+        uint32_t declared = 0;
+        changed |= store(facts, decl->id,
+                         declared_mask(&pass, false, decl->u.fn.params, decl->u.fn.result, &declared)
+                             ? declared
+                             : mask_of(&pass, decl->u.fn.params, decl->u.fn.body));
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
         pass.self_node = method->id;
-        changed |= store(facts, method->id, mask_of(&pass, method->func.params, method->func.body));
+        uint32_t declared = 0;
+        changed |= store(facts, method->id,
+                         declared_mask(&pass, method->holding, method->func.params, method->func.result, &declared)
+                             ? declared
+                             : mask_of(&pass, method->func.params, method->func.body));
       }
     }
   }
