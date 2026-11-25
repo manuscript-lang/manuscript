@@ -11,7 +11,8 @@
 #include "base/arena.h"
 #include "tooling/json_value.h"
 
-enum { QUEUE_CAPACITY = 256 };
+/* The client's frames wait for room once this many are queued; a worker's replies never wait (see `enqueue`). */
+enum { CLIENT_LIMIT = 256, CLIENT_SOURCE = 0 };
 
 typedef struct Entry {
   MsString body;
@@ -31,8 +32,8 @@ MS_LIST_DEFINE(PendingList, pending_list, Pending)
 struct LspInput {
   uv_mutex_t lock;
   uv_cond_t readable, writable;
-  Entry queue[QUEUE_CAPACITY];
-  size_t head, count;
+  Entry *queue; /* a ring that grows */
+  size_t capacity, head, count, clients; /* clients: queued frames from CLIENT_SOURCE */
   PendingList pending;
 };
 
@@ -97,10 +98,23 @@ static bool note_message(LspInput *input, MsSpan body, bool *defers) {
 }
 
 static void enqueue(LspInput *input, Entry entry) {
+  /* Only the client waits for room. A worker's reader that waited behind the client's frames would stop draining its
+   * pipe while the session is writing to that worker, and the two would block on each other. */
+  const bool client = entry.source == CLIENT_SOURCE;
   uv_mutex_lock(&input->lock);
-  while (input->count == QUEUE_CAPACITY) uv_cond_wait(&input->writable, &input->lock);
-  input->queue[(input->head + input->count) % QUEUE_CAPACITY] = entry;
+  while (client && input->clients >= CLIENT_LIMIT) uv_cond_wait(&input->writable, &input->lock);
+  if (input->count == input->capacity) {
+    const size_t grown = input->capacity == 0 ? CLIENT_LIMIT : input->capacity * 2;
+    Entry *queue = ms_alloc(grown * sizeof *queue);
+    for (size_t i = 0; i < input->count; i++) queue[i] = input->queue[(input->head + i) % input->capacity];
+    if (input->queue != NULL) ms_free(input->queue);
+    input->queue = queue;
+    input->capacity = grown;
+    input->head = 0;
+  }
+  input->queue[(input->head + input->count) % input->capacity] = entry;
   input->count++;
+  if (client) input->clients++;
   uv_cond_signal(&input->readable);
   uv_mutex_unlock(&input->lock);
 }
@@ -164,8 +178,9 @@ LspFrameStatus lsp_input_next(LspInput *input, MsStrBuild *body, const char **er
   uv_mutex_lock(&input->lock);
   while (input->count == 0) uv_cond_wait(&input->readable, &input->lock);
   Entry entry = input->queue[input->head];
-  input->head = (input->head + 1) % QUEUE_CAPACITY;
+  input->head = (input->head + 1) % input->capacity;
   input->count--;
+  if (entry.source == CLIENT_SOURCE) input->clients--;
   uv_cond_signal(&input->writable);
   uv_mutex_unlock(&input->lock);
   if (source != NULL) *source = entry.source;
