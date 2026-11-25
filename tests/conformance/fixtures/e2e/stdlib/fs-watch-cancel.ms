@@ -15,16 +15,21 @@ fn follow(root String, last String, move seen WriteStream[Int]) Void! {
 	var events = watch(root, recursive: true, options: WatchOptions(max_events: 4096))?
 	var out = seen
 	out.write(0)?
+	var count = 0
 
 	while true {
-		event := events.next()?
+		ev := events.next()
+		if ev.is_error() { print(f"DBG follow next error after {count}: {ev.err().message}\n") }
+		event := ev?
 		found := event
+		count += 1
 
 		if found != null {
 			if found.path == last {
 				out.write(1)?
 			}
 		} else {
+			print(f"DBG follow stream ended after {count}\n")
 			break
 		}
 	}
@@ -52,7 +57,11 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 		i += 1
 	}
 
-	_arrived := reader.next()?
+	r2 := reader.next()
+	if r2.is_error() { print(f"DBG arrived error: {r2.err().message} kind={r2.err().kind}\n") }
+	_arrived := r2?
 	switch.cancel()
-	expect_true(work.wait().is_error())?
+	w := work.wait()
+	print(f"DBG work after cancel error={w.is_error()}\n")
+	expect_true(w.is_error())?
 }
