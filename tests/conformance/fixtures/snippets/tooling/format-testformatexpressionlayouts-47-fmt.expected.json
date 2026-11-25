@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() String {\n\treturn incoming_request_payload.normalize_whitespace().replace(\n\t\told: legacy_separator,\n\t\tnew: current_separator,\n\t).trim()\n}\n"
-  }
-}

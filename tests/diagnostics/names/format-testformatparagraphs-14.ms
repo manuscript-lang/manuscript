@@ -1,0 +1,17 @@
+// conform: tags=closures,control-flow,diagnostics,tier-core
+// conform: phase=check
+// conform: origin=pkg/tooling/format/format_paragraphs_test.go:211 TestFormatParagraphs
+fn example() Int {
+	result := apply(
+		value: 3,
+		transform: (
+			fn(value Int) Int {
+				if value == 0 { return 0 } next := value + 1
+				return next
+			}
+		),
+	)
+
+	return result
+}
+// expect-error: MS2001 5:15 unknown binding apply; declare it with 'apply := ...' before use, define 'fn apply(...) T { ... }', or import it from a module

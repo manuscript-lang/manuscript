@@ -1,0 +1,12 @@
+// conform: tags=diagnostics,closures,functions,tier-core
+// conform: phase=check
+// conform: origin=ms-build/tests/callable_defaults.rs
+fn original(value Int = 7) Int => value + 1
+
+fn replacement(value Int) Int => value + 2
+
+export fn main() Int {
+	callbacks := [original, replacement]
+	return callbacks[1]()
+}
+// expect-error: MS3003 10:12 missing argument 1: Int; pass it positionally, without a label

@@ -15,7 +15,25 @@ import (
 	glob,
 	read_file,
 	remove from "@std/os/fs.ms",
+
+	inline_lines from "./expect.ms",
 )
+
+// The directories of `tests/` that hold fixtures; the rest of `tests/` (lsp, docs,
+// checks, commands) are other kinds of test.
+FIXTURE_DIRS List[String] := ["lang", "diagnostics", "format"]
+
+// Glob patterns for files named `name` anywhere below the fixture directories.
+export fn within(name String) List[String] {
+	return FIXTURE_DIRS.map(dir => f"{dir}/**/{name}")
+}
+
+// Glob patterns for the sources and project markers below the fixture directories.
+fn fixture_files() List[String] {
+	var patterns = within("*.ms")
+	patterns.extend(within("conform.meta"))
+	return patterns
+}
 
 // A recorded fixture: a single .ms file (with an optional support/ directory beside it)
 // or a project directory.
@@ -30,12 +48,20 @@ export type Fixture {
 	deterministic Bool
 	sidecar String
 	expected JsonValue
+	// The trailing `// expect-` lines of the file; a fixture with any has no
+	// sidecar.
+	inline List[String]
+	// A phase after the first in the file's `phase=a,b` header: the program is checked
+	// by that phase's default expectation (a clean parse, already formatted for
+	// `parse`), with nothing recorded.
+	secondary Bool
 }
 
 // The `// conform:` header of a fixture.
 export type Meta {
 	tags List[String]
 	phase String
+	phases List[String]
 	args List[String]
 	timeout Int
 	entry, origin String
@@ -72,6 +98,7 @@ export fn parse_meta(text String) Meta {
 	var meta = Meta(
 		tags: [],
 		phase: "",
+		phases: [],
 		args: [],
 		timeout: 0,
 		entry: "",
@@ -105,7 +132,8 @@ export fn parse_meta(text String) Meta {
 				}
 			}
 		} else if key == "phase" {
-			meta.phase = value.clone()
+			meta.phases = value.split(",").map(name => name.trim().clone())
+			meta.phase = meta.phases[0].clone()
 		} else if key == "timeout" {
 			meta.timeout = value.parse_int() or 0
 		} else if key == "entry" {
@@ -145,7 +173,9 @@ export fn read_text(path String) String {
 // a fixture.
 export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 	var found = List[Fixture]()
-	projects := glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]).map(
+	projects := glob(root, GlobOptions(patterns: within("conform.meta"))).get_or(
+		[]
+	).map(
 		entry => entry.path.slice(
 			0,
 			entry.path.length() - "conform.meta".length(),
@@ -153,9 +183,7 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 	)
 	var candidates = List[String]()
 
-	for entry in glob(root, GlobOptions(patterns: ["**/*.ms", "**/conform.meta"])).get_or(
-		[]
-	) {
+	for entry in glob(root, GlobOptions(patterns: fixture_files())).get_or([]) {
 		if entry.path.contains(
 			"/support/"
 		) or entry.path.starts_with("support/") { continue }
@@ -183,13 +211,13 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 		if not selected(id, filters) { continue }
 
 		path := if is_dir { f"{root}/{id}" } else { f"{root}/{id}.ms" }
-		var meta = parse_meta(
-			read_text(
-				if is_dir { f"{path}/conform.meta" } else { path.clone() }
-			)
-		)
-		if meta.phase != phase { continue }
+		source := read_text(if is_dir { f"{path}/conform.meta" } else { path.clone() })
+		var meta = parse_meta(source)
+		if not meta.phases.contains(
+			phase
+		) { continue }
 
+		inline := if is_dir { List[String]() } else { inline_lines(source) }
 		sidecar := if is_dir { f"{path}/expected.json" } else { f"{root}/{id}.expected.json" }
 		var expected = JsonValue.Null
 		recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected")
@@ -222,6 +250,8 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 				deterministic: meta.deterministic,
 				sidecar: sidecar.clone(),
 				expected: expected.clone(),
+				inline: inline.clone(),
+				secondary: meta.phase != phase,
 			)
 		)
 	}
@@ -268,7 +298,9 @@ export fn materialize(fx Fixture, work String) Void {
 // The `// conform:` header lines of `meta`, as `parse_meta` reads them.
 export fn render_meta(meta Meta) String {
 	var out = f"// conform: tags={meta.tags.join(",")}\n"
-	if meta.phase != "" { out += f"// conform: phase={meta.phase}\n" }
+	if not meta.phases.is_empty() {
+		out += f"// conform: phase={meta.phases.join(",")}\n"
+	}
 	if meta.origin != "" { out += f"// conform: origin={meta.origin}\n" }
 
 	if not meta.args.is_empty() {
@@ -286,7 +318,9 @@ export fn render_meta(meta Meta) String {
 // outside
 // `support/` directories and outside project directories, or a project directory.
 export fn candidate_ids(root String) List[String] {
-	projects := glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]).map(
+	projects := glob(root, GlobOptions(patterns: within("conform.meta"))).get_or(
+		[]
+	).map(
 		entry => entry.path.slice(
 			0,
 			entry.path.length() - "conform.meta".length(),
@@ -294,9 +328,7 @@ export fn candidate_ids(root String) List[String] {
 	)
 	var ids = List[String]()
 
-	for entry in glob(root, GlobOptions(patterns: ["**/*.ms", "**/conform.meta"])).get_or(
-		[]
-	) {
+	for entry in glob(root, GlobOptions(patterns: fixture_files())).get_or([]) {
 		if entry.path.contains(
 			"/support/"
 		) or entry.path.starts_with(

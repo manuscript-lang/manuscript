@@ -12,7 +12,7 @@ Proposal, 2026-11-13, measured on `main` at `8ecb3576` plus #3835 (4 cores, rele
 
 ## Problem
 
-Measured on 40 `phase=test` fixtures in `tests/conformance/fixtures/e2e/stdlib` (242 tests):
+Measured on 40 `phase=test` fixtures in `tests/lang/stdlib` (242 tests):
 
 | Run | Wall |
 | --- | --- |

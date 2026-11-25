@@ -6,5 +6,5 @@ Decision: `Set[Int]([3, 1, 2])` and `Set([3, 1, 2])` build a Set from a list (in
 
 
 Apply when: adding collection constructors or writing fixtures that need a populated Set.
-Evidence: [Set declaration](../../../src/stdlib/collections/collections.ms), [constructor uses](../../../tests/conformance/fixtures/e2e/stdlib/preferred-names.ms), commit c025937b.
+Evidence: [Set declaration](../../../src/stdlib/collections/collections.ms), [constructor uses](../../../tests/lang/stdlib/preferred-names.ms), commit c025937b.
 Verify: duplicates collapse, first-seen order is kept, and `Set[Int]([])` is empty.

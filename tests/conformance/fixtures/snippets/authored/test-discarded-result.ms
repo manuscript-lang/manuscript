@@ -1,7 +1,0 @@
-// conform: tags=diagnostics,testing,tier-stdlib,try-result
-// conform: phase=check
-import expect_equal from "@std/test/test.ms"
-
-test "a discarded expectation checks nothing" {
-	void expect_equal(1, 2)
-}

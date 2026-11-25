@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum First {\n\tReady(value Int)\n}\n\nenum Second {\n\tReady(value Int)\n}\n\nfn wrong() First {\n\treturn Ready(value: 1)\n}\n"
-  }
-}

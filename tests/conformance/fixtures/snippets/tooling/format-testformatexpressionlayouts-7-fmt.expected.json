@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work(\n\tbalance Int = initial_account_balance\n\t+ pending_deposit_total * applicable_exchange_rate\n\t- pending_withdrawal_total\n) Int {\n\treturn balance\n}\n"
-  }
-}

@@ -1,0 +1,39 @@
+// conform: tags=alternatives,closures,control-flow,diagnostics,generics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/build/compiler_test.go:33 TestCallArgumentLabelRejections
+fn one(value Int) Int {
+	return value
+}
+
+fn two(left Int, right Int) Int {
+	return left - right
+}
+
+fn zero() Void {
+	return
+}
+
+fn identity[T](hold value T) &T {
+	return value
+}
+
+fn apply(transform fn(Int) Int) Int {
+	return transform(1)
+}
+
+type Box {
+	value Int
+}
+
+enum Choice {
+	Payload(value Int)
+}
+
+interface Read {
+	fn get() Int
+}
+
+fn Box.get() Int {
+	return self.value
+}
+// expect-exit: 0

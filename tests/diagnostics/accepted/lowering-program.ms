@@ -1,0 +1,30 @@
+// conform: tags=control-flow,diagnostics,faults,lists,modules,mutation,stdlib-collections,tier-stdlib
+// conform: phase=check
+// conform: origin=bench/perf/lowering/program.ms
+
+fn scalar(limit Int) Int {
+	var total = 0
+	for index in 0..limit {
+		total += index
+	}
+	return total
+}
+
+fn add(left Int, right Int) Int => left + right
+
+fn calls(limit Int) Int {
+	var total = 0
+	for index in 0..limit {
+		total = add(total, index)
+	}
+	return total
+}
+
+fn items(values List[Int], limit Int) Int {
+	var total = 0
+	for index in 0..limit {
+		total += values[index]
+	}
+	return total
+}
+// expect-exit: 0

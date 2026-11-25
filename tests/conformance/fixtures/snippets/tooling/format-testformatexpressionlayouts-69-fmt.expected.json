@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Int {\n\tif (\n\t\ttagged_detail(integer) != \"integer 7\"\n\t\tor tagged_detail(text) != \"text diagnostic\"\n\t) {\n\t\treturn 1\n\t}\n\treturn 0\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn use(value Int?) Int {\n\tpresent := match value {\n\t\tn => n\n\t\tnull => return 0\n\t}\n\n\treturn match value {\n\t\tn => present + n\n\t\tnull => 0\n\t}\n}\n"
-  }
-}

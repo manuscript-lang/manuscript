@@ -1,0 +1,23 @@
+// conform: tags=control-flow,faults,formatter,modules,optional,records,stdlib-faults,testing,tier-stdlib
+// conform: phase=test,parse
+// conform: origin=documentation/core-language/types/named-types.md:120
+import panic from "@std/core.ms"
+
+type Node {
+	value Int
+	next Node?
+}
+
+test "recursive links" {
+	var node = Node(value: 1, next: null)
+	node.next = Node(value: 5, next: null)
+
+	var copy = node.clone()
+	copy.next = Node(value: 2, next: null)
+	if (
+		(node.next or panic("called Optional.get() on null")).value != 5
+		or (copy.next or panic("called Optional.get() on null")).value != 2
+	) {
+		panic("clones must be independent")
+	}
+}

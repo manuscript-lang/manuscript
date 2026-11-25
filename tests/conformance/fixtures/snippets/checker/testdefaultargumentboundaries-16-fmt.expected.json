@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() Void {\n\tvar outer = 1\n\t_callback := fn(\n\t\tvalue Int = (\n\t\t\tfn() Int {\n\t\t\t\touter = 2\n\t\t\t\treturn outer\n\t\t\t}\n\t\t)()\n\t) Int {\n\t\treturn value\n\t}\n}\n"
-  }
-}

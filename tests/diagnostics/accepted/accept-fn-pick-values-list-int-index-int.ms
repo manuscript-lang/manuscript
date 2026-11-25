@@ -1,0 +1,10 @@
+// conform: tags=diagnostics
+// conform: phase=check
+fn pick(values List[Int], index Int) Int {
+	return values[index]
+}
+
+export fn main() Int {
+	return pick([1, 2, 3], 3)
+}
+// expect-exit: 0

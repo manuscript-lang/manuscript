@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Counter {\n\tvalue Int\n}\n\nfn Counter.overflow() Int {\n\treturn self.value * self.value\n}\n\ntest \"inherent fault frame\" {\n\tCounter(value: 9223372036854775807).overflow()\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Void {\n\tvalues := {\n\t\t\"balance\": initial_account_balance\n\t\t+ pending_deposit_total * applicable_exchange_rate\n\t\t- pending_withdrawal_total\n\t}\n}\n"
-  }
-}

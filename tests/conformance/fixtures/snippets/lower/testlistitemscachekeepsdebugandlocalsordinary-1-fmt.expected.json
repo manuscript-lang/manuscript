@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Int {\n\tvalues := [1, 2]\n\tvar i = 0\n\tvar total = 0\n\n\twhile i < 2 {\n\t\ttotal += values[i]\n\t\ti += 1\n\t}\n\n\treturn total\n}\n"
-  }
-}

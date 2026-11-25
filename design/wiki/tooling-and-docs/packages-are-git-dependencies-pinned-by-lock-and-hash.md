@@ -17,4 +17,4 @@ Verified: package files live outside the project root, so confinement and the lo
 Editor: package files live in the cache, not under the project root, so a logical module name (`@pg/conn.ms`) maps to a path through `Analysis::package_roots`, and import completion reads `Project::deps` as well as `aliases`. A new place that turns a module name into a path must do the same.
 
 Evidence: [proposal](../../proposals/packages.md), `src/cli/package_validate.c`, `src/compiler/project/solve*.c`.
-Verify: `ctest --preset ci` (package tests) and the `install` command fixtures under `tests/conformance/commands/install`.
+Verify: `ctest --preset ci` (package tests) and the `install` command fixtures under `tests/commands/install`.

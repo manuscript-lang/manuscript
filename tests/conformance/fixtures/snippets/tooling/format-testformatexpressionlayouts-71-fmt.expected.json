@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() String {\n\tvalues := [1, 2, 3]\n\ttext := f\"# A deliberately long literal with {format(value: \"nested text\")} that must retain its exact original spelling.\"\n\tif enabled { return text }\n\n\treturn text\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\ntest \"sum indexes\" {\n\tvar total = 0\n\tfor index in 0..5 {\n\t\ttotal += index\n\t}\n\tif total != 10 {\n\t\treturn panic(f\"Expected 10, got {total}\")\n\t}\n}\n"
-  }
-}

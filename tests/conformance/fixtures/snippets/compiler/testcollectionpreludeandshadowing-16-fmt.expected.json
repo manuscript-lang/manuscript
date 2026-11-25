@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Set[T] {\n\tvalue T\n}\n\nfn f(values Set[Int]) Void {\n\tvalues.add(1)\n}\n"
-  }
-}

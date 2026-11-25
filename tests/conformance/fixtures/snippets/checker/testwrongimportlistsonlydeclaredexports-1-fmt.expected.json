@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export enum MoneyError {\n\tInvalid\n}\n\nexport fn parse_cents() Int => 0\n\nexport fn format_cents() String => \"0\"\n"
-  }
-}

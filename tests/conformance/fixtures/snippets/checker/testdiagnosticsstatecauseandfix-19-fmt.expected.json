@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(n Int?) Int {\n\tif n == 0 {\n\t\treturn 1\n\t}\n\treturn 0\n}\n"
-  }
-}

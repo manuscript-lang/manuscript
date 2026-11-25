@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn wrong(value Int!String) Bool {\n\treturn value.is_some()\n}\n"
-  }
-}

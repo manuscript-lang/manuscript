@@ -258,6 +258,17 @@ fn without_header(source String) String {
 	return source.slice(skip, source.length())
 }
 
+// `{"clean": true}` when a program parses and `fmt` leaves it as it is: the observation
+// of a fixture that names `parse` as a later phase.
+fn clean_parse(fields Map[String, JsonValue], before String) JsonValue {
+	diagnostics := (fields.get("diagnostics") or JsonValue.Null).as_list() or []
+	after := (fields.get("fmt") or JsonValue.Null).as_string()
+	clean := diagnostics.is_empty() and after != null and after == before
+	var out = Map[String, JsonValue]()
+	out.add("clean", JsonValue.BoolValue(clean))
+	return JsonValue.ObjectValue(out)
+}
+
 fn parse_phase(ms String, fx Fixture, work String) JsonValue {
 	// `fmt --check` parses without loading the standard library, which `check` does for
 	// every file that parses; the parse diagnostics are the same.
@@ -285,6 +296,7 @@ fn parse_phase(ms String, fx Fixture, work String) JsonValue {
 		fields.add("raw", report)
 	}
 
+	before := without_header(read_text(f"{work}/{fx.entry}"))
 	formatted := invoke(ms, fx, ["fmt", fx.entry.clone()], work, "".to_bytes())
 
 	if formatted.code == 0 {
@@ -294,6 +306,8 @@ fn parse_phase(ms String, fx Fixture, work String) JsonValue {
 		fields.add("fmt", JsonValue.Null)
 		fields.add("fmt_exit_code", number(formatted.code))
 	}
+
+	if fx.secondary { return clean_parse(fields, before) }
 
 	return JsonValue.ObjectValue(fields)
 }

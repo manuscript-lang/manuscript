@@ -12,5 +12,5 @@ Constraints found while writing it:
 - The embedded stdlib is baked into `ms`; after adding a module run `cmake --build --preset ci` before `ms test` sees it.
 
 Apply when: adding resilience helpers, or moving them to another module.
-Verify: `ms test tests/conformance/fixtures/e2e/stdlib/resilience.ms`.
+Verify: `ms test tests/lang/stdlib/resilience.ms`.
 Streams compose with backpressure in `@std/io/steps.ms`, so no Node-style `pipeline` was added.

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export type Customer {\n\tname String\n\tactive Bool\n}\n\nexport fn welcome(customer Customer) String {\n\tif customer.active {\n\t\treturn f\"Welcome, {customer.name}!\"\n\t}\n\treturn \"Your account is inactive.\"\n}\n"
-  }
-}

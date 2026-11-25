@@ -1,0 +1,14 @@
+// conform: tags=alternatives,diagnostics,match,records,tier-core
+// conform: phase=check
+// conform: origin=pkg/compiler/recursive_types_test.go:34 TestRecursiveTypesPreserveInitializationAndHashing
+enum Expr {
+	Num(value Int)
+	Add(left Expr, right Expr)
+}
+
+fn value(expr Expr) Int {
+	match expr {
+		Num(value) => return value
+	}
+}
+// expect-error: MS3050 10:5 non-exhaustive match; missing cases: Add, or add a final '_ => ...' arm; add the arms 'Add(left, right) => ...'

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type CustomerKey {\n\tid Int\n\tlabel String\n}\n\nfn CustomerKey.equals(other CustomerKey) Bool {\n\treturn self.id == other.id\n}\n\nfn CustomerKey.hash() Int => self.id\n"
-  }
-}

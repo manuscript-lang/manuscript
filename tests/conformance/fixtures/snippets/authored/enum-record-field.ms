@@ -1,5 +1,0 @@
-// conform: phase=check
-// conform: tags=alternatives,diagnostics,parser,tier-core
-enum Wrong {
-    value: Int
-}

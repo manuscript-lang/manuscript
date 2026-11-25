@@ -2,11 +2,14 @@
 # assume LF, so Windows checkouts must not convert them.
 *.ms text eol=lf
 *.toml text eol=lf
-tests/conformance/** text eol=lf
+tests/lang/** text eol=lf
+tests/diagnostics/** text eol=lf
+tests/format/** text eol=lf
+tests/commands/** text eol=lf
 # Everything else is text with LF too: tests compare byte offsets and sizes of fixtures,
 # recorded corpora and guide text, and git detects binary files on its own.
 * text=auto eol=lf
 # Vendored published-suite data keeps its exact bytes, including CR line endings.
-tests/conformance/fixtures/e2e/projects/*_suite/data/** -text
+tests/lang/projects/*_suite/data/** -text
 # Vendored libraries keep their exact bytes (the lock digest covers them), CRLF included.
 src/third_party/** -text

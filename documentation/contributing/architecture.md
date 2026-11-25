@@ -88,7 +88,7 @@ Fix generated output through its generator, never by editing HTML or copying sta
 
 ## Read the evidence correctly
 
-- C tests (`ctest`) cover narrow contracts. The conformance corpus in `tests/conformance/` checks program behavior through the built `ms`; declaration-only fixtures show acceptance, not execution.
+- C tests (`ctest`) cover narrow contracts. The conformance corpus in `tests/` checks program behavior through the built `ms`; declaration-only fixtures show acceptance, not execution.
 - `tests/docs` checks highlighting and published book pages.
 - Passing tests find regressions, not language completeness. See [development checks](development.md).
 - `make repo-check` enforces nested-match rules, `.ms` formatting, standard-library syntax, release pins and workflow triggers.

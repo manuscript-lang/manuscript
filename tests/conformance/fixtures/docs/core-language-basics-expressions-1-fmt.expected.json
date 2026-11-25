@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn load(path String) Config! {\n\tconfig := (\n\t\tread(path)?\n\t\t| parse?\n\t\t| normalize\n\t\t| validate?\n\t)\n\treturn ok(config)\n}\n"
-  }
-}

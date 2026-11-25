@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn example(value Int = choose(first: 1, second: 2)) Int {\n\ttext := f\"# if value: return {value}\"\n\tnext := choose(\n\t\tfirst: value,\n\t\t// Explain this argument.\n\t\tsecond: 2\n\t)\n\tif (next > 0 and value > 0) { return next }\n\n\treturn 0\n}\n"
-  }
-}

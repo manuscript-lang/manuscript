@@ -28,7 +28,10 @@ fn skipped(path String) Bool {
 	return (
 		path.starts_with("vendor/")
 		or path.starts_with("website/themes/")
-		or path.starts_with("tests/conformance/")
+		or path.starts_with("tests/lang/")
+		or path.starts_with("tests/diagnostics/")
+		or path.starts_with("tests/format/")
+		or path.starts_with("tests/commands/")
 		or path.starts_with("tests/checks/removed/")
 		or path.starts_with("bench/agent/results/sources/")
 		or path.contains("/third_party/")

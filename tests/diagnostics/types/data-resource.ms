@@ -1,0 +1,25 @@
+// conform: tags=testing,tier-io
+// conform: phase=check
+import (
+	Data from "@std/core.ms",
+	stringify from "@std/data/json.ms",
+	FileHandle from "@std/os/fs.ms",
+)
+
+fn show[T Data](value T) String {
+	return stringify(value).get_or("")
+}
+
+type Report {
+	title String
+	log FileHandle
+}
+
+fn send(report Report) Int {
+	return show(report).length()
+}
+
+export fn main() Int {
+	return 0
+}
+// expect-error: MS3000 19:12 Report does not satisfy Data; field log is FileHandle, opaque; return a plain value from the module that declares it

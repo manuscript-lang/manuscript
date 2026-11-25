@@ -1,6 +1,0 @@
-// conform: tags=diagnostics,types,tier-core
-// conform: phase=check
-// conform: origin=ms-check/tests/messages.rs
-fn main() Void {
-	a := [1].first().unwrap_or(0)
-}

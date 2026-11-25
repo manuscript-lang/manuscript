@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn empty() List[Int] {\n\treturn []\n}\n\nexport fn main() Int {\n\t[value] := empty()\n\treturn value\n}\n"
-  }
-}

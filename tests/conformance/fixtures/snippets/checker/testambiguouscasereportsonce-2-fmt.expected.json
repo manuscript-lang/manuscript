@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum A {\n\tX(n Int)\n}\n\nenum B {\n\tX(n Int)\n}\n\nfn f() Int {\n\ta := X(n: 1)\n\treturn 1\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn p() Int! {\n\treturn ok(1)\n}\n\nfn f() Int {\n\treturn p()\n}\n"
-  }
-}

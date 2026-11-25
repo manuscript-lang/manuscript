@@ -76,6 +76,16 @@ message("${lint_output}")
 if(NOT lint_status EQUAL 0)
   message(FATAL_ERROR "conform: the corpus lint above found problems")
 endif()
+# The expectation lines a fixture states in its own file round-trip (tools/conform/expect.ms).
+execute_process(
+  COMMAND "${MS}" test tools/conform/expect_test.ms
+  WORKING_DIRECTORY "${SOURCE_DIR}"
+  OUTPUT_VARIABLE expect_output
+  ERROR_VARIABLE expect_output
+  RESULT_VARIABLE expect_status)
+if(NOT expect_status EQUAL 0)
+  message(FATAL_ERROR "conform: tools/conform/expect_test.ms failed\n${expect_output}")
+endif()
 endif()
 if(ENFORCE AND NOT all_match)
   message(FATAL_ERROR "conform: the corpus phases above do not match")

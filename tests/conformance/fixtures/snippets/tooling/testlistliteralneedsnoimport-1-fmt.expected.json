@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn answer() Int {\n\titems := [1, 2, 3]\n\treturn items.length()\n}\n"
-  }
-}

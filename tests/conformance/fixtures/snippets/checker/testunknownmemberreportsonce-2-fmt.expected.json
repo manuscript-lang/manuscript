@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() Int {\n\tx := 1\n\ty Int := x.foo\n\treturn y\n}\n"
-  }
-}

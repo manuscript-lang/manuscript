@@ -10,7 +10,7 @@
 // (default: the CPU count); MS names the ms to run, which must embed a runtime built
 // with the `sched-stress` feature (`make stress-sched` builds one at
 // target/stress/release/ms). Arguments name the files to run (default:
-// tests/conformance/fixtures/e2e/stdlib);
+// tests/lang/stdlib);
 // `STRESS_CHANGED=<git ref>` runs only the test files changed since that ref.
 // Usage: ms run tools/stress-sched.ms [-- files]
 import (
@@ -25,7 +25,7 @@ import (
 	capture, env, tool_ms from "./lib.ms",
 )
 
-fixtures := "tests/conformance/fixtures/e2e/stdlib"
+fixtures := "tests/lang/stdlib"
 
 // Whether `ms test` is the fixture's own phase: a file declaring another phase (parse,
 // check, run) is not meant to pass `ms test`.

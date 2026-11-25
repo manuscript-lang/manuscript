@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Grow[T] {\n\tnext fn(Grow[List[T]]) Void\n}\n"
-  }
-}

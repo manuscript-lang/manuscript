@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import stdout from \"@std/io/io.ms\"\n\nfn main() Void {\n\ta := 0xFF_FF\n\tb := 0b1010_0101\n\tc := 1_000_000\n\td := -0x10\n\te Int32 := 0x7FFF_FFFF\n\tm := {0xFF: \"x\"}\n\tf := 3.141_592\n\tvoid stdout().write(\n\t\tf\"{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\\n\"\n\t)\n}\n"
-  }
-}

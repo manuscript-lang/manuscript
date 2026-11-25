@@ -1,0 +1,22 @@
+// conform: tags=alternatives,diagnostics,formatter,match,modules,records,stdlib-errors,tier-stdlib,try-result
+// conform: phase=check,parse
+// conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
+
+enum Cents {
+	Valid(amount Int)
+	Invalid
+}
+
+fn total(cents Cents) Result[Int, Error] {
+	amount := match cents {
+		Valid(value) => {
+			value
+		}
+		Invalid => {
+			return error(Error("Invalid amount"))
+		}
+	}
+
+	return ok(amount)
+}
+// expect-exit: 0

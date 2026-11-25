@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Describe {\n\tfn describe() String\n}\n\nenum State {\n\tReady\n\tWaiting\n}\n\nfn State.describe() String => \"state\"\n\nfn use(value Describe) Int {\n\tmatch value {\n\t\tState(Ready) => return 1\n\t\t_ => return 0\n\t}\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn first_number(text String?) Int? {\n\tif text == null { return null }\n\treturn text.trim().parse_int()\n}\n"
-  }
-}

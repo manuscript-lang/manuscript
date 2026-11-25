@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn use[T](value T?) T {\n\tmatch value {\n\t\tvalue => return Value\n\t\tnull => return panic(message: \"empty\")\n\t}\n}\n"
-  }
-}

@@ -94,14 +94,31 @@ fn category_of(relative String) List[String] {
 	return [category, slugify(rest)]
 }
 
+// The directory of `tests/` that a harvested category lands in;
+// `tools/conform.ms retag` and a later regrouping move a fixture to its feature.
+fn placed(category String) String {
+	if category == "e2e/stdlib" { return "lang/stdlib" }
+	if category == "e2e/projects" { return "lang/projects" }
+	if category == "e2e/reject" { return "diagnostics/harvested" }
+
+	return f"lang/{category.replace("/", "-")}"
+}
+
+// Whether `path` is inside the fixture directories of `tests/`.
+fn in_corpus(path String) Bool {
+	return (
+		path.starts_with("tests/lang/")
+		or path.starts_with("tests/diagnostics/")
+		or path.starts_with("tests/format/")
+	)
+}
+
 // Candidates found by walking the repository.
 fn scan_tree(repo String) List[Candidate] {
 	var projects = List[String]()
 
 	for entry in glob(repo, GlobOptions(patterns: ["**/ms.toml"])).get_or([]) {
-		if skipped(entry.path) or entry.path.starts_with(
-			"tests/conformance/"
-		) { continue }
+		if skipped(entry.path) or in_corpus(entry.path) { continue }
 
 		dir := entry.path.slice(0, parent_length(entry.path))
 		if dir != "" { projects.append(dir.clone()) }
@@ -112,10 +129,7 @@ fn scan_tree(repo String) List[Candidate] {
 
 	for entry in glob(repo, GlobOptions(patterns: ["**/*.ms"])).get_or([]) {
 		if skipped(entry.path) { continue }
-		if (
-			entry.path.starts_with("src/stdlib/")
-			or entry.path.starts_with("tests/conformance/")
-		) { continue }
+		if (entry.path.starts_with("src/stdlib/") or in_corpus(entry.path)) { continue }
 
 		var inside = false
 		for project in projects {
@@ -311,6 +325,7 @@ fn header(origin, phase, text String, extra List[String]) Meta {
 	return Meta(
 		tags: sorted_unique(tags),
 		phase: phase.clone(),
+		phases: [phase.clone()],
 		args: [],
 		timeout: 0,
 		entry: "",
@@ -494,12 +509,12 @@ export fn harvest(root, corpus String, args Args) Int {
 			continue
 		}
 
-		var id = f"{candidate.category}/{candidate.slug}"
+		var id = f"{placed(candidate.category)}/{candidate.slug}"
 		var n = 1
 
 		while used.contains(id) {
 			n += 1
-			id = f"{candidate.category}/{candidate.slug}-{n}"
+			id = f"{placed(candidate.category)}/{candidate.slug}-{n}"
 		}
 
 		used.append(id.clone())

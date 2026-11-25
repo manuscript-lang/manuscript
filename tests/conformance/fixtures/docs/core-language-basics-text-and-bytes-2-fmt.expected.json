@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "name := \"Ada\"\ncount := 3\ngreeting := f\"Welcome, {name}!\"\ncalculated := f\"Next: {count + 1}\"\n"
-  }
-}

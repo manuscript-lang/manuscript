@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import double from \"./main.ms\"\n\nfn quad(v Int) Int {\n\treturn double(double(v))\n}\n"
-  }
-}

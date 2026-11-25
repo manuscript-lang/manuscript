@@ -1,0 +1,10 @@
+// conform: tags=diagnostics,formatter,match,tier-core,try-result
+// conform: phase=check,parse
+// conform: origin=pkg/tooling/result_match_lint_test.go:15 TestResultMatchLint
+fn use(value Int!) Int {
+	match value {
+		ok(n) => return n
+		error(_) => return 0
+	}
+}
+// expect-exit: 0

@@ -41,17 +41,17 @@ add_test(NAME debug_info COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWOR
 
 # Fixtures that own resources, fault, recurse deeply or start threads leave nothing allocated at exit with the process-exit
 # frees kept (cmake/LeakCheck.cmake); a test that fails here found a leak, not a stale baseline.
-set(MS_LEAK_FIXTURES accept/bind-collection-resource-read-in-place accept/interface-box-freed-with-resource
-  stdlib/net-close-releases-socket
-  accept/call-depth.test accept/faulting-close-in-list-releases-buffer.test accept/pipe-flow.test
-  stdlib/promise-semantics.test accept/interface-views.test accept/recursive-types.test stdlib/tree.test
-  stdlib/collections.test stdlib/yaml-regressions.test accept/source-borrowed-wrapper-temporary-cleanup.test stdlib/map-get-or-release stdlib/map-handle-values stdlib/sorted-map-uncopyable-values
-  accept/faulting-close-releases-parts.test stdlib/http-exchange-helpers.test
-  stdlib/http-close-drains stdlib/http-fault-handler-frees-exchange-view stdlib/promise-closes-captured-pipe
-  stdlib/cancelled-file-read-frees-buffer stdlib/cancelled-dns-query-frees-state
-  stdlib/cancelled-serve-start-frees-handler stdlib/cancelled-tls-handshake-frees-state
-  stdlib/dying-receiver-takes.test)
-add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIXTURES=${CMAKE_SOURCE_DIR}/tests/conformance/fixtures/e2e
+set(MS_LEAK_FIXTURES lang/records/bind-collection-resource-read-in-place lang/interfaces/interface-box-freed-with-resource
+  lang/stdlib/net-close-releases-socket
+  lang/closures/call-depth.test lang/faults/faulting-close-in-list-releases-buffer.test lang/lists/pipe-flow.test
+  lang/stdlib/promise-semantics.test lang/misc/interface-views.test lang/misc/recursive-types.test lang/stdlib/tree.test
+  lang/stdlib/collections.test lang/stdlib/yaml-regressions.test lang/misc/source-borrowed-wrapper-temporary-cleanup.test lang/stdlib/map-get-or-release lang/stdlib/map-handle-values lang/stdlib/sorted-map-uncopyable-values
+  lang/faults/faulting-close-releases-parts.test lang/stdlib/http-exchange-helpers.test
+  lang/stdlib/http-close-drains lang/stdlib/http-fault-handler-frees-exchange-view lang/stdlib/promise-closes-captured-pipe
+  lang/stdlib/cancelled-file-read-frees-buffer lang/stdlib/cancelled-dns-query-frees-state
+  lang/stdlib/cancelled-serve-start-frees-handler lang/stdlib/cancelled-tls-handshake-frees-state
+  lang/stdlib/dying-receiver-takes.test)
+add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIXTURES=${CMAKE_SOURCE_DIR}/tests
   "-DNAMES=${MS_LEAK_FIXTURES}" -DWORK=${CMAKE_BINARY_DIR}/src/cli/leak -P ${CMAKE_SOURCE_DIR}/cmake/LeakCheck.cmake)
 
 # Every bundled standard-library body checks: `ms check` and `ms lint` check only the bodies a program reaches.

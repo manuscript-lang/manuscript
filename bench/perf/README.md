@@ -71,4 +71,4 @@ Every group has a row above and in [`groups.txt`](groups.txt); `make perf-check`
 
 ## Where the programs are
 
-All benchmark sources and drivers are under `bench/perf/` (`tools/` holds the runners and `perf.ms`). Two things are shared on purpose: the `workloads` group runs ten agent-challenge reference solutions from `bench/agent/challenges/*/solutions`, which the agent benchmark also needs, and `tools/perf-counts.ms` stays in `tools/` with the other repository gates. Conformance fixtures under `tests/conformance/fixtures/bench/` are copies of some benchmark programs, kept to prove they compile; they are not measurements.
+All benchmark sources and drivers are under `bench/perf/` (`tools/` holds the runners and `perf.ms`). Two things are shared on purpose: the `workloads` group runs ten agent-challenge reference solutions from `bench/agent/challenges/*/solutions`, which the agent benchmark also needs, and `tools/perf-counts.ms` stays in `tools/` with the other repository gates. Conformance fixtures under `tests/bench/` are copies of some benchmark programs, kept to prove they compile; they are not measurements.

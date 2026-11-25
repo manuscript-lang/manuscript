@@ -1,3 +1,0 @@
-// conform: tags=diagnostics
-// conform: phase=check
-fn f[T](value T? = null) T? { ... }

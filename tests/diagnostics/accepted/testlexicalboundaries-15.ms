@@ -1,0 +1,7 @@
+// conform: tags=diagnostics,formatter,interpolation,strings,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/lexer/lexer_test.go:76 TestLexicalBoundaries
+fn value() String {
+	return f"héllo \u{1F600} {1 + 2} \{literal\}"
+}
+// expect-exit: 0

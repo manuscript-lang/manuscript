@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn first() Int => return 1\n\nimport (\n\tOther from \"./other.ms\",\n\tValue from \"./value.ms\",\n)\n\nfn last() Int => return 2\n"
-  }
-}

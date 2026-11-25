@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type K {\n\tv Float\n}\n\nfn K.equals(other K) Bool {\n\treturn true\n}\n\nfn f() Int {\n\ts := Set[K]()\n\treturn 0\n}\n"
-  }
-}

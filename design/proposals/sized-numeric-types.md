@@ -101,7 +101,7 @@ d := b + c
 | `stdlib/bindings.json` | `"Int": "IntOperations"` receiver table gains one entry per width, generated from one declaration | `make docs` |
 | formatter, lint, LSP, VS Code | type names, hover and completion for conversion methods; a diagnostic hint for literals over 2^31 after the flip | LSP completion test |
 | `documentation/core-language/basics/numbers-and-booleans.md` and `expressions.md` | tables, range text, conversion table, literal rule | `make docs`, example checks |
-| `tests/conformance` | accept/reject per width, overflow per width, literal ranges | all three platforms; no platform gating |
+| `tests` | accept/reject per width, overflow per width, literal ranges | all three platforms; no platform gating |
 
 ## Breaking cost of the default flip (stage 5)
 
@@ -109,7 +109,7 @@ d := b + c
 - **Literals.** `3_000_000_000` and every literal outside the 32-bit range become compile errors; code needs `Int64`.
 - **Float.** Unchanged: `Float` stays binary64, so `@std/math`, `Decimal.to_float` and JSON numbers keep their results. `Float32` is opt-in.
 - **Stdlib surface.** `length()` and indexes stay `Int` (lists above 2^31 elements are not supported), but these must be re-typed `Int64` or they truncate: `Duration`/`Instant` nanoseconds (64-bit by the current spec; the `.seconds`/`.milliseconds` members take `Int`, so with a 32-bit `Int` the source count is limited to about 68 years of seconds but only about 24 days of milliseconds), file sizes and offsets in `@std/fs`, `hash()` in `core.ms:160`, `@std/random`, `@std/time`, byte counts in `@std/io`, `@std/net`. The inventory is 740 `Int` mentions in `stdlib/*.ms` and 48 `"Int"`/`"Float"` string checks in 18 files under `crates/` (`grep -rn '"Int"\|"Float"' crates`); each needs a decision, not a search-and-replace.
-- **Existing programs and benchmarks.** Everything in `bench/` and `tests/conformance` that uses `Int` as 64-bit changes meaning. Benchmark numbers move in both directions (smaller data, more sign-extension for indexing); none of this is measured.
+- **Existing programs and benchmarks.** Everything in `bench/` and `tests` that uses `Int` as 64-bit changes meaning. Benchmark numbers move in both directions (smaller data, more sign-extension for indexing); none of this is measured.
 - **Mitigation.** Stages 1–4 add the types with `Int = Int64` (and `Float = Float64` throughout) and change no existing behavior. The flip lands last, as one PR, so it can be reverted or dropped.
 
 ## Alternatives

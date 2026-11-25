@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn read(values List[Int], index Int) Int {\n\tif index < 0 or index >= values.length() {\n\t\treturn -1\n\t}\n\treturn values[index]\n}\n\nfn total(values List[Int]) Int {\n\tvar sum = 0\n\tvar i = 0\n\n\twhile i < values.length() {\n\t\tsum += values[i]\n\t\ti += 1\n\t}\n\n\treturn sum\n}\n\nfn nested(values List[Int?], index Int) Int? {\n\tif index >= 0 and index < values.length() {\n\t\treturn values[index]\n\t}\n\treturn null\n}\n\ntest \"guarded and looped lookups\" {\n\texpect_equal(read([1, 2, 3], 1), 2)?\n\texpect_equal(read([1, 2, 3], 3), -1)?\n\texpect_equal(read([1, 2, 3], -1), -1)?\n\texpect_equal(total([1, 2, 3]), 6)?\n\texpect_equal(nested([1, null], 1), null)?\n\texpect_equal(nested([1, null], 0), 1)?\n}\n"
-  }
-}

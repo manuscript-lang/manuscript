@@ -1,0 +1,27 @@
+// conform: tags=control-flow,formatter,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/cl-10.ms
+import expect_equal from "@std/test/test.ms"
+
+interface Increment {
+	fn apply(value Int) Int
+}
+
+type Offset {
+	delta Int
+}
+
+fn Offset.apply(value Int) Int {
+	return value + self.delta
+}
+
+fn use_increment(operation Increment) Int {
+	return operation.apply(4)
+}
+
+test "explicit contract conversion" {
+	offset := Offset(1)
+	operation Increment := offset
+	same_view Increment := operation
+	expect_equal(use_increment(same_view), 5)?
+}

@@ -1,0 +1,11 @@
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/tooling/diff_test.go:38 TestParseDiffAndReverseApply
+fn one() Int {
+	return 1
+}
+
+fn two() Int {
+	return 2
+}
+// expect-exit: 0

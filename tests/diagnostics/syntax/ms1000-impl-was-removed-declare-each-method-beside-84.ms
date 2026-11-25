@@ -1,0 +1,16 @@
+// conform: tags=diagnostics
+// conform: phase=check
+type T {
+    a Int
+}
+
+impl T {
+    fn f(self) Int {
+        return 1
+    }
+}
+
+fn main() Void! {
+}
+// expect-error: MS1000 7:1-7:5 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it
+// expect-error: MS1000 14:1-14:2 a block cannot be empty; add at least one statement, or write '...' inside the braces for a runtime-bound declaration

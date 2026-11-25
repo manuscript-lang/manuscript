@@ -7,5 +7,5 @@ Decision: cancellation is one global flag (set by signals, shutdown, and task-gr
 State that says "this task is unwinding" is per task (the task's `unwinding` byte, `src/runtime/core/fault.h`), never per thread: the unwind flag gates the drops generated cleanups run, and a cleanup that parks (joining a worker, closing a pipe) lets other tasks end, whose guard exit cleared the shared flag, so the cancelled task skipped its drops and leaked (#2671, an HTTP server closed with a request in flight left the accept loop's list). Fixture: `http-close-in-flight-frees-accept-loop`.
 
 Apply when: adding a runtime function, or deciding where a function should be a cancellation point.
-Evidence: design contract, shutdown fixtures, [signal project](../../../tests/conformance/fixtures/e2e/projects/signal).
+Evidence: design contract, shutdown fixtures, [signal project](../../../tests/lang/projects/signal).
 Verify: loop and I/O cancellation cases still stop; compare `ms run bench/perf/tools/programs.ms --` before and after.

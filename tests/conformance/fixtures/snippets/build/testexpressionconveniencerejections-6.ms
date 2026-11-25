@@ -1,4 +1,0 @@
-// conform: tags=diagnostics,lists,tier-core
-// conform: phase=check
-// conform: origin=pkg/build/expression_conveniences_test.go:17 TestExpressionConvenienceRejections
-fn f() Void => xs := List[Int](1)

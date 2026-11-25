@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import stat from \"@std/os/fs.ms\"\n\nfn classify(path String) String {\n\tmatch stat(path: path, follow_links: true) {\n\t\terror(_) => return \"missing\"\n\t\tok(_) => return \"exists\"\n\t}\n}\n"
-  }
-}

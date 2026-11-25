@@ -1,0 +1,17 @@
+// conform: tags=diagnostics
+// conform: phase=check
+type Box[Error Error] {
+    cause Error
+}
+impl Error for Box[Error] {
+    fn message() String => self.cause.message()
+}
+type Neighbor {
+    value: Int
+}
+fn read(item: Neighbor) Int => item.value
+// expect-error: MS1000 6:1-6:5 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it
+// expect-error: MS1000 10:10-10:11 remove the ':' between 'value' and its type; write value Type
+// expect-fix: 10:10-10:11 ""
+// expect-error: MS1000 12:13-12:14 remove the ':' between 'item' and its type; write item Type
+// expect-fix: 12:13-12:14 ""

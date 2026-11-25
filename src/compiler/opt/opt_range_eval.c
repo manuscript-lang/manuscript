@@ -306,6 +306,13 @@ static bool rg_eval_other(const RgFa *fa, const MirInst *inst, const RgEnv *env,
   case MOP_StrLen: case MOP_StrBytes:
     *out = len;
     return true;
+  case MOP_ClosureCap: /* an immutable capture the entry-ranges step bounded */
+    *out = top;
+    if (fa->f->entry != NULL && inst->imm.tag == MI_IDX && fa->f->nparams + inst->imm.a < fa->f->nentry) {
+      const uint32_t slot = fa->f->nparams + inst->imm.a;
+      *out = (RgItv){fa->f->entry[2 * slot], fa->f->entry[2 * slot + 1]};
+    }
+    return true;
   case MOP_StrAsciiLen:
     *out = (RgItv){-1, len.hi};
     return true;
@@ -336,7 +343,7 @@ bool rg_eval(const RgFa *fa, const MirInst *inst, const RgEnv *env, RgItv *out) 
     return rg_eval_bitwise(fa, inst, env, ty, out);
   case MOP_ICmp: case MOP_B2I: case MOP_Select: case MOP_ListLen: case MOP_ListGet:
   case MOP_ListGetNn: case MOP_ListGetU: case MOP_StrLen: case MOP_StrAsciiLen:
-  case MOP_StrBytes: case MOP_Conv: case MOP_AltTag:
+  case MOP_StrBytes: case MOP_Conv: case MOP_AltTag: case MOP_ClosureCap:
     return rg_eval_other(fa, inst, env, ty, top, out);
   default:
     *out = top;

@@ -10,6 +10,10 @@
 // recorded one. The other corpus commands (list, stats, lint, retag, diff, fuzz-gen,
 // fuzz, harvest) are tools/conform.ms.
 //
+// A check fixture may state its expectation as `// expect-error:` lines in its own
+// header instead (tools/conform/expect.ms); `--record --inline` writes that form and
+// removes the sidecar.
+//
 // `--record` writes each selected fixture's expectation from the ms under test instead of
 // comparing (`--only-missing` keeps recorded ones, `--no-stable-check` skips the second
 // observation, `--prune` deletes fixtures that cannot be recorded). MS names the ms
@@ -31,6 +35,7 @@ import (
 
 	proven from "./conform/batch.ms",
 	Fixture, fixtures, read_text, text_of from "./conform/corpus.ms",
+	render, with_lines from "./conform/expect.ms",
 	number, observe, same, text_value from "./conform/observe.ms",
 	tool_ms from "./lib.ms",
 )
@@ -48,11 +53,11 @@ fn sweep(ms, build_type String, chunk List[Fixture], detail Bool) List[String] {
 
 		observed := observe(ms, fx, build_type)
 
-		if same(fx.expected, observed) {
+		if matches(fx, observed) {
 			lines.append("ok")
 		} else if detail {
 			lines.append(
-				f"FAIL {fx.id}\n  expected: {clipped(fx.expected)}\n  observed: {clipped(observed)}"
+				f"FAIL {fx.id}\n  expected: {wanted(fx)}\n  observed: {seen(fx, observed)}"
 			)
 		} else {
 			lines.append(f"FAIL {fx.id}")
@@ -60,6 +65,25 @@ fn sweep(ms, build_type String, chunk List[Fixture], detail Bool) List[String] {
 	}
 
 	return lines
+}
+
+// Whether `observed` is what `fx` expects: the expectation lines of its header, or its
+// recorded sidecar.
+fn matches(fx Fixture, observed JsonValue) Bool {
+	if fx.secondary { return stringify(observed).get() == "{\"clean\":true}" }
+	if fx.inline.is_empty() { return same(fx.expected, observed) }
+
+	return render(observed) == fx.inline
+}
+
+fn wanted(fx Fixture) String {
+	if fx.inline.is_empty() { return clipped(fx.expected) }
+	return fx.inline.join("\n          ")
+}
+
+fn seen(fx Fixture, observed JsonValue) String {
+	if fx.inline.is_empty() { return clipped(observed) }
+	return render(observed).join("\n          ")
 }
 
 // The first 2500 characters of a value, for `CONFORM_DIFF=1` failure reports.
@@ -104,12 +128,18 @@ fn record_chunk(
 	version String,
 	stable,
 	only_missing,
-	prune Bool,
+	prune,
+	inline Bool,
 ) List[String] {
 	var lines = List[String]()
 
 	for fx in chunk {
-		if only_missing and access(fx.sidecar, 0).is_ok() {
+		if fx.secondary {
+			lines.append("kept")
+			continue
+		}
+
+		if only_missing and (not fx.inline.is_empty() or access(fx.sidecar, 0).is_ok()) {
 			lines.append("kept")
 			continue
 		}
@@ -125,6 +155,39 @@ fn record_chunk(
 			if prune { void remove(fx.path, recursive: true) }
 			if prune and not fx.is_dir { void remove(fx.sidecar) }
 			lines.append(f"REJECT {fx.id}: {rejected}")
+			continue
+		}
+
+		if (
+			(inline or not fx.inline.is_empty())
+			and fx.phase == "check"
+			and not fx.is_dir
+		) {
+			// Lines after the program move a diagnostic reported at the end of the
+			// file, so the expectation is observed again until it is stable.
+			var expectation = render(first)
+			current := read_text(fx.path)
+			var text = with_lines(current, expectation)
+			var rounds = 0
+
+			while text != current and rounds < 3 {
+				void write_file(fx.path, text, replace: true).wait().get()
+
+				again := render(observe(ms, fx, build_type))
+				if again == expectation { break }
+
+				expectation = again.clone()
+				text = with_lines(text, expectation)
+				rounds += 1
+			}
+
+			if text == current {
+				lines.append("same")
+			} else {
+				void remove(fx.sidecar)
+				lines.append("wrote")
+			}
+
 			continue
 		}
 
@@ -168,6 +231,7 @@ fn main() Int {
 	var only_missing = false
 	var stable = true
 	var prune = false
+	var inline = false
 	var filters = List[String]()
 	words := arguments().map(word => word.clone())
 	var at = 0
@@ -187,6 +251,8 @@ fn main() Int {
 			stable = false
 		} else if words[at] == "--prune" {
 			prune = true
+		} else if words[at] == "--inline" {
+			inline = true
 		} else {
 			filters.append(words[at].clone())
 		}
@@ -207,7 +273,7 @@ fn main() Int {
 	show_diff := environment().get_or(Map[String, String]()).get("CONFORM_DIFF") != null
 	var chosen = List[Fixture]()
 
-	for fx in fixtures(f"{root}/tests/conformance/fixtures", phase, filters) {
+	for fx in fixtures(f"{root}/tests", phase, filters) {
 		if phase != "parse" and fx.tags.contains("aliasing") { continue }
 
 		chosen.append(fx.clone())
@@ -234,6 +300,7 @@ fn main() Int {
 		stable_now := stable
 		only_missing_now := only_missing
 		prune_now := prune
+		inline_now := inline
 		var recorders = List[Promise[List[String]]]()
 
 		for worker in 0..jobs_count {
@@ -252,6 +319,7 @@ fn main() Int {
 							stable_now,
 							only_missing_now,
 							prune_now,
+							inline_now,
 						)
 					)
 				)

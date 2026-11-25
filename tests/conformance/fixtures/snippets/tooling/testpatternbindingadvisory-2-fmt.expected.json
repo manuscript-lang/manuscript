@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Item {\n\tvalue Int\n}\n\nfn use(value Item?) Int {\n\tmatch value {\n\t\titem => return Item.value\n\t\tnull => return 0\n\t}\n}\n"
-  }
-}

@@ -1,0 +1,16 @@
+// conform: tags=diagnostics,formatter,generics,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/checker/defaults_test.go:26 TestDefaultArgumentBoundaries
+fn f(value Int = 1) Int {
+	return value
+}
+
+fn forward[T](value T) T {
+	return value
+}
+
+fn call() Int {
+	copy := forward(f)
+	return copy()
+}
+// expect-error: MS3003 14:12 missing argument 1: Int in call to copy; pass it positionally, without a label

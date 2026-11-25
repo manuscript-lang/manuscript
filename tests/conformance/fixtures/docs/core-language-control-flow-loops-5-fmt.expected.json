@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn total(values Map[String, Int]) Int {\n\tvar sum = 0\n\n\tfor entry in values {\n\t\t{key: _key, value} := entry\n\t\tsum += value\n\t}\n\n\treturn sum\n}\n"
-  }
-}

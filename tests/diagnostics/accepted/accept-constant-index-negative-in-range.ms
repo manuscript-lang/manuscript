@@ -1,0 +1,7 @@
+// conform: tags=numbers,lists,tier-core
+// conform: phase=check
+// conform: origin=ms-check/tests/messages.rs
+export fn main() Int {
+	return [1, 2][-2]
+}
+// expect-exit: 0

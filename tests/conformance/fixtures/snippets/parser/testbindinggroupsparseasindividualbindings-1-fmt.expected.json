@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "A := 1\nB Int := A + 1\n\nfn main() Void {\n\tvar (\n\t\t_a = 10\n\t\t_b = fn(x Int) Int {\n\t\t\treturn x + 1\n\t\t}\n\t)\n\t_c := 11\n\t_d := \"Hi\"\n\t_a += 1\n}\n"
-  }
-}

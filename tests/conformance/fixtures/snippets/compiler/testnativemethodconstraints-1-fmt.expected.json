@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn stringify(value Int) String {\n\treturn f\"{value}\"\n}\n\nfn wrong_label(item Int) String {\n\treturn f\"{item}\"\n}\n\nfn callback() Void {\n\treturn\n}\n"
-  }
-}

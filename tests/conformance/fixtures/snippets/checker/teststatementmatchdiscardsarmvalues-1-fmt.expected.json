@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(var counts Map[String, Int], var names List[String], found Int?) Void {\n\tmatch found {\n\t\tn => {\n\t\t\tcounts.add(key: \"a\", value: n)\n\t\t}\n\t\tnull => {\n\t\t\tnames.append(\"x\")\n\t\t}\n\t}\n}\n"
-  }
-}
