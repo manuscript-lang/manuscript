@@ -1,8 +1,9 @@
-/* opt_unwind_sites: a test of the `unwinding` byte after a call that cannot park is always clear.
+/* opt_unwind_sites: a test of the `unwinding` byte is always clear when no call that can park ran since the last test.
  *
- * A cancel is delivered only inside a park (`ms_cancel_deliver`), so the byte test after a call is needed only when
- * the call can reach a cancellation point. Elsewhere the test becomes the constant zero, and the simplifier removes
- * the branch and the exit it guarded. */
+ * A cancel is delivered only inside a park (`ms_cancel_deliver`), so the byte test is needed only when a call that can
+ * reach a cancellation point ran since the previous test, on some path to it. Elsewhere the test becomes the constant
+ * zero, and the simplifier removes the branch and the exit it guarded. Inlining leaves such tests behind: the call
+ * they guarded became an operation (`list.push`) or a body with no parking call. */
 #include "compiler/mir/mir_pass.h"
 #include "compiler/opt/opt_pass.h"
 
@@ -11,9 +12,45 @@ static bool is_site_test(const MirModule *m, const MirInst *inst) {
   return inst->op == MOP_CallRt && inst->imm.tag == MI_EXT && m->externs.ptr[inst->imm.a].role == MR_UNWINDING;
 }
 
-/* Whether `inst` is a call whose result the byte test right after it guards. */
-static bool is_call(const MirInst *inst) {
-  return inst->op == MOP_Call || inst->op == MOP_CallRt || inst->op == MOP_CallInd || inst->op == MOP_CallMethod;
+/* Whether `inst` may reach a cancellation point and then continue, so that the byte can be set after it. A fault site
+ * leaves by its exit as a cancel does, so it counts only on that edge (`pending_after`). */
+static bool parks_and_continues(const MirModule *m, const bool *parks, const MirInst *inst) {
+  return inst->op != MOP_FaultSite && mir_inst_parks(m, parks, inst);
+}
+
+/* The state at the end of block `b` that flows along its edges: whether a call that can park ran since the last test of
+ * the byte. `fault` is the state along the edge a fault site takes, `normal` along the other edge. */
+typedef struct SiteState {
+  bool normal, fault;
+} SiteState;
+
+static SiteState walk_block(const MirModule *m, const bool *parks, MirFunc *f, size_t bi, bool entry, bool rewrite,
+                            bool *changed) {
+  MirInstList *insts = &f->blocks.ptr[bi].insts;
+  bool pending = entry;
+  bool faulted = false;
+  MirValue site = MIR_NONE;
+  for (size_t k = 0; k < insts->len; k++) {
+    MirInst *inst = &insts->ptr[k];
+    if (is_site_test(m, inst)) {
+      if (rewrite && !pending && !faulted) {
+        inst->op = MOP_BConst;
+        inst->imm = (MirImm){.tag = MI_BOOL, .a = 0};
+        *changed = true;
+      }
+      pending = false;
+      faulted = false;
+      site = MIR_NONE;
+    } else if (inst->op == MOP_FaultSite) {
+      faulted = true;
+      site = inst->res;
+    } else if (parks_and_continues(m, parks, inst)) {
+      pending = true;
+    }
+  }
+  const MirTerm *term = &f->blocks.ptr[bi].term;
+  const bool on_fault_site = term->kind == MT_CONDBR && site != MIR_NONE && term->value == site;
+  return (SiteState){.normal = pending || (faulted && !on_fault_site), .fault = pending || faulted};
 }
 
 bool opt_unwind_sites(MirModule *m) {
@@ -22,18 +59,27 @@ bool opt_unwind_sites(MirModule *m) {
   bool changed = false;
   for (size_t fi = 0; fi < m->funcs.len; fi++) {
     MirFunc *f = &m->funcs.ptr[fi];
-    for (size_t bi = 0; bi < f->blocks.len; bi++) {
-      MirInstList *insts = &f->blocks.ptr[bi].insts;
-      for (size_t k = 1; k < insts->len; k++) {
-        MirInst *test = &insts->ptr[k];
-        const MirInst *call = &insts->ptr[k - 1];
-        if (!is_site_test(m, test) || !is_call(call) || mir_inst_parks(m, parks, call)) {
-          continue;
+    bool *entry = MS_ARENA_NEW_ARRAY(&arena, bool, f->blocks.len + 1);
+    for (size_t at = 0; at < f->blocks.len; at++) {
+      entry[at] = false;
+    }
+    for (bool moved = true; moved;) { /* the states flow along edges until nothing changes */
+      moved = false;
+      for (size_t bi = 0; bi < f->blocks.len; bi++) {
+        const SiteState out = walk_block(m, parks, f, bi, entry[bi], false, &changed);
+        const MirTerm *term = &f->blocks.ptr[bi].term;
+        for (uint32_t k = 0; k < mir_term_ntargets(term); k++) {
+          const MirBlock to = mir_term_target_const(term, k)->block;
+          const bool pending = term->kind == MT_CONDBR && k == 1 ? out.normal : out.fault;
+          if (pending && !entry[to]) {
+            entry[to] = true;
+            moved = true;
+          }
         }
-        test->op = MOP_BConst;
-        test->imm = (MirImm){.tag = MI_BOOL, .a = 0};
-        changed = true;
       }
+    }
+    for (size_t bi = 0; bi < f->blocks.len; bi++) {
+      (void)walk_block(m, parks, f, bi, entry[bi], true, &changed);
     }
   }
   ms_arena_free(&arena);
