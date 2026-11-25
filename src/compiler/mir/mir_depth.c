@@ -250,6 +250,8 @@ static void dp_split(MirModule *m, uint32_t fi, const DpRuntime *rt) {
   f->scopes = fresh.scopes;
   f->exact = NULL;
   f->nexact = 0;
+  f->facts = NULL;
+  f->nfacts = 0;
   f->noalias = NULL;
   f->nnoalias = 0;
   f->has_slot_result = f->has_close_exit = f->has_slot_close = false;

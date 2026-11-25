@@ -193,7 +193,7 @@ static void rg_init_accesses(RgFa *fa) {
   }
 }
 
-static void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f) {
+void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f) {
   *fa = (RgFa){.m = m, .f = f, .nv = (uint32_t)f->values.len, .nb = (uint32_t)f->blocks.len};
   fa->lengths = rg_length_origins(&fa->arena, m, f);
   rg_alias_loop_lists(&fa->tmp, m, f, fa->lengths);
@@ -217,6 +217,9 @@ static void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f) {
     if (rg_tracked(f->values.ptr[v])) {
       fa->has_base[v] = 1;
       fa->base[v] = f->values.ptr[v] == MIR_BOOL ? RG_BOOL : RG_TOP;
+      if (f->entry != NULL && p < f->nentry && p < f->nparams) {
+        fa->base[v] = (RgItv){f->entry[2 * p], f->entry[2 * p + 1]};
+      }
     }
   }
   rg_init_squares(fa);
@@ -225,7 +228,7 @@ static void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f) {
   fa->widen = RG_ZNEW(&fa->arena, uint32_t, fa->nv + 1);
 }
 
-static void rg_fa_free(RgFa *fa) {
+void rg_fa_free(RgFa *fa) {
   ms_arena_free(&fa->arena);
   ms_arena_free(&fa->gen[0]);
   ms_arena_free(&fa->gen[1]);
@@ -468,7 +471,7 @@ static bool rg_fa_pass(RgFa *fa, bool narrow) {
 }
 
 /* Computes the fixpoint; false when it did not converge (no facts may be used). */
-static bool rg_fa_solve(RgFa *fa) {
+bool rg_fa_solve(RgFa *fa) {
   bool converged = false;
   for (int i = 0; i < RG_MAX_ROUNDS && !converged; i++) {
     converged = !rg_fa_pass(fa, false);
@@ -537,17 +540,47 @@ static void rg_apply_edits(MirModule *m, MirFunc *f, const RgEdits *edits) {
   }
 }
 
+/* Records the interval of each loop and join parameter the analysis bounded, for the emitter to hand to LLVM:
+ * a test the pass folded away was the only way LLVM could see the bound. Returns whether the list changed. */
+static bool rg_record_facts(RgFa *fa, MirModule *m, MirFunc *f) {
+  uint32_t n = 0;
+  MirFact *facts = MS_ARENA_NEW_ARRAY(&m->arena, MirFact, (size_t)fa->nv + 1);
+  for (uint32_t v = 0; v < fa->nv; v++) {
+    if (f->values.ptr[v] != MIR_INT || !fa->has_base[v] || fa->param_blk[v] == 0xFFFFFFFFu) {
+      continue;
+    }
+    const RgItv x = fa->base[v];
+    if (x.lo != INT64_MIN || x.hi != INT64_MAX) {
+      facts[n++] = (MirFact){v, x.lo, x.hi};
+    }
+  }
+  bool same = n == f->nfacts;
+  for (uint32_t i = 0; same && i < n; i++) {
+    same = facts[i].value == f->facts[i].value && facts[i].lo == f->facts[i].lo && facts[i].hi == f->facts[i].hi;
+  }
+  if (same) {
+    return false;
+  }
+  f->facts = n != 0 ? facts : NULL;
+  f->nfacts = n;
+  return true;
+}
+
 /* Runs the pass over one function; returns whether it changed. */
 bool opt_range_func(MirModule *m, MirFunc *f) {
   RgFa fa;
   rg_fa_init(&fa, m, f);
   RgEdits edits = {0};
-  if (rg_fa_solve(&fa)) {
+  const bool solved = rg_fa_solve(&fa);
+  if (solved) {
     rg_collect_edits(&fa, &edits);
   }
-  const bool changed = edits.n != 0;
+  bool changed = edits.n != 0;
   if (changed) {
     rg_apply_edits(m, f, &edits);
+  }
+  if (solved) {
+    changed = rg_record_facts(&fa, m, f) || changed;
   }
   rg_fa_free(&fa);
   return changed;

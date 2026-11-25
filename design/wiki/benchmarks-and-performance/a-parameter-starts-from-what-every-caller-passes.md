@@ -1,0 +1,8 @@
+# A parameter starts from what every caller passes
+
+`range` runs per function, so a parameter or closure capture was "any `Int`" even when each call site passed `0..127`. `opt_entry_range.c` joins the intervals that direct calls and `closure.new` sites pass, to a fixpoint, and `range` starts from them (`MirFunc.entry`). Measured: `workers` -31.7% instructions (equal to checked Rust).
+
+- **Only when every use is known.** A function named by anything else (vtable, glue, shape table, export, `func.addr`, `capture_closers`, `close_exit`, `slot_result`) keeps unknown parameters. `opt_external_roots` is the one list of those names; `inline` dead-function removal uses the same list. A closure's own arguments (`id`, runtime-supplied) are never seeded, only its plain captures.
+- **A function is read once something reaches it.** Joining the "unknown" of an unread caller into the callee's table pins it at top for good: the first prototype did nothing for this reason.
+- **Run it after the last inlining and before `function_passes`.** Late steps must not add an `Int` argument to a seeded callee.
+- **Folding a user's own guard hides the sign from LLVM.** Seeded `sift_down(0)` let the range pass prove `at >= 0` and delete the `while at >= 0` test; LLVM then expanded every list access to its negative path (`graph` +2.7%). `range` now records the interval of each bounded integer block parameter (`MirFunc.facts`) and the emitter writes `llvm.assume`; `graph` ended -2.3%. Any pass that deletes a test LLVM could have used owes it the fact.

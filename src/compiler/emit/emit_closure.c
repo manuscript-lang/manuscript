@@ -92,6 +92,7 @@ static bool closure_capture(EmitCx *cx, const MirInst *inst) {
   emit_pointer(cx, inst->args[0], env, sizeof env);
   emit_offset_pointer(cx, env, offset, at, sizeof at);
   emit_load_value(cx, inst->res, at);
+  emit_entry_assume(cx, inst->res, cx->func->nparams + index);
   return true;
 }
 
