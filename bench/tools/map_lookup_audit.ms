@@ -1,3 +1,7 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Longer paired trials for one flagged case from set-empty-relations/maps-control.ms.
 import (
 	arguments from "@std/os/env.ms",

@@ -1,3 +1,5 @@
+// ms: allow_effect std.process.run
+
 // Scheduler stress run (`make stress-sched`): runs the tests of the e2e stdlib fixtures
 // with
 // `MS_SCHED_STRESS=1`, where a promise never starts on its creator and the first idle thread

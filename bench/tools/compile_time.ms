@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Generates the same program in Manuscript, Go and Rust and times each build. Usage: ms
 // run bench/tools/compile_time.ms [-- packages files fns] (default 40 25 10, about 122k
 // lines of Manuscript) OUT keeps the generated sources; MS picks the compiler;

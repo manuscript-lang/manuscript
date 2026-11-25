@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Export agent-bench challenges as Harbor tasks (one per challenge x language).
 //
 //     ms run bench/agent/export_harbor.ms -- --out /tmp/agent-bench-tasks [--challenges c01,c02] [--languages ms,go]

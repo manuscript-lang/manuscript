@@ -1,3 +1,10 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // End-to-end uncached Release builds plus exact native output checks. MS_CACHE=off ms
 // run bench/tools/call_candidates_build.ms -- BEFORE AFTER INPUTS OUTPUT ROUNDS
 import (

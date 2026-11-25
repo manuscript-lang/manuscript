@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Generator for c03-csv-group-sum. Deterministic; run: ms run bench/agent/gen.ms -- c03
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",

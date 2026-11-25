@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Generator for c66-sql-case. The expected outputs come from the Go oracle in
 // oracle/*.ref (built with the local Go toolchain). The hidden cases are the inputs of
 // c52-sql-engine (the behavior that must survive the edit) plus scenarios for CASE

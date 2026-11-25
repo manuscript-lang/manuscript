@@ -1,3 +1,7 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.process.run
+
 // Instruction-count gate (`make perf-counts`): builds the small suite and guard
 // programs, runs each under callgrind and compares the instructions it executed with
 // the committed numbers in bench/perf/counts.txt. Instruction counts do not depend on

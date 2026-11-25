@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.read
+
 import (
 	map_concurrent from "@std/concurrency/resilience.ms",
 	arguments from "@std/os/env.ms",

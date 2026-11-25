@@ -1,3 +1,7 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Paired runtime Set intersection/algebra controls. Producers verify exact ordered
 // members. Usage: ms run bench/tools/map_intersection_audit.ms -- BEFORE AFTER_OR_DASH
 // OUTPUT PAIRS WORK [MODE [PATTERN [SIZE]]]

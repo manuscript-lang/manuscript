@@ -1,3 +1,6 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.read
+
 // Stack growth cost: a loop that crosses the first slot boundary on every call, the
 // same loop without a crossing, both on the main task, then a 900k-frame recursion. See
 // README.md.

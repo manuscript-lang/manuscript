@@ -1,3 +1,5 @@
+// ms: allow_effect db.write
+
 import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write

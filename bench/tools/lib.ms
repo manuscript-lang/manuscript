@@ -1,3 +1,14 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // Shared helpers for the benchmark drivers under bench/. Run a driver from the
 // repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.

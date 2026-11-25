@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Generator for c64-assembler-extend. The expected outputs come from the Go oracle in
 // oracle/*.ref (built with the local Go toolchain). The hidden cases are the inputs of
 // c57-assembler-vm (the behavior that must survive the edit) plus scenarios for the new

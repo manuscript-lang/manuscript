@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.write
+
 // Generates the same program in Manuscript, Go and Rust for the compile-time
 // benchmarks. `q` writes braces as ‹ and › so the generator reads as source.
 import (

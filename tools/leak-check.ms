@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.process.run
+
 // Leak sweep (`make leak-check`): runs the programs of the conformance corpus that
 // finish normally against the counting runtime (`cmake --preset stats`), which prints
 // the count of live heap blocks at exit. A correct program frees everything it

@@ -1,3 +1,7 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.process.run
+
 // Scaling gate (`make scaling-check`): generates inputs of 1k, 10k and 100k units and
 // fails when work that should be linear grows faster. It compares ratios, never wall
 // time: a shape fails when its time at 100k, minus the fixed start-up cost measured at

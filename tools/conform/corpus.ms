@@ -1,3 +1,7 @@
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // The conformance corpus on disk: fixture discovery and the `// conform:` metadata,
 // shared by the runner (tools/conform-run.ms) and the corpus commands
 // (tools/conform.ms).

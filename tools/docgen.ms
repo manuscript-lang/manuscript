@@ -1,3 +1,9 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Standard-library API reference (`make docs`): reads the snapshot `ms doc` prints and
 // writes
 //   - the book's reference pages under `<artifacts>/documentation/standard-library/reference/`,

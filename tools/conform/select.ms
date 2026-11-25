@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.read
+
 // Which fixtures a corpus command looks at: `--tag`, `--exclude-tag`, `--phase`, `--id`
 // and `--shard i/n`.
 import (

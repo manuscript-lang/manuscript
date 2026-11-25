@@ -1,3 +1,5 @@
+// ms: allow_effect std.console.write
+
 type Res {
 	id Int
 	open Bool = true

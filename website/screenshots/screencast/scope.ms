@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 import open from "@std/os/fs.ms"
 
 fn first_line(path String) String! {

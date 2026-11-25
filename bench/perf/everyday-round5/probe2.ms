@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	PriorityQueue from "@std/collections/queue.ms",
 	panic from "@std/core.ms",

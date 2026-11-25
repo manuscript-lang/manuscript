@@ -1,3 +1,5 @@
+// ms: allow_effect std.console.write
+
 // Reports build prerequisites without downloading or changing the checkout
 // (`make doctor`). Usage: ms run tools/doctor.ms
 import (

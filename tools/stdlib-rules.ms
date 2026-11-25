@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.read
+
 // The standard-library rules of `make repo-check` (tools/repo-check.ms), read from the
 // declaration files in src/stdlib/ by their shape, not by a full parse:
 //   - option parameters: an exported function never requires a caller to write `Options()`, so a parameter

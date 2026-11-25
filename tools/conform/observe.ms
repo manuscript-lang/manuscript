@@ -1,3 +1,8 @@
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // One fixture observed under an ms binary, as the JSON value its expectation records.
 import (
 	Bytes from "@std/bytes.ms",

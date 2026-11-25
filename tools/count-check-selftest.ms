@@ -1,3 +1,6 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.process.run
+
 // The ownership-count gate must fail when its fixture fails, even when cleanup is
 // complete (`make count-check`, after the gate itself). It runs tools/count-check.ms on
 // the fixtures in tools/count-check-selftest. MS names the ms that runs the gate

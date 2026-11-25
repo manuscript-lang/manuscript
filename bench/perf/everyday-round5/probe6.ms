@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import monotonic from "@std/time.ms"
 
 enum Tree {

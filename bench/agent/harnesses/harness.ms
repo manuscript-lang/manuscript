@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Harness adapter interface.
 //
 // A harness drives one coding agent CLI inside a workspace. To add one, implement

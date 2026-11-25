@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	panic from "@std/core.ms",
 	monotonic from "@std/time.ms",
