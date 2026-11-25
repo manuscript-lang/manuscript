@@ -174,8 +174,9 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
 }
 
 /* Records a borrow, and with it the borrow of everything its source borrows: a view of a view keeps the owner frozen. */
-static void push_borrow(Borrows *pass, Borrow borrow) {
+static void push_borrow(Borrows *pass, Borrow borrow, bool through_look) {
   const size_t count = pass->borrows.len;
+  bool derived_any = false;
   for (size_t index = 0; index < count; index++) {
     const Borrow parent = pass->borrows.ptr[index];
     if (parent.binding == borrow.root && parent.root != borrow.binding) {
@@ -184,9 +185,23 @@ static void push_borrow(Borrows *pass, Borrow borrow) {
       derived.place = parent.place;
       derived.alias = false;
       borrow_list_push(&pass->borrows, derived);
+      derived_any = true;
     }
   }
-  borrow_list_push(&pass->borrows, borrow);
+  if (!through_look || !derived_any) { /* an item of a look looks at the look's sources, so the look itself stays free */
+    borrow_list_push(&pass->borrows, borrow);
+  }
+}
+
+/* Whether the call answers a part of its look-record receiver without `hold`: the result keeps what the look keeps. */
+static bool answers_look_part(const Borrows *pass, const MsExpr *call) {
+  const MsCall *fact = call != NULL ? ms_facts_call(pass->facts, call->id) : NULL;
+  if (fact == NULL || fact->callee.kind != MS_REF_METHOD || call->u.call.callee->kind != MS_E_MEMBER) {
+    return false;
+  }
+  const MsMethodEntry *entry = ms_check_method_at(pass->program, fact->callee.decl.module, fact->callee.decl.node);
+  return entry != NULL && !entry->source->holding && ms_own_look_record(pass->program, entry->receiver) &&
+         ms_own_result_is_borrowed(pass->program, fact->callee.decl.module, fact->callee.decl.node);
 }
 
 static void note_bind(Borrows *pass, const MsStmt *stmt) {
@@ -200,7 +215,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   if (member != NULL && member->kind == MS_REF_METHOD && local_of(pass->facts, pattern->id, &binding) &&
       origin_of_arg(pass, value->u.member.left, &source)) {
     push_borrow(pass, (Borrow){.binding = binding, .name = pattern->u.name, .at = value->pos, .after = value->end.offset,
-                                              .method_value = true, .root = source.root, .place = source.place});
+                                              .method_value = true, .root = source.root, .place = source.place}, false);
     return;
   }
   if (pattern == NULL || pattern->kind != MS_P_NAME || value == NULL || !origin_of_arg(pass, value, &source) ||
@@ -217,7 +232,8 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   }
   push_borrow(pass, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
                                             .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
-                                            .root = source.root, .place = source.place});
+                                            .root = source.root, .place = source.place},
+              answers_look_part(pass, source.call));
 }
 
 /* Records the place a store or `var` argument changes. */
