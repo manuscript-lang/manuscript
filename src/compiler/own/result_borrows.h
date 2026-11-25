@@ -31,6 +31,10 @@ uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t modul
 
 /* Whether the callable declared by `node` of `module` has a pure borrowing callee result (see MS_RESULT_BORROWED). */
 
+/* Whether the Result written as `result` has an `&` ok payload: `&T!`, or `&T?!` where the `&` marks the Optional's
+ * payload. The signature alone decides the ABI of such a function or interface operation. */
+bool ms_own_written_ok_is_ref(const MsCheckProgram *program, const MsTypeRef *result);
+
 bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, MsNode node);
 
 /* Whether a call's result borrows from its argument at `position` (receiver first for a method). A callee the

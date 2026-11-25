@@ -264,7 +264,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     return !fn->failed;
   }
   if ((stmt->u.bind.is_mutable || fields_leave ||
-       ((!borrow || fresh) && kind != MS_E_NAME && narrowed_local(fn, local, ty))) &&
+       ((!borrow || fresh) && kind != MS_E_NAME && (fresh || !fn_is_borrowed_view(fn, value)) && narrowed_local(fn, local, ty))) &&
       mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
       return fn_fail(fn, "a local binding is outside the function's locals");
