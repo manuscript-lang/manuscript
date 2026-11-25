@@ -111,7 +111,7 @@ static void result_hint(Body *body, const Target *target, MsTy expected, MsTy *h
     expected = ms_ty_args(types, expected)[0]; /* a value wrapped as an optional is typed as its payload */
   }
   if (expected == MS_TY_NONE || ms_ty_is_invalid(types, expected) || count == 0 || count > 16 || result == MS_TY_NONE ||
-      !ms_ty_has_variable(types, result) || ms_ty_has_variable(types, expected)) {
+      !ms_ty_has_variable(types, result) || body_has_foreign_variable(body, expected)) {
     return;
   }
   MsTy trial[16] = {0};
@@ -376,7 +376,9 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     }
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
-    if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
+    /* An argument typed exactly as its open parameter (`Opt.None` for `Opt[T]`) fixes nothing: the other arguments do. */
+    const bool echoes = open && arg_tys[index] == wanted;
+    if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE && !echoes &&
         !body_is_none_name(body, arg->value) && !(is_function(types, arg_tys[index]) && unapplied(body, ms_ty_result(types, arg_tys[index]))) &&
         !report_callback_arity(body, target, arg->value, param, arg_tys[index])) {
       if (!ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound)) {
@@ -399,6 +401,9 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
       const MsTy final = expected_param(body, target, param, known);
       if (is_empty_literal(value) && mentions_vars(types, final, &target->vars) && body_reports(body) && !body->quiet) {
         body_report_empty_literal(body, value);
+      }
+      if (arg_tys[index] == final && mentions_vars(types, final, &target->vars) && value->kind == MS_E_MEMBER) {
+        body_report_uninferred_case(body, value, final); /* `Opt.None` beside nothing that fixes its type arguments */
       }
       if ((arg_tys[index] == MS_TY_NONE || body_has_foreign_variable(body, arg_tys[index])) && !mentions_vars(types, final, &target->vars)) {
         /* An argument typed while a variable was open (`Box(none)` beside `Box(value)`) is typed again at its final type. */
