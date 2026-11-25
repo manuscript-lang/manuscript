@@ -95,11 +95,8 @@ fn run() Result[Void, Error] {
     while true {
         line := input.next()?
 
-        if text := line {
-            stdout().write(f"{text}\n")?
-        } else {
-            break
-        }
+        if line == null { break }
+        stdout().write(f"{line}\n")?
     }
 
     return stdout().flush()

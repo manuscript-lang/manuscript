@@ -41,7 +41,7 @@ A group is only a layout: entries are separate bindings with their own scope rul
 
 Parameters and return types are explicit; local annotations are optional. `count := 3` and `count Int := 3` are the same: `:=` marks an immutable binding and the annotation only names its type. `var` alone binds with `=`, so `var count Int = 3` keeps it. Writing `count Int = 3` is rejected with a fix to `:=`. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    active Bool\n}\n\nfn welcome(customer Customer) String {\n    return customer.name\n}","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    active Bool\n}\n\nfn welcome(customer Customer) String {\n    return customer.name.clone()\n}","given":[]} -->
 ```manuscript
 customer := Customer(name: "Ada", active: true)
 greeting := welcome(customer)
@@ -54,10 +54,11 @@ remaining -= 1
 
 Unpack positions or named fields:
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    email String\n}","given":["names List[String]","customer: Customer"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    email String\n}","given":["names List[String]","customer Customer"]} -->
 ```manuscript
 [first_name, second_name] := names
 {name, email: customer_email} := customer
+print(f"{first_name} {second_name} {name} {customer_email}")
 ```
 
 `[...]` binds positions; `{field: local}` renames a field. Field shorthand and nesting work; parenthesized positional bindings do not. See [destructuring bindings](../types/destructuring.md).

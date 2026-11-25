@@ -97,7 +97,7 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `modules` | Imports per module |
 | `flow` | One function's ordered steps: calls, `?`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
 | `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
-| `tasks` | `flow` pruned to resource scopes that start tasks: each `promise(fn: ...)` with the calls its work makes (needs `--entity`) |
+| `tasks` | `flow` pruned to resource scopes that start tasks: each `promise(() => ...)` with the calls its work makes (needs `--entity`) |
 | `types` (alias `class`) | Types, alternatives and interfaces, each field or case expanding to the project types it holds; a function as `--entity` expands its parameters and result the same way |
 | `ownership` (alias `mutability`) | Per function: checked `copy`, `borrow`, `move`, or `var (exclusive borrow)` parameters; owned, borrowed, or owned-view results, including borrowed `Result` cases; closed resource scopes. Callees expand to `--depth`. Without `--entity`, functions with `var` parameters or resource scopes |
 

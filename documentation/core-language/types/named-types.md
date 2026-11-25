@@ -34,9 +34,10 @@ Names that share a type are written together: `width, height Int` declares two f
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Rect:
+type Rect {
     width, height Int
     x, y Float = 0.0
+}
 
 fn area(width, height Int) Int => width * height
 ```
@@ -144,8 +145,8 @@ type Report {
 
 fn main() Void {
     report := Report("scores", [3, 4])
-    batches := [report.rows]
     print(report.title)
+    batches := [report.rows]
     print(batches[0])
 }
 ```
@@ -155,15 +156,15 @@ scores
 [3, 4]
 ```
 
-- The outer list owns `report.rows` after construction. The sibling field `report.title` stays readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected. If both owners need the rows, use `report.rows.clone()` at construction.
+- The outer list owns `report.rows` after construction. A field moves at the last use of its record, so `report.title` is read first. Reading `report.rows` or using the whole `report` afterwards is rejected. If both owners need the rows, use `report.rows.clone()` at construction.
 - Field moves apply to owned fields (strings, lists, types, resources) of a `:=` binding or a consuming parameter. They do not apply to elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, or types that declare `close`. For those, clone a clonable value or move the whole owner.
 - A parameter whose field is moved into another owner is consumed, so the caller gives up the whole value. Pass `.clone()` to keep an independent caller-owned value.
 
-Reading a field is different from moving it: `rows := report.rows` borrows the field. A function that returns the field also returns an inferred borrow:
+Reading a field is different from moving it: `rows := report.rows` borrows the field. A function returns a borrow of the field when its signature says `hold` for the parameter and `&` for the result:
 
 <!-- manuscript-example: {"mode":"fragment","context":"type Report {\n    rows List[Int]\n}","given":[]} -->
 ```manuscript
-fn rows_of(report Report) List[Int] {
+fn rows_of(hold report Report) &List[Int] {
     return report.rows
 }
 ```
@@ -188,7 +189,7 @@ type Room {
     door, spare Door
 }
 
-fn open_door(r Room) List[Door] {
+fn open_door(move r Room) List[Door] {
     var doors List[Door] = []
     doors.append(r.door)
     return doors
@@ -272,7 +273,10 @@ test "recursive links" {
 
     var copy = node.clone()
     copy.next = Node(value: 2, next: null)
-    if node.next.get().value != 5 or copy.next.get().value != 2 {
+    original := node.next
+    duplicate := copy.next
+    if original == null or duplicate == null { panic("links must exist") }
+    if original.value != 5 or duplicate.value != 2 {
         panic("clones must be independent")
     }
 }
@@ -288,11 +292,12 @@ Generic recursion must preserve type parameters along every cycle; see [finite r
 
 ```text
 # gate.ms
-export opaque type Approved:
+export opaque type Approved {
     entity String
     nonce String
+}
 
-export fn approve(entity String) Approved: Approved(entity: entity, nonce: "n1")
+export fn approve(entity String) Approved => Approved(entity: entity.clone(), nonce: "n1")
 
 # agent.ms
 a := Approved(entity: "u2", nonce: "x")   # error: Approved is opaque outside gate.ms
@@ -337,7 +342,7 @@ sum := total(numbers)
 
 ## Growing a tree
 
-A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node { ... }`. A `T?` parameter has no default: write `= null` to make it omittable.
+A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if node != null { ... }`. A `T?` parameter has no default: write `= null` to make it omittable.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -365,8 +370,8 @@ fn var Branch.insert(key Int) Void {
 }
 
 fn count(node Branch?) Int {
-    if n := node {
-        return 1 + count(n.left) + count(n.right)
+    if node != null {
+        return 1 + count(node.left) + count(node.right)
     }
     return 0
 }

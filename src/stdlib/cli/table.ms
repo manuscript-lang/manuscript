@@ -21,11 +21,12 @@ non-blank line. Rows are added one at a time and rendered as LF-separated lines 
 ```manuscript
 import Align, Table from "@std/cli/table.ms"
 
-fn render() String!:
+fn render() String! {
     var table = Table(columns: [Align.Left, Align.Right])
     table.add(["tea", "2"])?
     table.add(["coffee", "30"])?
     return ok(table.render())
+}
 ```
 
 Unicode widths use `String.display_width`: cell bytes stay intact and widths are estimates, not a promise

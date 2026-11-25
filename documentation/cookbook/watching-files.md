@@ -25,7 +25,7 @@ test "a new file is reported" {
     write_file(f"{dir.path()}/note.txt", "hello").wait()?
 
     event := events.next(timeout: seconds(10))?
-    expect_equal(event.get().path.ends_with("note.txt"), true)?
+    expect_equal(event != null and event.path.ends_with("note.txt"), true)?
 }
 ```
 

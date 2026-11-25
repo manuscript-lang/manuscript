@@ -6,6 +6,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 
 - [Effects are implicit-deny comment directives](effects-are-implicit-deny-comment-directives.md): `allow_effect` permits, `effect` declares, `std.` tags on exported stdlib functions, MSL116 warns first.
 - [Packages are git dependencies pinned by lock and hash](packages-are-git-dependencies-pinned-by-lock-and-hash.md): `ms install` resolves versions (one copy per compatible range) and pins commit and content hash; builds then work offline; packages declare effects the importer allows.
+- [Embedded examples are checked by docs-check](embedded-examples-are-checked-by-docs-check.md): `tools/example-check.ms` runs every `manuscript-example` fence, so a syntax change cannot leave a stale one.
 - [Bounded editor work rules](bounded-editor-work-rules.md): Formatter, navigation and token-batch work stays bounded to the query and required context.
 - [Workspace scans filter files before running the checker](workspace-scans-filter-files-before-running-the-checker.md): `ms search_symbol` took minutes at the repository root until the lexical prefilter and reference search skipped unrelated files.
 

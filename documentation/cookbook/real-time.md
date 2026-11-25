@@ -24,8 +24,7 @@ fn echo(var exchange HttpExchange) Void! {
     message := socket.input.next()?
     if message == null { return ok() }
 
-    echoed := message.get()
-    socket.output.write(echoed)?
+    socket.output.write(message)?
     socket.close()?
 }
 
@@ -37,7 +36,8 @@ fn main() Void! {
     )?
 
     reply := client.input.next()?
-    print(reply.get().data.decode_utf8() or "")
+    if reply == null { return ok() }
+    print(reply.data.decode_utf8() or "")
     client.close()?
     server.close()?
 }

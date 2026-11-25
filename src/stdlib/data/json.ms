@@ -43,17 +43,19 @@ A JSON value. Number text is retained to avoid losing precision during parsing.
 `get` and `get_index` read one level, and the `as_*` methods read a scalar or container.
 Each returns `null` on a mismatch. `get` and `get_index` borrow the selected part, so keep the
 document alive and unchanged while you use it. `as_string`, `as_list` and `as_map` return clones.
-For nested reads, bind each level with `if value := ...`:
+For nested reads, bind each level and return early on `null`:
 
 <!-- manuscript-example: {"mode":"fragment","given":["doc JsonValue"]} -->
 ```manuscript
 import JsonValue from "@std/data/json.ms"
 
-fn user_name(doc JsonValue) String:
-    if user := doc.get("user"):
-        if name := user.get("name"):
-            return name.as_string().get_or("")
-    return ""
+fn user_name(doc JsonValue) String {
+    user := doc.get("user")
+    if user == null { return "" }
+    name := user.get("name")
+    if name == null { return "" }
+    return name.as_string() or ""
+}
 ```
 
 `get_in` reads a chain of object members in one call and borrows the result: `doc.get_in(["user", "name"])`.
@@ -248,20 +250,24 @@ a common protocol shape:
 ```manuscript
 import JsonEncode, JsonValue from "@std/data/json.ms"
 
-enum Event:
+enum Event {
     Created(id Int)
     Deleted(id Int)
+}
 
-fn Event.to_json() JsonValue:
-    match self:
-        Created(id): return tagged("created", id)
-        Deleted(id): return tagged("deleted", id)
+fn Event.to_json() JsonValue {
+    return match self {
+        Created(id) => tagged("created", id)
+        Deleted(id) => tagged("deleted", id)
+    }
+}
 
-fn tagged(kind String, id Int) JsonValue:
+fn tagged(kind String, id Int) JsonValue {
     var fields = Map[String, JsonValue]()
-    fields.add("type", JsonValue.StringValue(kind))
+    fields.add("type", JsonValue.StringValue(kind.clone()))
     fields.add("id", JsonValue.NumberValue(f"{id}"))
     return JsonValue.ObjectValue(fields)
+}
 ```
 */
 export interface JsonEncode {
@@ -307,10 +313,11 @@ indentation included; exceeding it returns `EOVERFLOW`. A negative bound or inde
 ```manuscript
 import stringify from "@std/data/json.ms"
 
-type Request:
+type Request {
     model String
     stream Bool
     user String?
+}
 
 text := stringify(Request(model: "example", stream: true, user: null))?
 print(text)

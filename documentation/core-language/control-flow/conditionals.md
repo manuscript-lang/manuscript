@@ -82,13 +82,13 @@ The branches are one-line expressions on the same line. For statements in a bran
 
 ## Unwrapping an Optional or Result
 
-`if name := expression { ... }` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `null` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
+`if name := expression { ... }` runs its block when a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once. An [Optional](../types/optionals.md) is tested with `!= null` instead, which makes the name its payload inside the block (`if name != null { ... }`); `if name := optional` is rejected with that remedy.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn greeting(name String?) String {
-    if value := name {
-        return "Hello, " + value
+    if name != null {
+        return "Hello, " + name
     } else {
         return "Hello!"
     }
@@ -111,7 +111,7 @@ fn port(lookup Result[Int, Error]) Int {
 - A missing key or out-of-range index takes the `else` branch.
 - The origin must be `var`, and nothing else may use it until the last use of `name`.
 - `if var name = map.get(key) { ... }` also borrows the map entry in place.
-- For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary `Optional`. To change an independent copy, use `if v := x` and clone the payload into a `var`.
+- For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary `Optional`. To change an independent copy, bind `v := x`, test `v != null`, and clone the payload into a `var`.
 
 This complete test updates an existing map entry:
 
@@ -128,7 +128,7 @@ test "increment a visit count" {
 }
 ```
 
-A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if v := x` to a two-arm `match` on a payload name and `null` (**MSL108**).
+A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `v != null` to a two-arm `match` on a payload name and `null` (**MSL108**).
 
 ## Validating inputs
 

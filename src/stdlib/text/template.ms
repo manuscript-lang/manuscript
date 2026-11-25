@@ -9,7 +9,7 @@ import (
 /*
 Text templates: compile a template once, then render it with `JsonValue` data.
 
-<!-- manuscript-example: {"mode":"fragment","given":["user: JsonValue"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["user JsonValue"]} -->
 ```manuscript
 import JsonValue from "@std/data/json.ms"
 import compile, to_data from "@std/text/template.ms"

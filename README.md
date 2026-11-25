@@ -69,7 +69,7 @@ fn main() Void {
 }
 ```
 
-No async, no await, no function coloring: wrap a call in `promise(fn: ...)` and it runs on another core. The lambda borrows its captures read-only, so the checker rules out data races. A parked promise costs about 5 KB on Linux, and idle stacks hibernate, so millions fit in memory.
+No async, no await, no function coloring: wrap a call in `promise(() => ...)` and it runs on another core. The lambda borrows its captures read-only, so the checker rules out data races. A parked promise costs about 5 KB on Linux, and idle stacks hibernate, so millions fit in memory.
 
 ## Effects the compiler checks
 

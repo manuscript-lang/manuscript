@@ -26,7 +26,7 @@ Generators draw integers from a `Source` that records them, so a failing input s
 draws (deleting spans, lowering values) and replaying the generator. Every generator, including your own
 built with `map`, `flat_map`, `lists` and the rest, therefore shrinks without a shrinker of its own.
 
-Example: `check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))?`.
+Example: `check("reverse twice", lists(ints(-100, 100)), xs => expect_equal(xs.reversed().reversed(), xs))?`.
 `ms test --runs N`, `--seed N` and `--fuzz DURATION` set the case count, the starting seed and a time budget.
 */
 

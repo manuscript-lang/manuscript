@@ -16,7 +16,7 @@ import parse_address, parse_message from "@std/net/mail.ms"
 sender := parse_address("Ada Lovelace <ada@example.com>")?
 print(sender.name)              // "Ada Lovelace"
 mail := parse_message(raw)?
-print(mail.headers.get("Subject").get_or(""))
+print(mail.headers.get("Subject") or "")
 ```
 */
 

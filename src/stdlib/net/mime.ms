@@ -14,9 +14,9 @@ header block (folded lines joined, names kept as written, lookup case-insensitiv
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
-print(media_type_for_extension(".json").get_or("")) // "application/json"
+print(media_type_for_extension(".json") or "") // "application/json"
 charset := (parse_media_type("text/html; charset=utf-8")?).params.get("charset")
-print(charset.get_or(""))                           // "utf-8"
+print(charset or "")                                // "utf-8"
 ```
 */
 
