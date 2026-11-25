@@ -1,0 +1,6 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "initialized", "params": {}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/first.ms", "languageId": "manuscript", "version": 1, "text": "fn main() Void {\n\treturn\n}\n"}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/second.ms", "languageId": "manuscript", "version": 1, "text": "import promise from \"@std/concurrency/promise.ms\"\n\nfn changes_outside() Void! {\n\tvar xs = [\"aaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]\n\tp := promise(() => ok(xs[0].length()))\n\txs.append(\"b\")\n\tprint(p.wait()?)\n}\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "shutdown"}
+{"jsonrpc": "2.0", "method": "exit"}
