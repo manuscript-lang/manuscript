@@ -32,6 +32,8 @@ typedef struct Change {
   MsPos at;     /* where the diagnostic points: a stored field's own name, else where the place starts */
   const MsExpr *place; /* the changed place; NULL when it is the whole binding */
   const MsExpr *lambda; /* the outermost open closure that captured the root and changes it, or NULL */
+  uint32_t via_binding; /* the closure binding whose call runs this change; 0 for a change written in place */
+  uint32_t via; /* the offset of that call: where the change takes effect */
   bool value_write; /* a `var` argument or receiver that is a value of a map (`m[k]`): changes the value in place, never the keys */
 } Change;
 
@@ -69,6 +71,12 @@ typedef struct Exit {
   bool is_return;
 } Exit;
 
+/* A name bound to a closure: calling it runs the closure's changes. */
+typedef struct Local {
+  uint32_t binding;
+  const MsExpr *lambda;
+} Local;
+
 MS_LIST_DEFINE(RangeList, range_list, Range)
 MS_LIST_DEFINE(ExitList, exit_list, Exit)
 MS_LIST_DEFINE(LambdaList, lambda_list, const MsExpr *)
@@ -77,6 +85,7 @@ MS_LIST_DEFINE(KeepList, keep_list, Keep)
 MS_LIST_DEFINE(BorrowList, borrow_list, Borrow)
 MS_LIST_DEFINE(ChangeList, change_list, Change)
 MS_LIST_DEFINE(UseList, use_list, Use)
+MS_LIST_DEFINE(LocalList, local_list, Local)
 
 typedef struct Borrows {
   MsCheckProgram *program;
@@ -90,6 +99,7 @@ typedef struct Borrows {
   UseList view_vars; /* the `var`s that hold a view: a later store replaces the reference */
   RangeList ranges;
   ExitList exits;
+  LocalList closures; /* the names bound to a closure that stays in the function */
   LambdaList kept; /* closures handed to a function the runtime keeps them in (a started promise) */
   KeepList keeps;
   SourceList extra; /* the origins after the first that the last origin_of_* query found */

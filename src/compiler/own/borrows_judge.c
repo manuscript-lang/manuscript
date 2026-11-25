@@ -240,7 +240,10 @@ void ms_borrows_judge(Borrows *pass) {
     const Borrow *borrow = &pass->borrows.ptr[at];
     for (size_t index = 0; index < pass->changes.len; index++) {
       const Change *change = &pass->changes.ptr[index];
-      const uint32_t offset = change->pos.offset;
+      const uint32_t offset = change->via != 0 ? change->via : change->pos.offset;
+      if (change->via_binding == borrow->binding && change->via != 0) {
+        continue; /* the closure's own call runs its own changes under its own borrow */
+      }
       if (borrow->alias && !change->moved) {
         continue;
       }
@@ -265,5 +268,6 @@ void ms_borrows_judge(Borrows *pass) {
   exit_list_clear(&pass->exits);
   lambda_list_clear(&pass->kept);
   keep_list_clear(&pass->keeps);
+  local_list_clear(&pass->closures);
 }
 
