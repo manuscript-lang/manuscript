@@ -28,6 +28,11 @@ static bool expands(const MirModule *module, const MirInst *inst) {
          op == MOP_ListFill || op == MOP_ListAddr || op == MOP_ListPush || op == MOP_OptUnwrap;
 }
 
+/* The accesses that count a negative index from the end. */
+static bool wraps_index(MirOp op) {
+  return op == MOP_ListGet || op == MOP_ListSet || op == MOP_ListFill || op == MOP_ListAddr;
+}
+
 /* How many blocks `op` adds after the one it is in, apart from fault blocks. */
 static uint32_t continuations(MirOp op, bool checks) {
   if (op == MOP_ListPush) {
@@ -201,16 +206,121 @@ static MirOp unchecked_op(MirOp op) {
   }
 }
 
+/* The block that reports a wrapped index outside the list, for a function with an exit: it posts the fault and
+ * joins with an undefined result and the flag set. */
+static MirBlock exit_bad_block(Expander *e, const MirInst *inst, MirBlock join_at, const MirValue *post_args) {
+  const MirLoc loc = inst->loc;
+  const MirTy ty = mir_value_ty(e->func, inst->res);
+  MirMode mode = MM_BORROW;
+  (void)mir_result_mode(e->module, e->func, inst, &mode);
+  MirBlockData bad = mir_block_empty();
+  bad.cold = true;
+  bad.term_loc = loc;
+  const MirTy ints[2] = {MIR_INT, MIR_INT};
+  (void)emit(e, &bad, MOP_CallRt, post_args, 2, mir_imm_ext(post_fn(e, &e->post_index, "msrt_post_index", ints, 2)),
+             MIR_VOID, loc);
+  MirValue to_join[2];
+  to_join[0] = emit(e, &bad, MOP_Undef, NULL, 0, mode == MM_BORROW ? mir_imm_int(1) : mir_imm_none(), ty, loc);
+  to_join[1] = emit(e, &bad, MOP_BConst, NULL, 0, (MirImm){.tag = MI_BOOL, .a = 1}, MIR_BOOL, loc);
+  bad.term = (MirTerm){.kind = MT_BR, .value = MIR_NONE,
+                       .a = {.block = join_at, .args = mir_args_copy(e->module, to_join, 2), .nargs = 2}};
+  const MirBlock at = e->fault_base + (MirBlock)e->faults.len;
+  mir_block_list_push(&e->faults, bad);
+  return at;
+}
+
+/* The block of the unchecked access at `index`, which joins with its result and a clear flag. */
+static void exit_good_block(Expander *e, const MirInst *inst, MirValue index, MirBlock join_at) {
+  const MirLoc loc = inst->loc;
+  MirBlockData good = mir_block_empty();
+  good.term_loc = loc;
+  MirValue *args = mir_args_copy(e->module, inst->args, inst->nargs);
+  args[1] = index;
+  const MirValue made = mir_new_value(e->func, mir_value_ty(e->func, inst->res));
+  mir_inst_list_push(&good.insts, mir_inst(unchecked_op((MirOp)inst->op), inst->imm, made, loc, args, inst->nargs));
+  MirValue from_good[2];
+  from_good[0] = made;
+  from_good[1] = emit(e, &good, MOP_BConst, NULL, 0, (MirImm){.tag = MI_BOOL, .a = 0}, MIR_BOOL, loc);
+  good.term = (MirTerm){.kind = MT_BR, .value = MIR_NONE,
+                        .a = {.block = join_at, .args = mir_args_copy(e->module, from_good, 2), .nargs = 2}};
+  mir_block_list_push(&e->out, good);
+}
+
+/* A list access that counts a negative index from the end, with the checks on. The common case is one unsigned
+ * comparison of the index with the length; only an index outside the list takes the slow block, which adds the
+ * length and checks again. Without an exit the blocks are the test, the slow block and the access; with one
+ * (`site`) the access is repeated in a block of each path and both join with the fault flag of the lowering. */
+static void expand_wrapping_access(Expander *e, const MirInst *inst, const MirInst *site, MirBlockData *cur,
+                                   MirValue len) {
+  const MirLoc loc = inst->loc;
+  const MirValue list_index = inst->args[1];
+  const MirValue fast = emit_cmp(e, cur, MOP_UICmp, MCC_LT, list_index, len, loc);
+  const MirBlock first_at = e->next++; /* the access at the index itself (or the slow block, without an exit) */
+  MirBlock slow_at = 0, second_at = 0, join_at = 0;
+  if (site != NULL) {
+    slow_at = e->next++;
+    second_at = e->next++;
+    join_at = e->next++;
+  } else {
+    slow_at = first_at;
+    second_at = e->next++;
+  }
+  MirBlockData slow = mir_block_empty();
+  slow.term_loc = loc;
+  const MirValue wrapped = emit_pure2(e, &slow, MOP_IAdd, list_index, len, loc);
+  const MirValue ok = emit_cmp(e, &slow, MOP_UICmp, MCC_LT, wrapped, len, loc);
+  const MirValue report[2] = {list_index, len};
+  if (site != NULL) {
+    const MirBlock bad_at = exit_bad_block(e, inst, join_at, report);
+    cur->term = (MirTerm){.kind = MT_CONDBR, .value = fast, .a = {.block = first_at}, .b = {.block = slow_at}};
+    mir_block_list_push(&e->out, *cur);
+    exit_good_block(e, inst, list_index, join_at);
+    slow.term = (MirTerm){.kind = MT_CONDBR, .value = ok, .a = {.block = second_at}, .b = {.block = bad_at}};
+    mir_block_list_push(&e->out, slow);
+    exit_good_block(e, inst, wrapped, join_at);
+    MirMode mode = MM_BORROW;
+    (void)mir_result_mode(e->module, e->func, inst, &mode);
+    MirBlockData join = mir_block_empty();
+    mir_block_param_list_push(&join.params, (MirBlockParam){inst->res, (uint8_t)mode});
+    mir_block_param_list_push(&join.params, (MirBlockParam){site->res, (uint8_t)MM_BORROW});
+    mir_idlist_push(&e->joined, site->res);
+    *cur = join;
+    return;
+  }
+  const MirBlock to_fault = e->fault_base + (MirBlock)e->faults.len;
+  mir_block_list_push(&e->faults, index_fault_block(e, list_index, len, loc));
+  e->faults.ptr[e->faults.len - 1].cold = true;
+  const MirBlock ready_at = second_at;
+  cur->term = (MirTerm){.kind = MT_CONDBR, .value = fast, .a = {.block = ready_at, .args = mir_args_copy(e->module, &list_index, 1), .nargs = 1},
+                        .b = {.block = slow_at}};
+  mir_block_list_push(&e->out, *cur);
+  slow.term = (MirTerm){.kind = MT_CONDBR, .value = ok,
+                        .a = {.block = ready_at, .args = mir_args_copy(e->module, &wrapped, 1), .nargs = 1},
+                        .b = {.block = to_fault}};
+  mir_block_list_push(&e->out, slow);
+  const MirValue param = mir_new_value(e->func, MIR_INT);
+  MirBlockData ready = mir_block_empty();
+  mir_block_param_list_push(&ready.params, (MirBlockParam){param, MM_MOVE});
+  MirValue *args = mir_args_copy(e->module, inst->args, inst->nargs);
+  args[1] = param;
+  mir_inst_list_push(&ready.insts, mir_inst(unchecked_op((MirOp)inst->op), inst->imm, inst->res, loc, args, inst->nargs));
+  *cur = ready;
+}
+
 /* A list access: `list.get`, `list.set`, `list.fill` and `list.addr` count a negative index from the end; the
  * `.nn` forms know it is not negative. */
 static void expand_access(Expander *e, const MirInst *inst, MirBlockData *cur) {
   const MirOp op = (MirOp)inst->op;
   const MirLoc loc = inst->loc;
   const MirValue list = inst->args[0], index = inst->args[1];
-  const bool wraps = op == MOP_ListGet || op == MOP_ListSet || op == MOP_ListFill || op == MOP_ListAddr;
+  const bool wraps = wraps_index(op);
   MirValue len = MIR_NONE;
   if (e->checks || wraps) {
     len = emit(e, cur, MOP_ListLen, &list, 1, mir_imm_none(), MIR_INT, loc);
+  }
+  if (wraps && e->checks) {
+    expand_wrapping_access(e, inst, site_of(e, inst), cur, len);
+    return;
   }
   MirValue wrapped_index = index;
   if (wraps) {
@@ -411,9 +521,15 @@ static bool has_site(const MirBlockData *block, size_t at) {
 static uint32_t block_continuations(const MirBlockData *block, bool checks) {
   uint32_t count = 0;
   for (size_t index = 0; index < block->insts.len; index++) {
-    const uint32_t more = continuations((MirOp)block->insts.ptr[index].op, checks);
-    /* a check with an exit adds the block of the unchecked instruction and the join */
-    count += more == 1 && has_site(block, index) ? 2 : more;
+    const MirOp op = (MirOp)block->insts.ptr[index].op;
+    const uint32_t more = continuations(op, checks);
+    const bool exits = more == 1 && has_site(block, index);
+    if (more == 1 && wraps_index(op)) {
+      count += exits ? 4 : 2; /* an in-range test, then the slow block that counts from the end */
+    } else {
+      /* a check with an exit adds the block of the unchecked instruction and the join */
+      count += exits ? 2 : more;
+    }
   }
   return count;
 }
