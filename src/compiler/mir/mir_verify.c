@@ -12,9 +12,7 @@
 
 #include <stdarg.h>
 
-#include "base/alloc.h"
 #include "base/message.h"
-#include "base/parallel.h"
 #include "compiler/mir/mir_layout.h"
 #include "compiler/mir/mir_print.h"
 
@@ -418,9 +416,6 @@ static void mv_run(Mv *v) {
   mv_fault_sites(v);
 }
 
-/* Functions per thread below which a thread is not worth starting. */
-#define VERIFY_GRAIN 64
-
 static void mv_function(MirVerifyErrors *errs, const MirModule *m, const MirFunc *f, const bool *drops,
                         MirLayouts *layouts, bool require_locs) {
   Mv v = {.errs = errs,
@@ -497,59 +492,15 @@ static void mv_check_declarations(MirVerifyErrors *errs, const MirModule *m) {
   }
 }
 
-/* What the workers of the parallel check share. A worker has its own layouts, which it fills as it asks. */
-typedef struct VerifyJobs {
-  const MirModule *m;
-  const bool *drops;
-  bool require_locs;
-  MirLayouts *layouts; /* one per worker */
-  MirVerifyErrors *found; /* one per worker */
-} VerifyJobs;
-
-static void verify_job(void *context, size_t index, uint32_t worker) {
-  const VerifyJobs *jobs = context;
-  mv_function(&jobs->found[worker], jobs->m, &jobs->m->funcs.ptr[index], jobs->drops, &jobs->layouts[worker],
-              jobs->require_locs);
-}
-
-/* Whether every function verifies, checked on all cores: the errors themselves are not kept. */
-static bool functions_clean(const MirModule *m, const bool *drops, bool require_locs) {
-  const size_t count = m->funcs.len;
-  const uint32_t threads = ms_parallel_threads(count, VERIFY_GRAIN);
-  MirLayouts *layouts = ms_alloc(sizeof(MirLayouts) * threads);
-  MirVerifyErrors *found = ms_alloc(sizeof(MirVerifyErrors) * threads);
-  for (uint32_t worker = 0; worker < threads; worker++) {
-    mir_layouts_init(&layouts[worker], m);
-    found[worker] = (MirVerifyErrors){0};
-  }
-  VerifyJobs jobs = {m, drops, require_locs, layouts, found};
-  ms_parallel_for(threads, count, verify_job, &jobs);
-  bool clean = true;
-  for (uint32_t worker = 0; worker < threads; worker++) {
-    clean = clean && found[worker].errors.len == 0;
-    mir_verify_errors_free(&found[worker]);
-    mir_layouts_free(&layouts[worker]);
-  }
-  ms_free(found);
-  ms_free(layouts);
-  return clean;
-}
-
 bool mir_verify_module(const MirModule *m, bool require_locs, MirVerifyErrors *out) {
   mv_check_declarations(out, m);
   MsArena scratch = ms_arena_new();
+  MirLayouts layouts;
+  mir_layouts_init(&layouts, m);
   bool *drops = MS_ARENA_NEW_ARRAY(&scratch, bool, m->types.kinds.len + 1);
   for (uint32_t t = 0; t < m->types.kinds.len; t++) {
     drops[t] = mir_needs_drop(m, t);
   }
-  /* A module that verifies is the usual case and is checked on all cores; one that does not is checked again in order,
-   * so its errors come out in function order whatever the thread count. */
-  if (out->errors.len == 0 && functions_clean(m, drops, require_locs)) {
-    ms_arena_free(&scratch);
-    return true;
-  }
-  MirLayouts layouts;
-  mir_layouts_init(&layouts, m);
   for (uint32_t i = 0; i < m->funcs.len; i++) {
     mv_function(out, m, &m->funcs.ptr[i], drops, &layouts, require_locs);
   }

@@ -357,7 +357,11 @@ bool opt_copyelim_func(MirModule *m, MirFunc *f) {
 }
 
 bool opt_copyelim(MirModule *m) {
-  return opt_each_func(m, opt_copyelim_func);
+  bool changed = false;
+  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
+    changed |= opt_copyelim_func(m, &m->funcs.ptr[fi]);
+  }
+  return changed;
 }
 
 bool opt_copyelim_takes(MirModule *m) {

@@ -52,10 +52,6 @@ void ms_arena_reset(MsArena *arena);
 
 void ms_arena_free(MsArena *arena);
 
-/* Moves everything `from` holds into `into`, which then frees it: the allocations keep their addresses. `from` is left
- * empty. For an arena a worker thread filled while `into` was in use by another. */
-void ms_arena_adopt(MsArena *into, MsArena *from);
-
 #define MS_ARENA_NEW(arena, T) ((T *)ms_arena_alloc_zeroed((arena), sizeof(T), _Alignof(T)))
 
 /* `count` zeroed elements; a count whose byte size overflows reports through ms_fatal. */
