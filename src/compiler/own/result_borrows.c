@@ -237,6 +237,10 @@ static Reach classify_call(Pass *pass, const MsExpr *call) {
     position = 1;
   }
   for (uint32_t index = 0; index < call->u.call.args.len; index++, position++) {
+    /* A text literal is static data: a result that holds it borrows nothing and owns nothing. */
+    if (call->u.call.args.ptr[index].value->kind == MS_E_TEXT) {
+      continue;
+    }
     if (kind == MS_REF_CASE || ms_own_call_borrows(pass->program, fact, position)) {
       out = join(out, classify(pass, call->u.call.args.ptr[index].value));
     }

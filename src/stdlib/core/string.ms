@@ -512,7 +512,7 @@ export type Split {
 	// The text being split, borrowed from the caller.
 	text &String
 	// The separator; an empty one cuts between scalars.
-	separator String
+	separator &String
 	// The byte offset where the next piece starts.
 	at Int
 	// The bytes between one piece's end and the next piece's start: the separator's
@@ -539,8 +539,8 @@ fn hold Split.collect() List[&String] {
 // separator yields one empty piece; an empty separator splits into scalars. The pieces
 // borrow the receiver: walk them with `for`, or call `collect()` on the result for a
 // list.
-fn hold String.split(separator String) Split {
-	return Split(self, separator.clone(), 0, separator.length())
+fn hold String.split(hold separator String) Split {
+	return Split(self, separator, 0, separator.length())
 }
 
 /*
