@@ -81,7 +81,7 @@ Splits the list into runs of consecutive items with equal keys. `key` is called 
 Items with the same key that are not adjacent form separate runs; sort first to gather them. An empty list gives an empty list.
 Example: `group_runs([1, 1, 2, 1], n => n)` has the runs `1 1`, `2` and `1`.
 */
-export fn group_runs[T Clonable, K Equal &Clonable](
+export fn group_runs[T Clonable, K Equal & Clonable](
 	values List[T],
 	key fn(T) K
 ) List[Run[K, T]] {

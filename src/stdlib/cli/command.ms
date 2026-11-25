@@ -269,7 +269,7 @@ export enum Parsed {
 }
 
 // The command reached by following `path` from `from` on, or null for an unknown word.
-fn node_at(hold node Command, path List[String], from Int) Command? {
+fn node_at(hold node Command, path List[String], from Int) &Command? {
 	if from >= path.length() { return node }
 
 	next := node.child(path[from])

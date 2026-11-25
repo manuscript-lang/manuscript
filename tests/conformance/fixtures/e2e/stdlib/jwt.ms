@@ -29,7 +29,7 @@ type Session {
 fn failure[T](hold result T!) Error! {
 	match result {
 		ok(_) => return error(Error("accepted"))
-		error(cause) => return ok(cause)
+		error(cause) => return ok(cause.clone())
 	}
 }
 
