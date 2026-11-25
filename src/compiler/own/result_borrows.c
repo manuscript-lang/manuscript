@@ -282,16 +282,6 @@ static Reached reached_by(Pass *pass, MsParams params, MsStmts body, MsTy result
   return out;
 }
 
-static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
-  const Reached reached = reached_by(pass, params, body, MS_TY_NONE);
-  if (!reached.known) {
-    return 0;
-  }
-  /* A `move` parameter is the callable's own: what it hands on is the result's, not a borrow of the caller's argument. */
-  const uint32_t borrowed = reached.all.mask & ~moved_positions(pass, params);
-  return borrowed | (reached.all.owned || reached.all.mask == 0 ? 0 : MS_RESULT_BORROWED);
-}
-
 static bool named_as(const Pass *pass, const MsTypeRef *t, const char *text) {
   return t->kind == MS_TYPE_NAMED && ms_span_is_text(ms_names_span(pass->program->names, t->name), text);
 }
@@ -323,34 +313,66 @@ static bool ref_result(const Pass *pass, const MsTypeRef *t) {
   return t->args.len >= 1 && (named_as(pass, t, "Optional") || named_as(pass, t, "Result")) && ref_result(pass, t->args.ptr[0]);
 }
 
-/* A signature that writes `hold` or `&` states the mask itself: the positions it holds, and the borrowed-result bit when
- * the result is a reference. Returns false for a signature that writes neither, which still gets the inferred mask. */
-static bool declared_mask(const Pass *pass, bool receiver_holds, MsParams params, const MsTypeRef *result, uint32_t *out) {
-  uint32_t mask = receiver_holds && pass->method ? 1u : 0u;
-  bool declared = receiver_holds;
-  for (uint32_t index = 0; index < params.len; index++) {
-    const uint32_t position = index + (pass->method ? 1u : 0u);
-    if (params.ptr[index]->holding && position < 31) {
-      mask |= UINT32_C(1) << position;
-      declared = true;
+static bool mentions(const MsTypeRef *t, MsName name) {
+  if (t == NULL) {
+    return false;
+  }
+  if (t->kind == MS_TYPE_FN) {
+    for (uint32_t index = 0; index < t->params.len; index++) {
+      if (mentions(t->params.ptr[index]->ty, name)) {
+        return true;
+      }
+    }
+    return mentions(t->result, name);
+  }
+  for (uint32_t index = 0; index < t->args.len; index++) {
+    if (mentions(t->args.ptr[index], name)) {
+      return true;
     }
   }
-  if (has_ref(result)) {
-    declared = true;
-    mask |= ref_result(pass, result) ? MS_RESULT_BORROWED : 0;
+  return t->name == name;
+}
+
+/* Whether a type parameter of the receiver also builds the result: a receiver handed over (`move`) carries what it
+ * borrows into the result, as `Optional[&List]`'s payload stays a part of the list. */
+static bool receiver_flows(const MsFunc *func, const MsMethod *method) {
+  for (uint32_t index = 0; index < method->receiver_args.len; index++) {
+    if (mentions(func->result, method->receiver_args.ptr[index]->name)) {
+      return true;
+    }
   }
-  *out = mask;
-  return declared;
+  return false;
+}
+
+/* The mask a signature states: the positions it holds, the positions handed over whose type the result is built from,
+ * and the borrowed-result bit when the result is a reference. */
+static uint32_t declared_mask(const Pass *pass, const MsFunc *func, const MsMethod *method) {
+  const bool receiver_holds = method != NULL && method->holding;
+  uint32_t mask = receiver_holds && pass->method ? 1u : 0u;
+  uint32_t flows = 0;
+  if (method != NULL && method->consuming && receiver_flows(func, method)) {
+    flows |= 1u;
+  }
+  for (uint32_t index = 0; index < func->params.len; index++) {
+    const uint32_t position = index + (pass->method ? 1u : 0u);
+    const MsParam *param = func->params.ptr[index];
+    if (position < 31 && param->holding) {
+      mask |= UINT32_C(1) << position;
+    }
+  }
+  /* What flows through a type parameter is a reference exactly when the value handed over is one; a result that is the
+   * bare parameter hands that value back, a wrapper around it holds a new owner. */
+  const MsTypeRef *result = func->result;
+  const bool bare = result != NULL && result->kind == MS_TYPE_NAMED && result->args.len == 0 && !result->is_ref;
+  return mask | flows | ((flows != 0 && bare) || ref_result(pass, result) ? MS_RESULT_BORROWED : 0);
 }
 
 /* A signature's `hold` and `&` against its body: the body may return a part of a held argument only, and a `&` result
  * must be a part of one. */
-static void report_declared(Pass *pass, uint32_t module, MsPos pos, bool receiver_holds, MsParams params, MsStmts body,
-                            const MsTypeRef *result) {
-  uint32_t declared = 0;
-  if (!declared_mask(pass, receiver_holds, params, result, &declared)) {
-    return;
-  }
+static void report_declared(Pass *pass, uint32_t module, MsPos pos, const MsFunc *func, const MsMethod *method) {
+  const MsParams params = func->params;
+  const MsStmts body = func->body;
+  const uint32_t declared = declared_mask(pass, func, method);
   const uint32_t holds = declared & ~MS_RESULT_BORROWED;
   if ((declared & MS_RESULT_BORROWED) != 0 && holds == 0) {
     MsStrBuild text = ms_strbuild_new();
@@ -445,15 +467,14 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
         pass.method = false;
         pass.self_node = decl->id;
         report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result);
-        report_declared(&pass, module, decl->pos, false, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result);
+        report_declared(&pass, module, decl->pos, &decl->u.fn, NULL);
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
         pass.self_node = method->id;
         report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result);
-        report_declared(&pass, module, method->pos, method->holding, method->func.params, method->func.body,
-                        method->func.result);
+        report_declared(&pass, module, method->pos, &method->func, method);
       }
     }
     ms_free(written);
@@ -480,21 +501,13 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes) {
       if (decl->kind == MS_D_FN) {
         pass.method = false;
         pass.self_node = decl->id;
-        uint32_t declared = 0;
-        changed |= store(facts, decl->id,
-                         declared_mask(&pass, false, decl->u.fn.params, decl->u.fn.result, &declared)
-                             ? declared
-                             : mask_of(&pass, decl->u.fn.params, decl->u.fn.body));
+        changed |= store(facts, decl->id, declared_mask(&pass, &decl->u.fn, NULL));
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
         pass.self_node = method->id;
-        uint32_t declared = 0;
-        changed |= store(facts, method->id,
-                         declared_mask(&pass, method->holding, method->func.params, method->func.result, &declared)
-                             ? declared
-                             : mask_of(&pass, method->func.params, method->func.body));
+        changed |= store(facts, method->id, declared_mask(&pass, &method->func, method));
       }
     }
   }
