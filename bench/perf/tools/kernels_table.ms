@@ -3,7 +3,10 @@
 // `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its
 // trial with `<version> # end`. Times below two microseconds are reported as folded
 // rather than used in ratios.
-import invalid, minimum from "./lib.ms"
+import (
+	invalid, minimum from "./lib.ms",
+	read_trials from "./trials.ms",
+)
 
 export fn suite_names(suite String) List[String] {
 	if suite == "kernels" {
@@ -73,72 +76,26 @@ export fn summarize(
 	names := suite_names(suite)
 	var samples = Map[String, List[Float]]()
 	var checks = Map[String, Set[Int]]()
-	var trials = Map[String, Int]()
-	for v in versions {
-		trials.add(v.clone(), 0)
-	}
+	rows := read_trials(
+		lines,
+		versions,
+		version => names.filter(n => not omitted(version).contains(n)),
+		repeats,
+	)?
 
-	var pending = Set[String]()
-	var active = ""
-
-	for line in lines {
-		parts := line.trim().split(" ").filter(p => p != "")
-		if parts.length() < 2 or not versions.contains(parts[0]) {
-			return invalid(f"invalid sample: {line.trim()}")
+	for row in rows {
+		if row.first < 0 {
+			return invalid(f"negative timing: {row.version} {row.name} {row.first}")
 		}
 
-		version := parts[0].clone()
-		name := parts[1].clone()
-		if active != "" and version != active {
-			return invalid(f"unterminated {active} trial")
-		}
-
-		active = version.clone()
-
-		if parts.length() == 3 and parts[1] == "#" and parts[2] == "end" {
-			expected := names.filter(n => not omitted(active).contains(n))
-			if (
-				pending.length() != expected.length()
-				or not expected.all(n => pending.contains(n))
-			) {
-				return invalid(f"incomplete {version} trial")
-			}
-
-			trials.add(version.clone(), trials.get_or(version, 0) + 1)
-			pending = Set[String]()
-			active = ""
-			continue
-		}
-
-		if (
-			parts.length() != 4
-			or not names.contains(name)
-			or omitted(version).contains(name)
-			or pending.contains(name)
-		) {
-			return invalid(f"invalid kernel: {line.trim()}")
-		}
-
-		micros := parts[2].parse_int()
-		check := parts[3].parse_int()
-		if (micros == null) or (check == null) {
-			return invalid(f"invalid sample: {line.trim()}")
-		}
-		if (micros) < 0 { return invalid(f"negative timing: {line.trim()}") }
-
-		key := f"{name} {version}"
+		key := f"{row.name} {row.version}"
 		var list = samples.get_or(key, List[Float]()).clone()
-		list.append((micros).to_float())
+		list.append(row.first.to_float())
 		samples.add(key.clone(), list)
 
-		var seen = checks.get_or(name, Set[Int]()).clone()
-		seen.add(check)
-		checks.add(name.clone(), seen)
-		pending.add(name.clone())
-	}
-
-	if active != "" or versions.any(v => trials.get_or(v, 0) != repeats) {
-		return invalid(f"expected {repeats} complete trials of every version")
+		var seen = checks.get_or(row.name, Set[Int]()).clone()
+		seen.add(row.second)
+		checks.add(row.name.clone(), seen)
 	}
 
 	for name in names {

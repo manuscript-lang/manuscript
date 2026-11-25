@@ -23,9 +23,8 @@ import (
 	fail,
 	finish,
 	must,
-	repeats,
-	rotate,
-	sample from "./lib.ms",
+	repeats from "./lib.ms",
+	run_trials from "./trials.ms",
 )
 
 fn build_c(source, out String, flags List[String]) Result[Void, Error] {
@@ -85,19 +84,7 @@ fn run(suite String, n Int, work String) Result[String, Error] {
 		}
 	}
 
-	var raw = List[String]()
-
-	for i in 0..n {
-		// Rotate the order each round so no version always runs first.
-		for v in rotate(versions, i) {
-			out := sample(f"{work}/{v}/bench", [])?
-			for line in out.split("\n") {
-				if line != "" { raw.append(f"{v} {line}") }
-			}
-			raw.append(f"{v} # end")
-		}
-	}
-
+	raw := run_trials(versions, v => f"{work}/{v}/bench", n)?
 	return summarize(raw, suite, n, versions)
 }
 
