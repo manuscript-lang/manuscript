@@ -14,7 +14,8 @@
 
 void body_set_type(Body *body, MsNode node, MsTy ty) {
   if (node < body->facts->node_count) {
-    body->facts->types[node] = ty;
+    /* A value is read through its borrow: an expression of type `&T` has the type `T`. */
+    body->facts->types[node] = ms_ty_is_borrow(&body->program->types, ty) ? ms_ty_args(&body->program->types, ty)[0] : ty;
     ms_node_journal_push(&body->typed, node);
   }
 }

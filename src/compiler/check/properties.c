@@ -601,5 +601,5 @@ static bool property_in(MsCheckProgram *program, MsTy ty, MsProperty property) {
 }
 
 bool ms_check_property(MsCheckProgram *program, MsTy ty, MsProperty property) {
-  return property_in(program, ty, property);
+  return property_in(program, ms_ty_unref(&program->types, ty), property);
 }

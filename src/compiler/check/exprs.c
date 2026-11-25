@@ -955,6 +955,9 @@ MsTy body_expr(Body *body, const MsExpr *expr, MsTy expected) {
     ty = body_match(body, expr, expected);
     break;
   }
+  if (ms_ty_is_borrow(&body->program->types, ty)) {
+    ty = ms_ty_args(&body->program->types, ty)[0]; /* a value is read through its borrow */
+  }
   body_set_type(body, expr->id, ty);
   if (expr->kind == MS_E_NAME) {
     body_note_narrowing(body, expr, ty);

@@ -112,6 +112,15 @@ MsTy ms_ty_intern(MsTyTable *table, const MsTyDesc *desc) {
   if (desc->builtin == MS_BUILTIN_Optional && desc->arg_count == 1 && ms_ty_row(table, desc->args[0])->builtin == (uint8_t)MS_BUILTIN_Optional) {
     return desc->args[0];
   }
+  if (desc->builtin == MS_BUILTIN_Ref && desc->arg_count == 1) {
+    /* `&&T` is `&T`, and a borrow of a scalar is the scalar: a copy of one is a borrow. */
+    const MsTyRow *inner = ms_ty_row(table, desc->args[0]);
+    if (inner->builtin == (uint8_t)MS_BUILTIN_Ref || ms_builtin_is_int((MsBuiltin)inner->builtin) ||
+        ms_builtin_is_float((MsBuiltin)inner->builtin) || inner->builtin == (uint8_t)MS_BUILTIN_Bool ||
+        inner->kind == MS_TY_INVALID) {
+      return desc->args[0];
+    }
+  }
   const MsName row = ms_names_intern(&table->keys, pack_key(table, desc));
   if (row == table->rows.len) {
     add_row(table, desc);
@@ -119,7 +128,45 @@ MsTy ms_ty_intern(MsTyTable *table, const MsTyDesc *desc) {
   return row;
 }
 
+bool ms_ty_same_view(const MsTyTable *table, MsTy a, MsTy b) {
+  while (ms_ty_is_borrow(table, a)) {
+    a = ms_ty_args(table, a)[0];
+  }
+  while (ms_ty_is_borrow(table, b)) {
+    b = ms_ty_args(table, b)[0];
+  }
+  if (a == b) {
+    return true;
+  }
+  const MsTyRow *left = ms_ty_row(table, a);
+  const MsTyRow *right = ms_ty_row(table, b);
+  if (left->id != right->id || left->kind != right->kind || left->arg_count != right->arg_count ||
+      left->param_count != right->param_count ||
+      (left->kind != MS_TY_FUNCTION && left->arg_count == 0)) {
+    return false;
+  }
+  for (uint32_t index = 0; index < left->arg_count; index++) {
+    if (!ms_ty_same_view(table, ms_ty_args(table, a)[index], ms_ty_args(table, b)[index])) {
+      return false;
+    }
+  }
+  for (uint32_t index = 0; index < left->param_count; index++) {
+    if (ms_ty_params(table, a)[index].flags != ms_ty_params(table, b)[index].flags ||
+        !ms_ty_same_view(table, ms_ty_params(table, a)[index].ty, ms_ty_params(table, b)[index].ty)) {
+      return false;
+    }
+  }
+  return left->kind != MS_TY_FUNCTION || ms_ty_same_view(table, left->result, right->result);
+}
+
+MsTy ms_ty_ref(MsTyTable *table, MsTy inner) {
+  /* no name: it is shown as `&inner`, and its identity is its kind, builtin and argument */
+  const MsTyDesc desc = {.kind = MS_TY_NATIVE, .builtin = MS_BUILTIN_Ref, .args = &inner, .arg_count = 1};
+  return ms_ty_intern(table, &desc);
+}
+
 MsTy ms_ty_shape(MsTyTable *table, MsTy ty) {
+  ty = ms_ty_unref(table, ty); /* `List[&T]` and `List[T]` have one shape: a borrow reads as the value */
   const MsTyRow *row = ms_ty_row(table, ty);
   bool lifted = false;
   for (uint32_t index = 0; index < row->param_count; index++) {

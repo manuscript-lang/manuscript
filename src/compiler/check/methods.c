@@ -620,7 +620,7 @@ bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actual, const MsT
       continue;
     }
     if (bound[index] != MS_TY_NONE) {
-      if (bound[index] == actual) {
+      if (bound[index] == actual || ms_ty_same_view(types, bound[index], actual)) {
         return true;
       }
       /* `T?` is `T` or null, and `T??` is `T?`: the optional `Int?` unifies with `T?` as `T = Int` and as `T = Int?`,
@@ -636,11 +636,16 @@ bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actual, const MsT
       }
       return false;
     }
-    bound[index] = actual;
+    /* A variable written bare is bound to the value, not the borrow: `List[T]` met by `List[&String]` is a list of
+     * `String`, so a method that clones its items produces owned ones. */
+    bound[index] = ms_ty_is_borrow(types, actual) ? ms_ty_args(types, actual)[0] : actual;
     return true;
   }
   if (!ms_ty_has_variable(types, pattern)) {
-    return pattern == actual;
+    return pattern == actual || ms_ty_same_view(types, pattern, actual);
+  }
+  while (ms_ty_is_borrow(types, actual)) {
+    actual = ms_ty_args(types, actual)[0]; /* a borrow fills a pattern written for the value */
   }
   /* A pattern that is its own actual (a recursive call) still binds its variables, each to itself. */
   const MsTyRow *want = ms_ty_row(types, pattern);

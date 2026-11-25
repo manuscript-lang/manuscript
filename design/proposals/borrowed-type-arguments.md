@@ -1,6 +1,6 @@
 # Borrowed type arguments: `&T` as a real type argument, so `Iterator[&T]` and `List[&T]` mean what they say
 
-* Status: **Stage 1a implemented** (2026-11-25); skeptical review: go with changes (split stage 1, drop `List[&T]` storage from this proposal). Stage 1b, the real `Ref[T]` type, waits for a decision on the risks listed under Open questions
+* Status: **Stages 1a and 1b implemented** (2026-11-25); skeptical review: go with changes (split stage 1, drop `List[&T]` storage from this proposal). Stage 2 (a borrowed list that stores without cloning) remains `borrowed-element-lists`
 * Authors: [Claude](https://claude.ai/code)
 * Implementation: not yet implemented
 * Supersedes / Extracted from: decision 0 of [borrowed-fields-and-looks](borrowed-fields-and-looks.md) ("`&` is not a checker type"), for type arguments; unparks [borrowed-element-lists](borrowed-element-lists.md); needed by [lazy-iterator-chains](lazy-iterator-chains.md) stage 4
@@ -85,6 +85,15 @@ Stage 1a (implemented, no new type kind): a bound written with a `&` argument (`
 - Source syntax is final: `Iterator[&T]` is what users write if `Ref[T]` lands later.
 
 Not done: a `&T` type argument elsewhere (`List[&T]`, `Optional[&T]`, `Seq[I, &T]`), and borrowed-element-lists, which stays its own proposal with its own review.
+
+## Stage 1b: `&T` as a real type argument (implemented)
+
+Written `&T` in a type argument is the builtin `Ref[T]` row (`MS_BUILTIN_Ref`, `ms_ty_ref`), shown as `&T`. `&&T` and a borrow of a scalar collapse to the inner type. `&T?` and `&T!E` keep the flag on the payload (the ownership pass reads it), so every existing `&T?` result is unchanged.
+- A value is read through its borrow: an expression of type `&T` has the type `T` (`body_set_type`, the expression entry in `exprs.c`).
+- `ms_ty_shape` ignores borrows, so assignability treats `List[&String]` and `List[String]` as one shape; `ms_ty_same_view` is the same test for unification and bound checks. A bare type variable binds to the value (`List[T]` met by `List[&String]` gives `T = String`), so a stdlib method that clones its items still returns owned ones.
+- `ms_check_implements` and `ms_check_property` look through a borrow, so `List[&String]` is Equal, Hashable and Clonable like `List[String]`.
+- Lowering strips borrows (`apply_subst`): a `Ref` has its value's layout. The borrowed bit still comes from the declaration, as before.
+- Not changed, and the reason stage 2 exists: `out.append(x)` into a `List[&T]` still clones, because the call is typed on the value. A borrowed `collect()` needs the borrowed list type of borrowed-element-lists.
 
 ## Open questions
 

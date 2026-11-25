@@ -55,6 +55,11 @@ static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *ta
   }
   const MsTy *args = ms_ty_args(table, ty);
   const size_t count = ms_ty_arg_count(table, ty);
+  if (ms_ty_is_borrow(table, ty) && count == 1) {
+    ms_strbuild_append_byte(out, '&');
+    show_node(out, names, table, args[0], show);
+    return;
+  }
   if (ms_ty_is(table, ty, MS_BUILTIN_Optional) && count == 1) {
     show_optional(out, names, table, args[0], show);
     return;
@@ -144,4 +149,49 @@ static MsTy substitute(MsTyTable *table, MsTy ty, const Binding *binding) {
 MsTy ms_ty_subst(MsTyTable *table, MsTy ty, const MsTy *vars, const MsTy *args, size_t count) {
   const Binding binding = {.vars = vars, .args = args, .count = count};
   return substitute(table, ty, &binding);
+}
+
+/* ---- reading through `&` ---- */
+
+static MsTy unref_node(MsTyTable *table, MsTy ty) {
+  const MsTyRow row = *ms_ty_row(table, ty);
+  if (row.builtin == (uint8_t)MS_BUILTIN_Ref && row.arg_count == 1) {
+    return unref_node(table, table->args_pool.ptr[row.args_at]);
+  }
+  if (row.arg_count == 0 && row.param_count == 0 && row.result == MS_TY_NONE) {
+    return ty;
+  }
+  const size_t arg_mark = table->scratch.len;
+  bool changed = false;
+  for (uint32_t index = 0; index < row.arg_count; index++) {
+    const MsTy before = table->args_pool.ptr[row.args_at + index];
+    const MsTy after = unref_node(table, before);
+    ms_ty_list_push(&table->scratch, after);
+    changed = changed || after != before;
+  }
+  const size_t param_mark = table->param_scratch.len;
+  for (uint32_t index = 0; index < row.param_count; index++) {
+    MsTyParam param = table->params_pool.ptr[row.params_at + index];
+    const MsTy after = unref_node(table, param.ty);
+    changed = changed || after != param.ty;
+    param.ty = after;
+    ms_ty_param_list_push(&table->param_scratch, param);
+  }
+  const MsTy result = row.result == MS_TY_NONE ? MS_TY_NONE : unref_node(table, row.result);
+  MsTy out = ty;
+  if (changed || result != row.result) {
+    const MsTyDesc desc = {.name = row.name, .id = row.id, .kind = (MsTyKind)row.kind,
+                           .builtin = (MsBuiltin)row.builtin, .def = row.def,
+                           .args = table->scratch.ptr + arg_mark, .arg_count = row.arg_count,
+                           .params = table->param_scratch.ptr + param_mark, .param_count = row.param_count,
+                           .result = result};
+    out = ms_ty_intern(table, &desc);
+  }
+  ms_ty_param_list_truncate(&table->param_scratch, param_mark);
+  ms_ty_list_truncate(&table->scratch, arg_mark);
+  return out;
+}
+
+MsTy ms_ty_unref(MsTyTable *table, MsTy ty) {
+  return unref_node(table, ty);
 }

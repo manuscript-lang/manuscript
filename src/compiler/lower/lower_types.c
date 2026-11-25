@@ -5,11 +5,12 @@
 #include "compiler/check/methods.h"
 #include "compiler/natives/native_sigs.h"
 
+/* The type lowering sees: a borrow has the layout of its value, and the borrowed bit comes from the declaration. */
 static MsTy apply_subst(Lower *cx, const LowerSubst *subst, MsTy ty) {
-  if (subst == NULL || subst->count == 0 || !ms_ty_has_variable(&cx->program->types, ty)) {
-    return ty;
+  if (subst != NULL && subst->count != 0 && ms_ty_has_variable(&cx->program->types, ty)) {
+    ty = ms_ty_subst(&cx->program->types, ty, subst->vars, subst->args, subst->count);
   }
-  return ms_ty_subst(&cx->program->types, ty, subst->vars, subst->args, subst->count);
+  return ms_ty_unref(&cx->program->types, ty);
 }
 
 void lower_type_text(Lower *cx, const LowerSubst *subst, MsTy ty, MsStrBuild *out) {

@@ -143,6 +143,20 @@ void ms_tys_free(MsTyTable *table);
 /* The type with this structure: the existing row, or a new one. */
 MsTy ms_ty_intern(MsTyTable *table, const MsTyDesc *desc);
 
+/* `&inner` written as a type argument: a borrow of a `inner`, one row per inner type. A scalar or an already
+ * borrowed type has nothing to borrow and is returned as it is. Expressions never have a `&T` type: it appears in
+ * declared types and type arguments, and the checker reads a value through it (`ms_ty_unref`). */
+MsTy ms_ty_ref(MsTyTable *table, MsTy inner);
+
+/* Whether `ty` is `&T`. */
+static inline bool ms_ty_is_borrow(const MsTyTable *table, MsTy ty);
+
+/* Whether `a` and `b` are one type once every `&` is ignored: a borrow of a value stands where the value does. */
+bool ms_ty_same_view(const MsTyTable *table, MsTy a, MsTy b);
+
+/* `ty` with every `&` removed, through arguments, parameters and results: what a value of it reads as. */
+MsTy ms_ty_unref(MsTyTable *table, MsTy ty);
+
 /* The same structure with every parameter's lifted flag cleared. */
 MsTy ms_ty_shape(MsTyTable *table, MsTy ty);
 
@@ -164,6 +178,10 @@ static inline MsBuiltin ms_ty_builtin(const MsTyTable *table, MsTy ty) {
 
 static inline bool ms_ty_is(const MsTyTable *table, MsTy ty, MsBuiltin builtin) {
   return ms_ty_row(table, ty)->builtin == (uint8_t)builtin;
+}
+
+static inline bool ms_ty_is_borrow(const MsTyTable *table, MsTy ty) {
+  return ms_ty_row(table, ty)->builtin == (uint8_t)MS_BUILTIN_Ref;
 }
 
 static inline bool ms_ty_is_invalid(const MsTyTable *table, MsTy ty) {

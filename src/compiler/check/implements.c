@@ -258,7 +258,7 @@ static bool operation_met(MsCheckProgram *program, MsTy receiver, MsTy contract,
     chosen = chosen != NULL ? chosen : (own.len == 1 ? &own.ptr[0] : NULL);
     if (chosen == NULL) {
       say(why, operation->name, program, " is missing");
-    } else if (chosen->ty != wanted) {
+    } else if (!ms_ty_same_view(&program->types, chosen->ty, wanted)) {
       say(why, operation->name, program, " must be declared as fn ");
       ms_strbuild_append(why, ms_names_span(program->names, operation->name));
       append_signature(program, wanted, why);
@@ -415,9 +415,10 @@ static bool shape_met(MsCheckProgram *program, MsTy receiver, MsTy contract) {
 }
 
 bool ms_check_implements(MsCheckProgram *program, MsTy receiver, MsTy contract) {
+  receiver = ms_ty_unref(&program->types, receiver); /* a borrow implements what its value does */
   const MsTyTable *types = &program->types;
   if (ms_ty_row(types, receiver)->id == ms_ty_row(types, contract)->id) {
-    return receiver == contract;
+    return ms_ty_same_view(types, receiver, contract);
   }
   const MsBuiltin builtin = ms_ty_builtin(types, contract);
   MsProperty property = MS_PROPERTY_EQUAL;
@@ -430,7 +431,7 @@ bool ms_check_implements(MsCheckProgram *program, MsTy receiver, MsTy contract) 
   if (ms_ty_kind(types, receiver) == MS_TY_VARIABLE) {
     const MsTyVariable *record = ms_ty_variable(&program->types, receiver);
     for (size_t index = 0; index < record->bounds.len; index++) {
-      if (record->bounds.ptr[index] == contract) {
+      if (ms_ty_same_view(types, record->bounds.ptr[index], contract)) {
         return true;
       }
     }

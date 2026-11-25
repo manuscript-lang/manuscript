@@ -321,10 +321,14 @@ void ms_check_flush_pending_bounds(MsCheckProgram *program) {
 /* The nominal type `base` applied to the arguments written after its name. */
 static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
   MsTyList args = {0};
-  for (uint32_t index = 0; index < type->args.len; index++) {
-    ms_ty_list_push(&args, resolver_type(resolver, type->args.ptr[index]));
-  }
   MsCheckProgram *program = resolver->program;
+  /* `&T?` and `&T!E` mark the payload of an optional or result (a flag the ownership pass reads) */
+  const bool optional = ms_ty_is(&program->types, base, MS_BUILTIN_Optional) || ms_ty_is(&program->types, base, MS_BUILTIN_Result);
+  for (uint32_t index = 0; index < type->args.len; index++) {
+    const MsTy arg = resolver_type(resolver, type->args.ptr[index]);
+    /* `&T?` marks the payload of an optional (a flag the ownership pass reads); elsewhere `&T` is a borrow type. */
+    ms_ty_list_push(&args, type->args.ptr[index]->is_ref && !optional ? ms_ty_ref(&program->types, arg) : arg);
+  }
   const uint32_t at = ms_ty_row(&program->types, base)->def;
   const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
   const size_t arity = def == NULL ? 0 : def->variables.len;
