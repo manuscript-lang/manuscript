@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/build/compiler_test.go:261 TestGenericRecursionAndNamespaceRules
 enum First {
 	Ready(value Int)

@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/ambiguous_case_test.go:17 TestAmbiguousCaseReportsOnce
 enum A {
 	X(n Int)

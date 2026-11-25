@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,match,records,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,match,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/equality-and-hashing.md:49
 type CustomerKey {
 	id Int

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,modules,mutation,stdlib-faults,testing,tier-stdlib
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,modules,mutation,stdlib-faults,testing,tier-stdlib
+// conform: phase=test,parse
 // conform: origin=documentation/core-language/control-flow/loops.md:43
 import panic from "@std/core.ms"
 

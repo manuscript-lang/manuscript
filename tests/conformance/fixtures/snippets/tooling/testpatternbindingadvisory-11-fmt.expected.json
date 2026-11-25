@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum Failure {\n\tNotFound\n}\n\nfn use() Int {\n\tNotFound := 1\n\treturn NotFound\n}\n"
-  }
-}

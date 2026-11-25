@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,strings,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/callbacks_test.go:121 TestInvalidCallbackPreservesIndependentDiagnostics
 fn example() Void {
 	names := [1, 2].map(item => missing).join(other_missing)

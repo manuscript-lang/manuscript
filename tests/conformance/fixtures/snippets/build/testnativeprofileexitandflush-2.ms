@@ -1,5 +1,5 @@
-// conform: tags=faults,modules,stdlib-faults,tier-stdlib
-// conform: phase=run
+// conform: tags=faults,formatter,modules,stdlib-faults,tier-stdlib
+// conform: phase=run,parse
 // conform: origin=pkg/build/profile_test.go:29 TestNativeProfileExitAndFlush
 import panic from "@std/core.ms"
 

@@ -1,5 +1,5 @@
-// conform: tags=closures,generics,modules,records,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=closures,formatter,generics,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/inline-functions.ms
 import expect_equal from "@std/test/test.ms"
 

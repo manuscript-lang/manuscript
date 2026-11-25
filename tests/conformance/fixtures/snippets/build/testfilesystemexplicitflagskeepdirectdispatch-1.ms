@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-fs,tier-io
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-fs,tier-io
+// conform: phase=check,parse
 // conform: origin=pkg/build/filesystem_defaults_test.go:52 TestFilesystemExplicitFlagsKeepDirectDispatch
 import CopyOptions, copy, create_directory, remove, write_file from "@std/os/fs.ms"
 

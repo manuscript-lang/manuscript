@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,match,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,match,records,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/projects/same_type_names/other.ms
 export type Point {
 	x Int

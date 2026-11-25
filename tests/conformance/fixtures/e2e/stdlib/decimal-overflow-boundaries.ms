@@ -1,5 +1,5 @@
-// conform: tags=decimal,modules,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=decimal,formatter,modules,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/decimal-overflow-boundaries.ms
 import (
 	Decimal from "@std/math/decimal.ms",

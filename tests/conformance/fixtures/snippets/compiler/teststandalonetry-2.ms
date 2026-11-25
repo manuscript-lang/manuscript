@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/standalone_try_test.go:11 TestStandaloneTry
 fn operation() Int! => ok(1)
 

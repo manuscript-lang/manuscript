@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-string,strings,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-string,strings,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/builder_range_test.go:30 TestClosedBuilderGrouping
 
 fn fragment() String => return "x"

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,mutation,records,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,mutation,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/lower/int_bounds_test.go:129 BenchmarkClosedCellProofScaling
 interface Counter {
 	fn bump(by Int) Int

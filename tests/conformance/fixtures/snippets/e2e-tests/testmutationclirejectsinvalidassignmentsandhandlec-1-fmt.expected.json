@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tConnection from \"@std/net/net.ms\",\n\tFileHandle from \"@std/os/fs.ms\",\n)\n\ntype Val {\n\tval Int\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import stdout from \"@std/io/io.ms\"\n\nfn never() Int {\n\treturn 1\n}\n\nexport fn main() Int {\n\t_written := stdout().write(\"TARGET_RAN\\n\")\n\treturn 0\n}\n"
-  }
-}

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/int_bounds_test.go:37 TestScalarIntBoundsLowering
 fn identity[T](hold value T) &T => return value
 

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "scores := {\"Ada\": 3, \"Lin\": 5}\nempty Map[String, Int] := {}\n"
-  }
-}

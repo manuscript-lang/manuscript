@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,interfaces,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,interfaces,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/default_type_arguments_test.go:26 TestDefaultTypeArgumentRules
 interface Named {
 	fn name() String

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/terminal.ms
 import (
 	raw_mode, terminal_capabilities from "@std/cli/terminal.ms",

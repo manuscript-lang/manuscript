@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Equal {\n\tfn equals(other Equal) Bool\n}\n\ninterface Hashable {\n\tfn hash() Int\n}\n"
-  }
-}

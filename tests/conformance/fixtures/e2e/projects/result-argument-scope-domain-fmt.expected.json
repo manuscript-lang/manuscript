@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export type Cause[T] {\n\tvalue T\n}\n\nexport fn make() Cause[Int] => Cause(7)\n"
-  }
-}

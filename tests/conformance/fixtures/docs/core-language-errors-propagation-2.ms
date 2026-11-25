@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-errors,strings,tier-stdlib,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-errors,strings,tier-stdlib,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/errors/propagation.md:24
 
 fn prepare() Result[Void, Error] => ok()

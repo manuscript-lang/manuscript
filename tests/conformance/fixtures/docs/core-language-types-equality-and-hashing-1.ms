@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,interfaces,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,interfaces,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/equality-and-hashing.md:15
 interface Equal {
 	fn equals(other Equal) Bool

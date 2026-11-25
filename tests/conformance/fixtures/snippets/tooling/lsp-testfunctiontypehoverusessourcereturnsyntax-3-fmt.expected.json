@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn identity(callback fn(Int) Int) fn(Int) Int => callback\n\nfn use(callback fn(Int) Int) Int => identity(callback)(2)\n"
-  }
-}

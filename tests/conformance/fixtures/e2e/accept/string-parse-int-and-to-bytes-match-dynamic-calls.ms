@@ -1,5 +1,5 @@
-// conform: tags=match,modules,optional,stdlib-testing,strings,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=formatter,match,modules,optional,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/string-parse-int-and-to-bytes-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 

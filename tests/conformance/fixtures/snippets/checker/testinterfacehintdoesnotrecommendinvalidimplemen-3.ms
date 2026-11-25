@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,interfaces,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,interfaces,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/interface_hints_test.go:98 TestInterfaceHintDoesNotRecommendInvalidImplementationReceivers
 interface Shape {
 	fn area() Int

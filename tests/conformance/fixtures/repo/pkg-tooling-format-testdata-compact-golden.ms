@@ -1,5 +1,5 @@
-// conform: tags=alternatives,closures,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
-// conform: phase=test
+// conform: tags=alternatives,closures,formatter,interpolation,match,modules,records,scope-cleanup,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=pkg/tooling/format/testdata/compact.golden.ms
 import expect_equal from "@std/test/test.ms"
 

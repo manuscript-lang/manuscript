@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,match,modules,records,stdlib-testing,testing,tier-core,try-result
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,match,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/projects/same_type_names/conformance_test.ms
 import (
 	expect_equal from "@std/test/test.ms",

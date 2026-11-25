@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,match,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,match,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/collection_prelude_imports_test.go:84 TestCollectionSupportShadowingAndCaseLookup
 enum Other {
 	OutOfRange

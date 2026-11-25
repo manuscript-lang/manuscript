@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/completion_test.go:26 TestLocalExtensionCompletionAndNavigation
 import (
 	Box from "./domain.ms",

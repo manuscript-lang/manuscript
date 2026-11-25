@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/native_defaults_test.go:18 TestNativeDefaultsAreCheckedInParameterScope
 fn f(value Int = value) Int { ... }
 // expect-error: MS2001 4:18 unknown binding value; declare it with 'value := ...' before use, define 'fn value(...) T { ... }', or import it from a module

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:28 TestDiagnosticsStateCauseAndFix
 fn id[T](x T) T {
 	return x

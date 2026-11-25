@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,modules,stdlib-bytes,stdlib-fs,tier-io
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,modules,stdlib-bytes,stdlib-fs,tier-io
+// conform: phase=check,parse
 // conform: origin=pkg/build/filesystem_defaults_test.go:17 TestFilesystemDefaultCallableBoundaries
 import Bytes from "@std/bytes.ms"
 

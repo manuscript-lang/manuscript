@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,maps,modules,records,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,maps,modules,records,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:75 TestCollectionPreludeAndShadowing
 import Map from "@std/collections/collections.ms"
 

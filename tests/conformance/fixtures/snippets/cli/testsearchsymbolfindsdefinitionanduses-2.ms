@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=internal/cli/agent_test.go:59 TestSearchSymbolFindsDefinitionAndUses
 import double from "./main.ms"
 

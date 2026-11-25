@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "test \"new start\" {\n\t[1].splice(-1, 0, [])\n}\n\ntest \"new count\" {\n\t[1].splice(0, 2, [])\n}\n\ntest \"bound start\" {\n\tvar items = [1]\n\tsplice := items.splice\n\tsplice(2, 0, [])\n}\n\ntest \"bound count\" {\n\tvar items = [1]\n\tsplice := items.splice\n\tsplice(0, -1, [])\n}\n\ntest \"continues\" {\n\tvar values = [1]\n\tvalues.splice(0, 1, [])\n\tvalues.append(2)\n}\n"
-  }
-}

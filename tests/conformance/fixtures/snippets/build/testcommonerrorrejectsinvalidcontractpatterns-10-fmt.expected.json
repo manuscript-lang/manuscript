@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Named {\n\tfn name() String\n}\n\nfn wrong(item Named) String {\n\tmatch item {\n\t\tCircle.Big(value) => {\n\t\t\treturn \"invalid\"\n\t\t}\n\t\t_ => {\n\t\t\treturn item.name()\n\t\t}\n\t}\n}\n"
-  }
-}

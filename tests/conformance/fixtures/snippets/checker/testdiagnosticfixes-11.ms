@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-queues,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-queues,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:31 TestDiagnosticFixes
 import Queue from "@std/collections/queue.ms"
 

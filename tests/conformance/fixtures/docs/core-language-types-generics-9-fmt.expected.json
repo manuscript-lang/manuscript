@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn repeat[T](value T) Never {\n\treturn repeat[T](value)  // Regular specialization; allowed.\n}\n\nfn grow[T](value T) Never {\n\treturn grow[List[T]]([value])  // Rejected: expanding specialization.\n}\n"
-  }
-}

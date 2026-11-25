@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/functions/function-values-and-closures.md:10
 fn apply(value Int, transform fn(Int) Int) Int {
 	return transform(value: value)

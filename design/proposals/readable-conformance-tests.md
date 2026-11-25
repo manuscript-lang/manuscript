@@ -2,7 +2,7 @@
 
 * Status: **Proposed** (2026-11-25, checked against `a3691f89`)
 * Authors: [chinmaymk](https://github.com/chinmaymk)
-* Implementation: stages 1 and 2a landed (every `check` fixture, 2,816, states its expectation in its file); parse, run and test fixtures follow
+* Implementation: stages 1 and 2a landed (every `check` fixture, 2,816, states its expectation in its file); 2b: `phase=test,parse` replaces 1,183 `-fmt` twins; run and test fixtures follow
 * Direction: Chinmay, 2026-11-25: "one suite we test to assert correctness, one suite for perf, one suite for agent-bench"; tests are "littered with .json files so reading code and figuring what it does is crazy hard".
 
 ## Summary

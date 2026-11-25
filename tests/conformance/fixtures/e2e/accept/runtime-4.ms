@@ -1,5 +1,5 @@
-// conform: tags=control-flow,interfaces,modules,optional,records,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
-// conform: phase=test
+// conform: tags=control-flow,formatter,interfaces,modules,optional,records,scope-cleanup,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/runtime-4.ms
 import (
 	Bytes from "@std/bytes.ms",

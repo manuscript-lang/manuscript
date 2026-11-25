@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/syntax/walk_test.go:68 TestVisitorIncludesAssignmentTargetBeforeValue
 fn update() Void {
 	owner().value = replacement()

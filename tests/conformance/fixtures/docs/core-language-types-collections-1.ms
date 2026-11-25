@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/collections.md:22
 values := [1, 2, 3]
 empty List[Int] := []

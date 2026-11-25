@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,lists,mutation,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,lists,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/build/loop_poll_test.go:17 TestCounterLoopPollPhase
 fn poll_literal_up(var log List[Int], start Int) Void {
 	var i = -137

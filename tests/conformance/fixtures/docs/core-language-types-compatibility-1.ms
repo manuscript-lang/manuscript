@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/compatibility.md:26
 fn identity(value Int) Int {
 	return value

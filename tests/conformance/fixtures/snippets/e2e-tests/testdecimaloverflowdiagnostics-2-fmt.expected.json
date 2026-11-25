@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "test \"continues after decimal overflow\" {\n\tfinite := 1d / 3d\n}\n"
-  }
-}

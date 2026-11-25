@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/checker/collection_prelude_test.go:116 TestRedundantPreludeImportDiagnosticsAndFixes
 import (
 	List  // collection

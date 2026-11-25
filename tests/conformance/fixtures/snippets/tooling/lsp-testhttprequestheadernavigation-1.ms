@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,modules,optional,stdlib-bytes,stdlib-http,tier-io
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,modules,optional,stdlib-bytes,stdlib-http,tier-io
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/http_header_test.go:11 TestHTTPRequestHeaderNavigation
 import (
 	Bytes from "@std/bytes.ms",

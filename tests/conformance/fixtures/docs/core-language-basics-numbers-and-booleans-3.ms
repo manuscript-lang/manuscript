@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/basics/numbers-and-booleans.md:86
 price := 100d
 percent := 15d

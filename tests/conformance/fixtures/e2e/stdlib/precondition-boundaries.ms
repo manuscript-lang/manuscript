@@ -1,5 +1,5 @@
-// conform: tags=faults,modules,optional,stdlib-bigint,stdlib-bytes,stdlib-numbers,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=faults,formatter,modules,optional,stdlib-bigint,stdlib-bytes,stdlib-numbers,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",

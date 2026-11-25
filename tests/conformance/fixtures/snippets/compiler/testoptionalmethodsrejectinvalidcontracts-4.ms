@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,faults,generics,optional,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,faults,formatter,generics,optional,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/optional_test.go:71 TestOptionalMethodsRejectInvalidContracts
 import panic from "@std/core.ms"
 

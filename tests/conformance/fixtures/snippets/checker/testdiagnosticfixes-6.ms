@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,maps,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,maps,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:26 TestDiagnosticFixes
 fn f() Int {
 	m := Map[List[Int], Int]()

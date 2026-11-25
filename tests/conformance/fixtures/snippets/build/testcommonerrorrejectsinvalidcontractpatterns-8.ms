@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,records,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/build/library_test.go:101 TestCommonErrorRejectsInvalidContractPatterns
 type Impostor {
 	detail String

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lint_program_test.go:110 TestMatchArmPayloadBindingsAreLinted
 fn answer() Int {
 	match parse("1") {

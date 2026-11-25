@@ -1,5 +1,5 @@
-// conform: tags=modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
-// conform: phase=test
+// conform: tags=formatter,modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/time-methods.ms
 import (
 	expect_equal, expect_false from "@std/test/test.ms",

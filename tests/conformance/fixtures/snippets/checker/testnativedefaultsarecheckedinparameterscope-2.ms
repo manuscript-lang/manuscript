@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/native_defaults_test.go:16 TestNativeDefaultsAreCheckedInParameterScope
 fn f(value Int = true) Int { ... }
 // expect-error: MS3001 4:18 expected Int, found Bool

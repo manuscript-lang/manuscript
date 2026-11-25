@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,interfaces,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,interfaces,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/interface_hints_test.go:97 TestInterfaceHintDoesNotRecommendInvalidImplementationReceivers
 interface A {
 	fn a() Int

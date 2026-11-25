@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,modules,mutation,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=closures,control-flow,formatter,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 

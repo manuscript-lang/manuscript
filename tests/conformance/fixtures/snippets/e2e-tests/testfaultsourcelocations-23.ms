@@ -1,5 +1,5 @@
-// conform: tags=control-flow,interfaces,records,tier-core
-// conform: phase=run
+// conform: tags=control-flow,formatter,interfaces,records,tier-core
+// conform: phase=run,parse
 // conform: origin=tests/e2e/fault_locations_test.go:177 TestFaultSourceLocations
 interface Crash {
 	fn run() Int

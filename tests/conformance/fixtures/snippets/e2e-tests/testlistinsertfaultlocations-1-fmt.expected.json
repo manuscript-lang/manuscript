@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export fn main() Int {\n\tvar values = [1, 2]\n\tvalues.insert(3, 9)\n\treturn values.length()\n}\n"
-  }
-}

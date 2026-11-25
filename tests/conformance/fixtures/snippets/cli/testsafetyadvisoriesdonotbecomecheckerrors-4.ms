@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,faults,maps,modules,stdlib-faults,stdlib-http,stdlib-net,tier-io
-// conform: phase=check
+// conform: tags=closures,diagnostics,faults,formatter,maps,modules,stdlib-faults,stdlib-http,stdlib-net,tier-io
+// conform: phase=check,parse
 // conform: origin=internal/cli/advisory_lint_test.go:19 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 import (
 	panic from "@std/core.ms",

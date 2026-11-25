@@ -1,5 +1,5 @@
-// conform: tags=generics,optional,testing,tier-core
-// conform: phase=test
+// conform: tags=formatter,generics,optional,testing,tier-core
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/cl-09-2.ms
 fn absent[T]() T? {
 	return null

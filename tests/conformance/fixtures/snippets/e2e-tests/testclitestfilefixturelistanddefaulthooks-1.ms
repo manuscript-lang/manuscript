@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,interfaces,interpolation,modules,records,stdlib-io,stdlib-testing,strings,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,interfaces,interpolation,modules,records,stdlib-io,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/test_fixture_test.go:106 TestCLITestFileFixtureListAndDefaultHooks
 import (
 	stdout from "@std/io/io.ms",

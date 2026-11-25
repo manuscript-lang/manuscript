@@ -1,5 +1,5 @@
-// conform: tags=alternatives,control-flow,diagnostics,interfaces,match,records,strings,tier-core
-// conform: phase=check
+// conform: tags=alternatives,control-flow,diagnostics,formatter,interfaces,match,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:29 TestPatternBindingAdvisory
 interface Describe {
 	fn describe() String

@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/layout_diagnostics_test.go:20 TestRecursiveDataAndFiniteTypeApplications
 enum A {
 	End

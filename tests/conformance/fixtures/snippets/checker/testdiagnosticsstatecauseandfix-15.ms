@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:34 TestDiagnosticsStateCauseAndFix
 fn f(values List[Int]) Void {
 	values.delete(0)

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,generics,interfaces,optional,records,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,generics,interfaces,optional,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/argument_reuse_test.go:12 TestIndependentArgumentsRetainFinalConversions
 fn identity[T](hold value T) &T => value
 

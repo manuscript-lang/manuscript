@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:53 TestFormatExpressionLayouts
 fn work() Void {
 	expect_false(

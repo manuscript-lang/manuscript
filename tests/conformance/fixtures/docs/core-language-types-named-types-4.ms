@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/named-types.md:38
 type Options {
 	count Int = 3

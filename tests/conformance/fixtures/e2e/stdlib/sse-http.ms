@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,interpolation,modules,optional,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,scope-cleanup
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,interpolation,modules,optional,scope-cleanup,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
 import (
 	panic from "@std/core.ms",

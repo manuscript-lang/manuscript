@@ -1,5 +1,5 @@
-// conform: tags=maps,tier-core
-// conform: phase=run
+// conform: tags=formatter,maps,tier-core
+// conform: phase=run,parse
 // conform: origin=tests/e2e/fault_locations_test.go:80 TestFaultSourceLocations
 fn crash() Int {
 	return 1 / "".length()

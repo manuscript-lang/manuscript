@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "price := 100d\npercent := 15d\ndiscounted := price * (1d - percent / 100d)\n"
-  }
-}

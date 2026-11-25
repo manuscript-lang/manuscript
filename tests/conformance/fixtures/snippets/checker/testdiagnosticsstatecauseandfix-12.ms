@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,generics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,generics,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:31 TestDiagnosticsStateCauseAndFix
 fn start[T](operation fn() T) Int {
 	return 0

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,scope-cleanup,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:16 TestFormatParagraphs
 fn work(enabled Bool) Int {
 	count := 2

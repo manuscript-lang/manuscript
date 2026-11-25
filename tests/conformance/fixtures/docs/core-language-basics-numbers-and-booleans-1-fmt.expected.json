@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "count := 3\nratio := 0.5\nprice := 12.50d\nactive := true\n"
-  }
-}

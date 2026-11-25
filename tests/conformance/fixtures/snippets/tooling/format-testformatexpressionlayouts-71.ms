@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interpolation,strings,tier-core,scope-cleanup
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interpolation,scope-cleanup,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:517 TestFormatExpressionLayouts
 fn work() String {
 	values := [1, 2, 3]

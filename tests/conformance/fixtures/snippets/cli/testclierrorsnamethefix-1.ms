@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=internal/cli/cli_test.go:337 TestCLIErrorsNameTheFix
 fn value() Int {
 	return 1

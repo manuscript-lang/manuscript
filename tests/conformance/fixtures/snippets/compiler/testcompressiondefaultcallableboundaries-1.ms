@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,modules,stdlib-bytes,stdlib-compress,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,modules,stdlib-bytes,stdlib-compress,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/compression_defaults_test.go:10 TestCompressionDefaultCallableBoundaries
 import (
 	Bytes from "@std/bytes.ms",

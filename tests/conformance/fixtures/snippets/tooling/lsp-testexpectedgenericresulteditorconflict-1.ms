@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/contextual_generics_test.go:41 TestExpectedGenericResultEditorConflict
 fn identity[T](value T) T => value
 

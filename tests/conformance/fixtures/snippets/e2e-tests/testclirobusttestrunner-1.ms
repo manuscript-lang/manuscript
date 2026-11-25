@@ -1,5 +1,5 @@
-// conform: tags=modules,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=formatter,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testing_runner_test.go:13 TestCLIRobustTestRunner
 import expect_equal, skip from "@std/test/test.ms"
 

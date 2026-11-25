@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/defaults_test.go:29 TestDefaultArgumentBoundaries
 fn f() Void {
 	var outer = 1

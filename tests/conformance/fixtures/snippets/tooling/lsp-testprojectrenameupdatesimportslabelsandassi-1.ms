@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/features_test.go:57 TestProjectRenameUpdatesImportsLabelsAndAssignments
 export fn add(value Int) Int {
 	var current = value

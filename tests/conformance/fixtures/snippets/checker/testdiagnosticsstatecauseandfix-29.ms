@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-faults,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-faults,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:48 TestDiagnosticsStateCauseAndFix
 import nope from "@std/core.ms"
 

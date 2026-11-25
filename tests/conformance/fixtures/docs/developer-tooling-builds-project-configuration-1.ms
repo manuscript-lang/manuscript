@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/developer-tooling/builds/project-configuration.md:73
 import (
 	CustomerId from "./domain/customers.ms",

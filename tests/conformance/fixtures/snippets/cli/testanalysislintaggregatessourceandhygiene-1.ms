@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=internal/cli/analysis_test.go:73 TestAnalysisLintAggregatesSourceAndHygiene
 import value from "./shared.ms"
 

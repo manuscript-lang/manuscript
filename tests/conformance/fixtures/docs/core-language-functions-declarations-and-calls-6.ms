@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/functions/declarations-and-calls.md:145
 fn incomplete(active Bool) Int {
 	if active {

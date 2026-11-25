@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn incomplete(active Bool) Int {\n\tif active {\n\t\treturn 1\n\t}\n\t// Rejected: the false path reaches the end without returning Int.\n}\n"
-  }
-}

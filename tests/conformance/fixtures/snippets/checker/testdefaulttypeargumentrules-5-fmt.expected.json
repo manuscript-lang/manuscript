@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Trio[A, B, C = A] {\n\tfirst A\n}\n\nfn use(t Trio[Int]) Void => void\n"
-  }
-}

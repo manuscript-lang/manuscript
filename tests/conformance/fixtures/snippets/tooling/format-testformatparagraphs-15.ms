@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:227 TestFormatParagraphs
 // File introduction.
 fn example() Int {

@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/positional_arguments_test.go:68 TestPositionalArgumentDiagnostics
 fn f(n Int) Int => n
 

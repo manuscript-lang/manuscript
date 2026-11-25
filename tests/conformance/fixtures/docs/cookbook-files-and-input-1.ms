@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,modules,stdlib-fs,stdlib-process,tier-io,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,modules,stdlib-fs,stdlib-process,tier-io,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/learn/common-tasks.md:94
 import (
 	arguments from "@std/os/env.ms",

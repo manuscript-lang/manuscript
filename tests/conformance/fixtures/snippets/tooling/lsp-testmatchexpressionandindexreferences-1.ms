@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,match,optional,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,match,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/match_test.go:9 TestMatchExpressionAndIndexReferences
 fn read(values List[Int], index Int) Int {
 	result := match values.take(index).first() {

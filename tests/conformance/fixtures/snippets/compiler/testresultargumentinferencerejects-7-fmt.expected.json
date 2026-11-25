@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn callback[T](r (fn(T) Int)!) Void => return\n\nfn first(r (fn(Int) Int)!E1) Void => callback(r)\n"
-  }
-}

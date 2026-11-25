@@ -1,5 +1,5 @@
-// conform: tags=modules,stdlib-io,tier-core
-// conform: phase=run
+// conform: tags=formatter,modules,stdlib-io,tier-core
+// conform: phase=run,parse
 // conform: origin=tests/e2e/debug_script_test.go:125 TestDebugOneShotRejectsUnknownAndUnreachedBreakpoints
 import stdout from "@std/io/io.ms"
 

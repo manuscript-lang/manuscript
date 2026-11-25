@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,mutation,strings,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,mutation,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/functions/function-values-and-closures.md:52
 fn make_headline() fn() String {
 	var subject = "Weekly update"

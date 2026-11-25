@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,modules,stdlib-fs,strings,tier-io
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,modules,stdlib-fs,strings,tier-io
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/advisory_lint_test.go:20 TestSafetyAdvisoriesPublishAsWarnings
 // café 🦀
 import stat from "@std/os/fs.ms"

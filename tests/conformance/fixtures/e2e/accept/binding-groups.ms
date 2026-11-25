@@ -1,5 +1,5 @@
-// conform: tags=closures,destructuring,interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=closures,destructuring,formatter,interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/binding-groups.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 

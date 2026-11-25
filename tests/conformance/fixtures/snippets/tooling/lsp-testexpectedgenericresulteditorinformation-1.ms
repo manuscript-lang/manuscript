@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,generics,optional,strings,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,generics,optional,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/contextual_generics_test.go:10 TestExpectedGenericResultEditorInformation
 fn absent[T]() T? => null
 

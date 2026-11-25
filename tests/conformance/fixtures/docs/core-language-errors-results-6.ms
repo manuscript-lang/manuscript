@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-bytes,stdlib-encoding,strings,tier-stdlib,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-bytes,stdlib-encoding,strings,tier-stdlib,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/errors/results.md:97
 import (
 	Bytes from "@std/bytes.ms",

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,modules,stdlib-collections,stdlib-system,strings,tier-io
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,modules,stdlib-collections,stdlib-system,strings,tier-io
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
 import (
 	ListEntry from "@std/collections/collections.ms",

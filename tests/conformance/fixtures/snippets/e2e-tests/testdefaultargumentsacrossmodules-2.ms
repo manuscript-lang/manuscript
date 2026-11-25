@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,modules,stdlib-testing,testing,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,modules,stdlib-testing,testing,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/e2e_test.go:510 TestDefaultArgumentsAcrossModules
 import (
 	expect_true, fail from "@std/test/test.ms",

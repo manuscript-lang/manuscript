@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn answer() Int {\n\tvar total = 0\n\ttotal += 2\n\tif total > 1 {\n\t\treturn 1\n\t}\n\n\treturn 0\n}\n"
-  }
-}

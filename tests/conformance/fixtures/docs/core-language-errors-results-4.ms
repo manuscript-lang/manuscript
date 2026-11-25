@@ -1,5 +1,5 @@
-// conform: tags=decimal,diagnostics,modules,optional,stdlib-errors,tier-stdlib,try-result
-// conform: phase=check
+// conform: tags=decimal,diagnostics,formatter,modules,optional,stdlib-errors,tier-stdlib,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/errors/results.md:75
 
 fn successful_price(outcome Result[Decimal, Error]) Decimal? {

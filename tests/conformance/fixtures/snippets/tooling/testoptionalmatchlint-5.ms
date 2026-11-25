@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,match,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,match,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/optional_match_lint_test.go:18 TestOptionalMatchLint
 enum Shape {
 	Dot

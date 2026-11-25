@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,records,stdlib-json,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,records,stdlib-json,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lint_program_test.go:29 TestUnusedImportsFollowResolvedNames
 import parse from "@std/data/json.ms"
 

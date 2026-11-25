@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/contextual_generics_test.go:93 TestExpectedResultGenericInferenceRejects
 fn required(value Int) Int => value
 

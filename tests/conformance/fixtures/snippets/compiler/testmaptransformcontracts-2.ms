@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,maps,strings,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,maps,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/map_transforms_test.go:14 TestMapTransformContracts
 fn wrong[W](values Map[String, Int], transform fn(String, Int) W) Void {
 	mapped := values.map_keys(transform)

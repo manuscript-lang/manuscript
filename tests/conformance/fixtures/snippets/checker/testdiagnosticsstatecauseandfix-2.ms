@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:21 TestDiagnosticsStateCauseAndFix
 fn f() Void {
 	return panic(message: "x")

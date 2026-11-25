@@ -1,5 +1,5 @@
-// conform: tags=decimal,diagnostics,numbers,tier-core
-// conform: phase=check
+// conform: tags=decimal,diagnostics,formatter,numbers,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/basics/numbers-and-booleans.md:36
 fn literals() Void {
 	smallest Int := -9223372036854775808

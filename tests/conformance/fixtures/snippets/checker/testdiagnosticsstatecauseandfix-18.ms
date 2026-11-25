@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,optional,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:37 TestDiagnosticsStateCauseAndFix
 fn f(o Int?) Int {
 	match o {

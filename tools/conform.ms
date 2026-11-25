@@ -121,9 +121,9 @@ fn lint_command(corpus String) Int {
 	for fx in everything {
 		known_ids.append(fx.id.clone())
 		if seen.get(
-			fx.id
+			f"{fx.id}|{fx.phase}"
 		) != null { problems.append(f"{fx.id}: duplicate id") }
-		seen.add(fx.id.clone(), true)
+		seen.add(f"{fx.id}|{fx.phase}", true)
 		if fx.tags.is_empty() {
 			problems.append(f"{fx.id}: no tags")
 		}
@@ -135,7 +135,7 @@ fn lint_command(corpus String) Int {
 		if fx.phase == "parse" and fx.is_dir {
 			problems.append(f"{fx.id}: parse fixtures must be single files")
 		}
-		if not fx.inline.is_empty() { continue }
+		if fx.secondary or not fx.inline.is_empty() { continue }
 
 		if not fx.is_dir { sidecars.append(fx.sidecar.clone()) }
 

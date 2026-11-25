@@ -1,5 +1,5 @@
-// conform: tags=functions,tier-core
-// conform: phase=run
+// conform: tags=formatter,functions,tier-core
+// conform: phase=run,parse
 // conform: origin=pkg/tooling/lsp/query_test.go:13 TestQuerySymbolFindsTypeDefinitionAndReferences
 fn double(value Int) Int {
 	return value * 2

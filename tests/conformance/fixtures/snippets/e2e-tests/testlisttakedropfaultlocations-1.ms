@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/list_take_drop_test.go:13 TestListTakeDropFaultLocations
 export fn main() Int {
 	values := [1, 2]

@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=closures,control-flow,diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/list_bounds_test.go:74 TestClosedIntListGenericAndLambdaIsolation
 fn probe(value Int) Int {
 	values := [1, 2, 3]

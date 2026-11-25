@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,optional,records,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,optional,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/generics.md:74
 type Pair[A, B = A] {
 	first A

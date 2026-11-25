@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,optional,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:38 TestDiagnosticsStateCauseAndFix
 fn f(n Int?) Int {
 	if n == 0 {

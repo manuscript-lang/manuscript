@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/basics/grammar.md:203
 fn double(value Int) Int => value * 2
 

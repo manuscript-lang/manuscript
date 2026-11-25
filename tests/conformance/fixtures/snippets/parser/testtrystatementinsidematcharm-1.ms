@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,optional,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,optional,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/parser/parser_test.go:268 TestTryStatementInsideMatchArm
 fn f(x Int?) Void! {
 	match x {

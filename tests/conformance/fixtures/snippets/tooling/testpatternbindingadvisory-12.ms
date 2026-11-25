@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,generics,match,optional,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,generics,match,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:43 TestPatternBindingAdvisory
 fn use[T](value T?) T {
 	match value {

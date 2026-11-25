@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/basics/expressions.md:73
 fn load(path String) Config! {
 	config := (

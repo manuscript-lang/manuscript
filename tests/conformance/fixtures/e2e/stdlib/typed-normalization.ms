@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,faults,generics,match,modules,optional,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=closures,control-flow,faults,formatter,generics,match,modules,optional,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/typed-normalization.ms
 import (
 	NormalizationForm from "@std/string.ms",

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn add(value Int) Int {\n\treturn value\n}\n\nfn render() String {\n\treturn f\"héllo { add(value: 2) }\"\n}\n"
-  }
-}

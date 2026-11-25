@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn answer() Int {\n\tmatch parse(\"1\") {\n\t\tok(value) => return 1\n\t\terror(e) => return 2\n\t}\n}\n"
-  }
-}

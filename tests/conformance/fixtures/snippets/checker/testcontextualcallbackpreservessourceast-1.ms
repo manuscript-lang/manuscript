@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/checker_test.go:55 TestContextualCallbackPreservesSourceAST
 type Callback {
 	value fn(Int) Int

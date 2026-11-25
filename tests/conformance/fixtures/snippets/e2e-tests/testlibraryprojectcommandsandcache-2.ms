@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,stdlib-testing,testing,tier-core
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,stdlib-testing,testing,tier-core
+// conform: phase=test,parse
 // conform: origin=tests/e2e/library_project_test.go:30 TestLibraryProjectCommandsAndCache
 import fail from "@std/test/test.ms"
 

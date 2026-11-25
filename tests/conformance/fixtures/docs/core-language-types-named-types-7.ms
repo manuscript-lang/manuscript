@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/named-types.md:82
 customer_id := CustomerId("42")
 // Rejected: equal field shapes do not make nominal types interchangeable.

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,modules,stdlib-errors,strings,tier-stdlib,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,modules,stdlib-errors,strings,tier-stdlib,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/generics.md:103
 
 fn fail[T](message String) Result[T, Error] => error(Error(message))

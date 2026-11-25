@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Void {\n\t_larger := [1, 2, 3, 4, 5]\n\t_nested := [[1, 2], [3, 4]]\n}\n"
-  }
-}

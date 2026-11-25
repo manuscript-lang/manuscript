@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:353 TestFormatExpressionLayouts
 fn work() String {
 	return incoming_request_payload.normalize_whitespace().replace(

@@ -1,5 +1,5 @@
-// conform: tags=interpolation,modules,records,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=formatter,interpolation,modules,records,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=documentation/learn/best-practices.md:28
 import (
 	parse from "@std/data/json.ms",

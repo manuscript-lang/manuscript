@@ -1,5 +1,5 @@
-// conform: tags=testing,tier-core
-// conform: phase=test
+// conform: tags=formatter,testing,tier-core
+// conform: phase=test,parse
 // conform: origin=tests/e2e/library_project_test.go:40 TestLibraryProjectCommandsAndCache
 test "nested" {
 	return

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,faults,formatter,generics,match,modules,scope-cleanup,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/projects/library/main.ms
 import (
 	uuid_v4 from "@std/data/uuid.ms",

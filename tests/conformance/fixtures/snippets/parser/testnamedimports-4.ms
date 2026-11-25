@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/parser/parser_test.go:155 TestNamedImports
 import (
 	ListEntry,  // first

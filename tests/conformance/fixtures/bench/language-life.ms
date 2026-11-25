@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,lists,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
-// conform: phase=run
+// conform: tags=control-flow,faults,formatter,lists,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
+// conform: phase=run,parse
 // conform: origin=bench/perf/language/life.ms
 import (
 	filled from "@std/collections/collections.ms",

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,stdlib-fs,tier-io,try-result
-// conform: phase=run
+// conform: tags=control-flow,formatter,modules,stdlib-fs,tier-io,try-result
+// conform: phase=run,parse
 // conform: origin=tests/e2e/fs_remove_test.go:17 TestFileSystemRemoveProtectsWorkingDirectory
 import canonicalize, remove, rename from "@std/os/fs.ms"
 

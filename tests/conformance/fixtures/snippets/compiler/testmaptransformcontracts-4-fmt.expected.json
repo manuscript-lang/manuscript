@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn wrong(values Map[String, Int]) Void {\n\tfound := values.find_last((k, v) => v)\n}\n"
-  }
-}

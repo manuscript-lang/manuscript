@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(value Int = 1) Int {\n\treturn value\n}\n\nfn make() fn(Int) Int {\n\treturn f\n}\n\nfn call() Int {\n\treturn make()()\n}\n"
-  }
-}

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/position_consumers_test.go:61 TestDocumentSymbolOriginalHeaderAndFieldPositions
 // α😀
 interface Read {

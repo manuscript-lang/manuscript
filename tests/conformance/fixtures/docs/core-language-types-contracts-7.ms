@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/contracts.md:127
 fn use_increment(operation Increment) Int {
 	return operation.apply(1)

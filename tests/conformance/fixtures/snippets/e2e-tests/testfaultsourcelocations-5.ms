@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,optional,stdlib-io,tier-core
-// conform: phase=run
+// conform: tags=control-flow,formatter,modules,optional,stdlib-io,tier-core
+// conform: phase=run,parse
 // conform: origin=tests/e2e/fault_locations_test.go:63 TestFaultSourceLocations
 import (
 	Bytes from "@std/bytes.ms",

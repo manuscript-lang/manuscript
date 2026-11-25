@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,interpolation,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,interpolation,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/string-keyed-map-calls-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 

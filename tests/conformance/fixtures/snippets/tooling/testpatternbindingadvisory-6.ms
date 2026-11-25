@@ -1,5 +1,5 @@
-// conform: tags=alternatives,control-flow,diagnostics,generics,interfaces,match,records,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=alternatives,control-flow,diagnostics,formatter,generics,interfaces,match,records,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:28 TestPatternBindingAdvisory
 enum Failure[T] {
 	NotFound

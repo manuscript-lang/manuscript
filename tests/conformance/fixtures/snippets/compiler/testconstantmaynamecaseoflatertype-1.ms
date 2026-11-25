@@ -1,5 +1,5 @@
-// conform: tags=alternatives,match,records,tier-core
-// conform: phase=run
+// conform: tags=alternatives,formatter,match,records,tier-core
+// conform: phase=run,parse
 // conform: origin=pkg/compiler/constant_before_type_test.go:8 TestConstantMayNameCaseOfLaterType
 initial := Mode.Idle
 

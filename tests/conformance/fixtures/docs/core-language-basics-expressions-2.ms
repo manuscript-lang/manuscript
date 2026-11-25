@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/basics/expressions.md:140
 fn calculated(value Int, active Bool) Int {
 	product := 1 + 2 * 3  // 7

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,faults,interfaces,modules,mutation,optional,records,stdlib-bytes,stdlib-io,strings,tier-stdlib,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,faults,formatter,interfaces,modules,mutation,optional,records,stdlib-bytes,stdlib-io,strings,tier-stdlib,try-result
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/stdlib/support/streams.ms
 import (
 	Bytes from "@std/bytes.ms",

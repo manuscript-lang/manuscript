@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,match,optional,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,match,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:77 TestStatementMatchDiscardsArmValues
 fn f(xs List[Int], o Int?) Void {
 	r := match o {

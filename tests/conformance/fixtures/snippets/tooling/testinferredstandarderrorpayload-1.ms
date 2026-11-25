@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,modules,stdlib-fs,strings,tier-io
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,modules,stdlib-fs,strings,tier-io
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:143 TestInferredStandardErrorPayload
 import stat from "@std/os/fs.ms"
 

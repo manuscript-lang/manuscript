@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,faults,interpolation,modules,stdlib-io,stdlib-process,tier-io
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,faults,formatter,interpolation,modules,stdlib-io,stdlib-process,tier-io
+// conform: phase=check,parse
 // conform: origin=documentation/_index.md:10
 import (
 	stdout from "@std/io/io.ms",

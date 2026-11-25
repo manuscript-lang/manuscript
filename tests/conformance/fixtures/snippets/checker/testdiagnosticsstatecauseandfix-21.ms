@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:40 TestDiagnosticsStateCauseAndFix
 fn p() Int! {
 	return ok(1)

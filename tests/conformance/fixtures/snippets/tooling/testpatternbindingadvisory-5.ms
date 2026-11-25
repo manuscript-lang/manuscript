@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,match,optional,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,match,optional,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:27 TestPatternBindingAdvisory
 enum First {
 	Ready

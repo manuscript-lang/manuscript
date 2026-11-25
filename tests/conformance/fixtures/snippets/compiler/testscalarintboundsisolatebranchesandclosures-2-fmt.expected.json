@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn probe(value Int) Int {\n\tvar sum = 0\n\tsum = value\n\n\tcallback := fn() Int {\n\t\treturn sum + value\n\t}\n\treturn callback()\n}\n"
-  }
-}

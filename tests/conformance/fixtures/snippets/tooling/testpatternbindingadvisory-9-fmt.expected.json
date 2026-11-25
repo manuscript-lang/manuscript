@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum Flag {\n\tReady\n}\n\nfn use(value Int?) Int {\n\t_Flag := 2\n\n\tmatch value {\n\t\tready => return Ready\n\t\tnull => return 0\n\t}\n}\n"
-  }
-}

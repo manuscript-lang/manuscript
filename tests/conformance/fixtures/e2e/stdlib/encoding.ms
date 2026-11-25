@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,stdlib-bytes,stdlib-encoding,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,stdlib-bytes,stdlib-encoding,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/encoding.ms
 import (
 	Bytes from "@std/bytes.ms",

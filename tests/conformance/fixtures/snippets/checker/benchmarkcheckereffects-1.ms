@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/performance_test.go:39 BenchmarkCheckerEffects
 type Cell {
 	value Int

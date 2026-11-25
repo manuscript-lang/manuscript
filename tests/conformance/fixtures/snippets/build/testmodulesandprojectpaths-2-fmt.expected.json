@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tread from \"@domain/value.ms\",\n\tIdentity from \"@value\",\n)\n\nexport fn main() Int {\n\treturn read(value: Identity(value: 0))\n}\n"
-  }
-}

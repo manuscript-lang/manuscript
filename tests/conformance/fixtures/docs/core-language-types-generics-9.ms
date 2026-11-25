@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,lists,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,lists,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/generics.md:149
 fn repeat[T](value T) Never {
 	return repeat[T](value)  // Regular specialization; allowed.

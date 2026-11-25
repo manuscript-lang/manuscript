@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,lists,records,sets,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,lists,records,sets,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:37 TestCollectionPreludeAndShadowing
 type Selection {
 	values Set[Int]

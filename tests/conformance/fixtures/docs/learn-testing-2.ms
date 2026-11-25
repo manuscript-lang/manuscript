@@ -1,5 +1,5 @@
-// conform: tags=modules,optional,stdlib-json,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=formatter,modules,optional,stdlib-json,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=documentation/learn/testing.md:53
 import (
 	parse from "@std/data/json.ms",

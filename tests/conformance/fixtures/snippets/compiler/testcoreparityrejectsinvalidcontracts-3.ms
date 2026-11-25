@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,maps,strings,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,maps,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/core_parity_test.go:21 TestCoreParityRejectsInvalidContracts
 fn wrong(value Map[String, Int]) Void {
 	output := value.filter((k, n) => n)

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,optional,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,optional,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/build/expression_conveniences_test.go:24 TestExpressionConvenienceRejections
 fn p() Int! {
 	return ok(1)

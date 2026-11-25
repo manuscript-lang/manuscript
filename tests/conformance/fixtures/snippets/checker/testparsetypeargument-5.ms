@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,records,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,records,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/checker/json_parse_test.go:22 TestParseTypeArgument
 type Request {
 	model String

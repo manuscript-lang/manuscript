@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/project_bench_test.go:33 BenchmarkProjectPipeline
 import value from "./shared.ms"
 

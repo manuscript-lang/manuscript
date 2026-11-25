@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,records,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/build/library_test.go:91 TestCommonErrorRejectsInvalidContractPatterns
 interface Diagnostic {
 	fn message() String

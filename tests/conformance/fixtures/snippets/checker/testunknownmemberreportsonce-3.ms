@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/member_cascade_test.go:18 TestUnknownMemberReportsOnce
 fn g(v Int) Int {
 	return v

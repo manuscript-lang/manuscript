@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn failing() Int! => error(Error(\"failure\"))\n\nfn count[T](r T!) Int => 1\n\nfn use() Int => count(r: failing())\n"
-  }
-}

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,records,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,records,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/build/compiler_test.go:592 TestGroupedImportResolutionErrors
 import MapEntry from "@std/collections/collections.ms"
 

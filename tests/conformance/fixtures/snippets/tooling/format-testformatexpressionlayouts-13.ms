@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,generics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,generics,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:130 TestFormatExpressionLayouts
 fn map_box[T, U_wwwwwwwwwwww](
 	b_wwwwwwwwwwwwwwwwwwwwwwww Box_wwwwwwwwwwwwwwwwwww[T],

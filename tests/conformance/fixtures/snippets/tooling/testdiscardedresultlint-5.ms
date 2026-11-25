@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,control-flow,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/result_lint_test.go:19 TestDiscardedResultLint
 fn caller() Void {
 	callback := fn() Void {

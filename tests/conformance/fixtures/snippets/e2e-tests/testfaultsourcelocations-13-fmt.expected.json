@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn crash(key String, value Int) Bool {\n\treturn 1 / value == 0\n}\n\nexport fn main() Int {\n\tvalue Map[String, Int] := {\"a\": 0}\n\treturn value.filter(crash).length()\n}\n"
-  }
-}

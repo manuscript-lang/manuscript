@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/counter_aggregate_test.go:28 TestCounterAggregateSelection
 fn probe() Int {
 	var sum = 0

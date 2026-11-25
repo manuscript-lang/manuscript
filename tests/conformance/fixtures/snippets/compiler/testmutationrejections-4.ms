@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/mutation_test.go:25 TestMutationRejections
 fn f() Void {
 	Val.val = 1

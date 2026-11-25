@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,records,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:32 TestDiagnosticFixes
 interface I {
 	fn n() Int

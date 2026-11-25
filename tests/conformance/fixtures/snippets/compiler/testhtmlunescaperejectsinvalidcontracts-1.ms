@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/html_unescape_test.go:12 TestHTMLUnescapeRejectsInvalidContracts
 fn wrong() String {
 	convert := unescape

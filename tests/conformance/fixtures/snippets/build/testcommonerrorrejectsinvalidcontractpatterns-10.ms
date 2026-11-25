@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/build/library_test.go:111 TestCommonErrorRejectsInvalidContractPatterns
 interface Named {
 	fn name() String

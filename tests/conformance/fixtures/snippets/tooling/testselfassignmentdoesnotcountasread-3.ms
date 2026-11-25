@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lint_program_test.go:95 TestSelfAssignmentDoesNotCountAsRead
 fn answer() Int {
 	var total = 0

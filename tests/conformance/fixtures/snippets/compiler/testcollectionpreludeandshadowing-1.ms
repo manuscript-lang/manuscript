@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,lists,maps,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,lists,maps,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:32 TestCollectionPreludeAndShadowing
 import panic from "@std/core.ms"
 

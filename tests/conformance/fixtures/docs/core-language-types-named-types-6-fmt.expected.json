@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type CustomerId {\n\tvalue String\n}\n\ntype OrderId {\n\tvalue String\n}\n"
-  }
-}

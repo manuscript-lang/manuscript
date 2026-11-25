@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/list_parity_test.go:15 TestListParityRejectInvalidContracts
 fn wrong() Int {
 	values := [fn() Int => 1]

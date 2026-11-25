@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,modules,stdlib-faults,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,modules,stdlib-faults,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:30 TestDiagnosticFixes
 import panic from "@std/core.ms"
 

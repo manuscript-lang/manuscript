@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/group_test.go:11 TestBindingGroupsParseAsIndividualBindings
 A := 1
 B Int := A + 1

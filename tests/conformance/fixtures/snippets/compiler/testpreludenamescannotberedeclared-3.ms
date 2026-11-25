@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,records,sets,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,records,sets,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:112 TestPreludeNamesCannotBeRedeclared
 type Set[T] {
 	value T

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,faults,modules,stdlib-faults,tier-stdlib
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,faults,formatter,modules,stdlib-faults,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/functions/declarations-and-calls.md:116
 import panic from "@std/core.ms"
 

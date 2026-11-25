@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn subtract(amount Int, deduction Int = 1) Int {\n\treturn amount - deduction\n}\n\nfn example() Int {\n\tusual := subtract(5)\n\texplicit := subtract(5, 2)\n\treturn usual + explicit\n}\n"
-  }
-}

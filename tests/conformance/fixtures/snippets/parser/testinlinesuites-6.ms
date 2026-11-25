@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/parser_test.go:203 TestInlineSuites
 fn f() Void {
 	g := fn(x Int) Int => return x

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,modules,optional,stdlib-bytes,stdlib-faults,strings,testing,tier-stdlib
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,modules,optional,stdlib-bytes,stdlib-faults,strings,testing,tier-stdlib
+// conform: phase=test,parse
 // conform: origin=documentation/core-language/basics/text-and-bytes.md:110
 import (
 	Bytes from "@std/bytes.ms",

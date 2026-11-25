@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,numbers,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,numbers,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:42 TestDiagnosticsStateCauseAndFix
 fn f() Float {
 	x Float := 3
