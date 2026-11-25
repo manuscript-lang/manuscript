@@ -31,6 +31,10 @@ bool link_host_prepare(LinkJob *job, MsStrBuild *why) {
   if (options->strip) {
     link_job_push_text(job, "--strip-all");
   }
+  if (options->quick) {
+    link_job_push_text(job, "-O0");
+    link_job_push_text(job, "--threads=1");
+  }
   link_job_push_in(job, options->files, "crt2.o");
   link_job_push(job, job->request->object);
   link_job_push_text(job, "--start-group");
