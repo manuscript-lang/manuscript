@@ -382,7 +382,7 @@ static int handle_message(Session *session, MsSpan body) {
   } else if (handle_document_request(session, id, method->text, params)) {
     /* answered */
   } else if (id != NULL) {
-    if (ms_span_starts_with(method->text, ms_span_of_text("textDocument/"))) {
+    if (ms_span_starts_with_text(method->text, "textDocument/")) {
       reply_result(id, ms_span_of_text("null"));
     } else if (ms_span_is_text(method->text, "initialized")) {
       reply_result(id, ms_span_of_text("null"));

@@ -16,16 +16,16 @@ static MsSpan after(MsSpan text, const char *prefix) {
 /* Records the directive on one comment line, if it is one. */
 static void read_line(MsDirectives *directives, MsSpan line) {
   const MsSpan text = ms_span_trim(line);
-  if (!ms_span_starts_with(text, ms_span_of_text("// ms:"))) {
+  if (!ms_span_starts_with_text(text, "// ms:")) {
     return;
   }
   const MsSpan rest = ms_span_trim(after(text, "// ms:"));
-  if (ms_span_starts_with(rest, ms_span_of_text("allow_effect "))) {
+  if (ms_span_starts_with_text(rest, "allow_effect ")) {
     ms_span_list_push(&directives->allow, ms_span_trim(after(rest, "allow_effect ")));
     directives->has_allow = true;
-  } else if (ms_span_starts_with(rest, ms_span_of_text("words "))) {
+  } else if (ms_span_starts_with_text(rest, "words ")) {
     ms_span_list_push(&directives->words, ms_span_trim(after(rest, "words ")));
-  } else if (ms_span_starts_with(rest, ms_span_of_text("effect "))) {
+  } else if (ms_span_starts_with_text(rest, "effect ")) {
     ms_span_list_push(&directives->declared, ms_span_trim(after(rest, "effect ")));
   }
 }
@@ -45,7 +45,7 @@ static MsSpan line_at(MsSpan source, size_t at, size_t *next) {
 }
 
 static bool is_comment(MsSpan line) {
-  return ms_span_starts_with(ms_span_trim(line), ms_span_of_text("//"));
+  return ms_span_starts_with_text(ms_span_trim(line), "//");
 }
 
 /* The offset just past the leading comment lines of the file, or 0 when the file does not start with one. */
@@ -99,7 +99,7 @@ MsDirectives ms_directives_above(MsSpan source, const uint32_t *line_starts, uin
   while (start != SIZE_MAX) {
     size_t next = 0;
     const MsSpan text = line_at(source, start, &next);
-    if (!ms_span_starts_with(ms_span_trim(text), ms_span_of_text("//"))) {
+    if (!ms_span_starts_with_text(ms_span_trim(text), "//")) {
       break;
     }
     read_line(&found, text);
@@ -118,11 +118,11 @@ bool ms_effect_matches(MsSpan pattern, MsSpan effect) {
   if (ms_span_is_text(pattern, "*")) {
     return true;
   }
-  if (ms_span_ends_with(pattern, ms_span_of_text(".*"))) {
+  if (ms_span_ends_with_text(pattern, ".*")) {
     const MsSpan prefix = ms_span_of(pattern.ptr, pattern.len - 2);
     return ms_span_starts_with(effect, prefix) && effect.len > prefix.len && effect.ptr[prefix.len] == '.';
   }
-  if (ms_span_starts_with(pattern, ms_span_of_text("*."))) {
+  if (ms_span_starts_with_text(pattern, "*.")) {
     const MsSpan suffix = ms_span_of(pattern.ptr + 2, pattern.len - 2);
     size_t dot = effect.len;
     while (dot > 0 && effect.ptr[dot - 1] != '.') {

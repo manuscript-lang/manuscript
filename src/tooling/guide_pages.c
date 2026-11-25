@@ -27,10 +27,10 @@ static MsSpan trim(MsSpan s) {
 }
 
 static MsSpan short_name(MsSpan path) {
-  if (ms_span_starts_with(path, ms_span_of_text("@std/"))) {
+  if (ms_span_starts_with_text(path, "@std/")) {
     path = sub(path, 5, path.len);
   }
-  if (ms_span_ends_with(path, ms_span_of_text(".ms"))) {
+  if (ms_span_ends_with_text(path, ".ms")) {
     path = sub(path, 0, path.len - 3);
   }
   for (size_t i = path.len; i > 0; i--) {
@@ -42,10 +42,10 @@ static MsSpan short_name(MsSpan path) {
 }
 
 static MsSpan package_name(MsSpan path) {
-  if (ms_span_starts_with(path, ms_span_of_text("@std/"))) {
+  if (ms_span_starts_with_text(path, "@std/")) {
     path = sub(path, 5, path.len);
   }
-  return ms_span_ends_with(path, ms_span_of_text(".ms")) ? sub(path, 0, path.len - 3) : path;
+  return ms_span_ends_with_text(path, ".ms") ? sub(path, 0, path.len - 3) : path;
 }
 
 /* Drops a generic parameter list: `group_by[K: Hashable]` becomes `group_by`. */
@@ -354,7 +354,7 @@ static bool member_page(MsArena *arena, const MsApiModule *m, const MsApiDecl *d
 /* The dot-separated parts of a path, at most three; a leading `@std/` and `.ms` are accepted. */
 static size_t split_path(MsArena *arena, MsSpan path, MsSpan parts[3]) {
   path = trim(path);
-  if (ms_span_starts_with(path, ms_span_of_text("@std/"))) {
+  if (ms_span_starts_with_text(path, "@std/")) {
     path = sub(path, 5, path.len);
     size_t at = 0;
     if (ms_span_find(path, ms_span_of_text(".ms"), &at)) {

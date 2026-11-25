@@ -111,7 +111,7 @@ static int fail(const BuildReport *report, const char *phase, MsSpan message) {
 /* The source or manifest an `-o` path would replace, or empty. */
 static MsSpan protected_output(const BuildReport *report, MsSpan project_root) {
   const MsSpan base = ms_path_file_name(report->output);
-  if (ms_span_ends_with(base, ms_span_of_text(".ms")) || ms_span_is_text(base, "ms.toml")) {
+  if (ms_span_ends_with_text(base, ".ms") || ms_span_is_text(base, "ms.toml")) {
     return base;
   }
   MsStrBuild manifest = ms_strbuild_new();

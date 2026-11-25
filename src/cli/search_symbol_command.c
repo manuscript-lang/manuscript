@@ -267,7 +267,7 @@ int ms_search_symbol_command(int argc, char **argv) {
     MsSpan inline_value = {0};
     bool has_inline = false;
     size_t at = 0;
-    if (ms_span_starts_with(arg, ms_span_of_text("--limit=")) && ms_span_find(arg, ms_span_of_text("="), &at)) {
+    if (ms_span_starts_with_text(arg, "--limit=") && ms_span_find(arg, ms_span_of_text("="), &at)) {
       inline_value = ms_span_of(arg.ptr + at + 1, arg.len - at - 1);
       arg = ms_span_of_text("--limit");
       has_inline = true;

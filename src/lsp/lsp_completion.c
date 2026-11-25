@@ -23,7 +23,7 @@
 #include "tooling/doc_comment.h"
 
 static void add(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSpan insert, MsSpan documentation) {
-  if (!name_matches(name, c->prefix) || ms_span_starts_with(name, ms_span_of_text(MARKER))) return;
+  if (!name_matches(name, c->prefix) || ms_span_starts_with_text(name, MARKER)) return;
   for (size_t i = 0; i < c->items.len; i++) {
     if (ms_span_equal(ms_string_span(&c->items.ptr[i].label), name)) return;
   }

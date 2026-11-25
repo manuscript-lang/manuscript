@@ -78,7 +78,7 @@ static void collect_importable(MsSpan text, MsSpan path, bool bundled, Importabl
       const MsDecl *decl = module.decls[d];
       if (!decl->is_exported || !ms_check_declared_name(decl, &declared)) continue;
       const MsSpan name = ms_names_span(&names, declared);
-      if (ms_span_starts_with(name, ms_span_of_text(MARKER))) continue;
+      if (ms_span_starts_with_text(name, MARKER)) continue;
       if (bundled && ms_check_is_prelude_declaration(path, name)) continue;
       const bool is_type = is_type_decl(decl);
       const bool function = decl->kind == MS_D_FN;
@@ -267,7 +267,7 @@ static void add_exports(Completer *c, MsSpan text, MsSpan path, bool bundled, co
 }
 
 /* The bundled modules a user may import: not the internal ones, and not the two that hold only prelude names. */
-static bool public_module(MsSpan name) { return !ms_span_starts_with(name, ms_span_of_text("internal/")); }
+static bool public_module(MsSpan name) { return !ms_span_starts_with_text(name, "internal/"); }
 
 static bool has_public_export(MsSpan name, MsSpan text) {
   MsArena arena = ms_arena_new();
@@ -337,7 +337,7 @@ static void list_directory(Completer *c, MsArena *arena, MsSpan directory, MsSpa
       const bool is_directory = entries.ptr[i].kind == MS_PATH_DIRECTORY ||
                                 (entries.ptr[i].kind == MS_PATH_SYMLINK && ms_dir_exists(ms_strbuild_span(&entry_path)));
       ms_strbuild_free(&entry_path);
-      if (ms_span_starts_with(full, prefix) && (is_directory || ms_span_ends_with(name, ms_span_of_text(".ms")))) add_path(c, full, is_directory);
+      if (ms_span_starts_with(full, prefix) && (is_directory || ms_span_ends_with_text(name, ".ms"))) add_path(c, full, is_directory);
     }
   }
   ms_dir_entries_free(&entries);
@@ -374,8 +374,8 @@ static void path_items(Completer *c, const LspDoc *doc, MsSpan prefix) {
   size_t slash = prefix.len;
   while (slash > 0 && prefix.ptr[slash - 1] != '/') slash--;
   const MsSpan directory_prefix = ms_span_of(prefix.ptr, slash);
-  const bool relative = ms_span_starts_with(prefix, ms_span_of_text("./")) || ms_span_starts_with(prefix, ms_span_of_text("../"));
-  const bool aliased = ms_span_starts_with(prefix, ms_span_of_text("@")) && !ms_span_starts_with(prefix, ms_span_of_text("@std/"));
+  const bool relative = ms_span_starts_with_text(prefix, "./") || ms_span_starts_with_text(prefix, "../");
+  const bool aliased = ms_span_starts_with_text(prefix, "@") && !ms_span_starts_with_text(prefix, "@std/");
   if (slash > 0 && relative) {
     MsStrBuild base = ms_strbuild_new(), joined = ms_strbuild_new();
     ms_path_dir(ms_string_span(&doc->path), &base);
@@ -469,10 +469,10 @@ bool lsp_import_items(Completer *c, const LspDoc *doc, const LspDocList *docs) {
   imported_names(c, start, grouped, &imported);
   MsSpan path;
   if (following_path(c->source, c->end, braces, &path)) {
-    if (ms_span_starts_with(path, ms_span_of_text("@std/"))) {
+    if (ms_span_starts_with_text(path, "@std/")) {
       MsStdSource source;
       if (ms_std_source_find(ms_span_of(path.ptr + 5, path.len - 5), &source)) add_exports(c, source.text, path, true, &imported, true, false);
-    } else if (ms_span_starts_with(path, ms_span_of_text(".")) || ms_span_starts_with(path, ms_span_of_text("@"))) {
+    } else if (ms_span_starts_with_text(path, ".") || ms_span_starts_with_text(path, "@")) {
       MsArena arena = ms_arena_new();
       MsStrBuild base = ms_strbuild_new(), joined = ms_strbuild_new(), file = ms_strbuild_new();
       bool resolved = true;

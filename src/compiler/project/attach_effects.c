@@ -7,12 +7,12 @@ static bool ms_package_pattern_covers(MsSpan allowed, MsSpan declared) {
   if (ms_span_is_text(allowed, "*") || ms_span_equal(allowed, declared)) {
     return true;
   }
-  if (ms_span_ends_with(allowed, ms_span_of_text(".*"))) {
+  if (ms_span_ends_with_text(allowed, ".*")) {
     const MsSpan prefix = ms_span_of(allowed.ptr, allowed.len - 2);
     return ms_span_equal(declared, prefix) ||
            (ms_span_starts_with(declared, prefix) && declared.len > prefix.len && declared.ptr[prefix.len] == '.');
   }
-  if (ms_span_starts_with(allowed, ms_span_of_text("*."))) {
+  if (ms_span_starts_with_text(allowed, "*.")) {
     const MsSpan suffix = ms_span_of(allowed.ptr + 1, allowed.len - 1); /* `.name` */
     size_t at = 0;
     return !ms_span_find(declared, ms_span_of_text("*"), &at) && ms_span_ends_with(declared, suffix);

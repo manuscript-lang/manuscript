@@ -6,17 +6,17 @@
 #include "lsp/lsp_internal.h"
 
 bool lsp_uri_is_standard_library(MsSpan uri) {
-  return ms_span_starts_with(uri, ms_span_of_text("manuscript-stdlib:"));
+  return ms_span_starts_with_text(uri, "manuscript-stdlib:");
 }
 
 bool lsp_uri_standard_module(MsSpan uri, MsSpan *name) {
   const MsSpan scheme = ms_span_of_text("manuscript-stdlib:");
   if (!ms_span_starts_with(uri, scheme)) return false;
   size_t skip = scheme.len;
-  if (ms_span_starts_with(ms_span_of(uri.ptr + skip, uri.len - skip), ms_span_of_text("///"))) {
+  if (ms_span_starts_with_text(ms_span_of(uri.ptr + skip, uri.len - skip), "///")) {
     skip += 3;
-  } else if (ms_span_starts_with(ms_span_of(uri.ptr + skip, uri.len - skip), ms_span_of_text("/")) &&
-             !ms_span_starts_with(ms_span_of(uri.ptr + skip, uri.len - skip), ms_span_of_text("//"))) {
+  } else if (ms_span_starts_with_text(ms_span_of(uri.ptr + skip, uri.len - skip), "/") &&
+             !ms_span_starts_with_text(ms_span_of(uri.ptr + skip, uri.len - skip), "//")) {
     skip += 1;
   } else {
     return false;
@@ -170,12 +170,12 @@ void lsp_file_uri(MsSpan path, MsStrBuild *out) {
   MsStrBuild fixed = ms_strbuild_new();
   for (size_t i = 0; i < path.len; i++) ms_strbuild_append_byte(&fixed, path.ptr[i] == '\\' ? '/' : path.ptr[i]);
   MsSpan p = ms_strbuild_span(&fixed);
-  if (ms_span_starts_with(p, ms_span_of_text("//?/UNC/"))) {
+  if (ms_span_starts_with_text(p, "//?/UNC/")) {
     escape_path(out, ms_span_of(p.ptr + 8, p.len - 8));
     ms_strbuild_free(&fixed);
     return;
   }
-  if (ms_span_starts_with(p, ms_span_of_text("//?/"))) p = ms_span_of(p.ptr + 4, p.len - 4);
+  if (ms_span_starts_with_text(p, "//?/")) p = ms_span_of(p.ptr + 4, p.len - 4);
   if (p.len >= 2 && p.ptr[0] != '/' && p.ptr[1] == ':') ms_strbuild_append_byte(out, '/');
   escape_path(out, p);
   ms_strbuild_free(&fixed);

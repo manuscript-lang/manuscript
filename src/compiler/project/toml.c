@@ -188,7 +188,7 @@ static bool read_header(Scanner *s, size_t at, size_t end) {
   }
   const MsSpan name = ms_span_of(s->text.ptr + at + 1, close - at - 1);
   s->open = -1;
-  if (ms_span_starts_with(name, ms_span_of_text("dependencies."))) {
+  if (ms_span_starts_with_text(name, "dependencies.")) {
     return read_dependency_header(s, at, close);
   }
   for (size_t i = 0; i < s->document->tables.len; i++) {

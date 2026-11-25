@@ -125,7 +125,7 @@ static const MsJson *measurement(MsArena *arena, MsSpan printed) {
       end++;
     }
     const MsSpan line = ms_span_of(printed.ptr + at, end - at);
-    if (ms_span_starts_with(line, ms_span_of_text("MSBENCH "))) {
+    if (ms_span_starts_with_text(line, "MSBENCH ")) {
       found = ms_span_of(line.ptr + 8, line.len - 8);
     }
     at = end + 1;

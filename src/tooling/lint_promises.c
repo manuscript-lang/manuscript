@@ -115,7 +115,7 @@ static void scan_stmt(void *context, const MsStmt *stmt) {
 
 static bool imports_promises(const MsModule *tree) {
   for (uint32_t i = 0; i < tree->nimports; i++) {
-    if (ms_span_ends_with(tree->imports[i].path, ms_span_of_text("promise.ms"))) {
+    if (ms_span_ends_with_text(tree->imports[i].path, "promise.ms")) {
       return true;
     }
   }

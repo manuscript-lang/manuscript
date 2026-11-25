@@ -77,7 +77,7 @@ static bool check_entry(MsArena *arena, MsSpan key, MsSpan entry, SeenList *seen
   }
   const MsSpan meta = ms_span_of(entry.ptr, tab);
   const MsSpan path = ms_span_of(entry.ptr + tab + 1, entry.len - tab - 1);
-  if (ms_span_starts_with(meta, ms_span_of_text("120000 "))) {
+  if (ms_span_starts_with_text(meta, "120000 ")) {
     *error = ms_message_format(arena,
                                "package %S: package contains the symbolic link %S; a package holds regular files "
                                "only",

@@ -10,7 +10,7 @@
 #include "compiler/syntax/parse.h"
 
 bool ms_check_std_path(MsSpan path, MsSpan *name) {
-  return ms_span_starts_with(path, ms_span_of_text("@std/")) && ms_span_slice(path, 5, path.len, name);
+  return ms_span_starts_with_text(path, "@std/") && ms_span_slice(path, 5, path.len, name);
 }
 
 /* The index of the module with logical path `path`, or false. */

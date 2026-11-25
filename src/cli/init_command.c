@@ -178,7 +178,7 @@ static bool ignores_cache(MsSpan line) {
 }
 
 static bool pins_sources(MsSpan line) {
-  return ms_span_starts_with(line, ms_span_of_text("*.ms "));
+  return ms_span_starts_with_text(line, "*.ms ");
 }
 
 static bool write_files(MsArena *arena, MsSpan absolute, const InitFile *files, size_t count) {

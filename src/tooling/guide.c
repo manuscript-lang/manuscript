@@ -98,7 +98,7 @@ static void load_files(Guide *g) {
   const MsStdSource *sources = ms_std_sources(&count);
   g->files = MS_ARENA_NEW_ARRAY(g->arena, StdFile, count == 0 ? 1 : count);
   for (size_t i = 0; i < count; i++) {
-    if (ms_span_starts_with(sources[i].name, ms_span_of_text("internal/"))) {
+    if (ms_span_starts_with_text(sources[i].name, "internal/")) {
       continue;
     }
     StdFile *file = &g->files[g->nfiles];

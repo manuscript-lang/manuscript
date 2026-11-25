@@ -236,7 +236,7 @@ static bool all_bytes(MsSpan text, bool (*accepts)(uint8_t)) {
 }
 
 static bool begins(const MsStrBuild *bytes, const char *prefix) {
-  return ms_span_starts_with(ms_strbuild_span(bytes), ms_span_of_text(prefix));
+  return ms_span_starts_with_text(ms_strbuild_span(bytes), prefix);
 }
 
 /* Whether rendering `u` is known to read back as a URL with the same scheme and no user information, without

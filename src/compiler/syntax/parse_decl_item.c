@@ -42,8 +42,8 @@ MS_NODISCARD bool parse_method_signature(Parser *p, MsToken name, bool generics,
 /* The suite after `test "name":` or `bench "name":` (the keyword is consumed). */
 MS_NODISCARD bool parse_single_line(Parser *p, MsToken token, const char *what) {
   MsSpan full = parse_text(p, token);
-  if (ms_span_starts_with(full, ms_span_of_text("\"\"\"")) ||
-      ms_span_starts_with(full, ms_span_of_text("r\"\"\""))) {
+  if (ms_span_starts_with_text(full, "\"\"\"") ||
+      ms_span_starts_with_text(full, "r\"\"\"")) {
     parse_fail(p, token, parse_fmt(p, "%s are one-line text; write them with a single pair of quotes", what));
     return false;
   }

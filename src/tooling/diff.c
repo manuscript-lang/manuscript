@@ -51,10 +51,6 @@ static MsSpans split_terminator(MsArena *arena, MsSpan source) {
   return lines;
 }
 
-static bool starts(MsSpan line, const char *prefix) {
-  return ms_span_starts_with(line, ms_span_of_text(prefix));
-}
-
 static MsSpan rest(MsSpan line, size_t from) {
   return ms_span_of(line.ptr + from, line.len - from);
 }
@@ -142,9 +138,9 @@ static bool diff_path(MsArena *arena, MsSpan field, const char *prefix, bool git
     return false;
   }
   const char *other = prefix[0] == 'a' ? "b/" : "a/";
-  if (starts(path, prefix)) {
+  if (ms_span_starts_with_text(path, prefix)) {
     *out = rest(path, 2);
-  } else if (starts(path, other)) {
+  } else if (ms_span_starts_with_text(path, other)) {
     *out = rest(path, 2);
   } else {
     *out = path;
@@ -285,7 +281,7 @@ static bool parse_hunk(MsArena *arena, const MsSpans *lines, size_t start, MsDif
   if (i < lines->len) {
     const MsSpan line = lines->ptr[i];
     const bool marker = line.len > 0 && (line.ptr[0] == ' ' || line.ptr[0] == '+' || line.ptr[0] == '-');
-    const bool text_header = starts(line, "--- ") && i + 1 < lines->len && starts(lines->ptr[i + 1], "+++ ");
+    const bool text_header = ms_span_starts_with_text(line, "--- ") && i + 1 < lines->len && ms_span_starts_with_text(lines->ptr[i + 1], "+++ ");
     if (!ms_span_is_text(line, "-- ") && marker && !text_header) {
       return fail(arena, error, "diff line %z: hunk is longer than its header declares", i + 1);
     }
@@ -318,16 +314,16 @@ bool ms_diff_parse(MsArena *arena, MsSpan input, MsDiffFiles *files, MsSpan *err
   size_t i = 0;
   while (i < lines.len) {
     const MsSpan line = lines.ptr[i];
-    if (starts(line, "diff --git ")) {
+    if (ms_span_starts_with_text(line, "diff --git ")) {
       git_header = rest(line, 11);
       has_header = true;
       ms_diff_files_push(arena, files, (MsDiffFile){0});
       have_current = true;
       git = true;
-    } else if (starts(line, "rename from ") || starts(line, "rename to ")) {
+    } else if (ms_span_starts_with_text(line, "rename from ") || ms_span_starts_with_text(line, "rename to ")) {
       *error = text("renamed files are not supported; produce the diff with git diff --no-renames");
       return false;
-    } else if (starts(line, "--- ") && i + 1 < lines.len && starts(lines.ptr[i + 1], "+++ ")) {
+    } else if (ms_span_starts_with_text(line, "--- ") && i + 1 < lines.len && ms_span_starts_with_text(lines.ptr[i + 1], "+++ ")) {
       if (!have_current || !git) {
         ms_diff_files_push(arena, files, (MsDiffFile){0});
         have_current = true;
@@ -345,13 +341,13 @@ bool ms_diff_parse(MsArena *arena, MsSpan input, MsDiffFiles *files, MsSpan *err
         *error = ms_message_format(arena, "diff line %z: %S", i + 2, reason);
         return false;
       }
-      if (!git && starts(current->old, "a/") && starts(current->new, "b/") &&
+      if (!git && ms_span_starts_with_text(current->old, "a/") && ms_span_starts_with_text(current->new, "b/") &&
           ms_span_equal(rest(current->old, 2), rest(current->new, 2))) {
         current->old = rest(current->old, 2);
         current->new = rest(current->new, 2);
       }
       i++;
-    } else if (starts(line, "@@ ")) {
+    } else if (ms_span_starts_with_text(line, "@@ ")) {
       if (!have_current) {
         return fail(arena, error, "diff line %z: hunk before any file header", i + 1);
       }
@@ -364,10 +360,10 @@ bool ms_diff_parse(MsArena *arena, MsSpan input, MsDiffFiles *files, MsSpan *err
       i = next;
       continue;
     } else if (git && have_current &&
-               (starts(line, "old mode ") || starts(line, "new mode ") || starts(line, "new file mode ") ||
-                starts(line, "deleted file mode ") || starts(line, "Binary files ") ||
+               (ms_span_starts_with_text(line, "old mode ") || ms_span_starts_with_text(line, "new mode ") || ms_span_starts_with_text(line, "new file mode ") ||
+                ms_span_starts_with_text(line, "deleted file mode ") || ms_span_starts_with_text(line, "Binary files ") ||
                 ms_span_is_text(line, "GIT binary patch"))) {
-      if (starts(line, "Binary files ") || ms_span_is_text(line, "GIT binary patch")) {
+      if (ms_span_starts_with_text(line, "Binary files ") || ms_span_is_text(line, "GIT binary patch")) {
         *error = text("binary diff cannot reconstruct the base; produce a text diff with git diff --text --no-renames");
         return false;
       }
@@ -378,9 +374,9 @@ bool ms_diff_parse(MsArena *arena, MsSpan input, MsDiffFiles *files, MsSpan *err
         current->old = path;
         current->new = path;
       }
-      if (starts(line, "new file mode ")) {
+      if (ms_span_starts_with_text(line, "new file mode ")) {
         current->old = (MsSpan){0};
-      } else if (starts(line, "deleted file mode ")) {
+      } else if (ms_span_starts_with_text(line, "deleted file mode ")) {
         current->new = (MsSpan){0};
       }
     }

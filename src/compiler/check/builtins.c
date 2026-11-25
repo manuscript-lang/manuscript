@@ -35,7 +35,7 @@ MsBuiltin ms_builtin_primitive(MsSpan name) {
 
 MsBuiltin ms_builtin_from_id(MsSpan id) {
   MsSpan name = {0};
-  if (!ms_span_starts_with(id, ms_span_of_text("@std/")) || !ms_span_slice(id, 5, id.len, &name)) {
+  if (!ms_span_starts_with_text(id, "@std/") || !ms_span_slice(id, 5, id.len, &name)) {
     return MS_BUILTIN_NONE;
   }
   return find(ORIGIN_STD, name);

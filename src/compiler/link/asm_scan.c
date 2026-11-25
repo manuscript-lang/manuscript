@@ -128,10 +128,6 @@ static void place_loc(AsmScan *scan, MsSpan line, size_t at, uint32_t want) {
   ms_strbuild_printf(&scan->out, "%sms_loc_%u:\n", asm_local_prefix(scan->format), label);
 }
 
-static bool starts(MsSpan line, const char *text) {
-  return ms_span_starts_with(line, ms_span_of_text(text));
-}
-
 /* Whether `line` (after its tab) names directive `name` followed by blank or the end. */
 static bool is_directive(MsSpan line, const char *name) {
   MsSpan text = ms_span_of_text(name);
@@ -144,7 +140,7 @@ static bool is_directive(MsSpan line, const char *name) {
 /* One indented line: a directive or an instruction. True when the line is dropped. */
 static bool indented(AsmScan *scan, MsSpan line) {
   MsSpan text = ms_span_of(line.ptr + 1, line.len - 1);
-  if (scan->format == ASM_COFF && starts(text, ".def\t@feat.00")) {
+  if (scan->format == ASM_COFF && ms_span_starts_with_text(text, ".def\t@feat.00")) {
     scan->skipping = true;
     return true;
   }
@@ -196,7 +192,7 @@ static void scan_line(AsmScan *scan, MsSpan line) {
     return;
   }
   /* A COFF function that needs no unwind info has no `.seh_endproc`: the `.Lfunc_end` label closes it. */
-  if (scan->format == ASM_COFF && scan->current != UINT32_MAX && starts(line, ".Lfunc_end") &&
+  if (scan->format == ASM_COFF && scan->current != UINT32_MAX && ms_span_starts_with_text(line, ".Lfunc_end") &&
       line.ptr[line.len - 1] == ':') {
     ms_strbuild_append(&scan->out, line);
     ms_strbuild_append_byte(&scan->out, '\n');

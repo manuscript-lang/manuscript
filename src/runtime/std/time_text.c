@@ -207,7 +207,7 @@ static const char *const token_text[TOKEN_COUNT] = {"YYYY", "MM",  "DD", "HH",  
                                                     "ss",   "SSS", "ZZ", "zone"};
 
 static bool starts_with(MsSpan bytes, size_t at, const char *token) {
-  return ms_span_starts_with(ms_span_of(bytes.ptr + at, bytes.len - at), ms_span_of_text(token));
+  return ms_span_starts_with_text(ms_span_of(bytes.ptr + at, bytes.len - at), token);
 }
 
 static void append_offset(MsStrBuild *buffer, int64_t offset_seconds) {

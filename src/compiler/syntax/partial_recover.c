@@ -130,9 +130,9 @@ static size_t offending_line(const Buffer *buffer, const MsDiag *issue, MsChunk 
     line = opened;
   }
   /* A misindented line of multi-line text drops the whole statement. */
-  if (attempt == 0 && ms_span_starts_with(issue->message, ms_span_of_text("text line is indented less"))) {
+  if (attempt == 0 && ms_span_starts_with_text(issue->message, "text line is indented less")) {
     while (line > 1 && line <= buffer->nlines &&
-           !ms_span_ends_with(partial_trim_end(ms_span_view(buffer->lines[line - 1])), ms_span_of_text("\"\"\""))) {
+           !ms_span_ends_with_text(partial_trim_end(ms_span_view(buffer->lines[line - 1])), "\"\"\"")) {
       line--;
     }
   }

@@ -182,7 +182,7 @@ void ms_fault_fatal(MsFaultKind kind, MsSpan message) {
 
 /* Whether a frame belongs to the standard library, whose files are shown as `@std/...`. */
 static bool is_library_frame(const MsFrame *frame) {
-  return ms_span_starts_with(ms_span_of_text(frame->file), ms_span_of_text("@std/"));
+  return ms_span_starts_with_text(ms_span_of_text(frame->file), "@std/");
 }
 
 /* The frames below the program's last one are the library code that ran it (a test runner waiting on the promise
@@ -305,7 +305,7 @@ void ms_fault_text_add_started(MsFaultText *text, MsSpan site) {
   MsSpan function;
   uint32_t line = 0;
   /* The report names a line of the program: one of the standard library's own starts is left out. */
-  if (!site_parts(site, &file, &line, &function) || ms_span_starts_with(file, ms_span_of_text("@std/"))) {
+  if (!site_parts(site, &file, &line, &function) || ms_span_starts_with_text(file, "@std/")) {
     return;
   }
   if (text->detail == NULL) {

@@ -156,9 +156,9 @@ static bool has_nul(MsSpan s) {
 /* Strips an http:// or https:// prefix, recording the authority up to the first / or ?. */
 static bool take_authority(MsSpan *rest, MsSpan *host, bool *has_host, const char **reason) {
   MsSpan after = {0};
-  if (ms_span_starts_with(*rest, ms_span_of_text("http://"))) {
+  if (ms_span_starts_with_text(*rest, "http://")) {
     after = ms_span_of(rest->ptr + 7, rest->len - 7);
-  } else if (ms_span_starts_with(*rest, ms_span_of_text("https://"))) {
+  } else if (ms_span_starts_with_text(*rest, "https://")) {
     after = ms_span_of(rest->ptr + 8, rest->len - 8);
   } else {
     return true;

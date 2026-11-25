@@ -250,10 +250,10 @@ bool ms_edit_default_name(MsArena *arena, MsSpan url, MsSpan *name) {
     start--;
   }
   MsSpan base = ms_span_of(url.ptr + start, end - start);
-  if (ms_span_ends_with(base, ms_span_of_text(".git"))) {
+  if (ms_span_ends_with_text(base, ".git")) {
     base = ms_span_of(base.ptr, base.len - 4);
   }
-  if (ms_span_starts_with(base, ms_span_of_text("ms-"))) {
+  if (ms_span_starts_with_text(base, "ms-")) {
     base = ms_span_of(base.ptr + 3, base.len - 3);
   }
   MsStrBuild alias = ms_strbuild_new();

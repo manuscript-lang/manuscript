@@ -220,7 +220,7 @@ static const MsParams *declared_params(const MsCheckProgram *program, const MsOc
     if (decl != NULL && decl->kind == MS_D_FN) return &decl->u.fn.params;
   }
   /* A method's key is `method:<file>:<offset of its declaration>`. */
-  if (!callee->method || !ms_span_starts_with(callee->key, ms_span_of_text("method:"))) return NULL;
+  if (!callee->method || !ms_span_starts_with_text(callee->key, "method:")) return NULL;
   size_t colon = callee->key.len;
   while (colon > 0 && callee->key.ptr[colon - 1] != ':') colon--;
   if (colon <= 7) return NULL;

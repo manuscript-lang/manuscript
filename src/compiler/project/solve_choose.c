@@ -250,7 +250,7 @@ static bool pick_pin(Solver *s, MsSpan repo, const AskPointerList *pins, Choice 
 static bool has_nested_non_https(Solver *s, const AskPointerList *list) {
   for (size_t i = 0; i < list->len; i++) {
     const Ask *ask = list->ptr[i];
-    if (ask->nested && !ms_span_starts_with(ask->dep->url, ms_span_of_text("https://"))) {
+    if (ask->nested && !ms_span_starts_with_text(ask->dep->url, "https://")) {
       return solver_fail(s, ms_message_format(s->arena,
                                               "%S depends on %S = %S; a package's own dependencies must use "
                                               "https:// URLs, because file:// reads the machine running ms install",

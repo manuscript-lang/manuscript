@@ -50,7 +50,7 @@ bool ms_package_check_spec(MsArena *arena, MsSpan spec, MsSpan *why) {
                              ms_project_quote(arena, spec));
     return false;
   }
-  if (!ms_span_starts_with(url, ms_span_of_text("https://")) && !ms_span_starts_with(url, ms_span_of_text("file://"))) {
+  if (!ms_span_starts_with_text(url, "https://") && !ms_span_starts_with_text(url, "file://")) {
     *why = ms_message_format(arena,
                              "dependency URL %S must start with https:// (or file:// for a local repository); other "
                              "git transports are not supported",

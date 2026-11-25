@@ -198,7 +198,7 @@ static int64_t high_water_mark(pid_t pid) {
   char line[256];
   int64_t kilobytes = 0;
   while (fgets(line, sizeof line, file) != NULL) {
-    if (ms_span_starts_with(ms_span_of_text(line), ms_span_of_text("VmHWM:"))) {
+    if (ms_span_starts_with_text(ms_span_of_text(line), "VmHWM:")) {
       kilobytes = strtoll(line + 6, NULL, 10);
       break;
     }

@@ -102,7 +102,7 @@ bool lsp_offset(MsSpan source, LspPosition position, bool clamp, size_t *offset)
 }
 
 static bool starts(MsSpan source, size_t at, const char *text) {
-  return ms_span_starts_with(ms_span_of(source.ptr + at, source.len - at), ms_span_of_text(text));
+  return ms_span_starts_with_text(ms_span_of(source.ptr + at, source.len - at), text);
 }
 
 static size_t find(MsSpan source, size_t from, const char *needle) {

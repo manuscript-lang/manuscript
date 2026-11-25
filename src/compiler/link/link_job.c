@@ -21,8 +21,8 @@ void link_job_push_in(LinkJob *job, MsSpan directory, const char *name) {
 }
 
 static bool is_runtime_symbol(MsSpan name) {
-  return ms_span_starts_with(name, ms_span_of_text("msrt_")) ||
-         ms_span_starts_with(name, ms_span_of_text("msstd_"));
+  return ms_span_starts_with_text(name, "msrt_") ||
+         ms_span_starts_with_text(name, "msstd_");
 }
 
 /* The text after each `undefined symbol: ` marker, up to the end of its line without trailing spaces. */

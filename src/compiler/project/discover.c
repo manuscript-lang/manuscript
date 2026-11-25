@@ -20,8 +20,8 @@ typedef struct Scan {
 } Scan;
 
 static bool is_test_name(MsSpan name) {
-  return ms_span_is_text(name, "test.ms") || ms_span_ends_with(name, ms_span_of_text("_test.ms")) ||
-         ms_span_is_text(name, "bench.ms") || ms_span_ends_with(name, ms_span_of_text("_bench.ms"));
+  return ms_span_is_text(name, "test.ms") || ms_span_ends_with_text(name, "_test.ms") ||
+         ms_span_is_text(name, "bench.ms") || ms_span_ends_with_text(name, "_bench.ms");
 }
 
 bool ms_project_skips_name(MsSpan name) {
@@ -140,7 +140,7 @@ static bool walk_children(Scan *scan, MsSpan scan_root, bool all, MsSpan path) {
     }
     if (!ms_utf8_is_valid(name.ptr, name.len)) {
       const bool irrelevant = entry->kind == MS_PATH_DIRECTORY ? name.ptr[0] == '.'
-                                                              : !(is_test_name(name) || (all && ms_span_ends_with(name, ms_span_of_text(".ms"))));
+                                                              : !(is_test_name(name) || (all && ms_span_ends_with_text(name, ".ms")));
       if (!irrelevant) {
         MsStrBuild text = ms_strbuild_new();
         ms_strbuild_append_text(&text, "discovered source path \"");

@@ -117,7 +117,7 @@ static void checker_fixes(Actions *actions, LspAnalysis *analysis) {
     const MsDiag *diag = &finding->diag;
     const MsSpan code = ms_span_of_text(finding_code(finding));
     const bool prelude = ms_span_is_text(code, "MS2003");
-    if (!prelude && ms_span_starts_with(diag->replacement, ms_span_of_text("import "))) continue; /* its own action */
+    if (!prelude && ms_span_starts_with_text(diag->replacement, "import ")) continue; /* its own action */
     LspRange shown;
     if (prelude) {
       if (!diag->has_end) continue;
@@ -362,7 +362,7 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
       last = ends[index];
       have_last = true;
       index = last + 1;
-    } else if (trimmed.len == 0 || ms_span_starts_with(trimmed, ms_span_of_text("//")) || ms_span_starts_with(trimmed, ms_span_of_text("/*"))) {
+    } else if (trimmed.len == 0 || ms_span_starts_with_text(trimmed, "//") || ms_span_starts_with_text(trimmed, "/*")) {
       index++;
     } else {
       break;
@@ -380,7 +380,7 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
       const MsSpan bare = ms_span_trim(row);
       size_t lead = 0;
       while (lead < row.len && (row.ptr[lead] == ' ' || row.ptr[lead] == '\t')) lead++;
-      if (ms_span_starts_with(ms_span_of(row.ptr + lead, row.len - lead), ms_span_of_text("//"))) {
+      if (ms_span_starts_with_text(ms_span_of(row.ptr + lead, row.len - lead), "//")) {
         offset += row.len;
         comments++;
       } else if (comments > 0 && bare.len == 0) {
@@ -427,7 +427,7 @@ bool lsp_relative_import(MsArena *arena, MsSpan from_dir, MsSpan file, MsSpan *p
   for (size_t k = 0; ok && k < text.len; k++) ok = text.ptr[k] != '"' && text.ptr[k] != '\\';
   ok = ok && text.len > 0;
   if (ok) {
-    *path = ms_span_starts_with(text, ms_span_of_text("../")) ? ms_arena_copy(arena, text) : ms_message_format(arena, "./%S", text, (MsSpan){0});
+    *path = ms_span_starts_with_text(text, "../") ? ms_arena_copy(arena, text) : ms_message_format(arena, "./%S", text, (MsSpan){0});
   }
   ms_strbuild_free(&relative);
   return ok;
@@ -495,7 +495,7 @@ static void add_imports(Actions *actions, LspAnalysis *analysis, const MsModule 
     MsSpanList statements = {0};
     project_imports(actions, analysis->arena, name, types_only, &statements);
     /* The checker's own fix names the standard module that exports it. */
-    if (finding->diag.has_fix && ms_span_starts_with(finding->diag.replacement, ms_span_of_text("import "))) {
+    if (finding->diag.has_fix && ms_span_starts_with_text(finding->diag.replacement, "import ")) {
       MsSpan statement = ms_span_trim(finding->diag.replacement);
       ms_span_list_push(&statements, statement);
     }

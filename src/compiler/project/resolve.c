@@ -197,13 +197,13 @@ static bool ms_project_import_target(MsArena *arena, const MsManifest *manifest,
     return fail_text(arena, error,
                      "import paths use / separators; write \"./dir/file.ms\" instead of backslashes");
   }
-  if (ms_span_starts_with(path, ms_span_of_text("./")) || ms_span_starts_with(path, ms_span_of_text("../"))) {
+  if (ms_span_starts_with_text(path, "./") || ms_span_starts_with_text(path, "../")) {
     return relative_target(arena, importer, path, target, error);
   }
-  if (ms_span_starts_with(path, ms_span_of_text("@"))) {
+  if (ms_span_starts_with_text(path, "@")) {
     return alias_import(arena, manifest, path, target, error);
   }
-  if (ms_span_starts_with(path, ms_span_of_text("/"))) {
+  if (ms_span_starts_with_text(path, "/")) {
     return fail_text(arena, error,
                      "absolute import paths are not supported; write a relative path such as \"../name.ms\" "
                      "from this file, or declare an alias under [aliases] in ms.toml");
@@ -357,7 +357,7 @@ MsSpan ms_project_explain_absolute(MsArena *arena, const MsProjectError *error, 
 static MsSpan confinement_root(const MsManifest *manifest, MsSpan root, MsSpan importer, MsSpan path, MsSpan target) {
   const MsPackage *own = ms_manifest_package_of(manifest, importer);
   const MsSpan own_root = own == NULL ? root : own->root;
-  if (!ms_span_starts_with(path, ms_span_of_text("@"))) {
+  if (!ms_span_starts_with_text(path, "@")) {
     return own_root;
   }
   const MsPackage *holder = ms_manifest_package_of(manifest, target);

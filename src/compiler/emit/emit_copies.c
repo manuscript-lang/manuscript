@@ -65,7 +65,7 @@ static size_t name_end(const uint8_t *text, size_t at, size_t limit) {
 static MsSpan view(const uint8_t *text, size_t at, size_t length) { return ms_span_of(text + at, length); }
 
 static bool has(const Line *line, size_t at, const char *prefix) {
-  return at <= line->end && ms_span_starts_with(view(line->text, at, line->end - at), ms_span_of_text(prefix));
+  return at <= line->end && ms_span_starts_with_text(view(line->text, at, line->end - at), prefix);
 }
 
 static bool same_text(const uint8_t *text, size_t a, size_t a_len, size_t b, size_t b_len) {
