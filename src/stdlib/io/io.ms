@@ -411,7 +411,7 @@ fn pipe_next[T](id Int) T?! {
 
 	if code != 0 {
 		msrt_promise_drop(p)
-		return error(Error("pipe: read cancelled", kind: "ECANCELED"))
+		return error(Error(f"pipe: read cancelled code={code}", kind: "ECANCELED"))
 	}
 
 	value := msrt_promise_take[T](p)
