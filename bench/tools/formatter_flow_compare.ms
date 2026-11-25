@@ -100,7 +100,7 @@ fn compare(before, after, out String, samples Int, cpu String) Result[Void, Erro
 					return invalid(f"{c.count} {c.shape}: output changed")
 				}
 
-				var list = observed.get_or(name, [])
+				var list = observed.get_or(name, []).clone()
 				list.append(got[0].to_float() / r.to_float())
 				observed.add(name.clone(), list)
 				rows.append(

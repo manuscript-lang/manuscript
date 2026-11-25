@@ -48,7 +48,7 @@ fn run(opts Map[String, String], n Int) Result[String, Error] {
 		}
 
 		for revision in ["before", "after"] {
-			var lines = raw.get_or(revision, [])
+			var lines = raw.get_or(revision, []).clone()
 			lines = lines.concat(lines_of("go", results.get_or("go", "")))
 			lines = lines.concat(lines_of("ms", results.get_or(revision, "")))
 			raw.add(revision.clone(), lines)

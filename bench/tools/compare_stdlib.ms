@@ -97,14 +97,14 @@ fn run(opts Map[String, String], repeats, samples Int) Result[String, Error] {
 				names = parsed.operations.keys().clone()
 			}
 
-			var kept = raw.get_or(version, [])
+			var kept = raw.get_or(version, []).clone()
 			kept.append(output.trim() + "\n")
 			raw.add(version.clone(), kept)
 
-			var per = values.get_or(version, Map[String, List[Float]]())
+			var per = values.get_or(version, Map[String, List[Float]]()).clone()
 
 			for entry in parsed.medians.entries() {
-				var list = per.get_or(entry.key, [])
+				var list = per.get_or(entry.key, []).clone()
 				list.append(entry.value)
 				per.add(entry.key.clone(), list)
 			}

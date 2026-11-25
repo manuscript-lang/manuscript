@@ -127,11 +127,11 @@ export fn summarize(
 		if (micros) < 0 { return invalid(f"negative timing: {line.trim()}") }
 
 		key := f"{name} {version}"
-		var list = samples.get_or(key, List[Float]())
+		var list = samples.get_or(key, List[Float]()).clone()
 		list.append((micros).to_float())
 		samples.add(key.clone(), list)
 
-		var seen = checks.get_or(name, Set[Int]())
+		var seen = checks.get_or(name, Set[Int]()).clone()
 		seen.add(check)
 		checks.add(name.clone(), seen)
 		pending.add(name.clone())

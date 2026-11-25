@@ -160,7 +160,7 @@ fn decode(before, after, out String, pairs Int) Result[Void, Error] {
 				append_json_line(f"{out}/samples.jsonl", jobject(row))
 
 				if pair >= 0 {
-					var list = samples.get_or(name, [])
+					var list = samples.get_or(name, []).clone()
 					list.append(elapsed)
 					samples.add(name.clone(), list)
 				}
@@ -251,11 +251,11 @@ fn json_failure(before, after, out String, pairs Int) Result[Void, Error] {
 				append_json_line(f"{out}/samples.jsonl", jobject(row))
 
 				if repeat >= 0 {
-					var wl = wall.get_or(name, [])
+					var wl = wall.get_or(name, []).clone()
 					wl.append(w)
 					wall.add(name.clone(), wl)
 
-					var cl = cpu.get_or(name, [])
+					var cl = cpu.get_or(name, []).clone()
 					cl.append(u)
 					cpu.add(name.clone(), cl)
 				}

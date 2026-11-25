@@ -220,7 +220,7 @@ fn compare(
 					return invalid(f"{c.mode} {c.count} {c.shape}: output changed")
 				}
 
-				var list = observed.get_or(name, [])
+				var list = observed.get_or(name, []).clone()
 				list.append(got.elapsed.to_float() / r.to_float())
 				observed.add(name.clone(), list)
 				rows.append(
