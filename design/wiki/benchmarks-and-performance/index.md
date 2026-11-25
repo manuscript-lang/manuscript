@@ -36,6 +36,7 @@ Perf benchmarks, profiling.
 - [A count before the list pays only for short texts](a-count-before-the-list-pays-only-for-short-texts.md): `split` counting its pieces first cost grep +24% on 22 MB; count only texts of at most 4 KiB.
 - [A string held in a slot is appended in place](a-string-in-a-slot-is-appended-in-place.md): `b += f"..."` copied the whole string per append when `b` lived in a slot (200k appends 40 s); a late `strfuse` lifts the take so it grows in place.
 - [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
+- [List fusion matches the loop shapes real chains produce](list-fusion-matches-exit-edges-and-builder-fault-drops.md): fault exits and builder drops no longer block `opt_fuse`; a map/filter/sum chain in a loop 62.9M to 24.9M instructions.
 - [`for x in xs.filter(f)` walks `xs` in place](filtered-for-loops-walk-the-list-in-place.md): no filtered list or deep copies when the lambdas cannot fault (c13 392M to 350M instructions).
 - [`for e in list.entries()` walks the list in place](list-entries-loops-walk-the-list.md): no entry records when `e` is only read as `.index`/`.value` (28 to 3.2 ms on 2M elements).
 - [Small literal maps are searched, not built](small-literal-maps-are-searched-not-built.md): lookups on a literal of up to 12 constants compare keys directly (85 to 4 ns per call).
@@ -92,3 +93,5 @@ Perf benchmarks, profiling.
 - [LSP passes find positions through a line index](lsp-positions-come-from-a-line-index.md): semantic tokens of a 26k-line file 26 s to 98 ms, outline 913 to 19 ms; a line table and a kind table by offset replaced per-token scans.
 - [Completion finds the import spot once per request](completion-finds-the-import-spot-once.md): completion on a 5,700-line file 265 to 85 ms; the per-offer document scan became one scan.
 - [A check made unchecked must not leave its fault exit behind](a-check-made-unchecked-leaves-no-fault-exit.md): dead fault exits were 20% of optimized IR; release build of 500 functions 4.1 to 3.8 s, 267 to 246 MB.
+- [A list of plain records is tagged like a list of scalars](a-list-of-plain-records-is-tagged-like-a-list-of-scalars.md): `graph` -4.0% instructions; swapping heap entries no longer rewrites the list header.
+- [A split loop walks the text and makes no list](a-split-loop-walks-the-text-and-makes-no-list.md): `for piece in text.split(sep)` reads pieces by byte offset; grep -21%, report -19%, treegrep -21% wall time.

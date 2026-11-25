@@ -12,7 +12,8 @@ static MirTy list_elem(const EmitCx *cx, MirTy list_type) {
   return data->kind == MK_BYTES ? MIR_UINT8 : data->elem;
 }
 
-/* The access tag of a list of scalars, which no other memory aliases. */
+/* The access tag of a list of scalars, or of records made only of them (nothing in one owns anything, so
+ * no list header lies inside an element), which no other memory aliases. */
 static const char *elem_tbaa(const EmitCx *cx, MirTy elem) {
   switch ((MirTyKind)mir_ty_data(cx->module, elem)->kind) {
   case MK_BOOL:
@@ -27,6 +28,8 @@ static const char *elem_tbaa(const EmitCx *cx, MirTy elem) {
   case MK_UINT32:
   case MK_UINT64:
     return ", !tbaa !900002";
+  case MK_TYPE:
+    return mir_needs_drop(cx->module, elem) ? NULL : ", !tbaa !900002";
   default:
     return NULL;
   }

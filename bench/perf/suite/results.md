@@ -1,5 +1,21 @@
 # Suite results
 
+## 2026-11-25, split loops without a list (on `70c893f162`)
+
+Release `ms` built from `70c893f162` with and without the split-loop change, same 4 vCPU Xeon VM, wall time in ms (min of 9) with the Rust program of the suite beside it. `for piece in text.split(sep)` walks the text by byte offset instead of building the list of pieces first. Programs with no split loop (csvgroup, wordfreq, jsonsum) moved by +3.8% to +7.8% between the two runs, which is this VM's noise.
+
+| program | before | after | change | Rust |
+|---|---:|---:|---:|---:|
+| grep | 44.5 | 35.1 | -21% | 26.8 |
+| report | 186.6 | 150.4 | -19% | 118.2 |
+| treegrep | 32.6 | 25.8 | -21% | 19.8 |
+| sortrecords | 287.5 | 245.3 | -15% | 261.6 |
+| logstats | 53.3 | 48.2 | -10% | 69.7 |
+| dedupe | 326.1 | 317.1 | -3% | 484.1 |
+| pargroup | 49.0 | 48.3 | -1% | 33.6 |
+
+Page faults of grep fall from 9.4k to 5.7k and of report from 31k to 18k. Callgrind instructions rise on the split-heavy programs (grep +11%, treegrep +11%, pargroup +4.8%, report +2.3%): each piece is a call that reads both strings again. The loops are memory bound, so wall time is the measure here.
+
 ## 2026-11-25, after the take-twin, padding and index-check changes (`8ddeac9b65`)
 
 Release `ms` built from `8ddeac9b65`, 4 vCPU Xeon VM, min of 7, wall time in ms, process start and output included. Instruction counts (callgrind) are the stable measure on this shared VM: against main before #7065, #7080, #7090 and #7097 they fell as follows.
@@ -168,3 +184,7 @@ The old `workers` ran 16 prime-counting chunks and then 100k promises of about 1
 ## 2026-11-14: a list updated in place in a loop is registered once
 
 Same sandbox (4 cores). The `workers` chunk loop (200,000 steps updating a 256-bucket list) inside a promise registered and discarded an unwind cleanup for the list on every iteration. It is now registered once before the loop. One thread: promise 185 ms to 113 ms (min of 7); the same loop called directly is 113 ms (Rust 101 ms on one core). Callgrind: 3.51G to 1.21G instructions. Conformance: 3964 and 1458 fixtures pass on Cranelift and LLVM.
+
+## 2026-11-25: list fusion matches fault exits
+
+Callgrind instruction counts, `ms` built from this branch against its parent, same machine (4 vCPU VM): `graph` 619.4M to 558.6M (-9.8%); a `map`/`filter`/`sum` chain over 1000 `Int` repeated 2000 times 62.9M to 24.9M; `hashing` 1177M to 1220M (+3.6%, wall time equal, the change is in `sha256`'s LLVM schedule after fewer unwinding tests); `csvgroup`, `dispatch`, `exprparse`, `interp`, `lz`, `sim`, `sortrecords`, `wordfreq` within 0.2%. `wordfreq` and `report` build lists of `String` pieces, which fusion does not take yet.

@@ -62,7 +62,8 @@ typedef struct Ctx {
   uint32_t *uses;
   MirPreds preds;
   MirBlock *idom;
-  MirBits body;  /* the reader's body blocks */
+  MirBits body;  /* the reader's body blocks: the ones that lead back to its header */
+  MirBits leave; /* the blocks the body leaves by: they never reach the header, and end in a return */
   MirBits loop;  /* the builder loop's blocks */
 } Ctx;
 
@@ -133,34 +134,61 @@ static bool blocks_order_free(const Ctx *c, const MirBits *set) {
 
 /* ---- the reader ---- */
 
-/* Fills the body set of reader header `r`: what its true edge reaches without passing `r`. False when the
- * body leaves by anything but an edge back to `r`. */
+/* Fills the body and leave sets of reader header `r`. The blocks its true edge reaches without passing `r` split in two:
+ * those that lead back to `r` are the body, the rest are exits (a checked add that faults, say) and must all end the
+ * function, so a body that breaks out to the code after the loop does not match. */
 static bool reader_body(MsArena *arena, Ctx *c, MirBlock r, MirBlock first) {
-  c->body = mir_bits_new(arena, (uint32_t)c->f->blocks.len);
-  MirBlock *stack = MS_ARENA_NEW_ARRAY(arena, MirBlock, (size_t)c->f->blocks.len + 1);
+  const uint32_t count = (uint32_t)c->f->blocks.len;
+  MirBits seen = mir_bits_new(arena, count);
+  MirBlock *stack = MS_ARENA_NEW_ARRAY(arena, MirBlock, (size_t)count + 1);
   uint32_t top = 0;
   stack[top++] = first;
-  mir_bits_set(&c->body, first);
+  mir_bits_set(&seen, first);
   while (top > 0) {
     const MirBlock b = stack[--top];
     const MirTerm *term = &c->f->blocks.ptr[b].term;
-    if (term->kind == MT_RET) {
-      return false;
-    }
     for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
       const MirBlock to = mir_term_target_const(term, t)->block;
-      if (to == r || mir_bits_test(&c->body, to)) {
+      if (to == r || mir_bits_test(&seen, to)) {
         continue;
       }
       if (to == 0 || c->preds.start[to + 1] - c->preds.start[to] == 0) {
         return false;
       }
-      mir_bits_set(&c->body, to);
+      mir_bits_set(&seen, to);
       stack[top++] = to;
     }
   }
+  /* The body: what leads back to `r`, found from the edges into it. */
+  c->body = mir_bits_new(arena, count);
+  c->leave = mir_bits_new(arena, count);
+  for (uint32_t p = 0; p < mir_preds_count(&c->preds, r); p++) {
+    const MirBlock from = mir_pred(&c->preds, r, p);
+    if (mir_bits_test(&seen, from) && !mir_bits_test(&c->body, from)) {
+      mir_bits_set(&c->body, from);
+      stack[top++] = from;
+    }
+  }
+  while (top > 0) {
+    const MirBlock b = stack[--top];
+    for (uint32_t p = 0; p < mir_preds_count(&c->preds, b); p++) {
+      const MirBlock from = mir_pred(&c->preds, b, p);
+      if (mir_bits_test(&seen, from) && !mir_bits_test(&c->body, from)) {
+        mir_bits_set(&c->body, from);
+        stack[top++] = from;
+      }
+    }
+  }
+  if (!mir_bits_test(&c->body, first)) {
+    return false;
+  }
+  for (uint32_t b = 0; b < count; b++) {
+    if (mir_bits_test(&seen, b) && !mir_bits_test(&c->body, b)) {
+      mir_bits_set(&c->leave, b);
+    }
+  }
   /* Nothing outside the body may enter it except through the first block. */
-  for (uint32_t b = 0; b < c->f->blocks.len; b++) {
+  for (uint32_t b = 0; b < count; b++) {
     if (!mir_bits_test(&c->body, b) || b == first) {
       continue;
     }
@@ -174,14 +202,17 @@ static bool reader_body(MsArena *arena, Ctx *c, MirBlock r, MirBlock first) {
 }
 
 /* Whether the body reads `list` only as `list.get[..] list, counter` and steps the counter by one on every
- * edge to `r`, with nothing else using the counter. */
+ * edge to `r`, with nothing else using the counter, and the list has no other use than its length and drops. */
 static bool reader_uses(const Ctx *c, MirBlock r, MirValue counter, MirValue list) {
-  uint32_t gets = 0, incs = 0, edges = 0;
+  uint32_t gets = 0, incs = 0, edges = 0, drops = 0;
   for (uint32_t b = 0; b < c->f->blocks.len; b++) {
+    const MirBlockData *blk = &c->f->blocks.ptr[b];
     if (!mir_bits_test(&c->body, b)) {
+      for (uint32_t i = 0; i < blk->insts.len; i++) {
+        drops += is_op(&blk->insts.ptr[i], MOP_Drop) && blk->insts.ptr[i].args[0] == list ? 1u : 0u;
+      }
       continue;
     }
-    const MirBlockData *blk = &c->f->blocks.ptr[b];
     for (uint32_t i = 0; i < blk->insts.len; i++) {
       const MirInst *inst = &blk->insts.ptr[i];
       if (is_list_get(inst) && inst->args[0] == list) {
@@ -191,6 +222,8 @@ static bool reader_uses(const Ctx *c, MirBlock r, MirValue counter, MirValue lis
         gets++;
       } else if (is_op(inst, MOP_IAdd) && inst->args[0] == counter && const_int_is(c, inst->args[1], 1)) {
         incs++;
+      } else if (is_op(inst, MOP_Drop) && inst->args[0] == list) {
+        drops++;
       }
     }
     const MirTerm *term = &blk->term;
@@ -206,11 +239,12 @@ static bool reader_uses(const Ctx *c, MirBlock r, MirValue counter, MirValue lis
       edges++;
     }
   }
-  /* The counter feeds the test, the steps and the reads; the list the length, the reads and one drop. */
+  /* The counter feeds the test, the steps and the reads; the list the length, the reads and its drops, which are on
+   * the exits (a fault leaves the function with the list still owned) and after the loop. */
   if (edges == 0 || c->uses[counter] != 1 + incs + gets) {
     return false;
   }
-  return c->uses[list] == 1 + gets + 1;
+  return c->uses[list] == 1 + gets + drops;
 }
 
 /* ---- the builder ---- */
@@ -252,6 +286,11 @@ static bool builder_loop(MsArena *arena, Ctx *c, MirBlock header, MirBlock *pre)
 
 /* Finds the push triple `take S; list.push; put S` of slot `s` in the loop and checks that nothing else
  * touches the slot but its one initial put and the final take. */
+static bool exit_take(const Ctx *c, const Fusion *fu, const MirInst *take) {
+  return is_op(take, MOP_Take) && take->args[0] == fu->slot && !mir_bits_test(&c->loop, c->defs[take->res].block) &&
+         c->defs[take->res].block != fu->entry;
+}
+
 static bool builder_slot(const Ctx *c, Fusion *fu, MirValue s) {
   uint32_t triples = 0, initial = 0, finals = 0, others = 0;
   for (uint32_t b = 0; b < c->f->blocks.len; b++) {
@@ -278,6 +317,11 @@ static bool builder_slot(const Ctx *c, Fusion *fu, MirValue s) {
         i += 2;
       } else if (is_op(inst, MOP_Take) && inst->args[0] == s && b == fu->entry) {
         finals++;
+      } else if (is_op(inst, MOP_Take) && inst->args[0] == s && !in_loop && c->uses[inst->res] == 1 &&
+                 i + 1 < blk->insts.len && is_op(&blk->insts.ptr[i + 1], MOP_Drop) &&
+                 blk->insts.ptr[i + 1].args[0] == inst->res) {
+        /* A fault exit of the builder drops the list it was building: the list is gone, so is the drop. */
+        i += 1;
       } else if (is_op(inst, MOP_Put) && inst->args[0] == s && !in_loop) {
         const MirInst *made = def_inst(c, inst->args[1]);
         if (made == NULL || !is_op(made, MOP_ListNew) || c->uses[inst->args[1]] != 1) {
@@ -474,7 +518,10 @@ static void mark_dead(const MirFunc *f, const Ctx *c, const Fusion *fu, bool *co
       const bool read = mir_bits_test(&c->body, b) &&
                         ((is_list_get(inst) && inst->args[0] == fu->list) ||
                          (is_op(inst, MOP_IAdd) && inst->args[0] == counter));
-      dead[b][i] = dead[b][i] || made || initial || read || (is_op(inst, MOP_Drop) && inst->args[0] == fu->list);
+      const MirInst *owner = is_op(inst, MOP_Drop) ? def_inst(c, inst->args[0]) : NULL;
+      const bool exit_pair = exit_take(c, fu, inst) || (owner != NULL && exit_take(c, fu, owner));
+      dead[b][i] = dead[b][i] || made || initial || read || exit_pair ||
+                   (is_op(inst, MOP_Drop) && inst->args[0] == fu->list);
       if (initial) {
         /* The first list, found through its only use. */
         const MirInst *first = def_inst(c, inst->args[1]);

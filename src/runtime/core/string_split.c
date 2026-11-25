@@ -1,5 +1,5 @@
 /* runtime/core/string_split.c: splitting and replacing strings: split, split_view, split_view_into,
- * split_first, the split iterator, replace, replace_first and replace_take.
+ * split_first, `split_at`, replace, replace_first and replace_take.
  *
  * Ownership: results are written through `out`, which the caller owns from then on. A split list owns its
  * pieces except in the view forms, where long pieces borrow bytes of the text and the caller keeps the text
@@ -165,67 +165,26 @@ void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *o
   *out = make_piece(PIECE_VIEW, between(text, 0, end));
 }
 
-/* ---- the split iterator ---- */
+/* ---- one piece of a split ---- */
 
-/* The state of `for piece in text.split(separator)`, which walks the pieces without building the list. A
- * piece is a view of the text (an inline copy when short). The iterator holds copies of the two string
- * values, since a short string's bytes are inside its value. */
-struct MsSplitIter {
-  MsObj header;
-  MsString text;
-  MsString separator;
-  MsNeedle needle; /* the separator prepared for the text; its pattern points into `separator` */
-  size_t position; /* the start of the next piece */
-  bool done;
-};
-
-static void split_iter_drop(MsObj *object) {
-  ms_free(object);
-}
-
-MsSplitIter *msrt_string_split_iter(const MsString *s, const MsString *sep) {
-  MsSplitIter *iter = ms_alloc(sizeof *iter);
-  iter->header = (MsObj){.clone = NULL, .drop = split_iter_drop};
-  iter->text = *s;
-  iter->separator = *sep;
-  const MsSpan separator = msrt_text(&iter->separator);
-  iter->needle = separator.len == 0 ? (MsNeedle){0} : ms_needle_for(separator, ms_string_length(&iter->text));
-  iter->position = 0;
-  iter->done = false;
-  return iter;
-}
-
-/* The next piece of a split at a separator; the last one runs to the end of the text. */
-static MsSpan next_delimited(MsSplitIter *iter, MsSpan text, size_t separator_length) {
-  const MsSpan rest = between(text, iter->position, text.len);
-  const size_t at = ms_needle_find(&iter->needle, rest);
-  if (at == SIZE_MAX) {
-    iter->done = true;
-    return rest;
-  }
-  iter->position += at + separator_length;
-  return between(rest, 0, at);
-}
-
-uint8_t msrt_split_next(MsSplitIter *iter, MsString *out) {
-  if (iter->done) {
-    return 0;
-  }
-  const MsSpan text = msrt_text(&iter->text);
-  const size_t separator_length = ms_string_length(&iter->separator);
-  MsSpan piece = {0};
-  if (separator_length != 0) {
-    piece = next_delimited(iter, text, separator_length);
-  } else if (iter->position < text.len) {
-    const size_t width = ms_utf8_decode(text.ptr + iter->position, text.len - iter->position).width;
-    piece = between(text, iter->position, iter->position + width);
-    iter->position += width;
+/* The piece of `s` that starts at byte `at` when it is split at `sep`: the loop `for piece in s.split(sep)` visits
+ * the pieces by byte offset, with no list. `at` is 0 or the end of the previous piece and its separator. A separator
+ * of no bytes cuts after each scalar. A piece is a view of the text (an inline copy when short), like the pieces of
+ * `split_view`. */
+void msrt_string_split_at(const MsString *s, const MsString *sep, int64_t at, MsString *out) {
+  const MsSpan text = msrt_text(s);
+  const MsSpan separator = msrt_text(sep);
+  const MsSpan rest = between(text, (size_t)at, text.len);
+  size_t end = rest.len;
+  if (separator.len == 0) {
+    end = rest.len == 0 ? 0 : ms_utf8_decode(rest.ptr, rest.len).width;
   } else {
-    iter->done = true;
-    return 0;
+    /* A one-byte separator needs no preparation, and a piece must not pay for any. */
+    const MsNeedle needle = separator.len == 1 ? (MsNeedle){.pattern = separator} : ms_needle_for(separator, text.len);
+    const size_t hit = ms_needle_find(&needle, rest);
+    end = hit == SIZE_MAX ? rest.len : hit;
   }
-  *out = msrt_string_view_of(piece);
-  return 1;
+  *out = make_piece(PIECE_VIEW, between(rest, 0, end));
 }
 
 /* ---- replace ---- */
