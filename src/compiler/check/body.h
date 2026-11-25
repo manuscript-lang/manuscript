@@ -113,6 +113,7 @@ void body_narrow_reset(Body *body, size_t mark);
 void body_narrow(Body *body, const MsExpr *cond, bool truth);
 bool body_block_exits(const Body *body, MsStmts stmts);
 void body_note_narrowing(Body *body, const MsExpr *expr, MsTy read);
+bool body_use_is_narrowed(const Body *body, const MsExpr *expr);
 
 /* ---- exprs.c ---- */
 

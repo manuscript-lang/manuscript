@@ -57,7 +57,10 @@ fn var Table.add(row List[String]) Void! {
 		return error(table_invalid(f"row has {row.length()} cells, expected {count}"))
 	}
 
-	measured := row.map(cell => cell.display_width()?)
+	var measured = List[Int]()
+	for cell in row {
+		measured.append(cell.display_width()?)
+	}
 	if self.widths.is_empty() {
 		for _unused in 0..count {
 			self.widths.append(0)
