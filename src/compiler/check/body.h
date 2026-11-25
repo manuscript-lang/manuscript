@@ -58,6 +58,8 @@ typedef struct Body {
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
   const MsExpr *statement_match; /* the match being checked as a statement */
   bool saw_return; /* a return statement appeared in the current lambda body */
+  const MsExpr *pending_try; /* the first `?` in a lambda body whose result is still being inferred, else NULL */
+  bool pending_try_optional; /* whether that `?` is on an Optional */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
   const MsStmt *bench_last; /* the last statement of the bench being checked: its value is the bench's result, kept by the harness */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
@@ -211,6 +213,7 @@ void body_check_int64_literal(Body *body, const MsExpr *number, bool negated);
 /* A float literal must be finite in its type: binary32 when `ty` is Float32, else binary64. */
 void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty);
 void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
+void body_check_pending_try(Body *body, MsTy result);
 /* Reports `what` when `ty` is an opaque type declared in another module; true when it did. */
 bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what);
 void body_check_call_statement(Body *body, const MsStmt *stmt, MsTy value);
