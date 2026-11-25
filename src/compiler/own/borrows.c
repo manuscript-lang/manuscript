@@ -311,7 +311,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   Borrow borrow = {.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
-                   .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
+                   .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME && ms_facts_use(pass->facts, value->id) == MS_USE_MOVE,
                    .root = source.root, .place = source.place, .parts = source.parts};
   push_borrow(pass, borrow, answers_look_part(pass, source.call));
   /* a result that borrows from several arguments keeps every one of them frozen */
