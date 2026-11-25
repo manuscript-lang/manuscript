@@ -37,10 +37,6 @@ typedef struct BuildOutcome {
   MsSpan message;          /* a failure that is not a diagnostic of the source */
 } BuildOutcome;
 
-static void print_span(FILE *stream, MsSpan text) {
-  (void)fwrite(text.ptr, 1, text.len, stream);
-}
-
 /* What the file system says of an artifact: built now, or the one a failed build left behind. */
 static const char *artifact_state(bool built, MsSpan path) {
   if (built) {
@@ -99,13 +95,13 @@ static void write_document(MsStrBuild *out, const BuildReport *report, const Bui
 static void print_document(const BuildReport *report, const BuildOutcome *outcome) {
   MsStrBuild out = ms_strbuild_new();
   write_document(&out, report, outcome);
-  print_span(stdout, ms_strbuild_span(&out));
+  ms_span_write(stdout, ms_strbuild_span(&out));
   ms_strbuild_free(&out);
 }
 
 /* The failure of the build step: the message on stderr, and with --json the document. */
 static int fail(const BuildReport *report, const char *phase, MsSpan message) {
-  print_span(stderr, ms_message_format(report->arena, "%S\n", message));
+  ms_span_write(stderr, ms_message_format(report->arena, "%S\n", message));
   if (report->invocation->json) {
     print_document(report, &(BuildOutcome){.phase = phase, .message = message});
   }
@@ -180,14 +176,14 @@ static int build(MsArena *arena, const MsInvocation *invocation) {
     status = STATUS_FAILED;
   } else if (ms_path_kind(report.output) == MS_PATH_DIRECTORY) {
     report.source_root = checked.graph.source_root;
-    print_span(stderr, ms_message_format(arena, "-o %S is a directory; pass a file path (e.g. -o %S/program)\n",
+    ms_span_write(stderr, ms_message_format(arena, "-o %S is a directory; pass a file path (e.g. -o %S/program)\n",
                                          report.display, report.display));
     status = STATUS_USAGE;
   } else {
     report.source_root = checked.graph.source_root;
     const MsSpan protect = protected_output(&report, checked.graph.project_root);
     if (protect.len > 0) {
-      print_span(stderr, ms_message_format(arena, "-o %S would overwrite %S; choose a different executable path\n",
+      ms_span_write(stderr, ms_message_format(arena, "-o %S would overwrite %S; choose a different executable path\n",
                                            report.display, protect));
       status = STATUS_USAGE;
     } else {
@@ -197,7 +193,7 @@ static int build(MsArena *arena, const MsInvocation *invocation) {
   if (status == 0 && invocation->json) {
     print_document(&report, &(BuildOutcome){.completed = true});
   } else if (status == 0) {
-    print_span(stdout, ms_message_format(arena, "Built %S\n", report.display));
+    ms_span_write(stdout, ms_message_format(arena, "Built %S\n", report.display));
   }
   ms_checked_input_free(&checked);
   return status;

@@ -9,36 +9,24 @@ void ms_directives_free(MsDirectives *directives) {
   ms_span_list_free(&directives->words);
 }
 
-static MsSpan trim(MsSpan text) {
-  size_t start = 0;
-  size_t end = text.len;
-  while (start < end && ms_ascii_is_space(text.ptr[start])) {
-    start++;
-  }
-  while (end > start && ms_ascii_is_space(text.ptr[end - 1])) {
-    end--;
-  }
-  return ms_span_of(text.ptr + start, end - start);
-}
-
 static MsSpan after(MsSpan text, const char *prefix) {
   return ms_span_of(text.ptr + ms_span_of_text(prefix).len, text.len - ms_span_of_text(prefix).len);
 }
 
 /* Records the directive on one comment line, if it is one. */
 static void read_line(MsDirectives *directives, MsSpan line) {
-  const MsSpan text = trim(line);
+  const MsSpan text = ms_span_trim(line);
   if (!ms_span_starts_with(text, ms_span_of_text("// ms:"))) {
     return;
   }
-  const MsSpan rest = trim(after(text, "// ms:"));
+  const MsSpan rest = ms_span_trim(after(text, "// ms:"));
   if (ms_span_starts_with(rest, ms_span_of_text("allow_effect "))) {
-    ms_span_list_push(&directives->allow, trim(after(rest, "allow_effect ")));
+    ms_span_list_push(&directives->allow, ms_span_trim(after(rest, "allow_effect ")));
     directives->has_allow = true;
   } else if (ms_span_starts_with(rest, ms_span_of_text("words "))) {
-    ms_span_list_push(&directives->words, trim(after(rest, "words ")));
+    ms_span_list_push(&directives->words, ms_span_trim(after(rest, "words ")));
   } else if (ms_span_starts_with(rest, ms_span_of_text("effect "))) {
-    ms_span_list_push(&directives->declared, trim(after(rest, "effect ")));
+    ms_span_list_push(&directives->declared, ms_span_trim(after(rest, "effect ")));
   }
 }
 
@@ -57,7 +45,7 @@ static MsSpan line_at(MsSpan source, size_t at, size_t *next) {
 }
 
 static bool is_comment(MsSpan line) {
-  return ms_span_starts_with(trim(line), ms_span_of_text("//"));
+  return ms_span_starts_with(ms_span_trim(line), ms_span_of_text("//"));
 }
 
 /* The offset just past the leading comment lines of the file, or 0 when the file does not start with one. */
@@ -74,7 +62,7 @@ MsDirectives ms_directives_header(MsSpan source) {
   MsDirectives found = {0};
   const size_t end = comment_block_end(source);
   size_t next = 0;
-  if (end == 0 || end > source.len || trim(line_at(source, end, &next)).len != 0) {
+  if (end == 0 || end > source.len || ms_span_trim(line_at(source, end, &next)).len != 0) {
     return found;
   }
   for (size_t cursor = 0; cursor < end;) {
@@ -111,7 +99,7 @@ MsDirectives ms_directives_above(MsSpan source, const uint32_t *line_starts, uin
   while (start != SIZE_MAX) {
     size_t next = 0;
     const MsSpan text = line_at(source, start, &next);
-    if (!ms_span_starts_with(trim(text), ms_span_of_text("//"))) {
+    if (!ms_span_starts_with(ms_span_trim(text), ms_span_of_text("//"))) {
       break;
     }
     read_line(&found, text);

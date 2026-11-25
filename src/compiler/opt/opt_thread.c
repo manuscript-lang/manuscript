@@ -44,13 +44,6 @@ typedef struct Th {
   const MirBlock *idom;
 } Th;
 
-static bool dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
-  while (b != a && idom[b] != b && idom[b] != MIR_NONE) {
-    b = idom[b];
-  }
-  return b == a;
-}
-
 static const MirInst *def_inst(const Th *t, MirValue v) {
   if (v >= t->nvalues || t->owner[v] == MIR_NONE) {
     return NULL;
@@ -389,7 +382,7 @@ static bool sweep(MirModule *m, MirFunc *f, uint32_t *budget) {
     const MirTerm *qt = &f->blocks.ptr[order[q]].term;
     for (uint32_t k = 0; k < mir_term_ntargets(qt); k++) {
       const MirBlock target = mir_term_target_const(qt, k)->block;
-      header[target] = header[target] || dominates(idom, target, order[q]);
+      header[target] = header[target] || mir_dominates(idom, target, order[q]);
     }
   }
   for (uint32_t i = 0; i < reachable; i++) {

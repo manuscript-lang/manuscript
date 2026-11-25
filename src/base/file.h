@@ -5,9 +5,15 @@
 #ifndef MS_BASE_FILE_H
 #define MS_BASE_FILE_H
 
+#include <stdio.h>
+
 #include "base/bytes.h"
 #include "base/string.h"
 
+/* Writes the bytes of `text` to an open stream (the result is ignored: a closed pipe is the reader's business). */
+static inline void ms_span_write(FILE *stream, MsSpan text) {
+  (void)fwrite(text.ptr, 1, text.len, stream);
+}
 /* Replaces `*out` with the bytes of the file (the old contents are freed). */
 MS_NODISCARD MS_NONNULL bool ms_file_read(MsSpan path, MsBytes *out);
 /* Writes `data` as the whole file, creating or truncating it. */

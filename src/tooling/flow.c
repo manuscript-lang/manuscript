@@ -3,6 +3,8 @@
 
 #include "compiler/syntax/walk.h"
 
+#include "base/chars.h"
+
 bool ms_flow_scoped(const MsFacts *facts, uint32_t pattern) {
   const MsCloser *closer = ms_facts_closer(facts, pattern);
   return closer != NULL && closer->method.node != 0;
@@ -10,28 +12,16 @@ bool ms_flow_scoped(const MsFacts *facts, uint32_t pattern) {
 
 /* ---- helpers ---- */
 
-static MsSpan trim(MsSpan text) {
-  size_t start = 0;
-  size_t end = text.len;
-  while (start < end && (text.ptr[start] == ' ' || text.ptr[start] == '\t' || text.ptr[start] == '\r' || text.ptr[start] == '\n')) {
-    start++;
-  }
-  while (end > start && (text.ptr[end - 1] == ' ' || text.ptr[end - 1] == '\t' || text.ptr[end - 1] == '\r' || text.ptr[end - 1] == '\n')) {
-    end--;
-  }
-  return ms_span_of(text.ptr + start, end - start);
-}
-
 /* The source line of `pos`, trimmed, without a trailing `:`. */
 static MsSpan source_line(const MsFlow *flow, MsPos pos) {
   if (pos.line < 1 || pos.line > flow->line_count) {
     return (MsSpan){0};
   }
-  MsSpan text = trim(flow->lines[pos.line - 1]);
+  MsSpan text = ms_span_trim(flow->lines[pos.line - 1]);
   if (text.len > 0 && text.ptr[text.len - 1] == ':') {
     text.len--;
   }
-  return trim(text);
+  return ms_span_trim(text);
 }
 
 static MsViewNode *step(const MsFlow *flow, const char *kind, MsSpan label, MsPos pos) {

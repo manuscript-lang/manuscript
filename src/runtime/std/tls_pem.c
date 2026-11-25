@@ -8,16 +8,6 @@
 static const char begin_line[] = "-----BEGIN CERTIFICATE-----";
 static const char end_line[] = "-----END CERTIFICATE-----";
 
-static MsSpan trim(MsSpan text) {
-  while (text.len > 0 && ms_ascii_is_space(text.ptr[0])) {
-    text = ms_span_of(text.ptr + 1, text.len - 1);
-  }
-  while (text.len > 0 && ms_ascii_is_space(text.ptr[text.len - 1])) {
-    text = ms_span_of(text.ptr, text.len - 1);
-  }
-  return text;
-}
-
 /* The next line (without its newline) and the text after it; false at the end of the text. */
 static bool next_line(MsSpan *text, MsSpan *line) {
   if (text->len == 0) {
@@ -45,13 +35,13 @@ static bool has_colon(MsSpan line) {
 /* One block at the start of `*text`: its DER bytes; false when it is not a plain CERTIFICATE block. */
 static bool block(MsSpan *text, MsBytes *der) {
   MsSpan line;
-  if (!next_line(text, &line) || !ms_span_is_text(trim(line), begin_line)) {
+  if (!next_line(text, &line) || !ms_span_is_text(ms_span_trim(line), begin_line)) {
     return false;
   }
   MsStrBuild body = ms_strbuild_new();
   bool closed = false;
   while (next_line(text, &line)) {
-    const MsSpan item = trim(line);
+    const MsSpan item = ms_span_trim(line);
     if (ms_span_is_text(item, end_line)) {
       closed = true;
       break;
@@ -79,7 +69,7 @@ static bool block(MsSpan *text, MsBytes *der) {
 
 uint8_t ms_tls_pem_certificates(MsSpan text, int64_t max, MsList *ders) {
   *ders = (MsList){0};
-  MsSpan rest = trim(text);
+  MsSpan rest = ms_span_trim(text);
   while (rest.len > 0) {
     MsBytes der = {0};
     if (!block(&rest, &der)) {
@@ -93,7 +83,7 @@ uint8_t ms_tls_pem_certificates(MsSpan text, int64_t max, MsList *ders) {
       return MS_STATUS_LIMIT_EXCEEDED;
     }
     ms_list_push(ders, sizeof der, &der);
-    rest = trim(rest);
+    rest = ms_span_trim(rest);
   }
   return MS_STATUS_OK;
 }

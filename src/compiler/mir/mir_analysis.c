@@ -343,6 +343,13 @@ static MirBlock intersect(const MirBlock *idom, const uint32_t *rank, MirBlock a
   return a;
 }
 
+bool mir_dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
+  while (b != a && idom[b] != b && idom[b] != MIR_NONE) {
+    b = idom[b];
+  }
+  return b == a;
+}
+
 MirBlock *mir_dominators(MsArena *arena, const MirFunc *func, const MirBlock *order, uint32_t count,
                          const MirPreds *preds) {
   const uint32_t blocks = block_count(func);

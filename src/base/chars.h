@@ -35,6 +35,16 @@ static inline bool ms_ascii_is_ident(uint8_t b) {
 static inline bool ms_ascii_is_space(uint8_t b) {
   return b == ' ' || (b >= '\t' && b <= '\r');
 }
+/* `s` without leading and trailing ASCII whitespace. */
+static inline MsSpan ms_span_trim(MsSpan s) {
+  while (s.len > 0 && ms_ascii_is_space(s.ptr[0])) {
+    s = ms_span_of(s.ptr + 1, s.len - 1);
+  }
+  while (s.len > 0 && ms_ascii_is_space(s.ptr[s.len - 1])) {
+    s.len--;
+  }
+  return s;
+}
 static inline bool ms_ascii_is_hex(uint8_t b) {
   return ms_ascii_is_digit(b) || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F');
 }

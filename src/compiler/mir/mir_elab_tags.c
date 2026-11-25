@@ -61,18 +61,6 @@ static bool is_ancestor(const ElCx *cx, int64_t outer, int64_t inner) {
   return false;
 }
 
-static bool dominates(const MirBlock *idom, MirBlock def, MirBlock at) {
-  for (;;) {
-    if (at == def) {
-      return true;
-    }
-    if (at == 0 || idom[at] == MIR_NONE || idom[at] == at) {
-      return false;
-    }
-    at = idom[at];
-  }
-}
-
 static MirBlock defining_block(const MirFunc *func, MirValue value) {
   for (size_t b = 0; b < func->blocks.len; b++) {
     const MirBlockData *block = &func->blocks.ptr[b];
@@ -119,7 +107,7 @@ static bool defined_before_every_end(ElCx *cx, const MirBlock **idom, MirValue v
   }
   ensure_idom(cx, idom);
   for (size_t b = 0; b < func->blocks.len; b++) {
-    if (block_ends_scope(&func->blocks.ptr[b], scope) && !dominates(*idom, def, (MirBlock)b)) {
+    if (block_ends_scope(&func->blocks.ptr[b], scope) && !mir_dominates(*idom, def, (MirBlock)b)) {
       return false;
     }
   }
@@ -174,7 +162,7 @@ static bool disowned_before(ElCx *cx, const MirBlock **idom, const MirPreds *pre
     for (size_t i = 0; i < insts->len; i++) {
       if ((insts->ptr[i].op == MOP_ScopeDisown || insts->ptr[i].op == MOP_ScopeUnpin) && insts->ptr[i].args[0] == value) {
         ensure_idom(cx, idom);
-        return dominates(*idom, (MirBlock)b, block);
+        return mir_dominates(*idom, (MirBlock)b, block);
       }
     }
   }
@@ -262,7 +250,7 @@ void el_prune_undominated_drops(ElCx *cx) {
         const MirBlock def = defining_block(func, inst->args[1]);
         if (def != MIR_NONE && def != (MirBlock)b) {
           ensure_idom(cx, &idom);
-          drop = !dominates(idom, def, (MirBlock)b);
+          drop = !mir_dominates(idom, def, (MirBlock)b);
         }
       }
       if (!drop) {
