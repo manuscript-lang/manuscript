@@ -364,7 +364,38 @@ static void report_unknown_case(Body *body, const MsExpr *expr, MsTy owner) {
   ms_span_list_free(&names);
 }
 
-static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
+/* An unapplied case whose type arguments nothing fixes: reported where the statement ends without them. */
+void body_report_uninferred_case(Body *body, const MsExpr *expr, MsTy owner) {
+  if (!body_reports(body) || body->quiet) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "cannot infer the type arguments of ");
+  const MsSpan type = ms_names_span(body->program->names, ms_ty_row(&body->program->types, owner)->name);
+  ms_strbuild_append(&text, type);
+  ms_strbuild_append_text(&text, " for this case; annotate the binding or write them, e.g. ");
+  ms_strbuild_append(&text, type);
+  ms_strbuild_append_text(&text, "[Int].");
+  ms_strbuild_append(&text, ms_names_span(body->program->names, expr->u.member.name));
+  ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
+/* An unapplied case of a generic type (`Opt.None`) takes its arguments from the expected type: an open slot of the
+ * enclosing call, or a written type. With none, nothing can fix them. */
+static MsTy infer_case_owner(Body *body, const MsExpr *expr, MsTy owner, MsTy expected) {
+  const MsTyTable *types = &body->program->types;
+  if (!body_has_foreign_variable(body, owner)) {
+    return owner;
+  }
+  if (expected != MS_TY_NONE && ms_ty_kind(types, expected) == ms_ty_kind(types, owner) &&
+      ms_ty_row(types, expected)->def == ms_ty_row(types, owner)->def && !ms_ty_is_invalid(types, expected)) {
+    return expected;
+  }
+  body_report_uninferred_case(body, expr, owner);
+  return MS_TY_NONE;
+}
+
+static bool type_member(Body *body, const MsExpr *expr, MsTy expected, MsTy *ty) {
   const MsExpr *left = expr->u.member.left;
   /* `Type[Args].Case`: the type applied to its arguments. */
   const bool applied = left->kind == MS_E_APPLY && left->u.apply.left->kind == MS_E_NAME &&
@@ -404,8 +435,9 @@ static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
       (void)body_opaque_denied(body, expr->pos, owner, ms_strbuild_span(&what));
       ms_strbuild_free(&what);
     }
-    body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
-    *ty = owner;
+    const MsTy inferred = !applied && kase->fields.len == 0 ? infer_case_owner(body, expr, owner, expected) : owner;
+    body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = inferred != MS_TY_NONE ? inferred : owner});
+    *ty = inferred;
   } else {
     *ty = MS_TY_NONE;
     report_unknown_case(body, expr, owner);
@@ -438,9 +470,8 @@ static bool takes_element_mutator(const MsTyTable *types, MsTy method, MsTy rece
 }
 
 static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
-  (void)expected;
   MsTy ty = MS_TY_NONE;
-  if (type_member(body, expr, &ty)) {
+  if (type_member(body, expr, expected, &ty)) {
     return ty;
   }
   const MsTy receiver = body_expr(body, expr->u.member.left, MS_TY_NONE);
