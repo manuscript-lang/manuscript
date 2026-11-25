@@ -60,23 +60,28 @@ export fn parse_groups(text String) List[Group]! {
 	return ok(groups)
 }
 
-// The program and arguments of a group's command: `ms` is `binary`, `{n}` is `samples`.
-export fn argv(group Group, binary String, samples Int) List[String] {
-	var out = List[String]()
+// The commands of a group, in order (` ;; ` separates several): each is a program and
+// arguments, where `ms` is `binary` and `{n}` is `samples`.
+export fn commands(group Group, binary String, samples Int) List[List[String]] {
+	var all = List[List[String]]()
 
-	for word in group.command.split(" ") {
-		if word == "" { continue }
+	for text in group.command.split(" ;; ") {
+		var words = List[String]()
 
-		if word == "ms" and out.is_empty() {
-			out.append(binary.clone())
-		} else if word == "ms" {
-			out.append(word.clone())
-		} else {
-			out.append(word.replace("{n}", f"{samples}"))
+		for word in text.split(" ") {
+			if word == "" { continue }
+
+			if word == "ms" and words.is_empty() {
+				words.append(binary.clone())
+			} else {
+				words.append(word.replace("{n}", f"{samples}"))
+			}
 		}
+
+		if not words.is_empty() { all.append(words) }
 	}
 
-	return out
+	return all
 }
 
 // The first path component of a results entry, or "" for none.
@@ -94,7 +99,7 @@ export fn layout_problems(groups List[Group], entries List[String]) List[String]
 	var known = Set[String]()
 
 	for group in groups {
-		known.add(top(group.results))
+		for page in group.results.split(", ") { known.add(top(page.trim())) }
 		known.add(group.name.clone())
 		if group.kind != "probe" and group.command == "" {
 			problems.append(f"group {group.name} has kind {group.kind} but no command")

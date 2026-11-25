@@ -25,7 +25,7 @@ import (
 	repeats,
 	run_inherit,
 	usage from "./lib.ms",
-	Group, argv, layout_problems, parse_groups from "./perf_groups.ms",
+	Group, commands, layout_problems, parse_groups from "./perf_groups.ms",
 )
 
 PERF := "bench/perf"
@@ -89,12 +89,13 @@ fn run_groups(groups List[Group], names List[String], samples Int) Int {
 	for g in picked {
 		note(f"== {g.name}")
 
-		words := argv(g, binary, samples)
-		code := run_inherit(".", words[0].clone(), words.drop(1))
+		for words in commands(g, binary, samples) {
+			code := run_inherit(".", words[0].clone(), words.drop(1))
 
-		if code != 0 {
-			note(f"{g.name} exited {code}")
-			status = code
+			if code != 0 {
+				note(f"{g.name} exited {code}")
+				status = code
+			}
 		}
 	}
 
@@ -107,8 +108,10 @@ fn check(groups List[Group]) Int {
 	readme := read_text(f"{PERF}/README.md")
 
 	for g in groups {
-		if g.results != "" and not exists(f"{PERF}/{g.results.split("#")[0]}") {
-			problems.append(f"{g.name}: results page {g.results} is missing")
+		for page in g.results.split(", ") {
+			if page != "" and not exists(f"{PERF}/{page.split("#")[0]}") {
+				problems.append(f"{g.name}: results page {page} is missing")
+			}
 		}
 		if not readme.contains(f"`{g.name}`") {
 			problems.append(f"{g.name}: not named in bench/perf/README.md")
