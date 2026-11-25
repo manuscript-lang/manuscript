@@ -497,7 +497,8 @@ MsTy resolver_type(Resolver *resolver, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
   const MsTy resolved = type->kind == MS_TYPE_FN ? resolver_function(resolver, type->params, type->result)
                                                   : named_type(resolver, type);
-  if (ms_check_is_user_module(program, resolver->module)) {
+  /* The editor index covers every module the graph loaded, a checkout copy of a bundled file included. */
+  if (resolver->module < program->user_modules) {
     ms_type_ref_record_list_push(&program->type_refs, (MsTypeRefRecord){.module = resolver->module, .node = type->id, .ty = resolved});
   }
   return resolved;

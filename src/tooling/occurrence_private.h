@@ -20,7 +20,6 @@ typedef struct Builder {
   bool **assigned;                      /* an expression that is the target of an assignment */
   uint32_t module;                      /* the module being walked */
   struct TypeSites *sink;               /* where the written-type collectors append */
-  uint32_t **folded_into;               /* per declaration index: the first declaration whose receiver reads the same, or itself */
 } Builder;
 
 /* One written type: its node, the position of its name and the name; a function type has none. */

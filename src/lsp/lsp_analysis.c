@@ -223,7 +223,10 @@ void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOver
   }
   out->overlay = files;
   const MsOverlay overlay = {files, total};
-  const MsLoadOptions options = {.overlay = &overlay, .recover = true};
+  /* A bundled module opened through its `manuscript-stdlib:` URI is checked as that module (see `checkout_std_name`). */
+  MsSpan bundled = {0};
+  if (!lsp_uri_standard_module(ms_string_span(&doc->uri), &bundled)) bundled = (MsSpan){0};
+  const MsLoadOptions options = {.overlay = &overlay, .recover = true, .entry_std_name = bundled};
   (void)ms_checked_input_load_with(out->arena, &out->checked, ms_string_span(&doc->path), MS_INPUT_ANALYSIS, &options);
   if (!out->checked.checked) return;
   const MsCheckProgram *program = &out->checked.program;

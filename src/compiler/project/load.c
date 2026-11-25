@@ -39,6 +39,8 @@ typedef struct Loader {
   MsSpanList loaded;  /* canonical path of modules[i] */
   GraphDiagList diagnostics;
   bool recover; /* MsLoadOptions.recover */
+  MsSpan entry_std_name;  /* MsLoadOptions.entry_std_name */
+  MsSpan entry_canonical; /* the entry file's canonical path, once resolved */
 } Loader;
 
 static MsPos start_position(void) {
@@ -325,7 +327,9 @@ static bool load(Loader *loader, MsSpan canonical, MsSpan file, int32_t *index, 
   module_list_push(&loader->modules, (MsGraphModule){.name = file,
                                                      .path = canonical,
                                                      .source = text,
-                                                     .std_name = checkout_std_name(canonical),
+                                                     .std_name = loader->entry_std_name.len != 0 && ms_span_equal(canonical, loader->entry_canonical)
+                                                                    ? loader->entry_std_name
+                                                                    : checkout_std_name(canonical),
                                                      .syntax = module,
                                                      .targets = targets});
   ms_span_list_push(&loader->loaded, canonical);
@@ -551,6 +555,7 @@ static void load_graph(Loader *loader, MsSpan filename, MsSpan target, bool is_m
       fail_error(loader->arena, filename, &error, out);
       return;
     }
+    loader->entry_canonical = entry;
     if (!visit(loader, entry, &index, &failure)) {
       ms_span_list_free(&extras);
       fail_load(loader, out, failure_diag(&failure, filename, start_position()));
@@ -590,7 +595,8 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
                    .overlay = options == NULL ? NULL : options->overlay,
                    .manifest = governed ? &manifest : NULL,
                    .root = governed ? manifest.root : root,
-                   .recover = options != NULL && options->recover};
+                   .recover = options != NULL && options->recover,
+                   .entry_std_name = options == NULL ? (MsSpan){0} : options->entry_std_name};
   out->source_root = loader.root;
   const bool is_manifest = ms_span_is_text(ms_path_file_name(absolute), "ms.toml");
   if (is_manifest) {
