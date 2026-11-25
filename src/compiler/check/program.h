@@ -133,7 +133,8 @@ typedef struct MsCheckDiag {
 
 MS_LIST_DEFINE(MsCheckDiagList, ms_check_diag_list, MsCheckDiag)
 
-/* A standard function or method whose body lazy_std.c set aside, until something reaches it. */
+/* A standard function or method whose body lazy_std.c set aside, until something reaches it. A declaration that has
+ * no body but default values (a native function, a record type) is listed too, so reaching it reaches what they call. */
 typedef struct MsDeferredBody {
   uint32_t module;
   uint32_t node;      /* the function's or method's id */
@@ -141,6 +142,7 @@ typedef struct MsDeferredBody {
   MsMethod *method;   /* NULL for a function */
   MsStmts body;
   bool restored;
+  bool defaults_only; /* a native function, or a type, whose parameter or field defaults call functions: nothing to restore */
 } MsDeferredBody;
 
 MS_LIST_DEFINE(MsDeferredBodyList, ms_deferred_body_list, MsDeferredBody)
@@ -168,7 +170,7 @@ typedef struct MsCheckProgram {
   bool check_std; /* the bundled standard modules report their diagnostics too */
   const struct MsStdCache *std_cache; /* parsed bundled modules to reuse, or NULL: names then layer over its names */
   bool all_std;   /* load every bundled standard module, not only the imported ones (`ms check --std`) */
-  bool lazy_std;  /* standard bodies are checked only once reached (lazy_std.c): the program is analyzed, never lowered */
+  bool lazy_std;  /* standard bodies are checked only once reached (lazy_std.c) */
   MsDeferredBodyList deferred_bodies;
   MsMethodKeyList deferred_index; /* the deferred bodies by (module, node), sorted */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */
@@ -259,10 +261,10 @@ void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
  * outlive `program`. Passes are added as they land; a program is accepted only when `program->diagnostics`
  * is empty. */
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
-/* The same reusing `cache`'s parsed standard modules; `names` must be layered over the cache's names. */
+/* The same reusing `cache`'s parsed standard modules (`names` must be layered over the cache's names), with the
+ * bodies of bundled standard functions nothing in the program reaches left unchecked (lazy_std.c). */
 void ms_check_graph_cached(MsCheckProgram *program, MsNames *names, const MsGraph *graph, const struct MsStdCache *cache);
-/* The same for a program that is only analyzed (check, lint, the language server): the bodies of bundled standard
- * functions nothing in it reaches are not checked. Its facts must not be lowered. */
+/* The same, with the bodies of bundled standard functions nothing in the program reaches left unchecked (lazy_std.c). */
 void ms_check_graph_analysis(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
 /* The eager check over every bundled standard module: the gate that every bundled body checks. */
 void ms_check_graph_std(MsCheckProgram *program, MsNames *names, const MsGraph *graph);

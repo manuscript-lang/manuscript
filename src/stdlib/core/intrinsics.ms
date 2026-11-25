@@ -115,8 +115,9 @@ interface StringOperations {
 	// Tests whether the receiver begins with this exact prefix.
 	fn starts_with(prefix String) Bool
 	// Removes Unicode whitespace at both ends. The exact set is listed in the text
-	// guide.
-	fn trim() String
+	// guide. The result borrows the receiver, as `view` does: use it in place, or
+	// `.clone()` it to keep the text.
+	hold fn trim() &String
 	// Returns the text in full Unicode uppercase, independent of locale. The scalar
 	// length can change.
 	fn upper() String
@@ -131,8 +132,8 @@ interface StringOperations {
 	// Returns the byte offset of the last match, or `null`. An empty `value` matches at
 	// `length()`.
 	fn last_index_of(value String) Int?
-	fn trim_start() String  // Removes Unicode whitespace at the start.
-	fn trim_end() String  // Removes Unicode whitespace at the end.
+	hold fn trim_start() &String  // Removes Unicode whitespace at the start; borrows the receiver.
+	hold fn trim_end() &String  // Removes Unicode whitespace at the end; borrows the receiver.
 	/*
     Pads on the left until the scalar length reaches `target_length`, repeating `padding` and cutting its last copy.
     A target that is not longer than the text, a negative target, or empty padding returns the text unchanged.

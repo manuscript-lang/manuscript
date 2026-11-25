@@ -61,8 +61,9 @@ static void abort_with(MsHttpResponse *response, uint8_t status, const char *tex
   }
 }
 
-/* `HTTP/1.1 200 OK`, `HTTP/2 200`: the protocol text and the status. */
-static void on_status_line(MsHttpResponse *response, MsSpan line) {
+/* `HTTP/1.1 200 OK`, `HTTP/2 200`: the protocol text and the status. The status is exactly three digits followed by a
+ * space or the end of the line; false for anything else, which the caller aborts. */
+static bool on_status_line(MsHttpResponse *response, MsSpan line) {
   fields_free(&response->fields);
   response->head_bytes = 0;
   response->head_done = false;
@@ -75,10 +76,20 @@ static void on_status_line(MsHttpResponse *response, MsSpan line) {
   response->protocol =
       ms_string_from_span(ms_span_is_text(version, "HTTP/2") ? ms_span_of_text("HTTP/2.0") : version);
   uint16_t status = 0;
-  for (size_t i = space + 1; i < line.len && line.ptr[i] >= '0' && line.ptr[i] <= '9' && i < space + 4; i++) {
+  size_t digits = 0;
+  while (space + 1 + digits < line.len && line.ptr[space + 1 + digits] >= '0' && line.ptr[space + 1 + digits] <= '9') {
+    digits++;
+  }
+  const size_t after = space + 1 + digits;
+  if (digits != 3 || (after < line.len && line.ptr[after] != ' ')) {
+    response->status = 0;
+    return false;
+  }
+  for (size_t i = space + 1; i < after; i++) {
     status = (uint16_t)(status * 10 + (line.ptr[i] - '0'));
   }
   response->status = status;
+  return true;
 }
 
 /* Whether the body is one gzip coding the request asked for, from the fields just read. */
@@ -92,20 +103,62 @@ static bool decodes_gzip(const MsHttpResponse *response) {
          (ms_ascii_is_text_fold(coding, "gzip") || ms_ascii_is_text_fold(coding, "x-gzip"));
 }
 
-static void on_head_end(MsHttpResponse *response) {
+/* Whether `value` is a Content-Length: digits only, and a size that fits in 63 bits. */
+static bool is_content_length(MsSpan value) {
+  if (value.len == 0) {
+    return false;
+  }
+  uint64_t size = 0;
+  for (size_t i = 0; i < value.len; i++) {
+    if (value.ptr[i] < '0' || value.ptr[i] > '9' || size > (INT64_MAX - (uint64_t)(value.ptr[i] - '0')) / 10) {
+      return false;
+    }
+    size = size * 10 + (uint64_t)(value.ptr[i] - '0');
+  }
+  return true;
+}
+
+/* Whether every Content-Length of the head is valid and they all say the same. */
+static bool content_lengths_valid(const MsHttpResponse *response) {
+  const HeadField *items = (const HeadField *)(const void *)response->fields.ptr;
+  MsSpan first = {0};
+  bool seen = false;
+  for (size_t i = 0; i < response->fields.len; i++) {
+    if (!ms_ascii_is_text_fold(ms_string_span(&items[i].name), "Content-Length")) {
+      continue;
+    }
+    const MsSpan value = ms_bytes_span(&items[i].value);
+    if (!is_content_length(value) || (seen && !ms_span_equal(first, value))) {
+      return false;
+    }
+    first = value;
+    seen = true;
+  }
+  return true;
+}
+
+static bool on_head_end(MsHttpResponse *response) {
   if (response->status < 200) {
     fields_free(&response->fields);
-    return;
+    return true;
+  }
+  if (!content_lengths_valid(response)) {
+    abort_with(response, MS_STATUS_FAILED, "http: server sent an invalid Content-Length; aborted");
+    return false;
   }
   response->head_done = true;
   if (decodes_gzip(response)) {
     response->gunzip = ms_gunzip_new();
   }
+  return true;
 }
 
 static size_t header_line(MsHttpResponse *response, MsSpan line, size_t whole) {
   if (line.len >= 5 && __builtin_memcmp(line.ptr, "HTTP/", 5) == 0) {
-    on_status_line(response, line);
+    if (!on_status_line(response, line)) {
+      abort_with(response, MS_STATUS_FAILED, "http: server sent an invalid status line; aborted");
+      return 0;
+    }
     return whole;
   }
   if (response->max_head_bytes != 0 && response->head_bytes > response->max_head_bytes) {
@@ -113,8 +166,7 @@ static size_t header_line(MsHttpResponse *response, MsSpan line, size_t whole) {
     return 0;
   }
   if (line.len == 0) {
-    on_head_end(response);
-    return whole;
+    return on_head_end(response) ? whole : 0;
   }
   size_t colon = 0;
   while (colon < line.len && line.ptr[colon] != ':') {

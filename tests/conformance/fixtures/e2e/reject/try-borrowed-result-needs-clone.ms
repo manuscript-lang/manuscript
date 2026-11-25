@@ -13,7 +13,7 @@ fn pass(hold value String!String) &String!String {
 
 fn again(value String!String) String!String {
 	text := pass(value)?
-	return ok(text)
+	return ok(text.clone())
 }
 
 fn copied(value String!String) String!String {
@@ -24,5 +24,5 @@ fn copied(value String!String) String!String {
 fn aliased(value String!String) String!String {
 	alias := value
 	text := alias?
-	return ok(text)
+	return ok(text.clone())
 }

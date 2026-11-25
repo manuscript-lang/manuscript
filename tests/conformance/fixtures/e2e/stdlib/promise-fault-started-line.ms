@@ -23,7 +23,7 @@ fn middle(n Int) Int! {
 // What follows `task started by:` in a fault report.
 fn started_by(reason Error) String {
 	parts := reason.details["report"].split("task started by:\n")
-	return parts[parts.length() - 1].trim()
+	return parts[parts.length() - 1].trim().clone()
 }
 
 test "a fault in a promise names the one line that started it" {

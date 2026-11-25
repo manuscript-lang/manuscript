@@ -109,18 +109,6 @@ uint8_t msrt_bytes_eq(const MsBytes *a, const MsBytes *b) {
 
 /* ---- reads and views ---- */
 
-int64_t msrt_bytes_get(const MsBytes *b, int64_t index, uint8_t has_default, int64_t default_value) {
-  size_t position = 0;
-  if (ms_resolve_index(b->len, index, &position)) {
-    return b->ptr[position];
-  }
-  if (has_default == 0) {
-    msrt_post_index(index, (int64_t)b->len);
-    return 0;
-  }
-  return default_value;
-}
-
 uint8_t msrt_bytes_slice(const MsBytes *b, int64_t start, int64_t end, MsBytes *out) {
   size_t from = 0;
   size_t to = 0;

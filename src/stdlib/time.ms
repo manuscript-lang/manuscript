@@ -179,7 +179,7 @@ export type Instant {
 }
 
 // Shifts this monotonic instant by a duration.
-fn hold Instant.shift(duration Duration) &Instant {
+fn Instant.shift(duration Duration) Instant {
 	return msstd_time_instant_shift(self, duration.nanos)
 }
 

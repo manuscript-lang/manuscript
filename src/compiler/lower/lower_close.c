@@ -363,7 +363,7 @@ static bool prepare_method(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only
   const bool parts = fields_only || (!ms_check_closeable(cx->program, concrete) && ms_ty_kind(&cx->program->types, concrete) != MS_TY_CONTRACT);
   const bool iface = ms_ty_kind(&cx->program->types, concrete) == MS_TY_CONTRACT;
   const uint32_t method = iface ? lower_close_iface(cx, concrete)
-                          : parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, "close");
+                          : parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, MS_HOOK_CLOSE);
   if (method == MIR_NONE || !close_thunks(cx, method, ty, silent)) {
     return fn_fail(fn, "the close of a resource binding could not be lowered");
   }

@@ -1,5 +1,5 @@
-// expect-debug: allocs=11 alloc_bytes=255
-// expect-release: allocs=11 alloc_bytes=255
+// expect-debug: allocs=9 alloc_bytes=163
+// expect-release: allocs=9 alloc_bytes=163
 // expect-stdout: 6
 // expect-stdout: 3
 // expect-stdout: 2

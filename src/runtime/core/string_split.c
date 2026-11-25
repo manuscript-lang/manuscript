@@ -44,9 +44,17 @@ static void split_scalars(MsSpan text, MsStringList *list, PieceMode mode) {
   }
 }
 
+/* Texts up to this long have their pieces counted before the list is built, so a short text's list is one allocation
+ * instead of a chain of doublings. A longer text is not scanned twice: the doublings are amortized over its pieces and
+ * cost less than a second pass (grep over 22 MB: +24% instructions with the count). */
+#define SPLIT_COUNT_TEXT_MAX 4096
+
 /* Split at a separator of one or more bytes. */
 static void split_at_pattern(MsSpan text, MsSpan separator, MsStringList *list, PieceMode mode) {
   const MsNeedle needle = ms_needle_for(separator, text.len);
+  if (text.len <= SPLIT_COUNT_TEXT_MAX) {
+    ms_string_list_reserve(list, ms_count(text.ptr, text.len, separator.ptr, separator.len) + 1);
+  }
   size_t piece_start = 0;
   for (;;) {
     const size_t hit = ms_needle_find(&needle, between(text, piece_start, text.len));

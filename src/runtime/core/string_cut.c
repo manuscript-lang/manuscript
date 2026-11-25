@@ -76,66 +76,16 @@ static void trim_view(const MsString *s, bool at_start, bool at_end, MsString *o
   }
 }
 
-/* The text without white space at the ends the flags name, as a new string. */
-static MsString trimmed(const MsString *s, bool at_start, bool at_end) {
-  const MsSpan text = msrt_text(s);
-  const TrimRange range = trim_range(text, at_start, at_end);
-  if (range.start == 0 && range.end == text.len) {
-    return ms_string_clone(s);
-  }
-  return msrt_string_make(ms_span_of(text.ptr + range.start, range.end - range.start));
-}
-
-/* `trim` of a string that dies at the call: the kept bytes move to the front of the same block. */
-static void trimmed_take(MsString *s, bool at_start, bool at_end, MsString *out) {
-  if (!msrt_string_owns(s)) {
-    *out = trimmed(s, at_start, at_end);
-    return;
-  }
-  const MsSpan text = msrt_text(s);
-  const TrimRange range = trim_range(text, at_start, at_end);
-  uint8_t *block = s->owned;
-  const size_t kept = range.end - range.start;
-  if (range.start > 0 && kept > 0) {
-    __builtin_memmove(block, block + range.start, kept);
-  }
-  *out = msrt_string_from_block(block, kept);
-}
-
-void msrt_string_trim_view(const MsString *s, MsString *out) {
+void msrt_string_trim(const MsString *s, MsString *out) {
   trim_view(s, true, true, out);
 }
 
-void msrt_string_trim_start_view(const MsString *s, MsString *out) {
+void msrt_string_trim_start(const MsString *s, MsString *out) {
   trim_view(s, true, false, out);
 }
 
-void msrt_string_trim_end_view(const MsString *s, MsString *out) {
-  trim_view(s, false, true, out);
-}
-
-void msrt_string_trim(const MsString *s, MsString *out) {
-  *out = trimmed(s, true, true);
-}
-
-void msrt_string_trim_start(const MsString *s, MsString *out) {
-  *out = trimmed(s, true, false);
-}
-
 void msrt_string_trim_end(const MsString *s, MsString *out) {
-  *out = trimmed(s, false, true);
-}
-
-void msrt_string_trim_take(MsString *s, MsString *out) {
-  trimmed_take(s, true, true, out);
-}
-
-void msrt_string_trim_start_take(MsString *s, MsString *out) {
-  trimmed_take(s, true, false, out);
-}
-
-void msrt_string_trim_end_take(MsString *s, MsString *out) {
-  trimmed_take(s, false, true, out);
+  trim_view(s, false, true, out);
 }
 
 /* ---- characters ---- */

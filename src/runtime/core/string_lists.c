@@ -55,25 +55,42 @@ void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out) {
 
 /* `String.lines`: the text between line feeds; a carriage return before one is dropped, and a final line
  * without a line feed counts only when it is not empty. */
+/* The end of the line that starts at `start` and ends at the line feed `found` bytes on: a carriage return before the
+ * feed is not part of it. */
+static size_t line_end(MsSpan text, size_t start, size_t found) {
+  const size_t end = start + found;
+  return end > start && text.ptr[end - 1] == '\r' ? end - 1 : end;
+}
+
+/* `String.lines` is declared `hold ... List[&String]`: each line views the text in place (a short one is its two words),
+ * and the list is sized once. */
 void msrt_string_lines(const MsString *s, MsList *out) {
   static const uint8_t line_feed = '\n';
   const MsSpan text = msrt_text(s);
   MsStringList list = {0};
+  size_t lines = 0;
+  for (size_t start = 0;;) {
+    const size_t found = ms_find(text.ptr + start, text.len - start, &line_feed, 1);
+    if (found == SIZE_MAX) {
+      lines += start < text.len;
+      break;
+    }
+    lines++;
+    start += found + 1;
+  }
+  ms_string_list_reserve(&list, lines);
   size_t start = 0;
   for (;;) {
     const size_t found = ms_find(text.ptr + start, text.len - start, &line_feed, 1);
     if (found == SIZE_MAX) {
       break;
     }
-    size_t end = start + found;
-    if (end > start && text.ptr[end - 1] == '\r') {
-      end--;
-    }
-    ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + start, end - start)));
+    const size_t end = line_end(text, start, found);
+    ms_string_list_push(&list, msrt_string_view_of(ms_span_of(text.ptr + start, end - start)));
     start += found + 1;
   }
   if (start < text.len) {
-    ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + start, text.len - start)));
+    ms_string_list_push(&list, msrt_string_view_of(ms_span_of(text.ptr + start, text.len - start)));
   }
   out_list(list, out);
 }
@@ -89,26 +106,36 @@ static bool space_at(MsSpan rest, size_t *width) {
   return ms_utf8_is_space(rune.rune);
 }
 
-/* `String.fields`: the runs of text between Unicode White_Space, none empty. */
-void msrt_string_fields(const MsString *s, MsList *out) {
-  const MsSpan text = msrt_text(s);
-  MsStringList list = {0};
-  size_t field_start = 0;
+/* `String.fields` is declared `hold ... List[&String]`: the runs of text between Unicode White_Space, none empty, each
+ * viewing the text in place (a short one is inline). The fields are counted first, so the list is sized once. */
+static size_t count_fields(MsSpan text) {
+  size_t count = 0;
   bool in_field = false;
   for (size_t at = 0; at < text.len;) {
     size_t width = 0;
     const bool space = space_at(ms_span_of(text.ptr + at, text.len - at), &width);
-    if (space && in_field) {
-      ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + field_start, at - field_start)));
-      in_field = false;
-    } else if (!space && !in_field) {
-      in_field = true;
-      field_start = at;
-    }
+    count += !space && !in_field;
+    in_field = !space;
     at += width;
   }
-  if (in_field) {
-    ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + field_start, text.len - field_start)));
+  return count;
+}
+
+void msrt_string_fields(const MsString *s, MsList *out) {
+  const MsSpan text = msrt_text(s);
+  MsStringList list = {0};
+  const size_t count = count_fields(text);
+  ms_string_list_reserve(&list, count);
+  for (size_t at = 0, start = 0; at < text.len && list.len < count;) {
+    size_t width = 0;
+    while (at < text.len && space_at(ms_span_of(text.ptr + at, text.len - at), &width)) {
+      at += width;
+    }
+    start = at;
+    while (at < text.len && !space_at(ms_span_of(text.ptr + at, text.len - at), &width)) {
+      at += width;
+    }
+    ms_string_list_push(&list, msrt_string_view_of(ms_span_of(text.ptr + start, at - start)));
   }
   out_list(list, out);
 }

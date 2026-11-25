@@ -14,6 +14,9 @@
 
 typedef void (*MsTargetFn)(void *ctx, uint32_t module, uint32_t node);
 
+/* The methods named `name` that can run for a value of type `ty` (declared on its definition, or on its builtin). */
+void ms_check_method_targets(const MsCheckProgram *program, MsTy ty, MsName name, MsTargetFn visit, void *ctx);
+
 /* The methods of `conversion->from` that the interface `conversion->to` names. */
 void ms_check_view_targets(const MsCheckProgram *program, const MsConversion *conversion, MsTargetFn visit, void *ctx);
 

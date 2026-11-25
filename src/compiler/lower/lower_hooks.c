@@ -77,7 +77,7 @@ static uint32_t json_hook(Lower *cx, MirTy ty, MirTy tree_ty, uint32_t method) {
 }
 
 /* A method of `ty` the hook can call: one borrowed receiver, answering `ret`. */
-static uint32_t own_method(Lower *cx, MirTy ty, const char *name, MirTy ret) {
+static uint32_t own_method(Lower *cx, MirTy ty, MsHook name, MirTy ret) {
   const MsTy checked = lower_source_type(cx, ty);
   if (checked == MS_TY_NONE) {
     return MIR_NONE;
@@ -93,7 +93,7 @@ static uint32_t own_method(Lower *cx, MirTy ty, const char *name, MirTy ret) {
 /* The `to_json` of `ty` when it answers the untyped JSON value; `tree` is that value's type. */
 static uint32_t own_json_method(Lower *cx, MirTy ty, MirTy *tree) {
   const MsTy checked = lower_source_type(cx, ty);
-  const uint32_t method = checked == MS_TY_NONE ? MIR_NONE : lower_named_method(cx, checked, "to_json");
+  const uint32_t method = checked == MS_TY_NONE ? MIR_NONE : lower_named_method(cx, checked, MS_HOOK_TO_JSON);
   if (method == MIR_NONE) {
     return MIR_NONE;
   }
@@ -125,7 +125,7 @@ static void object_hooks(Lower *cx, MirTy ty) {
     return;
   }
   MirTy tree = MIR_NONE;
-  const uint32_t text = own_method(cx, ty, "to_string", MIR_STR);
+  const uint32_t text = own_method(cx, ty, MS_HOOK_TO_STRING, MIR_STR);
   const uint32_t json = own_json_method(cx, ty, &tree);
   if (text == MIR_NONE && json == MIR_NONE) {
     return;
@@ -161,7 +161,7 @@ static void walk(Lower *cx, MirTy ty) {
   const bool record = data->kind == MK_TYPE;
   const uint32_t id = data->id;
   MirTy tree = MIR_NONE;
-  const uint32_t text = own_method(cx, ty, "to_string", MIR_STR);
+  const uint32_t text = own_method(cx, ty, MS_HOOK_TO_STRING, MIR_STR);
   const uint32_t json = own_json_method(cx, ty, &tree);
   const uint32_t text_fn = text != MIR_NONE ? text_hook(cx, ty, text) : MIR_NONE;
   const uint32_t json_fn = json != MIR_NONE ? json_hook(cx, ty, tree, json) : MIR_NONE;

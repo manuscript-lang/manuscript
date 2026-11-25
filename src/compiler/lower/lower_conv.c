@@ -1,5 +1,7 @@
 /* compiler/lower/lower_conv.c: conversions the checker recorded on an expression: a value seen as an interface it
  * implements (a vtable of the type's methods, made on first use), and the other conversions. */
+#include "base/fatal.h"
+#include "compiler/check/hooks.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_layout.h"
@@ -60,12 +62,13 @@ static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy rece
 
 uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsTy *args, uint32_t nargs, MsTy instantiated) {
   const MsMethodEntry *entry = resolve_operation(cx, receiver, name);
-  return entry != NULL && !entry->source->func.external && entry->source->func.body.len > 0
+  return entry != NULL && ms_func_has_body(&entry->source->func)
              ? method_function(cx, entry, receiver, args, nargs, instantiated)
              : MIR_NONE;
 }
 
-uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
+uint32_t lower_named_method(Lower *cx, MsTy receiver, MsHook hook) {
+  const char *operation = ms_hook_name(hook);
   MsName name = MS_NAME_EMPTY;
   if (!ms_names_find(cx->program->names, ms_span_of_text(operation), &name)) {
     return MIR_NONE;
@@ -78,7 +81,7 @@ uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property) {
   if (!ms_check_decided_by_method(cx->program, receiver, property)) {
     return MIR_NONE;
   }
-  const uint32_t method = lower_named_method(cx, receiver, equal ? "equals" : "hash");
+  const uint32_t method = lower_named_method(cx, receiver, equal ? MS_HOOK_EQUALS : MS_HOOK_HASH);
   if (method == MIR_NONE) {
     return MIR_NONE;
   }
@@ -242,7 +245,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
   for (size_t index = 0; index <= def->operations.len; index++) { /* the last slot is the payload's text */
     const MsName operation = index < def->operations.len ? def->operations.ptr[index].name : text_name;
     const MsMethodEntry *entry = resolve_operation(cx, receiver, operation);
-    if (entry == NULL || entry->source->func.external || entry->source->func.body.len == 0) { /* the runtime implements it: no body to call */
+    if (entry == NULL || !ms_func_has_body(&entry->source->func)) { /* the runtime implements it: no body to call */
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append(&text, ms_names_span(&cx->module->names, name));
       ms_strbuild_printf(&text, ".native.%zu", index);

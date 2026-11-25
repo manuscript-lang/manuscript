@@ -109,8 +109,10 @@ export fn from_scalars(values List[Int]) String! {
 
 // Splits on runs of Unicode White_Space and omits empty fields, so empty or
 // all-whitespace text gives an empty list. Field text is kept exactly, without
-// normalization. The byte-order mark and zero-width space are not separators.
-fn String.fields() List[String] {
+// normalization. The byte-order mark and zero-width space are not separators. The
+// fields borrow the receiver, as `split` pieces do: use them in place, or `.clone()`
+// the result.
+fn hold String.fields() List[&String] {
 	return msrt_string_fields(self)
 }
 

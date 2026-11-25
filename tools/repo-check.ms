@@ -67,7 +67,7 @@ fn repository_files() List[String] {
 
 	for line in listing.split("\n") {
 		path := line.trim()
-		if path != "" { files.append(path) }
+		if path != "" { files.append(path.clone()) }
 	}
 
 	return files
@@ -238,7 +238,7 @@ fn trigger_error(text String) String {
 		trimmed := line.trim()
 
 		if trimmed.starts_with("types:") {
-			types.append(trimmed.slice(6, trimmed.length()).trim())
+			types.append(trimmed.slice(6, trimmed.length()).trim().clone())
 		} else if trimmed.starts_with("- ") {
 			types.append(trimmed.clone())
 		}

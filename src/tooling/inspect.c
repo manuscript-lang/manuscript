@@ -106,7 +106,7 @@ static bool is_mixed(const MsModule *tree) {
     body = body || ms_decl_has_body(decl);
     if (decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL) {
       for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
-        native = native || decl->u.impl.methods.ptr[i]->func.body.len == 0;
+        native = native || !ms_func_has_body(&decl->u.impl.methods.ptr[i]->func);
       }
     }
   }
@@ -155,7 +155,7 @@ static MsSpan method_id(Collect *c, const MsMethodEntry *entry) {
 }
 
 static bool has_body(const MsMethodEntry *entry) {
-  return entry->source != NULL && entry->source->func.body.len > 0;
+  return entry->source != NULL && ms_func_has_body(&entry->source->func);
 }
 
 /* ---- call sites ---- */
