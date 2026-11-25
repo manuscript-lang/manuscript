@@ -149,26 +149,26 @@ b18():
 
 fn @print[String](%0: str, %1: str) -> void !1:0:0 {
 b0:
-  %2: str = clone %0 !1:207:36
-  %3: bool = call.rt @msrt_unwinding () !1:207:36
-  br_if %3, b1(), b2() !1:207:36
+  %2: str = clone %0 !1:208:36
+  %3: bool = call.rt @msrt_unwinding () !1:208:36
+  br_if %3, b1(), b2() !1:208:36
 b1():
-  %4: void = call.rt @msrt_unwinding_pause () !1:207:36
+  %4: void = call.rt @msrt_unwinding_pause () !1:208:36
   drop %2
-  %5: void = call.rt @msrt_unwinding_resume () !1:207:36
-  ret !1:207:36
+  %5: void = call.rt @msrt_unwinding_resume () !1:208:36
+  ret !1:208:36
 b2():
-  %6: void = call.rt @msrt_io_write_stdout_end (%2, %1) !1:207:5
-  %7: bool = call.rt @msrt_unwinding () !1:207:5
-  br_if %7, b3(), b4() !1:207:5
+  %6: void = call.rt @msrt_io_write_stdout_end (%2, %1) !1:208:5
+  %7: bool = call.rt @msrt_unwinding () !1:208:5
+  br_if %7, b3(), b4() !1:208:5
 b3():
-  %8: void = call.rt @msrt_unwinding_pause () !1:207:5
+  %8: void = call.rt @msrt_unwinding_pause () !1:208:5
   drop %2
-  %9: void = call.rt @msrt_unwinding_resume () !1:207:5
-  ret !1:207:5
+  %9: void = call.rt @msrt_unwinding_resume () !1:208:5
+  ret !1:208:5
 b4():
   drop %2
-  ret !1:207:5
+  ret !1:208:5
   name %0 "value" param 0
   name %1 "end" param 0
 }
@@ -223,33 +223,33 @@ b10():
 
 fn @get_or[Int,Failure](%0: move Result[Int, Failure], %1: move opt<int>) -> int !1:0:0 {
 b0:
-  %2: int = alt.tag %0 !1:314:5
-  %3: int = iconst 0 !1:314:5
-  %4: bool = icmp.eq %2, %3 !1:314:5
-  br_if %4, b1(), b2() !1:314:5
+  %2: int = alt.tag %0 !1:315:5
+  %3: int = iconst 0 !1:315:5
+  %4: bool = icmp.eq %2, %3 !1:315:5
+  br_if %4, b1(), b2() !1:315:5
 b1():
-  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:314:5
-  alt.release Result[Int, Failure].ok.value %0 !1:314:5
-  ret %5 !1:314:24
+  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:315:5
+  alt.release Result[Int, Failure].ok.value %0 !1:315:5
+  ret %5 !1:315:24
 b2():
-  br b3() !1:314:24
+  br b3() !1:315:24
 b3():
-  %6: bool = opt.is_some %1 !1:315:5
-  br_if %6, b4(), b5() !1:315:5
+  %6: bool = opt.is_some %1 !1:316:5
+  br_if %6, b4(), b5() !1:316:5
 b4():
-  %7: int = opt.get %1 !1:315:26
+  %7: int = opt.get %1 !1:316:26
   drop %0
-  ret %7 !1:315:26
+  ret %7 !1:316:26
 b5():
-  br b6() !1:315:26
+  br b6() !1:316:26
 b6():
-  %8: str = str "called Result.get_or with a none default" !1:317:5
-  %9: void = call.rt @msrt_panic (%8) !1:317:5
-  %10: void = call.rt @msrt_unwinding_pause () !1:317:5
+  %8: str = str "called Result.get_or with a none default" !1:318:5
+  %9: void = call.rt @msrt_panic (%8) !1:318:5
+  %10: void = call.rt @msrt_unwinding_pause () !1:318:5
   drop %0
-  %11: void = call.rt @msrt_unwinding_resume () !1:317:5
-  %12: int = undef !1:317:5
-  ret %12 !1:317:5
+  %11: void = call.rt @msrt_unwinding_resume () !1:318:5
+  %12: int = undef !1:318:5
+  ret %12 !1:318:5
 b7():
   unreachable
   name %0 "self" param 0
