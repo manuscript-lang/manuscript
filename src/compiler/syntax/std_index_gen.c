@@ -46,28 +46,30 @@ static void digest_expr(void *ctx, const MsExpr *expr) {
   digest->nodes++;
 }
 
+/* Parses the body of `func` if it was left out. False when it does not parse. */
+static bool restore_body(MsArena *arena, MsNames *names, MsSpan source, MsFunc *func, MsDiag *diag) {
+  if (func->lazy.end == 0) {
+    return true;
+  }
+  if (!ms_parse_body(arena, names, source, func->lazy, &func->body, diag)) {
+    return false;
+  }
+  func->deferred = false;
+  func->lazy = (MsBodyRange){0};
+  return true;
+}
+
 /* Parses the bodies of `module` that were left out, in place. False when one does not parse. */
 static bool restore_bodies(MsArena *arena, MsNames *names, MsSpan source, MsModule *module, MsDiag *diag) {
   for (uint32_t index = 0; index < module->ndecls; index++) {
     MsDecl *decl = (MsDecl *)(void *)module->decls[index];
-    MsFunc *funcs[2] = {decl->kind == MS_D_FN ? &decl->u.fn : NULL, NULL};
-    if (decl->kind == MS_D_IMPL) {
-      for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
-        funcs[0] = &decl->u.impl.methods.ptr[at]->func;
-        if (funcs[0]->lazy.end != 0 && !ms_parse_body(arena, names, source, funcs[0]->lazy, &funcs[0]->body, diag)) {
-          return false;
-        }
-        funcs[0]->deferred = false;
-        funcs[0]->lazy = (MsBodyRange){0};
-      }
-      continue;
+    if (decl->kind == MS_D_FN && !restore_body(arena, names, source, &decl->u.fn, diag)) {
+      return false;
     }
-    if (funcs[0] != NULL && funcs[0]->lazy.end != 0) {
-      if (!ms_parse_body(arena, names, source, funcs[0]->lazy, &funcs[0]->body, diag)) {
+    for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
+      if (!restore_body(arena, names, source, &decl->u.impl.methods.ptr[at]->func, diag)) {
         return false;
       }
-      funcs[0]->deferred = false;
-      funcs[0]->lazy = (MsBodyRange){0};
     }
   }
   return true;
