@@ -77,6 +77,7 @@ typedef struct MirCellMap {
   const uint32_t *value, *ordinal;
   const uint64_t *conflict;
   const bool *shareable;
+  const bool *promotable; /* only loaded, stored and copied: the backend keeps it in registers, so it needs no shared cell */
   const MirCellDeath *deaths; /* filled when the caller asks (MS_POISON_SLOTS), else NULL */
   uint32_t ndeaths;
 } MirCellMap;

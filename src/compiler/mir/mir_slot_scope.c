@@ -43,6 +43,7 @@ static Access access_of(const MirModule *module, const MirInst *inst, uint32_t a
 typedef struct Scan {
   uint32_t *owner;     /* by value: the slot an address derives from, or the value itself, or MIR_NONE */
   bool *bad;           /* by slot value: the slot may not share storage */
+  bool *wide;          /* by slot value: an instruction other than a plain load, store or copy touches it */
   const bool *values;  /* by value: kept in a cell, not a slot; NULL for none */
 } Scan;
 
@@ -123,6 +124,10 @@ static void scan_inst(const MirModule *module, const Scan *scan, const MirInst *
       continue; /* the result is an address of the slot as well, and is scanned itself */
     }
     Access how = access_of(module, inst, index);
+    switch ((MirOp)inst->op) {
+    case MOP_Load: case MOP_Take: case MOP_Store: case MOP_Put: case MOP_PtrField: case MOP_MemCopy: break;
+    default: scan->wide[slot] = true; /* a call or an indexed access keeps it in memory */
+    }
     if ((how == ACCESS_DERIVE && index > 0) || how == ACCESS_ESCAPE) {
       scan->bad[slot] = true;
     }
@@ -286,7 +291,11 @@ bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *
   for (size_t value = 0; value < count; value++) {
     bad[value] = false;
   }
-  Scan scan = {owner, bad, values};
+  bool *wide = MS_ARENA_NEW_ARRAY(arena, bool, count);
+  for (size_t value = 0; value < count; value++) {
+    wide[value] = false;
+  }
+  Scan scan = {owner, bad, wide, values};
   derive_owners(module, func, &scan);
   uint32_t *ordinal = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
   uint32_t *object_value = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
@@ -397,7 +406,13 @@ bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *
   for (uint32_t object = 0; object < nobjects; object++) {
     keep[object] = !bad[object_value[object]];
   }
+  bool *promotable = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)nobjects + 1);
+  for (uint32_t object = 0; object < nobjects; object++) {
+    const uint32_t value = object_value[object];
+    promotable[object] = !wide[value] && !bad[value] && !is_cell_value(&scan, value);
+  }
   *map = (MirCellMap){.nobjects = nobjects, .words = live.words, .value = object_value, .ordinal = ordinal,
-                      .conflict = rows, .shareable = keep, .deaths = deaths, .ndeaths = walk.ndeaths};
+                      .conflict = rows, .shareable = keep, .promotable = promotable, .deaths = deaths,
+                      .ndeaths = walk.ndeaths};
   return true;
 }
