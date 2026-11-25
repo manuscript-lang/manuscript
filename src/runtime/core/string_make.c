@@ -88,15 +88,6 @@ MsString msrt_string_from_block(uint8_t *block, size_t length) {
 }
 
 /* A string that is a copy of `string`: the same two words when they own nothing. */
-/* An optional string's `none` is a static string with a null pointer, which no real string is (a literal points at
- * its bytes), so the copy of `none` stays `none` rather than becoming an empty string. */
-static MsString cloned(const MsString *string) {
-  if (string->tagged == (UINT64_C(2) << MS_STRING_TAG_SHIFT) && string->low_bits == 0) {
-    return *string;
-  }
-  return ms_string_clone(string);
-}
-
 /* ---- construction ---- */
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsString *out) {
@@ -109,7 +100,7 @@ void msrt_string_empty(MsString *out) {
 
 void msrt_string_clone(const MsString *s, MsString *out) {
   ms_stats_copy(1, ms_string_span(s).len);
-  *out = cloned(s);
+  *out = ms_string_clone(s);
 }
 
 /* `tagged` is the second word of an owned string or a view, never of an inline string. */
@@ -163,9 +154,9 @@ static MsString join_strings(const MsString *const *parts, size_t count) {
 
 void msrt_string_concat(const MsString *a, const MsString *b, MsString *out) {
   if (ms_string_is_empty(b)) {
-    *out = cloned(a);
+    *out = ms_string_clone(a);
   } else if (ms_string_is_empty(a)) {
-    *out = cloned(b);
+    *out = ms_string_clone(b);
   } else {
     const MsString *const parts[] = {a, b};
     *out = join_strings(parts, MS_COUNT_OF(parts));
