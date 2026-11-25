@@ -20,7 +20,7 @@ fn main() Void {
 	var price = 0
 
 	// Cells arrive as views of `data`; only the two keys are copied out.
-	visit := fn(row, col Int, cell String) Void {
+	visit := fn(row Int, col Int, cell String) Void {
 		if row == 0 { return }
 
 		if col == 1 {
@@ -34,7 +34,8 @@ fn main() Void {
 		} else if col == 5 {
 			cents := qty * price
 			old := regions.get_or(region, Total(0, 0))
-			regions[region.clone()] = Total(old.rows + 1, old.cents + cents)
+			next := Total(old.rows + 1, old.cents + cents)
+			regions[region.clone()] = next
 			products[product.clone()] = products.get_or(product, 0) + cents
 			if cell.contains(",") { quoted += 1 }
 			rows += 1
