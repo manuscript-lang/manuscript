@@ -20,7 +20,8 @@ export type SortedRef[K Comparable, V] {
 // One key or value of a sorted collection, viewed in place: it borrows the collection
 // and copies nothing.
 export type SortedItem[T] {
-	// The key, value or member this item views; it belongs to the collection that returned it and is not copied.
+	// The key, value or member this item views; it belongs to the collection that
+	// returned it and is not copied.
 	value &T
 }
 

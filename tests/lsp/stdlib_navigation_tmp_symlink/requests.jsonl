@@ -1,12 +1,12 @@
 {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
 {"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms", "languageId": "manuscript", "version": 1, "text": "ignored"}}}
-{"jsonrpc": "2.0", "id": 2, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": 75, "character": 4}}}
-{"jsonrpc": "2.0", "id": 3, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": 0, "character": 7}}}
-{"jsonrpc": "2.0", "id": 4, "method": "textDocument/references", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": 74, "character": 4}, "context": {"includeDeclaration": true}}}
-{"jsonrpc": "2.0", "id": 5, "method": "textDocument/hover", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": 74, "character": 4}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": @LINE:core.ms|fn status_kind(status Int@, "character": 4}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": @LINE:core.ms|import Bytes from@, "character": 7}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/references", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": @LINE:core.ms|// The kind of the `Error` a runtime status stands for (see@, "character": 4}, "context": {"includeDeclaration": true}}}
+{"jsonrpc": "2.0", "id": 5, "method": "textDocument/hover", "params": {"textDocument": {"uri": "manuscript-stdlib:/core.ms"}, "position": {"line": @LINE:core.ms|// The kind of the `Error` a runtime status stands for (see@, "character": 4}}}
 {"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "manuscript-stdlib:/bytes.ms", "languageId": "manuscript", "version": 1, "text": "ignored"}}}
-{"jsonrpc": "2.0", "id": 6, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/bytes.ms"}, "position": {"line": 11, "character": 3}}}
-{"jsonrpc": "2.0", "id": 7, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/bytes.ms"}, "position": {"line": 12, "character": 20}}}
-{"jsonrpc": "2.0", "id": 8, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:///bytes.ms"}, "position": {"line": 11, "character": 3}}}
+{"jsonrpc": "2.0", "id": 6, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/bytes.ms"}, "position": {"line": @LINE:bytes.ms|msrt_bits_bit_or, msrt_bits_shift_left from|1@, "character": 3}}}
+{"jsonrpc": "2.0", "id": 7, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:/bytes.ms"}, "position": {"line": @LINE:bytes.ms|msrt_bits_bit_or, msrt_bits_shift_left from|2@, "character": 20}}}
+{"jsonrpc": "2.0", "id": 8, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:///bytes.ms"}, "position": {"line": @LINE:bytes.ms|msrt_bits_bit_or, msrt_bits_shift_left from|1@, "character": 3}}}
 {"jsonrpc": "2.0", "id": 9, "method": "shutdown"}
 {"jsonrpc": "2.0", "method": "exit"}
