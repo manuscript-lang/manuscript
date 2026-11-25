@@ -93,3 +93,4 @@ Perf benchmarks, profiling.
 - [Completion finds the import spot once per request](completion-finds-the-import-spot-once.md): completion on a 5,700-line file 265 to 85 ms; the per-offer document scan became one scan.
 - [A check made unchecked must not leave its fault exit behind](a-check-made-unchecked-leaves-no-fault-exit.md): dead fault exits were 20% of optimized IR; release build of 500 functions 4.1 to 3.8 s, 267 to 246 MB.
 - [A list of plain records is tagged like a list of scalars](a-list-of-plain-records-is-tagged-like-a-list-of-scalars.md): `graph` -4.0% instructions; swapping heap entries no longer rewrites the list header.
+- [A split loop walks the text and makes no list](a-split-loop-walks-the-text-and-makes-no-list.md): `for piece in text.split(sep)` reads pieces by byte offset; grep -21%, report -19%, treegrep -21% wall time.

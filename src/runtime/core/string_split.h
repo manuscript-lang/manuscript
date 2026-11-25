@@ -5,9 +5,6 @@
 #include "base/list.h"
 #include "base/string.h"
 
-/* The state of a split loop. */
-typedef struct MsSplitIter MsSplitIter;
-
 /* ms-sig: msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_split(const MsString *s, const MsString *sep, MsList *out);
 /* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @borrows @twin=split_view @domain=string @end */
@@ -18,11 +15,9 @@ void msrt_string_split_view_into(const MsString *s, const MsString *sep, MsStrin
 /* ms-sig: msrt_string_split_first(s: *const StrVal, sep: *const StrVal, out: *mut StrVal) @borrows @domain=string
  * */
 void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *out);
-/* ms-sig: msrt_string_split_iter(s: *const StrVal, sep: *const StrVal) -> *mut SplitIter @domain=string
- * */
-MsSplitIter *msrt_string_split_iter(const MsString *s, const MsString *sep);
-/* ms-sig: msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 @domain=split @end */
-uint8_t msrt_split_next(MsSplitIter *iter, MsString *out);
+/* The piece of `s` that starts at byte `at` when it is split at `sep`, a view of `s`: the step of
+ * `for piece in s.split(sep)`. */
+void msrt_string_split_at(const MsString *s, const MsString *sep, int64_t at, MsString *out);
 /* ms-sig: msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal)
  * @domain=string @end */
 void msrt_string_replace(const MsString *s, const MsString *old, const MsString *replacement, MsString *out);

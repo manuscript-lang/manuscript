@@ -1,5 +1,21 @@
 # Suite results
 
+## 2026-11-25, split loops without a list (on `70c893f162`)
+
+Release `ms` built from `70c893f162` with and without the split-loop change, same 4 vCPU Xeon VM, wall time in ms (min of 9) with the Rust program of the suite beside it. `for piece in text.split(sep)` walks the text by byte offset instead of building the list of pieces first. Programs with no split loop (csvgroup, wordfreq, jsonsum) moved by +3.8% to +7.8% between the two runs, which is this VM's noise.
+
+| program | before | after | change | Rust |
+|---|---:|---:|---:|---:|
+| grep | 44.5 | 35.1 | -21% | 26.8 |
+| report | 186.6 | 150.4 | -19% | 118.2 |
+| treegrep | 32.6 | 25.8 | -21% | 19.8 |
+| sortrecords | 287.5 | 245.3 | -15% | 261.6 |
+| logstats | 53.3 | 48.2 | -10% | 69.7 |
+| dedupe | 326.1 | 317.1 | -3% | 484.1 |
+| pargroup | 49.0 | 48.3 | -1% | 33.6 |
+
+Page faults of grep fall from 9.4k to 5.7k and of report from 31k to 18k. Callgrind instructions rise on the split-heavy programs (grep +11%, treegrep +11%, pargroup +4.8%, report +2.3%): each piece is a call that reads both strings again. The loops are memory bound, so wall time is the measure here.
+
 ## 2026-11-25, after the take-twin, padding and index-check changes (`8ddeac9b65`)
 
 Release `ms` built from `8ddeac9b65`, 4 vCPU Xeon VM, min of 7, wall time in ms, process start and output included. Instruction counts (callgrind) are the stable measure on this shared VM: against main before #7065, #7080, #7090 and #7097 they fell as follows.
