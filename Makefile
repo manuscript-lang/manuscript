@@ -104,6 +104,7 @@ bench-check: build
 		[ -f $$p/ms.toml ] || "$(MS)" check $$f || exit 1; \
 	done
 	@for t in bench/tools/*.ms bench/agent/*.ms; do "$(MS)" check $$t || exit 1; done
+	@for t in bench/agent/challenges/*/start/ms/src/main.ms; do "$(MS)" check $$t || exit 1; done
 	@for t in bench/tools/*_test.ms; do "$(MS)" test $$t || exit 1; done
 
 # Runs the bench blocks of bench/perf/stdlib; BENCHREPEATS is the sample count per case.

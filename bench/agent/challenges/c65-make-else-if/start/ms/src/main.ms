@@ -72,9 +72,7 @@ type Ctx {
 
 fn bs(s String, a, b Int) String {
 	if a >= b { return "" }
-	if r := s.slice(a, b) { return r }
-
-	return ""
+	return s.slice(a, b)
 }
 
 fn is_ws(c String) Bool => c == " " or c == "\t" or c == "\n" or c == "\r"
@@ -123,14 +121,14 @@ fn split_args(s String) List[String] {
 			depth -= 1
 			cur += c
 		} else if c == "," and depth <= 0 {
-			out.append(cur.trim())
+			out.append(cur.trim().clone())
 			cur = ""
 		} else {
 			cur += c
 		}
 	}
 
-	out.append(cur.trim())
+	out.append(cur.trim().clone())
 	return out
 }
 
@@ -351,7 +349,7 @@ fn var Ctx.lookup(name String) String! {
 	self.expanding.add(name.clone())
 
 	r := self.expand(val)?
-	self.expanding.remove(name)
+	self.expanding.remove(name.clone())
 	return ok(r)
 }
 
@@ -640,7 +638,7 @@ fn var Ctx.call_func(fname, rest String) String! {
 		if had {
 			self.binds[vname.clone()] = oldv
 		} else {
-			self.binds.remove(vname)
+			self.binds.remove(vname.clone())
 		}
 
 		return ok(join_sp(o))
@@ -956,13 +954,13 @@ fn var Ctx.parse(src List[String]) Void! {
 			if self.cmdvars.contains(name) { continue }
 
 			if op == "=" {
-				self.vars[name.clone()] = Var(val, false)
+				self.vars[name.clone()] = Var(val.clone(), false)
 			} else if op == ":" {
 				ev := self.expand(val)?
 				self.vars[name.clone()] = Var(ev, true)
 			} else if op == "?" {
 				if not self.vars.contains(name) {
-					self.vars[name.clone()] = Var(val, false)
+					self.vars[name.clone()] = Var(val.clone(), false)
 				}
 			} else {
 				var old = ""
@@ -977,7 +975,7 @@ fn var Ctx.parse(src List[String]) Void! {
 				}
 
 				if not had {
-					self.vars[name.clone()] = Var(val, false)
+					self.vars[name.clone()] = Var(val.clone(), false)
 				} else if osimple {
 					ev := self.expand(val)?
 					joined := if old.length() == 0 or ev.length() == 0 { old + ev } else { old + " " + ev }
@@ -1468,7 +1466,7 @@ fn var Ctx.start(cv Map[String, String], src List[String]) Bool {
 		self.line = 0
 		return true
 	} else {
-		self.out.append(res.err().message)
+		self.out.append(res.err().message.clone())
 		self.line = 0
 		return false
 	}
@@ -1567,7 +1565,7 @@ fn main() Void! {
 				if _u := r {
 					void
 				} else {
-					ctx.out.append(r.err().message)
+					ctx.out.append(r.err().message.clone())
 				}
 
 				ctx.dry = false
@@ -1588,7 +1586,7 @@ fn main() Void! {
 					}
 					for x in ctx.dres { ctx.out.append(x.clone()) }
 				} else {
-					ctx.out.append(r.err().message)
+					ctx.out.append(r.err().message.clone())
 				}
 			} else {
 				d := ctx.default_goal()
@@ -1619,7 +1617,7 @@ fn main() Void! {
 			if v := r {
 				ctx.out.append(f"[{v}]")
 			} else {
-				ctx.out.append(r.err().message)
+				ctx.out.append(r.err().message.clone())
 			}
 		} else if cmd == "files" {
 			names := ctx.files.keys().sorted()
