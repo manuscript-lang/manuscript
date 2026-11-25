@@ -82,6 +82,12 @@ add_custom_target(llvm-lib
   USES_TERMINAL
 )
 
+# Downloads the pinned shared Cranelift library (cmake/toolchain/cranelift-lib.lock), which Debug builds use when present.
+add_custom_target(cranelift-lib
+  COMMAND ${CMAKE_COMMAND} "-DROOT=${CMAKE_SOURCE_DIR}" "-DARCH=${MS_LLVM_ARCH}" -P "${CMAKE_SOURCE_DIR}/cmake/FetchCraneliftLib.cmake"
+  USES_TERMINAL
+)
+
 # Formatting, nested matches, release pins, workflow triggers and the license inventory (tools/repo-check.ms). The tool
 # lists the files with git, which the MSYS2 shell of the Windows runners does not have on PATH: Git for Windows is.
 find_program(MS_GIT git PATHS "$ENV{ProgramFiles}/Git/cmd")

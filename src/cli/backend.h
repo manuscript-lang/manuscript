@@ -19,6 +19,7 @@ typedef struct BackendOptions {
   bool poison_slots;    /* EmitOptions.poison_slots */
   uint32_t units;       /* EmitOptions.units: the most modules ms_backend_compile writes; 0 for one */
   size_t unit_bytes;    /* EmitOptions.unit_bytes */
+  MsSpan cranelift;     /* the Cranelift library to write the object with (Debug), or empty for the LLVM route */
 } BackendOptions;
 
 /* A compiled program kept for the fault tables: the renamed module and what the tables need to know of it. */
@@ -26,6 +27,8 @@ typedef struct BackendProgram {
   MirModule module;
   MsArena arena;
   EmitTableInfo tables;
+  MsStrBuild object; /* the finished object file when Cranelift wrote it; `ir` is then empty */
+  bool native;
 } BackendProgram;
 
 /* As ms_backend_ir, with the entry point and source places the fault tables need; `out` then holds the module the

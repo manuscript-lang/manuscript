@@ -1,6 +1,7 @@
 /* Structural equality of two values, walked through their shape table. See shape_equal.h. */
 #include "base/hash.h"
 #include "base/map.h"
+#include "runtime/std/decimal.h"
 #include "runtime/std/shape_equal.h"
 
 #define AT(type, address) ((const type *)(const void *)(address))
@@ -132,6 +133,8 @@ static bool equal_at(const MsShapeTable *table, uint32_t shape_index, const uint
     const MsShapeMember *y = ms_shape_active_case(table, shape, right);
     return x == y && equal_fields(table, x->first, x->count, left, right, depth);
   }
+  case MS_SHAPE_DECIMAL: /* equal values have equal records, whatever slot holds them */
+    return msstd_decimal_compare(AT(MsDecimal, left), AT(MsDecimal, right)) == 0;
   default: /* a handle, a function, a number of unbounded size: the same value or none */
     return left == right;
   }
@@ -232,6 +235,8 @@ static uint64_t hash_at(const MsShapeTable *table, uint32_t shape_index, const u
     const MsShapeMember *active = ms_shape_active_case(table, shape, resolved);
     return hash_fields(table, active->first, active->count, resolved, ms_hash_int((uint64_t)(active - ms_shape_member(table, 0))), depth);
   }
+  case MS_SHAPE_DECIMAL: /* the record is canonical, so its bytes are the value */
+    return ms_hash_span(ms_span_of(resolved, sizeof(MsDecimal)));
   default: /* a handle or a function: compared by identity */
     return ms_hash_int((uint64_t)(uintptr_t)resolved);
   }

@@ -12,7 +12,8 @@ compiler/lower: base abi compiler/syntax compiler/check compiler/natives compile
 compiler/mir: base abi
 compiler/opt: base compiler/mir
 compiler/emit: base abi compiler/mir
-compiler/link: base abi compiler/mir compiler/emit
+compiler/emit_cl: base abi compiler/mir compiler/emit
+compiler/link: base abi compiler/mir compiler/emit compiler/emit_cl
 tooling: base abi compiler/syntax compiler/project compiler/check compiler/own
 lsp: base abi compiler/syntax compiler/project compiler/check tooling
-cli: base abi compiler/syntax compiler/project compiler/check compiler/own compiler/lower compiler/mir compiler/opt compiler/emit compiler/link tooling lsp runtime/std
+cli: base abi compiler/syntax compiler/project compiler/check compiler/own compiler/lower compiler/mir compiler/opt compiler/emit compiler/emit_cl compiler/link tooling lsp runtime/std
