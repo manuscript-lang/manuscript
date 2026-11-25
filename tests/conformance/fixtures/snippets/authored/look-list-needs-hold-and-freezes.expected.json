@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a `&` result points into an argument; mark that argument `hold`, or return an owned value",
+        "position": {
+          "file": "look-list-needs-hold-and-freezes.ms",
+          "line": 8,
+          "column": 1,
+          "offset": 95
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a `&` result points into an argument; mark that argument `hold`, or return an owned value",
+        "position": {
+          "file": "look-list-needs-hold-and-freezes.ms",
+          "line": 16,
+          "column": 1,
+          "offset": 237
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/look-list-needs-hold-and-freezes.ms:8:1: type: a `&` result points into an argument; mark that argument `hold`, or return an owned value\n   |\n 8 | fn refs(names List[String]) List[Ref] {\n   | ^\n<DIR>/look-list-needs-hold-and-freezes.ms:16:1: type: a `&` result points into an argument; mark that argument `hold`, or return an owned value\n    |\n 16 | fn bad() List[Ref] {\n    | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

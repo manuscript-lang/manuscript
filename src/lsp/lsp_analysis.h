@@ -7,11 +7,19 @@
 #include "base/string.h"
 #include "tooling/checked_input.h"
 #include "compiler/project/project.h"
+#include "tooling/inspect.h"
 #include "tooling/occurrence.h"
 #include "base/strbuild.h"
 
 /* The file name prefix of the stand-in a bundled module is checked as (in the temporary directory). */
 #define LSP_BUNDLED_PREFIX "ms-stdlib-"
+
+/* What `ms_inspect_collect` found, computed on the first hover that needs it and shared by every copy of an analysis:
+ * collecting walks the whole program, so doing it per hover made a hover in a large file take seconds. */
+typedef struct LspInspections {
+  bool done[2]; /* [0]: the user's modules, [1]: with the bundled ones */
+  MsInspection value[2];
+} LspInspections;
 
 typedef struct LspDoc {
   MsString uri, path, text;
@@ -34,7 +42,11 @@ typedef struct LspAnalysis {
   MsSpan *paths;       /* the file of each user module of the program */
   void *overlay;       /* the open documents' text, as the loader reads it */
   bool resolved;       /* the program was checked, with or without diagnostics */
+  LspInspections *inspections; /* in `arena`; set with `resolved` */
 } LspAnalysis;
+
+/* The inspection of the analysed program, collected once; with `standard` the bundled modules are listed too. */
+const MsInspection *lsp_inspection(const LspAnalysis *analysis, bool standard);
 
 /* Checks `doc` as the entry of its own graph, with every open document's text in place of disk. The latest result is kept
  * until an open document's text changes, so successive requests share one check. */

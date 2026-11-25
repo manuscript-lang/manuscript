@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "\nexport fn main() Int {\n\tvalue Int!Error := ok(0)\n\textract := value.err\n\treturn extract().text.scalar_length()\n}\n"
+    "fmt": "\nexport fn main() Int {\n\tvalue Int! := ok(0)\n\textract := value.err\n\treturn extract().text.scalar_length()\n}\n"
   }
 }

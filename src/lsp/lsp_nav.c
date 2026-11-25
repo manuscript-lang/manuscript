@@ -263,12 +263,11 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   if (declaration == NULL && std_declaration(&analysis, selected, &bundled)) {
     const size_t line = lsp_position(bundled.source, bundled.at).line + 1;
     if (ms_span_starts_with(ms_strbuild_span(&shown), ms_span_of_text("fn("))) {
-      MsInspection inspection = {0};
-      ms_inspect_collect(analysis.arena, program, true, &inspection);
+      const MsInspection *inspection = lsp_inspection(&analysis, true);
       MsStrBuild file = ms_strbuild_new();
       ms_strbuild_append_text(&file, "@std/");
       ms_strbuild_append(&file, bundled.file);
-      write_effects(&value, &inspection, ms_strbuild_span(&file), line, selected->name);
+      write_effects(&value, inspection, ms_strbuild_span(&file), line, selected->name);
       ms_strbuild_free(&file);
     }
     const MsSpan docs_text = ms_declaration_comment(analysis.arena, bundled.source, bundled.at, (uint32_t)line);
@@ -281,9 +280,8 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
     const MsSpan source = source_of(&analysis, declaration);
     const size_t line = lsp_position(source, declaration->offset).line + 1;
     if (ms_span_starts_with(ms_strbuild_span(&shown), ms_span_of_text("fn("))) {
-      MsInspection inspection = {0};
-      ms_inspect_collect(analysis.arena, program, false, &inspection);
-      write_effects(&value, &inspection,
+      const MsInspection *inspection = lsp_inspection(&analysis, false);
+      write_effects(&value, inspection,
                     ms_names_span(program->names, program->modules.ptr[declaration->module].file), line, selected->name);
     }
     const MsSpan docs_text = ms_declaration_comment(analysis.arena, source, declaration->offset, (uint32_t)line);

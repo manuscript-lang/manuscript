@@ -8,6 +8,15 @@ export type SortedEntry[K Comparable, V] {
 	value V
 }
 
+// One key-value pair of a SortedMap, viewed in place: it borrows the map and copies
+// nothing.
+export type SortedRef[K Comparable, V] {
+	// The entry's key.
+	key &K
+	// The value stored for `key`.
+	value &V
+}
+
 /*
 A map kept in ascending key order, so lookups by position (`first`, `last`, `floor`, `ceiling`, `range`) are as cheap as lookups by key.
 Keys use their `Comparable` order; keys that compare equal are the same key. Replacing a key's value keeps the original key.
@@ -245,28 +254,28 @@ fn var SortedMap[K, V].pop_last() SortedEntry[K, V]? {
 	return self.take_at(c, self.key_chunks[c].length() - 1)
 }
 
-// Returns the entry with the smallest key that is at least `key`, or `null`.
-fn SortedMap[K Comparable & Clonable, V Clonable].ceiling(key K) SortedEntry[K, V]? {
+// Returns the entry with the smallest key that is at least `key` as a view of this map,
+// or `null`.
+fn hold SortedMap[K, V].ceiling(key K) SortedRef[K, V]? {
 	if self.size == 0 { return null }
 
 	c := self.chunk_for(key)
 	at := self.lower_bound(c, key)
 	if at >= self.key_chunks[c].length() { return null }
 
-	return SortedEntry(self.key_chunks[c][at].clone(), self.value_chunks[c][at].clone())
+	return SortedRef(self.key_chunks[c][at], self.value_chunks[c][at])
 }
 
-// Returns the entry with the largest key that is at most `key`, or `null`.
-fn SortedMap[K Comparable & Clonable, V Clonable].floor(key K) SortedEntry[K, V]? {
+// Returns the entry with the largest key that is at most `key` as a view of this map,
+// or
+// `null`.
+fn hold SortedMap[K, V].floor(key K) SortedRef[K, V]? {
 	if self.size == 0 { return null }
 
 	var c = self.chunk_for(key)
 	var at = self.lower_bound(c, key)
 	if (at < self.key_chunks[c].length() and order(self.key_chunks[c][at], key) == 0) {
-		return SortedEntry(
-			self.key_chunks[c][at].clone(),
-			self.value_chunks[c][at].clone(),
-		)
+		return SortedRef(self.key_chunks[c][at], self.value_chunks[c][at])
 	}
 
 	if at == 0 {
@@ -277,27 +286,23 @@ fn SortedMap[K Comparable & Clonable, V Clonable].floor(key K) SortedEntry[K, V]
 	}
 
 	at -= 1
-	return SortedEntry(self.key_chunks[c][at].clone(), self.value_chunks[c][at].clone())
+	return SortedRef(self.key_chunks[c][at], self.value_chunks[c][at])
 }
 
-// Returns a new list of the entries with `low` <= key < `high`, in ascending order.
-fn SortedMap[K Comparable & Clonable, V Clonable].range(
-	low,
-	high K,
-) List[SortedEntry[K, V]] {
-	var out List[SortedEntry[K, V]] = []
+// Returns the entries with `low` <= key < `high`, in ascending order, as views of this
+// map: the list is new, the keys and values are not copied.
+fn hold SortedMap[K, V].range(low, high K) List[SortedRef[K, V]] {
+	var out List[SortedRef[K, V]] = []
 	if self.size == 0 { return out }
 
 	var c = self.chunk_for(low)
 	var at = self.lower_bound(c, low)
 
 	while c < self.key_chunks.length() {
-		keys := self.key_chunks[c]
+		while at < self.key_chunks[c].length() {
+			if order(self.key_chunks[c][at], high) >= 0 { return out }
 
-		while at < keys.length() {
-			if order(keys[at], high) >= 0 { return out }
-
-			out.append(SortedEntry(keys[at].clone(), self.value_chunks[c][at].clone()))
+			out.append(SortedRef(self.key_chunks[c][at], self.value_chunks[c][at]))
 			at += 1
 		}
 
@@ -308,24 +313,51 @@ fn SortedMap[K Comparable & Clonable, V Clonable].range(
 	return out
 }
 
-// Returns a new list of the keys in ascending order.
-fn SortedMap[K Comparable & Clonable, V Clonable].keys() List[K] {
-	return joined(self.key_chunks, 0, self.key_chunks.length())
-}
-
-// Returns a new list of the values in ascending key order.
-fn SortedMap[K Comparable & Clonable, V Clonable].values() List[V] {
-	return joined(self.value_chunks, 0, self.value_chunks.length())
-}
-
-// Returns a new list of the entries in ascending key order.
-fn SortedMap[K Comparable & Clonable, V Clonable].entries() List[SortedEntry[K, V]] {
-	var out List[SortedEntry[K, V]] = []
+// Returns the keys in ascending order as views of this map: the list is new, the keys
+// are not copied.
+fn hold SortedMap[K, V].keys() List[&K] {
+	var out List[&K] = []
 
 	for c in 0..self.key_chunks.length() {
-		keys := self.key_chunks[c]
-		for at in 0..keys.length() {
-			out.append(SortedEntry(keys[at].clone(), self.value_chunks[c][at].clone()))
+		var at = 0
+
+		while at < self.key_chunks[c].length() {
+			out.append(self.key_chunks[c][at])
+			at += 1
+		}
+	}
+
+	return out
+}
+
+// Returns the values in ascending key order as views of this map: the list is new, the
+// values are not copied.
+fn hold SortedMap[K, V].values() List[&V] {
+	var out List[&V] = []
+
+	for c in 0..self.value_chunks.length() {
+		var at = 0
+
+		while at < self.value_chunks[c].length() {
+			out.append(self.value_chunks[c][at])
+			at += 1
+		}
+	}
+
+	return out
+}
+
+// Returns the entries in ascending key order as views of this map: the list is new, the
+// keys and values are not copied.
+fn hold SortedMap[K, V].entries() List[SortedRef[K, V]] {
+	var out List[SortedRef[K, V]] = []
+
+	for c in 0..self.key_chunks.length() {
+		var at = 0
+
+		while at < self.key_chunks[c].length() {
+			out.append(SortedRef(self.key_chunks[c][at], self.value_chunks[c][at]))
+			at += 1
 		}
 	}
 
@@ -333,11 +365,22 @@ fn SortedMap[K Comparable & Clonable, V Clonable].entries() List[SortedEntry[K, 
 }
 
 // Calls `operation(key, value)` for each entry in ascending key order. It iterates
-// over a snapshot, so `operation` may change the map.
+// over a snapshot of copies, so `operation` may change the map.
 fn SortedMap[K Comparable & Clonable, V Clonable].for_each(
 	operation fn(K, V) Void
 ) Void {
-	for entry in self.entries() {
+	var snapshot List[SortedEntry[K, V]] = []
+	for c in 0..self.key_chunks.length() {
+		for at in 0..self.key_chunks[c].length() {
+			snapshot.append(
+				SortedEntry(
+					self.key_chunks[c][at].clone(),
+					self.value_chunks[c][at].clone(),
+				)
+			)
+		}
+	}
+	for entry in snapshot {
 		operation(entry.key, entry.value)
 	}
 }
@@ -408,30 +451,36 @@ fn var SortedSet[T].pop_last() T? {
 	return null
 }
 
-// Returns the smallest member that is at least `value`, or `null`.
-fn SortedSet[T Comparable & Clonable].ceiling(value T) T? {
+// Returns the smallest member that is at least `value` as a view of this set, or
+// `null`.
+fn hold SortedSet[T].ceiling(value T) &T? {
 	entry := self.members.ceiling(value)
-	if entry != null { return entry.key.clone() }
+	if entry != null { return entry.key }
 
 	return null
 }
 
-// Returns the largest member that is at most `value`, or `null`.
-fn SortedSet[T Comparable & Clonable].floor(value T) T? {
+// Returns the largest member that is at most `value` as a view of this set, or `null`.
+fn hold SortedSet[T].floor(value T) &T? {
 	entry := self.members.floor(value)
-	if entry != null { return entry.key.clone() }
+	if entry != null { return entry.key }
 
 	return null
 }
 
-// Returns a new list of the members with `low` <= member < `high`, in ascending
-// order.
-fn SortedSet[T Comparable & Clonable].range(low, high T) List[T] {
-	return self.members.range(low, high).map(entry => entry.key.clone())
+// Returns the members with `low` <= member < `high`, in ascending order, as views of
+// this set.
+fn hold SortedSet[T].range(low, high T) List[&T] {
+	var out List[&T] = []
+	var found = self.members.range(low, high)
+	for entry in found {
+		out.append(entry.key)
+	}
+	return out
 }
 
-// Returns a new list of the members in ascending order.
-fn SortedSet[T Comparable & Clonable].values() List[T] {
+// Returns the members in ascending order as views of this set.
+fn hold SortedSet[T].values() List[&T] {
 	return self.members.keys()
 }
 
@@ -440,20 +489,4 @@ fn SortedSet[T Comparable & Clonable].values() List[T] {
 // `right` sorts first.
 fn order[T Comparable](left, right T) Int {
 	return left.compare(right)
-}
-
-// Internal: returns one new list holding `chunks[low]` through `chunks[high - 1]`
-// in order.
-// Halving the range copies each element about log2(chunk count) times; folding left
-// with `concat` would recopy every earlier chunk for each later one.
-fn joined[T Clonable](chunks List[List[T]], low, high Int) List[T] {
-	count := high - low
-	if count == 0 { return [] }
-	if count == 1 { return chunks[low].clone() }
-	if count == 2 {
-		return chunks[low].concat(chunks[low + 1])
-	}
-
-	middle := low + count / 2
-	return joined(chunks, low, middle).concat(joined(chunks, middle, high))
 }

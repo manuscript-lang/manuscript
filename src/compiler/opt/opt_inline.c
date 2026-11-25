@@ -131,13 +131,13 @@ static IlSccs il_sccs(MsArena *arena, const OptInlineGraph *g) {
   IlTarjan t = {.g = g};
   t.index = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);
   __builtin_memset(t.index, 0xff, sizeof(uint32_t) * n);
-  t.low = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);
-  t.stack = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);
-  t.wv = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);
-  t.wk = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);
-  t.on = MS_ARENA_NEW_ARRAY(arena, bool, n);
-  t.out.nodes = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);
-  t.out.start = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)n + 1);
+  t.low = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, n);
+  t.stack = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, n);
+  t.wv = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, n);
+  t.wk = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, n);
+  t.on = MS_ARENA_NEW_ARRAY_UNINIT(arena, bool, n);
+  t.out.nodes = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, n);
+  t.out.start = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, (size_t)n + 1);
   for (uint32_t root = 0; root < n; root++) {
     if (t.index[root] == MIR_NONE) {
       il_tarjan_from(&t, root);
@@ -165,14 +165,14 @@ bool *opt_inline_cyclic(MsArena *arena, const OptInlineGraph *g) {
 
 bool *opt_blocks_in_loops(MsArena *arena, const MirFunc *f) {
   OptInlineGraph g = {.n = (uint32_t)f->blocks.len};
-  g.off = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)g.n + 1);
+  g.off = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, (size_t)g.n + 1);
   uint32_t total = 0;
   for (uint32_t b = 0; b < g.n; b++) {
     g.off[b] = total;
     total += mir_term_ntargets(&f->blocks.ptr[b].term);
   }
   g.off[g.n] = total;
-  g.to = MS_ARENA_NEW_ARRAY(arena, uint32_t, total);
+  g.to = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, total);
   for (uint32_t b = 0; b < g.n; b++) {
     for (uint32_t k = 0; k < g.off[b + 1] - g.off[b]; k++) {
       g.to[g.off[b] + k] = mir_term_target_const(&f->blocks.ptr[b].term, k)->block;

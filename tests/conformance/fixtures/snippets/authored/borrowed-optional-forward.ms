@@ -11,7 +11,7 @@ type Bag {
 }
 
 fn hold Bag.lowest() &Item? {
-	if self.items.length() == 0 { return null }
+	if self.items.is_empty() { return null }
 
 	var best = 0
 	for i in 1..self.items.length() {

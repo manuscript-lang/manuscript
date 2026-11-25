@@ -38,6 +38,13 @@ static void emit_type_sites(Builder *b, const TypeSites *sites) {
                             (MsWrittenType){.module = b->module, .offset = site->offset, .ty = resolved, .named = site->named});
     }
     MsSymbolId symbol = site->named ? ms_occ_type_symbol(b, resolved) : 0;
+    if (symbol == 0 && site->named && ms_ty_is(&b->program->types, resolved, MS_BUILTIN_TypeSet)) {
+      /* A set of types (`type Ordered = Int | String`) has no definition of its own: the alias declares it. */
+      const MsModuleInfo *info = &b->program->modules.ptr[b->module];
+      const MsSymbolId *found = ms_scope_get(&info->scope, site->name);
+      found = found != NULL ? found : ms_scope_get(&info->imports, site->name);
+      symbol = found != NULL ? *found : 0;
+    }
     /* `Self` in an interface is the contract's marker, not a mention of the interface. */
     if (symbol != 0 && ms_span_is_text(ms_occ_name_text(b, site->name), "Self") && b->program->symbols.ptr[symbol].decl != NULL &&
         b->program->symbols.ptr[symbol].decl->kind == MS_D_INTERFACE) {

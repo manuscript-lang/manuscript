@@ -1,0 +1,27 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "import Bytes from \"@std/bytes.ms\"\n\ntype Pt {\n\tx Int\n\ty Int\n}\n\ntype Node {\n\tkey String\n\tvalue Int\n}\n\nenum Kind {\n\tCircle(\n\t\t// The radius.\n\t\tradius Int\n\t)\n\tSquare\n}\n\ntype Ordered = Int | String\n\nfn Ordered.twice() Self {\n\treturn self\n}\n\nfn id[T](x T) T {\n\treturn x\n}\n\nfn pick[A, B](a A, b B) A {\n\treturn a\n}\n\nfn make(n Int, scale Int = 1) Int {\n\treturn n * scale\n}\n\nfn lookup(node Node?) Int {\n\tif node != null {\n\t\treturn node.value\n\t}\n\treturn 0\n}\n\nfn pick_kind(kind Kind?) Int {\n\tif kind != null {\n\t\tmatch kind {\n\t\t\tCircle(radius) => return radius\n\t\t\tSquare => return 0\n\t\t}\n\t}\n\treturn 0\n}\n\nfn main() Int {\n\tp := Pt(x: 1, y: 2)\n\t{x: a, y: b} := p\n\tk := Kind.Circle(radius: 3)\n\tfirst := id[Int](a)\n\tsecond := pick[Int, String](b, \"s\")\n\tscaled := make(1, scale: 2)\n\treturn first + second + scaled + lookup(null) + pick_kind(k)\n}\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 40, "character": 14}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 40, "character": 14}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 15, "character": 2}}}
+{"jsonrpc": "2.0", "id": 5, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 15, "character": 2}}}
+{"jsonrpc": "2.0", "id": 6, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 48, "character": 3}}}
+{"jsonrpc": "2.0", "id": 7, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 48, "character": 3}}}
+{"jsonrpc": "2.0", "id": 8, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 48, "character": 10}}}
+{"jsonrpc": "2.0", "id": 9, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 48, "character": 10}}}
+{"jsonrpc": "2.0", "id": 10, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 22, "character": 3}}}
+{"jsonrpc": "2.0", "id": 11, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 22, "character": 3}}}
+{"jsonrpc": "2.0", "id": 12, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 59, "character": 10}}}
+{"jsonrpc": "2.0", "id": 13, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 59, "character": 10}}}
+{"jsonrpc": "2.0", "id": 14, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 60, "character": 11}}}
+{"jsonrpc": "2.0", "id": 15, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 60, "character": 11}}}
+{"jsonrpc": "2.0", "id": 16, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 57, "character": 2}}}
+{"jsonrpc": "2.0", "id": 17, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 57, "character": 2}}}
+{"jsonrpc": "2.0", "id": 18, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 58, "character": 18}}}
+{"jsonrpc": "2.0", "id": 19, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 58, "character": 18}}}
+{"jsonrpc": "2.0", "id": 20, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 61, "character": 19}}}
+{"jsonrpc": "2.0", "id": 21, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 61, "character": 19}}}
+{"jsonrpc": "2.0", "id": 22, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 56, "character": 9}}}
+{"jsonrpc": "2.0", "id": 23, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 56, "character": 9}}}
+{"jsonrpc": "2.0", "id": 24, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 40, "character": 9}}}
+{"jsonrpc": "2.0", "id": 25, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 40, "character": 9}}}
+{"jsonrpc": "2.0", "id": 26, "method": "shutdown"}

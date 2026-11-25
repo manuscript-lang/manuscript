@@ -27,6 +27,10 @@ void body_check_try(Body *body, const MsExpr *expr, MsTy operand) {
   }
   if (enclosing == MS_TY_NONE) {
     ms_strbuild_free(&text);
+    if (body->pending_try == NULL) {
+      body->pending_try = expr; /* the lambda reports it once its result is known */
+      body->pending_try_optional = optional;
+    }
     return;
   }
   if (optional) {
@@ -58,6 +62,25 @@ void body_check_try(Body *body, const MsExpr *expr, MsTy operand) {
   show(body, &text, ms_ty_args(types, operand)[1]);
   ms_strbuild_append_text(&text, ", so change the return error type or translate the error with map_error");
   report(body, expr, &text);
+}
+
+/* A lambda's `?` was typed before the lambda's result was known: the result must be able to carry the failure. */
+void body_check_pending_try(Body *body, MsTy result) {
+  const MsTyTable *types = &body->program->types;
+  if (body->pending_try == NULL || result == MS_TY_NONE) {
+    return;
+  }
+  const bool carries = ms_ty_is(types, result, MS_BUILTIN_Result) || ms_ty_is(types, result, MS_BUILTIN_Optional) ||
+                       (body->pending_try_optional && ms_ty_is(types, result, MS_BUILTIN_Void));
+  if (carries) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "'?' inside a lambda returns from the lambda, whose result is ");
+  show(body, &text, result);
+  ms_strbuild_append_text(&text, "; write the lambda's result as a Result, as in `fn(x T) Result[U, E] => ...`, or "
+                                 "handle the failure with 'if value := x', 'match' or a loop");
+  report(body, body->pending_try, &text);
 }
 
 /* An expression statement discards its value: a `?` must leave Void, and a Result must not be dropped silently. */

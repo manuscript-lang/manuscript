@@ -9,3 +9,9 @@ Decision: the project loader marks a file at `<repo>/src/stdlib/<name>` (`core/<
 Apply when: adding a check that differs for user and bundled code, or changing how a module is identified.
 Evidence: [imports](../../../src/compiler/check/imports.c), [loader](../../../src/compiler/project/load.c), `std_checkout` in `cmake/targets/cli.cmake`, conformance fixture `e2e/projects/same_name_types`.
 Verify: `ms check src/stdlib/<any>.ms` reports nothing, and `tests/lsp/stdlib_bodies` jumps and hovers inside `bytes`, `collections` and `core`.
+
+## Language-server regression nets
+
+- `ctest -R lsp_sweep` (`tools/lsp-sweep.ms`) asks `ms lsp` for the definition and hover of every identifier in every stdlib module (`-- bytes.ms` limits it): a jump onto text that is not the identifier, or hover missing above the ceiling, fails it. Add a module to it when a construct stops navigating.
+- The supervisor's queue must never make the worker's reader wait behind client frames: a client that pipelines thousands of requests deadlocked the supervisor and worker on each other's pipes. Only client frames wait for room.
+- Navigation gaps found by the full sweep: a field read on a value narrowed by `!= null` (the facts keep `T?`), enum case payload fields (declaration, `Kind.Case(label: x)`), `{field: name}` destructuring labels, a generic function written `f[Int](...)` (the index used to leave the name out), a `match` over an optional, labels of an extern call, and type-set names (`type Ordered = Int | String`) as receivers and bounds. Rebuild `ms` before sweeping: the server reads the stdlib embedded in the binary, not the checkout.
