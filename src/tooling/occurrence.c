@@ -402,14 +402,22 @@ static void bindings_expr(void *context, const MsExpr *expr) {
   }
 }
 
-static void declare_parameters(Builder *b, uint32_t module, const MsParams params, uint32_t first_index) {
+/* The parameters a function declares. A function with no body (an extern or a stub) is never walked, so its parameters
+ * have no checked facts: they take the type of the function's signature instead. */
+static void declare_parameters(Builder *b, uint32_t module, const MsParams params, MsTy signature) {
   const MsFacts *facts = &b->program->modules.ptr[module].facts;
+  const MsTyTable *types = &b->program->types;
+  const bool listed = signature != MS_TY_NONE && ms_ty_kind(types, signature) == MS_TY_FUNCTION && ms_ty_param_count(types, signature) == params.len;
   for (uint32_t index = 0; index < params.len; index++) {
     const MsParam *param = params.ptr[index];
     const MsRef ref = {.kind = MS_REF_PARAM, .decl = {module, param->id}};
-    ms_occ_add(b, binding_key(b, &ref), ms_occ_name_text(b, param->name), module, param->pos.offset, true, false, ms_facts_type(facts, param->id), 0,
-        false);
-    (void)first_index;
+    MsTy ty = ms_facts_type(facts, param->id);
+    if (ty == MS_TY_NONE && listed) ty = ms_ty_params(types, signature)[index].ty;
+    for (size_t at = 0; ty == MS_TY_NONE && param->ty != NULL && at < b->program->type_refs.len; at++) {
+      const MsTypeRefRecord *written = &b->program->type_refs.ptr[at];
+      if (written->module == module && written->node == param->ty->id) ty = written->ty; /* an operation of an interface */
+    }
+    ms_occ_add(b, binding_key(b, &ref), ms_occ_name_text(b, param->name), module, param->pos.offset, true, false, ty, 0, false);
   }
 }
 
@@ -420,12 +428,13 @@ static void declare_bindings(Builder *b, uint32_t module) {
   for (uint32_t at = 0; at < tree->ndecls; at++) {
     const MsDecl *decl = tree->decls[at];
     if (decl->kind == MS_D_FN) {
-      declare_parameters(b, module, decl->u.fn.params, 0);
+      const MsSymbolId *symbol = ms_scope_get(&b->program->modules.ptr[module].scope, decl->u.fn.name);
+      declare_parameters(b, module, decl->u.fn.params, symbol != NULL ? b->program->symbols.ptr[*symbol].ty : MS_TY_NONE);
     } else if (decl->kind == MS_D_INTERFACE || decl->kind == MS_D_IMPL) {
       const bool iface = decl->kind == MS_D_INTERFACE;
       const uint32_t count = iface ? decl->u.iface.methods.len : decl->u.impl.methods.len;
       for (uint32_t method = 0; method < count; method++) {
-        declare_parameters(b, module, (iface ? decl->u.iface.methods.ptr[method] : decl->u.impl.methods.ptr[method])->func.params, 0);
+        declare_parameters(b, module, (iface ? decl->u.iface.methods.ptr[method] : decl->u.impl.methods.ptr[method])->func.params, MS_TY_NONE);
       }
     }
     ms_walk_decl(&visitor, decl);

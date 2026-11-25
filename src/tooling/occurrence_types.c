@@ -154,6 +154,11 @@ void ms_occ_declare_types(Builder *b, uint32_t module) {
     case MS_D_IMPL:
       /* Each `fn Type.method` writes its own receiver, so each is a site of its own. */
       type_site(b, decl->u.impl.receiver);
+      for (uint32_t index = 0; index < decl->u.impl.bounds.len; index++) {
+        for (uint32_t bound = 0; bound < decl->u.impl.bounds.ptr[index]->bounds.len; bound++) {
+          type_site(b, decl->u.impl.bounds.ptr[index]->bounds.ptr[bound]);
+        }
+      }
       for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
         func_sites(b, &decl->u.impl.methods.ptr[index]->func);
       }

@@ -1,0 +1,34 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "type Pt {\n\tx, y Int\n\tname String\n}\n\ninterface Shape {\n\tfn area(scale Int) Int\n}\n\nenum Kind {\n\tBig\n\tSmall\n}\n\nextern fn nat(left, right Float) Float\n\nfn dist(a, b Int, scale Int = 1) Int {\n\treturn (a + b) * scale\n}\n\nfn Pt.sum(first, second Int) Int {\n\treturn self.x + first + second\n}\n\nfn Pt.twice(one Int) Int {\n\treturn self.sum(one, one)\n}\n\ntype Box[T] {\n\titem T\n}\n\nfn Box[T Clonable].keep() T {\n\treturn self.item.clone()\n}\n\nfn name(k Kind) String {\n\tmatch k {\n\t\tBig => return \"b\"\n\t\tSmall => return \"s\"\n\t}\n}\n\nfn main() Void {\n\tp := Pt(x: 1, y: 2, name: \"p\")\n\tprint(dist(1, 2))\n\tprint(p.twice(1))\n\tprint(name(Kind.Big))\n}\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 1, "character": 1}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 1, "character": 1}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 1, "character": 4}}}
+{"jsonrpc": "2.0", "id": 5, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 1, "character": 4}}}
+{"jsonrpc": "2.0", "id": 8, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 6, "character": 9}}}
+{"jsonrpc": "2.0", "id": 9, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 6, "character": 9}}}
+{"jsonrpc": "2.0", "id": 10, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 14, "character": 14}}}
+{"jsonrpc": "2.0", "id": 11, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 14, "character": 14}}}
+{"jsonrpc": "2.0", "id": 12, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 14, "character": 20}}}
+{"jsonrpc": "2.0", "id": 13, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 14, "character": 20}}}
+{"jsonrpc": "2.0", "id": 14, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 16, "character": 8}}}
+{"jsonrpc": "2.0", "id": 15, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 16, "character": 8}}}
+{"jsonrpc": "2.0", "id": 16, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 16, "character": 11}}}
+{"jsonrpc": "2.0", "id": 17, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 16, "character": 11}}}
+{"jsonrpc": "2.0", "id": 18, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 20, "character": 10}}}
+{"jsonrpc": "2.0", "id": 19, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 20, "character": 10}}}
+{"jsonrpc": "2.0", "id": 20, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 24, "character": 3}}}
+{"jsonrpc": "2.0", "id": 21, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 24, "character": 3}}}
+{"jsonrpc": "2.0", "id": 22, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 20, "character": 3}}}
+{"jsonrpc": "2.0", "id": 23, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 20, "character": 3}}}
+{"jsonrpc": "2.0", "id": 24, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 32, "character": 9}}}
+{"jsonrpc": "2.0", "id": 25, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 32, "character": 9}}}
+{"jsonrpc": "2.0", "id": 26, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 32, "character": 7}}}
+{"jsonrpc": "2.0", "id": 27, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 32, "character": 7}}}
+{"jsonrpc": "2.0", "id": 28, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 9, "character": 5}}}
+{"jsonrpc": "2.0", "id": 29, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 9, "character": 5}}}
+{"jsonrpc": "2.0", "id": 30, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 32, "character": 10}}}
+{"jsonrpc": "2.0", "id": 31, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 32, "character": 10}}}
+{"jsonrpc": "2.0", "id": 32, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 40, "character": 6}}}
+{"jsonrpc": "2.0", "id": 33, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 40, "character": 6}}}
+{"jsonrpc": "2.0", "id": 34, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 5, "character": 10}}}
+{"jsonrpc": "2.0", "id": 35, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 5, "character": 10}}}
