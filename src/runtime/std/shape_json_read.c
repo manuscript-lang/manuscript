@@ -117,8 +117,14 @@ static const MsTypeDesc *desc_of(const Decode *state, uint32_t shape_index) {
   }
 }
 
+/* Drops the value built at `slot`. A descriptor reads its own layout, so an embedded value is gathered into it first;
+ * its owned handles are the same bytes, so dropping the copy drops the value. */
 static void drop_slot(const Decode *state, uint32_t shape_index, uint8_t *slot) {
-  ms_slot_drop(desc_of(state, shape_index), slot);
+  const MsShape *shape = ms_shape_at(state->table, shape_index);
+  MsOwnSlot own;
+  const uint8_t *value = ms_own_gather(&own, state->table, shape, slot);
+  ms_slot_drop(desc_of(state, shape_index), (uint8_t *)(uintptr_t)value);
+  ms_own_done(&own);
 }
 
 /* ---- scalars ---- */
