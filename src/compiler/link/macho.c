@@ -116,7 +116,7 @@ void macho_collect(MsSpan data, MachoSymbols *out) {
       return;
     }
     /* BSD archives put a long member name at the start of its data: `#1/N`. */
-    size_t skip = ms_span_starts_with(header, ms_span_of_text("#1/")) ? decimal(ms_span_of(header.ptr + 3, 13)) : 0;
+    size_t skip = ms_span_starts_with_text(header, "#1/") ? decimal(ms_span_of(header.ptr + 3, 13)) : 0;
     if (skip <= size) {
       read_object(ms_span_of(data.ptr + body + skip, size - skip), out);
     }

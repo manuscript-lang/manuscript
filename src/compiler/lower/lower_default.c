@@ -164,10 +164,10 @@ static CallerDefault caller_default(const LowerFn *fn, uint32_t module, const Ms
   const MsSymbol *symbol = &cx->program->symbols.ptr[fn_symbol_at(cx, call->callee.decl)];
   const MsSpan file = ms_names_span(cx->program->names, cx->program->modules.ptr[symbol->module].file);
   const MsSpan name = ms_names_span(cx->program->names, symbol->name);
-  if (ms_span_is_text(name, "caller_site") && ms_span_ends_with(file, ms_span_of_text("test/test.ms"))) {
+  if (ms_span_is_text(name, "caller_site") && ms_span_ends_with_text(file, "test/test.ms")) {
     return CALLER_SITE;
   }
-  if (ms_span_is_text(name, "caller_frame") && ms_span_ends_with(file, ms_span_of_text("concurrency/promise.ms"))) {
+  if (ms_span_is_text(name, "caller_frame") && ms_span_ends_with_text(file, "concurrency/promise.ms")) {
     return CALLER_FRAME;
   }
   return CALLER_NONE;

@@ -15,3 +15,5 @@ The in-place build (`emit_wide_alias`) builds a wrapped payload at its place in 
 Apply when: a change adds a block copy to emitted code, or `make memcpy-check` fails.
 Evidence: [opt_fieldload.c](../../../src/compiler/opt/opt_fieldload.c), [memcpy-check.ms](../../../tools/memcpy-check.ms), [a new owner takes a move or a written clone](a-new-owner-takes-a-move-or-a-written-clone-never-a-hidden-copy.md) for the language-level copy probe.
 Verify: `make memcpy-check`; `ms emit bench/perf/programs/ms/ms.toml --opt --ir | grep -c llvm.memcpy`.
+
+Round 3 review (csv, callgrind): libc `memcpy` is 5.7% of instructions and every caller is a data copy: list growth (`realloc`), owned strings from spans (`from_span`, `split` pieces, `append`). No generated-code copy is on a hot path. What remains in the optimised IR is the unwind path, which moves the state cell into a scratch cell and then drops that (`memcpy` then `drop`); dropping in place would save the copy but only code size. `make copy-check` reports the same 21 front-end copies as before this audit.

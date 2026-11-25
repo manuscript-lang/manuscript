@@ -34,7 +34,7 @@ static void walk(MsArena *arena, MsSpan dir, MsSpanList *out) {
     const MsSpan path = ms_message_format(arena, "%S/%S", dir, name);
     if (entries.ptr[i].kind == MS_PATH_DIRECTORY) {
       walk(arena, path, out);
-    } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms"))) {
+    } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with_text(name, ".ms")) {
       ms_span_list_push(out, path);
     }
   }
@@ -59,7 +59,7 @@ MsSpan lsp_project_root(MsArena *arena, MsSpan dir) {
 
 void lsp_workspace_files(MsArena *arena, MsSpan file, MsSpanList *out) {
   /* A bundled module's stand-in file sits in the temporary directory, which is no project. */
-  if (ms_span_starts_with(ms_path_base(file), ms_span_of_text(LSP_BUNDLED_PREFIX))) return;
+  if (ms_span_starts_with_text(ms_path_base(file), LSP_BUNDLED_PREFIX)) return;
   MsStrBuild dir = ms_strbuild_new();
   ms_path_dir(file, &dir);
   const MsSpan start = ms_message_take_builder(arena, &dir);

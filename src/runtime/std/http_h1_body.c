@@ -1,6 +1,7 @@
 /* runtime/std/http_h1_body.c: the incremental decoder of request bodies: fixed length, chunked coding with
  * trailers, or until close. Strict about line ends: every CR and LF of the chunk framing is part of a CRLF.
  */
+#include "base/chars.h"
 #include "runtime/std/http_h1.h"
 
 enum { SIZE_LINE_LIMIT = 4096, TRAILER_LINE_LIMIT = 8192, MAX_HEX_DIGITS = 16 };
@@ -48,19 +49,6 @@ static size_t take_data(MsH1Body *body, MsSpan input, size_t at, MsBytes *out) {
   return n;
 }
 
-static bool hex_digit(uint8_t c, unsigned *value) {
-  if (c >= '0' && c <= '9') {
-    *value = (unsigned)(c - '0');
-  } else if (c >= 'a' && c <= 'f') {
-    *value = (unsigned)(c - 'a' + 10);
-  } else if (c >= 'A' && c <= 'F') {
-    *value = (unsigned)(c - 'A' + 10);
-  } else {
-    return false;
-  }
-  return true;
-}
-
 /* A collected size line (without its LF): `hex[;extension]` ending in CR. */
 static const char *parse_size_line(MsH1Body *body) {
   MsSpan line = ms_bytes_span(&body->size_line);
@@ -84,8 +72,8 @@ static const char *parse_size_line(MsH1Body *body) {
     return "invalid chunk size";
   }
   for (size_t i = start; i < end; i++) {
-    unsigned digit = 0;
-    if (!hex_digit(line.ptr[i], &digit)) {
+    uint32_t digit = 0;
+    if (!ms_hex_digit_value(line.ptr[i], &digit)) {
       return "invalid chunk size";
     }
     n = n << 4 | digit;

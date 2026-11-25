@@ -76,7 +76,7 @@ bool ms_path_escapes(MsSpan relative) {
   if (ms_span_is_text(relative, "..")) {
     return true;
   }
-  return ms_span_starts_with(relative, ms_span_of_text("../"));
+  return ms_span_starts_with_text(relative, "../");
 }
 
 bool ms_path_relative(MsStrBuild *out, MsSpan base, MsSpan target) {

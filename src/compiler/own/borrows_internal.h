@@ -14,8 +14,9 @@ typedef struct Borrow {
   MsPos at; /* where it is bound */
   uint32_t after; /* the offset its initializer ends at */
   bool mutable_;
-  bool alias; /* bound from a bare name (`b := s`): a view that only a move of the source ends */
+  bool alias; /* bound from a bare name the binding takes (`b := s`, `s` not read again): the source only gives way to a move */
   bool loop; /* the variable of a `for`: the loop keeps the source frozen for its whole body */
+  bool captured;     /* a closure or promise reads it through a capture */
   bool method_value; /* a method read as a value (`f := xs.any`): it keeps its receiver until it is last called */
   uint32_t root; /* the binding it borrows from */
   const MsExpr *place; /* the part of it that is borrowed */

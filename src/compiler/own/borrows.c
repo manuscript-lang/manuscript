@@ -212,6 +212,7 @@ typedef struct Captured {
   uint32_t binding;
   MsPos at;
   uint32_t after;
+  bool local; /* a closure that stays in the function borrows every capture; a kept one only what owns memory */
   MsBindingList done;
 } Captured;
 
@@ -222,16 +223,17 @@ static void tie_capture(void *ctx, const MsExpr *expr) {
   if (expr->kind != MS_E_NAME || !ms_bind_of(scan->pass->facts, expr->id, &decl) ||
       !ms_binding_list_contains(&scan->captures, decl) || ms_binding_list_contains(&scan->done, decl) ||
       !local_of(scan->pass->facts, expr->id, &root) ||
-      !ms_class_owns_memory(scan->pass->facts, scan->pass->classes, expr) ||
-      ms_check_holds_resource(scan->pass->program, ms_facts_type(scan->pass->facts, expr->id))) {
+      (!scan->local && (!ms_class_owns_memory(scan->pass->facts, scan->pass->classes, expr) ||
+                        ms_check_holds_resource(scan->pass->program, ms_facts_type(scan->pass->facts, expr->id))))) {
     return; /* a resource the promise takes at its last use is its own: only a plain value stays borrowed */
   }
   ms_binding_list_push(&scan->done, decl);
   push_borrow(scan->pass, (Borrow){.binding = scan->binding, .name = scan->stmt->u.bind.pattern->u.name, .at = scan->at,
-                                   .after = scan->after, .root = root, .place = expr}, false);
+                                   .after = scan->after, .root = root, .place = expr, .captured = true}, false);
 }
 
-/* `p := promise(() => ...)`: the promise reads what its closure captures until it is last used. */
+/* `p := promise(() => ...)`: the promise reads what its closure captures until it is last used. `f := fn() ...`: a
+ * closure that stays in the function borrows what it captures until `f` is last used. */
 static void note_kept_captures(Borrows *pass, const MsStmt *stmt) {
   const MsExpr *value = stmt->u.bind.value;
   const MsPattern *pattern = stmt->u.bind.pattern;
@@ -239,15 +241,20 @@ static void note_kept_captures(Borrows *pass, const MsStmt *stmt) {
   while (value != NULL && value->kind == MS_E_UNARY && value->op == MS_U_TRY) {
     value = value->u.bin.left;
   }
-  if (value == NULL || value->kind != MS_E_CALL || pattern == NULL || pattern->kind != MS_P_NAME ||
+  if (value == NULL || (value->kind != MS_E_CALL && value->kind != MS_E_LAMBDA) || pattern == NULL || pattern->kind != MS_P_NAME ||
       !local_of(pass->facts, pattern->id, &binding)) {
     return;
   }
   LambdaList closures = {0};
-  kept_closures(pass, value, &closures);
+  const bool local = value->kind == MS_E_LAMBDA && ms_facts_use(pass->facts, value->id) == MS_USE_BORROW;
+  if (local) {
+    lambda_list_push(&closures, value);
+  } else {
+    kept_closures(pass, value, &closures);
+  }
   for (size_t index = 0; index < closures.len; index++) {
     Captured scan = {.pass = pass, .captures = ms_bind_captures(pass->facts, closures.ptr[index]), .stmt = stmt,
-                     .binding = binding, .at = pattern->pos, .after = stmt->u.bind.value->end.offset};
+                     .binding = binding, .at = pattern->pos, .after = stmt->u.bind.value->end.offset, .local = local};
     ms_walk_expr(&(MsVisitor){.ctx = &scan, .expr = tie_capture}, closures.ptr[index]);
     ms_binding_list_free(&scan.captures);
     ms_binding_list_free(&scan.done);
@@ -304,7 +311,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   Borrow borrow = {.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
-                   .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
+                   .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME && ms_facts_use(pass->facts, value->id) == MS_USE_MOVE,
                    .root = source.root, .place = source.place, .parts = source.parts};
   push_borrow(pass, borrow, answers_look_part(pass, source.call));
   /* a result that borrows from several arguments keeps every one of them frozen */

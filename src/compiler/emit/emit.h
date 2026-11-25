@@ -33,6 +33,8 @@ void emit_name_symbols(MirModule *module);
 /* The LLVM target triple of the machine the emitter runs on (the one the program is built for); empty when this
  * host is not supported. */
 MsSpan emit_host_triple(void);
+/* Whether the program is built for Windows, whose stack walk needs unwind data for every function. */
+bool emit_host_windows(void);
 
 /* Writes the module's functions, its static data (`data`, NULL for none), its declarations and its debug metadata
  * into `out[0]` (a new builder). With `options->units` above 1 and enough function text, the functions are cut into

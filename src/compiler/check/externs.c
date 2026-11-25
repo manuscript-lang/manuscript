@@ -124,7 +124,7 @@ void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty) {
     return;
   }
   const MsSpan name = ms_names_span(body->program->names, func->name);
-  if (ms_span_starts_with(name, ms_span_of_text("msrt_")) || ms_span_starts_with(name, ms_span_of_text("msstd_"))) {
+  if (ms_span_starts_with_text(name, "msrt_") || ms_span_starts_with_text(name, "msstd_")) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "extern fn ");
     ms_strbuild_append(&text, name);

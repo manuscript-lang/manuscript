@@ -8,7 +8,7 @@
  *
  * Generated code keeps a frame pointer, so the walk follows the chain of saved frame pointers, bounded by the
  * stack segment the task runs on (segments chain to the one below). Windows cannot follow the register: its
- * walk starts from native unwind data and then finds each frame's record by scanning (ms_frames_scan_record).
+ * walk uses the system's unwind data, which generated code carries (ms_sys_unwind).
  */
 #ifndef MS_RUNTIME_CORE_FRAMES_H
 #define MS_RUNTIME_CORE_FRAMES_H
@@ -121,15 +121,6 @@ const MsTables *ms_frames_tables(void);
 /* Visits the return addresses up the frame-pointer chain starting at `fp`, within `window`. */
 void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit, void *context);
 
-/* Finds the frame record `[saved frame pointer, return address]` at or above `fp` (or `sp` when `fp` is not inside
- * the stack above it) whose return address `is_source` accepts, scanning at most 4 KiB up to `high`. A record
- * returning into native code (`is_native`) at `fp` itself ends the walk. Returns its address, or 0. For
- * Windows, where generated code does not keep its frame register at its own frame record; kept portable so
- * Linux tests cover it. */
-uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintptr_t high,
-                bool (*is_source)(uintptr_t, const void *), bool (*is_native)(uintptr_t, const void *),
-                const void *context);
-
 /* ---- reports ---- */
 
 /* Collects source frames from a feed of return addresses: `ms_frames_collector_add` is the MsFrameVisit. */
@@ -142,7 +133,7 @@ typedef struct MsFrameCollector {
 } MsFrameCollector;
 
 /* Walks from `fp` and collects the source frames into `list`, which must be zeroed. */
-void ms_frames_collect(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameList *list) MS_NONNULL;
+void ms_frames_collect(uintptr_t fp, MsStackWindow window, MsFrameList *list) MS_NONNULL;
 /* Collects the source frames of the return addresses `addresses` into `list`, which must be zeroed. */
 void ms_frames_describe(const uintptr_t *addresses, size_t count, MsFrameList *list) MS_NONNULL;
 

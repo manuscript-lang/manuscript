@@ -188,7 +188,7 @@ MsName ms_check_unique_id(MsCheckProgram *program, const char *prefix) {
 /* The built-in a standard module's type is: a prelude type by name, or a native-layout source type. */
 static MsBuiltin builtin_of(const MsCheckProgram *program, const MsSymbol *symbol) {
   const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].id);
-  if (!ms_span_starts_with(file, ms_span_of_text("@std/"))) {
+  if (!ms_span_starts_with_text(file, "@std/")) {
     return MS_BUILTIN_NONE;
   }
   const MsBuiltin source = ms_builtin_source(file, ms_names_span(program->names, symbol->name));

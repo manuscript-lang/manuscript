@@ -152,7 +152,7 @@ static void list_tree(MsArena *arena, MsSpan dir, Scan *scan) {
       if (!ms_span_is_text(name, "node_modules") && !ms_span_is_text(name, "vendor")) {
         list_tree(arena, path, scan);
       }
-    } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms")) &&
+    } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with_text(name, ".ms") &&
                !path_set_contains(&scan->covered, path)) {
       ms_span_list_push(&scan->pending, path);
     }

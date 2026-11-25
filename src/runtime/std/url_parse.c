@@ -41,10 +41,6 @@ static MsSpan tail(MsSpan text, size_t from) {
   return ms_span_of(text.ptr + from, text.len - from);
 }
 
-static bool starts_with(MsSpan text, const char *prefix) {
-  return ms_span_starts_with(text, ms_span_of_text(prefix));
-}
-
 /* Go's getScheme: the scheme (empty for none) and the rest; false for an empty scheme before `:`. */
 static bool get_scheme(MsSpan raw, MsSpan *scheme, MsSpan *rest) {
   *scheme = ms_span_of(NULL, 0);
@@ -111,7 +107,7 @@ static bool parse_bracketed_host(MsSpan host, size_t close, MsStrBuild *out) {
 
 static bool parse_host(MsSpan host, MsStrBuild *out) {
   size_t at = 0;
-  if (starts_with(host, "[")) {
+  if (ms_span_starts_with_text(host, "[")) {
     if (!url_find_last(host, ']', &at) || !url_valid_optional_port(tail(host, at + 1))) {
       return false;
     }
@@ -195,7 +191,7 @@ static size_t count_byte(MsSpan text, uint8_t byte) {
 
 /* The part after the scheme: query first, then the authority and path. `rest` starts after the scheme. */
 static bool parse_hierarchy(MsSpan rest, UrlParts *url) {
-  if (starts_with(rest, "//") && !(starts_with(rest, "///") && url->scheme.bytes.len == 0)) {
+  if (ms_span_starts_with_text(rest, "//") && !(ms_span_starts_with_text(rest, "///") && url->scheme.bytes.len == 0)) {
     MsSpan authority = tail(rest, 2);
     rest = ms_span_of(NULL, 0);
     size_t slash = 0;
@@ -206,7 +202,7 @@ static bool parse_hierarchy(MsSpan rest, UrlParts *url) {
     if (!parse_authority(authority, url)) {
       return false;
     }
-  } else if (url->scheme.bytes.len != 0 && starts_with(rest, "/")) {
+  } else if (url->scheme.bytes.len != 0 && ms_span_starts_with_text(rest, "/")) {
     url->omit_host = true;
   }
   return url_set_path(url, rest);
@@ -238,7 +234,7 @@ static bool parse_inner(MsSpan raw, UrlParts *url) {
     rest = before;
     url_append(&url->raw_query, query);
   }
-  if (!starts_with(rest, "/")) {
+  if (!ms_span_starts_with_text(rest, "/")) {
     if (url->scheme.bytes.len != 0) {
       url_append(&url->opaque, rest);
       url->omit_host = true; /* no `//` was written: `mailto:?subject=hi` */

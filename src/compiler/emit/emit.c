@@ -60,6 +60,14 @@ static MsSpan source_name(const MirModule *module) {
   return ms_span_of_text("ms");
 }
 
+bool emit_host_windows(void) {
+#ifdef _WIN32
+  return true;
+#else
+  return false;
+#endif
+}
+
 MsSpan emit_host_triple(void) {
 #ifdef EMIT_TRIPLE
   return ms_span_of_text(EMIT_TRIPLE);

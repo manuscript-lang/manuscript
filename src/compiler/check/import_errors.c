@@ -17,7 +17,7 @@ static void std_module_names(MsSpanList *out) {
   size_t count = 0;
   const MsStdSource *sources = ms_std_sources(&count);
   for (size_t index = 0; index < count; index++) {
-    if (!ms_span_starts_with(sources[index].name, ms_span_of_text("internal/"))) {
+    if (!ms_span_starts_with_text(sources[index].name, "internal/")) {
       ms_span_list_push(out, sources[index].name);
     }
   }
@@ -44,7 +44,7 @@ static MsSpan module_stem(MsSpan name) {
     return after_last_slash(path);
   }
   for (size_t index = 0; index < MS_COUNT_OF(PACKAGES); index++) {
-    if (ms_span_starts_with(path, ms_span_of_text(PACKAGES[index]))) {
+    if (ms_span_starts_with_text(path, PACKAGES[index])) {
       const size_t skip = ms_span_of_text(PACKAGES[index]).len;
       return ms_span_of(path.ptr + skip, path.len - skip);
     }
@@ -156,7 +156,7 @@ static bool suggest_module(const ImportView *view, const MsSpanList *modules, Ms
 static bool std_has_module_with_extension(const MsSpanList *modules, MsSpan path) {
   for (size_t index = 0; index < modules->len; index++) {
     const MsSpan name = modules->ptr[index];
-    if (name.len == path.len + 3 && ms_span_starts_with(name, path) && ms_span_ends_with(name, ms_span_of_text(".ms"))) {
+    if (name.len == path.len + 3 && ms_span_starts_with(name, path) && ms_span_ends_with_text(name, ".ms")) {
       return true;
     }
   }

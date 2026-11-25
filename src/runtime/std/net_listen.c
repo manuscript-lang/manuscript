@@ -205,7 +205,7 @@ uint8_t ms_net_bind_datagram(MsSpan address, MsObj **out, MsString *err) { retur
 
 uint8_t ms_net_listen_unix(MsSpan path, MsObj **out, MsString *err) {
   *err = ms_string_empty();
-  if (path.len == 0 || memchr(path.ptr, 0, path.len) != NULL) {
+  if (path.len == 0 || ms_span_has_byte(path, 0)) {
     return MS_STATUS_INVALID_INPUT;
   }
   ListenOp *listen = ms_net_op_new(sizeof *listen, listen_start, NULL, listen_release);

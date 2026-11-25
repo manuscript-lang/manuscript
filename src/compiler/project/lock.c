@@ -29,7 +29,7 @@ MsSpan ms_lock_repo_key(MsArena *arena, MsSpan url) {
   while (rest.len > 0 && rest.ptr[rest.len - 1] == '/') {
     rest.len--;
   }
-  if (ms_span_ends_with(rest, ms_span_of_text(".git"))) {
+  if (ms_span_ends_with_text(rest, ".git")) {
     rest.len -= 4;
   }
   if (local) {
@@ -157,7 +157,7 @@ static bool split_line(MsSpan line, LockLine *out) {
 static bool parse_line(MsArena *arena, size_t number, MsSpan raw, MsLockEntry *out, MsSpan *error) {
   LockLine line = {0};
   MsSpan hash = {0};
-  if (!split_line(raw, &line) || !ms_span_starts_with(line.hash, ms_span_of_text("sha256:"))) {
+  if (!split_line(raw, &line) || !ms_span_starts_with_text(line.hash, "sha256:")) {
     *error = ms_message_format(arena,
                                "ms.lock line %z is not `\"@name\" = \"url#tag revision sha256:hash\"`; delete "
                                "ms.lock and run ms install to pin again",

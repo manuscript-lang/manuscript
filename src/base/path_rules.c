@@ -47,15 +47,11 @@ static size_t element_end(MsSpan path, size_t at, bool verbatim) {
   return at;
 }
 
-static bool has_prefix_bytes(MsSpan path, const char *text) {
-  return ms_span_starts_with(path, ms_span_of_text(text));
-}
-
 /* \\?\UNC\server\share, \\?\C:, \\?\name, \\.\name and \\server\share, with the number of bytes they take. */
 static void parse_windows_prefix(MsSpan path, Parsed *parsed) {
   const bool two_seps = path.len >= 2 && (path.ptr[0] == '/' || path.ptr[0] == '\\') &&
                         (path.ptr[1] == '/' || path.ptr[1] == '\\');
-  if (two_seps && has_prefix_bytes(path, "\\\\?\\")) {
+  if (two_seps && ms_span_starts_with_text(path, "\\\\?\\")) {
     parsed->verbatim = true;
     parsed->prefix_kind = PREFIX_OTHER;
     size_t at = 4;

@@ -122,6 +122,7 @@ typedef struct MsSysSample {
   uintptr_t pc;
   uintptr_t sp;
   uintptr_t fp;
+  const void *registers; /* Windows: the thread's CONTEXT, for ms_sys_unwind; NULL elsewhere */
 } MsSysSample;
 /* Called about `hz` times a second of the process's CPU time with the sampled thread's registers. Linux and macOS: in a
  * signal handler on that thread, so it may only use async-signal-safe calls. Windows: on a sampler thread while the
@@ -161,21 +162,15 @@ void ms_sys_fault_record_write(MsSpan bytes);
 /* sys/{posix,windows}/frames.c: what a stack walk needs from the system. */
 
 /* Whether a walk follows the saved frame pointers (Linux, macOS). Windows generated code does not keep its frame
- * register at the frame record, so the walk starts from native unwind data instead. */
+ * register at the frame record, so the walk uses the system's unwind data (ms_sys_unwind) instead. */
 bool ms_sys_frame_pointer_chain(void);
-/* Where the walk of generated code begins once the runtime's own frames are passed. */
-typedef struct MsSysNativeStart {
-  uintptr_t pc;
-  uintptr_t sp;
-  uintptr_t fp;
-  size_t budget; /* logical frames left */
-} MsSysNativeStart;
-/* Windows only (the others report false and zero). Whether the system has unwind data for `pc`. */
-bool ms_sys_has_unwind_data(uintptr_t pc);
+/* Windows only (the others do nothing). Unwinds with the system's unwind data, which generated code carries too, and
+ * calls `visit` with the return address of each caller up the stack, innermost first, until it returns false, the stack
+ * leaves `low` to `high` (a task's segment ends the walk) or `max_frames` are visited. `registers` is the CONTEXT of a
+ * suspended thread, or NULL to start from the caller. */
+void ms_sys_unwind(const void *registers, uintptr_t low, uintptr_t high, bool (*visit)(uintptr_t, void *), void *context,
+                   size_t max_frames);
 /* The calling thread's stack bounds. */
 void ms_sys_stack_bounds(uintptr_t *low, uintptr_t *high);
-/* Unwinds from here to the first frame `is_source` accepts, charging frames from `anchor_pc`'s function on. */
-MS_NODISCARD bool ms_sys_native_start(uintptr_t anchor_pc, bool (*is_source)(uintptr_t, const void *), const void *context,
-                                      size_t budget, MsSysNativeStart *start);
 
 #endif

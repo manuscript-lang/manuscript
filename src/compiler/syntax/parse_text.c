@@ -210,7 +210,7 @@ static TextParts one_literal(Parser *p, MsSpan s) {
  * interpolates; braces are plain in the other forms. */
 MS_NODISCARD bool parse_text_parts_of(Parser *p, MsToken token, TextParts *out) {
   MsSpan full = parse_text(p, token);
-  if (ms_span_starts_with(full, ms_span_of_text("r\"\"\""))) {
+  if (ms_span_starts_with_text(full, "r\"\"\"")) {
     MsSpan body = {full.ptr + 4, full.len - 4 - 3};
     MsSpan content;
     size_t indent, f;
@@ -218,19 +218,19 @@ MS_NODISCARD bool parse_text_parts_of(Parser *p, MsToken token, TextParts *out) 
     *out = one_literal(p, parse_dedent(p, content, indent));
     return true;
   }
-  if (ms_span_starts_with(full, ms_span_of_text("f\"\"\""))) {
+  if (ms_span_starts_with_text(full, "f\"\"\"")) {
     MsSpan body = {full.ptr + 4, full.len - 4 - 3};
     return text_parts(p, token, body, 4, true, out);
   }
-  if (ms_span_starts_with(full, ms_span_of_text("\"\"\""))) {
+  if (ms_span_starts_with_text(full, "\"\"\"")) {
     MsSpan body = {full.ptr + 3, full.len - 6};
     return text_parts(p, token, body, 3, false, out);
   }
-  if (ms_span_starts_with(full, ms_span_of_text("r\""))) {
+  if (ms_span_starts_with_text(full, "r\"")) {
     *out = one_literal(p, (MsSpan){full.ptr + 2, full.len - 3});
     return true;
   }
-  if (ms_span_starts_with(full, ms_span_of_text("f\""))) {
+  if (ms_span_starts_with_text(full, "f\"")) {
     MsSpan body = {full.ptr + 2, full.len - 3};
     return text_parts(p, token, body, 2, true, out);
   }

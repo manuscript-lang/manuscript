@@ -182,7 +182,7 @@ void ms_fault_fatal(MsFaultKind kind, MsSpan message) {
 
 /* Whether a frame belongs to the standard library, whose files are shown as `@std/...`. */
 static bool is_library_frame(const MsFrame *frame) {
-  return ms_span_starts_with(ms_span_of_text(frame->file), ms_span_of_text("@std/"));
+  return ms_span_starts_with_text(ms_span_of_text(frame->file), "@std/");
 }
 
 /* The frames below the program's last one are the library code that ran it (a test runner waiting on the promise
@@ -217,8 +217,7 @@ MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message
   flight.detail->message_length = message.len;
   ms_strbuild_append(&flight.text, message);
   ms_free(owned); /* the message is copied: a fault never returns, so its builder is released here */
-  ms_frames_collect((uintptr_t)__builtin_frame_address(0), (uintptr_t)raise_fault, window_of(unwind),
-                    &flight.detail->frames);
+  ms_frames_collect((uintptr_t)__builtin_frame_address(0), window_of(unwind), &flight.detail->frames);
   drop_trailing_library_frames(&flight.detail->frames);
   render_frames(&flight.text, &flight.detail->frames);
   MsFaultText text = seal(&flight);
@@ -241,8 +240,7 @@ MS_NOINLINE static void post_fault(MsFaultKind kind, MsSpan message, void *owned
   flight.detail->message_length = message.len;
   ms_strbuild_append(&flight.text, message);
   ms_free(owned);
-  ms_frames_collect((uintptr_t)__builtin_frame_address(0), (uintptr_t)post_fault, window_of(unwind),
-                    &flight.detail->frames);
+  ms_frames_collect((uintptr_t)__builtin_frame_address(0), window_of(unwind), &flight.detail->frames);
   drop_trailing_library_frames(&flight.detail->frames);
   render_frames(&flight.text, &flight.detail->frames);
   unwind->pending = seal(&flight);
@@ -305,7 +303,7 @@ void ms_fault_text_add_started(MsFaultText *text, MsSpan site) {
   MsSpan function;
   uint32_t line = 0;
   /* The report names a line of the program: one of the standard library's own starts is left out. */
-  if (!site_parts(site, &file, &line, &function) || ms_span_starts_with(file, ms_span_of_text("@std/"))) {
+  if (!site_parts(site, &file, &line, &function) || ms_span_starts_with_text(file, "@std/")) {
     return;
   }
   if (text->detail == NULL) {

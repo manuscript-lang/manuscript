@@ -422,8 +422,8 @@ void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const c
  * a double. */
 bool emit_extern_is_c(const EmitCx *cx, const MirExtern *def) {
   MsSpan name = ms_names_span(&cx->module->names, def->name);
-  return !ms_span_starts_with(name, ms_span_of_text("msrt_")) &&
-         !ms_span_starts_with(name, ms_span_of_text("msstd_"));
+  return !ms_span_starts_with_text(name, "msrt_") &&
+         !ms_span_starts_with_text(name, "msstd_");
 }
 
 /* Appends one argument of a runtime call to `args`: the leaves of `value` when `type` passes directly, else

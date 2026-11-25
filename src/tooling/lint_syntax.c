@@ -53,7 +53,7 @@ static bool allowed(MsSpan code, size_t line) {
   }
   const MsSpan before = trimmed(line_of(code, line - 1));
   const MsSpan prefix = ms_span_of_text(ALLOWANCE);
-  return ms_span_starts_with(before, ms_span_of_text("// manuscript:allow-nested-match")) && before.len > prefix.len &&
+  return ms_span_starts_with_text(before, "// manuscript:allow-nested-match") && before.len > prefix.len &&
          trimmed((MsSpan){.ptr = before.ptr + prefix.len, .len = before.len - prefix.len}).len > 0;
 }
 
@@ -159,7 +159,7 @@ static void lint_fences(MsArena *arena, MsSpan file, MsSpan source, MsLintFindin
 }
 
 void ms_lint_syntax(MsArena *arena, MsSpan file, MsSpan source, MsLintFindingList *findings) {
-  if (ms_span_ends_with(file, ms_span_of_text(".md"))) {
+  if (ms_span_ends_with_text(file, ".md")) {
     lint_fences(arena, file, source, findings);
   } else {
     lint_unit(arena, file, source, 1, findings);

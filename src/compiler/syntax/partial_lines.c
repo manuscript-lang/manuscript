@@ -39,7 +39,7 @@ bool partial_is_candidate_line(MsSpan line) {
     return false;
   }
   MsSpan trimmed = partial_trim(line);
-  return trimmed.len != 0 && !ms_span_starts_with(trimmed, ms_span_of_text("//"));
+  return trimmed.len != 0 && !ms_span_starts_with_text(trimmed, "//");
 }
 
 /* The text after `keyword` when it ends at a word boundary. */
@@ -71,7 +71,7 @@ static bool constant_start(MsSpan source) {
     return false;
   }
   MsSpan rest = partial_trim_start(ms_span_of(source.ptr + name, source.len - name));
-  return ms_span_starts_with(rest, ms_span_of_text(":="));
+  return ms_span_starts_with_text(rest, ":=");
 }
 
 /* A named function needs a parameter or type-parameter list after its name. Inferred callbacks can continue
@@ -186,14 +186,14 @@ bool partial_declared_name(MsSpan chunk, MsSpan *name) {
     }
     MsSpan line = partial_trim(ms_span_of(chunk.ptr + at, end - at));
     at = end + 1;
-    if (line.len == 0 || ms_span_starts_with(line, ms_span_of_text("//"))) {
+    if (line.len == 0 || ms_span_starts_with_text(line, "//")) {
       continue;
     }
     MsSpan rest = line;
-    if (ms_span_starts_with(rest, ms_span_of_text("export "))) {
+    if (ms_span_starts_with_text(rest, "export ")) {
       rest = ms_span_of(rest.ptr + 7, rest.len - 7);
     }
-    if (ms_span_starts_with(rest, ms_span_of_text("opaque "))) {
+    if (ms_span_starts_with_text(rest, "opaque ")) {
       rest = ms_span_of(rest.ptr + 7, rest.len - 7);
     }
     return split_name(rest, name);

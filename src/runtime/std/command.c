@@ -19,33 +19,27 @@ static char *copy_text(MsSpan text) {
   return copy;
 }
 
-static bool has_nul(const MsString *text) {
-  const MsSpan span = ms_string_span(text);
-  return span.len > 0 && __builtin_memchr(span.ptr, 0, span.len) != NULL;
-}
-
-static bool has_equals(const MsString *text) {
-  const MsSpan span = ms_string_span(text);
-  return span.len > 0 && __builtin_memchr(span.ptr, '=', span.len) != NULL;
+static bool has_byte(const MsString *text, uint8_t byte) {
+  return ms_span_has_byte(ms_string_span(text), byte);
 }
 
 static bool command_valid(const MsString *program, const MsList *arguments, bool has_cwd, const MsString *cwd,
                           const MsList *names, const MsList *values) {
-  if (ms_string_is_empty(program) || has_nul(program) || names->len != values->len) {
+  if (ms_string_is_empty(program) || has_byte(program, 0) || names->len != values->len) {
     return false;
   }
   for (size_t i = 0; i < arguments->len; i++) {
-    if (has_nul(string_at(arguments, i))) {
+    if (has_byte(string_at(arguments, i), 0)) {
       return false;
     }
   }
   for (size_t i = 0; i < names->len; i++) {
     const MsString *name = string_at(names, i);
-    if (ms_string_is_empty(name) || has_nul(name) || has_equals(name) || has_nul(string_at(values, i))) {
+    if (ms_string_is_empty(name) || has_byte(name, 0) || has_byte(name, '=') || has_byte(string_at(values, i), 0)) {
       return false;
     }
   }
-  return !has_cwd || (!ms_string_is_empty(cwd) && !has_nul(cwd));
+  return !has_cwd || (!ms_string_is_empty(cwd) && !has_byte(cwd, 0));
 }
 
 static char **list_alloc(size_t count) { return ms_alloc_zeroed((count + 1) * sizeof(char *)); }

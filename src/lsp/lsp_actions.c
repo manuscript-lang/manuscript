@@ -117,7 +117,7 @@ static void checker_fixes(Actions *actions, LspAnalysis *analysis) {
     const MsDiag *diag = &finding->diag;
     const MsSpan code = ms_span_of_text(finding_code(finding));
     const bool prelude = ms_span_is_text(code, "MS2003");
-    if (!prelude && ms_span_starts_with(diag->replacement, ms_span_of_text("import "))) continue; /* its own action */
+    if (!prelude && ms_span_starts_with_text(diag->replacement, "import ")) continue; /* its own action */
     LspRange shown;
     if (prelude) {
       if (!diag->has_end) continue;
@@ -337,8 +337,9 @@ static void organize_imports(Actions *actions, const MsModule *module) {
 
 /* ---- add an import ---- */
 
-/* Where `statement` goes: after the leading run of imports, else after a file header of comments ending in a blank line. */
-void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statement, LspPosition *at, MsStrBuild *text) {
+/* Where an import goes: after the leading run of imports, else after a file header of comments ending in a blank line. */
+LspImportSite lsp_import_site(MsSpan source, const MsModule *module) {
+  LspImportSite site = {0};
   size_t line_count = 0;
   for (size_t i = 0; i < source.len; i++) line_count += source.ptr[i] == '\n';
   if (source.len > 0 && source.ptr[source.len - 1] != '\n') line_count++;
@@ -352,7 +353,7 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
   size_t *ends = module != NULL ? import_end_lines(source, module, line_count) : NULL;
   bool crlf = false;
   for (size_t i = 1; i < source.len; i++) crlf |= source.ptr[i] == '\n' && source.ptr[i - 1] == '\r';
-  const char *newline = crlf ? "\r\n" : "\n";
+  site.newline = crlf ? "\r\n" : "\n";
   size_t index = 0;
   bool have_last = false;
   size_t last = 0;
@@ -362,16 +363,15 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
       last = ends[index];
       have_last = true;
       index = last + 1;
-    } else if (trimmed.len == 0 || ms_span_starts_with(trimmed, ms_span_of_text("//")) || ms_span_starts_with(trimmed, ms_span_of_text("/*"))) {
+    } else if (trimmed.len == 0 || ms_span_starts_with_text(trimmed, "//") || ms_span_starts_with_text(trimmed, "/*")) {
       index++;
     } else {
       break;
     }
   }
   if (have_last) {
-    *at = lsp_position(source, starts[last + 1]);
-    const bool missing = starts[last + 1] > starts[last] && source.ptr[starts[last + 1] - 1] != '\n';
-    if (missing) ms_strbuild_append_text(text, newline);
+    site.at = lsp_position(source, starts[last + 1]);
+    site.break_first = starts[last + 1] > starts[last] && source.ptr[starts[last + 1] - 1] != '\n';
   } else {
     /* A file header: comment lines followed by a blank line. */
     size_t offset = 0, comments = 0, header = 0;
@@ -380,7 +380,7 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
       const MsSpan bare = ms_span_trim(row);
       size_t lead = 0;
       while (lead < row.len && (row.ptr[lead] == ' ' || row.ptr[lead] == '\t')) lead++;
-      if (ms_span_starts_with(ms_span_of(row.ptr + lead, row.len - lead), ms_span_of_text("//"))) {
+      if (ms_span_starts_with_text(ms_span_of(row.ptr + lead, row.len - lead), "//")) {
         offset += row.len;
         comments++;
       } else if (comments > 0 && bare.len == 0) {
@@ -390,12 +390,24 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
         break;
       }
     }
-    *at = lsp_position(source, header);
+    site.at = lsp_position(source, header);
   }
-  ms_strbuild_append(text, statement);
-  ms_strbuild_append_text(text, newline);
   free(ends);
   free(starts);
+  return site;
+}
+
+/* The text that inserts `statement` at the site. */
+void lsp_import_text(const LspImportSite *site, MsSpan statement, MsStrBuild *text) {
+  if (site->break_first) ms_strbuild_append_text(text, site->newline);
+  ms_strbuild_append(text, statement);
+  ms_strbuild_append_text(text, site->newline);
+}
+
+void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statement, LspPosition *at, MsStrBuild *text) {
+  const LspImportSite site = lsp_import_site(source, module);
+  *at = site.at;
+  lsp_import_text(&site, statement, text);
 }
 
 /* The name an `unknown binding NAME` or `unknown type NAME` diagnostic is about. */
@@ -427,7 +439,7 @@ bool lsp_relative_import(MsArena *arena, MsSpan from_dir, MsSpan file, MsSpan *p
   for (size_t k = 0; ok && k < text.len; k++) ok = text.ptr[k] != '"' && text.ptr[k] != '\\';
   ok = ok && text.len > 0;
   if (ok) {
-    *path = ms_span_starts_with(text, ms_span_of_text("../")) ? ms_arena_copy(arena, text) : ms_message_format(arena, "./%S", text, (MsSpan){0});
+    *path = ms_span_starts_with_text(text, "../") ? ms_arena_copy(arena, text) : ms_message_format(arena, "./%S", text, (MsSpan){0});
   }
   ms_strbuild_free(&relative);
   return ok;
@@ -495,7 +507,7 @@ static void add_imports(Actions *actions, LspAnalysis *analysis, const MsModule 
     MsSpanList statements = {0};
     project_imports(actions, analysis->arena, name, types_only, &statements);
     /* The checker's own fix names the standard module that exports it. */
-    if (finding->diag.has_fix && ms_span_starts_with(finding->diag.replacement, ms_span_of_text("import "))) {
+    if (finding->diag.has_fix && ms_span_starts_with_text(finding->diag.replacement, "import ")) {
       MsSpan statement = ms_span_trim(finding->diag.replacement);
       ms_span_list_push(&statements, statement);
     }

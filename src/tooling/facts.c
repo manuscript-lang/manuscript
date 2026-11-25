@@ -67,7 +67,7 @@ static void sort_spans(MsSpans *list) {
 
 /* `E` of a function type whose result is `Result[T, E]`, or empty. */
 static MsSpan error_type(MsSpan signature) {
-  if (!ms_span_starts_with(signature, ms_span_of_text("fn("))) {
+  if (!ms_span_starts_with_text(signature, "fn(")) {
     return (MsSpan){0};
   }
   const uint8_t *params = signature.ptr + 3;
@@ -82,7 +82,7 @@ static MsSpan error_type(MsSpan signature) {
   while (result.len > 0 && result.ptr[0] == ' ') {
     result = ms_span_of(result.ptr + 1, result.len - 1);
   }
-  if (depth != 0 || !ms_span_starts_with(result, ms_span_of_text("Result["))) {
+  if (depth != 0 || !ms_span_starts_with_text(result, "Result[")) {
     return (MsSpan){0};
   }
   MsSpan inner = ms_span_of(result.ptr + 7, result.len - 7);

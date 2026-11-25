@@ -83,7 +83,7 @@ static void index_module(MsCheckProgram *program, MsStdSource source, int32_t mo
 static void build_index(MsCheckProgram *program, const MsStdSource *sources, size_t count) {
   ms_names_init(&export_index.names);
   for (size_t index = 0; index < count; index++) {
-    if (ms_span_starts_with(sources[index].name, ms_span_of_text("internal/"))) continue;
+    if (ms_span_starts_with_text(sources[index].name, "internal/")) continue;
     index_module(program, sources[index], (int32_t)index);
   }
   export_index.built = true;

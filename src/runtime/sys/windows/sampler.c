@@ -67,7 +67,8 @@ static void sampler_main(void *argument) {
     __builtin_memcpy(registers.bytes + CONTEXT_FLAGS_AT, &flags, sizeof flags);
     if (GetThreadContext(target, registers.bytes) != 0) {
       const MsSysSample sample = {.pc = context_word(&registers, CONTEXT_PC), .sp = context_word(&registers, CONTEXT_SP),
-                                  .fp = context_word(&registers, CONTEXT_FP)};
+                                  .fp = context_word(&registers, CONTEXT_FP),
+                                  .registers = registers.bytes};
       sample_function(&sample);
     }
     (void)ResumeThread(target);

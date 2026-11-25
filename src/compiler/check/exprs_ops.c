@@ -108,9 +108,9 @@ static void report_missing_decimal(Body *body, const MsExpr *expr) {
   for (size_t index = 0; index < program->diagnostics.len; index++) {
     const MsCheckDiag *diag = &program->diagnostics.ptr[index];
     const MsSpan message = ms_string_span(&diag->message);
-    if (diag->module == body->module && (ms_span_starts_with(message, ms_span_of_text("Decimal literal requires")) ||
-                                         ms_span_starts_with(message, ms_span_of_text("unknown type Decimal")) ||
-                                         ms_span_starts_with(message, ms_span_of_text("unknown binding Decimal")))) {
+    if (diag->module == body->module && (ms_span_starts_with_text(message, "Decimal literal requires") ||
+                                         ms_span_starts_with_text(message, "unknown type Decimal") ||
+                                         ms_span_starts_with_text(message, "unknown binding Decimal"))) {
       return;
     }
   }

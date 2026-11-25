@@ -15,7 +15,7 @@
 #include "cli/package_validate.h"
 
 static const char *protocols_for(MsSpan url, bool nested) {
-  if (nested || ms_span_starts_with(url, ms_span_of_text("https://"))) {
+  if (nested || ms_span_starts_with_text(url, "https://")) {
     return "https";
   }
   return "https:file";
@@ -34,7 +34,7 @@ static bool remote_tags(void *self, MsArena *arena, MsSpan url, MsSpan **tags, s
   MsGitRemote *remote = self;
   const char *const args[] = {"ls-remote", "--tags", "--refs", "--", c_text(arena, url)};
   MsSpan listing = {0};
-  const bool plain = ms_span_starts_with(url, ms_span_of_text("https://"));
+  const bool plain = ms_span_starts_with_text(url, "https://");
   if (!ms_git_run(&remote->git, (MsSpan){0}, plain ? "https" : "https:file", args, 5, &listing, error)) {
     return false;
   }

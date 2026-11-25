@@ -261,7 +261,7 @@ bool ms_lex_at(MsArena *arena, MsSpan source, uint32_t base_offset, uint32_t bas
     return fail_source(diag, origin,
                        "source must be valid UTF-8; re-save the file with UTF-8 encoding");
   }
-  if (ms_span_starts_with(source, ms_span_of_text("\xEF\xBB\xBF"))) {
+  if (ms_span_starts_with_text(source, "\xEF\xBB\xBF")) {
     return fail_source(diag, origin,
                        "a byte-order mark is not allowed; save the file as UTF-8 without BOM");
   }

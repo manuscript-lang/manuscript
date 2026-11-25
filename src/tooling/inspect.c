@@ -407,7 +407,7 @@ MsSpan ms_readable_id(MsArena *arena, MsSpan id) {
     return id;
   }
   MsSpan file = ms_span_of(id.ptr, first);
-  if (ms_span_ends_with(file, ms_span_of_text("+source"))) {
+  if (ms_span_ends_with_text(file, "+source")) {
     file.len -= 7;
   }
   return ms_message_format(arena, "%S::%S", file, ms_span_of(rest.ptr + second + 1, rest.len - second - 1));
