@@ -83,7 +83,7 @@ ms_library(ms_check compiler/check
 
 ms_library(ms_own compiler/own
   SOURCES
-    class.c own.c unused.c changes.c borrows.c uses.c escapes.c moves.c closers.c taken.c result_borrows.c look_fields.c bind.c
+    class.c own.c unused.c changes.c borrows.c look_stores.c uses.c escapes.c moves.c closers.c taken.c result_borrows.c look_fields.c bind.c
     live_expr.c live_set.c live_stmt.c places.c overlaps.c relays.c expr_text.c
   LINK ms_base ms_syntax ms_project ms_check ms_native_sigs)
 

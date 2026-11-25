@@ -35,8 +35,37 @@ static void mimalloc_release(void *block) {
 
 static const MsAllocator mimalloc_allocator = {mimalloc_allocate, mimalloc_reallocate, mimalloc_release};
 
+#ifdef MS_STATS
+/* MS_ALLOC_LIBC=1 (the counting runtime only): blocks come from libc malloc, so valgrind and the libc heap checks see
+ * every use after free, double free and read of uninitialized memory that mimalloc's own pages would hide. */
+static void *libc_allocate(size_t size) {
+  return malloc(size);
+}
+static void *libc_reallocate(void *block, size_t size) {
+  return realloc(block, size);
+}
+static void libc_release(void *block) {
+  free(block);
+}
+static const MsAllocator libc_allocator = {libc_allocate, libc_reallocate, libc_release};
+static bool use_libc = false;
+__attribute__((constructor(101))) static void read_libc_choice(void) {
+  use_libc = getenv("MS_ALLOC_LIBC") != NULL; // NOLINT(concurrency-mt-unsafe): runs before main
+}
+#else
+#define use_libc false
+#endif
+
 static const MsAllocator *current(void) {
-  return installed != NULL ? installed : &mimalloc_allocator;
+  if (installed != NULL) {
+    return installed;
+  }
+#ifdef MS_STATS
+  if (use_libc) {
+    return &libc_allocator;
+  }
+#endif
+  return &mimalloc_allocator;
 }
 
 static void *checked(void *block) {
@@ -269,7 +298,7 @@ void *ms_alloc(size_t size) {
 }
 
 void *ms_alloc_zeroed(size_t size) {
-  if (installed == NULL) {
+  if (installed == NULL && !use_libc) {
     /* mimalloc knows when a block comes from fresh pages that are already zero, so it skips the clearing. */
     count(size);
     void *fresh = checked(mi_zalloc(size));

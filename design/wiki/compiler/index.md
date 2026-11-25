@@ -41,3 +41,4 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Backends lower; the stack-depth protocol and layouts live in MIR](backends-only-lower-language-logic-lives-in-mir.md): `ms_mir::depth`, `stack.low`, one closure layout, why the grow path carries no location.
 - [Checks and list growth are MIR; the backends only lower](checks-and-list-growth-are-mir-the-backends-only-lower.md)
 - [F-strings and string joins are expanded in MIR](f-strings-and-joins-are-expanded-in-mir.md): lengths, `msrt_string_open`, `str.data` and `mem.copy`; in-place append through a `{text, pending}` frame; no numbered entry points.
+- [A look is checked against its owner's block, not only at returns](a-look-is-checked-against-its-owners-block.md): assigning or appending a `&`-field record to a place read after the owner's block ends, or capturing one in an escaping closure, is rejected (#6979); `own/look_stores.c`.
