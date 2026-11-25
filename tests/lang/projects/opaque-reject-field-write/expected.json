@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/main.ms:9:7: type: Approved is opaque outside gate.ms: field nonce is hidden; use the functions gate.ms exports\n   |\n 9 |     a.nonce = \"z\"\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/main.ms:9:7: type: Approved is opaque outside gate.ms: field nonce is hidden; use the functions gate.ms exports\n   |\n 9 |     a.nonce = \"z\"\n   |       ^\n1 error; fix them and re-run\n"
     }
   }
 }

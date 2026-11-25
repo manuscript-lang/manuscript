@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testmutationclirejectsinvalidassignmentsandhandlec-6.ms:4:14: resolution: unknown type Connection; add: import Connection from \"@std/net/net.ms\"\n   |\n 4 | fn f(socket: Connection) Void:\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testmutationclirejectsinvalidassignmentsandhandlec-6.ms:4:14: resolution: unknown type Connection; add: import Connection from \"@std/net/net.ms\"\n   |\n 4 | fn f(socket: Connection) Void:\n   |              ^\n1 error; fix them and re-run\n"
     }
   }
 }

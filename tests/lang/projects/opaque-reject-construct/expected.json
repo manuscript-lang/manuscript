@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/main.ms:8:10: type: Approved is opaque outside gate.ms: it cannot be constructed here; use the functions gate.ms exports\n   |\n 8 |     a := Approved(entity: \"u2\", nonce: \"x\")\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/main.ms:8:10: type: Approved is opaque outside gate.ms: it cannot be constructed here; use the functions gate.ms exports\n   |\n 8 |     a := Approved(entity: \"u2\", nonce: \"x\")\n   |          ^\n1 error; fix them and re-run\n"
     }
   }
 }

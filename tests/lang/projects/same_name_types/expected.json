@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/main.ms:5:14: type: expected Box, found Box (in the initializer of 'x'); these are two different types both named Box: the expected one is declared in a.ms, the found one is declared in b.ms\n   |\n 5 |     x Box := make()\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/main.ms:5:14: type: expected Box, found Box (in the initializer of 'x'); these are two different types both named Box: the expected one is declared in a.ms, the found one is declared in b.ms\n   |\n 5 |     x Box := make()\n   |              ^\n1 error; fix them and re-run\n"
     }
   }
 }
