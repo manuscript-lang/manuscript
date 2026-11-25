@@ -254,6 +254,10 @@ fn main() Int {
 
 	published := published_by(finished.get().stdout)
 	var failed = 0
+	print(f"DEBUG input {parts.join("").to_bytes().length()} output {finished.get().stdout.length()} exit {finished.get().exit_code} chosen {chosen.length()} published {published.length()}")
+	print(f"DEBUG head {(finished.get().stdout.decode_utf8() or "").slice(0, 700)}")
+	print(f"DEBUG first {chosen[0]}")
+	print(f"DEBUG ms {ms}")
 
 	for at in 0..chosen.length() {
 		expected := reference_of(ms.clone(), chosen[at].clone(), texts[at].clone())
