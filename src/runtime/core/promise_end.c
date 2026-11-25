@@ -137,13 +137,19 @@ uint32_t promise_park_on(MsPromise id, int64_t at_ns) {
   if (row < 0) {
     return 0;
   }
-  /* The row names the parked task itself: no token is made for a wait on one promise. */
+  /* The row names the parked task itself: no token is made for a wait on one promise. A promise can be ended by two
+   * tasks at once (the one that drops it and an owner's ask to end it), and the row holds one word: a waiter that
+   * finds another's keeps it and wakes it when it leaves, so the end's wake reaches both. A woken waiter checks
+   * its condition again, so the extra wake costs nothing. */
   const uint64_t word = ms_task_wait_word();
+  const uint64_t earlier = promise_table.hot.ptr[row].token;
   promise_table.hot.ptr[row].token = word;
   const uint32_t result = ms_task_park_word(at_ns, (promise_table.hot.ptr[row].flags & FLAG_REMOTE_WAKE) != 0);
   const ptrdiff_t after = promise_row_of(id);
   if (after >= 0 && promise_table.hot.ptr[after].token == word) {
-    promise_table.hot.ptr[after].token = 0;
+    promise_table.hot.ptr[after].token = earlier == word ? 0 : earlier;
+  } else if (earlier != 0 && earlier != word) {
+    ms_token_post(earlier, 1);
   }
   return result;
 }
