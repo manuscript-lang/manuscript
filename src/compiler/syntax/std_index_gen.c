@@ -137,6 +137,7 @@ int main(int argc, char **argv) {
       line_end++;
     }
     const uint8_t *tab = cursor;
+    const uint8_t *text_end = line_end > cursor && line_end[-1] == '\r' ? line_end - 1 : line_end; /* a CRLF list */
     while (tab < line_end && *tab != '\t') {
       tab++;
     }
@@ -144,10 +145,11 @@ int main(int argc, char **argv) {
     MsStrBuild path = ms_strbuild_new();
     ms_strbuild_append_text(&path, argv[1]);
     ms_strbuild_append_text(&path, "/");
-    ms_strbuild_append(&path, (MsSpan){tab + 1, (size_t)(line_end - tab - 1)});
+    ms_strbuild_append(&path, (MsSpan){tab + 1, (size_t)(text_end - tab - 1)});
     MsBytes source = {0};
     if (!ms_file_read(ms_strbuild_span(&path), &source)) {
-      (void)fprintf(stderr, "std_index_gen: cannot read %.*s\n", (int)ms_strbuild_length(&path), (const char *)ms_strbuild_span(&path).ptr);
+      (void)fprintf(stderr, "std_index_gen: cannot read '%.*s' (%zu bytes)\n", (int)ms_strbuild_length(&path),
+                    (const char *)ms_strbuild_span(&path).ptr, ms_strbuild_length(&path));
       return 1;
     }
     MsBodyRange *ranges = NULL;
