@@ -14,7 +14,7 @@ fn vnull() Val => Val()
 
 fn vint(n Int) Val => Val(k: 1, n: n)
 
-fn vtext(s String) Val => Val(k: 2, s: s)
+fn vtext(s String) Val => Val(k: 2, s: s.clone())
 
 fn vbool(b Bool) Val => Val(k: 3, n: if b { 1 } else { 0 })
 
@@ -39,7 +39,7 @@ fn rowkey(row List[Val], idxs List[Int]) String {
 	return out
 }
 
-fn err(msg String) Error => Error(msg)
+fn err(msg String) Error => Error(msg.clone())
 
 fn syn() Error => Error("syntax error")
 
@@ -366,7 +366,7 @@ fn var Parser.name() String! {
 
 fn var Parser.add(n Node) Int {
 	id := self.nodes.length()
-	self.nodes.append(n)
+	self.nodes.append(n.clone())
 	return id
 }
 
@@ -374,7 +374,7 @@ fn var Parser.bin(op String, l, r Int) Int {
 	var a = List[Int]()
 	a.append(l)
 	a.append(r)
-	return self.add(Node(kind: BIN, op: op, args: a))
+	return self.add(Node(kind: BIN, op: op.clone(), args: a))
 }
 
 fn var Parser.parse_or() Int! {
@@ -1236,9 +1236,8 @@ fn eval_func(nodes List[Node], id Int, row List[Val], grp List[List[Val]]) Val! 
 	e := start + len - 1
 	hi := if e > s.length() { s.length() } else { e }
 	if lo > hi { return ok(vtext("")) }
-	if r := s.slice(lo - 1, hi) { return ok(vtext(r)) }
 
-	return ok(vtext(""))
+	return ok(vtext(s.slice(lo - 1, hi)))
 }
 
 fn eval_agg(nodes List[Node], id Int, grp List[List[Val]]) Val! {
@@ -1918,7 +1917,7 @@ fn exec_drop(var db Map[String, Table], st Stmt) String! {
 		st.table
 	) { return error(err(f"no such table: {st.table}")) }
 
-	db.remove(st.table)
+	db.remove(st.table.clone())
 	return ok("ok")
 }
 

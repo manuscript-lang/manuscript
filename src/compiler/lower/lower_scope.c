@@ -90,9 +90,13 @@ static void settle_moved_vars(LowerFn *fn, uint32_t scope, uint32_t closes_seq, 
 }
 
 bool fn_scope_own_var(LowerFn *fn, MirVar var, MsTy leaves) {
+  return fn_scope_own_var_in(fn, fn_scope(fn), var, leaves);
+}
+
+bool fn_scope_own_var_in(LowerFn *fn, uint32_t scope, MirVar var, MsTy leaves) {
   fn->owned_vars = fn_grow(fn, fn->owned_vars, &fn->owned_vars_cap, fn->nowned_vars, sizeof(LowerOwnedVar));
   LowerOwnedVar *entry = &fn->owned_vars[fn->nowned_vars++];
-  *entry = (LowerOwnedVar){.scope = fn_scope(fn), .seq = ++fn->own_seq, .var = var, .checked = leaves, .leaves = leaves != MS_TY_NONE, .pinned = MIR_NONE};
+  *entry = (LowerOwnedVar){.scope = scope, .seq = ++fn->own_seq, .var = var, .checked = leaves, .leaves = leaves != MS_TY_NONE, .pinned = MIR_NONE};
   if (mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->kind == MK_TYPE) {
     entry->mask = mir_b_declare_var(&fn->b, MIR_INT, MM_MOVE);
     entry->has_mask = true;

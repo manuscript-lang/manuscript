@@ -207,7 +207,7 @@ void lsp_analyze_scan(const LspDocList *docs, const LspDoc *doc, LspAnalysis *ou
 }
 
 /* The bundled modules parsed once for the session: the editor checks after every keystroke, and parsing them was a fifth
- * of each check. The server analyzes on one thread, and the cache is never written once built. */
+ * of each check. The server analyzes on one thread, and the trees are never written once built (a program on the cache checks every bundled body: deferring one would blank it for the next program). */
 static const MsStdCache *lsp_std_cache(void) {
   static MsStdCache *std;
   if (std == NULL) {

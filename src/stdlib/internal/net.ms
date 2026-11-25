@@ -10,12 +10,9 @@ import (
 	NativeNetwork,
 	Network from "@std/net/net.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
-	QueryEntry, Url from "@std/net/url.ms",
 	NativeWebSocket, RawWebSocketMessage, WebSocketWire from "@std/net/websocket.ms",
 	Duration, Timestamp from "@std/time.ms",
 )
-
-export extern fn msstd_url_encode_component(text String) String
 
 export extern fn msstd_net_ip_address_text(value IpAddress) String
 
@@ -42,18 +39,6 @@ export extern fn msstd_tls_verify_certificates(
 	server_name String,
 	now Timestamp,
 ) Void!
-
-export extern fn msstd_url_decode_component(text String) String!
-
-export extern fn msstd_url_format(value Url) String!
-
-export extern fn msstd_url_format_query(entries List[QueryEntry]) String
-
-export extern fn msstd_url_parse(text String) Url!
-
-export extern fn msstd_url_parse_query(text String, max_entries Int?) List[QueryEntry]!
-
-export extern fn msstd_url_resolve(base Url, reference String) Url!
 
 export extern fn msstd_net_connection_share(handle NativeConnection) NativeConnection
 

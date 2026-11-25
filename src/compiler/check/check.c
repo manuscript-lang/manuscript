@@ -123,5 +123,7 @@ void ms_check_graph_std(MsCheckProgram *program, MsNames *names, const MsGraph *
 }
 
 void ms_check_graph_cached(MsCheckProgram *program, MsNames *names, const MsGraph *graph, const MsStdCache *cache) {
-  check_graph(program, names, graph, true, false, cache);
+  /* A cache shares the parsed standard modules between programs, and deferring a body blanks it in the tree: a later
+   * program would find it gone. Programs on a shared cache check every bundled body, as before bodies were deferred. */
+  check_graph(program, names, graph, cache == NULL, false, cache);
 }

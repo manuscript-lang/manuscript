@@ -152,7 +152,7 @@ fn run_one(
 		"",
 	).out.trim()
 	rec := RunRecord(
-		toolchain: toolchain,
+		toolchain: toolchain.clone(),
 		skill: if skill == "e3b0c44298fc" { "" } else { skill },
 		run_id: run_id.clone(),
 		ts: now().unix_seconds(),
@@ -234,13 +234,8 @@ fn work(items List[Job], harness String, o Options, tag String) Int {
 			o.model,
 		)
 		verdict := if rec.pass { "PASS" } else { "FAIL" }
-		(
-			stdout()
-			.write(
-				f"{verdict} {item.challenge.id} {item.language.id} {rec.grade.passed}/{rec.grade.total} turns={rec.usage.turns} cost=${rec.usage.cost_usd.to_fixed(3)} {rec.wall_s}s\n"
-			)
-			.get()
-		)
+		line := f"{verdict} {item.challenge.id} {item.language.id} {rec.grade.passed}/{rec.grade.total} turns={rec.usage.turns} cost=${rec.usage.cost_usd.to_fixed(3)} {rec.wall_s}s\n"
+		stdout().write(line).get()
 		if not rec.pass { bad += 1 }
 	}
 

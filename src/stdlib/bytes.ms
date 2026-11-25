@@ -53,7 +53,9 @@ fn hold Bytes.view(start, end Int) &Bytes { ... }
 
 // Returns an unsigned byte; negative indexes are relative to the end. An
 // out-of-range index raises a fault.
-fn Bytes.get(index Int) UInt8 { ... }
+fn Bytes.get(index Int) UInt8 {
+	return self[index]
+}
 
 // Returns an unsigned byte, or `default` when the index is out of range; negative
 // indexes are relative to the end.

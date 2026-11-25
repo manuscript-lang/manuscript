@@ -43,7 +43,11 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
   }
   MsModule *tree = MS_ARENA_NEW(&program->arena, MsModule);
   MsDiag diag = {0};
-  const bool parsed = ms_parse(&program->arena, program->names, source.text, tree, &diag);
+  /* A lazy check leaves the bodies of the bundled functions unparsed until something reaches them (lazy_std.c). */
+  const bool parsed = program->lazy_std && source.bodies != NULL
+                          ? ms_parse_bodies(&program->arena, program->names, source.text, source.bodies, *source.nbodies, NULL,
+                                            NULL, tree, &diag)
+                          : ms_parse(&program->arena, program->names, source.text, tree, &diag);
   if (!parsed) {
     *tree = (MsModule){0}; /* an empty module keeps the importer's bindings; the parse error is reported below */
   }

@@ -55,11 +55,11 @@ ms_library(ms_std_text runtime/std
     unicode.c unicode_width.c
   LINK ms_base ms_values pcre2)
 
-# @std/data: json (scanner, document handle, tree builder, writer), checksum (zlib), encoding, html, url and archive.
+# @std/data: json (scanner, document handle, tree builder, writer), checksum (zlib), encoding, html and archive.
 ms_library(ms_std_data runtime/std
   SOURCES
     json_doc.c json_scalar.c json_scan.c json_tree.c json_write.c shape_json_write.c shape_json_read.c checksum.c
-    encoding.c html.c html_entity.c url.c url_escape.c url_parse.c url_render.c archive.c archive_tar.c
+    encoding.c archive.c archive_tar.c
     archive_zip.c
   LINK ms_base ms_values ms_std_text ms_std_compress zlib)
 

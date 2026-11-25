@@ -55,7 +55,30 @@ Callgrind instructions of `ms build a.ms --build-type Debug`, a program that wri
 | of it, ownership check | 64.5M | 15.9M |
 | of it, parsing the bundled sources | 35M | 35M |
 
-Parsing is now the largest front-end cost and is not touched here.
+Parsing was then the largest front-end cost; stage 3 below takes it on.
+
+## Stage 3: parse bodies when reached
+
+Bodies are about half of the parse work (stubbing every body in five std files cut `fmt --check` cost 25 to 75%), and a deferred body is not read until reached, so it need not be lexed or parsed until then.
+
+- Index: `std_index_gen` (a build tool linking only the syntax layer) parses each bundled file with the real parser, which logs every function body it could skip: byte range, line, and the node ids the body used (`MsBodyRange`). The result is `std_bodies.c`. No second scanner exists to drift, and the ids are exact.
+- Check at build: the tool parses each file again with those bodies left out, parses every body apart, and compares the two trees (ids, kinds, positions, node count) with the whole parse. A wrong or stale index fails the build.
+- Load: `ms_parse_bodies` blanks each indexed body to `{ ... }` in a copy of the text (offsets and lines kept) and the parser, at the body, skips to the `}` and sets `next_id` past the body's reserved ids. The function is `deferred` with its range (`MsFunc.lazy`). Node numbering is the same as a whole parse, so facts columns, `inspect` ids and the golden outputs do not change.
+- Restore: `ms_check_restore_reached` calls `ms_parse_body` for a reached function: it lexes the body text (the text before it on its line blanked, so columns hold), parses it with the reserved ids, and faults if it does not use exactly them.
+- Only checks that defer std bodies (`lazy_std`) parse lazily; the LSP's shared cache and `--std` listings keep whole parses.
+- Also: `lex_read_leading_space` moves along a run of blanks without a call per byte.
+
+Measured (`ci` preset, callgrind instructions, one run, against main before this stage):
+
+| Program | Before | After |
+| --- | --- | --- |
+| `ms check` of a one-line program | 80.0M | 70.5M |
+| `ms emit` of it | 86.6M | 77.1M |
+| `ms check tools/conform-run.ms` | 185.6M | 172.6M |
+
+`ms emit` output of all 2748 accept and stdlib e2e fixtures is identical to before.
+
+Rejected for finding body ends: a scanner keyed to the formatter's layout (a second lexer that drifts, and cannot give the ids); a lexer mode that skips by brace depth (needs parse context to know which `{` opens a body).
 
 ## Alternatives considered
 

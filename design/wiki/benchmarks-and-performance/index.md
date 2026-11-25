@@ -4,6 +4,7 @@
 
 Perf benchmarks, profiling.
 
+- [There is one perf suite, indexed by `groups.txt`](there-is-one-perf-suite-indexed-by-groups-txt.md): `make perf-list`, `make perf GROUP=<name>`, and a check that no benchmark sits outside the index.
 - [Binary search moves one select per step, and a captured comparator still gets the generated sort](binary-search-and-captured-comparators-must-not-branch-or-call.md): `binary_search` 270 to 31 ms per 2M searches (Rust 90); sorts by a capturing comparator 148 to 35 ms.
 - [A lone task runs file calls in place](a-lone-task-runs-file-calls-in-place.md): `treegrep` over 2000 small files 100 to 40 ms; the pool hand-off cost about 50 us per read.
 - [Eager arena commit made a program's first large allocations slow](eager-arena-commit-made-the-first-large-allocations-slow.md): a first run of a map block took 1.8 ms and the second 0.22 ms; `map_put_get_8k` 92 to 33 ns per op (Rust 33).
@@ -31,7 +32,8 @@ Perf benchmarks, profiling.
 - [A wrapper closure takes the captures of the closure it calls](a-wrapper-closure-takes-the-captures-of-the-closure-it-calls.md): `promise(fn: ...)` builds one closure object, not two, and the work inlines into the wrapper.
 - [Arms with checked arithmetic are selected with a predicated guard](arms-with-checked-arithmetic-are-selected-with-a-predicated-guard.md): `ifconv` hoists arms with checked `+` and `-` on Int, faulting through one guard on the taken arm's overflow flag.
 - [Small string primitives are straight-line code](small-string-primitives-are-straight-line-code.md): pad stays in `.ms`; inline concat, one-byte repeat and short scalar counts need no variable-length copy (`report` -25% instructions).
-- [An index in range is one unsigned compare, before the negative fix-up](an-index-in-range-is-one-unsigned-compare-before-the-negative-fix-up.md): `list.get/set` test `index <u len` first; negative indexes take a slow block (interp -10%, graph -5%, sim -4%; `workers` +8.5%).
+- [An index in range is one unsigned compare, before the negative fix-up](an-index-in-range-is-one-unsigned-compare-before-the-negative-fix-up.md): `list.get/set` test `index <u len` first; negative indexes take a slow block (interp -10%, graph -5%, sim -4%, workers -6%).
+- [A count before the list pays only for short texts](a-count-before-the-list-pays-only-for-short-texts.md): `split` counting its pieces first cost grep +24% on 22 MB; count only texts of at most 4 KiB.
 - [A string held in a slot is appended in place](a-string-in-a-slot-is-appended-in-place.md): `b += f"..."` copied the whole string per append when `b` lived in a slot (200k appends 40 s); a late `strfuse` lifts the take so it grows in place.
 - [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
 - [`for x in xs.filter(f)` walks `xs` in place](filtered-for-loops-walk-the-list-in-place.md): no filtered list or deep copies when the lambdas cannot fault (c13 392M to 350M instructions).

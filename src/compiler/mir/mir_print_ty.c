@@ -134,7 +134,7 @@ static const char *const role_names[] = {
     [MR_STRING_STARTS_WITH] = "string_starts_with", [MR_STRING_ENDS_WITH] = "string_ends_with",
     [MR_STRING_COMPARE] = "string_compare", [MR_STRING_SCALAR_STEP] = "string_scalar_step",
     [MR_STRING_SCALAR_AT] = "string_scalar_at",
-    [MR_STRING_SCALAR_TEXT] = "string_scalar_text"};
+    [MR_STRING_SCALAR_TEXT] = "string_scalar_text", [MR_STRING_TO_BYTES] = "string_to_bytes"};
 
 MsSpan mir_role_name(MirRole role) {
   const char *name = (size_t)role < MS_COUNT_OF(role_names) ? role_names[role] : NULL;

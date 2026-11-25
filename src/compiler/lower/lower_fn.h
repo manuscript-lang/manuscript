@@ -224,6 +224,8 @@ uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. `leaves` is the
  * checked type of a record the body hands fields of on (MS_TY_NONE otherwise). */
 bool fn_scope_own_var(LowerFn *fn, MirVar var, MsTy leaves);
+/* The same for a variable that belongs to `scope`, an enclosing one: a bound name outlives its statement's own scope. */
+bool fn_scope_own_var_in(LowerFn *fn, uint32_t scope, MirVar var, MsTy leaves);
 /* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
@@ -607,6 +609,8 @@ bool lower_lambda_bodies(Lower *cx, bool *progressed);
 /* A list literal (lower_list.c). */
 MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_list(LowerFn *fn, const MsExpr *expr);
+/* A borrowed view of the static data of a list literal of integer literals, or MIR_NONE when it is not one. */
+MirValue fn_constant_list_view(LowerFn *fn, const MsExpr *expr);
 /* `if x := value { ... }` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
 bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);
