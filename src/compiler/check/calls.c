@@ -165,6 +165,10 @@ static MsTy with_context_modes(Body *body, MsTy param, MsTy arg) {
   return adapted;
 }
 
+static bool is_empty_literal(const MsExpr *expr) {
+  return (expr->kind == MS_E_LIST && expr->u.list.len == 0) || (expr->kind == MS_E_MAP && expr->u.map.len == 0);
+}
+
 static bool is_function(const MsTyTable *types, MsTy ty) {
   return ms_ty_kind(types, ty) == MS_TY_FUNCTION;
 }
@@ -360,8 +364,12 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     for (size_t at = 0; at < target->vars.len; at++) {
       bare = bare || target->vars.ptr[at] == wanted;
     }
+    /* An empty literal beside an open parameter waits for the other arguments: it is reported below if none fixes it. */
+    const bool quiet_before = body->quiet;
+    body->quiet = quiet_before || (open && is_empty_literal(arg->value));
     arg_tys[index] = open || by_hint ? body_expr(body, arg->value, literal || bare ? MS_TY_NONE : wanted)
                          : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
+    body->quiet = quiet_before;
     if (by_hint && arg_tys[index] != MS_TY_NONE && is_function(types, arg_tys[index]) &&
         ms_ty_param_count(types, arg_tys[index]) == ms_ty_param_count(types, wanted)) {
       body_check_assignable(body, arg->value, arg_tys[index], wanted, ms_strbuild_span(&context));
@@ -389,6 +397,9 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
         known[at] = bound[at] != MS_TY_NONE ? bound[at] : hint[at];
       }
       const MsTy final = expected_param(body, target, param, known);
+      if (is_empty_literal(value) && mentions_vars(types, final, &target->vars) && body_reports(body) && !body->quiet) {
+        body_report_empty_literal(body, value);
+      }
       if ((arg_tys[index] == MS_TY_NONE || body_has_foreign_variable(body, arg_tys[index])) && !mentions_vars(types, final, &target->vars)) {
         /* An argument typed while a variable was open (`Box(none)` beside `Box(value)`) is typed again at its final type. */
         const bool quiet = body->quiet;

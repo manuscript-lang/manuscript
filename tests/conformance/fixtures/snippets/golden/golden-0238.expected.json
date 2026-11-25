@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `counts`: parameter `counts` is not declared var; write `var counts: <Type>` in the signature",
+        "message": "cannot change `counts`: parameter `counts` is not declared var; write `var counts <Type>` in the signature",
         "position": {
           "file": "golden-0238.ms",
           "line": 6,
@@ -35,7 +35,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `names`: parameter `names` is not declared var; write `var names: <Type>` in the signature",
+        "message": "cannot change `names`: parameter `names` is not declared var; write `var names <Type>` in the signature",
         "position": {
           "file": "golden-0238.ms",
           "line": 9,
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0238.ms:6:13: type: cannot change `counts`: parameter `counts` is not declared var; write `var counts: <Type>` in the signature\n   |\n 6 |             counts.add(key: \"a\", value: n)\n   |             ^\n<DIR>/golden-0238.ms:9:13: type: cannot change `names`: parameter `names` is not declared var; write `var names: <Type>` in the signature\n   |\n 9 |             names.append(\"x\")\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0238.ms:6:13: type: cannot change `counts`: parameter `counts` is not declared var; write `var counts <Type>` in the signature\n   |\n 6 |             counts.add(key: \"a\", value: n)\n   |             ^\n<DIR>/golden-0238.ms:9:13: type: cannot change `names`: parameter `names` is not declared var; write `var names <Type>` in the signature\n   |\n 9 |             names.append(\"x\")\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

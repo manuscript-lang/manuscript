@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `value.val`: parameter `value` is not declared var; write `var value: <Type>` in the signature",
+        "message": "cannot change `value.val`: parameter `value` is not declared var; write `var value <Type>` in the signature",
         "position": {
           "file": "golden-1271.ms",
           "line": 9,
@@ -35,7 +35,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature",
+        "message": "cannot change `value`: parameter `value` is not declared var; write `var value <Type>` in the signature",
         "position": {
           "file": "golden-1271.ms",
           "line": 8,
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1271.ms:9:15: type: cannot change `value.val`: parameter `value` is not declared var; write `var value: <Type>` in the signature\n   |\n 9 |         value.val += 1\n   |               ^\n<DIR>/golden-1271.ms:8:17: type: cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature\n   |\n 8 |     callback := fn() Void {\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1271.ms:9:15: type: cannot change `value.val`: parameter `value` is not declared var; write `var value <Type>` in the signature\n   |\n 9 |         value.val += 1\n   |               ^\n<DIR>/golden-1271.ms:8:17: type: cannot change `value`: parameter `value` is not declared var; write `var value <Type>` in the signature\n   |\n 8 |     callback := fn() Void {\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

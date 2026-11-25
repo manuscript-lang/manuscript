@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `state.count`: parameter `state` is not declared var; write `var state: <Type>` in the signature",
+        "message": "cannot change `state.count`: parameter `state` is not declared var; write `var state <Type>` in the signature",
         "position": {
           "file": "golden-1037.ms",
           "line": 8,
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1037.ms:8:11: type: cannot change `state.count`: parameter `state` is not declared var; write `var state: <Type>` in the signature\n   |\n 8 |     state.count += 1\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1037.ms:8:11: type: cannot change `state.count`: parameter `state` is not declared var; write `var state <Type>` in the signature\n   |\n 8 |     state.count += 1\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

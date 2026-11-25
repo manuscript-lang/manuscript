@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "a nullable has no method `ok_or_else`; write `if x != null:` and use `x`",
+        "message": "a nullable has no method `ok_or_else`; write `if x != null { ... }` and use `x`",
         "position": {
           "file": "golden-0490.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0490.ms:5:51: type: a nullable has no method `ok_or_else`; write `if x != null:` and use `x`\n   |\n 5 | fn wrong(value Int?) Result[Int, String] => value.ok_or_else(cause)\n   |                                                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0490.ms:5:51: type: a nullable has no method `ok_or_else`; write `if x != null { ... }` and use `x`\n   |\n 5 | fn wrong(value Int?) Result[Int, String] => value.ok_or_else(cause)\n   |                                                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

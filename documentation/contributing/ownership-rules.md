@@ -73,7 +73,7 @@ Programs written for reference semantics change as follows:
 2. **`.clone()` is deep**; a cheap shallow share is a borrow.
 3. **Mutator chaining/results** (`xs.append(1).append(2)`, `values.prepend(0).set(1, 9)`) become separate statements; results of mutators are not values.
 4. **Implicit parameter mutation.** A function that changes a parameter declares it `var` and every caller writes `var` at the argument.
-5. **`:=` is deeply immutable.** `xs := []; xs.append(1)` becomes `var xs`.
+5. **`:=` is deeply immutable.** `var xs List[Int] = []; xs.append(1)` is the form; `xs := []` alone is rejected.
 6. **Closure capture is by borrow or move,** not by copying a shared reference; a closure that mutates its capture exclusively borrows it, an escaping one owns it.
 7. **Iteration while mutating** the iterable (`for v in xs { xs.fill(..) }`) is rejected.
 8. **Accessor-then-mutate** (`first := xs[0]; xs.append(..); use(first)`, also through `Map.get`, `first`, `last` and any borrow-returning function) is rejected; `.clone()` the part or finish using it first.

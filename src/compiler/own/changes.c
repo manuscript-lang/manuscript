@@ -68,7 +68,7 @@ static void report(Changes *pass, const MsExpr *place, const MsExpr *root, const
     append_name(pass, &text, binding->name);
     ms_strbuild_append_text(&text, "` is not declared var; write `var ");
     append_name(pass, &text, binding->name);
-    ms_strbuild_append_text(&text, ": <Type>` in the signature");
+    ms_strbuild_append_text(&text, " <Type>` in the signature");
   } else {
     ms_strbuild_append_text(&text, "`");
     append_name(pass, &text, binding->name);

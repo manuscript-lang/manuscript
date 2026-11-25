@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 7,
@@ -35,7 +35,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 16,
@@ -61,7 +61,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 28,
@@ -87,7 +87,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 40,
@@ -113,7 +113,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 49,
@@ -139,7 +139,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 64,
@@ -165,7 +165,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 73,
@@ -191,7 +191,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
           "line": 88,
@@ -218,7 +218,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0162.ms:7:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n   |\n 7 |         log.append(i)\n   |         ^\n<DIR>/golden-0162.ms:16:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 16 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:28:13: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 28 |             log.append(i)\n    |             ^\n<DIR>/golden-0162.ms:40:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 40 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:49:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 49 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:64:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 64 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:73:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 73 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:88:13: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 88 |             log.append(i)\n    |             ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0162.ms:7:9: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n   |\n 7 |         log.append(i)\n   |         ^\n<DIR>/golden-0162.ms:16:9: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n    |\n 16 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:28:13: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n    |\n 28 |             log.append(i)\n    |             ^\n<DIR>/golden-0162.ms:40:9: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n    |\n 40 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:49:9: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n    |\n 49 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:64:9: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n    |\n 64 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:73:9: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n    |\n 73 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:88:13: type: cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature\n    |\n 88 |             log.append(i)\n    |             ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
