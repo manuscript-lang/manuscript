@@ -186,6 +186,9 @@ void emit_store_value(EmitCx *cx, MirValue value, const char *base);
 bool emit_wide_zero(EmitCx *cx, MirValue value);
 bool emit_wide_fill(EmitCx *cx, MirValue value, const char *from, const uint32_t *at);
 void emit_load_value(EmitCx *cx, MirValue value, const char *base);
+/* The next instruction (its result `next`) may move the payload the following move writes straight back: hold that move
+ * until the next instruction has run, and write neither when it does (emit_wide.c). */
+void emit_wide_defer_for(EmitCx *cx, MirValue next);
 bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, uint32_t from, uint32_t count);
 /* After an instruction is written: the loads of the leaves it read from cells, to go before it. */
 void emit_wide_loads(EmitCx *cx);
