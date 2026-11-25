@@ -281,7 +281,7 @@ def main():
                 durs[-1] += 1800
                 continue
             phases = sc.get("phases") or [sc]
-            codes = [open(os.path.join(SRC, ph["src"])).read().rstrip("\n").split("\n") if ph.get("src") else [] for ph in phases]
+            codes = [open(os.path.join(SRC, ph["src"])).read().expandtabs(4).rstrip("\n").split("\n") if ph.get("src") else [] for ph in phases]
             raws = [[keep(run(cmd, work, ms_dir)) for cmd, keep in ph["steps"]] for ph in phases]
             room = CARD[3] - CARD[1] - 62 - 34
             for font in FONTS:
