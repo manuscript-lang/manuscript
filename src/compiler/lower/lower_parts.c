@@ -101,7 +101,7 @@ static uint32_t part_close(Lower *cx, MsTy ty) {
   if (ms_ty_kind(&cx->program->types, ty) == MS_TY_CONTRACT) {
     return lower_close_iface(cx, ty);
   }
-  return ms_check_closeable(cx->program, ty) ? lower_named_method(cx, ty, "close") : helper_for(cx, ty);
+  return ms_check_closeable(cx->program, ty) ? lower_named_method(cx, ty, MS_HOOK_CLOSE) : helper_for(cx, ty);
 }
 
 uint32_t lower_part_close(Lower *cx, MsTy ty) {

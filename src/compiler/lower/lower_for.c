@@ -196,7 +196,7 @@ static MirValue collection_items(LowerFn *fn, const MsExpr *iter, MirValue value
   if (!map && !ms_ty_is(types, type, MS_BUILTIN_Set)) {
     return MIR_NONE;
   }
-  const uint32_t method = lower_named_method(fn->cx, type, map ? "entries" : "values");
+  const uint32_t method = lower_named_method(fn->cx, type, map ? MS_HOOK_ENTRIES : MS_HOOK_VALUES);
   if (method != MIR_NONE) {
     const MirValue items = mir_b_call(&fn->b, method, &value, 1);
     fn_own_result(fn, items);
@@ -434,7 +434,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
       next_index = at;
     }
   }
-  const uint32_t next = dispatched ? MIR_NONE : lower_named_method(fn->cx, type, "next");
+  const uint32_t next = dispatched ? MIR_NONE : lower_named_method(fn->cx, type, MS_HOOK_NEXT);
   if (next == MIR_NONE && next_index == UINT32_MAX) {
     return fn_fail(fn, "`for` needs a list, a range, or a value whose `next` has a body");
   }

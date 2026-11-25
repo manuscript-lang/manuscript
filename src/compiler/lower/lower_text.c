@@ -128,7 +128,7 @@ static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
     *out = (TextPiece){value, ty == MIR_INT, ty == MIR_STR};
     return true;
   }
-  const uint32_t own = lower_named_method(fn->cx, source, "to_string");
+  const uint32_t own = lower_named_method(fn->cx, source, MS_HOOK_TO_STRING);
   if (own != MIR_NONE && fn->cx->module->funcs.ptr[own].ret == MIR_STR) { /* a type with its own text-valued `to_string` is written by it */
     const MirValue text = mir_b_call(&fn->b, own, &value, 1);
     fn_own_result(fn, text);

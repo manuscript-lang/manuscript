@@ -3,6 +3,7 @@
 #define MS_COMPILER_LOWER_LOWER_INTERNAL_H
 
 #include "compiler/lower/lower.h"
+#include "compiler/check/hooks.h"
 #include "compiler/check/properties.h"
 #include "compiler/mir/mir_builder.h"
 
@@ -157,7 +158,7 @@ uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, 
  * MIR_NONE when the receiver type has none (a builtin or derived operation). */
 uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsTy *args, uint32_t nargs, MsTy instantiated);
 /* The same for an operation named by text (`to_string`, `clone`). */
-uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation);
+uint32_t lower_named_method(Lower *cx, MsTy receiver, MsHook hook);
 /* The MIR function of the own `equals(other: Self) Bool` (MS_PROPERTY_EQUAL) or `hash() Int` (MS_PROPERTY_HASHABLE) that
  * the concrete `receiver` declares, or MIR_NONE when it declares none or takes its argument by move. */
 uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property);

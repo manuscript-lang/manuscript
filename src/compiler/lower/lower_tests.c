@@ -247,7 +247,7 @@ static uint32_t noop_hook(TestRun *run, uint32_t module_index, MirTy hook_ty) {
  * hooks are the fixture type's methods of those names, and succeed trivially when it has none. */
 static uint32_t lower_fixture_runner(TestRun *run, uint32_t module_index, uint32_t file, MsSymbolId factory,
                                      const MsDecl **decls, uint32_t count, uint32_t first_index) {
-  static const char *const HOOKS[4] = {"before_all", "before_each", "after_each", "after_all"};
+  static const MsHook HOOKS[4] = {MS_HOOK_BEFORE_ALL, MS_HOOK_BEFORE_EACH, MS_HOOK_AFTER_EACH, MS_HOOK_AFTER_ALL};
   Lower *cx = run->cx;
   const MsTy fixture = ms_ty_result(&cx->program->types, cx->program->symbols.ptr[factory].ty);
   const LowerTarget target = lower_symbol_target(cx, runner_symbol(cx->program, "run_fixture_file"));
