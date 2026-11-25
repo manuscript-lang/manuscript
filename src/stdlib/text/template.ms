@@ -134,10 +134,7 @@ export opaque type Template {
 
 // Renders the template with `data` and the settings in `options`. When `data` is an
 // object, its members supply the root names.
-fn Template.render(
-	data JsonValue,
-	options RenderOptions = RenderOptions(),
-) String!Error {
+fn Template.render(data JsonValue, options RenderOptions = RenderOptions()) String! {
 	var frames = List[Map[String, JsonValue]]()
 	frames.append(root_names(data))
 
@@ -172,7 +169,7 @@ MAX_DEPTH := 64
 
 // Compiles template source. With `html: true`, printed values are HTML-escaped unless
 // the action ends in `| raw`.
-export fn compile(source String, html Bool = false) Template!Error {
+export fn compile(source String, html Bool = false) Template! {
 	tokens := tokenize(source)?
 	var builder = Builder(tokens: tokens, at: 0, html: html)
 	done := builder.block(0)?
@@ -185,14 +182,14 @@ export fn compile(source String, html Bool = false) Template!Error {
 
 // Compiles and renders in one call, with default `RenderOptions`. Use `compile` when
 // rendering more than once.
-export fn render(source String, data JsonValue, html Bool = false) String!Error {
+export fn render(source String, data JsonValue, html Bool = false) String! {
 	template := compile(source, html: html)?
 	return template.render(data)
 }
 
 // Converts any `Data` value (records, lists, scalars) to the `JsonValue` that a
 // template reads.
-export fn to_data[T Data](value T) JsonValue!Error {
+export fn to_data[T Data](value T) JsonValue! {
 	text := stringify(value: value)
 	if text.is_error() {
 		return error(Error("template: data is not JSON", kind: "EBADMSG"))
@@ -225,7 +222,7 @@ export fn render_to(
 	data JsonValue,
 	var output WriteStream[String],
 	options RenderOptions = RenderOptions(),
-) Void!Error {
+) Void! {
 	text := template.render(data, options)?
 	return output.write(text)
 }
@@ -243,7 +240,7 @@ fn count_lines(text String) Int {
 	return text.count("\n")
 }
 
-fn tokenize(source String) List[Token]!Error {
+fn tokenize(source String) List[Token]! {
 	var tokens = List[Token]()
 
 	// Splitting once keeps lexing linear: each piece starts right after an opening
@@ -345,7 +342,7 @@ fn is_digit(c String) Bool {
 	return c >= "0" and c <= "9"
 }
 
-fn lex(text String, line Int) List[Tok]!Error {
+fn lex(text String, line Int) List[Tok]! {
 	var toks = List[Tok]()
 	chars := text.chars()
 	var i = 0
@@ -459,7 +456,7 @@ fn ExprParser.fail(reason String) Error {
 	return syntax_error(line: self.line, reason: reason)
 }
 
-fn var ExprParser.or_expr() TemplateExpr!Error {
+fn var ExprParser.or_expr() TemplateExpr! {
 	var left = self.and_expr()?
 
 	while self.is_word("or") {
@@ -472,7 +469,7 @@ fn var ExprParser.or_expr() TemplateExpr!Error {
 	return ok(left)
 }
 
-fn var ExprParser.and_expr() TemplateExpr!Error {
+fn var ExprParser.and_expr() TemplateExpr! {
 	var left = self.not_expr()?
 
 	while self.is_word("and") {
@@ -485,7 +482,7 @@ fn var ExprParser.and_expr() TemplateExpr!Error {
 	return ok(left)
 }
 
-fn var ExprParser.not_expr() TemplateExpr!Error {
+fn var ExprParser.not_expr() TemplateExpr! {
 	if self.is_word("not") {
 		self.at += 1
 
@@ -496,7 +493,7 @@ fn var ExprParser.not_expr() TemplateExpr!Error {
 	return self.compare()
 }
 
-fn var ExprParser.compare() TemplateExpr!Error {
+fn var ExprParser.compare() TemplateExpr! {
 	left := self.filtered()?
 	t := self.peek().clone()
 	is_cmp := (t.kind == "sym" and ["==", "!=", "<", "<=", ">", ">="].contains(t.text))
@@ -508,7 +505,7 @@ fn var ExprParser.compare() TemplateExpr!Error {
 	return ok(Op(t.text.clone(), [left, right]))
 }
 
-fn var ExprParser.filtered() TemplateExpr!Error {
+fn var ExprParser.filtered() TemplateExpr! {
 	var value = self.primary()?
 
 	while self.is_sym("|") {
@@ -545,7 +542,7 @@ fn var ExprParser.filtered() TemplateExpr!Error {
 	return ok(value)
 }
 
-fn var ExprParser.primary() TemplateExpr!Error {
+fn var ExprParser.primary() TemplateExpr! {
 	t := self.peek().clone()
 	self.at += 1
 	if t.kind == "str" { return ok(Literal(JsonValue.StringValue(t.text.clone()))) }
@@ -573,7 +570,7 @@ fn var ExprParser.primary() TemplateExpr!Error {
 	return error(self.fail("expected a value"))
 }
 
-fn parse_expr(text String, line Int) TemplateExpr!Error {
+fn parse_expr(text String, line Int) TemplateExpr! {
 	toks := lex(text, line)?
 	var parser = ExprParser(toks: toks, at: 0, line: line)
 	if parser.toks.is_empty() {
@@ -608,7 +605,7 @@ type Builder {
 	html Bool
 }
 
-fn var Builder.block(depth Int) BlockEnd!Error {
+fn var Builder.block(depth Int) BlockEnd! {
 	var nodes = List[TemplateNode]()
 	if depth > MAX_DEPTH {
 		return error(syntax_error(line: 0, reason: "nested too deeply"))
@@ -657,7 +654,7 @@ fn var Builder.block(depth Int) BlockEnd!Error {
 	return ok(BlockEnd(nodes: nodes, end: "", cond: "", line: 0))
 }
 
-fn Builder.emit(body String, line Int) TemplateNode!Error {
+fn Builder.emit(body String, line Int) TemplateNode! {
 	var expr = parse_expr(body, line)?
 	var escape_output = self.html
 	last := trailing_filter(expr)
@@ -672,7 +669,7 @@ fn Builder.emit(body String, line Int) TemplateNode!Error {
 	return ok(Emit(expr, escape_output))
 }
 
-fn var Builder.conditional(cond String, line, depth Int) TemplateNode!Error {
+fn var Builder.conditional(cond String, line, depth Int) TemplateNode! {
 	var branches = List[TemplateBranch]()
 	var otherwise = List[TemplateNode]()
 	var guard = parse_expr(cond, line)?
@@ -703,7 +700,7 @@ fn var Builder.conditional(cond String, line, depth Int) TemplateNode!Error {
 	return ok(If(branches, otherwise))
 }
 
-fn var Builder.for_block(header String, line, depth Int) TemplateNode!Error {
+fn var Builder.for_block(header String, line, depth Int) TemplateNode! {
 	at := header.index_of(" in ")
 	if at == null {
 		return error(syntax_error(line: line, reason: "for needs `name in value`"))
@@ -782,7 +779,7 @@ type Run {
 	html Bool
 }
 
-fn var Run.write(text String) Void!Error {
+fn var Run.write(text String) Void! {
 	self.written += text.length()
 	if self.written > self.limit {
 		return error(Error("template: output limit exceeded", kind: "EOVERFLOW"))
@@ -808,7 +805,7 @@ fn Run.lookup(parts List[String]) JsonValue? {
 	return null
 }
 
-fn Run.eval(expr TemplateExpr, strict Bool) JsonValue!Error {
+fn Run.eval(expr TemplateExpr, strict Bool) JsonValue! {
 	match expr {
 		Literal(value) => return ok(value.clone())
 		Path(parts) => return self.path_value(parts, strict)
@@ -817,7 +814,7 @@ fn Run.eval(expr TemplateExpr, strict Bool) JsonValue!Error {
 	}
 }
 
-fn Run.path_value(parts List[String], strict Bool) JsonValue!Error {
+fn Run.path_value(parts List[String], strict Bool) JsonValue! {
 	found := self.lookup(parts)
 	if found != null { return ok(found) }
 	if strict { return error(missing_value_error(path: parts.join("."))) }
@@ -825,7 +822,7 @@ fn Run.path_value(parts List[String], strict Bool) JsonValue!Error {
 	return ok(JsonValue.Null)
 }
 
-fn Run.operator(op String, args List[TemplateExpr]) JsonValue!Error {
+fn Run.operator(op String, args List[TemplateExpr]) JsonValue! {
 	left := self.eval(args[0], false)?
 	if op == "not" { return ok(JsonValue.BoolValue(not truthy(left))) }
 	if op == "and" and not truthy(left) { return ok(JsonValue.BoolValue(false)) }
@@ -844,7 +841,7 @@ fn Run.operator(op String, args List[TemplateExpr]) JsonValue!Error {
 	return ok(JsonValue.BoolValue(order >= 0 and order != 2))
 }
 
-fn Run.call(name String, args List[TemplateExpr], strict Bool) JsonValue!Error {
+fn Run.call(name String, args List[TemplateExpr], strict Bool) JsonValue! {
 	if name == "default" {
 		input := self.eval(args[0], false)?
 		if truthy(input) { return ok(input) }
@@ -868,13 +865,13 @@ fn Run.call(name String, args List[TemplateExpr], strict Bool) JsonValue!Error {
 	return apply_filter(name.clone(), input, values)
 }
 
-fn var Run.nodes(items List[TemplateNode], depth Int) Void!Error {
+fn var Run.nodes(items List[TemplateNode], depth Int) Void! {
 	for node in items {
 		self.node(node, depth)?
 	}
 }
 
-fn var Run.node(node TemplateNode, depth Int) Void!Error {
+fn var Run.node(node TemplateNode, depth Int) Void! {
 	match node {
 		Text(text) => return self.write(text)
 		Emit(expr, escape_output) => return self.emit(expr, escape_output)
@@ -891,7 +888,7 @@ fn var Run.node(node TemplateNode, depth Int) Void!Error {
 	}
 }
 
-fn var Run.emit(expr TemplateExpr, escape_output Bool) Void!Error {
+fn var Run.emit(expr TemplateExpr, escape_output Bool) Void! {
 	value := self.eval(expr, self.strict)?
 	text := to_text(value)
 	if escape_output { return self.write(escape(text)) }
@@ -903,7 +900,7 @@ fn var Run.branch(
 	branches List[TemplateBranch],
 	otherwise List[TemplateNode],
 	depth Int,
-) Void!Error {
+) Void! {
 	for branch in branches {
 		verdict := self.eval(branch.cond, false)?
 		if truthy(verdict) {
@@ -921,7 +918,7 @@ fn var Run.each(
 	body,
 	otherwise List[TemplateNode],
 	depth Int,
-) Void!Error {
+) Void! {
 	collection := self.eval(source, false)?
 	var keys List[String] = []
 	var items = collection_items(collection, keys)
@@ -942,7 +939,7 @@ fn var Run.each(
 	return ok()
 }
 
-fn var Run.include(name TemplateExpr, depth Int) Void!Error {
+fn var Run.include(name TemplateExpr, depth Int) Void! {
 	key := to_text(self.eval(name, true)?)
 	if depth > MAX_DEPTH { return error(partial_depth_error(name: key)) }
 
@@ -1400,12 +1397,12 @@ fn invalid(name, reason String) Error {
 	return invalid_filter_error(name: name, reason: reason)
 }
 
-fn arg_text(name String, args List[JsonValue], at Int) String!Error {
+fn arg_text(name String, args List[JsonValue], at Int) String! {
 	if at >= args.length() { return error(invalid(name.clone(), "missing argument")) }
 	return ok(to_text(args[at]))
 }
 
-fn apply_filter(name String, input JsonValue, args List[JsonValue]) JsonValue!Error {
+fn apply_filter(name String, input JsonValue, args List[JsonValue]) JsonValue! {
 	text := to_text(input)
 	if name == "upper" { return ok(text_value(text.upper())) }
 	if name == "lower" { return ok(text_value(text.lower())) }
@@ -1479,7 +1476,7 @@ fn length_of(value JsonValue) Int {
 	return to_text(value).length()
 }
 
-fn reverse_value(value JsonValue) JsonValue!Error {
+fn reverse_value(value JsonValue) JsonValue! {
 	list := value.as_list()
 	if list != null { return ok(JsonValue.ArrayValue(list.reversed().clone())) }
 

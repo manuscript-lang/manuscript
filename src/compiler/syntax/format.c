@@ -364,6 +364,11 @@ static LineStep format_lines_step(Fmt *f, MsSpan source, MsSpan *out) {
       goto done;
     }
   }
+  if (fmt_drop_default_error(f, &module, normalized, &changed)) {
+    *out = changed;
+    step = LINE_AGAIN;
+    goto done;
+  }
   bool *breaks = MS_ARENA_NEW_ARRAY(f->arena, bool, nlines + 2);
   memset(breaks, 0, (nlines + 2) * sizeof *breaks);
   fmt_paragraph_breaks(f, &module, lines, nlines, breaks);

@@ -310,6 +310,8 @@ MS_LIST_DEFINE(EditList, edit_list, FmtEdit)
 
 /* The source with source-ordered, nonoverlapping edits applied. */
 MsSpan fmt_apply_edits(Fmt *f, MsSpan source, const FmtEdit *edits, size_t count);
+/* Drops the `Error` of each written `T!Error`: `T!` already means that. False when there is none. */
+bool fmt_drop_default_error(Fmt *f, const MsModule *module, MsSpan text, MsSpan *out);
 
 /* ---- passes ---- */
 

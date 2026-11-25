@@ -424,6 +424,9 @@ typedef struct MsModule {
   uint32_t nomitted;
   MsOffsetRange *recovered;
   uint32_t nrecovered;
+  /* The `Error` of each written `T!Error`: it is the default error type, so `T!` says the same. */
+  MsOffsetRange *redundant_error;
+  uint32_t nredundant_error;
 } MsModule;
 
 /* An `impl Type` block, with no contract. */

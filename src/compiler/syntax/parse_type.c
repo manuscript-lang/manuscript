@@ -121,6 +121,9 @@ MS_NODISCARD static bool type_suffix(Parser *p, MsTypeRef *t, MsTypeRef **out) {
       if (nx.kind == MS_T_Name && nx.lo == bang.hi) {
         if (!parse_named_type(p, &error))
           return false;
+        if (p->speculative == 0 && error->args.len == 0 && ms_span_is_text(ms_names_span(p->names, error->name), "Error")) {
+          offset_list_push(p->redundant_error, (MsOffsetRange){(uint32_t)nx.lo, (uint32_t)nx.hi});
+        }
       } else {
         MsTypeRefs none = {NULL, 0};
         error = parse_mk_named_type(p, pos, parse_intern(p, "Error"), none);
