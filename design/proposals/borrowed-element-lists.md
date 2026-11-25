@@ -1,6 +1,6 @@
 # Lists of borrowed elements: `List[&T]` that stores the element, not a copy
 
-* Status: **Proposed** (2026-11-25, against `main` at `4b1d4936`)
+* Status: **Proposed** (2026-11-25, against `main` at `4b1d4936`). Skeptical review: no-go as written. Written `&` types do not reach lowering (facts hold erased types), a second list type needs drop, clone, descriptor and shape-table entries, and `set`, `remove`, `pop`, a consuming `for` and implicit clones need borrowed variants. Needs the encoding and propagation (inferred bindings, Optional, closures, generics) specified before build. Interim: sorted keys, values and range return look records (#6990)
 * Authors: [Claude](https://claude.ai/code)
 * Issue: #6990
 * Direction: Chinmay, 2026-11-25: "it can copy the reference, but not value"; over-freezing sources is accepted ("we need to be correct"); `&` stays erased in the checker (card "Keep & erased, tag at lowering")
