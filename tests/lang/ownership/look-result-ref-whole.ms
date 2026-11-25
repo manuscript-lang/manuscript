@@ -16,3 +16,5 @@ fn main() Void {
 	r := relay(ok(Row("x")))
 	print(r.is_error())
 }
+// expect-exit: 0
+// expect-stdout: false

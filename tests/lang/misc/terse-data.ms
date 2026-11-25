@@ -82,3 +82,5 @@ test "map literal uses custom key equality" {
 	values := {a.clone(): "a", b: "b"}
 	expect_false(values.length() != 1 or values[a] != "b")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

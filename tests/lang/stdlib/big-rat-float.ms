@@ -186,3 +186,5 @@ test "to_float rounds once, onto the subnormal grid" {
 	expect_equal(rat_of_int(3).to_float(), 3.0)?
 	expect_equal(rat_of_binary(big_int_of_int(1), 1024).to_float(), null)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

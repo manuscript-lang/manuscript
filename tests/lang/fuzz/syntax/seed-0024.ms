@@ -35,3 +35,4 @@ export fn main() Int {
 	say(f"collatz(2917) == {collatz(2917)}")
 	return 0
 }
+// expect-format: unchanged

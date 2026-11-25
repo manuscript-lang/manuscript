@@ -10,3 +10,5 @@ test "timeout" {
 test "after" {
 	return
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

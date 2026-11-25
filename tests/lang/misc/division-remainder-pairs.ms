@@ -27,3 +27,5 @@ test "a divisor of minus one gives the negated quotient and a zero remainder" {
 	quotient_first(-7, -1) | expect_equal(7000)?
 	remainder_first(5, -1) | expect_equal(-5000)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

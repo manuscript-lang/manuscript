@@ -134,3 +134,4 @@ test "direct calls capture receiver and arguments in written order" {
 fn present[T](value T) T? {
 	return value
 }
+// expect-format: unchanged

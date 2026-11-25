@@ -71,3 +71,27 @@ fn tail() Void {
 	print(ids.values().length())
 	print(ids.range(3, 10).length())
 }
+// expect-exit: 0
+// expect-stdout: 3
+// expect-stdout: true
+// expect-stdout: true
+// expect-stdout: true
+// expect-stdout: a
+// expect-stdout: c
+// expect-stdout: 2
+// expect-stdout: true
+// expect-stdout: 1
+// expect-stdout: 300
+// expect-stdout: true
+// expect-stdout: 10
+// expect-stdout: true
+// expect-stdout: 299
+// expect-stdout: 4
+// expect-stdout: 300
+// expect-stdout: 300
+// expect-stdout: 300
+// expect-stdout: a
+// expect-stdout: 6
+// expect-stdout: 3
+// expect-stdout: 10
+// expect-stdout: 3

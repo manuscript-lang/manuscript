@@ -94,3 +94,5 @@ test "accepting a pending connection on a closed listener reports it" {
 	var listener = listen("127.0.0.1:0")?
 	listener.close()?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

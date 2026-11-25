@@ -56,3 +56,5 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 	switch.cancel()
 	expect_true(work.wait().is_error())?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

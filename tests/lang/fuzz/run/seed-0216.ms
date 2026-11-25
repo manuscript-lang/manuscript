@@ -81,3 +81,19 @@ export fn main() Int {
 	say(f"acc12 = {acc12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: -30949623890 123806 true sum -30949500084
+// expect-stdout: s1 = [-790589256237:]
+// expect-stdout: i2 = -44
+// expect-stdout: padded
+// expect-stdout: l3 = [-2] len 1
+// expect-stdout: fact(2) = 2
+// expect-stdout: i4 = 53053
+// expect-stdout: i5 = -44
+// expect-stdout: acc6 = -2
+// expect-stdout: f7 = 100000000000373.36
+// expect-stdout: i8 = -44
+// expect-stdout: l9 = [-2, 92] len 2
+// expect-stdout: s10 = [-790589256237:]
+// expect-stdout: i11 = -44
+// expect-stdout: acc12 = 140

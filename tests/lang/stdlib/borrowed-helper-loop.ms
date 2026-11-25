@@ -79,3 +79,5 @@ test "fresh results and temporary owners remain owned" {
 	}
 	expect_equal(sum, 15)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

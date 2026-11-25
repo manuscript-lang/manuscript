@@ -47,3 +47,10 @@ export fn main() Int {
 	say(f"f5 = {f5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = 0
+// expect-stdout: f2 = -Infinity
+// expect-stdout: l3 = [29] len 1
+// expect-stdout: s4 = [emoji 😀]
+// expect-stdout: collatz(397) = 27
+// expect-stdout: f5 = 3.5

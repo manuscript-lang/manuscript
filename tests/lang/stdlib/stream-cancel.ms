@@ -42,3 +42,5 @@ test "a cancel switch ends a loop that waits for an item" {
 
 	_gate := gate
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

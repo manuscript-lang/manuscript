@@ -37,3 +37,5 @@ test "generic implementations" {
 	expect_false(not (compare(number, 7)))?
 	expect_false(not (not compare(number, 8)))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -91,3 +91,5 @@ test "three fields change together and a borrowed field argument reads the curre
 	(words.count) | expect_equal(1)?
 	(words.c) | expect_equal(["y"])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

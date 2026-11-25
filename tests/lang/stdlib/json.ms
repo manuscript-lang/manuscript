@@ -638,3 +638,5 @@ test "JSON Decimal fields out of range or inexact are InvalidData" {
 	wide := "{\"amount\":0.1234567890123456789012345678901234567890,\"cents\":1}"
 	expect_invalid_data(parse[Price](wide))?
 }
+// expect-exit: 0
+// expect-tests: passed=34 failed=0

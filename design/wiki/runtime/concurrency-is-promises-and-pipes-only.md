@@ -10,4 +10,4 @@ Consequences found while migrating: a promise reading a resource keeps it borrow
 
 Apply when: porting code or tests that shared state between concurrent work.
 Evidence: [promise.ms](../../../src/stdlib/concurrency/promise.ms), [promise-semantics.ms](../../../tests/lang/stdlib/promise-semantics.ms), [concurrency guide](../../../documentation/core-language/concurrency/_index.md).
-Verify: `ms test tests/lang/misc/implicit-close-shielded.ms`.
+Verify: `ms test tests/lang/ownership/implicit-close-shielded.ms`.

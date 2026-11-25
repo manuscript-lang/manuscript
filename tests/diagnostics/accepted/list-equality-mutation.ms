@@ -98,3 +98,27 @@ test "element Equal mutating either List retains both captured headers" {
 		}
 	}
 }
+// expect-error: MS3060 33:15 cannot change `calls.count`: `calls` is an immutable binding, immutable including its contents; declare it `var calls` to change it
+// expect-fix: 30:5-30:13 "var calls ="
+// expect-error: MS3060 42:13 cannot change `target`: `target` is an immutable binding, immutable including its contents; declare it `var target` to change it
+// expect-fix: 38:9-38:18 "var target ="
+// expect-error: MS3060 47:13 cannot change `target`: `target` is an immutable binding, immutable including its contents; declare it `var target` to change it
+// expect-fix: 38:9-38:18 "var target ="
+// expect-error: MS3060 52:13 cannot change `target`: `target` is an immutable binding, immutable including its contents; declare it `var target` to change it
+// expect-fix: 38:9-38:18 "var target ="
+// expect-error: MS3060 53:13 cannot change `target`: `target` is an immutable binding, immutable including its contents; declare it `var target` to change it
+// expect-fix: 38:9-38:18 "var target ="
+// expect-error: MS3060 59:17 cannot change `target`: `target` is an immutable binding, immutable including its contents; declare it `var target` to change it
+// expect-fix: 38:9-38:18 "var target ="
+// expect-error: MS3060 61:13 cannot change `target`: `target` is an immutable binding, immutable including its contents; declare it `var target` to change it
+// expect-fix: 38:9-38:18 "var target ="
+// expect-error: MS3060 65:9 cannot change `target`: `target` is an immutable binding, immutable including its contents; declare it `var target` to change it
+// expect-fix: 38:9-38:18 "var target ="
+// expect-error: MS3000 32:14 this closure outlives the statement, so it takes `side` with it, but `side` is used again at 86:16; capture `side.clone()` to keep the original
+// expect-error: MS3000 32:14 this closure outlives the statement, so it takes `mutation` with it, but `mutation` is used again at 73:8; capture `mutation.clone()` to keep the original
+// expect-error: MS3000 32:14 this closure outlives the statement, so it takes `left` with it, but `left` is used again at 69:9; capture `left.clone()` to keep the original
+// expect-error: MS3000 32:14 this closure outlives the statement, so it takes `right` with it, but `right` is used again at 70:9; capture `right.clone()` to keep the original
+// expect-error: MS3030 32:14 this closure changes captured `calls`, so it cannot be returned, stored or passed to a moving parameter; keep the closure local, or have it return a new value instead of changing `calls`
+// expect-error: MS3000 32:14 this closure outlives the statement, so it takes `calls` with it, but `calls` is used again at 84:28; capture `calls.clone()` to keep the original
+// expect-error: MS3000 38:40 `right` is moved here but used again at 32:14; a value has one owner, so move it only at its last use, or pass `right.clone()` if the original is still needed
+// expect-error: MS3000 38:55 `left` is moved here but used again at 32:14; a value has one owner, so move it only at its last use, or pass `left.clone()` if the original is still needed

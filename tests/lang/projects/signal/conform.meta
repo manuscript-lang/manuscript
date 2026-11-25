@@ -1,3 +1,4 @@
 // conform: tags=projects,testing,tier-stdlib
 // conform: phase=check
 // conform: entry=main.ms
+// expect-exit: 0

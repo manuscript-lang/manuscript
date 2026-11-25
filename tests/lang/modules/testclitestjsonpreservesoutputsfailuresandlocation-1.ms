@@ -18,3 +18,6 @@ test "second=fails" {
 test "third=after" {
 	return
 }
+// expect-exit: 1
+// expect-tests: passed=2 failed=1
+// expect-stderr: user stderr

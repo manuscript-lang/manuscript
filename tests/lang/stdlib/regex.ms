@@ -219,3 +219,5 @@ test "regex compile errors point to duplicate flags and group names" {
 		)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=11 failed=0

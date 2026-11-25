@@ -177,3 +177,5 @@ test "RSA native function values preserve argument order and borrowed bytes" {
 	expect_equal(sign_message(private, HashAlgorithm.Sha256, data)?, signature)?
 	expect_equal(data, "message".to_bytes())?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

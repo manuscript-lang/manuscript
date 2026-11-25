@@ -96,3 +96,23 @@ export fn main() Int {
 	say(f"l18 = {l18} len {l18.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-11, -3, 11, -12] len 4
+// expect-stdout: s2 = [emoji 😀  padded]
+// expect-stdout: b3 = false
+// expect-stdout: i4 = 948582144
+// expect-stdout: acc5 = -12
+// expect-stdout: acc6 = -15
+// expect-stdout: l7 = [0, -12, -21, 7, 2] len 5
+// expect-stdout: 948582194 948582144 false sum 1897164338
+// expect-stdout: l8 = [0, -12, -21, 7, 2, 83] len 6
+// expect-stdout: l9 = [0, -12, -21, 7, 2, 83, 0, -12, -21, 7, 2, 83] len 12
+// expect-stdout: b10 = false
+// expect-stdout: f11 = -2.4030057024007345e-8
+// expect-stdout: i12 = 3
+// expect-stdout: s13 = [hello worldemoji 😀  padded2845746432:ms]
+// expect-stdout: f14 = -26449292207.880432
+// expect-stdout: acc15 = -26
+// expect-stdout: i16 = 317108583
+// expect-stdout: f17 = -2.4030057024007345e-8
+// expect-stdout: l18 = [2, -10, 4] len 3

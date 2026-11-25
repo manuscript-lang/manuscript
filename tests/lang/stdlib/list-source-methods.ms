@@ -39,3 +39,5 @@ test "keys of a temporary list is built and released once" {
 	expect_equal(["a", "b"].keys().length() + ["c"].keys().length(), 3)?
 	expect_equal(List[Int]().keys(), List[Int]())?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

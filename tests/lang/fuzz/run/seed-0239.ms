@@ -69,3 +69,13 @@ export fn main() Int {
 	say(f"{((763003567524 - (-11)) - ((-38) + (-38))) / big6}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: b1 = false
+// expect-stdout: s2 = [42]
+// expect-stdout: s3 = [4242MiXeD CaSe]
+// expect-stdout: f4 = -3.559158e+23
+// expect-stdout: l5 = [] len 0
+// expect-stdout: collatz(2371) = 151
+// expect-stdout: fib(37) = 24157817
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0239.ms:69 in main

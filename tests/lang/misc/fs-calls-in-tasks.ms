@@ -55,3 +55,5 @@ test "file-system calls from concurrent tasks" {
 
 	_gone := remove(root, true)
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

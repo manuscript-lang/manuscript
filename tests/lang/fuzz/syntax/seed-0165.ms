@@ -44,3 +44,4 @@ export fn main() Int {
 	sy(f"f5 = {f5}")
 	return 0
 }
+// expect-format: unchanged

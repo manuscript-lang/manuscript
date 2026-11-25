@@ -20,3 +20,5 @@ test "sized integers cross a C call as their own width" {
 test "a Float32 crosses a C call as a float" {
 	expect_equal(sqrtf(2.25).to_float(), 1.5)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -14,3 +14,5 @@ test "sum even indexes" {
 	}
 	expect_equal(total, 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

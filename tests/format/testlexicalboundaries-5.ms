@@ -5,3 +5,4 @@ fn value() Void {
 	return
 }
 // end
+// expect-format: unchanged

@@ -35,3 +35,11 @@ export fn main() Int {
 	say(f"s6 = [{s6}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 780
+// expect-stdout: l2 = [1, -7, -20] len 3
+// expect-stdout: s3 = [MiXeD CaSe]
+// expect-stdout: f4 = 0
+// expect-stdout: i5 = 0
+// expect-stdout: a
+// expect-stdout: s6 = [42MiXeD CaSe]

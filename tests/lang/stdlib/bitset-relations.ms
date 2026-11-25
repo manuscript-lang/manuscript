@@ -76,3 +76,5 @@ test "bitset intersection and difference ignore words past the operand that boun
 	expect_equal(small.union(large).contains(10000000), true)?
 	expect_equal(small.symmetric_difference(large).contains(10000000), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

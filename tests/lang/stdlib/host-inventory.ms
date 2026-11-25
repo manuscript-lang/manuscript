@@ -52,3 +52,5 @@ test "metrics report memory, uptime, load averages and parallelism" {
 	}
 	expect_true(m.available_parallelism >= 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

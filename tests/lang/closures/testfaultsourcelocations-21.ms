@@ -7,3 +7,7 @@ export fn main() Int {
 	}
 	return crash()
 }
+// expect-exit: 134
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at testfaultsourcelocations-21.ms:6 in main.closure
+// expect-stderr:   at testfaultsourcelocations-21.ms:8 in main

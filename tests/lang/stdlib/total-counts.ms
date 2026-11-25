@@ -74,3 +74,5 @@ test "a negative histogram observation counts as zero" {
 	expect_equal(h.count(), 1)?
 	expect_equal(h.percentile(50.0), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

@@ -138,3 +138,5 @@ test "modular square root rejects a composite witnessed during search" {
 	expect_equal(big_int_of_int(1).mod_sqrt(big_int_of_int(9)), invalid)?
 	expect_equal(big_int_of_int(1).mod_sqrt(big_int_of_int(25)), invalid)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

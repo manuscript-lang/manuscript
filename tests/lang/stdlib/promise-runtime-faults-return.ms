@@ -73,3 +73,5 @@ test "groups and promises work after the faults" {
 	msrt_promise_drop(id)
 	expect_equal(promise[Int](() => ok(3)).wait()?, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

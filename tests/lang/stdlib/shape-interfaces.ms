@@ -63,3 +63,5 @@ test "a scope closes the value once" {
 
 	expect_equal(closes(log), "x")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -39,3 +39,12 @@ fn main() Void {
 	replace_field(w)
 	print("end")
 }
+// expect-exit: 0
+// expect-stdout: close old
+// expect-stdout: after replace
+// expect-stdout: close local-old
+// expect-stdout: close local-new
+// expect-stdout: close field-old
+// expect-stdout: end
+// expect-stdout: close field-new
+// expect-stdout: close new

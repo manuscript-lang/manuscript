@@ -440,3 +440,5 @@ test "rotating transport rejects invalid sizes" {
 	expect_true(rotating_file_transport(path.clone(), 0, 1).is_error())?
 	expect_true(rotating_file_transport(path.clone(), 10, -1).is_error())?
 }
+// expect-exit: 0
+// expect-tests: passed=16 failed=0

@@ -60,3 +60,4 @@ test "reused inference preserves evaluation and argument conversions" {
 	callback := identity(identity(fn(value Int) => offset + value))
 	expect_equal(callback(3), 10)?
 }
+// expect-format: unchanged

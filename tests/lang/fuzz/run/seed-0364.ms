@@ -55,3 +55,23 @@ export fn main() Int {
 	say(f"{big10 * 6}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -135409
+// expect-stdout: s2 = [日本語0:line
+// expect-stdout: breakemoji 😀]
+// expect-stdout: s3 = [日本語0:line
+// expect-stdout: breakemoji 😀]
+// expect-stdout: acc4 = 1
+// expect-stdout: 日本語0:日本語0:line
+// expect-stdout: breakemoji 😀emoji 😀
+// expect-stdout: i5 = -62600
+// expect-stdout: s6 = [日本語0:LINE
+// expect-stdout: BREAKEMOJI 😀]
+// expect-stdout: s7 = [900:62627:日本語0:line
+// expect-stdout: breakemoji 😀日本語0:LINE
+// expect-stdout: BREAKEMOJI 😀]
+// expect-stdout: b8 = true
+// expect-stdout: i9 = -35
+// expect-stdout: -62600 -62600 false sum -125200
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0364.ms:55 in main

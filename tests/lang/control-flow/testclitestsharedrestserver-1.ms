@@ -51,3 +51,5 @@ test "second request uses same server" {
 	)?
 	expect_equal(response.body, "shared".to_bytes())?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

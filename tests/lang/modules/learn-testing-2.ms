@@ -12,3 +12,5 @@ test "typed JSON and Optional payloads" {
 	expect_equal((expect_error(parse[Int]("true"))?).kind, "EBADMSG")?
 	expect_some([number].first())? | expect_equal(3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

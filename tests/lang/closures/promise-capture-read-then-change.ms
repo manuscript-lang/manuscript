@@ -11,3 +11,5 @@ fn main() Void! {
 	xs.append("b")
 	stdout().write(f"{n} {xs.length()}\n")?
 }
+// expect-exit: 0
+// expect-stdout: 4 2

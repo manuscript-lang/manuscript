@@ -15,3 +15,4 @@ fn work(var value Val) Void {
 	list := [copy]
 	list.clone().append(value)
 }
+// expect-format: unchanged

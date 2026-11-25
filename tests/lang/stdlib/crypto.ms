@@ -214,3 +214,5 @@ test "RSA signs and encrypts" {
 	sealed := rsa_encrypt(public, HashAlgorithm.Sha256, data)?
 	expect_equal(rsa_decrypt(private, HashAlgorithm.Sha256, sealed)?, data)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

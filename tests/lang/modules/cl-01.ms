@@ -11,3 +11,5 @@ test "named multiline call" {
 	remaining := subtract(deduction: 2, amount: 9)
 	expect_equal(remaining, 7)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -53,3 +53,5 @@ test "an empty range faults" {
 	message := expect_fault(draw_from_empty_range)?
 	expect_equal(message.contains("min must be below"), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

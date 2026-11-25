@@ -312,3 +312,5 @@ test "oversized EOF records stay rejected after a failed read" {
 	expect_equal((read_rows("", 1, max_record_bytes: 0)?).is_empty(), true)?
 	expect_equal(read_rows("\"\"", 1, max_record_bytes: 2)?, [[""]])?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

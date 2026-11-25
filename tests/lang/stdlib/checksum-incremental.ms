@@ -106,3 +106,5 @@ test "whole and incremental checksums agree across binary chunk boundaries" {
 
 	expect_equal(data.get(17).to_int(), (17 * 73 + 17 / 7) % 256)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

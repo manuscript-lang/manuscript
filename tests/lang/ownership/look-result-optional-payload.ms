@@ -21,3 +21,7 @@ fn main() Void! {
 	none := empty.name_of()?
 	print((none == null).to_string())
 }
+// expect-exit: 0
+// expect-stdout: n
+// expect-stdout: true
+// expect-stdout: true

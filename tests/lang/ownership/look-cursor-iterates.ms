@@ -22,3 +22,8 @@ fn main() Void {
     }
     print(names.length())
 }
+// expect-exit: 0
+// expect-stdout: a
+// expect-stdout: b
+// expect-stdout: c
+// expect-stdout: 3

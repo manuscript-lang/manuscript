@@ -41,3 +41,13 @@ export fn main() Int {
 	say(f"f9 = {f9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = Infinity
+// expect-stdout: l2 = [] len 0
+// expect-stdout: acc3 = 0
+// expect-stdout: f4 = 639.527
+// expect-stdout: b5 = false
+// expect-stdout: i6 = -50
+// expect-stdout: i7 = -50
+// expect-stdout: f8 = Infinity
+// expect-stdout: f9 = 115.905

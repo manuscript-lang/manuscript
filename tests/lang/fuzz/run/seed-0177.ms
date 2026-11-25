@@ -99,3 +99,22 @@ export fn main() Int {
 	say(f"s15 = [{s15}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: a
+// expect-stdout: acc1 = 9
+// expect-stdout: s2 = [138580478251:gamma]
+// expect-stdout: s3 = [138580478251:GAMMA  PADDED  quote"d138580478251:gamma138580478251:gammaTab\there]
+// expect-stdout: i4 = 0
+// expect-stdout: s5 = [138580478251:gamma138580478251:gamma]
+// expect-stdout: l6 = [4, 22, 17, -29, 28] len 5
+// expect-stdout: fib(31) = 1346269
+// expect-stdout: collatz(2205) = 45
+// expect-stdout: i7 = 0
+// expect-stdout: i8 = 24
+// expect-stdout: s9 = [51:138580478251:GAMMA  PADDED  quote"d138580478251:gamma138580478251:gammaTab\there]
+// expect-stdout: s10 = [ammag:152874085831ammag:152874085831:42]
+// expect-stdout: s11 = [0:ms]
+// expect-stdout: b12 = true
+// expect-stdout: i13 = 26
+// expect-stdout: i14 = 96
+// expect-stdout: s15 = [gamma]

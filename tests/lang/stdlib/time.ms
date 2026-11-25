@@ -198,3 +198,5 @@ test "Int unit constructors accept the widest count that fits" {
 	expect_equal(9223372036854.milliseconds(), milliseconds(9223372036854))?
 	expect_equal((-9223372036).seconds(), seconds(-9223372036))?
 }
+// expect-exit: 0
+// expect-tests: passed=13 failed=0

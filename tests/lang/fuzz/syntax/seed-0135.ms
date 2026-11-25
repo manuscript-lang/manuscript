@@ -32,3 +32,4 @@ export fn main() Int {
 	say(f"s5 = [{s5}]")
 	return 0
 }
+// expect-format: unchanged

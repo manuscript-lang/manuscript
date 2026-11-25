@@ -34,3 +34,10 @@ export fn main() Int {
 	say(f"b5 = {b5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -280380
+// expect-stdout: s2 = [ahpla}s{ecarbevïan]
+// expect-stdout: f3 = 0
+// expect-stdout: i4 = 18
+// expect-stdout: fact(8) = 40320
+// expect-stdout: b5 = true

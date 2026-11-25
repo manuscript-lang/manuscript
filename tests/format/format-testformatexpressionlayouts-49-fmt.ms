@@ -4,3 +4,7 @@
 import Fifth, First, Fourth, Second, Third from "./contracts.ms"
 
 fn work(first Int, second Int, third Int, fourth Int) Int => return first
+// expect-format: rewritten
+// expect-formatted: import Fifth, First, Fourth, Second, Third from "./contracts.ms"
+// expect-formatted:
+// expect-formatted: fn work(first, second, third, fourth Int) Int => return first

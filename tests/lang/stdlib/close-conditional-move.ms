@@ -122,3 +122,32 @@ fn main() Void {
 	else_branch(false)
 	print("--end")
 }
+// expect-exit: 0
+// expect-stdout: closed ret-or-fall
+// expect-stdout: --ret_or_fall false
+// expect-stdout: closed ret-or-fall
+// expect-stdout: --arg_in_branch true
+// expect-stdout: closed arg-branch
+// expect-stdout: --arg_in_branch false
+// expect-stdout: closed arg-branch
+// expect-stdout: --into_record true
+// expect-stdout: closed into-record
+// expect-stdout: --into_record false
+// expect-stdout: closed into-record
+// expect-stdout: --in_loop
+// expect-stdout: closed loop-0
+// expect-stdout: closed loop-1
+// expect-stdout: closed loop-2
+// expect-stdout: closed loop-3
+// expect-stdout: --moved_always
+// expect-stdout: closed always
+// expect-stdout: --returned true
+// expect-stdout: --returned false
+// expect-stdout: closed returned
+// expect-stdout: --else true
+// expect-stdout: closed else
+// expect-stdout: --else false
+// expect-stdout: closed else
+// expect-stdout: --end
+// expect-stdout: closed other
+// expect-stdout: closed returned

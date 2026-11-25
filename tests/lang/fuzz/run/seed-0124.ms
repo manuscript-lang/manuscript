@@ -80,3 +80,26 @@ export fn main() Int {
 	say(f"l15 = {l15} len {l15.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: b2 = false
+// expect-stdout: i3 = -310600124316
+// expect-stdout: f4 = 1000000000000001800
+// expect-stdout: s5 = [kaerb
+// expect-stdout: enilx134093:brace{s}]
+// expect-stdout: i6 = -310600124316
+// expect-stdout: kaerb
+// expect-stdout: enilx134093:brace{s}
+// expect-stdout: 570 -310600124316 false sum -310600123746
+// expect-stdout: i7 = -616768
+// expect-stdout: acc8 = 105
+// expect-stdout: b9 = false
+// expect-stdout: i10 = 621199631913
+// expect-stdout: l11 = [-15, -29] len 2
+// expect-stdout: gcd(2475, 4530) = 15
+// expect-stdout: f12 = 1.362535187471225e+69
+// expect-stdout: acc13 = 0
+// expect-stdout: s14 = [kaerb
+// expect-stdout: enilx134093:brace{s}mskaerb
+// expect-stdout: enilx134093:brace{s}]
+// expect-stdout: l15 = [-15, -29, -15, -29] len 4

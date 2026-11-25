@@ -8,3 +8,5 @@ test "UInt64 to_string agrees with interpolation above Int max" {
 	expect_equal(v.to_string(), f"{v}")?
 	expect_equal(v.to_string(), v.to_string())?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

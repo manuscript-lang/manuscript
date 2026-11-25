@@ -4,3 +4,4 @@
 fn f(a Int) Int {
 	return 1 + ((if a == 1 { 1 } else { 0 }))
 }
+// expect-format: unchanged

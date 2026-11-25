@@ -46,3 +46,5 @@ test "from_bytes rejects a chunk size below one instead of never ending" {
 		expect_equal(first.kind, "EINVAL")?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -71,3 +71,5 @@ test "an explicit close returns the source's close error" {
 	expect_equal(result.is_error(), true)?
 	expect_equal(result.err().message, "close failed")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

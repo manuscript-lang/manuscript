@@ -68,3 +68,19 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -16
+// expect-stdout: f2 = 0
+// expect-stdout: i3 = 234
+// expect-stdout: i4 = -392
+// expect-stdout: acc5 = 0
+// expect-stdout: acc6 = 80
+// expect-stdout: i7 = -3744
+// expect-stdout: i8 = -88376
+// expect-stdout: s9 = []
+// expect-stdout: 5 -6103 false sum -6098
+// expect-stdout: i10 = -88376
+// expect-stdout: b11 = false
+// expect-stdout: i12 = -4
+// expect-stdout: i13 = 358948736
+// expect-stdout: -19 -21 false sum -40

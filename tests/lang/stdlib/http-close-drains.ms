@@ -89,3 +89,7 @@ export fn main() Int {
 
 	return 1
 }
+// expect-exit: 0
+// expect-stdout: answered: true
+// expect-stdout: close waited for the handler: true
+// expect-stdout: close returned promptly: true

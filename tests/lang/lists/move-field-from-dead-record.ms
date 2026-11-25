@@ -30,3 +30,5 @@ fn main() Void {
 	t := tag_of(make(2))
 	stdout().write(f"{l.join(",")} {t}\n").get()
 }
+// expect-exit: 0
+// expect-stdout: l0,l1,l2 t2

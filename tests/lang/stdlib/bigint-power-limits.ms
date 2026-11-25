@@ -31,3 +31,5 @@ test "constant big integer powers remain valid at huge exponents" {
 	expect_equal((big_int_of_int(-1).pow(maximum - 1)?).to_int(), 1)?
 	expect_equal((big_int_of_int(0).pow(0)?).to_int(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

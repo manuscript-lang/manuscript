@@ -23,3 +23,5 @@ fn main() Void {
 	)
 	print(started.is_error())
 }
+// expect-exit: 0
+// expect-stdout: true

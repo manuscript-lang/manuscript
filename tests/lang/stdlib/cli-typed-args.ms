@@ -58,3 +58,5 @@ test "Bool and List are not positional kinds" {
 		)?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

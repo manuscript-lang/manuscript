@@ -151,3 +151,5 @@ test "throttle allows one action per interval" {
 	spacing.wait()
 	expect_true(monotonic().difference(start).nanos >= milliseconds(10).nanos)?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

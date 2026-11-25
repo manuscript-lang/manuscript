@@ -19,3 +19,4 @@ fn run(entry fn(var Ch) Int) Int {
 export fn main() Int {
 	return run(child) - 4
 }
+// expect-exit: 0

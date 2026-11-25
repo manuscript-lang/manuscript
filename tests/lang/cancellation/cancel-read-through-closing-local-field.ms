@@ -26,3 +26,5 @@ fn main() Void {
 	void work.with(options: PromiseOptions(timeout: nanoseconds(200000000))).wait()
 	print("done")
 }
+// expect-exit: 0
+// expect-stdout: done

@@ -77,3 +77,18 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [] len 0
+// expect-stdout: l2 = [] len 0
+// expect-stdout: gcd(2865, 4945) = 5
+// expect-stdout: i3 = 47
+// expect-stdout: line
+// expect-stdout: break
+// expect-stdout: i4 = 47
+// expect-stdout: collatz(1579) = 122
+// expect-stdout: i5 = 47
+// expect-stdout: i6 = 0
+// expect-stdout: i7 = 807145
+// expect-stdout: i8 = 0
+// expect-stdout: b9 = false
+// expect-stdout: hello worldalpha

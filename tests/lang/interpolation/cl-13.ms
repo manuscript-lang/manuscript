@@ -14,3 +14,5 @@ test "text source forms" {
 
 	_no_value Void := void
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

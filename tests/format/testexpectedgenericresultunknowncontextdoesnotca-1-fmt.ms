@@ -5,3 +5,8 @@
 fn fail[T](message String) T!Error => error(Error(message))
 
 fn first() Int!Missing => fail("empty")
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn fail[T](message String) T! => error(Error(message))
+// expect-formatted:
+// expect-formatted: fn first() Int!Missing => fail("empty")

@@ -97,3 +97,21 @@ export fn main() Int {
 	say(f"l15 = {l15} len {l15.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: fib(23) = 28657
+// expect-stdout: i1 = -935874
+// expect-stdout: f2 = 0
+// expect-stdout: l3 = [-16, -2, 22, 15] len 4
+// expect-stdout: i4 = -935874
+// expect-stdout: i5 = -935874
+// expect-stdout: acc6 = 73
+// expect-stdout: 0 935874 true sum 935874
+// expect-stdout: acc7 = 0
+// expect-stdout: b8 = false
+// expect-stdout: f9 = 0.3081370593640051
+// expect-stdout: i10 = 875837682900
+// expect-stdout: l11 = [-16, -2, 22, 15, -16, -2, 22, 15] len 8
+// expect-stdout: i12 = 0
+// expect-stdout: acc13 = 7
+// expect-stdout: s14 = [a]
+// expect-stdout: l15 = [3, 27, -7, 6, -20] len 5

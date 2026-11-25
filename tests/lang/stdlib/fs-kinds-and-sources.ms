@@ -86,3 +86,5 @@ test "opening a directory classifies invalid and missing paths" {
 	valid := open_directory(root) | expect_ok?
 	valid.path() | expect_equal(root)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -123,3 +123,5 @@ test "token is URL-safe base64 of the requested size" {
 	again := (token() | expect_ok?)
 	(secret != again) | expect_true?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

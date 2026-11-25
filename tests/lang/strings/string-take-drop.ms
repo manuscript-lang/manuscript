@@ -13,3 +13,5 @@ fn main() Void {
 		) + "|" + s.view(s.length(), s.length()) + "|" + s.view(0, s.length()) + "\n"
 	).get()
 }
+// expect-exit: 0
+// expect-stdout: hé|llo|héllo||héllo

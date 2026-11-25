@@ -25,3 +25,5 @@ fn main() Void! {
 	work.cancel()
 	void work.wait()
 }
+// expect-exit: 0
+// expect-stdout: close door

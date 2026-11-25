@@ -80,3 +80,18 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [emoji 😀]
+// expect-stdout: collatz(1275) = 83
+// expect-stdout: i2 = -21906955626159
+// expect-stdout: i3 = -10
+// expect-stdout: s4 = [naïve]
+// expect-stdout: i5 = -21906955626159
+// expect-stdout: s6 = [naïveemoji 😀]
+// expect-stdout: b7 = false
+// expect-stdout: l8 = [2, 12] len 2
+// expect-stdout: acc9 = 14
+// expect-stdout: b10 = false
+// expect-stdout: i11 = 12
+// expect-stdout: l12 = [9] len 1
+// expect-stdout: 9223372036854775806 -903656 false sum 9223372036853872150

@@ -136,3 +136,5 @@ test "weighted choices preserve invalid input and empty behavior" {
 	expect_none(weighted_choice(List[Int](), List[Float]())?)?
 	expect_equal((expect_error(weighted_choice(List[Int](), [1.0]))?).kind, "EINVAL")?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

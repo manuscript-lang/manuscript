@@ -28,3 +28,8 @@ fn main() Void {
 	print(views[1].items[2])
 	print(held.items[0])
 }
+// expect-exit: 0
+// expect-stdout: inner1
+// expect-stdout: inner1
+// expect-stdout: name2
+// expect-stdout: name0

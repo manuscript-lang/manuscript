@@ -90,3 +90,5 @@ test "a loop variable that changes or escapes owns its list" {
 	closure_total := [1, 2, 3].map(x => x + 1).filter(x => x > 0).sum()
 	expect_equal(closure_total, 9)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

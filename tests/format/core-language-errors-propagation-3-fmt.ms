@@ -4,3 +4,7 @@
 fn discounted_label(price Decimal, percent Decimal) Result[String, DiscountError] {
 	return ok(discount(price, percent)? | label)
 }
+// expect-format: rewritten
+// expect-formatted: fn discounted_label(price, percent Decimal) Result[String, DiscountError] {
+// expect-formatted: \treturn ok(discount(price, percent)? | label)
+// expect-formatted: }

@@ -328,3 +328,5 @@ test "byte reversal names copy across direct bound and view calls" {
 fn present[T](hold value T) &T? {
 	return value
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

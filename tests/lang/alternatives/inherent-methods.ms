@@ -71,3 +71,5 @@ test "inherent methods" {
 	check(ok: Shape.Square(s: 3).area() == 9, name: "alternative receiver")
 	check(ok: Circle(r: 2).area() == 12, name: "unqualified case")
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

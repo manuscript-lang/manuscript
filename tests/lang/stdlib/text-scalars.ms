@@ -27,3 +27,5 @@ test "a long non-ASCII scan is linear" {
 	}
 	expect_equal(found, 6250)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

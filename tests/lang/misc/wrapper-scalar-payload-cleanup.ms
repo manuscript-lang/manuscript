@@ -86,3 +86,5 @@ test "scalar or_else success branches retain their cleanup duty" {
 	(expect_fault(optional_or_else)?) | expect_contains("resource could not be closed")?
 	(expect_fault(result_or_else)?) | expect_contains("resource could not be closed")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -69,3 +69,14 @@ export fn main() Int {
 	say(f"fib(24) = {fib(24)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: fact(16) = 20922789888000
+// expect-stdout: 0 812924842294800 true sum 812924842294800
+// expect-stdout: b1 = true
+// expect-stdout: l2 = [27, -8, 8, 21, 20] len 5
+// expect-stdout: brace{s}
+// expect-stdout: i3 = 0
+// expect-stdout: f4 = 1398976708.016805
+// expect-stdout: f5 = 1398976708.016805
+// expect-stdout: acc6 = 0
+// expect-stdout: fib(24) = 46368

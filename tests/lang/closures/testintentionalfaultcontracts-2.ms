@@ -38,3 +38,5 @@ test "Never faults propagate through initializers and returned values" {
 		"result cannot return",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

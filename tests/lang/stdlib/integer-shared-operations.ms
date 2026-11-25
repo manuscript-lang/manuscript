@@ -20,3 +20,5 @@ test "integer families share one set of operations" {
 	expect_equal((-7).sign(), -1)?
 	expect_equal((3).compare(4), -1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

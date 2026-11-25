@@ -4,3 +4,4 @@
 fn f(a List[Int]) Void {
 	a[0] = 1
 }
+// expect-format: unchanged

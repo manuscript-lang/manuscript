@@ -2,7 +2,7 @@
 
 After the final edit, run `ms check app.ms`, then `ms run app.ms` and verify behavior. `ms test` runs tests; `ms verify` checks projects. `--deny-warnings` rejects warnings.
 
-`ms check app.ms --json` gives structured diagnostics. Apply indicated repairs; `--fix` applies machine fixes, then recheck. `ms explain <code>` explains diagnostics. Acceptance does not prove runtime behavior or speed.
+Read the plain `ms check` output and apply the repairs it names; `--fix` applies machine fixes, then recheck. `--json` is for tools that parse results; it is several times larger, so agents should not use it by default. `ms explain <code>` explains diagnostics. Acceptance does not prove runtime behavior or speed.
 
 <!-- complete-test: arithmetic.ms -->
 ```manuscript

@@ -271,3 +271,5 @@ test "fixture lifecycle errors invalidate an otherwise successful report" {
 	)
 	validate(report).is_error() | expect_true?
 }
+// expect-exit: 1
+// expect-stdout: usage: conformance <ms executable> <all|core|stdlib> <shard> <count>

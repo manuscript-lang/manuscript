@@ -28,3 +28,7 @@ fn main() Void {
 	print(status())
 	void sleep(milliseconds(300)).wait()
 }
+// expect-exit: 0
+// expect-stdout: 500
+// expect-stderr: HTTP stream handler fault: index 5 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-handler-frees-exchange-view.ms:12 in faulting

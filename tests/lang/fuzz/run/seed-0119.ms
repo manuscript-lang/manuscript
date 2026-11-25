@@ -75,3 +75,21 @@ export fn main() Int {
 	say(f"s12 = [{s12}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 510713
+// expect-stdout: f2 = -426.5481
+// expect-stdout: i3 = 13278538
+// expect-stdout: gcd(289, 1728) = 1
+// expect-stdout: -20471 510693 true sum 490222
+// expect-stdout: l4 = [11, 0, -26] len 3
+// expect-stdout: l5 = [-19, -28, -30, -18] len 4
+// expect-stdout: alpha
+// expect-stdout: i6 = 8
+// expect-stdout: s7 = [quote"d24:068795276622]
+// expect-stdout: 17 -510706 false sum -510689
+// expect-stdout: fact(9) = 362880
+// expect-stdout: b8 = false
+// expect-stdout: l9 = [11, 0, -26, -19, -28, -30, -18] len 7
+// expect-stdout: l10 = [11, 0] len 2
+// expect-stdout: s11 = [7:beta]
+// expect-stdout: s12 = [betaateb:7]

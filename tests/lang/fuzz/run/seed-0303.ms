@@ -38,3 +38,13 @@ export fn main() Int {
 	say(f"s10 = [{s10}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [quote"d]
+// expect-stdout: i3 = -2488108896
+// expect-stdout: l4 = [] len 0
+// expect-stdout: l5 = [16, -4] len 2
+// expect-stdout: f6 = 362.884
+// expect-stdout: s7 = [msquote"dnaïvequote"dbrace{s}]
+// expect-stdout: b8 = false
+// expect-stdout: i9 = 0
+// expect-stdout: s10 = [quote"dnaïvequote"d]

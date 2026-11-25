@@ -88,3 +88,5 @@ test "request_stream reports a failing ReadStream" {
 	)
 	expect_equal(sent.is_error(), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

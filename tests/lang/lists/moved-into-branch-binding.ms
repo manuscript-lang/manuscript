@@ -51,3 +51,5 @@ test "nested branches hand the list on and release it once" {
 	expect_equal(rebound_nested(1), 2)?
 	expect_equal(rebound_nested(2), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

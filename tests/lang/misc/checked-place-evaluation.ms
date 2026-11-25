@@ -224,3 +224,5 @@ test "a borrowed key fast path faults before its value argument" {
 fn later_fault() Int {
 	return panic("later selection ran")
 }
+// expect-exit: 0
+// expect-tests: passed=19 failed=0

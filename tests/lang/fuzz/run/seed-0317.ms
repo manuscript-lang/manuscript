@@ -74,3 +74,18 @@ export fn main() Int {
 	say(f"{l4[0]} {5} {(l4[0] < 5)} sum {l4[0] + 5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: i2 = 36
+// expect-stdout: i3 = -308407168748
+// expect-stdout: l4 = [3, 2, -29, 11] len 4
+// expect-stdout:   PADDED\x20\x20
+// expect-stdout: acc5 = -1
+// expect-stdout: i6 = 8
+// expect-stdout: s7 = [naïve]
+// expect-stdout: i8 = -22
+// expect-stdout: fib(11) = 89
+// expect-stdout: -308407168748 -308407168748 false sum -616814337496
+// expect-stdout: l9 = [-6, 18, 13] len 3
+// expect-stdout: i10 = -3
+// expect-stdout: 3 5 true sum 8

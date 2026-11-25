@@ -17,3 +17,5 @@ test "runtime counts grow with the work a program does" {
 	expect_true(after.allocated_bytes - before.allocated_bytes >= 8000)?
 	expect_equal(xs.length(), 1000)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

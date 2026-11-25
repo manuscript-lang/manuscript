@@ -36,3 +36,5 @@ test "continues" {
 	result.set(0, 2)
 	result.remove(0)
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1 not_run=6

@@ -50,3 +50,14 @@ export fn main() Int {
 	say(f"s9 = [{s9}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: f2 = 299.99991
+// expect-stdout: l3 = [11, -28, -8] len 3
+// expect-stdout: i4 = -254380644724
+// expect-stdout: f5 = 1064232652.3414198
+// expect-stdout: -254380644724 -18004 true sum -254380662728
+// expect-stdout: acc6 = -37
+// expect-stdout: f7 = 679555041057684800000
+// expect-stdout: l8 = [11] len 1
+// expect-stdout: s9 = [gammabrace{s}  padded  TAB\tHERE]

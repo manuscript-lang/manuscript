@@ -29,3 +29,10 @@ export fn main() Int {
 	say(f"i6 = {i6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -20628804
+// expect-stdout: f2 = 0
+// expect-stdout: i3 = 63040704239
+// expect-stdout: l4 = [-14, -17, 28, 1] len 4
+// expect-stdout: s5 = [brace{s}a]
+// expect-stdout: i6 = 30

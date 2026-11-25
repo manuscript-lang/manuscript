@@ -172,3 +172,5 @@ test "a popped value bound to an ignored name closes at scope end" {
 	expect_equal(pops_into_ignored(log.clone()), 1)?
 	expect_equal(closed(log), "2,1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

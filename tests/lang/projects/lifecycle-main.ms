@@ -124,3 +124,20 @@ export fn main() Int {
 		}
 	}
 }
+// expect-exit: 0
+// expect-stdout: callable
+// expect-stdout: second
+// expect-stdout: first
+// expect-stdout: pair second
+// expect-stdout: pair first
+// expect-stdout: close normal
+// expect-stdout: after normal
+// expect-stdout: close iteration
+// expect-stdout: close iteration
+// expect-stdout: iterable
+// expect-stdout: close break
+// expect-stdout: close propagation
+// expect-stdout: return value
+// expect-stdout: close inner
+// expect-stdout: close outer
+// expect-stdout: finished

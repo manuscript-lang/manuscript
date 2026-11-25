@@ -54,3 +54,5 @@ test "Error is a record with a message, a kind and details" {
 	expect_equal(detailed.kind, "ENOENT")?
 	expect_equal(detailed.details["path"], "/tmp/x")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

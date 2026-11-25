@@ -59,3 +59,9 @@ export fn main() Int {
         }
     }
 }
+// expect-exit: 1
+// expect-stderr: <DIR>/testclonedrecordretainsfilehandlelifetime-1.ms:54:15: parse: expected a name, found text "I/O: resource is closed"
+// expect-stderr:     |
+// expect-stderr:  54 |         Error("I/O: resource is closed", kind: "EBADF") => {
+// expect-stderr:     |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+// expect-stderr: 1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

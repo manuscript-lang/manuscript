@@ -55,3 +55,13 @@ export fn main() Int {
 	say(f"fib(10) = {fib(10)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: fact(18) = 6402373705728000
+// expect-stdout: i1 = -33848
+// expect-stdout: f2 = 200000
+// expect-stdout: -33890 0 true sum -33890
+// expect-stdout: i3 = -33848
+// expect-stdout: s4 = [NAÏVE]
+// expect-stdout: i5 = 235356
+// expect-stdout: fib(16) = 987
+// expect-stdout: fib(10) = 55

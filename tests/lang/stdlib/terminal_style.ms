@@ -104,3 +104,5 @@ test "truncate_text keeps the first row" {
 	expect_equal(truncate_text("hello world", 5), "hello")?
 	expect_equal(truncate_text("hi", 5), "hi")?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

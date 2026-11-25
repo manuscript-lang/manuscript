@@ -18,3 +18,5 @@ test "recursive record round trips through JSON" {
 	back := parse[Link](text)?
 	expect_equal((back.next or panic("called Optional.get() on null")).value, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

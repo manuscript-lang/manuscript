@@ -86,3 +86,5 @@ test "in? loops and lambdas" {
 	expect_equal(code(in_lambda(2)), 21)?
 	expect_equal(code(in_lambda(-2)), -1)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

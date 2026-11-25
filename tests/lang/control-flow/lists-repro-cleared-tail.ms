@@ -20,3 +20,4 @@ fn main() Void {
 		panic("unexpected sum")
 	}
 }
+// expect-exit: 0

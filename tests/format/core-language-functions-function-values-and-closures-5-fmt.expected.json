@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tBytes from \"@std/bytes.ms\",\n\topen from \"@std/os/fs.ms\",\n)\n\nfn notes_reader(move path String) fn() Result[Bytes, Error] {\n\treturn () => {\n\t\tfile := open(path: path)?\n\t\treturn file.read_file(max_bytes: 1048576)\n\t}\n}\n"
-  }
-}

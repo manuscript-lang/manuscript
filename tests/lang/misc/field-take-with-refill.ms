@@ -30,3 +30,8 @@ export fn main() Void! {
 	print("first ended")
 	print(f"second {pair.second.id}")
 }
+// expect-exit: 0
+// expect-stdout: close 1
+// expect-stdout: first ended
+// expect-stdout: second 2
+// expect-stdout: close 2

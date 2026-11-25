@@ -60,3 +60,5 @@ test "a binding given a new value is closed afresh" {
 	expect_equal(ok_of(relocked(true)), false)?
 	expect_equal(ok_of(relocked(false)), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

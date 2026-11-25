@@ -58,3 +58,17 @@ fn main() Void {
 	pairs.add("p", Pair(Door("pair")))
 	say(f"end {count} {opened} {found.length()} {many.length()} {pairs.length()}")
 }
+// expect-exit: 0
+// expect-stdout: closed map-a
+// expect-stdout: --result
+// expect-stdout: closed result
+// expect-stdout: --try
+// expect-stdout: read try-read
+// expect-stdout: closed try-read
+// expect-stdout: --closeable
+// expect-stdout: --map of records
+// expect-stdout: end 1 true 1 1 1
+// expect-stdout: closed pair
+// expect-stdout: closed list
+// expect-stdout: closed closeable
+// expect-stdout: closed try-move

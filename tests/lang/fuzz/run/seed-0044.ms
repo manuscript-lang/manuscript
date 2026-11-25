@@ -49,3 +49,14 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = -140
+// expect-stdout: f2 = 11391.226372780864
+// expect-stdout: l4 = [-16, 27, 5, 4, -25] len 5
+// expect-stdout: i5 = -12412726471552
+// expect-stdout: i6 = 0
+// expect-stdout: gcd(895, 147) = 1
+// expect-stdout: f7 = -Infinity
+// expect-stdout: s8 = [a日本語]
+// expect-stdout: i9 = 45
+// expect-stdout: 45 -12412726471642 false sum -12412726471597

@@ -59,3 +59,22 @@ export fn main() Int {
 	say(f"b12 = {b12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [10] len 1
+// expect-stdout: i2 = -5088138
+// expect-stdout: MiXeD CaSedelta
+// expect-stdout: l3 = [] len 0
+// expect-stdout: b4 = true
+// expect-stdout: s5 = [line
+// expect-stdout: break]
+// expect-stdout: b6 = true
+// expect-stdout: line
+// expect-stdout: breakline
+// expect-stdout: break
+// expect-stdout: s7 = [line
+// expect-stdout: break]
+// expect-stdout: l8 = [] len 0
+// expect-stdout: l9 = [-1, 15, -19] len 3
+// expect-stdout: s10 = [beta]
+// expect-stdout: b11 = false
+// expect-stdout: b12 = false

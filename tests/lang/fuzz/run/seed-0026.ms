@@ -66,3 +66,12 @@ export fn main() Int {
 	say(f"acc6 = {acc6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: collatz(1597) = 122
+// expect-stdout: s1 = [hélloalphagamma]
+// expect-stdout: f2 = 6.059114642832439e+21
+// expect-stdout: acc3 = 12
+// expect-stdout: gcd(1432, 1558) = 2
+// expect-stdout: l4 = [] len 0
+// expect-stdout: l5 = [] len 0
+// expect-stdout: acc6 = -3

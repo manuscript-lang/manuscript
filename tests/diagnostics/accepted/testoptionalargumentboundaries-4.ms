@@ -4,3 +4,4 @@
 fn call() Void {
 	_value Int? := 4
 }
+// expect-exit: 0

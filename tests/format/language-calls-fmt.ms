@@ -14,3 +14,17 @@ export fn main() Int {
 
 	return 0
 }
+// expect-format: rewritten
+// expect-formatted: import panic from "@std/core.ms"
+// expect-formatted:
+// expect-formatted: fn add(a, b Int) Int => a + b
+// expect-formatted:
+// expect-formatted: export fn main() Int {
+// expect-formatted: \tvar sum = 0
+// expect-formatted: \tfor i in 0..5000000 {
+// expect-formatted: \t\tsum = add(sum, i)
+// expect-formatted: \t}
+// expect-formatted: \tif sum != 12499997500000 { return panic("calls checksum") }
+// expect-formatted:
+// expect-formatted: \treturn 0
+// expect-formatted: }

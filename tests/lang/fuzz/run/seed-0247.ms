@@ -88,3 +88,20 @@ export fn main() Int {
 	say(f"acc13 = {acc13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 35
+// expect-stdout: emoji 😀
+// expect-stdout: s2 = [gamma]
+// expect-stdout: fib(36) = 14930352
+// expect-stdout: f3 = 6960.646977840679
+// expect-stdout: l4 = [-6, 20, 23, -18] len 4
+// expect-stdout: l5 = [-4, 22, -16] len 3
+// expect-stdout: i6 = 35
+// expect-stdout: s7 = [gammaback\\slashgammaalpha]
+// expect-stdout: i8 = 3
+// expect-stdout: f9 = 1.5
+// expect-stdout: gamma
+// expect-stdout: s10 = [608200235669:brace{s}gammaback\\slashgammaalpha]
+// expect-stdout: i11 = 40
+// expect-stdout: f12 = 894549430.9814092
+// expect-stdout: acc13 = 4

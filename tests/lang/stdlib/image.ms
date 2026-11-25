@@ -280,3 +280,5 @@ test "jpeg gray round trip and alpha rejection" {
 	expect_equal(back.channel_count(), 1)?
 	expect_equal(encode_jpeg(new_image(2, 2, ColorMode.Rgba).get()).is_ok(), false)?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

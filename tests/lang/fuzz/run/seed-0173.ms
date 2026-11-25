@@ -53,3 +53,12 @@ export fn main() Int {
 	say(f"acc7 = {acc7}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = true
+// expect-stdout: l2 = [12, 8] len 2
+// expect-stdout: s3 = []
+// expect-stdout: l4 = [30, -8] len 2
+// expect-stdout: -48 6292961579324 true sum 6292961579276
+// expect-stdout: acc5 = 22
+// expect-stdout: b6 = false
+// expect-stdout: acc7 = 20

@@ -362,7 +362,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
                               .quick = request->build_type == MS_BUILD_DEBUG,
                               .musl = request->static_libc};
     const LinkRequest job = {.object = ms_strbuild_span(&object[0]), .inputs = inputs, .input_count = count,
-                             .output = request->output};
+                             .output = request->output, .temporary = request->temporary};
     MsStrBuild link_why = ms_strbuild_new();
     ok = link_executable(&link, &job, &link_why) || fail(error, "", ms_strbuild_span(&link_why));
     ms_strbuild_free(&link_why);

@@ -9,3 +9,5 @@ test "several checks" {
 		panic("last check failed")
 	}
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

@@ -96,3 +96,25 @@ export fn main() Int {
 	say(f"{((-40) + i10) / big15}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: fact(8) = 40320
+// expect-stdout: i1 = 994705843615
+// expect-stdout: collatz(652) = 25
+// expect-stdout: l2 = [20, 6, -17, 9] len 4
+// expect-stdout: DELTA
+// expect-stdout: s3 = [x  padded  ]
+// expect-stdout: i4 = 158
+// expect-stdout: b5 = false
+// expect-stdout: f6 = 133738.814
+// expect-stdout: fact(10) = 3628800
+// expect-stdout: s7 = [11:alphax  padded  ]
+// expect-stdout: s8 = [316:TAB\tHERE]
+// expect-stdout: l9 = [20, 6, 9] len 3
+// expect-stdout: i10 = 203
+// expect-stdout: b11 = true
+// expect-stdout: -30:
+// expect-stdout: i12 = 203
+// expect-stdout: s13 = [11:alphadelta  padded  hello world]
+// expect-stdout: b14 = true
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0278.ms:96 in main

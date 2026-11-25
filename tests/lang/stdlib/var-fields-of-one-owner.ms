@@ -49,3 +49,5 @@ test "changed fields of one record keep their owners without copying" {
 	expect_equal(lanes.right.length(), 1)?
 	expect_equal(lanes.counts, [1, 2, 2])?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

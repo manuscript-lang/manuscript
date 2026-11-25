@@ -77,3 +77,5 @@ test "closing in the turn a request task was started ends it and returns" {
 		server.close() | expect_ok?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

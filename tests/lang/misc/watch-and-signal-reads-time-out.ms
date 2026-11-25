@@ -28,3 +28,5 @@ test "a bounded read of a signal stream with no signal times out" {
 	stalled := signals.next(timeout: milliseconds(100))
 	expect_equal(stalled.err().kind, "ETIMEDOUT")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

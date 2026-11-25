@@ -98,3 +98,5 @@ test "JSON rejects sized numbers outside their range" {
 		"EBADMSG",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

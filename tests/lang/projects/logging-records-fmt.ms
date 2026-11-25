@@ -37,3 +37,4 @@ export fn emit(logger Logger) Void! {
 	)?
 	logger.warn("complete")?
 }
+// expect-format: unchanged

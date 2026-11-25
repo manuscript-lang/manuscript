@@ -41,3 +41,12 @@ fn main() Void {
 	}
 	void stdout().write(f"{h}\n")
 }
+// expect-exit: 0
+// expect-stdout: 18446744073709551615 9223372036854775808 1
+// expect-stdout: true true true true false true
+// expect-stdout: 9223372036854775807 5 true 9223372036854775807
+// expect-stdout: 1 -1 8000000000000000 64
+// expect-stdout: 18446744073709552000 9223372036854775808 none some(1) none some(1)
+// expect-stdout: [0, 5, 9223372036854775808, 18446744073709551615] [18446744073709551615, 9223372036854775808, 5, 0]
+// expect-stdout: 18446744073709551615 7 some(5) none
+// expect-stdout: 5738308706962252

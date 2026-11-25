@@ -40,3 +40,5 @@ test "an enum payload shares one type across grouped names" {
 	expect_equal(sides(Shape.Box(1, 2)), 3)?
 	expect_equal(sides(Shape.Dot), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

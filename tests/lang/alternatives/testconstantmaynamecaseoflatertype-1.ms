@@ -18,3 +18,4 @@ export fn main() Int {
 		}
 	}
 }
+// expect-exit: 0

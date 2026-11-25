@@ -101,3 +101,5 @@ test "copy moves every item" {
 	count := copy(from_list([7, 8, 9]), writer)?
 	expect_equal(count, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

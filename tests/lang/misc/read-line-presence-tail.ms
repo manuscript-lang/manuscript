@@ -40,3 +40,5 @@ test "presence and text reads share buffered consumption" {
 	present(input) | expect_ok? | expect_true?
 	(present(input) | expect_ok? | expect_false?)
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

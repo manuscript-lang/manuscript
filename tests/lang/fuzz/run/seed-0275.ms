@@ -68,3 +68,23 @@ export fn main() Int {
 	say(f"{big16 * 3}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: f1 = -31521776818582.684
+// expect-stdout: s3 = [日本語-22:a]
+// expect-stdout: f4 = -31221776817308.43
+// expect-stdout: l5 = [14] len 1
+// expect-stdout: s6 = [日本語-22:a日本語-22:a]
+// expect-stdout: fact(17) = 355687428096000
+// expect-stdout: s7 = [21860374:gammams日本語-22:a日本語-22:a]
+// expect-stdout: f8 = -8.44298754941023e-9
+// expect-stdout: 0 3 true sum 3
+// expect-stdout: i9 = 47
+// expect-stdout: 50 35 false sum 85
+// expect-stdout: s10 = [日本語-22:a日本語-22:a]
+// expect-stdout: l11 = [98] len 1
+// expect-stdout: i12 = 65
+// expect-stdout: l13 = [14] len 1
+// expect-stdout: l14 = [98] len 1
+// expect-stdout: s15 = [brace{s}]
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0275.ms:68 in main

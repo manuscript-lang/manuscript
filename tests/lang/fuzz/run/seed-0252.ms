@@ -82,3 +82,15 @@ export fn main() Int {
 	say(f"l9 = {l9} len {l9.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: i2 = -97
+// expect-stdout: fib(19) = 4181
+// expect-stdout: i3 = -1241988
+// expect-stdout: f4 = 910.423
+// expect-stdout: acc5 = 196
+// expect-stdout: acc6 = 24
+// expect-stdout: l7 = [] len 0
+// expect-stdout: collatz(1112) = 44
+// expect-stdout: f8 = 4042.798
+// expect-stdout: l9 = [] len 0

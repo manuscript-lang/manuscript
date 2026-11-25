@@ -27,3 +27,5 @@ test "xor_bytes combines equal lengths and rejects others" {
 	expect_equal(mixed.get(2).to_int(), 240)?
 	expect_true(xor_bytes(Bytes([1]), Bytes([])).is_error())?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

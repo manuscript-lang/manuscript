@@ -48,3 +48,11 @@ export fn main() Int {
 	say(f"acc6 = {acc6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [}s{ecarb]
+// expect-stdout: l2 = [28, 14, -4, 9] len 4
+// expect-stdout: s3 = [x]
+// expect-stdout: i4 = 0
+// expect-stdout: s5 = [ms}s{ecarb]
+// expect-stdout: fib(48) = 4807526976
+// expect-stdout: acc6 = 0

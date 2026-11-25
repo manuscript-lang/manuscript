@@ -21,3 +21,5 @@ test "literal divisors" {
 
 	expect_true((hits == 34))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

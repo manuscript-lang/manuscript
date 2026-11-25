@@ -18,3 +18,7 @@ export fn main() Int {
 	run := item.run
 	return run()
 }
+// expect-exit: 134
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at testfaultsourcelocations-23.ms:13 in Item.run
+// expect-stderr:   at testfaultsourcelocations-23.ms:19 in main

@@ -8,3 +8,4 @@ fn f(command String) Int {
 
 	return 0
 }
+// expect-format: unchanged

@@ -36,3 +36,8 @@ fn main() Void {
 	print(step(scanner, "c"))
 	print(f"{scanner.done} {scanner.budget.left} {scanner.budget.notes.length()}")
 }
+// expect-exit: 0
+// expect-stdout: s@1/8
+// expect-stdout: s@2/6
+// expect-stdout: s@3/4
+// expect-stdout: true 4 3

@@ -238,3 +238,5 @@ test "recursive native watch sees a file in a new subdirectory" {
 
 	expect_true(seen)?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

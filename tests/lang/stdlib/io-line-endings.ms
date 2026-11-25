@@ -97,3 +97,5 @@ test "empty chunks preserve pending carriage returns and byte budgets" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

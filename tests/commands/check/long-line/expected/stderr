@@ -14,4 +14,4 @@
    |
  6 |         "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc…
    |         ^
-4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
+4 errors; fix them and re-run

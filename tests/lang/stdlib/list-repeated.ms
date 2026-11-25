@@ -28,3 +28,5 @@ test "filled builds a list of copies" {
 	expect_equal(filled(0, 4, null).get_or([]), [0, 0, 0, 0])?
 	expect_equal(filled("x", 3, null).get_or([]), ["x", "x", "x"])?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -37,3 +37,12 @@ export fn main() Int {
 	say(f"{big3 + 5}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: -9223372036854775797 61447447359 true sum -9223371975407328438
+// expect-stdout: l1 = [-30, 30, -20, 22, 21] len 5
+// expect-stdout: 47 181705 true sum 181752
+// expect-stdout: 日本語
+// expect-stdout: 530601064884 429612298815 false sum 960213363699
+// expect-stdout: f2 = 626.779
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0264.ms:37 in main

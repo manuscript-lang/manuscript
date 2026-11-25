@@ -78,3 +78,22 @@ export fn main() Int {
 	say(f"f17 = {f17}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-26, 15] len 2
+// expect-stdout: l2 = [23, -7, 25, 7] len 4
+// expect-stdout: f3 = 597.725
+// expect-stdout: i4 = 6
+// expect-stdout: l5 = [7, 25, -7, 23] len 4
+// expect-stdout: l6 = [18, 20, 10, -15, -30] len 5
+// expect-stdout: i7 = -11318838
+// expect-stdout: s8 = [  padded  -11318845:hello world}s{ecarb]
+// expect-stdout: fib(60) = 1548008755920
+// expect-stdout: i9 = -330
+// expect-stdout: i10 = 65918492
+// expect-stdout: s11 = [a]
+// expect-stdout: f12 = -45.48144627546117
+// expect-stdout: f13 = -45.48144627546117
+// expect-stdout: f14 = 1655.7104462754612
+// expect-stdout: l15 = [18, 20, 10, -15, -30] len 5
+// expect-stdout: b16 = true
+// expect-stdout: f17 = 0

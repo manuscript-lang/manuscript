@@ -54,3 +54,12 @@ export fn main() Int {
 	say(f"s5 = [{s5}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: fact(16) = 20922789888000
+// expect-stdout: s1 = [  padded  ]
+// expect-stdout: s2 = [padded]
+// expect-stdout: b3 = false
+// expect-stdout: i4 = 8383470
+// expect-stdout: gcd(184, 3086) = 2
+// expect-stdout: 42  padded\x20\x20
+// expect-stdout: s5 = [-16:alpha]

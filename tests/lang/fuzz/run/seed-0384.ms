@@ -83,3 +83,21 @@ export fn main() Int {
 	say(f"s13 = [{s13}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [  padded  tab\there]
+// expect-stdout: s2 = [Tab\there]
+// expect-stdout: s3 = [naïve]
+// expect-stdout: collatz(1020) = 49
+// expect-stdout: s4 = [  padded  tab\therehello world]
+// expect-stdout: i5 = 139170
+// expect-stdout: s6 = [emoji 😀]
+// expect-stdout: l7 = [19, -2, -23, 16] len 4
+// expect-stdout:
+// expect-stdout: i8 = -139168
+// expect-stdout: f9 = 489.077
+// expect-stdout: s10 = [naïveTAB\tHERE]
+// expect-stdout: b11 = true
+// expect-stdout: delta
+// expect-stdout: s12 = [naïve]
+// expect-stdout: 4 0 false sum 4
+// expect-stdout: s13 = [TAB\tHERE]

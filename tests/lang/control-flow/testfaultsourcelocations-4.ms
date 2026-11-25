@@ -24,3 +24,8 @@ fn probe(value Int) Int {
 export fn main() Int {
 	return probe(9223372036854775807)
 }
+// expect-exit: 134
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at testfaultsourcelocations-4.ms:13 in Cell.bump
+// expect-stderr:   at testfaultsourcelocations-4.ms:20 in probe
+// expect-stderr:   at testfaultsourcelocations-4.ms:25 in main

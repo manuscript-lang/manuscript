@@ -75,3 +75,12 @@ fn main() Void {
 		f"{ints.sorted((a, b) => a.compare(b))} {ints.map(x => x + 1)} {ints.fold(0, (a, x) => a + x.to_int64())}\n"
 	)
 }
+// expect-exit: 0
+// expect-stdout: 1 1000 1000
+// expect-stdout: 300 14850 some(99)
+// expect-stdout: 7 true false
+// expect-stdout: 6 3
+// expect-stdout: 100000 -7 0.5 true true
+// expect-stdout: 7 5 0
+// expect-stdout: [some(3), none, some(-1)] false
+// expect-stdout: [-9, 1, 3, 5] [6, 4, -8, 2] 0

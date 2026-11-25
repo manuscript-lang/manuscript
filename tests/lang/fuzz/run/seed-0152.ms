@@ -41,3 +41,13 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 364896.55875
+// expect-stdout: b2 = true
+// expect-stdout: 日本語x日本語
+// expect-stdout: i3 = -824044
+// expect-stdout: i4 = -824044
+// expect-stdout: i5 = 22
+// expect-stdout: i6 = 1358097027872
+// expect-stdout: f7 = 1094997.3932500002
+// expect-stdout: 33696864 -477647 false sum 33219217

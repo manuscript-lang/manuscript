@@ -58,3 +58,5 @@ test "a list pattern moves its elements" {
 	expect_equal(a, 1)?
 	expect_equal(b, 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

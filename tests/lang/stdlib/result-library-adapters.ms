@@ -59,3 +59,5 @@ test "absence adapters and sorted lookup retain an explicit failure type" {
 		InputFailure.MissingKey(2),
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

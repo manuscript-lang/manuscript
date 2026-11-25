@@ -56,3 +56,16 @@ export fn main() Int {
 	say(f"b8 = {b8}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-2] len 1
+// expect-stdout: s2 = [line
+// expect-stdout: break]
+// expect-stdout: s3 = [line
+// expect-stdout: break]
+// expect-stdout: collatz(955) = 28
+// expect-stdout: l4 = [] len 0
+// expect-stdout: b5 = true
+// expect-stdout: i6 = 10
+// expect-stdout: s7 = [kaerb
+// expect-stdout: enil]
+// expect-stdout: b8 = false

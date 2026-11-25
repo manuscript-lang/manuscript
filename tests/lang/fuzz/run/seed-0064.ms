@@ -55,3 +55,12 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: s2 = [msbeta]
+// expect-stdout: acc4 = 0
+// expect-stdout: s5 = [MSBETA]
+// expect-stdout: f6 = 9.5
+// expect-stdout: fib(12) = 144
+// expect-stdout: l7 = [21, -30, -19, -7, 9] len 5
+// expect-stdout: msbeta

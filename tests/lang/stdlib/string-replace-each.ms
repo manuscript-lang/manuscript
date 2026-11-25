@@ -33,3 +33,5 @@ test "index_any reports the byte offset of the first scalar in the set" {
 	"a🦀b".index_any("🦀") | expect_equal(1)?
 	"zzzzzzzzzzk".index_any("abcdefghijk") | expect_equal(10)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

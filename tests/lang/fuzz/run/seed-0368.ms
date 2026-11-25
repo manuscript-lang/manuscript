@@ -100,3 +100,23 @@ export fn main() Int {
 	say(f"i16 = {i16}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [日本語]
+// expect-stdout: i2 = -122182837180
+// expect-stdout: s3 = [日本語]
+// expect-stdout: f4 = 1665.172
+// expect-stdout: l5 = [] len 0
+// expect-stdout: l6 = [-26, 29, -12, -19, -1] len 5
+// expect-stdout: b7 = true
+// expect-stdout: f8 = 1665.172
+// expect-stdout: b9 = true
+// expect-stdout: f10 = 261.034
+// expect-stdout: l11 = [-26, 29, -12, -19, -1, 85] len 6
+// expect-stdout: collatz(2321) = 32
+// expect-stdout: i12 = -122182837180
+// expect-stdout: fib(37) = 24157817
+// expect-stdout: f13 = 165081524.78481027
+// expect-stdout: l14 = [85, -1, -19, -12, 29, -26] len 6
+// expect-stdout: 日本語back\\slash
+// expect-stdout: f15 = 27495985810505324
+// expect-stdout: i16 = 22

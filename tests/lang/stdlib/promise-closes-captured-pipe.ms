@@ -35,3 +35,5 @@ export fn main() Int {
 	void task.wait()
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: got 7

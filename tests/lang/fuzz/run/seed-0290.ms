@@ -31,3 +31,12 @@ export fn main() Int {
 	say(f"{(-i4) / big5}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: -32 -158288384435 false sum -158288384467
+// expect-stdout: l1 = [-12] len 1
+// expect-stdout: l2 = [] len 0
+// expect-stdout: f3 = 6.5
+// expect-stdout: i4 = -31
+// expect-stdout: 29 -31 false sum -2
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0290.ms:31 in main

@@ -108,3 +108,5 @@ export fn main() Int {
 
 	return 1
 }
+// expect-exit: 0
+// expect-stdout: idle server stays asleep: true

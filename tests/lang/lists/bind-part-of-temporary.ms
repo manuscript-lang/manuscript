@@ -39,3 +39,5 @@ test "a list literal and append own copies of nested elements of a temporary" {
 	b.append(nested()[0][1].clone())
 	expect_equal(b[0], "b")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -57,3 +57,5 @@ test "a result of an operation outlives the value it was read from" {
 
 	expect_equal(out, ["p0", "p1", "p2"])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

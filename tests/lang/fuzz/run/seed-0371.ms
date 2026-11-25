@@ -60,3 +60,17 @@ export fn main() Int {
 	say(f"i12 = {i12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: s2 = [31:naïve]
+// expect-stdout: f3 = 283633.45701106463
+// expect-stdout: i4 = -40
+// expect-stdout: b5 = true
+// expect-stdout: b6 = false
+// expect-stdout: f7 = 283633.45701106463
+// expect-stdout: hello world
+// expect-stdout: s8 = [31:naïve31:naïve]
+// expect-stdout: l9 = [-2] len 1
+// expect-stdout: acc10 = 0
+// expect-stdout: s11 = [日本語]
+// expect-stdout: i12 = 0

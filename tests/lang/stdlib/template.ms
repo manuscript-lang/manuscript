@@ -218,3 +218,5 @@ test "truncate counts bytes and never splits a character" {
 	expect_equal(render("{{ u | truncate(5) }}", d).get(), "é€...")?
 	expect_equal(render("{{ u | truncate(11) }}", d).get(), "é€😀 x")?
 }
+// expect-exit: 0
+// expect-tests: passed=15 failed=0

@@ -7,3 +7,10 @@ fn run() Int {
 	number := 10
 	return subtract(number, 3)
 }
+// expect-format: rewritten
+// expect-formatted: fn subtract(amount, deduction Int) Int => amount - deduction
+// expect-formatted:
+// expect-formatted: fn run() Int {
+// expect-formatted: \tnumber := 10
+// expect-formatted: \treturn subtract(number, 3)
+// expect-formatted: }

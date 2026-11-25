@@ -60,3 +60,23 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 6
+// expect-stdout: i2 = 6
+// expect-stdout: i3 = 132948
+// expect-stdout: i4 = -120
+// expect-stdout: s5 = [650609:LINE
+// expect-stdout: BREAK]
+// expect-stdout: i6 = 48
+// expect-stdout: b7 = false
+// expect-stdout: l8 = [] len 0
+// expect-stdout: f9 = 995.238
+// expect-stdout: 650609:LINE
+// expect-stdout: BREAK
+// expect-stdout: b10 = false
+// expect-stdout: l11 = [] len 0
+// expect-stdout: s12 = [ALPHA650609:LINE
+// expect-stdout: BREAK]
+// expect-stdout: ALPHA650609:LINE
+// expect-stdout: BREAKALPHA650609:LINE
+// expect-stdout: BREAK

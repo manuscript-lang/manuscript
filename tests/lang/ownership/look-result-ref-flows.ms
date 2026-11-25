@@ -42,3 +42,13 @@ fn main() Void {
 	r := b.pick(0)
 	print(r.get())
 }
+// expect-exit: 0
+// expect-stdout: ok(abc)
+// expect-stdout: ok(de)
+// expect-stdout: ok(de)
+// expect-stdout: error(Error(details: Map(), kind: none, message: out of range))
+// expect-stdout: true
+// expect-stdout: de
+// expect-stdout: ok(3)
+// expect-stdout: error(Error(details: Map(), kind: none, message: out of range))
+// expect-stdout: abc

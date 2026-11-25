@@ -14,3 +14,7 @@ fn next_sum(a List[Int]) Int {
 fn main() Void {
 	void stdout().write(f"{next_sum([1, 2, 3])}\n")
 }
+// expect-exit: 134
+// expect-stderr: index 3 out of range for length 3; use get_or(index, default) to avoid the fault
+// expect-stderr:   at bounds-fault-next.ms:9 in next_sum
+// expect-stderr:   at bounds-fault-next.ms:15 in main

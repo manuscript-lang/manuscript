@@ -87,3 +87,5 @@ test "rotations retain empty and extra-buffer behavior" {
 		)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

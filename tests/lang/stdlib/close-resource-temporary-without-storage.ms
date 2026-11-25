@@ -25,3 +25,6 @@ fn main() Void {
 	a := open_counter(7).value()
 	print(f"read {a}")
 }
+// expect-exit: 0
+// expect-stdout: closed 7
+// expect-stdout: read 7

@@ -62,3 +62,8 @@ fn main2() Void {
 fn main() Void {
 	main2()
 }
+// expect-exit: 0
+// expect-stdout: 2
+// expect-stdout: 3 sxx
+// expect-stdout: 2
+// expect-stdout: 6

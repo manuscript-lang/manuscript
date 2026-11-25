@@ -11,3 +11,14 @@ fn value(expr Expr) Int {
 		Num(value) => return value
 	}
 }
+// expect-format: rewritten
+// expect-formatted: enum Expr {
+// expect-formatted: \tNum(value Int)
+// expect-formatted: \tAdd(left, right Expr)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn value(expr Expr) Int {
+// expect-formatted: \tmatch expr {
+// expect-formatted: \t\tNum(value) => return value
+// expect-formatted: \t}
+// expect-formatted: }

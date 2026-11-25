@@ -174,3 +174,5 @@ test "Commands defaults cross concrete bound view and generic boundaries" {
 	native := run
 	expect_equal(native("", []).wait(), invalid)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

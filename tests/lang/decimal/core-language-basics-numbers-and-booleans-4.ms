@@ -18,3 +18,5 @@ fn amount_text() Result[String, Error] {
 test "decimal amounts" {
 	amount_text()? | expect_equal("tax 4.95 total 64.92 padded 25.50")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

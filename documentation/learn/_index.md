@@ -66,4 +66,4 @@ irm https://manuscript-lang.github.io/manuscript/install-skill.ps1 | iex
 
 This creates a self-contained `manuscript` skill with concept references and the language version.
 
-Use `ms verify` to run type checking, the formatting check, lint and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Use `ms verify` to run type checking, the formatting check, lint and tests together; `ms check --json` gives structured diagnostics for tools (agents should read the plain output), and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).

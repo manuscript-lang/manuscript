@@ -69,3 +69,15 @@ export fn main() Int {
 	say(f"f8 = {f8}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 38
+// expect-stdout: fact(5) = 120
+// expect-stdout: i2 = 84420
+// expect-stdout: i3 = -25
+// expect-stdout: f4 = 0
+// expect-stdout: l5 = [-14, -26, 17, -19] len 4
+// expect-stdout: i6 = -84505
+// expect-stdout: gcd(4993, 3262) = 1
+// expect-stdout: b7 = false
+// expect-stdout: collatz(2309) = 32
+// expect-stdout: f8 = Infinity

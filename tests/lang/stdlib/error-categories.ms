@@ -31,3 +31,5 @@ test "an Error built by hand compares by message, kind and details" {
 	left | expect_equal(right)?
 	(left == Error("same", kind: "ETIMEDOUT")) | expect_equal(false)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

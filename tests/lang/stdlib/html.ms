@@ -226,3 +226,5 @@ test "unescape maps the HTML5 nGt and nLt references to two scalars" {
 	expect_equal(unescape("&nLt;"), "\u{226a}\u{20d2}")?
 	expect_equal(unescape("&nGtv;"), "\u{226b}\u{338}")?
 }
+// expect-exit: 0
+// expect-tests: passed=11 failed=0

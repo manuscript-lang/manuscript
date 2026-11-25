@@ -88,3 +88,5 @@ test "Closeable cleanup runs in reverse order before return delivery" {
 	expect_equal((read_file(f"{dir}/1").wait()?), Bytes([116, 114, 117, 101]))?
 	expect_equal((read_file(f"{dir}/2").wait()?), Bytes([102, 97, 108, 115, 101]))?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

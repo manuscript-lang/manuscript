@@ -45,3 +45,7 @@ fn main() Void! {
 	print(heard.next()?)
 	return ok()
 }
+// expect-exit: 0
+// expect-stdout: hi
+// expect-stdout: 1
+// expect-stdout: some(7)

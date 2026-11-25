@@ -93,3 +93,25 @@ export fn main() Int {
 	say(f"s14 = [{s14}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = true
+// expect-stdout: b2 = true
+// expect-stdout: s3 = [aline
+// expect-stdout: break]
+// expect-stdout: 11 48 true sum 59
+// expect-stdout: i4 = 980054112855
+// expect-stdout: i5 = -9223372036854775807
+// expect-stdout: f6 = 654.594
+// expect-stdout: 41004240 -9223372036854775807 false sum -9223372036813771567
+// expect-stdout: fib(5) = 5
+// expect-stdout: l7 = [-5, -25, -5, -29, 17] len 5
+// expect-stdout: b8 = false
+// expect-stdout: l9 = [-4, -24, -4, -28, 18] len 5
+// expect-stdout: acc10 = -42
+// expect-stdout: aline
+// expect-stdout: break
+// expect-stdout: f11 = -173.732
+// expect-stdout: s12 = []
+// expect-stdout: -6860378789656 980054112847 true sum -5880324676809
+// expect-stdout: l13 = [18] len 1
+// expect-stdout: s14 = []

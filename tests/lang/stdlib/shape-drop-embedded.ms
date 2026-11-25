@@ -39,3 +39,5 @@ test "a good parse reads the same shape" {
 	m := got.mid or Mid(inner: Inner(a: false, b: false, c: false, d: false, e: false, f: false, g: false, h: false, name: ""), n: 0)
 	expect_equal(m.n, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

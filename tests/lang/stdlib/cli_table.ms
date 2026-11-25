@@ -83,3 +83,5 @@ test "display_width measures terminal columns" {
 	expect_equal("界".display_width(), ok(2))?
 	expect_equal("e\u{301}".display_width(), ok(1))?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

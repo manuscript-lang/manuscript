@@ -9,3 +9,8 @@ fn main() Void! {
 	print(zs.length().to_string())
 	print(xs.slice(2, 9).is_error().to_string())
 }
+// expect-exit: 0
+// expect-stdout: 2
+// expect-stdout: b
+// expect-stdout: 2
+// expect-stdout: true

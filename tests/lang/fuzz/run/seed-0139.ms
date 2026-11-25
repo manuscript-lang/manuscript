@@ -36,3 +36,11 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 200000000
+// expect-stdout: i2 = 0
+// expect-stdout: i3 = 527880
+// expect-stdout: b4 = false
+// expect-stdout: f5 = 200000000
+// expect-stdout: s6 = []
+// expect-stdout:

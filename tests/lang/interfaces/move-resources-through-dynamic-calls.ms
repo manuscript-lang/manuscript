@@ -83,3 +83,19 @@ fn main() Void {
 	print(f"finished {finish(Door(7))}")
 	print(f"kept {kept.length()}")
 }
+// expect-exit: 0
+// expect-stdout: close 1
+// expect-stdout: lambda reads 1
+// expect-stdout: lambda keeps 1
+// expect-stdout: close 3
+// expect-stdout: reader 3
+// expect-stdout: close 4
+// expect-stdout: named keeps 1
+// expect-stdout: map 50
+// expect-stdout: close 6
+// expect-stdout: interface 6
+// expect-stdout: close 7
+// expect-stdout: finished 7
+// expect-stdout: kept 1
+// expect-stdout: close 5
+// expect-stdout: close 2

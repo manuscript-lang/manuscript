@@ -84,3 +84,18 @@ export fn main() Int {
 	say(f"gcd(4473, 4179) = {gcd(4473, 4179)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: l2 = [-20, -19, 30, -24, -25] len 5
+// expect-stdout: emoji 😀42
+// expect-stdout: acc3 = 61
+// expect-stdout: f4 = 0.01
+// expect-stdout: f5 = 0.000999553613402449
+// expect-stdout: acc6 = 168
+// expect-stdout: b7 = false
+// expect-stdout: l8 = [9, -1, 4, 6] len 4
+// expect-stdout: b9 = true
+// expect-stdout: l10 = [9, -1, 4, 6, 9, -1, 4, 6] len 8
+// expect-stdout: fib(38) = 39088169
+// expect-stdout: i11 = -39
+// expect-stdout: gcd(4473, 4179) = 21

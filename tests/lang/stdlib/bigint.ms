@@ -86,3 +86,5 @@ test "power radix parsing keeps digit order leading zeros and strict budgets" {
 	expect_equal(parse_big_int("+0_1", 16, 2), limited)?
 	expect_equal(parse_big_int("+0_1", 16, 3), malformed)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

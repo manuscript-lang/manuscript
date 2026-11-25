@@ -44,3 +44,9 @@ export fn main() Int {
 	print(parts)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: [alpha, beta, gamma, delta, epsilon, zeta, eta, theta]
+// expect-stdout: 7
+// expect-stdout: 3
+// expect-stdout: wwwwwwwwwwwwwwwwwwwwwwwwwwww
+// expect-stdout: [one, two]

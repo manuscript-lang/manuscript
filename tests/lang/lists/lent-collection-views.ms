@@ -85,3 +85,19 @@ export fn main() Int {
 	print(rows[0])
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 12
+// expect-stdout: 21
+// expect-stdout: false
+// expect-stdout: [2, 3, 4]
+// expect-stdout: 0
+// expect-stdout: [alpha is a longer string than inline, beta is a longer string than inline too]
+// expect-stdout: 321
+// expect-stdout: 44
+// expect-stdout: 321
+// expect-stdout: [100, 200]
+// expect-stdout: 3
+// expect-stdout: [[1, 0], [0, 200], [200, 4]]
+// expect-stdout: 32
+// expect-stdout: 31
+// expect-stdout: first row is longer than inline

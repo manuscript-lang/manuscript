@@ -82,3 +82,23 @@ export fn main() Int {
 	say(f"s16 = [{s16}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -264899694745120032
+// expect-stdout: b2 = false
+// expect-stdout: b3 = false
+// expect-stdout: f4 = 6e+23
+// expect-stdout: b5 = false
+// expect-stdout: i6 = 18
+// expect-stdout: MiXeD CaSe
+// expect-stdout: l7 = [] len 0
+// expect-stdout: b8 = false
+// expect-stdout: s9 = [naïveEMOJI 😀24]
+// expect-stdout: i10 = 530
+// expect-stdout: b11 = false
+// expect-stdout: brace{s}
+// expect-stdout: acc12 = -45
+// expect-stdout: fact(0) = 1
+// expect-stdout: b13 = true
+// expect-stdout: f14 = 6e+23
+// expect-stdout: b15 = false
+// expect-stdout: s16 = [42😀 ijomeevïan24]

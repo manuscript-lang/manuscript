@@ -29,3 +29,5 @@ export fn main() Int {
 	print(f"{stock.levels["a"]} {stock.levels["b"]} {counts[1]} {key}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 15 -2 3 a

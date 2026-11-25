@@ -20,3 +20,5 @@ test "keywords are ordinary field names and members" {
 		expect_equal(i, 2)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

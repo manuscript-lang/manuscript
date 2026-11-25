@@ -70,3 +70,22 @@ export fn main() Int {
 	say(f"{l4[4]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: l1 = [-17, 2, -29] len 3
+// expect-stdout: b2 = false
+// expect-stdout: i3 = 44
+// expect-stdout: l4 = [2, -29] len 2
+// expect-stdout: l5 = [2, -29, 83] len 3
+// expect-stdout: i6 = -3432
+// expect-stdout: s7 = [x]
+// expect-stdout: s8 = [x]
+// expect-stdout: f9 = 257403.28264324504
+// expect-stdout: i10 = -31
+// expect-stdout: hello world
+// expect-stdout: s11 = [deltaxnaïve]
+// expect-stdout: b12 = true
+// expect-stdout: fact(6) = 720
+// expect-stdout: line
+// expect-stdout: break
+// expect-stderr: index 4 out of range for length 2; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0162.ms:70 in main

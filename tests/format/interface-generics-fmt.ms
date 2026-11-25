@@ -59,3 +59,4 @@ test "parameters and bounds belong to interfaces and types" {
 	text := Box("seven")
 	expect_equal(read(text), "seven")?
 }
+// expect-format: unchanged

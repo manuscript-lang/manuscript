@@ -29,3 +29,5 @@ test "appends across capacity growth keep every byte" {
 test "an empty builder builds empty bytes" {
 	expect_equal(build(0).length(), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -58,3 +58,5 @@ test "extreme durations format, including the minimum" {
 	expect_equal(f"{nanoseconds(-1500)}", "-1.5µs")?
 	expect_equal(f"{nanoseconds(-999999999)}", "-999.999999ms")?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

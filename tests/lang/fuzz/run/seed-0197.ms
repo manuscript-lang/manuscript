@@ -58,3 +58,17 @@ export fn main() Int {
 	say(f"{l4[10]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 125633434
+// expect-stdout: i2 = 125633396
+// expect-stdout: -882 100721 true sum 99839
+// expect-stdout: 125633434 125633396 false sum 251266830
+// expect-stdout: i3 = 125633434
+// expect-stdout: l4 = [8, -6, 10, -24, 5] len 5
+// expect-stdout: b5 = false
+// expect-stdout: gcd(4763, 2727) = 1
+// expect-stdout: f6 = 176.05081467154386
+// expect-stdout: acc7 = 175
+// expect-stdout: f8 = -318.78318532845617
+// expect-stderr: index 10 out of range for length 5; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0197.ms:58 in main

@@ -48,3 +48,5 @@ test "keys returns an independent list" {
 	map.add(-1, "extra")
 	expect_equal(keys.length(), 300)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -228,3 +228,231 @@ test "malformed and bounded inputs return errors" {
 	failure4 JsonValue! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
 	parse(text: "[[[]]]", limits: limits) | expect_equal(failure4)?
 }
+// expect-format: rewritten
+// expect-formatted: import (
+// expect-formatted: \tBytes, BytesBuilder from "@std/bytes.ms",
+// expect-formatted: \tsha256 from "@std/crypto/crypto.ms",
+// expect-formatted: \tbase64_decode, hex_decode, hex_encode from "@std/data/encoding.ms",
+// expect-formatted: \tJsonOptions, JsonValue, parse, stringify from "@std/data/json.ms",
+// expect-formatted: \tArchiveEntry,
+// expect-formatted: \tArchiveOptions,
+// expect-formatted: \tcompress,
+// expect-formatted: \tdecompress,
+// expect-formatted: \tpack,
+// expect-formatted: \tunpack from "@std/io/archive.ms",
+// expect-formatted: \tround, sqrt from "@std/math/math.ms",
+// expect-formatted: \tformat_query, parse_query from "@std/net/url.ms",
+// expect-formatted: \tfrom_scalars from "@std/string.ms",
+// expect-formatted: \texpect_equal, expect_false, fail from "@std/test/test.ms",
+// expect-formatted: )
+// expect-formatted:
+// expect-formatted: fn twice(value Int) Int {
+// expect-formatted: \treturn value * 2
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn positive(value Int) Bool {
+// expect-formatted: \treturn value > 0
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn sum(accumulator, value Int) Int {
+// expect-formatted: \treturn accumulator + value
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn compare(left, right Int) Int {
+// expect-formatted: \tif left < right {
+// expect-formatted: \t\treturn -1
+// expect-formatted: \t}
+// expect-formatted: \tif left > right {
+// expect-formatted: \t\treturn 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn 0
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn verify_json() Void! {
+// expect-formatted: \tlimits := JsonOptions(max_bytes: 1024, max_depth: 8, max_values: 32)
+// expect-formatted: \tvalue := parse(text: "{\\"large\\":9007199254740993,\\"ok\\":true}", limits: limits)?
+// expect-formatted: \t(
+// expect-formatted: \t\t(
+// expect-formatted: \t\t\tnot (
+// expect-formatted: \t\t\t\tstringify(
+// expect-formatted: \t\t\t\t\tvalue: value,
+// expect-formatted: \t\t\t\t\tmax_bytes: 1024,
+// expect-formatted: \t\t\t\t)? == "{\\"large\\":9007199254740993,\\"ok\\":true}"
+// expect-formatted: \t\t\t)
+// expect-formatted: \t\t)
+// expect-formatted: \t\t| expect_false?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn verify_encoding() Void! {
+// expect-formatted: \tbytes := hex_decode(text: "00ff42", max_bytes: 3)?
+// expect-formatted: \thex_encode(data: bytes) | expect_equal("00ff42")?
+// expect-formatted: \t(
+// expect-formatted: \t\t(
+// expect-formatted: \t\t\tnot (
+// expect-formatted: \t\t\t\thex_encode(
+// expect-formatted: \t\t\t\t\tdata: sha256(data: "abc".to_bytes())
+// expect-formatted: \t\t\t\t) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+// expect-formatted: \t\t\t)
+// expect-formatted: \t\t)
+// expect-formatted: \t\t| expect_false?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn verify_url() Void! {
+// expect-formatted: \tquery := parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)?
+// expect-formatted: \tquery.length() | expect_equal(3)?
+// expect-formatted: \tformat_query(entries: query) | expect_equal("a=1&a=2&space=hello+world")?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn verify_binary() Void! {
+// expect-formatted: \tvar out = BytesBuilder()
+// expect-formatted: \tout.append_int16_be(-32768)
+// expect-formatted: \t(out.build().int16_be(0)?).to_int() | expect_equal(-32768)?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn verify_compression() Void! {
+// expect-formatted: \tcompressed := compress(
+// expect-formatted: \t\tdata: "hello hello hello".to_bytes(),
+// expect-formatted: \t\tformat: "gzip",
+// expect-formatted: \t\tlevel: 6,
+// expect-formatted: \t\tmax_bytes: 256,
+// expect-formatted: \t)?
+// expect-formatted: \t(
+// expect-formatted: \t\t(
+// expect-formatted: \t\t\tnot (
+// expect-formatted: \t\t\t\tdecompress(
+// expect-formatted: \t\t\t\t\tdata: compressed,
+// expect-formatted: \t\t\t\t\tformat: "gzip",
+// expect-formatted: \t\t\t\t\tmax_bytes: 17,
+// expect-formatted: \t\t\t\t)? == "hello hello hello".to_bytes()
+// expect-formatted: \t\t\t)
+// expect-formatted: \t\t)
+// expect-formatted: \t\t| expect_false?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn verify_archive() Void! {
+// expect-formatted: \tentries := [
+// expect-formatted: \t\tArchiveEntry(
+// expect-formatted: \t\t\tpath: "hello.txt",
+// expect-formatted: \t\t\tdata: "hello".to_bytes(),
+// expect-formatted: \t\t\tdirectory: false,
+// expect-formatted: \t\t)
+// expect-formatted: \t]
+// expect-formatted: \tarchive := pack(entries: entries, format: "zip", max_bytes: 1024)?
+// expect-formatted: \t(
+// expect-formatted: \t\t(
+// expect-formatted: \t\t\tnot (
+// expect-formatted: \t\t\t\tunpack(
+// expect-formatted: \t\t\t\t\tdata: archive,
+// expect-formatted: \t\t\t\t\tformat: "zip",
+// expect-formatted: \t\t\t\t\tlimits: ArchiveOptions(
+// expect-formatted: \t\t\t\t\t\tmax_entries: 1,
+// expect-formatted: \t\t\t\t\t\tmax_entry_bytes: 5,
+// expect-formatted: \t\t\t\t\t\tmax_bytes: 5,
+// expect-formatted: \t\t\t\t\t),
+// expect-formatted: \t\t\t\t)? == entries
+// expect-formatted: \t\t\t)
+// expect-formatted: \t\t)
+// expect-formatted: \t\t| expect_false?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "expanded packages run through compiler" {
+// expect-formatted: \tmatch verify_json() {
+// expect-formatted: \t\tok(_) => {
+// expect-formatted: \t\t\t_verified := void
+// expect-formatted: \t\t}
+// expect-formatted: \t\terror(_) => {
+// expect-formatted: \t\t\treturn fail(message: "json failed")
+// expect-formatted: \t\t}
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \tmatch verify_encoding() {
+// expect-formatted: \t\tok(_) => {
+// expect-formatted: \t\t\t_verified := void
+// expect-formatted: \t\t}
+// expect-formatted: \t\terror(_) => {
+// expect-formatted: \t\t\treturn fail(message: "encoding failed")
+// expect-formatted: \t\t}
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \tmatch verify_url() {
+// expect-formatted: \t\tok(_) => {
+// expect-formatted: \t\t\t_verified := void
+// expect-formatted: \t\t}
+// expect-formatted: \t\terror(_) => {
+// expect-formatted: \t\t\treturn fail(message: "url failed")
+// expect-formatted: \t\t}
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \tmatch verify_binary() {
+// expect-formatted: \t\tok(_) => {
+// expect-formatted: \t\t\t_verified := void
+// expect-formatted: \t\t}
+// expect-formatted: \t\terror(_) => {
+// expect-formatted: \t\t\treturn fail(message: "binary failed")
+// expect-formatted: \t\t}
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \tmatch verify_compression() {
+// expect-formatted: \t\tok(_) => {
+// expect-formatted: \t\t\t_verified := void
+// expect-formatted: \t\t}
+// expect-formatted: \t\terror(_) => {
+// expect-formatted: \t\t\treturn fail(message: "compression failed")
+// expect-formatted: \t\t}
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \tmatch verify_archive() {
+// expect-formatted: \t\tok(_) => {
+// expect-formatted: \t\t\t_verified := void
+// expect-formatted: \t\t}
+// expect-formatted: \t\terror(_) => {
+// expect-formatted: \t\t\treturn fail(message: "archive failed")
+// expect-formatted: \t\t}
+// expect-formatted: \t}
+// expect-formatted: \t("a,,b").split(separator: ",") | expect_equal(["a", "", "b"])?
+// expect-formatted: \t("é🙂").scalar_length() | expect_equal(2)?
+// expect-formatted: \t("é").scalar_values() | expect_equal([233])?
+// expect-formatted:
+// expect-formatted: \ttext_success String! := ok("é")
+// expect-formatted: \tfrom_scalars(values: [233]) | expect_equal(text_success)?
+// expect-formatted: \tsqrt(value: 9.0) | expect_equal(3.0)?
+// expect-formatted: \tround(value: 2.5) | expect_equal(3.0)?
+// expect-formatted: \t([1, 2]).map(transform: twice) | expect_equal([2, 4])?
+// expect-formatted: \t([-1, 3, 0, 2]).filter(predicate: positive) | expect_equal([3, 2])?
+// expect-formatted: \t([1, 2, 3]).fold(initial: 0, step: sum) | expect_equal(6)?
+// expect-formatted: \t([3, 1, 2]).sorted(compare: compare) | expect_equal([1, 2, 3])?
+// expect-formatted:
+// expect-formatted: \tvar flipped = [1, 2]
+// expect-formatted: \tflipped.reverse()
+// expect-formatted: \tflipped | expect_equal([2, 1])?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "malformed and bounded inputs return errors" {
+// expect-formatted: \tfailure1 Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+// expect-formatted: \t(
+// expect-formatted: \t\tbase64_decode(
+// expect-formatted: \t\t\ttext: "Zh==",
+// expect-formatted: \t\t\turl_safe: false,
+// expect-formatted: \t\t\tmax_bytes: 10,
+// expect-formatted: \t\t) | expect_equal(failure1)?
+// expect-formatted: \t)
+// expect-formatted:
+// expect-formatted: \tfailure2 Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+// expect-formatted: \thex_decode(text: "abcd", max_bytes: 1) | expect_equal(failure2)?
+// expect-formatted:
+// expect-formatted: \tlimits := JsonOptions(max_bytes: 100, max_depth: 2, max_values: 10)
+// expect-formatted: \tfailure3 := parse(text: "{\\"a\\":1,\\"a\\":2}", limits: limits)
+// expect-formatted: \t(
+// expect-formatted: \t\tfailure3.err().message | expect_equal(
+// expect-formatted: \t\t\t"JSON: invalid data: line 1, column 14: duplicate object key"
+// expect-formatted: \t\t)?
+// expect-formatted: \t)
+// expect-formatted:
+// expect-formatted: \tfailure4 JsonValue! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+// expect-formatted: \tparse(text: "[[[]]]", limits: limits) | expect_equal(failure4)?
+// expect-formatted: }

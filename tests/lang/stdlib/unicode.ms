@@ -61,3 +61,5 @@ test "Unicode predicates can be passed as ordinary function values" {
 	values := [65, 233, 32, 51, 128578]
 	values.filter(is_alphanumeric) | expect_equal([65, 233, 51])?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

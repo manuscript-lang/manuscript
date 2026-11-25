@@ -1226,3 +1226,5 @@ test "YAML an explicit value may open a collection after extra spaces" {
 		)?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=93 failed=0

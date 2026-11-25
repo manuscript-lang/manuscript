@@ -23,3 +23,4 @@ export fn main() Int {
 	say(f"b5 = {b5}")
 	return 0
 }
+// expect-format: unchanged

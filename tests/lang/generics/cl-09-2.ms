@@ -8,3 +8,5 @@ fn absent[T]() T? {
 test "result context infers function arguments" {
 	_value Int? := absent()
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

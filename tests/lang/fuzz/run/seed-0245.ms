@@ -32,3 +32,10 @@ export fn main() Int {
 	say(f"f6 = {f6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [-44:BRACE{S}a]
+// expect-stdout: b2 = false
+// expect-stdout: i3 = -862553538726
+// expect-stdout: acc4 = 0
+// expect-stdout: s5 = [héllo日本語]
+// expect-stdout: f6 = 1239836.313366

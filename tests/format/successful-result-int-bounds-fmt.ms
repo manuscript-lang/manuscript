@@ -166,3 +166,169 @@ test "Result bounds preserve argument effects and cleanup" {
 fn present[T](hold value T) &T? {
 	return value
 }
+// expect-format: rewritten
+// expect-formatted: import (
+// expect-formatted: \tCloseable from "@std/core.ms",
+// expect-formatted: \texpect_contains, expect_equal, expect_fault from "@std/test/test.ms",
+// expect-formatted: )
+// expect-formatted:
+// expect-formatted: fn checked(n Int) Int! {
+// expect-formatted: \tif n < 0 {
+// expect-formatted: \t\treturn error(Error("negative"))
+// expect-formatted: \t}
+// expect-formatted: \treturn ok(n + 1)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn wrapped(n Int) Int! {
+// expect-formatted: \tvalue := checked(n)?
+// expect-formatted: \treturn ok(value)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn total(positive Bool) Int {
+// expect-formatted: \tvar sum = 0
+// expect-formatted: \tvar i = -2
+// expect-formatted:
+// expect-formatted: \twhile i < 1000 {
+// expect-formatted: \t\tif found := wrapped(i) {
+// expect-formatted: \t\t\tif positive {
+// expect-formatted: \t\t\t\tsum += found
+// expect-formatted: \t\t\t} else {
+// expect-formatted: \t\t\t\tsum -= found
+// expect-formatted: \t\t\t}
+// expect-formatted: \t\t} else {
+// expect-formatted: \t\t\tsum -= 1
+// expect-formatted: \t\t}
+// expect-formatted:
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn prefix() Int {
+// expect-formatted: \tvar sum = 9223372036854775807
+// expect-formatted: \tvar i = 0
+// expect-formatted:
+// expect-formatted: \twhile i < 2 {
+// expect-formatted: \t\tif found := wrapped(i) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t\tsum -= found
+// expect-formatted: \t\t}
+// expect-formatted:
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn peer() Int {
+// expect-formatted: \tvar sum = 9223372036854775807
+// expect-formatted: \tvar value = 0
+// expect-formatted: \tvar i = 0
+// expect-formatted:
+// expect-formatted: \twhile i < 2 {
+// expect-formatted: \t\tif found := checked(value) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t}
+// expect-formatted: \t\tvalue += 1
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn hidden(n Int) Int! {
+// expect-formatted: \tif n < 0 {
+// expect-formatted: \t\treturn error(
+// expect-formatted: \t\t\tError(
+// expect-formatted: \t\t\t\tmatch present(n) {
+// expect-formatted: \t\t\t\t\t_value => {
+// expect-formatted: \t\t\t\t\t\treturn ok(9223372036854775807)
+// expect-formatted: \t\t\t\t\t} null => "negative"
+// expect-formatted: \t\t\t\t}
+// expect-formatted: \t\t\t)
+// expect-formatted: \t\t)
+// expect-formatted: \t}
+// expect-formatted: \treturn ok(n + 1)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn hidden_success() Int {
+// expect-formatted: \tvar sum = 1
+// expect-formatted: \tvar i = -1
+// expect-formatted:
+// expect-formatted: \twhile i < 1 {
+// expect-formatted: \t\tif found := hidden(i) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t}
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: type BoundedResultCleanup {
+// expect-formatted: \tvisits List[Int]
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn move BoundedResultCleanup.close() Void! {
+// expect-formatted: \tself.visits.append(7)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn cleanup(move visits List[Int]) Int {
+// expect-formatted: \t_resource := BoundedResultCleanup(visits)
+// expect-formatted: \treturn total(true)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn argument(value Int, var visits List[Int]) Int {
+// expect-formatted: \tvisits.append(value)
+// expect-formatted: \treturn value
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn ordered(var visits List[Int]) Int {
+// expect-formatted: \tvar sum = 0
+// expect-formatted: \tvar i = -1
+// expect-formatted:
+// expect-formatted: \twhile i < 2 {
+// expect-formatted: \t\tif found := wrapped(argument(i, visits)) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t}
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "bounded successful Results preserve both branch budgets" {
+// expect-formatted: \ttotal(true) | expect_equal(500498)?
+// expect-formatted: \ttotal(false) | expect_equal(-500502)?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "Result payload bounds retain intermediate overflow" {
+// expect-formatted: \t(expect_fault(() => _ignored := prefix())?) | expect_contains("Int overflow")?
+// expect-formatted: \t(expect_fault(() => _ignored := peer())?) | expect_contains("Int overflow")?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "Result helper overflow still occurs in the original call" {
+// expect-formatted: \t(
+// expect-formatted: \t\t(expect_fault(() => _ignored := checked(9223372036854775807))?)
+// expect-formatted: \t\t| expect_contains("Int overflow")?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "hidden successful returns in error construction keep checks" {
+// expect-formatted: \t(
+// expect-formatted: \t\t(expect_fault(() => _ignored := hidden_success())?)
+// expect-formatted: \t\t| expect_contains("Int overflow")?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "Result bounds preserve argument effects and cleanup" {
+// expect-formatted: \tvar visits List[Int] = []
+// expect-formatted: \tordered(visits) | expect_equal(3)?
+// expect-formatted: \tvisits | expect_equal([-1, 0, 1])?
+// expect-formatted: \tcleanup(visits) | expect_equal(500498)?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn present[T](hold value T) &T? {
+// expect-formatted: \treturn value
+// expect-formatted: }

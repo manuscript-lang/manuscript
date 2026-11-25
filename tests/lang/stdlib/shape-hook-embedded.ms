@@ -48,3 +48,5 @@ fn wide() Wide! {
 test "a JSON form inside a Result" {
 	expect_equal(stringify(wide())?, "{\"ok\":{\"value\":\"wide:true,41,true\"}}")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

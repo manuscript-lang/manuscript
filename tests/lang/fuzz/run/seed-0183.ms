@@ -59,3 +59,18 @@ export fn main() Int {
 	say(f"i11 = {i11}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = true
+// expect-stdout: b2 = true
+// expect-stdout: i3 = 83211166825
+// expect-stdout: i4 = 83211166825
+// expect-stdout: 0 0 false sum 0
+// expect-stdout: i5 = -59219897783
+// expect-stdout: sm
+// expect-stdout: b6 = true
+// expect-stdout: s7 = [212362:beta]
+// expect-stdout: 42212362:beta
+// expect-stdout: b8 = false
+// expect-stdout: i9 = 83211166825
+// expect-stdout: i10 = 83211166825
+// expect-stdout: i11 = 10

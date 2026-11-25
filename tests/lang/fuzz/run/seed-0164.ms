@@ -48,3 +48,14 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [22, -21, 15, -6, 18] len 5
+// expect-stdout: l2 = [22, -21, 15, -6, 18, 22, -21, 15, -6, 18] len 10
+// expect-stdout: l3 = [19, 10] len 2
+// expect-stdout: l4 = [22, 15, 18] len 3
+// expect-stdout: back\\slashx
+// expect-stdout: b5 = true
+// expect-stdout: i6 = -10
+// expect-stdout: s7 = [brace{s}]
+// expect-stdout: f8 = 472.5730737141615
+// expect-stdout: }s{ecarb

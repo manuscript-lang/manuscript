@@ -12,3 +12,7 @@ fn outer(value Int) Int {
 export fn main() Int {
 	return outer(divide(0))
 }
+// expect-exit: 134
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at testfaultsourcelocations-19.ms:5 in divide
+// expect-stderr:   at testfaultsourcelocations-19.ms:13 in main

@@ -493,3 +493,5 @@ test "tar entries and unpack agree on corrupted and truncated archives" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=13 failed=0

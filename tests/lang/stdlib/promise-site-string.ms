@@ -38,3 +38,5 @@ test "a built site string shows in the report" {
 		true,
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

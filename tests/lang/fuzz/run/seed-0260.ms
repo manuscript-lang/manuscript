@@ -50,3 +50,14 @@ export fn main() Int {
 	say(f"b10 = {b10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [1, 15] len 2
+// expect-stdout: s2 = [ammagbeta]
+// expect-stdout: acc3 = -2
+// expect-stdout: i4 = 18
+// expect-stdout: i5 = 18
+// expect-stdout: i6 = 14528088
+// expect-stdout: i7 = 1899588068421696
+// expect-stdout: i8 = 14528088
+// expect-stdout: b9 = false
+// expect-stdout: b10 = true

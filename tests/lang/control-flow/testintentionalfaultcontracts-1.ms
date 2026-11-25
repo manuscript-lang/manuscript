@@ -22,3 +22,5 @@ test "return contracts" {
 	positive(value: 3) | expect_equal(expected: 3)?
 	discard(value: 1) | expect_equal(expected: void)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

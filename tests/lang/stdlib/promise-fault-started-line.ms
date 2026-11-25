@@ -60,3 +60,5 @@ test "map_concurrent names the line that called it" {
 	reason := mapped() | expect_error?
 	expect_equal(started_by(reason), "at promise-fault-started-line.ms:47 in mapped")?
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=3

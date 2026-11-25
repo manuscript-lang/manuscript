@@ -464,3 +464,5 @@ test "TOML parse without options stops deep nesting and none lifts it" {
 	lifted := parse(deep, TomlOptions(max_depth: null, max_values: null))
 	expect_true(lifted.is_ok())?
 }
+// expect-exit: 0
+// expect-tests: passed=18 failed=0

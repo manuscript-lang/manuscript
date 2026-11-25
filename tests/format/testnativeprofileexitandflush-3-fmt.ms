@@ -10,3 +10,4 @@ fn main() Void {
 	void stdout().write("ready\n")
 	sleep(nanoseconds(60000000000)).wait()
 }
+// expect-format: unchanged

@@ -15,3 +15,6 @@ fn main() Void {
 	)
 	void stdout().write(f"{f.abs()} {f.sign()} {g.abs()} {g.sign()} {(0.5).sign()}\n")
 }
+// expect-exit: 0
+// expect-stdout: 100 70000 5 -1 0 -1 -1
+// expect-stdout: 2.5 -1 0 -0 1

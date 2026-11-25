@@ -6,3 +6,5 @@ import stdout from "@std/io/io.ms"
 fn main() Void {
 	void stdout().write(f"{[1, 2, 3].chunks(0).length()}\n")
 }
+// expect-exit: 0
+// expect-stdout: 0

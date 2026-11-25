@@ -18,3 +18,5 @@ test "receiver before index" {
 	expect_equal(result, 7)?
 	expect_equal(calls, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

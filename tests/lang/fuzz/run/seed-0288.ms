@@ -50,3 +50,19 @@ export fn main() Int {
 	say(f"{big10 * 4}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 26
+// expect-stdout: b2 = false
+// expect-stdout: i3 = 26
+// expect-stdout: s4 = [  padded  naïveline
+// expect-stdout: break]
+// expect-stdout: f5 = 0
+// expect-stdout: s6 = [brace{s}]
+// expect-stdout: f7 = 992.756
+// expect-stdout:   padded  naïveline
+// expect-stdout: break
+// expect-stdout: f8 = 0
+// expect-stdout: i9 = -364136760
+// expect-stdout: 0 -793237 false sum -793237
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0288.ms:50 in main

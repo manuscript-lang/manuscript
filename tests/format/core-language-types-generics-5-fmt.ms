@@ -8,3 +8,11 @@ fn choose[T](first T, second T) T {
 value := choose(1, 2)  // T = Int
 // Rejected: conflicting evidence for T.
 mixed := choose(1, 2.0)
+// expect-format: rewritten
+// expect-formatted: fn choose[T](first, second T) T {
+// expect-formatted: \treturn first
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: value := choose(1, 2)  // T = Int
+// expect-formatted: // Rejected: conflicting evidence for T.
+// expect-formatted: mixed := choose(1, 2.0)

@@ -78,3 +78,25 @@ export fn main() Int {
 	say(f"{(-i2) / big19}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -101700
+// expect-stdout: i2 = -273212
+// expect-stdout: acc3 = 0
+// expect-stdout: l4 = [-27, -23, 19] len 3
+// expect-stdout: l5 = [19] len 1
+// expect-stdout: i6 = 273212
+// expect-stdout: l7 = [-27, -23, 19, 19] len 4
+// expect-stdout: i8 = 273212
+// expect-stdout: l9 = [19, 22] len 2
+// expect-stdout: i10 = 38
+// expect-stdout: b11 = true
+// expect-stdout: i12 = 764828347377
+// expect-stdout: i13 = 273246
+// expect-stdout: i14 = -27
+// expect-stdout: i15 = -27
+// expect-stdout: acc16 = 0
+// expect-stdout: 16826229652958 -27 false sum 16826229652931
+// expect-stdout: s17 = [273250:日本語]
+// expect-stdout: l18 = [] len 0
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0398.ms:78 in main

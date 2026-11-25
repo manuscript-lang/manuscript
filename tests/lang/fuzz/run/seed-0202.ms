@@ -42,3 +42,12 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [42]
+// expect-stdout: beta
+// expect-stdout: f2 = 984.753155287775
+// expect-stdout: 42
+// expect-stdout: -1 -21 false sum -22
+// expect-stdout: l3 = [] len 0
+// expect-stdout: b4 = true
+// expect-stdout: -597129363650 0 true sum -597129363650

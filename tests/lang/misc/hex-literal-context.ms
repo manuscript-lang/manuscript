@@ -16,3 +16,5 @@ test "hex digits retain integer kind in sized contexts" {
 	values List[Int8] := [0x1d, 0x1e]
 	expect_true(values == [0x1d, 0x1e])?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -29,3 +29,5 @@ test "closing a file handle by hand is allowed once more at scope end" {
 	expect_true(file.write("hello").is_ok())?
 	file.close()?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

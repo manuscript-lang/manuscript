@@ -18,3 +18,5 @@ test "method fault frame" {
 	rect := Rect(w: 9223372036854775807, h: 2)
 	rect.area()
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

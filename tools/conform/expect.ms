@@ -119,3 +119,117 @@ export fn with_lines(text String, lines List[String]) String {
 	}
 	return out.join("\n") + "\n"
 }
+
+// `text` on one comment line: escapes for backslash, line breaks, tabs and other control
+// characters, and `\x20` for each trailing space, which the file would lose.
+export fn encoded(text String) String {
+	var out = ""
+
+	for ch in text.split("") {
+		if ch == "\\" {
+			out += "\\\\"
+		} else if ch == "\r" {
+			out += "\\r"
+		} else if ch == "\t" {
+			out += "\\t"
+		} else {
+			out += ch
+		}
+	}
+
+	var end = out.length()
+	while end > 0 and out.slice(end - 1, end) == " " { end -= 1 }
+	return out.slice(0, end) + "\\x20".repeat(out.length() - end)
+}
+
+// One `<key>: <text>` line, or `<key>:` when the text is empty.
+fn keyed(key, text String) String {
+	if text == "" { return f"{key}:" }
+	return f"{key}: {encoded(text)}"
+}
+
+// The lines of captured output, one comment line apiece; output that does not end with
+// a newline gains a closing `<key>-partial` line.
+fn output_lines(key, text String) List[String] {
+	var lines = List[String]()
+	if text == "" { return lines }
+
+	var parts = text.split("\n")
+	partial := not text.ends_with("\n")
+	if not partial {
+		parts = parts.slice(0, parts.length() - 1).get().clone()
+	}
+	for part in parts {
+		lines.append(keyed(key, part))
+	}
+	if partial { lines.append(f"{key}-partial") }
+	return lines
+}
+
+fn string_of(value JsonValue, key String) String {
+	return (value.get(key) or JsonValue.Null).as_string() or ""
+}
+
+// The expectation lines of an observed `run`: exit status, stdout and stderr.
+fn run_lines(observed JsonValue) List[String] {
+	var lines = [f"expect-exit: {number_of(observed, "exit_code")}"]
+	lines.extend(output_lines("expect-stdout", string_of(observed, "stdout")))
+	lines.extend(output_lines("expect-stderr", string_of(observed, "stderr")))
+	return lines
+}
+
+// The expectation lines of an observed `test`: exit status and the counts of its
+// summary.
+fn test_lines(observed JsonValue) List[String] {
+	report := observed.get("report") or JsonValue.Null
+	summary := report.get("summary") or JsonValue.Null
+	var counts = f"passed={number_of(summary, "passed")} failed={number_of(summary, "failed")}"
+	if number_of(summary, "skipped") > 0 {
+		counts += f" skipped={number_of(summary, "skipped")}"
+	}
+	if number_of(summary, "not_run") > 0 {
+		counts += f" not_run={number_of(summary, "not_run")}"
+	}
+
+	var lines = [
+		f"expect-exit: {number_of(observed, "exit_code")}", f"expect-tests: {counts}"
+	]
+	lines.extend(output_lines("expect-stderr", string_of(observed, "stderr")))
+	return lines
+}
+
+// The expectation lines of an observed `parse`: its parse diagnostics, then whether
+// `ms fmt` leaves the program as it is, rewrites it (the result follows) or refuses it.
+fn parse_lines(observed JsonValue) List[String] {
+	var lines = List[String]()
+	for one in (observed.get("diagnostics") or JsonValue.Null).as_list() or [] {
+		lines.extend(diagnostic_lines(one))
+	}
+
+	code := observed.get("fmt_exit_code")
+
+	if code != null {
+		lines.append(f"expect-format-exit: {code.as_int() or (-1)}")
+	} else if (observed.get("unchanged") or JsonValue.Null).as_bool() or false {
+		lines.append("expect-format: unchanged")
+	} else {
+		lines.append("expect-format: rewritten")
+		lines.extend(output_lines("expect-formatted", string_of(observed, "fmt")))
+	}
+
+	return lines
+}
+
+// The expectation lines of `observed` for `phase`.
+export fn render_phase(phase String, observed JsonValue) List[String] {
+	if phase == "run" { return run_lines(observed) }
+	if phase == "test" { return test_lines(observed) }
+	if phase == "parse" { return parse_lines(observed) }
+
+	return render(observed)
+}
+
+// `text` without its trailing expectation block.
+export fn program_text(text String) String {
+	return program_lines(text).join("\n") + "\n"
+}

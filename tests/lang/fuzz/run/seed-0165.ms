@@ -38,3 +38,12 @@ export fn main() Int {
 	say(f"{-big6}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: l1 = [22, -30, 23] len 3
+// expect-stdout: l2 = [23, -30, 22] len 3
+// expect-stdout: b3 = false
+// expect-stdout: f4 = 434818.9348050562
+// expect-stdout: emoji 😀
+// expect-stdout: l5 = [-17, -2, 6, 25, -28] len 5
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0165.ms:38 in main

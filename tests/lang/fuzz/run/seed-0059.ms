@@ -63,3 +63,17 @@ export fn main() Int {
 	say(f"fib(48) = {fib(48)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [日本語]
+// expect-stdout: i2 = -562736870889
+// expect-stdout: s3 = [emoji 😀]
+// expect-stdout: b4 = false
+// expect-stdout: b5 = false
+// expect-stdout: l6 = [-1, 6, -4, 10, 5] len 5
+// expect-stdout: 0 7 true sum 7
+// expect-stdout: i7 = -562736870886
+// expect-stdout: i8 = 4
+// expect-stdout: i9 = -9733176177196220
+// expect-stdout: i10 = -562736870889
+// expect-stdout: s11 = [日本語hello world]
+// expect-stdout: fib(48) = 4807526976

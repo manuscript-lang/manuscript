@@ -33,3 +33,10 @@ export fn main() Int {
 	say(f"i3 = {i3}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout:   padded\x20\x20
+// expect-stdout: l1 = [3, 10, 21] len 3
+// expect-stdout: ALPHA
+// expect-stdout: s2 = [-69:  padded  ]
+// expect-stdout: 8 66907 true sum 66915
+// expect-stdout: i3 = -71

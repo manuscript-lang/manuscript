@@ -271,3 +271,5 @@ test "fixture lifecycle errors invalidate an otherwise successful report" {
 	)
 	validate(report).is_error() | expect_true?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

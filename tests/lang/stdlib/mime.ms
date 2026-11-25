@@ -173,3 +173,5 @@ test "form_part writes a backslash literally and a quote as %22, and parse_multi
 	expect_equal(back[0].name, "a\\b")?
 	expect_equal(back[0].filename, "C:\\dir\\f %221%22.txt")?
 }
+// expect-exit: 0
+// expect-tests: passed=11 failed=0

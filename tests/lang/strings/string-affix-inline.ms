@@ -61,3 +61,5 @@ test "multibyte text compares bytes" {
 	expect_equal(both("日本語のテキスト", "日本"), 1)?
 	expect_equal(both("日本語のテキスト", "スト"), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

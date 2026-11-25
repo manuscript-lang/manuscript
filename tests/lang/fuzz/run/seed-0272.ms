@@ -84,3 +84,18 @@ export fn main() Int {
 	say(f"s11 = [{s11}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: gamma
+// expect-stdout: b1 = false
+// expect-stdout: fib(43) = 433494437
+// expect-stdout: f2 = 325.916
+// expect-stdout: s3 = [10:x]
+// expect-stdout: l4 = [-28, 5, 2, 4] len 4
+// expect-stdout: collatz(739) = 20
+// expect-stdout: i5 = -1488
+// expect-stdout: f6 = 325.916
+// expect-stdout: i7 = 0
+// expect-stdout: b8 = false
+// expect-stdout: s9 = [4:10:x0:brace{s}]
+// expect-stdout: f10 = 325.916
+// expect-stdout: s11 = [TAB\tHERE4:10:X0:BRACE{S}]

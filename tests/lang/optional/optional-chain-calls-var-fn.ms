@@ -64,3 +64,16 @@ fn main() Void {
 	leave_when_absent(none_c)
 	stdout().write("done\n").get()
 }
+// expect-exit: 0
+// expect-stdout: some 2
+// expect-stdout: some 3
+// expect-stdout: some 3
+// expect-stdout: some 1
+// expect-stdout: some 11
+// expect-stdout: some 11
+// expect-stdout: some 4
+// expect-stdout: some 4
+// expect-stdout: none
+// expect-stdout: none
+// expect-stdout: present
+// expect-stdout: done

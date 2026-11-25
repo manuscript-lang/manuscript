@@ -70,3 +70,16 @@ export fn main() Int {
 	say(f"i6 = {i6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: collatz(1528) = 47
+// expect-stdout: f1 = 95819999.9879475
+// expect-stdout: gcd(4116, 2069) = 1
+// expect-stdout: b2 = false
+// expect-stdout: gcd(3212, 2317) = 1
+// expect-stdout: gcd(4823, 4386) = 1
+// expect-stdout: f3 = 2698.999
+// expect-stdout: ms
+// expect-stdout: i4 = 14
+// expect-stdout: f5 = 2874599999635726
+// expect-stdout: MiXeD CaSe
+// expect-stdout: i6 = -651

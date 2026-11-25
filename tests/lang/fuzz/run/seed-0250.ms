@@ -94,3 +94,20 @@ export fn main() Int {
 	say(f"s10 = [{s10}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 21879224
+// expect-stdout: gcd(636, 1285) = 1
+// expect-stdout: f2 = 662.533
+// expect-stdout: f3 = 662.533
+// expect-stdout: l4 = [-22, 22, -6, -29, 26] len 5
+// expect-stdout: fact(3) = 6
+// expect-stdout: b5 = false
+// expect-stdout: 43758448:emoji 😀
+// expect-stdout: f6 = 0.011528610366944013
+// expect-stdout: i7 = 765772840
+// expect-stdout: f8 = 1632.614
+// expect-stdout: collatz(1127) = 137
+// expect-stdout: gcd(3895, 1044) = 1
+// expect-stdout: MiXeD CaSe
+// expect-stdout: i9 = 21879224
+// expect-stdout: s10 = [naïve]

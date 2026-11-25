@@ -47,3 +47,12 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 225607259820 422275328712654344 true sum 422275554319914164
+// expect-stdout: s1 = [Tab\there-155827490194:naïve]
+// expect-stdout: i2 = -114560470025
+// expect-stdout: s3 = [héllo]
+// expect-stdout: acc4 = 2
+// expect-stdout: i5 = 229120939951
+// expect-stdout: emoji 😀
+// expect-stdout: 3479430 -631104 false sum 2848326

@@ -24,3 +24,4 @@ test "map entry type" {
 	expect_equal(entry.key, "a")?
 	expect_equal(entry.value, 3)?
 }
+// expect-format: unchanged

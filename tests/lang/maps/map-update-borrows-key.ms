@@ -28,3 +28,5 @@ test "distinct long keys each get their own copy" {
 	expect_equal(counts.length(), 4)?
 	expect_equal(counts["a label that is longer than inline 2"], 13)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

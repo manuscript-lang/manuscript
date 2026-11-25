@@ -91,3 +91,94 @@ test "contextual callbacks and inline returns" {
 	}
 	expect_equal(outer(3)(4), 7)?
 }
+// expect-format: rewritten
+// expect-formatted: import expect_equal, expect_false from "@std/test/test.ms"
+// expect-formatted:
+// expect-formatted: fn apply[T, U](value T, transform fn(T) U) U => transform(value)
+// expect-formatted:
+// expect-formatted: fn chain[T, U](first fn() T, second fn(T) U) U => second(first())
+// expect-formatted:
+// expect-formatted: fn with_result[T](transform fn() T!) T! => transform()
+// expect-formatted:
+// expect-formatted: fn checked() Int! => ok(3)
+// expect-formatted:
+// expect-formatted: type Box[T] {
+// expect-formatted: \tvalue T
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: type Callback[T, U] {
+// expect-formatted: \ttransform fn(T) U
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: interface Read {
+// expect-formatted: \tfn get() Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn Box[Int].get() Int => self.value
+// expect-formatted:
+// expect-formatted: fn invoke(transform (fn(Int) Int)?) Int {
+// expect-formatted: \tcallback := transform
+// expect-formatted: \tif callback != null { return callback(4) }
+// expect-formatted:
+// expect-formatted: \treturn 0
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "contextual callbacks and inline returns" {
+// expect-formatted: \toffset := 3
+// expect-formatted: \tstrings := [1, 2, 3].filter(
+// expect-formatted: \t\titem => item > 1
+// expect-formatted: \t).map(number => (number + offset).to_string())
+// expect-formatted: \texpect_equal(strings.join(","), "5,6")?
+// expect-formatted:
+// expect-formatted: \tresult := apply(transform: item => item + offset, value: 2)
+// expect-formatted: \texpect_equal(result, 5)?
+// expect-formatted: \texpect_equal(chain(second: item => item + 2, first: () => 3), 5)?
+// expect-formatted:
+// expect-formatted: \tcallback := Callback(fn(item Int) => item + 1)
+// expect-formatted: \texpect_equal(callback.transform(3), 4)?
+// expect-formatted:
+// expect-formatted: \tview Read := Box(7)
+// expect-formatted: \texpect_equal(view.get(), 7)?
+// expect-formatted: \texpect_false(invoke() != 0 or invoke(item => item + 1) != 5)?
+// expect-formatted:
+// expect-formatted: \tfunctions List[fn(Int) Int] := [item => item + 4]
+// expect-formatted: \texpect_equal(functions[0](2), 6)?
+// expect-formatted:
+// expect-formatted: \tnested := fn(value Int) {
+// expect-formatted: \t\tinner := () => "text"
+// expect-formatted: \t\treturn value + inner().scalar_length()
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \texpect_equal(nested(2), 6)?
+// expect-formatted:
+// expect-formatted: \tsuccess := with_result(() => ok(4))
+// expect-formatted: \texpect_equal(success, Result[Int, Error].ok(4))?
+// expect-formatted:
+// expect-formatted: \tpropagated := with_result(
+// expect-formatted: \t\t() => {
+// expect-formatted: \t\t\tvalue := checked()?
+// expect-formatted: \t\t\treturn ok(value + 2)
+// expect-formatted: \t\t}
+// expect-formatted: \t)
+// expect-formatted:
+// expect-formatted: \texpect_equal(propagated, Result[Int, Error].ok(5))?
+// expect-formatted:
+// expect-formatted: \tfailed := with_result(
+// expect-formatted: \t\t() => {
+// expect-formatted: \t\t\tif true { return error(Error("expected")) } return ok(4)
+// expect-formatted: \t\t}
+// expect-formatted: \t)
+// expect-formatted:
+// expect-formatted: \texpect_equal(failed, Result[Int, Error].error(Error("expected")))?
+// expect-formatted:
+// expect-formatted: \tsubtract fn(Int, Int) Int := (a, b) => a - b
+// expect-formatted: \texpect_equal(subtract(7, 2), 5)?
+// expect-formatted:
+// expect-formatted: \tdefaulted fn(Int) Int := fn(item Int = 4) => item + 1
+// expect-formatted: \texpect_equal(defaulted(8), 9)?
+// expect-formatted:
+// expect-formatted: \touter fn(Int) fn(Int) Int := base => {
+// expect-formatted: \t\treturn extra => base + extra
+// expect-formatted: \t}
+// expect-formatted: \texpect_equal(outer(3)(4), 7)?
+// expect-formatted: }

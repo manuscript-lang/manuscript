@@ -4,3 +4,7 @@
 fn first() Void {
 	value fn(String) Int!Error := fail
 }
+// expect-format: rewritten
+// expect-formatted: fn first() Void {
+// expect-formatted: \tvalue fn(String) Int! := fail
+// expect-formatted: }

@@ -60,3 +60,7 @@ fn main() Void {
 	)
 	void stdout().write(f"{maps[1].length()} {maps[0].length()}\n")
 }
+// expect-exit: 0
+// expect-stdout: 1 2 20002 20000
+// expect-stdout: 3 3 1 2
+// expect-stdout: 1 0

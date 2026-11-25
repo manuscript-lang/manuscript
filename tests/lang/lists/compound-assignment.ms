@@ -69,3 +69,5 @@ test "compound assignment in loops" {
 
 	expect_false(total != 10 or index != 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

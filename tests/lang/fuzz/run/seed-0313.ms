@@ -82,3 +82,22 @@ export fn main() Int {
 	say(f"i15 = {i15}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 48
+// expect-stdout: s2 = [brace{s}]
+// expect-stdout: s3 = [tab\therebrace{s}]
+// expect-stdout: l4 = [-22, -28] len 2
+// expect-stdout: f5 = 173668719001.57397
+// expect-stdout: -5 48 true sum 43
+// expect-stdout: acc6 = -50
+// expect-stdout: i7 = 48
+// expect-stdout: alpha
+// expect-stdout: b8 = false
+// expect-stdout: i9 = -242798
+// expect-stdout: fact(14) = 87178291200
+// expect-stdout: i10 = -22
+// expect-stdout: s11 = [BRACE{S}BRACE{S}]
+// expect-stdout: b12 = false
+// expect-stdout: f13 = 173668719001.57397
+// expect-stdout: i14 = 8
+// expect-stdout: i15 = 8

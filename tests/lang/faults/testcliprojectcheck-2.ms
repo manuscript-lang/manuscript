@@ -6,3 +6,5 @@ import panic from "@std/core.ms"
 test "check must not execute tests" {
 	return panic("check must not execute tests")
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

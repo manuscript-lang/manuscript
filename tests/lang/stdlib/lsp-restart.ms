@@ -135,3 +135,5 @@ test "a killed worker is replaced and the open document is replayed" {
 	input.flush()?
 	expect_equal(child.wait(timeout: 20.seconds())?, 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

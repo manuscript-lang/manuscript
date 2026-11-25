@@ -48,3 +48,13 @@ export fn main() Int {
 	say(f"b5 = {b5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 8.5
+// expect-stdout: s2 = [aline
+// expect-stdout: break]
+// expect-stdout: f3 = 40127.799750000006
+// expect-stdout: f4 = 465089486.4136691
+// expect-stdout: fib(51) = 20365011074
+// expect-stdout: aline
+// expect-stdout: break
+// expect-stdout: b5 = false

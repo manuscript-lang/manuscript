@@ -8,3 +8,9 @@ type DnsRecord {
 	weight Int
 	port Int
 }
+// expect-format: rewritten
+// expect-formatted: type DnsRecord {
+// expect-formatted: \tkind DnsKind
+// expect-formatted: \tvalue String
+// expect-formatted: \tpriority, weight, port Int
+// expect-formatted: }

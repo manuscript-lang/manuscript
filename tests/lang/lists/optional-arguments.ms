@@ -179,3 +179,5 @@ test "queue capacity accepts a plain value or omission" {
 
 	expect_false(not (explicit.enqueue(1)))?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

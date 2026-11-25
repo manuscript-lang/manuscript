@@ -52,3 +52,5 @@ test "permutation contains each index once" {
 	expect_equal(order.sorted(), expected)?
 	expect_equal(rng.permutation(0).length(), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

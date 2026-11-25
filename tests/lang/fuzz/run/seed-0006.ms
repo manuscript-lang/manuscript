@@ -71,3 +71,17 @@ export fn main() Int {
 	say(f"i10 = {i10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 47 363296353295300643 true sum 363296353295300690
+// expect-stdout: i1 = -257538
+// expect-stdout: acc2 = 5
+// expect-stdout: b3 = false
+// expect-stdout: b4 = true
+// expect-stdout: i5 = 0
+// expect-stdout: l6 = [-8, 13, -5, 16] len 4
+// expect-stdout: acc7 = 79
+// expect-stdout: MiXeD CaSe
+// expect-stdout: l8 = [16, -3, -13] len 3
+// expect-stdout: 0:a
+// expect-stdout: b9 = true
+// expect-stdout: i10 = -257518

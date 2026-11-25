@@ -8,3 +8,6 @@ fn zero() Int {
 export fn main() Int {
 	return (1 / zero())
 }
+// expect-exit: 134
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at testfaultsourcelocations-18.ms:9 in main

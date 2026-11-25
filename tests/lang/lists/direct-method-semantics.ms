@@ -103,3 +103,5 @@ test "direct methods" {
 	(order(rect: rect, log: log) == 12) | expect_true?
 	(log.join(separator: ",") == "receiver,argument") | expect_true?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

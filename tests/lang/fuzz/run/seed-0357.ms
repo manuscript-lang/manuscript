@@ -42,3 +42,11 @@ export fn main() Int {
 	say(f"l6 = {l6} len {l6.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-9, -17, -20, -13, 26] len 5
+// expect-stdout: s2 = [deltaemoji 😀331022:deltax]
+// expect-stdout: -8 755473 true sum 755465
+// expect-stdout: acc3 = 252
+// expect-stdout: f4 = 70176.49630999999
+// expect-stdout: f5 = 27036870.786622632
+// expect-stdout: l6 = [-27, -2] len 2

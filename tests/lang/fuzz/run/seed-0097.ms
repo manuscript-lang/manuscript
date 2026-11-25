@@ -76,3 +76,23 @@ export fn main() Int {
 	say(f"i17 = {i17}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [3, -14] len 2
+// expect-stdout: i2 = 2
+// expect-stdout: 0 2 true sum 2
+// expect-stdout: b3 = false
+// expect-stdout: s4 = [ms-13:42hello world]
+// expect-stdout: f5 = 0.000003971013909755979
+// expect-stdout: fact(17) = 355687428096000
+// expect-stdout: b6 = true
+// expect-stdout: s7 = [44:MS-13:42HELLO WORLDhello world]
+// expect-stdout: l8 = [4] len 1
+// expect-stdout: b9 = false
+// expect-stdout: f10 = 7294919277.995572
+// expect-stdout: i11 = 2
+// expect-stdout: f12 = 999739506135.692
+// expect-stdout: s13 = [ams-13:42hello world42:44:MS-13:42HELLO WORLDhello worldTab\there]
+// expect-stdout: l14 = [-16, 18] len 2
+// expect-stdout: l15 = [] len 0
+// expect-stdout: l16 = [3, -14, 3, -14] len 4
+// expect-stdout: i17 = 318616

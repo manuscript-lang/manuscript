@@ -92,3 +92,23 @@ export fn main() Int {
 	say(f"b15 = {b15}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = NaN
+// expect-stdout: i2 = 43
+// expect-stdout: s3 = [74:quote"d]
+// expect-stdout: i4 = 991511
+// expect-stdout: i5 = 991466
+// expect-stdout: i6 = 955725274668
+// expect-stdout: -26 991466 true sum 991440
+// expect-stdout: f7 = 600.258
+// expect-stdout: 74:quote"d
+// expect-stdout: 576587 -22 false sum 576565
+// expect-stdout: f8 = 600.258
+// expect-stdout: i9 = -201636570102836489
+// expect-stdout: l10 = [26] len 1
+// expect-stdout: fib(18) = 2584
+// expect-stdout: i11 = 50
+// expect-stdout: acc12 = 26
+// expect-stdout: f13 = NaN
+// expect-stdout: s14 = [NAÏVE74:QUOTE"D]
+// expect-stdout: b15 = false

@@ -49,3 +49,8 @@ fn main() Void {
 	c := Cb(x => ok(x + 1))
 	stdout().write(f"{apply(c, 1).get_or(0)}\n").get()
 }
+// expect-exit: 0
+// expect-stdout: 42
+// expect-stdout: false
+// expect-stdout: 2
+// expect-stdout: 2

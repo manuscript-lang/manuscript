@@ -75,3 +75,5 @@ test "captured maps read the entries present at capture" {
 	callback := fn() Int => values.get(1) or panic("called Optional.get() on null")
 	callback() | expect_equal(10)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

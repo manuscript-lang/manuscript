@@ -30,3 +30,5 @@ test "operands retain evaluation order" {
 fn present[T](hold value T) &T? {
 	return value
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -38,3 +38,12 @@ export fn main() Int {
 	say(f"i7 = {i7}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 3.5
+// expect-stdout: s2 = [alphaMiXeD CaSenaïvealpha]
+// expect-stdout: 24
+// expect-stdout: l3 = [-24, -10, 10, -28, -27] len 5
+// expect-stdout: i4 = 0
+// expect-stdout: i5 = -28
+// expect-stdout: b6 = false
+// expect-stdout: i7 = -10

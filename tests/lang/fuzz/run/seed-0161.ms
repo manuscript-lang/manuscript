@@ -35,3 +35,13 @@ export fn main() Int {
 	say(f"{big8 - 3}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -5
+// expect-stdout: l2 = [] len 0
+// expect-stdout: i3 = -5
+// expect-stdout: i4 = 309
+// expect-stdout: s5 = [42]
+// expect-stdout: s6 = [4242]
+// expect-stdout: i7 = -31
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0161.ms:35 in main

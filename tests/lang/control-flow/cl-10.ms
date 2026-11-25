@@ -25,3 +25,5 @@ test "explicit contract conversion" {
 	same_view Increment := operation
 	expect_equal(use_increment(same_view), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

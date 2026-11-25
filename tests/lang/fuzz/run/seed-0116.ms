@@ -85,3 +85,22 @@ export fn main() Int {
 	say(f"b15 = {b15}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 280848
+// expect-stdout: i2 = 699858
+// expect-stdout: héllo
+// expect-stdout: i3 = -73427525092
+// expect-stdout: b4 = false
+// expect-stdout: b5 = false
+// expect-stdout: 280848:ms
+// expect-stdout: i6 = 73427516929
+// expect-stdout: f7 = 59413619235837.836
+// expect-stdout: acc8 = 0
+// expect-stdout: l9 = [5, 4] len 2
+// expect-stdout: gcd(4377, 4875) = 3
+// expect-stdout: f10 = 395.689
+// expect-stdout: s11 = [280817:HÉLLOMiXeD CaSe]
+// expect-stdout: l12 = [4, 5] len 2
+// expect-stdout: i13 = -73427525092
+// expect-stdout: f14 = 14483911510771618
+// expect-stdout: b15 = false

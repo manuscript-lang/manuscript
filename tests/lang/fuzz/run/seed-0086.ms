@@ -65,3 +65,18 @@ export fn main() Int {
 	say(f"s13 = [{s13}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [gamma]
+// expect-stdout: l2 = [15] len 1
+// expect-stdout: b3 = true
+// expect-stdout: s4 = [naïve]
+// expect-stdout: gcd(836, 3458) = 38
+// expect-stdout: i5 = -38
+// expect-stdout: acc6 = 168
+// expect-stdout: b7 = true
+// expect-stdout: i8 = -154
+// expect-stdout: b9 = false
+// expect-stdout: i10 = 38
+// expect-stdout: l11 = [] len 0
+// expect-stdout: i12 = 43
+// expect-stdout: s13 = [  padded  ]

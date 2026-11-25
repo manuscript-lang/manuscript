@@ -59,3 +59,20 @@ export fn main() Int {
 	say(f"i14 = {i14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 50
+// expect-stdout: b2 = true
+// expect-stdout: f3 = 0.5
+// expect-stdout: l4 = [-5, -28, -19, -18, 7] len 5
+// expect-stdout: i5 = 19
+// expect-stdout: i6 = 50
+// expect-stdout: 133 962 true sum 1095
+// expect-stdout: b7 = false
+// expect-stdout: f8 = 880734.229522
+// expect-stdout: i9 = 5
+// expect-stdout: l10 = [-20, -112, -76, -72, 28] len 5
+// expect-stdout: i11 = -21
+// expect-stdout: -110 0 true sum -110
+// expect-stdout: i12 = -28436468300
+// expect-stdout: l13 = [-112, -76, -72, -20, 28] len 5
+// expect-stdout: i14 = 142182341532

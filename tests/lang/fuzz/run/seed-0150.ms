@@ -53,3 +53,16 @@ export fn main() Int {
 	say(f"{(-29)} {24} {((-29) < 24)} sum {(-29) + 24}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -409782600544
+// expect-stdout: b2 = true
+// expect-stdout: i3 = 8826499
+// expect-stdout: f4 = 0
+// expect-stdout: l5 = [] len 0
+// expect-stdout: gamma
+// expect-stdout: f6 = NaN
+// expect-stdout: b7 = false
+// expect-stdout: fact(10) = 3628800
+// expect-stdout: i8 = -8457162
+// expect-stdout: l9 = [5] len 1
+// expect-stdout: -29 24 true sum -5

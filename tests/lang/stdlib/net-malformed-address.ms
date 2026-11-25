@@ -33,3 +33,5 @@ test "a datagram sent to a malformed address returns EINVAL" {
 	e := sock.output.write(Datagram("x".to_bytes(), "127.0.0.1:99999")) | expect_error?
 	return expect_equal(kind_of(e), "EINVAL")
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

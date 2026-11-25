@@ -23,3 +23,5 @@ test "increments" {
 test "starts fresh" {
 	expect_equal(fixture.count, 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

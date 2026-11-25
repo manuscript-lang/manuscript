@@ -74,3 +74,23 @@ export fn main() Int {
 	say(f"s17 = [{s17}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 8.5
+// expect-stdout: i2 = -1315732358301
+// expect-stdout: f3 = 133.507
+// expect-stdout: l4 = [] len 0
+// expect-stdout: i5 = -29
+// expect-stdout: i6 = -1315732358301
+// expect-stdout: b7 = true
+// expect-stdout: deltahéllo
+// expect-stdout: i8 = 379685214271
+// expect-stdout: b9 = true
+// expect-stdout: i10 = 37220191246670
+// expect-stdout: s11 = [MIXED CASE]
+// expect-stdout: f12 = 20.539538461538463
+// expect-stdout: i13 = -1315732358301
+// expect-stdout: s14 = [ESAC DEXIM]
+// expect-stdout: s15 = [MIXED CASE]
+// expect-stdout: emoji 😀
+// expect-stdout: l16 = [] len 0
+// expect-stdout: s17 = [alpha]

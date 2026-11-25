@@ -160,3 +160,205 @@ test "a fetch cancelled while it waits for the response frees the cancellation e
 		)
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-leak.ms:19 in faulting

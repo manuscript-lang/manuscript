@@ -94,3 +94,5 @@ test "update evaluates initial eagerly and drops it when the key exists" {
 	expect_equal(once.get(1), "xy")?
 	expect_equal(once.get(2), "newy")?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

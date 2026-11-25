@@ -6,3 +6,4 @@ fn f(a Int) Int {
 		1 => return 2
 	}
 }
+// expect-format: unchanged

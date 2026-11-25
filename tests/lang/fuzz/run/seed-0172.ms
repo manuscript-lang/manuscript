@@ -88,3 +88,19 @@ export fn main() Int {
 	say(f"b11 = {b11}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 680708.129436
+// expect-stdout: f2 = -680391.2554360001
+// expect-stdout: s3 = [héllobeta-78120:MiXeD CaSeback\\slashquote"d]
+// expect-stdout: f4 = 894.618
+// expect-stdout: acc5 = 23
+// expect-stdout: l6 = [] len 0
+// expect-stdout: acc7 = 6
+// expect-stdout: i8 = -175257091772
+// expect-stdout: fib(5) = 5
+// expect-stdout: s9 = [ammaghéllobeta-78120:MiXeD CaSeback\\slashquote"d]
+// expect-stdout: 0 -175257091772 false sum -175257091772
+// expect-stdout: 26:hello world
+// expect-stdout: fib(10) = 55
+// expect-stdout: l10 = [17, -12, 6, -5, -20] len 5
+// expect-stdout: b11 = true

@@ -18,3 +18,5 @@ test "precision formatting preserves signed zero significant padding and special
 	expect_equal((parse_float("Infinity")?).to_precision(3), "Infinity")?
 	expect_equal((parse_float("-Infinity")?).to_precision(3), "-Infinity")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

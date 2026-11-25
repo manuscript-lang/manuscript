@@ -59,3 +59,15 @@ export fn main() Int {
 	say(f"collatz(815) = {collatz(815)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [1] len 1
+// expect-stdout: i2 = 47
+// expect-stdout: s3 = [376:-24:alphaline
+// expect-stdout: breakbetaback\\slash]
+// expect-stdout: l4 = [-26, -26, -21, -26, 16] len 5
+// expect-stdout: b5 = false
+// expect-stdout: i6 = 2
+// expect-stdout: 2 0 false sum 2
+// expect-stdout: b7 = false
+// expect-stdout: b8 = true
+// expect-stdout: collatz(815) = 134

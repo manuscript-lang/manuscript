@@ -152,3 +152,5 @@ test "a failed entry close preserves its owner and closes the remaining siblings
 	expect_contains(message, "a resource could not be closed")?
 	expect_equal(logged(log), "1,3,2,")?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

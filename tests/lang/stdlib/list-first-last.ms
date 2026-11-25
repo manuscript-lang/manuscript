@@ -34,3 +34,5 @@ test "first and last of text lists copy the element" {
 	expect_equal(names.first(), "a")?
 	expect_equal(names.last(), "b")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

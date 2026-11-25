@@ -50,3 +50,11 @@ export fn main() Int {
 	say(f"b5 = {b5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = 40
+// expect-stdout: fact(6) = 720
+// expect-stdout: i2 = 3170049596241455745
+// expect-stdout: l3 = [-29, 20, -28, -10, 16] len 5
+// expect-stdout: emoji 😀
+// expect-stdout: i4 = 3170049596241455795
+// expect-stdout: b5 = true

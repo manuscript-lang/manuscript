@@ -17,3 +17,20 @@ fn chain(n Int) Int!Error {
 export fn main() Int {
 	return chain(9223372036854775807).get()
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn checked(n Int) Int! {
+// expect-formatted: \tif n < 0 {
+// expect-formatted: \t\treturn error(Error("negative"))
+// expect-formatted: \t}
+// expect-formatted: \treturn ok(n + 1)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn chain(n Int) Int! {
+// expect-formatted: \tvalue := checked(n)?
+// expect-formatted: \treturn ok(value)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: export fn main() Int {
+// expect-formatted: \treturn chain(9223372036854775807).get()
+// expect-formatted: }

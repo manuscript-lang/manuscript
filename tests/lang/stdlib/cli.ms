@@ -321,3 +321,5 @@ test "help rows without text carry no trailing spaces" {
 		line | expect_equal(line.trim_end())?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=12 failed=0

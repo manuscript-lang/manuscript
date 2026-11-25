@@ -99,3 +99,25 @@ export fn main() Int {
 	say(f"{-big15}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: acc1 = 36
+// expect-stdout: i2 = 1008
+// expect-stdout: b3 = true
+// expect-stdout: l4 = [-26] len 1
+// expect-stdout: b5 = true
+// expect-stdout: b6 = true
+// expect-stdout: fact(20) = 2432902008176640000
+// expect-stdout: 1008 925 false sum 1933
+// expect-stdout: i7 = -15
+// expect-stdout: b8 = false
+// expect-stdout: i9 = 1
+// expect-stdout: s10 = [hello world]
+// expect-stdout: 16:hello world
+// expect-stdout: fib(30) = 832040
+// expect-stdout: l11 = [-26] len 1
+// expect-stdout: s12 = [hello world]
+// expect-stdout: fib(32) = 2178309
+// expect-stdout: s13 = [delta]
+// expect-stdout: l14 = [-15, 6, 19, 24] len 4
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0061.ms:99 in main

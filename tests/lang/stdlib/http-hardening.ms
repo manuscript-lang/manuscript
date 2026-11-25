@@ -206,3 +206,5 @@ test "asterisk-form target is accepted only for OPTIONS" {
 		return error(Error(f"OPTIONS * answered: {options}"))
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

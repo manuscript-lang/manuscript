@@ -60,3 +60,5 @@ test "math rounding signs and exact identities" {
 	expect_false((sin(0.0) != 0.0 or cos(0.0) != 1.0 or pi < 3.14))?
 	expect_false(not sqrt(-1.0).is_nan())?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

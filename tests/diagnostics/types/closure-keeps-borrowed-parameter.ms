@@ -15,3 +15,4 @@ export fn main() Int {
 	read := size_reader(Big("a name that is long enough to live on the heap", [1, 2]))
 	return read()
 }
+// expect-error: MS3000 11:12 this closure outlives the statement but captures `big`, which is borrowed, not owned; bind `own := big.clone()` before the closure and capture `own` instead

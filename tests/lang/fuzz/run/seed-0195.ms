@@ -58,3 +58,19 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: gcd(2604, 2996) = 28
+// expect-stdout: i1 = 170
+// expect-stdout: i2 = 170
+// expect-stdout: -27 170 true sum 143
+// expect-stdout: s3 = [delta]
+// expect-stdout: b4 = false
+// expect-stdout: l5 = [4, -26] len 2
+// expect-stdout: i6 = 5
+// expect-stdout: s7 = [x]
+// expect-stdout: i8 = -6
+// expect-stdout: l9 = [] len 0
+// expect-stdout: i10 = -19116
+// expect-stdout: b11 = false
+// expect-stdout: gcd(4349, 1756) = 1
+// expect-stdout: 19074 45 false sum 19119

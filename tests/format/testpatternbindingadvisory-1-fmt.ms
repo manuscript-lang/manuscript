@@ -15,3 +15,18 @@ fn use(value Envelope) Int {
 		Pair(_payload, NotFound) => return 1
 	}
 }
+// expect-format: rewritten
+// expect-formatted: enum Failure {
+// expect-formatted: \tNotFound
+// expect-formatted: \tDenied
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: enum Envelope {
+// expect-formatted: \tPair(left, right Failure)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn use(value Envelope) Int {
+// expect-formatted: \tmatch value {
+// expect-formatted: \t\tPair(_payload, NotFound) => return 1
+// expect-formatted: \t}
+// expect-formatted: }

@@ -29,3 +29,11 @@ test "closing a server whose handler faulted frees the worker once" {
 
 	server.close() | expect_ok?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-handler-then-close.ms:14 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-handler-then-close.ms:14 in faulting
+// expect-stderr: HTTP stream handler fault: index 1000000 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at http-fault-handler-then-close.ms:14 in faulting

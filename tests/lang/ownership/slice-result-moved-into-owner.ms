@@ -37,3 +37,5 @@ test "a loop over a slice result keeps the source elements" {
 	expect_equal(churn(), 200)?
 	expect_equal(parts[4], "3")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

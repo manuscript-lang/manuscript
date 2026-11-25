@@ -44,3 +44,26 @@ fn main() Int {
 	print(fill(1))
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: eval x
+// expect-stdout: eval y
+// expect-stdout: eval z
+// expect-stdout: x1-y2-z3
+// expect-stdout: eval a
+// expect-stdout: eval b
+// expect-stdout: eval c
+// expect-stdout: ok([a1|b2|ok|c3])
+// expect-stdout: eval a
+// expect-stdout: eval b
+// expect-stdout: error(Error(details: Map(), kind: none, message: bad 1))
+// expect-stdout: eval p
+// expect-stdout: eval p
+// expect-stdout: eval p
+// expect-stdout: p00p11p22
+// expect-stdout: eval a
+// expect-stdout: eval b
+// expect-stdout: eval c
+// expect-stdout: eval d
+// expect-stdout: ok(start;[a1|ok|b2|0]c3-d4)
+// expect-stdout: eval a
+// expect-stdout: error(Error(details: Map(), kind: none, message: bad 1))

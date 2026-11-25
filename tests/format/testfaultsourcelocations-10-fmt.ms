@@ -7,3 +7,10 @@ export fn main() Int {
 	extract := value.err
 	return extract().text.scalar_length()
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: export fn main() Int {
+// expect-formatted: \tvalue Int! := ok(0)
+// expect-formatted: \textract := value.err
+// expect-formatted: \treturn extract().text.scalar_length()
+// expect-formatted: }

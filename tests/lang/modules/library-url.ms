@@ -19,3 +19,5 @@ fn verify_url() Void! {
 test "URLs preserve escaped path structure" {
 	verify_url()?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -11,3 +11,5 @@ test "Decimal.to_string matches its interpolated text" {
 	}
 	expect_equal(25.50d.to_string(), "25.5")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

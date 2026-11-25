@@ -9,3 +9,5 @@ test "checked decrement" {
 		return panic(message: "check failed")
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

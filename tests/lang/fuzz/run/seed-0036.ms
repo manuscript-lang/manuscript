@@ -79,3 +79,19 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 28188
+// expect-stdout: b2 = true
+// expect-stdout: l3 = [27, -3, -21] len 3
+// expect-stdout: s4 = [XMS1:DELTA]
+// expect-stdout: acc5 = 252
+// expect-stdout: 28188 32 false sum 28220
+// expect-stdout: l6 = [8, -12, -19] len 3
+// expect-stdout: b7 = false
+// expect-stdout: s8 = [XMS1:DELTA]
+// expect-stdout: i9 = 8
+// expect-stdout: i10 = 37
+// expect-stdout: 28188 713641 true sum 741829
+// expect-stdout: acc11 = -3
+// expect-stdout: gcd(1507, 2920) = 1
+// expect-stdout: ATLED:1SMX

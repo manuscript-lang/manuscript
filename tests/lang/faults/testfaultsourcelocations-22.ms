@@ -10,3 +10,7 @@ fn extract[T](move value T?) T {
 export fn main() Int {
 	return extract[Int](null)
 }
+// expect-exit: 134
+// expect-stderr: called Optional.get() on null
+// expect-stderr:   at testfaultsourcelocations-22.ms:7 in extract
+// expect-stderr:   at testfaultsourcelocations-22.ms:11 in main

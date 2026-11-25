@@ -56,3 +56,19 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: s2 = [-187:BACK\\SLASH]
+// expect-stdout: b3 = false
+// expect-stdout: i4 = 1538399737
+// expect-stdout: i5 = -10
+// expect-stdout: f6 = 0.0001744520004003806
+// expect-stdout: s7 = [-187:BACK\\SLASH]
+// expect-stdout: f8 = -81.19617445200038
+// expect-stdout: l9 = [-9, -7] len 2
+// expect-stdout: s10 = [HSALS\\KCAB:781-HSALS\\KCAB:781-]
+// expect-stdout: s11 = [-187:BACK\\SLASH]
+// expect-stdout: -153839973 1538399737 true sum 1384559764
+// expect-stdout: i12 = -22724203774191
+// expect-stdout: l13 = [22, 26, 19, 7] len 4
+// expect-stdout: 36 1538399737 true sum 1538399773

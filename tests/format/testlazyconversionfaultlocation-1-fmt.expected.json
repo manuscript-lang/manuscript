@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "\nfn crash() Error {\n\treturn Error((1 / \"\".length()).to_string())\n}\n\nfn main() Void {\n\tvalue Int? := null\n\t_result := value.ok_or_else(crash)\n}\n"
-  }
-}

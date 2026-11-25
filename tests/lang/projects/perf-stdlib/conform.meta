@@ -1,3 +1,17 @@
 // conform: tags=aliasing,alternatives,closures,control-flow,decimal,diagnostics,faults,interpolation,lists,maps,modules,mutation,projects,records,sets,stdlib-archive,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-compress,stdlib-crypto,stdlib-csv,stdlib-decimal,stdlib-encoding,stdlib-fs,stdlib-html,stdlib-io,stdlib-json,stdlib-log,stdlib-math,stdlib-path,stdlib-queues,stdlib-random,stdlib-regex,stdlib-sse,stdlib-string,stdlib-time,stdlib-toml,stdlib-url,stdlib-yaml,strings,tier-io,try-result,scope-cleanup
 // conform: phase=check
 // conform: origin=bench/perf/stdlib
+// expect-error: MS3001 42:29 expected UInt8, found Int (in argument 'value' of bb.append)
+// expect-error: MS2002 3:5-3:15 module does not export FileSystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+// expect-error: MS2001 8:11 unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it
+// expect-error: MS3004 73:36 unknown argument timestamp; parameters of create: options, transport
+// expect-error: MS2001 94:13 unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T { ... }', or import it from a module
+// expect-error: MS3001 41:32 expected ArchiveFormat, found String (in argument 'format' of pack)
+// expect-error: MS3001 49:32 expected ArchiveFormat, found String (in argument 'format' of pack)
+// expect-error: MS3001 53:29 expected ArchiveFormat, found String (in argument 'format' of pack)
+// expect-error: MS3001 63:36 expected ArchiveFormat, found String (in argument 'format' of unpack)
+// expect-error: MS3001 44:36 expected CompressionFormat, found String (in argument 'format' of compress)
+// expect-error: MS3001 44:44 expected CompressOptions, found Int (in argument 'options' of compress)
+// expect-error: MS3001 52:36 expected CompressionFormat, found String (in argument 'format' of compress)
+// expect-error: MS3001 52:44 expected CompressOptions, found Int (in argument 'options' of compress)
+// expect-error: MS3001 100:30 expected CompressionFormat, found String (in argument 'format' of decompress)

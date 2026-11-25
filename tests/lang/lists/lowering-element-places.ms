@@ -83,3 +83,5 @@ test "find over owned elements keeps the hit" {
 	expect_equal(rows.find(fn(value List[Int]) => value[0] == 9), null)?
 	expect_equal(rows.find_last(fn(value List[Int]) => value[0] > 1), [3, 3])?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

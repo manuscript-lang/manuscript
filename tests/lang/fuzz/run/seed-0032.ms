@@ -86,3 +86,23 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 784983
+// expect-stdout: acc2 = 5
+// expect-stdout: i3 = -784983
+// expect-stdout: i4 = -2730
+// expect-stdout: MiXeD CaSe
+// expect-stdout: i5 = 36
+// expect-stdout: hélloback\\slash
+// expect-stdout: i6 = -801242
+// expect-stdout: l7 = [] len 0
+// expect-stdout: f8 = 100000508.864
+// expect-stdout: l9 = [] len 0
+// expect-stdout: f10 = 99999908.614
+// expect-stdout: b11 = true
+// expect-stdout: s12 = [naïve]
+// expect-stdout: i13 = 35324260
+// expect-stdout: gcd(4201, 302) = 1
+// expect-stdout: f14 = 8e+24
+// expect-stdout: i15 = 1
+// expect-stdout: naïve

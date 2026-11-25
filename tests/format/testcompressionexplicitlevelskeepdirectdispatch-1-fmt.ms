@@ -12,3 +12,4 @@ fn explicit() Void {
 	void CompressionFormat.Zlib.compress(data, 0, max_bytes: null)
 	void CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)
 }
+// expect-format: unchanged

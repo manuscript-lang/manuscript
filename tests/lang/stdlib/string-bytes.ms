@@ -262,3 +262,5 @@ test "list slice errors name the values that failed" {
 		true,
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

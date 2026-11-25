@@ -31,3 +31,5 @@ test "numeric boundary rules" {
 	expect_equal(1e300.truncate_to_int(), absent)?
 	expect_equal(2.seconds().add(1.seconds()), 3.seconds())?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

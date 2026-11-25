@@ -42,3 +42,5 @@ fn main() Void {
 		.get()
 	)
 }
+// expect-exit: 0
+// expect-stdout: 9 -1 4 16 25 36

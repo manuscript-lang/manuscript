@@ -36,3 +36,5 @@ test "big integer operators keep precision past 64 bits" {
 	expect_equal(x.to_int(), null)?
 	expect_equal(x.to_string(), "1180591620717411303424")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

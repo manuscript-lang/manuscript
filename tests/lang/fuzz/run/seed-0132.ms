@@ -65,3 +65,14 @@ export fn main() Int {
 	say(f"l9 = {l9} len {l9.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l2 = [-23, -22] len 2
+// expect-stdout: acc3 = 115
+// expect-stdout: beta
+// expect-stdout: i4 = -741479
+// expect-stdout: gcd(2368, 28) = 4
+// expect-stdout: b5 = true
+// expect-stdout: l6 = [-20] len 1
+// expect-stdout: s7 = [DELTA]
+// expect-stdout: acc8 = -20
+// expect-stdout: l9 = [8, -2] len 2

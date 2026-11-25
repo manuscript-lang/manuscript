@@ -30,3 +30,7 @@ fn main() Void {
 	print(check(a))
 	print(check(b))
 }
+// expect-exit: 0
+// expect-stdout: 1 12 true true
+// expect-stdout: fresh
+// expect-stdout: kept

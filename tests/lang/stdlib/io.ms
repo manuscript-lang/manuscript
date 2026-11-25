@@ -41,3 +41,5 @@ test "a reader keeps the shared file open after the handle closes" {
 	handle.close()?
 	expect_equal((input.next()?), "second")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

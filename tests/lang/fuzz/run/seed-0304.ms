@@ -63,3 +63,19 @@ export fn main() Int {
 	say(f"i12 = {i12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: -417976608 -501595 true sum -418478203
+// expect-stdout: l1 = [30, -28, -17] len 3
+// expect-stdout: -36547700 0 true sum -36547700
+// expect-stdout: b2 = false
+// expect-stdout: b3 = false
+// expect-stdout: i4 = 0
+// expect-stdout: s5 = [GAMMA]
+// expect-stdout: héllo
+// expect-stdout: s6 = [  deddap  a]
+// expect-stdout: s7 = [D"ETOUQ]
+// expect-stdout: acc8 = -6
+// expect-stdout: b9 = false
+// expect-stdout: l10 = [30] len 1
+// expect-stdout: f11 = -Infinity
+// expect-stdout: i12 = 45

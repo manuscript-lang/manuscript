@@ -79,3 +79,8 @@ fn main() Void {
 		f"{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
 	)
 }
+// expect-exit: 0
+// expect-stdout: 28 603 17
+// expect-stdout: 3 -1 -1
+// expect-stdout: 15 0
+// expect-stdout: 0 0 0 6

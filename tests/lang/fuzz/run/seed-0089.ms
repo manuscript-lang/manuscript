@@ -76,3 +76,18 @@ export fn main() Int {
 	say(f"collatz(2335) = {collatz(2335)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -18
+// expect-stdout: f2 = 915.619
+// expect-stdout: s3 = [  padded  ]
+// expect-stdout: collatz(2256) = 19
+// expect-stdout: f4 = -2746.095
+// expect-stdout:   padded\x20\x20
+// expect-stdout:   padded\x20\x20
+// expect-stdout: i5 = -630
+// expect-stdout: b6 = false
+// expect-stdout:   padded\x20\x20
+// expect-stdout: -10 10 true sum 0
+// expect-stdout: f7 = 858488661955.6362
+// expect-stdout: b8 = false
+// expect-stdout: collatz(2335) = 89

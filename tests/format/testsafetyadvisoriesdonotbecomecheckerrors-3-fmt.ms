@@ -9,3 +9,12 @@ fn fail() Int!Error {
 fn use() Void {
 	void fail()
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn fail() Int! {
+// expect-formatted: \treturn error(Error("boom"))
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn use() Void {
+// expect-formatted: \tvoid fail()
+// expect-formatted: }

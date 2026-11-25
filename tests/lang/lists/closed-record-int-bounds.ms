@@ -122,3 +122,5 @@ test "record arguments execute exactly once before the update" {
 	eager(visits) | expect_equal(1)?
 	visits | expect_equal([7])?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

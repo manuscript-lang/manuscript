@@ -438,3 +438,5 @@ test "XML errors carry a line, a column and a reason" {
 	expect_error_at("<a>\u{1}</a>", 1, 4, "invalid character U+0001")?
 	expect_error_at("\u{feff}<a>\r\n</b>", 2, 3, "closing tag `b` does not match `a`")?
 }
+// expect-exit: 0
+// expect-tests: passed=28 failed=0

@@ -12,3 +12,4 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0

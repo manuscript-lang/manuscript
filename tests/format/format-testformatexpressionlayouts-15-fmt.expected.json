@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Int {\n\tvalue := (\n\t\t[2, 5, 3, (-6), (-9), 1, 2, 3, 4]\n\t\t.clone()\n\t\t.sorted(fn(l, r Int) Int => (l - r))\n\t\t.first()\n\t)\n\tif value != null {\n\t\treturn value\n\t}\n\n\treturn 0\n}\n"
-  }
-}

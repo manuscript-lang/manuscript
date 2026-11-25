@@ -4,3 +4,9 @@
 export fn main(value Int) Int {
 	return value
 }
+// expect-exit: 1
+// expect-stderr: <DIR>/testparameterlessentrysignature-2.ms:4:8: type: entry must declare fn main; main takes no parameters, so remove them (read program arguments through the standard cli module)
+// expect-stderr:    |
+// expect-stderr:  4 | export fn main(value Int) Int {
+// expect-stderr:    |        ^
+// expect-stderr: 1 error; fix them and re-run

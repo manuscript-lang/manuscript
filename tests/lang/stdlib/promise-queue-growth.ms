@@ -34,3 +34,5 @@ test "a ring grown under thieves does not drop a closure twice" {
 	}
 	expect_equal(wait_first(later)?, 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

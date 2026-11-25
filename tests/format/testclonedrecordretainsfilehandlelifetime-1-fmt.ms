@@ -59,3 +59,5 @@ export fn main() Int {
         }
     }
 }
+// expect-error: MS1000 54:15-54:40 expected a name, found text "I/O: resource is closed"
+// expect-format-exit: 1

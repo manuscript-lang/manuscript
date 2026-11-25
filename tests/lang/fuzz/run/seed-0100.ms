@@ -75,3 +75,20 @@ export fn main() Int {
 	say(f"gcd(1969, 3256) = {gcd(1969, 3256)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 118.79
+// expect-stdout: b2 = false
+// expect-stdout: f3 = 79640.32308
+// expect-stdout: b4 = false
+// expect-stdout: msms
+// expect-stdout: s5 = [back\\slash]
+// expect-stdout: i6 = -28638220
+// expect-stdout: i7 = 10
+// expect-stdout: s8 = [-21:24:48:back\\slash]
+// expect-stdout: -1030975920 15 true sum -1030975905
+// expect-stdout: i9 = 28638220
+// expect-stdout: i10 = 286382190
+// expect-stdout: 😀 ijome
+// expect-stdout: -21:24:48:back\\slashback\\slash
+// expect-stdout: back\\slashback\\slash
+// expect-stdout: gcd(1969, 3256) = 11

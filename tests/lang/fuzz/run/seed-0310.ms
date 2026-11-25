@@ -110,3 +110,23 @@ export fn main() Int {
 	say(f"i14 = {i14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 656.722
+// expect-stdout: i2 = -644929
+// expect-stdout: collatz(1577) = 91
+// expect-stdout: l3 = [17] len 1
+// expect-stdout: gcd(965, 2836) = 1
+// expect-stdout: fact(17) = 355687428096000
+// expect-stdout: l4 = [17, 17] len 2
+// expect-stdout: acc5 = -2
+// expect-stdout: collatz(470) = 128
+// expect-stdout: acc6 = 139
+// expect-stdout: s7 = [Tab\there-34:naïve644959:Tab\there]
+// expect-stdout: tab\there-34:naïve644959:tab\there
+// expect-stdout: i8 = 388815
+// expect-stdout: i9 = 2
+// expect-stdout: l10 = [15, -10] len 2
+// expect-stdout: s11 = [2:Tab\thereTTab\thereaTab\therebTab\there\tTab\therehTab\thereeTab\thererTab\thereeTab\there-Tab\there3Tab\there4Tab\there:Tab\therenTab\thereaTab\thereïTab\therevTab\thereeTab\there6Tab\there4Tab\there4Tab\there9Tab\there5Tab\there9Tab\there:Tab\thereTTab\thereaTab\therebTab\there\tTab\therehTab\thereeTab\thererTab\thereeTab\there]
+// expect-stdout: i12 = -1289858
+// expect-stdout: f13 = -26.288332273248127
+// expect-stdout: i14 = -644931

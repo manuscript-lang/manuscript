@@ -117,3 +117,5 @@ test "a list built by a counted loop is read by the same count" {
 test "a list built by a conditional push is read by its own length" {
 	expect_equal(filtered_then_read(7), 12)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

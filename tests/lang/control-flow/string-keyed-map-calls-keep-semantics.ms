@@ -35,3 +35,5 @@ test "string map" {
 
 	expect_true((seen == 3 and m.length() == 6))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

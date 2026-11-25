@@ -60,3 +60,19 @@ export fn main() Int {
 	say(f"i12 = {i12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-1, -27, -12, -14] len 4
+// expect-stdout: Tab\there
+// expect-stdout: i2 = -32849280
+// expect-stdout: s3 = [42]
+// expect-stdout: s4 = [42eSaC DeXiM]
+// expect-stdout: l5 = [-1, -27, -12, -14, 91] len 5
+// expect-stdout: i6 = 159876752502
+// expect-stdout: s7 = [delta]
+// expect-stdout: l8 = [-8, -10] len 2
+// expect-stdout: line
+// expect-stdout: break
+// expect-stdout: i9 = 12
+// expect-stdout: s10 = [42ammag]
+// expect-stdout: b11 = false
+// expect-stdout: i12 = 14212935

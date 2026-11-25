@@ -75,3 +75,23 @@ export fn main() Int {
 	say(f"{(s9.scalar_length() % i6) / big19}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 8836974
+// expect-stdout: i2 = 8836974
+// expect-stdout: i3 = -8836980
+// expect-stdout: acc4 = 26
+// expect-stdout: f5 = 719.421
+// expect-stdout: i6 = -12
+// expect-stdout: i7 = 0
+// expect-stdout: b8 = false
+// expect-stdout: s9 = [日本語]
+// expect-stdout: b10 = true
+// expect-stdout: s11 = [-93901:alpha]
+// expect-stdout: -8836980 500492 true sum -8336488
+// expect-stdout: b12 = false
+// expect-stdout: i13 = -1991031
+// expect-stdout: i14 = -8836980
+// expect-stdout: i15 = -28
+// expect-stdout: b18 = false
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0194.ms:75 in main

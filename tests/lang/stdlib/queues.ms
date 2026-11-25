@@ -76,3 +76,5 @@ test "get reads by position and counts negative indexes from the end" {
 	expect_equal(heap.get(-1), 5)?
 	expect_equal(heap.get(2), null)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

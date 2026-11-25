@@ -19,3 +19,5 @@ test "builders" {
 	text += " world"
 	expect_equal(text, "hello world")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

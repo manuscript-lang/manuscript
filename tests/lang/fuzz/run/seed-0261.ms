@@ -66,3 +66,14 @@ export fn main() Int {
 	say(f"fib(7) = {fib(7)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -686429
+// expect-stdout: l2 = [16, -7] len 2
+// expect-stdout: b3 = false
+// expect-stdout: betaa
+// expect-stdout: b4 = false
+// expect-stdout: acc5 = 15
+// expect-stdout: i6 = -686429
+// expect-stdout: i7 = 471184085603
+// expect-stdout: b8 = true
+// expect-stdout: fib(7) = 13

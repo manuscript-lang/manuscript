@@ -70,3 +70,5 @@ test "ticker keeps its original cadence when the consumer misses ticks" {
 		expect_true(next.difference(pending).compare(period) > 0)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

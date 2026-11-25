@@ -38,3 +38,5 @@ test "the later branches of the same function still store the value" {
 	store(box, "none")
 	expect_equal(box.note, null)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

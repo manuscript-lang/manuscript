@@ -6,3 +6,6 @@ export fn main() Int {
 	values.insert(3, 9)
 	return values.length()
 }
+// expect-exit: 134
+// expect-stderr: List.insert: index must be between -2 and 2 (negative indexes count from the end), found 3
+// expect-stderr:   at testlistinsertfaultlocations-1.ms:6 in main

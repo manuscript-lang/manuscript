@@ -1,2 +1,5 @@
 // conform: tags=projects,testing,tier-core
 // conform: phase=check
+// expect-error: MS3001 2:12 expected Int, found String (in the return value)
+// expect-error: MS3001 6:12 expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 6:12-6:13 "\"1\""

@@ -13,3 +13,5 @@ test "Decimal magnitude rounding and underflow boundaries remain unchanged" {
 	expect_false(1e-6176d / 10d != 0d or - 1e-6176d / 10d != 0d)?
 	expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

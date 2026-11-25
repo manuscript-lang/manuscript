@@ -91,3 +91,5 @@ test "contextual callbacks and inline returns" {
 	}
 	expect_equal(outer(3)(4), 7)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

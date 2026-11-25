@@ -118,3 +118,5 @@ test "view_bytes of short text survives later statements and blocks" {
 	expect_equal(bytes.length(), 4)?
 	expect_equal(bytes.view(1, 3).clone(), "é".to_bytes())?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

@@ -31,3 +31,5 @@ test "a captured short literal is found in a list" {
 	expect_equal(words.contains("k4"), false)?
 	expect_equal("héllo".scalar_length(), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

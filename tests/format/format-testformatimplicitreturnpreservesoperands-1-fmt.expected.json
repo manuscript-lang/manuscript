@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn sum(first_value, second_value, third_value, fourth_value Int) Int => (\n\tfirst_value\n\t+ second_value\n\t+ third_value\n\t+ fourth_value\n)\n"
-  }
-}

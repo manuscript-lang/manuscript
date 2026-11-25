@@ -23,3 +23,5 @@ test "the first piece can be kept after the text changes" {
 	expect_equal(kept, "alpha")?
 	expect_equal(text, "gamma")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

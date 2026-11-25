@@ -150,3 +150,5 @@ test "List explicit and bound interface views splice through the adapter" {
 	view.splice(1, 2, [8])
 	expect_equal(view.contents(), [7, 8])?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

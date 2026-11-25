@@ -63,3 +63,5 @@ fn main() Void! {
 	stdout().write(f"{lift([Opt.None, Opt.Has(7)])} {lead.length()} {pick(arms, 0)} {pair.b} ")?
 	stdout().write(f"{a} {r} {xs.length()} {ys.length()} {pick(box.o, 5)} {pick(m, 6)} {name}\n")?
 }
+// expect-exit: 0
+// expect-stdout: 2 2 0 1 3 7 2 2 5 6 none

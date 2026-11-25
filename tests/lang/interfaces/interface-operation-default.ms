@@ -32,3 +32,8 @@ fn main() Void {
 	print(value("x"))
 	print(value("x", Opts(n: 5)))
 }
+// expect-exit: 0
+// expect-stdout: 1
+// expect-stdout: 1
+// expect-stdout: 1
+// expect-stdout: 6

@@ -83,3 +83,21 @@ export fn main() Int {
 	say(f"s16 = [{s16}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [MIXED CASENAÏVE]
+// expect-stdout: collatz(1681) = 42
+// expect-stdout: i3 = -19
+// expect-stdout: f4 = 504.404
+// expect-stdout: i5 = -19
+// expect-stdout: i6 = 19
+// expect-stdout: b7 = false
+// expect-stdout: b9 = false
+// expect-stdout: f10 = 0
+// expect-stdout: -19 19 true sum 0
+// expect-stdout: i11 = 50029044
+// expect-stdout: s12 = [MiXeD CaSe]
+// expect-stdout: i13 = -19
+// expect-stdout: f14 = 504.404
+// expect-stdout: fact(2) = 2
+// expect-stdout: acc15 = 0
+// expect-stdout: s16 = [olléhMiXeD CaSe]

@@ -99,3 +99,21 @@ export fn main() Int {
 	say(f"f13 = {f13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: collatz(1937) = 50
+// expect-stdout: l1 = [25, -26, -19, 17, -25] len 5
+// expect-stdout: l2 = [-7, -7, 12, 13, 5] len 5
+// expect-stdout: f3 = 0.00029319683374083225
+// expect-stdout: fib(14) = 377
+// expect-stdout: l4 = [14] len 1
+// expect-stdout: i5 = 14
+// expect-stdout: acc6 = -30
+// expect-stdout: i7 = 4
+// expect-stdout: l8 = [-25] len 1
+// expect-stdout: -3588715 -16 true sum -3588731
+// expect-stdout: i9 = -28
+// expect-stdout: f10 = 0.00029319683374083225
+// expect-stdout: fib(54) = 86267571272
+// expect-stdout: l11 = [25, -26, -19, 17, -25, 55] len 6
+// expect-stdout: l12 = [-25, 55] len 2
+// expect-stdout: f13 = 2.9861333333333336e-16

@@ -70,3 +70,5 @@ test "an empty stream has the empty checksum" {
 	expect_equal(crc32_of(chunked("".to_bytes(), 4))?, 0)?
 	expect_equal(adler32_of(chunked("".to_bytes(), 4))?, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

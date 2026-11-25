@@ -25,3 +25,8 @@ export fn main() Int {
 fn read_line(input ReadStream[Bytes], max_bytes Int) String? {
 	return null
 }
+// expect-exit: 134
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at testfaultsourcelocations-5.ms:10 in limit
+// expect-stderr:   at testfaultsourcelocations-5.ms:14 in probe
+// expect-stderr:   at testfaultsourcelocations-5.ms:21 in main

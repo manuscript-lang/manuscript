@@ -82,3 +82,5 @@ test "optional elements keep none distinct from absent" {
 	expect_equal(d.pop_front(), present_none)?
 	expect_equal(d.pop_front(), null)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

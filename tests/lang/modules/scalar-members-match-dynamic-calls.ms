@@ -10,3 +10,5 @@ test "string and float members" {
 	expect_true((text.concat(other: "!") == "héllo!"))?
 	expect_true(((0.0 / 0.0).is_nan() and not (1.0).is_nan() and (1.0).is_finite()))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

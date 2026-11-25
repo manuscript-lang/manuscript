@@ -59,3 +59,10 @@ fn main() Void {
 
 	_k := stdout().write(f"{total}\n")
 }
+// expect-exit: 0
+// expect-stdout: [h][é][l][l][o][ ][w][ö][r][l][d][ ][✓][ ][😀][!] 16
+// expect-stdout:  0
+// expect-stdout: [a][b][c] 3
+// expect-stdout: 4 -1
+// expect-stdout: 3 ñ
+// expect-stdout: 2

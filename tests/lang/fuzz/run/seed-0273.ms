@@ -42,3 +42,15 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: s3 = [line
+// expect-stdout: breakgamma  padded  ]
+// expect-stdout: s4 = [line
+// expect-stdout: breakgamma  padded  ]
+// expect-stdout: l5 = [-7, 19, -29, 9, 1] len 5
+// expect-stdout: i6 = 607888385042
+// expect-stdout: line
+// expect-stdout: breakgamma  padded\x20\x20
+// expect-stdout: i7 = -607888385025
+// expect-stdout: ammag

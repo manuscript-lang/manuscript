@@ -20,3 +20,5 @@ test "regex hexadecimal escapes accept only digit sequences" {
 		expect_equal(regex.matches("B"), false)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

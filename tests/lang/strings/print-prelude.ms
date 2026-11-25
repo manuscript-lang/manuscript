@@ -15,3 +15,9 @@ fn main() Void {
 	name := "ms"
 	print(f"name: {name}")
 }
+// expect-exit: 0
+// expect-stdout: hello
+// expect-stdout: 42
+// expect-stdout: Point(x: 1, y: 2)
+// expect-stdout: [1, 2, 3]
+// expect-stdout: name: ms

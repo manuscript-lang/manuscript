@@ -15,3 +15,5 @@ test "a file name past the host limit reports ENAMETOOLONG on every platform" {
 	written := expect_error(write_file(path, "x").wait())?
 	expect_equal(written.kind, "ENAMETOOLONG")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

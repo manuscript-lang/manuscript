@@ -302,3 +302,5 @@ test "Set filter and map copy snapshots and deduplicate in first-result order" {
 	expect_false(not (Set[Int]().map(n => n.to_string()).is_empty()))?
 	expect_false(not (keys.filter(unused => false).is_empty()))?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

@@ -6,3 +6,6 @@ fn main() Void {
 	insert := values.insert
 	insert(index: 5, value: 9)
 }
+// expect-exit: 134
+// expect-stderr: List.insert: index must be between -1 and 1 (negative indexes count from the end), found 5
+// expect-stderr:   at testlistinsertfaultlocations-3.ms:7 in main
