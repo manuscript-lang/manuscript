@@ -12,5 +12,10 @@ fn count[T](o Opt[T]) Int {
 
 export fn main() Int {
 	x := Opt.None
+	both := [Opt.None, Opt.None]
+	arms := match 1 {
+		0 => Opt.None
+		_ => Opt.None
+	}
 	return count(Opt.None)
 }

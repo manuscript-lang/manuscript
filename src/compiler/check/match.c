@@ -557,15 +557,22 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
   }
   check_exhaustive(body, expr, scrutinee);
   bool *open = MS_ARENA_NEW_ARRAY(&body->program->arena, bool, expr->u.match.arms.len + 1);
+  bool *waited = MS_ARENA_NEW_ARRAY(&body->program->arena, bool, expr->u.match.arms.len + 1); /* a case only its siblings can type */
+  const bool outer_defer = body->defer_uninferred;
   bool any_open = false;
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
+    const uint32_t uninferred = body->uninferred;
+    body->defer_uninferred = result == MS_TY_NONE;
     const MsTy value = arm_value(body, expr->u.match.arms.ptr[index], &kept[index], result == MS_TY_NONE ? expected : result, &state);
+    body->defer_uninferred = outer_defer;
+    waited[index] = body->uninferred != uninferred;
     const bool complete = value != MS_TY_NONE && !holds_invalid(types, value, 6) && !body_has_foreign_variable(body, value);
     if (complete && any_open && (result == MS_TY_NONE || holds_invalid(types, result, 6))) {
       /* a later arm completes what an earlier one left open (`none: []`, `value: [value]`): they are read again with it */
       for (uint32_t before = 0; before < index; before++) {
         if (open[before]) {
           (void)arm_value(body, expr->u.match.arms.ptr[before], &kept[before], value, &state);
+          waited[before] = false;
         }
       }
       result = value;
@@ -575,6 +582,11 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
     open[index] = expr->u.match.arms.ptr[index]->value != NULL && !complete;
     any_open = any_open || open[index];
     result = result == MS_TY_NONE ? value : result;
+  }
+  for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
+    if (waited[index]) { /* nothing fixed it: read again to report it */
+      (void)arm_value(body, expr->u.match.arms.ptr[index], &kept[index], result, &state);
+    }
   }
   body->quiet = outer_quiet;
   return result;

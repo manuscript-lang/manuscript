@@ -311,6 +311,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
   const MsTyTable *types = &body->program->types;
   /* A function literal is typed after the other arguments, so the variables they fix are known to it. */
   bool typed[32] = {false};
+  bool waited[32] = {false}; /* arguments left open by an uninferred case */
   const size_t nargs = call->u.call.args.len;
   bool has_lambda = false;
   for (size_t at = 0; at < nargs; at++) {
@@ -367,9 +368,14 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     /* An empty literal beside an open parameter waits for the other arguments: it is reported below if none fixes it. */
     const bool quiet_before = body->quiet;
     body->quiet = quiet_before || (open && is_empty_literal(arg->value));
+    const bool defer_before = body->defer_uninferred;
+    const uint32_t uninferred = body->uninferred;
+    body->defer_uninferred = open; /* a case only the other arguments or the result can type waits for them */
     arg_tys[index] = open || by_hint ? body_expr(body, arg->value, literal || bare ? MS_TY_NONE : wanted)
                          : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
     body->quiet = quiet_before;
+    body->defer_uninferred = defer_before;
+    waited[index] = body->uninferred != uninferred;
     if (by_hint && arg_tys[index] != MS_TY_NONE && is_function(types, arg_tys[index]) &&
         ms_ty_param_count(types, arg_tys[index]) == ms_ty_param_count(types, wanted)) {
       body_check_assignable(body, arg->value, arg_tys[index], wanted, ms_strbuild_span(&context));
@@ -404,6 +410,10 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
       }
       if (arg_tys[index] == final && mentions_vars(types, final, &target->vars) && value->kind == MS_E_MEMBER) {
         body_report_uninferred_case(body, value, final); /* `Opt.None` beside nothing that fixes its type arguments */
+      }
+      if (waited[index] && mentions_vars(types, final, &target->vars)) {
+        arg_tys[index] = body_expr(body, value, MS_TY_NONE); /* nothing fixed the case: typed again to report it */
+        continue;
       }
       if ((arg_tys[index] == MS_TY_NONE || body_has_foreign_variable(body, arg_tys[index])) && !mentions_vars(types, final, &target->vars)) {
         /* An argument typed while a variable was open (`Box(none)` beside `Box(value)`) is typed again at its final type. */
