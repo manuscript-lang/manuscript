@@ -13,6 +13,8 @@
 #include "compiler/check/std_cache.h"
 #include "tooling/findings.h"
 #include "lsp/lsp_internal.h"
+#include "lsp/lsp_workspace.h"
+#include "compiler/project/manifest.h"
 #include "compiler/syntax/diag.h"
 #include "tooling/lint.h"
 
@@ -310,6 +312,18 @@ static void append_diagnostic(MsStrBuild *out, bool *first, MsSpan source, const
 }
 
 /* The diagnostics of `doc` as the elements of a JSON array. */
+/* Whether `doc` is the entry file the manifest of its project names. */
+static bool is_project_entry(const LspAnalysis *analysis, const LspDoc *doc) {
+  const MsSpan root = lsp_project_root(analysis->arena, ms_path_parent(ms_string_span(&doc->path)));
+  MsManifest manifest;
+  MsProjectError error = {0};
+  const MsSpan file = ms_message_format(analysis->arena, "%S/ms.toml", root, (MsSpan){0});
+  if (!ms_manifest_read(analysis->arena, file, &manifest, &error)) return false;
+  const bool entry = ms_span_equal(manifest.entry, ms_string_span(&doc->path));
+  ms_manifest_free(&manifest);
+  return entry;
+}
+
 static MsString diagnostics_of(LspDoc *doc, const LspDocList *docs) {
   LspAnalysis analysis;
   lsp_analyze(docs, doc, &analysis);
@@ -345,6 +359,14 @@ static MsString diagnostics_of(LspDoc *doc, const LspDocList *docs) {
     if (repeated) continue;
     append_diagnostic(&out, &first, source, finding);
   }
+    FindingList entry_findings = {0};
+  if (analysis.resolved && analysis.checked.findings.len == 0) {
+    /* As `ms check` and `ms build` do once nothing else is wrong: a `main` that is declared must be usable in any file, and
+     * the project's entry must declare one. */
+    ms_require_main(analysis.arena, &analysis.checked.program, ms_entry_module(&analysis.checked.program, &analysis.checked.graph),
+                    !is_project_entry(&analysis, doc), &entry_findings);
+  }
+  for (size_t i = 0; i < entry_findings.len; i++) append_diagnostic(&out, &first, source, &entry_findings.ptr[i]);
   /* The advisories: the lint rules over the checked program, or the lexical ones alone when it did not load. */
   MsLintFindingList lint = {0};
   if (analysis.resolved) {

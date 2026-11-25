@@ -633,6 +633,13 @@ static void use_call(Builder *b, const MsExpr *expr, MsTy ty) {
         }
       }
     }
+    /* A native type declares no fields: the label of `Bytes(values: [1])` has the type of what it labels. */
+    for (uint32_t index = 0; def != NULL && def->fields.len == 0 && index < expr->u.call.args.len; index++) {
+      const MsArg *arg = &expr->u.call.args.ptr[index];
+      if (!arg->has_name) continue;
+      ms_occ_add(b, ms_message_format(b->arena, "field:%S:%S", ms_occ_symbol_key(b, parent), ms_occ_name_text(b, arg->name)), ms_occ_name_text(b, arg->name),
+          b->module, arg->pos.offset, false, false, ms_facts_type(&b->program->modules.ptr[b->module].facts, arg->value->id), 0, false);
+    }
     return;
   }
   /* A prelude constructor (`ok`, `error`, `some`) builds a case of the type it returns. */

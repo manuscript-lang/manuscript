@@ -7,6 +7,7 @@
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
+#include "compiler/syntax/parse.h"
 #include "lsp/lsp_analysis.h"
 #include "tooling/facts.h"
 
@@ -88,9 +89,8 @@ static int compare_symbol(const void *left, const void *right) {
   return by_name == 0 ? 0 : (by_name < 0 ? -1 : 1);
 }
 
-static int symbol_kind(const MsCheckProgram *program, const MsOccurrence *entry) {
-  if (entry->symbol == 0 || program->symbols.ptr[entry->symbol].decl == NULL) return 12;
-  switch (program->symbols.ptr[entry->symbol].decl->kind) {
+static int declaration_kind(const MsDecl *decl) {
+  switch (decl->kind) {
     case MS_D_TYPE:
     case MS_D_ALIAS:
     case MS_D_INTERFACE:
@@ -102,6 +102,64 @@ static int symbol_kind(const MsCheckProgram *program, const MsOccurrence *entry)
     default:
       return 12;
   }
+}
+
+static MsName declaration_name(const MsDecl *decl) {
+  switch (decl->kind) {
+    case MS_D_FN: return decl->u.fn.name;
+    case MS_D_CONST: return decl->u.konst.name;
+    case MS_D_TYPE: return decl->u.type.name;
+    case MS_D_ENUM: return decl->u.enumeration.name;
+    case MS_D_ALIAS: return decl->u.alias.name;
+    case MS_D_INTERFACE: return decl->u.iface.name;
+    default: return 0;
+  }
+}
+
+typedef struct FileSymbols {
+  MsArena *arena;
+  MsSpan source;
+  MsSpan query;
+  SymbolList *found;
+  MsSpan uri;
+} FileSymbols;
+
+static void add_symbol(FileSymbols *file, MsSpan name, int kind, size_t offset) {
+  if (!lsp_text_mentions(name, file->query)) return;
+  size_t at = offset;
+  (void)lsp_header(file->source, offset, name, &at);
+  Symbol symbol = {.name = ms_arena_copy(file->arena, name), .uri = file->uri, .kind = kind,
+                   .range = {lsp_position(file->source, at), lsp_position(file->source, at + name.len)}};
+  symbol_list_push(file->found, symbol);
+}
+
+static void add_methods(FileSymbols *file, const MsNames *names, MsMethod *const *methods, uint32_t count) {
+  for (uint32_t i = 0; i < count; i++) {
+    add_symbol(file, ms_names_span(names, methods[i]->func.name), 12, methods[i]->pos.offset);
+  }
+}
+
+/* The declarations of one file, read from its syntax alone: a workspace symbol needs names and places, not types, so no file
+ * is checked and the cost is one parse of each file naming the query. */
+static void file_symbols(FileSymbols *file) {
+  MsArena arena = ms_arena_new();
+  MsNames names;
+  ms_names_init(&names);
+  MsModule tree = {0};
+  MsDiag *issues = NULL;
+  size_t count = 0;
+  (void)ms_parse_partial(&arena, &names, file->source, &tree, &issues, &count);
+  for (uint32_t i = 0; i < tree.ndecls; i++) {
+    const MsDecl *decl = tree.decls[i];
+    if (decl->synthetic && decl->kind == MS_D_INTERFACE) continue;
+    if (decl->kind == MS_D_IMPL) {
+      add_methods(file, &names, decl->u.impl.methods.ptr, decl->u.impl.methods.len);
+    } else if (decl->kind != MS_D_TEST) {
+      add_symbol(file, ms_names_span(&names, declaration_name(decl)), declaration_kind(decl), decl->pos.offset);
+    }
+  }
+  ms_names_free(&names);
+  ms_arena_free(&arena);
 }
 
 void lsp_workspace_symbols(const LspDocList *docs, const MsSpan *roots, size_t root_count, MsSpan query, MsStrBuild *out) {
@@ -138,26 +196,12 @@ void lsp_workspace_symbols(const LspDocList *docs, const MsSpan *roots, size_t r
     } else {
       continue;
     }
-    const bool mentions = lsp_text_mentions(text, query);
-    if (open == NULL) ms_bytes_free(&bytes);
-    if (!mentions) continue;
-    LspDoc entry = {.path = ms_string_from_span(paths.ptr[i])};
-    LspAnalysis analysis;
-    lsp_analyze_scan(docs, &entry, &analysis);
-    const MsCheckProgram *program = &analysis.checked.program;
-    for (size_t e = 0; analysis.resolved && e < analysis.index.len; e++) {
-      const MsOccurrence *occurrence = &analysis.index.ptr[e];
-      if (!occurrence->declaration || (occurrence->symbol == 0 && !occurrence->method) || !lsp_text_mentions(occurrence->name, query)) continue;
-      const MsSpan source = program->modules.ptr[occurrence->module].source;
-      Symbol symbol = {.name = ms_arena_copy(&arena, occurrence->name), .uri = lsp_path_uri(docs, &arena, analysis.paths[occurrence->module]),
-                       .kind = symbol_kind(program, occurrence),
-                       .range = {lsp_position(source, occurrence->offset), lsp_position(source, occurrence->end)}};
-      bool duplicate = false;
-      for (size_t k = 0; k < found.len && !duplicate; k++) duplicate = compare_symbol(&found.ptr[k], &symbol) == 0;
-      if (!duplicate) symbol_list_push(&found, symbol);
+    if (lsp_text_mentions(text, query)) {
+      FileSymbols file = {.arena = &arena, .source = text, .query = query, .found = &found,
+                          .uri = lsp_path_uri(docs, &arena, paths.ptr[i])};
+      file_symbols(&file);
     }
-    lsp_analysis_release(&analysis);
-    ms_string_release(&entry.path);
+    if (open == NULL) ms_bytes_free(&bytes);
   }
   if (found.len > 1) qsort(found.ptr, found.len, sizeof(Symbol), compare_symbol);
   ms_strbuild_append_byte(out, '[');

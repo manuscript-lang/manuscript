@@ -20,12 +20,9 @@ import (
 	tool_ms from "./lib.ms",
 )
 
-// Identifiers with no hover that the sweep tolerates: the type argument of a call in a
-// field default (`items List[T] = List[T]()`), and the `values:` label of the `Bytes`
-// constructor, which has no declared parameters. Lower this as navigation improves;
-// raise it never.
+// Identifiers with no hover that the sweep tolerates: none. Raise it never.
 fn ceiling() Int {
-	return 3
+	return 0
 }
 
 // How many identifiers without hover the sweep names.

@@ -1,0 +1,7 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "initialized", "params": {}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/src/main.ms", "languageId": "manuscript", "version": 1, "text": "fn helper() Int {\n\treturn 1\n}\n"}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/src/util.ms", "languageId": "manuscript", "version": 1, "text": "export fn util() Int {\n\treturn 2\n}\n"}}}
+{"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {"textDocument": {"uri": "$ROOT_URI/src/main.ms", "version": 2}, "contentChanges": [{"text": "fn helper() Int {\n\treturn 1\n}\n\nfn main() Void {\n\tprint(\"hi\")\n}\n"}]}}
+{"jsonrpc": "2.0", "id": 2, "method": "shutdown"}
+{"jsonrpc": "2.0", "method": "exit"}
