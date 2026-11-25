@@ -392,7 +392,7 @@ static int build_and_run(Run *run, const MsTestOptions *options, MsSpan input, i
   const MsLinkRequest request = {.program = &run->checked->program, .entry = run->checked->entry,
                                  .build_type = invocation->build_type, .output = run->executable,
                                  .link = invocation->link.ptr, .link_count = invocation->link.len,
-                                 .static_libc = invocation->static_libc, .tests = true, .bench = true,
+                                 .static_libc = invocation->static_libc, .temporary = true, .tests = true, .bench = true,
                                  .count_ops = options->ops};
   MsSpan error = {0};
   if (!ms_pipeline_link(&request, &error)) {

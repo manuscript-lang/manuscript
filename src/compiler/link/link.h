@@ -23,6 +23,7 @@ typedef struct LinkRequest {
   const MsSpan *inputs; /* borrowed: the runtime archive and any `--link` files, in order */
   size_t input_count;
   MsSpan output;        /* the executable to write */
+  bool temporary;       /* the executable is run once and discarded (`run`, `test`): macOS skips its dSYM bundle */
 } LinkRequest;
 
 /* Links the request. On failure `why` gets the reason, with the linker's output and advice. */
