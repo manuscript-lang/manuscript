@@ -534,6 +534,86 @@ IcKnown ic_known_aliased(MsArena *arena, const MirModule *m, const MirFunc *f) {
   return known;
 }
 
+static void ic_mark_used(void *context, MirValue value) {
+  ((bool *)context)[value] = true;
+}
+
+/* A closure stored in a local record: `slot S; put S, T` with `T = type.new (.., c, ..)`, no other write, and no use of S
+ * but `ptr.field` reads and a final take, drop or forget. A load of that field then yields `c`, so a record that carries
+ * a callback (`Mapped`, `Filtered`) lets the call through it inline like a direct one. */
+static void ic_slot_fields(MsArena *arena, const MirFunc *f, const MirInst *const *defs, IcKnown *known,
+                           const IcKnown *closures) {
+  const uint32_t nv = (uint32_t)f->values.len + 1;
+  uint32_t *puts = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  uint32_t *put_block = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  uint32_t *put_index = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  MirValue *put_value = MS_ARENA_NEW_ARRAY(arena, MirValue, nv);
+  bool *other = MS_ARENA_NEW_ARRAY(arena, bool, nv);
+  uint64_t *written = MS_ARENA_NEW_ARRAY(arena, uint64_t, nv); /* bit per field: reached by more than a read */
+  const bool *reads = ic_field_reads(arena, f);
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirInstList *insts = &f->blocks.ptr[b].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      const MirInst *in = &insts->ptr[i];
+      for (uint32_t k = 0; k < in->nargs; k++) {
+        const MirValue a = in->args[k];
+        if (k == 0 && in->op == MOP_PtrField && in->imm.tag == MI_FIELD && in->res != MIR_NONE) {
+          if (!reads[in->res]) {
+            written[a] |= (uint64_t)1 << (in->imm.b < 63 ? in->imm.b : 63);
+          }
+        } else if (k == 0 && in->op == MOP_Put && in->nargs == 2) {
+          puts[a]++;
+          put_block[a] = b;
+          put_index[a] = i;
+          put_value[a] = in->args[1];
+        } else if (!(k == 0 && (in->op == MOP_Take || in->op == MOP_Drop || in->op == MOP_Forget))) {
+          other[a] = true;
+        }
+      }
+    }
+    mir_term_each_value(&f->blocks.ptr[b].term, ic_mark_used, other);
+  }
+  MirBlock *order = NULL;
+  const MirDomTree *tree = NULL;
+  MirDomTree tree_storage;
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirInstList *insts = &f->blocks.ptr[b].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      const MirInst *load = &insts->ptr[i];
+      const MirInst *field = load->op == MOP_Load && load->nargs == 1 ? defs[load->args[0]] : NULL;
+      if (field == NULL || field->op != MOP_PtrField || field->imm.tag != MI_FIELD || load->res == MIR_NONE) {
+        continue;
+      }
+      const MirValue slot = field->args[0];
+      const MirInst *made = defs[slot] != NULL && defs[slot]->op == MOP_Slot && !other[slot] && puts[slot] == 1 &&
+                                  (written[slot] & ((uint64_t)1 << (field->imm.b < 63 ? field->imm.b : 63))) == 0
+                              ? defs[put_value[slot]]
+                              : NULL;
+      if (made == NULL || made->op != MOP_TypeNew || made->imm.tag != MI_TYPE || made->imm.a != field->imm.a ||
+          field->imm.b >= made->nargs || !ic_known_has(closures, made->args[field->imm.b])) {
+        continue;
+      }
+      if (tree == NULL) {
+        const uint32_t reachable = mir_rpo(arena, f, &order);
+        const MirPreds preds = mir_preds(arena, f);
+        const MirBlock *idom = mir_dominators(arena, f, order, reachable, &preds);
+        tree_storage = mir_dom_tree(arena, f, order, reachable, idom);
+        tree = &tree_storage;
+      }
+      /* The load sees the record only when the put runs first on every path to it. */
+      const bool after = put_block[slot] == b ? put_index[slot] < i : mir_tree_dominates(tree, put_block[slot], b);
+      if (!after) {
+        continue;
+      }
+      const MirValue c = made->args[field->imm.b];
+      if (known->n == 0) {
+        *known = ic_known_new(arena, (uint32_t)f->values.len);
+      }
+      ic_known_set(known, load->res, closures->code[c], closures->caps[c], closures->ncaps[c]);
+    }
+  }
+}
+
 static IcKnown ic_known_with_fields(MsArena *arena, const MirModule *m, const MirFunc *f,
                   const IcFields *fields) {
   IcKnown known = ic_known_aliased(arena, m, f);
@@ -562,6 +642,7 @@ static IcKnown ic_known_with_fields(MsArena *arena, const MirModule *m, const Mi
       }
     }
   }
+  ic_slot_fields(arena, f, defs, &known, &known);
   return known;
 }
 

@@ -138,7 +138,14 @@ static const Step early_steps[] = {
     {"strfuse", strfuse_step},
 };
 
+/* Once the simplifier has threaded a record's slot through the loop, a callback it holds is known: the closures open again. */
+static bool closures_step(MirModule *m) {
+  (void)opt_simplify(m);
+  return opt_inline_closures(m) && opt_inline(m);
+}
+
 static const Step late_steps[] = {
+    {"closures", closures_step},
     {"fieldload", opt_fieldload},
     {"strfuse", strfuse_step}, /* the simplified bodies hold `take`/`drop` of a variable's slot, which the early run does not see */
     {"fuse", opt_fuse_step},
