@@ -23,15 +23,15 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
   return true;
 }
 
-/* With `kept`, the fault tables are wanted: the table info is read before the functions are renamed, every
- * function is exported and every instruction carries its source place. */
+/* With `kept`, the fault tables are wanted: the table info is read before the functions are renamed and every
+ * instruction carries its source place; functions stay internal, so LLVM may specialize them. */
 static bool emit_program(MirModule *module, const MirData *data, const MirGlue *glue, BackendProgram *kept,
                          const BackendOptions *options, MsStrBuild *ir, uint32_t *units, MsStrBuild *why) {
   if (kept != NULL) {
     emit_table_info(&kept->arena, module, &kept->tables);
   }
   emit_name_symbols(module);
-  const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL,
+  const EmitOptions emit = {.places = kept != NULL,
                           .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide,
                           .poison_slots = options->poison_slots, .units = options->units,
                           .unit_bytes = options->unit_bytes};
