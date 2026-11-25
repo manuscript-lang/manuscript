@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "the closure at 9:16 of `for_each` is moved or changed in place but overlaps the receiver `m`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first",
+        "position": {
+          "file": "sorted-map-for-each-changes-map.ms",
+          "line": 9,
+          "column": 7,
+          "offset": 295
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/sorted-map-for-each-changes-map.ms:9:7: type: the closure at 9:16 of `for_each` is moved or changed in place but overlaps the receiver `m`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first\n   |\n 9 |     m.for_each((k, v) => m.add(k + 100, v))\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
