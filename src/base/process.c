@@ -166,6 +166,67 @@ static void fail_at(const char *what, MsSpan path, int code, MsStrBuild *error) 
   fail_with(code, error);
 }
 
+/* Whether `directory`/`name` is an executable file, with its path in `*path` when it is; libuv has no PATH lookup that
+ * stays in one process (it forks once per directory), so the caller walks the directories. */
+static bool executable_in(MsSpan directory, MsSpan name, MsStrBuild *path) {
+  MsStrBuild candidate = ms_strbuild_new();
+  ms_strbuild_append(&candidate, directory.len == 0 ? ms_span_of_text(".") : directory);
+  ms_strbuild_append_byte(&candidate, '/');
+  ms_strbuild_append(&candidate, name);
+#ifdef _WIN32
+  ms_strbuild_append_text(&candidate, ".exe");
+#endif
+  MsOsText text = ms_os_text_new(ms_strbuild_span(&candidate));
+  uv_fs_t request;
+  const bool found = uv_fs_access(NULL, &request, text.ptr, X_OK, NULL) == 0;
+  uv_fs_req_cleanup(&request);
+  ms_os_text_free(&text);
+  if (found && path != NULL) {
+    ms_strbuild_append(path, ms_strbuild_span(&candidate));
+  }
+  ms_strbuild_free(&candidate);
+  return found;
+}
+
+/* Finds `name` in PATH, writing its path to `*path` when `path` is not NULL. */
+static bool find_in_path(MsSpan name, MsStrBuild *path) {
+#ifdef _WIN32
+  const uint8_t separator = ';';
+#else
+  const uint8_t separator = ':';
+#endif
+  MsString search = ms_string_empty();
+  bool found = false;
+  if (name.len != 0 && ms_env_get("PATH", &search)) {
+    MsSpan rest = ms_string_span(&search);
+    while (!found) {
+      size_t end = 0;
+      while (end < rest.len && rest.ptr[end] != separator) {
+        end++;
+      }
+      found = executable_in(ms_span_of(rest.ptr, end), name, path);
+      if (end >= rest.len) {
+        break;
+      }
+      rest = ms_span_of(rest.ptr + end + 1, rest.len - end - 1);
+    }
+  }
+  ms_string_release(&search);
+  return found;
+}
+
+bool ms_process_find(MsSpan name) { return find_in_path(name, NULL); }
+
+/* Whether `name` is a bare program name (no directory part), which the spawn would otherwise look up in PATH itself. */
+static bool is_bare(const char *name) {
+  for (const char *at = name; *at != 0; at++) {
+    if (*at == '/' || *at == '\\') {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* Starts the program with the log as its output and waits for it; false with `error` set when it cannot run. */
 static bool spawn_and_wait(const MsProcessSpec *spec, const int fds[2], int *exit_status, MsStrBuild *error) {
   uv_loop_t loop;
@@ -190,8 +251,15 @@ static bool spawn_and_wait(const MsProcessSpec *spec, const int fds[2], int *exi
     (void)uv_loop_close(&loop);
     return false;
   }
+  /* A bare name is looked up once here: libuv would fork a child for every PATH directory it tries. */
+  MsStrBuild resolved = ms_strbuild_new();
+  const char *file = arguments.pointers[0];
+  if (is_bare(file) && find_in_path(ms_span_of_text(file), &resolved)) {
+    ms_strbuild_append_byte(&resolved, 0);
+    file = (const char *)ms_strbuild_span(&resolved).ptr;
+  }
   const uv_process_options_t options = {.exit_cb = on_exit,
-                                        .file = arguments.pointers[0],
+                                        .file = file,
                                         .args = arguments.pointers,
                                         .env = environment.pointers,
                                         .cwd = spec->directory.len == 0 ? NULL : directory.ptr,
@@ -215,6 +283,7 @@ static bool spawn_and_wait(const MsProcessSpec *spec, const int fds[2], int *exi
     (void)uv_run(&loop, UV_RUN_DEFAULT);
     *exit_status = done.signal != 0 ? (spec->inherit ? 128 + done.signal : -1) : (int)done.status;
   }
+  ms_strbuild_free(&resolved);
   ms_os_text_free(&directory);
   arguments_free(&arguments);
   environment_free(&environment, spec->envc);
@@ -252,50 +321,6 @@ bool ms_process_run(const MsProcessSpec *spec, int *exit_status, MsStrBuild *err
     }
   }
   return ok;
-}
-
-/* Whether `directory`/`name` is an executable file; libuv has no PATH lookup, so the caller walks the directories. */
-static bool executable_in(MsSpan directory, MsSpan name) {
-  MsStrBuild candidate = ms_strbuild_new();
-  ms_strbuild_append(&candidate, directory.len == 0 ? ms_span_of_text(".") : directory);
-  ms_strbuild_append_byte(&candidate, '/');
-  ms_strbuild_append(&candidate, name);
-#ifdef _WIN32
-  ms_strbuild_append_text(&candidate, ".exe");
-#endif
-  MsOsText text = ms_os_text_new(ms_strbuild_span(&candidate));
-  uv_fs_t request;
-  const bool found = uv_fs_access(NULL, &request, text.ptr, X_OK, NULL) == 0;
-  uv_fs_req_cleanup(&request);
-  ms_os_text_free(&text);
-  ms_strbuild_free(&candidate);
-  return found;
-}
-
-bool ms_process_find(MsSpan name) {
-#ifdef _WIN32
-  const uint8_t separator = ';';
-#else
-  const uint8_t separator = ':';
-#endif
-  MsString path = ms_string_empty();
-  bool found = false;
-  if (name.len != 0 && ms_env_get("PATH", &path)) {
-    MsSpan rest = ms_string_span(&path);
-    while (!found) {
-      size_t end = 0;
-      while (end < rest.len && rest.ptr[end] != separator) {
-        end++;
-      }
-      found = executable_in(ms_span_of(rest.ptr, end), name);
-      if (end >= rest.len) {
-        break;
-      }
-      rest = ms_span_of(rest.ptr + end + 1, rest.len - end - 1);
-    }
-  }
-  ms_string_release(&path);
-  return found;
 }
 
 static void append_trimmed_log(MsSpan log_path, MsStrBuild *out) {
