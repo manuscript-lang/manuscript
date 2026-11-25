@@ -18,6 +18,7 @@ typedef struct Borrow {
   uint32_t after; /* the offset its initializer ends at */
   bool mutable_;
   bool alias; /* bound from a bare name (`b := s`): a view that only a move of the source ends */
+  bool loop; /* the variable of a `for`: the loop keeps the source frozen for its whole body */
   bool method_value; /* a method read as a value (`f := xs.any`): it keeps its receiver until it is last called */
   uint32_t root; /* the binding it borrows from */
   const MsExpr *place; /* the part of it that is borrowed */
@@ -37,6 +38,7 @@ typedef struct Change {
 typedef struct Use {
   uint32_t binding;
   uint32_t offset;
+  uint32_t loop; /* a loop's own use of its variable at the end of the body: where that `for` starts, plus one; else 0 */
 } Use;
 
 /* A source range: a branch's two arms exclude each other; a loop body runs again after its end. */
@@ -59,7 +61,16 @@ typedef struct Keep {
   bool returned; /* a value the function hands back that it only reads in place: no borrow origin, see report_returned */
 } Keep;
 
+/* A block that ends in an unconditional `break` or `return`: a change in [lo, at) is followed by that exit, so no earlier
+ * or later use in the loop (or, for a `return`, anywhere) runs after it. */
+typedef struct Exit {
+  uint32_t lo, at;
+  bool is_return;
+} Exit;
+
 MS_LIST_DEFINE(RangeList, range_list, Range)
+MS_LIST_DEFINE(ExitList, exit_list, Exit)
+MS_LIST_DEFINE(SourceList, source_list, Source)
 MS_LIST_DEFINE(KeepList, keep_list, Keep)
 MS_LIST_DEFINE(BorrowList, borrow_list, Borrow)
 MS_LIST_DEFINE(ChangeList, change_list, Change)
@@ -75,7 +86,9 @@ typedef struct Borrows {
   ChangeList changes;
   UseList uses;
   RangeList ranges;
+  ExitList exits;
   KeepList keeps;
+  SourceList extra; /* the origins after the first that the last origin_of_* query found */
   uint32_t high; /* the furthest end offset seen by the current measuring walk */
   uint32_t lambdas; /* open closures: what they return is theirs */
   const MsExpr *outer; /* the outermost open closure */
@@ -162,13 +175,25 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
     return false;
   }
-  bool found = receiver && borrows_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
-  for (uint32_t index = 0; !found && index < call->u.call.args.len; index++) {
-    found = borrows_from(pass, fact, index + (receiver ? 1u : 0u)) &&
-            origin_of_arg(pass, call->u.call.args.ptr[index].value, out);
-  }
-  if (found && out->call == NULL) {
-    out->call = call;
+  /* every argument the result borrows from keeps its source frozen: the first fills `out`, the rest go to `extra` */
+  bool found = false;
+  const uint32_t first = receiver ? 0 : 1;
+  for (uint32_t index = first; index <= call->u.call.args.len; index++) {
+    const uint32_t position = receiver ? index : index - 1; /* the receiver is position 0 */
+    const MsExpr *value = index == 0 ? callee->u.member.left : call->u.call.args.ptr[index - 1].value;
+    Source origin = {0};
+    if (!borrows_from(pass, fact, position) || !origin_of_arg(pass, value, &origin)) {
+      continue;
+    }
+    if (origin.call == NULL) {
+      origin.call = call;
+    }
+    if (found) {
+      source_list_push(&pass->extra, origin);
+    } else {
+      *out = origin;
+      found = true;
+    }
   }
   return found;
 }
@@ -209,6 +234,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   const MsExpr *value = stmt->u.bind.value;
   Source source = {0};
   uint32_t binding = 0;
+  source_list_clear(&pass->extra);
   const MsRef *member = pattern != NULL && pattern->kind == MS_P_NAME && value != NULL && value->kind == MS_E_MEMBER
                             ? ms_facts_ref(pass->facts, value->id)
                             : NULL;
@@ -230,10 +256,16 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   if (value->kind == MS_E_MEMBER && ms_facts_use(pass->facts, value->id) == MS_USE_MOVE) {
     return;
   }
-  push_borrow(pass, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
-                                            .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
-                                            .root = source.root, .place = source.place},
-              answers_look_part(pass, source.call));
+  Borrow borrow = {.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
+                   .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
+                   .root = source.root, .place = source.place};
+  push_borrow(pass, borrow, answers_look_part(pass, source.call));
+  /* a result that borrows from several arguments keeps every one of them frozen */
+  for (size_t index = 0; index < pass->extra.len; index++) {
+    borrow.root = pass->extra.ptr[index].root;
+    borrow.place = pass->extra.ptr[index].place;
+    push_borrow(pass, borrow, answers_look_part(pass, pass->extra.ptr[index].call));
+  }
 }
 
 /* Records the place a store or `var` argument changes. */
@@ -286,15 +318,41 @@ static void measure_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
-/* The furthest offset any expression of `body` ends at. */
+static void measure_stmt(void *ctx, const MsStmt *stmt) {
+  Borrows *pass = ctx;
+  if (stmt->pos.offset > pass->high) {
+    pass->high = stmt->pos.offset; /* a `break` or `return` ends no expression */
+  }
+}
+
+/* The furthest offset any expression of `body` ends at, or any statement starts at. */
 static uint32_t body_end(Borrows *pass, MsStmts body) {
   pass->high = 0;
-  const MsVisitor measure = {.ctx = pass, .expr = measure_expr};
+  const MsVisitor measure = {.ctx = pass, .stmt = measure_stmt, .expr = measure_expr};
   ms_walk_block(&measure, body);
   return pass->high;
 }
 
+/* Notes the exit a block ends in, if any: statements after an unconditional exit never run. */
+static void note_exit(Borrows *pass, MsStmts body) {
+  for (uint32_t index = 0; pass->lambdas == 0 && index < body.len; index++) {
+    const MsStmt *stmt = body.ptr[index];
+    if (stmt->kind == MS_S_BREAK || stmt->kind == MS_S_RETURN) {
+      /* `return value` evaluates its value first: uses inside it still run after the change */
+      const uint32_t at = stmt->kind == MS_S_RETURN && stmt->u.expr != NULL ? stmt->u.expr->end.offset : stmt->pos.offset;
+      exit_list_push(&pass->exits, (Exit){.lo = body.ptr[0]->pos.offset, .at = at, .is_return = stmt->kind == MS_S_RETURN});
+      return;
+    }
+  }
+}
+
 static void note_ranges(Borrows *pass, const MsStmt *stmt) {
+  if (stmt->kind == MS_S_IF) {
+    note_exit(pass, stmt->u.branch.body);
+    note_exit(pass, stmt->u.branch.else_body);
+  } else if (stmt->kind == MS_S_WHILE || stmt->kind == MS_S_FOR) {
+    note_exit(pass, stmt->kind == MS_S_WHILE ? stmt->u.loop.body : stmt->u.each.body);
+  }
   if (stmt->kind == MS_S_IF && stmt->u.branch.else_body.len != 0 && stmt->u.branch.body.len != 0) {
     const uint32_t split = stmt->u.branch.else_body.ptr[0]->pos.offset;
     range_list_push(&pass->ranges, (Range){.lo = stmt->pos.offset, .split = split,
@@ -473,7 +531,7 @@ static void note_if_var(Borrows *pass, const MsStmt *stmt) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");
   ms_own_expr_text(&text, pass->program->names, cond);
-  ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value { ... }`, then use `var copy = x.clone()` for an independent "
+  ms_strbuild_append_text(&text, "` is not one; read the payload by testing `if value != null { ... }`, then use `var copy = x.clone()` for an independent "
                                  "mutable copy, or write the changed value back");
   ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
@@ -507,9 +565,33 @@ static void note_return(Borrows *pass, const MsStmt *stmt) {
   ms_strbuild_free(&text);
 }
 
+/* `for item in source`: the loop keeps `source` frozen, and the loop variable a borrow of it, until the body ends. */
+static void note_loop(Borrows *pass, const MsStmt *stmt) {
+  const MsExpr *iter = stmt->u.each.iter;
+  const MsRef *ref = ms_facts_ref(pass->facts, stmt->id);
+  Source source = {0};
+  source_list_clear(&pass->extra);
+  if (stmt->u.each.body.len == 0 || ref == NULL || ref->kind != MS_REF_LOCAL || !origin_of_arg(pass, iter, &source)) {
+    return;
+  }
+  Borrow borrow = {.binding = ref->local, .name = stmt->u.each.name, .at = stmt->pos, .after = iter->end.offset,
+                   .root = source.root, .place = source.place, .loop = true};
+  push_borrow(pass, borrow, false);
+  for (size_t index = 0; index < pass->extra.len; index++) {
+    borrow.root = pass->extra.ptr[index].root;
+    borrow.place = pass->extra.ptr[index].place;
+    push_borrow(pass, borrow, false);
+  }
+  /* the next round reads the source again: the loop uses its variable's borrow until the body's end */
+  use_list_push(&pass->uses, (Use){.binding = ref->local, .offset = body_end(pass, stmt->u.each.body), .loop = stmt->pos.offset + 1});
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Borrows *pass = ctx;
   note_ranges(pass, stmt);
+  if (stmt->kind == MS_S_FOR) {
+    note_loop(pass, stmt);
+  }
   if (stmt->kind == MS_S_RETURN) {
     note_return(pass, stmt);
   }
@@ -582,9 +664,42 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* Whether an exit the change runs into (`xs.append(1); break`) leaves `use` unreachable: the exit ends the loop (or the
+ * function), so a use before the change in the next round, or after the exit inside the loop, never runs. A loop that
+ * ends inside the exit's block runs the change again, so it keeps the use reachable. */
+static bool cut_by_exit(const Borrows *pass, uint32_t change, const Use *later) {
+  const uint32_t use = later->offset;
+  for (size_t index = 0; index < pass->exits.len; index++) {
+    const Exit *exit = &pass->exits.ptr[index];
+    if (change < exit->lo || change >= exit->at || (use > change && use < exit->at)) {
+      continue;
+    }
+    bool straight = true;
+    const Range *loop = NULL; /* the innermost loop around the exit */
+    for (size_t at = 0; at < pass->ranges.len; at++) {
+      const Range *range = &pass->ranges.ptr[at];
+      if (!range->loop) {
+        continue;
+      }
+      straight = straight && !(change >= range->lo && change <= range->hi && exit->at > range->hi);
+      if (exit->at >= range->lo && exit->at <= range->hi && (loop == NULL || range->lo > loop->lo)) {
+        loop = range;
+      }
+    }
+    if (straight && (exit->is_return || (loop != NULL && use >= loop->lo && use <= loop->hi && (later->loop == 0 || later->loop > loop->lo)))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Whether a use at `use` can run after a change at `change`: later in the source, unless the two sit in
  * different arms of one branch; or anywhere in a loop that holds the change and not the borrow's binding. */
-static bool runs_after(const Borrows *pass, const Borrow *borrow, uint32_t change, uint32_t use) {
+static bool runs_after(const Borrows *pass, const Borrow *borrow, uint32_t change, const Use *later, bool in_lambda) {
+  const uint32_t use = later->offset;
+  if (!in_lambda && cut_by_exit(pass, change, later)) {
+    return false;
+  }
   for (size_t index = 0; index < pass->ranges.len; index++) {
     const Range *range = &pass->ranges.ptr[index];
     if (range->loop) {
@@ -605,9 +720,10 @@ static bool runs_after(const Borrows *pass, const Borrow *borrow, uint32_t chang
   return use > change;
 }
 
-static bool used_after(const Borrows *pass, const Borrow *borrow, uint32_t offset) {
+static bool used_after(const Borrows *pass, const Borrow *borrow, uint32_t offset, bool in_lambda) {
   for (size_t index = 0; index < pass->uses.len; index++) {
-    if (pass->uses.ptr[index].binding == borrow->binding && runs_after(pass, borrow, offset, pass->uses.ptr[index].offset)) {
+    if (pass->uses.ptr[index].binding == borrow->binding &&
+        runs_after(pass, borrow, offset, &pass->uses.ptr[index], in_lambda)) {
       return true;
     }
   }
@@ -674,6 +790,15 @@ static void report(Borrows *pass, const Borrow *borrow, const Change *change, Ms
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, change->assign ? "cannot reassign `" : change->moved ? "cannot move `" : "cannot change `");
   ms_strbuild_append(&text, (MsSpan){pass->source.ptr + start.offset, change->end - start.offset});
+  if (borrow->loop) {
+    ms_strbuild_append_text(&text, "` while the loop at ");
+    ms_strbuild_append_u64(&text, borrow->at.line);
+    ms_strbuild_append_text(&text, ":");
+    ms_strbuild_append_u64(&text, borrow->at.column);
+    ms_strbuild_append_text(&text, " iterates it; apply the change after the loop, or loop over a `.clone()` of it");
+    ms_check_report(pass->program, pass->module, at, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    return;
+  }
   ms_strbuild_append_text(&text, "` while `");
   append_name(pass, &text, borrow->name);
   ms_strbuild_append_text(&text, borrow->method_value ? "` borrows it (method value, at "
@@ -746,7 +871,7 @@ static void judge(Borrows *pass) {
       if (borrow->alias && !change->moved) {
         continue;
       }
-      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset) &&
+      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset, change->lambda != NULL) &&
           (change->place == NULL || borrow->place == NULL || places_overlap(change->place, borrow->place))) {
         report(pass, borrow, change, change->at);
         if (change->lambda != NULL) { /* the closure that runs the change is itself a change of what it captured */
@@ -760,6 +885,7 @@ static void judge(Borrows *pass) {
   change_list_clear(&pass->changes);
   use_list_clear(&pass->uses);
   range_list_clear(&pass->ranges);
+  exit_list_clear(&pass->exits);
   keep_list_clear(&pass->keeps);
 }
 
@@ -775,6 +901,9 @@ void ms_own_borrows(MsCheckProgram *program) {
     const MsModule *tree = program->modules.ptr[module].tree;
     const MsVisitor visitor = {.ctx = &pass, .stmt = visit_stmt, .expr = visit_expr, .leave_expr = leave_expr};
     for (uint32_t index = 0; index < tree->ndecls; index++) {
+      if (tree->decls[index]->kind == MS_D_FN) {
+        note_exit(&pass, tree->decls[index]->u.fn.body);
+      }
       ms_walk_decl(&visitor, tree->decls[index]);
       judge(&pass);
     }
@@ -782,7 +911,9 @@ void ms_own_borrows(MsCheckProgram *program) {
     change_list_free(&pass.changes);
     use_list_free(&pass.uses);
     range_list_free(&pass.ranges);
+    exit_list_free(&pass.exits);
     keep_list_free(&pass.keeps);
+    source_list_free(&pass.extra);
   }
   ms_class_free(&classes);
 }

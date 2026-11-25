@@ -727,7 +727,7 @@ static void note_var(void *ctx, const MsStmt *stmt) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");
     ms_own_expr_text(&text, pass->program->names, stmt->u.branch.cond);
-    ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value { ... }`, then use `var copy = x.clone()` for an "
+    ms_strbuild_append_text(&text, "` is not one; read the payload by testing `if value != null { ... }`, then use `var copy = x.clone()` for an "
                                    "independent mutable copy, or write the changed value back");
     ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
