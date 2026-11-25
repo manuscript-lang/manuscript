@@ -89,7 +89,7 @@ fn Promise[T].wait() move T! {
 // `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds
 // the read. The timeout counts from now. A provided cancel signal replaces the previous
 // one.
-fn Promise[T].with(options PromiseOptions = PromiseOptions()) Promise[T] {
+fn hold Promise[T].with(options PromiseOptions = PromiseOptions()) & Promise[T] {
 	limit(self.id, options)
 	return self
 }

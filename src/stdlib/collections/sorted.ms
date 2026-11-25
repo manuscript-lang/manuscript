@@ -222,13 +222,13 @@ fn var SortedMap[K, V].clear() Void {
 }
 
 // Returns the smallest key, or `null` when empty. Look its value up with `get`.
-fn SortedMap[K, V].first() K? {
+fn hold SortedMap[K, V].first() & K? {
 	if self.size == 0 { return null }
 	return self.key_chunks[0][0]
 }
 
 // Returns the largest key, or `null` when empty. Look its value up with `get`.
-fn SortedMap[K, V].last() K? {
+fn hold SortedMap[K, V].last() & K? {
 	if self.size == 0 { return null }
 
 	c := self.key_chunks.length() - 1
@@ -384,12 +384,12 @@ fn var SortedSet[T].clear() Void {
 }
 
 // Returns the smallest member, or `null` when empty.
-fn SortedSet[T].first() T? {
+fn hold SortedSet[T].first() & T? {
 	return self.members.first()
 }
 
 // Returns the largest member, or `null` when empty.
-fn SortedSet[T].last() T? {
+fn hold SortedSet[T].last() & T? {
 	return self.members.last()
 }
 

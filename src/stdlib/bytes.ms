@@ -51,7 +51,7 @@ Borrows [start, end) of the receiver without copying; negative bounds are relati
 Bounds outside 0 <= start <= end <= length() raise a fault. Like `xs[i]`, the result borrows
 the receiver, which cannot change while the view is used; `.clone()` keeps the bytes.
 */
-fn Bytes.view(start, end Int) Bytes { ... }
+fn hold Bytes.view(start, end Int) & Bytes { ... }
 
 // Returns an unsigned byte; negative indexes are relative to the end. An
 // out-of-range index raises a fault.

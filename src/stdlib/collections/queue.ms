@@ -51,7 +51,7 @@ fn var Queue[T].dequeue() T? {
 }
 
 // Returns the oldest value without removing it, or `null` when the queue is empty.
-fn Queue[T].peek() T? {
+fn hold Queue[T].peek() & T? {
 	if self.head >= self.items.length() { return null }
 	return self.items[self.head]
 }
@@ -68,7 +68,7 @@ fn Queue[T].length() Int {
 
 // Returns the value `index` places after the oldest, or `null` when out of range;
 // negative indexes count from the newest, as `xs[i]` does.
-fn Queue[T].get(index Int) T? {
+fn hold Queue[T].get(index Int) & T? {
 	at := if index < 0 { index + self.length() } else { index }
 	if at < 0 or at >= self.length() { return null }
 

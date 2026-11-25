@@ -23,12 +23,12 @@ export opaque type BigRat {
 }
 
 // Returns the numerator, which carries the sign.
-fn BigRat.numerator() BigInt {
+fn hold BigRat.numerator() & BigInt {
 	return self.num
 }
 
 // Returns the positive denominator.
-fn BigRat.denominator() BigInt {
+fn hold BigRat.denominator() & BigInt {
 	return self.den
 }
 

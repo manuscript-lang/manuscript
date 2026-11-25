@@ -396,7 +396,7 @@ fn adjacency(path, text String) List[String] {
 			continue
 		}
 
-		method := without_words(rest.clone(), ["fn", "var", "move"])
+		method := without_words(rest.clone(), ["fn", "var", "move", "hold"])
 		owner := leading_name(method.clone())
 		dot := method.index_of(".") or (-1)
 

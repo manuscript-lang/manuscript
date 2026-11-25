@@ -24,17 +24,17 @@ fn Ordered.clamp(low, high Self) Self {
 	return clamped(self, low, high).clone()
 }
 
-fn lesser[T Comparable](left, right T) T {
+fn lesser[T Comparable](hold left, right T) & T {
 	if right.compare(left) < 0 { return right }
 	return left
 }
 
-fn greater[T Comparable](left, right T) T {
+fn greater[T Comparable](hold left, right T) & T {
 	if right.compare(left) > 0 { return right }
 	return left
 }
 
-fn clamped[T Comparable](value, low, high T) T {
+fn clamped[T Comparable](hold value, low, high T) & T {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}
