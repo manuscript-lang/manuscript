@@ -8,4 +8,4 @@ Verified (perf bash, 2026-11-18): a `Connection` and the `Listener` that made it
 
 Measured on 4 vCPUs: 20k empty-handler connections 843 to 766 ms (Go 493, the rest is user time per connection and the kernel), 1k connections with real work each 1758 to 1229 ms. A second function-value copy per connection is not possible (function values have one owner), which is why the API hands over a value and not a handler.
 
-See [the results page](../../../bench/perf/perf-bash-2026-11-18-concurrency.md).
+See [the results page](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/perf-bash-2026-11-18-concurrency.md).

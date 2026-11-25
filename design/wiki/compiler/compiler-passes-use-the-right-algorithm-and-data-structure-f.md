@@ -5,21 +5,21 @@
 Decision: the user wants parsing, checking, and lowering to stay linear (or n log n) in source size, with no ad-hoc special cases. A pass that re-walks a shared graph per root, scans a list per lookup, or allocates per-byte tables is a defect even when small inputs hide it.
 
 Verified: module-loader input tracking must not scan all previously recorded paths for every module or embedded asset. Keep ordered output and membership separate within a load, seed membership from manifest lookups, and retain failed-input tracking as well as successful modules. Embedding the project root overlaps the manifest, entry and imported files; the loader regression checks their first-seen order without duplicates. Measure broad graphs and small controls, since the membership index stores another copy of each distinct path.
-Evidence: input ordering regression, [paired module-loader measurements](../../../bench/perf/module-inputs/README.md).
+Evidence: input ordering regression, [paired module-loader measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/module-inputs/README.md).
 
 Verified: type-suffix sugar must move the accumulated syntax tree into each wrapper. Cloning it for every `?` or `!` copies all preceding wrappers and makes construction quadratic; preserve node IDs and positions while removing the discarded copies.
-Evidence: suffix parser, shape and position regressions, [interleaved parser measurements](../../../bench/perf/parser-suffix/README.md).
+Evidence: suffix parser, shape and position regressions, [interleaved parser measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/parser-suffix/README.md).
 
 Verified: interpolation positions must advance through each literal prefix once. Recomputing the line and byte position from the start of the text for every interpolation token makes both long expressions and many short interpolations quadratic, especially in multiline text. The lexer rejects physical newlines inside expressions, so their token positions are relative byte offsets from one computed origin. Preserve nested/error attribution and LF/CRLF behavior when changing that mapping.
 Evidence: interpolation position regressions.
 
 Verified (2026-11-02): the failed-type-argument replay cache was deleted. One pass over the tokens sets a bit per `[` whose content has only type tokens; other brackets are indexes and never speculate (nested ones fail at once). Deep indexing is faster than with the cache (256 levels 84 to 49 µs) and ordinary input is unchanged. Removing the lexer's string-end table instead made nested interpolation 8x slower (256 levels 83 to ~700 µs): it is the precomputed output of the single lex pass, not a replay, so it stays.
-Evidence: speculative parser, metadata regressions, [accepted and rejected measurements](../../../bench/perf/parser-speculation/README.md).
+Evidence: speculative parser, metadata regressions, [accepted and rejected measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/parser-speculation/README.md).
 
 Verified: repeatedly recomputing use counts and scanning a function to delete the last unused instruction makes dead-expression chains quadratic. Decrement operand use counts as dead users are removed, and visit newly dead definitions with a worklist. Preserve faulting instructions and owned results as roots.
 
 Verified: probing a source method and then resolving its member again checks the same receiver twice; nested source calls compound that work exponentially. Retain a successful unique nongeneric source resolution, including its member scope and receiver control-flow facts. Keep diagnostic-producing receivers on the original recovery path so cascaded diagnostics retain their order. Count callback checks in a deterministic regression, and measure ordinary native/flat controls and complete Release builds alongside the chain.
-Evidence: call candidate regressions, [source-call execution tests](../../../tests/conformance/fixtures/e2e/accept/source-call-resolution.ms), [reproduction drivers](../../../bench/perf/call-candidates/README.md).
+Evidence: call candidate regressions, [source-call execution tests](../../../tests/conformance/fixtures/e2e/accept/source-call-resolution.ms), [reproduction drivers](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/call-candidates/README.md).
 
 Verified: LLVM's SLP vectorizer (in `opt`) and machine scheduler (in `llc`) are quadratic in the length of one function, so a 20000-element list literal built in 127s in Release (Rust era, against 0.4s in Cranelift). Debug builds run with vectorization off (`vectorize = !debug`, `src/cli/pipeline.c`); in Release, keep functions from growing with the input (see the literal-chunk rule below). Time Release builds, not only Debug, at N/2N/4N, and read `opt -time-passes` and `llc -time-passes` before blaming the frontend.
 Count definition lines rather than trailing metadata. Keep quoted metadata fields on one physical line with LLVM byte escapes: literal line breaks in a filename or scope name can otherwise manufacture apparent `define` or closing-brace lines for a textual size heuristic.
@@ -45,7 +45,7 @@ widening and plain-value controls. Combining independently bounded inference
 searches also needs unshared-forest measurements: a shared-root win can introduce
 hashing for ordinary independent children.
 Evidence: inference regressions,
-[inference benchmark harness](../../../bench/perf/checker-inference-resolution/README.md).
+[inference benchmark harness](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/checker-inference-resolution/README.md).
 
 Verified: type interning deduplicates completed input nodes within each `intern` or `shape` query, preserving first representatives, flags and child order. Reuse empty memo storage, never answers across queries. Bypass recursive frames for leaves and leave short leaf-only rows uncached; cache wide rows too so shallow fanout cannot become quadratic.
 Evidence: type identity regressions.
@@ -59,7 +59,7 @@ linear path-label output. Share shortest suffixes only after individual searches
 spend a graph-sized budget, so sparse direct violations avoid a full-graph pass.
 Preserve stable equal-label ties and exclude a declaring start as its own terminal.
 Evidence: effect path regressions,
-[paired release checks and controls](../../../bench/perf/effect-reachability/README.md).
+[paired release checks and controls](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/effect-reachability/README.md).
 
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: type recursion pass, issues #490 and #491.

@@ -10,6 +10,8 @@
 
 Implemented, 2026-11-23, on top of `4b1e2c3d`. Chinmay chose to let the fault order change when both loops can fault.
 
+2026-11-25: the matcher accepts exit edges (the reader body is the blocks that lead back to the header; the rest must return), drops of the vanishing list anywhere, and the builder's fault exit `take S; drop`; unwinding tests that cannot fire are cleared before matching. Owned elements remain out of scope.
+
 ## Problem
 
 `closures_20M` runs `xs.map(..).filter(..).sum()` over 1000 elements, 20,000 times. Staged it takes 37 ms; the same loop fused by hand takes 9 ms (same machine, min of 5). The kernel went 46 ms against 34 for checked Rust. LLVM cannot fuse them: the lists are heap blocks behind cleanup registrations.

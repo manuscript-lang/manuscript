@@ -757,9 +757,14 @@ static void mark_module(Uses *pass, const MsModule *tree) {
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     const MsDecl *decl = tree->decls[index];
     if (decl->kind == MS_D_FN) {
-      mark_callable(pass, decl->u.fn.params, decl->u.fn.body, false);
+      if (!decl->u.fn.deferred) {
+        mark_callable(pass, decl->u.fn.params, decl->u.fn.body, false);
+      }
     } else if (decl->kind == MS_D_IMPL) {
       for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
+        if (decl->u.impl.methods.ptr[at]->func.deferred) {
+          continue;
+        }
         mark_callable(pass, decl->u.impl.methods.ptr[at]->func.params, decl->u.impl.methods.ptr[at]->func.body,
                     decl->u.impl.methods.ptr[at]->consuming);
       }

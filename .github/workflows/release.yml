@@ -55,7 +55,7 @@ jobs:
           set -eu
           tar -xzf dist/manuscript-linux-amd64.tar.gz -C dist
           ms="$PWD/dist/manuscript-linux-amd64/bin/ms"
-          MS="$ms" "$ms" run bench/tools/listloops.ms -- 5 | tee listloops.txt
+          MS="$ms" "$ms" run bench/perf/tools/listloops.ms -- 5 | tee listloops.txt
       - uses: actions/upload-artifact@v7
         with:
           name: listloops-${{ github.ref_name }}

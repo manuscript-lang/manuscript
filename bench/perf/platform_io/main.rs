@@ -1,4 +1,4 @@
-// Rust control for bench/tools/platform_io.ms: the same small-file, rename, walk, spawn and pipe
+// Rust control for bench/perf/tools/platform_io.ms: the same small-file, rename, walk, spawn and pipe
 // round-trip operations through std only, so a slow platform is blamed on the OS only when this is
 // equally slow. Usage: main <files> <program that accepts --version>; it spawns itself with
 // --echo for the pipe round trip. Prints ns per operation,

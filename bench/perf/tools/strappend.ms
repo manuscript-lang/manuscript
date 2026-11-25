@@ -1,0 +1,62 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
+// Compares String.append against Rust's String::push_str for pieces of 4 B to 8 KiB
+// (microseconds to build about 1 MB) and List[Int].append against Vec::push for 10K to
+// 1M items, min of N runs (bench/perf/strappend). Usage: ms run
+// bench/perf/tools/strappend.ms [-- repeats]; MS, RUSTC pick tools; RUSTC_LINKER names
+// the linker when PATH has the wrong one (Git's `link` shadows MSVC's on Windows
+// runners).
+import (
+	arguments from "@std/os/env.ms",
+	CopyOptions, copy, temporary from "@std/os/fs.ms",
+
+	build_ms, build_rust, env, exe, finish, repeats, sample, usage from "./lib.ms",
+	summarize from "./strappend_table.ms",
+)
+
+fn run(work String, n Int) Result[String, Error] {
+	copy(
+		"bench/perf/strappend/ms",
+		f"{work}/ms",
+		CopyOptions(recursive: true, replace: true),
+	)?
+	build_ms(f"{work}/ms", f"{work}/ms/bench{exe()}")?
+
+	var flags = List[String]()
+	linker := env("RUSTC_LINKER", "")
+	if linker != "" { flags = ["-C", f"linker={linker}"] }
+	build_rust("bench/perf/strappend/rust/main.rs", f"{work}/rust{exe()}", flags)?
+
+	var raw = List[String]()
+
+	for i in 0..n {
+		for v in ["ms", "rust"] {
+			path := if v == "ms" { f"{work}/ms/bench{exe()}" } else { f"{work}/rust{exe()}" }
+			for line in (sample(path, [])?).split("\n") {
+				if line != "" { raw.append(f"{i} {v} {line}") }
+			}
+		}
+	}
+
+	return summarize(raw, n)
+}
+
+fn main() Int {
+	var n = 5
+	args := arguments()
+
+	if not args.is_empty() {
+		if parsed := repeats(args[0]) {
+			n = parsed
+		} else {
+			return usage("repeats must be a positive integer")
+		}
+	}
+
+	tmp := temporary("strappend-").get()
+	return finish(run(tmp.path(), n))
+}

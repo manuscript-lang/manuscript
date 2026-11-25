@@ -804,6 +804,9 @@ void ms_own_borrows(MsCheckProgram *program) {
     const MsVisitor visitor = {.ctx = &pass, .stmt = visit_stmt, .expr = visit_expr, .leave_expr = leave_expr};
     for (uint32_t index = 0; index < tree->ndecls; index++) {
       const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN && decl->u.fn.deferred) {
+        continue;
+      }
       if (decl->kind == MS_D_FN) {
         note_exit(&pass, decl->u.fn.body);
         pass.ref_result = ms_own_result_is_borrowed(program, module, decl->id);
@@ -811,6 +814,9 @@ void ms_own_borrows(MsCheckProgram *program) {
       } else if (decl->kind == MS_D_IMPL) {
         for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
           const MsMethod *method = decl->u.impl.methods.ptr[at];
+          if (method->func.deferred) {
+            continue;
+          }
           pass.ref_result = ms_own_result_is_borrowed(program, module, method->id);
           ms_walk_callable(&visitor, method->func.params, method->func.body);
         }

@@ -781,6 +781,9 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
 static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN:
+    if (decl->u.fn.deferred) {
+      return;
+    }
     pass->taken = ms_own_taken_mask(pass->program, pass->module, decl->id);
     pass->ref_result = ms_own_result_is_borrowed(pass->program, pass->module, decl->id);
     check_body(pass, arena, decl->u.fn.body, decl->u.fn.params);
@@ -791,6 +794,9 @@ static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
   case MS_D_IMPL:
     for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
       const MsFunc *func = &decl->u.impl.methods.ptr[index]->func;
+      if (func->deferred) {
+        continue;
+      }
       pass->taken = ms_own_taken_mask(pass->program, pass->module, decl->u.impl.methods.ptr[index]->id);
       pass->ref_result = ms_own_result_is_borrowed(pass->program, pass->module, decl->u.impl.methods.ptr[index]->id);
       check_body(pass, arena, func->body, func->params);

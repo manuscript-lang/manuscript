@@ -4,6 +4,7 @@
 
 Perf benchmarks, profiling.
 
+- [Deleted perf investigations and where to find them](deleted-perf-investigations-and-where-to-find-them.md): about 110 finished folders removed from `bench/perf/`, each with a permalink.
 - [There is one perf suite, indexed by `groups.txt`](there-is-one-perf-suite-indexed-by-groups-txt.md): `make perf-list`, `make perf GROUP=<name>`, and a check that no benchmark sits outside the index.
 - [Binary search moves one select per step, and a captured comparator still gets the generated sort](binary-search-and-captured-comparators-must-not-branch-or-call.md): `binary_search` 270 to 31 ms per 2M searches (Rust 90); sorts by a capturing comparator 148 to 35 ms.
 - [A lone task runs file calls in place](a-lone-task-runs-file-calls-in-place.md): `treegrep` over 2000 small files 100 to 40 ms; the pool hand-off cost about 50 us per read.
@@ -36,6 +37,7 @@ Perf benchmarks, profiling.
 - [A count before the list pays only for short texts](a-count-before-the-list-pays-only-for-short-texts.md): `split` counting its pieces first cost grep +24% on 22 MB; count only texts of at most 4 KiB.
 - [A string held in a slot is appended in place](a-string-in-a-slot-is-appended-in-place.md): `b += f"..."` copied the whole string per append when `b` lived in a slot (200k appends 40 s); a late `strfuse` lifts the take so it grows in place.
 - [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
+- [List fusion matches the loop shapes real chains produce](list-fusion-matches-exit-edges-and-builder-fault-drops.md): fault exits and builder drops no longer block `opt_fuse`; a map/filter/sum chain in a loop 62.9M to 24.9M instructions.
 - [`for x in xs.filter(f)` walks `xs` in place](filtered-for-loops-walk-the-list-in-place.md): no filtered list or deep copies when the lambdas cannot fault (c13 392M to 350M instructions).
 - [`for e in list.entries()` walks the list in place](list-entries-loops-walk-the-list.md): no entry records when `e` is only read as `.index`/`.value` (28 to 3.2 ms on 2M elements).
 - [Small literal maps are searched, not built](small-literal-maps-are-searched-not-built.md): lookups on a literal of up to 12 constants compare keys directly (85 to 4 ns per call).
@@ -52,7 +54,7 @@ Perf benchmarks, profiling.
 - [Singleton fast paths need small-heap controls](singleton-fast-paths-need-small-heap-controls.md): a large singleton win was rejected after small heaps and unchanged controls regressed in longer paired trials.
 - [Source-size gap versus TypeScript is lines and I/O ceremony, not syntax noise](source-size-gap-versus-typescript-is-lines-and-i-o-ceremony.md): `bench/agent/tokens.py` puts the hand-written reference solutions at ms 12.2k, rust 10.1k, go 10.1k, ts 8.3k tokens, so Manuscript is not be…
 - [Empty Set relations need no membership probes](empty-set-relations-need-no-membership-probes.md): skip empty-right disjoint traversal while preserving callback behavior; keep nonempty and unrelated Map controls.
-- [Benchmark drivers are `ms run` programs in the flat `bench/tools/` directory](benchmark-drivers-are-ms-programs-in-one-flat-directory.md): an entry file imports only below its own directory, so drivers share one `lib.ms` there; `make bench-check` tests them.
+- [Benchmark drivers are `ms run` programs in the flat `bench/perf/tools/` directory](benchmark-drivers-are-ms-programs-in-one-flat-directory.md): an entry file imports only below its own directory, so drivers share one `lib.ms` there; `make bench-check` tests them.
 - [Perf work follows data-oriented design and tries a faster design before a cache](perf-work-follows-data-oriented-design-and-removes-caches.md): flat arrays and indices over hash tables and pointers, structure of arrays, a cache only when measurement shows no faster design matches it.
 - [Freed large blocks stay resident after an `/io` burst](freed-large-blocks-stay-resident-after-an-io-burst.md): 64 in-flight 2 MiB requests leave 111 MB resident; pinning glibc's mmap threshold fixes it but slows JSON parse ~20%.
 - [Release LLVM builds split into parallel units](release-llvm-builds-split-into-parallel-units.md): one `opt`+`llc` per unit above 2 MiB of code; 350 s to 60 s at 122k lines, no cross-unit inlining; `MS_LLVM_UNITS` overrides.
@@ -92,3 +94,5 @@ Perf benchmarks, profiling.
 - [LSP passes find positions through a line index](lsp-positions-come-from-a-line-index.md): semantic tokens of a 26k-line file 26 s to 98 ms, outline 913 to 19 ms; a line table and a kind table by offset replaced per-token scans.
 - [Completion finds the import spot once per request](completion-finds-the-import-spot-once.md): completion on a 5,700-line file 265 to 85 ms; the per-offer document scan became one scan.
 - [A check made unchecked must not leave its fault exit behind](a-check-made-unchecked-leaves-no-fault-exit.md): dead fault exits were 20% of optimized IR; release build of 500 functions 4.1 to 3.8 s, 267 to 246 MB.
+- [A list of plain records is tagged like a list of scalars](a-list-of-plain-records-is-tagged-like-a-list-of-scalars.md): `graph` -4.0% instructions; swapping heap entries no longer rewrites the list header.
+- [A split loop walks the text and makes no list](a-split-loop-walks-the-text-and-makes-no-list.md): `for piece in text.split(sep)` reads pieces by byte offset; grep -21%, report -19%, treegrep -21% wall time.

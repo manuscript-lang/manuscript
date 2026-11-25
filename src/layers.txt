@@ -3,17 +3,17 @@
 base:
 abi: base
 runtime: base abi
-compiler/syntax: base abi
-compiler/project: base abi compiler/syntax
+compiler/syntax: base
+compiler/project: base compiler/syntax
 compiler/natives: base
 compiler/check: base abi compiler/syntax compiler/project
-compiler/own: base abi compiler/syntax compiler/check compiler/natives
+compiler/own: base compiler/syntax compiler/check compiler/natives
 compiler/lower: base abi compiler/syntax compiler/check compiler/natives compiler/own compiler/mir
-compiler/mir: base abi compiler/check
-compiler/opt: base abi compiler/check compiler/mir
-compiler/emit: base abi compiler/check compiler/mir compiler/opt
+compiler/mir: base abi
+compiler/opt: base compiler/mir
+compiler/emit: base abi compiler/mir
 compiler/emit_cl: base abi compiler/mir compiler/emit
 compiler/link: base abi compiler/mir compiler/emit compiler/emit_cl
-tooling: base abi compiler
-lsp: base abi compiler tooling
-cli: base abi compiler tooling lsp runtime/std
+tooling: base abi compiler/syntax compiler/project compiler/check compiler/own
+lsp: base abi compiler/syntax compiler/project compiler/check tooling
+cli: base abi compiler/syntax compiler/project compiler/check compiler/own compiler/lower compiler/mir compiler/opt compiler/emit compiler/emit_cl compiler/link tooling lsp runtime/std

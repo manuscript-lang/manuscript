@@ -7,5 +7,5 @@ Verified: results are only comparable on one machine and revision; record the co
 Verified: validate parser benchmark inputs before timing. Ignoring a parse error measures an early exit while counting the entire file as parsed bytes. Parser benchmark regressions require a diagnostic and nonzero exit instead of throughput for malformed inputs.
 
 Apply when: claiming a speedup or regression.
-Evidence: [program results](../../../bench/perf/programs/results.md).
-Verify: before/after run on the same host with `make stdlib-bench BENCHREPEATS=5 BENCHFILTER=<case>` or `ms run bench/tools/programs.ms -- 7`.
+Evidence: [program results](../../../bench/perf/results.md#programs).
+Verify: before/after run on the same host with `make stdlib-bench BENCHREPEATS=5 BENCHFILTER=<case>` or `ms run bench/perf/tools/programs.ms -- 7`.

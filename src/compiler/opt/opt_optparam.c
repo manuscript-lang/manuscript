@@ -305,11 +305,3 @@ bool opt_optparam_func(MirModule *m, MirFunc *f) {
   }
   return changed;
 }
-
-bool opt_optparam(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    changed = opt_optparam_func(m, &m->funcs.ptr[fi]) || changed;
-  }
-  return changed;
-}

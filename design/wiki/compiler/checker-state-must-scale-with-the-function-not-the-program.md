@@ -2,7 +2,7 @@
 
 # Checker state must scale with the function, not the program
 
-Verified (Rust `ms`, kept as the pattern): 2026-11-16, `ms check` on a generated 1,001-file, 123k-line project (`bench/tools/compile_time.ms`), callgrind: 11.7 B instructions before, 5.1 B after; median wall 2.05 s to 1.55 s on 4 cores. Conformance 4019 and 1460 fixtures unchanged.
+Verified (Rust `ms`, kept as the pattern): 2026-11-16, `ms check` on a generated 1,001-file, 123k-line project (`bench/perf/tools/compile_time.ms`), callgrind: 11.7 B instructions before, 5.1 B after; median wall 2.05 s to 1.55 s on 4 cores. Conformance 4019 and 1460 fixtures unchanged.
 
 - Binding ids count up across the whole checker, so an array indexed by binding costs the program's binding count per function. Per-function state (borrow arrays, live sets) must cover only the span of ids a function touches; the Rust walker's zeroed arrays were 8% of the run (`memset`).
 - A loop over every method of the program per type question is quadratic: keep per-property method lists (structural `Equal`/`Hashable` lookup, types that close their receiver) and extend them where methods are added (`compiler/check/properties.c`).

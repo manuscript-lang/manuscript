@@ -64,6 +64,30 @@ static void defer_function(MsCheckProgram *program, uint32_t module, MsDecl *dec
   func->deferred = true;
 }
 
+const MsModule *ms_check_clone_for_deferral(MsCheckProgram *program, const MsModule *tree) {
+  MsModule *copy = MS_ARENA_NEW(&program->arena, MsModule);
+  *copy = *tree;
+  copy->decls = MS_ARENA_NEW_ARRAY(&program->arena, MsDecl *, tree->ndecls ? tree->ndecls : 1);
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
+    MsDecl *decl = tree->decls[index];
+    if (decl->kind != MS_D_FN && decl->kind != MS_D_IMPL) {
+      copy->decls[index] = decl;
+      continue;
+    }
+    MsDecl *own = MS_ARENA_NEW(&program->arena, MsDecl);
+    *own = *decl;
+    if (decl->kind == MS_D_IMPL && decl->u.impl.methods.len > 0) {
+      own->u.impl.methods.ptr = MS_ARENA_NEW_ARRAY(&program->arena, MsMethod *, decl->u.impl.methods.len);
+      for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
+        own->u.impl.methods.ptr[at] = MS_ARENA_NEW(&program->arena, MsMethod);
+        *own->u.impl.methods.ptr[at] = *decl->u.impl.methods.ptr[at];
+      }
+    }
+    copy->decls[index] = own;
+  }
+  return copy;
+}
+
 void ms_check_defer_std_bodies(MsCheckProgram *program) {
   for (uint32_t module = program->user_modules; module < program->modules.len; module++) {
     const MsModule *tree = program->modules.ptr[module].tree;
@@ -85,6 +109,17 @@ void ms_check_defer_std_bodies(MsCheckProgram *program) {
 
 enum { HOOK_COUNT = 24 }; /* at least the entries of MS_HOOK_METHODS */
 
+/* A hook method (hooks.h) by the head of its receiver type: the head is what ms_check_method_targets compares
+ * (see its same_head), so one lookup per type replaces a scan of the methods named by each hook. */
+typedef struct HookTarget {
+  uint64_t head;
+  uint32_t module, node;
+} HookTarget;
+
+MS_LIST_DEFINE(HookTargetList, hook_target_list, HookTarget)
+
+enum { HEAD_ANY = 0 }; /* a receiver that is a type variable fits every type */
+
 typedef struct Reach {
   MsCheckProgram *program;
   MsDeferredBodyList *queue;  /* indices of the bodies restored and not yet scanned */
@@ -94,7 +129,47 @@ typedef struct Reach {
   size_t bindings;            /* the bindings of the program already read */
   MsName hooks[HOOK_COUNT];   /* the hook names (hooks.h) some deferred method has; the rest need no lookup */
   size_t hook_count;
+  HookTargetList targets;     /* the methods of those names by receiver head, sorted by head */
+  bool any_done;              /* the methods with a type-variable receiver were restored */
 } Reach;
+
+/* The head of a type: its definition, or else its kind and builtin. Definitions are aligned, so the low bit tells the
+ * two apart. */
+static uint64_t head_of(const MsCheckProgram *program, MsTy ty) {
+  const MsDef *def = ms_check_def_of(program, ty);
+  if (def != NULL) {
+    return (uint64_t)(uintptr_t)def;
+  }
+  return 1u | (uint64_t)ms_ty_kind(&program->types, ty) << 8 | (uint64_t)ms_ty_builtin(&program->types, ty) << 24;
+}
+
+static int64_t compare_targets(uint8_t *env, const uint8_t *left, const uint8_t *right) {
+  (void)env;
+  const HookTarget *a = (const HookTarget *)(const void *)left;
+  const HookTarget *b = (const HookTarget *)(const void *)right;
+  return a->head < b->head ? -1 : a->head > b->head;
+}
+
+/* Lists the methods that carry a hook name, by receiver head. */
+static void index_hook_targets(Reach *reach) {
+  const MsCheckProgram *program = reach->program;
+  const MsMethodKeyList *named = &program->method_index.by_name;
+  for (size_t hook = 0; hook < reach->hook_count; hook++) {
+    for (size_t at = 0; at < named->len; at++) {
+      if (named->ptr[at].key != reach->hooks[hook]) {
+        continue;
+      }
+      const MsMethodEntry *entry = &program->methods.ptr[named->ptr[at].entry];
+      if (entry->source == NULL) {
+        continue;
+      }
+      const bool any = ms_ty_kind(&program->types, entry->receiver) == MS_TY_VARIABLE;
+      hook_target_list_push(&reach->targets, (HookTarget){.head = any ? HEAD_ANY : head_of(program, entry->receiver),
+                                                          .module = entry->module, .node = entry->source->id});
+    }
+  }
+  ms_sort((uint8_t *)reach->targets.ptr, reach->targets.len, sizeof(HookTarget), compare_targets, NULL);
+}
 
 /* Restores the deferred body of the function or method the reference names, and queues it. */
 static void reach_node(Reach *reach, uint32_t module, uint32_t node) {
@@ -158,8 +233,27 @@ static void reach_type(Reach *reach, MsTy ty) {
     return;
   }
   reach->typed[ty] = 1;
-  for (size_t index = 0; index < reach->hook_count; index++) {
-    ms_check_method_targets(program, ty, reach->hooks[index], reach_target, reach);
+  if (ms_ty_kind(&program->types, ty) != MS_TY_VARIABLE) {
+    const HookTargetList *targets = &reach->targets;
+    const uint64_t head = head_of(program, ty);
+    size_t low = 0;
+    size_t high = targets->len;
+    while (low < high) {
+      const size_t mid = low + (high - low) / 2;
+      if (targets->ptr[mid].head < head) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    for (; low < targets->len && targets->ptr[low].head == head; low++) {
+      reach_node(reach, targets->ptr[low].module, targets->ptr[low].node);
+    }
+    /* The methods with a type-variable receiver (head 0, sorted first) fit every type: restored once. */
+    for (size_t at = 0; !reach->any_done && at < targets->len && targets->ptr[at].head == HEAD_ANY; at++) {
+      reach_node(reach, targets->ptr[at].module, targets->ptr[at].node);
+    }
+    reach->any_done = true;
   }
   for (size_t index = 0; index < ms_ty_arg_count(&program->types, ty); index++) {
     reach_type(reach, ms_ty_args(&program->types, ty)[index]);
@@ -230,6 +324,7 @@ void ms_check_restore_reached(MsCheckProgram *program) {
       }
     }
   }
+  index_hook_targets(&reach);
   for (uint32_t module = 0; module < program->user_modules; module++) {
     const MsModule *tree = program->modules.ptr[module].tree;
     for (uint32_t index = 0; index < tree->ndecls; index++) {
@@ -273,6 +368,7 @@ void ms_check_restore_reached(MsCheckProgram *program) {
     }
   } while (queue.len > 0);
   ms_free(reach.typed);
+  hook_target_list_free(&reach.targets);
   ms_deferred_body_list_free(&queue);
 }
 
