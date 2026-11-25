@@ -16,6 +16,9 @@ static inline void ms_span_write(FILE *stream, MsSpan text) {
 }
 /* Replaces `*out` with the bytes of the file (the old contents are freed). */
 MS_NODISCARD MS_NONNULL bool ms_file_read(MsSpan path, MsBytes *out);
+
+/* Closes a descriptor: 0, or a negative libuv code (the descriptor is gone either way). */
+int ms_file_close_fd(int fd);
 /* Writes `data` as the whole file, creating or truncating it. */
 MS_NODISCARD bool ms_file_write(MsSpan path, MsSpan data);
 MS_NODISCARD bool ms_file_is_regular(MsSpan path);

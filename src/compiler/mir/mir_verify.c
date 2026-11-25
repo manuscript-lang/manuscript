@@ -362,20 +362,6 @@ static void mv_check_blocks(Mv *v, const MvDef *defs) {
   }
 }
 
-/* Whether `op` is a check whose fault posts and leaves: the lowering follows it with a `fault.site`. */
-static bool mv_faulting(MirOp op) {
-  switch (op) {
-  case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
-  case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk:
-  case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
-  case MOP_NarrowChk:
-  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListAddr: case MOP_OptUnwrap:
-    return true;
-  default:
-    return false;
-  }
-}
-
 /* A fault leaves the function by the exit its `fault.site` names: a check without one would have nowhere to go.
  */
 static void mv_fault_sites(Mv *v) {
@@ -384,7 +370,7 @@ static void mv_fault_sites(Mv *v) {
     const MirBlockData *block = &f->blocks.ptr[b];
     for (uint32_t i = 0; i < block->insts.len; i++) {
       const MirInst *in = &block->insts.ptr[i];
-      if (!mv_faulting((MirOp)in->op) || in->res == MIR_NONE) {
+      if (!mir_op_has_fault_site((MirOp)in->op) || in->res == MIR_NONE) {
         continue;
       }
       bool found = false;

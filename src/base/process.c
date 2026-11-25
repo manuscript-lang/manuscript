@@ -231,12 +231,6 @@ static int open_log(MsSpan path) {
   return fd;
 }
 
-static void close_log(int fd) {
-  uv_fs_t request;
-  (void)uv_fs_close(NULL, &request, fd, NULL);
-  uv_fs_req_cleanup(&request);
-}
-
 bool ms_process_run(const MsProcessSpec *spec, int *exit_status, MsStrBuild *error) {
   int fds[2] = {-1, -1};
   if (!spec->inherit) {
@@ -245,16 +239,16 @@ bool ms_process_run(const MsProcessSpec *spec, int *exit_status, MsStrBuild *err
     if (fds[0] < 0 || (fds[1] < 0 && !spec->inherit_error)) {
       fail_at("open", fds[0] < 0 ? spec->log_path : spec->error_path, fds[0] < 0 ? fds[0] : fds[1], error);
       if (fds[0] >= 0) {
-        close_log(fds[0]);
+        (void)ms_file_close_fd(fds[0]);
       }
       return false;
     }
   }
   const bool ok = spawn_and_wait(spec, fds, exit_status, error);
   if (!spec->inherit) {
-    close_log(fds[0]);
+    (void)ms_file_close_fd(fds[0]);
     if (fds[1] >= 0 && fds[1] != fds[0]) {
-      close_log(fds[1]);
+      (void)ms_file_close_fd(fds[1]);
     }
   }
   return ok;

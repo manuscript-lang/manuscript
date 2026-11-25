@@ -119,34 +119,6 @@ MsTypeParams ms_check_decl_type_params(const MsDecl *decl) {
   return (MsTypeParams){0};
 }
 
-/* The name a declaration introduces, or false for impl and test declarations. */
-bool ms_check_declared_name(const MsDecl *decl, MsName *name) {
-  switch ((MsDeclKind)decl->kind) {
-  case MS_D_FN:
-    *name = decl->u.fn.name;
-    return true;
-  case MS_D_CONST:
-    *name = decl->u.konst.name;
-    return true;
-  case MS_D_TYPE:
-    *name = decl->u.type.name;
-    return true;
-  case MS_D_ENUM:
-    *name = decl->u.enumeration.name;
-    return true;
-  case MS_D_ALIAS:
-    *name = decl->u.alias.name;
-    return true;
-  case MS_D_INTERFACE:
-    *name = decl->u.iface.name;
-    return true;
-  case MS_D_IMPL:
-  case MS_D_TEST:
-    return false;
-  }
-  return false;
-}
-
 static bool is_type_like(const MsDecl *decl, MsTyKind *kind) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_TYPE:
@@ -259,7 +231,7 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     const MsDecl *decl = tree->decls[index];
     MsName name = MS_NAME_EMPTY;
-    if (!ms_check_declared_name(decl, &name)) {
+    if (!ms_decl_name(decl, &name)) {
       continue;
     }
     if (ms_check_is_user_module(program, module) && is_prelude_constructor(program, name)) {

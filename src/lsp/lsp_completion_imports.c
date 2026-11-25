@@ -76,7 +76,7 @@ static void collect_importable(MsSpan text, MsSpan path, bool bundled, Importabl
     for (uint32_t d = 0; d < module.ndecls; d++) {
       MsName declared;
       const MsDecl *decl = module.decls[d];
-      if (!decl->is_exported || !ms_check_declared_name(decl, &declared)) continue;
+      if (!decl->is_exported || !ms_decl_name(decl, &declared)) continue;
       const MsSpan name = ms_names_span(&names, declared);
       if (ms_span_starts_with_text(name, MARKER)) continue;
       if (bundled && ms_check_is_prelude_declaration(path, name)) continue;
@@ -252,7 +252,7 @@ static void add_exports(Completer *c, MsSpan text, MsSpan path, bool bundled, co
     for (uint32_t d = 0; d < module.ndecls; d++) {
       MsName declared;
       const MsDecl *decl = module.decls[d];
-      if (!decl->is_exported || !ms_check_declared_name(decl, &declared)) continue;
+      if (!decl->is_exported || !ms_decl_name(decl, &declared)) continue;
       const MsSpan name = ms_names_span(&names, declared);
       if ((bundled && ms_check_is_prelude_declaration(path, name)) || ms_span_list_contains(imported, name) || !name_matches(name, c->prefix)) continue;
       MsStrBuild insert = ms_strbuild_new();
@@ -287,7 +287,7 @@ static bool has_public_export(MsSpan name, MsSpan text) {
     for (uint32_t d = 0; d < module.ndecls && !found; d++) {
       MsName declared;
       const MsDecl *decl = module.decls[d];
-      found = decl->is_exported && ms_check_declared_name(decl, &declared) &&
+      found = decl->is_exported && ms_decl_name(decl, &declared) &&
               !ms_check_is_prelude_declaration(ms_strbuild_span(&file), ms_names_span(&names, declared));
     }
     ms_strbuild_free(&file);

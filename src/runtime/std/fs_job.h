@@ -69,6 +69,8 @@ int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out);
 /* The same for a path as bytes: UV_EINVAL for an empty path or one with a NUL. */
 int ms_fs_stat_bytes(MsSpan path, bool follow, uv_stat_t *out);
 int ms_fs_fstat(uv_file fd, uv_stat_t *out);
+/* Opens a path with libuv flags and permissions: the descriptor, or a negative UV_* code. */
+int ms_fs_open(const char *path, int flags, int mode);
 int ms_fs_remove_one(const char *path);
 /* A directory with permissions 0700. */
 int ms_fs_make_directory(const char *path);
