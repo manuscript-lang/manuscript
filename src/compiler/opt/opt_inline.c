@@ -436,7 +436,7 @@ typedef struct IlRun {
   uint32_t budget, grown;
   uint8_t *consts; /* values defined by a constant instruction */
   uint32_t nconsts, cconsts;
-  bool *in_loop; /* per block of `fi`, for the block being scanned; NULL until needed */
+  bool *in_loop; /* per block of `fi`, computed once on first need: inlining at another site neither adds nor removes a cycle through an existing block; NULL until needed */
   IlSite *picks;
   uint32_t npicks, cpicks;
 } IlRun;
@@ -594,7 +594,6 @@ static void il_pick(IlRun *r, uint32_t ii, uint32_t gi) {
 static bool il_inline_block(IlRun *r, uint32_t bi) {
   MirFunc *f = &r->m->funcs.ptr[r->fi];
   r->npicks = 0;
-  r->in_loop = NULL;
   for (uint32_t ii = 0; ii < f->blocks.ptr[bi].insts.len; ii++) {
     const MirInst *inst = &f->blocks.ptr[bi].insts.ptr[ii];
     uint32_t gi = 0;
