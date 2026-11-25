@@ -44,8 +44,8 @@ add_test(NAME debug_info COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWOR
 set(MS_LEAK_FIXTURES lang/records/bind-collection-resource-read-in-place lang/interfaces/interface-box-freed-with-resource
   lang/stdlib/net-close-releases-socket
   lang/closures/call-depth.test lang/faults/faulting-close-in-list-releases-buffer.test lang/lists/pipe-flow.test
-  lang/stdlib/promise-semantics.test lang/misc/interface-views.test lang/misc/recursive-types.test lang/stdlib/tree.test
-  lang/stdlib/collections.test lang/stdlib/yaml-regressions.test lang/misc/source-borrowed-wrapper-temporary-cleanup.test lang/stdlib/map-get-or-release lang/stdlib/map-handle-values lang/stdlib/sorted-map-uncopyable-values
+  lang/stdlib/promise-semantics.test lang/interfaces/interface-views.test lang/misc/recursive-types.test lang/stdlib/tree.test
+  lang/stdlib/collections.test lang/stdlib/yaml-regressions.test lang/ownership/source-borrowed-wrapper-temporary-cleanup.test lang/stdlib/map-get-or-release lang/stdlib/map-handle-values lang/stdlib/sorted-map-uncopyable-values
   lang/faults/faulting-close-releases-parts.test lang/stdlib/http-exchange-helpers.test
   lang/stdlib/http-close-drains lang/stdlib/http-fault-handler-frees-exchange-view lang/stdlib/promise-closes-captured-pipe
   lang/stdlib/cancelled-file-read-frees-buffer lang/stdlib/cancelled-dns-query-frees-state
