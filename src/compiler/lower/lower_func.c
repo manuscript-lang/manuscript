@@ -349,6 +349,10 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, cons
   if (ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem)) {
     return false; /* a boxed Optional owns the heap block that holds its payload: a view of a part cannot be one */
   }
+  const MsTypeRef *written = target->func != NULL ? target->func->result : NULL;
+  if (ret_data->kind == MK_LIST && written != NULL && !written->is_ref) {
+    return false; /* a list of looks owns its buffer: only its items look at another value */
+  }
   if (target->entry || body_closes(cx, target) || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
     return false;

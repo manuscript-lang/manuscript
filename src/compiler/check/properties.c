@@ -431,8 +431,17 @@ static bool declares_clone(MsCheckProgram *program, MsTy ty) {
 
 /* A record looks at another value when a field is written `&T`, or a field is itself such a record. */
 static bool look_record_within(const MsCheckProgram *program, MsTy ty, int depth) {
+  if (depth > 8) {
+    return false;
+  }
+  /* a list, optional or other generic instance of a look holds views too: `List[Ref]` looks at what its items look at */
+  for (size_t index = 0; index < ms_ty_arg_count(&program->types, ty); index++) {
+    if (look_record_within(program, ms_ty_args(&program->types, ty)[index], depth + 1)) {
+      return true;
+    }
+  }
   const MsTyRow *row = ms_ty_row(&program->types, ty);
-  if (row->kind != MS_TY_TYPE || row->def == 0 || depth > 8) {
+  if (row->kind != MS_TY_TYPE || row->def == 0) {
     return false;
   }
   const MsDef *def = ms_defs_get(&program->defs, row->def);
