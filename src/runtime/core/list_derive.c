@@ -177,12 +177,20 @@ void msrt_list_repeat(const MsList *v, const MsTypeDesc *d, int64_t count, MsLis
 
 /* `extend`: appends copies of the elements of `other`, which stays unchanged. */
 void msrt_list_extend(MsList *v, const MsTypeDesc *d, const MsList *other) {
-  if (other->len == 0) {
+  const size_t count = other->len;
+  if (count == 0) {
     return;
   }
-  ms_list_reserve(v, d->size, other->len);
-  msrt_list_copy_range(d, other->ptr, ms_list_slot(v, d, v->len), other->len);
-  v->len += other->len;
+  /* The room check is inline: a view has no capacity of its own, so it always takes the reserve. */
+  if (v->cap == 0 || count > v->cap - v->len) {
+    ms_list_reserve(v, d->size, count);
+  }
+  if (ms_desc_is_plain(d)) {
+    __builtin_memcpy(v->ptr + v->len * d->size, other->ptr, count * d->size);
+  } else {
+    msrt_list_copy_range(d, other->ptr, ms_list_slot(v, d, v->len), count);
+  }
+  v->len += count;
 }
 
 /* Whether `element` is already in `result`; with `seen` a hash set, adds it to the set when it is new. */
