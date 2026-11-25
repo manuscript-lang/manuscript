@@ -38,8 +38,7 @@ runs:
         cmake "-DROOT=$PWD" "-DARCH=${{ runner.arch == 'ARM64' && 'arm64' || 'amd64' }}" -P cmake/FetchLlvmLib.cmake
     # The pinned Cranelift library (cmake/toolchain/cranelift-lib.lock): Debug builds generate code through it and
     # the step exports MS_CRANELIFT to the steps after it.
-    - if: runner.os != 'Windows'
-      shell: bash
+    - shell: bash
       run: |
         cmake "-DROOT=$PWD" "-DARCH=${{ runner.arch == 'ARM64' && 'arm64' || 'amd64' }}" -P cmake/FetchCraneliftLib.cmake
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2, which brings the perl and make
