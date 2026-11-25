@@ -284,6 +284,15 @@ bool fmt_token_space(const MsToken *tokens, size_t at) {
   if (previous == MS_T_Bang && current == MS_T_Name && tokens[at].lo == tokens[at - 1].hi) {
     return false;
   }
+  if (previous == MS_T_Amp && at >= 2) {
+    /* `Hashable & Clonable` joins two bounds and keeps its spaces; `&T` after a name (`items &List[T]`) is a
+     * reference mark and touches its type. The source spacing tells them apart. */
+    const MsTok before = (MsTok)tokens[at - 2].kind;
+    const bool joins = (before == MS_T_Name || before == MS_T_RBracket) &&
+                       (tokens[at].lo > tokens[at - 1].hi || tokens[at - 1].lo == tokens[at - 2].hi);
+    return joins;
+  }
+
   if (current == MS_T_DotDot || previous == MS_T_DotDot || previous == MS_T_Amp) {
     return false; // `&T`: the reference mark touches its type
   }

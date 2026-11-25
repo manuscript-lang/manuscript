@@ -379,6 +379,23 @@ static uint32_t declared_mask(const Pass *pass, const MsFunc *func, const MsMeth
 
 /* A signature's `hold` and `&` against its body: the body may return a part of a held argument only, and a `&` result
  * must be a part of one. */
+static MsTy written_type(const Pass *pass, const MsTypeRef *ref) {
+  return ref != NULL && ref->id < pass->facts->node_count ? pass->written[ref->id] : MS_TY_NONE;
+}
+
+/* Whether a type is or wraps an interface: converting a part to one builds a new box, which is an owned value. */
+static bool holds_interface(const MsTyTable *types, MsTy ty) {
+  if (ms_ty_kind(types, ty) == MS_TY_CONTRACT) {
+    return true;
+  }
+  for (size_t index = 0; index < ms_ty_arg_count(types, ty); index++) {
+    if (holds_interface(types, ms_ty_args(types, ty)[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void report_declared(Pass *pass, uint32_t module, MsPos pos, const MsFunc *func, const MsMethod *method) {
   const MsParams params = func->params;
   const MsStmts body = func->body;
@@ -417,6 +434,14 @@ static void report_declared(Pass *pass, uint32_t module, MsPos pos, const MsFunc
     ms_check_report(pass->program, module, pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     return;
   }
+  if ((declared & MS_RESULT_BORROWED) == 0 && (used & holds) != 0 &&
+      !holds_interface(&pass->program->types, written_type(pass, func->result))) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "the result is a part of a `hold` argument but its type is an owned value; write `&` before the "
+                                   "result type to return the part, or return a `.clone()`");
+    ms_check_report(pass->program, module, pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    return;
+  }
   if ((declared & MS_RESULT_BORROWED) != 0 && used == 0 && !reached.all.owned) {
     return;
   }
@@ -429,9 +454,6 @@ static void report_declared(Pass *pass, uint32_t module, MsPos pos, const MsFunc
 }
 
 /* A callable that returns a part of its arguments on one path and a new value on another cannot say who owns its result. */
-static MsTy written_type(const Pass *pass, const MsTypeRef *ref) {
-  return ref != NULL && ref->id < pass->facts->node_count ? pass->written[ref->id] : MS_TY_NONE;
-}
 
 /* The resolved types of a module's written types, by node: one pass over the records, not one scan per function. */
 static MsTy *written_types(const MsCheckProgram *program, uint32_t module, uint32_t node_count) {
@@ -445,11 +467,12 @@ static MsTy *written_types(const MsCheckProgram *program, uint32_t module, uint3
   return written;
 }
 
-static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body, const MsTypeRef *result_ref) {
+/* Whether it reported a mixed return, which already says what to fix. */
+static bool report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body, const MsTypeRef *result_ref) {
   const MsTy result = written_type(pass, result_ref);
   const Reached reached = reached_by(pass, params, body, result);
   if (!reached.known || reached.borrowed == NULL || reached.fresh == NULL) {
-    return;
+    return false;
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "this function returns a reference into its arguments at ");
@@ -461,6 +484,7 @@ static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams para
   if (node < pass->facts->node_count) {
     pass->facts->result_borrows[node] = 0; /* callers see an owner, so one mistake is reported once */
   }
+  return true;
 }
 
 void ms_own_mixed_returns(MsCheckProgram *program) {
@@ -476,15 +500,17 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       if (decl->kind == MS_D_FN) {
         pass.method = false;
         pass.self_node = decl->id;
-        report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result);
-        report_declared(&pass, module, decl->pos, &decl->u.fn, NULL);
+        if (!report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result)) {
+          report_declared(&pass, module, decl->pos, &decl->u.fn, NULL);
+        }
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
         pass.self_node = method->id;
-        report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result);
-        report_declared(&pass, module, method->pos, &method->func, method);
+        if (!report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result)) {
+          report_declared(&pass, module, method->pos, &method->func, method);
+        }
       }
     }
     ms_free(written);

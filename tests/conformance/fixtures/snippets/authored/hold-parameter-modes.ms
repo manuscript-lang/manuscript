@@ -13,7 +13,7 @@ fn var hold Person.rename(value String) Void {
 	self.name = value
 }
 
-fn pick(hold a Person, b Person) String {
+fn pick(hold a Person, b Person) &String {
 	return a.name
 }
 
