@@ -6,5 +6,5 @@ Decision: after sweeping renames (`to_string`, positional arguments, `--drop-lab
 
 
 Apply when: a rename or removal lands, or a rebase brings in fixtures written before it.
-Evidence: nested-match check; `ms-repo-check` skips `tests/conformance/fixtures/` because those inputs are frozen.
+Evidence: nested-match check; `make repo-check` skips `tests/conformance/fixtures/` because those inputs are frozen.
 Verify: `rg` for the old spelling finds only reject fixtures and intentionally scoped allowances.
