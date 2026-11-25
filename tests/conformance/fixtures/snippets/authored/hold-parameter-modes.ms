@@ -1,3 +1,4 @@
+// conform: tags=functions,interfaces,tier-core
 // conform: phase=run
 // conform: origin=design/proposals/argument-modes-in-signatures.md
 type Person {
