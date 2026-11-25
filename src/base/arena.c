@@ -115,6 +115,24 @@ void ms_arena_free(MsArena *arena) {
   *arena = (MsArena){0};
 }
 
+void ms_arena_adopt(MsArena *into, MsArena *from) {
+  if (from->head == NULL) {
+    return;
+  }
+  if (into->head == NULL) {
+    *into = *from;
+  } else {
+    /* The adopted chunks go behind the current one, which keeps its free range. */
+    MsArenaChunk *tail = from->head;
+    while (tail->next != NULL) {
+      tail = tail->next;
+    }
+    tail->next = into->head->next;
+    into->head->next = from->head;
+  }
+  *from = (MsArena){0};
+}
+
 void ms_arena_reset(MsArena *arena) {
   if (arena->head == NULL) {
     return;

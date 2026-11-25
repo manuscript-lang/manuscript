@@ -4,6 +4,7 @@
  * visited. */
 #include "compiler/mir/mir_pass.h"
 #include "compiler/mir/mir_verify.h"
+#include "base/parallel.h"
 #include "compiler/opt/opt_inline.h"
 #include "compiler/opt/opt_pass.h"
 
@@ -16,6 +17,9 @@
  * yaml library, fixtures): the second and third `range` runs were a quarter of the per-function time. The rest go
  * again after `simplify` changed the function. */
 typedef enum FuncPass { FP_OPTPARAM, FP_SIMPLIFY, FP_COPYELIM, FP_RANGE, FP_IFCONV, FP_TWINS, FP_COUNT } FuncPass;
+
+/* Functions per thread below which a thread is not worth starting. */
+#define FUNCTION_GRAIN 64
 
 #define FP_BIT(p) (1u << (p))
 #define FP_ALL (FP_BIT(FP_COUNT) - 1u)
@@ -61,29 +65,53 @@ static bool function_round(MirModule *m, MirFunc *f, uint32_t *dirty, bool first
   return changed;
 }
 
-/* Runs each function's rounds (at most three, stopping at the first that changes nothing) on a copy and stores
- * the copies of those that changed. */
+/* What the workers of function_passes share: the module they read, and a slot per function for what they return. */
+typedef struct FuncJobs {
+  MirModule *m;
+  MirFunc *results;
+  bool *changed;
+  MsArena *arenas; /* one per worker: the argument arrays its passes allocate */
+} FuncJobs;
+
+/* Runs one function's rounds (at most three, stopping at the first that changes nothing) on a copy. The passes read the
+ * module and allocate from a module that is a view of it with the worker's own arena, so no two workers write the
+ * same memory. */
+static void function_job(void *context, size_t index, uint32_t worker) {
+  FuncJobs *jobs = context;
+  MirModule view = *jobs->m;
+  view.arena = jobs->arenas[worker];
+  MirFunc *result = &jobs->results[index];
+  opt_func_deep_clone(&view, &view.funcs.ptr[index], result);
+  uint32_t dirty[FP_COUNT] = {0};
+  for (int round = 0; round < OPT_FUNCTION_ROUNDS; round++) {
+    if (!function_round(&view, result, dirty, round == 0)) {
+      break;
+    }
+    jobs->changed[index] = true;
+  }
+  jobs->arenas[worker] = view.arena;
+}
+
+/* Runs the per-function passes on every function, on all cores, and stores the copies of those that changed. Each
+ * function sees the module as it was before the pass, so the result does not depend on the thread count. */
 static void function_passes(MirModule *m) {
   const uint32_t count = (uint32_t)m->funcs.len;
+  const uint32_t threads = ms_parallel_threads(count, FUNCTION_GRAIN);
   MsArena arena = ms_arena_new();
-  MirFunc *results = MS_ARENA_NEW_ARRAY(&arena, MirFunc, (size_t)count + 1);
-  bool *changed = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)count + 1);
-  for (uint32_t fi = 0; fi < count; fi++) {
-    opt_func_deep_clone(m, &m->funcs.ptr[fi], &results[fi]);
-    uint32_t dirty[FP_COUNT] = {0};
-    for (int round = 0; round < OPT_FUNCTION_ROUNDS; round++) {
-      if (!function_round(m, &results[fi], dirty, round == 0)) {
-        break;
-      }
-      changed[fi] = true;
-    }
+  FuncJobs jobs = {.m = m,
+                   .results = MS_ARENA_NEW_ARRAY(&arena, MirFunc, (size_t)count + 1),
+                   .changed = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)count + 1),
+                   .arenas = MS_ARENA_NEW_ARRAY(&arena, MsArena, threads)};
+  ms_parallel_for(threads, count, function_job, &jobs);
+  for (uint32_t worker = 0; worker < threads; worker++) {
+    ms_arena_adopt(&m->arena, &jobs.arenas[worker]); /* the stored copies point into them */
   }
   for (uint32_t fi = 0; fi < count; fi++) {
-    if (changed[fi]) {
+    if (jobs.changed[fi]) {
       mir_func_release(&m->funcs.ptr[fi]);
-      m->funcs.ptr[fi] = results[fi];
+      m->funcs.ptr[fi] = jobs.results[fi];
     } else {
-      mir_func_release(&results[fi]);
+      mir_func_release(&jobs.results[fi]);
     }
   }
   ms_arena_free(&arena);
