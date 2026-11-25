@@ -8,8 +8,7 @@ Bracketed paste and the extended keyboard protocols are on while the `RawTermina
 Styling and width helpers are in `@std/cli/style.ms`; the diffed redraw is in `@std/cli/screen.ms`.
 */
 import (
-	Closeable from "@std/core.ms",
-	ReadStream, Source from "@std/io/io.ms",
+	ReadStream from "@std/io/io.ms",
 
 	msstd_terminal_capabilities_colors,
 	msstd_terminal_capabilities_error_is_terminal,

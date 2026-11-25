@@ -221,9 +221,7 @@ fn main() Int {
 				extra.clone(),
 				limit,
 			)
-			var small = first
-			if again >= 0.0 and (again < first or first < 0.0) { small = again }
-
+			small := if again >= 0.0 and (again < first or first < 0.0) { again } else { first }
 			mid := measure(
 				ms.clone(),
 				command.clone(),

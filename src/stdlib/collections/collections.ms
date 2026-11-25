@@ -1177,11 +1177,7 @@ fn reverse_span[T](var items List[T], start, end Int) Void {
 	}
 }
 
-import (
-	panic from "@std/core.ms",
-
-	msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms",
-)
+import msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms"
 
 // The built-in integer and float types: the element types `sum` adds.
 export type Numeric = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | Float | Float32

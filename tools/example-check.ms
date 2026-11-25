@@ -17,7 +17,7 @@
 import (
 	parse from "@std/data/json.ms",
 	arguments, working_directory from "@std/os/env.ms",
-	create_directory, read_file, temporary, write_file from "@std/os/fs.ms",
+	read_file, temporary, write_file from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	seconds from "@std/time.ms",
 

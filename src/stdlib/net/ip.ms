@@ -1,5 +1,4 @@
 import (
-	Data from "@std/core.ms",
 	JsonValue from "@std/data/json.ms",
 
 	msstd_net_cidr_text,

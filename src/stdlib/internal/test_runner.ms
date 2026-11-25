@@ -35,7 +35,7 @@ export fn run_test_files(files List[fn(List[Int], String) Void]) Int {
 	results := environment.get_or("MS_TEST_RESULTS", "")
 	var selected = List[Int]()
 	for text in environment.get_or("MS_TEST_SELECT", "").split(",") {
-		if text.length() > 0 {
+		if not text.is_empty() {
 			selected.append(text.parse_int() or (-1))
 		}
 	}
@@ -263,7 +263,7 @@ fn line(
 
 // Records `text` as the output of `key` (a test index, or `f` and a file number).
 fn output(results, key, text String) Void {
-	if text.length() == 0 { return }
+	if text.is_empty() { return }
 
 	record(results, f"\u{1}MSOUT {key} {text.length()}\n{text}\n")
 }

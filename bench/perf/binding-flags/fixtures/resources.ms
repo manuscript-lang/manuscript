@@ -1,5 +1,3 @@
-import Closeable from "@std/core.ms"
-
 type Res {
 	id Int
 	open Bool = true

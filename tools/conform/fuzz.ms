@@ -824,9 +824,7 @@ export fn type_error(seed Int) Generated {
 	count := 2 + below(g.rng, 6)
 	for _index in 0..count { statement(g) }
 
-	var at = 0
-	if not g.bounds.is_empty() { at = g.bounds[below(g.rng, g.bounds.length())] }
-
+	at := if not g.bounds.is_empty() { g.bounds[below(g.rng, g.bounds.length())] } else { 0 }
 	error := pick(g.rng, TYPE_ERRORS)
 	g.out.insert(at, error.clone())
 	g.tags.append("diagnostics")

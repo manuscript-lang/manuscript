@@ -323,8 +323,7 @@ fn var Scan.rule() Rule {
 		if day > 365 { self.bad = true }
 	}
 
-	var time = 7200
-	if self.eat(47) { time = self.clock() }
+	time := if self.eat(47) { self.clock() } else { 7200 }
 	return Rule(kind: kind, month: month, week: week, day: day, time: time)
 }
 

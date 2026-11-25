@@ -1,6 +1,5 @@
 import (
 	Bytes from "@std/bytes.ms",
-	HttpExchange,
 	HttpHeaders,
 	HttpResponseMetadata,
 	HttpServerOptions,

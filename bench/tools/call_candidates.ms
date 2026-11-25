@@ -11,7 +11,6 @@ import (
 	file_sha256,
 	invalid,
 	now_ns,
-	read_text,
 	write_text from "./lib.ms",
 )
 

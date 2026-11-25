@@ -93,7 +93,7 @@
     {
       "code": "MSL121",
       "severity": "error",
-      "message": "Write the default and the override as one `x := if c: b else: a`",
+      "message": "Write the default and the override as one `x := if c { b } else { a }`",
       "position": {
         "file": "main.ms",
         "line": 25,
@@ -109,11 +109,11 @@
         },
         "end": {
           "file": "main.ms",
-          "line": 27,
-          "column": 8,
-          "offset": 524
+          "line": 28,
+          "column": 3,
+          "offset": 527
         },
-        "replacement": "x := if flag: 2 else: 1"
+        "replacement": "x := if flag { 2 } else { 1 }"
       }
     },
     {

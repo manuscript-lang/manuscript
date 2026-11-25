@@ -41,7 +41,7 @@ const MsLintRule MS_LINT_RULES[] = {
     {"MSL120", "Optional chained after a map get", MS_LINT_ERROR,
      "write `map.get_or(key, default)`; `ms lint --fix` does it"},
     {"MSL121", "Default overridden by a one-line if", MS_LINT_ERROR,
-     "write `x := if c: b else: a`; `ms lint --fix` does it for a literal or name default"},
+     "write `x := if c { b } else { a }`; `ms lint --fix` does it for a literal or name default"},
     {"MSL122", "Counter loop written as a while", MS_LINT_ERROR,
      "write `for i in start..end { ... }` and drop `i += 1`; `ms lint --fix` does it"},
     {"MSL123", "Index loop that only reads xs[i]", MS_LINT_WARNING,

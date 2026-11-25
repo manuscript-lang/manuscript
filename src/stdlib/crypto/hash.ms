@@ -138,11 +138,7 @@ fn var Crc64.update(data Bytes) Void {
 
 	if length >= 256 {
 		wide := length >= 4096
-		var count = 1
-		if wide {
-			count = 8
-		}
-
+		count := if wide { 8 } else { 1 }
 		tables := crc64_tables(poly, count)
 
 		while wide and index + 8 <= length {

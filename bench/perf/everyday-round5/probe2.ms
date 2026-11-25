@@ -173,7 +173,7 @@ fn x_graph_bfs() Int {
 
 	var t = 0
 
-	while frontier.length() > 0 {
+	while not frontier.is_empty() {
 		var next List[Int] = []
 
 		for v in frontier {

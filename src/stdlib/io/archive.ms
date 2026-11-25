@@ -1,6 +1,6 @@
 import (
 	Bytes, BytesBuilder, join from "@std/bytes.ms",
-	ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+	ReadStream, through from "@std/io/io.ms",
 
 	ArchiveLimits,
 	msstd_archive_pack,

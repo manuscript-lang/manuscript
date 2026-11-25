@@ -488,7 +488,7 @@ export fn stdlib_issues(files List[String]) List[String] {
 	var optional_found = List[String]()
 	var stream_found = List[String]()
 	var issues = List[String]()
-	if sources.length() == 0 {
+	if sources.is_empty() {
 		issues.append(
 			f"no src/stdlib/*.ms file was found among {files.length()} listed files (first: `{(files.first() or "")}`)"
 		)

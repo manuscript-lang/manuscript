@@ -6,7 +6,7 @@
 // and › so the generator reads as source.
 import (
 	arguments, set_environment from "@std/os/env.ms",
-	create_directory, remove, temporary from "@std/os/fs.ms",
+	remove, temporary from "@std/os/fs.ms",
 
 	generate from "./compile_time_project.ms",
 	absolute,

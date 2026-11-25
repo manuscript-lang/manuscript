@@ -1,4 +1,3 @@
-import panic from "@std/core.ms"
 // The conformance corpus commands that are not a replay: `list`, `stats`, `lint`,
 // `retag`, `diff`,
 // `fuzz-gen`, `fuzz` and `harvest`. The replay and recording of expectations is tools/conform-run.ms.
@@ -10,18 +9,13 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	GlobOptions, glob, write_file from "@std/os/fs.ms",
 
-	Args, has, many, number, one, parse_args from "./conform/args.ms",
-	Fixture,
-	candidate_ids,
-	parse_meta,
-	read_text,
-	render_meta from "./conform/corpus.ms",
+	Args, has, one, parse_args from "./conform/args.ms",
+	candidate_ids, parse_meta, read_text, render_meta from "./conform/corpus.ms",
 	run_diff from "./conform/diff.ms",
 	fuzz, fuzz_gen from "./conform/fuzz_commands.ms",
 	harvest from "./conform/harvest.ms",
 	Filter, filter_of, select from "./conform/select.ms",
 	imports_of, tag_allowed, tier_of from "./conform/tags.ms",
-	tool_ms from "./lib.ms",
 )
 
 USAGE String := """

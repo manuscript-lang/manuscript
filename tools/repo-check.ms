@@ -299,9 +299,7 @@ fn libraries(lock String) List[String] {
 
 		name := line.split(" ")[0].clone()
 		path := license_path(name.clone(), line.clone())
-		var digest = ""
-		if path != "" { digest = file_sha256(path.clone()) }
-
+		digest := if path != "" { file_sha256(path.clone()) } else { "" }
 		version := quoted(field(line.clone(), "version"))
 		entries.append(
 			f"    \{\"name\": {quoted(name)}, \"version\": {version}, \"license\": {quoted(path)}, \"sha256\": {quoted(digest)}\}"
@@ -356,7 +354,7 @@ fn licenses(check Bool) Int {
 
 fn main() Int {
 	words := arguments()
-	if words.length() > 0 and words[0] == "licenses" {
+	if not words.is_empty() and words[0] == "licenses" {
 		return licenses(words.contains("--check"))
 	}
 
@@ -389,7 +387,7 @@ fn main() Int {
 	for issue in issues {
 		note(issue.clone())
 	}
-	if failing != 0 or issues.length() != 0 { return 1 }
+	if failing != 0 or not issues.is_empty() { return 1 }
 
 	print("Formatting, nested matches, release pins and workflow triggers agree.")
 	return 0

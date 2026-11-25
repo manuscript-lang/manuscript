@@ -11,7 +11,7 @@
 import (
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	Pipe, pipe from "@std/io/io.ms",
-	Connection, Listener, connect, listen from "@std/net/net.ms",
+	Listener, connect, listen from "@std/net/net.ms",
 	arguments from "@std/os/env.ms",
 	monotonic, nanoseconds, sleep from "@std/time.ms",
 )

@@ -22,9 +22,7 @@ fn counts(var m Map[String, Int], k String) Void {
 }
 
 fn pick(flag Bool) Int {
-	x := if flag: 2 else: 1
-	}
-	return x
+	return if flag { 2 } else { 1 }
 }
 
 fn done(n Int) Int {

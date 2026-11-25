@@ -16,21 +16,11 @@
 // -- [--phase parse|check|run|test] [--jobs N] [fixture id substring ...] Prints
 // `<phase>: passed/total` and one `FAIL <id>` line per difference.
 import (
-	Bytes from "@std/bytes.ms",
 	Promise, promise from "@std/concurrency/promise.ms",
-	JsonValue, StringifyOptions, parse, stringify from "@std/data/json.ms",
+	JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
 	arguments, environment, working_directory from "@std/os/env.ms",
-	CopyOptions,
-	GlobOptions,
-	access,
-	copy,
-	create_directory,
-	glob,
-	read_file,
-	remove,
-	temporary,
-	write_file from "@std/os/fs.ms",
-	CommandOutput, RunOptions, run from "@std/os/process.ms",
+	access, remove, write_file from "@std/os/fs.ms",
+	RunOptions, run from "@std/os/process.ms",
 	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",
 

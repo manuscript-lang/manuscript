@@ -1,6 +1,4 @@
 import (
-	Data, Writable from "@std/core.ms",
-
 	msrt_bits_bit_and,
 	msrt_bits_shift_right,
 	msrt_bytes_join,
