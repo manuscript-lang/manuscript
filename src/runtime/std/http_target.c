@@ -25,16 +25,6 @@ bool ms_http_valid_authority(MsSpan value) {
   return true;
 }
 
-static int hex_value(uint8_t b) {
-  if (b >= '0' && b <= '9') {
-    return b - '0';
-  }
-  if (b >= 'a' && b <= 'f') {
-    return b - 'a' + 10;
-  }
-  return b >= 'A' && b <= 'F' ? b - 'A' + 10 : -1;
-}
-
 /* Percent-decodes `raw` into *out (owned); false when an escape is malformed. */
 static bool ms_http_unescape(MsSpan raw, MsString *out) {
   MsStrBuild text = ms_strbuild_new();
@@ -43,8 +33,8 @@ static bool ms_http_unescape(MsSpan raw, MsString *out) {
       ms_strbuild_append_byte(&text, raw.ptr[i++]);
       continue;
     }
-    const int hi = i + 1 < raw.len ? hex_value(raw.ptr[i + 1]) : -1;
-    const int lo = i + 2 < raw.len ? hex_value(raw.ptr[i + 2]) : -1;
+    const int hi = i + 1 < raw.len ? ms_hex_value(raw.ptr[i + 1]) : -1;
+    const int lo = i + 2 < raw.len ? ms_hex_value(raw.ptr[i + 2]) : -1;
     if (hi < 0 || lo < 0) {
       ms_strbuild_free(&text);
       return false;
@@ -148,17 +138,12 @@ static bool has_text_ci(MsSpan s, const char *needle_lower) {
   return false;
 }
 
-static bool has_nul(MsSpan s) {
-  size_t at = 0;
-  return ms_span_find_byte(s, 0, &at);
-}
-
 /* Strips an http:// or https:// prefix, recording the authority up to the first / or ?. */
 static bool take_authority(MsSpan *rest, MsSpan *host, bool *has_host, const char **reason) {
   MsSpan after = {0};
-  if (ms_span_starts_with(*rest, ms_span_of_text("http://"))) {
+  if (ms_span_starts_with_text(*rest, "http://")) {
     after = ms_span_of(rest->ptr + 7, rest->len - 7);
-  } else if (ms_span_starts_with(*rest, ms_span_of_text("https://"))) {
+  } else if (ms_span_starts_with_text(*rest, "https://")) {
     after = ms_span_of(rest->ptr + 8, rest->len - 8);
   } else {
     return true;
@@ -224,7 +209,7 @@ static bool finish_path(MsSpan raw_path, MsString *path, const char **reason) {
   const MsSpan bytes = ms_string_span(&decoded);
   if (!ms_utf8_is_valid(bytes.ptr, bytes.len)) {
     *reason = "invalid UTF-8 URL";
-  } else if (has_text_ci(raw_path, "%00") || has_text_ci(raw_path, "%2f") || has_nul(bytes)) {
+  } else if (has_text_ci(raw_path, "%00") || has_text_ci(raw_path, "%2f") || ms_span_has_byte(bytes, 0)) {
     *reason = "invalid request path";
   }
   if (*reason != NULL) {

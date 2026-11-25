@@ -108,7 +108,7 @@ static bool wildcard_members(MsArena *arena, MsSpan root, MsSpan parent, MsSpanL
 
 /* The directories one member pattern names, appended to `dirs`. */
 static bool expand_member(MsArena *arena, MsSpan root, MsSpan pattern, MsSpanList *dirs, MsProjectError *error) {
-  const bool wildcard = ms_span_ends_with(pattern, ms_span_of_text("/*"));
+  const bool wildcard = ms_span_ends_with_text(pattern, "/*");
   const MsSpan base = wildcard ? ms_span_of(pattern.ptr, pattern.len - 2) : pattern;
   bool star = false;
   for (size_t i = 0; i < base.len; i++) {

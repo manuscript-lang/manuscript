@@ -133,7 +133,7 @@ static bool test_failure_position(MsSpan message, MsSpan *file, int64_t *line, i
   while (start > 0 && message.ptr[start - 1] != ' ') {
     start--;
   }
-  if (start < 6 || start == file_end || !ms_span_starts_with(ms_span_of(message.ptr + start - 6, 6), ms_span_of_text("\n  at "))) {
+  if (start < 6 || start == file_end || !ms_span_starts_with_text(ms_span_of(message.ptr + start - 6, 6), "\n  at ")) {
     return false;
   }
   *file = ms_span_of(message.ptr + start, file_end - start);

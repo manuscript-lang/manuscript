@@ -56,7 +56,7 @@ static int64_t compare_position(uint8_t *env, const uint8_t *left, const uint8_t
 }
 
 static bool is_standard(MsSpan file) {
-  return ms_span_starts_with(file, ms_span_of_text("@std/"));
+  return ms_span_starts_with_text(file, "@std/");
 }
 
 void ms_lint_modules(MsArena *arena, const MsCheckProgram *program, MsLintFindingList *findings) {

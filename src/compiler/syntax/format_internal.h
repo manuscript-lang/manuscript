@@ -66,11 +66,11 @@ static inline bool fmt_is(MsSpan s, const char *text) {
 }
 
 static inline bool fmt_starts(MsSpan s, const char *prefix) {
-  return ms_span_starts_with(s, ms_span_of_text(prefix));
+  return ms_span_starts_with_text(s, prefix);
 }
 
 static inline bool fmt_ends(MsSpan s, const char *suffix) {
-  return ms_span_ends_with(s, ms_span_of_text(suffix));
+  return ms_span_ends_with_text(s, suffix);
 }
 
 /* Bytewise order: negative, zero or positive. */

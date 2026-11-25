@@ -32,7 +32,7 @@ static bool next_line(MsSpan *text, MsSpan *line) {
 
 /* "HTTP/1.x NNN reason" */
 static bool parse_status(MsSpan line, uint16_t *status) {
-  if (line.len < 12 || !ms_span_starts_with(line, ms_span_of_text("HTTP/1.")) || line.ptr[8] != ' ') {
+  if (line.len < 12 || !ms_span_starts_with_text(line, "HTTP/1.") || line.ptr[8] != ' ') {
     return false;
   }
   uint16_t value = 0;

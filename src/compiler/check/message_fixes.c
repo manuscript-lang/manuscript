@@ -31,7 +31,7 @@ void ms_check_attach_message_fixes(MsCheckProgram *program) {
     const MsSpan source = program->modules.ptr[diag->module].source;
     const MsSpan name = single_suggestion(ms_string_span(&diag->message));
     /* an arm naming no case of the enum is reported without an edit */
-    if (diag->has_fix || diag->stage == MS_STAGE_IMPORTS || ms_span_starts_with(ms_string_span(&diag->message), ms_span_of_text("unknown case ")) || name.len == 0 || diag->pos.offset >= source.len) {
+    if (diag->has_fix || diag->stage == MS_STAGE_IMPORTS || ms_span_starts_with_text(ms_string_span(&diag->message), "unknown case ") || name.len == 0 || diag->pos.offset >= source.len) {
       continue;
     }
     size_t length = 0;

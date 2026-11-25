@@ -520,9 +520,9 @@ static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsT
 static bool only_callback_diagnostics(const MsCheckProgram *program, size_t before) {
   for (size_t index = before; index < program->diagnostics.len; index++) {
     const MsSpan message = ms_string_span(&program->diagnostics.ptr[index].message);
-    if (!ms_span_starts_with(message, ms_span_of_text("cannot infer callback parameter")) &&
-        !ms_span_starts_with(message, ms_span_of_text("unknown argument ")) &&
-        !ms_span_starts_with(message, ms_span_of_text("unknown type "))) {
+    if (!ms_span_starts_with_text(message, "cannot infer callback parameter") &&
+        !ms_span_starts_with_text(message, "unknown argument ") &&
+        !ms_span_starts_with_text(message, "unknown type ")) {
       return false;
     }
   }
@@ -539,7 +539,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
   const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found) ||
                            ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
   if (!body_reports(body) || body->quiet ||
-      !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
+      !(unmet_bound || ms_span_starts_with_text(message, "cannot infer type argument")) ||
       !only_callback_diagnostics(body->program, before) || holds_invalid(types, body->result, 6) ||
       holds_invalid(types, callee, 6)) {
     return false;

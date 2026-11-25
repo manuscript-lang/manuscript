@@ -158,19 +158,15 @@ static void scan(MsSpan source, SemanticList *tokens) {
   mark_receivers(source, tokens);
 }
 
-static bool key_starts(MsSpan key, const char *prefix) {
-  return ms_span_starts_with(key, ms_span_of_text(prefix));
-}
-
 static uint8_t kind_of(const MsCheckProgram *program, const MsOccurrence *entry) {
-  if (key_starts(entry->key, "field:")) return KIND_PROPERTY;
-  if (key_starts(entry->key, "parameter:")) return KIND_PARAMETER;
-  if (key_starts(entry->key, "case:")) return KIND_ENUM_MEMBER;
+  if (ms_span_starts_with_text(entry->key, "field:")) return KIND_PROPERTY;
+  if (ms_span_starts_with_text(entry->key, "parameter:")) return KIND_PARAMETER;
+  if (ms_span_starts_with_text(entry->key, "case:")) return KIND_ENUM_MEMBER;
   /* A bare standard constructor (`null`, `ok`) is keyed as a native; only its type tells it from a native function. */
-  if (key_starts(entry->key, "native:") && entry->ty != MS_TY_NONE && ms_ty_kind(&program->types, entry->ty) != MS_TY_FUNCTION) {
+  if (ms_span_starts_with_text(entry->key, "native:") && entry->ty != MS_TY_NONE && ms_ty_kind(&program->types, entry->ty) != MS_TY_FUNCTION) {
     return KIND_ENUM_MEMBER;
   }
-  if (key_starts(entry->key, "binding:typeparam:")) return KIND_TYPE_PARAMETER;
+  if (ms_span_starts_with_text(entry->key, "binding:typeparam:")) return KIND_TYPE_PARAMETER;
   const MsSymbol *symbol = entry->symbol != 0 ? &program->symbols.ptr[entry->symbol] : NULL;
   if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) return KIND_TYPE;
   const bool constant = symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_CONST;

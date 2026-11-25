@@ -59,7 +59,7 @@ static bool selectable(MsArena *arena, MsSpan directory, const MsDirEntry *entry
            ms_path_kind(ms_cli_joined(arena, ms_cli_joined(arena, directory, name), ms_span_of_text("ms.toml"))) == MS_PATH_MISSING;
   }
   const bool linked_directory = entry->kind == MS_PATH_SYMLINK && ms_dir_exists(ms_cli_joined(arena, directory, name));
-  return !linked_directory && ms_span_ends_with(name, ms_span_of_text(".ms"));
+  return !linked_directory && ms_span_ends_with_text(name, ".ms");
 }
 
 typedef struct Walked {

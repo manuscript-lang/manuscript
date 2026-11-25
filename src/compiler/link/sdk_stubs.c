@@ -24,19 +24,15 @@ static const char *const directories[] = {
     "System/Library/Frameworks/Security.framework", "System/Library/Frameworks/CoreFoundation.framework",
     "System/Library/Frameworks/SystemConfiguration.framework"};
 
-static bool starts(MsSpan name, const char *prefix) {
-  return ms_span_starts_with(name, ms_span_of_text(prefix));
-}
-
 /* The library whose names start like `name`: the frameworks by prefix, everything else libSystem. */
 static size_t library_of(MsSpan name) {
-  if (starts(name, "_Sec") || starts(name, "_kSec")) {
+  if (ms_span_starts_with_text(name, "_Sec") || ms_span_starts_with_text(name, "_kSec")) {
     return LIBRARY_SECURITY;
   }
-  if (starts(name, "_CF") || starts(name, "_kCF")) {
+  if (ms_span_starts_with_text(name, "_CF") || ms_span_starts_with_text(name, "_kCF")) {
     return LIBRARY_CORE;
   }
-  if (starts(name, "_SC") || starts(name, "_kSC")) {
+  if (ms_span_starts_with_text(name, "_SC") || ms_span_starts_with_text(name, "_kSC")) {
     return LIBRARY_CONFIGURATION;
   }
   return LIBRARY_SYSTEM;

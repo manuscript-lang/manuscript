@@ -168,7 +168,7 @@ int lex_peek(const Scanner *s, size_t i) {
 }
 
 bool lex_starts_with(const Scanner *s, size_t i, const char *lit) {
-  return i <= s->n && ms_span_starts_with(ms_span_of(s->src + i, s->n - i), ms_span_of_text(lit));
+  return i <= s->n && ms_span_starts_with_text(ms_span_of(s->src + i, s->n - i), lit);
 }
 
 bool lex_at_line_comment(const Scanner *s) {
@@ -360,7 +360,7 @@ MS_NODISCARD static bool scan_exponent(Scanner *s) {
 
 static bool word_has_prefix(MsSpan word, const char *a, const char *b) {
   return word.len > 1 &&
-         (ms_span_starts_with(word, ms_span_of_text(a)) || ms_span_starts_with(word, ms_span_of_text(b)));
+         (ms_span_starts_with_text(word, a) || ms_span_starts_with_text(word, b));
 }
 
 static const char *suffix_reason(MsSpan word) {

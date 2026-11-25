@@ -209,6 +209,14 @@ static inline bool ms_span_ends_with(MsSpan span, MsSpan suffix) {
          ms_span_equal(ms_span_of(span.ptr + (span.len - suffix.len), suffix.len), suffix);
 }
 
+static inline bool ms_span_starts_with_text(MsSpan span, const char *prefix) {
+  return ms_span_starts_with(span, ms_span_of_text(prefix));
+}
+
+static inline bool ms_span_ends_with_text(MsSpan span, const char *suffix) {
+  return ms_span_ends_with(span, ms_span_of_text(suffix));
+}
+
 /* The offset of the first `byte` in `text`; false when absent, `at` untouched. */
 MS_NODISCARD MS_NONNULL static inline bool ms_span_find_byte(MsSpan text, uint8_t byte, size_t *at) {
   for (size_t i = 0; i < text.len; i++) {

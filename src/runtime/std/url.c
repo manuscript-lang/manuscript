@@ -236,7 +236,7 @@ static bool all_bytes(MsSpan text, bool (*accepts)(uint8_t)) {
 }
 
 static bool begins(const MsStrBuild *bytes, const char *prefix) {
-  return ms_span_starts_with(ms_strbuild_span(bytes), ms_span_of_text(prefix));
+  return ms_span_starts_with_text(ms_strbuild_span(bytes), prefix);
 }
 
 /* Whether rendering `u` is known to read back as a URL with the same scheme and no user information, without
@@ -325,10 +325,6 @@ uint8_t msstd_url_resolve(const MsUrl *base, const MsString *reference, MsUrl *o
 
 /* ---- components and queries ---- */
 
-static int hex_value(uint8_t c) {
-  return c <= '9' ? c - '0' : (c | 0x20) - 'a' + 10;
-}
-
 void msstd_url_encode_component(const MsString *text, MsString *out) {
   static const char DIGITS[] = "0123456789ABCDEF";
   const MsSpan span = ms_string_span(text);
@@ -360,7 +356,7 @@ uint8_t msstd_url_decode_component(const MsString *text, MsString *out) {
     ok = i + 3 <= span.len && ms_ascii_is_hex(span.ptr[i + 1]) && ms_ascii_is_hex(span.ptr[i + 2]);
     if (ok) {
       ms_strbuild_append_byte(&result,
-                              (uint8_t)(hex_value(span.ptr[i + 1]) * 16 + hex_value(span.ptr[i + 2])));
+                              (uint8_t)(ms_hex_value(span.ptr[i + 1]) * 16 + ms_hex_value(span.ptr[i + 2])));
       i += 3;
     }
   }

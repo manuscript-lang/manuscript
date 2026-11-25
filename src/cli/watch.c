@@ -97,7 +97,7 @@ void watch_add_inputs(MsArena *arena, MsSpan input, const MsGraph *graph, MsSpan
   }
   for (size_t i = 0; i < graph->count; i++) {
     const MsGraphModule *module = &graph->modules[i];
-    if (!ms_span_starts_with(module->name, ms_span_of_text("@"))) {
+    if (!ms_span_starts_with_text(module->name, "@")) {
       ms_span_list_push(watched, module->path);
       ms_span_list_push(watched, ms_path_parent(module->path));
     }

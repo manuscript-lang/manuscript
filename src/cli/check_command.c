@@ -131,7 +131,7 @@ static size_t project_modules(const MsCheckProgram *program, const MsNames *name
   size_t count = 0;
   for (size_t i = 0; i < program->modules.len; i++) {
     const MsSpan file = ms_names_span(names, program->modules.ptr[i].file);
-    count += ms_span_starts_with(file, ms_span_of_text("@std/")) ? 0 : 1;
+    count += ms_span_starts_with_text(file, "@std/") ? 0 : 1;
   }
   return count;
 }
@@ -174,7 +174,7 @@ static Finding kept(MsArena *arena, Finding finding, MsSpan file) {
 
 /* A collection shows a file relative to the working directory. */
 static MsSpan shown(MsArena *arena, const CheckSelection *selection, MsSpan root, MsSpan file) {
-  if (!selection->collection || ms_span_starts_with(file, ms_span_of_text("@std/")) || finding_is_package_file(file)) {
+  if (!selection->collection || ms_span_starts_with_text(file, "@std/") || finding_is_package_file(file)) {
     return ms_arena_copy(arena, file);
   }
   if (root.len != 0 && !ms_path_is_absolute(file)) {
@@ -188,8 +188,8 @@ static MsSpan shown(MsArena *arena, const CheckSelection *selection, MsSpan root
 }
 
 static bool failed_import(MsSpan message) {
-  return ms_span_starts_with(message, ms_span_of_text("module does not export")) ||
-         ms_span_starts_with(message, ms_span_of_text("unknown standard module"));
+  return ms_span_starts_with_text(message, "module does not export") ||
+         ms_span_starts_with_text(message, "unknown standard module");
 }
 
 /* The fixable diagnostics of one input with the path of the file each edits. A failed import leaves its names
@@ -197,7 +197,7 @@ static bool failed_import(MsSpan message) {
 static void collect_fixes(MsArena *arena, MsSpan root, const FindingList *found, CheckFixList *fixes) {
   for (size_t i = 0; i < found->len; i++) {
     const Finding *finding = &found->ptr[i];
-    if (!finding->diag.has_fix || ms_span_starts_with(finding->file, ms_span_of_text("@std/"))) {
+    if (!finding->diag.has_fix || ms_span_starts_with_text(finding->file, "@std/")) {
       continue;
     }
     bool broken = false;

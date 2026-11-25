@@ -87,11 +87,11 @@ static MsSpan checkout_std_name(MsSpan canonical) {
   for (size_t at = 0; at + sizeof DIRECTORY - 1 < canonical.len; at++) {
     const bool boundary = at == 0 || ms_path_is_separator(canonical.ptr[at - 1]);
     const MsSpan rest = ms_span_of(canonical.ptr + at, canonical.len - at);
-    if (!boundary || !ms_span_starts_with(rest, ms_span_of_text(DIRECTORY))) {
+    if (!boundary || !ms_span_starts_with_text(rest, DIRECTORY)) {
       continue;
     }
     MsSpan name = ms_span_of(rest.ptr + sizeof DIRECTORY - 1, rest.len - (sizeof DIRECTORY - 1));
-    if (ms_span_starts_with(name, ms_span_of_text("core/"))) {
+    if (ms_span_starts_with_text(name, "core/")) {
       name = ms_span_of(name.ptr + 5, name.len - 5); /* the implicit prelude is bundled under flat names */
     }
     if (!ms_std_source_find(name, &source)) {
@@ -304,7 +304,7 @@ static bool load_imports(Loader *loader, MsSpan canonical, MsSpan file, const Ms
   for (uint32_t i = 0; i < module->nimports; i++) {
     const MsImport *item = &module->imports[i];
     targets[i] = MS_NO_MODULE;
-    if (ms_span_starts_with(item->path, ms_span_of_text("@std/"))) {
+    if (ms_span_starts_with_text(item->path, "@std/")) {
       continue;
     }
     if (!import_module(loader, canonical, file, item, &targets[i], failure)) {

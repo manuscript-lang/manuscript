@@ -60,7 +60,7 @@ void finding_add_check(const MsCheckProgram *program, const MsNames *names, Find
 
 /* Whether a diagnostic's file is a fetched package's: `@id/path`, which has no place in the project's directory. */
 bool finding_is_package_file(MsSpan file) {
-  return ms_span_starts_with(file, ms_span_of_text("@")) && !ms_span_starts_with(file, ms_span_of_text("@std/"));
+  return ms_span_starts_with_text(file, "@") && !ms_span_starts_with_text(file, "@std/");
 }
 
 /* The excerpt under a diagnostic: the file is read again from `root`. */

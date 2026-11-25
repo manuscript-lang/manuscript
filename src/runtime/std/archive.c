@@ -285,7 +285,7 @@ static uint8_t unpack_tar(MsSpan data, Collector *c) {
     } else {
       MsSpan name = ms_strbuild_span(&item.name);
       /* `tar -cf x.tar .` prefixes every member with `./` and adds a bare `./` entry. */
-      while (ms_span_starts_with(name, ms_span_of_text("./"))) {
+      while (ms_span_starts_with_text(name, "./")) {
         name = ms_span_of(name.ptr + 2, name.len - 2);
       }
       const size_t size = (uint64_t)item.size > SIZE_MAX ? SIZE_MAX : (size_t)item.size;

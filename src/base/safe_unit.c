@@ -35,8 +35,8 @@ static void test_spans(void) {
   CHECK(!ms_span_get(hello, 11, &byte));
   CHECK(ms_span_find(hello, ms_span_of_text("o w"), &at) && at == 4);
   CHECK(!ms_span_find(hello, ms_span_of_text("xyz"), &at));
-  CHECK(ms_span_starts_with(hello, ms_span_of_text("hell")));
-  CHECK(ms_span_ends_with(hello, ms_span_of_text("world")));
+  CHECK(ms_span_starts_with_text(hello, "hell"));
+  CHECK(ms_span_ends_with_text(hello, "world"));
   CHECK(!ms_span_ends_with(ms_span_of_text("d"), hello));
 }
 

@@ -404,7 +404,7 @@ static bool merge_pax(TarItem *item, const PaxList *records) {
     if (!merge_record(item, &records->items[i])) {
       return false;
     }
-    sparse = sparse || ms_span_starts_with(records->items[i].key, ms_span_of_text("GNU.sparse."));
+    sparse = sparse || ms_span_starts_with_text(records->items[i].key, "GNU.sparse.");
   }
   if (sparse) {
     item->typeflag = TYPE_GNU_SPARSE; /* treated as an unsupported typeflag */

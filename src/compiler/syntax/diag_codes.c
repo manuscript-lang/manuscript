@@ -145,12 +145,8 @@ static MsSpan before(MsSpan text, const char *separator) {
   return at == SIZE_MAX ? text : ms_span_of(text.ptr, at);
 }
 
-static bool starts_with(MsSpan text, const char *prefix) {
-  return ms_span_starts_with(text, ms_span_of_text(prefix));
-}
-
 static const char *parse_code(MsSpan cause) {
-  if (starts_with(cause, "string-literal match patterns")) {
+  if (ms_span_starts_with_text(cause, "string-literal match patterns")) {
     return "MS1000";
   }
   if (contains(cause, "indent") || contains(cause, "suite") || contains(cause, "tabs")) {
@@ -162,7 +158,7 @@ static const char *parse_code(MsSpan cause) {
 }
 
 static const char *resolution_code(MsSpan cause) {
-  if (starts_with(cause, "redundant prelude import ")) {
+  if (ms_span_starts_with_text(cause, "redundant prelude import ")) {
     return "MS2003";
   }
   bool module = contains(cause, "module") || contains(cause, "import") || contains(cause, "path") ||

@@ -75,7 +75,7 @@ static bool names_other_version(MsSpan buf) {
       start = i + 1;
     }
   }
-  return tokens == 3 && ms_span_starts_with(version, ms_span_of_text("HTTP/")) &&
+  return tokens == 3 && ms_span_starts_with_text(version, "HTTP/") &&
          !ms_span_is_text(version, "HTTP/1.0") && !ms_span_is_text(version, "HTTP/1.1");
 }
 

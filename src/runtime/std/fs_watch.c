@@ -306,7 +306,7 @@ static void watch_event(uv_fs_event_t *handle, const char *filename, int events,
 
 static bool is_ready_file(const char *filename) {
   const char *prefix = ms_sys_fs_watch_ready_prefix();
-  return filename != NULL && prefix[0] != '\0' && ms_span_starts_with(ms_span_of_text(filename), ms_span_of_text(prefix));
+  return filename != NULL && prefix[0] != '\0' && ms_span_starts_with_text(ms_span_of_text(filename), prefix);
 }
 
 /* Starts a handle on `path`. Recursive handles cover the subtree on the hosts that can. */

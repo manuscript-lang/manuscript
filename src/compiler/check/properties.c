@@ -74,7 +74,7 @@ static bool has_marker(const MsCheckProgram *program, const MsDef *def, const ch
   const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].id);
   MsSpan name = {0};
   MsStdSource source = {0};
-  if (!ms_span_starts_with(file, ms_span_of_text("@std/")) || !ms_span_slice(file, 5, file.len, &name) ||
+  if (!ms_span_starts_with_text(file, "@std/") || !ms_span_slice(file, 5, file.len, &name) ||
       !ms_std_source_find(name, &source) || symbol->decl == NULL) {
     return false;
   }
@@ -94,7 +94,7 @@ static bool has_marker(const MsCheckProgram *program, const MsDef *def, const ch
     while (line.len > 0 && (line.ptr[line.len - 1] == ' ' || line.ptr[line.len - 1] == '\r')) {
       line = ms_span_of(line.ptr, line.len - 1);
     }
-    if (!ms_span_starts_with(line, ms_span_of_text("//"))) {
+    if (!ms_span_starts_with_text(line, "//")) {
       return false;
     }
     MsSpan text = ms_span_of(line.ptr + 2, line.len - 2);

@@ -65,11 +65,11 @@ static MsSpan strip_cr(MsSpan line) {
  * and the blank lines next to the markers dropped. */
 static MsSpan block_text(MsArena *arena, const MsSpan *lines, size_t count) {
   MsSpan first = trim_start(lines[0]);
-  first = ms_span_starts_with(first, ms_span_of_text("/*")) ? drop_prefix(first, 2) : ms_span_of_text("");
+  first = ms_span_starts_with_text(first, "/*") ? drop_prefix(first, 2) : ms_span_of_text("");
   MsSpan last = strip_cr(trim_end(lines[count - 1]));
-  last = ms_span_ends_with(last, ms_span_of_text("*/")) ? ms_span_of(last.ptr, last.len - 2) : last;
+  last = ms_span_ends_with_text(last, "*/") ? ms_span_of(last.ptr, last.len - 2) : last;
   if (count == 1) {
-    MsSpan one = ms_span_ends_with(first, ms_span_of_text("*/")) ? ms_span_of(first.ptr, first.len - 2) : first;
+    MsSpan one = ms_span_ends_with_text(first, "*/") ? ms_span_of(first.ptr, first.len - 2) : first;
     return ms_arena_copy(arena, trim(one));
   }
   MsSpans rows = {0};
@@ -131,16 +131,16 @@ static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, s
       break;
     }
     const MsSpan text = trim(line);
-    if (ms_span_starts_with(text, ms_span_of_text("// ms:"))) {
+    if (ms_span_starts_with_text(text, "// ms:")) {
       used++;
-    } else if (ms_span_starts_with(text, ms_span_of_text("//"))) {
+    } else if (ms_span_starts_with_text(text, "//")) {
       MsSpan comment = drop_prefix(text, 2);
       if (comment.len > 0 && comment.ptr[0] == ' ') {
         comment = drop_prefix(comment, 1);
       }
       ms_spans_push(arena, &blocks, trim_end(comment));
       used++;
-    } else if (ms_span_ends_with(text, ms_span_of_text("*/"))) {
+    } else if (ms_span_ends_with_text(text, "*/")) {
       size_t open = used;
       bool found = false;
       for (;; open++) {
@@ -148,7 +148,7 @@ static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, s
         if (open >= lines.nearest.len) {
           break;
         }
-        if (ms_span_starts_with(trim_start(lines.nearest.ptr[open]), ms_span_of_text("/*"))) {
+        if (ms_span_starts_with_text(trim_start(lines.nearest.ptr[open]), "/*")) {
           found = true;
           break;
         }
@@ -279,7 +279,7 @@ MsSpan ms_leading_comment(MsArena *arena, MsSpan source, size_t offset) {
   const MsSpan prefix = trim(own_line);
   /* Names of cases and operations follow their keyword; inline payload fields do not begin a declaration line. A receiver
    * method's name follows its receiver: `fn Type.name`, `fn var Type[T].name`. */
-  const bool receiver_method = ms_span_starts_with(prefix, ms_span_of_text("fn ")) && ms_span_ends_with(prefix, ms_span_of_text("."));
+  const bool receiver_method = ms_span_starts_with_text(prefix, "fn ") && ms_span_ends_with_text(prefix, ".");
   static const char *const MODIFIERS[] = {"export", "opaque", "extern"};
   const bool lead = words_among(prefix, MODIFIERS, 3) || ms_span_is_text(prefix, "fn") || ms_span_is_text(prefix, "var fn") ||
                     ms_span_is_text(prefix, "move fn") || ms_span_is_text(prefix, "case");
@@ -310,10 +310,10 @@ void ms_declared_effects(MsArena *arena, MsSpan source, size_t offset, MsSpans *
       begin--;
     }
     const MsSpan line = trim_start(strip_cr(ms_span_of(source.ptr + begin, stop - begin)));
-    if (!ms_span_starts_with(line, ms_span_of_text("//"))) {
+    if (!ms_span_starts_with_text(line, "//")) {
       break;
     }
-    if (ms_span_starts_with(line, ms_span_of_text("// ms: effect "))) {
+    if (ms_span_starts_with_text(line, "// ms: effect ")) {
       ms_spans_push(arena, &found, trim(drop_prefix(line, 14)));
     }
     end = begin;

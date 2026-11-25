@@ -458,7 +458,7 @@ static inline bool ms_decl_has_body(const MsDecl *decl) {
 /* Whether every import of `module` is from the standard library (`@std/`). */
 static inline bool ms_module_only_std_imports(const MsModule *module) {
   for (uint32_t i = 0; i < module->nimports; i++) {
-    if (!ms_span_starts_with(module->imports[i].path, ms_span_of_text("@std/"))) {
+    if (!ms_span_starts_with_text(module->imports[i].path, "@std/")) {
       return false;
     }
   }

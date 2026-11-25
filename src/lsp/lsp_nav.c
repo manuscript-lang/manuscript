@@ -130,8 +130,8 @@ typedef struct StdDeclaration {
 static bool std_declaration(const LspAnalysis *analysis, const MsOccurrence *selected, StdDeclaration *out) {
   const MsSpan key = selected->key;
   size_t skip;
-  if (ms_span_starts_with(key, ms_span_of_text("symbol:@std/"))) skip = 12;
-  else if (ms_span_starts_with(key, ms_span_of_text("method:@std/"))) skip = 12;
+  if (ms_span_starts_with_text(key, "symbol:@std/")) skip = 12;
+  else if (ms_span_starts_with_text(key, "method:@std/")) skip = 12;
   else return false;
   size_t colon = key.len;
   while (colon > skip && key.ptr[colon - 1] != ':') colon--;
@@ -145,7 +145,7 @@ static bool std_declaration(const LspAnalysis *analysis, const MsOccurrence *sel
   const MsCheckProgram *program = &analysis->checked.program;
   for (size_t i = program->user_modules; i < program->modules.len; i++) {
     const MsSpan name = ms_names_span(program->names, program->modules.ptr[i].file);
-    if (!ms_span_starts_with(name, ms_span_of_text("@std/")) || !ms_span_equal(ms_span_of(name.ptr + 5, name.len - 5), file)) continue;
+    if (!ms_span_starts_with_text(name, "@std/") || !ms_span_equal(ms_span_of(name.ptr + 5, name.len - 5), file)) continue;
     const MsSpan source = program->modules.ptr[i].source;
     size_t at;
     if (!lsp_header(source, offset, selected->name, &at)) return false;
@@ -262,7 +262,7 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   StdDeclaration bundled;
   if (declaration == NULL && std_declaration(&analysis, selected, &bundled)) {
     const size_t line = lsp_position(bundled.source, bundled.at).line + 1;
-    if (ms_span_starts_with(ms_strbuild_span(&shown), ms_span_of_text("fn("))) {
+    if (ms_span_starts_with_text(ms_strbuild_span(&shown), "fn(")) {
       const MsInspection *inspection = lsp_inspection(&analysis, true);
       MsStrBuild file = ms_strbuild_new();
       ms_strbuild_append_text(&file, "@std/");
@@ -279,7 +279,7 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   if (declaration != NULL) {
     const MsSpan source = source_of(&analysis, declaration);
     const size_t line = lsp_position(source, declaration->offset).line + 1;
-    if (ms_span_starts_with(ms_strbuild_span(&shown), ms_span_of_text("fn("))) {
+    if (ms_span_starts_with_text(ms_strbuild_span(&shown), "fn(")) {
       const MsInspection *inspection = lsp_inspection(&analysis, false);
       write_effects(&value, inspection,
                     ms_names_span(program->names, program->modules.ptr[declaration->module].file), line, selected->name);
@@ -320,7 +320,7 @@ static bool import_path_definition(LspAnalysis *analysis, const LspDocList *docs
       while (close < text.len && text.ptr[close] != '"') close++;
       if (open >= text.len || close >= text.len || cursor <= open || cursor > close) continue;
       const MsSpan written = ms_span_of(text.ptr + open + 1, close - open - 1);
-      if (ms_span_starts_with(written, ms_span_of_text("@std/"))) {
+      if (ms_span_starts_with_text(written, "@std/")) {
         ms_strbuild_append_text(out, "[{\"uri\":\"manuscript-stdlib:///");
         ms_strbuild_append(out, ms_span_of(written.ptr + 5, written.len - 5));
         ms_strbuild_append_text(out, "\",\"range\":");
@@ -424,7 +424,7 @@ void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition p
 
 /* Whether uses of `selected` can sit in files outside the document's own graph: not a local, not a private function. */
 static bool crosses_files(const LspAnalysis *analysis, const MsOccurrence *selected) {
-  if (ms_span_starts_with(selected->key, ms_span_of_text("binding:")) || ms_span_starts_with(selected->key, ms_span_of_text("parameter:"))) {
+  if (ms_span_starts_with_text(selected->key, "binding:") || ms_span_starts_with_text(selected->key, "parameter:")) {
     return false;
   }
   const MsCheckProgram *program = &analysis->checked.program;
@@ -619,7 +619,7 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     goto done;
   }
   const MsCheckProgram *program = &analysis.checked.program;
-  if (ms_span_find(selected->key, ms_span_of_text(":@std/"), &(size_t){0}) || ms_span_starts_with(selected->key, ms_span_of_text("native:"))) {
+  if (ms_span_find(selected->key, ms_span_of_text(":@std/"), &(size_t){0}) || ms_span_starts_with_text(selected->key, "native:")) {
     refuse(error, "standard-library declarations are read-only");
     goto done;
   }
@@ -803,7 +803,7 @@ void lsp_nav_type_definition(const LspDocList *docs, const LspDoc *doc, LspPosit
       const MsSymbol *declared = &program->symbols.ptr[symbol];
       const MsSpan file = ms_names_span(program->names, program->modules.ptr[declared->module].file);
       size_t at;
-      if (declared->module >= program->user_modules && declared->decl != NULL && ms_span_starts_with(file, ms_span_of_text("@std/")) &&
+      if (declared->module >= program->user_modules && declared->decl != NULL && ms_span_starts_with_text(file, "@std/") &&
           lsp_header(program->modules.ptr[declared->module].source, declared->decl->pos.offset, ms_names_span(program->names, declared->name), &at)) {
         const MsSpan source = program->modules.ptr[declared->module].source;
         const size_t name_length = ms_names_span(program->names, declared->name).len;
@@ -849,8 +849,8 @@ void lsp_nav_inlay_hints(const LspDocList *docs, const LspDoc *doc, LspRange ran
   const MsCheckProgram *program = &analysis.checked.program;
   for (size_t i = 0; analysis.resolved && i < analysis.index.len; i++) {
     const MsOccurrence *entry = &analysis.index.ptr[i];
-    if (!entry->declaration || !ms_span_starts_with(entry->key, ms_span_of_text("binding:")) ||
-        ms_span_starts_with(entry->key, ms_span_of_text("binding:typeparam:")) ||
+    if (!entry->declaration || !ms_span_starts_with_text(entry->key, "binding:") ||
+        ms_span_starts_with_text(entry->key, "binding:typeparam:") ||
         !ms_span_equal(analysis.paths[entry->module], ms_string_span(&doc->path))) {
       continue;
     }

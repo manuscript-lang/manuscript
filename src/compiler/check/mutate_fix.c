@@ -40,7 +40,7 @@ static bool rewrite(MsSpan name, MsSpan after, size_t *length, MsStrBuild *text)
     spaces++;
   }
   const MsSpan rest = ms_span_of(after.ptr + spaces, after.len - spaces);
-  if (ms_span_starts_with(rest, ms_span_of_text(":="))) {
+  if (ms_span_starts_with_text(rest, ":=")) {
     *length = name.len + spaces + 2;
     ms_strbuild_append_text(text, "var ");
     ms_strbuild_append(text, name);

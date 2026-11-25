@@ -8,19 +8,6 @@ static bool is_alnum(uint8_t c) {
   return ms_ascii_is_alnum(c);
 }
 
-static int unhex(uint8_t c) {
-  if (c >= '0' && c <= '9') {
-    return c - '0';
-  }
-  if (c >= 'a' && c <= 'f') {
-    return c - 'a' + 10;
-  }
-  if (c >= 'A' && c <= 'F') {
-    return c - 'A' + 10;
-  }
-  return -1;
-}
-
 static bool is_host_safe(uint8_t c) {
   static const char SAFE[] = "!$&'()*+,;=:[]<>\"";
   for (size_t i = 0; SAFE[i] != 0; i++) {
@@ -137,13 +124,13 @@ void url_escape(MsSpan text, UrlEnc mode, MsStrBuild *out) {
 
 /* Whether the escape at text[i..i+3] is allowed in `mode` (it is well formed). */
 static bool escape_allowed(MsSpan text, size_t i, UrlEnc mode) {
-  const int high = unhex(text.ptr[i + 1]);
+  const int high = ms_hex_value(text.ptr[i + 1]);
   const bool is_percent25 = text.ptr[i + 1] == '2' && text.ptr[i + 2] == '5';
   if (mode == URL_ENC_HOST && high < 8 && !is_percent25) {
     return false;
   }
   if (mode == URL_ENC_ZONE) {
-    const uint8_t value = (uint8_t)(high * 16 + unhex(text.ptr[i + 2]));
+    const uint8_t value = (uint8_t)(high * 16 + ms_hex_value(text.ptr[i + 2]));
     if (!is_percent25 && value != ' ' && url_should_escape(value, URL_ENC_HOST)) {
       return false;
     }
@@ -159,7 +146,7 @@ static bool validate(MsSpan text, UrlEnc mode, bool *rewrite) {
     const uint8_t c = text.ptr[i];
     if (c == '%') {
       has_percent = true;
-      if (i + 2 >= text.len || unhex(text.ptr[i + 1]) < 0 || unhex(text.ptr[i + 2]) < 0 ||
+      if (i + 2 >= text.len || ms_hex_value(text.ptr[i + 1]) < 0 || ms_hex_value(text.ptr[i + 2]) < 0 ||
           !escape_allowed(text, i, mode)) {
         return false;
       }
@@ -189,7 +176,7 @@ bool url_unescape(MsSpan text, UrlEnc mode, MsStrBuild *out) {
   for (size_t i = 0; i < text.len; i++) {
     const uint8_t c = text.ptr[i];
     if (c == '%') {
-      ms_strbuild_append_byte(out, (uint8_t)(unhex(text.ptr[i + 1]) * 16 + unhex(text.ptr[i + 2])));
+      ms_strbuild_append_byte(out, (uint8_t)(ms_hex_value(text.ptr[i + 1]) * 16 + ms_hex_value(text.ptr[i + 2])));
       i += 2;
     } else if (c == '+' && mode == URL_ENC_QUERY_COMPONENT) {
       ms_strbuild_append_byte(out, ' ');

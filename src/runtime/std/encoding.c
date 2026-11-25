@@ -281,14 +281,6 @@ void msstd_encoding_hex_encode(const MsBytes *data, MsString *out) {
   *out = text_finish(&text);
 }
 
-static int hex_value(uint8_t digit) {
-  if (ms_ascii_is_digit(digit)) {
-    return digit - '0';
-  }
-  const uint8_t lower = ms_ascii_to_lower(digit);
-  return lower >= 'a' && lower <= 'f' ? lower - 'a' + 10 : -1;
-}
-
 /* The budget is checked before the length's parity and the digits. */
 uint8_t msstd_encoding_hex_decode(const MsString *text, uint8_t has_max, int64_t max, MsBytes *out) {
   *(out) = (MsBytes){0};
@@ -305,8 +297,8 @@ uint8_t msstd_encoding_hex_decode(const MsString *text, uint8_t has_max, int64_t
   }
   uint8_t *bytes = bytes_begin(out, in.len / 2);
   for (size_t i = 0; i < in.len / 2; i++) {
-    const int high = hex_value(in.ptr[2 * i]);
-    const int low = hex_value(in.ptr[2 * i + 1]);
+    const int high = ms_hex_value(in.ptr[2 * i]);
+    const int low = ms_hex_value(in.ptr[2 * i + 1]);
     if (high < 0 || low < 0) {
       bytes_discard(out);
       return MS_STATUS_INVALID_DATA;

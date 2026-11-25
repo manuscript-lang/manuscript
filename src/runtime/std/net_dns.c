@@ -304,7 +304,7 @@ static void read_options(MsDnsConfig *config, MsSpan line, size_t at) {
   static const char key[] = "ndots:";
   MsSpan word;
   while (next_word(line, &at, &word)) {
-    if (word.len > sizeof key - 1 && ms_span_starts_with(word, ms_span_of_text(key))) {
+    if (word.len > sizeof key - 1 && ms_span_starts_with_text(word, key)) {
       int value = 0;
       for (size_t i = sizeof key - 1; i < word.len && word.ptr[i] >= '0' && word.ptr[i] <= '9' && value < 15; i++) {
         value = value * 10 + (word.ptr[i] - '0');

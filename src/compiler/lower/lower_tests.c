@@ -28,7 +28,7 @@ static MsSymbolId module_symbol(const MsCheckProgram *program, const char *modul
   }
   for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
     const MsModuleInfo *info = &program->modules.ptr[index];
-    if (!ms_span_ends_with(ms_names_span(program->names, info->file), ms_span_of_text(module))) {
+    if (!ms_span_ends_with_text(ms_names_span(program->names, info->file), module)) {
       continue;
     }
     const MsSymbolId *found = ms_scope_get(&info->scope, id);
