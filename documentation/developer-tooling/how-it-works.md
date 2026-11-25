@@ -69,12 +69,12 @@ The same compiler includes the standard library, formatter, linter, language ser
 
 ## Build tools and local setup
 
-Native builds use `lld` to link the executable. Optimized builds also use LLVM tools when available. `ms` uses explicitly configured local tools first, then complete cached tools; it downloads missing tools from pinned releases and verifies their SHA-256 hashes.
+Native builds use `lld` to link the executable. `ms` optimizes and generates code in-process with the shared LLVM library installed beside it; no `opt` or `llc` is needed.
 
 | Tool | Local setting | Cache |
 | --- | --- | --- |
 | Linker | `MS_LLD`: path to a compatible `lld` executable | `<cache>/ms/lld/` |
-| LLVM optimization | `MS_LLVM_TOOLS`: directory containing `opt`, `llc` and `llvm-link` | `<cache>/ms/llvm/` |
+| LLVM library | `MS_LLVM`: path to a compatible shared LLVM library | shipped in `lib/ms/lib` |
 
 To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
 

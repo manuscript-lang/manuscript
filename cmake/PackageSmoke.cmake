@@ -1,6 +1,6 @@
 # Unpacks the distribution archive into an empty directory and builds, runs and tests the packaged hello example with
 # nothing else: PATH holds no compiler or LLVM tool and no MS_* variable is set, so ms must find the runtime, the
-# startup files, libLLVM, llc and lld inside the package.
+# startup files, libLLVM and lld inside the package.
 #   cmake -DDIST=<directory holding manuscript-*.tar.gz or .zip> -DWORK=<scratch dir> -P cmake/PackageSmoke.cmake
 cmake_minimum_required(VERSION 3.25)
 file(GLOB archives "${DIST}/manuscript-*.tar.gz" "${DIST}/manuscript-*.zip")
@@ -19,7 +19,7 @@ if(WIN32)
   set(suffix ".exe")
 endif()
 set(ms "${root}/bin/ms${suffix}")
-foreach(variable MS_OPT MS_LLC MS_LLVM MS_LLD MS_FILES MS_RUNTIME)
+foreach(variable MS_LLVM MS_LLD MS_FILES MS_RUNTIME)
   unset(ENV{${variable}})
 endforeach()
 if(WIN32)

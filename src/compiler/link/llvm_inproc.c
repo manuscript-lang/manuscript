@@ -128,13 +128,6 @@ static bool message_failure(char *message, const char *what, MsStrBuild *why) {
 
 bool llvm_load(MsSpan path, MsStrBuild *why) { return load(path, why); }
 
-bool llvm_usable(MsSpan path) {
-  MsStrBuild why = ms_strbuild_new();
-  const bool usable = load(path, &why);
-  ms_strbuild_free(&why);
-  return usable;
-}
-
 /* LLVM's code generator reads its choices from process-wide options, and compiles of several modules may run at once:
  * the options a compile needs are set under a lock, and only when they differ from the ones set last. */
 static void apply_options(const LlvmSettings *settings) {
@@ -151,7 +144,7 @@ static void apply_options(const LlvmSettings *settings) {
                        : settings->fast_codegen     ? "-regalloc=basic"
                                                     : "-regalloc=greedy";
     options[count++] = settings->fast_codegen ? "-enable-misched=0" : "-enable-misched=1";
-    options[count++] = "-dse-memoryssa-walklimit=10"; /* the same limit as the process route, see object.c */
+    options[count++] = "-dse-memoryssa-walklimit=10"; /* DSE's default memory-walk limit makes one huge generated function (60k lines in the YAML parser) cost 4 s of a 15 s optimizer run; 10 takes 15% off the module's optimizer time and leaves the suite's binaries unchanged */
     api.LLVMParseCommandLineOptions(count, options, NULL);
     applied = wanted;
   }
@@ -180,7 +173,7 @@ static bool parse_module(Ref context, MsSpan input, Ref *module, MsStrBuild *why
   size_t unit_at = 0;
   if (ms_span_find(input, ms_span_of_text("!llvm.dbg.cu"), &unit_at) &&
       api.LLVMGetNamedMetadataNumOperands(*module, "llvm.dbg.cu") == 0) {
-    return message_failure(NULL, "the IR's debug info is invalid and LLVM dropped it (run opt on the IR to see why)", why);
+    return message_failure(NULL, "the IR's debug info is invalid and LLVM dropped it (see the IR with `ms emit --ir`)", why);
   }
   return true;
 }

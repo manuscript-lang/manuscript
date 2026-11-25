@@ -1,5 +1,4 @@
-/* compiler/link/object.h: LLVM IR text to an object file with the pinned `opt` and `llc`, run as child
- * processes. */
+/* compiler/link/object.h: LLVM IR text to an object file through the shared libLLVM loaded in this process (llvm_inproc.h). */
 #ifndef MS_COMPILER_LINK_OBJECT_H
 #define MS_COMPILER_LINK_OBJECT_H
 
@@ -7,10 +6,7 @@
 #include "compiler/emit/emit_tables.h"
 
 typedef struct ObjectOptions {
-  MsSpan opt;       /* the `opt` executable */
-  MsSpan llc;       /* the `llc` executable */
-  MsSpan llvm;      /* the shared libLLVM to compile in this process; empty to run `opt` and `llc` instead */
-  MsSpan directory; /* an existing directory for the intermediate files; they are removed afterwards */
+  MsSpan llvm;      /* the shared libLLVM to compile with, loaded by llvm_load */
   bool speed;       /* optimize: -O3, or -O2 with `debug`; otherwise the IR goes straight to the code generator at -O0 */
   bool debug;       /* with `speed`: a Debug build, which uses -O2 */
   bool vectorize;   /* with `speed`: allow LLVM's loop and SLP vectorizers */
@@ -20,8 +16,7 @@ typedef struct ObjectOptions {
   uint32_t unit, units;           /* this is module `unit` of a program written as `units` modules (see emit_module) */
 } ObjectOptions;
 
-/* What phase one of a module leaves for phase two: the assembly it generated (in-process; the child processes leave it
- * in a file). */
+/* What phase one of a module leaves for phase two: the assembly it generated. */
 typedef struct ObjectCode {
   const char *data;
   size_t size;

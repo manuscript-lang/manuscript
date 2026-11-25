@@ -3,8 +3,7 @@
  *
  * Linux links against stand-ins for glibc 2.28's shared libraries made from the table of its exports, so the
  * build machine's glibc is not the program's minimum; with `musl` it links static over musl's startup files.
- * macOS links over text stubs of the system libraries; Windows over the mingw-w64 CRT. Everything runs the
- * tools as child processes. */
+ * macOS links over text stubs of the system libraries; Windows over the mingw-w64 CRT. `lld` runs as a child process. */
 #ifndef MS_COMPILER_LINK_LINK_H
 #define MS_COMPILER_LINK_LINK_H
 
@@ -12,8 +11,7 @@
 
 typedef struct LinkOptions {
   MsSpan lld;   /* the `lld` executable */
-  MsSpan llc;   /* the `llc` executable, which makes the glibc stubs when `llvm` is empty */
-  MsSpan llvm;  /* the shared LLVM library that makes the glibc stubs in this process; empty to run `llc` */
+  MsSpan llvm;  /* the shared LLVM library, already loaded, that makes the glibc stubs in this process */
   MsSpan files; /* the directory with the startup files, runtime libraries and the glibc export table */
   bool strip;   /* drop the symbol table */
   bool musl;    /* static musl instead of the glibc 2.28 stubs; the inputs must be the musl runtime */

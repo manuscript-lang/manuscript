@@ -52,8 +52,7 @@ jobs:
       - uses: ./.github/actions/toolchain
       - run: cmake --preset ci
       - run: cmake --build --preset ci
-      # The pinned shared LLVM library: ms compiles programs through it in this process instead of running opt and
-      # llc. The step exports MS_LLVM to the steps after it.
+      # The pinned shared LLVM library: ms compiles programs through it in this process. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.

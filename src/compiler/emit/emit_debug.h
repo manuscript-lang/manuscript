@@ -1,5 +1,5 @@
 /* compiler/emit/emit_debug.h: source places for the fault tables. Every instruction gets
- * `!dbg !DILocation(line: <line>, column: <scope>)` in a line-tables-only compile unit, so the assembly `llc`
+ * `!dbg !DILocation(line: <line>, column: <scope>)` in a line-tables-only compile unit, so the assembly LLVM
  * writes has a `.loc file line scope` before each instruction, which the tables step (compiler/link) turns into
  * the line ranges. The column carries the module-wide scope number: 1 to the number of scopes the functions
  * list is an inlined callee of MIR, and above that one number per function body, so a function LLVM inlines

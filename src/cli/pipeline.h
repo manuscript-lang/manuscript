@@ -1,4 +1,4 @@
-/* cli/pipeline.h: a checked program to an executable: LLVM IR from the back end, an object from `opt` and `llc`,
+/* cli/pipeline.h: a checked program to an executable: LLVM IR from the back end, an object from the loaded LLVM library,
  * then the linker. The commands that build, run and test call this after they have checked the program. */
 #ifndef MS_CLI_PIPELINE_H
 #define MS_CLI_PIPELINE_H
@@ -24,14 +24,14 @@ typedef struct MsLinkRequest {
 
 /* Builds the executable. On failure returns false and `error` (valid until the next call) says what failed.
  *
- * The tools come from the environment: `MS_OPT`, `MS_LLC` and `MS_LLD` name the executables (default `opt`, `llc`,
- * `lld`, found on PATH); `MS_FILES` is the directory of startup files and the glibc export table; `MS_RUNTIME` lists
+ * The tools come from the environment: `MS_LLD` names the linker (default `lld`, found on PATH) and `MS_LLVM` the shared LLVM library (default the one
+ * installed beside ms); `MS_FILES` is the directory of startup files and the glibc export table; `MS_RUNTIME` lists
  * the runtime archives, separated by `:` (`;` on Windows). Without `MS_FILES` and `MS_RUNTIME` the build's own
  * `files` directory next to `ms` and its runtime archives are used (cmake/MsRuntimePackage.cmake). */
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error);
 
 /* The back-end options `ms_pipeline_link` uses for `request` (before it splits the program into modules), so a
- * tool that prints the IR shows what a build would hand to `opt`. */
+ * tool that prints the IR shows what a build would hand to LLVM. */
 BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request);
 
 /* The name of the executable `run` and `test` build inside their temporary folder: Windows will not start a program
