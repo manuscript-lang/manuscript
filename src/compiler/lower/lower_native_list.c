@@ -132,14 +132,21 @@ bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue
 /* `index` counted from the end when negative, checked against `length`: out of range faults with `kind` (the runtime's
  * `List` fault kind of the operation) and the code after it runs only for an index inside the list. */
 static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int64_t kind) {
-  const MirValue zero = mir_b_iconst(&fn->b, 0);
-  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, zero);
-  const MirValue at = mir_b_select(&fn->b, negative, mir_b_binop(&fn->b, MOP_IAdd, index, length), index);
-  const MirValue pair[2] = {at, length};
-  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
+  /* An index inside the list is one unsigned comparison; only another one takes the block that counts from the end. */
+  const MirBlock slow = mir_b_new_block(&fn->b);
   const MirBlock hit = mir_b_new_block(&fn->b);
   const MirBlock miss = mir_b_new_block(&fn->b);
-  mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
+  const MirValue at = mir_b_add_block_param(&fn->b, hit, MIR_INT, MM_MOVE);
+  const MirValue pair[2] = {index, length};
+  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
+  mir_b_br_if(&fn->b, inside, hit, &index, 1, slow, NULL, 0);
+  mir_b_seal_block(&fn->b, slow);
+  mir_b_switch_to(&fn->b, slow);
+  const MirValue wrapped = mir_b_binop(&fn->b, MOP_IAdd, index, length);
+  const MirValue wrapped_pair[2] = {wrapped, length};
+  const MirValue wrapped_inside =
+      mir_b_emit(&fn->b, MOP_UICmp, wrapped_pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
+  mir_b_br_if(&fn->b, wrapped_inside, hit, &wrapped, 1, miss, NULL, 0);
   mir_b_seal_block(&fn->b, hit);
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
