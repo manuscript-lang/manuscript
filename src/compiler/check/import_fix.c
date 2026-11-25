@@ -1,5 +1,6 @@
 /* compiler/check/import_fix.c: removing a binding from an import statement (see import_fix.h). */
 #include "compiler/check/import_fix.h"
+#include "base/chars.h"
 
 #include "base/strbuild.h"
 #include "compiler/syntax/lex.h"
@@ -13,14 +14,10 @@ typedef struct FixInput {
   size_t at; /* index of the binding's name token */
 } FixInput;
 
-static bool is_blank(uint8_t byte) {
-  return byte == ' ' || byte == '\t';
-}
-
 static bool all_space(MsSpan text) {
   for (size_t index = 0; index < text.len; index++) {
     const uint8_t byte = text.ptr[index];
-    if (!is_blank(byte) && byte != '\n' && byte != '\r') {
+    if (!ms_ascii_is_blank(byte) && byte != '\n' && byte != '\r') {
       return false;
     }
   }
@@ -108,7 +105,7 @@ static bool clause_end(const FixInput *in, uint32_t *end) {
     return false;
   }
   uint32_t at = in->tokens[index].end.offset;
-  while (at < in->source.len && is_blank(in->source.ptr[at])) {
+  while (at < in->source.len && ms_ascii_is_blank(in->source.ptr[at])) {
     at++;
   }
   *end = at < in->source.len && in->source.ptr[at] == ',' ? at + 1 : at;

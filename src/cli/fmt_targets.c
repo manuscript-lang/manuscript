@@ -26,13 +26,7 @@ static int64_t file_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
   const FmtFile *x = (const void *)a;
   const FmtFile *y = (const void *)b;
-  const size_t common = x->display.len < y->display.len ? x->display.len : y->display.len;
-  for (size_t i = 0; i < common; i++) {
-    if (x->display.ptr[i] != y->display.ptr[i]) {
-      return x->display.ptr[i] < y->display.ptr[i] ? -1 : 1;
-    }
-  }
-  return x->display.len == y->display.len ? 0 : (x->display.len < y->display.len ? -1 : 1);
+  return ms_span_compare(x->display, y->display);
 }
 
 static bool known(const FmtFileList *files, MsSpan path) {

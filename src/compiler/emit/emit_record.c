@@ -55,23 +55,11 @@ static bool field_span(EmitCx *cx, MirTy type, uint32_t field, uint32_t *start, 
   return true;
 }
 
-/* The memory offsets of the leaves of `value`, from `mir_mem_layout`; free with ms_free. */
-static uint32_t *leaf_offsets(EmitCx *cx, MirValue value) {
-  MsSpan leaves = emit_value_leaves(cx, value);
-  size_t bytes = 0;
-  if (!ms_size_mul(leaves.len + 1, sizeof(uint32_t), &bytes)) {
-    ms_fatal(MS_FATAL_OVERFLOW, "leaf count");
-  }
-  uint32_t *offsets = ms_alloc_zeroed(bytes);
-  (void)mir_mem_layout(leaves, offsets);
-  return offsets;
-}
-
 /* Bytes of the leaves of `value` without the padding after the last (a copy of it must not reach the next field);
  * `aligned` receives whether a copy at `at` keeps each leaf's natural alignment. */
 static uint32_t packed_bytes(EmitCx *cx, MirValue value, uint32_t at, bool *aligned) {
   MsSpan leaves = emit_value_leaves(cx, value);
-  uint32_t *offsets = leaf_offsets(cx, value);
+  uint32_t *offsets = emit_leaf_offsets(cx, value);
   const MirMemLayout layout = mir_mem_layout(leaves, NULL);
   *aligned = at % layout.align == 0;
   const uint32_t bytes = leaves.len == 0 ? 0 : offsets[leaves.len - 1] + mir_leaf_size(leaves.ptr[leaves.len - 1]);
@@ -86,7 +74,7 @@ static bool held_record_new(EmitCx *cx, const MirInst *inst) {
     return false;
   }
   MsSpan leaves = emit_value_leaves(cx, inst->res);
-  uint32_t *offsets = leaf_offsets(cx, inst->res);
+  uint32_t *offsets = emit_leaf_offsets(cx, inst->res);
   uint32_t at = 0;
   bool ok = true;
   for (uint32_t arg = 0; ok && arg < inst->nargs; arg++) {
@@ -141,7 +129,7 @@ static bool held_record_set(EmitCx *cx, const MirInst *inst, uint32_t start, uin
                        emit_slot_bytes(cx, value_type(cx, inst->res)));
   }
   MsSpan leaves = emit_value_leaves(cx, inst->res);
-  uint32_t *offsets = leaf_offsets(cx, inst->res);
+  uint32_t *offsets = emit_leaf_offsets(cx, inst->res);
   for (uint32_t leaf = 0; leaf < count; leaf++) {
     emit_store_leaf(cx, leaves.ptr[start + leaf], inst->args[1], leaf, emit_address(cx, to, offsets[start + leaf]));
   }
@@ -172,8 +160,8 @@ static bool held_record_get(EmitCx *cx, const MirInst *inst, uint32_t start, uin
   if (count == 0 || !emit_wide_held(cx, inst->res) || !emit_wide_address(cx, inst->args[0], from, sizeof from)) {
     return false;
   }
-  uint32_t *source = leaf_offsets(cx, inst->args[0]);
-  uint32_t *result = leaf_offsets(cx, inst->res);
+  uint32_t *source = emit_leaf_offsets(cx, inst->args[0]);
+  uint32_t *result = emit_leaf_offsets(cx, inst->res);
   bool same = source[start] >= result[0] && result[0] == 0;
   for (uint32_t leaf = 1; leaf < count && same; leaf++) {
     same = source[start + leaf] - source[start] == result[leaf] - result[0];

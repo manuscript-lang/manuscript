@@ -208,12 +208,8 @@ static int compare_statement(const void *left, const void *right) {
   const Statement *a = left, *b = right;
   const MsSpan pairs[2][2] = {{a->path, b->path}, {a->text, b->text}};
   for (size_t k = 0; k < 2; k++) {
-    const MsSpan x = pairs[k][0], y = pairs[k][1];
-    const size_t common = x.len < y.len ? x.len : y.len;
-    for (size_t i = 0; i < common; i++) {
-      if (x.ptr[i] != y.ptr[i]) return x.ptr[i] < y.ptr[i] ? -1 : 1;
-    }
-    if (x.len != y.len) return x.len < y.len ? -1 : 1;
+    const int order = ms_span_compare(pairs[k][0], pairs[k][1]);
+    if (order != 0) return order;
   }
   return 0;
 }

@@ -292,12 +292,7 @@ static int64_t compare_collected(uint8_t *env, const uint8_t *left, const uint8_
   if (code != 0) {
     return code < 0 ? -1 : 1;
   }
-  const size_t common = a->diag.message.len < b->diag.message.len ? a->diag.message.len : b->diag.message.len;
-  const int text = common == 0 ? 0 : __builtin_memcmp(a->diag.message.ptr, b->diag.message.ptr, common);
-  if (text != 0) {
-    return text < 0 ? -1 : 1;
-  }
-  return a->diag.message.len == b->diag.message.len ? 0 : (a->diag.message.len < b->diag.message.len ? -1 : 1);
+  return ms_span_compare(a->diag.message, b->diag.message);
 }
 
 static bool same_finding(const Finding *a, const Finding *b) {

@@ -169,13 +169,7 @@ static void emit_field(Text *text, const MsShapeMember *field, const uint8_t *ba
 static bool name_before(const MsShapeTable *table, const MsShapeMember *a, const MsShapeMember *b) {
   const MsSpan left = ms_span_of_text(ms_shape_text(table, a->name));
   const MsSpan right = ms_span_of_text(ms_shape_text(table, b->name));
-  const size_t common = left.len < right.len ? left.len : right.len;
-  for (size_t at = 0; at < common; at++) {
-    if (left.ptr[at] != right.ptr[at]) {
-      return left.ptr[at] < right.ptr[at];
-    }
-  }
-  return left.len < right.len;
+  return ms_span_compare(left, right) < 0;
 }
 
 /* The place of field `index` among the `count` fields from `first` when written by name; equal names keep

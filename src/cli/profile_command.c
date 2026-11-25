@@ -356,9 +356,7 @@ static int64_t compare_rows(uint8_t *unused, const uint8_t *a, const uint8_t *b)
   if (left->bytes != right->bytes) {
     return left->bytes > right->bytes ? -1 : 1;
   }
-  const size_t common = left->function.len < right->function.len ? left->function.len : right->function.len;
-  const int order = __builtin_memcmp(left->function.ptr, right->function.ptr, common);
-  return order != 0 ? order : (left->function.len < right->function.len ? -1 : left->function.len > right->function.len);
+  return ms_span_compare(left->function, right->function);
 }
 
 /* `text` right-aligned in `width` columns after one space. */

@@ -29,7 +29,7 @@ static int64_t compare_version_tags(uint8_t *env, const uint8_t *a, const uint8_
   const VersionTag *x = (const VersionTag *)(const void *)a;
   const VersionTag *y = (const VersionTag *)(const void *)b;
   const int by_version = ms_version_compare(&x->version, &y->version);
-  return by_version != 0 ? by_version : span_compare(x->tag, y->tag);
+  return by_version != 0 ? by_version : ms_span_compare(x->tag, y->tag);
 }
 
 static MsSpan version_name(Solver *s, const MsVersion *version) {
@@ -199,7 +199,7 @@ static bool better_name(MsSpan current, MsSpan candidate) {
   /* Rust compares (is_commit(current), candidate) > (is_commit(candidate), current). */
   const bool a = is_commit(current);
   const bool b = is_commit(candidate);
-  return a != b ? a : span_compare(candidate, current) > 0;
+  return a != b ? a : ms_span_compare(candidate, current) > 0;
 }
 
 static const MsLockEntry *locked_pin(const Solver *s, const Ask *ask) {
@@ -371,7 +371,7 @@ static bool pick_repo(Solver *s, MsSpan repo, const AskPointerList *list, Choice
 
 static int64_t compare_repo_spans(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
-  return span_compare(*(const MsSpan *)(const void *)a, *(const MsSpan *)(const void *)b);
+  return ms_span_compare(*(const MsSpan *)(const void *)a, *(const MsSpan *)(const void *)b);
 }
 
 bool solver_choose(Solver *s, ChoiceList *next) {
