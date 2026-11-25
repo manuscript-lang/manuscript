@@ -15,7 +15,8 @@ static bool same_signature(const MirExtern *a, const MirExtern *b) {
       return false;
     }
   }
-  return true;
+  /* Two roles on one signature (a probe of a map by address: every map is a pointer) are two declarations. */
+  return a->role == MR_NONE || b->role == MR_NONE || a->role == b->role;
 }
 
 uint32_t mir_extern_intern(MirModule *module, const MirExtern *def) {
