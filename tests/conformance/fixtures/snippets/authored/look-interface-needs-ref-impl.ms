@@ -1,4 +1,4 @@
-// conform: tags=types,interfaces
+// conform: tags=ownership,interfaces
 // conform: phase=check
 interface Source {
 	hold fn items() &List[String]
