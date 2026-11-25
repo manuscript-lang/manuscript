@@ -1,0 +1,33 @@
+--- a/src/main.ms
++++ b/src/main.ms
+@@ -1,6 +1,6 @@
+ import expect_equal from "@std/test/test.ms"
+ 
+-MAX_QUANTITY := 100
++MAX_QUANTITY := 10000
+ 
+ type Order {
+ 	id, sku String
+@@ -47,7 +47,7 @@
+ 		return null
+ 	}
+ 
+-	return if n >= 1 { n } else { null }
++	return if n >= 1 and n <= MAX_QUANTITY { n } else { null }
+ }
+ 
+ fn money(cents Int) String => f"{cents / 100}.{cents % 100}"
+@@ -57,7 +57,12 @@
+ 		return "error: bad order id"
+ 	}
+ 
+-	w.stock.add(sku.clone(), w.stock.get_or(sku, 0) - count)
++	now := w.stock.get_or(sku, 0)
++	if now < count {
++		return f"error: only {now} of {sku} in stock"
++	}
++
++	w.stock.add(sku.clone(), now - count)
+ 	w.orders.append(Order(id.clone(), sku.clone(), count))
+ 	return f"ok {id}"
+ }

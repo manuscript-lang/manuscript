@@ -8,10 +8,10 @@ Screenshots live in `website/static/images/`, with a `-dark` variant next to eac
 
 Alt text is required and the path must start with `/images/`; the book build fails otherwise.
 
-Regenerate a code-map screenshot from a project:
+Regenerate the code-map screenshots from the sample project in `website/screenshots/codemap/` (`change.patch` turns its `before` state into the checked-in source):
 
 ```sh
-ms diagram ms.toml --format html --diff change.patch -o map.html
+ms diagram website/screenshots/codemap/ms.toml --format html --diff website/screenshots/codemap/change.patch -o map.html
 node website/screenshots/capture.cjs map.html run_command code-map Behavior Calls
 ```
 
