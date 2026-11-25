@@ -131,6 +131,7 @@ bool parse_foreign_declaration(Parser *p, MsToken t, MsSpan *message, const char
 
 /* parse_type.c */
 bool parse_take_move(Parser *p, const MsTok *nexts, size_t count);
+bool parse_take_hold(Parser *p, const MsTok *nexts, size_t count);
 MS_NODISCARD bool parse_named_type(Parser *p, MsTypeRef **out);
 MS_NODISCARD bool parse_type_args(Parser *p, MsTypeRefs *out);
 MS_NODISCARD bool parse_move_type(Parser *p, MsTypeRef **out, bool *moves);
