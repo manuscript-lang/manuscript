@@ -534,75 +534,197 @@ IcKnown ic_known_aliased(MsArena *arena, const MirModule *m, const MirFunc *f) {
   return known;
 }
 
+/* The `ptr.field` values whose only uses are loads and further `ptr.field`s: a path into a record that changes nothing. */
+static const bool *ic_field_paths(MsArena *arena, const MirFunc *f) {
+  bool *pure = MS_ARENA_NEW_ARRAY(arena, bool, f->values.len + 1);
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
+      const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
+      if (in->op == MOP_PtrField && in->res != MIR_NONE) {
+        pure[in->res] = true;
+      }
+    }
+  }
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirBlockData *blk = &f->blocks.ptr[b];
+    for (uint32_t i = 0; i < blk->insts.len; i++) {
+      const MirInst *in = &blk->insts.ptr[i];
+      for (uint32_t k = in->op == MOP_Load || in->op == MOP_PtrField ? 1 : 0; k < in->nargs; k++) {
+        pure[in->args[k]] = false;
+      }
+    }
+    mir_term_each_value(&blk->term, ic_field_escape, pure);
+  }
+  return pure;
+}
+
 static void ic_mark_used(void *context, MirValue value) {
   ((bool *)context)[value] = true;
 }
 
-/* A closure stored in a local record: `slot S; put S, T` with `T = type.new (.., c, ..)`, no other write, and no use of S
- * but `ptr.field` reads and a final take, drop or forget. A load of that field then yields `c`, so a record that carries
- * a callback (`Mapped`, `Filtered`) lets the call through it inline like a direct one. */
+/* What a function says about the records it builds in place: where each value is defined, which slots are put once
+ * and used only through `ptr.field`, and which fields anything writes. */
+typedef struct IcRecords {
+  const MirInst *const *defs;
+  uint32_t *def_block, *def_index;
+  uint32_t *puts, *put_block, *put_index;
+  MirValue *put_value;
+  bool *other;           /* a value used other than as the base of a `ptr.field`, or by the end of its slot */
+  uint32_t *first_write; /* per record value: the first write to it in its defining block (or UINT32_MAX) */
+  uint32_t *wtype, *wfield, nwrites;
+} IcRecords;
+
+static bool ic_field_written(const IcRecords *r, uint32_t type, uint32_t field) {
+  for (uint32_t i = 0; i < r->nwrites; i++) {
+    if (r->wtype[i] == type && r->wfield[i] == field) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* The `type.new` that builds `v`: through a `move.out`, and through a `type.get` of a record built in the same block
+ * (nothing can write the field between building and reading it when no write to it comes first in that block). */
+static const MirInst *ic_record_of(const IcRecords *r, MirValue v) {
+  for (int depth = 0; depth < 16; depth++) {
+    const MirInst *d = r->defs[v];
+    if (d == NULL) {
+      return NULL;
+    }
+    if (d->op == MOP_TypeNew) {
+      return d;
+    }
+    if (d->op == MOP_MoveOut) {
+      v = d->args[0];
+    } else if (d->op == MOP_TypeGet && d->imm.tag == MI_FIELD) {
+      const MirValue base = d->args[0];
+      const MirInst *made = ic_record_of(r, base);
+      if (made == NULL || d->imm.b >= made->nargs || r->def_block[base] != r->def_block[v] ||
+          r->first_write[base] < r->def_index[v]) {
+        return NULL;
+      }
+      v = made->args[d->imm.b];
+    } else {
+      return NULL;
+    }
+  }
+  return NULL;
+}
+
+/* The `type.new` of the record that pointer `p` designates, with the position of the `put` that stored it. */
+static const MirInst *ic_pointee(const IcRecords *r, MirValue p, uint32_t *block, uint32_t *index) {
+  const MirInst *d = r->defs[p];
+  if (d == NULL) {
+    return NULL;
+  }
+  if (d->op == MOP_Slot) {
+    if (r->other[p] || r->puts[p] != 1) {
+      return NULL;
+    }
+    *block = r->put_block[p];
+    *index = r->put_index[p];
+    return ic_record_of(r, r->put_value[p]);
+  }
+  if (d->op != MOP_PtrField || d->imm.tag != MI_FIELD || r->other[p]) {
+    return NULL;
+  }
+  const MirInst *outer = ic_pointee(r, d->args[0], block, index);
+  if (outer == NULL || d->imm.b >= outer->nargs || ic_field_written(r, d->imm.a, d->imm.b)) {
+    return NULL;
+  }
+  const MirInst *inner = ic_record_of(r, outer->args[d->imm.b]);
+  return inner;
+}
+
+/* A closure stored in a record built in place: `slot S; put S, T` with `T = type.new (.., c, ..)` (possibly nested in
+ * records built the same way), no other write, and S used only through `ptr.field` reads and a final take, drop or
+ * forget. A load of that field then yields `c`, so a record that carries a callback (`Mapped`, `Filtered`) lets the call
+ * through it inline like a direct one. */
 static void ic_slot_fields(MsArena *arena, const MirFunc *f, const MirInst *const *defs, IcKnown *known,
                            const IcKnown *closures) {
   const uint32_t nv = (uint32_t)f->values.len + 1;
-  uint32_t *puts = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
-  uint32_t *put_block = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
-  uint32_t *put_index = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
-  MirValue *put_value = MS_ARENA_NEW_ARRAY(arena, MirValue, nv);
-  bool *other = MS_ARENA_NEW_ARRAY(arena, bool, nv);
-  uint64_t *written = MS_ARENA_NEW_ARRAY(arena, uint64_t, nv); /* bit per field: reached by more than a read */
-  const bool *reads = ic_field_reads(arena, f);
+  IcRecords r = {.defs = defs};
+  r.def_block = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  r.def_index = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  r.puts = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  r.put_block = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  r.put_index = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  r.put_value = MS_ARENA_NEW_ARRAY(arena, MirValue, nv);
+  r.other = MS_ARENA_NEW_ARRAY(arena, bool, nv);
+  r.first_write = MS_ARENA_NEW_ARRAY(arena, uint32_t, nv);
+  const uint32_t ninsts = mir_inst_count(f) + 1;
+  r.wtype = MS_ARENA_NEW_ARRAY(arena, uint32_t, ninsts);
+  r.wfield = MS_ARENA_NEW_ARRAY(arena, uint32_t, ninsts);
+  for (uint32_t v = 0; v < nv; v++) {
+    r.first_write[v] = UINT32_MAX;
+  }
+  const bool *reads = ic_field_paths(arena, f);
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     const MirInstList *insts = &f->blocks.ptr[b].insts;
     for (uint32_t i = 0; i < insts->len; i++) {
       const MirInst *in = &insts->ptr[i];
+      if (in->res != MIR_NONE) {
+        r.def_block[in->res] = b;
+        r.def_index[in->res] = i;
+      }
+    }
+  }
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirInstList *insts = &f->blocks.ptr[b].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      const MirInst *in = &insts->ptr[i];
+      const bool field_write = (in->op == MOP_TypeSet || in->op == MOP_TypeFill ||
+                                (in->op == MOP_PtrField && in->res != MIR_NONE && !reads[in->res])) &&
+                               in->imm.tag == MI_FIELD;
+      if (field_write) {
+        r.wtype[r.nwrites] = in->imm.a;
+        r.wfield[r.nwrites++] = in->imm.b;
+        if (in->op != MOP_PtrField && r.def_block[in->args[0]] == b && r.first_write[in->args[0]] > i) {
+          r.first_write[in->args[0]] = i;
+        }
+      }
       for (uint32_t k = 0; k < in->nargs; k++) {
         const MirValue a = in->args[k];
-        if (k == 0 && in->op == MOP_PtrField && in->imm.tag == MI_FIELD && in->res != MIR_NONE) {
-          if (!reads[in->res]) {
-            written[a] |= (uint64_t)1 << (in->imm.b < 63 ? in->imm.b : 63);
-          }
-        } else if (k == 0 && in->op == MOP_Put && in->nargs == 2) {
-          puts[a]++;
-          put_block[a] = b;
-          put_index[a] = i;
-          put_value[a] = in->args[1];
-        } else if (!(k == 0 && (in->op == MOP_Take || in->op == MOP_Drop || in->op == MOP_Forget))) {
-          other[a] = true;
+        if (k == 0 && in->op == MOP_Put && in->nargs == 2) {
+          r.puts[a]++;
+          r.put_block[a] = b;
+          r.put_index[a] = i;
+          r.put_value[a] = in->args[1];
+        } else if (!(k == 0 && (in->op == MOP_PtrField || in->op == MOP_Take || in->op == MOP_Drop ||
+                                in->op == MOP_Forget))) {
+          r.other[a] = true;
         }
       }
     }
-    mir_term_each_value(&f->blocks.ptr[b].term, ic_mark_used, other);
+    mir_term_each_value(&f->blocks.ptr[b].term, ic_mark_used, r.other);
   }
   MirBlock *order = NULL;
-  const MirDomTree *tree = NULL;
-  MirDomTree tree_storage;
+  MirDomTree tree = {0};
+  bool have_tree = false;
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     const MirInstList *insts = &f->blocks.ptr[b].insts;
     for (uint32_t i = 0; i < insts->len; i++) {
       const MirInst *load = &insts->ptr[i];
       const MirInst *field = load->op == MOP_Load && load->nargs == 1 ? defs[load->args[0]] : NULL;
-      if (field == NULL || field->op != MOP_PtrField || field->imm.tag != MI_FIELD || load->res == MIR_NONE) {
+      if (field == NULL || field->op != MOP_PtrField || field->imm.tag != MI_FIELD || load->res == MIR_NONE ||
+          ic_field_written(&r, field->imm.a, field->imm.b)) {
         continue;
       }
-      const MirValue slot = field->args[0];
-      const MirInst *made = defs[slot] != NULL && defs[slot]->op == MOP_Slot && !other[slot] && puts[slot] == 1 &&
-                                  (written[slot] & ((uint64_t)1 << (field->imm.b < 63 ? field->imm.b : 63))) == 0
-                              ? defs[put_value[slot]]
-                              : NULL;
-      if (made == NULL || made->op != MOP_TypeNew || made->imm.tag != MI_TYPE || made->imm.a != field->imm.a ||
-          field->imm.b >= made->nargs || !ic_known_has(closures, made->args[field->imm.b])) {
+      uint32_t pb = 0, pi = 0;
+      const MirInst *made = ic_pointee(&r, field->args[0], &pb, &pi);
+      if (made == NULL || made->imm.tag != MI_TYPE || made->imm.a != field->imm.a || field->imm.b >= made->nargs ||
+          !ic_known_has(closures, made->args[field->imm.b])) {
         continue;
       }
-      if (tree == NULL) {
+      if (!have_tree) {
         const uint32_t reachable = mir_rpo(arena, f, &order);
         const MirPreds preds = mir_preds(arena, f);
         const MirBlock *idom = mir_dominators(arena, f, order, reachable, &preds);
-        tree_storage = mir_dom_tree(arena, f, order, reachable, idom);
-        tree = &tree_storage;
+        tree = mir_dom_tree(arena, f, order, reachable, idom);
+        have_tree = true;
       }
       /* The load sees the record only when the put runs first on every path to it. */
-      const bool after = put_block[slot] == b ? put_index[slot] < i : mir_tree_dominates(tree, put_block[slot], b);
-      if (!after) {
+      if (!(pb == b ? pi < i : mir_tree_dominates(&tree, pb, b))) {
         continue;
       }
       const MirValue c = made->args[field->imm.b];

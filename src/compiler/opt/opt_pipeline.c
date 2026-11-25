@@ -141,7 +141,13 @@ static const Step early_steps[] = {
 /* Once the simplifier has threaded a record's slot through the loop, a callback it holds is known: the closures open again. */
 static bool closures_step(MirModule *m) {
   (void)opt_simplify(m);
-  return opt_inline_closures(m) && opt_inline(m);
+  if (!opt_inline_closures(m)) {
+    return false;
+  }
+  (void)opt_inline(m);
+  (void)opt_unwind_sites(m);
+  (void)opt_unwind_thread(m);
+  return true;
 }
 
 static const Step late_steps[] = {
