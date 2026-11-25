@@ -23,7 +23,7 @@ test "invalid evidence" {
 	rest := valid.slice(1, valid.length()).get_or([])
 	cases := [
 		List[String](),
-		valid.slice(0, valid.length() - 1).get_or([]),
+		valid.slice(0, valid.length() - 1).get_or([]).clone(),
 		valid.concat([valid[0].clone()]),
 		sample(0, "ms", 100),
 		[valid[0].replace("# 40000000", "# -1")].concat(rest),
