@@ -1192,6 +1192,7 @@ type ListIter[T] {
 // Returns the next item as a borrow of the list, or `null` after the last.
 fn var ListIter[T].next() &T? {
 	index := self.at
+	if index < 0 { return null }
 	if index >= self.items.length() { return null }
 
 	self.at = index + 1
