@@ -184,6 +184,7 @@ export fn panic(message String) Never { ... }
 // The process-wide output buffer; standard output is flushed at exit
 // (`msrt_io_*` natives).
 extern fn msrt_io_write_stdout(text String) Void
+extern fn msrt_io_write_stdout_end(text, end String) Void
 
 // Ends the calling task as cancelled when `status` is a cancelled wait or the task was
 // asked to stop.
@@ -203,7 +204,7 @@ print(order)
 */
 // ms: effect std.console.write
 export fn print[T](value T, end String = "\n") Void {
-	msrt_io_write_stdout(value.to_string() + end)
+	msrt_io_write_stdout_end(value.to_string(), end)
 }
 
 /*
