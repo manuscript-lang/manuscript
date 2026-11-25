@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`text` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `text.clone()`",
+        "position": {
+          "file": "diag-borrow-never-reaches-move.ms",
+          "line": 25,
+          "column": 22,
+          "offset": 426
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`view.item` looks at a value its record does not own (the field is written `&`), so a new owner needs a copy; write `view.item.clone()` to copy it",
+        "position": {
+          "file": "diag-borrow-never-reaches-move.ms",
+          "line": 29,
+          "column": 27,
+          "offset": 492
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`view.item` looks at a value its record does not own (the field is written `&`), so a new owner needs a copy; write `view.item.clone()` to copy it",
+        "position": {
+          "file": "diag-borrow-never-reaches-move.ms",
+          "line": 34,
+          "column": 27,
+          "offset": 578
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-borrow-never-reaches-move.ms:25:22: type: `text` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `text.clone()`\n    |\n 25 |     return take_text(text)\n    |                      ^\n<DIR>/diag-borrow-never-reaches-move.ms:29:27: type: `view.item` looks at a value its record does not own (the field is written `&`), so a new owner needs a copy; write `view.item.clone()` to copy it\n    |\n 29 |     return take_item(view.item)\n    |                           ^\n<DIR>/diag-borrow-never-reaches-move.ms:34:27: type: `view.item` looks at a value its record does not own (the field is written `&`), so a new owner needs a copy; write `view.item.clone()` to copy it\n    |\n 34 |     return take_item(view.item)\n    |                           ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

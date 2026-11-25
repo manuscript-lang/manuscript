@@ -2,6 +2,7 @@
  * and to runtime functions declared `extern fn`. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/natives/native_sigs.h"
+#include "compiler/own/look_fields.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
@@ -71,7 +72,8 @@ static bool native_takes_place(LowerFn *fn, const MsExpr *expr, const MsCall *ca
 
 /* Whether the call hands argument `index` (written as `written`) to its callee, rather than borrowing it. */
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
-  const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
+  const bool owning = (call->callee.kind == MS_REF_TYPE && !ms_own_look_field(fn->cx->program, call, index)) ||
+                      call->callee.kind == MS_REF_CASE;
   const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD &&
                               written == fn_call_callee(expr)->u.member.left && consuming_receiver(fn, call);
   return owning || takes_receiver || (call->args[index].flags & MS_PARAM_MOVE) != 0 ||

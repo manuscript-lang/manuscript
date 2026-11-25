@@ -79,7 +79,7 @@ static MirField *lower_fields(Lower *cx, MsTy ty, const MsDef *def, const MsTyPa
                                                          : ms_ty_arg_count(&cx->program->types, ty)};
   for (size_t index = 0; index < count; index++) {
     out[index] = (MirField){mir_name(cx->module, ms_names_span(cx->program->names, fields[index].name)),
-                            lower_type(cx, &subst, fields[index].ty), 0};
+                            lower_type(cx, &subst, fields[index].ty), 0, false};
   }
   return out;
 }
@@ -98,6 +98,7 @@ static MirTy lower_record(Lower *cx, MsTy ty) {
                               def->variables.len < nargs ? def->variables.len : nargs};
     for (size_t index = 0; index < def->fields.len; index++) {
       const MsExpr *value = decl->u.type.fields.ptr[index]->def;
+      fields[index].borrowed = decl->u.type.fields.ptr[index]->ty != NULL && decl->u.type.fields.ptr[index]->ty->is_ref;
       if (value != NULL) {
         fields[index].default_fn1 =
             1 + lower_field_default(cx, cx->program->symbols.ptr[def->symbol].module, value, fields[index].ty, result, &subst);
@@ -192,7 +193,7 @@ static MirTy lower_inline(Lower *cx, MsTy ty, uint32_t size) {
   const uint32_t words = size / 8;
   MirField *fields = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirField, (size_t)words + 1);
   for (uint32_t at = 0; at < words; at++) {
-    fields[at] = (MirField){mir_name(cx->module, ms_span_of_text("word")), MIR_INT, 0};
+    fields[at] = (MirField){mir_name(cx->module, ms_span_of_text("word")), MIR_INT, 0, false};
   }
   cx->module->type_defs.ptr[id].fields = fields;
   cx->module->type_defs.ptr[id].nfields = words;

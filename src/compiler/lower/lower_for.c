@@ -53,8 +53,8 @@ static uint32_t add_cursor_type(Lower *cx, MsName name, MirTy list_ty) {
   MirModule *module = cx->module;
   const uint32_t id = mir_add_type(module, name);
   MirField *fields = MS_ARENA_NEW_ARRAY(&module->arena, MirField, 2);
-  fields[0] = (MirField){mir_name(module, ms_span_of_text("list")), list_ty, 0};
-  fields[1] = (MirField){mir_name(module, ms_span_of_text("next")), MIR_INT, 0};
+  fields[0] = (MirField){mir_name(module, ms_span_of_text("list")), list_ty, 0, false};
+  fields[1] = (MirField){mir_name(module, ms_span_of_text("next")), MIR_INT, 0, false};
   module->type_defs.ptr[id].fields = fields;
   module->type_defs.ptr[id].nfields = 2;
   return id;

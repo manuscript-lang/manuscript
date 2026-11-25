@@ -292,6 +292,7 @@ typedef struct MirField {
   MsName name;
   MirTy ty;
   uint32_t default_fn1; /* 1 + the function that builds the field's default in place, `fn(out, record)`; 0 for none */
+  bool borrowed;        /* written `&T`: it points at a value another owner frees, so releasing the record leaves it */
 } MirField;
 
 typedef struct MirTypeDef {
