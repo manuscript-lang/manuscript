@@ -440,11 +440,11 @@ static MsSymbolMatch describe(MsArena *arena, const Candidate *c, MsSpan cwd) {
   if (c->entry->ty != MS_TY_NONE && !ms_ty_is_invalid(&program->types, c->entry->ty)) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append(&text, c->entry->name);
-    ms_strbuild_append_text(&text, ": ");
+    ms_strbuild_append_text(&text, " ");
     ms_ty_show(&text, program->names, &program->types, c->entry->ty);
     match.type = ms_arena_copy(arena, ms_strbuild_span(&text));
     ms_strbuild_free(&text);
-    if (ms_span_starts_with(match.type, ms_message_format(arena, "%S: fn(", c->entry->name, (MsSpan){0}))) {
+    if (ms_span_starts_with(match.type, ms_message_format(arena, "%S fn(", c->entry->name, (MsSpan){0}))) {
       match.effects = effects_of(arena, c);
     }
   }

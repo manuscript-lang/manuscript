@@ -1,4 +1,4 @@
 parse_total  fn  src/shapes.ms:20:11
-  parse_total: fn(List[String]) Int
+  parse_total fn(List[String]) Int
   effects: pure (ambient authority only)
   used (3): src/main.ms:4:2, src/main.ms:8:11, src/main.ms:14:15

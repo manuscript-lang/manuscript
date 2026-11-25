@@ -11,4 +11,4 @@ import CopyOptions, copy from "@std/os/fs.ms"
 
 copy("a.txt", "b.txt", CopyOptions(replace: true))?
 ```
-fn copy(source: String, destination: String, options: CopyOptions = CopyOptions()) Result[Void, Error]:
+fn copy(source String, destination String, options CopyOptions = CopyOptions()) Result[Void, Error] { ... }
