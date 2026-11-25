@@ -17,6 +17,8 @@ void msrt_string_split_view_into(const MsString *s, const MsString *sep, MsStrin
 void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *out);
 /* The piece of `s` that starts at byte `at` when it is split at `sep`, a view of `s`: the step of
  * `for piece in s.split(sep)`. */
+/* ms-sig: msrt_string_split_at(s: *const StrVal, sep: *const StrVal, at: i64, out: *mut StrVal) @borrows @domain=string @leaf
+ * @end */
 void msrt_string_split_at(const MsString *s, const MsString *sep, int64_t at, MsString *out);
 /* ms-sig: msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal)
  * @domain=string @end */

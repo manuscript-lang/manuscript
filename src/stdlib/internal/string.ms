@@ -4,6 +4,9 @@ export extern fn msrt_string_from_scalars(values List[Int]) String!
 
 export extern fn msrt_string_fields(hold text String) List[&String]
 
+// The piece of `text` that starts at byte `at` when it is split at `separator`, a view of `text`.
+export extern fn msrt_string_split_at(hold text, separator String, at Int) &String
+
 // Byte offset of the first scalar of `text` that occurs in `set`, or null.
 export extern fn msrt_string_index_any(text, set String) Int?
 

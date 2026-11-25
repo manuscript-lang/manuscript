@@ -4,6 +4,7 @@ import (
 	msrt_string_fields,
 	msrt_string_from_scalars,
 	msrt_string_index_any,
+	msrt_string_split_at,
 	msrt_string_trim_chars from "@std/internal/string.ms",
 	msstd_unicode_display_width,
 	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
@@ -548,4 +549,24 @@ fn String.replace_each(pairs Map[String, String]) String {
 
 fn is_word_scalar(c String) Bool {
 	return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"
+}
+
+
+// The pieces of a text between separators, one at a time: the iterator `split` returns.
+export type Split {
+	text &String
+	separator &String
+	at Int
+}
+
+fn var Split.next() &String? {
+	last := self.text.length() + (if self.separator.is_empty() { 0 } else { 1 })
+	if self.at >= last { return null }
+	piece := msrt_string_split_at(self.text, self.separator, self.at)
+	self.at += piece.length() + self.separator.length()
+	return piece
+}
+
+fn hold String.pieces(hold separator String) Split {
+	return Split(self, separator, 0)
 }

@@ -709,10 +709,11 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, CallBufs *bufs) {
   LowerTarget target;
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
                       fn_callee_target(fn, call, &target);
-  const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
-  /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there. */
-  const bool dispatched = call->callee.kind == MS_REF_OPERATION && fn_call_callee(expr)->kind == MS_E_MEMBER &&
-                          mir_ty_data(fn->cx->module, fn_type(fn, fn_read_type(fn, fn_call_callee(expr)->u.member.left)))->kind == MK_IFACE;
+  /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there, and
+   * so does the method of a bound variable's instance. */
+  const bool dispatched = call->callee.kind == MS_REF_OPERATION && fn_call_callee(expr)->kind == MS_E_MEMBER;
+  const bool receiver_var = (source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0) ||
+                            (dispatched && call->arg_count > 0 && (call->args[0].flags & MS_PARAM_VAR) != 0);
   if (!lower_args(fn, expr, call, args, source || dispatched ? slots : NULL, &nslots, receiver_var, !source, held)) {
     return MIR_NONE;
   }
