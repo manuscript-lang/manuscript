@@ -1,0 +1,4 @@
+[project]
+name = "entry_main"
+source = "./src"
+entry = "./src/main.ms"

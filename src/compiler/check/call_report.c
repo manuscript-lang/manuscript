@@ -187,6 +187,15 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
   ms_strbuild_free(&text);
 }
 
+/* `Bytes(values)` declares no parameter, yet its argument is a list of bytes: an empty literal there is that list. */
+static MsTy bytes_values(Body *body, const Target *target) {
+  if (!ms_ty_is(&body->program->types, target->nominal, MS_BUILTIN_Bytes)) {
+    return MS_TY_NONE;
+  }
+  const MsTy octet = body_primitive(body, MS_BUILTIN_UInt8);
+  return body_std_type(body, "List", &octet, 1);
+}
+
 void body_report_arguments(Body *body, const Target *target, const MsExpr *call, const Matched *matched) {
   const bool report = body_reports(body) && !body->quiet && !target->builtin;
   bool hinted = false;
@@ -208,7 +217,7 @@ void body_report_arguments(Body *body, const Target *target, const MsExpr *call,
                        (arg->value->kind == MS_E_MAP && arg->value->u.map.len == 0);
     const bool quiet = body->quiet;
     body->quiet = quiet || empty;
-    (void)body_expr(body, arg->value, MS_TY_NONE);
+    (void)body_expr(body, arg->value, bytes_values(body, target));
     body->quiet = quiet;
   }
   const MsTyTable *types = &body->program->types;
