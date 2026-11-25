@@ -1,6 +1,7 @@
 /* lsp/lsp_text.c: UTF-16 positions and the forgiving token scanner behind diagnostic ranges. Text may be malformed: an invalid byte counts as one UTF-16 unit. */
 #include <string.h>
 
+#include "base/alloc.h"
 #include "base/utf8.h"
 #include "lsp/lsp_internal.h"
 
@@ -36,6 +37,40 @@ LspPosition lsp_position(MsSpan source, size_t offset) {
     }
   }
   return (LspPosition){line, lsp_utf16_length(ms_span_of(source.ptr + start, offset - start))};
+}
+
+void lsp_lines_init(LspLines *lines, MsSpan source) {
+  size_t count = 1;
+  for (size_t i = 0; i < source.len; i++) {
+    count += source.ptr[i] == '\n' ? 1u : 0u;
+  }
+  lines->source = source;
+  lines->count = count;
+  lines->starts = ms_alloc(sizeof(size_t) * count);
+  size_t line = 1;
+  lines->starts[0] = 0;
+  for (size_t i = 0; i < source.len; i++) {
+    if (source.ptr[i] == '\n') {
+      lines->starts[line++] = i + 1;
+    }
+  }
+}
+
+void lsp_lines_free(LspLines *lines) {
+  ms_free(lines->starts);
+  *lines = (LspLines){0};
+}
+
+LspPosition lsp_lines_position(const LspLines *lines, size_t offset) {
+  if (offset > lines->source.len) offset = lines->source.len;
+  size_t low = 0, high = lines->count; /* the last line starting at or before the offset */
+  while (high - low > 1) {
+    const size_t mid = low + (high - low) / 2;
+    if (lines->starts[mid] <= offset) low = mid;
+    else high = mid;
+  }
+  const size_t start = lines->starts[low];
+  return (LspPosition){low, lsp_utf16_length(ms_span_of(lines->source.ptr + start, offset - start))};
 }
 
 bool lsp_offset(MsSpan source, LspPosition position, bool clamp, size_t *offset) {

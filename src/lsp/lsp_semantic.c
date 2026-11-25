@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "base/alloc.h"
 #include "lsp/lsp_internal.h"
 #include "compiler/syntax/lex.h"
 
@@ -22,13 +23,6 @@ typedef struct SemanticToken {
 } SemanticToken;
 
 MS_LIST_DEFINE(SemanticList, semantic_list, SemanticToken)
-
-typedef struct Resolved {
-  size_t offset;
-  uint8_t kind;
-} Resolved;
-
-MS_LIST_DEFINE(ResolvedList, resolved_list, Resolved)
 
 static bool is_keyword_text(MsSpan text) {
   for (int kind = 0; kind < MS_T_COUNT; kind++) {
@@ -184,12 +178,6 @@ static uint8_t kind_of(const MsCheckProgram *program, const MsOccurrence *entry)
   return KIND_VARIABLE;
 }
 
-static const Resolved *resolved_at(const ResolvedList *list, size_t offset) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (list->ptr[i].offset == offset) return &list->ptr[i];
-  }
-  return NULL;
-}
 
 void lsp_semantic_tokens(const LspDocList *docs, const LspDoc *doc, MsStrBuild *out) {
   const MsSpan source = ms_string_span(&doc->text);
@@ -197,28 +185,25 @@ void lsp_semantic_tokens(const LspDocList *docs, const LspDoc *doc, MsStrBuild *
   scan(source, &tokens);
   LspAnalysis analysis;
   lsp_analyze(docs, doc, &analysis);
-  ResolvedList resolved = {0};
+  /* The kind of the name starting at each byte offset, plus one; 0 when nothing resolved there. A table by offset
+   * answers in one load where a scan of the list per name made a file's tokens quadratic. */
+  uint8_t *resolved = ms_alloc_zeroed(source.len + 1);
   for (size_t i = 0; analysis.resolved && i < analysis.index.len; i++) {
     const MsOccurrence *entry = &analysis.index.ptr[i];
-    if (!ms_span_equal(analysis.paths[entry->module], ms_string_span(&doc->path))) continue;
+    if (entry->offset > source.len || !ms_span_equal(analysis.paths[entry->module], ms_string_span(&doc->path))) continue;
     const uint8_t kind = kind_of(&analysis.checked.program, entry);
     /* A bare constructor has an occurrence per identity (its case and its native); the case colours it. */
-    bool known = false;
-    for (size_t r = 0; r < resolved.len; r++) {
-      if (resolved.ptr[r].offset != entry->offset) continue;
-      known = true;
-      if (kind == KIND_ENUM_MEMBER) resolved.ptr[r].kind = kind;
-    }
-    if (known) continue;
-    resolved_list_push(&resolved, (Resolved){entry->offset, kind});
+    if (resolved[entry->offset] == 0 || kind == KIND_ENUM_MEMBER) resolved[entry->offset] = (uint8_t)(kind + 1);
   }
   /* A written type is a type even when it has no declaration to index, like `Int`. */
   for (size_t i = 0; i < analysis.written.len; i++) {
     const MsWrittenType *site = &analysis.written.ptr[i];
-    if (!ms_span_equal(analysis.paths[site->module], ms_string_span(&doc->path)) || resolved_at(&resolved, site->offset) != NULL) continue;
+    if (site->offset > source.len || !ms_span_equal(analysis.paths[site->module], ms_string_span(&doc->path)) || resolved[site->offset] != 0) continue;
     const bool variable = ms_ty_kind(&analysis.checked.program.types, site->ty) == MS_TY_VARIABLE;
-    resolved_list_push(&resolved, (Resolved){site->offset, variable ? KIND_TYPE_PARAMETER : KIND_TYPE});
+    resolved[site->offset] = (uint8_t)((variable ? KIND_TYPE_PARAMETER : KIND_TYPE) + 1);
   }
+  LspLines lines;
+  lsp_lines_init(&lines, source);
   ms_strbuild_append_text(out, "{\"data\":[");
   size_t line = 0, character = 0;
   bool first = true;
@@ -234,8 +219,7 @@ void lsp_semantic_tokens(const LspDocList *docs, const LspDoc *doc, MsStrBuild *
     default: continue;
     }
     if (token->kind == LEX_NAME) {
-      const Resolved *found = resolved_at(&resolved, token->start);
-      if (found != NULL) kind = found->kind;
+      if (token->start <= source.len && resolved[token->start] != 0) kind = resolved[token->start] - 1;
       if (token->previous_fn) kind = KIND_FUNCTION;
       if (token->previous_type || token->receiver || (token->bound && kind == KIND_VARIABLE)) kind = KIND_TYPE;
     }
@@ -246,7 +230,7 @@ void lsp_semantic_tokens(const LspDocList *docs, const LspDoc *doc, MsStrBuild *
       while (stop < token->end && source.ptr[stop] != '\n') stop++;
       size_t body = stop;
       if (body > at && source.ptr[body - 1] == '\r') body--;
-      const LspPosition start = lsp_position(source, at), end = lsp_position(source, body);
+      const LspPosition start = lsp_lines_position(&lines, at), end = lsp_lines_position(&lines, body);
       if (end.character > start.character) {
         const int64_t length = (int64_t)(end.character - start.character);
         int64_t delta = (int64_t)start.character;
@@ -262,7 +246,8 @@ void lsp_semantic_tokens(const LspDocList *docs, const LspDoc *doc, MsStrBuild *
     }
   }
   ms_strbuild_append_text(out, "]}");
-  resolved_list_free(&resolved);
+  lsp_lines_free(&lines);
+  ms_free(resolved);
   semantic_list_free(&tokens);
   lsp_analysis_release(&analysis);
 }
