@@ -294,7 +294,7 @@ export fn parse_headers(text String) Headers! {
 		fields.append(
 			HeaderField(
 				name: line.view(0, at).trim().clone(),
-				value: line.view((at) + 1, line.length()).trim(),
+				value: line.view((at) + 1, line.length()).trim().clone(),
 			)
 		)
 	}

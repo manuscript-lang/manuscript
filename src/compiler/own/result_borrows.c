@@ -93,11 +93,21 @@ static void add_view(Pass *pass, uint32_t local, const MsExpr *source) {
   }
 }
 
-static bool is_list_element(const Pass *pass, const MsExpr *expr) {
-  MsExpr *container = NULL;
+/* An element of a list or a value of a map is a part of its container. */
+static bool is_element(const Pass *pass, const MsExpr *expr, const MsExpr **container) {
+  MsExpr *base = NULL;
   MsExpr *position = NULL;
-  return ms_expr_index(expr, &container, &position) &&
-         ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, container->id), MS_BUILTIN_List);
+  if (!ms_expr_index(expr, &base, &position)) {
+    return false;
+  }
+  const MsTy ty = ms_facts_type(pass->facts, base->id);
+  *container = base;
+  return ms_ty_is(&pass->program->types, ty, MS_BUILTIN_List) || ms_ty_is(&pass->program->types, ty, MS_BUILTIN_Map);
+}
+
+static bool is_list_element(const Pass *pass, const MsExpr *expr) {
+  const MsExpr *container = NULL;
+  return is_element(pass, expr, &container);
 }
 
 static void view_stmt(void *ctx, const MsStmt *stmt) {
@@ -165,12 +175,10 @@ static void view_expr(void *ctx, const MsExpr *expr) {
 static Reach classify_place(Pass *pass, const MsExpr *expr) {
   const MsExpr *root = expr;
   for (;;) {
-    MsExpr *container = NULL;
-    MsExpr *position = NULL;
+    const MsExpr *container = NULL;
     if (root->kind == MS_E_MEMBER) {
       root = root->u.member.left;
-    } else if (ms_expr_index(root, &container, &position) &&
-               ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, container->id), MS_BUILTIN_List)) {
+    } else if (is_element(pass, root, &container)) {
       root = container; /* an element of a list is a part of it */
     } else {
       break;
@@ -251,10 +259,8 @@ static Reach classify(Pass *pass, const MsExpr *expr) {
       ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
     return classify(pass, expr->u.bin.left); /* `x or d` hands out the payload of `x`, which stays where `x` keeps it */
   }
-  MsExpr *container = NULL;
-  MsExpr *position = NULL;
-  if (ms_expr_index(expr, &container, &position) &&
-      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, container->id), MS_BUILTIN_List)) {
+  const MsExpr *container = NULL;
+  if (is_element(pass, expr, &container)) {
     return classify(pass, container); /* an element of a list is a part of it */
   }
   return expr->kind == MS_E_CALL ? classify_call(pass, expr) : OWNED;
@@ -568,7 +574,7 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
         pass.method = false;
-        pass.call_views = has_ref(decl->u.fn.result);
+        pass.call_views = true;
         pass.self_node = decl->id;
         if (!report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result)) {
           report_declared(&pass, module, decl->pos, &decl->u.fn, NULL);
@@ -577,7 +583,7 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
-        pass.call_views = has_ref(method->func.result);
+        pass.call_views = true;
         pass.look_receiver = pass.written != NULL && ms_own_look_record(program, written_type(&pass, decl->u.impl.receiver));
         pass.self_node = method->id;
         if (!report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result)) {
@@ -608,14 +614,14 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes, MsTy *const
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
         pass.method = false;
-        pass.call_views = has_ref(decl->u.fn.result);
+        pass.call_views = true;
         pass.self_node = decl->id;
         changed |= store(facts, decl->id, declared_mask(&pass, &decl->u.fn, NULL));
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
-        pass.call_views = has_ref(method->func.result);
+        pass.call_views = true;
         pass.look_receiver = pass.written != NULL && ms_own_look_record(program, written_type(&pass, decl->u.impl.receiver));
         pass.self_node = method->id;
         changed |= store(facts, method->id, declared_mask(&pass, &method->func, method));
@@ -835,6 +841,11 @@ MsNativeGet ms_own_native_get(const MsCheckProgram *program, const MsFacts *fact
   return call->u.call.args.len == 0 && (ms_ty_is(types, held, MS_BUILTIN_Optional) || ms_ty_is(types, held, MS_BUILTIN_Result))
              ? MS_NATIVE_GET_PAYLOAD
              : MS_NATIVE_GET_NONE;
+}
+
+bool ms_own_declared_ref_result(const MsCheckProgram *program, const MsRef *callee) {
+  const MsFunc *declared = ms_own_find_func(program, callee);
+  return declared != NULL && declared->result != NULL && declared->result->is_ref;
 }
 
 bool ms_own_written_ok_is_ref(const MsCheckProgram *program, const MsTypeRef *result) {

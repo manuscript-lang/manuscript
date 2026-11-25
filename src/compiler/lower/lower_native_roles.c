@@ -66,9 +66,5 @@ MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first) {
 
 /* The family of borrowing twins the signature declares (`@twin=`). */
 MirTwin fn_native_twin(const struct MsNativeSig *sig) {
-  if (sig == NULL || sig->twin == NULL) {
-    return MTW_NONE;
-  }
-  const MsSpan family = ms_span_of_text(sig->twin);
-  return ms_span_is_text(family, "split_view") ? MTW_SPLIT_VIEW : ms_span_is_text(family, "view") ? MTW_VIEW : MTW_NONE;
+  return sig != NULL && sig->twin != NULL && ms_span_is_text(ms_span_of_text(sig->twin), "split_view") ? MTW_SPLIT_VIEW : MTW_NONE;
 }

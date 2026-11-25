@@ -34,6 +34,9 @@ uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t modul
 /* Whether the Result written as `result` has an `&` ok payload: `&T!`, or `&T?!` where the `&` marks the Optional's
  * payload. The signature alone decides the ABI of such a function or interface operation. */
 bool ms_own_written_ok_is_ref(const MsCheckProgram *program, const MsTypeRef *result);
+/* Whether the callee's declaration writes a `&` result (`hold fn view(..) &String`): the call answers a view of what
+ * it borrows, not a new value. */
+bool ms_own_declared_ref_result(const MsCheckProgram *program, const MsRef *callee);
 
 bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, MsNode node);
 

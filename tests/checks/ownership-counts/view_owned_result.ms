@@ -6,7 +6,7 @@ type Line {
 }
 
 fn body(l Line) String {
-	return l.text.trim()
+	return l.text.trim().clone()
 }
 
 fn size(l Line) Int {

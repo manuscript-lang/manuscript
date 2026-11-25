@@ -44,12 +44,12 @@ fn held(cause Cause) String {
 	return e.message()
 }
 
-fn through(cause Cause) Reportable {
+fn through(hold cause Cause) Reportable {
 	e := first_error(cause)
 	return e
 }
 
-fn cond(cause Cause, hold other Cause, c Bool) Reportable {
+fn cond(hold cause Cause, hold other Cause, c Bool) Reportable {
 	e := first_error(cause)
 	if c { return e }
 
@@ -89,7 +89,7 @@ fn id[T](hold x T) &T {
 	return x
 }
 
-fn lend_then_relay(cause Cause) Reportable {
+fn lend_then_relay(hold cause Cause) Reportable {
 	e := first_error(cause)
 	return relay(e)
 }

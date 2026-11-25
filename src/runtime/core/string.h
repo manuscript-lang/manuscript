@@ -32,27 +32,12 @@ void msrt_string_append(const MsString *a, const MsString *b, MsString *out);
 void msrt_string_repeat(const MsString *s, int64_t count, MsString *out);
 /* ms-sig: msrt_string_reverse(a: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_reverse(const MsString *a, MsString *out);
-/* ms-sig: msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string
- * */
-void msrt_string_trim_view(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string
- * */
-void msrt_string_trim_start_view(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string
- * */
-void msrt_string_trim_end_view(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim(s: *const StrVal, out: *mut StrVal) @twin=view @leaf @domain=string @end */
+/* ms-sig: msrt_string_trim(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string */
 void msrt_string_trim(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @twin=view @leaf @domain=string @end */
+/* ms-sig: msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string */
 void msrt_string_trim_start(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @twin=view @leaf @domain=string @end */
+/* ms-sig: msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string */
 void msrt_string_trim_end(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
-void msrt_string_trim_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
-void msrt_string_trim_start_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
-void msrt_string_trim_end_take(MsString *s, MsString *out);
 /* ms-sig: msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) @domain=string @end */
 void msrt_string_char_at(const MsString *s, int64_t at, MsString *out);
 /* ms-sig: msrt_string_slice(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @domain=string @end */

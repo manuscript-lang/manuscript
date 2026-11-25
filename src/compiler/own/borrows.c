@@ -526,18 +526,17 @@ static void note_keeps(Borrows *pass, const MsExpr *expr) {
   }
 }
 
-/* The name a `view` of a local or parameter is rooted at, when `value` is a native `view` returning an owned `String` or
- * `Bytes`: the returned text would be owned, and the view only borrows. */
+/* The name a borrowed `String` or `Bytes` result (`view`, `trim`, ...) of a local or parameter is rooted at, when the
+ * function returns it as an owned value: the returned text would be owned, and the result only borrows. */
 static bool returned_view(const Borrows *pass, const MsExpr *value, MsName *local) {
   const MsExpr *callee = value->kind == MS_E_CALL ? value->u.call.callee : NULL;
   const MsCall *fact = callee != NULL ? ms_facts_call(pass->facts, value->id) : NULL;
   if (fact == NULL || callee->kind != MS_E_MEMBER || fact->callee.kind == MS_REF_METHOD || fact->callee.kind == MS_REF_FUNCTION) {
     return false;
   }
-  const MsSpan name = ms_names_span(pass->program->names, callee->u.member.name);
   const MsTyTable *types = &pass->program->types;
   const MsTy ty = ms_facts_type(pass->facts, value->id);
-  if ((!ms_span_is_text(name, "view") && !ms_span_is_text(name, "view_bytes")) || ty == MS_TY_NONE ||
+  if (!ms_own_declared_ref_result(pass->program, &fact->callee) || ty == MS_TY_NONE ||
       (!ms_ty_is(types, ty, MS_BUILTIN_Bytes) && !ms_ty_is(types, ty, MS_BUILTIN_String))) {
     return false;
   }
@@ -561,7 +560,7 @@ bool ms_borrows_describe_returned(Borrows *pass, const MsExpr *value, MsStrBuild
   const MsNames *names = pass->program->names;
   const MsTy ty = ms_facts_type(pass->facts, value->id);
   const MsNativeGet get = ty == MS_TY_NONE ? MS_NATIVE_GET_NONE : ms_own_native_get(pass->program, pass->facts, value);
-  if (returned_view(pass, value, &local)) {
+  if (!pass->ref_result && returned_view(pass, value, &local)) { /* a `&` result may be a view: result borrows check it */
     ms_strbuild_append_text(text, "cannot return a view of `");
     ms_strbuild_append(text, ms_names_span(names, local));
     ms_strbuild_append_text(text, "`: a returned `");
@@ -635,7 +634,17 @@ bool ms_borrows_lends_collection(const Borrows *pass, const MsExpr *call) {
 }
 
 static void note_return(Borrows *pass, const MsStmt *stmt) {
-  if (pass->lambdas != 0 || stmt->u.expr == NULL) {
+  if (stmt->u.expr == NULL) {
+    return;
+  }
+  if (pass->lambdas != 0) {
+    /* A closure's value is stored by whoever calls it (`map` builds a list of them), so a borrowed text it answers from
+     * its own parameter or a capture would outlive the owner: it returns `.clone()` unless it writes a `&` result. */
+    MsName local = 0;
+    const bool written_ref = pass->outer != NULL && pass->outer->u.lambda.result != NULL && pass->outer->u.lambda.result->is_ref;
+    if (!written_ref && returned_view(pass, stmt->u.expr, &local)) {
+      keep_list_push(&pass->keeps, (Keep){.kept = stmt->u.expr, .returned = true});
+    }
     return;
   }
   MsStrBuild text = ms_strbuild_new();

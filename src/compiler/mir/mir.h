@@ -386,8 +386,7 @@ typedef enum MirRole {
 
 /* The family of borrowing twins an extern declares: other runtime functions that answer the same call without
  * building its result (`opt_splitview`). */
-/* MTW_VIEW: `<name>_view` answers a view of the first operand where the call answers a copy of the part it keeps. */
-typedef enum MirTwin { MTW_NONE, MTW_SPLIT_VIEW, MTW_VIEW } MirTwin;
+typedef enum MirTwin { MTW_NONE, MTW_SPLIT_VIEW } MirTwin;
 
 typedef struct MirExtern {
   MsName name;

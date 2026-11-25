@@ -203,7 +203,7 @@ fn parse_operand(t String) Opnd! {
 		n := t.length()
 		if n < 2 or cat(t, n - 1) != 93 { return error(bad_op(t)) }
 
-		inner := sub(t, 1, n - 1).trim()
+		inner := sub(t, 1, n - 1).trim().clone()
 		if inner == "" { return error(bad_op(t)) }
 
 		parts := split_terms(inner)

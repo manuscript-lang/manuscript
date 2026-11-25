@@ -67,7 +67,7 @@ fn repository_files() List[String] {
 
 	for line in listing.split("\n") {
 		path := line.trim()
-		if path != "" { files.append(path) }
+		if path != "" { files.append(path.clone()) }
 	}
 
 	return files

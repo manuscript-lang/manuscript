@@ -759,10 +759,9 @@ bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy
  * method value): a native that changes its receiver writes through it. */
 bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                       const MirValue *args, MirTy ret, MirValue *out) {
-  /* The pieces of a split of a variable or field borrow it (the checker keeps them from outliving it), so no piece is
-   * copied; a temporary receiver keeps the copying form, as it is gone before its pieces are. */
-  if (ms_span_is_text(operation, "split") && argc == 2 && place != NULL && slot == MIR_NONE &&
-      (place->kind == MS_E_NAME || place->kind == MS_E_MEMBER) &&
+  /* `String.split` is declared `hold ... List[&String]`: its pieces view the receiver in place, so none is copied; the
+   * checker keeps the pieces from outliving the receiver, a temporary included. */
+  if (ms_span_is_text(operation, "split") && argc == 2 && slot == MIR_NONE &&
       ms_ty_is(&fn->cx->program->types, owner, MS_BUILTIN_String)) {
     operation = ms_span_of_text("split_view");
   }

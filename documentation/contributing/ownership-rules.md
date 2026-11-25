@@ -63,7 +63,7 @@ The ownership fixtures in `tests/conformance/fixtures/` (`e2e/reject` for reject
 
 ## String views
 
-`trim`, `trim_start` and `trim_end` return an owned `String`. Lowering elides the copy when the receiver is a variable that stays unchanged for the result's whole life, so a result that is only read allocates nothing, and one that is stored or returned is a real copy. The checker applies no borrow rule to it.
+`view`, `trim`, `trim_start` and `trim_end` return `&String`: a view of the receiver, written `hold` in their signatures, so nothing is copied and the receiver cannot change while the result is used. A function that returns one says `hold`, or returns `.clone()`, and a stored trim is `.clone()`. `split` pieces borrow the receiver in the same way, whether it is a variable, a field, a map value or a temporary. A binding of a call result, a list element or a map value is a view of what it came from, so a function cannot return it as an owned `String`.
 
 ## Behavior changes for the migration tool
 

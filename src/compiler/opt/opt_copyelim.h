@@ -102,7 +102,6 @@ bool cpe_unbox_across(MsArena *arena, MirModule *m, MirFunc *f);
 bool cpe_move_dead_sources(MsArena *arena, const MirModule *m, MirFunc *f);
 bool cpe_move_across(MsArena *arena, const MirModule *m, MirFunc *f);
 bool cpe_borrow_local_copies(MsArena *arena, const MirModule *m, MirFunc *f);
-bool cpe_view_twins(MsArena *arena, MirModule *m, MirFunc *f);
 bool cpe_alias_stable(MsArena *arena, const MirModule *m, MirFunc *f);
 bool cpe_unbox_dead_options(MsArena *arena, MirModule *m, MirFunc *f);
 bool cpe_unbox_dead_sources(MsArena *arena, MirModule *m, MirFunc *f);
