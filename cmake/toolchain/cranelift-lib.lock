@@ -1,11 +1,11 @@
 # The shared Cranelift library Debug builds generate code with in-process (manuscript-lang/cranelift-bundle).
 # cmake/FetchCraneliftLib.cmake downloads the archive for the host and checks it against these digests; they are the
 # release SHA256SUMS. Update the tag and every digest together.
-tag cranelift-0.136.0-r2
+tag cranelift-0.136.0-r3
 version 0.136.0
-7fb772a1d09204f4c41bdf50e8a84a08b50c55e3101e7fadc8cf2460a84b29ef  cranelift-lib-0.136.0-darwin-amd64.tar.gz
-3533f12f0c6a390e45935ded605dc0510feeba8c3971e6fd2128977176b5c5b6  cranelift-lib-0.136.0-darwin-arm64.tar.gz
-376bc3590834269d9d79a45a253999ea9760fc3091270ffcf73dcb0c7b00bb99  cranelift-lib-0.136.0-linux-amd64.tar.gz
-a449a8b12ac81e4e94c02c9085ed363e7d53daefc7d4f1dfcd6f462fe3e99f29  cranelift-lib-0.136.0-linux-arm64.tar.gz
-ecd21a2c398136b69635f91ff7b2d084c17a1afaa0d467f46c647c21a5010596  cranelift-lib-0.136.0-windows-amd64.tar.gz
-2867a275022005562cd38a1f6c8c56fe0ac8530ce967125ffb92794f3f19e1d7  cranelift-lib-0.136.0-windows-arm64.tar.gz
+7cccef348babc09f88bf849a28816b4dd1b5a64172a3196b0d2f2c8f6b5c4538  cranelift-lib-0.136.0-darwin-amd64.tar.gz
+862981e957614651b1514968ff064ffbde156a5f9a8dbafcb94808f47051bc2f  cranelift-lib-0.136.0-darwin-arm64.tar.gz
+4d8169e9e3b702e9875ad316ec4049fed9e07172d7197792d71477a3da7406a3  cranelift-lib-0.136.0-linux-amd64.tar.gz
+bffd0def86946cfcc50b39303da9c984c12e46d1c249c79490e1eaff2ac686ca  cranelift-lib-0.136.0-linux-arm64.tar.gz
+de08629a3d7585f60373ad7a7d98a49e51b17ffa49a47d126cff82555be27d1c  cranelift-lib-0.136.0-windows-amd64.tar.gz
+837634be56d2fd92cbd2062f9e3c0a47a2ed661fffa062ded0d41f66750f273a  cranelift-lib-0.136.0-windows-arm64.tar.gz
