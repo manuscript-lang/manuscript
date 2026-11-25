@@ -1,5 +1,5 @@
 // removed: if let v = o:
-// use: if value := optional
+// use: if value := result
 // fix: if v := o {
 fn main() Int {
 	o Result[Int, Error] := ok(1)

@@ -24,7 +24,7 @@ fn header(source, key String) String {
 	prefix := f"// {key}: "
 	for line in source.lines() {
 		if line.starts_with(prefix) {
-			return line.slice(prefix.length(), line.length()).trim()
+			return line.slice(prefix.length(), line.length()).trim().clone()
 		}
 	}
 	return ""

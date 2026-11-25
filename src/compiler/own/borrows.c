@@ -593,6 +593,13 @@ bool ms_borrows_describe_returned(Borrows *pass, const MsExpr *value, MsStrBuild
     ms_strbuild_append_text(text, "`; copy it with `.clone()` after the view");
     return true;
   }
+  if (!pass->ref_result && value->kind == MS_E_CALL && value->u.call.callee->kind == MS_E_MEMBER &&
+      ms_own_declared_ref_result(pass->program, &ms_facts_call(pass->facts, value->id)->callee) && borrows_temporary(pass, value)) {
+    ms_strbuild_append_text(text, "`");
+    ms_own_expr_text(text, names, value);
+    ms_strbuild_append_text(text, "` borrows a temporary value that is gone when this function returns; return `.clone()` of it");
+    return true;
+  }
   const MsExpr *receiver = get == MS_NATIVE_GET_NONE ? NULL : value->u.call.callee->u.member.left;
   if ((get == MS_NATIVE_GET_LIST || get == MS_NATIVE_GET_MAP) && ms_check_holds_resource(pass->program, ty)) {
     ms_strbuild_append_text(text, "`");
