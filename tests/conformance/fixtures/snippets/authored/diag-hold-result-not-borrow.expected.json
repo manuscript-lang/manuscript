@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "the result is a part of a `hold` argument but its type is an owned value; write `&` before the result type to return the part, or return a `.clone()`",
+        "position": {
+          "file": "diag-hold-result-not-borrow.ms",
+          "line": 16,
+          "column": 1,
+          "offset": 319
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-hold-result-not-borrow.ms:16:1: type: the result is a part of a `hold` argument but its type is an owned value; write `&` before the result type to return the part, or return a `.clone()`\n    |\n 16 | fn node_at(hold node Command, path List[String], from Int) Command? {\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

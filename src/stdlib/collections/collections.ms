@@ -355,7 +355,7 @@ fn List[T Clonable].group_by[K Hashable](key fn(T) K) Map[K, List[T]] { ... }
 
 // Counts how many times each distinct element occurs. Keys appear in first-seen order.
 // Example: `["a", "b", "a"].counts()` maps `"a"` to 2 and `"b"` to 1.
-fn List[T Hashable &Clonable].counts() Map[T, Int] {
+fn List[T Hashable & Clonable].counts() Map[T, Int] {
 	var out = Map[T, Int]()
 	for x in self {
 		out.update(x, 0, n => n + 1)
@@ -394,13 +394,13 @@ fn List[T Equal].last_index_of(value T) Int? {
 
 // Returns a new list with a copy of the first of each group of equal elements, in
 // order. Elements must implement `Equal` and be Clonable.
-fn List[T Equal &Clonable].distinct() List[T] {
+fn List[T Equal & Clonable].distinct() List[T] {
 	return msrt_list_distinct(self)
 }
 
 // Returns a new set of the distinct elements, using `Hashable` equality. The first
 // of equal elements is kept, in insertion order.
-fn List[T Hashable &Clonable].to_set() Set[T] {
+fn List[T Hashable & Clonable].to_set() Set[T] {
 	var out = Set[T]()
 	for x in self {
 		out.add(x.clone())
@@ -431,7 +431,7 @@ Returns a new list in ascending natural order; the receiver is unchanged. The so
 Float orders NaN above every other value.
 Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
 */
-fn List[T Comparable &Clonable].sorted() List[T] {
+fn List[T Comparable & Clonable].sorted() List[T] {
 	return self.sorted((a, b) => a.compare(b))
 }
 
@@ -472,7 +472,7 @@ fn List[T Comparable].binary_search(value T) SearchResult {
 // Returns a copy of the least element, or `null` for an empty list. The first of
 // equal elements wins. Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()` is
 // `null`.
-fn List[T Comparable &Clonable].min() T? {
+fn List[T Comparable & Clonable].min() T? {
 	if self.is_empty() { return null }
 
 	var at = 0
@@ -486,7 +486,7 @@ fn List[T Comparable &Clonable].min() T? {
 
 // Returns a copy of the greatest element, or `null` for an empty list. The first of
 // equal elements wins. Example: `[3, 1, 2].max()` is `3`.
-fn List[T Comparable &Clonable].max() T? {
+fn List[T Comparable & Clonable].max() T? {
 	if self.is_empty() { return null }
 
 	var at = 0
@@ -750,7 +750,7 @@ fn var Map[T, U].add(move key T, move value U) Void { ... }
 fn var Map[T, U].remove(move key T) Void { ... }
 
 // Returns a deep copy with independent map and nested value storage.
-fn Map[T Hashable &Clonable, U Clonable].clone() Map[T, U] {
+fn Map[T Hashable & Clonable, U Clonable].clone() Map[T, U] {
 	var out = Map[T, U]()
 	for key in self.keys() {
 		out.add(key.clone(), self[key].clone())
@@ -761,7 +761,7 @@ fn Map[T Hashable &Clonable, U Clonable].clone() Map[T, U] {
 // Returns a new map of copies of the entries for which `predicate` is true, in
 // insertion order. The callback borrows the receiver, so changing the map during
 // the traversal is rejected.
-fn Map[T Hashable &Clonable, U Clonable].filter(predicate fn(T, U) Bool) Map[T, U] {
+fn Map[T Hashable & Clonable, U Clonable].filter(predicate fn(T, U) Bool) Map[T, U] {
 	var out = Map[T, U]()
 
 	for key in self.keys() {
@@ -775,7 +775,7 @@ fn Map[T Hashable &Clonable, U Clonable].filter(predicate fn(T, U) Bool) Map[T, 
 // Returns a new map with each key replaced by `transform(key, value)`, in insertion
 // order, and the values copied. When two entries produce equal keys, the result keeps
 // the first position and the last value.
-fn Map[T Hashable &Clonable, U Clonable].map_keys[W Hashable](
+fn Map[T Hashable & Clonable, U Clonable].map_keys[W Hashable](
 	transform fn(T, U) W
 ) Map[W, U] {
 	var out = Map[W, U]()
@@ -794,7 +794,9 @@ fn Map[T Hashable, U Clonable].get_or(key T, fallback U) U { ... }
 
 // Returns the first entry for which `predicate` is true as a new `MapEntry` holding
 // copies of the key and value, or `null`.
-fn Map[T Hashable &Clonable, U Clonable].find(predicate fn(T, U) Bool) MapEntry[T, U]? {
+fn Map[T Hashable & Clonable, U Clonable].find(
+	predicate fn(T, U) Bool
+) MapEntry[T, U]? {
 	for key in self.keys() {
 		value := self[key]
 		if predicate(key, value) { return MapEntry(key: key.clone(), value: value) }
@@ -805,7 +807,7 @@ fn Map[T Hashable &Clonable, U Clonable].find(predicate fn(T, U) Bool) MapEntry[
 
 // Searches from the end and returns the last entry for which `predicate` is true as
 // a new `MapEntry` holding copies of the key and value, or `null`.
-fn Map[T Hashable &Clonable, U Clonable].find_last(
+fn Map[T Hashable & Clonable, U Clonable].find_last(
 	predicate fn(T, U) Bool
 ) MapEntry[T, U]? {
 	keys := self.keys()
@@ -829,7 +831,7 @@ fn hold Map[T Hashable, U Clonable].values() &List[U] { ... }
 
 // Returns a new list of `MapEntry` records in insertion order. Each record holds the
 // key and value without copying them.
-fn Map[T Hashable &Clonable, U Clonable].entries() List[MapEntry[T, U]] {
+fn Map[T Hashable & Clonable, U Clonable].entries() List[MapEntry[T, U]] {
 	var out = List[MapEntry[T, U]]()
 	keys := self.keys()
 	var at = 0
@@ -851,7 +853,7 @@ fn var Map[T Hashable, U Clonable].merge(other Map[T, U]) Void { ... }
 // absent. The key is probed once, `initial` is always evaluated, and `change` runs once
 // and must not use this map. The key is copied only when it is absent. Example:
 // `counts.update(word, 0, fn n: n + 1)` counts occurrences.
-fn var Map[T Hashable &Clonable, U].update(
+fn var Map[T Hashable & Clonable, U].update(
 	key T,
 	move initial U,
 	change fn(U) U
@@ -862,7 +864,7 @@ Keeps only the entries for which `keep(key, value)` is true, in place, like `Lis
 `keep` is called once per entry in insertion order, before any removal.
 Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
 */
-fn var Map[T Hashable &Clonable, U].retain(keep fn(T, U) Bool) Void {
+fn var Map[T Hashable & Clonable, U].retain(keep fn(T, U) Bool) Void {
 	var doomed = List[T]()
 	for key in self.keys() {
 		if not keep(key, self[key]) {
@@ -887,7 +889,7 @@ export type MapEntry[T Hashable, U] {
 export extern type Set[T Hashable]
 
 // Returns a deep copy with independent storage, in the same insertion order.
-fn Set[T Hashable &Clonable].clone() Set[T] {
+fn Set[T Hashable & Clonable].clone() Set[T] {
 	var out = Set[T]()
 	for value in self.values() {
 		out.add(value.clone())
@@ -903,7 +905,7 @@ fn Set[T].is_empty() Bool {
 // Returns a new set of copies of the elements for which `predicate` is true, in
 // insertion order. The callback borrows the receiver, so changing the set during the
 // traversal is rejected.
-fn Set[T Hashable &Clonable].filter(predicate fn(T) Bool) Set[T] {
+fn Set[T Hashable & Clonable].filter(predicate fn(T) Bool) Set[T] {
 	var out = Set[T]()
 	for value in self.values() {
 		if predicate(value) { out.add(value.clone()) }
@@ -946,7 +948,7 @@ fn Set[T].fold_right[A](initial A, step fn(A, T) A) A {
 }
 
 // Returns the first element for which `predicate` is true, or `null`.
-fn Set[T Hashable &Clonable].find(predicate fn(T) Bool) T? {
+fn Set[T Hashable & Clonable].find(predicate fn(T) Bool) T? {
 	for value in self.values() {
 		if predicate(value) { return value.clone() }
 	}
@@ -955,7 +957,7 @@ fn Set[T Hashable &Clonable].find(predicate fn(T) Bool) T? {
 
 // Searches from the end and returns the last element for which `predicate` is true,
 // or `null`.
-fn Set[T Hashable &Clonable].find_last(predicate fn(T) Bool) T? {
+fn Set[T Hashable & Clonable].find_last(predicate fn(T) Bool) T? {
 	values := self.values()
 	var i = values.length() - 1
 
@@ -1040,7 +1042,7 @@ fn var Set[T].remove(move value T) Void { ... }
 
 // Keeps only the values for which `keep` is true, in place, like `List.retain`. The
 // rest keep their insertion order. Example: `seen.retain(fn n: n >= 0)`.
-fn var Set[T Hashable &Clonable].retain(keep fn(T) Bool) Void {
+fn var Set[T Hashable & Clonable].retain(keep fn(T) Bool) Void {
 	var doomed = List[T]()
 	self.for_each(
 		value => {

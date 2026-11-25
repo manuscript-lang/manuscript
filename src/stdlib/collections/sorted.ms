@@ -1,7 +1,7 @@
 import panic from "@std/core.ms"
 
 // One key-value pair of a SortedMap.
-export type SortedEntry[K Comparable &Clonable, V Clonable] {
+export type SortedEntry[K Comparable & Clonable, V Clonable] {
 	// The entry's key, which orders it within the map.
 	key K
 	// The value stored for `key`.
@@ -16,7 +16,7 @@ It is a list of sorted chunks of at most 128 entries. `get`, `contains`, `floor`
 `add` and `remove` locate the key and shift entries within its chunk; splitting or removing a chunk also updates the chunk lists.
 Use `clone()` for an independent deep copy. Use `Map` when you do not need sorted order and want average O(1) key lookup.
 */
-export type SortedMap[K Comparable &Clonable, V Clonable] {
+export type SortedMap[K Comparable & Clonable, V Clonable] {
 	// Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not
 	// this field.
 	key_chunks List[List[K]] = []
@@ -346,7 +346,7 @@ fn SortedMap[K, V].for_each(operation fn(K, V) Void) Void {
 // A set kept in ascending order, with the same `Comparable` ordering and costs as
 // `SortedMap`. Members that compare equal are the same member. Use `clone()` for an
 // independent deep copy.
-export type SortedSet[T Comparable &Clonable] {
+export type SortedSet[T Comparable & Clonable] {
 	// Members as the keys of a map. Internal state: use the operations, not this field.
 	members SortedMap[T, Bool] = SortedMap[T, Bool]()
 }
