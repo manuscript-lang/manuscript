@@ -16,29 +16,12 @@
           "column": 13,
           "offset": 104
         }
-      },
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
-        "position": {
-          "file": "f-text-backslash-in-expression.ms",
-          "line": 5,
-          "column": 1,
-          "offset": 124
-        },
-        "end": {
-          "file": "f-text-backslash-in-expression.ms",
-          "line": 5,
-          "column": 2,
-          "offset": 125
-        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/f-text-backslash-in-expression.ms:4:13: parse: a backslash cannot appear in the interpolated expression ('{' starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)\n   |\n 4 |     print(f\"{xs.join(\\\", \\\")}\")\n   |             ^\n<DIR>/f-text-backslash-in-expression.ms:5:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 5 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/f-text-backslash-in-expression.ms:4:13: parse: a backslash cannot appear in the interpolated expression ('{' starts an interpolation in f\"...\" text; write \\{ and \\} for literal braces, or drop the f)\n   |\n 4 |     print(f\"{xs.join(\\\", \\\")}\")\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

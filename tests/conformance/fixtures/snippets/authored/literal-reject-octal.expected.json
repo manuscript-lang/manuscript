@@ -22,29 +22,12 @@
           "column": 13,
           "offset": 156
         }
-      },
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
-        "position": {
-          "file": "literal-reject-octal.ms",
-          "line": 7,
-          "column": 1,
-          "offset": 170
-        },
-        "end": {
-          "file": "literal-reject-octal.ms",
-          "line": 7,
-          "column": 2,
-          "offset": 171
-        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-octal.ms:5:10: parse: invalid number 0o7; octal literals do not exist, so write the value in decimal, hexadecimal (0x) or binary (0b)\n   |\n 5 |     x := 0o7\n   |          ^^^\n<DIR>/literal-reject-octal.ms:7:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 7 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-octal.ms:5:10: parse: invalid number 0o7; octal literals do not exist, so write the value in decimal, hexadecimal (0x) or binary (0b)\n   |\n 5 |     x := 0o7\n   |          ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
