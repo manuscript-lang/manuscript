@@ -56,6 +56,8 @@ typedef struct Body {
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
   MsSpan source;  /* the module's text, for repairing edits; empty for a bundled module */
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
+  bool defer_uninferred;  /* an uninferred generic case is left for the caller to retype beside its siblings */
+  uint32_t uninferred;    /* how many cases were left that way */
   const MsExpr *statement_match; /* the match being checked as a statement */
   bool saw_return; /* a return statement appeared in the current lambda body */
   const MsExpr *pending_try; /* the first `?` in a lambda body whose result is still being inferred, else NULL */
