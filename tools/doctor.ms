@@ -78,7 +78,7 @@ fn main() Int {
 	hugo_output := capture(hugo, ["version"])
 
 	if hugo_usable(hugo_output) {
-		stdout().write(hugo_output).get()
+		void stdout().write(hugo_output).get()
 	} else {
 		print("MISSING Hugo Extended 0.146.7 or newer (book checks)")
 		failed += 1

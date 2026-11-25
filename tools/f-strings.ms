@@ -332,8 +332,8 @@ fn main() Int {
 
 		if converted == source { continue }
 
-		write_file(path, converted, replace: true).wait().get()
-		stdout().write(f"{path}\n").get()
+		void write_file(path, converted, replace: true).wait().get()
+		void stdout().write(f"{path}\n").get()
 	}
 
 	return 0

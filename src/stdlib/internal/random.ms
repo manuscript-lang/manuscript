@@ -56,8 +56,6 @@ fn draw_below(min, width Int) Int! {
 			return ok(wrapping_add(min, n))
 		}
 	}
-
-	return ok(min)
 }
 
 // An integer at least `min` and below `max_exclusive` (below the largest Int when

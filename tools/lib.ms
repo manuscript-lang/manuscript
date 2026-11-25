@@ -48,7 +48,7 @@ export fn dist_arch() String {
 
 // Prints `message` and a newline to standard error.
 export fn note(message String) Void {
-	stderr().write(f"{message}\n").get()
+	void stderr().write(f"{message}\n").get()
 }
 
 // The value of environment variable `name`, or `fallback`.
@@ -173,7 +173,7 @@ export fn use_stats_runtime() Int {
 		}
 	}
 
-	set_environment("MS_RUNTIME", archives.join(separator)).get()
+	void set_environment("MS_RUNTIME", archives.join(separator)).get()
 	return 0
 }
 

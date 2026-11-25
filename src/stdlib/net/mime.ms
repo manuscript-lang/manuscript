@@ -56,13 +56,9 @@ fn Headers.get(name String) String? {
 // Returns every value for `name`, ignoring case, in order.
 fn Headers.get_all(name String) List[String] {
 	wanted := name.lower()
-	var values = List[String]()
-	for field in self.fields {
-		if field.name.lower() == wanted {
-			values.append(field.value.clone())
-		}
-	}
-	return values
+	return self.fields.filter(
+		field => field.name.lower() == wanted
+	).map(field => (field.value.clone()))
 }
 
 // Formats the block as `Name: value` lines, each ending in CRLF.

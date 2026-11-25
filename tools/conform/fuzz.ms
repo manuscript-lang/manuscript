@@ -475,10 +475,7 @@ fn bool_expr(var g Gen, depth Int) String {
 }
 
 fn list_code(items List[Int]) String {
-	var parts = List[String]()
-	for item in items {
-		parts.append(int_code(item))
-	}
+	parts := items.map(item => int_code(item))
 	return "[" + parts.join(", ") + "]"
 }
 
@@ -486,8 +483,7 @@ fn list_code(items List[Int]) String {
 fn list_expr(var g Gen, depth Int) ListExpr {
 	if depth == 0 or g.lists.is_empty() or chance(g.rng, 30) {
 		n := below(g.rng, 6)
-		var items = List[Int]()
-		for _index in 0..n { items.append(range(g.rng, -30, 30)) }
+		items := (0..n).map(_index => range(g.rng, -30, 30))
 
 		// An empty literal has no element type; spell one out.
 		if items.is_empty() { return ListExpr(code: "[1, 2, 3].take(0)", items: items) }
@@ -537,7 +533,7 @@ fn list_expr(var g Gen, depth Int) ListExpr {
 	if which == 4 {
 		other := g.lists[below(g.rng, g.lists.length())].clone()
 		items = base.items.clone()
-		for x in other.items { items.append(x) }
+		items.extend(other.items)
 		return ListExpr(code: f"{base.name}.concat({other.name})", items: items)
 	}
 
@@ -862,9 +858,7 @@ export fn syntax_error(seed Int) Generated {
 
 	at := body_start + below(rng, lines.length() - body_start)
 	line := lines[at].clone()
-	var chars = List[String]()
-	for c in line.chars() { chars.append(c.clone()) }
-
+	chars := line.chars().map(c => c.clone())
 	which := below(rng, 9)
 	var mutated = line.replace(" = ", " == ")
 

@@ -571,18 +571,12 @@ fn var TerminalEvents.next() TerminalEvent?! {
 		ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
 
 		if ready != null {
-			for event in self.decoder.decode(msstd_terminal_input_text()) {
-				self.queue.append(event.clone())
-			}
+			self.queue.extend(self.decoder.decode(msstd_terminal_input_text()))
 		} else if waiting {
 			// A quiet pause resolves a lone escape into the Escape key.
-			for event in self.decoder.flush() {
-				self.queue.append(event.clone())
-			}
+			self.queue.extend(self.decoder.flush())
 		}
 	}
-
-	return ok(null)
 }
 
 fn move TerminalEvents.close() Void! {

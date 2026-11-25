@@ -93,11 +93,8 @@ export fn select(root String, filter Filter) List[Fixture] {
 	found = found.sorted_by_key(fx => fx.id)
 	if filter.shard_count == 1 { return found }
 
-	var mine = List[Fixture]()
-	for index in 0..found.length() {
-		if index % filter.shard_count == filter.shard_index {
-			mine.append(found[index].clone())
-		}
-	}
+	mine := (0..found.length()).filter(
+		index => (index % filter.shard_count == filter.shard_index)
+	).map(index => found[index].clone())
 	return mine
 }

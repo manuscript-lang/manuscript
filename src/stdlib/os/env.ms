@@ -1,3 +1,7 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.read
+
 import (
 	parse_dotenv from "@std/data/config.ms",
 	access, stat from "@std/os/fs.ms",

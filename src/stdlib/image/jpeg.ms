@@ -518,11 +518,7 @@ export fn decode_jpeg(data Bytes, max_pixels Int?) Raster! {
 						return error(bad("truncated JPEG Huffman table"))
 					}
 
-					var values = List[Int]()
-					for zi in 0..total {
-						values.append(data.get(p + 17 + zi).to_int())
-					}
-
+					values := (0..total).map(zi => data.get(p + 17 + zi).to_int())
 					table := build_huffman(counts, values)?
 
 					if table_class == 0 {
@@ -847,22 +843,11 @@ export fn decode_jpeg(data Bytes, max_pixels Int?) Raster! {
 	if not have_frame or not have_scan { return error(bad("JPEG has no image data")) }
 
 	// Planes, then upsample + color convert.
-	var planes = List[List[UInt8]]()
-	for c in comps {
-		planes.append(jpeg_plane(c))
-	}
-
+	planes := comps.map(c => jpeg_plane(c))
 	zi := comps.length()
-	var spans = List[List[Int]]()
-	for c in comps {
-		spans.append(
-			[
-				(width * c.h + hmax - 1) / hmax,
-				(height * c.v + vmax - 1) / vmax,
-			]
-		)
-	}
-
+	spans := comps.map(
+		c => [(width * c.h + hmax - 1) / hmax, (height * c.v + vmax - 1) / vmax]
+	)
 	m := if zi == 1 { 1 } else { 3 }
 	var pixels = zeroed(width * height * m)
 	ycc := (
@@ -890,10 +875,7 @@ export fn decode_jpeg(data Bytes, max_pixels Int?) Raster! {
 	}
 
 	var s = [0, 0, 0, 0]
-	var rows = List[List[Int]]()
-	for c in comps {
-		rows.append([0].repeated(width))
-	}
+	var rows = comps.map(c => [0].repeated(width))
 
 	for y in 0..height {
 		for c in 0..zi {

@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.read
+
 import (
 	Bytes from "@std/bytes.ms",
 	DirectoryEntry, canonicalize, list, read_file from "@std/os/fs.ms",

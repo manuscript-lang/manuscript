@@ -234,9 +234,7 @@ fn var Reader.expect(literal String) Void! {
 // Returns the text up to `stop` and consumes it, or fails when `stop` never appears;
 // `what` names the construct in that error, which points at `opened`, where it began.
 fn var Reader.take_until(stop, what String, opened Int) String! {
-	var wanted List[Int] = []
-	for code in stop.scalar_values() { wanted.append(code) }
-
+	wanted := stop.scalar_values().clone()
 	start := self.at
 	count := self.codes.length()
 	head := wanted[0]

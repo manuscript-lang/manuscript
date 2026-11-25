@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.net.connect
+
 // Fetch-style HTTP client implemented in Manuscript over `@std/net/http.ms` and
 // `@std/data/json.ms`.
 import (

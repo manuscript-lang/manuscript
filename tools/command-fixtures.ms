@@ -87,7 +87,7 @@ fn tree_of(root, dir String, ignored List[String]) Map[String, String] {
 }
 
 fn write_text(path, text String) Void {
-	write_file(path, text, replace: true).wait().get()
+	void write_file(path, text, replace: true).wait().get()
 }
 
 // The outcome of one case_dir run in a fresh working directory.
@@ -100,7 +100,7 @@ type Outcome {
 fn execute(ms, case_dir String) Outcome {
 	scratch := temporary("ms-cmd-").get()
 	work := f"{scratch.path()}/work"
-	create_directory(work.clone()).get()
+	void create_directory(work.clone()).get()
 	if access(f"{case_dir}/input", 0).is_ok() {
 		copy(
 			f"{case_dir}/input",
@@ -121,11 +121,9 @@ fn execute(ms, case_dir String) Outcome {
 		input = read_file(f"{case_dir}/stdin").wait().get()
 	}
 
-	var args = List[String]()
-	for line in text_of(read_file(f"{case_dir}/args").wait().get()).split("\n") {
-		if line != "" { args.append(line.clone()) }
-	}
-
+	args := text_of(read_file(f"{case_dir}/args").wait().get()).split("\n").filter(
+		line => (line != "")
+	).map(line => line.clone())
 	out := run(
 		ms.clone(),
 		args,
@@ -141,7 +139,7 @@ fn execute(ms, case_dir String) Outcome {
 
 fn record(case_dir String, outcome Outcome) Void {
 	expected := f"{case_dir}/expected"
-	create_directory(f"{expected}/tree", recursive: true).get()
+	void create_directory(f"{expected}/tree", recursive: true).get()
 	write_text(f"{expected}/stdout", outcome.stdout)
 	write_text(f"{expected}/stderr", outcome.stderr)
 	write_text(f"{expected}/status", f"{outcome.status}\n")
@@ -211,12 +209,9 @@ fn difference(case_dir String, outcome Outcome) String {
 	}
 
 	if recorded != outcome.files.length() {
-		var extra = List[String]()
-		for item in outcome.files.entries() {
-			if access(f"{tree}/{item.key}", 0).is_error() {
-				extra.append(item.key.clone())
-			}
-		}
+		extra := outcome.files.entries().filter(
+			item => access(f"{tree}/{item.key}", 0).is_error()
+		).map(item => (item.key.clone()))
 		return f"extra files written: {extra.join(", ")}"
 	}
 
@@ -234,10 +229,7 @@ fn selected(case_dir String, prefixes List[String]) Bool {
 
 fn main() Int {
 	root := working_directory().get()
-	var words = List[String]()
-	for word in arguments() {
-		words.append(word.clone())
-	}
+	words := arguments().map(word => word.clone())
 	if words.is_empty() { return 64 }
 
 	mode := words[0].clone()
@@ -295,7 +287,7 @@ fn main() Int {
 		}
 	}
 
-	change_directory(root).get()
+	void change_directory(root).get()
 	print(f"commands: {passed}/{total}")
 	if passed != total { return 1 }
 

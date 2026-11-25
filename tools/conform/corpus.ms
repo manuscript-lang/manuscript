@@ -145,16 +145,12 @@ export fn read_text(path String) String {
 // a fixture.
 export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 	var found = List[Fixture]()
-	var projects = List[String]()
-	for entry in glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]) {
-		projects.append(
-			entry.path.slice(
-				0,
-				entry.path.length() - "conform.meta".length(),
-			).clone()
-		)
-	}
-
+	projects := glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]).map(
+		entry => entry.path.slice(
+			0,
+			entry.path.length() - "conform.meta".length(),
+		).clone()
+	)
 	var candidates = List[String]()
 
 	for entry in glob(root, GlobOptions(patterns: ["**/*.ms", "**/conform.meta"])).get_or(
@@ -246,18 +242,26 @@ export fn under_project(id String, projects List[String]) Bool {
 // files, or a single file with the support/ directory beside it.
 export fn materialize(fx Fixture, work String) Void {
 	if fx.is_dir {
-		copy(fx.path.clone(), work.clone(), CopyOptions(recursive: true, replace: true)).get()
+		void copy(
+			fx.path.clone(),
+			work.clone(),
+			CopyOptions(recursive: true, replace: true),
+		).get()
 		for name in ["conform.meta", "expected.json", "conform.stdin"] {
 			void remove(f"{work}/{name}")
 		}
 		return
 	}
 
-	copy(fx.path.clone(), f"{work}/{fx.entry}").get()
+	void copy(fx.path.clone(), f"{work}/{fx.entry}").get()
 
 	support := f"{fx.path.slice(0, parent_length(fx.path))}/support"
 	if access(support, 0).is_ok() {
-		copy(support, f"{work}/support", CopyOptions(recursive: true, replace: true)).get()
+		void copy(
+			support,
+			f"{work}/support",
+			CopyOptions(recursive: true, replace: true),
+		).get()
 	}
 }
 
@@ -268,10 +272,7 @@ export fn render_meta(meta Meta) String {
 	if meta.origin != "" { out += f"// conform: origin={meta.origin}\n" }
 
 	if not meta.args.is_empty() {
-		var items = List[JsonValue]()
-		for arg in meta.args {
-			items.append(JsonValue.StringValue(arg.clone()))
-		}
+		items := meta.args.map(arg => JsonValue.StringValue(arg.clone()))
 		out += f"// conform: args={stringify(JsonValue.ArrayValue(items)).get()}\n"
 	}
 
@@ -285,16 +286,12 @@ export fn render_meta(meta Meta) String {
 // outside
 // `support/` directories and outside project directories, or a project directory.
 export fn candidate_ids(root String) List[String] {
-	var projects = List[String]()
-	for entry in glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]) {
-		projects.append(
-			entry.path.slice(
-				0,
-				entry.path.length() - "conform.meta".length(),
-			).clone()
-		)
-	}
-
+	projects := glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]).map(
+		entry => entry.path.slice(
+			0,
+			entry.path.length() - "conform.meta".length(),
+		).clone()
+	)
 	var ids = List[String]()
 
 	for entry in glob(root, GlobOptions(patterns: ["**/*.ms", "**/conform.meta"])).get_or(

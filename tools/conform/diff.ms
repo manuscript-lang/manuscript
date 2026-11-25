@@ -49,12 +49,9 @@ export fn differing(
 	var chunks = List[List[Fixture]]()
 
 	for worker in 0..jobs {
-		var mine = List[Fixture]()
-		for index in 0..chosen.length() {
-			if index % jobs == worker {
-				mine.append(chosen[index].clone())
-			}
-		}
+		mine := (0..chosen.length()).filter(
+			index => index % jobs == worker
+		).map(index => chosen[index].clone())
 		chunks.append(mine)
 	}
 

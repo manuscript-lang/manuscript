@@ -79,6 +79,25 @@ static bool has_call(const MsExpr *e) {
   return found;
 }
 
+static void has_probe_expr(void *context, const MsExpr *e) {
+  if (e->kind == MS_E_PROBE || (e->kind == MS_E_UNARY && e->op == MS_U_TRY)) {
+    *(bool *)context = true;
+  }
+}
+
+/* Whether a `?` can leave the function from inside `s`: such a loop is no `map`, which cannot return early. */
+static bool has_probe(const MsStmt *s) {
+  bool found = false;
+  const MsVisitor visitor = {.ctx = &found, .expr = has_probe_expr};
+  ms_walk_stmt(&visitor, s);
+  return found;
+}
+
+/* Whether the function being walked is called `name`: inside it the rewrite the rule suggests would call itself. */
+static bool inside(const TerseScan *scan, const char *name) {
+  return scan->enclosing != 0 && terse_name_is(scan, scan->enclosing, name);
+}
+
 /* ---- small helpers ---- */
 
 static bool is_trim_space(uint8_t c) {
@@ -482,7 +501,7 @@ static void index_loop(const TerseScan *scan, const MsStmt *s) {
                              ? count_in(region, ms_strbuild_span(&pattern))
                              : 0;
   ms_strbuild_free(&pattern);
-  if (uses.reads > 0 && uses.reads == indexed) {
+  if (uses.reads > 0 && uses.reads == indexed && !inside(scan, "for_each")) {
     MsStrBuild message = ms_strbuild_new();
     ms_strbuild_append_text(&message, "Loop over the list directly: `for item in ");
     ms_strbuild_append(&message, list);
@@ -505,6 +524,12 @@ static bool appends_to(const TerseScan *scan, const MsStmt *s, MsName name) {
          terse_name_is(scan, callee->u.member.name, "append") && is_name(callee->u.member.left, name);
 }
 
+/* Whether `e` is a range `a..b`, which parses as a call of the name `..`. */
+static bool is_range(const TerseScan *scan, const MsExpr *e) {
+  return e->kind == MS_E_CALL && e->u.call.callee->kind == MS_E_NAME &&
+         terse_name_is(scan, e->u.call.callee->u.sym, "..");
+}
+
 /* A loop whose whole body appends one value to, or adds one value into, a fresh accumulator. */
 static void accumulate_loop(const TerseScan *scan, MsStmts body, size_t at) {
   if (at + 1 >= body.len) {
@@ -513,7 +538,8 @@ static void accumulate_loop(const TerseScan *scan, MsStmts body, size_t at) {
   const MsStmt *first = body.ptr[at];
   const MsStmt *second = body.ptr[at + 1];
   const MsName name = bound_name(first);
-  if (name == 0 || !first->u.bind.is_mutable || second->kind != MS_S_FOR || second->u.each.body.len != 1) {
+  if (name == 0 || !first->u.bind.is_mutable || second->kind != MS_S_FOR || second->u.each.body.len != 1 ||
+      has_probe(second)) {
     return;
   }
   const MsExpr *value = first->u.bind.value;
@@ -524,13 +550,14 @@ static void accumulate_loop(const TerseScan *scan, MsStmts body, size_t at) {
                            ms_span_ends_with(written, text_of("]()")));
   const bool guarded = only->kind == MS_S_IF && only->u.branch.binding == NULL && only->u.branch.else_body.len == 0 &&
                        only->u.branch.body.len == 1 && appends_to(scan, only->u.branch.body.ptr[0], name);
-  if (empty_list && (appends_to(scan, only, name) || guarded)) {
+  if (empty_list && (appends_to(scan, only, name) || guarded) && !inside(scan, "map") && !inside(scan, "filter")) {
     terse_note(scan, "MSL124",
                text_of("Build the list with `xs.map(x => ...)` or `xs.filter(x => ...)` instead of a loop that "
                        "appends"),
                first->pos);
   } else if (value->kind == MS_E_NUMBER && only->kind == MS_S_ASSIGN && !only->u.assign.member_target &&
-             only->u.assign.name == name && only->u.assign.has_compound && only->u.assign.compound == MS_B_ADD) {
+             only->u.assign.name == name && only->u.assign.has_compound && only->u.assign.compound == MS_B_ADD &&
+             !is_range(scan, second->u.each.iter) && !inside(scan, "sum")) {
     terse_note(scan, "MSL124",
                text_of("Total with `xs.sum()` or `xs.map(...).sum()` instead of a loop that adds"), first->pos);
   }
@@ -554,7 +581,7 @@ static void append_all(const TerseScan *scan, const MsStmt *s) {
     element = terse_name_is(scan, arg->u.call.callee->u.member.name, "clone") &&
               is_name(arg->u.call.callee->u.member.left, name);
   }
-  if (element && terse_name_is(scan, call->u.call.callee->u.member.name, "append")) {
+  if (element && terse_name_is(scan, call->u.call.callee->u.member.name, "append") && !inside(scan, "extend")) {
     terse_note(scan, "MSL125", text_of("Append every element with `out.extend(xs)` instead of a loop"), s->pos);
   }
 }

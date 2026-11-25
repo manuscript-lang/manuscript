@@ -24,12 +24,9 @@ import (
 
 // The text after `prefix` on every line that starts with it.
 fn after(text, prefix String) List[String] {
-	var found = List[String]()
-	for line in text.split("\n") {
-		if line.starts_with(prefix) {
-			found.append(line.slice(prefix.length(), line.length()).clone())
-		}
-	}
+	found := text.split("\n").filter(
+		line => line.starts_with(prefix)
+	).map(line => (line.slice(prefix.length(), line.length()).clone()))
 	return found
 }
 
@@ -39,16 +36,15 @@ fn main() Int {
 
 	// LLVM would delete blocks nothing reads; the gate counts every block the compiler
 	// asks for.
-	set_environment("MS_HEAP_FACTS", "off").get()
+	void set_environment("MS_HEAP_FACTS", "off").get()
 
 	// The runtime keeps per-worker tables, so its block count grows with the worker
 	// count, which defaults to the core count (26 blocks at 1, 28 at 2, 32 at 4 for
 	// promise_wrapper_closure). Pin it so every machine reports the same counts.
-	set_environment("MS_THREADS", "4").get()
+	void set_environment("MS_THREADS", "4").get()
 
 	root := working_directory().get()
-	var files = List[String]()
-	for f in arguments() { files.append(f.clone()) }
+	var files = arguments().map(f => f.clone())
 	if files.is_empty() {
 		for f in glob("tests/checks/ownership-counts", GlobOptions(patterns: ["*.ms"])).get_or(
 			[]
@@ -59,7 +55,7 @@ fn main() Int {
 
 	ms := tool_ms(root.clone())
 	scratch := temporary("ms-counts-").get()
-	change_directory(scratch.path()).get()
+	void change_directory(scratch.path()).get()
 
 	var failures = 0
 	var checked = 0
@@ -152,7 +148,7 @@ fn main() Int {
 		}
 	}
 
-	change_directory(root).get()
+	void change_directory(root).get()
 	print(f"checked {checked} expectations, {failures} failing")
 
 	if checked == 0 {

@@ -1,4 +1,4 @@
-// conform: tags=ownership,optionals,tier-core
+// conform: tags=ownership,optional,tier-core
 // conform: phase=run
 // conform: origin=design/proposals/argument-modes-in-signatures.md
 type Item {

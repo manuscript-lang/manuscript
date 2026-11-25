@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.random.read
+
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	panic from "@std/core.ms",
@@ -139,11 +142,7 @@ export fn weighted_choice[T](hold values List[T], weights List[Float]) &T?! {
 }
 
 fn positions(count Int) List[Int] {
-	var out List[Int] = []
-	for i in 0..count {
-		out.append(i)
-	}
-	return out
+	return (0..count).map(i => i)
 }
 
 /*
@@ -197,11 +196,7 @@ fn scaled_weighted_position(weights List[Float], unit_draw Float) Int {
 		}
 	}
 
-	var total = 0.0
-	for weight in weights {
-		total += weight / scale
-	}
-
+	total := weights.map(weight => weight / scale).sum()
 	point := unit_draw * total
 	var running = 0.0
 	var last = 0
@@ -269,8 +264,6 @@ fn var SeededRandom.int(min, max_exclusive Int) Int {
 		// likelier.
 		if bits - rest <= max_int - (span - 1) { return min + rest }
 	}
-
-	return min
 }
 
 // Returns a Float at least 0.0 and below 1.0 with 53 random bits.
@@ -351,12 +344,7 @@ fn var SeededRandom.permutation(count Int) List[Int] {
 	if count < 0 {
 		panic("random permutation: count must not be negative")
 	}
-
-	var items List[Int] = []
-	for index in 0..count {
-		items.append(index)
-	}
-	return self.shuffle(items)
+	return self.shuffle((0..count).map(index => index))
 }
 
 // Returns a generator that starts from `seed`. Equal seeds give equal sequences. The

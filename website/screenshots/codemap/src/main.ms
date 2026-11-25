@@ -109,11 +109,7 @@ fn run_command(var w Warehouse, line String) String {
 
 fn run(lines List[String]) List[String] {
 	var w = Warehouse(Map[String, Int](), Map[String, Int](), List[Order]())
-	var out = List[String]()
-	for line in lines {
-		out.append(run_command(w, line))
-	}
-	return out
+	return lines.map(line => run_command(w, line))
 }
 
 fn main() Void {

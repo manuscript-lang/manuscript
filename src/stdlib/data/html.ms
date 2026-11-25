@@ -768,8 +768,6 @@ fn var Parser.read_cdata() Bool {
 			brackets = 0
 		}
 	}
-
-	return true
 }
 
 // The raw-text element whose name is the current tag name, or `RAW_NONE`.

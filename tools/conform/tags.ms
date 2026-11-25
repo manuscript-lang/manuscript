@@ -82,12 +82,9 @@ export fn imports_of(text String) List[String] {
 // The milestone tier of a program: stdout and the test harness are part of the core
 // language experience, so `io` and `testing` do not raise it.
 export fn tier_of(imports List[String]) String {
-	var others = List[String]()
-	for name in imports {
-		if name != "io" and name != "testing" {
-			others.append(name.clone())
-		}
-	}
+	others := imports.filter(
+		name => name != "io" and name != "testing"
+	).map(name => name.clone())
 	if others.is_empty() { return "tier-core" }
 
 	for name in others {

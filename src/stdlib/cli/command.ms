@@ -1,4 +1,5 @@
 // ms: allow_effect std.console.write
+
 import panic from "@std/core.ms"
 /*
 Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
@@ -206,14 +207,14 @@ fn Command.execute(argv List[String]) Int {
 
 	match parsed.get() {
 		Help(text) => {
-			stdout().write(text).get()
+			void stdout().write(text).get()
 			return 0
 		}
 		Run(matches) => {
 			result := self.run(matches)
 
 			if result.is_error() {
-				stderr().write(result.err().message + "\n").get()
+				void stderr().write(result.err().message + "\n").get()
 				return 1
 			}
 
