@@ -263,6 +263,7 @@ static bool load_missing(Loader *loader, MsSpan importer, const MsImport *item, 
   module_list_push(&loader->modules, (MsGraphModule){.name = logical_name(loader, canonical),
                                                      .path = canonical,
                                                      .source = (MsSpan){0},
+                                                     .missing = true,
                                                      .syntax = (MsModule){0},
                                                      .targets = targets});
   ms_span_list_push(&loader->loaded, canonical);

@@ -192,6 +192,18 @@ void lsp_analyze(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out) {
   out->cached = true;
 }
 
+void lsp_analyze_scan(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out) {
+  for (size_t i = 0; i < CACHE_SLOTS; i++) {
+    CacheSlot *slot = &cache[i];
+    if (slot->valid && slot->generation == generation && ms_string_equal(&slot->path, &doc->path)) {
+      *out = slot->value;
+      out->cached = true;
+      return;
+    }
+  }
+  lsp_analyze_changed(docs, doc, NULL, 0, out);
+}
+
 /* The bundled modules parsed once for the session: the editor checks after every keystroke, and parsing them was a fifth
  * of each check. The server analyzes on one thread, and the cache is never written once built. */
 static const MsStdCache *lsp_std_cache(void) {
@@ -256,7 +268,7 @@ const MsInspection *lsp_inspection(const LspAnalysis *analysis, bool standard) {
 bool lsp_rename_stays_checked(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
                               MsStrBuild *error) {
   LspAnalysis before;
-  lsp_analyze(docs, doc, &before);
+  lsp_analyze_scan(docs, doc, &before);
   const bool clean = before.resolved && before.checked.findings.len == 0;
   lsp_analysis_release(&before);
   if (!clean) {
@@ -322,6 +334,15 @@ static MsString diagnostics_of(LspDoc *doc, const LspDocList *docs) {
     const Finding *finding = &analysis.checked.findings.ptr[i];
     const MsSpan file = lsp_absolute_file(analysis.arena, analysis.checked.graph.source_root, finding->file);
     if (!ms_span_equal(file, ms_string_span(&doc->path))) continue;
+    /* One mistake reported at one place is one diagnostic, as `ms check` prints it: an import of a missing file is
+     * found once per name it brings in. */
+    bool repeated = false;
+    for (size_t earlier = 0; earlier < i && !repeated; earlier++) {
+      const Finding *other = &analysis.checked.findings.ptr[earlier];
+      repeated = other->diag.pos.offset == finding->diag.pos.offset && ms_span_equal(other->diag.message, finding->diag.message) &&
+                 ms_span_equal(other->file, finding->file);
+    }
+    if (repeated) continue;
     append_diagnostic(&out, &first, source, finding);
   }
   /* The advisories: the lint rules over the checked program, or the lexical ones alone when it did not load. */
