@@ -23,14 +23,6 @@ MsSpan ms_message_join(MsArena *arena, const MsSpan *parts, size_t count) {
   return joined;
 }
 
-MsSpan ms_message_number(MsArena *arena, uint64_t value) {
-  MsStrBuild builder = ms_strbuild_new();
-  ms_strbuild_append_u64(&builder, value);
-  MsSpan text = ms_message_from_builder(arena, &builder);
-  ms_strbuild_free(&builder);
-  return text;
-}
-
 MsSpan ms_message_lowered(MsArena *arena, MsSpan text) {
   MsStrBuild out = ms_strbuild_new();
   for (size_t i = 0; i < text.len; i++) {
@@ -39,10 +31,6 @@ MsSpan ms_message_lowered(MsArena *arena, MsSpan text) {
   MsSpan copy = ms_message_from_builder(arena, &out);
   ms_strbuild_free(&out);
   return copy;
-}
-
-MsSpan ms_message_byte(MsArena *arena, uint8_t byte) {
-  return ms_arena_copy(arena, ms_span_of(&byte, 1));
 }
 
 static void append_conversion(MsStrBuild *builder, char conversion, va_list *arguments) {

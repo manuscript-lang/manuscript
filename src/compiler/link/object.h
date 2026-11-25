@@ -31,10 +31,6 @@ typedef struct ObjectCode {
 /* Releases what link_generate left in `code` (link_finish does it itself). */
 void link_discard(ObjectCode *code);
 
-/* Compiles `ir` to the object file `object`. On failure `why` gets the tool's name and its output. */
-MS_NODISCARD MS_NONNULL bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object,
-                                              MsStrBuild *why);
-
 /* The same in two phases, so the modules of one program can run each phase at once on several threads. LLVM's code
  * generator reads process-wide options (a different register allocator for each phase), so every module must finish
  * link_generate before any starts link_finish. Without fault tables link_generate writes `object` and link_finish

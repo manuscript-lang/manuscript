@@ -266,14 +266,6 @@ bool ms_h2_wants_write(const MsH2 *h2) {
   return nghttp2_session_want_write(h2->session) != 0;
 }
 
-bool ms_h2_failed(const MsH2 *h2) {
-  return h2->failed;
-}
-
 const char *ms_h2_error_text(const MsH2 *h2) {
   return h2->error != NULL ? h2->error : "";
-}
-
-size_t ms_h2_open_streams(const MsH2 *h2) {
-  return h2->open;
 }

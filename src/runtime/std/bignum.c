@@ -246,10 +246,6 @@ size_t ms_big_bit_length(const MsBig *a) {
   return (size_t)BN_num_bits(ms_big_value_of(a));
 }
 
-bool ms_big_magnitude_bit(const MsBig *a, size_t index) {
-  return index <= INT_MAX && BN_is_bit_set(ms_big_value_of(a), (int)index);
-}
-
 /* ---- arithmetic ---- */
 
 void ms_big_negate(MsBig *out, const MsBig *a) {
@@ -323,14 +319,6 @@ void ms_big_divmod(MsBig *quotient, MsBig *remainder, const MsBig *a, const MsBi
   } else {
     ms_big_release_bn(r);
   }
-}
-
-void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) {
-  const bool wide = is_wide(a) || is_wide(m);
-  BIGNUM *const result = result_begin(out, a, m);
-  BN_CTX *const ctx = new_ctx();
-  ms_big_must(BN_nnmod(result, ms_big_value_of(a), ms_big_value_of(m), ctx));
-  result_end_shrinking(out, result, wide);
 }
 
 /* ---- shifts and bitwise operations ---- */

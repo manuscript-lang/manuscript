@@ -52,7 +52,5 @@ bool ms_requirement_matches(const MsRequirement *requirement, const MsVersion *v
 void ms_requirement_append(MsStrBuild *out, const MsRequirement *requirement);
 
 bool ms_bucket_equal(MsBucket a, MsBucket b);
-/* `1.x`, `0.4.x` or `0.0.3`. */
-void ms_bucket_append(MsStrBuild *out, MsBucket bucket);
 
 #endif

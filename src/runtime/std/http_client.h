@@ -111,8 +111,6 @@ MS_NODISCARD uint8_t ms_http_client_send(MsHttpClient *client, const MsHttpReque
 uint16_t ms_http_response_status(const MsHttpResponse *response);
 const MsString *ms_http_response_protocol(const MsHttpResponse *response); /* "HTTP/1.1", "HTTP/2.0" */
 const MsHeaders *ms_http_response_headers(const MsHttpResponse *response);
-/* The URL the response came from, after redirects. */
-const MsString *ms_http_response_url(const MsHttpResponse *response);
 /* Appends up to `max` body bytes to `out`; OK with nothing appended is the end of the body. LIMIT_EXCEEDED
  * once the body outgrows the request's bound (the bytes within it are delivered first), TIMED_OUT, CLOSED,
  * INVALID_DATA (bad gzip) or FAILED with text. */

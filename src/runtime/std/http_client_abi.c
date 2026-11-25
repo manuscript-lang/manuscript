@@ -70,10 +70,6 @@ MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolic
   return &cell->header;
 }
 
-MsObj *ms_http_client_handle(MsHttpClient *client) {
-  return ms_http_client_handle_with_policy(client, NULL);
-}
-
 /* True when the client has ended, or when no handle but this one names it any longer: a value dropped without
  * `close` (a cancelled call unwinding) leaves the network's handle as the client's last owner. */
 bool ms_http_client_handle_closed(const MsObj *handle) {

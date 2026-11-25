@@ -11,7 +11,6 @@ void ms_facts_init(MsFacts *facts, MsArena *arena, uint32_t module, uint32_t nod
 /* Records one sparse fact; a later record for the same node replaces the earlier one at ms_facts_finish. */
 void ms_facts_add_call(MsFacts *facts, const MsCall *call);
 void ms_facts_add_conversion(MsFacts *facts, const MsConversion *conversion);
-void ms_facts_add_constant(MsFacts *facts, const MsConstant *constant);
 
 /* Sorts the sparse tables by node so the lookups can search them. */
 void ms_facts_finish(MsFacts *facts);

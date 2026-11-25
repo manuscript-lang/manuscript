@@ -54,6 +54,5 @@ void ms_process_run_exit_hooks(void);
  * (ms_on_stop_v1), used by library code that must interrupt a blocking system call. */
 void ms_stop_hooks_run(void);
 void *ms_on_stop_v1(void (*function)(void *argument), void *argument);
-void ms_on_stop_remove_v1(void *hook);
 
 #endif

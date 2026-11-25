@@ -267,36 +267,6 @@ void ms_fault_text(MsFaultKind kind, const char *message) { ms_fault(kind, ms_sp
 
 enum { OOM_MESSAGE_BYTES = 160 };
 
-/* Appends the decimal digits of `value` at `out`, which holds at least 20 bytes; returns how many. */
-static size_t put_decimal(uint8_t *out, uint64_t value) {
-  uint8_t reversed[20];
-  size_t count = 0;
-  do {
-    reversed[count++] = (uint8_t)('0' + value % 10);
-    value /= 10;
-  } while (value != 0);
-  for (size_t i = 0; i < count; i++) {
-    out[i] = reversed[count - 1 - i];
-  }
-  return count;
-}
-
-/* The message is built on the stack: reporting an allocation that was refused cannot allocate. */
-void ms_fault_out_of_memory(size_t bytes) {
-  static const char before[] = "out of memory: could not allocate ";
-  static const char after[] = " bytes; hold less data at once, or process it in chunks or as a stream";
-  _Static_assert(sizeof before - 1 + 20 + sizeof after - 1 <= OOM_MESSAGE_BYTES, "the message fits its buffer");
-  /* A size that does not fit an Int is shown as the largest Int, as the message always has. */
-  const uint64_t shown = bytes > (uint64_t)INT64_MAX ? (uint64_t)INT64_MAX : bytes;
-  uint8_t message[OOM_MESSAGE_BYTES];
-  size_t length = sizeof before - 1;
-  __builtin_memcpy(message, before, length);
-  length += put_decimal(message + length, shown);
-  __builtin_memcpy(message + length, after, sizeof after - 1);
-  length += sizeof after - 1;
-  raise_fault(MS_FAULT_KIND_OUT_OF_MEMORY, ms_span_of(message, length), true, NULL);
-}
-
 /* base reports its unrecoverable conditions as Manuscript faults. */
 static void raise_base_fatal(MsFatalKind kind, MsSpan message) {
   raise_fault(ms_fault_kind_of_fatal(kind), message, kind == MS_FATAL_OUT_OF_MEMORY, NULL);

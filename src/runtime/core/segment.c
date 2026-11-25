@@ -42,8 +42,6 @@ static void set_segment_state(MsUnwind *unwind, SegmentBounds bounds) {
   unwind->stack_chain = bounds.chain;
 }
 
-uint32_t ms_task_segment(void) { return ms_task_running()->segment; }
-
 void ms_task_publish_limit(void) {
   MsTask *const task = ms_task_running();
   if (task->stack == NULL) {
@@ -51,27 +49,6 @@ void ms_task_publish_limit(void) {
   }
   uint8_t *const base = task->segment == 0 ? task->stack : task->extra->segments.ptr[task->segment - 1];
   ms_stack_publish(base, &task->unwind.hdr, task->unwind.hdr.limit);
-}
-
-void ms_task_restore_segment(uint32_t segment) {
-  MsTask *const task = ms_task_running();
-  if (task->segment == segment) {
-    return;
-  }
-  task->segment = segment;
-  if (task->extra != NULL && task->extra->segment_teb.len > segment) {
-    task->extra->segment_teb.len = segment;
-  }
-  set_segment_state(&task->unwind, segment_bounds(task, segment));
-}
-
-void ms_task_segment_teb(uint32_t segment, uintptr_t out[MS_CTX_TEB_WORDS]) {
-  const MsTask *const task = ms_task_running();
-  if (task->segment == segment || task->extra == NULL || segment >= task->extra->segment_teb.len) {
-    ms_ctx_teb_stack(out);
-  } else {
-    __builtin_memcpy(out, task->extra->segment_teb.ptr[segment].words, sizeof task->extra->segment_teb.ptr[segment].words);
-  }
 }
 
 

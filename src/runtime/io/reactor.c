@@ -611,39 +611,9 @@ bool ms_io_resolve(const char *host, const char *service, uint64_t id, MsIoAddre
   return true;
 }
 
-size_t ms_io_addresses_count(const MsIoAddresses *addresses) {
-  size_t count = 0;
-  for (const struct addrinfo *entry = addresses->request.addrinfo; entry != NULL; entry = entry->ai_next) {
-    count++;
-  }
-  return count;
-}
-
-bool ms_io_addresses_at(const MsIoAddresses *addresses, size_t index, MsIoAddress *out) {
-  const struct addrinfo *entry = addresses->request.addrinfo;
-  for (; entry != NULL && index > 0; index--) {
-    entry = entry->ai_next;
-  }
-  if (entry == NULL || entry->ai_addrlen > sizeof out->socket_address) {
-    return false;
-  }
-  *out = (MsIoAddress){.family = entry->ai_family, .length = (uint32_t)entry->ai_addrlen};
-  __builtin_memcpy(out->socket_address, entry->ai_addr, entry->ai_addrlen);
-  return true;
-}
-
 void ms_io_addresses_free(MsIoAddresses *addresses) {
   uv_freeaddrinfo(addresses->request.addrinfo);
   ms_free(addresses);
-}
-
-void ms_io_addresses_abandon(MsIoAddresses *addresses) {
-  if (addresses->finished) {
-    ms_io_addresses_free(addresses); /* its completion is queued or collected; the id no longer matters */
-    return;
-  }
-  addresses->abandoned = true;
-  (void)uv_cancel((uv_req_t *)&addresses->request);
 }
 
 void ms_io_set_completion_sink(MsIoCompletionSink sink) {

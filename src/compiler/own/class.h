@@ -30,9 +30,6 @@ typedef struct MsClassifier {
 MsClassifier ms_class_new(MsCheckProgram *program);
 void ms_class_free(MsClassifier *classifier);
 
-/* Records that `ty` has a `Closeable` implementation of its own (a `close` method satisfying the interface). */
-void ms_class_mark_closeable(MsClassifier *classifier, MsTy ty);
-
 MsClass ms_class_of(MsClassifier *classifier, MsTy ty);
 
 /* Whether the value of `expr` is something other than a plain copy: it has a known type that moves or is a resource. */

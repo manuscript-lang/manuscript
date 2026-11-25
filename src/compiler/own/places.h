@@ -38,7 +38,4 @@ MsPlace ms_place_then(MsArena *arena, MsPlace place, MsStep step);
 /* Whether the two places can share storage. */
 bool ms_place_overlaps(const MsPlace *a, const MsPlace *b);
 
-/* Appends the place as source reads it: `root.field[..][3]`; `root_name` is the root's text. */
-void ms_place_show(MsStrBuild *out, const MsNames *names, const MsPlace *place, MsSpan root_name);
-
 #endif

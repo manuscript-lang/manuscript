@@ -117,27 +117,6 @@ static void wake(MsH2 *h2, H2Out *out) {
 
 /* ---- heads ---- */
 
-bool ms_h2_open_stream(MsH2 *h2, const MsH2Field *fields, size_t count, bool end_stream, uint32_t *id) {
-  MsList nv = make_nv(fields, count);
-  H2Out *out = end_stream ? NULL : ms_h2_out_new(h2, 0);
-  const nghttp2_data_provider2 provider = out != NULL ? provider_for(out) : (nghttp2_data_provider2){0};
-  const int32_t made = nghttp2_submit_request2(h2->session, NULL, (const nghttp2_nv *)(void *)nv.ptr, nv.len,
-                                               out != NULL ? &provider : NULL, NULL);
-  ms_list_free(&nv);
-  if (made < 0) {
-    if (out != NULL) {
-      ms_h2_out_drop(h2, 0);
-    }
-    return false;
-  }
-  if (out != NULL) {
-    out->id = made;
-  }
-  h2->open++;
-  *id = (uint32_t)made;
-  return true;
-}
-
 static bool is_interim(const MsH2Field *fields, size_t count) {
   for (size_t i = 0; i < count; i++) {
     const MsSpan name = ms_bytes_span(&fields[i].name);
@@ -166,22 +145,6 @@ bool ms_h2_send_response_headers(MsH2 *h2, uint32_t id, const MsH2Field *fields,
   }
   ms_list_free(&nv);
   return made == 0;
-}
-
-bool ms_h2_send_trailers(MsH2 *h2, uint32_t id, const MsH2Field *fields, size_t count) {
-  H2Out *out = ms_h2_out_find(h2, (int32_t)id);
-  if (out == NULL || out->eof) {
-    return false;
-  }
-  for (size_t i = 0; i < count; i++) {
-    const MsH2Field copy = {.name = ms_bytes_from_span(ms_bytes_span(&fields[i].name)),
-                            .value = ms_bytes_from_span(ms_bytes_span(&fields[i].value))};
-    ms_list_push(&out->trailers, sizeof copy, &copy);
-  }
-  out->has_trailers = true;
-  out->eof = true;
-  wake(h2, out);
-  return true;
 }
 
 /* ---- body, windows, control frames ---- */
@@ -223,10 +186,6 @@ void ms_h2_release(MsH2 *h2, uint32_t id, size_t count) {
   if (count > 0) {
     (void)nghttp2_session_consume(h2->session, (int32_t)id, count);
   }
-}
-
-void ms_h2_send_ping(MsH2 *h2, const uint8_t data[8]) {
-  (void)nghttp2_submit_ping(h2->session, NGHTTP2_FLAG_NONE, data);
 }
 
 void ms_h2_shutdown(MsH2 *h2, uint32_t code) {

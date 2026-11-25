@@ -70,51 +70,6 @@ bool mh_put(MsArena *arena, MirHash *map, uint64_t key, uint64_t value) {
   return fresh;
 }
 
-/* Removes the entry at `hole` and moves later entries of its probe run back so lookups still find them. */
-static void close_hole(MirHash *map, uint32_t hole) {
-  const uint32_t mask = map->cap - 1;
-  for (uint32_t next = (hole + 1) & mask; map->used[next] != 0; next = (next + 1) & mask) {
-    const uint32_t ideal = slot_of(map->key[next], mask);
-    /* `next` may move into the hole unless its ideal slot lies cyclically in (hole, next]. */
-    const bool stays = hole <= next ? (ideal > hole && ideal <= next) : (ideal > hole || ideal <= next);
-    if (stays) {
-      continue;
-    }
-    map->key[hole] = map->key[next];
-    map->val[hole] = map->val[next];
-    map->used[hole] = 1;
-    map->used[next] = 0;
-    hole = next;
-  }
-}
-
-bool mh_del(MirHash *map, uint64_t key) {
-  if (map->cap == 0) {
-    return false;
-  }
-  const uint32_t index = find(map, key);
-  if (map->used[index] == 0) {
-    return false;
-  }
-  map->used[index] = 0;
-  map->n--;
-  close_hole(map, index);
-  return true;
-}
-
-MirHash mh_clone(MsArena *arena, const MirHash *map) {
-  MirHash out = {0};
-  if (map->cap == 0) {
-    return out;
-  }
-  allocate(arena, &out, map->cap);
-  __builtin_memcpy(out.key, map->key, sizeof(uint64_t) * map->cap);
-  __builtin_memcpy(out.val, map->val, sizeof(uint64_t) * map->cap);
-  __builtin_memcpy(out.used, map->used, map->cap);
-  out.n = map->n;
-  return out;
-}
-
 static int64_t compare_keys(uint8_t *env, const uint8_t *x, const uint8_t *y) {
   (void)env;
   uint64_t a = 0, b = 0;
@@ -135,16 +90,4 @@ uint64_t *mh_keys(MsArena *arena, const MirHash *map) {
     ms_sort((uint8_t *)out, count, sizeof *out, compare_keys, NULL);
   }
   return out;
-}
-
-bool mh_equal_sets(const MirHash *x, const MirHash *y) {
-  if (x->n != y->n) {
-    return false;
-  }
-  for (uint32_t index = 0; index < x->cap; index++) {
-    if (x->used[index] != 0 && !mh_has(y, x->key[index])) {
-      return false;
-    }
-  }
-  return true;
 }

@@ -28,9 +28,6 @@ static inline size_t ms_find(const uint8_t *hay, size_t n, const uint8_t *needle
   return ms_find_big(hay, n, needle, m);
 }
 
-/* The first offset of `byte` in the n bytes at hay, or SIZE_MAX: the first bytes are scanned as words, the rest by memchr. */
-size_t ms_find_byte(uint8_t byte, const uint8_t *hay, size_t n);
-
 /* The last offset of the m bytes at needle in the n bytes at hay (an empty needle matches at n), or SIZE_MAX.
  */
 size_t ms_rfind(const uint8_t *hay, size_t n, const uint8_t *needle, size_t m);

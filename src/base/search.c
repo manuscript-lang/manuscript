@@ -314,10 +314,6 @@ static MS_ALWAYS_INLINE size_t find_byte(uint8_t byte, const uint8_t *hay, size_
   return hit == NULL ? SIZE_MAX : (size_t)(hit - hay);
 }
 
-size_t ms_find_byte(uint8_t byte, const uint8_t *hay, size_t n) {
-  return find_byte(byte, hay, n);
-}
-
 size_t ms_needle_find(const MsNeedle *needle, MsSpan haystack) {
   const uint8_t *pattern = needle->pattern.ptr, *hay = haystack.ptr;
   const size_t m = needle->pattern.len, n = haystack.len;

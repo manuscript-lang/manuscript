@@ -51,8 +51,6 @@ int ms_big_cmp_abs(const MsBig *a, const MsBig *b) MS_NONNULL;
 bool ms_big_is_odd(const MsBig *a) MS_NONNULL;
 /* Number of bits of the magnitude; 0 for zero. */
 size_t ms_big_bit_length(const MsBig *a) MS_NONNULL;
-/* The bit at `index` of the magnitude. */
-bool ms_big_magnitude_bit(const MsBig *a, size_t index) MS_NONNULL;
 
 void ms_big_negate(MsBig *out, const MsBig *a) MS_NONNULL;
 void ms_big_abs(MsBig *out, const MsBig *a) MS_NONNULL;
@@ -62,9 +60,6 @@ void ms_big_mul(MsBig *out, const MsBig *a, const MsBig *b) MS_NONNULL;
 /* Quotient (toward zero) and remainder (the dividend's sign); b must be
  * nonzero. Either output may be NULL. */
 void ms_big_divmod(MsBig *quotient, MsBig *remainder, const MsBig *a, const MsBig *b);
-/* The remainder in 0..|m|-1 (floor modulo for a positive m); m must be nonzero.
- */
-void ms_big_mod_floor(MsBig *out, const MsBig *a, const MsBig *m) MS_NONNULL;
 void ms_big_shift_left(MsBig *out, const MsBig *a, size_t count) MS_NONNULL;
 /* Rounds toward negative infinity. */
 void ms_big_shift_right(MsBig *out, const MsBig *a, size_t count) MS_NONNULL;

@@ -66,8 +66,6 @@ MsH1Scan ms_h1_scan(const MsHeaders *fields);
 bool ms_h1_scan_keep_alive(const MsH1Scan *scan, uint8_t minor);
 /* Whether a comma-separated field holds `token` (ASCII case-insensitive). */
 bool ms_h1_has_token(const MsHeaders *fields, const char *name, const char *token);
-/* Whether the connection stays open after a message of this minor version. */
-bool ms_h1_keep_alive(uint8_t minor, const MsHeaders *fields);
 /* Request body framing; a message with both Transfer-Encoding and Content-Length is refused. */
 bool ms_h1_request_framing(uint8_t minor, const MsHeaders *fields, const MsH1Scan *scan, MsH1Framing *out,
                            MsH1Bad *bad);
@@ -97,13 +95,6 @@ typedef enum MsH1Progress { MS_H1_MORE, MS_H1_DONE } MsH1Progress;
 MsH1Body ms_h1_body_new(MsH1Framing framing);
 void ms_h1_body_free(MsH1Body *body);
 bool ms_h1_body_is_done(const MsH1Body *body);
-/* How many body bytes the next read may take raw (a fixed length, one chunk's data, or until close), so they
- * can bypass ms_h1_body_feed; false between chunks and once the body is finished. */
-bool ms_h1_body_raw_room(const MsH1Body *body, uint64_t *room);
-/* Whether the raw bytes ahead are the whole rest of the body. */
-bool ms_h1_body_is_fixed_length(const MsH1Body *body);
-/* Accounts for `n` raw body bytes taken without feed. */
-MsH1Progress ms_h1_body_took_raw(MsH1Body *body, size_t n);
 /* Consumes `input`, appending body bytes to `out`; *used is the input consumed. A malformed chunked body
  * returns false and *error is its text. */
 MS_NODISCARD bool ms_h1_body_feed(MsH1Body *body, MsSpan input, MsBytes *out, size_t *used,

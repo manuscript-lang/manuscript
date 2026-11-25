@@ -70,13 +70,6 @@ bool ms_h1_has_token(const MsHeaders *fields, const char *name, const char *toke
   return false;
 }
 
-bool ms_h1_keep_alive(uint8_t minor, const MsHeaders *fields) {
-  if (ms_h1_has_token(fields, "Connection", "close")) {
-    return false;
-  }
-  return minor >= 1 || ms_h1_has_token(fields, "Connection", "keep-alive");
-}
-
 typedef struct ConnectionFlags {
   bool close;
   bool keep_alive;

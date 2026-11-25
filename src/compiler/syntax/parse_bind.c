@@ -498,15 +498,6 @@ MsExpr *parse_clone_chain(Parser *p, const MsExpr *e) {
   return c;
 }
 
-bool ms_is_index_store(const MsNames *names, const MsExpr *call) {
-  const MsExpr *callee = call->u.call.callee;
-  if (callee->kind != MS_E_MEMBER) {
-    return false;
-  }
-  const MsSpan name = ms_names_span(names, callee->u.member.name);
-  return ms_span_is_text(name, MS_INDEX_SET);
-}
-
 /* `xs[i] = value` (the receiver `left` and `index` of the target at `pos`) as the call of the member `[]=`.
  * With `reread`, the value reads the same element, so a name or field key is cloned for the store. */
 MsExpr *parse_index_set(Parser *p, MsPos pos, MsExpr *left, MsExpr *index, MsExpr *value, bool reread) {
