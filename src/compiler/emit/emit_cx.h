@@ -193,6 +193,7 @@ void emit_alt_payload_run(EmitCx *cx, const MirInst *inst, uint32_t *first, uint
 void emit_wide_alias(EmitCx *cx);
 /* The `getelementptr` of each such value's place in its cell, at the top of the function. */
 void emit_wide_alias_cells(EmitCx *cx);
+bool emit_wide_is_ret_cell(const EmitCx *cx, uint32_t cell);
 bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, uint32_t from, uint32_t count);
 /* After an instruction is written: the loads of the leaves it read from cells, to go before it. */
 void emit_wide_loads(EmitCx *cx);
