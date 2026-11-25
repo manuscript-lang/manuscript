@@ -33,7 +33,7 @@ A header parameter is *stable* when every latch argument for it is exactly the r
 | Component | Change | Test |
 | --- | --- | --- |
 | `crates/ms-mir/src/unwind.rs` | stable-chain detection in `hoist_loops`, `consumed_inside` | unit test on a `list.set` loop: one push before the loop, one discard per exit, none inside |
-| `tests/conformance/fixtures` | task loop that sets a list element and then hits an index fault, an overflow fault and a cancellation; no leak, no double free | conformance, both backends |
+| `tests` | task loop that sets a list element and then hits an index fault, an overflow fault and a cancellation; no leak, no double free | conformance, both backends |
 | `bench/perf/suite/workers` | dated result with the 1-thread gap | rerun |
 
 ## Alternatives

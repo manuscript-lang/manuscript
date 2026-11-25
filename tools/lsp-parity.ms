@@ -184,21 +184,24 @@ fn published_by(output Bytes) Map[String, List[String]] {
 fn main() Int {
 	root := working_directory().get().clone()
 	ms := tool_ms(root.clone())
-	files := glob(
-		f"{root}/tests/conformance/fixtures",
-		GlobOptions(patterns: ["**/*.ms"]),
-	).get_or([])
+	var files = List[String]()
+	for dir in ["lang", "diagnostics", "format"] {
+		for found in glob(f"{root}/tests/{dir}", GlobOptions(patterns: ["**/*.ms"])).get_or(
+			[]
+		) {
+			files.append(f"{dir}/{found.path}")
+		}
+	}
+
 	var paths = List[String]()
 
 	for file in files {
-		path := file.path.clone()
+		path := file.clone()
 		if path.contains(
 			"/projects/"
-		) or path.contains(
-			"-fmt.ms"
-		) { continue }
+		) or path.contains("-fmt.ms") { continue }
 
-		paths.append(f"{root}/tests/conformance/fixtures/{path}")
+		paths.append(f"{root}/tests/{path}")
 	}
 
 	paths.sort()

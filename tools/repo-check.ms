@@ -28,8 +28,11 @@ fn skipped(path String) Bool {
 	return (
 		path.starts_with("vendor/")
 		or path.starts_with("website/themes/")
-		or path.starts_with("tests/conformance/")
-		or path.starts_with("tools/checks/removed/")
+		or path.starts_with("tests/lang/")
+		or path.starts_with("tests/diagnostics/")
+		or path.starts_with("tests/format/")
+		or path.starts_with("tests/commands/")
+		or path.starts_with("tests/checks/removed/")
 		or path.starts_with("bench/agent/results/sources/")
 		or path.contains("/third_party/")
 		or path.contains("/tests/")
@@ -43,7 +46,7 @@ fn skipped(path String) Bool {
 fn unlinted(path String) Bool {
 	return (
 		path.starts_with("bench/")
-		or path.starts_with("tools/checks/")
+		or path.starts_with("tests/checks/")
 		or path.starts_with("examples/tooling-demo/")
 		or path.starts_with("examples/postgres-service/")
 		or path.starts_with("website/screenshots/screencast/")

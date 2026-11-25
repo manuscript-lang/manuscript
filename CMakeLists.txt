@@ -57,7 +57,7 @@ endforeach()
 # `cmake --build <dir> --target conform`: the conformance corpus (parse, check, run, test) and the command
 # fixtures, replayed against the ms built here, one `passed/total` line each (cmake/Conform.cmake).
 # MS_CONFORM_ENFORCE=ON fails the target on any corpus difference; the command fixtures always must pass.
-# `conform-commands` replays only the command fixtures (tests/conformance/commands).
+# `conform-commands` replays only the command fixtures (tests/commands).
 option(MS_CONFORM_ENFORCE "Fail conform when a corpus phase has a difference" OFF)
 function(ms_conform_target name only comment)
   add_custom_target(${name}
@@ -99,7 +99,7 @@ add_custom_target(repo-check
   USES_TERMINAL
   COMMENT "Checking repository invariants")
 
-# Ownership counts (tools/count-check.ms): builds the `stats` preset itself, runs tools/checks/ownership-counts in Debug
+# Ownership counts (tools/count-check.ms): builds the `stats` preset itself, runs tests/checks/ownership-counts in Debug
 # and Release against it, and fails on a live block or a changed cleanup order.
 add_custom_target(count-check
   COMMAND $<TARGET_FILE:ms> run tools/count-check.ms

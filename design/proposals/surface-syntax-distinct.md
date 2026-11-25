@@ -34,7 +34,7 @@ Implemented on `claude/project-thread-1z7efx`, 2026-10-28. Direction (Chinmay): 
 | 11 | `extern def` | `extern fn` |
 
 - An inline closure body that starts with `if` is parenthesized: `fn x: (if x > 0: 1 else: 0)`.
-- Every Python word gets a targeted parse or resolution diagnostic with the remedy: `def`, `lambda`, `elif`, `True`/`False`/`None`, `Callable[...]`, `f"..."`, `from ... import`, `case` arms, `()`, `->`, `a if c else b`. Recorded as `tests/conformance/fixtures/snippets/foreign-*` and `diag-spelling-capital-true`.
+- Every Python word gets a targeted parse or resolution diagnostic with the remedy: `def`, `lambda`, `elif`, `True`/`False`/`None`, `Callable[...]`, `f"..."`, `from ... import`, `case` arms, `()`, `->`, `a if c else b`. Recorded as `tests/snippets/foreign-*` and `diag-spelling-capital-true`.
 - Displayed types (hover, diagnostics, API pages) use the same spelling through `ms-check/src/types.rs`.
 
 ## Components touched

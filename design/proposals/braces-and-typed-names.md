@@ -38,7 +38,7 @@ Ambiguities and resolutions:
 | `src/compiler/syntax/parse*.c` | typed names, bodies, arrows | parser fixtures, reject cases |
 | `src/compiler/syntax/format*.c` | print braces and arrows | formatter idempotence |
 | migration tool (old to new, once) | rewrite every `.ms` and Markdown fence; `name: Type` becomes `name Type` | `ms check` on all 6570 files |
-| `src/stdlib/**`, `tests/conformance`, `examples`, `bench` | migrated by the tool | `make verify-full` |
+| `src/stdlib/**`, `tests`, `examples`, `bench` | migrated by the tool | `make verify-full` |
 | `documentation/`, `extensions/agent-skill`, `VISION.md` | new examples | `docs-check` |
 | `src/lsp`, editor grammars | tokens, folding | LSP tests |
 

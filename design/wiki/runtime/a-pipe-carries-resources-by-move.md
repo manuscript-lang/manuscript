@@ -9,5 +9,5 @@ Connection, websocket and other network handles stay on one thread (owner decisi
 Not fixed: a promise closure cannot move a captured stream into a step that takes it by move (`for line in input | lines` in a promise body), because the checker treats a closure as able to run more than once. Do that work inline in the handler, or in a function that receives the stream as a parameter.
 
 Apply when: designing request/reply or broadcast between a handler and a state owner.
-Evidence: [pipe.ms](../../../tests/conformance/fixtures/e2e/stdlib/pipe.ms) (`a pipe carries a writer by move`), [HTTP server guide](../../../documentation/core-language/concurrency/http-server.md).
-Verify: `ms test tests/conformance/fixtures/e2e/stdlib/pipe.ms`.
+Evidence: [pipe.ms](../../../tests/lang/stdlib/pipe.ms) (`a pipe carries a writer by move`), [HTTP server guide](../../../documentation/core-language/concurrency/http-server.md).
+Verify: `ms test tests/lang/stdlib/pipe.ms`.

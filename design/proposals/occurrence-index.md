@@ -12,7 +12,7 @@ Implemented in stages on this branch, 2026-11-22. Direction (coordinator, relayi
 
 ## Problem
 
-`ms diagram --format html` on `tests/conformance/commands/diagram/html` gives `"t":[[],[]]`; the recorded Rust page carries 15 types and 70 hint rows. `ms search_symbol Shape` in a project prints no project match.
+`ms diagram --format html` on `tests/commands/diagram/html` gives `"t":[[],[]]`; the recorded Rust page carries 15 types and 70 hint rows. `ms search_symbol Shape` in a project prints no project match.
 
 ## Design
 
