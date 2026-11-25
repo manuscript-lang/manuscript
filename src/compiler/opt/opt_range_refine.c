@@ -7,30 +7,6 @@
 #include "base/sort.h"
 #include "compiler/opt/opt_range.h"
 
-static bool rg_cmp_holds(MirCc cc, int64_t a, int64_t b) {
-  switch (cc) {
-  case MCC_LT: return a < b;
-  case MCC_LE: return a <= b;
-  case MCC_GT: return a > b;
-  case MCC_GE: return a >= b;
-  case MCC_EQ: return a == b;
-  case MCC_NE: return a != b;
-  }
-  return false;
-}
-
-static MirCc rg_cc_negated(MirCc cc) {
-  switch (cc) {
-  case MCC_LT: return MCC_GE;
-  case MCC_LE: return MCC_GT;
-  case MCC_GT: return MCC_LE;
-  case MCC_GE: return MCC_LT;
-  case MCC_EQ: return MCC_NE;
-  case MCC_NE: return MCC_EQ;
-  }
-  return cc;
-}
-
 void rg_corners(RgArith op, RgItv x, RgItv y, RgWide *lo, RgWide *hi) {
   const RgWide xs[2] = {x.lo, x.hi}, ys[2] = {y.lo, y.hi};
   RgWide mn = 0, mx = 0;
@@ -354,7 +330,7 @@ static bool rg_refine_param(RgFa *fa, MirValue cond, bool truth, RgEnv *env) {
 static bool rg_arm_can(const RgFa *fa, MirValue v, MirCc cc, int64_t k, bool truth, uint32_t depth) {
   int64_t c = 0;
   if (rg_constant(fa, v, &c)) {
-    return rg_cmp_holds(cc, c, k) == truth;
+    return mir_cc_holds(cc, c, k) == truth;
   }
   const MirInst *d = rg_def_inst(fa, v);
   if (d != NULL && d->op == MOP_Select && depth > 0) {
@@ -531,7 +507,7 @@ static void rg_refine_icmp(RgFa *fa, const MirInst *inst, bool truth, RgEnv *env
   if (rg_constant(fa, inst->args[1], &k)) {
     rg_refine_select(fa, inst->args[0], cc, k, truth, env, 4);
   }
-  rg_refine_cmp(fa, truth ? cc : rg_cc_negated(cc), inst->args[0], inst->args[1], env);
+  rg_refine_cmp(fa, truth ? cc : mir_cc_negated(cc), inst->args[0], inst->args[1], env);
 }
 
 void rg_refine_cond(RgFa *fa, MirValue cond, bool truth, RgEnv *env) {
@@ -552,7 +528,7 @@ void rg_refine_cond(RgFa *fa, MirValue cond, bool truth, RgEnv *env) {
   case MOP_UICmp:
     if (inst->imm.tag == MI_CC) {
       const MirCc cc = (MirCc)inst->imm.a;
-      rg_refine_ucmp(fa, truth ? cc : rg_cc_negated(cc), inst->args[0], inst->args[1], env);
+      rg_refine_ucmp(fa, truth ? cc : mir_cc_negated(cc), inst->args[0], inst->args[1], env);
     }
     break;
   case MOP_Not:
