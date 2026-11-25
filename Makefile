@@ -26,6 +26,7 @@ build:
 	cmake --preset ci
 	cmake --build --preset ci
 	@cmake --build --preset ci --target llvm-lib >/dev/null || echo "warning: the shared LLVM library was not fetched; ms cannot compile until it is (make llvm-lib retries)"
+	@cmake --build --preset ci --target cranelift-lib >/dev/null || echo "warning: the shared Cranelift library was not fetched; Debug builds use LLVM (make cranelift-lib retries)"
 
 # The conformance corpus replayed with the ms just built (tools/conform-run.ms).
 conform: build
