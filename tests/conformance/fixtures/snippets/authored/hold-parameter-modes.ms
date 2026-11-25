@@ -5,7 +5,7 @@ type Person {
 	name String
 }
 
-fn hold Person.name_of() String {
+fn hold Person.name_of() & String {
 	return self.name
 }
 
@@ -26,6 +26,10 @@ interface Named {
 	var hold fn rename(v String) Void
 }
 
+fn first_of(hold xs List[Int]) & Int? {
+	return xs.first()
+}
+
 fn hold(slot Int) Int {
 	return slot
 }
@@ -37,4 +41,5 @@ fn main() Void {
 	print(p.name_of())
 	print(apply(q => q.name, p))
 	print(hold(3))
+	print(first_of([4, 5]) or 0)
 }

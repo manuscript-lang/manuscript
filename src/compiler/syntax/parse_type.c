@@ -237,6 +237,7 @@ MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
     return fn_type(p, first, out);
   }
   MsTypeRef *t;
+  bool is_ref = parse_take(p, MS_T_Amp);
   if (parse_take(p, MS_T_LParen)) {
     if (!parse_typ(p, &t))
       return false;
@@ -253,6 +254,7 @@ MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
     if (!parse_named_type(p, &t))
       return false;
   }
+  t->is_ref = t->is_ref || is_ref;
   return type_suffix(p, t, out);
 }
 
