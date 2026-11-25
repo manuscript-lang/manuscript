@@ -7,10 +7,27 @@ fn main() Void {
 	data := read_all(stdin(), null).get().decode_utf8() or ""
 	var counts = Map[String, Int]()
 	var total = 0
+	text := data.lower()
+	var start = -1
+	var i = 0
 
-	for word in data.lower().fields_by(c => c == " " or c == "." or c == "\n") {
+	for c in text.chars() {
+		if c == " " or c == "." or c == "\n" {
+			if start >= 0 {
+				total += 1
+				counts.update(text.view(start, i), 0, v => v + 1)
+				start = -1
+			}
+		} else if start < 0 {
+			start = i
+		}
+
+		i += 1
+	}
+
+	if start >= 0 {
 		total += 1
-		counts.update(word, 0, v => v + 1)
+		counts.update(text.view(start, i), 0, v => v + 1)
 	}
 
 	print(f"words: {total}")
