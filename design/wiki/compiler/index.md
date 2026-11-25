@@ -4,6 +4,7 @@
 
 Checking, lowering, MIR, Cranelift, build, fault sites.
 
+- [The Debug back end is Cranelift behind a shared library](the-debug-back-end-is-cranelift-behind-a-shared-library.md): one object for the program, loaded by path; measured speed and the pitfalls so far.
 - [Name lookups in a function are indexed, not scanned](name-lookups-in-a-function-are-indexed-not-scanned.md): per-name scope index; a 32k-line function checks in 0.47 s instead of 3.8 s.
 - [Debug suffixes hid lines from the copy-forwarding pass](debug-suffixes-hid-lines-from-the-copy-forwarding-pass.md): `emit_copies` matched nothing in builds with debug info; fixed, `string_append_50k` instructions halved.
 - [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
