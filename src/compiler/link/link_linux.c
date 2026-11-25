@@ -24,6 +24,10 @@ static void push_common(LinkJob *job) {
   if (options->strip) {
     link_job_push_text(job, "--strip-all");
   }
+  if (options->quick) {
+    link_job_push_text(job, "-O0");
+    link_job_push_text(job, "--threads=1");
+  }
   if (options->musl) {
     link_job_push_text(job, "-static");
     /* libunwind.a names dl and pthread as dependent libraries; musl has them inside libc.a. */
