@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`r` returns a reference into `base`, which this position would keep; store `.clone()` of it, or use it in place",
+        "position": {
+          "file": "diag-var-owner-stores-view.ms",
+          "line": 10,
+          "column": 9,
+          "offset": 147
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-var-owner-stores-view.ms:10:9: type: `r` returns a reference into `base`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 10 |     x = r(base)\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
