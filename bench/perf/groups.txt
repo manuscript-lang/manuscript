@@ -10,12 +10,9 @@
 #            `../` reaches bench/). Add a dated section rather than editing old numbers.
 # Comparisons against C use checked C (overflow and bounds checks on). A group never moves
 # out of this file without its results page and its README entry moving with it.
-suite | programs | time | sh bench/perf/suite/run.sh {n} | results.md#suite
-kernels | kernels | time | ms run bench/perf/tools/kernels.ms -- kernels {n} | kernels/README.md
-competence | kernels | time | ms run bench/perf/tools/kernels.ms -- competence {n} | competence/README.md
-programs | operations | time | ms run bench/perf/tools/programs.ms -- {n} | results.md#programs
-workloads | programs | time | ms run bench/perf/tools/workloads.ms -- {n} | results.md#workloads
-datastructures | operations | time | ms run bench/perf/tools/datastructures.ms -- {n} | results.md#datastructures
+suite | programs | time | sh bench/perf/suite/run.sh {n} ;; ms run bench/perf/tools/workloads.ms -- {n} | results.md#suite, workloads/validation-2026-10-29.md
+kernels | kernels | time | ms run bench/perf/tools/kernels.ms -- kernels {n} ;; ms run bench/perf/tools/kernels.ms -- competence {n} | kernels/README.md, competence/README.md
+datastructures | operations | time | ms run bench/perf/tools/datastructures.ms -- {n} ;; ms run bench/perf/tools/programs.ms -- {n} | results.md#datastructures, programs/ms/ms.toml
 element-types | operations | time | sh bench/perf/element-types/run.sh {n} | element-types/README.md
 sort-shapes | operations | time | sh bench/perf/sort-shapes/run.sh {n} | sort-shapes/README.md
 stdlib | operations | time | ms run bench/perf/tools/stdlib_bench.ms -- {n} | stdlib/results

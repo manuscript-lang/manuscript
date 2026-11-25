@@ -7,3 +7,5 @@ Decision (Chinmay, 2026-11-25): perf tests were scattered over `bench/`, `bench/
 A new benchmark is a row in `groups.txt` and in the `bench/perf/README.md` table. Numbers go in `bench/perf/results.md` (one section per group, newest first). A finished investigation is deleted once its finding is in the wiki ([index](deleted-perf-investigations-and-where-to-find-them.md)). Correctness gates that count (the `tests/checks` programs, `scaling-check`, `copy-check`) stay in `make verify`; only measurements live in the suite.
 
 Everything lives under `bench/perf/` (Chinmay, 2026-11-25: one place, nothing to trace across directories): runners in `bench/perf/tools/`, programs beside their group, results in `results.md`. Exceptions: `workloads` reads the agent-challenge solutions, and `tools/perf-counts.ms` stays with the repository gates.
+
+Folded (Chinmay, 2026-11-25): `competence` runs inside `kernels`, `workloads` inside `suite`, and `programs` inside `datastructures`; a group's command may chain several with ` ;; `. Their sources, pages and results sections keep their names, so old numbers stay comparable.
