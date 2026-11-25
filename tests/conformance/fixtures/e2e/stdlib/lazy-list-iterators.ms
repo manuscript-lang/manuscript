@@ -25,3 +25,9 @@ test "a filter yields borrowed items and clones nothing" {
 	total := words.iter().seq().filter(w => w.length() > 1).map(w => w.length()).fold(0, (sum, n) => sum + n)
 	expect_equal(total, 7)?
 }
+
+test "filter_owned keeps owned items produced by map" {
+	words := ["a", "bb", "ccc", "dd"]
+	kept := words.iter().seq().map(w => w + "!").filter_owned(w => w.length() > 2).collect()
+	expect_equal(kept, ["bb!", "ccc!", "dd!"])?
+}

@@ -1279,3 +1279,24 @@ fn move Seq[I Iterator[T], T Clonable].collect() List[T] {
 fn move Seq[I Iterator[&T], T].filter(keep fn(T) Bool) Seq[Filtered[I, T], T] {
 	return Seq[Filtered[I, T], T](Filtered[I, T](self.source, keep))
 }
+
+// An iterator over the items of an owning `source` for which `keep` is true; each kept
+// item moves on unchanged.
+type Kept[I Iterator[T], T] {
+	source I
+	keep fn(T) Bool
+}
+
+fn var Kept[I Iterator[T], T].next() T? {
+	while true {
+		item := self.source.next()
+		if item == null { return null }
+		if self.keep(item) { return item }
+	}
+}
+
+// Yields the items of an owning source (after `map`) for which `keep` is true; nothing
+// is copied.
+fn move Seq[I Iterator[T], T].filter_owned(keep fn(T) Bool) Seq[Kept[I, T], T] {
+	return Seq[Kept[I, T], T](Kept[I, T](self.source, keep))
+}

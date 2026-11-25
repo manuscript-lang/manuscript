@@ -682,7 +682,8 @@ bool ms_check_bounds_satisfied(MsCheckProgram *program, const MsTy *variables, s
     const MsTyVariable *record = ms_ty_variable(&program->types, variables[index]);
     for (size_t at = 0; at < record->bounds.len; at++) {
       const MsTy wanted = ms_ty_subst(&program->types, record->bounds.ptr[at], variables, bound, count);
-      if (!ms_check_implements(program, bound[index], wanted)) {
+      const bool lends = at < 32 && (record->lends & (UINT32_C(1) << at)) != 0;
+      if (!ms_check_implements(program, bound[index], wanted) || (lends && !ms_check_lends(program, bound[index], wanted))) {
         return false;
       }
     }
