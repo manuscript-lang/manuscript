@@ -16,7 +16,7 @@ import (
 )
 
 fn site_of(failure Error) String {
-	return failure.details.get_or("site", "")
+	return failure.details.get_or("site", "").clone()
 }
 
 fn good() Int! {

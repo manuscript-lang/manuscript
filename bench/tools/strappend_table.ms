@@ -55,7 +55,7 @@ export fn summarize(lines List[String], repeats Int) String! {
 		}
 
 		key := f"{(trial)} {version}"
-		var cases = seen.get_or(key, Set[String]())
+		var cases = seen.get_or(key, Set[String]()).clone()
 		if (cases.contains(name) or (check) != checksum(name) or (elapsed) <= 0) {
 			return invalid(f"duplicate or invalid measurement: {line.trim()}")
 		}

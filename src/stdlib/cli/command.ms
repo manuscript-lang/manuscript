@@ -595,7 +595,7 @@ fn store(var values Map[String, List[String]], flag Flag, value String) Result[
 	}
 
 	if is_list(flag.kind) {
-		var items = values.get_or(flag.name, [])
+		var items = values.get_or(flag.name, []).clone()
 		items.append(value.clone())
 		values[flag.name.clone()] = items
 		return ok()

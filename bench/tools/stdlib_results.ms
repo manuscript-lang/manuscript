@@ -128,7 +128,7 @@ export fn case_labels(names List[String]) Map[String, String] {
 			name.clone(),
 			if counts.get_or(s, 0) == 1 { s } else { name.clone() },
 		)
-		distinct.add(labels.get_or(name, ""))
+		distinct.add(labels.get_or(name, "").clone())
 	}
 
 	if distinct.length() != labels.length() {
