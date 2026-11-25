@@ -705,10 +705,13 @@ MsTy body_constant_type(const Body *body, const MsSymbol *symbol) {
   if (own->ty != MS_TY_NONE || depth >= 8 || symbol->decl == NULL || symbol->decl->kind != MS_D_CONST) {
     return own->ty;
   }
-  const MsModuleInfo *info = &program->modules.ptr[symbol->module];
-  MsFacts scratch = {0};
-  ms_facts_init(&scratch, &program->arena, symbol->module, info->tree->node_count);
-  Body inner = {.program = program, .module = symbol->module, .facts = &scratch, .quiet = true};
+  MsModuleInfo *info = &program->modules.ptr[symbol->module];
+  if (info->constant_scratch.types == NULL) {
+    /* Each initializer owns its own nodes, so one table serves every constant of the module; sizing one per
+     * constant made typing the constants of a module quadratic in its size. */
+    ms_facts_init(&info->constant_scratch, &program->arena, symbol->module, info->tree->node_count);
+  }
+  Body inner = {.program = program, .module = symbol->module, .facts = &info->constant_scratch, .quiet = true};
   resolver_init(&inner.resolver, program, symbol->module);
   inner.resolver.report = false;
   depth++;
