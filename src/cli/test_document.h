@@ -25,7 +25,6 @@ bool test_plan_select(MsArena *arena, const MsSpanList *names, const MsTestOptio
 typedef struct TestFilters {
   MsRegex *matching, *exclude;
 } TestFilters;
-bool test_filters_compile(MsArena *arena, const MsTestOptions *options, TestFilters *out, MsSpan *error);
 /* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
 bool test_selection_valid(MsArena *arena, const MsTestOptions *options);
 void test_filters_free(TestFilters *filters);
@@ -55,9 +54,6 @@ typedef struct TestDocument {
   MsSpan diagnostics; /* the array's entries as `ms_json_diag` writes them; empty for none */
 } TestDocument;
 
-/* The position `file:line:column` that ends a failure's text (`\n  at f.ms:30:5`), or false. */
-bool test_failure_position(MsSpan message, MsSpan *file, int64_t *line, int64_t *column);
-
 /* Appends the `MST001` diagnostic of a failure that is not in the source (`phase` is "execution" or "build"), at
  * `file:line:1`, as an entry of `diagnostics`. */
 void test_document_diagnostic(MsStrBuild *out, const char *phase, MsSpan message, MsSpan file, uint32_t line);
@@ -76,8 +72,5 @@ void test_document_finish(TestDocument *document);
 /* A run that could not start: the message goes to standard error, and `--json` gets a document naming the phase
  * ("execution" or "build") with the diagnostic at `input:1:1`. Returns the failure status. */
 int test_fail_early(MsArena *arena, MsSpan source_root, MsSpan input, bool bench, const char *phase, MsSpan message);
-
-/* Appends the document and its closing newline. */
-void test_document_write(const TestDocument *document, MsStrBuild *out);
 
 #endif

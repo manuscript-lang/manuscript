@@ -9,7 +9,7 @@ static const char COMMENT_BIDI[] =
     "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in comments because they "
     "can make source display differently from how it is read; remove the character";
 
-bool lex_is_binary_digit(uint8_t byte) {
+static bool lex_is_binary_digit(uint8_t byte) {
   return byte == '0' || byte == '1';
 }
 
@@ -94,7 +94,7 @@ bool lex_fail_char(Scanner *s, MsSpan message, const char *replacement) {
 }
 
 /* Fails on the source range [start, cursor). */
-bool lex_fail_range(Scanner *s, MsPos start, MsSpan message) {
+static bool lex_fail_range(Scanner *s, MsPos start, MsSpan message) {
   MsDiag *diag = lex_new_diag(s, start, message);
   diag->has_end = true;
   diag->end = lex_pos(s);
@@ -135,7 +135,8 @@ static void append_escape(MsStrBuild *out, uint32_t scalar) {
   ms_strbuild_append_byte(out, '}');
 }
 
-void ms_quote_rune(MsStrBuild *out, uint32_t scalar) {
+/* Appends `scalar` quoted the way Rust's `{:?}` does for a char. */
+static void ms_quote_rune(MsStrBuild *out, uint32_t scalar) {
   ms_strbuild_append_byte(out, '\'');
   append_escape(out, scalar);
   ms_strbuild_append_byte(out, '\'');
@@ -202,7 +203,7 @@ void lex_emit_layout(Scanner *s, MsTok kind) {
 size_t lex_token_count(const Scanner *s) {
   return s->tokens.len;
 }
-MsToken *lex_token_at(const Scanner *s, size_t i) {
+static MsToken *lex_token_at(const Scanner *s, size_t i) {
   return &s->tokens.ptr[i];
 }
 int lex_last_kind(const Scanner *s) {

@@ -158,7 +158,6 @@ struct MsH2Conn {
 
 /* Serves an HTTP/2 connection until it ends (the connection task's body). */
 void ms_serve_h2(MsServeConn *conn);
-void ms_h2_wake(uint64_t token);
 /* Whether another thread may take this connection while it waits for a frame: no stream, no output queued, and
  * the writer parked (http_serve_steal.c). */
 bool ms_h2_movable(const MsH2Conn *owner);

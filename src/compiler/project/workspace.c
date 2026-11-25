@@ -174,7 +174,8 @@ static bool read_member(MsArena *arena, MsSpan root, MsSpan dir, const Workspace
   return true;
 }
 
-bool ms_workspace_read(MsArena *arena, const MsManifest *root_project, MsWorkspace *out, MsProjectError *error) {
+/* Expands and checks the members of a parsed workspace root. */
+static bool ms_workspace_read(MsArena *arena, const MsManifest *root_project, MsWorkspace *out, MsProjectError *error) {
   *out = (MsWorkspace){.root = root_project->root};
   MsSpanList dirs = {0};
   /* The root's own project, when it has one, is a member. */

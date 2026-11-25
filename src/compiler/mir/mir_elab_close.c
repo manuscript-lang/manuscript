@@ -13,7 +13,7 @@ void em_drop_owned(ElEm *em, uint32_t at, MirValue value) {
   }
 }
 
-MirValue em_is_error(ElEm *em, uint32_t at, MirValue result) {
+static MirValue em_is_error(ElEm *em, uint32_t at, MirValue result) {
   const MirValue tag = em_push(em, at, MOP_AltTag, &result, 1, mir_imm_none(), MIR_INT);
   const MirValue error = em_iconst(em, at, 1); /* the `Error` case of a Result */
   const MirValue pair[2] = {tag, error};
@@ -356,7 +356,7 @@ static bool cleanup_slot_owner(ElEm *em, uint32_t *at, MirValue value, ElSt kind
 }
 
 /* Cleans up one owner whose move state is `kind`. `*outcome` is the first close failure so far. */
-bool em_cleanup_one(ElEm *em, uint32_t *at, MirValue value, ElSt kind, MirValue *outcome) {
+static bool em_cleanup_one(ElEm *em, uint32_t *at, MirValue value, ElSt kind, MirValue *outcome) {
   MirValue flag = MIR_NONE, code = MIR_NONE;
   (void)em_flag_of(&em->flags, value, &flag);
   if (em->cx->tag_kind[value] >= 2) {

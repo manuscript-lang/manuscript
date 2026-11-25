@@ -49,7 +49,7 @@ static bool reserved_escapes(uint8_t c, UrlEnc mode) {
   }
 }
 
-bool url_should_escape(uint8_t c, UrlEnc mode) {
+static bool url_should_escape(uint8_t c, UrlEnc mode) {
   if (is_alnum(c)) {
     return false;
   }

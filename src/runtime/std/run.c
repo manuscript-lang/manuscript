@@ -29,7 +29,8 @@ struct MsRun {
 static const char output_kept_open[] =
     "the command finished but a background process kept its output open; close or redirect its output, or set a timeout";
 
-MsRun *ms_run_new(const MsList *input, int64_t limit, int64_t timeout_ns) {
+/* The collection for a run: `input` is copied; `limit` bounds the output bytes; a negative `timeout_ns` is none. */
+static MsRun *ms_run_new(const MsList *input, int64_t limit, int64_t timeout_ns) {
   MsRun *run = ms_alloc_zeroed(sizeof *run);
   run->remaining = limit;
   run->timeout_ns = timeout_ns;
@@ -132,7 +133,9 @@ static void on_written(uv_write_t *request, int status) {
   close_pipe(child->run, MS_STREAM_IN);
 }
 
-bool ms_run_attach(MsChild *child, const int descriptors[MS_STREAM_COUNT]) {
+/* Opens the parent ends of the pipes on the child's loop and starts reading, writing and timing. Runs before the loop
+ * thread starts. */
+static bool ms_run_attach(MsChild *child, const int descriptors[MS_STREAM_COUNT]) {
   MsRun *run = child->run;
   for (int stream = 0; stream < MS_STREAM_COUNT; stream++) {
     if (uv_pipe_init(&child->loop, &run->pipes[stream], 0) != 0) {
@@ -167,7 +170,8 @@ bool ms_run_attach(MsChild *child, const int descriptors[MS_STREAM_COUNT]) {
 
 /* ---- the task's half ---- */
 
-bool ms_run_wait(MsChild *child, MsFail *fail) {
+/* Waits for the loop thread to end. A stop request kills the child, waits for the loop and fails the call. */
+static bool ms_run_wait(MsChild *child, MsFail *fail) {
   for (;;) {
     const uint64_t token = ms_child_arm(child);
     ms_child_lock(child);
@@ -193,7 +197,8 @@ bool ms_run_wait(MsChild *child, MsFail *fail) {
   }
 }
 
-uint8_t ms_run_result(MsChild *child, MsCommandOut *out, MsFail *fail) {
+/* The result of a finished run: its status, and the output on success. */
+static uint8_t ms_run_result(MsChild *child, MsCommandOut *out, MsFail *fail) {
   MsRun *run = child->run;
   if (run->overflow) {
     ms_fail_status(fail, MS_STATUS_OUTPUT_LIMIT);

@@ -13,7 +13,7 @@ static MirTy value_type(const EmitCx *cx, MirValue value) {
 
 /* ---- the one-block `if` ---- */
 
-EmitIf emit_if_begin(EmitCx *cx, const char *condition, const EmitSite *site) {
+static EmitIf emit_if_begin(EmitCx *cx, const char *condition, const EmitSite *site) {
   EmitIf branch = {.id = cx->next++, .head = *site->part, .join = ++*site->part};
   ms_strbuild_printf(cx->out, "  br i1 %s, label %%i%u, label %%", condition, branch.id);
   emit_label(cx->out, site->block, branch.join);
@@ -21,7 +21,7 @@ EmitIf emit_if_begin(EmitCx *cx, const char *condition, const EmitSite *site) {
   return branch;
 }
 
-void emit_if_end(EmitCx *cx, const EmitIf *branch, const EmitSite *site) {
+static void emit_if_end(EmitCx *cx, const EmitIf *branch, const EmitSite *site) {
   ms_strbuild_append_text(cx->out, "  br label %");
   emit_label(cx->out, site->block, branch->join);
   ms_strbuild_append_byte(cx->out, '\n');
@@ -29,7 +29,8 @@ void emit_if_end(EmitCx *cx, const EmitIf *branch, const EmitSite *site) {
   ms_strbuild_append_text(cx->out, ":\n");
 }
 
-void emit_if_phi(EmitCx *cx, const EmitIf *branch, const EmitSite *site, const char *dst, const char *value) {
+/* `<dst> = phi i64 [0, %head], [<value>, %i<id>]`: a word that is zero when the side was skipped. */
+static void emit_if_phi(EmitCx *cx, const EmitIf *branch, const EmitSite *site, const char *dst, const char *value) {
   ms_strbuild_printf(cx->out, "  %s = phi i64 [0, %%", dst);
   emit_label(cx->out, site->block, branch->head);
   ms_strbuild_printf(cx->out, "], [%s, %%i%u]\n", value, branch->id);

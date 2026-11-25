@@ -517,7 +517,8 @@ static bool read_edge(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBy
 #endif
 }
 
-uint8_t ms_net_read(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err) {
+/* Up to `capacity` bytes: MS_STATUS_NONE at the end of the stream. */
+static uint8_t ms_net_read(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err) {
   uint8_t result = MS_STATUS_OK;
   if (edge_reads(core) && read_edge(core, capacity, timeout_ns, out, err, &result)) {
     return result;
@@ -712,11 +713,11 @@ static uint8_t write_run(MsNetCore *core, MsSpan data, bool shutting, int64_t ti
   return status;
 }
 
-uint8_t ms_net_write(MsNetCore *core, MsSpan data, int64_t timeout_ns, MsString *err) {
+static uint8_t ms_net_write(MsNetCore *core, MsSpan data, int64_t timeout_ns, MsString *err) {
   return write_run(core, data, false, timeout_ns, "write", err);
 }
 
-uint8_t ms_net_shutdown(MsNetCore *core, MsString *err) {
+static uint8_t ms_net_shutdown(MsNetCore *core, MsString *err) {
   return write_run(core, ms_span_of(NULL, 0), true, -1, "shutdown", err);
 }
 

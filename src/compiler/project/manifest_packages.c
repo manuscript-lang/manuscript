@@ -342,7 +342,8 @@ void manifest_sort_packages(MsManifest *m) {
   }
 }
 
-const MsDependency *ms_manifest_dependency(const MsManifest *manifest, MsSpan name) {
+/* The dependency named `name` (with its `@`), or NULL. */
+static const MsDependency *ms_manifest_dependency(const MsManifest *manifest, MsSpan name) {
   for (size_t i = 0; i < manifest->dependencies.len; i++) {
     if (ms_span_equal(manifest->dependencies.ptr[i].name, name)) {
       return &manifest->dependencies.ptr[i];

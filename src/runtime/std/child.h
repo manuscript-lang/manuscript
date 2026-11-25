@@ -57,8 +57,6 @@ void ms_child_free(MsObj *object);
 
 void ms_child_lock(MsChild *child);
 void ms_child_unlock(MsChild *child);
-/* Wakes the waiting task, if any (any thread). */
-void ms_child_wake(MsChild *child);
 /* A remote token counts as a pending wake-up only until its first post, so a task that parks again needs a new one: arm
  * before reading the state, park only while the state says to, then disarm. */
 uint64_t ms_child_arm(MsChild *child);

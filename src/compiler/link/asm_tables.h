@@ -10,9 +10,6 @@
 
 #include "compiler/link/asm_scan.h"
 
-/* The assembly format of the host. */
-AsmFormat asm_host_format(void);
-
 /* Rewrites `assembly` into `out` and appends the tables. `module` is renamed (emit_name_symbols) and `info`
  * was made before that. A function LLVM removed, or one that is not in this assembly, is left out of the tables.
  * A program of several modules (`units` above 1) gives each its own tables, named by `unit`, and module 0 also

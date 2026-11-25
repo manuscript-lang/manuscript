@@ -35,7 +35,8 @@ static const char *const VALUE_OPTIONS[] = {
     "--samples", "--iterations", "--baseline", "--fail-over", "--format",  "--view",   "--entity", "--depth",
     "--diff",  "--top",        "--link"};
 
-bool ms_invocation_takes_value(MsSpan flag) {
+/* Whether `flag` is an option that consumes the next argument as its value. */
+static bool ms_invocation_takes_value(MsSpan flag) {
   for (size_t i = 0; i < sizeof VALUE_OPTIONS / sizeof VALUE_OPTIONS[0]; i++) {
     if (ms_span_is_text(flag, VALUE_OPTIONS[i])) {
       return true;

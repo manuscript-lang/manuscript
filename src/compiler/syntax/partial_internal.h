@@ -15,7 +15,6 @@ typedef struct Partial {
 /* ---- text helpers shared by the files ---- */
 
 MsSpan partial_trim(MsSpan text);
-MsSpan partial_trim_start(MsSpan text);
 MsSpan partial_trim_end(MsSpan text);
 size_t partial_leading_space(MsSpan line);
 

@@ -9,9 +9,6 @@
  * any function changed. */
 bool mir_expand(MirModule *module, bool checks);
 
-/* The ownership shorthands (`alt.own`, `alt.unbox`, `alt.release`, `type.release`, `opt.unbox`, `opt.unwrap`)
- * as plain reads, drops and frees; run after the last pass that reads them. */
-bool mir_expand_owned_needed(const MirModule *module);
 bool mir_expand_owned(MirModule *module);
 
 #endif

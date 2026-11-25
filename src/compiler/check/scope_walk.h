@@ -39,8 +39,6 @@ typedef struct MsBindingList {
 } MsBindingList;
 
 void ms_binding_list_push(MsBindingList *list, MsBinding binding);
-/* Drops the bindings from position `len` on. */
-void ms_binding_list_truncate(MsBindingList *list, size_t len);
 void ms_binding_list_free(MsBindingList *list);
 
 /* Where a visited node sits: the `impl` declaration whose method holds it, or NULL. */

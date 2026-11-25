@@ -94,10 +94,6 @@ void ms_http_engine_free_client(
 /* Called by the engine as a transfer ends (also from cancel): marks it done and wakes the waiter. */
 void ms_http_response_finished(MsHttpResponse *response, CURLcode result);
 
-/* http_exchange.c: curl's callbacks (called on the engine thread). */
-size_t ms_http_on_header(char *buffer, size_t size, size_t count, void *user);
-size_t ms_http_on_body(char *buffer, size_t size, size_t count, void *user);
-
 typedef struct HttpHop {
   MsSpan method;
   MsSpan url;

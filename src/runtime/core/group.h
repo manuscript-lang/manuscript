@@ -21,8 +21,6 @@ enum { MS_RUN_NOTHING = 0, MS_RUN_RAN = 1, MS_RUN_INTERRUPTED = 2 };
 
 /* A new group; ids start at 1. */
 int64_t ms_group_new(void);
-/* Adds the promise with `tag`; false when it is already in a group. A finished or closed promise reports at once. */
-bool ms_group_add(int64_t group, MsPromise id, int64_t tag);
 /* Adds ids[from..count) tagged by their index, unless that was done; answers how they joined. */
 int64_t ms_group_join(int64_t group, const MsPromise *ids, size_t count, size_t from);
 /* Waits for a finished promise and answers its tag, or -1 when none is left, MS_WAITER_CANCELLED on a cancel. */

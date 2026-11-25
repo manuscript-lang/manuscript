@@ -471,7 +471,7 @@ static MsTypeRef *copy_type(Parser *p, const MsTypeRef *t) {
   return c;
 }
 
-MsExpr *parse_clone_chain(Parser *p, const MsExpr *e) {
+static MsExpr *parse_clone_chain(Parser *p, const MsExpr *e) {
   MsExpr *c = MS_ARENA_NEW(p->arena, MsExpr);
   c->id = parse_new_id(p);
   c->pos = e->pos;

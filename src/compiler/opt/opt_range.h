@@ -2,7 +2,6 @@
 #ifndef MS_COMPILER_OPT_OPT_RANGE_H
 #define MS_COMPILER_OPT_OPT_RANGE_H
 
-
 #include "compiler/opt/opt_pass.h"
 
 __extension__ typedef __int128 RgWide;
@@ -67,9 +66,6 @@ typedef enum RgArith { RG_MUL, RG_DIV } RgArith;
 /* The least and greatest of `x op y` over the four corners. */
 void rg_corners(RgArith op, RgItv x, RgItv y, RgWide *lo, RgWide *hi);
 
-bool rg_cmp_holds(MirCc cc, int64_t a, int64_t b);
-MirCc rg_cc_negated(MirCc cc);
-
 /* ---- environments ---- */
 
 /* What is known at a program point: intervals of values (sorted by value) and relations
@@ -92,10 +88,7 @@ typedef struct RgEnv {
   uint32_t nrel, crel;
 } RgEnv;
 
-bool rg_env_lookup(const RgEnv *e, MirValue v, RgItv *out);
 void rg_env_narrow(RgEnv *e, MirValue v, RgWide lo, RgWide hi);
-void rg_env_add_rel(RgEnv *e, MirValue a, MirValue b, bool strict);
-RgEnv rg_env_clone(MsArena *arena, const RgEnv *src);
 
 /* ---- the analysis ---- */
 
@@ -197,7 +190,6 @@ typedef struct RgEdits {
 void rg_collect_edits(RgFa *fa, RgEdits *out);
 bool rg_decide(const RgFa *fa, MirCc cc, MirValue a, MirValue b, RgItv x, RgItv y,
        const RgEnv *env, bool *result);
-bool rg_same_value(const RgFa *fa, MirValue a, MirValue b);
 bool rg_list_length(const RgFa *fa, MirValue v, int64_t *out);
 
 #endif

@@ -141,7 +141,8 @@ static void wake(MsHttpResponse *response) {
   }
 }
 
-size_t ms_http_on_header(char *buffer, size_t size, size_t count, void *user) {
+/* http_exchange.c: curl's callbacks (called on the engine thread). */
+static size_t ms_http_on_header(char *buffer, size_t size, size_t count, void *user) {
   MsHttpResponse *response = user;
   const size_t whole = size * count;
   ms_http_mutex_lock(response->lock);
@@ -217,7 +218,7 @@ static bool stage_gunzip(MsHttpResponse *response, MsSpan in) {
   }
 }
 
-size_t ms_http_on_body(char *buffer, size_t size, size_t count, void *user) {
+static size_t ms_http_on_body(char *buffer, size_t size, size_t count, void *user) {
   MsHttpResponse *response = user;
   const size_t whole = size * count;
   const MsSpan bytes = ms_span_of((const uint8_t *)buffer, whole);

@@ -188,7 +188,9 @@ static bool bare_error(MsArena *arena, MsSpan path, MsProjectError *error) {
   return message(arena, error, &text);
 }
 
-bool ms_project_import_target(MsArena *arena, const MsManifest *manifest, MsSpan importer, MsSpan path,
+/* The path an import `path` written in `importer` names, before symbolic links are resolved. `manifest` holds
+ * the aliases and embeds, or is NULL for a standalone file. */
+static bool ms_project_import_target(MsArena *arena, const MsManifest *manifest, MsSpan importer, MsSpan path,
                               MsSpan *target, MsProjectError *error) {
   size_t at = 0;
   if (ms_span_find(path, ms_span_of_text("\\"), &at)) {

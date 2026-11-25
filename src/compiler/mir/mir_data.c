@@ -28,7 +28,7 @@ MsSpan mird_name(DataCx *cx, const char *kind, uint32_t n) {
   return name;
 }
 
-void mird_put_word(uint8_t *at, uint64_t value) {
+static void mird_put_word(uint8_t *at, uint64_t value) {
   for (uint32_t index = 0; index < 8; index++) {
     at[index] = (uint8_t)(value >> (8 * index));
   }

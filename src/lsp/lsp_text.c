@@ -15,7 +15,7 @@ static void rune_width(const uint8_t *bytes, size_t length, size_t *width, size_
   *width = (rune.rune == MS_RUNE_ERROR && rune.width == 1) ? 1 : (rune.rune >= 0x10000 ? 2 : 1);
 }
 
-size_t lsp_utf16_length(MsSpan bytes) {
+static size_t lsp_utf16_length(MsSpan bytes) {
   size_t length = 0;
   for (size_t at = 0; at < bytes.len;) {
     size_t width, size;

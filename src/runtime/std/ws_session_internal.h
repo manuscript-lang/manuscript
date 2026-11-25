@@ -45,9 +45,6 @@ uint8_t ms_ws_fault_take(MsWsFault *fault, MsString *err);
 bool ms_ws_session_ended(MsWsSession *session);
 /* Ends the session after a read failure. */
 void ms_ws_session_fail(MsWsSession *session);
-/* Writes one frame or message: a failure is sticky; a call during a write only queues behind it. */
-MsWsFault ms_ws_session_write(MsWsSession *session, MsBytes bytes, int64_t timeout_ns,
-                              const char *on_timeout);
 /* A control frame; a sent close frame makes later writes fail. */
 MsWsFault ms_ws_session_control(MsWsSession *session, uint8_t opcode, MsSpan payload, int64_t timeout_ns,
                                 const char *on_timeout);

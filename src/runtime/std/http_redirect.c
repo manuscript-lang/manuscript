@@ -18,7 +18,8 @@ bool ms_http_redirect_method(uint16_t status, MsSpan method, MsString *next, boo
   return false;
 }
 
-bool ms_http_domain_or_subdomain(MsSpan sub, MsSpan parent) {
+/* `sub` is `parent` or a subdomain of it; an IP literal matches only itself. */
+static bool ms_http_domain_or_subdomain(MsSpan sub, MsSpan parent) {
   if (ms_ascii_equal_fold(sub, parent)) {
     return true;
   }

@@ -22,7 +22,4 @@ void ms_git_close(MsGit *git);
 MS_NODISCARD bool ms_git_run(MsGit *git, MsSpan directory, const char *protocols, const char *const *args,
                              size_t count, MsSpan *output, MsSpan *error);
 
-/* `text` without the `user:password@` of any URL in it. */
-MsSpan ms_git_redact(MsArena *arena, MsSpan text);
-
 #endif

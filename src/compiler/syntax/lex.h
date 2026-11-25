@@ -58,7 +58,4 @@ size_t ms_bounds_interp_end(const MsBounds *bounds, size_t start);
 /* Position after advancing from `from` to `to` through normalised text, restoring CR bytes. */
 MsPos ms_bounds_restore_offset(const MsBounds *bounds, MsPos from, MsPos to);
 
-/* Appends `scalar` quoted the way Rust's `{:?}` does for a char. */
-void ms_quote_rune(MsStrBuild *out, uint32_t scalar);
-
 #endif

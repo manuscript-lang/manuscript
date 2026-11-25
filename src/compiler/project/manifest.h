@@ -90,9 +90,6 @@ const MsPackage *ms_manifest_package_of(const MsManifest *manifest, MsSpan path)
 /* The manifest whose aliases and dependencies apply to imports written in `importer`. */
 const MsManifest *ms_manifest_scope(const MsManifest *manifest, MsSpan importer);
 
-/* The dependency named `name` (with its `@`), or NULL. */
-const MsDependency *ms_manifest_dependency(const MsManifest *manifest, MsSpan name);
-
 /* The target of alias or embed `name` (with its `@`), or false. */
 MS_NODISCARD bool ms_manifest_find(const ManifestNameList *list, MsSpan name, MsSpan *target);
 

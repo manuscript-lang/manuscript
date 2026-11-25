@@ -28,7 +28,7 @@ void mirlo_to_call_rt(MirInst *inst, uint32_t external) {
   inst->imm = mir_imm_ext(external);
 }
 
-void mirlo_to_call(MirInst *inst, uint32_t func) {
+static void mirlo_to_call(MirInst *inst, uint32_t func) {
   inst->op = MOP_Call;
   inst->imm = (MirImm){.tag = MI_FUNC, .a = func};
 }

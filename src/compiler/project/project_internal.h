@@ -17,11 +17,6 @@ void ms_project_error_path(MsProjectError *error, const char *op, MsSpan path, i
 
 struct MsManifest;
 
-/* The path an import `path` written in `importer` names, before symbolic links are resolved. `manifest` holds
- * the aliases and embeds, or is NULL for a standalone file. */
-MS_NODISCARD bool ms_project_import_target(MsArena *arena, const struct MsManifest *manifest, MsSpan importer,
-                                           MsSpan path, MsSpan *target, MsProjectError *error);
-
 /* ms_project_resolve_import with the aliases of `manifest` (NULL for none). */
 MS_NODISCARD bool ms_project_resolve_in(MsArena *arena, const struct MsManifest *manifest, MsSpan root,
                                         const MsOverlay *overlay, MsSpan importer, MsSpan path,

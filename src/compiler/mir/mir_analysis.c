@@ -56,7 +56,9 @@ static bool mir_method_consumes(const MirModule *module, const MirInst *inst) {
   return inst->imm.b < iface->nmethods && iface->methods[inst->imm.b].consumes;
 }
 
-uint64_t mir_indirect_owned(const MirModule *module, const MirFunc *func, const MirInst *inst) {
+/* The arguments a `call.ind` (from the closure's type) or `call.method` (from the interface method) passes
+ * owned, as a bit set (see mir_owns). */
+static uint64_t mir_indirect_owned(const MirModule *module, const MirFunc *func, const MirInst *inst) {
   if (inst->op == MOP_CallMethod && inst->imm.tag == MI_METHOD) {
     if (inst->imm.a >= module->ifaces.len) {
       return 0;

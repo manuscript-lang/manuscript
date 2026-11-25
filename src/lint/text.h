@@ -15,7 +15,6 @@ bool lint_text_ends_with(const char *text, const char *suffix);
 bool lint_text_contains(const char *text, const char *needle);
 /* Removes a trailing newline and carriage return in place. */
 void lint_text_chomp(char *line);
-bool lint_is_identifier_char(char value);
 
 /* Calls on_word(context, start, length) for each identifier in code outside string
  * literals and comments; `followed_by_call` tells whether `(` comes next. */

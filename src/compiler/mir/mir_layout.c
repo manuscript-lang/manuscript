@@ -86,7 +86,10 @@ bool mir_boxed_block_size(MirLayouts *layouts, MirTy ty, uint32_t *size) {
 
 /* ---- record blocks ---- */
 
-MsSpan mir_type_block(MirLayouts *layouts, uint32_t type_id) {
+/* The leaves of the heap block behind indirect type `type_id`: its fields' leaves in order, except that a map
+ * or set field is one pointer to a header block that exists only while the collection is not the all-zero
+ * empty value. */
+static MsSpan mir_type_block(MirLayouts *layouts, uint32_t type_id) {
   const MirTypeDef *def = &layouts->module->type_defs.ptr[type_id];
   MirLeafList list = {0};
   for (uint32_t index = 0; index < def->nfields; index++) {

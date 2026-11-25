@@ -6,7 +6,7 @@ static bool is_space(uint8_t b) {
   return b == ' ' || b == '\t' || b == '\n' || b == '\r' || b == '\v' || b == '\f';
 }
 
-MsSpan partial_trim_start(MsSpan text) {
+static MsSpan partial_trim_start(MsSpan text) {
   size_t at = 0;
   while (at < text.len && is_space(text.ptr[at])) {
     at++;

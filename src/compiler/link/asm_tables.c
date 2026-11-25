@@ -5,7 +5,8 @@
 
 enum { TABLES_SET_VERSION = 4 }; /* MS_TABLES_SET of the runtime */
 
-AsmFormat asm_host_format(void) {
+/* The assembly format of the host. */
+static AsmFormat asm_host_format(void) {
 #if defined(__APPLE__)
   return ASM_MACHO;
 #elif defined(_WIN32)

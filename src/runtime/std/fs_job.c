@@ -15,7 +15,7 @@ MsFsJob ms_fs_job(const MsString *path) {
   return job;
 }
 
-void ms_fs_job_free(MsFsJob *job) {
+static void ms_fs_job_free(MsFsJob *job) {
   ms_fail_free(&job->fail);
   ms_strbuild_free(&job->text);
   ms_bytes_free(&job->data);

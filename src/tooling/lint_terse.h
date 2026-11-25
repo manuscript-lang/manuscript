@@ -39,16 +39,8 @@ void terse_report(const TerseScan *scan, const char *code, MsSpan message, MsPos
 /* `text` copied into the arena. */
 MsSpan terse_keep(const TerseScan *scan, MsStrBuild *text);
 
-/* Whether the written `e` is a `name` path or a field path over names. */
-bool terse_is_path(const MsExpr *e);
-
 /* The expression and statement rules, called for every node of the module. */
 void terse_expr(const TerseScan *scan, const MsExpr *expr);
 void terse_stmt(const TerseScan *scan, const MsStmt *stmt);
-void terse_emptiness(const TerseScan *scan, const MsExpr *e, bool condition);
-
-/* The rules over a statement list and a function, in lint_terse_stmts.c. */
-void terse_block(TerseScan *scan, MsStmts body);
-void terse_trailing_return(TerseScan *scan, const MsFunc *func);
 
 #endif

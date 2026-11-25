@@ -7,7 +7,7 @@
 #include "base/sort.h"
 #include "compiler/opt/opt_range.h"
 
-bool rg_cmp_holds(MirCc cc, int64_t a, int64_t b) {
+static bool rg_cmp_holds(MirCc cc, int64_t a, int64_t b) {
   switch (cc) {
   case MCC_LT: return a < b;
   case MCC_LE: return a <= b;
@@ -19,7 +19,7 @@ bool rg_cmp_holds(MirCc cc, int64_t a, int64_t b) {
   return false;
 }
 
-MirCc rg_cc_negated(MirCc cc) {
+static MirCc rg_cc_negated(MirCc cc) {
   switch (cc) {
   case MCC_LT: return MCC_GE;
   case MCC_LE: return MCC_GT;
@@ -64,7 +64,7 @@ static uint32_t rg_env_find(const RgEnv *e, MirValue v) {
   return lo;
 }
 
-bool rg_env_lookup(const RgEnv *e, MirValue v, RgItv *out) {
+static bool rg_env_lookup(const RgEnv *e, MirValue v, RgItv *out) {
   const uint32_t at = rg_env_find(e, v);
   if (at < e->nent && e->ent[at].v == v) {
     *out = e->ent[at].itv;
@@ -93,7 +93,7 @@ void rg_env_narrow(RgEnv *e, MirValue v, RgWide lo, RgWide hi) {
   e->nent++;
 }
 
-void rg_env_add_rel(RgEnv *e, MirValue a, MirValue b, bool strict) {
+static void rg_env_add_rel(RgEnv *e, MirValue a, MirValue b, bool strict) {
   RgRel r = {a, b, strict};
   OPT_PUSH(e->arena, e->rel, e->nrel, e->crel, RgRel, r);
 }
@@ -107,7 +107,7 @@ static bool rg_env_has_rel(const RgEnv *e, const RgRel *r) {
   return false;
 }
 
-RgEnv rg_env_clone(MsArena *arena, const RgEnv *src) {
+static RgEnv rg_env_clone(MsArena *arena, const RgEnv *src) {
   RgEnv e = {.arena = arena};
   if (src->nent != 0) {
     e.ent = RG_NEW(arena, RgEnt, src->nent);

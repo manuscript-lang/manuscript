@@ -66,7 +66,8 @@ MsSpan terse_keep(const TerseScan *scan, MsStrBuild *text) {
   return kept;
 }
 
-bool terse_is_path(const MsExpr *e) {
+/* Whether the written `e` is a `name` path or a field path over names. */
+static bool terse_is_path(const MsExpr *e) {
   return e->kind == MS_E_NAME || (e->kind == MS_E_MEMBER && terse_is_path(e->u.member.left));
 }
 
@@ -95,7 +96,7 @@ static const MsExpr *length_of(const TerseScan *scan, const MsExpr *e) {
 }
 
 /* `x.length() == 0` and, in a condition, `x.length() != 0` / `> 0`. */
-void terse_emptiness(const TerseScan *scan, const MsExpr *e, bool condition) {
+static void terse_emptiness(const TerseScan *scan, const MsExpr *e, bool condition) {
   if (e->kind != MS_E_BINARY) {
     return;
   }

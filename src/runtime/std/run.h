@@ -16,18 +16,9 @@ typedef struct MsCommandOut {
   int64_t max_resident_bytes;
 } MsCommandOut;
 
-/* The collection for a run: `input` is copied; `limit` bounds the output bytes; a negative `timeout_ns` is none. */
-MsRun *ms_run_new(const MsList *input, int64_t limit, int64_t timeout_ns);
 void ms_run_free(MsRun *run); /* NULL is allowed */
-/* Opens the parent ends of the pipes on the child's loop and starts reading, writing and timing. Runs before the loop
- * thread starts. */
-bool ms_run_attach(MsChild *child, const int descriptors[MS_STREAM_COUNT]);
 /* Ends what is finished after an exit or a closed pipe (loop thread). */
 void ms_run_progress(MsChild *child);
-/* Waits for the loop thread to end. A stop request kills the child, waits for the loop and fails the call. */
-bool ms_run_wait(MsChild *child, MsFail *fail);
-/* The result of a finished run: its status, and the output on success. */
-uint8_t ms_run_result(MsChild *child, MsCommandOut *out, MsFail *fail);
 
 /* ms-sig: msstd_process_command_run(program: *const StrVal, arguments: *const VecVal, input: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout_ns: i64, has_cwd: HasRaw, cwd: *const StrVal, env_names: *const VecVal, env_values: *const VecVal, out: *mut CommandOut, err: ErrSlot) -> u8 @domain=process */
 uint8_t msstd_process_command_run(const MsString *program, const MsList *arguments, const MsList *input, uint8_t has_max,

@@ -5,7 +5,8 @@
 #include "base/alloc.h"
 #include "runtime/std/tls.h"
 
-X509 *ms_tls_x509_parse(MsSpan der) {
+/* A parsed DER certificate; NULL when it is malformed. */
+static X509 *ms_tls_x509_parse(MsSpan der) {
   const unsigned char *at = der.ptr;
   X509 *cert = d2i_X509(NULL, &at, (long)der.len);
   if (cert != NULL && (size_t)(at - der.ptr) != der.len) {
@@ -15,7 +16,8 @@ X509 *ms_tls_x509_parse(MsSpan der) {
   return cert;
 }
 
-bool ms_tls_time_seconds(const ASN1_TIME *time, int64_t *seconds) {
+/* The time as seconds since the Unix epoch; false when it is not a valid time. */
+static bool ms_tls_time_seconds(const ASN1_TIME *time, int64_t *seconds) {
   ASN1_TIME *epoch = ASN1_TIME_set(NULL, 0);
   int days = 0;
   int secs = 0;
@@ -169,7 +171,9 @@ static bool set_name(X509_VERIFY_PARAM *param, MsSpan name) {
   return ok;
 }
 
-uint8_t ms_tls_verify(const MsList *chain, const MsList *roots, MsSpan name, int64_t now) {
+/* Verifies the leaf `chain[0]` (with the rest as intermediates) for a server called `name` at `now` (Unix
+ * seconds) against `roots`: OK or AUTHENTICATION_FAILED. */
+static uint8_t ms_tls_verify(const MsList *chain, const MsList *roots, MsSpan name, int64_t now) {
   X509 *leaf = NULL;
   STACK_OF(X509) *untrusted = stack_of(chain, &leaf);
   X509_STORE *store = X509_STORE_new();

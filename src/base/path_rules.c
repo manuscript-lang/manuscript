@@ -24,7 +24,7 @@ typedef struct Parsed {
   size_t body;        /* where the elements start */
 } Parsed;
 
-bool ms_path_is_separator_with(MsPathRules rules, uint8_t byte) {
+static bool ms_path_is_separator_with(MsPathRules rules, uint8_t byte) {
   return byte == '/' || (rules == MS_PATH_RULES_WINDOWS && byte == '\\');
 }
 
@@ -114,7 +114,7 @@ static Parsed parse(MsPathRules rules, MsSpan path) {
 
 static bool has_root(const Parsed *parsed) { return parsed->physical_root || parsed->implicit_root; }
 
-bool ms_path_is_absolute_with(MsPathRules rules, MsSpan path) {
+static bool ms_path_is_absolute_with(MsPathRules rules, MsSpan path) {
   const Parsed parsed = parse(rules, path);
   if (rules == MS_PATH_RULES_UNIX) {
     return parsed.physical_root;
@@ -217,16 +217,20 @@ static void clean_elements(MsPathRules rules, MsSpan path, size_t drop, MsStrBui
   }
 }
 
-void ms_path_clean_with(MsPathRules rules, MsSpan path, MsStrBuild *out) { clean_elements(rules, path, 0, out); }
+/* The shortest equivalent path by lexical processing ("." for an empty result): repeated separators and "." go, ".."
+ * undoes the element before it and vanishes above a root. Appended to `out`. */
+static void ms_path_clean_with(MsPathRules rules, MsSpan path, MsStrBuild *out) { clean_elements(rules, path, 0, out); }
 
-void ms_path_dir_with(MsPathRules rules, MsSpan path, MsStrBuild *out) {
+/* Everything but the last element, cleaned; a path without one (a root, a volume, empty) is cleaned itself. */
+static void ms_path_dir_with(MsPathRules rules, MsSpan path, MsStrBuild *out) {
   const Parsed parsed = parse(rules, path);
   Element last = {0};
   const size_t total = last_element(&parsed, path, &last);
   clean_elements(rules, path, total > 0 ? 1 : 0, out);
 }
 
-MsSpan ms_path_base_with(MsPathRules rules, MsSpan path) {
+/* The last element: "." for an empty path, the root or volume for a bare one. A view into `path`, or a constant. */
+static MsSpan ms_path_base_with(MsPathRules rules, MsSpan path) {
   static const uint8_t separators[] = {'/', '\\'};
   static const uint8_t dot_text[] = {'.'};
   const Parsed parsed = parse(rules, path);
@@ -246,7 +250,8 @@ MsSpan ms_path_base_with(MsPathRules rules, MsSpan path) {
   return ms_span_of(dot_text, 1);
 }
 
-void ms_path_join_with(MsPathRules rules, MsSpan first, MsSpan second, MsStrBuild *out) {
+/* Two elements joined and cleaned; an absolute second element replaces the first. */
+static void ms_path_join_with(MsPathRules rules, MsSpan first, MsSpan second, MsStrBuild *out) {
   if (first.len == 0) {
     if (second.len != 0) {
       ms_path_clean_with(rules, second, out);

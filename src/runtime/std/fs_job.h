@@ -32,7 +32,6 @@ typedef struct MsFsJob {
 } MsFsJob;
 
 MsFsJob ms_fs_job(const MsString *path);
-void ms_fs_job_free(MsFsJob *job);
 /* Ends a native: frees the job, then returns its status with `err` filled (ms_fail_finish_at). A stop request is
  * delivered by unwinding, which never returns, so the job is freed first; the caller must not touch it afterwards. */
 uint8_t ms_fs_job_finish(MsFsJob *job, MsSpan detail, MsString *err);
@@ -91,7 +90,6 @@ void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat
 MS_NODISCARD bool ms_fs_limit(uint8_t present, int64_t value, int64_t *out);
 
 #define MS_FS_UNLIMITED INT64_MAX
-
 
 /* Whether a listing entry (its name, and the libuv `type` the listing gave) is a directory or a symbolic link: its own
  * kind, or an lstat of `directory`/name when the filesystem gives none. */
