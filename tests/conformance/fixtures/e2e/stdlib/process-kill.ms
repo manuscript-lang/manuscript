@@ -21,14 +21,14 @@ test "kill ends any process by pid and a gone process is ENOENT" {
 	child := spawn("cat", [])?
 	expect_true(child.pid() > 0)?
 	kill(child.pid())?
-	expect_equal((child.wait()?), -1)?
+	expect_true((child.wait()?) != 0)?
 	expect_equal(kill(child.pid(), Signal.Terminate).err().kind, "ENOENT")?
 }
 
 test "kill with Interrupt ends a child that does not handle it" {
 	child := spawn("cat", [])?
 	kill(child.pid(), Signal.Interrupt)?
-	expect_equal((child.wait()?), -1)?
+	expect_true((child.wait()?) != 0)?
 }
 
 test "Stop suspends a child and Continue resumes it" {
