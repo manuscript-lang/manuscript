@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Embedded example check (`docs-check`): every `manuscript` fence in the book, the
 // standard-library descriptions and the agent skill must still be valid Manuscript, so
 // a syntax change that leaves a stale example fails the build. A fence carries a marker

@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	SortedMap from "@std/collections/sorted.ms",
 	sqrt from "@std/math/math.ms",

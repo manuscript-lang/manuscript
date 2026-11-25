@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.clock.sleep
+// ms: allow_effect std.net.connect
+// ms: allow_effect std.net.listen
+
 // Cost of each async primitive, one mode per primitive. Prints `mode ns/op`.
 // `ms build bench/perf/async-primitives/main.ms -o probe && ./probe <mode> <n>`.
 //

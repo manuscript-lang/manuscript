@@ -1,3 +1,9 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Small helpers shared by the benchmark tools: environment, files, shell commands.
 import (
 	environment from "@std/os/env.ms",

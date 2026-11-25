@@ -1,3 +1,7 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Interleaves two already-built LSP harnesses and rejects mismatched output or work
 // (replaces bench/perf/lsp*/compare.py). Usage: ms run bench/tools/lsp_compare.ms --
 // <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N] Suites

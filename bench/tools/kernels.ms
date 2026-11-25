@@ -1,3 +1,10 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Whole-kernel comparisons against hand-written Go, Rust and (kernels only) C, minimum
 // of N runs (bench/perf/kernels, bench/perf/competence). Usage: ms run
 // bench/tools/kernels.ms -- <kernels|competence> [repeats]

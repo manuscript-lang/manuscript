@@ -1,3 +1,11 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // `conform harvest`: turns the repository's Manuscript sources and the ```manuscript fences of the
 // documentation into corpus fixtures. Each candidate is classified by asking the ms
 // under test to check it: parse errors become `parse` fixtures, type errors `check`

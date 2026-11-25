@@ -1,3 +1,7 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Runs already-built programs in alternating pairs, rejecting failed or incomplete
 // samples (bench/perf/string-lines, also used by bench/tools/bytes_index_compare.ms).
 // Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs

@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.read
+
 import (
 	arguments from "@std/os/env.ms",
 	list, read_file from "@std/os/fs.ms",

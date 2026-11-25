@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Generator for c63-inventory-returns. The expected outputs come from the Go oracle in
 // oracle/*.ref (built with the local Go toolchain). The hidden cases are the inputs of
 // c13-inventory-orders (the behavior that must survive the edit) plus the new return

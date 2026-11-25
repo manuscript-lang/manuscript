@@ -1,3 +1,7 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // The conformance corpus commands that are not a replay: `list`, `stats`, `lint`,
 // `retag`, `diff`,
 // `fuzz-gen`, `fuzz` and `harvest`. The replay and recording of expectations is tools/conform-run.ms.

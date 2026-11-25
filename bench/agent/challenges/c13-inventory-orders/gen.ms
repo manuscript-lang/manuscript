@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Generator for c13-inventory-orders. Deterministic; run: ms run bench/agent/gen.ms --
 // c13
 import (

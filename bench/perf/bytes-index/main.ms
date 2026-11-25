@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	Bytes from "@std/bytes.ms",
 	stdout from "@std/io/io.ms",

@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.read
+
 // Count lexical tokens in the source an agent produced (language-neutral,
 // dependency-free).
 //

@@ -1,3 +1,7 @@
+// ms: allow_effect std.clock.sleep
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.read
+
 // Memory and time per parked task: starts N promise tasks that park (mode `sleep`, on a
 // timer;
 // `deep`, on a timer after a 256-frame call chain, as a handler parks after real work; or

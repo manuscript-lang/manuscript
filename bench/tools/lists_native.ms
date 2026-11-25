@@ -1,3 +1,10 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Builds Release Manuscript reproductions of the List workloads
 // (bench/lists/program.ms) and measures native wall time and peak RSS. Usage: ms run
 // bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]

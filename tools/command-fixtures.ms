@@ -1,3 +1,7 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Command fixtures: records and replays `ms` commands that the conformance corpus does
 // not cover (`lint`, `inspect`, `init`, ...).
 //

@@ -1,3 +1,9 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Plain element-wise list loops in GFLOPS (higher is better), best of N
 // (bench/perf/listloops). ms is the Manuscript loops (`for i in 0..n: out[i] = ...`)
 // built with `ms build`; c-sse2 and c-avx2 are the same loops in C at

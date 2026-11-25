@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.sleep
+
 import (
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
 	panic from "@std/core.ms",

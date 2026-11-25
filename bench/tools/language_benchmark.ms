@@ -1,3 +1,10 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // Builds checked native workloads (bench/language/*.ms) with two Manuscript CLIs and
 // compares them, alternating the first runner. Usage: ms run
 // bench/tools/language_benchmark.ms -- --before MS --after MS --output DIR [--runs 3]

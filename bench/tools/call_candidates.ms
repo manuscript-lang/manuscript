@@ -1,3 +1,10 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Process-cold production checker controls. Run after all compiler builds stop:
 // ms run bench/tools/call_candidates.ms -- BEFORE AFTER OUTPUT ROUNDS
 // Linux measurement host: taskset CPU 0; child peak RSS is retained.

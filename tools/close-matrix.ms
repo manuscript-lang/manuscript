@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Close-once matrix (`make close-matrix`): generates one program for each combination
 // of a resource shape (a bare resource, an Optional, a List, a record or a Result
 // holding one) and a language construct that ends or moves its life (scope end, early

@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Collect Harbor trials into results/trials-YYYY-MM-DD.jsonl and render
 // results/leaderboard-YYYY-MM-DD.md.
 //

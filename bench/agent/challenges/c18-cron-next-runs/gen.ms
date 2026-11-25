@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms --
 // c18
 import (

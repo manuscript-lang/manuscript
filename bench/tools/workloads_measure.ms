@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.read
+
 // Times prebuilt CLI workloads, validating every version and trial's output
 // (bench/perf/workloads).
 import invalid, left, now_ns, right, rotate from "./lib.ms"

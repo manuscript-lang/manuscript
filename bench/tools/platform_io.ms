@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Times file, directory, process and pipe operations so Linux, macOS and Windows can be
 // compared on one run (the `Platform benchmarks` workflow). Usage:
 // `ms run bench/tools/platform_io.ms [-- files]`; MS names the `ms` binary. Prints one

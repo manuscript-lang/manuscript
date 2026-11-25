@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Generator for c05-calculator. Deterministic; run: ms run bench/agent/gen.ms -- c05
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",

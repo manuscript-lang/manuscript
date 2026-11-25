@@ -1,3 +1,5 @@
+// ms: allow_effect std.process.run
+
 // Cancellation sweep (`make cancel-sweep`): cancels each test of the e2e fixtures at
 // every park (await point) in turn and checks that nothing leaks. It builds the
 // counting runtime (`cmake --preset stats`,

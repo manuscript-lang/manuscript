@@ -1,3 +1,6 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.process.run
+
 // Resource ownership matrix (`make resource-matrix`): generates one program for each
 // combination of a standard operation that takes, returns or discards a one-owner
 // resource, a call form (direct call, or a method value called later) and an argument

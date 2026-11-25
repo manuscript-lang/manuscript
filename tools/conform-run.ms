@@ -1,3 +1,8 @@
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // The conformance corpus replayed against an ms binary, in Manuscript: it reads each
 // fixture's recorded expectation (<name>.expected.json beside a .ms file, or
 // expected.json in a project directory with a conform.meta), observes the ms under test

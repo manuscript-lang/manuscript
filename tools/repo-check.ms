@@ -1,3 +1,9 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Repository invariants that no compiler or test run enforces (`make repo-check`):
 //   - every tracked .ms source is formatted (`ms fmt --check`),
 //   - nested matches stay out of .ms sources and Markdown code fences (`ms lint --syntax`, MSL107),

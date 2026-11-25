@@ -1,3 +1,9 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Build an agent workspace and score a finished one against hidden tests.
 import (
 	panic from "@std/core.ms",

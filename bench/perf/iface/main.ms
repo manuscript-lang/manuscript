@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	stdout from "@std/io/io.ms",
 	Instant, monotonic from "@std/time.ms",

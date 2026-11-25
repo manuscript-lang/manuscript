@@ -1,3 +1,7 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Compares formatter binaries, retaining all output-checked paired samples
 // (bench/perf/formatter-flow). Usage: ms run bench/tools/formatter_flow_compare.ms --
 // BEFORE AFTER --out FILE.csv [--samples 10] [--cpu N] Harness output is

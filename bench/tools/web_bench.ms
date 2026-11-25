@@ -1,3 +1,12 @@
+// ms: allow_effect std.clock.sleep
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Web server and fetch client benchmarks against Go (bench/perf/web; replaces run.sh
 // and fetch.sh). Linux only: it needs taskset, pgrep, ps, strace and /proc.
 //
