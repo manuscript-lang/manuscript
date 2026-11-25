@@ -189,7 +189,7 @@ uint8_t ms_net_dial(MsSpan address, MsNetFilter *filter, int64_t timeout_ns, MsO
 
 uint8_t ms_net_dial_unix(MsSpan path, int64_t timeout_ns, MsObj **out, MsString *err) {
   *err = ms_string_empty();
-  if (path.len == 0 || memchr(path.ptr, 0, path.len) != NULL) {
+  if (path.len == 0 || ms_span_has_byte(path, 0)) {
     return MS_STATUS_INVALID_INPUT;
   }
   ConnectOp *dial = connect_new();

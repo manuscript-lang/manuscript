@@ -230,7 +230,7 @@ MsNetTlsCtx *ms_net_tls_ctx_from_options(bool server, const MsTlsOptions *option
 
 static bool usable_name(const MsString *name) {
   const MsSpan text = ms_string_span(name);
-  return text.len > 0 && memchr(text.ptr, 0, text.len) == NULL;
+  return text.len > 0 && !ms_span_has_byte(text, 0);
 }
 
 /* ---- natives ---- */

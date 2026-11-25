@@ -417,10 +417,6 @@ static char *slash_copy(MsSpan text, bool windows) {
   return copy;
 }
 
-static bool has_nul(MsSpan text) {
-  return text.len != 0 && memchr(text.ptr, 0, text.len) != NULL;
-}
-
 static uint8_t status_of(MsPathResult result) {
   return result == PATH_INVALID ? MS_STATUS_INVALID_INPUT : MS_STATUS_FAILED;
 }
@@ -435,7 +431,7 @@ uint8_t msstd_path_host_windows(void) {
 
 uint8_t msstd_path_compile_glob(uint8_t windows, const MsString *pattern, MsObj **out) {
   MsSpan text = ms_string_span(pattern);
-  if (text.len > MAX_PATTERN_BYTES || has_nul(text)) {
+  if (text.len > MAX_PATTERN_BYTES || ms_span_has_byte(text, 0)) {
     return MS_STATUS_INVALID_INPUT;
   }
   char *slashed = slash_copy(text, windows != 0);
@@ -561,7 +557,7 @@ static bool match_alternative(bool *failed, const MsParts *parts, const MsAltern
 uint8_t msstd_path_glob_matches(const MsObj *glob, const MsString *value, uint8_t *out) {
   const MsGlobCell *cell = (const MsGlobCell *)glob;
   MsSpan text = ms_string_span(value);
-  if (has_nul(text)) {
+  if (ms_span_has_byte(text, 0)) {
     return MS_STATUS_INVALID_INPUT;
   }
   char *slashed = slash_copy(text, cell->windows);

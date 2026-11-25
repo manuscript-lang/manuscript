@@ -138,11 +138,6 @@ static bool has_text_ci(MsSpan s, const char *needle_lower) {
   return false;
 }
 
-static bool has_nul(MsSpan s) {
-  size_t at = 0;
-  return ms_span_find_byte(s, 0, &at);
-}
-
 /* Strips an http:// or https:// prefix, recording the authority up to the first / or ?. */
 static bool take_authority(MsSpan *rest, MsSpan *host, bool *has_host, const char **reason) {
   MsSpan after = {0};
@@ -214,7 +209,7 @@ static bool finish_path(MsSpan raw_path, MsString *path, const char **reason) {
   const MsSpan bytes = ms_string_span(&decoded);
   if (!ms_utf8_is_valid(bytes.ptr, bytes.len)) {
     *reason = "invalid UTF-8 URL";
-  } else if (has_text_ci(raw_path, "%00") || has_text_ci(raw_path, "%2f") || has_nul(bytes)) {
+  } else if (has_text_ci(raw_path, "%00") || has_text_ci(raw_path, "%2f") || ms_span_has_byte(bytes, 0)) {
     *reason = "invalid request path";
   }
   if (*reason != NULL) {

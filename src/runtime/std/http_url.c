@@ -34,17 +34,8 @@ static char *terminated(MsSpan text) {
   return copy;
 }
 
-static bool has_nul(MsSpan text) {
-  for (size_t i = 0; i < text.len; i++) {
-    if (text.ptr[i] == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
 MsHttpUrl *ms_http_url_parse(MsSpan text) {
-  if (text.len == 0 || has_nul(text)) {
+  if (text.len == 0 || ms_span_has_byte(text, 0)) {
     return NULL;
   }
   CURLU *handle = curl_url();
@@ -60,7 +51,7 @@ MsHttpUrl *ms_http_url_parse(MsSpan text) {
 }
 
 MsHttpUrl *ms_http_url_resolve(const MsHttpUrl *base, MsSpan location) {
-  if (has_nul(location)) {
+  if (ms_span_has_byte(location, 0)) {
     return NULL;
   }
   CURLU *handle = curl_url_dup(base->handle);

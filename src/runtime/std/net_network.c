@@ -334,7 +334,7 @@ static uint8_t lookup_run(const MsObj *net, const MsString *name, int family, ui
   if (!is_open(network)) {
     return MS_STATUS_CLOSED;
   }
-  if (text.len == 0 || memchr(text.ptr, 0, text.len) != NULL || (has_max != 0 && max < 0)) {
+  if (text.len == 0 || ms_span_has_byte(text, 0) || (has_max != 0 && max < 0)) {
     return MS_STATUS_INVALID_INPUT;
   }
   if (!ms_net_filter_host_allowed(network->filter, text)) {
@@ -404,7 +404,7 @@ uint8_t msstd_net_network_resolve(const MsObj *net, const MsString *name, int64_
   if (!is_open(network)) {
     return MS_STATUS_CLOSED;
   }
-  if (ms_dns_type_of_kind(kind) == 0 || text.len == 0 || memchr(text.ptr, 0, text.len) != NULL ||
+  if (ms_dns_type_of_kind(kind) == 0 || text.len == 0 || ms_span_has_byte(text, 0) ||
       (has_max != 0 && max < 0)) {
     return MS_STATUS_INVALID_INPUT;
   }
