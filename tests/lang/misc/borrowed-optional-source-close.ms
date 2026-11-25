@@ -35,3 +35,5 @@ test "borrowing through an Optional does not close the named owner" {
 	bytes := read_file(path).wait()?
 	expect_equal(bytes.decode_utf8() or "", "closed,")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

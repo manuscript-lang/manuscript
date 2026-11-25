@@ -25,3 +25,5 @@ test "a Void mutation of a temporary list returns Void" {
 test "a mutation of a temporary list keeps its extra result" {
 	expect_equal(pop_temporary(), 4)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

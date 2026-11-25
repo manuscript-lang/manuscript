@@ -53,3 +53,15 @@ export fn main() Int {
 	say(f"{big8 * 5}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: l1 = [-16, -18, -30] len 3
+// expect-stdout: b2 = true
+// expect-stdout: l3 = [-18, -30] len 2
+// expect-stdout: l4 = [-3, 4, -21, 20] len 4
+// expect-stdout: l5 = [-16, -18, -30, 87] len 4
+// expect-stdout: fib(52) = 32951280099
+// expect-stdout: i6 = -20983844
+// expect-stdout: fib(21) = 10946
+// expect-stdout: l7 = [-18, 5, 12, 19] len 4
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0155.ms:53 in main

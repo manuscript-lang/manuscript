@@ -40,3 +40,5 @@ test "omitted defaults" {
 	callback := scaled
 	expect_true((callback(2, 3, "z") == "z6"))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

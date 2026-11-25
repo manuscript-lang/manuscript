@@ -32,3 +32,5 @@ test "the argument is the result only when the callee returns it" {
 	expect_true(first_long(Tok("ab"), 5) == null)?
 	expect_true(first_long(Tok("abcdef"), 5) != null)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

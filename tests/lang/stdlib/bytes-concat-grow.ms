@@ -43,3 +43,5 @@ test "concat of a part of itself" {
 	v = v.concat(v.view(0, 2).clone())
 	expect_equal(v.values(), [9, 8, 7, 9, 8])?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

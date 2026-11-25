@@ -224,3 +224,5 @@ test "cleanup remains owned by its source callable" {
 fn present[T](hold value T) &T? {
 	return value
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -81,3 +81,25 @@ export fn main() Int {
 	say(f"{big20 + 5}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -34522115
+// expect-stdout: l2 = [-17, -3, -24] len 3
+// expect-stdout: l3 = [-24, -3, -17] len 3
+// expect-stdout: s4 = [PADDED]
+// expect-stdout: b5 = false
+// expect-stdout: f6 = 736.967
+// expect-stdout: i7 = -54
+// expect-stdout: f8 = 736.967
+// expect-stdout: b9 = true
+// expect-stdout: i10 = 35
+// expect-stdout: l11 = [] len 0
+// expect-stdout: f12 = Infinity
+// expect-stdout: i13 = -34522115
+// expect-stdout: i14 = 35
+// expect-stdout: i15 = 12276374357205
+// expect-stdout: acc16 = -26
+// expect-stdout: i17 = 162
+// expect-stdout: s18 = [x]
+// expect-stdout: l19 = [-17, -3, -24, 95] len 4
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0332.ms:81 in main

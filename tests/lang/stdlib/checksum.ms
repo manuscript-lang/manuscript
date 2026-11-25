@@ -116,3 +116,5 @@ test "IEEE CRC32 preserves larger unaligned views and tails" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

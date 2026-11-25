@@ -32,3 +32,5 @@ test "an inserted element is independent of its source" {
 	expect_equal(rows, [[1]])?
 	expect_equal(row, [1, 2])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

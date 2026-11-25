@@ -135,3 +135,5 @@ test "implementation and bound method defaults" {
 	box := Box[String]("boxed")
 	box.read() | expect_equal("boxed")?
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=0

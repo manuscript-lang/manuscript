@@ -255,3 +255,5 @@ test "span results remain bounded for dense matches" {
 		) | expect_ok? | expect_some? | slots | expect_equal([[0, 2], [0, 2], null])?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

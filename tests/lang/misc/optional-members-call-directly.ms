@@ -18,3 +18,5 @@ test "optional members" {
 	items.append(value: 5)
 	expect_true((items.get_or(index: 0, -1) == 5 and (items.first() or 0) == 5))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

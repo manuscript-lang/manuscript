@@ -264,3 +264,5 @@ test "filesystem default preparation retains written argument order" {
 	)
 	log | expect_equal(["data", "path", "source", "destination"])?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

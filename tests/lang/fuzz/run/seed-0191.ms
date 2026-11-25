@@ -62,3 +62,19 @@ export fn main() Int {
 	say(f"{big15[8]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: s1 = [64502219150:  padded]
+// expect-stdout: acc2 = 7
+// expect-stdout: s3 = [gamma]
+// expect-stdout: s4 = [naïve]
+// expect-stdout: 2 42 true sum 44
+// expect-stdout: b6 = true
+// expect-stdout: s7 = [naïve]
+// expect-stdout: f8 = 203725.30330125
+// expect-stdout: i9 = -11960122
+// expect-stdout: s10 = [gamma]
+// expect-stdout: f11 = 156.551
+// expect-stdout: i12 = 0
+// expect-stdout: s14 = [}s{ecarbgammaTab\there64502219150:  paddedx]
+// expect-stderr: index 8 out of range for length 3; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0191.ms:62 in main

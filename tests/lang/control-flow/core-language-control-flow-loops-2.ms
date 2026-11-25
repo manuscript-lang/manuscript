@@ -12,3 +12,5 @@ test "sum indexes" {
 		return panic(f"Expected 10, got {total}")
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

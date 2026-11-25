@@ -71,3 +71,5 @@ test "requests cancelled on a shared HTTP/2 connection release their streams" {
 		return error(Error(f"heap grew {grown} bytes over 1000 cancelled requests"))
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

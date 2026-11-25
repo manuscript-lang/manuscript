@@ -35,3 +35,5 @@ fn step(move start String) String {
 test "a match arm rebuilds the matched variable from its payload" {
 	expect_equal(step("a"), "a!")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

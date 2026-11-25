@@ -73,3 +73,23 @@ export fn main() Int {
 	say(f"{10 / big14}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: hélloalpha
+// expect-stdout: f1 = 0
+// expect-stdout: s2 = [MiXeD CaSe42]
+// expect-stdout: f3 = Infinity
+// expect-stdout: i4 = -46
+// expect-stdout: i5 = -28
+// expect-stdout: b6 = false
+// expect-stdout: s7 = [24esac dexim]
+// expect-stdout: i8 = -28
+// expect-stdout: 46 -33 false sum 13
+// expect-stdout: f9 = 0
+// expect-stdout: i10 = 1
+// expect-stdout: b11 = false
+// expect-stdout: fact(19) = 121645100408832000
+// expect-stdout: f12 = NaN
+// expect-stdout: b13 = false
+// expect-stdout: -490071133126 242151 true sum -490070890975
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0175.ms:73 in main

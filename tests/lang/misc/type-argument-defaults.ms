@@ -127,3 +127,5 @@ fn forward_read(value ForwardFirst) Int => value.value.value.value
 test "a default may name a type declared later, through several hops" {
 	forward_read(ForwardFirst(ForwardMiddle(ForwardLast(5)))) | expect_equal(5)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

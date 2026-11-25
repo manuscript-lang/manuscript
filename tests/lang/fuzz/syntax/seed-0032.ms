@@ -24,3 +24,4 @@ export fn main() Int {
 	say(f"{i1} {840178} {(i1 < 840178)} sum {i1 + 840178}")
 	return 0
 }
+// expect-format: unchanged

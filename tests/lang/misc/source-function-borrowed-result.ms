@@ -56,3 +56,5 @@ test "borrowed list callback returns independent data" {
 	expect_equal(first, ["a-1", "b-2"])?
 	expect_equal(second, ["c-3"])?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

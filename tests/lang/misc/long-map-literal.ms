@@ -1033,3 +1033,5 @@ test "a literal of constants covers every key and value kind" {
 	expect_equal(grown.length(), 21)?
 	expect_equal(ints.length(), 20)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

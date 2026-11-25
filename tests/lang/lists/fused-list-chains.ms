@@ -121,3 +121,5 @@ test "chains over records and strings read each element in place" {
 		[11],
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

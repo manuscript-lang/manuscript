@@ -7,3 +7,4 @@ explicit String? := null
 unknown := null
 // Rejected: bindings still require explicit wrapping.
 wrong String? := "Ada"
+// expect-exit: 0

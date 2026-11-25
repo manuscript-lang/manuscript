@@ -42,3 +42,13 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 20
+// expect-stdout: i2 = 0
+// expect-stdout: b3 = true
+// expect-stdout: s4 = [44:日本語]
+// expect-stdout: i5 = 0
+// expect-stdout: i6 = 47
+// expect-stdout: i8 = 47
+// expect-stdout: l9 = [22, 9] len 2
+// expect-stdout: brace{s}

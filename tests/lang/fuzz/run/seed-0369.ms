@@ -64,3 +64,20 @@ export fn main() Int {
 	say(f"{i1 / big11}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: a  padded\x20\x20
+// expect-stdout: i1 = 0
+// expect-stdout: a
+// expect-stdout: 0 0 false sum 0
+// expect-stdout: i3 = -18
+// expect-stdout: s4 = [-36:héllo]
+// expect-stdout: b5 = true
+// expect-stdout: b6 = true
+// expect-stdout: 0:-36:héllo
+// expect-stdout: b7 = false
+// expect-stdout: f8 = 98808.51657600001
+// expect-stdout: i9 = -365727
+// expect-stdout: b10 = true
+// expect-stdout: 0 303135360474477947 true sum 303135360474477947
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0369.ms:64 in main

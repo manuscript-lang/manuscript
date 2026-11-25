@@ -18,3 +18,5 @@ test "lines leave embedded NUL and non LF separators unchanged" {
 	expect_equal("".lines(), [])?
 	expect_equal("\n\n".lines(), ["", ""])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

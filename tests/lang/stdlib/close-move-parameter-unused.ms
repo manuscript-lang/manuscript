@@ -64,3 +64,23 @@ fn main() Void {
 	print(s.name)
 	print("end")
 }
+// expect-exit: 0
+// expect-stdout: closed a
+// expect-stdout: 1
+// expect-stdout: closed bb
+// expect-stdout: 2
+// expect-stdout: closed c
+// expect-stdout: 1
+// expect-stdout: closed e
+// expect-stdout: 2
+// expect-stdout: closed f
+// expect-stdout: 3
+// expect-stdout: closed g
+// expect-stdout: 4
+// expect-stdout: h
+// expect-stdout: closed h
+// expect-stdout: text
+// expect-stdout: closed p
+// expect-stdout: q
+// expect-stdout: end
+// expect-stdout: closed q

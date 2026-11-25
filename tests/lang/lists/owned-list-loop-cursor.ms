@@ -72,3 +72,5 @@ test "continue keeps taking elements" {
 test "an inner break and an outer return release both lists" {
 	expect_equal(nested(), 12)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

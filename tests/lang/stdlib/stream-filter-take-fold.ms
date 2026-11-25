@@ -101,3 +101,5 @@ test "take preserves its remaining items across errors in composed stages" {
 	expect_equal(source.next()?, null)?
 	expect_equal(source.next()?, null)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

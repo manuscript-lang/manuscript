@@ -39,3 +39,5 @@ test "fields handle large inputs and separator-heavy text" {
 	separators := "\u{a0} \t".repeat(65536)
 	separators.fields() | expect_equal(List[String]())?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

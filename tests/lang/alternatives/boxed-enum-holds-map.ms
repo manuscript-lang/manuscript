@@ -68,3 +68,5 @@ test "cloning a self-containing enum copies its maps" {
 	copy := tree.clone()
 	expect_equal(size(copy), size(tree))?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

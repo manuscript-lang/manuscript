@@ -74,3 +74,5 @@ test "YAML parse never faults on mutated documents and accepted input is stable"
 
 	expect_not_equal(accepted, 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

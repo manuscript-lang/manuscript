@@ -48,3 +48,12 @@ fn main() Void {
 	via_optional()
 	via_passthrough()
 }
+// expect-exit: 0
+// expect-stdout: body try
+// expect-stdout: close try
+// expect-stdout: body get
+// expect-stdout: close get
+// expect-stdout: body optional
+// expect-stdout: close optional
+// expect-stdout: body keep
+// expect-stdout: close keep

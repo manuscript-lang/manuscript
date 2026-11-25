@@ -41,3 +41,11 @@ fn main() Void {
 	)
 	void stdout().write(f"{wide.to_float()} {high.to_float32()}\n")
 }
+// expect-exit: 0
+// expect-stdout: 0 255 65535 4000000000
+// expect-stdout: 250 60000 3000000000
+// expect-stdout: [1, 3, 200, 255] 127
+// expect-stdout: 127 5 true true
+// expect-stdout: 255 none some(300) none 4000000000
+// expect-stdout: 255 none ee6b2800 1
+// expect-stdout: 4000000000 255

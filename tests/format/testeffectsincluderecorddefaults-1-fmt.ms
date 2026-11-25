@@ -18,3 +18,4 @@ type Options {
 fn construct(state State) Options {
 	return Options(state: state)
 }
+// expect-format: unchanged

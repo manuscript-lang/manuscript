@@ -33,3 +33,7 @@ fn main() Void {
 	c := keep(5)
 	print(f"end {a + b + c}")
 }
+// expect-exit: 0
+// expect-stdout: closed wrapped
+// expect-stdout: closed optional
+// expect-stdout: end 1

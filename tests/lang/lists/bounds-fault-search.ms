@@ -26,3 +26,7 @@ fn search(a List[Int], want Int) Int {
 fn main() Void {
 	void stdout().write(f"{search([1, 3, 5], 9)}\n")
 }
+// expect-exit: 134
+// expect-stderr: index 3 out of range for length 3; use get_or(index, default) to avoid the fault
+// expect-stderr:   at bounds-fault-search.ms:12 in search
+// expect-stderr:   at bounds-fault-search.ms:27 in main

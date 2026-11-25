@@ -14,3 +14,4 @@ fn probe() Int {
 	text := lookup[String]("one", "two")
 	return number
 }
+// expect-error: MS3000 8:16 `key` is moved here but used again at 9:23; a value has one owner, so move it only at its last use, or pass `key.clone()` if the original is still needed

@@ -59,3 +59,21 @@ export fn main() Int {
 	print(total)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: [HELLO there, A HEAP STRING PAST THE INLINE SIZE]
+// expect-stdout: [HÉLLO there, NON ASCII PAST THE INLINE SIZE]
+// expect-stdout: [SHORT]
+// expect-stdout: 100
+// expect-stdout: x and x
+// expect-stdout: no match here, but a string past the inline size
+// expect-stdout: abcdefghijklmnopqrstu
+// expect-stdout: -a-b-c- -d-e-f- -g-h-i- -j-k-l- -m-n-o- -p-q-r- -s-t-u-
+// expect-stdout: ας οδυσσευς and more text
+// expect-stdout: STRASSE AND MORE TEXT PAST INLINE
+// expect-stdout: left only, a heap string past the inline size
+// expect-stdout: right only, a heap string past the inline size|
+// expect-stdout: []
+// expect-stdout: [52]
+// expect-stdout: cc ddd cc ddd cc ddd
+// expect-stdout: grow the much longer text, a heap string past inline
+// expect-stdout: 22890

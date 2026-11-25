@@ -58,3 +58,5 @@ test "a copy is changed without changing the constant" {
 	table | expect_equal([3, 1, 4, 1, 5, 9, 2, 6])?
 	give() | expect_equal([3, 1, 4, 1, 5, 9, 2, 6])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

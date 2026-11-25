@@ -7,3 +7,5 @@ test "fault" {
 	missing Int? := null
 	_impossible := missing or panic("called Optional.get() on null")
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

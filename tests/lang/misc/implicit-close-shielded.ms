@@ -152,3 +152,5 @@ test "cancellation does not interrupt the close of a discarded result" {
 	cancel_a_discard(dir.clone(), 7)
 	expect_true(closed(dir, "7"))?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

@@ -48,3 +48,13 @@ export fn main() Int {
 	say(f"{l4[2]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: s1 = [line
+// expect-stdout: breaknaïvealpha]
+// expect-stdout: b2 = true
+// expect-stdout: f3 = 103.367
+// expect-stdout: l4 = [] len 0
+// expect-stdout: acc5 = 84
+// expect-stdout: collatz(1676) = 42
+// expect-stderr: index 2 out of range for length 0; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0028.ms:48 in main

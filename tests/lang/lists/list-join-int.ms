@@ -11,3 +11,5 @@ fn main() Void {
 		) + "\n"
 	).get()
 }
+// expect-exit: 0
+// expect-stdout: 3,-1,20||7

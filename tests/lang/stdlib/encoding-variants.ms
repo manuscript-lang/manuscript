@@ -319,3 +319,5 @@ test "unpadded Base64 preserves byte budget precedence for invalid padding" {
 
 	expect_equal(base64_decode("Zg", max_bytes: 1, padded: false)?, "f".to_bytes())?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

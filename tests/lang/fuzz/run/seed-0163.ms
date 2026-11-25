@@ -44,3 +44,15 @@ export fn main() Int {
 	say(f"i10 = {i10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: i2 = 490569730900
+// expect-stdout: s3 = [x]
+// expect-stdout: i4 = -3163228438298138129
+// expect-stdout: l5 = [] len 0
+// expect-stdout: s6 = [QUOTE"DHÉLLOX]
+// expect-stdout: i7 = -3163228438298138129
+// expect-stdout: l8 = [-10, -10, -9, 16] len 4
+// expect-stdout: l9 = [16, -9, -10, -10] len 4
+// expect-stdout: -490569324888 -3163228017380059124 false sum -3163228507949384012
+// expect-stdout: i10 = 632886

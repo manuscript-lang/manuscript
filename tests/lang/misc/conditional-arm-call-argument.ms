@@ -36,3 +36,5 @@ test "a conditional with a literal arm and a field arm can be a call argument" {
 	expect_equal(consumed_options(options.clone(), false), 3)?
 	expect_equal(consumed_options(options, true), 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

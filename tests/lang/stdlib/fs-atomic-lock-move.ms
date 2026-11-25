@@ -136,3 +136,5 @@ test "write_atomic replaces a file whose name is near the name length limit" {
 	names := (list(root, null)?).map(e => e.name)
 	expect_equal(names.length(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

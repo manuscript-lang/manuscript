@@ -27,3 +27,9 @@ export fn main() Int {
 	print(f"kids {root.kids.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: kids 2
+// expect-stdout: close 1
+// expect-stdout: close 4
+// expect-stdout: close 3
+// expect-stdout: close 2

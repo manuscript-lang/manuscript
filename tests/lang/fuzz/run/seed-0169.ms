@@ -48,3 +48,16 @@ export fn main() Int {
 	say(f"b10 = {b10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 340656
+// expect-stdout: 0 340656 true sum 340656
+// expect-stdout: i2 = 0
+// expect-stdout: i3 = 0
+// expect-stdout: 42
+// expect-stdout: i4 = 340656
+// expect-stdout: l5 = [20] len 1
+// expect-stdout: f6 = 1.1861459783902024
+// expect-stdout: s7 = [58284876730:quote"d]
+// expect-stdout: i8 = 340656
+// expect-stdout: l9 = [-17, 6, 14, 20] len 4
+// expect-stdout: b10 = false

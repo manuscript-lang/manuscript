@@ -13,3 +13,5 @@ test "recursive immutable collection" {
 	root := Tree[Int](2, [leaf])
 	expect_equal(root.value, 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -4,3 +4,4 @@
 export fn main() Int {
 	return 7
 }
+// expect-exit: 7

@@ -37,3 +37,5 @@ test "plain function types and indexed values still parse as before" {
 	identity(increment)(inferred)
 	expect_equal(inferred, 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -27,3 +27,5 @@ test "an error moves out of an owned local and an ok payload is read in place" {
 	length_of(heap("door", 2), false).get() | expect_equal(heap("door", 2).length())?
 	length_of(heap("door", 3), true).err() | expect_equal(heap("failed", 1))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

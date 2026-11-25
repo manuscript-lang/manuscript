@@ -36,3 +36,5 @@ test "repeated calls through one site" {
 	expect_true((describe(e: boom_error(Boom(code: 1))) == "boom 1"))?
 	expect_true((describe(e: boom_error(Boom(code: 2))) == "boom 2"))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -30,3 +30,6 @@ export fn main() Int {
 	print(f"{nested}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 11 [x] zzz
+// expect-stdout: Map(1: Map(k: [1, 2]))

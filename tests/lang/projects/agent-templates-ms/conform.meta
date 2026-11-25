@@ -2,3 +2,4 @@
 // conform: phase=run
 // conform: origin=bench/agent/templates/ms
 // conform: timeout=120
+// expect-exit: 0

@@ -29,3 +29,6 @@ fn main() Void {
 	print(f"{a.hits} {a.names.length()} {a.order.length()}")
 	print(f"{b.hits} {b.names.length()} {b.order.length()}")
 }
+// expect-exit: 0
+// expect-stdout: 2 2 2
+// expect-stdout: 3 3 3

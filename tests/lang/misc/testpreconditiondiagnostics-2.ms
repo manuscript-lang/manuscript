@@ -4,3 +4,5 @@
 test "continues after preconditions" {
 	_valid := 1
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

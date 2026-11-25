@@ -39,3 +39,9 @@ export fn main() Int {
 	say(f"i4 = {i4}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -37
+// expect-stdout: collatz(522) = 30
+// expect-stdout: -1 42 true sum 41
+// expect-stdout: s3 = [x]
+// expect-stdout: i4 = -37

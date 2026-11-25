@@ -122,3 +122,5 @@ test "chacha20 rejects data past the 32-bit block counter" {
 	expect_equal(chacha20(key, nonce, last - 1, data128).is_error(), false)?
 	expect_equal(chacha20(key, nonce, last - 1, data129).is_error(), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

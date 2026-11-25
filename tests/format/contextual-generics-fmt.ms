@@ -75,3 +75,78 @@ test "expected generic results preserve behavior and call order" {
 	expect_false(not (combined == null))?
 	expect_equal(events.values, [2, 1, 3])?
 }
+// expect-format: rewritten
+// expect-formatted: import expect_equal, expect_false from "@std/test/test.ms"
+// expect-formatted:
+// expect-formatted: fn fail[T](move message String) T! => error(Error(message))
+// expect-formatted:
+// expect-formatted: fn fail_cause[T, E](move cause E) T!E => error(cause)
+// expect-formatted:
+// expect-formatted: fn absent[T]() T? => null
+// expect-formatted:
+// expect-formatted: fn identity[T](hold value T) &T => value
+// expect-formatted:
+// expect-formatted: fn from_callback[T](factory fn() T) T => factory()
+// expect-formatted:
+// expect-formatted: fn transform[T, U](callback fn(T) U) fn(T) U => callback
+// expect-formatted:
+// expect-formatted: type Failure {
+// expect-formatted: \tdetail String
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn failure_error(cause Failure) Error => Error(cause.detail.clone())
+// expect-formatted:
+// expect-formatted: fn first() List[Int]! => fail("empty")
+// expect-formatted:
+// expect-formatted: fn failed() Int! => fail_cause(failure_error(Failure("domain")))
+// expect-formatted:
+// expect-formatted: fn forward[T]() T? => absent()
+// expect-formatted:
+// expect-formatted: fn consume(value Int?) Int => value or 0
+// expect-formatted:
+// expect-formatted: type Events {
+// expect-formatted: \tvalues List[Int]
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn record[T](var events Events, value Int) T? {
+// expect-formatted: \tevents.values.append(value)
+// expect-formatted: \treturn null
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn combine[T](var events Events, hold first T?, second T?) &T? {
+// expect-formatted: \tevents.values.append(3)
+// expect-formatted: \treturn first
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "expected generic results preserve behavior and call order" {
+// expect-formatted: \tresult List[Int]! := first()
+// expect-formatted: \texpect_false(result.is_ok())?
+// expect-formatted: \texpect_equal(result.err().message, "empty")?
+// expect-formatted:
+// expect-formatted: \tdomain := failed()
+// expect-formatted: \texpect_false(domain.is_ok())?
+// expect-formatted: \texpect_equal(domain.err().message, "domain")?
+// expect-formatted:
+// expect-formatted: \tempty Int? := forward()
+// expect-formatted: \texpect_false(not (empty == null))?
+// expect-formatted:
+// expect-formatted: \tvalues List[Int?] := [1, 2].map(item => absent())
+// expect-formatted: \texpect_equal(values.length(), 2)?
+// expect-formatted: \texpect_false(not (values[0] == null))?
+// expect-formatted:
+// expect-formatted: \tcallback fn(Int) String := transform(item => item.to_string())
+// expect-formatted: \texpect_equal(callback(7), "7")?
+// expect-formatted:
+// expect-formatted: \tdefaulted fn(Int) Int := from_callback(() => fn(value Int = 4) => (value + 1))
+// expect-formatted: \texpect_equal(defaulted(8), 9)?
+// expect-formatted: \texpect_equal(consume(identity(5)), 5)?
+// expect-formatted:
+// expect-formatted: \tvar events = Events([])
+// expect-formatted: \tcombined Int? := combine(
+// expect-formatted: \t\tevents,
+// expect-formatted: \t\tsecond: record(events, 2),
+// expect-formatted: \t\tfirst: record(events, 1),
+// expect-formatted: \t)
+// expect-formatted: \texpect_false(not (combined == null))?
+// expect-formatted: \texpect_equal(events.values, [2, 1, 3])?
+// expect-formatted: }

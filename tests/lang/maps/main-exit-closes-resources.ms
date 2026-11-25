@@ -36,3 +36,8 @@ fn main() Void {
 	first := Gate(1)
 	print(f"{plain.length()} {held.gates.length()} {first.id}")
 }
+// expect-exit: 0
+// expect-stdout: 2 2 1
+// expect-stdout: closed 1
+// expect-stdout: closed 3
+// expect-stdout: closed 2

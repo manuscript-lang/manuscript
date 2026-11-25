@@ -69,3 +69,16 @@ export fn main() Int {
 	say(f"{11} {l8.length()} {(11 < l8.length())} sum {11 + l8.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: fib(15) = 610
+// expect-stdout: b2 = false
+// expect-stdout: acc3 = 0
+// expect-stdout: b4 = false
+// expect-stdout: gcd(4254, 223) = 1
+// expect-stdout: i5 = 283570873179
+// expect-stdout: i6 = 5387846590424
+// expect-stdout: s7 = [24a]
+// expect-stdout: l8 = [] len 0
+// expect-stdout: b9 = true
+// expect-stdout: 11 0 false sum 11

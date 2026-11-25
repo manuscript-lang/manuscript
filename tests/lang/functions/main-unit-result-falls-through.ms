@@ -14,3 +14,7 @@ fn main() Void! {
 	step(3)?
 	print("unreachable")
 }
+// expect-exit: 1
+// expect-stdout: step 1
+// expect-stdout: step 2
+// expect-stderr: error: too big

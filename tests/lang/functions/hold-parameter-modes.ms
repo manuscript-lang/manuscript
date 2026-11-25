@@ -43,3 +43,9 @@ fn main() Void {
 	print(hold(3))
 	print(first_of([4, 5]) or 0)
 }
+// expect-exit: 0
+// expect-stdout: y
+// expect-stdout: y
+// expect-stdout: y
+// expect-stdout: 3
+// expect-stdout: 4

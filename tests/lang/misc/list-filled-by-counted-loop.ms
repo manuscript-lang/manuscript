@@ -58,3 +58,5 @@ test "a list grows past the reserved size" {
 	wide.length() | expect_equal(1100001)?
 	wide[1099999] | expect_equal(1099998)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

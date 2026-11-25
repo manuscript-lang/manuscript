@@ -46,3 +46,5 @@ test "HTTP response bodies decode as SSE and close with the reader" {
 	events.close()?
 	expect_equal(status, 200)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

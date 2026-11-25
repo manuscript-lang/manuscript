@@ -32,3 +32,10 @@ export fn main() Int {
 	say(f"f5 = {f5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 0.016957440767781225
+// expect-stdout: i2 = -1919588
+// expect-stdout: alpha
+// expect-stdout: i3 = 4
+// expect-stdout: i4 = 4
+// expect-stdout: f5 = 0.016957440767781225

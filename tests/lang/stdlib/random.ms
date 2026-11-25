@@ -42,3 +42,5 @@ test "float shuffle and choice use operating system entropy" {
 	expect_equal(choice([7])?, 7)?
 	expect_equal(choice(List[Int]())?, null)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

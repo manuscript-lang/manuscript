@@ -126,3 +126,5 @@ test "wait_first returns a ready input before foreign deferred work" {
 		wait_first([remote, ready])?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

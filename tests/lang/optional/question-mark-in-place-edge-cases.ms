@@ -49,3 +49,12 @@ fn main() Void {
 	elements()
 	loop()
 }
+// expect-exit: 0
+// expect-stdout: 2
+// expect-stdout: 3
+// expect-stdout: 3
+// expect-stdout: 2
+// expect-stdout: -1
+// expect-stdout: 3
+// expect-stdout: 1
+// expect-stdout: 2

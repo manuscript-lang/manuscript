@@ -65,3 +65,21 @@ export fn main() Int {
 	say(f"i14 = {i14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 100 -531 false sum -431
+// expect-stdout: s1 = [deltaline
+// expect-stdout: breakbrace{s}]
+// expect-stdout: i2 = -1
+// expect-stdout: f4 = 445.25
+// expect-stdout: s5 = [24]
+// expect-stdout: fact(12) = 479001600
+// expect-stdout: s6 = [back\\slash24]
+// expect-stdout: s7 = [24]
+// expect-stdout: s8 = [Tab\there24]
+// expect-stdout: -1 2 true sum 1
+// expect-stdout: i9 = 985488
+// expect-stdout: b10 = false
+// expect-stdout: b11 = false
+// expect-stdout: i12 = -1
+// expect-stdout: b13 = false
+// expect-stdout: i14 = 1213816374540

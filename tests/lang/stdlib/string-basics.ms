@@ -124,3 +124,5 @@ test "String basic bound methods capture immutable receiver values" {
 	empty_lines.append("new")
 	expect_false(not ("".lines().is_empty()))?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

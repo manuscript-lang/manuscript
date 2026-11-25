@@ -48,3 +48,14 @@ export fn main() Int {
 	say(f"{big8 * 4}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: acc1 = 0
+// expect-stdout: i2 = -20
+// expect-stdout: b3 = false
+// expect-stdout: s4 = [日本語]
+// expect-stdout: s5 = [MS]
+// expect-stdout: acc6 = 18
+// expect-stdout: b7 = true
+// expect-stdout: 143 -40 false sum 103
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0212.ms:48 in main

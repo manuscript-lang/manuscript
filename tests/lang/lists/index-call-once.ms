@@ -19,3 +19,5 @@ fn main() Void {
 	xs[c.next()] = "z"
 	print(f"{one} {two} {len} {xs} {c.n}")
 }
+// expect-exit: 0
+// expect-stdout: b c 1 [a, b, c, d, z, f, g] 4

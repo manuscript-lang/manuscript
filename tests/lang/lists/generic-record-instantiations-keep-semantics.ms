@@ -50,3 +50,5 @@ test "generic records" {
 	o := Box[Int?](v: 3, n: 0)
 	expect_true((o.v == 3))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

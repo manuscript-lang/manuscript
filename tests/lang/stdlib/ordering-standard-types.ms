@@ -42,3 +42,5 @@ test "BigInt orders with min, max and clamp" {
 		"5",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -42,3 +42,5 @@ test "string keys of every size are found and missing ones are not" {
 	expect_equal(hits, 1200)?
 	expect_equal(sum, 224950)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

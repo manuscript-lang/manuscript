@@ -107,3 +107,21 @@ export fn main() Int {
 	say(f"acc13 = {acc13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = 189
+// expect-stdout: i2 = -586695510165
+// expect-stdout: GAMMA
+// expect-stdout: f3 = 931.0048916020925
+// expect-stdout: collatz(2944) = 22
+// expect-stdout: l4 = [-28] len 1
+// expect-stdout: acc5 = -84
+// expect-stdout: acc6 = -28
+// expect-stdout: f7 = 7368723.966462663
+// expect-stdout: i8 = -11
+// expect-stdout: naïvequote"d
+// expect-stdout: f9 = 39.536
+// expect-stdout: s10 = [gamma]
+// expect-stdout: i11 = 1
+// expect-stdout: acc12 = -6
+// expect-stdout: NAÏVE
+// expect-stdout: acc13 = -60

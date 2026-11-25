@@ -98,3 +98,5 @@ test "windows UNC roots collapse repeated separators and need exactly two leadin
 	expect_equal(paths.normalize("\\\\\\srv\\share"), "\\srv\\share")?
 	expect_equal(paths.parse("\\\\\\srv\\share\\a.txt").root, "\\")?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

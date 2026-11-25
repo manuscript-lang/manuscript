@@ -65,3 +65,68 @@ fn callback_write(var values List[Int]) Int {
 
 	return total.value
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn build(count Int) List[Int] {
+// expect-formatted: \tvar values List[Int] = []
+// expect-formatted: \tfor i in 0..count {
+// expect-formatted: \t\tvalues.append(i * 7919 % 100003)
+// expect-formatted: \t}
+// expect-formatted: \treturn values
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn index(values List[Int], count Int) Int {
+// expect-formatted: \tvar total = 0
+// expect-formatted: \tfor i in 0..count {
+// expect-formatted: \t\ttotal += values[i % values.length()]
+// expect-formatted: \t}
+// expect-formatted: \treturn total
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn iterate(values List[Int]) Int {
+// expect-formatted: \tvar total = values.sum()
+// expect-formatted: \treturn total
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: type Total {
+// expect-formatted: \tvalue Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn callbacks(values List[Int]) Int {
+// expect-formatted: \tvar total = Total(0)
+// expect-formatted: \tvalues.for_each(
+// expect-formatted: \t\tvalue => {
+// expect-formatted: \t\t\ttotal.value += value
+// expect-formatted: \t\t}
+// expect-formatted: \t)
+// expect-formatted: \treturn total.value
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn sorted(values List[Int]) List[Int] {
+// expect-formatted: \treturn values.sorted(compare)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn compare(left, right Int) Int {
+// expect-formatted: \tif left < right { return -1 }
+// expect-formatted: \tif left > right { return 1 }
+// expect-formatted:
+// expect-formatted: \treturn 0
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: export fn main() Int => return 0
+// expect-formatted:
+// expect-formatted: fn callback_write(var values List[Int]) Int {
+// expect-formatted: \tvar total = Total(0)
+// expect-formatted:
+// expect-formatted: \t(
+// expect-formatted: \t\tvalues.clone().for_each(
+// expect-formatted: \t\t\tvalue => {
+// expect-formatted: \t\t\t\ttotal.value += value
+// expect-formatted: \t\t\t\tif value == 0 {
+// expect-formatted: \t\t\t\t\tvalues.set(0, 7)
+// expect-formatted: \t\t\t\t} }
+// expect-formatted: \t\t)
+// expect-formatted: \t)
+// expect-formatted:
+// expect-formatted: \treturn total.value
+// expect-formatted: }

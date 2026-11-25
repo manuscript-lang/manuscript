@@ -69,3 +69,21 @@ export fn main() Int {
 	say(f"{big16 - 2}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: s1 = [日本語brace{s}]
+// expect-stdout: l2 = [-24, 26, -21, 20, -10] len 5
+// expect-stdout: l3 = [] len 0
+// expect-stdout: i4 = 475213
+// expect-stdout: b5 = false
+// expect-stdout: f6 = 1477.501
+// expect-stdout: f7 = 1476.5009999999997
+// expect-stdout: s8 = [日本語brace{s}42日本語brace{s}beta]
+// expect-stdout: i9 = 225827395412
+// expect-stdout: acc10 = 13
+// expect-stdout: s11 = [日本語brace{s}]
+// expect-stdout: l12 = [] len 0
+// expect-stdout: f13 = -342510.5231648184
+// expect-stdout: i14 = 396344094674986480
+// expect-stdout: i15 = 225842127015
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0187.ms:69 in main

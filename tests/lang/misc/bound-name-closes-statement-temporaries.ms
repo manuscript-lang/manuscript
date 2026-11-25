@@ -36,3 +36,11 @@ export fn main() Int {
 	print(f"{first} {second}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: closed pb
+// expect-stdout: closed pa
+// expect-stdout: --field
+// expect-stdout: closed l2
+// expect-stdout: closed l1
+// expect-stdout: --index
+// expect-stdout: pa l2

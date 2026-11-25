@@ -140,3 +140,5 @@ test "closures that outlive their statement keep what they captured" {
 	expect_equal(c8("abc"), 6)?
 	expect_equal((c9("x,yyyy,zz") or panic("called Optional.get() on null"))(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

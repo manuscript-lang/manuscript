@@ -40,3 +40,12 @@ export fn main() Int {
 	say(f"{i4} {i4} {(i4 < i4)} sum {i4 + i4}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: l2 = [-22, 17] len 2
+// expect-stdout: f3 = 144275.627348
+// expect-stdout: i4 = -15031138623
+// expect-stdout: f5 = 0.03
+// expect-stdout: acc6 = 62
+// expect-stdout: s7 = [日本語]
+// expect-stdout: -15031138623 -15031138623 false sum -30062277246

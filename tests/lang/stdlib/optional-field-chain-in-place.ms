@@ -63,3 +63,5 @@ test "a method that clears a child's own children" {
 	lone.reset_left(2)
 	expect_equal(lone.count(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

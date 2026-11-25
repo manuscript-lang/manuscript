@@ -109,3 +109,5 @@ test "distinct preserves owned strings, empty and small lists" {
 	)?
 	expect_equal(source.length(), 40)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

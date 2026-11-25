@@ -54,3 +54,12 @@ export fn main() Int {
 	say(f"acc6 = {acc6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i2 = 441776943809
+// expect-stdout: l3 = [18, 7, -11, -13] len 4
+// expect-stdout: ereh\tbaT
+// expect-stdout: i4 = -81286957660856
+// expect-stdout: fib(42) = 267914296
+// expect-stdout: s5 = [😀 ijomeevïan]
+// expect-stdout: 81286957660901 0 false sum 81286957660901
+// expect-stdout: acc6 = -9

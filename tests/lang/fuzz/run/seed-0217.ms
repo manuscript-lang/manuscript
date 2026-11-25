@@ -90,3 +90,23 @@ export fn main() Int {
 	say(f"i16 = {i16}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: xa
+// expect-stdout: b1 = false
+// expect-stdout: i2 = -431955
+// expect-stdout: fib(20) = 6765
+// expect-stdout: f3 = 83.25
+// expect-stdout: i4 = 254957119224
+// expect-stdout: i5 = 0
+// expect-stdout: f6 = 40
+// expect-stdout: b7 = true
+// expect-stdout: Tab\there
+// expect-stdout: l8 = [19] len 1
+// expect-stdout: i9 = 254957119224
+// expect-stdout: s10 = [delta]
+// expect-stdout: l11 = [19] len 1
+// expect-stdout: f12 = 533333358308.3334
+// expect-stdout: b13 = false
+// expect-stdout: acc14 = 3
+// expect-stdout: i15 = -10453241888183
+// expect-stdout: i16 = 253618058724

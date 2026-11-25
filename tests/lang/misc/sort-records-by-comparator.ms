@@ -97,3 +97,5 @@ test "ascending, descending and interleaved inputs sort stably at every size" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

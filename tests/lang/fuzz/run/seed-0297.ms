@@ -65,3 +65,20 @@ export fn main() Int {
 	say(f"f14 = {f14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 0
+// expect-stdout: hélloTab\there
+// expect-stdout: f3 = 692.25
+// expect-stdout: b4 = false
+// expect-stdout: i5 = 0
+// expect-stdout: s6 = [héllo]
+// expect-stdout: s7 = [x]
+// expect-stdout: l8 = [] len 0
+// expect-stdout: i9 = 0
+// expect-stdout: 0 8 true sum 8
+// expect-stdout: b10 = false
+// expect-stdout: naïve
+// expect-stdout: i11 = 0
+// expect-stdout: f12 = 0
+// expect-stdout: f13 = NaN
+// expect-stdout: f14 = NaN

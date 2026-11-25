@@ -87,3 +87,5 @@ test "statement match arms assign enclosing locals" {
 	expect_equal(side_effects(Shape.Circle(7)), 7)?
 	expect_equal(side_effects(Shape.Dot), 100)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

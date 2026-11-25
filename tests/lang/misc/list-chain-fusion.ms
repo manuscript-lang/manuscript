@@ -26,3 +26,5 @@ test "an empty source and a filter that keeps nothing give zero" {
 test "a chain inside a loop builds each pass from nothing" {
 	expect_equal(counted(6), 9)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

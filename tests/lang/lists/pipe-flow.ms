@@ -97,3 +97,5 @@ test "dot steps call methods on the value" {
 	size := "abc" | .length() | double
 	expect_equal(size, 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

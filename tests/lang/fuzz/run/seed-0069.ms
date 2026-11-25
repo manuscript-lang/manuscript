@@ -84,3 +84,20 @@ export fn main() Int {
 	say(f"l11 = {l11} len {l11.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [日本語naïve]
+// expect-stdout: b2 = true
+// expect-stdout: b3 = false
+// expect-stdout: f4 = -32414899999999748
+// expect-stdout: beta
+// expect-stdout: gcd(3956, 2329) = 1
+// expect-stdout: l5 = [-6, 12, 18, 23] len 4
+// expect-stdout: i6 = 33389
+// expect-stdout: acc7 = 105
+// expect-stdout: s8 = [1114825321:naïve]
+// expect-stdout: fib(2) = 1
+// expect-stdout: s9 = [alpha]
+// expect-stdout: -684323 33389 true sum -650934
+// expect-stdout: s10 = [emoji 😀line
+// expect-stdout: break]
+// expect-stdout: l11 = [23, 18, 12, -6] len 4

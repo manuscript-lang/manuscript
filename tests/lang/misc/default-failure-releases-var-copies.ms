@@ -54,3 +54,5 @@ test "a default that changes an earlier var keeps its change" {
 	expect_equal(changed(values), 22)?
 	expect_equal(values.length(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

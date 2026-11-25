@@ -129,3 +129,5 @@ test "ordinary empty declarations and interface omission" {
 	view ReadWithDefault := Reader()
 	(view.get() != 5 or view.get(fallback: 7) != 7) | expect_false?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

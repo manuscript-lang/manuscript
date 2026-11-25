@@ -24,3 +24,5 @@ test "iteration control" {
 	expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)?
 	expect_equal(selected_sum([]), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

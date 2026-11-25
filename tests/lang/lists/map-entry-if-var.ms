@@ -31,3 +31,7 @@ fn main() Void {
 	alias := p
 	print(f"{alias.length()} {p.length()}")
 }
+// expect-exit: 0
+// expect-stdout: 3 1
+// expect-stdout: 1 11
+// expect-stdout: 2 2

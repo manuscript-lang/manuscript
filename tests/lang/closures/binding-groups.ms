@@ -27,3 +27,5 @@ test "a let group declares immutable locals" {
 	[first, second] := [1, 2]
 	expect_false(not (name == "Ada" and first + second == 3))?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

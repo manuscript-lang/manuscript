@@ -121,3 +121,5 @@ test "negating the minimum overflows" {
 	)?
 	message | expect_contains("Int overflow;")?
 }
+// expect-exit: 0
+// expect-tests: passed=11 failed=0

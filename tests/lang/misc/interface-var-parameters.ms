@@ -116,3 +116,5 @@ test "a failed step's partial output is dropped and the failure is the next item
 	expect_equal(seen, [1])?
 	expect_equal(failed, true)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

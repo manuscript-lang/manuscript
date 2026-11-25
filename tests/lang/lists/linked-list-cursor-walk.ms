@@ -75,3 +75,5 @@ test "a walk over a short list and an empty list" {
 	expect_equal(count_and_last(build(3)), 1)?
 	expect_equal(sum_bound(build(0)), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

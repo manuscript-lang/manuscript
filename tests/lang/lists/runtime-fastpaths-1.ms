@@ -77,3 +77,9 @@ fn main() Void {
 
 	say(f"{ordered}\n")
 }
+// expect-exit: 0
+// expect-stdout: -3000009,<-3>-2000006,<-2>-1000003,<-1>0,<0>1000003,<1>2000006,<2>3000009,<3>9223372036854775807|-9223372036854775807|
+// expect-stdout: 1000000000000000012
+// expect-stdout: 3 5 0
+// expect-stdout: 0 50 100
+// expect-stdout: true

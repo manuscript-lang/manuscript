@@ -68,3 +68,5 @@ test "List max_by and min_by are source methods" {
 fn main() Void {
 	return
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

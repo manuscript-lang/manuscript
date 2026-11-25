@@ -319,3 +319,5 @@ test "a wait_all cancelled by a timeout leaves later wait_all calls working" {
 		)?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=21 failed=0

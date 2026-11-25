@@ -1,3 +1,4 @@
 // conform: tags=projects,testing,tier-stdlib
 // conform: phase=check
 // conform: entry=main.ms
+// expect-error: MS3000 8:15 Mode is opaque outside gate.ms: case Safe cannot be built here; use the functions gate.ms exports

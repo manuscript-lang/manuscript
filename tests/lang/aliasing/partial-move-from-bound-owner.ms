@@ -27,3 +27,6 @@ export fn main() Void {
 		_ => print("not a number")
 	}
 }
+// expect-exit: 0
+// expect-stdout: 2
+// expect-stdout: 5

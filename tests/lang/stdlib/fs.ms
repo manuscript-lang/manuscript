@@ -234,3 +234,5 @@ test "rename and copy failures name source and destination" {
 		error(cause) => cause.message | expect_equal(expected)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

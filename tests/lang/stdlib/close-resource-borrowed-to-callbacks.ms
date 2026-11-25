@@ -42,3 +42,12 @@ fn main() Void {
 		f"end {doors.length()} {(name or panic("called Optional.get() on null"))} {size.get()} {fallback.name}"
 	)
 }
+// expect-exit: 0
+// expect-stdout: --map
+// expect-stdout: closed result
+// expect-stdout: --fallback
+// expect-stdout: end 2 mapped 6 fallback
+// expect-stdout: closed fallback
+// expect-stdout: closed mapped
+// expect-stdout: closed first
+// expect-stdout: closed inserted

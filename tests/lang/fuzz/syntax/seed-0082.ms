@@ -30,3 +30,4 @@ export fn main() Int {
 	say(f"acc3 = {acc3}")
 	return 0
 }
+// expect-format: unchanged

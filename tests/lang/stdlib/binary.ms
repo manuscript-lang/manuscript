@@ -78,3 +78,5 @@ test "reads past the end or before the start are out of range" {
 	expect_equal(Bytes([]).uint8(0), range_error8)?
 	expect_equal(Bytes([0, 0, 0, 0]).uint32_le(9223372036854775807), range_error32)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

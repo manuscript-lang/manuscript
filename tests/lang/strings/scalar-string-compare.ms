@@ -84,3 +84,5 @@ test "parse_int of a one-character string" {
 	both("7") | expect_equal(8)?
 	"x5".chars()[1].parse_int() | expect_equal(5)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

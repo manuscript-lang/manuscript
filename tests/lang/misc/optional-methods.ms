@@ -85,3 +85,5 @@ test "Optional methods work on inferred library return values" {
 	expect_equal(values[0], 1)?
 	expect_equal(values.get_or(5, 9), 9)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

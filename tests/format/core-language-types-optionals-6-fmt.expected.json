@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn greet(name String?) String {\n\tif name != null {\n\t\treturn \"Hello, \" + name\n\t}\n\treturn \"Hello!\"\n}\n"
-  }
-}

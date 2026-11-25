@@ -41,3 +41,5 @@ test "changing a missing map entry faults like reading it" {
 	)?
 	message | expect_contains("map key not found")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

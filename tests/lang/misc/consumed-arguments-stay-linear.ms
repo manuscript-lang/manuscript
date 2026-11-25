@@ -33,3 +33,5 @@ test "a consumed receiver moves" {
 	}
 	nd.val | expect_equal(29999)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

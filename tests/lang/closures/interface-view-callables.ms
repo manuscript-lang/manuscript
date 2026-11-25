@@ -140,3 +140,5 @@ test "match receiver side effects and callable body remain ordered" {
 fn present[T](hold value T) &T? {
 	return value
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

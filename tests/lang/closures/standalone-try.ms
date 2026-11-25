@@ -84,3 +84,5 @@ test "standalone in? closure returns from that closure" {
 	expect_false(outcome.is_ok())?
 	expect_equal(outcome.err().code, 42)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

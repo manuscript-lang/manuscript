@@ -56,3 +56,14 @@ export fn main() Int {
 	say(f"f9 = {f9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [14, -3, -24] len 3
+// expect-stdout: i2 = 939526
+// expect-stdout: l3 = [5, 3, -20, -17, -22] len 5
+// expect-stdout: b4 = false
+// expect-stdout: i5 = 296183088685
+// expect-stdout: f6 = 912.234
+// expect-stdout: s7 = [back\\slash]
+// expect-stdout: collatz(985) = 23
+// expect-stdout: f8 = 1906.484
+// expect-stdout: f9 = 6767.040220363181

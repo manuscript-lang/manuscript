@@ -30,3 +30,8 @@ fn main() Void! {
 	void f()
 	print("after closure")
 }
+// expect-exit: 0
+// expect-stdout: close out
+// expect-stdout: after through
+// expect-stdout: close out
+// expect-stdout: after closure

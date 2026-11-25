@@ -91,3 +91,5 @@ test "swap faults on an index outside the list and leaves the list unchanged" {
 	void expect_fault(() => numbers.swap(5, 0))?
 	expect_equal(numbers, [1, 2, 3])?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

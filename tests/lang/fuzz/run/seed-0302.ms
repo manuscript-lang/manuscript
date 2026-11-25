@@ -75,3 +75,18 @@ export fn main() Int {
 	say(f"i12 = {i12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = -517452.10051100014
+// expect-stdout: i2 = 0
+// expect-stdout: b3 = true
+// expect-stdout: fib(54) = 86267571272
+// expect-stdout: i5 = 0
+// expect-stdout: b6 = true
+// expect-stdout: l7 = [-6, -26, -9, 21, 25] len 5
+// expect-stdout: s8 = [MiXeD CaSe]
+// expect-stdout: l9 = [-15, 10, 13] len 3
+// expect-stdout: 42
+// expect-stdout: b10 = false
+// expect-stdout: l11 = [-8, 22, 26] len 3
+// expect-stdout: 42
+// expect-stdout: i12 = -826947

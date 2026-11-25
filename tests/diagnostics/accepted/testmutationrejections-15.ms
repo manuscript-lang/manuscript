@@ -6,3 +6,4 @@ import Connection from "@std/net/net.ms"
 fn f(socket Connection) Void {
 	socket.clone()
 }
+// expect-exit: 0

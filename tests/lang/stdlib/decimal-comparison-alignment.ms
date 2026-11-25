@@ -23,3 +23,5 @@ test "decimal comparison aligns every significant digit without losing signs" {
 	expect_equal(1e-6176d.compare(2e-6176d), -1)?
 	expect_equal((-1e-6176d).compare(-2e-6176d), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

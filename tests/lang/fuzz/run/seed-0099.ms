@@ -94,3 +94,22 @@ export fn main() Int {
 	say(f"s15 = [{s15}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: fact(5) = 120
+// expect-stdout: s1 = [  padded  emoji 😀]
+// expect-stdout: b2 = false
+// expect-stdout: s3 = [emoji 😀]
+// expect-stdout: acc4 = 1
+// expect-stdout: i5 = -997656
+// expect-stdout: 415964147645 -997656 false sum 415963149989
+// expect-stdout: f6 = 90000000000000000000
+// expect-stdout: s7 = [emoji 😀]
+// expect-stdout: b8 = true
+// expect-stdout: i9 = -1995340
+// expect-stdout: fib(38) = 39088169
+// expect-stdout: i10 = -9245
+// expect-stdout: acc11 = -4
+// expect-stdout: s12 = [GAMMA  PADDED  ]
+// expect-stdout: l13 = [-24, 9, 21] len 3
+// expect-stdout: i14 = -9245
+// expect-stdout: s15 = [GAMMA  PADDED  ]

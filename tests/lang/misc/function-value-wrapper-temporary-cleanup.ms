@@ -190,3 +190,5 @@ test "function Optional transport from a named payload remains a borrow" {
 
 // An index no check can see is out of range, so the fault happens at run time.
 fn past_end() Int => 3
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

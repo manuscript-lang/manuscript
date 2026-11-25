@@ -70,3 +70,5 @@ test "repeat builds plain text" {
 	repeated := "ab".repeat(3)
 	expect_equal(repeated, "ababab")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

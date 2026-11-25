@@ -18,3 +18,7 @@ fn main() Void {
 	print(f())
 	print("end")
 }
+// expect-exit: 0
+// expect-stdout: 5
+// expect-stdout: end
+// expect-stdout: closed front

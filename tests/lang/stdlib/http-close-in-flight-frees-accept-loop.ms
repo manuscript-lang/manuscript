@@ -27,3 +27,5 @@ fn main() Void {
 	print(if run() { "timed out" } else { "answered" })
 	void sleep(milliseconds(500)).wait()
 }
+// expect-exit: 0
+// expect-stdout: timed out

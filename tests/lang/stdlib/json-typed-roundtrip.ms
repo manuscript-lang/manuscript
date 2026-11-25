@@ -50,3 +50,5 @@ test "JSON writes IpAddress and Cidr as strings" {
 	bare := Endpoint(parse_ip("127.0.0.1")?, parse_cidr("::/0")?, null)
 	expect_equal(stringify(bare)?, "{\"host\":\"127.0.0.1\",\"network\":\"::/0\"}")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

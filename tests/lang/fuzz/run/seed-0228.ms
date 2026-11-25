@@ -79,3 +79,27 @@ export fn main() Int {
 	say(f"{((0 + i14) - ((-26) * 12)) / big15}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: gcd(3507, 875) = 7
+// expect-stdout: i1 = -423232
+// expect-stdout: -114794 -43 true sum -114837
+// expect-stdout: l2 = [] len 0
+// expect-stdout: i3 = -32
+// expect-stdout: b4 = false
+// expect-stdout: i5 = 423183
+// expect-stdout: s6 = [line
+// expect-stdout: break]
+// expect-stdout: f7 = -303.76883203915287
+// expect-stdout: i8 = -61
+// expect-stdout: l9 = [] len 0
+// expect-stdout: f10 = -1.9783303621840854e+51
+// expect-stdout: 42
+// expect-stdout: 846464 -10 false sum 846454
+// expect-stdout: b11 = true
+// expect-stdout: s12 = [日本語LINE
+// expect-stdout: BREAK]
+// expect-stdout: f13 = -1.450217050329406e+54
+// expect-stdout: -423246 -600089 false sum -1023335
+// expect-stdout: i14 = -423232
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0228.ms:79 in main

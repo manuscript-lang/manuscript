@@ -256,3 +256,5 @@ test "finite nested generic composition constructs and extracts values" {
 		) | expect_false?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

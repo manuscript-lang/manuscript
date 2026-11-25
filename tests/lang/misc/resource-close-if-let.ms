@@ -92,3 +92,17 @@ fn main() Void {
 	var_payload()
 	say("end")
 }
+// expect-exit: 0
+// expect-stdout: close early
+// expect-stdout: body local
+// expect-stdout: after local
+// expect-stdout: close local
+// expect-stdout: else branch
+// expect-stdout: moved_on got moved
+// expect-stdout: body ok-result
+// expect-stdout: close ok-result
+// expect-stdout: close var
+// expect-stdout: body var-reassigned
+// expect-stdout: close var-reassigned
+// expect-stdout: end
+// expect-stdout: close moved

@@ -88,3 +88,5 @@ test "affix cuts agree with an independent scalar oracle" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

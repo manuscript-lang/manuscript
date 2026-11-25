@@ -248,3 +248,5 @@ test "function values can replace later backing elements" {
 
 	expect_false(not (seen == [7, 7] and functions[0]() == 9 and functions[1]() == 9))?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

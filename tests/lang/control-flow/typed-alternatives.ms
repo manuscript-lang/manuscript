@@ -156,3 +156,5 @@ test "list at unwrap" {
 	expect_equal(items[-1], 30)?
 	expect_equal(items[1] + items[2], 50)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

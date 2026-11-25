@@ -40,3 +40,11 @@ export fn main() Int {
 	say(f"i6 = {i6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = 4
+// expect-stdout: f2 = 7.113360000000001e+21
+// expect-stdout: f3 = 70000
+// expect-stdout: fact(11) = 39916800
+// expect-stdout: b4 = false
+// expect-stdout: b5 = false
+// expect-stdout: i6 = 40

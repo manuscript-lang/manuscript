@@ -96,3 +96,5 @@ test "try out of a borrowed helper loop leaves resources with their owner" {
 	use_after_try(log.clone())?
 	logged(log.clone()) | expect_equal("2,1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

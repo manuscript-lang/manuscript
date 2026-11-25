@@ -16,3 +16,5 @@ test "closures read the variable they borrow" {
 	first() | expect_equal(99)?
 	second() | expect_true?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -85,3 +85,5 @@ test "join sizes its result exactly across the inline and heap boundary" {
 		"one--two--three--four--five--six--seven",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

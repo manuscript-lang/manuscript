@@ -47,3 +47,48 @@ test "three receiver types alternate at one site" {
 
 	expect_true((total == 4 * (18 + 20 + 20)))?
 }
+// expect-format: rewritten
+// expect-formatted: import expect_true from "@std/test/test.ms"
+// expect-formatted:
+// expect-formatted: interface Shape {
+// expect-formatted: \tfn area(scale Int) Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: type Sq {
+// expect-formatted: \tside Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: type Rect {
+// expect-formatted: \tw, h Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: type Tri {
+// expect-formatted: \tb, h Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn Sq.area(scale Int) Int => self.side * self.side * scale
+// expect-formatted:
+// expect-formatted: fn Rect.area(scale Int) Int => self.w * self.h * scale
+// expect-formatted:
+// expect-formatted: fn Tri.area(scale Int) Int => self.b * self.h * scale / 2
+// expect-formatted:
+// expect-formatted: fn measure(shape Shape, scale Int) Int => shape.area(scale: scale)
+// expect-formatted:
+// expect-formatted: test "three receiver types alternate at one site" {
+// expect-formatted: \tshapes List[Shape] := [Sq(side: 3), Rect(w: 2, h: 5), Tri(b: 4, h: 5)]
+// expect-formatted: \tvar total = 0
+// expect-formatted: \tvar round = 0
+// expect-formatted:
+// expect-formatted: \twhile round < 4 {
+// expect-formatted: \t\tvar i = 0
+// expect-formatted:
+// expect-formatted: \t\twhile i < 3 {
+// expect-formatted: \t\t\ttotal += measure(shape: shapes[i], scale: 2)
+// expect-formatted: \t\t\ti += 1
+// expect-formatted: \t\t}
+// expect-formatted:
+// expect-formatted: \t\tround += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \texpect_true((total == 4 * (18 + 20 + 20)))?
+// expect-formatted: }

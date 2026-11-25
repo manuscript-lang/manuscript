@@ -108,3 +108,5 @@ test "two var parameters swapping fields across a park" {
 	swap(a, b)?
 	expect_equal(a.inner.tags.length(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

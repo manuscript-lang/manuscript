@@ -147,3 +147,5 @@ test "a handle keeps its own position across append writes, seeks and reads" {
 	expect_equal(refused.kind, "EINVAL")?
 	handle.close()?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

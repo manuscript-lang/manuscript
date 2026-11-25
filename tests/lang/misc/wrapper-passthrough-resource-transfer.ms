@@ -135,3 +135,5 @@ test "or_else takes its receiver before a later try fails" {
 	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "9,10,")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

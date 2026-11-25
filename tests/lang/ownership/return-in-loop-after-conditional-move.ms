@@ -26,3 +26,7 @@ fn main() Void {
 	print(found(1, "HOME"))
 	print(found(0, "PATH"))
 }
+// expect-exit: 0
+// expect-stdout: true
+// expect-stdout: false
+// expect-stdout: false

@@ -4,3 +4,7 @@
 fn first() Void {
 	result Int!Error := fail("empty")
 }
+// expect-format: rewritten
+// expect-formatted: fn first() Void {
+// expect-formatted: \tresult Int! := fail("empty")
+// expect-formatted: }

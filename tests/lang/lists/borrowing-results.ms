@@ -77,3 +77,10 @@ fn main() Void {
 	names.append(first_tag(team.members[0]).clone())
 	print(f"{names.length()} {names[0]}")
 }
+// expect-exit: 0
+// expect-stdout: t1 cat bob
+// expect-stdout: 2 2
+// expect-stdout: t1 2
+// expect-stdout: owned x
+// expect-stdout: 2 team
+// expect-stdout: 1 t1

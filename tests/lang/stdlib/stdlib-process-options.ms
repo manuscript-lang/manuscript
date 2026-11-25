@@ -66,3 +66,5 @@ test "bad cwd and variable names are rejected" {
 		"process: not found: working directory /definitely/not/here",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

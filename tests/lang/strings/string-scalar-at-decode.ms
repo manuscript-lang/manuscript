@@ -43,3 +43,5 @@ test "a bound length is the byte length" {
 	expect_equal(size(), 6)?
 	expect_equal(count(), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

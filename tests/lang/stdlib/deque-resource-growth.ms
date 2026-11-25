@@ -176,3 +176,5 @@ test "wrapped growth leaves opaque native file handles usable" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

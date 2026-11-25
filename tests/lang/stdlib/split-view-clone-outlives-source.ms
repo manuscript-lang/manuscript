@@ -70,3 +70,5 @@ test "a copied split piece outlives its source" {
 test "a copied split piece outlives its source on worker threads" {
 	expect_equal(spread(0, 16)?, 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

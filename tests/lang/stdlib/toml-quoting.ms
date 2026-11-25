@@ -92,3 +92,5 @@ test "TOML quoting preserves quoted keys and all ASCII control escapes" {
 	root := table(controls)
 	(parse(stringify(root)?)?) | expect_equal(root)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

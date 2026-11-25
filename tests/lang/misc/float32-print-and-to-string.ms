@@ -26,3 +26,5 @@ test "Float64 keeps its own digits" {
 	d Float64 := 0.1
 	expect_equal(d.to_string(), "0.1")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

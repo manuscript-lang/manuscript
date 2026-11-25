@@ -2772,3 +2772,5 @@ test "difference and compare match wide arithmetic for raw fields" {
 
 	expect_equal(i, expected.length())?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

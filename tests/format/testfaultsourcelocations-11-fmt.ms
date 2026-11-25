@@ -10,3 +10,13 @@ export fn main() Int {
 	value Int!Error := ok(0)
 	return value.map(crash).get()
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn crash(value Int) Int {
+// expect-formatted: \treturn 1 / value
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: export fn main() Int {
+// expect-formatted: \tvalue Int! := ok(0)
+// expect-formatted: \treturn value.map(crash).get()
+// expect-formatted: }

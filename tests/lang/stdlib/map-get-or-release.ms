@@ -36,3 +36,11 @@ fn main() Void {
 	print(items.get_or("none", Item(label(5), [label(6)])).name)
 	print(items.get_or("one", Item(label(7), [])).tags.length())
 }
+// expect-exit: 0
+// expect-stdout: built-1
+// expect-stdout: stored-a
+// expect-stdout: literal
+// expect-stdout: built-3
+// expect-stdout: 2
+// expect-stdout: built-5
+// expect-stdout: 2

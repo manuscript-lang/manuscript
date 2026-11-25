@@ -54,3 +54,5 @@ test "a cancelled var binding closes the value it had reached" {
 	cancel_counter(log.clone())
 	logged(log.clone()) | expect_equal("7,")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

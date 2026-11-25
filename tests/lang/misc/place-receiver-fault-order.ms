@@ -113,3 +113,5 @@ test "a map entry mutator selects its receiver once, before its arguments" {
 	expect_equal(table["k"], [9])?
 	expect_equal(events, [1, 2])?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

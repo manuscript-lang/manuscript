@@ -31,3 +31,5 @@ test "an alias and its target are the same type" {
 	expect_equal(first(7), 7)?
 	expect_equal(first(null), -1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

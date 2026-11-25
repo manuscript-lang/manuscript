@@ -12,3 +12,5 @@ test "lines over a child's stdout with temporaries" {
 	got := collect(lines(child.stdout()), null)?
 	expect_equal(got.length(), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -24,3 +24,5 @@ test "redirected streams report no terminal and refuse raw mode" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

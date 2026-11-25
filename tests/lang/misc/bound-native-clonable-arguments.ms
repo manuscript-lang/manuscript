@@ -122,3 +122,5 @@ test "bound native getter defaults remain unchanged" {
 	expect_equal(get(2, fallback), fallback)?
 	expect_equal(fallback, "fallback-1")?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

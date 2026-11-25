@@ -191,3 +191,5 @@ test "interface values converted from borrowed values are views" {
 		)?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

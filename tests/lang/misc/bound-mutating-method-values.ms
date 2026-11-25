@@ -78,3 +78,5 @@ test "a list method value appends to the list" {
 	append("b")
 	names | expect_equal(["a", "b"])?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -59,3 +59,11 @@ fn main() Void {
 	ps := [p, q]
 	void stdout().write(f"{ps.length()} {ps[1].w}\n")
 }
+// expect-exit: 0
+// expect-stdout: [-12, -9, -6, -3, 0, 3, 6, 9, 12, 15] 10 true
+// expect-stdout: [1.5, 0.1, -2] true
+// expect-stdout: -5 7 127 -300 2.5 -70000 true
+// expect-stdout: false true
+// expect-stdout: some(200) some(100) 2
+// expect-stdout: -9 100001 7
+// expect-stdout: 2 -300

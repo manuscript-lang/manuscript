@@ -38,3 +38,17 @@ export fn main() Int {
 	say(f"b8 = {b8}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [line
+// expect-stdout: break]
+// expect-stdout: i2 = -5082744028726442550
+// expect-stdout: s3 = [line
+// expect-stdout: break]
+// expect-stdout: i4 = -5082744028726442550
+// expect-stdout: 5082744028726442550 0 false sum 5082744028726442550
+// expect-stdout: f5 = 3041.383
+// expect-stdout: l6 = [-15, -2] len 2
+// expect-stdout: s7 = [LINE
+// expect-stdout: BREAKQUOTE"Dline
+// expect-stdout: break]
+// expect-stdout: b8 = false

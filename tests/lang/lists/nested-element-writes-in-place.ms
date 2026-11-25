@@ -68,3 +68,5 @@ test "three levels and Float rows write through the same way" {
 	expect_equal(cube[0][1], [5.5, 3.0])?
 	expect_equal(cube[0][0], [0.0, 1.0])?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

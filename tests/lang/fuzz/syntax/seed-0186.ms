@@ -17,3 +17,4 @@ export fn main() Int {
 	say(f"s2 = [{s2}]")
 	return 0
 }
+// expect-format: unchanged

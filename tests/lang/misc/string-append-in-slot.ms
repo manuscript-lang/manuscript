@@ -18,3 +18,5 @@ test "appending an f-string 200000 times grows the string in place" {
 	expect_equal(s.length(), 5088890)?
 	expect_equal(s.starts_with("line 0 and more text\nline 1 "), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -25,3 +25,5 @@ test "a network used in a promise on another thread keeps working" {
 	void expect_true(n > 0)?
 	return expect_contains(address, "127.0.0.1:")
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

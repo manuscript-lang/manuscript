@@ -58,3 +58,5 @@ test "? on an absent Optional returns early from a function returning nothing" {
 	mark(absent, null)
 	expect_equal(absent, [])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

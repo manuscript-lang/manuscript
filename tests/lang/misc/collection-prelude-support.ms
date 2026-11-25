@@ -70,3 +70,5 @@ test "public collection support types retain their standard runtime identities" 
 	expect_equal(missing.kind, "ENOENT")?
 	expect_equal(first(values).get(), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

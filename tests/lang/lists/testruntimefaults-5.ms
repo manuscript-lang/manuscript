@@ -9,3 +9,5 @@ fn difference(values List[Int]) Int {
 test "fault" {
 	_impossible := difference(values: [1])
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

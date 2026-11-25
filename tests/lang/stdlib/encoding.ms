@@ -67,3 +67,5 @@ test "Latin-1 and ASCII are strict single-byte encodings" {
 	invalid_decode String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	expect_equal(ascii_decode(Bytes([200])), invalid_decode)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

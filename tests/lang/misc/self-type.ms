@@ -77,3 +77,5 @@ test "keys use the custom equality" {
 		"first",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

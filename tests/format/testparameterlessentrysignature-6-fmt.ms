@@ -4,3 +4,4 @@
 export fn main() Void {
 	return
 }
+// expect-format: unchanged

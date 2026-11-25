@@ -74,3 +74,5 @@ test "an escaping closure takes an explicit clone of a value that is used again"
 	expect_equal(b[0](1), 4)?
 	expect_equal(a.length(), 4)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

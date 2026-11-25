@@ -51,3 +51,5 @@ test "raw text needs no escapes for JSON" {
 	expect_equal(person.name, "ada")?
 	expect_equal(person.n, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

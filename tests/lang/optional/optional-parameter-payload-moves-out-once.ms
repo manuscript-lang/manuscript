@@ -29,3 +29,9 @@ fn main() Void {
 	print(f"got {g.id}")
 	print(first[Int](3))
 }
+// expect-exit: 0
+// expect-stdout: got 1
+// expect-stdout: got 2
+// expect-stdout: 3
+// expect-stdout: close 2
+// expect-stdout: close 1

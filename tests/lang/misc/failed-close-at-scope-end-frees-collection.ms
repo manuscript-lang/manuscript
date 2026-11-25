@@ -52,3 +52,5 @@ test "a failed close of an optional element at scope end faults" {
 	message := expect_fault(() => optionals_at_scope_end())?
 	expect_contains(message, "could not be closed")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

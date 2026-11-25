@@ -76,3 +76,5 @@ test "add rejects an index outside 0 through 1073741823 and changes nothing" {
 	set.add(1073741823)?
 	expect_true(set.contains(1073741823))?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

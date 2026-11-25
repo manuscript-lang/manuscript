@@ -18,3 +18,6 @@ fn main() Void! {
 	blank := ""
 	print(pick(blank).is_error().to_string())
 }
+// expect-exit: 0
+// expect-stdout: kept
+// expect-stdout: true

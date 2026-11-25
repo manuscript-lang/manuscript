@@ -40,3 +40,12 @@ export fn main() Int {
 	say(f"i7 = {i7}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: i2 = -2143
+// expect-stdout: i3 = 30002
+// expect-stdout: i4 = 22
+// expect-stdout: i5 = 1609171
+// expect-stdout: s6 = [ereh\tbaT]
+// expect-stdout: gcd(2313, 3959) = 1
+// expect-stdout: i7 = 502461

@@ -63,3 +63,22 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 90409.88519800002
+// expect-stdout: l2 = [] len 0
+// expect-stdout: i3 = 2289144
+// expect-stdout: f4 = 0.2385302086719131
+// expect-stdout: i5 = 2289102
+// expect-stdout: f6 = 124.74627558966681
+// expect-stdout: l7 = [] len 0
+// expect-stdout: i8 = 6
+// expect-stdout: 6 -5 false sum 1
+// expect-stdout: s9 = [31:line
+// expect-stdout: break]
+// expect-stdout: l10 = [] len 0
+// expect-stdout: b11 = false
+// expect-stdout: i12 = 2289102
+// expect-stdout: i13 = 0
+// expect-stdout: b14 = false
+// expect-stdout: l15 = [99] len 1
+// expect-stdout: -24 33 true sum 9

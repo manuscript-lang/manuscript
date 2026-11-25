@@ -23,3 +23,5 @@ test "a recursive helper called with a known closure" {
 	limit := 6
 	expect_equal(count_matches(items, 0, items.length(), x => x > limit), 4)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

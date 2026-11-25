@@ -33,3 +33,5 @@ test "flatten copies every inner list in order" {
 	expect_equal(lists, [[1, 2], [], [3]])?
 	expect_equal(flatten([["x"], ["y", "z"]]), ["x", "y", "z"])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

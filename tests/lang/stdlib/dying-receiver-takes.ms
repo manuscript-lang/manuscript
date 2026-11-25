@@ -72,3 +72,5 @@ test "decode_utf8 of a dying buffer, long, short, invalid and viewed" {
 	expect_equal(kept.length(), 30)?
 	expect_equal(first.length(), 30)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

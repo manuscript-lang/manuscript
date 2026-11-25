@@ -41,3 +41,5 @@ test "clone of a generic sized number keeps its width" {
 	want Int8? := 5
 	expect_equal(first_copy(small), want)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

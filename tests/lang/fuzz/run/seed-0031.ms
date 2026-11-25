@@ -51,3 +51,20 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 179.523
+// expect-stdout: i2 = -806598
+// expect-stdout: i3 = -842040
+// expect-stdout: f4 = 128913.48500757378
+// expect-stdout: s5 = [-842040:line
+// expect-stdout: break]
+// expect-stdout: i6 = -40417920
+// expect-stdout: s7 = [-842040:line
+// expect-stdout: breakkaerb
+// expect-stdout: enil:040248-]
+// expect-stdout: l8 = [-12, -12, -11] len 3
+// expect-stdout: i9 = 2543708
+// expect-stdout: i10 = -34033504514771
+// expect-stdout: l11 = [-12, -12, -11, -12, -12, -11] len 6
+// expect-stdout: kaerb
+// expect-stdout: enil:040248-

@@ -504,3 +504,5 @@ test "a long function runs in a promise that starts here" {
 test "a long function runs in a test body" {
 	expect_equal(long_function(), 579186)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

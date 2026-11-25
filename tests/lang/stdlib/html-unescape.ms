@@ -79,3 +79,5 @@ test "HTML unescape keeps a hexadecimal reference without digits literal" {
 	expect_equal(unescape("a&#x;b"), "a&#x;b")?
 	expect_equal(unescape("&amp;&#x;&lt;"), "&&#x;<")?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

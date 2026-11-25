@@ -55,3 +55,5 @@ test "string at" {
 	expect_equal(text.scalar_at(10, -1), -1)?
 	expect_equal(text.scalar_at(2, -1), -1)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

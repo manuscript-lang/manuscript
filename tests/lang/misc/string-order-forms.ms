@@ -42,3 +42,5 @@ test "inline strings of up to fifteen bytes order by their words" {
 	expect_true(pad(12) + "\u{1}" < pad(12) + "\u{2}" + "x")?
 	expect_true(pad(12) + "\u{0}" < pad(12) + "\u{0}\u{0}")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

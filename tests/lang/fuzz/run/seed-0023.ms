@@ -50,3 +50,16 @@ export fn main() Int {
 	say(f"i12 = {i12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = 105
+// expect-stdout: l3 = [27, -19, -27, 17, -2] len 5
+// expect-stdout: i4 = 40
+// expect-stdout: f5 = 286.5106637690692
+// expect-stdout: b6 = false
+// expect-stdout: i7 = -910028215
+// expect-stdout: i8 = 40
+// expect-stdout: 37 18200547 true sum 18200584
+// expect-stdout: b9 = false
+// expect-stdout: l10 = [15, 1, -17, -15, -9] len 5
+// expect-stdout: i11 = -2842350
+// expect-stdout: i12 = -1560

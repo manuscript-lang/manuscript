@@ -69,3 +69,22 @@ export fn main() Int {
 	say(f"{((i11 - i11) * i3) % big15}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: s1 = [hello world]
+// expect-stdout: -9 11 true sum 2
+// expect-stdout: i2 = -17
+// expect-stdout: i3 = 12420087
+// expect-stdout: b4 = false
+// expect-stdout: s5 = [d"etouq:51-]
+// expect-stdout: -51 12420104 true sum 12420053
+// expect-stdout: s6 = [d"etouq:51-  deddap  -15:quote"d]
+// expect-stdout: i7 = -17
+// expect-stdout: l8 = [23, 0, 18] len 3
+// expect-stdout: f9 = 164.012
+// expect-stdout: s10 = [41:delta]
+// expect-stdout: i11 = 609910002488
+// expect-stdout: acc12 = 180
+// expect-stdout: l13 = [29, -4, -3, 5, 23] len 5
+// expect-stdout: i14 = -17
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0076.ms:69 in main

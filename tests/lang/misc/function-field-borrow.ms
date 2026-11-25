@@ -16,3 +16,5 @@ test "a let of a function-valued field borrows it" {
 	expect_equal(run(l), 3)?
 	expect_equal(l.load(5), 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

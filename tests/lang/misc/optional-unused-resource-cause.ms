@@ -66,3 +66,5 @@ test "unused eager resource causes close immediately only when owned" {
 	explicit_wrapped_transfer(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,3,5,6,")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

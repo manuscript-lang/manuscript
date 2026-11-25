@@ -25,3 +25,5 @@ test "nominal record and nested binding" {
 	customer := Customer(CustomerId("c1"), "Ada")
 	expect_equal(customer_name(customer), "c1: Ada")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -20,3 +20,6 @@ fn main() Void {
 	_a := opt(Door("temp"))
 	print("end")
 }
+// expect-exit: 0
+// expect-stdout: end
+// expect-stdout: closed temp

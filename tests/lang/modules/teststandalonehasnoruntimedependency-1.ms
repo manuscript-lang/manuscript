@@ -6,3 +6,5 @@ import expect_equal from "@std/test/test.ms"
 test "arithmetic" {
 	2 + 3 | expect_equal(expected: 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

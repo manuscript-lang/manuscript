@@ -70,3 +70,5 @@ test "literal map values keep their type" {
 	expect_equal({1: true}.get(1) != null, true)?
 	expect_equal({1: true}.get(4) == null, true)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

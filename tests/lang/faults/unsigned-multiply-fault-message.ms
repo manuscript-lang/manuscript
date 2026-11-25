@@ -16,3 +16,5 @@ test "a UInt32 product above 63 bits names the sized range" {
 	)?
 	message | expect_contains("sized integer type's range")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

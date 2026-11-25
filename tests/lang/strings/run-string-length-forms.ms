@@ -17,3 +17,10 @@ export fn main() Int {
 	print("".scalar_length())
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 5
+// expect-stdout: 5
+// expect-stdout: 55
+// expect-stdout: 53
+// expect-stdout: 11
+// expect-stdout: 0

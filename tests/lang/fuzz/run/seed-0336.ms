@@ -98,3 +98,26 @@ export fn main() Int {
 	say(f"fact(14) = {fact(14)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [13, 10, -14, -4, 22] len 5
+// expect-stdout: s2 = [brace{s}back\\slashline
+// expect-stdout: breakgammahsals\\kcab]
+// expect-stdout: i3 = -4
+// expect-stdout: -317867366551 -702120 true sum -317868068671
+// expect-stdout: s4 = [hélloback\\slashammagkaerb
+// expect-stdout: enilhsals\\kcab}s{ecarbdelta  padded  hello world]
+// expect-stdout: -4:MiXeD CaSe
+// expect-stdout: i5 = 5
+// expect-stdout: fib(29) = 514229
+// expect-stdout: i6 = 5
+// expect-stdout: f7 = 213241.54162099998
+// expect-stdout: l8 = [-24, -23, 25, 18] len 4
+// expect-stdout: s9 = [brace{s}back\\slashline
+// expect-stdout: breakgammahsals\\kcab]
+// expect-stdout: naïve
+// expect-stdout: i10 = 40
+// expect-stdout: f11 = -65106054.52155723
+// expect-stdout: f12 = 213416.92962099996
+// expect-stdout: l13 = [18] len 1
+// expect-stdout: b14 = false
+// expect-stdout: fact(14) = 87178291200

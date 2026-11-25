@@ -84,3 +84,5 @@ test "an element property that is not a record" {
 	}
 	expect_equal(out, ["PEAR", "APPLE", "KIWI"])?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

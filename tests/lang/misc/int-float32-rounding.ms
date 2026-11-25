@@ -100,3 +100,5 @@ test "constant unsigned integer to Float32 rounds directly" {
 	input UInt64 := 9223372586610589697
 	expect_equal(input.to_float32().to_float(), 9223373136366403584.0)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

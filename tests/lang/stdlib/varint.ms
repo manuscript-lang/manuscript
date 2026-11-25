@@ -333,3 +333,5 @@ test "varint diagnostics describe the error without echoing input" {
 		"binary: varint overflows 64 bits",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=13 failed=0

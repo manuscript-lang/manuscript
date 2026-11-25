@@ -55,3 +55,5 @@ test "a promise dropped before waiting leaves the resource to its scope" {
 	expect_equal(text, "closed back;")?
 	remove(dir, true)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

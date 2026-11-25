@@ -51,3 +51,5 @@ test "max and min over a list" {
 	expect_true(((empty.max() == null) and (empty.min() == null)))?
 	expect_true(([Version(4), Version(8)].max() == Version(8)))?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

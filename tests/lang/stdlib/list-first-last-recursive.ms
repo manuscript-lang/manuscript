@@ -50,3 +50,5 @@ test "get and a map entry of recursive nodes borrow in place" {
 	expect_equal(value_of(m.get("b")), null)?
 	expect_equal(next_value_of(m.get("a")), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

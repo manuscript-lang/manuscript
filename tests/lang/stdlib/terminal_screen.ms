@@ -74,3 +74,5 @@ test "reset forgets the previous frame" {
 	out := s.render(["one", "two"], 1, 0)
 	expect_equal(out.contains(f"{esc}[2Kone"), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

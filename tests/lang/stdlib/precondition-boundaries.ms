@@ -72,3 +72,5 @@ test "queue capacities retain omission none minimum maximum and full results" {
 	var large_priority = PriorityQueue[Int](9223372036854775807)
 	expect_false(not unlimited.enqueue(1) or not large_priority.enqueue(1))?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

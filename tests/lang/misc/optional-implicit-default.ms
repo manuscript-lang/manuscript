@@ -21,3 +21,5 @@ test "defaults" {
 	expect_equal(find("abc", 7), 7)?
 	expect_equal(find("abc", tag: "x"), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

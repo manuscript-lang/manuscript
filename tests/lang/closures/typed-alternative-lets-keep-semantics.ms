@@ -99,3 +99,5 @@ test "typed alternative lets" {
 	expect_true((captured(n: 8) == 4))?
 	expect_true((captured(n: 7) == 0 - 1))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -20,3 +20,5 @@ test "split keeps every piece" {
 	parts.append(value: "y")
 	expect_true((parts.join(separator: "") == "xy"))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -11,3 +11,5 @@ fn main() Void {
 	size := () => xs[0].length() + xs.length()
 	print(f"{size()}")
 }
+// expect-exit: 0
+// expect-stdout: 8

@@ -19,3 +19,5 @@ test "escaping adapter keeps owning behavior" {
 	f := make("xy")
 	expect_true(f("z"))?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

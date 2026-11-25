@@ -3,3 +3,4 @@
 // conform: origin=documentation/core-language/types/optionals.md:10
 present String? := "Ada"
 missing String? := null
+// expect-exit: 0

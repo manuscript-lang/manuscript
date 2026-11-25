@@ -67,3 +67,5 @@ test "closure mutates capture" {
 	expect_equal(total, 5)?
 	expect_equal(box.n, 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

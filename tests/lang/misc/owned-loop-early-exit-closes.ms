@@ -55,3 +55,5 @@ test "break closes the elements it never reached" {
 	until_two(log.clone()) | expect_equal(3)?
 	logged(log.clone()) | expect_equal("1,2,3,")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

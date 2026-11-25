@@ -62,3 +62,5 @@ test "typed normalization keeps UTF-8 byte budgets and domain errors" {
 		Error("string: invalid input", kind: "EINVAL"),
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

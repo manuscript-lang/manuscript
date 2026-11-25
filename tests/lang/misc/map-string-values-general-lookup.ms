@@ -45,3 +45,5 @@ test "many int keys with string values" {
 	expect_equal(hits, 200)?
 	expect_equal(m[199], "v199")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

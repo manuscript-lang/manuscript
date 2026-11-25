@@ -18,3 +18,5 @@ test "list binding" {
 type Label {
 	value String
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

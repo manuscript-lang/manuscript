@@ -40,3 +40,5 @@ test "set constructor accepts a list" {
 	empty Set[Int] := Set([])
 	expect_false(not empty.is_empty())?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

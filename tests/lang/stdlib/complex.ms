@@ -479,3 +479,5 @@ test "complex pow multiplies out a small integer exponent" {
 	expect_equal(complex(0.0, 2.0).pow(complex(2.0, 0.0)).re, -4.0)?
 	expect_equal(complex(2.0, 0.0).pow(complex(-2.0, 0.0)).re, 0.25)?
 }
+// expect-exit: 0
+// expect-tests: passed=28 failed=0

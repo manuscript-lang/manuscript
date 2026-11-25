@@ -51,3 +51,5 @@ test "map replacement keeps the incoming entry owned while the old one closes" {
 	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "1,9,")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

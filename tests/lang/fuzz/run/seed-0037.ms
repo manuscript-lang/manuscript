@@ -81,3 +81,21 @@ export fn main() Int {
 	say(f"b14 = {b14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-6, -11, -23, -19] len 4
+// expect-stdout: b2 = true
+// expect-stdout: i3 = 0
+// expect-stdout: s4 = [MiXeD CaSeaback\\slash]
+// expect-stdout: fib(7) = 13
+// expect-stdout: b5 = true
+// expect-stdout: i6 = -78
+// expect-stdout: MiXeD CaSeaback\\slashMiXeD CaSeaback\\slash
+// expect-stdout: i7 = -115
+// expect-stdout: f8 = 7.485683995280001e+26
+// expect-stdout: -73 -34 true sum -107
+// expect-stdout: acc9 = 189
+// expect-stdout: s10 = [MiXeD CaSeaback\\slash]
+// expect-stdout: b11 = false
+// expect-stdout: f12 = 7.485683995280001e+26
+// expect-stdout: l13 = [] len 0
+// expect-stdout: b14 = true

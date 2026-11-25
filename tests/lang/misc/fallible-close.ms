@@ -99,3 +99,5 @@ test "a holder closing a part faults on a failed close" {
 	expect_equal(message, "a resource could not be closed: its close returned an error")?
 	expect_equal(hold(false), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

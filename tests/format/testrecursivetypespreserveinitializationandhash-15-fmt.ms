@@ -7,3 +7,9 @@ type Pair {
 }
 
 fn hash(pair Pair) Int => return pair.hash()
+// expect-format: rewritten
+// expect-formatted: type Pair {
+// expect-formatted: \tleft, right Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn hash(pair Pair) Int => return pair.hash()

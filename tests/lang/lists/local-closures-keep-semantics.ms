@@ -80,3 +80,5 @@ test "local closures" {
 	expect_true((passed().length() == 3 and passed()[2] == 6))?
 	expect_true((nested(n: 4) == 10))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

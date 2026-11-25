@@ -59,3 +59,9 @@ fn main() Void {
 	void stdout().write(f"{near + near} {near * 2 + 1} {top / 3 * 3}\n")
 	void stdout().write(f"{mix(top / 1000)}\n")
 }
+// expect-exit: 0
+// expect-stdout: 4 3 5
+// expect-stdout: 0 18446744073709551614 0
+// expect-stdout: 364 121
+// expect-stdout: 18446744073709551612 18446744073709551613 18446744073709551615
+// expect-stdout: 4482558809911421014

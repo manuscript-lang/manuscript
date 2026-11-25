@@ -65,3 +65,5 @@ test "a borrowing result is passed to a reader as an ordinary Result" {
 	bad String!String := error(heap("bad", 5))
 	describe(bad) | expect_equal(f"error({heap("bad", 5)})")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -15,3 +15,4 @@ fn header(source String) String {
 export fn main() Int {
 	return header("// removed: a long long long long value here").length()
 }
+// expect-error: MS3000 9:49 `line.slice(..).trim(..)` borrows a temporary value that is gone when this function returns; return `.clone()` of it

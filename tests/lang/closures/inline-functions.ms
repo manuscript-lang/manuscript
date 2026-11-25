@@ -18,3 +18,5 @@ test "inline callbacks survive contextual rechecking" {
 	transform := Transform(value => return value + 2)
 	expect_equal(transform.operation(3), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

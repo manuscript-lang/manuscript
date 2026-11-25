@@ -63,3 +63,5 @@ test "explicit error conversion" {
 	unchanged Int!Error := ok(3)
 	describe(outcome: succeeded) | expect_equal(unchanged)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -73,3 +73,5 @@ test "forty thousand concurrent file reads complete" {
 	expect_equal(total, 200000)?
 	remove(dir, recursive: true)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

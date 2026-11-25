@@ -107,3 +107,21 @@ export fn main() Int {
 	say(f"s13 = [{s13}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [1, 14, -12] len 3
+// expect-stdout: i2 = -29
+// expect-stdout: collatz(929) = 129
+// expect-stdout: acc3 = 1
+// expect-stdout: MiXeD CaSe
+// expect-stdout: i4 = -3
+// expect-stdout: fib(47) = 2971215073
+// expect-stdout: i5 = 31
+// expect-stdout: s6 = [42  padded  ]
+// expect-stdout: b7 = true
+// expect-stdout: i8 = 3
+// expect-stdout: f9 = 122286.3305
+// expect-stdout: gcd(2493, 1480) = 1
+// expect-stdout: l10 = [1, 14, -12, 1, 14, -12] len 6
+// expect-stdout: i11 = -3
+// expect-stdout: s12 = [delta42  padded  x]
+// expect-stdout: s13 = [brace{s}-39:日本語42  padded  ]

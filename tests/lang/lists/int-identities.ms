@@ -35,3 +35,5 @@ test "identities keep operand effects" {
 	((touch(log, 9) % 1 == 0)) | expect_true?
 	log | expect_equal([1, 2, 3, 4, 5, 6, 7, 8, 9])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

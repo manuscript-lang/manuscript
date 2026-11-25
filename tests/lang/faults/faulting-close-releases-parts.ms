@@ -243,3 +243,5 @@ test "fill over an empty range releases the value" {
 		)
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=15 failed=0

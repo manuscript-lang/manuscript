@@ -37,3 +37,5 @@ test "guarded and looped lookups" {
 	expect_equal(nested([1, null], 1), null)?
 	expect_equal(nested([1, null], 0), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

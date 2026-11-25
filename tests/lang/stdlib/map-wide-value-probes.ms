@@ -52,3 +52,5 @@ test "update of a wide scalar value changes it in place and appends a missing ke
 	expect_equal(points["p0"].x, 5)?
 	expect_equal(points["p3"].y, 3 + 7 + 11 + 15 + 19)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

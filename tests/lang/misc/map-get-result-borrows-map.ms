@@ -21,3 +21,5 @@ test "a clone of the result owns its copy" {
 	m.add("b", [2])
 	expect_equal(found != null, true)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

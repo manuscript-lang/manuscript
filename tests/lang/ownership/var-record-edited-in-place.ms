@@ -48,3 +48,8 @@ fn main() Void {
 	print(result.is_error())
 	print(f"{again.pos} {again.seen}")
 }
+// expect-exit: 0
+// expect-stdout: abc
+// expect-stdout: 6 3
+// expect-stdout: true
+// expect-stdout: 2 1

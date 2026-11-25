@@ -29,3 +29,5 @@ test "source consuming receiver remains owned after later try" {
 	box := Box(f"long-dynamic-map-key-{1}")
 	expect_equal(box.consume(successful_value(7)?), 8)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

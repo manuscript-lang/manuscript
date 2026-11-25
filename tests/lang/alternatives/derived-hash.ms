@@ -29,3 +29,5 @@ test "derived hashes agree for equal values and are stable" {
 	expect_false(code(3) != code(3) or code(12.50d) != code(12.5d))?
 	expect_not_equal(code(true), code(false))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

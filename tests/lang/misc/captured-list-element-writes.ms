@@ -49,3 +49,5 @@ test "an index past the end faults" {
 	)?
 	message | expect_contains("index")?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

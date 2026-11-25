@@ -101,3 +101,5 @@ test "typed archives retain entry limits and validation" {
 		expect_equal(pack(entries, format, -1), invalid)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

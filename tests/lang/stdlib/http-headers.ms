@@ -236,3 +236,5 @@ test "legacy Expires removes a cookie before the next request" {
 		(echoed_cookie(client, f"{url}/echo")?) | expect_equal("")?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

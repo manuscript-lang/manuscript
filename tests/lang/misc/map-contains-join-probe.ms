@@ -62,3 +62,5 @@ test "a key that is present on one path and inserted on the other is found" {
 	m["b"] | expect_equal(20)?
 	m["c"] | expect_equal(10)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

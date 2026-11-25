@@ -19,3 +19,5 @@ test "a stalled read times out and a ready one does not" {
 	expect_equal(stalled.is_error(), true)?
 	expect_equal(stalled.err().kind, "ETIMEDOUT")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -5,3 +5,4 @@ fn f(a Int) Int {
 	b := (if a == 1 { 2 } else { 3 })
 	return b
 }
+// expect-format: unchanged

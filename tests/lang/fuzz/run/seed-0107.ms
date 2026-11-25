@@ -88,3 +88,18 @@ export fn main() Int {
 	say(f"b11 = {b11}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -10
+// expect-stdout: b2 = true
+// expect-stdout: fib(32) = 2178309
+// expect-stdout: héllo
+// expect-stdout: Tab\therems
+// expect-stdout: s4 = [Tab\therealpha]
+// expect-stdout: s5 = [Tab\therealphaquote"dhello worldbrace{s}]
+// expect-stdout: l6 = [] len 0
+// expect-stdout: b7 = false
+// expect-stdout: s8 = [TAB\tHEREALPHAQUOTE"DHELLO WORLDBRACE{S}]
+// expect-stdout: i9 = 17
+// expect-stdout: gcd(4050, 1856) = 2
+// expect-stdout: b10 = false
+// expect-stdout: b11 = false

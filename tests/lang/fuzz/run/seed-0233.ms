@@ -47,3 +47,11 @@ export fn main() Int {
 	say(f"collatz(1008) = {collatz(1008)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-28, 0, 15] len 3
+// expect-stdout: b2 = false
+// expect-stdout: l3 = [-25, -12] len 2
+// expect-stdout: b4 = false
+// expect-stdout: l5 = [25, 29, 21, 26, -2] len 5
+// expect-stdout: b6 = true
+// expect-stdout: collatz(1008) = 111

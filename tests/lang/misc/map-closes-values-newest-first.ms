@@ -37,3 +37,5 @@ test "a map of resources closes the values it holds newest entry first at scope 
 	fill(log.clone())
 	logged(log.clone()) | expect_equal("2,4,3,1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

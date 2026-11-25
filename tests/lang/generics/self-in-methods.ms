@@ -36,3 +36,5 @@ fn main() Void {
 		).length().to_string() + "\n"
 	)
 }
+// expect-exit: 0
+// expect-stdout: 5 2 2

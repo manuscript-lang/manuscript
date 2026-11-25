@@ -9,3 +9,8 @@ fn deep(value Int!Error) Int {
 export fn main() Int {
 	return deep(error(Error("expected failure")))
 }
+// expect-exit: 134
+// expect-stderr: called Result.get() on error: Error(details: Map(), kind: none, message: expected failure); check is_ok first, or use get_or(default)
+// expect-stderr:   at @std/core.ms:<LINE> in Result.get
+// expect-stderr:   at testfaultsourcelocations-9.ms:6 in deep
+// expect-stderr:   at testfaultsourcelocations-9.ms:10 in main

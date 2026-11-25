@@ -51,3 +51,15 @@ export fn main() Int {
 	say(f"i10 = {i10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 14.532999999999959
+// expect-stdout: s2 = [日本語]
+// expect-stdout: f3 = Infinity
+// expect-stdout: i4 = 16
+// expect-stdout: b5 = true
+// expect-stdout: 24974246 21 false sum 24974267
+// expect-stdout: l6 = [16, 22, 19, 20] len 4
+// expect-stdout: b7 = false
+// expect-stdout: acc8 = 236
+// expect-stdout: b9 = false
+// expect-stdout: i10 = -654

@@ -16,3 +16,5 @@ test "receiver fault comes first" {
 test "continues with valid units" {
 	_valid := (1).seconds()
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1 not_run=3

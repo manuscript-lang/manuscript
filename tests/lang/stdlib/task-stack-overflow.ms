@@ -15,3 +15,7 @@ fn main() Int {
 	)
 	return p.wait().get_or(0)
 }
+// expect-exit: 139
+// expect-stderr: stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead
+// expect-stderr:   at task-stack-overflow.ms:8 in forever
+// expect-stderr:   ... previous frame repeated <COUNT> more times

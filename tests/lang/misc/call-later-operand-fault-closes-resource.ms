@@ -74,3 +74,5 @@ test "a failing later operand closes an interface call argument" {
 	expect_contains(fault, "operand failed")?
 	expect_equal(events(log)?, "4,")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

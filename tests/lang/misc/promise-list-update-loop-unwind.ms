@@ -44,3 +44,5 @@ test "a task that faults in the loop frees the list once" {
 		expect_equal(p.wait().is_ok(), width == 8)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

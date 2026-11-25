@@ -62,3 +62,21 @@ export fn main() Int {
 	say(f"l13 = {l13} len {l13.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 22
+// expect-stdout: f2 = 1424254411234.7793
+// expect-stdout: i3 = 57
+// expect-stdout: i4 = 0
+// expect-stdout: s5 = [日本語MiXeD CaSeline
+// expect-stdout: breakESAC DEXIM]
+// expect-stdout: l6 = [] len 0
+// expect-stdout: i7 = -1
+// expect-stdout: 42
+// expect-stdout: 33:日本語MiXeD CaSeline
+// expect-stdout: breakESAC DEXIM
+// expect-stdout: b8 = true
+// expect-stdout: s9 = [25:MiXeD CaSe]
+// expect-stdout: b10 = false
+// expect-stdout: f11 = 20000000000000000000
+// expect-stdout: b12 = true
+// expect-stdout: l13 = [] len 0

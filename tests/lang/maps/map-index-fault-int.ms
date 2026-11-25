@@ -10,3 +10,7 @@ fn main() Void {
 	void stdout().write(f"{bump[1]}\n")
 	void stdout().write(f"{counts[2]}\n")
 }
+// expect-exit: 134
+// expect-stdout: 15
+// expect-stderr: map key not found: 2
+// expect-stderr:   at map-index-fault-int.ms:11 in main

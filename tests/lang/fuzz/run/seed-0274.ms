@@ -42,3 +42,11 @@ export fn main() Int {
 	say(f"acc5 = {acc5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: quote"d
+// expect-stdout: f1 = 1588225930149.252
+// expect-stdout: l2 = [2, -6, 5, -14] len 4
+// expect-stdout: s3 = [7:line
+// expect-stdout: breakMiXeD CaSe]
+// expect-stdout: i4 = -2580570973385689851
+// expect-stdout: acc5 = 0

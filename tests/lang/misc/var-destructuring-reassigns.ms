@@ -28,3 +28,5 @@ test "var destructuring binds reassignable copies" {
 	expect_equal([a, b, x, y, q], [11, 7, 6, 0, 7])?
 	expect_equal([point.x, point.y], [1, 2])?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

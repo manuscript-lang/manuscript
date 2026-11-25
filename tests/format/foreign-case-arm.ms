@@ -10,3 +10,6 @@ fn f(e E) Int {
         case A: return 1
     }
 }
+// expect-error: MS1000 10:9-10:14 match arms use bare variant names, e.g. Paid(receipt) => value or Missing => value; remove the legacy 'case' prefix
+// expect-fix: 10:9-10:14 ""
+// expect-format-exit: 1

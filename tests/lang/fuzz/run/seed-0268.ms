@@ -42,3 +42,12 @@ export fn main() Int {
 	say(f"i5 = {i5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: BACK\\SLASH
+// expect-stdout: i1 = -43
+// expect-stdout: s2 = [emoji 😀alphaalpha]
+// expect-stdout: s3 = [Tab\thereemoji 😀alphaalpha]
+// expect-stdout: quote"d
+// expect-stdout: 31508723 -55 false sum 31508668
+// expect-stdout: b4 = false
+// expect-stdout: i5 = -118

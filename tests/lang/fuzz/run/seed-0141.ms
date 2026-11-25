@@ -42,3 +42,14 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: f2 = 550.198
+// expect-stdout: i3 = 0
+// expect-stdout: i4 = 0
+// expect-stdout: i5 = 0
+// expect-stdout: naïve
+// expect-stdout: b6 = false
+// expect-stdout: -6 -35 false sum -41
+// expect-stdout: i7 = 0
+// expect-stdout: -4 -1 true sum -5

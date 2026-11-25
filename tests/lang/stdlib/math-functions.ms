@@ -152,3 +152,5 @@ test "numeric limits and constants match IEEE and JavaScript" {
 	expect_true(near(log2e * ln2, 1.0))?
 	expect_true(near(log10e * ln10, 1.0))?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

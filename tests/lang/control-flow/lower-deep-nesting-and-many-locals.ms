@@ -1315,3 +1315,10 @@ fn main() Void {
 	all += s259
 	print(all.length())
 }
+// expect-exit: 0
+// expect-stdout: 26
+// expect-stdout: v0
+// expect-stdout: v69
+// expect-stdout: none
+// expect-stdout: 1
+// expect-stdout: 1190

@@ -138,3 +138,5 @@ test "which honors PATHEXT defaults and skips empty PATH entries" {
 	relative := if windows { ".\\default.CMD" } else { "./default" }
 	expect_equal(which(relative), relative)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

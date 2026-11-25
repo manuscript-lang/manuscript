@@ -9,3 +9,12 @@ fn deep(value Int!Error) Int {
 export fn main() Int {
 	return deep(error(Error("expected failure")))
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn deep(value Int!) Int {
+// expect-formatted: \treturn value.get()
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: export fn main() Int {
+// expect-formatted: \treturn deep(error(Error("expected failure")))
+// expect-formatted: }

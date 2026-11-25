@@ -119,3 +119,5 @@ test "sized numbers widen to Int and Float with to_int and to_float" {
 	expect_equal(total, 69902)?
 	expect_equal(f.to_float(), 0.5)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

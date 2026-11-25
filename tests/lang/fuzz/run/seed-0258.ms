@@ -53,3 +53,12 @@ export fn main() Int {
 	say(f"collatz(1262) = {collatz(1262)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -7458852240
+// expect-stdout: s2 = [日本語]
+// expect-stdout: s3 = [-30484:Tab\there]
+// expect-stdout: quote"d
+// expect-stdout: l4 = [19, -11] len 2
+// expect-stdout: i5 = 3
+// expect-stdout: l6 = [-11, 19] len 2
+// expect-stdout: collatz(1262) = 39

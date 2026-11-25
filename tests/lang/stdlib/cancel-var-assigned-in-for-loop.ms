@@ -20,3 +20,5 @@ fn assigned_in_loop() Bool {
 test "a var assigned in a for loop is freed when cancelled after the loop" {
 	expect_true(not assigned_in_loop())?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

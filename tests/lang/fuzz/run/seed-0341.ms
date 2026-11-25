@@ -44,3 +44,14 @@ export fn main() Int {
 	say(f"f10 = {f10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [EMOJI 😀]
+// expect-stdout: acc2 = 0
+// expect-stdout: i3 = -1
+// expect-stdout: i4 = 211567
+// expect-stdout: b5 = true
+// expect-stdout: b6 = true
+// expect-stdout: f7 = 70000000000056.11
+// expect-stdout: s8 = [quote"d]
+// expect-stdout: f9 = 70000000000056.11
+// expect-stdout: f10 = 60000

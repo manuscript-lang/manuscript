@@ -137,3 +137,5 @@ test "omitted labels preserve evaluation order" {
 	sum([next(state), next(state)]) | expect_equal(13)?
 	state.value | expect_equal(8)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -21,3 +21,5 @@ test "to_string of a borrowed String is an owned String" {
 
 	expect_equal(seen, "xxxyyy")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

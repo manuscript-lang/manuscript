@@ -57,3 +57,5 @@ test "contract views and callbacks" {
 	expect_equal(callback_view.get(), 7)?
 	expect_equal(consume(holder.reader), 7)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

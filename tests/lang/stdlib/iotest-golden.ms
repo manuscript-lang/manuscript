@@ -77,3 +77,5 @@ test "golden comparison passes and names the first differing line" {
 	bytes := expect_error(expect_golden_bytes(path, "a\nb\nd".to_bytes()))?
 	expect_contains(bytes.message, "byte 4")?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

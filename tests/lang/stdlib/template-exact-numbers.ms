@@ -179,3 +179,5 @@ test "long shared coefficient prefixes retain exact order" {
 	values := f"\{\"left\":1.{prefix},\"right\":1.{prefix}1\}"
 	check("left < right and right > left and left != right", values, "yes")?
 }
+// expect-exit: 0
+// expect-tests: passed=19 failed=0

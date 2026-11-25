@@ -23,3 +23,5 @@ test "parse_decimal rejects text that is not exactly a Decimal" {
 		expect_equal(parsed.err().kind, "EINVAL")?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -14,3 +14,5 @@ test "addition" {
 test "zero is unchanged" {
 	expect_equal(add(0, 7), 7)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

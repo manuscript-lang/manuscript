@@ -76,3 +76,20 @@ export fn main() Int {
 	say(f"i15 = {i15}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-15, -28, 9] len 3
+// expect-stdout: l2 = [-28, 9] len 2
+// expect-stdout: l3 = [-28, 9, 78] len 3
+// expect-stdout: acc4 = 164
+// expect-stdout: f5 = 0
+// expect-stdout: i6 = -771576
+// expect-stdout: acc7 = -29
+// expect-stdout: 1 962629 true sum 962630
+// expect-stdout: s8 = [  padded  ]
+// expect-stdout: s9 = [x]
+// expect-stdout: i10 = 10
+// expect-stdout: s11 = [MiXeD CaSe]
+// expect-stdout: b12 = false
+// expect-stdout: l13 = [-15, -28, 9, -15, -28, 9] len 6
+// expect-stdout: i14 = 13
+// expect-stdout: i15 = -3086310

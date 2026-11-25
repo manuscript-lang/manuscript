@@ -24,3 +24,5 @@ test "decimal zero identities preserve signs and exponent extremes" {
 
 	expect_equal(1.25d + -1.25d, 0d)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

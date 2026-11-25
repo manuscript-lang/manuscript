@@ -45,3 +45,5 @@ test "successful cause cleanup transfers the protected receiver exactly once" {
 	normal_transfer(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "2,1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

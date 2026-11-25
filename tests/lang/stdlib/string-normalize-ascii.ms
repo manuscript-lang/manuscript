@@ -51,3 +51,5 @@ test "normalization falls back for Unicode before and after long ASCII prefixes"
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

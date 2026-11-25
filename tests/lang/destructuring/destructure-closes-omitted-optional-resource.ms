@@ -48,3 +48,19 @@ export fn main() Int {
 	print(f"end {out.length()} {moved.id}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: local
+// expect-stdout: close 2
+// expect-stdout: close 3
+// expect-stdout: none
+// expect-stdout: param
+// expect-stdout: close 6
+// expect-stdout: close 7
+// expect-stdout: keep end
+// expect-stdout: return
+// expect-stdout: close 9
+// expect-stdout: end 3 8
+// expect-stdout: close 8
+// expect-stdout: close 5
+// expect-stdout: close 4
+// expect-stdout: close 1

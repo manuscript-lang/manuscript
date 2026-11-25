@@ -26,3 +26,5 @@ test "a lone interpolation of a borrowed string is a new string wherever it is o
 	expect_equal(h.text, "a")?
 	expect_equal(f(), "a")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

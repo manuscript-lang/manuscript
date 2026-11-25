@@ -54,3 +54,16 @@ export fn main() Int {
 	say(f"s11 = [{s11}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 28
+// expect-stdout: i2 = 84
+// expect-stdout: s3 = [x]
+// expect-stdout: i4 = -594563
+// expect-stdout: i5 = -594563
+// expect-stdout: i6 = 1308038566
+// expect-stdout: acc7 = -4
+// expect-stdout: -44521915495 -555253154113 false sum -599775069608
+// expect-stdout: b8 = false
+// expect-stdout: b9 = false
+// expect-stdout: f10 = Infinity
+// expect-stdout: s11 = [日本語]

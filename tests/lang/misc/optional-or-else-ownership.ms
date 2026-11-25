@@ -140,3 +140,5 @@ test "a cloned data receiver stays with its caller across a later try" {
 		"dynamic optional payload 10",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

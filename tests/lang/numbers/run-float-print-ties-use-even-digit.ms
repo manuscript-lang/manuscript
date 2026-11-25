@@ -7,3 +7,5 @@ export fn main() Int {
 	print(f"{wide} {narrow} {1313322917213848.25}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 29501041598734.312 3423159.2 1313322917213848.2

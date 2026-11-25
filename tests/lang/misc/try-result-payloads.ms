@@ -114,3 +114,5 @@ test "function Result payloads keep their calling convention" {
 	value := function_tail(wrapped)?
 	value() | expect_equal(42)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

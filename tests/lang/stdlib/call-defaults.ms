@@ -15,3 +15,5 @@ test "restrict, parse_int and run take their defaults" {
 	output := run("true").wait()?
 	expect_true(output.exit_code == 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

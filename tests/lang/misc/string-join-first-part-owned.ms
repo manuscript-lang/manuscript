@@ -32,3 +32,9 @@ fn main() Void {
 	print(text("a", "d", "x").message)
 	print(text("a", "d", "").message)
 }
+// expect-exit: 0
+// expect-stdout: d: failed
+// expect-stdout: own
+// expect-stdout: d: seen
+// expect-stdout: d: a: x
+// expect-stdout: d: a

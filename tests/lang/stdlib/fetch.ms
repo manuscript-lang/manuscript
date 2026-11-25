@@ -169,3 +169,5 @@ test "Fetcher.stream returns the body incrementally and reuses the client" {
 	again := client.fetch(url).wait()?
 	expect_equal(again.body.length(), 10)?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

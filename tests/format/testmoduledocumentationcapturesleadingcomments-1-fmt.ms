@@ -20,3 +20,23 @@ fn helper() Int {
 export fn bare() Int {
 	return 0
 }
+// expect-format: rewritten
+// expect-formatted: // Adds two numbers.
+// expect-formatted: // Never rounds.
+// expect-formatted: export fn add(a, b Int) Int {
+// expect-formatted: \treturn a + b
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: // Detached by a blank line.
+// expect-formatted: export fn sub(a, b Int) Int {
+// expect-formatted: \treturn a - b
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: // Not a doc comment: private declaration.
+// expect-formatted: fn helper() Int {
+// expect-formatted: \treturn 1
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: export fn bare() Int {
+// expect-formatted: \treturn 0
+// expect-formatted: }

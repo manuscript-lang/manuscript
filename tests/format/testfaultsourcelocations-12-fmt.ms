@@ -10,3 +10,13 @@ export fn main() Int {
 	value Int!Error := error(Error("expected failure"))
 	return value.get_or_else(crash)
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn crash(cause Error) Int {
+// expect-formatted: \treturn 1 / "".length()
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: export fn main() Int {
+// expect-formatted: \tvalue Int! := error(Error("expected failure"))
+// expect-formatted: \treturn value.get_or_else(crash)
+// expect-formatted: }

@@ -4,3 +4,4 @@
 import Error from "@std/core.ms"  // keep
 
 fn first(values List[Int]) Int! => values.first().ok_or()
+// expect-format: unchanged

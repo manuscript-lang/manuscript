@@ -21,3 +21,5 @@ test "an unnamed promise waited on in place is closed" {
 	grown := (memory_usage() | expect_ok?).heap_used - before
 	if grown > 2000000 { return error(Error(f"heap grew {grown} bytes over 3000 waits")) }
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

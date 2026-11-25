@@ -43,3 +43,5 @@ test "inline functions and branches" {
 }
 
 test "inline test" { return }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

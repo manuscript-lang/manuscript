@@ -26,3 +26,5 @@ test "continues" {
 	values.splice(0, 1, [])
 	values.append(2)
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1 not_run=4

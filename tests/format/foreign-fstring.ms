@@ -5,3 +5,4 @@ fn f() String {
 	n := 1
 	return f"n={n}"
 }
+// expect-format: unchanged

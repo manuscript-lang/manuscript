@@ -45,3 +45,5 @@ test "a JSON encoder recurses past a promise task's first stack slot" {
 test "copying and comparing a deep chain in a promise" {
 	expect_equal(on_a_task(clone_chain), 100000 - 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

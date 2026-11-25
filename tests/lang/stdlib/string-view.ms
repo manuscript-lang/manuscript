@@ -75,3 +75,5 @@ test "view of a short text agrees with slice for ASCII and non-ASCII" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

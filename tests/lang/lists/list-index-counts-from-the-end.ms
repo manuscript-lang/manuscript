@@ -41,3 +41,5 @@ test "an index past either end faults" {
 	small := expect_fault(() => { put(zs, -2, 0) })?
 	small | expect_contains("index")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

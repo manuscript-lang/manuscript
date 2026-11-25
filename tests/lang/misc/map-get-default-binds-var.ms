@@ -18,3 +18,5 @@ test "a map value read with get(default) is an owned var" {
 	void expect_equal(lookup(table, "b"), "d!")?
 	return expect_equal(table.get_or("default", ""), "d")
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

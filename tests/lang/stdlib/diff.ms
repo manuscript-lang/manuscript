@@ -160,3 +160,5 @@ test "unified_diff handles dense changes with full-file context" {
 		f"--- a\n+++ b\n@@ -1,4000 +0,0 @@\n{removed}\n",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

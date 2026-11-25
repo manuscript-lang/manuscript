@@ -47,3 +47,14 @@ export fn main() Int {
 	say(f"i10 = {i10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -6834797475957
+// expect-stdout: f2 = -16145549825103800000
+// expect-stdout: b3 = false
+// expect-stdout: f4 = -16145549825103800000
+// expect-stdout: s5 = [back\\slash]
+// expect-stdout: b6 = false
+// expect-stdout: s7 = [-6834797475957:-13669594951914:quote"dgamma-13669594951914:back\\slash]
+// expect-stdout: acc8 = 90
+// expect-stdout: b9 = false
+// expect-stdout: i10 = 18

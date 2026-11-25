@@ -71,3 +71,5 @@ test "map lookup" {
 	expect_true((describe(key: Point(x: 1, y: 2), m: points) == "found a"))?
 	expect_true((describe(key: Point(x: 2, y: 1), m: points) == "missing"))?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

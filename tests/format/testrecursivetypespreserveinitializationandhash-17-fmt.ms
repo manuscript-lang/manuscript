@@ -7,3 +7,10 @@ enum Expr {
 }
 
 fn tree() Expr => return Expr.Add(left: Expr.Num(1), right: Expr.Num(2))
+// expect-format: rewritten
+// expect-formatted: enum Expr {
+// expect-formatted: \tNum(value Int)
+// expect-formatted: \tAdd(left, right Expr)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn tree() Expr => return Expr.Add(left: Expr.Num(1), right: Expr.Num(2))

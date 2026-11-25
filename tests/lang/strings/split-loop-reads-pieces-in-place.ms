@@ -69,3 +69,21 @@ fn main() Void {
 
 	print(f"{keep.length()} {keep[1]} {keep[keep.length() - 1]}")
 }
+// expect-exit: 0
+// expect-stdout: plain: 3 [a, b, c]
+// expect-stdout: empty text: 1 [""]
+// expect-stdout: no separator in text: 1 [abc]
+// expect-stdout: leading: 2 ["", a]
+// expect-stdout: trailing: 2 [a, ""]
+// expect-stdout: only separator: 2 ["", ""]
+// expect-stdout: adjacent: 3 [a, "", b]
+// expect-stdout: long separator: 4 [a, b, "", c-]
+// expect-stdout: partial separator: 2 [a-b, c]
+// expect-stdout: empty separator: 5 [h, é, l, l, o]
+// expect-stdout: empty separator, empty text: 0 []
+// expect-stdout: multibyte separator: 4 [x, y, "", z]
+// expect-stdout: long pieces: 3 [a long piece of text, another long piece of text, short]
+// expect-stdout: separator evaluated
+// expect-stdout: seen 3
+// expect-stdout: kept 3
+// expect-stdout: 13 line third

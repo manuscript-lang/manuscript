@@ -64,3 +64,8 @@ fn main() Void {
 	print(parsed(["x", "y"]).length().to_string())
 	print(opened("/nonexistent/owner-flows").is_error().to_string())
 }
+// expect-exit: 0
+// expect-stdout: unreadable
+// expect-stdout: 1
+// expect-stdout: 2
+// expect-stdout: true

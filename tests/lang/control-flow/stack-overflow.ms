@@ -3014,3 +3014,8 @@ fn fat(n Int) Int {
 fn main() Int {
 	return fat(0)
 }
+// expect-exit: 139
+// expect-stderr: stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead
+// expect-stderr:   at stack-overflow.ms:1506 in fat
+// expect-stderr:   ... previous frame repeated <COUNT> more times
+// expect-stderr:   at stack-overflow.ms:3015 in main

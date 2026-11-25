@@ -40,3 +40,4 @@ test "omitted defaults" {
 	callback := scaled
 	expect_true((callback(base: 2, factor: 3, label: "z") == "z6"))?
 }
+// expect-format: unchanged

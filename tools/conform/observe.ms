@@ -17,6 +17,7 @@ import (
 	read_text,
 	string_member,
 	text_of from "./corpus.ms",
+	inline_lines, program_text from "./expect.ms",
 )
 
 // What one run of ms left: its exit status and streams, as text.
@@ -269,6 +270,12 @@ fn clean_parse(fields Map[String, JsonValue], before String) JsonValue {
 	return JsonValue.ObjectValue(out)
 }
 
+// `text` without its trailing expectation lines, when it has any.
+fn stripped(text String) String {
+	if inline_lines(text).is_empty() { return text.clone() }
+	return program_text(text)
+}
+
 fn parse_phase(ms String, fx Fixture, work String) JsonValue {
 	// `fmt --check` parses without loading the standard library, which `check` does for
 	// every file that parses; the parse diagnostics are the same.
@@ -296,12 +303,13 @@ fn parse_phase(ms String, fx Fixture, work String) JsonValue {
 		fields.add("raw", report)
 	}
 
-	before := without_header(read_text(f"{work}/{fx.entry}"))
+	before := without_header(stripped(read_text(f"{work}/{fx.entry}")))
 	formatted := invoke(ms, fx, ["fmt", fx.entry.clone()], work, "".to_bytes())
 
 	if formatted.code == 0 {
-		after := read_text(f"{work}/{fx.entry}")
-		fields.add("fmt", text_value(without_header(after)))
+		after := without_header(stripped(read_text(f"{work}/{fx.entry}")))
+		fields.add("fmt", text_value(after))
+		fields.add("unchanged", JsonValue.BoolValue(after == before))
 	} else {
 		fields.add("fmt", JsonValue.Null)
 		fields.add("fmt_exit_code", number(formatted.code))

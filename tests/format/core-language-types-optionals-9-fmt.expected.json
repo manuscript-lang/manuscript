@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn port_number(text String) Result[Int, Error] {\n\tport := text.parse_int().ok_or()?\n\treturn ok(port)\n}\n"
-  }
-}

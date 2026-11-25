@@ -52,3 +52,5 @@ test "a sum of signed bytes goes negative without a fault" {
 
 	expect_equal(signed_sum(values), -30000)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

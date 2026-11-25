@@ -46,3 +46,5 @@ test "a temporary receiver of a var method closes at the end of its statement" {
 	expect_equal(first + second, 1)?
 	expect_equal(logged(log), "1,2,")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -17,3 +17,5 @@ fn main() Void {
 		stdout().write(f"ok {e}\n").get()
 	}
 }
+// expect-exit: 0
+// expect-stdout: 4 false

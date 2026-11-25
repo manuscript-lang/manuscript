@@ -253,3 +253,5 @@ test "mutable recursive graphs compare and clone without recursion failures" {
 	right.value = 4
 	expect_not_equal(left, right)?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

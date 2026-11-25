@@ -83,3 +83,5 @@ test "glob patterns ignore dot segments and never match the root" {
 		["x.ms"],
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

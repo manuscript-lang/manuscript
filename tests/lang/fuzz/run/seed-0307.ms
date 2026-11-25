@@ -87,3 +87,20 @@ export fn main() Int {
 	say(f"{l3.length() % big10}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: MS
+// expect-stdout: i1 = -898142
+// expect-stdout: collatz(1197) = 119
+// expect-stdout: alpha
+// expect-stdout: -290099866 -898133 true sum -290997999
+// expect-stdout: i2 = 0
+// expect-stdout: l3 = [] len 0
+// expect-stdout: -806659052164 0 true sum -806659052164
+// expect-stdout: i4 = 0
+// expect-stdout: acc5 = 0
+// expect-stdout: i6 = -17812638324488
+// expect-stdout: i7 = 3
+// expect-stdout: s8 = [42]
+// expect-stdout: l9 = [] len 0
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0307.ms:87 in main

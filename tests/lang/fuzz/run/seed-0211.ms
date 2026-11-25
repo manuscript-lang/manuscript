@@ -39,3 +39,12 @@ export fn main() Int {
 	say(f"f5 = {f5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: -76 -19 true sum -95
+// expect-stdout: s1 = [BACK\\SLASHX]
+// expect-stdout: s2 = [BACK\\SLASHX]
+// expect-stdout: b3 = false
+// expect-stdout: BACK\\SLASHX
+// expect-stdout: l4 = [] len 0
+// expect-stdout: 16081436 115 false sum 16081551
+// expect-stdout: f5 = 800000000000000000

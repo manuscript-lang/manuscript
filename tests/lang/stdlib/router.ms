@@ -602,3 +602,5 @@ test "a path that is not absolute matches no route" {
 	options := router.call(request(HttpMethod.Options, "*"))?
 	expect_equal(options.status, 204)?
 }
+// expect-exit: 0
+// expect-tests: passed=30 failed=0

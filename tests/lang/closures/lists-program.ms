@@ -65,3 +65,4 @@ fn callback_write(var values List[Int]) Int {
 
 	return total.value
 }
+// expect-exit: 0

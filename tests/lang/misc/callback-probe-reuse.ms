@@ -89,3 +89,5 @@ test "try rechecks the inferred enclosing result" {
 
 	expect_equal(value, Result[Int, Error].ok(4))?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

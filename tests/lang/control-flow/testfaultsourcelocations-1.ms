@@ -13,3 +13,7 @@ fn probe() Int {
 export fn main() Int {
 	return probe()
 }
+// expect-exit: 134
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at testfaultsourcelocations-1.ms:8 in probe
+// expect-stderr:   at testfaultsourcelocations-1.ms:14 in main

@@ -103,3 +103,25 @@ export fn main() Int {
 	say(f"{((i16 - (-35)) + (i10 + 21)) / big17}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: l1 = [-19, -3, 15] len 3
+// expect-stdout: f2 = -1999510175.6618512
+// expect-stdout: s3 = [42]
+// expect-stdout: acc4 = -3
+// expect-stdout: i5 = -147596
+// expect-stdout: l6 = [-95, -15, 75] len 3
+// expect-stdout: acc7 = 0
+// expect-stdout: f8 = -8.789946707718282e+26
+// expect-stdout: i9 = 147596
+// expect-stdout: -95 147596 true sum 147501
+// expect-stdout: i10 = 440538
+// expect-stdout: s11 = [atledback\\slash]
+// expect-stdout: 42
+// expect-stdout: i12 = 15
+// expect-stdout: acc13 = -3
+// expect-stdout: atledback\\slash
+// expect-stdout: s14 = [42x]
+// expect-stdout: i15 = -165
+// expect-stdout: i16 = 19
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0383.ms:103 in main

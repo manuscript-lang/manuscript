@@ -72,3 +72,19 @@ export fn main() Int {
 	say(f"b13 = {b13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 22384864
+// expect-stdout: s2 = [ms]
+// expect-stdout: i3 = 0
+// expect-stdout: f4 = 168.25
+// expect-stdout: i5 = 0
+// expect-stdout: s6 = [emoji 😀]
+// expect-stdout: i7 = 22384864
+// expect-stdout: f8 = 668.281
+// expect-stdout: i9 = -22384883
+// expect-stdout: fib(28) = 317811
+// expect-stdout: emoji 😀
+// expect-stdout: l10 = [-13] len 1
+// expect-stdout: s11 = [ms]
+// expect-stdout: f12 = -99631.07450000002
+// expect-stdout: b13 = false

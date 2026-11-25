@@ -6,3 +6,6 @@ import panic from "@std/core.ms"
 export fn main() Int {
 	return panic("check must not execute main")
 }
+// expect-exit: 134
+// expect-stderr: check must not execute main
+// expect-stderr:   at testcliprojectcheck-1.ms:7 in main

@@ -126,3 +126,5 @@ test "a match on a temporary resource closes it when the match ends" {
 	expect_equal(seen, 5)?
 	logged(log.clone()) | expect_equal("5,")?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

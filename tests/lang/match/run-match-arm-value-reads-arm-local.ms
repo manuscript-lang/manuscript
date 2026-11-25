@@ -19,3 +19,6 @@ export fn main() Int {
 	print(pick(2))
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: one
+// expect-stdout: none

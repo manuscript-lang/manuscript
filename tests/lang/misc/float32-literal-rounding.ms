@@ -54,3 +54,5 @@ test "a long list of Float32 literals rounds the same way" {
 	expect_equal(list.length() >= 65, true)?
 	expect_equal(list[64].to_float64(), 1.0000001192092896)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

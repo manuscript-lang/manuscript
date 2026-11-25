@@ -97,3 +97,5 @@ test "remove bounds fault still closes the list's existing resource" {
 	expect_contains(fault, "index")?
 	expect_equal(events(log)?, "1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

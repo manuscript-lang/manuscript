@@ -30,3 +30,11 @@ export fn main() Int {
 	say(f"i5 = {i5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 171539676
+// expect-stdout: 388625 171539676 true sum 171928301
+// expect-stdout: 171539676 29421197307632592 true sum 29421197479172268
+// expect-stdout: l2 = [23, -6, -20, 7, -24] len 5
+// expect-stdout: b3 = false
+// expect-stdout: b4 = false
+// expect-stdout: i5 = 171539676

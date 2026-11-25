@@ -51,3 +51,5 @@ test "a returned promise owns an aggregate it captures" {
 test "dropping an unwaited returned promise ends it" {
 	_p := start("dropped")
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

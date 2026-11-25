@@ -75,3 +75,5 @@ test "a var parameter of a one-owner type is rebuilt from itself" {
 	rewrap(xs)
 	xs | expect_equal([3, 7])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

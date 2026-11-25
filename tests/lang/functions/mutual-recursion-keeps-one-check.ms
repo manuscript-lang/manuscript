@@ -30,3 +30,5 @@ fn is_odd(n Int) Bool {
 fn main() Void {
 	print(f"{count(20)} {is_even(10)} {is_even(7)} {is_odd(7)}")
 }
+// expect-exit: 0
+// expect-stdout: 21891 true false true

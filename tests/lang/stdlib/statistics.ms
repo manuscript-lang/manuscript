@@ -618,3 +618,5 @@ test "correlation of large and tiny perfectly correlated values" {
 	)?
 	expect_none(correlation([1e100, 1e100], [1e100, 2e100]))?
 }
+// expect-exit: 0
+// expect-tests: passed=39 failed=0

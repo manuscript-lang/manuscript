@@ -50,3 +50,5 @@ test "a bound resource passed to such a callee closes once" {
 		logged(log.clone()) | expect_equal("3,")?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

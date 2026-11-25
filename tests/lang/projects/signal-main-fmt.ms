@@ -25,3 +25,4 @@ fn main() Void {
 	}
 	_resource.close()
 }
+// expect-format: unchanged

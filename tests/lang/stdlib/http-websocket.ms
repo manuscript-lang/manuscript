@@ -408,3 +408,5 @@ test "HttpExchange.upgrade returns a WebSocket" {
 	)
 	message.data | expect_equal("hi".to_bytes())?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

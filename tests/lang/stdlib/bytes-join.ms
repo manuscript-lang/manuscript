@@ -24,3 +24,5 @@ test "join leaves its parts unchanged" {
 	expect_equal(whole, Bytes([3, 4, 5]))?
 	expect_equal(parts, [Bytes([3]), Bytes([4, 5])])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -13,3 +13,16 @@ fn discount_validated(price Decimal, percent Decimal) Decimal {
 
 	return price * (1d - percent / 100d)
 }
+// expect-format: rewritten
+// expect-formatted: import panic from "@std/core.ms"
+// expect-formatted:
+// expect-formatted: fn discount_validated(price, percent Decimal) Decimal {
+// expect-formatted: \tif price <= 0d {
+// expect-formatted: \t\treturn panic("Price must be positive")
+// expect-formatted: \t}
+// expect-formatted: \tif percent <= 0d or percent >= 100d {
+// expect-formatted: \t\treturn panic("Percent must be positive and below 100")
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn price * (1d - percent / 100d)
+// expect-formatted: }

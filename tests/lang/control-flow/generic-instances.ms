@@ -47,3 +47,5 @@ test "instances copy non-scalar arguments" {
 	expect_equal(alias.x, 5)?
 	expect_equal(point.x, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

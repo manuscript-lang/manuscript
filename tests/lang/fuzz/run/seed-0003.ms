@@ -51,3 +51,14 @@ export fn main() Int {
 	say(f"acc9 = {acc9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-3, -16] len 2
+// expect-stdout: s2 = [208107077528:ms]
+// expect-stdout: gamma
+// expect-stdout: s3 = [208107077528:ms]
+// expect-stdout: i4 = -17
+// expect-stdout: i5 = 7782
+// expect-stdout: i6 = 12
+// expect-stdout: i7 = -727834896
+// expect-stdout: l8 = [6, -12, 15, -17, -29] len 5
+// expect-stdout: acc9 = 2

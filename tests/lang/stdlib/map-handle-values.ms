@@ -21,3 +21,10 @@ fn main() Void {
 	patterns.clear()
 	print(patterns.length())
 }
+// expect-exit: 0
+// expect-stdout: 2
+// expect-stdout: true
+// expect-stdout: true
+// expect-stdout: false
+// expect-stdout: false
+// expect-stdout: 0

@@ -47,3 +47,5 @@ test "a scalar walk reads the text as it was when the loop began" {
 	expect_equal(total, 195)?
 	expect_equal(s, "abéé")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

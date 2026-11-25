@@ -38,3 +38,5 @@ test "Stop suspends a child and Continue resumes it" {
 	child.kill()?
 	expect_equal((child.wait()?), -1)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

@@ -31,3 +31,5 @@ test "checked sums in both arms give the same result as branches" {
 test "an overflow in the arm that is not taken does not fault" {
 	expect_equal(spread([-1], 9223372036854775800, 100), 9223372036854775800)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

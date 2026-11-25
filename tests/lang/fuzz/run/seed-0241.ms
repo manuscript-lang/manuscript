@@ -42,3 +42,10 @@ export fn main() Int {
 	say(f"i5 = {i5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: l2 = [0] len 1
+// expect-stdout: b3 = false
+// expect-stdout: fib(48) = 4807526976
+// expect-stdout: l4 = [-19] len 1
+// expect-stdout: i5 = 19

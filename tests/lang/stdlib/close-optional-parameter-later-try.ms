@@ -29,3 +29,6 @@ fn main() Void {
 	void attempt()
 	print("end")
 }
+// expect-exit: 0
+// expect-stdout: closed temp
+// expect-stdout: end

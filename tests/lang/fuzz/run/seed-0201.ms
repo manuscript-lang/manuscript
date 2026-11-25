@@ -60,3 +60,16 @@ export fn main() Int {
 	say(f"i11 = {i11}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [delta]
+// expect-stdout: i2 = -32
+// expect-stdout: fib(54) = 86267571272
+// expect-stdout: l3 = [1, -29, 11] len 3
+// expect-stdout: f4 = 634.249
+// expect-stdout: i5 = 354168
+// expect-stdout: i6 = 0
+// expect-stdout: s7 = [naïvedelta]
+// expect-stdout: f8 = 0.6958603006009529
+// expect-stdout: i9 = 1
+// expect-stdout: l10 = [-13] len 1
+// expect-stdout: i11 = 354168

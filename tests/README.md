@@ -9,7 +9,7 @@ ms run tools/conform-run.ms -- --phase check ownership    # one phase, fixtures 
 
 ## Layout
 
-A fixture id is its path under `tests/` without extension. A `check` fixture states what it expects in its own file: the last lines are `// expect-error: <code> <line>:<col>[-<line>:<col>] <message>` (one per diagnostic, with `// expect-fix: <span> "<replacement>"` after one that offers a fix) and `// expect-exit: <n>` when there is no diagnostic or the exit code is not 1; they follow the program, so their line numbers are the file's own. Parse, run and test fixtures have `<slug>.expected.json` beside the `.ms` file until they are converted (see `design/proposals/readable-conformance-tests.md`).
+A fixture id is its path under `tests/` without extension. A `check` fixture states what it expects in its own file: the last lines are `// expect-error: <code> <line>:<col>[-<line>:<col>] <message>` (one per diagnostic, with `// expect-fix: <span> "<replacement>"` after one that offers a fix) and `// expect-exit: <n>` when there is no diagnostic or the exit code is not 1; they follow the program, so their line numbers are the file's own. Other phases use the same trailing block: `run` has `// expect-exit: <n>` and `// expect-stdout: <line>` / `// expect-stderr: <line>` (`-partial` when the output has no final newline); `test` has `// expect-exit:`, `// expect-tests: passed=<n> failed=<n>`; `parse` has diagnostics plus `// expect-format: unchanged|rewritten` (then `// expect-formatted:` lines) or `// expect-format-exit: <n>`. A project directory keeps its lines at the end of `conform.meta`. No fixture has a JSON sidecar (see `design/proposals/readable-conformance-tests.md`).
 
 | directory | contents |
 | --- | --- |
@@ -54,7 +54,7 @@ Tier: `tier-core` imports nothing, `tier-stdlib` imports only pure modules, `tie
 A new behavior test goes in `lang/<feature>/` (or `lang/stdlib/`) as an in-source `test` with `expect_equal` and `phase=test`; a rejected program goes in `diagnostics/<family>/` (`phase=check`, then `--record --inline`), and a multi-file program in `lang/projects/<name>/` with `conform.meta`. Modules that single-file fixtures import live in a `support/` directory beside them (not fixtures). This corpus is the one test runner for `.ms` behavior.
 
 1. Write the `.ms` file with a `// conform:` header, choose tags and phase.
-2. `ms run tools/conform-run.ms -- --record --only-missing <slug>` writes the expectation (`--inline` writes a `check` fixture's as `// expect-` lines); each fixture is observed twice and refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized; `--no-stable-check` skips the second run). `--prune` deletes fixtures that cannot be recorded.
+2. `ms run tools/conform-run.ms -- --record --only-missing <slug>` writes the expectation (`--inline` writes the `// expect-` lines); each fixture is observed twice and refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized; `--no-stable-check` skips the second run). `--prune` deletes fixtures that cannot be recorded.
 3. Review the expectation. It records what the binary does, bugs included; a fixture that pins a bug keeps its expectation and joins `expect-fail.txt` with a reason.
 4. Fixtures whose output varies between runs (for example diagnostics emitted in map order) must be deleted, not recorded.
 

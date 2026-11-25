@@ -77,3 +77,5 @@ test "an enum payload holds a record whose leaves differ in size" {
 	expect_equal(mark == Shape.Mark(inner: mixed(99)), true)?
 	expect_equal(mark == Shape.Mark(inner: mixed(98)), false)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

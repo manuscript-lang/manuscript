@@ -88,3 +88,22 @@ export fn main() Int {
 	say(f"acc14 = {acc14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [msmsnaïve]
+// expect-stdout: b2 = false
+// expect-stdout: i3 = 752689326628
+// expect-stdout: i5 = 752689326628
+// expect-stdout: i6 = -40
+// expect-stdout: s7 = [  deddap  ]
+// expect-stdout: s8 = [betatab\there]
+// expect-stdout: s9 = [msmsnaïve]
+// expect-stdout: 752688754923 520 false sum 752688755443
+// expect-stdout: b10 = false
+// expect-stdout: i11 = 21827990472257
+// expect-stdout: gcd(880, 1930) = 10
+// expect-stdout: f12 = 173.693
+// expect-stdout: l13 = [12, -20, -18] len 3
+// expect-stdout: gcd(2793, 2645) = 1
+// expect-stdout: 170920605817 3 false sum 170920605820
+// expect-stdout: fib(23) = 28657
+// expect-stdout: acc14 = 70

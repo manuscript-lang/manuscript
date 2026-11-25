@@ -9,3 +9,5 @@ import (
 test "expect_fault reports the injected fault" {
 	expect_contains(expect_fault(() => panic("boom"))?, "boom")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -32,3 +32,11 @@ export fn main() Int {
 	say(f"b6 = {b6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [MiXeD CaSe]
+// expect-stdout: i2 = 9
+// expect-stdout: s3 = [MiXeD CaSe]
+// expect-stdout: -4 7655400 true sum 7655396
+// expect-stdout: f4 = 61082862913936.414
+// expect-stdout: l5 = [-24, -28, -6] len 3
+// expect-stdout: b6 = false

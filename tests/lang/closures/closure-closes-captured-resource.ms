@@ -44,3 +44,10 @@ fn main() Void {
 	print("after local call")
 	print(f"bound {bound_temporary()}")
 }
+// expect-exit: 0
+// expect-stdout: after parameter call
+// expect-stdout: after local call
+// expect-stdout: close 3
+// expect-stdout: bound 6
+// expect-stdout: close 2
+// expect-stdout: close 1

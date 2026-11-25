@@ -40,3 +40,4 @@ test "glob matching rejects NUL in the path as it does in the pattern" {
 	expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)?
 	expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)?
 }
+// expect-format: unchanged

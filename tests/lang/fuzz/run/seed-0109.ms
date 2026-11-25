@@ -64,3 +64,17 @@ export fn main() Int {
 	say(f"i10 = {i10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 69768.1855
+// expect-stdout: s2 = [654055170802:delta]
+// expect-stdout: -50 66343 true sum 66293
+// expect-stdout: i3 = 35
+// expect-stdout: f4 = 69768.1855
+// expect-stdout: }s{ecarb
+// expect-stdout: f5 = 10000000210847.191
+// expect-stdout: i6 = 0
+// expect-stdout: f7 = 697681874578026400
+// expect-stdout: fib(27) = 196418
+// expect-stdout: l8 = [] len 0
+// expect-stdout: l9 = [] len 0
+// expect-stdout: i10 = -36

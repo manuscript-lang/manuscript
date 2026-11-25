@@ -17,3 +17,5 @@ test "try inside a loop over a list of promises" {
 
 	expect_equal(total, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

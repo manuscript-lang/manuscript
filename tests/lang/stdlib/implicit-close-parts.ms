@@ -177,3 +177,5 @@ test "a record handed to the caller is not closed by the callee" {
 	expect_equal(closed(log), "")?
 	expect_equal(p.first.id, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

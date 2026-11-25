@@ -35,3 +35,5 @@ test "two receivers implement different applications of a generic contract" {
 	expect_equal(a, 15)?
 	expect_equal(b, "<5>")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

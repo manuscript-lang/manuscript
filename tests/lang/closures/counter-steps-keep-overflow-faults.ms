@@ -73,3 +73,5 @@ test "conditionally reassigned counter still faults" {
 	)?
 	message | expect_contains("Int overflow;")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -162,3 +162,5 @@ test "nonzero permutations retain position order and own their results" {
 	expect_equal(input, [[1], [2], [3]])?
 	expect_equal(result[1], [[1], [3]])?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

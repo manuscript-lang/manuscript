@@ -71,3 +71,17 @@ export fn main() Int {
 	say(f"f9 = {f9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -33
+// expect-stdout: b2 = false
+// expect-stdout: s3 = [brace{s}]
+// expect-stdout: 18527048720928 330 false sum 18527048721258
+// expect-stdout: s4 = [Tab\there]
+// expect-stdout: collatz(1715) = 29
+// expect-stdout: i5 = -259469
+// expect-stdout: emoji 😀brace{s}
+// expect-stdout: l6 = [2, 25] len 2
+// expect-stdout: i7 = -11416636
+// expect-stdout: s8 = [Tab\thereTab\there399582260:Tab\there日本語]
+// expect-stdout:   deddap\x20\x20
+// expect-stdout: f9 = -6.235579155106149e-27

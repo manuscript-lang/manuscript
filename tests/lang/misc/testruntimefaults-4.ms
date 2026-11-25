@@ -8,3 +8,5 @@ fn divide(value Int, divisor Int) Int {
 test "fault" {
 	_impossible := divide(value: 3, divisor: 0)
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

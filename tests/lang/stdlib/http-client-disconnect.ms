@@ -50,3 +50,6 @@ export fn main() Int {
 
 	return 1
 }
+// expect-exit: 0
+// expect-stdout: handler cleanup ran
+// expect-stdout: done

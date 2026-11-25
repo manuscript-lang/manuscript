@@ -113,3 +113,5 @@ test "nested try in a direct method becomes an error result" {
 	expect_equal(run_bound(chain, -5), -1)?
 	expect_equal(run_bound(chain, 5), 16)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

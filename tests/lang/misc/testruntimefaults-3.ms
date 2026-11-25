@@ -8,3 +8,5 @@ fn sum(value Int) Int {
 test "fault" {
 	_impossible := sum(value: 9223372036854775807)
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

@@ -53,3 +53,15 @@ export fn main() Int {
 	say(f"s9 = [{s9}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 528.694
+// expect-stdout: f2 = 1057.388
+// expect-stdout: Tab\there
+// expect-stdout: f3 = 1.0049218118771375
+// expect-stdout: acc4 = 0
+// expect-stdout: i5 = -26
+// expect-stdout: s6 = [héllo]
+// expect-stdout: b7 = true
+// expect-stdout: -11:quote"d
+// expect-stdout: f8 = 63.285
+// expect-stdout: s9 = [héllo]

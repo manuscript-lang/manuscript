@@ -17,3 +17,4 @@ fn h(xs List[Int]) List[Int] {
 export fn main() Int {
 	return f(2) + g(3) + h([1, 5])[1]
 }
+// expect-exit: 10

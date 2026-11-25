@@ -74,3 +74,20 @@ export fn main() Int {
 	say(f"b12 = {b12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 34
+// expect-stdout: l2 = [15, 16, 12, 20] len 4
+// expect-stdout: s3 = [ms]
+// expect-stdout: f4 = 0
+// expect-stdout: 34 -14853 false sum -14819
+// expect-stdout: l5 = [4, -24] len 2
+// expect-stdout: i6 = 74
+// expect-stdout: s7 = [MSmsquote"dx]
+// expect-stdout: b8 = true
+// expect-stdout: acc9 = -20
+// expect-stdout: gamma
+// expect-stdout: i10 = 29
+// expect-stdout: MSmsquote"dxMSmsquote"dx
+// expect-stdout: l11 = [] len 0
+// expect-stdout: 7834067785564 0 false sum 7834067785564
+// expect-stdout: b12 = false

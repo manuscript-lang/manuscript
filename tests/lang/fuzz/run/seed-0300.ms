@@ -53,3 +53,10 @@ export fn main() Int {
 	say(f"f3 = {f3}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: Tab\there
+// expect-stdout: i2 = 108000
+// expect-stdout: fib(32) = 2178309
+// expect-stdout: fact(14) = 87178291200
+// expect-stdout: f3 = Infinity

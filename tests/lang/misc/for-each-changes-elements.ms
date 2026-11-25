@@ -67,3 +67,5 @@ test "Map.for_each reads on a let map" {
 	m.for_each((k, v) => total += v)
 	expect_equal(total, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

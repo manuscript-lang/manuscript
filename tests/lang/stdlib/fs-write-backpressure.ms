@@ -27,3 +27,5 @@ test "more large writes than pool slots all complete" {
 		back.length() | expect_equal(256 * 1024)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -42,3 +42,5 @@ test "calendar format retains minimum widths outside UTC year limits" {
 		"10000-01-01 23:58:59.999 +23:59 [+23:59]",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

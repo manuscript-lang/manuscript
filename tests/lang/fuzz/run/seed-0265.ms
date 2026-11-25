@@ -61,3 +61,14 @@ export fn main() Int {
 	say(f"s7 = [{s7}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: fib(37) = 24157817
+// expect-stdout: QUOTE"D
+// expect-stdout: s1 = [héllo]
+// expect-stdout: l2 = [-21, -9, 10, 0, 17] len 5
+// expect-stdout: s3 = [olléh]
+// expect-stdout: i4 = -2
+// expect-stdout: s5 = [héllox]
+// expect-stdout: f6 = 1e+25
+// expect-stdout: x
+// expect-stdout: s7 = [-2:héllo]

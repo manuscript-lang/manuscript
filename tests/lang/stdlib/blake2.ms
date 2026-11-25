@@ -59,3 +59,5 @@ test "BLAKE2s matches reference digests" {
 		"69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

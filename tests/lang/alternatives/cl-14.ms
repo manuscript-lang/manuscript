@@ -31,3 +31,5 @@ test "unchanged propagated error" {
 	expect_equal(summarize(doubled(3)), 6)?
 	expect_equal(summarize(doubled(-1)), -1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -133,3 +133,5 @@ test "semver reads and orders calendar versions" {
 		i += 1
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

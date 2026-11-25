@@ -36,3 +36,5 @@ fn main() Void! {
 	void remove(dir, true)
 	print("done")
 }
+// expect-exit: 0
+// expect-stdout: done

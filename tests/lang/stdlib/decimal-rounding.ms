@@ -69,3 +69,5 @@ test "exact rounding retains values at every supported precision" {
 		expect_equal(((-1e-6176d).round(6176, mode)?), -1e-6176d)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

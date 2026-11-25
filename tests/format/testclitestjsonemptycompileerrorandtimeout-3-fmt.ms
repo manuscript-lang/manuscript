@@ -10,3 +10,4 @@ test "timeout" {
 test "after" {
 	return
 }
+// expect-format: unchanged

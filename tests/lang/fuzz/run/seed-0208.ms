@@ -44,3 +44,13 @@ export fn main() Int {
 	say(f"f6 = {f6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -26347684
+// expect-stdout: gcd(2938, 1113) = 1
+// expect-stdout: l2 = [] len 0
+// expect-stdout: l3 = [] len 0
+// expect-stdout: deltaquote"d
+// expect-stdout: f4 = 281886899999997800000
+// expect-stdout: s5 = [back\\slashbrace{s}alpha]
+// expect-stdout: -26347684 -49 true sum -26347733
+// expect-stdout: f6 = 281886899999997800000

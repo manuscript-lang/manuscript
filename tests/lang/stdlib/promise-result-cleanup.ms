@@ -112,3 +112,5 @@ test "a fault frees the work and reports once" {
 	reason := promise(() => boom(3)).wait() | expect_error?
 	expect_equal(reason.kind, "EIO")?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

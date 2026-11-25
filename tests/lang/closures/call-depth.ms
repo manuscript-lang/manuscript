@@ -33,3 +33,5 @@ test "recursion below the limit runs normally" {
 test "method recursion below the limit runs normally" {
 	(Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

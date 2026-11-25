@@ -43,3 +43,5 @@ test "JSON strict stringify accepts none and nulls that are values" {
 	expect_equal(stringify(plain, StringifyOptions(strict: true)), ok(expected.clone()))?
 	expect_equal(stringify(plain), ok(expected))?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -60,3 +60,10 @@ fn main() Void {
 	stop_in_else()
 	skip_in_else()
 }
+// expect-exit: 0
+// expect-stdout: body0
+// expect-stdout: skip0
+// expect-stdout: skip2
+// expect-stdout: else0
+// expect-stdout: else0
+// expect-stdout: else2

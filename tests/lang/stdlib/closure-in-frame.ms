@@ -30,3 +30,5 @@ test "a closure that outlives the frame owns its captures" {
 	expect_equal(kept(1), 37)?
 	expect_equal(apply(kept, 3), 3 * 36 + 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

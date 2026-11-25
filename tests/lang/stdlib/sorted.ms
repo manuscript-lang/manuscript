@@ -160,3 +160,5 @@ test "sorted set keeps unique ordered members" {
 	set.clear()
 	expect_true(set.is_empty())?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

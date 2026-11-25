@@ -63,3 +63,5 @@ test "an arm over a try owns its payload and hands it on without a copy" {
 	expect_equal(null_arm()?, -1)?
 	expect_equal(many_views()?, 400)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

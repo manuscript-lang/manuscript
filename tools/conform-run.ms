@@ -35,8 +35,8 @@ import (
 
 	proven from "./conform/batch.ms",
 	Fixture, fixtures, read_text, text_of from "./conform/corpus.ms",
-	render, with_lines from "./conform/expect.ms",
-	number, observe, same, text_value from "./conform/observe.ms",
+	render_phase, with_lines from "./conform/expect.ms",
+	number, observe, same, text_value, without_member from "./conform/observe.ms",
 	tool_ms from "./lib.ms",
 )
 
@@ -71,9 +71,9 @@ fn sweep(ms, build_type String, chunk List[Fixture], detail Bool) List[String] {
 // recorded sidecar.
 fn matches(fx Fixture, observed JsonValue) Bool {
 	if fx.secondary { return stringify(observed).get() == "{\"clean\":true}" }
-	if fx.inline.is_empty() { return same(fx.expected, observed) }
+	if fx.inline.is_empty() { return same(fx.expected, recorded_form(observed)) }
 
-	return render(observed) == fx.inline
+	return render_phase(fx.phase, observed) == fx.inline
 }
 
 fn wanted(fx Fixture) String {
@@ -83,7 +83,12 @@ fn wanted(fx Fixture) String {
 
 fn seen(fx Fixture, observed JsonValue) String {
 	if fx.inline.is_empty() { return clipped(observed) }
-	return render(observed).join("\n          ")
+	return render_phase(fx.phase, observed).join("\n          ")
+}
+
+// An observation as a sidecar records it: `unchanged` is only for inline expectations.
+fn recorded_form(observed JsonValue) JsonValue {
+	return without_member(observed, "unchanged")
 }
 
 // The first 2500 characters of a value, for `CONFORM_DIFF=1` failure reports.
@@ -158,22 +163,22 @@ fn record_chunk(
 			continue
 		}
 
-		if (
-			(inline or not fx.inline.is_empty())
-			and fx.phase == "check"
-			and not fx.is_dir
-		) {
-			// Lines after the program move a diagnostic reported at the end of the
-			// file, so the expectation is observed again until it is stable.
-			var expectation = render(first)
-			current := read_text(fx.path)
+		if inline or not fx.inline.is_empty() {
+			// A directory fixture keeps its expectation in `conform.meta`.
+			target := if fx.is_dir { f"{fx.path}/conform.meta" } else { fx.path.clone() }
+			var expectation = render_phase(fx.phase, first)
+			current := read_text(target)
 			var text = with_lines(current, expectation)
+
+			// Lines after a program move a diagnostic reported at the end of the file,
+			// so a parse or check expectation is observed again until it is stable.
 			var rounds = 0
+			positional := fx.phase == "check" or fx.phase == "parse"
 
-			while text != current and rounds < 3 {
-				void write_file(fx.path, text, replace: true).wait().get()
+			while positional and not fx.is_dir and text != current and rounds < 3 {
+				void write_file(target, text, replace: true).wait().get()
 
-				again := render(observe(ms, fx, build_type))
+				again := render_phase(fx.phase, observe(ms, fx, build_type))
 				if again == expectation { break }
 
 				expectation = again.clone()
@@ -184,6 +189,7 @@ fn record_chunk(
 			if text == current {
 				lines.append("same")
 			} else {
+				void write_file(target, text, replace: true).wait().get()
 				void remove(fx.sidecar)
 				lines.append("wrote")
 			}
@@ -195,7 +201,7 @@ fn record_chunk(
 		document.add("format", number(1))
 		document.add("phase", text_value(fx.phase))
 		document.add("oracle", text_value(version))
-		document.add("expected", first)
+		document.add("expected", recorded_form(first))
 
 		text := (
 			stringify(
@@ -274,7 +280,9 @@ fn main() Int {
 	var chosen = List[Fixture]()
 
 	for fx in fixtures(f"{root}/tests", phase, filters) {
-		if phase != "parse" and fx.tags.contains("aliasing") { continue }
+		if phase != "parse" and not recording and fx.tags.contains(
+			"aliasing"
+		) { continue }
 
 		chosen.append(fx.clone())
 	}

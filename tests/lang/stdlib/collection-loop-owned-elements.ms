@@ -63,3 +63,5 @@ test "set values move from their owned traversal result" {
 	expect_equal(out, ["alpha", "beta", "gamma"])?
 	expect_equal(source.length(), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

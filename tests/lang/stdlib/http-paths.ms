@@ -176,3 +176,5 @@ test "buffered and reusable clients reject URLs with an empty host" {
 		)
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

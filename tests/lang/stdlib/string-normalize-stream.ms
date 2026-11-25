@@ -84,3 +84,5 @@ test "normalization retains lookahead across a complete combining segment" {
 		Error("string: limit exceeded", kind: "EOVERFLOW"),
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

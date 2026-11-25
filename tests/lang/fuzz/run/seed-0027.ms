@@ -71,3 +71,21 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [23, -15, -9] len 3
+// expect-stdout: b2 = false
+// expect-stdout: l3 = [23, -15, -9, 23, -15, -9] len 6
+// expect-stdout: brace{s}
+// expect-stdout: b4 = false
+// expect-stdout: i5 = 968408581873
+// expect-stdout: s6 = [968408530816:BACK\\SLASH]
+// expect-stdout: b7 = false
+// expect-stdout: l8 = [-15, -12, -12] len 3
+// expect-stdout: gamma
+// expect-stdout: i9 = 968408581807
+// expect-stdout: -968407979936 61 true sum -968407979875
+// expect-stdout: i10 = -968408808559
+// expect-stdout: i11 = 6
+// expect-stdout: i12 = 6580348
+// expect-stdout: i13 = -12
+// expect-stdout: -54230893279640 -6 true sum -54230893279646

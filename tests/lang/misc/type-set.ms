@@ -45,3 +45,5 @@ test "sized integers keep their overflow fault" {
 	message := expect_fault(overflow)?
 	expect_contains(message, "Int overflow")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

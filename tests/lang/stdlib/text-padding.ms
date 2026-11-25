@@ -111,3 +111,5 @@ test "small strings join and repeat across the inline size" {
 	expect_equal("日本語".scalar_length(), 3)?
 	expect_equal("日本語日本語".scalar_length(), 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

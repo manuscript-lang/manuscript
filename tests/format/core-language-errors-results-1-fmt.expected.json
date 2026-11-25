@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import Decimal from \"@std/math/decimal.ms\"\n\nenum DiscountError {\n\tInvalidPrice\n\tInvalidPercent\n}\n\nfn discount(price, percent Decimal) Result[Decimal, DiscountError] {\n\tif price < 0d {\n\t\treturn error(InvalidPrice)\n\t}\n\tif percent < 0d or percent > 100d {\n\t\treturn error(InvalidPercent)\n\t}\n\n\treturn ok(price * (1d - percent / 100d))\n}\n"
-  }
-}

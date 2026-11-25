@@ -36,3 +36,4 @@ export fn main() Int {
 	say(f"fact(19) = {fact(19)}")
 	return 0
 }
+// expect-format: unchanged

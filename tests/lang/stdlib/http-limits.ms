@@ -71,3 +71,5 @@ test "serve rejects a zero request timeout" {
 	)?
 	expect_equal(failure, Error("HTTP: invalid input", kind: "EINVAL"))?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

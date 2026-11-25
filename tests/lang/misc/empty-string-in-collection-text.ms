@@ -14,3 +14,5 @@ test "an empty string on its own and in other values" {
 	expect_equal(f"{["", "x"]}", "[\"\", x]")?
 	expect_equal(m.to_string(), "Map()")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -79,3 +79,5 @@ test "map keys read after the map's earlier uses stay valid" {
 	expect_equal(seen, 6)?
 	expect_equal(n > 0, true)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

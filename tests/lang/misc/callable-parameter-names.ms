@@ -38,3 +38,5 @@ test "callable identity uses ordered types rather than parameter names" {
 	expect_equal(factory(true)(3), 4)?
 	expect_equal(factory(false)(3), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

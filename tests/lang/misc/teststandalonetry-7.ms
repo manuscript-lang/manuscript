@@ -12,3 +12,5 @@ test "unit" {
 test "fall" {
 	_x := 1
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

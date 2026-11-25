@@ -50,3 +50,12 @@ export fn main() Int {
 	print(total)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: plain ascii text that is longer than the inline size
+// expect-stdout: unicode é🙂 text that is also past the inline size
+// expect-stdout: short
+// expect-stdout:
+// expect-stdout: cdefghijklmnopqrstuvwxyz0123
+// expect-stdout: 84
+// expect-stdout: owned long enough to be a heap string, grown in place!owned long enough to be a heap string, grown in place
+// expect-stdout: 48890

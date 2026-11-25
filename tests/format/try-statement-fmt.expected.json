@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn parse(n Int) Int! {\n\tif n < 0 {\n\t\treturn error(Error(\"neg\"))\n\t}\n\treturn ok(n)\n}\n\nfn bound(n Int) Int! {\n\tv := parse(n)?\n\treturn ok(v + 1)\n}\n\nfn reassigned(n Int) Int! {\n\tvar total = 1\n\ttotal = parse(n)?\n\treturn ok(total * 2)\n}\n\nfn check(n Int) Void! {\n\tif n < 0 {\n\t\treturn error(Error(\"neg\"))\n\t}\n}\n\nfn discarded(n Int) Int! {\n\tcheck(n)?\n\treturn ok(7)\n}\n\nfn code(r Int!) Int {\n\treturn r.clone().get_or(-1)\n}\n\nfn nested(n Int) Int! {\n\treturn ok((parse(n)?) + (parse(n - 5)?))\n}\n\nfn chained(n Int) Int! {\n\ta := bound(n)?\n\tb := reassigned(a - 10)?\n\treturn ok(b)\n}\n\nfn in_loop(values List[Int]) Int! {\n\tvar sum = 0\n\tfor v in values {\n\t\tsum += parse(v)?\n\t}\n\treturn ok(sum)\n}\n\nfn in_lambda(n Int) Int! {\n\tinner := fn() Int! {\n\t\tv := parse(n)?\n\t\treturn ok(v * 10)\n\t}\n\n\tr := inner()?\n\treturn ok(r + 1)\n}\n\ntest \"statement returns? the error and binds the value\" {\n\texpect_equal(code(bound(4)), 5)?\n\texpect_equal(code(bound(-1)), -1)?\n\texpect_equal(code(reassigned(3)), 6)?\n\texpect_equal(code(reassigned(-2)), -1)?\n\texpect_equal(code(discarded(1)), 7)?\n\texpect_equal(code(discarded(-1)), -1)?\n}\n\ntest \"nested? in expressions and chains still propagates\" {\n\texpect_equal(code(nested(6)), 7)?\n\texpect_equal(code(nested(2)), -1)?\n\texpect_equal(code(chained(12)), 6)?\n\texpect_equal(code(chained(3)), -1)?\n}\n\ntest \"in? loops and lambdas\" {\n\texpect_equal(code(in_loop([1, 2, 3])), 6)?\n\texpect_equal(code(in_loop([1, -2, 3])), -1)?\n\texpect_equal(code(in_lambda(2)), 21)?\n\texpect_equal(code(in_lambda(-2)), -1)?\n}\n"
-  }
-}
