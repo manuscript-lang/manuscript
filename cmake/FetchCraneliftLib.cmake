@@ -1,0 +1,85 @@
+# Fetches the pinned shared Cranelift library for this host (cmake/toolchain/cranelift-lib.lock: release tag, version and
+# the SHA-256 of each platform's archive) from manuscript-lang/cranelift-bundle into .artifacts/cranelift-lib
+# (CRANELIFT_LIB_WORK overrides it) and prints the absolute path of the library, which is what `MS_CRANELIFT` takes. When
+# GITHUB_ENV is set it also appends `MS_CRANELIFT=<path>` there. Does nothing but print when the library is already there.
+#
+#   cmake -DROOT=<source dir> -DARCH=<amd64|arm64> -P cmake/FetchCraneliftLib.cmake
+#
+# CMake and not a Manuscript program for the reason cmake/FetchLlvmLib.cmake gives.
+cmake_minimum_required(VERSION 3.25)
+
+file(STRINGS "${ROOT}/cmake/toolchain/cranelift-lib.lock" lock)
+foreach(line IN LISTS lock)
+  if(line MATCHES "^tag +(.+)$")
+    set(tag "${CMAKE_MATCH_1}")
+  elseif(line MATCHES "^version +(.+)$")
+    set(version "${CMAKE_MATCH_1}")
+  elseif(line MATCHES "^([0-9a-f]+)  (.+)$")
+    set(digest_${CMAKE_MATCH_2} "${CMAKE_MATCH_1}")
+  endif()
+endforeach()
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+  set(os darwin)
+  set(library lib/libms_cranelift.dylib)
+elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+  set(os windows)
+  set(library bin/ms_cranelift.dll)
+  set(exe .exe)
+else()
+  set(os linux)
+  set(library lib/libms_cranelift.so)
+endif()
+
+set(kind cranelift-lib)
+set(here_infix "")
+set(asset "${kind}-${version}-${os}-${ARCH}.tar.gz")
+if(NOT DEFINED digest_${asset})
+  message(FATAL_ERROR "cmake/toolchain/cranelift-lib.lock has no digest for ${asset}")
+endif()
+
+if(DEFINED ENV{CRANELIFT_LIB_WORK} AND NOT "$ENV{CRANELIFT_LIB_WORK}" STREQUAL "")
+  set(work "$ENV{CRANELIFT_LIB_WORK}")
+else()
+  set(work "${ROOT}/.artifacts/cranelift-lib")
+endif()
+set(here "${work}/${tag}-${here_infix}${os}-${ARCH}")
+
+if(NOT EXISTS "${here}/${library}")
+  set(partial "${here}.tmp")
+  file(REMOVE_RECURSE "${partial}")
+  file(MAKE_DIRECTORY "${partial}")
+  set(url "https://github.com/manuscript-lang/cranelift-bundle/releases/download/${tag}/${asset}")
+  # CI runners now and then fail to resolve github.com or drop a transfer: retry before giving up.
+  foreach(attempt RANGE 1 4)
+    # No EXPECTED_HASH here: with it, a failed download is a fatal error instead of a status. The digest is checked below.
+    file(DOWNLOAD "${url}" "${partial}/${asset}" STATUS download TLS_VERIFY ON)
+    list(GET download 0 code)
+    if(code EQUAL 0)
+      file(SHA256 "${partial}/${asset}" actual)
+      if(actual STREQUAL digest_${asset})
+        break()
+      endif()
+      set(download "0;digest ${actual} is not ${digest_${asset}}")
+      set(code 1)
+    endif()
+    message(STATUS "fetch of ${url} failed (attempt ${attempt} of 4): ${download}")
+    file(REMOVE "${partial}/${asset}")
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E sleep ${attempt}0)
+  endforeach()
+  if(NOT code EQUAL 0)
+    file(REMOVE_RECURSE "${partial}")
+    message(FATAL_ERROR "cannot fetch ${url}: ${download}")
+  endif()
+  file(ARCHIVE_EXTRACT INPUT "${partial}/${asset}" DESTINATION "${partial}")
+  file(REMOVE "${partial}/${asset}")
+  file(REMOVE_RECURSE "${here}")
+  file(RENAME "${partial}" "${here}")
+endif()
+
+file(REAL_PATH "${here}/${library}" path)
+set(exports "MS_CRANELIFT=${path}\n")
+execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${path}")
+if(DEFINED ENV{GITHUB_ENV} AND NOT "$ENV{GITHUB_ENV}" STREQUAL "")
+  file(APPEND "$ENV{GITHUB_ENV}" "${exports}")
+endif()
