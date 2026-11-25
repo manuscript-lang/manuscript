@@ -7,11 +7,11 @@ Decision: `Int` arithmetic faults on overflow (design contract). An optimizer ma
 Measured 2026-11-12: speculating (vector overflow flag per chunk, scalar replay) loses to the scalar checked loop, and LLVM 23 vectorizes neither `with.overflow` reductions nor early-exit loops with stores. The lever is removing the check: the range pass treats an accumulator whose addends lie in `[-2^16, 2^16]` (a widened `UInt8`/`Int8`/`Int16`/`UInt16`, or a bounded value) as a bounded counter, so a byte sum is 5x faster ([proposal](../../proposals/checked-int-loops.md), [fixture](../../../tests/lang/numbers/narrow-sums-keep-values.ms)).
 
 Apply when: adding overflow-check elimination, bounds narrowing, or constant folding.
-Evidence: [overflow faults](../../../tests/lang/closures/numeric-faults.ms), [bounded arithmetic](../../../tests/lang/misc/bounded-int-arithmetic.ms), [counter step](../../../tests/lang/closures/counter-steps-keep-overflow-faults.ms), [int identities](../../../tests/lang/lists/int-identities.ms).
+Evidence: [overflow faults](../../../tests/lang/closures/numeric-faults.ms), [bounded arithmetic](../../../tests/lang/numbers/bounded-int-arithmetic.ms), [counter step](../../../tests/lang/closures/counter-steps-keep-overflow-faults.ms), [int identities](../../../tests/lang/lists/int-identities.ms).
 Evidence: interpreter, native lowering, simplifier boundary regressions.
 Evidence: simplifier and checked-CSE regressions, dominator-scoped value numbering.
 Evidence: range analysis, saved-length regressions.
-Evidence: [integer conversion regression](../../../tests/lang/misc/int-float32-rounding.ms), MIR conversion fixture.
+Evidence: [integer conversion regression](../../../tests/lang/numbers/int-float32-rounding.ms), MIR conversion fixture.
 Verify: both signed and unsigned integer conversions to `Float32` round directly to binary32. An intermediate binary64 conversion can erase which side of a midpoint a large integer is on; cover direct calls and bound conversion methods.
 Evidence: backend settings and compile regression, profile options.
 Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.

@@ -27,7 +27,7 @@ clone can also leave a borrowed String pointing at consumed storage. Keep the si
 path for literals and immutable keys the other operand does not reference; an immutable
 key can still be consumed by that operand. A direct numeric-literal operand also permits a
 mutable key because it cannot access that key. Otherwise use ordinary lowering. See
-[key stability regressions](../../../tests/lang/misc/map-counter-key-stability.ms) and
+[key stability regressions](../../../tests/lang/maps/map-counter-key-stability.ms) and
 [#2857](https://github.com/manuscript-lang/manuscript/issues/2857).
 
 The fused key slot must also have the map's checked key representation. A plain key lifted
