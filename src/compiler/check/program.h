@@ -54,6 +54,7 @@ MS_MAP_DEFINE(MsScope, ms_scope, uint32_t, MsSymbolId, ms_hash_u32_key, ms_equal
 /* One loaded module: its tree, its file name and its scope of module-level names. */
 typedef struct MsModuleInfo {
   MsName file; /* the name the file is reported under */
+  MsName id;   /* the name the bundled library knows the module by: `file`, or `@std/<name>` for a checkout copy of a bundled file */
   const MsModule *tree;
   MsScope scope;      /* owned: name -> symbol id */
   MsScope imports;    /* owned: imported name -> symbol id (0 when the import did not resolve) */
@@ -166,6 +167,12 @@ typedef struct MsCheckProgram {
   MsMethodKeyList deferred_index; /* the deferred bodies by (module, node), sorted */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */
 } MsCheckProgram;
+
+/* Whether `module` is the program's own source, held to the rules for user code. A bundled module, and the checkout
+ * copy of one an editor opens, follow the standard library's rules instead. */
+static inline bool ms_check_is_user_module(const MsCheckProgram *program, uint32_t module) {
+  return module < program->user_modules && program->modules.ptr[module].id == program->modules.ptr[module].file;
+}
 
 void ms_check_program_init(MsCheckProgram *program, MsNames *names);
 void ms_check_program_free(MsCheckProgram *program);

@@ -71,7 +71,7 @@ static bool is_opaque(const MsCheckProgram *program, const MsDef *def) {
 /* Whether a bundled type carries `// ms: <word>` among the comment lines directly above its declaration. */
 static bool has_marker(const MsCheckProgram *program, const MsDef *def, const char *word) {
   const MsSymbol *symbol = &program->symbols.ptr[def->symbol];
-  const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].file);
+  const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].id);
   MsSpan name = {0};
   MsStdSource source = {0};
   if (!ms_span_starts_with(file, ms_span_of_text("@std/")) || !ms_span_slice(file, 5, file.len, &name) ||

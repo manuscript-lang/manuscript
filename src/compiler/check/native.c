@@ -17,7 +17,7 @@
 static MsTy standard_interface(MsCheckProgram *program, const char *name) {
   for (size_t index = 1; index < program->symbols.len; index++) {
     const MsSymbol *symbol = &program->symbols.ptr[index];
-    if (symbol->kind == MS_SYMBOL_TYPE && symbol->ty != MS_TY_NONE && symbol->module >= program->user_modules &&
+    if (symbol->kind == MS_SYMBOL_TYPE && symbol->ty != MS_TY_NONE && !ms_check_is_user_module(program, symbol->module) &&
         ms_ty_kind(&program->types, symbol->ty) == MS_TY_CONTRACT &&
         ms_span_is_text(ms_names_span(program->names, symbol->name), name)) {
       return symbol->ty;
@@ -60,7 +60,7 @@ static void collect_shared_sets(MsCheckProgram *program) {
   ms_ty_list_clear(&memo->shared_sets);
   for (size_t index = 1; index < program->symbols.len; index++) {
     const MsSymbol *symbol = &program->symbols.ptr[index];
-    if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || symbol->module < program->user_modules ||
+    if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || ms_check_is_user_module(program, symbol->module) ||
         ms_ty_kind(types, symbol->ty) != MS_TY_CONTRACT || symbol->var_count != 1) {
       continue;
     }
@@ -185,7 +185,7 @@ void ms_check_native_names(MsCheckProgram *program, MsTy receiver, MsSpanList *o
 bool ms_check_standard_operation(MsCheckProgram *program, MsName name, MsTy receiver) {
   for (size_t index = 1; index < program->symbols.len; index++) {
     const MsSymbol *symbol = &program->symbols.ptr[index];
-    if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || symbol->module < program->user_modules ||
+    if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || ms_check_is_user_module(program, symbol->module) ||
         ms_ty_kind(&program->types, symbol->ty) != MS_TY_CONTRACT) {
       continue;
     }

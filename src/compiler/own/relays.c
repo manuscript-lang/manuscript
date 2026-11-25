@@ -141,6 +141,9 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
 void ms_own_relays(MsCheckProgram *program) {
   MsClassifier classes = ms_class_new(program);
   for (uint32_t module = 0; module < program->user_modules && module < (uint32_t)program->modules.len; module++) {
+    if (!ms_check_is_user_module(program, module)) {
+      continue;
+    }
     Relays pass = {.program = program, .classes = &classes, .module = module, .facts = &program->modules.ptr[module].facts};
     const MsModule *tree = program->modules.ptr[module].tree;
     const MsVisitor visitor = {.ctx = &pass, .expr = visit_expr, .stmt = visit_stmt};

@@ -90,6 +90,7 @@ typedef struct MsGraphModule {
   MsSpan name;   /* logical path: relative to the project root */
   MsSpan path;   /* canonical file */
   MsSpan source; /* the text as read */
+  MsSpan std_name; /* `math/math.ms` when this file is the checkout copy of that bundled module (`src/stdlib/math/math.ms`); else empty */
   MsModule syntax;
   const int32_t *targets;
 } MsGraphModule;

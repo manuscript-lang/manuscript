@@ -58,7 +58,7 @@ void ms_check_type_variables(MsCheckProgram *program, uint32_t module) {
       for (uint32_t before = 0; before < index; before++) {
         repeated = repeated || params.ptr[before]->name == params.ptr[index]->name;
       }
-      if (module < program->user_modules && (repeated || ms_check_intrinsic_type_param(program, params.ptr[index]->name))) {
+      if (ms_check_is_user_module(program, module) && (repeated || ms_check_intrinsic_type_param(program, params.ptr[index]->name))) {
         ms_check_report_type_param(program, module, params.ptr[index]);
       }
       const MsName var_id = ms_check_unique_id(program, "var");

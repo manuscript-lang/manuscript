@@ -466,6 +466,9 @@ static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams para
 void ms_own_mixed_returns(MsCheckProgram *program) {
   MsClassifier classes = ms_class_new(program);
   for (uint32_t module = 0; module < program->user_modules && module < program->modules.len; module++) {
+    if (!ms_check_is_user_module(program, module)) {
+      continue;
+    }
     MsFacts *facts = &program->modules.ptr[module].facts;
     const MsModule *tree = program->modules.ptr[module].tree;
     MsTy *written = written_types(program, module, facts->node_count);

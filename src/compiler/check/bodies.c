@@ -680,7 +680,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     }
     break;
   case MS_D_INTERFACE:
-    if (decl->u.iface.methods.len == 0 && body->module < body->program->user_modules && !body->quiet) {
+    if (decl->u.iface.methods.len == 0 && ms_check_is_user_module(body->program, body->module) && !body->quiet) {
       ms_check_report(body->program, body->module, decl->pos, MS_CHECK_TYPE,
                       ms_string_from_span(ms_span_of_text("an interface declares at least one operation; only the standard "
                                                           "library declares a property without operations, like `Data`")));

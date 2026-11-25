@@ -16,7 +16,7 @@ bool ms_check_std_path(MsSpan path, MsSpan *name) {
 /* The index of the module with logical path `path`, or false. */
 static bool find_module(const MsCheckProgram *program, MsName file, uint32_t *out) {
   for (uint32_t index = 0; index < program->modules.len; index++) {
-    if (program->modules.ptr[index].file == file) {
+    if (program->modules.ptr[index].id == file) {
       *out = index;
       return true;
     }
@@ -190,7 +190,7 @@ void ms_check_bind_imports(MsCheckProgram *program, uint32_t module) {
       }
     }
     const MsSymbolId *earlier = ms_scope_get(&program->modules.ptr[module].imports, import->name);
-    if (earlier != NULL && module < program->user_modules) {
+    if (earlier != NULL && ms_check_is_user_module(program, module)) {
       report_collision(program, module, import, *earlier);
     }
     ms_scope_put(&program->modules.ptr[module].imports, import->name, symbol);

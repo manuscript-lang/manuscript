@@ -9,6 +9,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Bounded editor work rules](bounded-editor-work-rules.md): Formatter, navigation and token-batch work stays bounded to the query and required context.
 - [Workspace scans filter files before running the checker](workspace-scans-filter-files-before-running-the-checker.md): `ms search_symbol` took minutes at the repository root until the lexical prefilter and reference search skipped unrelated files.
 
+- [A checkout copy of a bundled file is the bundled module](a-checkout-copy-of-a-bundled-file-is-the-bundled-module.md): editing `src/stdlib/*.ms` declared every type twice, giving "expected T, found T"; the file now is the bundled module.
 - [Agent help is CLI commands, not a protocol server](agent-help-is-cli-commands-not-a-protocol-server.md): the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed.
 - [Agents get machine-applicable fixes, structured faults and named replacements](agents-get-machine-applicable-fixes-structured-faults-and-na.md): diagnostics carry a `fix` field when the repair is mechanical (nearest-name misspellings, missing imports), and `ms check --fix` / `ms lint…
 - [Diagnostics are `<cause>; <fix>`, and tools key on the cause](diagnostics-are-cause-fix-and-tools-key-on-the-cause.md): agents act on a diagnostic only when it names the cause, the location, and a concrete fix (nearest name, import line, valid options).
