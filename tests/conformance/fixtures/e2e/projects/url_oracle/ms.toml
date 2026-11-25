@@ -1,0 +1,6 @@
+[project]
+name = "url_oracle"
+source = "."
+
+[embed]
+"@oracle" = "./data"
