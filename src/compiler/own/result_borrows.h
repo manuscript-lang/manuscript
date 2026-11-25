@@ -30,6 +30,10 @@ void ms_own_mixed_returns(MsCheckProgram *program);
 uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t module, MsNode node);
 
 /* Whether the callable declared by `node` of `module` has a pure borrowing callee result (see MS_RESULT_BORROWED). */
+/* Whether a function written `&T!` builds its Result on every path (`ok(part)`, `error(e)`, or a call of another such
+ * function), so it returns the borrowing variant: the `ok` payload is a part of an argument and the error is owned. */
+bool ms_own_returns_variant(const MsCheckProgram *program, uint32_t module, const MsFunc *func);
+
 bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, MsNode node);
 
 /* Whether a call's result borrows from its argument at `position` (receiver first for a method). A callee the

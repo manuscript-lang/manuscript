@@ -50,6 +50,10 @@ static bool borrows_a_place(const Relays *pass, const MsExpr *call_expr) {
   if (call == NULL || call->callee.kind != MS_REF_FUNCTION) {
     return false;
   }
+  const MsFunc *callee = ms_own_find_func(pass->program, &call->callee);
+  if (callee != NULL && ms_own_returns_variant(pass->program, call->callee.decl.module, callee)) {
+    return false; /* a `&T!` that builds its Result owns its error: `?` moves it out */
+  }
   const uint32_t mask = ms_own_result_borrow_mask(pass->program, call->callee.decl.module, call->callee.decl.node);
   for (uint32_t index = 0; index < call->arg_count && index < 31; index++) {
     if ((mask & (UINT32_C(1) << index)) == 0 || call->args[index].source != MS_ARG_WRITTEN) {

@@ -77,6 +77,7 @@ typedef struct Borrows {
   RangeList ranges;
   KeepList keeps;
   uint32_t high; /* the furthest end offset seen by the current measuring walk */
+  bool ref_result; /* the callable being walked answers a `&` result: `ok(part)` wraps a view, it keeps nothing */
   uint32_t lambdas; /* open closures: what they return is theirs */
   const MsExpr *outer; /* the outermost open closure */
 } Borrows;
@@ -203,6 +204,8 @@ static bool answers_look_part(const Borrows *pass, const MsExpr *call) {
   return entry != NULL && !entry->source->holding && ms_own_look_record(pass->program, entry->receiver) &&
          ms_own_result_is_borrowed(pass->program, fact->callee.decl.module, fact->callee.decl.node);
 }
+
+static void note_keep(Borrows *pass, const MsExpr *kept);
 
 static void note_bind(Borrows *pass, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
@@ -343,6 +346,9 @@ static void note_call_keeps(Borrows *pass, const MsExpr *call) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
   const MsExpr *callee = call->u.call.callee;
   const bool constructor = ms_bind_is_constructor(pass->facts, call);
+  if (pass->ref_result && fact != NULL && fact->callee.kind == MS_REF_CASE) {
+    return; /* `ok(part)` in a `&` function wraps a view of the part: its holder keeps the part, not the wrapper */
+  }
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *value = call->u.call.args.ptr[index].value;
     bool moves = constructor;
@@ -775,7 +781,20 @@ void ms_own_borrows(MsCheckProgram *program) {
     const MsModule *tree = program->modules.ptr[module].tree;
     const MsVisitor visitor = {.ctx = &pass, .stmt = visit_stmt, .expr = visit_expr, .leave_expr = leave_expr};
     for (uint32_t index = 0; index < tree->ndecls; index++) {
-      ms_walk_decl(&visitor, tree->decls[index]);
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN) {
+        pass.ref_result = ms_own_result_is_borrowed(program, module, decl->id);
+        ms_walk_callable(&visitor, decl->u.fn.params, decl->u.fn.body);
+      } else if (decl->kind == MS_D_IMPL) {
+        for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
+          const MsMethod *method = decl->u.impl.methods.ptr[at];
+          pass.ref_result = ms_own_result_is_borrowed(program, module, method->id);
+          ms_walk_callable(&visitor, method->func.params, method->func.body);
+        }
+      } else {
+        ms_walk_decl(&visitor, decl);
+      }
+      pass.ref_result = false;
       judge(&pass);
     }
     borrow_list_free(&pass.borrows);
