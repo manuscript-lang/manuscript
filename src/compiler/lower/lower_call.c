@@ -310,6 +310,7 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
                          .params = mir_params,
                          .nparams = count,
                          .ret = ret,
+                         .leaf = sig != NULL && sig->leaf,
                          .role = (uint8_t)(sig != NULL && sig->keeps ? MR_KEEPS_SLOT : MR_NONE)};
   return mir_extern_intern(fn->cx->module, &def);
 }

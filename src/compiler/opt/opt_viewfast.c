@@ -232,18 +232,20 @@ static void vf_slow_block(MirBuilder *bp, const VfView *v_, uint32_t slow_ext, M
 /* The runtime functions this pass replaces, told apart by role and signature (no name is read). `String.view` and
  * `Bytes.view` are borrowing natives of a receiver, two bounds and the address the view goes to; the receiver is a
  * string or a byte list. `String.slice` has its own role and returns the copy. */
-typedef enum VfKind { VK_NONE, VK_STRING_VIEW, VK_STRING_SLICE, VK_STRING_VIEW_VALUE, VK_BYTES_VIEW } VfKind;
+typedef enum VfKind { VK_NONE, VK_STRING_VIEW, VK_STRING_SLICE, VK_STRING_VIEW_VALUE, VK_STRING_PIECE, VK_BYTES_VIEW } VfKind;
 
 /* Builds `string_view(text, start, end, out)` (`slice` false) or `string_slice(text, start, end) -> String`, which
  * calls the runtime function `slow_ext` when the fast path does not apply. A view longer than fifteen bytes
  * borrows the receiver's bytes; a longer slice is an owned copy, so it takes the runtime. The slice writes its
  * piece to a slot of its own and takes it. */
 static uint32_t vf_build(MirModule *m, uint32_t slow_ext, VfKind kind) {
-  const bool borrowed = kind == VK_STRING_VIEW_VALUE;
+  /* A piece comes from a leaf native: its bounds are the runtime's own, so no guard stands before the fast path. */
+  const bool piece = kind == VK_STRING_PIECE;
+  const bool borrowed = kind == VK_STRING_VIEW_VALUE || piece;
   const bool slice = kind == VK_STRING_SLICE || borrowed; /* the value forms return the string */
   const MirParam params[4] = {{MIR_STR, MM_BORROW}, {MIR_INT, MM_BORROW}, {MIR_INT, MM_BORROW}, {MIR_PTR, MM_BORROW}};
   MirBuilder b;
-  mir_b_init_fast_path(&b, m, mir_name(m, ms_span_of_text(borrowed ? "string_view_value" : slice ? "string_slice" : "string_view")), params,
+  mir_b_init_fast_path(&b, m, mir_name(m, ms_span_of_text(piece ? "string_piece" : borrowed ? "string_view_value" : slice ? "string_slice" : "string_view")), params,
             slice ? 3 : 4, slice ? MIR_STR : MIR_VOID);
   VfView v = {0};
   MirValue ps[4];
@@ -269,13 +271,17 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext, VfKind kind) {
   const MirValue short_p = mir_b_add_block_param(&b, short_block, MIR_PTR, MM_BORROW);
   const MirValue short_n = mir_b_add_block_param(&b, short_block, MIR_INT, MM_BORROW);
   mir_b_switch_to(&b, inline_block); // its bytes sit in the slot: an ASCII range of it is packed from there
-  vf_inline_guard(&b, &v);
+  if (!piece) {
+    vf_inline_guard(&b, &v);
+  }
   const MirValue inline_from = ob_past(&b, v.slot, v.start);
   const MirValue inline_n = mir_b_binop(&b, MOP_ISub, v.end, v.start);
   const MirValue inline_args[2] = {inline_from, inline_n};
   mir_b_br(&b, short_block, inline_args, 2);
   mir_b_switch_to(&b, flat_block);
-  vf_flat_guard(&b, &v);
+  if (!piece) {
+    vf_flat_guard(&b, &v);
+  }
   const MirValue bytes = ob_load(&b, v.slot, 0, MIR_PTR);
   const MirValue flat_from = ob_past(&b, bytes, v.start);
   const MirValue flat_n = mir_b_binop(&b, MOP_ISub, v.end, v.start);
@@ -295,7 +301,13 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext, VfKind kind) {
     }
   }
   vf_short_join(&b, &v, short_block, short_p, short_n, join, slice);
-  vf_slow_block(&b, &v, slow_ext, join, slice);
+  if (piece) {
+    mir_b_seal_block(&b, v.slow);
+    mir_b_switch_to(&b, v.slow);
+    mir_b_unreachable(&b);
+  } else {
+    vf_slow_block(&b, &v, slow_ext, join, slice);
+  }
   mir_b_seal_block(&b, join);
   mir_b_switch_to(&b, join);
   mir_b_ret(&b, slice ? result : mir_b_unit(&b));
@@ -358,10 +370,11 @@ static VfKind vf_kind(const MirExtern *e) {
     return shape ? VK_STRING_SLICE : VK_NONE;
   }
   if (e->role == MR_VIEW_RESULT) {
-    /* The borrowing `String.view`, which lowering calls as a function returning the view. */
+    /* The borrowing `String.view`, which lowering calls as a function returning the view; a leaf one never faults, so
+     * its range needs no check. */
     const bool shape = e->nparams == 3 && e->ret == MIR_STR && e->params[0].ty == MIR_STR &&
                        e->params[1].ty == MIR_INT && e->params[2].ty == MIR_INT;
-    return shape ? VK_STRING_VIEW_VALUE : VK_NONE;
+    return !shape ? VK_NONE : e->leaf ? VK_STRING_PIECE : VK_STRING_VIEW_VALUE;
   }
   if (e->role != MR_BORROWS_ARGUMENT || e->nparams != 4 || e->ret != MIR_VOID || e->params[1].ty != MIR_INT ||
     e->params[2].ty != MIR_INT || e->params[3].ty != MIR_PTR) {

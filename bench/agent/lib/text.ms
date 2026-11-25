@@ -46,7 +46,9 @@ export fn write_text(path, text String) Void {
 // compare output.
 export fn norm(text String) String {
 	if text.trim().is_empty() { return "" }
-	return text.trim_end().split("\n").collect().map(line => line.trim_end().clone()).join("\n")
+	return text.trim_end().split("\n").collect().map(
+		line => line.trim_end().clone()
+	).join("\n")
 }
 
 // The nonblank lines of `text`.

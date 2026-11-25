@@ -16,8 +16,8 @@ void msrt_string_split_view_into(const MsString *s, const MsString *sep, int64_t
 /* ms-sig: msrt_string_split_first(s: *const StrVal, sep: *const StrVal, at: i64, out: *mut StrVal) @borrows @domain=string
  * @end */
 void msrt_string_split_first(const MsString *s, const MsString *sep, int64_t at, MsString *out);
-/* The byte offset where the piece of `s` that starts at `at` ends when `s` is split at `sep`. */
-/* ms-sig: msrt_string_split_end(s: *const StrVal, sep: *const StrVal, at: i64) -> i64 @domain=string @leaf @end */
+/* The byte offset where the piece of `s` that starts at `at` ends when `s` is split at `sep`, or -1 when no piece is left. */
+/* ms-sig: msrt_string_split_end(s: *const StrVal, sep: *const StrVal, at: i64) -> i64 @leaf @domain=string @end */
 int64_t msrt_string_split_end(const MsString *s, const MsString *sep, int64_t at);
 /* ms-sig: msrt_string_piece(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @borrows @leaf @domain=string @end */
 void msrt_string_piece(const MsString *s, int64_t start, int64_t end, MsString *out);

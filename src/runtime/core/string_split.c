@@ -197,8 +197,14 @@ static size_t piece_end(MsSpan text, MsSpan separator, size_t at) {
   return at + (hit == SIZE_MAX ? rest.len : hit);
 }
 
+/* `piece_end` for the piece at `at`, or -1 when the split has no piece left there (see split_rest). */
 int64_t msrt_string_split_end(const MsString *s, const MsString *sep, int64_t at) {
-  return (int64_t)piece_end(msrt_text(s), msrt_text(sep), (size_t)at);
+  const MsSpan text = msrt_text(s);
+  const MsSpan separator = msrt_text(sep);
+  if (at < 0 || (size_t)at > text.len || ((size_t)at == text.len && separator.len == 0)) {
+    return -1;
+  }
+  return (int64_t)piece_end(text, separator, (size_t)at);
 }
 
 /* The bytes of `s` from `start` to `end`, a view (an inline string when short). The iterators cut at separators and

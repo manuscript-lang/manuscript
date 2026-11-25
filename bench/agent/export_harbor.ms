@@ -65,7 +65,9 @@ fn quote(text String) String => dumps(JsonValue.StringValue(text.clone()), 0)
 
 fn put(from, to String) Void {
 	create_directory(
-		to.split("/").collect().take(to.split("/").collect().length() - 1).join("/"),
+		to.split("/").collect().take(to.split("/").collect().length() - 1).join(
+			"/"
+		),
 		recursive: true,
 	).get()
 	copy(from, to, CopyOptions(replace: true)).get()

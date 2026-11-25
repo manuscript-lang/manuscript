@@ -515,18 +515,18 @@ export type Split {
 	separator String
 	// The byte offset where the next piece starts.
 	at Int
-	// The offset past which no piece starts: one beyond the text for a separator of
-	// bytes.
-	last Int
+	// The bytes between one piece's end and the next piece's start: the separator's
+	// length.
+	step Int
 }
 
 // The next piece, or `null` after the last one.
 fn var Split.next() &String? {
-	if self.at >= self.last { return null }
-
 	start := self.at
 	end := msrt_string_split_end(self.text, self.separator, start)
-	self.at = end + self.separator.length()
+	if end < 0 { return null }
+
+	self.at = end + self.step
 	return msrt_string_piece(self.text, start, end)
 }
 
@@ -540,12 +540,7 @@ fn hold Split.collect() List[&String] {
 // borrow the receiver: walk them with `for`, or call `collect()` on the result for a
 // list.
 fn hold String.split(separator String) Split {
-	return Split(
-		self,
-		separator.clone(),
-		0,
-		self.length() + (if separator.is_empty() { 0 } else { 1 }),
-	)
+	return Split(self, separator.clone(), 0, separator.length())
 }
 
 /*
