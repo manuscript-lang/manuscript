@@ -1,4 +1,4 @@
-// conform: tags=closures,concurrency,mutation,tier-stdlib
+// conform: tags=closures,mutation,tier-stdlib
 // conform: phase=run
 // A value a promise read can change again once the promise is waited on.
 import promise from "@std/concurrency/promise.ms"
