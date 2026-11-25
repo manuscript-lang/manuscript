@@ -10,7 +10,7 @@ fn apply(f fn(Int) Int, n Int) Int {
 	return acc
 }
 
-fn keep(move f fn(Int) Int) fn(Int) Int {
+fn keep(f fn(Int) Int) fn(Int) Int {
 	return f
 }
 

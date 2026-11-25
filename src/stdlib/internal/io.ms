@@ -4,7 +4,7 @@ export extern fn msstd_io_redirect_null(which Int) Void!
 
 export extern fn msstd_io_stdout_status(flush Bool) Void!
 
-export extern fn msstd_terminal_raw_mode() move NativeRawTerminal!
+export extern fn msstd_terminal_raw_mode() NativeRawTerminal!
 
 export extern fn msstd_terminal_capabilities_input_is_terminal() Bool
 
@@ -28,14 +28,14 @@ export extern fn msstd_terminal_raw_terminal_close(handle NativeRawTerminal) Voi
 
 export extern fn msstd_terminal_raw_terminal_share(
 	handle NativeRawTerminal
-) move NativeRawTerminal
+) NativeRawTerminal
 
 export extern fn msstd_terminal_raw_terminal_read(
 	handle NativeRawTerminal,
 	quick Bool,
 ) Void?!
 
-export extern fn msstd_terminal_input_text() move String
+export extern fn msstd_terminal_input_text() String
 
 export extern fn msstd_terminal_raw_terminal_set_restore(
 	handle NativeRawTerminal,

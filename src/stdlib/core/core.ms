@@ -213,7 +213,7 @@ Text is written as its UTF-8 encoding.
 */
 export interface Writable {
 	// The bytes to write, as a new value the writer may keep.
-	fn as_bytes() move Bytes
+	fn as_bytes() Bytes
 }
 
 /*
@@ -298,7 +298,7 @@ fn Result[T, E].is_error() Bool {
 
 // Returns the successful payload; an error raises a fault, so use it only when
 // failure is a bug. Prefer `?`, `if value := result:` or `get_or(default)`.
-fn hold Result[T, E].get() & T {
+fn hold Result[T, E].get() &T {
 	match self {
 		ok(value) => return value
 		error(cause) => panic(
@@ -318,7 +318,7 @@ fn move Result[T, E].get_or(move default T?) T {
 
 // Returns the error payload; check `is_error()` first, because a successful result
 // raises a fault.
-fn hold Result[T, E].err() & E {
+fn hold Result[T, E].err() &E {
 	match self {
 		ok(_) => panic("called Result.err() on ok; check is_error first")
 		error(cause) => return cause
@@ -397,7 +397,7 @@ export interface Comparable {
 // parameter.
 export interface Clonable {
 	// Returns an independent deep copy of this value.
-	fn clone() move Self
+	fn clone() Self
 }
 
 /*
@@ -418,7 +418,7 @@ export interface Data { ... }
 // declaring `to_string`.
 export interface Stringable {
 	// Returns this value as text.
-	fn to_string() move String
+	fn to_string() String
 }
 
 // A type with a stable hash that is consistent with its `Equal` implementation.
@@ -456,7 +456,7 @@ export fn join_errors(errors List[Error]) Error? {
 }
 
 // An Optional copies its payload; `null` stays `null`.
-fn Optional[T Clonable].clone() move T? {
+fn Optional[T Clonable].clone() T? {
 	match self {
 		value => return value.clone()
 		null => return null

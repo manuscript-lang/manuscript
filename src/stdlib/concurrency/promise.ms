@@ -77,7 +77,7 @@ export opaque type Promise[T] {
 // - `EBADF`, when an earlier wait already took the result;
 // - `ETIMEDOUT`, once the promise's `timeout` option has passed, which also cancelled
 //   the work.
-fn Promise[T].wait() move T! {
+fn Promise[T].wait() T! {
 	taken := msrt_promise_result[Slot[T]](self.id)
 	if taken != null { return ok(taken.value) }
 
@@ -89,7 +89,7 @@ fn Promise[T].wait() move T! {
 // `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds
 // the read. The timeout counts from now. A provided cancel signal replaces the previous
 // one.
-fn hold Promise[T].with(options PromiseOptions = PromiseOptions()) & Promise[T] {
+fn hold Promise[T].with(options PromiseOptions = PromiseOptions()) &Promise[T] {
 	limit(self.id, options)
 	return self
 }
@@ -361,7 +361,7 @@ fn joined_partly(result Int) Bool => result == 2
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are
 // cancelled and waited for before `wait_all` returns that error.
-export fn wait_all[T](move promises List[Promise[T]]) move List[T]! {
+export fn wait_all[T](move promises List[Promise[T]]) List[T]! {
 	var pending = promises
 	count := pending.length()
 	var slots List[T!] = []

@@ -13,7 +13,7 @@ type ListSource[T] {
 	items List[T]
 }
 
-fn var ListSource[T].next() move T?! {
+fn var ListSource[T].next() T?! {
 	return ok(self.items.pop())
 }
 
@@ -36,7 +36,7 @@ type BytesSource {
 	at, chunk Int
 }
 
-fn var BytesSource.next() move Bytes?! {
+fn var BytesSource.next() Bytes?! {
 	if self.chunk < 1 {
 		return error(Error("I/O: chunk size must be positive", kind: "EINVAL"))
 	}

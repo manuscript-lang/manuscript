@@ -94,7 +94,7 @@ export enum JsonValue {
 
 // Returns the object member for `key`, or `null` for an absent key or a value that
 // is not an object. The result borrows from the receiver.
-fn hold JsonValue.get(key String) & JsonValue? {
+fn hold JsonValue.get(key String) &JsonValue? {
 	match self {
 		ObjectValue(values) => return values.get(key)
 		_ => return null
@@ -106,14 +106,14 @@ Returns the value reached by reading each object member of `keys` in turn, or `n
 member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
 from the receiver.
 */
-fn hold JsonValue.get_in(keys List[String]) & JsonValue? {
+fn hold JsonValue.get_in(keys List[String]) &JsonValue? {
 	return member_path(self, keys, 0)
 }
 
 // Returns the array element at `index`, counting a negative index from the end. An
 // index out of range, or a value that is not an array, returns `null`. The result
 // borrows from the receiver.
-fn hold JsonValue.get_index(index Int) & JsonValue? {
+fn hold JsonValue.get_index(index Int) &JsonValue? {
 	match self {
 		ArrayValue(values) => {
 			if index >= values.length() or index < 0 - values.length() { return null }
@@ -266,7 +266,7 @@ fn tagged(kind String, id Int) JsonValue:
 */
 export interface JsonEncode {
 	// Returns the JSON form of this value.
-	fn to_json() move JsonValue
+	fn to_json() JsonValue
 }
 
 /*
@@ -368,7 +368,7 @@ fn var JsonReading[T].fail(cause Error) Void! {
 }
 
 // Parses the buffered value and clears the scanner for the next one.
-fn var JsonReading[T].complete() move T! {
+fn var JsonReading[T].complete() T! {
 	bytes := self.pending.drain()
 	self.reset()
 
@@ -441,7 +441,7 @@ fn var JsonReading[T].scan(byte UInt8) Bool! {
 }
 
 // Consumes one byte and returns the value it completes, if any.
-fn var JsonReading[T].advance(byte UInt8) move T?! {
+fn var JsonReading[T].advance(byte UInt8) T?! {
 	done := self.scan(byte)?
 	if not done { return ok(null) }
 

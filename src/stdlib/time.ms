@@ -84,21 +84,21 @@ fn Duration.compare(other Duration) Int {
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
-fn hold Duration.min(other Duration) & Duration {
+fn hold Duration.min(other Duration) &Duration {
 	if other.compare(self) < 0 { return other }
 	return self
 }
 
 // Returns the greater of this value and `other`, or this value when they compare
 // equal.
-fn hold Duration.max(other Duration) & Duration {
+fn hold Duration.max(other Duration) &Duration {
 	if other.compare(self) > 0 { return other }
 	return self
 }
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn hold Duration.clamp(hold low, high Duration) & Duration {
+fn hold Duration.clamp(hold low, high Duration) &Duration {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}
@@ -176,7 +176,7 @@ export type Instant {
 }
 
 // Shifts this monotonic instant by a duration.
-fn hold Instant.shift(duration Duration) & Instant {
+fn hold Instant.shift(duration Duration) &Instant {
 	return msstd_time_instant_shift(self, duration.nanos)
 }
 
@@ -194,21 +194,21 @@ fn Instant.compare(other Instant) Int {
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
-fn hold Instant.min(other Instant) & Instant {
+fn hold Instant.min(other Instant) &Instant {
 	if other.compare(self) < 0 { return other }
 	return self
 }
 
 // Returns the greater of this value and `other`, or this value when they compare
 // equal.
-fn hold Instant.max(other Instant) & Instant {
+fn hold Instant.max(other Instant) &Instant {
 	if other.compare(self) > 0 { return other }
 	return self
 }
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn hold Instant.clamp(hold low, high Instant) & Instant {
+fn hold Instant.clamp(hold low, high Instant) &Instant {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}
@@ -394,21 +394,21 @@ fn Timestamp.compare(other Timestamp) Int {
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
-fn hold Timestamp.min(other Timestamp) & Timestamp {
+fn hold Timestamp.min(other Timestamp) &Timestamp {
 	if other.compare(self) < 0 { return other }
 	return self
 }
 
 // Returns the greater of this value and `other`, or this value when they compare
 // equal.
-fn hold Timestamp.max(other Timestamp) & Timestamp {
+fn hold Timestamp.max(other Timestamp) &Timestamp {
 	if other.compare(self) > 0 { return other }
 	return self
 }
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn hold Timestamp.clamp(hold low, high Timestamp) & Timestamp {
+fn hold Timestamp.clamp(hold low, high Timestamp) &Timestamp {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}

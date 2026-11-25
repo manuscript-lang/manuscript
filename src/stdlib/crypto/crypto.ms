@@ -171,7 +171,7 @@ export interface Hasher {
 	fn update(data Bytes) Void
 	// Returns the digest of all data supplied since creation or the last `finish`, then
 	// resets the state.
-	fn finish() move Bytes
+	fn finish() Bytes
 }
 
 /*

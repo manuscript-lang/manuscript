@@ -7,7 +7,7 @@ import Bytes from "@std/bytes.ms"
 
 export extern fn msrt_promise_put[T](id Int, move value T, failed Int) Void
 
-export extern fn msrt_promise_take[T](id Int) move T?
+export extern fn msrt_promise_take[T](id Int) T?
 
 // A result held in a slot of its own: taking `Slot[T]` instead of `T` tells a result
 // that is `null` (`T` nullable) from a result that is gone, which `T?` of a nullable
@@ -18,7 +18,7 @@ export type Slot[T] {
 
 // Waits for the promise without a limit and takes its value. `null` when it ended any
 // other way; `msrt_promise_wait` then says which.
-export extern fn msrt_promise_result[T](id Int) move T?
+export extern fn msrt_promise_result[T](id Int) T?
 
 export extern fn msrt_promise_done(id Int) Bool
 
@@ -26,17 +26,17 @@ export extern fn msrt_promise_done(id Int) Bool
 // and finishes with `msrt_promise_put`. `site` is the line a fault report names as the
 // start. The work is queued on the calling thread: its waiter runs it, or an idle
 // thread takes it.
-export extern fn msrt_promise_start(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start(work fn(Int) Void, site String) Int
 
 // As `msrt_promise_start`, but always a task on the calling thread.
-export extern fn msrt_promise_start_here(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start_here(work fn(Int) Void, site String) Int
 
 // Like `msrt_promise_start_here`, but with no other task running the work waits for its
 // waiter.
-export extern fn msrt_promise_start_idle(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start_idle(work fn(Int) Void, site String) Int
 
 // As `msrt_promise_start`, but on the least loaded thread.
-export extern fn msrt_promise_start_spread(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start_spread(work fn(Int) Void, site String) Int
 
 export extern fn msrt_promise_wait(id, timeout_ns Int) Int
 
@@ -94,7 +94,7 @@ export extern fn msrt_group_poll(group Int) Int
 
 export extern fn msrt_group_free(group Int) Void
 
-export extern fn msrt_promise_fault_report(id Int) move String
+export extern fn msrt_promise_fault_report(id Int) String
 
 export extern fn msrt_promise_drop(id Int) Void
 
@@ -121,7 +121,7 @@ export extern fn msrt_pipe_write[T](pipe Int, move value T) Int
 export extern fn msrt_pipe_read(pipe Int) Int
 
 // The next queued value without a promise; none when nothing is queued right now.
-export extern fn msrt_pipe_try[T](pipe Int) move T?
+export extern fn msrt_pipe_try[T](pipe Int) T?
 
 // 1 when a read would end with no value: every writer closed and nothing is queued.
 export extern fn msrt_pipe_ended(pipe Int) Int
@@ -156,13 +156,13 @@ export extern fn msrt_streams_buffered(stream Int) Int
 
 // The last read failure or the terminal write failure (retained until close), or an
 // empty string.
-export extern fn msrt_streams_error(stream Int) move String
+export extern fn msrt_streams_error(stream Int) String
 
 export extern fn msrt_streams_close(stream Int) Void
 
 // A new promise whose work runs in the first task that waits on it, called with the
 // promise's id.
-export extern fn msrt_promise_defer(move work fn(Int) Void) Int
+export extern fn msrt_promise_defer(work fn(Int) Void) Int
 
 // An already finished promise with no value.
 export extern fn msrt_promise_finished() Int

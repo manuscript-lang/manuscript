@@ -50,7 +50,7 @@ type WebSocketSource {
 // Waits for the next complete message; null once the peer closes normally. A message
 // over `max_message_bytes` is `EOVERFLOW` and a text message that is not valid UTF-8 is
 // `EBADMSG`; after any failure the connection is closed.
-fn var WebSocketSource.next() move WebSocketMessage?! {
+fn var WebSocketSource.next() WebSocketMessage?! {
 	raw := msstd_websocket_receive(self.native)?
 	message := raw
 

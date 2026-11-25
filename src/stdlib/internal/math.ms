@@ -8,29 +8,29 @@ import (
 	WordSum
 ) from "@std/math/math.ms"
 
-export extern fn msstd_math_add_with_carry(left, right UInt64, carry Bool) move WordSum
+export extern fn msstd_math_add_with_carry(left, right UInt64, carry Bool) WordSum
 
 export extern fn msstd_math_subtract_with_borrow(
 	left,
 	right UInt64,
 	borrow Bool,
-) move WordDifference
+) WordDifference
 
-export extern fn msstd_math_multiply_wide(left, right UInt64) move WideProduct
+export extern fn msstd_math_multiply_wide(left, right UInt64) WideProduct
 
-export extern fn msstd_math_divide_wide(high, low, divisor UInt64) move WordDivision!
+export extern fn msstd_math_divide_wide(high, low, divisor UInt64) WordDivision!
 
 export extern fn msstd_math_remainder_wide(high, low, divisor UInt64) UInt64!
 
-export extern fn msstd_math_frexp(value Float) move BinaryFloatParts
+export extern fn msstd_math_frexp(value Float) BinaryFloatParts
 
 export extern fn msstd_math_ldexp(fraction Float, exponent Int) Float
 
-export extern fn msstd_math_modf(value Float) move FloatParts
+export extern fn msstd_math_modf(value Float) FloatParts
 
 export extern fn msstd_math_ieee_remainder(left, right Float) Float
 
-export extern fn msstd_bigint_inverse_mod(value, modulus BigInt) move BigInt?
+export extern fn msstd_bigint_inverse_mod(value, modulus BigInt) BigInt?
 
 export extern fn msstd_math_exp2(value Float) Float
 
@@ -44,13 +44,13 @@ export extern fn msstd_math_next_after(value, toward Float) Float
 
 export extern fn msstd_math_fma(left, right, addend Float) Float
 
-export extern fn msstd_bigint_gcd(value, other BigInt) move BigInt
+export extern fn msstd_bigint_gcd(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_lcm(value, other BigInt) move BigInt
+export extern fn msstd_bigint_lcm(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_sqrt(value BigInt) move BigInt!
+export extern fn msstd_bigint_sqrt(value BigInt) BigInt!
 
-export extern fn msstd_bigint_pow_mod(value, exponent, modulus BigInt) move BigInt!
+export extern fn msstd_bigint_pow_mod(value, exponent, modulus BigInt) BigInt!
 
 export extern fn msstd_math_acos(value Float) Float
 
@@ -144,52 +144,48 @@ export extern fn msrt_numbers_parse_float(text String) Float!
 
 export extern fn msrt_numbers_parse_int(text String, radix Int) Int!
 
-export extern fn msstd_bigint_add(value, other BigInt) move BigInt
+export extern fn msstd_bigint_add(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_subtract(value, other BigInt) move BigInt
+export extern fn msstd_bigint_subtract(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_multiply(value, other BigInt) move BigInt
+export extern fn msstd_bigint_multiply(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_divide(value, other BigInt) move BigInt!
+export extern fn msstd_bigint_divide(value, other BigInt) BigInt!
 
-export extern fn msstd_bigint_remainder(value, other BigInt) move BigInt!
+export extern fn msstd_bigint_remainder(value, other BigInt) BigInt!
 
-export extern fn msstd_bigint_quotient(value, other BigInt) move BigInt
+export extern fn msstd_bigint_quotient(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_modulo(value, other BigInt) move BigInt
+export extern fn msstd_bigint_modulo(value, other BigInt) BigInt
 
 export extern fn msstd_bigint_compare(value, other BigInt) Int
 
-export extern fn msstd_bigint_bit_and(value, other BigInt) move BigInt
+export extern fn msstd_bigint_bit_and(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_bit_or(value, other BigInt) move BigInt
+export extern fn msstd_bigint_bit_or(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_bit_xor(value, other BigInt) move BigInt
+export extern fn msstd_bigint_bit_xor(value, other BigInt) BigInt
 
-export extern fn msstd_bigint_bit_not(value BigInt) move BigInt
+export extern fn msstd_bigint_bit_not(value BigInt) BigInt
 
-export extern fn msstd_bigint_negate(value BigInt) move BigInt
+export extern fn msstd_bigint_negate(value BigInt) BigInt
 
-export extern fn msstd_bigint_abs(value BigInt) move BigInt
+export extern fn msstd_bigint_abs(value BigInt) BigInt
 
 export extern fn msstd_bigint_sign(value BigInt) Int
 
-export extern fn msstd_bigint_pow(value BigInt, exponent Int) move BigInt!
+export extern fn msstd_bigint_pow(value BigInt, exponent Int) BigInt!
 
-export extern fn msstd_bigint_shift_left(value BigInt, count Int) move BigInt!
+export extern fn msstd_bigint_shift_left(value BigInt, count Int) BigInt!
 
-export extern fn msstd_bigint_shift_right(value BigInt, count Int) move BigInt!
+export extern fn msstd_bigint_shift_right(value BigInt, count Int) BigInt!
 
 export extern fn msstd_bigint_to_float(value BigInt) Float
 
 export extern fn msstd_bigint_to_int(value BigInt) Int?
 
-export extern fn msstd_bigint_to_string_radix(value BigInt, radix Int) move String
+export extern fn msstd_bigint_to_string_radix(value BigInt, radix Int) String
 
-export extern fn msstd_bigint_from_int(value Int) move BigInt
+export extern fn msstd_bigint_from_int(value Int) BigInt
 
-export extern fn msstd_bigint_parse(
-	text String,
-	radix Int,
-	max_digits Int?,
-) move BigInt!
+export extern fn msstd_bigint_parse(text String, radix Int, max_digits Int?) BigInt!

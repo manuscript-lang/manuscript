@@ -76,7 +76,7 @@ export type ReadStream[T] {
 // its error. With `timeout`, a read that waits that long in total (a stalled socket)
 // fails with `ETIMEDOUT`. The source may be left mid-item, so close the stream
 // afterwards.
-fn var ReadStream[T].next(timeout Duration? = null) move T?! {
+fn var ReadStream[T].next(timeout Duration? = null) T?! {
 	if self.closed { return ok(null) }
 
 	bound := timeout
@@ -125,7 +125,7 @@ type EndedSource[T] {
 	done Bool = true
 }
 
-fn var EndedSource[T].next() move T?! {
+fn var EndedSource[T].next() T?! {
 	return ok(null)
 }
 
@@ -198,7 +198,7 @@ export type DescriptorSource {
 // Waits for the next chunk of the descriptor. Returns `null` at its end and `EIO`
 // when the descriptor failed. A wait that ends early, such as at the `timeout` of
 // `ReadStream.next`, returns `ETIMEDOUT`.
-fn var DescriptorSource.next() move Bytes?! {
+fn var DescriptorSource.next() Bytes?! {
 	p := msrt_streams_read(self.id)
 	code := msrt_promise_wait(p, -1)
 
@@ -424,7 +424,7 @@ type PipeSource[T] {
 	id Int
 }
 
-fn var PipeSource[T].next() move T?! {
+fn var PipeSource[T].next() T?! {
 	return pipe_next[T](self.id)
 }
 
@@ -478,7 +478,7 @@ export opaque type Pipe[T] {
 // Returns a new writing end, like `dup` on a descriptor. Close it when done: the
 // reader ends when every writer has closed. It is safe to call from a promise that
 // owns the pipe, since each call makes a writer of its own.
-fn Pipe[T].writer() move WriteStream[T] {
+fn Pipe[T].writer() WriteStream[T] {
 	msrt_pipe_add_writer(self.id)
 	return WriteStream[T](PipeSink[T](self.id, self.capacity))
 }
@@ -538,7 +538,7 @@ type Through[A, B] {
 	finished Bool
 }
 
-fn var Through[A, B].next() move B?! {
+fn var Through[A, B].next() B?! {
 	while true {
 		item := self.out.pop()
 		if item != null { return ok(item) }

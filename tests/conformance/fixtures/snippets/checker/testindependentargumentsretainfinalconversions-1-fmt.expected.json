@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn identity[T](hold value T) & T => value\n\nfn consume[T](value T, cause Error, optional T?) Void => return\n\nfn first() Void => consume(\n\tvalue: 1,\n\tcause: identity(Error(\"two\")),\n\toptional: identity(3),\n)\n"
+    "fmt": "fn identity[T](hold value T) &T => value\n\nfn consume[T](value T, cause Error, optional T?) Void => return\n\nfn first() Void => consume(\n\tvalue: 1,\n\tcause: identity(Error(\"two\")),\n\toptional: identity(3),\n)\n"
   }
 }

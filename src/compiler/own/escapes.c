@@ -225,6 +225,7 @@ static void visit_call(Escapes *pass, const MsExpr *call) {
       tie_list_push(&module->ties, (Tie){value->id, call->id});
     } else if (holding && value->kind == MS_E_NAME && value->id < facts->node_count) {
       module->holdn[value->id] = 1;
+      tie_list_push(&module->ties, (Tie){value->id, call->id}); /* kept when the call's result is */
     } else if (value->kind == MS_E_NAME || value->kind == MS_E_LAMBDA) {
       mark_ok(pass, value);
     }
@@ -438,6 +439,15 @@ static void settle(Escapes *pass, uint32_t module, Pass *scan) {
         }
       }
       ms_binding_list_free(&captures);
+    }
+    for (size_t at = 0; at < state->ties.len; at++) { /* a name the callee holds in a result that is kept is kept */
+      uint32_t binding = 0;
+      const Tie *tie = &state->ties.ptr[at];
+      if (ms_bind_of(facts, tie->lambda, &binding) && binding < facts->node_count && !state->kept[binding] &&
+          result_escapes(state, facts, scan, tie->call)) {
+        state->kept[binding] = 1;
+        state->bad[binding] = 1;
+      }
     }
     for (size_t at = 0; at < scan->lambdas.len; at++) {
       const MsExpr *lambda = scan->lambdas.ptr[at];

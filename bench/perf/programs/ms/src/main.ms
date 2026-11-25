@@ -40,7 +40,7 @@ fn report(name String, ops Int, started Instant) Void {
 	say(f"{name} {ops} {since(started)}\n")
 }
 
-fn ident[T](hold x T) & T {
+fn ident[T](hold x T) &T {
 	return x
 }
 

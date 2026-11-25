@@ -7,7 +7,7 @@ type Handlers {
 	items List[fn(var Int, Int) Void!]
 }
 
-fn var Handlers.add(move f fn(var Int, Int) Void!) Void {
+fn var Handlers.add(f fn(var Int, Int) Void!) Void {
 	self.items.append(f)
 }
 

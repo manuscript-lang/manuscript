@@ -17,7 +17,7 @@ type OneByte {
 	held Bytes?
 }
 
-fn var OneByte.next() move Bytes?! {
+fn var OneByte.next() Bytes?! {
 	var data = "".to_bytes()
 	held := self.held.clone()
 
@@ -59,7 +59,7 @@ type FailAfter {
 	cause Error
 }
 
-fn var FailAfter.next() move Bytes?! {
+fn var FailAfter.next() Bytes?! {
 	if self.remaining <= 0 { return error(self.cause.clone()) }
 
 	chunk := self.input.next()?

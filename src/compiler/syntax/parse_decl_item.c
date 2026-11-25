@@ -18,8 +18,7 @@ MS_NODISCARD bool parse_method_signature(Parser *p, MsToken name, bool generics,
   if (!parse_parameters(p, true, false, &params))
     return false;
   MsTypeRef *result = NULL;
-  bool result_moves = false;
-  if (!parse_result_type(p, &result, &result_moves))
+  if (!parse_result_type(p, &result))
     return false;
   MsStmts stmts = {NULL, 0};
   if (body) {
@@ -34,7 +33,6 @@ MS_NODISCARD bool parse_method_signature(Parser *p, MsToken name, bool generics,
   m->func.type_params = tps;
   m->func.params = params;
   m->func.result = result;
-  m->func.result_moves = result_moves;
   m->func.body = stmts;
   m->mutating = mutating;
   *out = m;

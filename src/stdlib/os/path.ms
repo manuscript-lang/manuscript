@@ -43,49 +43,49 @@ export type PathParts {
 export interface PathOperations {
 	// Returns the last component after ignoring trailing separators under this view's
 	// path rules.
-	fn basename(path String) move String
+	fn basename(path String) String
 	// Returns the basename with `suffix` removed when it matches exactly. It is not an
 	// extension stripper: a suffix equal to the whole basename is not removed.
-	fn basename_without(path, suffix String) move String
+	fn basename_without(path, suffix String) String
 	// Returns the directory component using the selected POSIX or Windows convention.
-	fn dirname(path String) move String
+	fn dirname(path String) String
 	// Returns the final dot extension, or empty text for extensionless names and simple
 	// dotfiles.
-	fn extension(path String) move String
+	fn extension(path String) String
 	// Tests absolute-root syntax; a Windows drive-relative spelling is not absolute.
 	fn is_absolute(path String) Bool
 	// Joins nonempty parts and normalizes separators/dot segments without filesystem
 	// access.
-	fn join(parts List[String]) move String
+	fn join(parts List[String]) String
 	// Cleans repeated separators and dot segments lexically; it does not resolve
 	// symlinks.
-	fn normalize(path String) move String
+	fn normalize(path String) String
 	// Computes the lexical relative path from `base` to `target`, both absolute. Paths
 	// with different roots, such as Windows drives, return `target` normalized. A
 	// relative argument or a NUL byte returns EINVAL.
-	fn relative(base, target String) move String!
+	fn relative(base, target String) String!
 	// Resolves `parts` against the absolute `base`, without consulting the process
 	// working directory. A relative `base` or a NUL byte returns EINVAL.
-	fn resolve(base String, parts List[String]) move String!
+	fn resolve(base String, parts List[String]) String!
 	// Splits the original spelling into root, directory, base, extension and name
 	// without filesystem access.
-	fn parse(path String) move PathParts
+	fn parse(path String) PathParts
 	// Builds a path from `parts`, preferring `directory` over `root` and `base` over
 	// `name` plus `extension`.
-	fn format(parts PathParts) move String
+	fn format(parts PathParts) String
 	// Returns slash for POSIX or backslash for Windows path components.
-	fn separator() move String
+	fn separator() String
 	// Returns colon for POSIX or semicolon for Windows path-list entries.
-	fn delimiter() move String
+	fn delimiter() String
 	// Returns a Windows namespaced absolute path when applicable; POSIX paths are
 	// unchanged.
-	fn to_namespaced_path(path String) move String
+	fn to_namespaced_path(path String) String
 	// Tests one lexical path against the supported glob syntax; malformed patterns
 	// return EINVAL.
 	fn matches_glob(path, pattern String) Bool!
 	// Compiles a glob pattern once for matching many paths under this dialect's rules;
 	// malformed patterns return EINVAL.
-	fn compile_glob(pattern String) move Glob!
+	fn compile_glob(pattern String) Glob!
 }
 
 // One dialect's rules; the interface implementation forwards to the functions below

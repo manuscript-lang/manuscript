@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(move g fn(Int) Int) fn(Int) Int {\n\treturn g\n}\n"
+    "fmt": "fn f(g fn(Int) Int) fn(Int) Int {\n\treturn g\n}\n"
   }
 }

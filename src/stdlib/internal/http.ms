@@ -18,7 +18,7 @@ import (
 
 export extern fn msstd_http_client_close(handle NativeHttpClient) Void
 
-export extern fn msstd_http_client_share(handle NativeHttpClient) move NativeHttpClient
+export extern fn msstd_http_client_share(handle NativeHttpClient) NativeHttpClient
 
 export extern fn msstd_http_client_request_bytes(
 	handle NativeHttpClient,
@@ -28,26 +28,26 @@ export extern fn msstd_http_client_request_bytes(
 	body Bytes,
 	max_response_bytes Int?,
 	timeout Duration?,
-) move RawResponse!
+) RawResponse!
 
 export extern fn msstd_http_serving_new(
 	address String,
 	options HttpServerOptions,
-	move handler fn(move NativeExchange) Int
-) move NativeServing!
+	handler fn(move NativeExchange) Int
+) NativeServing!
 
 // Another handle on the same serving, for a connection promise to own.
 // What one worker needs from the serving, as plain data a worker promise owns.
-export extern fn msstd_http_serving_spec(serving NativeServing) move NativeWorkerSpec
+export extern fn msstd_http_serving_spec(serving NativeServing) NativeWorkerSpec
 
-export extern fn msstd_http_serving_address(serving NativeServing) move String
+export extern fn msstd_http_serving_address(serving NativeServing) String
 
 // The next connection, owned by the returned handle until a worker adopts it.
-export extern fn msstd_http_serving_accept(serving NativeServing) move NativeAccepted!
+export extern fn msstd_http_serving_accept(serving NativeServing) NativeAccepted!
 
 // A worker engine on the calling thread; it adopts connections and serves them from the
 // poller.
-export extern fn msstd_http_serving_worker(spec NativeWorkerSpec) move NativeWorker!
+export extern fn msstd_http_serving_worker(spec NativeWorkerSpec) NativeWorker!
 
 // Takes the connection out of `accepted`; a closed worker leaves it there to close with
 // the handle.
@@ -63,20 +63,17 @@ export extern fn msstd_http_serving_release(serving NativeServing) Void
 
 export extern fn msstd_http_exchange_close(handle NativeExchange) Void
 
-export extern fn msstd_http_exchange_headers(handle NativeExchange) move HttpHeaders
+export extern fn msstd_http_exchange_headers(handle NativeExchange) HttpHeaders
 
-export extern fn msstd_http_exchange_method(handle NativeExchange) move String
+export extern fn msstd_http_exchange_method(handle NativeExchange) String
 
-export extern fn msstd_http_exchange_path(handle NativeExchange) move String
+export extern fn msstd_http_exchange_path(handle NativeExchange) String
 
-export extern fn msstd_http_exchange_protocol(handle NativeExchange) move String
+export extern fn msstd_http_exchange_protocol(handle NativeExchange) String
 
-export extern fn msstd_http_exchange_query(handle NativeExchange) move String
+export extern fn msstd_http_exchange_query(handle NativeExchange) String
 
-export extern fn msstd_http_exchange_read(
-	handle NativeExchange,
-	max_bytes Int?,
-) move Bytes?!
+export extern fn msstd_http_exchange_read(handle NativeExchange, max_bytes Int?) Bytes?!
 
 export extern fn msstd_http_exchange_send_headers(
 	handle NativeExchange,
@@ -103,20 +100,17 @@ export extern fn msstd_http_exchange_upgrade(
 	allowed_origins,
 	subprotocols List[String],
 	max_message_bytes Int?,
-) move NativeWebSocket!
+) NativeWebSocket!
 
 export extern fn msstd_http_body_close(handle NativeResponseBody) Void
 
 export extern fn msstd_http_body_metadata(
 	handle NativeResponseBody
-) move HttpResponseMetadata
+) HttpResponseMetadata
 
-export extern fn msstd_http_body_read(
-	handle NativeResponseBody,
-	max_bytes Int?,
-) move Bytes?!
+export extern fn msstd_http_body_read(handle NativeResponseBody, max_bytes Int?) Bytes?!
 
-export extern fn msstd_http_body_read_all(handle NativeResponseBody) move Bytes!
+export extern fn msstd_http_body_read_all(handle NativeResponseBody) Bytes!
 
 export extern fn msstd_http_headers_append(
 	headers HttpHeaders,
@@ -124,18 +118,15 @@ export extern fn msstd_http_headers_append(
 	value Bytes,
 ) Void!
 
-export extern fn msstd_http_headers_values(
-	value HttpHeaders,
-	name String,
-) move List[Bytes]?
+export extern fn msstd_http_headers_values(value HttpHeaders, name String) List[Bytes]?
 
-export extern fn msstd_http_headers_names(value HttpHeaders) move List[String]
+export extern fn msstd_http_headers_names(value HttpHeaders) List[String]
 
 export extern fn msstd_http_headers_remove(value HttpHeaders, name String) Bool
 
-export extern fn msstd_http_headers_clone(value HttpHeaders) move HttpHeaders
+export extern fn msstd_http_headers_clone(value HttpHeaders) HttpHeaders
 
-export extern fn msstd_http_headers_new() move HttpHeaders
+export extern fn msstd_http_headers_new() HttpHeaders
 
 // Limits the scheduler threads the runtime starts to `n` (at least 1).
 export extern fn msrt_runtime_set_threads(n Int) Void

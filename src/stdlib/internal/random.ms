@@ -12,7 +12,7 @@ import (
 )
 
 // The operating system's entropy: exactly `count` bytes, `count` from 0 through 16 MiB.
-export extern fn msstd_random_os_bytes(count Int) move Bytes!
+export extern fn msstd_random_os_bytes(count Int) Bytes!
 
 // The stamp `millis * 4096 + sequence` of the next version-7 UUID made at `millis`,
 // strictly greater than every earlier one. A new millisecond starts the sequence at

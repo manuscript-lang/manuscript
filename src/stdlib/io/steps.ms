@@ -77,7 +77,7 @@ fn var Lines.take(stop Int, terminated Bool) String! {
 	return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 }
 
-fn var Lines.next() move String?! {
+fn var Lines.next() String?! {
 	while true {
 		end := self.data.index_of_byte(10, self.start)
 
@@ -156,7 +156,7 @@ type Mapped[T, U] {
 	f fn(T) U
 }
 
-fn var Mapped[T, U].next() move U?! {
+fn var Mapped[T, U].next() U?! {
 	item := self.input.next()?
 	value := item
 	if value != null { return ok(self.f(value)) }
@@ -170,7 +170,7 @@ fn move Mapped[T, U].close() Void! {
 
 // Returns a stream of `f` applied to each item of `input`. Closing it closes
 // `input`.
-export fn map[T, U](move input ReadStream[T], move f fn(T) U) ReadStream[U] {
+export fn map[T, U](move input ReadStream[T], f fn(T) U) ReadStream[U] {
 	return ReadStream[U](Mapped[T, U](input, f))
 }
 
@@ -179,7 +179,7 @@ type Filtered[T] {
 	keep fn(T) Bool
 }
 
-fn var Filtered[T].next() move T?! {
+fn var Filtered[T].next() T?! {
 	while true {
 		item := self.input.next()?
 		value := item
@@ -198,7 +198,7 @@ fn move Filtered[T].close() Void! {
 
 // Returns a stream of the items of `input` for which `keep` is true, in order.
 // Closing it closes `input`.
-export fn filter[T](move input ReadStream[T], move keep fn(T) Bool) ReadStream[T] {
+export fn filter[T](move input ReadStream[T], keep fn(T) Bool) ReadStream[T] {
 	return ReadStream[T](Filtered[T](input, keep))
 }
 
@@ -208,7 +208,7 @@ type Taker[T] {
 	left Int
 }
 
-fn var Taker[T].next() move T?! {
+fn var Taker[T].next() T?! {
 	if self.left <= 0 { return ok(null) }
 
 	item := self.input.next()?

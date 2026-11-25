@@ -74,8 +74,8 @@ static uint32_t mask_of(MsCheckProgram *program, const MsFacts *facts, MsParams 
     const MsRef *ref = ms_facts_ref(facts, param->id);
     const MsTy ty = ms_facts_type(facts, param->id);
     if (param->moving || ref == NULL || ref->kind != MS_REF_PARAM || ty == MS_TY_NONE ||
-        (ms_ty_kind(&program->types, ty) != MS_TY_VARIABLE && !ms_ty_has_variable(&program->types, ty) &&
-         !ms_check_holds_resource(program, ty))) {
+        (ms_ty_kind(&program->types, ty) != MS_TY_VARIABLE && ms_ty_kind(&program->types, ty) != MS_TY_FUNCTION &&
+         !ms_ty_has_variable(&program->types, ty) && !ms_check_holds_resource(program, ty))) {
       continue;
     }
     Scan scan = {facts, ref->local, false};
@@ -135,7 +135,28 @@ bool ms_own_call_takes(const MsCheckProgram *program, const MsCall *call, uint32
 
 /* ---- report ---- */
 
-static void report_params(MsCheckProgram *program, uint32_t module, MsNode node, MsParams params) {
+/* A function is not an owned value, so a parameter of function type has no argument mode to write. */
+static void report_function_modes(MsCheckProgram *program, uint32_t module, MsParams params) {
+  for (uint32_t index = 0; index < params.len; index++) {
+    const MsParam *param = params.ptr[index];
+    const MsTy ty = ms_facts_type(&program->modules.ptr[module].facts, param->id);
+    if ((!param->moving && !param->holding) || ty == MS_TY_NONE || ms_ty_kind(&program->types, ty) != MS_TY_FUNCTION) {
+      continue;
+    }
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "a function is not an owned value, so `");
+    ms_strbuild_append(&text, ms_names_span(program->names, param->name));
+    ms_strbuild_append_text(&text, "` takes no `move` or `hold`; write the parameter as `");
+    ms_strbuild_append(&text, ms_names_span(program->names, param->name));
+    ms_strbuild_append_text(&text, " fn(...) Type`");
+    ms_check_report(program, module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+}
+
+static void report_params(MsCheckProgram *program, uint32_t module, MsNode node, MsParams params, bool modes) {
+  if (modes) {
+    report_function_modes(program, module, params);
+  }
   const uint32_t mask = ms_own_taken_mask(program, module, node);
   for (uint32_t index = 0; mask != 0 && index < params.len && index < 32; index++) {
     const MsParam *param = params.ptr[index];
@@ -162,11 +183,11 @@ void ms_own_taken_report(MsCheckProgram *program) {
     for (uint32_t index = 0; index < tree->ndecls; index++) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
-        report_params(program, module, decl->id, decl->u.fn.params);
+        report_params(program, module, decl->id, decl->u.fn.params, !decl->u.fn.external);
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
-        report_params(program, module, method->id, method->func.params);
+        report_params(program, module, method->id, method->func.params, true);
       }
     }
   }

@@ -91,12 +91,6 @@ static bool local_of(const MsFacts *facts, MsNode node, uint32_t *id) {
   return true;
 }
 
-/* Whether the declaration `ref` names declares its result `move`. */
-static bool declares_move(const MsCheckProgram *program, const MsRef *ref) {
-  const MsFunc *func = ms_own_find_func(program, ref);
-  return func != NULL && func->result_moves;
-}
-
 static bool is_value_ref(MsRefKind kind) {
   return kind == MS_REF_FUNCTION || kind == MS_REF_METHOD || kind == MS_REF_NATIVE || kind == MS_REF_OPERATION;
 }
@@ -159,8 +153,7 @@ static bool takes_payload(Borrows *pass, const MsExpr *call) {
 /* A call whose result is not declared `move` borrows from its first argument that has an origin. */
 static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
-  if (fact == NULL || !is_value_ref(fact->callee.kind) || declares_move(pass->program, &fact->callee) ||
-      !ms_class_owns_memory(pass->facts, pass->classes, call)) {
+  if (fact == NULL || !is_value_ref(fact->callee.kind) || !ms_class_owns_memory(pass->facts, pass->classes, call)) {
     return false;
   }
   const MsExpr *callee = call->u.call.callee;
@@ -729,34 +722,9 @@ static void judge(Borrows *pass) {
   keep_list_clear(&pass->keeps);
 }
 
-/* Whether any bundled standard declaration says `move` before its result. Without one, no result is known to
- * hand over memory and every call result would read as a borrow, so the pass has nothing to go on. */
-static bool standard_declares_move(const MsCheckProgram *program) {
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->module >= program->user_modules && entry->source->func.result_moves) {
-      return true;
-    }
-  }
-  for (size_t module = program->user_modules; module < program->modules.len; module++) {
-    const MsModule *tree = program->modules.ptr[module].tree;
-    for (uint32_t index = 0; index < tree->ndecls; index++) {
-      const MsDecl *decl = tree->decls[index];
-      if (decl->kind == MS_D_FN && decl->u.fn.result_moves) {
-        return true;
-      }
-      for (uint32_t at = 0; decl->kind == MS_D_INTERFACE && at < decl->u.iface.methods.len; at++) {
-        if (decl->u.iface.methods.ptr[at]->func.result_moves) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 void ms_own_borrows(MsCheckProgram *program) {
-  if (program->diagnostics.len != 0 || !standard_declares_move(program)) {
+  if (program->diagnostics.len != 0 || program->modules.len <= program->user_modules) {
+    /* without the standard library no result is known to be new, and every call result would read as a borrow */
     return;
   }
   MsClassifier classes = ms_class_new(program);

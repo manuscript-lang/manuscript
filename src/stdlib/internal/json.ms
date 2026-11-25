@@ -10,11 +10,11 @@ export extern fn msstd_json_decode[T](
 	text String,
 	limits JsonLimits,
 	ignore_unknown_fields Bool,
-) move T!
+) T!
 
 export extern fn msstd_json_stringify[T](
 	value T,
 	max_bytes,
 	indent Int?,
 	strict Bool,
-) move String!
+) String!
