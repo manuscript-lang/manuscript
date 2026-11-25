@@ -19,7 +19,9 @@
  *   by byte or eight at a time; a longer one calls the runtime.
  * - `scalar_at`, `scalar_step`: an offset inside the text decodes in place (the lead byte fixes the width, and a
  *   string is valid UTF-8 so every continuation byte is in bounds); an offset outside the text, or a continuation
- *   byte, calls the runtime for the default or the fault. `scalar_step` answers `scalar << 3 | width`. */
+ *   byte, calls the runtime for the default or the fault. `scalar_step` answers `scalar << 3 | width`.
+ * - `to_bytes`: an empty string is the empty bytes without a call (so a literal `"".to_bytes()` folds to constant
+ *   zeros); any other string calls the runtime. */
 #include "compiler/opt/opt_pass.h"
 #include "compiler/opt/opt_build.h"
 
@@ -273,6 +275,27 @@ static void sf_scalar_text(MirBuilder *b, uint32_t slow_ext) {
 }
 static void sf_scalar_step(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_ext, true); }
 
+/* ---- to_bytes ---- */
+
+static void sf_to_bytes(MirBuilder *b, uint32_t slow_ext) {
+  MirValue ps[1];
+  mir_b_params(b, ps, 1);
+  const MirBlock empty = mir_b_new_block(b), slow = mir_b_new_block(b);
+  const SfBytes text = sf_bytes_of(b, sf_slot_of(b, ps[0]));
+  ob_br_if(b, sf_const_cmp(b, MCC_EQ, text.len, 0), empty, slow);
+  mir_b_switch_to(b, empty);
+  /* The empty bytes: a null data pointer, length 0 and capacity 0, owning nothing. */
+  const MirValue made = mir_b_emit(b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_BYTES}, MIR_PTR);
+  const MirValue zero = mir_b_iconst(b, 0);
+  for (int64_t word = 0; word < 3; word++) {
+    const MirValue store[2] = {ob_add(b, made, word * SF_WORD), zero};
+    (void)mir_b_emit(b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+  }
+  mir_b_ret(b, mir_b_emit(b, MOP_Take, &made, 1, (MirImm){.tag = MI_TY, .a = MIR_BYTES}, MIR_BYTES));
+  mir_b_switch_to(b, slow);
+  sf_call_slow(b, slow_ext, ps, 1);
+}
+
 /* ---- starts_with, ends_with ---- */
 
 /* The first difference of the bytes at `x` and `y` for `n` in `w..=2 * w`: two overlapping reads of `w` bytes, the
@@ -501,6 +524,7 @@ static const SfKind sf_kinds[] = {
   {MR_STRING_COMPARE, "string_compare", 2, {MIR_STR, MIR_STR}, MIR_INT, sf_compare},
   {MR_STRING_SCALAR_STEP, "scalar_step", 2, {MIR_STR, MIR_INT}, MIR_INT, sf_scalar_step},
   {MR_STRING_SCALAR_TEXT, "scalar_text", 2, {MIR_STR, MIR_INT}, MIR_STR, sf_scalar_text},
+  {MR_STRING_TO_BYTES, "to_bytes", 1, {MIR_STR}, MIR_BYTES, sf_to_bytes},
   {MR_STRING_SCALAR_AT, "scalar_at", 4, {MIR_STR, MIR_INT, MIR_BOOL, MIR_INT}, MIR_INT, sf_scalar_at},
 };
 

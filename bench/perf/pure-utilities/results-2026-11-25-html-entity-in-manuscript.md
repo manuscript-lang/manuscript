@@ -1,11 +1,11 @@
 # HTML character references moved from C to Manuscript (2026-11-25)
 
 Change: `runtime/std/html.c` and `html_entity.c` (about 1,000 lines of C, 2,231 named references) became `stdlib/internal/html_entities.ms`, which `data/html.ms` calls for `escape`, `unescape` and the tokenizer's text and attribute decoding. The three `msstd_html_*` externs are gone. Proposal: [pure codecs in Manuscript](../../../design/proposals/pure-codecs-in-manuscript.md), stage 2.
-Baseline: `d810e9f0`. After: this branch. Same program, same preset, same shared 4-core Linux x86-64 VM, no other build running, 15 alternating runs, 100000 rounds of `unescape` and `escape` over four strings (references of every kind, a long plain run, a run of 40 `&amp;`). Wall time in ms for the whole run.
+Baseline: `d810e9f0`. After: this branch. Same program, same preset, same shared 4-core Linux x86-64 VM, no other build running, 31 alternating runs, 100000 rounds of `unescape` and `escape` over four strings (references of every kind, a long plain run, a run of 40 `&amp;`). Wall time in ms for the whole run.
 
 | | before (C) min / median | after (Manuscript) min / median | ratio |
 | --- | --- | --- | --- |
-| unescape + escape | 583 / 630 | 599 / 640 | 1.03 / 1.02 |
+| unescape + escape | 574 / 610 | 592 / 635 | 1.03 / 1.04 |
 
 Callgrind instructions (3000 rounds): 167.5M before, 257.8M after (1.54x); wall time is closer because the C spends its time in `memchr`-style byte loops and a string builder, which the port replaces with the same loops over views.
 
