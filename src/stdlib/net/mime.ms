@@ -271,9 +271,7 @@ fn quote_value(value String) String {
 // inside a value precedes a `;`. Names are lower-cased and the first of a repeated name
 // wins.
 fn disposition_params(text String) Map[String, String] {
-	var cs = List[String]()
-	for c in text.chars() { cs.append(c.clone()) }
-
+	cs := text.chars()
 	var params = Map[String, String]()
 	count := cs.length()
 	var at = 0
