@@ -717,8 +717,9 @@ fn var Map[T, U].add_default_from(move key T, create fn(T) U) Void {
 // Removes every entry in place.
 fn var Map[T, U].clear() Void { ... }
 
-// Returns a new list of the keys in insertion order.
-fn Map[T, U].keys() List[T] { ... }
+// Returns the keys in insertion order as a view of this map: it keeps the map
+// unchangeable until its last use. Use `.clone()` to keep the keys.
+fn hold Map[T, U].keys() &List[T] { ... }
 
 // Calls `operation(key, value)` for each entry in insertion order.
 // A callback that takes `value` as `var` changes it in place, and the receiver must
@@ -821,8 +822,9 @@ fn Map[T Hashable &Clonable, U Clonable].find_last(
 	return null
 }
 
-// Returns a new list of the values in insertion order.
-fn Map[T Hashable, U Clonable].values() List[U] { ... }
+// Returns the values in insertion order as a view of this map: it keeps the map
+// unchangeable until its last use. Use `.clone()` to keep the values.
+fn hold Map[T Hashable, U Clonable].values() &List[U] { ... }
 
 // Returns a new list of `MapEntry` records in insertion order. Each record holds the
 // key and value without copying them.

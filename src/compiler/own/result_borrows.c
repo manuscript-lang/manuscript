@@ -597,9 +597,6 @@ static bool native_result_borrows(const MsCheckProgram *program, MsTy receiver, 
   if (ms_span_is_text(operation, "lines") || ms_span_is_text(operation, "chars")) {
     return args == 0 && text;
   }
-  if (ms_span_is_text(operation, "keys") || ms_span_is_text(operation, "values")) {
-    return args == 0 && map;
-  }
   if (ms_span_is_text(operation, "slice") && args == 2 && list && ms_ty_arg_count(types, receiver) == 1) {
     const MsTy elem = ms_ty_args(types, receiver)[0]; /* only elements that own nothing */
     return ms_ty_is(types, elem, MS_BUILTIN_Int) || ms_ty_is(types, elem, MS_BUILTIN_Float) || ms_ty_is(types, elem, MS_BUILTIN_Bool);
