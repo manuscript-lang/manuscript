@@ -1,4 +1,5 @@
 /* compiler/own/borrows.c: a source changed while a binding borrowing it is still used (see borrows.h). */
+#include "compiler/own/look_fields.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/borrows.h"
 
@@ -311,6 +312,11 @@ static void note_call_keeps(Borrows *pass, const MsExpr *call) {
     const MsExpr *value = call->u.call.args.ptr[index].value;
     bool moves = constructor;
     for (uint32_t at = 0; fact != NULL && at < fact->arg_count; at++) {
+      if (constructor && fact->args[at].source == MS_ARG_WRITTEN && fact->args[at].node.node == value->id &&
+          (ms_own_look_field(pass->program, fact, at) || ms_own_look_carrier(pass->program, fact, at))) {
+        moves = false; /* the record is tied to it, not given it */
+        break;
+      }
       moves = moves || (fact->args[at].source == MS_ARG_WRITTEN && fact->args[at].node.node == value->id &&
                         (fact->args[at].flags & MS_PARAM_MOVE) != 0);
     }

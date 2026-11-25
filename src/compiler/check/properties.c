@@ -429,6 +429,28 @@ static bool declares_clone(MsCheckProgram *program, MsTy ty) {
   return any;
 }
 
+/* A record looks at another value when a field is written `&T`, or a field is itself such a record. */
+static bool look_record_within(const MsCheckProgram *program, MsTy ty, int depth) {
+  const MsTyRow *row = ms_ty_row(&program->types, ty);
+  if (row->kind != MS_TY_TYPE || row->def == 0 || depth > 8) {
+    return false;
+  }
+  const MsDef *def = ms_defs_get(&program->defs, row->def);
+  const MsDecl *decl = program->symbols.ptr[def->symbol].decl;
+  for (uint32_t index = 0; decl != NULL && decl->kind == MS_D_TYPE && index < decl->u.type.fields.len; index++) {
+    const MsTypeRef *written = decl->u.type.fields.ptr[index]->ty;
+    if ((written != NULL && written->is_ref) ||
+        (index < def->fields.len && look_record_within(program, def->fields.ptr[index].ty, depth + 1))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ms_check_look_record(const MsCheckProgram *program, MsTy ty) {
+  return look_record_within(program, ty, 0);
+}
+
 static bool clonable(MsCheckProgram *program, MsTy ty) {
   const MsTyTable *types = &program->types;
   switch (ms_ty_kind(types, ty)) {
@@ -454,8 +476,8 @@ static bool clonable(MsCheckProgram *program, MsTy ty) {
   if (def != NULL && has_marker(program, def, "clonable")) {
     return true;
   }
-  if (ms_check_closeable(program, ty)) {
-    return false;
+  if (ms_check_closeable(program, ty) || ms_check_look_record(program, ty)) {
+    return false; /* a record with a `&` field looks at a value it does not own, so a copy has nothing to keep */
   }
   if (ms_ty_kind(types, ty) == MS_TY_NATIVE) {
     return (ms_ty_is(types, ty, MS_BUILTIN_Decimal) || declares_clone(program, ty)) &&

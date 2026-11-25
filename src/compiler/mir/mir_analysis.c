@@ -108,7 +108,15 @@ void mir_arg_modes(const MirModule *module, const MirFunc *func, const MirInst *
   case MOP_ClosureNew: /* a closure into its maker's frame only reads the captures where they live */
     fill_modes(out, count, inst->imm.tag == MI_FUNC && module->funcs.ptr[inst->imm.a].scoped ? MM_BORROW : MM_MOVE);
     return;
-  case MOP_TypeNew: case MOP_AltNew: case MOP_ListLit: case MOP_TypeSet:
+  case MOP_TypeNew:
+    fill_modes(out, count, MM_MOVE);
+    for (uint32_t field = 0; inst->imm.tag == MI_TYPE && field < count && field < module->type_defs.ptr[inst->imm.a].nfields; field++) {
+      if (module->type_defs.ptr[inst->imm.a].fields[field].borrowed) {
+        out[field] = MM_BORROW; /* a `&` field points at a value its owner keeps */
+      }
+    }
+    return;
+  case MOP_AltNew: case MOP_ListLit: case MOP_TypeSet:
   case MOP_TypeFill: case MOP_ListPush: case MOP_ListDropLast: case MOP_ListSet: case MOP_ListSetNn:
   case MOP_ListSetU: case MOP_ListFill: case MOP_ListFillU: case MOP_ListPushU:
     fill_modes(out, count, MM_MOVE);

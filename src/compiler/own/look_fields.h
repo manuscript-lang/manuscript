@@ -13,4 +13,14 @@
 /* Whether `call` builds a record whose field `index` (declaration order) is written `&T`. */
 bool ms_own_look_field(const MsCheckProgram *program, const MsCall *call, uint32_t index);
 
+/* Whether `call` builds a record whose field `index` holds a record that looks at something: the field is moved in,
+ * and the result is still tied to what the inner record looks at. */
+bool ms_own_look_carrier(const MsCheckProgram *program, const MsCall *call, uint32_t index);
+
+/* Whether `member` (`record.field`) names a field written `&T`: it looks at a value the record does not own. */
+bool ms_own_look_member(const MsCheckProgram *program, const MsFacts *facts, const MsExpr *member);
+
+/* Whether a record type has a `&` field, so a value of it looks at what its fields were built from. */
+bool ms_own_look_record(const MsCheckProgram *program, MsTy ty);
+
 #endif

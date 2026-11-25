@@ -313,13 +313,17 @@ static bool has_ref(const MsTypeRef *t) {
   return false;
 }
 
+static MsTy written_type(const Pass *pass, const MsTypeRef *ref) {
+  return ref != NULL && ref->id < pass->facts->node_count ? pass->written[ref->id] : MS_TY_NONE;
+}
+
 /* Whether the result itself is a reference: `&T`, or the payload of `&T?` and `&T!`. */
 static bool ref_result(const Pass *pass, const MsTypeRef *t) {
   if (t == NULL) {
     return false;
   }
-  if (t->is_ref) {
-    return true;
+  if (t->is_ref || (pass->written != NULL && ms_own_look_record(pass->program, written_type(pass, t)))) {
+    return true; /* a record with a `&` field looks at what built it */
   }
   return t->args.len >= 1 && (named_as(pass, t, "Optional") || named_as(pass, t, "Result")) && ref_result(pass, t->args.ptr[0]);
 }
@@ -380,9 +384,6 @@ static uint32_t declared_mask(const Pass *pass, const MsFunc *func, const MsMeth
 
 /* A signature's `hold` and `&` against its body: the body may return a part of a held argument only, and a `&` result
  * must be a part of one. */
-static MsTy written_type(const Pass *pass, const MsTypeRef *ref) {
-  return ref != NULL && ref->id < pass->facts->node_count ? pass->written[ref->id] : MS_TY_NONE;
-}
 
 /* Whether a type is or wraps an interface: converting a part to one builds a new box, which is an owned value. */
 static bool holds_interface(const MsTyTable *types, MsTy ty) {
@@ -529,13 +530,13 @@ static bool store(MsFacts *facts, MsNode node, uint32_t mask) {
   return changed;
 }
 
-static bool round_of(MsCheckProgram *program, MsClassifier *classes) {
+static bool round_of(MsCheckProgram *program, MsClassifier *classes, MsTy *const *written_by_module) {
   bool changed = false;
   for (uint32_t module = 0; module < program->modules.len; module++) {
     MsFacts *facts = &program->modules.ptr[module].facts;
     const MsModule *tree = program->modules.ptr[module].tree;
     Pass pass = {.program = program, .classes = classes, .facts = facts, .self_module = module,
-                 .self_name = ms_names_intern(program->names, ms_span_of_text("self"))};
+                 .self_name = ms_names_intern(program->names, ms_span_of_text("self")), .written = written_by_module[module]};
     for (uint32_t index = 0; facts->result_borrows != NULL && index < tree->ndecls; index++) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
@@ -556,8 +557,16 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes) {
 
 void ms_own_result_borrows(MsCheckProgram *program) {
   MsClassifier classes = ms_class_new(program);
-  for (int round = 0; round < 8 && round_of(program, &classes); round++) {
+  MsTy **written = ms_alloc_zeroed((program->modules.len + 1) * sizeof *written);
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    written[module] = written_types(program, module, program->modules.ptr[module].facts.node_count);
   }
+  for (int round = 0; round < 8 && round_of(program, &classes, written); round++) {
+  }
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    ms_free(written[module]);
+  }
+  ms_free(written);
 }
 
 uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t module, MsNode node) {
@@ -682,7 +691,7 @@ bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint
     return false; /* an interface operation answers the clone its implementation writes */
   }
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE) {
-    return kind == MS_REF_CASE || (kind == MS_REF_TYPE && ms_own_look_field(program, call, position));
+    return kind == MS_REF_CASE || (kind == MS_REF_TYPE && (ms_own_look_field(program, call, position) || ms_own_look_carrier(program, call, position)));
   }
   const MsFunc *declared = ms_own_find_func(program, &call->callee);
   if (declared == NULL) {

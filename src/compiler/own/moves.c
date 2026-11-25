@@ -321,7 +321,8 @@ static void check_place_handed_on(Moves *pass, const MsExpr *value) {
   if (concrete == MS_TY_NONE || (!pass->instance && ms_ty_has_variable(&pass->program->types, concrete)) || !copy_is_written(pass, concrete)) {
     return;
   }
-  const bool leaves = !element && value->kind == MS_E_MEMBER && root == value->u.member.left && !pass->instance &&
+  const bool looks = value->kind == MS_E_MEMBER && ms_own_look_member(pass->program, pass->facts, value);
+  const bool leaves = !element && !looks && value->kind == MS_E_MEMBER && root == value->u.member.left && !pass->instance &&
                       !ms_binding_list_contains(&pass->borrowed, binding) && !ms_binding_list_contains(&pass->vars, binding) &&
                       !ms_binding_list_contains(&pass->varparams, binding) && owner_at_last_use(pass, root, false);
   if (leaves || ms_check_holds_resource(pass->program, concrete)) {
@@ -334,12 +335,16 @@ static void check_place_handed_on(Moves *pass, const MsExpr *value) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "`");
   ms_strbuild_append(&text, place_span);
-  ms_strbuild_append_text(&text, "` belongs to `");
-  ms_strbuild_append(&text, ms_names_span(pass->program->names, root->u.sym));
-  ms_strbuild_append_text(&text, "`, so a new owner would get a hidden copy; write `");
+  if (looks) {
+    ms_strbuild_append_text(&text, "` looks at a value its record does not own (the field is written `&`), so a new owner needs a copy; write `");
+  } else {
+    ms_strbuild_append_text(&text, "` belongs to `");
+    ms_strbuild_append(&text, ms_names_span(pass->program->names, root->u.sym));
+    ms_strbuild_append_text(&text, "`, so a new owner would get a hidden copy; write `");
+  }
   ms_strbuild_append(&text, place_span);
   ms_strbuild_append_text(&text, ".clone()` to copy it");
-  if (!element) {
+  if (!element && !looks) {
     ms_strbuild_append_text(&text, ", or use the field at the last use of the record to move it");
   }
   ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
@@ -508,7 +513,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(pass->facts, expr->id) : NULL;
   for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
     if (call->args[index].source != MS_ARG_WRITTEN || (!call->constructor && (call->args[index].flags & MS_PARAM_MOVE) == 0) ||
-        ms_own_look_field(pass->program, call, index)) {
+        ms_own_look_field(pass->program, call, index) || ms_own_look_carrier(pass->program, call, index)) {
       continue;
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {

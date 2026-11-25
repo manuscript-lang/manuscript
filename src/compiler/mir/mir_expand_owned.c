@@ -86,7 +86,7 @@ static void release_type(OwnedCx *cx, MirValue value, uint32_t type, uint32_t ma
   for (uint32_t field = 0; field < def->nfields; field++) {
     const MirTy ty = def->fields[field].ty;
     const MirImm imm = {.tag = MI_FIELD, .a = type, .b = field};
-    if (!bit(mask, field) && mir_needs_drop(cx->module, ty)) {
+    if (!bit(mask, field) && !def->fields[field].borrowed && mir_needs_drop(cx->module, ty)) {
       drop_value(cx, push(cx, MOP_TypeGet, &value, 1, imm, ty));
     }
     if (def->indirect && mir_type_field_boxed(cx->layouts, ty)) {

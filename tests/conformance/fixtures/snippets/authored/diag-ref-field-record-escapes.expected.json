@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a `&` result points into an argument; mark that argument `hold`, or return an owned value",
+        "position": {
+          "file": "diag-ref-field-record-escapes.ms",
+          "line": 13,
+          "column": 1,
+          "offset": 224
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a value with a `&` field looks at another value, so it has no copy of its own; clone the part you need, such as its items",
+        "position": {
+          "file": "diag-ref-field-record-escapes.ms",
+          "line": 23,
+          "column": 14,
+          "offset": 442
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-ref-field-record-escapes.ms:13:1: type: a `&` result points into an argument; mark that argument `hold`, or return an owned value\n    |\n 13 | fn make(names List[String]) Cursor {\n    | ^\n<DIR>/diag-ref-field-record-escapes.ms:23:14: type: a value with a `&` field looks at another value, so it has no copy of its own; clone the part you need, such as its items\n    |\n 23 |     return c.clone()\n    |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -142,7 +142,7 @@ static MirTy frame_type(MirModule *m) {
     id = mir_add_type(m, name);
     MirField *fields = MS_ARENA_NEW_ARRAY(&m->arena, MirField, SV_FRAME_PIECES);
     for (uint32_t k = 0; k < SV_FRAME_PIECES; k++) {
-      fields[k] = (MirField){mir_name(m, ms_span_of_text("piece")), MIR_STR, 0};
+      fields[k] = (MirField){mir_name(m, ms_span_of_text("piece")), MIR_STR, 0, false};
     }
     m->type_defs.ptr[id].fields = fields;
     m->type_defs.ptr[id].nfields = SV_FRAME_PIECES;
