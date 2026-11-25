@@ -140,7 +140,7 @@ A collection loop or non-escaping callback borrows the receiver for the traversa
 
 Mutating methods such as `append`, `set`, `add`, and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted`, and `reversed` return independent results.
 
-Some methods borrow instead: `slice` on a List of numbers or `Bool`s, and `keys()` and `values()` on a Map. Use the result in place while the receiver stays unchanged. Keeping it (storing it, returning it, binding it with `var`, or capturing it in an escaping closure) needs `.clone()`, as in `xs.slice(1, 3).get().clone()`.
+Some methods borrow instead: `slice` on a List (of any element type), and `keys()` and `values()` on a Map. Use the result in place while the receiver stays unchanged. Keeping it (storing it, returning it, binding it with `var`, or capturing it in an escaping closure) needs `.clone()`, as in `xs.slice(1, 3).get().clone()`.
 
 For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
 

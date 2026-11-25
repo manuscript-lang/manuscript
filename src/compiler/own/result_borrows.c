@@ -571,20 +571,6 @@ static bool external_function_is_fresh(const MsCheckProgram *program, const MsCa
   return sig != NULL && !sig->borrows;
 }
 
-/* The natives whose result points into their receiver, the one place a method name decides ownership (the rule the
- * Rust checker's `native_borrow` states): `get` on a Map, the payload `get()` of an Optional or Result, the
- * views of text and bytes, the keys and values of a Map, and a slice of a list of plain data. Every other native
- * answers a value of its own. */
-static bool native_result_borrows(const MsCheckProgram *program, MsTy receiver, MsSpan operation, uint32_t args) {
-  const MsTyTable *types = &program->types;
-  const bool list = ms_ty_is(types, receiver, MS_BUILTIN_List);
-  if (ms_span_is_text(operation, "slice") && args == 2 && list && ms_ty_arg_count(types, receiver) == 1) {
-    const MsTy elem = ms_ty_args(types, receiver)[0]; /* only elements that own nothing */
-    return ms_ty_is(types, elem, MS_BUILTIN_Int) || ms_ty_is(types, elem, MS_BUILTIN_Float) || ms_ty_is(types, elem, MS_BUILTIN_Bool);
-  }
-  return false;
-}
-
 /* Whether the runtime native behind a bodiless declaration says its result is a fresh owner (no `@borrows`): a copy,
  * not a view into an argument. False when the table does not know the native. */
 static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *call) {
@@ -617,9 +603,6 @@ static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *
   }
   const char *type_name = ms_builtin_name(ms_ty_builtin(&program->types, receiver));
   const MsSpan operation = ms_names_span(program->names, name);
-  if (native_result_borrows(program, receiver, operation, call->arg_count > 0 ? call->arg_count - 1 : 0)) {
-    return false;
-  }
   const MsNativeSig *sig = ms_native_sig_find_method(ms_span_of_text(type_name), operation);
   return sig == NULL || !sig->borrows; /* a runtime native that says `@borrows` is a view too */
 }
