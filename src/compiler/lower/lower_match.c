@@ -328,9 +328,17 @@ static bool dispatch_literals(LowerFn *fn, const Match *match, const MsExpr *exp
 }
 
 MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
-  Match match = {.scrutinee = fn_expr(fn, expr->u.match.scrutinee, LW_BORROW)};
+  /* `match call()? { v => .. }`: the payload of a Result nothing else owns moves out into the match, so its arms own what
+   * they bind (a binding handed on is moved, not copied). */
+  const MsExpr *tried = expr->u.match.scrutinee;
+  const bool takes = tried->kind == MS_E_UNARY && tried->op == MS_U_TRY && tried->u.bin.left->kind == MS_E_CALL;
+  Match match = {.scrutinee = fn_expr(fn, expr->u.match.scrutinee, takes ? LW_MOVE : LW_BORROW)};
   if (match.scrutinee == MIR_NONE) {
     return MIR_NONE;
+  }
+  const MirInst *made = takes ? fn_just_made(fn, match.scrutinee) : NULL;
+  if (made != NULL && made->op == MOP_AltTake && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, match.scrutinee))) {
+    fn_own(fn, fn_scope(fn), match.scrutinee);
   }
   match.ty = mir_b_ty(&fn->b, match.scrutinee);
   match.checked = ms_facts_type(fn->facts, expr->u.match.scrutinee->id);
@@ -340,9 +348,9 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
   const MsExpr *subject = expr->u.match.scrutinee;
   match.consumed = ((subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE) ||
-                    (subject->kind == MS_E_CALL && fn_fresh_owner(fn, match.scrutinee))) &&
+                    ((subject->kind == MS_E_CALL || takes) && fn_fresh_owner(fn, match.scrutinee))) &&
                    (match.kind == MK_ALT || match.kind == MK_OPT) &&
-                   (subject->kind == MS_E_CALL || !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id)));
+                   (subject->kind == MS_E_CALL || takes || !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id)));
   match.owned_resource = !match.consumed && subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE &&
                          (match.kind == MK_ALT || match.kind == MK_OPT);
   if (!match.consumed && subject->kind == MS_E_NAME && (match.kind == MK_ALT || match.kind == MK_OPT) &&
