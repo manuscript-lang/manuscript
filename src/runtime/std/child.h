@@ -66,6 +66,10 @@ void ms_child_disarm(MsChild *child, uint64_t token);
 
 /* SIGTERM to the child's group unless `force`; a child that has exited is left alone, since its pid may be reused. */
 void ms_child_signal(MsChild *child, bool force);
+/* Sends `signal` to the child's group; does nothing (returns 0) once the child has exited. Returns a libuv status. */
+int ms_child_send(MsChild *child, MsSysKill signal);
+/* Sends `signal` to the child's group; does nothing (returns 0) once the child has exited. Returns a libuv status. */
+int ms_child_send(MsChild *child, MsSysKill signal);
 /* Kills what remains of the group, also after the leader has been reaped. */
 void ms_child_kill_group(MsChild *child);
 /* Waits for the loop thread to finish. The child must be exiting: callers kill it first. */

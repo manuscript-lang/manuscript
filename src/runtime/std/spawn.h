@@ -19,8 +19,10 @@ int64_t msstd_process_subprocess_stream_id(MsObj *handle, int64_t which);
 int64_t msstd_process_subprocess_max_resident(MsObj *handle);
 /* ms-sig: msstd_process_subprocess_terminate(handle h: *mut ObjCell<Child>) @domain=process */
 void msstd_process_subprocess_terminate(MsObj *handle);
-/* ms-sig: msstd_process_subprocess_kill(handle h: *mut ObjCell<Child>) @domain=process */
-void msstd_process_subprocess_kill(MsObj *handle);
+/* ms-sig: msstd_process_subprocess_pid(handle h: *mut ObjCell<Child>) -> i64 @domain=process */
+int64_t msstd_process_subprocess_pid(MsObj *handle);
+/* ms-sig: msstd_process_subprocess_signal(handle h: *mut ObjCell<Child>, signal: i64, err: ErrSlot) -> u8 @domain=process */
+uint8_t msstd_process_subprocess_signal(MsObj *handle, int64_t signal, MsString *err);
 /* Kills the group, joins the child and closes the pipes not yet handed to the table. Idempotent. */
 /* ms-sig: msstd_process_subprocess_close(handle h: *mut ObjCell<Child>) @domain=process */
 void msstd_process_subprocess_close(MsObj *handle);

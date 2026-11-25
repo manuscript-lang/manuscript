@@ -6,6 +6,7 @@
 #include "base/strbuild.h"
 #include "runtime/core/task.h"
 #include "runtime/std/child.h"
+#include "runtime/std/process.h"
 #include "runtime/std/streams.h"
 
 /* The flags of the parent end of a stream's pipe when a task reads or writes it. The runtime polls a POSIX descriptor, so
@@ -65,7 +66,16 @@ int64_t msstd_process_subprocess_max_resident(MsObj *handle) {
 
 void msstd_process_subprocess_terminate(MsObj *handle) { ms_child_signal((MsChild *)handle, false); }
 
-void msstd_process_subprocess_kill(MsObj *handle) { ms_child_signal((MsChild *)handle, true); }
+int64_t msstd_process_subprocess_pid(MsObj *handle) { return (int64_t)((MsChild *)handle)->pid; }
+
+uint8_t msstd_process_subprocess_signal(MsObj *handle, int64_t signal, MsString *err) {
+  if (signal < 0 || signal >= MS_SYS_KILL_COUNT) {
+    MsFail fail = ms_fail_new();
+    ms_fail_status(&fail, MS_STATUS_INVALID_INPUT);
+    return ms_fail_finish(&fail, err);
+  }
+  return msstd_process_finish_kill(ms_child_send((MsChild *)handle, (MsSysKill)signal), err);
+}
 
 void msstd_process_subprocess_close(MsObj *handle) {
   MsChild *child = (MsChild *)handle;
