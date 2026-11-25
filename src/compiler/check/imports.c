@@ -5,6 +5,7 @@
  * import names the graph module the loader resolved. An import binds to the exported symbol of that name; an
  * import that does not resolve binds to symbol 0 so later passes do not report it a second time. */
 #include "base/message.h"
+#include "compiler/check/lazy_std.h"
 #include "compiler/check/program.h"
 #include "compiler/check/std_cache.h"
 #include "compiler/syntax/parse.h"
@@ -37,7 +38,8 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
   }
   const MsModule *cached = program->std_cache != NULL ? ms_std_cache_tree(program->std_cache, file) : NULL;
   if (cached != NULL) {
-    *out = ms_check_add_module(program, file, cached);
+    /* A lazy check sets bodies aside in the functions of its own copy: the cache's trees stay whole between programs. */
+    *out = ms_check_add_module(program, file, program->lazy_std ? ms_check_clone_for_deferral(program, cached) : cached);
     program->modules.ptr[*out].source = source.text;
     return true;
   }

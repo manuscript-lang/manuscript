@@ -64,6 +64,30 @@ static void defer_function(MsCheckProgram *program, uint32_t module, MsDecl *dec
   func->deferred = true;
 }
 
+const MsModule *ms_check_clone_for_deferral(MsCheckProgram *program, const MsModule *tree) {
+  MsModule *copy = MS_ARENA_NEW(&program->arena, MsModule);
+  *copy = *tree;
+  copy->decls = MS_ARENA_NEW_ARRAY(&program->arena, MsDecl *, tree->ndecls ? tree->ndecls : 1);
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
+    MsDecl *decl = tree->decls[index];
+    if (decl->kind != MS_D_FN && decl->kind != MS_D_IMPL) {
+      copy->decls[index] = decl;
+      continue;
+    }
+    MsDecl *own = MS_ARENA_NEW(&program->arena, MsDecl);
+    *own = *decl;
+    if (decl->kind == MS_D_IMPL && decl->u.impl.methods.len > 0) {
+      own->u.impl.methods.ptr = MS_ARENA_NEW_ARRAY(&program->arena, MsMethod *, decl->u.impl.methods.len);
+      for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
+        own->u.impl.methods.ptr[at] = MS_ARENA_NEW(&program->arena, MsMethod);
+        *own->u.impl.methods.ptr[at] = *decl->u.impl.methods.ptr[at];
+      }
+    }
+    copy->decls[index] = own;
+  }
+  return copy;
+}
+
 void ms_check_defer_std_bodies(MsCheckProgram *program) {
   for (uint32_t module = program->user_modules; module < program->modules.len; module++) {
     const MsModule *tree = program->modules.ptr[module].tree;
