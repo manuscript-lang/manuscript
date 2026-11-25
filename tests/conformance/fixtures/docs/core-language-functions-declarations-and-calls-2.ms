@@ -11,3 +11,7 @@ mixed := reduce(deduction: 3, 10)
 amount := 10
 deduction := 3
 swapped := reduce(deduction: deduction, amount: amount)
+// expect-error: MS3070 8:14 a constant takes literals, operators, collections, and other constants; compute this value in a function
+// expect-error: MS3070 9:23 a constant takes literals, operators, collections, and other constants; compute this value in a function
+// expect-error: MS3070 10:10 a constant takes literals, operators, collections, and other constants; compute this value in a function
+// expect-error: MS3070 13:12 a constant takes literals, operators, collections, and other constants; compute this value in a function

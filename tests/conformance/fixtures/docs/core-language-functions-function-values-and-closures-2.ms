@@ -13,3 +13,4 @@ fn adapt() Void {
 	}
 	result := apply(value: 3, transform: renamed)
 }
+// expect-error: MS2001 14:15 unknown binding apply; declare it with 'apply := ...' before use, define 'fn apply(...) T { ... }', or import it from a module

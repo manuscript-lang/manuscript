@@ -36,3 +36,4 @@ export fn main() Int {
 	say(f"gcd(2021, 3909) = {gcd(2021, 3909)}")
 	return 0
 }
+// expect-error: MS3001 35:17 expected Bool, found Int (in the initializer of 'bad')

@@ -16,3 +16,4 @@ fn nested(state Queue[Int]) Void {
 		return value
 	}
 }
+// expect-exit: 0

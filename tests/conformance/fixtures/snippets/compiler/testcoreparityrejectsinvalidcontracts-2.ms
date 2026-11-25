@@ -4,3 +4,4 @@
 fn wrong[U](value Set[Int], transform fn(Int) U) Void {
 	output := value.map(transform)
 }
+// expect-error: MS3021 5:21 U does not satisfy Hashable; pass a type that already implements it

@@ -39,3 +39,4 @@ export fn main() Int {
 	say(f"gcd(4773, 402) = {gcd(4773, 402)}")
 	return 0
 }
+// expect-exit: 0

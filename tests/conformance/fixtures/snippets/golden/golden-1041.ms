@@ -10,3 +10,4 @@ fn example() Int {
 		value: 3
 	)
 }
+// expect-exit: 0

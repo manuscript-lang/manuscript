@@ -5,3 +5,4 @@
         return ok()
     }
     , options: HttpServerOptions(tls: null))
+// expect-error: MS1000 3:85-3:86 a closure without parameter types is written without 'fn': x => { ... }, (a, b) => { ... } or () => { ... }

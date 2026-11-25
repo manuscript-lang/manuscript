@@ -14,3 +14,4 @@ fn wrong(cause Error) String {
 		}
 	}
 }
+// expect-error: MS3000 8:5 match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else

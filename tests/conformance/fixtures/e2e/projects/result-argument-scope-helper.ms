@@ -4,3 +4,4 @@
 export fn erase[T](hold r T!) &T! => r
 
 export fn forward[T](hold r T!) &T! => erase(r)
+// expect-exit: 0

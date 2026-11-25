@@ -5,3 +5,4 @@
 fn fail[T](message String) T!Error => error(Error(message))
 
 fn first() Int!Error { ... }
+// expect-error: MS3000 7:1 reachable fallthrough in function returning Result[Int, Error]; end every path with 'return <Result[Int, Error]>' (or make the last branch return)

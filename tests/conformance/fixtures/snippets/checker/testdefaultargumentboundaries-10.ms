@@ -14,3 +14,4 @@ fn call() Int {
 	copy = g
 	return copy()
 }
+// expect-error: MS3003 15:12 missing argument 1: Int in call to copy; pass it positionally, without a label

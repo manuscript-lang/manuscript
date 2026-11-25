@@ -6,3 +6,4 @@ fn failing() Int! => error(Error("failure"))
 fn count[T](r T!) Int => 1
 
 fn use() Int => count(r: failing())
+// expect-exit: 0

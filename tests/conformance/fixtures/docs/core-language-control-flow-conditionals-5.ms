@@ -8,3 +8,4 @@ fn port(lookup Result[Int, Error]) Int {
 	}
 	return 8080
 }
+// expect-exit: 0

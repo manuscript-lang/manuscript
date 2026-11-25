@@ -40,3 +40,4 @@ export fn main() Int {
 	say(f"fib(58) = {fib(58)}")
 	return 0
 }
+// expect-error: MS2001 37:12 unknown binding missing_function; declare it with 'missing_function := ...' before use, define 'fn missing_function(...) T { ... }', or import it from a module

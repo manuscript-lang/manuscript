@@ -37,3 +37,4 @@ export fn main() Int {
 	return "not an int"
 	return 0
 }
+// expect-error: MS3001 37:12 expected Int, found String (in the return value)

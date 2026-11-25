@@ -93,3 +93,4 @@ fn poll_nested(var log List[Int], start Int) Void {
 		outer += 1
 	}
 }
+// expect-exit: 0

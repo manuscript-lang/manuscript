@@ -8,3 +8,4 @@ type Box[T] {
 fn f() Box[Int] {
 	return Box(value: 1)
 }
+// expect-exit: 0

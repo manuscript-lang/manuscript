@@ -17,3 +17,4 @@ export fn defaults(
 ) Int {
 	return callback(second)
 }
+// expect-exit: 0

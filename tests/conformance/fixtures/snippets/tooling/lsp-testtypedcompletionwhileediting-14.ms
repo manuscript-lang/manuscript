@@ -4,3 +4,4 @@
 fn work() String {
 	return "Que|"
 }
+// expect-exit: 0

@@ -8,3 +8,4 @@ fn one() Int {
 fn two() Int {
 	return 2
 }
+// expect-exit: 0

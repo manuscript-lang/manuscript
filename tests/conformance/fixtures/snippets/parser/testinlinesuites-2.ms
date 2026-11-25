@@ -4,3 +4,4 @@
 fn f() Void => return
 
 fn g() Void => return
+// expect-exit: 0

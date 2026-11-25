@@ -17,3 +17,4 @@ fn get() Int => (
 fn cause() CollectionError => CollectionError("local")
 
 export fn main() Int => get() - 15
+// expect-error: MS2002 4:1 unknown import alias @domain; this project declares none, so add one under [aliases] in ms.toml, e.g. "@lib" = "./src/lib" (use @std/... for the standard library)

@@ -7,3 +7,4 @@ fn f(a Int) Void {
 		return
 	}
 }
+// expect-exit: 0

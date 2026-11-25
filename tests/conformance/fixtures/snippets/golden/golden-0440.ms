@@ -15,3 +15,4 @@ fn first() Void {
 	)
 	wrap(fn(item Int = 4) => item + offset)
 }
+// expect-error: MS3000 9:5 local binding result is never read; remove it, use it, or name it with a leading '_' to ignore it

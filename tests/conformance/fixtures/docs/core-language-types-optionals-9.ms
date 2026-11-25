@@ -5,3 +5,4 @@ fn port_number(text String) Result[Int, Error] {
 	port := ok_or(text.parse_int(), Error("missing"))?
 	return ok(port)
 }
+// expect-exit: 0

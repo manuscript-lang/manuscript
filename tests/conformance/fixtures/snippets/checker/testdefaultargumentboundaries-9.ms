@@ -9,3 +9,4 @@ fn call() Int {
 	copy fn(Int) Int := f
 	return copy()
 }
+// expect-error: MS3003 10:12 missing argument 1: Int in call to copy; pass it positionally, without a label

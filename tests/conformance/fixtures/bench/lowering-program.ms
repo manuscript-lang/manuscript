@@ -27,3 +27,4 @@ fn items(values List[Int], limit Int) Int {
 	}
 	return total
 }
+// expect-exit: 0

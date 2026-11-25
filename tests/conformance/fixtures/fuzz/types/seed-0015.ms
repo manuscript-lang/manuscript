@@ -30,3 +30,4 @@ export fn main() Int {
 	say(f"i6 = {i6}")
 	return 0
 }
+// expect-error: MS3001 28:14 operator operands require the same independently known type, found Int + String; convert one side so both have one type (e.g. interpolate into text with f"{value}", or convert between Int and Float)

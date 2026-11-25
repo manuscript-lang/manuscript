@@ -32,3 +32,4 @@ export fn main() Int {
 	say(f"{6} {730998903425} {(6 < 730998903425)} sum {6 + 730998903425}")
 	return 0
 }
+// expect-error: MS2001 26:12 unknown binding undefined_name; declare it with 'undefined_name := ...' before use, define 'fn undefined_name(...) T { ... }', or import it from a module

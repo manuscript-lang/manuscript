@@ -7,3 +7,4 @@
         sum += i%d
         i%d += 1
     }
+// expect-error: MS1000 3:17-3:18 expected ':=', found '%'

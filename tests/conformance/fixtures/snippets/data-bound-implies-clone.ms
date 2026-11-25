@@ -16,3 +16,4 @@ fn e[T Hashable](m Map[T, Int]) Map[T, Int] => m.clone()
 export fn main() Int {
 	return a(1) + b(2)
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 fn caller() Void {
 	operation()
 }
+// expect-error: MS2001 5:5 unknown binding operation; declare it with 'operation := ...' before use, define 'fn operation(...) T { ... }', or import it from a module

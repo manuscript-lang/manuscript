@@ -19,3 +19,4 @@ fn classify(result Int!Failure) Int {
 		ok(value) => return value
 	}
 }
+// expect-exit: 0

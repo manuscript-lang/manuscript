@@ -7,3 +7,4 @@ fn use(value Int?) Int {
 		null => return 0
 	}
 }
+// expect-error: MS3000 6:23 type name requires a constructor call; write Int(field: value, ...) to build a value

@@ -6,3 +6,4 @@ fn f(x Int?) Int {
 		n => n
 	}
 }
+// expect-error: MS3050 5:12 non-exhaustive match; missing cases: null, or add a final '_ => ...' arm; add the arms 'null => ...'

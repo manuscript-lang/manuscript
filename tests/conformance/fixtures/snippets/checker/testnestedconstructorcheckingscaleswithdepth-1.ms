@@ -4,3 +4,4 @@
 type Box[T] {
 	value T
 }
+// expect-exit: 0

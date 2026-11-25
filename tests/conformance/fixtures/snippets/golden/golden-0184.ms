@@ -12,3 +12,4 @@ enum Node {
 	Leaf(value Value)
 	Children(values List[Wrapper])
 }
+// expect-exit: 0

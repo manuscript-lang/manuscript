@@ -10,3 +10,4 @@ fn example() Int {
 	explicit := subtract(5, 2)
 	return usual + explicit
 }
+// expect-exit: 0

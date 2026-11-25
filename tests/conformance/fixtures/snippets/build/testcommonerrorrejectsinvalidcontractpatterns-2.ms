@@ -8,3 +8,4 @@ type Impostor {
 fn wrong(value Impostor) Error {
 	return value
 }
+// expect-error: MS3001 9:12 expected Error, found Impostor (in the return value)

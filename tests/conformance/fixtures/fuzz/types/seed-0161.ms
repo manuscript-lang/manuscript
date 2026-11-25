@@ -61,3 +61,4 @@ export fn main() Int {
 	bad := "abc".no_such_method()
 	return 0
 }
+// expect-error: MS2001 61:18 unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 57 members in total

@@ -12,3 +12,5 @@ fn f(c Choice[Int]) Int {
 		Choice[String].Missing => return 0
 	}
 }
+// expect-error: MS3000 11:9 pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>
+// expect-error: MS3000 12:9 pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>

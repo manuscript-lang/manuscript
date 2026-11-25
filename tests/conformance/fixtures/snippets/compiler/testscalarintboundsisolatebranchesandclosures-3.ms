@@ -9,3 +9,4 @@ fn probe(value Int, flag Bool) Int {
 	sum += 1
 	return sum
 }
+// expect-exit: 0

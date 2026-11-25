@@ -5,3 +5,4 @@ import Network from "@std/net/net.ms"
 fn f(socket Network) Void {
 	socket.clone()
 }
+// expect-exit: 0

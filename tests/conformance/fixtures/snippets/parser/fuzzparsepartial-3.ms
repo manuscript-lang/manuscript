@@ -5,3 +5,4 @@
 fn read() Int {
 	return 2
 }
+// expect-exit: 0

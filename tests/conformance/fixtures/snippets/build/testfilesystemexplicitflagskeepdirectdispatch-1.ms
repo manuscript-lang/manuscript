@@ -10,3 +10,4 @@ fn explicit() Void {
 	void create_directory("", true)
 	void remove("", false)
 }
+// expect-exit: 0

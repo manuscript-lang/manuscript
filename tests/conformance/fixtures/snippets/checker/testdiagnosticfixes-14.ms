@@ -8,3 +8,7 @@ fn f() Int {
 	var n = Queue[Int]()
 	return 0
 }
+// expect-error: MS2001 7:13 unknown binding Queue; add: import Queue from "@std/collections/queue.ms"
+// expect-fix: 1:1-1:1 "import Queue from \"@std/collections/queue.ms\"\n"
+// expect-error: MS2001 8:13 unknown binding Queue; add: import Queue from "@std/collections/queue.ms"
+// expect-fix: 1:1-1:1 "import Queue from \"@std/collections/queue.ms\"\n"

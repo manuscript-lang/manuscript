@@ -4,3 +4,4 @@
 fn f[T](value T = 3) T {
 	return value
 }
+// expect-error: MS3001 4:19 expected T, found Int

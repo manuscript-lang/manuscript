@@ -11,3 +11,4 @@ fn CustomerKey.equals(other CustomerKey) Bool {
 }
 
 fn CustomerKey.hash() Int => self.id
+// expect-exit: 0

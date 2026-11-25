@@ -7,3 +7,4 @@ fn work() Void {
 		payload: encode(build(records)),
 	)
 }
+// expect-error: MS2001 5:5 unknown binding send; declare it with 'send := ...' before use, define 'fn send(...) T { ... }', or import it from a module

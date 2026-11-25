@@ -8,3 +8,4 @@ export fn main() Int {
 	[value] := empty()
 	return value
 }
+// expect-exit: 0

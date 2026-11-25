@@ -28,3 +28,4 @@ export fn main() Int {
 	say(f"i2 = {i2}")
 	return 0
 }
+// expect-error: MS3000 19:14 logical operands require Bool, found Int and Int; compare explicitly, e.g. x != 0

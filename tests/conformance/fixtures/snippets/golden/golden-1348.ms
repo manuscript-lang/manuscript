@@ -19,3 +19,8 @@ fn classify(result: Result[Int, Failure]) Int {
         ok(value) => return value
     }
 }
+// expect-error: MS1000 7:1-7:5 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it
+// expect-error: MS1000 10:22-10:23 remove the ':' between 'cause' and its type; write cause Type
+// expect-fix: 10:22-10:23 ""
+// expect-error: MS1000 16:19-16:20 remove the ':' between 'result' and its type; write result Type
+// expect-fix: 16:19-16:20 ""

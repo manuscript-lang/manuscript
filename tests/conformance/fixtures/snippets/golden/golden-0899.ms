@@ -3,3 +3,4 @@
 fn f() String {
 	return "a}"
 }
+// expect-exit: 0

@@ -49,3 +49,10 @@ func init() {
         checkPoll(poll_nested, 0, 2, 133, 63)
     }
 }
+// expect-error: MS1000 5:23-5:29 expected '{', found name 'struct'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'
+// expect-error: MS1000 10:1-10:5 'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int { ... }' with the result type after the parameters
+// expect-fix: 10:1-10:5 "fn"
+// expect-error: MS1000 21:30-21:31 unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon
+// expect-error: MS1000 31:1-31:2 unmatched closing delimiter '}'; remove it or add the matching opener before it
+// expect-error: MS1000 33:20-33:21 unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon
+// expect-error: MS1000 51:1-51:2 unmatched closing delimiter '}'; remove it or add the matching opener before it

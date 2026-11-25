@@ -10,3 +10,4 @@ fn choose(algorithm HashAlgorithm) Void {
 fn wrong() Void {
 	choose("sha256")
 }
+// expect-error: MS3001 11:12 expected HashAlgorithm, found String (in argument 'algorithm' of choose)

@@ -32,3 +32,6 @@ export fn main() Int {
 	say(f"fact(2) = {fact(2)}")
 	return 0
 }
+// expect-error: MS3001 23:16 expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 23:16-23:17 "\"1\""
+// expect-error: MS3000 23:19 too many positional arguments; every parameter is already supplied, so remove this argument

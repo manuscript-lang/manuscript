@@ -18,3 +18,4 @@ fn main() Void {
 	_d := "Hi"
 	_a += x + b(c)
 }
+// expect-exit: 0

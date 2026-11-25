@@ -62,3 +62,4 @@ export fn main() Int {
 	say(f"acc4 = {acc4}")
 	return 0
 }
+// expect-error: MS3001 32:17 expected Bool, found Int (in the initializer of 'bad')

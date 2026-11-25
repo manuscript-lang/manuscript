@@ -7,3 +7,4 @@ fn read(values List[Int]) Int {
 
 	return 0
 }
+// expect-exit: 0

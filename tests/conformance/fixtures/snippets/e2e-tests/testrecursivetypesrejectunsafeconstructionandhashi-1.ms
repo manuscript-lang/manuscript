@@ -9,3 +9,4 @@ export fn main() Int {
 	node := Node(node)
 	return 0
 }
+// expect-error: MS2001 9:18 unknown binding node; declare it with 'node := ...' before use, define 'fn node(...) T { ... }', or import it from a module

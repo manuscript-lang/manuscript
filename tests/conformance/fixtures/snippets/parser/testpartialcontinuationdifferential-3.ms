@@ -4,3 +4,4 @@
 fn later(value Int = 3) Int {
 	return value
 }
+// expect-exit: 0

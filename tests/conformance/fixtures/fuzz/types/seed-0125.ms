@@ -31,3 +31,4 @@ export fn main() Int {
 	bad := Map[Int, Int]().get_or(1, 2, 3)
 	return 0
 }
+// expect-error: MS3000 31:41 too many positional arguments; every parameter is already supplied, so remove this argument

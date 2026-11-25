@@ -4,3 +4,4 @@ fn work() Void {
 	// Que|
 	void
 }
+// expect-exit: 0

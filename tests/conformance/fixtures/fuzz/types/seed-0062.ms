@@ -31,3 +31,5 @@ export fn main() Int {
 	say(f"l5 = {l5} len {l5.length()}")
 	return 0
 }
+// expect-error: MS3001 13:19 expected String, found Int (in the initializer of 'bad'); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 13:19-13:20 "\"5\""

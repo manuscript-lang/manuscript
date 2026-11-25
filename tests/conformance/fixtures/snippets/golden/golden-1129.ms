@@ -6,3 +6,4 @@ fn sum(
 	third_value Int,
 	fourth_value Int,
 ) Int => (first_value + second_value + third_value + fourth_value)
+// expect-exit: 0

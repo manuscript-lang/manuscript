@@ -6,3 +6,4 @@ import TomlValue, parse from "@std/data/toml.ms"
 fn read() Void {
 	_result := parse(text: "a=1")
 }
+// expect-exit: 0

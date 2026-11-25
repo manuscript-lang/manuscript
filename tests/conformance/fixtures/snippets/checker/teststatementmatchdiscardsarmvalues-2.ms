@@ -16,3 +16,4 @@ fn f(var xs List[Int], o Int?) Void {
 
 	xs.append(n)
 }
+// expect-exit: 0

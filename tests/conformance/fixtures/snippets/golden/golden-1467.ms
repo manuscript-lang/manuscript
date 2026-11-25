@@ -8,3 +8,4 @@ export fn main() Int {
 	value Map[String, Int] := {"a": 0}
 	return value.filter(crash).length()
 }
+// expect-exit: 0

@@ -20,3 +20,4 @@ export fn main() Int {
 	bad := undefined_name + 1
 	return 0
 }
+// expect-error: MS2001 20:12 unknown binding undefined_name; declare it with 'undefined_name := ...' before use, define 'fn undefined_name(...) T { ... }', or import it from a module

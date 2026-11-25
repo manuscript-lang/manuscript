@@ -10,3 +10,4 @@ fn use() Int {
 	chain_1.add("a", nested[1][0])
 	return chain_1.get("a") or panic("called Optional.get() on null")
 }
+// expect-exit: 0

@@ -10,3 +10,4 @@ fn example() Void {
 	Set[String]()
 	CsvOptions(delimiter: ",", line_ending: "\n")
 }
+// expect-exit: 0

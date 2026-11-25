@@ -23,3 +23,4 @@ fn wrong(item Named) String {
 		}
 	}
 }
+// expect-error: MS3000 18:9 concrete type pattern requires explicit type arguments; write e.g. Box[Int]

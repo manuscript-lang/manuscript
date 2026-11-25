@@ -23,3 +23,4 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS3001 16:16 expected Int, found String (in the initializer of 'bad')

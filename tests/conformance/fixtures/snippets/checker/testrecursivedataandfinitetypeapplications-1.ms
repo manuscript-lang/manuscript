@@ -6,3 +6,4 @@ enum Expr {
 	Add(left Expr, right Expr)
 	Neg(inner Expr?)
 }
+// expect-exit: 0

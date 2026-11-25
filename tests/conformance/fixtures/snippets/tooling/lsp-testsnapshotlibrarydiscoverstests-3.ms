@@ -6,3 +6,4 @@ import value from "../src/value.ms"
 test "checks source" {
 	invalid Int := "wrong"
 }
+// expect-error: MS2002 4:1 cannot find module ../src/value.ms (looked for <SCRATCH>/src); check the spelling, make sure the file exists, and that the path is relative to the importing file

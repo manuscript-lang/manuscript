@@ -51,3 +51,4 @@ fn strings(left String, right String, limit Int, move resource Resource) Int {
 	}
 	return count
 }
+// expect-exit: 0

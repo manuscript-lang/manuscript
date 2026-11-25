@@ -15,3 +15,4 @@ fn probe() Int {
 	values.add(Key(2), 20)
 	return values.length()
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@ type Layer%d {
     left: Layer%d
     right: Layer%d
 }
+// expect-error: MS1000 3:11-3:12 expected '{', found '%'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'

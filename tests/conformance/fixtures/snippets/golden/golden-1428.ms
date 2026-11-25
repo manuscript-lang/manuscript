@@ -7,3 +7,5 @@ fn main() Void {
     values := %s
     result := values.%s(%s)
 }
+// expect-error: MS1000 3:10-3:11 expected a name, found '%'
+// expect-error: MS1000 7:15-7:16 expected an expression, found '%'; write a value, name, call, or literal here

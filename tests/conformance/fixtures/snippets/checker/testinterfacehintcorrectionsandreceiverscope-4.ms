@@ -12,3 +12,4 @@ type E {
 fn E.name() String => self.text.clone()
 
 fn named_value() Named => E("bad input")
+// expect-exit: 0

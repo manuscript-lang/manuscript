@@ -10,3 +10,4 @@ fn work() Int {
 		}
 	)
 }
+// expect-error: MS2001 5:12 unknown binding apply; declare it with 'apply := ...' before use, define 'fn apply(...) T { ... }', or import it from a module

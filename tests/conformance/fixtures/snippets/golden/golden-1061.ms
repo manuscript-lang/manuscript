@@ -6,3 +6,4 @@ fn work() Void {
 		23, 24, 25, 26, 27, 28, 29, 30
 	]
 }
+// expect-error: MS3000 4:5 local binding values is never read; remove it, use it, or name it with a leading '_' to ignore it

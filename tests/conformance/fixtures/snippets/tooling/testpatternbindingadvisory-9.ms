@@ -13,3 +13,4 @@ fn use(value Int?) Int {
 		null => return 0
 	}
 }
+// expect-error: MS3001 12:25 expected Int, found Flag (in the return value)

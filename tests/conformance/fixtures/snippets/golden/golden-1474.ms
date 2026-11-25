@@ -7,3 +7,4 @@ fn divide(value Int = 1 / 0) Int {
 export fn main() Int {
 	return divide()
 }
+// expect-error: MS3000 3:25 division by zero always faults; guard the divisor or use a nonzero constant

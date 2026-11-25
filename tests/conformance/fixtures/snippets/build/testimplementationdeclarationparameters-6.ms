@@ -12,3 +12,4 @@ type Box[T] {
 fn Box[Int].get() T {
 	return self.value
 }
+// expect-error: MS2001 12:19 unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it

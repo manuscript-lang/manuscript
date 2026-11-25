@@ -92,3 +92,19 @@ fn poll_nested(log List[Int], start Int) Void {
 		outer += 1
 	}
 }
+// expect-error: MS3000 7:9 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 3:20-3:20 "var "
+// expect-error: MS3000 16:9 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 12:22-12:22 "var "
+// expect-error: MS3000 28:13 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 21:24-21:24 "var "
+// expect-error: MS3000 40:9 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 36:12-36:12 "var "
+// expect-error: MS3000 49:9 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 45:14-45:14 "var "
+// expect-error: MS3000 64:9 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 54:18-54:18 "var "
+// expect-error: MS3000 73:9 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 69:15-69:15 "var "
+// expect-error: MS3000 88:13 cannot change `log`: parameter `log` is not declared var; write `var log <Type>` in the signature
+// expect-fix: 81:16-81:16 "var "

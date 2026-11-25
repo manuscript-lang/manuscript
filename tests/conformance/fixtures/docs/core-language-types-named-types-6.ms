@@ -8,3 +8,4 @@ type CustomerId {
 type OrderId {
 	value String
 }
+// expect-exit: 0

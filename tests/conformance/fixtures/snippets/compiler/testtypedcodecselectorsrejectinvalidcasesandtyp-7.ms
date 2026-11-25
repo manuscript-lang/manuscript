@@ -13,3 +13,4 @@ fn choose(algorithm HashAlgorithm) Void {
 fn wrong() Void {
 	choose(CompressionFormat.Gzip)
 }
+// expect-error: MS3001 14:30 expected HashAlgorithm, found CompressionFormat (in argument 'algorithm' of choose)

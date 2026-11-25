@@ -27,3 +27,4 @@ test "Map removal keeps direct bound generic and defining-module key scopes" {
 	remove(Key(1, "different"))
 	expect_false((returned_values.length() != 2 or returned_values.keys()[0].id != 2))?
 }
+// expect-error: MS2002 4:1 cannot find module ./by_id.ms (looked for by_id.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file

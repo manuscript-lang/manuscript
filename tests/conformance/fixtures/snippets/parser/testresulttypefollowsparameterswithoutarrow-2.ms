@@ -4,3 +4,4 @@
 fn f(g fn(Int) Int) fn(Int) Int {
 	return g
 }
+// expect-exit: 0

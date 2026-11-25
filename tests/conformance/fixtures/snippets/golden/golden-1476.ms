@@ -9,3 +9,4 @@ fn extract[T](hold value T?) &T {
 export fn main() Int {
 	return extract[Int](null)
 }
+// expect-error: MS3000 5:20 the body keeps `value`, so the signature must say so: write `move value Type`, or keep `.clone()` of it

@@ -5,3 +5,4 @@ fn use() Int {
 	empty Map[String, Int] := {}
 	return Map[String, Int]().add("a", nested[1][0]).get("a").get()
 }
+// expect-error: MS2001 6:54 unknown or ambiguous member get on Void; this type has no fields or operations

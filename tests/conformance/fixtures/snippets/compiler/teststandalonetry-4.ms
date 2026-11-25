@@ -6,3 +6,4 @@ fn operation() Void! => ok()
 fn f() Void {
 	operation()?
 }
+// expect-error: MS3000 7:5 '?' requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get_or(default)', or '.get()'

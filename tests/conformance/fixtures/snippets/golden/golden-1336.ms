@@ -10,3 +10,4 @@ fn use(value Item?) Int {
 		null => return 0
 	}
 }
+// expect-error: MS2001 9:29 Item has no member value; a type name is followed only by an enum case

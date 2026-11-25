@@ -8,3 +8,4 @@ fn work() Void {
 		4
 	]
 }
+// expect-error: MS3000 4:5 local binding values is never read; remove it, use it, or name it with a leading '_' to ignore it

@@ -4,3 +4,4 @@
 fn combine(first Int = 3, second Int = first) Int {
 	return first + second
 }
+// expect-exit: 0

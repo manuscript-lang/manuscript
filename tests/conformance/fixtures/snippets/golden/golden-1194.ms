@@ -7,3 +7,4 @@ type Point {
 fn read(point Point) Int {
     return point.|
 }
+// expect-error: MS1000 8:18-8:19 expected a name, found '|'

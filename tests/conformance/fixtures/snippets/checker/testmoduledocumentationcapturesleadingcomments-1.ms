@@ -20,3 +20,4 @@ fn helper() Int {
 export fn bare() Int {
 	return 0
 }
+// expect-exit: 0

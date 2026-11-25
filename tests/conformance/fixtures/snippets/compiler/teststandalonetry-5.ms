@@ -7,3 +7,4 @@ fn f() Int! {
 	operation()?
 	return ok(1)
 }
+// expect-error: MS3000 7:5 '?' requires a Result or an Optional, found Void; apply '?' to a value of type Result[T, E] or T?

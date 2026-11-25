@@ -4,3 +4,4 @@
 type Config {
 	value List[Int?]?
 }
+// expect-exit: 0

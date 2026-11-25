@@ -6,3 +6,4 @@ enum CollectionError {
 }
 
 fn get() List[Int]! => [1].slice(0, 1)
+// expect-exit: 0

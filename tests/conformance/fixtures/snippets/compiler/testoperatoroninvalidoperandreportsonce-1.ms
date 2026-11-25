@@ -6,3 +6,4 @@ fn f() Int {
 	x += 3?
 	return x
 }
+// expect-error: MS3000 6:10 '?' requires a Result or an Optional, found Int; apply '?' to a value of type Result[T, E] or T?

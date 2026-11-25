@@ -7,3 +7,4 @@ type Options {
 }
 
 options := Options(count: 5)  // total defaults to 6
+// expect-error: MS3070 9:12 a constant takes literals, operators, collections, and other constants; compute this value in a function

@@ -13,3 +13,4 @@ fn example() Int {
 
 	return result
 }
+// expect-error: MS2001 4:15 unknown binding apply; declare it with 'apply := ...' before use, define 'fn apply(...) T { ... }', or import it from a module

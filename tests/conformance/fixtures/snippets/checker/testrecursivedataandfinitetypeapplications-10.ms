@@ -4,3 +4,4 @@
 type Config {
 	value Int??
 }
+// expect-exit: 0

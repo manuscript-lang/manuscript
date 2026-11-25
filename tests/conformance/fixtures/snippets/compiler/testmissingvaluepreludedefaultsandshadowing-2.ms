@@ -14,3 +14,4 @@ fn read(value Other) Int {
 		Missing(found) => return found
 	}
 }
+// expect-exit: 0

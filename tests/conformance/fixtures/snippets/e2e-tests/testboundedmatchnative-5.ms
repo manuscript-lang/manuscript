@@ -13,3 +13,5 @@ export fn main() Int {
 
 	return sum
 }
+// expect-error: MS2001 5:16 unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module
+// expect-error: MS2001 10:16 unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module

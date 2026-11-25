@@ -4,3 +4,4 @@
 fn display_name(move name String?) String {
 	return name or "Anonymous"
 }
+// expect-exit: 0

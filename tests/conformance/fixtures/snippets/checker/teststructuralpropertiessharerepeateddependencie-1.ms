@@ -4,3 +4,4 @@
 type Layer0 {
 	value Int
 }
+// expect-exit: 0

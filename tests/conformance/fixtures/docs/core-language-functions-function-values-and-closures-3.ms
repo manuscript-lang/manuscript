@@ -10,3 +10,4 @@ fn make_headline() fn() String {
 	return headline
 }
 // make_headline()() returns "Weekly update".
+// expect-exit: 0

@@ -6,3 +6,4 @@ enum Payment {
 	Declined(reason String)
 	Pending(reference String)
 }
+// expect-exit: 0

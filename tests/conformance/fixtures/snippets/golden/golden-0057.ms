@@ -8,3 +8,4 @@ fn add(a Int, b Int) Int {
 export fn main() Int {
 	return add(1, 2)
 }
+// expect-exit: 0

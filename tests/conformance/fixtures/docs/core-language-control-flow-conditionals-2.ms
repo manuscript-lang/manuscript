@@ -8,3 +8,4 @@ fn status(active Bool) String {
 		return "Inactive"
 	}
 }
+// expect-exit: 0

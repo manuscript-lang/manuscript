@@ -8,3 +8,4 @@ fn add(value Int) Int {
 fn render() String {
 	return f"héllo { add(value: 2) }"
 }
+// expect-exit: 0

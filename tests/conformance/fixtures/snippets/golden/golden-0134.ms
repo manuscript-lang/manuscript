@@ -9,3 +9,4 @@ fn f(x Int?) Int {
         null => 0
     }
 }
+// expect-error: MS1000 6:13 an arm value must be its final expression

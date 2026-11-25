@@ -14,3 +14,4 @@ fn describe(payment Payment) String {
 		}
 	}
 }
+// expect-error: MS2001 4:21 unknown type Payment; declare it with 'type Payment:' / 'enum Payment:' / 'interface Payment:', declare it as a type parameter, or import it

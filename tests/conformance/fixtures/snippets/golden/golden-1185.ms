@@ -3,3 +3,4 @@
 export type Box {
 	value Int
 }
+// expect-exit: 0

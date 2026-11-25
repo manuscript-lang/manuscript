@@ -17,3 +17,7 @@ test "second=fails" {
 test "third=after" {
 	return
 }
+// expect-error: MS3004 9:28 unknown argument data; parameters of write: value
+// expect-error: MS3003 9:22 missing argument value: String in call to write; add 'value: <String>'
+// expect-error: MS3004 10:28 unknown argument data; parameters of write: value
+// expect-error: MS3003 10:22 missing argument value: String in call to write; add 'value: <String>'

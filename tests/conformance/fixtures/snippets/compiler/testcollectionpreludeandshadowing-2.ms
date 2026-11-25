@@ -15,3 +15,4 @@ fn use() Set[Int] {
 	var nested List[Set[Int]] = [values]
 	return keep(nested[0], 1)
 }
+// expect-exit: 0

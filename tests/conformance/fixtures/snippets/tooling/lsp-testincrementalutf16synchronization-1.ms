@@ -5,3 +5,4 @@
 fn answer(input Int) Int {
 	return input
 }
+// expect-exit: 0

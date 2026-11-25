@@ -6,3 +6,4 @@ fn tail(value Int!Error) Int!Error {
 	output := value.clone()?
 	return ok(output)
 }
+// expect-exit: 0

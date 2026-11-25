@@ -15,3 +15,4 @@ fn use(value Envelope) Int {
 		Pair(_payload, NotFound) => return 1
 	}
 }
+// expect-exit: 0

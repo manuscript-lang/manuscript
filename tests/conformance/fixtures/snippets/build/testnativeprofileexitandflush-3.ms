@@ -10,3 +10,4 @@ fn main() Void {
 	void stdout().write("ready\n")
 	void sleep(nanoseconds(60000000000)).wait()
 }
+// expect-exit: 0

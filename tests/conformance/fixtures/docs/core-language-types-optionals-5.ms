@@ -4,3 +4,4 @@
 fn display_name(create fn() String, move name String?) String {
 	return name or create()
 }
+// expect-exit: 0

@@ -10,3 +10,4 @@ fn greeting(name String?) String {
 		return "Hello!"
 	}
 }
+// expect-exit: 0

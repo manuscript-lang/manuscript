@@ -10,3 +10,4 @@ fn f(x Int?) Void! {
 		null => return ok()
 	}
 }
+// expect-error: MS2001 7:13 unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T { ... }', or import it from a module

@@ -14,3 +14,4 @@ fn recognize(value Other) Int {
 		OutOfRange => return 1
 	}
 }
+// expect-exit: 0

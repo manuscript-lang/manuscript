@@ -10,3 +10,5 @@ fn read(values List[Int]) Int {
     }
     return result
 }
+// expect-error: MS1000 4:5-4:16 'let' was removed; bind with 'x := value' (or 'x Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding
+// expect-fix: 4:5-4:16 "result :="

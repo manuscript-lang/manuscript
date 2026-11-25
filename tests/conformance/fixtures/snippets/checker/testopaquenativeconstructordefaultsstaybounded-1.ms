@@ -4,3 +4,4 @@
 type Resource {
 	size Int = 1
 }
+// expect-exit: 0

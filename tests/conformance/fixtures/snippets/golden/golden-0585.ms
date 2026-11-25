@@ -5,3 +5,4 @@ import Bytes from "@std/bytes.ms"
 fn count(items List[Int], data Bytes) Int {
 	return items.length() + data.length()
 }
+// expect-exit: 0

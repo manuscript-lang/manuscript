@@ -5,3 +5,4 @@ fn f() Int {
 	s := Set[Float]()
 	return 0
 }
+// expect-error: MS3021 5:10 Float does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a type with an Int or String key, or use Decimal

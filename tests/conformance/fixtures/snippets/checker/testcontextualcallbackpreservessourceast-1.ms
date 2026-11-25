@@ -8,3 +8,4 @@ type Callback {
 fn example() Void {
 	_callback := Callback(value => value + 1)
 }
+// expect-exit: 0

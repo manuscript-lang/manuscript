@@ -12,3 +12,4 @@ type Box[T] {
 fn Box[Int].get() Int {
 	return self.value
 }
+// expect-exit: 0

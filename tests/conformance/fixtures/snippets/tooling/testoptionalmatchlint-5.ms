@@ -12,3 +12,4 @@ fn use(value Shape) Int {
 		Line => 1
 	}
 }
+// expect-exit: 0

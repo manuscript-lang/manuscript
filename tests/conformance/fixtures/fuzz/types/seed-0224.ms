@@ -34,3 +34,6 @@ export fn main() Int {
 	say(f"i5 = {i5}")
 	return 0
 }
+// expect-error: MS3001 16:16 expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 16:16-16:17 "\"1\""
+// expect-error: MS3000 16:19 too many positional arguments; every parameter is already supplied, so remove this argument

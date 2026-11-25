@@ -4,3 +4,4 @@
 export fn remove_generic[K Hashable, V](var values Map[K, V], key K) Void {
 	values.remove(key)
 }
+// expect-exit: 0

@@ -34,3 +34,4 @@ type Box {
 fn Box.read(value Int = choose(8)) Int {
 	return choose(9)
 }
+// expect-exit: 0

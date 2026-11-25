@@ -4,3 +4,4 @@
 fn text[T](value T) String {
 	return value.to_string()
 }
+// expect-exit: 0

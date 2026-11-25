@@ -7,3 +7,4 @@ fn nonnegative(value Int) Bool {
 	}
 	return true
 }
+// expect-exit: 0

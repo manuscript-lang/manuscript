@@ -7,3 +7,4 @@ type Options {
 }
 
 fn read() Int => return Options().first
+// expect-exit: 0

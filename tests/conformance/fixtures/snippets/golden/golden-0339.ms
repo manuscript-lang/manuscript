@@ -8,3 +8,4 @@ enum A {
 type B {
 	a A
 }
+// expect-exit: 0

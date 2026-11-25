@@ -14,4 +14,4 @@
   probe(ctx)
   panic("query did not fault")
  }
- 
+// expect-error: MS1000 5:63-5:64 unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon

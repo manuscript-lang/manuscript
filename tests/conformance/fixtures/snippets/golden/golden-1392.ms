@@ -3,3 +3,4 @@
 type Data {
 	count Int
 }
+// expect-exit: 0

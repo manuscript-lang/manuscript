@@ -5,3 +5,4 @@ export type Options {
 	total Int = count + 1
 	label String = "literal, )"
 }
+// expect-exit: 0

@@ -19,3 +19,5 @@ fn run() Void {
 		}
 	)
 }
+// expect-error: MS3000 15:20 local binding n is never read; remove it, use it, or name it with a leading '_' to ignore it
+// expect-error: MS3000 16:23 local binding e is never read; remove it, use it, or name it with a leading '_' to ignore it

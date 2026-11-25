@@ -6,3 +6,4 @@ fn f() Result[Int, Error] {
 	operation()?
 	return ok(1)
 }
+// expect-exit: 0

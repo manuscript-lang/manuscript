@@ -19,3 +19,4 @@ fn total(cents Cents) Result[Int, Error] {
 
 	return ok(amount)
 }
+// expect-exit: 0

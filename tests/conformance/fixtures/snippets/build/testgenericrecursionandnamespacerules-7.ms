@@ -16,3 +16,4 @@ fn Box[T].get() T {
 fn Box[Int].get() Int {
 	return self.value
 }
+// expect-error: MS3010 16:13 duplicate or overlapping implementation of get on Box: another receiver form of the same type could match the same application

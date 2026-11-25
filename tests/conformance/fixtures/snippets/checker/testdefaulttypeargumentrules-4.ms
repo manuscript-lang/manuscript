@@ -6,3 +6,4 @@ interface Named {
 }
 
 fn f[T Named = Int]() Void => void
+// expect-error: MS3000 8:16 Int does not satisfy Named; choose a default that already implements it

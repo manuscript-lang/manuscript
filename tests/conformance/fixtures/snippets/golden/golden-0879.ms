@@ -6,3 +6,4 @@ fn f() Int {
 	}
 	return 0
 }
+// expect-exit: 0

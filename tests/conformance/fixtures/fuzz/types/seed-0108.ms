@@ -18,3 +18,4 @@ export fn main() Int {
 	say(f"l2 = {l2} len {l2.length()}")
 	return 0
 }
+// expect-exit: 0

@@ -7,3 +7,4 @@ export fn multiply(value Int) Int {
 fn private() Int {
 	return 0
 }
+// expect-exit: 0

@@ -30,3 +30,4 @@ export fn main() Int {
 	say(f"b4 = {b4}")
 	return 0
 }
+// expect-error: MS2001 16:12 unknown binding undefined_name; declare it with 'undefined_name := ...' before use, define 'fn undefined_name(...) T { ... }', or import it from a module

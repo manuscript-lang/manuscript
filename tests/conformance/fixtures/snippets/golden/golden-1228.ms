@@ -9,3 +9,4 @@ fn work(a Int) Int {
 export fn main() Int {
     return work(2)
 }
+// expect-error: MS1000 5:10-5:11 expected an expression, found '='; write a value, name, call, or literal here

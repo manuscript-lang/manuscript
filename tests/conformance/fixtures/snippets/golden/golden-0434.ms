@@ -5,3 +5,4 @@ value := choose(first: fn() {
         return 1
     , second: () => 2)
 }
+// expect-error: MS1000 6:22 mismatched closing delimiter ')'; the '{' opened at line 3:29 needs '}'

@@ -36,3 +36,4 @@ interface Read {
 fn Box.get() Int {
 	return self.value
 }
+// expect-exit: 0

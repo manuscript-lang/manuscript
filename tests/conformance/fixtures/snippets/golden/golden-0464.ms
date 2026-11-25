@@ -5,3 +5,4 @@ enum Other {
 }
 
 fn get() Other => OutOfRange
+// expect-exit: 0

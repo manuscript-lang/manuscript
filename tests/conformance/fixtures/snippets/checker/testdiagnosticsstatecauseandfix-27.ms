@@ -5,3 +5,4 @@ fn f() Int {
 	s := null
 	return 0
 }
+// expect-error: MS3080 5:10 cannot infer the type of null; give it a target, e.g. `x Int? := null`, or pass a value

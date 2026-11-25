@@ -16,3 +16,4 @@ fn first() Void {
 	)
 	wrap(fn(item Int = 4) => item + offset)
 }
+// expect-exit: 0

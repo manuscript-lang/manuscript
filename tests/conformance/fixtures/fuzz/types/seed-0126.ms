@@ -27,3 +27,4 @@ export fn main() Int {
 	say(f"i3 = {i3}")
 	return 0
 }
+// expect-exit: 0
