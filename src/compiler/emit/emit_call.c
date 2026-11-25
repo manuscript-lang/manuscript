@@ -316,7 +316,11 @@ void emit_frame_slots(EmitCx *cx) {
     }
   }
   for (uint32_t cell = 0; cell < cx->ncells; cell++) {
-    ms_strbuild_printf(cx->out, "  %%cell%u = alloca [%u x i8], align 8\n", cell, cx->cell_bytes[cell]);
+    if (emit_wide_is_ret_cell(cx, cell)) {
+      ms_strbuild_printf(cx->out, "  %%cell%u = getelementptr i8, ptr %%sret, i64 0\n", cell);
+    } else {
+      ms_strbuild_printf(cx->out, "  %%cell%u = alloca [%u x i8], align 8\n", cell, cx->cell_bytes[cell]);
+    }
     if (cx->cell_escape[cell] && cx->wide_hide) {
       /* An empty `asm` takes the address, so LLVM keeps the cell in memory instead of promoting it to registers. */
       ms_strbuild_printf(cx->out, "  call void asm sideeffect \"\", \"r,~{memory}\"(ptr %%cell%u)\n", cell);

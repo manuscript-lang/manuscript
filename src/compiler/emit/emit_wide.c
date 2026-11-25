@@ -29,6 +29,7 @@ struct EmitWide {
   uint32_t moved_first;
   uint32_t moved_count;
   const uint32_t *uses; /* by value: the operands and edge arguments that read it */
+  uint32_t ret_cell;    /* the pooled cell that is the result area (UINT32_MAX: none), see emit_wide_alias */
   uint32_t *base;       /* by value: where it lies in its pooled cell (0 unless emit_wide_alias moved it) */
 };
 
@@ -67,6 +68,7 @@ const bool *emit_wide_plan(EmitCx *cx, MsArena *arena) {
     plan->held[value] = plan->incoming[value] = cells[value] = plan->stored[value] = false;
   }
   plan->moved = MIR_NONE;
+  plan->ret_cell = UINT32_MAX;
   plan->uses = mir_use_counts(arena, func);
   plan->base = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
   for (size_t value = 0; value < count; value++) {
@@ -337,6 +339,31 @@ void emit_wide_loads(EmitCx *cx) {
   plan->ntouched = 0;
 }
 
+/* The result area is a cell of the frame when a returned value lies alone at the start of one of exactly its size:
+ * the value is built where it is returned and the copy at `ret` is not written. The cell holding most such returns
+ * is chosen; its occupants are never live together, so the others use the result area in turn. */
+static void choose_ret_cell(EmitCx *cx) {
+  EmitWide *plan = cx->wide;
+  const MirFunc *func = cx->func;
+  uint32_t *votes = ms_alloc_zeroed(((size_t)cx->ncells + 1) * sizeof *votes);
+  uint32_t best = 0;
+  for (uint32_t block = 0; block < func->blocks.len; block++) {
+    const MirTerm *term = &func->blocks.ptr[block].term;
+    const MirValue value = term->value;
+    if (term->kind != MT_RET || value == MIR_NONE || !plan->held[value] || plan->incoming[value] ||
+        plan->base[value] != 0 || cx->pool[value] == UINT32_MAX ||
+        cx->cell_bytes[cx->pool[value]] != emit_slot_bytes(cx, emit_value_type(cx, value))) {
+      continue;
+    }
+    const uint32_t cell = cx->pool[value];
+    if (++votes[cell] > best) {
+      best = votes[cell];
+      plan->ret_cell = cell;
+    }
+  }
+  ms_free(votes);
+}
+
 /* A held value made by an instruction and read only by the `alt.new` that wraps it as its payload lies in the result's
  * cell already (pooling put them in one cell: the value dies where the result is made). Built where the payload goes, the
  * block copy that would shift it past the tag is not written. */
@@ -387,6 +414,12 @@ void emit_wide_alias(EmitCx *cx) {
     }
   }
   ms_free(made);
+  choose_ret_cell(cx);
+}
+
+/* Whether the pooled cell is the function's result area. */
+bool emit_wide_is_ret_cell(const EmitCx *cx, uint32_t cell) {
+  return cx->wide != NULL && cx->wide->ret_cell == cell;
 }
 
 /* `%cellv<value>`: where each moved value lies in its pooled cell. */
@@ -459,6 +492,9 @@ void emit_wide_copy_edge(EmitCx *cx, const MirTerm *term, uint32_t index) {
 bool emit_wide_return(EmitCx *cx, MirValue value) {
   if (cx->wide == NULL || !cx->wide->held[value]) {
     return false;
+  }
+  if (!cx->wide->incoming[value] && cx->wide->base[value] == 0 && cx->pool[value] == cx->wide->ret_cell) {
+    return true; /* built in the result area */
   }
   char from[24];
   cell_name(cx, value, from, sizeof from);
