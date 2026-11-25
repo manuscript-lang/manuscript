@@ -47,11 +47,11 @@ void msrt_string_trim(const MsString *s, MsString *out);
 void msrt_string_trim_start(const MsString *s, MsString *out);
 /* ms-sig: msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_trim_end(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
 void msrt_string_trim_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
 void msrt_string_trim_start_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
 void msrt_string_trim_end_take(MsString *s, MsString *out);
 /* ms-sig: msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) @domain=string @end */
 void msrt_string_char_at(const MsString *s, int64_t at, MsString *out);

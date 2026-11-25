@@ -17,7 +17,7 @@ Everything else, including strings, types, lists and maps, has exactly one owner
 
 The compiler checks that borrows do not outlive their owners. While a borrow lives, the owner cannot change or be reassigned, and the borrow cannot escape the owner's lifetime. Clone when a new owner needs to keep the data independently.
 
-A function that returns a part of an argument says so in its signature: `hold` before the argument the result keeps using, and `&` before the result type. Wrapping a borrowed part in `Optional` or `Result`, or forwarding a borrowed error with `?`, preserves that borrow, and the caller keeps the owner available while it uses the result. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for the compiler contract.
+A function that returns a part of an argument says so in its signature: `hold` before the argument the result keeps using, and `&` before the result type. Wrapping a borrowed part in `Optional` or `Result`, or forwarding a borrowed error with `?`, preserves that borrow, and the caller keeps the owner available while it uses the result. See the [ownership rules](../../contributing/ownership-rules.md) for the compiler contract.
 
 ## Borrowing
 

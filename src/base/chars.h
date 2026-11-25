@@ -35,6 +35,10 @@ static inline bool ms_ascii_is_ident(uint8_t b) {
 static inline bool ms_ascii_is_space(uint8_t b) {
   return b == ' ' || (b >= '\t' && b <= '\r');
 }
+/* A space or a tab. */
+static inline bool ms_ascii_is_blank(uint8_t b) {
+  return b == ' ' || b == '\t';
+}
 /* `s` without leading and trailing ASCII whitespace. */
 static inline MsSpan ms_span_trim(MsSpan s) {
   while (s.len > 0 && ms_ascii_is_space(s.ptr[0])) {

@@ -1,5 +1,6 @@
 /* compiler/project/toml.c: the TOML subset of ms.toml (see toml.h). */
 #include "compiler/project/toml.h"
+#include "base/chars.h"
 
 #include "base/strbuild.h"
 
@@ -45,16 +46,12 @@ static bool fail(Scanner *s, size_t offset, const char *message) {
   return false;
 }
 
-static bool is_blank(uint8_t c) {
-  return c == ' ' || c == '\t';
-}
-
 static bool is_bare(uint8_t c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
 }
 
 static size_t skip_blank(const Scanner *s, size_t at, size_t end) {
-  while (at < end && is_blank(s->text.ptr[at])) {
+  while (at < end && ms_ascii_is_blank(s->text.ptr[at])) {
     at++;
   }
   return at;
@@ -133,7 +130,7 @@ static size_t content_end(const Scanner *s, size_t from, size_t end) {
       break;
     }
   }
-  while (i > from && is_blank(s->text.ptr[i - 1])) {
+  while (i > from && ms_ascii_is_blank(s->text.ptr[i - 1])) {
     i--;
   }
   return i;
@@ -234,7 +231,7 @@ static bool read_element(Scanner *s, size_t *at, uint8_t closer, TomlValue *out)
     i++;
   }
   size_t stop = i;
-  while (stop > start && (is_blank(s->text.ptr[stop - 1]) || s->text.ptr[stop - 1] == '\r')) {
+  while (stop > start && (ms_ascii_is_blank(s->text.ptr[stop - 1]) || s->text.ptr[stop - 1] == '\r')) {
     stop--;
   }
   out->text = ms_arena_copy(s->arena, ms_span_of(s->text.ptr + start, stop - start));
@@ -246,7 +243,7 @@ static bool read_element(Scanner *s, size_t *at, uint8_t closer, TomlValue *out)
 static size_t skip_space(const Scanner *s, size_t at, bool lines) {
   while (at < s->text.len) {
     const uint8_t c = s->text.ptr[at];
-    if (is_blank(c) || (lines && (c == '\n' || c == '\r'))) {
+    if (ms_ascii_is_blank(c) || (lines && (c == '\n' || c == '\r'))) {
       at++;
     } else if (lines && c == '#') {
       at = line_end_of(s, at);

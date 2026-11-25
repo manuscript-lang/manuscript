@@ -75,19 +75,6 @@ static const MirInst *def_inst(const Ctx *c, MirValue v) {
   return d.index == MIR_NONE ? NULL : &c->f->blocks.ptr[d.block].insts.ptr[d.index];
 }
 
-static bool dominates(const Ctx *c, MirBlock a, MirBlock b) {
-  if (c->idom[b] == MIR_NONE) {
-    return false;
-  }
-  while (b != a) {
-    if (b == 0) {
-      return false;
-    }
-    b = c->idom[b];
-  }
-  return true;
-}
-
 static bool const_int_is(const Ctx *c, MirValue v, int64_t want) {
   const MirInst *d = def_inst(c, v);
   return d != NULL && is_op(d, MOP_IConst) && d->imm.i == want;
@@ -234,7 +221,7 @@ static bool builder_loop(MsArena *arena, Ctx *c, MirBlock header, MirBlock *pre)
   mir_bits_set(&c->loop, header);
   for (uint32_t p = 0; p < mir_preds_count(&c->preds, header); p++) {
     const MirBlock from = mir_pred(&c->preds, header, p);
-    if (dominates(c, header, from)) {
+    if (mir_dominates(c->idom, header, from)) {
       if (!mir_bits_test(&c->loop, from)) {
         mir_bits_set(&c->loop, from);
         stack[top++] = from;

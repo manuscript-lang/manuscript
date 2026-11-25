@@ -39,10 +39,6 @@ static bool outside_text(Tokens *tokens, size_t at) {
   return !(next->kind == MS_T_String && next->pos.offset <= at);
 }
 
-static bool is_blank(uint8_t byte) {
-  return byte == ' ' || byte == '\t';
-}
-
 static bool is_ascii_digit(uint8_t byte) {
   return byte >= '0' && byte <= '9';
 }
@@ -57,7 +53,7 @@ static bool is_ascii_alpha(uint8_t byte) {
 
 /* `line` with trailing spaces and tabs cut. */
 static size_t trim_end(MsSpan line, size_t end) {
-  while (end > 0 && is_blank(line.ptr[end - 1])) {
+  while (end > 0 && ms_ascii_is_blank(line.ptr[end - 1])) {
     end--;
   }
   return end;
@@ -73,10 +69,10 @@ static bool floor_division_shape(MsSpan line, size_t slash) {
   /* The comment: what follows `//`, trimmed, without trailing brackets. */
   size_t start = slash + 2;
   size_t stop = line.len;
-  while (start < stop && (is_blank(line.ptr[start]) || line.ptr[start] == '\r')) {
+  while (start < stop && (ms_ascii_is_blank(line.ptr[start]) || line.ptr[start] == '\r')) {
     start++;
   }
-  while (stop > start && (is_blank(line.ptr[stop - 1]) || line.ptr[stop - 1] == '\r')) {
+  while (stop > start && (ms_ascii_is_blank(line.ptr[stop - 1]) || line.ptr[stop - 1] == '\r')) {
     stop--;
   }
   while (stop > start && (line.ptr[stop - 1] == ')' || line.ptr[stop - 1] == ']')) {

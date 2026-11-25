@@ -81,26 +81,12 @@ static void rsv_cfg_init(MsArena *arena, const MirFunc *f, RsvCfg *cfg) {
   cfg->uses = mir_use_counts(arena, f);
 }
 
-/* Whether block `a` dominates block `b`. */
-static bool rsv_cfg_dominates(const RsvCfg *cfg, MirBlock a, MirBlock b) {
-  if (cfg->idom[b] == MIR_NONE) {
-    return false;
-  }
-  while (b != a) {
-    if (b == 0) {
-      return false;
-    }
-    b = cfg->idom[b];
-  }
-  return true;
-}
-
 /* Whether `v` is defined before instruction `index` of `block`. */
 static bool rsv_cfg_available(const RsvCfg *cfg, MirValue v, MirBlock block, uint32_t index) {
   const DefAt d = cfg->defs[v];
   switch ((DefKind)d.kind) {
-  case DEF_PARAM: return rsv_cfg_dominates(cfg, d.block, block);
-  case DEF_INST: return d.block == block ? d.index < index : rsv_cfg_dominates(cfg, d.block, block);
+  case DEF_PARAM: return mir_dominates(cfg->idom, d.block, block);
+  case DEF_INST: return d.block == block ? d.index < index : mir_dominates(cfg->idom, d.block, block);
   case DEF_NONE: return false;
   }
   return false;
@@ -290,7 +276,7 @@ static bool rsv_analyse_loop(MsArena *arena, const RsvCfg *cfg, MirBlock h, Loop
   uint32_t nlatches = 0;
   for (uint32_t k = 0; k < mir_preds_count(&cfg->preds, h); k++) {
     const MirBlock p = mir_pred(&cfg->preds, h, k);
-    if (rsv_cfg_dominates(cfg, h, p)) {
+    if (mir_dominates(cfg->idom, h, p)) {
       latches[nlatches++] = p;
     }
   }

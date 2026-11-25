@@ -64,6 +64,23 @@ MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first) {
   return probe != MR_NONE ? probe : string_role(name);
 }
 
+/* Whether `sig` has a sibling `<name>_take` (marked `@leaf`: it never faults, so a call of it leaves nothing to free) that takes its first operand by move (a `var` list or string slot where
+ * `sig` reads it): the call of `sig` on a value that dies there can reuse the value's storage (`opt_bytetake`). */
+bool fn_native_takes_dying(const struct MsNativeSig *sig) {
+  if (sig == NULL || sig->count == 0 || (sig->kinds[0] != NS_VEC_IN && sig->kinds[0] != NS_STR_IN)) {
+    return false;
+  }
+  char twin[96];
+  const size_t length = __builtin_strlen(sig->name);
+  if (length + 6 > sizeof twin) {
+    return false;
+  }
+  __builtin_memcpy(twin, sig->name, length);
+  __builtin_memcpy(twin + length, "_take", 6);
+  const MsNativeSig *taker = ms_native_sig_find(ms_span_of_text(twin));
+  return taker != NULL && taker->leaf && taker->count > 0 && taker->kinds[0] == (sig->kinds[0] == NS_VEC_IN ? NS_VEC_MUT : NS_STR_MUT);
+}
+
 /* The family of borrowing twins the signature declares (`@twin=`). */
 MirTwin fn_native_twin(const struct MsNativeSig *sig) {
   return sig != NULL && sig->twin != NULL && ms_span_is_text(ms_span_of_text(sig->twin), "split_view") ? MTW_SPLIT_VIEW : MTW_NONE;

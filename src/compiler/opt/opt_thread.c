@@ -68,17 +68,6 @@ static ThKnown known_of_def(const Th *t, MirValue v) {
   }
 }
 
-static bool cmp_holds(uint32_t cc, int64_t a, int64_t b) {
-  switch (cc) {
-  case MCC_EQ: return a == b;
-  case MCC_NE: return a != b;
-  case MCC_LT: return a < b;
-  case MCC_LE: return a <= b;
-  case MCC_GT: return a > b;
-  default: return a >= b;
-  }
-}
-
 /* What the join's branch does when `j` is entered from `p` with `args`: 1 for the first target, 0 for the
  * second, -1 when unknown. */
 static int decide(const Th *t, MirBlock j, const MirValue *args) {
@@ -124,7 +113,7 @@ static int decide(const Th *t, MirBlock j, const MirValue *args) {
       break;
     case MOP_ICmp:
       if (a[0].kind == TK_INT && a[1].kind == TK_INT) {
-        r = (ThKnown){TK_INT, cmp_holds(in->imm.a, a[0].val, a[1].val) ? 1 : 0};
+        r = (ThKnown){TK_INT, mir_cc_holds((MirCc)in->imm.a, a[0].val, a[1].val) ? 1 : 0};
       }
       break;
     default: break;

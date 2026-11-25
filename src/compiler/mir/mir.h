@@ -133,6 +133,43 @@ static inline bool mir_op_is_call(MirOp op) {
 
 typedef enum MirCc { MCC_EQ, MCC_NE, MCC_LT, MCC_LE, MCC_GT, MCC_GE } MirCc;
 
+/* Whether `a cc b` holds for two integers. */
+static inline bool mir_cc_holds(MirCc cc, int64_t a, int64_t b) {
+  switch (cc) {
+  case MCC_EQ: return a == b;
+  case MCC_NE: return a != b;
+  case MCC_LT: return a < b;
+  case MCC_LE: return a <= b;
+  case MCC_GT: return a > b;
+  case MCC_GE: return a >= b;
+  }
+  return false;
+}
+
+/* The condition that holds exactly when `cc` does not (for integers). */
+static inline MirCc mir_cc_negated(MirCc cc) {
+  switch (cc) {
+  case MCC_EQ: return MCC_NE;
+  case MCC_NE: return MCC_EQ;
+  case MCC_LT: return MCC_GE;
+  case MCC_LE: return MCC_GT;
+  case MCC_GT: return MCC_LE;
+  case MCC_GE: return MCC_LT;
+  }
+  return cc;
+}
+
+/* The condition that gives the same answer with the operands exchanged. */
+static inline MirCc mir_cc_swapped(MirCc cc) {
+  switch (cc) {
+  case MCC_LT: return MCC_GT;
+  case MCC_LE: return MCC_GE;
+  case MCC_GT: return MCC_LT;
+  case MCC_GE: return MCC_LE;
+  default: return cc;
+  }
+}
+
 typedef enum MirImmTag {
   MI_NONE, MI_INT, MI_FLOAT, MI_BOOL, MI_STR, MI_FUNC, MI_EXT, MI_TY, MI_TYPE, MI_FIELD, MI_CASE, MI_ALTFIELD,
   MI_ALTMASK, MI_TYPEMASK, MI_VTABLE, MI_GLOBAL, MI_METHOD, MI_CC, MI_IDX, MI_SCOPE
