@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/src/report.ms:2:12: type: expected Int, found String (in the return value)\n   |\n 2 |     return \"wrong\"\n   |            ^\n<DIR>/src/report.ms:6:12: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 6 |     return 1\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/src/report.ms:2:12: type: expected Int, found String (in the return value)\n   |\n 2 |     return \"wrong\"\n   |            ^\n<DIR>/src/report.ms:6:12: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 6 |     return 1\n   |            ^\n2 errors; fix them and re-run\n"
     }
   }
 }
