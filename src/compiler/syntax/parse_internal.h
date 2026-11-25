@@ -18,6 +18,7 @@ enum { PREFIX_OPERAND = 3 };
 enum { RANGE_LEVEL = 5 };
 
 MS_LIST_DEFINE(ScratchList, scratch_list, uint8_t)
+MS_LIST_DEFINE(OffsetList, offset_list, MsOffsetRange)
 
 /* What a speculative parse restores when it fails: the shared scratch stacks and the parser flags that the
  * abandoned frames had changed. Node ids and queued statements are deliberately not restored, so a
@@ -48,6 +49,7 @@ typedef struct Parser {
   bool enter_failed; /* the last unwind came from a failed parse_enter(), which leaves depth raised */
   uint64_t *type_brackets;
   ScratchList *scratch, *bytes; /* shared with nested parsers */
+  OffsetList *redundant_error;   /* see MsModule.redundant_error */
   MsDiag *diag;
 } Parser;
 

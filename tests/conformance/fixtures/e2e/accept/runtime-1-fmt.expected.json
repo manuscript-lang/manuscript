@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tDecimal from \"@std/math/decimal.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn amount() Decimal!Error {\n\treturn ok(12.50d)\n}\n\ntest \"explicit standard imports\" {\n\texpect_equal([1, 2].length(), 2)?\n\texpect_equal(amount().get_or(0.0d), 12.50d)?\n}\n"
+    "fmt": "import (\n\tDecimal from \"@std/math/decimal.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn amount() Decimal! {\n\treturn ok(12.50d)\n}\n\ntest \"explicit standard imports\" {\n\texpect_equal([1, 2].length(), 2)?\n\texpect_equal(amount().get_or(0.0d), 12.50d)?\n}\n"
   }
 }

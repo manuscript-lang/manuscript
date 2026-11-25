@@ -176,6 +176,7 @@ bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk
   ScratchList bytes = {0};
   ImportList imports = {0};
   DeclList decls = {0};
+  OffsetList redundant = {0};
   Parser p = {.arena = arena,
               .names = names,
               .source = lexed.source,
@@ -185,6 +186,7 @@ bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk
               .type_brackets = parse_compute_type_brackets(arena, lexed.tokens, lexed.ntokens),
               .scratch = &scratch,
               .bytes = &bytes,
+              .redundant_error = &redundant,
               .next_id = chunk.first_id,
               .diag = diag};
   bool ok = parse_module(&p, &imports, &decls);
@@ -194,10 +196,13 @@ bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk
     out->ndecls = (uint32_t)decls.len;
     out->decls = copy_out(arena, decls.ptr, decls.len, sizeof(MsDecl *), _Alignof(MsDecl *));
     out->node_count = p.next_id;
+    out->nredundant_error = (uint32_t)redundant.len;
+    out->redundant_error = copy_out(arena, redundant.ptr, redundant.len, sizeof(MsOffsetRange), _Alignof(MsOffsetRange));
   }
   scratch_list_free(&scratch);
   scratch_list_free(&bytes);
   import_list_free(&imports);
   decl_list_free(&decls);
+  offset_list_free(&redundant);
   return ok;
 }

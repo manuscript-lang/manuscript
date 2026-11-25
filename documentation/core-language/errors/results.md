@@ -48,7 +48,7 @@ Both calls return normally. The second returns an error value, and `show` choose
 
 ## Shorthand: `T!` and `T!E`
 
-`T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Use `T!E` for a failure that is not an `Error`. `Result[T, E]` stays valid.
+`T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Use `T!E` for a failure that is not an `Error`. `Result[T, E]` stays valid. `T!Error` says the same as `T!`, so `ms fmt` writes it as `T!`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

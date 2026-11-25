@@ -72,3 +72,21 @@ MsSpan fmt_apply_edits(Fmt *f, MsSpan source, const FmtEdit *edits, size_t count
   fmt_put(&out, fmt_slice(source, cursor, source.len));
   return fmt_take(f, &out);
 }
+
+/* Offsets come from the parser in source order, but a retried parse can repeat one. */
+bool fmt_drop_default_error(Fmt *f, const MsModule *module, MsSpan text, MsSpan *out) {
+  if (module->nredundant_error == 0) {
+    return false;
+  }
+  FmtEdit *edits = MS_ARENA_NEW_ARRAY(f->arena, FmtEdit, module->nredundant_error);
+  size_t count = 0;
+  for (uint32_t i = 0; i < module->nredundant_error; i++) {
+    const MsOffsetRange r = module->redundant_error[i];
+    if (count > 0 && edits[count - 1].from >= r.start) {
+      continue;
+    }
+    edits[count++] = (FmtEdit){r.start, r.end, ms_span_of_text("")};
+  }
+  *out = fmt_apply_edits(f, text, edits, count);
+  return true;
+}
