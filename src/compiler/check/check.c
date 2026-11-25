@@ -123,5 +123,5 @@ void ms_check_graph_std(MsCheckProgram *program, MsNames *names, const MsGraph *
 }
 
 void ms_check_graph_cached(MsCheckProgram *program, MsNames *names, const MsGraph *graph, const MsStdCache *cache) {
-  check_graph(program, names, graph, false, false, cache);
+  check_graph(program, names, graph, true, false, cache);
 }
