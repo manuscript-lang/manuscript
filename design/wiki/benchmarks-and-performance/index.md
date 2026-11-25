@@ -91,3 +91,4 @@ Perf benchmarks, profiling.
 - [LSP passes find positions through a line index](lsp-positions-come-from-a-line-index.md): semantic tokens of a 26k-line file 26 s to 98 ms, outline 913 to 19 ms; a line table and a kind table by offset replaced per-token scans.
 - [Completion finds the import spot once per request](completion-finds-the-import-spot-once.md): completion on a 5,700-line file 265 to 85 ms; the per-offer document scan became one scan.
 - [A check made unchecked must not leave its fault exit behind](a-check-made-unchecked-leaves-no-fault-exit.md): dead fault exits were 20% of optimized IR; release build of 500 functions 4.1 to 3.8 s, 267 to 246 MB.
+- [A list of plain records is tagged like a list of scalars](a-list-of-plain-records-is-tagged-like-a-list-of-scalars.md): `graph` -4.0% instructions; swapping heap entries no longer rewrites the list header.
