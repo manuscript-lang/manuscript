@@ -60,7 +60,7 @@ jobs:
           ms=$(find .artifacts/build/ci -maxdepth 3 \( -name ms -o -name ms.exe \) -type f | head -1); echo "ms=$ms"; echo "cl=$MS_CRANELIFT"
           mkdir -p .artifacts/probe && printf 'fn main() { println("hi") }\n' > .artifacts/probe/hello.ms
           for q in 0 1; do for f in .artifacts/probe/hello.ms tools/repo-check.ms; do for i in 1 2 3; do
-            echo "== quick=$q $f run $i"
+            echo "== baseline=$q $f run $i"
             if [ $q = 1 ]; then export MS_LINK_QUICK=1; else unset MS_LINK_QUICK; fi; MS_BUILD_TIMES=1 "$ms" build --build-type debug -o .artifacts/probe/out "$f" 2>&1 | tail -4
           done; done; done
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
