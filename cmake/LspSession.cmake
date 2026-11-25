@@ -2,7 +2,9 @@
 #   cmake -DMS_C=<ms> -DCASE=<dir> -DWORK=<dir> -P LspSession.cmake
 # CASE holds `requests.jsonl` (one JSON message per line) and `expected.jsonl` (the messages the server sends, one per
 # line). `$ROOT` in either names the case directory as a path and `$ROOT_URI` as a file URI. Set RECORD=1 to write
-# `expected.jsonl` from the run instead of comparing. A case holding a `symlinked_tmp` file runs with TMPDIR behind a symlink.
+# `expected.jsonl` from the run instead of comparing (the recording holds literal numbers: put the `@LINE` placeholders back).
+# `@LINE:<stdlib file>|<text>@` in either stands for the 0-based line of the first occurrence of <text> in that file of
+# src/stdlib (`|<n>` before the closing `@` adds n lines, for a line with no text of its own), so a case points at a declaration by its text and an edit elsewhere in the file does not move it. A case holding a `symlinked_tmp` file runs with TMPDIR behind a symlink.
 cmake_minimum_required(VERSION 3.20)
 
 file(MAKE_DIRECTORY ${WORK})
@@ -13,7 +15,42 @@ if(NOT ROOT MATCHES "^/")
   set(ROOT_URI file:///${ROOT})
 endif()
 
+# Replaces every `@LINE:file|text@` by the line the text starts on in the standard-library file `file`.
+function(resolve_lines text out)
+  set(stdlib ${CMAKE_CURRENT_LIST_DIR}/../src/stdlib)
+  while(text MATCHES "@LINE:([^|@]+)\\|([^|@]*)(\\|([0-9]+))?@")
+    set(name "${CMAKE_MATCH_1}")
+    set(needle "${CMAKE_MATCH_2}")
+    set(offset 0)
+    set(given "${CMAKE_MATCH_4}")
+    set(token "@LINE:${name}|${needle}@")
+    if(NOT given STREQUAL "")
+      set(offset ${given})
+      set(token "@LINE:${name}|${needle}|${offset}@")
+    endif()
+    file(GLOB_RECURSE sources ${stdlib}/*.ms)
+    list(FILTER sources INCLUDE REGEX "/${name}$")
+    list(SORT sources)
+    if(NOT sources)
+      message(FATAL_ERROR "LspSession: no standard-library file ${name} for ${token}")
+    endif()
+    list(GET sources 0 source)
+    file(READ ${source} content)
+    string(FIND "${content}" "${needle}" at)
+    if(at LESS 0)
+      message(FATAL_ERROR "LspSession: ${name} has no text '${needle}' for ${token}")
+    endif()
+    string(SUBSTRING "${content}" 0 ${at} before)
+    string(REGEX REPLACE "[^\n]" "" newlines "${before}")
+    string(LENGTH "${newlines}" line)
+    math(EXPR line "${line} + ${offset}")
+    string(REPLACE "${token}" "${line}" text "${text}")
+  endwhile()
+  set(${out} "${text}" PARENT_SCOPE)
+endfunction()
+
 function(substitute text out)
+  resolve_lines("${text}" text)
   string(REPLACE "$ROOT_URI" "${ROOT_URI}" text "${text}")
   string(REPLACE "$ROOT" "${ROOT}" text "${text}")
   set(${out} "${text}" PARENT_SCOPE)
@@ -73,6 +110,7 @@ if(RECORD)
   return()
 endif()
 file(READ ${CASE}/expected.jsonl expected)
+resolve_lines("${expected}" expected)
 if(NOT replies STREQUAL expected)
   message(FATAL_ERROR "ms lsp replies differ\n--- expected\n${expected}\n--- actual\n${replies}")
 endif()

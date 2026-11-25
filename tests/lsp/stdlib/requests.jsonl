@@ -5,11 +5,12 @@
 {"jsonrpc": "2.0", "id": 4, "method": "manuscript/standardLibrarySource", "params": {"textDocument": {"uri": "manuscript-stdlib:///nothing.ms"}}}
 {"jsonrpc": "2.0", "id": 5, "method": "manuscript/standardLibrarySource", "params": {"textDocument": {"uri": "file:///x.ms"}}}
 {"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms", "languageId": "manuscript", "version": 1, "text": "ignored"}}}
-{"jsonrpc": "2.0", "id": 20, "method": "textDocument/documentSymbol", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}}}
-{"jsonrpc": "2.0", "id": 21, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": 188, "character": 14}}}
-{"jsonrpc": "2.0", "id": 22, "method": "textDocument/hover", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": 104, "character": 11}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "manuscript-stdlib:///collections/ordering.ms", "languageId": "manuscript", "version": 1, "text": "ignored"}}}
+{"jsonrpc": "2.0", "id": 20, "method": "textDocument/documentSymbol", "params": {"textDocument": {"uri": "manuscript-stdlib:///collections/ordering.ms"}}}
+{"jsonrpc": "2.0", "id": 21, "method": "textDocument/definition", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": @LINE:math/math.ms|exponent Int@, "character": 14}}}
+{"jsonrpc": "2.0", "id": 22, "method": "textDocument/hover", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": @LINE:math/math.ms|export fn acos(value Float@, "character": 11}}}
 {"jsonrpc": "2.0", "id": 23, "method": "textDocument/formatting", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "options": {}}}
-{"jsonrpc": "2.0", "id": 24, "method": "textDocument/rename", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": 104, "character": 11}, "newName": "x"}}
-{"jsonrpc": "2.0", "id": 25, "method": "textDocument/references", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": 104, "character": 11}, "context": {"includeDeclaration": true}}}
+{"jsonrpc": "2.0", "id": 24, "method": "textDocument/rename", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": @LINE:math/math.ms|export fn acos(value Float@, "character": 11}, "newName": "x"}}
+{"jsonrpc": "2.0", "id": 25, "method": "textDocument/references", "params": {"textDocument": {"uri": "manuscript-stdlib:///math/math.ms"}, "position": {"line": @LINE:math/math.ms|export fn acos(value Float@, "character": 11}, "context": {"includeDeclaration": true}}}
 {"jsonrpc": "2.0", "id": 6, "method": "shutdown"}
 {"jsonrpc": "2.0", "method": "exit"}
