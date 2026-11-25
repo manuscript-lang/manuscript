@@ -110,7 +110,7 @@ static MsTypeDesc moved_out(const MsTypeDesc *vd) {
 static void take_value(MsList *taken, const MsTypeDesc *vd, const uint8_t *value) {
   *taken = (MsList){0};
   ms_list_reserve(taken, vd->size, 1);
-  __builtin_memcpy(taken->ptr, value, vd->size);
+  ms_copy_slot(taken->ptr, value, vd->size);
   taken->len = 1;
 }
 
@@ -153,7 +153,7 @@ void msrt_map_clear_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, M
   for (size_t number = 0; number < m->used; number++) {
     const uint8_t *entry = ms_table_entry(m, &layout, number);
     if (ms_table_entry_is_live(entry)) {
-      __builtin_memcpy(ms_list_slot(taken, vd, taken->len), entry + layout.value_offset, vd->size);
+      ms_copy_slot(ms_list_slot(taken, vd, taken->len), entry + layout.value_offset, vd->size);
       taken->len++;
     }
   }
@@ -168,7 +168,7 @@ static uint8_t *append_borrowed(MsMap *m, const MsMapLayout *layout, uint64_t ha
   uint8_t *entry = ms_table_next_entry(m, layout);
   ms_store64(entry, hash);
   ms_slot_copy(kd, key, entry + layout->key_offset);
-  __builtin_memcpy(entry + layout->value_offset, val, layout->value_size);
+  ms_copy_slot(entry + layout->value_offset, val, layout->value_size);
   ms_table_publish(m, hash);
   return entry + layout->value_offset;
 }
@@ -203,7 +203,7 @@ void msrt_map_update(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const
     entry = ms_table_next_entry(m, &layout);
     ms_store64(entry, probe.hash);
     ms_slot_copy(kd, key, entry + layout.key_offset);
-    __builtin_memcpy(entry + layout.value_offset, initial, layout.value_size);
+    ms_copy_slot(entry + layout.value_offset, initial, layout.value_size);
     ms_table_publish(m, probe.hash);
   } else {
     entry = ms_table_entry(m, &layout, probe.entry);
@@ -225,7 +225,7 @@ void msrt_map_add_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd,
   }
   uint8_t *value = ms_table_entry(m, &layout, probe.entry) + layout.value_offset;
   ms_slot_drop(vd, value);
-  __builtin_memcpy(value, val, layout.value_size);
+  ms_copy_slot(value, val, layout.value_size);
 }
 
 /* `add_default(key, value)` with a borrowed key: nothing is copied or stored when the entry exists. */

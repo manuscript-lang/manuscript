@@ -221,7 +221,7 @@ void msrt_list_insert(MsList *v, const MsTypeDesc *d, int64_t index, const uint8
   ms_list_reserve(v, d->size, 1);
   uint8_t *slot = ms_list_slot(v, d, position);
   __builtin_memmove(slot + d->size, slot, (v->len - position) * d->size);
-  __builtin_memcpy(slot, e, d->size);
+  ms_copy_slot(slot, e, d->size);
   v->len++;
 }
 
@@ -252,7 +252,7 @@ uint8_t msrt_list_pop(MsList *v, const MsTypeDesc *d, uint8_t *out) {
     return 0;
   }
   v->len--;
-  __builtin_memcpy(out, ms_list_slot(v, d, v->len), d->size);
+  ms_copy_slot(out, ms_list_slot(v, d, v->len), d->size);
   return 1;
 }
 
@@ -309,8 +309,8 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
    * element by then. */
   MsrtScratch old;
   msrt_scratch_open(&old, d->size);
-  __builtin_memcpy(old.ptr, slot, d->size);
-  __builtin_memcpy(slot, e, d->size);
+  ms_copy_slot(old.ptr, slot, d->size);
+  ms_copy_slot(slot, e, d->size);
   ms_slot_drop(d, old.ptr);
   msrt_scratch_close(&old);
 }
@@ -325,8 +325,8 @@ void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e
   size_t position = 0;
   (void)ms_resolve_index(v->len, index, &position);
   uint8_t *slot = ms_list_slot(v, d, position);
-  __builtin_memcpy(out, slot, d->size);
-  __builtin_memcpy(slot, e, d->size);
+  ms_copy_slot(out, slot, d->size);
+  ms_copy_slot(slot, e, d->size);
 }
 
 /* Exchanges two distinct slots of `size` bytes through a small buffer. */
@@ -370,7 +370,7 @@ void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList
   uint8_t *slot = ms_list_slot(v, d, position);
   *taken = empty_list;
   ms_list_reserve(taken, d->size, 1);
-  __builtin_memcpy(taken->ptr, slot, d->size);
+  ms_copy_slot(taken->ptr, slot, d->size);
   taken->len = 1;
   __builtin_memmove(slot, slot + d->size, (v->len - position - 1) * d->size);
   v->len--;

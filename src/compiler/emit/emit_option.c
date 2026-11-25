@@ -13,11 +13,13 @@ static MirTy value_type(const EmitCx *cx, MirValue value) {
 
 /* `alt.new`, `alt.view` of an alternative held as leaves: the case index, the payload leaves in their slots,
  * zeros elsewhere. */
-static void alt_inline(EmitCx *cx, const MirInst *inst, const MirAltFields *fields) {
-  uint32_t case_index = inst->imm.b;
+/* The payload leaves of `alt.new` `inst` that come whole from one held operand, in order: leaves [first, end) of the result
+ * from leaves [source, ...) of operand `operand`. `end - first` is below 2 when there is no such run. */
+void emit_alt_payload_run(EmitCx *cx, const MirInst *inst, uint32_t *first, uint32_t *end, uint32_t *operand_out,
+                          uint32_t *source_out) {
+  const MirAltFields *fields = mir_alt_fields(cx->layouts, inst->imm.a);
+  const uint32_t case_index = inst->imm.b;
   MsSpan leaves = emit_value_leaves(cx, inst->res);
-  ms_strbuild_printf(cx->out, "  %%v%u = add i64 %u, 0\n", inst->res, case_index);
-  /* A payload that comes whole from one held operand, in order, moves as a block. */
   uint32_t run_first = 0;
   uint32_t run_end = 0;
   uint32_t run_operand = 0;
@@ -37,6 +39,22 @@ static void alt_inline(EmitCx *cx, const MirInst *inst, const MirAltFields *fiel
       run_source = source;
     }
   }
+  *first = run_first;
+  *end = run_end;
+  *operand_out = run_operand;
+  *source_out = run_source;
+}
+
+static void alt_inline(EmitCx *cx, const MirInst *inst, const MirAltFields *fields) {
+  uint32_t case_index = inst->imm.b;
+  MsSpan leaves = emit_value_leaves(cx, inst->res);
+  ms_strbuild_printf(cx->out, "  %%v%u = add i64 %u, 0\n", inst->res, case_index);
+  /* A payload that comes whole from one held operand, in order, moves as a block. */
+  uint32_t run_first = 0;
+  uint32_t run_end = 0;
+  uint32_t run_operand = 0;
+  uint32_t run_source = 0;
+  emit_alt_payload_run(cx, inst, &run_first, &run_end, &run_operand, &run_source);
   if (run_end - run_first < 2 ||
       !emit_wide_move_leaves(cx, inst->res, run_first, inst->args[run_operand], run_source, run_end - run_first)) {
     run_first = run_end = 0;
@@ -111,7 +129,7 @@ static bool alt_new(EmitCx *cx, const MirInst *inst) {
 }
 
 /* `alt.get`, `alt.take`: the leaves of one payload field, from the registers or from the block. */
-static void alt_get(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
+static void alt_get(EmitCx *cx, const MirInst *inst) {
   const MirShape *shape = mir_shape(cx->layouts, value_type(cx, inst->args[0]));
   const MirAltFields *fields = mir_alt_fields(cx->layouts, inst->imm.a);
   const MirAltField *field = &fields->fields[fields->case_start[inst->imm.b] + inst->imm.c];
@@ -120,15 +138,7 @@ static void alt_get(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
     for (uint32_t leaf = 1; leaf < field->nleaves; leaf++) {
       contiguous = contiguous && field->leaves[leaf] == field->leaves[0] + leaf;
     }
-    /* `alt.take` of a payload that the next instruction wraps again (`alt.new` of the other result type) */
-    const MirBlockData *block = &cx->func->blocks.ptr[site->block];
-    const MirInst *next = site->index + 1 < block->insts.len ? &block->insts.ptr[site->index + 1] : NULL;
-    if (inst->op == MOP_AltTake && next != NULL && next->op == MOP_AltNew && next->nargs == 1 && next->args[0] == inst->res) {
-      emit_wide_defer_for(cx, next->res);
-    }
-    const bool moved = contiguous && emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], field->leaves[0], field->nleaves);
-    emit_wide_defer_for(cx, MIR_NONE);
-    if (moved) {
+    if (contiguous && emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], field->leaves[0], field->nleaves)) {
       return;
     }
     for (uint32_t leaf = 0; leaf < field->nleaves; leaf++) {
@@ -249,6 +259,7 @@ static void opt_get(EmitCx *cx, const MirInst *inst) {
 }
 
 bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled) {
+  (void)site;
   *handled = true;
   switch ((MirOp)inst->op) {
   case MOP_AltNew:
@@ -256,7 +267,7 @@ bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool 
     return alt_new(cx, inst);
   case MOP_AltGet:
   case MOP_AltTake:
-    alt_get(cx, inst, site);
+    alt_get(cx, inst);
     return true;
   case MOP_AltTag:
     alt_tag(cx, inst);

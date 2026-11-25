@@ -161,18 +161,6 @@ static void complete(size_t row, void *block, const MsTypeDesc *desc, bool faile
   settle(hot, cold, row, failed);
 }
 
-/* Copies a value that fits a row. Most are one, two or three whole words, which copy without a call. */
-static inline void copy_small(void *to, const void *from, size_t size) {
-  if (size == 8) {
-    __builtin_memcpy(to, from, 8);
-  } else if (size == 16) {
-    __builtin_memcpy(to, from, 16);
-  } else if (size == 24) {
-    __builtin_memcpy(to, from, 24);
-  } else {
-    __builtin_memcpy(to, from, size);
-  }
-}
 
 /* Completes `row` with the `desc` value at `value`, which fits the row; the value is taken either way. */
 static inline MS_ALWAYS_INLINE void complete_small(size_t row, const uint8_t *value, const MsTypeDesc *desc, bool failed) {
@@ -184,7 +172,7 @@ static inline MS_ALWAYS_INLINE void complete_small(size_t row, const uint8_t *va
     ms_slot_drop_owned(desc, (uint8_t *)copy);
     return;
   }
-  copy_small(cold->small, value, desc->size);
+  ms_copy_slot(cold->small, value, desc->size);
   cold->small_result = true;
   cold->result = NULL;
   cold->desc = desc;
@@ -264,7 +252,7 @@ MS_ALWAYS_INLINE bool promise_take_row(size_t row, const MsTypeDesc *desc, uint8
     return false;
   }
   if (cold->small_result) {
-    copy_small(out, cold->small, desc->size);
+    ms_copy_slot(out, cold->small, desc->size);
     cold->small_result = false;
   } else {
     __builtin_memcpy(out, cold->result, desc->size);

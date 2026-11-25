@@ -271,6 +271,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   emit_index_edges(cx, &scratch);
   const bool *held = emit_wide_plan(cx, &scratch);
   cx->pool = emit_slot_pool(&scratch, cx, held);
+  emit_wide_alias(cx);
   uint32_t subprogram = cx->debug != NULL ? emit_debug_subprogram(cx, index) : 0;
   MsStrBuild *module_out = cx->out;
   MsStrBuild body = ms_strbuild_new();

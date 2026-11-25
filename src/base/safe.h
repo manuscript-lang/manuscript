@@ -96,6 +96,20 @@ static inline void ms_store64(uint8_t *p, uint64_t value) {
   __builtin_memcpy(p, &value, sizeof value);
 }
 
+/* Copies one slot (an element, a key, a value): `size` bytes that do not overlap. Slots are usually one to three whole words,
+ * which copy as inline moves, not a call to memcpy per slot. The size is a runtime value, so without this each copy is a call. */
+static inline void ms_copy_slot(void *to, const void *from, size_t size) {
+  if (size == 8) {
+    __builtin_memcpy(to, from, 8);
+  } else if (size == 16) {
+    __builtin_memcpy(to, from, 16);
+  } else if (size == 24) {
+    __builtin_memcpy(to, from, 24);
+  } else {
+    __builtin_memcpy(to, from, size);
+  }
+}
+
 /* ---- spans ---- */
 
 /* Read-only bytes, borrowed: never freed through the span. `ptr` may be null only when `len` is 0. */
