@@ -89,7 +89,7 @@ fn category_of(relative String) List[String] {
 
 	var rest = rel.replace("/", "-")
 	if category.starts_with("e2e/") or (category != "repo" and parts.length() > 1) {
-		rest = parts.slice(1, parts.length()).get_or([]).join("-")
+		rest = parts.drop(1).join("-")
 	}
 	return [category, slugify(rest)]
 }
@@ -164,12 +164,9 @@ fn scan_tree(repo String) List[Candidate] {
 // Candidates from ```manuscript fences under `documentation/`.
 fn scan_docs(repo String) List[Candidate] {
 	var found = List[Candidate]()
-	var files = List[String]()
-	for entry in glob(f"{repo}/documentation", GlobOptions(patterns: ["**/*.md"])).get_or(
+	var files = glob(f"{repo}/documentation", GlobOptions(patterns: ["**/*.md"])).get_or(
 		[]
-	) {
-		files.append(entry.path.clone())
-	}
+	).map(entry => (entry.path.clone()))
 	files.sort()
 
 	for file in files {
@@ -223,8 +220,8 @@ fn unusable(reason String) Verdict {
 // Copies the project at `from` into `to` without hidden or build directories and
 // without harness files.
 fn copy_project(from, to String) Void {
-	create_directory(to.slice(0, parent_length(to)).clone(), recursive: true).get()
-	copy(from, to, CopyOptions(recursive: true, replace: true)).get()
+	void create_directory(to.slice(0, parent_length(to)).clone(), recursive: true).get()
+	void copy(from, to, CopyOptions(recursive: true, replace: true)).get()
 	for pattern in [
 		"**/*.expected.json", "**/conform.meta", "**/.*", "**/node_modules",
 		"**/target", "**/vendor", "**/dist"
@@ -245,7 +242,7 @@ fn check_candidate(ms, scratch String, index Int, candidate Candidate) Verdict {
 		copy_project(candidate.dir, work)
 		entry = "ms.toml"
 	} else {
-		create_directory(work.clone(), recursive: true).get()
+		void create_directory(work.clone(), recursive: true).get()
 		if write_file(f"{work}/main.ms", candidate.text, replace: true).wait().is_error() {
 			return unusable("cannot write scratch file")
 		}
@@ -281,10 +278,9 @@ fn check_candidate(ms, scratch String, index Int, candidate Candidate) Verdict {
 }
 
 fn check_chunk(ms, scratch String, base Int, chunk List[Candidate]) List[Verdict] {
-	var verdicts = List[Verdict]()
-	for offset in 0..chunk.length() {
-		verdicts.append(check_candidate(ms, scratch, base + offset, chunk[offset]))
-	}
+	verdicts := (0..chunk.length()).map(
+		offset => check_candidate(ms, scratch, base + offset, chunk[offset])
+	)
 	return verdicts
 }
 
@@ -311,7 +307,7 @@ fn project_text(dir String) String {
 
 fn header(origin, phase, text String, extra List[String]) Meta {
 	var tags = tags_for(text, phase)
-	for tag in extra { tags.append(tag.clone()) }
+	tags.extend(extra)
 	return Meta(
 		tags: sorted_unique(tags),
 		phase: phase.clone(),
@@ -330,12 +326,12 @@ fn strip_headers(source String) String {
 		skipped_lines < lines.length()
 		and lines[skipped_lines].starts_with("// conform:")
 	) { skipped_lines += 1 }
-	return lines.slice(skipped_lines, lines.length()).get_or([]).join("\n")
+	return lines.drop(skipped_lines).join("\n")
 }
 
 fn write_source(corpus, id, origin, phase, body String, extra List[String]) Bool {
 	path := f"{corpus}/{id}.ms"
-	create_directory(path.slice(0, parent_length(path)).clone(), recursive: true).get()
+	void create_directory(path.slice(0, parent_length(path)).clone(), recursive: true).get()
 
 	var text = render_meta(header(origin, phase, body, extra)) + body
 	if not text.ends_with("\n") { text += "\n" }
@@ -412,7 +408,7 @@ fn write_project(corpus, id String, candidate Candidate, verdict Verdict) List[S
 
 		var meta = header(candidate.origin, phases[index], text, ["projects"])
 		if phases[index] == "run" { meta.timeout = 120 }
-		write_file(f"{target}/conform.meta", render_meta(meta), replace: true).wait().get()
+		void write_file(f"{target}/conform.meta", render_meta(meta), replace: true).wait().get()
 		written.append(phases[index].clone())
 	}
 
@@ -424,14 +420,10 @@ export fn harvest(root, corpus String, args Args) Int {
 	ms := one(args, "ms", tool_ms(root))
 	var candidates = List[Candidate]()
 	if not has(args, "no-tree") {
-		for candidate in scan_tree(repo) {
-			candidates.append(candidate.clone())
-		}
+		candidates.extend(scan_tree(repo))
 	}
 	if not has(args, "no-docs") {
-		for candidate in scan_docs(repo) {
-			candidates.append(candidate.clone())
-		}
+		candidates.extend(scan_docs(repo))
 	}
 	print(f"{candidates.length()} candidates")
 
@@ -468,7 +460,7 @@ export fn harvest(root, corpus String, args Args) Int {
 	while start < unique.length() {
 		var end = start + size
 		if end > unique.length() { end = unique.length() }
-		chunks.append(unique.slice(start, end).get_or([]).clone())
+		chunks.append(unique.drop(start).take(end - start))
 		bases.append(start)
 		start = end
 	}
@@ -485,9 +477,7 @@ export fn harvest(root, corpus String, args Args) Int {
 
 	var verdicts = List[Verdict]()
 	for task in tasks {
-		for verdict in task.wait().get_or([]) {
-			verdicts.append(verdict.clone())
-		}
+		verdicts.extend(task.wait().get_or([]))
 	}
 
 	var used = List[String]()

@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.random.read
+
 // Request routing and middleware over `HttpExchange`, implemented in Manuscript.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",

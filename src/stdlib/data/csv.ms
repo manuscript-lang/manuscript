@@ -493,7 +493,7 @@ fn invalid_text() Void! {
 }
 
 fn write_rows(rows List[List[String]], var out List[List[String]]) Void! {
-	for row in rows { out.append(row) }
+	out.extend(rows)
 }
 
 /*

@@ -7,6 +7,7 @@ typedef struct Scan {
   const MsCheckProgram *program;
   const MsModuleInfo *module;
   MsSpan file;
+  MsName enclosing; /* the name of the function being walked, 0 outside one */
   size_t depth;
   MsLintFindingList *findings;
 } Scan;
@@ -32,6 +33,9 @@ static void two_arm(Scan *scan, const MsExpr *expr) {
   if (expr->u.match.arms.len != 2) {
     return;
   }
+  if (scrutinee->kind == MS_E_NAME && ms_span_is_text(path_text(scan, scrutinee), "self")) {
+    return; /* a method of Optional or Result defines itself by its cases; the methods the rule suggests are built on them */
+  }
   const MsFacts *facts = &scan->module->facts;
   const MsTy ty = ms_facts_type(facts, scrutinee->id);
   if (ty == MS_TY_NONE) {
@@ -41,6 +45,9 @@ static void two_arm(Scan *scan, const MsExpr *expr) {
   const bool optional = ms_ty_is(types, ty, MS_BUILTIN_Optional);
   if (!optional && !ms_ty_is(types, ty, MS_BUILTIN_Result)) {
     return;
+  }
+  if (optional && scan->enclosing != 0 && ms_span_is_text(ms_names_span(scan->program->names, scan->enclosing), "get_or")) {
+    return; /* `get_or` is the method the rule suggests; its default is a borrowed value that `or` cannot return */
   }
   const char *first = optional ? "some" : "ok";
   const char *second = optional ? "null" : "error";
@@ -54,8 +61,8 @@ static void two_arm(Scan *scan, const MsExpr *expr) {
   }
   if (has_first && has_second) {
     ms_lint_add(scan->findings, optional ? "MSL108" : "MSL109", scan->file, expr->pos,
-                optional ? ms_span_of_text("Matching an Optional with only a payload arm and null; use 'if value := "
-                                           "... { ... }' with 'else { ... }', or an Optional method such as get_or(default) or map")
+                optional ? ms_span_of_text("Matching an Optional with only a payload arm and null; bind it with 'v := x' and "
+                                           "test 'if v != null { ... }', or use `x or default` or an Optional method such as map")
                          : ms_span_of_text("Matching a Result with only ok and error; use a trailing '?', 'if value "
                                            ":= ... { ... }' with 'else { ... }', or a Result method such as get_or(default), "
                                            "is_error, or err"));
@@ -92,15 +99,19 @@ void ms_lint_matches(MsArena *arena, const MsCheckProgram *program, uint32_t mod
   if (module->tree == NULL) {
     return;
   }
-  Scan scan = {program, module, ms_names_span(program->names, module->file), 0, findings};
+  Scan scan = {program, module, ms_names_span(program->names, module->file), 0, 0, findings};
   const MsVisitor visitor = {.ctx = &scan, .expr = enter, .leave_expr = leave};
   for (uint32_t i = 0; i < module->tree->ndecls; i++) {
-    ms_walk_decl(&visitor, module->tree->decls[i]);
+    const MsDecl *decl = module->tree->decls[i];
+    scan.enclosing = decl->kind == MS_D_FN ? decl->u.fn.name
+                     : decl->kind == MS_D_IMPL && decl->u.impl.methods.len == 1 ? decl->u.impl.methods.ptr[0]->func.name
+                                                                                : 0;
+    ms_walk_decl(&visitor, decl);
   }
 }
 
 void ms_lint_nested_matches(const MsModule *tree, MsSpan file, MsLintFindingList *findings) {
-  Scan scan = {NULL, NULL, file, 0, findings};
+  Scan scan = {NULL, NULL, file, 0, 0, findings};
   const MsVisitor visitor = {.ctx = &scan, .expr = enter, .leave_expr = leave};
   for (uint32_t i = 0; i < tree->ndecls; i++) {
     ms_walk_decl(&visitor, tree->decls[i]);

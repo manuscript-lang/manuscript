@@ -1,3 +1,9 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.clock.sleep
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 /*
 Files and directories.
 
@@ -360,8 +366,6 @@ fn FileHandle.lock(exclusive Bool, timeout Duration?) Bool! {
 		}
 		sleep(milliseconds(5)).wait()?
 	}
-
-	return ok(false)
 }
 
 // Releases the advisory lock this handle holds; releasing when null is held
@@ -495,15 +499,12 @@ fn var WatchSource.next() FileEvent?! {
 
 		// An empty batch only means nothing changed yet; only null ends the stream.
 		// Paths are spelled as `join` spells them on this host (Windows: backslashes).
-		var batch = List[FileEvent]()
-		for event in next {
-			batch.append(FileEvent(normalize(event.path), event.kind.clone()))
-		}
+		var batch = next.clone().map(
+			event => FileEvent(normalize(event.path), event.kind.clone())
+		)
 		batch.reverse()
 		self.pending = batch
 	}
-
-	return ok(null)
 }
 
 // Stops the watcher and waits for its worker to stop.
@@ -1084,24 +1085,21 @@ fn replace_atomically(link String, data Bytes) Void! {
 		)
 		attempt += 1
 
-		match open(
+		opened := open(
 			temporary,
 			OpenMode.Write,
 			OpenOptions(exclusive: true, permissions: mode),
-		) {
-			ok(file) => {
-				return finish_atomic(
-					file,
-					temporary,
-					path,
-					data,
-					if existing.is_ok() { mode } else { null },
-				)
-			}
-			error(cause) => {
-				if cause.kind != "EEXIST" { return error(cause) }
-			}
+		)
+		if opened.is_ok() {
+			return finish_atomic(
+				opened.get(),
+				temporary,
+				path,
+				data,
+				if existing.is_ok() { mode } else { null },
+			)
 		}
+		if opened.err().kind != "EEXIST" { return error(opened.err().clone()) }
 	}
 
 	return error(already_exists())

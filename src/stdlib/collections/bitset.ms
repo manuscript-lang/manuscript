@@ -56,11 +56,7 @@ fn BitSet.contains(index Int) Bool {
 
 // Returns the number of members.
 fn BitSet.length() Int {
-	var total = 0
-	for word in self.words {
-		total += count_ones(word)
-	}
-	return total
+	return self.words.map(word => count_ones(word)).sum()
 }
 
 // Reports whether the set has no members.

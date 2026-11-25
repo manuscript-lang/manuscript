@@ -7,7 +7,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
-	create_directory, temporary, write_file from "@std/os/fs.ms",
+	create_directory, temporary from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	seconds from "@std/time.ms",
 
@@ -194,10 +194,7 @@ fn normalized(value JsonValue, work String) JsonValue {
 	match value {
 		StringValue(text) => return JsonValue.StringValue(normalize_text(text, work))
 		ArrayValue(items) => {
-			var out = List[JsonValue]()
-			for item in items {
-				out.append(normalized(item, work))
-			}
+			out := items.map(item => normalized(item, work))
 			return JsonValue.ArrayValue(out)
 		}
 		ObjectValue(fields) => {
@@ -361,7 +358,7 @@ fn run_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 
 	if not fx.args.is_empty() {
 		args.append("--")
-		for word in fx.args { args.append(word.clone()) }
+		args.extend(fx.args)
 	}
 
 	out := invoke(ms, fx, args, work, fx.stdin.clone())
@@ -376,10 +373,7 @@ fn run_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 fn without_member(value JsonValue, name String) JsonValue {
 	match value {
 		ArrayValue(items) => {
-			var out = List[JsonValue]()
-			for item in items {
-				out.append(without_member(item, name))
-			}
+			out := items.map(item => without_member(item, name))
 			return JsonValue.ArrayValue(out)
 		}
 		ObjectValue(fields) => {
@@ -419,7 +413,7 @@ fn test_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 
 	if not fx.args.is_empty() {
 		args.append("--")
-		for word in fx.args { args.append(word.clone()) }
+		args.extend(fx.args)
 	}
 
 	out := invoke(ms, fx, args, work, fx.stdin.clone())
@@ -431,9 +425,7 @@ fn test_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 	shape(faultless, "", keys)
 	keys.sort()
 
-	var listed = List[JsonValue]()
-	for key in keys { listed.append(text_value(key)) }
-
+	listed := keys.map(key => text_value(key))
 	var fields = Map[String, JsonValue]()
 	process_fields(fields, out)
 	fields.add("report", without_member(faultless, "duration_ns"))
@@ -446,7 +438,7 @@ fn test_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 export fn observe(ms String, fx Fixture, build_type String) JsonValue {
 	scratch := temporary("ms-conform-").get()
 	work := f"{scratch.path()}/w"
-	create_directory(work.clone()).get()
+	void create_directory(work.clone()).get()
 	materialize(fx, work.clone())
 	if fx.phase == "parse" { return parse_phase(ms, fx, work.clone()) }
 	if fx.phase == "check" { return check_phase(ms, fx, work.clone()) }

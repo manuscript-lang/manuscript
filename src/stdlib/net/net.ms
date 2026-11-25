@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.sleep
+
 import (
 	Bytes from "@std/bytes.ms",
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
@@ -159,13 +161,8 @@ fn move Connection.close() Void! {
 fn connection(move native NativeConnection) Connection {
 	local := msstd_net_connection_local_address(native)
 	peer := msstd_net_connection_peer_address(native)
-	var tls TlsInfo? = null
-
-	match msstd_net_connection_tls_info(native) {
-		ok(found) => tls = found
-		error(_) => tls = null
-	}
-
+	secured := msstd_net_connection_tls_info(native)
+	tls TlsInfo? := if secured.is_ok() { secured.get().clone() } else { null }
 	other := msstd_net_connection_share(native)
 	upgradable := msstd_net_connection_alias(native)
 	return Connection(

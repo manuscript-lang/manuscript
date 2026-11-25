@@ -49,7 +49,7 @@ TIGHT := ["guard-http-request", "guard-http-request-small"]
 COUNTS := "bench/perf/counts.txt"
 
 fn say(text String) Void {
-	stdout().write(text.clone()).get()
+	void stdout().write(text.clone()).get()
 }
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
@@ -115,26 +115,25 @@ fn main() Int {
 	scratch := temporary("ms-perf-counts-").get()
 	var failures = 0
 	var report = "# Instructions executed under callgrind by `make perf-counts`; refresh with `ms run tools/perf-counts.ms -- --update`.\n"
-	var targets List[List[String]] = []
-	for name in PROGRAMS {
-		targets.append([name.clone(), f"{root}/bench/perf/suite/{name}/main.ms", ""])
-	}
-	for name in GUARDS {
-		targets.append(
-			[
+	var targets List[List[String]] = PROGRAMS.map(
+		name => [name.clone(), f"{root}/bench/perf/suite/{name}/main.ms", ""]
+	)
+	targets.extend(
+		GUARDS.map(
+			name => [
 				f"guard-{name}", f"{root}/bench/perf/guards/{name}/main.ms", ""
 			]
 		)
-	}
-	for shape in SHAPES {
-		targets.append(
-			[
+	)
+	targets.extend(
+		SHAPES.map(
+			shape => [
 				f"guard-{shape[0]}",
 				f"{root}/bench/perf/guards/{shape[1]}/main.ms",
 				shape[2].clone(),
 			]
 		)
-	}
+	)
 
 	for target in targets {
 		name := target[0].clone()
@@ -193,10 +192,10 @@ fn main() Int {
 	// The CI nightly keeps what it measured, whether or not the gate passed, as the
 	// canonical numbers to refresh the committed file from.
 	measured := env("PERF_COUNTS_OUT", "")
-	if measured != "" { write_file(measured, report.clone(), true).wait().get() }
+	if measured != "" { void write_file(measured, report.clone(), true).wait().get() }
 
 	if update {
-		write_file(path, report, true).wait().get()
+		void write_file(path, report, true).wait().get()
 		say(f"wrote {COUNTS}\n")
 		return 0
 	}

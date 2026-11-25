@@ -154,7 +154,7 @@ fn growth(base, mid, big, floor Float) Float {
 }
 
 fn say(text String) Void {
-	stdout().write(text.clone()).get()
+	void stdout().write(text.clone()).get()
 }
 
 fn show(ratio Float) String {
@@ -167,11 +167,7 @@ fn main() Int {
 	ms := tool_ms(root.clone())
 	bound := env("SCALING_BOUND", "30").parse_float() or 30.0
 	limit := env("SCALING_TIMEOUT", "300").parse_int() or 300
-	var shapes = List[String]()
-	for a in arguments() {
-		shapes.append(a.clone())
-	}
-
+	var shapes = arguments().map(a => a.clone())
 	compile_only := shapes.length() > 0
 	if shapes.is_empty() { shapes = SHAPES.clone() }
 
@@ -185,7 +181,7 @@ fn main() Int {
 
 		for n in sizes_of {
 			file := f"{scratch.path()}/{shape}_{n}.ms"
-			write_file(file, generate(shape, n)).wait().get()
+			void write_file(file, generate(shape, n)).wait().get()
 			files.append(file)
 		}
 

@@ -18,19 +18,15 @@ import (
 
 // The probe lines the compiler printed on standard error, without their prefix.
 fn copies(text String) List[String] {
-	var sites = List[String]()
-	for line in text.split("\n") {
-		if line.starts_with("copy-probe\t") {
-			sites.append(line.slice(11, line.length()).clone())
-		}
-	}
+	sites := text.split("\n").filter(
+		line => line.starts_with("copy-probe\t")
+	).map(line => (line.slice(11, line.length()).clone()))
 	return sites
 }
 
 fn main() Int {
 	root := working_directory().get()
-	var files = List[String]()
-	for f in arguments() { files.append(f.clone()) }
+	var files = arguments().map(f => f.clone())
 	if files.is_empty() {
 		for dir in [
 			"tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
@@ -82,7 +78,7 @@ fn main() Int {
 		}
 	}
 
-	change_directory(root).get()
+	void change_directory(root).get()
 	print(f"swept {swept} programs, {total} object copies in {failing}")
 
 	if swept == 0 {

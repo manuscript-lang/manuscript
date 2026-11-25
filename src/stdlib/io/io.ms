@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes from "@std/bytes.ms",
 	adopt from "@std/concurrency/promise.ms",
@@ -562,8 +564,6 @@ fn var Through[A, B].next() B?! {
 
 		if self.out.length() > 1 { self.out.reverse() }
 	}
-
-	return ok(null)
 }
 
 fn move Through[A, B].close() Void! {

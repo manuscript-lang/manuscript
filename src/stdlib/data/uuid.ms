@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.random.read
+
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	HashAlgorithm from "@std/crypto/crypto.ms",

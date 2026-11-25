@@ -140,7 +140,7 @@ fn record_chunk(
 			continue
 		}
 
-		write_file(fx.sidecar, text, replace: true).wait().get()
+		void write_file(fx.sidecar, text, replace: true).wait().get()
 		lines.append("wrote")
 	}
 
@@ -162,9 +162,7 @@ fn main() Int {
 	var stable = true
 	var prune = false
 	var filters = List[String]()
-	var words = List[String]()
-	for word in arguments() { words.append(word.clone()) }
-
+	words := arguments().map(word => word.clone())
 	var at = 0
 
 	while at < words.length() {
@@ -216,12 +214,9 @@ fn main() Int {
 	var chunks = List[List[Fixture]]()
 
 	for worker in 0..jobs_count {
-		var mine = List[Fixture]()
-		for index in 0..chosen.length() {
-			if index % jobs_count == worker {
-				mine.append(chosen[index].clone())
-			}
-		}
+		mine := (0..chosen.length()).filter(
+			index => index % jobs_count == worker
+		).map(index => chosen[index].clone())
 		chunks.append(mine)
 	}
 

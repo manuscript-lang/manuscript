@@ -121,8 +121,6 @@ export fn encode_ppm(width, height, channels Int, pixels List[UInt8]) Bytes! {
 	var out = BytesBuilder()
 	magic := if channels == 3 { "P6" } else { "P5" }
 	out.append_bytes(f"{magic}\n{width} {height}\n255\n".to_bytes())
-	for b in pixels {
-		out.append(b)
-	}
+	out.extend(pixels)
 	return ok(out.build())
 }

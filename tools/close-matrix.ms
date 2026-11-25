@@ -443,7 +443,7 @@ fn verify(ms, scratch String, cell Cell, show Bool, filter String) Tally {
 	var tally = Tally(0, 0, 0, [])
 	name := cell.name.clone()
 	file := f"{scratch}/{name}.ms"
-	write_file(file, program(cell.shape.clone(), cell.construct.clone())).wait().get()
+	void write_file(file, program(cell.shape.clone(), cell.construct.clone())).wait().get()
 
 	verdict := run(ms.clone(), ["check", file.clone()]).wait()
 
@@ -573,7 +573,7 @@ fn main() Int {
 		rejected += tally.rejected
 		failures += tally.failures
 		for line in tally.lines {
-			stdout().write(line.clone()).get()
+			void stdout().write(line.clone()).get()
 		}
 	}
 

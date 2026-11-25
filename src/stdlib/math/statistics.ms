@@ -169,10 +169,7 @@ fn spread_variance(values List[Float], divisor Int) Float? {
 	center := mean(values)
 
 	if center != null {
-		var total = 0.0
-		for value in values {
-			total += (value - center) * (value - center)
-		}
+		total := values.map(value => (value - center) * (value - center)).sum()
 		return total / divisor.to_float()
 	}
 
@@ -640,10 +637,7 @@ fn centered(values List[Float], exponent Int) Centered {
 	}
 
 	center := total.value() / values.length().to_float()
-	var deviations List[Float] = []
-	for value in values {
-		deviations.append((ldexp(value, -exponent) - origin) - center)
-	}
+	deviations := values.map(value => (ldexp(value, -exponent) - origin) - center)
 	return Centered(origin: origin, center: center, deviations: deviations)
 }
 

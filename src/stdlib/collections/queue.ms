@@ -23,11 +23,7 @@ fn var Queue[T].enqueue(move value T) Bool {
 	count := self.items.length()
 
 	if self.head > 0 and self.head * 2 >= count {
-		var live List[T?] = []
-		for index in self.head..count {
-			live.append(self.items.replace(index, null))
-		}
-		self.items = live
+		self.items = (self.head..count).map(index => self.items.replace(index, null))
 		self.head = 0
 	}
 

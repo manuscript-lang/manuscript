@@ -133,8 +133,7 @@ fn program(o Operation, source Source, stomp Stomp) String {
 }
 
 fn expected(o Operation, source Source, stomp Stomp) String {
-	var lines = List[String]()
-	for line in stomp.expected { lines.append(line.clone()) }
+	var lines = stomp.expected.map(line => line.clone())
 	lines.append(o.expected.clone())
 	if source.name != "temporary" {
 		lines.append(" ab cd ")
@@ -146,7 +145,7 @@ fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root)
 	scratch := temporary("ms-view-matrix-").get()
-	set_environment("MS_POISON_SLOTS", "1").get()
+	void set_environment("MS_POISON_SLOTS", "1").get()
 
 	var filter = ""
 	for a in arguments() { filter = a.clone() }
@@ -164,7 +163,7 @@ fn main() Int {
 				) { continue }
 
 				file := f"{scratch.path()}/{name}.ms"
-				write_file(file, program(o, source, stomp)).wait().get()
+				void write_file(file, program(o, source, stomp)).wait().get()
 
 				verdict := run(ms.clone(), ["check", file.clone()]).wait()
 

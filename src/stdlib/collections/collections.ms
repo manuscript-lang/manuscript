@@ -326,10 +326,7 @@ fn var List[T Clonable].copy_within(target, start, end Int) Void { ... }
 // Returns a new list of `ListEntry` records pairing each zero-based index with its
 // element, in order.
 fn List[T Clonable].entries() List[ListEntry[T]] {
-	var out = List[ListEntry[T]]()
-	for i in 0..self.length() {
-		out.append(ListEntry[T](i, self[i].clone()))
-	}
+	out := (0..self.length()).map(i => ListEntry[T](i, self[i].clone()))
 	return out
 }
 
@@ -866,12 +863,9 @@ Keeps only the entries for which `keep(key, value)` is true, in place, like `Lis
 Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
 */
 fn var Map[T Hashable & Clonable, U].retain(keep fn(T, U) Bool) Void {
-	var doomed = List[T]()
-	for key in self.keys() {
-		if not keep(key, self[key]) {
-			doomed.append(key.clone())
-		}
-	}
+	doomed := self.keys().filter(
+		key => not keep(key, self[key])
+	).map(key => key.clone())
 	for key in doomed {
 		self.remove(key)
 	}
@@ -1158,11 +1152,7 @@ export fn map_from_entries[K Hashable, V](
 // Copies the inner lists' elements in order into one new list; elements must be
 // Clonable. Example: `flatten([[1, 2], [3]])` returns `[1, 2, 3]`.
 export fn flatten[T Clonable](lists List[List[T]]) List[T] {
-	var total = 0
-	for inner in lists {
-		total += inner.length()
-	}
-
+	total := lists.map(inner => inner.length()).sum()
 	var out = List[T](reserve: total)
 	for inner in lists {
 		out.extend(inner)

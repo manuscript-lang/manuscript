@@ -1,3 +1,5 @@
+// ms: allow_effect std.random.read
+
 import (
 	panic from "@std/core.ms",
 	random_bytes from "@std/random.ms",
