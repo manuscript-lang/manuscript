@@ -61,6 +61,11 @@ static void make_room(Queue *queue, uint64_t tail) {
   if (tail - head == queue->capacity) {
     const size_t capacity = queue->capacity == 0 ? 16 : queue->capacity * 2;
     Entry *const items = ms_alloc(capacity * sizeof *items);
+    /* A slot nothing was copied to must read as empty: an owner removing an entry that a thief took earlier looks at its
+     * old slot, and stale bytes of a freed ring there would hold the id of that very entry. */
+    for (size_t at = 0; at < capacity; at++) {
+      atomic_init(&items[at].id, 0);
+    }
     for (uint64_t at = head; at < tail; at++) {
       const Entry *const from = entry_at(queue, at);
       Entry *const to = &items[(size_t)at & (capacity - 1)];
