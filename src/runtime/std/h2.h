@@ -70,14 +70,13 @@ typedef struct MsH2Event {
 MsH2 *ms_h2_new(bool server, const MsH2Settings *settings);
 void ms_h2_free(MsH2 *h2);
 
-/* Processes received bytes; false on a connection error (ms_h2_error_text says which). */
+/* Processes received bytes; false on a connection error. */
 MS_NODISCARD bool ms_h2_feed(MsH2 *h2, MsSpan input);
 /* Takes the next event into `out` (release it with ms_h2_event_release); false when none is pending. */
 MS_NODISCARD bool ms_h2_poll(MsH2 *h2, MsH2Event *out);
 void ms_h2_event_release(MsH2Event *event);
 /* Appends the bytes to write to `out`. */
 void ms_h2_take_output(MsH2 *h2, MsBytes *out);
-const char *ms_h2_error_text(const MsH2 *h2);
 /* Whether output is waiting for ms_h2_take_output. */
 bool ms_h2_wants_write(const MsH2 *h2);
 /* Bytes ms_h2_send_data would take now on stream `id`. */

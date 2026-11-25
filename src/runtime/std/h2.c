@@ -245,7 +245,6 @@ bool ms_h2_feed(MsH2 *h2, MsSpan input) {
   const nghttp2_ssize used = nghttp2_session_mem_recv2(h2->session, input.ptr, input.len);
   if (used < 0) {
     h2->failed = true;
-    h2->error = nghttp2_strerror((int)used);
     return false;
   }
   return true;
@@ -264,8 +263,4 @@ void ms_h2_take_output(MsH2 *h2, MsBytes *out) {
 
 bool ms_h2_wants_write(const MsH2 *h2) {
   return nghttp2_session_want_write(h2->session) != 0;
-}
-
-const char *ms_h2_error_text(const MsH2 *h2) {
-  return h2->error != NULL ? h2->error : "";
 }

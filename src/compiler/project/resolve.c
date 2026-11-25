@@ -369,8 +369,3 @@ bool ms_project_resolve_in(MsArena *arena, const MsManifest *manifest, MsSpan ro
   return ms_project_source_path(arena, confinement_root(manifest, root, importer, path, target), target, overlay,
                                 canonical, error);
 }
-
-bool ms_project_resolve_import(MsArena *arena, MsSpan root, const MsOverlay *overlay, MsSpan importer,
-                               MsSpan path, MsSpan *canonical, MsProjectError *error) {
-  return ms_project_resolve_in(arena, NULL, root, overlay, importer, path, canonical, error);
-}

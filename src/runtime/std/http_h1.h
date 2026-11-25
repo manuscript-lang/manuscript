@@ -65,7 +65,6 @@ MsH1Scan ms_h1_scan(const MsHeaders *fields);
 /* Whether the connection stays open after this request. */
 bool ms_h1_scan_keep_alive(const MsH1Scan *scan, uint8_t minor);
 /* Whether a comma-separated field holds `token` (ASCII case-insensitive). */
-bool ms_h1_has_token(const MsHeaders *fields, const char *name, const char *token);
 /* Request body framing; a message with both Transfer-Encoding and Content-Length is refused. */
 bool ms_h1_request_framing(uint8_t minor, const MsHeaders *fields, const MsH1Scan *scan, MsH1Framing *out,
                            MsH1Bad *bad);

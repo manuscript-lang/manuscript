@@ -549,11 +549,3 @@ bool opt_twins_func(MirModule *m, MirFunc *f) {
   }
   return changed;
 }
-
-bool opt_twins(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    changed = opt_twins_func(m, &m->funcs.ptr[fi]) || changed;
-  }
-  return changed;
-}
