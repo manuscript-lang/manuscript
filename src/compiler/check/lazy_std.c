@@ -205,14 +205,9 @@ static void scan_decl(Reach *reach, uint32_t module, const MsDecl *decl) {
 void ms_check_restore_reached(MsCheckProgram *program) {
   MsDeferredBodyList queue = {0};
   Reach reach = {.program = program, .queue = &queue};
-  const char *const hooks[] = {
-#define MS_HOOK_ITEM(text) text,
-      MS_HOOK_METHODS(MS_HOOK_ITEM)
-#undef MS_HOOK_ITEM
-  };
-  for (size_t index = 0; index < sizeof hooks / sizeof hooks[0]; index++) {
+  for (int hook = 0; hook < MS_HOOK_COUNT; hook++) {
     MsName name = MS_NAME_EMPTY;
-    if (!ms_names_find(program->names, ms_span_of_text(hooks[index]), &name)) {
+    if (!ms_names_find(program->names, ms_span_of_text(ms_hook_name((MsHook)hook)), &name)) {
       continue;
     }
     for (size_t at = 0; at < program->deferred_bodies.len; at++) {

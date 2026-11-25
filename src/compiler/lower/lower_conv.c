@@ -67,10 +67,8 @@ uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsT
              : MIR_NONE;
 }
 
-uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
-  if (!ms_is_hook_method(operation)) {
-    ms_fatal(MS_FATAL_INVARIANT, "lowering looked up a method by a name the lazy standard checker does not restore");
-  }
+uint32_t lower_named_method(Lower *cx, MsTy receiver, MsHook hook) {
+  const char *operation = ms_hook_name(hook);
   MsName name = MS_NAME_EMPTY;
   if (!ms_names_find(cx->program->names, ms_span_of_text(operation), &name)) {
     return MIR_NONE;
@@ -83,7 +81,7 @@ uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property) {
   if (!ms_check_decided_by_method(cx->program, receiver, property)) {
     return MIR_NONE;
   }
-  const uint32_t method = lower_named_method(cx, receiver, equal ? "equals" : "hash");
+  const uint32_t method = lower_named_method(cx, receiver, equal ? MS_HOOK_EQUALS : MS_HOOK_HASH);
   if (method == MIR_NONE) {
     return MIR_NONE;
   }

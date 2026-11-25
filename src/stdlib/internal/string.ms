@@ -2,7 +2,7 @@ import Regex from "@std/regex.ms"
 
 export extern fn msrt_string_from_scalars(values List[Int]) String!
 
-export extern fn msrt_string_fields(text String) List[String]
+export extern fn msrt_string_fields(hold text String) List[&String]
 
 // Byte offset of the first scalar of `text` that occurs in `set`, or null.
 export extern fn msrt_string_index_any(text, set String) Int?

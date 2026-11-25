@@ -830,8 +830,8 @@ fn Map[T Hashable & Clonable, U Clonable].find_last(
 // unchangeable until its last use. Use `.clone()` to keep the values.
 fn hold Map[T Hashable, U Clonable].values() &List[U] { ... }
 
-// Returns a new list of `MapEntry` records in insertion order. Each record holds the
-// key and value without copying them.
+// Returns a new list of `MapEntry` records in insertion order. Each record holds a copy
+// of its key and value.
 fn Map[T Hashable & Clonable, U Clonable].entries() List[MapEntry[T, U]] {
 	var out = List[MapEntry[T, U]]()
 	keys := self.keys()
