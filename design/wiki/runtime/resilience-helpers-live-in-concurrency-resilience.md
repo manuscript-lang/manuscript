@@ -9,7 +9,7 @@ Constraints found while writing it:
 - `Result` payloads are borrowed, so `CircuitBreaker.call` needs `T` and `E` `Clonable`.
 - A token-bucket refill compares earned tokens with remaining room before adding: a full or nearly full maximum-Int burst can overflow a sum even though the capped result fits. `resilience.ms` tests use a past stamp instead of sleeps to exercise this boundary.
 - `Optional.get_or(default)` evaluates its default eagerly; do not pass `panic(...)`.
-- The embedded stdlib is baked into `ms`; after adding a module run `cargo build --release -p ms-cli` before `ms test` sees it.
+- The embedded stdlib is baked into `ms`; after adding a module run `cmake --build --preset ci` before `ms test` sees it.
 
 Apply when: adding resilience helpers, or moving them to another module.
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/resilience.ms`.
