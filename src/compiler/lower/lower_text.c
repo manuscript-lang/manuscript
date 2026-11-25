@@ -166,6 +166,10 @@ MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args,
   if (nargs == 1 && ms_span_is_text(operation, "to_string") && mir_ty_data(fn->cx->module, receiver)->kind == MK_IFACE) {
     return fn_value_text(fn, args[0], receiver);
   }
+  if (nargs == 1 && ms_span_is_text(operation, "to_string") && receiver == MIR_STR) {
+    /* the text of a String is a copy of it; as a plain clone, `copyelim` can drop it where only a read follows */
+    return fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, MIR_STR);
+  }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "msstd_value_");
   ms_strbuild_append(&text, operation);
