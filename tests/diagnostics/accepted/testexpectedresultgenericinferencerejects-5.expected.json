@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding fail; add: import fail from \"@std/test/test.ms\"",
+        "position": {
+          "file": "testexpectedresultgenericinferencerejects-5.ms",
+          "line": 5,
+          "column": 36,
+          "offset": 257
+        },
+        "fix": {
+          "position": {
+            "file": "testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import fail from \"@std/test/test.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:36: resolution: unknown binding fail; add: import fail from \"@std/test/test.ms\"\n   |\n 5 |     value: fn(String) Int!Error := fail\n   |                                    ^\n1 error; fix them and re-run\n"
+    }
+  }
+}

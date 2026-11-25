@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "<DIR>/unsigned-uint64-fault-mul.ms:9:5: type: local binding one is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 9 |     one UInt64 := 1\n   |     ^\n1 error; fix them and re-run\n"
+  }
+}

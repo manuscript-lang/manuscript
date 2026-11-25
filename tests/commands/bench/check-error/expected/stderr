@@ -1,0 +1,5 @@
+<DIR>/bench.ms:2:14: type: expected Int, found String (in the initializer of 'y')
+   |
+ 2 |     y Int := "no"
+   |              ^
+1 error; fix them and re-run

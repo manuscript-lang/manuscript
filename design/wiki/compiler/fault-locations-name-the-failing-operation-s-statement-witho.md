@@ -6,7 +6,7 @@ Decision: the user rejected per-call bookkeeping in generated code; a fault capt
 
 Apply when: adding lowered operations, inlining, source fault traces, or call fast paths.
 Evidence: default frame regressions, default lowering, and the frozen `tests-e2e-testfaultsourcelocations-20` corpus fixture.
-Evidence: [expected failures](../../../tests/conformance/expect-fail.txt), [call depth fixture](../../../tests/conformance/fixtures/e2e/accept/call-depth.ms), [fault and frame docs](../../../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
+Evidence: [expected failures](../../../tests/expect-fail.txt), [call depth fixture](../../../tests/lang/closures/call-depth.ms), [fault and frame docs](../../../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
 Evidence: frame walkers and budget regressions, Windows native unwind anchor, [stack-size contract](../../../documentation/core-language/errors/faults.md).
 Evidence: LLVM translation and six-target object tests, actual backend frame comparison, runtime fault definitions.
 Evidence: glue selection and bounded-traversal regressions, deep-literal and source-frame guards.

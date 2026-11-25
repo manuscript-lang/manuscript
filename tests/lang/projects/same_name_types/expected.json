@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Box, found Box (in the initializer of 'x'); these are two different types both named Box: the expected one is declared in a.ms, the found one is declared in b.ms",
+        "position": {
+          "file": "main.ms",
+          "line": 5,
+          "column": 14,
+          "offset": 79
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/main.ms:5:14: type: expected Box, found Box (in the initializer of 'x'); these are two different types both named Box: the expected one is declared in a.ms, the found one is declared in b.ms\n   |\n 5 |     x Box := make()\n   |              ^\n1 error; fix them and re-run\n"
+    }
+  }
+}

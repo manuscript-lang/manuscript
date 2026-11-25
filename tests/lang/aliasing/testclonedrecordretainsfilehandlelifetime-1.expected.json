@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "<DIR>/testclonedrecordretainsfilehandlelifetime-1.ms:45:15: parse: expected a name, found text \"I/O: resource is closed\"\n    |\n 45 |         Error(\"I/O: resource is closed\", kind: \"EBADF\"):\n    |               ^^^^^^^^^^^^^^^^^^^^^^^^^\n1 error; fix them and re-run\n"
+  }
+}

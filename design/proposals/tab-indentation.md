@@ -39,7 +39,7 @@ Measured (leading groups of four spaces replaced by one tab; independently re-me
 | `crates/ms-syntax/src/format.rs` | entry and exit conversion, width | `format_edits`, corpus goldens |
 | `crates/ms-lsp/src/editor.rs`, `features.rs`; `ms-repo-check/src/nested.rs`; `ms-check/src/suggestions.rs` | indent helpers that trim only `' '` or emit four spaces (stage 2) | LSP code-action and folding tests |
 | `documentation/`, `ms guide`, `ms init` | tab wording | `guide_pages`, init test |
-| `tests/conformance` | `-fmt` twins re-recorded | `make conform` |
+| `tests` | `-fmt` twins re-recorded | `make conform` |
 
 ## Alternatives
 

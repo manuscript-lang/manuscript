@@ -68,7 +68,7 @@ Callgrind instructions, same machine, all 23 suite programs against its parent: 
 | Component | Change | Test |
 | --- | --- | --- |
 | `src/compiler/mir/mir.h` | `entry` table on `MirFunc` | MIR verifier: length equals parameters plus captures |
-| `src/compiler/opt/opt_entry_range.c` (new) | module step, fixpoint | `tools/checks` MIR check: callee with 0..127 caller loses its negative path; callee with an unknown caller keeps it |
+| `src/compiler/opt/opt_entry_range.c` (new) | module step, fixpoint | `tests/checks` MIR check: callee with 0..127 caller loses its negative path; callee with an unknown caller keeps it |
 | `src/compiler/opt/opt_range*.c` | seed entry parameters and `closure.cap` | existing range fixtures unchanged |
 | `src/compiler/emit` | `llvm.assume` for entry intervals and block-parameter facts | `workers` instruction count |
 | `bench/perf/results.md`, wiki | dated result, page | `repo-check` |

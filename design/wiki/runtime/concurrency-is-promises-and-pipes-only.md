@@ -9,5 +9,5 @@ Streams follow the same model ([stream redesign](../../proposals/stream-redesign
 Consequences found while migrating: a promise reading a resource keeps it borrowed until the promise is dropped or moved into `wait_all`, so close the resource after that; a `var fn` method cannot run inside a promise, so a handle whose `next` or `read` is `var` cannot be waited on from one while another closes it; a logger on each thread owns its transport (`Transport.duplicate`), so a custom transport's `close` is not run at logger scope end; `Debounce`, `Cache` and `SingleFlight` were dropped with their locks.
 
 Apply when: porting code or tests that shared state between concurrent work.
-Evidence: [promise.ms](../../../src/stdlib/concurrency/promise.ms), [promise-semantics.ms](../../../tests/conformance/fixtures/e2e/stdlib/promise-semantics.ms), [concurrency guide](../../../documentation/core-language/concurrency/_index.md).
-Verify: `ms test tests/conformance/fixtures/e2e/accept/implicit-close-shielded.ms`.
+Evidence: [promise.ms](../../../src/stdlib/concurrency/promise.ms), [promise-semantics.ms](../../../tests/lang/stdlib/promise-semantics.ms), [concurrency guide](../../../documentation/core-language/concurrency/_index.md).
+Verify: `ms test tests/lang/misc/implicit-close-shielded.ms`.

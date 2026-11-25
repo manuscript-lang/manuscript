@@ -4,7 +4,7 @@
 
 `@std/data/xml.ms` promises well-formed XML 1.0. Finding `-->` is not enough: comment content cannot contain `--` or end in `-`. `Reader.comment` consumes and validates the whole comment for both child nodes and discarded comments before/after the root, returning the existing `EBADMSG` error. Keep generic `take_until` unchanged: CDATA and processing instructions may contain these hyphens.
 
-Evidence: [issue #2948](https://github.com/manuscript-lang/manuscript/issues/2948), [parser](../../../src/stdlib/data/xml.ms), and [XML fixtures](../../../tests/conformance/fixtures/e2e/stdlib/xml.ms). Tests cover all three positions, malformed/unterminated comments, empty and single-hyphen controls, Unicode/multiline content, and literal entity-looking comment text.
+Evidence: [issue #2948](https://github.com/manuscript-lang/manuscript/issues/2948), [parser](../../../src/stdlib/data/xml.ms), and [XML fixtures](../../../tests/lang/stdlib/xml.ms). Tests cover all three positions, malformed/unterminated comments, empty and single-hyphen controls, Unicode/multiline content, and literal entity-looking comment text.
 
 The XML 1.0 `Char` production applies to the entire literal input too (#2950), not only numeric references. Reuse `is_xml_char` before constructing `Reader` so discarded comments/instructions and DTD text cannot hide forbidden scalars. Preserve permitted whitespace, C1 controls, supplementary-plane noncharacters, and BOM; do not substitute a broader Unicode noncharacter ban.
 
@@ -20,7 +20,7 @@ A DOCTYPE's public identifier uses XML's restricted ASCII `PubidChar` production
 
 Assert that each forbidden-character fixture has one scalar so a wrong fixture fails at the test data rather than masquerading as a parser defect (#3419).
 
-Serialization inspects child text only to choose indentation. Compact output must skip that scan, and mixed content can stop at its first nonempty text result. Calling `text()` just for this decision allocates a copy of the text. Preserve the predicate's handling of empty text and comments; [the allocation fixture](../../../tools/checks/ownership-counts/xml_stringify.ms) catches redundant copies, while the XML tests pin exact compact and indented output. [Paired measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/xml-stringify/README.md) cover wide trees and neighboring cases.
+Serialization inspects child text only to choose indentation. Compact output must skip that scan, and mixed content can stop at its first nonempty text result. Calling `text()` just for this decision allocates a copy of the text. Preserve the predicate's handling of empty text and comments; [the allocation fixture](../../../tests/checks/ownership-counts/xml_stringify.ms) catches redundant copies, while the XML tests pin exact compact and indented output. [Paired measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/xml-stringify/README.md) cover wide trees and neighboring cases.
 
 Delimiter scans prepare the stop's scalar list once per scan, not once per input
 scalar. Keep first-match selection and partial delimiters at EOF unchanged;

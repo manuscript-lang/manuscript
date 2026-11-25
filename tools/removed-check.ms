@@ -1,5 +1,5 @@
 // Removed-spelling check (`make removed-check`): every spelling the language or
-// standard library removed or renamed has a snippet in tools/checks/removed/. A snippet
+// standard library removed or renamed has a snippet in tests/checks/removed/. A snippet
 // starts with
 //   // removed: <the old spelling>
 //   // use: <text the error must contain, naming the new spelling>
@@ -24,7 +24,7 @@ fn header(source, key String) String {
 	prefix := f"// {key}: "
 	for line in source.lines() {
 		if line.starts_with(prefix) {
-			return line.slice(prefix.length(), line.length()).trim()
+			return line.slice(prefix.length(), line.length()).trim().clone()
 		}
 	}
 	return ""
@@ -53,8 +53,8 @@ fn main() Int {
 	var failing = 0
 	var seen = 0
 
-	for f in glob("tools/checks/removed", GlobOptions(patterns: ["*.ms"])).get_or([]) {
-		path := f"{root}/tools/checks/removed/{f.path}"
+	for f in glob("tests/checks/removed", GlobOptions(patterns: ["*.ms"])).get_or([]) {
+		path := f"{root}/tests/checks/removed/{f.path}"
 		source := read_file(path.clone()).wait().get().decode_utf8() or ""
 		old := header(source, "removed")
 		want := header(source, "use")

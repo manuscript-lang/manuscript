@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "<DIR>/testparameterlessentrysignature-2.ms:4:8: type: entry must declare fn main; main takes no parameters, so remove them (read program arguments through the standard cli module)\n   |\n 4 | export fn main(value Int) Int {\n   |        ^\n1 error; fix them and re-run\n"
+  }
+}
