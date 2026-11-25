@@ -3,6 +3,7 @@
  * the graph then has no modules and one diagnostic. */
 #include <errno.h>
 
+#include "base/dir.h"
 #include "base/file.h"
 #include "base/path.h"
 #include "base/utf8.h"
@@ -74,6 +75,35 @@ static MsSpan logical_name(Loader *loader, MsSpan canonical) {
   ms_strbuild_append(&named, ms_strbuild_span(&relative));
   ms_strbuild_free(&relative);
   return ms_message_take_builder(loader->arena, &named);
+}
+
+/* The bundled module a file is the checkout copy of: `<repo>/src/stdlib/<name>` (`core/<name>` for the prelude) in a Manuscript checkout, which the
+ * `src/layers.txt` beside `src/stdlib` identifies. An editor opens these files; the checker must treat each as the
+ * bundled module itself, because a second copy declares every type again and the two never compare equal. */
+static MsSpan checkout_std_name(MsSpan canonical) {
+  static const char DIRECTORY[] = "src/stdlib/";
+  MsStdSource source = {0};
+  for (size_t at = 0; at + sizeof DIRECTORY - 1 < canonical.len; at++) {
+    const bool boundary = at == 0 || ms_path_is_separator(canonical.ptr[at - 1]);
+    const MsSpan rest = ms_span_of(canonical.ptr + at, canonical.len - at);
+    if (!boundary || !ms_span_starts_with(rest, ms_span_of_text(DIRECTORY))) {
+      continue;
+    }
+    MsSpan name = ms_span_of(rest.ptr + sizeof DIRECTORY - 1, rest.len - (sizeof DIRECTORY - 1));
+    if (ms_span_starts_with(name, ms_span_of_text("core/"))) {
+      name = ms_span_of(name.ptr + 5, name.len - 5); /* the implicit prelude is bundled under flat names */
+    }
+    if (!ms_std_source_find(name, &source)) {
+      continue;
+    }
+    MsStrBuild marker = ms_strbuild_new();
+    ms_strbuild_append(&marker, ms_span_of(canonical.ptr, at));
+    ms_strbuild_append_text(&marker, "src/layers.txt");
+    const bool checkout = ms_path_kind(ms_strbuild_span(&marker)) == MS_PATH_FILE;
+    ms_strbuild_free(&marker);
+    return checkout ? name : (MsSpan){0};
+  }
+  return (MsSpan){0};
 }
 
 static Failure cycle_failure(Loader *loader, size_t first, MsSpan canonical) {
@@ -295,6 +325,7 @@ static bool load(Loader *loader, MsSpan canonical, MsSpan file, int32_t *index, 
   module_list_push(&loader->modules, (MsGraphModule){.name = file,
                                                      .path = canonical,
                                                      .source = text,
+                                                     .std_name = checkout_std_name(canonical),
                                                      .syntax = module,
                                                      .targets = targets});
   ms_span_list_push(&loader->loaded, canonical);

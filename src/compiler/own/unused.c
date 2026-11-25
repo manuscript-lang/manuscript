@@ -130,6 +130,9 @@ void ms_own_unused(MsCheckProgram *program) {
     return;
   }
   for (uint32_t module = 0; module < program->user_modules; module++) {
+    if (!ms_check_is_user_module(program, module)) {
+      continue;
+    }
     check_module(program, module);
   }
 }

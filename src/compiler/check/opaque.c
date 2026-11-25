@@ -12,7 +12,7 @@ bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what) {
   if (home->module == body->module) {
     return false;
   }
-  const MsSpan file = ms_names_span(body->program->names, body->program->modules.ptr[home->module].file);
+  const MsSpan file = ms_names_span(body->program->names, body->program->modules.ptr[home->module].id);
   MsStrBuild text = ms_strbuild_new();
   ms_ty_show(&text, body->program->names, types, ty);
   ms_strbuild_append_text(&text, " is opaque outside ");

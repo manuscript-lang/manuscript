@@ -42,7 +42,7 @@ typedef struct Pass {
 
 static bool is_node(const MsCheckProgram *program, MsSymbolId id) {
   const MsSymbol *symbol = &program->symbols.ptr[id];
-  return symbol->module < program->user_modules && symbol->kind == MS_SYMBOL_TYPE && symbol->def != 0 && symbol->decl != NULL &&
+  return ms_check_is_user_module(program, symbol->module) && symbol->kind == MS_SYMBOL_TYPE && symbol->def != 0 && symbol->decl != NULL &&
          (symbol->decl->kind == MS_D_TYPE || symbol->decl->kind == MS_D_ENUM || symbol->decl->kind == MS_D_INTERFACE);
 }
 
@@ -253,7 +253,7 @@ typedef struct Scan {
 
 static bool is_generic_body(const MsCheckProgram *program, MsSymbolId id) {
   const MsSymbol *symbol = &program->symbols.ptr[id];
-  if (symbol->module >= program->user_modules || symbol->decl == NULL || symbol->var_count == 0) {
+  if (!ms_check_is_user_module(program, symbol->module) || symbol->decl == NULL || symbol->var_count == 0) {
     return false;
   }
   return (symbol->kind == MS_SYMBOL_FN && symbol->decl->kind == MS_D_FN) || (symbol->kind == MS_SYMBOL_TYPE && symbol->decl->kind == MS_D_TYPE);

@@ -45,7 +45,7 @@ void ms_check_program_free(MsCheckProgram *program) {
 }
 
 uint32_t ms_check_add_module(MsCheckProgram *program, MsName file, const MsModule *tree) {
-  ms_module_list_push(&program->modules, (MsModuleInfo){.file = file, .tree = tree});
+  ms_module_list_push(&program->modules, (MsModuleInfo){.file = file, .id = file, .tree = tree});
   return (uint32_t)program->modules.len - 1;
 }
 
@@ -187,7 +187,7 @@ MsName ms_check_unique_id(MsCheckProgram *program, const char *prefix) {
 
 /* The built-in a standard module's type is: a prelude type by name, or a native-layout source type. */
 static MsBuiltin builtin_of(const MsCheckProgram *program, const MsSymbol *symbol) {
-  const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].file);
+  const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].id);
   if (!ms_span_starts_with(file, ms_span_of_text("@std/"))) {
     return MS_BUILTIN_NONE;
   }
@@ -262,10 +262,10 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
     if (!ms_check_declared_name(decl, &name)) {
       continue;
     }
-    if (module < program->user_modules && is_prelude_constructor(program, name)) {
+    if (ms_check_is_user_module(program, module) && is_prelude_constructor(program, name)) {
       report_constructor_reuse(program, module, decl, name);
     }
-    if (module < program->user_modules && is_prelude_name(program, name)) {
+    if (ms_check_is_user_module(program, module) && is_prelude_name(program, name)) {
       report_prelude_reuse(program, module, decl, name);
       continue;
     }
@@ -274,7 +274,7 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
       report_duplicate(program, module, decl, name);
       continue;
     }
-    if (module < program->user_modules && decl->kind == MS_D_TYPE && decl->u.type.external &&
+    if (ms_check_is_user_module(program, module) && decl->kind == MS_D_TYPE && decl->u.type.external &&
         decl->u.type.type_params.len != 0) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append_text(&text, "extern type ");

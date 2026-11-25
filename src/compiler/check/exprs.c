@@ -29,8 +29,8 @@ const MsSymbol *body_find_symbol(const Body *body, MsName name) {
   if (id == 0 && (range || ms_span_is_text(text, "print") || ms_span_is_text(text, "ok_or"))) {
     const MsName home = intern(body, range ? "@std/collections/collections.ms" : "@std/core.ms");
     const MsName target = range ? intern(body, "range") : name;
-    for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
-      const MsSymbolId *symbol = program->modules.ptr[index].file == home
+    for (uint32_t index = 0; index < program->modules.len; index++) {
+      const MsSymbolId *symbol = program->modules.ptr[index].id == home
                                      ? ms_scope_get(&program->modules.ptr[index].scope, target)
                                      : NULL;
       id = symbol != NULL ? *symbol : id;

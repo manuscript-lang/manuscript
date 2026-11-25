@@ -13,7 +13,7 @@ static bool user_extern(const Body *body, MsTy ty) {
   const MsTyTable *types = &body->program->types;
   const MsDef *def = body_def(body, ty);
   return ms_ty_kind(types, ty) == MS_TY_NATIVE && ms_ty_arg_count(types, ty) == 0 && def != NULL &&
-         body->program->symbols.ptr[def->symbol].module < body->program->user_modules;
+         ms_check_is_user_module(body->program, body->program->symbols.ptr[def->symbol].module);
 }
 
 static bool crosses_element(const Body *body, MsTy ty) {
@@ -120,7 +120,7 @@ static void check_result(Body *body, const MsFunc *func, MsTy result) {
 void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty) {
   const MsFunc *func = &decl->u.fn;
   const MsTyTable *types = &body->program->types;
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!ms_check_is_user_module(body->program, body->module) || body->quiet) {
     return;
   }
   const MsSpan name = ms_names_span(body->program->names, func->name);

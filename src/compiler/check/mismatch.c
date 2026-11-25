@@ -316,6 +316,64 @@ void body_report_uninferred_none(Body *body, MsPos pos) {
                                                       "null`, or pass a value")));
 }
 
+/* The first pair of distinct nominal types with one name inside `left` and `right`, found by walking matching arguments. */
+static bool same_named_pair(const MsTyTable *types, MsTy left, MsTy right, MsTy *first, MsTy *second) {
+  if (left == right) {
+    return false;
+  }
+  const MsTyRow *a = ms_ty_row(types, left);
+  const MsTyRow *b = ms_ty_row(types, right);
+  if (a->name == b->name && a->def != 0 && b->def != 0 && a->def != b->def) {
+    *first = left;
+    *second = right;
+    return true;
+  }
+  if (a->arg_count != b->arg_count) {
+    return false;
+  }
+  for (uint32_t at = 0; at < a->arg_count; at++) {
+    if (same_named_pair(types, ms_ty_args(types, left)[at], ms_ty_args(types, right)[at], first, second)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void append_declared_in(const Body *body, MsStrBuild *out, MsTy ty) {
+  const MsCheckProgram *program = body->program;
+  const MsDef *def = ms_defs_get(&program->defs, ms_ty_row(&program->types, ty)->def);
+  const MsSymbol *symbol = &program->symbols.ptr[def->symbol];
+  ms_strbuild_append_text(out, "declared in ");
+  ms_strbuild_append(out, ms_names_span(program->names, program->modules.ptr[symbol->module].file));
+}
+
+/* Two types that print alike are told apart: by where each nominal one is declared, else by the detail the short
+ * form leaves out. Without this the message reads "expected T, found T" and nothing says what differs. */
+static void append_same_print_detail(const Body *body, MsStrBuild *out, MsTy actual, MsTy expected) {
+  MsStrBuild left = ms_strbuild_new();
+  MsStrBuild right = ms_strbuild_new();
+  show(body, &left, expected);
+  show(body, &right, actual);
+  const bool same = ms_span_equal(ms_strbuild_span(&left), ms_strbuild_span(&right));
+  ms_strbuild_free(&left);
+  ms_strbuild_free(&right);
+  if (!same) {
+    return;
+  }
+  MsTy first = MS_TY_NONE;
+  MsTy second = MS_TY_NONE;
+  if (!same_named_pair(&body->program->types, expected, actual, &first, &second)) {
+    ms_strbuild_append_text(out, "; the two print alike but differ in a detail the short form leaves out, such as a borrow or an argument mode");
+    return;
+  }
+  ms_strbuild_append_text(out, "; these are two different types both named ");
+  ms_strbuild_append(out, ms_names_span(body->program->names, ms_ty_row(&body->program->types, first)->name));
+  ms_strbuild_append_text(out, ": the expected one is ");
+  append_declared_in(body, out, first);
+  ms_strbuild_append_text(out, ", the found one is ");
+  append_declared_in(body, out, second);
+}
+
 static void report_mismatch(Body *body, const MsExpr *expr, MsTy actual, MsTy expected, MsSpan context) {
   if (is_none(body, actual) && ms_ty_kind(&body->program->types, expected) == MS_TY_CONTRACT) {
     body_report_uninferred_none(body, expr->pos); /* an interface is no target for none */
@@ -340,6 +398,7 @@ static void report_mismatch(Body *body, const MsExpr *expr, MsTy actual, MsTy ex
     show(body, &text, expected);
     ms_strbuild_append_text(&text, "? or give a value");
   } else {
+    append_same_print_detail(body, &text, actual, expected);
     append_hints(body, &text, actual, expected);
   }
   ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));

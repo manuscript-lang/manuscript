@@ -16,8 +16,8 @@ static const MsSymbol *factory_symbol(const Body *body) {
 static MsTy hooks_type(const Body *body) {
   const MsCheckProgram *program = body->program;
   const MsName home = fixture_name(body, "@std/test/test.ms");
-  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
-    const MsSymbolId *found = program->modules.ptr[index].file == home
+  for (uint32_t index = 0; index < program->modules.len; index++) {
+    const MsSymbolId *found = program->modules.ptr[index].id == home
                                   ? ms_scope_get(&program->modules.ptr[index].scope, fixture_name(body, "TestHooks"))
                                   : NULL;
     if (found != NULL) {

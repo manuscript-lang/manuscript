@@ -14,7 +14,7 @@
 static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms"};
 
 void resolver_init(Resolver *resolver, MsCheckProgram *program, uint32_t module) {
-  *resolver = (Resolver){.program = program, .module = module, .report = module < program->user_modules || program->check_std};
+  *resolver = (Resolver){.program = program, .module = module, .report = ms_check_is_user_module(program, module) || program->check_std};
 }
 
 void resolver_free(Resolver *resolver) {
@@ -60,7 +60,7 @@ MsSymbolId resolver_prelude_symbol(const MsCheckProgram *program, MsName name) {
     for (size_t at = 0; at < MS_COUNT_OF(PRELUDE_MODULES); at++) {
       uint32_t found = 0;
       const MsName file = ms_names_intern(program->names, ms_span_of_text(PRELUDE_MODULES[at]));
-      for (; found < program->modules.len && program->modules.ptr[found].file != file; found++) {
+      for (; found < program->modules.len && program->modules.ptr[found].id != file; found++) {
       }
       const MsSymbolId *symbol =
           found < program->modules.len ? ms_scope_get(&program->modules.ptr[found].scope, name) : NULL;
@@ -497,7 +497,7 @@ MsTy resolver_type(Resolver *resolver, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
   const MsTy resolved = type->kind == MS_TYPE_FN ? resolver_function(resolver, type->params, type->result)
                                                   : named_type(resolver, type);
-  if (resolver->module < program->user_modules) {
+  if (ms_check_is_user_module(program, resolver->module)) {
     ms_type_ref_record_list_push(&program->type_refs, (MsTypeRefRecord){.module = resolver->module, .node = type->id, .ty = resolved});
   }
   return resolved;
