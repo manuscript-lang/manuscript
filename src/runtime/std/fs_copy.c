@@ -7,6 +7,7 @@
 #include <limits.h>
 
 #include "base/alloc.h"
+#include "base/file.h"
 #include "runtime/core/fault_abi.h"
 #include "runtime/io/pool.h"
 #include "runtime/std/fs_tree.h"
@@ -238,19 +239,6 @@ typedef struct FileJob {
   bool cloned;
 } FileJob;
 
-static int open_fd(const char *path, int flags, int mode) {
-  uv_fs_t request;
-  const int fd = uv_fs_open(NULL, &request, path, flags, mode, NULL);
-  uv_fs_req_cleanup(&request);
-  return fd;
-}
-
-static void close_fd(uv_file fd) {
-  uv_fs_t request;
-  (void)uv_fs_close(NULL, &request, fd, NULL);
-  uv_fs_req_cleanup(&request);
-}
-
 /* Copies `input` to `output` inside the kernel where the host can (libuv: copy_file_range or sendfile, else a read and
  * write loop), charging the byte budget one byte past what is left so an excess is seen. */
 static void copy_stream(FileJob *job, uv_file input, uv_file output) {
@@ -280,7 +268,7 @@ static void copy_stream(FileJob *job, uv_file input, uv_file output) {
 /* Creates the destination, which must not exist, with the source's permission bits. */
 static bool create_output(FileJob *job, const char *path, uv_file *output) {
   const int mode = (int)(job->info.st_mode & COPY_MODE_MASK);
-  *output = open_fd(path, UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_EXCL, mode);
+  *output = ms_fs_open(path, UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_EXCL, mode);
   if (*output < 0) {
     ms_fail_uv(&job->fail, *output, "open", job->destination);
     return false;
@@ -326,7 +314,7 @@ static void copy_into_new(FileJob *job, uv_file input, const char *destination_p
   if (job->clone != CLONE_NONE) {
     done = clone_content(job, input, output, destination_path);
     if (!done) {
-      close_fd(output); /* the failed clone took the file with it: make it again */
+      (void)ms_file_close_fd(output); /* the failed clone took the file with it: make it again */
       if (!create_output(job, destination_path, &output)) {
         return;
       }
@@ -343,14 +331,14 @@ static void copy_into_new(FileJob *job, uv_file input, const char *destination_p
       ms_fail_uv(&job->fail, code, "chmod", job->destination);
     }
   }
-  close_fd(output);
+  (void)ms_file_close_fd(output);
 }
 
 static void file_job(void *data) {
   FileJob *job = data;
   MsOsText source = ms_os_text_new(job->source);
   MsOsText destination = ms_os_text_new(job->destination);
-  const uv_file input = open_fd(source.ptr, UV_FS_O_RDONLY, 0);
+  const uv_file input = ms_fs_open(source.ptr, UV_FS_O_RDONLY, 0);
   if (input < 0) {
     ms_fail_uv(&job->fail, input, "open", job->source);
   } else {
@@ -366,7 +354,7 @@ static void file_job(void *data) {
     if (!ms_fail_failed(&job->fail)) {
       copy_into_new(job, input, destination.ptr);
     }
-    close_fd(input);
+    (void)ms_file_close_fd(input);
   }
   ms_os_text_free(&source);
   ms_os_text_free(&destination);

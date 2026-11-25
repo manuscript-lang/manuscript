@@ -14,6 +14,7 @@
 #include <uv.h>
 
 #include "base/alloc.h"
+#include "base/file.h"
 #include "base/strbuild.h"
 #include "runtime/core/fault_abi.h"
 #include "runtime/core/promise.h"
@@ -431,9 +432,7 @@ void msrt_streams_close(int64_t stream) {
     (void)drain(entry);
   }
   if ((entry->flags & MS_STREAMS_OWNS) != 0) {
-    uv_fs_t request;
-    (void)uv_fs_close(NULL, &request, entry->fd, NULL); /* the descriptor is gone either way */
-    uv_fs_req_cleanup(&request);
+    (void)ms_file_close_fd(entry->fd);
   }
   entry->live = false;
   ms_free(entry->out);

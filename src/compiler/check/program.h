@@ -200,9 +200,6 @@ void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString
  * resolution diagnostic). Impl and test declarations declare nothing. */
 void ms_check_declare(MsCheckProgram *program, uint32_t module);
 
-/* The name a declaration binds in its module scope; false for an impl or a test. */
-bool ms_check_declared_name(const MsDecl *decl, MsName *name);
-
 /* The type parameters a declaration writes (none for a constant, an impl or a test). */
 MsTypeParams ms_check_decl_type_params(const MsDecl *decl);
 

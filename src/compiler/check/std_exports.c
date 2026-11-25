@@ -33,32 +33,8 @@ static void record_export(MsName name, int32_t module, bool is_type) {
 
 static bool declared_name(const MsDecl *decl, const MsNames *names, MsSpan *name, bool *is_type) {
   MsName declared = MS_NAME_EMPTY;
-  *is_type = true;
-  switch ((MsDeclKind)decl->kind) {
-  case MS_D_FN:
-    declared = decl->u.fn.name;
-    *is_type = false;
-    break;
-  case MS_D_CONST:
-    declared = decl->u.konst.name;
-    *is_type = false;
-    break;
-  case MS_D_TYPE:
-    declared = decl->u.type.name;
-    break;
-  case MS_D_ENUM:
-    declared = decl->u.enumeration.name;
-    break;
-  case MS_D_ALIAS:
-    declared = decl->u.alias.name;
-    break;
-  case MS_D_INTERFACE:
-    declared = decl->u.iface.name;
-    break;
-  case MS_D_IMPL:
-  case MS_D_TEST:
-    return false;
-  }
+  if (!ms_decl_name(decl, &declared)) return false;
+  *is_type = decl->kind != MS_D_FN && decl->kind != MS_D_CONST;
   if (!decl->is_exported || declared == MS_NAME_EMPTY) return false;
   *name = ms_names_span(names, declared);
   return true;

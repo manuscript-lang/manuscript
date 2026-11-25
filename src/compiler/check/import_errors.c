@@ -76,7 +76,7 @@ static bool std_exports(MsCheckProgram *program, MsSpan module, MsName name) {
   }
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     MsName declared = 0;
-    if (tree->decls[index]->is_exported && ms_check_declared_name(tree->decls[index], &declared) &&
+    if (tree->decls[index]->is_exported && ms_decl_name(tree->decls[index], &declared) &&
         declared == name) {
       return true;
     }

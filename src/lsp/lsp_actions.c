@@ -474,7 +474,7 @@ static void project_imports(Actions *actions, MsArena *arena, MsSpan name, bool 
       for (uint32_t d = 0; d < module.ndecls && !exported; d++) {
         MsName declared;
         const MsDecl *decl = module.decls[d];
-        if (!decl->is_exported || !ms_check_declared_name(decl, &declared) || !ms_span_equal(ms_names_span(&names, declared), name)) continue;
+        if (!decl->is_exported || !ms_decl_name(decl, &declared) || !ms_span_equal(ms_names_span(&names, declared), name)) continue;
         exported = !types_only || decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM || decl->kind == MS_D_ALIAS || decl->kind == MS_D_INTERFACE;
       }
     }

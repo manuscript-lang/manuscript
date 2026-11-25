@@ -67,7 +67,7 @@ static const char *entity_kind(const MsDecl *decl) {
 /* The name a declaration binds, or the empty span (an impl, a test). */
 static MsSpan bound_name(const Collect *c, const MsDecl *decl) {
   MsName name = 0;
-  return ms_check_declared_name(decl, &name) ? name_text(c, name) : (MsSpan){0};
+  return ms_decl_name(decl, &name) ? name_text(c, name) : (MsSpan){0};
 }
 
 /* The text of a written type: `Shape`, `List[Int]`. */
@@ -291,7 +291,7 @@ static void add_entity(Collect *c, MsSpan id, MsSpan checker_id, const char *kin
 /* The symbol the module binds `decl` to, or NULL. */
 static const MsSymbol *symbol_of(const Collect *c, const MsDecl *decl) {
   MsName name = 0;
-  if (!ms_check_declared_name(decl, &name)) {
+  if (!ms_decl_name(decl, &name)) {
     return NULL;
   }
   const MsSymbolId *found = ms_scope_get(&c->program->modules.ptr[c->module].scope, name);

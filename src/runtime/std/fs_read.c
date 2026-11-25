@@ -5,6 +5,7 @@
 #include <limits.h>
 
 #include "base/alloc.h"
+#include "base/file.h"
 #include "runtime/core/task.h"
 #include "runtime/io/pool.h"
 #include "runtime/std/fs_job.h"
@@ -13,18 +14,11 @@ enum { READ_CHUNK = 32 * 1024, READ_LARGEST = 1 << 20, READ_KNOWN_LIMIT = 1 << 2
 
 /* ---- libuv calls, run to their end ---- */
 
-static int open_file(const char *path, int flags, int mode) {
+int ms_fs_open(const char *path, int flags, int mode) {
   uv_fs_t request;
   const int fd = uv_fs_open(NULL, &request, path, flags, mode, NULL);
   uv_fs_req_cleanup(&request);
   return fd;
-}
-
-static int close_file(uv_file fd) {
-  uv_fs_t request;
-  const int code = uv_fs_close(NULL, &request, fd, NULL);
-  uv_fs_req_cleanup(&request);
-  return code;
 }
 
 int ms_fs_fstat(uv_file fd, uv_stat_t *out) {
@@ -150,7 +144,7 @@ static bool open_regular(MsFsJob *job, int flags, uv_file *fd, uv_stat_t *stat) 
   if (!ms_fs_open_path(job, job->path, &path)) {
     return false;
   }
-  const int opened = open_file(path.ptr, flags | UV_FS_O_NONBLOCK, 0600);
+  const int opened = ms_fs_open(path.ptr, flags | UV_FS_O_NONBLOCK, 0600);
   ms_os_text_free(&path);
   if (opened == UV_ENXIO) { /* a FIFO without a reader */
     job->not_regular = true;
@@ -164,7 +158,7 @@ static bool open_regular(MsFsJob *job, int flags, uv_file *fd, uv_stat_t *stat) 
   if (ms_fs_fstat(*fd, stat) == 0 && ms_fs_is_regular(stat)) {
     return true;
   }
-  (void)close_file(*fd);
+  (void)ms_file_close_fd(*fd);
   job->not_regular = true;
   return false;
 }
@@ -177,7 +171,7 @@ static void read_whole_job(void *data) {
     return;
   }
   ms_fs_read_limited(fd, job->number, false, &stat, NULL, &job->data, &job->fail);
-  (void)close_file(fd);
+  (void)ms_file_close_fd(fd);
 }
 
 /* The same read on the runtime thread, for anything but a regular file. */
@@ -188,7 +182,7 @@ static void read_whole_here(MsFsJob *job) {
   }
   /* A named pipe opened for reading would block in open until a writer arrives, so it is opened without waiting;
    * reads wait for data through wait_readable. */
-  const int fd = open_file(path.ptr, UV_FS_O_RDONLY | UV_FS_O_NONBLOCK, 0);
+  const int fd = ms_fs_open(path.ptr, UV_FS_O_RDONLY | UV_FS_O_NONBLOCK, 0);
   ms_os_text_free(&path);
   if (fd < 0) {
     ms_fs_job_fail(job, fd, "open", job->path);
@@ -201,7 +195,7 @@ static void read_whole_here(MsFsJob *job) {
   } else {
     ms_fs_read_limited(fd, job->number, true, have_stat ? &stat : NULL, NULL, &job->data, &job->fail);
   }
-  (void)close_file(fd);
+  (void)ms_file_close_fd(fd);
 }
 
 uint8_t msstd_fs_read_file(const MsString *path, uint8_t has_max, int64_t max, MsBytes *out, MsString *err) {
@@ -250,7 +244,7 @@ static void write_all(uv_file fd, MsSpan data, MsSpan path, bool cancellable, Ms
 
 /* Closes after a write: the write's own failure wins over a failed close. */
 static void close_after_write(uv_file fd, MsSpan path, MsFail *fail) {
-  const int code = close_file(fd);
+  const int code = ms_file_close_fd(fd);
   if (code != 0 && !ms_fail_failed(fail)) {
     ms_fail_uv(fail, code, "close", path);
   }
@@ -272,7 +266,7 @@ static void write_whole_here(MsFsJob *job) {
   if (!ms_fs_open_path(job, job->path, &path)) {
     return;
   }
-  const int fd = open_file(path.ptr, UV_FS_O_WRONLY | UV_FS_O_CREAT | (int)job->number, 0600);
+  const int fd = ms_fs_open(path.ptr, UV_FS_O_WRONLY | UV_FS_O_CREAT | (int)job->number, 0600);
   ms_os_text_free(&path);
   if (fd < 0) {
     ms_fs_job_fail(job, fd, "open", job->path);

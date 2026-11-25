@@ -82,24 +82,13 @@ static const MsSymbol *symbol_of(const Outline *outline, uint32_t module, const 
   return symbol->decl == decl ? symbol : NULL;
 }
 
-static MsName decl_name(const MsDecl *decl) {
-  switch (decl->kind) {
-  case MS_D_FN: return decl->u.fn.name;
-  case MS_D_CONST: return decl->u.konst.name;
-  case MS_D_TYPE: return decl->u.type.name;
-  case MS_D_ENUM: return decl->u.enumeration.name;
-  case MS_D_ALIAS: return decl->u.alias.name;
-  case MS_D_INTERFACE: return decl->u.iface.name;
-  default: return 0;
-  }
-}
-
 static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t module, const MsDecl *decl, size_t end) {
   MsStrBuild name = ms_strbuild_new();
   MsStrBuild detail = ms_strbuild_new();
   int kind = KIND_FUNCTION;
   MsSpan selection_name = {0};
-  const MsName declared = decl_name(decl);
+  MsName declared = 0;
+  (void)ms_decl_name(decl, &declared);
   if (decl->kind != MS_D_IMPL && decl->kind != MS_D_TEST) {
     selection_name = name_text(outline, declared);
     ms_strbuild_append(&name, selection_name);

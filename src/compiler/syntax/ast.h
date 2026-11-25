@@ -429,6 +429,21 @@ typedef struct MsModule {
   uint32_t nredundant_error;
 } MsModule;
 
+/* The name a declaration introduces, or false for impl and test declarations. */
+static inline bool ms_decl_name(const MsDecl *decl, MsName *name) {
+  switch ((MsDeclKind)decl->kind) {
+  case MS_D_FN: *name = decl->u.fn.name; return true;
+  case MS_D_CONST: *name = decl->u.konst.name; return true;
+  case MS_D_TYPE: *name = decl->u.type.name; return true;
+  case MS_D_ENUM: *name = decl->u.enumeration.name; return true;
+  case MS_D_ALIAS: *name = decl->u.alias.name; return true;
+  case MS_D_INTERFACE: *name = decl->u.iface.name; return true;
+  case MS_D_IMPL:
+  case MS_D_TEST: return false;
+  }
+  return false;
+}
+
 /* An `impl Type` block, with no contract. */
 static inline bool ms_decl_is_inherent_impl(const MsDecl *decl) {
   return decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL;

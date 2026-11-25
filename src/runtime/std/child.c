@@ -6,6 +6,7 @@
 #include "runtime/std/child.h"
 
 #include "base/alloc.h"
+#include "base/file.h"
 #include "runtime/core/isolate.h"
 #include "runtime/core/task.h"
 #include "runtime/std/run.h"
@@ -120,9 +121,7 @@ static void loop_thread(void *argument) {
 
 void ms_child_close_descriptor(int fd) {
   if (fd >= 0) {
-    uv_fs_t request;
-    (void)uv_fs_close(NULL, &request, fd, NULL);
-    uv_fs_req_cleanup(&request);
+    (void)ms_file_close_fd(fd);
   }
 }
 

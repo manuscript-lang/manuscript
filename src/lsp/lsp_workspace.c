@@ -104,18 +104,6 @@ static int declaration_kind(const MsDecl *decl) {
   }
 }
 
-static MsName declaration_name(const MsDecl *decl) {
-  switch (decl->kind) {
-    case MS_D_FN: return decl->u.fn.name;
-    case MS_D_CONST: return decl->u.konst.name;
-    case MS_D_TYPE: return decl->u.type.name;
-    case MS_D_ENUM: return decl->u.enumeration.name;
-    case MS_D_ALIAS: return decl->u.alias.name;
-    case MS_D_INTERFACE: return decl->u.iface.name;
-    default: return 0;
-  }
-}
-
 typedef struct FileSymbols {
   MsArena *arena;
   MsSpan source;
@@ -155,7 +143,9 @@ static void file_symbols(FileSymbols *file) {
     if (decl->kind == MS_D_IMPL) {
       add_methods(file, &names, decl->u.impl.methods.ptr, decl->u.impl.methods.len);
     } else if (decl->kind != MS_D_TEST) {
-      add_symbol(file, ms_names_span(&names, declaration_name(decl)), declaration_kind(decl), decl->pos.offset);
+      MsName declared = 0;
+      (void)ms_decl_name(decl, &declared);
+      add_symbol(file, ms_names_span(&names, declared), declaration_kind(decl), decl->pos.offset);
     }
   }
   ms_names_free(&names);
