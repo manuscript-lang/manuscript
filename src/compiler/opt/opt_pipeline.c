@@ -135,6 +135,7 @@ static const Step early_steps[] = {
 };
 
 static const Step late_steps[] = {
+    {"fieldload", opt_fieldload},
     {"strfuse", strfuse_step}, /* the simplified bodies hold `take`/`drop` of a variable's slot, which the early run does not see */
     {"fuse", opt_fuse_step},
     {"exit_drops", opt_exit_drops},
