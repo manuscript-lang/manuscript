@@ -3,9 +3,9 @@
 # release SHA256SUMS. Update the tag and every digest together.
 tag cranelift-0.136.0-r4
 version 0.136.0
-d5af7a953b01b8967157e42e3b0ae184ab41f94197b6b779acc1d9e2218fbfd5  cranelift-lib-0.136.0-darwin-amd64.tar.gz
-3b611d9ee4db4d253784a44f19583ce402dbee80c4d75511b56e6f947f090f1f  cranelift-lib-0.136.0-darwin-arm64.tar.gz
-b3086eacc55943f0959608c90a7216842ff8362785759c0a11eacb3fbc5eef41  cranelift-lib-0.136.0-linux-amd64.tar.gz
-2d5b579ca606944840c698df2e43eb7732bc7333b2fd945898810fb39a92d8ce  cranelift-lib-0.136.0-linux-arm64.tar.gz
-1ff7ad9131e6488aa519ed6d03c33ddebc70f875bcf9224063d2dc1c8107aa11  cranelift-lib-0.136.0-windows-amd64.tar.gz
-38715b88b870aaae54296d35ad530e72280af6b76090eb1a8f74258b13866804  cranelift-lib-0.136.0-windows-arm64.tar.gz
+59a5ae68488563fdea2626711b60b5a2544c95d5f9bc3cb599be4be3fbca9273  cranelift-lib-0.136.0-darwin-amd64.tar.gz
+b901b51fab7b6ff7b92f3d236b9bec6cedcc7d0f924a294c02aac5d778462278  cranelift-lib-0.136.0-darwin-arm64.tar.gz
+b35f0fe4ff6cac63c83926327818139fd4d3aed2f4f45c65f57aef5c70df7f34  cranelift-lib-0.136.0-linux-amd64.tar.gz
+9c39c6b32016274d25beda49bdb666bc76a0347e345de71fcb33e557d7e1f733  cranelift-lib-0.136.0-linux-arm64.tar.gz
+fae5836a32cbc4a2db388e3b4af95eeb0a44d7845116845e018fccea6eb9315a  cranelift-lib-0.136.0-windows-amd64.tar.gz
+9a987118f147071f991b3f2274bcb3b7f425d1bdfe2299ccee9b32eadc81eeb7  cranelift-lib-0.136.0-windows-arm64.tar.gz
