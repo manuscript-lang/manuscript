@@ -461,7 +461,7 @@ export fn harvest(root, corpus String, args Args) Int {
 	while start < unique.length() {
 		var end = start + size
 		if end > unique.length() { end = unique.length() }
-		chunks.append(unique.slice(start, end).get_or([]))
+		chunks.append(unique.slice(start, end).get_or([]).clone())
 		bases.append(start)
 		start = end
 	}
