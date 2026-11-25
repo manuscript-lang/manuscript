@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "narrowed-name-bound-from-temporary-chain.ms::a narrowed name bound from a temporary chain outlives its statement",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 1,
+        "selected": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN narrowed-name-bound-from-temporary-chain.ms::a narrowed name bound from a temporary chain outlives its statement\nPASS narrowed-name-bound-from-temporary-chain.ms::a narrowed name bound from a temporary chain outlives its statement\n1 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

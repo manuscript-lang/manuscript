@@ -287,7 +287,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     fn->vars[local] = mir_b_declare_var(&fn->b, ty, MM_MOVE) + 1;
     fn_disown(fn, value);
     mir_b_def_var(&fn->b, fn->vars[local] - 1, value);
-    return fn_scope_own_var(fn, fn->vars[local] - 1, fields_leave ? ms_facts_type(fn->facts, pattern->id) : MS_TY_NONE) && !fn->failed;
+    /* The name outlives the statement's own scope (`bind_scope`), which ends right after it. */
+    const uint32_t owner_scope = fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn);
+    return fn_scope_own_var_in(fn, owner_scope, fn->vars[local] - 1, fields_leave ? ms_facts_type(fn->facts, pattern->id) : MS_TY_NONE) && !fn->failed;
   }
   if (fn->local_owns != NULL && local < fn->nvars && (!borrow || fresh) && !stmt->u.bind.is_mutable &&
       mir_needs_drop(fn->cx->module, ty)) {
