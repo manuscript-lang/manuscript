@@ -59,11 +59,3 @@ cl_val clx_const(ClCx *cx, int64_t k) {
   return cl_i64const(cx->fb, k);
 }
 
-/* A loaded leaf of a sized kind is already extended by the load; only a boolean needs no change and a float32
- * widens. The loads in cl_mem.c do the extension, so this only converts Float32. */
-cl_val clx_widen(ClCx *cx, MirLeaf leaf, cl_val loaded) {
-  if (leaf == MIR_LEAF_F32) {
-    return cl_cast(cx->fb, CL_FPROMOTE, CL_F64, loaded);
-  }
-  return loaded;
-}

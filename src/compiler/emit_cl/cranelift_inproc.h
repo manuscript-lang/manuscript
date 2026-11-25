@@ -13,7 +13,4 @@
  * be opened, or the first function it lacks). */
 MS_NODISCARD MS_NONNULL bool cranelift_load(MsSpan path, MsStrBuild *why);
 
-/* Whether the library at `path` loads and has the whole API; it stays loaded. */
-MS_NODISCARD bool cranelift_usable(MsSpan path);
-
 #endif
