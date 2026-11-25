@@ -464,6 +464,22 @@ static bool rooted_at_self(const Borrows *pass, const MsExpr *place) {
          ms_span_is_text(ms_names_span(pass->program->names, place->u.sym), "self");
 }
 
+/* A borrowing call on a value the statement builds and drops (`text.slice(1, n).trim()`): what it answers points
+ * into a temporary that is gone when the statement ends. */
+static bool borrows_temporary(Borrows *pass, const MsExpr *call) {
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  const MsExpr *callee = call->u.call.callee;
+  if (fact == NULL || !is_value_ref(fact->callee.kind) || callee->kind != MS_E_MEMBER || !borrows_from(pass, fact, 0) ||
+      takes_payload(pass, call)) {
+    return false; /* the payload of a temporary optional or result leaves with it */
+  }
+  const MsExpr *receiver = kept_call(callee->u.member.left);
+  const MsCall *made = receiver != NULL ? ms_facts_call(pass->facts, receiver->id) : NULL;
+  Source ignored = {0};
+  return made != NULL && is_value_ref(made->callee.kind) && ms_class_owns_memory(pass->facts, pass->classes, receiver) &&
+         !origin_of_call(pass, receiver, &ignored);
+}
+
 static void note_keep(Borrows *pass, const MsExpr *kept) {
   if (!ms_class_owns_memory(pass->facts, pass->classes, kept)) {
     return; /* a scalar is copied out of the result, so nothing is kept */
@@ -475,6 +491,13 @@ static void note_keep(Borrows *pass, const MsExpr *kept) {
   Keep keep = {.kept = call};
   if (call != NULL && origin_of_arg(pass, call, &keep.source) && !rooted_at_self(pass, keep.source.place)) {
     keep_list_push(&pass->keeps, keep);
+  } else if (call != NULL && ms_own_declared_ref_result(pass->program, &ms_facts_call(pass->facts, call->id)->callee) &&
+             borrows_temporary(pass, call)) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "`");
+    ms_own_expr_text(&text, pass->program->names, call);
+    ms_strbuild_append_text(&text, "` borrows a temporary value that is gone when this statement ends; store `.clone()` of it");
+    ms_check_report(pass->program, pass->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
 }
 

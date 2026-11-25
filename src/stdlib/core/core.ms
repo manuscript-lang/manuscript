@@ -470,6 +470,48 @@ fn String.to_string() String {
 	return self.clone()
 }
 
+// Pads on the left (`pad_start`) or the right (`pad_end`) until the scalar length
+// reaches `target_length`, repeating `padding` and cutting its last copy.
+fn String.pad_start(target_length Int, padding String) String {
+	return padding_for(self, target_length, padding) + self
+}
+
+// Pads on the right until the scalar length reaches `target_length`; see `pad_start`.
+fn String.pad_end(target_length Int, padding String) String {
+	return self + padding_for(self, target_length, padding)
+}
+
+fn padding_for(text String, target_length Int, padding String) String {
+	missing := target_length - text.scalar_length()
+	if missing <= 0 or padding.is_empty() { return "" }
+
+	// One byte is one scalar: the filler is `missing` copies. Repeating first makes an
+	// oversized request fault at the string limit instead of looping to it.
+	if padding.length() == 1 {
+		return padding.repeat(missing)
+	}
+
+	padding_scalars := padding.scalar_length()
+	source := padding.repeat(missing / padding_scalars + 1)
+
+	// ASCII padding: a byte is a scalar, so the filler is one copy of the first bytes.
+	if padding.length() == padding_scalars {
+		return source.view(0, missing).clone()
+	}
+
+	var filler = ""
+	var count = 0
+
+	for scalar in source.chars() {
+		if count >= missing { break }
+
+		filler += scalar
+		count += 1
+	}
+
+	return filler
+}
+
 // Plain numbers and flags copy by value: their `clone` is the value itself.
 fn Int.clone() Int {
 	return self

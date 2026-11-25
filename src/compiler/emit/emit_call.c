@@ -515,7 +515,10 @@ static bool call_runtime_option(EmitCx *cx, const MirInst *inst, const MirExtern
 void emit_unwinding_address(EmitCx *cx) {
   MsStrBuild *out = cx->out;
   ms_strbuild_printf(out, "  %%ubf = call ptr @llvm.frameaddress.p0(i32 0)\n  %%ubs = ptrtoint ptr %%ubf to i64\n");
-  ms_strbuild_printf(out, "  %%ubm = and i64 %%ubs, %lld\n  %%ubc = add i64 %%ubm, %lld\n", -(long long)MS_STACK_REGION,
+  /* The frame address goes through an empty asm so the compiler cannot assume its low bits are zero: on Windows x64 a
+   * leaf function's frame pointer is only 8-aligned, and the folded mask then read the cell's limit word. */
+  ms_strbuild_printf(out, "  %%ubo = call i64 asm \"\", \"=r,0\"(i64 %%ubs)\n");
+  ms_strbuild_printf(out, "  %%ubm = and i64 %%ubo, %lld\n  %%ubc = add i64 %%ubm, %lld\n", -(long long)MS_STACK_REGION,
                      (long long)(MS_STACK_REGION - MS_STACK_CELL_HDR));
   /* The header pointer of the cell does not change while this activation runs, so loads of it merge. */
   ms_strbuild_printf(out, "  %%ubhp = inttoptr i64 %%ubc to ptr\n  %%ubh = load ptr, ptr %%ubhp, !invariant.load !%d\n",

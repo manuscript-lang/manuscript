@@ -9,6 +9,7 @@ Checking, lowering, MIR, LLVM emission, build, fault sites.
 - [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
 - [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
 
+- [The region cell address must not assume an aligned frame address](the-region-cell-address-must-not-assume-an-aligned-frame-address.md): LLVM folded the cell mask assuming a 16-aligned frame address; on Windows x64 it is 8-aligned, so the limit word was read as the header.
 - [Checker state must scale with the function, not the program](checker-state-must-scale-with-the-function-not-the-program.md): uid-indexed arrays, scans over all methods and `Info` clones were half of `ms check` on a large project.
 - [Checked Int arithmetic is language behavior](checked-int-arithmetic-is-language-behavior.md): `Int` arithmetic faults on overflow ([ownership rules](../../../documentation/contributing/ownership-rules.md)).
 - [Compiler passes use the right algorithm and data structure for their input size](compiler-passes-use-the-right-algorithm-and-data-structure-f.md): the user wants parsing, checking, and lowering to stay linear (or n log n) in source size, with no ad-hoc special cases.
