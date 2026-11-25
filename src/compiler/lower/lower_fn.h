@@ -97,11 +97,11 @@ typedef struct LowerFn {
   uint32_t npresolved;
   /* A call's borrowing-variant result and the ordinary Result every reader sees it as (`alt.plain`): a return or a binding
    * that hands the call on needs the owner. */
-  struct { MirValue plain, owner; } viewed[8];
-  uint32_t nviewed;
+  struct LowerViewed { MirValue plain, owner; } *viewed; /* grown in the module arena as calls are lowered */
+  uint32_t nviewed, cviewed;
   /* Results of natives declared `@borrows` (`List.slice`): an ordinary Result whose payload views an argument. */
-  MirValue native_views[8];
-  uint32_t nnative_views;
+  MirValue *native_views;
+  uint32_t nnative_views, cnative_views;
   bool keeps_scoped; /* this function keeps the closures it is given (the flag of its MIR function) */
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */

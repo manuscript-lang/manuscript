@@ -17,4 +17,4 @@ fn main() Void {
 // expect-stderr:    |
 // expect-stderr:  9 |     one UInt64 := 1
 // expect-stderr:    |     ^
-// expect-stderr: 1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
+// expect-stderr: 1 error; fix them and re-run

@@ -9,4 +9,4 @@ export fn main(value Int = 0) Int {
 // expect-stderr:    |
 // expect-stderr:  4 | export fn main(value Int = 0) Int {
 // expect-stderr:    |        ^
-// expect-stderr: 1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
+// expect-stderr: 1 error; fix them and re-run

@@ -122,8 +122,7 @@ void finding_terminal_text(MsStrBuild *err, MsSpan root, const FindingList *find
     warnings += finding->warning;
   }
   if (errors != 0) {
-    ms_strbuild_printf(err, "%zu %s; fix them and re-run (ms check <file> --json gives the same diagnostics as "
-                            "structured data)\n",
+    ms_strbuild_printf(err, "%zu %s; fix them and re-run\n",
                        errors, errors == 1 ? "error" : "errors");
   }
   if (warnings != 0) {
