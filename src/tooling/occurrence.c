@@ -69,64 +69,6 @@ static uint32_t header(MsSpan source, uint32_t offset, MsSpan name) {
   return offset;
 }
 
-/* A written type as text: `Box[fn(Int) Int]`. Two methods share a receiver form when it reads the same. */
-static void type_form(const Builder *b, MsStrBuild *out, const MsTypeRef *type) {
-  if (type->kind == MS_TYPE_NAMED) {
-    ms_strbuild_append(out, ms_names_span(b->program->names, type->name));
-    for (uint32_t index = 0; index < type->args.len; index++) {
-      ms_strbuild_append_text(out, index == 0 ? "[" : ",");
-      type_form(b, out, type->args.ptr[index]);
-    }
-    ms_strbuild_append_text(out, type->args.len == 0 ? "" : "]");
-    return;
-  }
-  ms_strbuild_append_text(out, "fn(");
-  for (uint32_t index = 0; index < type->params.len; index++) {
-    ms_strbuild_append_text(out, index == 0 ? "" : ",");
-    ms_strbuild_append_text(out, type->params.ptr[index]->is_mutable ? "var " : "");
-    if (type->params.ptr[index]->ty != NULL) {
-      type_form(b, out, type->params.ptr[index]->ty);
-    }
-  }
-  ms_strbuild_append_text(out, ")");
-  if (type->result != NULL) {
-    type_form(b, out, type->result);
-  }
-}
-
-/* The methods of one receiver form are folded into the first: only that one writes the receiver as a type. */
-static void fold_receivers(Builder *b, uint32_t module) {
-  const MsModule *tree = b->program->modules.ptr[module].tree;
-  b->folded_into[module] = MS_ARENA_NEW_ARRAY(b->arena, uint32_t, tree->ndecls + 1);
-  MsSpan *forms = MS_ARENA_NEW_ARRAY(b->arena, MsSpan, tree->ndecls + 1);
-  for (uint32_t at = 0; at < tree->ndecls; at++) {
-    b->folded_into[module][at] = at;
-    if (tree->decls[at]->kind != MS_D_IMPL) {
-      continue;
-    }
-    MsStrBuild text = ms_strbuild_new();
-    type_form(b, &text, tree->decls[at]->u.impl.receiver);
-    const MsTypeParams bounds = tree->decls[at]->u.impl.bounds;
-    for (uint32_t index = 0; index < bounds.len; index++) {
-      /* `Box[T: Equal]` and `Box[T]` are two forms. */
-      ms_strbuild_append_text(&text, " ");
-      ms_strbuild_append(&text, ms_names_span(b->program->names, bounds.ptr[index]->name));
-      for (uint32_t bound = 0; bound < bounds.ptr[index]->bounds.len; bound++) {
-        ms_strbuild_append_text(&text, ":");
-        type_form(b, &text, bounds.ptr[index]->bounds.ptr[bound]);
-      }
-    }
-    forms[at] = ms_arena_copy(b->arena, ms_strbuild_span(&text));
-    ms_strbuild_free(&text);
-    for (uint32_t earlier = 0; earlier < at; earlier++) {
-      if (tree->decls[earlier]->kind == MS_D_IMPL && b->folded_into[module][earlier] == earlier && ms_span_equal(forms[earlier], forms[at])) {
-        b->folded_into[module][at] = earlier;
-        break;
-      }
-    }
-  }
-}
-
 /* ---- keys ---- */
 
 MsSpan ms_occ_symbol_key(const Builder *b, MsSymbolId id) {
@@ -826,7 +768,6 @@ static void index_tables(Builder *b) {
   b->written = MS_ARENA_NEW_ARRAY(b->arena, MsTy *, modules);
   b->assigned = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
   b->instantiated = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
-  b->folded_into = MS_ARENA_NEW_ARRAY(b->arena, uint32_t *, modules);
   for (size_t module = 0; module < modules; module++) {
     const uint32_t nodes = program->modules.ptr[module].tree->node_count + 1;
     b->symbol_at[module] = MS_ARENA_NEW_ARRAY(b->arena, MsSymbolId, nodes);
@@ -837,7 +778,6 @@ static void index_tables(Builder *b) {
     b->instantiated[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
   }
   for (size_t module = 0; module < modules; module++) {
-    fold_receivers(b, (uint32_t)module);
   }
   for (size_t index = 1; index < program->symbols.len; index++) {
     const MsSymbol *symbol = &program->symbols.ptr[index];

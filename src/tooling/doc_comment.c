@@ -331,6 +331,16 @@ MsSpan ms_declaration_comment(MsArena *arena, MsSpan source, size_t offset, uint
   while (line_start > 0 && source.ptr[line_start - 1] != '\n') {
     line_start--;
   }
+  /* A name inside a parameter or type-parameter list written on the declaration's own line belongs to that list; the
+   * comment above the line documents the declaration, not the parameter. */
+  int depth = 0;
+  for (size_t at = line_start; at < offset; at++) {
+    const uint8_t b = source.ptr[at];
+    depth += (b == '(' || b == '[') - (b == ')' || b == ']');
+  }
+  if (depth > 0) {
+    return ms_span_of_text("");
+  }
   const MsSpan above = comments_above(arena, source, line_start, ANY_INDENT);
   const MsSpan docs = above.len > 0 ? above : trailing_comment(arena, source, offset);
   return trim(docs);
