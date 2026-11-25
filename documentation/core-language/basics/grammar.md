@@ -60,7 +60,7 @@ No identifier character may follow a numeric token except the `d` suffix. Leadin
 - Indentation carries no meaning. [`ms fmt`](../../developer-tooling/source/formatting.md) indents each block four spaces (a tab per level on disk) and puts `{` at the end of the header line and `}` at the start of its own line. A block that fits on one line may stay on it.
 - `else` follows the closing brace on the same line: `} else {` and `} else if c {`. A line that starts with `else` after a `}` line is accepted and joined by the formatter.
 - A line starting with `|`, or `.` not followed by a digit or `.`, continues the previous statement ([pipe flows](expressions.md#pipe-flows)).
-- A `{` opens a block unless it follows a token that expects an operand (`(`, `[`, `,`, `=`, `:=`, `:`, `return`, an operator, `in`) or its matching `}` is followed by `:=` or `=`; there it is a [map literal](../types/collections.md#maps) or a destructuring pattern. `=> {` is always a block, so a map returned from an arrow body is written in parentheses: `() => ({"a": 1})`. A bare `{ ... }` statement is a scope.
+- A `{` opens a block unless it follows a token that expects an operand (`(`, `[`, `,`, `=`, `:=`, `:`, `return`, an operator, `in`) or its matching `}` is followed by `:=` or `=`; there it is a [map literal](../types/collections.md#map-literals) or a destructuring pattern. `=> {` is always a block, so a map returned from an arrow body is written in parentheses: `() => ({"a": 1})`. A bare `{ ... }` statement is a scope.
 - Delimiters must balance. Trailing commas are allowed only in comma-separated forms below.
 
 ### Anonymous functions inside delimiters
