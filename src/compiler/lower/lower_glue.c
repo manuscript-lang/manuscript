@@ -223,8 +223,9 @@ bool lower_glue_bodies(Lower *cx, bool *progressed) {
 /* A record that declares the operator's operation (`Duration.add`) or its own `compare` is calculated or ordered by
  * it: returns whether `op` was lowered that way, with the answer in `answer`. */
 bool fn_record_operator(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirCc cc, MirValue *answer) {
-  const char *operation = op == MS_B_ADD ? "add" : op == MS_B_SUB ? "subtract" : op == MS_B_MUL ? "multiply"
-                          : op == MS_B_DIV ? "divide" : op == MS_B_REM ? "remainder" : NULL;
+  const bool arithmetic = op == MS_B_ADD || op == MS_B_SUB || op == MS_B_MUL || op == MS_B_DIV || op == MS_B_REM;
+  const MsHook operation = op == MS_B_ADD ? MS_HOOK_ADD : op == MS_B_SUB ? MS_HOOK_SUBTRACT : op == MS_B_MUL ? MS_HOOK_MULTIPLY
+                           : op == MS_B_DIV ? MS_HOOK_DIVIDE : MS_HOOK_REMAINDER;
   const MirTy operand = mir_b_ty(&fn->b, left);
   if (mir_ty_data(fn->cx->module, operand)->kind != MK_TYPE) {
     return false;
@@ -233,7 +234,7 @@ bool fn_record_operator(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue righ
   if (checked == MS_TY_NONE) {
     return false;
   }
-  if (operation != NULL) {
+  if (arithmetic) {
     const uint32_t method = lower_named_method(fn->cx, checked, operation);
     const MirFunc *funcs = fn->cx->module->funcs.ptr; /* after the lookup: it can declare a function and move the list */
     if (method == MIR_NONE || funcs[method].nparams != 2 || funcs[method].params[1].ty != mir_b_ty(&fn->b, right)) {
@@ -247,7 +248,7 @@ bool fn_record_operator(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue righ
   if ((op != MS_B_LT && op != MS_B_GT && op != MS_B_LE && op != MS_B_GE) || operand != mir_b_ty(&fn->b, right)) {
     return false;
   }
-  const uint32_t method = lower_named_method(fn->cx, checked, "compare");
+  const uint32_t method = lower_named_method(fn->cx, checked, MS_HOOK_COMPARE);
   const MirFunc *funcs = fn->cx->module->funcs.ptr;
   if (method == MIR_NONE || funcs[method].nparams != 2 || funcs[method].ret != MIR_INT) {
     return false;
