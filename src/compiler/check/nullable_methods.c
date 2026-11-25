@@ -17,7 +17,7 @@ static Removed removed_kind(MsSpan name, size_t nargs) {
   if (ms_span_is_text(name, "is_some") && nargs == 0) {
     return REMOVED_IS_PRESENT;
   }
-  if (ms_span_is_text(name, "get_or") && nargs == 1) {
+  if ((ms_span_is_text(name, "get_or") || ms_span_is_text(name, "get")) && nargs == 1) {
     return REMOVED_OR;
   }
   if ((ms_span_is_text(name, "get_or_else") || ms_span_is_text(name, "or_else")) && nargs == 1) {
@@ -191,7 +191,7 @@ static bool fix_text(const Body *body, const MsExpr *call, Removed kind, const M
 
 static const char *write_text(Removed kind) {
   return kind == REMOVED_UNWRAP ? "if x != null { ... }` and use `x"
-         : kind == REMOVED_GET  ? "if x != null { ... }` and use `x`, or `x or panic(\"...\")"
+         : kind == REMOVED_GET  ? "if x != null { ... }` and use `x`, `x or d` for a fallback, or `x or panic(\"...\")"
          : kind == REMOVED_OK_OR ? "ok_or(x, cause)"
          : kind == REMOVED_IS_NULL ? "x == null"
          : kind == REMOVED_IS_PRESENT ? "x != null"

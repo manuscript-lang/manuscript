@@ -1,0 +1,3 @@
+# Returning a String view of a temporary is a compile error
+
+`return line.slice(a, b).trim()` returned a view into the `String` that `slice` made, which is freed when the function returns: the caller read freed memory (it broke `make removed-check`, whose strings came back with their first bytes overwritten). The returned-view check (`ms_borrows_describe_returned`) only followed a chain of members to a local, so a borrowing call on a call result slipped past. It now reports `borrows a temporary value`, as the kept-value check already did, for a `String` or `Bytes` result. Fixture: `reject/return-view-of-temporary`. Records such as `Duration.max(..)` stay accepted: their view is copied out before the temporary dies.
