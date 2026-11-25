@@ -354,7 +354,7 @@ void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit
 }
 
 /* How far above a frame's stack pointer its saved record is looked for: a frame with thousands of live locals is far larger than a page.
- * Only a fault walks the stack, so the scan may be long. */
+ * Only a fault walks the stack, so the scan may be long. A workaround for Windows code having no unwind data: delete it with #7011. */
 enum { SCAN_BYTES = 1 << 20 };
 
 uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintptr_t high,
