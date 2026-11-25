@@ -108,6 +108,100 @@ static void optional_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, M
   (void)data;
 }
 
+static uint32_t embed_shape(ShapeBuild *build, uint32_t shape_index, const uint32_t *abs, size_t n);
+
+/* A copy of shape `original`, the shape of the same type, that the image keeps beside it. */
+static uint32_t push_copy(ShapeBuild *build, uint32_t original, MsShape copy) {
+  const uint32_t index = (uint32_t)build->shapes.len;
+  shape_list_push(&build->shapes, copy);
+  mir_tylist_push(&build->types, build->types.ptr[original]); /* the original, found first, stays the one a type maps to */
+  return index;
+}
+
+/* A value inside a flattened image (an optional's payload, a case's field, a field of a record that sits there) has
+ * its leaves where the host puts them, which is not where its own layout does when the leaves before it differ in
+ * size: `{x Bool, y Int}` is at 0 and 8 alone and at 1 and 8 after a tag byte. `abs` holds the host offset of each of
+ * the value's `n` leaves; the result is `shape_index` when every offset agrees with the shape's own, and otherwise a
+ * copy whose offsets are relative to `abs[0]`, so a reader that adds them to the slot finds the leaves. */
+static uint32_t embed_optional(ShapeBuild *build, uint32_t shape_index, const uint32_t *abs, size_t n) {
+  const MsShape shape = build->shapes.ptr[shape_index];
+  if ((shape.flags & MS_SHAPE_NULLABLE) != 0 || n < 2) {
+    return shape_index;
+  }
+  MsShape copy = shape;
+  copy.extra = abs[1] - abs[0];
+  copy.elem = embed_shape(build, shape.elem, abs + 1, n - 1);
+  if (copy.extra == shape.extra && copy.elem == shape.elem) {
+    return shape_index;
+  }
+  return push_copy(build, shape_index, copy);
+}
+
+/* Places the fields of record `def` whose leaves lie at `abs` (`n` of them): fills `offsets` (from `abs[0]`) and `kids`
+ * (each field's shape, embedded likewise). `old_first` is the member run of the shape being copied, or MS_SHAPE_NONE when
+ * the record's own shape is being built; for a copy, `*changed` is set when a field moved. `counts[i]` is the number of
+ * leaves of field `i`. Returns how many leaves the fields cover. */
+static uint32_t embed_fields(ShapeBuild *build, const MirTypeDef *def, uint32_t old_first, const uint32_t *abs,
+                             size_t n, const uint32_t *counts, uint32_t *offsets, uint32_t *kids, bool *changed) {
+  uint32_t start = 0;
+  for (uint32_t index = 0; index < def->nfields; index++) {
+    const uint32_t leaves = counts[index];
+    const uint32_t old_shape = old_first == MS_SHAPE_NONE ? shape_of(build, def->fields[index].ty)
+                                                          : build->members.ptr[old_first + index].shape;
+    const bool placed = start + leaves <= n && leaves > 0;
+    offsets[index] = placed ? abs[start] - abs[0] : (old_first == MS_SHAPE_NONE ? 0 : build->members.ptr[old_first + index].offset);
+    kids[index] = placed ? embed_shape(build, old_shape, abs + start, leaves) : old_shape;
+    if (old_first != MS_SHAPE_NONE && (offsets[index] != build->members.ptr[old_first + index].offset || kids[index] != old_shape)) {
+      *changed = true;
+    }
+    start += leaves;
+  }
+  return start;
+}
+
+static void push_fields(ShapeBuild *build, const MirTypeDef *def, uint32_t old_first, const uint32_t *offsets,
+                        const uint32_t *kids) {
+  for (uint32_t index = 0; index < def->nfields; index++) {
+    MsShapeMember member = {.name = MS_SHAPE_NONE};
+    if (old_first != MS_SHAPE_NONE) {
+      member = build->members.ptr[old_first + index];
+    } else {
+      member.name = add_mir_name(build, def->fields[index].name);
+      member.flags = def->fields[index].default_fn1 != 0 ? MS_SHAPE_MEMBER_DEFAULT : 0;
+      member.reserved = def->fields[index].default_fn1; /* the build's note; the image keeps 0 */
+    }
+    member.shape = kids[index];
+    member.offset = offsets[index];
+    member_list_push(&build->members, member);
+  }
+}
+
+/* The leaf count of each field of an inline record, in declaration order. */
+static uint32_t *inline_counts(ShapeBuild *build, const MirTypeDef *def) {
+  uint32_t *counts = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
+  for (uint32_t index = 0; index < def->nfields; index++) {
+    counts[index] = (uint32_t)mir_leaves(build->layouts, def->fields[index].ty).len;
+  }
+  return counts;
+}
+
+static uint32_t embed_record(ShapeBuild *build, uint32_t shape_index, const uint32_t *abs, size_t n) {
+  const MsShape shape = build->shapes.ptr[shape_index];
+  const MirTyData *data = mir_ty_data(build->module, build->types.ptr[shape_index]);
+  const MirTypeDef *def = &build->module->type_defs.ptr[data->id];
+  uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
+  uint32_t *kids = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
+  bool changed = false;
+  const uint32_t used = embed_fields(build, def, shape.first, abs, n, inline_counts(build, def), offsets, kids, &changed);
+  if (!changed || used > n) {
+    return shape_index;
+  }
+  MsShape copy = shape;
+  copy.first = (uint32_t)build->members.len;
+  push_fields(build, def, shape.first, offsets, kids);
+  return push_copy(build, shape_index, copy);
+}
+
 /* One member per field of a record, made after the field shapes so the members stay contiguous. */
 static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsShape *shape) {
   MirLayouts *layouts = build->layouts;
@@ -116,38 +210,39 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
   shape->flags |= (def->opaque ? MS_SHAPE_NAME_ONLY : 0) | (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   shape->name = add_type_name(build, def->name);
   uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
-  uint32_t *kinds = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
+  uint32_t *kids = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
+  uint32_t *counts = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
+  /* The offset of each leaf in the record's own memory image: its block when indirect, else the leaves in order. */
+  MsSpan leaves = {0};
   if (def->indirect) {
     const MirRecordBlock block = mir_record_block(layouts, data->id);
     shape->flags |= MS_SHAPE_BOXED;
     shape->size = 8;
     shape->align = 8;
     shape->value = block.size;
+    leaves = block.leaves;
     for (uint32_t index = 0; index < def->nfields; index++) {
-      offsets[index] = block.offsets[block.starts[index]];
+      counts[index] = block.boxed[index] ? 1 : (uint32_t)mir_leaves(layouts, def->fields[index].ty).len;
     }
   } else {
     fill_slot(build, shape, ty);
+    leaves = mir_leaves(layouts, ty);
     for (uint32_t index = 0; index < def->nfields; index++) {
-      offsets[index] = mir_field_offset(layouts, data->id, index);
+      counts[index] = (uint32_t)mir_leaves(layouts, def->fields[index].ty).len;
     }
   }
   if (def->decimal) { /* the words are the runtime's: a number, with no members to name */
     shape->first = (uint32_t)build->members.len;
     return;
   }
-  for (uint32_t index = 0; index < def->nfields; index++) {
-    kinds[index] = shape_of(build, def->fields[index].ty);
-  }
+  uint32_t *abs = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, leaves.len + 1);
+  (void)mir_mem_layout(leaves, abs);
+  bool changed = false;
+  (void)embed_fields(build, def, MS_SHAPE_NONE, abs, leaves.len, counts, offsets, kids, &changed);
+  /* a field's offset is from the record's own start, which is leaf 0 at offset 0 */
   shape->first = (uint32_t)build->members.len;
   shape->count = def->nfields;
-  for (uint32_t index = 0; index < def->nfields; index++) {
-    const MsShapeMember member = {.name = add_mir_name(build, def->fields[index].name), .shape = kinds[index],
-                                  .offset = offsets[index], .tag = 0, .first = 0, .count = 0,
-                                  .flags = def->fields[index].default_fn1 != 0 ? MS_SHAPE_MEMBER_DEFAULT : 0,
-                                  .reserved = def->fields[index].default_fn1}; /* the build's note; the image keeps 0 */
-    member_list_push(&build->members, member);
-  }
+  push_fields(build, def, MS_SHAPE_NONE, offsets, kids);
 }
 
 /* The byte offset of each leaf of an alternative's memory image (inline, or in its block when boxed). */
@@ -159,19 +254,87 @@ static const uint32_t *alt_offsets(ShapeBuild *build, MirTy ty, bool boxed) {
   return offsets;
 }
 
-/* The shape of an optional field whose leaves lie in an alternative's flattened image: the payload sits `rel` bytes from
- * the presence byte there, which can differ from the optional's own layout, so such a field gets a shape of its own. */
-static uint32_t optional_field_shape(ShapeBuild *build, uint32_t shape_index, int32_t rel) {
-  const MsShape found = build->shapes.ptr[shape_index];
-  if (found.kind != MS_SHAPE_OPTIONAL || (found.flags & MS_SHAPE_NULLABLE) != 0 || (int32_t)found.extra == rel) {
+/* Builds the case and payload-field members of the alternative `ty` whose leaves lie at `abs` (relative to `abs[0]`;
+ * `n` of them), and returns the index of the first. `old_first` is the member run of a shape being copied, or
+ * MS_SHAPE_NONE for the type's own shape. A false `*changed` after a copy means nothing moved. */
+static uint32_t alt_members(ShapeBuild *build, MirTy ty, const MirAltDef *def, const MirAltFields *fields,
+                            const uint32_t *abs, size_t n, uint32_t old_first, bool *changed) {
+  const uint32_t total = fields->case_start[fields->ncases];
+  uint32_t *shapes = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)total + 1);
+  uint32_t *offs = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)total + 1);
+  for (uint32_t index = 0; index < total; index++) {
+    const MirAltField *field = &fields->fields[index];
+    const uint32_t old = old_first == MS_SHAPE_NONE ? shape_of(build, field->ty)
+                                                    : build->members.ptr[old_first + def->ncases + index].shape;
+    shapes[index] = old;
+    offs[index] = 0;
+    bool placed = field->nleaves > 0;
+    uint32_t *gathered = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)field->nleaves + 1);
+    for (uint32_t leaf = 0; leaf < field->nleaves && placed; leaf++) {
+      placed = field->leaves[leaf] < n;
+      gathered[leaf] = placed ? abs[field->leaves[leaf]] : 0;
+    }
+    if (placed) {
+      offs[index] = gathered[0] - abs[0];
+      shapes[index] = embed_shape(build, old, gathered, field->nleaves);
+    }
+    if (old_first != MS_SHAPE_NONE && (shapes[index] != old || offs[index] != build->members.ptr[old_first + def->ncases + index].offset)) {
+      *changed = true;
+    }
+  }
+  const uint32_t cases_at = (uint32_t)build->members.len;
+  for (uint32_t kase = 0; kase < def->ncases; kase++) {
+    MsShapeMember member = {.name = MS_SHAPE_NONE, .shape = MS_SHAPE_NONE, .tag = kase,
+                            .first = cases_at + def->ncases + fields->case_start[kase],
+                            .count = fields->case_start[kase + 1] - fields->case_start[kase]};
+    member.name = old_first == MS_SHAPE_NONE ? add_mir_name(build, def->cases[kase].name) : build->members.ptr[old_first + kase].name;
+    member_list_push(&build->members, member);
+  }
+  for (uint32_t kase = 0; kase < def->ncases; kase++) {
+    for (uint32_t at = fields->case_start[kase]; at < fields->case_start[kase + 1]; at++) {
+      const uint32_t name_at = at - fields->case_start[kase];
+      MsShapeMember member = {.name = MS_SHAPE_NONE, .shape = shapes[at], .offset = offs[at]};
+      if (old_first != MS_SHAPE_NONE) {
+        member.name = build->members.ptr[old_first + def->ncases + at].name;
+      } else if (name_at < def->cases[kase].nfields) {
+        member.name = add_mir_name(build, def->cases[kase].fields[name_at].name);
+      }
+      member_list_push(&build->members, member);
+    }
+  }
+  (void)ty;
+  return cases_at;
+}
+
+static uint32_t embed_alternative(ShapeBuild *build, uint32_t shape_index, const uint32_t *abs, size_t n) {
+  const MsShape shape = build->shapes.ptr[shape_index];
+  const MirTy ty = build->types.ptr[shape_index];
+  const MirTyData *data = mir_ty_data(build->module, ty);
+  const MirAltDef *def = &build->module->alts.ptr[data->id];
+  /* a dry run decides whether anything moves before members are pushed */
+  bool changed = false;
+  const uint32_t before = (uint32_t)build->members.len;
+  const uint32_t first = alt_members(build, ty, def, mir_alt_fields(build->layouts, data->id), abs, n, shape.first, &changed);
+  if (!changed) {
+    build->members.len = before; /* drop the unused copy; shapes it pushed stay, harmlessly */
     return shape_index;
   }
-  MsShape variant = found;
-  variant.extra = (uint32_t)rel;
-  const uint32_t index = (uint32_t)build->shapes.len;
-  shape_list_push(&build->shapes, variant);
-  mir_tylist_push(&build->types, build->types.ptr[shape_index]); /* the original, found first, stays the one a type maps to */
-  return index;
+  MsShape copy = shape;
+  copy.first = first;
+  return push_copy(build, shape_index, copy);
+}
+
+static uint32_t embed_shape(ShapeBuild *build, uint32_t shape_index, const uint32_t *abs, size_t n) {
+  const MsShape shape = build->shapes.ptr[shape_index];
+  if (n == 0 || shape_index == MS_SHAPE_NONE || (shape.flags & MS_SHAPE_BOXED) != 0) {
+    return shape_index;
+  }
+  switch ((MsShapeKind)shape.kind) {
+  case MS_SHAPE_OPTIONAL: return embed_optional(build, shape_index, abs, n);
+  case MS_SHAPE_RECORD: return embed_record(build, shape_index, abs, n);
+  case MS_SHAPE_ALTERNATIVE: return embed_alternative(build, shape_index, abs, n);
+  default: return shape_index;
+  }
 }
 
 static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsShape *shape) {
@@ -196,37 +359,11 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   } else {
     fill_slot(build, shape, ty);
   }
-  const uint32_t total = fields->case_start[fields->ncases];
-  MirTy *tys = MS_ARENA_NEW_ARRAY(&build->arena, MirTy, (size_t)total + 1);
-  uint32_t *shapes = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)total + 1);
-  for (uint32_t index = 0; index < total; index++) {
-    tys[index] = fields->fields[index].ty;
-    shapes[index] = shape_of(build, tys[index]);
-    const MirAltField *field = &fields->fields[index];
-    if (field->nleaves > 1) {
-      shapes[index] = optional_field_shape(build, shapes[index],
-                                           (int32_t)offsets[field->leaves[1]] - (int32_t)offsets[field->leaves[0]]);
-    }
-  }
-  const uint32_t cases_at = (uint32_t)build->members.len;
-  shape->first = cases_at;
+  const MirShape *flat = mir_shape(layouts, ty);
+  const size_t count = boxed ? flat->block.len : flat->leaves.len;
+  bool changed = false;
+  shape->first = alt_members(build, ty, def, fields, offsets, count, MS_SHAPE_NONE, &changed);
   shape->count = def->ncases;
-  for (uint32_t kase = 0; kase < def->ncases; kase++) {
-    const MsShapeMember member = {.name = add_mir_name(build, def->cases[kase].name), .shape = MS_SHAPE_NONE,
-                                  .tag = kase, .first = cases_at + def->ncases + fields->case_start[kase],
-                                  .count = fields->case_start[kase + 1] - fields->case_start[kase]};
-    member_list_push(&build->members, member);
-  }
-  for (uint32_t kase = 0; kase < def->ncases; kase++) {
-    for (uint32_t at = fields->case_start[kase]; at < fields->case_start[kase + 1]; at++) {
-      const MirAltField *field = &fields->fields[at];
-      const uint32_t name_at = at - fields->case_start[kase];
-      const MirField *written = name_at < def->cases[kase].nfields ? &def->cases[kase].fields[name_at] : NULL;
-      const MsShapeMember member = {.name = written != NULL ? add_mir_name(build, written->name) : MS_SHAPE_NONE,
-                                    .shape = shapes[at], .offset = field->nleaves > 0 ? offsets[field->leaves[0]] : 0};
-      member_list_push(&build->members, member);
-    }
-  }
 }
 
 static void collection_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsShape *shape) {
@@ -237,27 +374,6 @@ static void collection_shape(ShapeBuild *build, MirTy ty, const MirTyData *data,
 }
 
 static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text, uint32_t *json);
-
-/* A flagged Optional inside a flagged Optional shares the outer's flat leaves, so its payload sits at the outer's offsets and
- * not at the ones its own layout would give: each level gets its own copy of the inner shape with the payload offset
- * relative to where that level starts. `k` is the leaf the level's presence byte is. */
-static uint32_t nested_optional(ShapeBuild *build, MirTy opt, uint32_t shape, const uint32_t *offsets, uint32_t leaves,
-                                uint32_t k) {
-  if (k + 1 >= leaves) {
-    return shape;
-  }
-  MsShape copy = build->shapes.ptr[shape];
-  copy.extra = offsets[k + 1] - offsets[k];
-  const MirTy inner = mir_ty_data(build->module, opt)->elem;
-  const MirTyData *inner_data = mir_ty_data(build->module, inner);
-  if (inner_data->kind == MK_OPT && mir_opt_has_flag(build->layouts, inner)) {
-    copy.elem = nested_optional(build, inner, copy.elem, offsets, leaves, k + 1);
-  }
-  const uint32_t index = (uint32_t)build->shapes.len;
-  shape_list_push(&build->shapes, copy);
-  mir_tylist_push(&build->types, mir_ty_unscoped(opt)); /* shape_of finds the first shape of the type, not this copy */
-  return index;
-}
 
 static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
   const MirModule *module = build->module;
@@ -275,13 +391,12 @@ static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
   } else if (data->kind == MK_OPT) {
     optional_shape(build, ty, data, &shape);
     shape.elem = shape_of(build, data->elem);
-    const MirTyData *elem_data = mir_ty_data(module, data->elem);
-    if (mir_opt_has_flag(layouts, ty) && elem_data->kind == MK_OPT && mir_opt_has_flag(layouts, data->elem)) {
+    if (mir_opt_has_flag(layouts, ty)) {
       const MsSpan leaves = mir_leaves(layouts, ty);
       uint32_t offsets[64] = {0};
-      if (leaves.len > 2 && leaves.len <= 64) {
+      if (leaves.len > 1 && leaves.len <= 64) {
         (void)mir_mem_layout(leaves, offsets);
-        shape.elem = nested_optional(build, data->elem, shape.elem, offsets, (uint32_t)leaves.len, 1);
+        shape.elem = embed_shape(build, shape.elem, offsets + 1, leaves.len - 1);
       }
     }
   } else if (data->kind == MK_TYPE) {

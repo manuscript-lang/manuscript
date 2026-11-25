@@ -444,7 +444,7 @@ static bool decode_fields(Decode *state, uint32_t first, uint32_t count, uint32_
   for (uint32_t at = 0; at < count; at++) {
     const MsShapeMember *field = ms_shape_member(state->table, first + at);
     const MsShape *shape = ms_shape_at(state->table, field->shape);
-    uint8_t *slot = base + field->offset;
+    uint8_t *slot = base + (int32_t)field->offset;
     const MsString name = ms_string_static(ms_span_of_text(ms_shape_text(state->table, field->name)));
     const int64_t found = msstd_json_find(state->doc, id, &name);
     bool built = true;
@@ -458,7 +458,7 @@ static bool decode_fields(Decode *state, uint32_t first, uint32_t count, uint32_
     if (!built) {
       for (uint32_t done = 0; done < at; done++) {
         const MsShapeMember *earlier = ms_shape_member(state->table, first + done);
-        drop_slot(state, earlier->shape, base + earlier->offset);
+        drop_slot(state, earlier->shape, base + (int32_t)earlier->offset);
       }
       return false;
     }
