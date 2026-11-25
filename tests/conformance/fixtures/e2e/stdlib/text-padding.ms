@@ -95,3 +95,19 @@ test "a digit count outside the range faults" {
 	)?
 	exponential | expect_contains("to_exponential")?
 }
+
+test "small strings join and repeat across the inline size" {
+	for n in 0..17 {
+		expect_equal("a".repeat(n).length(), n)?
+		expect_equal(("x".repeat(n) + "yz").length(), n + 2)?
+	}
+
+	expect_equal("abcdefg" + "hijklmn", "abcdefghijklmn")?
+	expect_equal("abcdefgh" + "ijklmno", "abcdefghijklmno")?
+	expect_equal("abcdefgh" + "ijklmnop", "abcdefghijklmnop")?
+	expect_equal("é".repeat(7) + "z", "éééééééz")?
+	expect_equal("k".repeat(15), "kkkkkkkkkkkkkkk")?
+	expect_equal("k".repeat(8) + "k".repeat(7), "k".repeat(15))?
+	expect_equal("日本語".scalar_length(), 3)?
+	expect_equal("日本語日本語".scalar_length(), 6)?
+}
