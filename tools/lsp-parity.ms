@@ -28,6 +28,13 @@ fn every() Int {
 	return named[0].parse_int() or 40
 }
 
+// The `file` URI of an absolute path: a drive path such as `D:/dir` takes the slash
+// that makes it a URI path.
+fn file_uri(path String) String {
+	if path.starts_with("/") { return f"file://{path}" }
+	return f"file:///{path}"
+}
+
 fn frame(body String) String {
 	return f"Content-Length: {body.to_bytes().length()}\r\n\r\n{body}"
 }
@@ -214,8 +221,8 @@ fn main() Int {
 	var parts = List[String]()
 	parts.append(
 		frame(
-			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"rootUri\":\"file://"
-			+ root
+			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"rootUri\":\""
+			+ file_uri(root.clone())
 			+ "\",\"capabilities\":{}}}"
 		)
 	)
@@ -225,8 +232,8 @@ fn main() Int {
 		quoted := if encoded.is_ok() { encoded.get().clone() } else { "\"\"" }
 		parts.append(
 			frame(
-				"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"file://"
-				+ chosen[at]
+				"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\""
+				+ file_uri(chosen[at].clone())
 				+ "\",\"languageId\":\"manuscript\",\"version\":1,\"text\":"
 				+ quoted
 				+ "}}}"
@@ -234,8 +241,8 @@ fn main() Int {
 		)
 		parts.append(
 			frame(
-				"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"file://"
-				+ chosen[at]
+				"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\""
+				+ file_uri(chosen[at].clone())
 				+ "\"}}}"
 			)
 		)
@@ -257,7 +264,7 @@ fn main() Int {
 
 	for at in 0..chosen.length() {
 		expected := reference_of(ms.clone(), chosen[at].clone(), texts[at].clone())
-		got := published.get(f"file://{chosen[at]}")
+		got := published.get(file_uri(chosen[at].clone()))
 
 		if got == null {
 			failed += 1
