@@ -3,7 +3,7 @@
 `@std/csv` `parse` and `stringify` against the Rust `csv` crate on 5000 generated rows, best of 200 parses, each materializing every cell as an owned string. Two shapes: `quoted` (quoted and escaped cells) and `plain` (no quotes).
 
 ```sh
-MS=./target/release/ms ms run bench/tools/cargo_vs_ms.ms -- csv
+MS=./target/release/ms ms run bench/perf/tools/cargo_vs_ms.ms -- csv
 ```
 
 Compare numbers only from the same machine.

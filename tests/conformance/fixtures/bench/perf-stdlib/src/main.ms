@@ -16,7 +16,7 @@ import (
 )
 
 // Standard-library micro-benchmarks. Each case prints `name<TAB>ops<TAB>ns_per_op`. Run
-// with bench/tools/stdlib_bench.ms. Add a case with one `bench(...)` call in the
+// with bench/perf/tools/stdlib_bench.ms. Add a case with one `bench(...)` call in the
 // matching module file.
 fn main() Void {
 	bench_string()

@@ -6,4 +6,4 @@ Decided: an untyped `parse` builds `JsonValue` in the runtime's tree builder (`s
 
 Apply when: adding another recursive alternative to build natively, or changing the `JsonValue` cases (the thunk looks them up by name) or the map/list slot layout.
 Evidence: builder, thunk and call (`json_tree_ctor`), scanner (`parse_tree`), [fixture](../../../tests/conformance/fixtures/e2e/stdlib/json.ms) ("releases partial trees on failure").
-Verify: `ms run bench/tools/json_bench.ms`; the json fixtures pass; a failing document leaves no leak (`make leak-check`).
+Verify: `ms run bench/perf/tools/json_bench.ms`; the json fixtures pass; a failing document leaves no leak (`make leak-check`).

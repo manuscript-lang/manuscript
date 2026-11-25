@@ -1,6 +1,6 @@
 # Incremental rebuild results
 
-Script: `ms run bench/tools/compile_time_incremental.ms` (generated project: 1,001 files, 122,957 lines, about 12,000 functions; each scenario edits one file, builds, restores it). 4 cores, Linux, one run per cell, so treat differences under 0.5 s as noise.
+Script: `ms run bench/perf/tools/compile_time_incremental.ms` (generated project: 1,001 files, 122,957 lines, about 12,000 functions; each scenario edits one file, builds, restores it). 4 cores, Linux, one run per cell, so treat differences under 0.5 s as noise.
 
 ## 2026-11-16, `9f09fd55` (no incremental backend work; the whole-build mtime cache was still present)
 

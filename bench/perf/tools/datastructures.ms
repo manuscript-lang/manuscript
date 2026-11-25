@@ -6,7 +6,7 @@
 // ms: allow_effect std.process.run
 
 // Core data-structure operations in Manuscript, Go and Rust (ns per operation, best of
-// N) (bench/perf/datastructures). Usage: ms run bench/tools/datastructures.ms [--
+// N) (bench/perf/datastructures). Usage: ms run bench/perf/tools/datastructures.ms [--
 // repeats]; MS picks the Manuscript compiler.
 import (
 	arguments from "@std/os/env.ms",

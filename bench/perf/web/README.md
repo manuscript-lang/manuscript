@@ -11,7 +11,7 @@ The same HTTP server written with Manuscript's standard library ([`ms/`](ms)), G
 
 ```sh
 cargo build --release --locked -p ms-cli
-ms run bench/tools/web_bench.ms -- run 5
+ms run bench/perf/tools/web_bench.ms -- run 5
 ```
 
 `web_bench.ms -- run [seconds]` serves Manuscript from `MS_THREADS` workers (default 2, matching `SERVER_CPUS`; the main thread accepts and deals connections round robin), so every server gets the same two cores. It needs Go and, for the system-call rows, `strace`. On a machine with at least four CPUs it pins the server to `SERVER_CPUS` (default `0,1`) and the load generator to `LOAD_CPUS` (default `2,3`). It runs each server in turn and prints one line per measurement:
@@ -22,6 +22,6 @@ ms run bench/tools/web_bench.ms -- run 5
 - system calls in 5 idle seconds, and per `/health` request under load;
 - resident memory with 10,000 idle keep-alive connections open, and `/health` throughput beside them.
 
-`ms run bench/tools/web_bench.ms -- fetch [seconds]` measures the client side the same way: `fetch` against Go's `net/http` client on small and 8 MiB bodies, plus one 8 MiB body sent chunked and one gzip-compressed (`/chunked/big`, `/gzip/text`), one request through a 302 hop (`/redirect`), and one with a cookie jar (`/cookie`).
+`ms run bench/perf/tools/web_bench.ms -- fetch [seconds]` measures the client side the same way: `fetch` against Go's `net/http` client on small and 8 MiB bodies, plus one 8 MiB body sent chunked and one gzip-compressed (`/chunked/big`, `/gzip/text`), one request through a 302 hop (`/redirect`), and one with a cookie jar (`/cookie`).
 
 Compare numbers only within one run on one machine. Shared virtual machines vary by 10 to 15% between runs; run twice and report both. [`results.md`](../results.md#web) records the latest numbers.

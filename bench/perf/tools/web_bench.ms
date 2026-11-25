@@ -10,9 +10,9 @@
 // Web server and fetch client benchmarks against Go (bench/perf/web; replaces run.sh
 // and fetch.sh). Linux only: it needs taskset, pgrep, ps, strace and /proc.
 //
-// Usage: ms run bench/tools/web_bench.ms -- run [SECONDS] serves the same endpoints
-// from Manuscript, Go and Rust and measures each
-//        ms run bench/tools/web_bench.ms -- fetch [SECONDS]  Manuscript's fetch and Go's net/http client against one Go file server
+// Usage: ms run bench/perf/tools/web_bench.ms -- run [SECONDS] serves the same
+// endpoints from Manuscript, Go and Rust and measures each
+//        ms run bench/perf/tools/web_bench.ms -- fetch [SECONDS]  Manuscript's fetch and Go's net/http client against one Go file server
 // Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without
 // taskset or with fewer than 4 CPUs nothing is pinned.
 import (

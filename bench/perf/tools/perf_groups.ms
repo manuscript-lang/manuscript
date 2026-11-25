@@ -12,7 +12,7 @@ export type Group {
 }
 
 KINDS := ["time", "count", "probe"]
-OWN := ["README.md", "groups.txt", "results.md"]
+OWN := ["README.md", "groups.txt", "results.md", "tools"]
 
 fn field(text String) String {
 	return text.trim().clone()

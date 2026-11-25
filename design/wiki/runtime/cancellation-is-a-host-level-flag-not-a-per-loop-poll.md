@@ -8,4 +8,4 @@ State that says "this task is unwinding" is per task (the task's `unwinding` byt
 
 Apply when: adding a runtime function, or deciding where a function should be a cancellation point.
 Evidence: design contract, shutdown fixtures, [signal project](../../../tests/conformance/fixtures/e2e/projects/signal).
-Verify: loop and I/O cancellation cases still stop; compare `ms run bench/tools/programs.ms --` before and after.
+Verify: loop and I/O cancellation cases still stop; compare `ms run bench/perf/tools/programs.ms --` before and after.

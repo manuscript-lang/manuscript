@@ -9,7 +9,7 @@
 // each ~3 MB of its largest hidden stdin (repeated), checks that all three print
 // identical output, and reports the minimum wall time in ms. Needs go and rustc on
 // PATH. Unlike the kernels suite, these are ordinary parsing/string/map programs.
-// Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler;
+// Usage: ms run bench/perf/tools/workloads.ms [-- repeats]; MS picks the compiler;
 // BENCH_OUTPUT keeps the evidence directory.
 import (
 	sha256 from "@std/crypto/crypto.ms",
