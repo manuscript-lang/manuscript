@@ -20,7 +20,7 @@ fn main() Void {
 	var price = 0
 
 	// Cells arrive as views of `data`; only the two keys are copied out.
-	visit := fn(row Int, col Int, cell String) Void {
+	visit := fn(row, col Int, cell String) Void {
 		if row == 0 { return }
 
 		if col == 1 {
