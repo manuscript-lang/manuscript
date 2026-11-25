@@ -210,10 +210,11 @@ fn List[T Numeric].sum() T {
 // Returns a deep copy with independent list and nested value storage.
 fn List[T Clonable].clone() List[T] { ... }
 
-// Returns a new list containing copies of the elements in [start, end).
+// Returns the elements in [start, end) as a view of this list: it keeps the list
+// unchangeable until its last use, and nothing is copied. Use `.clone()` to keep it.
 // Negative bounds are relative to the end; bounds outside 0 <= start <= end <=
 // length() return an `Error` of kind `ERANGE`.
-fn List[T Clonable].slice(start, end Int) List[T]! { ... }
+fn hold List[T Clonable].slice(start, end Int) &List[T]! { ... }
 
 // Returns a new list with copies of the first `count` elements, or of all of them
 // when `count` exceeds the length. The receiver is unchanged; a count of zero or
