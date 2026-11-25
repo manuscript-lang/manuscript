@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/defaults_test.go:27 TestDefaultArgumentBoundaries
 interface Add {
 	fn add(value Int) Int

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,maps,modules,sets,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,maps,modules,sets,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/collection_prelude_imports_test.go:157 TestPreludeImportPolicyUsesResolvedIdentity
 import List, Map, Set from "@std/collections/collections.ms"
 

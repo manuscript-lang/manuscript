@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn run() Result[Void, Error] {\n\tfor name in arguments() {\n\t\tstdout().write(f\"Hello, {name}!\\n\")?\n\t}\n\treturn stdout().flush()\n}\n\nfn main() Void! {\n\trun()?\n}\n"
-  }
-}

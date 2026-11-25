@@ -1,5 +1,5 @@
-// conform: tags=numbers,lexer,tier-core
-// conform: phase=run
+// conform: tags=formatter,lexer,numbers,tier-core
+// conform: phase=run,parse
 // conform: origin=hex, binary and separator literals
 import stdout from "@std/io/io.ms"
 

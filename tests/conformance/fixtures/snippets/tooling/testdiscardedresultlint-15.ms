@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/result_lint_test.go:29 TestDiscardedResultLint
 type Outcome {
 	value Int

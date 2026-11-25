@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "test \"bare\" {\n\treturn\n}\n\ntest \"unit\" {\n\treturn\n}\n\ntest \"fall\" {\n\t_x := 1\n}\n"
-  }
-}

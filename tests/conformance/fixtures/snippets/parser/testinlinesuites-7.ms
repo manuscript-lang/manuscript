@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,scope-cleanup,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/parser_test.go:204 TestInlineSuites
 fn f() Void {
 	while true { break }

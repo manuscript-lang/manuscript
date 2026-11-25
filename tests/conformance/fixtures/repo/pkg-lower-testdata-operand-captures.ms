@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,lists,match,modules,mutation,optional,records,stdlib-faults,testing,tier-stdlib
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,lists,match,modules,mutation,optional,records,stdlib-faults,testing,tier-stdlib
+// conform: phase=test,parse
 // conform: origin=pkg/lower/testdata/operand-captures.ms
 import panic from "@std/core.ms"
 

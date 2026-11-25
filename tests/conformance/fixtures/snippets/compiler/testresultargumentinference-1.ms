@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/result_argument_inference_test.go:47 TestResultArgumentInference
 fn first() Int {
 	r Int! := f()

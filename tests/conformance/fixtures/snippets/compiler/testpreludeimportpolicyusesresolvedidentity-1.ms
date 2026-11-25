@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,maps,modules,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,maps,modules,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/collection_prelude_imports_test.go:131 TestPreludeImportPolicyUsesResolvedIdentity
 import (
 	Map, MapEntry from "@domain/types.ms",

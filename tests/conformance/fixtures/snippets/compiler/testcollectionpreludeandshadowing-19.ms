@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,records,sets,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,records,sets,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:81 TestCollectionPreludeAndShadowing
 import Set from "@std/collections/collections.ms"
 

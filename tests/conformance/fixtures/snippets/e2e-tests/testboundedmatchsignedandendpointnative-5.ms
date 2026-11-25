@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/match_bounds_test.go:176 TestBoundedMatchSignedAndEndpointNative
 export fn main() Int {
 	shapes := [Shape.Square(3037000500)]

@@ -1,5 +1,5 @@
-// conform: tags=decimal,interpolation,modules,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=decimal,formatter,interpolation,modules,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=documentation/core-language/basics/numbers-and-booleans.md:114
 import (
 	Decimal from "@std/math/decimal.ms",

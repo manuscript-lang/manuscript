@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=internal/cli/analysis_test.go:32 TestAnalysisIndependentInputsAndPartialErrors
 export fn main() Int {
 	return missing

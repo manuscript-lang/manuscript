@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_suite_header_test.go:24 TestFormatMovesSuiteWithMisindentedHeaderClose
 fn f() Int {
 	if a {

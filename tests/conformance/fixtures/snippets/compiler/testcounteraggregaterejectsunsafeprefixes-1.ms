@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/counter_aggregate_test.go:44 TestCounterAggregateRejectsUnsafePrefixes
 fn probe() Int {
 	var sum = 9223372036854775807

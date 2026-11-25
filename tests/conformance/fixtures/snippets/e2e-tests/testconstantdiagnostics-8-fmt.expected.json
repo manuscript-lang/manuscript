@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "A := 1\n\nfn f() Int {\n\tA = 2\n\treturn A\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Key {\n\tid Int\n}\n\nfn Key.equals(other Key) Bool => return true\n\nfn keys() Map[Key, Int] => return Map[Key, Int]()\n"
-  }
-}

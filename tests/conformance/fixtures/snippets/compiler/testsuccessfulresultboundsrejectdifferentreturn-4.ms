@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,tier-core,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/result_bounds_test.go:69 TestSuccessfulResultBoundsRejectDifferentReturns
 fn affine(n Int) Int!Cause {
 	if n < 0 { return error(Cause()) }

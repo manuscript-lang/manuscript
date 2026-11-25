@@ -35,12 +35,17 @@ export type Fixture {
 	// The trailing `// expect-` lines of the file; a fixture with any has no
 	// sidecar.
 	inline List[String]
+	// A phase after the first in the file's `phase=a,b` header: the program is checked
+	// by that phase's default expectation (a clean parse, already formatted for
+	// `parse`), with nothing recorded.
+	secondary Bool
 }
 
 // The `// conform:` header of a fixture.
 export type Meta {
 	tags List[String]
 	phase String
+	phases List[String]
 	args List[String]
 	timeout Int
 	entry, origin String
@@ -77,6 +82,7 @@ export fn parse_meta(text String) Meta {
 	var meta = Meta(
 		tags: [],
 		phase: "",
+		phases: [],
 		args: [],
 		timeout: 0,
 		entry: "",
@@ -110,7 +116,8 @@ export fn parse_meta(text String) Meta {
 				}
 			}
 		} else if key == "phase" {
-			meta.phase = value.clone()
+			meta.phases = value.split(",").map(name => name.trim().clone())
+			meta.phase = meta.phases[0].clone()
 		} else if key == "timeout" {
 			meta.timeout = value.parse_int() or 0
 		} else if key == "entry" {
@@ -190,7 +197,9 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 		path := if is_dir { f"{root}/{id}" } else { f"{root}/{id}.ms" }
 		source := read_text(if is_dir { f"{path}/conform.meta" } else { path.clone() })
 		var meta = parse_meta(source)
-		if meta.phase != phase { continue }
+		if not meta.phases.contains(
+			phase
+		) { continue }
 
 		inline := if is_dir { List[String]() } else { inline_lines(source) }
 		sidecar := if is_dir { f"{path}/expected.json" } else { f"{root}/{id}.expected.json" }
@@ -226,6 +235,7 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 				sidecar: sidecar.clone(),
 				expected: expected.clone(),
 				inline: inline.clone(),
+				secondary: meta.phase != phase,
 			)
 		)
 	}
@@ -272,7 +282,9 @@ export fn materialize(fx Fixture, work String) Void {
 // The `// conform:` header lines of `meta`, as `parse_meta` reads them.
 export fn render_meta(meta Meta) String {
 	var out = f"// conform: tags={meta.tags.join(",")}\n"
-	if meta.phase != "" { out += f"// conform: phase={meta.phase}\n" }
+	if not meta.phases.is_empty() {
+		out += f"// conform: phase={meta.phases.join(",")}\n"
+	}
 	if meta.origin != "" { out += f"// conform: origin={meta.origin}\n" }
 
 	if not meta.args.is_empty() {

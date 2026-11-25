@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,faults,generics,lists,maps,match,modules,stdlib-http,strings,tier-io,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,faults,formatter,generics,lists,maps,match,modules,stdlib-http,strings,tier-io,try-result
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/stdlib/support/http.ms
 import (
 	panic from "@std/core.ms",

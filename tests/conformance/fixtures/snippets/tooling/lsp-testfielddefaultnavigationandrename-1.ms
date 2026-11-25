@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/defaults_test.go:81 TestFieldDefaultNavigationAndRename
 type Options {
 	first Int = 3

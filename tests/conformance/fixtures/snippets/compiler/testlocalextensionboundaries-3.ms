@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/local_extensions_test.go:34 TestLocalExtensionBoundaries
 import invoke from "./domain.ms"
 

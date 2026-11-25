@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "// é😀\nfn value() String {\n\t// comment\n\tif true {\n\t\treturn \"é😀\"\n\t}\n\treturn \"\"\n}\n"
-  }
-}

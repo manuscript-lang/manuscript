@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:283 TestFormatExpressionLayouts
 fn work() Int {
 	var total = 1

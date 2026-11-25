@@ -1,5 +1,5 @@
-// conform: tags=lists,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=formatter,lists,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/string-split-replace-join-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 

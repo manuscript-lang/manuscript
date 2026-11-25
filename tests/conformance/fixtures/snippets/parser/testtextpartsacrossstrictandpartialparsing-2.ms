@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/text_test.go:22 TestTextPartsAcrossStrictAndPartialParsing
 // prefix
 fn value() String {

@@ -1,5 +1,5 @@
-// conform: tags=closures,faults,modules,stdlib-faults,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=closures,faults,formatter,modules,stdlib-faults,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/intentional_faults_test.go:57 TestIntentionalFaultContracts
 import (
 	panic from "@std/core.ms",

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=internal/cli/analysis_test.go:76 TestAnalysisLintAggregatesSourceAndHygiene
 export fn broken() Int {
 	return missing

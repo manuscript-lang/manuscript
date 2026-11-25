@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,records,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,records,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/checker/json_parse_test.go:24 TestParseTypeArgument
 type Request {
 	callback fn() Int

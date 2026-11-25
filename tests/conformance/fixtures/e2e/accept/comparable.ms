@@ -1,5 +1,5 @@
-// conform: tags=control-flow,decimal,generics,interfaces,lists,match,modules,optional,records,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=control-flow,decimal,formatter,generics,interfaces,lists,match,modules,optional,records,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/comparable.ms
 import (
 	Decimal from "@std/math/decimal.ms",

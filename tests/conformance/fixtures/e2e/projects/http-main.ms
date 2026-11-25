@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interpolation,modules,stdlib-http,stdlib-io,stdlib-net,tier-io,scope-cleanup
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interpolation,modules,scope-cleanup,stdlib-http,stdlib-io,stdlib-net,tier-io
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/projects/http/main.ms
 import (
 	stdout from "@std/io/io.ms",

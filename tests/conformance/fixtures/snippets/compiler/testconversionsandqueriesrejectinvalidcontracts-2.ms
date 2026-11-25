@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,maps,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,maps,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/conversions_queries_test.go:19 TestConversionsAndQueriesRejectInvalidContracts
 fn check(value Int, key String) Bool => true
 

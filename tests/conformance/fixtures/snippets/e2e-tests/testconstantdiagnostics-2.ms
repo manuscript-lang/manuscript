@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/constants_test.go:13 TestConstantDiagnostics
 fn f() Int {
 	return 1

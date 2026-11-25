@@ -1,5 +1,5 @@
-// conform: tags=faults,lists,tier-core
-// conform: phase=run
+// conform: tags=faults,formatter,lists,tier-core
+// conform: phase=run,parse
 // conform: origin=tests/e2e/fault_locations_test.go:87 TestFaultSourceLocations
 fn pick(values List[Int], index Int) Int {
 	return values[index]

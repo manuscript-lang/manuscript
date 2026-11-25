@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,mutation,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/int-literal-divisors-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 

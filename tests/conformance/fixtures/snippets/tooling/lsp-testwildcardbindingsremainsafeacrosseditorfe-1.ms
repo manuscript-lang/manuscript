@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,optional,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/features_test.go:178 TestWildcardBindingsRemainSafeAcrossEditorFeatures
 fn answer(value Int?) Int {
 	match value {

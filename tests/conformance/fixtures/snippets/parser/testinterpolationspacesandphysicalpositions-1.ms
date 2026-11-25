@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,interpolation,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,interpolation,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/parser_test.go:95 TestInterpolationSpacesAndPhysicalPositions
 fn add(value Int) Int {
 	return value

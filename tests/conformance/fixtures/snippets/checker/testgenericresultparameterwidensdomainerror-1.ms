@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,generics,interfaces,records,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,generics,interfaces,records,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/checker/contextual_inference_test.go:89 TestGenericResultParameterWidensDomainError
 fn failing() Int! => error(Error("failure"))
 

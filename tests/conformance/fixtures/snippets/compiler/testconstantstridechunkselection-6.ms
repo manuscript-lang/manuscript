@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/counter_chunk_test.go:41 TestConstantStrideChunkSelection
 fn probe() Int {
 	var sum = 0

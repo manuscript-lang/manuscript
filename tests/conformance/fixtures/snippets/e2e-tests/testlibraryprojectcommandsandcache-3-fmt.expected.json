@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tread_file from \"@std/os/fs.ms\",\n\tfail from \"@std/test/test.ms\",\n\n\tvalue from \"@lib/value.ms\",\n)\n\ntest \"root\" {\n\tif value() != 3 { return fail(\"bad value\") }\n\n\tdata := read_file(path: \"golden/input.txt\", max_bytes: 1024).wait()?\n\tif data.length() != 7 { return fail(\"wrong fixture size\") }\n}\n"
-  }
-}

@@ -1,5 +1,5 @@
-// conform: tags=alternatives,control-flow,diagnostics,interfaces,records,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=alternatives,control-flow,diagnostics,formatter,interfaces,records,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:114 TestImportedPatternNamesAndAliases
 export enum Failure {
 	NotFound

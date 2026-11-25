@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,lists,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,lists,records,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/e2e_test.go:541 TestFieldDefaultsAcrossModules
 fn copy[T](hold value T) &T => return value
 

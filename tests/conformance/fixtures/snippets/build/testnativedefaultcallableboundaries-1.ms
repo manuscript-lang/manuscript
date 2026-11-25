@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,modules,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-time,tier-io
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,modules,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-time,tier-io
+// conform: phase=check,parse
 // conform: origin=pkg/build/native_defaults_test.go:11 TestNativeDefaultCallableBoundaries
 import (
 	Bytes from "@std/bytes.ms",

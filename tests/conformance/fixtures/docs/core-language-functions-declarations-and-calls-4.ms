@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,lists,mutation,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,lists,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/functions/declarations-and-calls.md:86
 fn sum(values List[Int]) Int {
 	var total = 0

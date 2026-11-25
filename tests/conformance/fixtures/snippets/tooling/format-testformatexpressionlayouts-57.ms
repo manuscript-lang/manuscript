@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,control-flow,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:415 TestFormatExpressionLayouts
 fn work() Int {
 	return apply(

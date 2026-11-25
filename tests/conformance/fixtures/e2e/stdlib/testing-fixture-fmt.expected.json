@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import TestHooks, expect_equal from \"@std/test/test.ms\"\n\ntype Counter {\n\tvalue Int\n}\n\nfn make_fixture() Counter {\n\treturn Counter(0)\n}\n\nfn var Counter.before_each() Void! {\n\tself.value = 1\n}\n\nfn var Counter.after_each() Void! {\n\tself.value = 10\n}\n\ntest \"first fixture use\" {\n\texpect_equal(fixture.value, 1)?\n}\n\ntest \"second fixture use starts from clean state\" {\n\texpect_equal(fixture.value, 1)?\n}\n"
-  }
-}

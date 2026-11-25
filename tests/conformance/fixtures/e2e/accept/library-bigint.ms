@@ -1,5 +1,5 @@
-// conform: tags=modules,stdlib-bigint,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=formatter,modules,stdlib-bigint,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/library-bigint.ms
 import (
 	BigInt, parse_big_int from "@std/math/math.ms",

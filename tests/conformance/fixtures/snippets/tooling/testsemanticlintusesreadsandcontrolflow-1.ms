@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,mutation,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,mutation,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lint_program_test.go:11 TestSemanticLintUsesReadsAndControlFlow
 import ListEntry from "@std/collections/collections.ms"
 

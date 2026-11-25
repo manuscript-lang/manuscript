@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lint_program_test.go:51 TestImportUsesStayWithinTheirModule
 import value from "./value.ms"
 

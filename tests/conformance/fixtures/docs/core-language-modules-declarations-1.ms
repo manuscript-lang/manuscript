@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/modules/declarations.md:32
 export MAX_ITEMS := 100
 NAMES List[String] := ["Ada", "Grace"]

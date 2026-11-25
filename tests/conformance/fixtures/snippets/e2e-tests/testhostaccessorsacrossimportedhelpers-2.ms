@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,match,modules,stdlib-io,stdlib-time,tier-io
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,match,modules,stdlib-io,stdlib-time,tier-io
+// conform: phase=check,parse
 // conform: origin=tests/e2e/e2e_test.go:444 TestHostAccessorsAcrossImportedHelpers
 import (
 	stdout from "@std/io/io.ms",

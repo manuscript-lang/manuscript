@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/named-types.md:22
 customer := Customer(name: "Ada", email: null)
 name := customer.name

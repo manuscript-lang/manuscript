@@ -1,5 +1,5 @@
-// conform: tags=decimal,faults,match,modules,mutation,optional,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=decimal,faults,formatter,match,modules,mutation,optional,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
 import (
 	Decimal from "@std/math/decimal.ms",

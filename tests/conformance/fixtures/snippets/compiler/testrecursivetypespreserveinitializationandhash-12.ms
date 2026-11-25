@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,generics,interfaces,lists,records,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,generics,interfaces,lists,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/recursive_types_test.go:21 TestRecursiveTypesPreserveInitializationAndHashing
 interface I[T] {
 	fn f(x I[List[T]]) Int

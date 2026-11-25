@@ -1,5 +1,5 @@
-// conform: tags=control-flow,interfaces,interpolation,modules,mutation,records,stdlib-io,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,interfaces,interpolation,modules,mutation,records,stdlib-io,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/standard-contract-calls-reuse-operations-per-site.ms
 import (
 	stdout from "@std/io/io.ms",

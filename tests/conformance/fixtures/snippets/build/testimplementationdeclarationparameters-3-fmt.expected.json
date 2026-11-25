@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Read[V] {\n\tfn get() V\n}\n\ntype Box[T] {\n\tvalue T\n}\n\nfn Box[Int].get() Int {\n\treturn self.value\n}\n"
-  }
-}

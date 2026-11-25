@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "test \"filesystem concrete overrides and interface defaults\" {\n\titem := Override(false)\n\tview := FileSystem(item)\n}\n"
-  }
-}

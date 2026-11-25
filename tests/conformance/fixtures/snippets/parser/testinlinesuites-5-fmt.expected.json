@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() Void {\n\tif true {\n\t\treturn\n\t} else {\n\t\treturn\n\t}\n}\n"
-  }
-}

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/functions/declarations-and-calls.md:10
 fn decrement(value Int) Int {
 	return value - 1

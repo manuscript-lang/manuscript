@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import add from \"./helper.ms\"\n\nfn result() Int {\n\treturn add(value: 1)\n}\n"
-  }
-}

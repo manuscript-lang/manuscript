@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-toml,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-toml,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/lsp/navigation_test.go:163 TestSourceStandardLibraryNavigation
 import TomlValue, parse from "@std/data/toml.ms"
 

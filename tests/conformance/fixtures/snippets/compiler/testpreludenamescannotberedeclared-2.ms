@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,maps,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,maps,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:111 TestPreludeNamesCannotBeRedeclared
 type Map[K, V] {
 	value V

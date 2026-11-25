@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/bound_recovery_test.go:43 checkInvalidBounds
 type Data {
 	value Int

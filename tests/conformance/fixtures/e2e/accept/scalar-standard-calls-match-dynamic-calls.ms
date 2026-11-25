@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,modules,mutation,numbers,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=closures,control-flow,formatter,modules,mutation,numbers,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
 import (
 	atan2,

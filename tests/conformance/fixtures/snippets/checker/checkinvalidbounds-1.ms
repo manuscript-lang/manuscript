@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,records,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/bound_recovery_test.go:39 checkInvalidBounds
 interface Named {
 	fn name() String

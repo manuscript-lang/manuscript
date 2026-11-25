@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,optional,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/optional_test.go:14 TestOptionalArgumentsCompose
 import panic from "@std/core.ms"
 

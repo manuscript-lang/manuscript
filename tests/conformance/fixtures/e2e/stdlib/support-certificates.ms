@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/stdlib/support/certificates.ms
 // Fixed self-signed test identity, valid 2020–2100. This key is public fixture data.
 export fn certificate() String {

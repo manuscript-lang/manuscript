@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,records,sets,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,records,sets,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:78 TestCollectionPreludeAndShadowing
 type Set[T] {
 	value T

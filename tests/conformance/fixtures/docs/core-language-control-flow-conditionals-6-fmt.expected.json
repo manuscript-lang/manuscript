@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn nonnegative(value Int) Bool {\n\tif value < 0 {\n\t\treturn false\n\t}\n\treturn true\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn wrong[U](value Set[Int], transform fn(Int) U) Void {\n\toutput := value.map(transform)\n}\n"
-  }
-}

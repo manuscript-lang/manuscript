@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "prices := [12, 8, 25]\naffordable := (\n\tprices.length > 1\n\tand prices.keep(predicate: fn(value Int) Bool => return value <= 10).length > 0\n)\n"
-  }
-}

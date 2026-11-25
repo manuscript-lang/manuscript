@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,generics,match,tier-core,try-result
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,generics,match,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/checker/optional_test.go:34 TestMatchArmBindingsSurviveRepeatedFunctionLiteralChecks
 fn call[T](operation fn() T) T {
 	return operation()

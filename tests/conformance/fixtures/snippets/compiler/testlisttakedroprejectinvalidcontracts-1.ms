@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/list_take_drop_test.go:14 TestListTakeDropRejectInvalidContracts
 fn wrong() List[Int] {
 	copy := [1].METHOD

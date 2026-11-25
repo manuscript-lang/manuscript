@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Request {\n\tmodel String\n}\n\nfn f(text String) Request! {\n\trequest Request := parse(text)?\n\treturn ok(request)\n}\n"
-  }
-}

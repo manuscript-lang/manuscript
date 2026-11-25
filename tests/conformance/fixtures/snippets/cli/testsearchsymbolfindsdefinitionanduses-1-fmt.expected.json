@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "// Doubles a number.\nexport fn double(value Int) Int {\n\treturn value * 2\n}\n\nexport fn main() Int {\n\treturn double(4) - 8\n}\n"
-  }
-}

@@ -1,5 +1,5 @@
-// conform: tags=modules,stdlib-testing,stdlib-url,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=formatter,modules,stdlib-testing,stdlib-url,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/library-url.ms
 import (
 	decode_component, encode_component, format, parse, resolve from "@std/net/url.ms",

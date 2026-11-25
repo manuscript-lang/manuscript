@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,faults,generics,interfaces,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,faults,formatter,generics,interfaces,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/defaults_test.go:67 TestDefaultCapturesShareFreely
 fn run[T](operation fn() T) T {
 	return operation()

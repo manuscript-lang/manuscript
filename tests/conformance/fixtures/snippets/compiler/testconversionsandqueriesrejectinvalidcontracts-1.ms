@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,optional,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,optional,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/conversions_queries_test.go:11 TestConversionsAndQueriesRejectInvalidContracts
 fn cause(value Int) String => "cause"
 

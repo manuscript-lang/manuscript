@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,generics,optional,records,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,generics,optional,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/optional_test.go:53 TestOptionalArgumentBoundaries
 enum Optional[T] {
 	T

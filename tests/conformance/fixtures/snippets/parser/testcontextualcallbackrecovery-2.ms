@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/parser_test.go:227 TestContextualCallbackRecovery
 fn f() Void {
 	use(fn(value, other Int) => return value + other)

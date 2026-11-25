@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,interfaces,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,interfaces,records,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/inherent_methods_test.go:36 TestInherentImplRejections
 type B {
 	x Int

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interpolation,records,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interpolation,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/basics/syntax.md:12
 export type Customer {
 	name String

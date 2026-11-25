@@ -74,6 +74,7 @@ fn write_generated(dir String, kind Kind, low, high Int) Int {
 		meta := Meta(
 			tags: sorted_unique(tags),
 			phase: kind.phase.clone(),
+			phases: [kind.phase.clone()],
 			args: [],
 			timeout: 0,
 			entry: "",

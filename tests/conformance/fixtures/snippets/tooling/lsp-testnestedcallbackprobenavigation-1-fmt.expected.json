@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn answer() Void {\n\toffset := 7\n\t_values := [1].map(outer => [2].map(inner => outer + inner + offset))\n}\n"
-  }
-}

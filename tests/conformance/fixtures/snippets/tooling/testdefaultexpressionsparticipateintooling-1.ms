@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,modules,stdlib-queues,tier-stdlib
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,modules,stdlib-queues,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/defaults_test.go:14 TestDefaultExpressionsParticipateInTooling
 import Queue from "@std/collections/queue.ms"
 

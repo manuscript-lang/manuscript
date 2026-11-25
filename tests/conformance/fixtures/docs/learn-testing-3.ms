@@ -1,5 +1,5 @@
-// conform: tags=control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=documentation/learn/testing.md:96
 import TestHooks, expect_equal from "@std/test/test.ms"
 

@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,generics,match,records,strings,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,generics,match,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:52 TestDiagnosticsStateCauseAndFix
 enum Choice[T] {
 	Found(value T)

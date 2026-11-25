@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,generics,optional,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,generics,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/callback_work_test.go:93 TestCallbackProbeRetainsCapturedBindingsAndOptionalMetadata
 fn wrap[T](callback (fn(Int) T)?) Void => return
 

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,interfaces,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,interfaces,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/empty_declarations_test.go:14 TestEmptyFunctionDeclarations
 type Counter {
 	value Int

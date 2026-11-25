@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,generics,interfaces,records,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,generics,interfaces,records,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/interface_hints_test.go:22 TestInterfaceAndReceiverHints
 interface Read[T] {
 	fn get() T

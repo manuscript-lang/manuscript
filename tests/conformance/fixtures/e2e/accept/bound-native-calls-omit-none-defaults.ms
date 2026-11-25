@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/bound-native-calls-omit-none-defaults.ms
 import expect_equal from "@std/test/test.ms"
 

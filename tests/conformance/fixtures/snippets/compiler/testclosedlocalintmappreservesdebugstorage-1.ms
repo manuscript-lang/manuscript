@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,maps,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,maps,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/local_int_map_test.go:50 TestClosedLocalIntMapPreservesDebugStorage
 import panic from "@std/core.ms"
 

@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=documentation/core-language/control-flow/loops.md:63
 import (
 	range_by from "@std/collections/collections.ms",

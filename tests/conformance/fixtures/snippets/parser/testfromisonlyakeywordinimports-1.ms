@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/hints_test.go:71 TestFromIsOnlyAKeywordInImports
 import a from "./x.ms"
 

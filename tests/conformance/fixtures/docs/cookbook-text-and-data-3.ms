@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,modules,stdlib-http,stdlib-io,stdlib-net,stdlib-process,tier-io,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,modules,stdlib-http,stdlib-io,stdlib-net,stdlib-process,tier-io,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/learn/common-tasks.md:240
 import (
 	stdout from "@std/io/io.ms",

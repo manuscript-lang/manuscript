@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn example() Void {\n\tvar remaining = 3\n\tremaining = 2\n\tremaining = 2.0  // Rejected: Float cannot replace Int.\n}\n"
-  }
-}

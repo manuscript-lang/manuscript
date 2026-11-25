@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Diagnostic {\n\tfn message() String\n}\n\ntype LocalError {\n\tdetail String\n}\n\nfn LocalError.message() String {\n\treturn self.detail.clone()\n}\n\nfn wrong(hold value LocalError) &Diagnostic {\n\treturn value\n}\n"
-  }
-}

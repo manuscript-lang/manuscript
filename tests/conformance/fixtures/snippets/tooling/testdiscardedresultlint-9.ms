@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/result_lint_test.go:23 TestDiscardedResultLint
 fn caller() Int! {
 	return match operation() {

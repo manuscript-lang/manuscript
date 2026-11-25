@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/performance_test.go:67 BenchmarkCheckerGenerics
 fn identity[T](hold value T) &T => value
 

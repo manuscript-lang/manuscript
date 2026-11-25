@@ -1,5 +1,5 @@
-// conform: tags=faults,lists,modules,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=faults,formatter,lists,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/primitive-list-literals-own-fresh-storage.ms
 import expect_true from "@std/test/test.ms"
 

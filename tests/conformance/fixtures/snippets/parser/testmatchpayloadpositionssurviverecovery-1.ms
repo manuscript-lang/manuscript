@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/parser/pattern_positions_test.go:13 TestMatchPayloadPositionsSurviveRecovery
 // café 🦀
 fn use(value Envelope) Int {

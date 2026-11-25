@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,match,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,match,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/optional_match_lint_test.go:17 TestOptionalMatchLint
 fn use(value Int!) Int {
 	return match value {

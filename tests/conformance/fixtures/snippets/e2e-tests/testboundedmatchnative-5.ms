@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,faults,mutation,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,faults,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/match_bounds_test.go:79 TestBoundedMatchNative
 export fn main() Int {
 	shapes := [Shape.Circle(2)]

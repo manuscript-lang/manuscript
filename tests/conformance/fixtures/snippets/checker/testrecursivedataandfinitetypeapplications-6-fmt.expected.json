@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type A[T, U] {\n\tb B[U, T]\n}\n\ntype B[X, Y] {\n\ta A[Y, X]\n}\n"
-  }
-}

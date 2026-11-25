@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,modules,stdlib-faults,testing,tier-stdlib
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,modules,stdlib-faults,testing,tier-stdlib
+// conform: phase=test,parse
 // conform: origin=pkg/build/compiler_test.go:280 FuzzCompile
 import panic from "@std/core.ms"
 

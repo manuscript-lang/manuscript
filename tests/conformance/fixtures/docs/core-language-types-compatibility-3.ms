@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,records,stdlib-errors,tier-stdlib,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,records,stdlib-errors,tier-stdlib,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/compatibility.md:69
 
 fn known() Result[Int, Error] {

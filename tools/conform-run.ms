@@ -70,7 +70,9 @@ fn sweep(ms, build_type String, chunk List[Fixture], detail Bool) List[String] {
 // Whether `observed` is what `fx` expects: the expectation lines of its header, or its
 // recorded sidecar.
 fn matches(fx Fixture, observed JsonValue) Bool {
+	if fx.secondary { return stringify(observed).get() == "{\"clean\":true}" }
 	if fx.inline.is_empty() { return same(fx.expected, observed) }
+
 	return render(observed) == fx.inline
 }
 
@@ -132,6 +134,11 @@ fn record_chunk(
 	var lines = List[String]()
 
 	for fx in chunk {
+		if fx.secondary {
+			lines.append("kept")
+			continue
+		}
+
 		if only_missing and (not fx.inline.is_empty() or access(fx.sidecar, 0).is_ok()) {
 			lines.append("kept")
 			continue

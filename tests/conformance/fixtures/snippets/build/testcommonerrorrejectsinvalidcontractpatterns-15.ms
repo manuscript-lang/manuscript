@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,generics,interfaces,match,records,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,generics,interfaces,match,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/build/library_test.go:150 TestCommonErrorRejectsInvalidContractPatterns
 type Box[T] {
 	item T

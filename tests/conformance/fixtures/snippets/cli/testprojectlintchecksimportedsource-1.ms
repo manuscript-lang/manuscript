@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
 // conform: origin=internal/cli/cli_test.go:232 TestProjectLintChecksImportedSource
 import value from "./other.ms"
 

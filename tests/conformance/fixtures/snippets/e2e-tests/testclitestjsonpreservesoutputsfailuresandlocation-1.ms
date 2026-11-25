@@ -1,5 +1,5 @@
-// conform: tags=modules,stdlib-io,stdlib-testing,testing,tier-core
-// conform: phase=test
+// conform: tags=formatter,modules,stdlib-io,stdlib-testing,testing,tier-core
+// conform: phase=test,parse
 // conform: origin=tests/e2e/cli_json_test.go:70 TestCLITestJSONPreservesOutputsFailuresAndLocations
 import (
 	stderr, stdout from "@std/io/io.ms",

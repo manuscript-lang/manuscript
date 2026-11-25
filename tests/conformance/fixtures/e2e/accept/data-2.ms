@@ -1,5 +1,5 @@
-// conform: tags=modules,optional,stdlib-bytes,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=formatter,modules,optional,stdlib-bytes,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/data-2.ms
 import (
 	Bytes from "@std/bytes.ms",

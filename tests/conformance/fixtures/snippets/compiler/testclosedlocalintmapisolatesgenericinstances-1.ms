@@ -1,5 +1,5 @@
-// conform: tags=aliasing,diagnostics,faults,generics,maps,strings,tier-core
-// conform: phase=check
+// conform: tags=aliasing,diagnostics,faults,formatter,generics,maps,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/local_int_map_test.go:79 TestClosedLocalIntMapIsolatesGenericInstances
 import panic from "@std/core.ms"
 

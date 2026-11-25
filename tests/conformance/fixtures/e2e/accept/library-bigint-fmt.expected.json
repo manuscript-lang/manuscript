@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tBigInt, parse_big_int from \"@std/math/math.ms\",\n\texpect_false from \"@std/test/test.ms\",\n)\n\nfn verify_bigint() Void! {\n\tlarge := parse_big_int(text: \"18446744073709551616\", radix: 10, max_digits: 30)?\n\t(\n\t\t(\n\t\t\tnot (\n\t\t\t\t(\n\t\t\t\t\t(large).multiply(other: large)\n\t\t\t\t).to_string() == \"340282366920938463463374607431768211456\"\n\t\t\t)\n\t\t)\n\t\t| expect_false?\n\t)\n}\n\ntest \"large integers are exact\" {\n\tverify_bigint()?\n}\n"
-  }
-}

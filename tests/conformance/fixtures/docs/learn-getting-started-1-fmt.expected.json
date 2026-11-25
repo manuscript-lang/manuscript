@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import arguments from \"@std/os/env.ms\"\n\nfn main() Void {\n\tprint(f\"Arguments: {arguments().length()}\")\n}\n"
-  }
-}

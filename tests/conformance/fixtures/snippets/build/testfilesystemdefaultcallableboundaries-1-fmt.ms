@@ -1,6 +1,0 @@
-// conform: tags=formatter,generics,modules,parser,stdlib-bytes,stdlib-fs,tier-io
-// conform: phase=parse
-// conform: origin=pkg/build/filesystem_defaults_test.go:17 TestFilesystemDefaultCallableBoundaries
-import Bytes from "@std/bytes.ms"
-
-fn forward[T](hold item T) &T => item

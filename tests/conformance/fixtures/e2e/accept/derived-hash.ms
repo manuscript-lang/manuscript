@@ -1,5 +1,5 @@
-// conform: tags=alternatives,control-flow,decimal,generics,modules,optional,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=alternatives,control-flow,decimal,formatter,generics,modules,optional,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/derived-hash.ms
 import (
 	Decimal from "@std/math/decimal.ms",

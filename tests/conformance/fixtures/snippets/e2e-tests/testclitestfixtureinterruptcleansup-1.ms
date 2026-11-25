@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,testing,tier-core,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,testing,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=tests/e2e/test_fixture_test.go:196 TestCLITestFixtureInterruptCleansUp
 test "interruptible" {
 	println("READY")

@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,optional,records,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,optional,records,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/recursive_types_test.go:13 TestRecursiveTypesRejectUnsafeConstructionAndHashing
 type Node {
 	next Node?

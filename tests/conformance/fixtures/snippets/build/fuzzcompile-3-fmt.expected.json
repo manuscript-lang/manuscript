@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\ntest \"list\" {\n\tvalues := [1, 2]\n\tif not (values.length() == 2) {\n\t\treturn panic(message: \"check failed\")\n\t}\n}\n"
-  }
-}

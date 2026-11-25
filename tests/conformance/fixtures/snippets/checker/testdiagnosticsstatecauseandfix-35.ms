@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,strings,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:54 TestDiagnosticsStateCauseAndFix
 fn f() Int {
 	s := Set[String]()

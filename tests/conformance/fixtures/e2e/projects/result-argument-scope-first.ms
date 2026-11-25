@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,generics,interfaces,interpolation,modules,strings,tier-core,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,generics,interfaces,interpolation,modules,strings,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=tests/e2e/testdata/projects/result_argument_scope/first.ms
 import (
 	Cause, make from "./domain.ms",

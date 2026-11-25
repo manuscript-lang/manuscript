@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,mutation,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/result_bounds_test.go:91 TestSuccessfulResultBoundsRejectDifferentReturns
 fn probe() Int {
 	var sum = 0

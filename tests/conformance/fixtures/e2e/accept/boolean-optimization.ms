@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,modules,records,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=closures,control-flow,formatter,modules,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/boolean-optimization.ms
 import expect_false from "@std/test/test.ms"
 

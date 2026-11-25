@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,faults,generics,lists,modules,mutation,numbers,optional,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=closures,control-flow,faults,formatter,generics,lists,modules,mutation,numbers,optional,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/primitive-list-storage.ms
 import (
 	panic from "@std/core.ms",

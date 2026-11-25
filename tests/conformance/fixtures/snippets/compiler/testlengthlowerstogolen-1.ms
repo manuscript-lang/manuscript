@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,lists,modules,stdlib-bytes,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,lists,modules,stdlib-bytes,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/lower_length_test.go:12 TestLengthLowersToGoLen
 import Bytes from "@std/bytes.ms"
 

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn later(letter String = f\"{1 + 2}\", interface_name Int = 1) Int {\n\treturn 1\n}\n"
-  }
-}

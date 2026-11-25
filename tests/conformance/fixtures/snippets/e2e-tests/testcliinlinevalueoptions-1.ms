@@ -1,5 +1,5 @@
-// conform: tags=control-flow,interpolation,match,modules,mutation,stdlib-io,stdlib-process,strings,testing,tier-io,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,interpolation,match,modules,mutation,stdlib-io,stdlib-process,strings,testing,tier-io,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/cli_options_test.go:14 TestCLIInlineValueOptions
 import (
 	stderr, stdout from "@std/io/io.ms",

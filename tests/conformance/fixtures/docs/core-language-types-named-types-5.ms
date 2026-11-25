@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/named-types.md:52
 interface Counter {
 	var fn increment() Void

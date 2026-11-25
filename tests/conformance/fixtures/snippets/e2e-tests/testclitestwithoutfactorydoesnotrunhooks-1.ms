@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,interfaces,modules,records,stdlib-io,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,interfaces,modules,records,stdlib-io,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/test_fixture_test.go:257 TestCLITestWithoutFactoryDoesNotRunHooks
 import (
 	stdout from "@std/io/io.ms",

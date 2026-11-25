@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,match,strings,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,match,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:54 TestFormatParagraphs
 fn process(input String) Int {
 	records := parse(input)

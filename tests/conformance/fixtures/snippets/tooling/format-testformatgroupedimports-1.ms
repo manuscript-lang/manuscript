@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-collections,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-collections,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/tooling/format/format_test.go:148 TestFormatGroupedImports
 import ListEntry, MapEntry from "@std/collections/collections.ms"  // collections
 // expect-error: MS2003 4:8-4:17 redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly

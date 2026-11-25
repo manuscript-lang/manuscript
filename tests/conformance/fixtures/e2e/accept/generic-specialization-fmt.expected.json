@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn ident[T](hold x T) &T {\n\treturn x\n}\n\nfn countdown[T](x T, n Int) Int {\n\tif n == 0 {\n\t\treturn 0\n\t}\n\treturn 1 + countdown(x, n - 1)\n}\n\nfn twice[T](hold x T) &T {\n\treturn ident(ident(x))\n}\n\nfn depth() Int {\n\treturn countdown(\"s\", 5)\n}\n\ntest \"static specializations are reused across calls\" {\n\tvar acc = 0\n\tfor i in 0..100 {\n\t\tacc += ident(i)\n\t}\n\texpect_equal(acc, 4950)?\n\texpect_equal(ident(\"a\"), \"a\")?\n}\n\ntest \"recursive generics with static arguments\" {\n\texpect_equal(depth(), 5)?\n\texpect_equal(countdown(1, 3), 3)?\n}\n\ntest \"generic calls with type-variable arguments still resolve\" {\n\texpect_equal(twice(4), 4)?\n\texpect_equal(twice(\"b\"), \"b\")?\n}\n"
-  }
-}

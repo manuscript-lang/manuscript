@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import TomlValue from \"@std/data/toml.ms\"\n\nexport fn main() Int {\n\tv TomlValue? := null\n\tif v != null { return 1 }\n\n\treturn 0\n}\n"
-  }
-}

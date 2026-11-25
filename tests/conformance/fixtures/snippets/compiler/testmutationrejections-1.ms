@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,modules,records,stdlib-io,stdlib-queues,tier-stdlib
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,modules,records,stdlib-io,stdlib-queues,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/mutation_test.go:11 TestMutationRejections
 import (
 	Queue from "@std/collections/queue.ms",

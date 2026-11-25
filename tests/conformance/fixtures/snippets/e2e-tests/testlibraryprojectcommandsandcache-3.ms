@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,modules,stdlib-fs,stdlib-testing,testing,tier-io,try-result
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,modules,stdlib-fs,stdlib-testing,testing,tier-io,try-result
+// conform: phase=check,parse
 // conform: origin=tests/e2e/library_project_test.go:32 TestLibraryProjectCommandsAndCache
 import (
 	read_file from "@std/os/fs.ms",

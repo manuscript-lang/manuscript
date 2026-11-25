@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,numbers,sets,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,numbers,sets,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:25 TestDiagnosticFixes
 fn f() Int {
 	s := Set[Float]()

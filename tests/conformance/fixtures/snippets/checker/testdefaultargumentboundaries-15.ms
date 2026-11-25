@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,generics,tier-core
-// conform: phase=check
+// conform: tags=closures,diagnostics,formatter,generics,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/defaults_test.go:28 TestDefaultArgumentBoundaries
 fn run[T](operation fn() T) T {
 	return operation()

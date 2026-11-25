@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tListEntry from \"@std/collections/collections.ms\",\n\tsystem_info from \"@std/os/system.ms\",\n)\n\nfn length(values List[Int]) Int {\n\treturn values.length()\n}\n\nfn os_name() String {\n\treturn system_info().os\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum Choice[T] {\n\tFound(value T)\n\tMissing\n}\n\nfn f(c Choice[Int], o Int?) Int {\n\tmatch o {\n\t\tOptional.some(n) => return n\n\t\tOptional.null => return 0\n\t}\n\n\tmatch c {\n\t\tChoice.Found(v) => return v\n\t\tChoice.Missing => return 0\n\t}\n}\n"
-  }
-}

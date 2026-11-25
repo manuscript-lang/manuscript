@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,interfaces,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,interfaces,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/prelude_test.go:114 TestPreludeNamesCannotBeRedeclared
 interface Equal {
 	fn same() Bool

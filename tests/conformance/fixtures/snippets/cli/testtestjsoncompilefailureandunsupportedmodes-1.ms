@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,testing,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,testing,tier-core
+// conform: phase=check,parse
 // conform: origin=internal/cli/test_result_test.go:83 TestTestJSONCompileFailureAndUnsupportedModes
 test "broken" {
 	x := unknown_name

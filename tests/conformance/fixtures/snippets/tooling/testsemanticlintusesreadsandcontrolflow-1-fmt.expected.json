@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import ListEntry from \"@std/collections/collections.ms\"\n\nfn answer() Int {\n\t_unused := 1\n\tvar _written = 2\n\t_written = 3\n\treturn 0\n\treturn 1\n}\n"
-  }
-}

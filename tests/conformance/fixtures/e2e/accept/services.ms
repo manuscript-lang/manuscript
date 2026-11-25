@@ -1,5 +1,5 @@
-// conform: tags=faults,modules,optional,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=faults,formatter,modules,optional,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/services.ms
 import (
 	BytesBuilder from "@std/bytes.ms",

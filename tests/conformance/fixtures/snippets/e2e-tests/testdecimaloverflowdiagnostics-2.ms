@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,testing,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,testing,tier-core
+// conform: phase=check,parse
 // conform: origin=tests/e2e/decimal_overflow_diagnostics_test.go:31 TestDecimalOverflowDiagnostics
 test "continues after decimal overflow" {
 	finite := 1d / 3d

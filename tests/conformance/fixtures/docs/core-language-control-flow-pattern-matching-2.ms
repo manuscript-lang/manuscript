@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,match,modules,records,stdlib-errors,tier-stdlib,try-result
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,match,modules,records,stdlib-errors,tier-stdlib,try-result
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
 
 enum Cents {

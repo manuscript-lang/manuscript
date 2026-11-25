@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,numbers,optional,stdlib-numbers,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,numbers,optional,stdlib-numbers,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/numbers.ms
 import (
 	parse_float, parse_int from "@std/math/math.ms",

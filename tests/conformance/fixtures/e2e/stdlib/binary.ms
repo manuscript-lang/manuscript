@@ -1,5 +1,5 @@
-// conform: tags=control-flow,modules,stdlib-binary,stdlib-bytes,stdlib-testing,testing,tier-stdlib,try-result
-// conform: phase=test
+// conform: tags=control-flow,formatter,modules,stdlib-binary,stdlib-bytes,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/stdlib/binary.ms
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",

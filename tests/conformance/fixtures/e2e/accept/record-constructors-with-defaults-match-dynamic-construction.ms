@@ -1,5 +1,5 @@
-// conform: tags=modules,numbers,records,stdlib-testing,strings,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=formatter,modules,numbers,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/record-constructors-with-defaults-match-dynamic-construction.ms
 import expect_true from "@std/test/test.ms"
 

@@ -1,5 +1,5 @@
-// conform: tags=closures,diagnostics,faults,generics,lists,tier-core,try-result
-// conform: phase=check
+// conform: tags=closures,diagnostics,faults,formatter,generics,lists,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/checker/inference_hints_test.go:45 TestUnknownTypeDoesNotCascadeIntoInference
 fn collect[T, U](items List[T], step fn(T) List[U]!MissingError) List[U]!MissingError {
 	return step(items[0])

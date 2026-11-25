@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,records,tier-core,scope-cleanup
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,records,scope-cleanup,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/alternatives.md:38
 enum LeftState {
 	Ready

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "\nfn successful_price(outcome Result[Decimal, Error]) Decimal? {\n\treturn outcome.to_optional()\n}\n"
-  }
-}

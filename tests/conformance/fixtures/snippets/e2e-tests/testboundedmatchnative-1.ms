@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,faults,interfaces,modules,mutation,records,stdlib-cleanup,tier-stdlib,scope-cleanup
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,faults,formatter,interfaces,modules,mutation,records,scope-cleanup,stdlib-cleanup,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=tests/e2e/match_bounds_test.go:32 TestBoundedMatchNative
 import Closeable from "@std/core.ms"
 

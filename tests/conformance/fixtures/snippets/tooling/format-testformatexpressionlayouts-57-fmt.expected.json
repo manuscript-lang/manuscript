@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Int {\n\treturn apply(\n\t\tvalue: 3,\n\t\ttransform: fn(value Int) Int {\n\t\t\tif value == 0 { return 0 } next := value + 1\n\t\t\treturn next\n\t\t}\n\t)\n}\n"
-  }
-}

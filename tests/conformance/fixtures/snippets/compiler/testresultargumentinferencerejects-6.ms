@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,generics,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,generics,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/result_argument_inference_test.go:190 TestResultArgumentInferenceRejects
 fn nested[T](r T!!) Void => return
 

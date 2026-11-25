@@ -1,5 +1,5 @@
-// conform: tags=control-flow,interpolation,modules,stdlib-io,tier-core,try-result
-// conform: phase=run
+// conform: tags=control-flow,formatter,interpolation,modules,stdlib-io,tier-core,try-result
+// conform: phase=run,parse
 // conform: origin=documentation/learn/common-tasks.md:120
 import (
 	stdin, stdout from "@std/io/io.ms",

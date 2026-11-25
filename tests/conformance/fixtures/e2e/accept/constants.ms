@@ -1,5 +1,5 @@
-// conform: tags=alternatives,control-flow,interpolation,lists,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=alternatives,control-flow,formatter,interpolation,lists,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/constants.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 

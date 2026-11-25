@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,modules,stdlib-archive,tier-stdlib
-// conform: phase=check
+// conform: tags=diagnostics,formatter,modules,stdlib-archive,tier-stdlib
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/codec_selectors_test.go:28 TestTypedCodecSelectorsRejectInvalidCasesAndTypes
 import ArchiveFormat from "@std/io/archive.ms"
 

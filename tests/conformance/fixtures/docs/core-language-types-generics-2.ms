@@ -1,5 +1,5 @@
-// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
-// conform: phase=check
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/types/generics.md:32
 type Key {
 	id Int

@@ -1,5 +1,5 @@
-// conform: tags=closures,control-flow,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
-// conform: phase=test
+// conform: tags=closures,control-flow,formatter,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
 // conform: origin=tests/e2e/testdata/accept/closed-record-int-bounds.ms
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 

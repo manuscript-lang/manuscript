@@ -1,5 +1,5 @@
-// conform: tags=control-flow,mutation,tier-core
-// conform: phase=run
+// conform: tags=control-flow,formatter,mutation,tier-core
+// conform: phase=run,parse
 // conform: origin=tests/e2e/fault_locations_test.go:25 TestFaultSourceLocations
 fn probe() Int {
 	var sum = 0

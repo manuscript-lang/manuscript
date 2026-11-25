@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
-// conform: phase=run
+// conform: tags=control-flow,faults,formatter,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
+// conform: phase=run,parse
 // conform: origin=bench/perf/language/numeric.ms
 import panic from "@std/core.ms"
 

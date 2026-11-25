@@ -1,5 +1,5 @@
-// conform: tags=control-flow,faults,interpolation,modules,stdlib-faults,testing,tier-stdlib
-// conform: phase=test
+// conform: tags=control-flow,faults,formatter,interpolation,modules,stdlib-faults,testing,tier-stdlib
+// conform: phase=test,parse
 // conform: origin=pkg/parser/parser_test.go:60 FuzzParse
 import panic from "@std/core.ms"
 

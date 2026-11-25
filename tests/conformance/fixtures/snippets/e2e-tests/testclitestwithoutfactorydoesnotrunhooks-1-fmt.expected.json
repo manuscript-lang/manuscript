@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\tTestHooks, expect_equal from \"@std/test/test.ms\",\n)\n\ntype UnusedFixture {\n\tvalue Int\n}\n\nfn UnusedFixture.before_all() Void! {\n\t_written := stdout().write(\"UNUSED before_all\").get()\n}\n\nfn UnusedFixture.before_each() Void! {\n\t_written := stdout().write(\"UNUSED before_each\").get()\n}\n\nfn UnusedFixture.after_each() Void! {\n\t_written := stdout().write(\"UNUSED after_each\").get()\n}\n\nfn UnusedFixture.after_all() Void! {\n\t_written := stdout().write(\"UNUSED after_all\").get()\n}\n\ntest \"plain test\" {\n\texpect_equal(1 + 1, 2)?\n}\n"
-  }
-}

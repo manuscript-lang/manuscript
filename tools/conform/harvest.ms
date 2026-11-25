@@ -311,6 +311,7 @@ fn header(origin, phase, text String, extra List[String]) Meta {
 	return Meta(
 		tags: sorted_unique(tags),
 		phase: phase.clone(),
+		phases: [phase.clone()],
 		args: [],
 		timeout: 0,
 		entry: "",

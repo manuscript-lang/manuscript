@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,faults,optional,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,faults,formatter,optional,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/optional_test.go:62 TestOptionalMethodsRejectInvalidContracts
 fn wrong(value Int?) Int {
 	return value or "missing"

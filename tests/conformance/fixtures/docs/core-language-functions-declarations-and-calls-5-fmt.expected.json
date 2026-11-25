@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\nfn check_positive(value Int) Void {\n\tif not (value > 0) {\n\t\treturn panic(message: \"check failed\")\n\t}\n}\n\nfn missing_value() Int {\n\treturn panic(message: \"Required value is missing\")\n}\n"
-  }
-}

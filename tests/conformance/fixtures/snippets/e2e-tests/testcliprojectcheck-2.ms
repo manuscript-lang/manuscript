@@ -1,5 +1,5 @@
-// conform: tags=faults,modules,stdlib-faults,testing,tier-stdlib
-// conform: phase=test
+// conform: tags=faults,formatter,modules,stdlib-faults,testing,tier-stdlib
+// conform: phase=test,parse
 // conform: origin=tests/e2e/project_check_test.go:32 TestCLIProjectCheck
 import panic from "@std/core.ms"
 

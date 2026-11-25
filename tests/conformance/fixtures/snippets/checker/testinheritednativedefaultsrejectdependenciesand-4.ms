@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/native_defaults_test.go:54 TestInheritedNativeDefaultsRejectDependenciesAndEffects
 fn f(value Bytes = "".to_bytes()) Bytes { ... }
 // expect-error: MS2001 4:12 unknown type Bytes; add: import Bytes from "@std/bytes.ms"

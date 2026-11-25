@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn g[T](x T) Int {\n\treturn 0\n}\n\nfn f() Int {\n\treturn g()\n}\n"
-  }
-}

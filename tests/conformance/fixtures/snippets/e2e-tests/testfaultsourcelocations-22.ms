@@ -1,5 +1,5 @@
-// conform: tags=faults,generics,optional,tier-core
-// conform: phase=run
+// conform: tags=faults,formatter,generics,optional,tier-core
+// conform: phase=run,parse
 // conform: origin=tests/e2e/fault_locations_test.go:172 TestFaultSourceLocations
 import panic from "@std/core.ms"
 

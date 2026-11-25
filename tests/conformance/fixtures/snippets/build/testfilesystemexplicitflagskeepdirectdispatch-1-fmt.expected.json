@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import CopyOptions, copy, create_directory, remove, write_file from \"@std/os/fs.ms\"\n\nfn explicit() Void {\n\tvoid write_file(\"\", \"\", false).wait()\n\tvoid copy(\"\", \"\", CopyOptions(replace: true))\n\tvoid copy(\"\", \"\", CopyOptions(recursive: true, max_bytes: 3))\n\tvoid create_directory(\"\", true)\n\tvoid remove(\"\", false)\n}\n"
-  }
-}

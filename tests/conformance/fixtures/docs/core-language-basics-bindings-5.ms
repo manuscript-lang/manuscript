@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,mutation,numbers,tier-core
-// conform: phase=check
+// conform: tags=diagnostics,formatter,mutation,numbers,tier-core
+// conform: phase=check,parse
 // conform: origin=documentation/core-language/basics/bindings.md:64
 fn example() Void {
 	var remaining = 3

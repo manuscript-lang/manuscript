@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "payment := Payment.Paid(\"receipt-42\")\ndeclined Payment := Declined(\"Card rejected\")\n"
-  }
-}

@@ -1,5 +1,5 @@
-// conform: tags=alternatives,diagnostics,records,strings,tier-core
-// conform: phase=check
+// conform: tags=alternatives,diagnostics,formatter,records,strings,tier-core
+// conform: phase=check,parse
 // conform: origin=pkg/checker/hints_test.go:108 TestWrongImportListsOnlyDeclaredExports
 export enum MoneyError {
 	Invalid

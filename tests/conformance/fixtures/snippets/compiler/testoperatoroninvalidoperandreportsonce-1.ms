@@ -1,5 +1,5 @@
-// conform: tags=diagnostics,mutation,tier-core,try-result
-// conform: phase=check
+// conform: tags=diagnostics,formatter,mutation,tier-core,try-result
+// conform: phase=check,parse
 // conform: origin=pkg/compiler/conversions_queries_test.go:47 TestOperatorOnInvalidOperandReportsOnce
 fn f() Int {
 	var x Int = 1
