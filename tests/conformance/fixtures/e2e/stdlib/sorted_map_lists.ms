@@ -29,9 +29,9 @@ test "keys and values join every chunk in key order" {
 		var index = 0
 
 		while index < keys.length() {
-			expect_equal(keys[index] > previous, true)?
-			expect_equal(values[index], f"v{keys[index]}")?
-			previous = keys[index]
+			expect_equal(keys[index].value > previous, true)?
+			expect_equal(values[index].value, f"v{keys[index].value}")?
+			previous = keys[index].value
 			index += 1
 		}
 	}
@@ -39,9 +39,12 @@ test "keys and values join every chunk in key order" {
 
 test "keys returns an independent list" {
 	var map = filled(300)
-	var keys = map.keys().clone()
+	var keys = List[Int]()
+	for item in map.keys() {
+		keys.append(item.value)
+	}
 	keys.set(0, -5)
-	expect_equal(map.keys()[0], 0)?
+	expect_equal(map.keys()[0].value, 0)?
 	map.add(-1, "extra")
 	expect_equal(keys.length(), 300)?
 }

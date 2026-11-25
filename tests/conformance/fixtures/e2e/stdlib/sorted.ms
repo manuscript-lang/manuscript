@@ -1,18 +1,27 @@
 // conform: tags=optional,stdlib-sorted,stdlib-testing,testing,tier-stdlib
 // conform: phase=test
 import (
-	SortedMap, SortedSet from "@std/collections/sorted.ms",
+	SortedItem, SortedMap, SortedSet from "@std/collections/sorted.ms",
 	panic from "@std/core.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
+
+// The values of a view list, each cloned: the list a caller keeps when the map changes.
+fn copied[T Clonable](items List[SortedItem[T]]) List[T] {
+	var out = List[T]()
+	for item in items {
+		out.append(item.value.clone())
+	}
+	return out
+}
 
 test "add get replace remove" {
 	var map = SortedMap[Int, String]()
 	for key in [5, 1, 9, 3, 7] {
 		map.add(key, f"v{key}")
 	}
-	expect_equal(map.keys(), [1, 3, 5, 7, 9])?
-	expect_equal(map.values(), ["v1", "v3", "v5", "v7", "v9"])?
+	expect_equal(copied(map.keys()), [1, 3, 5, 7, 9])?
+	expect_equal(copied(map.values()), ["v1", "v3", "v5", "v7", "v9"])?
 	expect_equal(map.get(3), "v3")?
 	expect_equal(map.get(4), null)?
 	map.add(3, "three")
@@ -32,7 +41,7 @@ test "string keys order lexicographically" {
 		map.add(word, size)
 	}
 
-	expect_equal(map.keys(), ["apple", "fig", "pear"])?
+	expect_equal(copied(map.keys()), ["apple", "fig", "pear"])?
 }
 
 test "first last floor ceiling and pops" {
@@ -49,7 +58,7 @@ test "first last floor ceiling and pops" {
 	expect_equal(map.ceiling(31), null)?
 	expect_equal((map.pop_first() or panic("called Optional.get() on null")).key, 10)?
 	expect_equal((map.pop_last() or panic("called Optional.get() on null")).key, 30)?
-	expect_equal(map.keys(), [20])?
+	expect_equal(copied(map.keys()), [20])?
 	map.clear()
 	expect_equal(map.pop_first(), null)?
 	expect_true(map.is_empty())?
@@ -104,8 +113,8 @@ test "many random operations agree with Map" {
 
 		var expected Int? = null
 		for candidate in sorted.keys() {
-			if candidate <= key {
-				expected = candidate
+			if candidate.value <= key {
+				expected = candidate.value.clone()
 			}
 		}
 
@@ -126,8 +135,8 @@ test "copies are independent" {
 
 	var b = a.clone()
 	b.add(2, 2)
-	expect_equal(a.keys(), [1])?
-	expect_equal(b.keys(), [1, 2])?
+	expect_equal(copied(a.keys()), [1])?
+	expect_equal(copied(b.keys()), [1, 2])?
 }
 
 test "sorted set keeps unique ordered members" {
@@ -135,19 +144,19 @@ test "sorted set keeps unique ordered members" {
 	for value in [4, 2, 4, 9, 1] {
 		set.add(value)
 	}
-	expect_equal(set.values(), [1, 2, 4, 9])?
+	expect_equal(copied(set.values()), [1, 2, 4, 9])?
 	expect_equal(set.length(), 4)?
 	expect_true(set.contains(9))?
 	expect_equal(set.first(), 1)?
 	expect_equal(set.last(), 9)?
 	expect_equal(set.floor(3), 2)?
 	expect_equal(set.ceiling(5), 9)?
-	expect_equal(set.range(2, 9), [2, 4])?
+	expect_equal(copied(set.range(2, 9)), [2, 4])?
 	expect_equal(set.pop_first(), 1)?
 	expect_equal(set.pop_last(), 9)?
 	set.remove(4)
 	set.remove(77)
-	expect_equal(set.values(), [2])?
+	expect_equal(copied(set.values()), [2])?
 	set.clear()
 	expect_true(set.is_empty())?
 }

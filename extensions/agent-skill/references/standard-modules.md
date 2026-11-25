@@ -22,7 +22,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/collections/deque.ms`: Deque
 - `@std/collections/itertools.ms`: Run, accumulate, combinations, cycle, group_runs, pairwise, permutations, product, zip_longest
 - `@std/collections/queue.ms`: HeapEntry, PriorityQueue, Queue
-- `@std/collections/sorted.ms`: SortedEntry, SortedMap, SortedRef, SortedSet
+- `@std/collections/sorted.ms`: SortedEntry, SortedItem, SortedMap, SortedRef, SortedSet
 - `@std/concurrency/promise.ms`: Cancel, Placement, Promise, PromiseOptions, Signal, adopt, caller_frame, cancel_switch, complete, deferred, promise, promise_when_idle, set_options, wait_all, wait_first
 - `@std/concurrency/resilience.ms`: CircuitBreaker, CircuitError, RateLimiter, RetryPolicy, Throttle, map_concurrent, rate_limiter, retry
 - `@std/core.ms`: Clonable, Closeable, Comparable, Data, Equal, Error, Hashable, Iterator, Optional, Result, Stringable, Writable, join_errors, ok_or, panic, print, wrap_error
