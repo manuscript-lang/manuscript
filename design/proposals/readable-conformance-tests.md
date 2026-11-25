@@ -61,7 +61,7 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 | `tools/conform/corpus.ms`, `conform-run.ms` | read and write header expectations | unit test of the header round trip; full corpus replay |
 | `tests/conformance/fixtures/**` | converted, renamed, regrouped | conform 0 problems, same counts per phase minus dropped duplicates |
 | `tools/conform/fuzz_commands.ms` | generate in the gate | gate fails on a seeded bug |
-| `tests/checks/**` | moved under `tools/checks/` | the `make` targets that run them |
+| `tests/checks/**` | moved under `tools/checks/` (done) | the `make` targets that run them |
 | wiki, README, AGENTS | one page for the layout | `repo-check` |
 
 ## Alternatives
@@ -76,7 +76,7 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 1. Header format in the runner and recorder; convert `e2e/reject` and `snippets/authored` (a few hundred); corpus green.
 2. Convert every check fixture (done, with the recorder re-observing until lines that sit after the program stop moving an end-of-file diagnostic). Then parse fixtures and the `-fmt` twins: a twin is its original's source with `phase=parse`, so a fixture should name several phases (`phase=test,parse`) instead of being copied; 1,230 of 1,342 twins state only that `ms fmt` leaves the source unchanged, 112 differ and are mostly fuzz seeds.
 3. Regroup `golden` by code and dedupe; generate fuzz in the gate.
-4. Move `e2e/*` and `snippets/*` run and test cases into feature directories by tag; convert the 270 recorded runs; move `tests/checks`; one README and wiki page.
+4. Move `e2e/*` and `snippets/*` run and test cases into feature directories by tag; convert the 270 recorded runs; move `tests/checks` (done); one README and wiki page.
 
 Each stage lands green and keeps `make conform` as the gate (its time must not grow).
 

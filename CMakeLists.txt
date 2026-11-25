@@ -99,7 +99,7 @@ add_custom_target(repo-check
   USES_TERMINAL
   COMMENT "Checking repository invariants")
 
-# Ownership counts (tools/count-check.ms): builds the `stats` preset itself, runs tests/checks/ownership-counts in Debug
+# Ownership counts (tools/count-check.ms): builds the `stats` preset itself, runs tools/checks/ownership-counts in Debug
 # and Release against it, and fails on a live block or a changed cleanup order.
 add_custom_target(count-check
   COMMAND $<TARGET_FILE:ms> run tools/count-check.ms

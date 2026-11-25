@@ -99,7 +99,7 @@ The optimizer fuses the closure the standard library wraps around the work with 
 | `inline` | 204 / 215 | 186 / 180 | 33 |
 | `batch` | 173 / 173 | 143 / 154 | 26 |
 
-Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tests/checks/ownership-counts/promise_wrapper_closure.ms`).
+Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tools/checks/ownership-counts/promise_wrapper_closure.ms`).
 
 ### Later the same day: the start line is a constant
 
