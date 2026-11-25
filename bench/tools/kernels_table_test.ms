@@ -32,9 +32,7 @@ fn kernel_versions() List[String] {
 test "complete rotating trials preserve minimum and columns" {
 	for suite in ["kernels", "competence"] {
 		versions := if suite == "kernels" { kernel_versions() } else { base_versions() }
-		var rotated = versions.slice(1, versions.length()).get_or([])
-		rotated.append(versions[0].clone())
-
+		rotated := versions.drop(1).concat([versions[0].clone()])
 		lines := trials(versions, suite, 100).concat(trials(rotated, suite, 50))
 		report := expect_ok(summarize(lines, suite, 2, versions))?
 		expect_contains(report, "Minimum of 2 rotating runs")?
@@ -81,7 +79,7 @@ test "rejects invalid evidence" {
 		truncated,
 		good.concat(trial("ms", "kernels", 100)),
 		no_omitted,
-		good.slice(1, good.length()).get_or([]),
+		good.slice(1, good.length()).get_or([]).clone(),
 		[good[0].clone()].concat(good),
 		no_c,
 		[good[0].replace("100", "-1")].concat(

@@ -389,6 +389,31 @@ static void readiness_timed_out(MsPromise id, size_t row) {
   }
 }
 
+/* A descriptor the host cannot watch is asked again at this interval until its transfer goes through. */
+enum { POLL_INTERVAL_NS = 2 * 1000 * 1000 };
+
+static void promise_poll_arm(MsPromise id, Cold *cold) {
+  const int64_t at = ms_sched_now() + POLL_INTERVAL_NS;
+  cold->deadline = at;
+  ms_sched_arm((uint64_t)id, at);
+}
+
+static void promise_poll_again(MsPromise id, size_t row) {
+  Cold *cold = &promise_table.cold.ptr[row];
+  const MsPromiseRetry retry = cold->retry;
+  if (retry(id, cold->retry_state, cold->events & (MS_WAIT_READ | MS_WAIT_WRITE))) {
+    const ptrdiff_t done = promise_row_of(id);
+    if (done >= 0) {
+      promise_table.cold.ptr[done].retry = NULL;
+    }
+    return;
+  }
+  const ptrdiff_t again = promise_row_of(id);
+  if (again >= 0 && promise_table.hot.ptr[again].state == STATE_PENDING) {
+    promise_poll_arm(id, &promise_table.cold.ptr[again]);
+  }
+}
+
 bool promise_timer_live(uint64_t id, int64_t deadline) {
   const ptrdiff_t row = promise_row_of((MsPromise)id);
   return row >= 0 && promise_table.hot.ptr[row].state == STATE_PENDING &&
@@ -408,6 +433,8 @@ void promise_timer_fire(uint64_t id, int64_t deadline) {
     promise_table.cold.ptr[row].deadline = NO_TIME;
     if (promise_table.cold.ptr[row].fd >= 0) {
       readiness_timed_out(promise, (size_t)row);
+    } else if (promise_table.cold.ptr[row].retry != NULL) {
+      promise_poll_again(promise, (size_t)row);
     } else {
       ms_promise_io_done_unit(promise);
     }
@@ -453,7 +480,19 @@ bool ms_promise_io_on_ready(MsPromise id, int fd, uint32_t events, int64_t timeo
     return false;
   }
   if (armed == MS_POLL_ALWAYS) {
-    (void)retry(id, state, events & (MS_WAIT_READ | MS_WAIT_WRITE));
+    if (retry(id, state, events & (MS_WAIT_READ | MS_WAIT_WRITE))) {
+      return true;
+    }
+    /* The host cannot watch this descriptor (a pipe on Windows) and the transfer would block: ask again shortly. */
+    const ptrdiff_t again = promise_row_of(id);
+    if (again >= 0 && promise_table.hot.ptr[again].state == STATE_PENDING) {
+      Cold *const polled = &promise_table.cold.ptr[again];
+      polled->fd = -1;
+      polled->events = events;
+      polled->retry = retry;
+      polled->retry_state = state;
+      promise_poll_arm(id, polled);
+    }
     return true;
   }
   Cold *const cold = &promise_table.cold.ptr[found];

@@ -43,6 +43,7 @@ typedef struct Entry {
   MsPromise reading; /* the read promise waiting on the poller, 0 when none */
   size_t file_left;  /* a regular file: bytes the next reads may still find (its size less what was read), else 0 */
   bool regular;      /* the descriptor is a regular file: always readable, so a read never polls */
+  bool nonblocking;  /* the descriptor is in non-blocking mode (the host has one), so a read that would block says so */
   MsString error;    /* the message of a read failure or terminal write failure; empty when none */
 } Entry;
 
@@ -129,7 +130,7 @@ static Transfer transfer(const Entry *entry, uint8_t *read_into, const uint8_t *
 /* Whether a read would not block. A descriptor opened without NONBLOCK (the inherited standard input, whose file
  * description other processes share) is polled first, so a silent pipe parks the task instead of the thread. */
 static bool readable_now(const Entry *entry) {
-  return entry->regular || (entry->flags & MS_STREAMS_NONBLOCK) != 0 || ms_sys_fd_readable_now(entry->fd);
+  return entry->regular || entry->nonblocking || ms_sys_fd_readable_now(entry->fd);
 }
 
 typedef enum { STEP_DATA, STEP_END, STEP_BLOCKED, STEP_FAILED } StepKind;
@@ -228,9 +229,7 @@ static size_t slot_take(void) {
 }
 
 int64_t msrt_streams_open(int64_t fd, int64_t flags) {
-  if ((flags & MS_STREAMS_NONBLOCK) != 0) {
-    (void)ms_sys_fd_set_nonblocking((int)fd, true);
-  }
+  const bool nonblocking = (flags & MS_STREAMS_NONBLOCK) != 0 && ms_sys_fd_set_nonblocking((int)fd, true);
   ms_spin_lock(&table.lock);
   const size_t slot = slot_take();
   Entry *entry = &table.entries[slot];
@@ -241,6 +240,7 @@ int64_t msrt_streams_open(int64_t fd, int64_t flags) {
   entry_reset_out(entry);
   entry->reading = 0;
   entry->regular = false;
+  entry->nonblocking = nonblocking;
   entry->file_left = 0;
   uv_stat_t stat;
   if ((flags & MS_STREAMS_READS) != 0 && ms_fs_fstat((uv_file)fd, &stat) == 0 && (stat.st_mode & S_IFMT) == S_IFREG) {

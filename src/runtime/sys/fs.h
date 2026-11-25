@@ -36,6 +36,9 @@ int ms_sys_fs_unlock(int fd);
 /* Whether the scheduler can wait for `fd` to become ready (a pipe, a terminal, a socket), as opposed to a descriptor whose
  * reads must run on the blocking pool (a regular file, anything on Windows). */
 bool ms_sys_fs_waitable(int fd);
+/* For a descriptor that is not waitable but can be asked whether a read would block (an anonymous pipe on Windows): 1 when a
+ * read would return at once (data, end of stream or an error), 0 when it would block, -1 when the host cannot tell. */
+int ms_sys_fs_read_ready(int fd);
 
 /* Makes `output` share the data blocks of `input` (copy on write): UV_ENOTSUP where the filesystem or host cannot. */
 int ms_sys_fs_clone_file(int output, int input);

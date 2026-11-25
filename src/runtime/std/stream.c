@@ -113,6 +113,7 @@ typedef struct RawJob {
   bool write;
 } RawJob;
 
+enum { READY_POLL_NS = 2 * 1000 * 1000 }; /* how often a pipe without readiness events is asked whether it has data */
 enum { STREAM_CHUNK = 64 * 1024 }; /* the most a read takes and a write sends at once */
 
 static void raw_job(void *data) {
@@ -128,6 +129,14 @@ static void raw_job(void *data) {
 /* Parks until the descriptor is ready. Ready, hung up or failed all return: the next transfer reports the details. */
 static bool wait_ready(const MsStream *stream, bool for_write, MsFail *fail) {
   if (!stream->waitable) {
+    /* A pipe the scheduler cannot wait on (Windows) is polled, so a read that times out or is cancelled stops waiting: a
+     * blocking read on the pool cannot be interrupted, and the cancelled caller would wait for the peer to write. */
+    while (!for_write && !ms_pool_on_thread() && ms_sys_fs_read_ready(stream->fd) == 0) {
+      if ((ms_task_sleep(READY_POLL_NS) & MS_WAIT_CANCELLED) != 0) {
+        ms_fail_text(fail, "cancelled");
+        return false;
+      }
+    }
     return !ms_fail_poll_cancel(fail);
   }
   const uint32_t got = ms_task_wait_fd(stream->fd, for_write ? MS_WAIT_WRITE : MS_WAIT_READ, -1);
