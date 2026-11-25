@@ -353,47 +353,6 @@ void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit
   }
 }
 
-/* How far above a frame's stack pointer its saved record is looked for: a frame with thousands of live locals is far larger than a page.
- * Only a fault walks the stack, so the scan may be long. A workaround for Windows code having no unwind data: delete it with #7011. */
-enum { SCAN_BYTES = 1 << 20 };
-
-uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintptr_t high,
-                bool (*is_source)(uintptr_t, const void *), bool (*is_native)(uintptr_t, const void *),
-                                const void *context) {
-  const bool from_fp = fp >= sp && fp < high && fp % sizeof(uintptr_t) == 0;
-  uintptr_t first = fp;
-  if (!from_fp) {
-    if (sp > UINTPTR_MAX - 7) {
-      return 0;
-    }
-    first = (sp + 7) & ~(uintptr_t)7;
-  }
-  if (high < 16 || first > UINTPTR_MAX - SCAN_BYTES) {
-    return 0;
-  }
-  uintptr_t last = first + SCAN_BYTES;
-  if (last > high - 16) {
-    last = high - 16;
-  }
-  for (uintptr_t at = first; at <= last; at += sizeof(uintptr_t)) {
-    if (at < low) {
-      continue;
-    }
-    uintptr_t record[2] = {0};
-    read_words(at, record, MS_COUNT_OF(record));
-    if (record[0] <= at || record[0] % sizeof(uintptr_t) != 0 || record[0] >= high) {
-      continue;
-    }
-    if (is_source(record[1], context)) {
-      return at;
-    }
-    if (from_fp && at == fp && is_native(record[1], context)) {
-      return 0;
-    }
-  }
-  return 0;
-}
-
 /* ---- source frames ---- */
 
 static void ms_frames_collector_init(MsFrameCollector *collector, MsFrameList *list, size_t steps) {
@@ -499,55 +458,43 @@ static bool ms_frames_collector_add(uintptr_t return_address, void *context) {
 
 static bool is_source_address(uintptr_t pc, const void *tables) { return ms_frames_find_function(tables, pc) != NULL; }
 
-static bool is_native_address(uintptr_t pc, const void *unused) {
-  (void)unused;
-  return ms_sys_has_unwind_data(pc);
+/* A walk of the system's unwind data feeds every caller's return address, the runtime's own frames first. They cost
+ * nothing: the first source frame starts the report, so its length does not depend on how deep the fault path is. */
+typedef struct NativeWalk {
+  const MsTables *tables;
+  MsFrameVisit visit;
+  void *context;
+  bool started;
+} NativeWalk;
+
+static bool native_visit(uintptr_t return_address, void *state) {
+  NativeWalk *const walk = state;
+  if (!walk->started) {
+    if (!is_source_address(return_address, walk->tables)) {
+      return true;
+    }
+    walk->started = true;
+  }
+  return walk->visit(return_address, walk->context);
 }
 
-/* Windows: the system's unwind data leads from the runtime's frames to the first frame of generated code; from
- * there each frame's record is found by scanning, since the frame register does not point at it. */
-static void visit_native(uintptr_t anchor, MsFrameVisit visit, void *context) {
-  const MsTables *const tables = ms_frames_tables();
-  MsSysNativeStart start = {0};
-  if (tables == NULL || !ms_sys_native_start(anchor, is_source_address, tables, MS_FRAMES_WALK_MAX, &start)) {
-    return;
-  }
-  uintptr_t low = 0;
-  uintptr_t high = 0;
-  ms_sys_stack_bounds(&low, &high);
-  uintptr_t pc = start.pc;
-  for (size_t step = 0; step < start.budget; step++) {
-    if (ms_frames_find_function(tables, pc) == NULL || !visit(pc, context)) {
-      return;
-    }
-    const uintptr_t at = ms_frames_scan_record(start.sp, start.fp, low, high, is_source_address, is_native_address,
-                           tables);
-    if (at == 0) {
-      return;
-    }
-    uintptr_t record[2] = {0};
-    read_words(at, record, MS_COUNT_OF(record));
-    start.fp = record[0];
-    pc = record[1];
-    start.sp = at + 2 * sizeof(uintptr_t);
-  }
-}
-
-/* Visits the return addresses of the frames above the caller of the function `anchor` (the one that starts the
- * walk, whose frame pointer is `fp`). Linux and macOS follow the frame-pointer chain from `fp`; Windows ignores
- * `fp` and starts from native unwind data, finding `anchor` on the stack. */
-static void ms_frames_visit(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameVisit visit, void *context) {
+/* Visits the return addresses of the callers of the function that calls this. Linux and macOS follow the frame-pointer
+ * chain from `fp`; Windows ignores `fp` and walks the system's unwind data. */
+static void ms_frames_visit(uintptr_t fp, MsStackWindow window, MsFrameVisit visit, void *context) {
   if (ms_sys_frame_pointer_chain()) {
     ms_frames_walk_chain(fp, window, visit, context);
     return;
   }
-  visit_native(anchor, visit, context);
+  NativeWalk walk = {.tables = ms_frames_tables(), .visit = visit, .context = context};
+  if (walk.tables != NULL) {
+    ms_sys_unwind(NULL, 0, 0, native_visit, &walk, MS_FRAMES_WALK_MAX + MS_FRAMES_NATIVE_MAX);
+  }
 }
 
-void ms_frames_collect(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameList *list) {
+void ms_frames_collect(uintptr_t fp, MsStackWindow window, MsFrameList *list) {
   MsFrameCollector collector;
   ms_frames_collector_init(&collector, list, MS_FRAMES_WALK_MAX);
-  ms_frames_visit(fp, anchor, window, ms_frames_collector_add, &collector);
+  ms_frames_visit(fp, window, ms_frames_collector_add, &collector);
 }
 
 void ms_frames_describe(const uintptr_t *addresses, size_t count, MsFrameList *list) {
