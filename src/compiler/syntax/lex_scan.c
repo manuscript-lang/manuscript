@@ -245,6 +245,21 @@ bool lex_trailing_semicolon(const Scanner *s) {
 
 /* ---- comments ---- */
 
+/* Moves over the ordinary bytes of a comment: it stops at a newline, a CR, a possible bidi control (0xE2) and, in a
+ * block comment, `*` and `/`. None of the bytes passed is a newline, so offset and column move together. */
+static void lex_comment_run(Scanner *s, bool block) {
+  size_t at = s->offset;
+  while (at < s->n) {
+    const uint8_t b = s->src[at];
+    if (b == '\n' || b == '\r' || b == 0xE2 || (block && (b == '*' || b == '/'))) {
+      break;
+    }
+    at++;
+  }
+  s->column += at - s->offset;
+  s->offset = at;
+}
+
 MS_NODISCARD bool lex_skip_comment(Scanner *s) {
   while (s->offset < s->n && s->src[s->offset] != '\n') {
     if (s->src[s->offset] == '\r') {
@@ -254,6 +269,7 @@ MS_NODISCARD bool lex_skip_comment(Scanner *s) {
       return lex_fail_text(s, COMMENT_BIDI);
     }
     lex_advance(s);
+    lex_comment_run(s, false);
   }
   return true;
 }
@@ -287,6 +303,7 @@ MS_NODISCARD bool lex_skip_block_comment(Scanner *s) {
       return lex_fail_text(s, COMMENT_BIDI);
     }
     lex_advance(s);
+    lex_comment_run(s, true);
   }
   while (s->offset < s->n && s->src[s->offset] == ' ') {
     lex_advance(s);
