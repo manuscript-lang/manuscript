@@ -692,10 +692,9 @@ export fn glob(
 fn excluding(
 	move exclude (fn(PathEntry) Bool)?
 ) (fn(String, String, Bool, Bool) Bool)? {
-	keep := exclude
-	if keep != null {
+	if exclude != null {
 		return fn(path, name String, directory, symlink Bool) Bool {
-			return keep(
+			return exclude(
 				PathEntry(
 					path: path.clone(),
 					entry: DirectoryEntry(
@@ -707,7 +706,6 @@ fn excluding(
 			)
 		}
 	}
-
 	return null
 }
 

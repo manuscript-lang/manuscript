@@ -139,9 +139,7 @@ export fn expect_contains(actual, expected String, site String = caller_site()) 
 
 // Fails on `null`; otherwise returns the payload.
 export fn expect_some[T](move actual T?, site String = caller_site()) T! {
-	value := actual
-	if value != null { return ok(value) }
-
+	if actual != null { return ok(actual) }
 	return error(failure("expected some, got none", site))
 }
 
