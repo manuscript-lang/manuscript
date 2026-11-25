@@ -84,26 +84,30 @@ MsDirectives ms_directives_header(MsSpan source) {
   return found;
 }
 
-/* The offset where the 0-based line `index` starts, or SIZE_MAX when the source has fewer lines. */
-static size_t line_start(MsSpan source, size_t index) {
-  size_t start = 0;
-  for (size_t line = 0; line < index; line++) {
-    const uint8_t *newline = __builtin_memchr(source.ptr + start, '\n', source.len - start);
-    if (newline == NULL) {
-      return SIZE_MAX;
-    }
-    start = (size_t)(newline - source.ptr) + 1;
+uint32_t *ms_line_starts(MsArena *arena, MsSpan source, uint32_t *count) {
+  uint32_t lines = 1;
+  for (size_t at = 0; at < source.len; at++) {
+    lines += source.ptr[at] == '\n' ? 1u : 0u;
   }
-  return start;
+  uint32_t *starts = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, lines);
+  uint32_t line = 1;
+  starts[0] = 0;
+  for (size_t at = 0; at < source.len; at++) {
+    if (source.ptr[at] == '\n') {
+      starts[line++] = (uint32_t)at + 1;
+    }
+  }
+  *count = lines;
+  return starts;
 }
 
-MsDirectives ms_directives_above(MsSpan source, uint32_t line) {
+MsDirectives ms_directives_above(MsSpan source, const uint32_t *line_starts, uint32_t line_count, uint32_t line) {
   MsDirectives found = {0};
   const size_t above = line > 0 ? line - 1 : 0; /* the 0-based index of the line above the declaration, plus one */
   if (above == 0) {
     return found;
   }
-  size_t start = line_start(source, above - 1);
+  size_t start = above - 1 < line_count ? line_starts[above - 1] : SIZE_MAX;
   while (start != SIZE_MAX) {
     size_t next = 0;
     const MsSpan text = line_at(source, start, &next);

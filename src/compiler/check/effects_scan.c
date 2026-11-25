@@ -32,6 +32,8 @@ typedef struct Scan {
   NodeIndex by_decl;  /* (module, function or method node) -> node index */
   EdgeList edges;
   uint32_t module;
+  uint32_t **line_starts; /* by module: its line offsets, built when the first declaration asks */
+  uint32_t *line_counts;
   uint32_t holder;    /* the node whose body is walked */
 } Scan;
 
@@ -66,7 +68,10 @@ static void add_node(Scan *scan, uint32_t module, const MsDecl *decl, const MsMe
   const MsFunc *func = !callable ? NULL : method != NULL ? &method->func : &decl->u.fn;
   const MsPos at = method != NULL ? method->pos : decl->pos;
   const uint32_t node_id = method != NULL ? method->id : decl->id;
-  MsDirectives above = ms_directives_above(info->source, at.line);
+  if (scan->line_starts[module] == NULL) {
+    scan->line_starts[module] = ms_line_starts(scan->arena, info->source, &scan->line_counts[module]);
+  }
+  MsDirectives above = ms_directives_above(info->source, scan->line_starts[module], scan->line_counts[module], at.line);
   MsDirectives header = ms_directives_header(info->source);
   MsSpan *declared = MS_ARENA_NEW_ARRAY(scan->arena, MsSpan, above.declared.len + 1);
   for (size_t index = 0; index < above.declared.len; index++) {
@@ -102,6 +107,8 @@ static void add_node(Scan *scan, uint32_t module, const MsDecl *decl, const MsMe
 /* The functions come first, in program order: `ms inspect` finds a function's effects by its place among them. Then
  * the methods, types and constants. */
 static void add_nodes(Scan *scan) {
+  scan->line_starts = MS_ARENA_NEW_ARRAY(scan->arena, uint32_t *, scan->program->modules.len);
+  scan->line_counts = MS_ARENA_NEW_ARRAY(scan->arena, uint32_t, scan->program->modules.len);
   for (uint32_t pass = 0; pass < 2; pass++) {
     for (uint32_t module = 0; module < scan->program->modules.len; module++) {
       const MsModule *tree = scan->program->modules.ptr[module].tree;
