@@ -192,15 +192,7 @@ static bool parse_line(MsArena *arena, size_t number, MsSpan raw, MsLockEntry *o
 
 static int64_t compare_entries(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
-  const MsSpan x = ((const MsLockEntry *)(const void *)a)->id;
-  const MsSpan y = ((const MsLockEntry *)(const void *)b)->id;
-  const size_t common = x.len < y.len ? x.len : y.len;
-  for (size_t i = 0; i < common; i++) {
-    if (x.ptr[i] != y.ptr[i]) {
-      return x.ptr[i] < y.ptr[i] ? -1 : 1;
-    }
-  }
-  return x.len == y.len ? 0 : (x.len < y.len ? -1 : 1);
+  return ms_span_compare(((const MsLockEntry *)(const void *)a)->id, ((const MsLockEntry *)(const void *)b)->id);
 }
 
 static bool read_lines(MsArena *arena, MsSpan text, MsLockList *out, MsSpan *error) {

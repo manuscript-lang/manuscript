@@ -378,11 +378,8 @@ int lsp_completion_compare_item(const void *left, const void *right) {
   const MsSpan x[2] = {ms_string_span(&a->sort), ms_string_span(&a->detail)};
   const MsSpan y[2] = {ms_string_span(&b->sort), ms_string_span(&b->detail)};
   for (size_t k = 0; k < 2; k++) {
-    const size_t common = x[k].len < y[k].len ? x[k].len : y[k].len;
-    for (size_t i = 0; i < common; i++) {
-      if (x[k].ptr[i] != y[k].ptr[i]) return x[k].ptr[i] < y[k].ptr[i] ? -1 : 1;
-    }
-    if (x[k].len != y[k].len) return x[k].len < y[k].len ? -1 : 1;
+    const int order = ms_span_compare(x[k], y[k]);
+    if (order != 0) return order;
   }
   return 0;
 }

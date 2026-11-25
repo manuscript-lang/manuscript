@@ -409,12 +409,7 @@ static void send_diagnostics(MsSpan uri, int64_t version, bool has_version, MsSp
 }
 
 static int compare_uri(const void *left, const void *right) {
-  const MsSpan a = ms_string_span(&(*(LspDoc *const *)left)->uri), b = ms_string_span(&(*(LspDoc *const *)right)->uri);
-  const size_t common = a.len < b.len ? a.len : b.len;
-  for (size_t i = 0; i < common; i++) {
-    if (a.ptr[i] != b.ptr[i]) return a.ptr[i] < b.ptr[i] ? -1 : 1;
-  }
-  return a.len < b.len ? -1 : (a.len > b.len ? 1 : 0);
+  return ms_span_compare(ms_string_span(&(*(LspDoc *const *)left)->uri), ms_string_span(&(*(LspDoc *const *)right)->uri));
 }
 
 void lsp_publish_diagnostics(LspDocList *docs, void (*send)(MsStrBuild *message)) {

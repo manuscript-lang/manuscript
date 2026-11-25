@@ -60,12 +60,7 @@ bool ms_string_equal(const MsString *a, const MsString *b) {
 int ms_string_compare(const MsString *a, const MsString *b) {
   const MsSpan left = ms_string_span(a);
   const MsSpan right = ms_string_span(b);
-  const size_t common = left.len < right.len ? left.len : right.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(left.ptr, right.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return (left.len > right.len) - (left.len < right.len);
+  return ms_span_compare(left, right);
 }
 
 uint64_t ms_string_hash(const MsString *string) {

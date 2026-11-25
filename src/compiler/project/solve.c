@@ -7,16 +7,6 @@
 /* The most rounds before the resolver gives up on a graph whose picks keep changing. */
 enum { kMaxRounds = 64 };
 
-int span_compare(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  for (size_t i = 0; i < common; i++) {
-    if (a.ptr[i] != b.ptr[i]) {
-      return a.ptr[i] < b.ptr[i] ? -1 : 1;
-    }
-  }
-  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
-}
-
 bool solver_fail(Solver *s, MsSpan message) {
   *s->error = message;
   return false;
@@ -106,8 +96,8 @@ static int64_t compare_asks(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
   const Ask *x = (const Ask *)(const void *)a;
   const Ask *y = (const Ask *)(const void *)b;
-  const int by_asker = span_compare(x->asker, y->asker);
-  return by_asker != 0 ? by_asker : span_compare(x->alias, y->alias);
+  const int by_asker = ms_span_compare(x->asker, y->asker);
+  return by_asker != 0 ? by_asker : ms_span_compare(x->alias, y->alias);
 }
 
 /* Every requirement of the roots and of the copies picked so far. A copy counts once, however many ask for it. */
@@ -157,12 +147,12 @@ static bool choices_equal(const ChoiceList *a, const ChoiceList *b) {
 
 static int64_t compare_copies(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
-  return span_compare(((const MsCopy *)(const void *)a)->id, ((const MsCopy *)(const void *)b)->id);
+  return ms_span_compare(((const MsCopy *)(const void *)a)->id, ((const MsCopy *)(const void *)b)->id);
 }
 
 static int64_t compare_names(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
-  return span_compare(((const MsRootName *)(const void *)a)->alias, ((const MsRootName *)(const void *)b)->alias);
+  return ms_span_compare(((const MsRootName *)(const void *)a)->alias, ((const MsRootName *)(const void *)b)->alias);
 }
 
 static const Choice *choice_of(const Solver *s, const Ask *ask) {
