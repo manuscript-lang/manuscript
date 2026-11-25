@@ -124,14 +124,14 @@ fn split_ops(args String) List[String] {
 		if c == 93 and depth > 0 { depth -= 1 }
 
 		if c == 44 and depth == 0 {
-			out.append(sub(args, start, i).trim())
+			out.append(sub(args, start, i).trim().clone())
 			start = i + 1
 		}
 
 		i += 1
 	}
 
-	out.append(sub(args, start, n).trim())
+	out.append(sub(args, start, n).trim().clone())
 	return out
 }
 
@@ -181,7 +181,7 @@ fn split_terms(inner String) List[Term] {
 		}
 
 		if c == 43 or c == 45 {
-			out.append(Term(neg: neg, text: sub(inner, start, i).trim()))
+			out.append(Term(neg: neg, text: sub(inner, start, i).trim().clone()))
 			neg = c == 45
 			start = i + 1
 		}
@@ -189,7 +189,7 @@ fn split_terms(inner String) List[Term] {
 		i += 1
 	}
 
-	out.append(Term(neg: neg, text: sub(inner, start, n).trim()))
+	out.append(Term(neg: neg, text: sub(inner, start, n).trim().clone()))
 	return out
 }
 
@@ -1068,7 +1068,7 @@ fn main() Void! {
 		if _u := r {
 			continue
 		} else {
-			err = r.err().message
+			err = r.err().message.clone()
 			errline = k + 1
 			break
 		}
@@ -1089,7 +1089,7 @@ fn main() Void! {
 		if _u := r {
 			err = ""
 		} else {
-			err = r.err().message
+			err = r.err().message.clone()
 			errline = asm.cur_line
 		}
 	}

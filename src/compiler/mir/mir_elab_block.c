@@ -98,12 +98,18 @@ static bool marker(ElEm *em, uint32_t *cur, ElState *state, const MirInst *inst,
 static bool plain(ElEm *em, uint32_t cur, ElState *state, MirInst *inst, MirValue returned) {
   MirMode *modes = MS_ARENA_NEW_ARRAY(em->cx->ma, MirMode, (size_t)inst->nargs + 1);
   mir_arg_modes(em->m, em->f, inst, modes);
+  /* The move state follows the owners the instruction names, not the `move.out` values that stand in for flagged
+   * ones: a flagged owner that moved here must not look live to the exits after it. */
+  MirValue *named = MS_ARENA_NEW_ARRAY(em->cx->ma, MirValue, (size_t)inst->nargs + 1);
   for (uint32_t k = 0; k < inst->nargs; k++) {
+    named[k] = inst->args[k];
     if (modes[k] == MM_MOVE && mir_needs_drop(em->m, mir_value_ty(em->f, inst->args[k]))) {
       inst->args[k] = em_move_arg(em, cur, inst->args[k]);
     }
   }
-  if (!el_apply(em->cx, state, inst)) {
+  MirInst applied = *inst;
+  applied.args = named;
+  if (!el_apply(em->cx, state, &applied)) {
     return false;
   }
   if (inst->res != MIR_NONE && inst->res == returned) {

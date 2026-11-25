@@ -1,0 +1,5 @@
+# A flagged owner moved into an operand is no longer live
+
+Drop elaboration gives an owner a drop flag when some path may have moved it. At each consuming instruction a flagged owner stays in place and the operand becomes a `move.out` of it, with the flag set false. The move state must still follow the owner the instruction named: `plain` (`mir_elab_block.c`) applies the instruction to the named owners, not to the `move.out` values. Applying it to the replacements left the owner `Live`, so an early `return` right after the move dropped it with a plain `drop` and freed a value the destination already owned (a `String` stored into a field on an early-return path, also assigned on a branch after it; a hang in the allocator at thread exit, found by the c67 agent-bench starter).
+
+The fixture `early-return-after-flagged-move` is the regression; before the fix it hangs. If a state in the dataflow pass and in the emission pass can disagree about an owner, the exit drops are wrong on exactly the paths the flag was meant for.
