@@ -97,9 +97,10 @@ export fn shuffle[T](move values List[T]) List[T]! {
 	return draw_shuffle(values)
 }
 
-// Returns a uniformly chosen item, or null for an empty list.
+// Returns a uniformly chosen item as a view of `values`, or null for an empty list. Use
+// `.clone()` to keep it.
 // ms: effect std.random.read
-export fn choice[T Clonable](values List[T]) T?! {
+export fn choice[T](hold values List[T]) &T?! {
 	return draw_choice(values)
 }
 
@@ -124,18 +125,18 @@ export fn sample[T Clonable](values List[T], count Int) List[T]! {
 	return ok(out)
 }
 
-// Returns an item chosen with probability proportional to its weight, or null for an
-// empty list. `weights` must match `values` in length, hold no negative or non-finite
-// weight, and not all be zero; otherwise this returns `EINVAL`.
+// Returns a view of an item chosen with probability proportional to its weight, or null
+// for an empty list. `weights` must match `values` in length, hold no negative or
+// non-finite weight, and not all be zero; otherwise this returns `EINVAL`.
 // ms: effect std.random.read
-export fn weighted_choice[T Clonable](values List[T], weights List[Float]) T?! {
+export fn weighted_choice[T](hold values List[T], weights List[Float]) &T?! {
 	if values.is_empty() and weights.is_empty() { return ok(null) }
 
 	total := weight_total(values.length(), weights)
 	if total == 0.0 { return error(Error("random: invalid input", kind: "EINVAL")) }
 
 	point := float()?
-	return ok(values[weighted_position(weights, point, total)].clone())
+	return ok(values[weighted_position(weights, point, total)])
 }
 
 fn positions(count Int) List[Int] {
@@ -293,7 +294,7 @@ fn var SeededRandom.shuffle[T](move values List[T]) List[T] {
 }
 
 // Returns a uniformly chosen item, or null for an empty list.
-fn var SeededRandom.choice[T](values List[T]) &T? {
+fn var SeededRandom.choice[T](hold values List[T]) &T? {
 	if values.is_empty() { return null }
 	return values[self.int(0, values.length())]
 }
