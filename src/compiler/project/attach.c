@@ -345,15 +345,7 @@ static bool check_alias_collisions(Wiring *w, const MsManifest *project) {
 
 static int64_t compare_packages(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
-  const MsSpan x = ((const MsPackage *)(const void *)a)->id;
-  const MsSpan y = ((const MsPackage *)(const void *)b)->id;
-  const size_t common = x.len < y.len ? x.len : y.len;
-  for (size_t i = 0; i < common; i++) {
-    if (x.ptr[i] != y.ptr[i]) {
-      return x.ptr[i] < y.ptr[i] ? -1 : 1;
-    }
-  }
-  return x.len == y.len ? 0 : (x.len < y.len ? -1 : 1);
+  return ms_span_compare(((const MsPackage *)(const void *)a)->id, ((const MsPackage *)(const void *)b)->id);
 }
 
 static bool attach_in(Wiring *w, MsManifest *project) {

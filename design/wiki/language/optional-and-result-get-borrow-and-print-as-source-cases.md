@@ -8,4 +8,4 @@ Lesson (hardening 2026-11-16): `get_or(default)` hands back the payload too, so 
 
 Text conversion (`print`, interpolation, `to_string`, test `repr`) shows `some(v)`, `none`, `ok(v)`, `error(e)`, the source spellings, not `Optional.some(v)`. Other enums keep `Type.Case`.
 
-Check: `ms run tools/conform.ms` (CI's conformance job runs it; `ms-conform` alone missed five e2e fixtures), `crates/ms-check/tests/ownership/accept/try_owned_result_local_moves_payload.ms`, `crates/ms-check/tests/ownership/reject/var_borrow_of_result_get.ms`, `tests/conformance/fixtures/e2e/accept/to-string.ms`.
+Check: `ms run tools/conform.ms` (CI's conformance job runs it; a narrower runner once missed five e2e fixtures), the ownership checks under `tests/checks/ownership-counts/`, `tests/conformance/fixtures/e2e/accept/to-string.ms`.

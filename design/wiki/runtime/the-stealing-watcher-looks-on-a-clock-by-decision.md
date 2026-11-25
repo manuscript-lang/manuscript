@@ -2,7 +2,7 @@
 
 # The stealing watcher looks on a clock, by decision
 
-Decision (Chinmay, 2026-11-16): the watcher thread (`crates/ms-rt/src/watch.rs`) keeps a periodic look; PR 4238, which replaced it with kernel timers, was closed unmerged. A second instruction the same day: keep the previous latencies, so a single fixed interval is out. This is the one deliberate periodic wait left in the runtime. It is not a poll for something that could signal: a task that computes never signals that it is stuck, so "a thread was held up" can only be seen by looking at how long it has gone without turning its reactor.
+Decision (Chinmay, 2026-11-16): the watcher thread (`src/runtime/core/watch.c`) keeps a periodic look; PR 4238, which replaced it with kernel timers, was closed unmerged. A second instruction the same day: keep the previous latencies, so a single fixed interval is out. This is the one deliberate periodic wait left in the runtime. It is not a poll for something that could signal: a task that computes never signals that it is stuck, so "a thread was held up" can only be seen by looking at how long it has gone without turning its reactor.
 
 ## Why kernel timers lost
 
@@ -25,6 +25,6 @@ It looks every 2 ms while any thread is busy, every 100 µs for 0.1 s after a ho
 
 A form with the two-mode latencies and no periodic look: for example a deadline armed by the event that makes a thread stuck (a handler start), which needs a cheap start announcement, since the measured costs above are all per request. Measure it with `bench/perf/http-tail` (`sweep.sh`, fast and slow mixes, closed loop) and the idle fixture against the dated results before proposing it, and expect Chinmay's call.
 
-Apply when: touching `ms_rt::watch`, the steal hooks or the scheduler's rest states.
-Evidence: [stealing page](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md), [proposal](../../proposals/event-driven-waits.md), [results](../../../bench/perf/http-tail/README.md), watch.rs.
+Apply when: touching `src/runtime/core/watch.c`, the steal hooks or the scheduler's rest states.
+Evidence: [stealing page](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md), [proposal](../../proposals/event-driven-waits.md), [results](../../../bench/perf/http-tail/README.md), `src/runtime/core/watch.c`.
 Verify: fixture `http-idle-server-stays-asleep`; `bench/perf/http-tail` against the latest dated baseline.

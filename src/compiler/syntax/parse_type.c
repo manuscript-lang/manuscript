@@ -449,7 +449,7 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
   MsToken names[MS_GROUP_MAX];
   names[0] = name;
   size_t nnames = 1;
-  if (!inferred && !parse_group_names(p, names, &nnames))
+  if (!parse_group_names(p, names, &nnames)) /* a lambda groups too: `fn(row, col Int)` is what `ms fmt` writes */
     return false;
   const MsToken last = names[nnames - 1];
   const size_t type_at = p->at;

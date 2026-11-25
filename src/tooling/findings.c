@@ -26,13 +26,9 @@ int64_t finding_compare(uint8_t *env, const uint8_t *left, const uint8_t *right)
   (void)env;
   const Finding *a = (const void *)left;
   const Finding *b = (const void *)right;
-  const size_t common = a->file.len < b->file.len ? a->file.len : b->file.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a->file.ptr, b->file.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  if (a->file.len != b->file.len) {
-    return a->file.len < b->file.len ? -1 : 1;
+  const int by_file = ms_span_compare(a->file, b->file);
+  if (by_file != 0) {
+    return by_file;
   }
   if (a->diag.pos.line != b->diag.pos.line) {
     return a->diag.pos.line < b->diag.pos.line ? -1 : 1;

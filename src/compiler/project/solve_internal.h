@@ -59,8 +59,6 @@ typedef struct Solver {
   MsSpan *error;
 } Solver;
 
-/* Orders spans by bytes. */
-int span_compare(MsSpan a, MsSpan b);
 /* Whether `name` is one of `count` spans. */
 bool span_in_list(const MsSpan *names, size_t count, MsSpan name);
 const Download *find_download(const Solver *s, MsSpan url, MsSpan reference);

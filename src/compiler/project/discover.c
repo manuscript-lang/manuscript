@@ -49,14 +49,9 @@ static int64_t entry_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   const MsDirEntry *y = (const void *)b;
   const MsSpan left = ms_string_span(&x->name);
   const MsSpan right = ms_string_span(&y->name);
-  const size_t common = left.len < right.len ? left.len : right.len;
-  for (size_t i = 0; i < common; i++) {
-    if (left.ptr[i] != right.ptr[i]) {
-      return left.ptr[i] < right.ptr[i] ? -1 : 1;
-    }
-  }
-  if (left.len != right.len) {
-    return left.len < right.len ? -1 : 1;
+  const int by_name = ms_span_compare(left, right);
+  if (by_name != 0) {
+    return by_name;
   }
   return (x->kind == MS_PATH_DIRECTORY) - (y->kind == MS_PATH_DIRECTORY);
 }

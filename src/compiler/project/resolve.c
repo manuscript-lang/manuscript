@@ -9,16 +9,6 @@
 
 enum { OS_ENOENT = 2, OS_EACCES = 13, OS_ENOTDIR = 20 };
 
-static bool span_less(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  for (size_t i = 0; i < common; i++) {
-    if (a.ptr[i] != b.ptr[i]) {
-      return a.ptr[i] < b.ptr[i];
-    }
-  }
-  return a.len < b.len;
-}
-
 static bool message(MsArena *arena, MsProjectError *error, MsStrBuild *text) {
   ms_project_error_message(error, ms_message_take_builder(arena, text));
   return false;
@@ -83,7 +73,7 @@ static size_t declared_names(MsArena *arena, const MsManifest *manifest, MsSpan 
     }
   }
   for (size_t i = 1; i < count; i++) {
-    for (size_t j = i; j > 0 && span_less(all[j], all[j - 1]); j--) {
+    for (size_t j = i; j > 0 && ms_span_compare(all[j], all[j - 1]) < 0; j--) {
       const MsSpan swap = all[j];
       all[j] = all[j - 1];
       all[j - 1] = swap;

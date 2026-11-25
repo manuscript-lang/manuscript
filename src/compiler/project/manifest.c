@@ -343,14 +343,9 @@ static const TomlEntry *first_foreign_entry(const Reader *r) {
       continue;
     }
     const MsSpan held = r->document->tables.ptr[first->table].name;
-    const size_t common = table.len < held.len ? table.len : held.len;
-    int order = common == 0 ? 0 : __builtin_memcmp(table.ptr, held.ptr, common);
-    if (order == 0 && table.len == held.len) {
-      const size_t keys = entry->key.len < first->key.len ? entry->key.len : first->key.len;
-      order = keys == 0 ? 0 : __builtin_memcmp(entry->key.ptr, first->key.ptr, keys);
-      order = order != 0 ? order : (entry->key.len < first->key.len ? -1 : entry->key.len > first->key.len);
-    } else if (order == 0) {
-      order = table.len < held.len ? -1 : 1;
+    int order = ms_span_compare(table, held);
+    if (order == 0) {
+      order = ms_span_compare(entry->key, first->key);
     }
     first = order < 0 ? entry : first;
   }

@@ -2,6 +2,7 @@
  * `is_some`, and `x or d` replaces `get_or`, `get_or_else` and `or_else`; each use is reported with the rewrite as its
  * machine fix. */
 #include "compiler/check/body.h"
+#include "base/chars.h"
 #include "compiler/check/call_internal.h"
 #include "compiler/syntax/walk.h"
 
@@ -39,10 +40,6 @@ static bool slice(const Body *body, const MsExpr *expr, MsSpan *out) {
   return expr->end.offset > start.offset && ms_span_slice(body->source, start.offset, expr->end.offset, out);
 }
 
-static bool blank(uint8_t c) {
-  return c == ' ' || c == '\t';
-}
-
 /* Whether the source text before `end` ends with `word`. */
 static bool ends_with(MsSpan source, size_t end, const char *word) {
   const MsSpan expected = ms_span_of_text(word);
@@ -55,15 +52,15 @@ static bool ends_with(MsSpan source, size_t end, const char *word) {
 static bool stands_alone(const Body *body, const MsExpr *call, MsPos start) {
   const MsSpan source = body->source;
   size_t before = start.offset;
-  while (before > 0 && blank(source.ptr[before - 1])) {
+  while (before > 0 && ms_ascii_is_blank(source.ptr[before - 1])) {
     before--;
   }
   size_t after = call->end.offset;
-  while (after < source.len && blank(source.ptr[after])) {
+  while (after < source.len && ms_ascii_is_blank(source.ptr[after])) {
     after++;
   }
   const bool open = before == 0 || source.ptr[before - 1] == '\n' || source.ptr[before - 1] == '(' ||
-                    source.ptr[before - 1] == ',' || source.ptr[before - 1] == ':' || (source.ptr[before - 1] == '=' && before >= 2 && (source.ptr[before - 2] == ':' || blank(source.ptr[before - 2]))) ||
+                    source.ptr[before - 1] == ',' || source.ptr[before - 1] == ':' || (source.ptr[before - 1] == '=' && before >= 2 && (source.ptr[before - 2] == ':' || ms_ascii_is_blank(source.ptr[before - 2]))) ||
                     ends_with(source, before, "if") || ends_with(source, before, "while") || ends_with(source, before, "return");
   const bool close = after >= source.len || source.ptr[after] == '\n' || source.ptr[after] == ':' ||
                      source.ptr[after] == ')' || source.ptr[after] == ',';
@@ -84,11 +81,11 @@ static bool written_receiver(const Body *body, const MsExpr *receiver, MsSpan na
   }
   for (;;) {
     size_t before = begin;
-    while (before > 0 && blank(source.ptr[before - 1])) {
+    while (before > 0 && ms_ascii_is_blank(source.ptr[before - 1])) {
       before--;
     }
     size_t after = end;
-    while (after < source.len && blank(source.ptr[after])) {
+    while (after < source.len && ms_ascii_is_blank(source.ptr[after])) {
       after++;
     }
     if (before == 0 || after >= source.len || source.ptr[before - 1] != '(' || source.ptr[after] != ')') {
@@ -102,7 +99,7 @@ static bool written_receiver(const Body *body, const MsExpr *receiver, MsSpan na
   }
   /* what follows must be `.name`: a pipe stage or an odd layout has no receiver text to move */
   size_t dot = end;
-  while (dot < source.len && blank(source.ptr[dot])) {
+  while (dot < source.len && ms_ascii_is_blank(source.ptr[dot])) {
     dot++;
   }
   const bool member = dot + 1 + name.len <= source.len && source.ptr[dot] == '.' &&
@@ -132,7 +129,7 @@ static MsSpan lambda_body(const Body *body, const MsExpr *lambda, MsSpan text) {
     colon++;
   }
   size_t start = colon + 1;
-  while (start < text.len && blank(text.ptr[start])) {
+  while (start < text.len && ms_ascii_is_blank(text.ptr[start])) {
     start++;
   }
   (void)body;
@@ -359,7 +356,7 @@ void body_report_if_unwrap(Body *body, const MsStmt *stmt) {
     line--;
   }
   for (size_t at = line; at < stmt->pos.offset; at++) {
-    if (!blank(body->source.ptr[at])) {
+    if (!ms_ascii_is_blank(body->source.ptr[at])) {
       return; /* `else if`: no mechanical rewrite */
     }
   }

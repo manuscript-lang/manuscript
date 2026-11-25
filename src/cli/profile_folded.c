@@ -166,12 +166,7 @@ static int64_t compare_top(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   const MsNames *const names = ((const TopOrder *)(void *)env)->names;
   const MsSpan x = ms_names_span(names, left.function);
   const MsSpan y = ms_names_span(names, right.function);
-  const size_t common = x.len < y.len ? x.len : y.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(x.ptr, y.ptr, common);
-  if (order != 0) {
-    return order;
-  }
-  return x.len < y.len ? -1 : (x.len > y.len ? 1 : 0);
+  return ms_span_compare(x, y);
 }
 
 void ms_folded_top(const MsFoldedProfile *profile, MsTopList *out) {

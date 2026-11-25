@@ -217,18 +217,6 @@ static bool sf_int_op(MirOp op, int64_t x, int64_t y, int64_t *out) {
   }
 }
 
-static bool sf_eval_cc(uint32_t cc, int64_t a, int64_t b) {
-  switch ((MirCc)cc) {
-  case MCC_EQ: return a == b;
-  case MCC_NE: return a != b;
-  case MCC_LT: return a < b;
-  case MCC_LE: return a <= b;
-  case MCC_GT: return a > b;
-  case MCC_GE: return a >= b;
-  }
-  return false;
-}
-
 static bool sf_eval_cc_float(uint32_t cc, double a, double b) {
   switch ((MirCc)cc) {
   case MCC_EQ: return a == b;
@@ -239,16 +227,6 @@ static bool sf_eval_cc_float(uint32_t cc, double a, double b) {
   case MCC_GE: return a >= b;
   }
   return false;
-}
-
-static uint32_t sf_swapped(uint32_t cc) {
-  switch ((MirCc)cc) {
-  case MCC_LT: return MCC_GT;
-  case MCC_LE: return MCC_GE;
-  case MCC_GT: return MCC_LT;
-  case MCC_GE: return MCC_LE;
-  default: return cc;
-  }
 }
 
 /* ---- the rules ---- */
@@ -469,7 +447,7 @@ static SfAct sf_icmp_rule(SfEnv *e, OptInstVec *out, const MirInst *inst) {
   const MirValue x = inst->args[0], y = inst->args[1];
   int64_t p = 0, q = 0;
   if (sf_ci(e, x, &p) && sf_ci(e, y, &q)) {
-    return sf_const_bool(sf_eval_cc(cc, p, q));
+    return sf_const_bool(mir_cc_holds((MirCc)cc, p, q));
   }
   if (x == y) {
     return sf_const_bool(cc == MCC_EQ || cc == MCC_LE || cc == MCC_GE);
@@ -684,7 +662,7 @@ static bool sf_canonical_order(const SfEnv *e, MirInst *inst) {
   inst->args[0] = inst->args[1];
   inst->args[1] = t;
   if (!commutes) {
-    inst->imm.a = sf_swapped(inst->imm.a);
+    inst->imm.a = (uint32_t)mir_cc_swapped((MirCc)inst->imm.a);
   }
   return true;
 }

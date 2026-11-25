@@ -88,7 +88,8 @@ void emit_store_leaf(EmitCx *cx, MirLeaf leaf, MirValue src, uint32_t index, Emi
                      tbaa_text(cx));
 }
 
-void emit_leaves_at(EmitCx *cx, MirValue value, const char *base, bool load) {
+/* The memory offsets of the leaves of `value`, from `mir_mem_layout`; free with ms_free. */
+uint32_t *emit_leaf_offsets(EmitCx *cx, MirValue value) {
   MsSpan leaves = emit_value_leaves(cx, value);
   size_t bytes = 0;
   if (!ms_size_mul(leaves.len + 1, sizeof(uint32_t), &bytes)) {
@@ -96,6 +97,12 @@ void emit_leaves_at(EmitCx *cx, MirValue value, const char *base, bool load) {
   }
   uint32_t *offsets = ms_alloc_zeroed(bytes);
   (void)mir_mem_layout(leaves, offsets);
+  return offsets;
+}
+
+void emit_leaves_at(EmitCx *cx, MirValue value, const char *base, bool load) {
+  MsSpan leaves = emit_value_leaves(cx, value);
+  uint32_t *offsets = emit_leaf_offsets(cx, value);
   for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {
     EmitAddr address = emit_address(cx, base, offsets[leaf]);
     if (load) {

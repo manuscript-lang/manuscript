@@ -2,7 +2,7 @@
 
 # Compiler and build
 
-Checking, lowering, MIR, Cranelift, build, fault sites.
+Checking, lowering, MIR, LLVM emission, build, fault sites.
 
 - [Name lookups in a function are indexed, not scanned](name-lookups-in-a-function-are-indexed-not-scanned.md): per-name scope index; a 32k-line function checks in 0.47 s instead of 3.8 s.
 - [Debug suffixes hid lines from the copy-forwarding pass](debug-suffixes-hid-lines-from-the-copy-forwarding-pass.md): `emit_copies` matched nothing in builds with debug info; fixed, `string_append_50k` instructions halved.
@@ -26,19 +26,18 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Native omissions are declared in the standard declaration](native-omissions-are-declared-in-the-standard-declaration.md): defaults for native functions, methods, and constructor fields are written in the standard `.ms` declaration and checked as ordinary expressions.
 - [Omitted library entries must stay empty through module loading](omitted-library-entries-must-stay-empty-through-module-loadi.md): executable manifests require an entry; libraries omit the key, and an explicitly empty or invalid entry remains an error.
 - [Promises borrow their captures and never change them](promises-borrow-their-captures-and-never-change-them.md): the ownership checker's rule for concurrent code (declared by the `Promise` result type), its known gaps, and the `.wait()` migration fixes.
-- [Symbols are indexes ordered by intern order, not text](symbols-are-indexes-ordered-by-intern-order-not-text.md): output that must be alphabetical sorts with `Names::cmp`; `Names::str` text lives until its interner is dropped or a session is released.
-- [Compile time is spent in Cranelift, LLVM tools and serial passes](compile-time-is-spent-in-cranelift-and-serial-passes.md): measured split of a test-corpus build, the verifier and parallel-pass rules, and what costs next.
+- [Names are dense ids ordered by intern order, not text](symbols-are-indexes-ordered-by-intern-order-not-text.md): output that must be alphabetical sorts on the text, never on id order.
+- [Compile time is spent in LLVM and serial MIR passes](compile-time-is-spent-in-llvm-and-serial-mir-passes.md): the C compiler has one LLVM backend; unit splitting, serial MIR passes and repeated library checking.
 - [Standard-library analyses run on demand](standard-library-analyses-run-on-demand.md): the project's callables are analyzed first and a bundled one when the effect scan or lowering reaches it; hello `ms check` 317M to 168M instructions.
-- [Compiler change checklist](compiler-change-checklist.md): syntax, checking, lowering, MIR, Cranelift, build, and linking rules to check before editing the compiler.
+- [Compiler change checklist](compiler-change-checklist.md): syntax, checking, lowering, MIR, LLVM emission, build, and linking rules to check before editing the compiler.
 - [LLVM resolves interface calls only from vtables it can read](llvm-resolves-interface-calls-from-vtables-it-can-read.md): release units carry `available_externally` vtable copies so calls on a known `iface.new` inline.
-- [Direct LLVM records above eight leaves are memory, not leaf bags](direct-llvm-records-are-memory-not-leaf-bags-above-eight-leaves.md): one `alloca` of the leaf struct, `memcpy` copies, byte-offset field reads, slots for block parameters.
-- [LLVM facts need pointer provenance, and Cranelift alias regions are not markers](llvm-facts-need-provenance-and-cranelift-alias-regions-are-global.md): the deleted translation, why region tags are Cranelift-global, direct-emitter facts, and what blocks vectorization.
+- [Values above eight leaves live in memory cells, not leaf bags](direct-llvm-records-are-memory-not-leaf-bags-above-eight-leaves.md): stack cells above `wide_leaves`, `memcpy` copies, edge copies instead of phis, sret and pointer parameters.
+- [LLVM facts need pointer provenance, and TBAA stays coarse](llvm-facts-need-pointer-provenance-and-tbaa-stays-coarse.md): TBAA classes, function facts, what to keep out, and what blocks vectorization.
 - [Structural property bits are not worth a whole-program pass](structural-property-bits-are-not-worth-a-whole-program-pass.md): a typical check makes about 270 property queries, and answers depended on per-file impl visibility.
-- [A list updated in place in a loop is registered once](a-list-updated-in-place-in-a-loop-is-registered-once.md): a task loop that set list elements pushed and discarded a cleanup every iteration, 1.5x slower than the same loop called directly.
 - [Debug frames are allocas plus one spill per cross-block value](debug-frames-are-allocas-plus-one-spill-per-cross-block-value.md): -O0 never reuses spill slots, so the emitter shares call result areas, argument copies and one-block slots itself; cross-block values are the remaining cost.
 - [There are no function-size tiers in the emitter](there-are-no-function-size-tiers-in-the-emitter.md): huge functions compile at the module level; use pass timings, not a size switch; handle slot sharing rule.
 - [A call not declared fresh pins its argument slots](a-call-not-declared-fresh-pins-its-argument-slots.md): a view of an inline text points into the slot its argument was passed in, so pinning is the default unless the call is `fresh`.
-- [Backends lower; the stack-depth protocol and layouts live in MIR](backends-only-lower-language-logic-lives-in-mir.md): `ms_mir::depth`, `stack.low`, one closure layout, why the grow path carries no location.
+- [Backends lower; the stack-depth protocol and layouts live in MIR](backends-only-lower-language-logic-lives-in-mir.md): `mir_depth.c`, `stack.low`, one closure layout, why the grow path carries no location.
 - [Checks and list growth are MIR; the backends only lower](checks-and-list-growth-are-mir-the-backends-only-lower.md)
 - [F-strings and string joins are expanded in MIR](f-strings-and-joins-are-expanded-in-mir.md): lengths, `msrt_string_open`, `str.data` and `mem.copy`; in-place append through a `{text, pending}` frame; no numbered entry points.
 - [A look is checked against its owner's block, not only at returns](a-look-is-checked-against-its-owners-block.md): assigning or appending a `&`-field record to a place read after the owner's block ends, or capturing one in an escaping closure, is rejected (#6979); `own/look_stores.c`.

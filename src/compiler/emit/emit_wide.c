@@ -316,12 +316,7 @@ void emit_wide_loads(EmitCx *cx) {
   for (uint32_t index = 0; index < plan->ntouched; index++) {
     const MirValue value = plan->touched[index];
     MsSpan leaves = emit_value_leaves(cx, value);
-    size_t bytes = 0;
-    if (!ms_size_mul(leaves.len + 1, sizeof(uint32_t), &bytes)) {
-      ms_fatal(MS_FATAL_OVERFLOW, "leaf count");
-    }
-    uint32_t *offsets = ms_alloc_zeroed(bytes);
-    (void)mir_mem_layout(leaves, offsets);
+    uint32_t *offsets = emit_leaf_offsets(cx, value);
     char cell[24];
     cell_name(cx, value, cell, sizeof cell);
     for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {

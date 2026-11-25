@@ -30,6 +30,12 @@ void msrt_string_concat(const MsString *a, const MsString *b, MsString *out);
 void msrt_string_append(const MsString *a, const MsString *b, MsString *out);
 /* ms-sig: msrt_string_repeat(s: *const StrVal, count: i64, out: *mut StrVal) @domain=string @end */
 void msrt_string_repeat(const MsString *s, int64_t count, MsString *out);
+/* ms-sig: msrt_string_pad_start(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string
+ * @end */
+void msrt_string_pad_start(const MsString *s, int64_t target, const MsString *padding, MsString *out);
+/* ms-sig: msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string
+ * @end */
+void msrt_string_pad_end(const MsString *s, int64_t target, const MsString *padding, MsString *out);
 /* ms-sig: msrt_string_reverse(a: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_reverse(const MsString *a, MsString *out);
 /* ms-sig: msrt_string_trim(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string */

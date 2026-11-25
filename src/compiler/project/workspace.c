@@ -61,14 +61,7 @@ static bool member_error(MsArena *arena, MsProjectError *error, MsSpan pattern, 
 
 static int64_t compare_paths(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
-  const MsSpan x = *(const MsSpan *)(const void *)a;
-  const MsSpan y = *(const MsSpan *)(const void *)b;
-  const size_t common = x.len < y.len ? x.len : y.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(x.ptr, y.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return x.len < y.len ? -1 : x.len > y.len;
+  return ms_span_compare(*(const MsSpan *)(const void *)a, *(const MsSpan *)(const void *)b);
 }
 
 /* The child directories of `parent` holding an ms.toml, canonical, sorted; hidden ones are never members. */

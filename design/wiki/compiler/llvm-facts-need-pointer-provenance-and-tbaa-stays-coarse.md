@@ -1,0 +1,21 @@
+[Wiki](../index.md) › [Compiler and build](index.md)
+
+# LLVM facts need pointer provenance, and TBAA stays coarse
+
+Verified: the C compiler writes LLVM IR text straight from MIR (`compiler/emit`) and keeps `ptr` throughout, so facts reach LLVM. History worth keeping from the Rust era: the Cranelift lowering saw every address as `i64`, and a Cranelift alias region means "disjoint from every other region, untagged accesses included", so a tagged store no untagged load observes was dead. Never use a region as a mere marker.
+
+TBAA has few classes: scalar list elements, list/string header elements, and whole list or bytes headers moved between a slot and registers (`ms.list-header`, `emit.c`; `emit_list.c`). A buffer holds one element type, so `dp[i][j] = v` does not reload and rewrite the row header (LCS grid 41 to 34 ms). Finer classes are unsound: a record field or inner header is also read through borrowed pointers that carry no tag, so tag only accesses through the element address. A slot registered for cleanup escapes to the runtime, so untagged header accesses made every element store reload the header; tagging whole headers took `stencil` from 21.0M to 18.1M instructions.
+
+- Measured (2026-11-12): none of the facts moves the kernels beyond noise (`chars_1M` shifted 25% with identical IR, code placement). The real vectorization blocker is checked `Int` arithmetic: `sadd.with.overflow` reductions and cold fault exits are not vectorized (`sumi` 0.6 ns per element, a checked `y[i] += x[i] * 3` 0.78, wrapping `saxpy` 0.25). Range proofs in MIR (`opt/opt_range*.c`) are the lever; what stays checked is an unbounded accumulation, and vectorizing it needs a loop-versioning scheme with scalar replay on overflow.
+- Tried without effect: an entry `llvm.assume` with `dereferenceable(ptr, len * size)` for every list parameter.
+- A runtime function with an out parameter is never declared `memory(read)`; declared read-only while writing its out slot, `parse_int`, `index_of` and `view` returned wrong output once the library's own definition no longer replaced the declaration.
+- Function facts: a scalar function whose MIR is pure gets `nounwind nofree nosync memory(none)` (plus `willreturn norecurse` when loop-free), and the same on the `declare` at each call site, since a callee in another unit is only a declaration (`emit_hints.c`, `emit_func.c`). `nomerge` goes only on calls that can fault; faults are `cold noreturn`.
+- Keep out: `noundef` while enums and optionals pass an unused payload leaf as `undef` (undefined behavior at the first `none`); record-field TBAA while borrowed pointers carry no tag; `llvm.loop.mustprogress` until the language decides whether an effect-free loop may be deleted.
+- Not implemented in the C emitter (the Rust one had them): LLVM allocation-family attributes on `msrt_alloc`/`msrt_free`. LLVM then could delete a block only stored to and freed (a temp `List` in a loop went from 33M to 1.2M instructions). Allocator inlining was measured and rejected: an alloc, two appends and a free cost 5.5 ns, so the calls are a fifth at most. Under `valgrind` allocation-heavy instruction counts are not the shipped allocator's.
+- When a new emitter replaces a path, diff the inline fast paths of the old one (string compare with a literal, `bytes_append`) and time `bench/perf` and a builder microbenchmark before and after: dropping them made wordfreq 242 to 305 ms and `BytesBuilder.append` 39 to 300 ms.
+- A hot string op written as a chain of selects costs more than a branch (`StrAsciiLen` made `records_1M_x20` 13% slower; its own block made it 17% faster). A map or set is a memory value, since seven SSA words made LLVM spill the map around every runtime call (strmap_10M +10%). The deep-drop guard counts nesting only near the stack limit; guarding every drop cost about 5%.
+- Line count does not predict compile time (a 19k-line MIR yaml program: 183k LLVM lines, 122k without vectorize, same 2.9 s build). Judge a stage by time.
+
+Apply when: adding facts to the LLVM emitter.
+Evidence: [direct emission proposal](../../proposals/mir-to-llvm-direct.md), [LLVM backend](../../proposals/llvm-backend.md), `src/compiler/emit/README.md`, `tools/llvm-direct-check.ms`.
+Verify: `make conform-release` (run and test phases under Release) and a `bench/perf` before/after.

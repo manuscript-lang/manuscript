@@ -119,7 +119,9 @@ export fn read_all(move input ReadStream[Bytes], max_bytes Int?) Bytes! {
 		}
 	}
 
+	// `first` gives up its chunk, so `ok` takes the chunk itself and not a copy of it.
 	one := first
+	first = null
 	if one != null { return ok(one) }
 
 	return ok(all.build())

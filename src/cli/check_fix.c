@@ -12,13 +12,9 @@ static int64_t order_fixes(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
   const CheckFix *x = (const CheckFix *)(const void *)a;
   const CheckFix *y = (const CheckFix *)(const void *)b;
-  const size_t common = x->path.len < y->path.len ? x->path.len : y->path.len;
-  const int by_path = common == 0 ? 0 : __builtin_memcmp(x->path.ptr, y->path.ptr, common);
+  const int by_path = ms_span_compare(x->path, y->path);
   if (by_path != 0) {
-    return by_path < 0 ? -1 : 1;
-  }
-  if (x->path.len != y->path.len) {
-    return x->path.len < y->path.len ? -1 : 1;
+    return by_path;
   }
   if (x->start != y->start) {
     return x->start < y->start ? -1 : 1;

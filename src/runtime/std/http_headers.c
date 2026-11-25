@@ -93,13 +93,6 @@ static int fold_compare(MsSpan a, MsSpan b) {
   return a.len == b.len ? 0 : a.len < b.len ? -1 : 1;
 }
 
-/* Bytewise order, as ms_string_compare gives. */
-static int span_compare(MsSpan a, MsSpan b) {
-  const size_t n = a.len < b.len ? a.len : b.len;
-  const int d = n == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, n);
-  return d != 0 ? d : (a.len == b.len ? 0 : a.len < b.len ? -1 : 1);
-}
-
 static MsHeaderGroup *group_at(const MsHeaders *headers, size_t index) {
   return (MsHeaderGroup *)(void *)headers->groups.ptr + index;
 }
@@ -284,7 +277,7 @@ MsHeaders *ms_headers_from_received(const MsHeaderField *fields, size_t count) {
     MsHeaderGroup *group = find_group(headers, text);
     if (group == NULL) {
       size_t at = 0;
-      while (at < headers->groups.len && span_compare(ms_string_span(&group_at(headers, at)->name), text) <= 0) {
+      while (at < headers->groups.len && ms_span_compare(ms_string_span(&group_at(headers, at)->name), text) <= 0) {
         at++;
       }
       group = insert_group(headers, at, text);

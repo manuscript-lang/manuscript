@@ -15,12 +15,11 @@ Evidence: [integer conversion regression](../../../tests/conformance/fixtures/e2
 Verify: both signed and unsigned integer conversions to `Float32` round directly to binary32. An intermediate binary64 conversion can erase which side of a midpoint a large integer is on; cover direct calls and bound conversion methods.
 Evidence: backend settings and compile regression, profile options.
 Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.
-Source-verified: LLVM address metadata uses modular offsets, independently of source checked arithmetic. Negate a subtraction delta with `wrapping_neg`, matching the following `wrapping_add`; ordinary host negation of `i64::MIN` panics in overflow-checked compiler builds even without a known base because `Option::zip` evaluates its argument eagerly. The backend regression `subtraction_tracks_minimum_integer_offsets_without_overflow` covers ordinary and exclusive-pointer parameters, minimum and neighboring deltas, and cancellation back to the original address.
-Verify: run `cargo test -p ms-mir --test it -- opt_simplify::`; preserve zero-divisor faults and the checked division overflow.
+Source-verified: LLVM address metadata uses modular offsets, independently of source checked arithmetic, so compiler code that tracks pointer offsets must negate and add with wrapping arithmetic; a host negation of the minimum `Int` must not trap in the compiler itself.
+Verify: run `make conform`; preserve zero-divisor faults and the checked division overflow.
 Verify: repeated checks across I/O and dominated blocks collapse; sibling checks, different operations, overflow and division faults keep their behavior.
 Verify: nested replacement loops eliminate redundant bounds checks; shrinking and conditional replacement still fault at an invalid index.
 Verify: run the source fixture in Debug and Release; both constant and variable conversions, both signs, and ties to even must agree.
-Verify: `cargo nextest run -p ms-clif`; preserve the long-Debug-function allocator selection.
 
 Radix spellings must be normalized before checking decimal suffixes or exponent markers: `d`, `e`, and `E` are valid hexadecimal digits. Keep literal-context inference and constant-fault folding consistent with ordinary number inference. Cover `Int8` expressions containing `0x1d`/`0x1e`, negated hex literals, and hex zero divisors and list indexes (checker regressions, [native fixture](../../../tests/conformance/fixtures/e2e/accept/hex-literal-context.ms)).
 
@@ -28,4 +27,4 @@ Unary identity signs belong to literal trees too. Propagate sized context throug
 
 Optional payload context must reach the same literal trees. Constructor argument probing can cache a default `Int` or `Float` before the sized payload is known; recheck only proven numeric literals when that cached type differs. Preserve intermediate-fault checks and one-layer wrapping (checker fixtures).
 
-Backends report the same fault text for the same failure. Cranelift multiplies sized integers in 64 bits, so `UInt32 * UInt32` can overflow 64-bit signed before the type range; a sized result reports the type-range message there, as LLVM's own-width check does. Found by differential generation of every sized type against all four backend/profile builds ([fixture](../../../tests/conformance/fixtures/e2e/accept/unsigned-multiply-fault-message.ms)).
+A sized result reports the type-range fault message, never a 64-bit overflow message: `UInt32 * UInt32` can overflow 64-bit signed before the type range (the Rust Cranelift backend multiplied in 64 bits and reported the wrong text; the LLVM emitter checks at the type's own width). Found by differential generation of every sized type across backends and profiles ([fixture](../../../tests/conformance/fixtures/e2e/accept/unsigned-multiply-fault-message.ms)).

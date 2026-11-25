@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "dying-receiver-takes.ms::trim, upper, lower and replace of a dying value",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "dying-receiver-takes.ms::a value read after the call keeps its bytes",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "dying-receiver-takes.ms::a view of the receiver stays valid",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "dying-receiver-takes.ms::a take in a loop and on one branch",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "dying-receiver-takes.ms::decode_utf8 of a dying buffer, long, short, invalid and viewed",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN dying-receiver-takes.ms::trim, upper, lower and replace of a dying value\nPASS dying-receiver-takes.ms::trim, upper, lower and replace of a dying value\nRUN dying-receiver-takes.ms::a value read after the call keeps its bytes\nPASS dying-receiver-takes.ms::a value read after the call keeps its bytes\nRUN dying-receiver-takes.ms::a view of the receiver stays valid\nPASS dying-receiver-takes.ms::a view of the receiver stays valid\nRUN dying-receiver-takes.ms::a take in a loop and on one branch\nPASS dying-receiver-takes.ms::a take in a loop and on one branch\nRUN dying-receiver-takes.ms::decode_utf8 of a dying buffer, long, short, invalid and viewed\nPASS dying-receiver-takes.ms::decode_utf8 of a dying buffer, long, short, invalid and viewed\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

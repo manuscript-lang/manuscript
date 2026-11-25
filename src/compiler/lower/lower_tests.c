@@ -367,7 +367,8 @@ static uint32_t lower_entry(TestRun *run, const uint32_t *runners, uint32_t coun
   mir_b_ret(&fn.b, result);
   MirFunc built;
   if (!mir_b_into_func(&fn.b, &built) || fn.failed) {
-    return lower_fail(cx, "the test entry could not be built") ? 0 : MIR_NONE;
+    (void)lower_fail(cx, "the test entry could not be built");
+    return MIR_NONE;
   }
   built.linkage = ML_EXPORT;
   mir_func_release(&cx->module->funcs.ptr[slot]);

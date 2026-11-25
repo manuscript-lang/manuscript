@@ -325,6 +325,63 @@ void msrt_string_repeat(const MsString *s, int64_t count, MsString *out) {
   *out = total <= MS_STRING_INLINE_MAX ? msrt_string_make(ms_span_of(small, total)) : result;
 }
 
+/* ---- pad ---- */
+
+/* The byte length of `scalars` whole scalars repeated from `padding` (cutting the last copy), or SIZE_MAX past the
+ * string limit. */
+static size_t padding_bytes(MsSpan padding, uint64_t scalars) {
+  const size_t pattern_scalars = ms_utf8_count(padding.ptr, padding.len);
+  if (pattern_scalars == padding.len) { /* one byte is one scalar */
+    return scalars > MSRT_STRING_LIMIT ? SIZE_MAX : (size_t)scalars;
+  }
+  const uint64_t copies = scalars / pattern_scalars;
+  if (copies > MSRT_STRING_LIMIT / padding.len) {
+    return SIZE_MAX;
+  }
+  size_t bytes = (size_t)copies * padding.len, cut = 0;
+  for (uint64_t rest = scalars % pattern_scalars; rest > 0; rest--) {
+    cut += ms_utf8_decode(padding.ptr + cut, padding.len - cut).width;
+  }
+  return bytes + cut;
+}
+
+/* `String.pad_start` / `pad_end`: the text with `padding` repeated (cutting the last copy) before or after it until
+ * its scalar length reaches `target`, built in one block. A target not past the text, or empty padding, copies the
+ * text; a result past the string limit faults like `concat`. */
+static void pad_text(const MsString *s, int64_t target, const MsString *padding, bool at_end, MsString *out) {
+  const MsSpan text = msrt_text(s);
+  const MsSpan pad = msrt_text(padding);
+  const size_t have = ms_utf8_count(text.ptr, text.len);
+  if (pad.len == 0 || target <= (int64_t)have) {
+    msrt_string_clone(s, out);
+    return;
+  }
+  const size_t filler = padding_bytes(pad, (uint64_t)target - have);
+  if (filler == SIZE_MAX || filler > MSRT_STRING_LIMIT - text.len) {
+    msrt_string_limit_post();
+    return;
+  }
+  const size_t total = text.len + filler;
+  uint8_t small[MS_STRING_INLINE_MAX + 1];
+  MsString result = ms_string_empty();
+  uint8_t *destination = total <= MS_STRING_INLINE_MAX ? small : msrt_string_block_post(total, &result);
+  if (destination == NULL) {
+    *out = result;
+    return;
+  }
+  __builtin_memcpy(destination + (at_end ? 0 : filler), text.ptr, text.len);
+  fill_repeated(destination + (at_end ? text.len : 0), filler, pad);
+  *out = total <= MS_STRING_INLINE_MAX ? ms_string_make_inline(ms_span_of(small, total)) : result;
+}
+
+void msrt_string_pad_start(const MsString *s, int64_t target, const MsString *padding, MsString *out) {
+  pad_text(s, target, padding, false, out);
+}
+
+void msrt_string_pad_end(const MsString *s, int64_t target, const MsString *padding, MsString *out) {
+  pad_text(s, target, padding, true, out);
+}
+
 /* Writes the scalars of `text` into `destination` last first. A String is valid UTF-8, so a scalar is a lead
  * byte and its continuation bytes and moves as it is, without decoding. */
 static void reverse_into(uint8_t *destination, MsSpan text) {
