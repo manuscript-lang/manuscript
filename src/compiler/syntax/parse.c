@@ -1,5 +1,6 @@
 /* Owns the parser entry point: imports, the module loop and the exported API. */
 #include "compiler/syntax/parse_internal.h"
+#include "base/sort.h"
 
 MS_LIST_DEFINE(ImportList, import_list, MsImport)
 MS_LIST_DEFINE(DeclList, decl_list, MsDecl *)
@@ -165,11 +166,115 @@ bool ms_parse(MsArena *arena, MsNames *names, MsSpan source, MsModule *out, MsDi
   return ms_parse_chunk(arena, names, source, (MsChunk){0}, out, diag);
 }
 
+static int64_t compare_ranges(uint8_t *env, const uint8_t *left, const uint8_t *right) {
+  (void)env;
+  const MsBodyRange *a = (const MsBodyRange *)(const void *)left;
+  const MsBodyRange *b = (const MsBodyRange *)(const void *)right;
+  if (a->start != b->start) {
+    return a->start < b->start ? -1 : 1;
+  }
+  return a->first_id < b->first_id ? -1 : a->first_id > b->first_id;
+}
+
+/* The whole-file parse behind ms_parse_chunk and ms_parse_bodies. */
+static bool parse_file(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk, const MsBodyRange *lazy,
+                       size_t nlazy, BodyList *log, MsModule *out, MsDiag *diag);
+
 bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk, MsModule *out,
                     MsDiag *diag) {
+  return parse_file(arena, names, source, chunk, NULL, 0, NULL, out, diag);
+}
+
+bool ms_parse_bodies(MsArena *arena, MsNames *names, MsSpan source, const MsBodyRange *lazy, size_t nlazy,
+                     MsBodyRange **log, size_t *nlog, MsModule *module, MsDiag *diag) {
+  BodyList seen = {0};
+  const bool ok = parse_file(arena, names, source, (MsChunk){0}, lazy, nlazy, log != NULL ? &seen : NULL, module, diag);
+  if (ok && log != NULL) {
+    /* A backtracked parse can see a body twice; the later sighting, with the higher ids, is the one the file keeps. */
+    size_t kept = 0;
+    ms_sort((uint8_t *)seen.ptr, seen.len, sizeof(MsBodyRange), compare_ranges, NULL);
+    for (size_t at = 0; at < seen.len; at++) {
+      if (at + 1 < seen.len && seen.ptr[at + 1].start == seen.ptr[at].start) {
+        continue;
+      }
+      seen.ptr[kept++] = seen.ptr[at];
+    }
+    *log = MS_ARENA_NEW_ARRAY(arena, MsBodyRange, kept ? kept : 1);
+    if (kept != 0) {
+      __builtin_memcpy(*log, seen.ptr, kept * sizeof(MsBodyRange));
+    }
+    *nlog = kept;
+  }
+  body_list_free(&seen);
+  return ok;
+}
+
+bool ms_parse_body(MsArena *arena, MsNames *names, MsSpan source, MsBodyRange range, MsStmts *out, MsDiag *diag) {
+  /* The text of the line before the body is blanked, not cut: the body's tokens keep their columns, and a
+   * signature that spans lines leaves no unmatched `)` behind. */
+  uint32_t from = range.start;
+  while (from > 0 && source.ptr[from - 1] != '\n') {
+    from--;
+  }
+  const size_t pad = range.start - from;
+  uint8_t *buffer = ms_arena_alloc(arena, pad + (range.end - range.start), 1);
+  __builtin_memset(buffer, ' ', pad);
+  __builtin_memcpy(buffer + pad, source.ptr + range.start, range.end - range.start);
+  MsLexed lexed;
+  if (!ms_lex_at(arena, (MsSpan){buffer, pad + (range.end - range.start)}, from, range.line, &lexed, diag)) {
+    return false;
+  }
+  ScratchList scratch = {0};
+  ScratchList bytes = {0};
+  OffsetList redundant = {0};
+  Parser p = {.arena = arena,
+              .names = names,
+              .source = lexed.source,
+              .tokens = lexed.tokens,
+              .ntokens = lexed.ntokens,
+              .bounds = &lexed.bounds,
+              .type_brackets = parse_compute_type_brackets(arena, lexed.tokens, lexed.ntokens),
+              .scratch = &scratch,
+              .bytes = &bytes,
+              .redundant_error = &redundant,
+              .next_id = range.first_id,
+              .diag = diag};
+  while (p.at < p.ntokens && p.tokens[p.at].pos.offset < range.start) {
+    p.at++;
+  }
+  bool ok = parse_statement_suite(&p, false, true, out);
+  if (ok && p.next_id != range.end_id) {
+    parse_fail(&p, parse_peek(&p), ms_span_of_text("the bundled standard library's body index is stale"));
+    ok = false;
+  }
+  scratch_list_free(&scratch);
+  scratch_list_free(&bytes);
+  offset_list_free(&redundant);
+  return ok;
+}
+
+static bool parse_file(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk, const MsBodyRange *lazy,
+                       size_t nlazy, BodyList *log, MsModule *out, MsDiag *diag) {
   *out = (MsModule){0};
   MsLexed lexed;
-  if (!ms_lex_at(arena, source, chunk.base_offset, chunk.base_line, &lexed, diag)) {
+  MsSpan text = source;
+  if (nlazy != 0) {
+    /* Where a body stood, `{`, blanks and `}`: offsets and line breaks stay, and the lexer has little to read. */
+    uint8_t *blank = ms_arena_alloc(arena, source.len, 1);
+    __builtin_memcpy(blank, source.ptr, source.len);
+    for (size_t at = 0; at < nlazy; at++) {
+      const MsBodyRange *range = &lazy[at];
+      for (uint32_t byte = range->start; byte < range->end; byte++) {
+        if (blank[byte] != '\n' && blank[byte] != '\r') {
+          blank[byte] = ' ';
+        }
+      }
+      blank[range->start] = '{';
+      blank[range->end - 1] = '}';
+    }
+    text = (MsSpan){blank, source.len};
+  }
+  if (!ms_lex_at(arena, text, chunk.base_offset, chunk.base_line, &lexed, diag)) {
     return false;
   }
   ScratchList scratch = {0};
@@ -188,6 +293,9 @@ bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk
               .bytes = &bytes,
               .redundant_error = &redundant,
               .next_id = chunk.first_id,
+              .lazy = lazy,
+              .nlazy = nlazy,
+              .log = log,
               .diag = diag};
   bool ok = parse_module(&p, &imports, &decls);
   if (ok) {

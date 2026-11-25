@@ -8,6 +8,7 @@
  * without a written reference (hooks.h). */
 #include <string.h>
 #include "base/alloc.h"
+#include "base/fatal.h"
 #include "base/sort.h"
 #include "compiler/check/body.h"
 #include "compiler/check/dispatch_targets.h"
@@ -15,6 +16,7 @@
 #include "compiler/check/methods.h"
 #include "compiler/check/properties.h"
 #include "compiler/check/lazy_std.h"
+#include "compiler/syntax/parse.h"
 #include "compiler/syntax/walk.h"
 
 static uint64_t node_key(uint32_t module, uint32_t node) {
@@ -48,7 +50,7 @@ static void list_defaults(MsCheckProgram *program, uint32_t module, uint32_t nod
 static void defer_function(MsCheckProgram *program, uint32_t module, MsDecl *decl, MsMethod *method) {
   MsFunc *func = method != NULL ? &method->func : &decl->u.fn;
   const uint32_t node = method != NULL ? method->id : decl->id;
-  if (func->body.len == 0 || func->external || func->bodiless) {
+  if ((func->body.len == 0 && func->lazy.end == 0) || func->external || func->bodiless) {
     if (has_default(func->params)) {
       list_defaults(program, module, node, decl, method);
     }
@@ -122,6 +124,16 @@ static void reach_node(Reach *reach, uint32_t module, uint32_t node) {
   if (!entry->defaults_only) {
     MsFunc *func = entry->method != NULL ? &entry->method->func : &entry->decl->u.fn;
     func->body = entry->body;
+    if (func->lazy.end != 0) {
+      MsDiag diag = {0};
+      const MsBodyRange range = func->lazy;
+      func->lazy = (MsBodyRange){0};
+      if (!ms_parse_body(&reach->program->arena, reach->program->names, reach->program->modules.ptr[module].source, range,
+                         &func->body, &diag)) {
+        ms_fatal(MS_FATAL_INVARIANT, "a bundled standard body does not parse (stale body index)");
+      }
+      entry->body = func->body;
+    }
     func->deferred = false;
   }
   ms_deferred_body_list_push(reach->queue, *entry);

@@ -296,6 +296,15 @@ struct MsStmt {
 
 /* ---- declarations ---- */
 
+/* Where a function body sits in its file and which node ids it uses, so it can be parsed apart from the file
+ * (parse.h, `ms_parse_body`). `start` is the offset of its `{` or `=>`, `end` the offset after its last token. */
+typedef struct MsBodyRange {
+  uint32_t start, end;
+  uint32_t line;                 /* lines before the one holding `start` */
+  uint32_t first_id, end_id;     /* the body's nodes are numbered first_id..end_id */
+  bool arrow;                    /* written `=> expression` */
+} MsBodyRange;
+
 typedef struct MsFunc {
   MsName name;
   MsTypeParams type_params;
@@ -304,7 +313,8 @@ typedef struct MsFunc {
   MsStmts body;
   bool external;
   bool bodiless; /* declared with the body `...`: the runtime provides it */
-  bool deferred; /* the checker set the body aside until a call reaches it (check/lazy_std.c): not a bodiless function */
+  bool deferred; /* the body is set aside until a call reaches it (check/lazy_std.c): not a bodiless function */
+  MsBodyRange lazy; /* when `end` is nonzero, the unparsed body of a deferred function */
 } MsFunc;
 
 /* Whether the function has a source body to run, checked yet or not: false for an external or bodiless one. */

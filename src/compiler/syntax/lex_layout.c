@@ -111,17 +111,20 @@ bool lex_statement_level(const Scanner *s) {
 /* Recovery's per-line flag: whether a delimiter is open there. */
 /* Skips the blanks at the start of a line; a tab counts as four columns. */
 bool lex_read_leading_space(Scanner *s, size_t *leading) {
-  *leading = 0;
-  while (s->offset < s->n && (s->src[s->offset] == ' ' || s->src[s->offset] == '\t')) {
-    if (s->src[s->offset] == '\t') {
-      lex_advance(s);
+  /* Spaces and tabs are not newlines, so the cursor moves along the line: offset and column step together. */
+  size_t at = s->offset;
+  size_t count = 0;
+  while (at < s->n && (s->src[at] == ' ' || s->src[at] == '\t')) {
+    if (s->src[at] == '\t') {
       s->column += 3;
-      *leading += 4;
-    } else {
-      lex_advance(s);
-      *leading += 1;
+      count += 3;
     }
+    at++;
+    count++;
   }
+  s->column += at - s->offset;
+  s->offset = at;
+  *leading = count;
   return true;
 }
 

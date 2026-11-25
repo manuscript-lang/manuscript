@@ -9,6 +9,7 @@
 #define MS_PROJECT_H
 
 #include "base/arena.h"
+#include "compiler/syntax/ast.h"
 #include "base/intern.h"
 #include "base/safe.h"
 #include "compiler/syntax/ast.h"
@@ -54,6 +55,8 @@ typedef struct MsOverlay {
 typedef struct MsStdSource {
   MsSpan name;
   MsSpan text;
+  const MsBodyRange *bodies; /* where its function bodies sit, sorted (std_index_gen); `*nbodies` of them */
+  const size_t *nbodies;
 } MsStdSource;
 
 /* Every bundled file in name order. */

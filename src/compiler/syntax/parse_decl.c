@@ -147,6 +147,10 @@ MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) 
   d->u.fn.result = result;
   d->u.fn.body = body;
   d->u.fn.bodiless = bodiless;
+  if (p->has_skipped) {
+    d->u.fn.lazy = p->skipped;
+    d->u.fn.deferred = true;
+  }
   *out = d;
   return true;
 }
