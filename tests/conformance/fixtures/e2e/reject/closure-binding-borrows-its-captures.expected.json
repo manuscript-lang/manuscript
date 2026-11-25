@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `xs` while `size` borrows it (binding of a part of it, at 7:5); finish using `size` before this, or give `size` its own value by ending its initializer with `.clone()`",
+        "position": {
+          "file": "closure-binding-borrows-its-captures.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 359
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot reassign `n` while `read` borrows it (binding of a part of it, at 14:5); finish using `read` before this, or give `read` its own value by ending its initializer with `.clone()`",
+        "position": {
+          "file": "closure-binding-borrows-its-captures.ms",
+          "line": 15,
+          "column": 5,
+          "offset": 448
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/closure-binding-borrows-its-captures.ms:8:5: type: cannot change `xs` while `size` borrows it (binding of a part of it, at 7:5); finish using `size` before this, or give `size` its own value by ending its initializer with `.clone()`\n   |\n 8 |     xs.append(4)\n   |     ^\n<DIR>/closure-binding-borrows-its-captures.ms:15:5: type: cannot reassign `n` while `read` borrows it (binding of a part of it, at 14:5); finish using `read` before this, or give `read` its own value by ending its initializer with `.clone()`\n    |\n 15 |     n = 5\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
