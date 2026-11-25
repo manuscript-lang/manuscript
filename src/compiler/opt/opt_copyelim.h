@@ -10,6 +10,8 @@ typedef struct CpePos {
   uint32_t block, index;
 } CpePos;
 
+bool cpe_has_op(const MirFunc *f, MirOp op);
+
 /* Operand uses of each value as positions in program order; a value used twice by one
  * instruction appears twice. Terminator uses are not listed. In one arena. */
 typedef struct CpeUses {

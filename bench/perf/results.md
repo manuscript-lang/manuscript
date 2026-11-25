@@ -1163,3 +1163,7 @@ Throughput on the shared 4-CPU VM (±25% run to run, so not a result): 1 CPU med
 ## 2026-11-25: wordfreq loops over the text directly
 
 `wordfreq` called `data.lower().fields_by(...)`, which builds a list of every word (112 MB, 55k page faults on the 22 MB input) before the loop reads it once; Rust's `split` is lazy. The Manuscript version now walks `chars()` and counts a `view` of each word, as the Rust loop reads slices of the text. Output is byte-identical. Min of 9, same machine: ms 302 to 254 ms, Rust 196 ms (ms / Rust 1.54x to 1.30x). Callgrind instructions rise 2330M to 2460M (+5.6%, a view per word); the saved time is allocation and page faults. `fields_by` itself still returns a list: its 1300-line MIR with four push sites is out of reach of list fusion, so a lazy form is the stdlib follow-up.
+
+## 2026-11-25: functions stay internal in release builds
+
+Same machine, min of 5, `ms` before and after the change (`export_all` removed): `sim` 202 to 143 ms (Rust 156 in the same run; the `heat` stencil alone 89 to 43 ms against Rust 40), `jsonsum` 200 to 160 ms, `jsonrt` 1159 to 1091 ms, `pargroup` 59 to 48 ms. Callgrind instructions: `sim` 1945M to 886M (-54%), `hashing` -3.4%, `interp` -2.6%, `dispatch` -2.6%, `lz` -1.8%, `csvgroup`, `exprparse`, `graph`, `logstats` and `objgraph` within 0.1%.

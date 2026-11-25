@@ -269,6 +269,15 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
   return result;
 }
 
+bool fn_is_native_view(const LowerFn *fn, MirValue value) {
+  for (uint32_t at = 0; at < fn->nnative_views; at++) {
+    if (fn->native_views[at] == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
   if (fn_view_owner(fn, value) != MIR_NONE) {
     return true; /* a call's borrowing variant, read as the plain Result */
