@@ -341,10 +341,10 @@ bool mvt_plain_of(const MvtCx *c) {
   }
   const MirAltDef *dx = &c->m->alts.ptr[from->id];
   const MirAltDef *dy = &c->m->alts.ptr[to->id];
-  if (dx->borrowed == 0 || dy->borrowed != 0 || !mvt_same_alt_name(c, dx->name, dy->name) || dx->ncases != dy->ncases) {
+  if (dx->borrowed == 0 || dy->borrowed != 0 || !mvt_same_alt_name(c, dx->name, dy->name) || dx->ncases < dy->ncases) {
     return false;
   }
-  for (uint32_t i = 0; i < dx->ncases; i++) {
+  for (uint32_t i = 0; i < dy->ncases; i++) {
     const MirCaseDef *a = &dx->cases[i], *b = &dy->cases[i];
     if (a->name != b->name || a->nfields != b->nfields) {
       return false;
@@ -367,6 +367,19 @@ static const char *mvt_alt_plain(const MvtCx *c) {
     return "alt.plain yields an alternative";
   }
   return mvt_want(mvt_plain_of(c), "alt.plain reads a borrowing variant as its ordinary alternative");
+}
+
+/* alt.borrow reads an ordinary alternative as its borrowing variant: every case borrows what the source holds. */
+static const char *mvt_alt_borrow(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 1));
+  if (mvt_kind(c, mvt_t(c, 0)) != MK_ALT || !c->has_res || mvt_kind(c, c->res) != MK_ALT) {
+    return "alt.borrow takes an alternative and yields its borrowing variant";
+  }
+  const MirAltDef *plain = &c->m->alts.ptr[mvt_data(c, mvt_t(c, 0))->id];
+  const MirAltDef *variant = &c->m->alts.ptr[mvt_data(c, c->res)->id];
+  return mvt_want(plain->borrowed == 0 && variant->borrowed != 0 && mvt_same_alt_name(c, plain->name, variant->name) &&
+                      variant->ncases == plain->ncases + 1 && variant->cases[plain->ncases].nfields == plain->cases[1].nfields,
+                  "alt.borrow reads an alternative as its borrowing variant");
 }
 
 static const char *mvt_alt_tag(const MvtCx *c) {
@@ -437,6 +450,6 @@ const MvtRule mvt_rules_core[MOP_COUNT] = {
   [MOP_I2F] = mvt_i2f, [MOP_U2F] = mvt_u2f, [MOP_FBits] = mvt_f_bits, [MOP_BitsF] = mvt_bits_f, [MOP_F2IOpt] = mvt_f2i_opt, [MOP_B2I] = mvt_b2i, [MOP_TypeNew] = mvt_type_new,
   [MOP_TypeGet] = mvt_type_field, [MOP_TypeSet] = mvt_type_field, [MOP_TypeFill] = mvt_type_field,
   [MOP_TypeRelease] = mvt_type_release, [MOP_AltNew] = mvt_alt_ctor, [MOP_AltView] = mvt_alt_ctor,
-  [MOP_AltPlain] = mvt_alt_plain, [MOP_AltTag] = mvt_alt_tag, [MOP_AltRelease] = mvt_alt_release,
+  [MOP_AltPlain] = mvt_alt_plain, [MOP_AltBorrow] = mvt_alt_borrow, [MOP_AltTag] = mvt_alt_tag, [MOP_AltRelease] = mvt_alt_release,
   [MOP_AltGet] = mvt_alt_field, [MOP_AltUnbox] = mvt_alt_field, [MOP_AltTake] = mvt_alt_field,
 };

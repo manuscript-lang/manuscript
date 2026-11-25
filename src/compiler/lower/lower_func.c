@@ -396,8 +396,7 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   /* `&T!` returns the borrowing variant of its Result: the `ok` payload is a part of an argument, an error is owned. */
   const MirTy view_ret = written_result != NULL && target->func->body.len != 0 && written_result->args.len >= 1 &&
                                  written_result->args.ptr[0]->is_ref &&
-                                 ms_own_result_is_borrowed(cx->program, target->module, target->node) &&
-                                 ms_own_returns_variant(cx->program, target->module, target->func)
+                                 ms_own_result_is_borrowed(cx->program, target->module, target->node)
                              ? lower_result_view(cx, &subst, ms_ty_result(types, target->ty))
                              : plain_ret;
   const bool ok_borrowed = view_ret != plain_ret;

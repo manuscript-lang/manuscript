@@ -180,7 +180,7 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MsTy ret_checked, MirTy outcome_t
   if (returns || keeps_pending) {
     if (pending) {
       const MirValue tag = mir_b_emit(&b, MOP_AltTag, &values[1], 1, none, MIR_INT);
-      const MirValue is_error = mir_b_icmp(&b, MCC_EQ, tag, mir_b_iconst(&b, ERR_CASE));
+      const MirValue is_error = mir_b_icmp(&b, MCC_NE, tag, mir_b_iconst(&b, OK_CASE));
       const MirBlock keep = mir_b_new_block(&b);
       const MirBlock replace = mir_b_new_block(&b);
       mir_b_br_if(&b, is_error, keep, NULL, 0, replace, NULL, 0);
@@ -244,7 +244,7 @@ void lower_close_check(MirBuilder *b, MirValue result) {
   const MirValue tag = mir_b_emit(b, MOP_AltTag, &result, 1, none, MIR_INT);
   const MirBlock failed = mir_b_new_block(b);
   const MirBlock ok = mir_b_new_block(b);
-  mir_b_br_if(b, mir_b_icmp(b, MCC_EQ, tag, mir_b_iconst(b, ERR_CASE)), failed, NULL, 0, ok, NULL, 0);
+  mir_b_br_if(b, mir_b_icmp(b, MCC_NE, tag, mir_b_iconst(b, OK_CASE)), failed, NULL, 0, ok, NULL, 0);
   mir_b_seal_block(b, failed);
   mir_b_switch_to(b, failed);
   post_fault(b);
@@ -403,7 +403,7 @@ static uint32_t fault_thunk(Lower *cx, uint32_t method, MirTy ty) {
   if (closed != MIR_NONE && result_def(module, method_ret, &def)) {
     const MirImm none = {0};
     const MirValue tag = mir_b_emit(&b, MOP_AltTag, &closed, 1, none, MIR_INT);
-    const MirValue failed = mir_b_icmp(&b, MCC_EQ, tag, mir_b_iconst(&b, ERR_CASE));
+    const MirValue failed = mir_b_icmp(&b, MCC_NE, tag, mir_b_iconst(&b, OK_CASE));
     const MirBlock bad = mir_b_new_block(&b);
     const MirBlock good = mir_b_new_block(&b);
     mir_b_br_if(&b, failed, bad, NULL, 0, good, NULL, 0);

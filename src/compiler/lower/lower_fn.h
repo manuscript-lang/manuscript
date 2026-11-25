@@ -612,6 +612,8 @@ bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_take_payload(LowerFn *fn, MirValue value, MirTy *ty);
 /* The value a call's new owner takes from a dying temporary the call answers (`id(make())`, `make().get()`), or MIR_NONE. */
 MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *call, MirValue value);
+/* Whether a read of `expr` leaves the binding: the checker's move, or an owner's last read. */
+bool fn_leaves_binding(const LowerFn *fn, const MsExpr *expr);
 bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr **index);
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
 bool fn_lend_writeback(LowerFn *fn, struct VarSlot *lent);

@@ -15,4 +15,6 @@ fn main() Void! {
 	a := "kept"
 	b := pick(a)?
 	print(b)
+	blank := ""
+	print(pick(blank).is_error().to_string())
 }

@@ -15,6 +15,7 @@ typedef struct Relays {
   const MsExpr *callee; /* the name of the call just entered: written as a callee, not used as a value */
   const MsExpr *applied; /* the name of the type application just entered, which checks as a whole */
   MsBindingList views;   /* locals bound to a borrowed part of a parameter: they borrow it too */
+  bool ref_result;       /* the callable being walked answers a `&` result: a borrowed error leaves as a borrow */
 } Relays;
 
 static bool owns_memory(const Relays *pass, MsTy ty) {
@@ -49,10 +50,6 @@ static bool borrows_a_place(const Relays *pass, const MsExpr *call_expr) {
   const MsCall *call = ms_facts_call(pass->facts, call_expr->id);
   if (call == NULL || call->callee.kind != MS_REF_FUNCTION) {
     return false;
-  }
-  const MsFunc *callee = ms_own_find_func(pass->program, &call->callee);
-  if (callee != NULL && ms_own_returns_variant(pass->program, call->callee.decl.module, callee)) {
-    return false; /* a `&T!` that builds its Result owns its error: `?` moves it out */
   }
   const uint32_t mask = ms_own_result_borrow_mask(pass->program, call->callee.decl.module, call->callee.decl.node);
   for (uint32_t index = 0; index < call->arg_count && index < 31; index++) {
@@ -130,7 +127,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     const MsExpr *callee = expr->u.call.callee;
     pass->callee = callee->kind == MS_E_APPLY ? callee->u.apply.left : callee;
   }
-  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY && relays_borrowed_error(pass, expr->u.bin.left)) {
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY && !pass->ref_result && relays_borrowed_error(pass, expr->u.bin.left)) {
     report_try(pass, expr, expr->u.bin.left);
   }
   if (expr->kind == MS_E_APPLY && expr->u.apply.left->kind == MS_E_NAME && expr->u.apply.left != pass->callee) {
@@ -152,7 +149,20 @@ void ms_own_relays(MsCheckProgram *program) {
     const MsModule *tree = program->modules.ptr[module].tree;
     const MsVisitor visitor = {.ctx = &pass, .expr = visit_expr, .stmt = visit_stmt};
     for (uint32_t index = 0; index < tree->ndecls; index++) {
-      ms_walk_decl(&visitor, tree->decls[index]);
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN) {
+        pass.ref_result = ms_own_result_is_borrowed(program, module, decl->id);
+        ms_walk_callable(&visitor, decl->u.fn.params, decl->u.fn.body);
+      } else if (decl->kind == MS_D_IMPL) {
+        for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
+          const MsMethod *method = decl->u.impl.methods.ptr[at];
+          pass.ref_result = ms_own_result_is_borrowed(program, module, method->id);
+          ms_walk_callable(&visitor, method->func.params, method->func.body);
+        }
+      } else {
+        ms_walk_decl(&visitor, decl);
+      }
+      pass.ref_result = false;
     }
     ms_binding_list_free(&pass.views);
   }

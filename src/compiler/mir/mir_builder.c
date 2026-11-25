@@ -142,8 +142,10 @@ static bool same_fields(const MirField *left, const MirField *right, uint32_t co
   return true;
 }
 
+/* The cases the variant `have` shares with the ordinary alternative `want`: all of `want`'s, plus the borrowed `error`
+ * a variant of a Result adds. */
 static bool same_cases(const MirAltDef *have, const MirAltDef *want) {
-  for (uint32_t index = 0; index < have->ncases; index++) {
+  for (uint32_t index = 0; index < want->ncases; index++) {
     const MirCaseDef *left = &have->cases[index];
     const MirCaseDef *right = &want->cases[index];
     if (left->name != right->name || left->nfields != right->nfields ||
@@ -164,7 +166,7 @@ static bool is_variant_of(const MirModule *module, MirTy have, MirTy want) {
   const MirAltDef *have_def = &module->alts.ptr[have_data->id];
   const MirAltDef *want_def = &module->alts.ptr[want_data->id];
   return have_def->borrowed != 0 && want_def->borrowed == 0 && have_def->name == want_def->name &&
-         have_def->ncases == want_def->ncases && same_cases(have_def, want_def);
+         have_def->ncases >= want_def->ncases && same_cases(have_def, want_def);
 }
 
 MirValue mir_b_call(MirBuilder *builder, uint32_t func, const MirValue *args, uint32_t nargs) {
