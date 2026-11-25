@@ -289,22 +289,22 @@ fn List[T Clonable].filter(predicate fn(T) Bool) List[T] {
 	return out
 }
 
-// Returns a copy of the first element for which `predicate` is true, or `null`.
-// Later elements are not tested after a match.
-fn List[T Clonable].find(predicate fn(T) Bool) T? {
+// Returns the first element for which `predicate` is true as a view of this list, or
+// `null`. Later elements are not tested after a match. Use `.clone()` to keep it.
+fn hold List[T].find(predicate fn(T) Bool) &T? {
 	for item in self {
-		if predicate(item) { return item.clone() }
+		if predicate(item) { return item }
 	}
 	return null
 }
 
-// Searches from the end and returns a copy of the last element for which `predicate`
-// is true, or `null`.
-fn List[T Clonable].find_last(predicate fn(T) Bool) T? {
+// Searches from the end and returns the last element for which `predicate` is true as a
+// view of this list, or `null`.
+fn hold List[T].find_last(predicate fn(T) Bool) &T? {
 	var i = self.length() - 1
 
 	while i >= 0 {
-		if predicate(self[i]) { return self[i].clone() }
+		if predicate(self[i]) { return self[i] }
 
 		i -= 1
 	}
@@ -326,10 +326,7 @@ fn var List[T Clonable].copy_within(target, start, end Int) Void { ... }
 // Returns a new list of `ListEntry` records pairing each zero-based index with its
 // element, in order.
 fn List[T Clonable].entries() List[ListEntry[T]] {
-	var out = List[ListEntry[T]]()
-	for i in 0..self.length() {
-		out.append(ListEntry[T](i, self[i].clone()))
-	}
+	out := (0..self.length()).map(i => ListEntry[T](i, self[i].clone()))
 	return out
 }
 
@@ -469,10 +466,11 @@ fn List[T Comparable].binary_search(value T) SearchResult {
 	return SearchResult(base, base < count and self[base].compare(value) == 0)
 }
 
-// Returns a copy of the least element, or `null` for an empty list. The first of
-// equal elements wins. Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()` is
+// Returns the least element as a view of this list, or `null` for an empty list. The
+// first of equal elements wins. Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()`
+// is
 // `null`.
-fn List[T Comparable & Clonable].min() T? {
+fn hold List[T Comparable].min() &T? {
 	if self.is_empty() { return null }
 
 	var at = 0
@@ -481,12 +479,12 @@ fn List[T Comparable & Clonable].min() T? {
 			at = i
 		}
 	}
-	return self[at].clone()
+	return self[at]
 }
 
-// Returns a copy of the greatest element, or `null` for an empty list. The first of
-// equal elements wins. Example: `[3, 1, 2].max()` is `3`.
-fn List[T Comparable & Clonable].max() T? {
+// Returns the greatest element as a view of this list, or `null` for an empty list. The
+// first of equal elements wins. Example: `[3, 1, 2].max()` is `3`.
+fn hold List[T Comparable].max() &T? {
 	if self.is_empty() { return null }
 
 	var at = 0
@@ -495,15 +493,15 @@ fn List[T Comparable & Clonable].max() T? {
 			at = i
 		}
 	}
-	return self[at].clone()
+	return self[at]
 }
 
 /*
-Returns a copy of the element whose `key` is greatest, or `null` when the list is empty.
+Returns a view of the element whose `key` is greatest, or `null` when the list is empty.
 `key` is called once per element in order, and ties keep the earlier element.
 Example: `["bb", "a", "ccc"].max_by(w => w.length())` is `"ccc"`.
 */
-fn List[T Clonable].max_by[K Comparable](key fn(T) K) T? {
+fn hold List[T].max_by[K Comparable](key fn(T) K) &T? {
 	if self.is_empty() { return null }
 
 	var at = 0
@@ -518,15 +516,15 @@ fn List[T Clonable].max_by[K Comparable](key fn(T) K) T? {
 		}
 	}
 
-	return self[at].clone()
+	return self[at]
 }
 
 /*
-Returns a copy of the element whose `key` is least, or `null` when the list is empty.
+Returns a view of the element whose `key` is least, or `null` when the list is empty.
 `key` is called once per element in order, and ties keep the earlier element.
 Example: `["bb", "a", "ccc"].min_by(w => w.length())` is `"a"`.
 */
-fn List[T Clonable].min_by[K Comparable](key fn(T) K) T? {
+fn hold List[T].min_by[K Comparable](key fn(T) K) &T? {
 	if self.is_empty() { return null }
 
 	var at = 0
@@ -541,7 +539,7 @@ fn List[T Clonable].min_by[K Comparable](key fn(T) K) T? {
 		}
 	}
 
-	return self[at].clone()
+	return self[at]
 }
 
 /*
@@ -865,12 +863,9 @@ Keeps only the entries for which `keep(key, value)` is true, in place, like `Lis
 Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
 */
 fn var Map[T Hashable & Clonable, U].retain(keep fn(T, U) Bool) Void {
-	var doomed = List[T]()
-	for key in self.keys() {
-		if not keep(key, self[key]) {
-			doomed.append(key.clone())
-		}
-	}
+	doomed := self.keys().filter(
+		key => not keep(key, self[key])
+	).map(key => key.clone())
 	for key in doomed {
 		self.remove(key)
 	}
@@ -947,22 +942,26 @@ fn Set[T].fold_right[A](initial A, step fn(A, T) A) A {
 	return acc
 }
 
-// Returns the first element for which `predicate` is true, or `null`.
-fn Set[T Hashable & Clonable].find(predicate fn(T) Bool) T? {
-	for value in self.values() {
-		if predicate(value) { return value.clone() }
+// Returns the first element for which `predicate` is true as a view of this set, or
+// `null`.
+fn hold Set[T Hashable].find(predicate fn(T) Bool) &T? {
+	// Workaround for #6943: iterate a bound view, not the call, so a record element
+	// borrows.
+	values := self.values()
+	for value in values {
+		if predicate(value) { return value }
 	}
 	return null
 }
 
-// Searches from the end and returns the last element for which `predicate` is true,
-// or `null`.
-fn Set[T Hashable & Clonable].find_last(predicate fn(T) Bool) T? {
+// Searches from the end and returns the last element for which `predicate` is true as a
+// view of this set, or `null`.
+fn hold Set[T Hashable].find_last(predicate fn(T) Bool) &T? {
 	values := self.values()
 	var i = values.length() - 1
 
 	while i >= 0 {
-		if predicate(values[i]) { return values[i].clone() }
+		if predicate(values[i]) { return values[i] }
 
 		i -= 1
 	}
@@ -1153,11 +1152,7 @@ export fn map_from_entries[K Hashable, V](
 // Copies the inner lists' elements in order into one new list; elements must be
 // Clonable. Example: `flatten([[1, 2], [3]])` returns `[1, 2, 3]`.
 export fn flatten[T Clonable](lists List[List[T]]) List[T] {
-	var total = 0
-	for inner in lists {
-		total += inner.length()
-	}
-
+	total := lists.map(inner => inner.length()).sum()
 	var out = List[T](reserve: total)
 	for inner in lists {
 		out.extend(inner)
@@ -1177,11 +1172,7 @@ fn reverse_span[T](var items List[T], start, end Int) Void {
 	}
 }
 
-import (
-	panic from "@std/core.ms",
-
-	msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms",
-)
+import msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms"
 
 // The built-in integer and float types: the element types `sum` adds.
 export type Numeric = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | Float | Float32

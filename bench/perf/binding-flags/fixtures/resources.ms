@@ -1,4 +1,4 @@
-import Closeable from "@std/core.ms"
+// ms: allow_effect std.console.write
 
 type Res {
 	id Int

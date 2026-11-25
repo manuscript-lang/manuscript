@@ -50,11 +50,7 @@ export fn blake2b(data Bytes, key Bytes = Bytes([]), length Int = 64) Bytes {
 			counted = (block + 1) * 128
 		}
 
-		var m List[Int] = []
-		for index in 0..16 {
-			m.append(word(message, block * 128 + index * 8, 8))
-		}
-
+		m := (0..16).map(index => word(message, block * 128 + index * 8, 8))
 		var v = h.clone()
 		for index in 0..8 {
 			v.append(iv[index])
@@ -162,11 +158,7 @@ export fn blake2s(data Bytes, key Bytes = Bytes([]), length Int = 32) Bytes {
 	for block in 0..blocks {
 		last := block == blocks - 1
 		counted := if last { total } else { (block + 1) * 64 }
-		var m List[Int] = []
-		for index in 0..16 {
-			m.append(word(message, block * 64 + index * 4, 4))
-		}
-
+		m := (0..16).map(index => word(message, block * 64 + index * 4, 4))
 		var v = h.clone()
 		for index in 0..8 {
 			v.append(iv[index])

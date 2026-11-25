@@ -87,7 +87,7 @@ fn main() Int {
 		} else if not fixed.starts_with("none:") {
 			scratch := temporary("ms-removed-").get()
 			copy := f"{scratch.path()}/snippet.ms"
-			write_file(copy.clone(), body(source), replace: true).wait().get()
+			void write_file(copy.clone(), body(source), replace: true).wait().get()
 
 			applied := run(
 				ms.clone(),

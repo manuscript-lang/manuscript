@@ -1,12 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
-	Closeable from "@std/core.ms",
-	DescriptorSink,
-	DescriptorSource,
-	ReadStream,
-	Source,
-	WriteStream from "@std/io/io.ms",
+	DescriptorSink, DescriptorSource, ReadStream, WriteStream from "@std/io/io.ms",
 	Duration from "@std/time.ms",
 
 	msstd_process_command_run,
@@ -276,14 +271,12 @@ fn move SignalSource.close() Void! {
 
 // The names of an environment map, in the order of its values.
 fn environment_names(environment Map[String, String]) List[String] {
-	var names = environment.entries().map(entry => entry.key.clone())
-	return names
+	return environment.entries().map(entry => entry.key.clone())
 }
 
 // The values of an environment map, in the order of its names.
 fn environment_values(environment Map[String, String]) List[String] {
-	var values = environment.entries().map(entry => entry.value.clone())
-	return values
+	return environment.entries().map(entry => entry.value.clone())
 }
 
 // The work of `run`.

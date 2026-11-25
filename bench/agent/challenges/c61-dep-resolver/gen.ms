@@ -1,9 +1,14 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Generator for c61-dep-resolver. The expected outputs come from the Go oracle in
 // oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
 // Deterministic; run: ms run bench/agent/gen.ms -- c61
 import (
 	Cases, build_oracle, write_cases from "../../lib/gen.ms",
-	Random, seeded from "../../lib/pyrandom.ms",
+	seeded from "../../lib/pyrandom.ms",
 )
 
 fn add(var cs Cases, name, script String) Void {

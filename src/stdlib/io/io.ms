@@ -1,7 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes from "@std/bytes.ms",
 	adopt from "@std/concurrency/promise.ms",
-	Closeable from "@std/core.ms",
 	Duration, monotonic from "@std/time.ms",
 
 	msstd_io_redirect_null, msstd_io_stdout_status from "@std/internal/io.ms",
@@ -20,7 +21,6 @@ import (
 	msrt_pipe_try,
 	msrt_pipe_write,
 	msrt_promise_drop,
-	msrt_promise_finished,
 	msrt_promise_take,
 	msrt_promise_wait,
 	msrt_streams_buffered,
@@ -275,7 +275,7 @@ fn move DescriptorSink.close() Void! {
 // must not hide it.
 fn descriptor_write_result(id Int) Void! {
 	message := msrt_streams_error(id)
-	if message.length() > 0 { return error(Error(message.clone(), kind: "EIO")) }
+	if not message.is_empty() { return error(Error(message.clone(), kind: "EIO")) }
 
 	return ok()
 }
@@ -564,8 +564,6 @@ fn var Through[A, B].next() B?! {
 
 		if self.out.length() > 1 { self.out.reverse() }
 	}
-
-	return ok(null)
 }
 
 fn move Through[A, B].close() Void! {

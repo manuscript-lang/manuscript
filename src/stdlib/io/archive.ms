@@ -1,6 +1,8 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Bytes, BytesBuilder, join from "@std/bytes.ms",
-	ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+	ReadStream, through from "@std/io/io.ms",
 
 	ArchiveLimits,
 	msstd_archive_pack,
@@ -413,8 +415,6 @@ fn TarEntries.member_length(ended Bool) Int! {
 			if found >= 0 { override = found }
 		}
 	}
-
-	return ok(0)
 }
 
 // Internal: applies `unpack`'s whole-archive path rules across members: no duplicate

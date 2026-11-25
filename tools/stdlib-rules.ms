@@ -1,3 +1,5 @@
+// ms: allow_effect std.fs.read
+
 // The standard-library rules of `make repo-check` (tools/repo-check.ms), read from the
 // declaration files in src/stdlib/ by their shape, not by a full parse:
 //   - option parameters: an exported function never requires a caller to write `Options()`, so a parameter
@@ -260,23 +262,17 @@ fn type_names(text String, only_exported Bool) List[String] {
 // ---- allow lists that only shrink ----
 
 fn allow_list(path String) List[String] {
-	var entries = List[String]()
-	for line in text_of(path).split("\n") {
-		if line != "" and not line.starts_with("//") {
-			entries.append(line.trim())
-		}
-	}
+	entries := text_of(path).split("\n").filter(
+		line => (line != "" and not line.starts_with("//"))
+	).map(line => line.trim())
 	return entries
 }
 
 // Findings not on the allow list, and allow-list lines that no longer match anything.
 fn shrinking(allowed, found List[String], list_path, describe String) List[String] {
-	var issues = List[String]()
-	for entry in found {
-		if not allowed.contains(
-			entry
-		) { issues.append(f"{entry}: {describe}") }
-	}
+	var issues = found.filter(
+		entry => not allowed.contains(entry)
+	).map(entry => f"{entry}: {describe}")
 	for entry in allowed {
 		if not found.contains(entry) {
 			issues.append(
@@ -488,7 +484,7 @@ export fn stdlib_issues(files List[String]) List[String] {
 	var optional_found = List[String]()
 	var stream_found = List[String]()
 	var issues = List[String]()
-	if sources.length() == 0 {
+	if sources.is_empty() {
 		issues.append(
 			f"no src/stdlib/*.ms file was found among {files.length()} listed files (first: `{(files.first() or "")}`)"
 		)

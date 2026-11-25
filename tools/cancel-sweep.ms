@@ -1,3 +1,5 @@
+// ms: allow_effect std.process.run
+
 // Cancellation sweep (`make cancel-sweep`): cancels each test of the e2e fixtures at
 // every park (await point) in turn and checks that nothing leaks. It builds the
 // counting runtime (`cmake --preset stats`,
@@ -17,7 +19,7 @@ import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",
-	GlobOptions, glob, read_file, temporary, write_file from "@std/os/fs.ms",
+	GlobOptions, glob, read_file, temporary from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",
@@ -212,8 +214,7 @@ fn main() Int {
 	if code != 0 { return code }
 
 	root := working_directory().get()
-	var files = List[String]()
-	for f in arguments() { files.append(f.clone()) }
+	var files = arguments().map(f => f.clone())
 
 	if files.is_empty() {
 		for f in glob(
@@ -229,7 +230,7 @@ fn main() Int {
 
 	ms := tool_ms(root.clone())
 	scratch := temporary("ms-cancel-").get()
-	change_directory(scratch.path()).get()
+	void change_directory(scratch.path()).get()
 
 	var jobs = system_info().cpu_count
 	n := env("LEAK_JOBS", "").parse_int()
@@ -243,12 +244,9 @@ fn main() Int {
 	var chunks = List[List[String]]()
 
 	for worker in 0..jobs {
-		var mine = List[String]()
-		for i in 0..files.length() {
-			if i % jobs == worker {
-				mine.append(files[i].clone())
-			}
-		}
+		mine := (0..files.length()).filter(
+			i => i % jobs == worker
+		).map(i => files[i].clone())
 		chunks.append(mine)
 	}
 
@@ -276,8 +274,12 @@ fn main() Int {
 		}
 	}
 
-	change_directory(root).get()
-	stdout().write(f"cancel-sweep: {swept} cancelled runs, {leaks} leaking\n").get()
+	void change_directory(root).get()
+	void (
+		stdout()
+		.write(f"cancel-sweep: {swept} cancelled runs, {leaks} leaking\n")
+		.get()
+	)
 	if leaks > 0 { return 1 }
 
 	return 0

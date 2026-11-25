@@ -419,7 +419,8 @@ MS_NODISCARD static bool type_field(Parser *p) {
     /* `width, height Int = 0`: every name reads the same type and default. */
     p->at = type_at;
     MsTypeRef *ty = NULL;
-    if (!parse_name_type(p, names[i], &ty))
+    /* `items &List[T]`: a field that looks at a value owned elsewhere. */
+    if (!(parse_kind(p) == MS_T_Amp ? parse_typ(p, &ty) : parse_name_type(p, names[i], &ty)))
       return false;
     MsExpr *def = NULL;
     if (parse_take(p, MS_T_Assign)) {

@@ -1,3 +1,5 @@
+// ms: allow_effect std.process.run
+
 // Scheduler stress run (`make stress-sched`): runs the tests of the e2e stdlib fixtures
 // with
 // `MS_SCHED_STRESS=1`, where a promise never starts on its creator and the first idle thread
@@ -94,9 +96,7 @@ fn changed(since String) List[String] {
 
 fn main() Int {
 	root := working_directory().get()
-	var files = List[String]()
-	for f in arguments() { files.append(f.clone()) }
-
+	var files = arguments().map(f => f.clone())
 	since := env("STRESS_CHANGED", "")
 
 	if files.is_empty() and since != "" {
@@ -123,12 +123,9 @@ fn main() Int {
 	var chunks = List[List[String]]()
 
 	for worker in 0..jobs {
-		var mine = List[String]()
-		for i in 0..tests.length() {
-			if i % jobs == worker {
-				mine.append(tests[i].clone())
-			}
-		}
+		mine := (0..tests.length()).filter(
+			i => i % jobs == worker
+		).map(i => tests[i].clone())
 		chunks.append(mine)
 	}
 

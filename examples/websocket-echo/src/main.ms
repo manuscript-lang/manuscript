@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.read
+
 import (
 	HttpExchange from "@std/net/http.ms",
 	serve from "@std/net/net.ms",

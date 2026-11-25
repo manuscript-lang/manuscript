@@ -1,3 +1,5 @@
+// ms: allow_effect std.console.write
+
 // A stack bytecode VM running a nested-loop program: enum dispatch, a list as the
 // stack.
 enum Op {

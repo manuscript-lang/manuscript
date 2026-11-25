@@ -116,7 +116,7 @@ fn var Decoder.step(move value Bytes, var out List[SseEvent]) Void! {
 		}
 	}
 
-	for event in events { out.append(event.clone()) }
+	out.extend(events)
 }
 
 fn var Decoder.finish(var out List[SseEvent]) Void! {

@@ -1,5 +1,5 @@
 import (
-	Closeable, panic from "@std/core.ms",
+	panic from "@std/core.ms",
 	Duration from "@std/time.ms",
 
 	Slot,
@@ -265,10 +265,12 @@ fn no_result(id Int) Error {
 
 // Stores how the work ended (its result or error) in the promise `id`.
 export fn complete[U](id Int, move result U!) Void {
-	match result {
-		ok(value) => msrt_promise_put(id, value, 0)
-		error(cause) => msrt_promise_put(id, cause, 1)
+	if result.is_error() {
+		msrt_promise_put(id, result.err().clone(), 1)
+		return
 	}
+
+	msrt_promise_put(id, result.get(), 0)
 }
 
 // Starts `entry` like a `Placement.Here` promise, except that when no other task is
@@ -336,11 +338,9 @@ fn first_failure[T](
 	while at >= 0 {
 		if not taken[at] and at != head {
 			result := pending[at].wait()
+			if result.is_error() { return result.err().clone() }
 
-			match result {
-				ok(_) => at = msrt_group_poll(set)
-				error(cause) => return cause.clone()
-			}
+			at = msrt_group_poll(set)
 		} else {
 			at = msrt_group_poll(set)
 		}
@@ -398,9 +398,10 @@ export fn wait_all[T](move promises List[Promise[T]]) List[T]! {
 		fresh := head != tried
 		tried = head
 
-		var ran = 0
-		if fresh {
-			ran = msrt_promise_run_watched(pending[head].id, set.id, members, head)
+		ran := if fresh {
+			msrt_promise_run_watched(pending[head].id, set.id, members, head)
+		} else {
+			0
 		}
 		if run_interrupted(ran) {
 			return error(first_failure(set.id, pending, taken, head))
@@ -424,12 +425,7 @@ export fn wait_all[T](move promises List[Promise[T]]) List[T]! {
 				}
 			}
 		} else {
-			var ids List[Int] = []
-			for at in head..count {
-				if not taken[at] {
-					ids.append(pending[at].id)
-				}
-			}
+			ids := (head..count).filter(at => not taken[at]).map(at => pending[at].id)
 			msrt_promise_wait_any(ids, -1)
 
 			for at in head..count {

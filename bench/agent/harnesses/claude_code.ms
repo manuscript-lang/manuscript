@@ -1,7 +1,7 @@
 import (
 	JsonValue from "@std/data/json.ms",
 
-	Harness, Usage, events, int_at from "./harness.ms",
+	Usage, events, int_at from "./harness.ms",
 )
 
 export type ClaudeCode {

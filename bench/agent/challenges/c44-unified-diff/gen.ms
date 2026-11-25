@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Generator for c44-unified-diff. Deterministic; run: ms run bench/agent/gen.ms -- c44
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",

@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Embedded example check (`docs-check`): every `manuscript` fence in the book, the
 // standard-library descriptions and the agent skill must still be valid Manuscript, so
 // a syntax change that leaves a stale example fails the build. A fence carries a marker
@@ -17,7 +20,7 @@
 import (
 	parse from "@std/data/json.ms",
 	arguments, working_directory from "@std/os/env.ms",
-	create_directory, read_file, temporary, write_file from "@std/os/fs.ms",
+	read_file, temporary, write_file from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	seconds from "@std/time.ms",
 
@@ -303,7 +306,7 @@ fn ms_run(ms, command, path String) Outcome {
 fn check_snippet(ms, scratch String, e Example, n Int) Outcome {
 	if not e.typed {
 		path := f"{scratch}/e{n}.ms"
-		write_file(path.clone(), fragment_source(e, false)).wait().get()
+		void write_file(path.clone(), fragment_source(e, false)).wait().get()
 
 		whole := ms_run(ms, "check", path)
 		if not whole.text.contains(
@@ -312,7 +315,7 @@ fn check_snippet(ms, scratch String, e Example, n Int) Outcome {
 	}
 
 	wrapped_path := f"{scratch}/e{n}w.ms"
-	write_file(wrapped_path.clone(), fragment_source(e, true)).wait().get()
+	void write_file(wrapped_path.clone(), fragment_source(e, true)).wait().get()
 
 	wrapped := ms_run(ms, "check", wrapped_path)
 	if wrapped.code != 0 and real_errors(wrapped.text).is_empty() {
@@ -341,7 +344,7 @@ fn verdict(ms, scratch String, e Example, n Int) String {
 			result = check_snippet(ms, scratch, e, n)
 		} else {
 			path := f"{scratch}/e{n}.ms"
-			write_file(path.clone(), e.code).wait().get()
+			void write_file(path.clone(), e.code).wait().get()
 			result = ms_run(ms, "check", path)
 		}
 
@@ -354,7 +357,7 @@ fn verdict(ms, scratch String, e Example, n Int) String {
 	}
 
 	path := f"{scratch}/e{n}.ms"
-	write_file(path.clone(), e.code).wait().get()
+	void write_file(path.clone(), e.code).wait().get()
 
 	if e.mode == "check" or e.mode == "run" or e.mode == "bench" {
 		result := ms_run(ms, "check", path)
@@ -383,8 +386,7 @@ fn first_line(text String) String {
 fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
-	var files = List[String]()
-	for f in arguments() { files.append(f.clone()) }
+	var files = arguments().map(f => f.clone())
 
 	if files.is_empty() {
 		listing := capture(env("GIT", "git"), ["ls-files"])

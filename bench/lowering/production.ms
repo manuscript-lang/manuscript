@@ -1,5 +1,3 @@
-import Closeable from "@std/core.ms"
-
 type Resource {
 	value Int
 }

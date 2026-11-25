@@ -1,3 +1,8 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Compares @std/json against Node (V8) and Rust's serde_json on standard documents
 // (bench/perf/json). Usage: ms run bench/tools/json_bench.ms (NAMES="twitter canada"
 // selects documents; MS picks the compiler) The corpora are downloaded into

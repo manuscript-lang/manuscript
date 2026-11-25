@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Generates the same program in Manuscript, Go and Rust and times each build. Usage: ms
 // run bench/tools/compile_time.ms [-- packages files fns] (default 40 25 10, about 122k
 // lines of Manuscript) OUT keeps the generated sources; MS picks the compiler;
@@ -6,7 +14,7 @@
 // and › so the generator reads as source.
 import (
 	arguments, set_environment from "@std/os/env.ms",
-	create_directory, remove, temporary from "@std/os/fs.ms",
+	remove, temporary from "@std/os/fs.ms",
 
 	generate from "./compile_time_project.ms",
 	absolute,

@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // Paired CLI effect-analysis measurements. Run from the repository root: ms run
 // bench/tools/effect_reachability.ms -- OUT BASE CANDIDATE REPEATS SIZES MODES ACTION
 // SIZES and MODES are comma-separated; ACTION is check, lint, build, or projects. Set

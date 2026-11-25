@@ -1,3 +1,8 @@
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // The conformance corpus replayed against an ms binary, in Manuscript: it reads each
 // fixture's recorded expectation (<name>.expected.json beside a .ms file, or
 // expected.json in a project directory with a conform.meta), observes the ms under test
@@ -16,21 +21,11 @@
 // -- [--phase parse|check|run|test] [--jobs N] [fixture id substring ...] Prints
 // `<phase>: passed/total` and one `FAIL <id>` line per difference.
 import (
-	Bytes from "@std/bytes.ms",
 	Promise, promise from "@std/concurrency/promise.ms",
-	JsonValue, StringifyOptions, parse, stringify from "@std/data/json.ms",
+	JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
 	arguments, environment, working_directory from "@std/os/env.ms",
-	CopyOptions,
-	GlobOptions,
-	access,
-	copy,
-	create_directory,
-	glob,
-	read_file,
-	remove,
-	temporary,
-	write_file from "@std/os/fs.ms",
-	CommandOutput, RunOptions, run from "@std/os/process.ms",
+	access, remove, write_file from "@std/os/fs.ms",
+	RunOptions, run from "@std/os/process.ms",
 	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",
 
@@ -145,7 +140,7 @@ fn record_chunk(
 			continue
 		}
 
-		write_file(fx.sidecar, text, replace: true).wait().get()
+		void write_file(fx.sidecar, text, replace: true).wait().get()
 		lines.append("wrote")
 	}
 
@@ -167,9 +162,7 @@ fn main() Int {
 	var stable = true
 	var prune = false
 	var filters = List[String]()
-	var words = List[String]()
-	for word in arguments() { words.append(word.clone()) }
-
+	words := arguments().map(word => word.clone())
 	var at = 0
 
 	while at < words.length() {
@@ -221,12 +214,9 @@ fn main() Int {
 	var chunks = List[List[Fixture]]()
 
 	for worker in 0..jobs_count {
-		var mine = List[Fixture]()
-		for index in 0..chosen.length() {
-			if index % jobs_count == worker {
-				mine.append(chosen[index].clone())
-			}
-		}
+		mine := (0..chosen.length()).filter(
+			index => index % jobs_count == worker
+		).map(index => chosen[index].clone())
 		chunks.append(mine)
 	}
 

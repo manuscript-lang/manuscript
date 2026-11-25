@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.process.run
+
 // Source size in LLM tokens (tiktoken o200k_base) per language over the reference
 // solutions.
 //

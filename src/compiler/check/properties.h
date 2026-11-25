@@ -94,4 +94,7 @@ void ms_check_data_message(const MsCheckProgram *program, MsTy ty, MsDataReason 
 /* Whether `def` is declared `opaque`. */
 bool ms_check_def_opaque(const MsCheckProgram *program, const MsDef *def);
 
+/* Whether `ty` is a record with a field written `&T`: a value of it looks at what its fields were built from. */
+bool ms_check_look_record(const MsCheckProgram *program, MsTy ty);
+
 #endif

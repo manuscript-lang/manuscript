@@ -1,7 +1,14 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // `conform fuzz-gen` and `conform fuzz`: generated programs written into the corpus, or run under two ms
 // binaries and compared.
 import (
-	arguments, working_directory from "@std/os/env.ms",
 	CopyOptions, copy, create_directory, temporary, write_file from "@std/os/fs.ms",
 	system_info from "@std/os/system.ms",
 
@@ -55,7 +62,7 @@ fn padded(seed Int) String {
 
 // Writes `seed-NNNN.ms` for each seed into `dir`; returns how many.
 fn write_generated(dir String, kind Kind, low, high Int) Int {
-	create_directory(dir.clone(), recursive: true).get()
+	void create_directory(dir.clone(), recursive: true).get()
 
 	var written = 0
 
@@ -138,9 +145,9 @@ export fn fuzz(root String, args Args) Int {
 	save := one(args, "save", "")
 
 	if save != "" and not different.is_empty() {
-		create_directory(save.clone(), recursive: true).get()
+		void create_directory(save.clone(), recursive: true).get()
 		for id in different {
-			copy(f"{dir}/{id}.ms", f"{save}/{id}.ms", CopyOptions(replace: true)).get()
+			void copy(f"{dir}/{id}.ms", f"{save}/{id}.ms", CopyOptions(replace: true)).get()
 		}
 	}
 

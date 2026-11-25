@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Close-once matrix (`make close-matrix`): generates one program for each combination
 // of a resource shape (a bare resource, an Optional, a List, a record or a Result
 // holding one) and a language construct that ends or moves its life (scope end, early
@@ -440,7 +443,7 @@ fn verify(ms, scratch String, cell Cell, show Bool, filter String) Tally {
 	var tally = Tally(0, 0, 0, [])
 	name := cell.name.clone()
 	file := f"{scratch}/{name}.ms"
-	write_file(file, program(cell.shape.clone(), cell.construct.clone())).wait().get()
+	void write_file(file, program(cell.shape.clone(), cell.construct.clone())).wait().get()
 
 	verdict := run(ms.clone(), ["check", file.clone()]).wait()
 
@@ -570,7 +573,7 @@ fn main() Int {
 		rejected += tally.rejected
 		failures += tally.failures
 		for line in tally.lines {
-			stdout().write(line.clone()).get()
+			void stdout().write(line.clone()).get()
 		}
 	}
 

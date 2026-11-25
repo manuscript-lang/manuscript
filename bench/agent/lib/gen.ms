@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Shared pieces of the challenge generators: the case record, the committed file layout
 // and the Go oracle.
 import (

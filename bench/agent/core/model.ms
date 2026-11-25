@@ -1,3 +1,6 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+
 // Data loading shared by the runner: challenges, languages, pricing. Paths are relative
 // to the repository root, where every command in README.md runs.
 import (

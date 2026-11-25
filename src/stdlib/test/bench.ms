@@ -113,7 +113,7 @@ fn measure[F](operations Int, work fn(var F) Void!, var state F) Void! {
 	)
 	mir_ops := (after.operations - before.operations).to_float() / ops
 	line := f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)},\"cpu_ns\":{cpu_ns},\"allocations\":{allocations},\"allocated_bytes\":{allocated},\"list_copies\":{list_copies},\"list_copy_bytes\":{list_copied},\"string_clones\":{string_clones},\"string_clone_bytes\":{string_cloned},\"mir_ops\":{mir_ops}\}\n"
-	stdout().write(line).get()
+	void stdout().write(line).get()
 }
 
 // Called by the entry that `ms bench` builds, with each block's body; programs do not

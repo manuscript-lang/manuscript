@@ -328,7 +328,9 @@ typedef struct BodyCloses {
 
 static void note_body_closes(void *ctx, const MsStmt *stmt) {
   BodyCloses *closes = ctx;
-  if (stmt->kind == MS_S_BIND && ms_facts_closer(closes->facts, stmt->u.bind.pattern->id) != NULL) {
+  const MsCloser *closer = stmt->kind == MS_S_BIND ? ms_facts_closer(closes->facts, stmt->u.bind.pattern->id) : NULL;
+  /* A `var` of a plain type has a drop-only closer: it releases memory, closes nothing, and cannot replace the result. */
+  if (closer != NULL && (closer->flags & MS_CLOSER_DROP) == 0) {
     closes->found = true;
   }
 }

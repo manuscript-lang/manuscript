@@ -1,3 +1,11 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // `conform diff`: the corpus observed under two ms binaries (or two build types) and compared directly.
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
@@ -41,12 +49,9 @@ export fn differing(
 	var chunks = List[List[Fixture]]()
 
 	for worker in 0..jobs {
-		var mine = List[Fixture]()
-		for index in 0..chosen.length() {
-			if index % jobs == worker {
-				mine.append(chosen[index].clone())
-			}
-		}
+		mine := (0..chosen.length()).filter(
+			index => index % jobs == worker
+		).map(index => chosen[index].clone())
 		chunks.append(mine)
 	}
 

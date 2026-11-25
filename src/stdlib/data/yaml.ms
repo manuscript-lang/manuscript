@@ -866,16 +866,15 @@ fn flow_entry(
 	explicit.add(name.clone())
 
 	if name == "<<" and not quoted_key {
-		cause := match merge(
+		merged := merge(
 			line: flow.line,
 			column: flow.pos + 1,
 			target: entries,
 			value: value,
-		) {
-			ok(_) => return ok()
-			error(cause) => cause
-		}
+		)
+		if merged.is_ok() { return ok() }
 
+		cause := merged.err().clone()
 		if cause.kind != "EBADMSG" { return error(cause) }
 
 		reason := cause.details.get_or("reason", "").clone()
@@ -2791,14 +2790,10 @@ fn directives(var context Context) Void! {
 		context.index < context.lines.length()
 		and context.lines[context.index].starts_with("%")
 	) {
-		var words List[String] = []
-		for word in uncomment(context.lines[context.index]).replace(
+		words := uncomment(context.lines[context.index]).replace(
 			"\t",
 			" ",
-		).split(" ") {
-			if word != "" { words.append(word.clone()) }
-		}
-
+		).split(" ").filter(word => (word != ""))
 		line := source_line(context, context.index)
 
 		if words[0] == "%YAML" {

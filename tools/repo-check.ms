@@ -1,6 +1,14 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Repository invariants that no compiler or test run enforces (`make repo-check`):
 //   - every tracked .ms source is formatted (`ms fmt --check`),
 //   - nested matches stay out of .ms sources and Markdown code fences (`ms lint --syntax`, MSL107),
+//   - every .ms source passes `ms lint --deny-warnings`, except the benchmarks and the
+//     deliberate probes and demos named in `unlinted`,
 //   - .msversion is a calendar version and the VS Code extension carries it,
 //   - ci.yml runs on every pull request without path filters and on merge_group.
 // `licenses` writes documentation/contributing/dependency-licenses.json from
@@ -26,6 +34,21 @@ fn skipped(path String) Bool {
 		or path.starts_with("bench/agent/results/sources/")
 		or path.contains("/third_party/")
 		or path.contains("/tests/")
+	)
+}
+
+// Sources that stay out of the lint gate on purpose: benchmark ports mirror other
+// languages, everything under tests/ is probes and negative fixtures that pin exact
+// shapes, the demos exist to show diagnostics, and one example needs a package download
+// to check at all.
+fn unlinted(path String) Bool {
+	return (
+		path.starts_with("bench/")
+		or path.starts_with("tests/")
+		or path.starts_with("examples/tooling-demo/")
+		or path.starts_with("examples/postgres-service/")
+		or path.starts_with("website/screenshots/screencast/")
+		or path == "tools/count-check-selftest/rejected.ms"
 	)
 }
 
@@ -65,9 +88,7 @@ fn run_in_batches(ms String, head, paths List[String]) Int {
 		var arguments = head.clone()
 		var end = at + 200
 		if end > paths.length() { end = paths.length() }
-		for path in paths.slice(at, end).get() {
-			arguments.append(path.clone())
-		}
+		arguments.extend(paths.slice(at, end).get())
 		if run_program(ms.clone(), arguments) != 0 { failing += 1 }
 		at = end
 	}
@@ -299,9 +320,7 @@ fn libraries(lock String) List[String] {
 
 		name := line.split(" ")[0].clone()
 		path := license_path(name.clone(), line.clone())
-		var digest = ""
-		if path != "" { digest = file_sha256(path.clone()) }
-
+		digest := if path != "" { file_sha256(path.clone()) } else { "" }
 		version := quoted(field(line.clone(), "version"))
 		entries.append(
 			f"    \{\"name\": {quoted(name)}, \"version\": {version}, \"license\": {quoted(path)}, \"sha256\": {quoted(digest)}\}"
@@ -348,7 +367,7 @@ fn licenses(check Bool) Int {
 		return 1
 	}
 
-	write_file(inventory, wanted, replace: true).wait().get()
+	void write_file(inventory, wanted, replace: true).wait().get()
 	return 0
 }
 
@@ -356,7 +375,7 @@ fn licenses(check Bool) Int {
 
 fn main() Int {
 	words := arguments()
-	if words.length() > 0 and words[0] == "licenses" {
+	if not words.is_empty() and words[0] == "licenses" {
 		return licenses(words.contains("--check"))
 	}
 
@@ -377,6 +396,9 @@ fn main() Int {
 		["fmt", "--check"],
 		sources(files.clone(), [".ms"]),
 	)
+
+	linted := sources(files.clone(), [".ms"]).filter(path => not unlinted(path.clone()))
+	failing += run_in_batches(ms.clone(), ["lint", "--deny-warnings"], linted)
 	failing += run_in_batches(
 		ms.clone(),
 		["lint", "--syntax"],
@@ -389,8 +411,8 @@ fn main() Int {
 	for issue in issues {
 		note(issue.clone())
 	}
-	if failing != 0 or issues.length() != 0 { return 1 }
+	if failing != 0 or not issues.is_empty() { return 1 }
 
-	print("Formatting, nested matches, release pins and workflow triggers agree.")
+	print("Formatting, lint, nested matches, release pins and workflow triggers agree.")
 	return 0
 }

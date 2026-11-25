@@ -116,27 +116,19 @@ fn Gen.names(kind Int) List[String] {
 
 // A random name of a kind, or "" when there is none. A moved name is skipped.
 fn var Gen.any(kind Int) String {
-	var live = List[String]()
-	for n in self.names(kind) {
-		if not self.dead.contains(n) {
-			live.append(n.clone())
-		}
-	}
-	if live.length() == 0 { return "" }
+	live := self.names(kind).filter(n => not self.dead.contains(n)).map(n => n.clone())
+	if live.is_empty() { return "" }
 
 	return live[self.rng.int(0, live.length())].clone()
 }
 
 // A string to move: an owned name that dies here, else a copy of a borrowed one.
 fn var Gen.moved() String {
-	var owned = List[String]()
-	for n in self.strings {
-		if not self.dead.contains(n) and not n.starts_with("b") {
-			owned.append(n.clone())
-		}
-	}
+	owned := self.strings.filter(
+		n => (not self.dead.contains(n) and not n.starts_with("b"))
+	).map(n => n.clone())
 
-	if owned.length() == 0 {
+	if owned.is_empty() {
 		borrowed := self.any(0)
 		if borrowed == "" { return self.text("str", "a") }
 
@@ -345,7 +337,7 @@ fn main() Int {
 	var seed = 1
 	var count = 200
 	args := arguments()
-	if args.length() > 0 { seed = args[0].parse_int() or 1 }
+	if not args.is_empty() { seed = args[0].parse_int() or 1 }
 	if args.length() > 1 { count = args[1].parse_int() or 200 }
 
 	var ran = 0
@@ -355,7 +347,7 @@ fn main() Int {
 	for i in 0..count {
 		name := f"p{seed}_{i}"
 		file := f"{scratch.path()}/{name}.ms"
-		write_file(file, program(seed * 100000 + i)).wait().get()
+		void write_file(file, program(seed * 100000 + i)).wait().get()
 
 		verdict := run(ms.clone(), ["check", file.clone()]).wait()
 

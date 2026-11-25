@@ -1,3 +1,9 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // Building blocks for the per-experiment paired-trial drivers under bench/tools (names
 // ending in a study topic). A study runs prebuilt producer binaries in rotating order,
 // validates every record, and keeps samples, environment and a summary.

@@ -135,7 +135,7 @@ fn rest_after(s String, k Int) String {
 }
 
 fn valid_int(s String) Bool {
-	if s.length() == 0 or s.length() > 7 { return false }
+	if s.is_empty() or s.length() > 7 { return false }
 
 	for c in s.chars() {
 		if digit(c) < 0 { return false }
@@ -176,7 +176,7 @@ fn valid_date(s String) Bool {
 }
 
 fn valid_label(s String) Bool {
-	if s.length() == 0 { return false }
+	if s.is_empty() { return false }
 
 	for c in s.chars() {
 		if not (is_lower(c) or digit(c) >= 0 or c == "_" or c == "-") { return false }
@@ -186,7 +186,7 @@ fn valid_label(s String) Bool {
 
 fn valid_state_name(s String) Bool {
 	cs := s.chars()
-	if cs.length() == 0 { return false }
+	if cs.is_empty() { return false }
 	if not is_lower(cs[0]) { return false }
 
 	for c in cs {
@@ -281,7 +281,7 @@ fn opt_i(x Int?) String {
 }
 
 fn labels_s(l List[String]) String {
-	if l.length() == 0 { return "-" }
+	if l.is_empty() { return "-" }
 	return l.join(",")
 }
 
@@ -290,7 +290,7 @@ fn parse_id_syntax(arg String) Int! {
 	if a.starts_with(
 		"#"
 	) { a = rest_after_hash(arg) }
-	if a.length() == 0 { return error(Error(f"bad issue id '{arg}'")) }
+	if a.is_empty() { return error(Error(f"bad issue id '{arg}'")) }
 
 	var v = 0
 
@@ -413,7 +413,7 @@ fn sort_unique(xs List[String]) List[String] {
 	var s = xs.sorted((a, b) => a.compare(b))
 	var out = List[String]()
 	for x in s {
-		if out.length() == 0 or out[out.length() - 1] != x {
+		if out.is_empty() or out[out.length() - 1] != x {
 			out.append(x.clone())
 		}
 	}
@@ -1010,7 +1010,7 @@ fn match_one(st State, fc, op Int, v String, iss Issue) Bool {
 			return false
 		}
 
-		if v == "none" { return iss.f.labels.length() == 0 }
+		if v == "none" { return iss.f.labels.is_empty() }
 
 		for l in iss.f.labels {
 			if l == v { return true }
@@ -1032,8 +1032,8 @@ fn match_one(st State, fc, op Int, v String, iss Issue) Bool {
 	if v == "assignee" { return iss.f.assignee != null }
 	if v == "due" { return iss.f.due != null }
 	if v == "points" { return iss.f.points != null }
-	if v == "labels" { return iss.f.labels.length() > 0 }
-	if v == "comments" { return iss.comments.length() > 0 }
+	if v == "labels" { return not iss.f.labels.is_empty() }
+	if v == "comments" { return not iss.comments.is_empty() }
 
 	return iss.f.reporter != null
 }
@@ -1219,7 +1219,7 @@ fn State.final_check(idx Int) Void! {
 fn var State.commit_edit(idx Int, nf Fields) String {
 	changes := diff_fields(self.issues[idx].f, nf)
 	id := self.issues[idx].id
-	if changes.length() == 0 { return f"#{id} unchanged" }
+	if changes.is_empty() { return f"#{id} unchanged" }
 
 	self.clock += 1
 	self.issues[idx].f = nf.clone()
@@ -1233,7 +1233,7 @@ fn var State.commit_edit(idx Int, nf Fields) String {
 fn var State.do_edit(id Int, toks List[String]) String! {
 	idx := self.find(id)
 	self.final_check(idx)?
-	if toks.length() == 0 { return error(Error("usage: edit ID field=value...")) }
+	if toks.is_empty() { return error(Error("usage: edit ID field=value...")) }
 
 	var nf = copy_fields(self.issues[idx].f)
 	for t in toks {
@@ -1315,7 +1315,7 @@ fn var State.do_move(id Int, target, comment String) String! {
 		} else if g == "due" {
 			unmet = f.due == null
 		} else if g == "labels" {
-			unmet = f.labels.length() == 0
+			unmet = f.labels.is_empty()
 		} else {
 			unmet = f.reporter == null
 		}
@@ -1323,7 +1323,7 @@ fn var State.do_move(id Int, target, comment String) String! {
 		if unmet { missing.append(g.clone()) }
 	}
 
-	if missing.length() > 0 {
+	if not missing.is_empty() {
 		return error(
 			Error(
 				f"cannot move #{id} to {target}: missing {missing.join(", ")}"
@@ -1354,7 +1354,7 @@ fn var State.cmd_create(rest String) String! {
 	if self.wf.initial < 0 { return error(Error("no workflow defined")) }
 
 	toks := tokenize(rest)?
-	if toks.length() == 0 { return error(Error("usage: create TITLE [field=value...]")) }
+	if toks.is_empty() { return error(Error("usage: create TITLE [field=value...]")) }
 
 	first := toks[0].clone()
 	if first.trim() == "" { return error(Error("empty title")) }
@@ -1389,7 +1389,7 @@ fn var State.cmd_create(rest String) String! {
 
 fn var State.cmd_edit(rest String) String! {
 	toks := tokenize(rest)?
-	if toks.length() == 0 { return error(Error("usage: edit ID field=value...")) }
+	if toks.is_empty() { return error(Error("usage: edit ID field=value...")) }
 
 	id := self.id_arg(toks[0].clone())?
 	return self.do_edit(id, toks.slice(1, toks.length())?)
@@ -1462,7 +1462,7 @@ fn State.cmd_show(rest String) String! {
 	lines.append(f"  points: {opt_i(f.points)}")
 	lines.append(f"  due: {opt_s(f.due)}")
 	lines.append(
-		f"  labels: {if f.labels.length() == 0 { "-" } else { f.labels.join(", ") }}"
+		f"  labels: {if f.labels.is_empty() { "-" } else { f.labels.join(", ") }}"
 	)
 	lines.append(f"  reporter: {opt_s(f.reporter)}")
 	lines.append(f"  created: t={iss.created}, updated: t={iss.updated}")
@@ -1485,7 +1485,7 @@ fn var State.cmd_log(rest String) String! {
 	usage := "usage: log [ID] [tail N]"
 	var p = 0
 
-	if ws.length() > 0 and ws[0] != "tail" {
+	if not ws.is_empty() and ws[0] != "tail" {
 		id = parse_id_syntax(ws[0])?
 		if id >= self.next_id { return error(Error(f"no such issue #{id}")) }
 
@@ -1507,14 +1507,12 @@ fn var State.cmd_log(rest String) String! {
 		}
 	}
 
-	var start = 0
-	if tail >= 0 and tail < sel.length() { start = sel.length() - tail }
-
+	start := if tail >= 0 and tail < sel.length() { sel.length() - tail } else { 0 }
 	var lines = List[String]()
 	for i in start..sel.length() {
 		lines.append(sel[i].clone())
 	}
-	if lines.length() == 0 { return ok("(no log entries)") }
+	if lines.is_empty() { return ok("(no log entries)") }
 
 	return ok(lines.join("\n"))
 }
@@ -1541,13 +1539,13 @@ fn State.sorted_views() List[String] {
 fn var State.cmd_view(rest String) String! {
 	ws := rest.fields()
 	usage := "usage: view save|run|list|show|delete"
-	if ws.length() == 0 { return error(Error(usage)) }
+	if ws.is_empty() { return error(Error(usage)) }
 
 	sub := ws[0]
 
 	if sub == "list" {
 		names := self.sorted_views()
-		if names.length() == 0 { return ok("(no views)") }
+		if names.is_empty() { return ok("(no views)") }
 
 		var lines = List[String]()
 		for n in names {
@@ -1637,7 +1635,7 @@ fn var State.cmd_view(rest String) String! {
 
 fn valid_view_name(s String) Bool {
 	cs := s.chars()
-	if cs.length() == 0 or not is_lower(cs[0]) { return false }
+	if cs.is_empty() or not is_lower(cs[0]) { return false }
 
 	for c in cs {
 		if not (is_lower(c) or digit(c) >= 0 or c == "_" or c == "-") { return false }
@@ -1753,7 +1751,7 @@ fn issues_word(n Int) String => if n == 1 { "issue" } else { "issues" }
 fn State.cmd_report(rest String) String! {
 	ws := rest.fields()
 	usage := "usage: report summary|workload|labels|timeline"
-	if ws.length() == 0 { return error(Error(usage)) }
+	if ws.is_empty() { return error(Error(usage)) }
 
 	sub := ws[0]
 
@@ -1867,7 +1865,7 @@ fn State.cmd_report(rest String) String! {
 			}
 		}
 
-		if counts.length() == 0 { return ok("(no labels)") }
+		if counts.is_empty() { return ok("(no labels)") }
 
 		counts.sort((a, b) => lc_cmp(a, b))
 
@@ -1964,7 +1962,7 @@ fn parse_workflow(block List[String]) Wf! {
 
 			for entry in rest.split(",") {
 				ws := entry.fields()
-				if ws.length() == 0 { return error(Error("workflow: bad state name ''")) }
+				if ws.is_empty() { return error(Error("workflow: bad state name ''")) }
 				if not valid_state_name(ws[0]) {
 					return error(Error(f"workflow: bad state name '{ws[0]}'"))
 				}

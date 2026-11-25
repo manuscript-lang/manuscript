@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Compile time of the in-process LLVM route (MS_LLVM names the shared library) against
 // the opt and llc subprocess route (MS_OPT and MS_LLC name the tools), on the programs
 // below, in Debug and Release. Builds alternate between the routes so drift on a shared

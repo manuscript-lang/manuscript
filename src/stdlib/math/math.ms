@@ -1,5 +1,7 @@
+// ms: allow_effect std.random.read
+
 import (
-	Data, panic from "@std/core.ms",
+	panic from "@std/core.ms",
 	random_bytes from "@std/random.ms",
 
 	msrt_bits_bit_and,
@@ -30,13 +32,11 @@ import (
 	msstd_bigint_gcd,
 	msstd_bigint_inverse_mod,
 	msstd_bigint_lcm,
-	msstd_bigint_modulo,
 	msstd_bigint_multiply,
 	msstd_bigint_negate,
 	msstd_bigint_parse,
 	msstd_bigint_pow,
 	msstd_bigint_pow_mod,
-	msstd_bigint_quotient,
 	msstd_bigint_remainder,
 	msstd_bigint_shift_left,
 	msstd_bigint_shift_right,

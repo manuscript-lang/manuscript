@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 // Collection probes: each case prints "name microseconds checksum".
 import monotonic from "@std/time.ms"
 

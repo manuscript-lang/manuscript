@@ -56,8 +56,6 @@ fn draw_below(min, width Int) Int! {
 			return ok(wrapping_add(min, n))
 		}
 	}
-
-	return ok(min)
 }
 
 // An integer at least `min` and below `max_exclusive` (below the largest Int when
@@ -112,9 +110,9 @@ export fn draw_shuffle[T](move values List[T]) List[T]! {
 }
 
 // A uniformly chosen item, or null for an empty list.
-export fn draw_choice[T Clonable](values List[T]) T?! {
+export fn draw_choice[T](hold values List[T]) &T?! {
 	if values.is_empty() { return ok(null) }
 
 	at := draw_below(0, values.length())?
-	return ok(values[at].clone())
+	return ok(values[at])
 }

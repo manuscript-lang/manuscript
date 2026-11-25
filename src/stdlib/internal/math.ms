@@ -154,10 +154,6 @@ export extern fn msstd_bigint_divide(value, other BigInt) BigInt!
 
 export extern fn msstd_bigint_remainder(value, other BigInt) BigInt!
 
-export extern fn msstd_bigint_quotient(value, other BigInt) BigInt
-
-export extern fn msstd_bigint_modulo(value, other BigInt) BigInt
-
 export extern fn msstd_bigint_compare(value, other BigInt) Int
 
 export extern fn msstd_bigint_bit_and(value, other BigInt) BigInt

@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Generator for c55-jq-lite. The expected outputs come from the Go oracle in
 // oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
 // Deterministic; run: ms run bench/agent/gen.ms -- c55

@@ -309,9 +309,7 @@ fn q_decode(payload String) Bytes {
 				out.append(61)
 			}
 		} else {
-			for b in c.to_bytes().values() {
-				out.append(b)
-			}
+			out.extend(c.to_bytes().values())
 		}
 
 		i += 1

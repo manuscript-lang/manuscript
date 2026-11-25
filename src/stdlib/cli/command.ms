@@ -1,4 +1,5 @@
 // ms: allow_effect std.console.write
+
 import panic from "@std/core.ms"
 /*
 Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
@@ -206,14 +207,14 @@ fn Command.execute(argv List[String]) Int {
 
 	match parsed.get() {
 		Help(text) => {
-			stdout().write(text).get()
+			void stdout().write(text).get()
 			return 0
 		}
 		Run(matches) => {
 			result := self.run(matches)
 
 			if result.is_error() {
-				stderr().write(result.err().message + "\n").get()
+				void stderr().write(result.err().message + "\n").get()
 				return 1
 			}
 
@@ -226,7 +227,7 @@ fn Command.execute(argv List[String]) Int {
 // returns its exit status. The path starts at this node's name; an unknown path is
 // an `EINVAL` error.
 fn Command.run(matches Matches) Int! {
-	if matches.path.length() > 0 and matches.path[0] == self.name {
+	if not matches.path.is_empty() and matches.path[0] == self.name {
 		node := node_at(self, matches.path, 1)
 		if node != null {
 			return node.exec(matches)

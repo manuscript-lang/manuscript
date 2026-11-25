@@ -8,8 +8,7 @@ Bracketed paste and the extended keyboard protocols are on while the `RawTermina
 Styling and width helpers are in `@std/cli/style.ms`; the diffed redraw is in `@std/cli/screen.ms`.
 */
 import (
-	Closeable from "@std/core.ms",
-	ReadStream, Source from "@std/io/io.ms",
+	ReadStream from "@std/io/io.ms",
 
 	msstd_terminal_capabilities_colors,
 	msstd_terminal_capabilities_error_is_terminal,
@@ -572,18 +571,12 @@ fn var TerminalEvents.next() TerminalEvent?! {
 		ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
 
 		if ready != null {
-			for event in self.decoder.decode(msstd_terminal_input_text()) {
-				self.queue.append(event.clone())
-			}
+			self.queue.extend(self.decoder.decode(msstd_terminal_input_text()))
 		} else if waiting {
 			// A quiet pause resolves a lone escape into the Escape key.
-			for event in self.decoder.flush() {
-				self.queue.append(event.clone())
-			}
+			self.queue.extend(self.decoder.flush())
 		}
 	}
-
-	return ok(null)
 }
 
 fn move TerminalEvents.close() Void! {

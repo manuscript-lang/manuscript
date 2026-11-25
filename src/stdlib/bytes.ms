@@ -1,6 +1,4 @@
 import (
-	Data, Writable from "@std/core.ms",
-
 	msrt_bits_bit_and,
 	msrt_bits_shift_right,
 	msrt_bytes_join,
@@ -63,12 +61,11 @@ fn Bytes.get_or(index Int, default UInt8?) UInt8 {
 	count := self.length()
 	position := index
 	if index < 0 { position = count + index }
-	if position >= 0 and position < count { return self.get(position) }
-
-	match default {
-		value => return value
-		null => return self.get(index)
+	if position >= 0 and position < count {
+		return self.get(position)
 	}
+
+	return default or self.get(index)
 }
 
 // Returns the first matching byte offset or `null`; empty `value` matches at zero.
@@ -304,6 +301,13 @@ fn var BytesBuilder.append(value UInt8) Void { ... }
 
 // Appends all supplied bytes in order; the input is unchanged.
 fn var BytesBuilder.append_bytes(values Bytes) Void { ... }
+
+// Appends every byte of `values` in order, like `List.extend`.
+fn var BytesBuilder.extend(values List[UInt8]) Void {
+	for value in values {
+		self.append(value)
+	}
+}
 
 // Consumes the builder and returns its bytes; the builder cannot be used
 // afterwards.

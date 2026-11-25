@@ -14,7 +14,7 @@
     |
  21 |     print(total)
     |     ^
-<DIR>/main.ms:25:5: MSL121: Write the default and the override as one `x := if c: b else: a`
+<DIR>/main.ms:25:5: MSL121: Write the default and the override as one `x := if c { b } else { a }`
     |
  25 |     var x = 1
     |     ^

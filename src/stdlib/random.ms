@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.random.read
+
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	panic from "@std/core.ms",
@@ -18,7 +21,6 @@ import (
 	draw_float,
 	draw_int,
 	draw_shuffle,
-	invalid_input,
 	msstd_random_os_bytes from "@std/internal/random.ms",
 )
 
@@ -97,9 +99,10 @@ export fn shuffle[T](move values List[T]) List[T]! {
 	return draw_shuffle(values)
 }
 
-// Returns a uniformly chosen item, or null for an empty list.
+// Returns a uniformly chosen item as a view of `values`, or null for an empty list. Use
+// `.clone()` to keep it.
 // ms: effect std.random.read
-export fn choice[T Clonable](values List[T]) T?! {
+export fn choice[T](hold values List[T]) &T?! {
 	return draw_choice(values)
 }
 
@@ -124,26 +127,22 @@ export fn sample[T Clonable](values List[T], count Int) List[T]! {
 	return ok(out)
 }
 
-// Returns an item chosen with probability proportional to its weight, or null for an
-// empty list. `weights` must match `values` in length, hold no negative or non-finite
-// weight, and not all be zero; otherwise this returns `EINVAL`.
+// Returns a view of an item chosen with probability proportional to its weight, or null
+// for an empty list. `weights` must match `values` in length, hold no negative or
+// non-finite weight, and not all be zero; otherwise this returns `EINVAL`.
 // ms: effect std.random.read
-export fn weighted_choice[T Clonable](values List[T], weights List[Float]) T?! {
+export fn weighted_choice[T](hold values List[T], weights List[Float]) &T?! {
 	if values.is_empty() and weights.is_empty() { return ok(null) }
 
 	total := weight_total(values.length(), weights)
 	if total == 0.0 { return error(Error("random: invalid input", kind: "EINVAL")) }
 
 	point := float()?
-	return ok(values[weighted_position(weights, point, total)].clone())
+	return ok(values[weighted_position(weights, point, total)])
 }
 
 fn positions(count Int) List[Int] {
-	var out List[Int] = []
-	for i in 0..count {
-		out.append(i)
-	}
-	return out
+	return (0..count).map(i => i)
 }
 
 /*
@@ -197,11 +196,7 @@ fn scaled_weighted_position(weights List[Float], unit_draw Float) Int {
 		}
 	}
 
-	var total = 0.0
-	for weight in weights {
-		total += weight / scale
-	}
-
+	total := weights.map(weight => weight / scale).sum()
 	point := unit_draw * total
 	var running = 0.0
 	var last = 0
@@ -269,8 +264,6 @@ fn var SeededRandom.int(min, max_exclusive Int) Int {
 		// likelier.
 		if bits - rest <= max_int - (span - 1) { return min + rest }
 	}
-
-	return min
 }
 
 // Returns a Float at least 0.0 and below 1.0 with 53 random bits.
@@ -293,7 +286,7 @@ fn var SeededRandom.shuffle[T](move values List[T]) List[T] {
 }
 
 // Returns a uniformly chosen item, or null for an empty list.
-fn var SeededRandom.choice[T](values List[T]) &T? {
+fn var SeededRandom.choice[T](hold values List[T]) &T? {
 	if values.is_empty() { return null }
 	return values[self.int(0, values.length())]
 }
@@ -351,12 +344,7 @@ fn var SeededRandom.permutation(count Int) List[Int] {
 	if count < 0 {
 		panic("random permutation: count must not be negative")
 	}
-
-	var items List[Int] = []
-	for index in 0..count {
-		items.append(index)
-	}
-	return self.shuffle(items)
+	return self.shuffle((0..count).map(index => index))
 }
 
 // Returns a generator that starts from `seed`. Equal seeds give equal sequences. The

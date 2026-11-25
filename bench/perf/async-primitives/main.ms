@@ -1,3 +1,8 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.clock.sleep
+// ms: allow_effect std.net.connect
+// ms: allow_effect std.net.listen
+
 // Cost of each async primitive, one mode per primitive. Prints `mode ns/op`.
 // `ms build bench/perf/async-primitives/main.ms -o probe && ./probe <mode> <n>`.
 //
@@ -11,7 +16,7 @@
 import (
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	Pipe, pipe from "@std/io/io.ms",
-	Connection, Listener, connect, listen from "@std/net/net.ms",
+	Listener, connect, listen from "@std/net/net.ms",
 	arguments from "@std/os/env.ms",
 	monotonic, nanoseconds, sleep from "@std/time.ms",
 )

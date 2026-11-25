@@ -1,3 +1,5 @@
+// ms: allow_effect std.process.run
+
 // Bash's built-in timer supplies child user/system CPU time without an external time
 // binary.
 import (

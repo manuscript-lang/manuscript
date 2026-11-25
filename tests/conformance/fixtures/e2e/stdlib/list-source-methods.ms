@@ -6,7 +6,7 @@ type Plain {
 	n Int
 }
 
-fn smallest[T Comparable & Clonable](values List[T]) T? {
+fn smallest[T Comparable](hold values List[T]) &T? {
 	return values.min()
 }
 

@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	PriorityQueue from "@std/collections/queue.ms",
 	panic from "@std/core.ms",
@@ -72,7 +75,7 @@ fn l_insert_remove() Int {
 
 	var t = 0
 
-	while xs.length() > 0 {
+	while not xs.is_empty() {
 		xs.remove(xs.length() / 3)
 		t += 1
 	}

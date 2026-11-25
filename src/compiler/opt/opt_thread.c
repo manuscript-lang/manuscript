@@ -437,9 +437,5 @@ bool opt_thread_func(MirModule *m, MirFunc *f) {
 }
 
 bool opt_thread(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    changed = opt_thread_func(m, &m->funcs.ptr[fi]) || changed;
-  }
-  return changed;
+  return opt_each_func(m, opt_thread_func);
 }

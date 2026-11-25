@@ -69,64 +69,6 @@ static uint32_t header(MsSpan source, uint32_t offset, MsSpan name) {
   return offset;
 }
 
-/* A written type as text: `Box[fn(Int) Int]`. Two methods share a receiver form when it reads the same. */
-static void type_form(const Builder *b, MsStrBuild *out, const MsTypeRef *type) {
-  if (type->kind == MS_TYPE_NAMED) {
-    ms_strbuild_append(out, ms_names_span(b->program->names, type->name));
-    for (uint32_t index = 0; index < type->args.len; index++) {
-      ms_strbuild_append_text(out, index == 0 ? "[" : ",");
-      type_form(b, out, type->args.ptr[index]);
-    }
-    ms_strbuild_append_text(out, type->args.len == 0 ? "" : "]");
-    return;
-  }
-  ms_strbuild_append_text(out, "fn(");
-  for (uint32_t index = 0; index < type->params.len; index++) {
-    ms_strbuild_append_text(out, index == 0 ? "" : ",");
-    ms_strbuild_append_text(out, type->params.ptr[index]->is_mutable ? "var " : "");
-    if (type->params.ptr[index]->ty != NULL) {
-      type_form(b, out, type->params.ptr[index]->ty);
-    }
-  }
-  ms_strbuild_append_text(out, ")");
-  if (type->result != NULL) {
-    type_form(b, out, type->result);
-  }
-}
-
-/* The methods of one receiver form are folded into the first: only that one writes the receiver as a type. */
-static void fold_receivers(Builder *b, uint32_t module) {
-  const MsModule *tree = b->program->modules.ptr[module].tree;
-  b->folded_into[module] = MS_ARENA_NEW_ARRAY(b->arena, uint32_t, tree->ndecls + 1);
-  MsSpan *forms = MS_ARENA_NEW_ARRAY(b->arena, MsSpan, tree->ndecls + 1);
-  for (uint32_t at = 0; at < tree->ndecls; at++) {
-    b->folded_into[module][at] = at;
-    if (tree->decls[at]->kind != MS_D_IMPL) {
-      continue;
-    }
-    MsStrBuild text = ms_strbuild_new();
-    type_form(b, &text, tree->decls[at]->u.impl.receiver);
-    const MsTypeParams bounds = tree->decls[at]->u.impl.bounds;
-    for (uint32_t index = 0; index < bounds.len; index++) {
-      /* `Box[T: Equal]` and `Box[T]` are two forms. */
-      ms_strbuild_append_text(&text, " ");
-      ms_strbuild_append(&text, ms_names_span(b->program->names, bounds.ptr[index]->name));
-      for (uint32_t bound = 0; bound < bounds.ptr[index]->bounds.len; bound++) {
-        ms_strbuild_append_text(&text, ":");
-        type_form(b, &text, bounds.ptr[index]->bounds.ptr[bound]);
-      }
-    }
-    forms[at] = ms_arena_copy(b->arena, ms_strbuild_span(&text));
-    ms_strbuild_free(&text);
-    for (uint32_t earlier = 0; earlier < at; earlier++) {
-      if (tree->decls[earlier]->kind == MS_D_IMPL && b->folded_into[module][earlier] == earlier && ms_span_equal(forms[earlier], forms[at])) {
-        b->folded_into[module][at] = earlier;
-        break;
-      }
-    }
-  }
-}
-
 /* ---- keys ---- */
 
 MsSpan ms_occ_symbol_key(const Builder *b, MsSymbolId id) {
@@ -460,14 +402,22 @@ static void bindings_expr(void *context, const MsExpr *expr) {
   }
 }
 
-static void declare_parameters(Builder *b, uint32_t module, const MsParams params, uint32_t first_index) {
+/* The parameters a function declares. A function with no body (an extern or a stub) is never walked, so its parameters
+ * have no checked facts: they take the type of the function's signature instead. */
+static void declare_parameters(Builder *b, uint32_t module, const MsParams params, MsTy signature) {
   const MsFacts *facts = &b->program->modules.ptr[module].facts;
+  const MsTyTable *types = &b->program->types;
+  const bool listed = signature != MS_TY_NONE && ms_ty_kind(types, signature) == MS_TY_FUNCTION && ms_ty_param_count(types, signature) == params.len;
   for (uint32_t index = 0; index < params.len; index++) {
     const MsParam *param = params.ptr[index];
     const MsRef ref = {.kind = MS_REF_PARAM, .decl = {module, param->id}};
-    ms_occ_add(b, binding_key(b, &ref), ms_occ_name_text(b, param->name), module, param->pos.offset, true, false, ms_facts_type(facts, param->id), 0,
-        false);
-    (void)first_index;
+    MsTy ty = ms_facts_type(facts, param->id);
+    if (ty == MS_TY_NONE && listed) ty = ms_ty_params(types, signature)[index].ty;
+    for (size_t at = 0; ty == MS_TY_NONE && param->ty != NULL && at < b->program->type_refs.len; at++) {
+      const MsTypeRefRecord *written = &b->program->type_refs.ptr[at];
+      if (written->module == module && written->node == param->ty->id) ty = written->ty; /* an operation of an interface */
+    }
+    ms_occ_add(b, binding_key(b, &ref), ms_occ_name_text(b, param->name), module, param->pos.offset, true, false, ty, 0, false);
   }
 }
 
@@ -478,12 +428,13 @@ static void declare_bindings(Builder *b, uint32_t module) {
   for (uint32_t at = 0; at < tree->ndecls; at++) {
     const MsDecl *decl = tree->decls[at];
     if (decl->kind == MS_D_FN) {
-      declare_parameters(b, module, decl->u.fn.params, 0);
+      const MsSymbolId *symbol = ms_scope_get(&b->program->modules.ptr[module].scope, decl->u.fn.name);
+      declare_parameters(b, module, decl->u.fn.params, symbol != NULL ? b->program->symbols.ptr[*symbol].ty : MS_TY_NONE);
     } else if (decl->kind == MS_D_INTERFACE || decl->kind == MS_D_IMPL) {
       const bool iface = decl->kind == MS_D_INTERFACE;
       const uint32_t count = iface ? decl->u.iface.methods.len : decl->u.impl.methods.len;
       for (uint32_t method = 0; method < count; method++) {
-        declare_parameters(b, module, (iface ? decl->u.iface.methods.ptr[method] : decl->u.impl.methods.ptr[method])->func.params, 0);
+        declare_parameters(b, module, (iface ? decl->u.iface.methods.ptr[method] : decl->u.impl.methods.ptr[method])->func.params, MS_TY_NONE);
       }
     }
     ms_walk_decl(&visitor, decl);
@@ -826,7 +777,6 @@ static void index_tables(Builder *b) {
   b->written = MS_ARENA_NEW_ARRAY(b->arena, MsTy *, modules);
   b->assigned = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
   b->instantiated = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
-  b->folded_into = MS_ARENA_NEW_ARRAY(b->arena, uint32_t *, modules);
   for (size_t module = 0; module < modules; module++) {
     const uint32_t nodes = program->modules.ptr[module].tree->node_count + 1;
     b->symbol_at[module] = MS_ARENA_NEW_ARRAY(b->arena, MsSymbolId, nodes);
@@ -837,7 +787,6 @@ static void index_tables(Builder *b) {
     b->instantiated[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
   }
   for (size_t module = 0; module < modules; module++) {
-    fold_receivers(b, (uint32_t)module);
   }
   for (size_t index = 1; index < program->symbols.len; index++) {
     const MsSymbol *symbol = &program->symbols.ptr[index];

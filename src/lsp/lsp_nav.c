@@ -214,6 +214,20 @@ static bool hover_expression(const LspAnalysis *analysis, const LspDoc *doc, siz
   return false;
 }
 
+/* The keyword a declared type is introduced with, or NULL when the occurrence is not a type. */
+static const char *type_keyword(const MsCheckProgram *program, const MsOccurrence *selected) {
+  if (selected->symbol == 0 || selected->symbol >= program->symbols.len) return NULL;
+  const MsSymbol *symbol = &program->symbols.ptr[selected->symbol];
+  if (symbol->kind != MS_SYMBOL_TYPE || symbol->decl == NULL) return NULL;
+  switch (symbol->decl->kind) {
+  case MS_D_ENUM: return "enum";
+  case MS_D_INTERFACE: return "interface";
+  case MS_D_TYPE:
+  case MS_D_ALIAS: return "type";
+  default: return NULL;
+  }
+}
+
 void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out) {
   LspAnalysis analysis;
   const MsOccurrence *selected;
@@ -232,9 +246,17 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   ms_ty_show_plain(&shown, program->names, &program->types, selected->ty);
   MsStrBuild value = ms_strbuild_new();
   ms_strbuild_append_text(&value, "```manuscript\n");
-  ms_strbuild_append(&value, selected->name);
-  ms_strbuild_append_text(&value, " ");
-  ms_strbuild_append(&value, ms_strbuild_span(&shown));
+  const char *keyword = type_keyword(program, selected);
+  if (keyword != NULL) {
+    /* A declared type reads as its declaration (`type List[T]`), not as a name followed by itself. */
+    ms_strbuild_append_text(&value, keyword);
+    ms_strbuild_append_text(&value, " ");
+    ms_strbuild_append(&value, ms_strbuild_span(&shown));
+  } else {
+    ms_strbuild_append(&value, selected->name);
+    ms_strbuild_append_text(&value, " ");
+    ms_strbuild_append(&value, ms_strbuild_span(&shown));
+  }
   ms_strbuild_append_text(&value, "\n```");
   const MsOccurrence *declaration = declaration_of(&analysis, selected);
   StdDeclaration bundled;

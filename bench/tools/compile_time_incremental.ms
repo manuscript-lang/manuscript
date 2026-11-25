@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Times rebuilds after small edits. Usage: ms run
 // bench/tools/compile_time_incremental.ms [-- packages files fns] (default 40 25 10,
 // about 122k lines). MS picks the compiler; SKIP_LLVM=1 skips the Release column. Each

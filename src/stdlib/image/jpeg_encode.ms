@@ -249,10 +249,9 @@ fn jpeg_dht(var out BytesBuilder, class_id Int, counts, values List[Int]) Void {
 // formula, keeping each entry in 1 through 255.
 fn jpeg_scaled(base List[Int], quality Int) List[Int] {
 	scale := if quality < 50 { 5000 / quality } else { 200 - quality * 2 }
-	var table = List[Int]()
-	for zi in 0..64 {
-		table.append(jpeg_clamp(max_of((base[zi] * scale + 50) / 100, 1), 255))
-	}
+	table := (0..64).map(
+		zi => jpeg_clamp(max_of((base[zi] * scale + 50) / 100, 1), 255)
+	)
 	return table
 }
 

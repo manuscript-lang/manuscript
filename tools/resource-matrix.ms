@@ -1,3 +1,6 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.process.run
+
 // Resource ownership matrix (`make resource-matrix`): generates one program for each
 // combination of a standard operation that takes, returns or discards a one-owner
 // resource, a call form (direct call, or a method value called later) and an argument
@@ -263,12 +266,7 @@ fn words(text String) List[String] {
 	for mark in ["(", ")", "[", "]", ",", ":", "?", "!", "=", "&", "<", ">", ";"] {
 		spaced = spaced.replace(mark, " ")
 	}
-
-	var found = List[String]()
-	for word in spaced.split(" ") {
-		if word != "" { found.append(word.clone()) }
-	}
-	return found
+	return spaced.split(" ").filter(word => word != "").map(word => word.clone())
 }
 
 // Whether the declaration `signature` changes its receiver, or takes or returns one of
@@ -441,7 +439,7 @@ fn main() Int {
 				) { continue }
 
 				file := f"{scratch.path()}/{name}.ms"
-				write_file(file, program(o, call_form, arg_form)).wait().get()
+				void write_file(file, program(o, call_form, arg_form)).wait().get()
 
 				verdict := run(ms.clone(), ["check", file.clone()]).wait()
 

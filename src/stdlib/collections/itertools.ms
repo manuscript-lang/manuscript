@@ -18,11 +18,7 @@ export type Run[K Clonable, T Clonable] {
 // Pairs each item with the one after it; a list with fewer than two items gives an
 // empty list. Example: `pairwise([1, 2, 3])` holds the pairs `(1, 2)` and `(2, 3)`.
 export fn pairwise[T Clonable](values List[T]) List[Pair[T, T]] {
-	var out List[Pair[T, T]] = []
-	for i in 1..values.length() {
-		out.append(Pair(values[i - 1].clone(), values[i].clone()))
-	}
-	return out
+	return (1..values.length()).map(i => Pair(values[i - 1].clone(), values[i].clone()))
 }
 
 /*
@@ -151,10 +147,7 @@ export fn combinations[T Clonable](values List[T], size Int) List[List[T]] {
 	if size < 0 or size > values.length() { return [] }
 
 	var out List[List[T]] = []
-	var chosen List[Int] = []
-	for i in 0..size {
-		chosen.append(i)
-	}
+	var chosen = (0..size).map(i => i)
 
 	while true {
 		out.append(chosen.map(i => values[i].clone()))

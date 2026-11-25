@@ -1,13 +1,10 @@
+// ms: allow_effect std.clock.sleep
+
 import (
 	Bytes from "@std/bytes.ms",
-	Placement,
-	Promise,
-	PromiseOptions,
-	complete,
-	deferred,
-	promise from "@std/concurrency/promise.ms",
-	Closeable, Writable from "@std/core.ms",
-	Pipe, ReadStream, Sink, Source, WriteStream, pipe from "@std/io/io.ms",
+	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
+	Writable from "@std/core.ms",
+	Pipe, ReadStream, WriteStream, pipe from "@std/io/io.ms",
 	ClientResponse,
 	HttpClient,
 	HttpClientOptions,
@@ -22,13 +19,13 @@ import (
 	NativeWorkerSpec,
 	headers,
 	native_handler from "@std/net/http.ms",
-	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
+	DnsKind, DnsRecord from "@std/net/ip.ms",
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
 	WebSocket,
 	WebSocketOptions,
 	WebSocketWire,
 	web_socket_from from "@std/net/websocket.ms",
-	Duration, Timestamp, nanoseconds, sleep from "@std/time.ms",
+	Duration, nanoseconds, sleep from "@std/time.ms",
 
 	msrt_runtime_limit,
 	msrt_runtime_set_threads,
@@ -43,7 +40,6 @@ import (
 	msstd_net_connection_accept_tls,
 	msstd_net_connection_adopt,
 	msstd_net_connection_alias,
-	msstd_net_connection_close,
 	msstd_net_connection_close_if_last,
 	msstd_net_connection_local_address,
 	msstd_net_connection_peer_address,
@@ -54,7 +50,6 @@ import (
 	msstd_net_connection_tls_info,
 	msstd_net_connection_write_bytes,
 	msstd_net_datagram_address,
-	msstd_net_datagram_close,
 	msstd_net_datagram_close_if_last,
 	msstd_net_datagram_receive,
 	msstd_net_datagram_send_bytes,
@@ -166,13 +161,8 @@ fn move Connection.close() Void! {
 fn connection(move native NativeConnection) Connection {
 	local := msstd_net_connection_local_address(native)
 	peer := msstd_net_connection_peer_address(native)
-	var tls TlsInfo? = null
-
-	match msstd_net_connection_tls_info(native) {
-		ok(found) => tls = found
-		error(_) => tls = null
-	}
-
+	secured := msstd_net_connection_tls_info(native)
+	tls TlsInfo? := if secured.is_ok() { secured.get().clone() } else { null }
 	other := msstd_net_connection_share(native)
 	upgradable := msstd_net_connection_alias(native)
 	return Connection(

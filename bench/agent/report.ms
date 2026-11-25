@@ -13,8 +13,8 @@ import (
 	compile from "@std/regex.ms",
 
 	root from "./core/model.ms",
-	fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms",
-	Interval, mean_ci, wilson from "./lib/stats.ms",
+	fmt_g, pct0 from "./lib/pyfmt.ms",
+	mean_ci, wilson from "./lib/stats.ms",
 	nonblank_lines, read_text from "./lib/text.ms",
 )
 

@@ -33,13 +33,11 @@ test "random natives bound to a name draw from the operating system" {
 	int_in := secure_int
 	id := uuid_v4
 	mix := shuffle[Int]
-	pick := choice[Int]
 	draw := float
 	n := int_in(5, 6).get()
 	expect_equal(n, 5)?
 	expect_equal(id().get().length(), 36)?
 	expect_equal(mix([1, 2, 3]).get().length(), 3)?
-	expect_true(pick([7]).get() != null)?
 	expect_true(draw().get() < 1.0)?
 }
 

@@ -1,6 +1,5 @@
 import (
 	Bytes from "@std/bytes.ms",
-	Writable from "@std/core.ms",
 
 	msrt_string_fields,
 	msrt_string_from_scalars,

@@ -1,3 +1,9 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Pairs existing generated executables (bench/perf/codecs,
 // bench/perf/codecs/json-failure); only their internal timer is measured. Usage: ms run
 // bench/tools/codecs_compare.ms -- <decode|json-failure> BEFORE AFTER OUTPUT_DIR

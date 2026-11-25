@@ -1,3 +1,5 @@
+// ms: allow_effect std.process.run
+
 // A command whose standard output cannot be written must fail
 // (`ctest -R stdout_closed`): `ms doc` writes more than a pipe holds, so the child is
 // still writing when this program closes the read end, and it must exit nonzero (a

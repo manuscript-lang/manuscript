@@ -1,4 +1,7 @@
-import panic from "@std/core.ms"
+// ms: allow_effect std.console.write
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // The conformance corpus commands that are not a replay: `list`, `stats`, `lint`,
 // `retag`, `diff`,
 // `fuzz-gen`, `fuzz` and `harvest`. The replay and recording of expectations is tools/conform-run.ms.
@@ -10,18 +13,13 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	GlobOptions, glob, write_file from "@std/os/fs.ms",
 
-	Args, has, many, number, one, parse_args from "./conform/args.ms",
-	Fixture,
-	candidate_ids,
-	parse_meta,
-	read_text,
-	render_meta from "./conform/corpus.ms",
+	Args, has, one, parse_args from "./conform/args.ms",
+	candidate_ids, parse_meta, read_text, render_meta from "./conform/corpus.ms",
 	run_diff from "./conform/diff.ms",
 	fuzz, fuzz_gen from "./conform/fuzz_commands.ms",
 	harvest from "./conform/harvest.ms",
 	Filter, filter_of, select from "./conform/select.ms",
 	imports_of, tag_allowed, tier_of from "./conform/tags.ms",
-	tool_ms from "./lib.ms",
 )
 
 USAGE String := """
@@ -168,15 +166,14 @@ fn lint_command(corpus String) Int {
 		}
 	}
 
-	var project_dirs = List[String]()
-	for entry in glob(corpus, GlobOptions(patterns: ["**/conform.meta"])).get_or([]) {
-		project_dirs.append(
-			entry.path.slice(
-				0,
-				entry.path.length() - "conform.meta".length(),
-			).clone()
-		)
-	}
+	project_dirs := glob(corpus, GlobOptions(patterns: ["**/conform.meta"])).get_or(
+		[]
+	).map(
+		entry => entry.path.slice(
+			0,
+			entry.path.length() - "conform.meta".length(),
+		).clone()
+	)
 
 	for entry in glob(corpus, GlobOptions(patterns: ["**/*.expected.json"])).get_or(
 		[]
@@ -220,21 +217,15 @@ fn retag_command(corpus String) Int {
 
 		text := if fx.is_dir { project_text(fx.path) } else { source.clone() }
 		var meta = parse_meta(source)
-		var tags = List[String]()
-		for tag in meta.tags {
-			if not tag.starts_with("tier-") {
-				tags.append(tag.clone())
-			}
-		}
+		var tags = meta.tags.filter(
+			tag => not tag.starts_with("tier-")
+		).map(tag => tag.clone())
 		tags.append(tier_of(imports_of(text)))
 		tags.sort()
 
-		var unique = List[String]()
-		for tag in tags {
-			if unique.is_empty() or unique[unique.length() - 1] != tag {
-				unique.append(tag.clone())
-			}
-		}
+		unique := (0..tags.length()).filter(
+			i => i == 0 or tags[i - 1] != tags[i]
+		).map(i => tags[i].clone())
 		if unique == meta.tags { continue }
 
 		meta.tags = unique
@@ -248,10 +239,10 @@ fn retag_command(corpus String) Int {
 				skipped < lines.length()
 				and lines[skipped].starts_with("// conform:")
 			) { skipped += 1 }
-			out += lines.slice(skipped, lines.length()).get_or([]).join("\n")
+			out += lines.drop(skipped).join("\n")
 		}
 
-		write_file(meta_path, out, replace: true).wait().get()
+		void write_file(meta_path, out, replace: true).wait().get()
 		changed += 1
 	}
 
@@ -268,7 +259,7 @@ fn main() Int {
 	}
 
 	command := words[0].clone()
-	args := parse_args(words.slice(1, words.length()).get_or([]))
+	args := parse_args(words.drop(1))
 
 	if args.problem != "" {
 		print(f"conform: {args.problem}")

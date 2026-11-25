@@ -1,4 +1,5 @@
 /* compiler/own/borrows.c: a source changed while a binding borrowing it is still used (see borrows.h). */
+#include "compiler/own/look_fields.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/borrows.h"
 
@@ -92,7 +93,7 @@ static bool local_of(const MsFacts *facts, MsNode node, uint32_t *id) {
 }
 
 static bool is_value_ref(MsRefKind kind) {
-  return kind == MS_REF_FUNCTION || kind == MS_REF_METHOD || kind == MS_REF_NATIVE || kind == MS_REF_OPERATION;
+  return kind == MS_REF_FUNCTION || kind == MS_REF_METHOD || kind == MS_REF_NATIVE || kind == MS_REF_OPERATION || kind == MS_REF_TYPE;
 }
 
 static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out);
@@ -157,7 +158,7 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
     return false;
   }
   const MsExpr *callee = call->u.call.callee;
-  const bool receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION;
+  const bool receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_TYPE;
   if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
     return false;
   }
@@ -172,6 +173,22 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   return found;
 }
 
+/* Records a borrow, and with it the borrow of everything its source borrows: a view of a view keeps the owner frozen. */
+static void push_borrow(Borrows *pass, Borrow borrow) {
+  const size_t count = pass->borrows.len;
+  for (size_t index = 0; index < count; index++) {
+    const Borrow parent = pass->borrows.ptr[index];
+    if (parent.binding == borrow.root && parent.root != borrow.binding) {
+      Borrow derived = borrow;
+      derived.root = parent.root;
+      derived.place = parent.place;
+      derived.alias = false;
+      borrow_list_push(&pass->borrows, derived);
+    }
+  }
+  borrow_list_push(&pass->borrows, borrow);
+}
+
 static void note_bind(Borrows *pass, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   const MsExpr *value = stmt->u.bind.value;
@@ -182,7 +199,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
                             : NULL;
   if (member != NULL && member->kind == MS_REF_METHOD && local_of(pass->facts, pattern->id, &binding) &&
       origin_of_arg(pass, value->u.member.left, &source)) {
-    borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = value->pos, .after = value->end.offset,
+    push_borrow(pass, (Borrow){.binding = binding, .name = pattern->u.name, .at = value->pos, .after = value->end.offset,
                                               .method_value = true, .root = source.root, .place = source.place});
     return;
   }
@@ -198,7 +215,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   if (value->kind == MS_E_MEMBER && ms_facts_use(pass->facts, value->id) == MS_USE_MOVE) {
     return;
   }
-  borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
+  push_borrow(pass, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
                                             .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
                                             .root = source.root, .place = source.place});
 }
@@ -311,6 +328,11 @@ static void note_call_keeps(Borrows *pass, const MsExpr *call) {
     const MsExpr *value = call->u.call.args.ptr[index].value;
     bool moves = constructor;
     for (uint32_t at = 0; fact != NULL && at < fact->arg_count; at++) {
+      if (constructor && fact->args[at].source == MS_ARG_WRITTEN && fact->args[at].node.node == value->id &&
+          (ms_own_look_field(pass->program, fact, at) || ms_own_look_carrier(pass->program, fact, at))) {
+        moves = false; /* the record is tied to it, not given it */
+        break;
+      }
       moves = moves || (fact->args[at].source == MS_ARG_WRITTEN && fact->args[at].node.node == value->id &&
                         (fact->args[at].flags & MS_PARAM_MOVE) != 0);
     }

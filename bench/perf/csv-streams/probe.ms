@@ -1,7 +1,10 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	Bytes from "@std/bytes.ms",
 	csv_rows from "@std/data/csv.ms",
-	ReadStream, Source from "@std/io/io.ms",
+	ReadStream from "@std/io/io.ms",
 	monotonic from "@std/time.ms",
 )
 

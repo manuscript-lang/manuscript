@@ -1,4 +1,5 @@
 /* compiler/own/uses.c: fills the `uses` fact column (see uses.h). */
+#include "compiler/own/look_fields.h"
 #include "compiler/own/uses.h"
 
 #include <stdlib.h>
@@ -272,6 +273,11 @@ static void visit_call(Uses *pass, const MsExpr *call) {
   const MsExpr *callee = call->u.call.callee;
   if (is_clone(pass, call)) {
     const MsExpr *receiver = callee->u.member.left;
+    if (pass->report && ms_own_look_record(pass->program, ms_facts_type(pass->facts, receiver->id))) {
+      ms_check_report(pass->program, pass->module, call->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("a value with a `&` field looks at another value, so it has no copy of its own; "
+                                                          "clone the part you need, such as its items")));
+    }
     if ((receiver->kind == MS_E_NAME || receiver->kind == MS_E_MEMBER) && place_root(pass, receiver)) {
       pass->facts->uses[receiver->id] = MS_USE_CLONE;
     }
@@ -284,6 +290,10 @@ static void visit_call(Uses *pass, const MsExpr *call) {
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value);
     if (constructor && stored_param(pass, value)) {
       pass->facts->uses[value->id] = MS_USE_MOVE;
+    }
+    const bool looks = fact != NULL && arg != NULL && ms_own_look_field(pass->program, fact, (uint32_t)(arg - fact->args));
+    if (looks) {
+      continue; /* a `&` field is tied to the value, not given it */
     }
     if (constructor || (arg != NULL && ((arg->flags & MS_PARAM_MOVE) != 0 ||
                                         ms_own_call_takes(pass->program, fact, (uint32_t)(arg - fact->args))))) {

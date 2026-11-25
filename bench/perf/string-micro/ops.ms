@@ -1,7 +1,7 @@
-import (
-	arguments from "@std/os/env.ms",
-	Instant, monotonic from "@std/time.ms",
-)
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
+import Instant, monotonic from "@std/time.ms"
 
 fn lcg(x Int) Int {
 	return (x * 1103515245 + 12345) % 2147483648

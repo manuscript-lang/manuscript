@@ -14,6 +14,7 @@ typedef struct TerseScan {
   MsLintFindingList *findings;
   const uint32_t *mutable_ids; /* the nodes of `var` bindings and parameters, sorted */
   size_t mutable_count;
+  MsName enclosing; /* the name of the function being walked, 0 outside one */
 } TerseScan;
 
 /* The text of the name `name` is `text`. */

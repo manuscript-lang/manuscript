@@ -21,7 +21,8 @@
       "inherits": "base",
       "description": "Optimised: the ms that CI replays the corpus with is about 4x faster than -O0 and still reports fault frames.",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "MS_CONFORM_ENFORCE": "ON"
       }
     },
     {

@@ -768,8 +768,6 @@ fn var Parser.read_cdata() Bool {
 			brackets = 0
 		}
 	}
-
-	return true
 }
 
 // The raw-text element whose name is the current tag name, or `RAW_NONE`.
@@ -1366,7 +1364,7 @@ fn var Parser.oe_push(n Int) Void {
 }
 
 fn var Parser.oe_pop() Int {
-	if self.oe.length() == 0 { return -1 }
+	if self.oe.is_empty() { return -1 }
 
 	self.oe_p.pop()
 	self.oe_stop.pop()
@@ -1667,9 +1665,7 @@ fn var Parser.set_token_attributes(id Int) Void {
 }
 
 fn var Parser.add_element() Void {
-	var data = ""
-	if self.tok_atom == 0 { data = self.tok_data.clone() }
-
+	data := if self.tok_atom == 0 { self.tok_data.clone() } else { "" }
 	id := self.alloc(K_ELEMENT, self.tok_atom, data)
 	if self.tok_n > 0 { self.set_token_attributes(id) }
 	self.add_child(id)
@@ -1734,12 +1730,12 @@ fn var Parser.add_formatting_element() Void {
 fn var Parser.clear_active_formatting_elements() Void {
 	while true {
 		n := self.afe_truncate_pop()
-		if self.afe.length() == 0 or n < 0 or self.kind[n] == K_MARKER { return }
+		if self.afe.is_empty() or n < 0 or self.kind[n] == K_MARKER { return }
 	}
 }
 
 fn var Parser.reconstruct_active_formatting_elements() Void {
-	if self.afe.length() == 0 { return }
+	if self.afe.is_empty() { return }
 
 	top := self.afe[self.afe.length() - 1]
 	if self.kind[top] == K_MARKER or self.oe_index(top) >= 0 { return }
@@ -1842,7 +1838,7 @@ fn var Parser.reset_insertion_mode() Void {
 			}
 
 			self.im = IM_IN_BODY
-			if self.template_stack.length() > 0 {
+			if not self.template_stack.is_empty() {
 				self.im = self.template_stack[self.template_stack.length() - 1]
 			}
 			return
@@ -2262,7 +2258,7 @@ fn var Parser.in_body_im() Bool {
 	} else if self.tok_ty == T_COMMENT {
 		self.add_comment()
 	} else if self.tok_ty == T_ERROR {
-		if self.template_stack.length() > 0 {
+		if not self.template_stack.is_empty() {
 			self.im = IM_IN_TEMPLATE
 			return false
 		}
@@ -2719,8 +2715,7 @@ fn var Parser.in_body_end_tag_formatting(tag_atom Int, tag_name String) Void {
 		self.oe_remove(formatting)
 
 		fi := self.oe_index(furthest)
-		var place = 0
-		if fi >= 0 { place = fi + 1 }
+		place := if fi >= 0 { fi + 1 } else { 0 }
 		self.oe_insert(place, clone)
 	}
 }
@@ -3900,7 +3895,7 @@ fn var Parser.add_doctype(text String) Bool {
 
 	if key != "" or pos < size { return true }
 
-	if keys.length() > 0 {
+	if not keys.is_empty() {
 		if keys[0] == "public" {
 			public_id := go_lower(values[0])
 
@@ -5623,7 +5618,7 @@ fn within_limits(p Parser, max_depth, max_nodes Int) Bool {
 	var depths List[Int] = [0]
 	var count = 0
 
-	while stack.length() > 0 {
+	while not stack.is_empty() {
 		id := stack.pop() or 1
 		depth := depths.pop() or 0
 		count += 1
@@ -5649,9 +5644,7 @@ export fn parse(text String, options HtmlOptions = HtmlOptions()) HtmlNode! {
 	max_nodes := budget(options.max_nodes)?
 	if text.length() > max_bytes { return error(limit_error()) }
 
-	var max_open = max_depth
-	if max_depth < 9000000000000000000 { max_open = max_depth + 64 }
-
+	max_open := if max_depth < 9000000000000000000 { max_depth + 64 } else { max_depth }
 	src := text.to_bytes()
 	var p = Parser(src: src.clone(), size: src.length(), max_open: max_open)
 	p.run()

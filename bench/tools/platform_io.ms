@@ -1,10 +1,16 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Times file, directory, process and pipe operations so Linux, macOS and Windows can be
 // compared on one run (the `Platform benchmarks` workflow). Usage:
 // `ms run bench/tools/platform_io.ms [-- files]`; MS names the `ms` binary. Prints one
 // line per measurement, nanoseconds per operation, min of three rounds.
 import (
-	Bytes from "@std/bytes.ms",
-	stdin, stdout_bytes from "@std/io/io.ms",
 	min from "@std/math/math.ms",
 	arguments from "@std/os/env.ms",
 	create_directory,
@@ -14,7 +20,7 @@ import (
 	rename,
 	temporary_directory,
 	write_file from "@std/os/fs.ms",
-	RunOptions, SpawnOptions, run, spawn from "@std/os/process.ms",
+	SpawnOptions, run, spawn from "@std/os/process.ms",
 
 	capture, exe, fail, host, ms_binary, note, now_ns, usage from "./lib.ms",
 )

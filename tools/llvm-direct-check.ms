@@ -1,3 +1,11 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Release build time, LLVM IR size and kernel times of the LLVM backend against the
 // Cranelift backend. Usage: ms run tools/llvm-direct-check.ms -- report [program...]
 //
@@ -24,7 +32,7 @@ import (
 	RunOptions, run from "@std/os/process.ms",
 	monotonic from "@std/time.ms",
 
-	env, exe, note, run_program from "./lib.ms",
+	env, exe, note from "./lib.ms",
 )
 
 fn ms_path() String {

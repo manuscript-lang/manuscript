@@ -1,3 +1,6 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+
 import (
 	PriorityQueue from "@std/collections/queue.ms",
 	panic from "@std/core.ms",
@@ -173,7 +176,7 @@ fn x_graph_bfs() Int {
 
 	var t = 0
 
-	while frontier.length() > 0 {
+	while not frontier.is_empty() {
 		var next List[Int] = []
 
 		for v in frontier {

@@ -1,3 +1,10 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // Validates and compares already-built byte-search programs in balanced order
 // (bench/perf/bytes-index). Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE
 // AFTER RUST OUTPUT_DIR [--cpu N] Programs print the string-lines CSV (see

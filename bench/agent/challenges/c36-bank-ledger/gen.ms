@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Generator for c36-bank-ledger. Deterministic; run: ms run bench/agent/gen.ms -- c36
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",

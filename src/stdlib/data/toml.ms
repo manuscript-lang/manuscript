@@ -1231,19 +1231,15 @@ fn inline_value(value TomlValue) String {
 		BoolValue(flag) => return flag.to_string()
 		DateTimeValue(text) => return text.clone()
 		ArrayValue(values) => {
-			var parts List[String] = []
-			for item in values { parts.append(inline_value(item)) }
+			parts := values.map(item => inline_value(item))
 			return "[".concat(parts.join(", ")).concat("]")
 		}
 		TableValue(values) => {
-			var parts List[String] = []
-			for entry in values.entries() {
-				parts.append(
-					format_key(entry.key).concat(" = ").concat(
-						inline_value(entry.value)
-					)
+			parts := values.entries().map(
+				entry => format_key(entry.key).concat(" = ").concat(
+					inline_value(entry.value)
 				)
-			}
+			)
 			if parts.is_empty() { return "{}" }
 
 			return "{ ".concat(parts.join(", ")).concat(" }")
@@ -1265,9 +1261,7 @@ fn table_items(values List[TomlValue]) List[Map[String, TomlValue]] {
 }
 
 fn dotted(path List[String]) String {
-	var parts List[String] = []
-	for key in path { parts.append(format_key(key)) }
-	return parts.join(".")
+	return path.map(key => format_key(key)).join(".")
 }
 
 fn emit_header(var writer Writer, header String) Void {

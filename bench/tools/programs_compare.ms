@@ -1,3 +1,8 @@
+// ms: allow_effect std.env.read
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.process.run
+
 // Compares two already-built revisions against shared handwritten Go samples. Usage: ms
 // run bench/tools/programs_compare.ms -- --before B --after A --go G --input I --output
 // DIR [--repeats 30]

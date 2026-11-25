@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.process.run
+
 // Proves that closing what containers and fields own costs nothing when no element is a
 // resource: every benchmark project under bench/perf is lowered by a compiler from
 // before the change (BASE) and one with it (HEAD), and the lowered MIR (`ms emit`) and

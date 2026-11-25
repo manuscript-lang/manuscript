@@ -501,9 +501,5 @@ bool opt_lastuse_func(MirModule *m, MirFunc *f) {
 }
 
 bool opt_lastuse(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    changed |= opt_lastuse_func(m, &m->funcs.ptr[fi]);
-  }
-  return changed;
+  return opt_each_func(m, opt_lastuse_func);
 }

@@ -1,3 +1,10 @@
+// ms: allow_effect std.console.write
+// ms: allow_effect std.env.read
+// ms: allow_effect std.env.write
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.process.run
+// ms: allow_effect std.system.read
+
 // Shared helpers for the repository tools in this directory. Run a tool from the
 // repository root with `ms run tools/<name>.ms [-- arguments]`.
 import (
@@ -5,7 +12,7 @@ import (
 	hex_encode from "@std/data/encoding.ms",
 	stderr from "@std/io/io.ms",
 	environment, set_environment, working_directory from "@std/os/env.ms",
-	canonicalize, read_file from "@std/os/fs.ms",
+	read_file from "@std/os/fs.ms",
 	SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
 	Os, os, system_info from "@std/os/system.ms",
 )
@@ -41,7 +48,7 @@ export fn dist_arch() String {
 
 // Prints `message` and a newline to standard error.
 export fn note(message String) Void {
-	stderr().write(f"{message}\n").get()
+	void stderr().write(f"{message}\n").get()
 }
 
 // The value of environment variable `name`, or `fallback`.
@@ -142,9 +149,7 @@ export fn use_stats_runtime() Int {
 		).wait().get().decode_utf8()
 		or ""
 	)
-	var separator = ":"
-	if host() == "windows" { separator = ";" }
-
+	separator := if host() == "windows" { ";" } else { ":" }
 	var archives = List[String]()
 
 	for line in paths.split("\n") {
@@ -168,7 +173,7 @@ export fn use_stats_runtime() Int {
 		}
 	}
 
-	set_environment("MS_RUNTIME", archives.join(separator)).get()
+	void set_environment("MS_RUNTIME", archives.join(separator)).get()
 	return 0
 }
 

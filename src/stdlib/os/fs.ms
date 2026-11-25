@@ -1,3 +1,9 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.clock.sleep
+// ms: allow_effect std.fs.delete
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 /*
 Files and directories.
 
@@ -21,11 +27,10 @@ import (
 	Placement,
 	Promise,
 	PromiseOptions,
-	adopt,
 	promise,
 	promise_when_idle from "@std/concurrency/promise.ms",
-	Closeable, Writable from "@std/core.ms",
-	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
+	Writable from "@std/core.ms",
+	ReadStream, WriteStream from "@std/io/io.ms",
 	BigInt from "@std/math/math.ms",
 	normalize from "@std/os/path.ms",
 	Duration, Timestamp, milliseconds, monotonic, now, sleep from "@std/time.ms",
@@ -86,9 +91,7 @@ import (
 	msstd_fs_write_file,
 	msstd_io_close,
 	msstd_io_read,
-	msstd_io_write,
 	msstd_io_write_bytes from "@std/internal/fs.ms",
-	msrt_promise_finished from "@std/internal/promises.ms",
 )
 
 // The name and kind flags for one child returned by a directory listing.
@@ -363,8 +366,6 @@ fn FileHandle.lock(exclusive Bool, timeout Duration?) Bool! {
 		}
 		sleep(milliseconds(5)).wait()?
 	}
-
-	return ok(false)
 }
 
 // Releases the advisory lock this handle holds; releasing when null is held
@@ -498,15 +499,12 @@ fn var WatchSource.next() FileEvent?! {
 
 		// An empty batch only means nothing changed yet; only null ends the stream.
 		// Paths are spelled as `join` spells them on this host (Windows: backslashes).
-		var batch = List[FileEvent]()
-		for event in next {
-			batch.append(FileEvent(normalize(event.path), event.kind.clone()))
-		}
+		var batch = next.clone().map(
+			event => FileEvent(normalize(event.path), event.kind.clone())
+		)
 		batch.reverse()
 		self.pending = batch
 	}
-
-	return ok(null)
 }
 
 // Stops the watcher and waits for its worker to stop.
@@ -1087,24 +1085,21 @@ fn replace_atomically(link String, data Bytes) Void! {
 		)
 		attempt += 1
 
-		match open(
+		opened := open(
 			temporary,
 			OpenMode.Write,
 			OpenOptions(exclusive: true, permissions: mode),
-		) {
-			ok(file) => {
-				return finish_atomic(
-					file,
-					temporary,
-					path,
-					data,
-					if existing.is_ok() { mode } else { null },
-				)
-			}
-			error(cause) => {
-				if cause.kind != "EEXIST" { return error(cause) }
-			}
+		)
+		if opened.is_ok() {
+			return finish_atomic(
+				opened.get(),
+				temporary,
+				path,
+				data,
+				if existing.is_ok() { mode } else { null },
+			)
 		}
+		if opened.err().kind != "EEXIST" { return error(opened.err().clone()) }
 	}
 
 	return error(already_exists())

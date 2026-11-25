@@ -1,3 +1,6 @@
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+
 // Generator for c09-ciphers. Deterministic; run: ms run bench/agent/gen.ms -- c09
 import (
 	from_scalars from "@std/string.ms",

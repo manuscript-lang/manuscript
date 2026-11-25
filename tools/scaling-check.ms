@@ -1,3 +1,7 @@
+// ms: allow_effect std.clock.read
+// ms: allow_effect std.console.write
+// ms: allow_effect std.process.run
+
 // Scaling gate (`make scaling-check`): generates inputs of 1k, 10k and 100k units and
 // fails when work that should be linear grows faster. It compares ratios, never wall
 // time: a shape fails when its time at 100k, minus the fixed start-up cost measured at
@@ -150,7 +154,7 @@ fn growth(base, mid, big, floor Float) Float {
 }
 
 fn say(text String) Void {
-	stdout().write(text.clone()).get()
+	void stdout().write(text.clone()).get()
 }
 
 fn show(ratio Float) String {
@@ -163,11 +167,7 @@ fn main() Int {
 	ms := tool_ms(root.clone())
 	bound := env("SCALING_BOUND", "30").parse_float() or 30.0
 	limit := env("SCALING_TIMEOUT", "300").parse_int() or 300
-	var shapes = List[String]()
-	for a in arguments() {
-		shapes.append(a.clone())
-	}
-
+	var shapes = arguments().map(a => a.clone())
 	compile_only := shapes.length() > 0
 	if shapes.is_empty() { shapes = SHAPES.clone() }
 
@@ -181,7 +181,7 @@ fn main() Int {
 
 		for n in sizes_of {
 			file := f"{scratch.path()}/{shape}_{n}.ms"
-			write_file(file, generate(shape, n)).wait().get()
+			void write_file(file, generate(shape, n)).wait().get()
 			files.append(file)
 		}
 
@@ -221,9 +221,7 @@ fn main() Int {
 				extra.clone(),
 				limit,
 			)
-			var small = first
-			if again >= 0.0 and (again < first or first < 0.0) { small = again }
-
+			small := if again >= 0.0 and (again < first or first < 0.0) { again } else { first }
 			mid := measure(
 				ms.clone(),
 				command.clone(),

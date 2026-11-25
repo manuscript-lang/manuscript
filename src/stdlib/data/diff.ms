@@ -12,10 +12,7 @@ export fn edit_distance(left, right String) Int {
 
 	a := left.chars()
 	b := right.chars()
-	var previous List[Int] = []
-	for j in 0..b.length() + 1 {
-		previous.append(j)
-	}
+	var previous = (0..b.length() + 1).map(j => j)
 
 	for i in 1..a.length() + 1 {
 		var current List[Int] = [i]
@@ -213,11 +210,9 @@ fn line_steps(old, new List[String]) List[Step] {
 		tail += 1
 	}
 
-	var steps List[Step] = []
-	for i in 0..head {
-		steps.append(Step(kind: 0, text: old[i].clone(), old_at: i, new_at: i))
-	}
-
+	var steps = (0..head).map(
+		i => Step(kind: 0, text: old[i].clone(), old_at: i, new_at: i)
+	)
 	var old_middle List[String] = []
 	var new_middle List[String] = []
 	for i in head..old.length() - tail {

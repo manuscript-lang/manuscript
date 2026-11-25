@@ -1,3 +1,5 @@
+// ms: allow_effect std.clock.read
+
 import (
 	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
 	Instant, monotonic from "@std/time.ms",
@@ -33,12 +35,9 @@ its fault record (`ms_rt_abi::record`) as `\u{1}MSOUT r<file> <bytes>`.
 export fn run_test_files(files List[fn(List[Int], String) Void]) Int {
 	environment := msstd_process_environment_map().get_or(Map[String, String]())
 	results := environment.get_or("MS_TEST_RESULTS", "")
-	var selected = List[Int]()
-	for text in environment.get_or("MS_TEST_SELECT", "").split(",") {
-		if text.length() > 0 {
-			selected.append(text.parse_int() or (-1))
-		}
-	}
+	selected := environment.get_or("MS_TEST_SELECT", "").split(",").filter(
+		text => not text.is_empty()
+	).map(text => (text.parse_int() or (-1)))
 
 	if environment.get_or("MS_TEST_PARALLEL", "") == "1" {
 		for position in 0..files.length() {
@@ -74,7 +73,7 @@ fn run_range(
 		options: PromiseOptions(placement: Placement.Spread),
 	)
 	run_range(files, low, middle, selected, results)
-	upper.wait().get()
+	void upper.wait().get()
 }
 
 // Runs one file's tests in a promise, so a fault ends only that file.
@@ -263,7 +262,7 @@ fn line(
 
 // Records `text` as the output of `key` (a test index, or `f` and a file number).
 fn output(results, key, text String) Void {
-	if text.length() == 0 { return }
+	if text.is_empty() { return }
 
 	record(results, f"\u{1}MSOUT {key} {text.length()}\n{text}\n")
 }

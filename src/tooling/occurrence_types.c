@@ -152,9 +152,12 @@ void ms_occ_declare_types(Builder *b, uint32_t module) {
       }
       break;
     case MS_D_IMPL:
-      /* The first method of a receiver form writes it as a type; the rest are folded into that one. */
-      if (b->folded_into[module][at] == at) {
-        type_site(b, decl->u.impl.receiver);
+      /* Each `fn Type.method` writes its own receiver, so each is a site of its own. */
+      type_site(b, decl->u.impl.receiver);
+      for (uint32_t index = 0; index < decl->u.impl.bounds.len; index++) {
+        for (uint32_t bound = 0; bound < decl->u.impl.bounds.ptr[index]->bounds.len; bound++) {
+          type_site(b, decl->u.impl.bounds.ptr[index]->bounds.ptr[bound]);
+        }
       }
       for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
         func_sites(b, &decl->u.impl.methods.ptr[index]->func);
@@ -276,7 +279,6 @@ static MsTypeParams declared_type_params(const MsModule *tree, MsName name, bool
 static void type_parameter_sites(Builder *b, uint32_t module, ParamSites *out) {
   b->module = module;
   const MsModule *tree = b->program->modules.ptr[module].tree;
-  ParamScope *scopes = MS_ARENA_NEW_ARRAY(b->arena, ParamScope, tree->ndecls + 1);
   for (uint32_t at = 0; at < tree->ndecls; at++) {
     const MsDecl *decl = tree->decls[at];
     if (decl->synthetic && decl->kind == MS_D_INTERFACE) {
@@ -285,11 +287,7 @@ static void type_parameter_sites(Builder *b, uint32_t module, ParamSites *out) {
     ParamScope scope = {0};
     TypeSites sites = {0};
     b->sink = &sites;
-    const bool folded = decl->kind == MS_D_IMPL && b->folded_into[module][at] != at;
-    if (folded) {
-      scope = scopes[b->folded_into[module][at]];
-    }
-    switch (folded ? MS_D_TEST : (MsDeclKind)decl->kind) {
+    switch ((MsDeclKind)decl->kind) {
     case MS_D_FN: {
       scope_declare_all(b, &scope, out, decl->u.fn.type_params);
       const TypeSites own = function_sites(b, &decl->u.fn);
@@ -359,7 +357,6 @@ static void type_parameter_sites(Builder *b, uint32_t module, ParamSites *out) {
     case MS_D_TEST:
       break;
     }
-    scopes[at] = scope;
     scope_uses(b, &scope, &sites, 0, true, out);
     if (decl->kind == MS_D_INTERFACE) {
       method_scopes(b, &scope, decl->u.iface.methods.ptr, decl->u.iface.methods.len, out);

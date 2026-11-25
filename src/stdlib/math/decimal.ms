@@ -1,5 +1,5 @@
 import (
-	Data, panic from "@std/core.ms",
+	panic from "@std/core.ms",
 
 	msstd_decimal_compare,
 	msstd_decimal_parse,
