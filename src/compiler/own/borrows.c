@@ -336,7 +336,7 @@ static void note_closure_call(Borrows *pass, uint32_t binding, MsPos at) {
       if (derived.lambda != pass->closures.ptr[index].lambda) {
         continue;
       }
-      derived.lambda = NULL;
+      derived.lambda = pass->outer; /* inside another closure the call runs when that closure does */
       derived.via_binding = binding;
       derived.via = at.offset;
       derived.at = at;
