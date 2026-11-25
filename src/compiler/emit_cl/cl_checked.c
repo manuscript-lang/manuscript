@@ -222,15 +222,13 @@ static void pointer_store(ClCx *cx, const MirInst *inst, uint32_t bits) {
 }
 
 /* `ptr.null`, `ptr.is_null`, `ptr.add`, `ptr.loadu`, `ptr.storeu`, `free`; false when `inst` is none. */
-static bool pointer_op(ClCx *cx, const MirInst *inst, bool *ok) {
+static bool pointer_op(ClCx *cx, const MirInst *inst) {
   ms_cl_fn *f = cx->fb;
   const uint32_t bits = access_bits(inst->imm.tag == MI_INT ? inst->imm.i : 8);
   switch ((MirOp)inst->op) {
   case MOP_Free: {
     if (inst->imm.tag != MI_NONE) {
-      cx->why = "free of a collection field";
-      *ok = false;
-      return true;
+      return false; /* a collection field: cl_record_op */
     }
     ms_cl_call(f, cl_runtime_func(cx->mod, "msrt_free", 1, false), (ms_cl_val[]){cl_arg(cx, inst, 0)}, 1, NULL);
     return true;
@@ -295,9 +293,8 @@ bool cl_checked_op(ClCx *cx, const MirInst *inst, bool *handled) {
   default:
     break;
   }
-  bool ok = true;
-  if (pointer_op(cx, inst, &ok)) {
-    return ok;
+  if (pointer_op(cx, inst)) {
+    return true;
   }
   *handled = false;
   return true;

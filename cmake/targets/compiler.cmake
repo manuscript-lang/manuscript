@@ -59,7 +59,7 @@ ms_library(ms_emit compiler/emit
 
 ms_library(ms_emit_cl compiler/emit_cl
   SOURCES
-    cranelift_inproc.c cl_leaf.c cl_mem.c cl_scalar.c cl_checked.c cl_call.c cl_func.c cl_module.c
+    cranelift_inproc.c cl_leaf.c cl_mem.c cl_scalar.c cl_checked.c cl_call.c cl_branch.c cl_record.c cl_data.c cl_option.c cl_list.c cl_string.c cl_closure.c cl_iface.c cl_tables.c cl_func.c cl_module.c
   LINK ms_emit ms_mir ms_base)
 
 # One linker per OS family.

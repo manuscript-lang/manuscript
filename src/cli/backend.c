@@ -40,7 +40,7 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
     /* Cranelift writes the whole object; a program it cannot lower falls back to LLVM. */
     MsStrBuild cl_why = ms_strbuild_new();
     kept->object = ms_strbuild_new();
-    const ClOptions cl = {.export_all = true, .places = true};
+    const ClOptions cl = {.export_all = true, .places = true, .tables = &kept->tables};
     kept->native = cranelift_load(options->cranelift, &cl_why) &&
                    cl_emit_module(module, data, glue, &cl, &kept->object, &cl_why);
     if (!kept->native) {

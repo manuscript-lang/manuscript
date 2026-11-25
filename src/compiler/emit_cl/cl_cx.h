@@ -9,6 +9,7 @@
 #ifndef MS_COMPILER_EMIT_CL_CL_CX_H
 #define MS_COMPILER_EMIT_CL_CL_CX_H
 
+#include "compiler/emit/emit_tables.h"
 #include "compiler/emit_cl/cranelift_inproc.h"
 #include "compiler/mir/mir.h"
 #include "compiler/mir/mir_data.h"
@@ -35,6 +36,12 @@ typedef struct ClModule {
     ms_cl_func func;
   } named[24];
   uint32_t nnamed;
+  ms_cl_data *syms;          /* per data symbol of `data` */
+  struct ClRuntimeData {     /* the runtime's data symbols the static data and code name, declared on first use */
+    MsSpan name;
+    ms_cl_data data;
+  } *runtime;
+  uint32_t nruntime, cap_runtime;
   const uint32_t *scope_base; /* per function: module-wide index of its first scope */
   uint32_t total_scopes;
 } ClModule;
@@ -66,6 +73,8 @@ typedef struct ClCx {
   ms_cl_slot shared[CL_SHARED_ARGS], area;
   uint32_t shared_bytes[CL_SHARED_ARGS], area_bytes;
   bool shared_made[CL_SHARED_ARGS], area_made;
+  const bool *framed;      /* per value: a closure object kept in the frame */
+  const bool *borrowed;    /* per value: an `iface.borrow` kept in the frame */
   uint32_t cur_block, cur_index; /* the MIR instruction being lowered; index == insts.len for the terminator */
 } ClCx;
 
@@ -118,7 +127,50 @@ ms_cl_type cl_rt_leaf_type(MirLeaf leaf, bool is_c);
  * continues in a new block. */
 void cl_fault_if(ClCx *cx, ms_cl_val condition, ClPost post, const ms_cl_val *args, uint32_t nargs);
 
+/* ---- one-sided branches (cl_branch.c) ---- */
+
+#define CL_IF_WORDS 8u
+typedef struct ClIf {
+  ms_cl_block then, join;
+  uint32_t words;
+} ClIf;
+
+/* Branches on the i8 `condition`: continues in the side that runs when it holds. `words` i64 values leave the side;
+ * when it is skipped they are zero. */
+ClIf cl_if_begin(ClCx *cx, ms_cl_val condition, uint32_t words);
+/* Ends the side with `values` (`words` of them) and continues in the join; `joined` receives its words. */
+void cl_if_end(ClCx *cx, const ClIf *branch, const ms_cl_val *values, ms_cl_val *joined);
+
+/* ---- records (cl_record.c) ---- */
+
+bool cl_record_op(ClCx *cx, const MirInst *inst, bool *handled);
+/* A heap block of `bytes` bytes from the runtime, as an address. */
+ms_cl_val cl_alloc(ClCx *cx, uint32_t bytes);
+
+bool cl_option_op(ClCx *cx, const MirInst *inst, bool *handled);
+bool cl_list_op(ClCx *cx, const MirInst *inst, bool *handled);
+bool cl_closure_op(ClCx *cx, const MirInst *inst, bool *handled);
+bool cl_iface_op(ClCx *cx, const MirInst *inst, bool *handled);
+bool cl_string_op(ClCx *cx, const MirInst *inst, bool *handled);
+
+/* ---- static data (cl_data.c) ---- */
+
+/* Declares and defines every data symbol of the module's MirData. */
+void cl_define_data(ClModule *mod);
+void cl_free_data(ClModule *mod);
+bool cl_data_op(ClCx *cx, const MirInst *inst, bool *handled);
+/* The address of what `ref` names, as a value. */
+ms_cl_val cl_ref_address(ClCx *cx, MirRef ref);
+
+/* ---- fault tables (cl_tables.c) ---- */
+
+/* Waits for the functions and defines `tables_data` as the fault tables of the module. */
+bool cl_define_tables(ClModule *mod, const EmitTableInfo *info, ms_cl_data tables_data, MsStrBuild *why);
+
 /* ---- the module (cl_module.c) ---- */
+
+/* A NUL-terminated copy of a name, in `text`. */
+const char *cl_c_name(MsStrBuild *text, MsSpan name);
 
 /* The Cranelift function of runtime function `external`, declared on first use. */
 ms_cl_func cl_extern_func(ClModule *mod, uint32_t external);

@@ -5,6 +5,7 @@
 #include "base/fatal.h"
 #include "compiler/emit/emit_func.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_pass.h"
 
 /* ---- values and edges ---- */
 
@@ -166,6 +167,27 @@ static bool lower_instruction(ClCx *cx, const MirInst *inst) {
   bool ok = cl_scalar_op(cx, inst, &handled);
   if (!handled) {
     ok = cl_checked_op(cx, inst, &handled);
+  }
+  if (!handled) {
+    ok = cl_record_op(cx, inst, &handled);
+  }
+  if (!handled) {
+    ok = cl_data_op(cx, inst, &handled);
+  }
+  if (!handled) {
+    ok = cl_option_op(cx, inst, &handled);
+  }
+  if (!handled) {
+    ok = cl_list_op(cx, inst, &handled);
+  }
+  if (!handled) {
+    ok = cl_closure_op(cx, inst, &handled);
+  }
+  if (!handled) {
+    ok = cl_iface_op(cx, inst, &handled);
+  }
+  if (!handled) {
+    ok = cl_string_op(cx, inst, &handled);
   }
   if (!handled) {
     ok = cl_memory_op(cx, inst, &handled);
@@ -333,6 +355,9 @@ bool cl_lower_function(ClCx *cx) {
       ms_cl_cold(cx->fb, cx->blocks[order[at]]);
     }
   }
+  MsArena scratch = {0};
+  cx->framed = mir_framed_closures(&scratch, cx->module, cx->func);
+  cx->borrowed = mir_framed_iface_borrows(&scratch, cx->module, cx->func);
   const uint32_t body = body_line(cx);
   bool ok = true;
   for (uint32_t at = 0; ok && at < reachable; at++) {
@@ -345,6 +370,8 @@ bool cl_lower_function(ClCx *cx) {
       ok = false;
     }
   }
+  ms_arena_free(&scratch);
+  cx->framed = cx->borrowed = NULL;
   ms_free(order);
   ms_free(cx->blocks);
   ms_free(cx->regs);

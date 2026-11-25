@@ -89,7 +89,8 @@ void cl_frame_areas(ClCx *cx) {
     const MirInstList *insts = &cx->func->blocks.ptr[block].insts;
     for (uint32_t index = 0; index < insts->len; index++) {
       const MirInst *inst = &insts->ptr[index];
-      if ((MirOp)inst->op == MOP_Call || (MirOp)inst->op == MOP_CallRt) {
+      if ((MirOp)inst->op == MOP_Call || (MirOp)inst->op == MOP_CallRt || (MirOp)inst->op == MOP_CallInd ||
+          (MirOp)inst->op == MOP_CallMethod) {
         scan_call(cx, inst, shared, &area);
       }
     }
@@ -129,9 +130,42 @@ static ms_cl_val arg_slot(ClCx *cx, const MirInst *inst, uint32_t arg, uint32_t 
 
 /* ---- calls of MIR functions ---- */
 
-static void call_function(ClCx *cx, const MirInst *inst) {
+/* The signature of an indirect call: the hidden result pointer, the lead address when there is one, then the leaves of
+ * each argument as `function_sig` gives a MIR function (cl_module.c). */
+static ms_cl_sig indirect_sig(ClCx *cx, const MirInst *inst, bool lead) {
+  ms_cl *cl = cx->mod->cl;
+  ms_cl_sig sig = ms_cl_sig_new(cl);
+  const MsSpan result = inst->res == MIR_NONE ? (MsSpan){0} : cl_value_leaves(cx, inst->res);
+  if (result.len > 1) {
+    ms_cl_sig_param(cl, sig, MS_CL_I64, MS_CL_EXT_NONE);
+  }
+  if (lead) {
+    ms_cl_sig_param(cl, sig, MS_CL_I64, MS_CL_EXT_NONE);
+  }
+  for (uint32_t arg = lead ? 1 : 0; arg < inst->nargs; arg++) {
+    const MirTy type = cl_value_type(cx, inst->args[arg]);
+    if (cl_is_indirect(cx, type)) {
+      ms_cl_sig_param(cl, sig, MS_CL_I64, MS_CL_EXT_NONE);
+      continue;
+    }
+    const MsSpan leaves = cl_leaves(cx, type);
+    for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {
+      const ms_cl_type reg = cl_reg_type((MirLeaf)leaves.ptr[leaf]);
+      ms_cl_sig_param(cl, sig, reg, reg == MS_CL_I8 ? MS_CL_EXT_U : MS_CL_EXT_NONE);
+    }
+  }
+  if (result.len == 1) {
+    const ms_cl_type reg = cl_reg_type((MirLeaf)result.ptr[0]);
+    ms_cl_sig_ret(cl, sig, reg, reg == MS_CL_I8 ? MS_CL_EXT_U : MS_CL_EXT_NONE);
+  }
+  return sig;
+}
+
+/* A call of the MIR function the instruction names, or, with `code`, of the code address it holds; `lead`, when set,
+ * is the first argument in place of operand 0 (the data address of an interface value). */
+static void call_function(ClCx *cx, const MirInst *inst, const ms_cl_val *code, const ms_cl_val *lead) {
   ms_cl_fn *f = cx->fb;
-  uint32_t capacity = 2;
+  uint32_t capacity = 3;
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
     capacity += (uint32_t)cl_value_leaves(cx, inst->args[arg]).len;
   }
@@ -143,7 +177,10 @@ static void call_function(ClCx *cx, const MirInst *inst) {
     area = result_area(cx);
     args[count++] = area;
   }
-  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+  if (lead != NULL) {
+    args[count++] = *lead;
+  }
+  for (uint32_t arg = lead != NULL ? 1 : 0; arg < inst->nargs; arg++) {
     const MirTy type = cl_value_type(cx, inst->args[arg]);
     if (cl_is_indirect(cx, type)) {
       ms_cl_val slot = arg_slot(cx, inst, arg, cl_slot_bytes(cx, type));
@@ -157,13 +194,35 @@ static void call_function(ClCx *cx, const MirInst *inst) {
     }
   }
   ms_cl_val ret[1];
-  ms_cl_call(f, cx->mod->funcs[inst->imm.a], args, count, ret);
+  if (code != NULL) {
+    ms_cl_call_indirect(f, indirect_sig(cx, inst, lead != NULL), *code, args, count, ret);
+  } else {
+    ms_cl_call(f, cx->mod->funcs[inst->imm.a], args, count, ret);
+  }
   ms_free(args);
   if (result_leaves == 1) {
     cl_set(cx, inst->res, 0, ret[0]);
   } else if (result_leaves > 1) {
     cl_leaves_at(cx, inst->res, area, true);
   }
+}
+
+/* The header word offsets of a closure object, and the slots of an interface vtable. */
+enum { CLOSURE_CODE = 16 };
+
+/* `call.ind`: the code word of the closure in the first operand, called with the closure first. */
+static void call_closure(ClCx *cx, const MirInst *inst) {
+  const ms_cl_val code = ms_cl_load(cx->fb, MS_CL_I64, MS_CL_NOTRAP, cl_arg(cx, inst, 0), CLOSURE_CODE);
+  call_function(cx, inst, &code, NULL);
+}
+
+/* `call.method`: the code word of the method's slot, called with the data address first. */
+static void call_method(ClCx *cx, const MirInst *inst) {
+  ms_cl_fn *f = cx->fb;
+  const ms_cl_val table = ms_cl_band(f, cl_get(cx, inst->args[0], 1), cl_const(cx, -4));
+  const ms_cl_val code = ms_cl_load(f, MS_CL_I64, MS_CL_NOTRAP, table, (int32_t)(8 * (1 + inst->imm.b)));
+  const ms_cl_val data = cl_get(cx, inst->args[0], 0);
+  call_function(cx, inst, &code, &data);
 }
 
 /* ---- runtime calls ---- */
@@ -179,7 +238,7 @@ static ms_cl_val unwinding_address(ClCx *cx) {
 }
 
 /* The leaf `leaf` of a runtime call's result, as it arrives, widened to its register. */
-static ms_cl_val widen_result(ClCx *cx, MirLeaf leaf, ms_cl_val raw) {
+static ms_cl_val widen_result(ClCx *cx, MirLeaf leaf, ms_cl_val raw, bool is_c) {
   ms_cl_fn *f = cx->fb;
   switch (leaf) {
   case MIR_LEAF_N8:
@@ -191,7 +250,7 @@ static ms_cl_val widen_result(ClCx *cx, MirLeaf leaf, ms_cl_val raw) {
   case MIR_LEAF_U32:
     return ms_cl_cast(f, MS_CL_UEXTEND, MS_CL_I64, raw);
   case MIR_LEAF_F32:
-    return ms_cl_cast(f, MS_CL_FPROMOTE, MS_CL_F64, raw);
+    return is_c ? ms_cl_cast(f, MS_CL_FPROMOTE, MS_CL_F64, raw) : raw; /* the runtime's own functions return a double */
   default:
     return raw;
   }
@@ -279,7 +338,7 @@ static bool call_runtime(ClCx *cx, const MirInst *inst) {
     return true;
   }
   if (direct && result.len == 1 && inst->res != MIR_NONE) {
-    cl_set(cx, inst->res, 0, widen_result(cx, result.ptr[0], ret[0]));
+    cl_set(cx, inst->res, 0, widen_result(cx, result.ptr[0], ret[0], extern_is_c(cx, &cx->module->externs.ptr[inst->imm.a])));
   } else if (!direct && inst->res != MIR_NONE) {
     cl_leaves_at(cx, inst->res, area, true);
   }
@@ -290,7 +349,13 @@ bool cl_call_op(ClCx *cx, const MirInst *inst, bool *handled) {
   *handled = true;
   switch ((MirOp)inst->op) {
   case MOP_Call:
-    call_function(cx, inst);
+    call_function(cx, inst, NULL, NULL);
+    return true;
+  case MOP_CallInd:
+    call_closure(cx, inst);
+    return true;
+  case MOP_CallMethod:
+    call_method(cx, inst);
     return true;
   case MOP_CallRt:
     return call_runtime(cx, inst);

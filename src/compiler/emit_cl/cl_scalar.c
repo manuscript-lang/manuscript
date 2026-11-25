@@ -68,11 +68,24 @@ static ms_cl_val float_function(ClCx *cx, const MirInst *inst) {
   return inst->op == MOP_FSqrt && is_float32(cx, inst->res) ? round_to_float32(cx, v) : v;
 }
 
+/* An unsigned 64-bit integer to binary32 with one rounding: a value with the top bit set is halved, keeping the low bit
+ * as a sticky bit so the rounding sees it, converted as a signed one, and doubled (exact). Cranelift's own unsigned
+ * conversion to a 32-bit float does not lower on x64 (0.136). */
+static ms_cl_val unsigned_to_float32(ClCx *cx, ms_cl_val v) {
+  ms_cl_fn *f = cx->fb;
+  ms_cl_val top = ms_cl_icmp(f, MS_CL_SLT, v, cl_const(cx, 0));
+  ms_cl_val halved = ms_cl_bor(f, ms_cl_ushr(f, v, cl_const(cx, 1)), ms_cl_band(f, v, cl_const(cx, 1)));
+  ms_cl_val single = ms_cl_cast(f, MS_CL_FCVT_FROM_SINT, MS_CL_F32, ms_cl_select(f, top, halved, v));
+  return ms_cl_select(f, top, ms_cl_fadd(f, single, single), single);
+}
+
 /* One rounding, straight to binary32 for a Float32 result: through a double it would round twice at the midpoints. */
 static ms_cl_val int_to_float(ClCx *cx, const MirInst *inst) {
   const ms_cl_castop convert = inst->op == MOP_U2F ? MS_CL_FCVT_FROM_UINT : MS_CL_FCVT_FROM_SINT;
   if (cl_value_leaves(cx, inst->res).ptr[0] == MIR_LEAF_F32) {
-    return ms_cl_cast(cx->fb, MS_CL_FPROMOTE, MS_CL_F64, ms_cl_cast(cx->fb, convert, MS_CL_F32, cl_arg(cx, inst, 0)));
+    const ms_cl_val single = inst->op == MOP_U2F ? unsigned_to_float32(cx, cl_arg(cx, inst, 0))
+                                                 : ms_cl_cast(cx->fb, convert, MS_CL_F32, cl_arg(cx, inst, 0));
+    return ms_cl_cast(cx->fb, MS_CL_FPROMOTE, MS_CL_F64, single);
   }
   return ms_cl_cast(cx->fb, convert, MS_CL_F64, cl_arg(cx, inst, 0));
 }

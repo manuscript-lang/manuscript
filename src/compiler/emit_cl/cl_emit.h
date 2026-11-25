@@ -8,6 +8,7 @@
 #define MS_COMPILER_EMIT_CL_CL_EMIT_H
 
 #include "base/strbuild.h"
+#include "compiler/emit/emit_tables.h"
 #include "compiler/mir/mir.h"
 #include "compiler/mir/mir_data.h"
 #include "compiler/mir/mir_glue.h"
@@ -15,6 +16,7 @@
 typedef struct ClOptions {
   bool export_all; /* every function gets an external symbol (needed when fault tables name them) */
   bool places;     /* record each instruction's source line (DWARF line table and ranges for the fault tables) */
+  const EmitTableInfo *tables; /* when set, the object defines `ms_tables` for the runtime (needs `places`) */
 } ClOptions;
 
 /* Lowers `module` (after emit_name_symbols) and appends the object file's bytes to `object`. False when some function

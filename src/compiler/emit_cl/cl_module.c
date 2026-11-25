@@ -8,7 +8,7 @@
 #include "compiler/emit_cl/cl_func.h"
 
 /* A NUL-terminated copy of a name, in `text`. */
-static const char *c_name(MsStrBuild *text, MsSpan name) {
+const char *cl_c_name(MsStrBuild *text, MsSpan name) {
   ms_strbuild_clear(text);
   ms_strbuild_append(text, name);
   ms_strbuild_append_byte(text, '\0');
@@ -105,7 +105,7 @@ ms_cl_func cl_extern_func(ClModule *mod, uint32_t external) {
     ClCx cx = scratch_cx(mod);
     const MirExtern *def = &module->externs.ptr[external];
     MsStrBuild text = ms_strbuild_new();
-    const char *name = c_name(&text, ms_names_span(&module->names, def->name));
+    const char *name = cl_c_name(&text, ms_names_span(&module->names, def->name));
     mod->externs[external] = ms_cl_declare_func(mod->cl, name, extern_sig(&cx, def), MS_CL_IMPORT);
     mod->extern_made[external] = true;
     ms_strbuild_free(&text);
@@ -154,7 +154,7 @@ ms_cl_func cl_post_func(ClModule *mod, ClPost post) {
 /* ---- the C `main` ---- */
 
 /* `int main(int argc, char **argv)`: hands the entry function and the tables to the runtime (`msrt_start`). */
-static void define_main(ClModule *mod, ms_cl_fn *fb, ms_cl_val tables_address, bool has_tables) {
+static void define_main(ClModule *mod, ms_cl_fn *fb, const ms_cl_data *tables) {
   ms_cl *cl = mod->cl;
   ms_cl_sig main_sig = ms_cl_sig_new(cl);
   ms_cl_sig_param(cl, main_sig, MS_CL_I32, MS_CL_EXT_NONE);
@@ -171,9 +171,9 @@ static void define_main(ClModule *mod, ms_cl_fn *fb, ms_cl_val tables_address, b
   ms_cl_fn_begin(fb, main_func);
   const ms_cl_block entry = ms_cl_entry(fb);
   ms_cl_val entry_address = ms_cl_func_addr(fb, mod->funcs[mod->module->entry]);
-  ms_cl_val tables = has_tables ? tables_address : ms_cl_i64const(fb, 0);
+  ms_cl_val tables_address = tables != NULL ? ms_cl_data_addr(fb, *tables) : ms_cl_i64const(fb, 0);
   ms_cl_val result = ms_cl_call1(fb, start,
-                                 (ms_cl_val[]){entry_address, tables, ms_cl_block_param(fb, entry, 0),
+                                 (ms_cl_val[]){entry_address, tables_address, ms_cl_block_param(fb, entry, 0),
                                                ms_cl_block_param(fb, entry, 1)}, 4);
   ms_cl_ret1(fb, result);
   ms_cl_seal_all(fb);
@@ -217,13 +217,18 @@ bool cl_emit_module(const MirModule *module, const MirData *data, const MirGlue 
     const MirFunc *func = &module->funcs.ptr[index];
     const bool exported = options->export_all || func->linkage == ML_EXPORT || module->entry == index;
     cx.func = func;
-    mod.funcs[index] = ms_cl_declare_func(mod.cl, c_name(&text, ms_names_span(&module->names, func->name)),
+    mod.funcs[index] = ms_cl_declare_func(mod.cl, cl_c_name(&text, ms_names_span(&module->names, func->name)),
                                           function_sig(&cx, func), exported ? MS_CL_EXPORT : MS_CL_LOCAL);
   }
+  cl_define_data(&mod);
   if (options->places) {
     for (uint32_t file = 0; file < module->files.len; file++) {
-      ms_cl_dwarf_file(mod.cl, file, c_name(&text, module->files.ptr[file]));
+      ms_cl_dwarf_file(mod.cl, file, cl_c_name(&text, module->files.ptr[file]));
     }
+  }
+  ms_cl_data tables_data = {0};
+  if (options->tables != NULL) {
+    tables_data = ms_cl_declare_data(mod.cl, "ms_tables", MS_CL_EXPORT, 0, 0);
   }
   bool ok = true;
   ms_cl_fn *fb = ms_cl_fn_new(mod.cl);
@@ -243,9 +248,12 @@ bool cl_emit_module(const MirModule *module, const MirData *data, const MirGlue 
     ok = false;
   }
   if (ok && module->entry != MIR_NONE) {
-    define_main(&mod, fb, (ms_cl_val){0}, false);
+    define_main(&mod, fb, options->tables != NULL ? &tables_data : NULL);
   }
   ms_cl_fn_free(fb);
+  if (ok && options->tables != NULL) {
+    ok = cl_define_tables(&mod, options->tables, tables_data, why);
+  }
   if (ok) {
     size_t size = 0;
     const uint8_t *bytes = ms_cl_finish(mod.cl, &size);
@@ -256,6 +264,7 @@ bool cl_emit_module(const MirModule *module, const MirData *data, const MirGlue 
       ms_strbuild_append(object, ms_span_of(bytes, size));
     }
   }
+  cl_free_data(&mod);
   ms_cl_free(mod.cl);
   ms_strbuild_free(&text);
   ms_free(scope_base);
