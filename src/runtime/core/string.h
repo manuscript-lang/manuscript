@@ -86,7 +86,7 @@ uint8_t msrt_string_last_index_of(const MsString *a, const MsString *v, int64_t 
 void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out);
 /* ms-sig: msrt_string_chars(s: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_chars(const MsString *s, MsList *out);
-/* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @domain=string @end */
+/* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @borrows @domain=string @end */
 void msrt_string_lines(const MsString *s, MsList *out);
 /* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_fields(const MsString *s, MsList *out);

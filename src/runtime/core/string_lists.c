@@ -55,25 +55,42 @@ void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out) {
 
 /* `String.lines`: the text between line feeds; a carriage return before one is dropped, and a final line
  * without a line feed counts only when it is not empty. */
+/* The end of the line that starts at `start` and ends at the line feed `found` bytes on: a carriage return before the
+ * feed is not part of it. */
+static size_t line_end(MsSpan text, size_t start, size_t found) {
+  const size_t end = start + found;
+  return end > start && text.ptr[end - 1] == '\r' ? end - 1 : end;
+}
+
+/* `String.lines` is declared `hold ... List[&String]`: each line views the text in place (a short one is its two words),
+ * and the list is sized once. */
 void msrt_string_lines(const MsString *s, MsList *out) {
   static const uint8_t line_feed = '\n';
   const MsSpan text = msrt_text(s);
   MsStringList list = {0};
+  size_t lines = 0;
+  for (size_t start = 0;;) {
+    const size_t found = ms_find(text.ptr + start, text.len - start, &line_feed, 1);
+    if (found == SIZE_MAX) {
+      lines += start < text.len;
+      break;
+    }
+    lines++;
+    start += found + 1;
+  }
+  ms_string_list_reserve(&list, lines);
   size_t start = 0;
   for (;;) {
     const size_t found = ms_find(text.ptr + start, text.len - start, &line_feed, 1);
     if (found == SIZE_MAX) {
       break;
     }
-    size_t end = start + found;
-    if (end > start && text.ptr[end - 1] == '\r') {
-      end--;
-    }
-    ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + start, end - start)));
+    const size_t end = line_end(text, start, found);
+    ms_string_list_push(&list, msrt_string_view_of(ms_span_of(text.ptr + start, end - start)));
     start += found + 1;
   }
   if (start < text.len) {
-    ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + start, text.len - start)));
+    ms_string_list_push(&list, msrt_string_view_of(ms_span_of(text.ptr + start, text.len - start)));
   }
   out_list(list, out);
 }
