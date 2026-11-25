@@ -229,7 +229,7 @@ static void tie_capture(void *ctx, const MsExpr *expr) {
   }
   ms_binding_list_push(&scan->done, decl);
   push_borrow(scan->pass, (Borrow){.binding = scan->binding, .name = scan->stmt->u.bind.pattern->u.name, .at = scan->at,
-                                   .after = scan->after, .root = root, .place = expr}, false);
+                                   .after = scan->after, .root = root, .place = expr, .captured = true}, false);
 }
 
 /* `p := promise(() => ...)`: the promise reads what its closure captures until it is last used. `f := fn() ...`: a

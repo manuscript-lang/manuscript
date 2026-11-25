@@ -158,15 +158,18 @@ static void report(Borrows *pass, const Borrow *borrow, const Change *change, Ms
   }
   ms_strbuild_append_text(&text, "` while `");
   append_name(pass, &text, borrow->name);
-  ms_strbuild_append_text(&text, borrow->method_value ? "` borrows it (method value, at "
-                                 : borrow->mutable_   ? "` borrows it (mutable borrow, at "
-                                                      : "` borrows it (binding of a part of it, at ");
+  ms_strbuild_append_text(&text, borrow->captured       ? "` captures it (closure, at "
+                                 : borrow->method_value ? "` borrows it (method value, at "
+                                 : borrow->mutable_     ? "` borrows it (mutable borrow, at "
+                                                        : "` borrows it (binding of a part of it, at ");
   ms_strbuild_append_u64(&text, borrow->at.line);
   ms_strbuild_append_text(&text, ":");
   ms_strbuild_append_u64(&text, borrow->at.column);
   ms_strbuild_append_text(&text, "); finish using `");
   append_name(pass, &text, borrow->name);
-  if (borrow->method_value) {
+  if (borrow->captured) {
+    ms_strbuild_append_text(&text, "` before this, or capture a clone: bind `.clone()` of the value first and capture that binding");
+  } else if (borrow->method_value) {
     ms_strbuild_append_text(&text, "` before this, or build `");
     append_name(pass, &text, borrow->name);
     ms_strbuild_append_text(&text, "` from a clone: bind `.clone()` of the captured value first and capture that binding");
