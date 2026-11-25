@@ -1,4 +1,4 @@
-/* lsp/lsp_command.h: `ms lsp`, the language server on standard input and output. Port of crates/ms-lsp. */
+/* lsp/lsp_command.h: `ms lsp`, the language server on standard input and output. */
 #ifndef MS_CLI_LSP_COMMAND_H
 #define MS_CLI_LSP_COMMAND_H
 

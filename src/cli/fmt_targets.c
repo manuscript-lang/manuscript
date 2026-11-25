@@ -1,4 +1,4 @@
-/* cli/fmt_targets.c: the files `ms fmt` formats, from its targets (crates/ms-cli/src/fmt.rs). */
+/* cli/fmt_targets.c: the files `ms fmt` formats, from its targets. */
 #include "cli/fmt_targets.h"
 
 #include "base/file.h"

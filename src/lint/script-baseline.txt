@@ -54,8 +54,6 @@ bench/perf/sort-shapes/run.sh
 bench/perf/suite/run.sh
 bench/perf/web/multicpu.sh
 bench/perf/workloads/validation-2026-10-29/measure-controls.py
-crates/ms-rt/tests/bench/run.sh
-crates/ms-rt/tests/e2e/run.sh
 tests/conformance/fixtures/e2e/stdlib/support/image-jpeg-vectors.gen.py
 tests/conformance/fixtures/e2e/stdlib/support/image-png-vectors.gen.py
 cmake/toolchain/check-glibc-floor.sh

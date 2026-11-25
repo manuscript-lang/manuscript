@@ -1,5 +1,4 @@
-/* compiler/project/load.c: a module and the local modules it imports, parsed into one graph. Port of the
- * `Loader` in crates/ms-driver/src/load.rs for standalone files and local imports. A failure stops the load:
+/* compiler/project/load.c: a module and the local modules it imports, parsed into one graph. A failure stops the load:
  * the graph then has no modules and one diagnostic. */
 #include <errno.h>
 

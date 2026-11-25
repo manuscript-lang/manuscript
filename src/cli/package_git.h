@@ -1,5 +1,5 @@
 /* cli/package_git.h: running `git` for `ms install`, without prompts and with only the transports a package may
- * use. Port of the `git` helper of crates/ms-cli/src/fetch.rs. */
+ * use. */
 #ifndef MS_CLI_PACKAGE_GIT_H
 #define MS_CLI_PACKAGE_GIT_H
 

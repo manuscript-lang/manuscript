@@ -1,5 +1,4 @@
-/* syntax/diag.h: stable diagnostic codes (MS1000, MS3000.1, ...), the same as crates/ms-syntax/src/diag.rs.
- */
+/* syntax/diag.h: stable diagnostic codes (MS1000, MS3000.1, ...). */
 #ifndef MS_SYNTAX_DIAG_H
 #define MS_SYNTAX_DIAG_H
 

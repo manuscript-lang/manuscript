@@ -1,5 +1,5 @@
 /* tooling/diff.h: unified diff parsing and reverse application, for `ms review --diff`. Never runs git.
- * Port of crates/ms-tooling/src/diff.rs. Texts live in the arena. */
+ * Texts live in the arena. */
 #ifndef MS_TOOLING_DIFF_H
 #define MS_TOOLING_DIFF_H
 

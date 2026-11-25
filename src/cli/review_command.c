@@ -1,4 +1,4 @@
-/* cli/review_command.c: `ms review`. Port of `review` in crates/ms-cli/src/engine/tooling.rs. */
+/* cli/review_command.c: `ms review`. */
 #include "cli/files.h"
 #include "cli/review_command.h"
 

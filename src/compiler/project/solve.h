@@ -1,5 +1,5 @@
 /* compiler/project/solve.h: dependency resolution the way Cargo does it: one copy of a repository per compatible
- * range. Port of crates/ms-driver/src/project/resolve.rs.
+ * range.
  *
  * The resolver reads requirements from the roots and from every package it has picked, picks the highest tag that
  * satisfies all requirements in a bucket, and repeats until the picks stop changing, because a package that is

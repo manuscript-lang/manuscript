@@ -1,4 +1,4 @@
-/* Source-order walker over executable syntax: the port of crates/ms-syntax/src/visit.rs. Fill an
+/* Source-order walker over executable syntax. Fill an
  * MsVisitor with the hooks you need (the rest stay NULL) and call ms_walk_decl; the walk goes
  * through parameter defaults, interpolation, closures, branches and match arms. Types and
  * patterns are not executable and are not visited.

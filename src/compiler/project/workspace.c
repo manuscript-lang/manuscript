@@ -1,4 +1,4 @@
-/* compiler/project/workspace.c: port of crates/ms-driver/src/project/workspace.rs. */
+/* compiler/project/workspace.c: workspaces: the members a root `ms.toml` names. */
 #include "compiler/project/workspace.h"
 
 #include <errno.h>

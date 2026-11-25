@@ -1,4 +1,4 @@
-/* Driver: `ms fmt`, the source formatter command (crates/ms-cli/src/fmt.rs). */
+/* Driver: `ms fmt`, the source formatter command. */
 #ifndef MS_CLI_FMT_COMMAND_H
 #define MS_CLI_FMT_COMMAND_H
 

@@ -1,6 +1,5 @@
-// Deterministic generators of small Manuscript programs for differential testing, a
-// port of the generators of the former Rust `ms-conform fuzz` (same SplitMix64 stream,
-// so a seed gives the program it always gave).
+// Deterministic generators of small Manuscript programs for differential testing
+// (SplitMix64 stream, so a seed gives the program it always gave).
 //
 // * `program(seed)`: a well-typed program over Int, Float, Bool, String and `List[Int]`
 //   expression trees, loops and a few recursive helpers. Checked Int arithmetic is tracked while

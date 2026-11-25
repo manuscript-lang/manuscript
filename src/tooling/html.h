@@ -1,5 +1,5 @@
 /* tooling/html.h: the interactive page of `ms diagram --format html`: one self-contained HTML file that embeds the fact
- * model. Port of crates/ms-tooling/src/html.rs. */
+ * model. */
 #ifndef MS_TOOLING_HTML_H
 #define MS_TOOLING_HTML_H
 

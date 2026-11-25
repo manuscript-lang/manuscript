@@ -1,5 +1,5 @@
 /* Owns `ms run` (run_command.h): builds a temporary executable and runs it, with the program's own standard streams
- * or, with --json, captured into one document. Port of crates/ms-cli/src/engine/run.rs. Not yet ported: --watch. */
+ * or, with --json, captured into one document. Not yet ported: --watch. */
 #include "cli/files.h"
 #include "cli/run_command.h"
 

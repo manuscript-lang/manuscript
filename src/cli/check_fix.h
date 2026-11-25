@@ -1,5 +1,4 @@
-/* cli/check_fix.h: `ms check --fix`: applying the edits diagnostics suggest. Port of `apply_fixes` of
- * crates/ms-cli/src/engine/tooling.rs. */
+/* cli/check_fix.h: `ms check --fix`: applying the edits diagnostics suggest. */
 #ifndef MS_CLI_CHECK_FIX_H
 #define MS_CLI_CHECK_FIX_H
 

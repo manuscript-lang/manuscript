@@ -1,5 +1,5 @@
 /* Owns the promise rules of lint.h: a `while true` loop that never waits (MSL111) and a promise dropped the moment
- * it is made (MSL115). Port of crates/ms-tooling/src/lint/tasks.rs and promises.rs. */
+ * it is made (MSL115). */
 #include "base/message.h"
 #include "compiler/syntax/walk.h"
 #include "tooling/lint.h"

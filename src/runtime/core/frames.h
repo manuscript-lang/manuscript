@@ -19,7 +19,7 @@
 
 #include "base/safe.h"
 
-/* The layout is the ABI the compiler emits (crates/ms-rt-abi `FuncEntry`, `LineEntry`, `ScopeEntry`, `Tables`). */
+/* The layout is the ABI the compiler emits. */
 typedef struct MsFuncEntry {
   uintptr_t address;
   uint32_t size;

@@ -1,5 +1,5 @@
 /* cli/help_command.h: `ms help`, `ms version`, and the help and unknown-command answers every command shares.
- * Port of crates/ms-cli/src/commands.rs (run_help, run_version) and help.rs. */
+ *rs. */
 #ifndef MS_CLI_HELP_COMMAND_H
 #define MS_CLI_HELP_COMMAND_H
 

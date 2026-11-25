@@ -1,5 +1,4 @@
-/* cli/invocation.h: the arguments of `ms build`, `ms run` and `ms test`, read and validated. Port of
- * crates/ms-cli/src/invocation.rs and the argument handling of lib.rs. Every text lives in the arena. */
+/* cli/invocation.h: the arguments of `ms build`, `ms run` and `ms test`, read and validated. Every text lives in the arena. */
 #ifndef MS_CLI_INVOCATION_H
 #define MS_CLI_INVOCATION_H
 

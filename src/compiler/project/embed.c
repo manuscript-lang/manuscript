@@ -1,5 +1,4 @@
-/* compiler/project/embed.c: an [embed] directory as a generated Manuscript module, port of
- * crates/ms-driver/src/project/embed.rs. The module exports `files()`, which builds an `EmbeddedTree` holding
+/* compiler/project/embed.c: an [embed] directory as a generated Manuscript module. The module exports `files()`, which builds an `EmbeddedTree` holding
  * every file of the directory as Base64 text in a string literal. */
 #include <errno.h>
 

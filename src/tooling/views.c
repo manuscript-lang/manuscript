@@ -1,4 +1,4 @@
-/* Owns views.h: port of crates/ms-tooling/src/{views,tree}.rs. */
+/* Owns views.h. */
 #include "tooling/views.h"
 #include "tooling/views_private.h"
 

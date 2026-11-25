@@ -1,5 +1,5 @@
 /* Owns editor recovery parsing: retains the declarations of a file that parse independently and reports
- * the diagnostics of those that do not. Port of crates/ms-syntax/src/partial.rs. */
+ * the diagnostics of those that do not. */
 #include "base/sort.h"
 #include "compiler/syntax/partial_internal.h"
 

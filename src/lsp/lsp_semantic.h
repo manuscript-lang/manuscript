@@ -1,4 +1,4 @@
-/* lsp/lsp_semantic.h: `textDocument/semanticTokens/full`. Port of crates/ms-lsp/src/semantic.rs. */
+/* lsp/lsp_semantic.h: `textDocument/semanticTokens/full`. */
 #ifndef MS_CLI_LSP_SEMANTIC_H
 #define MS_CLI_LSP_SEMANTIC_H
 

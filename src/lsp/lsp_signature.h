@@ -1,5 +1,4 @@
-/* lsp/lsp_signature.h: `textDocument/signatureHelp`, the signature of the call around the cursor. Port of
- * crates/ms-lsp/src/completion.rs `signature_help`. */
+/* lsp/lsp_signature.h: `textDocument/signatureHelp`, the signature of the call around the cursor. */
 #ifndef MS_CLI_LSP_SIGNATURE_H
 #define MS_CLI_LSP_SIGNATURE_H
 

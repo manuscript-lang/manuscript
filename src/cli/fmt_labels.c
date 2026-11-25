@@ -1,4 +1,4 @@
-/* Owns fmt_labels.h: `analysis` of one file, as the Rust `drop_redundant_labels` does it. */
+/* Owns fmt_labels.h: `analysis` of one file. */
 #include "cli/fmt_labels.h"
 
 #include "base/message.h"

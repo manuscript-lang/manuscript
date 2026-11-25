@@ -1,5 +1,4 @@
-/* lsp/lsp_frame.c: `Content-Length` framing and JSON text for `ms lsp`. Port of read_frame in
- * crates/ms-lsp/src/transport.rs. */
+/* lsp/lsp_frame.c: `Content-Length` framing and JSON text for `ms lsp`. */
 #include <ctype.h>
 #include <string.h>
 

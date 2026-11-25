@@ -1,6 +1,5 @@
 /* cli/search_project.h: the project half of `ms search_symbol`: the declarations of the project in the working
- * directory whose names match, with their type, documentation, effects and uses. Port of the workspace search of
- * crates/ms-lsp (query.rs, nav.rs) as crates/ms-cli/src/engine/search.rs reads it. */
+ * directory whose names match, with their type, documentation, effects and uses. */
 #ifndef MS_CLI_SEARCH_PROJECT_H
 #define MS_CLI_SEARCH_PROJECT_H
 

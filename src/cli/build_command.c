@@ -1,5 +1,5 @@
 /* Owns `ms build` (build_command.h): checks the input, builds the executable through the pipeline and reports the
- * result as text or as the versioned JSON document. Port of crates/ms-cli/src/engine/build.rs. */
+ * result as text or as the versioned JSON document. */
 #include "cli/files.h"
 #include "cli/build_command.h"
 

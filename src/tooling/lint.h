@@ -1,4 +1,4 @@
-/* tooling/lint.h: the advisory findings of `ms lint` over a checked program, as in crates/ms-tooling/src/lint.
+/* tooling/lint.h: the advisory findings of `ms lint` over a checked program
  * Lint never changes behavior and finds nothing in a program that has diagnostics.
  *
  * Ownership: every text of a finding is allocated from the arena the caller gives. */

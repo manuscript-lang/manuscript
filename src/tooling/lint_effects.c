@@ -1,5 +1,5 @@
 /* Owns the effects rule of lint.h: MSL116, a project function reaches an effect no `// ms: allow_effect` line
- * permits. Port of crates/ms-tooling/src/lint/effects.rs. */
+ * permits. */
 #include "base/strbuild.h"
 #include "compiler/check/effects_scan.h"
 #include "tooling/lint.h"

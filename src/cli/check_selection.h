@@ -1,5 +1,5 @@
 /* cli/check_selection.h: the inputs of `ms check` from its targets. A collection is a set of independent compiler
- * requests, never one combined program. Port of crates/ms-cli/src/analysis.rs. */
+ * requests, never one combined program. */
 #ifndef MS_CLI_CHECK_SELECTION_H
 #define MS_CLI_CHECK_SELECTION_H
 

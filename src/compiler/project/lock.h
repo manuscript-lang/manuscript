@@ -1,5 +1,4 @@
-/* compiler/project/lock.h: ms.lock, the package cache and the content hash of a package. Port of the lock and cache
- * half of crates/ms-driver/src/project/packages.rs and the ids of resolve.rs.
+/* compiler/project/lock.h: ms.lock, the package cache and the content hash of a package.rs.
  *
  * `ms install` is the only code that uses the network. Everything here reads the lock and the cache, so a locked
  * project builds offline. */

@@ -1,5 +1,5 @@
 /* compiler/project/manifest.h: ms.toml read and validated: [project], [aliases], [embed], [dependencies],
- * [effects] and [workspace]. Port of crates/ms-driver/src/project/manifest.rs. */
+ * [effects] and [workspace]. */
 #ifndef MS_PROJECT_MANIFEST_H
 #define MS_PROJECT_MANIFEST_H
 

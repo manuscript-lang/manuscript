@@ -1,6 +1,5 @@
 /* Owns attaching the packages a project reaches (package.h): reading the lock, loading each locked copy from the
- * cache, checking it against the index, and wiring its own dependencies. Port of `attach` in
- * crates/ms-driver/src/project/packages.rs. */
+ * cache, checking it against the index, and wiring its own dependencies. */
 #include "base/dir.h"
 #include "base/file.h"
 #include "base/message.h"

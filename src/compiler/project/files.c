@@ -1,5 +1,5 @@
 /* compiler/project/files.c: the source files a command's target stands for (`ms fmt`): a .ms file is itself;
- * a directory or an ms.toml stands for the project's modules, as `format_paths` in crates/ms-cli/src/fmt.rs. */
+ * a directory or an ms.toml stands for the project's modules. */
 #include <errno.h>
 
 #include "base/dir.h"

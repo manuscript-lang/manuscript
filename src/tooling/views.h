@@ -1,6 +1,5 @@
 /* tooling/views.h: the diagram views, one question each, built from the fact model, and their renderings: the tree
- * as text, Mermaid and JSON, and the box, signature and flowchart forms of the types, ownership and overview views.
- * Port of crates/ms-tooling/src/{views,tree}.rs. */
+ * as text, Mermaid and JSON, and the box, signature and flowchart forms of the types, ownership and overview views. */
 #ifndef MS_TOOLING_VIEWS_H
 #define MS_TOOLING_VIEWS_H
 

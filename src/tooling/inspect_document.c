@@ -1,5 +1,4 @@
-/* Owns ms_inspect_document (inspect.h): the document `ms inspect` prints. Port of `Inspection::to_json` and its
- * collection in crates/ms-tooling/src/inspect.rs. The `build_id` is the digest of the compact document without it. */
+/* Owns ms_inspect_document (inspect.h): the document `ms inspect` prints. The `build_id` is the digest of the compact document without it. */
 #include "base/sha256.h"
 #include "base/sort.h"
 #include "compiler/syntax/diag_json.h"

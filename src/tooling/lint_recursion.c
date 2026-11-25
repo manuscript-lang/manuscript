@@ -1,5 +1,5 @@
 /* Owns the recursion rule of lint.h: MSL112, a function that calls itself on every path, since no `return`, `?` or
- * fault leaves it before the recursive call. Port of crates/ms-tooling/src/lint/recursion.rs. */
+ * fault leaves it before the recursive call. */
 #include "base/message.h"
 #include "tooling/lint.h"
 
