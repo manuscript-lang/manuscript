@@ -112,6 +112,8 @@ EmitAddr emit_address(EmitCx *cx, const char *base, uint32_t offset);
 void emit_load_leaf(EmitCx *cx, MirLeaf leaf, MirValue dst, uint32_t index, EmitAddr address);
 void emit_store_leaf(EmitCx *cx, MirLeaf leaf, MirValue src, uint32_t index, EmitAddr address);
 /* Reads (`load`) or writes the leaves of `value` at the address in `base`. */
+/* The memory offsets of the leaves of `value`; free with ms_free. */
+uint32_t *emit_leaf_offsets(EmitCx *cx, MirValue value);
 void emit_leaves_at(EmitCx *cx, MirValue value, const char *base, bool load);
 /* Converts the word `value` to a pointer register; writes its name to `name`. */
 void emit_pointer(EmitCx *cx, MirValue value, char *name, size_t capacity);

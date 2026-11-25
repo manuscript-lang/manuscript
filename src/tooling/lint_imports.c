@@ -1,5 +1,6 @@
 /* Owns the unused-import rule of lint.h: MSL102, with the edit that removes the import. */
 #include "compiler/syntax/lex.h"
+#include "base/chars.h"
 #include "compiler/syntax/walk.h"
 #include "tooling/lint.h"
 
@@ -187,16 +188,8 @@ static bool referenced(const MsFacts *facts, const MsSymbol *symbol) {
   return false;
 }
 
-static bool is_blank(uint8_t c) {
-  return c == ' ' || c == '\t';
-}
-
-static bool is_space(uint8_t c) {
-  return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f';
-}
-
 static size_t skip_blank(MsSpan source, size_t at) {
-  while (at < source.len && is_blank(source.ptr[at])) {
+  while (at < source.len && ms_ascii_is_blank(source.ptr[at])) {
     at++;
   }
   return at;
@@ -211,7 +204,7 @@ static size_t line_start_of(MsSpan source, size_t at) {
 
 static bool all_space(MsSpan source, size_t from, size_t to) {
   for (size_t i = from; i < to; i++) {
-    if (!is_space(source.ptr[i])) {
+    if (!ms_ascii_is_space(source.ptr[i])) {
       return false;
     }
   }
@@ -354,7 +347,7 @@ static bool name_removal(MsSpan source, const MsImport *import, size_t name_leng
     return true;
   }
   size_t before = start;
-  while (before > 0 && is_blank(source.ptr[before - 1])) {
+  while (before > 0 && ms_ascii_is_blank(source.ptr[before - 1])) {
     before--;
   }
   if (before == 0 || source.ptr[before - 1] != ',') {

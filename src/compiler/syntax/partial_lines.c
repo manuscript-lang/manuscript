@@ -2,13 +2,9 @@
 #include "base/chars.h"
 #include "compiler/syntax/partial_internal.h"
 
-static bool is_space(uint8_t b) {
-  return b == ' ' || b == '\t' || b == '\n' || b == '\r' || b == '\v' || b == '\f';
-}
-
 static MsSpan partial_trim_start(MsSpan text) {
   size_t at = 0;
-  while (at < text.len && is_space(text.ptr[at])) {
+  while (at < text.len && ms_ascii_is_space(text.ptr[at])) {
     at++;
   }
   return ms_span_of(text.ptr + at, text.len - at);
@@ -16,7 +12,7 @@ static MsSpan partial_trim_start(MsSpan text) {
 
 MsSpan partial_trim_end(MsSpan text) {
   size_t end = text.len;
-  while (end > 0 && is_space(text.ptr[end - 1])) {
+  while (end > 0 && ms_ascii_is_space(text.ptr[end - 1])) {
     end--;
   }
   return ms_span_of(text.ptr, end);
@@ -148,7 +144,7 @@ bool partial_single_root(const MsModule *module) {
 static bool split_name(MsSpan fields, MsSpan *name) {
   MsSpan rest = partial_trim_start(fields);
   size_t at = 0;
-  while (at < rest.len && !is_space(rest.ptr[at])) {
+  while (at < rest.len && !ms_ascii_is_space(rest.ptr[at])) {
     at++;
   }
   MsSpan keyword = ms_span_of(rest.ptr, at);
@@ -158,7 +154,7 @@ static bool split_name(MsSpan fields, MsSpan *name) {
   }
   rest = partial_trim_start(ms_span_of(rest.ptr + at, rest.len - at));
   size_t end = 0;
-  while (end < rest.len && !is_space(rest.ptr[end])) {
+  while (end < rest.len && !ms_ascii_is_space(rest.ptr[end])) {
     end++;
   }
   /* The first non-empty piece of the second field, split at `(`, `[` or `:`. */

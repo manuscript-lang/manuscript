@@ -64,11 +64,7 @@ static int compare_place(const void *left, const void *right) {
   for (size_t i = 0; i < 4; i++) {
     if (x[i] != y[i]) return x[i] < y[i] ? -1 : 1;
   }
-  const size_t common = a->uri.len < b->uri.len ? a->uri.len : b->uri.len;
-  for (size_t i = 0; i < common; i++) {
-    if (a->uri.ptr[i] != b->uri.ptr[i]) return a->uri.ptr[i] < b->uri.ptr[i] ? -1 : 1;
-  }
-  return a->uri.len < b->uri.len ? -1 : (a->uri.len > b->uri.len ? 1 : 0);
+  return ms_span_compare(a->uri, b->uri);
 }
 
 /* The places of every occurrence of the identity at `selected`, sorted and without repeats. */

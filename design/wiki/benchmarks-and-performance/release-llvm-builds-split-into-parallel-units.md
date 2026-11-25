@@ -2,11 +2,10 @@
 
 # Release LLVM builds split into parallel units
 
-Release builds used to send one monolithic module through one `opt` and one `llc` process: 350 s for the 122k-line `bench/tools/compile_time.ms` workload (4 cores), 16.9 s for 18.6k lines. `LlvmModule::finish_units` now cuts the functions into consecutive runs of equal byte size, each a complete module that only declares what another unit defines, and `compile_all` in `ms-build` runs one `opt`+`llc` per unit on its own thread. Result: 60 s and 6.4 s, identical program output.
+A monolithic module through one optimizer and one code generator took 350 s for the 122k-line `bench/tools/compile_time.ms` workload (4 cores) and 16.9 s for 18.6k lines; cutting it into consecutive equal-size modules, one per core, gave 60 s and 6.4 s with identical output (Rust-era measurement; the C build keeps the design, see [large programs compile as parallel LLVM modules](large-programs-compile-as-parallel-llvm-modules.md)).
 
-- Units are used only above 2 MiB of function text per unit (`UNIT_BYTES`), at most one per core, so small programs keep whole-program inlining and their benchmarks do not change. `MS_LLVM_UNITS=n` forces a count (1 turns it off).
-- More than one unit disables the ELF anchor mode: every function keeps a hidden symbol and the tables address functions by symbol, as on macOS and Windows. Scope ids from each object are offset when the tables merge.
+- Small programs stay one module so they keep whole-program inlining; `MS_UNITS=n` forces a count (1 turns it off).
 - Cost: no inlining across units, and each unit parses the whole debug metadata. A function reached only from another unit stays a call.
-- What remains serial is the single largest function (`ms_entry` of the synthetic workload is 33k IR lines and 40% of `opt` time) and the metadata parse.
+- What remains serial is the single largest function and the metadata parse.
 
-Evidence: `bench/compile-time/README.md` (2026-11-03 section), `crates/ms-cli/tests/llvm.rs::llvm_units_keep_fault_frames`.
+Evidence: `bench/compile-time/README.md` (2026-11-03 section), `src/compiler/emit/emit_units.c`, `src/cli/pipeline.c`.

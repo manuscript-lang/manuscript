@@ -31,7 +31,7 @@ void msrt_string_replace(const MsString *s, const MsString *old, const MsString 
 void msrt_string_replace_first(const MsString *s, const MsString *old, const MsString *replacement,
                                MsString *out);
 /* ms-sig: msrt_string_replace_take(s: *mut StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal)
- * @domain=string @end */
+ * @domain=string @leaf @end */
 void msrt_string_replace_take(MsString *s, const MsString *old, const MsString *replacement, MsString *out);
 
 #endif

@@ -134,9 +134,7 @@ static int64_t compare_locals(uint8_t *env, const uint8_t *left, const uint8_t *
   (void)env;
   const MsSpan a = ((const Local *)(const void *)left)->checker_id;
   const MsSpan b = ((const Local *)(const void *)right)->checker_id;
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  return order != 0 ? order : (int64_t)a.len - (int64_t)b.len;
+  return ms_span_compare(a, b);
 }
 
 static Local *collect_locals(Doc *d, size_t *count) {
@@ -169,9 +167,7 @@ static int64_t compare_sources(uint8_t *env, const uint8_t *left, const uint8_t 
   (void)env;
   const MsSpan a = ((const SourceRow *)(const void *)left)->file;
   const MsSpan b = ((const SourceRow *)(const void *)right)->file;
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  return order != 0 ? order : (int64_t)a.len - (int64_t)b.len;
+  return ms_span_compare(a, b);
 }
 
 /* The document describes the user's modules only: the standard library's entities, sites and hashes change with every

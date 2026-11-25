@@ -43,13 +43,7 @@ static int64_t order_targets(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
   const MsSpan *x = (const void *)a;
   const MsSpan *y = (const void *)b;
-  const size_t common = x->len < y->len ? x->len : y->len;
-  for (size_t index = 0; index < common; index++) {
-    if (x->ptr[index] != y->ptr[index]) {
-      return x->ptr[index] < y->ptr[index] ? -1 : 1;
-    }
-  }
-  return x->len == y->len ? 0 : (x->len < y->len ? -1 : 1);
+  return ms_span_compare(*x, *y);
 }
 
 static bool is_option(const char *argument, const char *name) {

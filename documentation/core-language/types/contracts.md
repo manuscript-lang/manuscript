@@ -180,7 +180,7 @@ A value whose type satisfies an interface converts implicitly wherever that inte
 
 A value that is already a view of the same interface application is unchanged. Other interface-to-interface conversions and unchecked downcasts are rejected. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver with a runtime nominal check.
 
-The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position. A read-only argument borrows the operand, so the operand stays usable afterwards. A stored position (field, collection entry, `:=`, return) moves the operand at its last use, or needs `.clone()` otherwise.
+The conversion follows the [ownership rules](../../contributing/ownership-rules.md) of its position. A read-only argument borrows the operand, so the operand stays usable afterwards. A stored position (field, collection entry, `:=`, return) moves the operand at its last use, or needs `.clone()` otherwise.
 
 A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 

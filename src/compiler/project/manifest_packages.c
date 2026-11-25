@@ -306,12 +306,7 @@ bool manifest_package_entry(Reader *r, const TomlTable *table, const TomlEntry *
 /* ---- checks over the whole manifest ---- */
 
 static int64_t compare_names(const MsSpan a, const MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return a.len < b.len ? -1 : a.len > b.len;
+  return ms_span_compare(a, b);
 }
 
 static int64_t compare_dependencies(uint8_t *env, const uint8_t *a, const uint8_t *b) {

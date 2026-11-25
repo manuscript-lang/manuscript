@@ -588,7 +588,9 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
   if (!ms_project_absolute_path(arena, filename, &absolute, &error) || !canonical_root(arena, absolute, &root, &error) ||
       !read_governing_manifest(arena, absolute, root, &manifest, &governed, &error)) {
     out->source_root = manifest.root;
-    fail_error(arena, filename, &error, out);
+    /* an error found after the manifest was read (a dependency missing from ms.lock) belongs to that file, named the
+     * way the manifest's own errors are, not by the relative argument the user typed */
+    fail_error(arena, error.kind == MS_PERR_MESSAGE && manifest.file.len != 0 ? manifest.file : filename, &error, out);
     ms_manifest_free(&manifest);
     return;
   }

@@ -2,9 +2,9 @@
 
 # Path text is Manuscript; only the glob matcher stays native
 
-Decision (Chinmay, stdlib idiom proposal, 2026-11-05): lexical path functions live in `src/stdlib/os/path.ms`, split from `os/fs.ms` with no aliases. They never touch the OS, so Rust holds nothing for them. `msstd_path_compile_glob` and `msstd_path_glob_matches` (a compiled `Glob` handle; `matches_glob` is a thin wrapper) stay native because `fs.glob`'s directory walk uses the same matcher (`ms-std-path::glob`).
+Decision (Chinmay, stdlib idiom proposal, 2026-11-05): lexical path functions live in `src/stdlib/os/path.ms`, split from `os/fs.ms` with no aliases. They never touch the OS, so Rust holds nothing for them. `msstd_path_compile_glob` and `msstd_path_glob_matches` (a compiled `Glob` handle; `matches_glob` is a thin wrapper) stay native because `fs.glob`'s directory walk uses the same matcher (`src/runtime/std/path_glob.c`).
 
-Verified: the 9.7k-case corpus recorded from the original implementation replays under `tests/conformance/fixtures/e2e/projects/path_oracle` (an embed project, so the data file travels with the test). Port a lexical native by moving its cases into such a replay first. The `.ms` rules cost about 1x (basename, dirname, relative) to 2x (normalize, join, parse) the Rust natives, still under 300 ns; `bench/perf/pure-utilities/rust/src/path_rules.rs` keeps the old Rust rules as the control.
+Verified: the 9.7k-case corpus recorded from the original implementation replays under `tests/conformance/fixtures/e2e/projects/path_oracle` (an embed project, so the data file travels with the test). Port a lexical native by moving its cases into such a replay first. The `.ms` rules cost about 1x (basename, dirname, relative) to 2x (normalize, join, parse) the Rust natives, still under 300 ns; `bench/perf/pure-utilities/` keeps the old Rust rules as the control.
 
 Path case comparisons preserve per-scalar lowercase mapping, not whole-string contextual casing. Mapping `Σ` to `σ` before lowercasing prevents final-sigma rules from changing Windows relative components and UNC roots. `accept/path-case-mapping.ms` covers sigma, combining marks, expanding lowercase mappings, final-sigma distinction and POSIX case sensitivity beyond the recorded corpus.
 

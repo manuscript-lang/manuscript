@@ -9,9 +9,7 @@ extern @msrt_unwinding() -> bool leaf unwinding
 extern @msrt_unwinding_pause() -> void
 extern @msrt_unwinding_resume() -> void
 extern @msrt_string_join(str, int) -> str fresh leaf string_join
-extern @msstd_value_to_string(ptr, ptr) -> str fresh
-extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
-extern @msrt_io_write_stdout(str) -> void
+extern @msrt_io_write_stdout_end(str, str) -> void
 extern @msrt_string_parse_int(str, ptr) -> uint8 string_parse_int
 extern @msrt_panic(str) -> void
 entry @main
@@ -151,32 +149,26 @@ b18():
 
 fn @print[String](%0: str, %1: str) -> void !1:0:0 {
 b0:
-  %2: ptr = shape str !1:206:32
-  %3: ptr = slot str !1:206:32
-  store %3, %0 !1:206:32
-  %4: str = call.rt @msstd_value_to_string (%2, %3) !1:206:32
-  %5: bool = call.rt @msrt_unwinding () !1:206:32
-  br_if %5, b1(), b2() !1:206:32
+  %2: str = clone %0 !1:208:36
+  %3: bool = call.rt @msrt_unwinding () !1:208:36
+  br_if %3, b1(), b2() !1:208:36
 b1():
-  forget %4 !1:206:32
-  %6: void = call.rt @msrt_unwinding_pause () !1:206:32
-  %7: void = call.rt @msrt_unwinding_resume () !1:206:32
-  ret !1:206:32
+  %4: void = call.rt @msrt_unwinding_pause () !1:208:36
+  drop %2
+  %5: void = call.rt @msrt_unwinding_resume () !1:208:36
+  ret !1:208:36
 b2():
-  %8: str = call.rt @msrt_string_concat (%4, %1) !1:206:32
-  %9: void = call.rt @msrt_io_write_stdout (%8) !1:206:5
-  %10: bool = call.rt @msrt_unwinding () !1:206:5
-  br_if %10, b3(), b4() !1:206:5
+  %6: void = call.rt @msrt_io_write_stdout_end (%2, %1) !1:208:5
+  %7: bool = call.rt @msrt_unwinding () !1:208:5
+  br_if %7, b3(), b4() !1:208:5
 b3():
-  %11: void = call.rt @msrt_unwinding_pause () !1:206:5
-  drop %8
-  drop %4
-  %12: void = call.rt @msrt_unwinding_resume () !1:206:5
-  ret !1:206:5
+  %8: void = call.rt @msrt_unwinding_pause () !1:208:5
+  drop %2
+  %9: void = call.rt @msrt_unwinding_resume () !1:208:5
+  ret !1:208:5
 b4():
-  drop %8
-  drop %4
-  ret !1:206:5
+  drop %2
+  ret !1:208:5
   name %0 "value" param 0
   name %1 "end" param 0
 }
@@ -231,33 +223,33 @@ b10():
 
 fn @get_or[Int,Failure](%0: move Result[Int, Failure], %1: move opt<int>) -> int !1:0:0 {
 b0:
-  %2: int = alt.tag %0 !1:313:5
-  %3: int = iconst 0 !1:313:5
-  %4: bool = icmp.eq %2, %3 !1:313:5
-  br_if %4, b1(), b2() !1:313:5
+  %2: int = alt.tag %0 !1:315:5
+  %3: int = iconst 0 !1:315:5
+  %4: bool = icmp.eq %2, %3 !1:315:5
+  br_if %4, b1(), b2() !1:315:5
 b1():
-  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:313:5
-  alt.release Result[Int, Failure].ok.value %0 !1:313:5
-  ret %5 !1:313:24
+  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:315:5
+  alt.release Result[Int, Failure].ok.value %0 !1:315:5
+  ret %5 !1:315:24
 b2():
-  br b3() !1:313:24
+  br b3() !1:315:24
 b3():
-  %6: bool = opt.is_some %1 !1:314:5
-  br_if %6, b4(), b5() !1:314:5
+  %6: bool = opt.is_some %1 !1:316:5
+  br_if %6, b4(), b5() !1:316:5
 b4():
-  %7: int = opt.get %1 !1:314:26
+  %7: int = opt.get %1 !1:316:26
   drop %0
-  ret %7 !1:314:26
+  ret %7 !1:316:26
 b5():
-  br b6() !1:314:26
+  br b6() !1:316:26
 b6():
-  %8: str = str "called Result.get_or with a none default" !1:316:5
-  %9: void = call.rt @msrt_panic (%8) !1:316:5
-  %10: void = call.rt @msrt_unwinding_pause () !1:316:5
+  %8: str = str "called Result.get_or with a none default" !1:318:5
+  %9: void = call.rt @msrt_panic (%8) !1:318:5
+  %10: void = call.rt @msrt_unwinding_pause () !1:318:5
   drop %0
-  %11: void = call.rt @msrt_unwinding_resume () !1:316:5
-  %12: int = undef !1:316:5
-  ret %12 !1:316:5
+  %11: void = call.rt @msrt_unwinding_resume () !1:318:5
+  %12: int = undef !1:318:5
+  ret %12 !1:318:5
 b7():
   unreachable
   name %0 "self" param 0

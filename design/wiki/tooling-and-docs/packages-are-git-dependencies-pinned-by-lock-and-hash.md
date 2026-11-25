@@ -6,7 +6,7 @@ Decision (the prime-time lead for Chinmay, 2026-11-15): a project names git depe
 
 Resolution (Chinmay, 2026-11-15: follow Rust): `version` is a Cargo-style requirement on tags (caret by default); one copy per repository per compatible range (major, or minor for 0.x), highest tag that satisfies every asker in the graph; another major is another copy with its own types. `ms.lock` has one line per copy keyed `github.com/acme/wire@v1.4.2`, a satisfying lock is kept, and `ms install --update @name` re-picks. `[project] version` is optional semver (CalVer fits); at a tagged commit it must equal the tag, the tag selects and the manifest only checks. Effects of a unified copy are checked against every dependent's allowance on every build. Design: [proposal](../../proposals/package-resolution.md), resolver.
 
-Portability (bug bash 2026-11-18): the hash comes from the checked-out directory, so `ms install` rejects, from git's own file list and on every platform, a symbolic link, two paths equal after lowercasing, and a Windows-invalid name (`reject_unportable` in `fetch.rs`). Before, a Linux install pinned a case-colliding package that macOS and Windows could not reproduce. The test records such names with `git update-index --cacheinfo`, so it runs on every platform without creating them.
+Portability (bug bash 2026-11-18): the hash comes from the checked-out directory, so `ms install` rejects, from git's own file list and on every platform, a symbolic link, two paths equal after lowercasing, and a Windows-invalid name (`ms_package_reject_unportable` in `src/cli/package_validate.c`). Before, a Linux install pinned a case-colliding package that macOS and Windows could not reproduce. The test records such names with `git update-index --cacheinfo`, so it runs on every platform without creating them.
 
 Why: copying source with an alias had no pin, origin or check.
 
@@ -16,5 +16,5 @@ Verified: package files live outside the project root, so confinement and the lo
 
 Editor: package files live in the cache, not under the project root, so a logical module name (`@pg/conn.ms`) maps to a path through `Analysis::package_roots`, and import completion reads `Project::deps` as well as `aliases`. A new place that turns a module name into a path must do the same.
 
-Evidence: [proposal](../../proposals/packages.md), packages.rs, fetch.rs, test.
-Verify: `cargo test -p ms-cli --test it packages`.
+Evidence: [proposal](../../proposals/packages.md), `src/cli/package_validate.c`, `src/compiler/project/solve*.c`.
+Verify: `ctest --preset ci` (package tests) and the `install` command fixtures under `tests/conformance/commands/install`.

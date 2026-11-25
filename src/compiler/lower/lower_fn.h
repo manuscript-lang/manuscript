@@ -445,6 +445,9 @@ bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, ui
 MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first);
 struct MsNativeSig;
 MirTwin fn_native_twin(const struct MsNativeSig *sig);
+bool fn_native_takes_dying(const struct MsNativeSig *sig);
+/* `Map.update`'s runtime call as an in-line probe plus a call of the change thunk (lower_native_update.c). False when it does not apply. */
+bool fn_update_in_line(LowerFn *fn, MsName name, const MirValue *wanted, uint32_t count);
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
