@@ -20,7 +20,7 @@ A DOCTYPE's public identifier uses XML's restricted ASCII `PubidChar` production
 
 Assert that each forbidden-character fixture has one scalar so a wrong fixture fails at the test data rather than masquerading as a parser defect (#3419).
 
-Serialization inspects child text only to choose indentation. Compact output must skip that scan, and mixed content can stop at its first nonempty text result. Calling `text()` just for this decision allocates a copy of the text. Preserve the predicate's handling of empty text and comments; [the allocation fixture](../../../tests/checks/ownership-counts/xml_stringify.ms) catches redundant copies, while the XML tests pin exact compact and indented output. [Paired measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/xml-stringify/README.md) cover wide trees and neighboring cases.
+Serialization inspects child text only to choose indentation. Compact output must skip that scan, and mixed content can stop at its first nonempty text result. Calling `text()` just for this decision allocates a copy of the text. Preserve the predicate's handling of empty text and comments; [the allocation fixture](../../../tools/checks/ownership-counts/xml_stringify.ms) catches redundant copies, while the XML tests pin exact compact and indented output. [Paired measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/xml-stringify/README.md) cover wide trees and neighboring cases.
 
 Delimiter scans prepare the stop's scalar list once per scan, not once per input
 scalar. Keep first-match selection and partial delimiters at EOF unchanged;

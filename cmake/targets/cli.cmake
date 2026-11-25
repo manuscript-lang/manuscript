@@ -80,7 +80,7 @@ add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
 
 # `ms build` does not verify the module, `ms emit` does after every pass: the map calls that lower to inline probes verify.
-add_test(NAME mir_verify COMMAND ms emit --opt ${CMAKE_SOURCE_DIR}/tests/checks/mir-verify/map-calls.ms -o ${CMAKE_BINARY_DIR}/src/cli/map-calls.mir)
+add_test(NAME mir_verify COMMAND ms emit --opt ${CMAKE_SOURCE_DIR}/tools/checks/mir-verify/map-calls.ms -o ${CMAKE_BINARY_DIR}/src/cli/map-calls.mir)
 
 # `ms search_symbol` over many files searches every one.
 add_test(NAME search_many COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/search-many
@@ -104,9 +104,9 @@ add_test(NAME lsp_parity COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/lsp-parity.ms 
 set_tests_properties(lsp_parity PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 
 # The embedded-example check (docs-check) accepts a current example and rejects one in a removed syntax.
-add_test(NAME example_check_accepts_current COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/example-check.ms -- tests/checks/examples/current.md
+add_test(NAME example_check_accepts_current COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/example-check.ms -- tools/checks/examples/current.md
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-add_test(NAME example_check_rejects_stale COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/example-check.ms -- tests/checks/examples/stale.md
+add_test(NAME example_check_rejects_stale COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/example-check.ms -- tools/checks/examples/stale.md
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_tests_properties(example_check_accepts_current example_check_rejects_stale PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 set_tests_properties(example_check_rejects_stale PROPERTIES WILL_FAIL TRUE)
