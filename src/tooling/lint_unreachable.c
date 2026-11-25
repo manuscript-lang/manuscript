@@ -1,7 +1,6 @@
 /* Owns the unreachable-statement rule of lint.h: MSL103. A statement is unreachable when an earlier statement of
  * its block never falls through (return, break, continue, a call or value that never returns, or a branch all of
- * whose paths end). Port of the block scan of crates/ms-tooling/src/lint/bindings.rs, with the fall-through the
- * Rust checker records per statement (crates/ms-check/src/stmts.rs) computed here from the checked types. */
+ * whose paths end). */
 #include "compiler/syntax/walk.h"
 #include "tooling/lint.h"
 

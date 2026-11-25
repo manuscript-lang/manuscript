@@ -1,5 +1,4 @@
-/* tooling/review.h: classifies what changed between a base and a head program and ranks it.
- * Port of crates/ms-tooling/src/review.rs. */
+/* tooling/review.h: classifies what changed between a base and a head program and ranks it. */
 #ifndef MS_TOOLING_REVIEW_H
 #define MS_TOOLING_REVIEW_H
 

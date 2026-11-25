@@ -43,8 +43,8 @@ export type Error {
 }
 
 // The runtime reports a failed native as a status number; lowering builds the `Error`
-// from these rows (`// ms: status <number> <kind> <words>`, built by
-// crates/ms-lower/build.rs). The message is `<domain>: <words>`, and `-` words mean the
+// from these rows (`// ms: status <number> <kind> <words>`).
+// The message is `<domain>: <words>`, and `-` words mean the
 // native's own text is the whole message. A module that words a status differently
 // declares `// ms: words <number> <words>` at the top of its file, covering the externs
 // that file declares.
@@ -182,7 +182,7 @@ fn status_error_text(
 export fn panic(message String) Never { ... }
 
 // The process-wide output buffer; standard output is flushed at exit
-// (crates/ms-rt/src/io.rs).
+// (`msrt_io_*` natives).
 extern fn msrt_io_write_stdout(text String) Void
 
 // Ends the calling task as cancelled when `status` is a cancelled wait or the task was

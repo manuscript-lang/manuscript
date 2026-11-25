@@ -1,5 +1,4 @@
-/* compiler/project/discover.c: the test and source modules of a project, port of
- * crates/ms-driver/src/project/discovery.rs. Files come back as canonical-looking absolute paths in byte
+/* compiler/project/discover.c: the test and source modules of a project. Files come back as canonical-looking absolute paths in byte
  * order. Unsaved editor files are not added yet. */
 #include <errno.h>
 

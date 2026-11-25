@@ -1,5 +1,4 @@
 /* compiler/project/semver.h: semantic versions and the requirements a dependency names, as Cargo reads them.
- * Port of crates/ms-driver/src/project/semver.rs.
  *
  * A version is MAJOR.MINOR.PATCH with an optional -pre suffix. A requirement is a version of one to three
  * numbers, optionally behind ^ (the default), ~ or =. Requirements that could span incompatible releases (^0,

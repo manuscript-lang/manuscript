@@ -1,5 +1,5 @@
 /* lsp/lsp_internal.h: the pieces of `ms lsp`, the language server: framed input and output, URIs, UTF-16 text
- * positions and the forgiving token scanner. Port of crates/ms-lsp/src/{transport,uri,text}.rs. */
+ * positions and the forgiving token scanner. */
 #ifndef MS_CLI_LSP_INTERNAL_H
 #define MS_CLI_LSP_INTERNAL_H
 

@@ -1,5 +1,5 @@
 /* Owns `ms init` (init_command.h): the files of a new project, library or workspace, written into a directory that
- * holds none of them. Port of crates/ms-cli/src/init.rs. */
+ * holds none of them. */
 #include "cli/init_command.h"
 
 #include <stdio.h>

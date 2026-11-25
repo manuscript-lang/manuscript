@@ -1,6 +1,5 @@
 /* Driver: `ms verify` (see verify_command.h). Each step (check, fmt --check, lint, test) is this program run on the
- * target with `--json`; verify embeds each result in one document or summarizes them as text. Port of
- * crates/ms-cli/src/verify.rs. Status 0 is every step passed or skipped, 1 a failed step, 2 a usage error. */
+ * target with `--json`; verify embeds each result in one document or summarizes them as text. Status 0 is every step passed or skipped, 1 a failed step, 2 a usage error. */
 #include "cli/verify_command.h"
 
 #include <stdio.h>

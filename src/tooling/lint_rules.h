@@ -1,5 +1,4 @@
-/* tooling/lint_rules.h: the lint rules `ms lint` can report and `ms explain` describes, as in
- * crates/ms-tooling/src/lint/mod.rs. */
+/* tooling/lint_rules.h: the lint rules `ms lint` can report and `ms explain` describes. */
 #ifndef MS_TOOLING_LINT_RULES_H
 #define MS_TOOLING_LINT_RULES_H
 

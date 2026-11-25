@@ -1,5 +1,5 @@
 /* lsp/lsp_workspace.h: the files of a project and the queries that read all of them: workspace symbols and, through
- * lsp_nav, references and rename across files. Port of crates/ms-lsp/src/workspace.rs. */
+ * lsp_nav, references and rename across files. */
 #ifndef MS_CLI_LSP_WORKSPACE_H
 #define MS_CLI_LSP_WORKSPACE_H
 

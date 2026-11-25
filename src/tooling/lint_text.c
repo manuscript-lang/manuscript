@@ -1,5 +1,5 @@
 /* Owns the lexical rules of lint.h: trailing whitespace (MSL001), a missing final newline (MSL002) and a `//` that
- * reads like floor division (MSL133). Port of lint_source in crates/ms-tooling/src/lint/mod.rs. */
+ * reads like floor division (MSL133). */
 #include "base/chars.h"
 #include "compiler/syntax/lex.h"
 #include "tooling/lint.h"

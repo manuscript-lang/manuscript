@@ -1,5 +1,4 @@
-/* compiler/check/exprs_mismatch.c: the diagnostic for binary operands that do not share one type (port of the
- * mismatch branch of infer_binary in crates/ms-check/src/exprs.rs). Only operand pairs that cannot be told
+/* compiler/check/exprs_mismatch.c: the diagnostic for binary operands that do not share one type. Only operand pairs that cannot be told
  * apart from a mistake are reported: two different primitives, or an Optional, a Result or a function beside
  * a primitive. Everything else stays with the later operator checks. */
 #include "compiler/check/body.h"

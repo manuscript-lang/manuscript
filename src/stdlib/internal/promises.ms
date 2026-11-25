@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
 
-// Runtime promise slots (crates/ms-rt/src/promise.rs). Ids carry a generation: a stale
+// Runtime promise slots. Ids carry a generation: a stale
 // id never matches. Outcome codes of msrt_promise_wait: 0 ok, 1 the operation's own
 // error, 2 timed out, 3 cancelled, 4 closed (the result was already taken), 5 failed (a
 // fault inside).
@@ -105,7 +105,7 @@ export extern fn msrt_promise_close(id Int) Bool
 // A promise that finishes after `ns` nanoseconds; it has no task. Wait with code 0.
 export extern fn msrt_promise_sleep(ns Int) Int
 
-// In-memory pipes (crates/ms-rt/src/pipes.rs). A pipe starts with one writer, the Pipe
+// In-memory pipes. A pipe starts with one writer, the Pipe
 // value itself.
 export extern fn msrt_pipe_new(capacity Int) Int
 
@@ -136,7 +136,7 @@ export extern fn msrt_pipe_close_writer(pipe Int) Void
 
 export extern fn msrt_pipe_close_reader(pipe Int) Void
 
-// The native stream table (crates/ms-rt/src/streams.rs): descriptor-backed byte
+// The native stream table: descriptor-backed byte
 // streams. Flags of msrt_streams_open: 1 reads, 2 writes, 4 closing the stream closes
 // the descriptor.
 export extern fn msrt_streams_open(fd, flags Int) Int
@@ -164,7 +164,7 @@ export extern fn msrt_streams_close(stream Int) Void
 // promise's id.
 export extern fn msrt_promise_defer(work fn(Int) Void) Int
 
-// The process-wide output buffers (crates/ms-rt/src/io.rs); standard output is flushed
+// The process-wide output buffers; standard output is flushed
 // at exit.
 export extern fn msrt_io_write_stdout(text String) Void
 

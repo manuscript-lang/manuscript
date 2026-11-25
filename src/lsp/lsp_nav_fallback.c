@@ -1,6 +1,5 @@
 /* lsp/lsp_nav_fallback.c: hover on the expressions the occurrence index does not hold (literals and operators), so the
- * cursor on `123`, `+`, `true`, `void`, `[`, `{` or `match` shows the expression's type. Port of Finder::consider in
- * crates/ms-lsp/src/nav.rs. */
+ * cursor on `123`, `+`, `true`, `void`, `[`, `{` or `match` shows the expression's type. */
 #include "lsp/lsp_nav_fallback.h"
 
 #include <string.h>

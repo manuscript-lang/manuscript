@@ -1,6 +1,6 @@
 /* Driver: `ms check <targets> [--json [--with-text [--each]]]` and `ms lint <targets> [--json] [--fix]
  * [--deny-warnings]`; lint is check followed by the lint rules over each input that checks. Loads the module graph of each input, checks it
- * and reports the diagnostics as terminal text or as the JSON document of crates/ms-cli. Several targets, a
+ * and reports the diagnostics as terminal text or as the versioned JSON document. Several targets, a
  * directory without ms.toml and --each check each input on its own; --fix applies fixes and --watch reruns after each
  * saved change. Status 0 is accepted, 1 a diagnostic, 2 a usage error. */
 #include "cli/check_command.h"

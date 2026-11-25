@@ -1,4 +1,4 @@
-/* Statement compaction (crates/ms-syntax/src/format/compact.rs): rewrites that make a program
+/* Statement compaction: rewrites that make a program
  * shorter without changing its meaning.
  *
  * Each rewrite is a source edit found on the parsed tree. A candidate that contains a comment,

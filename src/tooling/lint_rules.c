@@ -1,4 +1,4 @@
-/* Owns the lint rule table of lint_rules.h: the rules of crates/ms-tooling/src/lint/mod.rs in code order. */
+/* Owns the lint rule table of lint_rules.h: the rules in code order. */
 #include "tooling/lint_rules.h"
 
 #include <stddef.h>

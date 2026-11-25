@@ -1,5 +1,5 @@
 /* compiler/project/package.h: package dependencies: the spec a dependency value pins, the lock file, the package
- * cache and the content hash. Port of crates/ms-driver/src/project/packages.rs. */
+ * cache and the content hash. */
 #ifndef MS_PROJECT_PACKAGE_H
 #define MS_PROJECT_PACKAGE_H
 

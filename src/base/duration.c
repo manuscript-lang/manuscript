@@ -1,4 +1,4 @@
-/* Owns duration.h. Port of crates/ms-cli/src/duration.rs. */
+/* Owns duration.h. */
 #include "base/duration.h"
 
 typedef struct Unit {

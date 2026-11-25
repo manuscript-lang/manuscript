@@ -1,5 +1,4 @@
-/* compiler/project/manifest.c: ms.toml validation, port of crates/ms-driver/src/project/manifest.rs for the
- * tables [project], [aliases] and [embed]. The TOML syntax errors are this reader's own wording. */
+/* compiler/project/manifest.c: ms.toml validation, The TOML syntax errors are this reader's own wording. */
 #include "compiler/project/manifest.h"
 #include "compiler/project/manifest_internal.h"
 

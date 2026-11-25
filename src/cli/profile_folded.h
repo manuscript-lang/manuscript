@@ -1,6 +1,5 @@
 /* cli/profile_folded.h: what `ms profile` does with the stacks the runtime wrote: read the folded text, rank the
- * functions, render the text report, and encode the pprof protobuf. Port of the conversion half of
- * crates/ms-cli/src/profile.rs. Every text lives in the arena. */
+ * functions, render the text report, and encode the pprof protobuf. Every text lives in the arena. */
 #ifndef MS_CLI_PROFILE_FOLDED_H
 #define MS_CLI_PROFILE_FOLDED_H
 

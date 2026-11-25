@@ -1,4 +1,4 @@
-/* Owns the call graph renderers of inspect.h: port of `diagram_ascii` and `Inspection::mermaid`. */
+/* Owns the call graph renderers of inspect.h. */
 #include "base/sha256.h"
 #include "base/sort.h"
 #include "tooling/inspect.h"

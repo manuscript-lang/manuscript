@@ -1,6 +1,6 @@
 /* tooling/flow.h: one callable body as ordered significant steps: calls, branches, loops, match arms, try sites,
  * cleanup scopes and exits. Bindings and arithmetic are elided; labels are the source lines themselves.
- * Port of crates/ms-tooling/src/flow.rs. Internal to the fact model. */
+ * Internal to the fact model. */
 #ifndef MS_TOOLING_FLOW_H
 #define MS_TOOLING_FLOW_H
 

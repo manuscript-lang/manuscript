@@ -1,5 +1,5 @@
 /* cli/package_commands.h: `ms install`, `ms add` and `ms remove`: resolve `[dependencies]`, download them with git,
- * and write `ms.lock`. These are the only commands that use the network. Port of crates/ms-cli/src/fetch.rs. */
+ * and write `ms.lock`. These are the only commands that use the network. */
 #ifndef MS_CLI_PACKAGE_COMMANDS_H
 #define MS_CLI_PACKAGE_COMMANDS_H
 

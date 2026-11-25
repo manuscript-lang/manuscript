@@ -1,5 +1,4 @@
-/* lsp/lsp_text.c: UTF-16 positions and the forgiving token scanner behind diagnostic ranges. Port of
- * crates/ms-lsp/src/text.rs. Text may be malformed: an invalid byte counts as one UTF-16 unit. */
+/* lsp/lsp_text.c: UTF-16 positions and the forgiving token scanner behind diagnostic ranges. Text may be malformed: an invalid byte counts as one UTF-16 unit. */
 #include <string.h>
 
 #include "base/utf8.h"

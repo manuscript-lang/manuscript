@@ -1,7 +1,6 @@
 /* Owns `ms profile` (profile_command.h): builds the program into a new bundle directory, runs it with the runtime's
  * sampling profiler switched on (MS_PROFILE names the file the runtime writes its folded stacks to), converts what the
- * runtime wrote and reports it as text or as the versioned JSON document. Port of crates/ms-cli/src/profile.rs; the
- * conversion lives in profile_folded.c. `--allocs` also has the runtime sample allocations (MS_PROFILE_ALLOCS) and
+ * runtime wrote and reports it as text or as the versioned JSON document. `--allocs` also has the runtime sample allocations (MS_PROFILE_ALLOCS) and
  * reports which functions allocate. */
 #include "cli/files.h"
 #include "cli/profile_command.h"

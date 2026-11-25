@@ -1,5 +1,5 @@
 /* lsp/lsp_actions.h: `textDocument/codeAction`: the checker's and the linter's fixes, import organization and the format-all
- * action. Port of crates/ms-lsp/src/actions.rs, apart from adding an import for an unresolved name. */
+ * action. */
 #ifndef MS_CLI_LSP_ACTIONS_H
 #define MS_CLI_LSP_ACTIONS_H
 

@@ -1,5 +1,5 @@
 /* Owns the match-shape rules of lint.h: nested matches (MSL107) and two-arm matches on an Optional (MSL108) or a
- * Result (MSL109). Port of crates/ms-tooling/src/lint/matches.rs. */
+ * Result (MSL109). */
 #include "compiler/syntax/walk.h"
 #include "tooling/lint.h"
 

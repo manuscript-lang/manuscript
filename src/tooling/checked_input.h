@@ -1,6 +1,5 @@
 /* tooling/checked_input.h: the checked half of `ms build`, `ms run` and `ms test`: load and check the input, require
- * the entry the command needs, and report what is wrong as `ms check` does. Port of `compile_target` in
- * crates/ms-cli/src/engine/mod.rs. */
+ * the entry the command needs, and report what is wrong as `ms check` does. */
 #ifndef MS_CLI_CHECKED_INPUT_H
 #define MS_CLI_CHECKED_INPUT_H
 

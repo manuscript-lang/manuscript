@@ -24,7 +24,7 @@ MsJson *ms_json_parse(MsArena *arena, MsSpan text);
 /* The member `key` of an object, or NULL. */
 const MsJson *ms_json_member(const MsJson *object, const char *key);
 
-/* Appends the value at `depth` levels, two spaces each, as the Rust CLI prints a pretty document. */
+/* Appends the value at `depth` levels, two spaces each a pretty document. */
 void ms_json_write(MsStrBuild *out, const MsJson *value, size_t depth);
 
 #endif

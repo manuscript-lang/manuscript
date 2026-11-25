@@ -1,5 +1,5 @@
 /* Owns two single-expression rules of lint.h: `Optional.get()` without a default (MSL110) and an integer literal
- * interpolated into text (MSL117). Port of crates/ms-tooling/src/lint/faults.rs and text.rs. */
+ * interpolated into text (MSL117). */
 #include "compiler/syntax/walk.h"
 #include "base/message.h"
 #include "tooling/lint.h"

@@ -1,6 +1,4 @@
 /* tooling/inspect.h: the entities and call sites of a checked program, as `ms diagram` and `ms review` read them.
- * Port of the collection half of crates/ms-tooling/src/inspect.rs: one entity per declaration and method of the
- * project's modules, and one call site per call, construction, operation, constant use and scope-end cleanup.
  *
  * Ownership: every text lives in the arena the caller gives; the program must outlive the inspection. */
 #ifndef MS_TOOLING_INSPECT_H

@@ -1,7 +1,6 @@
 /* compiler/check/conversions.c: the implicit conversions the checker applies where an expression meets the type
  * it is expected to have, recorded as conversion facts for lowering: a value seen as an interface it implements,
  * a plain value wrapped as an optional, and a function used where one with other parameter modes is expected.
- * Port of the conversion branches of check_expression (exprs.rs) and interface_assignable (contracts.rs).
  * Reporting a mismatch is left to the diagnostics that run after this call. */
 #include "compiler/check/body.h"
 

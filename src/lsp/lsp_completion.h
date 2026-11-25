@@ -1,5 +1,4 @@
-/* lsp/lsp_completion.h: `textDocument/completion`: members after a dot, the names in scope, types and keywords. Port of
- * crates/ms-lsp/src/completion.rs, apart from import-path completion and suggesting imports of unimported names. */
+/* lsp/lsp_completion.h: `textDocument/completion`: members after a dot, the names in scope, types and keywords. */
 #ifndef MS_CLI_LSP_COMPLETION_H
 #define MS_CLI_LSP_COMPLETION_H
 

@@ -1,5 +1,4 @@
-/* compiler/check/exprs_ops.c: types of literals, text and the unary and binary operators (port of infer_number,
- * infer_text, infer_unary and infer_binary of crates/ms-check/src/exprs.rs). This file computes result types and
+/* compiler/check/exprs_ops.c: types of literals, text and the unary and binary operators. This file computes result types and
  * records the operand conversions the lowering needs; diagnostics for ill-typed operands come in a later change,
  * so an operand that does not fit yields the invalid type. */
 #include "compiler/check/body.h"

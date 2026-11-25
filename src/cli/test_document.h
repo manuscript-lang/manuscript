@@ -1,5 +1,4 @@
-/* cli/test_document.h: the `--json` document of `ms test` and `ms bench`. Port of `Document` in
- * crates/ms-cli/src/engine/testing.rs. */
+/* cli/test_document.h: the `--json` document of `ms test` and `ms bench`. */
 #ifndef MS_CLI_TEST_DOCUMENT_H
 #define MS_CLI_TEST_DOCUMENT_H
 
@@ -31,7 +30,7 @@ bool test_filters_compile(MsArena *arena, const MsTestOptions *options, TestFilt
 bool test_selection_valid(MsArena *arena, const MsTestOptions *options);
 void test_filters_free(TestFilters *filters);
 
-/* Seeded Fisher-Yates, as the Rust CLI does it. */
+/* Seeded Fisher-Yates. */
 void test_plan_shuffle(TestPlan *plan, int64_t seed);
 
 /* One planned test or bench. */

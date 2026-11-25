@@ -163,7 +163,7 @@ typedef struct Date {
 } Date;
 
 static Date date_in_zone(const MsTimestamp *value, int64_t offset, const MsString *zone) {
-  /* Saturating, as the Rust arithmetic was: timestamps and offsets are small, so the clamp is never reached.
+  /* Saturating: timestamps and offsets are small, so the clamp is never reached.
    */
   int64_t local = 0;
   if (__builtin_add_overflow(value->seconds, offset, &local)) {

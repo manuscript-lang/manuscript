@@ -1,6 +1,5 @@
 /* Owns `ms bench` (bench_command.h): reads the arguments, checks the input with its bench files, selects and plans the
- * bench blocks, builds the executable and runs each bench in its own process. Port of the bench half of
- * crates/ms-cli/src/engine/testing.rs. */
+ * bench blocks, builds the executable and runs each bench in its own process. */
 #include "cli/files.h"
 #include "cli/bench_command.h"
 
@@ -141,7 +140,7 @@ static MsSpan trim_end(MsSpan text) {
   return text;
 }
 
-/* A limit as Rust prints a `Duration`: `600s`, `100ms`, `1.5s`. */
+/* A limit a `Duration`: `600s`, `100ms`, `1.5s`. */
 static MsSpan describe_limit(MsArena *arena, int64_t ms) {
   if (ms < 1000) {
     return ms_message_format(arena, "%zms", (size_t)ms);
