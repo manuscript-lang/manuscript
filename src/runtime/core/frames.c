@@ -353,7 +353,9 @@ void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit
   }
 }
 
-enum { SCAN_BYTES = 4096 };
+/* How far above a frame's stack pointer its saved record is looked for: a frame with thousands of live locals is far larger than a page.
+ * Only a fault walks the stack, so the scan may be long. */
+enum { SCAN_BYTES = 1 << 20 };
 
 uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintptr_t high,
                 bool (*is_source)(uintptr_t, const void *), bool (*is_native)(uintptr_t, const void *),

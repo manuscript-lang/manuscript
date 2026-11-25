@@ -134,6 +134,23 @@ static void test_frames(void) {
   CHECK(ms_frames_tables() == NULL);
 }
 
+static bool is_code(uintptr_t pc, const void *context) {
+  (void)context;
+  return pc == 0x1234;
+}
+
+/* A frame far larger than a page still has its saved record found, since a deep recursion of fat frames is a fault whose
+ * trace must name the callers. */
+static void test_scan_big_frame(void) {
+  static uintptr_t stack[4096]; /* 32 KiB */
+  const size_t record = 3000;    /* 24000 bytes above the stack pointer */
+  stack[record] = (uintptr_t)&stack[record + 8]; /* the caller's frame record, above this one */
+  stack[record + 1] = 0x1234;
+  const uintptr_t low = (uintptr_t)&stack[0];
+  const uintptr_t high = (uintptr_t)&stack[4096];
+  CHECK(ms_frames_scan_record(low, 0, low, high, is_code, never, NULL) == (uintptr_t)&stack[record]);
+}
+
 /* A program built in two units passes one table block per unit; each names its own strings and scopes. */
 static void test_frames_set(void) {
   static const uint8_t first_strings[] = "\0a.ms\0first\0inner";
@@ -247,6 +264,7 @@ int main(void) {
   test_queue_race();
   test_frames();
   test_frames_set();
+  test_scan_big_frame();
   test_record();
   test_release();
   return failures == 0 ? 0 : 1;
