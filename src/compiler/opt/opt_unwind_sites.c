@@ -57,29 +57,34 @@ static bool bare_exit(const MirFunc *f, const MirBlockData *b) {
   return b->insts.ptr[0].op == MOP_Undef && b->insts.ptr[0].res == b->term.value && f->ret != MIR_VOID;
 }
 
-/* The exits of a function that close nothing are one block: edges go to the first of them. */
+/* The exits of a function that close nothing are one block: edges go to the first of them. One sweep over the
+ * edges serves every exit; a sweep per exit made a function with many fallible calls quadratic. */
 static bool share_exits(MirFunc *f) {
   MirBlock canonical = MIR_NONE;
-  bool changed = false;
+  MsArena arena = ms_arena_new();
+  bool *shared = MS_ARENA_NEW_ARRAY(&arena, bool, f->blocks.len);
   for (size_t bi = 0; bi < f->blocks.len; bi++) {
     if (!bare_exit(f, &f->blocks.ptr[bi])) {
       continue;
     }
     if (canonical == MIR_NONE) {
       canonical = (MirBlock)bi;
-      continue;
+    } else {
+      shared[bi] = true;
     }
-    for (size_t pi = 0; pi < f->blocks.len; pi++) {
-      MirTerm *term = &f->blocks.ptr[pi].term;
-      for (uint32_t k = 0; k < mir_term_ntargets(term); k++) {
-        MirTarget *edge = mir_term_target(term, k);
-        if (edge->block == bi && edge->nargs == 0 && pi != bi) {
-          edge->block = canonical;
-          changed = true;
-        }
+  }
+  bool changed = false;
+  for (size_t pi = 0; canonical != MIR_NONE && pi < f->blocks.len; pi++) {
+    MirTerm *term = &f->blocks.ptr[pi].term;
+    for (uint32_t k = 0; k < mir_term_ntargets(term); k++) {
+      MirTarget *edge = mir_term_target(term, k);
+      if (shared[edge->block] && edge->nargs == 0 && pi != edge->block) {
+        edge->block = canonical;
+        changed = true;
       }
     }
   }
+  ms_arena_free(&arena);
   return changed;
 }
 
