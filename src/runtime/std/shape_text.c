@@ -162,7 +162,7 @@ static void emit_field(Text *text, const MsShapeMember *field, const uint8_t *ba
     ms_strbuild_append_text(&text->out, ms_shape_text(text->table, field->name));
     ms_strbuild_append_text(&text->out, ": ");
   }
-  emit_element(text, field->shape, base + field->offset, depth);
+  emit_element(text, field->shape, ms_shape_member_at(base, field), depth);
 }
 
 /* Whether field `a` is written before field `b` in the plain form: by name. */

@@ -160,6 +160,12 @@ static inline const MsShapeHook *ms_shape_hook(const MsShapeTable *table, uint32
   return table->hooks == NULL ? NULL : &table->hooks[index];
 }
 
+/* Where a member's value lies from `base`. The offset is signed: a value inside a flattened image sits where its leaves do,
+ * and the leaves of a case's payload can be placed before the first of them. */
+static inline const uint8_t *ms_shape_member_at(const uint8_t *base, const MsShapeMember *member) {
+  return base + (int32_t)member->offset;
+}
+
 /* The block a BOXED shape's slot points to, or the slot itself. */
 static inline const uint8_t *ms_shape_resolve(const MsShape *shape, const uint8_t *slot) {
   return (shape->flags & MS_SHAPE_BOXED) != 0 ? *(const uint8_t *const *)(const void *)slot : slot;
