@@ -284,8 +284,8 @@ bool fmt_token_space(const MsToken *tokens, size_t at) {
   if (previous == MS_T_Bang && current == MS_T_Name && tokens[at].lo == tokens[at - 1].hi) {
     return false;
   }
-  if (current == MS_T_DotDot || previous == MS_T_DotDot) {
-    return false;
+  if (current == MS_T_DotDot || previous == MS_T_DotDot || previous == MS_T_Amp) {
+    return false; // `&T`: the reference mark touches its type
   }
   switch (current) {
   case MS_T_RParen:

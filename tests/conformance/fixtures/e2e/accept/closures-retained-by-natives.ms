@@ -34,7 +34,7 @@ fn mk2(m Map[Int, fn() String], move s String) List[fn() String] {
 
 fn inc(x Int) Int => x + 1
 
-fn build(move r fn(Int) Int) List[fn(Int) Int] {
+fn build(r fn(Int) Int) List[fn(Int) Int] {
 	var out = List[fn(Int) Int]()
 
 	// A stored function value has one owner: each closure a callback appends is its
@@ -60,7 +60,7 @@ test "closures kept by natives own their captures" {
 	expect_equal(fs[2](1), 2)?
 }
 
-fn keep(move r fn(Int) Int) List[fn(Int) Int] {
+fn keep(r fn(Int) Int) List[fn(Int) Int] {
 	var out = List[fn(Int) Int]()
 	out.append(r)
 	return out

@@ -127,7 +127,7 @@ fn Gen[T].flat_map[B](next fn(T) Gen[B]) Gen[B] {
 
 // Keeps only the values for which `keep` is true. After 50 consecutive rejections the
 // case is marked invalid and discarded.
-fn Gen[T].filter(move keep fn(T) Bool) Gen[T] {
+fn Gen[T].filter(keep fn(T) Bool) Gen[T] {
 	source := self.clone()
 	return Gen[T](s => filter_draw(source, keep, s.clone()))
 }

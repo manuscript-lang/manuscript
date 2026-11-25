@@ -181,7 +181,7 @@ type Reader {
 	at, max_depth Int
 }
 
-fn hold Reader.peek(offset Int = 0) & String {
+fn hold Reader.peek(offset Int = 0) &String {
 	return self.chars.get_or(self.at + offset, "")
 }
 

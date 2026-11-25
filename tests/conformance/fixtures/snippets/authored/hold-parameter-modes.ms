@@ -5,7 +5,7 @@ type Person {
 	name String
 }
 
-fn hold Person.name_of() & String {
+fn hold Person.name_of() &String {
 	return self.name
 }
 
@@ -26,7 +26,7 @@ interface Named {
 	var hold fn rename(v String) Void
 }
 
-fn first_of(hold xs List[Int]) & Int? {
+fn first_of(hold xs List[Int]) &Int? {
 	return xs.first()
 }
 

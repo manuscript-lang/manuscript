@@ -197,6 +197,11 @@ MS_NODISCARD static bool extern_fn_declaration(Parser *p, MsToken token, MsDecl 
   MsTypeRef *result = NULL;
   if (!parse_result_type(p, &result))
     return false;
+  for (uint32_t index = 0; index < params.len; index++) {
+    if (params.ptr[index]->ty != NULL && params.ptr[index]->ty->kind == MS_TYPE_FN) {
+      params.ptr[index]->moving = true; /* the runtime keeps a function it is handed (a started promise's work) */
+    }
+  }
   if (parse_kind(p) == MS_T_BlockOpen) {
     parse_fail(p, parse_peek(p), ms_span_of_text("an extern fn has no body; remove the braces"));
     return false;

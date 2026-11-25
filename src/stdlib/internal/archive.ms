@@ -8,15 +8,9 @@ export type ArchiveLimits {
 	max_entries, max_entry_bytes, max_total_bytes Int?
 }
 
-export extern fn msstd_compress_encoder_new(
-	format String,
-	level Int,
-) NativeEncoder!
+export extern fn msstd_compress_encoder_new(format String, level Int) NativeEncoder!
 
-export extern fn msstd_compress_encoder_push(
-	encoder NativeEncoder,
-	data Bytes,
-) Bytes
+export extern fn msstd_compress_encoder_push(encoder NativeEncoder, data Bytes) Bytes
 
 export extern fn msstd_compress_encoder_end(encoder NativeEncoder) Bytes
 
@@ -25,10 +19,7 @@ export extern fn msstd_compress_decoder_new(
 	max_bytes Int?,
 ) NativeDecoder!
 
-export extern fn msstd_compress_decoder_push(
-	decoder NativeDecoder,
-	data Bytes,
-) Bytes!
+export extern fn msstd_compress_decoder_push(decoder NativeDecoder, data Bytes) Bytes!
 
 export extern fn msstd_compress_decoder_end(decoder NativeDecoder) Bytes!
 

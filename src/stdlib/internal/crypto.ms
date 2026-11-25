@@ -7,21 +7,11 @@ export extern fn msstd_crypto_constant_time_equal(left, right Bytes) Bool
 
 export extern fn msstd_crypto_verify(key, data, signature Bytes) Bool
 
-export extern fn msstd_crypto_open(
-	key,
-	nonce,
-	ciphertext,
-	associated_data Bytes,
-) Bytes!
+export extern fn msstd_crypto_open(key, nonce, ciphertext, associated_data Bytes) Bytes!
 
 export extern fn msstd_crypto_public_key(seed Bytes) Bytes!
 
-export extern fn msstd_crypto_seal(
-	key,
-	nonce,
-	plaintext,
-	associated_data Bytes,
-) Bytes!
+export extern fn msstd_crypto_seal(key, nonce, plaintext, associated_data Bytes) Bytes!
 
 export extern fn msstd_crypto_sign(seed, data Bytes) Bytes!
 
@@ -115,10 +105,7 @@ export extern fn msstd_crypto_hkdf(
 
 export extern fn msstd_crypto_hasher_new(alg HashAlgorithm) NativeHasher
 
-export extern fn msstd_crypto_hmac_hasher_new(
-	alg HashAlgorithm,
-	key Bytes,
-) NativeHasher
+export extern fn msstd_crypto_hmac_hasher_new(alg HashAlgorithm, key Bytes) NativeHasher
 
 export extern fn msstd_crypto_hasher_update(hasher NativeHasher, data Bytes) Void
 

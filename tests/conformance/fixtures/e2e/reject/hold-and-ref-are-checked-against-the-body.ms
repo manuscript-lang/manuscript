@@ -5,19 +5,19 @@ type Person {
 	name String
 }
 
-fn pick(hold a Person, b Person) & String {
+fn pick(hold a Person, b Person) &String {
 	return b.name
 }
 
-fn hold Person.fresh() & String {
+fn hold Person.fresh() &String {
 	return "x"
 }
 
-fn amp_without_hold(p Person) & String {
+fn amp_without_hold(p Person) &String {
 	return p.name
 }
 
-fn ok_pick(hold a Person, b Person) & String {
+fn ok_pick(hold a Person, b Person) &String {
 	return a.name
 }
 

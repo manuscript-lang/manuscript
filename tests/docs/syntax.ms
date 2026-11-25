@@ -9,7 +9,7 @@ extern type Native
 
 extern fn native_call(value Int) Int
 
-export type Box[T Equal & Hashable = Int] {
+export type Box[T Equal &Hashable = Int] {
 	value T
 }
 

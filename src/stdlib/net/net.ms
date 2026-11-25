@@ -759,7 +759,7 @@ export fn restrict(
 // ms: effect std.net.listen
 export fn serve(
 	address String,
-	move handler fn(var HttpExchange) Void!,
+	handler fn(var HttpExchange) Void!,
 	options HttpServerOptions = HttpServerOptions()
 ) HttpServer! {
 	cores := options.cores

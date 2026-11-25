@@ -254,14 +254,14 @@ export fn log2(value Float) Float {
 
 // Returns the greater of two values, or `left` when they compare equal. Float orders
 // NaN above every other value, so a NaN operand makes the result NaN.
-export fn max[T Comparable](hold left, right T) & T {
+export fn max[T Comparable](hold left, right T) &T {
 	if right.compare(left) > 0 { return right }
 	return left
 }
 
 // Returns the lesser of two values, or `left` when they compare equal. Float orders NaN
 // above every other value, so `min` ignores a NaN operand unless both are NaN.
-export fn min[T Comparable](hold left, right T) & T {
+export fn min[T Comparable](hold left, right T) &T {
 	if right.compare(left) < 0 { return right }
 	return left
 }
@@ -819,21 +819,21 @@ fn BigInt.compare(other BigInt) Int {
 
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal.
-fn hold BigInt.min(other BigInt) & BigInt {
+fn hold BigInt.min(other BigInt) &BigInt {
 	if other.compare(self) < 0 { return other }
 	return self
 }
 
 // Returns the greater of this value and `other`, or this value when they compare
 // equal.
-fn hold BigInt.max(other BigInt) & BigInt {
+fn hold BigInt.max(other BigInt) &BigInt {
 	if other.compare(self) > 0 { return other }
 	return self
 }
 
 // Returns this value limited to `low` through `high`; `low` greater than `high` is
 // a programming fault.
-fn hold BigInt.clamp(hold low, high BigInt) & BigInt {
+fn hold BigInt.clamp(hold low, high BigInt) &BigInt {
 	if low.compare(high) > 0 {
 		panic("clamp: low must not be greater than high")
 	}

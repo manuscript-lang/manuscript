@@ -170,7 +170,7 @@ fn move Mapped[T, U].close() Void! {
 
 // Returns a stream of `f` applied to each item of `input`. Closing it closes
 // `input`.
-export fn map[T, U](move input ReadStream[T], move f fn(T) U) ReadStream[U] {
+export fn map[T, U](move input ReadStream[T], f fn(T) U) ReadStream[U] {
 	return ReadStream[U](Mapped[T, U](input, f))
 }
 
@@ -198,7 +198,7 @@ fn move Filtered[T].close() Void! {
 
 // Returns a stream of the items of `input` for which `keep` is true, in order.
 // Closing it closes `input`.
-export fn filter[T](move input ReadStream[T], move keep fn(T) Bool) ReadStream[T] {
+export fn filter[T](move input ReadStream[T], keep fn(T) Bool) ReadStream[T] {
 	return ReadStream[T](Filtered[T](input, keep))
 }
 

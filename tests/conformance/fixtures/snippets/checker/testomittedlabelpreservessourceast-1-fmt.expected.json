@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn identity[T](hold value T) & T {\n\treturn value\n}\n\nfn call() Int {\n\treturn identity(3)\n}\n"
+    "fmt": "fn identity[T](hold value T) &T {\n\treturn value\n}\n\nfn call() Int {\n\treturn identity(3)\n}\n"
   }
 }

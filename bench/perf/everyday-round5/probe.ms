@@ -229,7 +229,7 @@ fn c_closure_passed() Int {
 	return apply_n(v => v * k + 1, 50000000)
 }
 
-fn max_of[T Comparable & Clonable](xs List[T]) T {
+fn max_of[T Comparable &Clonable](xs List[T]) T {
 	var best = xs[0].clone()
 	for v in xs {
 		if v.compare(best) > 0 { best = v.clone() }

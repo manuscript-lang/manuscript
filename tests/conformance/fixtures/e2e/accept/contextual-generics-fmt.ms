@@ -13,7 +13,7 @@ fn identity[T](hold value T) &T => value
 
 fn from_callback[T](factory fn() T) T => factory()
 
-fn transform[T, U](move callback fn(T) U) fn(T) U => callback
+fn transform[T, U](callback fn(T) U) fn(T) U => callback
 
 type Failure {
 	detail String

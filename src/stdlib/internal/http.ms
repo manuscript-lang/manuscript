@@ -33,7 +33,7 @@ export extern fn msstd_http_client_request_bytes(
 export extern fn msstd_http_serving_new(
 	address String,
 	options HttpServerOptions,
-	move handler fn(move NativeExchange) Int
+	handler fn(move NativeExchange) Int
 ) NativeServing!
 
 // Another handle on the same serving, for a connection promise to own.
@@ -73,10 +73,7 @@ export extern fn msstd_http_exchange_protocol(handle NativeExchange) String
 
 export extern fn msstd_http_exchange_query(handle NativeExchange) String
 
-export extern fn msstd_http_exchange_read(
-	handle NativeExchange,
-	max_bytes Int?,
-) Bytes?!
+export extern fn msstd_http_exchange_read(handle NativeExchange, max_bytes Int?) Bytes?!
 
 export extern fn msstd_http_exchange_send_headers(
 	handle NativeExchange,
@@ -111,10 +108,7 @@ export extern fn msstd_http_body_metadata(
 	handle NativeResponseBody
 ) HttpResponseMetadata
 
-export extern fn msstd_http_body_read(
-	handle NativeResponseBody,
-	max_bytes Int?,
-) Bytes?!
+export extern fn msstd_http_body_read(handle NativeResponseBody, max_bytes Int?) Bytes?!
 
 export extern fn msstd_http_body_read_all(handle NativeResponseBody) Bytes!
 
@@ -124,10 +118,7 @@ export extern fn msstd_http_headers_append(
 	value Bytes,
 ) Void!
 
-export extern fn msstd_http_headers_values(
-	value HttpHeaders,
-	name String,
-) List[Bytes]?
+export extern fn msstd_http_headers_values(value HttpHeaders, name String) List[Bytes]?
 
 export extern fn msstd_http_headers_names(value HttpHeaders) List[String]
 

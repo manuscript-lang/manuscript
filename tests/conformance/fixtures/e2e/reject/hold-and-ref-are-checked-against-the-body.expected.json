@@ -25,7 +25,7 @@
           "file": "hold-and-ref-are-checked-against-the-body.ms",
           "line": 12,
           "column": 16,
-          "offset": 278
+          "offset": 277
         }
       },
       {
@@ -36,14 +36,14 @@
           "file": "hold-and-ref-are-checked-against-the-body.ms",
           "line": 16,
           "column": 1,
-          "offset": 312
+          "offset": 310
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/hold-and-ref-are-checked-against-the-body.ms:8:1: type: the result is a part of `b`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`\n   |\n 8 | fn pick(hold a Person, b Person) & String {\n   | ^\n<DIR>/hold-and-ref-are-checked-against-the-body.ms:12:16: type: a `&` result must be a part of a `hold` argument, but this body returns a new value; remove the `&` or return a part of the held argument\n    |\n 12 | fn hold Person.fresh() & String {\n    |                ^\n<DIR>/hold-and-ref-are-checked-against-the-body.ms:16:1: type: a `&` result points into an argument; mark that argument `hold`, or return an owned value\n    |\n 16 | fn amp_without_hold(p Person) & String {\n    | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/hold-and-ref-are-checked-against-the-body.ms:8:1: type: the result is a part of `b`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`\n   |\n 8 | fn pick(hold a Person, b Person) &String {\n   | ^\n<DIR>/hold-and-ref-are-checked-against-the-body.ms:12:16: type: a `&` result must be a part of a `hold` argument, but this body returns a new value; remove the `&` or return a part of the held argument\n    |\n 12 | fn hold Person.fresh() &String {\n    |                ^\n<DIR>/hold-and-ref-are-checked-against-the-body.ms:16:1: type: a `&` result points into an argument; mark that argument `hold`, or return an owned value\n    |\n 16 | fn amp_without_hold(p Person) &String {\n    | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

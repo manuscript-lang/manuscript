@@ -10,7 +10,7 @@ type Box {
 }
 
 interface Sink {
-	var fn put(move f fn() Int) Void
+	var fn put(f fn() Int) Void
 	fn total() Int
 }
 
@@ -18,7 +18,7 @@ type ListSink {
 	fs List[fn() Int]
 }
 
-fn var ListSink.put(move f fn() Int) Void {
+fn var ListSink.put(f fn() Int) Void {
 	self.fs.append(f)
 }
 
@@ -30,7 +30,7 @@ fn ListSink.total() Int {
 	return t
 }
 
-fn mk(move f fn() Int) Box {
+fn mk(f fn() Int) Box {
 	return Box(f: f)
 }
 

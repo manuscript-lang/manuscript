@@ -109,7 +109,7 @@ fn keep_opt(text String) Int {
 	return t
 }
 
-fn store(var fs List[fn() Int], move f fn() Int) Void {
+fn store(var fs List[fn() Int], f fn() Int) Void {
 	fs.append(f)
 }
 

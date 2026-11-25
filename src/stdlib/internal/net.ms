@@ -51,22 +51,15 @@ export extern fn msstd_url_format_query(entries List[QueryEntry]) String
 
 export extern fn msstd_url_parse(text String) Url!
 
-export extern fn msstd_url_parse_query(
-	text String,
-	max_entries Int?,
-) List[QueryEntry]!
+export extern fn msstd_url_parse_query(text String, max_entries Int?) List[QueryEntry]!
 
 export extern fn msstd_url_resolve(base Url, reference String) Url!
 
 export extern fn msstd_net_connection_close(handle NativeConnection) Void
 
-export extern fn msstd_net_connection_share(
-	handle NativeConnection
-) NativeConnection
+export extern fn msstd_net_connection_share(handle NativeConnection) NativeConnection
 
-export extern fn msstd_net_connection_alias(
-	handle NativeConnection
-) NativeConnection
+export extern fn msstd_net_connection_alias(handle NativeConnection) NativeConnection
 
 export extern fn msstd_net_connection_close_if_last(handle NativeConnection) Void
 
@@ -162,9 +155,7 @@ export extern fn msstd_websocket_ping(handle NativeWebSocket, data String) Void!
 
 export extern fn msstd_websocket_ping_bytes(handle NativeWebSocket, data Bytes) Void!
 
-export extern fn msstd_websocket_receive(
-	handle NativeWebSocket
-) RawWebSocketMessage?!
+export extern fn msstd_websocket_receive(handle NativeWebSocket) RawWebSocketMessage?!
 
 export extern fn msstd_websocket_send_bytes(
 	handle NativeWebSocket,
@@ -205,10 +196,7 @@ export extern fn msstd_net_network_http_client(
 	options HttpClientOptions,
 ) HttpClient!
 
-export extern fn msstd_net_network_listen(
-	net NativeNetwork,
-	address String,
-) Listener!
+export extern fn msstd_net_network_listen(net NativeNetwork, address String) Listener!
 
 export extern fn msstd_net_network_listen_tls(
 	net NativeNetwork,
@@ -217,10 +205,7 @@ export extern fn msstd_net_network_listen_tls(
 	handshake_timeout Duration?,
 ) Listener!
 
-export extern fn msstd_net_network_listen_unix(
-	net NativeNetwork,
-	path String,
-) Listener!
+export extern fn msstd_net_network_listen_unix(net NativeNetwork, path String) Listener!
 
 export extern fn msstd_net_network_lookup(
 	net NativeNetwork,

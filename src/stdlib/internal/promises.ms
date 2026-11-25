@@ -26,17 +26,17 @@ export extern fn msrt_promise_done(id Int) Bool
 // and finishes with `msrt_promise_put`. `site` is the line a fault report names as the
 // start. The work is queued on the calling thread: its waiter runs it, or an idle
 // thread takes it.
-export extern fn msrt_promise_start(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start(work fn(Int) Void, site String) Int
 
 // As `msrt_promise_start`, but always a task on the calling thread.
-export extern fn msrt_promise_start_here(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start_here(work fn(Int) Void, site String) Int
 
 // Like `msrt_promise_start_here`, but with no other task running the work waits for its
 // waiter.
-export extern fn msrt_promise_start_idle(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start_idle(work fn(Int) Void, site String) Int
 
 // As `msrt_promise_start`, but on the least loaded thread.
-export extern fn msrt_promise_start_spread(move work fn(Int) Void, site String) Int
+export extern fn msrt_promise_start_spread(work fn(Int) Void, site String) Int
 
 export extern fn msrt_promise_wait(id, timeout_ns Int) Int
 
@@ -162,7 +162,7 @@ export extern fn msrt_streams_close(stream Int) Void
 
 // A new promise whose work runs in the first task that waits on it, called with the
 // promise's id.
-export extern fn msrt_promise_defer(move work fn(Int) Void) Int
+export extern fn msrt_promise_defer(work fn(Int) Void) Int
 
 // An already finished promise with no value.
 export extern fn msrt_promise_finished() Int

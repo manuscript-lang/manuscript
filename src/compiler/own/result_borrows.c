@@ -242,6 +242,20 @@ static uint32_t moved_positions(const Pass *pass, MsParams params) {
   return mask;
 }
 
+/* The bit of every parameter of function type: a function is not an owned value, so what a result makes of it is not
+ * a part of an argument and no signature marks it. */
+static uint32_t function_positions(const Pass *pass, MsParams params) {
+  uint32_t mask = 0;
+  for (uint32_t index = 0; index < params.len; index++) {
+    const uint32_t position = index + (pass->method ? 1u : 0u);
+    const MsTy ty = ms_facts_type(pass->facts, params.ptr[index]->id);
+    if (position < 31 && ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
+      mask |= UINT32_C(1) << position;
+    }
+  }
+  return mask;
+}
+
 static Reached reached_by(Pass *pass, MsParams params, MsStmts body, MsTy result) {
   pass->view_count = 0;
   pass->depth = 0;
@@ -381,7 +395,7 @@ static void report_declared(Pass *pass, uint32_t module, MsPos pos, const MsFunc
     return;
   }
   const uint32_t moved = moved_positions(pass, params);
-  const uint32_t used = reached.all.mask & ~moved & ~MS_RESULT_BORROWED;
+  const uint32_t used = reached.all.mask & ~moved & ~function_positions(pass, params) & ~MS_RESULT_BORROWED;
   for (uint32_t position = 0; position < 31; position++) {
     const uint32_t bit = UINT32_C(1) << position;
     if ((used & bit) == 0 || (holds & bit) != 0) {
@@ -687,7 +701,16 @@ bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint
   if (declared_borrow(program, call, declared, position, &written)) {
     return written;
   }
-  return false; /* a signature that writes no `hold` and no `&` answers a new value */
+  if (declared->external) {
+    const MsNativeSig *sig = ms_native_sig_find(ms_names_span(program->names, declared->name));
+    return sig != NULL && sig->borrows; /* a runtime function answers a view only when its table entry says `@borrows` */
+  }
+  if (kind == MS_REF_NATIVE || declared->bodiless) {
+    /* a native the compiler provides: the name list still says which answer a view (see the native table) */
+    return !native_result_is_fresh(program, call);
+  }
+  /* a signature that writes no `hold` and no `&` answers a new value, except what a consumed receiver hands back */
+  return position < 31 && (ms_own_result_borrow_mask(program, call->callee.decl.module, call->callee.decl.node) >> position & 1u) != 0;
 }
 
 bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, MsNode node) {

@@ -2,15 +2,15 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn store(var fs List[fn() Int], move f fn() Int) Void {
+fn store(var fs List[fn() Int], f fn() Int) Void {
 	fs.append(f)
 }
 
-fn relay(var fs List[fn() Int], move f fn() Int) Void {
+fn relay(var fs List[fn() Int], f fn() Int) Void {
 	store(fs, f)
 }
 
-fn deep(var fs List[fn() Int], move f fn() Int, n Int) Void {
+fn deep(var fs List[fn() Int], f fn() Int, n Int) Void {
 	if n == 0 {
 		relay(fs, f)
 		return

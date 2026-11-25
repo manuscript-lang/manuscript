@@ -243,7 +243,7 @@ fn Command.help(path List[String] = []) String? {
 }
 
 // Returns the child named `word`, or null; the result reads the child in place.
-fn hold Command.child(word String) & Command? {
+fn hold Command.child(word String) &Command? {
 	for candidate in self.children {
 		if candidate.name == word { return candidate }
 	}
@@ -323,7 +323,7 @@ handler returns the exit status.
 */
 export fn command[T Data](
 	move name String,
-	move run fn(T) Int!,
+	run fn(T) Int!,
 	move about String = "",
 	move flags List[Flag] = [],
 	move args List[Arg] = []

@@ -397,7 +397,7 @@ fn EmbeddedTree.children(path String, max_entries Int?) List[DirectoryEntry]! {
 export fn embedded_tree(
 	move indexes Map[String, Int],
 	move directories Set[String],
-	move load fn(Int) Bytes
+	load fn(Int) Bytes
 ) EmbeddedTree {
 	var kids = Map[String, List[String]]()
 	for key in indexes.keys() {

@@ -17,7 +17,7 @@ import (
 // A fault the promise runtime raises returns through the frames of the work: the waiter
 // reads it as EIO with the report, and the thread goes on. The work runs on this
 // thread, so a promise made by the test is the work's own too.
-fn report_of(move work fn() Int!) String! {
+fn report_of(work fn() Int!) String! {
 	here := PromiseOptions(placement: Placement.Here)
 	reason := promise[Int](() => work(), options: here).wait() | expect_error?
 	expect_equal(reason.kind, "EIO")?

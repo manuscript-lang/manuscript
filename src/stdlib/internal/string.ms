@@ -31,10 +31,7 @@ export extern fn msstd_regex_captures_all(
 
 // The first match's named groups that took part: name, text, name, text, ... in group
 // order.
-export extern fn msstd_regex_named_capture_pairs(
-	re Regex,
-	text String,
-) List[String]
+export extern fn msstd_regex_named_capture_pairs(re Regex, text String) List[String]
 
 // Flat byte-offset pairs; captures start with the number of slots per match and use -1
 // for absent groups.
