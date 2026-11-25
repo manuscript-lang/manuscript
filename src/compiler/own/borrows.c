@@ -8,95 +8,12 @@
 #include "compiler/own/bind.h"
 #include "compiler/own/class.h"
 #include "compiler/own/expr_text.h"
+#include "compiler/own/taken.h"
 #include "compiler/own/uses.h"
 #include "compiler/syntax/walk.h"
 
-typedef struct Borrow {
-  uint32_t binding; /* the borrowing binding */
-  MsName name;
-  MsPos at; /* where it is bound */
-  uint32_t after; /* the offset its initializer ends at */
-  bool mutable_;
-  bool alias; /* bound from a bare name (`b := s`): a view that only a move of the source ends */
-  bool loop; /* the variable of a `for`: the loop keeps the source frozen for its whole body */
-  bool method_value; /* a method read as a value (`f := xs.any`): it keeps its receiver until it is last called */
-  uint32_t root; /* the binding it borrows from */
-  const MsExpr *place; /* the part of it that is borrowed */
-  uint32_t parts; /* bit i: the view covers the storage of type argument i of its receiver; 0 when it covers all of it */
-} Borrow;
+#include "compiler/own/borrows_internal.h"
 
-typedef struct Change {
-  uint32_t root;
-  MsPos pos;     /* where the changed place starts */
-  uint32_t end;  /* the offset it ends at */
-  bool moved;   /* a whole name goes to a `move` parameter */
-  bool assign;  /* a whole name is assigned: a field or element store is a change of the name */
-  MsPos at;     /* where the diagnostic points: a stored field's own name, else where the place starts */
-  const MsExpr *place; /* the changed place; NULL when it is the whole binding */
-  const MsExpr *lambda; /* the outermost open closure that captured the root and changes it, or NULL */
-  bool value_write; /* a `var` argument or receiver that is a value of a map (`m[k]`): changes the value in place, never the keys */
-} Change;
-
-typedef struct Use {
-  uint32_t binding;
-  uint32_t offset;
-  uint32_t loop; /* a loop's own use of its variable at the end of the body: where that `for` starts, plus one; else 0 */
-} Use;
-
-/* A source range: a branch's two arms exclude each other; a loop body runs again after its end. */
-typedef struct Range {
-  uint32_t lo, split, hi; /* an if: [lo, split) is the then arm and [split, hi] the else arm; a loop: [lo, hi] */
-  bool loop;
-} Range;
-
-/* What a borrowing expression was computed from: the place it reads and the innermost call applied to it. */
-typedef struct Source {
-  uint32_t root;
-  const MsExpr *place;
-  const MsExpr *call;
-  uint32_t parts; /* see Borrow */
-} Source;
-
-/* A borrowing call in a position that keeps its result. */
-typedef struct Keep {
-  const MsExpr *kept;
-  Source source;
-  bool returned; /* a value the function hands back that it only reads in place: no borrow origin, see report_returned */
-} Keep;
-
-/* A block that ends in an unconditional `break` or `return`: a change in [lo, at) is followed by that exit, so no earlier
- * or later use in the loop (or, for a `return`, anywhere) runs after it. */
-typedef struct Exit {
-  uint32_t lo, at;
-  bool is_return;
-} Exit;
-
-MS_LIST_DEFINE(RangeList, range_list, Range)
-MS_LIST_DEFINE(ExitList, exit_list, Exit)
-MS_LIST_DEFINE(SourceList, source_list, Source)
-MS_LIST_DEFINE(KeepList, keep_list, Keep)
-MS_LIST_DEFINE(BorrowList, borrow_list, Borrow)
-MS_LIST_DEFINE(ChangeList, change_list, Change)
-MS_LIST_DEFINE(UseList, use_list, Use)
-
-typedef struct Borrows {
-  MsCheckProgram *program;
-  MsClassifier *classes;
-  uint32_t module;
-  MsFacts *facts;
-  MsSpan source;
-  BorrowList borrows;
-  ChangeList changes;
-  UseList uses;
-  RangeList ranges;
-  ExitList exits;
-  KeepList keeps;
-  SourceList extra; /* the origins after the first that the last origin_of_* query found */
-  uint32_t high; /* the furthest end offset seen by the current measuring walk */
-  bool ref_result; /* the callable being walked answers a `&` result: `ok(part)` wraps a view, it keeps nothing */
-  uint32_t lambdas; /* open closures: what they return is theirs */
-  const MsExpr *outer; /* the outermost open closure */
-} Borrows;
 
 /* The function-wide id of the local or parameter `node` names: the checker numbers locals densely and gives
  * parameters their own index space. */
@@ -264,6 +181,78 @@ static bool answers_look_part(const Borrows *pass, const MsExpr *call) {
   const MsMethodEntry *entry = ms_check_method_at(pass->program, fact->callee.decl.module, fact->callee.decl.node);
   return entry != NULL && !entry->source->holding && ms_own_look_record(pass->program, entry->receiver) &&
          ms_own_result_is_borrowed(pass->program, fact->callee.decl.module, fact->callee.decl.node);
+}
+
+/* A closure argument of `call` that the callee keeps running after the call returns (`promise(() => ...)`) and that stays
+ * in the function: it reads what it captures for as long as the value the call returns lives. */
+static void kept_closures(const Borrows *pass, const MsExpr *call, LambdaList *out) {
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
+    return;
+  }
+  const uint32_t taken = ms_own_taken_mask(pass->program, fact->callee.decl.module, fact->callee.decl.node);
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    const MsExpr *value = call->u.call.args.ptr[index].value;
+    if (value->kind != MS_E_LAMBDA || ms_facts_use(pass->facts, value->id) != MS_USE_BORROW) {
+      continue;
+    }
+    for (uint32_t at = 0; at < fact->arg_count && at < 32; at++) {
+      if (fact->args[at].source == MS_ARG_WRITTEN && fact->args[at].node.node == value->id &&
+          (taken & (UINT32_C(1) << at)) != 0) {
+        lambda_list_push(out, value);
+      }
+    }
+  }
+}
+
+typedef struct Captured {
+  Borrows *pass;
+  MsBindingList captures;
+  const MsStmt *stmt;
+  uint32_t binding;
+  MsPos at;
+  uint32_t after;
+  MsBindingList done;
+} Captured;
+
+static void tie_capture(void *ctx, const MsExpr *expr) {
+  Captured *scan = ctx;
+  uint32_t decl = 0;
+  uint32_t root = 0;
+  if (expr->kind != MS_E_NAME || !ms_bind_of(scan->pass->facts, expr->id, &decl) ||
+      !ms_binding_list_contains(&scan->captures, decl) || ms_binding_list_contains(&scan->done, decl) ||
+      !local_of(scan->pass->facts, expr->id, &root) ||
+      !ms_class_owns_memory(scan->pass->facts, scan->pass->classes, expr) ||
+      ms_check_holds_resource(scan->pass->program, ms_facts_type(scan->pass->facts, expr->id))) {
+    return; /* a resource the promise takes at its last use is its own: only a plain value stays borrowed */
+  }
+  ms_binding_list_push(&scan->done, decl);
+  push_borrow(scan->pass, (Borrow){.binding = scan->binding, .name = scan->stmt->u.bind.pattern->u.name, .at = scan->at,
+                                   .after = scan->after, .root = root, .place = expr}, false);
+}
+
+/* `p := promise(() => ...)`: the promise reads what its closure captures until it is last used. */
+static void note_kept_captures(Borrows *pass, const MsStmt *stmt) {
+  const MsExpr *value = stmt->u.bind.value;
+  const MsPattern *pattern = stmt->u.bind.pattern;
+  uint32_t binding = 0;
+  while (value != NULL && value->kind == MS_E_UNARY && value->op == MS_U_TRY) {
+    value = value->u.bin.left;
+  }
+  if (value == NULL || value->kind != MS_E_CALL || pattern == NULL || pattern->kind != MS_P_NAME ||
+      !local_of(pass->facts, pattern->id, &binding)) {
+    return;
+  }
+  LambdaList closures = {0};
+  kept_closures(pass, value, &closures);
+  for (size_t index = 0; index < closures.len; index++) {
+    Captured scan = {.pass = pass, .captures = ms_bind_captures(pass->facts, closures.ptr[index]), .stmt = stmt,
+                     .binding = binding, .at = pattern->pos, .after = stmt->u.bind.value->end.offset};
+    ms_walk_expr(&(MsVisitor){.ctx = &scan, .expr = tie_capture}, closures.ptr[index]);
+    ms_binding_list_free(&scan.captures);
+    ms_binding_list_free(&scan.done);
+  }
+  lambda_list_free(&closures);
 }
 
 static void note_keep(Borrows *pass, const MsExpr *kept);
@@ -519,7 +508,7 @@ static bool returned_view(const Borrows *pass, const MsExpr *value, MsName *loca
 /* Writes the diagnostic for a returned value that is read in place out of something the function keeps: a view of a local
  * or parameter, a resource read out of a collection, or a payload read from a field. The caller would own what its owner
  * still holds. False when the value is none of those. */
-static bool describe_returned(Borrows *pass, const MsExpr *value, MsStrBuild *text) {
+bool ms_borrows_describe_returned(Borrows *pass, const MsExpr *value, MsStrBuild *text) {
   MsName local = 0;
   const MsNames *names = pass->program->names;
   const MsTy ty = ms_facts_type(pass->facts, value->id);
@@ -586,7 +575,7 @@ static void note_if_var(Borrows *pass, const MsStmt *stmt) {
 
 /* Whether `call` is a native that lends a collection of its receiver (`m.keys()`, `text.split(..)`): a function that
  * returns it would hand out something that only borrows. */
-static bool lends_collection(const Borrows *pass, const MsExpr *call) {
+bool ms_borrows_lends_collection(const Borrows *pass, const MsExpr *call) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
   const MsExpr *callee = call->u.call.callee;
   if (fact == NULL || callee->kind != MS_E_MEMBER || fact->callee.kind == MS_REF_METHOD || fact->callee.kind == MS_REF_FUNCTION) {
@@ -602,11 +591,11 @@ static void note_return(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
-  if (describe_returned(pass, stmt->u.expr, &text)) {
+  if (ms_borrows_describe_returned(pass, stmt->u.expr, &text)) {
     keep_list_push(&pass->keeps, (Keep){.kept = stmt->u.expr, .returned = true});
   } else {
     const MsExpr *call = kept_call(stmt->u.expr);
-    if (call != NULL && lends_collection(pass, call)) {
+    if (call != NULL && ms_borrows_lends_collection(pass, call)) {
       note_keep(pass, stmt->u.expr);
     }
   }
@@ -648,6 +637,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     note_if_var(pass, stmt);
   }
   if (stmt->kind == MS_S_BIND) {
+    note_kept_captures(pass, stmt);
     note_bind(pass, stmt);
   } else if (stmt->kind == MS_S_ASSIGN) {
     note_change(pass, stmt->u.assign.target, true, false);
@@ -677,6 +667,9 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     pass->outer = pass->lambdas++ == 0 ? expr : pass->outer;
   }
   note_keeps(pass, expr);
+  if (expr->kind == MS_E_CALL) {
+    kept_closures(pass, expr, &pass->kept);
+  }
   if (expr->kind == MS_E_NAME && local_of(pass->facts, expr->id, &binding)) {
     use_list_push(&pass->uses, (Use){.binding = binding, .offset = expr->pos.offset});
     return;
@@ -713,234 +706,6 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
-/* Whether an exit the change runs into (`xs.append(1); break`) leaves `use` unreachable: the exit ends the loop (or the
- * function), so a use before the change in the next round, or after the exit inside the loop, never runs. A loop that
- * ends inside the exit's block runs the change again, so it keeps the use reachable. */
-static bool cut_by_exit(const Borrows *pass, uint32_t change, const Use *later) {
-  const uint32_t use = later->offset;
-  for (size_t index = 0; index < pass->exits.len; index++) {
-    const Exit *exit = &pass->exits.ptr[index];
-    if (change < exit->lo || change >= exit->at || (use > change && use < exit->at)) {
-      continue;
-    }
-    bool straight = true;
-    const Range *loop = NULL; /* the innermost loop around the exit */
-    for (size_t at = 0; at < pass->ranges.len; at++) {
-      const Range *range = &pass->ranges.ptr[at];
-      if (!range->loop) {
-        continue;
-      }
-      straight = straight && !(change >= range->lo && change <= range->hi && exit->at > range->hi);
-      if (exit->at >= range->lo && exit->at <= range->hi && (loop == NULL || range->lo > loop->lo)) {
-        loop = range;
-      }
-    }
-    if (straight && (exit->is_return || (loop != NULL && use >= loop->lo && use <= loop->hi && (later->loop == 0 || later->loop > loop->lo)))) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/* Whether a use at `use` can run after a change at `change`: later in the source, unless the two sit in
- * different arms of one branch; or anywhere in a loop that holds the change and not the borrow's binding. */
-static bool runs_after(const Borrows *pass, const Borrow *borrow, uint32_t change, const Use *later, bool in_lambda) {
-  const uint32_t use = later->offset;
-  if (!in_lambda && cut_by_exit(pass, change, later)) {
-    return false;
-  }
-  for (size_t index = 0; index < pass->ranges.len; index++) {
-    const Range *range = &pass->ranges.ptr[index];
-    if (range->loop) {
-      if (change >= range->lo && change <= range->hi && use >= range->lo && use <= range->hi &&
-          borrow->after < range->lo) {
-        return true;
-      }
-      continue;
-    }
-    const bool change_then = change >= range->lo && change < range->split;
-    const bool change_else = change >= range->split && change <= range->hi;
-    const bool use_then = use >= range->lo && use < range->split;
-    const bool use_else = use >= range->split && use <= range->hi;
-    if ((change_then && use_else) || (change_else && use_then)) {
-      return false;
-    }
-  }
-  return use > change;
-}
-
-static bool used_after(const Borrows *pass, const Borrow *borrow, uint32_t offset, bool in_lambda) {
-  for (size_t index = 0; index < pass->uses.len; index++) {
-    if (pass->uses.ptr[index].binding == borrow->binding &&
-        runs_after(pass, borrow, offset, &pass->uses.ptr[index], in_lambda)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static void append_name(const Borrows *pass, MsStrBuild *text, MsName name) {
-  ms_strbuild_append(text, ms_names_span(pass->program->names, name));
-}
-
-static MsSpan source_text(const Borrows *pass, const MsExpr *expr) {
-  const MsPos start = ms_expr_start(expr);
-  return (MsSpan){pass->source.ptr + start.offset, expr->end.offset - start.offset};
-}
-
-/* The name a call is written with. */
-static MsName call_name(const MsExpr *call) {
-  const MsExpr *callee = call->u.call.callee;
-  return callee->kind == MS_E_MEMBER ? callee->u.member.name : callee->u.sym;
-}
-
-/* A `get` that reads an element of its receiver in place: the position would own an element the receiver keeps. */
-static void report_kept_read(Borrows *pass, const MsExpr *kept) {
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append_text(&text, "`");
-  ms_own_expr_text(&text, pass->program->names, kept);
-  ms_strbuild_append_text(&text, "` reads an element that `");
-  ms_own_expr_text(&text, pass->program->names, kept->u.call.callee->u.member.left);
-  ms_strbuild_append_text(&text, "` keeps, and this position would own it too; store `.clone()` of it, or use it in place");
-  ms_check_report(pass->program, pass->module, kept->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
-}
-
-static void report_keep(Borrows *pass, const Keep *keep) {
-  if (keep->returned) {
-    MsStrBuild text = ms_strbuild_new();
-    if (describe_returned(pass, keep->kept, &text)) {
-      ms_check_report(pass->program, pass->module, keep->kept->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
-    } else {
-      ms_strbuild_free(&text);
-    }
-    return;
-  }
-  if (!lends_collection(pass, keep->source.call) && ms_own_native_get(pass->program, pass->facts, keep->kept) != MS_NATIVE_GET_NONE) {
-    report_kept_read(pass, keep->kept);
-    return;
-  }
-  const MsExpr *base = keep->source.call;
-  const MsCall *fact = ms_facts_call(pass->facts, base->id);
-  const bool native = fact != NULL && fact->callee.kind != MS_REF_METHOD && fact->callee.kind != MS_REF_FUNCTION;
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append_text(&text, "`");
-  append_name(pass, &text, native ? call_name(base) : call_name(keep->kept));
-  ms_strbuild_append_text(&text, native ? "` borrows `" : "` returns a reference into `");
-  ms_strbuild_append(&text, source_text(pass, keep->source.place));
-  ms_strbuild_append_text(&text, "`, which this position would keep; store `.clone()` of it, or use it in place");
-  ms_check_report(pass->program, pass->module, keep->kept->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
-}
-
-static void report(Borrows *pass, const Borrow *borrow, const Change *change, MsPos at) {
-  const MsPos start = change->pos;
-  if (change->end <= start.offset || change->end > pass->source.len) {
-    return;
-  }
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append_text(&text, change->assign ? "cannot reassign `" : change->moved ? "cannot move `" : "cannot change `");
-  ms_strbuild_append(&text, (MsSpan){pass->source.ptr + start.offset, change->end - start.offset});
-  if (borrow->loop) {
-    ms_strbuild_append_text(&text, "` while the loop at ");
-    ms_strbuild_append_u64(&text, borrow->at.line);
-    ms_strbuild_append_text(&text, ":");
-    ms_strbuild_append_u64(&text, borrow->at.column);
-    ms_strbuild_append_text(&text, " iterates it; apply the change after the loop, or loop over a `.clone()` of it");
-    ms_check_report(pass->program, pass->module, at, MS_CHECK_TYPE, ms_strbuild_finish(&text));
-    return;
-  }
-  ms_strbuild_append_text(&text, "` while `");
-  append_name(pass, &text, borrow->name);
-  ms_strbuild_append_text(&text, borrow->method_value ? "` borrows it (method value, at "
-                                 : borrow->mutable_   ? "` borrows it (mutable borrow, at "
-                                                      : "` borrows it (binding of a part of it, at ");
-  ms_strbuild_append_u64(&text, borrow->at.line);
-  ms_strbuild_append_text(&text, ":");
-  ms_strbuild_append_u64(&text, borrow->at.column);
-  ms_strbuild_append_text(&text, "); finish using `");
-  append_name(pass, &text, borrow->name);
-  if (borrow->method_value) {
-    ms_strbuild_append_text(&text, "` before this, or build `");
-    append_name(pass, &text, borrow->name);
-    ms_strbuild_append_text(&text, "` from a clone: bind `.clone()` of the captured value first and capture that binding");
-  } else {
-    ms_strbuild_append_text(&text, "` before this, or give `");
-    append_name(pass, &text, borrow->name);
-    ms_strbuild_append_text(&text, "` its own value by ending its initializer with `.clone()`");
-  }
-  ms_check_report(pass->program, pass->module, at, MS_CHECK_TYPE, ms_strbuild_finish(&text));
-}
-
-/* Whether two places of one binding can share storage: unless both are plain field chains, and neither is a prefix of
- * the other (`self.data` and `self.at` are separate fields). */
-static bool places_overlap(const MsExpr *a, const MsExpr *b) {
-  const MsExpr *chain[2][16];
-  size_t length[2] = {0, 0};
-  const MsExpr *both[2] = {a, b};
-  for (int side = 0; side < 2; side++) {
-    const MsExpr *at = both[side];
-    for (;;) {
-      MsExpr *left = NULL;
-      MsExpr *index = NULL;
-      if (at != NULL && ms_expr_index(at, &left, &index)) {
-        at = left; /* an element lies inside its collection's place */
-        continue;
-      }
-      if (at == NULL || at->kind != MS_E_MEMBER) {
-        break;
-      }
-      if (length[side] == 16) {
-        return true;
-      }
-      chain[side][length[side]++] = at;
-      at = at->u.member.left;
-    }
-    if (at == NULL || at->kind != MS_E_NAME) {
-      return true;
-    }
-  }
-  const size_t shared = length[0] < length[1] ? length[0] : length[1];
-  for (size_t at = 0; at < shared; at++) { /* chains run from the leaf to the root, so compare from the root */
-    if (chain[0][length[0] - 1 - at]->u.member.name != chain[1][length[1] - 1 - at]->u.member.name) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/* Each borrow reports its first later change of the source when the borrower is still used after it. */
-static void judge(Borrows *pass) {
-  for (size_t at = 0; at < pass->keeps.len; at++) {
-    report_keep(pass, &pass->keeps.ptr[at]);
-  }
-  for (size_t at = 0; at < pass->borrows.len; at++) {
-    const Borrow *borrow = &pass->borrows.ptr[at];
-    for (size_t index = 0; index < pass->changes.len; index++) {
-      const Change *change = &pass->changes.ptr[index];
-      const uint32_t offset = change->pos.offset;
-      if (borrow->alias && !change->moved) {
-        continue;
-      }
-      if (change->value_write && borrow->parts != 0 && (borrow->parts & 2u) == 0) {
-        continue; /* a view of a map's keys: changing a value in place leaves the keys alone */
-      }
-      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset, change->lambda != NULL) &&
-          (change->place == NULL || borrow->place == NULL || places_overlap(change->place, borrow->place))) {
-        report(pass, borrow, change, change->at);
-        if (change->lambda != NULL) { /* the closure that runs the change is itself a change of what it captured */
-          report(pass, borrow, change, change->lambda->pos);
-        }
-        break;
-      }
-    }
-  }
-  borrow_list_clear(&pass->borrows);
-  change_list_clear(&pass->changes);
-  use_list_clear(&pass->uses);
-  range_list_clear(&pass->ranges);
-  exit_list_clear(&pass->exits);
-  keep_list_clear(&pass->keeps);
-}
-
 void ms_own_borrows(MsCheckProgram *program) {
   if (program->diagnostics.len != 0 || program->modules.len <= program->user_modules) {
     /* without the standard library no result is known to be new, and every call result would read as a borrow */
@@ -968,13 +733,14 @@ void ms_own_borrows(MsCheckProgram *program) {
         ms_walk_decl(&visitor, decl);
       }
       pass.ref_result = false;
-      judge(&pass);
+      ms_borrows_judge(&pass);
     }
     borrow_list_free(&pass.borrows);
     change_list_free(&pass.changes);
     use_list_free(&pass.uses);
     range_list_free(&pass.ranges);
     exit_list_free(&pass.exits);
+    lambda_list_free(&pass.kept);
     keep_list_free(&pass.keeps);
     source_list_free(&pass.extra);
   }
