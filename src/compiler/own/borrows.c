@@ -22,6 +22,7 @@ typedef struct Borrow {
   bool method_value; /* a method read as a value (`f := xs.any`): it keeps its receiver until it is last called */
   uint32_t root; /* the binding it borrows from */
   const MsExpr *place; /* the part of it that is borrowed */
+  uint32_t parts; /* bit i: the view covers the storage of type argument i of its receiver; 0 when it covers all of it */
 } Borrow;
 
 typedef struct Change {
@@ -33,6 +34,7 @@ typedef struct Change {
   MsPos at;     /* where the diagnostic points: a stored field's own name, else where the place starts */
   const MsExpr *place; /* the changed place; NULL when it is the whole binding */
   const MsExpr *lambda; /* the outermost open closure that captured the root and changes it, or NULL */
+  bool value_write; /* a `var` argument or receiver that is a value of a map (`m[k]`): changes the value in place, never the keys */
 } Change;
 
 typedef struct Use {
@@ -52,6 +54,7 @@ typedef struct Source {
   uint32_t root;
   const MsExpr *place;
   const MsExpr *call;
+  uint32_t parts; /* see Borrow */
 } Source;
 
 /* A borrowing call in a position that keeps its result. */
@@ -164,6 +167,37 @@ static bool takes_payload(Borrows *pass, const MsExpr *call) {
   return ms_facts_type(pass->facts, call->id) == ms_ty_args(types, held)[0];
 }
 
+/* Which type arguments of its receiver a method's result mentions: `Map[T, U].keys() &List[T]` covers only T. A view of
+ * the storage of some arguments leaves the storage of the others unchanged; 0 when it mentions all or none. */
+static void collect_names(const MsTypeRef *type, const MsTypeRefs *args, uint32_t *mask) {
+  if (type == NULL) {
+    return;
+  }
+  for (uint32_t index = 0; index < args->len && index < 32; index++) {
+    if (type->kind == MS_TYPE_NAMED && args->ptr[index]->name == type->name && type->args.len == 0) {
+      *mask |= UINT32_C(1) << index;
+    }
+  }
+  for (uint32_t index = 0; index < type->args.len; index++) {
+    collect_names(type->args.ptr[index], args, mask);
+  }
+  collect_names(type->result, args, mask);
+}
+
+static uint32_t result_parts(const Borrows *pass, const MsCall *fact) {
+  if (fact->callee.kind != MS_REF_METHOD && fact->callee.kind != MS_REF_NATIVE) {
+    return 0;
+  }
+  const MsMethodEntry *entry = ms_check_method_at(pass->program, fact->callee.decl.module, fact->callee.decl.node);
+  if (entry == NULL || entry->source == NULL || entry->source->receiver_args.len < 2) {
+    return 0;
+  }
+  uint32_t mask = 0;
+  collect_names(entry->source->func.result, &entry->source->receiver_args, &mask);
+  const uint32_t all = (UINT32_C(1) << entry->source->receiver_args.len) - 1;
+  return mask == all ? 0 : mask;
+}
+
 /* A call whose result is not declared `move` borrows from its first argument that has an origin. */
 static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
@@ -187,6 +221,7 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
     }
     if (origin.call == NULL) {
       origin.call = call;
+      origin.parts = receiver && index == 0 ? result_parts(pass, fact) : 0;
     }
     if (found) {
       source_list_push(&pass->extra, origin);
@@ -208,6 +243,7 @@ static void push_borrow(Borrows *pass, Borrow borrow, bool through_look) {
       Borrow derived = borrow;
       derived.root = parent.root;
       derived.place = parent.place;
+      derived.parts = parent.parts;
       derived.alias = false;
       borrow_list_push(&pass->borrows, derived);
       derived_any = true;
@@ -258,12 +294,13 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   }
   Borrow borrow = {.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
                    .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
-                   .root = source.root, .place = source.place};
+                   .root = source.root, .place = source.place, .parts = source.parts};
   push_borrow(pass, borrow, answers_look_part(pass, source.call));
   /* a result that borrows from several arguments keeps every one of them frozen */
   for (size_t index = 0; index < pass->extra.len; index++) {
     borrow.root = pass->extra.ptr[index].root;
     borrow.place = pass->extra.ptr[index].place;
+    borrow.parts = pass->extra.ptr[index].parts;
     push_borrow(pass, borrow, answers_look_part(pass, pass->extra.ptr[index].call));
   }
 }
@@ -276,23 +313,28 @@ static void note_change(Borrows *pass, const MsExpr *place, bool assign, bool mo
     return;
   }
   const MsExpr *at = place;
+  const MsExpr *map_value = NULL; /* the map the step next to the root indexes, when it is one */
   for (;;) {
     MsExpr *left = NULL;
     MsExpr *index = NULL;
     if (at->kind == MS_E_MEMBER) {
       at = at->u.member.left;
+      map_value = NULL;
     } else if (ms_expr_index(at, &left, &index)) {
       at = left;
+      map_value = left;
     } else {
       break;
     }
   }
+  const bool value_write = !assign && !moved && map_value != NULL &&
+                           ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, map_value->id), MS_BUILTIN_Map);
   uint32_t root = 0;
   if (at->kind == MS_E_NAME && local_of(pass->facts, at->id, &root)) {
     const bool stored_field = assign && place->kind == MS_E_MEMBER;
     change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset,
                                               .moved = moved, .assign = assign && !stored_field, .at = stored_field ? place->pos : ms_expr_start(place),
-                                              .place = place, .lambda = captured_by_open_closure(pass, at)});
+                                              .place = place, .lambda = captured_by_open_closure(pass, at), .value_write = value_write});
   }
 }
 
@@ -575,11 +617,12 @@ static void note_loop(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   Borrow borrow = {.binding = ref->local, .name = stmt->u.each.name, .at = stmt->pos, .after = iter->end.offset,
-                   .root = source.root, .place = source.place, .loop = true};
+                   .root = source.root, .place = source.place, .parts = source.parts, .loop = true};
   push_borrow(pass, borrow, false);
   for (size_t index = 0; index < pass->extra.len; index++) {
     borrow.root = pass->extra.ptr[index].root;
     borrow.place = pass->extra.ptr[index].place;
+    borrow.parts = pass->extra.ptr[index].parts;
     push_borrow(pass, borrow, false);
   }
   /* the next round reads the source again: the loop uses its variable's borrow until the body's end */
@@ -870,6 +913,9 @@ static void judge(Borrows *pass) {
       const uint32_t offset = change->pos.offset;
       if (borrow->alias && !change->moved) {
         continue;
+      }
+      if (change->value_write && borrow->parts != 0 && (borrow->parts & 2u) == 0) {
+        continue; /* a view of a map's keys: changing a value in place leaves the keys alone */
       }
       if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset, change->lambda != NULL) &&
           (change->place == NULL || borrow->place == NULL || places_overlap(change->place, borrow->place))) {

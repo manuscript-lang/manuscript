@@ -723,8 +723,8 @@ fn hold Map[T, U].keys() &List[T] { ... }
 // Calls `operation(key, value)` for each entry in insertion order.
 // A callback that takes `value` as `var` changes it in place, and the receiver must
 // then be `var`.
-fn Map[T Hashable & Clonable, U].for_each(operation fn(T, var U) Void) Void {
-	for key in self.keys().clone() {
+fn Map[T Hashable, U].for_each(operation fn(T, var U) Void) Void {
+	for key in self.keys() {
 		operation(key, self[key])
 	}
 }
