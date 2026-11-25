@@ -248,6 +248,7 @@ static void note_kept_captures(Borrows *pass, const MsStmt *stmt) {
   LambdaList closures = {0};
   const bool local = value->kind == MS_E_LAMBDA && ms_facts_use(pass->facts, value->id) == MS_USE_BORROW;
   if (local) {
+    local_list_push(&pass->closures, (Local){.binding = binding, .lambda = value});
     lambda_list_push(&closures, value);
   } else {
     kept_closures(pass, value, &closures);
@@ -320,6 +321,27 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     borrow.place = pass->extra.ptr[index].place;
     borrow.parts = pass->extra.ptr[index].parts;
     push_borrow(pass, borrow, answers_look_part(pass, pass->extra.ptr[index].call));
+  }
+}
+
+/* Calling a name bound to a closure runs the changes the closure makes to what it captured: they take effect here. */
+static void note_closure_call(Borrows *pass, uint32_t binding, MsPos at) {
+  for (size_t index = 0; index < pass->closures.len; index++) {
+    if (pass->closures.ptr[index].binding != binding) {
+      continue;
+    }
+    const size_t count = pass->changes.len;
+    for (size_t change = 0; change < count; change++) {
+      Change derived = pass->changes.ptr[change];
+      if (derived.lambda != pass->closures.ptr[index].lambda) {
+        continue;
+      }
+      derived.lambda = NULL;
+      derived.via_binding = binding;
+      derived.via = at.offset;
+      derived.at = at;
+      change_list_push(&pass->changes, derived);
+    }
   }
 }
 
@@ -708,6 +730,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (fact != NULL && expr->u.call.callee->kind == MS_E_NAME && local_of(pass->facts, expr->u.call.callee->id, &binding)) {
     /* A function value is in use until its call returns: a change its arguments make still runs under the borrow. */
     use_list_push(&pass->uses, (Use){.binding = binding, .offset = expr->end.offset});
+    note_closure_call(pass, binding, expr->u.call.callee->pos);
   }
   for (uint32_t index = 0; fact != NULL && index < fact->arg_count; index++) {
     const MsCallArg *arg = &fact->args[index];
@@ -773,6 +796,7 @@ void ms_own_borrows(MsCheckProgram *program) {
     exit_list_free(&pass.exits);
     lambda_list_free(&pass.kept);
     keep_list_free(&pass.keeps);
+    local_list_free(&pass.closures);
     source_list_free(&pass.extra);
   }
   ms_class_free(&classes);
