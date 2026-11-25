@@ -73,6 +73,18 @@ bool ms_sys_fs_waitable(int fd) {
   return false;
 }
 
+int ms_sys_fs_read_ready(int fd) {
+  const HANDLE handle = (HANDLE)uv_get_osfhandle(fd);
+  if (handle == INVALID_HANDLE_VALUE || GetFileType(handle) != FILE_TYPE_PIPE) {
+    return -1;
+  }
+  DWORD available = 0;
+  if (!PeekNamedPipe(handle, NULL, 0, NULL, &available, NULL)) {
+    return 1; /* a broken pipe is the end of the stream, any other failure is the read's to report */
+  }
+  return available > 0 ? 1 : 0;
+}
+
 int ms_sys_fs_clone_file(int output, int input) {
   (void)output;
   (void)input;

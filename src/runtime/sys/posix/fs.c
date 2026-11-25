@@ -87,6 +87,11 @@ bool ms_sys_fs_waitable(int fd) {
   return type != UV_FILE && type != UV_UNKNOWN_HANDLE;
 }
 
+int ms_sys_fs_read_ready(int fd) {
+  (void)fd;
+  return -1;
+}
+
 int ms_sys_fs_clone_file(int output, int input) {
 #ifdef __linux__
   enum { MS_FICLONE = 0x40049409 }; /* _IOW(0x94, 9, int); the header has no stable spelling under musl */
