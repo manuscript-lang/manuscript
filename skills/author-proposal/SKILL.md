@@ -23,7 +23,7 @@ Do this before writing any section. A proposal that invents syntax or names with
 
 ## Step 2: write it
 
-Target 80 to 150 lines, most of it the Design section; past 180, split or cut. Every line must change the decision or tell the implementer what to build. Technical and scannable: one fact per bullet, bullets of one or two lines, no paragraph over two sentences. Name crates, files, functions, and types exactly. Label claims as measured (command, commit, number), verified (`file:line`), or hypothesis.
+Target 80 to 150 lines, most of it the Design section; past 180, split or cut. Every line must change the decision or tell the implementer what to build. Technical and scannable: one fact per bullet, bullets of one or two lines, no paragraph over two sentences. Name files, functions, and types exactly. Label claims as measured (command, commit, number), verified (`file:line`), or hypothesis.
 
 Sections, in order. A small change uses Summary, Problem, Design, Components, Alternatives.
 

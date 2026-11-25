@@ -22,13 +22,13 @@ import expect_equal from "@std/test/test.ms"
 - `@std/collections/deque.ms`: Deque
 - `@std/collections/itertools.ms`: Run, accumulate, combinations, cycle, group_runs, pairwise, permutations, product, zip_longest
 - `@std/collections/queue.ms`: HeapEntry, PriorityQueue, Queue
-- `@std/collections/sorted.ms`: SortedEntry, SortedMap, SortedSet
-- `@std/concurrency/promise.ms`: Cancel, Placement, Promise, PromiseOptions, Signal, adopt, cancel_switch, complete, deferred, promise, promise_when_idle, set_options, wait_all, wait_first
+- `@std/collections/sorted.ms`: SortedEntry, SortedMap, SortedRef, SortedSet
+- `@std/concurrency/promise.ms`: Cancel, Placement, Promise, PromiseOptions, Signal, adopt, caller_frame, cancel_switch, complete, deferred, promise, promise_when_idle, set_options, wait_all, wait_first
 - `@std/concurrency/resilience.ms`: CircuitBreaker, CircuitError, RateLimiter, RetryPolicy, Throttle, map_concurrent, rate_limiter, retry
-- `@std/core.ms`: Clonable, Closeable, Comparable, Data, Equal, Error, Hashable, Iterator, Optional, Result, Stringable, Writable, join_errors, panic, print, wrap_error
+- `@std/core.ms`: Clonable, Closeable, Comparable, Data, Equal, Error, Hashable, Iterator, Optional, Result, Stringable, Writable, join_errors, ok_or, panic, print, wrap_error
 - `@std/crypto/blake2.ms`: blake2b, blake2s
 - `@std/crypto/chacha20poly1305.ms`: chacha20, chacha20poly1305_open, chacha20poly1305_seal, poly1305
-- `@std/crypto/crypto.ms`: Curve, HashAlgorithm, Hasher, aes_cbc_decrypt, aes_cbc_encrypt, aes_ctr, constant_time_equal, constant_time_less_or_equal, constant_time_select, derive_key, digest, ecdh_shared_secret, ecdsa_generate, ecdsa_sign, ecdsa_verify, open, public_key, public_key_der, rsa_decrypt, rsa_encrypt, rsa_generate, rsa_sign, rsa_sign_pss, rsa_verify, rsa_verify_pss, seal, sha256, sha384, sha512, sign, verify, xor_bytes
+- `@std/crypto/crypto.ms`: Curve, HashAlgorithm, Hasher, NativeHasher, aes_cbc_decrypt, aes_cbc_encrypt, aes_ctr, constant_time_equal, constant_time_less_or_equal, constant_time_select, derive_key, digest, ecdh_shared_secret, ecdsa_generate, ecdsa_sign, ecdsa_verify, open, public_key, public_key_der, rsa_decrypt, rsa_encrypt, rsa_generate, rsa_sign, rsa_sign_pss, rsa_verify, rsa_verify_pss, seal, sha256, sha384, sha512, sign, verify, xor_bytes
 - `@std/crypto/hash.ms`: Crc64, Crc64Polynomial, MapHash, crc64, crc64_of, fnv1_32, fnv1_64, fnv1a32, fnv1a64, random_seed
 - `@std/data/checksum.ms`: Adler32, Crc32, adler32, adler32_of, crc32, crc32_of
 - `@std/data/config.ms`: parse_dotenv, parse_ini
@@ -68,7 +68,7 @@ import expect_equal from "@std/test/test.ms"
 - `@std/math/math.ms`: BigInt, BinaryFloatParts, DivMod, FloatParts, WideProduct, WordDifference, WordDivision, WordSum, acos, acosh, add_with_carry, asin, asinh, atan, atan2, atanh, big_int_of_int, binomial, bit_and, bit_not, bit_or, bit_xor, cbrt, ceil, copy_sign, cos, cosh, count_ones, divide_wide, divmod, e, epsilon, exp, exp2, expm1, factorial, floor, fma, frexp, gcd, hypot, ieee_remainder, infinity, is_integer, is_safe_integer, isqrt, lcm, ldexp, leading_zeros, ln10, ln2, log, log10, log10e, log1p, log2, log2e, max, max_float, max_int, max_safe_integer, min, min_float, min_int, min_safe_integer, modf, multiply_wide, nan, next_after, parse_big_int, parse_float, parse_int, pi, pow, pow_int, remainder, remainder_wide, reverse_bits, reverse_bytes, rotate_left, rotate_right, round, round_to_even, shift_left, shift_right, shift_right_unsigned, sign_bit, sin, sinh, sqrt, sqrt2, sqrt_half, subtract_with_borrow, tan, tanh, trailing_zeros, truncate, wrapping_add, wrapping_multiply, wrapping_subtract
 - `@std/math/statistics.ms`: BinCounts, Regression, bin_counts, correlation, linear_regression, mean, median, mode, percentile, population_stdev, population_variance, quantiles, stdev, variance
 - `@std/net/fetch.ms`: FetchBody, FetchOptions, FetchResponse, Fetcher, FetcherOptions, fetch, fetcher, json_body
-- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeHttpClient, NativeResponseBody, NativeServing, NativeWorker, NativeWorkerSpec, RawExchange, RawResponse, StreamingResponse, buffered, headers, json, read_body, redirect, reply, text, upgrade
+- `@std/net/http.ms`: ClientResponse, HttpClient, HttpClientOptions, HttpExchange, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpResponseMetadata, HttpServer, HttpServerOptions, NativeAccepted, NativeExchange, NativeHttpClient, NativeResponseBody, NativeServing, NativeWorker, NativeWorkerSpec, RawResponse, StreamingResponse, buffered, headers, json, native_handler, read_body, redirect, reply, text, upgrade
 - `@std/net/ip.ms`: Cidr, DnsKind, DnsRecord, IpAddress, IpFamily, contains_ip, parse_cidr, parse_ip
 - `@std/net/mail.ms`: Address, Message, decode_words, parse_address, parse_address_list, parse_message
 - `@std/net/mime.ms`: HeaderField, Headers, MediaType, Part, encode_multipart, extension_for_media_type, form_part, format_media_type, media_type_for_extension, multipart_boundary, multipart_parts, parse_headers, parse_media_type, parse_multipart
@@ -81,14 +81,13 @@ import expect_equal from "@std/test/test.ms"
 - `@std/os/env.ms`: arguments, change_directory, environment, home_directory, load_environment, set_environment, which, working_directory
 - `@std/os/fs.ms`: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, OpenMode, OpenOptions, PathEntry, RawWatcher, Seek, TemporaryDirectory, WatchOptions, access, append_file, canonicalize, chmod, chown, copy, create_directory, create_hard_link, create_symlink, exists, glob, list, move, open, open_directory, read_file, read_symlink, remove, rename, set_times, stat, stat_filesystem, temporary, temporary_directory, temporary_root, truncate, watch, write_atomic, write_file
 - `@std/os/path.ms`: Glob, PathOperations, PathParts, basename, basename_without, compile_glob, delimiter, dirname, extension, format, is_absolute, join, matches_glob, normalize, parse, posix, relative, resolve, separator, stem, to_namespaced_path, win32, with_extension
-- `@std/os/process.ms`: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, get_priority, groups, initialize_groups, process_info, replace, resource_usage, run, send_signal, set_groups, set_identity, set_priority, set_title, spawn, title, umask, watch_signals
+- `@std/os/process.ms`: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, get_priority, groups, initialize_groups, process_info, replace, resource_usage, run, send_signal, set_groups, set_identity, set_priority, set_title, spawn, title, watch_signals
 - `@std/os/system.ms`: CpuInfo, Endianness, MemoryUsage, NetworkInterface, Os, RuntimeCounts, SystemInfo, SystemMetrics, UserInfo, available_memory, constants, constrained_memory, cpus, dev_null, end_of_line, endianness, hostname, machine, memory_usage, metrics, network_interfaces, os, os_release, os_version, runtime_counts, system_info, uptime, user_info
 - `@std/os/tree.ms`: EmbeddedTree, FileTree, HostTree, MemoryTree, WalkEntry, embedded_tree, host_tree, memory_tree, msstd_embed_bytes, walk
 - `@std/random.ms`: SeededRandom, choice, float, random_bytes, sample, secure_int, seeded, shuffle, token, ulid, weighted_choice
 - `@std/regex.ms`: Regex, RegexSpan, compile
 - `@std/string.ms`: NormalizationForm, SplitParts, from_scalars
-- `@std/string_builder.ms`: StringBuilder
-- `@std/test/bench.ms`: keep, measure, run_bench_block
+- `@std/test/bench.ms`: run_bench_block, run_bench_fixture
 - `@std/test/boundary.ms`: finite_float_boundaries, float_boundaries, int_boundaries
 - `@std/test/golden.ms`: expect_golden, expect_golden_bytes
 - `@std/test/iotest.ms`: check_reader, fail_after, fail_writer_after, one_byte
