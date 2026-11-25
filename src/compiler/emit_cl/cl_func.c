@@ -14,25 +14,25 @@ static void add_block_params(ClCx *cx, uint32_t block) {
   const MirBlockData *data = &cx->func->blocks.ptr[block];
   for (uint32_t index = 0; index < data->params.len; index++) {
     const MirValue param = data->params.ptr[index].value;
-    MsSpan leaves = cl_value_leaves(cx, param);
+    MsSpan leaves = clx_value_leaves(cx, param);
     for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {
-      cl_set(cx, param, leaf, ms_cl_block_param_add(cx->fb, cx->blocks[block], cl_reg_type(leaves.ptr[leaf])));
+      clx_set(cx, param, leaf, cl_block_param_add(cx->fb, cx->blocks[block], clx_reg_type(leaves.ptr[leaf])));
     }
   }
 }
 
 /* Every leaf of every argument of an edge, in order. Returns a count; `*out` is the array (free with ms_free). */
-static uint32_t edge_values(ClCx *cx, const MirTarget *target, ms_cl_val **out) {
+static uint32_t edge_values(ClCx *cx, const MirTarget *target, cl_val **out) {
   uint32_t count = 0;
   for (uint32_t arg = 0; arg < target->nargs; arg++) {
-    count += (uint32_t)cl_value_leaves(cx, target->args[arg]).len;
+    count += (uint32_t)clx_value_leaves(cx, target->args[arg]).len;
   }
-  ms_cl_val *values = ms_alloc((count + 1) * sizeof(ms_cl_val));
+  cl_val *values = ms_alloc((count + 1) * sizeof(cl_val));
   uint32_t at = 0;
   for (uint32_t arg = 0; arg < target->nargs; arg++) {
-    const uint32_t leaves = (uint32_t)cl_value_leaves(cx, target->args[arg]).len;
+    const uint32_t leaves = (uint32_t)clx_value_leaves(cx, target->args[arg]).len;
     for (uint32_t leaf = 0; leaf < leaves; leaf++) {
-      values[at++] = cl_get(cx, target->args[arg], leaf);
+      values[at++] = clx_get(cx, target->args[arg], leaf);
     }
   }
   *out = values;
@@ -40,78 +40,78 @@ static uint32_t edge_values(ClCx *cx, const MirTarget *target, ms_cl_val **out) 
 }
 
 static void jump_to(ClCx *cx, const MirTarget *target) {
-  ms_cl_val *values = NULL;
+  cl_val *values = NULL;
   const uint32_t count = edge_values(cx, target, &values);
-  ms_cl_jump(cx->fb, cx->blocks[target->block], values, count);
+  cl_jump(cx->fb, cx->blocks[target->block], values, count);
   ms_free(values);
 }
 
 /* ---- terminators ---- */
 
 static bool lower_return(ClCx *cx, MirValue value) {
-  const uint32_t leaves = value == MIR_NONE ? 0 : (uint32_t)cl_value_leaves(cx, value).len;
+  const uint32_t leaves = value == MIR_NONE ? 0 : (uint32_t)clx_value_leaves(cx, value).len;
   if (leaves == 0) {
-    ms_cl_ret0(cx->fb);
+    cl_ret0(cx->fb);
     return true;
   }
   if (leaves == 1) {
-    ms_cl_ret1(cx->fb, cl_get(cx, value, 0));
+    cl_ret1(cx->fb, clx_get(cx, value, 0));
     return true;
   }
-  cl_leaves_at(cx, value, cx->result_area, false);
-  ms_cl_ret0(cx->fb);
+  clx_leaves_at(cx, value, cx->result_area, false);
+  cl_ret0(cx->fb);
   return true;
 }
 
 /* A switch edge takes no arguments in Cranelift: one that carries some goes through a block of its own. */
-static ms_cl_block switch_edge(ClCx *cx, const MirTarget *target) {
+static cl_block switch_edge(ClCx *cx, const MirTarget *target) {
   uint32_t leaves = 0;
   for (uint32_t arg = 0; arg < target->nargs; arg++) {
-    leaves += (uint32_t)cl_value_leaves(cx, target->args[arg]).len;
+    leaves += (uint32_t)clx_value_leaves(cx, target->args[arg]).len;
   }
   if (leaves == 0) {
     return cx->blocks[target->block];
   }
-  const ms_cl_block trampoline = ms_cl_block_new(cx->fb);
-  ms_cl_enter(cx->fb, trampoline);
+  const cl_block trampoline = cl_block_new(cx->fb);
+  cl_enter(cx->fb, trampoline);
   jump_to(cx, target);
   return trampoline;
 }
 
 static void lower_switch(ClCx *cx, const MirTerm *term) {
   uint64_t *keys = ms_alloc((term->ncases + 1) * sizeof(uint64_t));
-  ms_cl_block *targets = ms_alloc((term->ncases + 1) * sizeof(ms_cl_block));
+  cl_block *targets = ms_alloc((term->ncases + 1) * sizeof(cl_block));
   for (uint32_t index = 0; index < term->ncases; index++) {
     keys[index] = (uint64_t)term->cases[index].value;
     targets[index] = switch_edge(cx, &term->cases[index].target);
   }
-  const ms_cl_block fallback = switch_edge(cx, &term->b);
-  ms_cl_enter(cx->fb, cx->cur); /* the trampolines were made in blocks of their own: resume where the block stands */
-  ms_cl_switch(cx->fb, cl_get(cx, term->value, 0), fallback, keys, targets, term->ncases);
+  const cl_block fallback = switch_edge(cx, &term->b);
+  cl_enter(cx->fb, cx->cur); /* the trampolines were made in blocks of their own: resume where the block stands */
+  cl_switch(cx->fb, clx_get(cx, term->value, 0), fallback, keys, targets, term->ncases);
   ms_free(keys);
   ms_free(targets);
 }
 
 static bool lower_fault_term(ClCx *cx, const MirTerm *term) {
   if (term->fault == MF_POSTED) {
-    ms_cl_call(cx->fb, cl_post_func(cx->mod, CL_POST_FAULT_POSTED), NULL, 0, NULL);
+    cl_call(cx->fb, clx_post_func(cx->mod, CLX_POST_FAULT_POSTED), NULL, 0, NULL);
   }
-  ms_cl_trap(cx->fb, 2);
+  cl_trap(cx->fb, 2);
   return true;
 }
 
 static bool lower_terminator(ClCx *cx, const MirTerm *term) {
-  ms_cl_fn *f = cx->fb;
+  cl_fn *f = cx->fb;
   switch ((MirTermKind)term->kind) {
   case MT_BR:
     jump_to(cx, &term->a);
     return true;
   case MT_CONDBR: {
-    ms_cl_val *then_values = NULL;
-    ms_cl_val *else_values = NULL;
+    cl_val *then_values = NULL;
+    cl_val *else_values = NULL;
     const uint32_t then_count = edge_values(cx, &term->a, &then_values);
     const uint32_t else_count = edge_values(cx, &term->b, &else_values);
-    ms_cl_brif(f, cl_get(cx, term->value, 0), cx->blocks[term->a.block], then_values, then_count,
+    cl_brif(f, clx_get(cx, term->value, 0), cx->blocks[term->a.block], then_values, then_count,
                cx->blocks[term->b.block], else_values, else_count);
     ms_free(then_values);
     ms_free(else_values);
@@ -123,7 +123,7 @@ static bool lower_terminator(ClCx *cx, const MirTerm *term) {
   case MT_RET:
     return lower_return(cx, term->value);
   case MT_UNREACHABLE:
-    ms_cl_trap(f, 2);
+    cl_trap(f, 2);
     return true;
   case MT_FAULT:
     return lower_fault_term(cx, term);
@@ -157,43 +157,43 @@ static void set_place(ClCx *cx, MirLoc loc, uint32_t body) {
   const uint32_t line = known ? loc.line : body;
   const uint32_t scope = known && loc.scope != 0 ? cx->scope_base + loc.scope : cx->body_scope;
   const uint32_t file = known && loc.file != MIR_NONE ? loc.file : cx->func->loc.file;
-  ms_cl_srcloc(cx->fb, file, line, scope);
+  cl_srcloc(cx->fb, file, line, scope);
 }
 
 /* ---- instructions ---- */
 
 static bool lower_instruction(ClCx *cx, const MirInst *inst) {
   bool handled = false;
-  bool ok = cl_scalar_op(cx, inst, &handled);
+  bool ok = clx_scalar_op(cx, inst, &handled);
   if (!handled) {
-    ok = cl_checked_op(cx, inst, &handled);
+    ok = clx_checked_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_record_op(cx, inst, &handled);
+    ok = clx_record_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_data_op(cx, inst, &handled);
+    ok = clx_data_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_option_op(cx, inst, &handled);
+    ok = clx_option_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_list_op(cx, inst, &handled);
+    ok = clx_list_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_closure_op(cx, inst, &handled);
+    ok = clx_closure_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_iface_op(cx, inst, &handled);
+    ok = clx_iface_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_string_op(cx, inst, &handled);
+    ok = clx_string_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_memory_op(cx, inst, &handled);
+    ok = clx_memory_op(cx, inst, &handled);
   }
   if (!handled) {
-    ok = cl_call_op(cx, inst, &handled);
+    ok = clx_call_op(cx, inst, &handled);
   }
   if (!handled) {
     cx->why = mir_op_info[inst->op].name;
@@ -208,18 +208,18 @@ static bool lower_instruction(ClCx *cx, const MirInst *inst) {
     return true;
   }
   /* A checked operation on a sized integer also faults when its result leaves the type's range. */
-  ms_cl_fn *f = cx->fb;
-  ms_cl_val result = cl_get(cx, inst->res, 0);
-  ms_cl_val outside = ms_cl_bor(f, ms_cl_icmp(f, MS_CL_SLT, result, cl_const(cx, lo)),
-                                ms_cl_icmp(f, MS_CL_SGT, result, cl_const(cx, hi)));
-  cl_fault_if(cx, outside, CL_POST_INT_RANGE, NULL, 0);
+  cl_fn *f = cx->fb;
+  cl_val result = clx_get(cx, inst->res, 0);
+  cl_val outside = cl_bor(f, cl_icmp(f, CL_SLT, result, clx_const(cx, lo)),
+                                cl_icmp(f, CL_SGT, result, clx_const(cx, hi)));
+  clx_fault_if(cx, outside, CLX_POST_INT_RANGE, NULL, 0);
   return true;
 }
 
 static bool lower_block(ClCx *cx, uint32_t block, uint32_t body) {
   const MirBlockData *data = &cx->func->blocks.ptr[block];
   cx->cur = cx->blocks[block];
-  ms_cl_enter(cx->fb, cx->cur);
+  cl_enter(cx->fb, cx->cur);
   for (uint32_t index = 0; index < data->insts.len; index++) {
     const MirInst *inst = &data->insts.ptr[index];
     cx->cur_block = block;
@@ -283,7 +283,7 @@ static uint32_t order_blocks(ClCx *cx, uint32_t *order) {
 static bool types_ok(ClCx *cx) {
   const MirFunc *func = cx->func;
   for (uint32_t value = 0; value < func->values.len; value++) {
-    (void)cl_leaves(cx, func->values.ptr[value]);
+    (void)clx_leaves(cx, func->values.ptr[value]);
   }
   if (cx->layouts->failed) {
     cx->why = "type layout";
@@ -305,28 +305,28 @@ static bool types_ok(ClCx *cx) {
  * argument that arrived as an address has its leaves loaded from it. */
 static void enter_function(ClCx *cx) {
   const MirFunc *func = cx->func;
-  const ms_cl_block entry = ms_cl_entry(cx->fb);
+  const cl_block entry = cl_entry(cx->fb);
   cx->blocks[0] = entry;
   uint32_t at = 0;
-  MsSpan result = cl_leaves(cx, func->ret);
+  MsSpan result = clx_leaves(cx, func->ret);
   if (result.len > 1) {
     cx->has_result_area = true;
-    cx->result_area = ms_cl_block_param(cx->fb, entry, at++);
+    cx->result_area = cl_block_param(cx->fb, entry, at++);
   }
   for (uint32_t param = 0; param < func->nparams; param++) {
     const MirValue value = func->blocks.ptr[0].params.ptr[param].value;
-    if (cl_is_indirect(cx, func->params[param].ty)) {
-      cl_leaves_at(cx, value, ms_cl_block_param(cx->fb, entry, at++), true);
+    if (clx_is_indirect(cx, func->params[param].ty)) {
+      clx_leaves_at(cx, value, cl_block_param(cx->fb, entry, at++), true);
       continue;
     }
-    const uint32_t leaves = (uint32_t)cl_value_leaves(cx, value).len;
+    const uint32_t leaves = (uint32_t)clx_value_leaves(cx, value).len;
     for (uint32_t leaf = 0; leaf < leaves; leaf++) {
-      cl_set(cx, value, leaf, ms_cl_block_param(cx->fb, entry, at++));
+      clx_set(cx, value, leaf, cl_block_param(cx->fb, entry, at++));
     }
   }
 }
 
-bool cl_lower_function(ClCx *cx) {
+bool clx_lower_function(ClCx *cx) {
   const MirFunc *func = cx->func;
   if (!types_ok(cx)) {
     return false;
@@ -336,23 +336,23 @@ bool cl_lower_function(ClCx *cx) {
   uint32_t total = 0;
   for (uint32_t value = 0; value < nvalues; value++) {
     first[value] = total;
-    total += (uint32_t)cl_value_leaves(cx, value).len;
+    total += (uint32_t)clx_value_leaves(cx, value).len;
   }
   cx->first = first;
-  cx->regs = ms_alloc_zeroed((total + 1) * sizeof(ms_cl_val));
+  cx->regs = ms_alloc_zeroed((total + 1) * sizeof(cl_val));
   const uint32_t nblocks = (uint32_t)func->blocks.len;
-  cx->blocks = ms_alloc_zeroed((nblocks + 1) * sizeof(ms_cl_block));
+  cx->blocks = ms_alloc_zeroed((nblocks + 1) * sizeof(cl_block));
   uint32_t *order = ms_alloc((nblocks + 1) * sizeof(uint32_t));
   const uint32_t reachable = order_blocks(cx, order);
   cx->has_result_area = false;
-  cl_frame_areas(cx);
-  ms_cl_fn_begin(cx->fb, cx->mod->funcs[cx->index]);
+  clx_frame_areas(cx);
+  cl_fn_begin(cx->fb, cx->mod->funcs[cx->index]);
   enter_function(cx);
   for (uint32_t at = 1; at < reachable; at++) {
-    cx->blocks[order[at]] = ms_cl_block_new(cx->fb);
+    cx->blocks[order[at]] = cl_block_new(cx->fb);
     add_block_params(cx, order[at]);
     if (func->blocks.ptr[order[at]].cold) {
-      ms_cl_cold(cx->fb, cx->blocks[order[at]]);
+      cl_cold(cx->fb, cx->blocks[order[at]]);
     }
   }
   MsArena scratch = {0};
@@ -364,8 +364,8 @@ bool cl_lower_function(ClCx *cx) {
     ok = lower_block(cx, order[at], body);
   }
   if (ok) {
-    ms_cl_seal_all(cx->fb);
-    if (ms_cl_fn_end(cx->fb) != 0) {
+    cl_seal_all(cx->fb);
+    if (cl_fn_end(cx->fb) != 0) {
       cx->why = "Cranelift refused the function";
       ok = false;
     }

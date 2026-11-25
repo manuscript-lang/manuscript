@@ -42,7 +42,7 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
     kept->object = ms_strbuild_new();
     const ClOptions cl = {.export_all = true, .places = true, .tables = &kept->tables};
     kept->native = cranelift_load(options->cranelift, &cl_why) &&
-                   cl_emit_module(module, data, glue, &cl, &kept->object, &cl_why);
+                   clx_emit_module(module, data, glue, &cl, &kept->object, &cl_why);
     if (!kept->native) {
       ms_strbuild_free(&kept->object);
       if (getenv("MS_CRANELIFT_VERBOSE") != NULL) {

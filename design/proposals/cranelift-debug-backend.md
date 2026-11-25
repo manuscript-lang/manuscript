@@ -34,7 +34,7 @@ Measured with the emitter (same program, same machine): Debug wall 1.33 s to 0.5
 **Consuming it.** Same as the LLVM library:
 
 - `cmake/toolchain/cranelift-lib.lock` pins the tag and the digest of each archive; `cmake/FetchCraneliftLib.cmake` downloads and checks it into `.artifacts/cranelift-lib` and prints the path, which `MS_CRANELIFT` overrides.
-- `compiler/link/cranelift_inproc.c` loads it by path with the dynamic form of `ms_cranelift.h` (a function table filled by `ms_cl_bind`); the header is vendored with its digest in the lock. No link-time dependency.
+- `compiler/link/cranelift_inproc.c` loads it by path with the dynamic form of `cranelift.h` (a function table filled by `cl_bind`); the header is vendored with its digest in the lock. No link-time dependency.
 
 **Emitter.** `compiler/emit_cl` mirrors `compiler/emit` file for file (leaf, memory, scalar, checked, call, term, record, option, list, string, data, closure, iface), reading the same `MirModule`, `MirLayouts` and `MirData`, so a MIR rule is decided once:
 

@@ -6,8 +6,8 @@
 /* The header word offsets of a closure object. */
 enum { CLOSURE_CLONE = 0, CLOSURE_DROP = 8, CLOSURE_CODE = 16 };
 
-static void store_entry(ClCx *cx, ms_cl_val object, int32_t offset, uint32_t func) {
-  ms_cl_store(cx->fb, MS_CL_NOTRAP, ms_cl_func_addr(cx->fb, cx->mod->funcs[func]), object, offset);
+static void store_entry(ClCx *cx, cl_val object, int32_t offset, uint32_t func) {
+  cl_store(cx->fb, CL_NOTRAP, cl_func_addr(cx->fb, cx->mod->funcs[func]), object, offset);
 }
 
 /* `closure.new`: a frame slot or a heap block, the three header entries, then the captures. */
@@ -25,9 +25,9 @@ static bool closure_new(ClCx *cx, const MirInst *inst) {
     cx->why = "closure glue was not made";
     return false;
   }
-  const ms_cl_val object = framed ? ms_cl_stack_addr(cx->fb, ms_cl_stack_slot(cx->fb, layout.size, 4), 0)
-                                  : cl_alloc(cx, layout.size);
-  cl_set(cx, inst->res, 0, object);
+  const cl_val object = framed ? cl_stack_addr(cx->fb, cl_stack_slot(cx->fb, layout.size, 4), 0)
+                                  : clx_alloc(cx, layout.size);
+  clx_set(cx, inst->res, 0, object);
   store_entry(cx, object, CLOSURE_CLONE, clone);
   store_entry(cx, object, CLOSURE_DROP, drop);
   store_entry(cx, object, CLOSURE_CODE, code);
@@ -35,8 +35,8 @@ static bool closure_new(ClCx *cx, const MirInst *inst) {
     if (layout.captures[capture].leaves.len == 0) {
       continue;
     }
-    const ms_cl_val at = ms_cl_iadd(cx->fb, object, cl_const(cx, layout.captures[capture].offset));
-    cl_leaves_at(cx, inst->args[capture], at, false);
+    const cl_val at = cl_iadd(cx->fb, object, clx_const(cx, layout.captures[capture].offset));
+    clx_leaves_at(cx, inst->args[capture], at, false);
   }
   return true;
 }
@@ -49,16 +49,16 @@ static bool closure_capture(ClCx *cx, const MirInst *inst) {
     cx->why = "capture out of range";
     return false;
   }
-  const ms_cl_val at = ms_cl_iadd(cx->fb, cl_arg(cx, inst, 0), cl_const(cx, layout.captures[index].offset));
+  const cl_val at = cl_iadd(cx->fb, clx_arg(cx, inst, 0), clx_const(cx, layout.captures[index].offset));
   if (inst->op == MOP_ClosureCapAddr) {
-    cl_set(cx, inst->res, 0, at);
+    clx_set(cx, inst->res, 0, at);
   } else if (layout.captures[index].leaves.len != 0) {
-    cl_leaves_at(cx, inst->res, at, true);
+    clx_leaves_at(cx, inst->res, at, true);
   }
   return true;
 }
 
-bool cl_closure_op(ClCx *cx, const MirInst *inst, bool *handled) {
+bool clx_closure_op(ClCx *cx, const MirInst *inst, bool *handled) {
   *handled = true;
   switch ((MirOp)inst->op) {
   case MOP_ClosureNew:

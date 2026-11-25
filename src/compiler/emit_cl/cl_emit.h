@@ -21,7 +21,7 @@ typedef struct ClOptions {
 
 /* Lowers `module` (after emit_name_symbols) and appends the object file's bytes to `object`. False when some function
  * could not be lowered or the library refused; `why` then lists one `name: reason` line per function. */
-bool cl_emit_module(const MirModule *module, const MirData *data, const MirGlue *glue, const ClOptions *options,
+bool clx_emit_module(const MirModule *module, const MirData *data, const MirGlue *glue, const ClOptions *options,
                     MsStrBuild *object, MsStrBuild *why);
 
 #endif

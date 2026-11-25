@@ -8,4 +8,4 @@ Verified (2026-11-25): a YAML parse and print program builds in Debug in 0.50 s 
 
 Apply when: changing `src/compiler/emit_cl`, the bundle's C API, or anything that decides how Debug objects are written.
 Evidence: [proposal](../../proposals/cranelift-debug-backend.md), `src/compiler/emit_cl/`.
-Verify: `MS_CRANELIFT=<libms_cranelift> ms test <fixture>` prints no `falling back to LLVM` and matches the LLVM output.
+Verify: `MS_CRANELIFT=<libcranelift> ms test <fixture>` prints no `falling back to LLVM` and matches the LLVM output.

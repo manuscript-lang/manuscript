@@ -1,11 +1,11 @@
 /* compiler/emit_cl/cranelift_inproc.h: the Cranelift shared library (manuscript-lang/cranelift-bundle), loaded by path when
- * first used. Its API is the table `ms_cl_fns` of ms_cranelift.h, filled by `cranelift_load`; the Debug emitter
- * (compiler/emit_cl) calls the `ms_cl_*` functions through it. */
+ * first used. Its API is the table `cl_fns` of cranelift.h, filled by `cranelift_load`; the Debug emitter
+ * (compiler/emit_cl) calls the `cl_*` functions through it. */
 #ifndef MS_COMPILER_LINK_CRANELIFT_INPROC_H
 #define MS_COMPILER_LINK_CRANELIFT_INPROC_H
 
-#define MS_CL_DYNAMIC
-#include "compiler/emit_cl/ms_cranelift.h"
+#define CL_DYNAMIC
+#include "compiler/emit_cl/cranelift.h"
 
 #include "base/strbuild.h"
 

@@ -6,6 +6,6 @@
 
 /* Lowers `cx->func` (function `cx->index`) with the builder `cx->fb` and queues it for the library's workers; false with
  * `cx->why` set when it cannot. */
-bool cl_lower_function(ClCx *cx);
+bool clx_lower_function(ClCx *cx);
 
 #endif

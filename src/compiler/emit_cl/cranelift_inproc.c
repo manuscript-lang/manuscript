@@ -1,5 +1,5 @@
 /* Owns loading the Cranelift library and filling the function table (see cranelift_inproc.h). */
-#define MS_CL_DEFINE_API
+#define CL_DEFINE_API
 #include "compiler/emit_cl/cranelift_inproc.h"
 
 #include "base/dylib.h"
@@ -19,7 +19,7 @@ bool cranelift_load(MsSpan path, MsStrBuild *why) {
   if (!ms_dylib_open(path, &library, why)) {
     return false;
   }
-  const char *missing = ms_cl_bind(resolve, &library);
+  const char *missing = cl_bind(resolve, &library);
   if (missing != NULL) {
     ms_strbuild_append_text(why, "the Cranelift library lacks ");
     ms_strbuild_append_text(why, missing);
