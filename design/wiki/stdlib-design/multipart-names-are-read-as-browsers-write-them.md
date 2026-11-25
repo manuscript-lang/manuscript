@@ -1,0 +1,3 @@
+# Multipart names are read as browsers write them
+
+`parse_multipart` and `form_part` follow the HTML `multipart/form-data` encoding, not the RFC 2616 quoted-string: a quoted `name` or `filename` is literal, a backslash included, and a quote in it is written `%22` (CR and LF `%0D`, `%0A`). A value ends at the first quote followed by `;` or the end of the header, so `filename="C:\x\y.txt"` and a name ending in a backslash survive. Reading a quoted-pair dropped the backslash from every browser upload (found by comparing 150 browser-style bodies; the owner chose the browser reading in #7089). `format_media_type` and `parse_media_type` keep the generic quoted-string rules. A sender that escapes with `\"` (curl) shows the backslash and the quote in the name.

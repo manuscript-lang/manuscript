@@ -145,3 +145,31 @@ test "a part may be only headers or empty, as RFC 2046 allows" {
 		).is_error()
 	)?
 }
+
+test "multipart names are read as browsers write them: a backslash is literal" {
+	body := (
+		"--b\r\nContent-Disposition: form-data; name=\"up\"; filename=\"C:\\x\\y.txt\"\r\n\r\n1\r\n"
+		+ "--b\r\nContent-Disposition: form-data; name=\"tail\\\"; filename=\"a\\\"\r\n\r\n2\r\n"
+		+ "--b\r\nContent-Disposition: form-data; name=\"q%22uote\" ; filename=\"x;y.txt\"\r\n\r\n3\r\n"
+		+ "--b\r\nContent-Disposition: form-data; NAME=plain; filename=f.txt\r\n\r\n4\r\n--b--\r\n"
+	)
+	parts := parse_multipart(body.to_bytes(), "b")?
+	expect_equal(parts[0].name, "up")?
+	expect_equal(parts[0].filename, "C:\\x\\y.txt")?
+	expect_equal(parts[1].name, "tail\\")?
+	expect_equal(parts[1].filename, "a\\")?
+	expect_equal(parts[2].name, "q%22uote")?
+	expect_equal(parts[2].filename, "x;y.txt")?
+	expect_equal(parts[3].name, "plain")?
+	expect_equal(parts[3].filename, "f.txt")?
+}
+
+test "form_part writes a backslash literally and a quote as %22, and parse_multipart reads both back" {
+	part := form_part("a\\b", "x".to_bytes(), "C:\\dir\\f \"1\".txt")
+	disposition := part.headers.get("Content-Disposition") or ""
+	expect_equal(disposition, "form-data; name=\"a\\b\"; filename=\"C:\\dir\\f %221%22.txt\"")?
+
+	back := parse_multipart(encode_multipart([part], "b"), "b")?
+	expect_equal(back[0].name, "a\\b")?
+	expect_equal(back[0].filename, "C:\\dir\\f %221%22.txt")?
+}
