@@ -332,17 +332,32 @@ uint32_t mir_rpo(MsArena *arena, const MirFunc *func, MirBlock **order) {
   return (uint32_t)count;
 }
 
-/* The nearest common dominator of `a` and `b` by walking up the dominator tree. */
-static MirBlock intersect(const MirBlock *idom, const uint32_t *rank, MirBlock a, MirBlock b) {
-  while (a != b) {
-    while (rank[a] > rank[b]) {
-      a = idom[a];
-    }
-    while (rank[b] > rank[a]) {
-      b = idom[b];
-    }
+/* Lengauer and Tarjan's dominators, with path compression: near-linear in the edges. The iterative fixed point
+ * walked the dominator tree from each predecessor, so a block with many predecessors at different depths (the shared
+ * exit of a long function) cost the depth of each, and a function of thousands of statements was quadratic.
+ * Vertices are numbered in depth-first order from the entry; `semi` and `label` follow the paper. */
+typedef struct DomWork {
+  uint32_t *semi, *label, *ancestor, *stack;
+} DomWork;
+
+/* The vertex with the smallest semidominator on the compressed path from `v` to the root of its tree. */
+static uint32_t dom_eval(DomWork *w, uint32_t v) {
+  if (w->ancestor[v] == MIR_NONE) {
+    return v;
   }
-  return a;
+  size_t top = 0;
+  for (uint32_t x = v; w->ancestor[w->ancestor[x]] != MIR_NONE; x = w->ancestor[x]) {
+    w->stack[top++] = x;
+  }
+  while (top > 0) {
+    const uint32_t x = w->stack[--top];
+    const uint32_t a = w->ancestor[x];
+    if (w->semi[w->label[a]] < w->semi[w->label[x]]) {
+      w->label[x] = w->label[a];
+    }
+    w->ancestor[x] = w->ancestor[a];
+  }
+  return w->label[v];
 }
 
 bool mir_dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
@@ -354,39 +369,108 @@ bool mir_dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
 
 MirBlock *mir_dominators(MsArena *arena, const MirFunc *func, const MirBlock *order, uint32_t count,
                          const MirPreds *preds) {
+  (void)order;
+  (void)count;
   const uint32_t blocks = block_count(func);
-  uint32_t *rank = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)blocks + 1);
   MirBlock *idom = MS_ARENA_NEW_ARRAY(arena, MirBlock, (size_t)blocks + 1);
   for (uint32_t index = 0; index < blocks; index++) {
-    rank[index] = MIR_NONE;
     idom[index] = MIR_NONE;
-  }
-  for (uint32_t index = 0; index < count; index++) {
-    rank[order[index]] = index;
   }
   if (blocks == 0) {
     return idom;
   }
-  idom[0] = 0;
-  for (bool changed = true; changed;) {
-    changed = false;
-    for (uint32_t index = 1; index < count; index++) {
-      const MirBlock block = order[index];
-      MirBlock best = MIR_NONE;
-      for (uint32_t k = 0; k < mir_preds_count(preds, block); k++) {
-        const MirBlock pred = mir_pred(preds, block, k);
-        if (idom[pred] == MIR_NONE || rank[pred] == MIR_NONE) {
-          continue;
-        }
-        best = best == MIR_NONE ? pred : intersect(idom, rank, pred, best);
-      }
-      if (best != idom[block]) {
-        idom[block] = best;
-        changed = true;
-      }
+  const size_t n = (size_t)blocks + 1;
+  uint32_t *dfn = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);        /* block -> depth-first number, MIR_NONE if unreached */
+  MirBlock *vertex = MS_ARENA_NEW_ARRAY(arena, MirBlock, n);     /* number -> block */
+  uint32_t *parent = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);     /* number -> number of the tree parent */
+  uint32_t *next_edge = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);  /* number -> next successor to visit */
+  DomWork w = {.semi = MS_ARENA_NEW_ARRAY(arena, uint32_t, n), .label = MS_ARENA_NEW_ARRAY(arena, uint32_t, n),
+               .ancestor = MS_ARENA_NEW_ARRAY(arena, uint32_t, n), .stack = MS_ARENA_NEW_ARRAY(arena, uint32_t, n)};
+  uint32_t *bucket = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);     /* semidominator number -> first vertex in its bucket */
+  uint32_t *bucket_next = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);
+  uint32_t *dom = MS_ARENA_NEW_ARRAY(arena, uint32_t, n);        /* number -> number of its immediate dominator */
+  for (uint32_t index = 0; index < blocks; index++) {
+    dfn[index] = MIR_NONE;
+    bucket[index] = MIR_NONE;
+  }
+  uint32_t reached = 0;
+  dfn[0] = 0;
+  vertex[0] = 0;
+  parent[0] = MIR_NONE;
+  next_edge[0] = 0;
+  reached = 1;
+  for (uint32_t top = 0; top != MIR_NONE;) {
+    const MirTerm *term = &func->blocks.ptr[vertex[top]].term;
+    if (next_edge[top] >= mir_term_ntargets(term)) {
+      top = parent[top];
+      continue;
+    }
+    const MirBlock to = mir_term_target_const(term, next_edge[top]++)->block;
+    if (dfn[to] == MIR_NONE) {
+      dfn[to] = reached;
+      vertex[reached] = to;
+      parent[reached] = top;
+      next_edge[reached] = 0;
+      top = reached++;
     }
   }
+  for (uint32_t i = 0; i < reached; i++) {
+    w.semi[i] = i;
+    w.label[i] = i;
+    w.ancestor[i] = MIR_NONE;
+  }
+  for (uint32_t i = reached; i-- > 1;) {
+    const MirBlock block = vertex[i];
+    for (uint32_t k = 0; k < mir_preds_count(preds, block); k++) {
+      const uint32_t from = dfn[mir_pred(preds, block, k)];
+      if (from == MIR_NONE) {
+        continue;
+      }
+      const uint32_t u = dom_eval(&w, from);
+      if (w.semi[u] < w.semi[i]) {
+        w.semi[i] = w.semi[u];
+      }
+    }
+    bucket_next[i] = bucket[w.semi[i]];
+    bucket[w.semi[i]] = i;
+    w.ancestor[i] = parent[i];
+    for (uint32_t v = bucket[parent[i]]; v != MIR_NONE; v = bucket_next[v]) {
+      const uint32_t u = dom_eval(&w, v);
+      dom[v] = w.semi[u] < w.semi[v] ? u : parent[i];
+    }
+    bucket[parent[i]] = MIR_NONE;
+  }
+  for (uint32_t i = 1; i < reached; i++) {
+    if (dom[i] != w.semi[i]) {
+      dom[i] = dom[dom[i]];
+    }
+    idom[vertex[i]] = vertex[dom[i]];
+  }
+  idom[0] = 0;
   return idom;
+}
+
+MirDomTree mir_dom_tree(MsArena *arena, const MirFunc *func, const MirBlock *order, uint32_t reachable,
+                        const MirBlock *idom) {
+  const size_t n = func->blocks.len;
+  uint32_t *pre = MS_ARENA_NEW_ARRAY(arena, uint32_t, n + 1);
+  uint32_t *size = MS_ARENA_NEW_ARRAY(arena, uint32_t, n + 1);
+  uint32_t *next = MS_ARENA_NEW_ARRAY(arena, uint32_t, n + 1);
+  for (uint32_t i = 0; i < reachable; i++) {
+    size[order[i]] = 1;
+  }
+  for (uint32_t i = reachable; i > 1; i--) { /* the entry is first, and a block follows its dominator */
+    size[idom[order[i - 1]]] += size[order[i - 1]];
+  }
+  for (uint32_t i = 0; i < reachable; i++) {
+    const MirBlock b = order[i];
+    pre[b] = i == 0 ? 0 : next[idom[b]];
+    if (i != 0) {
+      next[idom[b]] += size[b];
+    }
+    next[b] = pre[b] + 1;
+  }
+  return (MirDomTree){.idom = idom, .pre = pre, .size = size};
 }
 
 uint32_t mir_inst_count(const MirFunc *func) {

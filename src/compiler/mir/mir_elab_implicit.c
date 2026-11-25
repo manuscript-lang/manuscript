@@ -11,13 +11,16 @@
 static MirBits named_values(MsArena *ma, const MirFunc *func, MirBits *alias_moved) {
   MirBits named = mir_bits_new(ma, (uint32_t)func->values.len + 1);
   MirBits carried = mir_bits_new(ma, (uint32_t)func->values.len + 1);
+  /* `here[v] == b + 1` when `v` is disowned in block `b`: one table for the function, where a bit set per block made
+   * the memory and the time blocks times values. */
+  uint32_t *here = MS_ARENA_NEW_ARRAY(ma, uint32_t, (size_t)func->values.len + 1);
   for (size_t b = 0; b < func->blocks.len; b++) {
     const MirInstList *insts = &func->blocks.ptr[b].insts;
-    MirBits here = mir_bits_new(ma, (uint32_t)func->values.len + 1); /* disowned in this block */
+    const uint32_t stamp = (uint32_t)b + 1;
     for (size_t i = 0; i < insts->len; i++) {
       const MirInst *inst = &insts->ptr[i];
       for (uint32_t a = 0; inst->op == MOP_ScopeDisown && a < inst->nargs; a++) {
-        mir_bits_set(&here, inst->args[a]);
+        here[inst->args[a]] = stamp;
       }
       const bool marker = inst->op == MOP_ScopeOwn || inst->op == MOP_ScopeMark ||
                           inst->op == MOP_ScopeUnpin;
@@ -25,7 +28,7 @@ static MirBits named_values(MsArena *ma, const MirFunc *func, MirBits *alias_mov
         mir_bits_set(&named, inst->args[a]);
       }
       for (uint32_t a = 0; inst->op == MOP_Put && a < inst->nargs; a++) {
-        if (!mir_bits_test(&here, inst->args[a])) {
+        if (here[inst->args[a]] != stamp) {
           mir_bits_set(&carried, inst->args[a]); /* stored into a slot that keeps it */
         }
       }
@@ -35,12 +38,12 @@ static MirBits named_values(MsArena *ma, const MirFunc *func, MirBits *alias_mov
     for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
       const MirTarget *edge = mir_term_target(term, t);
       for (uint32_t a = 0; a < edge->nargs; a++) {
-        if (!mir_bits_test(&here, edge->args[a])) {
+        if (here[edge->args[a]] != stamp) {
           mir_bits_set(&carried, edge->args[a]);
         }
       }
     }
-    if (term->value != MIR_NONE && term->kind == MT_RET && !mir_bits_test(&here, term->value)) {
+    if (term->value != MIR_NONE && term->kind == MT_RET && here[term->value] != stamp) {
       mir_bits_set(&carried, term->value);
     }
   }
