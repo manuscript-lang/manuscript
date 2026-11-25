@@ -59,6 +59,7 @@ struct MsTypeRef {
   MsParams params;   /* fn */
   MsTypeRef *result; /* fn */
   bool result_moves; /* fn: the result is written `move T`, owned memory handed over */
+  bool is_ref;       /* written `&T`: a reference to a value owned elsewhere (`&T?` marks the payload) */
 };
 
 struct MsParam {
