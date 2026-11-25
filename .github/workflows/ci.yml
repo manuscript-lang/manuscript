@@ -66,7 +66,7 @@ jobs:
           file .artifacts/rc | cut -c1-200
           fails=0
           for i in $(seq 1 400); do
-            rc=0; GIT=/usr/bin/git MS=$ms "$ms" run tools/repo-check.ms > .artifacts/probe.out 2>&1 || rc=$?
+            rc=0; MS_CRANELIFT=off GIT=/usr/bin/git MS=$ms "$ms" run tools/repo-check.ms > .artifacts/probe.out 2>&1 || rc=$?
             if [ $rc -ne 0 ]; then
               fails=$((fails+1)); echo "== llvm run $i exit $rc"; tail -5 .artifacts/probe.out; sha1sum .artifacts/rc
               for c in .artifacts/cores/core.*; do
