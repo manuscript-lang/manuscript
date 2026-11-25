@@ -184,3 +184,7 @@ The old `workers` ran 16 prime-counting chunks and then 100k promises of about 1
 ## 2026-11-14: a list updated in place in a loop is registered once
 
 Same sandbox (4 cores). The `workers` chunk loop (200,000 steps updating a 256-bucket list) inside a promise registered and discarded an unwind cleanup for the list on every iteration. It is now registered once before the loop. One thread: promise 185 ms to 113 ms (min of 7); the same loop called directly is 113 ms (Rust 101 ms on one core). Callgrind: 3.51G to 1.21G instructions. Conformance: 3964 and 1458 fixtures pass on Cranelift and LLVM.
+
+## 2026-11-25: list fusion matches fault exits
+
+Callgrind instruction counts, `ms` built from this branch against its parent, same machine (4 vCPU VM): `graph` 619.4M to 558.6M (-9.8%); a `map`/`filter`/`sum` chain over 1000 `Int` repeated 2000 times 62.9M to 24.9M; `hashing` 1177M to 1220M (+3.6%, wall time equal, the change is in `sha256`'s LLVM schedule after fewer unwinding tests); `csvgroup`, `dispatch`, `exprparse`, `interp`, `lz`, `sim`, `sortrecords`, `wordfreq` within 0.2%. `wordfreq` and `report` build lists of `String` pieces, which fusion does not take yet.
