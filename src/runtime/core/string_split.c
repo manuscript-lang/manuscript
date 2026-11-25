@@ -44,9 +44,20 @@ static void split_scalars(MsSpan text, MsStringList *list, PieceMode mode) {
   }
 }
 
-/* Split at a separator of one or more bytes. */
+/* Split at a separator of one or more bytes. The pieces are counted first, so the list is sized once instead of
+ * growing by doubling (a second pass over the text costs less than the reallocations it replaces). */
 static void split_at_pattern(MsSpan text, MsSpan separator, MsStringList *list, PieceMode mode) {
   const MsNeedle needle = ms_needle_for(separator, text.len);
+  size_t pieces = 1;
+  for (size_t at = 0;;) {
+    const size_t hit = ms_needle_find(&needle, between(text, at, text.len));
+    if (hit == SIZE_MAX) {
+      break;
+    }
+    pieces++;
+    at += hit + separator.len;
+  }
+  ms_string_list_reserve(list, pieces);
   size_t piece_start = 0;
   for (;;) {
     const size_t hit = ms_needle_find(&needle, between(text, piece_start, text.len));

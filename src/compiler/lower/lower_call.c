@@ -103,6 +103,59 @@ static bool held_across(const MsCall *call, bool native) {
   return native && (call->callee.kind == MS_REF_NATIVE || call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_FUNCTION);
 }
 
+/* The declared parameter that argument `index` fills: the arguments of a call may start with a receiver the type lacks. */
+static const MsTyParam *declared_param(const MsTyTable *types, const MsCall *call, uint32_t index) {
+  const size_t declared = ms_ty_param_count(types, call->callee_ty);
+  const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+  return &ms_ty_params(types, call->callee_ty)[at];
+}
+
+/* An argument left out that the parameter's default fills; a resource default waits in `pending` for a later fault. */
+static MirValue arg_default(LowerFn *fn, const MsCall *call, const MsCallArg *arg, uint32_t index, MirValue *out,
+                            MirValue *pending) {
+  const MsTyTable *types = &fn->cx->program->types;
+  const MsTyParam *param = declared_param(types, call, index);
+  const bool outer_has_self = fn->default_has_self; /* an ordinary call inside a method value's default */
+  const LowerOuterEnv caller = fn_env_capture(fn);
+  fn->default_has_self = false;
+  fn->default_call = call;
+  fn->default_args = out;
+  const DefaultExit *saved_exit = fn->default_exit;
+  fn->default_exit = fn->call_exit != NULL ? fn->call_exit : saved_exit;
+  const MirValue value = fn_default_argument(fn, call, arg, fn_type(fn, param->ty), &caller);
+  fn->default_exit = saved_exit;
+  fn->default_call = NULL;
+  fn->default_args = NULL;
+  fn->default_has_self = outer_has_self;
+  if (owning_constructor(call) && value != MIR_NONE) {
+    /* A default resource waits in a closing slot too: a later default that faults closes it. */
+    const MsTy ty = ms_ty_subst(&fn->cx->program->types, param->ty, fn->subst.vars, fn->subst.args, fn->subst.count);
+    *pending = fn_pending_own(fn, ty, value);
+  }
+  return value;
+}
+
+/* An argument whose value is missing at the call (`?` left out of a lifted parameter). */
+static MirValue arg_missing(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index) {
+  const MsTyParam *param = declared_param(&fn->cx->program->types, call, index);
+  MirValue value = fn_missing_value(fn, expr->pos);
+  if (value != MIR_NONE && (param->flags & MS_PARAM_LIFTED) != 0) {
+    const MirTy opt = mir_ty_opt(fn->cx->module, mir_b_ty(&fn->b, value)); /* an omittable parameter is passed as an optional */
+    value = fn_emit(fn, MOP_OptSome, &value, 1, (MirImm){0}, opt);
+  }
+  return value;
+}
+
+/* An omittable parameter the call leaves out: `none` of its type. */
+static MirValue arg_omitted(LowerFn *fn, const MsCall *call, uint32_t index) {
+  const MsTyParam *param = declared_param(&fn->cx->program->types, call, index);
+  MirTy ty = fn_type(fn, param->ty);
+  if ((param->flags & MS_PARAM_LIFTED) != 0 && ty != MIR_VOID && mir_ty_data(fn->cx->module, ty)->kind != MK_OPT) {
+    ty = mir_ty_opt(fn->cx->module, ty); /* an omittable parameter is passed as an optional */
+  }
+  return ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty);
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var, bool native, MirValue *held) {
   uint32_t order_small[LOWER_MAX_ARGS];
@@ -215,46 +268,11 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
         pending[index] = fn_pending_own(fn, checked, out[index]);
       }
     } else if (arg->source == MS_ARG_DEFAULT) {
-      const MsTyTable *types = &fn->cx->program->types;
-      const size_t declared = ms_ty_param_count(types, call->callee_ty);
-      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
-      const bool outer_has_self = fn->default_has_self; /* an ordinary call inside a method value's default */
-      const LowerOuterEnv caller = fn_env_capture(fn);
-      fn->default_has_self = false;
-      fn->default_call = call;
-      fn->default_args = out;
-      const DefaultExit *saved_exit = fn->default_exit;
-      fn->default_exit = fn->call_exit != NULL ? fn->call_exit : saved_exit;
-      out[index] = fn_default_argument(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty), &caller);
-      fn->default_exit = saved_exit;
-      fn->default_call = NULL;
-      fn->default_args = NULL;
-      fn->default_has_self = outer_has_self;
-      if (owning_constructor(call) && out[index] != MIR_NONE) {
-        /* A default resource waits in a closing slot too: a later default that faults closes it. */
-        const MsTy param = ms_ty_subst(&fn->cx->program->types, ms_ty_params(types, call->callee_ty)[at].ty, fn->subst.vars, fn->subst.args,
-                                       fn->subst.count);
-        pending[index] = fn_pending_own(fn, param, out[index]);
-      }
+      out[index] = arg_default(fn, call, arg, index, out, &pending[index]);
     } else if (arg->source == MS_ARG_MISSING_VALUE) {
-      const MsTyTable *types = &fn->cx->program->types;
-      const size_t declared = ms_ty_param_count(types, call->callee_ty);
-      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
-      out[index] = fn_missing_value(fn, expr->pos);
-      if (out[index] != MIR_NONE && (ms_ty_params(types, call->callee_ty)[at].flags & MS_PARAM_LIFTED) != 0) {
-        const MirTy opt = mir_ty_opt(fn->cx->module, mir_b_ty(&fn->b, out[index])); /* an omittable parameter is passed as an optional */
-        out[index] = fn_emit(fn, MOP_OptSome, &out[index], 1, (MirImm){0}, opt);
-      }
+      out[index] = arg_missing(fn, expr, call, index);
     } else {
-      const MsTyTable *types = &fn->cx->program->types;
-      const size_t declared = ms_ty_param_count(types, call->callee_ty);
-      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
-      const MsTyParam *param = &ms_ty_params(types, call->callee_ty)[at];
-      MirTy ty = fn_type(fn, param->ty);
-      if ((param->flags & MS_PARAM_LIFTED) != 0 && ty != MIR_VOID && mir_ty_data(fn->cx->module, ty)->kind != MK_OPT) {
-        ty = mir_ty_opt(fn->cx->module, ty); /* an omittable parameter is passed as an optional */
-      }
-      out[index] = ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty);
+      out[index] = arg_omitted(fn, call, index);
     }
     if (out[index] == MIR_NONE) {
       return fn_fail(fn, "argument %u of the call at %u:%u has no value (callee kind %d)", index + 1, expr->pos.line, expr->pos.column, (int)call->callee.kind);

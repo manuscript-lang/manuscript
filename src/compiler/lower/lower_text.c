@@ -11,6 +11,7 @@ enum { TEXT_MAX_PIECES = 16 }; /* pieces joined from a frame array; more come fr
 typedef struct TextPiece {
   MirValue value;
   bool is_int;
+  bool borrowed; /* a String read in place: joining copies it, and a lone piece is cloned to be owned */
 } TextPiece;
 
 static MirValue call_join(LowerFn *fn, const char *prefix, uint32_t count, const MirTy *params, uint32_t nparams,
@@ -55,7 +56,7 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
     return call_join(fn, "msrt_int_to_string", 0, &param, 1, &pieces[0].value, MR_INT_TO_STRING);
   }
   if (count == 1) {
-    return pieces[0].value;
+    return pieces[0].borrowed ? fn_emit(fn, MOP_Clone, &pieces[0].value, 1, (MirImm){0}, MIR_STR) : pieces[0].value;
   }
   MirTy params[TEXT_MAX_PIECES];
   MirValue args[TEXT_MAX_PIECES];
@@ -113,7 +114,7 @@ MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty) {
 static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
   if (part->expr == NULL) {
     const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, part->lit)};
-    *out = (TextPiece){mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR), false};
+    *out = (TextPiece){mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR), false, false};
     return true;
   }
   const MirValue value = fn_expr(fn, part->expr, LW_BORROW);
@@ -123,19 +124,19 @@ static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   const MsTy source = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, part->expr->id), fn->subst.vars,
                                   fn->subst.args, fn->subst.count);
+  if (ty == MIR_INT || ty == MIR_STR) { /* a String is its own text: written in place, never copied */
+    *out = (TextPiece){value, ty == MIR_INT, ty == MIR_STR};
+    return true;
+  }
   const uint32_t own = lower_named_method(fn->cx, source, "to_string");
   if (own != MIR_NONE && fn->cx->module->funcs.ptr[own].ret == MIR_STR) { /* a type with its own text-valued `to_string` is written by it */
     const MirValue text = mir_b_call(&fn->b, own, &value, 1);
     fn_own_result(fn, text);
-    *out = (TextPiece){text, false};
+    *out = (TextPiece){text, false, false};
     return text != MIR_NONE;
   }
-  if (ty == MIR_INT || ty == MIR_STR) {
-    *out = (TextPiece){value, ty == MIR_INT};
-    return true;
-  }
   const MirValue text = fn_value_text(fn, value, ty);
-  *out = (TextPiece){text, false};
+  *out = (TextPiece){text, false, false};
   return text != MIR_NONE;
 }
 

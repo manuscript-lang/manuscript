@@ -45,7 +45,7 @@ export fn parse_dotenv(text String) Map[String, String]! {
 		lead := value.scalar_at(0, -1)
 
 		if lead != 39 and lead != 34 and lead != 96 {
-			out.add(name, bare_value(value.trim()))
+			out.add(name.clone(), bare_value(value.trim()))
 			continue
 		}
 
@@ -74,7 +74,7 @@ export fn parse_dotenv(text String) Map[String, String]! {
 			"#"
 		) { return error(config_error(number, "unexpected text after quoted value")) }
 
-		out.add(name, body.view(0, end).clone())
+		out.add(name.clone(), body.view(0, end).clone())
 	}
 
 	return ok(out)
@@ -123,7 +123,7 @@ export fn parse_ini(text String) Map[String, Map[String, String]]! {
 		if key.is_empty() { return error(config_error(number, "empty key")) }
 
 		if var section = sections.get(current) {
-			section.add(key, ini_value(entry.view(at + 1, entry.length())))
+			section.add(key.clone(), ini_value(entry.view(at + 1, entry.length())))
 		}
 	}
 
@@ -145,7 +145,7 @@ fn bare_value(value String) String {
 		at += c.length()
 	}
 
-	return value.trim()
+	return value.trim().clone()
 }
 
 fn valid_name(name String) Bool {

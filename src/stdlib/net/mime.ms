@@ -70,8 +70,9 @@ fn Headers.to_string() String {
 	return out
 }
 
-// One multipart part: its headers, the decoded `name` and `filename` from
-// Content-Disposition, and body bytes.
+// One multipart part: its headers, the `name` and `filename` from Content-Disposition,
+// and body bytes. The two names are read as browsers write them: a quoted value is
+// literal, a backslash included, and a quote in it is `%22`.
 export type Part {
 	// Part body without the delimiter line breaks.
 	data Bytes
@@ -263,6 +264,81 @@ fn quote_value(value String) String {
 	return f"\"{escaped}\""
 }
 
+// The parameters of a part's Content-Disposition, read as browsers write them (the HTML
+// multipart/form-data encoding): a quoted value takes every character literally, a
+// backslash included, so `C:\x\y.txt` survives, and ends at the first quote followed by
+// `;` or the end of the header. Browsers escape a quote in a name as `%22`, so no quote
+// inside a value precedes a `;`. Names are lower-cased and the first of a repeated name
+// wins.
+fn disposition_params(text String) Map[String, String] {
+	var cs = List[String]()
+	for c in text.chars() { cs.append(c.clone()) }
+
+	var params = Map[String, String]()
+	count := cs.length()
+	var at = 0
+	while at < count and cs[at] != ";" { at += 1 }
+
+	while at < count {
+		at += 1
+
+		var name = ""
+
+		while at < count and cs[at] != "=" and cs[at] != ";" {
+			name += cs[at]
+			at += 1
+		}
+
+		if at >= count or cs[at] == ";" { continue }
+
+		at += 1
+		while at < count and (cs[at] == " " or cs[at] == "\t") { at += 1 }
+
+		var value = ""
+
+		if at < count and cs[at] == "\"" {
+			at += 1
+
+			var closed = false
+
+			while at < count and not closed {
+				var end = at + 1
+				while end < count and (cs[end] == " " or cs[end] == "\t") { end += 1 }
+
+				if cs[at] == "\"" and (end >= count or cs[end] == ";") {
+					closed = true
+					at = end
+				} else {
+					value += cs[at]
+					at += 1
+				}
+			}
+		} else {
+			while at < count and cs[at] != ";" {
+				value += cs[at]
+				at += 1
+			}
+
+			value = value.trim()
+		}
+
+		key := name.trim().lower()
+		if not key.is_empty() and params.get(key) == null {
+			params.add(key, value)
+		}
+	}
+
+	return params
+}
+
+// A form field or file name as browsers write it in Content-Disposition: always quoted,
+// a quote, CR and LF as
+// `%22`, `%0D` and `%0A`, everything else, a backslash included, as it is. `disposition_params` reads it back.
+fn form_value(value String) String {
+	safe := value.replace("\r", "%0D").replace("\n", "%0A").replace("\"", "%22")
+	return f"\"{safe}\""
+}
+
 // Parses a header block (up to the first blank line). Continuation lines starting with
 // space or tab join the previous value with one space. A line without a colon, or a
 // fold before any field, returns `EBADMSG`.
@@ -294,7 +370,7 @@ export fn parse_headers(text String) Headers! {
 		fields.append(
 			HeaderField(
 				name: line.view(0, at).trim().clone(),
-				value: line.view((at) + 1, line.length()).trim(),
+				value: line.view((at) + 1, line.length()).trim().clone(),
 			)
 		)
 	}
@@ -365,14 +441,9 @@ fn make_part(section Bytes) Part! {
 	disposition := part.headers.get("Content-Disposition")
 
 	if disposition != null {
-		media := parse_media_type(
-			f"x/x{disposition.view(disposition.index_of(";") or disposition.length(), disposition.length())}"
-		)
-
-		if media.is_ok() {
-			part.name = media.get().params.get_or("name", "")
-			part.filename = media.get().params.get_or("filename", "")
-		}
+		params := disposition_params(disposition)
+		part.name = params.get_or("name", "")
+		part.filename = params.get_or("filename", "")
 	}
 
 	return ok(part)
@@ -561,8 +632,8 @@ export fn form_part(
 	filename,
 	content_type String = "",
 ) Part {
-	var disposition = f"form-data; name={quote_value(name)}"
-	if not filename.is_empty() { disposition = f"{disposition}; filename={quote_value(filename)}" }
+	var disposition = f"form-data; name={form_value(name)}"
+	if not filename.is_empty() { disposition = f"{disposition}; filename={form_value(filename)}" }
 
 	var fields = [HeaderField(name: "Content-Disposition", value: disposition)]
 	if not content_type.is_empty() {

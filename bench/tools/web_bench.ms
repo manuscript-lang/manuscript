@@ -42,7 +42,7 @@ fn say(text String) Void {
 }
 
 fn tail(text String) String {
-	return text.trim()
+	return text.trim().clone()
 }
 
 // The command line with CPU pinning when `cpus` is set.

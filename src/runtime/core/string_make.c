@@ -88,15 +88,6 @@ MsString msrt_string_from_block(uint8_t *block, size_t length) {
 }
 
 /* A string that is a copy of `string`: the same two words when they own nothing. */
-/* An optional string's `none` is a static string with a null pointer, which no real string is (a literal points at
- * its bytes), so the copy of `none` stays `none` rather than becoming an empty string. */
-static MsString cloned(const MsString *string) {
-  if (string->tagged == (UINT64_C(2) << MS_STRING_TAG_SHIFT) && string->low_bits == 0) {
-    return *string;
-  }
-  return ms_string_clone(string);
-}
-
 /* ---- construction ---- */
 
 void msrt_string_from_bytes(const uint8_t *ptr, size_t len, MsString *out) {
@@ -109,7 +100,7 @@ void msrt_string_empty(MsString *out) {
 
 void msrt_string_clone(const MsString *s, MsString *out) {
   ms_stats_copy(1, ms_string_span(s).len);
-  *out = cloned(s);
+  *out = ms_string_clone(s);
 }
 
 /* `tagged` is the second word of an owned string or a view, never of an inline string. */
@@ -161,11 +152,35 @@ static MsString join_strings(const MsString *const *parts, size_t count) {
   return msrt_string_join(spans, count);
 }
 
+/* Two inline strings that still fit one: the bytes of `b` shifted in after those of `a`, as 128-bit words, with no
+ * copy of a variable length. The bytes past an inline length are zero, so the or is the join. */
+static bool concat_inline(const MsString *a, const MsString *b, MsString *out) {
+  const uint64_t text_mask = (UINT64_C(1) << MS_STRING_INLINE_SHIFT) - 1; /* bytes 8 to 14 of the text */
+  if (!ms_string_is_inline(a) || !ms_string_is_inline(b)) {
+    return false;
+  }
+  const unsigned a_len = (unsigned)(a->tagged >> MS_STRING_INLINE_SHIFT) & 15u;
+  const unsigned b_len = (unsigned)(b->tagged >> MS_STRING_INLINE_SHIFT) & 15u;
+  if (a_len + b_len > MS_STRING_INLINE_MAX) {
+    return false;
+  }
+  const unsigned __int128 left = a->low_bits | ((unsigned __int128)(a->tagged & text_mask) << 64);
+  const unsigned __int128 right = b->low_bits | ((unsigned __int128)(b->tagged & text_mask) << 64);
+  const unsigned __int128 joined = left | (right << (8 * a_len));
+  out->low_bits = (uint64_t)joined;
+  out->tagged = ((uint64_t)(joined >> 64) & text_mask) | ((uint64_t)(a_len + b_len) << MS_STRING_INLINE_SHIFT) |
+                (UINT64_C(1) << MS_STRING_TAG_SHIFT);
+  return true;
+}
+
 void msrt_string_concat(const MsString *a, const MsString *b, MsString *out) {
+  if (concat_inline(a, b, out)) {
+    return;
+  }
   if (ms_string_is_empty(b)) {
-    *out = cloned(a);
+    *out = ms_string_clone(a);
   } else if (ms_string_is_empty(a)) {
-    *out = cloned(b);
+    *out = ms_string_clone(b);
   } else {
     const MsString *const parts[] = {a, b};
     *out = join_strings(parts, MS_COUNT_OF(parts));
@@ -323,6 +338,15 @@ void msrt_string_repeat(const MsString *s, int64_t count, MsString *out) {
     return;
   }
   const size_t total = text.len * (size_t)count;
+  if (text.len == 1 && total <= MS_STRING_INLINE_MAX) { /* one byte repeated: the two words of an inline string */
+    const uint64_t broadcast = UINT64_C(0x0101010101010101) * text.ptr[0];
+    const size_t low_len = total < 8 ? total : 8, high_len = total - low_len;
+    const uint64_t low_mask = low_len == 8 ? ~UINT64_C(0) : (UINT64_C(1) << (low_len * 8)) - 1;
+    out->low_bits = broadcast & low_mask;
+    out->tagged = (broadcast & ((UINT64_C(1) << (high_len * 8)) - 1)) | ((uint64_t)total << MS_STRING_INLINE_SHIFT) |
+                  (UINT64_C(1) << MS_STRING_TAG_SHIFT);
+    return;
+  }
   uint8_t small[MS_STRING_INLINE_MAX + 1];
   MsString result = ms_string_empty();
   uint8_t *destination = total <= MS_STRING_INLINE_MAX ? small : msrt_string_block_post(total, &result);
@@ -332,63 +356,6 @@ void msrt_string_repeat(const MsString *s, int64_t count, MsString *out) {
   }
   fill_repeated(destination, total, text);
   *out = total <= MS_STRING_INLINE_MAX ? msrt_string_make(ms_span_of(small, total)) : result;
-}
-
-/* ---- pad ---- */
-
-/* The byte length of `scalars` whole scalars repeated from `padding` (cutting the last copy), or SIZE_MAX past the
- * string limit. */
-static size_t padding_bytes(MsSpan padding, uint64_t scalars) {
-  const size_t pattern_scalars = ms_utf8_count(padding.ptr, padding.len);
-  if (pattern_scalars == padding.len) { /* one byte is one scalar */
-    return scalars > MSRT_STRING_LIMIT ? SIZE_MAX : (size_t)scalars;
-  }
-  const uint64_t copies = scalars / pattern_scalars;
-  if (copies > MSRT_STRING_LIMIT / padding.len) {
-    return SIZE_MAX;
-  }
-  size_t bytes = (size_t)copies * padding.len, cut = 0;
-  for (uint64_t rest = scalars % pattern_scalars; rest > 0; rest--) {
-    cut += ms_utf8_decode(padding.ptr + cut, padding.len - cut).width;
-  }
-  return bytes + cut;
-}
-
-/* `String.pad_start` / `pad_end`: the text with `padding` repeated (cutting the last copy) before or after it until
- * its scalar length reaches `target`, built in one block. A target not past the text, or empty padding, copies the
- * text; a result past the string limit faults like `concat`. */
-static void pad_text(const MsString *s, int64_t target, const MsString *padding, bool at_end, MsString *out) {
-  const MsSpan text = msrt_text(s);
-  const MsSpan pad = msrt_text(padding);
-  const size_t have = ms_utf8_count(text.ptr, text.len);
-  if (pad.len == 0 || target <= (int64_t)have) {
-    msrt_string_clone(s, out);
-    return;
-  }
-  const size_t filler = padding_bytes(pad, (uint64_t)target - have);
-  if (filler == SIZE_MAX || filler > MSRT_STRING_LIMIT - text.len) {
-    msrt_string_limit_post();
-    return;
-  }
-  const size_t total = text.len + filler;
-  uint8_t small[MS_STRING_INLINE_MAX + 1];
-  MsString result = ms_string_empty();
-  uint8_t *destination = total <= MS_STRING_INLINE_MAX ? small : msrt_string_block_post(total, &result);
-  if (destination == NULL) {
-    *out = result;
-    return;
-  }
-  __builtin_memcpy(destination + (at_end ? 0 : filler), text.ptr, text.len);
-  fill_repeated(destination + (at_end ? text.len : 0), filler, pad);
-  *out = total <= MS_STRING_INLINE_MAX ? ms_string_make_inline(ms_span_of(small, total)) : result;
-}
-
-void msrt_string_pad_start(const MsString *s, int64_t target, const MsString *padding, MsString *out) {
-  pad_text(s, target, padding, false, out);
-}
-
-void msrt_string_pad_end(const MsString *s, int64_t target, const MsString *padding, MsString *out) {
-  pad_text(s, target, padding, true, out);
 }
 
 /* Writes the scalars of `text` into `destination` last first. A String is valid UTF-8, so a scalar is a lead

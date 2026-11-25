@@ -30,35 +30,14 @@ void msrt_string_concat(const MsString *a, const MsString *b, MsString *out);
 void msrt_string_append(const MsString *a, const MsString *b, MsString *out);
 /* ms-sig: msrt_string_repeat(s: *const StrVal, count: i64, out: *mut StrVal) @domain=string @end */
 void msrt_string_repeat(const MsString *s, int64_t count, MsString *out);
-/* ms-sig: msrt_string_pad_start(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string
- * @end */
-void msrt_string_pad_start(const MsString *s, int64_t target, const MsString *padding, MsString *out);
-/* ms-sig: msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal) @domain=string
- * @end */
-void msrt_string_pad_end(const MsString *s, int64_t target, const MsString *padding, MsString *out);
 /* ms-sig: msrt_string_reverse(a: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_reverse(const MsString *a, MsString *out);
-/* ms-sig: msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string
- * */
-void msrt_string_trim_view(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string
- * */
-void msrt_string_trim_start_view(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) @borrows @domain=string
- * */
-void msrt_string_trim_end_view(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim(s: *const StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_trim(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string */
 void msrt_string_trim(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string */
 void msrt_string_trim_start(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) @borrows @leaf @domain=string */
 void msrt_string_trim_end(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
-void msrt_string_trim_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_start_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
-void msrt_string_trim_start_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_trim_end_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
-void msrt_string_trim_end_take(MsString *s, MsString *out);
 /* ms-sig: msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) @domain=string @end */
 void msrt_string_char_at(const MsString *s, int64_t at, MsString *out);
 /* ms-sig: msrt_string_slice(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @domain=string @end */
@@ -107,7 +86,7 @@ uint8_t msrt_string_last_index_of(const MsString *a, const MsString *v, int64_t 
 void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out);
 /* ms-sig: msrt_string_chars(s: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_chars(const MsString *s, MsList *out);
-/* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @domain=string @end */
+/* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @borrows @domain=string @end */
 void msrt_string_lines(const MsString *s, MsList *out);
 /* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_fields(const MsString *s, MsList *out);

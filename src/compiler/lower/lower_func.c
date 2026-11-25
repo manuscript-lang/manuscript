@@ -1,6 +1,7 @@
 /* compiler/lower/lower_func.c: the lowering driver. Functions are lowered on demand from `main`: a use of a
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
+#include <stdio.h>
 #include "base/fatal.h"
 #include "base/env.h"
 #include "compiler/lower/lower_fn.h"
@@ -368,7 +369,11 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, cons
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
 static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs) {
   if (target->func != NULL && target->func->deferred) {
-    ms_fatal(MS_FATAL_INVARIANT, "lowering reached a standard body the checker never checked");
+    const MsSpan name = ms_names_span(cx->program->names, target->name);
+    char message[160];
+    (void)snprintf(message, sizeof message, "lowering reached `%.*s`, a standard body the checker never checked",
+                   (int)name.len, (const char *)name.ptr);
+    ms_fatal(MS_FATAL_INVARIANT, message);
   }
   MsTy vars[16];
   if (nargs > 16 || (nargs > 0 && !decl_variables(cx, target, vars, nargs))) {
@@ -709,9 +714,6 @@ bool lower_pending(Lower *cx) {
 }
 
 void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
-  if (program->lazy_std) {
-    ms_fatal(MS_FATAL_INVARIANT, "a program checked for analysis only was lowered");
-  }
   *cx = (Lower){.program = program, .module = module, .error = error, .unwinding = MIR_NONE};
   MsString probe = ms_string_empty();
   cx->copy_probe = ms_env_get("MS_COPY_PROBE", &probe) && ms_string_span(&probe).len != 0;

@@ -308,7 +308,13 @@ fn tokenize(source String) List[Token]! {
 			tokens.append(Token(action: false, body: text, line: line))
 		}
 		if not body.trim().starts_with("#") {
-			tokens.append(Token(action: true, body: body.trim(), line: action_line))
+			tokens.append(
+				Token(
+					action: true,
+					body: body.trim().clone(),
+					line: action_line,
+				)
+			)
 		}
 		line = action_line + count_lines(raw)
 		literal = tail
@@ -711,7 +717,7 @@ fn var Builder.for_block(header String, line, depth Int) TemplateNode! {
 		return error(syntax_error(line: line, reason: "for takes one or two names"))
 	}
 
-	first := names[0].trim()
+	first := names[0].trim().clone()
 	second := if names.length() == 2 { names[1].trim() } else { "" }
 	if first.is_empty() or not is_word_start(first.chars()[0]) or first.contains(".") {
 		return error(syntax_error(line: line, reason: "bad loop name"))

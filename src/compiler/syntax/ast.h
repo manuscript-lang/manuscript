@@ -307,6 +307,11 @@ typedef struct MsFunc {
   bool deferred; /* the checker set the body aside until a call reaches it (check/lazy_std.c): not a bodiless function */
 } MsFunc;
 
+/* Whether the function has a source body to run, checked yet or not: false for an external or bodiless one. */
+static inline bool ms_func_has_body(const MsFunc *func) {
+  return !func->external && (func->body.len > 0 || func->deferred);
+}
+
 typedef struct MsMethod {
   uint32_t id;
   MsPos pos;
@@ -452,13 +457,13 @@ static inline bool ms_decl_is_inherent_impl(const MsDecl *decl) {
 /* Whether the declaration carries an implementation: a body, an `extern fn`, a constant, alias or test. */
 static inline bool ms_decl_has_body(const MsDecl *decl) {
   switch ((MsDeclKind)decl->kind) {
-  case MS_D_FN: return decl->u.fn.body.len > 0 || decl->u.fn.external;
+  case MS_D_FN: return decl->u.fn.body.len > 0 || decl->u.fn.deferred || decl->u.fn.external;
   case MS_D_CONST:
   case MS_D_ALIAS: return true;
   case MS_D_TEST: return decl->u.test.body.len > 0;
   case MS_D_IMPL:
     for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
-      if (decl->u.impl.methods.ptr[i]->func.body.len > 0) {
+      if (decl->u.impl.methods.ptr[i]->func.body.len > 0 || decl->u.impl.methods.ptr[i]->func.deferred) {
         return true;
       }
     }

@@ -100,7 +100,7 @@ fn parameters(header String) List[String] {
 				continue
 			}
 		} else if c == "," and depth == 1 {
-			found.append(current.trim())
+			found.append(current.trim().clone())
 			current = ""
 			continue
 		}
@@ -108,7 +108,7 @@ fn parameters(header String) List[String] {
 		current = f"{current}{c}"
 	}
 
-	if current.trim() != "" { found.append(current.trim()) }
+	if current.trim() != "" { found.append(current.trim().clone()) }
 	return found
 }
 
@@ -138,7 +138,7 @@ fn header_from(lines List[String], start Int) String {
 		at += 1
 	}
 
-	return text.trim()
+	return text.trim().clone()
 }
 
 // The declared name `Type.method` or `name` of a header that starts after `fn `.
@@ -264,7 +264,7 @@ fn type_names(text String, only_exported Bool) List[String] {
 fn allow_list(path String) List[String] {
 	entries := text_of(path).split("\n").filter(
 		line => (line != "" and not line.starts_with("//"))
-	).map(line => line.trim())
+	).map(line => line.trim().clone())
 	return entries
 }
 

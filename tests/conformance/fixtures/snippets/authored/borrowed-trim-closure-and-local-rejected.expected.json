@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot return a view of `line`: a returned `String` is owned and a view only borrows `line`; copy it with `.clone()` after the view",
+        "position": {
+          "file": "borrowed-trim-closure-and-local-rejected.ms",
+          "line": 6,
+          "column": 35,
+          "offset": 299
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot return a view of `text`: a returned `String` is owned and a view only borrows `text`; copy it with `.clone()` after the view",
+        "position": {
+          "file": "borrowed-trim-closure-and-local-rejected.ms",
+          "line": 11,
+          "column": 17,
+          "offset": 425
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/borrowed-trim-closure-and-local-rejected.ms:6:35: type: cannot return a view of `line`: a returned `String` is owned and a view only borrows `line`; copy it with `.clone()` after the view\n   |\n 6 |     return lines.map(line => line.trim())\n   |                                   ^\n<DIR>/borrowed-trim-closure-and-local-rejected.ms:11:17: type: cannot return a view of `text`: a returned `String` is owned and a view only borrows `text`; copy it with `.clone()` after the view\n    |\n 11 |     return text.trim()\n    |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -96,7 +96,7 @@ export fn run_rows(
 		}
 
 		seen.add(name.clone())
-		rows.append(Row(name.clone(), nums[1], nums[2], line.trim()))
+		rows.append(Row(name.clone(), nums[1], nums[2], line.trim().clone()))
 	}
 
 	if seen.length() != expected.length() { return invalid("missing cases") }
