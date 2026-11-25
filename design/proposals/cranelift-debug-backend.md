@@ -25,7 +25,7 @@ Measured on `d5b63adf0` (`make build`, linux/amd64, 4 cores) for a program that 
 
 So about 94% of a Debug build is code generation and linking, and the front end is not worth tuning first. The Rust implementation had a Cranelift Debug route (`ms-clif`) that the C rewrite dropped; its history is at `660429d4`.
 
-Hypothesis, not yet measured: Cranelift generates the same module several times faster than LLVM's light pipeline with the basic register allocator. Stage 3 measures it and gates the default.
+Measured with the emitter (same program, same machine): Debug wall 1.33 s to 0.50 s and CPU 3.3 s to 0.64 s (about 5x less CPU, 2.7x less wall); the binary is 5.06 MB against 4.15 MB.
 
 ## Detailed design
 
@@ -58,7 +58,7 @@ Hypothesis, not yet measured: Cranelift generates the same module several times 
 
 ## Measured benefit
 
-None yet; see Motivation. Gate before Debug defaults to Cranelift: on the conformance corpus the Debug build is at least 2x faster in `ms` CPU time than LLVM Debug, run-time of the produced code within the tolerance the corpus tests already assume, and the largest-frame recursion fixtures pass.
+Debug build CPU is about 5x lower on the YAML program (Motivation). 157 fixtures built and run on the route with output identical to LLVM, none fell back. Gate before Debug defaults to Cranelift: on the conformance corpus the Debug build is at least 2x faster in `ms` CPU time than LLVM Debug, run-time of the produced code within the tolerance the corpus tests already assume, and the largest-frame recursion fixtures pass.
 
 ## Components touched
 
