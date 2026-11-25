@@ -1171,7 +1171,91 @@ fn reverse_span[T](var items List[T], start, end Int) Void {
 	}
 }
 
-import msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms"
+import (
+	Iterator from "@std/core.ms",
+
+	msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms",
+)
 
 // The built-in integer and float types: the element types `sum` adds.
 export type Numeric = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | Float | Float32
+
+/*
+Lazy iteration over a list: `xs.iter()` walks the items in order as borrows, and chains such as
+`xs.iter().map(f).fold(0, g)` make no list between steps. `collect()` builds the list when you want one.
+*/
+type ListIter[T] {
+	items &List[T]
+	at Int
+}
+
+// Returns the next item as a borrow of the list, or `null` after the last.
+fn var ListIter[T].next() &T? {
+	index := self.at
+	if index >= self.items.length() { return null }
+
+	self.at = index + 1
+	return self.items[index]
+}
+
+// Walks the list's items in order; the list cannot change while the walk lives.
+fn hold List[T].iter() ListIter[T] {
+	return ListIter[T](self, 0)
+}
+
+// An iterator that yields `transform` applied to each item of `source`.
+type Mapped[I Iterator[T], T, U] {
+	source I
+	transform fn(T) U
+}
+
+fn var Mapped[I Iterator[T], T, U].next() U? {
+	item := self.source.next()
+	if item == null { return null }
+
+	return self.transform(item)
+}
+
+// Wraps an iterator with the chain methods: `map`, `fold`, `count`, `collect`.
+type Seq[I Iterator[T], T] {
+	source I
+}
+
+fn var Seq[I Iterator[T], T].next() T? {
+	return self.source.next()
+}
+
+fn hold ListIter[T].seq() Seq[ListIter[T], T] {
+	return Seq[ListIter[T], T](self)
+}
+
+// Yields `transform` applied to each item, one at a time.
+fn move Seq[I Iterator[T], T].map[U](transform fn(T) U) Seq[Mapped[I, T, U], U] {
+	return Seq[Mapped[I, T, U], U](Mapped[I, T, U](self.source, transform))
+}
+
+// Combines the items from first to last with `step`, starting with `initial`.
+fn move Seq[I Iterator[T], T].fold[A](initial A, step fn(A, T) A) A {
+	var total = initial
+	for item in self.source {
+		total = step(total, item)
+	}
+	return total
+}
+
+// Returns how many items remain.
+fn move Seq[I Iterator[T], T].count() Int {
+	return self.fold(0, (total, _item) => total + 1)
+}
+
+// Builds a list of the remaining items; each is cloned out of its source.
+fn move Seq[I Iterator[T], T Clonable].collect() List[T] {
+	var out = List[T]()
+
+	for item in self.source {
+		copy := item.clone()
+		out.append(copy)
+	}
+
+	return out
+}
