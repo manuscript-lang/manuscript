@@ -159,6 +159,7 @@ static const Step late_steps[] = {
     {"lastuse", opt_lastuse},
     {"unwind pairs", opt_unwind_pairs},
     {"thread", opt_thread},
+    {"unwind sites", opt_unwind_sites}, /* a threaded edge no longer reaches a test that only a fault edge needed */
     {"bytetake", opt_bytetake},
     {"copyelim takes", opt_copyelim_takes},
     {"simplify", opt_simplify},

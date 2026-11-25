@@ -64,6 +64,10 @@ static ThKnown known_of_def(const Th *t, MirValue v) {
   case MOP_OptSome: return (ThKnown){TK_OPT, 1};
   case MOP_OptNone:
   case MOP_OptNoneOwned: return (ThKnown){TK_OPT, 0};
+  case MOP_Undef:
+    /* An optional left undefined by a fault exit is read as absent: any value is a legal reading of it, and the fault
+     * path then leaves where the caller tests the byte, instead of every later branch on it keeping a test. */
+    return mir_ty_data(t->m, mir_value_ty(t->f, v))->kind == MK_OPT ? (ThKnown){TK_OPT, 0} : (ThKnown){TK_NONE, 0};
   default: return (ThKnown){TK_NONE, 0};
   }
 }
