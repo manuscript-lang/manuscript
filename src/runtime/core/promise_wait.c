@@ -1,4 +1,3 @@
-#include <stdio.h>
 /* Waiting for promises, sleeps, limits and descriptor readiness. See promise.h. */
 #include "runtime/core/promise_table.h"
 
@@ -66,7 +65,6 @@ static inline MS_ALWAYS_INLINE int64_t wait_row(MsPromise id, int64_t timeout_ns
       return MS_PROMISE_CLOSED;
     }
     const int64_t code = outcome((size_t)row);
-    if (code == MS_PROMISE_TIMEOUT) { fprintf(stderr, "DBGW outcome-timeout state=%d flags=%x\n", (int)promise_table.hot.ptr[row].state, (unsigned)promise_table.hot.ptr[row].flags); }
     if (code >= 0) {
       *settled = row;
       return code;
@@ -86,7 +84,6 @@ static inline MS_ALWAYS_INLINE int64_t wait_row(MsPromise id, int64_t timeout_ns
       return done;
     }
     if (woke == MS_WAIT_TIMEOUT) {
-      fprintf(stderr, "DBGW woke-timeout deadline=%lld asked=%lld limit=%lld defer=%lld\n", (long long)deadline, (long long)asked, (long long)promise_table.cold.ptr[after].limit, (long long)ms_task_defer_deadline());
       /* The promise's own limit passed: stop it as the limit timer does and wait for its work to unwind, so a
        * resource the work holds is closed when `wait` answers (a race between this wake and the timer left it open). */
       const int64_t limit = promise_table.cold.ptr[after].limit;
