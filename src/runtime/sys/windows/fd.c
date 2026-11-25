@@ -37,11 +37,13 @@ static bool pipe_has_data(int fd, bool *known) {
     return available > 0;
 }
 
-/* A pipe cannot be waited on here: a read is asked about now (PeekNamedPipe), and a write is assumed to go through. */
+/* No refused-descriptor thread runs here (it blocks in poll(2)), so the host cannot say: the reactor then calls the
+ * descriptor ready at once and the caller asks it with ms_sys_fd_readable_now, polling when a read would block. */
 bool ms_sys_fd_ready(int fd, bool writes, bool *ready) {
-    bool known = false;
-    *ready = writes ? true : pipe_has_data(fd, &known);
-    return true;
+    (void)fd;
+    (void)writes;
+    *ready = true;
+    return false;
 }
 
 bool ms_sys_fd_wait_any(MsSysFdWait *entries, size_t count) {
