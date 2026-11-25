@@ -2,6 +2,7 @@
 # cmake/FetchCraneliftLib.cmake downloads the archive for the host and checks it against these digests; they are the
 # release SHA256SUMS. Update the tag and every digest together.
 tag cranelift-0.136.0-r4
+version 0.136.0
 d5af7a953b01b8967157e42e3b0ae184ab41f94197b6b779acc1d9e2218fbfd5  cranelift-lib-0.136.0-darwin-amd64.tar.gz
 3b611d9ee4db4d253784a44f19583ce402dbee80c4d75511b56e6f947f090f1f  cranelift-lib-0.136.0-darwin-arm64.tar.gz
 b3086eacc55943f0959608c90a7216842ff8362785759c0a11eacb3fbc5eef41  cranelift-lib-0.136.0-linux-amd64.tar.gz
