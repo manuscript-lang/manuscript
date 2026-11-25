@@ -3,8 +3,6 @@
 // `ms run bench/tools/platform_io.ms [-- files]`; MS names the `ms` binary. Prints one
 // line per measurement, nanoseconds per operation, min of three rounds.
 import (
-	Bytes from "@std/bytes.ms",
-	stdin, stdout_bytes from "@std/io/io.ms",
 	min from "@std/math/math.ms",
 	arguments from "@std/os/env.ms",
 	create_directory,
@@ -14,7 +12,7 @@ import (
 	rename,
 	temporary_directory,
 	write_file from "@std/os/fs.ms",
-	RunOptions, SpawnOptions, run, spawn from "@std/os/process.ms",
+	SpawnOptions, run, spawn from "@std/os/process.ms",
 
 	capture, exe, fail, host, ms_binary, note, now_ns, usage from "./lib.ms",
 )

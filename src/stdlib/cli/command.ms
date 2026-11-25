@@ -226,7 +226,7 @@ fn Command.execute(argv List[String]) Int {
 // returns its exit status. The path starts at this node's name; an unknown path is
 // an `EINVAL` error.
 fn Command.run(matches Matches) Int! {
-	if matches.path.length() > 0 and matches.path[0] == self.name {
+	if not matches.path.is_empty() and matches.path[0] == self.name {
 		node := node_at(self, matches.path, 1)
 		if node != null {
 			return node.exec(matches)

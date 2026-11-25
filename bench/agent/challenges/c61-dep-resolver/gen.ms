@@ -3,7 +3,7 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c61
 import (
 	Cases, build_oracle, write_cases from "../../lib/gen.ms",
-	Random, seeded from "../../lib/pyrandom.ms",
+	seeded from "../../lib/pyrandom.ms",
 )
 
 fn add(var cs Cases, name, script String) Void {

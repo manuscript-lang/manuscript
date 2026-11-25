@@ -1,7 +1,6 @@
 // `conform fuzz-gen` and `conform fuzz`: generated programs written into the corpus, or run under two ms
 // binaries and compared.
 import (
-	arguments, working_directory from "@std/os/env.ms",
 	CopyOptions, copy, create_directory, temporary, write_file from "@std/os/fs.ms",
 	system_info from "@std/os/system.ms",
 

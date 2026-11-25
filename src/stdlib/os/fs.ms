@@ -21,11 +21,10 @@ import (
 	Placement,
 	Promise,
 	PromiseOptions,
-	adopt,
 	promise,
 	promise_when_idle from "@std/concurrency/promise.ms",
-	Closeable, Writable from "@std/core.ms",
-	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
+	Writable from "@std/core.ms",
+	ReadStream, WriteStream from "@std/io/io.ms",
 	BigInt from "@std/math/math.ms",
 	normalize from "@std/os/path.ms",
 	Duration, Timestamp, milliseconds, monotonic, now, sleep from "@std/time.ms",
@@ -86,9 +85,7 @@ import (
 	msstd_fs_write_file,
 	msstd_io_close,
 	msstd_io_read,
-	msstd_io_write,
 	msstd_io_write_bytes from "@std/internal/fs.ms",
-	msrt_promise_finished from "@std/internal/promises.ms",
 )
 
 // The name and kind flags for one child returned by a directory listing.

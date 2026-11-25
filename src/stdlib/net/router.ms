@@ -1,7 +1,7 @@
 // Request routing and middleware over `HttpExchange`, implemented in Manuscript.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	Closeable, panic from "@std/core.ms",
+	panic from "@std/core.ms",
 	uuid_v4 from "@std/data/uuid.ms",
 	Logger from "@std/log.ms",
 	HttpExchange,

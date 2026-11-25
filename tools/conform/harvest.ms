@@ -1,4 +1,3 @@
-import panic from "@std/core.ms"
 // `conform harvest`: turns the repository's Manuscript sources and the ```manuscript fences of the
 // documentation into corpus fixtures. Each candidate is classified by asking the ms
 // under test to check it: parse errors become `parse` fixtures, type errors `check`

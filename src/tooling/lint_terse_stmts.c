@@ -138,7 +138,7 @@ static const MsStmt *const *stmts_from(MsStmts body, size_t from) {
   return (const MsStmt *const *)body.ptr + from;
 }
 
-/* `var x = a` then `if c: x = b` is `x := if c: b else: a`. */
+/* `var x = a` then `if c { x = b }` is `x := if c { b } else { a }`. */
 static void default_then_reassign(const TerseScan *scan, MsStmts body, size_t at) {
   if (at + 1 >= body.len) {
     return;
@@ -167,7 +167,7 @@ static void default_then_reassign(const TerseScan *scan, MsStmts body, size_t at
   }
   const bool scalar = terse_type_is(scan, def->id, MS_BUILTIN_String) || terse_type_is(scan, def->id, MS_BUILTIN_Int) ||
                       terse_type_is(scan, def->id, MS_BUILTIN_Float) || terse_type_is(scan, def->id, MS_BUILTIN_Bool);
-  /* `x := if c: b else: a` reads `a` after `c` runs; a call in `c` can change a `var` `a`. */
+  /* `x := if c { b } else { a }` reads `a` after `c` runs; a call in `c` can change a `var` `a`. */
   const bool moves = def->kind == MS_E_NAME && is_mutable_binding(scan, def) && has_call(cond);
   const Uses later = uses_in(scan, name, stmts_from(body, at + 2), body.len - at - 2);
   const size_t in_cond = expr_reads(scan, name, cond) + expr_reads(scan, name, replacement);
@@ -175,7 +175,15 @@ static void default_then_reassign(const TerseScan *scan, MsStmts body, size_t at
     return;
   }
   const size_t from = first->pos.offset;
-  const size_t to = replacement->end.offset;
+  const MsSpan source = scan->module->source;
+  size_t to = replacement->end.offset; /* the `if` ends at the brace that closes its single statement */
+  while (to < source.len && (source.ptr[to] == ' ' || source.ptr[to] == '\t' || source.ptr[to] == '\n' || source.ptr[to] == '\r')) {
+    to++;
+  }
+  if (to >= source.len || source.ptr[to] != '}') {
+    return;
+  }
+  to++;
   MsSpan whole = {0};
   MsSpan a = {0};
   MsSpan c = {0};
@@ -188,11 +196,12 @@ static void default_then_reassign(const TerseScan *scan, MsStmts body, size_t at
   ms_strbuild_append(&text, ms_names_span(scan->program->names, name));
   ms_strbuild_append_text(&text, " := if ");
   ms_strbuild_append(&text, c);
-  ms_strbuild_append_text(&text, ": ");
+  ms_strbuild_append_text(&text, " { ");
   ms_strbuild_append(&text, b);
-  ms_strbuild_append_text(&text, " else: ");
+  ms_strbuild_append_text(&text, " } else { ");
   ms_strbuild_append(&text, a);
-  terse_report(scan, "MSL121", text_of("Write the default and the override as one `x := if c: b else: a`"), first->pos,
+  ms_strbuild_append_text(&text, " }");
+  terse_report(scan, "MSL121", text_of("Write the default and the override as one `x := if c { b } else { a }`"), first->pos,
                from, to, terse_keep(scan, &text));
 }
 
@@ -649,7 +658,11 @@ void ms_lint_terse(MsArena *arena, const MsCheckProgram *program, uint32_t modul
   }
   const MsVisitor visitor = {.ctx = &scan, .block = visit_block, .stmt = visit_stmt, .expr = visit_expr};
   for (uint32_t i = 0; i < module->tree->ndecls; i++) {
-    ms_walk_decl(&visitor, module->tree->decls[i]);
+    const MsDecl *decl = module->tree->decls[i];
+    scan.enclosing = decl->kind == MS_D_FN ? decl->u.fn.name
+                     : decl->kind == MS_D_IMPL && decl->u.impl.methods.len == 1 ? decl->u.impl.methods.ptr[0]->func.name
+                                                                                : 0;
+    ms_walk_decl(&visitor, decl);
   }
   free(set.ids);
 }

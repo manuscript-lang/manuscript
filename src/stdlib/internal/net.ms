@@ -55,8 +55,6 @@ export extern fn msstd_url_parse_query(text String, max_entries Int?) List[Query
 
 export extern fn msstd_url_resolve(base Url, reference String) Url!
 
-export extern fn msstd_net_connection_close(handle NativeConnection) Void
-
 export extern fn msstd_net_connection_share(handle NativeConnection) NativeConnection
 
 export extern fn msstd_net_connection_alias(handle NativeConnection) NativeConnection
@@ -96,8 +94,6 @@ export extern fn msstd_net_connection_write_bytes(
 ) Void!
 
 export extern fn msstd_net_datagram_address(handle NativeDatagramSocket) String
-
-export extern fn msstd_net_datagram_close(handle NativeDatagramSocket) Void
 
 export extern fn msstd_net_datagram_share(
 	handle NativeDatagramSocket
@@ -145,13 +141,9 @@ export extern fn msstd_net_listener_address(handle NativeListener) String
 
 export extern fn msstd_net_listener_close(handle NativeListener) Void
 
-export extern fn msstd_websocket_close(handle NativeWebSocket) Void
-
 export extern fn msstd_websocket_share(handle NativeWebSocket) NativeWebSocket
 
 export extern fn msstd_websocket_close_if_last(handle NativeWebSocket) Void
-
-export extern fn msstd_websocket_ping(handle NativeWebSocket, data String) Void!
 
 export extern fn msstd_websocket_ping_bytes(handle NativeWebSocket, data Bytes) Void!
 

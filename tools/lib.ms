@@ -5,7 +5,7 @@ import (
 	hex_encode from "@std/data/encoding.ms",
 	stderr from "@std/io/io.ms",
 	environment, set_environment, working_directory from "@std/os/env.ms",
-	canonicalize, read_file from "@std/os/fs.ms",
+	read_file from "@std/os/fs.ms",
 	SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
 	Os, os, system_info from "@std/os/system.ms",
 )
@@ -142,9 +142,7 @@ export fn use_stats_runtime() Int {
 		).wait().get().decode_utf8()
 		or ""
 	)
-	var separator = ":"
-	if host() == "windows" { separator = ";" }
-
+	separator := if host() == "windows" { ";" } else { ":" }
 	var archives = List[String]()
 
 	for line in paths.split("\n") {

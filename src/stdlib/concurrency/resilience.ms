@@ -4,7 +4,6 @@
 
 import (
 	Promise, caller_frame, promise, wait_all from "@std/concurrency/promise.ms",
-	panic from "@std/core.ms",
 	float from "@std/random.ms",
 	Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
 )

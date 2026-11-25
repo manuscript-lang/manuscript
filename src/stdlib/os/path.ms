@@ -13,7 +13,7 @@ print(name)
 ```
 */
 import (
-	Bytes, BytesBuilder from "@std/bytes.ms",
+	Bytes from "@std/bytes.ms",
 
 	msstd_path_compile_glob,
 	msstd_path_glob_matches,

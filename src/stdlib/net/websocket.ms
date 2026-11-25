@@ -1,15 +1,11 @@
 import (
 	Bytes from "@std/bytes.ms",
-	Promise, complete, deferred from "@std/concurrency/promise.ms",
-	Closeable from "@std/core.ms",
-	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
+	ReadStream, WriteStream from "@std/io/io.ms",
 	HttpHeaders, headers from "@std/net/http.ms",
 	TlsOptions from "@std/net/tls.ms",
 	Duration from "@std/time.ms",
 
-	msstd_websocket_close,
 	msstd_websocket_close_if_last,
-	msstd_websocket_ping,
 	msstd_websocket_ping_bytes,
 	msstd_websocket_receive,
 	msstd_websocket_send_bytes,

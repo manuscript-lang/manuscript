@@ -168,12 +168,12 @@ fn status_error_text(
 	move said String,
 ) Error {
 	if words == "-" {
-		if said.length() > 0 { return Error(said, kind: kind) }
+		if not said.is_empty() { return Error(said, kind: kind) }
 		return Error(f"{domain}: failed", kind: kind)
 	}
 
 	if said.starts_with(f"{domain}: ") { return Error(said, kind: kind) }
-	if said.length() > 0 { return Error(f"{domain}: {words}: {said}", kind: kind) }
+	if not said.is_empty() { return Error(f"{domain}: {words}: {said}", kind: kind) }
 
 	return Error(f"{domain}: {words}", kind: kind)
 }
@@ -490,8 +490,7 @@ fn padding_for(text String, target_length Int, padding String) String {
 
 	// ASCII padding: a byte is a scalar, so the filler is one copy of the first bytes.
 	if padding.length() == padding_scalars {
-		filler := source.view(0, missing).clone()
-		return filler
+		return source.view(0, missing).clone()
 	}
 
 	var filler = ""

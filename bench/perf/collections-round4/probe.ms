@@ -56,7 +56,7 @@ fn n_remove_front() Int {
 
 	var t = 0
 
-	while xs.length() > 0 {
+	while not xs.is_empty() {
 		xs.remove(0)
 		t += 1
 	}
@@ -108,7 +108,7 @@ fn n_dedupe_sorted() Int {
 	ys := xs.sorted((a, b) => a - b)
 	var out List[Int] = []
 	for v in ys {
-		if out.length() == 0 or out[out.length() - 1] != v {
+		if out.is_empty() or out[out.length() - 1] != v {
 			out.append(v)
 		}
 	}

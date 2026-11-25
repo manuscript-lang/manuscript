@@ -1,8 +1,8 @@
 import (
 	Promise, adopt from "@std/concurrency/promise.ms",
-	Data, panic from "@std/core.ms",
+	panic from "@std/core.ms",
 	JsonValue from "@std/data/json.ms",
-	ReadStream, Source from "@std/io/io.ms",
+	ReadStream from "@std/io/io.ms",
 
 	msrt_promise_sleep from "@std/internal/promises.ms",
 	msstd_time_clock_now,

@@ -1,8 +1,7 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	Promise from "@std/concurrency/promise.ms",
 	Data from "@std/core.ms",
-	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
+	ReadStream, WriteStream, through from "@std/io/io.ms",
 	parse_float from "@std/math/math.ms",
 
 	JsonLimits, msstd_json_decode, msstd_json_stringify from "@std/internal/json.ms",

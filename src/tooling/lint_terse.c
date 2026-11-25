@@ -112,6 +112,9 @@ void terse_emptiness(const TerseScan *scan, const MsExpr *e, bool condition) {
   if (receiver == NULL || !terse_expr_text(scan, receiver, &recv)) {
     return;
   }
+  if (scan->enclosing != 0 && terse_name_is(scan, scan->enclosing, "is_empty")) {
+    return; /* inside `is_empty` the comparison is its own definition; the rewrite would call itself */
+  }
   const bool equal = e->op == MS_B_EQ && !condition;
   if (!equal && !((e->op == MS_B_NE || e->op == MS_B_GT) && condition)) {
     return;

@@ -18,7 +18,6 @@ import (
 	draw_float,
 	draw_int,
 	draw_shuffle,
-	invalid_input,
 	msstd_random_os_bytes from "@std/internal/random.ms",
 )
 

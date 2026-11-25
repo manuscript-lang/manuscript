@@ -2,7 +2,6 @@ import (
 	IpFamily from "@std/net/ip.ms",
 	Duration from "@std/time.ms",
 
-	MetricsSnapshot,
 	msstd_process_available_memory,
 	msstd_process_constrained_memory,
 	msstd_process_elapsed,

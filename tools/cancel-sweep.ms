@@ -17,7 +17,7 @@ import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",
-	GlobOptions, glob, read_file, temporary, write_file from "@std/os/fs.ms",
+	GlobOptions, glob, read_file, temporary from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",

@@ -22,8 +22,9 @@ fn handle(request HttpRequest) HttpResponse {
 	}
 
 	var out = f"\{\"path\":\"{request.path}\",\"spun\":{spun},\"items\":["
-	var count = 64
-	if request.path.starts_with("/big") { count = 4096 }
+	count := if request.path.starts_with(
+		"/big"
+	) { 4096 } else { 64 }
 
 	for i in 0..count {
 		if i > 0 { out += "," }

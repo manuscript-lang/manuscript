@@ -1,5 +1,5 @@
 import (
-	Closeable, panic from "@std/core.ms",
+	panic from "@std/core.ms",
 	Duration from "@std/time.ms",
 
 	Slot,
@@ -398,9 +398,10 @@ export fn wait_all[T](move promises List[Promise[T]]) List[T]! {
 		fresh := head != tried
 		tried = head
 
-		var ran = 0
-		if fresh {
-			ran = msrt_promise_run_watched(pending[head].id, set.id, members, head)
+		ran := if fresh {
+			msrt_promise_run_watched(pending[head].id, set.id, members, head)
+		} else {
+			0
 		}
 		if run_interrupted(ran) {
 			return error(first_failure(set.id, pending, taken, head))

@@ -1,7 +1,6 @@
 import (
 	ColorMode,
 	ImageFormat,
-	JpegOptions,
 	decode_image,
 	encode_image,
 	encode_jpeg,

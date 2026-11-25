@@ -164,9 +164,6 @@ export extern fn msrt_streams_close(stream Int) Void
 // promise's id.
 export extern fn msrt_promise_defer(work fn(Int) Void) Int
 
-// An already finished promise with no value.
-export extern fn msrt_promise_finished() Int
-
 // The process-wide output buffers (crates/ms-rt/src/io.rs); standard output is flushed
 // at exit.
 export extern fn msrt_io_write_stdout(text String) Void

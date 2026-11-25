@@ -3,7 +3,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
-	Closeable, Data from "@std/core.ms",
+	Data from "@std/core.ms",
 	JsonOptions, parse, stringify from "@std/data/json.ms",
 	HttpClient,
 	HttpClientOptions,

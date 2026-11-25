@@ -51,8 +51,6 @@ export extern fn msstd_fs_file_clone(file NativeFile) FileHandle!
 
 export extern fn msstd_io_read(file NativeFile, max_bytes Int?) Bytes?!
 
-export extern fn msstd_io_write(file NativeFile, data String) Void!
-
 export extern fn msstd_io_write_bytes(file NativeFile, data Bytes) Void!
 
 export extern fn msstd_fs_file_read_at(

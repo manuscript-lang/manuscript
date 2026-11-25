@@ -24,7 +24,7 @@ import (
 	RunOptions, run from "@std/os/process.ms",
 	monotonic from "@std/time.ms",
 
-	env, exe, note, run_program from "./lib.ms",
+	env, exe, note from "./lib.ms",
 )
 
 fn ms_path() String {
