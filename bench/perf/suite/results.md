@@ -1,5 +1,45 @@
 # Suite results
 
+## 2026-11-25, after the take-twin, padding and index-check changes (`8ddeac9b65`)
+
+Release `ms` built from `8ddeac9b65`, 4 vCPU Xeon VM, min of 7, wall time in ms, process start and output included. Instruction counts (callgrind) are the stable measure on this shared VM: against main before #7065, #7080, #7090 and #7097 they fell as follows.
+
+| program | instructions before | after | change |
+|---|---:|---:|---:|
+| report | 2,225 M | 1,672 M | -25% |
+| interp | 3,092 M | 2,744 M | -11% |
+| graph | 691 M | 644 M | -6.7% |
+| sim | 2,034 M | 1,945 M | -4.4% |
+| workers | 1,205 M | 1,129 M | -6.4% |
+
+#7065 (take-twin pass and `read_all`) measured grep -28%, wordfreq -26%, report -24% and logstats -14% in its own run; `report` above includes it. The `split` pre-count of #7084 (+24% grep on 22 MB) was limited to texts of 4 KiB or less in #7100. `pargroup`, `wordfreq` and `grep` run at or below Rust's instruction count; their wall-time gap is page faults from materialized lists (`wordfreq` 55.7k faults against 19.9k) and, for `pargroup`, the libuv pool hand-off per file.
+
+| program | ms | Rust | Go | Node | C | ms / Rust |
+|---|---:|---:|---:|---:|---:|---:|
+| interp | 211 | 162 | 164 | 645 | - | 1.30x |
+| graph | 302 | 273 | 437 | 1145 | - | 1.11x |
+| objgraph | 354 | 337 | 324 | 617 | - | 1.05x |
+| sim | 188 | 135 | 182 | 237 | - | 1.39x |
+| dispatch | 322 | 296 | 1098 | 1103 | - | 1.09x |
+| hashing | 172 | 141 | 237 | 207 | - | 1.22x |
+| lz | 194 | 153 | 567 | 627 | - | 1.27x |
+| exprparse | 760 | 720 | 1083 | 1096 | - | 1.06x |
+| logstats | 60 | 76 | 264 | 297 | 54 | 0.79x |
+| csvgroup | 103 | 287 | 439 | 799 | 56 | 0.36x |
+| wordfreq | 309 | 163 | 1064 | 1284 | 180 | 1.90x |
+| sortrecords | 233 | 297 | 621 | 1232 | 320 | 0.78x |
+| grep | 44 | 26 | 190 | 133 | 27 | 1.69x |
+| treegrep | 25 | 20 | 44 | 62 | 22 | 1.25x |
+| pargroup | 46 | 27 | 42 | 112 | 18 | 1.70x |
+| jsonsum | 161 | 239 | 668 | 203 | 185 | 0.67x |
+| dedupe | 258 | 523 | 536 | 985 | 319 | 0.49x |
+| report | 207 | 123 | 406 | 1038 | 159 | 1.68x |
+| workers | 35 | 30 | 31 | 254 | - | 1.17x |
+| strings | 117 | 197 | 239 | 733 | - | 0.59x |
+| concat | 8 | 9 | 7649 | 44 | - | 0.89x |
+| jsonrt | 1047 | - | 1549 | 584 | - | - |
+| regex | 411 | - | 1631 | 372 | - | - |
+
 ## 2026-11-15, after the wave of merges (`d85da123`)
 
 Rerun on `d85da123` (main after #4034, with #4008, #4009, #4010, #4012 and #4013 merged; #4003 and #4004 still open), same VM, min of 5. Wall times were 0 to 50% higher than the `71487c98` run an hour earlier (`interp` 134 to 202 ms), but the callgrind instruction counts of `interp`, `strings`, `lz` and `graph` are unchanged to the instruction (within 1,000 of 2.98G, 1.76G, 618M and 635M), so the generated code and runtime path of these programs did not change; the wall-clock moves are VM load. Not rerun under callgrind: the other 19 programs. Open risk: #4032 (`wait_all` ends at the first failure) costs about 40% more on 100,000 trivial promises in its own debug-build numbers; rerun `workers` and `bench/perf/wait-all` in release when it merges.
