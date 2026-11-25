@@ -1,4 +1,5 @@
 /* compiler/own/result_borrows.c: see borrows.h. */
+#include "compiler/own/look_fields.h"
 #include "compiler/own/result_borrows.h"
 
 #include "base/alloc.h"
@@ -165,7 +166,7 @@ static Reach classify_call(Pass *pass, const MsExpr *call) {
       return OWNED; /* a case of a user enum stores its payload: new storage */
     }
   }
-  if (kind != MS_REF_CASE && kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE) {
+  if (kind != MS_REF_CASE && kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE && kind != MS_REF_TYPE) {
     return OWNED;
   }
   const MsExpr *callee = call->u.call.callee;
@@ -678,7 +679,7 @@ bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint
     return false; /* an interface operation answers the clone its implementation writes */
   }
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE) {
-    return kind == MS_REF_CASE;
+    return kind == MS_REF_CASE || (kind == MS_REF_TYPE && ms_own_look_field(program, call, position));
   }
   const MsFunc *declared = ms_own_find_func(program, &call->callee);
   if (declared == NULL) {

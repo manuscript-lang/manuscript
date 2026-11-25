@@ -1,4 +1,5 @@
 /* compiler/own/moves.c: a moved value used again (see moves.h). */
+#include "compiler/own/look_fields.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/taken.h"
 
@@ -506,7 +507,8 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   }
   const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(pass->facts, expr->id) : NULL;
   for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
-    if (call->args[index].source != MS_ARG_WRITTEN || (!call->constructor && (call->args[index].flags & MS_PARAM_MOVE) == 0)) {
+    if (call->args[index].source != MS_ARG_WRITTEN || (!call->constructor && (call->args[index].flags & MS_PARAM_MOVE) == 0) ||
+        ms_own_look_field(pass->program, call, index)) {
       continue;
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {

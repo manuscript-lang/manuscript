@@ -92,7 +92,7 @@ static bool local_of(const MsFacts *facts, MsNode node, uint32_t *id) {
 }
 
 static bool is_value_ref(MsRefKind kind) {
-  return kind == MS_REF_FUNCTION || kind == MS_REF_METHOD || kind == MS_REF_NATIVE || kind == MS_REF_OPERATION;
+  return kind == MS_REF_FUNCTION || kind == MS_REF_METHOD || kind == MS_REF_NATIVE || kind == MS_REF_OPERATION || kind == MS_REF_TYPE;
 }
 
 static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out);
@@ -157,7 +157,7 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
     return false;
   }
   const MsExpr *callee = call->u.call.callee;
-  const bool receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION;
+  const bool receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_TYPE;
   if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
     return false;
   }

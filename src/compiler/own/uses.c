@@ -1,4 +1,5 @@
 /* compiler/own/uses.c: fills the `uses` fact column (see uses.h). */
+#include "compiler/own/look_fields.h"
 #include "compiler/own/uses.h"
 
 #include <stdlib.h>
@@ -284,6 +285,10 @@ static void visit_call(Uses *pass, const MsExpr *call) {
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value);
     if (constructor && stored_param(pass, value)) {
       pass->facts->uses[value->id] = MS_USE_MOVE;
+    }
+    const bool looks = fact != NULL && arg != NULL && ms_own_look_field(pass->program, fact, (uint32_t)(arg - fact->args));
+    if (looks) {
+      continue; /* a `&` field is tied to the value, not given it */
     }
     if (constructor || (arg != NULL && ((arg->flags & MS_PARAM_MOVE) != 0 ||
                                         ms_own_call_takes(pass->program, fact, (uint32_t)(arg - fact->args))))) {
