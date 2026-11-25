@@ -16,29 +16,12 @@
           "column": 15,
           "offset": 86
         }
-      },
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
-        "position": {
-          "file": "golden-0787.ms",
-          "line": 5,
-          "column": 1,
-          "offset": 87
-        },
-        "end": {
-          "file": "golden-0787.ms",
-          "line": 5,
-          "column": 2,
-          "offset": 88
-        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0787.ms:4:15: parse: an exponent requires digits; write e.g. 1e3 or 2.5e-4\n   |\n 4 |     return 1e+\n   |               ^\n<DIR>/golden-0787.ms:5:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 5 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0787.ms:4:15: parse: an exponent requires digits; write e.g. 1e3 or 2.5e-4\n   |\n 4 |     return 1e+\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

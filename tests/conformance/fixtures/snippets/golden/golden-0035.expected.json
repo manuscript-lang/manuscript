@@ -60,23 +60,6 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
-        "position": {
-          "file": "golden-0035.ms",
-          "line": 31,
-          "column": 1,
-          "offset": 1517
-        },
-        "end": {
-          "file": "golden-0035.ms",
-          "line": 31,
-          "column": 2,
-          "offset": 1518
-        }
-      },
-      {
-        "code": "MS1000",
-        "phase": "parse",
         "message": "expected a module declaration or import, found name 'Options'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
@@ -106,23 +89,6 @@
           "line": 40,
           "column": 20,
           "offset": 1696
-        }
-      },
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
-        "position": {
-          "file": "golden-0035.ms",
-          "line": 41,
-          "column": 1,
-          "offset": 1775
-        },
-        "end": {
-          "file": "golden-0035.ms",
-          "line": 41,
-          "column": 2,
-          "offset": 1776
         }
       },
       {
@@ -248,7 +214,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0035.ms:3:1: parse: expected a module declaration or import, found name 'Usage'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 | Usage ms <command> [arguments] [options]\n   | ^^^^^\n<DIR>/golden-0035.ms:6:1: parse: expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | Manuscript checks, builds, and runs .ms source and ms.toml projects.\n   | ^^^^^^^^^^\n<DIR>/golden-0035.ms:16:56: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 16 |   verify         Run check, fmt --check, lint, and test; one result\n    |                                                        ^\n<DIR>/golden-0035.ms:31:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 31 | }\n    | ^\n<DIR>/golden-0035.ms:33:1: parse: expected a module declaration or import, found name 'Options'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 33 | Options {\n    | ^^^^^^^\n<DIR>/golden-0035.ms:40:19: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 40 |   Default: Release; profile and profiled tests default to RelWithDebInfo; debug always uses Debug\n    |                   ^\n<DIR>/golden-0035.ms:41:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 41 | }\n    | ^\n<DIR>/golden-0035.ms:43:1: parse: expected a module declaration or import, found name 'Start'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 43 | Start with {\n    | ^^^^^\n<DIR>/golden-0035.ms:49:1: parse: expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 49 | Bare ms prints this help and exits successfully.\n    | ^^^^\n<DIR>/golden-0035.ms:50:14: parse: expected ':=', found name 'that'\n    |\n 50 | Long options that take values also accept --flag=value.\n    |              ^^^^\n<DIR>/golden-0035.ms:51:5: parse: unexpected source character '\\''; text uses double quotes, e.g. \"text\"\n    |\n 51 | Run 'ms help <command>' or 'ms <command> --help' for usage and examples.\n    |     ^\n<DIR>/golden-0035.ms:52:1: parse: expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 52 | The Go toolchain is embedded and cannot be replaced by external tools.\n    | ^^^\n<DIR>/golden-0035.ms:53:1: parse: expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 53 | MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains\n    | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/golden-0035.ms:54:1: parse: expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 54 | and standalone run/test/debug/profile artifacts.\n    | ^^^\n14 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0035.ms:3:1: parse: expected a module declaration or import, found name 'Usage'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 | Usage ms <command> [arguments] [options]\n   | ^^^^^\n<DIR>/golden-0035.ms:6:1: parse: expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | Manuscript checks, builds, and runs .ms source and ms.toml projects.\n   | ^^^^^^^^^^\n<DIR>/golden-0035.ms:16:56: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 16 |   verify         Run check, fmt --check, lint, and test; one result\n    |                                                        ^\n<DIR>/golden-0035.ms:33:1: parse: expected a module declaration or import, found name 'Options'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 33 | Options {\n    | ^^^^^^^\n<DIR>/golden-0035.ms:40:19: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 40 |   Default: Release; profile and profiled tests default to RelWithDebInfo; debug always uses Debug\n    |                   ^\n<DIR>/golden-0035.ms:43:1: parse: expected a module declaration or import, found name 'Start'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 43 | Start with {\n    | ^^^^^\n<DIR>/golden-0035.ms:49:1: parse: expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 49 | Bare ms prints this help and exits successfully.\n    | ^^^^\n<DIR>/golden-0035.ms:50:14: parse: expected ':=', found name 'that'\n    |\n 50 | Long options that take values also accept --flag=value.\n    |              ^^^^\n<DIR>/golden-0035.ms:51:5: parse: unexpected source character '\\''; text uses double quotes, e.g. \"text\"\n    |\n 51 | Run 'ms help <command>' or 'ms <command> --help' for usage and examples.\n    |     ^\n<DIR>/golden-0035.ms:52:1: parse: expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 52 | The Go toolchain is embedded and cannot be replaced by external tools.\n    | ^^^\n<DIR>/golden-0035.ms:53:1: parse: expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 53 | MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains\n    | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/golden-0035.ms:54:1: parse: expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 54 | and standalone run/test/debug/profile artifacts.\n    | ^^^\n12 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
