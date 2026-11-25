@@ -47,8 +47,9 @@ static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation,
   MsStrBuild why = ms_strbuild_new();
   /* With --opt the options are a Release build's, so the IR shown is what `opt` receives. */
   const MsLinkRequest release = {.build_type = MS_BUILD_RELEASE, .tests = tests};
-  const BackendOptions options = optimize ? ms_pipeline_backend_options(&release)
-                                          : (BackendOptions){.verify = true, .tests = tests};
+  BackendOptions options = optimize ? ms_pipeline_backend_options(&release)
+                                    : (BackendOptions){.tests = tests};
+  options.verify = true; /* `ms emit` shows what the passes make, so it checks each step */
   const bool ok = ir ? ms_backend_ir(&checked->program, checked->entry, &options, &out, &why)
                      : print_mir(&checked->program, checked->entry, optimize, &out, &why);
   int status = STATUS_FAILED;
