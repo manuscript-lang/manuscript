@@ -87,50 +87,50 @@ fn hex_digit(value Int) UInt8 {
 	return (55 + value).to_uint8() or 0
 }
 
-// Bytes a host or zone keeps unescaped: ! " $ & ' ( ) * + , : ; < = > [ ]
-fn host_safe(c Int) Bool {
-	if c >= 33 and c <= 44 { return c != 35 and c != 37 }
-	return c >= 58 and c <= 62 or c == 91 or c == 93
-}
-
-// Whether a reserved byte (one of `$&+,/:;=?@`) is escaped in `mode`.
-fn reserved_escapes(c, mode Int) Bool {
-	if mode == 0 { return c == 63 }
-	if mode == 1 { return c == 47 or c == 59 or c == 44 or c == 63 }
-	if mode == 4 { return c == 64 or c == 47 or c == 63 or c == 58 }
-	if mode == 6 { return false }
-
-	return true
-}
-
-// Letters, digits and `-._~`: never escaped in any mode.
-fn unreserved(c Int) Bool {
-	return is_alnum(c) or c == 45 or c == 46 or c == 95 or c == 126
-}
+// Whether byte c (below 128) is escaped in mode m (0 to 6; 7 unused), at index c * 8 +
+// m.
+ESCAPES := [
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+	0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1,
+	1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0,
+	0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1
+]
 
 fn should_escape(c, mode Int) Bool {
-	if (c >= 97 and c <= 122) or (c >= 65 and c <= 90) or (c >= 48 and c <= 57) { return false }
-
-	host := mode == 2 or mode == 3
-	if host and host_safe(c) { return false }
-	if c == 45 or c == 95 or c == 46 or c == 126 { return false }
-
-	reserved := (
-		c == 36
-		or c == 38
-		or c == 43
-		or c == 44
-		or c == 47
-		or c == 58
-		or c == 59
-		or c == 61
-		or c == 63
-		or c == 64
-	)
-	if reserved and not host { return reserved_escapes(c, mode) }
-	if mode == 6 and (c == 33 or c == 40 or c == 41 or c == 42) { return false }
-
-	return true
+	return c >= 128 or ESCAPES[c * 8 + mode] == 1
 }
 
 fn escape(text Bytes, mode Int) Bytes {
@@ -139,7 +139,7 @@ fn escape(text Bytes, mode Int) Bytes {
 	for i in 0..text.length() {
 		c := text.get(i).to_int()
 
-		if not unreserved(c) and should_escape(c, mode) {
+		if should_escape(c, mode) {
 			plain = false
 			break
 		}
@@ -625,16 +625,14 @@ fn parse_inner(raw Bytes, var url Parts) Bool {
 }
 
 // Go's url.Parse; null when the text is malformed.
-fn parse_parts(raw Bytes) Parts? {
+fn parse_parts(raw Bytes, var url Parts) Bool {
 	hash := raw.index_of_byte(35, 0) or raw.length()
-	var url = new_parts()
-	if not parse_inner(raw.view(0, hash), url) { return null }
-	if (
-		hash + 1 < raw.length()
-		and not set_fragment(url, raw.view(hash + 1, raw.length()))
-	) { return null }
+	if not parse_inner(raw.view(0, hash), url) { return false }
 
-	return url
+	return (
+		hash + 1 >= raw.length()
+		or set_fragment(url, raw.view(hash + 1, raw.length()))
+	)
 }
 
 // ---- rendering, resolving and the public record ----
@@ -848,29 +846,32 @@ fn resolve_reference(base, r Parts) Parts {
 }
 
 type HostPort {
-	name, port Bytes
+	name_at, name_stop, port_at Int
 }
 
-// Splits `host:port` (the port is empty when there is none) and strips the brackets of
-// an IP literal.
 fn split_host_port(host_port Bytes) HostPort {
-	var name = host_port.clone()
-	var port = empty()
+	size := host_port.length()
+	var stop = size
+	var port_at = size
 	colon := last_index(host_port, 58)
 
-	if colon >= 0 and valid_optional_port(host_port.view(colon, host_port.length())) {
-		port = sub(host_port, colon + 1, host_port.length())
-		name = sub(host_port, 0, colon)
+	if colon >= 0 and valid_optional_port(host_port.view(colon, size)) {
+		port_at = colon + 1
+		stop = colon
 	}
 
+	var at = 0
+
 	if (
-		name.length() >= 2
-		and name.get(0).to_int() == 91
-		and name.get(name.length() - 1).to_int() == 93
+		stop >= 2
+		and host_port.get(0).to_int() == 91
+		and host_port.get(stop - 1).to_int() == 93
 	) {
-		name = sub(name, 1, name.length() - 1)
+		at = 1
+		stop -= 1
 	}
-	return HostPort(name, port)
+
+	return HostPort(at, stop, port_at)
 }
 
 fn valid_query(query Bytes) Bool {
@@ -942,23 +943,26 @@ fn components(parts Parts) Url! {
 	if parts.has_user or not parts.opaque.is_empty() or parts.scheme.is_empty() { return invalid_data() }
 
 	split := split_host_port(parts.host)
+	size := parts.host.length()
 	var port = 0
 
-	for i in 0..split.port.length() {
-		port = port * 10 + split.port.get(i).to_int() - 48
+	for i in split.port_at..size {
+		port = port * 10 + parts.host.get(i).to_int() - 48
 		if port > 65535 { return invalid_data() }
 	}
 
 	bracketed := starts_with(parts.host, "[")
 	if parts.path.decode_utf8() == null or not valid_query(parts.raw_query) { return invalid_data() }
-	if split.name.index_of_byte(
+
+	name := parts.host.view(split.name_at, split.name_stop)
+	if name.index_of_byte(
 		58,
 		0,
 	) != null and not bracketed { return invalid_data() }
 
 	path := text_of(escaped_path(parts))?
 	fragment := text_of(parts.fragment)?
-	host := text_of(go_lower_host(split.name))?
+	host := text_of(go_lower_host(name))?
 	scheme := text_of(lower_ascii(parts.scheme))?
 	var query String? = null
 	if parts.force_query or not parts.raw_query.is_empty() {
@@ -966,7 +970,7 @@ fn components(parts Parts) Url! {
 	}
 
 	var number Int? = null
-	if not split.port.is_empty() { number = port }
+	if split.port_at < size { number = port }
 	return ok(Url(scheme, host, path, fragment, query, number, parts.omit_host))
 }
 
@@ -995,7 +999,7 @@ fn build_parts(v Url, var url Parts) Bool {
 	path := unescape(raw, 1)
 	if path == null or path.decode_utf8() == null { return false }
 
-	address := sub(joined, 0, joined.index_of_byte(37, 0) or joined.length())
+	address := joined.view(0, joined.index_of_byte(37, 0) or joined.length())
 	query := (v.query or "").to_bytes()
 	if not valid_query(query) { return false }
 	if (
@@ -1044,9 +1048,12 @@ fn reads_back_plain(u Parts) Bool {
 		and is_alpha(u.scheme.get(0).to_int())
 		and all_bytes(u.scheme, false)
 	)
+	split := split_host_port(u.host)
+	host_at := split.name_at
+	host_stop := split.name_stop
 	plain_host := (
 		not starts_with(u.host, "[")
-		and all_bytes(split_host_port(u.host).name, true)
+		and all_bytes(u.host.view(host_at, host_stop), true)
 	)
 	rereads_path := (
 		u.host.is_empty()
@@ -1058,8 +1065,8 @@ fn reads_back_plain(u Parts) Bool {
 // The reference check: parse what was rendered and require a hierarchical URL with the
 // same scheme, no user information and no host byte that would change the authority.
 fn reparses(u Parts, rendered Bytes) Bool {
-	parsed := parse_parts(rendered)
-	if parsed == null { return false }
+	var parsed = new_parts()
+	if not parse_parts(rendered, parsed) { return false }
 	if parsed.scheme.is_empty() or lower_ascii(parsed.scheme) != lower_ascii(u.scheme) { return false }
 	if not parsed.opaque.is_empty() or parsed.has_user { return false }
 
@@ -1169,8 +1176,12 @@ export fn format_query(entries List[QueryEntry]) String {
 
 // Parses an absolute URL into its components.
 export fn parse(text String) Url! {
-	parts := parse_parts(text.view_bytes())
-	if parts == null or parts.scheme.is_empty() or parts.has_user { return invalid_data() }
+	var parts = new_parts()
+	if (
+		not parse_parts(text.view_bytes(), parts)
+		or parts.scheme.is_empty()
+		or parts.has_user
+	) { return invalid_data() }
 
 	return components(parts)
 }
@@ -1209,8 +1220,8 @@ export fn resolve(base Url, reference String) Url! {
 	var built = new_parts()
 	if go_url(base, built) == null { return invalid_input() }
 
-	parsed := parse_parts(reference.view_bytes())
-	if parsed == null or parsed.has_user { return invalid_data() }
+	var parsed = new_parts()
+	if not parse_parts(reference.view_bytes(), parsed) or parsed.has_user { return invalid_data() }
 
 	return components(resolve_reference(built, parsed))
 }

@@ -141,7 +141,8 @@ MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty) {
 
 /* The value of the parameter or local `ref` names; `expr` is the name (a callee's ref is on its call). */
 /* A module constant: its initializer lowered where it is read, under the facts and file of the module that declares
- * it. The value is read-only, so each read is the same value. */
+ * it. The value is read-only, so each read is the same value; a list of integer literals is read as a borrowed view of
+ * static data, not rebuilt. */
 static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
   const MsSymbolId id = fn_symbol_at(fn->cx, ref->decl);
   const MsDecl *decl = id == 0 ? NULL : fn->cx->program->symbols.ptr[id].decl;
@@ -155,7 +156,8 @@ static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
   fn->facts = &fn->cx->program->modules.ptr[ref->decl.module].facts;
   fn->module_index = ref->decl.module;
   fn->file = lower_file(fn->cx, ref->decl.module);
-  const MirValue value = fn_expr(fn, decl->u.konst.value, LW_BORROW);
+  const MirValue view = fn_constant_list_view(fn, decl->u.konst.value);
+  const MirValue value = view != MIR_NONE ? view : fn_expr(fn, decl->u.konst.value, LW_BORROW);
   fn->facts = facts;
   fn->module_index = module_index;
   fn->file = file;

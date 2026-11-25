@@ -59,7 +59,7 @@ ms_library(ms_std_text runtime/std
 ms_library(ms_std_data runtime/std
   SOURCES
     json_doc.c json_scalar.c json_scan.c json_tree.c json_write.c shape_json_write.c shape_json_read.c checksum.c
-    encoding.c html.c html_entity.c archive.c archive_tar.c
+    encoding.c archive.c archive_tar.c
     archive_zip.c
   LINK ms_base ms_values ms_std_text ms_std_compress zlib)
 

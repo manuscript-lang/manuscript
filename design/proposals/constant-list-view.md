@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-16, against `main` 2b8a689e. Fixes #4199. Removes no documented behavior: `documentation/core-language/modules/declarations.md` says each use of a constant evaluates its initializer in place, so a list constant is always fresh. A view is not observable: nothing can write it, and a use that could observe sharing gets a copy.
+Implemented 2026-11-25 in the C compiler: `fn_constant_list_view` in `lower_list.c` lowers a reference to a list of integer literals to `list.const.view` (the MIR op, verifier and emitter were already present); fixture `accept/constant-list-view.ms`; found by the HTML entity port ([result](../../bench/perf/pure-utilities/results-2026-11-25-html-entity-in-manuscript.md)). Floats, booleans and non-literal elements still rebuild the list. Original proposal, 2026-11-16, against `main` 2b8a689e. Fixes #4199. Removes no documented behavior: `documentation/core-language/modules/declarations.md` says each use of a constant evaluates its initializer in place, so a list constant is always fresh. A view is not observable: nothing can write it, and a use that could observe sharing gets a copy.
 
 ## Problem
 
