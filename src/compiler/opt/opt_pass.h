@@ -41,6 +41,7 @@ bool opt_splitview(MirModule *m); /* a split read only in place makes no heap li
 bool opt_probe(MirModule *m);     /* a map or set lookup of a fixed layout runs as a probe loop in the caller */
 bool opt_appendfast(MirModule *m);/* `string_append` on an owned string with room runs inline */
 bool opt_exit_drops(MirModule *m); /* the plain drops on the entry's return paths run only when `msrt_exit_frees` says so */
+bool opt_fieldload(MirModule *m); /* a field of a record behind a pointer is loaded alone, not through a copy of the record */
 bool opt_inline(MirModule *m);
 
 #endif
