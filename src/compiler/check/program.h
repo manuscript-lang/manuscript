@@ -60,6 +60,7 @@ typedef struct MsModuleInfo {
   MsScope imports;    /* owned: imported name -> symbol id (0 when the import did not resolve) */
   const int32_t *targets; /* borrowed from the graph: module index of each local import; NULL for std */
   MsFacts facts;
+  MsFacts constant_scratch; /* node-indexed storage for typing module constants before the bodies run; allocated on first use, one per module */
   MsSpan source; /* the text the tree was parsed from; borrowed */
 } MsModuleInfo;
 
