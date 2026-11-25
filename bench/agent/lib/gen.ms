@@ -39,10 +39,10 @@ export fn write_cases(id String, examples, hidden List[GenCase]) Void {
 // the executable.
 export fn build_oracle(id String) String {
 	tmp := temporary_directory("msbench-oracle-").get()
-	sources := bash("ls oracle/*.ref", dir(id), 10, "").out.trim().split("\n")
+	sources := bash("ls oracle/*.ref", dir(id), 10, "").out.trim().split("\n").collect()
 
 	for source in sources {
-		name := source.split("/").last() or ""
+		name := source.split("/").collect().last() or ""
 		copy(
 			f"{dir(id)}/{source}",
 			f"{tmp}/{name.slice(0, name.length() - 4)}",

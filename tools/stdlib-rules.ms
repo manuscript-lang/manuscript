@@ -171,7 +171,7 @@ fn declared_of(
 // Every function a file declares: free and `fn Type.method` at column 0, and the
 // methods of its interfaces.
 fn declarations(text String) List[Declared] {
-	lines := text.split("\n")
+	lines := text.split("\n").collect()
 	var found = List[Declared]()
 	var interface_name = ""
 	var interface_exported = false
@@ -262,7 +262,7 @@ fn type_names(text String, only_exported Bool) List[String] {
 // ---- allow lists that only shrink ----
 
 fn allow_list(path String) List[String] {
-	entries := text_of(path).split("\n").filter(
+	entries := text_of(path).split("\n").collect().filter(
 		line => (line != "" and not line.starts_with("//"))
 	).map(line => line.trim().clone())
 	return entries
@@ -328,8 +328,11 @@ fn optional_defaults(
 	return found
 }
 
+// A look iterator (`fn var Type.next() &T?`) walks a value it borrows; it is an
+// iterator, not a stream.
 fn stream_names(
-	path String,
+	path,
+	text String,
 	declared List[Declared],
 	exported_types List[String],
 ) List[String] {
@@ -337,7 +340,12 @@ fn stream_names(
 
 	for d in declared {
 		if d.owner == "" or d.owner == "Iterator" { continue }
-		if not exported_types.contains(d.owner) { continue }
+		if not exported_types.contains(
+			d.owner
+		) { continue }
+		if d.name == "next" and text.contains(
+			f"fn var {d.owner}.next() &"
+		) { continue }
 
 		if banned_methods.contains(
 			d.name
@@ -505,7 +513,12 @@ export fn stdlib_issues(files List[String]) List[String] {
 		}
 		if not stream_modules.contains(path) {
 			stream_found = stream_found.concat(
-				stream_names(path.clone(), declared, exported_types)
+				stream_names(
+					path.clone(),
+					text,
+					declared,
+					exported_types,
+				)
 			)
 		}
 		issues = issues.concat(adjacency(path.clone(), text))

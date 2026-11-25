@@ -89,14 +89,14 @@ test "verify rejects a wrong key, a tampered body and a different algorithm" {
 		) | expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
 	)
 
-	parts := token.split(".")
+	parts := token.split(".").collect()
 	forged := (
 		sign_token(
 			Session(sub: "1", exp: 1900000000, iss: "me"),
 			secret,
 		) | expect_ok?
 	)
-	swapped := f"{parts[0]}.{forged.split(".")[1]}.{parts[2]}"
+	swapped := f"{parts[0]}.{forged.split(".").collect()[1]}.{parts[2]}"
 	(
 		(failure(verify_token[Session](swapped, secret))?)
 		| expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
@@ -394,7 +394,7 @@ test "es256 signatures are raw 64 bytes and verify" {
 				JwtAlgorithm.Es256,
 			) | expect_ok?
 		)
-		token.split(".")[2].length() | expect_equal(86)?
+		token.split(".").collect()[2].length() | expect_equal(86)?
 		(
 			(verify_token[Session](token, public, check) | expect_ok?).exp
 			| expect_equal(1900000000 + round)?

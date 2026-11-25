@@ -49,7 +49,7 @@ fn main() Void {
 		size += w.length() + 1
 	}
 
-	parts := sb.split(",")
+	parts := sb.split(",").collect()
 	print(
 		f"upper {upper_len} replaced {replaced} found {found} padded {padded} sorted {sorted_sample} parts {parts.length()}"
 	)

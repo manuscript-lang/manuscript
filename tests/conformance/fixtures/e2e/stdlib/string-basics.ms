@@ -25,7 +25,7 @@ test "String basic counterparts are callable" {
 			or "é".compare("é") != 0
 		)
 	)?
-	expect_equal("a\r\nb\n".lines(), ["a", "b"])?
+	expect_equal("a\r\nb\n".lines().collect(), ["a", "b"])?
 }
 
 test "length and chars use scalars and preserve text boundaries" {
@@ -91,7 +91,7 @@ test "lines preserve interior empties and recognize LF and CRLF only" {
 		LineCase("a\u{85}b\u{2028}c\u{2029}d", ["a\u{85}b\u{2028}c\u{2029}d"]),
 	]
 	for line_case in cases {
-		if line_case.text.lines() != line_case.expected {
+		if line_case.text.lines().collect() != line_case.expected {
 			return fail(f"line boundary: {line_case.text.to_string()}")
 		}
 	}
@@ -110,17 +110,17 @@ test "String basic bound methods capture immutable receiver values" {
 	empty := snapshot.is_empty
 	compare := snapshot.compare
 	text = "changed"
-	expect_false(chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"])?
+	expect_false(chars() != ["é", "\n", "🙂", "\n"] or lines().collect() != ["é", "🙂"])?
 	expect_false((reverse() != "\n🙂\né" or length() != 8 or empty()))?
 	expect_equal(compare("é\n🙂\n"), 0)?
 
-	var first = lines()
-	second := lines()
+	var first = lines().collect()
+	second := lines().collect()
 	first.set(0, "changed")
 	first.append("new")
 	expect_equal(second, ["é", "🙂"])?
 
-	var empty_lines = "".lines()
+	var empty_lines = "".lines().collect()
 	empty_lines.append("new")
-	expect_false(not ("".lines().is_empty()))?
+	expect_false(not ("".lines().collect().is_empty()))?
 }

@@ -24,7 +24,7 @@ test "a trim view keeps its source until the view's last use" {
 
 test "a source whose last use is early is not needed by later work" {
 	text := "alpha beta gamma".clone()
-	words := text.split(" ")
+	words := text.split(" ").collect()
 	count := words.length()
 	n := churn(200)
 	expect_equal(count, 3)?

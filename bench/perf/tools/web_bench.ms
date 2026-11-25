@@ -112,7 +112,9 @@ fn wait_started(p Plan, port Int) Bool {
 }
 
 fn first_pid(pattern String) String {
-	return capture("pgrep", ["-f", pattern.clone()]).stdout.split("\n")[0].trim()
+	return capture("pgrep", ["-f", pattern.clone()]).stdout.split(
+		"\n"
+	).collect()[0].trim()
 }
 
 // Total system calls of all threads while strace is attached for `seconds`.
@@ -133,7 +135,7 @@ fn syscalls(pid String, seconds Int, file String) Int {
 
 	for line in read_text(file).split("\n") {
 		if line.contains(" total") {
-			cells := line.split(" ").filter(c => c != "")
+			cells := line.split(" ").collect().filter(c => c != "")
 			return cells[3].parse_int() or 0
 		}
 	}
@@ -226,7 +228,9 @@ fn measure_server(p Plan, name String, port, seconds Int, ms_threads String) Voi
 		void sleep(milliseconds(500)).wait()
 
 		reqs := (
-			load(p, port, ["64", "2", "/health"]).split(" ")[1].parse_int()
+			load(p, port, ["64", "2", "/health"]).split(" ").collect()[
+				1
+			].parse_int()
 			or 0 * 2
 		)
 		busy.wait().get_or(0)
@@ -235,7 +239,12 @@ fn measure_server(p Plan, name String, port, seconds Int, ms_threads String) Voi
 		var total = 0
 		for line in read_text(f"{p.w}/busy").split("\n") {
 			if line.contains(" total") {
-				total = (line.split(" ").filter(c => c != "")[3].parse_int() or 0)
+				total = (
+					line.split(" ").collect().filter(
+						c => c != ""
+					)[3].parse_int()
+					or 0
+				)
 			}
 		}
 

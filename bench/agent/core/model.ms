@@ -77,7 +77,7 @@ export type Lang {
 
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String {
-	base := self.solution.split("/").last() or ""
+	base := self.solution.split("/").collect().last() or ""
 	at := base.last_index_of(".")
 	if at != null { return base.slice(at, base.length()) }
 
@@ -85,7 +85,7 @@ fn Lang.suffix() String {
 }
 
 // The file name of the reference solution, such as `main.ms.ref`.
-fn Lang.reference() String => f"{(self.solution.split("/").last() or "")}.ref"
+fn Lang.reference() String => f"{(self.solution.split("/").collect().last() or "")}.ref"
 
 fn text_of(file String) String {
 	return read_file(file).wait().get().decode_utf8() or ""

@@ -35,7 +35,7 @@ test "repeat is plain text and clamps nonpositive counts" {
 	expect_equal("x".pad_start(3, "ab"), "abx")?
 	expect_equal("x".pad_end(3, "ab"), "xab")?
 	expect_equal("aa".replace("a", "xy"), "xyxy")?
-	expect_equal("a,,b".split(","), ["a", "", "b"])?
+	expect_equal("a,,b".split(",").collect(), ["a", "", "b"])?
 	expect_equal(" \té \n".trim(), "é")?
 
 	invalid String! := error(Error("string: invalid input", kind: "EINVAL"))
@@ -115,10 +115,10 @@ test "string and bytes builders freeze" {
 }
 
 test "empty text splits into one part and case mapping is full Unicode" {
-	expect_equal("".split(","), [""])?
+	expect_equal("".split(",").collect(), [""])?
 
 	none_requested List[String] := []
-	expect_equal("".split(""), none_requested)?
+	expect_equal("".split("").collect(), none_requested)?
 	expect_equal("ß".upper(), "SS")?
 	expect_equal("ﬁ".upper(), "FI")?
 	expect_equal("ΑΣ".lower(), "ας")?

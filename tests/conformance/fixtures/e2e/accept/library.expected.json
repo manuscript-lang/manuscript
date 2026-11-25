@@ -24,7 +24,7 @@
         {
           "code": "MST001",
           "phase": "build",
-          "message": "internal compiler error: the checker recorded no usable call at 191:14 (node 364, 85 calls)\ninternal compiler error: argument 1 of the call at 191:38 has no value (callee kind 3)\n\nThis is a bug in ms, not in your program. Please report it at https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.\n",
+          "message": "internal compiler error: the checker recorded no usable call at 191:36 (node 366, 85 calls)\ninternal compiler error: argument 1 of the call at 191:48 has no value (callee kind 3)\n\nThis is a bug in ms, not in your program. Please report it at https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.\n",
           "position": {
             "file": "library.ms",
             "line": 1,
@@ -60,6 +60,6 @@
       "summary.skipped",
       "tests"
     ],
-    "stderr": "internal compiler error: the checker recorded no usable call at 191:14 (node 364, 85 calls)\ninternal compiler error: argument 1 of the call at 191:38 has no value (callee kind 3)\n\nThis is a bug in ms, not in your program. Please report it at https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.\n\n"
+    "stderr": "internal compiler error: the checker recorded no usable call at 191:36 (node 366, 85 calls)\ninternal compiler error: argument 1 of the call at 191:48 has no value (callee kind 3)\n\nThis is a bug in ms, not in your program. Please report it at https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.\n\n"
   }
 }

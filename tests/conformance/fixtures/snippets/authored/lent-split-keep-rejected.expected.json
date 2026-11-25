@@ -9,12 +9,12 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "`split` borrows `line`, which this position would keep; store `.clone()` of it, or use it in place",
+        "message": "`collect` returns a reference into `line`, which this position would keep; store `.clone()` of it, or use it in place",
         "position": {
           "file": "lent-split-keep-rejected.ms",
           "line": 10,
-          "column": 21,
-          "offset": 258
+          "column": 32,
+          "offset": 269
         }
       },
       {
@@ -25,18 +25,18 @@
           "file": "lent-split-keep-rejected.ms",
           "line": 14,
           "column": 17,
-          "offset": 335
+          "offset": 345
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "`lines` borrows `text`, which this position would keep; store `.clone()` of it, or use it in place",
+        "message": "`collect` returns a reference into `text`, which this position would keep; store `.clone()` of it, or use it in place",
         "position": {
           "file": "lent-split-keep-rejected.ms",
           "line": 18,
-          "column": 17,
-          "offset": 407
+          "column": 29,
+          "offset": 414
         }
       },
       {
@@ -47,14 +47,14 @@
           "file": "lent-split-keep-rejected.ms",
           "line": 24,
           "column": 5,
-          "offset": 502
+          "offset": 522
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lent-split-keep-rejected.ms:10:21: type: `split` borrows `line`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 10 |     return Row(line.split(\" \"))\n    |                     ^\n<DIR>/lent-split-keep-rejected.ms:14:17: type: `chars` borrows `text`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 14 |     return text.chars()\n    |                 ^\n<DIR>/lent-split-keep-rejected.ms:18:17: type: `lines` borrows `text`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 18 |     return text.lines()\n    |                 ^\n<DIR>/lent-split-keep-rejected.ms:24:5: type: cannot reassign `line` while `parts` borrows it (binding of a part of it, at 23:5); finish using `parts` before this, or give `parts` its own value by ending its initializer with `.clone()`\n    |\n 24 |     line = \"\"\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lent-split-keep-rejected.ms:10:32: type: `collect` returns a reference into `line`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 10 |     return Row(line.split(\" \").collect())\n    |                                ^\n<DIR>/lent-split-keep-rejected.ms:14:17: type: `chars` borrows `text`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 14 |     return text.chars()\n    |                 ^\n<DIR>/lent-split-keep-rejected.ms:18:29: type: `collect` returns a reference into `text`, which this position would keep; store `.clone()` of it, or use it in place\n    |\n 18 |     return Row(text.lines().collect())\n    |                             ^\n<DIR>/lent-split-keep-rejected.ms:24:5: type: cannot reassign `line` while `parts` borrows it (binding of a part of it, at 23:5); finish using `parts` before this, or give `parts` its own value by ending its initializer with `.clone()`\n    |\n 24 |     line = \"\"\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -77,7 +77,7 @@ system       CpuInfo, Endianness +26
 tree         EmbeddedTree, FileTree +8
 random       SeededRandom, choice +9
 regex        Regex, RegexSpan, compile
-string       NormalizationForm +2
+string       Fields, Lines +4
 bench        run_bench_block +1
 boundary     finite_float_boundaries +2
 golden       expect_golden +1

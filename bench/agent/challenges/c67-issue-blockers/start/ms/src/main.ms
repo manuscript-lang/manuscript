@@ -389,7 +389,7 @@ fn apply_token(var f Fields, tok String) Void! {
 			return ok()
 		}
 
-		f.labels = norm_labels(value.split(","))?
+		f.labels = norm_labels(value.split(",").collect())?
 		return ok()
 	}
 
@@ -853,7 +853,7 @@ fn build_term(
 	var alts = List[String]()
 
 	if (op == 0 or op == 1 or op == 6) and not quoted {
-		alts = value.split("|").clone()
+		alts = value.split("|").collect().clone()
 	} else {
 		alts = [value.clone()]
 	}
@@ -2125,7 +2125,7 @@ fn var State.exec(line String) Void {
 fn main() Void! {
 	bytes := read_all(stdin(), null)?
 	text := bytes.decode_utf8() or ""
-	lines := text.lines()
+	lines := text.lines().collect()
 	var st = State()
 	var i = 0
 

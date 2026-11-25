@@ -67,10 +67,24 @@ static void split_at_pattern(MsSpan text, MsSpan separator, MsStringList *list, 
   }
 }
 
-static void split_into(const MsString *s, const MsString *sep, MsList *out, PieceMode mode) {
-  const MsSpan text = msrt_text(s);
+/* The part of `s` a split that has walked to byte `at` still has to cut; false when it has no piece left: `at` is
+ * past the text, or at its end for an empty separator (a separator of bytes yields one empty piece there). */
+static bool split_rest(MsSpan text, MsSpan separator, int64_t at, MsSpan *rest) {
+  if (at < 0 || (size_t)at > text.len || ((size_t)at == text.len && separator.len == 0)) {
+    return false;
+  }
+  *rest = between(text, (size_t)at, text.len);
+  return true;
+}
+
+static void split_into(const MsString *s, const MsString *sep, int64_t at, MsList *out, PieceMode mode) {
   const MsSpan separator = msrt_text(sep);
+  MsSpan text = {0};
   MsStringList list = {0};
+  if (!split_rest(msrt_text(s), separator, at, &text)) {
+    *out = (MsList){0};
+    return;
+  }
   if (separator.len == 0) {
     split_scalars(text, &list, mode);
   } else {
@@ -80,11 +94,11 @@ static void split_into(const MsString *s, const MsString *sep, MsList *out, Piec
 }
 
 void msrt_string_split(const MsString *s, const MsString *sep, MsList *out) {
-  split_into(s, sep, out, PIECE_COPY);
+  split_into(s, sep, 0, out, PIECE_COPY);
 }
 
-void msrt_string_split_view(const MsString *s, const MsString *sep, MsList *out) {
-  split_into(s, sep, out, PIECE_VIEW);
+void msrt_string_split_view(const MsString *s, const MsString *sep, int64_t at, MsList *out) {
+  split_into(s, sep, at, out, PIECE_VIEW);
 }
 
 /* Splits at a one-byte separator into `buffer` (room for SPLIT_FRAME_PIECES); false when it fills up. The text is
@@ -127,33 +141,33 @@ static bool split_into_buffer(MsSpan text, uint8_t separator, MsString *buffer, 
   return true;
 }
 
-/* The view split into the caller's frame buffer when the text is short and has at most eight pieces at a
+/* The view split into the caller's frame buffer when a split from the start is of short text with at most eight pieces at a
  * one-byte separator (the list then has capacity 0: it owns nothing); otherwise the heap list of split_view.
  */
-void msrt_string_split_view_into(const MsString *s, const MsString *sep, MsString *buffer, MsList *out) {
+void msrt_string_split_view_into(const MsString *s, const MsString *sep, int64_t at, MsString *buffer, MsList *out) {
   const MsSpan text = msrt_text(s);
   const MsSpan separator = msrt_text(sep);
   size_t count = 0;
-  if (separator.len == 1 && text.len <= SPLIT_FRAME_TEXT_MAX &&
+  if (at == 0 && separator.len == 1 && text.len <= SPLIT_FRAME_TEXT_MAX &&
       split_into_buffer(text, separator.ptr[0], buffer, &count)) {
     *out = (MsList){.ptr = (uint8_t *)(void *)buffer, .len = count, .cap = 0};
     return;
   }
-  split_into(s, sep, out, PIECE_VIEW);
+  split_into(s, sep, at, out, PIECE_VIEW);
 }
 
-/* text.split(separator)[0], a view of text, found without building the list. Faults like an index of an empty
- * list when text is empty and the separator is not. */
-void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *out) {
-  const MsSpan text = msrt_text(s);
+/* text.split(separator)[0] from byte `at`, a view of text, found without building the list. Faults like an index of
+ * an empty list when no piece is left, or text is empty and the separator is not. */
+void msrt_string_split_first(const MsString *s, const MsString *sep, int64_t at, MsString *out) {
   const MsSpan separator = msrt_text(sep);
+  MsSpan text = {0};
+  if (!split_rest(msrt_text(s), separator, at, &text)) {
+    msrt_post_index(0, 0);
+    *out = make_piece(PIECE_VIEW, between(msrt_text(s), 0, 0)); /* the caller leaves */
+    return;
+  }
   size_t end = 0;
   if (separator.len == 0) {
-    if (text.len == 0) {
-      msrt_post_index(0, 0);
-      *out = make_piece(PIECE_VIEW, between(text, 0, 0)); /* the caller leaves */
-      return;
-    }
     end = ms_utf8_decode(text.ptr, text.len).width;
   } else {
     const MsNeedle needle = ms_needle_for(separator, text.len);
@@ -171,20 +185,26 @@ void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *o
  * the pieces by byte offset, with no list. `at` is 0 or the end of the previous piece and its separator. A separator
  * of no bytes cuts after each scalar. A piece is a view of the text (an inline copy when short), like the pieces of
  * `split_view`. */
-void msrt_string_split_at(const MsString *s, const MsString *sep, int64_t at, MsString *out) {
-  const MsSpan text = msrt_text(s);
-  const MsSpan separator = msrt_text(sep);
-  const MsSpan rest = between(text, (size_t)at, text.len);
-  size_t end = rest.len;
+/* The byte offset where the piece that starts at `at` ends. */
+static size_t piece_end(MsSpan text, MsSpan separator, size_t at) {
+  const MsSpan rest = between(text, at, text.len);
   if (separator.len == 0) {
-    end = rest.len == 0 ? 0 : ms_utf8_decode(rest.ptr, rest.len).width;
-  } else {
-    /* A one-byte separator needs no preparation, and a piece must not pay for any. */
-    const MsNeedle needle = separator.len == 1 ? (MsNeedle){.pattern = separator} : ms_needle_for(separator, text.len);
-    const size_t hit = ms_needle_find(&needle, rest);
-    end = hit == SIZE_MAX ? rest.len : hit;
+    return at + (rest.len == 0 ? 0 : ms_utf8_decode(rest.ptr, rest.len).width);
   }
-  *out = make_piece(PIECE_VIEW, between(rest, 0, end));
+  /* A one-byte separator needs no preparation, and a piece must not pay for any. */
+  const MsNeedle needle = separator.len == 1 ? (MsNeedle){.pattern = separator} : ms_needle_for(separator, text.len);
+  const size_t hit = ms_needle_find(&needle, rest);
+  return at + (hit == SIZE_MAX ? rest.len : hit);
+}
+
+int64_t msrt_string_split_end(const MsString *s, const MsString *sep, int64_t at) {
+  return (int64_t)piece_end(msrt_text(s), msrt_text(sep), (size_t)at);
+}
+
+/* The bytes of `s` from `start` to `end`, a view (an inline string when short). The iterators cut at separators and
+ * scalar ends of valid text, so the bounds need no check. */
+void msrt_string_piece(const MsString *s, int64_t start, int64_t end, MsString *out) {
+  *out = make_piece(PIECE_VIEW, between(msrt_text(s), (size_t)start, (size_t)end));
 }
 
 /* ---- replace ---- */

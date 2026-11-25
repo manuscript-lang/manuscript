@@ -109,7 +109,7 @@ fn check(groups List[Group]) Int {
 
 	for g in groups {
 		for page in g.results.split(", ") {
-			if page != "" and not exists(f"{PERF}/{page.split("#")[0]}") {
+			if page != "" and not exists(f"{PERF}/{page.split("#").collect()[0]}") {
 				problems.append(f"{g.name}: results page {page} is missing")
 			}
 		}

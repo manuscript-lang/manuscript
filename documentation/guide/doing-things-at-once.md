@@ -15,7 +15,7 @@ import (
 )
 
 fn count_rows(text String) Int {
-    return text.split("\n").filter(line => not line.is_empty()).length()
+    return text.split("\n").collect().filter(line => not line.is_empty()).length()
 }
 
 fn run(paths List[String]) Int! {

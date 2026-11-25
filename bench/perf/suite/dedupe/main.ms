@@ -15,7 +15,7 @@ fn main() Void {
 		total += 1
 		lines.update(line, 0, v => v + 1)
 
-		name := line.split(" ")[0].clone()
+		name := line.split(" ").collect()[0].clone()
 		names.update(name, 0, v => v + 1)
 	}
 

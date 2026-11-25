@@ -53,7 +53,7 @@ export fn summarize(lines List[String], repeats Int) String! {
 	var sinks = Map[String, Int]()
 
 	for line in lines {
-		parts := line.trim().split(" ").filter(p => p != "")
+		parts := line.trim().split(" ").collect().filter(p => p != "")
 		if parts.length() < 2 or not VERSIONS.contains(parts[0]) {
 			return invalid(f"invalid sample: {line.trim()}")
 		}

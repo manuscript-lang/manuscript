@@ -150,7 +150,7 @@ test "Go net/url tables agree with the parser except for the listed cases" {
 	var by_design = 0
 
 	for line in text(tree, "expect-fail.txt").split("\n") {
-		name := line.split(" ").get_or(0, "")
+		name := line.split(" ").collect().get_or(0, "")
 		if name != "" and not name.starts_with("#") {
 			expected.append(name.clone())
 		}

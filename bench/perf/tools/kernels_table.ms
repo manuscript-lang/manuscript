@@ -82,7 +82,7 @@ export fn summarize(
 	var active = ""
 
 	for line in lines {
-		parts := line.trim().split(" ").filter(p => p != "")
+		parts := line.trim().split(" ").collect().filter(p => p != "")
 		if parts.length() < 2 or not versions.contains(parts[0]) {
 			return invalid(f"invalid sample: {line.trim()}")
 		}

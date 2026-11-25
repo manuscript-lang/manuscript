@@ -15,7 +15,7 @@ test "minima and reordered samples" {
 		sample(0, "rust", 100)
 	).concat(sample(1, "ms", 50)).concat(sample(1, "rust", 100))
 	result := expect_ok(summarize(lines.reversed(), 2))?
-	expect_equal(result.split("0.50x").length() - 1, case_names().length())?
+	expect_equal(result.split("0.50x").collect().length() - 1, case_names().length())?
 }
 
 test "invalid evidence" {

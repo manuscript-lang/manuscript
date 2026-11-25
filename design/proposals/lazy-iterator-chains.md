@@ -1,8 +1,8 @@
 # Lazy iterator chains: `split`, `lines`, `fields_by`, `map` and `filter` yield one item at a time
 
-* Status: **Proposed** (2026-11-25, against `main` at `f29c5c29`)
+* Status: **Stages 1 to 3 implemented** (2026-11-25); stage 4 (`map`/`filter`) next
 * Authors: [Claude](https://claude.ai/code)
-* Implementation: not yet implemented
+* Implementation: `Split`, `Lines`, `Fields` in `src/stdlib/core/string.ms`; `source_split` deleted
 * Supersedes / Extracted from: the `for`-over-`split` lowering (`source_split` in `lower_for.c`, #7105) and the list-fusion pass ([fuse-list-loops](fuse-list-loops.md)), for the shapes this covers; builds on stage 2 of [borrowed-fields-and-looks](borrowed-fields-and-looks.md) (a look record with a `next` that returns `&T?`)
 * Direction: Chinmay, 2026-11-25: "lets do lazy iterations in ms as well, thats more efficient, and users can build a list if they want to"; the coordinator's brief: "like Rust's: each step yields a borrowed view of the source, no intermediate list"
 
@@ -15,7 +15,7 @@
 ## Motivation
 
 - `wordfreq`: `data.lower().fields_by(...)` builds 112 MB of piece headers before the loop reads them once (#7121 rewrote the benchmark around it). `bench/perf/results.md` lists the other gaps.
-- The loop special case covers only `for x in text.split(sep)` written literally; `lines()`, `fields_by`, a chain, or a split passed on still build the list (wiki `a-split-loop-walks-the-text-and-makes-no-list`).
+- The loop special case covers only `for x in text.split(sep)` written literally; `lines()`, `fields_by`, a chain, or a split passed on still build the list (the earlier wiki page on it was deleted).
 - The fusion pass covers scalar elements and lambda-shaped callbacks only; strings and records still pay one list per stage (wiki `a-list-built-and-read-once-never-exists`).
 - Verified 2026-11-25: a generic adapter over an interface-bound iterator (`type Mapped[I Iterator[T], T, U]`) does not compile today: the lowering passes a `var` receiver by value (`ICE: call: argument 0 has type Count but ptr is expected`), and a look wrapped in a generic record cannot be returned (`a & result must be a part of a hold argument`). Both are general bugs, fixed in stage 1.
 

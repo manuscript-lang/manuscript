@@ -148,7 +148,7 @@ fn main() Void {
 		if arg == "quick" {
 			budget = 0
 		} else {
-			parts := arg.split(":")
+			parts := arg.split(":").collect()
 			var op = "both"
 			if parts.length() > 1 { op = parts[1].clone() }
 			bench_one(parts[0], op, budget, runs)

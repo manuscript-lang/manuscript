@@ -29,7 +29,7 @@ export fn parse_groups(text String) List[Group]! {
 			"#"
 		) { continue }
 
-		parts := line.split(" | ")
+		parts := line.split(" | ").collect()
 		if parts.length() != 5 { return invalid(f"groups.txt: want five fields: {line}") }
 
 		name := field(parts[0])
@@ -89,7 +89,7 @@ export fn top(path String) String {
 	if path == "" or path.starts_with(
 		"../"
 	) { return "" }
-	return path.split("#")[0].split("/")[0].clone()
+	return path.split("#").collect()[0].split("/").collect()[0].clone()
 }
 
 // What is wrong with the layout: `entries` are the names directly under bench/perf.
@@ -99,7 +99,9 @@ export fn layout_problems(groups List[Group], entries List[String]) List[String]
 	var known = Set[String]()
 
 	for group in groups {
-		for page in group.results.split(", ") { known.add(top(page.trim())) }
+		for page in group.results.split(
+			", "
+		).collect() { known.add(top(page.trim())) }
 		known.add(group.name.clone())
 		if group.kind != "probe" and group.command == "" {
 			problems.append(f"group {group.name} has kind {group.kind} but no command")

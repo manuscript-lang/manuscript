@@ -456,7 +456,7 @@ fn verify(ms, scratch String, cell Cell, show Bool, filter String) Tally {
 			tally.failures += 1
 			tally.lines.append(f"generated: {name} does not parse: {why}\n")
 		} else if show or filter != "" {
-			tally.lines.append(f"rejected {name}: {why.split("\n")[0]}\n")
+			tally.lines.append(f"rejected {name}: {why.split("\n").collect()[0]}\n")
 		}
 
 		return tally
@@ -474,7 +474,7 @@ fn verify(ms, scratch String, cell Cell, show Bool, filter String) Tally {
 		}
 
 		child := ran.get()
-		lines := (child.stdout.decode_utf8() or "").split("\n")
+		lines := (child.stdout.decode_utf8() or "").split("\n").collect()
 
 		if child.exit_code != 0 {
 			tally.failures += 1

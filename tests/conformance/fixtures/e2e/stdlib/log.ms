@@ -312,7 +312,7 @@ test "loggers on several threads never interleave a record" {
 	logger.flush()?
 
 	text := (written(path)?) or ""
-	expect_equal(text.split("\n").length(), 7)?
+	expect_equal(text.split("\n").collect().length(), 7)?
 
 	for line in text.split("\n") {
 		if line != "" {

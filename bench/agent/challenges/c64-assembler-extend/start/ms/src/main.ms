@@ -1043,7 +1043,7 @@ fn parse_input(lines List[String]) List[Int] {
 fn main() Void! {
 	bytes := read_all(stdin())?
 	text := bytes.decode_utf8() or ""
-	all := text.lines()
+	all := text.lines().collect()
 	var src = List[String]()
 	var inp_lines = List[String]()
 	var seen = false

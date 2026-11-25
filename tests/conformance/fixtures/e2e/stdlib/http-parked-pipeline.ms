@@ -70,7 +70,7 @@ export fn main() Int {
 		text := exchange(server.address())
 		elapsed_ms := monotonic().difference(start).to_milliseconds()
 		_count := stdout().write(
-			f"responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
+			f"responses: {text.split("HTTP/1.1 200 OK").collect().length() - 1}\n"
 		)
 		_order := stdout().write(
 			f"slow first: {(text.index_of("ok /slow") or (-1)) < (text.index_of("ok /fast") or (-1))}\n"

@@ -22,7 +22,7 @@ fn say(ok Bool, ok_text, missing_text String) Bool {
 // Whether `version` ("0.146.7") is at least 0.146.7.
 // Whether `hugo version` output names an extended build new enough for the book.
 fn hugo_usable(output String) Bool {
-	fields := output.split(" ")
+	fields := output.split(" ").collect()
 	return (
 		output.contains("extended")
 		and fields.length() > 1
@@ -31,7 +31,15 @@ fn hugo_usable(output String) Bool {
 }
 
 fn hugo_new_enough(version String) Bool {
-	parts := version.split("-")[0].split("+")[0].split(".")
+	parts := (
+		version
+		.split("-")
+		.collect()[0]
+		.split("+")
+		.collect()[0]
+		.split(".")
+		.collect()
+	)
 	if parts.length() < 3 { return false }
 
 	major := parts[0].parse_int() or 0

@@ -4,7 +4,11 @@ import (
 	msrt_string_fields,
 	msrt_string_from_scalars,
 	msrt_string_index_any,
-	msrt_string_split_at,
+	msrt_string_lines,
+	msrt_string_piece,
+	msrt_string_scalar_text,
+	msrt_string_split_end,
+	msrt_string_split_view,
 	msrt_string_trim_chars from "@std/internal/string.ms",
 	msstd_unicode_display_width,
 	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
@@ -136,58 +140,6 @@ fn scalar_width(code Int) Int {
 	return 4
 }
 
-// Splits around runs of characters (one-scalar strings) for which `is_separator`
-// returns true. The result has no empty items.
-fn String.fields_by(is_separator fn(String) Bool) List[String] {
-	var out = List[String]()
-
-	// ASCII text: a scalar index is a byte offset, so each field is one copy of its run
-	// instead of a builder per field.
-	if self.length() == self.scalar_length() {
-		var start = -1
-		var i = 0
-
-		for c in self.chars() {
-			if is_separator(c) {
-				if start >= 0 {
-					out.append(self.view(start, i).clone())
-					start = -1
-				}
-			} else if start < 0 {
-				start = i
-			}
-
-			i += 1
-		}
-
-		if start >= 0 {
-			out.append(self.view(start, i).clone())
-		}
-		return out
-	}
-
-	var current = ""
-	var open = false
-
-	for c in self.chars() {
-		if is_separator(c) {
-			if open {
-				out.append(current)
-				current = ""
-				open = false
-			}
-		} else {
-			current += c
-			open = true
-		}
-	}
-
-	if open {
-		out.append(current)
-	}
-	return out
-}
-
 // Compares text ignoring case. Both sides are uppercased and then lowercased with
 // Unicode full case mapping, without locale or normalization, so "Straße" equals
 // "STRASSE". This is not Unicode default case folding: the dotless "ı" (U+0131)
@@ -259,7 +211,7 @@ fn String.split_after(separator String) List[String] {
 	if separator.is_empty() { return self.chars().clone() }
 
 	var out = List[String]()
-	parts := self.split(separator)
+	parts := self.split(separator).collect()
 
 	for i in 0..parts.length() {
 		if i + 1 < parts.length() {
@@ -551,22 +503,157 @@ fn is_word_scalar(c String) Bool {
 	return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"
 }
 
-
-// The pieces of a text between separators, one at a time: the iterator `split` returns.
+/*
+The pieces of a text between separators, one at a time: what `split` returns. Each piece views the
+text, which cannot change while the iterator lives. Walk it with `for`, chain it, or call
+`collect()` for a list of the pieces that remain.
+*/
 export type Split {
+	// The text being split, borrowed from the caller.
 	text &String
-	separator &String
+	// The separator; an empty one cuts between scalars.
+	separator String
+	// The byte offset where the next piece starts.
+	at Int
+	// The offset past which no piece starts: one beyond the text for a separator of
+	// bytes.
+	last Int
+}
+
+// The next piece, or `null` after the last one.
+fn var Split.next() &String? {
+	if self.at >= self.last { return null }
+
+	start := self.at
+	end := msrt_string_split_end(self.text, self.separator, start)
+	self.at = end + self.separator.length()
+	return msrt_string_piece(self.text, start, end)
+}
+
+// The pieces that remain, as a list of views of the text.
+fn hold Split.collect() List[&String] {
+	return msrt_string_split_view(self.text, self.separator, self.at)
+}
+
+// Splits at every exact separator, keeping empty pieces. Empty text with a nonempty
+// separator yields one empty piece; an empty separator splits into scalars. The pieces
+// borrow the receiver: walk them with `for`, or call `collect()` on the result for a
+// list.
+fn hold String.split(separator String) Split {
+	return Split(
+		self,
+		separator.clone(),
+		0,
+		self.length() + (if separator.is_empty() { 0 } else { 1 }),
+	)
+}
+
+/*
+The lines of a text, one at a time: what `lines` returns. A line ends at LF or CRLF; a
+standalone CR stays in the line. Text that ends in a newline yields no extra empty line.
+*/
+export type Lines {
+	// The text being read, borrowed from the caller.
+	text &String
+	// The byte offset where the next line starts.
 	at Int
 }
 
-fn var Split.next() &String? {
-	last := self.text.length() + (if self.separator.is_empty() { 0 } else { 1 })
-	if self.at >= last { return null }
-	piece := msrt_string_split_at(self.text, self.separator, self.at)
-	self.at += piece.length() + self.separator.length()
-	return piece
+// The next line without its line ending, or `null` after the last one.
+fn var Lines.next() &String? {
+	n := self.text.length()
+	if self.at >= n { return null }
+
+	start := self.at
+	found := self.text.view(start, n).index_of("\n")
+
+	if found == null {
+		self.at = n
+		return self.text.view(start, n)
+	}
+
+	feed := start + found
+	self.at = feed + 1
+	if feed > start and self.text.view(feed - 1, feed) == "\r" {
+		return self.text.view(start, feed - 1)
+	}
+
+	return self.text.view(start, feed)
 }
 
-fn hold String.pieces(hold separator String) Split {
-	return Split(self, separator, 0)
+// The lines that remain, as a list of views of the text.
+fn hold Lines.collect() List[&String] {
+	n := self.text.length()
+	if self.at >= n {
+		return self.text.view(n, n).chars()
+	}
+
+	return msrt_string_lines(self.text.view(self.at, n))
+}
+
+// Splits at LF and CRLF, keeping interior empty lines and any standalone CR.
+// Text that ends in a newline yields no extra empty item, and empty text yields none.
+// The lines borrow the receiver: walk them with `for`, or call `collect()` for a list.
+fn hold String.lines() Lines {
+	return Lines(self, 0)
+}
+
+/*
+The runs of text between separator characters, one at a time: what `fields_by` returns.
+No run is empty. Each run views the text.
+*/
+export type Fields {
+	// The text being read, borrowed from the caller.
+	text &String
+	// Whether a one-scalar string is a separator.
+	is_separator fn(String) Bool
+	// The byte offset where the search for the next run continues.
+	at Int
+}
+
+// The next run, or `null` after the last one.
+fn var Fields.next() &String? {
+	n := self.text.length()
+	var i = self.at
+	var start = -1
+
+	while i < n {
+		c := msrt_string_scalar_text(self.text, i)
+		width := c.length()
+
+		if self.is_separator(c) {
+			if start >= 0 {
+				self.at = i + width
+				return self.text.view(start, i)
+			}
+		} else if start < 0 {
+			start = i
+		}
+
+		i += width
+	}
+
+	self.at = n
+	if start < 0 { return null }
+
+	return self.text.view(start, n)
+}
+
+// The runs that remain, as a list of copies.
+fn var Fields.collect() List[String] {
+	var out List[String] = []
+
+	for run in self {
+		owned := run.clone()
+		out.append(owned)
+	}
+
+	return out
+}
+
+// Splits around runs of characters (one-scalar strings) for which `is_separator`
+// returns true. No run is empty. The runs borrow the receiver: walk them with `for`, or
+// call `collect()` on the result for a list.
+fn hold String.fields_by(is_separator fn(String) Bool) Fields {
+	return Fields(self, is_separator, 0)
 }

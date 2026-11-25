@@ -97,7 +97,7 @@ bench "fused chains" {
 		fn(r Row) Int => (r.name.length())
 	).sum()
 	text := "the quick brown fox jumps over the lazy dog ".repeat(100)
-	words := text.split(" ").filter(fn(w String) Bool => w.length() > 3).map(
+	words := text.split(" ").collect().filter(fn(w String) Bool => w.length() > 3).map(
 		fn(w String) Int => w.length()
 	).sum()
 	total + words

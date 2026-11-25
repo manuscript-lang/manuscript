@@ -34,7 +34,7 @@ fn summarize(path String) Stats {
 	for line in text.split("\n") {
 		if line.is_empty() { continue }
 
-		f := line.split(" ")
+		f := line.split(" ").collect()
 		s.lines += 1
 		s.latency += f[5].parse_int() or 0
 
