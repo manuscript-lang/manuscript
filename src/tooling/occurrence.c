@@ -200,6 +200,16 @@ static MsSpan method_key(Builder *b, const MsMethodEntry *entry) {
   return ms_message_format(b->arena, "method:%S:%u", ms_occ_module_file(b, entry->module), entry->source->pos.offset);
 }
 
+/* The type a parameter or field was written with: its checked fact, else the type its annotation resolved to. */
+static MsTy written_type(const Builder *b, uint32_t module, const MsParam *param) {
+  MsTy ty = ms_facts_type(&b->program->modules.ptr[module].facts, param->id);
+  for (size_t at = 0; ty == MS_TY_NONE && param->ty != NULL && at < b->program->type_refs.len; at++) {
+    const MsTypeRefRecord *written = &b->program->type_refs.ptr[at];
+    if (written->module == module && written->node == param->ty->id) ty = written->ty;
+  }
+  return ty;
+}
+
 /* ---- declarations ---- */
 
 static MsSymbolId declared_symbol(const Builder *b, uint32_t module, const MsDecl *decl) {
@@ -245,8 +255,13 @@ static void declare_symbols(Builder *b, uint32_t module) {
     if (decl->kind == MS_D_ENUM) {
       for (uint32_t index = 0; index < decl->u.enumeration.cases.len; index++) {
         const MsCase *kase = decl->u.enumeration.cases.ptr[index];
-        ms_occ_add(b, ms_message_format(b->arena, "case:%S:%S", key, ms_occ_name_text(b, kase->name)), ms_occ_name_text(b, kase->name), module,
-            kase->pos.offset, true, false, symbol->ty, 0, false);
+        const MsSpan case_name = ms_occ_name_text(b, kase->name);
+        ms_occ_add(b, ms_message_format(b->arena, "case:%S:%S", key, case_name), case_name, module, kase->pos.offset, true, false, symbol->ty, 0, false);
+        for (uint32_t member = 0; member < kase->fields.len; member++) {
+          const MsParam *field = kase->fields.ptr[member];
+          ms_occ_add(b, ms_message_format(b->arena, "case:%S:%S:%S", key, case_name, ms_occ_name_text(b, field->name)), ms_occ_name_text(b, field->name),
+              module, field->pos.offset, true, false, written_type(b, module, field), 0, false);
+        }
       }
     }
     if (decl->kind == MS_D_INTERFACE) {
@@ -342,8 +357,19 @@ static void declare_pattern(Builder *b, const MsPattern *pattern) {
       declare_pattern(b, pattern->u.list.ptr[index]);
     }
   } else if (pattern->kind == MS_P_TYPE) {
+    const MsTy record = ms_facts_type(facts, pattern->id);
+    const MsSymbolId parent = ms_ty_kind(&b->program->types, record) == MS_TY_TYPE ? ms_occ_type_symbol(b, record) : 0;
+    const MsSymbol *owner = parent != 0 ? &b->program->symbols.ptr[parent] : NULL;
+    const MsDef *def = owner != NULL && owner->def != 0 ? ms_defs_get(&b->program->defs, owner->def) : NULL;
     for (uint32_t index = 0; index < pattern->u.fields.len; index++) {
-      declare_pattern(b, pattern->u.fields.ptr[index].pattern);
+      const MsPatternField *field = &pattern->u.fields.ptr[index];
+      for (size_t slot = 0; def != NULL && slot < def->fields.len; slot++) {
+        if (def->fields.ptr[slot].name != field->name) continue;
+        const MsSpan name = ms_occ_name_text(b, field->name);
+        ms_occ_add(b, ms_message_format(b->arena, "field:%S:%S", ms_occ_symbol_key(b, parent), name), name, b->module, field->pos.offset, false, false,
+                   def->fields.ptr[slot].ty, 0, false);
+      }
+      declare_pattern(b, field->pattern);
     }
   }
 }
@@ -413,10 +439,7 @@ static void declare_parameters(Builder *b, uint32_t module, const MsParams param
     const MsRef ref = {.kind = MS_REF_PARAM, .decl = {module, param->id}};
     MsTy ty = ms_facts_type(facts, param->id);
     if (ty == MS_TY_NONE && listed) ty = ms_ty_params(types, signature)[index].ty;
-    for (size_t at = 0; ty == MS_TY_NONE && param->ty != NULL && at < b->program->type_refs.len; at++) {
-      const MsTypeRefRecord *written = &b->program->type_refs.ptr[at];
-      if (written->module == module && written->node == param->ty->id) ty = written->ty; /* an operation of an interface */
-    }
+    if (ty == MS_TY_NONE) ty = written_type(b, module, param); /* an operation of an interface */
     ms_occ_add(b, binding_key(b, &ref), ms_occ_name_text(b, param->name), module, param->pos.offset, true, false, ty, 0, false);
   }
 }
@@ -480,7 +503,9 @@ static void use_name(Builder *b, const MsExpr *expr, const MsRef *ref, MsTy ty, 
   }
   const MsSymbolId symbol = symbol_of_ref(b, ref);
   if (symbol != 0 && (ref->kind == MS_REF_FUNCTION || ref->kind == MS_REF_CONSTANT || ref->kind == MS_REF_TYPE || ref->kind == MS_REF_NATIVE)) {
-    ms_occ_add(b, ms_occ_symbol_key(b, symbol), name, b->module, expr->pos.offset, false, write, ty, symbol, false);
+    /* A generic function written with type arguments (`f[Int]`) has no type of its own at the name: the application has. */
+    ms_occ_add(b, ms_occ_symbol_key(b, symbol), name, b->module, expr->pos.offset, false, write, ty != MS_TY_NONE ? ty : b->program->symbols.ptr[symbol].ty,
+               symbol, false);
   }
 }
 
@@ -504,7 +529,11 @@ static void use_member(Builder *b, const MsExpr *expr, const MsRef *ref, MsTy ty
   const MsSpan name = ms_occ_name_text(b, expr->u.member.name);
   const MsFacts *facts = &b->program->modules.ptr[b->module].facts;
   if (ref->kind == MS_REF_FIELD) {
-    const MsTy receiver = ms_facts_type(facts, expr->u.member.left->id);
+    MsTy receiver = ms_facts_type(facts, expr->u.member.left->id);
+    /* A value narrowed by `!= null` keeps its optional type in the facts; the field belongs to the payload. */
+    if (ms_ty_is(&b->program->types, receiver, MS_BUILTIN_Optional) && ms_ty_arg_count(&b->program->types, receiver) == 1) {
+      receiver = ms_ty_args(&b->program->types, receiver)[0];
+    }
     const MsSymbolId parent = ms_ty_kind(&b->program->types, receiver) == MS_TY_TYPE ? ms_occ_type_symbol(b, receiver) : 0;
     if (parent != 0) {
       ms_occ_add(b, ms_message_format(b->arena, "field:%S:%S", ms_occ_symbol_key(b, parent), name), name, b->module, expr->pos.offset, false, write,
@@ -535,6 +564,24 @@ static const MsExpr *peel_apply(const MsExpr *expr) {
   return expr;
 }
 
+/* The labels of a constructor call (`Shape.Circle(radius: 3)`) name fields of the case. */
+static void case_labels(Builder *b, const MsExpr *call, MsSymbolId parent, MsName case_name) {
+  const MsSymbol *owner = &b->program->symbols.ptr[parent];
+  const MsDef *def = owner->def == 0 ? NULL : ms_defs_get(&b->program->defs, owner->def);
+  for (size_t at = 0; def != NULL && at < def->cases.len; at++) {
+    if (def->cases.ptr[at].name != case_name) continue;
+    for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+      const MsArg *arg = &call->u.call.args.ptr[index];
+      for (size_t slot = 0; arg->has_name && slot < def->cases.ptr[at].fields.len; slot++) {
+        if (def->cases.ptr[at].fields.ptr[slot].name != arg->name) continue;
+        const MsSpan label = ms_occ_name_text(b, arg->name);
+        ms_occ_add(b, ms_message_format(b->arena, "case:%S:%S:%S", ms_occ_symbol_key(b, parent), ms_occ_name_text(b, case_name), label), label, b->module,
+                   arg->pos.offset, false, false, def->cases.ptr[at].fields.ptr[slot].ty, 0, false);
+      }
+    }
+  }
+}
+
 /* The constructor a call builds: its case, its type, and the labels of its arguments. */
 static void use_call(Builder *b, const MsExpr *expr, MsTy ty) {
   const MsCall *call = call_of(b, expr);
@@ -561,6 +608,7 @@ static void use_call(Builder *b, const MsExpr *expr, MsTy ty) {
       if (root != NULL && root->kind == MS_E_NAME) {
         ms_occ_add(b, ms_occ_symbol_key(b, parent), ms_occ_name_text(b, root->u.sym), b->module, root->pos.offset, false, false, ty, parent, false);
       }
+      case_labels(b, expr, parent, case_name);
     }
     return;
   }
@@ -598,9 +646,8 @@ static void use_call(Builder *b, const MsExpr *expr, MsTy ty) {
 
 /* A match path names a case of the scrutinee's alternative: it bypasses expression inference, so the case comes from
  * the scrutinee's type. */
-static void match_case(Builder *b, const MsExpr *scrutinee, const MsExpr *path) {
+static void match_case(Builder *b, MsTy ty, const MsExpr *path) {
   const MsFacts *facts = &b->program->modules.ptr[b->module].facts;
-  const MsTy ty = ms_facts_type(facts, scrutinee->id);
   if (ty == MS_TY_NONE || ms_ty_kind(&b->program->types, ty) != MS_TY_ALTERNATIVE) {
     return;
   }
@@ -664,13 +711,14 @@ static void match_type(Builder *b, MsTy scrutinee, const MsExpr *path) {
 /* Argument labels resolve to the parameters of a callee with a body, whichever module declares it. */
 static void use_labels(Builder *b, const MsExpr *expr) {
   const MsCall *call = call_of(b, expr);
-  if (call == NULL || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD) || call->callee.decl.node == 0) {
+  const bool function = call != NULL && (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_NATIVE); /* an extern is a native */
+  if (call == NULL || (!function && call->callee.kind != MS_REF_METHOD) || call->callee.decl.node == 0) {
     return;
   }
   const uint32_t home = call->callee.decl.module;
   const MsParams *params = NULL;
   uint32_t declared_at = 0;
-  if (call->callee.kind == MS_REF_FUNCTION) {
+  if (function) {
     const MsModule *tree = b->program->modules.ptr[home].tree;
     for (uint32_t at = 0; at < tree->ndecls; at++) {
       if (tree->decls[at]->id == call->callee.decl.node && tree->decls[at]->kind == MS_D_FN) {
@@ -688,8 +736,16 @@ static void use_labels(Builder *b, const MsExpr *expr) {
     const MsArg *arg = &expr->u.call.args.ptr[index];
     for (uint32_t at = 0; arg->has_name && at < params->len; at++) {
       if (params->ptr[at]->name == arg->name) {
+        MsTy label = ms_facts_type(owner, params->ptr[at]->id);
+        if (label == MS_TY_NONE) label = written_type(b, home, params->ptr[at]); /* an extern has no body to check */
+        const MsSymbolId callee = symbol_of_ref(b, &call->callee);
+        const MsTy signature = callee != 0 ? b->program->symbols.ptr[callee].ty : MS_TY_NONE;
+        if (label == MS_TY_NONE && signature != MS_TY_NONE && ms_ty_kind(&b->program->types, signature) == MS_TY_FUNCTION &&
+            ms_ty_param_count(&b->program->types, signature) == params->len) {
+          label = ms_ty_params(&b->program->types, signature)[at].ty;
+        }
         ms_occ_add(b, ms_message_format(b->arena, "parameter:%S:%u:%u", ms_occ_module_file(b, home), declared_at, at), ms_occ_name_text(b, arg->name),
-            b->module, arg->pos.offset, false, false, ms_facts_type(owner, params->ptr[at]->id), 0, false);
+            b->module, arg->pos.offset, false, false, label, 0, false);
       }
     }
   }
@@ -701,13 +757,8 @@ static void uses_expr(void *context, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(facts, expr->id);
   const MsTy ty = ms_facts_type(facts, expr->id);
   const bool write = b->assigned[b->module][expr->id];
-  if (expr->kind == MS_E_APPLY && expr->u.apply.left->kind == MS_E_NAME) {
-    b->instantiated[b->module][expr->u.apply.left->id] = true;
-  }
   if (expr->kind == MS_E_NAME && ref != NULL) {
-    if (!(ref->kind == MS_REF_FUNCTION && b->instantiated[b->module][expr->id])) {
-      use_name(b, expr, ref, ty, write);
-    }
+    use_name(b, expr, ref, ty, write);
   } else if (expr->kind == MS_E_MEMBER && ref != NULL) {
     use_member(b, expr, ref, ty, write);
   } else if (expr->kind == MS_E_CALL) {
@@ -717,9 +768,12 @@ static void uses_expr(void *context, const MsExpr *expr) {
     for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
       const MsArm *arm = expr->u.match.arms.ptr[index];
       const MsTy scrutinee = ms_facts_type(facts, expr->u.match.scrutinee->id);
-      const bool optional = arm->bare && ms_ty_is(&b->program->types, scrutinee, MS_BUILTIN_Optional);
-      if (!optional && !arm->from_if) {
-        match_case(b, expr->u.match.scrutinee, arm->path);
+      const bool optional = ms_ty_is(&b->program->types, scrutinee, MS_BUILTIN_Optional) && ms_ty_arg_count(&b->program->types, scrutinee) == 1;
+      if (optional) {
+        /* An arm over an optional names a case of the value it holds: `match node { Leaf(x) => ... }`. */
+        match_case(b, ms_ty_args(&b->program->types, scrutinee)[0], arm->path);
+      } else if (!arm->from_if) {
+        match_case(b, scrutinee, arm->path);
         match_type(b, scrutinee, arm->path);
       }
     }
@@ -776,7 +830,6 @@ static void index_tables(Builder *b) {
   b->param_key = MS_ARENA_NEW_ARRAY(b->arena, MsSpan *, modules);
   b->written = MS_ARENA_NEW_ARRAY(b->arena, MsTy *, modules);
   b->assigned = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
-  b->instantiated = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
   for (size_t module = 0; module < modules; module++) {
     const uint32_t nodes = program->modules.ptr[module].tree->node_count + 1;
     b->symbol_at[module] = MS_ARENA_NEW_ARRAY(b->arena, MsSymbolId, nodes);
@@ -784,7 +837,6 @@ static void index_tables(Builder *b) {
     b->param_key[module] = MS_ARENA_NEW_ARRAY(b->arena, MsSpan, nodes);
     b->written[module] = MS_ARENA_NEW_ARRAY(b->arena, MsTy, nodes);
     b->assigned[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
-    b->instantiated[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
   }
   for (size_t module = 0; module < modules; module++) {
   }

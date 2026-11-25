@@ -237,8 +237,8 @@ static const MsParams *declared_params(const MsCheckProgram *program, const MsOc
   return NULL;
 }
 
-/* A generic function named with type arguments (`first[Int](...)`) has no occurrence of its own, so its callee is read from
- * the checker's facts: the application ending at `name_end`. */
+/* A generic function named with type arguments (`first[Int](...)`): its occurrence is typed with the generic signature, so the
+ * callee is read from the checker's facts instead: the application ending at `name_end`. */
 typedef struct Instantiated {
   const MsFacts *facts;
   size_t name_end;
@@ -464,17 +464,21 @@ void lsp_signature_help(const LspDocList *docs, const LspDoc *doc, LspPosition p
   /* The document as written first; when its declaration did not parse, with the call closed so that it does. */
   LspAnalysis analysis;
   lsp_analyze(docs, doc, &analysis);
-  const MsOccurrence *callee = analysis.resolved ? callee_occurrence(&analysis, doc, call->name_end) : NULL;
+  /* A generic function written with type arguments (`first[Int](`) takes its signature from the instantiation. */
+  MsOccurrence instantiated;
+  const MsOccurrence *callee = NULL;
+  if (analysis.resolved && instantiated_callee(&analysis, doc, call->name_end, &instantiated)) callee = &instantiated;
+  if (callee == NULL && analysis.resolved) callee = callee_occurrence(&analysis, doc, call->name_end);
   MsString repaired = {0};
   if (callee == NULL || ms_ty_is_invalid(&analysis.checked.program.types, callee->ty)) {
     lsp_analysis_release(&analysis);
     repaired = close_call(source, &tokens, offset, tail);
     const MsOverlayFile changed = {ms_string_span(&doc->path), ms_string_span(&repaired)};
     lsp_analyze_changed(docs, doc, &changed, 1, &analysis);
-    callee = analysis.resolved ? callee_occurrence(&analysis, doc, call->name_end) : NULL;
+    callee = NULL;
+    if (analysis.resolved && instantiated_callee(&analysis, doc, call->name_end, &instantiated)) callee = &instantiated;
+    if (callee == NULL && analysis.resolved) callee = callee_occurrence(&analysis, doc, call->name_end);
   }
-  MsOccurrence instantiated;
-  if (callee == NULL && analysis.resolved && instantiated_callee(&analysis, doc, call->name_end, &instantiated)) callee = &instantiated;
   if (callee == NULL) {
     ms_strbuild_append_text(out, "null");
   } else {
