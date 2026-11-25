@@ -101,12 +101,6 @@ static void test_queue(void) {
   ms_queue_release(1, NULL);
 }
 
-static bool never(uintptr_t pc, const void *context) {
-  (void)pc;
-  (void)context;
-  return false;
-}
-
 /* Two functions given out of address order, as a linker may leave them; a line range and a name blob. */
 static void test_frames(void) {
   static const uint8_t strings[] = "\0a.ms\0first\0second";
@@ -129,26 +123,8 @@ static void test_frames(void) {
   CHECK(list.count == 2 && list.frames[0].line == 21 && list.frames[1].line == 11);
   CHECK(list.frames[0].function[0] == 's' && list.frames[1].repeated == 1);
   CHECK(ms_frames_find_function(ms_frames_tables(), 0x1000) == NULL); /* the call lies before the function */
-  CHECK(ms_frames_scan_record(0, 0, 0, 0, never, never, NULL) == 0);
   ms_frames_release();
   CHECK(ms_frames_tables() == NULL);
-}
-
-static bool is_code(uintptr_t pc, const void *context) {
-  (void)context;
-  return pc == 0x1234;
-}
-
-/* A frame far larger than a page still has its saved record found, since a deep recursion of fat frames is a fault whose
- * trace must name the callers. */
-static void test_scan_big_frame(void) {
-  static uintptr_t stack[4096]; /* 32 KiB */
-  const size_t record = 3000;    /* 24000 bytes above the stack pointer */
-  stack[record] = (uintptr_t)&stack[record + 8]; /* the caller's frame record, above this one */
-  stack[record + 1] = 0x1234;
-  const uintptr_t low = (uintptr_t)&stack[0];
-  const uintptr_t high = (uintptr_t)&stack[4096];
-  CHECK(ms_frames_scan_record(low, 0, low, high, is_code, never, NULL) == (uintptr_t)&stack[record]);
 }
 
 /* A program built in two units passes one table block per unit; each names its own strings and scopes. */
@@ -264,7 +240,6 @@ int main(void) {
   test_queue_race();
   test_frames();
   test_frames_set();
-  test_scan_big_frame();
   test_record();
   test_release();
   return failures == 0 ? 0 : 1;

@@ -3,22 +3,17 @@
 
 bool ms_sys_frame_pointer_chain(void) { return true; }
 
-bool ms_sys_has_unwind_data(uintptr_t pc) {
-  (void)pc;
-  return false;
-}
-
 void ms_sys_stack_bounds(uintptr_t *low, uintptr_t *high) {
   *low = 0;
   *high = 0;
 }
 
-bool ms_sys_native_start(uintptr_t anchor_pc, bool (*is_source)(uintptr_t, const void *), const void *context, size_t budget,
-                         MsSysNativeStart *start) {
-  (void)anchor_pc;
-  (void)is_source;
+void ms_sys_unwind(const void *registers, uintptr_t low, uintptr_t high, bool (*visit)(uintptr_t, void *), void *context,
+                   size_t max_frames) {
+  (void)registers;
+  (void)low;
+  (void)high;
+  (void)visit;
   (void)context;
-  (void)budget;
-  (void)start;
-  return false;
+  (void)max_frames;
 }

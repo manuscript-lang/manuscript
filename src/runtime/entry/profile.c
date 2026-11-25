@@ -52,11 +52,6 @@ static bool add_frame(uintptr_t return_address, void *context) {
 
 static bool is_source_address(uintptr_t pc, const void *tables) { return ms_frames_find_function(tables, pc) != NULL; }
 
-static bool is_native_address(uintptr_t pc, const void *unused) {
-  (void)unused;
-  return ms_sys_has_unwind_data(pc);
-}
-
 static uintptr_t read_word(uintptr_t address) {
   uintptr_t word = 0;
   __builtin_memcpy(&word, (const void *)address, sizeof word); // NOLINT(performance-no-int-to-ptr)
@@ -77,23 +72,11 @@ static void add_caller_of_native(const MsSysSample *sample, const MsTables *tabl
   }
 }
 
-/* Windows: the frame register does not point at the frame record, so each record is found by scanning the stack. */
-static void walk_by_scanning(const MsSysSample *sample, const MsTables *tables, const uintptr_t window[3], Walk *walk) {
-  uintptr_t sp = sample->sp;
-  uintptr_t fp = sample->fp;
-  while (walk->count < MAX_FRAMES) {
-    const uintptr_t at = ms_frames_scan_record(sp, fp, window[0], window[1], is_source_address, is_native_address, tables);
-    if (at == 0) {
-      return;
-    }
-    const uintptr_t record_fp = read_word(at);
-    const uintptr_t return_address = read_word(at + sizeof(uintptr_t));
-    if (!add_frame(return_address, walk)) {
-      return;
-    }
-    fp = record_fp;
-    sp = at + 2 * sizeof(uintptr_t);
-  }
+/* Windows: the frame register does not point at the frame record, so the system's unwind data finds the callers. Only
+ * source addresses are kept, as the chain walk of the others keeps them. */
+static bool add_source_frame(uintptr_t return_address, void *context) {
+  Walk *const walk = context;
+  return !is_source_address(return_address, ms_frames_tables()) || add_frame(return_address, walk);
 }
 
 /* Writes the stack of `sample` into `slot`: the frame count, then the pcs innermost first. */
@@ -105,7 +88,7 @@ static void capture(const MsSysSample *sample, uintptr_t *slot) {
   /* Without a running task there is no stack to read: the sample is its pc alone. */
   if (tables != NULL && ms_sched_sample_window(window) && window[1] != 0) {
     if (!ms_sys_frame_pointer_chain()) {
-      walk_by_scanning(sample, tables, window, &walk);
+      ms_sys_unwind(sample->registers, window[0], window[1], add_source_frame, &walk, MAX_FRAMES * 8);
     } else {
       if (!is_source_address(sample->pc + 1, tables)) {
         add_caller_of_native(sample, tables, window, &walk);

@@ -3,6 +3,7 @@
 
 #include "base/alloc.h"
 #include "base/fatal.h"
+#include "compiler/emit/emit.h"
 #include "compiler/emit/emit_debug.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
@@ -210,6 +211,11 @@ static void emit_header(EmitCx *cx, uint32_t index, uint32_t subprogram) {
   /* Every function that calls another keeps a frame pointer: the fault walker follows the chain, and a
    * frameless wrapper would drop its caller's frame from the trace. */
   ms_strbuild_append_text(out, ") nounwind noinline");
+  /* Windows walks the stack with the system's unwind data, since the frame register does not point at the saved record
+   * there; `uwtable` makes llc write it for a function that cannot throw. */
+  if (emit_host_windows()) {
+    ms_strbuild_append_text(out, " uwtable");
+  }
   ms_strbuild_append_text(out, " \"frame-pointer\"=\"non-leaf\" \"disable-tail-calls\"=\"true\"");
   if (cx->pure) {
     ms_strbuild_append_text(out, " willreturn nofree nosync memory(none)");
