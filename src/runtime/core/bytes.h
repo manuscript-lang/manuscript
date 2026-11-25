@@ -31,9 +31,6 @@ uint8_t msrt_bytes_last_index_of(const MsList *b, const MsList *v, int64_t *out)
 uint8_t msrt_bytes_starts_with(const MsList *b, const MsList *v);
 /* ms-sig: msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8 @domain=binary @end */
 uint8_t msrt_bytes_ends_with(const MsList *b, const MsList *v);
-/* ms-sig: msrt_bytes_get(b: *const VecVal, index: i64, has_default: HasRaw, default: i64) -> i64
- * @domain=binary @end */
-int64_t msrt_bytes_get(const MsList *b, int64_t index, uint8_t has_default, int64_t default_value);
 /* ms-sig: msrt_bytes_slice(b: *const VecVal, start: i64, end: i64, out: *mut VecVal) -> u8 @domain=binary
  * */
 uint8_t msrt_bytes_slice(const MsList *b, int64_t start, int64_t end, MsList *out);
