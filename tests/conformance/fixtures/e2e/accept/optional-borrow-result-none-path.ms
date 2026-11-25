@@ -7,12 +7,12 @@ type Tok {
 }
 
 // Returns its argument on one path and `null` on the other.
-fn keep(t Tok, flag Bool) Tok? {
+fn keep(hold t Tok, flag Bool) &Tok? {
 	if flag { return t }
 	return null
 }
 
-fn first_long(t Tok, n Int) Tok? {
+fn first_long(hold t Tok, n Int) &Tok? {
 	if t.s.length() > n { return t }
 	return null
 }

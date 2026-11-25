@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/runtime-3.ms
 import expect_equal, expect_true, fail from "@std/test/test.ms"
 
-fn identity[T](value T) T {
+fn identity[T](hold value T) &T {
 	return value
 }
 

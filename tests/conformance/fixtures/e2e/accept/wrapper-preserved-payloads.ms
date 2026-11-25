@@ -170,7 +170,7 @@ type Box {
 	items List[Int]
 }
 
-fn Box.read[T](_tag T) List[Int] => self.items
+fn hold Box.read[T](_tag T) &List[Int] => self.items
 
 fn var Box.change[T](_tag T) Int {
 	self.items.append(3)

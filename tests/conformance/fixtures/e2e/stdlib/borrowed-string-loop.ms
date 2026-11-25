@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn first(words List[String]) String {
+fn first(hold words List[String]) &String {
 	return words[0]
 }
 
@@ -10,7 +10,7 @@ type Text {
 	value String
 }
 
-fn Text.read() String {
+fn hold Text.read() &String {
 	return self.value
 }
 

@@ -120,6 +120,6 @@ test "direct calls capture receiver and arguments in written order" {
 	)?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

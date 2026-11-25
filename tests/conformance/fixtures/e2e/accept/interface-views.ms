@@ -22,7 +22,7 @@ type Holder {
 	cause Cause
 }
 
-fn first_error(cause Cause) Reportable {
+fn first_error(hold cause Cause) &Reportable {
 	return cause
 }
 
@@ -30,12 +30,12 @@ fn first_failure(cause Cause) Int!Reportable {
 	return error(cause.clone())
 }
 
-fn fresh(cause Cause, make Bool) Reportable {
+fn fresh(hold cause Cause, make Bool) Reportable {
 	if make { return Cause(9, "fresh and also heap allocated text") }
 	return cause
 }
 
-fn relay(e Reportable) Reportable {
+fn relay(hold e Reportable) &Reportable {
 	return e
 }
 
@@ -49,14 +49,14 @@ fn through(cause Cause) Reportable {
 	return e
 }
 
-fn cond(cause Cause, other Cause, c Bool) Reportable {
+fn cond(cause Cause, hold other Cause, c Bool) Reportable {
 	e := first_error(cause)
 	if c { return e }
 
 	return other
 }
 
-fn looped(cause Cause) Reportable {
+fn looped(hold cause Cause) Reportable {
 	for i in 0..3 {
 		e Reportable := cause
 		if i == 2 { return e }
@@ -65,12 +65,12 @@ fn looped(cause Cause) Reportable {
 	return Cause(7, "fell through the loop with heap text")
 }
 
-fn maybe(cause Cause, b Bool) Reportable? {
+fn maybe(hold cause Cause, b Bool) &Reportable? {
 	if b { return cause }
 	return null
 }
 
-fn either(r Holder, b Bool) Reportable {
+fn either(hold r Holder, b Bool) &Reportable {
 	if b { return r.err }
 	return r.cause
 }
@@ -85,7 +85,7 @@ fn through_result(cause Cause) Int!Reportable {
 	return r
 }
 
-fn id[T](x T) T {
+fn id[T](hold x T) &T {
 	return x
 }
 
@@ -94,11 +94,11 @@ fn lend_then_relay(cause Cause) Reportable {
 	return relay(e)
 }
 
-fn lend_id(cause Cause) Reportable {
+fn lend_id(hold cause Cause) &Reportable {
 	return id(first_error(cause))
 }
 
-fn rebound(cause Cause) Reportable {
+fn rebound(hold cause Cause) &Reportable {
 	e Reportable := cause
 	e2 := e
 	return e2
@@ -110,7 +110,7 @@ fn rebound_result(cause Cause) Int!Reportable {
 	return r2
 }
 
-fn rebound_alias_relay(cause Cause) Reportable {
+fn rebound_alias_relay(hold cause Cause) &Reportable {
 	e Reportable := cause
 	e2 := e
 	return relay(e2)

@@ -30,11 +30,11 @@ fn seven() Int {
 	return 7
 }
 
-fn make_view[T ReadValue[Int]](source T) ReadValue[Int] {
+fn make_view[T ReadValue[Int]](hold source T) &ReadValue[Int] {
 	return source
 }
 
-fn forward_view[T ReadValue[Int]](source T) ReadValue[Int] {
+fn forward_view[T ReadValue[Int]](hold source T) &ReadValue[Int] {
 	return source
 }
 

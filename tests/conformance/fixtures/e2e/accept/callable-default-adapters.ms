@@ -11,7 +11,7 @@ fn replacement(value Int) Int => value + 2
 
 fn original_float(value Float = 7.0) Float => value
 
-fn choose[T](left T, right T) T => right
+fn choose[T](left T, hold right T) &T => right
 
 type Offset {
 	base Int

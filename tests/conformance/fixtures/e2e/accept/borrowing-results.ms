@@ -14,11 +14,11 @@ type Team {
 }
 
 // Every path returns a part of an argument: the result is a reference into it.
-fn first_tag(p Person) String {
+fn first_tag(hold p Person) &String {
 	return p.tags[0]
 }
 
-fn pick(a Person, b Person, left Bool) String {
+fn pick(hold a Person, hold b Person, left Bool) &String {
 	if left { return a.name }
 	return b.name
 }
@@ -28,15 +28,15 @@ fn head(rows List[List[Int]]) List[Int] {
 	return h
 }
 
-fn deep(t Team) String {
+fn deep(hold t Team) &String {
 	return first_tag(t.members[0])
 }
 
-fn members(t Team) List[Person] {
+fn members(hold t Team) &List[Person] {
 	return t.members
 }
 
-fn recurse(value String, count Int) String {
+fn recurse(hold value String, count Int) &String {
 	if count == 0 { return value }
 	return recurse(value: value, count: count - 1)
 }

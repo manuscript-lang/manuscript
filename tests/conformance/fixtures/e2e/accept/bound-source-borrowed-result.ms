@@ -7,15 +7,15 @@ type Label {
 	parts List[String]
 }
 
-fn Label.name() String {
+fn hold Label.name() &String {
 	return self.text
 }
 
-fn Label.first() String {
+fn hold Label.first() &String {
 	return self.parts[0]
 }
 
-fn Label.greeting(prefix String = "hi") String {
+fn hold Label.greeting(prefix String = "hi") &String {
 	return self.text
 }
 

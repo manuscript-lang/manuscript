@@ -320,7 +320,7 @@ test "a consumed parameter closes on its retained path before borrowed success" 
 	expect_equal(events(log), "close 1\n")?
 }
 
-fn whole_result(log String, source Int!, fail Bool) Int! {
+fn whole_result(log String, hold source Int!, fail Bool) &Int! {
 	_resource := Failing(log.clone(), 1, fail: fail)
 	return source
 }
@@ -329,7 +329,7 @@ type Holder {
 	resource Failing
 }
 
-fn holder_result[T](log String, source T!) T! {
+fn holder_result[T](log String, hold source T!) &T! {
 	_holder := Holder(Failing(log.clone(), 1, fail: false))
 	return source
 }
@@ -403,12 +403,12 @@ fn move OwnHolder.close() Void! {
 	return ok()
 }
 
-fn own_holder_result[T](log String, source T!) T! {
+fn own_holder_result[T](log String, hold source T!) &T! {
 	_holder := OwnHolder(Failing(log.clone(), 1, fail: false))
 	return source
 }
 
-fn generic_whole[T](log String, source T!) T! {
+fn generic_whole[T](log String, hold source T!) &T! {
 	_resource := Failing(log.clone(), 1, fail: false)
 	return source
 }
@@ -444,19 +444,19 @@ test "a generic resource error stays owned and closes exactly once" {
 	expect_equal(events(log), "close 1\nclose 2\n")?
 }
 
-fn moved_holder_result[T](log String, source T!) T! {
+fn moved_holder_result[T](log String, hold source T!) &T! {
 	resource := Failing(log.clone(), 1, fail: false)
 	_holder := Holder(resource)
 	return source
 }
 
-fn handled_result[T](log String, source T!) T! {
+fn handled_result[T](log String, hold source T!) &T! {
 	var resource = Failing(log.clone(), 1)
 	void resource.close()
 	return source
 }
 
-fn nested_closure_result[T](log String, source T!) T! {
+fn nested_closure_result[T](log String, hold source T!) &T! {
 	_unused := () => {
 		_resource := Failing(log.clone(), 1)
 		return
@@ -501,14 +501,14 @@ test "an uncalled closure cannot contribute an outer close error" {
 	expect_equal(events(log), "")?
 }
 
-fn replaced_handled_result[T](log String, source T!) T! {
+fn replaced_handled_result[T](log String, hold source T!) &T! {
 	var resource = Failing(log.clone(), 1, fail: false)
 	resource = Failing(log.clone(), 2)
 	void resource.close()
 	return source
 }
 
-fn replaced_unhandled_result(log String, source Int!) Int! {
+fn replaced_unhandled_result(log String, hold source Int!) &Int! {
 	var resource = Failing(log.clone(), 1, fail: false)
 	void resource.close()
 	resource = Failing(log.clone(), 2)
@@ -526,7 +526,7 @@ fn replacement_exit(log String) Int! {
 	return ok(7)
 }
 
-fn captured_result[T](log String, source T!) T! {
+fn captured_result[T](log String, hold source T!) &T! {
 	resource := Failing(log.clone(), 1, fail: false)
 	_callbacks List[fn() Int] := [() => resource.id]
 	return source

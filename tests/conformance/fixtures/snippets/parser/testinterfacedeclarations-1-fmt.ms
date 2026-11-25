@@ -9,6 +9,6 @@ type Box[T] {
 	value T
 }
 
-fn Box[T Equal].get() T {
+fn hold Box[T Equal].get() &T {
 	return self.value
 }

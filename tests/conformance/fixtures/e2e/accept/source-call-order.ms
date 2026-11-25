@@ -27,7 +27,7 @@ fn optional(value Int?) Int => value or panic("called Optional.get() on null")
 
 fn defaulted(value Int = 3) Int => value
 
-fn identity[T](value T) T => value
+fn identity[T](hold value T) &T => value
 
 test "source call dispatch contracts" {
 	expect_equal(optional(4), 4)?

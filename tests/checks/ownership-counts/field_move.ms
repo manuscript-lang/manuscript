@@ -19,7 +19,7 @@ type Wrap {
 	tag Int
 }
 
-fn items_of(b Big) List[Int] {
+fn items_of(hold b Big) & List[Int] {
 	return b.items
 }
 
@@ -45,7 +45,7 @@ fn reinit(b Big) Int {
 	return c.items.length()
 }
 
-fn nested(w Wrap) List[Int] {
+fn nested(hold w Wrap) & List[Int] {
 	return w.inner.items
 }
 

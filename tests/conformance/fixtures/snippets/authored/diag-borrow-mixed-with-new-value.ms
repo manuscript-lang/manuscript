@@ -5,7 +5,7 @@ type User {
 	name String
 }
 
-fn display(u User, anonymous Bool) String {
+fn display(hold u User, anonymous Bool) String {
 	if anonymous { return "anonymous" }
 	return u.name
 }

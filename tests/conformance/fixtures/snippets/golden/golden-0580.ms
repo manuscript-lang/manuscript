@@ -2,7 +2,7 @@
 // conform: phase=check
 import panic from "@std/core.ms"
 
-fn lookup[T Hashable](key T, value T) T {
+fn lookup[T Hashable](hold key T, value T) T {
 	values := Map[T, T]()
 	values.add(key, value)
 	return values.get(key) or panic("called Optional.get() on null")

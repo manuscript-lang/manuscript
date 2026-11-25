@@ -60,7 +60,7 @@ fn var MapAdapter.remove(key Int) Void {
 	self.values.remove(key)
 }
 
-fn MapAdapter.keys() List[Int] => self.values.keys()
+fn hold MapAdapter.keys() &List[Int] => self.values.keys()
 
 test "Map explicit and bound interface views remove through the adapter" {
 	var values = Map[Int, String]()

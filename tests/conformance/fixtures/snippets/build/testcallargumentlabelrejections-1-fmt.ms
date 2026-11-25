@@ -13,7 +13,7 @@ fn zero() Void {
 	return
 }
 
-fn identity[T](value T) T {
+fn identity[T](hold value T) &T {
 	return value
 }
 

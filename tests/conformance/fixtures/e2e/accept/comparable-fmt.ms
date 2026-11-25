@@ -15,7 +15,7 @@ fn Version.compare(other Version) Int {
 	return self.major - other.major
 }
 
-fn larger[T Comparable](left T, right T) T {
+fn larger[T Comparable](hold left T, hold right T) &T {
 	return max(left, right)
 }
 

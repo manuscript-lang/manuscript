@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn identity[T](value T) T {
+fn identity[T](hold value T) &T {
 	return value
 }
 

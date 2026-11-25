@@ -12,7 +12,7 @@ type Offset {
 
 fn Offset.subtract(amount Int) Int => amount - self.value
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }
 

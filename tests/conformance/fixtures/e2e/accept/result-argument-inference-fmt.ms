@@ -10,15 +10,15 @@ type Failure {
 	code Int
 }
 
-fn erase[T, E](r Result[T, E]) Result[T, E] => r
+fn erase[T, E](hold r Result[T, E]) &Result[T, E] => r
 
 fn optional[T Clonable](
 	r T!?
 ) T! => (r or panic("called Optional.get() on null")).clone()
 
-fn same[T, E](r T!E) T!E => r
+fn same[T, E](hold r T!E) &T!E => r
 
-fn both[T, E](cause E, r T!E) T!E => r
+fn both[T, E](cause E, hold r T!E) &T!E => r
 
 fn number() Int!Failure => ok(7)
 
@@ -37,11 +37,11 @@ fn default_value(var events Events) Int {
 }
 
 fn ordered[T](
-	first T!,
+	hold first T!,
 	second T!,
 	var events Events,
 	last Int = default_value(events),
-) T! {
+) &T! {
 	events.values.append(4)
 	return first
 }

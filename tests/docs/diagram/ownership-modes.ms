@@ -34,7 +34,7 @@ fn inputs(
 	return
 }
 
-fn item_name(item Item) String {
+fn item_name(hold item Item) & String {
 	return item.name
 }
 
@@ -42,7 +42,7 @@ fn fresh_name(item Item) String {
 	return item.name + "!"
 }
 
-fn generic[T](value T) T {
+fn generic[T](hold value T) & T {
 	return value
 }
 
@@ -50,7 +50,7 @@ fn hold(item Item) List[Item] {
 	return [item.clone()]
 }
 
-fn optional_name(item Item) String? {
+fn optional_name(hold item Item) & String? {
 	return item.name
 }
 
@@ -84,7 +84,7 @@ fn Item.label() String {
 	return self.name.clone()
 }
 
-fn Item.borrowed() String {
+fn hold Item.borrowed() & String {
 	return self.name
 }
 
@@ -96,7 +96,7 @@ fn Item.boxed(item Item) List[Item] {
 	return [item.clone()]
 }
 
-fn named(item Item) Named {
+fn named(hold item Item) & Named {
 	return item
 }
 

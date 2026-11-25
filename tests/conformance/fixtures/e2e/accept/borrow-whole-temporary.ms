@@ -18,11 +18,11 @@ fn mk(n Int) Big {
 	return Big("a name that is long enough to live on the heap", xs)
 }
 
-fn id(b Big) Big => b
+fn id(hold b Big) &Big => b
 
-fn pass[T](x T) T => x
+fn pass[T](hold x T) &T => x
 
-fn Big.me() Big => return self
+fn hold Big.me() &Big => return self
 
 fn first_of(b Big) Int {
 	return b.items[0]

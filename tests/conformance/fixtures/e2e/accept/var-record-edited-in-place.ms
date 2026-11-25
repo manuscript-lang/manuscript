@@ -6,7 +6,7 @@ type Cursor {
 	seen Int
 }
 
-fn advance(var cursor Cursor) String {
+fn advance(var hold cursor Cursor) &String {
 	cursor.pos += 1
 	return cursor.items[cursor.pos - 1]
 }

@@ -9,11 +9,11 @@ fn fail_cause[T, E](move cause E) T!E => error(cause)
 
 fn absent[T]() T? => null
 
-fn identity[T](value T) T => value
+fn identity[T](hold value T) &T => value
 
 fn from_callback[T](factory fn() T) T => factory()
 
-fn transform[T, U](callback fn(T) U) fn(T) U => callback
+fn transform[T, U](hold callback fn(T) U) &fn(T) U => callback
 
 type Failure {
 	detail String
@@ -38,7 +38,7 @@ fn record[T](var events Events, value Int) T? {
 	return null
 }
 
-fn combine[T](var events Events, first T?, second T?) T? {
+fn combine[T](var events Events, hold first T?, second T?) &T? {
 	events.values.append(3)
 	return first
 }

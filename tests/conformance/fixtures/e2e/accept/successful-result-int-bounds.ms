@@ -163,6 +163,6 @@ test "Result bounds preserve argument effects and cleanup" {
 	cleanup(visits) | expect_equal(500498)?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

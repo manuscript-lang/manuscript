@@ -15,15 +15,15 @@ type Pet {
 	alias String?
 }
 
-fn Pet.text() String {
+fn hold Pet.text() &String {
 	return self.name
 }
 
-fn Pet.tags() List[String] {
+fn hold Pet.tags() &List[String] {
 	return self.labels
 }
 
-fn Pet.nick() String? {
+fn hold Pet.nick() &String? {
 	return self.alias
 }
 

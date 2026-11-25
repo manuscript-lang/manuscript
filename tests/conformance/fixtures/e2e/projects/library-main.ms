@@ -22,7 +22,7 @@ import (
 	now, parse_timestamp from "@std/time.ms",
 )
 
-fn common_result[T](result T!) T! => result
+fn common_result[T](hold result T!) &T! => result
 
 fn exercise(path String) Void! {
 	_written := common_result(

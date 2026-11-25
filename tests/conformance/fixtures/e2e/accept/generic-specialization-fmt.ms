@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
 import expect_equal from "@std/test/test.ms"
 
-fn ident[T](x T) T {
+fn ident[T](hold x T) &T {
 	return x
 }
 
@@ -14,7 +14,7 @@ fn countdown[T](x T, n Int) Int {
 	return 1 + countdown(x, n - 1)
 }
 
-fn twice[T](x T) T {
+fn twice[T](hold x T) &T {
 	return ident(ident(x))
 }
 

@@ -18,10 +18,10 @@ type Slot[T] {
 	value T?
 }
 
-fn unwrap_field(s Slot[Handle]) Handle {
+fn unwrap_field(hold s Slot[Handle]) &Handle {
 	return s.value or panic("called Optional.get() on null")
 }
 
-fn unwrap_generic[T](s Slot[T]) T {
+fn unwrap_generic[T](hold s Slot[T]) &T {
 	return s.value or panic("called Optional.get() on null")
 }

@@ -23,7 +23,7 @@ fn twice(x Named) String {
 	return f"{x.label()}{x.label()}"
 }
 
-fn keep(x Named) Named {
+fn keep(hold x Named) &Named {
 	return x
 }
 

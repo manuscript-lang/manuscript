@@ -29,7 +29,7 @@ type Request {
 	box Box[Int?]
 }
 
-fn select[T](first T, second T) T {
+fn select[T](hold first T, second T) &T {
 	return first
 }
 

@@ -14,7 +14,7 @@
           "file": "callee-reassigned-during-call.ms",
           "line": 14,
           "column": 12,
-          "offset": 411
+          "offset": 417
         }
       }
     ],

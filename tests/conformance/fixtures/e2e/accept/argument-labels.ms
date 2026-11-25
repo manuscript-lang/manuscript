@@ -9,7 +9,7 @@ fn increment(value Int) Int {
 	return value + 1
 }
 
-fn identity[T](value T) T {
+fn identity[T](hold value T) &T {
 	return value
 }
 

@@ -42,7 +42,7 @@ fn compare(left Int, right Int) Int {
 	return 0
 }
 
-fn common_result[T](result T!) T! {
+fn common_result[T](hold result T!) &T! {
 	match result {
 		ok(value) => {
 			return ok(value)

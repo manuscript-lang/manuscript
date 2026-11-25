@@ -17,10 +17,10 @@ fn Box[T Equal].same(other T) Bool {
 	return self.value == other
 }
 
-fn Box[T].get() T {
+fn hold Box[T].get() &T {
 	return self.value
 }
 
-fn read[T](value Box[T]) T {
+fn read[T](hold value Box[T]) &T {
 	return value.get()
 }

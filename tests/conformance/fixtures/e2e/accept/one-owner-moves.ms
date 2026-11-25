@@ -29,7 +29,7 @@ type Ring {
 	size Int
 }
 
-fn Ring.at(index Int) Counter? {
+fn hold Ring.at(index Int) &Counter? {
 	if index < 0 or index >= self.size { return null }
 	return self.slots[index]
 }

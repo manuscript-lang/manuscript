@@ -15,7 +15,7 @@ type Box[T] {
 	value T
 }
 
-fn Box[T].get() T {
+fn hold Box[T].get() &T {
 	return self.value
 }
 

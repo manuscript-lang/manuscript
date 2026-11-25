@@ -13,6 +13,6 @@ fn LocalError.message() String {
 	return self.detail.clone()
 }
 
-fn wrong(value LocalError) Diagnostic {
+fn wrong(hold value LocalError) &Diagnostic {
 	return value
 }

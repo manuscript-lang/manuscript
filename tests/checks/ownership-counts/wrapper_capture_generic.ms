@@ -22,9 +22,9 @@ fn mk(n Int) Big {
 
 fn wrap(b Big) Wrap => Wrap(b.clone(), "a tag that is long enough to live on the heap")
 
-fn id(b Big) Big => b
+fn id(hold b Big) & Big => b
 
-fn pass[T](x T) T => x
+fn pass[T](hold x T) & T => x
 
 fn cap(b Big) fn() Int {
 	return () => b.items.length()

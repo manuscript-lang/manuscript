@@ -14,7 +14,7 @@
           "file": "wrapper-and-or-from-borrowed-parameter.ms",
           "line": 5,
           "column": 15,
-          "offset": 208
+          "offset": 214
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "wrapper-and-or-from-borrowed-parameter.ms",
           "line": 9,
           "column": 12,
-          "offset": 256
+          "offset": 268
         }
       }
     ],

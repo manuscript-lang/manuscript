@@ -22,7 +22,7 @@ fn widened_decrypt(key Bytes, data Bytes) Bytes! {
 	return rsa_decrypt(key, HashAlgorithm.Sha256, data)
 }
 
-fn marked(var calls List[Int], marker Int, data Bytes) Bytes {
+fn marked(var calls List[Int], marker Int, hold data Bytes) &Bytes {
 	calls.append(marker)
 	return data
 }

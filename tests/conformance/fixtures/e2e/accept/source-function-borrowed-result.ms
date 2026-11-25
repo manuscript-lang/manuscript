@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn identity(s String) String {
+fn identity(hold s String) &String {
 	return s
 }
 
@@ -16,11 +16,11 @@ test "borrowed string callback" {
 	expect_equal(out, "hello")?
 }
 
-fn generic[T](value T) T {
+fn generic[T](hold value T) &T {
 	return value
 }
 
-fn pick(items List[String]) String {
+fn pick(hold items List[String]) &String {
 	return items[0]
 }
 
@@ -33,7 +33,7 @@ test "generic and list-field callback results outlive arguments" {
 	expect_equal(second, "dynamic-17")?
 }
 
-fn default_identity(value String, _tag Int = 0) String {
+fn default_identity(hold value String, _tag Int = 0) &String {
 	return value
 }
 
@@ -45,7 +45,7 @@ test "defaulted source callback preserves borrowed strings" {
 	expect_equal(second, "explicit-2")?
 }
 
-fn list_identity(items List[String]) List[String] {
+fn list_identity(hold items List[String]) &List[String] {
 	return items
 }
 

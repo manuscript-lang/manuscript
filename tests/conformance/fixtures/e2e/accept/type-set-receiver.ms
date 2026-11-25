@@ -16,7 +16,7 @@ fn Length.double() Self {
 	return Self(value: self.value * 2)
 }
 
-fn Length.longer(other Self) Self {
+fn hold Length.longer(other Self) &Self {
 	if other.value > self.value { return other }
 	return self
 }

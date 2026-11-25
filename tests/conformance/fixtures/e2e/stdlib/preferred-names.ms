@@ -325,6 +325,6 @@ test "byte reversal names copy across direct bound and view calls" {
 	)?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

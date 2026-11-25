@@ -8,7 +8,7 @@ type Counter {
 
 fn Counter.next(amount Int = 1) Counter => Counter(self.value + amount)
 
-fn Counter.identity[T](value T) T => value
+fn Counter.identity[T](hold value T) &T => value
 
 fn Counter.to_string(prefix String) String => f"{prefix}{self.value}"
 

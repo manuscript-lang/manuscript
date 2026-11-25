@@ -13,15 +13,15 @@
         "position": {
           "file": "golden-1476.ms",
           "line": 5,
-          "column": 15,
-          "offset": 101
+          "column": 20,
+          "offset": 106
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1476.ms:5:15: type: the body keeps `value`, so the signature must say so: write `move value Type`, or keep `.clone()` of it\n   |\n 5 | fn extract[T](value T?) T {\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1476.ms:5:20: type: the body keeps `value`, so the signature must say so: write `move value Type`, or keep `.clone()` of it\n   |\n 5 | fn extract[T](hold value T?) &T {\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

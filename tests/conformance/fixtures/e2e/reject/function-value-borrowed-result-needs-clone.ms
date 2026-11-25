@@ -2,7 +2,7 @@
 // conform: phase=check
 // A function that returns a borrow of its argument is not a function value whose result
 // is owned: wrap it in a closure that returns `.clone()` of the call.
-fn identity(s String) String {
+fn identity(hold s String) &String {
 	return s
 }
 

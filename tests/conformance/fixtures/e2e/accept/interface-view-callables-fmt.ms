@@ -137,6 +137,6 @@ test "match receiver side effects and callable body remain ordered" {
 	expect_equal(view.read(), 9)?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

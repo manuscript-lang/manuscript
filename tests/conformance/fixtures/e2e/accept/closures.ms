@@ -7,7 +7,7 @@ fn apply(value Int, action fn(Int) Int) Int {
 	return action(value)
 }
 
-fn countdown[T](value T, count Int) T {
+fn countdown[T](hold value T, count Int) &T {
 	if count == 0 {
 		return value
 	}
