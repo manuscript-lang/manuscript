@@ -374,6 +374,7 @@ MS_NODISCARD static bool scan_multiline_body(Scanner *s, bool raw, bool interpol
       return lex_fail_text(s, TEXT_UNMATCHED_BRACE);
     }
   }
+  s->open_at_end = true;
   return lex_fail_at_text(s, opened,
                           "unterminated multi-line text; close it with '\"\"\"' alone on its own line");
 }
