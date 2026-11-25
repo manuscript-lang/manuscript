@@ -45,7 +45,8 @@ void ms_binding_list_push(MsBindingList *list, MsBinding binding) {
   list->latest[binding.name] = (uint32_t)list->len;
 }
 
-void ms_binding_list_truncate(MsBindingList *list, size_t len) {
+/* Drops the bindings from position `len` on. */
+static void ms_binding_list_truncate(MsBindingList *list, size_t len) {
   while (list->len > len) {
     const MsBinding *top = &list->ptr[--list->len];
     list->latest[top->name] = top->shadowed;

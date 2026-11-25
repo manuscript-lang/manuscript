@@ -25,7 +25,6 @@ uint32_t mirlo_rt(LowerCx *cx, uint32_t *cache, const char *name, const MirTy *p
 
 /* Turns `inst` into a call of runtime function `external` or module function `func`. */
 void mirlo_to_call_rt(MirInst *inst, uint32_t external);
-void mirlo_to_call(MirInst *inst, uint32_t func);
 
 /* The block-level rewrites; each walks every block of `func`. */
 void mirlo_list_drops(LowerCx *cx, MirFunc *func);

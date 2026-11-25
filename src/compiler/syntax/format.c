@@ -431,7 +431,7 @@ FmtParsed *fmt_parsed_entry(Fmt *f, MsSpan source) {
   return entry;
 }
 
-void fmt_memo_free(Fmt *f) {
+static void fmt_memo_free(Fmt *f) {
   ms_free(f->parsed);
   ms_arena_free(&f->memo);
 }

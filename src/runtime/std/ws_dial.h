@@ -26,8 +26,6 @@ typedef struct MsWebSocketOptionsWire {
 /* The head of an HTTP response in `buf`: PARTIAL until its blank line, BAD when malformed; on COMPLETE the
  * status, the fields (owned) and the bytes the head took. */
 typedef enum MsResponseHead { MS_RESPONSE_PARTIAL, MS_RESPONSE_COMPLETE, MS_RESPONSE_BAD } MsResponseHead;
-MsResponseHead ms_ws_parse_response_head(MsSpan buf, size_t limit, uint16_t *status, MsHeaders **fields,
-                                         size_t *used);
 
 /* ms-sig: msstd_net_network_web_socket(handle net: *const ObjCell<NetH>, address: *const StrVal, handle
  * headers: *const ObjCell<HeadersH>, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out:

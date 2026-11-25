@@ -31,7 +31,8 @@ void ms_git_close(MsGit *git) {
   ms_string_release(&git->directory);
 }
 
-MsSpan ms_git_redact(MsArena *arena, MsSpan text) {
+/* `text` without the `user:password@` of any URL in it. */
+static MsSpan ms_git_redact(MsArena *arena, MsSpan text) {
   MsStrBuild out = ms_strbuild_new();
   size_t at = 0;
   while (at < text.len) {

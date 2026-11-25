@@ -5,7 +5,7 @@
 
 /* ---- states ---- */
 
-ElSt el_part(ElCx *cx, uint32_t alt, uint32_t cs, uint32_t mask) {
+static ElSt el_part(ElCx *cx, uint32_t alt, uint32_t cs, uint32_t mask) {
   for (uint32_t index = 0; index < cx->nparts; index++) {
     const ElPart *part = &cx->parts[index];
     if (part->alt == alt && part->cs == cs && part->mask == mask) {
@@ -33,7 +33,7 @@ const ElPart *el_part_of(const ElCx *cx, ElSt state) {
   return &cx->parts[state - EL_PLAIN_KINDS];
 }
 
-bool el_is_odd(ElSt state) {
+static bool el_is_odd(ElSt state) {
   return state == EL_MAYBE || state == EL_MAYBE_CLOSED || state == EL_CLOSED_OR_MOVED;
 }
 
@@ -69,7 +69,7 @@ bool el_get(const ElState *state, MirValue value, ElSt *kind) {
   return true;
 }
 
-void el_set(ElCx *cx, ElState *state, MirValue value, ElSt kind) {
+static void el_set(ElCx *cx, ElState *state, MirValue value, ElSt kind) {
   uint32_t position = 0;
   ElSt old = 0;
   if (!el_position_of(state, value, &position) || (el_get(state, value, &old) && old == kind)) {
@@ -131,7 +131,7 @@ ElOwner *el_odd(ElCx *cx, const ElState *state, uint32_t *count) {
 }
 
 /* Equal states are the common join: the shared trees say so without reading an entry. */
-bool el_state_equal(const ElState *x, const ElState *y) {
+static bool el_state_equal(const ElState *x, const ElState *y) {
   if (posmap_same_entries(&x->seq, &y->seq) && posmap_same_entries(&x->at, &y->at)) {
     return true;
   }
@@ -175,7 +175,7 @@ static void finish_owner(ElCx *cx, ElState *state, MirValue value) {
   }
 }
 
-bool el_consume_value(ElCx *cx, ElState *state, MirValue value) {
+static bool el_consume_value(ElCx *cx, ElState *state, MirValue value) {
   ElSt kind = 0;
   if (!el_get(state, value, &kind)) {
     return true;
@@ -367,7 +367,7 @@ MirValue *el_own_params(const ElCx *cx, uint32_t block, uint32_t *count) {
 }
 
 /* The state flowing along the edge `target`: the arguments of owning parameters are consumed. */
-bool el_edge_state(ElCx *cx, const ElState *state, const MirTarget *target, ElState *out) {
+static bool el_edge_state(ElCx *cx, const ElState *state, const MirTarget *target, ElState *out) {
   const MirBlockData *dest = &cx->f->blocks.ptr[target->block];
   *out = *state;
   const size_t count = target->nargs < dest->params.len ? target->nargs : dest->params.len;
@@ -414,7 +414,7 @@ static bool join_one(ElCx *cx, MirValue value, ElSt a, ElSt b, ElSt *out) {
   return true;
 }
 
-bool el_merge(ElCx *cx, const ElState *old, const ElState *next, ElState *out) {
+static bool el_merge(ElCx *cx, const ElState *old, const ElState *next, ElState *out) {
   if (el_state_equal(old, next)) {
     *out = *old;
     return true;

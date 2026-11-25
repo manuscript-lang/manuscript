@@ -200,16 +200,10 @@ bool emit_wide_result(EmitCx *cx, MirValue value, char *out, size_t capacity);
 bool emit_wide_address(const EmitCx *cx, MirValue value, char *out, size_t capacity);
 bool emit_wide_same_cell(const EmitCx *cx, MirValue first, MirValue second);
 
-
 /* The one-block shape: a branch on `condition`, the code of its side, a join. */
 typedef struct EmitIf {
   uint32_t id;
   uint32_t head, join; /* the pieces before and after, for the phis that name them */
 } EmitIf;
-
-EmitIf emit_if_begin(EmitCx *cx, const char *condition, const EmitSite *site);
-void emit_if_end(EmitCx *cx, const EmitIf *branch, const EmitSite *site);
-/* `<dst> = phi i64 [0, %head], [<value>, %i<id>]`: a word that is zero when the side was skipped. */
-void emit_if_phi(EmitCx *cx, const EmitIf *branch, const EmitSite *site, const char *dst, const char *value);
 
 #endif

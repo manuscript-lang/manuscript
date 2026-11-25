@@ -20,10 +20,6 @@ MS_NODISCARD MS_NONNULL bool mir_result_mode(const MirModule *module, const MirF
  * room for that many entries. */
 void mir_arg_modes(const MirModule *module, const MirFunc *func, const MirInst *inst, MirMode *out);
 
-/* The arguments a `call.ind` (from the closure's type) or `call.method` (from the interface method) passes
- * owned, as a bit set (see mir_owns). */
-uint64_t mir_indirect_owned(const MirModule *module, const MirFunc *func, const MirInst *inst);
-
 /* Whether the owned result of `inst` points into its operands (an interface view, a call to a view returner,
  * a borrowing variant). Passes that move drops treat it as a borrow. */
 bool mir_result_views(const MirModule *module, const MirFunc *func, const MirInst *inst);

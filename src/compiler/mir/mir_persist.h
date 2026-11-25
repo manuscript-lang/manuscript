@@ -21,7 +21,6 @@ typedef struct OwnerSet {
   uint32_t height; /* 0: the root is a leaf covering 0..64; each level multiplies by 16 */
 } OwnerSet;
 
-bool owner_contains(const OwnerSet *set, uint32_t value);
 void owner_insert(MsArena *arena, OwnerSet *set, uint32_t value);
 /* Removes `value`; whether it was present. */
 bool owner_remove(MsArena *arena, OwnerSet *set, uint32_t value);

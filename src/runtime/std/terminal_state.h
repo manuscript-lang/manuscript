@@ -49,8 +49,6 @@ typedef struct MsTerminalHandle {
 
 void ms_terminal_retain(MsTerminal *terminal);
 void ms_terminal_release(MsTerminal *terminal);
-/* The raw terminal holding the host terminal, or NULL. */
-MsTerminal *ms_terminal_active(void);
 
 /* Waits on a pool thread for input and decodes it into `terminal->text` (terminal_read.c). */
 uint8_t ms_terminal_read(MsTerminal *terminal, bool quick);

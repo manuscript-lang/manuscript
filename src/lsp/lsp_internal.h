@@ -52,7 +52,6 @@ typedef struct LspRange {
 /* A range as the JSON object LSP carries. */
 void lsp_json_range(MsStrBuild *out, LspRange range);
 
-size_t lsp_utf16_length(MsSpan bytes);
 /* The position of a byte offset, clamped into the source. */
 LspPosition lsp_position(MsSpan source, size_t offset);
 /* The byte offset of a position. With `clamp`, a character past the end of a line or a line past the end of the document

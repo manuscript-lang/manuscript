@@ -8,7 +8,6 @@
  * its default. */
 uint32_t emit_edge_count(const MirTerm *term);
 const MirTarget *emit_edge(const MirTerm *term, uint32_t index);
-bool emit_edge_repeats(const MirTerm *term, uint32_t index);
 
 /* Writes the terminator of block `from`; false with `cx->why` set when it cannot. */
 bool emit_terminator(EmitCx *cx, const MirTerm *term, uint32_t from);

@@ -55,7 +55,7 @@ void body_push_local(Body *body, MsLocal local) {
   body->local_latest[local.name] = (uint32_t)body->locals.len;
 }
 
-void body_free_locals(Body *body) {
+static void body_free_locals(Body *body) {
   ms_local_list_free(&body->locals);
   ms_free(body->local_latest);
   ms_free(body->decl_symbol);

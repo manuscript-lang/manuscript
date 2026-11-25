@@ -29,9 +29,6 @@ int ms_invocation_parse(MsArena *arena, const char *command, int argc, char **ar
 
 void ms_invocation_free(MsInvocation *invocation);
 
-/* Whether `flag` is an option that consumes the next argument as its value. */
-bool ms_invocation_takes_value(MsSpan flag);
-
 /* Whether a flag is followed by a value that is not an input: the options above plus `--limit`, `--explain` and
  * `--effect`, which only their own commands parse. */
 bool ms_invocation_skips_value(MsSpan flag);

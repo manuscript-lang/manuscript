@@ -19,9 +19,6 @@ typedef struct MsWorkspace {
   WorkspaceMemberList members;
 } MsWorkspace;
 
-/* Expands and checks the members of a parsed workspace root. */
-MS_NODISCARD bool ms_workspace_read(MsArena *arena, const MsManifest *root, MsWorkspace *out, MsProjectError *error);
-
 /* The workspace that contains the project whose `ms.toml` is `manifest` (absolute): the manifest itself when it has
  * [workspace], else the nearest ancestor manifest that lists this directory. `*found` is false for a project outside
  * any workspace. */

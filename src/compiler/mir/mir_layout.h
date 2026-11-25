@@ -165,11 +165,6 @@ const MirAltFields *mir_alt_fields(MirLayouts *layouts, uint32_t alt);
 MS_NODISCARD MS_NONNULL bool mir_alt_slot_source(const MirAltFields *fields, uint32_t case_index, uint32_t slot,
                                                  uint32_t *operand, uint32_t *leaf);
 
-/* The leaves of the heap block behind indirect type `type_id`: its fields' leaves in order, except that a map
- * or set field is one pointer to a header block that exists only while the collection is not the all-zero
- * empty value. */
-MsSpan mir_type_block(MirLayouts *layouts, uint32_t type_id);
-
 /* The byte offset of field `field` of the inline record `type_id` in its memory image. */
 uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field);
 

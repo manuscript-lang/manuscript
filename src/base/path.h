@@ -11,7 +11,6 @@ MsSpan ms_path_file_name(MsSpan path);
 /* Everything before the final component, without the separator; empty when there is none. */
 MsSpan ms_path_parent(MsSpan path);
 
-
 /* Rewrites a path the host returned (`uv_cwd`, `uv_fs_realpath`, `uv_os_tmpdir`) in place to this module's `/`-separated
  * form. The only place the host's separator is known. */
 void ms_path_from_os(char *text, size_t size);
@@ -22,18 +21,6 @@ void ms_path_from_os(char *text, size_t size);
  * every result is written with `/` (a verbatim `\\?\` path keeps its backslashes). One implementation, path_rules.c,
  * serves the toolchain and @std/fs. */
 typedef enum MsPathRules { MS_PATH_RULES_UNIX, MS_PATH_RULES_WINDOWS } MsPathRules;
-
-bool ms_path_is_separator_with(MsPathRules rules, uint8_t byte);
-bool ms_path_is_absolute_with(MsPathRules rules, MsSpan path);
-/* The shortest equivalent path by lexical processing ("." for an empty result): repeated separators and "." go, ".."
- * undoes the element before it and vanishes above a root. Appended to `out`. */
-void ms_path_clean_with(MsPathRules rules, MsSpan path, MsStrBuild *out);
-/* Two elements joined and cleaned; an absolute second element replaces the first. */
-void ms_path_join_with(MsPathRules rules, MsSpan first, MsSpan second, MsStrBuild *out);
-/* The last element: "." for an empty path, the root or volume for a bare one. A view into `path`, or a constant. */
-MsSpan ms_path_base_with(MsPathRules rules, MsSpan path);
-/* Everything but the last element, cleaned; a path without one (a root, a volume, empty) is cleaned itself. */
-void ms_path_dir_with(MsPathRules rules, MsSpan path, MsStrBuild *out);
 
 /* The same by the host's rules. */
 bool ms_path_is_separator(uint8_t byte);

@@ -21,12 +21,6 @@ typedef struct MsHttpTarget {
  */
 bool ms_http_valid_authority(MsSpan value);
 
-/* Percent-decodes `raw` into *out (owned); false when an escape is malformed. */
-MS_NODISCARD bool ms_http_unescape(MsSpan raw, MsString *out);
-
-/* Go's path.Clean keeping the trailing slash of the input (except for the root). */
-MsString ms_http_clean_path(MsSpan path);
-
 /* Splits and normalizes the target of a request line. On failure returns false and *reason is the text of the
  * 400 answer (a static string); on success the strings of *out are owned by the caller. */
 MS_NODISCARD bool ms_http_target_parse(MsSpan target, MsHttpTarget *out, const char **reason);

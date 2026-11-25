@@ -30,7 +30,9 @@ void ms_fail_text(MsFail *fail, const char *text) {
   fail->message = ms_string_from_span(ms_span_of_text(text));
 }
 
-uint8_t ms_fail_classify(int code) {
+/* The status a libuv failure maps to: not found, exists, not empty, invalid, permission, unsupported, or
+ * MS_STATUS_FAILED for the rest. */
+static uint8_t ms_fail_classify(int code) {
   switch (code) {
     case UV_ENOENT:
       return MS_STATUS_NOT_FOUND;
@@ -104,7 +106,9 @@ bool ms_fail_poll_cancel(MsFail *fail) {
   return true;
 }
 
-bool ms_fail_cancel_pending(const MsFail *fail) { return fail->status != MS_STATUS_OK && ms_fail_cancel_requested(); }
+/* Whether ms_fail_finish would deliver a stop request instead of returning: it never returns, so a caller frees what it
+ * owns before it, never after. */
+static bool ms_fail_cancel_pending(const MsFail *fail) { return fail->status != MS_STATUS_OK && ms_fail_cancel_requested(); }
 
 uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err) {
   const uint8_t status = fail->status;

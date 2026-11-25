@@ -36,7 +36,7 @@ static MsRegex *compile_filter(MsArena *arena, const char *flag, MsSpan pattern,
   return re;
 }
 
-bool test_filters_compile(MsArena *arena, const MsTestOptions *options, TestFilters *out, MsSpan *error) {
+static bool test_filters_compile(MsArena *arena, const MsTestOptions *options, TestFilters *out, MsSpan *error) {
   *out = (TestFilters){0};
   out->matching = compile_filter(arena, "--match", options->matching, error);
   if (options->matching.len > 0 && out->matching == NULL) {
@@ -111,7 +111,8 @@ void test_plan_shuffle(TestPlan *plan, int64_t seed) {
   }
 }
 
-bool test_failure_position(MsSpan message, MsSpan *file, int64_t *line, int64_t *column) {
+/* The position `file:line:column` that ends a failure's text (`\n  at f.ms:30:5`), or false. */
+static bool test_failure_position(MsSpan message, MsSpan *file, int64_t *line, int64_t *column) {
   size_t at = message.len;
   int64_t numbers[2] = {0, 0};
   for (int part = 1; part >= 0; part--) {
@@ -203,7 +204,8 @@ static void write_base64(MsStrBuild *out, MsSpan bytes) {
   ms_strbuild_append_byte(out, '"');
 }
 
-void test_document_write(const TestDocument *document, MsStrBuild *out) {
+/* Appends the document and its closing newline. */
+static void test_document_write(const TestDocument *document, MsStrBuild *out) {
   ms_strbuild_append_text(out, "{\n");
   if (document->listed) {
     ms_strbuild_append_text(out, "  \"listed\": true,\n");

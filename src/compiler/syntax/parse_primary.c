@@ -53,7 +53,7 @@ static MsExpr *type_value(Parser *p, const MsTypeRef *t) {
 
 /* Brackets may contain types or a value. A single name or application keeps both interpretations
  * until name resolution identifies the receiver. */
-MS_NODISCARD bool parse_bracket(Parser *p, MsExpr *left, MsExpr **out) {
+static MS_NODISCARD bool parse_bracket(Parser *p, MsExpr *left, MsExpr **out) {
   size_t start = p->at;
   MsTypeRefs types = {NULL, 0};
   bool have_types = false;

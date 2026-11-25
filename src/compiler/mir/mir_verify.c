@@ -67,7 +67,7 @@ MirTy mv_ty(const Mv *v, MirValue x) { return v->cx.f->values.ptr[x]; }
 bool mv_rc(const Mv *v, MirValue x) { return v->cx.drops[mv_ty(v, x)]; }
 
 /* A function is Raw until `elaborate` runs: it still carries scope markers. */
-bool mv_is_raw(const MirFunc *f) {
+static bool mv_is_raw(const MirFunc *f) {
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       MirOp op = (MirOp)f->blocks.ptr[b].insts.ptr[i].op;

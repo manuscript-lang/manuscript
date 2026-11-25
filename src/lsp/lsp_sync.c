@@ -8,7 +8,8 @@ const MsJson *lsp_json_member(const MsJson *object, const char *key, MsJsonKind 
   return value != NULL && value->kind == kind ? value : NULL;
 }
 
-bool lsp_json_integer(const MsJson *value, size_t *out) {
+/* A non-negative whole number of at most 15 digits. */
+static bool lsp_json_integer(const MsJson *value, size_t *out) {
   if (value == NULL || value->kind != MS_JSON_NUMBER || value->text.len == 0 || value->text.len > 15) return false;
   size_t number = 0;
   for (size_t i = 0; i < value->text.len; i++) {

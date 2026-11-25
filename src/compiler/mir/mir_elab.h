@@ -79,15 +79,12 @@ typedef struct ElCx {
 /* Records the failure and returns false. */
 #define el_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), false)
 
-ElSt el_part(ElCx *cx, uint32_t alt, uint32_t cs, uint32_t mask);
 bool el_is_part(ElSt state);
 const ElPart *el_part_of(const ElCx *cx, ElSt state);
-bool el_is_odd(ElSt state);
 
 /* State operations. `get` returns false when `value` is not an owner. */
 void el_push(ElCx *cx, ElState *state, MirValue value, ElSt kind);
 bool el_get(const ElState *state, MirValue value, ElSt *kind);
-void el_set(ElCx *cx, ElState *state, MirValue value, ElSt kind);
 void el_remove(ElCx *cx, ElState *state, MirValue value);
 bool el_position_of(const ElState *state, MirValue value, uint32_t *position);
 /* The owners in definition order: `*count` of them, in the context's arena. */
@@ -96,7 +93,6 @@ ElOwner *el_owners(ElCx *cx, const ElState *state, uint32_t *count);
 int64_t el_owner_by_position(uint8_t *env, const uint8_t *x, const uint8_t *y);
 /* The owners a join left uncertain, in definition order. */
 ElOwner *el_odd(ElCx *cx, const ElState *state, uint32_t *count);
-bool el_state_equal(const ElState *x, const ElState *y);
 
 /* Whether `value` owns a memory slot (`scope.own S K p`, K >= 2): the owner is the slot's address. */
 bool el_is_slot_owner(const ElCx *cx, MirValue value);
@@ -104,9 +100,6 @@ bool el_tagged(const ElCx *cx, MirValue value);
 
 /* The move state after `inst`, and across an edge or a join. */
 bool el_apply(ElCx *cx, ElState *state, const MirInst *inst);
-bool el_edge_state(ElCx *cx, const ElState *state, const MirTarget *target, ElState *out);
-bool el_merge(ElCx *cx, const ElState *old, const ElState *next, ElState *out);
-bool el_consume_value(ElCx *cx, ElState *state, MirValue value);
 /* The block parameters that own a value, in the context's arena. */
 MirValue *el_own_params(const ElCx *cx, uint32_t block, uint32_t *count);
 
@@ -154,14 +147,12 @@ MirImm em_imm_func(uint32_t id);
 MirImm em_imm_case(uint32_t alt, uint32_t cs);
 bool em_closer(ElEm *em, MirValue value, uint32_t *close);
 void em_drop_owned(ElEm *em, uint32_t at, MirValue value);
-MirValue em_is_error(ElEm *em, uint32_t at, MirValue result);
 /* Runs the fallible close `close` of slot owner `value`, shielded; `*result` is its `Result`. */
 bool em_close_result(ElEm *em, uint32_t at, MirValue value, uint32_t close, MirValue *result);
 bool em_flag_of(const MirHash *map, MirValue key, MirValue *out);
 
 /* Closes or drops what a scope still holds at its end (mir_elab_close.c). */
 bool em_exit(ElEm *em, uint32_t *cur, ElState *state, int64_t scope);
-bool em_cleanup_one(ElEm *em, uint32_t *at, MirValue value, ElSt state, MirValue *outcome);
 
 /* Edge, flag and slot-refill code (mir_elab_edge.c, mir_elab_flags.c). */
 bool em_edges(ElEm *em, uint32_t cur, const ElState *state, MirTerm *term, const ElFparams *fparams);

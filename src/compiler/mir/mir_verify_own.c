@@ -15,7 +15,7 @@
 
 
 /* The index of the first member that is not below `id`. */
-uint32_t mvs_lower_bound(const MvSet *s, uint32_t id) {
+static uint32_t mvs_lower_bound(const MvSet *s, uint32_t id) {
   uint32_t lo = 0, hi = s->count;
   while (lo < hi) {
     uint32_t mid = lo + (hi - lo) / 2;
@@ -28,12 +28,12 @@ uint32_t mvs_lower_bound(const MvSet *s, uint32_t id) {
   return lo;
 }
 
-bool mvs_has(const MvSet *s, uint32_t id) {
+static bool mvs_has(const MvSet *s, uint32_t id) {
   uint32_t at = mvs_lower_bound(s, id);
   return at < s->count && s->ids[at] == id;
 }
 
-void mvs_reserve(MsArena *arena, MvSet *s, uint32_t extra) {
+static void mvs_reserve(MsArena *arena, MvSet *s, uint32_t extra) {
   if (s->count + extra <= s->cap) {
     return;
   }
@@ -49,7 +49,7 @@ void mvs_reserve(MsArena *arena, MvSet *s, uint32_t extra) {
   s->cap = cap;
 }
 
-void mvs_add(MsArena *arena, MvSet *s, uint32_t id) {
+static void mvs_add(MsArena *arena, MvSet *s, uint32_t id) {
   uint32_t at = mvs_lower_bound(s, id);
   if (at < s->count && s->ids[at] == id) {
     return;
@@ -61,7 +61,7 @@ void mvs_add(MsArena *arena, MvSet *s, uint32_t id) {
 }
 
 /* Removes `id`; false when it was not a member. */
-bool mvs_remove(MvSet *s, uint32_t id) {
+static bool mvs_remove(MvSet *s, uint32_t id) {
   uint32_t at = mvs_lower_bound(s, id);
   if (at >= s->count || s->ids[at] != id) {
     return false;
@@ -71,7 +71,7 @@ bool mvs_remove(MvSet *s, uint32_t id) {
   return true;
 }
 
-MvSet mvs_clone(MsArena *arena, const MvSet *s) {
+static MvSet mvs_clone(MsArena *arena, const MvSet *s) {
   MvSet c = {0};
   mvs_reserve(arena, &c, s->count);
   if (s->count > 0) {
@@ -81,12 +81,12 @@ MvSet mvs_clone(MsArena *arena, const MvSet *s) {
   return c;
 }
 
-bool mvs_equal(const MvSet *a, const MvSet *b) {
+static bool mvs_equal(const MvSet *a, const MvSet *b) {
   return a->count == b->count && (a->count == 0 || __builtin_memcmp(a->ids, b->ids, sizeof *a->ids * a->count) == 0);
 }
 
 /* `%a, %b, ...` for the values in exactly one of the two sets, ascending. */
-MsSpan mvs_difference_text(MsArena *arena, const MvSet *a, const MvSet *b) {
+static MsSpan mvs_difference_text(MsArena *arena, const MvSet *a, const MvSet *b) {
   MsStrBuild text = ms_strbuild_new();
   uint32_t i = 0, j = 0;
   while (i < a->count || j < b->count) {

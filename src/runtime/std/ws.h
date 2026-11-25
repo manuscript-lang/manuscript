@@ -47,12 +47,7 @@ void ms_ws_protocol_error_payload(MsSpan message, MsBytes *out);
 
 /* XORs `data` with the key starting at key offset `pos`; returns the next offset. */
 size_t ms_ws_mask_bytes(const uint8_t key[4], size_t pos, uint8_t *data, size_t length);
-/* A fresh masking key from the operating system; false when it has none. */
-MS_NODISCARD bool ms_ws_new_mask_key(uint8_t key[4]);
 
-/* Appends one frame; a masked frame (`key` not null) carries the payload XORed with the key. */
-void ms_ws_encode_frame(MsBytes *out, uint8_t opcode, bool fin, bool rsv1, MsSpan payload,
-                        const uint8_t *key);
 /* A control frame; false when the payload exceeds 125 bytes (or the key cannot be made). */
 MS_NODISCARD bool ms_ws_encode_control(MsBytes *out, uint8_t opcode, MsSpan payload, bool masked);
 /* A whole data message as one or more frames. `compress` deflates the payload and sets RSV1 on the first
@@ -132,15 +127,8 @@ void ms_ws_error_release(MsWsError *error);
 
 /* ---- opening handshake (ws_handshake.c) ---- */
 
-/* `Sec-WebSocket-Accept` for a challenge key. */
-void ms_ws_accept_key(MsSpan challenge, MsStrBuild *out);
 /* A fresh `Sec-WebSocket-Key`: 16 random bytes in base64; false when the system has no entropy. */
 MS_NODISCARD bool ms_ws_generate_key(MsStrBuild *out);
-/* Whether `text` is the base64 text of exactly 16 bytes. */
-bool ms_ws_valid_challenge_key(MsSpan text);
-/* Whether a comma-separated field holds `value` as a token, ignoring ASCII case; a malformed element skips
- * the rest of that line. */
-bool ms_ws_token_list_contains(const MsHeaders *fields, const char *name, const char *value);
 
 /* The only extension offered or accepted; both context takeovers are always off. */
 #define MS_WS_DEFLATE_RESPONSE "permessage-deflate; server_no_context_takeover; client_no_context_takeover"
@@ -181,10 +169,6 @@ void ms_ws_accepted_release(MsWsAccepted *accepted);
 /* The error response for a refusal; `date` is the Unix time of the Date field; `close` appends
  * `Connection: close`. */
 void ms_ws_rejected_response(const MsWsRejected *rejected, int64_t date, bool close, MsBytes *out);
-/* The origin policy: a missing or empty Origin is accepted; otherwise it must be a bare http or https origin
- * that equals an allowed entry, or (with none allowed) has the request's scheme and host. */
-bool ms_ws_origin_allowed(const MsHeaders *fields, MsSpan host, bool tls, const MsSpan *allowed,
-                          size_t count);
 
 /* Client side. */
 typedef struct MsWsClientRequest {

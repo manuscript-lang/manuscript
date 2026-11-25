@@ -56,7 +56,6 @@ static inline void url_truncate(MsStrBuild *builder, size_t length) {
 void url_escape(MsSpan text, UrlEnc mode, MsStrBuild *out);
 /* False for a malformed escape or a byte the mode forbids; `out` then holds partial text. */
 MS_NODISCARD bool url_unescape(MsSpan text, UrlEnc mode, MsStrBuild *out);
-bool url_should_escape(uint8_t byte, UrlEnc mode);
 bool url_valid_encoded(MsSpan text, UrlEnc mode);
 bool url_valid_optional_port(MsSpan port);
 bool url_is_canonical(MsSpan text, UrlEnc mode);

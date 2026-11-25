@@ -15,7 +15,7 @@ enum {
   STREAM_WINDOW = 1 << 18
 };
 
-void ms_h2_wake(uint64_t token) {
+static void ms_h2_wake(uint64_t token) {
   ms_token_post(token, 1);
 }
 

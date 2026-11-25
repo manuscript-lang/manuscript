@@ -18,8 +18,6 @@ uint32_t mird_add_sym(DataCx *cx, const MirDataSym *sym);
 /* The symbol name `ms.<kind>.<n>` in the module's arena. */
 MsSpan mird_name(DataCx *cx, const char *kind, uint32_t n);
 
-void mird_put_word(uint8_t *at, uint64_t value);
-
 /* Calls `visit` for every instruction of every function. */
 typedef void (*MirdInstFn)(DataCx *cx, const MirFunc *func, const MirInst *inst);
 void mird_each_inst(DataCx *cx, MirdInstFn visit);

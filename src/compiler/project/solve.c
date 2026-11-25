@@ -22,12 +22,13 @@ bool solver_fail(Solver *s, MsSpan message) {
   return false;
 }
 
-bool group_equal(const Group *a, const Group *b) {
+static bool group_equal(const Group *a, const Group *b) {
   return ms_span_equal(a->repo, b->repo) && a->has_bucket == b->has_bucket &&
          (!a->has_bucket || ms_bucket_equal(a->bucket, b->bucket));
 }
 
-MsSpan choice_id(Solver *s, const Choice *choice) {
+/* The id of the copy a choice names. */
+static MsSpan choice_id(Solver *s, const Choice *choice) {
   return ms_lock_copy_id(s->arena, choice->url, choice->reference);
 }
 

@@ -24,15 +24,6 @@ MsString ms_tls_dn_text(const X509_NAME *name);
 
 /* ---- certificates (tls_cert.c) ---- */
 
-/* A parsed DER certificate; NULL when it is malformed. */
-X509 *ms_tls_x509_parse(MsSpan der);
-/* The time as seconds since the Unix epoch; false when it is not a valid time. */
-bool ms_tls_time_seconds(const ASN1_TIME *time, int64_t *seconds);
-
-/* Verifies the leaf `chain[0]` (with the rest as intermediates) for a server called `name` at `now` (Unix
- * seconds) against `roots`: OK or AUTHENTICATION_FAILED. */
-uint8_t ms_tls_verify(const MsList *chain, const MsList *roots, MsSpan name, int64_t now);
-
 /* ---- natives (tls_cert.c) ---- */
 
 /* A parsed certificate in the layout of `CertificateInfo`. */

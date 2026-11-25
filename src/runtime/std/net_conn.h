@@ -29,11 +29,6 @@ void msstd_net_listener_close(const MsObj *handle);
 /* ms-sig: msstd_net_listener_share(handle l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH> @domain=network @end */
 MsObj *msstd_net_listener_share(const MsObj *handle);
 
-/* Up to `capacity` bytes: MS_STATUS_NONE at the end of the stream. */
-uint8_t ms_net_read(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err);
-uint8_t ms_net_write(MsNetCore *core, MsSpan data, int64_t timeout_ns, MsString *err);
-uint8_t ms_net_shutdown(MsNetCore *core, MsString *err);
-
 /* ms-sig: msstd_net_connection_read(handle c: *const ObjCell<ConnH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_net_connection_read(const MsObj *handle, uint8_t has_max, int64_t max, uint8_t has_timeout,
                                   int64_t timeout, MsBytes *out, MsString *err);

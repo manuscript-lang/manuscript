@@ -36,8 +36,6 @@ uint32_t opt_inline_edge(const OptInlineGraph *g, uint32_t v, uint32_t k);
 OptInlineGraph opt_inline_direct_graph(MsArena *arena, const MirModule *m);
 /* Per node: whether it lies on a cycle. */
 bool *opt_inline_cyclic(MsArena *arena, const OptInlineGraph *g);
-/* Per block: whether it lies on a cycle of the control-flow graph. */
-bool *opt_blocks_in_loops(MsArena *arena, const MirFunc *f);
 
 /* Whether inlining `callee` into `caller` would mix explicit-cancel states unsoundly. */
 bool opt_inline_cancel_mismatch(const MirFunc *caller, const MirFunc *callee);

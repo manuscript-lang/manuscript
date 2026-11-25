@@ -141,7 +141,8 @@ static bool next_queued(MsWsSession *session, MsBytes *bytes) {
   return any;
 }
 
-MsWsFault ms_ws_session_write(MsWsSession *session, MsBytes bytes, int64_t timeout_ns,
+/* Writes one frame or message: a failure is sticky; a call during a write only queues behind it. */
+static MsWsFault ms_ws_session_write(MsWsSession *session, MsBytes bytes, int64_t timeout_ns,
                               const char *on_timeout) {
   ms_http_mutex_lock(session->lock);
   if (session->write_fault.status != MS_STATUS_OK) {
@@ -234,7 +235,8 @@ uint8_t ms_ws_session_ping(MsWsSession *session, MsSpan data, MsString *err) {
   return ms_ws_fault_take(&fault, err);
 }
 
-void ms_ws_session_close_with(MsWsSession *session, uint16_t code, MsSpan reason) {
+/* Like close with a status code and a reason (cut to 123 bytes). */
+static void ms_ws_session_close_with(MsWsSession *session, uint16_t code, MsSpan reason) {
   if (atomic_exchange(&session->closed, true)) {
     return;
   }

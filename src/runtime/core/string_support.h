@@ -16,16 +16,8 @@ extern const uint8_t msrt_ascii_chars[128][2];
 /* A growable list of strings (the layout of every List[String]). */
 MS_LIST_DEFINE(MsStringList, ms_string_list, MsString)
 
-/* Raises the fault "string: limit exceeded". */
-MS_NORETURN void msrt_string_limit_fault(void);
 /* Posts the same fault and returns: the caller releases what it owns and returns at once. */
 void msrt_string_limit_post(void);
-
-/* a + b, raising the fault past the string limit (for callers compiled code reaches; natives use the _post forms). */
-size_t msrt_string_total(size_t a, size_t b);
-
-/* a + b into *out, posting the limit fault and returning false past the string limit. */
-bool msrt_string_total_post(size_t a, size_t b, size_t *out);
 
 /* msrt_string_block that posts the limit fault instead: returns NULL with *out empty. */
 uint8_t *msrt_string_block_post(size_t length, MsString *out);
@@ -39,9 +31,6 @@ MsString msrt_string_view_of(MsSpan text);
 
 /* The parts joined with one allocation (inline when they fit). */
 MsString msrt_string_join(const MsSpan *parts, size_t count);
-
-/* `a` and then the parts (at most 6), taking `a`: an owned `a` grows in place. */
-MsString msrt_string_append_parts(const MsString *a, const MsSpan *parts, size_t count);
 
 /* An owned string of `length` bytes, more than 15; returns the writable bytes, which the caller fills. */
 uint8_t *msrt_string_block(size_t length, MsString *out);

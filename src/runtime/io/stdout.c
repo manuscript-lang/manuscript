@@ -85,7 +85,8 @@ static bool capture_append(uint64_t id, MsSpan data) {
   return found;
 }
 
-void ms_stdout_write(MsSpan data) {
+/* Appends `data` to the running task's capture, or to standard output. */
+static void ms_stdout_write(MsSpan data) {
   const uint64_t capture = ms_task_capture();
   if (capture != 0 && capture_append(capture, data)) {
     return;

@@ -240,7 +240,7 @@ static bool is_void_type(const TerseScan *scan, const MsTypeRef *type) {
 
 /* A final `return ok(unit)` in a `Void!` function, or `return` in a `Void` one: the end of the body already
  * returns it. */
-void terse_trailing_return(TerseScan *scan, const MsFunc *func) {
+static void terse_trailing_return(TerseScan *scan, const MsFunc *func) {
   const MsTypeRef *result_type = func->result;
   if (result_type == NULL || result_type->kind != MS_TYPE_NAMED) {
     return;
@@ -586,7 +586,8 @@ static void append_all(const TerseScan *scan, const MsStmt *s) {
   }
 }
 
-void terse_block(TerseScan *scan, MsStmts body) {
+/* The rules over a statement list and a function, in lint_terse_stmts.c. */
+static void terse_block(TerseScan *scan, MsStmts body) {
   for (size_t at = 0; at < body.len; at++) {
     default_then_reassign(scan, body, at);
     temp_return(scan, body, at);

@@ -10,7 +10,8 @@ void msrt_post_list_overflow(void) {
   ms_fault_post_text(MS_FAULT_KIND_OVERFLOW, "list size overflow");
 }
 
-bool msrt_list_buffer_bytes(size_t count, size_t slot_size, size_t *bytes) {
+/* count * size of a slot, faulting on overflow. */
+static bool msrt_list_buffer_bytes(size_t count, size_t slot_size, size_t *bytes) {
   if (!ms_size_mul(count, slot_size == 0 ? 1 : slot_size, bytes)) {
     msrt_post_list_overflow();
     return false;
@@ -58,7 +59,8 @@ void msrt_post_splice(const char *what, int64_t found, size_t high) {
   ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
 }
 
-void msrt_post_bounds(const char *operation, size_t length, int64_t start, int64_t end) {
+/* "<operation>: start/end must satisfy 0 <= start <= end <= <length>; found start S and end E". */
+static void msrt_post_bounds(const char *operation, size_t length, int64_t start, int64_t end) {
   MsStrBuild message = ms_strbuild_new();
   ms_strbuild_append_text(&message, operation);
   ms_strbuild_append_text(&message, ": start/end must satisfy 0 <= start <= end <= ");

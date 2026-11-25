@@ -43,7 +43,6 @@ typedef struct Fmt {
 
 /* The entry for `source`, added empty when new. */
 FmtParsed *fmt_parsed_entry(Fmt *f, MsSpan source);
-void fmt_memo_free(Fmt *f);
 
 MS_LIST_DEFINE(SpanList, span_list, MsSpan)
 MS_LIST_DEFINE(RangeList, range_list, MsByteRange)

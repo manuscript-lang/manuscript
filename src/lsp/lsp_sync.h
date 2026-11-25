@@ -9,8 +9,6 @@
 
 /* The member `key` of an object when it has the kind `kind`, else NULL. */
 const MsJson *lsp_json_member(const MsJson *object, const char *key, MsJsonKind kind);
-/* A non-negative whole number of at most 15 digits. */
-bool lsp_json_integer(const MsJson *value, size_t *out);
 bool lsp_json_position(const MsJson *value, LspPosition *position);
 
 /* Stores an opened document, or applies a change transaction to an open one. Stale, empty or malformed transactions are

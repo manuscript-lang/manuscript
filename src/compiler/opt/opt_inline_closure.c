@@ -29,7 +29,7 @@ static void ic_known_set(IcKnown *k, MirValue v, uint32_t code, const MirValue *
 }
 
 /* The closures built in `f` by `closure.new` whose captures are all plain data. */
-IcKnown ic_known_closures(MsArena *arena, const MirModule *m, const MirFunc *f) {
+static IcKnown ic_known_closures(MsArena *arena, const MirModule *m, const MirFunc *f) {
   IcKnown known = ic_known_new(arena, (uint32_t)f->values.len);
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {

@@ -116,7 +116,8 @@ static Member *member_row(MsPromise id) {
   return &groups.members.ptr[row];
 }
 
-bool ms_group_add(int64_t group_id, MsPromise id, int64_t tag) {
+/* Adds the promise with `tag`; false when it is already in a group. A finished or closed promise reports at once. */
+static bool ms_group_add(int64_t group_id, MsPromise id, int64_t tag) {
   Group *const group = group_of(group_id);
   if (group == NULL) {
     return false;
