@@ -59,6 +59,7 @@ typedef struct Pass {
   MsNode self_node;
   uint32_t self_module;
   bool method;
+  bool look_receiver; /* the method's receiver is a look record: a `&` result keeps its sources, not the receiver */
   MsName self_name;
   const MsTy *written; /* by node of this module: the type a written type resolved to (MS_TY_NONE, which is 0, if none) */
 } Pass;
@@ -313,6 +314,11 @@ static bool has_ref(const MsTypeRef *t) {
   return false;
 }
 
+/* Whether the written result is `&T` or wraps one at its top. */
+static bool ref_written(const MsTypeRef *t) {
+  return t != NULL && (t->is_ref || (t->args.len >= 1 && ref_written(t->args.ptr[0])));
+}
+
 static MsTy written_type(const Pass *pass, const MsTypeRef *ref) {
   return ref != NULL && ref->id < pass->facts->node_count ? pass->written[ref->id] : MS_TY_NONE;
 }
@@ -362,7 +368,7 @@ static bool receiver_flows(const MsFunc *func, const MsMethod *method) {
 /* The mask a signature states: the positions it holds, the positions handed over whose type the result is built from,
  * and the borrowed-result bit when the result is a reference. */
 static uint32_t declared_mask(const Pass *pass, const MsFunc *func, const MsMethod *method) {
-  const bool receiver_holds = method != NULL && method->holding;
+  const bool receiver_holds = method != NULL && (method->holding || (pass->look_receiver && ref_result(pass, func->result)));
   uint32_t mask = receiver_holds && pass->method ? 1u : 0u;
   uint32_t flows = 0;
   if (method != NULL && method->consuming && receiver_flows(func, method)) {
@@ -512,6 +518,7 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
+        pass.look_receiver = pass.written != NULL && ms_own_look_record(program, written_type(&pass, decl->u.impl.receiver));
         pass.self_node = method->id;
         if (!report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result)) {
           report_declared(&pass, module, method->pos, &method->func, method);
@@ -547,6 +554,7 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes, MsTy *const
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
+        pass.look_receiver = pass.written != NULL && ms_own_look_record(program, written_type(&pass, decl->u.impl.receiver));
         pass.self_node = method->id;
         changed |= store(facts, method->id, declared_mask(&pass, &method->func, method));
       }
@@ -669,7 +677,10 @@ static bool declared_borrow(const MsCheckProgram *program, const MsCall *call, c
                             bool *answer) {
   const MsMethod *method = find_method(program, &call->callee);
   const bool receiver = method != NULL;
-  const bool receiver_holds = method != NULL && method->holding;
+  const MsMethodEntry *entry = method != NULL ? ms_check_method_at(program, call->callee.decl.module, call->callee.decl.node) : NULL;
+  /* a `&` result of a method on a look record keeps what the look keeps, so the receiver counts as held */
+  const bool receiver_holds = method != NULL && (method->holding || (entry != NULL && ref_written(declared->result) &&
+                                                                     ms_own_look_record(program, entry->receiver)));
   bool any = receiver_holds;
   bool holds = receiver_holds && position == 0;
   for (uint32_t index = 0; index < declared->params.len; index++) {
