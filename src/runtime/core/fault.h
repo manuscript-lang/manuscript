@@ -78,10 +78,6 @@ void ms_fault_post(MsFaultKind kind, MsSpan message);
 void ms_fault_post_built(MsFaultKind kind, MsStrBuild *message) MS_NONNULL; /* releases the builder */
 void ms_fault_post_text(MsFaultKind kind, const char *message);
 
-/* An allocation of `bytes` bytes was refused: the full fault path with the size in the message. Reporting can need
- * memory too, so a refusal while reporting one falls back to ms_fault_fatal. */
-MS_NORETURN void ms_fault_out_of_memory(size_t bytes);
-
 /* Ends the process now with the message and the record, with no frames and no cleanups. For a fault with
  * no task to leave (a broken invariant) or one that cannot allocate. Allocates nothing. */
 MS_NORETURN void ms_fault_fatal(MsFaultKind kind, MsSpan message);

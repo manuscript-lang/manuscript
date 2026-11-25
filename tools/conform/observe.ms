@@ -80,7 +80,7 @@ export fn invoke(
 // `text` with the work directory (as given and with forward slashes) as <DIR> and its
 // parent as <SCRATCH>, the line number of a standard-library frame as <LINE>, and the
 // count of a repeated frame as <COUNT>.
-fn normalize_text(text, work String) String {
+export fn normalize_text(text, work String) String {
 	var out = text.replace(work, "<DIR>").replace(work.replace("\\", "/"), "<DIR>")
 	parent_end := parent_length(work)
 
@@ -214,7 +214,7 @@ fn normalized(value JsonValue, work String) JsonValue {
 
 // A JSON report read from standard output and normalized, or a record of why it could
 // not be read.
-fn read_report(out Process, work String) JsonValue {
+export fn read_report(out Process, work String) JsonValue {
 	parsed := parse(out.stdout)
 	if document := parsed { return normalized(document, work) }
 
@@ -370,7 +370,7 @@ fn run_phase(ms String, fx Fixture, work, build_type String) JsonValue {
 }
 
 // `value` without the members called `name`, at every depth.
-fn without_member(value JsonValue, name String) JsonValue {
+export fn without_member(value JsonValue, name String) JsonValue {
 	match value {
 		ArrayValue(items) => {
 			out := items.map(item => without_member(item, name))
@@ -392,7 +392,7 @@ fn without_member(value JsonValue, name String) JsonValue {
 }
 
 // The key paths of a report, so a missing or extra field is a protocol break.
-fn shape(value JsonValue, path String, var out List[String]) Void {
+export fn shape(value JsonValue, path String, var out List[String]) Void {
 	match value {
 		ObjectValue(fields) => {
 			for field in fields.entries() {

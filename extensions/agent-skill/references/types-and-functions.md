@@ -1,6 +1,8 @@
 # Types and functions
 
-Declare parameter/return types: `fn f(value Int, offset Int = 1) Int { ... }`. Call labels are optional: `f(2, offset: 3)`. Generics follow the name. Callback type: `fn(Int) Int`; closures: `x => x + 1` or `fn(x Int) Int { return x + 1 }`. Names of one type may share it: `width, height Int`.
+Declare parameter/return types, with a space and no colon: `fn f(value Int, offset Int = 1) Int { ... }`. Call labels are optional: `f(2, offset: 3)`. Generics follow the name. Callback type: `fn(Int) Int` (no parameter names, and no `move`, `hold` or `&` on a function-typed parameter); closures: `x => x + 1` where the type is known, `fn(x Int) Int => x + 1` typed, `x => { ... }` with a block. Names of one type may share it, and a mode before the row covers the whole row: `width, height Int`, `hold left, right T`, `var a, b List[Int]`. A one-expression body is `=>`; a longer one is a braced block with `return`.
+
+How a parameter is used is part of the signature: no mark borrows, `var` changes, `move` keeps. A result that is part of an argument writes `hold` before that argument (`fn hold` for the receiver) and `&` before the result type, with no space: `fn hold User.name() &String`.
 
 <!-- complete: types.ms -->
 ```manuscript
@@ -20,7 +22,7 @@ fn use(value Int, operation Apply) Int {
     return operation.apply(value)
 }
 
-fn identity[T](value T) T => value
+fn identity[T](move value T) T => value
 
 enum Choice {
     Empty
@@ -42,13 +44,13 @@ fn main() Int {
 }
 ```
 
-Receiver methods satisfy interfaces by shape: names, parameter labels/types/mutability and return types must match. A read-only receiver method may satisfy a mutable receiver operation. Declare methods at module scope; there are no `impl` blocks.
+Receiver methods satisfy interfaces by shape: names, parameter types, modes (`var`, `move`, `hold`) and return types must match. A read-only receiver method may satisfy a mutable receiver operation. Declare methods at module scope; there are no `impl` blocks.
 
 Enum cases need no `case` keyword. Construct `Choice.Empty` or `Choice.Number(40)`. Match exhaustively; `_ =>` handles the remainder. Keep matches flat.
 
-Generic operations need bounds, such as `T: Clonable` for copying T. Not every type is cloneable.
+Generic operations need bounds written after the name, such as `T Clonable` for `.clone()` of a T. Not every type is cloneable. A function that only returns an element of its argument needs no `Clonable`: `fn hold pick[T](items List[T], i Int) &T`.
 
-A generic type takes its parameter after the name and its methods repeat it: `type Repository[T] { ... }` with `items List[T] = []`, built `Repository[Book]()`. A method names one receiver argument per type parameter: `fn Lru[K, V].size() Int { ... }`. A method that calls an interface member on `T` states the bound on the receiver: `fn var Repository[T Searchable].add(item T) Void { ... }`. Combine bounds with `&`: `T: Searchable & Clonable`. `fn var` belongs to methods only; a free function takes `var` on the parameter: `fn transfer(var from Account)`. There are no static methods or constructors: build a record by calling the type, or write a free function such as `new_store()`.
+A generic type takes its parameter after the name and its methods repeat it: `type Repository[T] { ... }` with `items List[T] = []`, built `Repository[Book]()`. A method names one receiver argument per type parameter: `fn Lru[K, V].size() Int { ... }`. A method that calls an interface member on `T` states the bound on the receiver: `fn var Repository[T Searchable].add(item T) Void { ... }`. Combine bounds with `&` (spaces kept): `T Searchable & Clonable`. `fn var` belongs to methods only; a free function takes `var` on the parameter: `fn transfer(var from Account)`. An implementation meets an interface operation only when it writes `var`, `move`, `hold` and `&` exactly where the operation does. There are no static methods or constructors: build a record by calling the type, or write a free function such as `new_store()`.
 
 Required fields and parameters come before optional (defaulted) ones. A function without a result type is an error: write `Void`. Functions are called as `f(x)`, never `x.f()`; only methods declared with a receiver use dot syntax. Bool and enums have no `compare`: order them with a small rank function. Enums read and write JSON as the case name (`"High"`).
 

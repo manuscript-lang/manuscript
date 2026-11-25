@@ -112,7 +112,3 @@ bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg,
   }
   return true;
 }
-
-bool ms_check_bounds_hold(MsCheckProgram *program, MsTy variable, MsTy arg, MsString *why) {
-  return ms_check_bounds_hold_with(program, variable, arg, NULL, NULL, 0, "pass a type that already implements it", why);
-}

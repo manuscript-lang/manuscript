@@ -13,16 +13,6 @@ const MirOpInfo mir_op_info[MOP_COUNT] = {
 #undef MIR_OP
 };
 
-bool mir_op_from_name(MsSpan name, MirOp *out) {
-  for (size_t index = 0; index < MOP_COUNT; index++) {
-    if (ms_span_is_text(name, mir_op_info[index].name)) {
-      *out = (MirOp)index;
-      return true;
-    }
-  }
-  return false;
-}
-
 enum { KEY_HEADER_BYTES = 28, KEY_INLINE_ARGS = 16 };
 
 static void put32(uint8_t *at, uint32_t value) {
@@ -230,6 +220,14 @@ static bool needs_drop_in(const MirModule *module, MirTy type, MirTyList *seen) 
 }
 
 bool mir_needs_drop(const MirModule *module, MirTy type) {
+  /* Most queries are a scalar or a heap kind: answer them without the declaration walk's bookkeeping. */
+  const MirTyData *data = mir_ty_data(module, type);
+  while (data->kind == MK_OPT) {
+    data = mir_ty_data(module, data->elem);
+  }
+  if (data->kind != MK_TYPE && data->kind != MK_ALT) {
+    return needs_drop_in(module, type, NULL);
+  }
   MirTyList seen = {0};
   const bool result = needs_drop_in(module, type, &seen);
   mir_tylist_free(&seen);

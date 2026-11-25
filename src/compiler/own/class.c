@@ -12,10 +12,6 @@ void ms_class_free(MsClassifier *classifier) {
   ms_ty_list_free(&classifier->closeable);
 }
 
-void ms_class_mark_closeable(MsClassifier *classifier, MsTy ty) {
-  ms_ty_list_push(&classifier->closeable, ty);
-}
-
 static bool is_closeable(const MsClassifier *classifier, MsTy ty) {
   for (size_t index = 0; index < classifier->closeable.len; index++) {
     if (classifier->closeable.ptr[index] == ty) {

@@ -25,9 +25,6 @@ typedef struct MsHttpPolicy {
   void (*release)(void *context);
 } MsHttpPolicy;
 
-/* A handle on `client` (retained); the handle's drop releases it, it never closes the client. The policy, if
- * any, is applied to every request sent through this handle or one shared from it. */
-MsObj *ms_http_client_handle(MsHttpClient *client);
 MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolicy *policy);
 /* Sends `request` through the handle's client under the handle's policy (see ms_http_client_send). */
 MS_NODISCARD uint8_t ms_http_handle_send(const MsObj *handle, const MsHttpRequest *request,

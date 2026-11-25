@@ -271,6 +271,32 @@ static MirTy lower_by_kind(Lower *cx, MsTy ty) {
   return MIR_VOID;
 }
 
+/* The borrowing variant of a Result type: the same cases under the same name, with `ok` borrowed. Releasing one frees
+ * only the error, and `alt.plain` reads it as the ordinary Result. */
+MirTy lower_result_view(Lower *cx, const LowerSubst *subst, MsTy ty) {
+  const MsTy concrete = apply_subst(cx, subst, ty);
+  const uint32_t *known = lower_ty_map_get(&cx->views, concrete);
+  if (known != NULL) {
+    return *known;
+  }
+  const MirTy plain = lower_type(cx, NULL, concrete);
+  const MirTyData *data = mir_ty_data(cx->module, plain);
+  if (data->kind != MK_ALT || cx->module->alts.ptr[data->id].std != MSTD_RESULT) {
+    return plain;
+  }
+  const MirAltDef base = cx->module->alts.ptr[data->id];
+  if (base.cases[0].nfields == 0 || mir_ty_data(cx->module, base.cases[0].fields[0].ty)->kind == MK_OPT) {
+    return plain; /* an Optional payload is its own view */
+  }
+  const uint32_t id = mir_add_alt(cx->module, base.name);
+  MirAltDef *alt = &cx->module->alts.ptr[id];
+  *alt = base;
+  alt->borrowed = 1; /* case 0, `ok`, borrows its payload */
+  const MirTy result = mir_ty_alt(cx->module, id);
+  lower_ty_map_put(&cx->views, concrete, result);
+  return result;
+}
+
 MirTy lower_type(Lower *cx, const LowerSubst *subst, MsTy ty) {
   const MsTy concrete = apply_subst(cx, subst, ty);
   const uint32_t *known = lower_ty_map_get(&cx->types, concrete);

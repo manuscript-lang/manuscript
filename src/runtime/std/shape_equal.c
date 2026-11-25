@@ -38,7 +38,7 @@ static bool equal_fields(const MsShapeTable *table, uint32_t first, uint32_t cou
                          int depth) {
   for (uint32_t at = 0; at < count; at++) {
     const MsShapeMember *field = ms_shape_member(table, first + at);
-    if (!equal_at(table, field->shape, a + field->offset, b + field->offset, depth + 1)) {
+    if (!equal_at(table, field->shape, ms_shape_member_at(a, field), ms_shape_member_at(b, field), depth + 1)) {
       return false;
     }
   }
@@ -160,7 +160,7 @@ static uint64_t hash_fields(const MsShapeTable *table, uint32_t first, uint32_t 
                             int depth) {
   for (uint32_t at = 0; at < count; at++) {
     const MsShapeMember *field = ms_shape_member(table, first + at);
-    hash = ms_hash_combine(hash, hash_at(table, field->shape, value + field->offset, depth + 1));
+    hash = ms_hash_combine(hash, hash_at(table, field->shape, ms_shape_member_at(value, field), depth + 1));
   }
   return hash;
 }

@@ -185,15 +185,10 @@ void ms_sched_fd_wait_end(uint64_t id, int fd);
  * costs one waiter node: no promise row, no allocation. */
 typedef bool (*MsFdNotify)(uint64_t id, uint32_t bits);
 enum { MS_FD_NOTIFY_KINDS = 8 };
-/* The kind number of `notify` on this thread's scheduler, registering it on first use; -1 when MS_FD_NOTIFY_KINDS
- * functions are registered already. */
-int ms_sched_fd_notify_kind(MsFdNotify notify) MS_NONNULL;
 /* Waits for `fd` on behalf of (`kind`, `id`): MS_POLL_ARMED, MS_POLL_ALWAYS (ready at once, nothing registered) or
  * MS_POLL_FAILED. `events` are MS_WAIT_READ and MS_WAIT_WRITE, with MS_WAIT_KEEP or MS_WAIT_EDGE passed on to the
  * poller. */
 int ms_sched_fd_notify(int kind, uint64_t id, int fd, uint32_t events);
-/* Ends that wait if it is still registered. */
-void ms_sched_fd_notify_end(int kind, uint64_t id, int fd);
 /* Arms an entry for the timer_live and timer_fire hooks; wakes the scheduler's idle wait in time. */
 void ms_sched_arm(uint64_t id, int64_t at_ns);
 
@@ -279,12 +274,6 @@ void ms_stack_call(void (*fn)(void *), void *arg) MS_NONNULL_ARGS(1);
 /* Whether fewer than MS_STACK_NATIVE_ROOM bytes remain before the running task's recursion limit (the test
  * ms_stack_call makes), for a hot native that packs its arguments only when it must grow. */
 bool ms_stack_low(void);
-/* The segment the running task is on (0 is its home slot). */
-uint32_t ms_task_segment(void);
-/* Puts the running task back on `segment` after a guard exit skipped the returns of the grows above it. */
-void ms_task_restore_segment(uint32_t segment);
-/* The TEB stack words of `segment` of the running task as the task last left them (Windows; zeros elsewhere). */
-void ms_task_segment_teb(uint32_t segment, uintptr_t out[3]);
 /* Copies the running task's recursion limit to the cell of the segment it is on. */
 void ms_task_publish_limit(void);
 

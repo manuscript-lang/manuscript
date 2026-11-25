@@ -134,16 +134,6 @@ bool ms_bucket_equal(MsBucket a, MsBucket b) {
   return a.kind == b.kind && a.number == b.number;
 }
 
-void ms_bucket_append(MsStrBuild *out, MsBucket bucket) {
-  if (bucket.kind == MS_BUCKET_MAJOR) {
-    ms_strbuild_printf(out, "%llu.x", (unsigned long long)bucket.number);
-  } else if (bucket.kind == MS_BUCKET_MINOR) {
-    ms_strbuild_printf(out, "0.%llu.x", (unsigned long long)bucket.number);
-  } else {
-    ms_strbuild_printf(out, "0.0.%llu", (unsigned long long)bucket.number);
-  }
-}
-
 static int compare_numbers(uint64_t a, uint64_t b) {
   return a < b ? -1 : a > b;
 }

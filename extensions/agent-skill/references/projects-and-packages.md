@@ -1,6 +1,6 @@
 # Projects, ms.toml and packages
 
-A project is a directory with an `ms.toml`. Use one when a program grows past a file, needs tests beside the source, or uses packages. `ms init <name>` creates `ms.toml`, `src/main.ms`, `test.ms`; `ms init --lib <name>` creates a library. Run commands on the manifest: `ms check ms.toml`, `ms run ms.toml`, `ms test ms.toml`, `ms build ms.toml -o prog`. `ms.toml` is TOML: strings are quoted, lists are arrays of strings, keys starting with `@` are quoted.
+A project is a directory with an `ms.toml`. Use one when a program grows past a file, needs tests beside the source, or uses packages. `ms init <directory>` creates `ms.toml`, `src/main.ms`, `test.ms`, `.gitignore` and `.gitattributes` (an existing file is never overwritten); `ms init --lib <directory>` creates a library; `ms init --workspace <directory>` a workspace with an app and a library. Inside a project, commands default to `./ms.toml`: `ms run -- args`, `ms test`, `ms verify`. Run commands on the manifest: `ms check ms.toml`, `ms run ms.toml`, `ms test ms.toml`, `ms build ms.toml -o prog`. `ms.toml` is TOML: strings are quoted, lists are arrays of strings, keys starting with `@` are quoted.
 
 ## The manifest
 

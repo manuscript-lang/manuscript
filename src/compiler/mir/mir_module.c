@@ -100,22 +100,6 @@ uint32_t mir_type_by_name(const MirModule *module, MsName name) {
   return index_get(&module->by_type, name);
 }
 
-uint32_t mir_alt_by_name(const MirModule *module, MsName name) {
-  return index_get(&module->by_alt, name);
-}
-
-uint32_t mir_iface_by_name(const MirModule *module, MsName name) {
-  return index_get(&module->by_iface, name);
-}
-
-uint32_t mir_vtable_by_name(const MirModule *module, MsName name) {
-  return index_get(&module->by_vtable, name);
-}
-
-uint32_t mir_global_by_name(const MirModule *module, MsName name) {
-  return index_get(&module->by_global, name);
-}
-
 uint32_t mir_extern_by_name(const MirModule *module, MsName name) {
   return index_get(&module->by_extern, name);
 }
@@ -161,13 +145,6 @@ uint32_t mir_add_vtable(MirModule *module, const MirVtable *vtable) {
   mir_vtable_list_push(&module->vtables, *vtable);
   const uint32_t id = (uint32_t)(module->vtables.len - 1);
   index_add(&module->by_vtable, vtable->name, id);
-  return id;
-}
-
-uint32_t mir_add_global(MirModule *module, MsName name, MirTy type) {
-  mir_global_list_push(&module->globals, (MirGlobal){name, type});
-  const uint32_t id = (uint32_t)(module->globals.len - 1);
-  index_add(&module->by_global, name, id);
   return id;
 }
 

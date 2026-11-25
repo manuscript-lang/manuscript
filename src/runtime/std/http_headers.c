@@ -222,10 +222,6 @@ bool ms_headers_remove(MsHeaders *headers, MsSpan name) {
   return false;
 }
 
-bool ms_headers_is_empty(const MsHeaders *headers) {
-  return headers->groups.len == 0;
-}
-
 bool ms_headers_first(const MsHeaders *headers, MsSpan name, MsSpan *out) {
   const MsHeaderGroup *group = find_group(headers, name);
   if (group == NULL) {
@@ -247,27 +243,6 @@ bool ms_headers_values(const MsHeaders *headers, MsSpan name, MsList *out) {
     ms_list_push(out, sizeof copy, &copy);
   }
   return true;
-}
-
-uint8_t ms_headers_text(const MsHeaders *headers, MsSpan name, bool *found, MsList *out) {
-  const MsHeaderGroup *group = find_group(headers, name);
-  *found = group != NULL;
-  if (group == NULL) {
-    return MS_STATUS_OK;
-  }
-  for (size_t v = 0; v < group->values.len; v++) {
-    const MsBytes *value = (const MsBytes *)(const void *)group->values.ptr + v;
-    if (!ms_utf8_is_valid(value->ptr, value->len)) {
-      return MS_STATUS_INVALID_DATA;
-    }
-  }
-  *out = (MsList){0};
-  for (size_t v = 0; v < group->values.len; v++) {
-    const MsBytes *value = (const MsBytes *)(const void *)group->values.ptr + v;
-    const MsString text = ms_string_from_span(ms_bytes_span(value));
-    ms_list_push(out, sizeof text, &text);
-  }
-  return MS_STATUS_OK;
 }
 
 size_t ms_headers_group_count(const MsHeaders *headers) {
@@ -320,19 +295,6 @@ MsHeaders *ms_headers_from_received(const MsHeaderField *fields, size_t count) {
     }
   }
   return headers;
-}
-
-void ms_headers_sort(MsHeaders *headers) {
-  for (size_t i = 1; i < headers->groups.len; i++) {
-    const MsHeaderGroup moved = *group_at(headers, i);
-    size_t at = i;
-    while (at > 0 &&
-           fold_compare(ms_string_span(&group_at(headers, at - 1)->name), ms_string_span(&moved.name)) > 0) {
-      *group_at(headers, at) = *group_at(headers, at - 1);
-      at--;
-    }
-    *group_at(headers, at) = moved;
-  }
 }
 
 bool ms_headers_is_text(const MsHeaders *headers) {

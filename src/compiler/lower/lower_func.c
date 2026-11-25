@@ -391,14 +391,23 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
     const MirTy ty = (params[index].flags & MS_PARAM_VAR) != 0 ? MIR_PTR : lower_type(cx, &subst, params[index].ty);
     mir_params[index] = (MirParam){ty, (uint8_t)param_mode(params[index].flags)};
   }
-  const MirTy declared = lower_type(cx, &subst, ms_ty_result(types, target->ty));
+  const MsTypeRef *written_result = target->func != NULL ? target->func->result : NULL;
+  const MirTy plain_ret = lower_type(cx, &subst, ms_ty_result(types, target->ty));
+  /* `&T!` returns the borrowing variant of its Result: the `ok` payload is a part of an argument, an error is owned. */
+  const MirTy view_ret = written_result != NULL && target->func->body.len != 0 && written_result->args.len >= 1 &&
+                                 written_result->args.ptr[0]->is_ref &&
+                                 ms_own_result_is_borrowed(cx->program, target->module, target->node)
+                             ? lower_result_view(cx, &subst, ms_ty_result(types, target->ty))
+                             : plain_ret;
+  const bool ok_borrowed = view_ret != plain_ret;
+  const MirTy declared = view_ret;
   const MirTy ret = target->entry && declared == MIR_VOID ? MIR_INT : declared;
   MirFunc func;
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
   func.display = lower_trace_name(cx, target->receiver, target->name);
   func.closer = target->receiver != MS_TY_NONE && (target->receiver_flags & MS_PARAM_MOVE) != 0 &&
                 ms_span_is_text(ms_names_span(cx->program->names, target->name), "close");
-  func.ret_borrowed = borrows_result(cx, target, ret, mir_params, count);
+  func.ret_borrowed = !ok_borrowed && borrows_result(cx, target, ret, mir_params, count);
   const MirTyData *ret_kind = mir_ty_data(cx->module, ret);
   if (func.ret_borrowed && (ret_kind->kind == MK_IFACE ||
                             (ret_kind->kind == MK_OPT && mir_ty_data(cx->module, ret_kind->elem)->kind == MK_IFACE))) {
@@ -717,6 +726,7 @@ void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuil
 
 void lower_release(Lower *cx) {
   lower_ty_map_free(&cx->types);
+  lower_ty_map_free(&cx->views);
   ms_names_free(&cx->instance_keys);
   ms_names_free(&cx->vtable_keys);
   mir_idlist_free(&cx->vtables);

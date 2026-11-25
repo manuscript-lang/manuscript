@@ -77,30 +77,21 @@ MS_NODISCARD bool ms_h2_poll(MsH2 *h2, MsH2Event *out);
 void ms_h2_event_release(MsH2Event *event);
 /* Appends the bytes to write to `out`. */
 void ms_h2_take_output(MsH2 *h2, MsBytes *out);
-bool ms_h2_failed(const MsH2 *h2);
 const char *ms_h2_error_text(const MsH2 *h2);
 /* Whether output is waiting for ms_h2_take_output. */
 bool ms_h2_wants_write(const MsH2 *h2);
-/* Streams in flight (opened and not yet closed). */
-size_t ms_h2_open_streams(const MsH2 *h2);
 /* Bytes ms_h2_send_data would take now on stream `id`. */
 size_t ms_h2_window_available(const MsH2 *h2, uint32_t id);
 
-/* Client: opens a stream with a request head; `*id` is the new stream. False when refused locally. */
-MS_NODISCARD bool ms_h2_open_stream(MsH2 *h2, const MsH2Field *fields, size_t count, bool end_stream,
-                                    uint32_t *id);
 /* Server: the response head (a 1xx status is an interim response and leaves the stream open). */
 MS_NODISCARD bool ms_h2_send_response_headers(MsH2 *h2, uint32_t id, const MsH2Field *fields, size_t count,
                                               bool end_stream);
-/* Ends a stream that is sending a body with trailers (instead of end_stream on the last data). */
-MS_NODISCARD bool ms_h2_send_trailers(MsH2 *h2, uint32_t id, const MsH2Field *fields, size_t count);
 /* Takes up to the open send window of `data`; the return value is how many bytes were taken. `end_stream`
  * only takes effect once every byte was taken. */
 size_t ms_h2_send_data(MsH2 *h2, uint32_t id, MsSpan data, bool end_stream);
 void ms_h2_send_rst(MsH2 *h2, uint32_t id, uint32_t code);
 /* Returns `count` received DATA bytes of stream `id` to the peer's window. */
 void ms_h2_release(MsH2 *h2, uint32_t id, size_t count);
-void ms_h2_send_ping(MsH2 *h2, const uint8_t data[8]);
 /* GOAWAY with `code`; in-flight streams may finish. */
 void ms_h2_shutdown(MsH2 *h2, uint32_t code);
 

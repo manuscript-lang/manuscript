@@ -6,7 +6,7 @@ Pick the section for the task: data and reports (1 to 2), failure and ownership 
 
 ## 1. Model data with `type` and `enum`, match every case
 
-A record holds the facts; an enum names the states and carries what each state needs. `match` covers every case, so adding a case makes the compiler point at each function to update; use `_:` only for "everything else". Derive values with a pipeline (`xs | .filter(f) | .map(g) | .sum()`); use a `for` loop when building a Map or changing a `var`.
+A record holds the facts; an enum names the states and carries what each state needs. `match` covers every case, so adding a case makes the compiler point at each function to update; use `_ =>` only for "everything else". Derive values with a pipeline (`xs | .filter(f) | .map(g) | .sum()`); use a `for` loop when building a Map or changing a `var`.
 
 <!-- complete: idiom-orders.ms -->
 ```manuscript
@@ -84,7 +84,7 @@ fn main() Void {
 
 ## 2. Turn text into records, group, sort, print
 
-Parse each line into a record or `null`, drop the failures with a pipeline, group into a Map, sort the keys, and `join` the output. Report what was skipped instead of failing silently. `if v := optional { ... }` binds the value in the success branch.
+Parse each line into a record or `null`, keep the successes in a loop, group into a Map, sort the keys, and `join` the output. Report what was skipped instead of failing silently. Test an Optional with `v == null` (return early) or `v != null`; afterwards `v` reads as its payload.
 
 <!-- complete: idiom-report.ms -->
 ```manuscript
@@ -104,11 +104,11 @@ fn parse_sale(line String) Sale? {
     if parts.length() != 2 {
         return null
     }
-    if cents := parts[1].parse_int() {
-        return Sale(parts[0].clone(), cents)
-    }
 
-    return null
+    cents := parts[1].parse_int()
+    if cents == null { return null }
+
+    return Sale(parts[0].clone(), cents)
 }
 
 fn totals_by_region(sales List[Sale]) Map[String, Int] {
@@ -126,12 +126,15 @@ fn report(totals Map[String, Int]) List[String] {
 
 fn main() Void {
     lines := ["north,1250", "south,800", "north,2505", "bad line", "south,x"]
-    sales := (
-        lines
-        | .map(parse_sale)
-        | .filter(s => s != null)
-        | .map(s => s.get())
-    )
+    var sales = List[Sale]()
+
+    for line in lines {
+        sale := parse_sale(line)
+        if sale != null {
+            sales.append(sale)
+        }
+    }
+
     skipped := lines.length() - sales.length()
     print(report(totals_by_region(sales)).join("\n"))
     print(f"skipped {skipped} lines")
@@ -143,7 +146,7 @@ fn main() Void {
 
 ## 3. Errors are values: `T!` and `?`
 
-A function that can fail returns `T!` (a Result). Inside it, `?` unwraps a success and returns the error early, so the happy path reads straight down. Turn an Optional into a Result with `.ok_or(Error(...))`. The message names the input; `kind` is a short code such as `"EINVAL"`. The caller decides: `?` again, `if r.is_error() { ... }`, or `.get_or(default)`. Nothing is thrown and a Result is never dropped.
+A function that can fail returns `T!` (a Result). Inside it, `?` unwraps a success and returns the error early, so the happy path reads straight down. Turn an Optional into a Result with `ok_or(x, Error(...))`. The message names the input; `kind` is a short code such as `"EINVAL"`. The caller decides: `?` again, `if r.is_error() { ... }`, or `.get_or(default)`. Nothing is thrown and a Result is never dropped.
 
 <!-- complete: idiom-lines.ms -->
 ```manuscript
@@ -158,15 +161,17 @@ fn parse_line(text String) Line! {
         return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
     }
 
-    quantity := parts[1].parse_int().ok_or(
-        Error(f"quantity is not a number: {text}", kind: "EINVAL")
+    quantity := ok_or(
+        parts[1].parse_int(),
+        Error(f"quantity is not a number: {text}", kind: "EINVAL"),
     )?
     if quantity <= 0 {
         return error(Error(f"quantity must be positive: {text}", kind: "EINVAL"))
     }
 
-    cents := parts[2].parse_int().ok_or(
-        Error(f"price is not a number: {text}", kind: "EINVAL")
+    cents := ok_or(
+        parts[2].parse_int(),
+        Error(f"price is not a number: {text}", kind: "EINVAL"),
     )?
     return ok(Line(parts[0].clone(), quantity, cents))
 }
@@ -195,9 +200,9 @@ fn main() Void {
 }
 ```
 
-## 4. One owner: borrow, change with `var`, clone to copy
+## 4. One owner: borrow, `var` to change, `move` to keep, clone to copy
 
-Reading a value (a plain argument, a comparison, a field read) borrows it. A function that changes its argument says `var` in its declaration (`fn add_gift(var cart Cart)`); the call writes `add_gift(cart)`. Storing a value in a collection or record moves it; to keep the original, store `.clone()`. `.clone()` is the only copy, so scanning for it shows where data is duplicated.
+Borrowing is the default: a plain parameter reads its argument in place and the caller keeps it. A function that changes its argument says `var` (`fn add_gift(var cart Cart)`); one that stores it says `move` (`fn archive(move cart Cart, ...)`). Calls write neither: `add_gift(cart)`. A moved value is dead afterwards, so pass `.clone()` when the original is still needed. `.clone()` is the only copy, so scanning for it shows where data is duplicated.
 
 <!-- complete: idiom-cart.ms -->
 ```manuscript
@@ -214,7 +219,7 @@ fn add_gift(var cart Cart) Void {
     cart.items.append("gift card")
 }
 
-fn archive(cart Cart, var history List[Cart]) Void {
+fn archive(move cart Cart, var history List[Cart]) Void {
     history.append(cart)
 }
 
@@ -231,8 +236,9 @@ fn main() Void {
 ```
 
 - "`x` is moved here but used again": store `x.clone()`, or move it at its last use.
-- "cannot move `x` out: it is borrowed": a loop variable, a parameter and an element read are borrowed; clone before storing.
-- "`chars` borrows `text`, which this position would keep": a call that returns part of its argument (`text.chars()`) is borrowed; store `text.chars().clone()`.
+- "`x` is a view of another value, not an owner, and cannot be moved here": a loop variable, an element read and a parameter that is not `move` are borrowed; `.clone()` before storing, or declare the parameter `move`.
+- "the result is a part of `u`, so the signature must say `hold`": a function that returns part of an argument writes `fn hold User.name() &String` (the result keeps the owner frozen), or returns `.clone()` of the part.
+- "parameter `c` is not declared var": changing a parameter needs `var c Cart` in the signature.
 - Numbers, booleans and payload-free enums copy; this only matters for text, lists, maps and records.
 
 ## 5. Parse text with a cursor type and an enum tree
@@ -270,7 +276,7 @@ type Parser {
     pos Int
 }
 
-fn var Parser.peek() String {
+fn hold Parser.peek() &String {
     return self.chars.get_or(self.pos, "")
 }
 
@@ -286,9 +292,10 @@ fn var Parser.number() Expr! {
         self.pos += 1
     }
 
-    digits := self.chars.slice(start, self.pos) or [].join("")
-    value := digits.parse_int().ok_or(
-        Error(f"expected a number at {start}", kind: "EINVAL")
+    digits := self.chars.slice(start, self.pos)?.join("")
+    value := ok_or(
+        digits.parse_int(),
+        Error(f"expected a number at {start}", kind: "EINVAL"),
     )?
     return ok(Expr.Num(value))
 }
@@ -367,11 +374,11 @@ fn main() Void {
 ```
 
 - Rebinding a changing value is `var left = ...` then `left = Expr.Mul(left, right)`; `var x := e` is not valid.
-- `self.chars.get_or(self.pos, "")` reads past the end safely; compare the empty string to detect the end.
+- `self.chars.get_or(self.pos, "")` reads past the end safely; compare the empty string to detect the end. `peek` returns a borrow of the receiver, so it is `fn hold Parser.peek() &String`.
 
 ## 6. Algorithms: grids, queues, visited sets
 
-Breadth-first search is a `List` used as a queue with a `head` index, a `Map` or `Set` of visited keys, and an Optional result. Key a visited set by a string such as `f"{row},{col}"`. A record with two Ints is the point type. Return `null` for "no path" and let the caller handle it with `if steps := shortest(...)`. Dynamic programming is a `var` List of the right length updated in a loop.
+Breadth-first search is a `List` used as a queue with a `head` index, a `Map` or `Set` of visited keys, and an Optional result. Key a visited set by a string such as `f"{row},{col}"`. A record with two Ints is the point type. Return `null` for "no path" and let the caller test it with `steps != null`. Dynamic programming is a `var` List of the right length updated in a loop.
 
 <!-- complete: idiom-bfs.ms -->
 ```manuscript
@@ -427,8 +434,9 @@ fn shortest(grid List[String], start, goal Point) Int? {
 
 fn main() Void {
     grid := ["S..#", ".#..", "...G"]
+    steps := shortest(grid, Point(0, 0), Point(2, 3))
 
-    if steps := shortest(grid, Point(0, 0), Point(2, 3)) {
+    if steps != null {
         print(f"shortest path: {steps}")
     } else {
         print("no path")
@@ -478,10 +486,10 @@ fn run_command(var shop Shop, line String) String {
 
     match words[0] {
         "add" => {
-            return shop.add(words[1], qty.get())
+            return shop.add(words[1], qty)
         }
         "take" => {
-            return shop.take(words[1], qty.get())
+            return shop.take(words[1], qty)
         }
         _ => {
             return f"error: unknown command {words[0]}"
@@ -503,7 +511,7 @@ fn main() Void! {
 
 ## 8. Interfaces and generics
 
-An `interface` lists the operations a caller depends on; a type satisfies it by having methods with those signatures, with no `implements`. Generic functions take bounds: `T: Clonable` lets the body keep a copy, `T: Equal`, `T: Comparable`, `T: Hashable` for equality, order and map keys.
+An `interface` lists the operations a caller depends on; a type satisfies it by having methods with those signatures, with no `implements`. Generic functions take bounds written after the name: `T Equal`, `T Comparable`, `T Hashable` for equality, order and map keys, `T Hashable & Clonable` for several. A function that only picks an element needs no `Clonable`: it returns a borrow (`hold items`, `&T?`) and the caller clones if it keeps the result.
 
 <!-- complete: idiom-shapes.ms -->
 ```manuscript
@@ -528,20 +536,24 @@ fn Circle.area() Float => 3.0 * self.radius * self.radius
 
 fn Circle.name() String => "circle"
 
-fn largest[T Clonable](items List[T], score fn(T) Float) T? {
-    var best T? = null
+fn largest[T](hold items List[T], score fn(T) Float) &T? {
+    var best_at = -1
     var best_score = -1.0
 
-    for item in items {
-        s := score(item)
+    for i in 0..items.length() {
+        s := score(items[i])
 
         if s > best_score {
             best_score = s
-            best = item.clone()
+            best_at = i
         }
     }
 
-    return best
+    if best_at < 0 {
+        return null
+    }
+
+    return items[best_at]
 }
 
 fn describe(shape Shape) String {
@@ -553,7 +565,8 @@ fn main() Void {
     print(describe(Circle(1.0)))
 
     rects := [Rect(2.0, 3.0), Rect(4.0, 1.5), Rect(1.0, 1.0)]
-    if big := largest(rects, r => r.area()) {
+    big := largest(rects, r => r.area())
+    if big != null {
         print(f"largest: {big.width} x {big.height}")
     }
 }
@@ -584,11 +597,8 @@ fn word_counts(text List[String]) Map[String, Int] {
 fn main() Void! {
     text := stdin() | lines | collect(null)?
     counts := word_counts(text)
-    top := (
-        counts.entries().sorted((a, b) => b.value.compare(a.value)).slice(0, 3)
-        or null
-    )
-    for entry in top {
+    ranked := counts.entries().sorted((a, b) => b.value.compare(a.value))
+    for entry in ranked.take(3) {
         print(f"{entry.key} {entry.value}")
     }
 }
@@ -596,7 +606,7 @@ fn main() Void! {
 
 ## 10. A command-line tool: arguments, a file, typed JSON
 
-`arguments()` returns the program arguments; `.first().ok_or(Error("usage: ..."))?` turns a missing one into a usage error. `read_file(path, max_bytes: n).wait()?` reads bytes; `.decode_utf8()` returns an Optional. `parse[Config](text)` reads typed JSON (missing fields take their defaults); `stringify(config)?` writes it back. `main` returns `Void!`, so a failure prints the error and exits nonzero.
+`arguments()` returns the program arguments; `ok_or(arguments().first(), Error("usage: ..."))?` turns a missing one into a usage error. `read_file(path, max_bytes: n).wait()?` reads bytes; `.decode_utf8()` returns an Optional, so `ok_or(bytes.decode_utf8(), Error(...))?` turns it into an error. `parse[Config](text)` reads typed JSON (missing fields take their defaults); `stringify(config)?` writes it back. `main` returns `Void!`, so a failure prints the error and exits nonzero.
 
 <!-- complete: idiom-config.ms -->
 ```manuscript
@@ -612,15 +622,17 @@ type Config {
     tags List[String] = []
 }
 
+// ms: allow_effect std.fs.read
 fn load(path String) Config! {
     bytes := read_file(path, max_bytes: 65536).wait()?
-    text := bytes.decode_utf8().ok_or(Error(f"{path} is not UTF-8", kind: "EBADMSG"))?
+    text := ok_or(bytes.decode_utf8(), Error(f"{path} is not UTF-8", kind: "EBADMSG"))?
     return parse[Config](text)
 }
 
 fn main() Void! {
-    path := arguments().first().ok_or(
-        Error("usage: config <file.json>", kind: "EINVAL")
+    path := ok_or(
+        arguments().first(),
+        Error("usage: config <file.json>", kind: "EINVAL"),
     )?
     config := load(path)?
     print(f"{config.name}: {config.retries} retries, {config.tags.length()} tags")
@@ -640,6 +652,9 @@ import (
     open from "@std/os/fs.ms",
 )
 
+// ms: allow_effect std.fs.read
+// ms: allow_effect std.fs.write
+// ms: allow_effect std.clock.read
 fn count_orders(path String) Int! {
     file := open(path)?
     rows := collect(file.reader()? | lines)?
@@ -671,13 +686,14 @@ fn count_rows(text String) Int {
     return text.split("\n").filter(line => not line.is_empty()).length()
 }
 
+// ms: allow_effect std.fs.read
 fn run(paths List[String]) Int! {
     reads := paths.map(path => read_file(path))
     files := wait_all(reads)?
     var rows = 0
 
     for file in files {
-        text := file.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
+        text := ok_or(file.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))?
         rows += count_rows(text)
     }
 

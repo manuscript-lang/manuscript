@@ -185,7 +185,7 @@ static int encode_optional(Encode *state, const MsShape *shape, const uint8_t *s
 /* Writes member `field` of the value at `base` unless it has no JSON form; an absent optional is left out. */
 static void encode_member(Encode *state, const MsShapeMember *field, const uint8_t *base, int depth) {
   uint32_t shape_index = field->shape;
-  const uint8_t *slot = base + field->offset;
+  const uint8_t *slot = ms_shape_member_at(base, field);
   const MsShape *shape = ms_shape_at(state->table, shape_index);
   if (shape->kind == MS_SHAPE_OPTIONAL && (shape->flags & MS_SHAPE_JSON_FORM) == 0) {
     slot = ms_shape_some(shape, ms_shape_resolve(shape, slot));
@@ -234,7 +234,7 @@ static int encode_tree(Encode *state, const MsShape *shape, const uint8_t *base,
   const MsShapeMember *first = ms_shape_member(state->table, shape->first);
   const MsShapeMember *which = ms_shape_active_case(state->table, shape, base);
   const MsShapeMember *field = ms_shape_member(state->table, which->first);
-  const uint8_t *payload = base + field->offset;
+  const uint8_t *payload = ms_shape_member_at(base, field);
   switch (which - first) {
   case 2:
     msstd_json_w_number(state->writer, AT(MsString, payload));

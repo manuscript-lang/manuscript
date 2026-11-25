@@ -181,30 +181,11 @@ void ms_sched_fd_wait_end(uint64_t id, int fd) { wait_end(id, fd, MS_WAIT_PROMIS
 
 static uint32_t notify_tag(int kind) { return MS_WAIT_NOTIFY | (uint32_t)kind << MS_WAIT_KIND_SHIFT; }
 
-int ms_sched_fd_notify_kind(MsFdNotify notify) {
-  MsSched *const sched = ms_sched();
-  for (int kind = 0; kind < MS_FD_NOTIFY_KINDS; kind++) {
-    if (sched->notify[kind] == NULL) {
-      sched->notify[kind] = notify;
-    }
-    if (sched->notify[kind] == notify) {
-      return kind;
-    }
-  }
-  return -1;
-}
-
 int ms_sched_fd_notify(int kind, uint64_t id, int fd, uint32_t events) {
   if (kind < 0 || kind >= MS_FD_NOTIFY_KINDS || fd < 0) {
     return MS_POLL_FAILED;
   }
   return wait_begin(id, fd, events & ~WAITER_PRIVATE, notify_tag(kind));
-}
-
-void ms_sched_fd_notify_end(int kind, uint64_t id, int fd) {
-  if (kind >= 0 && kind < MS_FD_NOTIFY_KINDS) {
-    wait_end(id, fd, notify_tag(kind));
-  }
 }
 
 void ms_park_wake(MsSched *sched, MsTask *task, uint32_t result) {

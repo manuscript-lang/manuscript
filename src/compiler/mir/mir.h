@@ -112,9 +112,6 @@ typedef struct MirOpInfo {
 
 extern const MirOpInfo mir_op_info[MOP_COUNT];
 
-/* The op whose text name is `name`; false when there is none. */
-MS_NODISCARD MS_NONNULL bool mir_op_from_name(MsSpan name, MirOp *out);
-
 static inline bool mir_op_is_call(MirOp op) {
   return op == MOP_Call || op == MOP_CallInd || op == MOP_CallRt || op == MOP_CallMethod;
 }
@@ -496,7 +493,6 @@ uint32_t mir_add_type(MirModule *module, MsName name);
 uint32_t mir_add_alt(MirModule *module, MsName name);
 uint32_t mir_add_iface(MirModule *module, MsName name);
 uint32_t mir_add_vtable(MirModule *module, const MirVtable *vtable);
-uint32_t mir_add_global(MirModule *module, MsName name, MirTy type);
 uint32_t mir_add_extern(MirModule *module, const MirExtern *external);
 void mir_add_desc_glue(MirModule *module, MirTy type, uint32_t eq, uint32_t hash);
 
@@ -506,10 +502,6 @@ void mir_funcs_reindex(MirModule *module);
 /* Lookups by name; MIR_NONE when absent. */
 uint32_t mir_func_by_name(const MirModule *module, MsName name);
 uint32_t mir_type_by_name(const MirModule *module, MsName name);
-uint32_t mir_alt_by_name(const MirModule *module, MsName name);
-uint32_t mir_iface_by_name(const MirModule *module, MsName name);
-uint32_t mir_vtable_by_name(const MirModule *module, MsName name);
-uint32_t mir_global_by_name(const MirModule *module, MsName name);
 uint32_t mir_extern_by_name(const MirModule *module, MsName name);
 
 /* The targets of a terminator in order: br has one, condbr two (then, else), switch its cases then the default,
