@@ -1,4 +1,4 @@
-// conform: tags=closures,concurrency,mutation,diagnostics,tier-stdlib
+// conform: tags=closures,mutation,diagnostics,tier-stdlib
 // conform: phase=check
 // A promise that stays in the function reads what it captures: it cannot change the value, and the caller cannot
 // change it while the promise is outstanding.
