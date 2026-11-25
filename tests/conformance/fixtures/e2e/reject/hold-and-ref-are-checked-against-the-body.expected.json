@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "the result is a part of `b`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`",
+        "position": {
+          "file": "hold-and-ref-are-checked-against-the-body.ms",
+          "line": 8,
+          "column": 1,
+          "offset": 201
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a `&` result must be a part of a `hold` argument, but this body returns a new value; remove the `&` or return a part of the held argument",
+        "position": {
+          "file": "hold-and-ref-are-checked-against-the-body.ms",
+          "line": 12,
+          "column": 16,
+          "offset": 278
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a `&` result points into an argument; mark that argument `hold`, or return an owned value",
+        "position": {
+          "file": "hold-and-ref-are-checked-against-the-body.ms",
+          "line": 16,
+          "column": 1,
+          "offset": 312
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/hold-and-ref-are-checked-against-the-body.ms:8:1: type: the result is a part of `b`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`\n   |\n 8 | fn pick(hold a Person, b Person) & String {\n   | ^\n<DIR>/hold-and-ref-are-checked-against-the-body.ms:12:16: type: a `&` result must be a part of a `hold` argument, but this body returns a new value; remove the `&` or return a part of the held argument\n    |\n 12 | fn hold Person.fresh() & String {\n    |                ^\n<DIR>/hold-and-ref-are-checked-against-the-body.ms:16:1: type: a `&` result points into an argument; mark that argument `hold`, or return an owned value\n    |\n 16 | fn amp_without_hold(p Person) & String {\n    | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
