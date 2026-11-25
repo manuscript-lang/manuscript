@@ -23,3 +23,4 @@ fn run() Void {
 	r := f(false)
 	print(f"{(r != null)}")
 }
+// expect-exit: 0

@@ -7,3 +7,4 @@ export fn main() Int {
 	words.append(text.view(0, 5))
 	return words.length()
 }
+// expect-error: MS3000 7:23 `view` borrows `text`, which this position would keep; store `.clone()` of it, or use it in place

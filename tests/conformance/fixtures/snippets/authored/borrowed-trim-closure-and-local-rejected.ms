@@ -15,3 +15,5 @@ fn main() Void {
 	print(of_local(1))
 	print(of_closure([" a "])[0])
 }
+// expect-error: MS3000 6:35 cannot return a view of `line`: a returned `String` is owned and a view only borrows `line`; copy it with `.clone()` after the view
+// expect-error: MS3000 11:17 cannot return a view of `text`: a returned `String` is owned and a view only borrows `text`; copy it with `.clone()` after the view

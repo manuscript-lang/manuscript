@@ -16,3 +16,4 @@ export fn main() Int {
 	again := first.clone()
 	return again.run(2) + pair([first]).length()
 }
+// expect-exit: 0

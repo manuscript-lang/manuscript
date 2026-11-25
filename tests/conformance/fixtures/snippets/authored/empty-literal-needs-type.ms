@@ -15,3 +15,6 @@ fn main() Void {
 	table := {}
 	print(unknown.length() + table.length())
 }
+// expect-error: MS3080 13:17 cannot infer list element type; add an annotation, e.g. xs List[Int] := []
+// expect-error: MS3080 14:16 cannot infer list element type; add an annotation, e.g. xs List[Int] := []
+// expect-error: MS3080 15:14 cannot infer map key and value types; add an annotation, e.g. m Map[String, Int] := {}

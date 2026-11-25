@@ -13,3 +13,4 @@ fn main() Void! {
 	gate.close()?
 	print(gate.name)
 }
+// expect-error: MS3000 13:5 `gate` is moved here but used again at 14:11; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read

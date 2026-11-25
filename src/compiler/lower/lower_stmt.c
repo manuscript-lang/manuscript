@@ -407,16 +407,6 @@ bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place) {
   return base != NULL && base->kind == MS_E_UNARY && base->op == MS_U_TRY && fn_try_place_changeable(fn, base->u.bin.left);
 }
 
-bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
-  MirVar var;
-  MirValue slot;
-  MirTy ty;
-  if (place->kind == MS_E_MEMBER) {
-    return fn_place_owns(fn, place->u.member.left);
-  }
-  return fn_closing_local(fn, place, &slot, &ty) ? mir_needs_drop(fn->cx->module, ty) : fn_owned_local(fn, place, &var) && var_owns(fn, var);
-}
-
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
  * (a path's inner record is copied), the old field is dropped, `type.set` makes the updated record and that is
  * stored back into the place of `base`. `value` is owned and held by no scope. */

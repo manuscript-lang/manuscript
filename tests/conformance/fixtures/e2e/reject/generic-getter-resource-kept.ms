@@ -24,3 +24,4 @@ fn main() Int {
 	cell := Cell(v: Res(name: "x"))
 	return keep(cell.get())
 }
+// expect-error: MS3000 25:22 `get` returns a reference into `cell`, which this position would keep; store `.clone()` of it, or use it in place

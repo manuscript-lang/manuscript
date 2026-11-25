@@ -19,3 +19,9 @@ export fn main() Int {
 	}
 	return count(Opt.None)
 }
+// expect-error: MS3080 14:14 cannot infer the type arguments of Opt for this case; annotate the binding or write them, e.g. Opt[Int].None
+// expect-error: MS3080 15:18 cannot infer the type arguments of Opt for this case; annotate the binding or write them, e.g. Opt[Int].None
+// expect-error: MS3080 15:28 cannot infer the type arguments of Opt for this case; annotate the binding or write them, e.g. Opt[Int].None
+// expect-error: MS3080 17:18 cannot infer the type arguments of Opt for this case; annotate the binding or write them, e.g. Opt[Int].None
+// expect-error: MS3080 18:18 cannot infer the type arguments of Opt for this case; annotate the binding or write them, e.g. Opt[Int].None
+// expect-error: MS3080 20:22 cannot infer the type arguments of Opt for this case; annotate the binding or write them, e.g. Opt[Int].None

@@ -4,3 +4,5 @@
 fn f() Void {
 	a := undefined
 }
+// expect-error: MS2001 5:10 unknown binding undefined; Manuscript writes absence as null: a nullable `T?` is a `T` or null, and a present value is just the value, which converts where a nullable is expected
+// expect-fix: 5:10-5:19 "null"

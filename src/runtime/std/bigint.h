@@ -103,5 +103,7 @@ void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, MsString *o
 /* ms-sig: msstd_bigint_equal(handle a: *const ObjCell<Big>, handle other: *const ObjCell<Big>) -> u8
  * @domain=big integer @end */
 uint8_t msstd_bigint_equal(const MsBigCell *a, const MsBigCell *other);
+/* Equal values hash alike: the sign and the magnitude's digits (the value-shape walk's hash, not a Manuscript API). */
+uint64_t ms_bigint_hash(const MsBigCell *a);
 
 #endif

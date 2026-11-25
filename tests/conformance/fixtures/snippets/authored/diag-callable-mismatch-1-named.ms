@@ -6,3 +6,4 @@ fn source(value Int) Int => value
 fn exercise() Void {
 	callback fn(Int?) Int := source
 }
+// expect-error: MS3001 7:30 expected fn(Int?) Int, found fn(Int) Int (in the initializer of 'callback')

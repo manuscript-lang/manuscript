@@ -18,3 +18,4 @@ fn main() Void {
 	h := Holder([[1, 2]])
 	print(h.first().items.length())
 }
+// expect-error: MS3000 14:21 `self.rows[0]` belongs to `self`, so a new owner would get a hidden copy; write `self.rows[0].clone()` to copy it

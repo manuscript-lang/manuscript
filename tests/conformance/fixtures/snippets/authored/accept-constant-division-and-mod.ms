@@ -4,3 +4,4 @@
 export fn main() Int {
 	return 8 / 2 % 3
 }
+// expect-exit: 0

@@ -40,3 +40,7 @@ fn use_before_exit() Void {
 		}
 	}
 }
+// expect-error: MS3000 8:9 cannot change `xs` while the loop at 7:5 iterates it; apply the change after the loop, or loop over a `.clone()` of it
+// expect-error: MS3000 16:9 cannot reassign `xs` while the loop at 15:5 iterates it; apply the change after the loop, or loop over a `.clone()` of it
+// expect-error: MS3000 26:17 cannot change `xs` while the loop at 23:5 iterates it; apply the change after the loop, or loop over a `.clone()` of it
+// expect-error: MS3000 37:13 cannot change `xs` while the loop at 35:5 iterates it; apply the change after the loop, or loop over a `.clone()` of it

@@ -15,3 +15,4 @@ export fn main() Int {
 
 	return factory(false)()
 }
+// expect-error: MS3003 16:12 missing argument 1: Int; pass it positionally, without a label

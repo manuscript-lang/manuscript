@@ -12,3 +12,4 @@ fn main() Void {
 	names.append("c")
 	print(c.items.length())
 }
+// expect-error: MS3000 12:5 cannot change `names` while `c` borrows it (binding of a part of it, at 11:5); finish using `c` before this, or give `c` its own value by ending its initializer with `.clone()`

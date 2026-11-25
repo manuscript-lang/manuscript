@@ -9,3 +9,4 @@ export fn main() Int {
 	items.sort()
 	return items.length()
 }
+// expect-error: MS3003 9:11 missing argument compare: fn(Plain, Plain) Int in call to items.sort; add 'compare: <fn(Plain, Plain) Int>'

@@ -13,3 +13,4 @@ export fn main() Int {
 	}
 	return n
 }
+// expect-error: MS3000 6:12 `if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `o` is not one; read the payload by testing `if value != null { ... }`, then use `var copy = x.clone()` for an independent mutable copy, or write the changed value back

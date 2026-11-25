@@ -10,3 +10,4 @@ export fn main() Int {
 	callback = replacement
 	return callback()
 }
+// expect-error: MS3003 11:12 missing argument 1: Int in call to callback; pass it positionally, without a label

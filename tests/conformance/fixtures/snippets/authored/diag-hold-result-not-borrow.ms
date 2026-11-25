@@ -19,3 +19,4 @@ fn node_at(hold node Command, path List[String], from Int) Command? {
 	if next != null { return node_at(next, path, from + 1) }
 	return null
 }
+// expect-error: MS3000 16:1 the result is a part of a `hold` argument but its type is an owned value; write `&` before the result type to return the part, or return a `.clone()`

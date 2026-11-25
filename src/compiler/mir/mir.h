@@ -585,7 +585,6 @@ static inline uint32_t mir_term_ntargets(const MirTerm *term) {
   return 0;
 }
 /* Removes argument `k` of the edge. */
-void mir_target_remove_arg(MirTarget *t, uint32_t k);
 MirTarget *mir_term_target(MirTerm *term, uint32_t index);
 
 /* ---- functions ---- */

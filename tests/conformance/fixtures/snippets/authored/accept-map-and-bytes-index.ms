@@ -8,3 +8,4 @@ export fn main() Int {
 	b := "x".to_bytes()
 	return m["a"] + b[0].to_int()
 }
+// expect-exit: 0

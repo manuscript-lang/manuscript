@@ -22,3 +22,5 @@ fn entries() Void {
 		print(entry.value)
 	}
 }
+// expect-error: MS3000 13:9 cannot change `m` while the loop at 12:5 iterates it; apply the change after the loop, or loop over a `.clone()` of it
+// expect-error: MS3000 21:14 cannot change `m["a"]` while the loop at 20:5 iterates it; apply the change after the loop, or loop over a `.clone()` of it

@@ -9,3 +9,4 @@ fn main() Void {
 	s.add("a")
 	print(first_of(s))
 }
+// expect-error: MS3000 3:1 a `&` result must be a part of a `hold` argument, but this body returns a new value; remove the `&` or return a part of the held argument

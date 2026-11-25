@@ -3,3 +3,4 @@
 // conform: origin=scripts/repo-check/nested_match_test.go:30 TestNestedMatchSourceGate
 // match match
 fn use() String => "match match"
+// expect-exit: 0

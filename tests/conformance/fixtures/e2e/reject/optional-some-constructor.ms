@@ -10,3 +10,4 @@ fn pick(n Int) Int? {
 fn main() Void {
 	print((pick(3) or 0))
 }
+// expect-error: MS3000 6:23 there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. x Int? := 5

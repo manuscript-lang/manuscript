@@ -15,6 +15,8 @@ import (
 	glob,
 	read_file,
 	remove from "@std/os/fs.ms",
+
+	inline_lines from "./expect.ms",
 )
 
 // A recorded fixture: a single .ms file (with an optional support/ directory beside it)
@@ -30,6 +32,9 @@ export type Fixture {
 	deterministic Bool
 	sidecar String
 	expected JsonValue
+	// The trailing `// expect-` lines of the file; a fixture with any has no
+	// sidecar.
+	inline List[String]
 }
 
 // The `// conform:` header of a fixture.
@@ -183,13 +188,11 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 		if not selected(id, filters) { continue }
 
 		path := if is_dir { f"{root}/{id}" } else { f"{root}/{id}.ms" }
-		var meta = parse_meta(
-			read_text(
-				if is_dir { f"{path}/conform.meta" } else { path.clone() }
-			)
-		)
+		source := read_text(if is_dir { f"{path}/conform.meta" } else { path.clone() })
+		var meta = parse_meta(source)
 		if meta.phase != phase { continue }
 
+		inline := if is_dir { List[String]() } else { inline_lines(source) }
 		sidecar := if is_dir { f"{path}/expected.json" } else { f"{root}/{id}.expected.json" }
 		var expected = JsonValue.Null
 		recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected")
@@ -222,6 +225,7 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 				deterministic: meta.deterministic,
 				sidecar: sidecar.clone(),
 				expected: expected.clone(),
+				inline: inline.clone(),
 			)
 		)
 	}

@@ -4,6 +4,7 @@
 #include "cli/pipeline.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "base/env.h"
 #include "base/file.h"
@@ -240,6 +241,42 @@ static bool make_objects(const MsLinkRequest *request, const BackendProgram *pro
   return ok;
 }
 
+/* The shared Cranelift library a Debug build generates code with, or empty for LLVM: `MS_CRANELIFT` names one (`off` or
+ * `0` turns the route off), otherwise the one installed beside ms, or in a build tree the one `make build` fetched
+ * (MS_BUILD_CRANELIFT), when the file exists. */
+static MsSpan cranelift_library(void) {
+  static MsString chosen;
+  static bool known;
+  if (known) {
+    return ms_string_span(&chosen);
+  }
+  known = true;
+  chosen = ms_string_empty();
+  MsString named = ms_string_empty();
+  if (ms_env_get("MS_CRANELIFT", &named)) {
+    const MsSpan name = ms_string_span(&named);
+    if (name.len != 0 && !ms_span_is_text(name, "off") && !ms_span_is_text(name, "0")) {
+      chosen = ms_string_from_span(name);
+    }
+    ms_string_release(&named);
+    return ms_string_span(&chosen);
+  }
+  MsStrBuild path = ms_strbuild_new();
+  MsStrBuild root = ms_strbuild_new();
+  if (ms_install_root(&root)) {
+    ms_install_cranelift(ms_strbuild_span(&root), &path);
+  } else {
+    ms_strbuild_append_text(&path, MS_BUILD_CRANELIFT);
+  }
+  if (ms_strbuild_span(&path).len != 0 && ms_file_is_regular(ms_strbuild_span(&path))) {
+    chosen = ms_strbuild_finish(&path);
+  } else {
+    ms_strbuild_free(&path);
+  }
+  ms_strbuild_free(&root);
+  return ms_string_span(&chosen);
+}
+
 BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
   /* A Release build trusts the passes; a Debug build checks the finished module once. */
   return (BackendOptions){.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG,
@@ -248,7 +285,8 @@ BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
                           .count_ops = request->count_ops || ops_from_environment(),
                           .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
                           .wide_hide = request->build_type == MS_BUILD_DEBUG,
-                          .poison_slots = poison_from_environment()};
+                          .poison_slots = poison_from_environment(),
+                          .cranelift = request->build_type == MS_BUILD_DEBUG ? cranelift_library() : ms_span_of(NULL, 0)};
 }
 
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
@@ -308,7 +346,10 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
     inputs[count++] = ms_strbuild_span(&object[unit]);
   }
   count = ok ? collect_inputs(request, runtime, inputs, count) : 0;
-  if (ok) {
+  if (ok && program.native) {
+    ok = ms_file_write(ms_strbuild_span(&object[0]), ms_strbuild_span(&program.object)) ||
+         fail(error, "cannot write the object file", ms_span_of(NULL, 0));
+  } else if (ok) {
     ok = make_objects(request, &program, ir, units, llvm, object, error);
   }
   if (ok) {

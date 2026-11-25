@@ -585,21 +585,90 @@ static bool sm_core_round(MirModule *m, MirFunc *f) {
   return c;
 }
 
+/* What a function holds that a pattern pass can match: the operations present, and the runtime calls that
+ * matter. Each pattern pass is a no-op without its trigger, and most pass bodies allocate per-value tables
+ * before they find out, so one scan decides which of them run. */
+typedef struct SmPresent {
+  uint64_t ops[(MOP_COUNT + 63) / 64];
+  bool map_probe, shield_enter, fresh_call;
+} SmPresent;
+
+static bool sm_has(const SmPresent *p, MirOp op) {
+  return (p->ops[op / 64] >> (op % 64) & 1) != 0;
+}
+
+static SmPresent sm_present(const MirModule *m, const MirFunc *f) {
+  SmPresent p = {0};
+  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
+    const MirBlockData *b = &f->blocks.ptr[bi];
+    for (uint32_t ii = 0; ii < b->insts.len; ii++) {
+      const MirInst *i = &b->insts.ptr[ii];
+      p.ops[i->op / 64] |= (uint64_t)1 << (i->op % 64);
+      if (i->op == MOP_CallRt && i->imm.tag == MI_EXT) {
+        const MirExtern *e = &m->externs.ptr[i->imm.a];
+        p.shield_enter |= e->role == MR_SHIELD_ENTER;
+        p.fresh_call |= e->pure && e->fresh;
+        p.map_probe |= opt_simplify_is_map_probe(m, i);
+      }
+    }
+  }
+  return p;
+}
+
+/* A pattern pass and the shape it needs. */
+typedef struct SmPattern {
+  bool (*run)(MirModule *m, MirFunc *f);
+  bool (*wanted)(const SmPresent *p);
+} SmPattern;
+
+static bool sm_run_dropped_somes(MirModule *m, MirFunc *f) { (void)m; return sm_dropped_somes(f); }
+static bool sm_run_dropped_nones(MirModule *m, MirFunc *f) { (void)m; return sm_dropped_nones(f); }
+static bool sm_run_roundtrips(MirModule *m, MirFunc *f) { (void)m; return opt_simplify_roundtrips(f); }
+static bool sm_run_put_takes(MirModule *m, MirFunc *f) { (void)m; return opt_simplify_put_takes(f); }
+
+static bool sm_want_alts(const SmPresent *p) { return sm_has(p, MOP_AltNew); }
+static bool sm_want_somes(const SmPresent *p) { return sm_has(p, MOP_OptSome); }
+static bool sm_want_nones(const SmPresent *p) { return sm_has(p, MOP_OptNoneOwned); }
+static bool sm_want_ifaces(const SmPresent *p) { return sm_has(p, MOP_IfaceNew); }
+static bool sm_want_lists(const SmPresent *p) { return sm_has(p, MOP_ListLit); }
+static bool sm_want_roundtrips(const SmPresent *p) { return sm_has(p, MOP_Take); }
+static bool sm_want_shields(const SmPresent *p) { return p->shield_enter; }
+static bool sm_want_put_takes(const SmPresent *p) { return sm_has(p, MOP_Put); }
+static bool sm_want_probes(const SmPresent *p) { return p->map_probe; }
+static bool sm_want_dead_owned(const SmPresent *p) {
+  return sm_has(p, MOP_AltNew) || sm_has(p, MOP_TypeNew) || sm_has(p, MOP_Clone) || sm_has(p, MOP_ListNew) ||
+         sm_has(p, MOP_ListLit) || sm_has(p, MOP_OptSome) || p->fresh_call;
+}
+
+static const SmPattern sm_patterns[] = {
+    {sm_known_alts, sm_want_alts},
+    {sm_run_dropped_somes, sm_want_somes},
+    {sm_run_dropped_nones, sm_want_nones},
+    {sm_known_ifaces, sm_want_ifaces},
+    {sm_known_lists, sm_want_lists},
+    {sm_run_roundtrips, sm_want_roundtrips},
+    {opt_simplify_shields, sm_want_shields},
+    {sm_run_put_takes, sm_want_put_takes},
+    {opt_simplify_map_probes, sm_want_probes},
+    {opt_simplify_fuse_contains, sm_want_probes},
+    {opt_simplify_dead_owned, sm_want_dead_owned},
+};
+
 /* The pattern passes: each looks for one shape (`known_*`, `dropped_*`, a round trip, a dead owned tree) that is
  * rare and does not enable the structural passes much. On a yaml-importing program they changed the function in
- * 2 of 441 first rounds and none of the later ones, yet cost a third of the rounds' time. */
+ * 2 of 441 first rounds and none of the later ones, yet cost a third of the rounds' time; a pass whose trigger
+ * the function lacks no longer runs. A pass that changes the function can create another's trigger, so the scan
+ * is repeated after it. */
 static bool sm_pattern_round(MirModule *m, MirFunc *f) {
-  bool c = sm_known_alts(m, f);
-  c |= sm_dropped_somes(f);
-  c |= sm_dropped_nones(f);
-  c |= sm_known_ifaces(m, f);
-  c |= sm_known_lists(m, f);
-  c |= opt_simplify_roundtrips(f);
-  c |= opt_simplify_shields(m, f);
-  c |= opt_simplify_put_takes(f);
-  c |= opt_simplify_map_probes(m, f);
-  c |= opt_simplify_fuse_contains(m, f);
-  c |= opt_simplify_dead_owned(m, f);
+  SmPresent present = sm_present(m, f);
+  bool c = false;
+  for (size_t k = 0; k < sizeof sm_patterns / sizeof sm_patterns[0]; k++) {
+    if (!sm_patterns[k].wanted(&present) || !sm_patterns[k].run(m, f)) {
+      continue;
+    }
+    c = true;
+    present = sm_present(m, f);
+  }
   return c;
 }
 

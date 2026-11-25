@@ -65,6 +65,11 @@ ms_library(ms_emit compiler/emit
     emit_task.c emit_debug.c emit_tables.c emit_units.c emit_hints.c emit_copies.c emit_dead.c emit_wide.c
   LINK ms_mir ms_base)
 
+ms_library(ms_emit_cl compiler/emit_cl
+  SOURCES
+    cranelift_inproc.c cl_leaf.c cl_mem.c cl_scalar.c cl_checked.c cl_call.c cl_branch.c cl_record.c cl_data.c cl_option.c cl_list.c cl_string.c cl_closure.c cl_iface.c cl_tables.c cl_func.c cl_module.c
+  LINK ms_emit ms_mir ms_base)
+
 # One linker per OS family.
 if(WIN32)
   set(link_os link_windows.c)
@@ -76,7 +81,7 @@ endif()
 ms_library(ms_link compiler/link
   SOURCES
     link.c link_job.c object.c llvm_inproc.c asm_scan.c asm_tables.c ${link_os}
-  LINK ms_emit ms_base)
+  LINK ms_emit ms_emit_cl ms_base)
 
 ms_library(ms_check compiler/check
   SOURCES
