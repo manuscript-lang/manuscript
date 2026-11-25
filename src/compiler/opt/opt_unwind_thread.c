@@ -109,11 +109,37 @@ static UtState edge_state(const Ut *t, const MirPreds *preds, MirBlock p, uint32
   return decided != UT_UNKNOWN ? decided : state_out(t, preds, p, UT_CHAIN);
 }
 
-static bool dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
-  while (b != a && idom[b] != b && idom[b] != MIR_NONE) {
-    b = idom[b];
+/* The dominator tree as preorder intervals: `a` dominates `b` when `b`'s number lies in `a`'s interval, so a query costs
+ * two compares however deep the tree is. */
+typedef struct UtDom {
+  const MirBlock *idom;
+  uint32_t *pre;  /* preorder number in the tree of a reachable block */
+  uint32_t *size; /* blocks in the subtree */
+} UtDom;
+
+static UtDom ut_dom(MsArena *arena, const MirFunc *f, const MirBlock *order, uint32_t reachable, const MirBlock *idom) {
+  const size_t n = f->blocks.len;
+  UtDom d = {.idom = idom, .pre = MS_ARENA_NEW_ARRAY(arena, uint32_t, n + 1), .size = MS_ARENA_NEW_ARRAY(arena, uint32_t, n + 1)};
+  uint32_t *next = MS_ARENA_NEW_ARRAY(arena, uint32_t, n + 1);
+  for (uint32_t i = 0; i < reachable; i++) {
+    d.size[order[i]] = 1;
   }
-  return b == a;
+  for (uint32_t i = reachable; i > 1; i--) { /* the entry is first, and a block follows its dominator */
+    d.size[idom[order[i - 1]]] += d.size[order[i - 1]];
+  }
+  for (uint32_t i = 0; i < reachable; i++) {
+    const MirBlock b = order[i];
+    d.pre[b] = i == 0 ? 0 : next[idom[b]];
+    if (i != 0) {
+      next[idom[b]] += d.size[b];
+    }
+    next[b] = d.pre[b] + 1;
+  }
+  return d;
+}
+
+static bool dominates(const UtDom *d, MirBlock a, MirBlock b) {
+  return d->idom[a] != MIR_NONE && d->idom[b] != MIR_NONE && d->pre[b] >= d->pre[a] && d->pre[b] - d->pre[a] < d->size[a];
 }
 
 typedef struct UtReplace {
@@ -175,17 +201,17 @@ static bool candidate(const Ut *t, MirBlock c) {
 
 /* The target's region: what a parameter of `c` may be replaced in. A target with other predecessors has none, since the
  * other edges could not fill a parameter added to it. */
-static bool in_region(const MirPreds *preds, const MirBlock *idom, MirBlock target, MirBlock b) {
-  return mir_preds_count(preds, target) == 1 && dominates(idom, target, b);
+static bool in_region(const MirPreds *preds, const UtDom *dom, MirBlock target, MirBlock b) {
+  return mir_preds_count(preds, target) == 1 && dominates(dom, target, b);
 }
 
 /* Whether every use of a parameter of `c` outside it is in the region of one target. */
-static bool params_local(const Ut *t, const MirPreds *preds, const MirBlock *idom, MirBlock c) {
+static bool params_local(const Ut *t, const MirPreds *preds, const UtDom *dom, MirBlock c) {
   const MirBlockData *cb = &t->f->blocks.ptr[c];
   const MirBlock yes = cb->term.a.block, no = cb->term.b.block;
   for (uint32_t i = 0; i < cb->params.len; i++) {
     for (uint32_t b = 0; b < t->f->blocks.len; b++) {
-      if (b != c && idom[b] != MIR_NONE && !in_region(preds, idom, yes, b) && !in_region(preds, idom, no, b) &&
+      if (b != c && dom->idom[b] != MIR_NONE && !in_region(preds, dom, yes, b) && !in_region(preds, dom, no, b) &&
         uses_value(&t->f->blocks.ptr[b], cb->params.ptr[i].value)) {
         return false;
       }
@@ -202,7 +228,7 @@ typedef struct UtSide {
   MirValue *fresh; /* the new parameter of the target */
 } UtSide;
 
-static UtSide side_of(Ut *t, const MirPreds *preds, const MirBlock *idom, MirBlock c, MirBlock target) {
+static UtSide side_of(Ut *t, const MirPreds *preds, const UtDom *dom, MirBlock c, MirBlock target) {
   MirFunc *f = t->f;
   const MirBlockData *cb = &f->blocks.ptr[c];
   UtSide side = {.target = target};
@@ -212,7 +238,7 @@ static UtSide side_of(Ut *t, const MirPreds *preds, const MirBlock *idom, MirBlo
     const MirValue q = cb->params.ptr[i].value;
     bool used = false;
     for (uint32_t b = 0; b < f->blocks.len && !used; b++) {
-      used = b != c && idom[b] != MIR_NONE && in_region(preds, idom, target, b) && uses_value(&f->blocks.ptr[b], q);
+      used = b != c && dom->idom[b] != MIR_NONE && in_region(preds, dom, target, b) && uses_value(&f->blocks.ptr[b], q);
     }
     if (!used) {
       continue;
@@ -223,7 +249,7 @@ static UtSide side_of(Ut *t, const MirPreds *preds, const MirBlock *idom, MirBlo
     side.fresh[side.n++] = v;
   }
   for (uint32_t b = 0; b < f->blocks.len; b++) {
-    if (b == c || idom[b] == MIR_NONE || !in_region(preds, idom, target, b)) {
+    if (b == c || dom->idom[b] == MIR_NONE || !in_region(preds, dom, target, b)) {
       continue;
     }
     for (uint32_t k = 0; k < side.n; k++) {
@@ -252,7 +278,7 @@ static MirTarget target_args(Ut *t, const MirBlockData *cb, const MirTarget *bas
 }
 
 /* Retargets every edge into `c` whose byte state is known; returns whether one was. */
-static bool thread_into(Ut *t, const MirPreds *preds, const MirBlock *idom, MirBlock c) {
+static bool thread_into(Ut *t, const MirPreds *preds, const UtDom *dom, MirBlock c) {
   MirFunc *f = t->f;
   bool any = false;
   /* The edges first: nothing changes unless one is known. */
@@ -263,12 +289,12 @@ static bool thread_into(Ut *t, const MirPreds *preds, const MirBlock *idom, MirB
       any = any || (mir_term_target_const(pt, s)->block == c && edge_state(t, preds, p, s) != UT_UNKNOWN);
     }
   }
-  if (!any || !params_local(t, preds, idom, c)) {
+  if (!any || !params_local(t, preds, dom, c)) {
     return false;
   }
   const MirBlockData cb = f->blocks.ptr[c];
   const MirTarget base_yes = cb.term.a, base_no = cb.term.b;
-  const UtSide yes = side_of(t, preds, idom, c, base_yes.block), no = side_of(t, preds, idom, c, base_no.block);
+  const UtSide yes = side_of(t, preds, dom, c, base_yes.block), no = side_of(t, preds, dom, c, base_no.block);
   /* The edges are read from the predecessors as they were: the states are decided before any edge moves. */
   for (uint32_t pi = 0; pi < mir_preds_count(preds, c); pi++) {
     const MirBlock p = mir_pred(preds, c, pi);
@@ -302,10 +328,11 @@ static bool thread_func(Ut *t) {
     const uint32_t reachable = mir_rpo(&arena, t->f, &order);
     const MirPreds preds = mir_preds(&arena, t->f);
     const MirBlock *idom = mir_dominators(&arena, t->f, order, reachable, &preds);
+    const UtDom dom = ut_dom(&arena, t->f, order, reachable, idom);
     bool did = false;
     for (uint32_t i = 0; i < reachable && !did; i++) {
       const MirBlock c = order[i];
-      did = candidate(t, c) && thread_into(t, &preds, idom, c);
+      did = candidate(t, c) && thread_into(t, &preds, &dom, c);
     }
     ms_arena_free(&arena);
     if (!did) {
