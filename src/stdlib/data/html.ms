@@ -1,9 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 
-	msstd_html_decode,
-	msstd_html_escape,
-	msstd_html_unescape from "@std/internal/html.ms",
+	decode_references, escape_text from "@std/internal/html_entities.ms",
 )
 
 /*
@@ -81,14 +79,14 @@ export enum HtmlNode {
 
 // Escapes text for insertion into an HTML text or quoted attribute context.
 export fn escape(text String) String {
-	return msstd_html_escape(text)
+	return escape_text(text)
 }
 
 // Decodes HTML5 named and numeric character references in text context, once. A
 // recognized reference may omit its semicolon; unrecognized text stays literal. Invalid
 // numeric references become U+FFFD. It does not parse markup or normalize text.
 export fn unescape(text String) String {
-	return msstd_html_unescape(text)
+	return decode_references(text, false, true)
 }
 
 // ---- parser state ----
@@ -1137,7 +1135,7 @@ fn var Parser.token_text() String {
 		s = s.replace("\u{0}", "\u{FFFD}")
 	}
 	if not self.text_is_raw and s.contains("&") {
-		s = msstd_html_decode(s, false)
+		s = decode_references(s, false, false)
 	}
 	return s
 }
@@ -1173,7 +1171,7 @@ fn var Parser.load_token() Void {
 				self.attr_ve[i],
 			) or ""
 		)
-		if value.contains("&") { value = msstd_html_decode(value, true) }
+		if value.contains("&") { value = decode_references(value, true, false) }
 
 		if i < self.tok_keys.length() {
 			self.tok_keys[i] = key

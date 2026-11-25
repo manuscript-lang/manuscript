@@ -607,6 +607,8 @@ bool lower_lambda_bodies(Lower *cx, bool *progressed);
 /* A list literal (lower_list.c). */
 MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_list(LowerFn *fn, const MsExpr *expr);
+/* A borrowed view of the static data of a list literal of integer literals, or MIR_NONE when it is not one. */
+MirValue fn_constant_list_view(LowerFn *fn, const MsExpr *expr);
 /* `if x := value { ... }` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
 bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);

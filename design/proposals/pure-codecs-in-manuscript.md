@@ -1,8 +1,8 @@
 # Pure codecs in Manuscript
 
-* Status: **Stage 1 implemented** (2026-11-25, `4ebec175`); stages 2 to 5 proposed
+* Status: **Stages 1 and 2 implemented** (2026-11-25, `4ebec175`); stages 3 to 5 proposed
 * Authors: Claude
-* Implementation: `net/url` (stage 1): [result](../../bench/perf/pure-utilities/results-2026-11-25-url-in-manuscript.md)
+* Implementation: `net/url` (stage 1): [result](../../bench/perf/pure-utilities/results-2026-11-25-url-in-manuscript.md); `html_entity` (stage 2): [result](../../bench/perf/pure-utilities/results-2026-11-25-html-entity-in-manuscript.md), which also found and fixed a compiler gap (constant lists rebuilt on every read)
 * Direction: Chinmay, "we'll do that last, first focus on the c side"; standing rule "prefer Manuscript: C holds small, general runtime primitives".
 
 ## Summary

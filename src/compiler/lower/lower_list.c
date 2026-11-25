@@ -39,6 +39,56 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
   return fn_emit(fn, MOP_ListLit, items, count, (MirImm){0}, list_ty);
 }
 
+/* The value of a list element that is an integer literal (`7`, `-7`); false for anything else. */
+static bool constant_element(LowerFn *fn, const MsExpr *item, MirTy elem, int64_t *out) {
+  const bool negative = item->kind == MS_E_UNARY && item->op == MS_U_NEG;
+  const MsExpr *number = negative ? item->u.bin.left : item;
+  uint64_t bits = 0;
+  if (number->kind != MS_E_NUMBER || fn_type(fn, ms_facts_type(fn->facts, number->id)) != elem ||
+      !fn_number_bits(ms_names_span(fn->cx->program->names, number->u.sym), &bits)) {
+    return false;
+  }
+  *out = negative ? (int64_t)(0 - bits) : (int64_t)bits;
+  return true;
+}
+
+/* The id of the module's constant list with these `count` values, added when it is new. */
+static uint32_t constant_list_id(MirModule *module, const int64_t *values, uint32_t count) {
+  for (uint32_t id = 0; id < module->list_consts.len; id++) {
+    const MirListConst *known = &module->list_consts.ptr[id];
+    if (known->count == count && __builtin_memcmp(&module->list_const_values.ptr[known->start], values, count * sizeof *values) == 0) {
+      return id;
+    }
+  }
+  const MirListConst added = {.start = (uint32_t)module->list_const_values.len, .count = count};
+  for (uint32_t index = 0; index < count; index++) {
+    mir_int64list_push(&module->list_const_values, values[index]);
+  }
+  mir_list_const_list_push(&module->list_consts, added);
+  return (uint32_t)module->list_consts.len - 1;
+}
+
+MirValue fn_constant_list_view(LowerFn *fn, const MsExpr *expr) {
+  const uint32_t count = expr->kind == MS_E_LIST ? expr->u.list.len : 0;
+  if (count == 0) {
+    return MIR_NONE;
+  }
+  const MirTy list_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MirTyData *data = mir_ty_data(fn->cx->module, list_ty);
+  if (data->kind != MK_LIST || !mir_is_scalar(fn->cx->module, data->elem) || data->elem == MIR_BOOL ||
+      data->elem == MIR_FLOAT || data->elem == MIR_FLOAT32) {
+    return MIR_NONE;
+  }
+  int64_t *values = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, int64_t, count);
+  for (uint32_t index = 0; index < count; index++) {
+    if (!constant_element(fn, expr->u.list.ptr[index], data->elem, &values[index])) {
+      return MIR_NONE;
+    }
+  }
+  const MirImm id = {.tag = MI_INT, .i = constant_list_id(fn->cx->module, values, count)};
+  return mir_b_emit(&fn->b, MOP_ListConstView, NULL, 0, id, list_ty);
+}
+
 /* `list[index]`: the element, borrowed from the list; a droppable element wanted as an owner is cloned. */
 MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   MsExpr *left = NULL;
