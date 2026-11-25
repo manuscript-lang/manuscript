@@ -12,3 +12,4 @@ export fn main() Int {
         }
     }
 }
+// expect-error: MS1000 6:32-6:33 expected an expression, found '%'; write a value, name, call, or literal here

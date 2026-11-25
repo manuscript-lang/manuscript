@@ -5,3 +5,4 @@ fn first() fn(Int) Int {
 	callback := fn(item Int) => item
 	return identity(callback)
 }
+// expect-error: MS2001 6:12 unknown binding identity; declare it with 'identity := ...' before use, define 'fn identity(...) T { ... }', or import it from a module

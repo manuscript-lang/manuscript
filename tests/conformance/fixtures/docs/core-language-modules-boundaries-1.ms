@@ -13,3 +13,4 @@ export fn total(items List[Item]) Int {
 	}
 	return result
 }
+// expect-exit: 0

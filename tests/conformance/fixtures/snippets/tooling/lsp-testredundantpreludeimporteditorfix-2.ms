@@ -4,3 +4,5 @@
 import List from "@std/collections/collections.ms"  // keep
 
 fn count() Int => List[Int]().length()
+// expect-error: MS2003 4:8-4:12 redundant prelude import List; remove List from this import and use its prelude declaration directly
+// expect-fix: 4:1-4:51 ""

@@ -14,3 +14,4 @@ fn use(value Int?) Int {
 		null => return 0
 	}
 }
+// expect-error: MS2001 13:25 ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready

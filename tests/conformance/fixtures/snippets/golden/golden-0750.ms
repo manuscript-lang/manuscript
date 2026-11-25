@@ -7,4 +7,4 @@ fn probe() Int {
     while i < 1000 {
     }
 }
-        
+// expect-error: MS1000 8:5-8:6 a block cannot be empty; add at least one statement, or write '...' inside the braces for a runtime-bound declaration

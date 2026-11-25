@@ -5,3 +5,4 @@ fn f() Void {
 	var value = "a"
 	value -= "b"
 }
+// expect-error: MS3000 6:11 arithmetic requires numeric operands

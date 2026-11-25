@@ -23,3 +23,4 @@ export fn main() Int {
 	say(f"fact(10) = {fact(10)}")
 	return 0
 }
+// expect-error: MS3001 22:12 expected Int, found String (in the return value)

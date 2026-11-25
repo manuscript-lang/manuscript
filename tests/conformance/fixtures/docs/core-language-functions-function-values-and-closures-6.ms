@@ -4,3 +4,4 @@
 fn names() List[String] {
 	return [1, 2].map(value => value.to_string())
 }
+// expect-exit: 0

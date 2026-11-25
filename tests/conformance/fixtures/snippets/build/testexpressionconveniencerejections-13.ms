@@ -14,3 +14,4 @@ fn f(x Int?) Void! {
 		null => return ok()
 	}
 }
+// expect-error: MS3000 11:13 a standalone '?' requires a Void success value, found Int; use 'name := call()?' to keep the value or 'return call()?' to return it

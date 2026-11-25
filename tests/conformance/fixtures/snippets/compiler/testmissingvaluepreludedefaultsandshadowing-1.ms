@@ -6,3 +6,4 @@ fn first(values List[Int]) Int! => ok_or(values.first(), Error("missing"))
 fn message(values List[Int]) String => first(values).err().message
 
 fn kind(values List[Int]) String? => first(values).err().kind
+// expect-exit: 0

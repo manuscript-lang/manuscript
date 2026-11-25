@@ -6,3 +6,4 @@ type Box {
 }
 
 fn Box.get() Int => self.value
+// expect-exit: 0

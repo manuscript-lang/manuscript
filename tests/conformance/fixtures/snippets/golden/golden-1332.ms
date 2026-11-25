@@ -6,3 +6,4 @@ fn use(value Result[Int, Error]) Int {
 		error(_) => 0
 	}
 }
+// expect-exit: 0

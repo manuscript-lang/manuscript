@@ -12,3 +12,4 @@ type Val {
 fn var Val.increment() Void {
 	self.val += 1
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 fn parse(text String) Int! {
 	return ok(1)
 }
+// expect-exit: 0

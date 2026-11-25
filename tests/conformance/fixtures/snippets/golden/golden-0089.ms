@@ -11,3 +11,4 @@ enum Second {
 fn wrong() First {
 	return Ready(value: 1)
 }
+// expect-error: MS2001 12:12 ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready

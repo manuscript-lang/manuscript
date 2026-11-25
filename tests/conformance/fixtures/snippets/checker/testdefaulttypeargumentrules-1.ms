@@ -7,3 +7,4 @@ type Pair[A, B = A] {
 }
 
 fn use() Pair[Int] => Pair[Int](1, 2)
+// expect-exit: 0

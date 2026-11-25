@@ -12,3 +12,4 @@ fn probe() Int {
 
 	return cell.total
 }
+// expect-error: MS2001 5:13 unknown binding Cell; declare it with 'Cell := ...' before use, define 'fn Cell(...) T { ... }', or import it from a module

@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/lower/performance_test.go:31 BenchmarkGo
 fn work() Int => return 1
+// expect-exit: 0

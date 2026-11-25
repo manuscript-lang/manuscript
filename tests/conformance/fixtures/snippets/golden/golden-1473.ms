@@ -11,3 +11,4 @@ fn outer(value Int) Int {
 export fn main() Int {
 	return outer(divide(0))
 }
+// expect-exit: 0

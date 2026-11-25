@@ -4,3 +4,4 @@
 fn value() String {
 	return f"héllo \u{1F600} {1 + 2} \{literal\}"
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 export fn value() Int {
 	return 1
 }
+// expect-exit: 0

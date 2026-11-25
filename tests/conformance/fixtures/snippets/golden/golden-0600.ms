@@ -5,3 +5,4 @@ fn area(s Shape) Int {
     match s {
     }
 }
+// expect-error: MS1000 5:5-5:10 match requires at least one arm; add a case pattern or '_' arm under the header

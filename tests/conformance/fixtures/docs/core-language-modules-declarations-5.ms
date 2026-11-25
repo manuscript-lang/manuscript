@@ -9,3 +9,4 @@ type PrivateToken {
 export fn issue() PrivateToken {
 	return PrivateToken("token")
 }
+// expect-error: MS3000 9:8 public signature exposes private type PrivateToken; add 'export' to its declaration or keep the function private

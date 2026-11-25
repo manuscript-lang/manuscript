@@ -5,3 +5,4 @@ fn f() Int {
 	g := fn(a Int, a Int) Int => return a
 	return 1
 }
+// expect-error: MS3000 5:20 duplicate parameter or field a; each name may appear once, so rename one

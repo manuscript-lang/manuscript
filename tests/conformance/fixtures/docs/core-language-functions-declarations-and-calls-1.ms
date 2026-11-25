@@ -6,3 +6,4 @@ fn decrement(value Int) Int {
 }
 
 remaining := decrement(3)
+// expect-error: MS3070 8:14 a constant takes literals, operators, collections, and other constants; compute this value in a function

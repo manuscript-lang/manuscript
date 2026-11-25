@@ -39,3 +39,4 @@ export fn main() Int {
 	say(f"i5 = {i5}")
 	return 0
 }
+// expect-error: MS3000 23:41 too many positional arguments; every parameter is already supplied, so remove this argument

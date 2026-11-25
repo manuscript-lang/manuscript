@@ -4,3 +4,4 @@
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](hold item T) &T => item
+// expect-exit: 0

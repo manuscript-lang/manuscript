@@ -3,3 +3,4 @@
 fn render() String {
 	return "hello { @ }"
 }
+// expect-exit: 0

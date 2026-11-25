@@ -4,3 +4,4 @@
 type Item {
 	value Int
 }
+// expect-exit: 0

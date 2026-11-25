@@ -12,3 +12,4 @@ type Box[T Clonable] {
 fn Box[T].get() T => self.item.clone()
 
 fn read() Read[Int] => Box(1)
+// expect-exit: 0

@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/lsp/query_test.go:37 TestCharacterPositionCountsUTF16Units
 s := "😀x"
+// expect-exit: 0

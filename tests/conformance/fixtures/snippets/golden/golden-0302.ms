@@ -14,3 +14,7 @@ fn first() Void {
 	)
 	unrelated Int := "wrong"
 }
+// expect-error: MS2001 5:32 unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
+// expect-error: MS2001 6:19 unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
+// expect-error: MS2001 13:47 unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
+// expect-error: MS3001 15:22 expected Int, found String (in the initializer of 'unrelated')

@@ -6,3 +6,4 @@ interface Named {
 fn text(value Named) String {
     return value.|
 }
+// expect-error: MS1000 7:18-7:19 expected a name, found '|'

@@ -4,3 +4,4 @@
 fn increase(value Int) Int {
 	return value + 1
 }
+// expect-exit: 0

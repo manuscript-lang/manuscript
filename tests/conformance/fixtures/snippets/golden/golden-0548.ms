@@ -14,3 +14,4 @@ fn probe() Int {
 
 	return sum
 }
+// expect-exit: 0

@@ -24,3 +24,5 @@ export fn main() Int {
 	say(f"i4 = {i4}")
 	return 0
 }
+// expect-error: MS3001 22:16 operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)
+// expect-fix: 22:18-22:19 "2.0"

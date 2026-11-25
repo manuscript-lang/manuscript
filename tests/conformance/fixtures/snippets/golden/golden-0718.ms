@@ -5,3 +5,4 @@ type Box[T] {
 }
 
 fn hash(box Box[Box[Int]]) Int => return box.hash()
+// expect-exit: 0

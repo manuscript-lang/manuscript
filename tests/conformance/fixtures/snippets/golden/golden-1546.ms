@@ -15,3 +15,4 @@ test "receiver fault comes first" {
 test "continues with valid units" {
 	valid := (1).seconds()
 }
+// expect-error: MS3000 12:22 division by zero always faults; guard the divisor or use a nonzero constant

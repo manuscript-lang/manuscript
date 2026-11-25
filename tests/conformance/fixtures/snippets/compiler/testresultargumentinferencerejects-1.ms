@@ -4,3 +4,4 @@
 fn bounded[T Equal](r T!) Void => return
 
 fn first(r Error!E1) Void => bounded(r)
+// expect-error: MS2001 6:18 unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it

@@ -2,7 +2,7 @@
 
 * Status: **Proposed** (2026-11-25, checked against `a3691f89`)
 * Authors: [chinmaymk](https://github.com/chinmaymk)
-* Implementation: stage 1 (check fixtures of `e2e/reject` and `snippets/authored`)
+* Implementation: stages 1 and 2a landed (every `check` fixture, 2,816, states its expectation in its file); parse, run and test fixtures follow
 * Direction: Chinmay, 2026-11-25: "one suite we test to assert correctness, one suite for perf, one suite for agent-bench"; tests are "littered with .json files so reading code and figuring what it does is crazy hard".
 
 ## Summary
@@ -74,7 +74,7 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 ## Stages
 
 1. Header format in the runner and recorder; convert `e2e/reject` and `snippets/authored` (a few hundred); corpus green.
-2. Convert check and parse snippets; drop `-fmt` twins; count the real formatter cases.
+2. Convert every check fixture (done, with the recorder re-observing until lines that sit after the program stop moving an end-of-file diagnostic). Then parse fixtures and the `-fmt` twins: a twin is its original's source with `phase=parse`, so a fixture should name several phases (`phase=test,parse`) instead of being copied; 1,230 of 1,342 twins state only that `ms fmt` leaves the source unchanged, 112 differ and are mostly fuzz seeds.
 3. Regroup `golden` by code and dedupe; generate fuzz in the gate.
 4. Move `e2e/*` and `snippets/*` run and test cases into feature directories by tag; convert the 270 recorded runs; move `tests/checks`; one README and wiki page.
 

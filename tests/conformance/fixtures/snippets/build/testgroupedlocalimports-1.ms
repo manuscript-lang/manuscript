@@ -12,3 +12,4 @@ export fn read(value Value) Int {
 fn hidden() Int {
 	return 1
 }
+// expect-exit: 0

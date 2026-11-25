@@ -28,3 +28,4 @@ test "each module's error conversion is kept through inference and forwarding" {
 		return fail("lost second generic evidence")
 	}
 }
+// expect-error: MS2002 4:1 cannot find module ./domain.ms (looked for domain.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file

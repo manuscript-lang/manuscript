@@ -38,3 +38,5 @@ export fn main() Int {
 	bad := 1.5 + 2
 	return 0
 }
+// expect-error: MS3001 38:16 operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)
+// expect-fix: 38:18-38:19 "2.0"

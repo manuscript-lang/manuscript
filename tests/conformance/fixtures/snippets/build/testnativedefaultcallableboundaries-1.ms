@@ -10,3 +10,4 @@ import (
 )
 
 fn forward[T](hold item T) &T => item
+// expect-exit: 0

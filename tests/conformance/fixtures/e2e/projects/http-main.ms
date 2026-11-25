@@ -40,3 +40,4 @@ export fn main() Int {
 
 	return 1
 }
+// expect-exit: 0

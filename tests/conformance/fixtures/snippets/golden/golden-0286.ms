@@ -9,3 +9,4 @@ fn f() Int {
 	hit := pick(nums, fn(value Int) Bool => value > 1)
 	return hit or 0
 }
+// expect-exit: 0

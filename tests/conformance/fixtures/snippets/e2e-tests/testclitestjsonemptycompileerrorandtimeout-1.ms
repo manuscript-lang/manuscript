@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=tests/e2e/cli_json_test.go:126 TestCLITestJSONEmptyCompileErrorAndTimeout
 export fn helper() Int => return 0
+// expect-exit: 0

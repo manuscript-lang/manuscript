@@ -4,3 +4,4 @@
 fn double(value Int) Int => value * 2
 
 fn run() Int => double(2)
+// expect-exit: 0

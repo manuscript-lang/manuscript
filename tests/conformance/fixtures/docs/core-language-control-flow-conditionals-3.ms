@@ -10,3 +10,4 @@ fn classify(value Int) String {
 		return "positive"
 	}
 }
+// expect-exit: 0

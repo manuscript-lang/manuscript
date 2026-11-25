@@ -9,3 +9,4 @@ fn probe(flag Bool) Void {
 		}
 	}
 }
+// expect-exit: 0

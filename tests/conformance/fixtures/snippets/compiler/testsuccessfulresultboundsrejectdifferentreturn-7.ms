@@ -10,3 +10,4 @@ interface Named {
 }
 
 fn Cause.name() String => self.text.clone()
+// expect-exit: 0

@@ -29,3 +29,4 @@ export fn main() Int {
 	say(f"i5 = {i5}")
 	return 0
 }
+// expect-error: MS3001 24:8 expected Bool, found Int (in an if condition)

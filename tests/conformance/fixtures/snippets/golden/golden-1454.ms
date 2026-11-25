@@ -7,3 +7,4 @@ export type Box[T] {
 	copied T = copy(value)
 	items List[T] = [value]
 }
+// expect-exit: 0

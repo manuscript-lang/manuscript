@@ -37,3 +37,4 @@ export fn main() Int {
 	bad := 1 and 2
 	return 0
 }
+// expect-error: MS3000 37:14 logical operands require Bool, found Int and Int; compare explicitly, e.g. x != 0

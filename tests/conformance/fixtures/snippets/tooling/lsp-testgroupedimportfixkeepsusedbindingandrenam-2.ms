@@ -8,3 +8,4 @@ export fn first() Int {
 export fn second() Int {
 	return 2
 }
+// expect-exit: 0

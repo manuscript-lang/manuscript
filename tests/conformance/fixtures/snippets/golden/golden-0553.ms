@@ -11,3 +11,4 @@ export type Box[T] {
 export fn invoke[T Read[Int]](value T) Int {
 	return value.get()
 }
+// expect-exit: 0

@@ -15,3 +15,5 @@ fn example() Int {
 	// A comment on the next step.
 	return second
 }
+// expect-error: MS2001 11:9 unknown binding run; add: import run from "@std/os/process.ms"
+// expect-fix: 1:1-1:1 "import run from \"@std/os/process.ms\"\n"

@@ -10,3 +10,4 @@ fn calculated(value Int, active Bool) Int {
 
 	return value
 }
+// expect-exit: 0

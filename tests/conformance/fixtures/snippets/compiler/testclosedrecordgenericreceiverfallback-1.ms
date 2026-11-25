@@ -25,3 +25,4 @@ fn probe() Int {
 
 	return cell.total
 }
+// expect-exit: 0

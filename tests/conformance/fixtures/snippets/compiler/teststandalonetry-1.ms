@@ -7,3 +7,4 @@ fn f() Int! {
 	operation()?
 	return ok(1)
 }
+// expect-exit: 0

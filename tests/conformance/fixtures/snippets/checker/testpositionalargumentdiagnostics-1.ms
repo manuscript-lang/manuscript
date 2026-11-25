@@ -5,3 +5,4 @@ type Pair {
 	first Int
 	second Int
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 export fn answer() String {
 	return "changed"
 }
+// expect-exit: 0

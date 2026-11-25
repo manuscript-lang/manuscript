@@ -4,3 +4,4 @@
 fn unique[T Hashable & Clonable](values List[T]) Set[T] {
 	return values.to_set()
 }
+// expect-exit: 0

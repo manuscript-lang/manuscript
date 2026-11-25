@@ -5,3 +5,4 @@ name := "Ada"
 count := 3
 greeting := f"Welcome, {name}!"
 calculated := f"Next: {count + 1}"
+// expect-exit: 0

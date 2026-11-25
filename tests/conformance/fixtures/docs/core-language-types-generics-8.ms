@@ -9,3 +9,4 @@ fn unchecked_same[T](left T, right T) Bool {
 type Keys[T Hashable] {
 	values Set[T]
 }
+// expect-error: MS3000 6:17 equality requires Equal operands; T has no equality, so give it 'fn T.equals(other: T) Bool' or compare fields

@@ -6,3 +6,4 @@ export type Cause[T] {
 }
 
 export fn make() Cause[Int] => Cause(7)
+// expect-exit: 0

@@ -6,3 +6,4 @@ fn use(value Int?) Int {
 
 	return 0
 }
+// expect-exit: 0

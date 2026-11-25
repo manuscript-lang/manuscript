@@ -4,3 +4,4 @@
 fn allowed(values Map[String, Int]) Map[String, Float] {
 	return values.map((key, value) => value.to_float())
 }
+// expect-exit: 0

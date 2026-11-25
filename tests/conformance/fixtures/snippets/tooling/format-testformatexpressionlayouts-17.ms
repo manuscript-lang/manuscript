@@ -9,3 +9,4 @@ fn work() Void {
 		4
 	]
 }
+// expect-exit: 0

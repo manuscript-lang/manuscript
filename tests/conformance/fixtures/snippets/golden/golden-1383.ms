@@ -48,3 +48,4 @@ test "copied native defaults" {
     if encode(data).get() != compressed { return panic("bound default compression level") }
     if decompress(compressed, "gzip").get() != data { return panic("default compression round trip") }
 }
+// expect-error: MS1000 25:31-25:32 expected an expression, found '%'; write a value, name, call, or literal here

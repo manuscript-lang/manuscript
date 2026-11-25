@@ -10,3 +10,4 @@ interface B {
 }
 
 fn f(value A) B => value
+// expect-error: MS3001 12:20 expected B, found A (in the return value); use a concrete value implementing B

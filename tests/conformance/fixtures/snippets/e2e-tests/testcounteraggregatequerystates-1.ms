@@ -31,3 +31,4 @@ fn var AggregateCell.lower(by Int) Int {
 }
 
 fn identity[T](hold value T) &T => return value
+// expect-exit: 0

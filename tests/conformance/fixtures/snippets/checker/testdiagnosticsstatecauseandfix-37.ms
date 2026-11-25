@@ -4,3 +4,4 @@
 fn f() Int {
 	return "abc".length()
 }
+// expect-exit: 0

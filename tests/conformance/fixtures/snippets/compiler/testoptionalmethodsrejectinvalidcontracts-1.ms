@@ -4,3 +4,4 @@
 fn wrong(value Int?) Int {
 	return value or "missing"
 }
+// expect-error: MS3000 5:18 `or` on Int? needs Int or Int? on the right, found String

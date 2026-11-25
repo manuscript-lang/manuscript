@@ -4,3 +4,4 @@
 fn f() Void {
 	values := Set()
 }
+// expect-error: MS3080 5:15 cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding

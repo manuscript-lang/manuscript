@@ -11,3 +11,4 @@ fn probe() String {
 
 	return b.freeze()
 }
+// expect-error: MS2001 12:14 unknown or ambiguous member freeze on List[String]; available starting with 'f': fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each; 69 members in total

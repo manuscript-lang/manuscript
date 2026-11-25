@@ -32,3 +32,4 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-error: MS3001 17:16 expected Int, found String (in entry 2 of the literal, whose entries share one type)

@@ -3,3 +3,4 @@
 fn value() Int {
 	return 0xff
 }
+// expect-exit: 0

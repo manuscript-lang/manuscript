@@ -6,3 +6,4 @@ interface Shape {
 }
 
 fn f() Shape => 1
+// expect-error: MS3001 8:17 expected Shape, found Int (in the return value); use a concrete value implementing Shape

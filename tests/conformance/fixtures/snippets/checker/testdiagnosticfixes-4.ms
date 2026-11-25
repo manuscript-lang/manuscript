@@ -4,3 +4,4 @@
 type Box[Hashable] {
 	v Hashable
 }
+// expect-error: MS2001 4:10 duplicate or intrinsic type parameter Hashable; choose a different type parameter name

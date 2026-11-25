@@ -7,3 +7,4 @@ fn f(x Int?) Void {
 		null => "missing"
 	}
 }
+// expect-error: MS3001 7:17 expected Int, found String

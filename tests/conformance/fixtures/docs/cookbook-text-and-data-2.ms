@@ -23,3 +23,4 @@ fn run() Result[Void, Error] {
 fn main() Void! {
 	run()?
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 fn call(operation fn() Int) Int {
 	return operation()
 }
+// expect-exit: 0

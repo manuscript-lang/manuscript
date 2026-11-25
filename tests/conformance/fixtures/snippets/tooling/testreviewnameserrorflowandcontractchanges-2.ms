@@ -4,3 +4,4 @@
 export fn load(n Int) Int! {
 	return ok(n)
 }
+// expect-exit: 0

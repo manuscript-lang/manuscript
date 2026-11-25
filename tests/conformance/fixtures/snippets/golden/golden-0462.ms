@@ -13,3 +13,5 @@ fn recognize(value Other) Int {
 		OutOfRange => return 1
 	}
 }
+// expect-error: MS2001 9:15 unknown type CollectionError; declare it with 'type CollectionError:' / 'enum CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import it
+// expect-error: MS2001 9:34 unknown binding CollectionError; declare it with 'CollectionError := ...' before use, define 'fn CollectionError(...) T { ... }', or import it from a module

@@ -34,3 +34,4 @@ export fn main() Int {
 	bad := [1, 2]["x"]
 	return 0
 }
+// expect-error: MS3001 34:19 expected Int, found String

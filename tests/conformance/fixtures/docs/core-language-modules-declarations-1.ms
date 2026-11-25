@@ -8,3 +8,4 @@ LIMIT := MAX_ITEMS * 2
 fn is_full(count Int) Bool {
 	return count >= LIMIT
 }
+// expect-exit: 0

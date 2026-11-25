@@ -8,3 +8,4 @@ fn difference(values List[Int]) Int {
 test "fault" {
 	impossible := difference(values: [1])
 }
+// expect-error: MS3000 9:5 local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore it

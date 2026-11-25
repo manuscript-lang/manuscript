@@ -10,3 +10,4 @@ fn value(expr Expr) Int {
 		Num(value) => return value
 	}
 }
+// expect-error: MS3050 9:5 non-exhaustive match; missing cases: Add, or add a final '_ => ...' arm; add the arms 'Add(left, right) => ...'

@@ -8,3 +8,4 @@ type Box[T] {
 type Nested {
 	value Box[Box[Int]]
 }
+// expect-exit: 0

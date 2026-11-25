@@ -52,3 +52,4 @@ export fn main() Int {
 	say(f"s5 = [{s5}]")
 	return 0
 }
+// expect-error: MS3000 50:12 not requires Bool, found Int; compare explicitly, e.g. not (x == 0)

@@ -5,3 +5,4 @@ import (
 	panic from "@std/core.ms",
 	HttpResponse from "@std/net/http.ms",
 )
+// expect-exit: 0

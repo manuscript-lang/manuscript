@@ -22,3 +22,4 @@ test "continues" {
 	values := [1].splice(0, 1, [])
 	values.append(2)
 }
+// expect-error: MS2001 23:12 unknown or ambiguous member append on Void; this type has no fields or operations

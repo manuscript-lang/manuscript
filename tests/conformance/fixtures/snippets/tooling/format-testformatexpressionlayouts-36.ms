@@ -8,3 +8,5 @@ fn work() Int {
 	box.count -= total
 	return total
 }
+// expect-error: MS2001 8:5 unknown binding box; declare it with 'box := ...' before use, define 'fn box(...) T { ... }', or import it from a module
+// expect-error: MS3000 8:9 assignment requires a type field; only fields of a type value can be assigned with 'x.field = ...'

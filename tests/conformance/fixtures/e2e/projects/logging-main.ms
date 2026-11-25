@@ -68,3 +68,4 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS2002 4:1 cannot find module ./records.ms (looked for records.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file

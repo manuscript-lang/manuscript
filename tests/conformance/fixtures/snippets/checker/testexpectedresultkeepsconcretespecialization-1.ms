@@ -4,3 +4,4 @@
 fn fail_cause[T, E](move cause E) T!E => error(cause)
 
 fn first() Int! => fail_cause(Error("empty"))
+// expect-exit: 0

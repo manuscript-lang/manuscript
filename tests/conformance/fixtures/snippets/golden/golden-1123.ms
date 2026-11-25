@@ -8,3 +8,4 @@ fn f() Int {
 	}
 	return 3
 }
+// expect-exit: 0

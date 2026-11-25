@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/docgen/documentation_test.go:59 TestSourceDeclarationsReachDocumentation
 type parameters { ... }
+// expect-exit: 0

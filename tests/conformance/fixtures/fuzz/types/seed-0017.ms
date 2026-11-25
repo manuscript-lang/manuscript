@@ -46,3 +46,4 @@ export fn main() Int {
 	say(f"l4 = {l4} len {l4.length()}")
 	return 0
 }
+// expect-error: MS3000 39:12 not requires Bool, found Int; compare explicitly, e.g. not (x == 0)

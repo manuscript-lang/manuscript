@@ -156,14 +156,27 @@ fn record_chunk(
 			and fx.phase == "check"
 			and not fx.is_dir
 		) {
-			expectation := render(first)
+			// Lines after the program move a diagnostic reported at the end of the
+			// file, so the expectation is observed again until it is stable.
+			var expectation = render(first)
 			current := read_text(fx.path)
-			text := with_lines(current, expectation)
+			var text = with_lines(current, expectation)
+			var rounds = 0
+
+			while text != current and rounds < 3 {
+				void write_file(fx.path, text, replace: true).wait().get()
+
+				again := render(observe(ms, fx, build_type))
+				if again == expectation { break }
+
+				expectation = again.clone()
+				text = with_lines(text, expectation)
+				rounds += 1
+			}
 
 			if text == current {
 				lines.append("same")
 			} else {
-				void write_file(fx.path, text, replace: true).wait().get()
 				void remove(fx.sidecar)
 				lines.append("wrote")
 			}

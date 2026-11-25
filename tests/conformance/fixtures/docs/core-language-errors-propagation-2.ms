@@ -8,3 +8,4 @@ fn ready_label() Result[String, Error] {
 	prepare()?
 	return ok("ready")
 }
+// expect-exit: 0

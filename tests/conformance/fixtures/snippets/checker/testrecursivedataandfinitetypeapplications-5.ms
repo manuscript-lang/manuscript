@@ -9,3 +9,4 @@ type A[T] {
 type B[U] {
 	a A[U]
 }
+// expect-exit: 0

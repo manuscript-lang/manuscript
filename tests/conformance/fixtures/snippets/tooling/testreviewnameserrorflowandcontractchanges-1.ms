@@ -5,3 +5,4 @@
 export fn load(n Int) Int!Error {
 	return ok(n)
 }
+// expect-exit: 0

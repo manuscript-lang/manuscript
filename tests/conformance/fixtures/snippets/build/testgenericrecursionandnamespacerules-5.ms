@@ -8,3 +8,4 @@ type Data {
 fn Data.compare() Void {
 	return
 }
+// expect-exit: 0

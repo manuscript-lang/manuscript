@@ -6,3 +6,4 @@ type Pair {
 }
 
 fn hash(pair Pair) Int => return pair.hash()
+// expect-exit: 0

@@ -29,3 +29,4 @@ interface Read {
 impl Read for Box[Int] {
     fn get() Int => self.value
 }
+// expect-error: MS1000 29:1-29:5 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it

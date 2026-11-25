@@ -7,3 +7,5 @@ fn answer() Int {
 		error(_) => return 2
 	}
 }
+// expect-error: MS2001 5:11 unknown binding parse; add: import parse from "@std/data/csv.ms"
+// expect-fix: 1:1-1:1 "import parse from \"@std/data/csv.ms\"\n"

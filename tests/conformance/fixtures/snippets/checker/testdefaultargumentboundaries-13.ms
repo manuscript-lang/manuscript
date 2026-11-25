@@ -13,3 +13,4 @@ fn call() Int {
 	copy := forward(f)
 	return copy()
 }
+// expect-error: MS3003 14:12 missing argument 1: Int in call to copy; pass it positionally, without a label

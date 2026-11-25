@@ -37,3 +37,4 @@ export fn list_headers(fields Map[String, List[String]]) HttpHeaders! {
 export fn http_result[T](move outcome T!) T! {
 	return outcome
 }
+// expect-exit: 0

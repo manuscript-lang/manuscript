@@ -10,3 +10,4 @@ fn f(x Int) Int {
 		return 2
 	}
 }
+// expect-exit: 0

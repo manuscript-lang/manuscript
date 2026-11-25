@@ -6,3 +6,4 @@ enum Optional[T] {
 }
 
 fn wrong(value Int?) Result[Int, String] => ok_or(value, "missing")
+// expect-error: MS2001 3:1 declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration

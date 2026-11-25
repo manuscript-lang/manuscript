@@ -5,3 +5,4 @@ import (
 	Decimal from "@std/math/decimal.ms",
 	nanoseconds from "@std/time.ms",
 )
+// expect-exit: 0

@@ -4,3 +4,4 @@
 fn work() Void {
 	send(condition: active and allowed and remaining > 0, payload: "data")
 }
+// expect-error: MS2001 5:5 unknown binding send; declare it with 'send := ...' before use, define 'fn send(...) T { ... }', or import it from a module

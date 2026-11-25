@@ -15,3 +15,4 @@ fn main() Void {
 	_d := "Hi"
 	_a += 1
 }
+// expect-exit: 0

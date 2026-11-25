@@ -4,3 +4,4 @@
 type Box[Int] {
 	value Int
 }
+// expect-error: MS2001 4:10 duplicate or intrinsic type parameter Int; choose a different type parameter name

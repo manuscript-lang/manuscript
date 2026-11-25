@@ -17,3 +17,4 @@ fn use() Void {
 
 	_server := serve(address: "127.0.0.1:0", handler: buffered(handle))
 }
+// expect-error: MS3080 13:18 cannot infer callback parameter request; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`

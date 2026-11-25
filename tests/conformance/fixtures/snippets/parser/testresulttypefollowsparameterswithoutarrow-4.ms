@@ -4,3 +4,4 @@
 interface Read {
 	fn read() Int
 }
+// expect-exit: 0

@@ -9,3 +9,4 @@ import (
 fn run() Void {
 	_values := [0]
 }
+// expect-exit: 0

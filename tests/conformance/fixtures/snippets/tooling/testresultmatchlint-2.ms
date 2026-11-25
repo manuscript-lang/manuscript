@@ -7,3 +7,4 @@ fn use(value Int!) Int {
 		error(_) => return 0
 	}
 }
+// expect-exit: 0

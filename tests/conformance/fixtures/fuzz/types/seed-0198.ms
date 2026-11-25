@@ -21,3 +21,4 @@ export fn main() Int {
 	say(f"s3 = [{s3}]")
 	return 0
 }
+// expect-exit: 0

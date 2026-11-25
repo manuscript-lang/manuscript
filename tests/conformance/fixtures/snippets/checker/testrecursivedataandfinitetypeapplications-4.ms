@@ -5,3 +5,4 @@ enum Tree[T] {
 	Leaf(value T)
 	Branch(left Tree[T], right Tree[T])
 }
+// expect-exit: 0

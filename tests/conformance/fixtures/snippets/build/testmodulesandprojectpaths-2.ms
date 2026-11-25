@@ -9,3 +9,4 @@ import (
 export fn main() Int {
 	return read(value: Identity(value: 0))
 }
+// expect-error: MS2002 4:1 unknown import alias @domain; this project declares none, so add one under [aliases] in ms.toml, e.g. "@lib" = "./src/lib" (use @std/... for the standard library)

@@ -6,3 +6,4 @@ var value = 1
         return item
     }
     )
+// expect-error: MS1000 3:1-3:4 module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type

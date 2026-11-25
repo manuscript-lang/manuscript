@@ -4,3 +4,4 @@
 fn answer() Void {
 	_values := [1, 2].map(value => value + 1)
 }
+// expect-exit: 0

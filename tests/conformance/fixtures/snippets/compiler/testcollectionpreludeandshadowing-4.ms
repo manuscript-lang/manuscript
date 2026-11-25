@@ -9,3 +9,4 @@ fn f() Int {
 	entries := {1: 2}
 	return List(3) + Map(4) + Set(5) + items.length() + entries.length()
 }
+// expect-exit: 0

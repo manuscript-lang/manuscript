@@ -12,3 +12,4 @@ type Box {
 fn Box.get() Int => self.value
 
 fn first() Read => identity(Box(1))
+// expect-error: MS2001 14:20 unknown binding identity; declare it with 'identity := ...' before use, define 'fn identity(...) T { ... }', or import it from a module

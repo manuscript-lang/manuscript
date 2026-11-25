@@ -9,3 +9,4 @@ fn g() Int {
 	_x := 1
 	return 2
 }
+// expect-exit: 0

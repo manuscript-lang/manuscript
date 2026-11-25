@@ -38,3 +38,4 @@ export fn main() Int {
 	say(f"gcd(2895, 2728) = {gcd(2895, 2728)}")
 	return 0
 }
+// expect-error: MS3001 29:14 operator operands require the same independently known type, found Int + String; convert one side so both have one type (e.g. interpolate into text with f"{value}", or convert between Int and Float)

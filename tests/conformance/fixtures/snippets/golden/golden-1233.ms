@@ -17,3 +17,4 @@ fn answer(
 	]
 	return value + callbacks.length()
 }
+// expect-exit: 0

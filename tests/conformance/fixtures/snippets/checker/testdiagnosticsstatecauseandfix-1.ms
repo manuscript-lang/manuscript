@@ -4,3 +4,5 @@
 fn f(count Int) Int {
 	return cuont
 }
+// expect-error: MS2001 5:12 unknown binding cuont; did you mean 'count'?
+// expect-fix: 5:12-5:17 "count"

@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/parser/result_type_test.go:10 TestResultTypeFollowsParametersWithoutArrow
 fn f(x Int) Int => x
+// expect-exit: 0

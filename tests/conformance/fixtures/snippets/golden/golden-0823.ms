@@ -12,3 +12,4 @@ fn work() Int {
 
 	return total
 }
+// expect-exit: 0

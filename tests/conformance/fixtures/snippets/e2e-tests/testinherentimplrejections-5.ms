@@ -8,3 +8,4 @@ type B {
 fn B.m[U](u U) &U {
 	return u
 }
+// expect-error: MS3000 8:6 a `&` result points into an argument; mark that argument `hold`, or return an owned value

@@ -7,3 +7,4 @@ fn main() Void {
 	var _bounded = Queue[Int](capacity: 4)
 	var _unbounded = Queue[Int]()
 }
+// expect-exit: 0

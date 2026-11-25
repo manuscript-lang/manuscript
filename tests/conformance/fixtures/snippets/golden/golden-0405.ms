@@ -5,3 +5,4 @@ import TestHooks from "@std/test/test.ms"
 type State {
 	value Int
 }
+// expect-exit: 0

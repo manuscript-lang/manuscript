@@ -4,3 +4,4 @@
 type Node {
 	next Node
 }
+// expect-exit: 0

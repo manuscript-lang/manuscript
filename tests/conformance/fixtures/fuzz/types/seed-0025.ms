@@ -41,3 +41,5 @@ export fn main() Int {
 	fixed = 2
 	return 0
 }
+// expect-error: MS3060 41:5 cannot assign immutable binding fixed; declare it with 'var fixed = ...' instead of 'fixed := ...'
+// expect-fix: 40:5-40:13 "var fixed ="

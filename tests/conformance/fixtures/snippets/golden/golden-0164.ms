@@ -7,3 +7,4 @@ fn fail() Int {
 export fn main() Int {
     data := 
 }
+// expect-error: MS1000 8:13-8:13 expected an expression, found end of line; write a value, name, call, or literal here

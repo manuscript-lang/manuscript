@@ -4,3 +4,4 @@
 fn f[Equal](a Equal) Void {
 	return
 }
+// expect-error: MS2001 4:6 duplicate or intrinsic type parameter Equal; choose a different type parameter name

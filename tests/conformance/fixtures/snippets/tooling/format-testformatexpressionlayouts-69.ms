@@ -10,3 +10,5 @@ fn work() Int {
 	}
 	return 0
 }
+// expect-error: MS2001 6:9 unknown binding tagged_detail; declare it with 'tagged_detail := ...' before use, define 'fn tagged_detail(...) T { ... }', or import it from a module
+// expect-error: MS2001 7:12 unknown binding tagged_detail; declare it with 'tagged_detail := ...' before use, define 'fn tagged_detail(...) T { ... }', or import it from a module

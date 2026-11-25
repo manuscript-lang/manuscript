@@ -12,3 +12,4 @@ fn use[T](value Result[Int, Failure[T]]) Int {
 		ok(inner) => return inner
 	}
 }
+// expect-exit: 0

@@ -8,3 +8,4 @@
         sum += list%d.length()
         i%d += 1
     }
+// expect-error: MS1000 3:13-3:14 expected ':=', found '%'

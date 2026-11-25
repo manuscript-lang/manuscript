@@ -5,3 +5,4 @@ export fn main() Int {
 	result := number + 1
 	return result - 42
 }
+// expect-exit: 0

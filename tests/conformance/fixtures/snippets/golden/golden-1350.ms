@@ -13,3 +13,6 @@ fn record(value: Item?) Int {
         null => return 0
     }
 }
+// expect-error: MS1001 3:1 unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line break
+// expect-error: MS1000 10:16-10:17 remove the ':' between 'value' and its type; write value Type
+// expect-fix: 10:16-10:17 ""

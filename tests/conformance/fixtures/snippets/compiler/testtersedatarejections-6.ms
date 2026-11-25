@@ -4,3 +4,4 @@
 fn f() Void {
 	_value := {1: 2}
 }
+// expect-exit: 0

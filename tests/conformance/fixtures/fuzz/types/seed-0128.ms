@@ -24,3 +24,4 @@ export fn main() Int {
 	say(f"l1 = {l1} len {l1.length()}")
 	return 0
 }
+// expect-error: MS3001 21:12 expected Int, found String (in the return value)

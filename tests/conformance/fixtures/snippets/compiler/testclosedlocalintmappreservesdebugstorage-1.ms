@@ -8,3 +8,4 @@ fn probe() Int {
 	values.add(1, 2)
 	return values.get(1) or panic("called Optional.get() on null")
 }
+// expect-exit: 0

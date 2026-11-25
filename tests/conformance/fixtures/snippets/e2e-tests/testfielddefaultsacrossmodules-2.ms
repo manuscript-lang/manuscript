@@ -13,3 +13,4 @@ test "imported constructor retains default module and generic scope" {
 		return fail("imported generic defaults")
 	}
 }
+// expect-error: MS2002 4:1 cannot find module ./data.ms (looked for data.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file

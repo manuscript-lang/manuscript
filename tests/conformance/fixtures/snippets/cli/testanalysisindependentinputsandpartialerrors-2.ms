@@ -4,3 +4,4 @@
 export fn main() Int {
 	return "wrong"
 }
+// expect-error: MS3001 5:12 expected Int, found String (in the return value)

@@ -7,3 +7,4 @@ type A[T, U] {
 type B[X, Y] {
 	a A[Y, X]
 }
+// expect-exit: 0

@@ -8,3 +8,4 @@ fn a(n Int) Int {
 fn b(n Int) Int {
 	return a(n)
 }
+// expect-exit: 0

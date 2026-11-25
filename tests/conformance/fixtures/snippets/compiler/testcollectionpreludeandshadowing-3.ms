@@ -6,3 +6,4 @@ fn use() Set[Int] {
 	values.add(1)
 	return values
 }
+// expect-exit: 0

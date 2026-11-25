@@ -35,3 +35,4 @@ export fn main() Int {
 	say(f"{((-43) % 860307)} {7} {(((-43) % 860307) < 7)} sum {((-43) % 860307) + 7}")
 	return 0
 }
+// expect-error: MS3001 34:12 expected Int, found String (in the return value)

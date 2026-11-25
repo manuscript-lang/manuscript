@@ -32,3 +32,4 @@ export fn emit(logger Logger) Void! {
 	child.info("received \"payload\"\nnext", fields)?
 	logger.warn("complete")?
 }
+// expect-exit: 0

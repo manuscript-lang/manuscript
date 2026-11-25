@@ -5,3 +5,4 @@ fn caller() Int! {
 	value := operation()
 	return value
 }
+// expect-error: MS2001 5:14 unknown binding operation; declare it with 'operation := ...' before use, define 'fn operation(...) T { ... }', or import it from a module

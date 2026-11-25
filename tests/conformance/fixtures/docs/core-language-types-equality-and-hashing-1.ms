@@ -8,3 +8,5 @@ interface Equal {
 interface Hashable {
 	fn hash() Int
 }
+// expect-error: MS2001 4:1 declaration Equal reuses a prelude name; rename it, because Equal always refers to the standard declaration
+// expect-error: MS2001 8:1 declaration Hashable reuses a prelude name; rename it, because Hashable always refers to the standard declaration

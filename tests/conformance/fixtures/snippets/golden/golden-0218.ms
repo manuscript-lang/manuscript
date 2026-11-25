@@ -13,3 +13,4 @@ fn f() Void {
 		return value
 	}
 }
+// expect-error: MS3000 5:5 local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore it

@@ -13,3 +13,5 @@ fn read(value Other) Int {
 		Missing(found) => return found
 	}
 }
+// expect-error: MS2001 9:15 unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
+// expect-error: MS2001 9:31 unknown binding MissingValue; declare it with 'MissingValue := ...' before use, define 'fn MissingValue(...) T { ... }', or import it from a module

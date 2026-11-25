@@ -7,3 +7,4 @@ fn double(n Int) Int {
 fn f() Int {
 	return [1, 2].map(double).length()
 }
+// expect-exit: 0

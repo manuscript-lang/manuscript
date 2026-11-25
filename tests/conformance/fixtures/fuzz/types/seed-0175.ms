@@ -32,3 +32,4 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS2001 25:18 unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 57 members in total

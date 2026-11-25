@@ -15,3 +15,4 @@ fn wrong(item Named) String {
 		}
 	}
 }
+// expect-error: MS3000 10:9 contract pattern requires a concrete type or enum; name an implementing type like Circle, or use '_'

@@ -36,3 +36,4 @@ export fn main() Int {
 	say(f"collatz(2467) = {collatz(2467)}")
 	return 0
 }
+// expect-error: MS3000 33:12 not requires Bool, found Int; compare explicitly, e.g. not (x == 0)

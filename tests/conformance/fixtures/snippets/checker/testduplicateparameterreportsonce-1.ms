@@ -4,3 +4,4 @@
 fn f(a Int, a Int) Int {
 	return a
 }
+// expect-error: MS3000 4:13 duplicate parameter or field a; each name may appear once, so rename one

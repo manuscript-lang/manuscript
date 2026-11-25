@@ -7,3 +7,4 @@ export interface Read {
 export type Box[T Read] {
 	value T
 }
+// expect-exit: 0

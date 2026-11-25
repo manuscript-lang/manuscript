@@ -11,3 +11,4 @@ fn f(var counts Map[String, Int], var names List[String], found Int?) Void {
 		}
 	}
 }
+// expect-exit: 0

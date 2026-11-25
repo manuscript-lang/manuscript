@@ -10,3 +10,4 @@ fn first() Void => consume(
 	cause: identity(Error("two")),
 	optional: identity(3),
 )
+// expect-exit: 0

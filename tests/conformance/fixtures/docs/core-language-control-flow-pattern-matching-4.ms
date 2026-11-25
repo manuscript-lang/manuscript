@@ -11,3 +11,4 @@ fn paid(payment Payment) Bool {
 		}
 	}
 }
+// expect-error: MS2001 4:17 unknown type Payment; declare it with 'type Payment:' / 'enum Payment:' / 'interface Payment:', declare it as a type parameter, or import it

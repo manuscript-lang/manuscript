@@ -5,3 +5,4 @@ fn f() Bool {
 	x := nope
 	return x and x
 }
+// expect-error: MS2001 5:10 unknown binding nope; declare it with 'nope := ...' before use, define 'fn nope(...) T { ... }', or import it from a module

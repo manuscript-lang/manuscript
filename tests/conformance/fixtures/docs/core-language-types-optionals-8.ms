@@ -7,3 +7,4 @@ fn display_name(name String?) String {
 
 	return "Anonymous"
 }
+// expect-exit: 0

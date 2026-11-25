@@ -9,3 +9,4 @@ type Pair[T, U] {
 type Config {
 	value Pair[Int?, String??]
 }
+// expect-exit: 0

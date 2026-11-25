@@ -7,3 +7,4 @@ fn positive(n Int) Bool {
 fn f() Int {
 	return [1].filter(positive).length()
 }
+// expect-exit: 0

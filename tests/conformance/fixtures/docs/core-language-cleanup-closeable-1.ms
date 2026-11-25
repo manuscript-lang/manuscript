@@ -4,3 +4,4 @@
 interface Closeable {
 	fn close() Void
 }
+// expect-exit: 0

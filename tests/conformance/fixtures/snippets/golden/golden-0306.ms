@@ -7,3 +7,4 @@ interface Shape {
 type Sq {
 	s Int
 }
+// expect-exit: 0

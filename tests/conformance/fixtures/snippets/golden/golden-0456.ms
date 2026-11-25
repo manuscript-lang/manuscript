@@ -9,3 +9,4 @@ fn choose(form NormalizationForm) Void {
 fn wrong() Void {
 	choose("NFC")
 }
+// expect-error: MS3001 10:12 expected NormalizationForm, found String (in argument 'form' of choose)

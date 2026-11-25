@@ -9,3 +9,4 @@ fn classify(path String) String {
 		ok(_) => return "exists"
 	}
 }
+// expect-exit: 0

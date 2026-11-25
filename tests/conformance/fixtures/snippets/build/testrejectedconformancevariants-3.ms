@@ -4,3 +4,4 @@
 fn increase(item Int) Int {
 	return item + 1
 }
+// expect-exit: 0

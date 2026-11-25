@@ -41,3 +41,6 @@ export fn main() Int {
 	bad := say(1, 2)
 	return 0
 }
+// expect-error: MS3001 41:16 expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 41:16-41:17 "\"1\""
+// expect-error: MS3000 41:19 too many positional arguments; every parameter is already supplied, so remove this argument

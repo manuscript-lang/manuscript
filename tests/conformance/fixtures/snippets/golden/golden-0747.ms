@@ -13,3 +13,4 @@ fn probe() Int {
 
 	return sum
 }
+// expect-error: MS2001 8:21 unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T { ... }', or import it from a module

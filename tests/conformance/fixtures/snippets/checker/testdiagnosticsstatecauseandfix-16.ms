@@ -16,3 +16,4 @@ fn f(s S) Int {
 
 	return 0
 }
+// expect-error: MS3050 11:5 non-exhaustive match; missing cases: B, C, or add a final '_ => ...' arm; add the arms 'B => ...', 'C => ...'

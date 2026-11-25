@@ -14,3 +14,4 @@ test "root" {
 	data := read_file(path: "golden/input.txt", max_bytes: 1024).wait()?
 	if data.length() != 7 { return fail("wrong fixture size") }
 }
+// expect-error: MS2002 4:1 unknown import alias @lib; this project declares none, so add one under [aliases] in ms.toml, e.g. "@lib" = "./src/lib" (use @std/... for the standard library)

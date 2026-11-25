@@ -45,3 +45,4 @@ export fn main() Int {
 	bad := [1, "two"]
 	return 0
 }
+// expect-error: MS3001 45:16 expected Int, found String (in entry 2 of the literal, whose entries share one type)

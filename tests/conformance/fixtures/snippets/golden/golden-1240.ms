@@ -13,3 +13,4 @@ fn bare() Int => 4
 // neighboring recovered declaration
 fn neighbor() Int => 5
 fn broken(
+// expect-error: MS1000 17:1 unterminated delimiter '(' opened at line 15:10; add the matching ')' before the end of the file

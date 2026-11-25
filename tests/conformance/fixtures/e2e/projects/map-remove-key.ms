@@ -5,3 +5,4 @@ export type Key {
 	id Int
 	label String
 }
+// expect-exit: 0

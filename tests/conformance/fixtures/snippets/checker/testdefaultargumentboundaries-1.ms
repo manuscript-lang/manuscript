@@ -4,3 +4,4 @@
 fn f(value Int = true) Int {
 	return value
 }
+// expect-error: MS3001 4:18 expected Int, found Bool

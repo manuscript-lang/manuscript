@@ -9,3 +9,4 @@ fn fail() Int!Error {
 fn use() Void {
 	void fail()
 }
+// expect-exit: 0

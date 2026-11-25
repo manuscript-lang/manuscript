@@ -10,3 +10,4 @@ fn use(path String) Int {
 		ok(_) => return 0
 	}
 }
+// expect-exit: 0

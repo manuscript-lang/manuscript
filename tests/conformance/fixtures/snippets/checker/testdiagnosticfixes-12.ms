@@ -17,3 +17,4 @@ fn Pair[A, A].n() Int {
 export fn main() Int {
 	return I(value: Pair[Int, String](a: 1, b: "x")).n()
 }
+// expect-error: MS3000 18:12 I is an interface and cannot be constructed; a type whose methods match I passes wherever I is expected, so pass the value directly

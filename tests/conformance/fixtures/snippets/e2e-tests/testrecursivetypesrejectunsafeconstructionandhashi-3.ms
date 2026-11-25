@@ -6,3 +6,4 @@ type Grow[T] {
 }
 
 export fn main() Int => return 0
+// expect-error: MS3040 5:5 recursive generic applications must preserve their parameters in Grow.next; keep the same type arguments in the same positions along a recursive cycle
