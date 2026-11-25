@@ -2,7 +2,7 @@
 // conform: phase=check
 fn absent[T]() T? => null
 
-fn transform[T, U](hold callback fn(T) U) &fn(T) U => callback
+fn transform[T, U](move callback fn(T) U) fn(T) U => callback
 
 fn answer() Void {
 	empty Int? := absent()
