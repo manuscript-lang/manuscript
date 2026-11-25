@@ -128,54 +128,69 @@ MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call) {
   return result;
 }
 
+/* `{a, b} := value`: the parts go to their names, taken out of the value when it is given up. */
+static bool bind_pattern(LowerFn *fn, const MsStmt *stmt) {
+  const MsPattern *pattern = stmt->u.bind.pattern;
+  MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
+  MirVar owner = 0;
+  MirValue taken = MIR_NONE;
+  if (source != MIR_NONE && stmt->u.bind.value->kind == MS_E_NAME &&
+      fn_closing_move(fn, stmt->u.bind.value, source, &taken)) {
+    /* A record destructured out of a closing slot hands its parts to the names: the slot gives the record up. */
+    return fn_bind_parts(fn, pattern, taken, true, NULL, stmt->u.bind.is_mutable, false, ms_facts_type(fn->facts, stmt->u.bind.value->id));
+  }
+  const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
+  /* A `var` pattern takes its parts out of a record that is given up (a fresh result, or a name read for the last time)
+   * instead of copying them: a resource part has no copy. */
+  const bool gives_up = fn_fresh_owner(fn, source) ||
+                        (stmt->u.bind.value->kind == MS_E_NAME && ms_facts_use(fn->facts, stmt->u.bind.value->id) == MS_USE_MOVE);
+  /* A record of resources that holds nothing to drop is still given up when it is a temporary: its parts close here. */
+  const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
+  const bool temporary = source != MIR_NONE && kind != MS_E_NAME && kind != MS_E_MEMBER && kind != MS_E_INDEX &&
+                         fn_temp_closes(fn, ms_facts_type(fn->facts, stmt->u.bind.value->id)) && fn_owns_result(fn, source);
+  return source != MIR_NONE &&
+         fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source) || temporary),
+                    from_var ? &owner : NULL, stmt->u.bind.is_mutable, false,
+                    ms_facts_type(fn->facts, stmt->u.bind.value->id));
+}
+
+/* `var x = xs[i]` and `var x = m[k]`: `x` names the entry. Returns true when it does; a failure leaves `fn->failed` set. */
+static bool bind_entry_view(LowerFn *fn, const MsStmt *stmt) {
+  const MsPattern *pattern = stmt->u.bind.pattern;
+  /* `var x = xs[i]` and `var x = m[k]` borrow the entry exclusively, unless it is a number: `x` names the entry, so what is
+   * changed through `x` changes the entry, whatever happens to the index or key afterwards. */
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
+  const MirTy entry = fn_type(fn, ms_facts_type(fn->facts, pattern->id));
+  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn_entry_read_parts(fn, stmt->u.bind.value, &container, &key) &&
+      mir_ty_data(fn->cx->module, entry)->kind != MK_VOID && !mir_is_scalar(fn->cx->module, entry)) {
+    MirValue address = MIR_NONE;
+    MirTy ty = MIR_VOID;
+    if (fn_place_address(fn, stmt->u.bind.value, &address, &ty)) {
+      fn->closing[ref->local] = address;
+      fn->closing_var[ref->local] = true;
+      fn->closing_types[ref->local] = ty;
+      if (fn->shared != NULL) {
+        fn->shared[ref->local] = LOWER_SHARED_BORROWED; /* the entry's owner holds it: a change here replaces it there */
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
-    MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
-    MirVar owner = 0;
-    MirValue taken = MIR_NONE;
-    if (source != MIR_NONE && stmt->u.bind.value->kind == MS_E_NAME &&
-        fn_closing_move(fn, stmt->u.bind.value, source, &taken)) {
-      /* A record destructured out of a closing slot hands its parts to the names: the slot gives the record up. */
-      return fn_bind_parts(fn, pattern, taken, true, NULL, stmt->u.bind.is_mutable, false, ms_facts_type(fn->facts, stmt->u.bind.value->id));
-    }
-    const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
-    /* A `var` pattern takes its parts out of a record that is given up (a fresh result, or a name read for the last time)
-     * instead of copying them: a resource part has no copy. */
-    const bool gives_up = fn_fresh_owner(fn, source) ||
-                          (stmt->u.bind.value->kind == MS_E_NAME && ms_facts_use(fn->facts, stmt->u.bind.value->id) == MS_USE_MOVE);
-    /* A record of resources that holds nothing to drop is still given up when it is a temporary: its parts close here. */
-    const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
-    const bool temporary = source != MIR_NONE && kind != MS_E_NAME && kind != MS_E_MEMBER && kind != MS_E_INDEX &&
-                           fn_temp_closes(fn, ms_facts_type(fn->facts, stmt->u.bind.value->id)) && fn_owns_result(fn, source);
-    return source != MIR_NONE &&
-           fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source) || temporary),
-                      from_var ? &owner : NULL, stmt->u.bind.is_mutable, false,
-                      ms_facts_type(fn->facts, stmt->u.bind.value->id));
+    return bind_pattern(fn, stmt);
   }
   if (stmt->u.bind.is_mutable && fn->closing != NULL) {
-    /* `var x = xs[i]` and `var x = m[k]` borrow the entry exclusively, unless it is a number: `x` names the entry, so what is
-     * changed through `x` changes the entry, whatever happens to the index or key afterwards. */
-    MsExpr *container = NULL;
-    MsExpr *key = NULL;
-    const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
-    const MirTy entry = fn_type(fn, ms_facts_type(fn->facts, pattern->id));
-    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn_entry_read_parts(fn, stmt->u.bind.value, &container, &key) &&
-        mir_ty_data(fn->cx->module, entry)->kind != MK_VOID && !mir_is_scalar(fn->cx->module, entry)) {
-      MirValue address = MIR_NONE;
-      MirTy ty = MIR_VOID;
-      if (fn_place_address(fn, stmt->u.bind.value, &address, &ty)) {
-        fn->closing[ref->local] = address;
-        fn->closing_var[ref->local] = true;
-        fn->closing_types[ref->local] = ty;
-        if (fn->shared != NULL) {
-          fn->shared[ref->local] = LOWER_SHARED_BORROWED; /* the entry's owner holds it: a change here replaces it there */
-        }
-        return !fn->failed;
-      }
-      if (fn->failed) {
-        return false;
-      }
+    if (bind_entry_view(fn, stmt)) {
+      return !fn->failed;
+    }
+    if (fn->failed) {
+      return false;
     }
   }
   /* A name bound to another name borrows it unless the checker marked the read a move (the source is assigned while
