@@ -1,6 +1,7 @@
 /* The Windows link: lld in its GNU flavor over mingw-w64's startup object and CRT, dropping unreachable
  * sections (the `/opt:ref` of the MSVC linker) and keeping DWARF in the image. The import libraries
  * (`libkernel32.a`, ...) are the ones llvm-mingw generates from the DLL export lists (see link.h). */
+#include <stdlib.h>
 #include "base/file.h"
 #include "base/path.h"
 #include "compiler/link/link_job.h"
@@ -28,6 +29,7 @@ bool link_host_prepare(LinkJob *job, MsStrBuild *why) {
     link_job_push_text(job, head[index]);
   }
   link_job_push(job, job->request->output);
+  if (getenv("MS_LINK_TRACE") != NULL) link_job_push_text(job, "--time-trace");
   if (options->strip) {
     link_job_push_text(job, "--strip-all");
   }

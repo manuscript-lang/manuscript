@@ -64,6 +64,12 @@ jobs:
             echo "== baseline=0 $f run $i"
             MS_BUILD_TIMES=1 "$ms" build --build-type debug -o .artifacts/probe/out "$f" 2>&1 | tail -8
           done; done
+          for f in .artifacts/probe/hello.ms tools/repo-check.ms; do
+            echo "== trace $f"
+            MS_LINK_TRACE=1 "$ms" build --build-type debug -o .artifacts/probe/out "$f" 2>&1 | tail -3
+            ls -la .artifacts/probe/out*
+            tr '{' '\n' < .artifacts/probe/out.time-trace | grep '"dur"' | sed -E 's/.*"dur":([0-9]+).*"name":"([^"]*)".*/\1 \2/' | sort -rn | awk '!s[$0]++' | head -25
+          done
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target lint

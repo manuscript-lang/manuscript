@@ -1,4 +1,5 @@
 /* The macOS link: lld over generated SDK stubs, then a debug companion (see link.h and sdk_stubs.h). */
+#include <stdlib.h>
 #include "base/file.h"
 #include "base/path.h"
 #include "base/process.h"
@@ -82,6 +83,7 @@ static void push_head(LinkJob *job) {
     link_job_push_text(job, head[index]);
   }
   link_job_push(job, ms_string_span(&job->scratch));
+  if (getenv("MS_LINK_TRACE") != NULL) link_job_push_text(job, "--time-trace");
   link_job_push_text(job, "-dead_strip");
   /* lld turns `adrp x10, got; ...; ldr x8, [x10, got]` into `adr x8` at the adrp, clobbering an x8 the code in
    * between still uses (a list of string literals stored a shift result). Workaround: remove once lld is
