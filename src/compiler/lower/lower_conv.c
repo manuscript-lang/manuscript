@@ -119,6 +119,7 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
   MirBuilder b;
   mir_b_init(&b, cx->module, name, params, target.nparams, target.ret);
   b.func.kind = MFK_METHOD;
+  b.func.ret_borrowed = sig->ret_borrowed && target.ret_borrowed; /* the thunk hands back the view the interface writes */
   b.func.linkage = ML_INTERNAL;
   MirValue args[LOWER_THUNK_PARAMS] = {MIR_NONE};
   mir_b_params(&b, args, target.nparams);
