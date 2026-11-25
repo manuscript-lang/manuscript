@@ -186,7 +186,9 @@ static Reach classify_call(Pass *pass, const MsExpr *call) {
       out = join(out, classify(pass, call->u.call.args.ptr[index].value));
     }
   }
-  return out;
+  /* A result that keeps nothing of its arguments is a new value, such as the copy `Set.values()` builds: a part of it
+   * dies with the statement, so it is no part of an argument. */
+  return out.mask == 0 && !out.owned ? OWNED : out;
 }
 
 static Reach classify(Pass *pass, const MsExpr *expr) {
