@@ -211,6 +211,7 @@ static MsPos import_point(MsSpan source) {
 
 static void report_unknown(const Resolver *resolver, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
+  if (ms_check_imported_from_missing(program, resolver->module, type->name)) return;
   MsStrBuild text = ms_strbuild_new();
   MsStrBuild statement = ms_strbuild_new();
   const MsSpan name = ms_names_span(program->names, type->name);

@@ -226,6 +226,7 @@ static void attach_edit(MsCheckProgram *program, MsPos pos, MsSpan name, const H
 void ms_unknown_name_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsName name,
                             const MsBindingList *scope, const MsScopeSite *site) {
   const MsSpan text = ms_names_span(program->names, name);
+  if (ms_check_imported_from_missing(program, module, name)) return;
   Hint hint = {.text = ms_strbuild_new(), .near_edit = ms_strbuild_new(), .statement = ms_strbuild_new()};
   const bool has_self =
       ms_scope_lookup(scope, ms_names_intern(program->names, ms_span_of_text("self"))) != NULL;

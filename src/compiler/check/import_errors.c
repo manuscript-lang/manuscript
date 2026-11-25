@@ -301,6 +301,15 @@ static void report_redundant(const ImportView *view, uint32_t index, MsSpan sour
   }
 }
 
+bool ms_check_imported_from_missing(const MsCheckProgram *program, uint32_t module, MsName name) {
+  const MsModuleInfo *info = &program->modules.ptr[module];
+  for (uint32_t index = 0; info->targets != NULL && index < info->tree->nimports; index++) {
+    const int32_t target = info->targets[index];
+    if (info->tree->imports[index].name == name && target >= 0 && program->modules.ptr[target].missing) return true;
+  }
+  return false;
+}
+
 /* The module an unresolved import names, when it exists (a standard module that is bundled, or a local module). */
 static bool import_target(const ImportView *view, uint32_t index, uint32_t *target) {
   const MsModuleInfo *info = &view->program->modules.ptr[view->module];
@@ -341,6 +350,7 @@ static void report_unresolved(const ImportView *view, uint32_t index, MsSpan sou
   MsSpan written = {0};
   const bool standard = ms_check_std_path(view->path, &written);
   if (import_target(view, index, &target)) {
+    if (view->program->modules.ptr[target].missing) return; /* the import of a missing file is reported once, where it is written */
     message = export_message(view, target);
   } else if (standard) {
     message = unknown_module_message(view);

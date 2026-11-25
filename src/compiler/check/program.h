@@ -62,9 +62,14 @@ typedef struct MsModuleInfo {
   MsFacts facts;
   MsFacts constant_scratch; /* node-indexed storage for typing module constants before the bodies run; allocated on first use, one per module */
   MsSpan source; /* the text the tree was parsed from; borrowed */
+  bool missing;  /* a stand-in for a file that does not exist: its import is already reported */
 } MsModuleInfo;
 
 MS_LIST_DEFINE(MsModuleList, ms_module_list, MsModuleInfo)
+
+/* Whether `name` is bound by an import of a file that does not exist (an editor keeps checking past it): the import
+ * is reported once, and the uses of the name are not more mistakes. */
+bool ms_check_imported_from_missing(const struct MsCheckProgram *program, uint32_t module, MsName name);
 
 /* A local the checker declared, in declaration order: what `ms inspect` lists. */
 typedef struct MsLocalRecord {

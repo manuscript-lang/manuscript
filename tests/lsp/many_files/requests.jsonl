@@ -1,0 +1,8 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "initialized", "params": {}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/lib.ms", "languageId": "manuscript", "version": 1, "text": "export fn shared() Int {\n\treturn 7\n}\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/references", "params": {"textDocument": {"uri": "$ROOT_URI/lib.ms"}, "position": {"line": 0, "character": 11}, "context": {"includeDeclaration": true}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/rename", "params": {"textDocument": {"uri": "$ROOT_URI/lib.ms"}, "position": {"line": 0, "character": 11}, "newName": "common"}}
+{"jsonrpc": "2.0", "id": 4, "method": "workspace/symbol", "params": {"query": "use"}}
+{"jsonrpc": "2.0", "id": 5, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/lib.ms"}, "position": {"line": 0, "character": 11}}}
+{"jsonrpc": "2.0", "id": 6, "method": "shutdown"}
