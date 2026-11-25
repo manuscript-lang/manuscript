@@ -1,4 +1,4 @@
-// Independent checksum oracle for bench/language/life.ms (not a performance
+// Independent checksum oracle for bench/perf/language/life.ms (not a performance
 // comparator).
 
 fn main() Int {

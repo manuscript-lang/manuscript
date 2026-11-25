@@ -100,7 +100,7 @@ bench-check: build
 	@for t in $$(find bench/perf -name ms.toml | sort); do \
 		(cd $$(dirname $$t) && "$(MS)" check ms.toml) || exit 1; \
 	done
-	@for f in $$(find bench/perf -name '*.ms' -not -path 'bench/perf/formatter-flow/*' -not -path 'bench/perf/results/*' | sort); do \
+	@for f in $$(find bench/perf -name '*.ms' | sort); do \
 		p=$$(dirname $$f); \
 		while [ $$p != bench/perf ] && [ ! -f $$p/ms.toml ]; do p=$$(dirname $$p); done; \
 		[ -f $$p/ms.toml ] || "$(MS)" check $$f || exit 1; \

@@ -8,7 +8,7 @@
 // repository root, with MS naming the ms to measure (default
 // .artifacts/build/release/src/cli/ms):
 //   ms run bench/tools/perf.ms -- list                    every group, its kind, command and results page
-//   ms run bench/tools/perf.ms -- run <group|time|count|all> [samples]   run groups (default 5 samples)
+//   ms run bench/tools/perf.ms -- run <group|area|time|count|all> [samples]   run groups (default 5 samples)
 //   ms run bench/tools/perf.ms -- check                   the index is complete and its pages exist
 // `make perf-list`, `make perf GROUP=<name> SAMPLES=<n>` and `make perf-check` call these.
 // A `probe` group has no single command: its page holds the protocol.
@@ -53,7 +53,12 @@ fn select(groups List[Group], names List[String]) List[Group]! {
 		var found = false
 
 		for g in groups {
-			if g.name == name or name == "all" or (name == g.kind and name != "probe") {
+			if (
+				g.name == name
+				or name == "all"
+				or name == g.area
+				or (name == g.kind and name != "probe")
+			) {
 				if g.command != "" { picked.append(g.clone()) }
 				found = true
 			}
@@ -98,14 +103,11 @@ fn run_groups(groups List[Group], names List[String], samples Int) Int {
 
 fn check(groups List[Group]) Int {
 	entries := list(PERF).get_or([]).map(e => e.name.clone())
-	investigations := read_text(f"{PERF}/investigations.txt").split("\n").filter(
-		l => l.trim() != "" and not l.starts_with("#")
-	)
-	var problems = layout_problems(groups, investigations, entries)
+	var problems = layout_problems(groups, entries)
 	readme := read_text(f"{PERF}/README.md")
 
 	for g in groups {
-		if g.results != "" and not exists(f"{PERF}/{g.results}") {
+		if g.results != "" and not exists(f"{PERF}/{g.results.split("#")[0]}") {
 			problems.append(f"{g.name}: results page {g.results} is missing")
 		}
 		if not readme.contains(f"`{g.name}`") {
@@ -132,7 +134,7 @@ fn main() Int {
 	if args[0] == "list" { return show(groups) }
 	if args[0] == "check" { return check(groups) }
 	if args[0] != "run" or args.length() < 2 {
-		return usage("usage: perf.ms -- run <group|time|count|all> [samples]")
+		return usage("usage: perf.ms -- run <group|area|time|count|all> [samples]")
 	}
 
 	var samples = 5

@@ -67,7 +67,7 @@ Code removed: about 90 lines in `server.rs` (role, `PARKING`, `give_up_reactor_r
 1. PR 1, `ms-rt`: `spawn_native`, pool 512, tests. Gate: `bench/perf/web` unchanged with the spike patch.
 2. PR 2, server: dispatch via scope tasks for h1 buffered, streaming and h2; delete the handoff and the prepark hook; drain through the scope. Gate: `make verify`, full `cicd.yml` dispatched on the branch (PRs run Linux only), web bench within noise of main, `http-parked-pipeline.ms` unmodified.
 3. PR 3, #1341: kill deadline on the request task, cancel on disconnect, docs, fixtures.
-4. Add a dated section to `bench/perf/web/results.md` with each measurement.
+4. Add a dated section to `bench/perf/results.md#web` with each measurement.
 
 Risks:
 

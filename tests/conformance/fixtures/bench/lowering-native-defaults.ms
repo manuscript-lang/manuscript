@@ -1,6 +1,6 @@
 // conform: tags=closures,diagnostics,lists,modules,optional,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-fs,stdlib-process,stdlib-time,strings,tier-io,try-result
 // conform: phase=check
-// conform: origin=bench/lowering/native-defaults.ms
+// conform: origin=bench/perf/lowering/native-defaults.ms
 import (
 	Bytes from "@std/bytes.ms",
 	Promise from "@std/concurrency/promise.ms",

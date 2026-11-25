@@ -1,6 +1,6 @@
 // conform: tags=control-flow,faults,formatter,modules,mutation,parser,stdlib-faults,tier-stdlib
 // conform: phase=parse
-// conform: origin=bench/lists/repro-cleared-tail.ms
+// conform: origin=bench/perf/lists/repro-cleared-tail.ms
 import panic from "@std/core.ms"
 
 fn main() Void {

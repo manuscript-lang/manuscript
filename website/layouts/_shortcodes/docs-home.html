@@ -34,7 +34,7 @@
     <li class="home-proof-map"><strong>Diagrams and a code map.</strong> <code>ms diagram</code> builds an interactive, offline code map of types, calls and control flow, with a diff overlay for what changed. <a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#interactive-code-map">Code map</a>
       {{ .Page.RenderString "![The code map's Calls tab: the callers and callees of a function beside its source, with the changed declarations listed on the left.](/images/code-map-calls.png \"The code map, Calls tab, with a diff overlay.\")" }}
     </li>
-    <li><strong>Build speed.</strong> A 122,000-line project builds in debug in 5.4 s against 9.0 s for <code>go build</code> (<a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/results-2026-11-05.md">measured 2026-11-05</a>).</li>
+    <li><strong>Build speed.</strong> A 122,000-line project builds in debug in 5.4 s against 9.0 s for <code>go build</code> (<a href="https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/results-2026-11-05.md">measured 2026-11-05</a>).</li>
   </ul>
 </section>
 {{- else if eq $part "status" -}}

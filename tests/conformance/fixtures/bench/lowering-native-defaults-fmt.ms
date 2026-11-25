@@ -1,6 +1,6 @@
 // conform: tags=closures,formatter,lists,modules,optional,parser,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-fs,stdlib-process,stdlib-time,strings,tier-io,try-result
 // conform: phase=parse
-// conform: origin=bench/lowering/native-defaults.ms
+// conform: origin=bench/perf/lowering/native-defaults.ms
 import (
 	Bytes from "@std/bytes.ms",
 	CsvOptions from "@std/data/csv.ms",

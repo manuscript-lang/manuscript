@@ -4,4 +4,4 @@ Resolving `..` removes the last segment of an accumulated URL path. Copying the 
 
 Keep root handling, repeated slashes, escaped dot text and trailing slashes unchanged. The separator search excludes the initial slash, so its offset must be shifted by one when truncating the original buffer. Preserve the existing `first` flag transition when no inner separator remains.
 
-Use [the URL parent benchmark](../../../bench/perf/url-parents/README.md) with increasing depths and one-parent, four-parent, plain-relative and dot-relative controls. Compare exact outputs as well as scaling; do not replace URI semantics with filesystem normalization.
+Use [the URL parent benchmark](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/url-parents/README.md) with increasing depths and one-parent, four-parent, plain-relative and dot-relative controls. Compare exact outputs as well as scaling; do not replace URI semantics with filesystem normalization.

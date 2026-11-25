@@ -1,5 +1,7 @@
-# The performance suite: one line per group, `name | kind | command | results`. This file is the
+# The performance suite: one line per group, `name | area | kind | command | results`. This file is the
 # index `ms run bench/tools/perf.ms` reads (`make perf-list`, `make perf GROUP=<name>`).
+#   area     programs, kernels, operations, io, concurrency, compile or counts: `make perf GROUP=<area>`
+#            runs every timing group of the area
 #   kind     time = wall time or ns per operation, count = instruction or allocation counts,
 #            probe = a dated protocol read from its page (no single command)
 #   command  run from the repository root without a shell; `ms` is $MS (default
@@ -8,32 +10,34 @@
 #            `../` reaches bench/). Add a dated section rather than editing old numbers.
 # Comparisons against C use checked C (overflow and bounds checks on). A group never moves
 # out of this file without its results page and its README entry moving with it.
-suite | time | sh bench/perf/suite/run.sh {n} | suite/results.md
-kernels | time | ms run bench/tools/kernels.ms -- kernels {n} | kernels/README.md
-competence | time | ms run bench/tools/kernels.ms -- competence {n} | competence/README.md
-programs | time | ms run bench/tools/programs.ms -- {n} | programs/results.md
-workloads | time | ms run bench/tools/workloads.ms -- {n} | workloads/results.md
-datastructures | time | ms run bench/tools/datastructures.ms -- {n} | datastructures/results.md
-element-types | time | sh bench/perf/element-types/run.sh {n} | element-types/README.md
-sort-shapes | time | sh bench/perf/sort-shapes/run.sh {n} | sort-shapes/README.md
-stdlib | time | ms run bench/tools/stdlib_bench.ms -- {n} | stdlib/results
-json | time | ms run bench/tools/json_bench.ms | json/results.md
-csv | time | ms run bench/tools/cargo_vs_ms.ms -- csv | csv/README.md
-strappend | time | ms run bench/tools/strappend.ms -- {n} | strappend/README.md
-listloops | time | ms run bench/tools/listloops.ms -- {n} | listloops/README.md
-web | time | ms run bench/tools/web_bench.ms -- run {n} | web/results.md
-tasks | time | ms run bench/perf/tasks/main.ms -- 1000000 sleep | tasks/README.md
-mailbox | time | ms run bench/perf/mailbox/main.ms -- 100000 {n} | mailbox/README.md
-promise-tree | time | ms run bench/perf/promise-tree/main.ms -- tree 36 {n} | promise-tree/README.md
-platform-io | time | ms run bench/tools/platform_io.ms | -
-compile-time | time | ms run bench/tools/compile_time.ms | ../compile-time/results.md
-language | time | ms run bench/tools/language_benchmark.ms | -
-lists | time | ms run bench/tools/lists_native.ms | -
-guards | count | ms run tools/perf-counts.ms | counts.txt
-codecs | probe | - | codecs/README.md
-csv-streams | probe | - | csv-streams/README.md
-streams | probe | - | streams/README.md
-iface | probe | - | iface/README.md
-async-primitives | probe | - | async-primitives/README.md
-wait-all | probe | - | wait-all/README.md
-llvm-release | probe | - | llvm-release.md
+suite | programs | time | sh bench/perf/suite/run.sh {n} | results.md#suite
+kernels | kernels | time | ms run bench/tools/kernels.ms -- kernels {n} | kernels/README.md
+competence | kernels | time | ms run bench/tools/kernels.ms -- competence {n} | competence/README.md
+programs | operations | time | ms run bench/tools/programs.ms -- {n} | results.md#programs
+workloads | programs | time | ms run bench/tools/workloads.ms -- {n} | results.md#workloads
+datastructures | operations | time | ms run bench/tools/datastructures.ms -- {n} | results.md#datastructures
+element-types | operations | time | sh bench/perf/element-types/run.sh {n} | element-types/README.md
+sort-shapes | operations | time | sh bench/perf/sort-shapes/run.sh {n} | sort-shapes/README.md
+stdlib | operations | time | ms run bench/tools/stdlib_bench.ms -- {n} | stdlib/results
+json | io | time | ms run bench/tools/json_bench.ms | results.md#json
+csv | io | time | ms run bench/tools/cargo_vs_ms.ms -- csv | csv/README.md
+strappend | operations | time | ms run bench/tools/strappend.ms -- {n} | strappend/README.md
+listloops | operations | time | ms run bench/tools/listloops.ms -- {n} | listloops/README.md
+web | io | time | ms run bench/tools/web_bench.ms -- run {n} | results.md#web
+tasks | concurrency | time | ms run bench/perf/tasks/main.ms -- 1000000 sleep | tasks/README.md
+mailbox | concurrency | time | ms run bench/perf/mailbox/main.ms -- 100000 {n} | mailbox/README.md
+promise-tree | concurrency | time | ms run bench/perf/promise-tree/main.ms -- tree 36 {n} | promise-tree/README.md
+platform-io | io | time | ms run bench/tools/platform_io.ms | platform_io/main.rs
+compile-time | compile | time | ms run bench/tools/compile_time.ms | compile-time/results.md
+language | kernels | time | ms run bench/tools/language_benchmark.ms | language/calls.ms
+lists | kernels | time | ms run bench/tools/lists_native.ms | lists/program.ms
+guards | counts | count | ms run tools/perf-counts.ms | counts.txt
+codecs | io | probe | - | codecs/README.md
+csv-streams | io | probe | - | csv-streams/README.md
+streams | operations | probe | - | streams/README.md
+iface | operations | probe | - | iface/README.md
+async-primitives | concurrency | probe | - | async-primitives/README.md
+wait-all | concurrency | probe | - | wait-all/README.md
+llvm-release | compile | probe | - | llvm-release.md
+pure-utilities | operations | probe | - | pure-utilities/README.md
+lowering | compile | probe | - | lowering/program.ms

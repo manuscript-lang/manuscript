@@ -61,7 +61,7 @@ Owner direction: Release and MinSizeRel builds use LLVM `-O3`/`-Os`; Debug stays
 
 - No LLVM code exists. `ms-clif` is the only backend; `link.rs` shells out to `cc`, and Windows to `clang` plus `lld`. "Bundled linker" is still planned, not shipped.
 - The build host has LLVM 18 binaries and `clang` but no static libraries (`libLLVM*.a` absent), so linking LLVM into `ms` needs a source build or a prebuilt archive in CI. Neither is wired up.
-- Measured headroom: kernel geometric mean about 1.2x from hand-written C at `-O3` against Cranelift (table above), and the collatz spike was 1.0x. The large Rust gaps in `bench/perf/programs/results.md` (`string_append` 3.7x, `for_list` 3.4x) are runtime and MIR shape; some of `for_list` and `int_eq` is vectorization LLVM would add.
+- Measured headroom: kernel geometric mean about 1.2x from hand-written C at `-O3` against Cranelift (table above), and the collatz spike was 1.0x. The large Rust gaps in `bench/perf/results.md#programs` (`string_append` 3.7x, `for_list` 3.4x) are runtime and MIR shape; some of `for_list` and `int_eq` is vectorization LLVM would add.
 
 ### Plan
 

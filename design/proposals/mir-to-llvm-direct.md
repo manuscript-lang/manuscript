@@ -62,7 +62,7 @@ MIR -> mir_llvm         -> LLVM IR text -> opt/llc   (release; new)
 
 - `opt -verify` on every emitted unit; the conformance corpus and `bench/perf` kernels run with the flag on and compared to the flag off (output and exit code).
 - One golden fixture per fact (stage 3): the attribute is present, and a missed case is not given it.
-- Cost check per stage: IR lines and release build time for the yaml program, recorded in `bench/compile-time/`.
+- Cost check per stage: IR lines and release build time for the yaml program, recorded in `bench/perf/compile-time/`.
 - Linux, macOS and Windows stay at parity; no gating. Windows and macOS CI is dispatched on the branch before any stage is called done.
 
 ## Builder: in-house, no inkwell (Chinmay, 2026-11-13)

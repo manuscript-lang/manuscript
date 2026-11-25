@@ -8,4 +8,4 @@ A monolithic module through one optimizer and one code generator took 350 s for 
 - Cost: no inlining across units, and each unit parses the whole debug metadata. A function reached only from another unit stays a call.
 - What remains serial is the single largest function and the metadata parse.
 
-Evidence: `bench/compile-time/README.md` (2026-11-03 section), `src/compiler/emit/emit_units.c`, `src/cli/pipeline.c`.
+Evidence: `bench/perf/compile-time/README.md` (2026-11-03 section), `src/compiler/emit/emit_units.c`, `src/cli/pipeline.c`.
