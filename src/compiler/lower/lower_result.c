@@ -22,7 +22,8 @@ static MirValue build_case(LowerFn *fn, uint32_t alt, uint32_t which, MirValue p
   if (payload == MIR_NONE && has_field) {
     payload = mir_b_unit(&fn->b);
   }
-  return fn_emit(fn, MOP_AltNew, &payload, payload == MIR_NONE ? 0 : 1, imm, ty);
+  const bool view = has_field && (fn->cx->module->alts.ptr[alt].borrowed >> which & 1u) != 0;
+  return fn_emit(fn, view ? MOP_AltView : MOP_AltNew, &payload, payload == MIR_NONE ? 0 : 1, imm, ty);
 }
 
 /* Whether the end of the body may be reached: a function that returns a value has returned on every path the
@@ -36,6 +37,106 @@ bool fn_end_is_reachable(LowerFn *fn) {
     return ok->nfields == 0 || ok->fields[0].ty == MIR_VOID;
   }
   return fn->ret == MIR_VOID || fn->decl_void || mir_ty_data(fn->cx->module, fn->ret)->kind == MK_OPT;
+}
+
+/* A call's borrowing-variant result is read as the ordinary Result, a borrow of the variant its scope owns. */
+MirValue fn_view_as_plain(LowerFn *fn, MirValue result, MirTy plain) {
+  if (result == MIR_NONE || mir_b_ty(&fn->b, result) == plain || mir_ty_data(fn->cx->module, plain)->kind != MK_ALT ||
+      fn->cx->module->alts.ptr[mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, result))->id].borrowed == 0) {
+    return result;
+  }
+  const MirValue read = mir_b_emit(&fn->b, MOP_AltPlain, &result, 1, (MirImm){0}, plain);
+  if (fn->nviewed < MS_COUNT_OF(fn->viewed)) {
+    fn->viewed[fn->nviewed].plain = read;
+    fn->viewed[fn->nviewed++].owner = result;
+  }
+  return read;
+}
+
+/* Whether the function returns a borrowing variant of Result (`&T!`). */
+bool fn_returns_view(const LowerFn *fn) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, fn->ret);
+  return data->kind == MK_ALT && fn->cx->module->alts.ptr[data->id].borrowed != 0 &&
+         fn->cx->module->alts.ptr[data->id].std == MSTD_RESULT;
+}
+
+/* A Result some other owner keeps, read as the borrowing variant: the `ok` payload stays where it is, and an error is
+ * copied because the variant owns its error. */
+static MirValue fn_view_of_result(LowerFn *fn, MirValue plain) {
+  uint32_t alt = 0;
+  uint32_t source = 0;
+  if (plain == MIR_NONE || result_def(fn, fn->ret, &alt) == NULL || result_def(fn, mir_b_ty(&fn->b, plain), &source) == NULL) {
+    (void)fn_fail(fn, "a `&` Result result must be built with `ok(part)` or `error(e)`, or be a Result held by an argument");
+    return MIR_NONE;
+  }
+  const MirModule *module = fn->cx->module;
+  const MirTy ok_ty = module->alts.ptr[source].cases[OK_CASE].nfields > 0 ? module->alts.ptr[source].cases[OK_CASE].fields[0].ty : MIR_VOID;
+  const MirTy err_ty = module->alts.ptr[source].cases[ERR_CASE].nfields > 0 ? module->alts.ptr[source].cases[ERR_CASE].fields[0].ty : MIR_VOID;
+  const MirValue tag = mir_b_emit(&fn->b, MOP_AltTag, &plain, 1, (MirImm){0}, MIR_INT);
+  const MirValue is_ok = mir_b_icmp(&fn->b, MCC_EQ, tag, mir_b_iconst(&fn->b, OK_CASE));
+  const MirBlock ok_block = mir_b_new_block(&fn->b);
+  const MirBlock err_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue joined = mir_b_add_block_param(&fn->b, join, fn->ret, MM_MOVE);
+  mir_b_br_if(&fn->b, is_ok, ok_block, NULL, 0, err_block, NULL, 0);
+  mir_b_seal_block(&fn->b, ok_block);
+  mir_b_seal_block(&fn->b, err_block);
+  mir_b_switch_to(&fn->b, ok_block);
+  const MirImm ok_imm = {.tag = MI_ALTFIELD, .a = source, .b = OK_CASE, .c = 0};
+  const MirValue payload = ok_ty == MIR_VOID ? MIR_NONE : fn_emit(fn, MOP_AltGet, &plain, 1, ok_imm, ok_ty);
+  const MirValue viewed = build_case(fn, alt, OK_CASE, payload, fn->ret);
+  mir_b_br(&fn->b, join, &viewed, 1);
+  mir_b_switch_to(&fn->b, err_block);
+  const MirImm err_imm = {.tag = MI_ALTFIELD, .a = source, .b = ERR_CASE, .c = 0};
+  MirValue err = err_ty == MIR_VOID ? MIR_NONE : fn_emit(fn, MOP_AltGet, &plain, 1, err_imm, err_ty);
+  if (err != MIR_NONE && mir_needs_drop(module, err_ty)) {
+    err = fn_implicit_clone(fn, err, false);
+  }
+  const MirValue failed = build_case(fn, alt, ERR_CASE, err, fn->ret);
+  mir_b_br(&fn->b, join, &failed, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return joined;
+}
+
+/* `return ok(part)`, `return error(e)` or `return call()` in a function that returns a borrowing variant: the `ok`
+ * payload is borrowed from where it is read, an error is owned, and a forwarded call hands its variant on. False when
+ * the expression is none of these. */
+bool fn_return_view(LowerFn *fn, const MsExpr *expr, MirValue *out) {
+  const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(fn->facts, expr->id) : NULL;
+  if (fn->default_exit != NULL) {
+    return false;
+  }
+  if (call != NULL && call->callee.kind == MS_REF_CASE && call->arg_count == 1 && expr->u.call.args.len == 1) {
+    const uint32_t which = call->callee.index == OK_CASE ? OK_CASE : ERR_CASE;
+    const MsExpr *written = expr->u.call.args.ptr[0].value;
+    const MirValue payload = fn_expr(fn, written, which == OK_CASE ? LW_BORROW : LW_MOVE);
+    if (payload == MIR_NONE) {
+      *out = MIR_NONE;
+      return true;
+    }
+    uint32_t alt = 0;
+    (void)result_def(fn, fn->ret, &alt);
+    *out = build_case(fn, alt, which, payload, fn->ret);
+    return true;
+  }
+  const MirValue handed = fn_expr(fn, expr, LW_BORROW);
+  const MirValue owner = fn_view_owner(fn, handed);
+  if (owner != MIR_NONE) {
+    *out = owner;
+    return true;
+  }
+  *out = fn_view_of_result(fn, handed);
+  return true;
+}
+
+MirValue fn_view_owner(const LowerFn *fn, MirValue value) {
+  for (uint32_t index = 0; index < fn->nviewed; index++) {
+    if (fn->viewed[index].plain == value) {
+      return fn->viewed[index].owner;
+    }
+  }
+  return MIR_NONE;
 }
 
 MirValue fn_result_wrap(LowerFn *fn, MirValue value) {

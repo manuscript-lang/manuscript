@@ -745,8 +745,9 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, CallBufs *bufs) {
   if (!fn_adapt_function_args(fn, func, call, args)) {
     return MIR_NONE;
   }
-  const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
+  MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
   fn_own_result(fn, result);
+  result = fn_view_as_plain(fn, result, ret);
   return fn_var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
 }
 

@@ -657,7 +657,12 @@ static MirValue view_return(LowerFn *fn, const MsExpr *expr) {
 
 static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
-  if (stmt->u.expr != NULL) {
+  if (stmt->u.expr != NULL && fn_returns_view(fn) && fn_return_view(fn, stmt->u.expr, &value)) {
+    if (fn->terminated || value == MIR_NONE) {
+      return !fn->failed;
+    }
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  } else if (stmt->u.expr != NULL) {
     value = fn->returns_borrow ? fn_expr(fn, stmt->u.expr, LW_BORROW) : fn->returns_view ? view_return(fn, stmt->u.expr) : take_value(fn, stmt->u.expr);
     if (fn->terminated) { /* the expression never returns: `return panic(...)` */
       return !fn->failed;

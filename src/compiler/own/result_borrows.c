@@ -59,6 +59,7 @@ typedef struct Pass {
   MsNode self_node;
   uint32_t self_module;
   bool method;
+  bool call_views; /* the function answers a `&` result: a name bound from a call is a view of what the call borrows */
   bool look_receiver; /* the method's receiver is a look record: a `&` result keeps its sources, not the receiver */
   MsName self_name;
   const MsTy *written; /* by node of this module: the type a written type resolved to (MS_TY_NONE, which is 0, if none) */
@@ -106,7 +107,9 @@ static void view_stmt(void *ctx, const MsStmt *stmt) {
       add_view(pass, ref->local, stmt->u.each.iter);
     }
   } else if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME &&
-             (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER) &&
+             (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER ||
+              (pass->call_views && (stmt->u.bind.value->kind == MS_E_CALL ||
+                                    (stmt->u.bind.value->kind == MS_E_UNARY && stmt->u.bind.value->op == MS_U_TRY)))) &&
              /* a field read the callable moves out (`old := self.f; self.f = g`) is owned by the name, not viewed */
              !(stmt->u.bind.value->kind == MS_E_MEMBER && ms_facts_use(pass->facts, stmt->u.bind.value->id) == MS_USE_MOVE)) {
     const MsRef *ref = ms_facts_ref(pass->facts, stmt->u.bind.pattern->id);
@@ -549,6 +552,7 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
         pass.method = false;
+        pass.call_views = has_ref(decl->u.fn.result);
         pass.self_node = decl->id;
         if (!report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result)) {
           report_declared(&pass, module, decl->pos, &decl->u.fn, NULL);
@@ -557,6 +561,7 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
+        pass.call_views = has_ref(method->func.result);
         pass.look_receiver = pass.written != NULL && ms_own_look_record(program, written_type(&pass, decl->u.impl.receiver));
         pass.self_node = method->id;
         if (!report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result)) {
@@ -587,12 +592,14 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes, MsTy *const
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
         pass.method = false;
+        pass.call_views = has_ref(decl->u.fn.result);
         pass.self_node = decl->id;
         changed |= store(facts, decl->id, declared_mask(&pass, &decl->u.fn, NULL));
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
+        pass.call_views = has_ref(method->func.result);
         pass.look_receiver = pass.written != NULL && ms_own_look_record(program, written_type(&pass, decl->u.impl.receiver));
         pass.self_node = method->id;
         changed |= store(facts, method->id, declared_mask(&pass, &method->func, method));
