@@ -116,6 +116,7 @@ Additive: no existing program holds a `&` field. `references.md` line "a type ca
 
 ## Stages
 
+0. `&` becomes a checker type. Today `&T` is only the `is_ref` flag on the AST type (`ast.h:61`), read by `own/result_borrows.c`; the checker's types do not carry it (verified: `grep is_ref src`). Add a look flag to the interned type, so `ms_ty_kind` and the member, call and assignment rules see through it and only the ownership, escape and lowering rules read it. A wrapper kind instead adds a case to about 70 `MS_TY_*` switches. `&String` is accepted where a read-only `String` is. Gate: `ctest`, conformance unchanged, check fixtures for `List[&String]`.
 1. `&` in field types with its escape rules together (a field with no tie would dangle): parse, check, fmt, lowering without copy, glue skip, construction ties, `hold` on a look. Gate: reject fixtures for reassigning a look (`c = b.iter()` then changing the old source), a look beside a `var` argument over its source, a temporary source, closure capture, pipe send, `Promise` of a look, `close()` of a frozen source; leak check.
 2. Iterators: `Cursor`, `iter()`, `Iterator[&T]` through `for`; a stdlib type implements `Iterator[&T]`. Gate: conformance, a `bench/perf` list walk.
 3. Interface looks: borrowed results through the interface-view wrapper. Gate: e2e with an interface-typed helper.
