@@ -97,11 +97,11 @@ export fn summarize(lines List[String], repeats Int) String! {
 		}
 
 		key := f"{version} {name}"
-		var list = samples.get_or(key, List[Float]())
+		var list = samples.get_or(key, List[Float]()).clone()
 		list.append(elapsed.to_float() / count.to_float())
 		samples.add(key.clone(), list)
 
-		var seen_ops = pending.get_or(version, Set[String]())
+		var seen_ops = pending.get_or(version, Set[String]()).clone()
 		seen_ops.add(name.clone())
 		pending.add(version.clone(), seen_ops)
 	}

@@ -24,7 +24,7 @@ fn text(tree FileTree, path String) String {
 }
 
 fn field(item Case, key String) String {
-	return item.fields.get_or(key, "")
+	return item.fields.get_or(key, "").clone()
 }
 
 fn flag(item Case, key String) Bool {

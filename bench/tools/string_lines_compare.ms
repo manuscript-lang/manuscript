@@ -175,7 +175,7 @@ fn compare(
 				csv.append(f"{pair},{variant},{row.line}")
 
 				key := f"{row.name} {variant}"
-				var list = per.get_or(key, [])
+				var list = per.get_or(key, []).clone()
 				list.append(row.elapsed_ns.to_float() / row.iterations.to_float())
 				per.add(key.clone(), list)
 			}

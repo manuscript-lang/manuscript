@@ -786,9 +786,12 @@ fn Map[T Hashable & Clonable, U Clonable].map_keys[W Hashable](
 	return out
 }
 
-// Returns the stored value, or `fallback` when the key is absent. The fallback is
-// always evaluated, and the map is not changed.
-fn Map[T Hashable, U Clonable].get_or(key T, fallback U) U { ... }
+// Returns the stored value, or `fallback` when the key is absent, as a view of
+// whichever it is. The fallback is always evaluated, and the map is not changed. Use
+// `.clone()` to keep the result.
+fn hold Map[T Hashable, U].get_or(key T, hold fallback U) &U {
+	return self.get(key) or fallback
+}
 
 // Returns the first entry for which `predicate` is true as a new `MapEntry` holding
 // copies of the key and value, or `null`.

@@ -343,15 +343,11 @@ static bool thread_func(Ut *t) {
   return changed;
 }
 
+static bool thread_one(MirModule *m, MirFunc *f) {
+  Ut t = {.m = m, .f = f, .resume = MS_NAME_EMPTY};
+  return ms_names_find(&m->names, ms_span_of_text("msrt_unwinding_resume"), &t.resume) && thread_func(&t);
+}
+
 bool opt_unwind_thread(MirModule *m) {
-  Ut t = {.m = m, .resume = MS_NAME_EMPTY};
-  if (!ms_names_find(&m->names, ms_span_of_text("msrt_unwinding_resume"), &t.resume)) {
-    return false;
-  }
-  bool changed = false;
-  for (size_t fi = 0; fi < m->funcs.len; fi++) {
-    t.f = &m->funcs.ptr[fi];
-    changed = thread_func(&t) || changed;
-  }
-  return changed;
+  return opt_each_func(m, thread_one);
 }

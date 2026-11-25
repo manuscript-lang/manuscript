@@ -10,7 +10,7 @@
 /* The passes from lowered MIR to a finished module; `glue` and `data` are the caller's to free. */
 static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue *glue, MirData *data,
                        MsStrBuild *why) {
-  const MirPipelineOptions pipeline = {.verify = options->verify, .checks = true,
+  const MirPipelineOptions pipeline = {.verify = options->verify, .verify_final = options->verify_final, .checks = true,
                                        .count_ops = options->count_ops};
   if (!mir_pipeline_prepare(module, &pipeline, why)) {
     return false;

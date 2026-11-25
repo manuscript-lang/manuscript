@@ -111,7 +111,7 @@ fn run(opts Map[String, String], runs Int) Result[String, Error] {
 				execute(f"{out}/{name}-{label}", cpu)?
 
 				elapsed := (now_ns() - start).to_float() / 1000000000.0
-				var list = samples.get_or(label, [])
+				var list = samples.get_or(label, []).clone()
 				list.append(elapsed)
 				samples.add(label.clone(), list)
 				(
