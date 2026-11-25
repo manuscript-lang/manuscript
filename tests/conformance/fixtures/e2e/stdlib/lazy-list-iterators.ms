@@ -26,8 +26,8 @@ test "a filter yields borrowed items and clones nothing" {
 	expect_equal(total, 7)?
 }
 
-test "filter_owned keeps owned items produced by map" {
+test "filter keeps owned items produced by map" {
 	words := ["a", "bb", "ccc", "dd"]
-	kept := words.iter().seq().map(w => w + "!").filter_owned(w => w.length() > 2).collect()
+	kept := words.iter().seq().map(w => w + "!").filter(w => w.length() > 2).collect()
 	expect_equal(kept, ["bb!", "ccc!", "dd!"])?
 }

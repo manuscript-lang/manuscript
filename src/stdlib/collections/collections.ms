@@ -1297,6 +1297,6 @@ fn var Kept[I Iterator[T], T].next() T? {
 
 // Yields the items of an owning source (after `map`) for which `keep` is true; nothing
 // is copied.
-fn move Seq[I Iterator[T], T].filter_owned(keep fn(T) Bool) Seq[Kept[I, T], T] {
+fn move Seq[I Iterator[T], T].filter(keep fn(T) Bool) Seq[Kept[I, T], T] {
 	return Seq[Kept[I, T], T](Kept[I, T](self.source, keep))
 }

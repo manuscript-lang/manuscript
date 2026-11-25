@@ -251,7 +251,7 @@ static bool same_bounds(MsCheckProgram *program, MsTy mine, MsTy theirs, const M
                         size_t count) {
   const MsTyVariable *a = ms_ty_variable(&program->types, mine);
   const MsTyVariable *b = ms_ty_variable(&program->types, theirs);
-  if (a->bounds.len != b->bounds.len) {
+  if (a->bounds.len != b->bounds.len || a->lends != b->lends) {
     return false;
   }
   for (size_t index = 0; index < a->bounds.len; index++) {
@@ -707,6 +707,34 @@ static void find_in_contract(MsCheckProgram *program, MsTy contract, MsName name
       .operation = operation});
 }
 
+static bool has_lends(MsCheckProgram *program, const MsMethodEntry *entry) {
+  for (uint32_t at = 0; at < entry->shared; at++) {
+    if (ms_ty_variable(&program->types, entry->variables.ptr[at])->lends != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* A lending source fits both the form written for lending iterators and the one for owning ones; the first is the
+ * more specific, so it alone answers (`Seq.filter` borrows from a borrowing source and keeps what an owning one yields). */
+static void prefer_lending(MsCheckProgram *program, MsMethodMatchList *out, size_t first) {
+  bool lending = false;
+  for (size_t at = first; at < out->len; at++) {
+    lending |= has_lends(program, out->ptr[at].entry);
+  }
+  if (!lending) {
+    return;
+  }
+  size_t kept = first;
+  for (size_t at = first; at < out->len; at++) {
+    if (has_lends(program, out->ptr[at].entry)) {
+      out->ptr[kept++] = out->ptr[at];
+    }
+  }
+  out->len = kept;
+}
+
 void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out) {
   const MsTyKind kind = ms_ty_kind(&program->types, receiver);
   if (kind == MS_TY_CONTRACT) {
@@ -725,6 +753,7 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
     return;
   }
   const MsMethodKeyList *named = &program->method_index.by_name;
+  const size_t first = out->len;
   for (size_t slot = lower_bound(named, name); slot < named->len && named->ptr[slot].key == name; slot++) {
     const MsMethodEntry *entry = &program->methods.ptr[named->ptr[slot].entry];
     MsTyList bound = {0};
@@ -741,5 +770,6 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
     }
     ms_ty_list_free(&bound);
   }
+  prefer_lending(program, out, first);
   ms_check_find_native(program, receiver, name, out);
 }

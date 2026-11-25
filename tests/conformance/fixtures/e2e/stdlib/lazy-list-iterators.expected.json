@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "lazy-list-iterators.ms::filter_owned keeps owned items produced by map",
+          "name": "lazy-list-iterators.ms::filter keeps owned items produced by map",
           "status": "passed"
         }
       ],
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN lazy-list-iterators.ms::a mapped walk makes no list until collect\nPASS lazy-list-iterators.ms::a mapped walk makes no list until collect\nRUN lazy-list-iterators.ms::mapped items can be strings\nPASS lazy-list-iterators.ms::mapped items can be strings\nRUN lazy-list-iterators.ms::a filter yields borrowed items and clones nothing\nPASS lazy-list-iterators.ms::a filter yields borrowed items and clones nothing\nRUN lazy-list-iterators.ms::filter_owned keeps owned items produced by map\nPASS lazy-list-iterators.ms::filter_owned keeps owned items produced by map\n4 tests, 0 failed\n",
+      "stdout": "RUN lazy-list-iterators.ms::a mapped walk makes no list until collect\nPASS lazy-list-iterators.ms::a mapped walk makes no list until collect\nRUN lazy-list-iterators.ms::mapped items can be strings\nPASS lazy-list-iterators.ms::mapped items can be strings\nRUN lazy-list-iterators.ms::a filter yields borrowed items and clones nothing\nPASS lazy-list-iterators.ms::a filter yields borrowed items and clones nothing\nRUN lazy-list-iterators.ms::filter keeps owned items produced by map\nPASS lazy-list-iterators.ms::filter keeps owned items produced by map\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
