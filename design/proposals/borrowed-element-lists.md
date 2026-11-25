@@ -75,3 +75,20 @@ An element of `List[&T]` has the layout of a `T` and is a bitwise copy of the ow
 
 - Is `.clone()` of an element into a `List[&T]` rejected (recommended: yes, nothing frees it)?
 - Do `sort`/`reverse` stay allowed on a borrowed list (recommended: yes)?
+
+## Revision 2026-11-25 (after borrowed-type-arguments stage 1b)
+
+`&T` is now a checker type argument ([borrowed-type-arguments](borrowed-type-arguments.md)): `List[&String]` is `List[Ref[String]]` in the checker, and the facts the review found missing exist. What it changes here:
+
+- **Written types reach lowering.** `apply_subst` currently unrefs everything. Keep the `Ref` on a list's element argument only: `lower_types.c` maps `List[Ref[T]]` to a list MIR type with `borrowed` set (two interned types, one layout), and still unrefs everywhere else.
+- **Append without clone.** The checker types `out.append(x)` on the value `T`, so the clone is chosen in lowering (`lower_native_list.c`): when the receiver's list type is borrowed, `append`, `insert` and `set` store the element bitwise and do not clone. The ownership pass already treats the call as a store of a look when the receiver is a look-holding binding (`look_stores.c`); the list variable's sources are the elements' owners.
+- **Borrowed `collect()`.** `Seq[I Iterator[&T], &T].collect()` returns `List[&T]` (no `Clonable` bound) and its result is tied to the source by `hold`.
+- **Per-operation rules** (answers to the review): `clone` of a borrowed list is rejected; `pop`, `remove`, `take` and a consuming `for` yield borrows, never moves; `sort`, `reverse`, `slice` stay allowed; drop frees the buffer only; descriptor, clone and shape-table entries are keyed by the interned borrowed type, so they exist only when used.
+
+Open: which MIR consumers read the list type by id and need the second type (verifier, glue, layouts, shape tables). That inventory is the first task of stage 2 and decides go or no-go.
+
+### Skeptical review of the revision (2026-11-25): conditional no-go as a patch
+
+- The MIR side is feasible but wide: about 25 files and 40 functions. "Does the list own its elements" is derived from `elem` at about 22 `mir_needs_drop` sites (glue, descriptors, shape tables, `for`, fusion, sort), so each needs a `list_owns_elems` predicate; runtime natives that take an `ElemDesc` (`insert`, non-plain `set`, `remove`, `clear`) need a no-drop element descriptor; the verifier needs a `list.view` cast.
+- Soundness blocker in the checker: `ms_ty_shape` ignores borrows, so a `List[&String]` is assignable to a `List[String]` field, binding, `move` or `var` parameter or owned return, and the new owner drops borrowed elements (double free). `pop`, `remove` and a consuming `for` are typed `T`, so the receiver binds an owned value. Generic stdlib instances see `T = String`, so `list<String>` bodies receive a borrowed list. Required first: the checker must keep a borrowed list distinct wherever ownership transfers (shape for move, var, field, return), and `T? ` of a borrowed list's `pop` must be a borrow.
+- Verdict: stage 2 is a multi-day change, not a spike, and lazy `List.map`/`List.filter` does not need it (owned items flow through `Seq`, `collect` clones). Order: finish lazy `List.map`/`filter` first; take stage 2 up as its own PR with the checker change first.
