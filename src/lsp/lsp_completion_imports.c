@@ -114,9 +114,13 @@ static void offer_importable(Completer *c, const Importable *item) {
   ms_strbuild_append_text(&statement, " from \"");
   ms_strbuild_append(&statement, path);
   ms_strbuild_append_byte(&statement, '"');
-  LspPosition at;
+  if (!c->has_import_site) {
+    c->import_site = lsp_import_site(c->source, c->tree);
+    c->has_import_site = true;
+  }
+  const LspPosition at = c->import_site.at;
   MsStrBuild inserted = ms_strbuild_new();
-  lsp_import_insertion(c->source, c->tree, ms_strbuild_span(&statement), &at, &inserted);
+  lsp_import_text(&c->import_site, ms_strbuild_span(&statement), &inserted);
   MsStrBuild edit = ms_strbuild_new();
   ms_strbuild_printf(&edit, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"newText\":", at.line,
                      at.character, at.line, at.character);

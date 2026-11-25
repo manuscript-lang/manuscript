@@ -88,3 +88,4 @@ Perf benchmarks, profiling.
 - [A per-declaration lookup must not walk the module or the source text](per-declaration-scans-must-not-walk-the-module.md): `ms lint` of 4000 types 1117 to 88 ms; a line-offset table and a definition lookup replaced two per-declaration scans.
 - [A long function must cost time and memory linear in its size](long-functions-must-not-cost-blocks-times-values.md): 4000-statement `emit --opt` 5.8 s and 500 MB to 2.1 s and 116 MB; dominators, dominance queries, shared exits and a per-block bit set were quadratic.
 - [LSP passes find positions through a line index](lsp-positions-come-from-a-line-index.md): semantic tokens of a 26k-line file 26 s to 98 ms, outline 913 to 19 ms; a line table and a kind table by offset replaced per-token scans.
+- [Completion finds the import spot once per request](completion-finds-the-import-spot-once.md): completion on a 5,700-line file 265 to 85 ms; the per-offer document scan became one scan.

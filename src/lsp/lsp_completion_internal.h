@@ -2,6 +2,7 @@
 #ifndef MS_CLI_LSP_COMPLETION_INTERNAL_H
 #define MS_CLI_LSP_COMPLETION_INTERNAL_H
 
+#include "lsp/lsp_actions.h"
 #include "lsp/lsp_analysis.h"
 #include "compiler/check/scope_walk.h"
 #include "lsp/lsp_internal.h"
@@ -30,6 +31,8 @@ typedef struct Completer {
   MsNode left; /* the receiver of the member being completed */
   bool has_left;
   ItemList items;
+  LspImportSite import_site; /* where an import goes, found on the first import offered */
+  bool has_import_site;
 } Completer;
 
 static inline bool is_word(uint8_t byte) {

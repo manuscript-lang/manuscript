@@ -337,8 +337,9 @@ static void organize_imports(Actions *actions, const MsModule *module) {
 
 /* ---- add an import ---- */
 
-/* Where `statement` goes: after the leading run of imports, else after a file header of comments ending in a blank line. */
-void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statement, LspPosition *at, MsStrBuild *text) {
+/* Where an import goes: after the leading run of imports, else after a file header of comments ending in a blank line. */
+LspImportSite lsp_import_site(MsSpan source, const MsModule *module) {
+  LspImportSite site = {0};
   size_t line_count = 0;
   for (size_t i = 0; i < source.len; i++) line_count += source.ptr[i] == '\n';
   if (source.len > 0 && source.ptr[source.len - 1] != '\n') line_count++;
@@ -352,7 +353,7 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
   size_t *ends = module != NULL ? import_end_lines(source, module, line_count) : NULL;
   bool crlf = false;
   for (size_t i = 1; i < source.len; i++) crlf |= source.ptr[i] == '\n' && source.ptr[i - 1] == '\r';
-  const char *newline = crlf ? "\r\n" : "\n";
+  site.newline = crlf ? "\r\n" : "\n";
   size_t index = 0;
   bool have_last = false;
   size_t last = 0;
@@ -369,9 +370,8 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
     }
   }
   if (have_last) {
-    *at = lsp_position(source, starts[last + 1]);
-    const bool missing = starts[last + 1] > starts[last] && source.ptr[starts[last + 1] - 1] != '\n';
-    if (missing) ms_strbuild_append_text(text, newline);
+    site.at = lsp_position(source, starts[last + 1]);
+    site.break_first = starts[last + 1] > starts[last] && source.ptr[starts[last + 1] - 1] != '\n';
   } else {
     /* A file header: comment lines followed by a blank line. */
     size_t offset = 0, comments = 0, header = 0;
@@ -390,12 +390,24 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
         break;
       }
     }
-    *at = lsp_position(source, header);
+    site.at = lsp_position(source, header);
   }
-  ms_strbuild_append(text, statement);
-  ms_strbuild_append_text(text, newline);
   free(ends);
   free(starts);
+  return site;
+}
+
+/* The text that inserts `statement` at the site. */
+void lsp_import_text(const LspImportSite *site, MsSpan statement, MsStrBuild *text) {
+  if (site->break_first) ms_strbuild_append_text(text, site->newline);
+  ms_strbuild_append(text, statement);
+  ms_strbuild_append_text(text, site->newline);
+}
+
+void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statement, LspPosition *at, MsStrBuild *text) {
+  const LspImportSite site = lsp_import_site(source, module);
+  *at = site.at;
+  lsp_import_text(&site, statement, text);
 }
 
 /* The name an `unknown binding NAME` or `unknown type NAME` diagnostic is about. */
