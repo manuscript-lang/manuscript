@@ -254,7 +254,9 @@ static void stack_check(EmitCx *cx, const MirInst *inst) {
   uint32_t number = cx->next++;
   ms_strbuild_printf(out, "  %%f%u = call ptr @llvm.frameaddress.p0(i32 0)\n  %%sp%u = ptrtoint ptr %%f%u to i64\n",
                      number, number, number);
-  ms_strbuild_printf(out, "  %%sm%u = and i64 %%sp%u, %lld\n  %%c%u = add i64 %%sm%u, %lld\n", number, number,
+  /* An empty asm hides the frame address's low bits from the compiler (see emit_unwinding_address). */
+  ms_strbuild_printf(out, "  %%so%u = call i64 asm \"\", \"=r,0\"(i64 %%sp%u)\n", number, number);
+  ms_strbuild_printf(out, "  %%sm%u = and i64 %%so%u, %lld\n  %%c%u = add i64 %%sm%u, %lld\n", number, number,
                      -(long long)MS_STACK_REGION, number, number,
                      (long long)(MS_STACK_REGION - MS_STACK_CELL_LIMIT));
   ms_strbuild_printf(out, "  %%l%up = inttoptr i64 %%c%u to ptr\n  %%l%u = load i64, ptr %%l%up\n", number, number,
