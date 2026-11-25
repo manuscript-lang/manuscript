@@ -88,14 +88,17 @@ fn cancel_accept_within(address String, ns Int) Void {
 
 // A limit short enough to pass while the work is still binding: the wait returns only
 // once the socket the work bound is closed, so the address binds again every time.
-fn rebinds_lost_to_early_cancels(address String) Int {
+// The TCP and the datagram checks each use an address of their own, taken from the kernel
+// for that protocol: a port the datagram bind got may be one of the client ports an earlier
+// connection left in TIME_WAIT, which no TCP listener can bind.
+fn rebinds_lost_to_early_cancels(datagram_address, stream_address String) Int {
 	var lost = 0
 
 	for round in 0..300 {
-		cancel_receive_within(address.clone(), 1000 + round * 300)
-		if rebound_datagram(address.clone()) == 0 { lost += 1 }
-		cancel_accept_within(address.clone(), 1000 + round * 300)
-		if rebound(address.clone()) == 0 { lost += 1 }
+		cancel_receive_within(datagram_address.clone(), 1000 + round * 300)
+		if rebound_datagram(datagram_address.clone()) == 0 { lost += 1 }
+		cancel_accept_within(stream_address.clone(), 1000 + round * 300)
+		if rebound(stream_address.clone()) == 0 { lost += 1 }
 	}
 
 	return lost
@@ -134,6 +137,9 @@ fn main() Void {
 			f"closed datagram socket rebound: {rebound_datagram(udp_address.clone())}\n"
 		).get()
 	)
+	var probe = listen("127.0.0.1:0").get()
+	stream_address := probe.address().clone()
+	void probe.close()
 	cancel_receive(udp_address.clone())
 	(
 		stdout().write(
@@ -143,7 +149,7 @@ fn main() Void {
 	(
 		stdout()
 		.write(
-			f"rebinds lost to a cancel during the bind: {rebinds_lost_to_early_cancels(udp_address.clone())}\n"
+			f"rebinds lost to a cancel during the bind: {rebinds_lost_to_early_cancels(udp_address.clone(), stream_address.clone())}\n"
 		)
 		.get()
 	)
