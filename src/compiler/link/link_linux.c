@@ -1,4 +1,5 @@
 /* The Linux link: glibc 2.28 stand-ins, or static musl (see link.h). */
+#include <stdlib.h>
 #include "base/path.h"
 #include "compiler/link/glibc_stubs.h"
 #include "compiler/link/link_job.h"
@@ -25,8 +26,9 @@ static void push_common(LinkJob *job) {
     link_job_push_text(job, "--strip-all");
   }
   if (options->quick) {
-    link_job_push_text(job, "-O0");
-    link_job_push_text(job, "--threads=1");
+    const char *only = getenv("MS_LINK_ONLY"); /* probe */
+    if (only == NULL || only[0] == 'o') link_job_push_text(job, "-O0");
+    if (only == NULL || only[0] == 't') link_job_push_text(job, "--threads=1");
   }
   if (options->musl) {
     link_job_push_text(job, "-static");
