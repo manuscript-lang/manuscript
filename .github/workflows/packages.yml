@@ -16,13 +16,17 @@ jobs:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
+    # A step's `shell` cannot be an expression; the job default can (Windows builds inside the MSYS2 shell).
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {os: linux, runner: ubuntu-24.04, arch: amd64}
-          - {os: darwin, runner: macos-15, arch: arm64}
-          - {os: windows, runner: windows-2025, arch: amd64}
+          - {os: linux, runner: ubuntu-24.04, arch: amd64, shell: bash}
+          - {os: darwin, runner: macos-15, arch: arm64, shell: bash}
+          - {os: windows, runner: windows-2025, arch: amd64, shell: 'msys2 {0}'}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -33,7 +37,6 @@ jobs:
         shell: bash
         run: brew install postgresql@16
       - name: Build ms
-        shell: ${{ matrix.os == 'windows' && 'msys2 {0}' || 'bash' }}
         run: |
           cmake --preset release
           cmake --build --preset release
