@@ -49,6 +49,7 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 - **Fuzz**: `tools/conform fuzz-gen` runs in the gate with the committed seeds and checks the same properties; generated programs are not stored.
 - **Names**: harvested `golden-NNNN` cases are grouped by diagnostic code into one file per code, one case per `// ---` separated block, each with a title line. Duplicates (378 sources) are dropped when the expectations match.
 - **Layout**: `tests/lang/` (accept, stdlib, projects, run and test phases), `tests/diagnostics/` (reject and golden, by code), `tests/format/`, `tests/lsp/`, `tests/docs/`. The gate programs in `tests/checks/` move next to their `make` target's tool under `tools/checks/`, so `tests/` holds only the suites.
+- **`tests/lang/` is one kind of test**: a `.ms` file of `test` blocks run by `ms test`, grouped by feature (`ownership/`, `lists/`, `modules/`, `faults/`, one directory per stdlib module), not by origin. Measured: of 1,445 run and test fixtures, 400 are stored fuzz output (dropped, generated instead), 775 are already `test` blocks, and 270 are recorded `run` programs (350 of all run outputs are under 200 bytes and exit 0; 121 end in a fault, exit 134). The 270 keep `// expect-stdout:` and `// expect-exit:` headers and become `test` blocks when touched; faults keep `expect-exit`. The `accept`/`stdlib`/`snippets/*` split (names of deleted Rust packages: `checker`, `compiler`, `lower`, `lexer`, `build`) goes away; each case moves to its feature directory by its `tags=`. Only multi-file programs (121 project directories today) keep a directory with `ms.toml`.
 - **Runner**: `tools/conform-run.ms` reads headers instead of sidecars; phase logic is unchanged. `make conform` stays the one command; `ms test tests/` runs the `test`-phase files directly.
 - **Frozen contracts** ([wiki](../wiki/testing-and-conformance/conformance-expectations-are-frozen-contracts.md)) hold: the conversion is mechanical and lossless apart from the derived text and the dropped duplicates, checked by running both formats on the same binary and diffing results.
 
@@ -74,7 +75,7 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 1. Header format in the runner and recorder; convert `e2e/reject` and `snippets/authored` (a few hundred); corpus green.
 2. Convert check and parse snippets; drop `-fmt` twins; count the real formatter cases.
 3. Regroup `golden` by code and dedupe; generate fuzz in the gate.
-4. Convert the run and test phases; move `tests/checks`; one README and wiki page.
+4. Move `e2e/*` and `snippets/*` run and test cases into feature directories by tag; convert the 270 recorded runs; move `tests/checks`; one README and wiki page.
 
 Each stage lands green and keeps `make conform` as the gate (its time must not grow).
 
