@@ -5,3 +5,4 @@ fn greet(name String?) String {
 	if name != null { return "Hello, " + name }
 	return "Hello!"
 }
+// expect-exit: 0

@@ -8,3 +8,4 @@ type Entry {
 type Person {
 	primary Entry?
 }
+// expect-exit: 0

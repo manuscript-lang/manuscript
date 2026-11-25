@@ -10,3 +10,4 @@ type Node {
 fn read(node Node) Int {
 	return (node.next or panic("called Optional.get() on null")).value
 }
+// expect-exit: 0

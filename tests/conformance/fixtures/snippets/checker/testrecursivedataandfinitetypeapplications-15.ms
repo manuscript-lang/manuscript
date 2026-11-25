@@ -4,3 +4,4 @@
 type Node[T] {
 	build fn() Node[T]
 }
+// expect-exit: 0

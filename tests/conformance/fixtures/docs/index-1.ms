@@ -11,3 +11,4 @@ fn main() Void! {
 	message := f"Hello, {name}!\n"
 	stdout().write(message)?
 }
+// expect-exit: 0

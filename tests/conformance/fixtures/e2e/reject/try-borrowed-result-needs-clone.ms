@@ -26,3 +26,6 @@ fn aliased(value String!String) String!String {
 	text := alias?
 	return ok(text.clone())
 }
+// expect-error: MS3000 6:13 `value` is a borrow, so `?` cannot move its error out; write `value.clone()?` to relay a copy, or take it from an owner
+// expect-error: MS3000 15:13 the result of `pass(..)` is a borrow of its arguments, so `?` cannot move its error out; write `pass(..).clone()?` to relay a copy, or take it from an owner
+// expect-error: MS3000 26:13 `alias` is a borrow, so `?` cannot move its error out; write `alias.clone()?` to relay a copy, or take it from an owner

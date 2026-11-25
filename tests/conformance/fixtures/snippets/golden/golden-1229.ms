@@ -10,3 +10,4 @@ export fn main() Int {
     q := (
     return s
 }
+// expect-error: MS1000 12:1 mismatched closing delimiter '}'; the '(' opened at line 10:10 needs ')'

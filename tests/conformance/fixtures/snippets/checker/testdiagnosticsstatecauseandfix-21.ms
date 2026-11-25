@@ -8,3 +8,4 @@ fn p() Int! {
 fn f() Int {
 	return p() + 1
 }
+// expect-error: MS3001 9:16 operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'

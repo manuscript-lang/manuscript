@@ -4,3 +4,4 @@
 enum Config {
 	Value(value Int??)
 }
+// expect-exit: 0

@@ -3,3 +3,4 @@
 fn value() Void {
 	return
 }
+// expect-exit: 0

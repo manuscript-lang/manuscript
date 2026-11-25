@@ -10,3 +10,4 @@
     for x%d in values {
         sum += x%d
     }
+// expect-error: MS1000 3:10-3:11 expected ':=', found '%'

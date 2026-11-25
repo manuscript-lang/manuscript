@@ -15,3 +15,4 @@ export fn first() Int! => erase(
 export fn first_generic() Int! => forward(
 	Result[Int, Cause[Int]].error(make()).map_error(first_error)
 )
+// expect-error: MS2002 4:1 cannot find module ./domain.ms (looked for domain.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file

@@ -13,3 +13,4 @@ fn explicit() Void {
 		CompressOptions(level: 9, max_bytes: 100),
 	)
 }
+// expect-exit: 0

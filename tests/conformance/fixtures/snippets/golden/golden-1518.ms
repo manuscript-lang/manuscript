@@ -11,3 +11,4 @@ type Pair {
 export fn main() Int {
     ignored := 
 }
+// expect-error: MS1000 12:16-12:16 expected an expression, found end of line; write a value, name, call, or literal here

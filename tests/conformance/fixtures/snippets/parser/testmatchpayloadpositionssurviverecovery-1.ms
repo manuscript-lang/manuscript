@@ -7,3 +7,4 @@ fn use(value Envelope) Int {
 		Pair(_, NotFound) => return 1
 	}
 }
+// expect-error: MS2001 5:14 unknown type Envelope; declare it with 'type Envelope:' / 'enum Envelope:' / 'interface Envelope:', declare it as a type parameter, or import it

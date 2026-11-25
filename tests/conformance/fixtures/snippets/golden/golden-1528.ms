@@ -44,3 +44,7 @@ test "bound replace" {
 test "continues" {
 	result := [1].set(0, 2).remove(0)
 }
+// expect-error: MS3000 32:27 too many positional arguments; every parameter is already supplied, so remove this argument
+// expect-error: MS3000 36:33 too many positional arguments; every parameter is already supplied, so remove this argument
+// expect-error: MS3000 41:21 too many positional arguments; every parameter is already supplied, so remove this argument
+// expect-error: MS2001 45:29 unknown or ambiguous member remove on Void; this type has no fields or operations

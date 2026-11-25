@@ -8,3 +8,4 @@ extern type Handle {
 export fn main() Int {
 	return 0
 }
+// expect-error: MS3000 4:1 extern type Handle has no fields; the native owns its payload, so remove the body and pair it with private externs and methods

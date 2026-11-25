@@ -27,3 +27,4 @@ export fn main() Int {
 	say(f"l5 = {l5} len {l5.length()}")
 	return 0
 }
+// expect-exit: 0

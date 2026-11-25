@@ -4,3 +4,4 @@
 export fn changed() Int {
 	return 7
 }
+// expect-exit: 0

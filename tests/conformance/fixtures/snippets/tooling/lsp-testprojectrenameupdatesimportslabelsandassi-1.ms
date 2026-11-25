@@ -6,3 +6,4 @@ export fn add(value Int) Int {
 	current += 1
 	return current
 }
+// expect-exit: 0

@@ -8,3 +8,5 @@ type DnsRecord {
 	weight Int
 	port Int
 }
+// expect-error: MS2001 5:10 unknown type DnsKind; add: import DnsKind from "@std/net/ip.ms"
+// expect-fix: 1:1-1:1 "import DnsKind from \"@std/net/ip.ms\"\n"

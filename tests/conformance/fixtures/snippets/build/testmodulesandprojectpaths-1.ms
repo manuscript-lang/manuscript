@@ -8,3 +8,4 @@ export type Identity {
 export fn read(value Identity) Int {
 	return value.value
 }
+// expect-exit: 0

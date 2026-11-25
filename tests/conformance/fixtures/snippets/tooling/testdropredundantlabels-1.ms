@@ -19,3 +19,4 @@ interface Adder {
 fn Counter.add(amount Int, extra Int) Int => self.total + amount + extra
 
 fn use(map Int, key Int, y Int, x Int, counter Counter) Int { ... }
+// expect-error: MS3000 21:1 reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)

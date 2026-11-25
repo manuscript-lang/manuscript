@@ -5,3 +5,4 @@
 fn sum(left Int, right Int) Int {  // sum
 	return left + right  // trailing
 }
+// expect-exit: 0

@@ -24,3 +24,4 @@ export fn main() Int {
 	say(f"l3 = {l3} len {l3.length()}")
 	return 0
 }
+// expect-error: MS3001 22:16 expected Int, found String (in entry 2 of the literal, whose entries share one type)

@@ -8,3 +8,4 @@ enum Other {
 fn f() Int? {
 	return 1
 }
+// expect-exit: 0

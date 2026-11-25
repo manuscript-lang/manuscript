@@ -11,3 +11,4 @@ export fn main() Int {
 	boxed := Box(xs.slice(0, 2).get_or([]))
 	return boxed.items.length()
 }
+// expect-error: MS3000 11:33 `slice` borrows `xs`, which this position would keep; store `.clone()` of it, or use it in place

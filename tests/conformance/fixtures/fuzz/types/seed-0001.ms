@@ -26,3 +26,5 @@ export fn main() Int {
 	fixed = 2
 	return 0
 }
+// expect-error: MS3060 26:5 cannot assign immutable binding fixed; declare it with 'var fixed = ...' instead of 'fixed := ...'
+// expect-fix: 25:5-25:13 "var fixed ="

@@ -7,3 +7,4 @@ fn read() Int {
 fn named(value Int = read()) Int {
 	return value
 }
+// expect-exit: 0

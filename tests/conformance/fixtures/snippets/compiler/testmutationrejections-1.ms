@@ -18,3 +18,4 @@ type Val {
 fn Val.get() Int {
 	return self.val
 }
+// expect-exit: 0

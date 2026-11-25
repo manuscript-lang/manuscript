@@ -8,3 +8,4 @@ fn f(value Int = 3) Int {
 fn call() Int {
 	return f()
 }
+// expect-exit: 0

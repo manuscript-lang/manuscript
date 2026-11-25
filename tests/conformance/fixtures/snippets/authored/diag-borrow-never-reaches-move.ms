@@ -40,3 +40,6 @@ fn main() Void {
 	print(through_field(View(item)))
 	print(through_local(item))
 }
+// expect-error: MS3000 25:22 `text` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `text.clone()`
+// expect-error: MS3000 29:27 `view.item` looks at a value its record does not own (the field is written `&`), so a new owner needs a copy; write `view.item.clone()` to copy it
+// expect-error: MS3000 34:27 `view.item` looks at a value its record does not own (the field is written `&`), so a new owner needs a copy; write `view.item.clone()` to copy it

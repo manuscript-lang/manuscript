@@ -42,3 +42,5 @@ export fn main() Int {
 	say(f"acc4 = {acc4}")
 	return 0
 }
+// expect-error: MS3001 26:19 expected String, found Int (in the initializer of 'bad'); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 26:19-26:20 "\"5\""

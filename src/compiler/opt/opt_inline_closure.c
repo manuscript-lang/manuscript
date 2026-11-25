@@ -28,9 +28,10 @@ static void ic_known_set(IcKnown *k, MirValue v, uint32_t code, const MirValue *
   k->ncaps[v] = n;
 }
 
-/* The closures built in `f` by `closure.new` whose captures are all plain data. */
+/* The closures built in `f` by `closure.new` whose captures are all plain data. A function with none gets an
+ * empty set (`n` of 0, nothing allocated): most functions build no closure. */
 static IcKnown ic_known_closures(MsArena *arena, const MirModule *m, const MirFunc *f) {
-  IcKnown known = ic_known_new(arena, (uint32_t)f->values.len);
+  IcKnown known = {0};
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
@@ -43,6 +44,9 @@ static IcKnown ic_known_closures(MsArena *arena, const MirModule *m, const MirFu
         plain = plain && !mir_needs_drop(m, mir_value_ty(f, in->args[a]));
       }
       if (plain) {
+        if (known.n == 0) {
+          known = ic_known_new(arena, (uint32_t)f->values.len);
+        }
         ic_known_set(&known, in->res, in->imm.a, in->args, in->nargs);
       }
     }
@@ -517,6 +521,9 @@ static void ic_work_push(IcInline *w, uint32_t bi) {
  * closure field. */
 IcKnown ic_known_aliased(MsArena *arena, const MirModule *m, const MirFunc *f) {
   const IcKnown roots = ic_known_closures(arena, m, f);
+  if (roots.count == 0) {
+    return roots;
+  }
   IcKnown known = ic_known_new(arena, (uint32_t)f->values.len);
   const MirValue *alias = ic_aliases(arena, f, &roots);
   for (uint32_t v = 0; v < f->values.len; v++) {
@@ -548,6 +555,9 @@ static IcKnown ic_known_with_fields(MsArena *arena, const MirModule *m, const Mi
       }
       const uint32_t s = ic_field_slot(fields, source->imm.a, source->imm.b);
       if (fields->used[s] && fields->code[s] != MIR_NONE) {
+        if (known.n == 0) {
+          known = ic_known_new(arena, (uint32_t)f->values.len);
+        }
         ic_known_set(&known, in->res, fields->code[s], NULL, 0);
       }
     }

@@ -12,3 +12,4 @@ fn wrong_label(item Int) String {
 fn callback() Void {
 	return
 }
+// expect-exit: 0

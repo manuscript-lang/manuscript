@@ -9,3 +9,4 @@ test "timeout" {
 test "after" {
 	return
 }
+// expect-exit: 0

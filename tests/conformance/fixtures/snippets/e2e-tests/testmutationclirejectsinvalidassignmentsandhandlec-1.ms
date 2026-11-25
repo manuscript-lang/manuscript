@@ -9,3 +9,4 @@ import (
 type Val {
 	val Int
 }
+// expect-exit: 0

@@ -15,3 +15,4 @@ fn firsts(lines List[String]) List[String] {
 fn main() Void {
 	print(firsts([" a ", " b "]).length())
 }
+// expect-error: MS3000 9:49 `line.slice(..).trim(..)` borrows a temporary value that is gone when this statement ends; store `.clone()` of it

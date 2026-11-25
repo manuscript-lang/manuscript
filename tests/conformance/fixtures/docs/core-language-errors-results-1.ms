@@ -18,3 +18,4 @@ fn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {
 
 	return ok(price * (1d - percent / 100d))
 }
+// expect-exit: 0

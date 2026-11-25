@@ -3,3 +3,4 @@
 export fn load(n Int) Result[Int, Error] {
 	return ok(n)
 }
+// expect-exit: 0

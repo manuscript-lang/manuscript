@@ -14,3 +14,4 @@ fn f() Void {
 		return value
 	}
 }
+// expect-exit: 0

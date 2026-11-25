@@ -7,3 +7,4 @@ size := match 1 {
 	}
 	null => values.length()
 }
+// expect-error: MS3070 3:9 a constant takes literals, operators, collections, and other constants; compute this value in a function

@@ -5,3 +5,4 @@
 fn fail[T](message String) T!Error => error(Error(message.clone()))
 
 fn first() Int!Error => fail[Int]("empty")
+// expect-exit: 0

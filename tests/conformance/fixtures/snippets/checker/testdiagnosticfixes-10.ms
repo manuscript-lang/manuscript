@@ -7,3 +7,4 @@ fn f() Int {
 	panic = 2
 	return 0
 }
+// expect-error: MS3000 7:5 cannot assign to imported function panic; assignment targets are 'var' bindings and type fields

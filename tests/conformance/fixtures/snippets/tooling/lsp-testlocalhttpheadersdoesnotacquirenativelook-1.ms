@@ -8,3 +8,4 @@ type HttpHeaders {
 fn lookup(fields HttpHeaders) Void {
 	fields.values("content-type")
 }
+// expect-error: MS2001 9:12 unknown or ambiguous member values on HttpHeaders; did you mean 'value'?; available: value

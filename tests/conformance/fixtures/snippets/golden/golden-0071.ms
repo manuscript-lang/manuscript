@@ -3,3 +3,4 @@
 fn apply(value Int) Int {
 	return value + self.delta
 }
+// expect-exit: 0

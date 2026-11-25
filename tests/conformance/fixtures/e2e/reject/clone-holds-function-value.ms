@@ -11,3 +11,4 @@ export fn main() Int {
 	again := first.clone()
 	return again.run(2)
 }
+// expect-exit: 0

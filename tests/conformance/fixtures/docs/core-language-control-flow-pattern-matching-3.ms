@@ -16,3 +16,4 @@ fn horizontal(position Position) Int {
 		}
 	}
 }
+// expect-exit: 0

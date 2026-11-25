@@ -4,3 +4,4 @@
 type Box[T] {
 	value T = 1
 }
+// expect-error: MS3001 5:15 expected T, found Int

@@ -31,3 +31,4 @@ export fn main() Int {
 	say(f"s4 = [{s4}]")
 	return 0
 }
+// expect-error: MS2001 19:18 unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 57 members in total

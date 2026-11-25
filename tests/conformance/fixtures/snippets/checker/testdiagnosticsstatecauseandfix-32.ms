@@ -17,3 +17,4 @@ fn f(c Choice[Int], o Int?) Int {
 		Choice.Missing => return 0
 	}
 }
+// expect-exit: 0

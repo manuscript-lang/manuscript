@@ -5,3 +5,4 @@ export fn value() Int {
 	_unused := 1
 	return 2
 }
+// expect-exit: 0

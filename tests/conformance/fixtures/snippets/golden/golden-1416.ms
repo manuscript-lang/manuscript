@@ -38,3 +38,10 @@ test "selected=a=b" {
 test "unselected" {
 	write_line("unselected")
 }
+// expect-error: MS2002 5:5-5:14 module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
+// expect-error: MS3004 9:20 unknown argument data; parameters of write: value
+// expect-error: MS3003 9:14 missing argument value: String in call to write; add 'value: <String>'
+// expect-error: MS2001 13:13 unknown binding arguments; add: import arguments from "@std/os/env.ms"
+// expect-fix: 1:1-1:1 "import arguments from \"@std/os/env.ms\"\n"
+// expect-error: MS3000 28:48 cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
+// expect-error: MS3000 39:5 this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose

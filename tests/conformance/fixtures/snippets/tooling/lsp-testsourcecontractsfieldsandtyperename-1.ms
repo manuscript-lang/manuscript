@@ -20,3 +20,4 @@ fn message(value Reader) String {
 fn make() Box {
 	return Box(label: "value")
 }
+// expect-exit: 0

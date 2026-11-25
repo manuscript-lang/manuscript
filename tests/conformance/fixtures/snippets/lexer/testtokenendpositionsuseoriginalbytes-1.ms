@@ -4,3 +4,4 @@
 fn f() String {
 	return "é"  // keep
 }
+// expect-exit: 0

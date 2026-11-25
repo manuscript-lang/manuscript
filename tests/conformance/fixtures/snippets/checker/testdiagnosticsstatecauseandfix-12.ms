@@ -12,3 +12,4 @@ fn work(n Int) Int {
 fn f() Int {
 	return start(work)
 }
+// expect-error: MS3000 13:18 callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest

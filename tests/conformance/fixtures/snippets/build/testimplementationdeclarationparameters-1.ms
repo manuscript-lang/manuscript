@@ -16,3 +16,4 @@ fn Box[T].same(other T) Bool {
 fn compare[T Equal](value Box[T], other T) Bool {
 	return value.same(other: other)
 }
+// expect-exit: 0

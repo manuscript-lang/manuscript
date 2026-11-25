@@ -30,3 +30,4 @@ export fn first_generic(cause DomainFailure) Error {
 export fn first_box(cause DomainFailure) Error {
 	return box_error(BoxFailure(cause), inner => f"first {inner.code}")
 }
+// expect-error: MS2002 4:1 cannot find module ./domain.ms (looked for domain.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file

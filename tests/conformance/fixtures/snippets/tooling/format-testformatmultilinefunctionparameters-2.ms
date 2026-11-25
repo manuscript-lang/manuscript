@@ -16,3 +16,5 @@ export fn render(
 		}
 	}
 }
+// expect-error: MS2001 6:12 unknown type WriteStream; add: import WriteStream from "@std/io/io.ms"
+// expect-fix: 1:1-1:1 "import WriteStream from \"@std/io/io.ms\"\n"

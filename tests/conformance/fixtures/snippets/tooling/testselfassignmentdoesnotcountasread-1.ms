@@ -6,3 +6,4 @@ fn answer() Int {
 	_total += 2
 	return 0
 }
+// expect-exit: 0

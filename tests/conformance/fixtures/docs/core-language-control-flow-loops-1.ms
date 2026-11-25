@@ -8,3 +8,4 @@ fn sum(values List[Int]) Int {
 	}
 	return total
 }
+// expect-exit: 0

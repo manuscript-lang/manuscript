@@ -13,3 +13,5 @@ fn length(values List[Int]) Int {
 fn os_name() String {
 	return system_info().os
 }
+// expect-error: MS2003 5:5-5:14 redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly
+// expect-fix: 5:1-6:1 ""

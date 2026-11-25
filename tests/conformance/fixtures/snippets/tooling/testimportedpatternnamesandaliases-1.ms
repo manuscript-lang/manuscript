@@ -11,3 +11,4 @@ export type Item {
 }
 
 export fn fail() Int!Failure => error(Failure.Denied("denied"))
+// expect-exit: 0

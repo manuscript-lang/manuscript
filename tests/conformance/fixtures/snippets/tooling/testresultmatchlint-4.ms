@@ -4,3 +4,4 @@
 fn use(value Int!) Int {
 	return value.get_or(0)
 }
+// expect-exit: 0

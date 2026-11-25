@@ -6,3 +6,4 @@ type S {
 }
 
 fn S.m() Int => return 1
+// expect-exit: 0

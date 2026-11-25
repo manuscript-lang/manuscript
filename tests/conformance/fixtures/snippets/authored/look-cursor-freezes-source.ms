@@ -18,3 +18,4 @@ fn main() Void {
     names.append("z")
     print(first)
 }
+// expect-error: MS3000 18:5 cannot change `names` while `first` borrows it (binding of a part of it, at 17:5); finish using `first` before this, or give `first` its own value by ending its initializer with `.clone()`

@@ -10,3 +10,4 @@ export fn main() Int {
 	var c = ["x"]
 	return child(c) - 1
 }
+// expect-exit: 0

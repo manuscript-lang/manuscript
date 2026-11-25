@@ -11,3 +11,5 @@ fn f(o Int?) Int {
 		}
 	}
 }
+// expect-error: MS2001 6:9 unknown case Some of Optional; cases: null, some; did you mean 'some'?
+// expect-error: MS2001 9:9 unknown case None of Optional; cases: null, some

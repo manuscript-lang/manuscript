@@ -23,3 +23,4 @@ fn area(s Shape) Int {
 
 	return out
 }
+// expect-exit: 0

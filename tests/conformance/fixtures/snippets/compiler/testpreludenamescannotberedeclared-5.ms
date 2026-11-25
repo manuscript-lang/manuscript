@@ -4,3 +4,4 @@
 interface Equal {
 	fn same() Bool
 }
+// expect-error: MS2001 4:1 declaration Equal reuses a prelude name; rename it, because Equal always refers to the standard declaration

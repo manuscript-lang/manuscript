@@ -12,3 +12,4 @@ fn is_full(count Int) Bool {
 fn names() Int {
 	return NAMES.length()
 }
+// expect-exit: 0

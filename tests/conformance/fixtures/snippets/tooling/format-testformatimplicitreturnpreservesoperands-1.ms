@@ -7,3 +7,4 @@ fn sum(first_value Int, second_value Int, third_value Int, fourth_value Int) Int
 	+ third_value
 	+ fourth_value
 )
+// expect-exit: 0

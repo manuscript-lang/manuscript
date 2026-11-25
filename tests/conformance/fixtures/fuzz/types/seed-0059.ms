@@ -19,3 +19,5 @@ export fn main() Int {
 	bad String := 5
 	return 0
 }
+// expect-error: MS3001 19:19 expected String, found Int (in the initializer of 'bad'); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 19:19-19:20 "\"5\""

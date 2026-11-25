@@ -14,3 +14,4 @@ fn probe(value Int) Int {
 
 	return callback()
 }
+// expect-exit: 0

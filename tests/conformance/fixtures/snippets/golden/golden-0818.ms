@@ -5,3 +5,4 @@ fn area%d(s: Shape%d) Int {
     match s {
     }
 }
+// expect-error: MS1000 3:8-3:9 expected '(', found '%'; a call or parameter list starts with '('

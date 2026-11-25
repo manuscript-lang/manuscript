@@ -5,3 +5,4 @@ fn value(flag Bool = not false) Bool {
 	callback := fn() Bool => return not (false or false)
 	return (not false and callback()) or flag
 }
+// expect-exit: 0

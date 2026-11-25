@@ -10,3 +10,4 @@ type Item {
 fn answer() Item {
 	return Item(parse: 1)
 }
+// expect-exit: 0

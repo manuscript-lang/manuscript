@@ -10,3 +10,5 @@ export fn main() Int {
 	push_one(var values)
 	return values.length() - 1
 }
+// expect-error: MS1000 10:14-10:18 a call does not write `var`: the callee's parameter declares that it changes the argument; write the argument plainly
+// expect-fix: 10:14-10:18 ""

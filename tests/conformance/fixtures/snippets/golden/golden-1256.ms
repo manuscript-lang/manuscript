@@ -7,3 +7,4 @@ fn call() Int {
 	deduction := 3
 	return subtract(deduction, amount)
 }
+// expect-exit: 0

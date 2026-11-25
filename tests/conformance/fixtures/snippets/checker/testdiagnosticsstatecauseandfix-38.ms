@@ -5,3 +5,4 @@ fn f() Int {
 	n := "abc".len()
 	return 0
 }
+// expect-error: MS2001 5:16 unknown or ambiguous member len on String; did you mean 'length' or 'scalar_length'?

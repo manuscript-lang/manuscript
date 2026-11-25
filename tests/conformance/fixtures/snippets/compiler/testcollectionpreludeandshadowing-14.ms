@@ -4,3 +4,4 @@
 fn f(values Set[Int]) Void {
 	values.add(true)
 }
+// expect-error: MS3001 5:16 expected Int, found Bool (in argument 'value' of values.add)

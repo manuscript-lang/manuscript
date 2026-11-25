@@ -17,3 +17,4 @@ fn Pair[A, A].get() Int {
 fn Pair[A, List[A]].get() Int {
 	return 2
 }
+// expect-error: MS3010 17:21 duplicate or overlapping implementation of get on Pair: another receiver form of the same type could match the same application

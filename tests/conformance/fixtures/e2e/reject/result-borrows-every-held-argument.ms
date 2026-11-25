@@ -15,3 +15,4 @@ fn main() Void {
 	t = "changed"
 	print(r)
 }
+// expect-error: MS3000 15:5 cannot reassign `t` while `r` borrows it (binding of a part of it, at 14:5); finish using `r` before this, or give `r` its own value by ending its initializer with `.clone()`

@@ -17,3 +17,4 @@ fn named(s String) String {
 fn wrapped(s String) String {
 	return apply(text => identity(text).clone(), s)
 }
+// expect-error: MS3000 14:18 `identity` returns a borrow of its arguments, so as a function value its result would be a hidden copy; wrap it in a closure that returns `.clone()` of the call

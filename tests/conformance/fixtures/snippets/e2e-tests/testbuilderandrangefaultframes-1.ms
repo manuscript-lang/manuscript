@@ -13,3 +13,4 @@ fn probe() String {
 
 	return b
 }
+// expect-exit: 0

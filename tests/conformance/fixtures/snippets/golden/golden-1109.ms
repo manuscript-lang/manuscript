@@ -13,3 +13,4 @@ fn choose(value Choice) Int {
 
 	return 3
 }
+// expect-error: MS2001 3:17 unknown type Choice; declare it with 'type Choice:' / 'enum Choice:' / 'interface Choice:', declare it as a type parameter, or import it

@@ -26,3 +26,4 @@ export fn main() Int {
 	}
 	return 0
 }
+// expect-error: MS3001 24:8 expected Bool, found Int (in an if condition)

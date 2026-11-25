@@ -33,3 +33,4 @@ export fn main() Int {
 	say(f"i7 = {i7}")
 	return 0
 }
+// expect-error: MS2001 16:18 unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 57 members in total

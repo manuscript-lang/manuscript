@@ -18,3 +18,4 @@ fn call(view Read) Void {
 	}
 	_result := run(task)
 }
+// expect-exit: 0

@@ -28,3 +28,4 @@ export fn main() Int {
 	bad Bool := 1
 	return 0
 }
+// expect-error: MS3001 28:17 expected Bool, found Int (in the initializer of 'bad')

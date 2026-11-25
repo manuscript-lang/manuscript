@@ -10,3 +10,4 @@ fn run() Void! {
 	}
 	return
 }
+// expect-exit: 0

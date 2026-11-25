@@ -10,3 +10,4 @@ export fn main() Int {
 	value Int? := 0
 	return value.and_then(crash) or panic("called Optional.get() on null")
 }
+// expect-error: MS3000 11:18 a nullable has no method `and_then`; write `if x != null { ... }` and use `x`

@@ -21,3 +21,4 @@ export fn main() Int {
 	say(f"l3 = {l3} len {l3.length()}")
 	return 0
 }
+// expect-error: MS3000 19:41 too many positional arguments; every parameter is already supplied, so remove this argument

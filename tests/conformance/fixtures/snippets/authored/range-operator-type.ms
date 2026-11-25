@@ -7,3 +7,4 @@ export fn main() Int {
 	}
 	return 0
 }
+// expect-error: MS3001 5:17 expected Int, found String (in argument 'end' of ..)

@@ -16,7 +16,7 @@ static const MirExtern *sb_extern_of(const MirModule *m, const MirInst *i) {
 }
 
 /* The runtime lookups that return the address of a map entry (or null). */
-static bool sb_is_map_probe(const MirModule *m, const MirInst *i) {
+bool opt_simplify_is_map_probe(const MirModule *m, const MirInst *i) {
   const MirExtern *e = sb_extern_of(m, i);
   return e != NULL && (sb_name_eq(m, e->name, "msrt_map_get_ptr") ||
             sb_name_eq(m, e->name, "msrt_map_get_ptr_w8") ||
@@ -132,7 +132,7 @@ static void sb_note_probe(SbProbeRun *run, SbProbes *table, uint32_t bi, uint32_
 
 static void sb_probe_inst(SbProbeRun *run, SbProbes *table, uint32_t bi, uint32_t ii) {
   const MirInst *inst = &run->f->blocks.ptr[bi].insts.ptr[ii];
-  if (sb_is_map_probe(run->m, inst) && inst->nargs == 4) {
+  if (opt_simplify_is_map_probe(run->m, inst) && inst->nargs == 4) {
     sb_note_probe(run, table, bi, ii, inst);
     return;
   }
@@ -157,7 +157,7 @@ bool opt_simplify_map_probes(MirModule *m, MirFunc *f) {
   bool any = false;
   for (uint32_t bi = 0; bi < f->blocks.len && !any; bi++) {
     for (uint32_t ii = 0; ii < f->blocks.ptr[bi].insts.len && !any; ii++) {
-      any = sb_is_map_probe(m, &f->blocks.ptr[bi].insts.ptr[ii]);
+      any = opt_simplify_is_map_probe(m, &f->blocks.ptr[bi].insts.ptr[ii]);
     }
   }
   if (!any) {
@@ -350,7 +350,7 @@ static bool sb_join_probe(SbJoin *j) {
   uint32_t pi = 0;
   bool found = false;
   for (uint32_t ii = 0; ii < jb->insts.len && !found; ii++) {
-    if (sb_is_map_probe(j->m, &jb->insts.ptr[ii]) && jb->insts.ptr[ii].nargs == 4) {
+    if (opt_simplify_is_map_probe(j->m, &jb->insts.ptr[ii]) && jb->insts.ptr[ii].nargs == 4) {
       pi = ii;
       found = true;
     } else if (sb_clobbers(&jb->insts.ptr[ii])) {

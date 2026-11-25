@@ -4,3 +4,4 @@
 type Flip[T, U] {
 	next Flip[U, T]
 }
+// expect-error: MS3040 5:5 recursive generic applications must preserve their parameters in Flip.next; keep the same type arguments in the same positions along a recursive cycle

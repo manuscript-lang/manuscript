@@ -5,3 +5,4 @@ fn work() Void {
 	_larger := [1, 2, 3, 4, 5]
 	_nested := [[1, 2], [3, 4]]
 }
+// expect-exit: 0

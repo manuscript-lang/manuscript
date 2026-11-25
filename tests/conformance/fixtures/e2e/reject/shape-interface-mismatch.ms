@@ -22,3 +22,4 @@ fn drain(s Source[Int]) Int {
 fn main() Void {
 	drain(Counted("x"))
 }
+// expect-error: MS3001 23:11 expected Source[Int], found Counted (in argument 's' of drain); Counted does not satisfy Source[Int] by its own methods (next must be declared as fn next() Int?!); declare each operation as a method of Counted with the interface's exact signature

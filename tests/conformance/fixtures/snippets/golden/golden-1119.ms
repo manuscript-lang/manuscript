@@ -10,3 +10,4 @@ fn run(n Int) Int {
 		| double
 	return a + b
 }
+// expect-exit: 0

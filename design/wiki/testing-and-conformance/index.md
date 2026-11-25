@@ -5,6 +5,7 @@
 Test layers, conformance corpus, fuzzing, fixtures.
 
 - [Choose the layer that can fail for the right reason](choose-the-layer-that-can-fail-for-the-right-reason.md): C tests, the conformance corpus (`make conform`) and its e2e fixtures; `tools/conform-run.ms` is the only runner for `.ms` behavior.
+- [Expectations live in the test file, after the program](expectations-live-in-the-test-file-after-the-program.md): check fixtures state diagnostics as trailing `// expect-error:` lines; a line above the program would shift every position.
 - [Conformance expectations are frozen contracts](conformance-expectations-are-frozen-contracts.md): the corpus expectations were first recorded from the Go `ms` and are now the contract; the Go implementation is gone and is not needed to extend them.
 - [Corpus time is standard-library loads per process](corpus-time-is-standard-library-loads-per-process.md): every `ms check` of a file that parses loads the standard library first, about 55 of its 60 ms.
 - [Do not accept an empty run](do-not-accept-an-empty-run.md): a runner that reports `0 tests, 0 failed` is a failure.

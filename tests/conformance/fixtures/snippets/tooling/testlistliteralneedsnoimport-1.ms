@@ -5,3 +5,4 @@ fn answer() Int {
 	items := [1, 2, 3]
 	return items.length()
 }
+// expect-exit: 0

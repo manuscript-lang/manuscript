@@ -18,3 +18,4 @@ export fn main() Int {
 	say(f"f2 = {f2}")
 	return 0
 }
+// expect-error: MS3001 15:12 expected Int, found String (in the return value)

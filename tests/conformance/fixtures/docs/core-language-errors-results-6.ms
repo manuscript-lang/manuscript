@@ -10,3 +10,4 @@ fn decode(text String) Result[Bytes, Error] {
 	bytes := hex_decode(text)?
 	return ok(bytes)
 }
+// expect-exit: 0

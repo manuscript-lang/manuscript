@@ -24,3 +24,4 @@ fn main() Void {
 	next := counter()
 	print(next())
 }
+// expect-error: MS3000 18:12 this closure outlives the statement but captures `view`, which looks at a value another binding owns; capture a `.clone()` of the part it needs, or keep the closure local

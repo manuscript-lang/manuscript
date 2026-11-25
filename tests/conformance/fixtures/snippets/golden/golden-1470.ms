@@ -7,3 +7,4 @@ fn deep(l List[Int], i Int) Int {
 export fn main() Int {
 	return deep(l: [1], i: 5)
 }
+// expect-exit: 0

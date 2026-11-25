@@ -13,3 +13,9 @@ fn discount_validated(price Decimal, percent Decimal) Decimal {
 
 	return price * (1d - percent / 100d)
 }
+// expect-error: MS2001 6:29 unknown type Decimal; add: import Decimal from "@std/math/decimal.ms"
+// expect-fix: 1:1-1:1 "import Decimal from \"@std/math/decimal.ms\"\n"
+// expect-error: MS2001 6:46 unknown type Decimal; add: import Decimal from "@std/math/decimal.ms"
+// expect-fix: 1:1-1:1 "import Decimal from \"@std/math/decimal.ms\"\n"
+// expect-error: MS2001 6:55 unknown type Decimal; add: import Decimal from "@std/math/decimal.ms"
+// expect-fix: 1:1-1:1 "import Decimal from \"@std/math/decimal.ms\"\n"

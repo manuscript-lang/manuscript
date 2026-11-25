@@ -24,3 +24,7 @@ fn mutate_while_used(m Map[String, Int]) Int {
 	table["x"] = 1
 	return names.length()
 }
+// expect-error: MS3000 10:32 `slice` borrows `xs`, which this position would keep; store `.clone()` of it, or use it in place
+// expect-error: MS3000 14:14 `keys` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place
+// expect-error: MS3000 18:14 `values` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place
+// expect-error: MS3000 24:5 cannot change `table` while `names` borrows it (binding of a part of it, at 23:5); finish using `names` before this, or give `names` its own value by ending its initializer with `.clone()`

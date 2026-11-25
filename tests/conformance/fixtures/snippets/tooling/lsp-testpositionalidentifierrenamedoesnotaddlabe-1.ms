@@ -7,3 +7,4 @@ fn run() Int {
 	number := 10
 	return subtract(number, 3)
 }
+// expect-exit: 0

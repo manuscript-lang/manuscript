@@ -3,3 +3,4 @@
 fn f() Int {
 	return 1_000
 }
+// expect-exit: 0

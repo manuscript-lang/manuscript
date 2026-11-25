@@ -33,3 +33,4 @@ export fn main() Int {
 	say(f"b6 = {b6}")
 	return 0
 }
+// expect-error: MS3001 22:16 expected Int, found String (in entry 2 of the literal, whose entries share one type)

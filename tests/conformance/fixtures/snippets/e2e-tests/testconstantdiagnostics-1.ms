@@ -6,3 +6,4 @@ fn f() Int {
 }
 
 X := f()
+// expect-error: MS3070 8:6 a constant takes literals, operators, collections, and other constants; compute this value in a function

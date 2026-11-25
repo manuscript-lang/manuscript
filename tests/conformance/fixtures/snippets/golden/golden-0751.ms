@@ -16,3 +16,5 @@ fn probe(found Int) Int {
 
 	return sum
 }
+// expect-error: MS2001 8:21 unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T { ... }', or import it from a module
+// expect-error: MS3000 8:12 binding found shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'

@@ -4,3 +4,4 @@
 fn f() String {
 	return [1.5].join(separator: ",")
 }
+// expect-exit: 0

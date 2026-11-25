@@ -9,7 +9,7 @@ ms run tools/conform-run.ms -- --phase check e2e/reject   # one phase, fixtures 
 
 ## Layout
 
-A fixture id is its path under `fixtures/` without extension. `<slug>.ms` has `<slug>.expected.json` beside it. A project fixture is a directory holding `conform.meta`, `ms.toml`, sources and `expected.json`. A `-fmt` suffix marks the parse-phase (formatter) twin of a fixture. Recorded output embeds the file name, so renaming a fixture means re-recording it or editing its expectation.
+A fixture id is its path under `fixtures/` without extension. A `check` fixture states what it expects in its own file: the last lines are `// expect-error: <code> <line>:<col>[-<line>:<col>] <message>` (one per diagnostic, with `// expect-fix: <span> "<replacement>"` after one that offers a fix) and `// expect-exit: <n>` when there is no diagnostic or the exit code is not 1; they follow the program, so their line numbers are the file's own. Parse, run and test fixtures have `<slug>.expected.json` beside the `.ms` file until they are converted (see `design/proposals/readable-conformance-tests.md`). A project fixture is a directory holding `conform.meta`, `ms.toml`, sources and `expected.json`. A `-fmt` suffix marks the parse-phase (formatter) twin of a fixture. Recorded output embeds the file name, so renaming a fixture means re-recording it or editing its expectation.
 
 | directory | contents |
 | --- | --- |
@@ -54,7 +54,7 @@ Tier: `tier-core` imports nothing, `tier-stdlib` imports only pure modules, `tie
 A new behavior test goes in `e2e/accept` or `e2e/stdlib` as an in-source `test` with `expect_equal` and `phase=test`; a rejected program goes in `e2e/reject` (`phase=check`), and a multi-file program in `e2e/projects/<name>/` with `conform.meta`. Modules that single-file fixtures import live in a `support/` directory beside them (not fixtures). This corpus is the one test runner for `.ms` behavior.
 
 1. Write the `.ms` file with a `// conform:` header, choose tags and phase.
-2. `ms run tools/conform-run.ms -- --record --only-missing <slug>` writes the expectation; each fixture is observed twice and refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized; `--no-stable-check` skips the second run). `--prune` deletes fixtures that cannot be recorded.
+2. `ms run tools/conform-run.ms -- --record --only-missing <slug>` writes the expectation (`--inline` writes a `check` fixture's as `// expect-` lines); each fixture is observed twice and refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized; `--no-stable-check` skips the second run). `--prune` deletes fixtures that cannot be recorded.
 3. Review the expectation. It records what the binary does, bugs included; a fixture that pins a bug keeps its expectation and joins `expect-fail.txt` with a reason.
 4. Fixtures whose output varies between runs (for example diagnostics emitted in map order) must be deleted, not recorded.
 

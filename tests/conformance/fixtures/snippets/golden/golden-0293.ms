@@ -15,3 +15,4 @@ fn f(s S) Int {
 		}
 	}
 }
+// expect-error: MS2001 13:9 'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, B

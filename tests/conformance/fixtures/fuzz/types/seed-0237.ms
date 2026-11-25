@@ -29,3 +29,5 @@ export fn main() Int {
 	say(f"i4 = {i4}")
 	return 0
 }
+// expect-error: MS3060 17:5 cannot assign immutable binding fixed; declare it with 'var fixed = ...' instead of 'fixed := ...'
+// expect-fix: 16:5-16:13 "var fixed ="

@@ -10,3 +10,4 @@ fn value() Int {
 		return 4
 	}
 }
+// expect-exit: 0

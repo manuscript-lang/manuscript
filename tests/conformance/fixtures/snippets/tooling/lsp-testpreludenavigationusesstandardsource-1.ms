@@ -6,3 +6,4 @@ import panic from "@std/core.ms"
 fn work(value Int?) Int! {
 	return ok(value: value or panic("called Optional.get() on null"))
 }
+// expect-exit: 0

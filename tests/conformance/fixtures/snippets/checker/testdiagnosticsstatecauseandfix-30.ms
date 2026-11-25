@@ -6,3 +6,4 @@ fn f() Int {
 	y := x + 1
 	return y
 }
+// expect-error: MS3001 5:14 expected Int, found Float (in the initializer of 'x'); Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get_or(0)

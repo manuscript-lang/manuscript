@@ -99,7 +99,8 @@ static void visit_type(GlueCx *cx, MirTy key) {
     for (uint32_t index = 0; index < data->nargs && index < 2; index++) {
       visit_type(cx, data->args[index]);
     }
-  } else if (is_custom(cx, ty) && !has_glue(cx, ty)) {
+  } else if ((is_custom(cx, ty) || (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_VALUE)) && !has_glue(cx, ty)) {
+    /* A BigInt is one shared word that compares by value: its shape's equality and hash read the number. */
     const uint32_t eq = make_function(cx, ty, true);
     const uint32_t hash = make_function(cx, ty, false);
     if (eq != MIR_NONE && hash != MIR_NONE) {

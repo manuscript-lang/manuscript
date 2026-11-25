@@ -4,3 +4,4 @@
 fn first() Void {
 	callback fn() Int? := () => absent()
 }
+// expect-error: MS2001 5:33 unknown binding absent; declare it with 'absent := ...' before use, define 'fn absent(...) T { ... }', or import it from a module

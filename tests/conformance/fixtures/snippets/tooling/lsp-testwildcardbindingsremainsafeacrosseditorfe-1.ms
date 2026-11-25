@@ -11,3 +11,4 @@ fn answer(value Int?) Int {
 		}
 	}
 }
+// expect-exit: 0

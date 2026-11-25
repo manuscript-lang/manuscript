@@ -6,3 +6,4 @@ fn operation() Void! => ok()
 fn caller() Void {
 	void operation()
 }
+// expect-exit: 0

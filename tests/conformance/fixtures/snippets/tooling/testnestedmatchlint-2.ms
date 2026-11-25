@@ -12,3 +12,4 @@ fn use(value Int?) Int {
 		null => 0
 	}
 }
+// expect-exit: 0

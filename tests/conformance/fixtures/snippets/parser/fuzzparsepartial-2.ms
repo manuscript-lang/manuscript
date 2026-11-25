@@ -4,3 +4,4 @@
 type Box {
 	value String
 }
+// expect-exit: 0

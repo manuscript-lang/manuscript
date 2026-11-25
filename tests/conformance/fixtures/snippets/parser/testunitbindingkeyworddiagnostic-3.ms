@@ -5,3 +5,4 @@ fn f() Void {
 	code_unit := void
 	return code_unit
 }
+// expect-exit: 0

@@ -16,3 +16,4 @@ fn Offset.add(value Int = self.value) Int {
 fn call(value Add) Int {
 	return value.add()
 }
+// expect-error: MS3003 17:18 missing argument value: Int in call to value.add; add 'value: <Int>'

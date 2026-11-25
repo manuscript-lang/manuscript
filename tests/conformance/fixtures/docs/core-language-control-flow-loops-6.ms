@@ -8,3 +8,4 @@ fn count_down(start Int) Int {
 	}
 	return remaining
 }
+// expect-exit: 0

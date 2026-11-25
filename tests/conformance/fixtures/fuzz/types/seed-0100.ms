@@ -35,3 +35,4 @@ export fn main() Int {
 	_bad := say
 	return 0
 }
+// expect-exit: 0

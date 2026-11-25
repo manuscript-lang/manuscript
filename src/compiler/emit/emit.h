@@ -10,7 +10,6 @@
 #include "compiler/mir/mir_data.h"
 
 typedef struct EmitOptions {
-  bool export_all; /* every function gets an external symbol (needed when fault tables name them) */
   bool places;     /* tag each instruction with its source line for the fault tables */
   uint32_t wide_leaves; /* a value of more leaves than this lives in a stack cell; 0 for never */
   bool wide_hide;       /* keep those cells out of LLVM's reach (volatile leaf loads, an opaque `asm`) */

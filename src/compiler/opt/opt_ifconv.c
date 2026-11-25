@@ -414,11 +414,3 @@ bool opt_ifconv_func(MirModule *m, MirFunc *f) {
   ms_arena_free(&arena);
   return any;
 }
-
-bool opt_ifconv(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    changed = opt_ifconv_func(m, &m->funcs.ptr[fi]) || changed;
-  }
-  return changed;
-}

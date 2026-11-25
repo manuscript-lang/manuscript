@@ -27,3 +27,4 @@ export fn main() Int {
 	say(f"s3 = [{s3}]")
 	return 0
 }
+// expect-error: MS3000 25:14 logical operands require Bool, found Int and Int; compare explicitly, e.g. x != 0

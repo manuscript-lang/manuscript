@@ -11,3 +11,4 @@ export fn main() Int {
 	rewrap(xs)
 	return xs[0] - 1
 }
+// expect-error: MS3000 5:12 cannot move `xs` out of the function: the caller keeps ownership of a var parameter; return `xs.clone()` or change the value in place

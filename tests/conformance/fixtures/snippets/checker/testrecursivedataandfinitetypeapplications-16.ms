@@ -4,3 +4,4 @@
 interface Node[T] {
 	fn build() Node[T]
 }
+// expect-exit: 0

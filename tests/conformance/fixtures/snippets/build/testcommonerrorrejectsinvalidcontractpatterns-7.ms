@@ -16,3 +16,4 @@ fn LocalError.message() String {
 fn wrong(hold value LocalError) &Diagnostic {
 	return value
 }
+// expect-exit: 0

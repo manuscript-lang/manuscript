@@ -6,3 +6,4 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS2001 5:11 unknown or ambiguous member some on List[Int]; some(predicate) is now any(predicate)

@@ -5,3 +5,4 @@ type Customer {
 	name String
 	email String?
 }
+// expect-exit: 0

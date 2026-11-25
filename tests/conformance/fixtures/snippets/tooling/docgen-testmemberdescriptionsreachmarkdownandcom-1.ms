@@ -4,3 +4,4 @@
 type Data {
 	value Int
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 type Options {
 	count Int = true
 }
+// expect-error: MS3001 5:17 expected Int, found Bool

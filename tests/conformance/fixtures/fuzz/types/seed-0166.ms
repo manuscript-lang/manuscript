@@ -21,3 +21,4 @@ export fn main() Int {
 	say(f"i3 = {i3}")
 	return 0
 }
+// expect-error: MS3000 19:12 not requires Bool, found Int; compare explicitly, e.g. not (x == 0)

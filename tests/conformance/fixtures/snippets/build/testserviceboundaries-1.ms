@@ -7,3 +7,4 @@ test "opaque" {
 	var queue = Queue[Int](capacity: 1)
 	_capacity := queue.capacity
 }
+// expect-exit: 0

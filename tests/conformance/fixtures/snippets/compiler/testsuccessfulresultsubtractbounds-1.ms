@@ -14,3 +14,4 @@ fn probe() Int {
 
 	return sum
 }
+// expect-error: MS2001 9:21 unknown binding wrapped; declare it with 'wrapped := ...' before use, define 'fn wrapped(...) T { ... }', or import it from a module

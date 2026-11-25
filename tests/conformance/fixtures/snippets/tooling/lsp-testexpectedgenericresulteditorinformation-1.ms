@@ -9,3 +9,4 @@ fn answer() Void {
 	_empty Int? := absent()
 	_callback fn(Int) String := transform(item => item.to_string())
 }
+// expect-exit: 0

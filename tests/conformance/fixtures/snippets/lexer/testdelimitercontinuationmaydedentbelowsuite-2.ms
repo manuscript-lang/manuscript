@@ -5,3 +5,4 @@ fn f() Int {
 	_x := (1 + 2)
 	return 0
 }
+// expect-exit: 0

@@ -25,3 +25,4 @@ test "second request uses same server" {
     response := expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))?
     expect_equal(response.body, "shared".to_bytes())?
 }
+// expect-error: MS1000 15:1-15:5 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it

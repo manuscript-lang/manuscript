@@ -30,3 +30,13 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS2002 5:5-5:14 module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
+// expect-error: MS2001 9:13 unknown binding arguments; add: import arguments from "@std/os/env.ms"
+// expect-fix: 1:1-1:1 "import arguments from \"@std/os/env.ms\"\n"
+// expect-error: MS2001 12:26 unknown or ambiguous member write_bytes on WriteStream[String]; available: close, end, flush, sink, write
+// expect-error: MS3004 18:28 unknown argument data; parameters of write: value
+// expect-error: MS3003 18:22 missing argument value: String in call to write; add 'value: <String>'
+// expect-error: MS3004 19:28 unknown argument data; parameters of write: value
+// expect-error: MS3003 19:22 missing argument value: String in call to write; add 'value: <String>'
+// expect-error: MS3004 23:32 unknown argument data; parameters of write: value
+// expect-error: MS3003 23:26 missing argument value: String in call to write; add 'value: <String>'

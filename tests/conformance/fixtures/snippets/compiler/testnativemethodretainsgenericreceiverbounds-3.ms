@@ -4,3 +4,4 @@
 fn convert[T, U](values List[T], transform fn(T) U) List[U] {
 	return values.map(transform: transform)
 }
+// expect-exit: 0

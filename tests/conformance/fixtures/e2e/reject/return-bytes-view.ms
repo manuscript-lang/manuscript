@@ -12,3 +12,4 @@ fn result() Bytes {
 export fn main() Int {
 	return result().length()
 }
+// expect-error: MS3000 9:18 cannot return a view of `bytes`: a returned `Bytes` is owned and a view only borrows `bytes`; copy it with `.clone()` after the view

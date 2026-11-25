@@ -4,3 +4,4 @@
 export fn main() Int {
 	return [1, 2][-2]
 }
+// expect-exit: 0

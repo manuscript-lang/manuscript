@@ -9,3 +9,4 @@ fn probe() Int {
 	}
 	return sum + values.length()
 }
+// expect-exit: 0

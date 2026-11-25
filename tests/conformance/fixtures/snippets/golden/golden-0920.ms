@@ -6,3 +6,4 @@ fn f() Void {
         )
     }
 }
+// expect-error: MS1000 6:9 mismatched closing delimiter ')'; the '{' opened at line 4:34 needs '}'

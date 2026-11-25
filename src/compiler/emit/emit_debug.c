@@ -192,22 +192,41 @@ static const ScalarInfo scalars[] = {
     {MK_UINT32, "UInt32", 32, DW_UNSIGNED}, {MK_UINT64, "UInt64", 64, DW_UNSIGNED},
 };
 
+/* The index of scalar type `ty` in `scalars`, or SIZE_MAX when it is not one. */
+static size_t scalar_index(const MirModule *module, MirTy ty) {
+  const uint32_t kind = mir_ty_data(module, ty)->kind;
+  for (size_t at = 0; at < sizeof scalars / sizeof scalars[0]; at++) {
+    if (scalars[at].kind == kind) {
+      return at;
+    }
+  }
+  return SIZE_MAX;
+}
+
+bool emit_debug_scalar(const MirModule *module, MirTy ty, const char **name, uint32_t *bits, uint32_t *encoding) {
+  const size_t at = scalar_index(module, ty);
+  if (at == SIZE_MAX) {
+    return false;
+  }
+  *name = scalars[at].name;
+  *bits = scalars[at].bits;
+  *encoding = scalars[at].encoding;
+  return true;
+}
+
 /* The DIBasicType of scalar type `ty`, or 0 when it is not one. */
 static uint32_t basic_type(EmitCx *cx, MirTy ty) {
-  const uint32_t kind = mir_ty_data(cx->module, ty)->kind;
-  for (size_t at = 0; at < sizeof scalars / sizeof scalars[0]; at++) {
-    if (scalars[at].kind != kind) {
-      continue;
-    }
-    EmitDebug *debug = cx->debug;
-    if (debug->basic_types[at] == 0) {
-      debug->basic_types[at] = debug->next++;
-      ms_strbuild_printf(&debug->nodes, "!%u = !DIBasicType(name: \"%s\", size: %u, encoding: %u)\n",
-                         debug->basic_types[at], scalars[at].name, scalars[at].bits, scalars[at].encoding);
-    }
-    return debug->basic_types[at];
+  const size_t at = scalar_index(cx->module, ty);
+  if (at == SIZE_MAX) {
+    return 0;
   }
-  return 0;
+  EmitDebug *debug = cx->debug;
+  if (debug->basic_types[at] == 0) {
+    debug->basic_types[at] = debug->next++;
+    ms_strbuild_printf(&debug->nodes, "!%u = !DIBasicType(name: \"%s\", size: %u, encoding: %u)\n",
+                       debug->basic_types[at], scalars[at].name, scalars[at].bits, scalars[at].encoding);
+  }
+  return debug->basic_types[at];
 }
 
 void emit_debug_params(EmitCx *cx) {

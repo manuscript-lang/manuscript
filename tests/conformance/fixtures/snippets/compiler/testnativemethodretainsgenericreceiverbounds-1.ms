@@ -4,3 +4,4 @@
 fn search[T Equal](values List[T], value T) Bool {
 	return values.contains(value: value)
 }
+// expect-exit: 0

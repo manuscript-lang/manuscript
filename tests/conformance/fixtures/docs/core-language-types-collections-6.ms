@@ -4,3 +4,4 @@
 fn increment_scores(scores Map[String, Int]) Map[String, Int] {
 	return scores.map((name, score) => score + 1)
 }
+// expect-exit: 0

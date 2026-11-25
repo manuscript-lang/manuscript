@@ -30,3 +30,4 @@ fn move ClosedSource.close() Void! {
 export fn closed_reader() ReadStream[Bytes] {
 	return ReadStream[Bytes](ClosedSource(0))
 }
+// expect-exit: 0

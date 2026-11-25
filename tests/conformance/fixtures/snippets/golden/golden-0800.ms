@@ -7,3 +7,4 @@ fn sample%d(value: Int = 3) Int {
     }
     return 0
 }
+// expect-error: MS1000 3:10-3:11 expected '(', found '%'; a call or parameter list starts with '('

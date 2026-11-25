@@ -3,3 +3,4 @@
 fn f(value Int?) Void => return
 
 fn call() Void => f()
+// expect-exit: 0

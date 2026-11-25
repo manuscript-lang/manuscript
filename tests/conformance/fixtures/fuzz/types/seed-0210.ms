@@ -30,3 +30,4 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS3001 23:20 operator operands require the same independently known type, found Bool < Int; convert one side so both have one type (e.g. interpolate into text with f"{value}", or convert between Int and Float)

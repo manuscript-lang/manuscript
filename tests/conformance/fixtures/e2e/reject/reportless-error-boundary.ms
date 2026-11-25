@@ -35,3 +35,8 @@ fn optional_result(value Int!String?) Int {
 fn unrelated_optional_error() Int {
 	return optional_result(error(7))
 }
+// expect-error: MS3001 18:12 expected Result[Int, Error], found Result[Int, DomainError] (in the return value)
+// expect-error: MS3000 22:14 '?' requires the same error type; this function returns Result[Int, Error] but the operand fails with DomainError, so change the return error type or translate the error with map_error
+// expect-error: MS3000 27:14 '?' requires the same error type; this function returns Result[Int, OtherError] but the operand fails with DomainError, so change the return error type or translate the error with map_error
+// expect-error: MS3001 36:34 expected String, found Int (in argument 'cause' of error); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"
+// expect-fix: 36:34-36:35 "\"7\""

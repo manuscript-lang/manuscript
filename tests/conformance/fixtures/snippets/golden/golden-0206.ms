@@ -7,3 +7,4 @@ fn f(second Int, first Int = 1) Int {
 fn call() Int {
 	return f()
 }
+// expect-error: MS3003 8:12 missing argument second: Int in call to f; add 'second: <Int>'

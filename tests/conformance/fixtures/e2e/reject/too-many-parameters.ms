@@ -79,3 +79,4 @@ fn main() Void {
 		)
 	)
 }
+// expect-error: MS3000 38:5 a function takes at most 32 parameters; pass a record instead

@@ -7,3 +7,4 @@ export fn other() Int => return 4
 test "unimported" {
 	if other() != 4 { return fail("bad other") }
 }
+// expect-exit: 0

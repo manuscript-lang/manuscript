@@ -11,3 +11,4 @@ fn f(xs List[Int], o Int?) Void {
 		}
 	}
 }
+// expect-error: MS3001 10:16 expected Void, found Int

@@ -9,3 +9,4 @@ fn held() Int {
 	m.remove("a")
 	return (x or []).length()
 }
+// expect-error: MS3000 9:5 cannot change `m` while `x` borrows it (binding of a part of it, at 8:5); finish using `x` before this, or give `x` its own value by ending its initializer with `.clone()`

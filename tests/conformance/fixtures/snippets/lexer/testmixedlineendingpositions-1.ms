@@ -9,3 +9,4 @@ fn value() String {
 	}
 	return ""
 }
+// expect-exit: 0

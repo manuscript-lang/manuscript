@@ -39,3 +39,4 @@ export fn mutate(var rng Rng, source String) String {
 	}
 	return chars.join("")
 }
+// expect-exit: 0

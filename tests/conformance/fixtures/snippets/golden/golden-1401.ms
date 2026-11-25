@@ -17,3 +17,4 @@ fn %s(visits: List[Int], scoped: Bool) String {
     }
     return b.freeze()
 }
+// expect-error: MS1000 3:4-3:5 expected a name, found '%'

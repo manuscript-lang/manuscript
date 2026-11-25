@@ -10,3 +10,5 @@ type E {
 }
 
 fn E.name() String => this.text
+// expect-error: MS2001 12:23 unknown binding this; the receiver in a method is 'self'; write self instead of this
+// expect-fix: 12:23-12:27 "self"

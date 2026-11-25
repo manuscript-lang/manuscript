@@ -30,3 +30,4 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-error: MS3001 19:19 expected Int, found String

@@ -6,3 +6,4 @@ export fn main() Int {
 	}
 	return crash()
 }
+// expect-error: MS3000 5:18 division by zero always faults; guard the divisor or use a nonzero constant

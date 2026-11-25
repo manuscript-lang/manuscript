@@ -24,3 +24,4 @@ fn Box[T].get() T {
 fn read[T Clonable](value Box[T]) T {
 	return value.get()
 }
+// expect-exit: 0

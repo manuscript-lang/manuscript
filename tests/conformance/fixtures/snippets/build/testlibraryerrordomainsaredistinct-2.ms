@@ -4,3 +4,4 @@
 fn wrong() Void! {
 	return error(cause: Error("encoding: invalid data", kind: "EBADMSG"))
 }
+// expect-exit: 0

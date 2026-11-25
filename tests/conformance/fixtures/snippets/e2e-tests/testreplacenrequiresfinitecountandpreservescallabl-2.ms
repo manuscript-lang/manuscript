@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=tests/e2e/replace_n_test.go:21 TestReplaceNRequiresFiniteCountAndPreservesCallableShape
 fn use() Void { ... }
+// expect-exit: 0

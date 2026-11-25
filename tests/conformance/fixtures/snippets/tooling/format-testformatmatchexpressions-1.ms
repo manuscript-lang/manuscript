@@ -12,3 +12,4 @@ fn read(values List[Int]) Int {
 
 	return result
 }
+// expect-exit: 0

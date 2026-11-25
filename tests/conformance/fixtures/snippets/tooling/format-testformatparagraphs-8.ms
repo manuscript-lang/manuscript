@@ -30,3 +30,16 @@ fn work(enabled Bool) Int {
 	resource.close()
 	return count
 }
+// expect-error: MS2001 8:9 unknown binding run; add: import run from "@std/os/process.ms"
+// expect-fix: 1:1-1:1 "import run from \"@std/os/process.ms\"\n"
+// expect-error: MS2001 10:9 unknown binding run; add: import run from "@std/os/process.ms"
+// expect-fix: 1:1-1:1 "import run from \"@std/os/process.ms\"\n"
+// expect-error: MS2001 12:9 unknown binding run; add: import run from "@std/os/process.ms"
+// expect-fix: 1:1-1:1 "import run from \"@std/os/process.ms\"\n"
+// expect-error: MS2001 18:9 unknown binding run; add: import run from "@std/os/process.ms"
+// expect-fix: 1:1-1:1 "import run from \"@std/os/process.ms\"\n"
+// expect-error: MS2001 25:9 unknown binding run; add: import run from "@std/os/process.ms"
+// expect-fix: 1:1-1:1 "import run from \"@std/os/process.ms\"\n"
+// expect-error: MS2001 28:20 unknown binding acquire; declare it with 'acquire := ...' before use, define 'fn acquire(...) T { ... }', or import it from a module
+// expect-error: MS2001 29:5 unknown binding run; add: import run from "@std/os/process.ms"
+// expect-fix: 1:1-1:1 "import run from \"@std/os/process.ms\"\n"

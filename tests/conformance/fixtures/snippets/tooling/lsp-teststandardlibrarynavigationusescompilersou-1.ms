@@ -4,3 +4,4 @@
 fn count(values List[String]) Int {
 	return values.length()
 }
+// expect-exit: 0

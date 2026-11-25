@@ -7,3 +7,4 @@ export fn other() Int => return 4
 test "unimported" {
 	return fail("changed unimported test")
 }
+// expect-exit: 0

@@ -5,3 +5,4 @@ type Node {
 	value Int
 	next Node?
 }
+// expect-exit: 0

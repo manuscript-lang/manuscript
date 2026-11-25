@@ -2,15 +2,13 @@ import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	from_scalars from "@std/string.ms",
 
-	msstd_encoding_ascii85_decode,
-	msstd_encoding_ascii85_encode,
-	msstd_encoding_base32_decode,
-	msstd_encoding_base32_encode,
 	msstd_encoding_base64_decode,
 	msstd_encoding_base64_decode_unpadded,
-	msstd_encoding_base64_encode_unpadded,
-	msstd_encoding_hex_decode,
-	msstd_encoding_hex_encode from "@std/internal/encoding.ms",
+	msstd_encoding_base64_encode_unpadded from "@std/internal/encoding.ms",
+	msrt_bits_bit_and,
+	msrt_bits_bit_or,
+	msrt_bits_shift_left,
+	msrt_bits_shift_right_unsigned from "@std/internal/math.ms",
 )
 
 /*
@@ -25,7 +23,67 @@ untrusted. `@std/data/encoding_stream.ms` has the streaming forms.
 // `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is
 // `"BOu!rDZ"`.
 export fn ascii85_encode(data Bytes) String {
-	return msstd_encoding_ascii85_encode(data)
+	size := data.length()
+	var out = BytesBuilder()
+	var at = 0
+
+	while at + 4 <= size {
+		word := (
+			data.get(at).to_int() * 16777216
+			+ data.get(at + 1).to_int() * 65536
+			+ data.get(at + 2).to_int() * 256
+			+ data.get(at + 3).to_int()
+		)
+		at += 4
+
+		if word == 0 {
+			out.append(122)
+			continue
+		}
+
+		r0 := word % 52200625
+		r1 := r0 % 614125
+		r2 := r1 % 7225
+		out.append((33 + word / 52200625).to_uint8() or 0)
+		out.append((33 + r0 / 614125).to_uint8() or 0)
+		out.append((33 + r1 / 7225).to_uint8() or 0)
+		out.append((33 + r2 / 85).to_uint8() or 0)
+		out.append((33 + r2 % 85).to_uint8() or 0)
+	}
+
+	if at < size {
+		var word = 0
+
+		for k in 0..4 {
+			byte := if at + k < size {
+				data.get(at + k).to_int()
+			} else {
+				0
+			}
+			word = word * 256 + byte
+		}
+
+		put_digits(out, word, size - at + 1)
+	}
+
+	return out.build().decode_utf8() or ""
+}
+
+// Appends the first `count` of the five base-85 digits of the 32-bit `word`.
+fn put_digits(var out BytesBuilder, word, count Int) Void {
+	d0 := word / 52200625
+	r0 := word % 52200625
+	d1 := r0 / 614125
+	r1 := r0 % 614125
+	d2 := r1 / 7225
+	r2 := r1 % 7225
+	d3 := r2 / 85
+	d4 := r2 % 85
+	out.append((33 + d0).to_uint8() or 0)
+	out.append((33 + d1).to_uint8() or 0)
+	if count > 2 { out.append((33 + d2).to_uint8() or 0) }
+	if count > 3 { out.append((33 + d3).to_uint8() or 0) }
+	if count > 4 { out.append((33 + d4).to_uint8() or 0) }
 }
 
 /*
@@ -34,7 +92,143 @@ Rejects Adobe delimiters, one-digit tails, invalid characters and groups that ov
 A negative `max_bytes` returns `EINVAL`; decoded output above it returns `EOVERFLOW` before the output is allocated.
 */
 export fn ascii85_decode(text String, max_bytes Int?) Bytes! {
-	return msstd_encoding_ascii85_decode(text, max_bytes)
+	if is_negative(max_bytes) { return invalid_input() }
+
+	room := budget(max_bytes)
+	data := text.view_bytes()
+	size := data.length()
+	var out = BytesBuilder()
+	var made = 0
+	var word = 0
+	var digits = 0
+	var i = 0
+
+	while i < size {
+		if digits == 0 and i + 5 <= size {
+			// Five digits in a row: a whole group without the per-byte state. A digit
+			// is under 85 and any other byte is 255, so no byte is a digit exactly when
+			// the or of the five has bit 7 set.
+			d0 := ASCII85_VALUES[data.get(i).to_int()]
+			d1 := ASCII85_VALUES[data.get(i + 1).to_int()]
+			d2 := ASCII85_VALUES[data.get(i + 2).to_int()]
+			d3 := ASCII85_VALUES[data.get(i + 3).to_int()]
+			d4 := ASCII85_VALUES[data.get(i + 4).to_int()]
+
+			if (
+				msrt_bits_bit_or(
+					msrt_bits_bit_or(d0, d1),
+					msrt_bits_bit_or(msrt_bits_bit_or(d2, d3), d4),
+				) < 128
+			) {
+				group := (
+					(
+						(
+							(
+								masked(d0) * 85
+								+ masked(d1)
+							) * 85
+							+ masked(d2)
+						) * 85
+						+ masked(d3)
+					) * 85
+					+ masked(d4)
+				)
+				if group > 4294967295 { return invalid_data() }
+				if 4 > room - made { return limit_exceeded() }
+
+				out.append(msrt_bits_shift_right_unsigned(group, 24).to_uint8() or 0)
+				out.append(
+					msrt_bits_bit_and(
+						msrt_bits_shift_right_unsigned(
+							group,
+							16,
+						),
+						255,
+					).to_uint8() or 0
+				)
+				out.append(
+					msrt_bits_bit_and(
+						msrt_bits_shift_right_unsigned(
+							group,
+							8,
+						),
+						255,
+					).to_uint8() or 0
+				)
+				out.append(msrt_bits_bit_and(group, 255).to_uint8() or 0)
+				made += 4
+				i += 5
+				continue
+			}
+		}
+
+		c := data.get(i).to_int()
+		i += 1
+		if c <= 32 { continue }
+
+		if c == 122 {
+			if digits != 0 { return invalid_data() }
+			if 4 > room - made { return limit_exceeded() }
+
+			for zero in 0..4 { out.append(0) }
+			made += 4
+			continue
+		}
+
+		if c < 33 or c > 117 { return invalid_data() }
+
+		word = word * 85 + (c - 33)
+		digits += 1
+
+		if digits == 5 {
+			if word > 4294967295 { return invalid_data() }
+			if 4 > room - made { return limit_exceeded() }
+
+			put_group(out, word, 4)
+			made += 4
+			word = 0
+			digits = 0
+		}
+	}
+
+	if digits == 1 { return invalid_data() }
+
+	if digits > 1 {
+		for pad in digits..5 { word = word * 85 + 84 }
+		if word > 4294967295 { return invalid_data() }
+		if digits - 1 > room - made { return limit_exceeded() }
+
+		put_group(out, word, digits - 1)
+	}
+
+	return ok(out.build())
+}
+
+// Appends the first `count` bytes of the 32-bit `word`, most significant first.
+fn put_group(var out BytesBuilder, word, count Int) Void {
+	out.append(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(word, 24),
+			255,
+		).to_uint8() or 0
+	)
+	if count > 1 {
+		out.append(
+			msrt_bits_bit_and(
+				msrt_bits_shift_right_unsigned(word, 16),
+				255,
+			).to_uint8() or 0
+		)
+	}
+	if count > 2 {
+		out.append(
+			msrt_bits_bit_and(
+				msrt_bits_shift_right_unsigned(word, 8),
+				255,
+			).to_uint8() or 0
+		)
+	}
+	if count > 3 { out.append(msrt_bits_bit_and(word, 255).to_uint8() or 0) }
 }
 
 // Alphabet and padding for `base32_encode` and `base32_decode`.
@@ -48,7 +242,85 @@ export type Base32Options {
 // Encodes uppercase RFC 4648 Base32, using the alphabet and padding in `options`.
 // Example: `base32_encode("f".to_bytes())` returns `"MY======"`.
 export fn base32_encode(data Bytes, options Base32Options = Base32Options()) String {
-	return msstd_encoding_base32_encode(data, options.hex_alphabet, options.padded)
+	symbols := if options.hex_alphabet { BASE32_HEX_SYMBOLS } else { BASE32_SYMBOLS }
+	size := data.length()
+	var out = BytesBuilder()
+	var at = 0
+
+	while at + 5 <= size {
+		word := (
+			data.get(at).to_int() * 4294967296
+			+ data.get(at + 1).to_int() * 16777216
+			+ data.get(at + 2).to_int() * 65536
+			+ data.get(at + 3).to_int() * 256
+			+ data.get(at + 4).to_int()
+		)
+		at += 5
+		for k in 0..8 {
+			out.append(
+				symbols[
+					msrt_bits_bit_and(
+						msrt_bits_shift_right_unsigned(
+							word,
+							35 - 5 * k,
+						),
+						31,
+					)
+				]
+			)
+		}
+	}
+
+	var written = at / 5 * 8
+	var accumulator = 0
+	var held = 0
+
+	for i in at..size {
+		accumulator = msrt_bits_bit_or(
+			msrt_bits_shift_left(accumulator, 8),
+			data.get(i).to_int(),
+		)
+		held += 8
+
+		while held >= 5 {
+			held -= 5
+			out.append(
+				symbols[
+					msrt_bits_bit_and(
+						msrt_bits_shift_right_unsigned(
+							accumulator,
+							held,
+						),
+						31,
+					)
+				]
+			)
+			written += 1
+		}
+
+		accumulator = msrt_bits_bit_and(accumulator, msrt_bits_shift_left(1, held) - 1)
+	}
+
+	if held > 0 {
+		out.append(
+			symbols[
+				msrt_bits_bit_and(
+					msrt_bits_shift_left(accumulator, 5 - held),
+					31,
+				)
+			]
+		)
+		written += 1
+	}
+
+	if options.padded {
+		while written % 8 != 0 {
+			out.append(61)
+			written += 1
+		}
+	}
+
+	return out.build().decode_utf8() or ""
 }
 
 /*
@@ -61,12 +333,119 @@ export fn base32_decode(
 	options Base32Options = Base32Options(),
 	max_bytes Int? = null,
 ) Bytes! {
-	return msstd_encoding_base32_decode(
-		text,
-		options.hex_alphabet,
-		options.padded,
-		max_bytes,
-	)
+	if is_negative(max_bytes) { return invalid_input() }
+
+	data := text.view_bytes()
+	size := data.length()
+	var padding = 0
+	while padding < size and data.get(
+		size - 1 - padding
+	) == 61 { padding += 1 }
+
+	count := size - padding
+
+	// Padding belongs only to padded text and completes its last block; a last block of
+	// 1, 3 or 6 symbols holds no bytes.
+	tail := count % 8
+	tail_ok := tail == 0 or tail == 2 or tail == 4 or tail == 5 or tail == 7
+	if (
+		(padding > 0 and not options.padded)
+		or (options.padded and size % 8 != 0)
+		or not tail_ok
+		or (options.padded and padding != (8 - tail) % 8)
+	) { return invalid_data() }
+
+	if count / 8 * 5 + count % 8 * 5 / 8 > budget(max_bytes) {
+		// An `=` before the padding is bad data whatever the budget.
+		for i in 0..count {
+			if data.get(i) == 61 { return invalid_data() }
+		}
+		return limit_exceeded()
+	}
+
+	values := if options.hex_alphabet { BASE32_HEX_VALUES } else { BASE32_VALUES }
+	var out = BytesBuilder()
+	var at = 0
+
+	while at + 8 <= count {
+		d0 := values[data.get(at).to_int()]
+		d1 := values[data.get(at + 1).to_int()]
+		d2 := values[data.get(at + 2).to_int()]
+		d3 := values[data.get(at + 3).to_int()]
+		d4 := values[data.get(at + 4).to_int()]
+		d5 := values[data.get(at + 5).to_int()]
+		d6 := values[data.get(at + 6).to_int()]
+		d7 := values[data.get(at + 7).to_int()]
+		if (
+			msrt_bits_bit_or(
+				msrt_bits_bit_or(
+					msrt_bits_bit_or(d0, d1),
+					msrt_bits_bit_or(d2, d3),
+				),
+				msrt_bits_bit_or(
+					msrt_bits_bit_or(d4, d5),
+					msrt_bits_bit_or(d6, d7),
+				),
+			) > 31
+		) {
+			return invalid_data()
+		}
+
+		word := (
+			masked(d0) * 34359738368
+			+ masked(d1) * 1073741824
+			+ masked(d2) * 33554432
+			+ masked(d3) * 1048576
+			+ masked(d4) * 32768
+			+ masked(d5) * 1024
+			+ masked(d6) * 32
+			+ masked(d7)
+		)
+		at += 8
+		for k in 0..5 {
+			out.append(
+				msrt_bits_bit_and(
+					msrt_bits_shift_right_unsigned(
+						word,
+						32 - 8 * k,
+					),
+					255,
+				).to_uint8() or 0
+			)
+		}
+	}
+
+	var accumulator = 0
+	var held = 0
+
+	for i in at..count {
+		digit := values[data.get(i).to_int()]
+		if digit == 255 { return invalid_data() }
+
+		accumulator = msrt_bits_bit_or(msrt_bits_shift_left(accumulator, 5), digit)
+		held += 5
+
+		if held >= 8 {
+			held -= 8
+			out.append(
+				msrt_bits_bit_and(
+					msrt_bits_shift_right_unsigned(
+						accumulator,
+						held,
+					),
+					255,
+				).to_uint8() or 0
+			)
+			accumulator = msrt_bits_bit_and(
+				accumulator,
+				msrt_bits_shift_left(1, held) - 1,
+			)
+		}
+	}
+
+	if accumulator != 0 { return invalid_data() }
+
+	return ok(out.build())
 }
 
 /*
@@ -114,12 +493,37 @@ export fn base64_encode(data Bytes, url_safe Bool = false, padded Bool = true) S
 // returns
 // `EBADMSG`. `max_bytes` bounds decoded output as in `base32_decode`.
 export fn hex_decode(text String, max_bytes Int?) Bytes! {
-	return msstd_encoding_hex_decode(text, max_bytes)
+	if is_negative(max_bytes) { return invalid_input() }
+
+	data := text.view_bytes()
+	half := data.length() / 2
+	if half > budget(max_bytes) { return limit_exceeded() }
+	if data.length() % 2 != 0 { return invalid_data() }
+
+	var out = BytesBuilder()
+
+	for i in 0..half {
+		high := HEX_VALUES[data.get(2 * i).to_int()]
+		low := HEX_VALUES[data.get(2 * i + 1).to_int()]
+		if msrt_bits_bit_or(high, low) > 15 { return invalid_data() }
+
+		out.append((masked(high) * 16 + masked(low)).to_uint8() or 0)
+	}
+
+	return ok(out.build())
 }
 
 // Encodes each byte as two lowercase hexadecimal digits.
 export fn hex_encode(data Bytes) String {
-	return msstd_encoding_hex_encode(data)
+	var out = BytesBuilder()
+
+	for i in 0..data.length() {
+		byte := data.get(i).to_int()
+		out.append(HEX_SYMBOLS[byte / 16])
+		out.append(HEX_SYMBOLS[byte % 16])
+	}
+
+	return out.build().decode_utf8() or ""
 }
 
 // Encodes text as UTF-16 code units, little-endian unless `little_endian` is false.
@@ -259,6 +663,114 @@ export fn ascii_decode(data Bytes) String! {
 	}
 	return ok(data.decode_utf8() or "")
 }
+
+// A table value known to be a digit, with its range visible to the checker of
+// arithmetic.
+fn masked(digit Int) Int {
+	return msrt_bits_bit_and(digit, 127)
+}
+
+fn min_of(a, b Int) Int {
+	if a < b { return a }
+	return b
+}
+
+fn is_negative(max_bytes Int?) Bool {
+	limit := max_bytes
+	return limit != null and limit < 0
+}
+
+fn invalid_input[T]() T! {
+	return error(Error("encoding: invalid input", kind: "EINVAL"))
+}
+
+fn invalid_data[T]() T! {
+	return error(Error("encoding: invalid data", kind: "EBADMSG"))
+}
+
+fn limit_exceeded[T]() T! {
+	return error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+}
+
+BASE32_SYMBOLS List[UInt8] := [
+	65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85,
+	86, 87, 88, 89, 90, 50, 51, 52, 53, 54, 55
+]
+BASE32_HEX_SYMBOLS List[UInt8] := [
+	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75,
+	76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86
+]
+HEX_SYMBOLS List[UInt8] := [
+	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102
+]
+BASE32_VALUES List[Int] := [
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 26,
+	27, 28, 29, 30, 31, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 1, 2, 3, 4, 5,
+	6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255
+]
+BASE32_HEX_VALUES List[Int] := [
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 1, 2, 3, 4,
+	5, 6, 7, 8, 9, 255, 255, 255, 255, 255, 255, 255, 10, 11, 12, 13, 14, 15, 16, 17,
+	18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255
+]
+HEX_VALUES List[Int] := [
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 1, 2, 3, 4,
+	5, 6, 7, 8, 9, 255, 255, 255, 255, 255, 255, 255, 10, 11, 12, 13, 14, 15, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 10, 11, 12, 13, 14, 15, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255
+]
+ASCII85_VALUES List[Int] := [
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0,
+	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+	24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
+	45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65,
+	66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+	255
+]
 
 fn encoding_invalid_data() Error {
 	return Error("encoding: invalid data", kind: "EBADMSG")

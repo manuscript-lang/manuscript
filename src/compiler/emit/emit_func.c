@@ -180,7 +180,7 @@ static bool emit_block(EmitCx *cx, uint32_t block, const uint32_t *last) {
 static void emit_header(EmitCx *cx, uint32_t index, uint32_t subprogram) {
   const MirFunc *func = cx->func;
   MsStrBuild *out = cx->out;
-  bool exported = cx->export_all || func->linkage == ML_EXPORT || cx->module->entry == index;
+  bool exported = func->linkage == ML_EXPORT || cx->module->entry == index;
   MsSpan result = emit_leaves(cx, func->ret);
   ms_strbuild_printf(out, "define %s%s ", exported ? "" : "internal ",
                      result.len == 1 ? emit_leaf_type(result.ptr[0]) : "void");

@@ -16,3 +16,4 @@ fn accepts(value Equal) Void {
 fn use_view() Void {
 	accepts(Key(1))
 }
+// expect-exit: 0

@@ -40,3 +40,4 @@ export fn main() Int {
 	say(f"s1 = [{s1}]")
 	return 0
 }
+// expect-error: MS3001 38:16 expected Int, found String (in entry 2 of the literal, whose entries share one type)

@@ -15,3 +15,7 @@ fn f(xs List[Int], o Int?) Void {
 
 	xs.append(n)
 }
+// expect-error: MS3000 9:13 cannot change `xs`: parameter `xs` is not declared var; write `var xs <Type>` in the signature
+// expect-fix: 3:6-3:6 "var "
+// expect-error: MS3000 16:5 cannot change `xs`: parameter `xs` is not declared var; write `var xs <Type>` in the signature
+// expect-fix: 3:6-3:6 "var "

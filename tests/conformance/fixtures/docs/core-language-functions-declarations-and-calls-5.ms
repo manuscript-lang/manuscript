@@ -12,3 +12,4 @@ fn check_positive(value Int) Void {
 fn missing_value() Int {
 	return panic(message: "Required value is missing")
 }
+// expect-exit: 0

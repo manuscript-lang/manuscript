@@ -11,3 +11,5 @@ fn sum(values List[Int]) Int {
 
 total := sum([1, 2, 3])
 empty := sum([])
+// expect-error: MS3070 12:10 a constant takes literals, operators, collections, and other constants; compute this value in a function
+// expect-error: MS3070 13:10 a constant takes literals, operators, collections, and other constants; compute this value in a function

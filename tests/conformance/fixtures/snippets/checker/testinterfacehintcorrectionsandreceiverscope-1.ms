@@ -10,3 +10,4 @@ type Sq {
 }
 
 fn Sq.area() Int => self.s * self.s
+// expect-exit: 0

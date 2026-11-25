@@ -6,3 +6,5 @@ fn f() Int {
 	x = 2
 	return x
 }
+// expect-error: MS3060 6:5 cannot assign immutable binding x; declare it with 'var x = ...' instead of 'x := ...'
+// expect-fix: 5:5-5:9 "var x ="

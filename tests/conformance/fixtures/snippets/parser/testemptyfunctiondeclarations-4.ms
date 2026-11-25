@@ -8,3 +8,4 @@ type Counter {
 fn Counter.double() Int {
 	return self.value * 2
 }
+// expect-exit: 0

@@ -1,9 +1,5 @@
 import Bytes from "@std/bytes.ms"
 
-export extern fn msstd_encoding_ascii85_encode(data Bytes) String
-
-export extern fn msstd_encoding_ascii85_decode(text String, max_bytes Int?) Bytes!
-
 export extern fn msstd_encoding_base64_encode_unpadded(data Bytes, url_safe Bool) String
 
 export extern fn msstd_encoding_base64_decode(
@@ -17,20 +13,3 @@ export extern fn msstd_encoding_base64_decode_unpadded(
 	url_safe Bool,
 	max_bytes Int?,
 ) Bytes!
-
-export extern fn msstd_encoding_base32_encode(
-	data Bytes,
-	hex_alphabet,
-	padded Bool,
-) String
-
-export extern fn msstd_encoding_base32_decode(
-	text String,
-	hex_alphabet,
-	padded Bool,
-	max_bytes Int?,
-) Bytes!
-
-export extern fn msstd_encoding_hex_encode(data Bytes) String
-
-export extern fn msstd_encoding_hex_decode(text String, max_bytes Int?) Bytes!

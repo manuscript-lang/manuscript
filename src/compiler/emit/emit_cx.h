@@ -65,7 +65,6 @@ typedef struct EmitCx {
   uint32_t scope_base;     /* module-wide index of the first scope of `func` */
   uint32_t body_scope;     /* the scope number of `func`'s own body */
   uint32_t body_line;      /* the line of the first instruction with one; 0 until looked up */
-  bool export_all;         /* every function gets an external symbol */
   bool noinline;           /* `func` is glue at the top of a deep chain of glue calls */
   bool pure;               /* `func` reads and writes no memory, cannot fault and always returns */
   bool slot_scopes;        /* mark where each one-block slot starts and stops living */

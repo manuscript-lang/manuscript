@@ -13,3 +13,4 @@ type Pair[A, B Clonable] {
 fn Pair[Int, B].get() B {
 	return self.right.clone()
 }
+// expect-exit: 0

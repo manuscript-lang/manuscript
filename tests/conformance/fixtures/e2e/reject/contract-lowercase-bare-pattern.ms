@@ -16,3 +16,4 @@ fn read(value Get) Int {
 		_ => return 0
 	}
 }
+// expect-error: MS3000 15:9 concrete type pattern requires exactly one receiver binding; write 'Type(name) => ...' or 'Type(_) => ...'

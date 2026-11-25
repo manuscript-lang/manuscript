@@ -10,3 +10,4 @@ fn positive(value Int) Bool {
 		return false
 	}
 }
+// expect-exit: 0

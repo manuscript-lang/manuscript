@@ -5,3 +5,4 @@ import CsvOptions from "@std/data/csv.ms"
 fn example(CsvOptions fn() Void) Void {
 	CsvOptions()
 }
+// expect-exit: 0

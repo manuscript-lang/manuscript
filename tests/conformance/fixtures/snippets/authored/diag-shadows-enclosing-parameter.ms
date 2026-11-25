@@ -13,3 +13,4 @@ fn f(x Int) Int {
 export fn main() Int {
 	return f(1)
 }
+// expect-error: MS3000 6:9 binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'

@@ -13,3 +13,4 @@ fn display(hold u User, anonymous Bool) String {
 fn keep(u User) List[String] {
 	return [display(u, false)]
 }
+// expect-error: MS3000 9:27 this function returns a reference into its arguments at 10:14 but a new value here; return `.clone()` of the part there, or build a new value on every path

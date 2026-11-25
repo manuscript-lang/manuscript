@@ -4,3 +4,4 @@
 type Layer0[T] {
 	value T
 }
+// expect-exit: 0

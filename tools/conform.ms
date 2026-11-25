@@ -135,6 +135,8 @@ fn lint_command(corpus String) Int {
 		if fx.phase == "parse" and fx.is_dir {
 			problems.append(f"{fx.id}: parse fixtures must be single files")
 		}
+		if not fx.inline.is_empty() { continue }
+
 		if not fx.is_dir { sidecars.append(fx.sidecar.clone()) }
 
 		text := read_text(fx.sidecar)

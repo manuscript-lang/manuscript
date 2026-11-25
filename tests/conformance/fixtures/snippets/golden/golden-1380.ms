@@ -15,3 +15,4 @@ fn read_number() Int {
 	input := stdin().read(max_bytes: 1)
 	return 41
 }
+// expect-error: MS2001 15:22 unknown or ambiguous member read on ReadStream[Bytes]; available: close, closed, end, next, source

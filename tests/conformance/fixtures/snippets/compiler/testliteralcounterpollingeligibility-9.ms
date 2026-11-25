@@ -7,3 +7,4 @@ fn probe() Void {
 		i -= 1
 	}
 }
+// expect-exit: 0

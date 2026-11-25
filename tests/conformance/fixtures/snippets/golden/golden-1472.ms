@@ -7,3 +7,4 @@ fn zero() Int {
 export fn main() Int {
 	return (1 / zero())
 }
+// expect-exit: 0

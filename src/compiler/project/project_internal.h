@@ -17,7 +17,9 @@ void ms_project_error_path(MsProjectError *error, const char *op, MsSpan path, i
 
 struct MsManifest;
 
-/* ms_project_resolve_import with the aliases of `manifest` (NULL for none). */
+/* The canonical file a local import `path` written in the file `importer` names, confined to the project root
+ * (`root`, canonical), with the aliases of `manifest` (NULL for none). `overlay` may be NULL. False with *error
+ * filled when the file cannot be named or read. */
 MS_NODISCARD bool ms_project_resolve_in(MsArena *arena, const struct MsManifest *manifest, MsSpan root,
                                         const MsOverlay *overlay, MsSpan importer, MsSpan path,
                                         MsSpan *canonical, MsProjectError *error);

@@ -11,3 +11,4 @@ fn tag_count() Int {
 	return count()
 }
 // tag_count() returns 2.
+// expect-exit: 0

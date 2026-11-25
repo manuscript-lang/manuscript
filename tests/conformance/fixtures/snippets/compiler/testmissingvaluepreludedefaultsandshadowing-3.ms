@@ -6,3 +6,4 @@ enum Other {
 }
 
 fn get() Other => Missing(1)
+// expect-exit: 0

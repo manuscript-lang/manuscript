@@ -16,3 +16,4 @@ fn var Buf.put(x Int) Void {
 fn main() Void {
 	return
 }
+// expect-exit: 0

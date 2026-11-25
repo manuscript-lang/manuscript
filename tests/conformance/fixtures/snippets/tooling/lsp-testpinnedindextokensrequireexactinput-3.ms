@@ -4,3 +4,4 @@
 export fn different() Int {
 	return 9
 }
+// expect-exit: 0

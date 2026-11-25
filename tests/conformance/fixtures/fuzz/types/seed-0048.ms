@@ -28,3 +28,4 @@ export fn main() Int {
 	say(f"i3 = {i3}")
 	return 0
 }
+// expect-error: MS2001 16:12 unknown binding missing_function; declare it with 'missing_function := ...' before use, define 'fn missing_function(...) T { ... }', or import it from a module

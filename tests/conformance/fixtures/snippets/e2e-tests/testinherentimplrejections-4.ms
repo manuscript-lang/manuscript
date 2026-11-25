@@ -8,3 +8,4 @@ type B[T] {
 fn B.f() Int {
 	return 1
 }
+// expect-error: MS3000 8:1 a method of B names one receiver argument per type parameter, as in 'fn B[T].name()'

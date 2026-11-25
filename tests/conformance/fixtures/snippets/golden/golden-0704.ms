@@ -13,3 +13,4 @@ fn count[T](value T) Int {
 }
 
 fn probe() Int => return count[String]("unused")
+// expect-error: MS2001 4:13 unknown binding Cell; declare it with 'Cell := ...' before use, define 'fn Cell(...) T { ... }', or import it from a module

@@ -5,3 +5,4 @@ fn operation() Int => 1
 fn caller() Void {
 	operation()
 }
+// expect-exit: 0

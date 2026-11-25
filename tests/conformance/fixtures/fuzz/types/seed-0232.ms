@@ -21,3 +21,4 @@ export fn main() Int {
 	say(f"s4 = [{s4}]")
 	return 0
 }
+// expect-error: MS3000 13:41 too many positional arguments; every parameter is already supplied, so remove this argument

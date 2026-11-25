@@ -17,3 +17,4 @@ test "failing" {
 test "later" {
 	expect_equal(true, true)?
 }
+// expect-exit: 0

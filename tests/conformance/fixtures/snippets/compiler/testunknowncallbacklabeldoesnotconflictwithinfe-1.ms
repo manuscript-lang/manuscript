@@ -4,3 +4,4 @@
 fn example() Void {
 	choose(first: () => "a", second: () => "b", other: () => missing)
 }
+// expect-error: MS2001 5:5 unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T { ... }', or import it from a module

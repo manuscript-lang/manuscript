@@ -12,3 +12,4 @@ fn probe(value Int, flag Bool) Int {
 
 	return sum
 }
+// expect-exit: 0

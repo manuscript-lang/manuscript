@@ -7,3 +7,4 @@ fn work() Bool {
 		) == [1, 2, 3]
 	)
 }
+// expect-exit: 0

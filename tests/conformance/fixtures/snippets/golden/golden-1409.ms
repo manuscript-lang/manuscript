@@ -7,3 +7,4 @@ fn depth(n Int) Int {
 export fn main() Int {
 	return depth(0)
 }
+// expect-exit: 0

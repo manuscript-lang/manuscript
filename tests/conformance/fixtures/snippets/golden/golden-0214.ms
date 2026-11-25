@@ -11,3 +11,4 @@ fn make() fn(Int) Int {
 fn call() Int {
 	return make()()
 }
+// expect-error: MS3003 12:12 missing argument 1: Int; pass it positionally, without a label

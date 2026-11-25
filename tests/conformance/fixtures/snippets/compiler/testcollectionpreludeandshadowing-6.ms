@@ -8,3 +8,4 @@ type List[T] {
 fn f() Void {
 	xs := [1]
 }
+// expect-error: MS2001 4:1 declaration List reuses a prelude name; rename it, because List always refers to the standard declaration

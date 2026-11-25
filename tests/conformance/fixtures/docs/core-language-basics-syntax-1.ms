@@ -12,3 +12,4 @@ export fn welcome(customer Customer) String {
 	}
 	return "Your account is inactive."
 }
+// expect-exit: 0

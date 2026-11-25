@@ -6,3 +6,4 @@ fn add(left Int, right Int) Int => left + right
 fn total(left Int, right Int) Int {
 	return add(left: left, right: right)
 }
+// expect-exit: 0

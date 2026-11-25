@@ -5,3 +5,4 @@ import (
 	HttpHeaders, HttpMethod, headers from "@std/net/http.ms",
 	Cidr, DnsKind, IpAddress, IpFamily from "@std/net/ip.ms",
 )
+// expect-exit: 0

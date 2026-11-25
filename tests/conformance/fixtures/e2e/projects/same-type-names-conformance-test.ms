@@ -26,3 +26,4 @@ test "same-named records and alternatives stay distinct" {
 		_ => expect_equal(true, false)?
 	}
 }
+// expect-error: MS2002 4:1 cannot find module ./other.ms (looked for other.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file

@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/checker/hints_test.go:109 TestWrongImportListsOnlyDeclaredExports
 fn hidden() Int => 0
+// expect-exit: 0

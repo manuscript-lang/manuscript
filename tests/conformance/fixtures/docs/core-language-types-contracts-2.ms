@@ -12,3 +12,4 @@ type Offset {
 fn Offset.apply(value Int) Int {
 	return value + self.delta
 }
+// expect-exit: 0

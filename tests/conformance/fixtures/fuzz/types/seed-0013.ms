@@ -43,3 +43,4 @@ export fn main() Int {
 	bad := not 5
 	return 0
 }
+// expect-error: MS3000 43:12 not requires Bool, found Int; compare explicitly, e.g. not (x == 0)

@@ -8,3 +8,4 @@ fn identity[T](hold value T) &T {
 fn call() Int {
 	return identity(3)
 }
+// expect-exit: 0

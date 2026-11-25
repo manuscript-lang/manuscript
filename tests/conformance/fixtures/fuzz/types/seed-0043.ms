@@ -27,3 +27,4 @@ export fn main() Int {
 	bad := missing_function(3)
 	return 0
 }
+// expect-error: MS2001 27:12 unknown binding missing_function; declare it with 'missing_function := ...' before use, define 'fn missing_function(...) T { ... }', or import it from a module

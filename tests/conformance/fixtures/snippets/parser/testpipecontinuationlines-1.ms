@@ -9,3 +9,4 @@ fn f() Int {
 		| .size()
 	return 0
 }
+// expect-error: MS2001 8:11 unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T { ... }', or import it from a module

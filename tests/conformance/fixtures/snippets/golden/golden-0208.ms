@@ -7,3 +7,4 @@ fn f(value Int = 1) Int {
 fn call() Int {
 	return f(other: 3)
 }
+// expect-error: MS3004 8:14 unknown argument other; parameters of f: value

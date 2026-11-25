@@ -11,3 +11,5 @@ fn example(value Int = choose(first: 1, second: 2)) Int {
 
 	return 0
 }
+// expect-error: MS2001 3:24 unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T { ... }', or import it from a module
+// expect-error: MS2001 5:13 unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T { ... }', or import it from a module

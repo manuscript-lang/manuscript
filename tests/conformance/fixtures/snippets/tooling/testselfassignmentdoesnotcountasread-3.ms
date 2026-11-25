@@ -8,3 +8,4 @@ fn answer() Int {
 	total += 2
 	return other
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 export fn helper() Void {
 	return
 }
+// expect-exit: 0

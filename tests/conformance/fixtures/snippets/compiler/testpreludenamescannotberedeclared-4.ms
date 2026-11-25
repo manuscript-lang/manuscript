@@ -4,3 +4,4 @@
 type ListEntry {
 	value Int
 }
+// expect-error: MS2001 4:1 declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declaration

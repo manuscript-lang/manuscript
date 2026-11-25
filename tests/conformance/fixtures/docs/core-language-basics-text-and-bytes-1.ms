@@ -5,3 +5,4 @@ quote := "She said \"hello\"."
 template := "Literal braces: {name}"
 lines := "first\nsecond"
 symbol := "\u{1F642}"
+// expect-exit: 0

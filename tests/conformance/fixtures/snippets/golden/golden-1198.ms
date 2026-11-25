@@ -6,3 +6,4 @@ fn sum(left Int, right Int) Int {
 fn answer(input: Int) Int {
     return sum(left: inp|
 }
+// expect-error: MS1000 8:1 mismatched closing delimiter '}'; the '(' opened at line 7:15 needs ')'

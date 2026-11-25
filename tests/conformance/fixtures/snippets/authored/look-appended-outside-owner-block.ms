@@ -20,3 +20,4 @@ fn main() Void {
 	}
 	print(views[0].items[0])
 }
+// expect-error: MS3000 19:15 this stores a value that looks at `inner` (bound at 18:9) in a place that is used after `inner` ends; declare the owner before the place that holds the view, or store `.clone()` of the part you need

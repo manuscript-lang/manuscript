@@ -9,3 +9,4 @@ export fn main() Int {
 	total := add(a: 1, b: 2)
 	return total - 3
 }
+// expect-exit: 0

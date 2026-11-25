@@ -8,3 +8,4 @@ fn f() Int {
 
 	return 1
 }
+// expect-error: MS3000 5:9 local binding x is never read; remove it, use it, or name it with a leading '_' to ignore it

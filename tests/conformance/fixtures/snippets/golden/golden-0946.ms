@@ -4,3 +4,4 @@ fn f() Void {
 	if true { return }
 	return
 }
+// expect-exit: 0

@@ -4,3 +4,4 @@
 fn work() Bool {
 	return (Error("command diagnostic", kind: "EIO").message != "command diagnostic")
 }
+// expect-exit: 0

@@ -20,3 +20,4 @@ fn copy(var o Outer) Inner {
 	inner.tags.append("taken")
 	return inner
 }
+// expect-error: MS3000 13:19 `var inner` cannot take `o.inner`: the caller keeps it, and a `var` is a value of its own; copy it with `o.inner.clone()`, or change it in place through `o`

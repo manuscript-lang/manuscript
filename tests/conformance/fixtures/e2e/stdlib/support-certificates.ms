@@ -9,3 +9,4 @@ export fn certificate() String {
 export fn private_key() String {
 	return "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIDAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAx\n-----END PRIVATE KEY-----\n"
 }
+// expect-exit: 0

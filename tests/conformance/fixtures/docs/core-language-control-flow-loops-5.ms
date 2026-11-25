@@ -11,3 +11,4 @@ fn total(values Map[String, Int]) Int {
 
 	return sum
 }
+// expect-exit: 0

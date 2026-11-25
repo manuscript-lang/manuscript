@@ -2,3 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/parser/partial_continuation_test.go:106 TestPartialContinuationDifferential
 value := 1
+// expect-exit: 0

@@ -15,3 +15,4 @@
   --trace <path>       Write an execution trace
   --debug              Alias for --build-type Debug
   --watch              Rebuild and rerun after each saved source change
+// expect-error: MS1000 3:48-3:49 unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon

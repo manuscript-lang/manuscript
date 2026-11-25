@@ -4,6 +4,7 @@
 
 Checking, lowering, MIR, LLVM emission, build, fault sites.
 
+- [The Debug back end is Cranelift behind a shared library](the-debug-back-end-is-cranelift-behind-a-shared-library.md): one object for the program, loaded by path; measured speed and the pitfalls so far.
 - [Name lookups in a function are indexed, not scanned](name-lookups-in-a-function-are-indexed-not-scanned.md): per-name scope index; a 32k-line function checks in 0.47 s instead of 3.8 s.
 - [Debug suffixes hid lines from the copy-forwarding pass](debug-suffixes-hid-lines-from-the-copy-forwarding-pass.md): `emit_copies` matched nothing in builds with debug info; fixed, `string_append_50k` instructions halved.
 - [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
@@ -44,3 +45,4 @@ Checking, lowering, MIR, LLVM emission, build, fault sites.
 - [A look is checked against its owner's block, not only at returns](a-look-is-checked-against-its-owners-block.md): assigning or appending a `&`-field record to a place read after the owner's block ends, or capturing one in an escaping closure, is rejected (#6979); `own/look_stores.c`.
 - [A flagged owner moved into an operand is no longer live](a-flagged-owner-moved-into-an-operand-is-no-longer-live.md): drop elaboration applies a consuming op to the named owner, not to its `move.out`; an early return after the move must not drop it again.
 - [A bound name belongs to the scope outside its statement](a-bound-name-belongs-to-the-scope-outside-its-statement.md): the narrowed-variable path of `lower_bind` registered its owner with the statement scope (`fn_scope_own_var_in`).
+- [A borrowing native's result handed to a new owner is copied](a-borrowing-native-result-given-to-an-owner-is-copied.md): a `slice` view consumed by `get_or` or a loop is cloned first.

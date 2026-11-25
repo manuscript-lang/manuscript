@@ -7,3 +7,4 @@ fn pick(values List[Int], index Int) Int {
 export fn main() Int {
 	return pick([1, 2, 3], 3)
 }
+// expect-exit: 0

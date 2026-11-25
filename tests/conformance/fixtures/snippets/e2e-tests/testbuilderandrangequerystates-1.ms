@@ -10,3 +10,4 @@ type Resource {
 fn move Resource.close() Void! {
 	self.visits.append(1)
 }
+// expect-exit: 0

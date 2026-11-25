@@ -24,3 +24,4 @@ export fn main() Int {
 	say(f"l4 = {l4} len {l4.length()}")
 	return 0
 }
+// expect-error: MS3001 16:14 operator operands require the same independently known type, found Int + String; convert one side so both have one type (e.g. interpolate into text with f"{value}", or convert between Int and Float)

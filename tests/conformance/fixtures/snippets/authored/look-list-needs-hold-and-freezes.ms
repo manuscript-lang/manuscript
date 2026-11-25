@@ -26,3 +26,5 @@ fn main() Void {
 	names.append("c")
 	print(out[0].name)
 }
+// expect-error: MS3000 8:1 a `&` result points into an argument; mark that argument `hold`, or return an owned value
+// expect-error: MS3000 16:1 a `&` result points into an argument; mark that argument `hold`, or return an owned value

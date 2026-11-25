@@ -3,3 +3,4 @@
 fn one() Int {
 	return 1  // keep
 }
+// expect-exit: 0

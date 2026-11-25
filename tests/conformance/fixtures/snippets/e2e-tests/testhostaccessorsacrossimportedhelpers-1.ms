@@ -13,3 +13,4 @@ export fn now() Instant {
 export fn close_output() Void {
 	void stdout().close()
 }
+// expect-exit: 0

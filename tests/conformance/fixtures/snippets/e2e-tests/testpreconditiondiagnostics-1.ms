@@ -8,3 +8,4 @@ import (
 )
 
 fn compare(left Int, right Int) Int => left - right
+// expect-exit: 0

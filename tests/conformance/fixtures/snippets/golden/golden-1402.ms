@@ -16,3 +16,4 @@ fn %s(visits: List[Int], scoped: Bool) Int {
     }
     return sum
 }
+// expect-error: MS1000 3:4-3:5 expected a name, found '%'

@@ -7,3 +7,4 @@ fn f(command String) Int {
 
 	return 0
 }
+// expect-error: MS3050 4:5 non-exhaustive match on String; add a final '_ => ...' arm

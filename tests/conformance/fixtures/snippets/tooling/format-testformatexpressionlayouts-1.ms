@@ -9,3 +9,5 @@ fn work() Void {
 		]
 	)?
 }
+// expect-error: MS2001 5:5 unknown binding expect_false; add: import expect_false from "@std/test/test.ms"
+// expect-fix: 1:1-1:1 "import expect_false from \"@std/test/test.ms\"\n"

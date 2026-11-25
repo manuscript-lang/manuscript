@@ -30,6 +30,8 @@ uint32_t emit_debug_subprogram(EmitCx *cx, uint32_t index);
 void emit_debug_place(EmitCx *cx, size_t from, MirLoc loc);
 /* At the start of the entry block: a `llvm.dbg.value` for each by-value scalar parameter that has a source name. */
 void emit_debug_params(EmitCx *cx);
+/* Describes scalar type `ty` as a debugger base type (name, size in bits, DWARF encoding); false when it is not one. */
+bool emit_debug_scalar(const MirModule *module, MirTy ty, const char **name, uint32_t *bits, uint32_t *encoding);
 /* The metadata that closes the module. */
 void emit_debug_finish(const EmitCx *cx, MsSpan source);
 

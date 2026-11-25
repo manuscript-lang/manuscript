@@ -8,3 +8,5 @@ fn count[T](values List[T]) Int {
 known := count[Int]([])
 // Rejected: the empty list does not determine T.
 unknown := count([])
+// expect-error: MS3070 8:10 a constant takes literals, operators, collections, and other constants; compute this value in a function
+// expect-error: MS3070 10:12 a constant takes literals, operators, collections, and other constants; compute this value in a function

@@ -24,3 +24,7 @@ fn mutate_while_used(text String) Int {
 	line = ""
 	return parts.length()
 }
+// expect-error: MS3000 10:21 `split` borrows `line`, which this position would keep; store `.clone()` of it, or use it in place
+// expect-error: MS3000 14:17 `chars` borrows `text`, which this position would keep; store `.clone()` of it, or use it in place
+// expect-error: MS3000 18:17 `lines` borrows `text`, which this position would keep; store `.clone()` of it, or use it in place
+// expect-error: MS3000 24:5 cannot reassign `line` while `parts` borrows it (binding of a part of it, at 23:5); finish using `parts` before this, or give `parts` its own value by ending its initializer with `.clone()`

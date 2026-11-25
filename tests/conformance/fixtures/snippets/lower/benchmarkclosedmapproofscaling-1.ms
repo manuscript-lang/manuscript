@@ -4,3 +4,4 @@
 interface Tag {
 	fn tag() Int
 }
+// expect-exit: 0

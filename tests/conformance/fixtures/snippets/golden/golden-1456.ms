@@ -15,3 +15,4 @@ fn probe() Int {
 export fn main() Int {
 	return probe()
 }
+// expect-exit: 0

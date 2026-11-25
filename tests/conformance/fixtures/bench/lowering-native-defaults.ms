@@ -55,3 +55,4 @@ fn filesystem_omitted(data Bytes) Result[Void, Error] {
 fn filesystem_bind() fn(String, Writable, Bool) Promise[Void] {
 	return write_file
 }
+// expect-exit: 0

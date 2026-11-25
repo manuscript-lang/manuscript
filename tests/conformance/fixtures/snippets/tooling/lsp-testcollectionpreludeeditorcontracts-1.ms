@@ -4,3 +4,4 @@
 fn use(values List[Int], var entries Map[String, Int], unique Set[Int]) Void {
 	entries.add("a", 1)
 }
+// expect-exit: 0

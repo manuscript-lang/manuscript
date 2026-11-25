@@ -7,3 +7,8 @@ fn discount_message(price Decimal, percent Decimal) String {
 	}
 	return "Discount could not be calculated."
 }
+// expect-error: MS2001 4:27 unknown type Decimal; add: import Decimal from "@std/math/decimal.ms"
+// expect-fix: 1:1-1:1 "import Decimal from \"@std/math/decimal.ms\"\n"
+// expect-error: MS2001 4:44 unknown type Decimal; add: import Decimal from "@std/math/decimal.ms"
+// expect-fix: 1:1-1:1 "import Decimal from \"@std/math/decimal.ms\"\n"
+// expect-error: MS2001 5:17 unknown binding discount; declare it with 'discount := ...' before use, define 'fn discount(...) T { ... }', or import it from a module

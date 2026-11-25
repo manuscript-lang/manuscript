@@ -4,3 +4,5 @@
 fn f(values Set[Int]) Void {
 	values.insert(1)
 }
+// expect-error: MS2001 5:12 unknown or ambiguous member insert on Set[Int]; did you mean 'add'?
+// expect-fix: 5:12-5:18 "add"
