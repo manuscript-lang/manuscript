@@ -93,6 +93,13 @@ static void add_view(Pass *pass, uint32_t local, const MsExpr *source) {
   }
 }
 
+static bool is_list_element(const Pass *pass, const MsExpr *expr) {
+  MsExpr *container = NULL;
+  MsExpr *position = NULL;
+  return ms_expr_index(expr, &container, &position) &&
+         ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, container->id), MS_BUILTIN_List);
+}
+
 static void view_stmt(void *ctx, const MsStmt *stmt) {
   Pass *pass = ctx;
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME) {
@@ -107,7 +114,7 @@ static void view_stmt(void *ctx, const MsStmt *stmt) {
       add_view(pass, ref->local, stmt->u.each.iter);
     }
   } else if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME &&
-             (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER ||
+             (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER || is_list_element(pass, stmt->u.bind.value) ||
               (pass->call_views && (stmt->u.bind.value->kind == MS_E_CALL ||
                                     (stmt->u.bind.value->kind == MS_E_UNARY && stmt->u.bind.value->op == MS_U_TRY)))) &&
              /* a field read the callable moves out (`old := self.f; self.f = g`) is owned by the name, not viewed */
@@ -157,8 +164,17 @@ static void view_expr(void *ctx, const MsExpr *expr) {
 
 static Reach classify_place(Pass *pass, const MsExpr *expr) {
   const MsExpr *root = expr;
-  while (root->kind == MS_E_MEMBER) {
-    root = root->u.member.left;
+  for (;;) {
+    MsExpr *container = NULL;
+    MsExpr *position = NULL;
+    if (root->kind == MS_E_MEMBER) {
+      root = root->u.member.left;
+    } else if (ms_expr_index(root, &container, &position) &&
+               ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, container->id), MS_BUILTIN_List)) {
+      root = container; /* an element of a list is a part of it */
+    } else {
+      break;
+    }
   }
   if (root->kind != MS_E_NAME) {
     return OWNED;
