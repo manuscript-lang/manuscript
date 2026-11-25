@@ -166,6 +166,7 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected);
 
 /* Whether `ty` names a type variable the enclosing body does not own: an open variable of a call being inferred. */
 bool body_has_foreign_variable(const Body *body, MsTy ty);
+void body_report_empty_literal(Body *body, const MsExpr *expr);
 
 /* ---- calls.c ---- */
 

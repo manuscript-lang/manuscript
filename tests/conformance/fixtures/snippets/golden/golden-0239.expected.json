@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature",
+        "message": "cannot change `xs`: parameter `xs` is not declared var; write `var xs <Type>` in the signature",
         "position": {
           "file": "golden-0239.ms",
           "line": 9,
@@ -35,7 +35,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature",
+        "message": "cannot change `xs`: parameter `xs` is not declared var; write `var xs <Type>` in the signature",
         "position": {
           "file": "golden-0239.ms",
           "line": 16,
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0239.ms:9:13: type: cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature\n   |\n 9 |             xs.set(index: 0, value: 5)\n   |             ^\n<DIR>/golden-0239.ms:16:5: type: cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature\n    |\n 16 |     xs.append(n)\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0239.ms:9:13: type: cannot change `xs`: parameter `xs` is not declared var; write `var xs <Type>` in the signature\n   |\n 9 |             xs.set(index: 0, value: 5)\n   |             ^\n<DIR>/golden-0239.ms:16:5: type: cannot change `xs`: parameter `xs` is not declared var; write `var xs <Type>` in the signature\n    |\n 16 |     xs.append(n)\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

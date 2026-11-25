@@ -497,7 +497,7 @@ static void check_move_receiver(Moves *pass, const MsExpr *call) {
   ms_strbuild_append(&text, name);
   ms_strbuild_append_text(&text, "` as a `move` receiver: it is not declared `move`, so the caller keeps it; write `move ");
   ms_strbuild_append(&text, name);
-  ms_strbuild_append_text(&text, ": <Type>` in the signature");
+  ms_strbuild_append_text(&text, " <Type>` in the signature");
   ms_check_report(pass->program, pass->module, receiver->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 

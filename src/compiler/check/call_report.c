@@ -203,7 +203,13 @@ void body_report_arguments(Body *body, const Target *target, const MsExpr *call,
     } else {
       report_labelled(body, target, arg, state);
     }
+    /* No parameter types an unmatched argument (a constructor such as `Bytes(values)` declares none): an empty literal there is no values. */
+    const bool empty = (arg->value->kind == MS_E_LIST && arg->value->u.list.len == 0) ||
+                       (arg->value->kind == MS_E_MAP && arg->value->u.map.len == 0);
+    const bool quiet = body->quiet;
+    body->quiet = quiet || empty;
     (void)body_expr(body, arg->value, MS_TY_NONE);
+    body->quiet = quiet;
   }
   const MsTyTable *types = &body->program->types;
   const bool written = written_fn_value(body, target);

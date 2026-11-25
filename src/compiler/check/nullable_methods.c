@@ -193,8 +193,8 @@ static bool fix_text(const Body *body, const MsExpr *call, Removed kind, const M
 }
 
 static const char *write_text(Removed kind) {
-  return kind == REMOVED_UNWRAP ? "if x != null:` and use `x"
-         : kind == REMOVED_GET  ? "if x != null:` and use `x`, or `x or panic(\"...\")"
+  return kind == REMOVED_UNWRAP ? "if x != null { ... }` and use `x"
+         : kind == REMOVED_GET  ? "if x != null { ... }` and use `x`, or `x or panic(\"...\")"
          : kind == REMOVED_OK_OR ? "ok_or(x, cause)"
          : kind == REMOVED_IS_NULL ? "x == null"
          : kind == REMOVED_IS_PRESENT ? "x != null"

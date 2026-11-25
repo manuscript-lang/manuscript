@@ -519,6 +519,19 @@ static MsTy none_widened(Body *body, MsExpr *const *entries, size_t count) {
   return body_std_type(body, "Optional", &value, 1);
 }
 
+/* An empty `[]` or `{}` whose type nothing fixes: the element types cannot be guessed from later use. */
+void body_report_empty_literal(Body *body, const MsExpr *expr) {
+  for (size_t at = 0; at < body->program->diagnostics.len; at++) {
+    if (body->program->diagnostics.ptr[at].phase == MS_CHECK_RESOLUTION && body->program->diagnostics.ptr[at].module == body->module) {
+      return; /* an annotation that did not resolve is why nothing fixes the type */
+    }
+  }
+  const bool list = expr->kind == MS_E_LIST;
+  ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text(list ? "cannot infer list element type; add an annotation, e.g. xs List[Int] := []"
+                                                           : "cannot infer map key and value types; add an annotation, e.g. m Map[String, Int] := {}")));
+}
+
 static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy element = expected_arg(body, expected, MS_BUILTIN_List, 0);
   if (element != MS_TY_NONE && body_has_foreign_variable(body, element)) {
@@ -537,6 +550,9 @@ static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
     element = element == MS_TY_NONE ? item : element;
   }
   if (element == MS_TY_NONE || unknown) {
+    if (expr->u.list.len == 0 && expected == MS_TY_NONE && body_reports(body) && !body->quiet) {
+      body_report_empty_literal(body, expr);
+    }
     return expr->u.list.len == 0 ? expected : MS_TY_NONE; /* an entry of unknown type leaves the literal unknown */
   }
   return body_std_type(body, "List", &element, 1);
@@ -564,6 +580,9 @@ static MsTy map_expr(Body *body, const MsExpr *expr, MsTy expected) {
     ms_strbuild_free(&context);
     args[0] = args[0] == MS_TY_NONE ? key : args[0];
     args[1] = args[1] == MS_TY_NONE ? value : args[1];
+  }
+  if ((args[0] == MS_TY_NONE || args[1] == MS_TY_NONE) && expr->u.map.len == 0 && expected == MS_TY_NONE && body_reports(body) && !body->quiet) {
+    body_report_empty_literal(body, expr);
   }
   return args[0] == MS_TY_NONE || args[1] == MS_TY_NONE ? expected : body_std_type(body, "Map", args, 2);
 }
