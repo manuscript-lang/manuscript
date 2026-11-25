@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "'?' inside a lambda returns from the lambda, whose result is Int; write the lambda's result as a Result, as in `fn(x T) Result[U, E] => ...`, or handle the failure with 'if value := x', 'match' or a loop",
+        "position": {
+          "file": "diag-try-in-lambda-needs-result.ms",
+          "line": 8,
+          "column": 33,
+          "offset": 186
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-try-in-lambda-needs-result.ms:8:33: type: '?' inside a lambda returns from the lambda, whose result is Int; write the lambda's result as a Result, as in `fn(x T) Result[U, E] => ...`, or handle the failure with 'if value := x', 'match' or a loop\n   |\n 8 |     widths := items.map(item => width(item)?)\n   |                                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

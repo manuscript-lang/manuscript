@@ -829,6 +829,8 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy saved_returned = body->returned;
   const MsExpr *const saved_returned_expr = body->returned_expr;
   const bool saved_saw = body->saw_return;
+  const MsExpr *const saved_try = body->pending_try;
+  body->pending_try = NULL;
   body->result = result;
   body->returned = MS_TY_NONE;
   body->returned_expr = NULL;
@@ -836,6 +838,8 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   body_block(body, expr->u.lambda.body);
   const bool unknown_return = result == MS_TY_NONE && body->saw_return && body->returned == MS_TY_NONE;
   result = result == MS_TY_NONE ? body->returned : result;
+  body_check_pending_try(body, result);
+  body->pending_try = saved_try;
   body->saw_return = saved_saw;
   body->result = saved_result;
   body->hint = saved_hint;
