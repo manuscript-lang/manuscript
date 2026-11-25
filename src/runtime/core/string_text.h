@@ -12,9 +12,9 @@
 void msrt_string_upper(const MsString *s, MsString *out);
 /* ms-sig: msrt_string_lower(s: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_lower(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
 void msrt_string_upper_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
+/* ms-sig: msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf @end */
 void msrt_string_lower_take(MsString *s, MsString *out);
 /* ms-sig: msrt_string_normalize(s: *const StrVal, form: *const StrVal, has_max: HasRaw, max: i64, out: *mut
  * StrVal) -> u8 @domain=string @end */
