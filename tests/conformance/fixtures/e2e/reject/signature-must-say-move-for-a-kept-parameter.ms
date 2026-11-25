@@ -7,3 +7,4 @@ import FileHandle from "@std/os/fs.ms"
 fn pass(move file FileHandle) FileHandle {
 	return file
 }
+// expect-exit: 0

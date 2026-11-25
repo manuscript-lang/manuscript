@@ -17,3 +17,4 @@ fn f(s S) Int {
 fn main() Void {
 	return
 }
+// expect-error: MS3050 10:5 non-exhaustive match; missing cases: B, or add a final '_ => ...' arm; add the arms 'B(x) => ...'

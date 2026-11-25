@@ -19,3 +19,5 @@ fn changes_outside() Void! {
 	xs.append("b")
 	print(p.wait()?)
 }
+// expect-error: MS3000 10:9 this closure is kept by the runtime (a promise), so it only reads what it captures, but it changes `xs`; clone the value inside the closure, or send changes through a pipe to one owner
+// expect-error: MS3000 19:5 cannot change `xs` while `p` captures it (closure, at 18:5); finish using `p` before this, or capture a clone: bind `.clone()` of the value first and capture that binding

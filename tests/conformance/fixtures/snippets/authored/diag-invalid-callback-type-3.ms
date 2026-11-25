@@ -8,3 +8,4 @@ fn apply[T, U](callback fn(T) U) Void => return
 fn exercise() Void {
 	apply(broken)
 }
+// expect-error: MS2001 4:22 unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it

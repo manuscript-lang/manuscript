@@ -11,3 +11,4 @@ fn pick(x Int?) Int {
 		}
 	}
 }
+// expect-error: MS2001 6:9 a literal pattern cannot match Optional; literals match only Int, String or Bool, so match one of the cases: null, some

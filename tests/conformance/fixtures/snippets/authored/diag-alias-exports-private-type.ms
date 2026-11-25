@@ -6,3 +6,4 @@ type Row {
 }
 
 export type Rows = List[Row]
+// expect-error: MS3000 8:8 public signature exposes private type Row; add 'export' to its declaration or keep the function private

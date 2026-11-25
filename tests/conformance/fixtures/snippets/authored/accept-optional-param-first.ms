@@ -9,3 +9,4 @@ type Node {
 fn find(node Node?, key Int) Bool {
 	return (node != null) and key > 0
 }
+// expect-exit: 0

@@ -17,3 +17,5 @@ fn move Res.close() Void! {
 fn consume(res Res) Void! {
 	res.close()?
 }
+// expect-error: MS3000 17:12 the body keeps `res`, so the signature must say so: write `move res Type`, or keep `.clone()` of it
+// expect-error: MS3000 18:5 cannot pass `res` as a `move` receiver: it is not declared `move`, so the caller keeps it; write `move res <Type>` in the signature

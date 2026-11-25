@@ -8,3 +8,4 @@ export fn main() Int {
 	}
 	return 0
 }
+// expect-error: MS3000 6:5 binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'

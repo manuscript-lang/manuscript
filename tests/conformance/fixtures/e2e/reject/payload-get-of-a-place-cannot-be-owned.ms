@@ -25,3 +25,5 @@ fn unwrap_field(hold s Slot[Handle]) &Handle {
 fn unwrap_generic[T](hold s Slot[T]) &T {
 	return s.value or panic("called Optional.get() on null")
 }
+// expect-error: MS3000 22:20 cannot move `s.value or ..` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place or move `s.value` itself
+// expect-error: MS3000 26:20 cannot move `s.value or ..` out: it is read in place from `s.value`, which keeps it; it has one owner and no `clone`, so use it in place or move `s.value` itself

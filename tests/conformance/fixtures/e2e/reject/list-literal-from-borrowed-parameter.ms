@@ -9,3 +9,4 @@ fn pair(name String) List[String] {
 fn main() Void {
 	print(pair("a").length())
 }
+// expect-error: MS3000 6:13 `name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`

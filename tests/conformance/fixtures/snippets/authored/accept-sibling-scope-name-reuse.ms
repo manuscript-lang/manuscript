@@ -16,3 +16,4 @@ export fn main() Int {
 
 	return total
 }
+// expect-exit: 0

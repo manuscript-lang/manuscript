@@ -13,3 +13,4 @@ fn describe(shape Shape) String {
 export fn main() Void {
 	print(describe(Shape.Circel(1)))
 }
+// expect-error: MS2001 14:26 unknown alternative case Circel of Shape; cases: Circle, Square

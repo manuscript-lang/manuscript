@@ -22,3 +22,6 @@ fn copy(hold names List[String]) Cursor {
 	c := Cursor(names, 0)
 	return c.clone()
 }
+// expect-error: MS3000 13:1 a `&` result points into an argument; mark that argument `hold`, or return an owned value
+// expect-error: MS3000 21:1 a `&` result must be a part of a `hold` argument, but this body returns a new value; remove the `&` or return a part of the held argument
+// expect-error: MS3000 23:14 a value with a `&` field looks at another value, so it has no copy of its own; clone the part you need, such as its items

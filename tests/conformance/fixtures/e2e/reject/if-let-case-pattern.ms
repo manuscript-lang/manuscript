@@ -13,3 +13,4 @@ fn size(shape Shape) Int {
 export fn main() Int {
     return size(Square)
 }
+// expect-error: MS1000 9:8-9:11 'if let' was removed; test an Optional with 'if value != null { ... }', or unwrap a Result with 'if value := result { ... }'

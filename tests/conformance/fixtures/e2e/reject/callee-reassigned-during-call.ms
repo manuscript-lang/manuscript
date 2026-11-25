@@ -21,3 +21,4 @@ export fn main() Int {
 		3
 	)
 }
+// expect-error: MS3000 14:12 argument `this value` of `selected` is moved or changed in place but overlaps the called value `selected`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first

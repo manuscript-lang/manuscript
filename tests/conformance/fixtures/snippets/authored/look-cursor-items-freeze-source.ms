@@ -21,3 +21,5 @@ fn main() Void {
 	print(first)
 	print(second)
 }
+// expect-error: MS3000 20:5 cannot change `names` while `first` borrows it (binding of a part of it, at 18:5); finish using `first` before this, or give `first` its own value by ending its initializer with `.clone()`
+// expect-error: MS3000 20:5 cannot change `names` while `second` borrows it (binding of a part of it, at 19:5); finish using `second` before this, or give `second` its own value by ending its initializer with `.clone()`
