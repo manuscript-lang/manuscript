@@ -680,6 +680,22 @@ static MirValue view_return(LowerFn *fn, const MsExpr *expr) {
   return mir_needs_drop(fn->cx->module, ty) ? fn_implicit_clone(fn, value, true) : value;
 }
 
+/* The borrow a `&` function hands back. A local bound to a view native's result (`p := t.view(0, 1)`) is owned by its
+ * scope, which closes it at the return: the result is a plain copy of the view's words, read back from a slot. */
+static MirValue borrow_return(LowerFn *fn, const MsExpr *expr) {
+  const MirValue value = fn_expr(fn, expr, LW_BORROW);
+  const MirTy ty = value == MIR_NONE ? MIR_NONE : mir_b_ty(&fn->b, value);
+  if (value == MIR_NONE || fn->terminated || (ty != MIR_STR && mir_ty_data(fn->cx->module, ty)->kind != MK_OPT) ||
+      !fn_fresh_owner(fn, value)) {
+    return value;
+  }
+  const MirImm str = {.tag = MI_TY, .a = ty};
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, str, MIR_PTR);
+  const MirValue stored[2] = {slot, value};
+  (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  return mir_b_emit(&fn->b, MOP_Load, &slot, 1, str, ty);
+}
+
 static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
   if (stmt->u.expr != NULL && fn_returns_view(fn) && fn_return_view(fn, stmt->u.expr, &value)) {
@@ -688,7 +704,7 @@ static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
     }
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   } else if (stmt->u.expr != NULL) {
-    value = fn->returns_borrow ? fn_expr(fn, stmt->u.expr, LW_BORROW) : fn->returns_view ? view_return(fn, stmt->u.expr) : take_value(fn, stmt->u.expr);
+    value = fn->returns_borrow ? borrow_return(fn, stmt->u.expr) : fn->returns_view ? view_return(fn, stmt->u.expr) : take_value(fn, stmt->u.expr);
     if (fn->terminated) { /* the expression never returns: `return panic(...)` */
       return !fn->failed;
     }
