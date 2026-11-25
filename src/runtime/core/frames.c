@@ -353,8 +353,6 @@ void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit
   }
 }
 
-enum { SCAN_BYTES = 4096 };
-
 uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintptr_t high,
                 bool (*is_source)(uintptr_t, const void *), bool (*is_native)(uintptr_t, const void *),
                                 const void *context) {
@@ -366,13 +364,12 @@ uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintp
     }
     first = (sp + 7) & ~(uintptr_t)7;
   }
-  if (high < 16 || first > UINTPTR_MAX - SCAN_BYTES) {
+  if (high < 16) {
     return 0;
   }
-  uintptr_t last = first + SCAN_BYTES;
-  if (last > high - 16) {
-    last = high - 16;
-  }
+  /* The record sits at the top of its frame, which may be large (locals live across a call): the stack's own end
+   * bounds the scan, and what lies above `first` is only the live frames. */
+  const uintptr_t last = high - 16;
   for (uintptr_t at = first; at <= last; at += sizeof(uintptr_t)) {
     if (at < low) {
       continue;

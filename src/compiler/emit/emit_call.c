@@ -510,8 +510,11 @@ static bool call_runtime_option(EmitCx *cx, const MirInst *inst, const MirExtern
 void emit_unwinding_address(EmitCx *cx) {
   MsStrBuild *out = cx->out;
   ms_strbuild_printf(out, "  %%ubf = call ptr @llvm.frameaddress.p0(i32 0)\n  %%ubs = ptrtoint ptr %%ubf to i64\n");
-  ms_strbuild_printf(out, "  %%ubm = and i64 %%ubs, %lld\n  %%ubc = add i64 %%ubm, %lld\n", -(long long)MS_STACK_REGION,
-                     (long long)(MS_STACK_REGION - MS_STACK_CELL_HDR));
+  /* The last byte of the region, then back to the cell. The frame address is not assumed aligned (on Windows the
+   * frame register follows the saved registers, so it is only 8-byte aligned): a mask that clears the low bits and
+   * an add that sets them again let the optimizer keep the address's own bits 0-3. Setting them all does not. */
+  ms_strbuild_printf(out, "  %%ubm = or i64 %%ubs, %lld\n  %%ubc = sub i64 %%ubm, %lld\n", (long long)(MS_STACK_REGION - 1),
+                     (long long)(MS_STACK_CELL_HDR - 1));
   /* The header pointer of the cell does not change while this activation runs, so loads of it merge. */
   ms_strbuild_printf(out, "  %%ubhp = inttoptr i64 %%ubc to ptr\n  %%ubh = load ptr, ptr %%ubhp, !invariant.load !%d\n",
                      EMIT_METADATA_EMPTY);

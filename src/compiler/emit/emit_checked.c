@@ -254,9 +254,10 @@ static void stack_check(EmitCx *cx, const MirInst *inst) {
   uint32_t number = cx->next++;
   ms_strbuild_printf(out, "  %%f%u = call ptr @llvm.frameaddress.p0(i32 0)\n  %%sp%u = ptrtoint ptr %%f%u to i64\n",
                      number, number, number);
-  ms_strbuild_printf(out, "  %%sm%u = and i64 %%sp%u, %lld\n  %%c%u = add i64 %%sm%u, %lld\n", number, number,
-                     -(long long)MS_STACK_REGION, number, number,
-                     (long long)(MS_STACK_REGION - MS_STACK_CELL_LIMIT));
+  /* As in emit_unwinding_address: set every low bit, then step back, so the result does not depend on the frame
+   * address being aligned. */
+  ms_strbuild_printf(out, "  %%sm%u = or i64 %%sp%u, %lld\n  %%c%u = sub i64 %%sm%u, %lld\n", number, number,
+                     (long long)(MS_STACK_REGION - 1), number, number, (long long)(MS_STACK_CELL_LIMIT - 1));
   ms_strbuild_printf(out, "  %%l%up = inttoptr i64 %%c%u to ptr\n  %%l%u = load i64, ptr %%l%up\n", number, number,
                      number, number);
   if (inst->op == MOP_StackNear) {

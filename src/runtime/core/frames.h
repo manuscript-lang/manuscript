@@ -122,7 +122,7 @@ const MsTables *ms_frames_tables(void);
 void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit, void *context);
 
 /* Finds the frame record `[saved frame pointer, return address]` at or above `fp` (or `sp` when `fp` is not inside
- * the stack above it) whose return address `is_source` accepts, scanning at most 4 KiB up to `high`. A record
+ * the stack above it) whose return address `is_source` accepts, scanning up to `high`. A record
  * returning into native code (`is_native`) at `fp` itself ends the walk. Returns its address, or 0. For
  * Windows, where generated code does not keep its frame register at its own frame record; kept portable so
  * Linux tests cover it. */

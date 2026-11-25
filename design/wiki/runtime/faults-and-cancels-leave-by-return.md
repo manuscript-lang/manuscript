@@ -14,5 +14,7 @@ Cost control (#6880): the byte is clear on every normal edge, so `opt_unwind_thr
 
 Failure modes found: LLVM tail-merged post calls and moved fault lines, so post calls are `nomerge` (`MR_POSTS_FAULT`); `cancel_edges` must be program-wide (a per-scheduler flag made worker threads take the old path and leak); a flagged slot owner needs its drop flag cleared at `scope.disown`, or a conditional move closes twice.
 
+Windows frame address (found when #6887 shrank exits to call-free leaf functions): `llvm.frameaddress` is only 8-byte aligned there (the frame register follows the saved registers), but LLVM assumes 16, so `(fa & -REGION) + (REGION - 16)` lost its `and` and read the limit word, not the header pointer, and the program died with an access violation. The cell address is `(fa | (REGION - 1)) - (offset - 1)`, which no alignment assumption can change; read it from a region mask the same way in any new inline cell read. The Windows frame scan (`ms_frames_scan_record`) runs to the stack's end, not 4 KiB: a frame can be 12 KB (`accept/stack-overflow`).
+
 Apply when: adding a runtime fault, a native that can post, or a lowering that takes values out of closing slots.
 Evidence: `src/runtime/core/unwind.c`, `fault.c`, `src/compiler/lower/lower_unwind.c`, `leak_check` and `tools/cancel-sweep.ms`.
