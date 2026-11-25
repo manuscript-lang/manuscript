@@ -34,6 +34,6 @@ export fn main() Int {
 	say(f"i4 = {i4}")
 
 	big5 := [1, 2, 3]
-	say(f"{big5.get(4)}")
+	say(f"{big5[4]}")
 	return 0
 }

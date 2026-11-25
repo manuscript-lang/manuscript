@@ -89,10 +89,10 @@ export fn main() Int {
 	b12 := true
 	say(f"b12 = {b12}")
 
-	i13 := ((-2) + l6.get(4))
+	i13 := ((-2) + l6[4])
 	say(f"i13 = {i13}")
 
-	i14 := (((i4 + i4) - (i4 - i8)) * l6.get(0))
+	i14 := (((i4 + i4) - (i4 - i8)) * l6[0])
 	say(f"i14 = {i14}")
 
 	s15 := "gamma"

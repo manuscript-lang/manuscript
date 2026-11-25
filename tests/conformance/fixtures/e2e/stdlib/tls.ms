@@ -44,7 +44,7 @@ test "TLS certificate parsing verification hostname and expiration" {
 	expect_false(
 		(
 			certificates.length() != 1
-			or certificates.get(0).dns_names != ["stdlib.test"]
+			or certificates[0].dns_names != ["stdlib.test"]
 		)
 	)?
 

@@ -196,7 +196,7 @@ typedef struct PlaceReturns {
 
 static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
 
-/* A native whose result is a type argument of one of its arguments (`List[T].get` answers a `T` of a `List[T]`): it can
+/* A native whose result is a type argument of one of its arguments (`Map[K, V].get` answers a `V` of a `Map[K, V]`): it can
  * only hand back a part of what it was given, so its result is a view. A native with any other result (a status, a
  * count) builds a new value. */
 /* Whether an argument of `call` that the result may be a part of is a value built in the call (`get_or(i, Tok(..))`):

@@ -51,7 +51,7 @@ test "contextual callbacks and inline returns" {
 	expect_false(invoke() != 0 or invoke(item => item + 1) != 5)?
 
 	functions List[fn(Int) Int] := [item => item + 4]
-	expect_equal(functions.get(0)(2), 6)?
+	expect_equal(functions[0](2), 6)?
 
 	nested := fn(value Int) {
 		inner := () => "text"

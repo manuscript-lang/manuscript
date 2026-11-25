@@ -850,7 +850,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
 
 	first := (entries(list.first() or panic("called Optional.get() on null"))?)
 	first["b"] | expect_equal(YamlValue.NumberValue("2"))?
-	(items(list.get(1).clone())?).length() | expect_equal(2)?
+	(items(list[1].clone())?).length() | expect_equal(2)?
 	(
 		(entries(list.last() or panic("called Optional.get() on null"))?)["d"]
 		| expect_equal(YamlValue.NumberValue("4"))?

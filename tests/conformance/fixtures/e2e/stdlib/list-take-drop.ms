@@ -46,22 +46,22 @@ test "List take and drop copy payloads before changing them" {
 	boxes := [Box(1), Box(2)]
 	var prefix = boxes.take(1)
 	remainder := boxes.drop(0)
-	var changed = prefix.get(0).clone()
+	var changed = prefix[0].clone()
 	changed.value = 7
 	prefix.set(0, changed)
 	expect_false(
-		boxes.get(0).value != 1 or remainder.get(0).value != 1 or prefix.get(
+		boxes[0].value != 1 or remainder[0].value != 1 or prefix[
 			0
-		).value != 7
+		].value != 7
 	)?
 
 	nested := [1]
 	lists := [nested.clone()]
 	var copied = lists.take(1).drop(0)
-	var inner = copied.get(0).clone()
+	var inner = copied[0].clone()
 	inner.append(2)
 	copied.set(0, inner)
-	expect_false(nested != [1] or lists.get(0) != nested or copied.get(0) != [1, 2])?
+	expect_false(nested != [1] or lists[0] != nested or copied[0] != [1, 2])?
 }
 
 fn copy_window[T Clonable](values List[T], first Int, skip Int) List[T] {
@@ -72,7 +72,7 @@ test "List take and drop support generic and nested values" {
 	expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])?
 
 	values List[Int?!Error] := [ok(1), error(Error("cause"))]
-	expect_equal(copy_window(values, 2, 1).get(0).err().message, "cause")?
+	expect_equal(copy_window(values, 2, 1)[0].err().message, "cause")?
 }
 
 test "List take and drop bound methods read the retained receiver" {

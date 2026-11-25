@@ -150,7 +150,7 @@ static bool habit_before_payload(Body *body, MsTy receiver, MsName id, MsSpan na
   if (!optional && !result && NAME_IN(name, "is_none", "is_some")) {
     ms_strbuild_append_text(out, "; a value of type ");
     show(body, out, receiver);
-    ms_strbuild_append_text(out, " is never null here. List.get(i) returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first");
+    ms_strbuild_append_text(out, " is never null here. xs[i] returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first");
     return true;
   }
   return false;
@@ -227,6 +227,11 @@ static bool habit_after_payload(Body *body, MsTy receiver, MsSpan name, const Ms
     ms_strbuild_append_text(out, "(predicate) is now ");
     ms_strbuild_append_text(out, ms_span_is_text(name, "some") ? "any" : "all");
     ms_strbuild_append_text(out, "(predicate)");
+    return true;
+  }
+  if (ms_ty_is(types, receiver, MS_BUILTIN_List) && ms_span_is_text(name, "get")) {
+    ms_strbuild_append_text(out, "; a List has no `get`, write xs[i] (negative indexes count from the end and an "
+                                 "index out of range faults), or xs.get_or(i, default) for a fallback");
     return true;
   }
   if (ms_ty_is(types, receiver, MS_BUILTIN_Map) && ms_span_is_text(name, "set")) {

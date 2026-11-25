@@ -55,7 +55,7 @@ export fn main() Int {
 	say(f"l4 = {l4} len {l4.length()}")
 	say(f"fib(26) = {fib(26)}")
 
-	i5 := ((i1 * (i1 - i1)) - ((i1 + i2) / l4.get(0)))
+	i5 := ((i1 * (i1 - i1)) - ((i1 + i2) / l4[0]))
 	say(f"i5 = {i5}")
 
 	s6 := s3

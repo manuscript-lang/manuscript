@@ -45,7 +45,7 @@ export fn main() Int {
 		say(("naïve" + "alpha"))
 	}
 
-	i10 := (i5 + (l6.get(4) * (i4 % i9)))
+	i10 := (i5 + (l6[4] * (i4 % i9)))
 	say(f"i10 = {i10}")
 
 	var acc11 = 0

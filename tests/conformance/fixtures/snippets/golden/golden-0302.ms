@@ -4,7 +4,7 @@ fn collect[T, U](
 	items List[T],
 	step fn(T) Result[List[U], MissingError]
 ) Result[List[U], MissingError] {
-	return step(items.get(0))
+	return step(items[0])
 }
 
 fn first() Void {

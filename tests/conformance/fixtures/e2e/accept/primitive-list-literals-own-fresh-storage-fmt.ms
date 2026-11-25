@@ -27,9 +27,9 @@ test "literals" {
 	)?
 	floats.append(value: 3.5)
 	words.append(value: "c")
-	expect_true((floats.get(index: 2) == 3.5 and words.get(index: 2) == "c"))?
+	expect_true((floats[2] == 3.5 and words[2] == "c"))?
 	expect_true(([1, 2] == [1, 2] and not ([1, 2] == [2, 1])))?
 
 	rows := [[1], [2, 3]]
-	expect_true((rows.get(index: 1) == [2, 3]))?
+	expect_true((rows[1] == [2, 3]))?
 }

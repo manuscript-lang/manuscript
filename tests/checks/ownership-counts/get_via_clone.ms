@@ -6,7 +6,7 @@ fn total(names List[String]) Int {
 	var n = 0
 
 	for i in 0..names.length() {
-		s := names.get(i).clone()
+		s := names[i].clone()
 		n += s.length()
 	}
 

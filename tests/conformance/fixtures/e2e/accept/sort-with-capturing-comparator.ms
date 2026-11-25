@@ -44,7 +44,7 @@ test "a captured weight orders records and integers" {
 			- y.priority * weight
 		)
 	)
-	expect_equal(tasks.get(0).name, "a")?
+	expect_equal(tasks[0].name, "a")?
 
 	offset := 100
 	ints := [3, 1, 2].sorted(

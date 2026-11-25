@@ -52,7 +52,7 @@ export fn main() Int {
 	l9 := l3.map(x => x * 6)
 	say(f"l9 = {l9} len {l9.length()}")
 	say(
-		f"{s1.scalar_length()} {((902445856851 + (-31)) % l3.get(0))} {(s1.scalar_length() < ((902445856851 + (-31)) % l3.get(0)))} sum {s1.scalar_length() + ((902445856851 + (-31)) % l3.get(0))}"
+		f"{s1.scalar_length()} {((902445856851 + (-31)) % l3[0])} {(s1.scalar_length() < ((902445856851 + (-31)) % l3[0]))} sum {s1.scalar_length() + ((902445856851 + (-31)) % l3[0])}"
 	)
 
 	var acc10 = 0

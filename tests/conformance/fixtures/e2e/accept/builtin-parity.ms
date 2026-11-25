@@ -107,7 +107,7 @@ fn checked_expansion() Void! {
 test "list methods mutate explicit clones and remain typed" {
 	original := [3, 1, 2, 1]
 	alias := original.clone()
-	original.get(index: -1) | expect_equal(1)?
+	original[-1] | expect_equal(1)?
 
 	absent Int? := null
 	original.get_or(index: -9223372036854775808, default: -1) | expect_equal(-1)?
@@ -211,7 +211,7 @@ test "list methods mutate explicit clones and remain typed" {
 	chain_7.copy_within(target: 1, start: 0, end: 3)
 	(chain_7 | expect_equal([3, 3, 1, 2])?)
 	original.keys() | expect_equal([0, 1, 2, 3])?
-	original.entries().get(index: 0) | expect_equal(ListEntry(index: 0, value: 3))?
+	original.entries()[0] | expect_equal(ListEntry(index: 0, value: 3))?
 	original.to_set().values() | expect_equal([3, 1, 2])?
 	expect_equal(
 		[[1, 2], [], [3]].flat_map(transform: value => value.clone()),

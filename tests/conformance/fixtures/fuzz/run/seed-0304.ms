@@ -26,7 +26,7 @@ export fn main() Int {
 	b3 := b2
 	say(f"b3 = {b3}")
 
-	i4 := (((32 - (-647678)) / (43 * (-715237275172))) * l1.get(1))
+	i4 := (((32 - (-647678)) / (43 * (-715237275172))) * l1[1])
 	say(f"i4 = {i4}")
 
 	s5 := "gamma".trim().replace("  padded  ", "quote\"d").upper()

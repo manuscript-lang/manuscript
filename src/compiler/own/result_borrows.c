@@ -434,7 +434,7 @@ static bool external_function_is_fresh(const MsCheckProgram *program, const MsCa
 }
 
 /* The natives whose result points into their receiver, the one place a method name decides ownership (the rule the
- * Rust checker's `native_borrow` states): `get` on a List or Map, the payload `get()` of an Optional or Result, the
+ * Rust checker's `native_borrow` states): `get` on a Map, the payload `get()` of an Optional or Result, the
  * views of text and bytes, the keys and values of a Map, and a slice of a list of plain data. Every other native
  * answers a value of its own. */
 static bool native_result_borrows(const MsCheckProgram *program, MsTy receiver, MsSpan operation, uint32_t args) {
@@ -445,7 +445,7 @@ static bool native_result_borrows(const MsCheckProgram *program, MsTy receiver, 
   const bool map = ms_ty_is(types, receiver, MS_BUILTIN_Map);
   const bool payload = ms_ty_is(types, receiver, MS_BUILTIN_Optional) || ms_ty_is(types, receiver, MS_BUILTIN_Result);
   if (ms_span_is_text(operation, "get")) {
-    return (args == 1 && (list || map)) || (args == 0 && payload);
+    return (args == 1 && map) || (args == 0 && payload);
   }
   if (ms_span_is_text(operation, "view")) {
     return args == 2 && (text || bytes);

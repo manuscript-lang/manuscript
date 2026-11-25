@@ -30,13 +30,13 @@ export fn main() Int {
 					for dx in - 1..2 {
 						if dx != 0 or dy != 0 {
 							index := ((y + dy + 128) % 128 * 128 + (x + dx + 128) % 128)
-							neighbors += cells.get(index)
+							neighbors += cells[index]
 						}
 					}
 				}
 
 				index := y * 128 + x
-				alive := (neighbors == 3 or (neighbors == 2 and cells.get(index) == 1))
+				alive := (neighbors == 3 or (neighbors == 2 and cells[index] == 1))
 				var value = 0
 				if alive { value = 1 }
 				next.set(index, value)
@@ -50,7 +50,7 @@ export fn main() Int {
 
 	var sum = 0
 	for i in 0..16384 {
-		sum += cells.get(i)
+		sum += cells[i]
 	}
 	if sum != 3914 { return panic("life checksum") }
 

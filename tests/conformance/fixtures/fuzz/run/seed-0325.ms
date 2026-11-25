@@ -54,7 +54,7 @@ export fn main() Int {
 	i6 := (-640393364026)
 	say(f"i6 = {i6}")
 
-	i7 := ((l3.get(3) * (-16)) * (s5.scalar_length() - (547996 % 47)))
+	i7 := ((l3[3] * (-16)) * (s5.scalar_length() - (547996 % 47)))
 	say(f"i7 = {i7}")
 
 	f8 := f2

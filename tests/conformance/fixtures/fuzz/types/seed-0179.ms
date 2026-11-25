@@ -20,7 +20,7 @@ export fn main() Int {
 	say(f"l3 = {l3} len {l3.length()}")
 
 	_bad := say
-	i4 := (-((13 % 39) / l3.get(1)))
+	i4 := (-((13 % 39) / l3[1]))
 	say(f"i4 = {i4}")
 
 	if (false or (not true)) {

@@ -34,11 +34,11 @@ fn self_overflow() Int {
 	var i = 0
 
 	while i < 2 {
-		values.append(values.get(-1) + 9223372036854775807)
+		values.append(values[-1] + 9223372036854775807)
 		i += 1
 	}
 
-	return values.get(-1)
+	return values[-1]
 }
 
 fn peer_overflow() Int {
@@ -47,12 +47,12 @@ fn peer_overflow() Int {
 	var i = 0
 
 	while i < 2 {
-		values.append(peer.get(-1))
-		peer.append(values.get(-1) + 1)
+		values.append(peer[-1])
+		peer.append(values[-1] + 1)
 		i += 1
 	}
 
-	return peer.get(-1)
+	return peer[-1]
 }
 
 fn prefix_overflow() Int {

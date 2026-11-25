@@ -36,7 +36,7 @@
           "file": "testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 11,
           "column": 39,
-          "offset": 411
+          "offset": 407
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 13,
           "column": 22,
-          "offset": 460
+          "offset": 456
         }
       }
     ],

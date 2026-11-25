@@ -295,7 +295,7 @@ fn var SeededRandom.shuffle[T](move values List[T]) List[T] {
 // Returns a uniformly chosen item, or null for an empty list.
 fn var SeededRandom.choice[T](values List[T]) T? {
 	if values.is_empty() { return null }
-	return values.get(self.int(0, values.length()))
+	return values[self.int(0, values.length())]
 }
 
 // Returns `count` items chosen uniformly without replacement, in random order, as

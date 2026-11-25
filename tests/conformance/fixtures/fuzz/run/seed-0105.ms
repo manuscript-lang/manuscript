@@ -76,6 +76,6 @@ export fn main() Int {
 
 	f15 := (((0.0 + 0.0) / (37.659 - f4)) * (f4 + f1))
 	say(f"f15 = {f15}")
-	say(f"{l5.get(2)}")
+	say(f"{l5[2]}")
 	return 0
 }

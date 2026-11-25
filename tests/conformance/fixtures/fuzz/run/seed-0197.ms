@@ -55,6 +55,6 @@ export fn main() Int {
 
 	f8 := (f6 - 494.834)
 	say(f"f8 = {f8}")
-	say(f"{l4.get(10)}")
+	say(f"{l4[10]}")
 	return 0
 }

@@ -41,7 +41,7 @@ fn Reader.reject(value Resource?) Void! {
 }
 
 fn Reader.broken(value Resource?) Void {
-	if value != null { _bad := [1].get(3) }
+	if value != null { _bad := [1][past_end()] }
 }
 
 fn Reader.create(path String, value Resource?) Resource {
@@ -54,7 +54,7 @@ fn Reader.change(var value Resource) Void {
 }
 
 fn Reader.fault_with_var(var value Resource) Void {
-	_bad := [value.id].get(3)
+	_bad := [value.id][past_end()]
 }
 
 fn Reader.result(value Result[Resource, String]) Bool => value.is_ok()
@@ -70,7 +70,7 @@ fn rejected() Int! => error(Error("expected"))
 
 fn accepted() Int! => ok(1)
 
-fn faulted() Int => [1].get(3)
+fn faulted() Int => [1][past_end()]
 
 fn later_error(reader Observer, path String) Void! {
 	_used := reader.observe(present(path, 10), present(path, 11), rejected()?)
@@ -201,3 +201,6 @@ test "interface Result temporaries and loop conditions keep cleanup bounded" {
 
 	expect_equal(log_text(path)?, "70,80,80,80,")?
 }
+
+// An index no check can see is out of range, so the fault happens at run time.
+fn past_end() Int => 3

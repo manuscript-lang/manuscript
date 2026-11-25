@@ -8,7 +8,7 @@ fn count_matches(items List[Int], lo Int, hi Int, keep fn(Int) Bool) Int {
 	if hi - lo == 0 { return 0 }
 
 	if hi - lo == 1 {
-		if keep(items.get(lo)) { return 1 }
+		if keep(items[lo]) { return 1 }
 		return 0
 	}
 

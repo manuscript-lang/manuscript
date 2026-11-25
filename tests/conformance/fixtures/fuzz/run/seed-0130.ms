@@ -22,7 +22,7 @@ export fn main() Int {
 	)
 	say(f"b3 = {b3}")
 
-	i4 := ((-758641) * l1.get(0))
+	i4 := ((-758641) * l1[0])
 	say(f"i4 = {i4}")
 
 	i5 := (((-9) + (-30)) - (s2.scalar_length() - (-44)))

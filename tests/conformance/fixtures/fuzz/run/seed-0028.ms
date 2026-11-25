@@ -45,6 +45,6 @@ export fn main() Int {
 	}
 	say(f"acc5 = {acc5}")
 	say(f"collatz(1676) = {collatz(1676)}")
-	say(f"{l4.get(2)}")
+	say(f"{l4[2]}")
 	return 0
 }

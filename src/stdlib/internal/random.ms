@@ -116,5 +116,5 @@ export fn draw_choice[T Clonable](values List[T]) T?! {
 	if values.is_empty() { return ok(null) }
 
 	at := draw_below(0, values.length())?
-	return ok(values.get(at).clone())
+	return ok(values[at].clone())
 }

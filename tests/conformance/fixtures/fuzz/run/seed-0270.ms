@@ -52,7 +52,7 @@ export fn main() Int {
 
 	s9 := (f"{(i5 + (-791878))}:" + s8.replace(s6, "line\nbreak").reverse())
 	say(f"s9 = [{s9}]")
-	say(f"{45} {l3.get(2)} {(45 < l3.get(2))} sum {45 + l3.get(2)}")
+	say(f"{45} {l3[2]} {(45 < l3[2])} sum {45 + l3[2]}")
 
 	i10 := (l3.length() * (-(-(-633232))))
 	say(f"i10 = {i10}")

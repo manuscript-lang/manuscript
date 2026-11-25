@@ -7,14 +7,14 @@ test "receiver before index" {
 	values := [7]
 	var calls = 0
 	index Int? := 0
-	result := values.get(
+	result := values[
 		match index {
 			i => {
 				calls += 1
 				i
 			} null => 0
 		}
-	)
+	]
 	expect_equal(result, 7)?
 	expect_equal(calls, 1)?
 }

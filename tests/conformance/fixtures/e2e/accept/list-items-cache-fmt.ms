@@ -25,7 +25,7 @@ test "negative indexes inside a cached loop count from the end" {
 	var i = 1
 
 	while i <= 3 {
-		total += values.get(-i)
+		total += values[-i]
 		i += 1
 	}
 
@@ -38,7 +38,7 @@ test "a list that grows inside the loop is read through its current storage" {
 	var i = 0
 
 	while i < 6 {
-		seen += values.get(i % values.length())
+		seen += values[i % values.length()]
 		if i < 3 {
 			grow(values)
 		}
@@ -55,7 +55,7 @@ test "appending directly inside the loop is visible to later reads" {
 	var total = 0
 
 	while i < 4 {
-		total += values.get(i)
+		total += values[i]
 		values.append(i + 2)
 		i += 1
 	}
@@ -70,7 +70,7 @@ test "rebinding the list inside the loop selects the new storage" {
 	var i = 0
 
 	while i < 3 {
-		total += values.get(i)
+		total += values[i]
 		values = other.clone()
 		i += 1
 	}
@@ -106,7 +106,7 @@ test "an out of range read or write inside a cached loop faults" {
 			var _total = 0
 
 			while i < 5 {
-				_total += values.get(i)
+				_total += values[i]
 				i += 1
 			} }
 	)?

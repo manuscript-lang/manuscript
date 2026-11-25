@@ -90,7 +90,7 @@ test "leading dot after a step applies to its result" {
 test "head is evaluated before step arguments" {
 	var log List[String] = []
 	expect_equal(order(log), 4)?
-	expect_false(log.get(0) != "a" or log.get(1) != "b")?
+	expect_false(log[0] != "a" or log[1] != "b")?
 }
 
 test "dot steps call methods on the value" {

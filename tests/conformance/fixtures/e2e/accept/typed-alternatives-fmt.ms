@@ -152,7 +152,7 @@ test "optional and payload kinds" {
 
 test "list at unwrap" {
 	items := [10, 20, 30]
-	expect_equal(items.get(0), 10)?
-	expect_equal(items.get(-1), 30)?
-	expect_equal(items.get(1) + items.get(2), 50)?
+	expect_equal(items[0], 10)?
+	expect_equal(items[-1], 30)?
+	expect_equal(items[1] + items[2], 50)?
 }

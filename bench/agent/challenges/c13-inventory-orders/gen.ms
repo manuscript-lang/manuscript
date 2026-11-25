@@ -254,7 +254,7 @@ export fn gen_c13() Void {
 			var parts = List[String]()
 			for k in rnd.sample(skus, count) {
 				parts.append(
-					f"{k}:{["1", "2", "3", "5", "9", "10", "12", "25"].get(rnd.below(8))}"
+					f"{k}:{["1", "2", "3", "5", "9", "10", "12", "25"][rnd.below(8)]}"
 				)
 			}
 			big.append(f"order o{n} {parts.join(" ")}")

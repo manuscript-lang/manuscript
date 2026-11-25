@@ -40,7 +40,7 @@ test "Bytes empty separator splits bytes without decoding" {
 
 	scalars := "é".to_bytes().split(empty)
 	expect_equal(scalars, [Bytes([195]), Bytes([169])])?
-	expect_false(scalars.get(0).decode_utf8() != null)?
+	expect_false(scalars[0].decode_utf8() != null)?
 	expect_equal("é".to_bytes().split(Bytes([169])), [Bytes([195]), empty])?
 }
 
@@ -86,7 +86,7 @@ test "Bytes split returns independent List storage and immutable views" {
 	data := Bytes([1, 0, 2])
 	var first = data.split(Bytes([0]))
 	second := data.split(Bytes([0]))
-	payload := first.get(0).clone()
+	payload := first[0].clone()
 	edited := payload.with_value(0, 99)
 	var extracted = payload.values()
 	extracted.set(0, 88)

@@ -10,11 +10,11 @@ fn merge_sorted(left List[Int], right List[Int]) List[Int] {
 	var k = 0
 
 	while i < left.length() and j < right.length() {
-		if right.get(j) < left.get(i) {
-			out.set(k, right.get(j))
+		if right[j] < left[i] {
+			out.set(k, right[j])
 			j += 1
 		} else {
-			out.set(k, left.get(i))
+			out.set(k, left[i])
 			i += 1
 		}
 
@@ -22,13 +22,13 @@ fn merge_sorted(left List[Int], right List[Int]) List[Int] {
 	}
 
 	while i < left.length() {
-		out.set(k, left.get(i))
+		out.set(k, left[i])
 		i += 1
 		k += 1
 	}
 
 	while j < right.length() {
-		out.set(k, right.get(j))
+		out.set(k, right[j])
 		j += 1
 		k += 1
 	}

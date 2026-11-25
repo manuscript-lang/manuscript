@@ -1,7 +1,7 @@
 /*
 An ordered mutable collection with indexing, iteration and transformations.
 Start with a literal such as `["docs", "release"]`; use `var` when you want to append, remove or replace items.
-A list has one owner; `clone()` makes a deep copy, and accessors such as `get` borrow elements.
+A list has one owner; `clone()` makes a deep copy, and `xs[i]` and accessors such as `first` borrow elements.
 `List[T]()` creates an empty list. `List[T](reserve: n)` also preallocates room for `n` items without changing the length; a negative `n` reserves nothing.
 */
 export type List[T] {
@@ -10,35 +10,30 @@ export type List[T] {
 	reserve Int?
 }
 
-// Returns an element; negative indexes are relative to the end. An out-of-range
-// index raises a fault, as `xs[i]` does. Use `get_or` for indexes that may miss, or
-// `first()` and `last()`.
-fn List[T].get(index Int) T { ... }
-
 // Returns an element, or `default` when the index is out of range; negative indexes are
 // relative to the end.
 fn List[T].get_or(index Int, default T?) T {
 	count := self.length()
 	position := index
 	if index < 0 { position = count + index }
-	if position >= 0 and position < count { return self.get(position) }
+	if position >= 0 and position < count { return self[position] }
 
 	match default {
 		value => return value
-		null => return self.get(index)
+		null => return self[index]
 	}
 }
 
 // Returns the first element, or `null` when the list is empty.
 fn List[T].first() T? {
 	if self.is_empty() { return null }
-	return self.get(0)
+	return self[0]
 }
 
 // Returns the last element, or `null` when the list is empty.
 fn List[T].last() T? {
 	if self.is_empty() { return null }
-	return self.get(-1)
+	return self[-1]
 }
 
 // Reports whether the list has no elements.

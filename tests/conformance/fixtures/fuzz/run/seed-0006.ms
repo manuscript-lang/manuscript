@@ -67,7 +67,7 @@ export fn main() Int {
 	b9 := not ("gamma" + "Tab\there").starts_with("ms")
 	say(f"b9 = {b9}")
 
-	i10 := (l6.length() + (i1 + l8.get(0)))
+	i10 := (l6.length() + (i1 + l8[0]))
 	say(f"i10 = {i10}")
 	return 0
 }

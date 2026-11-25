@@ -16,7 +16,7 @@ test "concat onto a dying left side keeps both operands correct" {
 	}
 
 	expect_equal(acc.length(), 2000)?
-	expect_equal(acc.values().get(1999), 2)?
+	expect_equal(acc.values()[1999], 2)?
 }
 
 test "concat keeps a left side that is still used" {

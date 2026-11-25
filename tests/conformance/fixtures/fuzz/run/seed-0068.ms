@@ -28,7 +28,7 @@ export fn main() Int {
 	l4 := [(-2)]
 	say(f"l4 = {l4} len {l4.length()}")
 
-	i5 := l4.get(0)
+	i5 := l4[0]
 	say(f"i5 = {i5}")
 
 	s6 := s3.replace("emoji 😀", "quote\"d")
@@ -37,7 +37,7 @@ export fn main() Int {
 	s7 := "quote\"d".lower()
 	say(f"s7 = [{s7}]")
 
-	i8 := (l4.get(0) + (-30))
+	i8 := (l4[0] + (-30))
 	say(f"i8 = {i8}")
 
 	f9 := (
@@ -61,7 +61,7 @@ export fn main() Int {
 	i13 := (((i2 * (-42)) * (31 + i8)) + 910066)
 	say(f"i13 = {i13}")
 
-	i14 := (((i1 - (-9)) % l4.get(0)) + ((i13 - i8) - (i13 - i1)))
+	i14 := (((i1 - (-9)) % l4[0]) + ((i13 - i8) - (i13 - i1)))
 	say(f"i14 = {i14}")
 
 	f15 := f9

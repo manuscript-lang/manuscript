@@ -55,7 +55,7 @@ export fn main() Int {
 
 	i9 := (((-i5) / (i5 * 34)) - i5)
 	say(f"i9 = {i9}")
-	say(f"{l6.get(0)} {i9} {(l6.get(0) < i9)} sum {l6.get(0) + i9}")
+	say(f"{l6[0]} {i9} {(l6[0] < i9)} sum {l6[0] + i9}")
 
 	i10 := ((i9 * s3.scalar_length()) + ((i9 * 46) % (50 + i9)))
 	say(f"i10 = {i10}")
@@ -69,7 +69,7 @@ export fn main() Int {
 		say(s3)
 	}
 
-	i12 := l1.get(2)
+	i12 := l1[2]
 	say(f"i12 = {i12}")
 
 	var acc13 = 0

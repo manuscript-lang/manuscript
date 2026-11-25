@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\nexport fn main() Int {\n\tvalues := [1, 2, 3, 4, 5, 6, 7, 8]\n\tvar sum = 0\n\tfor i in 0..5000000 {\n\t\tsum += values.get(i % 8)\n\t}\n\tif sum != 22500000 { return panic(\"list checksum\") }\n\n\treturn 0\n}\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\nexport fn main() Int {\n\tvalues := [1, 2, 3, 4, 5, 6, 7, 8]\n\tvar sum = 0\n\tfor i in 0..5000000 {\n\t\tsum += values[i % 8]\n\t}\n\tif sum != 22500000 { return panic(\"list checksum\") }\n\n\treturn 0\n}\n"
   }
 }

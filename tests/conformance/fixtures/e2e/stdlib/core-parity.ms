@@ -279,8 +279,8 @@ test "Set filter and map copy snapshots and deduplicate in first-result order" {
 	expect_false(
 		(
 			mapped.length() != 2
-			or mapped.values().get(0).label != "2"
-			or mapped.values().get(1).label != "3"
+			or mapped.values()[0].label != "2"
+			or mapped.values()[1].label != "3"
 		)
 	)?
 
@@ -292,13 +292,13 @@ test "Set filter and map copy snapshots and deduplicate in first-result order" {
 
 	key := Key(5, "shared")
 	keys := Set[Key]([key.clone()])
-	var first = keys.clone().filter(unused => true).values().get(0).clone()
+	var first = keys.clone().filter(unused => true).values()[0].clone()
 	first.label = "changed"
 
-	var second = keys.clone().map(value => value.clone()).values().get(0).clone()
+	var second = keys.clone().map(value => value.clone()).values()[0].clone()
 	second.label = "again"
 	expect_equal(key.label, "shared")?
-	expect_equal(keys.values().get(0).label, "shared")?
+	expect_equal(keys.values()[0].label, "shared")?
 	expect_false(not (Set[Int]().map(n => n.to_string()).is_empty()))?
 	expect_false(not (keys.filter(unused => false).is_empty()))?
 }

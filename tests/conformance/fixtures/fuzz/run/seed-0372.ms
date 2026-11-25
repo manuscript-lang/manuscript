@@ -46,7 +46,7 @@ export fn main() Int {
 	l7 := [0, (-12), (-21), 7, 2]
 	say(f"l7 = {l7} len {l7.length()}")
 	say(
-		f"{(l1.get(2) + (39 + i4))} {i4} {((l1.get(2) + (39 + i4)) < i4)} sum {(l1.get(2) + (39 + i4)) + i4}"
+		f"{(l1[2] + (39 + i4))} {i4} {((l1[2] + (39 + i4)) < i4)} sum {(l1[2] + (39 + i4)) + i4}"
 	)
 
 	var l8 = l7.clone()

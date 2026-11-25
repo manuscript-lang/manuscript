@@ -124,17 +124,17 @@ fn run_conformance(args List[String]) Result[Void, Error] {
 		)
 	}
 
-	ms := args.get(0)
-	suite := args.get(1)
+	ms := args[0]
+	suite := args[1]
 	(suite == "all" or suite == "core" or suite == "stdlib") | expect_true?
 
 	shard := (
-		args.get(2)
+		args[2]
 		| .parse_int()
 		| expect_some?
 	)
 	count := (
-		args.get(3)
+		args[3]
 		| .parse_int()
 		| expect_some?
 	)

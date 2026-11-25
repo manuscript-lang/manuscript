@@ -49,7 +49,7 @@ export fn main() Int {
 		say((f"{(i4 - i4)}:" + ""))
 	}
 
-	i7 := l6.get(2)
+	i7 := l6[2]
 	say(f"i7 = {i7}")
 	return 0
 }

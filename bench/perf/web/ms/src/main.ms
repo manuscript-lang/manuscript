@@ -66,9 +66,9 @@ fn top(k Int) String {
 
 fn top_reply(query String) HttpResponse {
 	parts := query.split("=")
-	if parts.length() != 2 or parts.get(0) != "n" { return reply(400, "bad n\n") }
+	if parts.length() != 2 or parts[0] != "n" { return reply(400, "bad n\n") }
 
-	k := parts.get(1).parse_int()
+	k := parts[1].parse_int()
 	if k != null {
 		if k >= 1 and k <= 50 { return reply(200, top(k)) }
 	}
@@ -79,7 +79,7 @@ fn user_reply(path String) HttpResponse {
 	parts := path.split("/")
 	if parts.length() != 3 { return reply(404, "not found\n") }
 
-	id := parts.get(2).parse_int()
+	id := parts[2].parse_int()
 	if id != null {
 		if id >= 0 and id < 1000 {
 			return reply(
@@ -159,7 +159,7 @@ fn main() Int {
 
 	var threads = 1
 	if args.length() == 3 {
-		threads = args.get(2).parse_int() or 1
+		threads = args[2].parse_int() or 1
 	}
-	return serve_here(args.get(0), args.get(1), max(threads, 1))
+	return serve_here(args[0], args[1], max(threads, 1))
 }

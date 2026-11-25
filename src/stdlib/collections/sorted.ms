@@ -57,7 +57,7 @@ fn SortedMap[K, V].lower_bound(c Int, key K) Int {
 	while low < high {
 		middle := (low + high) / 2
 
-		if order(self.key_chunks[c].get(middle), key) < 0 {
+		if order(self.key_chunks[c][middle], key) < 0 {
 			low = middle + 1
 		} else {
 			high = middle
@@ -69,7 +69,7 @@ fn SortedMap[K, V].lower_bound(c Int, key K) Int {
 
 // Internal: records the last key of chunk `c` after the chunk changed.
 fn var SortedMap[K, V].refresh(c Int) Void {
-	self.maxes.set(c, self.key_chunks[c].get(self.key_chunks[c].length() - 1).clone())
+	self.maxes.set(c, self.key_chunks[c][self.key_chunks[c].length() - 1].clone())
 }
 
 // Returns the number of entries.
@@ -90,7 +90,7 @@ fn SortedMap[K, V].contains(key K) Bool {
 	at := self.lower_bound(c, key)
 	return (
 		at < self.key_chunks[c].length()
-		and order(self.key_chunks[c].get(at), key) == 0
+		and order(self.key_chunks[c][at], key) == 0
 	)
 }
 
@@ -100,11 +100,8 @@ fn SortedMap[K, V].get(key K) V? {
 
 	c := self.chunk_for(key)
 	at := self.lower_bound(c, key)
-	if (
-		at < self.key_chunks[c].length()
-		and order(self.key_chunks[c].get(at), key) == 0
-	) {
-		return self.value_chunks[c].get(at).clone()
+	if (at < self.key_chunks[c].length() and order(self.key_chunks[c][at], key) == 0) {
+		return self.value_chunks[c][at].clone()
 	}
 
 	return null
@@ -129,10 +126,7 @@ fn var SortedMap[K, V].add(move key K, move value V) Void {
 	c := self.chunk_for(key)
 	at := self.lower_bound(c, key)
 
-	if (
-		at < self.key_chunks[c].length()
-		and order(self.key_chunks[c].get(at), key) == 0
-	) {
+	if (at < self.key_chunks[c].length() and order(self.key_chunks[c][at], key) == 0) {
 		self.value_chunks[c].set(at, value)
 		return
 	}
@@ -158,7 +152,7 @@ fn var SortedMap[K, V].split(c Int) Void {
 	self.value_chunks[c].splice(half, length - half, [])
 	self.key_chunks.insert(c + 1, tail_keys)
 	self.value_chunks.insert(c + 1, tail_values)
-	self.maxes.insert(c, self.key_chunks[c].get(half - 1).clone())
+	self.maxes.insert(c, self.key_chunks[c][half - 1].clone())
 }
 
 // Removes an equal key; an absent key changes nothing.
@@ -167,10 +161,7 @@ fn var SortedMap[K, V].remove(key K) Void {
 
 	c := self.chunk_for(key)
 	at := self.lower_bound(c, key)
-	if (
-		at >= self.key_chunks[c].length()
-		or order(self.key_chunks[c].get(at), key) != 0
-	) {
+	if (at >= self.key_chunks[c].length() or order(self.key_chunks[c][at], key) != 0) {
 		return
 	}
 
@@ -233,7 +224,7 @@ fn var SortedMap[K, V].clear() Void {
 // Returns the smallest key, or `null` when empty. Look its value up with `get`.
 fn SortedMap[K, V].first() K? {
 	if self.size == 0 { return null }
-	return self.key_chunks[0].get(0)
+	return self.key_chunks[0][0]
 }
 
 // Returns the largest key, or `null` when empty. Look its value up with `get`.
@@ -241,7 +232,7 @@ fn SortedMap[K, V].last() K? {
 	if self.size == 0 { return null }
 
 	c := self.key_chunks.length() - 1
-	return self.key_chunks[c].get(self.key_chunks[c].length() - 1)
+	return self.key_chunks[c][self.key_chunks[c].length() - 1]
 }
 
 // Removes the entry with the smallest key and moves it out, or returns `null` when
@@ -268,10 +259,7 @@ fn SortedMap[K, V].ceiling(key K) SortedEntry[K, V]? {
 	at := self.lower_bound(c, key)
 	if at >= self.key_chunks[c].length() { return null }
 
-	return SortedEntry(
-		self.key_chunks[c].get(at).clone(),
-		self.value_chunks[c].get(at).clone(),
-	)
+	return SortedEntry(self.key_chunks[c][at].clone(), self.value_chunks[c][at].clone())
 }
 
 // Returns the entry with the largest key that is at most `key`, or `null`.
@@ -280,13 +268,10 @@ fn SortedMap[K, V].floor(key K) SortedEntry[K, V]? {
 
 	var c = self.chunk_for(key)
 	var at = self.lower_bound(c, key)
-	if (
-		at < self.key_chunks[c].length()
-		and order(self.key_chunks[c].get(at), key) == 0
-	) {
+	if (at < self.key_chunks[c].length() and order(self.key_chunks[c][at], key) == 0) {
 		return SortedEntry(
-			self.key_chunks[c].get(at).clone(),
-			self.value_chunks[c].get(at).clone(),
+			self.key_chunks[c][at].clone(),
+			self.value_chunks[c][at].clone(),
 		)
 	}
 
@@ -298,10 +283,7 @@ fn SortedMap[K, V].floor(key K) SortedEntry[K, V]? {
 	}
 
 	at -= 1
-	return SortedEntry(
-		self.key_chunks[c].get(at).clone(),
-		self.value_chunks[c].get(at).clone(),
-	)
+	return SortedEntry(self.key_chunks[c][at].clone(), self.value_chunks[c][at].clone())
 }
 
 // Returns a new list of the entries with `low` <= key < `high`, in ascending order.
@@ -318,12 +300,7 @@ fn SortedMap[K, V].range(low, high K) List[SortedEntry[K, V]] {
 		while at < keys.length() {
 			if order(keys[at], high) >= 0 { return out }
 
-			out.append(
-				SortedEntry(
-					keys[at].clone(),
-					self.value_chunks[c].get(at).clone(),
-				)
-			)
+			out.append(SortedEntry(keys[at].clone(), self.value_chunks[c][at].clone()))
 			at += 1
 		}
 
@@ -351,12 +328,7 @@ fn SortedMap[K, V].entries() List[SortedEntry[K, V]] {
 	for c in 0..self.key_chunks.length() {
 		keys := self.key_chunks[c]
 		for at in 0..keys.length() {
-			out.append(
-				SortedEntry(
-					keys[at].clone(),
-					self.value_chunks[c].get(at).clone(),
-				)
-			)
+			out.append(SortedEntry(keys[at].clone(), self.value_chunks[c][at].clone()))
 		}
 	}
 

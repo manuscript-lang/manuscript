@@ -60,7 +60,7 @@ fn dispatch(n Int) Int {
 	var i = 0
 
 	while i < n {
-		total += shapes.get(i % 4).area()
+		total += shapes[i % 4].area()
 		i += 1
 	}
 
@@ -84,7 +84,7 @@ fn sorting(n Int) Int {
 	}
 
 	s := v.sorted(compare)
-	return s.get(0) + s.get(n / 2) + s.get(n - 1)
+	return s[0] + s[n / 2] + s[n - 1]
 }
 
 fn closures(n Int) Int {
@@ -133,7 +133,7 @@ fn word_map(n Int) Int {
 	var j = 0
 
 	while j < n {
-		w := words.get(j * 7 % 1000)
+		w := words[j * 7 % 1000]
 		m.add(w.clone(), m.get_or(w, 0) + 1)
 		j += 1
 	}
@@ -217,7 +217,7 @@ fn grid2d(n Int) Int {
 			var b = 1
 
 			while b < n - 1 {
-				total += g.get(a).get(b) + g.get(a - 1).get(b) + g.get(a + 1).get(b)
+				total += g[a][b] + g[a - 1][b] + g[a + 1][b]
 				b += 1
 			}
 

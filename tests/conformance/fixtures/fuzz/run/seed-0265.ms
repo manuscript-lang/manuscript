@@ -42,7 +42,7 @@ export fn main() Int {
 	s3 := "héllo".reverse()
 	say(f"s3 = [{s3}]")
 
-	i4 := ((-2) % l2.get(2))
+	i4 := ((-2) % l2[2])
 	say(f"i4 = {i4}")
 
 	s5 := (s1 + "x").trim().replace("quote\"d", s1)

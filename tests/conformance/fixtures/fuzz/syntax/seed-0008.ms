@@ -13,7 +13,7 @@ export fn main() Int {
 	l1 := [26]
 	say(f"l1 = {l1} len {l1.length()}")
 
-	i2 := ((-46) + l1.get(0))
+	i2 := ((-46) + l1[0])
 	say(f"i2 = {i2}")
 
 	i3 := (i2 + (((-7) - i2) / (25 + i2)))

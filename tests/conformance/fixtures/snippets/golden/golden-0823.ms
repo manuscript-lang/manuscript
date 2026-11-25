@@ -6,7 +6,7 @@ fn work() Int {
 	var total = 0
 
 	while i < 2 {
-		total += values.get(i)
+		total += values[i]
 		i += 1
 	}
 

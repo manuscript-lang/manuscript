@@ -37,7 +37,7 @@ test "first of a temporary list of recursive nodes" {
 }
 
 fn node_at(xs List[Node], i Int) Node? {
-	return xs.get(i)
+	return xs[i]
 }
 
 test "get and a map entry of recursive nodes borrow in place" {

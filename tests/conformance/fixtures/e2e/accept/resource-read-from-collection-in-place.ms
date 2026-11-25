@@ -23,8 +23,8 @@ export fn main() Int {
 
 	first := handles.first()
 	if first != null { print(first.id) }
-	print(handles.get(1).id)
-	print(id_of(handles.get(0)))
+	print(handles[1].id)
+	print(id_of(handles[0]))
 
 	found := by_key.get(7)
 	if found != null { print(found.id) }

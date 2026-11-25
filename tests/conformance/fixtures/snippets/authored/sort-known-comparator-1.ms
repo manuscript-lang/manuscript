@@ -57,11 +57,11 @@ fn main_run() Int {
 			sum = (
 				(
 					sum * 31
-					+ a.get(k) * 7
-					+ b.get(k) * 3
-					+ (c.get(k).truncate_to_int() or 0)
-					+ d.get(k) * 5
-					+ e.get(k)
+					+ a[k] * 7
+					+ b[k] * 3
+					+ (c[k].truncate_to_int() or 0)
+					+ d[k] * 5
+					+ e[k]
 				)
 				% 1000000007
 			)

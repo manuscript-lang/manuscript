@@ -28,7 +28,7 @@ export fn main() Int {
 	f6 := 736.967
 	say(f"f6 = {f6}")
 
-	i7 := ((((-9) / (-8)) + (-31)) + l2.get(2))
+	i7 := ((((-9) / (-8)) + (-31)) + l2[2])
 	say(f"i7 = {i7}")
 
 	f8 := f6
@@ -67,7 +67,7 @@ export fn main() Int {
 
 	say(f"acc16 = {acc16}")
 
-	i17 := (i7 * l3.get(1))
+	i17 := (i7 * l3[1])
 	say(f"i17 = {i17}")
 
 	s18 := "x"

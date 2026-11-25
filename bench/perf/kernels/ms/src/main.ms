@@ -34,7 +34,7 @@ fn sieve(n Int) Int {
 	i = 2
 
 	while i <= n {
-		if flags.get(i) {
+		if flags[i] {
 			count += 1
 
 			var j = i * i
@@ -59,11 +59,11 @@ fn advance(var bodies List[Body], steps Int) Float {
 		var i = 0
 
 		while i < n {
-			var a = bodies.get(i).clone()
+			var a = bodies[i].clone()
 			var j = i + 1
 
 			while j < n {
-				var b = bodies.get(j).clone()
+				var b = bodies[j].clone()
 				dx := a.x - b.x
 				dy := a.y - b.y
 				dz := a.z - b.z
@@ -86,7 +86,7 @@ fn advance(var bodies List[Body], steps Int) Float {
 		i = 0
 
 		while i < n {
-			var a = bodies.get(i).clone()
+			var a = bodies[i].clone()
 			a.x += 0.01 * a.vx
 			a.y += 0.01 * a.vy
 			a.z += 0.01 * a.vz
@@ -101,7 +101,7 @@ fn advance(var bodies List[Body], steps Int) Float {
 	var k = 0
 
 	while k < n {
-		a := bodies.get(k)
+		a := bodies[k]
 		e += a.mass * (a.vx * a.vx + a.vy * a.vy + a.vz * a.vz)
 		k += 1
 	}
@@ -112,7 +112,7 @@ fn advance(var bodies List[Body], steps Int) Float {
 fn cell(g Grid, x, y Int) Int {
 	wx := (x + g.width) % g.width
 	wy := (y + g.height) % g.height
-	return g.cells.get(wy * g.width + wx)
+	return g.cells[wy * g.width + wx]
 }
 
 fn neighbors(g Grid, x, y Int) Int {
@@ -218,7 +218,7 @@ fn matmul(n Int) Float {
 			var k = 0
 
 			while k < n {
-				s += a.get(i).get(k) * b.get(k).get(j)
+				s += a[i][k] * b[k][j]
 				k += 1
 			}
 
@@ -351,7 +351,7 @@ fn particles(n, steps Int) Float {
 
 	for _s in 0..steps {
 		for i in 0..n {
-			var p = ps.get(i).clone()
+			var p = ps[i].clone()
 			p.x += p.vx * 0.01
 			p.y += p.vy * 0.01
 			if p.x > 100.0 {
@@ -386,7 +386,7 @@ fn run_vm(code List[Op], iters Int) Int {
 	stack.append(iters)
 
 	while pc < code.length() {
-		match code.get(pc) {
+		match code[pc] {
 			Push(n) => {
 				stack.append(n)
 				pc += 1
@@ -404,7 +404,7 @@ fn run_vm(code List[Op], iters Int) Int {
 				pc += 1
 			}
 			Dup => {
-				v := stack.get(stack.length() - 1)
+				v := stack[stack.length() - 1]
 				stack.append(v)
 				pc += 1
 			}
@@ -420,7 +420,7 @@ fn run_vm(code List[Op], iters Int) Int {
 				pc += 1
 			}
 			JmpNz(target) => {
-				if stack.get(stack.length() - 1) != 0 {
+				if stack[stack.length() - 1] != 0 {
 					pc = target
 				} else {
 					pc += 1
@@ -506,10 +506,10 @@ fn stencil(n, iters Int) Int {
 		for y in 1..(n - 1) {
 			for x in 1..(n - 1) {
 				v := (
-					a.get(y * n + x - 1)
-					+ a.get(y * n + x + 1)
-					+ a.get((y - 1) * n + x)
-					+ a.get((y + 1) * n + x)
+					a[y * n + x - 1]
+					+ a[y * n + x + 1]
+					+ a[(y - 1) * n + x]
+					+ a[(y + 1) * n + x]
 				)
 				b.set(y * n + x, v % 1009)
 			}

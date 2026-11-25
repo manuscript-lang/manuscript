@@ -65,7 +65,7 @@ test "List pop and distinct copy payloads" {
 	nested := [1]
 	lists := [nested.clone(), [1], [2]]
 	unique := lists.distinct()
-	var inner = unique.get(0).clone()
+	var inner = unique[0].clone()
 	inner.append(3)
 	expect_false(unique.length() != 2 or nested != [1] or inner != [1, 3])?
 }
@@ -122,5 +122,5 @@ test "List distinct handles large Int and String lists" {
 	)?
 
 	uniqueWords := words.distinct()
-	expect_false(uniqueWords.length() != 20000 or uniqueWords.get(1) != "w1")?
+	expect_false(uniqueWords.length() != 20000 or uniqueWords[1] != "w1")?
 }

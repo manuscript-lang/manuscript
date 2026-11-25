@@ -25,7 +25,7 @@ export fn main() Int {
 	l4 := [8, (-6), (-7)]
 	say(f"l4 = {l4} len {l4.length()}")
 
-	s5 := ("ms" + (f"{l4.get(1)}:" + "delta".upper()))
+	s5 := ("ms" + (f"{l4[1]}:" + "delta".upper()))
 	say(f"s5 = [{s5}]")
 
 	b6 := (("gamma" + s5).is_empty() and s5.replace("brace{s}", s3).is_empty())

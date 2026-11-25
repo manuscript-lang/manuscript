@@ -31,6 +31,6 @@ export fn main() Int {
 		say(s3)
 	}
 
-	bad := [1, 2].get("x")
+	bad := [1, 2]["x"]
 	return 0
 }

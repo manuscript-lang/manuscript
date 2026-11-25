@@ -124,9 +124,9 @@ test "Map key transformation retains first equal keys and last values" {
 	expect_equal(mapped.keys().map(k => k.label.clone()), ["2", "1"])?
 	expect_equal(mapped.values().map(v => v.count), [3, 4])?
 
-	var first_key = mapped.keys().get(0).clone()
+	var first_key = mapped.keys()[0].clone()
 	first_key.label = "first copy"
-	expect_false((created.get(0).label != "2" or created.get(2).label != "4"))?
+	expect_false((created[0].label != "2" or created[2].label != "4"))?
 
 	var looked_up = mapped[Key(0, "lookup")].clone()
 	looked_up.count = 9

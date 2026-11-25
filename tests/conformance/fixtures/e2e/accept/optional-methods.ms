@@ -82,6 +82,6 @@ test "Optional fallbacks preserve standard option records" {
 
 test "Optional methods work on inferred library return values" {
 	values := [1, 2]
-	expect_equal(values.get(0), 1)?
+	expect_equal(values[0], 1)?
 	expect_equal(values.get_or(5, 9), 9)?
 }

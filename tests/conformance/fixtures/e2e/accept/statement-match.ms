@@ -22,7 +22,7 @@ fn first_positive(values List[Int?]) Int {
 	var index = 0
 
 	while index < values.length() {
-		item := values.get(index)
+		item := values[index]
 		index += 1
 
 		match item {

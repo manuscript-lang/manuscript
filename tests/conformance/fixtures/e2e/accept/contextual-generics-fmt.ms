@@ -57,7 +57,7 @@ test "expected generic results preserve behavior and call order" {
 
 	values List[Int?] := [1, 2].map(item => absent())
 	expect_equal(values.length(), 2)?
-	expect_false(not (values.get(0) == null))?
+	expect_false(not (values[0] == null))?
 
 	callback fn(Int) String := transform(item => item.to_string())
 	expect_equal(callback(7), "7")?

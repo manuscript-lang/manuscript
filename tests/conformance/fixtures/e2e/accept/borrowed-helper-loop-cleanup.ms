@@ -16,7 +16,7 @@ fn move Door.close() Void! {
 }
 
 fn first[T](rows List[List[T]]) List[T] {
-	return rows.get(0)
+	return rows[0]
 }
 
 fn logged(path String) String {
@@ -33,7 +33,7 @@ fn break_borrowed(log String) Void! {
 	}
 
 	logged(log.clone()) | expect_equal("")?
-	rows.get(0).get(1).id | expect_equal(2)?
+	rows[0][1].id | expect_equal(2)?
 }
 
 fn return_borrowed(rows List[List[Door]]) Int {
@@ -47,7 +47,7 @@ fn use_after_return(log String) Void! {
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
 	return_borrowed(rows) | expect_equal(1)?
 	logged(log.clone()) | expect_equal("")?
-	rows.get(0).get(1).id | expect_equal(2)?
+	rows[0][1].id | expect_equal(2)?
 }
 
 test "break from a borrowed helper loop leaves resources with their owner" {
@@ -87,7 +87,7 @@ fn use_after_try(log String) Void! {
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
 	try_borrowed(rows).is_error() | expect_equal(true)?
 	logged(log.clone()) | expect_equal("")?
-	rows.get(0).get(1).id | expect_equal(2)?
+	rows[0][1].id | expect_equal(2)?
 }
 
 test "try out of a borrowed helper loop leaves resources with their owner" {

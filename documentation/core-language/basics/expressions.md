@@ -58,7 +58,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 - `a < b == c`, `a == b == c`, and `a < b < c` are syntax errors; `(a < b) == flag` is ordinary Bool equality.
 - `not a == b` means `not (a == b)`.
 - `read()? + 1` means `(read()?) + 1`; write `(expression)?` to propagate a larger expression.
-- Brackets after a generic declaration supply types (`identity[Int]`, `Box[String]`); after a list value they look up: `values[index]` equals `values.get(index)`: it returns a `T`, accepts negative indexes, and faults when the index is out of range. `values[index] = x` and `values[index] += x` are the `set` mutator (`values.set(index, x)`); the receiver must be a `var`. Slicing is unsupported.
+- Brackets after a generic declaration supply types (`identity[Int]`, `Box[String]`); after a list value they look up: `values[index]` returns a `T`, accepts negative indexes, and faults when the index is out of range. `values[index] = x` and `values[index] += x` are the `set` mutator (`values.set(index, x)`); the receiver must be a `var`. Slicing is unsupported.
 - Calls take positional arguments and optional labels ([call rules](../functions/declarations-and-calls.md#argument-names)). Single-payload constructors may omit the label: `Box(3)`, `ok(3)`. An interface is never constructed; see [interface conversion](../types/contracts.md#interface-conversion).
 
 ## Pipe flows

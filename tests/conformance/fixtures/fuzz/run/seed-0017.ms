@@ -84,7 +84,7 @@ export fn main() Int {
 		f"{(i4 / (i4 * i2))} {((i2 + 908316178682) + s5.scalar_length())} {((i4 / (i4 * i2)) < ((i2 + 908316178682) + s5.scalar_length()))} sum {(i4 / (i4 * i2)) + ((i2 + 908316178682) + s5.scalar_length())}"
 	)
 
-	i12 := l9.get(0)
+	i12 := l9[0]
 	say(f"i12 = {i12}")
 	say(f"collatz(2820) = {collatz(2820)}")
 

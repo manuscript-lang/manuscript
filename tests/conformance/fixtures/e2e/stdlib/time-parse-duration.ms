@@ -29,7 +29,7 @@ test "duration parser accepts units, signs, components and Unicode microseconds"
 		1050000000,
 	]
 	for i in 0..examples.length() {
-		expect_equal(parse_duration(examples.get(i)), ok(nanoseconds(nanos.get(i))))?
+		expect_equal(parse_duration(examples[i]), ok(nanoseconds(nanos[i])))?
 	}
 }
 
@@ -51,7 +51,7 @@ test "duration fractions truncate exactly without rounding or a precision cap" {
 	]
 	nanos := [1999, -1999, 1000000000, 0, 0, 1, 19999999999, 20000000000]
 	for i in 0..examples.length() {
-		expect_equal(parse_duration(examples.get(i)), ok(nanoseconds(nanos.get(i))))?
+		expect_equal(parse_duration(examples[i]), ok(nanoseconds(nanos[i])))?
 	}
 }
 

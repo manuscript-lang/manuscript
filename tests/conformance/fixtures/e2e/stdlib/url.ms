@@ -28,7 +28,7 @@ test "URL canonicalization and relative references" {
 
 test "URL query retains duplicate keys empty values and spaces" {
 	entries := parse_query("a=1&a=2&empty=&space=hello+world")?
-	expect_false(entries.length() != 4 or entries.get(3).value != "hello world")?
+	expect_false(entries.length() != 4 or entries[3].value != "hello world")?
 	expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")?
 
 	limited List[QueryEntry]! := error(Error("URL: limit exceeded", kind: "EOVERFLOW"))

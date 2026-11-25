@@ -7,7 +7,7 @@ fn tally(words List[String]) Map[String, Int] {
 	var m = Map[String, Int]()
 
 	for i in 0..words.length() {
-		w := words.get(i)
+		w := words[i]
 		m.add(w.clone(), m.get_or(w, 0) + 1)
 	}
 

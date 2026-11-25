@@ -75,7 +75,7 @@ test "set callbacks" {
 test "sort with a comparator" {
 	words := ["ccc", "a", "bb"]
 	sorted := words.sorted(compare: byLength)
-	expect_true((sorted.get(index: 0) == "a" and sorted.get(index: 2) == "ccc"))?
+	expect_true((sorted[0] == "a" and sorted[2] == "ccc"))?
 
 	closure := words.sorted(
 		compare: fn(left String, right String) Int => (
@@ -83,5 +83,5 @@ test "sort with a comparator" {
 			- left.length()
 		)
 	)
-	expect_true((closure.get(index: 0) == "ccc"))?
+	expect_true((closure[0] == "ccc"))?
 }

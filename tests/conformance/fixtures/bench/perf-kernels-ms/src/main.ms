@@ -41,7 +41,7 @@ fn sieve(n Int) Int {
 	i = 2
 
 	while i <= n {
-		if flags.get(i) {
+		if flags[i] {
 			count += 1
 
 			var j = i * i
@@ -66,11 +66,11 @@ fn advance(var bodies List[Body], steps Int) Float {
 		var i = 0
 
 		while i < n {
-			var a = bodies.get(i).clone()
+			var a = bodies[i].clone()
 			var j = i + 1
 
 			while j < n {
-				var b = bodies.get(j).clone()
+				var b = bodies[j].clone()
 				dx := a.x - b.x
 				dy := a.y - b.y
 				dz := a.z - b.z
@@ -93,7 +93,7 @@ fn advance(var bodies List[Body], steps Int) Float {
 		i = 0
 
 		while i < n {
-			var a = bodies.get(i).clone()
+			var a = bodies[i].clone()
 			a.x += 0.01 * a.vx
 			a.y += 0.01 * a.vy
 			a.z += 0.01 * a.vz
@@ -108,7 +108,7 @@ fn advance(var bodies List[Body], steps Int) Float {
 	var k = 0
 
 	while k < n {
-		a := bodies.get(k)
+		a := bodies[k]
 		e += a.mass * (a.vx * a.vx + a.vy * a.vy + a.vz * a.vz)
 		k += 1
 	}
@@ -119,7 +119,7 @@ fn advance(var bodies List[Body], steps Int) Float {
 fn cell(g Grid, x Int, y Int) Int {
 	wx := (x + g.width) % g.width
 	wy := (y + g.height) % g.height
-	return g.cells.get(wy * g.width + wx)
+	return g.cells[wy * g.width + wx]
 }
 
 fn neighbors(g Grid, x Int, y Int) Int {
@@ -225,7 +225,7 @@ fn matmul(n Int) Float {
 			var k = 0
 
 			while k < n {
-				s += a.get(i).get(k) * b.get(k).get(j)
+				s += a[i][k] * b[k][j]
 				k += 1
 			}
 
