@@ -945,26 +945,22 @@ fn Set[T].fold_right[A](initial A, step fn(A, T) A) A {
 	return acc
 }
 
-// Returns the first element for which `predicate` is true as a view of this set, or
-// `null`.
-fn hold Set[T Hashable].find(predicate fn(T) Bool) &T? {
-	// Workaround for #6943: iterate a bound view, not the call, so a record element
-	// borrows.
-	values := self.values()
-	for value in values {
-		if predicate(value) { return value }
+// Returns a copy of the first element for which `predicate` is true, or `null`.
+fn Set[T Hashable & Clonable].find(predicate fn(T) Bool) T? {
+	for value in self.values() {
+		if predicate(value) { return value.clone() }
 	}
 	return null
 }
 
-// Searches from the end and returns the last element for which `predicate` is true as a
-// view of this set, or `null`.
-fn hold Set[T Hashable].find_last(predicate fn(T) Bool) &T? {
+// Searches from the end and returns a copy of the last element for which `predicate` is
+// true, or `null`.
+fn Set[T Hashable & Clonable].find_last(predicate fn(T) Bool) T? {
 	values := self.values()
 	var i = values.length() - 1
 
 	while i >= 0 {
-		if predicate(values[i]) { return values[i] }
+		if predicate(values[i]) { return values[i].clone() }
 
 		i -= 1
 	}
