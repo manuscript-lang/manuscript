@@ -129,4 +129,4 @@ Additive: no existing program holds a `&` field. `references.md` line "a type ca
 - Is a look-typed record `Clonable`? Recommended no: `.clone()` an item, not the walk.
 - Do record literals tie to a `&` field automatically (recommended), or need `hold` on a constructor? Automatic matches how `&T` is a type form.
 - `Iterator[&String]` as an ordinary instance (recommended) versus a second interface `Looking[T]`.
-- Per-component looks in `Result[&T, Error]` need the result ABI to say which component borrows (parent proposal, open); recommended as part of stage 4.
+- Per-component looks in `Result[&T, Error]` (2026-11-25): a `&T!` result checks like `&T?` (`ok(part)` of a held argument, `error(...)` new, no mixed-return error across cases), and a caller freezes the source. Lowering copies the payload at `ok(...)`: a distinct MIR alt with a borrowed `ok` component needs the checker to tell `Result[&T, E]` from `Result[T, E]`, which the erased `&` does not. Same behavior, one copy on the success path.

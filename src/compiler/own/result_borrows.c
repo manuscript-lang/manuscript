@@ -249,6 +249,7 @@ typedef struct Reached {
   const MsExpr *borrowed;
   const MsExpr *fresh;
   bool known;
+  bool mixed; /* one returned value joins a part of an argument with a value the body owns */
 } Reached;
 
 enum { CASE_OK = 1, CASE_ERROR = 2, CASE_ALL = 3 };
@@ -300,6 +301,7 @@ static Reached reached_by(Pass *pass, MsParams params, MsStmts body, MsTy result
   for (uint32_t index = 0; out.known && index < returns.len; index++) {
     reaches[index] = classify(pass, returns.values[index]);
     out.all = join(out.all, reaches[index]);
+    out.mixed = out.mixed || (reaches[index].owned && reaches[index].mask != 0);
   }
   const uint32_t owned_params = moved_positions(pass, params);
   /* An interface result is a view every path builds; a value converted on the way out (a type as its interface, a value as
@@ -483,7 +485,7 @@ static void report_declared(Pass *pass, uint32_t module, MsPos pos, const MsFunc
   if ((declared & MS_RESULT_BORROWED) != 0 && used == 0 && !reached.all.owned) {
     return;
   }
-  if ((declared & MS_RESULT_BORROWED) != 0 && reached.all.owned && (used & holds) != 0) {
+  if ((declared & MS_RESULT_BORROWED) != 0 && reached.mixed && (used & holds) != 0) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "a `&` result must be a part of a `hold` argument, but this body also puts a value it owns "
                                    "into the result; clone the part of the argument or keep only parts of the held argument");
