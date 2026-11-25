@@ -54,23 +54,23 @@ fn call_of(prefix String, d List[Dep], k, own Int, qualified Bool) String {
 fn ms_fn(p, f, k Int, d List[Dep]) String {
 	call := call_of("w", d, k, p, false)
 	shape := k % 4
-	var b = [f"export fn w_{p}_{f}_{k}(x Int) Int:"]
+	var b = [f"export fn w_{p}_{f}_{k}(x Int) Int \{"]
 
 	if shape == 0 {
 		b = b.concat(
 			[
-				"    var acc = x", "    for i in 0..10:", "        if i % 2 == 0:",
-				"            acc += i * 3", "        else:", "            acc -= 1",
-				f"    return acc % 100000 + {call}"
+				"    var acc = x", "    for i in 0..10 {", "        if i % 2 == 0 {",
+				"            acc += i * 3", "        } else {", "            acc -= 1",
+				"        }", "    }", f"    return acc % 100000 + {call}"
 			]
 		)
 	} else if shape == 1 {
 		b = b.concat(
 			[
-				"    var xs = List[Int]()", "    for i in 0..8:",
-				"        xs.append(i + x)", "    var t = 0", "    for v in xs:",
-				"        t += v % 7", "    acc := t + xs.length()",
-				f"    return acc + {call}"
+				"    var xs = List[Int]()", "    for i in 0..8 {",
+				"        xs.append(i + x)", "    }", "    var t = 0",
+				"    for v in xs {", "        t += v % 7", "    }",
+				"    acc := t + xs.length()", f"    return acc + {call}"
 			]
 		)
 	} else if shape == 2 {
@@ -78,8 +78,9 @@ fn ms_fn(p, f, k Int, d List[Dep]) String {
 			[
 				q(f"    r := R_{p}_{f}(x, \"n‹x›\", [x, 1, 2])"),
 				"    var acc = r.score()",
-				"    while acc > 1000:",
+				"    while acc > 1000 {",
 				"        acc = acc / 2",
+				"    }",
 				f"    return acc + {call}",
 			]
 		)
@@ -88,17 +89,19 @@ fn ms_fn(p, f, k Int, d List[Dep]) String {
 			[
 				q("    s := \"v‹x›\""),
 				"    var acc = s.length()",
-				"    if x > 50:",
+				"    if x > 50 {",
 				"        acc += x / 3",
-				"    else if x > 10:",
+				"    } else if x > 10 {",
 				"        acc += x * 2",
-				"    else:",
+				"    } else {",
 				"        acc += 1",
+				"    }",
 				f"    return acc + {call}",
 			]
 		)
 	}
 
+	b.append("}")
 	return b.join("\n") + "\n"
 }
 
@@ -269,16 +272,16 @@ export fn generate(out String, packages, files, fns Int) Void {
 			}
 
 			m.append(
-				f"\nexport type R_{p}_{f}:\n    a Int\n    b String\n    c List[Int]\n\nfn R_{p}_{f}.score() Int:\n    var t = self.a + self.b.length()\n    for v in self.c:\n        t += v\n    return t\n\n"
+				f"\nexport type R_{p}_{f} \{\n    a Int\n    b String\n    c List[Int]\n\}\n\nfn R_{p}_{f}.score() Int \{\n    var t = self.a + self.b.length()\n    for v in self.c \{\n        t += v\n    \}\n    return t\n\}\n\n"
 			)
 			for k in 0..fns {
 				m.append(ms_fn(p, f, k, d) + "\n")
 			}
-			m.append(f"export fn all_{p}_{f}(x Int) Int:\n    var t = 0\n")
+			m.append(f"export fn all_{p}_{f}(x Int) Int \{\n    var t = 0\n")
 			for k in 0..fns {
 				m.append(f"    t += w_{p}_{f}_{k}(x)\n")
 			}
-			m.append("    return t % 100000\n")
+			m.append("    return t % 100000\n}\n")
 			write_text(f"{out}/ms/src/pkg{p}/f{f}.ms", m.join(""))
 
 			var g = [f"package p{p}\n\nimport \"fmt\"\n"]
@@ -333,13 +336,13 @@ export fn generate(out String, packages, files, fns Int) Void {
 			ms.append(f"import all_{p}_{f} from \"./pkg{p}/f{f}.ms\"\n")
 		}
 	}
-	ms.append("\nexport fn main() Int:\n    var t = 0\n")
+	ms.append("\nexport fn main() Int {\n    var t = 0\n")
 	for p in 0..packages {
 		for f in 0..files {
 			ms.append(f"    t += all_{p}_{f}(7)\n")
 		}
 	}
-	ms.append(q("    stdout().write(f\"‹t›\\n\").get()\n    return 0\n"))
+	ms.append(q("    stdout().write(f\"‹t›\\n\").get()\n    return 0\n›\n"))
 	write_text(f"{out}/ms/src/main.ms", ms.join(""))
 	write_text(
 		f"{out}/ms/ms.toml",
