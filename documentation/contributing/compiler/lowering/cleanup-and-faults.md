@@ -5,7 +5,7 @@ weight = 96
 
 # Cleanup and fault lowering
 
-The compiler lowers scope-end cleanup in `ms-lower` (`close.rs`): after a resource binding's initializer succeeds it registers the binding's `close` and emits the close call on every way out of the scope, including nested blocks and loop iterations.
+The compiler lowers scope-end cleanup in `compiler/lower` (`lower_close.c`): after a resource binding's initializer succeeds it registers the binding's `close` and emits the close call on every way out of the scope, including nested blocks and loop iterations.
 
 The backend implements [scope-exit order](../../../core-language/cleanup/scopes.md#cleanup-order) and [fault selection](../../../core-language/cleanup/cleanup-faults.md):
 
@@ -18,4 +18,4 @@ The backend implements [scope-exit order](../../../core-language/cleanup/scopes.
 - Reassignment closes the replaced resource before the new owned value takes its place.
 - Checked stack exhaustion reports a fault and runs cleanup; out-of-memory termination has no cleanup guarantee. See [programming faults](../../../core-language/errors/faults.md#runaway-recursion).
 
-The close helpers in `ms-lower/src/close.rs` and guarded unwind entries in `ms-mir` implement these paths; validate them with the resource and ownership tests, not just successful compilation.
+The close helpers in `src/compiler/lower/lower_close.c` and the guarded unwind entries in `src/compiler/lower/lower_unwind.c` implement these paths; validate them with the resource and ownership tests, not just successful compilation.
