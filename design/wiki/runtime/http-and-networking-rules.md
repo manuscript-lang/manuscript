@@ -50,7 +50,7 @@ Verified: checking unsupported response transfer codings only inside the `chunke
 
 Apply when: changing HTTP/1 response framing or client decompression.
 Evidence: `response_framing_rules` covers unsupported codings with and without chunked, plus retained identity framing.
-Verify: `cargo test -p ms-std-net http::h1::tests::response_framing_rules` rejects `gzip` alone as well as `gzip, chunked`.
+Verify: the HTTP/1 response framing tests (`src/runtime/std/http_h1*.c`) reject `gzip` alone as well as `gzip, chunked`.
 
 ## Rejected uploads need a bounded half-close before socket retirement
 
@@ -77,7 +77,7 @@ Verify: run relevant cases for blocked I/O cancellation, concurrent close, bound
 
 ## STARTTLS moves the descriptor, it does not wrap the connection
 
-Verified: `start_tls` and `accept_tls` (`@std/net/net.ms`) take the socket out of an idle plain `Connection` (`Io::take_plain`), mark that connection closed without shutting the socket, and handshake on a new `Connection`. The `Connection` record keeps a non-stream `native` handle for this, so closing the socket when the last stream end closes counts `ends` in Rust, not `Rc::strong_count`. Busy, closed or already-TLS connections return EINVAL/EBADF and stay usable; a failed handshake consumes the socket.
+Verified: `start_tls` and `accept_tls` (`@std/net/net.ms`) take the socket out of an idle plain `Connection` (`Io::take_plain`), mark that connection closed without shutting the socket, and handshake on a new `Connection`. The `Connection` record keeps a non-stream `native` handle for this, so closing the socket when the last stream end closes counts `ends` in the runtime handle, not a reference count. Busy, closed or already-TLS connections return EINVAL/EBADF and stay usable; a failed handshake consumes the socket.
 
 Apply when: adding a stream wrapper or changing connection close rules.
 Evidence: `start_tls upgrades a plain connection in place on both sides` in [tls.ms](../../../tests/conformance/fixtures/e2e/stdlib/tls.ms).
