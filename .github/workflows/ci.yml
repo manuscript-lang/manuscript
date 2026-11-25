@@ -55,6 +55,15 @@ jobs:
       # The pinned shared LLVM library: ms compiles programs through it in this process. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
+      - name: Probe debug link time
+        run: |
+          ms=$(find .artifacts/build/ci -maxdepth 3 \( -name ms -o -name ms.exe \) -type f | head -1)
+          mkdir -p .artifacts/probe && printf 'fn main() Int {\n    print("hi")\n    return 0\n}\n' > .artifacts/probe/hello.ms
+          "$ms" check tools/repo-check.ms >/dev/null
+          for f in .artifacts/probe/hello.ms tools/repo-check.ms; do for i in 1 2 3; do
+            echo "== baseline=0 $f run $i"
+            MS_BUILD_TIMES=1 "$ms" build --build-type debug -o .artifacts/probe/out "$f" 2>&1 | tail -8
+          done; done
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target lint
