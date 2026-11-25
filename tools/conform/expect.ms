@@ -156,10 +156,9 @@ fn output_lines(key, text String) List[String] {
 
 	var parts = text.split("\n")
 	partial := not text.ends_with("\n")
-	if not partial { parts = parts.slice(
-		0,
-		parts.length() - 1,
-	).get().clone() }
+	if not partial {
+		parts = parts.slice(0, parts.length() - 1).get().clone()
+	}
 	for part in parts {
 		lines.append(keyed(key, part))
 	}
