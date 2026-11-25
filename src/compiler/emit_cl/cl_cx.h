@@ -96,7 +96,6 @@ cl_val clx_arg(const ClCx *cx, const MirInst *inst, uint32_t arg);
 /* The i64 constant `k`. */
 cl_val clx_const(ClCx *cx, int64_t k);
 /* Widens a loaded leaf to its register type and narrows a register for a store. */
-cl_val clx_widen(ClCx *cx, MirLeaf leaf, cl_val loaded);
 
 /* ---- memory (cl_mem.c) ---- */
 

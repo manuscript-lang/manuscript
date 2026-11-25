@@ -28,10 +28,3 @@ bool cranelift_load(MsSpan path, MsStrBuild *why) {
   atomic_store(&ready, true);
   return true;
 }
-
-bool cranelift_usable(MsSpan path) {
-  MsStrBuild why = ms_strbuild_new();
-  const bool usable = cranelift_load(path, &why);
-  ms_strbuild_free(&why);
-  return usable;
-}
