@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "base/clock.h"
 #include "base/env.h"
 #include "base/file.h"
 #include "base/path.h"
@@ -290,6 +291,8 @@ BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
 }
 
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
+  const bool report = ms_build_times_enabled();
+  int64_t mark = ms_clock_ns();
   MsStrBuild ir[EMIT_MAX_UNITS] = {ms_strbuild_new()};
   uint32_t units = 1;
   MsStrBuild why = ms_strbuild_new();
@@ -298,6 +301,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, ir, &units, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
+  ms_build_time_step(report, "codegen", &mark);
   MsString lld_storage, files_storage, runtime_storage;
   MsStrBuild lld_installed = ms_strbuild_new();
   MsStrBuild files_installed = ms_strbuild_new(), runtime_installed = ms_strbuild_new();
@@ -352,8 +356,10 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   } else if (ok) {
     ok = make_objects(request, &program, ir, units, llvm, object, error);
   }
+  ms_build_time_step(report, "object", &mark);
   if (ok) {
     const LinkOptions link = {.lld = lld, .llvm = llvm, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
+                              .quick = request->build_type == MS_BUILD_DEBUG,
                               .musl = request->static_libc};
     const LinkRequest job = {.object = ms_strbuild_span(&object[0]), .inputs = inputs, .input_count = count,
                              .output = request->output};
@@ -361,6 +367,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
     ok = link_executable(&link, &job, &link_why) || fail(error, "", ms_strbuild_span(&link_why));
     ms_strbuild_free(&link_why);
   }
+  ms_build_time_step(report, "link", &mark);
   if (ms_string_span(&scratch).len != 0) {
     ms_path_remove_tree(ms_string_span(&scratch));
   }
