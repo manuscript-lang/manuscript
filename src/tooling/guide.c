@@ -190,7 +190,7 @@ static void type_parameters(const Guide *g, MsStrBuild *out, const MsTypeParams 
     ms_strbuild_append_text(out, i > 0 ? ", " : "");
     ms_strbuild_append(out, name_text(g, p->name));
     for (uint32_t b = 0; b < p->bounds.len; b++) {
-      ms_strbuild_append_text(out, b == 0 ? ": " : " & ");
+      ms_strbuild_append_text(out, b == 0 ? " " : " & ");
       type_text(g, out, p->bounds.ptr[b]);
     }
     if (p->def != NULL) {
@@ -283,7 +283,7 @@ static void parameters(Guide *g, StdFile *file, MsStrBuild *out, const MsParams 
     ms_strbuild_append_text(out, p->moving ? "move " : "");
     ms_strbuild_append_text(out, p->is_mutable ? "var " : "");
     ms_strbuild_append(out, name_text(g, p->name));
-    ms_strbuild_append_text(out, ": ");
+    ms_strbuild_append_byte(out, ' ');
     if (p->ty != NULL) {
       type_text(g, out, p->ty);
     }
@@ -301,7 +301,7 @@ static MsSpan keep(Guide *g, MsStrBuild *out) {
   return text;
 }
 
-/* `fn name[T](params) Result { ... }`, with `var fn` or `move fn` for a method that changes or consumes its receiver. */
+/* `fn name[T](params) Result`, with `var fn` or `move fn` for a method that changes or consumes its receiver. */
 static void fn_declaration(Guide *g, StdFile *file, MsStrBuild *out, MsSpan name, const MsFunc *f, bool mutating,
                            bool consuming) {
   ms_strbuild_append_text(out, mutating ? "var fn " : consuming ? "move fn " : "fn ");
@@ -310,7 +310,6 @@ static void fn_declaration(Guide *g, StdFile *file, MsStrBuild *out, MsSpan name
   parameters(g, file, out, &f->params);
   ms_strbuild_append_byte(out, ' ');
   type_text(g, out, f->result);
-  ms_strbuild_append_text(out, ":\n");
 }
 
 /* `fn var Receiver.name(...)` when it changes `self`. */
@@ -325,7 +324,6 @@ static void receiver_declaration(Guide *g, StdFile *file, MsStrBuild *out, MsSpa
   parameters(g, file, out, &f->params);
   ms_strbuild_append_byte(out, ' ');
   type_text(g, out, f->result);
-  ms_strbuild_append_text(out, ":\n");
 }
 
 /* ---- symbols ---- */
@@ -493,7 +491,7 @@ static MsSpan operation_name(Guide *g, const MsMethod *method) {
       ms_strbuild_append_text(&out, i > 0 ? ", " : "");
       ms_strbuild_append(&out, name_text(g, params->ptr[i]->name));
       for (uint32_t b = 0; b < params->ptr[i]->bounds.len; b++) {
-        ms_strbuild_append_text(&out, b == 0 ? ": " : " & ");
+        ms_strbuild_append_text(&out, b == 0 ? " " : " & ");
         type_text(g, &out, params->ptr[i]->bounds.ptr[b]);
       }
     }
@@ -505,7 +503,7 @@ static MsSpan operation_name(Guide *g, const MsMethod *method) {
 static MsSpan field_signature(Guide *g, StdFile *file, const MsParam *field, bool with_default) {
   MsStrBuild out = ms_strbuild_new();
   ms_strbuild_append(&out, name_text(g, field->name));
-  ms_strbuild_append_text(&out, ": ");
+  ms_strbuild_append_byte(&out, ' ');
   if (field->ty != NULL) {
     type_text(g, &out, field->ty);
   }
@@ -521,20 +519,15 @@ static void add_member(Guide *g, MsApiMembers *members, MsApiMember member) {
   ms_api_members_push(g->arena, members, member);
 }
 
-static MsSpan strip_colon(MsSpan s) {
-  return s.len > 0 && s.ptr[s.len - 1] == ':' ? ms_span_of(s.ptr, s.len - 1) : s;
-}
-
 /* Member of a method written inside the declaration (an interface operation or a folded inherent method). */
 static void method_member(Guide *g, Symbol *symbol, MsApiMembers *members, const MsMethod *method, StdFile *file,
                           bool interface) {
   MsStrBuild sig = ms_strbuild_new();
   fn_declaration(g, file, &sig, name_text(g, method->func.name), &method->func, method->mutating, method->consuming);
-  MsSpan signature = trim_span(ms_strbuild_span(&sig));
-  if (interface) {
-    signature = strip_colon(signature);
+  if (!interface) {
+    ms_strbuild_append_text(&sig, " { ... }");
   }
-  signature = ms_arena_copy(g->arena, signature);
+  const MsSpan signature = ms_arena_copy(g->arena, trim_span(ms_strbuild_span(&sig)));
   ms_strbuild_free(&sig);
   add_member(g, members, (MsApiMember){.name = operation_name(g, method), .kind = ms_span_of_text("operation"),
                                        .signature = signature, .doc = comment_at(g, file, method->pos.offset)});
@@ -576,7 +569,7 @@ static MsSpan receiver_context(Guide *g, const Symbol *symbol, const MethodRef *
     ms_strbuild_append_text(&bounds, count++ > 0 ? ", " : "");
     ms_strbuild_append(&bounds, name_text(g, p->name));
     for (uint32_t b = 0; b < p->bounds.len; b++) {
-      ms_strbuild_append_text(&bounds, b == 0 ? ": " : " & ");
+      ms_strbuild_append_text(&bounds, b == 0 ? " " : " & ");
       type_text(g, &bounds, p->bounds.ptr[b]);
     }
   }
@@ -647,16 +640,17 @@ static MsSpan declaration_text(Guide *g, Symbol *s, StdFile *file, bool opaque) 
   if (decl == NULL) {
     ms_strbuild_append_text(&b, "type ");
     ms_strbuild_append(&b, s->name);
-    ms_strbuild_append_text(&b, ":\n");
+    ms_strbuild_append_text(&b, " { ... }\n");
     return keep(g, &b);
   }
   if (decl->kind == MS_D_FN) {
     fn_declaration(g, file, &b, s->name, &decl->u.fn, false, false);
+    ms_strbuild_append_text(&b, " { ... }\n");
     return keep(g, &b);
   }
   if (decl->kind == MS_D_CONST) {
     ms_strbuild_append(&b, s->name);
-    ms_strbuild_append_text(&b, ": ");
+    ms_strbuild_append_byte(&b, ' ');
     const MsExpr *value = decl->u.konst.value;
     if (decl->u.konst.ty != NULL) {
       type_text(g, &b, decl->u.konst.ty);
@@ -686,7 +680,7 @@ static MsSpan declaration_text(Guide *g, Symbol *s, StdFile *file, bool opaque) 
   ms_strbuild_append_byte(&b, ' ');
   ms_strbuild_append(&b, s->name);
   type_parameters(g, &b, &tps);
-  ms_strbuild_append_text(&b, ":\n");
+  ms_strbuild_append_text(&b, " {\n");
   if (fields != NULL && !opaque) {
     for (uint32_t i = 0; i < fields->len; i++) {
       ms_strbuild_append_text(&b, "    ");
@@ -705,11 +699,14 @@ static MsSpan declaration_text(Guide *g, Symbol *s, StdFile *file, bool opaque) 
       ms_strbuild_append_byte(&b, '\n');
     }
   }
+  const bool interface = decl->kind == MS_D_INTERFACE;
+  if (!interface) {
+    ms_strbuild_append_text(&b, "}\n");
+  }
   MsStrBuild receiver = ms_strbuild_new();
   ms_strbuild_append(&receiver, s->name);
   type_arguments(g, &receiver, &tps);
   const MsSpan receiver_text = ms_strbuild_span(&receiver);
-  const bool interface = decl->kind == MS_D_INTERFACE;
   const size_t methods = interface ? decl->u.iface.methods.len : s->folded.len;
   if ((decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM) && methods > 0) {
     ms_strbuild_append_byte(&b, '\n');
@@ -720,14 +717,16 @@ static MsSpan declaration_text(Guide *g, Symbol *s, StdFile *file, bool opaque) 
       MsStrBuild header = ms_strbuild_new();
       fn_declaration(g, file, &header, name_text(g, m->func.name), &m->func, m->mutating, m->consuming);
       ms_strbuild_append_text(&b, "    ");
-      ms_strbuild_append(&b, strip_colon(trim_span(ms_strbuild_span(&header))));
+      ms_strbuild_append(&b, trim_span(ms_strbuild_span(&header)));
       ms_strbuild_append_byte(&b, '\n');
       ms_strbuild_free(&header);
     }
+    ms_strbuild_append_text(&b, "}\n");
   } else {
     for (size_t i = 0; i < s->folded.len; i++) {
       const MsMethod *m = s->folded.ptr[i].method;
       receiver_declaration(g, file, &b, receiver_text, name_text(g, m->func.name), &m->func, m->mutating, m->consuming);
+      ms_strbuild_append_text(&b, " { ... }\n");
     }
   }
   ms_strbuild_free(&receiver);

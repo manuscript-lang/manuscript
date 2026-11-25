@@ -167,7 +167,7 @@ static void print_text(MsArena *arena, const DescribedList *described, size_t pr
   for (size_t i = 0; i < described->len; i++) {
     const Described *m = &described->ptr[i];
     ms_strbuild_append(&out, ms_message_format(arena, "%S  %S  %S\n", m->name, m->kind, m->definition));
-    const MsSpan self = ms_message_format(arena, "%S: %S", m->name, m->name);
+    const MsSpan self = ms_message_format(arena, "%S %S", m->name, m->name);
     if (m->type.len > 0 && !ms_span_equal(m->type, self)) {
       ms_strbuild_append(&out, ms_message_format(arena, "  %S\n", clip(arena, m->type, 200), (MsSpan){0}));
     }
