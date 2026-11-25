@@ -2,7 +2,12 @@
  * module. */
 #include "cli/backend.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "compiler/emit/emit.h"
+#include "compiler/emit_cl/cl_emit.h"
+#include "compiler/emit_cl/cranelift_inproc.h"
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_pipeline.h"
 #include "compiler/opt/opt.h"
@@ -31,6 +36,25 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
     emit_table_info(&kept->arena, module, &kept->tables);
   }
   emit_name_symbols(module);
+  if (options->cranelift.len != 0 && kept != NULL && !kept->native) {
+    /* Cranelift writes the whole object; a program it cannot lower falls back to LLVM. */
+    MsStrBuild cl_why = ms_strbuild_new();
+    kept->object = ms_strbuild_new();
+    const ClOptions cl = {.export_all = true, .places = true};
+    kept->native = cranelift_load(options->cranelift, &cl_why) &&
+                   cl_emit_module(module, data, glue, &cl, &kept->object, &cl_why);
+    if (!kept->native) {
+      ms_strbuild_free(&kept->object);
+      if (getenv("MS_CRANELIFT_VERBOSE") != NULL) {
+        fprintf(stderr, "cranelift: falling back to LLVM\n%.*s\n", (int)ms_strbuild_span(&cl_why).len,
+                (const char *)ms_strbuild_span(&cl_why).ptr);
+      }
+    }
+    ms_strbuild_free(&cl_why);
+    if (kept->native) {
+      return true;
+    }
+  }
   const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL,
                           .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide,
                           .poison_slots = options->poison_slots, .units = options->units,
@@ -106,11 +130,14 @@ bool ms_backend_compile(MsCheckProgram *program, uint32_t entry_module, const Ba
   mir_module_init(&out->module);
   out->arena = ms_arena_new();
   out->tables = (EmitTableInfo){0};
+  out->object = ms_strbuild_new();
+  out->native = false;
   *units = 1;
   return compile(program, entry_module, options, &out->module, out, ir, units, why);
 }
 
 void ms_backend_program_free(BackendProgram *program) {
+  ms_strbuild_free(&program->object);
   mir_module_free(&program->module);
   ms_arena_free(&program->arena);
 }

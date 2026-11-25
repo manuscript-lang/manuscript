@@ -4,6 +4,7 @@
 #include "cli/pipeline.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "base/env.h"
 #include "base/file.h"
@@ -250,6 +251,11 @@ static bool make_objects(const MsLinkRequest *request, const BackendProgram *pro
   return ok;
 }
 
+static MsSpan cranelift_from_environment(void) {
+  const char *path = getenv("MS_CRANELIFT");
+  return path != NULL ? ms_span_of_text(path) : ms_span_of(NULL, 0);
+}
+
 BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
   /* A Release build trusts the passes; a Debug build checks the finished module once. */
   return (BackendOptions){.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG,
@@ -258,7 +264,8 @@ BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
                           .count_ops = request->count_ops || ops_from_environment(),
                           .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
                           .wide_hide = request->build_type == MS_BUILD_DEBUG,
-                          .poison_slots = poison_from_environment()};
+                          .poison_slots = poison_from_environment(),
+                          .cranelift = request->build_type == MS_BUILD_DEBUG ? cranelift_from_environment() : ms_span_of(NULL, 0)};
 }
 
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
@@ -324,7 +331,10 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
     inputs[count++] = ms_strbuild_span(&object[unit]);
   }
   count = ok ? collect_inputs(request, runtime, inputs, count) : 0;
-  if (ok) {
+  if (ok && program.native) {
+    ok = ms_file_write(ms_strbuild_span(&object[0]), ms_strbuild_span(&program.object)) ||
+         fail(error, "cannot write the object file", ms_span_of(NULL, 0));
+  } else if (ok) {
     ok = make_objects(request, &program, ir, units, ms_string_span(&scratch), opt, llc, llvm, object, error);
   }
   if (ok) {

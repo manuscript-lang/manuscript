@@ -1,0 +1,304 @@
+/* Owns calls: the stack areas a call needs, and the calls of MIR functions and runtime functions. */
+#include "compiler/emit_cl/cl_cx.h"
+
+#include "abi/layout.h"
+#include "base/alloc.h"
+#include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_pass.h"
+
+/* An argument copy is dead once its call returns unless the result can point into it (a short string's view
+ * does), so a call whose result is void or a number shares one copy slot per argument position, as large as
+ * the largest copy; any other call keeps a slot of its own. Positions past CL_SHARED_ARGS keep one per site. */
+static bool temps_shared(const ClCx *cx, const MirInst *inst) {
+  MirTy result = MIR_NONE;
+  if ((MirOp)inst->op == MOP_CallRt) {
+    const MirExtern *external = &cx->module->externs.ptr[inst->imm.a];
+    /* A runtime call that neither returns a view nor keeps an argument leaves nothing pointing into the copies. */
+    if (!mir_extern_pins_argument(external)) {
+      return true;
+    }
+    result = external->ret;
+  } else if (inst->res != MIR_NONE) {
+    result = cl_value_type(cx, inst->res);
+    /* A function whose result is not a view of an argument leaves nothing pointing into the copies. */
+    if ((MirOp)inst->op == MOP_Call && inst->imm.tag == MI_FUNC && inst->imm.a < cx->module->funcs.len &&
+        !cx->module->funcs.ptr[inst->imm.a].ret_borrowed) {
+      return true;
+    }
+  } else {
+    return true;
+  }
+  return mir_ty_data(cx->module, result)->kind == MK_VOID || mir_is_scalar(cx->module, result);
+}
+
+static bool rt_direct(ClCx *cx, MirTy type) {
+  return mir_rt_direct(cx->module, cx->layouts, type);
+}
+
+/* An `opt<scalar>` the runtime returns as a C `u8` flag with the payload through a trailing output pointer. */
+static bool rt_scalar_option(ClCx *cx, MirTy type) {
+  return mir_ty_data(cx->module, type)->kind == MK_OPT && rt_direct(cx, type) && cl_leaves(cx, type).len == 2;
+}
+
+/* Whether extern `def` is a function of a C library: the runtime's own (`msrt_`, `msstd_`) take a Float32 as a double. */
+static bool extern_is_c(const ClCx *cx, const MirExtern *def) {
+  MsSpan name = ms_names_span(&cx->module->names, def->name);
+  return !ms_span_starts_with_text(name, "msrt_") && !ms_span_starts_with_text(name, "msstd_");
+}
+
+/* ---- frame areas ---- */
+
+static void note(uint32_t *slot, uint32_t bytes) {
+  *slot = bytes > *slot ? bytes : *slot;
+}
+
+/* The areas a call needs: a copy of each argument that does not pass directly, and the result area when the result does
+ * not. */
+static void scan_call(ClCx *cx, const MirInst *inst, uint32_t *shared, uint32_t *area) {
+  const bool share = temps_shared(cx, inst);
+  if ((MirOp)inst->op == MOP_CallRt) {
+    const MirExtern *def = &cx->module->externs.ptr[inst->imm.a];
+    for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+      if (!rt_direct(cx, def->params[arg].ty) && share && arg < CL_SHARED_ARGS) {
+        note(&shared[arg], cl_slot_bytes(cx, def->params[arg].ty));
+      }
+    }
+    if (!rt_direct(cx, def->ret)) {
+      note(area, cl_slot_bytes(cx, def->ret));
+    } else if (rt_scalar_option(cx, def->ret)) {
+      note(area, 8);
+    }
+    return;
+  }
+  if (inst->res != MIR_NONE && cl_value_leaves(cx, inst->res).len > 1) {
+    note(area, cl_slot_bytes(cx, cl_value_type(cx, inst->res)));
+  }
+  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+    const MirTy type = cl_value_type(cx, inst->args[arg]);
+    if (cl_is_indirect(cx, type) && share && arg < CL_SHARED_ARGS) {
+      note(&shared[arg], cl_slot_bytes(cx, type));
+    }
+  }
+}
+
+/* The shared areas of the function: one stack slot per argument position of the calls, and one result area. */
+void cl_frame_areas(ClCx *cx) {
+  uint32_t shared[CL_SHARED_ARGS] = {0};
+  uint32_t area = 0;
+  for (uint32_t block = 0; block < cx->func->blocks.len; block++) {
+    const MirInstList *insts = &cx->func->blocks.ptr[block].insts;
+    for (uint32_t index = 0; index < insts->len; index++) {
+      const MirInst *inst = &insts->ptr[index];
+      if ((MirOp)inst->op == MOP_Call || (MirOp)inst->op == MOP_CallRt) {
+        scan_call(cx, inst, shared, &area);
+      }
+    }
+  }
+  for (uint32_t arg = 0; arg < CL_SHARED_ARGS; arg++) {
+    cx->shared_bytes[arg] = shared[arg];
+    cx->shared_made[arg] = false;
+  }
+  cx->area_bytes = area;
+  cx->area_made = false;
+}
+
+/* The address of a shared slot, made when first needed. */
+static ms_cl_val shared_slot(ClCx *cx, uint32_t arg) {
+  if (!cx->shared_made[arg]) {
+    cx->shared_made[arg] = true;
+    cx->shared[arg] = ms_cl_stack_slot(cx->fb, cx->shared_bytes[arg], 3);
+  }
+  return ms_cl_stack_addr(cx->fb, cx->shared[arg], 0);
+}
+
+static ms_cl_val result_area(ClCx *cx) {
+  if (!cx->area_made) {
+    cx->area_made = true;
+    cx->area = ms_cl_stack_slot(cx->fb, cx->area_bytes, 3);
+  }
+  return ms_cl_stack_addr(cx->fb, cx->area, 0);
+}
+
+/* The slot for argument `arg` of the call: the shared one for its position, or a new one. */
+static ms_cl_val arg_slot(ClCx *cx, const MirInst *inst, uint32_t arg, uint32_t bytes) {
+  if (arg < CL_SHARED_ARGS && temps_shared(cx, inst)) {
+    return shared_slot(cx, arg);
+  }
+  return ms_cl_stack_addr(cx->fb, ms_cl_stack_slot(cx->fb, bytes, 3), 0);
+}
+
+/* ---- calls of MIR functions ---- */
+
+static void call_function(ClCx *cx, const MirInst *inst) {
+  ms_cl_fn *f = cx->fb;
+  uint32_t capacity = 2;
+  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+    capacity += (uint32_t)cl_value_leaves(cx, inst->args[arg]).len;
+  }
+  ms_cl_val *args = ms_alloc(capacity * sizeof(ms_cl_val));
+  uint32_t count = 0;
+  const uint32_t result_leaves = inst->res == MIR_NONE ? 0 : (uint32_t)cl_value_leaves(cx, inst->res).len;
+  ms_cl_val area = {0};
+  if (result_leaves > 1) {
+    area = result_area(cx);
+    args[count++] = area;
+  }
+  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+    const MirTy type = cl_value_type(cx, inst->args[arg]);
+    if (cl_is_indirect(cx, type)) {
+      ms_cl_val slot = arg_slot(cx, inst, arg, cl_slot_bytes(cx, type));
+      cl_leaves_at(cx, inst->args[arg], slot, false);
+      args[count++] = slot;
+      continue;
+    }
+    const uint32_t leaves = (uint32_t)cl_value_leaves(cx, inst->args[arg]).len;
+    for (uint32_t leaf = 0; leaf < leaves; leaf++) {
+      args[count++] = cl_get(cx, inst->args[arg], leaf);
+    }
+  }
+  ms_cl_val ret[1];
+  ms_cl_call(f, cx->mod->funcs[inst->imm.a], args, count, ret);
+  ms_free(args);
+  if (result_leaves == 1) {
+    cl_set(cx, inst->res, 0, ret[0]);
+  } else if (result_leaves > 1) {
+    cl_leaves_at(cx, inst->res, area, true);
+  }
+}
+
+/* ---- runtime calls ---- */
+
+/* The address of the running task's `unwinding` byte: the region's cell holds the header pointer, and the byte sits at a
+ * fixed offset (read in line, as the depth check reads its limit). */
+static ms_cl_val unwinding_address(ClCx *cx) {
+  ms_cl_fn *f = cx->fb;
+  ms_cl_val region = ms_cl_band(f, ms_cl_sp(f), cl_const(cx, -(int64_t)MS_STACK_REGION));
+  ms_cl_val cell = ms_cl_iadd(f, region, cl_const(cx, (int64_t)(MS_STACK_REGION - MS_STACK_CELL_HDR)));
+  ms_cl_val header = ms_cl_load(f, MS_CL_I64, MS_CL_NOTRAP | MS_CL_READONLY, cell, 0);
+  return ms_cl_iadd(f, header, cl_const(cx, MS_HDR_UNWINDING));
+}
+
+/* The leaf `leaf` of a runtime call's result, as it arrives, widened to its register. */
+static ms_cl_val widen_result(ClCx *cx, MirLeaf leaf, ms_cl_val raw) {
+  ms_cl_fn *f = cx->fb;
+  switch (leaf) {
+  case MIR_LEAF_N8:
+  case MIR_LEAF_N16:
+  case MIR_LEAF_N32:
+    return ms_cl_cast(f, MS_CL_SEXTEND, MS_CL_I64, raw);
+  case MIR_LEAF_U8:
+  case MIR_LEAF_U16:
+  case MIR_LEAF_U32:
+    return ms_cl_cast(f, MS_CL_UEXTEND, MS_CL_I64, raw);
+  case MIR_LEAF_F32:
+    return ms_cl_cast(f, MS_CL_FPROMOTE, MS_CL_F64, raw);
+  default:
+    return raw;
+  }
+}
+
+/* The type a runtime function returns a leaf in: the leaf's own width, so the extension above reads only the bits
+ * the callee set (a C function leaves the rest as they are). A Float32 is a double for the runtime's own functions. */
+ms_cl_type cl_rt_leaf_type(MirLeaf leaf, bool is_c) {
+  switch (leaf) {
+  case MIR_LEAF_I8:
+  case MIR_LEAF_N8:
+  case MIR_LEAF_U8:
+    return MS_CL_I8;
+  case MIR_LEAF_N16:
+  case MIR_LEAF_U16:
+    return MS_CL_I16;
+  case MIR_LEAF_N32:
+  case MIR_LEAF_U32:
+    return MS_CL_I32;
+  case MIR_LEAF_F32:
+    return is_c ? MS_CL_F32 : MS_CL_F64;
+  case MIR_LEAF_F64:
+    return MS_CL_F64;
+  default:
+    return MS_CL_I64;
+  }
+}
+
+static bool call_runtime(ClCx *cx, const MirInst *inst) {
+  ms_cl_fn *f = cx->fb;
+  const MirExtern *def = &cx->module->externs.ptr[inst->imm.a];
+  if (def->role == MR_UNWINDING && inst->res != MIR_NONE) {
+    ms_cl_val flag = ms_cl_load_ext(f, 8, 0, MS_CL_I64, MS_CL_NOTRAP, unwinding_address(cx), 0);
+    cl_set(cx, inst->res, 0, ms_cl_icmp(f, MS_CL_NE, flag, cl_const(cx, 0)));
+    return true;
+  }
+  const bool is_c = extern_is_c(cx, def);
+  MsSpan result = cl_leaves(cx, def->ret);
+  const bool direct = rt_direct(cx, def->ret);
+  const bool option = direct && rt_scalar_option(cx, def->ret);
+  if (direct && result.len > 1 && !option) {
+    cx->why = "runtime result of several scalars";
+    return false;
+  }
+  uint32_t capacity = 2;
+  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+    capacity += (uint32_t)cl_value_leaves(cx, inst->args[arg]).len;
+  }
+  ms_cl_val *args = ms_alloc(capacity * sizeof(ms_cl_val));
+  uint32_t count = 0;
+  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+    const MirTy type = def->params[arg].ty;
+    if (!rt_direct(cx, type)) {
+      ms_cl_val slot = arg_slot(cx, inst, arg, cl_slot_bytes(cx, type));
+      cl_leaves_at(cx, inst->args[arg], slot, false);
+      args[count++] = slot;
+      continue;
+    }
+    if (type == MIR_PTR) {
+      args[count++] = cl_get(cx, inst->args[arg], 0);
+      continue;
+    }
+    MsSpan leaves = cl_leaves(cx, type);
+    for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {
+      ms_cl_val v = cl_get(cx, inst->args[arg], leaf);
+      if (leaves.ptr[leaf] == MIR_LEAF_F32 && is_c) {
+        v = ms_cl_cast(f, MS_CL_FDEMOTE, MS_CL_F32, v); /* a C library function takes a float */
+      }
+      args[count++] = v;
+    }
+  }
+  ms_cl_val area = {0};
+  if (!direct || option) {
+    area = result_area(cx);
+    args[count++] = area;
+  }
+  ms_cl_val ret[1];
+  ms_cl_call(f, cl_extern_func(cx->mod, inst->imm.a), args, count, ret);
+  ms_free(args);
+  if (option) {
+    if (inst->res != MIR_NONE) {
+      cl_set(cx, inst->res, 0, ms_cl_icmp(f, MS_CL_NE, ret[0], ms_cl_iconst(f, MS_CL_I8, 0)));
+      cl_load_leaf(cx, result.ptr[1], inst->res, 1, area, 0);
+    }
+    return true;
+  }
+  if (direct && result.len == 1 && inst->res != MIR_NONE) {
+    cl_set(cx, inst->res, 0, widen_result(cx, result.ptr[0], ret[0]));
+  } else if (!direct && inst->res != MIR_NONE) {
+    cl_leaves_at(cx, inst->res, area, true);
+  }
+  return true;
+}
+
+bool cl_call_op(ClCx *cx, const MirInst *inst, bool *handled) {
+  *handled = true;
+  switch ((MirOp)inst->op) {
+  case MOP_Call:
+    call_function(cx, inst);
+    return true;
+  case MOP_CallRt:
+    return call_runtime(cx, inst);
+  case MOP_FuncAddr:
+    cl_set(cx, inst->res, 0, ms_cl_func_addr(cx->fb, cx->mod->funcs[inst->imm.a]));
+    return true;
+  default:
+    *handled = false;
+    return true;
+  }
+}
