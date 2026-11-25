@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot reassign `t` while `r` borrows it (binding of a part of it, at 14:5); finish using `r` before this, or give `r` its own value by ending its initializer with `.clone()`",
+        "position": {
+          "file": "result-borrows-every-held-argument.ms",
+          "line": 15,
+          "column": 5,
+          "offset": 341
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/result-borrows-every-held-argument.ms:15:5: type: cannot reassign `t` while `r` borrows it (binding of a part of it, at 14:5); finish using `r` before this, or give `r` its own value by ending its initializer with `.clone()`\n    |\n 15 |     t = \"changed\"\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

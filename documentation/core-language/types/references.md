@@ -55,7 +55,7 @@ The standard library writes the same marks: `List.first`, `List.last` and `Map.g
 
 - `x := m.get(k)` keeps `m` unchangeable until `x` is last used, and `x := m.get(k).get()` borrows the entry the same way.
 - `if var x = m.get(k)` and `var x = m.get(k).get()` change the entry in place. The second faults when the key is missing.
-- Use `if v := x` to read a borrowed resource or function value without moving it out of its container.
+- Bind a borrowed resource or function value with `v := x` and test `if v != null` to read it without moving it out of its container.
 
 ## Moving into a function
 

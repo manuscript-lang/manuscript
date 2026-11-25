@@ -316,8 +316,7 @@ MS_NODISCARD static bool if_binding(Parser *p, MsToken t, MsPattern **bind, bool
   if (parse_kind(p) == MS_T_Name && parse_text_is(p, parse_peek(p), "let") &&
       starts_binding_target((MsTok)parse_ahead(p, 1).kind)) {
     report_removed_let(p, parse_peek(p),
-                       ms_span_of_text("'if let' was removed; write 'if value := optional { ... }' (or 'if var "
-                                       "value = optional { ... }' for a mutable binding)"));
+                       ms_span_of_text("'if let' was removed; test an Optional with 'if value != null { ... }', or unwrap a Result with 'if value := result { ... }'"));
     return false;
   }
   bool names_binding = (parse_kind(p) == MS_T_Name || parse_kind(p) == MS_T_Underscore) &&
@@ -334,15 +333,15 @@ MS_NODISCARD static bool if_binding(Parser *p, MsToken t, MsPattern **bind, bool
     return false;
   if (pat->kind != MS_P_NAME) {
     parse_fail(p, t,
-               ms_span_of_text("an if binding takes one name; write 'if value := optional { ... }' and destructure "
+               ms_span_of_text("an if binding takes one name; write 'if value := result { ... }' and destructure "
                                "the value inside the branch"));
     return false;
   }
   if (parse_kind(p) == MS_T_LParen) {
     parse_fail(p, t,
                ms_span_of_text(
-                   "an if binding unwraps an Optional or Result into one name; it does not match alternative "
-                   "cases. Write 'match value { ... }' with a 'Case(x) => ...' arm, or 'if value := optional { ... }'"));
+                   "an if binding unwraps a Result into one name; it does not match alternative "
+                   "cases. Write 'match value { ... }' with a 'Case(x) => ...' arm, or 'if value := result { ... }'"));
     return false;
   }
   *bind = pat;
@@ -392,7 +391,7 @@ MS_NODISCARD static bool while_statement(Parser *p, MsStmt *st, MsStmt **out) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text(
                    "while takes a condition, not a binding; to loop while a value is present write 'while "
-                   "true { ... }', bind it inside with 'if name := value { ... }', and leave with 'else { break }'"));
+                   "true { ... }', test it inside with 'if value != null { ... }' (or 'if name := result { ... }'), and leave with 'else { break }'"));
     return false;
   }
   MsStmts body = {0};

@@ -433,8 +433,8 @@ static const char *end_hint(Parser *p, MsToken t) {
     hint = "; there is no inline conditional expression 'a if c else b': write 'if c { a } else { b }', or use an "
            "if statement";
   } else if (t.kind == MS_T_Question) {
-    hint = "; '?' after a Result call propagates its error, and is not '?\?' or 'c ? a : b': unwrap an "
-           "Optional with 'if x := v { ... }' or give it a default with 'v.get_or(default)', chain with 'a?.b', and "
+    hint = "; '?' after a Result call propagates its error, and is not '?\?' or 'c ? a : b': test an "
+           "Optional with 'if v != null { ... }' or give it a default with 'v.get_or(default)', chain with 'a?.b', and "
            "write a conditional as 'if c { a } else { b }'";
   } else if (t.kind == MS_T_Comma) {
     hint = "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own "

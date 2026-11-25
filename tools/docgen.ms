@@ -244,7 +244,7 @@ fn site_tree(modules List[Module]) Tree {
 		tree.link(parent.clone(), f"- [{title}]({title}.md)\n")
 	}
 
-	for directory in tree.directory_order {
+	for directory in tree.directory_order.clone() {
 		tree.put(
 			f"{base}/{directory}/_index.md",
 			tree.directories.get_or(directory, "").clone(),
