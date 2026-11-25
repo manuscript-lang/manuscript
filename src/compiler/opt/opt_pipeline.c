@@ -112,9 +112,13 @@ static bool fastpaths_step(MirModule *m) {
   return changed && opt_inline(m);
 }
 
-/* Fused loops leave dead values and merge blocks, so the simplifier cleans up after them. */
+/* A loop body that can fault carries an unwinding test after each call; fusion needs the plain block shapes, so the
+ * tests that cannot fire go first. Fused loops leave dead values and merge blocks, so the simplifier cleans up after them. */
 static bool opt_fuse_step(MirModule *m) {
   bool changed = false;
+  (void)opt_unwind_sites(m);
+  (void)opt_unwind_thread(m);
+  (void)opt_simplify(m);
   while (opt_fuse(m)) {
     changed = true;
     (void)opt_simplify(m);
