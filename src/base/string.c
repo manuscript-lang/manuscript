@@ -34,7 +34,11 @@ MsString ms_string_view(MsSpan span) {
 }
 
 MsString ms_string_clone(const MsString *string) {
-  return ms_string_is_inline(string) ? *string : ms_string_from_span(ms_string_span(string));
+  /* inline bytes are the value, and static bytes live forever: both copy as they are */
+  if (ms_string_is_inline(string) || (string->tagged >> MS_STRING_TAG_SHIFT) == 2) {
+    return *string;
+  }
+  return ms_string_from_span(ms_string_span(string));
 }
 
 void ms_string_release(MsString *string) {

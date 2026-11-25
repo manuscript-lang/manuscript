@@ -1,5 +1,5 @@
-// expect-debug: allocs=9 alloc_bytes=425
-// expect-release: allocs=9 alloc_bytes=425
+// expect-debug: allocs=6 alloc_bytes=288
+// expect-release: allocs=6 alloc_bytes=288
 // Nested wrappers, a generic pass-through and a capture: the baseline that
 // owned-argument and return-slot work must not raise.
 type Big {
