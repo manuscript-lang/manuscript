@@ -83,6 +83,9 @@ static void push_head(LinkJob *job) {
   }
   link_job_push(job, ms_string_span(&job->scratch));
   link_job_push_text(job, "-dead_strip");
+  if (job->options->quick) {
+    link_job_push_text(job, "--threads=1");
+  }
   /* lld turns `adrp x10, got; ...; ldr x8, [x10, got]` into `adr x8` at the adrp, clobbering an x8 the code in
    * between still uses (a list of string literals stored a shift result). Workaround: remove once lld is
    * fixed (#1748). */

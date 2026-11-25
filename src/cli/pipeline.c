@@ -376,7 +376,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   report_step(report, "object", &mark);
   if (ok) {
     const LinkOptions link = {.lld = lld, .llvm = llvm, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
-                              .quick = request->build_type == MS_BUILD_DEBUG,
+                              .quick = request->build_type == MS_BUILD_DEBUG && getenv("MS_LINK_QUICK") == NULL,
                               .musl = request->static_libc};
     const LinkRequest job = {.object = ms_strbuild_span(&object[0]), .inputs = inputs, .input_count = count,
                              .output = request->output};
