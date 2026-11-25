@@ -21,7 +21,6 @@ struct MsH2 {
   nghttp2_session *session;
   bool server;
   bool failed;
-  const char *error;
   MsList events; /* of MsH2Event; the first `head` were taken */
   size_t head;
   MsList block; /* of MsH2Field: the header block being received */

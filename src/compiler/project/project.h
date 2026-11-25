@@ -66,13 +66,6 @@ MS_NODISCARD bool ms_std_source_find(MsSpan name, MsStdSource *out);
 
 /* ---- imports ---- */
 
-/* The canonical file a local import `path` written in the file `importer` names, confined to the project root
- * (`root`, canonical). `overlay` may be NULL. False with *error filled when the file cannot be named or read.
- */
-MS_NODISCARD bool ms_project_resolve_import(MsArena *arena, MsSpan root, const MsOverlay *overlay,
-                                            MsSpan importer, MsSpan path, MsSpan *canonical,
-                                            MsProjectError *error);
-
 /* ---- the module graph ---- */
 
 enum { MS_NO_MODULE = -1 };

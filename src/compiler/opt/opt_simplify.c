@@ -630,15 +630,3 @@ bool opt_simplify(MirModule *m) {
   }
   return changed;
 }
-
-/* Only the trivial block-parameter elimination, which keeps every instruction in place. */
-bool opt_simplify_phis(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    MirFunc *f = &m->funcs.ptr[fi];
-    while (opt_simplify_phis_func(m, f)) {
-      changed = true;
-    }
-  }
-  return changed;
-}

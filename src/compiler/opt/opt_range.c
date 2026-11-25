@@ -552,11 +552,3 @@ bool opt_range_func(MirModule *m, MirFunc *f) {
   rg_fa_free(&fa);
   return changed;
 }
-
-bool opt_range(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    changed = opt_range_func(m, &m->funcs.ptr[fi]) || changed;
-  }
-  return changed;
-}

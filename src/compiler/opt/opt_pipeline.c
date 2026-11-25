@@ -136,7 +136,6 @@ static const Step early_steps[] = {
     {"unwind sites", opt_unwind_sites}, /* again: an inlined call that never parked leaves its test dead */
     {"unwind thread", opt_unwind_thread},
     {"strfuse", strfuse_step},
-    {"loopslot", opt_loopslot},
 };
 
 static const Step late_steps[] = {
@@ -144,7 +143,6 @@ static const Step late_steps[] = {
     {"strfuse", strfuse_step}, /* the simplified bodies hold `take`/`drop` of a variable's slot, which the early run does not see */
     {"fuse", opt_fuse_step},
     {"exit_drops", opt_exit_drops},
-    {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
     {"unwind pairs", opt_unwind_pairs},
     {"thread", opt_thread},

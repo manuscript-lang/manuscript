@@ -10,4 +10,6 @@ Verified (2026-11-24): on a 7-line program importing `@std/data/yaml.ms`, `ms em
 
 Method: `valgrind --tool=callgrind ms emit prog.ms --opt` for instructions; a `clock_gettime` wrapper around each pass call for wall time per pass and round; compare `ms emit --opt` output against a build of the base to prove a schedule or skip is exact. A skip keyed on a function fingerprint saved only 4% (most unchanged calls are small), so it was not kept.
 
+- Passes that no longer fire (2026-11-25): counting per-pass changes over 670 programs (benchmarks, agent suite, every accept fixture, tests mode included) found `loopslot` and `reserve` never changed anything; with each skipped, the emitted LLVM IR was byte-identical on all 670 (lowering sizes a counted loop's list, and the append fast paths superseded loopslot). Both were deleted. `twins` changed 9 programs and stays. Method: a temporary env switch that skips a named pass, then compare `ms emit --opt --ir` output with and without it; a pass with zero diffs is a deletion candidate.
+
 Apply when: a pass is added to `function_round` (give it an entry in `func_pass_enabled_by`), or compile time of a large import (yaml, json) regresses.
