@@ -14,25 +14,30 @@ import (
 	expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
 )
 
-type Profile:
-	sub: String
-	name: String
-	iat: Int
+type Profile {
+	sub String
+	name String
+	iat Int
+}
 
-type Session:
-	sub: String
-	exp: Int
-	iss: String
+type Session {
+	sub String
+	exp Int
+	iss String
+}
 
-fn failure[T](result: T!) Error!:
-	match result:
-		ok(_): return error(Error("accepted"))
-		error(cause): return ok(cause)
+fn failure[T](result T!) Error! {
+	match result {
+		ok(_) => return error(Error("accepted"))
+		error(cause) => return ok(cause)
+	}
+}
 
-fn session(exp: Int) Session:
+fn session(exp Int) Session {
 	return Session(sub: "42", exp: exp, iss: "me")
+}
 
-test "hs256 matches the published token":
+test "hs256 matches the published token" {
 	secret := "your-256-bit-secret".to_bytes()
 	claims := Profile(sub: "1234567890", name: "John Doe", iat: 1516239022)
 	token := (sign_token(claims, secret) | expect_ok?)
@@ -46,8 +51,9 @@ test "hs256 matches the published token":
 	back := (verify_token[Profile](token, secret) | expect_ok?)
 	back.name | expect_equal("John Doe")?
 	back.iat | expect_equal(1516239022)?
+}
 
-test "hs384 and hs512 match independent implementations":
+test "hs384 and hs512 match independent implementations" {
 	secret := "secret".to_bytes()
 	claims := session(1900000000)
 	(
@@ -62,8 +68,9 @@ test "hs384 and hs512 match independent implementations":
 			"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ.l7ZljlzTyputKNz9OPWJnsqWHe6ypJYHzFT_KgHlG83kxZaLOq2cxM3mM6ipWAiUZXz-Y6XYuGm4IGE64bruOw"
 		)?
 	)
+}
 
-test "verify returns the claims as a record or as a JSON document":
+test "verify returns the claims as a record or as a JSON document" {
 	secret := "secret".to_bytes()
 	token := (sign_token(session(1900000000), secret) | expect_ok?)
 	typed := (verify_token[Session](token, secret) | expect_ok?)
@@ -71,8 +78,9 @@ test "verify returns the claims as a record or as a JSON document":
 
 	raw := (verify_token(token, secret) | expect_ok?)
 	((raw.get("sub").clone() or JsonValue.Null).as_string() or "") | expect_equal("42")?
+}
 
-test "verify rejects a wrong key, a tampered body and a different algorithm":
+test "verify rejects a wrong key, a tampered body and a different algorithm" {
 	secret := "secret".to_bytes()
 	token := (sign_token(session(1900000000), secret) | expect_ok?)
 	(
@@ -104,8 +112,9 @@ test "verify rejects a wrong key, a tampered body and a different algorithm":
 			)?
 		) | expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))?
 	)
+}
 
-test "verify rejects the none algorithm and malformed tokens":
+test "verify rejects the none algorithm and malformed tokens" {
 	secret := "secret".to_bytes()
 
 	// {"alg":"none"} . {"sub":"42","exp":1900000000,"iss":"me"} . (empty signature)
@@ -114,11 +123,12 @@ test "verify rejects the none algorithm and malformed tokens":
 		(failure(verify_token[Session](unsigned, secret))?)
 		| expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))?
 	)
-	for text in ["", "a.b", "a.b.c.d", "...", "!!!.???.***"]:
+	for text in ["", "a.b", "a.b.c.d", "...", "!!!.???.***"] {
 		(
 			(failure(verify_token[Session](text, secret))?)
 			| expect_equal(Error("jwt: malformed token", kind: "EBADMSG"))?
 		)
+	}
 
 	big := "a".repeat(20000)
 	(
@@ -126,8 +136,9 @@ test "verify rejects the none algorithm and malformed tokens":
 			Error("jwt: malformed token", kind: "EBADMSG")
 		)?
 	)
+}
 
-test "verify enforces exp, nbf, iss and aud":
+test "verify enforces exp, nbf, iss and aud" {
 	secret := "secret".to_bytes()
 	stamp := (sign_token(session(1000), secret) | expect_ok?)
 	(
@@ -178,15 +189,18 @@ test "verify enforces exp, nbf, iss and aud":
 
 	doc := (verify_token(stamp, secret, JwtCheck(at: 5)) | expect_ok?)
 	((doc.get("exp").clone() or JsonValue.Null).as_int() or 0) | expect_equal(1000)?
+}
 
-type Timed:
-	nbf: Int
-	aud: List[String]
+type Timed {
+	nbf Int
+	aud List[String]
+}
 
-type Audience:
-	aud: String
+type Audience {
+	aud String
+}
 
-test "verify checks nbf and audience claims":
+test "verify checks nbf and audience claims" {
 	secret := "secret".to_bytes()
 	later := (sign_token(Timed(nbf: 100, aud: ["a", "b"]), secret) | expect_ok?)
 	(
@@ -236,8 +250,9 @@ test "verify checks nbf and audience claims":
 			)?
 		) | expect_equal(Error("jwt: wrong audience", kind: "EBADMSG"))?
 	)
+}
 
-test "verify rejects registered claims of the wrong type":
+test "verify rejects registered claims of the wrong type" {
 	secret := "secret".to_bytes()
 	wrong := Error("jwt: nbf must be a number", kind: "EBADMSG")
 	cases := [
@@ -245,11 +260,12 @@ test "verify rejects registered claims of the wrong type":
 		"{\"exp\":[1]}", "{\"aud\":[123]}", "{\"aud\":[123,\"wanted\"]}", "{\"aud\":7}"
 	]
 
-	for text in cases:
+	for text in cases {
 		claims := (parse(text) | expect_ok?)
 		token := (sign_token(claims, secret) | expect_ok?)
 		outcome := verify_token(token, secret, JwtCheck(at: 100, audience: "wanted"))
 		expect_equal(outcome.err().kind, "EBADMSG")?
+	}
 
 	nbf := (
 		sign_token(
@@ -272,11 +288,12 @@ test "verify rejects registered claims of the wrong type":
 			JwtCheck(at: 100, audience: "wanted"),
 		) | expect_ok?
 	)
+}
 
 // Independently generated HS256 JWS tokens with key "secret" and the exact JSON
 // payloads in order: null, false, true, 42, "claims", "{\"exp\":0}", [], [{"exp":0}].
 // Their signatures are genuine; it is the JWT claim-set shape that is invalid.
-test "verify rejects signed payloads that are not claim objects":
+test "verify rejects signed payloads that are not claim objects" {
 	secret := "secret".to_bytes()
 	tokens := [
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.7DWrkJHEM03NP-M-9zlpZJ3Ud49InV9BpM_GlfnVpfM",
@@ -288,15 +305,17 @@ test "verify rejects signed payloads that are not claim objects":
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.W10.ny0W7Pkele2S9JjQz1pcPuE-7_Jrt2VBqPEO1UnPyQg",
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.W3siZXhwIjowfV0.9JxJ3QGSMH2Ey3kNrUVwlUusIl_VcEEMKXanDqU_piI"
 	]
-	for token in tokens:
+	for token in tokens {
 		(
 			(failure(verify_token(token, secret, JwtCheck(at: 100)))?)
 			| expect_equal(
 				Error("jwt: claims must be an object", kind: "EBADMSG")
 			)?
 		)
+	}
+}
 
-test "claim object validation applies before typed payload decoding":
+test "claim object validation applies before typed payload decoding" {
 	secret := "secret".to_bytes()
 	null_token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.7DWrkJHEM03NP-M-9zlpZJ3Ud49InV9BpM_GlfnVpfM"
 	number_token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.NDI.DpSBf8asYLjZ8f-FNmbOgcAqnUgtEhVlF7yfz6fkGEo"
@@ -305,15 +324,17 @@ test "claim object validation applies before typed payload decoding":
 	(failure(verify_token[Int?](null_token, secret))?) | expect_equal(invalid)?
 	(failure(verify_token[Int](number_token, secret))?) | expect_equal(invalid)?
 	(failure(verify_token[List[Int]](array_token, secret))?) | expect_equal(invalid)?
+}
 
-test "claim object validation follows signature verification":
+test "claim object validation follows signature verification" {
 	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.7DWrkJHEM03NP-M-9zlpZJ3Ud49InV9BpM_GlfnVpfM"
 	(
 		(failure(verify_token(token, "other".to_bytes()))?)
 		| expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
 	)
+}
 
-test "verify accepts empty claim objects and nested values":
+test "verify accepts empty claim objects and nested values" {
 	secret := "secret".to_bytes()
 	empty := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M"
 	nested := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuZXN0ZWQiOltdLCJhY3RpdmUiOnRydWV9.mgN1ikVmpILfLmGzXL3xy4bWgwTvpDt52bslkrtkIjM"
@@ -343,8 +364,9 @@ test "verify accepts empty claim objects and nested values":
 			or panic("called Optional.get() on null")
 		).length() | expect_equal(0)?
 	)
+}
 
-test "rs256 signs with a private key and verifies with the public key":
+test "rs256 signs with a private key and verifies with the public key" {
 	private := (rsa_generate(2048) | expect_ok?)
 	public := (public_key_der(private) | expect_ok?)
 	token := (sign_token(session(1900000000), private, JwtAlgorithm.Rs256) | expect_ok?)
@@ -357,13 +379,14 @@ test "rs256 signs with a private key and verifies with the public key":
 			Error("jwt: bad signature", kind: "EBADMSG")
 		)?
 	)
+}
 
-test "es256 signatures are raw 64 bytes and verify":
+test "es256 signatures are raw 64 bytes and verify" {
 	private := (ecdsa_generate(Curve.P256) | expect_ok?)
 	public := (public_key_der(private) | expect_ok?)
 	check := JwtCheck(algorithm: JwtAlgorithm.Es256)
 
-	for round in 0..20:
+	for round in 0..20 {
 		token := (
 			sign_token(
 				session(1900000000 + round),
@@ -376,6 +399,7 @@ test "es256 signatures are raw 64 bytes and verify":
 			(verify_token[Session](token, public, check) | expect_ok?).exp
 			| expect_equal(1900000000 + round)?
 		)
+	}
 
 	token := (sign_token(session(1), private, JwtAlgorithm.Es256) | expect_ok?)
 	other := (public_key_der((ecdsa_generate(Curve.P256) | expect_ok?)) | expect_ok?)
@@ -384,8 +408,9 @@ test "es256 signatures are raw 64 bytes and verify":
 			Error("jwt: bad signature", kind: "EBADMSG")
 		)?
 	)
+}
 
-test "eddsa signs with a seed and verifies with the public key":
+test "eddsa signs with a seed and verifies with the public key" {
 	seed := (random_bytes(32) | expect_ok?)
 	public := (public_key(seed) | expect_ok?)
 	check := JwtCheck(algorithm: JwtAlgorithm.EdDsa)
@@ -395,19 +420,21 @@ test "eddsa signs with a seed and verifies with the public key":
 		(failure(verify_token[Session](token, public, JwtCheck()))?)
 		| expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))?
 	)
+}
 
-test "sign returns InvalidKey for a key that does not fit":
+test "sign returns InvalidKey for a key that does not fit" {
 	result := sign_token(session(1), "short".to_bytes(), JwtAlgorithm.EdDsa)
-	if _ := result: return fail("accepted")
+	if _ := result { return fail("accepted") }
 
 	result | expect_equal(error(Error("jwt: invalid key", kind: "EINVAL")))?
+}
 
-test "sign names the claims when they cannot be encoded":
+test "sign names the claims when they cannot be encoded" {
 	result := sign_token(
 		JsonValue.ObjectValue({"n": JsonValue.NumberValue("not a number")}),
 		"secret".to_bytes(),
 	)
-	if _ := result: return fail("accepted")
+	if _ := result { return fail("accepted") }
 
 	(
 		result | expect_equal(
@@ -419,10 +446,11 @@ test "sign names the claims when they cannot be encoded":
 			)
 		)?
 	)
+}
 
 // Independent HS256 signatures use key "secret" and payload {}. The comments
 // show the exact protected headers, including malformed extension requirements.
-test "verify rejects unsupported and malformed critical headers":
+test "verify rejects unsupported and malformed critical headers" {
 	secret := "secret".to_bytes()
 	tokens := [
 		// {"alg":"HS256","crit":["example"],"example":true}
@@ -448,7 +476,7 @@ test "verify rejects unsupported and malformed critical headers":
 		// {"alg":"HS256","b64":true,"crit":["b64"]}
 		"eyJhbGciOiJIUzI1NiIsImI2NCI6dHJ1ZSwiY3JpdCI6WyJiNjQiXX0.e30.kKndt9ePg2M-HhRwHLtmeT-Ll926VPZM5GW_Z_HVeWE",
 	]
-	for token in tokens:
+	for token in tokens {
 		(
 			(failure(verify_token(token, secret))?)
 			| expect_equal(
@@ -458,8 +486,10 @@ test "verify rejects unsupported and malformed critical headers":
 				)
 			)?
 		)
+	}
+}
 
-test "verify rejects unencoded and malformed payload encoding headers":
+test "verify rejects unencoded and malformed payload encoding headers" {
 	secret := "secret".to_bytes()
 	tokens := [
 		// {"alg":"HS256","b64":false}
@@ -475,7 +505,7 @@ test "verify rejects unencoded and malformed payload encoding headers":
 		// {"alg":"HS256","b64":{}}
 		"eyJhbGciOiJIUzI1NiIsImI2NCI6e319.e30.CpuY69nnDgJh7Nown0j8JP69DHt7DVidzzU1MfpguRo",
 	]
-	for token in tokens:
+	for token in tokens {
 		(
 			(failure(verify_token(token, secret))?)
 			| expect_equal(
@@ -485,8 +515,10 @@ test "verify rejects unencoded and malformed payload encoding headers":
 				)
 			)?
 		)
+	}
+}
 
-test "verify keeps unknown noncritical and default encoding headers":
+test "verify keeps unknown noncritical and default encoding headers" {
 	secret := "secret".to_bytes()
 	tokens := [
 		// {"alg":"HS256"}
@@ -499,7 +531,7 @@ test "verify keeps unknown noncritical and default encoding headers":
 		"eyJhbGciOiJIUzI1NiIsImV4YW1wbGUiOnsiY3JpdCI6WyJ1bmtub3duIl19fQ.e30._lEWMGZGyrcSAeFILDUL31ZCjeVp6DnNU9nssDc6Yu8",
 	]
 
-	for token in tokens:
+	for token in tokens {
 		claims := (verify_token(token, secret) | expect_ok?)
 		expect_true(claims.as_map() != null)?
 		(
@@ -514,8 +546,10 @@ test "verify keeps unknown noncritical and default encoding headers":
 				failure(verify_token(token, "other".to_bytes()))?
 			) | expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
 		)
+	}
+}
 
-test "configured algorithm validation precedes unsupported headers":
+test "configured algorithm validation precedes unsupported headers" {
 	token := "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSJdLCJleGFtcGxlIjp0cnVlfQ.e30.a2vMv_4PubTvFXgyFiBLVpBZSgLLXqx2FsNpqa0WU7k"
 	(
 		(
@@ -529,8 +563,9 @@ test "configured algorithm validation precedes unsupported headers":
 		)
 		| expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))?
 	)
+}
 
-test "verify rejects missing and nonstring algorithm names":
+test "verify rejects missing and nonstring algorithm names" {
 	tokens := [
 		// {}
 		"e30.e30.FCSDuqmCuL_yoq1hx-E3IJO5tSEpcgFbqwcZf590zhA",
@@ -547,31 +582,34 @@ test "verify rejects missing and nonstring algorithm names":
 		// {"alg":""}
 		"eyJhbGciOiIifQ.e30.eHpAX4gmdcAz1N_XANGlZqo-RN4PiuCyyS6tIel6RDI",
 	]
-	for token in tokens:
+	for token in tokens {
 		(
 			(failure(verify_token(token, "secret".to_bytes()))?)
 			| expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))?
 		)
+	}
+}
 
 // Sign NumberValue directly so JSON retains every decimal/exponent digit.
-fn dated_token(name: String, number: String) String!:
+fn dated_token(name String, number String) String! {
 	var claims = Map[String, JsonValue]()
 	claims.add(name.clone(), JsonValue.NumberValue(number.clone()))
 	return sign_token(JsonValue.ObjectValue(claims), "secret".to_bytes())
+}
 
-fn expect_date_order(number: String, at: Int, order: Int) Void!:
+fn expect_date_order(number String, at Int, order Int) Void! {
 	secret := "secret".to_bytes()
 	exp := dated_token("exp", number)?
 	nbf := dated_token("nbf", number)?
 	check := JwtCheck(at: at)
 
-	if order <= 0:
+	if order <= 0 {
 		(
 			(failure(verify_token(exp, secret, check))?)
 			| expect_equal(Error("jwt: token expired", kind: "EBADMSG"))?
 		)
 		void verify_token(nbf, secret, check)?
-	else:
+	} else {
 		void verify_token(exp, secret, check)?
 		(
 			(failure(verify_token(nbf, secret, check))?)
@@ -579,10 +617,12 @@ fn expect_date_order(number: String, at: Int, order: Int) Void!:
 				Error("jwt: token not yet valid", kind: "EBADMSG")
 			)?
 		)
+	}
 
 	return ok()
+}
 
-test "numeric dates retain consecutive integer and fractional ordering":
+test "numeric dates retain consecutive integer and fractional ordering" {
 	expect_date_order("9007199254740993", 9007199254740992, 1)?
 	expect_date_order("9007199254740992", 9007199254740993, -1)?
 	expect_date_order("-9007199254740993", -9007199254740992, -1)?
@@ -595,17 +635,21 @@ test "numeric dates retain consecutive integer and fractional ordering":
 	expect_date_order("9223372036854775808", 9223372036854775807, 1)?
 	expect_date_order("-9223372036854775808", -9223372036854775808, 0)?
 	expect_date_order("-9223372036854775809", -9223372036854775808, -1)?
+}
 
-test "numeric date exponents and signed zero preserve exact boundaries":
-	for zero in ["0", "-0", "0.000", "-0.000e99999999999999999999"]:
+test "numeric date exponents and signed zero preserve exact boundaries" {
+	for zero in ["0", "-0", "0.000", "-0.000e99999999999999999999"] {
 		expect_date_order(zero, 0, 0)?
 		expect_date_order(zero, -1, 1)?
 		expect_date_order(zero, 1, -1)?
+	}
 
-	for one in ["1", "1.00", "10e-1", "0.01E+0002", "1000e-3", "1e-000", "1E+000"]:
+	for one in ["1", "1.00", "10e-1", "0.01E+0002", "1000e-3", "1e-000", "1E+000"] {
 		expect_date_order(one, 1, 0)?
-	for minus_one in ["-1", "-1.00", "-10e-1", "-0.01E+0002", "-1e-000", "-1E+000"]:
+	}
+	for minus_one in ["-1", "-1.00", "-10e-1", "-0.01E+0002", "-1e-000", "-1E+000"] {
 		expect_date_order(minus_one, -1, 0)?
+	}
 	expect_date_order("1e-999999999999999999999", 0, 1)?
 	expect_date_order("1e-999999999999999999999", 1, -1)?
 	expect_date_order("-1e-999999999999999999999", 0, -1)?
@@ -620,16 +664,18 @@ test "numeric date exponents and signed zero preserve exact boundaries":
 	expect_date_order("1" + "0".repeat(1000) + "e-1000", 1, 0)?
 	expect_date_order("0." + "0".repeat(1000) + "1e1001", 1, 0)?
 	expect_date_order("1." + "0".repeat(1000) + "1", 1, 1)?
+}
 
-test "numeric date leeway is exact across Int boundaries":
+test "numeric date leeway is exact across Int boundaries" {
 	secret := "secret".to_bytes()
 
-	for number in ["9007199254740993", "9007199254740992.0000001"]:
+	for number in ["9007199254740993", "9007199254740992.0000001"] {
 		exp := dated_token("exp", number)?
 		void verify_token(exp, secret, JwtCheck(at: 9007199254740993, leeway: 1))?
 
 		nbf := dated_token("nbf", number)?
 		void verify_token(nbf, secret, JwtCheck(at: 9007199254740992, leeway: 1))?
+	}
 
 	exp_limit := dated_token("exp", "18446744073709551615")?
 	(
@@ -703,10 +749,12 @@ test "numeric date leeway is exact across Int boundaries":
 		secret,
 		JwtCheck(at: 9223372036854775807, leeway: 9223372036854775807),
 	)?
+}
 
-test "numeric date validation still follows signature verification":
+test "numeric date validation still follows signature verification" {
 	token := dated_token("nbf", "1e999999999999999999999")?
 	(
 		(failure(verify_token(token, "other".to_bytes(), JwtCheck(at: 0)))?)
 		| expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
 	)
+}

@@ -10,8 +10,10 @@ import (
 
 // The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a
 // dummy id finds them.
-fn resolve_hashes(oracle: String, script: String) String:
-	if not script.contains("{c"): return script.clone()
+fn resolve_hashes(oracle, script String) String {
+	if not script.contains(
+		"{c"
+	) { return script.clone() }
 
 	marker := compile("\\{c[0-9]+\\}").to_optional()
 	probe := (marker or panic("called Optional.get() on null")).replace_all(
@@ -24,36 +26,44 @@ fn resolve_hashes(oracle: String, script: String) String:
 	for groups in (found or panic("called Optional.get() on null")).capture_all(
 		out,
 		1000,
-	).get_or([]):
+	).get_or([]) {
 		shorts.append(groups[1].clone())
+	}
 
 	var resolved = script.clone()
 	var n = 1
 
-	while n <= shorts.length():
+	while n <= shorts.length() {
 		resolved = resolved.replace(f"\{c{n}\}", shorts[n - 1].clone())
 		n += 1
+	}
 
 	return resolved
+}
 
-fn add(var cs: Cases, name: String, script: String) Void:
+fn add(var cs Cases, name, script String) Void {
 	cs.push(name, resolve_hashes(cs.oracle, strip_nl(script)))
+}
 
-fn strip_nl(text: String) String:
+fn strip_nl(text String) String {
 	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
-	while start < end and chars[start] == "\n":
+	while start < end and chars[start] == "\n" {
 		start += 1
-	while end > start and chars[end - 1] == "\n":
+	}
+	while end > start and chars[end - 1] == "\n" {
 		end -= 1
+	}
 	return chars.slice(start, end).get_or([]).join("") + "\n"
+}
 
-fn W(name: String, lines: List[String] = []) String:
-	if lines.is_empty(): return f"write {name}\n.\n"
+fn W(name String, lines List[String] = []) String {
+	if lines.is_empty() { return f"write {name}\n.\n" }
 	return f"write {name}\n" + lines.join("\n") + "\n.\n"
+}
 
-export fn gen_c58() Void:
+export fn gen_c58() Void {
 	var cs = Cases(build_oracle("c58-mini-vcs"))
 	BASE := (
 		W("a.txt", ["one", "two", "three", "four", "five"])
@@ -432,3 +442,4 @@ export fn gen_c58() Void:
 		),
 	]
 	write_cases("c58-mini-vcs", examples, cs.list)
+}

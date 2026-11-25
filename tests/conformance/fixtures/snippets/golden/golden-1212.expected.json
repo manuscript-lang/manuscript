@@ -12,22 +12,22 @@
         "message": "expected a name, found '|'",
         "position": {
           "file": "golden-1212.ms",
-          "line": 6,
+          "line": 7,
           "column": 19,
-          "offset": 150
+          "offset": 152
         },
         "end": {
           "file": "golden-1212.ms",
-          "line": 6,
+          "line": 7,
           "column": 20,
-          "offset": 151
+          "offset": 153
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1212.ms:6:19: parse: expected a name, found '|'\n   |\n 6 |     return reader.|\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1212.ms:7:19: parse: expected a name, found '|'\n   |\n 7 |     return reader.|\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

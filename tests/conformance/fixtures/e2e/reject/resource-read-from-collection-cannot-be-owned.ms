@@ -5,27 +5,32 @@
 // and a plain value needs `.clone()`. Read it in place instead.
 import panic from "@std/core.ms"
 
-type Handle:
-	id: Int
+type Handle {
+	id Int
+}
 
-fn move Handle.close() Void!:
+fn move Handle.close() Void! {
 	print("closed")
+}
 
-type Holder:
-	handle: Handle
+type Holder {
+	handle Handle
+}
 
-fn returned(handles: List[Handle], i: Int) Handle?:
-	return handles.get(i)
+fn returned(handles List[Handle], i Int) Handle? {
+	return handles[i]
+}
 
-fn from_map(handles: Map[Int, Handle], key: Int) Handle?:
+fn from_map(handles Map[Int, Handle], key Int) Handle? {
 	return handles.get(key)
+}
 
-export fn main() Int:
+export fn main() Int {
 	handles := [Handle(1), Handle(2)]
 	var moved = List[Handle]()
-	moved.append(handles.get(0))
+	moved.append(handles[0])
 
-	holder := Holder(handles.get(1))
+	holder := Holder(handles[1])
 	var last = List[Handle]()
 	last.append(handles.last() or panic("called Optional.get() on null"))
 	return (
@@ -37,10 +42,12 @@ export fn main() Int:
 			or panic("called Optional.get() on null")
 		).id
 	)
+}
 
 // A plain value read with `get` is rejected the same way; `.clone()` gives the new
 // owner a copy.
-fn copied(names: List[String]) List[String]:
+fn copied(names List[String]) List[String] {
 	var out = List[String]()
-	out.append(names.get(0))
+	out.append(names[0])
 	return out
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use(values: List[Int], var entries: Map[String, Int], unique: Set[Int]) Void:\n\tentries.add(\"a\", 1)\n"
+    "fmt": "fn use(values List[Int], var entries Map[String, Int], unique Set[Int]) Void {\n\tentries.add(\"a\", 1)\n}\n"
   }
 }

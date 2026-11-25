@@ -8,13 +8,14 @@ import (
 
 // The child reads nothing for a second, so a writer that never waited would queue all 8
 // MiB and return at once.
-test "a descriptor write waits while the reader is slow":
+test "a descriptor write waits while the reader is slow" {
 	child := spawn("sh", ["-c", "sleep 1; wc -c | tr -d ' '"])?
 	chunk := ("x".repeat(1024 * 1024)).to_bytes()
 	var input = child.stdin()
 	started := monotonic()
-	for index in 0..8:
+	for index in 0..8 {
 		input.write(chunk.clone())?
+	}
 
 	waited := monotonic().difference(started)
 	expect_true(waited.compare(milliseconds(500)) > 0)?
@@ -22,3 +23,4 @@ test "a descriptor write waits while the reader is slow":
 
 	count := child.stdout().next()?
 	expect_equal(count or "".to_bytes(), "8388608\n".to_bytes())?
+}

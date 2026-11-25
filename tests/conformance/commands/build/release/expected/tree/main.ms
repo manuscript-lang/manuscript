@@ -1,5 +1,7 @@
-fn double(x: Int) Int:
+fn double(x Int) Int {
 	return x * 2
+}
 
-fn main() Void:
+fn main() Void {
 	print(f"{double(21)}")
+}

@@ -1,4 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f(a: Int) Int:
-    match a:
+fn f(a Int) Int {
+    match a {
+    }
+}

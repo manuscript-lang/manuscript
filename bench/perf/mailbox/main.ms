@@ -11,33 +11,39 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn work(a: Int) Int!:
+fn work(a Int) Int! {
 	return ok(a * 2 + 1)
+}
 
-fn main() Void:
+fn main() Void {
 	args := arguments()
 	n := args[0].parse_int() or panic("called Optional.get() on null")
 	rounds := args[1].parse_int() or panic("called Optional.get() on null")
-	window := if args.length() > 2: (
-		args[2].parse_int()
-		or panic("called Optional.get() on null")
-	) else: 64
+	window := if args.length() > 2 {
+		(args[2].parse_int() or panic("called Optional.get() on null"))
+	} else {
+		64
+	}
 	var total = 0
 	t0 := monotonic()
 
-	for r in 0..rounds:
+	for r in 0..rounds {
 		var done = 0
 
-		while done < n:
-			var promises: List[Promise[Int]] = []
+		while done < n {
+			var promises List[Promise[Int]] = []
 
-			for i in 0..window:
+			for i in 0..window {
 				value := done + i
-				promises.append(promise[Int](fn: work(value)))
+				promises.append(promise[Int](() => work(value)))
+			}
 
-			for p in promises:
+			for p in promises {
 				total += p.wait().get()
+			}
 			done += window
+		}
+	}
 
 	t1 := monotonic()
 	print("total " + total.to_string())
@@ -47,3 +53,4 @@ fn main() Void:
 			/ (n * rounds)
 		).to_string()
 	)
+}

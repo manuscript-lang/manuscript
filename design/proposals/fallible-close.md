@@ -42,10 +42,11 @@ Implemented 2026-10-31 (one `Closeable`; supersedes the `Result[Unit, Never]` an
 ```manuscript
 import FileHandle, open from "@std/os/fs.ms"
 
-fn save(path: String, text: String) Result[Unit, Error]:
+fn save(path String, text String) Result[Unit, Error] {
     var file = try open(path)
     try file.write(text)
     return ok(unit)
+}
 ```
 
 - Allocation failure (out of memory) is a fault everywhere in the language, including `clone()`, `push` and concatenation. Chinmay chose this on 2026-10-31; only I/O-backed operations return `Result`.
@@ -58,9 +59,10 @@ fn save(path: String, text: String) Result[Unit, Error]:
 ```manuscript
 import FileHandle from "@std/os/fs.ms"
 
-fn twice(file: FileHandle) Result[List[FileHandle], Error]:
+fn twice(file FileHandle) Result[List[FileHandle], Error] {
     copy := try file.clone()
     return ok([copy, file])
+}
 ```
 
 ## Components touched

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tQueue from \"@std/collections/queue.ms\",\n\tCloseable from \"@std/core.ms\",\n)\n\nfn invalid() Void: ...\n"
+    "fmt": "import (\n\tQueue from \"@std/collections/queue.ms\",\n\tCloseable from \"@std/core.ms\",\n)\n\nfn invalid() Void { ... }\n"
   }
 }

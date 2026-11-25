@@ -8,7 +8,7 @@ import (
 // `clone` copies a resource: each copy owns its own descriptor and closes on its own. A `Connection` has no clone: its
 // `input` and `output` streams are the two owners (see net.ms).
 
-test "a cloned file handle writes through its own descriptor after the original closes":
+test "a cloned file handle writes through its own descriptor after the original closes" {
 	temporary := temporary("manuscript-dup-") | expect_ok?
 	path := f"{temporary.path()}/a.txt"
 	var file = open(path, OpenMode.Write, OpenOptions(permissions: 420)) | expect_ok?
@@ -18,3 +18,4 @@ test "a cloned file handle writes through its own descriptor after the original 
 	copy.write("two")?
 	copy.close()?
 	expect_equal(read_file(path).wait()?, "one two".to_bytes())?
+}

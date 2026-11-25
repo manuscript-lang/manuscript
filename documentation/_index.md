@@ -13,16 +13,20 @@ A web server in a dozen lines. Each connection runs as its own promise across al
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
-import serve from "@std/net/net.ms"
+import (
+    HttpRequest, HttpResponse, buffered, headers from "@std/net/http.ms",
+    serve from "@std/net/net.ms",
+)
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse {
     return HttpResponse(200, f"hello {request.path}".to_bytes())
+}
 
-fn main() Void!:
+fn main() Void! {
     server := serve("127.0.0.1:0", buffered(handle))?
     print(f"{server.address()}")
     server.wait()?
+}
 ```
 
 ## What the compiler catches
@@ -33,12 +37,13 @@ Using a value after it moved is a compile error:
 
 <!-- manuscript-example: {"mode":"error","contains":"is moved here"} -->
 ```manuscript
-fn main() Void:
+fn main() Void {
     var names = List[String]()
     first := "ada"
     names.append(first)
     print(first)
     // type: `first` is moved here but used again at 5:11
+}
 ```
 
 An effect must be allowed by every caller that reaches it:
@@ -49,12 +54,14 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order: String) Void!:
+fn save(order String) Void! {
     return write_file("orders.log", order).wait()
+}
 
-fn audit(total: Int) Void!:
+fn audit(total Int) Void! {
     return save(f"audit {total}")
     // ms lint: `audit` reaches db.write: audit -> save
+}
 ```
 
 </div>

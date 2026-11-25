@@ -6,25 +6,28 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn table(move text: String) TomlValue:
+fn table(move text String) TomlValue {
 	var fields = Map[String, TomlValue]()
 	fields.add("value", TomlValue.StringValue(text))
 	return TomlValue.TableValue(fields)
+}
 
-test "TOML quoting preserves empty plain and Unicode text":
+test "TOML quoting preserves empty plain and Unicode text" {
 	for text in [
 		"",
 		"Ada",
 		"space punctuation : ; # ' []",
 		"é🙂日本語",
 		"é🙂日本語".repeat(1024),
-	]:
+	] {
 		root := table(text.clone())
 		out := stringify(root)?
 		out | expect_equal("value = \"".concat(text).concat("\"\n"))?
 		(parse(out)?) | expect_equal(root)?
+	}
+}
 
-test "TOML quoting preserves escaped control and Unicode text":
+test "TOML quoting preserves escaped control and Unicode text" {
 	for text in [
 		"\"",
 		"\\",
@@ -38,9 +41,10 @@ test "TOML quoting preserves escaped control and Unicode text":
 		"\u{7f}",
 		"é🙂\n日本語\\",
 		"abcdefgh".repeat(2048).concat("\n"),
-	]:
+	] {
 		root := table(text)
 		(parse(stringify(root)?)?) | expect_equal(root)?
+	}
 
 	(
 		stringify(
@@ -49,8 +53,9 @@ test "TOML quoting preserves escaped control and Unicode text":
 			ok("value = \"\\\"\\\\\\n\\t\\r\\b\\f\\u0000\\u001f\\u007f\"\n")
 		)?
 	)
+}
 
-test "TOML quoting retains exact and invalid output budgets":
+test "TOML quoting retains exact and invalid output budgets" {
 	root := table("é🙂")
 	text := stringify(root)?
 	stringify(root, max_bytes: text.length()) | expect_equal(ok(text.clone()))?
@@ -64,22 +69,26 @@ test "TOML quoting retains exact and invalid output budgets":
 			error(Error("invalid TOML input", kind: "EINVAL"))
 		)?
 	)
+}
 
-test "TOML quoting preserves quoted keys and all ASCII control escapes":
-	for key in ["", "é🙂", "quote\"", "slash\\", "line\n", "\u{7f}"]:
+test "TOML quoting preserves quoted keys and all ASCII control escapes" {
+	for key in ["", "é🙂", "quote\"", "slash\\", "line\n", "\u{7f}"] {
 		var fields = Map[String, TomlValue]()
 		fields.add(key, TomlValue.IntValue(7))
 
 		root := TomlValue.TableValue(fields)
 		(parse(stringify(root)?)?) | expect_equal(root)?
+	}
 
 	var fields = Map[String, TomlValue]()
 	fields.add("é🙂", TomlValue.StringValue("plain"))
 	stringify(TomlValue.TableValue(fields)) | expect_equal(ok("\"é🙂\" = \"plain\"\n"))?
 
 	var controls = ""
-	for code in 0..32:
+	for code in 0..32 {
 		controls = controls.concat(from_scalars([code]).get())
+	}
 
 	root := table(controls)
 	(parse(stringify(root)?)?) | expect_equal(root)?
+}

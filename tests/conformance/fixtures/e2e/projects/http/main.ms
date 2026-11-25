@@ -8,10 +8,11 @@ import (
 	serve from "@std/net/net.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse {
 	return HttpResponse(200, f"hello {request.path}".to_bytes())
+}
 
-export fn main() Int:
+export fn main() Int {
 	options := HttpServerOptions(
 		max_requests: 2,
 		max_body_bytes: 1024,
@@ -24,11 +25,15 @@ export fn main() Int:
 		address: "127.0.0.1:0",
 		handler: buffered(handle),
 		options: options,
-	):
+	) {
 		server := acquired
-		if stdout().write(f"{server.address()}\n").is_error(): return 1
+		if stdout().write(
+			f"{server.address()}\n"
+		).is_error() { return 1 }
 
 		_ignored := server.wait()
 		return 0
+	}
 
 	return 1
+}

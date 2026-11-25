@@ -30,88 +30,97 @@ import (
 	tool_ms from "./lib.ms",
 )
 
-fn text_of(data: Bytes) String:
+fn text_of(data Bytes) String {
 	return (data.decode_utf8() or "").clone()
+}
 
 // Replaces the working directory, spelled as the runtime names it or with
 // forward slashes as ms prints it on Windows, with <DIR> and the digits after
 // `"duration_ns": ` with 0, the only value that varies between runs.
-fn normalize(text: String, dir: String) String:
+fn normalize(text, dir String) String {
 	marker := "\"duration_ns\": "
 	slashed := dir.replace("\\", "/")
 	parts := text.replace(dir, "<DIR>").replace(slashed, "<DIR>").split(marker)
 	var out = parts[0].clone()
 
-	for index in 1..parts.length():
+	for index in 1..parts.length() {
 		rest := parts[index]
 		var start = 0
 		while (
 			start < rest.length()
 			and "0123456789".contains(rest.slice(start, start + 1))
-		):
+		) {
 			start += 1
+		}
 		out += marker + "0" + rest.slice(start, rest.length())
+	}
 
 	return out
+}
 
 // Every file under `root` as relative path then normalized content.
-fn tree_of(root: String, dir: String, ignored: List[String]) Map[String, String]:
+fn tree_of(root, dir String, ignored List[String]) Map[String, String] {
 	var files = Map[String, String]()
 
 	for found in glob(root, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
 		[]
-	):
+	) {
 		path := f"{root}/{found.path}"
-		if found.entry.directory: continue
-		if ignored.contains(found.path): continue
+		if found.entry.directory { continue }
+		if ignored.contains(found.path) { continue }
 
 		// A macOS build writes the debug companion `<output>.dSYM/` beside an
 		// executable with debug info; the recorded Linux runs have none.
-		if found.path.contains(".dSYM/"): continue
+		if found.path.contains(".dSYM/") { continue }
 
 		files.add(
 			found.path.clone(),
 			normalize(text_of(read_file(path).wait().get()), dir),
 		)
+	}
 
 	return files
+}
 
-fn write_text(path: String, text: String) Void:
+fn write_text(path, text String) Void {
 	write_file(path, text, replace: true).wait().get()
+}
 
 // The outcome of one case_dir run in a fresh working directory.
-type Outcome:
-	stdout: String
-	stderr: String
-	status: Int
-	files: Map[String, String]
+type Outcome {
+	stdout, stderr String
+	status Int
+	files Map[String, String]
+}
 
-fn execute(ms: String, case_dir: String) Outcome:
+fn execute(ms, case_dir String) Outcome {
 	scratch := temporary("ms-cmd-").get()
 	work := f"{scratch.path()}/work"
 	create_directory(work.clone()).get()
-	if access(f"{case_dir}/input", 0).is_ok():
+	if access(f"{case_dir}/input", 0).is_ok() {
 		copy(
 			f"{case_dir}/input",
 			work.clone(),
 			CopyOptions(recursive: true, replace: true),
 		).get()
+	}
 
 	var ignored = List[String]()
-	if access(f"{case_dir}/ignore", 0).is_ok():
-		for line in text_of(read_file(f"{case_dir}/ignore").wait().get()).split("\n"):
-			if line != "": ignored.append(line.clone())
+	if access(f"{case_dir}/ignore", 0).is_ok() {
+		for line in text_of(read_file(f"{case_dir}/ignore").wait().get()).split("\n") {
+			if line != "" { ignored.append(line.clone()) }
+		}
+	}
 
 	var input = "".to_bytes()
-	if access(f"{case_dir}/stdin", 0).is_ok(): input = (
-		read_file(f"{case_dir}/stdin")
-		.wait()
-		.get()
-	)
+	if access(f"{case_dir}/stdin", 0).is_ok() {
+		input = read_file(f"{case_dir}/stdin").wait().get()
+	}
 
 	var args = List[String]()
-	for line in text_of(read_file(f"{case_dir}/args").wait().get()).split("\n"):
-		if line != "": args.append(line.clone())
+	for line in text_of(read_file(f"{case_dir}/args").wait().get()).split("\n") {
+		if line != "" { args.append(line.clone()) }
+	}
 
 	out := run(
 		ms.clone(),
@@ -124,142 +133,167 @@ fn execute(ms: String, case_dir: String) Outcome:
 		status: out.exit_code,
 		files: tree_of(work, work, ignored),
 	)
+}
 
-fn record(case_dir: String, outcome: Outcome) Void:
+fn record(case_dir String, outcome Outcome) Void {
 	expected := f"{case_dir}/expected"
 	create_directory(f"{expected}/tree", recursive: true).get()
 	write_text(f"{expected}/stdout", outcome.stdout)
 	write_text(f"{expected}/stderr", outcome.stderr)
 	write_text(f"{expected}/status", f"{outcome.status}\n")
 
-	for item in outcome.files.entries():
+	for item in outcome.files.entries() {
 		path := item.key.clone()
 		content := item.value.clone()
 		parts := path.split("/")
-		if parts.length() > 1:
+		if parts.length() > 1 {
 			create_directory(
 				f"{expected}/tree/{path.slice(0, path.length() - parts[parts.length() - 1].length() - 1)}",
 				recursive: true,
 			).get()
+		}
 		write_text(f"{expected}/tree/{path}", content.clone())
+	}
+}
 
-fn expected_text(case_dir: String, name: String) String:
+fn expected_text(case_dir, name String) String {
 	return text_of(
 		read_file(f"{case_dir}/expected/{name}").wait().get_or("".to_bytes())
 	)
+}
 
 // `text` on one line, cut to 400 bytes, for a failure message.
-fn brief(text: String) String:
+fn brief(text String) String {
 	flat := text.replace("\n", "\\n").replace("\r", "\\r")
-	if flat.length() <= 400: return flat
+	if flat.length() <= 400 { return flat }
 
 	return flat.slice(0, 400) + "..."
+}
 
 // A failure message naming the stream and showing both texts.
-fn stream_difference(stream: String, expected: String, observed: String) String:
+fn stream_difference(stream, expected, observed String) String {
 	return f"{stream} differs\n  expected: {brief(expected)}\n  observed: {brief(observed)}"
+}
 
 // The first difference between the recorded and the observed outcome, or "".
-fn difference(case_dir: String, outcome: Outcome) String:
+fn difference(case_dir String, outcome Outcome) String {
 	stdout := expected_text(case_dir, "stdout")
-	if stdout != outcome.stdout:
+	if stdout != outcome.stdout {
 		return (
 			stream_difference("stdout", stdout, outcome.stdout)
 			+ f"\n  stderr: {brief(outcome.stderr)}"
 		)
+	}
 
 	stderr := expected_text(case_dir, "stderr")
-	if stderr != outcome.stderr: return stream_difference(
-		"stderr",
-		stderr,
-		outcome.stderr,
-	)
-	if expected_text(case_dir, "status") != f"{outcome.status}\n": return f"status {outcome.status}"
+	if stderr != outcome.stderr {
+		return stream_difference("stderr", stderr, outcome.stderr)
+	}
+	if expected_text(case_dir, "status") != f"{outcome.status}\n" { return f"status {outcome.status}" }
 
 	tree := f"{case_dir}/expected/tree"
 	var recorded = 0
 
 	for found in glob(tree, GlobOptions(patterns: ["**/*", "**/.*", "**/.*/**"])).get_or(
 		[]
-	):
-		if found.entry.directory: continue
+	) {
+		if found.entry.directory { continue }
 
 		recorded += 1
 
 		seen := outcome.files.get(found.path)
-		if seen == null: return f"missing file {found.path}"
-		if text_of(read_file(f"{tree}/{found.path}").wait().get()) != seen: return f"file {found.path} differs"
+		if seen == null { return f"missing file {found.path}" }
+		if text_of(read_file(f"{tree}/{found.path}").wait().get()) != seen { return f"file {found.path} differs" }
+	}
 
-	if recorded != outcome.files.length():
+	if recorded != outcome.files.length() {
 		var extra = List[String]()
-		for item in outcome.files.entries():
-			if access(f"{tree}/{item.key}", 0).is_error(): extra.append(
-				item.key.clone()
-			)
+		for item in outcome.files.entries() {
+			if access(f"{tree}/{item.key}", 0).is_error() {
+				extra.append(item.key.clone())
+			}
+		}
 		return f"extra files written: {extra.join(", ")}"
+	}
 
 	return ""
+}
 
-fn selected(case_dir: String, prefixes: List[String]) Bool:
-	if prefixes.is_empty(): return true
+fn selected(case_dir String, prefixes List[String]) Bool {
+	if prefixes.is_empty() { return true }
 
-	for prefix in prefixes:
-		if case_dir.contains(prefix): return true
+	for prefix in prefixes {
+		if case_dir.contains(prefix) { return true }
+	}
 	return false
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	var words = List[String]()
-	for word in arguments(): words.append(word.clone())
-	if words.is_empty(): return 64
+	for word in arguments() {
+		words.append(word.clone())
+	}
+	if words.is_empty() { return 64 }
 
 	mode := words[0].clone()
 	var only_missing = false
 	var prefixes = List[String]()
 
-	for word in words.slice(1, words.length()).get():
-		if word == "--only-missing": only_missing = true
-		else: prefixes.append(word.clone())
+	for word in words.slice(1, words.length()).get() {
+		if word == "--only-missing" {
+			only_missing = true
+		} else {
+			prefixes.append(word.clone())
+		}
+	}
 
 	ms := tool_ms(root.clone())
 	base := "tests/conformance/commands"
 	var total = 0
 	var passed = 0
 
-	for found in glob(base, GlobOptions(patterns: ["*/*/args"])).get_or([]):
+	for found in glob(base, GlobOptions(patterns: ["*/*/args"])).get_or([]) {
 		case_dir := f"{base}/{found.path.slice(0, found.path.length() - 5)}"
-		if not selected(case_dir, prefixes): continue
+		if not selected(case_dir, prefixes) { continue }
 		if (
 			mode == "record"
 			and only_missing
 			and access(f"{case_dir}/expected/status", 0).is_ok()
-		): continue
+		) { continue }
 
 		total += 1
 
 		outcome := execute(f"{ms}", f"{root}/{case_dir}")
 
-		if mode == "record":
+		if mode == "record" {
 			record(f"{root}/{case_dir}", outcome)
 
 			// A second run must give the same answer, or the output is not
 			// deterministic.
 			again := execute(ms.clone(), f"{root}/{case_dir}")
 
-			if difference(f"{root}/{case_dir}", again) != "":
+			if difference(f"{root}/{case_dir}", again) != "" {
 				print(f"NONDETERMINISTIC {case_dir}")
 				continue
+			}
 
 			passed += 1
 			continue
+		}
 
 		reason := difference(f"{root}/{case_dir}", outcome)
 
-		if reason == "": passed += 1
-		else: print(f"FAIL {case_dir}: {reason}")
+		if reason == "" {
+			passed += 1
+		} else {
+			print(f"FAIL {case_dir}: {reason}")
+		}
+	}
 
 	change_directory(root).get()
 	print(f"commands: {passed}/{total}")
-	if passed != total: return 1
+	if passed != total { return 1 }
 
 	return 0
+}

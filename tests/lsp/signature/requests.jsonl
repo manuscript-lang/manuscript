@@ -1,12 +1,12 @@
-{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
-{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "// Adds two numbers.\nfn add(left: Int, right: Int = 1) Int:\n\treturn left + right\n\ntype Point:\n\tx: Int\n\ty: Int\n\nfn main() Void:\n\ttotal := add(1, 2)\n\tmore := add(left: 3, right: 4)\n\tp := Point(1, 2)\n\tprint(total)\n"}}}
-{"jsonrpc": "2.0", "id": 2, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 9, "character": 14}}}
-{"jsonrpc": "2.0", "id": 3, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 9, "character": 17}}}
-{"jsonrpc": "2.0", "id": 4, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 10, "character": 26}}}
-{"jsonrpc": "2.0", "id": 5, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 11, "character": 13}}}
-{"jsonrpc": "2.0", "id": 6, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 11, "character": 16}}}
-{"jsonrpc": "2.0", "id": 7, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 12, "character": 8}}}
-{"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "version": 2}, "contentChanges": [{"text": "// Adds two numbers.\nfn add(left: Int, right: Int = 1) Int:\n\treturn left + right\n\ntype Point:\n\tx: Int\n\ty: Int\n\nfn main() Void:\n\ttotal := add(1, 2)\n\tmore := add(left: 3, right: 4)\n\tp := Point(1, 2)\n\tprint(add(1, \n"}]}}
-{"jsonrpc": "2.0", "id": 8, "method": "textDocument/signatureHelp", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 12, "character": 14}}}
-{"jsonrpc": "2.0", "id": 9, "method": "shutdown"}
-{"jsonrpc": "2.0", "method": "exit"}
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"$ROOT_URI","capabilities":{}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"// Adds two numbers.\nfn add(left Int, right Int = 1) Int {\n\treturn left + right\n}\n\ntype Point {\n\tx Int\n\ty Int\n}\n\nfn main() Void {\n\ttotal := add(1, 2)\n\tmore := add(left: 3, right: 4)\n\tp := Point(1, 2)\n\tprint(total)\n}\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":11,"character":14}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":11,"character":17}}}
+{"jsonrpc":"2.0","id":4,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":12,"character":26}}}
+{"jsonrpc":"2.0","id":5,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":13,"character":13}}}
+{"jsonrpc":"2.0","id":6,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":13,"character":16}}}
+{"jsonrpc":"2.0","id":7,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":14,"character":8}}}
+{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","version":2},"contentChanges":[{"text":"// Adds two numbers.\nfn add(left: Int, right: Int = 1) Int {\n\treturn left + right\n}\n\ntype Point {\n\tx: Int\n\ty: Int\n}\n\nfn main() Void {\n\ttotal := add(1, 2)\n\tmore := add(left: 3, right: 4)\n\tp := Point(1, 2)\n\tprint(add(1, \n}\n"}]}}
+{"jsonrpc":"2.0","id":8,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":12,"character":14}}}
+{"jsonrpc":"2.0","id":9,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}

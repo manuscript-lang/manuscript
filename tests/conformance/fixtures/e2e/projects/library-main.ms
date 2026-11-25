@@ -22,9 +22,9 @@ import (
 	now, parse_timestamp from "@std/time.ms",
 )
 
-fn common_result[T](result: T!) T!: result
+fn common_result[T](result T!) T! => result
 
-fn exercise(path: String) Void!:
+fn exercise(path String) Void! {
 	_written := common_result(
 		result: write_file(path: path, data: "hello", replace: false).wait()
 	)?
@@ -112,13 +112,18 @@ fn exercise(path: String) Void!:
 	(memory.heap_system > 0) | expect_true?
 
 	_removed := common_result(result: remove(path: path, recursive: false))?
+}
 
-export fn main() Int:
+export fn main() Int {
 	path := arguments().get_or(index: 0, "")
-	if path == "": return 2
+	if path == "" { return 2 }
 
-	match exercise(path: path):
-		ok(_):
+	match exercise(path: path) {
+		ok(_) => {
 			return 0
-		error(_):
+		}
+		error(_) => {
 			return 1
+		}
+	}
+}

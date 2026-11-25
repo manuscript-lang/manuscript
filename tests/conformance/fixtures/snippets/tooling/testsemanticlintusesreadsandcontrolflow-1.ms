@@ -3,9 +3,10 @@
 // conform: origin=pkg/tooling/lint_program_test.go:11 TestSemanticLintUsesReadsAndControlFlow
 import ListEntry from "@std/collections/collections.ms"
 
-fn answer() Int:
-    _unused := 1
-    var _written = 2
-    _written = 3
-    return 0
-    return 1
+fn answer() Int {
+	_unused := 1
+	var _written = 2
+	_written = 3
+	return 0
+	return 1
+}

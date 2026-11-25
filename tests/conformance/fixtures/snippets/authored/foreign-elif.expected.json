@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "there is no 'elif': write 'else if <condition>:' for a further branch",
+        "message": "there is no 'elif': write 'else if <condition> { ... }' for a further branch",
         "position": {
           "file": "foreign-elif.ms",
-          "line": 7,
+          "line": 8,
           "column": 5,
-          "offset": 169
+          "offset": 176
         },
         "end": {
           "file": "foreign-elif.ms",
-          "line": 7,
+          "line": 8,
           "column": 9,
-          "offset": 173
+          "offset": 180
         }
       }
     ],

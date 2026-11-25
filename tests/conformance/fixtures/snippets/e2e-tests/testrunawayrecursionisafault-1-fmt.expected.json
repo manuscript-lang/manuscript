@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn depth(n: Int) Int:\n\treturn 1 + depth(n + 1)\n\nexport fn main() Int:\n\treturn depth(0)\n"
+    "fmt": "fn depth(n Int) Int {\n\treturn 1 + depth(n + 1)\n}\n\nexport fn main() Int {\n\treturn depth(0)\n}\n"
   }
 }

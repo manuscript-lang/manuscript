@@ -5,14 +5,16 @@ let (
     B: Int = A + 1
 )
 
-fn main() Void:
+fn main() Void {
     var (
         a = 10
-        b = fn(x: Int) Int:
+        b = fn(x: Int) Int {
             return x + 1
+        }
     )
     let (
         c = 11
         d = "Hi"
     )
     a += 1
+}

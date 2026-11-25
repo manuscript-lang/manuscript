@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Position:\n\tPoint(x: Int, y: Int)\n\tUnknown\n\nfn horizontal(position: Position) Int:\n\tmatch position:\n\t\tPosition.Point(horizontal_value, _):\n\t\t\treturn horizontal_value\n\t\tPosition.Unknown:\n\t\t\treturn 0\n"
+    "fmt": "enum Position {\n\tPoint(x, y Int)\n\tUnknown\n}\n\nfn horizontal(position Position) Int {\n\tmatch position {\n\t\tPosition.Point(horizontal_value, _) => {\n\t\t\treturn horizontal_value\n\t\t}\n\t\tPosition.Unknown => {\n\t\t\treturn 0\n\t\t}\n\t}\n}\n"
   }
 }

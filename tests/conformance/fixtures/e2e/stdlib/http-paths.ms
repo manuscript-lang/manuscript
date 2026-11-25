@@ -18,33 +18,36 @@ import (
 	http_result, list_headers, text_headers from "./support/http.ms",
 )
 
-fn route(request: HttpRequest) HttpResponse:
+fn route(request HttpRequest) HttpResponse {
 	var cookies = Map[String, String]()
 	cookies.add("Set-Cookie", "a=1")
 	cookies.add("set-cookie", "b=2")
 
-	fields := match text_headers(cookies):
-		ok(found): found
-		error(cause): return HttpResponse(
+	fields := match text_headers(cookies) {
+		ok(found) => found
+		error(cause) => return HttpResponse(
 			status: 500,
 			headers: headers(),
 			body: (cause.message.to_bytes()),
 		)
+	}
 
 	return HttpResponse(
 		status: 200,
 		headers: fields,
 		body: f"{request.path}|{request.query}".to_bytes(),
 	)
+}
 
-fn stream_route(var exchange: HttpExchange) Void!:
+fn stream_route(var exchange HttpExchange) Void! {
 	var chain_1 = Map[String, List[String]]()
 	chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
 	_sent := exchange.send_headers(status: 200, headers: (list_headers(chain_1)?))?
 	_written := (http_result(exchange.write(f"{exchange.path()}|{exchange.query()}"))?)
+}
 
-fn check_route(url: String, expected: String) Void!:
+fn check_route(url String, expected String) Void! {
 	response := (
 		request(
 			method: HttpMethod.Get,
@@ -55,14 +58,15 @@ fn check_route(url: String, expected: String) Void!:
 			),
 		) | expect_ok?
 	)
-	if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
-		Error("path or raw query changed")
-	)
-	if ((response.metadata().headers.get_all("SET-cookie")) != ["a=1", "b=2"]): return error(
-		Error("#257 repeated cookies regressed")
-	)
+	if response.metadata().status != 200 or response.body != expected.to_bytes() {
+		return error(Error("path or raw query changed"))
+	}
+	if ((response.metadata().headers.get_all("SET-cookie")) != ["a=1", "b=2"]) {
+		return error(Error("#257 repeated cookies regressed"))
+	}
+}
 
-fn check_rejected(url: String) Void!:
+fn check_rejected(url String) Void! {
 	response := (
 		request(
 			method: HttpMethod.Get,
@@ -73,11 +77,12 @@ fn check_rejected(url: String) Void!:
 			),
 		) | expect_ok?
 	)
-	if response.metadata().status != 400: return error(
-		Error("unsafe or invalid path was dispatched")
-	)
+	if response.metadata().status != 400 {
+		return error(Error("unsafe or invalid path was dispatched"))
+	}
+}
 
-fn check_paths(base: String) Void!:
+fn check_paths(base String) Void! {
 	(check_route(url: f"{base}/a%20b", expected: "/a b|")?)
 	(check_route(url: f"{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F")?)
 	(check_route(url: f"{base}/a/../b/", expected: "/b/|")?)
@@ -85,12 +90,14 @@ fn check_paths(base: String) Void!:
 	(check_rejected(f"{base}/a%2Fb")?)
 	(check_rejected(f"{base}/a%00b")?)
 	(check_rejected(f"{base}/bad%ff/../x")?)
+}
 
-test "buffered routes validate original input and decode once":
+test "buffered routes validate original input and decode once" {
 	server := serve(address: "127.0.0.1:0", handler: buffered(route)) | expect_ok?
 	(check_paths(f"http://{server.address()}")?)
+}
 
-test "streaming routes validate original input and decode once":
+test "streaming routes validate original input and decode once" {
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -99,16 +106,20 @@ test "streaming routes validate original input and decode once":
 		) | expect_ok?
 	)
 	(check_paths(f"http://{server.address()}")?)
+}
 
-fn expect_http_error[T](outcome: T!) Void!:
-	match outcome:
-		ok(_): return error(Error("invalid URL succeeded"))
-		error(cause):
-			if cause.kind != "EINVAL": return error(
-				Error("malformed URL leaked transport error")
-			)
+fn expect_http_error[T](outcome T!) Void! {
+	match outcome {
+		ok(_) => return error(Error("invalid URL succeeded"))
+		error(cause) => {
+			if cause.kind != "EINVAL" {
+				return error(Error("malformed URL leaked transport error"))
+			}
+		}
+	}
+}
 
-test "buffered and reusable clients reject malformed ports as InvalidInput":
+test "buffered and reusable clients reject malformed ports as InvalidInput" {
 	headers := (text_headers(Map[String, String]())?)
 	body := ""
 	(
@@ -141,12 +152,13 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
 			body: body,
 		) | expect_http_error?
 	)
+}
 
-test "buffered and reusable clients reject URLs with an empty host":
+test "buffered and reusable clients reject URLs with an empty host" {
 	fields := headers()
 	client := http_client(HttpClientOptions()) | expect_ok?
 
-	for address in ["http://:80/", "https://:443/", "http://:/", "https://:/"]:
+	for address in ["http://:80/", "https://:443/", "http://:/", "https://:/"] {
 		(
 			request(
 				HttpMethod.Get,
@@ -162,3 +174,5 @@ test "buffered and reusable clients reject URLs with an empty host":
 				timeout: 1.seconds(),
 			) | expect_http_error?
 		)
+	}
+}

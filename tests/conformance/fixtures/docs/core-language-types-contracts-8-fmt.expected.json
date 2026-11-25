@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn invoke[T: Increment](operation: T) Int:\n\treturn Increment(operation).apply(1)\n\nfrom_concrete := invoke(offset)\nfrom_view := invoke(view)\n"
+    "fmt": "fn invoke[T Increment](operation T) Int {\n\treturn Increment(operation).apply(1)\n}\n\nfrom_concrete := invoke(offset)\nfrom_view := invoke(view)\n"
   }
 }

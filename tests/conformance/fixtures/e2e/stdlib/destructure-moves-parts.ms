@@ -8,24 +8,28 @@ import (
 // Destructuring a record or a list at its last use moves the parts out of it: a stream
 // bound by a record pattern keeps its cell (#2430), and the parts the pattern leaves
 // out are dropped.
-type Count:
-	n: Int
+type Count {
+	n Int
+}
 
-fn var Count.next() Int?!:
+fn var Count.next() Int?! {
 	self.n += 1
-	if self.n > 3: return ok(null)
+	if self.n > 3 { return ok(null) }
 
 	return ok(self.n)
+}
 
-fn move Count.close() Void!:
+fn move Count.close() Void! {
 	return ok()
+}
 
-type Box:
-	label: Int
-	body: ReadStream[Int]
-	spare: ReadStream[Int]
+type Box {
+	label Int
+	body ReadStream[Int]
+	spare ReadStream[Int]
+}
 
-test "a record pattern moves a stream field out of its record":
+test "a record pattern moves a stream field out of its record" {
 	b := Box(
 		label: 1,
 		body: ReadStream[Int](Count(0)),
@@ -34,8 +38,9 @@ test "a record pattern moves a stream field out of its record":
 	var {label: _l, body: p} = b
 	a := p.next()?
 	expect_equal(a, 1)?
+}
 
-test "a record pattern over a temporary moves its fields":
+test "a record pattern over a temporary moves its fields" {
 	var {body: p} = Box(
 		label: 2,
 		body: ReadStream[Int](Count(0)),
@@ -43,11 +48,13 @@ test "a record pattern over a temporary moves its fields":
 	)
 	a := p.next()?
 	expect_equal(a, 1)?
+}
 
-test "a list pattern moves its elements":
+test "a list pattern moves its elements" {
 	streams := [ReadStream[Int](Count(0)), ReadStream[Int](Count(1))]
 	var [first, second] = streams
 	a := first.next()?
 	b := second.next()?
 	expect_equal(a, 1)?
 	expect_equal(b, 2)?
+}

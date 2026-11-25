@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Closeable:\n\tfn close() Void\n"
+    "fmt": "interface Closeable {\n\tfn close() Void\n}\n"
   }
 }

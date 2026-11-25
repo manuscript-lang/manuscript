@@ -1,7 +1,9 @@
 // conform: tags=control-flow,formatter,optional,parser,strings,tier-core
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:77
-fn greet(name: String?) String:
-	if name != null:
+fn greet(name String?) String {
+	if name != null {
 		return "Hello, " + name
+	}
 	return "Hello!"
+}

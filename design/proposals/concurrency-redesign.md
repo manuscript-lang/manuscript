@@ -23,12 +23,13 @@ Every call that can wait starts its work immediately and returns a `Promise[T]`.
 // Work that has started; its result arrives later.
 export opaque type Promise[T]
 
-impl Promise[T]:
+impl Promise[T] {
     // Waits for the result and moves it out. Errors: the operation's own error; Failed (a fault
     // inside, with its report); Cancelled; Closed (an earlier wait already took the result);
     // Timeout (the work is cancelled) once `timeout` passes.
     fn wait(timeout: Duration? = none) T!
     fn done() Bool
+}
 // Dropping an unfinished promise cancels it and waits for it to end. An unused promise is a warning.
 
 export fn promise[U](entry: fn() U!) Promise[U]          // runs entry on a thread the runtime picks; captures are moved or read in place
@@ -39,20 +40,23 @@ export fn wait_first[T](promises: List[Promise[T]]) T!       // the first result
 `@std/io/io.ms` (the existing stream interfaces become generic; files, sockets and stdio are `[Bytes]`)
 
 ```manuscript
-export interface ReadStream[T]:
+export interface ReadStream[T] {
     var fn read() Promise[T?]          // one step; none at the end
     var fn wait() Waiting[T]           // for item in input.wait(): each step waits, the end included
-export interface WriteStream[T]:
-    var fn write(value: T) Unit!           // moves value into the stream's buffer and returns at once; never waits; Closed after the reader is gone
+}
+export interface WriteStream[T] {
+    var fn write(value T) Unit!           // moves value into the stream's buffer and returns at once; never waits; Closed after the reader is gone
     var fn flush() Promise[Unit]           // waits until the buffer is drained: the backpressure point
     fn buffered() Int                      // values or bytes not yet drained, to decide when to flush
+}
 // Waiting[T] is an Iterator[T!]. A ReadStream is not an Iterator itself, so every stream loop says wait.
 // Both kinds are Closeable: scope end closes them, and close never waits.
 
 export opaque type Pipe[T]             // in memory: any number of writers, one reader, values whole and in order; `capacity` is the level above which a writer's flush waits
-impl Pipe[T]:
+impl Pipe[T] {
     fn writer() WriteStream[T]         // a new writing end, like dup on an fd
     var fn reader() ReadStream[T]      // the one reading end; it ends when every writer is closed
+}
 export fn pipe[T](capacity: Int) Pipe[T]
 
 export fn json_reader[T: Data](input: ReadStream[Bytes]) ReadStream[T]    // typed view of a byte stream
@@ -66,20 +70,22 @@ Every other waiting call returns a promise: `read(path)`, `write(path, ...)`, `f
 ## Example
 
 ```manuscript
-fn summarize(urls: List[String], log: ReadStream[Bytes]) Summary!:
+fn summarize(urls List[String], log ReadStream[Bytes]) Summary! {
     config := read("config.json")                 // Promise[Bytes], already running
     pages := urls.map(fn u: fetch(u))             // all in flight together
     stats := promise(fn: count_words(urls))       // may run on another core
 
     var errors = 0
-    for chunk in log.wait():                         // each step waits
+    for chunk in log.wait() {                         // each step waits
         errors += count_errors(try chunk)
+    }
 
     settings := try config.wait()
     bodies := try wait_all(pages)
     words := try stats.wait(timeout: seconds(5))
     mirror := try wait_first([fetch(a), fetch(b)])
     return ok(Summary(settings, bodies, words, errors, mirror))
+}
 ```
 
 ## Public rules (the guide states only these)
@@ -95,15 +101,16 @@ fn summarize(urls: List[String], log: ReadStream[Bytes]) Summary!:
 
 ```manuscript
 export fn serve(
-    address: String,
-    handler: fn(HttpExchange) Unit!,   // built once, read by every thread
-    options: HttpServerOptions = HttpServerOptions()   // adds cores: Int?, where none means every core
+    address String,
+    handler fn(HttpExchange) Unit!,   // built once, read by every thread
+    options HttpServerOptions = HttpServerOptions()   // adds cores: Int?, where none means every core
 ) HttpServer!
 
-impl HttpServer:
+impl HttpServer {
     fn address() String
     fn wait(timeout: Duration? = none) Unit!   // until the server has stopped
     var fn close() Unit                        // stop accepting; drain within `grace`, then cancel (close itself never waits)
+}
 
 router := build_router(config)
 var server = try serve(":8080", router.handler())

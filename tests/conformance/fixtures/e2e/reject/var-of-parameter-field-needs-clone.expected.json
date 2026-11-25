@@ -12,16 +12,16 @@
         "message": "`var inner` cannot take `o.inner`: the caller keeps it, and a `var` is a value of its own; copy it with `o.inner.clone()`, or change it in place through `o`",
         "position": {
           "file": "var-of-parameter-field-needs-clone.ms",
-          "line": 11,
+          "line": 13,
           "column": 19,
-          "offset": 273
+          "offset": 277
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/var-of-parameter-field-needs-clone.ms:11:19: type: `var inner` cannot take `o.inner`: the caller keeps it, and a `var` is a value of its own; copy it with `o.inner.clone()`, or change it in place through `o`\n    |\n 11 |     var inner = o.inner\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/var-of-parameter-field-needs-clone.ms:13:19: type: `var inner` cannot take `o.inner`: the caller keeps it, and a `var` is a value of its own; copy it with `o.inner.clone()`, or change it in place through `o`\n    |\n 13 |     var inner = o.inner\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

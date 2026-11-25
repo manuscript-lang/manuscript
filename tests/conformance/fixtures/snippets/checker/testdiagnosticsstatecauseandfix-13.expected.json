@@ -12,16 +12,16 @@
         "message": "unknown or ambiguous member y on P; available: x",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-13.ms",
-          "line": 8,
+          "line": 9,
           "column": 14,
-          "offset": 200
+          "offset": 196
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-13.ms:8:14: resolution: unknown or ambiguous member y on P; available: x\n   |\n 8 |     return p.y\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-13.ms:9:14: resolution: unknown or ambiguous member y on P; available: x\n   |\n 9 |     return p.y\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

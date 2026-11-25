@@ -13,15 +13,15 @@
         "position": {
           "file": "testpipelinechecksskippedbooleanoperands-2.ms",
           "line": 4,
-          "column": 30,
-          "offset": 185
+          "column": 32,
+          "offset": 187
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testpipelinechecksskippedbooleanoperands-2.ms:4:30: type: logical operands require Bool, found Bool and Int; compare explicitly, e.g. x != 0\n   |\n 4 | fn value() Bool: return true or 3\n   |                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testpipelinechecksskippedbooleanoperands-2.ms:4:32: type: logical operands require Bool, found Bool and Int; compare explicitly, e.g. x != 0\n   |\n 4 | fn value() Bool => return true or 3\n   |                                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

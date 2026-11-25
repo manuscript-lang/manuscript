@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\nenum Optional[T]:\n\tT\n\tnull\n\nfn wrong(value: Int?) Int:\n\treturn value or panic(\"called Optional.get() on null\")\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\nenum Optional[T] {\n\tT\n\tnull\n}\n\nfn wrong(value Int?) Int {\n\treturn value or panic(\"called Optional.get() on null\")\n}\n"
   }
 }

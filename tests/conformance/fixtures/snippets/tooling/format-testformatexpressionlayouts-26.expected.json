@@ -22,12 +22,23 @@
           "column": 15,
           "offset": 244
         }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "mismatched closing delimiter '}'; the '(' opened at line 5:23 needs ')'",
+        "position": {
+          "file": "format-testformatexpressionlayouts-26.ms",
+          "line": 11,
+          "column": 9,
+          "offset": 337
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatexpressionlayouts-26.ms:6:14: parse: expected an expression, found '?'; write a value, name, call, or literal here\n   |\n 6 |         match? 0:\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatexpressionlayouts-26.ms:6:14: parse: expected an expression, found '?'; write a value, name, call, or literal here\n   |\n 6 |         match? 0 {\n   |              ^\n<DIR>/format-testformatexpressionlayouts-26.ms:11:9: parse: mismatched closing delimiter '}'; the '(' opened at line 5:23 needs ')'\n    |\n 11 |         }\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

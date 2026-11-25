@@ -11,11 +11,11 @@ result  2 modules, 7 entities
 
 2. PUBLIC SURFACE
    ENTITY       KIND  TYPE                  WHERE
-   parse_total  fn    fn(List[String]) Int  src/shapes.ms:17
+   parse_total  fn    fn(List[String]) Int  src/shapes.ms:20
 
 3. ENTRY POINTS
    ENTITY      KIND  EFFECTS  WHERE
-   main total  test  none     src/main.ms:12
+   main total  test  none     src/main.ms:13
 
 4. ERROR TYPES
    TYPE     FUNCTIONS
@@ -33,4 +33,4 @@ result  2 modules, 7 entities
    INTERNAL means no tracked contract, effect, error-flow, or resource change; runtime behavior can still change.
    Use --explain <number|id> with --diff for evidence and a focused diagram.
 
-digest sha256:8ab3c919221b70ab0289b5b11e4a15120995bad1b9e20573b4de48237839eb26
+digest sha256:ebc96c8a2ad753c9c2aeeac6608e434fec658bb69ff1586001f53ce14514f1c6

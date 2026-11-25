@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstderr, stdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn write_line(text: String) Void!:\n\tstdout().write(f\"{text}\\n\")?\n\nfn exercise() Int!:\n\targs := arguments()\n\tvar index = 0\n\n\twhile index < args.length():\n\t\twrite_line(args[index])?\n\t\tindex += 1\n\n\treturn ok(0)\n\nexport fn main() Int:\n\tmatch exercise():\n\t\tok(status): return status\n\t\terror(cause):\n\t\t\t_written := stderr().write(f\"{cause.message}\\n\")\n\t\t\treturn 1\n\ntest \"selected=a=b\":\n\twrite_line(\"selected\")?\n\ntest \"unselected\":\n\twrite_line(\"unselected\")?\n"
+    "fmt": "import (\n\tstderr, stdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn write_line(text String) Void! {\n\tstdout().write(f\"{text}\\n\")?\n}\n\nfn exercise() Int! {\n\targs := arguments()\n\tvar index = 0\n\n\twhile index < args.length() {\n\t\twrite_line(args[index])?\n\t\tindex += 1\n\t}\n\n\treturn ok(0)\n}\n\nexport fn main() Int {\n\tmatch exercise() {\n\t\tok(status) => return status\n\t\terror(cause) => {\n\t\t\t_written := stderr().write(f\"{cause.message}\\n\")\n\t\t\treturn 1\n\t\t}\n\t}\n}\n\ntest \"selected=a=b\" {\n\twrite_line(\"selected\")?\n}\n\ntest \"unselected\" {\n\twrite_line(\"unselected\")?\n}\n"
   }
 }

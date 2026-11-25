@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export type DomainFailure:\n\tcode: Int\n\nexport type BoxFailure[T]:\n\tcause: T\n\nexport fn box_error[T](box: BoxFailure[T], describe: fn(T) String) Error:\n\treturn Error(f\"box: {describe(box.cause)}\")\n"
+    "fmt": "export type DomainFailure {\n\tcode Int\n}\n\nexport type BoxFailure[T] {\n\tcause T\n}\n\nexport fn box_error[T](box BoxFailure[T], describe fn(T) String) Error {\n\treturn Error(f\"box: {describe(box.cause)}\")\n}\n"
   }
 }

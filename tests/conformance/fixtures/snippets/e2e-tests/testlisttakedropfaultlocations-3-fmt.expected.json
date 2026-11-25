@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn main() Int:\n\tempty: List[Int] := []\n\tpart := empty.METHOD(-7)\n\treturn part.length()\n"
+    "fmt": "export fn main() Int {\n\tempty List[Int] := []\n\tpart := empty.METHOD(-7)\n\treturn part.length()\n}\n"
   }
 }

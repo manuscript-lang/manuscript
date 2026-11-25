@@ -2,13 +2,13 @@
 // conform: phase=test
 import expect_equal, fail from "@std/test/test.ms"
 
-test "maps and sets keep distinct keys after removal to empty":
+test "maps and sets keep distinct keys after removal to empty" {
 	var m = Map[String, Int]()
 	m.add(key: "cap", value: 1)
 	m.remove("cap")
 	m.add(key: "pen", value: 2)
 	m.add(key: "cap", value: 3)
-	if m.length() != 2: return fail(f"without: length {m.length()}")
+	if m.length() != 2 { return fail(f"without: length {m.length()}") }
 
 	m["pen"] | expect_equal(2)?
 	m["cap"] | expect_equal(3)?
@@ -18,7 +18,7 @@ test "maps and sets keep distinct keys after removal to empty":
 	n.remove(key: 1)
 	n.add(key: 2, value: 20)
 	n.add(key: 1, value: 30)
-	if n.length() != 2: return fail(f"remove: length {n.length()}")
+	if n.length() != 2 { return fail(f"remove: length {n.length()}") }
 
 	n[2] | expect_equal(20)?
 	n[1] | expect_equal(30)?
@@ -28,4 +28,5 @@ test "maps and sets keep distinct keys after removal to empty":
 	s.remove("cap")
 	s.add("pen")
 	s.add("cap")
-	if s.length() != 2: return fail(f"set: length {s.length()}")
+	if s.length() != 2 { return fail(f"set: length {s.length()}") }
+}

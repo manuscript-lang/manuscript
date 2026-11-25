@@ -3,75 +3,99 @@
 // conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
-fn halve(n: Int) Int?:
-    if n % 2 != 0:
-        return null
+fn halve(n Int) Int? {
+	if n % 2 != 0 {
+		return null
+	}
+	return (n / 2)
+}
 
-    return (n / 2)
+fn parse(n Int) Int!Error {
+	if n < 0 {
+		return error(cause: Error("negative"))
+	}
+	return ok(value: n)
+}
 
-fn parse(n: Int) Int!Error:
-    if n < 0:
-        return error(cause: Error("negative"))
+fn matched(n Int) Int {
+	found := halve(n: n)
 
-    return ok(value: n)
+	match found {
+		v => {
+			return v
+		}
+		null => {
+			return 0 - 1
+		}
+	}
+}
 
-fn matched(n: Int) Int:
-    found := halve(n: n)
+fn twice(n Int) Int {
+	found := halve(n: n)
+	var total = 0
 
-    match found:
-        v:
-            return v
-        null:
-            return 0 - 1
+	match found {
+		v => {
+			total += v
+		}
+		null => {
+			total += 100
+		}
+	}
 
-fn twice(n: Int) Int:
-    found := halve(n: n)
-    var total = 0
+	match found {
+		v => {
+			total += v
+		}
+		null => {
+			total += 1000
+		}
+	}
 
-    match found:
-        v:
-            total = total + v
-        null:
-            total = total + 100
+	return total
+}
 
-    match found:
-        v:
-            total = total + v
-        null:
-            total = total + 1000
+fn results(n Int) String {
+	parsed := parse(n: n)
 
-    return total
+	match parsed {
+		ok(v) => {
+			return f"ok {v}"
+		}
+		error(cause) => {
+			return cause.message
+		}
+	}
+}
 
-fn results(n: Int) String:
-    parsed := parse(n: n)
+fn formatted(n Int) String {
+	found := halve(n: n)
+	return f"{found}"
+}
 
-    match parsed:
-        ok(v):
-            return f"ok {v}"
-        error(cause):
-            return cause.message
+fn captured(n Int) Int {
+	found := halve(n: n)
+	read := fn() Int {
+		match found {
+			v => {
+				return v
+			}
+			null => {
+				return 0 - 1
+			}
+		}
+	}
+	return read()
+}
 
-fn formatted(n: Int) String:
-    found := halve(n: n)
-    return f"{found}"
-
-fn captured(n: Int) Int:
-    found := halve(n: n)
-    read := fn() Int:
-        match found:
-            v:
-                return v
-            null:
-                return 0 - 1
-    return read()
-
-test "typed alternative lets":
-    expect_true((matched(n: 8) == 4))?
-    expect_true((matched(n: 7) == 0 - 1))?
-    expect_true((twice(n: 8) == 8))?
-    expect_true((twice(n: 7) == 1100))?
-    expect_true((results(n: 3) == "ok 3"))?
-    expect_true((results(n: 0 - 3) == "negative"))?
-    expect_true((formatted(n: 8) == formatted(n: 8)))?
-    expect_true((captured(n: 8) == 4))?
-    expect_true((captured(n: 7) == 0 - 1))?
+test "typed alternative lets" {
+	expect_true((matched(n: 8) == 4))?
+	expect_true((matched(n: 7) == 0 - 1))?
+	expect_true((twice(n: 8) == 8))?
+	expect_true((twice(n: 7) == 1100))?
+	expect_true((results(n: 3) == "ok 3"))?
+	expect_true((results(n: 0 - 3) == "negative"))?
+	expect_true((formatted(n: 8) == formatted(n: 8)))?
+	expect_true((captured(n: 8) == 4))?
+	expect_true((captured(n: 7) == 0 - 1))?
+}

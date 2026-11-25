@@ -12,22 +12,22 @@
         "message": "cannot assign immutable binding fixed; declare it with 'var fixed = ...' instead of 'fixed := ...'",
         "position": {
           "file": "seed-0174.ms",
-          "line": 32,
+          "line": 34,
           "column": 5,
-          "offset": 736
+          "offset": 696
         },
         "fix": {
           "position": {
             "file": "seed-0174.ms",
-            "line": 31,
+            "line": 33,
             "column": 5,
-            "offset": 721
+            "offset": 684
           },
           "end": {
             "file": "seed-0174.ms",
-            "line": 31,
+            "line": 33,
             "column": 13,
-            "offset": 729
+            "offset": 692
           },
           "replacement": "var fixed ="
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0174.ms:32:5: type: cannot assign immutable binding fixed; declare it with 'var fixed = ...' instead of 'fixed := ...'\n    |\n 32 |     fixed = 2\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0174.ms:34:5: type: cannot assign immutable binding fixed; declare it with 'var fixed = ...' instead of 'fixed := ...'\n    |\n 34 |     fixed = 2\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

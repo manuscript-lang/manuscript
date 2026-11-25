@@ -11,7 +11,7 @@ import (
 	summarize from "./strappend_table.ms",
 )
 
-fn run(work: String, n: Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error] {
 	copy(
 		"bench/perf/strappend/ms",
 		f"{work}/ms",
@@ -21,28 +21,35 @@ fn run(work: String, n: Int) Result[String, Error]:
 
 	var flags = List[String]()
 	linker := env("RUSTC_LINKER", "")
-	if linker != "": flags = ["-C", f"linker={linker}"]
+	if linker != "" { flags = ["-C", f"linker={linker}"] }
 	build_rust("bench/perf/strappend/rust/main.rs", f"{work}/rust{exe()}", flags)?
 
 	var raw = List[String]()
 
-	for i in 0..n:
-		for v in ["ms", "rust"]:
-			path := if v == "ms": f"{work}/ms/bench{exe()}" else: f"{work}/rust{exe()}"
-			for line in (sample(path, [])?).split("\n"):
-				if line != "": raw.append(f"{i} {v} {line}")
+	for i in 0..n {
+		for v in ["ms", "rust"] {
+			path := if v == "ms" { f"{work}/ms/bench{exe()}" } else { f"{work}/rust{exe()}" }
+			for line in (sample(path, [])?).split("\n") {
+				if line != "" { raw.append(f"{i} {v} {line}") }
+			}
+		}
+	}
 
 	return summarize(raw, n)
+}
 
-fn main() Int:
+fn main() Int {
 	var n = 5
 	args := arguments()
 
-	if not args.is_empty():
-		if parsed := repeats(args[0]):
+	if not args.is_empty() {
+		if parsed := repeats(args[0]) {
 			n = parsed
-		else:
+		} else {
 			return usage("repeats must be a positive integer")
+		}
+	}
 
 	tmp := temporary("strappend-").get()
 	return finish(run(tmp.path(), n))
+}

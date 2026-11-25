@@ -1,18 +1,19 @@
 // A stack bytecode VM running a nested-loop program: enum dispatch, a list as the
 // stack.
-enum Op:
-	Push(v: Int)
-	Load(slot: Int)
-	Store(slot: Int)
+enum Op {
+	Push(v Int)
+	Load(slot Int)
+	Store(slot Int)
 	Add
 	Mul
 	Mod
 	Lt
-	Jz(to: Int)
-	Jmp(to: Int)
+	Jz(to Int)
+	Jmp(to Int)
 	Halt
+}
 
-fn program(n: Int, m: Int) List[Op]:
+fn program(n, m Int) List[Op] {
 	// total = 0; i = 0; while i < n: j = 0; while j < m: total += (i * j) % 7; j += 1;
 	// i += 1
 	return [
@@ -51,56 +52,71 @@ fn program(n: Int, m: Int) List[Op]:
 		Op.Jmp(4),
 		Op.Halt,
 	]
+}
 
-fn run(code: List[Op]) Int:
+fn run(code List[Op]) Int {
 	var stack = List[Int]()
 	var vars = [0, 0, 0, 0]
 	var pc = 0
 	var steps = 0
 
-	while true:
+	while true {
 		steps += 1
 
-		match code[pc]:
-			Push(v):
+		match code[pc] {
+			Push(v) => {
 				stack.append(v)
 				pc += 1
-			Load(slot):
+			}
+			Load(slot) => {
 				stack.append(vars[slot])
 				pc += 1
-			Store(slot):
+			}
+			Store(slot) => {
 				vars[slot] = stack.pop() or 0
 				pc += 1
-			Add:
+			}
+			Add => {
 				b := stack.pop() or 0
 				a := stack.pop() or 0
 				stack.append(a + b)
 				pc += 1
-			Mul:
+			}
+			Mul => {
 				b := stack.pop() or 0
 				a := stack.pop() or 0
 				stack.append(a * b)
 				pc += 1
-			Mod:
+			}
+			Mod => {
 				b := stack.pop() or 0
 				a := stack.pop() or 0
 				stack.append(a % b)
 				pc += 1
-			Lt:
+			}
+			Lt => {
 				b := stack.pop() or 0
 				a := stack.pop() or 0
-				stack.append(if a < b: 1 else: 0)
+				stack.append(if a < b { 1 } else { 0 })
 				pc += 1
-			Jz(to):
+			}
+			Jz(to) => {
 				c := stack.pop() or 0
-				pc = if c == 0: to else: pc + 1
-			Jmp(to):
+				pc = if c == 0 { to } else { pc + 1 }
+			}
+			Jmp(to) => {
 				pc = to
-			Halt:
+			}
+			Halt => {
 				break
+			}
+		}
+	}
 
 	print(f"steps {steps}")
 	return vars[0]
+}
 
-fn main() Void:
+fn main() Void {
 	print(f"total {run(program(3000, 2000))}")
+}

@@ -48,82 +48,97 @@ export extern type HttpHeaders
 
 // Appends a String value under a valid HTTP name; an invalid name returns EINVAL.
 // Requests and responses validate field values and framing again when they are sent.
-fn var HttpHeaders.append(name: String, value: String) Void!:
+fn var HttpHeaders.append(name, value String) Void! {
 	return msstd_http_headers_append(self, name, value.to_bytes())
+}
 
 // Appends raw bytes, for the rare field whose value is not UTF-8 text.
-fn var HttpHeaders.append_bytes(name: String, value: Bytes) Void!:
+fn var HttpHeaders.append_bytes(name String, value Bytes) Void! {
 	return msstd_http_headers_append(self, name, value)
+}
 
 // Returns the first value as text, or null for an absent name. A value that is not
 // valid UTF-8 is skipped; read it with get_all_bytes.
-fn HttpHeaders.get(name: String) String?:
+fn HttpHeaders.get(name String) String? {
 	return self.get_all(name).first().clone()
+}
 
 // Returns every value as an owned list, empty for an absent name.
 // A received value that is not valid UTF-8 is left out; read it with get_all_bytes.
-fn HttpHeaders.get_all(name: String) List[String]:
-	var out: List[String] = []
+fn HttpHeaders.get_all(name String) List[String] {
+	var out List[String] = []
 	raw := msstd_http_headers_values(self, name)
 	found := raw
 
-	if found != null:
-		for item in found:
+	if found != null {
+		for item in found {
 			text := item.decode_utf8()
-			if text != null: out.append(text)
+			if text != null { out.append(text) }
+		}
+	}
 
 	return out
+}
 
 // Returns the raw bytes of every value as an owned list, or null for an absent
 // name.
-fn HttpHeaders.get_all_bytes(name: String) List[Bytes]?:
+fn HttpHeaders.get_all_bytes(name String) List[Bytes]? {
 	return msstd_http_headers_values(self, name)
+}
 
 // Reports whether the name has any value, whatever its encoding.
-fn HttpHeaders.contains(name: String) Bool:
+fn HttpHeaders.contains(name String) Bool {
 	return msstd_http_headers_values(self, name) != null
+}
 
 // Returns the names in insertion order, each as spelled when first inserted.
-fn HttpHeaders.names() List[String]:
+fn HttpHeaders.names() List[String] {
 	return msstd_http_headers_names(self)
+}
 
 // Removes a name and its values; an absent name changes nothing. Previously returned
 // value lists remain unchanged.
-fn var HttpHeaders.remove(name: String) Void:
+fn var HttpHeaders.remove(name String) Void {
 	msstd_http_headers_remove(self, name)
+}
 
 // Copies every name and value into independent headers.
-fn HttpHeaders.clone() move HttpHeaders:
+fn HttpHeaders.clone() move HttpHeaders {
 	return msstd_http_headers_clone(self)
+}
 
 // Creates empty mutable headers. No header values are joined or comma-combined.
-export fn headers() HttpHeaders:
+export fn headers() HttpHeaders {
 	return msstd_http_headers_new()
+}
 
 // Response status and headers shared by buffered and streaming response access.
-export type HttpResponseMetadata:
+export type HttpResponseMetadata {
 	// The received status; editing metadata leaves wire/body behavior unchanged.
-	status: Int
+	status Int
 	// The header fields, with every repeated value retained.
-	headers: HttpHeaders
+	headers HttpHeaders
 	// The protocol the response used, such as `HTTP/1.1` or `HTTP/2.0`; empty when the
 	// source does not report one.
-	protocol: String = ""
+	protocol String = ""
+}
 
 // Buffered response body with explicit common metadata access.
-export type ClientResponse:
+export type ClientResponse {
 	// Response metadata; changing it requires a mutable response and no live borrow of
 	// head.
-	head: HttpResponseMetadata
+	head HttpResponseMetadata
 	// The complete response payload within the supplied byte bound.
-	body: Bytes
+	body Bytes
+}
 
 // Returns an independent copy of the response metadata, including its headers.
-fn ClientResponse.metadata() HttpResponseMetadata:
+fn ClientResponse.metadata() HttpResponseMetadata {
 	return self.head.clone()
+}
 
 // Known HTTP methods, plus extension tokens validated by outgoing operations.
-export enum HttpMethod:
+export enum HttpMethod {
 	// Requests the selected representation.
 	Get
 	// Requests response metadata without a body.
@@ -146,48 +161,53 @@ export enum HttpMethod:
 	// Carries an extension token; requests reject empty or malformed tokens.
 	Custom(
 		// The method token; it must be a non-empty HTTP token such as PURGE.
-		value: String
+		value String
 	)
+}
 
 // Returns the method token; outgoing requests reject malformed Custom tokens.
-fn HttpMethod.to_string() String:
-	match self:
-		Get: return "GET"
-		Head: return "HEAD"
-		Post: return "POST"
-		Put: return "PUT"
-		Patch: return "PATCH"
-		Delete: return "DELETE"
-		Connect: return "CONNECT"
-		Options: return "OPTIONS"
-		Trace: return "TRACE"
-		Custom(value): return value.clone()
+fn HttpMethod.to_string() String {
+	match self {
+		Get => return "GET"
+		Head => return "HEAD"
+		Post => return "POST"
+		Put => return "PUT"
+		Patch => return "PATCH"
+		Delete => return "DELETE"
+		Connect => return "CONNECT"
+		Options => return "OPTIONS"
+		Trace => return "TRACE"
+		Custom(value) => return value.clone()
+	}
+}
 
 // The runtime handle behind a `HttpClient`.
 export extern type NativeHttpClient
 
 // Reusable HTTP client with connection pooling and explicit response limits.
 // Outbound headers retain separate values in their stored order.
-export type HttpClient:
+export type HttpClient {
 	// The runtime handle; it is released by `close` and owned by this value.
-	native: NativeHttpClient
+	native NativeHttpClient
+}
 
 // Cancels in-flight requests, closes open response bodies, and drops idle pooled
 // connections. Safe to call repeatedly; later requests return EBADF.
-fn move HttpClient.close() Void!:
+fn move HttpClient.close() Void! {
 	msstd_http_client_close(self.native)
+}
 
 // Sends the request, with `body` as text or `Bytes`, and returns the response with its
 // body as a stream. `max_response_bytes` bounds the body (null sets no limit) and
 // `timeout` bounds the whole exchange (null waits without limit).
 fn HttpClient.request(
-	method: HttpMethod,
-	url: String,
-	headers: HttpHeaders = headers(),
-	body: Writable = "",
-	max_response_bytes: Int?,
-	timeout: Duration?,
-) StreamingResponse!:
+	method HttpMethod,
+	url String,
+	headers HttpHeaders = headers(),
+	body Writable = "",
+	max_response_bytes Int?,
+	timeout Duration?,
+) StreamingResponse! {
 	raw := self.request_raw(
 		method,
 		url,
@@ -197,17 +217,18 @@ fn HttpClient.request(
 		timeout,
 	)?
 	return ok(response(raw))
+}
 
 // Sends `body` as `Bytes` and returns the native response, for callers that buffer the
 // whole response body with `RawResponse.read_all`.
 fn HttpClient.request_raw(
-	method: HttpMethod,
-	url: String,
-	headers: HttpHeaders,
-	body: Bytes,
-	max_response_bytes: Int? = null,
-	timeout: Duration? = null,
-) RawResponse!:
+	method HttpMethod,
+	url String,
+	headers HttpHeaders,
+	body Bytes,
+	max_response_bytes Int? = null,
+	timeout Duration? = null,
+) RawResponse! {
 	return msstd_http_client_request_bytes(
 		self.native,
 		method.to_string(),
@@ -217,46 +238,48 @@ fn HttpClient.request_raw(
 		max_response_bytes,
 		timeout,
 	)
+}
 
 // Reads `body` to its end, then sends it as the request body. The upload is buffered,
 // not streamed, so the whole body must fit in memory.
 fn HttpClient.request_stream(
-	method: HttpMethod,
-	url: String,
-	headers: HttpHeaders,
-	move body: ReadStream[Bytes],
-	max_response_bytes: Int? = null,
-	timeout: Duration? = null,
-) StreamingResponse!:
+	method HttpMethod,
+	url String,
+	headers HttpHeaders,
+	move body ReadStream[Bytes],
+	max_response_bytes Int? = null,
+	timeout Duration? = null,
+) StreamingResponse! {
 	data := read_all(body, null)?
 	return self.request(method, url, headers, data, max_response_bytes, timeout)
+}
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
-export type HttpClientOptions:
+export type HttpClientOptions {
 	// Most redirects followed per request. 0 returns the redirect response itself, null
 	// sets no cap, and a negative count is rejected. Redirects that downgrade from
 	// HTTPS, leave the network's restrictions, or carry user info are refused.
-	max_redirects: Int?
+	max_redirects Int?
 	// Number of idle connections kept for reuse. Must be nonnegative; null sets no
 	// explicit cap.
-	max_idle_connections: Int?
+	max_idle_connections Int?
 	// Largest accepted size of a response header block, in bytes. Must be positive;
 	// null uses the default of 1 MiB.
-	max_header_bytes: Int?
+	max_header_bytes Int?
 	// How long an idle pooled connection is kept before it is closed. null never
 	// expires it, and a negative duration is rejected.
-	idle_timeout: Duration?
+	idle_timeout Duration?
 	// When True, gzip-encoded responses are decoded transparently, with
 	// `max_response_bytes` bounding the decoded size; when False (the default), bodies
 	// arrive exactly as sent.
-	decompress: Bool = false
+	decompress Bool = false
 	// When True, the client keeps an in-memory cookie jar for its lifetime, respecting
 	// public-suffix boundaries; when False (the default), no cookies are stored or sent
 	// automatically.
-	cookies: Bool = false
+	cookies Bool = false
 	// TLS trust and client-certificate settings for `https` requests. The host name is
 	// taken from each URL, so `server_name` is ignored.
-	tls: TlsOptions = TlsOptions(
+	tls TlsOptions = TlsOptions(
 		server_name: "",
 		roots_pem: "",
 		certificate_pem: "",
@@ -264,10 +287,11 @@ export type HttpClientOptions:
 		alpn: [],
 		require_client_certificate: false,
 	)
+}
 
 // One streaming server exchange. Read or write incrementally and close when done.
 // Received headers are an owned copy; repeated values stay separate.
-export interface HttpExchange:
+export interface HttpExchange {
 	// Ends the exchange, interrupting reads or writes in progress. Later operations
 	// return EBADF.
 	var fn close() Void
@@ -286,19 +310,19 @@ export interface HttpExchange:
 	// Returns the next chunk of the request body, at most `max_bytes` and never more
 	// than 65536, or null at the end of the body. Reading past `max_body_bytes` returns
 	// an `Error` of kind `EOVERFLOW`, and a non-positive `max_bytes` returns EINVAL.
-	var fn read(max_bytes: Int?) move Bytes?!
+	var fn read(max_bytes Int?) move Bytes?!
 	// Sends a whole response: the status line, `headers`, and `body` with its length
 	// known, so the response carries `Content-Length` rather than chunked framing.
 	// Requests with HEAD and statuses without a body get the head alone. The rules of
 	// `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else
 	// may be sent afterwards.
-	var fn send(status: Int, headers: HttpHeaders, body: Bytes) Void!
+	var fn send(status Int, headers HttpHeaders, body Bytes) Void!
 	// Sends the status line and headers once, before any body is written. The status
 	// must be 200 through 599, header names cannot be `Content-Length`,
 	// `Transfer-Encoding`, or `Connection`, and header bytes are bounded by
 	// `max_header_bytes`. A second call returns EINVAL and a closed exchange returns
 	// EBADF.
-	var fn send_headers(status: Int, headers: HttpHeaders) Void!
+	var fn send_headers(status Int, headers HttpHeaders) Void!
 	// Switches the connection to a WebSocket after checking the `Origin` header.
 	// Requests without an Origin are accepted. Otherwise the Origin must exactly match
 	// an entry of `allowed_origins` or, when that list is empty, the request's own
@@ -307,59 +331,70 @@ export interface HttpExchange:
 	// must be positive when given. An exchange that already sent headers or upgraded
 	// returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
 	var fn upgrade(
-		allowed_origins: List[String] = [],
-		subprotocols: List[String] = [],
-		max_message_bytes: Int? = null,
+		allowed_origins,
+		subprotocols List[String] = [],
+		max_message_bytes Int? = null,
 	) WebSocket!
 	// Writes one chunk of the response body and flushes it.
 	// `send_headers` must come first, and writing beyond `max_response_bytes` returns an
 	// `Error` of kind `EOVERFLOW`. A write on a HEAD request succeeds and drops the
 	// bytes, so a handler written for GET needs no HEAD case. Statuses 204 and 304
 	// cannot have a body, so a write returns EINVAL.
-	var fn write(move data: String) Void!
+	var fn write(move data String) Void!
 	// Writes one chunk of raw bytes with the same rules as write.
-	var fn write_bytes(move data: Bytes) Void!
+	var fn write_bytes(move data Bytes) Void!
+}
 
 // The runtime handle of one request being served; `serve` hands it to the handler
 // wrapper `native_handler` builds, which presents it as an `HttpExchange`.
 export extern type NativeExchange
 
 // An `HttpExchange` over the runtime's exchange handle.
-type ServerExchange:
-	native: NativeExchange
+type ServerExchange {
+	native NativeExchange
+}
 
-fn var ServerExchange.close() Void:
+fn var ServerExchange.close() Void {
 	msstd_http_exchange_close(self.native)
+}
 
-fn ServerExchange.headers() HttpHeaders:
+fn ServerExchange.headers() HttpHeaders {
 	return msstd_http_exchange_headers(self.native)
+}
 
-fn ServerExchange.method() HttpMethod:
+fn ServerExchange.method() HttpMethod {
 	return method_of(msstd_http_exchange_method(self.native))
+}
 
-fn ServerExchange.path() String:
+fn ServerExchange.path() String {
 	return msstd_http_exchange_path(self.native)
+}
 
-fn ServerExchange.protocol() String:
+fn ServerExchange.protocol() String {
 	return msstd_http_exchange_protocol(self.native)
+}
 
-fn ServerExchange.query() String:
+fn ServerExchange.query() String {
 	return msstd_http_exchange_query(self.native)
+}
 
-fn var ServerExchange.read(max_bytes: Int?) move Bytes?!:
+fn var ServerExchange.read(max_bytes Int?) move Bytes?! {
 	return msstd_http_exchange_read(self.native, max_bytes)
+}
 
-fn var ServerExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
+fn var ServerExchange.send(status Int, headers HttpHeaders, body Bytes) Void! {
 	return msstd_http_exchange_send(self.native, status, headers, body)
+}
 
-fn var ServerExchange.send_headers(status: Int, headers: HttpHeaders) Void!:
+fn var ServerExchange.send_headers(status Int, headers HttpHeaders) Void! {
 	return msstd_http_exchange_send_headers(self.native, status, headers)
+}
 
 fn var ServerExchange.upgrade(
-	allowed_origins: List[String],
-	subprotocols: List[String],
-	max_message_bytes: Int?,
-) WebSocket!:
+	allowed_origins,
+	subprotocols List[String],
+	max_message_bytes Int?,
+) WebSocket! {
 	native := msstd_http_exchange_upgrade(
 		self.native,
 		allowed_origins,
@@ -367,69 +402,77 @@ fn var ServerExchange.upgrade(
 		max_message_bytes,
 	)?
 	return ok(web_socket_from(native))
+}
 
-fn var ServerExchange.write(move data: String) Void!:
+fn var ServerExchange.write(move data String) Void! {
 	return msstd_http_exchange_write(self.native, data)
+}
 
-fn var ServerExchange.write_bytes(move data: Bytes) Void!:
+fn var ServerExchange.write_bytes(move data Bytes) Void! {
 	return msstd_http_exchange_write_bytes(self.native, data)
+}
 
 // The `HttpMethod` a request line names; a token that is not one of the nine standard
 // methods is `Custom`.
-fn method_of(move text: String) HttpMethod:
-	if text == "GET": return HttpMethod.Get
-	if text == "HEAD": return HttpMethod.Head
-	if text == "POST": return HttpMethod.Post
-	if text == "PUT": return HttpMethod.Put
-	if text == "PATCH": return HttpMethod.Patch
-	if text == "DELETE": return HttpMethod.Delete
-	if text == "CONNECT": return HttpMethod.Connect
-	if text == "OPTIONS": return HttpMethod.Options
-	if text == "TRACE": return HttpMethod.Trace
+fn method_of(move text String) HttpMethod {
+	if text == "GET" { return HttpMethod.Get }
+	if text == "HEAD" { return HttpMethod.Head }
+	if text == "POST" { return HttpMethod.Post }
+	if text == "PUT" { return HttpMethod.Put }
+	if text == "PATCH" { return HttpMethod.Patch }
+	if text == "DELETE" { return HttpMethod.Delete }
+	if text == "CONNECT" { return HttpMethod.Connect }
+	if text == "OPTIONS" { return HttpMethod.Options }
+	if text == "TRACE" { return HttpMethod.Trace }
 
 	return HttpMethod.Custom(value: text)
+}
 
 // The closure the runtime calls for each request: it presents the native exchange as
 // an `HttpExchange` to the program's handler and answers 1 when the handler failed, 0
 // otherwise. The runtime reads only that flag, so the handler's result (and the `Error`
 // it may hold) is released here, by this function's own scope.
 export fn native_handler(
-	handler: fn(var HttpExchange) Void!
-) fn(move NativeExchange) Int:
-	return fn(move native: NativeExchange):
+	handler fn(var HttpExchange) Void!
+) fn(move NativeExchange) Int {
+	return fn(move native NativeExchange) {
 		result := handler(ServerExchange(native: native))
-		if result.is_error(): return 1
+		if result.is_error() { return 1 }
 
 		return 0
+	}
+}
 
 // Buffered request accepted by the simple HTTP server handler.
-export type HttpRequest:
+export type HttpRequest {
 	// The request method, using the Custom case for extension tokens.
-	method: HttpMethod
+	method HttpMethod
 	// The percent-decoded request path with dot segments resolved, so `/a/../b` arrives
 	// as `/b`.
-	path: String
+	path String
 	// The raw query string without the leading `?`; empty when there is null.
-	query: String
+	query String
 	// The request headers as mutable fields with every repeated value retained.
-	headers: HttpHeaders
+	headers HttpHeaders
 	// The complete request body, at most `max_body_bytes` long.
-	body: Bytes
+	body Bytes
 	// The protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`; empty
 	// when not reported.
-	protocol: String = ""
+	protocol String = ""
+}
 
 // Buffered response returned by the simple HTTP server handler.
-export type HttpResponse:
+export type HttpResponse {
 	// The HTTP status code, which must be 200 through 599; other values are answered
 	// with a 500 error.
-	status: Int
+	status Int
 	// The response body bytes, which must not exceed `max_response_bytes`; the server
 	// sets the content length.
-	body: Bytes
+	body Bytes
 	// The response headers to send, empty by default; `Content-Length`,
 	// `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
-	headers: HttpHeaders = headers()
+	headers HttpHeaders = headers()
+}
 
 // The listener, handler, limits, TLS settings and admission count that every connection
 // of one `serve` call shares.
@@ -449,66 +492,71 @@ export extern type NativeWorker
 export extern type NativeAccepted
 
 // A running HTTP server. Close it, or drop it, to stop accepting and drain.
-export type HttpServer:
+export type HttpServer {
 	// The accept loop, which owns the connection promises. It is declared first so it
 	// ends before what it uses.
-	accepting: Promise[Void]
+	accepting Promise[Void]
 	// The bound local address as `host:port`.
-	bound: String
+	bound String
 	// Whether `close` has been called, so `wait` reports a normal stop.
-	stopped: Bool
+	stopped Bool
+}
 
 // Stops accepting and asks every connection to finish: idle ones close at once,
 // requests in flight finish within `grace`, then the rest are cancelled. It returns
 // once the server has stopped, and consumes the server.
-fn move HttpServer.close() Void!:
+fn move HttpServer.close() Void! {
 	self.stopped = true
 	self.accepting.cancel()
+}
 
 // Returns the bound local address as `host:port` text, which reveals the port
 // chosen when listening on port 0.
-fn HttpServer.address() String:
+fn HttpServer.address() String {
 	return self.bound.clone()
+}
 
 // Waits until the server has stopped. Returns Ok after `close`, or the error that
 // ended accepting (`EIO` with the host's text). `timeout` bounds the wait, and the
 // server is cancelled when it passes.
-fn HttpServer.wait(timeout: Duration? = null) Void!:
+fn HttpServer.wait(timeout Duration? = null) Void! {
 	set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
 	ended := self.accepting.wait()
-	if self.stopped: return ok()
+	if self.stopped { return ok() }
 
 	return ended
+}
 
 // Request and response limits, deadlines, graceful shutdown, and TLS server settings.
-export type HttpServerOptions:
+export type HttpServerOptions {
 	// Most requests handled at once; further requests are answered with 503. Must be
 	// positive; null sets no cap.
-	max_requests: Int?
+	max_requests Int?
 	// Largest accepted request body, in bytes. Must be nonnegative; null sets no cap.
-	max_body_bytes: Int?
+	max_body_bytes Int?
 	// Most response body bytes a handler may write, in bytes. Must be nonnegative; null
 	// sets no cap.
-	max_response_bytes: Int?
+	max_response_bytes Int?
 	// Largest accepted request header block and largest response header block, in
 	// bytes. Must be positive; null uses the default of 1 MiB.
-	max_header_bytes: Int?
+	max_header_bytes Int?
 	// Per-request time budget covering reading the request, running the handler, and
 	// writing the response; an idle plain-HTTP connection waiting for its next request
 	// is also closed after it. A handler still running at the deadline is cancelled
 	// (its waits end and resource cleanup runs) and the request is answered 504; a
 	// WebSocket it opened is not limited. Must be positive; null sets no deadline.
-	timeout: Duration?
+	timeout Duration?
 	// How long `close` waits for in-flight requests to finish before cancelling them.
 	// null waits without limit and 0 cancels immediately.
-	grace: Duration?
+	grace Duration?
 	// Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; null,
 	// the default, serves plain HTTP/1.1.
-	tls: TlsOptions?
+	tls TlsOptions?
 	// How many threads serve connections: the runtime starts at most this many
 	// scheduler threads. Must be at least 1; null uses every core.
-	cores: Int?
+	cores Int?
+}
 
 // The runtime handle behind a `RawResponse`.
 export extern type NativeResponseBody
@@ -516,151 +564,173 @@ export extern type NativeResponseBody
 // The native response a client operation returns: its body is read through
 // `StreamingResponse.body`. Metadata remains available after close; each metadata()
 // call returns an independent copy.
-export opaque type RawResponse:
+export opaque type RawResponse {
 	// The runtime handle; it is released by `close` and owned by this value.
-	native: NativeResponseBody
+	native NativeResponseBody
+}
 
 // Cancels the rest of the response and releases its connection. Safe to call
 // repeatedly; reads afterwards return EBADF. A fully read body lets the connection
 // be reused.
-fn move RawResponse.close() Void!:
+fn move RawResponse.close() Void! {
 	msstd_http_body_close(self.native)
+}
 
 // Returns an independent copy of the response head (status and headers), including
 // after close.
-fn RawResponse.metadata() HttpResponseMetadata:
+fn RawResponse.metadata() HttpResponseMetadata {
 	return msstd_http_body_metadata(self.native)
+}
 
 // Reads the rest of the body into one value, bounded by the request's
 // `max_response_bytes`. A plain HTTP/1.1 body of known length arrives straight into
 // the result without intermediate copies.
-fn RawResponse.read_all() Bytes!:
+fn RawResponse.read_all() Bytes! {
 	return msstd_http_body_read_all(self.native)
+}
 
 // A client response: the head and the body as a stream. Closing or dropping the body
 // cancels the rest of the response and releases its connection; a fully read body lets
 // the connection be reused.
-export type StreamingResponse:
+export type StreamingResponse {
 	// Status and headers, available whether or not the body is read.
-	metadata: HttpResponseMetadata
+	metadata HttpResponseMetadata
 	// The body, at most 64 KiB per item. Reading past the request's
 	// `max_response_bytes` returns an `Error` of kind `EOVERFLOW`.
-	body: ReadStream[Bytes]
+	body ReadStream[Bytes]
+}
 
 // Closes the body, which cancels what is unread and releases the connection.
-fn move StreamingResponse.close() Void!:
+fn move StreamingResponse.close() Void! {
 	return self.body.close()
+}
 
-type ResponseSource:
-	raw: RawResponse
+type ResponseSource {
+	raw RawResponse
+}
 
-fn var ResponseSource.next() move Bytes?!:
+fn var ResponseSource.next() move Bytes?! {
 	return msstd_http_body_read(self.raw.native, null)
+}
 
-fn move ResponseSource.close() Void!:
+fn move ResponseSource.close() Void! {
 	return self.raw.close()
+}
 
-fn response(move raw: RawResponse) StreamingResponse:
+fn response(move raw RawResponse) StreamingResponse {
 	metadata := raw.metadata()
 	return StreamingResponse(
 		metadata: metadata,
 		body: ReadStream[Bytes](ResponseSource(raw)),
 	)
+}
 
 // Reads the rest of the request body into one value. A body over `max_body_bytes` of
 // the server's options returns EOVERFLOW; `limit` also bounds it when given.
-export fn read_body(var exchange: HttpExchange, limit: Int? = null) Bytes!:
+export fn read_body(var exchange HttpExchange, limit Int? = null) Bytes! {
 	first := exchange.read()?
 	head := first
-	if head != null: return read_rest(exchange, head, limit)
+	if head != null { return read_rest(exchange, head, limit) }
 
 	return ok("".to_bytes())
+}
 
 // Joins `head` with the chunks after it. A body that fits one chunk is returned without
 // copying.
-fn read_rest(var exchange: HttpExchange, move head: Bytes, limit: Int?) Bytes!:
+fn read_rest(var exchange HttpExchange, move head Bytes, limit Int?) Bytes! {
 	var total = head.length()
-	if over_limit(total, limit): return error(
-		Error("HTTP: limit exceeded", kind: "EOVERFLOW")
-	)
+	if over_limit(total, limit) {
+		return error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+	}
 
 	second := exchange.read()?
 	next := second
 
-	if next != null:
+	if next != null {
 		total += next.length()
-		if over_limit(total, limit): return error(
-			Error("HTTP: limit exceeded", kind: "EOVERFLOW")
-		)
+		if over_limit(total, limit) {
+			return error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+		}
 
 		return read_more(exchange, [head, next], total, limit)
+	}
 
 	return ok(head)
+}
 
 fn read_more(
-	var exchange: HttpExchange,
-	move chunks: List[Bytes],
-	total: Int,
-	limit: Int?,
-) Bytes!:
+	var exchange HttpExchange,
+	move chunks List[Bytes],
+	total Int,
+	limit Int?,
+) Bytes! {
 	var parts = chunks
 	var size = total
 
-	while true:
+	while true {
 		chunk := exchange.read()?
 		bytes := chunk
 
-		if bytes != null:
+		if bytes != null {
 			size += bytes.length()
-			if over_limit(size, limit): return error(
-				Error("HTTP: limit exceeded", kind: "EOVERFLOW")
-			)
+			if over_limit(size, limit) {
+				return error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+			}
 
 			parts.append(bytes)
-		else:
+		} else {
 			return ok(join(parts))
+		}
+	}
+}
 
-fn over_limit(total: Int, limit: Int?) Bool:
+fn over_limit(total Int, limit Int?) Bool {
 	max := limit
-	if max != null: return total > max
+	if max != null { return total > max }
 
 	return false
+}
 
 // Sends `response` whole: its status and headers, then its body.
-export fn reply(var exchange: HttpExchange, response: HttpResponse) Void!:
+export fn reply(var exchange HttpExchange, response HttpResponse) Void! {
 	return exchange.send(response.status, response.headers, response.body)
+}
 
 // Builds a response with a UTF-8 text body and no headers.
-export fn text(status: Int, body: String) HttpResponse:
+export fn text(status Int, body String) HttpResponse {
 	return HttpResponse(status: status, body: body.to_bytes())
+}
 
 // Builds a response whose body is `value` encoded as JSON, with
 // `Content-Type: application/json`. A value `stringify` cannot encode returns EIO with
 // its diagnostic.
-export fn json[T: Data](status: Int, value: T) HttpResponse!:
+export fn json[T Data](status Int, value T) HttpResponse! {
 	body := stringify(value)
-	if body.is_error(): return error(Error(body.err().message.clone(), kind: "EIO"))
+	if body.is_error() { return error(Error(body.err().message.clone(), kind: "EIO")) }
 
 	var sent = headers()
 	sent.append("Content-Type", "application/json")?
 	return ok(HttpResponse(status: status, headers: sent, body: body.get().to_bytes()))
+}
 
 // Builds a redirect to `location` with an empty body. The status should be 301, 302,
 // 303, 307, or 308; the default 303 sends a followed POST on as a GET.
-export fn redirect(location: String, status: Int = 303) HttpResponse!:
+export fn redirect(location String, status Int = 303) HttpResponse! {
 	var sent = headers()
 	sent.append("Location", location)?
 	return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
+}
 
 // Adapts a handler that maps a whole request to a whole response into an exchange
 // handler for `serve`. The request body is read in full first.
-export fn buffered(handler: fn(HttpRequest) HttpResponse) fn(var HttpExchange) Void!:
-	return fn(var exchange: HttpExchange): serve_buffered(handler, exchange)
+export fn buffered(handler fn(HttpRequest) HttpResponse) fn(var HttpExchange) Void! {
+	return fn(var exchange HttpExchange) => serve_buffered(handler, exchange)
+}
 
 fn serve_buffered(
-	handler: fn(HttpRequest) HttpResponse,
-	var exchange: HttpExchange
-) Void!:
+	handler fn(HttpRequest) HttpResponse,
+	var exchange HttpExchange
+) Void! {
 	body := read_body(exchange)?
 	request := HttpRequest(
 		method: exchange.method(),
@@ -671,13 +741,15 @@ fn serve_buffered(
 		protocol: exchange.protocol(),
 	)
 	return reply(exchange, handler(request))
+}
 
 // Switches the exchange's connection to a WebSocket; the rules of
 // `HttpExchange.upgrade` apply.
 export fn upgrade(
-	var exchange: HttpExchange,
-	allowed_origins: List[String] = [],
-	subprotocols: List[String] = [],
-	max_message_bytes: Int? = null,
-) WebSocket!:
+	var exchange HttpExchange,
+	allowed_origins,
+	subprotocols List[String] = [],
+	max_message_bytes Int? = null,
+) WebSocket! {
 	return exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
+}

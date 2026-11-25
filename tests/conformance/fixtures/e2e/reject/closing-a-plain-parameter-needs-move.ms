@@ -5,12 +5,15 @@
 // `var` method needs a `var` argument.
 import Closeable from "@std/core.ms"
 
-type Res:
-	id: Int
-	label: String
+type Res {
+	id Int
+	label String
+}
 
-fn move Res.close() Void!:
+fn move Res.close() Void! {
 	print(f"close {self.id}")
+}
 
-fn consume(res: Res) Void!:
+fn consume(res Res) Void! {
 	res.close()?
+}

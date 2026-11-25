@@ -2,30 +2,34 @@
 // conform: phase=test
 import expect_equal, expect_false from "@std/test/test.ms"
 
-type Point:
-	x: Int
-	y: Int
+type Point {
+	x Int
+	y Int
+}
 
-fn Point.equals(other: Point) Bool:
+fn Point.equals(other Point) Bool {
 	return self.x == other.x
+}
 
-fn contains_generic[T: Equal](values: List[T], value: T) Bool:
+fn contains_generic[T Equal](values List[T], value T) Bool {
 	return values.contains(value)
+}
 
-test "list members match generic dispatch":
-	var values: List[Int] = []
+test "list members match generic dispatch" {
+	var values List[Int] = []
 	values.append(1)
 	values.append(2)
 	expect_false(values.is_empty())?
 	expect_false(not values.contains(2))?
 	expect_false(values.contains(3))?
 
-	points: List[Point] := [Point(1, 2)]
+	points List[Point] := [Point(1, 2)]
 	expect_false(not points.contains(Point(1, 2)))?
 	expect_false(not contains_generic(points, Point(1, 2)))?
+}
 
-test "map and set members":
-	var m: Map[String, Int] = {}
+test "map and set members" {
+	var m Map[String, Int] = {}
 	m.add("a", 1)
 	m.add("a", 2)
 	m.add("b", 3)
@@ -35,7 +39,7 @@ test "map and set members":
 	expect_false(updated.get("z") != null)?
 	expect_false(not updated.contains("b"))?
 
-	var s: Set[Int] = Set()
+	var s Set[Int] = Set()
 	s.add(1)
 	s.add(1)
 	s.add(2)
@@ -43,9 +47,11 @@ test "map and set members":
 	grown := s
 	expect_equal(grown.length(), 2)?
 	expect_false(not grown.contains(2))?
+}
 
-test "string at":
+test "string at" {
 	text := "héllo"
 	expect_equal(text.scalar_at(1, -1), 233)?
 	expect_equal(text.scalar_at(10, -1), -1)?
 	expect_equal(text.scalar_at(2, -1), -1)?
+}

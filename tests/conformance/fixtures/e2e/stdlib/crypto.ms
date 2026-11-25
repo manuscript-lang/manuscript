@@ -33,7 +33,7 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-test "crypto known SHA256 HMAC and PBKDF2 vectors":
+test "crypto known SHA256 HMAC and PBKDF2 vectors" {
 	expect_false(
 		(
 			hex_encode(
@@ -68,8 +68,9 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
 			) != "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b"
 		)
 	)?
+}
 
-test "authenticated encryption detects wrong associated data":
+test "authenticated encryption detects wrong associated data" {
 	key := "01234567890123456789012345678901".to_bytes()
 	nonce := "012345678901".to_bytes()
 	encrypted := seal(key, nonce, "secret".to_bytes(), "header".to_bytes())?
@@ -78,13 +79,14 @@ test "authenticated encryption detects wrong associated data":
 		"secret".to_bytes(),
 	)?
 
-	failed: Bytes! := error(Error("cryptography: authentication failed", kind: "EAUTH"))
+	failed Bytes! := error(Error("cryptography: authentication failed", kind: "EAUTH"))
 	expect_equal(open(key, nonce, encrypted, "changed".to_bytes()), failed)?
 
-	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
+	invalid Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	expect_equal(seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()), invalid)?
+}
 
-test "Ed25519 signatures verify only the signed data":
+test "Ed25519 signatures verify only the signed data" {
 	seed := "01234567890123456789012345678901".to_bytes()
 	key := public_key(seed)?
 	signature := sign(seed, "message".to_bytes())?
@@ -92,8 +94,9 @@ test "Ed25519 signatures verify only the signed data":
 	expect_false(verify(key, "changed".to_bytes(), signature))?
 	expect_false(not constant_time_equal(seed, seed.clone()))?
 	expect_false(constant_time_equal(seed, "short".to_bytes()))?
+}
 
-test "additional hash algorithms match published vectors":
+test "additional hash algorithms match published vectors" {
 	abc := "abc".to_bytes()
 	expect_equal(
 		hex_encode(HashAlgorithm.Md5.digest(abc)),
@@ -113,8 +116,9 @@ test "additional hash algorithms match published vectors":
 	)?
 	expect_equal(HashAlgorithm.Sha3_384.digest(abc).length(), 48)?
 	expect_equal(HashAlgorithm.Sha3_512.digest(abc).length(), 64)?
+}
 
-test "key derivation supports PBKDF2 and HKDF across hashes":
+test "key derivation supports PBKDF2 and HKDF across hashes" {
 	pbkdf2 := HashAlgorithm.Sha1.derive_key(
 		"password".to_bytes(),
 		"salt".to_bytes(),
@@ -132,19 +136,22 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
 		"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
 	)?
 
-	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
+	invalid Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	expect_equal(HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid)?
 	expect_equal(HashAlgorithm.Sha256.derive_key(secret, salt, 0, 16), invalid)?
+}
 
-test "AES-GCM accepts 128 and 192 bit keys":
+test "AES-GCM accepts 128 and 192 bit keys" {
 	nonce := "012345678901".to_bytes()
 
-	for size in [16, 24]:
+	for size in [16, 24] {
 		key := "0123456789012345678901234567890123".to_bytes().slice(0, size)?
 		boxed := seal(key, nonce, "secret".to_bytes(), "".to_bytes())?
 		expect_equal(open(key, nonce, boxed, "".to_bytes())?, "secret".to_bytes())?
+	}
+}
 
-test "incremental hashers match one-shot digests":
+test "incremental hashers match one-shot digests" {
 	hasher := HashAlgorithm.Sha256.hasher()
 	hasher.update("a".to_bytes())
 	hasher.update("bc".to_bytes())
@@ -158,8 +165,9 @@ test "incremental hashers match one-shot digests":
 		hex_encode(mac.finish()),
 		"f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
 	)?
+}
 
-test "AES CTR and CBC round trip":
+test "AES CTR and CBC round trip" {
 	key := "0123456789012345".to_bytes()
 	iv := "abcdefghijklmnop".to_bytes()
 	message := "attack at dawn, attack at dawn".to_bytes()
@@ -170,24 +178,27 @@ test "AES CTR and CBC round trip":
 	expect_equal(boxed.length(), 32)?
 	expect_equal(aes_cbc_decrypt(key, iv, boxed)?, message)?
 
-	bad: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
+	bad Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	expect_equal(aes_cbc_decrypt(key, "short".to_bytes(), boxed), bad)?
+}
 
-test "ECDSA signs and ECDH agrees":
+test "ECDSA signs and ECDH agrees" {
 	private := ecdsa_generate(Curve.P256)?
 	public := public_key_der(private)?
 	signature := ecdsa_sign(private, HashAlgorithm.Sha256, "m".to_bytes())?
 	expect_true(ecdsa_verify(public, HashAlgorithm.Sha256, "m".to_bytes(), signature))?
 	expect_false(ecdsa_verify(public, HashAlgorithm.Sha256, "x".to_bytes(), signature))?
 
-	for curve in [Curve.P256, Curve.P384, Curve.X25519]:
+	for curve in [Curve.P256, Curve.P384, Curve.X25519] {
 		a := ecdsa_generate(curve)?
 		b := ecdsa_generate(curve)?
 		left := ecdh_shared_secret(a, public_key_der(b)?)?
 		right := ecdh_shared_secret(b, public_key_der(a)?)?
 		expect_equal(left, right)?
+	}
+}
 
-test "RSA signs and encrypts":
+test "RSA signs and encrypts" {
 	private := rsa_generate(2048)?
 	public := public_key_der(private)?
 	data := "payload".to_bytes()
@@ -202,3 +213,4 @@ test "RSA signs and encrypts":
 
 	sealed := rsa_encrypt(public, HashAlgorithm.Sha256, data)?
 	expect_equal(rsa_decrypt(private, HashAlgorithm.Sha256, sealed)?, data)?
+}

@@ -39,14 +39,18 @@ User code cannot run two things at once. The runtime already has stackful corout
 ```manuscript
 import TaskGroup from "@std/concurrency/tasks.ms"
 
-fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
-    with group := TaskGroup[Int](timeout: some(duration(5000000000))):
+fn fetch_all(urls List[String]) Result[List[Int], TaskError] {
+    with group := TaskGroup[Int](timeout: some(duration(5000000000))) {
         tasks := urls.map(fn url: group.spawn(fn: fetch_size(url.clone())))
         var sizes = List[Int]()
-        for task in tasks:
-            if size := task.result():
+        for task in tasks {
+            if size := task.result() {
                 sizes.append(size)
+            }
+        }
         return ok(sizes)
+    }
+}
 ```
 
 - `TaskGroup[T](timeout: Optional[Duration] = none)`: a `Closeable` scope. `timeout` limits every task in the group, counted from the group's creation.

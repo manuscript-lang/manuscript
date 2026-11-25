@@ -2,16 +2,23 @@
 // conform: phase=check
 import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
-type UnusedFixture:
-    value: Int
-impl TestHooks for UnusedFixture:
-    fn before_all() Void:
+type UnusedFixture {
+    value Int
+}
+impl TestHooks for UnusedFixture {
+    fn before_all() Void {
         written := stdout().write("UNUSED before_all").get()
-    fn before_each() Void:
+    }
+    fn before_each() Void {
         written := stdout().write("UNUSED before_each").get()
-    fn after_each() Void:
+    }
+    fn after_each() Void {
         written := stdout().write("UNUSED after_each").get()
-    fn after_all() Void:
+    }
+    fn after_all() Void {
         written := stdout().write("UNUSED after_all").get()
-test "plain test":
+    }
+}
+test "plain test" {
     expect_equal(1 + 1, 2)?
+}

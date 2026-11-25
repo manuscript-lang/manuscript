@@ -1,7 +1,9 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-type PrivateId:
-	value: String
+type PrivateId {
+	value String
+}
 
-export type PublicRecord:
-	ids: List[PrivateId]
+export type PublicRecord {
+	ids List[PrivateId]
+}

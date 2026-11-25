@@ -18,46 +18,55 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
-	if request.path == "/hold":
+fn handle(request HttpRequest) HttpResponse {
+	if request.path == "/hold" {
 		started := monotonic()
-		while monotonic().difference(started).to_milliseconds() < 400:
+		while monotonic().difference(started).to_milliseconds() < 400 {
 			continue
+		}
+	}
 
 	return HttpResponse(200, f"ok {request.path} done\n".to_bytes())
+}
 
-fn ask(var conn: Connection, path: String) Void!:
+fn ask(var conn Connection, path String) Void! {
 	return send(conn, f"GET {path} HTTP/1.1\r\nHost: t\r\n\r\n")
+}
 
-fn answer(var conn: Connection) Bool:
+fn answer(var conn Connection) Bool {
 	var text = ""
 
-	while not text.ends_with("done\n"):
-		if chunk := recv(conn, nanoseconds(10000000000)):
+	while not text.ends_with("done\n") {
+		if chunk := recv(conn, nanoseconds(10000000000)) {
 			data := chunk
 
-			if data != null:
+			if data != null {
 				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
+			}
+		}
 
 		return false
+	}
 
 	return text.starts_with("HTTP/1.1 200 OK")
+}
 
-fn ask_two(var x: Connection, var y: Connection) Void!:
+fn ask_two(var x Connection, var y Connection) Void! {
 	ask(x, "/fast")?
 	return ask(y, "/fast")
+}
 
 // Holds the thread of `held` and answers whether the others were served meanwhile.
 // `pair` is the connection the server dealt to the same thread as `held`.
 fn round(
-	var held: Connection,
-	var pair: Connection,
-	var w: Connection,
-	var x: Connection,
-	var y: Connection,
-	var z: Connection,
-) Bool!:
+	var held Connection,
+	var pair Connection,
+	var w Connection,
+	var x Connection,
+	var y Connection,
+	var z Connection,
+) Bool! {
 	started := monotonic()
 	ask(held, "/hold")?
 	ask(pair, "/fast")?
@@ -69,14 +78,16 @@ fn round(
 	held_ok := answer(held)
 	held_ms := monotonic().difference(started).to_milliseconds()
 	return ok(served and held_ok and others_ms * 2 < held_ms)
+}
 
-fn warm(var conn: Connection) Bool!:
+fn warm(var conn Connection) Bool! {
 	ask(conn, "/warm")?
 	return ok(answer(conn))
+}
 
 // Three workers are dealt six connections in turn, so each thread has two: a and d, b
 // and e, c and f.
-fn run() Bool!:
+fn run() Bool! {
 	var server = serve(
 		address: "127.0.0.1:0",
 		handler: buffered(handle),
@@ -107,10 +118,12 @@ fn run() Bool!:
 	void f.close()
 	void server.close()
 	return ok(warmed and (first or second or third))
+}
 
-export fn main() Int:
+export fn main() Int {
 	served := run().get_or(false)
 	_out := stdout().write(f"others served during a long handler: {served}\n")
-	if served: return 0
+	if served { return 0 }
 
 	return 1
+}

@@ -2,12 +2,15 @@
 // conform: phase=check
 import stdout from "@std/io/io.ms"
 
-fn say(text: String) Result[Void, Error]:
-    stdout().write(f"{text}\n")?
-    return stdout().flush()
+fn say(text String) Result[Void, Error] {
+	stdout().write(f"{text}\n")?
+	return stdout().flush()
+}
 
-fn add(a: Int, b: Int) Int:
-    return a + b
+fn add(a Int, b Int) Int {
+	return a + b
+}
 
-export fn run() Int:
-    return add(1, 2)
+export fn run() Int {
+	return add(1, 2)
+}

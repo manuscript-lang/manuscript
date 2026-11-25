@@ -4,211 +4,254 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-interface Counter:
-	var fn bump(by: Int) Int
+interface Counter {
+	var fn bump(by Int) Int
+}
 
-type Acc:
-	total: Int
+type Acc {
+	total Int
+}
 
-fn var Acc.bump(by: Int) Int:
+fn var Acc.bump(by Int) Int {
 	self.total += by
 	return self.total
+}
 
-enum Shape:
-	Circle(r: Int)
-	Square(s: Int)
-	Tri(b: Int)
+enum Shape {
+	Circle(r Int)
+	Square(s Int)
+	Tri(b Int)
+}
 
-fn got_line(var input: ReadStream[String]) Bool:
-	if line := input.next(): return line != null
+fn got_line(var input ReadStream[String]) Bool {
+	if line := input.next() { return line != null }
 	return false
+}
 
-fn say(text: String) Void:
-	_ignored := stdout().write(text)
+fn say(text String) Void {
+	_ignored := stdout().write(text.clone())
+}
 
-fn since(started: Instant) Int:
+fn since(started Instant) Int {
 	return monotonic().difference(started).to_nanoseconds()
+}
 
-fn report(name: String, ops: Int, started: Instant) Void:
+fn report(name String, ops Int, started Instant) Void {
 	say(f"{name} {ops} {since(started)}\n")
+}
 
-fn ident[T](x: T) T:
+fn ident[T](x T) T {
 	return x
+}
 
-fn checked(n: Int) Result[Int, Error]:
-	if n < 0: return error(Error("negative"))
+fn checked(n Int) Result[Int, Error] {
+	if n < 0 { return error(Error("negative")) }
 	return ok(n + 1)
+}
 
-fn chain(n: Int) Result[Int, Error]:
+fn chain(n Int) Result[Int, Error] {
 	v := checked(n)?
 	return ok(v)
+}
 
-fn area(s: Shape) Int:
+fn area(s Shape) Int {
 	var out = 0
 
-	match s:
-		Circle(r):
+	match s {
+		Circle(r) => {
 			out = r * 3
-		Square(side):
+		}
+		Square(side) => {
 			out = side * side
-		Tri(b):
+		}
+		Tri(b) => {
 			out = b
+		}
+	}
 
 	return out
+}
 
-fn bench_string() Int:
+fn bench_string() Int {
 	t := monotonic()
 	var sb = ""
 	var i = 0
 
-	while i < 50000:
+	while i < 50000 {
 		sb += "x"
 		i += 1
+	}
 
 	built := sb
 	report("string_append_50k", 50000, t)
 	return built.length()
+}
 
-fn bench_read_line() Void:
+fn bench_read_line() Void {
 	t := monotonic()
 	var input = lines(stdin())
 	var count = 0
 	var more = true
 
-	while more:
-		if got_line(input):
+	while more {
+		if got_line(input) {
 			count += 1
-		else:
+		} else {
 			more = false
+		}
+	}
 
 	report("read_line", count, t)
+}
 
-fn bench_map() Int:
+fn bench_map() Int {
 	t := monotonic()
 	var m = Map[Int, Int]()
 	var i = 0
 
-	while i < 8000:
+	while i < 8000 {
 		m.add(i, i * 2)
 		i += 1
+	}
 
 	var sum = 0
 	i = 0
 
-	while i < 8000:
+	while i < 8000 {
 		sum += m[i]
 		i += 1
+	}
 
 	report("map_put_get_8k", 16000, t)
 	return sum
+}
 
-fn bench_int_eq() Int:
+fn bench_int_eq() Int {
 	t := monotonic()
 	var hits = 0
 	var i = 0
 
-	while i < 10000000:
-		if i % 3 == 0:
+	while i < 10000000 {
+		if i % 3 == 0 {
 			hits += 1
+		}
 		i += 1
+	}
 
 	report("int_eq", 10000000, t)
 	return hits
+}
 
-fn bench_generic() Int:
+fn bench_generic() Int {
 	t := monotonic()
 	var i = 0
 	var g = 0
 
-	while i < 100000000:
+	while i < 100000000 {
 		g += ident[Int](i)
 		i += 1
+	}
 
 	report("generic_call", 100000000, t)
 	return g
+}
 
-fn bench_method() Int:
+fn bench_method() Int {
 	t := monotonic()
 	var acc = Acc(0)
 	var i = 0
 
-	while i < 100000000:
+	while i < 100000000 {
 		acc.bump(1)
 		i += 1
+	}
 
 	report("method_call", 100000000, t)
 	return acc.total
+}
 
-fn bench_try() Int:
+fn bench_try() Int {
 	t := monotonic()
 	var i = 0
 	var tr = 0
 
-	while i < 100000000:
-		if v := chain(i):
+	while i < 100000000 {
+		if v := chain(i) {
 			tr += v
-		else:
+		} else {
 			tr -= 1
+		}
 
 		i += 1
+	}
 
 	report("try", 100000000, t)
 	return tr
+}
 
-fn bench_match() Int:
+fn bench_match() Int {
 	t := monotonic()
 	shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
 	var i = 0
 	var ma = 0
 
-	while i < 100000000:
-		ma += area(shapes.get(i % 3))
+	while i < 100000000 {
+		ma += area(shapes[i % 3])
 		i += 1
+	}
 
 	report("match", 100000000, t)
 	return ma
+}
 
-fn bench_length() Int:
-	var xs: List[Int] = []
+fn bench_length() Int {
+	var xs List[Int] = []
 	var i = 0
 
-	while i < 100:
+	while i < 100 {
 		xs.append(i)
 		i += 1
+	}
 
 	t := monotonic()
 	i = 0
 
 	var ln = 0
 
-	while i < 100000000:
+	while i < 100000000 {
 		ln += xs.length()
 		i += 1
+	}
 
 	report("builtin_length", 100000000, t)
 	return ln
+}
 
-fn bench_for_list() Int:
-	var big: List[Int] = []
+fn bench_for_list() Int {
+	var big List[Int] = []
 	var i = 0
 
-	while i < 1000000:
+	while i < 1000000 {
 		big.append(i)
 		i += 1
+	}
 
 	t := monotonic()
 	var fs = 0
 	var rep = 0
 
-	while rep < 100:
-		for x in big:
+	while rep < 100 {
+		for x in big {
 			fs += x
+		}
 		rep += 1
+	}
 
 	report("for_list", 100000000, t)
 	return fs
+}
 
-fn main() Void:
+fn main() Void {
 	built := bench_string()
 	bench_read_line()
 
@@ -221,3 +264,4 @@ fn main() Void:
 	ln := bench_length()
 	fs := bench_for_list()
 	say(f"# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
+}

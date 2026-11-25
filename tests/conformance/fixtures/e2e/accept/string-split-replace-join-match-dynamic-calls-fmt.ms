@@ -3,19 +3,20 @@
 // conform: origin=tests/e2e/testdata/accept/string-split-replace-join-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 
-test "split keeps every piece":
-    expect_true(("a,b,c".split(separator: ",").length() == 3))?
-    expect_true(("".split(separator: ",").length() == 1))?
-    expect_true(("abc".split(separator: "").length() == 3))?
-    expect_true(("a-b-c".replace(old: "-", new: "+") == "a+b+c"))?
-    expect_true(("a-b-c".replace_first(old: "-", new: "+") == "a+b-c"))?
-    expect_true(("ab".replace(old: "", new: "_") == "_a_b_"))?
-    expect_true(("".replace(old: "x", new: "y") == ""))?
-    expect_true((["a", "b", "c"].join(separator: "-") == "a-b-c"))?
+test "split keeps every piece" {
+	expect_true(("a,b,c".split(separator: ",").length() == 3))?
+	expect_true(("".split(separator: ",").length() == 1))?
+	expect_true(("abc".split(separator: "").length() == 3))?
+	expect_true(("a-b-c".replace(old: "-", new: "+") == "a+b+c"))?
+	expect_true(("a-b-c".replace_first(old: "-", new: "+") == "a+b-c"))?
+	expect_true(("ab".replace(old: "", new: "_") == "_a_b_"))?
+	expect_true(("".replace(old: "x", new: "y") == ""))?
+	expect_true((["a", "b", "c"].join(separator: "-") == "a-b-c"))?
 
-    none_left: List[String] := []
-    expect_true((none_left.join(separator: "-") == ""))?
+	none_left List[String] := []
+	expect_true((none_left.join(separator: "-") == ""))?
 
-    var parts = ["x"]
-    parts.append(value: "y")
-    expect_true((parts.join(separator: "") == "xy"))?
+	var parts = ["x"]
+	parts.append(value: "y")
+	expect_true((parts.join(separator: "") == "xy"))?
+}

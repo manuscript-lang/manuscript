@@ -13,21 +13,21 @@
         "position": {
           "file": "diag-spelling-integer.ms",
           "line": 5,
-          "column": 8,
-          "offset": 138
+          "column": 7,
+          "offset": 135
         },
         "fix": {
           "position": {
             "file": "diag-spelling-integer.ms",
             "line": 5,
-            "column": 8,
-            "offset": 138
+            "column": 7,
+            "offset": 135
           },
           "end": {
             "file": "diag-spelling-integer.ms",
             "line": 5,
-            "column": 15,
-            "offset": 145
+            "column": 14,
+            "offset": 142
           },
           "replacement": "Int"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-spelling-integer.ms:5:8: resolution: unknown type Integer; did you mean 'Int'?\n   |\n 5 |     a: Integer := 1\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-spelling-integer.ms:5:7: resolution: unknown type Integer; did you mean 'Int'?\n   |\n 5 |     a Integer := 1\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

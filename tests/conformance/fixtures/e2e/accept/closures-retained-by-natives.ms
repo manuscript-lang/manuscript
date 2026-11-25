@@ -2,42 +2,49 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type Box:
-	f: fn() String
+type Box {
+	f fn() String
+}
 
-fn churn(n: Int) Int:
+fn churn(n Int) Int {
 	var t = 0
 
-	for i in 0..n:
+	for i in 0..n {
 		z := f"junk{i}" + "padding padding padding"
 		t += z.length()
+	}
 
 	return t
+}
 
-fn dflt(move s: String, move o: (fn() String)?) fn() String:
-	return o or (fn: s + "d")
+fn dflt(move s String, move o (fn() String)?) fn() String {
+	return o or (() => s + "d")
+}
 
-fn mk(move s: String, move o: (fn() String)?) Box:
-	h := o or (fn: s + "x")
+fn mk(move s String, move o (fn() String)?) Box {
+	h := o or (() => s + "x")
 	return Box(f: h)
+}
 
-fn mk2(m: Map[Int, fn() String], move s: String) List[fn() String]:
+fn mk2(m Map[Int, fn() String], move s String) List[fn() String] {
 	var out = List[fn() String]()
-	if m.get(7) == null: out.append(fn: s + "y")
+	if m.get(7) == null { out.append(() => s + "y") }
 	return out
+}
 
-fn inc(x: Int) Int: x + 1
+fn inc(x Int) Int => x + 1
 
-fn build(move r: fn(Int) Int) List[fn(Int) Int]:
+fn build(move r fn(Int) Int) List[fn(Int) Int] {
 	var out = List[fn(Int) Int]()
 
 	// A stored function value has one owner: each closure a callback appends is its
 	// own, and `r` moves into the list at its last use.
-	[1, 2].for_each(fn i: out.append(fn x: x + i))
+	[1, 2].for_each(i => out.append(x => x + i))
 	out.append(r)
 	return out
+}
 
-test "closures kept by natives own their captures":
+test "closures kept by natives own their captures" {
 	expect_equal(dflt("a", null)(), "ad")?
 
 	b := mk("hello" + "world", null)
@@ -51,16 +58,19 @@ test "closures kept by natives own their captures":
 	fs := build(inc)
 	expect_equal(fs.length(), 3)?
 	expect_equal(fs[2](1), 2)?
+}
 
-fn keep(move r: fn(Int) Int) List[fn(Int) Int]:
+fn keep(move r fn(Int) Int) List[fn(Int) Int] {
 	var out = List[fn(Int) Int]()
 	out.append(r)
 	return out
+}
 
-test "an escaping closure takes an explicit clone of a value that is used again":
+test "an escaping closure takes an explicit clone of a value that is used again" {
 	var a = [1, 2, 3]
 	snapshot := a.clone()
-	b := keep(fn x: x + snapshot.length())
+	b := keep(x => x + snapshot.length())
 	a.append(4)
 	expect_equal(b[0](1), 4)?
 	expect_equal(a.length(), 4)?
+}

@@ -2,19 +2,22 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-test "index_of_byte agrees with a scan across the inline window and the runtime":
+test "index_of_byte agrees with a scan across the inline window and the runtime" {
 	text := "abc,defghijklmnopqrstuvwxyz,\n0123456789012345678901234567890,x"
 	b := text.to_bytes()
 	var found = List[Int]()
 	var at = 0
 
-	while true:
+	while true {
 		i := b.index_of_byte(44, at)
 
-		if i != null:
+		if i != null {
 			found.append(i)
 			at = i + 1
-		else: break
+		} else {
+			break
+		}
+	}
 
 	expect_equal(found, [3, 27, 60])?
 	expect_equal(b.index_of_byte(10, 0) or (-1), 28)?
@@ -28,3 +31,4 @@ test "index_of_byte agrees with a scan across the inline window and the runtime"
 	expect_equal("0123456789abcdefg".to_bytes().index_of_byte(103, 0) or (-1), 16)?
 	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 0) or (-1), 15)?
 	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 1) or (-1), 15)?
+}

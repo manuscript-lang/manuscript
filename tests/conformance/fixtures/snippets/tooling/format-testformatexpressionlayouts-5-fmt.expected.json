@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Void:\n\tsend(\n\t\tcondition: account_is_active\n\t\tor payment_is_allowed and remaining_balance > minimum_balance\n\t)\n"
+    "fmt": "fn work() Void {\n\tsend(\n\t\tcondition: account_is_active\n\t\tor payment_is_allowed and remaining_balance > minimum_balance\n\t)\n}\n"
   }
 }

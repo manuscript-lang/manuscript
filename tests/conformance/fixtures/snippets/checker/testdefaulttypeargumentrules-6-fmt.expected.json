@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn make[T, U = Int]() T?: null\n\nfn use() Void:\n\tx := make()\n"
+    "fmt": "fn make[T, U = Int]() T? => null\n\nfn use() Void {\n\tx := make()\n}\n"
   }
 }

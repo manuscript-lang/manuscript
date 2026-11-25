@@ -4,6 +4,7 @@ import (
 	Approved, Mode, approve, safe from "./gate.ms",
 )
 
-export fn main() Int:
+export fn main() Int {
 	s := stringify(approve("u"))
 	return 0
+}

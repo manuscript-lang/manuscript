@@ -3,5 +3,6 @@
 // conform: origin=pkg/tooling/lsp/snapshot_test.go:331 TestSnapshotLibraryDiscoversTests
 import value from "../src/value.ms"
 
-test "checks source":
-    invalid: Int := "wrong"
+test "checks source" {
+	invalid Int := "wrong"
+}

@@ -1,13 +1,19 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface TestHooks:
+interface TestHooks {
     fn after_all() Void
-type State:
-    value: Int
-impl TestHooks for State:
-    fn after_all() Void:
+}
+type State {
+    value Int
+}
+impl TestHooks for State {
+    fn after_all() Void {
         return
-fn make_fixture() State:
+    }
+}
+fn make_fixture() State {
     return State(1)
-test "test":
+}
+test "test" {
     return
+}

@@ -18,15 +18,17 @@
 - `Map` already uses `get_or(key, default)`; `List` and `Optional` do not, so the same job has two spellings.
 
 ```manuscript
-fn display_name(name: String?, names: List[String]) String:
+fn display_name(name String?, names List[String]) String {
     return name.get("Anonymous") + names.get(0, "")
+}
 ```
 
 After:
 
 ```manuscript
-fn display_name(name: String?, names: List[String]) String:
+fn display_name(name String?, names List[String]) String {
     return name.get_or("Anonymous") + names.get_or(0, "")
+}
 ```
 
 ## Design

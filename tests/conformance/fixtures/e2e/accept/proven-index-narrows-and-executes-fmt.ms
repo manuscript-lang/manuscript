@@ -3,32 +3,37 @@
 // conform: origin=tests/e2e/testdata/accept/proven-index-narrows-and-executes.ms
 import expect_equal from "@std/test/test.ms"
 
-fn read(values: List[Int], index: Int) Int:
-    if index < 0 or index >= values.length():
-        return -1
+fn read(values List[Int], index Int) Int {
+	if index < 0 or index >= values.length() {
+		return -1
+	}
+	return values[index]
+}
 
-    return values[index]
+fn total(values List[Int]) Int {
+	var sum = 0
+	var i = 0
 
-fn total(values: List[Int]) Int:
-    var sum = 0
-    var i = 0
+	while i < values.length() {
+		sum += values[i]
+		i += 1
+	}
 
-    while i < values.length():
-        sum = sum + values[i]
-        i = i + 1
+	return sum
+}
 
-    return sum
+fn nested(values List[Int?], index Int) Int? {
+	if index >= 0 and index < values.length() {
+		return values[index]
+	}
+	return null
+}
 
-fn nested(values: List[Int?], index: Int) Int?:
-    if index >= 0 and index < values.length():
-        return values[index]
-
-    return null
-
-test "guarded and looped lookups":
-    expect_equal(read([1, 2, 3], 1), 2)?
-    expect_equal(read([1, 2, 3], 3), -1)?
-    expect_equal(read([1, 2, 3], -1), -1)?
-    expect_equal(total([1, 2, 3]), 6)?
-    expect_equal(nested([1, null], 1), null)?
-    expect_equal(nested([1, null], 0), 1)?
+test "guarded and looped lookups" {
+	expect_equal(read([1, 2, 3], 1), 2)?
+	expect_equal(read([1, 2, 3], 3), -1)?
+	expect_equal(read([1, 2, 3], -1), -1)?
+	expect_equal(total([1, 2, 3]), 6)?
+	expect_equal(nested([1, null], 1), null)?
+	expect_equal(nested([1, null], 0), 1)?
+}

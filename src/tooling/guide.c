@@ -301,7 +301,7 @@ static MsSpan keep(Guide *g, MsStrBuild *out) {
   return text;
 }
 
-/* `fn name[T](params) Result:`, with `var fn` or `move fn` for a method that changes or consumes its receiver. */
+/* `fn name[T](params) Result { ... }`, with `var fn` or `move fn` for a method that changes or consumes its receiver. */
 static void fn_declaration(Guide *g, StdFile *file, MsStrBuild *out, MsSpan name, const MsFunc *f, bool mutating,
                            bool consuming) {
   ms_strbuild_append_text(out, mutating ? "var fn " : consuming ? "move fn " : "fn ");
@@ -640,7 +640,7 @@ static const char *kind_of(const Symbol *s) {
   return "type";
 }
 
-/* `type Name:` with its fields, cases and methods, bodies left out. */
+/* `type Name { ... }` with its fields, cases and methods, bodies left out. */
 static MsSpan declaration_text(Guide *g, Symbol *s, StdFile *file, bool opaque) {
   MsStrBuild b = ms_strbuild_new();
   const MsDecl *decl = s->decl;

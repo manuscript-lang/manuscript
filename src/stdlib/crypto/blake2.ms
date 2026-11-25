@@ -15,7 +15,7 @@ Returns the BLAKE2b digest (RFC 7693) of `data`, `length` bytes long (default 64
 `length` must be 1 through 64 and `key` at most 64 bytes, or the call faults.
 `blake2b("abc".to_bytes())` begins with the bytes ba80a53f981c4d0d.
 */
-export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
+export fn blake2b(data Bytes, key Bytes = Bytes([]), length Int = 64) Bytes {
 	check(length, key, 64)
 
 	iv := [
@@ -35,34 +35,39 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 	blocks := message.length() / 128
 	schedule := sigma()
 	var total = data.length()
-	if not key.is_empty():
+	if not key.is_empty() {
 		total += 128
+	}
 
 	var counted = 0
 
-	for block in 0..blocks:
+	for block in 0..blocks {
 		last := block == blocks - 1
 
-		if last:
+		if last {
 			counted = total
-		else:
+		} else {
 			counted = (block + 1) * 128
+		}
 
-		var m: List[Int] = []
-		for index in 0..16:
+		var m List[Int] = []
+		for index in 0..16 {
 			m.append(word(message, block * 128 + index * 8, 8))
+		}
 
 		var v = h.clone()
-		for index in 0..8:
+		for index in 0..8 {
 			v.append(iv[index])
+		}
 		v.set(12, bit_xor(v[12], counted))
-		if last:
+		if last {
 			v.set(14, bit_xor(v[14], -1))
+		}
 
-		for round in 0..12:
+		for round in 0..12 {
 			s := schedule[round % 10]
 
-			for step in 0..8:
+			for step in 0..8 {
 				var a = step % 4
 				var b = 4 + step % 4
 				var c = 8 + step % 4
@@ -70,15 +75,16 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 				var x = 0
 				var y = 0
 
-				if step < 4:
+				if step < 4 {
 					x = m[s[2 * step]]
 					y = m[s[2 * step + 1]]
-				else:
+				} else {
 					b = 4 + (step + 1) % 4
 					c = 8 + (step + 2) % 4
 					d = 12 + (step + 3) % 4
 					x = m[s[2 * step]]
 					y = m[s[2 * step + 1]]
+				}
 
 				var va = v[a]
 				var vb = v[b]
@@ -96,13 +102,17 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 				v.set(b, vb)
 				v.set(c, vc)
 				v.set(d, vd)
+			}
+		}
 
-		for index in 0..8:
+		for index in 0..8 {
 			h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
+		}
+	}
 
 	var out = BytesBuilder()
 
-	for index in 0..length:
+	for index in 0..length {
 		w := h[index / 8]
 		out.append(
 			bit_and(
@@ -110,11 +120,13 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 				255,
 			).to_uint8() or 0
 		)
+	}
 
 	return out.build()
+}
 
 // Rotates a 32-bit word toward the low end.
-fn rotr32(value: Int, count: Int) Int:
+fn rotr32(value, count Int) Int {
 	return bit_and(
 		bit_or(
 			shift_right_unsigned(value, count),
@@ -122,13 +134,14 @@ fn rotr32(value: Int, count: Int) Int:
 		),
 		4294967295,
 	)
+}
 
 /*
 Returns the BLAKE2s digest (RFC 7693) of `data`, `length` bytes long (default 32), keyed when `key` is not empty.
 `length` must be 1 through 32 and `key` at most 32 bytes, or the call faults.
 `blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
 */
-export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
+export fn blake2s(data Bytes, key Bytes = Bytes([]), length Int = 32) Bytes {
 	check(length, key, 32)
 
 	iv := [
@@ -142,37 +155,42 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
 	blocks := message.length() / 64
 	schedule := sigma()
 	var total = data.length()
-	if not key.is_empty():
+	if not key.is_empty() {
 		total += 64
+	}
 
-	for block in 0..blocks:
+	for block in 0..blocks {
 		last := block == blocks - 1
-		counted := if last: total else: (block + 1) * 64
-		var m: List[Int] = []
-		for index in 0..16:
+		counted := if last { total } else { (block + 1) * 64 }
+		var m List[Int] = []
+		for index in 0..16 {
 			m.append(word(message, block * 64 + index * 4, 4))
+		}
 
 		var v = h.clone()
-		for index in 0..8:
+		for index in 0..8 {
 			v.append(iv[index])
+		}
 		v.set(12, bit_xor(v[12], bit_and(counted, 4294967295)))
 		v.set(13, bit_xor(v[13], shift_right_unsigned(counted, 32)))
-		if last:
+		if last {
 			v.set(14, bit_xor(v[14], 4294967295))
+		}
 
-		for round in 0..10:
+		for round in 0..10 {
 			s := schedule[round]
 
-			for step in 0..8:
+			for step in 0..8 {
 				a := step % 4
 				var b = 4 + step % 4
 				var c = 8 + step % 4
 				var d = 12 + step % 4
 
-				if step >= 4:
+				if step >= 4 {
 					b = 4 + (step + 1) % 4
 					c = 8 + (step + 2) % 4
 					d = 12 + (step + 3) % 4
+				}
 
 				x := m[s[2 * step]]
 				y := m[s[2 * step + 1]]
@@ -192,13 +210,17 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
 				v.set(b, vb)
 				v.set(c, vc)
 				v.set(d, vd)
+			}
+		}
 
-		for index in 0..8:
+		for index in 0..8 {
 			h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
+		}
+	}
 
 	var out = BytesBuilder()
 
-	for index in 0..length:
+	for index in 0..length {
 		w := h[index / 4]
 		out.append(
 			bit_and(
@@ -206,12 +228,14 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
 				255,
 			).to_uint8() or 0
 		)
+	}
 
 	return out.build()
+}
 
 // Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and
 // BLAKE2s (10 rounds).
-fn sigma() List[List[Int]]:
+fn sigma() List[List[Int]] {
 	return [
 		[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
 		[14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
@@ -224,41 +248,53 @@ fn sigma() List[List[Int]]:
 		[6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
 		[10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
 	]
+}
 
 // Reads a little-endian word of `width` bytes at `at`, zero padding past the end of
 // `data`.
-fn word(data: Bytes, at: Int, width: Int) Int:
+fn word(data Bytes, at, width Int) Int {
 	var value = 0
 
-	for offset in 0..width:
+	for offset in 0..width {
 		index := at + offset
-		if index < data.length():
+		if index < data.length() {
 			value = bit_or(value, shift_left(data.get(index).to_int(), 8 * offset))
+		}
+	}
 
 	return value
+}
 
 // The padded input: the key block (if any) followed by the data, zero filled to a whole
 // number of blocks (at least one).
-fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
+fn padded(key, data Bytes, block Int) Bytes {
 	var out = BytesBuilder()
 
-	if not key.is_empty():
+	if not key.is_empty() {
 		out.append_bytes(key)
-		for fill in key.length()..block:
+		for fill in key.length()..block {
 			out.append(0)
+		}
+	}
 
 	out.append_bytes(data)
 
-	written := if not key.is_empty(): block + data.length() else: data.length()
+	written := if not key.is_empty() { block + data.length() } else { data.length() }
 	var fill_to = ((written + block - 1) / block) * block
-	if fill_to == 0:
+	if fill_to == 0 {
 		fill_to = block
-	for fill in written..fill_to:
+	}
+	for fill in written..fill_to {
 		out.append(0)
+	}
 	return out.build()
+}
 
-fn check(length: Int, key: Bytes, max: Int) Void:
-	if length < 1 or length > max:
+fn check(length Int, key Bytes, max Int) Void {
+	if length < 1 or length > max {
 		panic(f"blake2: digest length must be 1 through {max}")
-	if key.length() > max:
+	}
+	if key.length() > max {
 		panic(f"blake2: key must be at most {max} bytes")
+	}
+}

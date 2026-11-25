@@ -15,21 +15,28 @@ Save this as `quantity.ms` and run `ms run quantity.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Quantity: 3\nQuantity must be positive\n"} -->
 ```manuscript
-fn quantity(value: Int) Result[Int, Error]:
-    if value <= 0:
+fn quantity(value Int) Result[Int, Error] {
+    if value <= 0 {
         return error(Error("Quantity must be positive", kind: "EINVAL"))
+    }
     return ok(value)
+}
 
-fn show(value: Int) Void:
+fn show(value Int) Void {
     outcome := quantity(value)
-    if outcome.is_error():
+
+    if outcome.is_error() {
         print(outcome.err().message)
         return
-    print(f"Quantity: {outcome.get()}")
+    }
 
-fn main() Void:
+    print(f"Quantity: {outcome.get()}")
+}
+
+fn main() Void {
     show(3)
     show(0)
+}
 ```
 
 ```text
@@ -45,9 +52,10 @@ Both calls return normally. The second returns an error value, and `show` choose
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn parse_port(text: String) Int!:
+fn parse_port(text String) Int! {
     port := ok_or(text.parse_int(), Error("missing port"))?
     return ok(port)
+}
 ```
 
 Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `Optional[Result[Int, Error]]`. A function type needs parentheses first, as with `?`: `(fn() Int)!`.
@@ -58,10 +66,11 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-export type Error:
-    message: String
-    kind: String? = null
-    details: Map[String, String] = Map[String, String]()
+export type Error {
+    message String
+    kind String? = null
+    details Map[String, String] = Map[String, String]()
+}
 ```
 
 - `message` is the text to show a person.
@@ -73,16 +82,20 @@ Build one by calling `Error(...)`. There is no separate constructor function and
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn find_user(id: Int) String!:
-    if id < 0:
+fn find_user(id Int) String! {
+    if id < 0 {
         return error(Error("negative id", kind: "EINVAL"))
+    }
     return error(Error("no such user", kind: "ENOENT", details: {"id": id.to_string()}))
+}
 
-fn describe(id: Int) String:
+fn describe(id Int) String {
     outcome := find_user(id)
-    if outcome.is_ok(): return outcome.get()
-    if outcome.err().kind == "ENOENT": return f"missing {outcome.err().details["id"]}"
+    if outcome.is_ok() { return outcome.get() }
+    if outcome.err().kind == "ENOENT" { return f"missing {outcome.err().details["id"]}" }
+
     return outcome.err().message.clone()
+}
 ```
 
 Standard-library failures are `Error` values too: branch on `kind`, read `details`, and do not import a per-module error type. Two errors are equal when their three fields are equal.
@@ -95,17 +108,21 @@ An `Error` fits most code. Use your own type as `E` when callers need typed payl
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
-enum DiscountError:
+enum DiscountError {
     InvalidPrice
     InvalidPercent
+}
 
-fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
-    if price < 0d:
+fn discount(price, percent Decimal) Result[Decimal, DiscountError] {
+    if price < 0d {
         return error(InvalidPrice)
-    if percent < 0d or percent > 100d:
+    }
+    if percent < 0d or percent > 100d {
         return error(InvalidPercent)
+    }
 
     return ok(price * (1d - percent / 100d))
+}
 ```
 
 The function validates inputs, returns an explicit error for each failure, and wraps the result in `ok`.
@@ -114,12 +131,14 @@ The function validates inputs, returns an explicit error for each failure, and w
 
 This continues the declarations above:
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}","given":[]} -->
 ```manuscript
-fn discount_message(price: Decimal, percent: Decimal) String:
-    if value := discount(price, percent):
+fn discount_message(price, percent Decimal) String {
+    if value := discount(price, percent) {
         return f"Discounted price: {value}"
+    }
     return "Discount could not be calculated."
+}
 ```
 
 This caller discards the cause. To use it, call `err()` after `is_error()`, or [propagate it with `?`](propagation.md).
@@ -130,22 +149,22 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | --- | --- |
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Void values |
 | `get() T` | Return the successful payload; on an error, [fault](faults.md) |
-| `get_or(default: T?) T` | Return the successful payload, or `default` on an error |
+| `get_or(default T?) T` | Return the successful payload, or `default` on an error |
 | `err() E` | Return the error payload; fault on success |
-| `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
-| `or_else(create: fn(move E) Result[T, E]) Result[T, E]` | Take the Result: keep a success, or hand the error to `create` once and return its Result |
-| `map_error[F](transform: fn(move E) F) Result[T, F]` | Take the Result and hand an error to `transform` once; preserve a success unchanged |
-| `map[U](transform: fn(move T) U) Result[U, E]` | Take the Result and hand a success to `transform` once; preserve an error unchanged |
-| `and_then[U](transform: fn(move T) Result[U, E]) Result[U, E]` | Take the Result; on success, return the callback's Result; preserve an existing error |
+| `get_or_else(create fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
+| `or_else(create fn(move E) Result[T, E]) Result[T, E]` | Take the Result: keep a success, or hand the error to `create` once and return its Result |
+| `map_error[F](transform fn(move E) F) Result[T, F]` | Take the Result and hand an error to `transform` once; preserve a success unchanged |
+| `map[U](transform fn(move T) U) Result[U, E]` | Take the Result and hand a success to `transform` once; preserve an error unchanged |
+| `and_then[U](transform fn(move T) Result[U, E]) Result[U, E]` | Take the Result; on success, return the callback's Result; preserve an existing error |
 
 `map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions. The four combinators take their receiver like the [Optional ones](../types/optionals.md): `.clone()` a Result you still need.
 
 This fragment uses `discount` above:
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}","given":[]} -->
 ```manuscript
 price := discount(price: 20d, percent: 10d).get_or(0d)
-text := discount(price: 20d, percent: 10d).map(fn value: value.to_string())
+text := discount(price: 20d, percent: 10d).map(value => value.to_string())
 ```
 
 Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the whole error; use it only when success is established. Routine failures use a fallback, `if v := x`, or `?`.
@@ -157,8 +176,10 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
-fn successful_price(outcome: Result[Decimal, Error]) Decimal?:
+
+fn successful_price(outcome Result[Decimal, Error]) Decimal? {
     return outcome.to_optional()
+}
 ```
 
 To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optionals.md#converting-absence-to-a-result).
@@ -167,7 +188,7 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Void, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, put `void` in front:
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}","given":[]} -->
 ```manuscript
 void discount(price: 20d, percent: 10d)
 ```
@@ -178,13 +199,15 @@ The initializer still runs and the outcome is dropped unread. Several `void` sta
 
 `?` forwards the error type unchanged and never converts one. Translate a domain error with an ordinary function or `map_error`:
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}","given":[]} -->
 ```manuscript
-fn discount_error(cause: DiscountError) Error:
+fn discount_error(cause DiscountError) Error {
     return Error("discount failed", kind: "EINVAL")
+}
 
-fn discount_checked(price: Decimal, percent: Decimal) Decimal!:
+fn discount_checked(price, percent Decimal) Decimal! {
     return discount(price, percent).map_error(discount_error)
+}
 ```
 
 Add context with `wrap_error(context, cause)` from `@std/core.ms`: `error(wrap_error("read config", cause))` reports `read config: <cause message>`, keeps the kind and details, and stores the original message in `details["cause"]`. `join_errors(errors)` combines several errors into one `Error` whose message holds theirs, one per line, with a `count` detail (none when the list is empty).

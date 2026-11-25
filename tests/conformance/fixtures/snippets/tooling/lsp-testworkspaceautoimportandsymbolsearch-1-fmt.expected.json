@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn multiply(value: Int) Int:\n\treturn value\n\nfn private() Int:\n\treturn 0\n"
+    "fmt": "export fn multiply(value Int) Int {\n\treturn value\n}\n\nfn private() Int {\n\treturn 0\n}\n"
   }
 }

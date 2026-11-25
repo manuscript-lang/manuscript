@@ -13,8 +13,9 @@ Save as `hello.ms`. `print` is available without an import and adds a newline.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-fn main() Void:
+fn main() Void {
     print("Hello, Manuscript!")
+}
 ```
 
 ```sh
@@ -33,16 +34,21 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 
 <!-- manuscript-example: {"mode":"run","args":["Sam","Ada"],"stdout":"Hello, Sam!\nHello, Ada!\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+)
 
-fn run() Result[Void, Error]:
-    for name in arguments():
+fn run() Result[Void, Error] {
+    for name in arguments() {
         stdout().write(f"Hello, {name}!\n")?
+    }
     return stdout().flush()
+}
 
-fn main() Void!:
+fn main() Void! {
     return run()
+}
 ```
 
 ```sh
@@ -60,29 +66,37 @@ Save as `tool.ms`. `@std/cli/command.ms` resolves nested commands, typed flags a
 
 <!-- manuscript-example: {"mode":"run","args":["hello","Ada","-n","2"],"stdout":"Hello, Ada!\nHello, Ada!\n"} -->
 ```manuscript
-import Arg, Command, Flag, FlagKind, command from "@std/cli/command.ms"
-import stdout from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
+import (
+    Arg, Command, Flag, FlagKind, command from "@std/cli/command.ms",
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+)
 
-type Greeting:
-    name: String
-    times: Int
+type Greeting {
+    name String
+    times Int
+}
 
-fn greet(options: Greeting) Result[Int, Error]:
-    for round in 0..options.times:
+fn greet(options Greeting) Result[Int, Error] {
+    for round in 0..options.times {
         stdout().write(f"Hello, {options.name}!\n")?
+    }
     stdout().flush()?
     return ok(0)
+}
 
-fn main() Int:
+fn main() Int {
     hello := command[Greeting](
         name: "hello",
         about: "Print a greeting",
         flags: [Flag("times", FlagKind.Int, "n", "1", "Repeat count")],
         args: [Arg("name", "Who to greet")],
-        run: fn options: greet(options)
+        run: options => greet(options),
     )
-    return Command(name: "tool", about: "Example tool", children: [hello]).execute(arguments())
+    return Command(name: "tool", about: "Example tool", children: [hello]).execute(
+        arguments()
+    )
+}
 ```
 
 ```sh

@@ -17,21 +17,24 @@ import (
 
 // One build: seconds, and the exit status and standard output of running the
 // executable.
-type Built:
-	seconds: Float
-	behavior: String
+type Built {
+	seconds Float
+	behavior String
+}
 
-fn route_env(inproc: Bool) Map[String, String]:
+fn route_env(inproc Bool) Map[String, String] {
 	var vars = Map[String, String]()
 
-	if inproc:
+	if inproc {
 		vars.add("MS_LLVM", env("MS_LLVM", ""))
-	else:
+	} else {
 		vars.add("MS_LLVM", "none")
+	}
 
 	return vars
+}
 
-fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) Built!:
+fn build(ms, source, level, dir String, inproc Bool) Built! {
 	path := canonicalize(source)?
 	output := f"{dir}/prog{exe()}"
 	started := monotonic()
@@ -41,12 +44,13 @@ fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) B
 		RunOptions(cwd: dir.clone(), env: route_env(inproc)),
 	).wait()?
 	seconds := monotonic().difference(started).to_nanoseconds().to_float() / 1.0e9
-	if ran.exit_code != 0:
+	if ran.exit_code != 0 {
 		return error(
 			Error(
 				f"ms build {source} failed:\n{(ran.stderr.decode_utf8() or "")}"
 			)
 		)
+	}
 
 	program := run(output.clone(), [], RunOptions(cwd: dir.clone())).wait()?
 	return ok(
@@ -55,48 +59,56 @@ fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) B
 			f"{program.exit_code}:{(program.stdout.decode_utf8() or "")}",
 		)
 	)
+}
 
-fn median(values: List[Float]) Float:
+fn median(values List[Float]) Float {
 	sorted := values.sorted()
 	return sorted[sorted.length() / 2]
+}
 
-fn report(ms: String, source: String, level: String, runs: Int) Int:
+fn report(ms, source, level String, runs Int) Int {
 	dir := temporary_directory("ms-route-bench-").get()
 	var process = List[Float]()
 	var inproc = List[Float]()
 	var behaviors = List[String]()
 
-	for round in 0..runs:
-		for use_inproc in [false, true]:
+	for round in 0..runs {
+		for use_inproc in [false, true] {
 			built := build(ms, source, level, dir.clone(), use_inproc)
 
-			if built.is_error():
+			if built.is_error() {
 				note(f"{built.err()}")
 				return 1
+			}
 
-			if use_inproc:
+			if use_inproc {
 				inproc.append(built.get().seconds)
-			else:
+			} else {
 				process.append(built.get().seconds)
+			}
 
 			behaviors.append(built.get().behavior.clone())
+		}
+	}
 
 	void remove(dir.clone(), recursive: true)
 
 	var same = true
-	for behavior in behaviors:
-		if behavior != behaviors[0]: same = false
+	for behavior in behaviors {
+		if behavior != behaviors[0] { same = false }
+	}
 
 	slow := median(process)
 	fast := median(inproc)
 	print(
 		f"| {source} | {level} | {slow.to_fixed(2)} | {fast.to_fixed(2)} | {(slow / fast).to_fixed(2)}x | {process.sorted()[0].to_fixed(2)} | {inproc.sorted()[0].to_fixed(2)} | {same} |"
 	)
-	if not same: return 1
+	if not same { return 1 }
 
 	return 0
+}
 
-fn main() Int:
+fn main() Int {
 	ms := canonicalize(env("MS", f".artifacts/build/ci/src/cli/ms{exe()}")).get()
 	runs := env("RUNS", "5").parse_int() or 5
 	print(
@@ -105,7 +117,10 @@ fn main() Int:
 	print("| --- | --- | --- | --- | --- | --- | --- | --- |")
 
 	var failed = 0
-	for source in ["examples/hello/src/main.ms", "tools/llvm-direct/yaml.ms"]:
-		for level in ["Debug", "Release"]:
+	for source in ["examples/hello/src/main.ms", "tools/llvm-direct/yaml.ms"] {
+		for level in ["Debug", "Release"] {
 			failed += report(ms.clone(), source.clone(), level.clone(), runs)
-	return if failed == 0: 0 else: 1
+		}
+	}
+	return if failed == 0 { 0 } else { 1 }
+}

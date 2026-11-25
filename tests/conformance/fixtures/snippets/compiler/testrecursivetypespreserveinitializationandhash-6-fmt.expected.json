@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(values: Map[Node, Int]) Void: return\n"
+    "fmt": "fn f(values Map[Node, Int]) Void => return\n"
   }
 }

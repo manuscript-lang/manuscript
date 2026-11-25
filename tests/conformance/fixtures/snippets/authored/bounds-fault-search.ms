@@ -3,21 +3,26 @@
 // conform: origin=range pass: relational bounds proofs
 import stdout from "@std/io/io.ms"
 
-fn search(a: List[Int], want: Int) Int:
-    var lo = 0
-    var hi = a.length()
+fn search(a List[Int], want Int) Int {
+	var lo = 0
+	var hi = a.length()
 
-    while lo <= hi:
-        mid := lo + (hi - lo) / 2
-        if a[mid] == want:
-            return mid
+	while lo <= hi {
+		mid := lo + (hi - lo) / 2
+		if a[mid] == want {
+			return mid
+		}
 
-        if a[mid] < want:
-            lo = mid + 1
-        else:
-            hi = mid - 1
+		if a[mid] < want {
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
 
-    return -1
+	return -1
+}
 
-fn main() Void:
-    void stdout().write(f"{search([1, 3, 5], 9)}\n")
+fn main() Void {
+	void stdout().write(f"{search([1, 3, 5], 9)}\n")
+}

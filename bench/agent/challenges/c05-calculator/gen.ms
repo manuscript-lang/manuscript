@@ -5,139 +5,158 @@ import (
 )
 
 // A token: `n` with a value, or `o` with the operator character.
-type Tok:
-	kind: String
-	text: String
-	value: Int
+type Tok {
+	kind, text String
+	value Int
+}
 
-fn tokens(line: String) List[Tok]:
+fn tokens(line String) List[Tok] {
 	var out = List[Tok]()
 	chars := line.chars()
 	var i = 0
 
-	while i < chars.length():
+	while i < chars.length() {
 		c := chars[i].clone()
 
-		if c.trim().is_empty():
+		if c.trim().is_empty() {
 			i += 1
-		else if "0123456789".contains(c):
+		} else if "0123456789".contains(c) {
 			var digits = ""
 
-			while i < chars.length() and "0123456789".contains(chars[i]):
+			while i < chars.length() and "0123456789".contains(chars[i]) {
 				digits += chars[i]
 				i += 1
+			}
 
 			out.append(Tok("n", digits.clone(), digits.parse_int() or 0))
-		else:
+		} else {
 			out.append(Tok("o", c.clone(), 0))
 			i += 1
+		}
+	}
 
 	return out
+}
 
 // A recursive-descent evaluator. `bad` records a syntax error (which wins over a
 // division by zero); once set the parser sees no more tokens, so every loop ends.
-type Parser:
-	toks: List[Tok]
-	pos: Int = 0
-	div: Bool = false
-	bad: Bool = false
+type Parser {
+	toks List[Tok]
+	pos Int = 0
+	div, bad Bool = false
+}
 
-fn Parser.at_op(text: String) Bool:
-	if self.bad or self.pos >= self.toks.length(): return false
+fn Parser.at_op(text String) Bool {
+	if self.bad or self.pos >= self.toks.length() { return false }
 	return self.toks[self.pos].kind == "o" and self.toks[self.pos].text == text
+}
 
-fn var Parser.expr() Int:
+fn var Parser.expr() Int {
 	var v = self.term()
 
-	while self.at_op("+") or self.at_op("-"):
+	while self.at_op("+") or self.at_op("-") {
 		plus := self.at_op("+")
 		self.pos += 1
 
 		r := self.term()
-		v = if plus: v + r else: v - r
+		v = if plus { v + r } else { v - r }
+	}
 
 	return v
+}
 
-fn var Parser.term() Int:
+fn var Parser.term() Int {
 	var v = self.unary()
 
-	while self.at_op("*") or self.at_op("/"):
+	while self.at_op("*") or self.at_op("/") {
 		times := self.at_op("*")
 		self.pos += 1
 
 		r := self.unary()
 
-		if times:
+		if times {
 			v *= r
-		else if r == 0:
+		} else if r == 0 {
 			self.div = true
 			v = 0
-		else:
+		} else {
 			v /= r
+		}
+	}
 
 	return v
+}
 
-fn var Parser.unary() Int:
-	if self.at_op("-"):
+fn var Parser.unary() Int {
+	if self.at_op("-") {
 		self.pos += 1
 		return 0 - self.unary()
+	}
 
 	return self.atom()
+}
 
-fn var Parser.atom() Int:
-	if self.bad or self.pos >= self.toks.length():
+fn var Parser.atom() Int {
+	if self.bad or self.pos >= self.toks.length() {
 		self.bad = true
 		return 0
+	}
 
 	t := self.toks[self.pos].clone()
 	self.pos += 1
-	if t.kind == "n": return t.value
+	if t.kind == "n" { return t.value }
 
-	if t.text == "(":
+	if t.text == "(" {
 		v := self.expr()
 
-		if not self.at_op(")"):
+		if not self.at_op(")") {
 			self.bad = true
 			return 0
+		}
 
 		self.pos += 1
 		return v
+	}
 
 	self.bad = true
 	return 0
+}
 
-fn evaluate(line: String) String:
+fn evaluate(line String) String {
 	var p = Parser(tokens(line))
 	v := p.expr()
-	if p.pos < p.toks.length(): p.bad = true
-	if p.bad: return "error: syntax"
-	if p.div: return "error: division by zero"
+	if p.pos < p.toks.length() { p.bad = true }
+	if p.bad { return "error: syntax" }
+	if p.div { return "error: division by zero" }
 
 	return f"{v}"
+}
 
-fn solve(s: String) String:
-	return s.split("\n").filter(fn l: not l.trim().is_empty()).map(
-		fn l: (evaluate(l) + "\n")
+fn solve(s String) String {
+	return s.split("\n").filter(l => not l.trim().is_empty()).map(
+		l => (evaluate(l) + "\n")
 	).join("")
+}
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-fn rexpr(var rnd: Random, d: Int) String:
-	if d == 0 or rnd.random() < 0.25: return f"{rnd.randint(0, 99)}"
+fn rexpr(var rnd Random, d Int) String {
+	if d == 0 or rnd.random() < 0.25 { return f"{rnd.randint(0, 99)}" }
 
 	r := rnd.random()
-	if r < 0.15: return "-" + rexpr(rnd, d - 1)
-	if r < 0.3: return "(" + rexpr(rnd, d - 1) + ")"
+	if r < 0.15 { return "-" + rexpr(rnd, d - 1) }
+	if r < 0.3 { return "(" + rexpr(rnd, d - 1) + ")" }
 
 	left := rexpr(rnd, d - 1)
 	op := rnd.choice([" + ", "-", " * ", "/", " - "])
 	return left + op + rexpr(rnd, d - 1)
+}
 
-export fn gen_c05() Void:
+export fn gen_c05() Void {
 	var rnd = seeded(5)
 	examples := [mk("basic", "1 + 2 * 3\n(1+2)*3\n10 / (5 - 5)\n2 +\n-7 / 2\n")]
 	var good = List[String]()
-	for _n in 0..400: good.append(rexpr(rnd, 5))
+	for _n in 0..400 { good.append(rexpr(rnd, 5)) }
 
 	syntax := [
 		"()", "1+", "+1", "(1", "1)", "1 2", "a", "1+*2", "2**3", "(", ")", "1 + (2",
@@ -166,3 +185,4 @@ export fn gen_c05() Void:
 		]
 	)
 	write_cases("c05-calculator", examples, hidden)
+}

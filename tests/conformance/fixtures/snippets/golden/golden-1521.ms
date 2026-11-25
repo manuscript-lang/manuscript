@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-    update := bytes.with_value
+update := bytes.with_value

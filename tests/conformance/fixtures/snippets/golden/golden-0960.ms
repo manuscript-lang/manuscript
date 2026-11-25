@@ -1,5 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
 fn later%d(
-value: ) Int:
+value: ) Int {
     return 1
+}

@@ -14,13 +14,13 @@
           "file": "enum-record-field.ms",
           "line": 4,
           "column": 10,
-          "offset": 104
+          "offset": 105
         },
         "end": {
           "file": "enum-record-field.ms",
           "line": 4,
           "column": 11,
-          "offset": 105
+          "offset": 106
         }
       }
     ],

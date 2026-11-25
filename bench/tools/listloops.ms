@@ -10,7 +10,7 @@ import (
 	build_ms, capture, env, finish, must, repeats, sample, usage from "./lib.ms",
 )
 
-fn run(work: String, n: Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error] {
 	copy(
 		"bench/perf/listloops/ms",
 		f"{work}/ms",
@@ -44,33 +44,39 @@ fn run(work: String, n: Int) Result[String, Error]:
 	)?
 	var best = Map[String, Float]()
 
-	for _i in 0..n:
-		for v in ["ms", "c-sse2", "c-avx2"]:
-			exe := if v == "ms": f"{work}/ms/bench" else: f"{work}/{v}"
+	for _i in 0..n {
+		for v in ["ms", "c-sse2", "c-avx2"] {
+			exe := if v == "ms" { f"{work}/ms/bench" } else { f"{work}/{v}" }
 
-			for line in (sample(exe, [])?).split("\n"):
-				f := line.split(" ").filter(fn p: p != "")
-				if f.length() < 2 or f[0] == "check": continue
+			for line in (sample(exe, [])?).split("\n") {
+				f := line.split(" ").filter(p => p != "")
+				if f.length() < 2 or f[0] == "check" { continue }
 
 				key := f"{f[0]} {v}"
 				value := f[1].parse_float() or 0.0
-				if value > best.get_or(key, 0.0) or not best.contains(key): best.add(
-					key.clone(),
-					value,
-				)
+				if value > best.get_or(key, 0.0) or not best.contains(key) {
+					best.add(key.clone(), value)
+				}
+			}
+		}
+	}
 
-	var rows = best.keys().sorted().map(fn k: f"{k} {best.get_or(k, 0.0).to_fixed(2)}")
+	var rows = best.keys().sorted().map(k => f"{k} {best.get_or(k, 0.0).to_fixed(2)}")
 	return ok(rows.join("\n"))
+}
 
-fn main() Int:
+fn main() Int {
 	var n = 5
 	args := arguments()
 
-	if not args.is_empty():
-		if parsed := repeats(args[0]):
+	if not args.is_empty() {
+		if parsed := repeats(args[0]) {
 			n = parsed
-		else:
+		} else {
 			return usage("repeats must be a positive integer")
+		}
+	}
 
 	tmp := temporary("listloops-").get()
 	return finish(run(tmp.path(), n))
+}

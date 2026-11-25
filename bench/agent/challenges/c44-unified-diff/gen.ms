@@ -6,64 +6,74 @@ import (
 )
 
 // One line of an edit script: a mark (space, `-` or `+`) and the text.
-type Op:
-	mark: String
-	text: String
+type Op {
+	mark, text String
+}
 
-fn script(a: List[String], b: List[String]) List[Op]:
+fn script(a, b List[String]) List[Op] {
 	n := a.length()
 	m := b.length()
 	var table = List[List[Int]]()
 
-	for _i in 0..n + 2:
+	for _i in 0..n + 2 {
 		var row = List[Int]()
-		for _j in 0..m + 2: row.append(0)
+		for _j in 0..m + 2 { row.append(0) }
 		table.append(row)
+	}
 
 	var i = n - 1
 
-	while i >= 0:
+	while i >= 0 {
 		var j = m - 1
 
-		while j >= 0:
-			if a[i] == b[j]:
+		while j >= 0 {
+			if a[i] == b[j] {
 				table[i][j] = table[i + 1][j + 1] + 1
-			else:
+			} else {
 				table[i][j] = (
-					if table[i + 1][j] > table[i][j + 1]: table[
-						i + 1
-					][j] else: table[i][j + 1]
+					if table[i + 1][j] > table[i][j + 1] {
+						table[i + 1][j]
+					} else {
+						table[i][j + 1]
+					}
 				)
+			}
 
 			j -= 1
+		}
 
 		i -= 1
+	}
 
 	var ops = List[Op]()
 	var x = 0
 	var y = 0
 
-	while x < n or y < m:
-		if x < n and y < m and a[x] == b[y]:
+	while x < n or y < m {
+		if x < n and y < m and a[x] == b[y] {
 			ops.append(Op(" ", a[x].clone()))
 			x += 1
 			y += 1
-		else if y == m or (x < n and table[x + 1][y] >= table[x][y + 1]):
+		} else if y == m or (x < n and table[x + 1][y] >= table[x][y + 1]) {
 			ops.append(Op("-", a[x].clone()))
 			x += 1
-		else:
+		} else {
 			ops.append(Op("+", b[y].clone()))
 			y += 1
+		}
+	}
 
 	return ops
+}
 
-fn rng(start: Int, ln: Int) String:
-	s := start + (if ln > 0: 1 else: 0)
-	return if ln == 1: f"{s}" else: f"{s},{ln}"
+fn rng(start, ln Int) String {
+	s := start + (if ln > 0 { 1 } else { 0 })
+	return if ln == 1 { f"{s}" } else { f"{s},{ln}" }
+}
 
-fn solve(s: String) String:
+fn solve(s String) String {
 	var lines = s.split("\n").clone()
-	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
+	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 
 	head := words(lines[0])
 	c := head[2].parse_int() or 0
@@ -73,89 +83,104 @@ fn solve(s: String) String:
 	b := lines.slice(1 + n, 1 + n + m).get_or([])
 	ops := script(a, b)
 	var changed = List[Int]()
-	for k in 0..ops.length():
-		if ops[k].mark != " ": changed.append(k)
-	if changed.is_empty(): return ""
+	for k in 0..ops.length() {
+		if ops[k].mark != " " {
+			changed.append(k)
+		}
+	}
+	if changed.is_empty() { return "" }
 
 	var groups = List[List[Int]]()
 	var cur = [changed[0]]
 
-	for k in changed.slice(1, changed.length()).get_or([]):
-		if k - cur[cur.length() - 1] - 1 <= 2 * c:
+	for k in changed.slice(1, changed.length()).get_or([]) {
+		if k - cur[cur.length() - 1] - 1 <= 2 * c {
 			cur.append(k)
-		else:
+		} else {
 			groups.append(cur.clone())
 			cur = [k]
+		}
+	}
 
 	groups.append(cur.clone())
 
 	var out = [f"--- {head[0]}", f"+++ {head[1]}"]
 
-	for g in groups:
-		lo := if g[0] - c > 0: g[0] - c else: 0
-		hi := if g[g.length() - 1] + 1 + c < ops.length(): g[g.length() - 1] + 1 + c else: ops.length()
+	for g in groups {
+		lo := if g[0] - c > 0 { g[0] - c } else { 0 }
+		hi := if g[g.length() - 1] + 1 + c < ops.length() { g[g.length() - 1] + 1 + c } else { ops.length() }
 		before := ops.slice(0, lo).get_or([])
-		sa := before.count(fn o: o.mark != "+")
-		sb := before.count(fn o: o.mark != "-")
+		sa := before.count(o => o.mark != "+")
+		sb := before.count(o => o.mark != "-")
 		body := ops.slice(lo, hi).get_or([])
-		la := body.count(fn o: o.mark != "+")
-		lb := body.count(fn o: o.mark != "-")
+		la := body.count(o => o.mark != "+")
+		lb := body.count(o => o.mark != "-")
 		out.append(f"@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
-		for o in body: out.append(o.mark + o.text)
+		for o in body { out.append(o.mark + o.text) }
+	}
 
-	return out.map(fn x: x + "\n").join("")
+	return out.map(x => x + "\n").join("")
+}
 
-fn mk(a: List[String], b: List[String], c: Int, na: String, nb: String) String:
+fn mk(a, b List[String], c Int, na, nb String) String {
 	return (
 		f"{na} {nb} {c} {a.length()} {b.length()}\n"
-		+ a.concat(b).map(fn x: x + "\n").join("")
+		+ a.concat(b).map(x => x + "\n").join("")
 	)
+}
 
-fn case3(name: String, a: List[String], b: List[String], c: Int) GenCase:
+fn case3(name String, a, b List[String], c Int) GenCase {
 	s := mk(a, b, c, "a.txt", "b.txt")
 	return make_case(name, s, solve(s))
+}
 
-fn words_pool() List[String]:
+fn words_pool() List[String] {
 	return [
 		"alpha", "beta", "gamma", "delta", "eps", "zeta", "eta", "theta", "iota",
 		"kappa", "", "  indented", "trailing ", "- dash", "+ plus", "@@ -1 +1 @@",
 		"--- x", " ", "a b  c"
 	]
+}
 
-fn doc(var rnd: Random, n: Int) List[String]:
+fn doc(var rnd Random, n Int) List[String] {
 	var out = List[String]()
 	pool := words_pool()
-	for _i in 0..n: out.append(rnd.choice(pool))
+	for _i in 0..n { out.append(rnd.choice(pool)) }
 	return out
+}
 
-fn edit(var rnd: Random, a: List[String], k: Int) List[String]:
+fn edit(var rnd Random, a List[String], k Int) List[String] {
 	var b = a.clone()
 	pool := words_pool()
 
-	for _i in 0..k:
+	for _i in 0..k {
 		r := rnd.random()
 		p := rnd.randrange(0, b.length() + 1)
-		at := if p < b.length() - 1: p else: b.length() - 1
+		at := if p < b.length() - 1 { p } else { b.length() - 1 }
 
-		if r < 0.35 and not b.is_empty():
+		if r < 0.35 and not b.is_empty() {
 			b.remove(at)
-		else if r < 0.7:
+		} else if r < 0.7 {
 			b.insert(p, rnd.choice(pool))
-		else if not b.is_empty():
+		} else if not b.is_empty() {
 			b[at] = rnd.choice(pool)
+		}
+	}
 
 	return b
+}
 
 // `base` with the lines at `changes[k].0` replaced by `changes[k].1`.
-fn at(base: List[String], places: List[Int], values: List[String]) List[String]:
+fn at(base List[String], places List[Int], values List[String]) List[String] {
 	var out = base.clone()
-	for k in 0..places.length(): out[places[k]] = values[k].clone()
+	for k in 0..places.length() { out[places[k]] = values[k].clone() }
 	return out
+}
 
-export fn gen_c44() Void:
+export fn gen_c44() Void {
 	var rnd = seeded(44)
-	nums := (1..41).map(fn i: f"line {i}")
-	base20 := (1..21).map(fn i: f"l{i}")
+	nums := (1..41).map(i => f"line {i}")
+	base20 := (1..21).map(i => f"l{i}")
 	ex_a := ["one", "two", "three", "four", "five", "six"]
 	ex_b := ["one", "two", "3", "four", "five", "seven"]
 	examples := [
@@ -263,3 +288,4 @@ export fn gen_c44() Void:
 		]
 	)
 	write_cases("c44-unified-diff", examples, hidden)
+}

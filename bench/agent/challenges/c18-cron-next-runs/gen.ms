@@ -8,12 +8,12 @@ import (
 
 NUM2 := "[0-9]{1,2}"
 
-type Range:
-	name: String
-	low: Int
-	high: Int
+type Range {
+	name String
+	low, high Int
+}
 
-fn ranges() List[Range]:
+fn ranges() List[Range] {
 	return [
 		Range("minute", 0, 59),
 		Range("hour", 0, 23),
@@ -21,109 +21,120 @@ fn ranges() List[Range]:
 		Range("month", 1, 12),
 		Range("day-of-week", 0, 6),
 	]
+}
 
 // Days since 1970-01-01 of a proleptic Gregorian date.
-fn days_from_civil(year: Int, month: Int, day: Int) Int:
-	y := if month <= 2: year - 1 else: year
-	era := (if y >= 0: y else: y - 399) / 400
+fn days_from_civil(year, month, day Int) Int {
+	y := if month <= 2 { year - 1 } else { year }
+	era := (if y >= 0 { y } else { y - 399 }) / 400
 	yoe := y - era * 400
-	doy := (153 * (if month > 2: month - 3 else: month + 9) + 2) / 5 + day - 1
+	doy := (153 * (if month > 2 { month - 3 } else { month + 9 }) + 2) / 5 + day - 1
 	doe := yoe * 365 + yoe / 4 - yoe / 100 + doy
 	return era * 146097 + doe - 719468
+}
 
 // The year, month and day of a count of days since 1970-01-01.
-fn civil_from_days(days: Int) List[Int]:
+fn civil_from_days(days Int) List[Int] {
 	z := days + 719468
-	era := (if z >= 0: z else: z - 146096) / 146097
+	era := (if z >= 0 { z } else { z - 146096 }) / 146097
 	doe := z - era * 146097
 	yoe := (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
 	doy := doe - (365 * yoe + yoe / 4 - yoe / 100)
 	mp := (5 * doy + 2) / 153
 	day := doy - (153 * mp + 2) / 5 + 1
-	month := if mp < 10: mp + 3 else: mp - 9
-	year := yoe + era * 400 + (if month <= 2: 1 else: 0)
+	month := if mp < 10 { mp + 3 } else { mp - 9 }
+	year := yoe + era * 400 + (if month <= 2 { 1 } else { 0 })
 	return [year, month, day]
+}
 
-fn days_in_month(year: Int, month: Int) Int:
-	if month == 2: return if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0: 29 else: 28
-	return if month == 4 or month == 6 or month == 9 or month == 11: 30 else: 31
+fn days_in_month(year, month Int) Int {
+	if month == 2 { return if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0 { 29 } else { 28 } }
+	return if month == 4 or month == 6 or month == 9 or month == 11 { 30 } else { 31 }
+}
 
-fn pad(n: Int, width: Int) String: f"{n}".pad_start(width, "0")
+fn pad(n, width Int) String => f"{n}".pad_start(width, "0")
 
 // `YYYY-MM-DD HH:MM` for a count of minutes since the epoch, with `sep` between date and time.
-fn stamp(minutes: Int, sep: String) String:
+fn stamp(minutes Int, sep String) String {
 	days := minutes / 1440
 	c := civil_from_days(days)
 	rest := minutes - days * 1440
 	return f"{pad(c[0], 4)}-{pad(c[1], 2)}-{pad(c[2], 2)}{sep}{pad(rest / 60, 2)}:{pad(rest % 60, 2)}"
+}
 
 // The values a field selects, or none when it is malformed or out of range.
-fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
+fn parse_field(text String, lo, hi Int) List[Int]? {
 	var vals = Set[Int]()
 
-	for item in text.split(","):
+	for item in text.split(",") {
 		var step = 1
 		var body = item.clone()
 		var stepped = false
 		slash := item.last_index_of("/")
 
-		if (slash != null and full_match(NUM2, item.slice((slash) + 1, item.length()))):
+		if (slash != null and full_match(NUM2, item.slice((slash) + 1, item.length()))) {
 			body = item.slice(0, slash)
 			step = item.slice((slash) + 1, item.length()).parse_int() or 0
 			stepped = true
-			if step < 1: return null
-			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return null
+			if step < 1 { return null }
+			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)) { return null }
+		}
 
 		var a = 0
 		var b = 0
 
-		if body == "*":
+		if body == "*" {
 			a = lo
 			b = hi
-		else if full_match(NUM2, body):
-			if stepped: return null
+		} else if full_match(NUM2, body) {
+			if stepped { return null }
 
 			a = body.parse_int() or 0
 			b = a
-		else:
-			if not full_match("[0-9]{1,2}-[0-9]{1,2}", body): return null
+		} else {
+			if not full_match("[0-9]{1,2}-[0-9]{1,2}", body) { return null }
 
 			ends := body.split("-")
 			a = ends[0].parse_int() or 0
 			b = ends[1].parse_int() or 0
-			if a > b: return null
+			if a > b { return null }
+		}
 
-		if a < lo or b > hi: return null
+		if a < lo or b > hi { return null }
 
 		var v = a
 
-		while v <= b:
+		while v <= b {
 			vals.add(v)
 			v += step
+		}
+	}
 
-	out: List[Int] := vals.values()
+	out List[Int] := vals.values()
 	return out
+}
 
-fn solve(s: String) String:
+fn solve(s String) String {
 	var lines = s.split("\n").clone()
-	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
+	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 
 	var out = List[String]()
 
-	for n in 1..lines.length() + 1:
+	for n in 1..lines.length() + 1 {
 		l := lines[n - 1].clone()
-		if l.replace(" ", "") == "": continue
+		if l.replace(" ", "") == "" { continue }
 
 		t := l.split(" ")
 		pre := f"line {n}:"
 
-		if t.length() != 7:
+		if t.length() != 7 {
 			out.append(f"{pre} error: bad line")
 			continue
+		}
 
 		var start = -1
 
-		if full_match("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}", t[0]):
+		if full_match("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}", t[0]) {
 			y := t[0].slice(0, 4).parse_int() or 0
 			mo := t[0].slice(5, 7).parse_int() or 0
 			d := t[0].slice(8, 10).parse_int() or 0
@@ -137,50 +148,54 @@ fn solve(s: String) String:
 				and h <= 23
 				and mi <= 59
 			)
-			if valid and y >= 1970 and y <= 2099: start = (
-				days_from_civil(y, mo, d) * 1440
-				+ h * 60
-				+ mi
-			)
+			if valid and y >= 1970 and y <= 2099 {
+				start = (days_from_civil(y, mo, d) * 1440 + h * 60 + mi)
+			}
+		}
 
-		if start < 0:
+		if start < 0 {
 			out.append(f"{pre} error: bad start")
 			continue
+		}
 
 		if (
 			not full_match(NUM2, t[1])
 			or (t[1].parse_int() or 0) < 1
 			or (t[1].parse_int() or 0) > 20
-		):
+		) {
 			out.append(f"{pre} error: bad count")
 			continue
+		}
 
 		count := t[1].parse_int() or 0
 		var sets = List[List[Int]]()
 		var bad = ""
 		var k = 0
 
-		for r in ranges():
+		for r in ranges() {
 			v := parse_field(t[2 + k], r.low, r.high)
 
-			if v != null:
+			if v != null {
 				sets.append(v)
-			else:
+			} else {
 				bad = r.name.clone()
 				break
+			}
 
 			k += 1
+		}
 
-		if bad != "":
+		if bad != "" {
 			out.append(f"{pre} error: bad {bad}")
 			continue
+		}
 
 		minutes := sets[0].sorted()
 		hours := sets[1].sorted()
 		var runs = List[Int]()
 		day0 := start / 1440
 
-		for dk in 0..3001:
+		for dk in 0..3001 {
 			day := day0 + dk
 			c := civil_from_days(day)
 			weekday := ((day + 4) % 7 + 7) % 7
@@ -188,40 +203,48 @@ fn solve(s: String) String:
 				not sets[3].contains(c[1])
 				or not sets[2].contains(c[2])
 				or not sets[4].contains(weekday)
-			): continue
+			) { continue }
 
-			for h in hours:
-				for mn in minutes:
+			for h in hours {
+				for mn in minutes {
 					t2 := day * 1440 + h * 60 + mn
 
-					if t2 > start:
+					if t2 > start {
 						runs.append(t2)
-						if runs.length() == count: break
+						if runs.length() == count { break }
+					}
+				}
 
-				if runs.length() == count: break
+				if runs.length() == count { break }
+			}
 
-			if runs.length() == count: break
+			if runs.length() == count { break }
+		}
 
-		if runs.is_empty():
+		if runs.is_empty() {
 			out.append(f"{pre} never")
 			continue
+		}
 
 		out.append(f"{pre} {runs.length()} runs")
-		for r in runs: out.append(stamp(r, " "))
+		for r in runs { out.append(stamp(r, " ")) }
+	}
 
-	return out.map(fn x: x + "\n").join("")
+	return out.map(x => x + "\n").join("")
+}
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-fn rand_field(var rnd: Random, lo: Int, hi: Int) String:
+fn rand_field(var rnd Random, lo, hi Int) String {
 	a := f"*/{rnd.randint(1, 7)}"
 	b := f"{rnd.randint(lo, hi)}"
 	c := f"{lo}-{rnd.randint(lo, hi)}".replace(f"{lo}-{lo}", f"{lo}")
 	d1 := rnd.randint(lo, hi)
 	d2 := rnd.randint(lo, hi)
 	return rnd.choice(["*", a, b, c, f"{d1},{d2}"])
+}
 
-fn rand_line(var rnd: Random) String:
+fn rand_line(var rnd Random) String {
 	var fields = List[String]()
 	rs := ranges()
 	fields.append(rand_field(rnd, 0, 59))
@@ -231,16 +254,21 @@ fn rand_line(var rnd: Random) String:
 	fields.append(rand_field(rnd, 0, 6))
 
 	var checked = List[String]()
-	for i in 0..5: checked.append(
-		if parse_field(fields[i], rs[i].low, rs[i].high) != null: fields[
-			i
-		].clone() else: "*"
-	)
+	for i in 0..5 {
+		checked.append(
+			if parse_field(fields[i], rs[i].low, rs[i].high) != null {
+				fields[i].clone()
+			} else {
+				"*"
+			}
+		)
+	}
 
 	when := stamp(rnd.randint(0, 60 * 24 * 365 * 129), "T")
 	return f"{when} {rnd.randint(1, 20)} {checked.join(" ")}"
+}
 
-export fn gen_c18() Void:
+export fn gen_c18() Void {
 	var rnd = seeded(18)
 	examples := [
 		mk(
@@ -250,7 +278,9 @@ export fn gen_c18() Void:
 		mk("weekdays", "2024-02-28T23:59 3 */15 9-17 * * 1-5\n"),
 	]
 	var random_lines = List[String]()
-	for _i in 0..40: random_lines.append(rand_line(rnd))
+	for _i in 0..40 {
+		random_lines.append(rand_line(rnd))
+	}
 
 	hidden := examples.concat(
 		[
@@ -299,3 +329,4 @@ export fn gen_c18() Void:
 		]
 	)
 	write_cases("c18-cron-next-runs", examples, hidden)
+}

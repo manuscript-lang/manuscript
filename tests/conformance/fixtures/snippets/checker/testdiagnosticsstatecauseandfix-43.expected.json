@@ -12,16 +12,16 @@
         "message": "'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, B",
         "position": {
           "file": "testdiagnosticsstatecauseandfix-43.ms",
-          "line": 12,
+          "line": 14,
           "column": 9,
-          "offset": 260
+          "offset": 242
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-43.ms:12:9: resolution: 'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, B\n    |\n 12 |         other:\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-43.ms:14:9: resolution: 'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, B\n    |\n 14 |         other => {\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

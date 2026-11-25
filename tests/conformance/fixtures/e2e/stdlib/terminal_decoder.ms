@@ -6,39 +6,49 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn key(move name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
+fn key(move name String, ctrl Bool, alt Bool, shift Bool) TerminalEvent {
 	return TerminalEvent.Key(name, ctrl, alt, shift)
+}
 
-fn plain(move name: String) TerminalEvent:
+fn plain(move name String) TerminalEvent {
 	return key(name, false, false, false)
+}
 
 // Joins adjacent text events, so a split read compares equal to a whole one.
-fn merged(events: List[TerminalEvent]) List[TerminalEvent]:
+fn merged(events List[TerminalEvent]) List[TerminalEvent] {
 	var out = List[TerminalEvent]()
 
-	for event in events:
-		match event:
-			Text(more):
-				if out.length() > 0:
+	for event in events {
+		match event {
+			Text(more) => {
+				if out.length() > 0 {
 					last := out[out.length() - 1].clone()
 					joined := text_of(last)
 
-					if joined != null:
+					if joined != null {
 						out[out.length() - 1] = TerminalEvent.Text(
 							joined + more.clone()
 						)
 						continue
+					}
+				}
 				out.append(TerminalEvent.Text(more.clone()))
-			_: out.append(event.clone())
+			}
+			_ => out.append(event.clone())
+		}
+	}
 
 	return out
+}
 
-fn text_of(event: TerminalEvent) String?:
-	match event:
-		Text(text): return text.clone()
-		_: return null
+fn text_of(event TerminalEvent) String? {
+	match event {
+		Text(text) => return text.clone()
+		_ => return null
+	}
+}
 
-test "text, controls and named keys":
+test "text, controls and named keys" {
 	var d = terminal_decoder()
 	expect_equal(
 		d.decode("ab\r\u{3}\u{7f}\u{0}"),
@@ -69,8 +79,9 @@ test "text, controls and named keys":
 			key("x", false, true, false),
 		],
 	)?
+}
 
-test "a lone escape waits for a flush and unknown sequences are dropped":
+test "a lone escape waits for a flush and unknown sequences are dropped" {
 	var d = terminal_decoder()
 	expect_equal(d.decode("\u{1b}"), List[TerminalEvent]())?
 	expect_equal(d.partial(), true)?
@@ -79,8 +90,9 @@ test "a lone escape waits for a flush and unknown sequences are dropped":
 	expect_equal(d.decode("\u{1b}[999z\u{1b}[?25hz"), [TerminalEvent.Text("z")])?
 	expect_equal(d.decode("\u{1b}[1;"), List[TerminalEvent]())?
 	expect_equal(d.flush(), List[TerminalEvent]())?
+}
 
-test "modified Enter arrives from the kitty and modifyOtherKeys protocols":
+test "modified Enter arrives from the kitty and modifyOtherKeys protocols" {
 	var d = terminal_decoder()
 	expect_equal(
 		d.decode(
@@ -95,8 +107,9 @@ test "modified Enter arrives from the kitty and modifyOtherKeys protocols":
 			key("enter", false, false, true),
 		],
 	)?
+}
 
-test "a bracketed paste is one event however the input is split":
+test "a bracketed paste is one event however the input is split" {
 	whole := "a\u{1b}[200~one\r\ntwo\rthree\u{1b}[A\u{1b}[201~b"
 	expected := [
 		TerminalEvent.Text("a"),
@@ -109,7 +122,7 @@ test "a bracketed paste is one event however the input is split":
 	scalars := whole.scalar_values()
 	var cut = 1
 
-	while cut < scalars.length():
+	while cut < scalars.length() {
 		var split = terminal_decoder()
 		head := scalars.take(cut)
 		tail := scalars.drop(cut)
@@ -117,27 +130,31 @@ test "a bracketed paste is one event however the input is split":
 		events.extend(split.decode(from_scalars(tail).get_or("")))
 		expect_equal(merged(events), expected)?
 		cut += 1
+	}
 
 	var empty = terminal_decoder()
 	expect_equal(
 		empty.decode("\u{1b}[200~\u{1b}[201~\u{1b}[A"),
 		[TerminalEvent.Paste(""), plain("up")],
 	)?
+}
 
-test "an overlong CSI sequence is dropped whole however it is split":
+test "an overlong CSI sequence is dropped whole however it is split" {
 	var d = terminal_decoder()
 	long := "1".repeat(300)
 	expect_equal(d.decode(f"\u{1b}[{long}"), List[TerminalEvent]())?
 	expect_equal(d.decode(f"{long}mok"), [TerminalEvent.Text("ok")])?
+}
 
-test "an unterminated paste keeps waiting":
+test "an unterminated paste keeps waiting" {
 	var d = terminal_decoder()
 	expect_equal(d.decode("\u{1b}[200~partial"), List[TerminalEvent]())?
 	expect_equal(d.partial(), false)?
 	expect_equal(d.flush(), List[TerminalEvent]())?
 	expect_equal(d.decode(" more\u{1b}[201~"), [TerminalEvent.Paste("partial more")])?
+}
 
-test "backtab keeps the Control and Alt of its modifier":
+test "backtab keeps the Control and Alt of its modifier" {
 	var d = terminal_decoder()
 	expect_equal(
 		d.decode("\u{1b}[1;5Z\u{1b}[1;3Z\u{1b}[1;8Z\u{1b}[1;2Z"),
@@ -148,3 +165,4 @@ test "backtab keeps the Control and Alt of its modifier":
 			key("tab", false, false, true),
 		],
 	)?
+}

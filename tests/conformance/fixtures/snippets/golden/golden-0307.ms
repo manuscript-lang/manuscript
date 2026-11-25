@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-impl Shape for Sq:
-    fn area() Int: self.s * self.s
+impl Shape for Sq {
+    fn area() Int => self.s * self.s
+}

@@ -7,17 +7,20 @@ import (
 	stdout from "@std/io/io.ms",
 )
 
-type Res:
-	id: Int
+type Res {
+	id Int
+}
 
-fn move Res.close() Void!:
+fn move Res.close() Void! {
 	stdout().write(f"close {self.id}\n").get()
+}
 
-type Pair:
-	a: Res
-	b: Res
+type Pair {
+	a, b Res
+}
 
-export fn main() Int:
+export fn main() Int {
 	p := Pair(a: Res(1), b: Res(2))
 	_c := Res(3)
 	return p.a.id - 1
+}

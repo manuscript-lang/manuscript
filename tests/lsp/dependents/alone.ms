@@ -1,2 +1,3 @@
-fn lonely() Int:
+fn lonely() Int {
 	return 1
+}

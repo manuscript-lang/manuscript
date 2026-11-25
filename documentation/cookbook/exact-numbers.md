@@ -13,16 +13,20 @@ Save as `big.ms`. `BigInt` never overflows. Both operands of an operator must be
 
 <!-- manuscript-example: {"mode":"run","stdout":"15511210043330985984000000\n1\n0.30\n"} -->
 ```manuscript
-import BigInt, big_int_of_int from "@std/math/math.ms"
-import parse_rat from "@std/math/big.ms"
+import (
+    parse_rat from "@std/math/big.ms",
+    BigInt, big_int_of_int from "@std/math/math.ms",
+)
 
-fn factorial(n: Int) BigInt:
+fn factorial(n Int) BigInt {
     var total = big_int_of_int(1)
-    for i in 2..n + 1:
-        total = total * big_int_of_int(i)
+    for i in 2..n + 1 {
+        total *= big_int_of_int(i)
+    }
     return total
+}
 
-fn main() Void!:
+fn main() Void! {
     print(factorial(25).to_string())
 
     third := parse_rat("1/3")?
@@ -32,6 +36,7 @@ fn main() Void!:
     tenth := parse_rat("1/10")?
     total := tenth.add(parse_rat("2/10")?)
     print(total.to_fixed(2)?)
+}
 ```
 
 - `25!` does not fit in `Int` (the limit is about 9.2e18); `BigInt` prints all 26 digits.

@@ -12,7 +12,7 @@
         "message": "cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding",
         "position": {
           "file": "bound-method-mutated-in-closure.ms",
-          "line": 15,
+          "line": 14,
           "column": 13,
           "offset": 482
         }
@@ -25,14 +25,14 @@
           "file": "bound-method-mutated-in-closure.ms",
           "line": 12,
           "column": 9,
-          "offset": 442
+          "offset": 441
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/bound-method-mutated-in-closure.ms:15:13: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding\n    |\n 15 |             values.remove(\"a\")\n    |             ^\n<DIR>/bound-method-mutated-in-closure.ms:12:9: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding\n    |\n 12 |         fn key,\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/bound-method-mutated-in-closure.ms:14:13: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding\n    |\n 14 |             values.remove(\"a\")\n    |             ^\n<DIR>/bound-method-mutated-in-closure.ms:12:9: type: cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding\n    |\n 12 |         (key, value) => {\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

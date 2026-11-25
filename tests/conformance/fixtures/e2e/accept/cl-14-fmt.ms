@@ -3,25 +3,31 @@
 // conform: origin=tests/e2e/testdata/accept/cl-14.ms
 import expect_equal from "@std/test/test.ms"
 
-enum Problem:
-    Missing(reason: String)
+enum Problem {
+	Missing(reason String)
+}
 
-enum OtherProblem:
-    Invalid(reason: String)
+enum OtherProblem {
+	Invalid(reason String)
+}
 
-fn checked(value: Int) Int!Problem:
-    if value < 0:
-        return error(Problem.Missing("negative"))
+fn checked(value Int) Int!Problem {
+	if value < 0 {
+		return error(Problem.Missing("negative"))
+	}
+	return ok(value)
+}
 
-    return ok(value)
+fn doubled(value Int) Int!Problem {
+	accepted := checked(value)?
+	return ok(accepted * 2)
+}
 
-fn doubled(value: Int) Int!Problem:
-    accepted := checked(value)?
-    return ok(accepted * 2)
+fn summarize(outcome Int!Problem) Int {
+	return outcome.clone().get_or(-1)
+}
 
-fn summarize(outcome: Int!Problem) Int:
-    return outcome.clone().get_or(-1)
-
-test "unchanged propagated error":
-    expect_equal(summarize(doubled(3)), 6)?
-    expect_equal(summarize(doubled(-1)), -1)?
+test "unchanged propagated error" {
+	expect_equal(summarize(doubled(3)), 6)?
+	expect_equal(summarize(doubled(-1)), -1)?
+}

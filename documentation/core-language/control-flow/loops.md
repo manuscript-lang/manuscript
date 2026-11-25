@@ -11,12 +11,13 @@ weight = 2
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn sum(values: List[Int]) Int:
+fn sum(values List[Int]) Int {
     var total = 0
-    for value in values:
+    for value in values {
         total += value
-
+    }
     return total
+}
 ```
 
 ## Counting loops
@@ -27,12 +28,15 @@ fn sum(values: List[Int]) Int:
 ```manuscript
 import panic from "@std/core.ms"
 
-test "sum indexes":
+test "sum indexes" {
     var total = 0
-    for index in 0..5:
+    for index in 0..5 {
         total += index
-    if total != 10:
+    }
+    if total != 10 {
         return panic(f"Expected 10, got {total}")
+    }
+}
 ```
 
 `end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by` with `RangeOptions(max_items:)` for larger lists.
@@ -43,14 +47,19 @@ Use `while` with a counter for other steps or computed exits:
 ```manuscript
 import panic from "@std/core.ms"
 
-test "five iterations":
+test "five iterations" {
     var index = 0
     var total = 0
-    while index < 5:
+
+    while index < 5 {
         total += index
         index += 1
-    if index != 5 or total != 10:
+    }
+
+    if index != 5 or total != 10 {
         return panic("Expected five iterations and total 10")
+    }
+}
 ```
 
 Increment the counter before any `continue` that would skip its update.
@@ -61,15 +70,19 @@ Increment the counter before any `continue` that would skip its update.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import range_by from "@std/collections/collections.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    range_by from "@std/collections/collections.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
-test "sum even indexes":
+test "sum even indexes" {
     indexes := range_by(start: 0, end: 6, step: 2)?
     var total = 0
-    for index in indexes:
+    for index in indexes {
         total += index
+    }
     expect_equal(total, 6)?
+}
 ```
 
 `?` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [`range_by` declaration](../../standard-library/reference/collections/collections.ms.md#range_by).
@@ -85,47 +98,58 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
 
-`MapEntry[K, V]` is a record with `key: K` and `value: V`. Iterating needs no import; only constructing one does (`@std/collections/collections.ms`). It is not a positional pair, so destructure it in the body. The entry is borrowed from the map, not copied.
+`MapEntry[K, V]` is a record with `key K` and `value V`. Iterating needs no import; only constructing one does (`@std/collections/collections.ms`). It is not a positional pair, so destructure it in the body. The entry is borrowed from the map, not copied.
 
 `for e in m.entries()`, `m.values()` and `m.keys()` visit the map directly, without building a list, when the body does not change the map. When the body does change the map, the list is built first, so the loop sees the entries as they were.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn total(values: Map[String, Int]) Int:
+fn total(values Map[String, Int]) Int {
     var sum = 0
-    for entry in values:
+
+    for entry in values {
         {key: _key, value} := entry
         sum += value
+    }
+
     return sum
+}
 ```
 
-`for [key, value] in values:` is a type error: a `MapEntry` is a record, so write `for {key, value} in values:`. Numbers, text, optionals, functions, and types without a `next` method of the `Iterator` shape are not iterable.
+`for [key, value] in values { ... }` is a type error: a `MapEntry` is a record, so write `for {key, value} in values { ... }`. Numbers, text, optionals, functions, and types without a `next` method of the `Iterator` shape are not iterable.
 
 Each iteration has a new scope. Assigning to the loop variable is rejected, but an outer `var` can change.
 
 ## Destructuring the element
 
-A list or record pattern after `for` binds the same names as `:=` does with the element, so `for [a, b] in pairs:` is `for pair in pairs:` followed by `[a, b] := pair`. The element is borrowed, the names are scoped to the body, and a pattern that does not fit the element type is rejected as it is after `:=`. A closure parameter takes the same patterns: `pairs.map(fn [a, b]: a + b)`.
+A list or record pattern after `for` binds the same names as `:=` does with the element, so `for [a, b] in pairs { ... }` is `for pair in pairs { ... }` followed by `[a, b] := pair`. The element is borrowed, the names are scoped to the body, and a pattern that does not fit the element type is rejected as it is after `:=`. A closure parameter takes the same patterns: `pairs.map(fn [a, b]: a + b)`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-test "destructure each element":
+test "destructure each element" {
     var total = 0
-    for [a, b] in [[1, 2], [3, 4]]:
+
+    for [a, b] in [[1, 2], [3, 4]] {
         total += a * b
+    }
+
     expect_equal(total, 14)?
 
     var names = ""
-    for {key, value: _value} in {"x": 1, "y": 2}:
+
+    for {key, value: _value} in {"x": 1, "y": 2} {
         names = f"{names}{key}"
+    }
+
     expect_equal(names, "xy")?
+}
 ```
 
 ## Iterators
 
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable. `for item in source:` calls `source.next()` until it returns `null`, binding each `T` as the owned result of `next` (`var fn next() T?`). It behaves like `while true:` with `if item := source.next(): ... else: break`, so `break`, `continue` and `return` work as in any loop.
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable. `for item in source { ... }` calls `source.next()` until it returns `null`, binding each `T` as the owned result of `next` (`var fn next() T?`). It behaves like `while true { ... }` with `if item := source.next() { ... } else { break }`, so `break`, `continue` and `return` work as in any loop.
 
 A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
 
@@ -133,18 +157,24 @@ A variable or field path is advanced in place and must be declared `var`; any ot
 ```manuscript
 import Iterator from "@std/core.ms"
 
-type Countdown:
-    left: Int
+type Countdown {
+    left Int
+}
 
-fn var Countdown.next() Int?:
-    if self.left == 0:
+fn var Countdown.next() Int? {
+    if self.left == 0 {
         return null
+    }
+
     self.left -= 1
     return self.left + 1
+}
 
-fn main() Void:
-    for n in Countdown(3):
+fn main() Void {
+    for n in Countdown(3) {
         print(n)
+    }
+}
 ```
 
 Output:
@@ -163,13 +193,16 @@ These containers are not iterable. Walk one by position with `length()` and `get
 ```manuscript
 import Deque from "@std/collections/deque.ms"
 
-fn main() Void:
+fn main() Void {
     var steps = Deque[Int]()
     steps.push_back(11)
     steps.push_back(12)
-    for index in 0..steps.length():
-        if step := steps.get(index):
+    for index in 0..steps.length() {
+        if step := steps.get(index) {
             print(step)
+        }
+    }
+}
 ```
 
 Output:
@@ -183,12 +216,13 @@ Output:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn count_down(start: Int) Int:
+fn count_down(start Int) Int {
     var remaining = start
-    while remaining > 0:
+    while remaining > 0 {
         remaining -= 1
-
+    }
     return remaining
+}
 ```
 
 `while` re-tests its condition before every iteration, including after `continue`. An empty iterable or initially false condition runs no body.

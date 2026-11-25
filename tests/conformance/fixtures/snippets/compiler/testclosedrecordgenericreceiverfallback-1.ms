@@ -1,22 +1,27 @@
 // conform: tags=control-flow,diagnostics,generics,interfaces,mutation,records,strings,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/record_bounds_test.go:80 TestClosedRecordGenericReceiverFallback
-interface Counter:
-    var fn bump(by: Int) Int
+interface Counter {
+	var fn bump(by Int) Int
+}
 
-type Cell[T]:
-    total: Int
+type Cell[T] {
+	total Int
+}
 
-fn var Cell[T].bump(by: Int) Int:
-    self.total += by
-    return self.total
+fn var Cell[T].bump(by Int) Int {
+	self.total += by
+	return self.total
+}
 
-fn probe() Int:
-    var cell = Cell[String](0)
-    var i = 0
+fn probe() Int {
+	var cell = Cell[String](0)
+	var i = 0
 
-    while i < 1000:
-        cell.bump(1)
-        i += 1
+	while i < 1000 {
+		cell.bump(1)
+		i += 1
+	}
 
-    return cell.total
+	return cell.total
+}

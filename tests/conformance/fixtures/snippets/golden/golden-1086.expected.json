@@ -12,27 +12,27 @@
         "message": "unknown type ApplicationError; declare it with 'type ApplicationError:' / 'enum ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-1086.ms",
-          "line": 6,
-          "column": 32,
-          "offset": 128
+          "line": 3,
+          "column": 64,
+          "offset": 116
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding cause; declare it with 'cause := ...' before use, define 'fn cause(...) T:', or import it from a module",
+        "message": "unknown binding cause; declare it with 'cause := ...' before use, define 'fn cause(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1086.ms",
-          "line": 7,
+          "line": 4,
           "column": 18,
-          "offset": 164
+          "offset": 150
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1086.ms:6:32: resolution: unknown type ApplicationError; declare it with 'type ApplicationError:' / 'enum ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it\n   |\n 6 | ) Result[Map[String, String]?, ApplicationError]:\n   |                                ^\n<DIR>/golden-1086.ms:7:18: resolution: unknown binding cause; declare it with 'cause := ...' before use, define 'fn cause(...) T:', or import it from a module\n   |\n 7 |     return error(cause)\n   |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1086.ms:3:64: resolution: unknown type ApplicationError; declare it with 'type ApplicationError:' / 'enum ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it\n   |\n 3 | fn work(first Int, second String) Result[Map[String, String]?, ApplicationError] {\n   |                                                                ^\n<DIR>/golden-1086.ms:4:18: resolution: unknown binding cause; declare it with 'cause := ...' before use, define 'fn cause(...) T { ... }', or import it from a module\n   |\n 4 |     return error(cause)\n   |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

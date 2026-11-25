@@ -7,27 +7,21 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes",
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Ready; declare it with 'type Ready:' / 'enum Ready:' / 'interface Ready:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-0913.ms",
-          "line": 3,
-          "column": 1,
-          "offset": 53
-        },
-        "end": {
-          "file": "golden-0913.ms",
-          "line": 3,
-          "column": 5,
-          "offset": 57
+          "line": 5,
+          "column": 10,
+          "offset": 83
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0913.ms:3:1: parse: a type declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes\n   |\n 3 | type Mixed:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0913.ms:5:10: resolution: unknown type Ready; declare it with 'type Ready:' / 'enum Ready:' / 'interface Ready:', declare it as a type parameter, or import it\n   |\n 5 |     case Ready\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

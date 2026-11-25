@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum CollectionError:\n\tOutOfRange\n\nfn get() List[Int]!: [1].slice(0, 1)\n"
+    "fmt": "enum CollectionError {\n\tOutOfRange\n}\n\nfn get() List[Int]! => [1].slice(0, 1)\n"
   }
 }

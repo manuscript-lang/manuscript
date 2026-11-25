@@ -9,19 +9,51 @@
       {
         "code": "MS1000",
         "phase": "parse",
+        "message": "remove the ':' between 'values' and its type; write values Type",
+        "position": {
+          "file": "golden-0981.ms",
+          "line": 4,
+          "column": 16,
+          "offset": 79
+        },
+        "end": {
+          "file": "golden-0981.ms",
+          "line": 4,
+          "column": 17,
+          "offset": 80
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0981.ms",
+            "line": 4,
+            "column": 16,
+            "offset": 79
+          },
+          "end": {
+            "file": "golden-0981.ms",
+            "line": 4,
+            "column": 17,
+            "offset": 80
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
         "message": "unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the file",
         "position": {
           "file": "golden-0981.ms",
-          "line": 11,
+          "line": 14,
           "column": 1,
-          "offset": 239
+          "offset": 265
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0981.ms:11:1: parse: unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the file\n    |\n 11 | \n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0981.ms:4:16: parse: remove the ':' between 'values' and its type; write values Type\n   |\n 4 | fn later(values: List[Int]) Int {\n   |                ^\n<DIR>/golden-0981.ms:14:1: parse: unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the file\n    |\n 14 | \n    | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

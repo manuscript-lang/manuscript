@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "decimal zero identities preserve signs and exponent extremes":
+test "decimal zero identities preserve signs and exponent extremes" {
 	for value in [
 		0d,
 		1.25d,
@@ -15,10 +15,12 @@ test "decimal zero identities preserve signs and exponent extremes":
 		1e-6176d,
 		-1e-6176d,
 		9.999999999999999999999999999999999e6144d,
-	]:
+	] {
 		expect_equal(value + 0d, value)?
 		expect_equal(0d + value, value)?
 		expect_equal(value - 0d, value)?
 		expect_equal(0d - value, -value)?
+	}
 
 	expect_equal(1.25d + -1.25d, 0d)?
+}

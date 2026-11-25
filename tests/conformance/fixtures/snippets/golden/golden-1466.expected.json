@@ -29,8 +29,8 @@
         "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-1466.ms",
-          "line": 4,
-          "column": 17,
+          "line": 5,
+          "column": 16,
           "offset": 108
         }
       },
@@ -40,9 +40,9 @@
         "message": "division by zero always faults; guard the divisor or use a nonzero constant",
         "position": {
           "file": "golden-1466.ms",
-          "line": 5,
+          "line": 6,
           "column": 14,
-          "offset": 137
+          "offset": 135
         }
       },
       {
@@ -51,27 +51,27 @@
         "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-1466.ms",
-          "line": 7,
-          "column": 24,
-          "offset": 186
+          "line": 10,
+          "column": 23,
+          "offset": 184
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module",
+        "message": "unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1466.ms",
-          "line": 7,
-          "column": 44,
-          "offset": 206
+          "line": 10,
+          "column": 43,
+          "offset": 204
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1466.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1466.ms:4:17: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 4 | fn crash(cause: TextError) Int:\n   |                 ^\n<DIR>/golden-1466.ms:5:14: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 5 |     return 1 / 0\n   |              ^\n<DIR>/golden-1466.ms:7:24: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 7 |     value: Result[Int, TextError] := error(TextError(\"expected failure\"))\n   |                        ^\n<DIR>/golden-1466.ms:7:44: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module\n   |\n 7 |     value: Result[Int, TextError] := error(TextError(\"expected failure\"))\n   |                                            ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1466.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1466.ms:5:16: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 5 | fn crash(cause TextError) Int {\n   |                ^\n<DIR>/golden-1466.ms:6:14: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 6 |     return 1 / 0\n   |              ^\n<DIR>/golden-1466.ms:10:23: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n    |\n 10 |     value Result[Int, TextError] := error(TextError(\"expected failure\"))\n    |                       ^\n<DIR>/golden-1466.ms:10:43: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T { ... }', or import it from a module\n    |\n 10 |     value Result[Int, TextError] := error(TextError(\"expected failure\"))\n    |                                           ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

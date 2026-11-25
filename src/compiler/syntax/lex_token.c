@@ -15,9 +15,6 @@ static void scan_word(Scanner *s, MsPos pos) {
   if (ms_tok_is_contextual(kind) && lex_names_a_member(s, end)) {
     kind = MS_T_Name;
   }
-  if (kind == MS_T_Fn || kind == MS_T_Match) {
-    size_list_push(&s->function_depths, lex_open_delimiters(s));
-  }
   lex_emit(s, kind, start, end, pos);
 }
 
@@ -54,7 +51,7 @@ static int two_char_kind(uint8_t first, int second) {
   case ':':
     return second == '=' ? MS_T_ColonAssign : -1;
   case '=':
-    return second == '=' ? MS_T_EqEq : -1;
+    return second == '=' ? MS_T_EqEq : second == '>' ? MS_T_FatArrow : -1;
   case '!':
     return second == '=' ? MS_T_NotEq : -1;
   case '<':
@@ -160,32 +157,91 @@ static bool fail_unexpected_char(Scanner *s, uint8_t b) {
   return lex_fail_char(s, message, replacement);
 }
 
+/* Whether the `{` at the cursor closes on this line and is followed by `:=` or `=`: a
+ * destructuring pattern, whose braces name fields. */
+static bool brace_destructures(const Scanner *s) {
+  size_t depth = 0;
+  size_t i = s->offset;
+  for (; i < s->n && s->src[i] != '\n'; i++) {
+    uint8_t c = s->src[i];
+    if (c == '"' || c == '/') {
+      return false;
+    }
+    if (c == '{') {
+      depth++;
+    } else if (c == '}' && --depth == 0) {
+      break;
+    }
+  }
+  if (i >= s->n || s->src[i] != '}') {
+    return false;
+  }
+  i++;
+  while (i < s->n && s->src[i] == ' ') {
+    i++;
+  }
+  if (i + 1 < s->n && s->src[i] == ':' && s->src[i + 1] == '=') {
+    return true;
+  }
+  return i < s->n && s->src[i] == '=' && (i + 1 >= s->n || (s->src[i + 1] != '=' && s->src[i + 1] != '>'));
+}
+
+/* Whether a `{` here opens a map literal: it follows a token that expects an operand. Anywhere
+ * else it opens a block (or a destructuring pattern). */
+static bool brace_is_map(const Scanner *s) {
+  switch (lex_last_kind(s)) {
+  case MS_T_LParen:
+  case MS_T_LBracket:
+  case MS_T_Comma:
+  case MS_T_Assign:
+  case MS_T_ColonAssign:
+  case MS_T_Colon:
+  case MS_T_Return:
+  case MS_T_For:
+  case MS_T_Plus:
+  case MS_T_Minus:
+  case MS_T_Star:
+  case MS_T_Slash:
+  case MS_T_Percent:
+  case MS_T_EqEq:
+  case MS_T_NotEq:
+  case MS_T_Lt:
+  case MS_T_Gt:
+  case MS_T_Le:
+  case MS_T_Ge:
+  case MS_T_And:
+  case MS_T_Or:
+  case MS_T_Not:
+  case MS_T_In:
+  case MS_T_Pipe:
+  case MS_T_Amp:
+    return true;
+  default:
+    return false;
+  }
+}
+
 static void open_delimiter(Scanner *s, MsPos pos, uint8_t b) {
-  byte_list_push(&s->delimiters, b);
+  uint8_t kind = (b == '{' && !brace_is_map(s) && !brace_destructures(s)) ? 'B' : b;
+  byte_list_push(&s->delimiters, kind);
   pos_list_push(&s->opened, pos);
   if (b == '(' && lex_last_kind(s) == MS_T_Var) {
     size_list_push(&s->groups, lex_open_delimiters(s));
   }
 }
 
-static bool close_delimiter(Scanner *s, const LineInfo *info, uint8_t b) {
+static bool close_delimiter(Scanner *s, uint8_t b) {
   if (s->virtual_paren && lex_open_delimiters(s) == 1 && s->delimiters.ptr[0] == '(' && b == ')') {
     /* The physical wrapper would leave its own closing parenthesis unmatched; use that path
      * for its exact error. */
     return lex_fail_text(s, "interpolation closes the virtual parenthesis");
   }
   if (lex_open_delimiters(s) == 0) {
-    /* A lone `}` left behind by a braced block is removed by the fix. */
-    const char *fix = (b == '}' && lex_trailing_semicolon(s)) ? "" : NULL;
     MsSpan message = ms_message_format(
         s->arena, "unmatched closing delimiter '%c'; remove it or add the matching opener before it", b);
-    return lex_fail_char(s, message, fix);
+    return lex_fail_char(s, message, NULL);
   }
-  if (s->levels.len > 1 && lex_open_delimiters(s) <= info->top_depth && info->leading >= info->top_indent) {
-    return lex_fail_text(s, "an outer delimiter cannot close inside a function suite; close the bracket on "
-                            "the line where the function body ends, or dedent the body");
-  }
-  uint8_t open = s->delimiters.ptr[s->delimiters.len - 1];
+  uint8_t open = lex_open_char(s->delimiters.ptr[s->delimiters.len - 1]);
   if ((char)b != lex_closer_of(open)) {
     MsPos opener = s->opened.ptr[s->opened.len - 1];
     return lex_fail_format(s, "mismatched closing delimiter '%c'; the '%c' opened at line %u:%u needs '%c'",
@@ -196,15 +252,11 @@ static bool close_delimiter(Scanner *s, const LineInfo *info, uint8_t b) {
   }
   s->delimiters.len--;
   s->opened.len--;
-  while (s->function_depths.len != 0 &&
-         s->function_depths.ptr[s->function_depths.len - 1] > lex_open_delimiters(s)) {
-    s->function_depths.len--;
-  }
   return true;
 }
 
 /* Scans a punctuation token: an operator, a delimiter, or a character that is not Manuscript. */
-static bool scan_symbol(Scanner *s, const LineInfo *info, MsPos pos, uint8_t b) {
+static bool scan_symbol(Scanner *s, MsPos pos, uint8_t b) {
   if (b == '.' && lex_peek(s, s->offset + 1) == '.' && lex_peek(s, s->offset + 2) == '.') {
     return scan_operator_token(s, pos, 3, MS_T_Ellipsis);
   }
@@ -221,14 +273,23 @@ static bool scan_symbol(Scanner *s, const LineInfo *info, MsPos pos, uint8_t b) 
   }
   if (b == '(' || b == '[' || b == '{') {
     open_delimiter(s, pos, b);
-  } else if ((b == ')' || b == ']' || b == '}') && !close_delimiter(s, info, b)) {
-    return false;
+    if (b == '{' && s->delimiters.ptr[s->delimiters.len - 1] == 'B') {
+      kind = MS_T_BlockOpen;
+    }
+  } else if (b == ')' || b == ']' || b == '}') {
+    bool block = b == '}' && s->delimiters.len != 0 && s->delimiters.ptr[s->delimiters.len - 1] == 'B';
+    if (!close_delimiter(s, b)) {
+      return false;
+    }
+    if (block) {
+      kind = MS_T_BlockClose;
+    }
   }
   return scan_operator_token(s, pos, 1, kind);
 }
 
 /* Scans one token or blank at the cursor; sets *line_done when a comment ends the line. */
-static bool scan_token(Scanner *s, const LineInfo *info, bool *line_done) {
+static bool scan_token(Scanner *s, bool *line_done) {
   uint8_t b = s->src[s->offset];
   MsPos pos = lex_pos(s);
   if (b == ' ') {
@@ -259,13 +320,13 @@ static bool scan_token(Scanner *s, const LineInfo *info, bool *line_done) {
   if (ms_ascii_is_digit(b)) {
     return lex_scan_number(s, pos);
   }
-  return scan_symbol(s, info, pos, b);
+  return scan_symbol(s, pos, b);
 }
 
-bool lex_scan_line_tokens(Scanner *s, const LineInfo *info) {
+bool lex_scan_line_tokens(Scanner *s) {
   bool line_done = false;
   while (!line_done && s->offset < s->n && s->src[s->offset] != '\n') {
-    if (!scan_token(s, info, &line_done)) {
+    if (!scan_token(s, &line_done)) {
       return false;
     }
   }

@@ -9,42 +9,57 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a name, found '%'",
+        "message": "expected the type of 'cause' after its name, e.g. cause Int",
         "position": {
           "file": "golden-0160.ms",
           "line": 3,
-          "column": 22,
-          "offset": 74
+          "column": 21,
+          "offset": 73
         },
         "end": {
           "file": "golden-0160.ms",
           "line": 3,
-          "column": 23,
-          "offset": 75
+          "column": 22,
+          "offset": 74
         }
       },
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a name, found '%'",
+        "message": "remove the ':' between 'cause' and its type; write cause Type",
         "position": {
           "file": "golden-0160.ms",
-          "line": 5,
-          "column": 16,
+          "line": 6,
+          "column": 14,
           "offset": 128
         },
         "end": {
           "file": "golden-0160.ms",
-          "line": 5,
-          "column": 17,
+          "line": 6,
+          "column": 15,
           "offset": 129
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0160.ms",
+            "line": 6,
+            "column": 14,
+            "offset": 128
+          },
+          "end": {
+            "file": "golden-0160.ms",
+            "line": 6,
+            "column": 15,
+            "offset": 129
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0160.ms:3:22: parse: expected a name, found '%'\n   |\n 3 | fn diagnostic(cause: %s) String:\n   |                      ^\n<DIR>/golden-0160.ms:5:16: parse: expected a name, found '%'\n   |\n 5 | fn view(cause: %s) Error:\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0160.ms:3:21: parse: expected the type of 'cause' after its name, e.g. cause Int\n   |\n 3 | fn diagnostic(cause %s) String {\n   |                     ^\n<DIR>/golden-0160.ms:6:14: parse: remove the ':' between 'cause' and its type; write cause Type\n   |\n 6 | fn view(cause: %s) Error {\n   |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

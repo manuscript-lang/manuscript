@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrong(value: Set[Int]) Void:\n\toutput := value.map(fn n: n.to_float())\n"
+    "fmt": "fn wrong(value Set[Int]) Void {\n\toutput := value.map(n => n.to_float())\n}\n"
   }
 }

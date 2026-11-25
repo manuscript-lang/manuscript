@@ -12,9 +12,9 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-generics-7.ms",
-          "line": 7,
+          "line": 8,
           "column": 10,
-          "offset": 204
+          "offset": 203
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-generics-7.ms",
-          "line": 9,
+          "line": 10,
           "column": 12,
-          "offset": 280
+          "offset": 279
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-generics-7.ms:7:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | known := count[Int]([])\n   |          ^\n<DIR>/core-language-types-generics-7.ms:9:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | unknown := count([])\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-generics-7.ms:8:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | known := count[Int]([])\n   |          ^\n<DIR>/core-language-types-generics-7.ms:10:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 10 | unknown := count([])\n    |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

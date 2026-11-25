@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Tree[T]:\n\tLeaf(value: T)\n\tPair(left: Tree[Int], right: Tree[String])\n"
+    "fmt": "enum Tree[T] {\n\tLeaf(value T)\n\tPair(left Tree[Int], right Tree[String])\n}\n"
   }
 }

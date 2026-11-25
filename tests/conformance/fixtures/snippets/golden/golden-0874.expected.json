@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0874.ms:4:5: parse: match requires at least one arm; add a case pattern or '_' arm under the header\n   |\n 4 |     match a:\n   |     ^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0874.ms:4:5: parse: match requires at least one arm; add a case pattern or '_' arm under the header\n   |\n 4 |     match a {\n   |     ^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

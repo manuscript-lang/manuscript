@@ -1,2 +1,3 @@
-bench "x":
-	y: Int := "no"
+bench "x" {
+	y Int := "no"
+}

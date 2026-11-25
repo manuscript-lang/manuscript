@@ -1,9 +1,11 @@
 // conform: tags=formatter,match,optional,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/build/expression_conveniences_test.go:23 TestExpressionConvenienceRejections
-fn f(x: Int?) Int:
-    y := match x:
-        n: n
-        null: 0
+fn f(x Int?) Int {
+	y := match x {
+		n => n
+		null => 0
+	}
 
-    return n
+	return n
+}

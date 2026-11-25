@@ -1,17 +1,22 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-type Bag:
-	items: List[Int]
+type Bag {
+	items List[Int]
+}
 
-interface Picker:
-	fn mapped[U](transform: fn(Int) U) List[U]
+interface Picker {
+	fn mapped[U](transform fn(Int) U) List[U]
+}
 
-fn Bag.mapped[U](transform: fn(Int) U) List[U]:
-	var out: List[U] = []
-	for x in self.items:
+fn Bag.mapped[U](transform fn(Int) U) List[U] {
+	var out List[U] = []
+	for x in self.items {
 		out.append(transform(x))
+	}
 	return out
+}
 
-export fn main() Int:
-	picker: Picker := Bag(items: [1])
+export fn main() Int {
+	picker Picker := Bag(items: [1])
 	return 0
+}

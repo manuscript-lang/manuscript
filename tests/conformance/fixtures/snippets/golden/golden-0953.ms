@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Void:
-    value := 
+fn f() Void {
+    value = 
+}

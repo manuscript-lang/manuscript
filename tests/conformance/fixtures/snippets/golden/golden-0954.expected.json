@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T:', or import it from a module",
+        "message": "unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-0954.ms",
           "line": 6,
           "column": 13,
-          "offset": 124
+          "offset": 111
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0954.ms:6:13: resolution: unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T:', or import it from a module\n   |\n 6 |             g(n)?\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0954.ms:6:13: resolution: unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T { ... }', or import it from a module\n   |\n 6 |             g(n)?\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

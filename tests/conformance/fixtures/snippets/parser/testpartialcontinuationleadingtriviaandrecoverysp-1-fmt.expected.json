@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "// prefix\n// second\nfn work(a: Int) Int: ...\n"
+    "fmt": "// prefix\n// second\nfn work(a Int) Int { ... }\n"
   }
 }

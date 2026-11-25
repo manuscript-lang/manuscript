@@ -28,42 +28,48 @@ import (
 	write_text from "./lib.ms",
 )
 
-type Diagnostic:
-	code: String
-	severity: String
+type Diagnostic {
+	code, severity String
+}
 
-type Document:
-	diagnostics: List[Diagnostic]
+type Document {
+	diagnostics List[Diagnostic]
+}
 
-type Sample:
-	label: String
-	trial: Int
-	wall_ns: Int
+type Sample {
+	label String
+	trial, wall_ns Int
+}
 
-fn report(out: String, name: String) Void!:
+fn report(out, name String) Void! {
 	rows := parse[List[Sample]](read_text(f"{out}/{name}-samples.json"))?
 	var baseline = Map[Int, Float]()
 	var candidate = Map[Int, Float]()
 
-	for row in rows:
-		if row.trial < 0: continue
+	for row in rows {
+		if row.trial < 0 { continue }
 
-		if row.label == "baseline": baseline.add(row.trial, row.wall_ns.to_float())
-		else: candidate.add(row.trial, row.wall_ns.to_float())
+		if row.label == "baseline" {
+			baseline.add(row.trial, row.wall_ns.to_float())
+		} else {
+			candidate.add(row.trial, row.wall_ns.to_float())
+		}
+	}
 
 	var before = List[Float]()
 	var after = List[Float]()
 	var ratios = List[Float]()
 	var slower = 0
 
-	for entry in baseline.entries():
+	for entry in baseline.entries() {
 		a := candidate.get(entry.key) or panic("called Optional.get() on null")
 		before.append(entry.value / 1000000.0)
 		after.append(a / 1000000.0)
 		ratios.append(a / entry.value)
-		if a > entry.value: slower += 1
+		if a > entry.value { slower += 1 }
+	}
 
-	if ratios.is_empty(): return invalid("no measured pairs")
+	if ratios.is_empty() { return invalid("no measured pairs") }
 
 	result := jobject(
 		{
@@ -77,92 +83,107 @@ fn report(out: String, name: String) Void!:
 	)
 	write_text(f"{out}/{name}-summary.json", dump(result))
 	print(stringify(result).get())
+}
 
-fn padded(i: Int) String:
+fn padded(i Int) String {
 	return f"{i}".pad_start(6, "0")
+}
 
 // A shared wide graph and the neighboring shapes that must not regress.
-export fn probe(size: Int, mode: String) String:
+export fn probe(size Int, mode String) String {
 	var lines = List[String]()
 
-	if mode == "many" or mode == "cyclic":
-		for i in 0..size:
+	if mode == "many" or mode == "cyclic" {
+		for i in 0..size {
 			suffix := padded(i)
 
-			if mode == "many":
+			if mode == "many" {
 				lines.append(
 					f"// ms: effect probe.e{suffix}\nfn sink_{suffix}() Int:\n    return 1\n"
 				)
 				lines.append(f"fn root_{suffix}() Int:\n    return sink_{suffix}()\n")
-			else:
+			} else {
 				lines.append(
 					f"// ms: effect probe.io\nfn root_{suffix}() Int:\n    return leaf_{suffix}()\n"
 				)
 				lines.append(f"fn leaf_{suffix}() Int:\n    return root_{suffix}()\n")
+			}
+		}
 
-		result := if mode == "many": "root_000000() - 1" else: "0"
+		result := if mode == "many" { "root_000000() - 1" } else { "0" }
 		lines.append(f"fn main() Int:\n    return {result}\n")
 		return lines.join("\n")
+	}
 
-	if mode == "allowed" or mode == "sparse":
+	if mode == "allowed" or mode == "sparse" {
 		lines.append("// ms: allow_effect probe.io\n")
-	if mode != "pure": lines.append("// ms: effect probe.io")
+	}
+	if mode != "pure" {
+		lines.append("// ms: effect probe.io")
+	}
 	lines.append("fn sink() Int:\n    return 1\n")
 
-	for i in 0..size:
+	for i in 0..size {
 		suffix := padded(i)
 		lines.append(f"fn leaf_{suffix}() Int:\n    return sink()\n")
+	}
 
 	lines.append("fn hub() Int:")
 
-	for i in 0..size:
+	for i in 0..size {
 		suffix := padded(i)
 		lines.append(f"    leaf_{suffix}()")
+	}
 
 	lines.append("    return 1\n")
 
-	for i in 0..size:
+	for i in 0..size {
 		suffix := padded(i)
-		if mode == "sparse" and i == 0: lines.append("// ms: allow_effect probe.none")
+		if mode == "sparse" and i == 0 {
+			lines.append("// ms: allow_effect probe.none")
+		}
 
-		target := if mode == "direct" or (mode == "sparse" and i == 0): "sink" else: "hub"
+		target := if mode == "direct" or (mode == "sparse" and i == 0) { "sink" } else { "hub" }
 		lines.append(f"fn root_{suffix}() Int:\n    return {target}()\n")
+	}
 
 	lines.append("fn main() Int:\n    return root_000000() - 1\n")
 	return lines.join("\n")
+}
 
-fn expected_count(size: Int, mode: String, action: String) Int:
-	if action != "lint": return 0
-	if mode == "none" or mode == "direct": return 2 * size + 1
-	if mode == "sparse": return 1
-	if mode == "many": return size
-	if mode == "cyclic": return 2 * size
+fn expected_count(size Int, mode, action String) Int {
+	if action != "lint" { return 0 }
+	if mode == "none" or mode == "direct" { return 2 * size + 1 }
+	if mode == "sparse" { return 1 }
+	if mode == "many" { return size }
+	if mode == "cyclic" { return 2 * size }
 
 	return 0
+}
 
 fn measure(
-	out: String,
-	binaries: List[String],
-	repeats: Int,
-	name: String,
-	input: String,
-	action: String,
-	wanted: Int,
-) Void!:
+	out String,
+	binaries List[String],
+	repeats Int,
+	name,
+	input,
+	action String,
+	wanted Int,
+) Void! {
 	var samples = List[JsonValue]()
 	var expected_stdout = ""
 	var expected_stderr = ""
 	labels := ["baseline", "candidate"]
 	executable := f"{out}/native-program{exe()}"
 
-	for round in 0..(repeats + 1):
-		for pass in 0..2:
+	for round in 0..(repeats + 1) {
+		for pass in 0..2 {
 			which := (round + pass) % 2
 			binary := binaries[which]
 			label := labels[which]
 			trial := round - 1
 			var command = [action.clone(), input.clone(), "--json"]
-			if action == "build":
+			if action == "build" {
 				command = [
 					"build",
 					input.clone(),
@@ -171,34 +192,38 @@ fn measure(
 					"-o",
 					executable.clone(),
 				]
+			}
 
 			started := now_ns()
 			ran := capture(binary, command)
 			elapsed := now_ns() - started
 
-			if not ran.ok or ran.code != 0:
+			if not ran.ok or ran.code != 0 {
 				write_text(f"{out}/{name}-{label}-{trial}.failed.stdout", ran.stdout)
 				write_text(f"{out}/{name}-{label}-{trial}.failed.stderr", ran.stderr)
+			}
 
-			if not ran.ok or ran.code != 0: return invalid(
-				f"{name}: {binary}: {ran.stderr}"
-			)
+			if not ran.ok or ran.code != 0 {
+				return invalid(f"{name}: {binary}: {ran.stderr}")
+			}
 
 			write_text(f"{out}/{name}-{label}-{trial}.stderr", ran.stderr)
 
-			if round == 0 and pass == 0:
+			if round == 0 and pass == 0 {
 				expected_stdout = ran.stdout.clone()
 				expected_stderr = ran.stderr.clone()
 				write_text(f"{out}/{name}.stdout", ran.stdout)
+			}
 
-			if ran.stdout != expected_stdout or ran.stderr != expected_stderr:
+			if ran.stdout != expected_stdout or ran.stderr != expected_stderr {
 				return invalid(f"{name}: output mismatch at {label} trial {trial}")
+			}
 
-			if action == "build":
+			if action == "build" {
 				execution := capture(executable, [])
-				if not execution.ok or execution.code != 0: return invalid(
-					f"{name}: native execution failed"
-				)
+				if not execution.ok or execution.code != 0 {
+					return invalid(f"{name}: native execution failed")
+				}
 
 				write_text(
 					f"{out}/{name}-{label}-{trial}.native.stdout",
@@ -214,28 +239,32 @@ fn measure(
 						execution.stdout != ""
 						or execution.stderr != ""
 					)
-				):
+				) {
 					return invalid(f"{name}: unexpected native output")
+				}
 				if (
 					name == "hello"
 					and (
 						execution.stdout != "Arguments: 0\n"
 						or execution.stderr != ""
 					)
-				):
+				) {
 					return invalid("hello: unexpected native output")
-			else:
+				}
+			} else {
 				doc := parse[Document](ran.stdout)?
 				var count = 0
 
-				for d in doc.diagnostics:
-					if d.severity == "error": return invalid(f"{name}: compiler error")
+				for d in doc.diagnostics {
+					if d.severity == "error" { return invalid(f"{name}: compiler error") }
 
-					if d.code == "MSL116": count += 1
+					if d.code == "MSL116" { count += 1 }
+				}
 
-				if count != wanted: return invalid(
-					f"{name}: effect count {count}, expected {wanted}"
-				)
+				if count != wanted {
+					return invalid(f"{name}: effect count {count}, expected {wanted}")
+				}
+			}
 
 			samples.append(
 				jobject(
@@ -250,7 +279,7 @@ fn measure(
 						"binary": jstr(binary.clone()),
 						"command": jlist(
 							command.map(
-								fn s: jstr(s.clone())
+								s => jstr(s.clone())
 							)
 						),
 						"exit": jint(ran.code),
@@ -259,27 +288,33 @@ fn measure(
 				)
 			)
 			write_text(f"{out}/{name}-samples.json", stringify(samples).get())
+		}
+	}
 
 	print(f"{name}: {repeats} exact-output pairs passed")
 	report(out, name)?
+}
 
-fn run(args: List[String]) String!:
-	if args.length() != 7: return invalid(
-		"expected OUT BASE CANDIDATE REPEATS SIZES MODES ACTION"
-	)
+fn run(args List[String]) String! {
+	if args.length() != 7 {
+		return invalid("expected OUT BASE CANDIDATE REPEATS SIZES MODES ACTION")
+	}
 
 	out := absolute(args[0].clone())
 
-	if args[6].starts_with("summary-"):
+	if args[6].starts_with("summary-") {
 		action := args[6].slice(8, args[6].length())
-		for size in args[4].split(","):
-			for mode in args[5].split(","):
+		for size in args[4].split(",") {
+			for mode in args[5].split(",") {
 				report(out, f"{mode}-{size}-{action}")?
+			}
+		}
 		return ok("summaries written")
+	}
 
 	binaries := [absolute(args[1].clone()), absolute(args[2].clone())]
 	repeats := args[3].parse_int() or 0
-	if repeats < 1: return invalid("repeats must be positive")
+	if repeats < 1 { return invalid("repeats must be positive") }
 
 	ensure_directory(out)
 	write_text(
@@ -298,7 +333,7 @@ fn run(args: List[String]) String!:
 						file_sha256(binaries[1])
 					),
 					"arguments": jlist(
-						args.map(fn s: jstr(s.clone()))
+						args.map(s => jstr(s.clone()))
 					)
 				}
 			)
@@ -307,7 +342,7 @@ fn run(args: List[String]) String!:
 
 	action := args[6]
 
-	if action == "projects":
+	if action == "projects" {
 		measure(
 			out,
 			binaries,
@@ -336,16 +371,18 @@ fn run(args: List[String]) String!:
 			0,
 		)?
 		return ok("project controls passed")
+	}
 
-	for size_text in args[4].split(","):
+	for size_text in args[4].split(",") {
 		size := size_text.parse_int() or 0
-		if size < 1: return invalid("size must be positive")
+		if size < 1 { return invalid("size must be positive") }
 
-		for mode in args[5].split(","):
+		for mode in args[5].split(",") {
 			if not ["none", "allowed", "pure", "direct", "sparse", "many", "cyclic"].contains(
 				mode
-			):
+			) {
 				return invalid(f"unknown mode {mode}")
+			}
 
 			name := f"{mode}-{size}-{action}"
 			input := f"{out}/{name}.ms"
@@ -359,8 +396,12 @@ fn run(args: List[String]) String!:
 				action,
 				expected_count(size, mode, action),
 			)?
+		}
+	}
 
 	return ok("effect controls passed")
+}
 
-fn main() Int:
+fn main() Int {
 	return finish(run(arguments()))
+}

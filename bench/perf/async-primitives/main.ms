@@ -16,178 +16,206 @@ import (
 	monotonic, nanoseconds, sleep from "@std/time.ms",
 )
 
-fn work(a: Int) Int!:
+fn work(a Int) Int! {
 	return ok(a * 2 + 1)
+}
 
-fn run_inline(n: Int) Int:
+fn run_inline(n Int) Int {
 	var total = 0
 
-	for i in 0..n:
-		p := promise[Int](fn: work(i))
+	for i in 0..n {
+		p := promise[Int](() => work(i))
 		total += p.wait().get()
+	}
 
 	return total
+}
 
-fn run_here(n: Int) Int:
+fn run_here(n Int) Int {
 	var total = 0
 
-	for i in 0..n:
+	for i in 0..n {
 		p := promise[Int](
-			fn: work(i),
-			options: PromiseOptions(placement: Placement.Here)
+			() => work(i),
+			options: PromiseOptions(placement: Placement.Here),
 		)
 		total += p.wait().get()
+	}
 
 	return total
+}
 
-fn run_batch(n: Int, here: Bool) Int:
+fn run_batch(n Int, here Bool) Int {
 	var total = 0
 	var done = 0
 
-	while done < n:
-		var promises: List[Promise[Int]] = []
+	while done < n {
+		var promises List[Promise[Int]] = []
 
-		for i in 0..64:
+		for i in 0..64 {
 			value := done + i
 
-			if here:
+			if here {
 				promises.append(
 					promise[Int](
-						fn: work(value),
+						() => work(value),
 						options: PromiseOptions(
 							placement: Placement.Here
-						)
+						),
 					)
 				)
-			else:
-				promises.append(promise[Int](fn: work(value)))
+			} else {
+				promises.append(promise[Int](() => work(value)))
+			}
+		}
 
-		for p in promises:
+		for p in promises {
 			total += p.wait().get()
+		}
 		done += 64
+	}
 
 	return total
+}
 
-fn echo_pipe(requests: Pipe[Int], replies: Pipe[Int]) Void!:
+fn echo_pipe(requests, replies Pipe[Int]) Void! {
 	var out = replies.writer()
 
-	while true:
+	while true {
 		next := requests.receive()?
 
-		if next != null:
+		if next != null {
 			out.write(next + 1)?
-		else:
+		} else {
 			return out.close()
+		}
+	}
+}
 
-fn run_pingpong(n: Int) Int:
+fn run_pingpong(n Int) Int {
 	requests := pipe[Int](1)
 	replies := pipe[Int](1)
 	var out = requests.writer()
 	var gate = replies.writer()
 	server := promise[Void](
-		fn: echo_pipe(requests, replies),
-		options: PromiseOptions(placement: Placement.Here)
+		() => echo_pipe(requests, replies),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	var total = 0
 
-	for i in 0..n:
+	for i in 0..n {
 		out.write(i).get()
 
 		value := replies.receive().get()
-		if value != null: total += value
+		if value != null { total += value }
+	}
 
 	out.close().get()
 	gate.close().get()
 	server.wait().get()
 	return total
+}
 
-fn produce(values: Pipe[Int], n: Int) Void!:
+fn produce(values Pipe[Int], n Int) Void! {
 	var out = values.writer()
-	for i in 0..n:
+	for i in 0..n {
 		out.write(i)?
+	}
 	return out.close()
+}
 
-fn run_stream(n: Int) Int:
+fn run_stream(n Int) Int {
 	values := pipe[Int](64)
 
 	// The gate keeps the pipe open until the producer has made its own writer.
 	var gate = values.writer()
 	writer := promise[Void](
-		fn: produce(values, n),
-		options: PromiseOptions(placement: Placement.Here)
+		() => produce(values, n),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	var total = 0
 
-	for i in 0..n:
+	for i in 0..n {
 		value := values.receive().get()
-		if value != null: total += value
+		if value != null { total += value }
+	}
 
 	gate.close().get()
 	writer.wait().get()
 	return total
+}
 
-fn run_sleep(n: Int) Int:
-	for i in 0..n:
+fn run_sleep(n Int) Int {
+	for i in 0..n {
 		sleep(nanoseconds(0)).wait().get()
+	}
 	return n
+}
 
-fn echo_tcp(var listener: Listener) Void!:
+fn echo_tcp(var listener Listener) Void! {
 	var conn = listener.accept().wait()?
 
-	while true:
+	while true {
 		chunk := conn.input.next()?
 
-		if chunk != null:
+		if chunk != null {
 			conn.output.write(chunk)?
 			conn.output.flush()?
-		else:
+		} else {
 			return conn.close()
+		}
+	}
+}
 
-fn run_echo(n: Int) Int:
+fn run_echo(n Int) Int {
 	var listener = listen("127.0.0.1:0").get()
 	address := listener.address()
 	server := promise[Void](
-		fn: echo_tcp(listener),
-		options: PromiseOptions(placement: Placement.Here)
+		() => echo_tcp(listener),
+		options: PromiseOptions(placement: Placement.Here),
 	)
 	var client = connect(address).wait().get()
 	var total = 0
 	message := "0123456789012345678901234567890123456789012345678901234567890123".to_bytes()
 
-	for i in 0..n:
+	for i in 0..n {
 		client.output.write(message.clone()).get()
 		client.output.flush().get()
 
 		data := client.input.next().get()
-		if data != null: total += data.length()
+		if data != null { total += data.length() }
+	}
 
 	client.close().get()
 	server.wait().get()
 	return total
+}
 
-fn main() Void:
+fn main() Void {
 	args := arguments()
 	mode := args[0].clone()
 	n := args[1].parse_int() or 0
 	before := monotonic()
 	var total = 0
 
-	if mode == "inline":
+	if mode == "inline" {
 		total = run_inline(n)
-	else if mode == "here":
+	} else if mode == "here" {
 		total = run_here(n)
-	else if mode == "batch":
+	} else if mode == "batch" {
 		total = run_batch(n, false)
-	else if mode == "batch-here":
+	} else if mode == "batch-here" {
 		total = run_batch(n, true)
-	else if mode == "pingpong":
+	} else if mode == "pingpong" {
 		total = run_pingpong(n)
-	else if mode == "stream":
+	} else if mode == "stream" {
 		total = run_stream(n)
-	else if mode == "sleep":
+	} else if mode == "sleep" {
 		total = run_sleep(n)
-	else if mode == "echo":
+	} else if mode == "echo" {
 		total = run_echo(n)
+	}
 
 	elapsed := monotonic().difference(before).to_nanoseconds()
 	print(f"{mode} total {total} ns/op {elapsed / n}")
+}

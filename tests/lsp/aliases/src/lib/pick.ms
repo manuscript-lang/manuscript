@@ -1,2 +1,3 @@
-export fn pick() Int:
+export fn pick() Int {
 	return 1
+}

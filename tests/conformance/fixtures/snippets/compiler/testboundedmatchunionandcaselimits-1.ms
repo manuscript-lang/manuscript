@@ -1,6 +1,7 @@
 // conform: tags=diagnostics,faults,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/match_bounds_test.go:83 TestBoundedMatchUnionAndCaseLimits
-fn other() Int:
-    shapes := [Shape.Square(9223372036854775807)]
-    return area(shapes.get(0))
+fn other() Int {
+	shapes := [Shape.Square(9223372036854775807)]
+	return area(shapes.get(0))
+}

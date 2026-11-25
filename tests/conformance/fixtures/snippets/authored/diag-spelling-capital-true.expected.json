@@ -14,20 +14,20 @@
           "file": "diag-spelling-capital-true.ms",
           "line": 5,
           "column": 10,
-          "offset": 140
+          "offset": 138
         },
         "fix": {
           "position": {
             "file": "diag-spelling-capital-true.ms",
             "line": 5,
             "column": 10,
-            "offset": 140
+            "offset": 138
           },
           "end": {
             "file": "diag-spelling-capital-true.ms",
             "line": 5,
             "column": 14,
-            "offset": 144
+            "offset": 142
           },
           "replacement": "true"
         }

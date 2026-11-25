@@ -7,18 +7,22 @@ file(MAKE_DIRECTORY "${WORK}")
 # A recursive function, which the compiler cannot inline into `main`, so it shows as a frame of its own. It runs for
 # about half a second: the sampler ticks no faster than the kernel timer (about 100 Hz on macOS), so a run of tens of
 # milliseconds can get one sample, in the runtime, and no frame of its own.
-file(WRITE "${WORK}/busy.ms" "fn fib(n: Int) Int:
-    if n < 2:
+file(WRITE "${WORK}/busy.ms" "fn fib(n Int) Int {
+    if n < 2 {
         return n
+    }
     return fib(n - 1) + fib(n - 2)
+}
 
-fn main() Int:
+fn main() Int {
     print(fib(40))
     return 0
+}
 ")
-file(WRITE "${WORK}/exit.ms" "fn main() Int:
+file(WRITE "${WORK}/exit.ms" "fn main() Int {
     print(\"hello\")
     return 3
+}
 ")
 if(WIN32)
   set(separator ";")
@@ -90,20 +94,24 @@ expect_contains("${out}" "\"reason\": \"program_exit\"" "json")
 expect_contains("${out}" "\"profile\": {" "json")
 
 # --allocs: a recursive function that allocates on every call is named in the allocation report, text and JSON.
-file(WRITE "${WORK}/alloc.ms" "fn grow(n: Int) Int:
-    if n == 0:
+file(WRITE "${WORK}/alloc.ms" "fn grow(n Int) Int {
+    if n == 0 {
         return 0
-    var xs: List[Int] = []
+    }
+    var xs List[Int] = []
     xs.append(n)
     xs.append(n)
     return xs.length() + grow(n - 1)
+}
 
-fn main() Int:
+fn main() Int {
     var total = 0
-    for round in 0..300:
+    for round in 0..300 {
         total += grow(300)
+    }
     print(total)
     return 0
+}
 ")
 execute_process(COMMAND "${MS_C}" profile alloc.ms --out-dir alloc-bundle --allocs WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)
@@ -123,7 +131,7 @@ expect_contains("${out}" "\"allocs\": {" "json")
 expect_contains("${out}" "\"function\": \"grow\"" "json")
 
 # A program that does not compile leaves no directory behind.
-file(WRITE "${WORK}/bad.ms" "fn main() Int:\n    x: Int := \"no\"\n    return 0\n")
+file(WRITE "${WORK}/bad.ms" "fn main() Int {\n    x Int := \"no\"\n    return 0\n}\n")
 execute_process(COMMAND "${MS_C}" profile bad.ms --out-dir bad-bundle WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status ERROR_VARIABLE err)
 if(NOT status EQUAL 1 OR EXISTS "${WORK}/bad-bundle")

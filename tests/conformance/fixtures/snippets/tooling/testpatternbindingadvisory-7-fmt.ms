@@ -1,16 +1,20 @@
 // conform: tags=alternatives,control-flow,formatter,interfaces,match,parser,records,strings,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:29 TestPatternBindingAdvisory
-interface Describe:
-    fn describe() String
+interface Describe {
+	fn describe() String
+}
 
-enum State:
-    Ready
-    Waiting
+enum State {
+	Ready
+	Waiting
+}
 
-fn State.describe() String: "state"
+fn State.describe() String => "state"
 
-fn use(value: Describe) Int:
-    match value:
-        State(Ready): return 1
-        _: return 0
+fn use(value Describe) Int {
+	match value {
+		State(Ready) => return 1
+		_ => return 0
+	}
+}

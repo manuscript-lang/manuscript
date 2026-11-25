@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() String:\n\treturn [1.5].join(separator: \",\")\n"
+    "fmt": "fn f() String {\n\treturn [1.5].join(separator: \",\")\n}\n"
   }
 }

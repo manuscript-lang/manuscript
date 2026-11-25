@@ -5,35 +5,44 @@ import Closeable from "@std/core.ms"
 
 // A temporary holding a resource that is only read closes it once, at the end of its
 // statement.
-type Door:
-	name: String
+type Door {
+	name String
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
 	print(f"closed {self.name}")
+}
 
-interface Labeled:
+interface Labeled {
 	fn label() String
+}
 
-fn Door.label() String:
+fn Door.label() String {
 	return self.name.clone()
+}
 
-type Pair:
-	a: Door
-	b: Door
+type Pair {
+	a Door
+	b Door
+}
 
-fn maybe(n: String) Door?:
+fn maybe(n String) Door? {
 	return Door(n.clone())
+}
 
-fn doors() List[Door]:
+fn doors() List[Door] {
 	return [Door("l1"), Door("l2")]
+}
 
-fn pair() Pair:
+fn pair() Pair {
 	return Pair(Door("pa"), Door("pb"))
+}
 
-fn show(l: Labeled) String:
+fn show(l Labeled) String {
 	return l.label()
+}
 
-fn main() Void:
+fn main() Void {
 	present := maybe("optional") != null
 	print("--list")
 
@@ -45,3 +54,4 @@ fn main() Void:
 
 	shown := show(Door("converted"))
 	print(f"end {present} {second} {first} {shown}")
+}

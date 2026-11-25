@@ -1,6 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Read:
+interface Read {
     fn get() Int
-fn old(value: Read & Equal) Void:
+}
+fn old(value Read & Equal) Void {
     return
+}

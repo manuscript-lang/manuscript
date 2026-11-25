@@ -6,22 +6,24 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn supplied(var log: List[String], data: Bytes) Bytes:
+fn supplied(var log List[String], data Bytes) Bytes {
 	log.append("data")
 	return data
+}
 
-fn chosen(var log: List[String], format: CompressionFormat) CompressionFormat:
+fn chosen(var log List[String], format CompressionFormat) CompressionFormat {
 	log.append("format")
 	return format
+}
 
-test "compression omission equals explicit level six for every format":
+test "compression omission equals explicit level six for every format" {
 	data := "repeat repeat repeat repeat".to_bytes()
 
 	for format in [
 		CompressionFormat.Gzip,
 		CompressionFormat.Zlib,
 		CompressionFormat.Deflate,
-	]:
+	] {
 		expected := compress(data, format, CompressOptions(level: 6))?
 		expect_equal((compress(data, format)?), expected)?
 		expect_equal((compress(data, format, CompressOptions())?), expected)?
@@ -37,30 +39,35 @@ test "compression omission equals explicit level six for every format":
 		)?
 		expect_equal((decompress(expected, format)?), data)?
 
-		for level in [0, 9]:
+		for level in [0, 9] {
 			output := compress(data, format, CompressOptions(level: level))?
 			expect_equal((decompress(output, format)?), data)?
+		}
 
 		encode := compress
 		expect_equal((encode(data, format, CompressOptions())?), expected)?
+	}
+}
 
-test "compression defaults retain invalid levels and output budgets":
+test "compression defaults retain invalid levels and output budgets" {
 	data := "abc".to_bytes()
-	invalid: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
-	limited: Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
+	invalid Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
+	limited Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
 
 	for format in [
 		CompressionFormat.Gzip,
 		CompressionFormat.Zlib,
 		CompressionFormat.Deflate,
-	]:
+	] {
 		expect_equal(compress(data, format, CompressOptions(level: -1)), invalid)?
 		expect_equal(compress(data, format, CompressOptions(level: 10)), invalid)?
 		expect_equal(compress(data, format, CompressOptions(max_bytes: -1)), invalid)?
 		expect_equal(compress(data, format, CompressOptions(max_bytes: 0)), limited)?
+	}
+}
 
-test "compression default preparation retains supplied argument order":
-	var log: List[String] = []
+test "compression default preparation retains supplied argument order" {
+	var log List[String] = []
 	data := "data".to_bytes()
 	encoded := compress(
 		format: chosen(log, CompressionFormat.Gzip),
@@ -68,3 +75,4 @@ test "compression default preparation retains supplied argument order":
 	)?
 	expect_equal(log, ["format", "data"])?
 	expect_equal((decompress(encoded, CompressionFormat.Gzip)?), data)?
+}

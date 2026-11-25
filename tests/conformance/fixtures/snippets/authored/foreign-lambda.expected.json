@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected end of statement, found name 'x'; there is no 'lambda': write an anonymous function as 'fn x: x + 1'",
+        "message": "expected end of statement, found name 'x'; there is no 'lambda': write an anonymous function as 'x => x + 1'",
         "position": {
           "file": "foreign-lambda.ms",
           "line": 5,
           "column": 17,
-          "offset": 144
+          "offset": 145
         },
         "end": {
           "file": "foreign-lambda.ms",
           "line": 5,
           "column": 18,
-          "offset": 145
+          "offset": 146
         }
       }
     ],

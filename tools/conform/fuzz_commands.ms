@@ -14,50 +14,55 @@ import (
 	sorted_unique from "./tags.ms",
 )
 
-type Kind:
-	name: String
-	dir: String
-	phase: String
+type Kind {
+	name, dir, phase String
+}
 
-fn kind_of(args: Args) Kind:
+fn kind_of(args Args) Kind {
 	name := one(args, "kind", "run")
-	if name == "type": return Kind(name: "type", dir: "fuzz/types", phase: "check")
-	if name == "syntax": return Kind(name: "syntax", dir: "fuzz/syntax", phase: "parse")
+	if name == "type" { return Kind(name: "type", dir: "fuzz/types", phase: "check") }
+	if name == "syntax" {
+		return Kind(name: "syntax", dir: "fuzz/syntax", phase: "parse")
+	}
 
 	return Kind(name: name.clone(), dir: "fuzz/run", phase: "run")
+}
 
-fn generate(kind: Kind, seed: Int) Generated:
-	if kind.name == "type": return type_error(seed)
-	if kind.name == "syntax": return syntax_error(seed)
+fn generate(kind Kind, seed Int) Generated {
+	if kind.name == "type" { return type_error(seed) }
+	if kind.name == "syntax" { return syntax_error(seed) }
 
 	return program(seed)
+}
 
 // `A..B` as the half-open seed range; (0, 0) with a problem when it does not parse.
-fn seed_range(args: Args) List[Int]:
+fn seed_range(args Args) List[Int] {
 	text := one(args, "seeds", "0..100")
 	at := text.index_of("..") or (-1)
-	if at < 0: return [-1, -1]
+	if at < 0 { return [-1, -1] }
 
 	low := text.slice(0, at).parse_int() or (-1)
 	high := text.slice(at + 2, text.length()).parse_int() or (-1)
 	return [low, high]
+}
 
-fn padded(seed: Int) String:
+fn padded(seed Int) String {
 	text := f"{seed}"
-	if text.length() >= 4: return text
+	if text.length() >= 4 { return text }
 
 	return "0".repeat(4 - text.length()) + text
+}
 
 // Writes `seed-NNNN.ms` for each seed into `dir`; returns how many.
-fn write_generated(dir: String, kind: Kind, low: Int, high: Int) Int:
+fn write_generated(dir String, kind Kind, low, high Int) Int {
 	create_directory(dir.clone(), recursive: true).get()
 
 	var written = 0
 
-	for seed in low..high:
+	for seed in low..high {
 		generated := generate(kind, seed)
 		var tags = generated.tags.clone()
-		if kind.phase == "run": tags.append("stdlib-io")
+		if kind.phase == "run" { tags.append("stdlib-io") }
 
 		meta := Meta(
 			tags: sorted_unique(tags),
@@ -76,16 +81,19 @@ fn write_generated(dir: String, kind: Kind, low: Int, high: Int) Int:
 			.wait()
 			.get()
 		written += 1
+	}
 
 	return written
+}
 
-export fn fuzz_gen(root: String, corpus: String, args: Args) Int:
+export fn fuzz_gen(root, corpus String, args Args) Int {
 	kind := kind_of(args)
 	range := seed_range(args)
 
-	if range[0] < 0 or range[1] < range[0]:
+	if range[0] < 0 or range[1] < range[0] {
 		print("conform fuzz-gen: --seeds wants A..B")
 		return 64
+	}
 
 	dir := f"{corpus}/{kind.dir}"
 	n := write_generated(dir, kind, range[0], range[1])
@@ -93,20 +101,23 @@ export fn fuzz_gen(root: String, corpus: String, args: Args) Int:
 		f"wrote {n} fixtures to {dir}; record them with `ms run tools/conform-run.ms -- --record {kind.dir}/`"
 	)
 	return 0
+}
 
-export fn fuzz(root: String, args: Args) Int:
+export fn fuzz(root String, args Args) Int {
 	kind := kind_of(args)
 	range := seed_range(args)
 
-	if range[0] < 0 or range[1] < range[0]:
+	if range[0] < 0 or range[1] < range[0] {
 		print("conform fuzz: --seeds wants A..B")
 		return 64
+	}
 
 	oracle := one(args, "oracle", "")
 
-	if oracle == "":
+	if oracle == "" {
 		print("conform fuzz: --oracle PATH names the reference ms")
 		return 64
+	}
 
 	candidate := one(args, "ms", tool_ms(root))
 	build_type := one(args, "build-type", "Release")
@@ -126,18 +137,18 @@ export fn fuzz(root: String, args: Args) Int:
 	)
 	save := one(args, "save", "")
 
-	if save != "" and not different.is_empty():
+	if save != "" and not different.is_empty() {
 		create_directory(save.clone(), recursive: true).get()
-		for id in different: copy(
-			f"{dir}/{id}.ms",
-			f"{save}/{id}.ms",
-			CopyOptions(replace: true),
-		).get()
+		for id in different {
+			copy(f"{dir}/{id}.ms", f"{save}/{id}.ms", CopyOptions(replace: true)).get()
+		}
+	}
 
-	for id in different: print(f"DIFF {id}")
+	for id in different { print(f"DIFF {id}") }
 	print(
 		f"{chosen.length()} programs: {chosen.length() - different.length()} same, {different.length()} differ"
 	)
-	if different.is_empty(): return 0
+	if different.is_empty() { return 0 }
 
 	return 1
+}

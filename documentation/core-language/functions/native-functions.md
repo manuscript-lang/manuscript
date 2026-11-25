@@ -5,19 +5,21 @@ weight = 3
 
 # Native functions
 
-`extern fn` declares a function whose body is native code linked into the program. The Manuscript name is the symbol name, so `extern fn llabs(value: Int) Int` calls the native symbol `llabs`. To use another Manuscript name, wrap the extern in an ordinary function.
+`extern fn` declares a function whose body is native code linked into the program. The Manuscript name is the symbol name, so `extern fn llabs(value Int) Int` calls the native symbol `llabs`. To use another Manuscript name, wrap the extern in an ordinary function.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-extern fn llabs(value: Int) Int
+extern fn llabs(value Int) Int
 
-fn magnitude(value: Int) Int:
+fn magnitude(value Int) Int {
     return llabs(value)
+}
 
-test "an extern calls the native symbol":
+test "an extern calls the native symbol" {
     expect_equal(magnitude(-7), 7)?
+}
 ```
 
 An extern has no body and no trailing `:`. It may be exported. It cannot be generic, take defaults or `var` parameters, or be a method.
@@ -51,16 +53,17 @@ Every output arrives holding an empty value (0, `""`, an empty list, NULL), and 
 
 ## Errors
 
-A `Result[T, E]` return names its error type `E`, an enum whose cases carry nothing, `code: Int`, `message: String`, or both. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order; reordering the cases changes the numbers. When any case has a `code` field, a trailing `int64_t *code_out` follows `out`; when any has a `message`, a trailing `ms_str *message_out` follows. The program reads the fields of the case the status names. A status that names no case faults.
+A `Result[T, E]` return names its error type `E`, an enum whose cases carry nothing, `code Int`, `message String`, or both. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order; reordering the cases changes the numbers. When any case has a `code` field, a trailing `int64_t *code_out` follows `out`; when any has a `message`, a trailing `ms_str *message_out` follows. The program reads the fields of the case the status names. A status that names no case faults.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // A failed call, with the library's code and description.
-enum LibraryError:
-    Failed(code: Int, message: String)
+enum LibraryError {
+    Failed(code Int, message String)
     Busy
+}
 
-extern fn lib_count(path: String) Int!LibraryError
+extern fn lib_count(path String) Int!LibraryError
 ```
 
 ```c
@@ -94,11 +97,13 @@ import Closeable from "@std/core.ms"
 // A connection the native library owns.
 export extern type Connection
 
-extern fn lib_connect(address: String) Connection
-extern fn lib_disconnect(connection: Connection) Void
+extern fn lib_connect(address String) Connection
 
-fn move Connection.close() Void!:
+extern fn lib_disconnect(connection Connection) Void
+
+fn move Connection.close() Void! {
     lib_disconnect(self)
+}
 ```
 
 ## Calling back into Manuscript
@@ -110,7 +115,7 @@ A native that keeps a function past the call, for a library that calls back late
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // Calls `visit` once for each entry the library finds.
-extern fn lib_walk(root: String, visit: fn(String, Int) Void) Void
+extern fn lib_walk(root String, visit fn(String, Int) Void) Void
 ```
 
 ```c

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn grow(values: List[Int]) Void:\n\tvalues.append(0)\n\nfn work(other: List[Int]) Int:\n\tvar values = [1, 2, 3, 4]\n\tvar total = 0\n"
+    "fmt": "fn grow(values List[Int]) Void {\n\tvalues.append(0)\n}\n\nfn work(other List[Int]) Int {\n\tvar values = [1, 2, 3, 4]\n\tvar total = 0\n}\n"
   }
 }

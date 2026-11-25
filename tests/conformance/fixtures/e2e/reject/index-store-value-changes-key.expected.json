@@ -12,16 +12,16 @@
         "message": "argument `bump(..)` of `[]=` is moved or changed in place but overlaps argument `k`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first",
         "position": {
           "file": "index-store-value-changes-key.ms",
-          "line": 10,
+          "line": 11,
           "column": 5,
-          "offset": 195
+          "offset": 197
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/index-store-value-changes-key.ms:10:5: type: argument `bump(..)` of `[]=` is moved or changed in place but overlaps argument `k`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first\n    |\n 10 |     m[k] = bump(k)\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/index-store-value-changes-key.ms:11:5: type: argument `bump(..)` of `[]=` is moved or changed in place but overlaps argument `k`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first\n    |\n 11 |     m[k] = bump(k)\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

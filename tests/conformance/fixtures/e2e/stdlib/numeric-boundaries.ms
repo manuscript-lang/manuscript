@@ -7,7 +7,7 @@ import (
 	nanoseconds from "@std/time.ms",
 )
 
-test "integer division retains signed boundary and remainder rules":
+test "integer division retains signed boundary and remainder rules" {
 	minimum := -9223372036854775808
 	expect_false(minimum / 1 != minimum or minimum % -1 != 0)?
 	expect_false(-7 / 2 != -3 or - 7 % 3 != -1)?
@@ -16,11 +16,12 @@ test "integer division retains signed boundary and remainder rules":
 	expect_equal(1d / -1d, -1d)?
 	expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())?
 
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(big_int_of_int(1).divide(big_int_of_int(0)), invalid)?
 	expect_equal(big_int_of_int(1).remainder(big_int_of_int(0)), invalid)?
+}
 
-test "duration arithmetic retains full signed nanosecond range":
+test "duration arithmetic retains full signed nanosecond range" {
 	minimum := nanoseconds(-9223372036854775808)
 	maximum := nanoseconds(9223372036854775807)
 	expect_false(
@@ -54,8 +55,9 @@ test "duration arithmetic retains full signed nanosecond range":
 			or maximum.subtract(maximum) != nanoseconds(0)
 		)
 	)?
+}
 
-test "duration safe addition subtraction negation and unit edges":
+test "duration safe addition subtraction negation and unit edges" {
 	minimum := nanoseconds(-9223372036854775808)
 	maximum := nanoseconds(9223372036854775807)
 	expect_false(
@@ -105,13 +107,15 @@ test "duration safe addition subtraction negation and unit edges":
 			).minutes().to_nanoseconds() != -9223372020000000000
 		)
 	)?
+}
 
-test "sized numbers widen to Int and Float with to_int and to_float":
-	a: Int8 := -100
-	b: Int16 := -7
-	c: Int32 := 70000
-	d: Int64 := 9
-	f: Float32 := 0.5
-	total: Int := a.to_int() + b.to_int() + c.to_int() + d.to_int()
+test "sized numbers widen to Int and Float with to_int and to_float" {
+	a Int8 := -100
+	b Int16 := -7
+	c Int32 := 70000
+	d Int64 := 9
+	f Float32 := 0.5
+	total Int := a.to_int() + b.to_int() + c.to_int() + d.to_int()
 	expect_equal(total, 69902)?
 	expect_equal(f.to_float(), 0.5)?
+}

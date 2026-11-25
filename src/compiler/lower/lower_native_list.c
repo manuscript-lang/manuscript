@@ -1,13 +1,8 @@
 /* compiler/lower/lower_native_list.c: the list natives that edit in place or close what they replace: `append`, `set`,
- * `get`, and the `_take` forms of `remove`, `splice` and a map's `add`, `remove` and `clear` on resources. */
+ * and the `_take` forms of `remove`, `splice` and a map's `add`, `remove` and `clear` on resources. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
-
-MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
-  const MirValue args[2] = {list, index}; /* the op counts a negative index from the end */
-  return fn_checked_emit(fn, MOP_ListGet, args, 2, (MirImm){0}, elem);
-}
 
 /* A native that changes a list receiver in line: the list is taken out of its slot or place, and `list_put` puts
  * the updated list back. False when the receiver is neither (nothing is emitted then). */

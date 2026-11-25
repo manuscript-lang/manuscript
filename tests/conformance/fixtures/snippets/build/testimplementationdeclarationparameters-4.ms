@@ -1,12 +1,15 @@
 // conform: tags=control-flow,diagnostics,interfaces,records,tier-core
 // conform: phase=check
 // conform: origin=pkg/build/compiler_test.go:528 TestImplementationDeclarationParameters
-interface Read[V]:
-    fn get() V
+interface Read[V] {
+	fn get() V
+}
 
-type Pair[A, B: Clonable]:
-    left: A
-    right: B
+type Pair[A, B Clonable] {
+	left A
+	right B
+}
 
-fn Pair[Int, B].get() B:
-    return self.right.clone()
+fn Pair[Int, B].get() B {
+	return self.right.clone()
+}

@@ -3,5 +3,6 @@
 // conform: origin=internal/cli/analysis_test.go:73 TestAnalysisLintAggregatesSourceAndHygiene
 import value from "./shared.ms"
 
-export fn main() Int:
-    return value()
+export fn main() Int {
+	return value()
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Counter:\n\tvar fn increment() Void\n\ntype Val:\n\tval: Int\n\nfn var Val.increment() Void:\n\tself.val += 1\n"
+    "fmt": "interface Counter {\n\tvar fn increment() Void\n}\n\ntype Val {\n\tval Int\n}\n\nfn var Val.increment() Void {\n\tself.val += 1\n}\n"
   }
 }

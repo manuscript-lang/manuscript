@@ -1,6 +1,6 @@
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"$ROOT_URI","capabilities":{}}}
 {"jsonrpc":"2.0","method":"initialized","params":{}}
-{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"fn main() Void:\n\tx := missing_name\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"fn main() Void {\n\tx := missing_name\n}\n"}}}
 {"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","version":2},"contentChanges":[{"range":{"start":{"line":1,"character":1},"end":{"line":1,"character":18}},"text":"print(\"é𝄞\")"}]}}
 {"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand","params":{}}
 {"jsonrpc":"2.0","method":"textDocument/didClose","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"}}}

@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "",
-    "stderr": "division by zero; right must be nonzero, found 0\n  at testfaultsourcelocations-5.ms:10 in limit\n  at testfaultsourcelocations-5.ms:13 in probe\n  at testfaultsourcelocations-5.ms:19 in main\n"
+    "stderr": "division by zero; right must be nonzero, found 0\n  at testfaultsourcelocations-5.ms:10 in limit\n  at testfaultsourcelocations-5.ms:14 in probe\n  at testfaultsourcelocations-5.ms:21 in main\n"
   }
 }

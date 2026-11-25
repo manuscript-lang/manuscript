@@ -26,34 +26,40 @@ import (
 	read_to_end from "./support/conn.ms",
 )
 
-fn get(path: String) HttpRequest:
+fn get(path String) HttpRequest {
 	return request(HttpMethod.Get, path)
+}
 
-fn request(method: HttpMethod, path: String) HttpRequest:
+fn request(method HttpMethod, path String) HttpRequest {
 	return HttpRequest(
-		method: method,
-		path: path,
+		method: method.clone(),
+		path: path.clone(),
 		query: "",
 		headers: headers(),
 		body: "".to_bytes(),
 	)
+}
 
-fn say(label: String) fn(var HttpExchange, RouteParams) Void!:
-	return fn var exchange, params: reply(exchange, text(200, label.clone()))
+fn say(label String) fn(var HttpExchange, RouteParams) Void! {
+	return (var exchange, params) => reply(exchange, text(200, label.clone()))
+}
 
-fn show(var exchange: HttpExchange, params: RouteParams) Void!:
+fn show(var exchange HttpExchange, params RouteParams) Void! {
 	id := params.get_or("id", "-")
 	rest := params.get_or("rest", "-")
 	return reply(exchange, text(200, f"{id}|{rest}"))
+}
 
-fn body_of(response: HttpResponse) String:
+fn body_of(response HttpResponse) String {
 	return response.body.decode_utf8() or ""
+}
 
-fn allow_of(response: HttpResponse) String:
+fn allow_of(response HttpResponse) String {
 	values := response.headers.get_all("Allow")
 	return values.join(",")
+}
 
-fn router() Router:
+fn router() Router {
 	var r = Router()
 	r.get("/", say("root")).get()
 	r.get("/users", say("list")).get()
@@ -61,52 +67,60 @@ fn router() Router:
 	r.get("/users/:id", show).get()
 	r.get("/files/*rest", show).get()
 	return r
+}
 
-test "literal, parameter and wildcard routes":
+test "literal, parameter and wildcard routes" {
 	r := router()
 	expect_equal(body_of(r.call(get("/"))?), "root")?
 	expect_equal(body_of(r.call(get("/users"))?), "list")?
 	expect_equal(body_of(r.call(get("/users/42"))?), "42|-")?
 	expect_equal(body_of(r.call(get("/files/a/b.txt"))?), "-|a/b.txt")?
 	expect_equal(body_of(r.call(get("/files/"))?), "-|")?
+}
 
-test "unknown paths answer 404":
+test "unknown paths answer 404" {
 	r := router()
 	response := r.call(get("/nope"))?
 	expect_equal(response.status, 404)?
 	expect_equal(body_of(r.call(get("/users/1/extra"))?), "not found\n")?
 	expect_equal((r.call(get("/users/"))?).status, 404)?
+}
 
-test "a known path under another method answers 405 with Allow":
+test "a known path under another method answers 405 with Allow" {
 	r := router()
 	response := r.call(request(HttpMethod.Delete, "/users"))?
 	expect_equal(response.status, 405)?
 	expect_equal(allow_of(response), "GET, HEAD, OPTIONS, POST")?
+}
 
-test "OPTIONS lists the methods without calling a handler":
+test "OPTIONS lists the methods without calling a handler" {
 	r := router()
 	response := r.call(request(HttpMethod.Options, "/users/7"))?
 	expect_equal(response.status, 204)?
 	expect_equal(allow_of(response), "GET, HEAD, OPTIONS")?
+}
 
-test "OPTIONS * lists the methods of every route":
+test "OPTIONS * lists the methods of every route" {
 	r := router()
 	response := r.call(request(HttpMethod.Options, "*"))?
 	expect_equal(response.status, 204)?
 	expect_equal(allow_of(response), "GET, HEAD, OPTIONS, POST")?
+}
 
-test "HEAD is answered from the GET route without a body":
+test "HEAD is answered from the GET route without a body" {
 	r := router()
 	response := r.call(request(HttpMethod.Head, "/users"))?
 	expect_equal(response.status, 200)?
 	expect_equal(response.body.length(), 0)?
+}
 
-fn stream_parts(var exchange: HttpExchange, params: RouteParams) Void!:
+fn stream_parts(var exchange HttpExchange, params RouteParams) Void! {
 	exchange.send_headers(200, headers())?
 	exchange.write("one")?
 	exchange.write("two")?
+}
 
-test "a streaming GET route answers HEAD, dropping the body writes":
+test "a streaming GET route answers HEAD, dropping the body writes" {
 	var r = Router()
 	r.get("/s", stream_parts).get()
 
@@ -126,17 +140,20 @@ test "a streaming GET route answers HEAD, dropping the body writes":
 
 	rest := read_to_end(over_socket.body)?
 	expect_equal(rest.length(), 0)?
+}
 
-test "the first matching route wins":
+test "the first matching route wins" {
 	var r = Router()
 	r.get("/a/:x", say("param")).get()
 	r.get("/a/b", say("literal")).get()
 	expect_equal(body_of(r.call(get("/a/b"))?), "param")?
+}
 
-fn head_reply(var exchange: HttpExchange, params: RouteParams) Void!:
+fn head_reply(var exchange HttpExchange, params RouteParams) Void! {
 	return reply(exchange, text(202, "head"))
+}
 
-test "explicit HEAD routes take precedence over GET fallback":
+test "explicit HEAD routes take precedence over GET fallback" {
 	var r = Router()
 	r.get("/a/:id", say("get"))?
 	r.head("/a/:id", head_reply)?
@@ -146,8 +163,9 @@ test "explicit HEAD routes take precedence over GET fallback":
 	expect_equal(response.status, 202)?
 	expect_equal(response.body.length(), 0)?
 	expect_equal(body_of(r.call(get("/a/fixed"))?), "get")?
+}
 
-test "invalid and duplicate patterns are rejected":
+test "invalid and duplicate patterns are rejected" {
 	var r = Router()
 	expect_true(r.get("users", say("x")).is_error())?
 	expect_true(r.get("/a/:", say("x")).is_error())?
@@ -157,90 +175,105 @@ test "invalid and duplicate patterns are rejected":
 	r.get("/a/:x", say("x")).get()
 	expect_true(r.get("/a/:y", say("y")).is_error())?
 	r.post("/a/:y", say("y")).get()
+}
 
-fn tag(label: String) fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
-	return fn var exchange, next: tagged(label.clone(), exchange, next)
+fn tag(label String) fn(var HttpExchange, fn(var HttpExchange) Void!) Void! {
+	return (var exchange, next) => tagged(label.clone(), exchange, next)
+}
 
 fn tagged(
-	label: String,
-	var exchange: HttpExchange,
-	next: fn(var HttpExchange) Void!
-) Void!:
+	label String,
+	var exchange HttpExchange,
+	next fn(var HttpExchange) Void!
+) Void! {
 	var seen = exchange.headers()
 	seen.append("X-Trail", label)?
 	with_request_headers(exchange, seen)
 	return next(exchange)
+}
 
-fn trail(var exchange: HttpExchange, params: RouteParams) Void!:
+fn trail(var exchange HttpExchange, params RouteParams) Void! {
 	values := exchange.headers().get_all("X-Trail")
 	return reply(exchange, text(200, values.join(">")))
+}
 
-test "middleware wraps routes outermost first":
+test "middleware wraps routes outermost first" {
 	var r = Router()
 	r.use(tag("a"))
 	r.use(tag("b"))
 	r.get("/t", trail).get()
 	expect_equal(body_of(r.call(get("/t"))?), "a>b")?
+}
 
-test "middleware also wraps the 404 answer":
+test "middleware also wraps the 404 answer" {
 	var r = Router()
 	r.use(tag("a"))
 	expect_equal((r.call(get("/missing"))?).status, 404)?
+}
 
-fn refuse(var exchange: HttpExchange, next: fn(var HttpExchange) Void!) Void!:
+fn refuse(var exchange HttpExchange, next fn(var HttpExchange) Void!) Void! {
 	return reply(exchange, text(401, "no"))
+}
 
-test "middleware may answer without calling the rest":
+test "middleware may answer without calling the rest" {
 	var r = Router()
 	r.use(refuse)
 	r.get("/t", say("never")).get()
 
 	response := r.call(get("/t"))?
 	expect_equal(response.status, 401)?
+}
 
-fn fail(var exchange: HttpExchange, params: RouteParams) Void!:
+fn fail(var exchange HttpExchange, params RouteParams) Void! {
 	return error(Error("boom", kind: "EIO"))
+}
 
-test "a handler error comes back from call":
+test "a handler error comes back from call" {
 	var r = Router()
 	r.get("/f", fail).get()
 	expect_true((r.call(get("/f"))).is_error())?
+}
 
-test "a handler that sends nothing answers 204":
+test "a handler that sends nothing answers 204" {
 	var r = Router()
-	r.get("/n", fn var exchange, params: ok()).get()
+	r.get("/n", (var exchange, params) => ok()).get()
 	expect_equal((r.call(get("/n"))?).status, 204)?
+}
 
-fn whole_response(var exchange: HttpExchange, params: RouteParams) Void!:
-	body := if exchange.path() == "/empty": "" else: "done"
+fn whole_response(var exchange HttpExchange, params RouteParams) Void! {
+	body := if exchange.path() == "/empty" { "" } else { "done" }
 	whole := text(200, body)
 	exchange.send(whole.status, whole.headers, whole.body)?
 
-	for extra in ["extra", ""]:
+	for extra in ["extra", ""] {
 		written := exchange.write(extra)
-		if written.is_ok(): return error(
-			Error("write after send succeeded", kind: "EIO")
-		)
-		if written.err().kind != "EINVAL": return error(
-			Error("wrong write error", kind: "EIO")
-		)
+		if written.is_ok() {
+			return error(Error("write after send succeeded", kind: "EIO"))
+		}
+		if written.err().kind != "EINVAL" {
+			return error(Error("wrong write error", kind: "EIO"))
+		}
+	}
+}
 
-test "a whole in-process response rejects subsequent writes":
+test "a whole in-process response rejects subsequent writes" {
 	var r = Router()
 	r.get("/done", whole_response)?
 	r.get("/empty", whole_response)?
 	expect_equal(body_of(r.call(get("/done"))?), "done")?
 	expect_equal(body_of(r.call(get("/empty"))?), "")?
+}
 
-fn small_reads(var exchange: HttpExchange, params: RouteParams) Void!:
+fn small_reads(var exchange HttpExchange, params RouteParams) Void! {
 	first := exchange.read(1)?
 	second := exchange.read(2)?
 	end := exchange.read(1)?
 	a := (first or Bytes([])).decode_utf8() or ""
 	b := (second or Bytes([])).decode_utf8() or ""
 	return reply(exchange, text(200, f"{a}|{b}|{(end == null)}"))
+}
 
-test "in-process reads retain the unread body after a bounded chunk":
+test "in-process reads retain the unread body after a bounded chunk" {
 	var r = Router()
 	r.post("/", small_reads)?
 
@@ -254,21 +287,26 @@ test "in-process reads retain the unread body after a bounded chunk":
 		)
 	)?
 	expect_equal(body_of(response), "a|bc|true")?
+}
 
-fn read_sizes(var exchange: HttpExchange, params: RouteParams) Void!:
-	limit: Int? := if params.get_or("mode", "") == "default": null else: 100000
+fn read_sizes(var exchange HttpExchange, params RouteParams) Void! {
+	limit Int? := if params.get_or(
+		"mode",
+		"",
+	) == "default" { null } else { 100000 }
 	first := exchange.read(limit)?
 	second := exchange.read(limit)?
 	end := exchange.read(limit)?
 	a := (first or Bytes([])).length()
 	b := (second or Bytes([])).length()
 	return reply(exchange, text(200, f"{a}|{b}|{(end == null)}"))
+}
 
-test "in-process reads cap default and explicit chunks at 65536 bytes":
+test "in-process reads cap default and explicit chunks at 65536 bytes" {
 	var r = Router()
 	r.post("/:mode", read_sizes)?
 
-	for mode in ["default", "explicit"]:
+	for mode in ["default", "explicit"] {
 		response := r.call(
 			HttpRequest(
 				method: HttpMethod.Post,
@@ -279,28 +317,34 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
 			)
 		)?
 		expect_equal(body_of(response), "65536|1|true")?
+	}
+}
 
-fn read_empty(var exchange: HttpExchange, params: RouteParams) Void!:
+fn read_empty(var exchange HttpExchange, params RouteParams) Void! {
 	first := exchange.read()?
 	second := exchange.read()?
 	return reply(exchange, text(200, f"{(first == null)}|{(second == null)}"))
+}
 
-test "in-process reads report EOF immediately for an empty body":
+test "in-process reads report EOF immediately for an empty body" {
 	var r = Router()
 	r.get("/", read_empty)?
 	expect_equal(body_of(r.call(get("/"))?), "true|true")?
+}
 
-fn invalid_reads(var exchange: HttpExchange, params: RouteParams) Void!:
-	for limit in [0, -1]:
+fn invalid_reads(var exchange HttpExchange, params RouteParams) Void! {
+	for limit in [0, -1] {
 		read := exchange.read(limit)
-		if read.is_ok(): return error(Error("invalid read size accepted", kind: "EIO"))
-		if read.err().kind != "EINVAL": return error(
-			Error("wrong read error", kind: "EIO")
-		)
+		if read.is_ok() { return error(Error("invalid read size accepted", kind: "EIO")) }
+		if read.err().kind != "EINVAL" {
+			return error(Error("wrong read error", kind: "EIO"))
+		}
+	}
 
 	return small_reads(exchange, params)
+}
 
-test "in-process reads reject nonpositive sizes without consuming input":
+test "in-process reads reject nonpositive sizes without consuming input" {
 	var r = Router()
 	r.post("/", invalid_reads)?
 
@@ -314,8 +358,9 @@ test "in-process reads reject nonpositive sizes without consuming input":
 		)
 	)?
 	expect_equal(body_of(response), "a|bc|true")?
+}
 
-test "the router serves over a socket":
+test "the router serves over a socket" {
 	handler := router().handler()
 	server := serve("127.0.0.1:0", handler, HttpServerOptions())?
 	client := http_client(HttpClientOptions())?
@@ -335,8 +380,9 @@ test "the router serves over a socket":
 		headers(),
 	)?
 	expect_equal(missing.metadata.status, 405)?
+}
 
-test "mount places a router under a prefix with its own middleware":
+test "mount places a router under a prefix with its own middleware" {
 	var api = Router()
 	api.use(tag("api"))
 	api.get("/", trail).get()
@@ -350,21 +396,24 @@ test "mount places a router under a prefix with its own middleware":
 	expect_equal(body_of(r.call(get("/api/v1/items/5"))?), "5|-")?
 	expect_equal(body_of(r.call(get("/health"))?), "top")?
 	expect_equal((r.call(get("/items/5"))?).status, 404)?
+}
 
-fn x_router() Router:
+fn x_router() Router {
 	var api = Router()
 	api.get("/x", say("x")).get()
 	return api
+}
 
-test "mount rejects a trailing slash and a clashing route":
+test "mount rejects a trailing slash and a clashing route" {
 	var r = Router()
 	expect_true(r.mount("/api/", x_router()).is_error())?
 	r.mount("/api", x_router()).get()
 	expect_true(r.mount("/api", x_router()).is_error())?
 	r.mount("/", x_router()).get()
 	expect_equal(body_of(r.call(get("/x"))?), "x")?
+}
 
-test "a mounted router keeps the groups of the routers mounted into it":
+test "a mounted router keeps the groups of the routers mounted into it" {
 	var inner = Router()
 	inner.use(tag("inner"))
 	inner.get("/", trail).get()
@@ -381,18 +430,22 @@ test "a mounted router keeps the groups of the routers mounted into it":
 	expect_equal(body_of(r.call(get("/mid/inner"))?), "top>mid>inner")?
 	expect_equal(body_of(r.call(get("/mid/own"))?), "top>mid")?
 	expect_equal(body_of(r.call(get("/plain"))?), "top")?
+}
 
-type Answer:
-	name: String
-	count: Int
+type Answer {
+	name String
+	count Int
+}
 
-fn answer(var exchange: HttpExchange, params: RouteParams) Void!:
+fn answer(var exchange HttpExchange, params RouteParams) Void! {
 	return reply(exchange, json(201, Answer(name: "ok", count: 2))?)
+}
 
-fn moved(var exchange: HttpExchange, params: RouteParams) Void!:
+fn moved(var exchange HttpExchange, params RouteParams) Void! {
 	return reply(exchange, redirect("/elsewhere")?)
+}
 
-test "json and redirect build responses":
+test "json and redirect build responses" {
 	var r = Router()
 	r.get("/j", answer).get()
 	r.get("/m", moved).get()
@@ -405,15 +458,18 @@ test "json and redirect build responses":
 	moved_to := r.call(get("/m"))?
 	expect_equal(moved_to.status, 303)?
 	expect_equal(moved_to.headers.get_all("Location").join(","), "/elsewhere")?
+}
 
-fn echo_id(var exchange: HttpExchange, params: RouteParams) Void!:
+fn echo_id(var exchange HttpExchange, params RouteParams) Void! {
 	seen := exchange.headers().get_all("X-Request-Id")
 	return reply(exchange, text(200, seen.join(",")))
+}
 
-fn id_of(response: HttpResponse) String:
+fn id_of(response HttpResponse) String {
 	return response.headers.get_all("X-Request-Id").join(",")
+}
 
-test "request_id keeps a usable id and makes one otherwise":
+test "request_id keeps a usable id and makes one otherwise" {
 	var r = Router()
 	r.use(request_id())
 	r.get("/i", echo_id).get()
@@ -433,32 +489,40 @@ test "request_id keeps a usable id and makes one otherwise":
 	bad.headers.append("X-Request-Id", "has space").get()
 	expect_equal(id_of(r.call(bad)?).length(), 36)?
 	expect_equal(id_of(r.call(get("/missing"))?).length(), 36)?
+}
 
-type Sink:
-	path: String
+type Sink {
+	path String
+}
 
-fn Sink.write(move data: String) Void!:
+fn Sink.write(move data String) Void! {
 	return append_file(self.path, data).wait()
+}
 
-fn Sink.write_bytes(move data: Bytes) Void!:
+fn Sink.write_bytes(move data Bytes) Void! {
 	return self.write(data.decode_utf8() or "")
+}
 
-fn Sink.flush() Void!:
+fn Sink.flush() Void! {
 	return ok()
+}
 
-fn Sink.duplicate() Transport!:
+fn Sink.duplicate() Transport! {
 	return ok(Sink(self.path.clone()))
+}
 
-fn move Sink.close() Void:
+fn move Sink.close() Void {
 	return
+}
 
-fn logged(path: String) String:
+fn logged(path String) String {
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8() or ""
+	if bytes := read { return bytes.decode_utf8() or "" }
 
 	return ""
+}
 
-test "access_log writes one record per request":
+test "access_log writes one record per request" {
 	dir := temporary("ms-router-log-") | expect_ok?
 	lines := f"{dir.path()}/lines"
 	logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
@@ -474,11 +538,13 @@ test "access_log writes one record per request":
 	expect_true(text_out.contains("\"bytes\":5"))?
 	expect_true(text_out.contains("\"status\":404"))?
 	expect_equal(text_out.lines().length(), 2)?
+}
 
-fn no_content(var exchange: HttpExchange, params: RouteParams) Void!:
+fn no_content(var exchange HttpExchange, params RouteParams) Void! {
 	return exchange.send(204, headers(), "ignored".to_bytes())
+}
 
-test "access_log counts only the body bytes that are sent":
+test "access_log counts only the body bytes that are sent" {
 	dir := temporary("ms-router-log-head-") | expect_ok?
 	lines := f"{dir.path()}/lines"
 	logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
@@ -508,8 +574,9 @@ test "access_log counts only the body bytes that are sent":
 	expect_true(records[2].contains("\"bytes\":0"))?
 	expect_true(records[3].contains("\"bytes\":5"))?
 	expect_true(records[4].contains("\"bytes\":6"))?
+}
 
-test "verb helpers register their method":
+test "verb helpers register their method" {
 	var r = Router()
 	r.put("/v", say("put"))?
 	r.patch("/v", say("patch"))?
@@ -520,15 +587,18 @@ test "verb helpers register their method":
 	expect_equal(body_of(r.call(request(HttpMethod.Delete, "/v"))?), "delete")?
 	expect_equal(body_of(r.call(request(HttpMethod.Options, "/o"))?), "options")?
 	expect_equal((r.call(request(HttpMethod.Post, "/v"))?).status, 405)?
+}
 
-test "a path that is not absolute matches no route":
+test "a path that is not absolute matches no route" {
 	var router = Router()
 	router.get("/", say("root"))?
 	router.get("/*rest", show)?
 
-	for path in ["", "*", "x"]:
+	for path in ["", "*", "x"] {
 		response := router.call(get(path))?
 		expect_equal(response.status, 404)?
+	}
 
 	options := router.call(request(HttpMethod.Options, "*"))?
 	expect_equal(options.status, 204)?
+}

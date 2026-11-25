@@ -12,22 +12,22 @@
         "message": "only types, enums, interfaces, and named functions can be exported; remove 'export' before this method, test, or bench (a method is exported with its type)",
         "position": {
           "file": "export-method.ms",
-          "line": 6,
+          "line": 7,
           "column": 1,
-          "offset": 98
+          "offset": 100
         },
         "end": {
           "file": "export-method.ms",
-          "line": 6,
+          "line": 7,
           "column": 7,
-          "offset": 104
+          "offset": 106
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/export-method.ms:6:1: parse: only types, enums, interfaces, and named functions can be exported; remove 'export' before this method, test, or bench (a method is exported with its type)\n   |\n 6 | export fn Item.show() Int:\n   | ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/export-method.ms:7:1: parse: only types, enums, interfaces, and named functions can be exported; remove 'export' before this method, test, or bench (a method is exported with its type)\n   |\n 7 | export fn Item.show() Int {\n   | ^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

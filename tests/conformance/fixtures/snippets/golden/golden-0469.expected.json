@@ -23,7 +23,7 @@
         "message": "declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration",
         "position": {
           "file": "golden-0469.ms",
-          "line": 5,
+          "line": 7,
           "column": 8,
           "offset": 96
         }
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0469.ms:3:8: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n   |\n 3 | export type Map[K, V]:\n   |        ^\n<DIR>/golden-0469.ms:5:8: resolution: declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration\n   |\n 5 | export type MapEntry[K, V]:\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0469.ms:3:8: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n   |\n 3 | export type Map[K, V] {\n   |        ^\n<DIR>/golden-0469.ms:7:8: resolution: declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration\n   |\n 7 | export type MapEntry[K, V] {\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

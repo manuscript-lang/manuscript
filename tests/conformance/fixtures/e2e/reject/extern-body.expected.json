@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "an extern fn has no body; remove the ':'",
+        "message": "an extern fn has no body; remove the braces",
         "position": {
           "file": "extern-body.ms",
           "line": 3,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/extern-body.ms:3:31: parse: an extern fn has no body; remove the ':'\n   |\n 3 | extern fn labs(value: Int) Int:\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/extern-body.ms:3:31: parse: an extern fn has no body; remove the braces\n   |\n 3 | extern fn labs(value Int) Int {\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,6 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type Empty: ...
-fn empty() Void: ...
-fn kept() Int:
-    return 3
+type Empty { ... }
+
+fn empty() Void { ... }
+
+fn kept() Int {
+	return 3
+}

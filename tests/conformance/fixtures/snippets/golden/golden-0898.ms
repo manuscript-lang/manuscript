@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() String:
-    return "{\"a\": 1}"
+fn f() String {
+	return "{\"a\": 1}"
+}

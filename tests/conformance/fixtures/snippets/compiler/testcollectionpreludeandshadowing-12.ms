@@ -2,4 +2,3 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/prelude_test.go:74 TestCollectionPreludeAndShadowing
 import List from "@std/collections/collections.ms"
-import List from "@std/collections/collections.ms"

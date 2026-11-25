@@ -15,12 +15,14 @@ Save as `batch.ms`. `map_concurrent` applies a function to every item with at mo
 ```manuscript
 import map_concurrent from "@std/concurrency/resilience.ms"
 
-fn square(n: Int) Int:
+fn square(n Int) Int {
     return n * n
+}
 
-fn main() Void!:
+fn main() Void! {
     squares := map_concurrent([1, 2, 3, 4, 5, 6], 3, square)?
     print(f"{squares}")
+}
 ```
 
 ## Feed a worker through a queue
@@ -29,30 +31,39 @@ Save as `worker.ms`. A pipe is the queue: the main program writes jobs, one work
 
 <!-- manuscript-example: {"mode":"run","stdout":"processed 3 jobs, total 60\n"} -->
 ```manuscript
-import promise from "@std/concurrency/promise.ms"
-import ReadStream, pipe from "@std/io/io.ms"
+import (
+    promise from "@std/concurrency/promise.ms",
+    ReadStream, pipe from "@std/io/io.ms",
+)
 
-type Summary:
-    jobs: Int
-    total: Int
+type Summary {
+    jobs, total Int
+}
 
-fn work(var jobs: ReadStream[Int]) Summary!:
+fn work(var jobs ReadStream[Int]) Summary! {
     var summary = Summary(jobs: 0, total: 0)
-    for job in jobs:
+
+    for job in jobs {
         summary.jobs += 1
         summary.total += job
-    return ok(summary)
+    }
 
-fn main() Void!:
+    return ok(summary)
+}
+
+fn main() Void! {
     var queue = pipe[Int](capacity: 8)
     var jobs = queue.writer()
     var reader = queue.reader()
-    worker := promise(fn: work(reader))
-    for job in [10, 20, 30]:
+    worker := promise(() => work(reader))
+    for job in [10, 20, 30] {
         jobs.write(job)?
+    }
     jobs.close()?
+
     done := worker.wait()?
     print(f"processed {done.jobs} jobs, total {done.total}")
+}
 ```
 
 - The queue holds up to `capacity` jobs; `write` waits when it is full, so a fast producer cannot outrun a slow worker without bound.
@@ -65,16 +76,22 @@ Save as `tick.ms`. A promise can loop and `sleep` between rounds. `sleep` return
 
 <!-- manuscript-example: {"mode":"run","stdout":"tick 1\ntick 2\ntick 3\n"} -->
 ```manuscript
-import promise from "@std/concurrency/promise.ms"
-import milliseconds, sleep from "@std/time.ms"
+import (
+    promise from "@std/concurrency/promise.ms",
+    milliseconds, sleep from "@std/time.ms",
+)
 
-fn ticker(rounds: Int) Void!:
-    for n in 1..rounds + 1:
+fn ticker(rounds Int) Void! {
+    for n in 1..rounds + 1 {
         print(f"tick {n}")
         sleep(milliseconds(20)).wait()?
-    return ok()
+    }
 
-fn main() Void!:
-    background := promise(fn: ticker(3))
+    return ok()
+}
+
+fn main() Void! {
+    background := promise(() => ticker(3))
     return background.wait()
+}
 ```

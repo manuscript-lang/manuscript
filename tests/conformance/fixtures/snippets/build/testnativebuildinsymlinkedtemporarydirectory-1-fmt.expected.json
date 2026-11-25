@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"native module identity\":\n\t_value := 1\n"
+    "fmt": "test \"native module identity\" {\n\t_value := 1\n}\n"
   }
 }

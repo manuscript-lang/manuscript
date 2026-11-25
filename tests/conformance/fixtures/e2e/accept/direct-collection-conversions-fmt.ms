@@ -6,66 +6,68 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn append_generic[T](var values: List[T?], value: T) Void:
+fn append_generic[T](var values List[T?], value T) Void {
 	values.append(value)
+}
 
-test "direct append preserves checked argument conversions":
-	var values: List[Int?] = []
+test "direct append preserves checked argument conversions" {
+	var values List[Int?] = []
 	values.append(7)
 	append_generic(values, 8)
 	values.append(null)
 	expect_false(
-		(values.get(0) or panic("called Optional.get() on null")) != 7 or (
-			values.get(1)
+		(values[0] or panic("called Optional.get() on null")) != 7 or (
+			values[1]
 			or panic("called Optional.get() on null")
 		) != 8
 	)?
-	expect_false(not (values.get(2) == null))?
+	expect_false(not (values[2] == null))?
 
-	var flags: List[Bool?] = []
+	var flags List[Bool?] = []
 	flags.append(false)
 	expect_false(
-		(flags.get(0) == null) or (
-			flags.get(0)
+		(flags[0] == null) or (
+			flags[0]
 			or panic("called Optional.get() on null")
 		)
 	)?
 
-	var units: List[Void?] = []
+	var units List[Void?] = []
 	units.append(void)
-	expect_false(units.get(0) == null)?
+	expect_false(units[0] == null)?
 
-	inner: Int? := null
-	var nested: List[Int??] = []
+	inner Int? := null
+	var nested List[Int??] = []
 	nested.append(inner)
 	expect_false(
 		(
-			(nested.get(0) == null)
+			(nested[0] == null)
 			or not (
-				nested.get(0)
+				nested[0]
 				or panic("called Optional.get() on null")
 			).is_none()
 		)
 	)?
 
-	var callbacks: List[(fn(Int) Int)?] = []
-	callbacks.append(fn value: value + 1)
-	expect_equal((callbacks.get(0) or panic("called Optional.get() on null"))(7), 8)?
+	var callbacks List[(fn(Int) Int)?] = []
+	callbacks.append(value => value + 1)
+	expect_equal((callbacks[0] or panic("called Optional.get() on null"))(7), 8)?
 
-	var errors: List[Error] = []
+	var errors List[Error] = []
 	errors.append(Error("failure"))
-	expect_equal(errors.get(0).message, "failure")?
+	expect_equal(errors[0].message, "failure")?
 
-	var results: List[Int!?] = []
-	failed: Int! := error(Error("failure"))
+	var results List[Int!?] = []
+	failed Int! := error(Error("failure"))
 	results.append(failed)
 
-	widened := results.get(0) or panic("called Optional.get() on null")
+	widened := results[0] or panic("called Optional.get() on null")
 	expect_false(widened.is_ok())?
 	expect_equal(widened.err().message, "failure")?
+}
 
-test "direct keyed calls preserve optional keys and values":
-	var values: List[Int?] = []
+test "direct keyed calls preserve optional keys and values" {
+	var values List[Int?] = []
 	values.append(7)
 	expect_false(not values.contains(7) or values.contains(8))?
 
@@ -86,18 +88,20 @@ test "direct keyed calls preserve optional keys and values":
 	expect_false(
 		(not keys.contains(7) or not keys.contains(null) or keys.length() != 2)
 	)?
+}
 
-test "direct calls capture receiver and arguments in written order":
-	first: List[Int?] := []
-	second: List[Int?] := []
+test "direct calls capture receiver and arguments in written order" {
+	first List[Int?] := []
+	second List[Int?] := []
 	var receiver = first.clone()
 	receiver.append(
 		(
-			match present(7):
-				value:
+			match present(7) {
+				value => {
 					receiver = second.clone()
 					value
-				null: 0
+				} null => 0
+			}
 		) + 0
 	)
 	expect_false(not first.is_empty() or not second.is_empty())?
@@ -107,11 +111,12 @@ test "direct calls capture receiver and arguments in written order":
 	entries.add(
 		key,
 		(
-			match present(7):
-				value:
+			match present(7) {
+				value => {
 					key = 2
 					value
-				null: 0
+				} null => 0
+			}
 		) + 0,
 	)
 	expect_false(
@@ -124,6 +129,8 @@ test "direct calls capture receiver and arguments in written order":
 			or key != 2
 		)
 	)?
+}
 
-fn present[T](value: T) T?:
+fn present[T](value T) T? {
 	return value
+}

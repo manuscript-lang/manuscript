@@ -6,10 +6,10 @@ Decision (Chinmay, 2026-11-09): code, examples, and docs use the shortest form t
 
 Use instead of:
 - `print("x")` over `stdout().write("x\n").get()`; `stdout()` only for bytes, no newline, or handled errors.
-- `a.length().max(b.length())` over `var m = a.length()` plus `if ...: m = ...`. The Int methods are ambient in user code and in stdlib modules outside the extension-module import closure; `math`, `string` and `big` cannot see them (cycle), so those write `max(a, b)`.
+- `a.length().max(b.length())` over `var m = a.length()` plus `if ... { m = ... }`. The Int methods are ambient in user code and in stdlib modules outside the extension-module import closure; `math`, `string` and `big` cannot see them (cycle), so those write `max(a, b)`.
 - `[0].repeated(n)` (one element takes a native fill), `(0..n)`, `.map`, `.filter`, `.any`/`.all`, `.sum()`, `.contains` over loops that build a list or accumulate; `for _round in` over `unusedN` (bare `_` is a reserved word; names starting `_` are exempt from unread and shadowing checks); `xs.extend(ys)` over a loop that appends copies.
 - `x := if c: a else: b` over `var x = a` plus a reassignment.
-- `.is_empty()` over `.length() == 0`; no `== true`; no `else:` after `return`.
+- `.is_empty()` over `.length() == 0`; no `== true`; no `} else {` after `return`.
 - `if v := x`, `get_or(default)`, `?` over `is_none()` guards and `match` unwrapping. Avoid chained `.get(a).get(b)`; use `get_or(key, default)` on a Map (`Headers`, `JsonValue` and `Result` lack it). Inside a type's own `get_or` do not write `self.get_or`: it recurses.
 - `"""` multi-line literals over `+ "\n" +` chains.
 
@@ -19,4 +19,4 @@ Verify: `ms fmt --check`, `make conform`, `make repo-check`.
 
 Rewrite hazards found: an `if` expression cannot replace `var x = a; if c: x = b` when `c` or `b` reads `x`, when `x` is reassigned later, or with `if v := x` (not an expression); `.get_or` on a type that defines its own `get_or` recurses. Do not bulk-edit `tests/e2e` fixtures that exist to exercise the verbose form.
 
-- Fallbacks are `get_or` (Chinmay, 2026-11-17): `Optional.get()`, `Result.get()` and `List.get(i)` take no fallback and `get_or(default)` / `get_or(i, default)` supplies one, like `Map.get_or(key, default)`. `x.get(d)` is a checker error with a `get_or` fix; MSL110 rewrites `m.get(k).get_or(d)` to `m.get_or(k, d)` and MSL129 rewrites a statement `result.get_or(none)` on `Void!` to `void result`.
+- Fallbacks are `get_or` (Chinmay, 2026-11-17): `Optional.get()` and `Result.get()` take no fallback and `get_or(default)` supplies one, and a list is read with `xs[i]` (`List.get` was removed 2026-11-25, Chinmay) with `get_or(i, default)` as the fallback, like `Map.get_or(key, default)`. `x.get(d)` is a checker error with a `get_or` fix; MSL110 rewrites `m.get(k).get_or(d)` to `m.get_or(k, d)` and MSL129 rewrites a statement `result.get_or(none)` on `Void!` to `void result`.

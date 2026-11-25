@@ -14,20 +14,20 @@
           "file": "golden-0578.ms",
           "line": 7,
           "column": 5,
-          "offset": 131
+          "offset": 132
         },
         "fix": {
           "position": {
             "file": "golden-0578.ms",
             "line": 6,
             "column": 5,
-            "offset": 104
+            "offset": 105
           },
           "end": {
             "file": "golden-0578.ms",
             "line": 6,
             "column": 14,
-            "offset": 113
+            "offset": 114
           },
           "replacement": "var values ="
         }

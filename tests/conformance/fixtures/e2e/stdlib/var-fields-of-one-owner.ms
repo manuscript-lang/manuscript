@@ -5,40 +5,47 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-type Lanes:
-	left: List[FileHandle] = []
-	right: List[FileHandle] = []
-	counts: List[Int] = []
+type Lanes {
+	left List[FileHandle] = []
+	right List[FileHandle] = []
+	counts List[Int] = []
+}
 
 // Moves the last handle of one list onto another, changing both lists and a third.
 fn hand_over(
-	var from: List[FileHandle],
-	var to: List[FileHandle],
-	var counts: List[Int],
-) Void:
+	var from List[FileHandle],
+	var to List[FileHandle],
+	var counts List[Int],
+) Void {
 	handle := from.pop()
 
-	if handle != null:
+	if handle != null {
 		to.append(handle)
 		counts.append(to.length())
+	}
+}
 
-fn var Lanes.shift() Void:
+fn var Lanes.shift() Void {
 	hand_over(self.left, self.right, self.counts)
+}
 
-fn var Lanes.shift_back() Void:
+fn var Lanes.shift_back() Void {
 	hand_over(self.right, self.left, self.counts)
+}
 
-test "changed fields of one record keep their owners without copying":
+test "changed fields of one record keep their owners without copying" {
 	tmp := temporary("var-fields-")?
 	path := f"{tmp.path()}/data"
 	append_file(path, "x").wait()?
 
 	var lanes = Lanes()
-	for unused in 0..3:
+	for unused in 0..3 {
 		lanes.left.append(open(path, OpenMode.Read)?)
+	}
 	lanes.shift()
 	lanes.shift()
 	lanes.shift_back()
 	expect_equal(lanes.left.length(), 2)?
 	expect_equal(lanes.right.length(), 1)?
 	expect_equal(lanes.counts, [1, 2, 2])?
+}

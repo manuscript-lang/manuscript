@@ -18,14 +18,16 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn ok_route(request: HttpRequest) HttpResponse:
+fn ok_route(request HttpRequest) HttpResponse {
 	return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
+}
 
-fn slow_route(request: HttpRequest) HttpResponse:
+fn slow_route(request HttpRequest) HttpResponse {
 	void sleep(30.seconds()).wait()
 	return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
+}
 
-test "serve ends a connection that trickles its request head":
+test "serve ends a connection that trickles its request head" {
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -39,25 +41,28 @@ test "serve ends a connection that trickles its request head":
 	// One byte every 100 ms never completes the head; the budget still runs out.
 	var sent = 0
 
-	while sent < 30:
+	while sent < 30 {
 		void sleep(100.milliseconds()).wait()
 
 		written := send(client, "a")
-		if written.is_error(): break
+		if written.is_error() { break }
 
 		sent += 1
+	}
 
 	// The server closes the connection, so a write fails before the trickle ends. The
 	// read may then see an error (a reset on macOS) instead of an end of stream.
-	if sent == 30: return error(Error("trickled request head was never cut off"))
+	if sent == 30 { return error(Error("trickled request head was never cut off")) }
 
-	if reply := recv(client, 3.seconds()):
+	if reply := recv(client, 3.seconds()) {
 		text := (reply or Bytes([])).decode_utf8() or ""
-		if text.starts_with("HTTP/1.1 200"): return error(
-			Error(f"incomplete request was served: {text}")
-		)
+		if text.starts_with(
+			"HTTP/1.1 200"
+		) { return error(Error(f"incomplete request was served: {text}")) }
+	}
+}
 
-test "close cancels a handler that outlives the grace period":
+test "close cancels a handler that outlives the grace period" {
 	var server = (
 		serve(
 			address: "127.0.0.1:0",
@@ -72,13 +77,15 @@ test "close cancels a handler that outlives the grace period":
 
 	// An error here is the connection ending (a reset on macOS); only a served reply
 	// fails.
-	if reply := recv(client, 5.seconds()):
+	if reply := recv(client, 5.seconds()) {
 		text := (reply or Bytes([])).decode_utf8() or ""
-		if text.starts_with("HTTP/1.1 200"): return error(
-			Error("handler finished instead of being cancelled")
-		)
+		if text.starts_with(
+			"HTTP/1.1 200"
+		) { return error(Error("handler finished instead of being cancelled")) }
+	}
+}
 
-test "close cancels a handler parked on a request body and releases its stream":
+test "close cancels a handler parked on a request body and releases its stream" {
 	var server = (
 		serve(
 			address: "127.0.0.1:0",
@@ -100,33 +107,37 @@ test "close cancels a handler parked on a request body and releases its stream":
 	void sleep(100.milliseconds()).wait()
 	server.close()?
 
-	if reply := recv(client, 5.seconds()):
+	if reply := recv(client, 5.seconds()) {
 		text := (reply or Bytes([])).decode_utf8() or ""
-		if text.starts_with("HTTP/1.1 200"): return error(
-			Error("handler finished instead of being cancelled")
-		)
+		if text.starts_with(
+			"HTTP/1.1 200"
+		) { return error(Error("handler finished instead of being cancelled")) }
+	}
+}
 
-fn expect_file_reply(var conn: Connection) Void!:
+fn expect_file_reply(var conn Connection) Void! {
 	reply := recv(conn, 10.seconds()) | expect_ok?
 	text := (reply or Bytes([])).decode_utf8() or ""
-	if not text.starts_with("HTTP/1.1 200"): return error(
-		Error(f"file handler failed: {text}")
-	)
+	if not text.starts_with(
+		"HTTP/1.1 200"
+	) { return error(Error(f"file handler failed: {text}")) }
+}
 
-test "serve answers requests while handlers read and write files":
+test "serve answers requests while handlers read and write files" {
 	var dir = temporary("ms-http-io") | expect_ok?
 	root := dir.path()
 	payload := ("0123456789abcdef".repeat(262144)).to_bytes()
 
-	fn io_route(request: HttpRequest) HttpResponse:
+	fn io_route(request HttpRequest) HttpResponse {
 		path := f"{root}/slot{request.query}.bin"
 		wrote := write_file(path, payload.clone(), replace: true).wait()
-		if wrote.is_error(): return HttpResponse(500, "write".to_bytes())
+		if wrote.is_error() { return HttpResponse(500, "write".to_bytes()) }
 
 		read := read_file(path).wait()
-		if read.is_error(): return HttpResponse(500, "read".to_bytes())
+		if read.is_error() { return HttpResponse(500, "read".to_bytes()) }
 
 		return HttpResponse(200, f"{read.get().length()}".to_bytes())
+	}
 
 	var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | expect_ok?
 	var a = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
@@ -147,11 +158,13 @@ test "serve answers requests while handlers read and write files":
 	expect_file_reply(b)?
 	server.close()?
 	dir.close()?
+}
 
-fn oversized(var exchange: HttpExchange) Void!:
+fn oversized(var exchange HttpExchange) Void! {
 	return reply(exchange, text(200, "z".repeat(5000)))
+}
 
-test "serve answers 500 when a whole response exceeds max_response_bytes":
+test "serve answers 500 when a whole response exceeds max_response_bytes" {
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -169,24 +182,27 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
 
 	reply_bytes := recv(client, 3.seconds()) | expect_ok?
 	head := (reply_bytes or Bytes([])).decode_utf8() or ""
-	if not head.starts_with("HTTP/1.1 500"): return error(
-		Error(f"expected a 500 reply, got: {head}")
-	)
+	if not head.starts_with(
+		"HTTP/1.1 500"
+	) { return error(Error(f"expected a 500 reply, got: {head}")) }
+}
 
-fn raw_status(address: String, request: String) String!:
+fn raw_status(address String, request String) String! {
 	var client = connect(address, timeout: 2.seconds()).wait() | expect_ok?
 	send(client, request) | expect_ok?
 
 	reply := recv(client, 2.seconds()) | expect_ok?
 	text := (reply or Bytes([])).decode_utf8() or ""
 	return ok(text.split("\r\n")[0].clone())
+}
 
-test "asterisk-form target is accepted only for OPTIONS":
+test "asterisk-form target is accepted only for OPTIONS" {
 	server := serve(address: "127.0.0.1:0", handler: buffered(ok_route)) | expect_ok?
 	tail := "HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
 	get := raw_status(server.address(), f"GET * {tail}") | expect_ok?
 	options := raw_status(server.address(), f"OPTIONS * {tail}") | expect_ok?
-	if get != "HTTP/1.1 400 Bad Request": return error(Error(f"GET * answered: {get}"))
-	if options != "HTTP/1.1 200 OK": return error(
-		Error(f"OPTIONS * answered: {options}")
-	)
+	if get != "HTTP/1.1 400 Bad Request" { return error(Error(f"GET * answered: {get}")) }
+	if options != "HTTP/1.1 200 OK" {
+		return error(Error(f"OPTIONS * answered: {options}"))
+	}
+}

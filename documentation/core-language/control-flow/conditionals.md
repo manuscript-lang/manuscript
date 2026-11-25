@@ -11,15 +11,18 @@ Save this as `status.ms` and run `ms run status.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Active\nInactive\n"} -->
 ```manuscript
-fn status(active: Bool) String:
-    if active:
+fn status(active Bool) String {
+    if active {
         return "Active"
-    else:
+    } else {
         return "Inactive"
+    }
+}
 
-fn main() Void:
+fn main() Void {
     print(status(true))
     print(status(false))
+}
 ```
 
 ```text
@@ -31,12 +34,16 @@ A short branch can be one simple statement on the same line:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn status(active: Bool) String:
-    if active: return "Active"
-    else: return "Inactive"
+fn status(active Bool) String {
+    if active {
+        return "Active"
+    } else {
+        return "Inactive"
+    }
+}
 ```
 
-See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing inline and indented bodies.
+See the [block rules](../basics/grammar.md#blocks-and-line-ends) for one-line blocks and `else` chains.
 
 - Conditions must be `Bool`; numbers and text have no truth values.
 - `if` is a statement here; the expression form is [below](#if-as-an-expression).
@@ -47,56 +54,63 @@ See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing i
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn classify(value: Int) String:
-    if value < 0:
+fn classify(value Int) String {
+    if value < 0 {
         return "negative"
-    else if value == 0:
+    } else if value == 0 {
         return "zero"
-    else:
+    } else {
         return "positive"
+    }
+}
 ```
 
-`if 1:` is rejected: the condition must be `Bool`.
+`if 1 { ... }` is rejected: the condition must be `Bool`.
 
 ## If as an expression
 
-`if c: a else: b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
+`if c { a } else { b }` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn sign(value: Int) Int:
-    return if value < 0: -1 else if value == 0: 0 else: 1
+fn sign(value Int) Int {
+    return if value < 0 { - 1 } else if value == 0 { 0 } else { 1 }
+}
 ```
 
 The branches are one-line expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#void-and-never) still require every reachable path of a function to return.
 
 ## Unwrapping an Optional or Result
 
-`if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `null` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
+`if name := expression { ... }` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `null` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn greeting(name: String?) String:
-    if value := name:
+fn greeting(name String?) String {
+    if value := name {
         return "Hello, " + value
-    else:
+    } else {
         return "Hello!"
+    }
+}
 ```
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn port(lookup: Result[Int, Error]) Int:
-    if value := lookup:
+fn port(lookup Result[Int, Error]) Int {
+    if value := lookup {
         return value
+    }
     return 8080
+}
 ```
 
-`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it. `place[key]?` is written only here.
+`if var name = place[key]? { ... }` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it. `place[key]?` is written only here.
 
-- `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`. `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar.
+- `if var entry = entries[key]? { ... }` then `entry.count = entry.count + 1` changes the value in `entries`. `if var n = counts[key]? { n += 1 }` updates `counts` without copying a scalar.
 - A missing key or out-of-range index takes the `else` branch.
 - The origin must be `var`, and nothing else may use it until the last use of `name`.
-- `if var name = map.get(key):` also borrows the map entry in place.
+- `if var name = map.get(key) { ... }` also borrows the map entry in place.
 - For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary `Optional`. To change an independent copy, use `if v := x` and clone the payload into a `var`.
 
 This complete test updates an existing map entry:
@@ -105,11 +119,13 @@ This complete test updates an existing map entry:
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-test "increment a visit count":
+test "increment a visit count" {
     var counts = {"visits": 2}
-    if var count = counts.get("visits"):
+    if var count = counts.get("visits") {
         count += 1
+    }
     expect_equal(counts.get_or("visits", 0), 3)?
+}
 ```
 
 A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if v := x` to a two-arm `match` on a payload name and `null` (**MSL108**).
@@ -120,11 +136,12 @@ Validate with an early return:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn nonnegative(value: Int) Bool:
-    if value < 0:
+fn nonnegative(value Int) Bool {
+    if value < 0 {
         return false
-
+    }
     return true
+}
 ```
 
 [Expected failures](../errors/results.md) uses this shape to reject invalid input with a domain error.

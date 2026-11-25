@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Queue from \"@std/collections/queue.ms\"\n\nfn read(state: Queue[Int]) Int:\n\treturn state.length()\n\nfn named(state: Queue[Int], value: Int = read(state)) Int:\n\treturn value\n\nfn nested(state: Queue[Int]) Void:\n\t_callback := fn(value: Int = read(state)) Int:\n\t\treturn value\n"
+    "fmt": "import Queue from \"@std/collections/queue.ms\"\n\nfn read(state Queue[Int]) Int {\n\treturn state.length()\n}\n\nfn named(state Queue[Int], value Int = read(state)) Int {\n\treturn value\n}\n\nfn nested(state Queue[Int]) Void {\n\t_callback := fn(value Int = read(state)) Int {\n\t\treturn value\n\t}\n}\n"
   }
 }

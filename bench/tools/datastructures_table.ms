@@ -4,11 +4,12 @@
 // only after a successful producer. Producers do not emit checksums.
 import invalid, left, right from "./lib.ms"
 
-export type Operation:
-	name: String
-	count: Int
+export type Operation {
+	name String
+	count Int
+}
 
-export fn operations() List[Operation]:
+export fn operations() List[Operation] {
 	return [
 		Operation("list_append", 1000000),
 		Operation("list_get_random", 1000000),
@@ -22,96 +23,112 @@ export fn operations() List[Operation]:
 		Operation("pq_int_enqueue_dequeue", 600000),
 		Operation("sorted_map_add_contains", 600000),
 	]
+}
 
-export fn versions() List[String]:
+export fn versions() List[String] {
 	return ["ms", "go", "rs"]
+}
 
 // Go has no sorted-map producer; all other rows are required in every version.
-fn required(version: String) List[String]:
-	names := operations().map(fn o: o.name.clone())
-	if version == "go": return names.filter(fn n: n != "sorted_map_add_contains")
+fn required(version String) List[String] {
+	names := operations().map(o => o.name.clone())
+	if version == "go" { return names.filter(n => n != "sorted_map_add_contains") }
 
 	return names
+}
 
-fn count_of(name: String) Int:
-	for op in operations():
-		if op.name == name: return op.count
+fn count_of(name String) Int {
+	for op in operations() {
+		if op.name == name { return op.count }
+	}
 	return 0
+}
 
-fn ratio(num: Float?, den: Float?) String:
-	if (num == null) or (den == null): return "-"
-	if (num) == 0.0 or (den) == 0.0: return "-"
+fn ratio(num, den Float?) String {
+	if (num == null) or (den == null) { return "-" }
+	if (num) == 0.0 or (den) == 0.0 { return "-" }
 
 	return ((num) / (den)).to_fixed(2)
+}
 
-fn cell(value: Float?) String:
+fn cell(value Float?) String {
 	v := value
-	if v != null: return right(v.to_fixed(1), 9)
+	if v != null { return right(v.to_fixed(1), 9) }
 
 	return right("-", 9)
+}
 
-export fn summarize(lines: List[String], repeats: Int) String!:
-	if repeats < 1: return invalid("repeats must be positive")
+export fn summarize(lines List[String], repeats Int) String! {
+	if repeats < 1 { return invalid("repeats must be positive") }
 
 	var best = Map[String, Float]()
 	var trials = Map[String, Int]()
-	for v in versions():
+	for v in versions() {
 		trials.add(v.clone(), 0)
+	}
 
 	var active = ""
 	var pending = Set[String]()
 
-	for line in lines:
-		parts := line.trim().split(" ").filter(fn p: p != "")
-		if parts.length() < 2 or not versions().contains(parts[0]):
+	for line in lines {
+		parts := line.trim().split(" ").filter(p => p != "")
+		if parts.length() < 2 or not versions().contains(parts[0]) {
 			return invalid(f"invalid sample: {line.trim()}")
+		}
 
 		version := parts[0].clone()
 		name := parts[1].clone()
-		if active != "" and version != active: return invalid(
-			f"unterminated {active} trial"
-		)
+		if active != "" and version != active {
+			return invalid(f"unterminated {active} trial")
+		}
 
 		active = version.clone()
 
-		if parts.length() == 3 and parts[1] == "#" and parts[2] == "end":
+		if parts.length() == 3 and parts[1] == "#" and parts[2] == "end" {
 			need := required(version)
 			if (
 				pending.length() != need.length()
-				or not need.all(fn n: pending.contains(n))
-			):
+				or not need.all(n => pending.contains(n))
+			) {
 				return invalid(f"incomplete {version} trial")
+			}
 
 			trials.add(version.clone(), trials.get_or(version, 0) + 1)
 			active = ""
 			pending = Set[String]()
 			continue
+		}
 
 		if (
 			parts.length() != 4
 			or not required(version).contains(name)
 			or pending.contains(name)
-		):
+		) {
 			return invalid(f"invalid operation: {line.trim()}")
+		}
 
 		ops := parts[2].parse_int()
 		ns := parts[3].parse_int()
-		if (ops == null or (ns == null) or (ops) != count_of(name) or (ns) < 0):
+		if (ops == null or (ns == null) or (ops) != count_of(name) or (ns) < 0) {
 			return invalid(f"invalid count or timing: {line.trim()}")
+		}
 
 		key := f"{name} {version}"
 		now := (ns).to_float()
 		prior := best.get(key)
 
-		if prior != null:
-			best.add(key.clone(), if now < prior: now else: prior)
-		else:
+		if prior != null {
+			best.add(key.clone(), if now < prior { now } else { prior })
+		} else {
 			best.add(key.clone(), now)
+		}
 
 		pending.add(name.clone())
+	}
 
-	if active != "" or versions().any(fn v: trials.get_or(v, 0) != repeats):
+	if active != "" or versions().any(v => trials.get_or(v, 0) != repeats) {
 		return invalid(f"expected {repeats} complete trials of every version")
+	}
 
 	var rows = [
 		f"Minimum of {repeats} rotating trials; ns/op. Complete trials and operation counts verified.",
@@ -122,12 +139,12 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		) + right("ms/go", 8) + right("ms/rust", 9),
 	]
 
-	for op in operations():
+	for op in operations() {
 		n := op.count.to_float()
 		m := best.get_or(f"{op.name} ms", 0.0) / n
-		var g: Float? = null
+		var g Float? = null
 		t := best.get(f"{op.name} go")
-		if t != null: g = t / n
+		if t != null { g = t / n }
 
 		r := best.get_or(f"{op.name} rs", 0.0) / n
 		rows.append(
@@ -136,5 +153,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 				8,
 			) + right(ratio(m, r), 9)
 		)
+	}
 
 	return ok(rows.join("\n"))
+}

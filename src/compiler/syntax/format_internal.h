@@ -226,7 +226,7 @@ static inline MsSpan fmt_tail(const MsStrBuild *builder, size_t from) {
 /* ---- tokens ---- */
 
 static inline bool fmt_layout_token(MsTok kind) {
-  return kind == MS_T_Newline || kind == MS_T_Indent || kind == MS_T_Dedent || kind == MS_T_Eof;
+  return kind == MS_T_Newline || kind == MS_T_Eof;
 }
 
 static inline MsSpan fmt_token_text(MsSpan source, const MsToken *t) {
@@ -329,6 +329,9 @@ int fmt_import_section(MsSpan path);
 bool fmt_group_imports(Fmt *f, MsSpan source, const MsToken *tokens, size_t ntokens, MsSpan *out);
 bool fmt_wrap_import(Fmt *f, const MsToken *parts, size_t nparts, MsSpan flat, MsSpan source, MsSpan *out);
 void fmt_wrap_comments(Fmt *f, const MsSpan *lines, size_t count, SpanList *out);
+bool fmt_normalize_blocks(Fmt *f, MsSpan text, const MsToken *tokens, size_t ntokens, MsSpan *out);
+/* Joins neighbouring fields, parameters and payload names that share a type: `width, height Int`. */
+bool fmt_group_names(Fmt *f, MsSpan text, const MsToken *tokens, size_t ntokens, MsSpan *out);
 bool fmt_align_suite_headers(Fmt *f, const MsSpan *lines, size_t nlines, const MsToken *tokens,
                              size_t ntokens, SpanList *out);
 

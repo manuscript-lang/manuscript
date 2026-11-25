@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrap[T](callback: (fn(Int) T)?) Void: return\n\nfn apply[T, U](value: T, transform: fn(T) U) U: transform(value)\n\nfn first() Void:\n\toffset := 7\n\t_result := apply(\n\t\tvalue: 1,\n\t\ttransform: fn outer: apply(\n\t\t\tvalue: 2,\n\t\t\ttransform: fn inner: (outer + inner + offset)\n\t\t)\n\t)\n\twrap(fn(item: Int = 4): item + offset)\n"
+    "fmt": "fn wrap[T](callback (fn(Int) T)?) Void => return\n\nfn apply[T, U](value T, transform fn(T) U) U => transform(value)\n\nfn first() Void {\n\toffset := 7\n\t_result := apply(\n\t\tvalue: 1,\n\t\ttransform: outer => apply(\n\t\t\tvalue: 2,\n\t\t\ttransform: inner => (outer + inner + offset),\n\t\t),\n\t)\n\twrap(fn(item Int = 4) => item + offset)\n}\n"
   }
 }

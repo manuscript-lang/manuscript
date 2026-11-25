@@ -7,8 +7,8 @@
 #define MS_TOKENS(X)                                                                                         \
   X(Comment, "#comment")                                                                                     \
   X(Newline, "NEWLINE")                                                                                      \
-  X(Indent, "INDENT")                                                                                        \
-  X(Dedent, "DEDENT")                                                                                        \
+  X(BlockOpen, "{")                                                                                        \
+  X(BlockClose, "}")                                                                                        \
   X(Eof, "EOF")                                                                                              \
   X(Name, "NAME") X(Number, "NUMBER") X(String, "STRING") X(And, "and") X(Break, "break")                    \
       X(Continue, "continue") X(Else, "else") X(Enum, "enum") X(Export, "export") X(Extern, "extern")        \
@@ -21,7 +21,7 @@
                                   X(Plus, "+") X(Minus, "-") X(Star, "*") X(Slash, "/") X(Percent, "%")      \
                                       X(Lt, "<") X(Gt, ">") X(Assign, "=") X(Amp, "&") X(Pipe, "|")          \
                                           X(Ellipsis, "...") X(DotDot, "..") X(Question, "?") X(Bang, "!")   \
-                                              X(ColonAssign, ":=") X(Arrow, "->") X(EqEq, "==")              \
+                                              X(ColonAssign, ":=") X(Arrow, "->") X(FatArrow, "=>") X(EqEq, "==")              \
                                                   X(NotEq, "!=") X(Le, "<=") X(Ge, ">=")
 
 typedef enum MsTok {

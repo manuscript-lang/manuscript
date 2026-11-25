@@ -9,41 +9,48 @@ import (
 	connect, serve from "@std/net/net.ms",
 )
 
-fn failing(var exchange: HttpExchange) Void!:
+fn failing(var exchange HttpExchange) Void! {
 	return error(
 		Error(
 			"the handler failed with a message that fills its own allocation",
 			kind: "EIO",
 		)
 	)
+}
 
-fn fetch(address: String) Bool:
-	if var conn = connect(address).wait():
+fn fetch(address String) Bool {
+	if var conn = connect(address).wait() {
 		_sent := conn.output.write(
 			"GET /x HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n".to_bytes()
 		)
 		_flushed := conn.output.flush()
 
-		while true:
+		while true {
 			read := conn.input.next()
-			if read.is_error(): return false
+			if read.is_error() { return false }
 
 			_data := read.get()
-			if _data != null: continue
+			if _data != null { continue }
 
 			return true
+		}
+	}
 
 	return false
+}
 
-export fn main() Int:
-	if acquired := serve(address: "127.0.0.1:0", handler: failing):
+export fn main() Int {
+	if acquired := serve(address: "127.0.0.1:0", handler: failing) {
 		var server = acquired
 		var answered = 0
-		for _at in 0..50:
-			if fetch(server.address()): answered += 1
+		for _at in 0..50 {
+			if fetch(server.address()) { answered += 1 }
+		}
 		void server.close()
 
 		_line := stdout().write(f"answered {answered}\n")
 		return 0
+	}
 
 	return 1
+}

@@ -3,33 +3,40 @@
 // conform: origin=tests/e2e/testdata/accept/cl-16.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-type Input:
-	names: List[String?]
+type Input {
+	names List[String?]
+}
 
-fn outcome_value(move outcome: Int!Error) Int:
+fn outcome_value(move outcome Int!Error) Int {
 	return outcome.get_or(-1)
+}
 
-test "data constructor context":
+test "data constructor context" {
 	_input := Input([null, "Ada"])
-	success: Int!Error := ok(3)
-	failure: Int!Error := error(Error("unavailable"))
-	_absent: Int? := null
-	_nested: List[List[Int]] := [[], [1]]
-	expect_equal(outcome_value(success), 3)?
+	success Int!Error := ok(3)
+	failure Int!Error := error(Error("unavailable"))
+	_absent Int? := null
+	_nested List[List[Int]] := [[], [1]]
+	expect_equal(outcome_value(success.clone()), 3)?
 	expect_equal(outcome_value(failure), -1)?
+}
 
-type Box[T]:
-	value: T
+type Box[T] {
+	value T
+}
 
-type Request:
-	box: Box[Int?]
+type Request {
+	box Box[Int?]
+}
 
-fn select[T](first: T, second: T) T:
+fn select[T](first T, second T) T {
 	return first
+}
 
-test "nested constructor arguments receive inferred context":
+test "nested constructor arguments receive inferred context" {
 	request := Request(Box(null))
-	provided: Int? := 3
+	provided Int? := 3
 	selected := select(Box(null), Box(provided))
 	expect_false(not (selected.value == null))?
 	expect_false(not (request.box.value == null))?
+}

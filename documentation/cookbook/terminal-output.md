@@ -17,12 +17,13 @@ Save as `report.ms`. A `Table` takes one alignment per column and pads every cel
 ```manuscript
 import Align, Table from "@std/cli/table.ms"
 
-fn main() Void!:
+fn main() Void! {
     var table = Table(columns: [Align.Left, Align.Right])
     table.add(["service", "ms"])?
     table.add(["search", "340"])?
     table.add(["home", "12"])?
     print(table.render())
+}
 ```
 
 ## Color only on a terminal
@@ -33,9 +34,10 @@ fn main() Void!:
 ```manuscript
 import Color, Style, styled from "@std/cli/style.ms"
 
-fn main() Void:
+fn main() Void {
     warn := Style(foreground: Color.Ansi(3), bold: true)
     print(styled("slow", warn))
+}
 ```
 
 - `Color` is `Default`, `Ansi(0..15)`, `Indexed(0..255)` or `Rgb(red, green, blue)`; a terminal with fewer colors gets the nearest one.

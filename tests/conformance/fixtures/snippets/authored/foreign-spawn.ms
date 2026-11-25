@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,stdlib-tasks,tier-core
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
-fn f() Void:
-    spawn(fn: 1)
+fn f() Void {
+	spawn(() => 1)
+}

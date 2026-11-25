@@ -15,256 +15,254 @@ import (
 	Duration, Timestamp from "@std/time.ms",
 )
 
-export extern fn msstd_url_encode_component(text: String) move String
+export extern fn msstd_url_encode_component(text String) move String
 
-export extern fn msstd_net_ip_address_text(value: IpAddress) move String
+export extern fn msstd_net_ip_address_text(value IpAddress) move String
 
-export extern fn msstd_net_ip_address_family(value: IpAddress) Bool
+export extern fn msstd_net_ip_address_family(value IpAddress) Bool
 
-export extern fn msstd_net_cidr_text(value: Cidr) move String
+export extern fn msstd_net_cidr_text(value Cidr) move String
 
-export extern fn msstd_net_contains_ip(cidr: Cidr, address: IpAddress) Bool!
+export extern fn msstd_net_contains_ip(cidr Cidr, address IpAddress) Bool!
 
-export extern fn msstd_net_parse_cidr(text: String) move Cidr!
+export extern fn msstd_net_parse_cidr(text String) move Cidr!
 
-export extern fn msstd_net_parse_ip(text: String) move IpAddress!
+export extern fn msstd_net_parse_ip(text String) move IpAddress!
 
 export extern fn msstd_net_network() move NativeNetwork
 
 export extern fn msstd_tls_parse_certificates(
-	pem: String,
-	max_certificates: Int?,
+	pem String,
+	max_certificates Int?,
 ) move List[CertificateInfo]!
 
 export extern fn msstd_tls_verify_certificates(
-	chain_pem: String,
-	roots_pem: String,
-	server_name: String,
-	now: Timestamp,
+	chain_pem,
+	roots_pem,
+	server_name String,
+	now Timestamp,
 ) Void!
 
-export extern fn msstd_url_decode_component(text: String) move String!
+export extern fn msstd_url_decode_component(text String) move String!
 
-export extern fn msstd_url_format(value: Url) move String!
+export extern fn msstd_url_format(value Url) move String!
 
-export extern fn msstd_url_format_query(entries: List[QueryEntry]) move String
+export extern fn msstd_url_format_query(entries List[QueryEntry]) move String
 
-export extern fn msstd_url_parse(text: String) move Url!
+export extern fn msstd_url_parse(text String) move Url!
 
 export extern fn msstd_url_parse_query(
-	text: String,
-	max_entries: Int?,
+	text String,
+	max_entries Int?,
 ) move List[QueryEntry]!
 
-export extern fn msstd_url_resolve(base: Url, reference: String) move Url!
+export extern fn msstd_url_resolve(base Url, reference String) move Url!
 
-export extern fn msstd_net_connection_close(handle: NativeConnection) Void
+export extern fn msstd_net_connection_close(handle NativeConnection) Void
 
 export extern fn msstd_net_connection_share(
-	handle: NativeConnection
+	handle NativeConnection
 ) move NativeConnection
 
 export extern fn msstd_net_connection_alias(
-	handle: NativeConnection
+	handle NativeConnection
 ) move NativeConnection
 
-export extern fn msstd_net_connection_close_if_last(handle: NativeConnection) Void
+export extern fn msstd_net_connection_close_if_last(handle NativeConnection) Void
 
-export extern fn msstd_net_connection_local_address(
-	handle: NativeConnection
-) move String
+export extern fn msstd_net_connection_local_address(handle NativeConnection) move String
 
-export extern fn msstd_net_connection_peer_address(handle: NativeConnection) move String
+export extern fn msstd_net_connection_peer_address(handle NativeConnection) move String
 
 export extern fn msstd_net_connection_read(
-	handle: NativeConnection,
-	max_bytes: Int?,
-	timeout: Duration?,
+	handle NativeConnection,
+	max_bytes Int?,
+	timeout Duration?,
 ) move Bytes?!
 
-export extern fn msstd_net_connection_shutdown_write(handle: NativeConnection) Void!
+export extern fn msstd_net_connection_shutdown_write(handle NativeConnection) Void!
 
 export extern fn msstd_net_connection_start_tls(
-	handle: NativeConnection,
-	options: TlsOptions,
-	timeout: Duration?,
+	handle NativeConnection,
+	options TlsOptions,
+	timeout Duration?,
 ) move NativeConnection!
 
 export extern fn msstd_net_connection_accept_tls(
-	handle: NativeConnection,
-	options: TlsOptions,
-	timeout: Duration?,
+	handle NativeConnection,
+	options TlsOptions,
+	timeout Duration?,
 ) move NativeConnection!
 
-export extern fn msstd_net_connection_tls_info(handle: NativeConnection) move TlsInfo!
+export extern fn msstd_net_connection_tls_info(handle NativeConnection) move TlsInfo!
 
 export extern fn msstd_net_connection_write_bytes(
-	handle: NativeConnection,
-	data: Bytes,
-	timeout: Duration?,
+	handle NativeConnection,
+	data Bytes,
+	timeout Duration?,
 ) Void!
 
-export extern fn msstd_net_datagram_address(handle: NativeDatagramSocket) move String
+export extern fn msstd_net_datagram_address(handle NativeDatagramSocket) move String
 
-export extern fn msstd_net_datagram_close(handle: NativeDatagramSocket) Void
+export extern fn msstd_net_datagram_close(handle NativeDatagramSocket) Void
 
 export extern fn msstd_net_datagram_share(
-	handle: NativeDatagramSocket
+	handle NativeDatagramSocket
 ) move NativeDatagramSocket
 
-export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) Void
+export extern fn msstd_net_datagram_close_if_last(handle NativeDatagramSocket) Void
 
 export extern fn msstd_net_datagram_receive(
-	handle: NativeDatagramSocket,
-	max_bytes: Int?,
-	timeout: Duration?,
+	handle NativeDatagramSocket,
+	max_bytes Int?,
+	timeout Duration?,
 ) move Datagram!
 
 export extern fn msstd_net_datagram_send_bytes(
-	handle: NativeDatagramSocket,
-	data: Bytes,
-	address: String,
-	timeout: Duration?,
+	handle NativeDatagramSocket,
+	data Bytes,
+	address String,
+	timeout Duration?,
 ) Void!
 
 export extern fn msstd_net_listener_accept(
-	handle: NativeListener,
-	timeout: Duration?,
+	handle NativeListener,
+	timeout Duration?,
 ) move NativeConnection!
 
 // Another handle on the same listener, for a promise that accepts on it; dropping it
 // leaves the listener open.
-export extern fn msstd_net_listener_share(handle: NativeListener) move NativeListener
+export extern fn msstd_net_listener_share(handle NativeListener) move NativeListener
 
 // Waits for the next connection and returns its socket handle without wrapping it, for
 // `msstd_net_connection_adopt` on any thread. A TLS listener fails.
 export extern fn msstd_net_listener_accept_raw(
-	handle: NativeListener,
-	timeout: Duration?,
+	handle NativeListener,
+	timeout Duration?,
 ) Int!
 
 // Closes a socket handle `accept_raw` returned that was never adopted.
-export extern fn msstd_net_pending_release(raw: Int) Void
+export extern fn msstd_net_pending_release(raw Int) Void
 
 // Wraps a socket handle `accept_raw` returned as a connection owned by the calling
 // thread.
-export extern fn msstd_net_connection_adopt(raw: Int) move NativeConnection!
+export extern fn msstd_net_connection_adopt(raw Int) move NativeConnection!
 
-export extern fn msstd_net_listener_address(handle: NativeListener) move String
+export extern fn msstd_net_listener_address(handle NativeListener) move String
 
-export extern fn msstd_net_listener_close(handle: NativeListener) Void
+export extern fn msstd_net_listener_close(handle NativeListener) Void
 
-export extern fn msstd_websocket_close(handle: NativeWebSocket) Void
+export extern fn msstd_websocket_close(handle NativeWebSocket) Void
 
-export extern fn msstd_websocket_share(handle: NativeWebSocket) move NativeWebSocket
+export extern fn msstd_websocket_share(handle NativeWebSocket) move NativeWebSocket
 
-export extern fn msstd_websocket_close_if_last(handle: NativeWebSocket) Void
+export extern fn msstd_websocket_close_if_last(handle NativeWebSocket) Void
 
-export extern fn msstd_websocket_ping(handle: NativeWebSocket, data: String) Void!
+export extern fn msstd_websocket_ping(handle NativeWebSocket, data String) Void!
 
-export extern fn msstd_websocket_ping_bytes(handle: NativeWebSocket, data: Bytes) Void!
+export extern fn msstd_websocket_ping_bytes(handle NativeWebSocket, data Bytes) Void!
 
 export extern fn msstd_websocket_receive(
-	handle: NativeWebSocket
+	handle NativeWebSocket
 ) move RawWebSocketMessage?!
 
 export extern fn msstd_websocket_send_bytes(
-	handle: NativeWebSocket,
-	data: Bytes,
-	text: Bool,
+	handle NativeWebSocket,
+	data Bytes,
+	text Bool,
 ) Void!
 
-export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) move String
+export extern fn msstd_websocket_subprotocol(handle NativeWebSocket) move String
 
 export extern fn msstd_net_network_bind_datagram(
-	net: NativeNetwork,
-	address: String,
+	net NativeNetwork,
+	address String,
 ) move NativeDatagramSocket!
 
-export extern fn msstd_net_network_close(net: NativeNetwork) Void
+export extern fn msstd_net_network_close(net NativeNetwork) Void
 
 export extern fn msstd_net_network_connect(
-	net: NativeNetwork,
-	address: String,
-	timeout: Duration?,
+	net NativeNetwork,
+	address String,
+	timeout Duration?,
 ) move NativeConnection!
 
 export extern fn msstd_net_network_connect_tls_config(
-	net: NativeNetwork,
-	address: String,
-	options: TlsOptions,
-	timeout: Duration?,
+	net NativeNetwork,
+	address String,
+	options TlsOptions,
+	timeout Duration?,
 ) move NativeConnection!
 
 export extern fn msstd_net_network_connect_unix(
-	net: NativeNetwork,
-	path: String,
-	timeout: Duration?,
+	net NativeNetwork,
+	path String,
+	timeout Duration?,
 ) move NativeConnection!
 
 export extern fn msstd_net_network_http_client(
-	net: NativeNetwork,
-	options: HttpClientOptions,
+	net NativeNetwork,
+	options HttpClientOptions,
 ) move HttpClient!
 
 export extern fn msstd_net_network_listen(
-	net: NativeNetwork,
-	address: String,
+	net NativeNetwork,
+	address String,
 ) move Listener!
 
 export extern fn msstd_net_network_listen_tls(
-	net: NativeNetwork,
-	address: String,
-	options: TlsOptions,
-	handshake_timeout: Duration?,
+	net NativeNetwork,
+	address String,
+	options TlsOptions,
+	handshake_timeout Duration?,
 ) move Listener!
 
 export extern fn msstd_net_network_listen_unix(
-	net: NativeNetwork,
-	path: String,
+	net NativeNetwork,
+	path String,
 ) move Listener!
 
 export extern fn msstd_net_network_lookup(
-	net: NativeNetwork,
-	name: String,
-	max_records: Int?,
-	timeout: Duration?,
+	net NativeNetwork,
+	name String,
+	max_records Int?,
+	timeout Duration?,
 ) move List[String]!
 
 export extern fn msstd_net_network_request_bytes(
-	net: NativeNetwork,
-	method: String,
-	url: String,
-	headers: HttpHeaders,
-	body: Bytes,
-	max_response_bytes: Int?,
-	timeout: Duration?,
+	net NativeNetwork,
+	method,
+	url String,
+	headers HttpHeaders,
+	body Bytes,
+	max_response_bytes Int?,
+	timeout Duration?,
 ) move ClientResponse!
 
 export extern fn msstd_net_network_resolve(
-	net: NativeNetwork,
-	name: String,
-	kind: DnsKind,
-	max_records: Int?,
-	timeout: Duration?,
+	net NativeNetwork,
+	name String,
+	kind DnsKind,
+	max_records Int?,
+	timeout Duration?,
 ) move List[DnsRecord]!
 
 export extern fn msstd_net_network_restrict(
-	net: NativeNetwork,
-	hosts: List[String],
-	cidrs: List[String],
-	allow_listen: Bool,
+	net NativeNetwork,
+	hosts,
+	cidrs List[String],
+	allow_listen Bool,
 ) move Network!
 
 export extern fn msstd_net_network_web_socket(
-	net: NativeNetwork,
-	url: String,
-	headers: HttpHeaders,
-	subprotocols: List[String],
-	options: WebSocketWire,
+	net NativeNetwork,
+	url String,
+	headers HttpHeaders,
+	subprotocols List[String],
+	options WebSocketWire,
 ) move NativeWebSocket!
 
 export extern fn msstd_net_network_with_resolver(
-	net: NativeNetwork,
-	address: String,
+	net NativeNetwork,
+	address String,
 ) move Network!

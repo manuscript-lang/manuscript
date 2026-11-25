@@ -15,15 +15,18 @@ Save this as `words.ms`. It splits a short line repeatedly and prints the number
 ```manuscript
 import arguments from "@std/os/env.ms"
 
-fn count_words(text: String) Int:
+fn count_words(text String) Int {
     return text.split(" ").length()
+}
 
-fn main() Void:
+fn main() Void {
     repeats := arguments().get_or(0, "1000000").parse_int() or 1000000
     var total = 0
-    for index in 0..repeats:
+    for index in 0..repeats {
         total += count_words("small programs are easy to review")
+    }
     print(total)
+}
 ```
 
 ```sh

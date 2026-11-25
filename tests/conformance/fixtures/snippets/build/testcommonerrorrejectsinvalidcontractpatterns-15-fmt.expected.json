@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[T]:\n\titem: T\n\ninterface Named:\n\tfn name() String\n\nfn Box[T].name() String:\n\treturn \"box\"\n\nfn wrong(item: Named) String:\n\tmatch item:\n\t\tBox(value):\n\t\t\treturn value.name()\n\t\t_:\n\t\t\treturn item.name()\n"
+    "fmt": "type Box[T] {\n\titem T\n}\n\ninterface Named {\n\tfn name() String\n}\n\nfn Box[T].name() String {\n\treturn \"box\"\n}\n\nfn wrong(item Named) String {\n\tmatch item {\n\t\tBox(value) => {\n\t\t\treturn value.name()\n\t\t}\n\t\t_ => {\n\t\t\treturn item.name()\n\t\t}\n\t}\n}\n"
   }
 }

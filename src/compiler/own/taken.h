@@ -11,6 +11,9 @@
 /* Recomputes the masks of every user module; true when one changed. */
 bool ms_own_taken(MsCheckProgram *program);
 
+/* Reports each parameter whose body keeps it without the signature saying `move`. Runs once the masks are final. */
+void ms_own_taken_report(MsCheckProgram *program);
+
 /* The mask of the function or method declared by `node` of `module`: bit i is the i-th parameter, the receiver
  * not counted. */
 uint32_t ms_own_taken_mask(const MsCheckProgram *program, uint32_t module, MsNode node);

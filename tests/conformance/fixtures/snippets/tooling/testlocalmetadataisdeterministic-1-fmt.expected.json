@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn answer(input: Int) Int:\n\tvalue := input\n\treturn value\n"
+    "fmt": "fn answer(input Int) Int {\n\tvalue := input\n\treturn value\n}\n"
   }
 }

@@ -1,6 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type List[T]: ...
-impl List[T]:
-    fn map[U](transform: fn(T) U) List[U]: ...
-    fn length() Int: ...
+type List[T] { ... }
+impl List[T] {
+    fn map[U](transform: fn(T) U) List[U] { ... }
+    fn length() Int { ... }
+}

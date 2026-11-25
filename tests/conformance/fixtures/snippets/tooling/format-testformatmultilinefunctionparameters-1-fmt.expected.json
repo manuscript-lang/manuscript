@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn render(\n\targuments: List[String],  // arguments\n\toutput: WriteStream,\n) Int:\n\tmessage := f\"Arguments: {arguments.join(\",\")}\\n\"\n\n\tmatch output.write(data: message):\n\t\tok(_):\n\t\t\treturn 0\n\t\terror(_):\n\t\t\treturn 1\n"
+    "fmt": "export fn render(\n\targuments List[String],  // arguments\n\toutput WriteStream,\n) Int {\n\tmessage := f\"Arguments: {arguments.join(\",\")}\\n\"\n\n\tmatch output.write(data: message) {\n\t\tok(_) => {\n\t\t\treturn 0\n\t\t}\n\t\terror(_) => {\n\t\t\treturn 1\n\t\t}\n\t}\n}\n"
   }
 }

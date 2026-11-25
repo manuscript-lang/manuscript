@@ -27,14 +27,16 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn execute(binary: String, cpu: String) Result[Void, Error]:
-	if cpu == "":
+fn execute(binary, cpu String) Result[Void, Error] {
+	if cpu == "" {
 		void must(binary, capture(binary, []))?
 		return ok()
+	}
 
 	void must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))?
+}
 
-fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
+fn run(opts Map[String, String], runs Int) Result[String, Error] {
 	out := absolute(opts.get_or("output", ""))
 	ensure_directory(out)
 
@@ -45,8 +47,8 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
 	workloads := ["numeric", "calls", "list", "life"]
 
-	for name in workloads:
-		for label in ["before", "after"]:
+	for name in workloads {
+		for label in ["before", "after"] {
 			cli := clis.get_or(label, "")
 			source := f"bench/language/{name}.ms"
 			_bin := must(
@@ -75,20 +77,29 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 					],
 				),
 			)?
+		}
+	}
 
 	var results = Map[String, JsonValue]()
 
-	for name in workloads:
+	for name in workloads {
 		var samples = Map[String, List[Float]]()
 		samples.add("before", List[Float]())
 		samples.add("after", List[Float]())
 
 		// One correctness/warm-up execution per binary, excluded from measurements.
-		for label in ["before", "after"]:
+		for label in ["before", "after"] {
 			execute(f"{out}/{name}-{label}", cpu)?
+		}
 
-		for i in 0..runs:
-			for label in (if i % 2 == 0: ["before", "after"] else: ["after", "before"]):
+		for i in 0..runs {
+			for label in (
+				if i % 2 == 0 {
+					["before", "after"]
+				} else {
+					["after", "before"]
+				}
+			) {
 				start := now_ns()
 				execute(f"{out}/{name}-{label}", cpu)?
 
@@ -101,23 +112,27 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 						f"{name} {label} run {i + 1}: {elapsed.to_fixed(6)}s\n"
 					).get()
 				)
+			}
+		}
 
 		before := median(samples.get_or("before", []))
 		after := median(samples.get_or("after", []))
 		var entry = Map[String, JsonValue]()
 		var seconds = Map[String, JsonValue]()
 		var medians = Map[String, JsonValue]()
-		for label in ["before", "after"]:
+		for label in ["before", "after"] {
 			seconds.add(
 				label.clone(),
-				jlist(samples.get_or(label, []).map(fn s: jfloat(s))),
+				jlist(samples.get_or(label, []).map(s => jfloat(s))),
 			)
+		}
 		medians.add("before", jfloat(before))
 		medians.add("after", jfloat(after))
 		entry.add("seconds", jobject(seconds))
 		entry.add("median_seconds", jobject(medians))
 		entry.add("speedup", jfloat(before / after))
 		results.add(name.clone(), jobject(entry))
+	}
 
 	var report = Map[String, JsonValue]()
 	report.add("platform", jstr(platform()))
@@ -125,29 +140,32 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	report.add("runs", jint(runs))
 	report.add(
 		"cpu_affinity",
-		if cpu == "": JsonValue.Null else: jint(cpu.parse_int() or 0),
+		if cpu == "" { JsonValue.Null } else { jint(cpu.parse_int() or 0) },
 	)
 
 	var names = Map[String, JsonValue]()
-	for label in ["before", "after"]:
+	for label in ["before", "after"] {
 		names.add(label.clone(), jstr(clis.get_or(label, "")))
+	}
 	report.add("clis", jobject(names))
 	report.add("results", jobject(results))
 
 	text := dump(jobject(report))
 	write_text(f"{out}/results.json", text)
 	return ok(text)
+}
 
-fn main() Int:
+fn main() Int {
 	parsed := options(
 		arguments(),
 		["before", "after", "output", "runs", "cpu"],
 		["before", "after", "output"],
 	)
-	if parsed.is_error(): return fail(parsed.err().message)
+	if parsed.is_error() { return fail(parsed.err().message) }
 
 	opts := parsed.get_or(Map[String, String]())
 	runs := opts.get_or("runs", "3").parse_int() or 0
-	if runs < 1: return fail("--runs must be positive")
+	if runs < 1 { return fail("--runs must be positive") }
 
 	return finish(run(opts, runs))
+}

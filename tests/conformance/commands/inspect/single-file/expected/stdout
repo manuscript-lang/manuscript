@@ -14,11 +14,11 @@
     }
   ],
   "format": 2,
-  "build_id": "faee47d973a5c9f4642323e29fdea8aebbee303999381609c52338a373381946",
+  "build_id": "31aa2481880d7a3d4f85429a1a233d13f103e9c4b45f4893c657375f65345799",
   "sources": [
     {
       "file": "main.ms",
-      "sha256": "7dd669e778300b049444906b8255ceeaf097fa3f92a8fc24f34688a2f13c42c3"
+      "sha256": "9a7d46faae2ef13033c66a8d798d5ba0f1d2a0f1ded6d328aa721d339a3cb128"
     }
   ],
   "entities": [
@@ -45,9 +45,9 @@
       "type": "fn() Void",
       "span": {
         "file": "main.ms",
-        "start": 38,
-        "end": 53,
-        "line": 4,
+        "start": 40,
+        "end": 56,
+        "line": 5,
         "column": 1
       },
       "exported": false,
@@ -61,28 +61,28 @@
   ],
   "calls": [
     {
-      "id": "main.ms#call#55",
+      "id": "main.ms#call#58",
       "owner": "main.ms#fn#main",
       "target": "@std/core.ms#fn#print",
       "kind": "function",
       "span": {
         "file": "main.ms",
-        "start": 55,
-        "end": 77,
-        "line": 5,
+        "start": 58,
+        "end": 80,
+        "line": 6,
         "column": 5
       }
     },
     {
-      "id": "main.ms#call#64",
+      "id": "main.ms#call#67",
       "owner": "main.ms#fn#main",
       "target": "main.ms#fn#double",
       "kind": "function",
       "span": {
         "file": "main.ms",
-        "start": 64,
-        "end": 77,
-        "line": 5,
+        "start": 67,
+        "end": 80,
+        "line": 6,
         "column": 14
       }
     }
@@ -97,9 +97,9 @@
     },
     {
       "file": "main.ms",
-      "start": 55,
-      "end": 77,
-      "line": 5,
+      "start": 58,
+      "end": 80,
+      "line": 6,
       "column": 5
     }
   ]

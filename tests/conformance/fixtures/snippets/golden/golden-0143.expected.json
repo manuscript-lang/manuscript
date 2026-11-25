@@ -20,19 +20,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module",
+        "message": "unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-0143.ms",
           "line": 4,
           "column": 12,
-          "offset": 86
+          "offset": 84
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0143.ms:3:12: resolution: unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it\n   |\n 3 | fn wrong() JsonError:\n   |            ^\n<DIR>/golden-0143.ms:4:12: resolution: unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module\n   |\n 4 |     return JsonError.PermissionDenied\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0143.ms:3:12: resolution: unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it\n   |\n 3 | fn wrong() JsonError {\n   |            ^\n<DIR>/golden-0143.ms:4:12: resolution: unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T { ... }', or import it from a module\n   |\n 4 |     return JsonError.PermissionDenied\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

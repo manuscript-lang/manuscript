@@ -8,21 +8,21 @@ import (
 	expect_equal, expect_error, expect_false from "@std/test/test.ms",
 )
 
-test "closed normalization forms reject spelling changes with their domain errors":
+test "closed normalization forms reject spelling changes with their domain errors" {
 	data := "text".to_bytes()
-	normalization_error: String! := error(
-		Error("string: invalid input", kind: "EINVAL")
-	)
-	for form in ["nfc", "NFC ", ""]:
+	normalization_error String! := error(Error("string: invalid input", kind: "EINVAL"))
+	for form in ["nfc", "NFC ", ""] {
 		expect_equal("text".normalize(form), normalization_error)?
-	for form in ["NFC", "NFD", "NFKC", "NFKD"]:
+	}
+	for form in ["NFC", "NFD", "NFKC", "NFKD"] {
 		expect_equal(("text".normalize(form)?), "text")?
+	}
 	for format in [
 		CompressionFormat.Gzip,
 		CompressionFormat.Zlib,
 		CompressionFormat.Deflate,
-	]:
-		for level in [0, 9]:
+	] {
+		for level in [0, 9] {
 			expect_equal(
 				(
 					compress(
@@ -33,9 +33,11 @@ test "closed normalization forms reject spelling changes with their domain error
 				),
 				data,
 			)?
+		}
+	}
 
-	level_error: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
-	for level in [-1, 10]:
+	level_error Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
+	for level in [-1, 10] {
 		expect_equal(
 			compress(
 				data,
@@ -44,8 +46,10 @@ test "closed normalization forms reject spelling changes with their domain error
 			),
 			level_error,
 		)?
+	}
+}
 
-test "every open mode with and without exclusive creation opens":
+test "every open mode with and without exclusive creation opens" {
 	temporary := temporary("manuscript-open-modes-")?
 	modes := [
 		OpenMode.Read,
@@ -56,14 +60,16 @@ test "every open mode with and without exclusive creation opens":
 		OpenMode.AppendRead,
 	]
 
-	for index in 0..modes.length():
+	for index in 0..modes.length() {
 		mode := modes[index]
 		path := f"{temporary.path()}/{index}"
-		if index < 2:
+		if index < 2 {
 			write_file(path, "", replace: false).wait()?
+		}
 
 		handle := open(path, mode, OpenOptions(permissions: 384))?
 		_fileinfo := handle.stat()?
+	}
 
 	// Exclusive creation fails on an existing file and succeeds on a new one.
 	existing := f"{temporary.path()}/2"
@@ -78,8 +84,9 @@ test "every open mode with and without exclusive creation opens":
 		OpenOptions(exclusive: true),
 	)?
 	_fresh_info := fresh.stat()?
+}
 
-test "full byte counts positions EOF and stream aliases retain their contracts":
+test "full byte counts positions EOF and stream aliases retain their contracts" {
 	temporary := temporary("manuscript-write-contract-")?
 	path := f"{temporary.path()}/data"
 	data := ("é".repeat(40000)).to_bytes()
@@ -119,8 +126,9 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	absent := expect_error(open(missing, OpenMode.Read, OpenOptions(permissions: 384)))?
 	expect_equal(absent.kind, "ENOENT")?
 	expect_equal(absent.message, f"filesystem: file or directory not found: {missing}")?
+}
 
-test "a handle keeps its own position across append writes, seeks and reads":
+test "a handle keeps its own position across append writes, seeks and reads" {
 	temporary := temporary("manuscript-position-")?
 	var handle = open(
 		f"{temporary.path()}/log",
@@ -138,3 +146,4 @@ test "a handle keeps its own position across append writes, seeks and reads":
 	refused := expect_error(handle.seek(-9, Seek.Current))?
 	expect_equal(refused.kind, "EINVAL")?
 	handle.close()?
+}

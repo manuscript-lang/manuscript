@@ -5,11 +5,12 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-type Item:
-	name: String
-	tags: List[String]
+type Item {
+	name String
+	tags List[String]
+}
 
-test "reading through get leaves the map entry intact":
+test "reading through get leaves the map entry intact" {
 	var m = Map[String, Item]()
 	m.add(key: "a", value: Item(name: "x", tags: ["p", "q"]))
 	expect_equal((m.get("a") or panic("called Optional.get() on null")).name, "x")?
@@ -25,8 +26,9 @@ test "reading through get leaves the map entry intact":
 		(m.get("a") or panic("called Optional.get() on null")).tags.length(),
 		2,
 	)?
+}
 
-test "a kept value is a copy that later changes do not reach":
+test "a kept value is a copy that later changes do not reach" {
 	var m = Map[String, Item]()
 	m.add(key: "a", value: Item(name: "x", tags: ["p"]))
 
@@ -35,10 +37,12 @@ test "a kept value is a copy that later changes do not reach":
 	expect_equal(kept.name, "x")?
 	expect_equal(kept.tags.length(), 1)?
 	expect_equal((m.get("a") or panic("called Optional.get() on null")).name, "y")?
+}
 
-test "get with a default on integer values":
+test "get with a default on integer values" {
 	var counts = Map[String, Int]()
 	counts.add(key: "k", value: 5)
 	expect_equal(counts.get_or("k", 0), 5)?
 	expect_equal(counts.get_or("none", 7), 7)?
 	expect_false(counts.get("none") != null)?
+}

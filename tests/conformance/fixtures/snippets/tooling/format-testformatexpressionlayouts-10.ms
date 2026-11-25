@@ -1,9 +1,10 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=pkg/tooling/format/format_layout_test.go:106 TestFormatExpressionLayouts
-fn work() Void:
-    values := {
-        "balance": initial_account_balance
-        + pending_deposit_total * applicable_exchange_rate
-        - pending_withdrawal_total
-    }
+fn work() Void {
+	values := {
+		"balance": initial_account_balance
+		+ pending_deposit_total * applicable_exchange_rate
+		- pending_withdrawal_total
+	}
+}

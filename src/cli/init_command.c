@@ -13,14 +13,14 @@
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2 };
 
 static const char kMain[] =
-    "import arguments from \"@std/os/env.ms\"\n\nfn main() Void:\n\tprint(f\"Arguments: {arguments().length()}\")\n";
+    "import arguments from \"@std/os/env.ms\"\n\nfn main() Void {\n\tprint(f\"Arguments: {arguments().length()}\")\n}\n";
 static const char kTest[] =
-    "import expect_equal from \"@std/test/test.ms\"\n\ntest \"arithmetic\":\n\texpect_equal(2 + 3, 5)?\n";
-static const char kLib[] = "export fn greeting(name: String) String: f\"Hello, {name}\"\n";
+    "import expect_equal from \"@std/test/test.ms\"\n\ntest \"arithmetic\" {\n\texpect_equal(2 + 3, 5)?\n}\n";
+static const char kLib[] = "export fn greeting(name String) String => f\"Hello, {name}\"\n";
 static const char kLibTest[] = "import (\n\texpect_equal from \"@std/test/test.ms\",\n\n\tgreeting from \"./src/lib.ms\",\n)\n\n"
-                               "test \"greeting\":\n\texpect_equal(greeting(\"ms\"), \"Hello, ms\")?\n";
+                               "test \"greeting\" {\n\texpect_equal(greeting(\"ms\"), \"Hello, ms\")?\n}\n";
 static const char kWorkspaceMain[] =
-    "import greeting from \"@greeter/lib.ms\"\n\nfn main() Void:\n\tprint(greeting(\"ms\"))\n";
+    "import greeting from \"@greeter/lib.ms\"\n\nfn main() Void {\n\tprint(greeting(\"ms\"))\n}\n";
 static const char kIgnore[] = ".ms-cache/\n";
 static const char kAttributes[] = "*.ms text eol=lf\n*.toml text eol=lf\nms.lock text eol=lf\n";
 

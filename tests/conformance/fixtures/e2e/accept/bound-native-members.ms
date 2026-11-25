@@ -1,58 +1,66 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import (
-	expect_contains, expect_fault, expect_true from "@std/test/test.ms",
-)
+import expect_contains, expect_fault, expect_true from "@std/test/test.ms"
 
-type Folded:
-	name: String
+type Folded {
+	name String
+}
 
-fn Folded.equals(other: Folded) Bool:
+fn Folded.equals(other Folded) Bool {
 	return true
+}
 
-fn Folded.hash() Int:
+fn Folded.hash() Int {
 	return 1
+}
 
-fn replace_first[T: Clonable](var xs: List[T], value: T) List[T]:
+fn replace_first[T Clonable](var xs List[T], value T) List[T] {
 	xs.set(index: 0, value: value)
 	return xs.clone()
+}
 
-test "string members":
+test "string members" {
 	("  a,b ".trim().split(separator: ",").length() == 2) | expect_true?
 	("abc".upper() == "ABC") | expect_true?
+}
 
-test "list members":
+test "list members" {
 	var xs = [1, 2, 3]
 	xs.set(index: -1, value: 9)
-	(xs.get(index: 2) == 9) | expect_true?
-	(replace_first(xs: xs, value: 5).get(index: 0) == 5) | expect_true?
+	(xs[2] == 9) | expect_true?
+	(replace_first(xs: xs, value: 5)[0] == 5) | expect_true?
 	(xs.contains(value: 9)) | expect_true?
+}
 
-test "custom equality is kept for bound members":
+test "custom equality is kept for bound members" {
 	var a = Set[Folded]()
 	a.add(value: Folded(name: "x"))
 	a.add(value: Folded(name: "y"))
 	(a.length() == 1) | expect_true?
 
-	mapped := a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
+	mapped := a.map(transform: fn(value Folded) Folded => return Folded(name: "z"))
 	(mapped.length() == 1) | expect_true?
+}
 
-test "list append":
-	var names: List[String] = []
+test "list append" {
+	var names List[String] = []
 	append := names.append
 	append("a")
 	append("é")
 	(names == ["a", "é"]) | expect_true?
+}
 
-test "abs of the minimum overflows":
+test "abs of the minimum overflows" {
 	smallest := 0 - 9223372036854775807 - 1
 	message := expect_fault(
-		fn:
+		() => {
 			_ignored := smallest.abs()
+		}
 	)?
 	message | expect_contains("Int overflow")?
+}
 
-test "size and shape methods as values":
+test "size and shape methods as values" {
 	xs := [10, 20, 30]
 	var m = Map[String, Int]()
 	m["a"] = 1
@@ -80,33 +88,39 @@ test "size and shape methods as values":
 	(map_entries().length() == 1) | expect_true?
 	(set_length() == 2) | expect_true?
 	(set_is_empty() == false) | expect_true?
+}
 
-interface IntList:
-	fn sorted(compare: fn(Int, Int) Int) List[Int]
-	fn take(count: Int) List[Int]
+interface IntList {
+	fn sorted(compare fn(Int, Int) Int) List[Int]
+	fn take(count Int) List[Int]
 	fn reversed() List[Int]
 	fn clone() List[Int]
+}
 
-test "sorted as a value":
-	view: IntList := [3, 1, 2]
+test "sorted as a value" {
+	view IntList := [3, 1, 2]
 	sort := view.sorted
-	ordered := sort(compare: fn a, b: a - b)
-	(ordered.get(index: 0) == 1) | expect_true?
-	(ordered.get(index: 2) == 3) | expect_true?
+	ordered := sort(compare: (a, b) => a - b)
+	(ordered[0] == 1) | expect_true?
+	(ordered[2] == 3) | expect_true?
+}
 
-test "take as a value":
+test "take as a value" {
 	take := [3, 1, 2].take
 	first := take(2)
 	(first.length() == 2) | expect_true?
-	(first.get(index: 0) == 3) | expect_true?
+	(first[0] == 3) | expect_true?
+}
 
-type EqualProbe:
-	n: Int
+type EqualProbe {
+	n Int
+}
 
-fn same(a: Equal, b: Equal) Bool:
+fn same(a Equal, b Equal) Bool {
 	return a.equals(b)
+}
 
-test "equals on built-in data":
+test "equals on built-in data" {
 	xs := [1, 2]
 	ys := [1, 2]
 	other := [9]
@@ -123,20 +137,23 @@ test "equals on built-in data":
 
 	text := "x".equals
 	(text("x")) | expect_true?
+}
 
-test "built-in data passes as Equal":
+test "built-in data passes as Equal" {
 	(same(1, 1)) | expect_true?
 	(same(1, 2) == false) | expect_true?
 	(same(EqualProbe(n: 1), EqualProbe(n: 1))) | expect_true?
 	(same(EqualProbe(n: 1), 1) == false) | expect_true?
+}
 
-test "list and map literals pass as Equal":
+test "list and map literals pass as Equal" {
 	(same([1, 2], [1, 2])) | expect_true?
 	(same([1, 2], [1]) == false) | expect_true?
 	(same({"a": 1}, {"a": 1})) | expect_true?
 	(same({"a": [1]}, {"a": [2]}) == false) | expect_true?
+}
 
-test "numeric and optional members as values":
+test "numeric and optional members as values" {
 	n := -7
 	x := 2.5
 	abs := n.abs
@@ -157,14 +174,17 @@ test "numeric and optional members as values":
 	(is_nan() == false) | expect_true?
 	(is_finite()) | expect_true?
 	(hash() == n.hash()) | expect_true?
+}
 
-test "native calls pass as Equal":
+test "native calls pass as Equal" {
 	(same("a".to_bytes(), "a".to_bytes())) | expect_true?
 	(same("ab".slice(start: 0, end: 1), "ab".slice(start: 0, end: 1))) | expect_true?
 	("a".to_bytes().equals("a".to_bytes())) | expect_true?
+}
 
-test "native contract methods through an interface value":
-	view: IntList := [3, 1, 2]
+test "native contract methods through an interface value" {
+	view IntList := [3, 1, 2]
 	(view.take(2).length() == 2) | expect_true?
-	(view.reversed().get(index: 0) == 2) | expect_true?
+	(view.reversed()[0] == 2) | expect_true?
 	(view.clone().length() == 3) | expect_true?
+}

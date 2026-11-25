@@ -7,25 +7,27 @@ import (
 LEVELS := ["DEBUG", "INFO", "WARN", "ERROR"]
 METHODS := ["DELETE", "GET", "POST", "PUT"]
 
-fn digits(s: String) Bool: (
+fn digits(s String) Bool => (
 	not s.is_empty()
-	and s.chars().all(fn c: "0123456789".contains(c))
+	and s.chars().all(c => "0123456789".contains(c))
 )
 
-type Entry:
-	level: String
-	path: String
-	status: Int
-	latency: Int
-	method: String
-	ts: String
+type Entry {
+	level, path String
+	status, latency Int
+	method, ts String
+}
 
-fn parse(line: String) Entry?:
+fn parse(line String) Entry? {
 	f := line.split(" ")
-	if f.length() != 6: return null
-	if f[0].is_empty() or not LEVELS.contains(f[1]) or not METHODS.contains(f[2]): return null
-	if not f[3].starts_with("/") or not (f[4].length() == 3 and digits(f[4])): return null
-	if not digits(f[5]) or f[5].length() > 9: return null
+	if f.length() != 6 { return null }
+	if f[0].is_empty() or not LEVELS.contains(
+		f[1]
+	) or not METHODS.contains(
+		f[2]
+	) { return null }
+	if not f[3].starts_with("/") or not (f[4].length() == 3 and digits(f[4])) { return null }
+	if not digits(f[5]) or f[5].length() > 9 { return null }
 
 	return Entry(
 		f[1].clone(),
@@ -35,69 +37,78 @@ fn parse(line: String) Entry?:
 		f[2].clone(),
 		f[0].clone(),
 	)
+}
 
-fn solve(s: String) String:
+fn solve(s String) String {
 	var valid = 0
 	var bad = 0
 	var classes = [0, 0, 0, 0, 0]
 	var lats = List[Int]()
-	var slow: Entry? = null
+	var slow Entry? = null
 	var levels = Map[String, Int]()
 	var counts = Map[String, Int]()
 	var totals = Map[String, Int]()
 
-	for line in s.split("\n"):
-		if line.trim().is_empty(): continue
+	for line in s.split("\n") {
+		if line.trim().is_empty() { continue }
 
 		r := parse(line)
 
-		if r == null:
+		if r == null {
 			bad += 1
 			continue
+		}
 
 		e := r
 		valid += 1
 		levels[e.level.clone()] = levels.get_or(e.level, 0) + 1
 
 		first := f"{e.status}".view(0, 1)
-		class := if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
+		class := if first == "2" { 0 } else { if first == "3" { 1 } else { if first == "4" { 2 } else { if first == "5" { 3 } else { 4 } } } }
 		classes[class] += 1
 		lats.append(e.latency)
-		if (slow == null) or e.latency > (slow.clone() or e.clone()).latency: slow = e.clone()
+		if (slow == null) or e.latency > (slow.clone() or e.clone()).latency { slow = e.clone() }
 		counts[e.path.clone()] = counts.get_or(e.path, 0) + 1
 		totals[e.path.clone()] = totals.get_or(e.path, 0) + e.latency
+	}
 
 	var out = [f"valid: {valid}", f"malformed: {bad}"]
-	for l in LEVELS: out.append(f"{l}: {levels.get_or(l, 0)}")
+	for l in LEVELS {
+		out.append(f"{l}: {levels.get_or(l, 0)}")
+	}
 	out.append(
 		f"status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]} other={classes[4]}"
 	)
 
 	sorted_lats := lats.sorted()
 	out.append(
-		f"p95: {if lats.is_empty(): 0 else: sorted_lats[(95 * lats.length() + 99) / 100 - 1]}"
+		f"p95: {if lats.is_empty() { 0 } else { sorted_lats[(95 * lats.length() + 99) / 100 - 1] }}"
 	)
 
 	e := slow
-	if e != null: out.append(f"slowest: {e.latency} {e.method} {e.path} {e.ts}")
+	if e != null {
+		out.append(f"slowest: {e.latency} {e.method} {e.path} {e.ts}")
+	}
 	out.append("top:")
 
 	order := counts.keys().sorted(
-		fn a,
-		b: if counts.get_or(a, 0) != counts.get_or(b, 0): counts.get_or(
-			b,
-			0,
-		) - counts.get_or(a, 0) else: a.compare(b)
+		(a, b) => if counts.get_or(a, 0) != counts.get_or(b, 0) {
+			counts.get_or(b, 0) - counts.get_or(a, 0)
+		} else {
+			a.compare(b)
+		}
 	)
-	for p in order.take(3):
+	for p in order.take(3) {
 		out.append(
 			f"{p} {counts.get_or(p, 0)} avg={totals.get_or(p, 0) / counts.get_or(p, 0)}"
 		)
-	return out.map(fn o: o + "\n").join("")
+	}
+	return out.map(o => o + "\n").join("")
+}
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-fn good(var rnd: Random, i: Int) String:
+fn good(var rnd Random, i Int) String {
 	level := rnd.choice(LEVELS)
 	method := rnd.choice(METHODS)
 	path := rnd.choice(
@@ -110,44 +121,51 @@ fn good(var rnd: Random, i: Int) String:
 	pick := rnd.below(statuses.length())
 	lat := rnd.randint(0, 900)
 	return f"2024-05-01T10:{f"{i / 60 % 60}".pad_start(2, "0")}:{f"{i % 60}".pad_start(2, "0")} {level} {method} {path} {statuses[pick]} {lat}"
+}
 
-fn mangle(var rnd: Random, l: String) String:
+fn mangle(var rnd Random, l String) String {
 	var f = l.split(" ").clone()
 	k := rnd.randrange(0, 9)
 
-	if k == 0:
+	if k == 0 {
 		f[1] = f[1].lower()
-	else if k == 1:
+	} else if k == 1 {
 		f[2] = "PATCH"
-	else if k == 2:
+	} else if k == 2 {
 		rest := f[3].slice(1, f[3].length())
-		f[3] = if rest.is_empty(): "x" else: rest
-	else if k == 3:
+		f[3] = if rest.is_empty() { "x" } else { rest }
+	} else if k == 3 {
 		f[4] = "20"
-	else if k == 4:
+	} else if k == 4 {
 		f[5] = "12ms"
-	else if k == 5:
+	} else if k == 5 {
 		f = f.take(5)
-	else if k == 6:
+	} else if k == 6 {
 		f.append("extra")
-	else if k == 7:
+	} else if k == 7 {
 		return l + " "
-	else:
+	} else {
 		f[5] = ""
+	}
 
 	return f.join(" ")
+}
 
-fn rand_log(var rnd: Random, n: Int, bad: Float) String:
+fn rand_log(var rnd Random, n Int, bad Float) String {
 	var ls = List[String]()
 
-	for i in 0..n:
+	for i in 0..n {
 		l := good(rnd, i)
-		ls.append(if rnd.random() < bad: mangle(rnd, l) else: l)
-		if rnd.random() < 0.03: ls.append(rnd.choice(["", "   "]))
+		ls.append(if rnd.random() < bad { mangle(rnd, l) } else { l })
+		if rnd.random() < 0.03 {
+			ls.append(rnd.choice(["", "   "]))
+		}
+	}
 
 	return ls.join("\n") + "\n"
+}
 
-export fn gen_c25() Void:
+export fn gen_c25() Void {
 	var rnd = seeded(25)
 	examples := [
 		mk(
@@ -157,7 +175,7 @@ export fn gen_c25() Void:
 		mk("all-malformed", "x\n\nINFO GET / 200 1\n"),
 	]
 	var p95 = ""
-	for i in 0..40: p95 += f"t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
+	for i in 0..40 { p95 += f"t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n" }
 
 	small := rand_log(rnd, 40, 0.1)
 	mid := rand_log(rnd, 600, 0.2)
@@ -191,3 +209,4 @@ export fn gen_c25() Void:
 		]
 	)
 	write_cases("c25-log-analyzer", examples, hidden)
+}

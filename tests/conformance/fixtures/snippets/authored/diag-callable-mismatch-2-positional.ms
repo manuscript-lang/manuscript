@@ -1,7 +1,8 @@
 // conform: tags=diagnostics,closures,types,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-fn source(_0: Int) Int: _0
+fn source(_0 Int) Int => _0
 
-fn exercise() Void:
-    callback: fn(String) Int := source
+fn exercise() Void {
+	callback fn(String) Int := source
+}

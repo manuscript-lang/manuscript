@@ -7,134 +7,155 @@ import (
 
 NUM := "[0-9]{1,6}"
 
-fn lcs(a: String, b: String) Int:
+fn lcs(a, b String) Int {
 	ys := b.chars()
 	var prev = List[Int]()
-	for _j in 0..ys.length() + 1: prev.append(0)
+	for _j in 0..ys.length() + 1 { prev.append(0) }
 
-	for x in a.chars():
+	for x in a.chars() {
 		var cur = [0]
-		for j in 0..ys.length():
+		for j in 0..ys.length() {
 			cur.append(
-				if x == ys[j]: prev[j] + 1 else: if prev[j + 1] > cur[
-					j
-				]: prev[j + 1] else: cur[j]
+				if x == ys[j] {
+					prev[j] + 1
+				} else {
+					if prev[j + 1] > cur[j] { prev[j + 1] } else { cur[j] } }
 			)
+		}
 		prev = cur
+	}
 
 	return prev[prev.length() - 1]
+}
 
-fn edit(a: String, b: String) Int:
+fn edit(a, b String) Int {
 	ys := b.chars()
 	var prev = List[Int]()
-	for j in 0..ys.length() + 1: prev.append(j)
+	for j in 0..ys.length() + 1 { prev.append(j) }
 
 	var i = 0
 
-	for x in a.chars():
+	for x in a.chars() {
 		i += 1
 
 		var cur = [i]
 
-		for j in 1..ys.length() + 1:
-			sub := prev[j - 1] + (if x != ys[j - 1]: 1 else: 0)
-			best := if prev[j] + 1 < cur[j - 1] + 1: prev[j] + 1 else: cur[j - 1] + 1
-			cur.append(if sub < best: sub else: best)
+		for j in 1..ys.length() + 1 {
+			sub := prev[j - 1] + (if x != ys[j - 1] { 1 } else { 0 })
+			best := if prev[j] + 1 < cur[j - 1] + 1 { prev[j] + 1 } else { cur[j - 1] + 1 }
+			cur.append(if sub < best { sub } else { best })
+		}
 
 		prev = cur
+	}
 
 	return prev[prev.length() - 1]
+}
 
-type Thing:
-	weight: Int
-	value: Int
+type Thing {
+	weight, value Int
+}
 
-fn knap(cap: Int, items: List[Thing]) Int:
+fn knap(cap Int, items List[Thing]) Int {
 	var best = List[Int]()
-	for _c in 0..cap + 1: best.append(0)
+	for _c in 0..cap + 1 { best.append(0) }
 
-	for item in items:
+	for item in items {
 		var c = cap
 
-		while c >= item.weight:
+		while c >= item.weight {
 			take := best[c - item.weight] + item.value
-			if take > best[c]: best[c] = take
+			if take > best[c] { best[c] = take }
 			c -= 1
+		}
+	}
 
 	return best[cap]
+}
 
-fn coins(amount: Int, cs: List[Int]) String:
+fn coins(amount Int, cs List[Int]) String {
 	inf := 1000000000
 	var best = [0]
-	for _a in 0..amount: best.append(inf)
-	for a in 1..amount + 1:
-		for c in cs:
-			if c <= a and best[a - c] + 1 < best[a]: best[a] = best[a - c] + 1
-	return if best[amount] >= inf: "impossible" else: f"{best[amount]}"
+	for _a in 0..amount { best.append(inf) }
+	for a in 1..amount + 1 {
+		for c in cs {
+			if c <= a and best[a - c] + 1 < best[a] { best[a] = best[a - c] + 1 }
+		}
+	}
+	return if best[amount] >= inf { "impossible" } else { f"{best[amount]}" }
+}
 
-fn solve_line(line: String) String:
+fn solve_line(line String) String {
 	t := line.split(" ")
 	bad := "error: bad command"
 	cmd := t[0].clone()
 
-	if cmd == "lcs" or cmd == "edit":
-		if t.length() != 3 or t[1] == "" or t[2] == "": return bad
-		return f"{if cmd == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
+	if cmd == "lcs" or cmd == "edit" {
+		if t.length() != 3 or t[1] == "" or t[2] == "" { return bad }
+		return f"{if cmd == "lcs" { lcs(t[1], t[2]) } else { edit(t[1], t[2]) }}"
+	}
 
-	if cmd == "knap":
-		if t.length() < 2 or not full_match(NUM, t[1]): return bad
+	if cmd == "knap" {
+		if t.length() < 2 or not full_match(NUM, t[1]) { return bad }
 
 		var items = List[Thing]()
 
-		for tok in t.slice(2, t.length()).get_or([]):
+		for tok in t.slice(2, t.length()).get_or([]) {
 			p := tok.split(":")
 			if (
 				p.length() != 2
 				or not full_match(NUM, p[0])
 				or not full_match(NUM, p[1])
 				or (p[0].parse_int() or 0) < 1
-			): return bad
+			) { return bad }
 
 			items.append(Thing(p[0].parse_int() or 0, p[1].parse_int() or 0))
+		}
 
 		return f"{knap(t[1].parse_int() or 0, items)}"
+	}
 
-	if cmd == "coins":
-		if t.length() < 3: return bad
+	if cmd == "coins" {
+		if t.length() < 3 { return bad }
 
 		rest := t.slice(1, t.length()).get_or([])
-		if not rest.all(fn x: full_match(NUM, x)): return bad
+		if not rest.all(x => full_match(NUM, x)) { return bad }
 
-		cs := t.slice(2, t.length()).get_or([]).map(fn x: x.parse_int() or 0)
-		if (cs.min() or 0) < 1: return bad
+		cs := t.slice(2, t.length()).get_or([]).map(x => x.parse_int() or 0)
+		if (cs.min() or 0) < 1 { return bad }
 
 		return coins(t[1].parse_int() or 0, cs)
+	}
 
 	return bad
+}
 
-fn solve(s: String) String:
+fn solve(s String) String {
 	var lines = s.split("\n").clone()
-	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
-	return lines.filter(fn l: l.replace(" ", "") != "").map(
-		fn l: solve_line(l) + "\n"
+	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
+	return lines.filter(l => l.replace(" ", "") != "").map(
+		l => solve_line(l) + "\n"
 	).join("")
+}
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-fn word(var rnd: Random, n: Int, alpha: List[String]) String:
+fn word(var rnd Random, n Int, alpha List[String]) String {
 	var out = ""
-	for _i in 0..n: out += rnd.choice(alpha)
+	for _i in 0..n { out += rnd.choice(alpha) }
 	return out
+}
 
-export fn gen_c14() Void:
+export fn gen_c14() Void {
 	var rnd = seeded(14)
 	acgt := ["a", "c", "g", "t"]
 	ab := ["a", "b"]
 	var parts = List[String]()
 
-	for _i in 0..50:
+	for _i in 0..50 {
 		w := rnd.randint(1, 60)
 		parts.append(f"{w}:{rnd.randint(0, 500)}")
+	}
 
 	items := parts.join(" ")
 	examples := [
@@ -187,3 +208,4 @@ export fn gen_c14() Void:
 		]
 	)
 	write_cases("c14-dp-suite", examples, hidden)
+}

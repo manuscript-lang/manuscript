@@ -12,9 +12,9 @@
         "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
-          "line": 6,
+          "line": 7,
           "column": 9,
-          "offset": 151
+          "offset": 140
         },
         "fix": {
           "position": {
@@ -38,22 +38,22 @@
         "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
-          "line": 12,
+          "line": 16,
           "column": 9,
-          "offset": 277
+          "offset": 254
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
-            "line": 9,
+            "line": 12,
             "column": 22,
-            "offset": 202
+            "offset": 190
           },
           "end": {
             "file": "golden-0162.ms",
-            "line": 9,
+            "line": 12,
             "column": 22,
-            "offset": 202
+            "offset": 190
           },
           "replacement": "var "
         }
@@ -64,22 +64,22 @@
         "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
-          "line": 20,
+          "line": 28,
           "column": 13,
-          "offset": 455
+          "offset": 407
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
-            "line": 15,
+            "line": 21,
             "column": 24,
-            "offset": 330
+            "offset": 306
           },
           "end": {
             "file": "golden-0162.ms",
-            "line": 15,
+            "line": 21,
             "column": 24,
-            "offset": 330
+            "offset": 306
           },
           "replacement": "var "
         }
@@ -90,74 +90,22 @@
         "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
-          "line": 27,
+          "line": 40,
           "column": 9,
-          "offset": 599
-        },
-        "fix": {
-          "position": {
-            "file": "golden-0162.ms",
-            "line": 24,
-            "column": 12,
-            "offset": 519
-          },
-          "end": {
-            "file": "golden-0162.ms",
-            "line": 24,
-            "column": 12,
-            "offset": 519
-          },
-          "replacement": "var "
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
-        "position": {
-          "file": "golden-0162.ms",
-          "line": 33,
-          "column": 9,
-          "offset": 719
-        },
-        "fix": {
-          "position": {
-            "file": "golden-0162.ms",
-            "line": 30,
-            "column": 14,
-            "offset": 642
-          },
-          "end": {
-            "file": "golden-0162.ms",
-            "line": 30,
-            "column": 14,
-            "offset": 642
-          },
-          "replacement": "var "
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
-        "position": {
-          "file": "golden-0162.ms",
-          "line": 43,
-          "column": 9,
-          "offset": 930
+          "offset": 535
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 36,
-            "column": 18,
-            "offset": 766
+            "column": 12,
+            "offset": 466
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 36,
-            "column": 18,
-            "offset": 766
+            "column": 12,
+            "offset": 466
           },
           "replacement": "var "
         }
@@ -170,20 +118,20 @@
           "file": "golden-0162.ms",
           "line": 49,
           "column": 9,
-          "offset": 1054
+          "offset": 643
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
-            "line": 46,
-            "column": 15,
-            "offset": 974
+            "line": 45,
+            "column": 14,
+            "offset": 577
           },
           "end": {
             "file": "golden-0162.ms",
-            "line": 46,
-            "column": 15,
-            "offset": 974
+            "line": 45,
+            "column": 14,
+            "offset": 577
           },
           "replacement": "var "
         }
@@ -194,22 +142,74 @@
         "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
         "position": {
           "file": "golden-0162.ms",
-          "line": 59,
-          "column": 13,
-          "offset": 1265
+          "line": 64,
+          "column": 9,
+          "offset": 821
         },
         "fix": {
           "position": {
             "file": "golden-0162.ms",
             "line": 54,
-            "column": 16,
-            "offset": 1136
+            "column": 18,
+            "offset": 689
           },
           "end": {
             "file": "golden-0162.ms",
             "line": 54,
+            "column": 18,
+            "offset": 689
+          },
+          "replacement": "var "
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "position": {
+          "file": "golden-0162.ms",
+          "line": 73,
+          "column": 9,
+          "offset": 933
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0162.ms",
+            "line": 69,
+            "column": 15,
+            "offset": 864
+          },
+          "end": {
+            "file": "golden-0162.ms",
+            "line": 69,
+            "column": 15,
+            "offset": 864
+          },
+          "replacement": "var "
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature",
+        "position": {
+          "file": "golden-0162.ms",
+          "line": 88,
+          "column": 13,
+          "offset": 1109
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0162.ms",
+            "line": 81,
             "column": 16,
-            "offset": 1136
+            "offset": 1004
+          },
+          "end": {
+            "file": "golden-0162.ms",
+            "line": 81,
+            "column": 16,
+            "offset": 1004
           },
           "replacement": "var "
         }
@@ -218,7 +218,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0162.ms:6:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n   |\n 6 |         log.append(i)\n   |         ^\n<DIR>/golden-0162.ms:12:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 12 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:20:13: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 20 |             log.append(i)\n    |             ^\n<DIR>/golden-0162.ms:27:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 27 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:33:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 33 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:43:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 43 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:49:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 49 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:59:13: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 59 |             log.append(i)\n    |             ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0162.ms:7:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n   |\n 7 |         log.append(i)\n   |         ^\n<DIR>/golden-0162.ms:16:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 16 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:28:13: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 28 |             log.append(i)\n    |             ^\n<DIR>/golden-0162.ms:40:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 40 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:49:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 49 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:64:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 64 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:73:9: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 73 |         log.append(i)\n    |         ^\n<DIR>/golden-0162.ms:88:13: type: cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature\n    |\n 88 |             log.append(i)\n    |             ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -92,24 +92,17 @@ MS_NODISCARD bool parse_result_type(Parser *p, MsTypeRef **out, bool *moves) {
     parse_fail_fix(
         p, t,
         ms_span_of_text(
-            "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void:"),
+            "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Void { ... }"),
         ms_span_of_text(""));
     return false;
   }
-  if (t.kind == MS_T_LBrace) {
-    parse_fail(p, t,
-               ms_span_of_text("blocks are not braced and every fn declares its result type: write the "
-                               "result type, then ':' and an indented body, e.g. fn f() Void: (Void when it "
-                               "returns nothing), and remove the closing '}'"));
-    return false;
-  }
-  if (t.kind == MS_T_Colon || t.kind == MS_T_Newline) {
+  if (t.kind == MS_T_Colon || t.kind == MS_T_FatArrow || t.kind == MS_T_Newline || t.kind == MS_T_BlockOpen) {
     if (p->speculative > 0) {
       return false;
     }
     parse_fail(
         p, t,
-        ms_span_of_text("every fn declares its result type after the parameter list, e.g. fn f() Void:"));
+        ms_span_of_text("every fn declares its result type after the parameter list, e.g. fn f() Void { ... } (Void when it returns nothing)"));
     return false;
   }
   return parse_move_type(p, out, moves);
@@ -233,7 +226,7 @@ MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
     if (parse_kind(p) == MS_T_Comma && p->speculative == 0) {
       parse_fail(
           p, parse_peek(p),
-          ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair:' and named fields to "
+          ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair { ... }' and named fields to "
                           "return several values, or use a List when the items share one type"));
       return false;
     }
@@ -281,7 +274,14 @@ MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out) {
       return false;
     MsTypeRefs bounds = {NULL, 0};
     MsTypeRef *def = NULL;
-    if (parse_take(p, MS_T_Colon)) {
+    if (parse_kind(p) == MS_T_Colon && p->speculative == 0) {
+      MsSpan n = parse_text(p, name);
+      parse_fail_fix(p, parse_peek(p),
+                     parse_fmt(p, "a type parameter's bound follows its name without ':'; write %S Comparable", n),
+                     ms_span_of_text(""));
+      return false;
+    }
+    if (parse_kind(p) == MS_T_Name) {
       size_t bm = parse_mark(p);
       if (!parse_push_named_type(p))
         return false;
@@ -292,7 +292,7 @@ MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out) {
       bounds.ptr = parse_finish(p, bm, &bounds.len, sizeof(void *), _Alignof(void *));
       if (parse_kind(p) == MS_T_Plus || parse_kind(p) == MS_T_And) {
         parse_fail_fix(p, parse_peek(p),
-                       ms_span_of_text("combine bounds with '&', as in T: Comparable & Clonable"),
+                       ms_span_of_text("combine bounds with '&', as in T Comparable & Clonable"),
                        ms_span_of_text("&"));
         return false;
       }
@@ -322,35 +322,79 @@ MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out) {
   return true;
 }
 
-/* The colon after a parameter or field name; a missing one is usually a type written directly
- * after the name. */
-MS_NODISCARD bool parse_need_name_colon(Parser *p, MsToken name) {
+/* A parameter or field name. A contextual keyword (`type`, `return`, `continue`, ...) is a name here when a type
+ * follows it, as in `type String = "x"`; elsewhere the keyword has its own meaning. */
+MS_NODISCARD bool parse_member_name(Parser *p, MsToken *out) {
   MsToken t = parse_peek(p);
-  if (t.kind == MS_T_Name && p->speculative == 0) {
-    MsToken at = name;
-    at.pos = name.end;
-    at.end = name.end;
-    MsSpan n = parse_text(p, name);
-    parse_fail_fix(
-        p, at,
-        parse_fmt(p, "expected ':' between '%S' and its type; parameters and fields are written name: Type",
-                  n),
-        ms_span_of_text(":"));
-    return false;
+  if (ms_tok_is_contextual((MsTok)t.kind) && parse_type_starts((MsTok)parse_ahead(p, 1).kind) &&
+      parse_ahead(p, 1).pos.line == t.pos.line) {
+    p->at++;
+    *out = t;
+    return true;
   }
-  if ((t.kind == MS_T_Comma || t.kind == MS_T_RParen) && p->speculative == 0) {
+  return parse_need_token(p, MS_T_Name, out);
+}
+
+/* Whether a token can begin a type: a name, `fn`, or a parenthesis. */
+bool parse_type_starts(MsTok kind) {
+  return kind == MS_T_Name || kind == MS_T_Fn || kind == MS_T_LParen;
+}
+
+/* The type after a parameter or field name, written directly after it: `name Type`. */
+MS_NODISCARD bool parse_name_type(Parser *p, MsToken name, MsTypeRef **out) {
+  MsToken t = parse_peek(p);
+  if (p->speculative == 0) {
     MsSpan n = parse_text(p, name);
-    parse_fail(p, name,
-               parse_fmt(p, "parameter '%S' has no type; every parameter is written name: Type, e.g. %S: Int",
-                         n, n));
-    return false;
+    if (t.kind == MS_T_Colon) {
+      parse_fail_fix(p, t,
+                     parse_fmt(p, "remove the ':' between '%S' and its type; write %S Type", n, n),
+                     ms_span_of_text(""));
+      return false;
+    }
+    if (t.kind == MS_T_Var) {
+      parse_fail(p, t, parse_fmt(p, "'var' goes before the parameter name, not its type; write var %S Type", n));
+      return false;
+    }
+    if (t.kind == MS_T_Comma || t.kind == MS_T_RParen) {
+      parse_fail(p, name,
+                 parse_fmt(p, "parameter '%S' has no type; every parameter is written name Type, e.g. %S Int", n,
+                           n));
+      return false;
+    }
+    if (!parse_type_starts((MsTok)t.kind)) {
+      parse_fail(p, t, parse_fmt(p, "expected the type of '%S' after its name, e.g. %S Int", n, n));
+      return false;
+    }
   }
-  if (!parse_need(p, MS_T_Colon))
-    return false;
-  return true;
+  return parse_typ(p, out);
 }
 
 /* One parameter: `[move|var] name[: Type][= default]`; it is pushed onto the open scratch list. */
+/* After a name: whether `, name, ... name Type` follows, so the names share the one type. */
+static bool group_ahead(const Parser *p) {
+  size_t j = 0;
+  while (parse_ahead(p, j).kind == MS_T_Comma && parse_ahead(p, j + 1).kind == MS_T_Name) {
+    j += 2;
+  }
+  return j > 0 && parse_ahead(p, j).kind != MS_T_Comma && parse_type_starts((MsTok)parse_ahead(p, j).kind);
+}
+
+/* Reads the names after the first of a `width, height Int` group into names[1..]; `*n` counts all of them. */
+MS_NODISCARD bool parse_group_names(Parser *p, MsToken *names, size_t *n) {
+  *n = 1;
+  if (!group_ahead(p)) {
+    return true;
+  }
+  while (parse_take(p, MS_T_Comma)) {
+    if (*n == MS_GROUP_MAX) {
+      parse_fail(p, parse_previous(p), ms_span_of_text("too many names share one type; split the group"));
+      return false;
+    }
+    names[(*n)++] = parse_next(p);
+  }
+  return true;
+}
+
 MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
   bool moving = parse_take_move(p, (const MsTok[]){MS_T_Var, MS_T_Name}, 2);
   bool is_mutable = parse_take(p, MS_T_Var);
@@ -361,27 +405,33 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
     return false;
   }
   MsToken name = {0};
-  if (!parse_need_token(p, MS_T_Name, &name))
+  if (!parse_member_name(p, &name))
     return false;
   MsTypeRef *ty = NULL;
   MsExpr *def = NULL;
   bool implied = false;
-  if (parse_take(p, MS_T_Colon)) {
-    if (parse_kind(p) == MS_T_Var) {
-      MsToken t = parse_peek(p);
-      MsSpan n = parse_text(p, name);
-      MsSpan rep = parse_fmt(p, "var %S:", n);
-      parse_fail_fix_range(
-          p, name, t,
-          parse_fmt(p, "'var' goes before the parameter name, not its type; write var %S: Type", n), rep);
-      return false;
-    }
-    if (!parse_typ(p, &ty))
-      return false;
-  } else if (!inferred || parse_kind(p) == MS_T_Name) {
-    if (!parse_need_name_colon(p, name))
+  if (parse_text_is(p, name, "ref") && parse_kind(p) == MS_T_Name && parse_type_starts((MsTok)parse_ahead(p, 1).kind) &&
+      p->speculative == 0) {
+    MsToken next = parse_peek(p);
+    parse_fail_fix_range(p, name, next,
+                         ms_span_of_text("'ref' is not a parameter marker; a parameter is written name Type, so "
+                                         "remove 'ref'"),
+                         parse_text(p, next));
+    return false;
+  }
+  MsToken names[MS_GROUP_MAX];
+  names[0] = name;
+  size_t nnames = 1;
+  if (!inferred && !parse_group_names(p, names, &nnames))
+    return false;
+  const MsToken last = names[nnames - 1];
+  const size_t type_at = p->at;
+  if (!inferred || parse_kind(p) == MS_T_Colon || parse_type_starts(parse_kind(p))) {
+    if (!parse_name_type(p, last, &ty))
       return false;
   }
+  const size_t def_at = p->at;
+  const bool has_default = parse_kind(p) == MS_T_Assign;
   if (parse_take(p, MS_T_Assign)) {
     if (!defaults) {
       parse_fail(p, parse_previous(p),
@@ -395,6 +445,29 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
     def = parse_implicit_none(p, ty);
     implied = def != NULL;
   }
+  const size_t end = p->at;
+  for (size_t i = 0; i + 1 < nnames; i++) {
+    /* `width, height Int = 0`: each earlier name reads the same type and default again. */
+    MsTypeRef *own_ty = NULL;
+    MsExpr *own_def = NULL;
+    bool own_implied = false;
+    p->at = type_at;
+    if (!parse_name_type(p, names[i], &own_ty))
+      return false;
+    if (has_default) {
+      p->at = def_at + 1;
+      if (!parse_expression(p, 0, &own_def))
+        return false;
+    } else if (defaults) {
+      own_def = parse_implicit_none(p, own_ty);
+      own_implied = own_def != NULL;
+    }
+    MsParam *earlier = parse_mk_param(p, names[i].pos, parse_sym(p, names[i]), own_ty, own_def, is_mutable, moving);
+    earlier->implied_default = own_implied;
+    parse_push_ptr(p, earlier);
+  }
+  p->at = end;
+  name = last;
   MsParam *param = parse_mk_param(p, name.pos, parse_sym(p, name), ty, def, is_mutable, moving);
   param->implied_default = implied;
   parse_push_ptr(p, param);

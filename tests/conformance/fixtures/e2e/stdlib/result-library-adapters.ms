@@ -6,29 +6,34 @@ import (
 	Duration, parse_duration from "@std/time.ms",
 )
 
-enum InputFailure:
-	Binary(cause: Error)
-	Time(cause: Error)
+enum InputFailure {
+	Binary(cause Error)
+	Time(cause Error)
 	MissingPrefix
-	MissingKey(value: Int)
+	MissingKey(value Int)
+}
 
-fn read_number(data: Bytes) UInt64!InputFailure:
-	decoded := data.uvarint(0).map_error(fn cause: InputFailure.Binary(cause.clone()))?
+fn read_number(data Bytes) UInt64!InputFailure {
+	decoded := data.uvarint(0).map_error(cause => InputFailure.Binary(cause.clone()))?
 	return ok(decoded.value)
+}
 
-fn read_duration(text: String) Duration!InputFailure:
-	return parse_duration(text).map_error(fn cause: InputFailure.Time(cause.clone()))
+fn read_duration(text String) Duration!InputFailure {
+	return parse_duration(text).map_error(cause => InputFailure.Time(cause.clone()))
+}
 
-fn read_prefixed(text: String) String!InputFailure:
+fn read_prefixed(text String) String!InputFailure {
 	return ok_or(text.cut_prefix("name="), InputFailure.MissingPrefix)
+}
 
-fn sorted_index(values: List[Int], target: Int) Int!InputFailure:
+fn sorted_index(values List[Int], target Int) Int!InputFailure {
 	position := values.binary_search(target)
-	if not position.found: return error(InputFailure.MissingKey(target))
+	if not position.found { return error(InputFailure.MissingKey(target)) }
 
 	return ok(position.index)
+}
 
-test "library results compose with failure values without a reporting implementation":
+test "library results compose with failure values without a reporting implementation" {
 	number := expect_ok(read_number(Bytes([172, 2])))?
 	expect_equal(number, 300)?
 	expect_equal(
@@ -42,8 +47,9 @@ test "library results compose with failure values without a reporting implementa
 		(expect_error(read_duration("invalid"))?),
 		InputFailure.Time(Error("time: invalid data", kind: "EBADMSG")),
 	)?
+}
 
-test "absence adapters and sorted lookup retain an explicit failure type":
+test "absence adapters and sorted lookup retain an explicit failure type" {
 	value := expect_ok(read_prefixed("name=value"))?
 	expect_equal(value, "value")?
 	expect_equal((expect_error(read_prefixed("missing"))?), InputFailure.MissingPrefix)?
@@ -52,3 +58,4 @@ test "absence adapters and sorted lookup retain an explicit failure type":
 		(expect_error(sorted_index([1, 3, 3], 2))?),
 		InputFailure.MissingKey(2),
 	)?
+}

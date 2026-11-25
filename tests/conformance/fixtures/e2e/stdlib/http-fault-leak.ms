@@ -13,128 +13,150 @@ import (
 	recv, send from "./support/conn.ms",
 )
 
-fn faulting(var exchange: HttpExchange) Void!:
+fn faulting(var exchange HttpExchange) Void! {
 	big := "x".repeat(1000000)
-	xs: List[Int] := []
+	xs List[Int] := []
 	n := xs[big.length()]
-	if big.length() + n > 5: return ok()
+	if big.length() + n > 5 { return ok() }
+}
 
-test "a faulting handler releases the values its frames own":
+test "a faulting handler releases the values its frames own" {
 	server := serve(address: "127.0.0.1:0", handler: faulting) | expect_ok?
 	before := (memory_usage() | expect_ok?).resident
 
-	for i in 0..100:
+	for i in 0..100 {
 		var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 		send(client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")?
 
 		reply_bytes := recv(client, 3.seconds())?
 		head := (reply_bytes or Bytes([])).decode_utf8() or ""
-		if not head.starts_with("HTTP/1.1 500"): return error(Error(head))
+		if not head.starts_with("HTTP/1.1 500") { return error(Error(head)) }
+	}
 
 	// Each leaked fault kept 1 MB, so 100 faults would grow the process by 100 MB; the
 	// allocator keeps some freed blocks resident (about 21 MB on Linux arm64), which is
 	// not growth.
 	grown := (memory_usage() | expect_ok?).resident - before
-	if grown > 45000000: return error(Error(f"resident memory grew {grown} bytes"))
+	if grown > 45000000 { return error(Error(f"resident memory grew {grown} bytes")) }
+}
 
-fn hanging(var exchange: HttpExchange) Void!:
+fn hanging(var exchange HttpExchange) Void! {
 	sleep(30.seconds()).wait()?
+}
 
 // Closing cancels the hanging handlers at once rather than waiting out their sleep.
-fn hanging_server() HttpServer!:
+fn hanging_server() HttpServer! {
 	return serve(
 		address: "127.0.0.1:0",
 		handler: hanging,
 		options: HttpServerOptions(grace: 0.seconds()),
 	)
+}
 
-test "a fetch cancelled by its timeout releases its read buffer":
+test "a fetch cancelled by its timeout releases its read buffer" {
 	server := hanging_server()?
 	url := f"http://{server.address()}/"
 
 	// Warm up the thread's buffers and the connection pool before measuring.
-	for i in 0..20:
+	for i in 0..20 {
 		void fetch(url).with(options: PromiseOptions(timeout: 1.milliseconds())).wait()
+	}
 
 	before := (memory_usage() | expect_ok?).resident
 
-	for i in 0..300:
+	for i in 0..300 {
 		timed_out := fetch(url).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
-		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+		if timed_out.is_ok() { return error(Error("a hanging handler answered")) }
+	}
 
 	// Each cancelled read leaked a 64 KiB buffer, so 300 fetches grew the process by
 	// about 19 MB.
 	grown := (memory_usage() | expect_ok?).resident - before
-	if grown > 8000000: return error(Error(f"resident memory grew {grown} bytes"))
+	if grown > 8000000 { return error(Error(f"resident memory grew {grown} bytes")) }
+}
 
-test "a fetch cancelled by its timeout frees the request state its frames own":
+test "a fetch cancelled by its timeout frees the request state its frames own" {
 	server := hanging_server()?
 	url := f"http://{server.address()}/"
 
 	// One fetch waits long enough for its request to be sent; the rest cancel at once.
 	void fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
-	for i in 0..200:
+	for i in 0..200 {
 		void fetch(url).with(options: PromiseOptions(timeout: 0.milliseconds())).wait()
+	}
 
 	// A leak grows the heap in every round; the pool and rings that settle while a
 	// loaded runner cancels fetches move it by a few kilobytes in one round. So the
 	// check fails only when no round came back near where it started.
 	var least = 0
 
-	for round in 0..3:
+	for round in 0..3 {
 		before := (memory_usage() | expect_ok?).heap_used
 
-		for i in 0..2000:
+		for i in 0..2000 {
 			timed_out := fetch(url).with(
 				options: PromiseOptions(timeout: 0.milliseconds())
 			).wait()
-			if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+			if timed_out.is_ok() { return error(Error("a hanging handler answered")) }
+		}
 
 		// The method, URLs, header vectors and pool key leaked about 340 bytes per
 		// cancelled fetch.
 		grown := (memory_usage() | expect_ok?).heap_used - before
-		if round == 0 or grown < least:
+		if round == 0 or grown < least {
 			least = grown
+		}
+	}
 
-	if least > 2000 * 64: return error(
-		Error(
-			f"heap grew at least {least} bytes in every round of 2000 cancelled fetches"
+	if least > 2000 * 64 {
+		return error(
+			Error(
+				f"heap grew at least {least} bytes in every round of 2000 cancelled fetches"
+			)
 		)
-	)
+	}
+}
 
-test "a fetch cancelled while it waits for the response frees the cancellation error":
+test "a fetch cancelled while it waits for the response frees the cancellation error" {
 	server := hanging_server()?
 	url := f"http://{server.address()}/"
 
 	// The first fetches warm the connection pool and the thread's buffers.
-	for i in 0..20:
+	for i in 0..20 {
 		void fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
+	}
 
 	// A leak grows the heap in every round; the pool and rings that settle while a
 	// loaded runner cancels fetches move it up or down by a few kilobytes in one round.
 	// So the check fails only when no round came back near where it started.
 	var least = 0
 
-	for round in 0..3:
+	for round in 0..3 {
 		before := (memory_usage() | expect_ok?).heap_used
 
-		for i in 0..150:
+		for i in 0..150 {
 			timed_out := fetch(url).with(
 				options: PromiseOptions(timeout: 3.milliseconds())
 			).wait()
-			if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+			if timed_out.is_ok() { return error(Error("a hanging handler answered")) }
+		}
 
 		// The error a cancelled read returns is dropped before the boundary jumps into
 		// the runtime's cancellation; keeping it leaked its text on every cancelled
 		// call.
 		grown := (memory_usage() | expect_ok?).heap_used - before
-		if round == 0 or grown < least:
+		if round == 0 or grown < least {
 			least = grown
+		}
+	}
 
-	if least > 4096: return error(
-		Error(
-			f"heap grew at least {least} bytes in every round of 150 fetches cancelled while reading"
+	if least > 4096 {
+		return error(
+			Error(
+				f"heap grew at least {least} bytes in every round of 150 fetches cancelled while reading"
+			)
 		)
-	)
+	}
+}

@@ -1,12 +1,16 @@
 // conform: tags=functions,tier-core
 // conform: phase=run
-fn step(n: Int) Void!:
-    if n > 2:
-        return error(Error("too big"))
-    print(f"step {n}")
+fn step(n Int) Void! {
+	if n > 2 {
+		return error(Error("too big"))
+	}
 
-fn main() Void!:
-    step(1)?
-    step(2)?
-    step(3)?
-    print("unreachable")
+	print(f"step {n}")
+}
+
+fn main() Void! {
+	step(1)?
+	step(2)?
+	step(3)?
+	print("unreachable")
+}

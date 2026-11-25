@@ -1,4 +1,4 @@
-/* compiler/check/narrow.c: flow narrowing of a nullable local. After `if v != null:`, in the rest of a block that
+/* compiler/check/narrow.c: flow narrowing of a nullable local. After `if v != null { ... }`, in the rest of a block that
  * follows `if v == null: return`, and on the right of `v != null and ...` or `v == null or ...`, an immutable local or
  * parameter `v` of type `T?` reads as `T`. The use is typed `T`, its node keeps the stored type `T?` and carries a
  * MS_CONV_NARROW conversion, so lowering yields the payload of the same value. */

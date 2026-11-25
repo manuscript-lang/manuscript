@@ -6,7 +6,7 @@ import (
 	exercise_shared from "./shared.ms",
 )
 
-test "same display names keep nested resource cleanup":
+test "same display names keep nested resource cleanup" {
 	path := f"{ temporary_root()?}/ms-nominal-cycle-identity.txt"
 	_gone := remove(path, false)
 	exercise(path.clone())
@@ -14,13 +14,15 @@ test "same display names keep nested resource cleanup":
 	seen := read_file(path.clone(), null).wait()?
 	_cleaned := remove(path, false)
 	seen.length() | expect_equal(1)?
+}
 
-fn expect_closed(path: String) Void!:
+fn expect_closed(path String) Void! {
 	seen := read_file(path.clone(), null).wait()?
 	_cleaned := remove(path, false)
 	expect_equal(seen.length(), 1)?
+}
 
-test "shared generic field types keep cleanup for each value":
+test "shared generic field types keep cleanup for each value" {
 	root := temporary_directory("ms-shared-classification")?
 	first := f"{root}/ms-shared-first.txt"
 	second := f"{root}/ms-shared-second.txt"
@@ -32,3 +34,4 @@ test "shared generic field types keep cleanup for each value":
 	expect_closed(third)?
 	expect_closed(fourth)?
 	remove(root, false)?
+}

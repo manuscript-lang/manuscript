@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn caller() Void:\n\tmatch operation():\n\t\tok(value): operation()\n\t\terror(cause): operation()\n"
+    "fmt": "fn caller() Void {\n\tmatch operation() {\n\t\tok(value) => operation()\n\t\terror(cause) => operation()\n\t}\n}\n"
   }
 }

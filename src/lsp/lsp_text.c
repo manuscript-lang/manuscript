@@ -199,7 +199,7 @@ bool lsp_line_opens_suite(MsSpan line) {
   for (size_t i = tokens.len; i > 0; i--) {
     const LspEditorToken *token = &tokens.ptr[i - 1];
     if (token->kind == LSP_TOKEN_COMMENT) continue;
-    opens = token->kind == LSP_TOKEN_CHAR && line.ptr[token->start] == ':';
+    opens = token->kind == LSP_TOKEN_CHAR && line.ptr[token->start] == '{';
     break;
   }
   lsp_token_list_free(&tokens);

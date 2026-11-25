@@ -2,8 +2,10 @@
 // conform: phase=check
 import stdout from "@std/io/io.ms"
 
-fn never() Int:
-    return 1
+fn never() Int {
+	return 1
+}
 
-fn main() Void:
-    _written := stdout().write(data: "TARGET_RAN\n")
+fn main() Void {
+	_written := stdout().write(data: "TARGET_RAN\n")
+}

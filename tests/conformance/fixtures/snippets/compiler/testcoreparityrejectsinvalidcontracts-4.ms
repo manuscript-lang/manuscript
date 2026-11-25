@@ -1,8 +1,9 @@
 // conform: tags=alternatives,diagnostics,faults,generics,records,strings,tier-core,try-result
 // conform: phase=check
 // conform: origin=pkg/compiler/core_parity_test.go:24 TestCoreParityRejectsInvalidContracts
-enum T!E:
+enum T!E {
     ok(value: T)
     error(cause: E)
+}
 
-fn wrong(value: Int!String) Int: value.get()
+fn wrong(value: Int!String) Int => value.get()

@@ -5,82 +5,95 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-type Chunks:
-	data: Bytes
-	size: Int
-	at: Int = 0
+type Chunks {
+	data Bytes
+	size Int
+	at Int = 0
+}
 
-fn var Chunks.next() Bytes?!:
-	if self.at >= self.data.length(): return ok(null)
+fn var Chunks.next() Bytes?! {
+	if self.at >= self.data.length() { return ok(null) }
 
 	var end = self.at + self.size
-	if end > self.data.length(): end = self.data.length()
+	if end > self.data.length() { end = self.data.length() }
 
 	piece := self.data.slice(self.at, end)?
 	self.at = end
 	return ok(piece)
+}
 
-fn move Chunks.close() Void!:
+fn move Chunks.close() Void! {
 	return ok()
+}
 
-type Case:
-	name: String
-	data: Bytes
-	chunk: Int
-	expected: String
-	operations: Int = 4
-	malformed: Bool = false
+type Case {
+	name String
+	data Bytes
+	chunk Int
+	expected String
+	operations Int = 4
+	malformed Bool = false
+}
 
-fn read(item: Case) Int!:
+fn read(item Case) Int! {
 	var rows = csv_rows(ReadStream[Bytes](Chunks(item.data.clone(), item.chunk)))
 	first := rows.next()
 
-	if item.malformed:
-		if not first.is_error(): return error(Error("expected malformed CSV"))
-		if first.err().kind != "EBADMSG": return error(Error("wrong error kind"))
+	if item.malformed {
+		if not first.is_error() { return error(Error("expected malformed CSV")) }
+		if first.err().kind != "EBADMSG" { return error(Error("wrong error kind")) }
 
 		return ok(item.data.length())
+	}
 
 	found := first?
-	if found == null: return error(Error("missing row"))
+	if found == null { return error(Error("missing row")) }
 
 	row := found
-	if row.length() != 1 or row[0] != item.expected: return error(Error("wrong row"))
-	if (rows.next()?) != null: return error(Error("extra row"))
+	if row.length() != 1 or row[0] != item.expected { return error(Error("wrong row")) }
+	if (rows.next()?) != null { return error(Error("extra row")) }
 
 	return ok(row[0].length())
+}
 
-fn measure(item: Case) Void!:
-	length := if item.malformed: item.data.length() else: item.expected.length()
+fn measure(item Case) Void! {
+	length := if item.malformed { item.data.length() } else { item.expected.length() }
 
-	for sample in 0..6:
+	for sample in 0..6 {
 		started := monotonic()
 		var checksum = 0
-		for _iteration in 0..item.operations:
+		for _iteration in 0..item.operations {
 			checksum += read(item)?
+		}
 
 		ns := monotonic().difference(started).to_nanoseconds()
-		if checksum != length * item.operations: return error(Error("wrong checksum"))
+		if checksum != length * item.operations { return error(Error("wrong checksum")) }
 
 		print(
 			f"{item.name},{item.chunk},{item.data.length()},{item.operations},{sample},{ns},{checksum}"
 		)
+	}
+}
 
-fn main() Void:
-	for chunk in [1, 64, 1000000]:
-		for length in [4096, 8192, 16384, 32768, 65536]:
+fn main() Void {
+	for chunk in [1, 64, 1000000] {
+		for length in [4096, 8192, 16384, 32768, 65536] {
 			expected := "x".repeat(length)
 			measure(Case("plain", f"{expected}\n".to_bytes(), chunk, expected)).get()
+		}
+	}
 
 	quoted := "é\"日\n".repeat(2048)
 	encoded := f"\"{quoted.replace("\"", "\"\"")}\"\r\n".to_bytes()
-	for chunk in [1, 64, 1000000]:
+	for chunk in [1, 64, 1000000] {
 		measure(Case("quoted", encoded.clone(), chunk, quoted.clone())).get()
+	}
 
-	for chunk in [1, 4, 1000000]:
-		for field in ["x", "a,b", "é\"日\n"]:
+	for chunk in [1, 4, 1000000] {
+		for field in ["x", "a,b", "é\"日\n"] {
 			data := f"\"{field.replace("\"", "\"\"")}\"\r\n".to_bytes()
 			measure(Case("small-quoted", data, chunk, field.clone(), operations: 20000)).get()
+		}
 
 		measure(Case("small-plain", "x\n".to_bytes(), chunk, "x", operations: 20000)).get()
 		measure(Case("small-tail", "x".to_bytes(), chunk, "x", operations: 20000)).get()
@@ -104,3 +117,5 @@ fn main() Void:
 				malformed: true,
 			)
 		).get()
+	}
+}

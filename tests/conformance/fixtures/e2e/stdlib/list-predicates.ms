@@ -2,24 +2,27 @@
 // conform: phase=test
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
-type Person:
-	name: String
-	age: Int
+type Person {
+	name String
+	age Int
+}
 
-fn people() List[Person]:
+fn people() List[Person] {
 	return [Person("ann", 30), Person("bob", 17), Person("cy", 30), Person("di", 17)]
+}
 
-test "any and all stop early and handle empty lists":
-	empty: List[Int] := []
-	expect_false(empty.any(fn(x: Int) Bool: true))?
-	expect_true(empty.all(fn(x: Int) Bool: false))?
+test "any and all stop early and handle empty lists" {
+	empty List[Int] := []
+	expect_false(empty.any(fn(x Int) Bool => true))?
+	expect_true(empty.all(fn(x Int) Bool => false))?
 
 	var calls = 0
 
 	hit := [1, 2, 3, 4].any(
-		fn(x: Int) Bool:
+		fn(x Int) Bool {
 			calls += 1
 			return x == 2
+		}
 	)
 
 	expect_true(hit)?
@@ -27,58 +30,65 @@ test "any and all stop early and handle empty lists":
 	calls = 0
 
 	miss := [1, 2, 3, 4].all(
-		fn(x: Int) Bool:
+		fn(x Int) Bool {
 			calls += 1
 			return x < 3
+		}
 	)
 
 	expect_false(miss)?
 	expect_equal(calls, 3)?
+}
 
-test "set and map any and all":
+test "set and map any and all" {
 	set := Set([1, 2, 3])
-	expect_true(set.any(fn(x: Int) Bool: x == 3))?
-	expect_false(set.all(fn(x: Int) Bool: x < 3))?
+	expect_true(set.any(fn(x Int) Bool => x == 3))?
+	expect_false(set.all(fn(x Int) Bool => x < 3))?
 
 	map := {"a": 1, "b": 2}
-	expect_true(map.any(fn(k: String, v: Int) Bool: v == 2))?
-	expect_true(map.all(fn(k: String, v: Int) Bool: v > 0))?
+	expect_true(map.any(fn(k String, v Int) Bool => v == 2))?
+	expect_true(map.all(fn(k String, v Int) Bool => v > 0))?
+}
 
-test "max_by and min_by pick the first of ties and call key once per element":
-	empty: List[Person] := []
-	expect_true(empty.max_by(fn(p: Person) Int: p.age) == null)?
-	expect_true(empty.min_by(fn(p: Person) Int: p.age) == null)?
+test "max_by and min_by pick the first of ties and call key once per element" {
+	empty List[Person] := []
+	expect_true(empty.max_by(fn(p Person) Int => p.age) == null)?
+	expect_true(empty.min_by(fn(p Person) Int => p.age) == null)?
 
 	var calls = 0
 
 	oldest := people().max_by(
-		fn(p: Person) Int:
+		fn(p Person) Int {
 			calls += 1
 			return p.age
+		}
 	)
 
 	expect_equal(calls, 4)?
 	expect_true(oldest != null)?
-	if oldest != null: expect_equal(oldest.name, "ann")?
+	if oldest != null { expect_equal(oldest.name, "ann")? }
 
-	youngest := people().min_by(fn(p: Person) Int: p.age)
+	youngest := people().min_by(fn(p Person) Int => p.age)
 	expect_true(youngest != null)?
-	if youngest != null: expect_equal(youngest.name, "bob")?
+	if youngest != null { expect_equal(youngest.name, "bob")? }
+}
 
-test "max_by supports owned String keys":
+test "max_by supports owned String keys" {
 	words := ["pear", "fig", "banana", "kiwi"]
-	expect_equal(words.max_by(fn(w: String) String: w.clone()), "pear")?
-	expect_equal(words.min_by(fn(w: String) String: w.clone()), "banana")?
+	expect_equal(words.max_by(fn(w String) String => w.clone()), "pear")?
+	expect_equal(words.min_by(fn(w String) String => w.clone()), "banana")?
+}
 
-test "max_by and min_by with extreme Int and Float keys":
+test "max_by and min_by with extreme Int and Float keys" {
 	ints := [3, -9223372036854775807 - 1, 3]
-	expect_equal(ints.max_by(fn(x: Int) Int: x), 3)?
-	expect_equal(ints.min_by(fn(x: Int) Int: x), (-9223372036854775807 - 1))?
+	expect_equal(ints.max_by(fn(x Int) Int => x), 3)?
+	expect_equal(ints.min_by(fn(x Int) Int => x), (-9223372036854775807 - 1))?
 
 	floats := [1.5, -2.5, 1.5]
-	expect_equal(floats.max_by(fn(x: Float) Float: x), 1.5)?
-	expect_equal(floats.min_by(fn(x: Float) Float: x), -2.5)?
+	expect_equal(floats.max_by(fn(x Float) Float => x), 1.5)?
+	expect_equal(floats.min_by(fn(x Float) Float => x), -2.5)?
 
 	ties := ["b", "a", "c"]
-	expect_equal(ties.max_by(fn(w: String) Int: 0), "b")?
-	expect_equal(ties.min_by(fn(w: String) Int: 0), "b")?
+	expect_equal(ties.max_by(fn(w String) Int => 0), "b")?
+	expect_equal(ties.min_by(fn(w String) Int => 0), "b")?
+}

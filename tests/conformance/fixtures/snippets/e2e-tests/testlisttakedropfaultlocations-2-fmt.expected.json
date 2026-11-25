@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn main() Int:\n\tcopy := [1, 2].METHOD\n\tpart := copy(count: -7)\n\treturn part.length()\n"
+    "fmt": "export fn main() Int {\n\tcopy := [1, 2].METHOD\n\tpart := copy(count: -7)\n\treturn part.length()\n}\n"
   }
 }

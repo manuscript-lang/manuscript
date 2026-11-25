@@ -10,86 +10,103 @@ import (
 DIGITS := "0123456789"
 LETTERS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) String:
+fn shift(text String, keys List[Int], fixed Int, use_keys Bool, sign Int) String {
 	var out = List[Int]()
 	var i = 0
 
-	for ch in text.scalar_values():
+	for ch in text.scalar_values() {
 		lower := ch >= 97 and ch <= 122
 
-		if lower or (ch >= 65 and ch <= 90):
-			base := if lower: 97 else: 65
-			k := if use_keys: keys[i % keys.length()] else: fixed
+		if lower or (ch >= 65 and ch <= 90) {
+			base := if lower { 97 } else { 65 }
+			k := if use_keys { keys[i % keys.length()] } else { fixed }
 			out.append((((ch - base + sign * k) % 26) + 26) % 26 + base)
 			i += 1
-		else:
+		} else {
 			out.append(ch)
+		}
+	}
 
 	return from_scalars(out).get_or("")
+}
 
 // A caesar key: an optional minus sign and one to seven digits.
-fn caesar_key(key: String) Bool:
-	digits := if key.starts_with("-"): key.slice(1, key.length()) else: key.clone()
+fn caesar_key(key String) Bool {
+	digits := if key.starts_with("-") {
+		key.slice(1, key.length())
+	} else {
+		key.clone()
+	}
 	return (
 		digits.length() >= 1
 		and digits.length() <= 7
-		and digits.chars().all(fn c: DIGITS.contains(c))
+		and digits.chars().all(c => DIGITS.contains(c))
 	)
+}
 
-fn solve_line(line: String) String:
+fn solve_line(line String) String {
 	parts := split_max(line, " ", 3)
-	if parts.length() < 4 or parts[3].is_empty(): return "error: bad command"
+	if parts.length() < 4 or parts[3].is_empty() { return "error: bad command" }
 
 	cipher := parts[0].clone()
 	mode := parts[1].clone()
 	key := parts[2].clone()
 	text := parts[3].clone()
-	if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
-	if mode != "enc" and mode != "dec": return "error: bad mode"
+	if cipher != "caesar" and cipher != "vigenere" { return "error: bad cipher" }
+	if mode != "enc" and mode != "dec" { return "error: bad mode" }
 
-	sign := if mode == "enc": 1 else: -1
+	sign := if mode == "enc" { 1 } else { - 1 }
 
-	if cipher == "caesar":
-		if not caesar_key(key): return "error: bad key"
+	if cipher == "caesar" {
+		if not caesar_key(key) { return "error: bad key" }
 		return shift(text, [], key.parse_int() or 0, false, sign)
+	}
 
-	if key.is_empty() or not key.chars().all(fn c: LETTERS.contains(c)): return "error: bad key"
+	if key.is_empty() or not key.chars().all(
+		c => LETTERS.contains(c)
+	) { return "error: bad key" }
 
-	ks := key.lower().scalar_values().map(fn c: c - 97)
+	ks := key.lower().scalar_values().map(c => c - 97)
 	return shift(text, ks, 0, true, sign)
+}
 
-fn solve(s: String) String:
+fn solve(s String) String {
 	var lines = s.split("\n").clone()
-	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
-	return lines.filter(fn l: l.replace(" ", "") != "").map(
-		fn l: solve_line(l) + "\n"
+	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
+	return lines.filter(l => l.replace(" ", "") != "").map(
+		l => solve_line(l) + "\n"
 	).join("")
+}
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-export fn gen_c09() Void:
+export fn gen_c09() Void {
 	var rnd = seeded(9)
 	alpha := (LETTERS + "      .,!?" + DIGITS).chars()
 	var big = List[String]()
 
-	for _n in 0..200:
+	for _n in 0..200 {
 		c := rnd.choice(["caesar", "vigenere"])
 		var k = ""
 
-		if c == "caesar":
+		if c == "caesar" {
 			k = f"{rnd.randint(-100, 100)}"
-		else:
+		} else {
 			n := rnd.randint(1, 8)
-			for _m in 0..n: k += rnd.choice(["a", "b", "c", "X", "Y", "Z"])
+			for _m in 0..n {
+				k += rnd.choice(["a", "b", "c", "X", "Y", "Z"])
+			}
+		}
 
 		mode := rnd.choice(["enc", "dec"])
 		n := rnd.randint(1, 80)
 		var text = ""
-		for _m in 0..n: text += rnd.choice(alpha)
+		for _m in 0..n { text += rnd.choice(alpha) }
 
 		var trimmed = strip_spaces(text)
-		if trimmed.is_empty(): trimmed = "x"
+		if trimmed.is_empty() { trimmed = "x" }
 		big.append(f"{c} {mode} {k} {trimmed}")
+	}
 
 	examples := [
 		mk(
@@ -148,3 +165,4 @@ export fn gen_c09() Void:
 		]
 	)
 	write_cases("c09-ciphers", examples, hidden)
+}

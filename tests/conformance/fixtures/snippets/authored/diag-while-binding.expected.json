@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "while takes a condition, not a binding; to loop while a value is present write 'while true:', bind it inside with 'if name := value:', and leave with 'else: break'",
+        "message": "while takes a condition, not a binding; to loop while a value is present write 'while true { ... }', bind it inside with 'if name := value { ... }', and leave with 'else { break }'",
         "position": {
           "file": "diag-while-binding.ms",
           "line": 5,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-while-binding.ms:5:13: parse: while takes a condition, not a binding; to loop while a value is present write 'while true:', bind it inside with 'if name := value:', and leave with 'else: break'\n   |\n 5 |     while v := o:\n   |             ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-while-binding.ms:5:13: parse: while takes a condition, not a binding; to loop while a value is present write 'while true { ... }', bind it inside with 'if name := value { ... }', and leave with 'else { break }'\n   |\n 5 |     while v := o {\n   |             ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

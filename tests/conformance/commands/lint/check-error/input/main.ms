@@ -1,2 +1,3 @@
-fn main() Void:
-	x: Int = "no"
+fn main() Void {
+	x Int = "no"
+}

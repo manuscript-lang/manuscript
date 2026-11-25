@@ -20,44 +20,52 @@ import (
 // The live block counts the runtime printed on standard error; a program that starts
 // child processes prints one per process, and their sum is what leaked. Empty when none
 // was printed.
-fn live_blocks(text: String) List[Int]:
+fn live_blocks(text String) List[Int] {
 	var counts = List[Int]()
 
-	for line in text.split("\n"):
-		if line.starts_with("ms-rt live blocks at exit: "):
+	for line in text.split("\n") {
+		if line.starts_with("ms-rt live blocks at exit: ") {
 			n := line.slice(27, line.length()).trim().parse_int()
-			if n != null: counts.append(n)
+			if n != null { counts.append(n) }
+		}
+	}
 
 	return counts
+}
 
 // The tests of one `ms test` run that left live blocks, as "name: count" lines: each
 // test prints RUN before it starts, and the runtime prints its count as the process
 // exits or after the test.
-fn leaking_tests(text: String) List[String]:
+fn leaking_tests(text String) List[String] {
 	var leaks = List[String]()
 	var current = ""
 
-	for line in text.split("\n"):
-		if line.starts_with("RUN "): current = line.slice(4, line.length())
-		else if line.starts_with("ms-rt live blocks at exit: "):
+	for line in text.split("\n") {
+		if line.starts_with("RUN ") {
+			current = line.slice(4, line.length())
+		} else if line.starts_with("ms-rt live blocks at exit: ") {
 			n := line.slice(27, line.length()).trim().parse_int() or 0
-			if n != 0: leaks.append(f"{current}: {n}")
+			if n != 0 { leaks.append(f"{current}: {n}") }
+		}
+	}
 
 	return leaks
+}
 
-fn has_tests(source: String) Bool:
+fn has_tests(source String) Bool {
 	return source.starts_with("test \"") or source.contains("\ntest \"")
+}
 
 // Sweeps `files` and returns one line per swept program (`swept`), followed by one
 // report per leak that starts with `leak:`.
-fn sweep(ms: String, root: String, files: List[String]) List[String]:
+fn sweep(ms, root String, files List[String]) List[String] {
 	var lines = List[String]()
 
-	for f in files:
+	for f in files {
 		absolute := f"{root}/{f}"
 		source := read_file(absolute.clone()).wait().get().decode_utf8() or ""
 
-		if has_tests(source):
+		if has_tests(source) {
 			if out := run(
 				ms.clone(),
 				["test", absolute.clone()],
@@ -65,58 +73,70 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 					timeout: seconds(600),
 					env: {"MS_UNDER_TEST": ms.clone()},
 				),
-			).wait():
+			).wait() {
 				found := leaking_tests(out.stderr.decode_utf8() or "")
 				lines.append("swept")
-				if not found.is_empty(): lines.append(
-					f"leak: {absolute}\n  {found.join("\n  ")}"
-				)
+				if not found.is_empty() {
+					lines.append(f"leak: {absolute}\n  {found.join("\n  ")}")
+				}
+			}
 
 			continue
+		}
 
 		if out := run(
 			ms.clone(),
 			["run", absolute.clone()],
 			RunOptions(timeout: seconds(60)),
-		).wait():
+		).wait() {
 			counts := live_blocks(out.stderr.decode_utf8() or "")
-			if counts.is_empty(): continue
+			if counts.is_empty() { continue }
 
 			lines.append("swept")
 
-			total := counts.fold(0, fn(a: Int, b: Int) Int: a + b)
-			if total != 0: lines.append(f"leak: {absolute} left {total} live blocks")
+			total := counts.fold(0, fn(a, b Int) Int => a + b)
+			if total != 0 {
+				lines.append(f"leak: {absolute} left {total} live blocks")
+			}
+		}
+	}
 
 	return lines
+}
 
-fn main() Int:
+fn main() Int {
 	code := use_stats_runtime()
-	if code != 0: return code
+	if code != 0 { return code }
 
 	root := working_directory().get()
 	var files = List[String]()
-	for f in arguments(): files.append(f.clone())
+	for f in arguments() { files.append(f.clone()) }
 
-	if files.is_empty():
+	if files.is_empty() {
 		for dir in [
 			"tests/conformance/fixtures/fuzz/run", "tests/conformance/fixtures/e2e",
 			"tests/conformance/fixtures/examples"
-		]:
-			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get_or([]):
+		] {
+			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get_or([]) {
 				path := f"{dir}/{f.path}"
 				if (read_file(path.clone()).wait().get().decode_utf8() or "").contains(
 					"fn main"
-				): files.append(path.clone())
+				) { files.append(path.clone()) }
+			}
+		}
+	}
 
-	if files.is_empty():
+	if files.is_empty() {
 		for f in glob(
 			"tests/conformance/fixtures/e2e",
 			GlobOptions(patterns: ["**/*.ms"]),
-		).get_or([]):
+		).get_or([]) {
 			path := f"tests/conformance/fixtures/e2e/{f.path}"
-			if has_tests(read_file(path.clone()).wait().get().decode_utf8() or ""): files.append(
-				path.clone()
-			)
+			if has_tests(read_file(path.clone()).wait().get().decode_utf8() or "") {
+				files.append(path.clone())
+			}
+		}
+	}
 
 	ms := tool_ms(root.clone())
 	scratch := temporary("ms-leak-").get()
@@ -127,44 +147,55 @@ fn main() Int:
 	// working directory of the child processes.
 	var jobs = system_info().cpu_count
 	n := env("LEAK_JOBS", "").parse_int()
-	if n != null: jobs = n
-	if jobs < 1: jobs = 1
+	if n != null { jobs = n }
+	if jobs < 1 { jobs = 1 }
 
 	// A promise reads its captures until it is dropped, so the chunks outlive the loop
 	// that starts them.
 	var chunks = List[List[String]]()
 
-	for worker in 0..jobs:
+	for worker in 0..jobs {
 		var mine = List[String]()
-		for i in 0..files.length():
-			if i % jobs == worker: mine.append(files[i].clone())
+		for i in 0..files.length() {
+			if i % jobs == worker {
+				mine.append(files[i].clone())
+			}
+		}
 		chunks.append(mine)
+	}
 
 	var tasks = List[Promise[List[String]]]()
 
-	for worker in 0..jobs:
+	for worker in 0..jobs {
 		ms_copy := ms.clone()
 		root_copy := root.clone()
 		chunk := chunks[worker].clone()
-		tasks.append(promise(fn: ok(sweep(ms_copy, root_copy, chunk))))
+		tasks.append(promise(() => ok(sweep(ms_copy, root_copy, chunk))))
+	}
 
 	var swept = 0
 	var leaks = 0
 
-	for task in tasks:
-		for line in task.wait().get_or(List[String]()):
-			if line == "swept": swept += 1
-			else:
+	for task in tasks {
+		for line in task.wait().get_or(List[String]()) {
+			if line == "swept" {
+				swept += 1
+			} else {
 				leaks += 1
 				print(f"{line}")
+			}
+		}
+	}
 
 	change_directory(root).get()
 	print(f"swept {swept} programs, {leaks} leaking")
 
-	if swept == 0:
+	if swept == 0 {
 		print("no program reported a live block count")
 		return 1
+	}
 
-	if leaks > 0: return 1
+	if leaks > 0 { return 1 }
 
 	return 0
+}

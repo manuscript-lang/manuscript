@@ -11,23 +11,26 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Void:
+fn add(var cs Cases, name, script String) Void {
 	cs.push(name, script)
+}
 
 // The entries of c57-assembler-vm's hidden cases.
-fn c57_inputs() List[JsonValue]:
+fn c57_inputs() List[JsonValue] {
 	doc := parse(read_text(f"{root()}/challenges/c57-assembler-vm/hidden/cases.json")).get_or(
 		JsonValue.Null
 	)
 	return doc.as_list() or []
+}
 
-export fn gen_c64() Void:
+export fn gen_c64() Void {
 	var cs = Cases(build_oracle("c64-assembler-extend"))
 
-	for entry in c57_inputs():
+	for entry in c57_inputs() {
 		name := (entry.get("name") or JsonValue.Null).as_string() or ""
 		stdin := (entry.get("stdin") or JsonValue.Null).as_string() or ""
 		add(cs, f"kept-{name}", stdin)
+	}
 
 	add(
 		cs,
@@ -140,3 +143,4 @@ export fn gen_c64() Void:
 		),
 	]
 	write_cases("c64-assembler-extend", examples, cs.list)
+}

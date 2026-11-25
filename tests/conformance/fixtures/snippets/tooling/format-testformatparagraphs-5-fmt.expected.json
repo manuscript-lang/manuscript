@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn process(input: String) Int:\n\trecords := parse(input)\n\tif records.length() == 0: return 0\n\tif records.length() > 100: return 1\n\n\treport := summarize(records)\n\tpayload := encode(report)\n\n\tmatch save(payload):\n\t\tok(_):\n\t\t\treturn 0\n\t\terror(_):\n\t\t\treturn 1\n"
+    "fmt": "fn process(input String) Int {\n\trecords := parse(input)\n\tif records.length() == 0 { return 0 }\n\tif records.length() > 100 { return 1 }\n\n\treport := summarize(records)\n\tpayload := encode(report)\n\n\tmatch save(payload) {\n\t\tok(_) => {\n\t\t\treturn 0\n\t\t}\n\t\terror(_) => {\n\t\t\treturn 1\n\t\t}\n\t}\n}\n"
   }
 }

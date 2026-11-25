@@ -2,15 +2,17 @@
 // conform: phase=test
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-test "Unicode lowercase sigma ignores combining marks and format characters":
-	for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"]:
+test "Unicode lowercase sigma ignores combining marks and format characters" {
+	for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"] {
 		expect_equal(f"A{mark}Σ".lower(), f"a{mark}ς")?
 		expect_equal(f"AΣ{mark}A".lower(), f"aσ{mark}a")?
 
 		lower := f"AΣ{mark}A".lower
 		expect_equal(lower(), f"aσ{mark}a")?
+	}
+}
 
-test "String basic counterparts are callable":
+test "String basic counterparts are callable" {
 	expect_equal("é🙂".scalar_length(), 2)?
 	expect_equal("é🙂".length(), 6)?
 	expect_false(not ("".is_empty()) or "a".is_empty())?
@@ -24,8 +26,9 @@ test "String basic counterparts are callable":
 		)
 	)?
 	expect_equal("a\r\nb\n".lines(), ["a", "b"])?
+}
 
-test "length and chars use scalars and preserve text boundaries":
+test "length and chars use scalars and preserve text boundaries" {
 	text := "é🙂e\u{301}"
 	expect_false(text.scalar_length() != 4 or text.length() != 9)?
 	expect_equal(text.chars(), ["é", "🙂", "e", "\u{301}"])?
@@ -38,8 +41,9 @@ test "length and chars use scalars and preserve text boundaries":
 	characters.set(0, "changed")
 	characters.append("new")
 	expect_false(second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}")?
+}
 
-test "reverse operates on scalars without normalization":
+test "reverse operates on scalars without normalization" {
 	expect_equal("aé🙂z".reverse(), "z🙂éa")?
 	expect_equal("e\u{301}".reverse(), "\u{301}e")?
 	expect_equal("👩\u{200d}🚀".reverse(), "🚀\u{200d}👩")?
@@ -48,8 +52,9 @@ test "reverse operates on scalars without normalization":
 
 	original := "é🙂e\u{301}"
 	expect_equal(original.reverse().reverse(), original)?
+}
 
-test "compare is normalized sign and scalar lexical order":
+test "compare is normalized sign and scalar lexical order" {
 	expect_false("".compare("a") != -1 or "a".compare("") != 1)?
 	expect_false("ab".compare("abc") != -1 or "abc".compare("ab") != 1)?
 	expect_equal("Z".compare("a"), -1)?
@@ -59,12 +64,14 @@ test "compare is normalized sign and scalar lexical order":
 
 	equal := "é🙂"
 	expect_equal(equal.compare(equal), 0)?
+}
 
-type LineCase:
-	text: String
-	expected: List[String]
+type LineCase {
+	text String
+	expected List[String]
+}
 
-test "lines preserve interior empties and recognize LF and CRLF only":
+test "lines preserve interior empties and recognize LF and CRLF only" {
 	cases := [
 		LineCase("", []),
 		LineCase("\n", [""]),
@@ -83,12 +90,14 @@ test "lines preserve interior empties and recognize LF and CRLF only":
 		LineCase("a\u{0}\nb", ["a\u{0}", "b"]),
 		LineCase("a\u{85}b\u{2028}c\u{2029}d", ["a\u{85}b\u{2028}c\u{2029}d"]),
 	]
-	for line_case in cases:
-		if line_case.text.lines() != line_case.expected: return fail(
-			f"line boundary: {line_case.text.to_string()}"
-		)
+	for line_case in cases {
+		if line_case.text.lines() != line_case.expected {
+			return fail(f"line boundary: {line_case.text.to_string()}")
+		}
+	}
+}
 
-test "String basic bound methods capture immutable receiver values":
+test "String basic bound methods capture immutable receiver values" {
 	var text = "é\n🙂\n"
 
 	// A method value borrows its receiver, so a snapshot that outlives a change is a
@@ -114,3 +123,4 @@ test "String basic bound methods capture immutable receiver values":
 	var empty_lines = "".lines()
 	empty_lines.append("new")
 	expect_false(not ("".lines().is_empty()))?
+}

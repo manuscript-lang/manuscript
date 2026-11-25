@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn size(text: String) Int:
+fn size(text String) Int {
     return text.bl|
+}

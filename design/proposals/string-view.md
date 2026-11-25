@@ -19,13 +19,16 @@ Making `slice` itself return a borrow would reject every program that stores its
 ## Design
 
 ```manuscript
-fn count_a(text: String) Int:
-    head := text.view(0, 4)      // borrows `text`, nothing allocated
+fn count_a(text String) Int {
+    head := text.view(0, 4)  // borrows `text`, nothing allocated
     var n = 0
-    for c in head.scalar_values():
-        if c == 97:
+    for c in head.scalar_values() {
+        if c == 97 {
             n += 1
+        }
+    }
     return n
+}
 ```
 
 - Bounds are scalar positions with the bounds of `slice` (negative counts from the end); a bound outside `0 <= start <= end <= scalar_length()` raises a fault, like `Bytes.view`.

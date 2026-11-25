@@ -17,20 +17,24 @@ A value read from the map is borrowed from it, so `.clone()` it before using it 
 ```manuscript
 import compile from "@std/regex.ms"
 
-fn main() Void!:
+fn main() Void! {
     line := compile("(?P<level>[A-Z]+) (?P<path>/\\S*) (?P<ms>[0-9]+)ms")?
     log := ["INFO /home 12ms", "WARN /search 340ms", "INFO /home 9ms", "not a log line"]
-
     var counts = Map[String, Int]()
-    for entry in log:
+
+    for entry in log {
         found := line.capture_named(entry)
-        if found.is_empty(): continue
+        if found.is_empty() { continue }
+
         level := found["level"].clone()
         seen := counts.get_or(level, 0)
         counts[level] = seen + 1
+    }
 
-    for level in counts.keys().sorted():
+    for level in counts.keys().sorted() {
         print(f"{level}: {counts[level]}")
+    }
+}
 ```
 
 - `matches` tests, `find_all` lists every match, `capture` returns `[whole, group1, ...]` by position, and `capture_all` does that for every match.
@@ -45,12 +49,14 @@ Save as `link.ms`. `parse` accepts an absolute URL and returns an error for anyt
 ```manuscript
 import encode_component, parse, parse_query from "@std/net/url.ms"
 
-fn main() Void!:
+fn main() Void! {
     link := parse("https://example.com:8443/search?q=a%20b&page=2#top")?
     print(f"{link.host} {link.port or 443} {link.path} {link.fragment}")
-    for entry in parse_query((link.query or ""), null)?:
+    for entry in parse_query((link.query or ""), null)? {
         print(f"{entry.key}={entry.value}")
+    }
     print(encode_component("a b&c"))
+}
 ```
 
 - `port` is `null` when the URL names none, so `get_or` supplies the scheme's default.

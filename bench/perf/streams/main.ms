@@ -15,145 +15,179 @@ import (
 // ns per item for stream pipelines against the loops they replace. One line per case:
 // `name ns checksum`.
 
-fn say(text: String) Void:
+fn say(text String) Void {
 	_ignored := stdout().write(text)
+}
 
-fn report(name: String, n: Int, start: Instant, sum: Int) Void:
+fn report(name String, n Int, start Instant, sum Int) Void {
 	ns := monotonic().difference(start).to_nanoseconds()
 	say(f"{name} {ns.to_float() / n.to_float()} {sum}\n")
+}
 
 // A list as a `Source`, read by index.
-type ListSource:
-	items: List[Int]
-	at: Int
+type ListSource {
+	items List[Int]
+	at Int
+}
 
-fn var ListSource.next() Int?!:
-	if self.at >= self.items.length(): return ok(null)
+fn var ListSource.next() Int?! {
+	if self.at >= self.items.length() { return ok(null) }
 
 	v := self.items[self.at]
 	self.at += 1
 	return ok(v)
+}
 
-fn move ListSource.close() Void!:
+fn move ListSource.close() Void! {
 	return ok()
+}
 
 // `f` over another `Source`, called through the interface.
-type MapSource:
-	up: Source[Int]
-	f: fn(Int) Int
+type MapSource {
+	up Source[Int]
+	f fn(Int) Int
+}
 
-fn var MapSource.next() Int?!:
+fn var MapSource.next() Int?! {
 	step := self.up.next()?
-	if step != null: return ok(self.f(step))
+	if step != null { return ok(self.f(step)) }
 
 	return ok(null)
+}
 
-fn move MapSource.close() Void!:
+fn move MapSource.close() Void! {
 	return self.up.close()
+}
 
-fn plain(xs: List[Int]) Int:
+fn plain(xs List[Int]) Int {
 	var total = 0
-	for x in xs:
+	for x in xs {
 		total += x + 1
+	}
 	return total
+}
 
-fn drain(source: Source[Int]) Int!:
+fn drain(source Source[Int]) Int! {
 	var s = source
 	var total = 0
 
-	while true:
+	while true {
 		step := s.next()?
 
-		if step != null:
+		if step != null {
 			total += step
-		else:
+		} else {
 			break
+		}
+	}
 
 	return ok(total)
+}
 
-fn stdlib_map(xs: List[Int]) Int!:
+fn stdlib_map(xs List[Int]) Int! {
 	var total = 0
-	for item in from_list(xs) | map(fn x: x + 1):
+	for item in from_list(xs) | map(x => x + 1) {
 		total += item
+	}
 	return ok(total)
+}
 
-fn stdlib_map3(xs: List[Int]) Int!:
+fn stdlib_map3(xs List[Int]) Int! {
 	var total = 0
 	for item in (
 		from_list(xs)
-		| map(fn x: x + 1)
-		| map(fn x: x * 3)
-		| map(fn x: x - 2)
-	):
+		| map(x => x + 1)
+		| map(x => x * 3)
+		| map(x => x - 2)
+	) {
 		total += item
+	}
 	return ok(total)
+}
 
-fn stdlib_collect(xs: List[Int]) Int!:
-	all := collect(from_list(xs) | map(fn x: x + 1), null)?
+fn stdlib_collect(xs List[Int]) Int! {
+	all := collect(from_list(xs) | map(x => x + 1), null)?
 	return ok(all.length())
+}
 
-fn plain_filter(xs: List[Int]) Int:
+fn plain_filter(xs List[Int]) Int {
 	var total = 0
-	for x in xs:
-		if x % 2 == 0:
+	for x in xs {
+		if x % 2 == 0 {
 			total += x
+		}
+	}
 	return total
+}
 
-fn stdlib_filter(xs: List[Int]) Int!:
+fn stdlib_filter(xs List[Int]) Int! {
 	var total = 0
-	for item in from_list(xs) | filter(fn x: x % 2 == 0):
+	for item in from_list(xs) | filter(x => x % 2 == 0) {
 		total += item
+	}
 	return ok(total)
+}
 
-fn plain_take(xs: List[Int], count: Int) Int:
+fn plain_take(xs List[Int], count Int) Int {
 	var total = 0
 	var seen = 0
 
-	for x in xs:
-		if seen >= count: break
+	for x in xs {
+		if seen >= count { break }
 
 		total += x
 		seen += 1
+	}
 
 	return total
+}
 
-fn stdlib_take(xs: List[Int], count: Int) Int!:
+fn stdlib_take(xs List[Int], count Int) Int! {
 	var total = 0
-	for item in from_list(xs) | take(count):
+	for item in from_list(xs) | take(count) {
 		total += item
+	}
 	return ok(total)
+}
 
-fn stdlib_fold(xs: List[Int]) Int!:
-	return fold(from_list(xs), 0, fn total, x: total + x)
+fn stdlib_fold(xs List[Int]) Int! {
+	return fold(from_list(xs), 0, (total, x) => total + x)
+}
 
-fn hand_lines(data: Bytes) Int!:
+fn hand_lines(data Bytes) Int! {
 	var count = 0
 	var at = 0
 
-	while true:
+	while true {
 		end := data.index_of_byte(10, at)
 
-		if end != null:
+		if end != null {
 			line := data.slice(at, end)?
 			text := line.decode_utf8()
-			if text != null: count += text.length()
+			if text != null { count += text.length() }
 			at = end + 1
-		else:
+		} else {
 			break
+		}
+	}
 
 	return ok(count)
+}
 
-fn stdlib_lines(data: Bytes) Int!:
+fn stdlib_lines(data Bytes) Int! {
 	var count = 0
-	for line in from_bytes(data) | lines:
+	for line in from_bytes(data) | lines {
 		count += line.length()
+	}
 	return ok(count)
+}
 
-fn main() Void:
+fn main() Void {
 	n := 5000000
 	var xs = List[Int]()
-	for i in 0..n:
+	for i in 0..n {
 		xs.append(i)
+	}
 
 	var t = monotonic()
 	report("for-list", n, t, plain(xs))
@@ -168,7 +202,7 @@ fn main() Void:
 		"source-map",
 		n,
 		t,
-		drain(MapSource(ListSource(b, 0), fn x: x + 1)).get_or(-1),
+		drain(MapSource(ListSource(b, 0), x => x + 1)).get_or(-1),
 	)
 
 	c := xs.clone()
@@ -201,8 +235,9 @@ fn main() Void:
 
 	var builder = BytesBuilder()
 	rows := 1000000
-	for i in 0..rows:
+	for i in 0..rows {
 		builder.append_bytes(f"line number {i} of the log\n".to_bytes())
+	}
 
 	data := builder.build()
 	t = monotonic()
@@ -211,3 +246,4 @@ fn main() Void:
 	f := data.clone()
 	t = monotonic()
 	report("stream-lines", rows, t, stdlib_lines(f).get_or(-1))
+}

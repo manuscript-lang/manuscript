@@ -13,21 +13,21 @@
         "position": {
           "file": "golden-1294.ms",
           "line": 5,
-          "column": 21,
-          "offset": 117
+          "column": 20,
+          "offset": 119
         },
         "end": {
           "file": "golden-1294.ms",
           "line": 5,
-          "column": 22,
-          "offset": 118
+          "column": 21,
+          "offset": 120
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1294.ms:5:21: parse: expected '=', found '|'\n   |\n 5 |     var value: ListE|\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1294.ms:5:20: parse: expected '=', found '|'\n   |\n 5 |     var value ListE|\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

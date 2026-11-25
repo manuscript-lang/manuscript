@@ -9,13 +9,16 @@ A function is pure unless a comment permits what it reaches. `ms lint` reports a
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn total(prices: List[Int]) Int:
+fn total(prices List[Int]) Int {
     print(f"summing {prices.length()} prices")
+
     sum := prices.sum()
     return sum
+}
 
-fn main() Void:
+fn main() Void {
     print(total([2, 3]))
+}
 ```
 
 ```text
@@ -32,14 +35,18 @@ a.ms:2:5: warning MSL116: `total` reaches std.console.write: total -> print; per
 ```manuscript
 // ms: allow_effect std.fs.read
 
-import read_file from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    read_file from "@std/os/fs.ms",
+)
 
-fn load(path: String) Bytes!:
+fn load(path String) Bytes! {
     return read_file(path).wait()
+}
 
-fn main() Void:
+fn main() Void {
     return
+}
 ```
 
 Each line names one effect or a pattern:
@@ -59,23 +66,29 @@ A function that is handed an interface value does not need a permission to use i
 
 <!-- manuscript-example: {"mode":"run","stdout":"> summing 2 prices\n5\n"} -->
 ```manuscript
-interface Logger:
-    fn info(message: String) Void
+interface Logger {
+    fn info(message String) Void
+}
 
-type ConsoleLogger:
-    prefix: String
+type ConsoleLogger {
+    prefix String
+}
 
 // ms: allow_effect std.console.write
-fn ConsoleLogger.info(message: String) Void:
+fn ConsoleLogger.info(message String) Void {
     print(f"{self.prefix}{message}")
+}
 
-fn total(log: Logger, prices: List[Int]) Int:
+fn total(log Logger, prices List[Int]) Int {
     log.info(f"summing {prices.length()} prices")
+
     sum := prices.sum()
     return sum
+}
 
-fn main() Void:
+fn main() Void {
     print(total(ConsoleLogger("> "), [2, 3]))
+}
 ```
 
 `total` is pure here, so a test can pass a logger that records messages. Turning a `ConsoleLogger` into a `Logger` inside a pure function would be reported, because that is where the authority is obtained. The same holds when a function is written as a closure, named as a value, or passed for a generic parameter.
@@ -90,18 +103,22 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order: String) Void!:
+fn save(order String) Void! {
     return write_file("orders.log", order).wait()
+}
 
 // ms: allow_effect db.*
-fn checkout(total: Int) Void!:
+fn checkout(total Int) Void! {
     return save(f"order {total}")
+}
 
-fn audit(total: Int) Void!:
+fn audit(total Int) Void! {
     return save(f"audit {total}")
+}
 
-fn main() Void:
+fn main() Void {
     return
+}
 ```
 
 `save` may write a file and declares `db.write`. `checkout` may use any `db` effect but not the file system directly. `audit` has no line, so it is reported for `db.write`. Names starting with `std.` belong to the standard library.

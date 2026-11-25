@@ -2,14 +2,16 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type Point:
-	x: Int
-	y: Int
+type Point {
+	x Int
+	y Int
+}
 
-fn origin() Point:
+fn origin() Point {
 	return Point(x: 1, y: 2)
+}
 
-test "var destructuring binds reassignable copies":
+test "var destructuring binds reassignable copies" {
 	var xs = [1, 2]
 	var [a, b] = xs
 	a += 10
@@ -25,3 +27,4 @@ test "var destructuring binds reassignable copies":
 	expect_equal(xs, [1, 2])?
 	expect_equal([a, b, x, y, q], [11, 7, 6, 0, 7])?
 	expect_equal([point.x, point.y], [1, 2])?
+}

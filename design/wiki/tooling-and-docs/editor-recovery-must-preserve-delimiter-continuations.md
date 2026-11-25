@@ -6,7 +6,7 @@ Verified: strict parsing accepts multiline parameters, but declaration recovery 
 
 Verified: recovery synchronization and optimistic parse bounds must recognize the same declaration starts at token boundaries, including `import(`, `test"name"`, contextual `bench "name"`, and `opaque type`. Otherwise an unfinished opener swallows valid following declarations. Contextual names alone remain parameter continuations.
 
-Verified: `fn value:` and `fn left, right:` at column zero can continue a list, call, or grouping as inferred callbacks. They must not synchronize as named declarations when an unrelated declaration fails; named functions require a parameter list after the name.
+Verified: `fn value { ... }` and `fn left, right { ... }` at column zero can continue a list, call, or grouping as inferred callbacks. They must not synchronize as named declarations when an unrelated declaration fails; named functions require a parameter list after the name.
 
 Recovery chunk boundaries must also skip physical lines inside block comments and multiline text, including when an earlier line has a lexical error. Otherwise an unrelated incomplete declaration turns commented-out functions or imports into live editor declarations. Keep the same continuation mask in root selection, optimistic probe bounds, and the next-declaration index; preserve strict diagnostics for malformed comments. The comment recovery tests cover these paths with LF/CRLF and original positions.
 

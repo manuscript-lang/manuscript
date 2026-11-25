@@ -14,7 +14,7 @@
           "file": "unsigned-append-range.ms",
           "line": 7,
           "column": 16,
-          "offset": 158
+          "offset": 159
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "unsigned-append-range.ms",
           "line": 8,
           "column": 17,
-          "offset": 176
+          "offset": 177
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "unsigned-append-range.ms",
           "line": 9,
           "column": 26,
-          "offset": 201
+          "offset": 202
         }
       }
     ],

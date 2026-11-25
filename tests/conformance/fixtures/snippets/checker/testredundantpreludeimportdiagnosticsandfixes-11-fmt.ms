@@ -2,6 +2,6 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/collection_prelude_test.go:120 TestRedundantPreludeImportDiagnosticsAndFixes
 import (
-    // keep me
-    List,
+	// keep me
+	List,
 ) from "@std/collections/collections.ms"  // tail

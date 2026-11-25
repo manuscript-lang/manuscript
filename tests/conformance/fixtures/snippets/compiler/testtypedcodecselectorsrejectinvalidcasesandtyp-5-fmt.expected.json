@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import ArchiveFormat from \"@std/io/archive.ms\"\n\nfn wrong() Void:\n\tformat := ArchiveFormat.TAR\n"
+    "fmt": "import ArchiveFormat from \"@std/io/archive.ms\"\n\nfn wrong() Void {\n\tformat := ArchiveFormat.TAR\n}\n"
   }
 }

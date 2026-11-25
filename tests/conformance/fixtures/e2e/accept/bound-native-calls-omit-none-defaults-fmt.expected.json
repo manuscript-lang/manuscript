@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"omitted none defaults\":\n\texpect_equal(\"ab\".repeat(count: 2), \"abab\")?\n\texpect_equal(\"ab\".pad_start(target_length: 4, padding: \"-\"), \"--ab\")?\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"omitted none defaults\" {\n\texpect_equal(\"ab\".repeat(count: 2), \"abab\")?\n\texpect_equal(\"ab\".pad_start(target_length: 4, padding: \"-\"), \"--ab\")?\n}\n"
   }
 }

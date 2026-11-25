@@ -9,25 +9,40 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'const' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes",
+        "message": "an immutable binding uses ':=' after its type: write 'x Type := value'; '=' binds only after 'var'",
         "position": {
           "file": "golden-0887.ms",
           "line": 4,
-          "column": 5,
-          "offset": 69
+          "column": 13,
+          "offset": 78
         },
         "end": {
           "file": "golden-0887.ms",
           "line": 4,
-          "column": 10,
-          "offset": 74
+          "column": 14,
+          "offset": 79
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0887.ms",
+            "line": 4,
+            "column": 13,
+            "offset": 78
+          },
+          "end": {
+            "file": "golden-0887.ms",
+            "line": 4,
+            "column": 14,
+            "offset": 79
+          },
+          "replacement": ":="
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0887.ms:4:5: parse: 'const' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes\n   |\n 4 |     const x = 1\n   |     ^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0887.ms:4:13: parse: an immutable binding uses ':=' after its type: write 'x Type := value'; '=' binds only after 'var'\n   |\n 4 |     const x = 1\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

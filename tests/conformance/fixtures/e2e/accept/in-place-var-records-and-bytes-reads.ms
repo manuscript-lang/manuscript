@@ -5,44 +5,58 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-type Cursor:
-	data: Bytes
-	start: Int
-	stop: Int
-	label: String
-	seen: List[Int]
-	done: Bool
+type Cursor {
+	data Bytes
+	start Int
+	stop Int
+	label String
+	seen List[Int]
+	done Bool
+}
 
-fn Cursor.peek() Int:
+fn Cursor.peek() Int {
 	return self.data.get_or(self.start, 0).to_int()
+}
 
-fn var Cursor.advance() Int:
+fn var Cursor.advance() Int {
 	at := self.start
-	if self.start >= self.stop:
+
+	if self.start >= self.stop {
 		self.done = true
 		return -1
+	}
+
 	self.start += 1
 	self.seen.append(at)
 	return self.data[at].to_int()
+}
 
-fn var Cursor.reset(move label: String) Void:
+fn var Cursor.reset(move label String) Void {
 	self.start = 0
 	self.label = label
 	self.seen = []
+}
 
-fn fill(var c: Cursor, n: Int) Int:
+fn fill(var c Cursor, n Int) Int {
 	var sum = 0
-	for step in 0..n:
-		if step < 0: return 0
+
+	for step in 0..n {
+		if step < 0 { return 0 }
+
 		v := c.advance()
-		if v < 0: return sum
+		if v < 0 { return sum }
+
 		sum += v
+	}
+
 	return sum
+}
 
-fn replace_whole(var c: Cursor) Void:
+fn replace_whole(var c Cursor) Void {
 	c = Cursor("abc".to_bytes(), 1, 3, "swapped", [], false)
+}
 
-test "bytes reads index, wrap negative and use defaults":
+test "bytes reads index, wrap negative and use defaults" {
 	b := "hello".to_bytes()
 	expect_equal(b[0].to_int(), 104)?
 	expect_equal(b[-1].to_int(), 111)?
@@ -51,8 +65,9 @@ test "bytes reads index, wrap negative and use defaults":
 	expect_equal(b.get_or(-9, 3).to_int(), 3)?
 	expect_equal(b.get_or(-5, 3).to_int(), 104)?
 	expect_equal(b.get_or(2, null), 108)?
+}
 
-test "var record methods change fields in place":
+test "var record methods change fields in place" {
 	var c = Cursor("abcd".to_bytes(), 0, 3, "first", [], false)
 	expect_equal(c.peek(), 97)?
 	expect_equal(fill(c, 2), 97 + 98)?
@@ -66,10 +81,12 @@ test "var record methods change fields in place":
 	expect_equal(c.start, 0)?
 	expect_equal(c.seen.length(), 0)?
 	expect_equal(c.advance(), 97)?
+}
 
-test "a var record parameter can be replaced whole":
+test "a var record parameter can be replaced whole" {
 	var c = Cursor("xyz".to_bytes(), 0, 3, "orig", [5], false)
 	replace_whole(c)
 	expect_equal(c.label, "swapped")?
 	expect_equal(c.peek(), 98)?
 	expect_equal(c.seen.length(), 0)?
+}

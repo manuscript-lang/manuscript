@@ -3,6 +3,8 @@
 // conform: origin=pkg/parser/parser_test.go:60 FuzzParse
 import panic from "@std/core.ms"
 
-test "text":
-    if not (f"{1}" == "1"):
-        return panic(message: "check failed")
+test "text" {
+	if not (f"{1}" == "1") {
+		return panic(message: "check failed")
+	}
+}

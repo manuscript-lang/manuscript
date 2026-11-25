@@ -9,8 +9,9 @@ Implement `Closeable` when your type owns a resource that must be released at sc
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-interface Closeable:
+interface Closeable {
     move fn close() Void!
+}
 ```
 
 For a type that satisfies `Closeable`, cleanup calls its declared operation:
@@ -63,16 +64,20 @@ To close one part of a holder that stays in use (a connection's output side), ta
 ```manuscript
 import Closeable from "@std/core.ms"
 
-type Gate:
-    fails: Bool
+type Gate {
+    fails Bool
+}
 
-fn move Gate.close() Void!:
-    if self.fails:
+fn move Gate.close() Void! {
+    if self.fails {
         self.fails = false
         return error(Error("gate stuck"))
+    }
+}
 
-fn use_gate(fails: Bool) Void!:
+fn use_gate(fails Bool) Void! {
     _gate := Gate(fails)
+}
 ```
 
 This example reports the release failure once.

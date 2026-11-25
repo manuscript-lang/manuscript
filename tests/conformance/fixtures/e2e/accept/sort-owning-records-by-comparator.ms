@@ -2,17 +2,18 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type Entry:
-	key: Int
-	id: Int
-	name: String
-	tags: List[String]
+type Entry {
+	key Int
+	id Int
+	name String
+	tags List[String]
+}
 
-fn entries(count: Int) List[Entry]:
-	var out: List[Entry] = []
+fn entries(count Int) List[Entry] {
+	var out List[Entry] = []
 	var x = 7
 
-	for i in 0..count:
+	for i in 0..count {
 		x = (x * 1103515245 + 12345) % 2147483648
 		out.append(
 			Entry(
@@ -22,59 +23,72 @@ fn entries(count: Int) List[Entry]:
 				tags: [f"t{i}", "u"],
 			)
 		)
+	}
 
 	return out
+}
 
-fn in_order(list: List[Entry]) Bool:
-	for i in 1..list.length():
+fn in_order(list List[Entry]) Bool {
+	for i in 1..list.length() {
 		before := list[i - 1]
 		after := list[i]
-		if before.key > after.key or (before.key == after.key and before.id > after.id):
+		if before.key > after.key or (before.key == after.key and before.id > after.id) {
 			return false
+		}
+	}
 
 	return true
+}
 
-test "sorting records that own strings and lists orders by key and keeps equal keys in input order":
+test "sorting records that own strings and lists orders by key and keeps equal keys in input order" {
 	original := entries(500)
-	sorted := original.sorted(compare: fn(a: Entry, b: Entry) Int: (a.key - b.key))
+	sorted := original.sorted(compare: fn(a Entry, b Entry) Int => (a.key - b.key))
 	expect_equal(in_order(sorted), true)?
 	expect_equal(sorted.length(), 500)?
 	expect_equal(in_order(original), false)?
 	expect_equal(original[3].name, "entry-name-longer-than-inline-3")?
+}
 
-test "the sorted copy owns its strings and lists independently of the original":
+test "the sorted copy owns its strings and lists independently of the original" {
 	original := entries(100)
-	var sorted = original.sorted(compare: fn(a: Entry, b: Entry) Int: b.key - a.key)
+	var sorted = original.sorted(compare: fn(a Entry, b Entry) Int => b.key - a.key)
 	sorted[0].tags.append("changed")
 	sorted[0].name = "renamed"
 	expect_equal(sorted[0].tags.length(), 3)?
 
 	var seen = 0
-	for e in original:
-		if e.tags.length() != 2 or e.name == "renamed":
+	for e in original {
+		if e.tags.length() != 2 or e.name == "renamed" {
 			seen += 1
+		}
+	}
 	expect_equal(seen, 0)?
+}
 
-test "sorting records that own data in place keeps every record":
+test "sorting records that own data in place keeps every record" {
 	var list = entries(300)
-	list.sort(compare: fn(a: Entry, b: Entry) Int: a.key - b.key)
+	list.sort(compare: fn(a Entry, b Entry) Int => a.key - b.key)
 	expect_equal(in_order(list), true)?
 
 	var ids = 0
-	for e in list:
+	for e in list {
 		ids += e.id
+	}
 	expect_equal(ids, 299 * 300 / 2)?
 	expect_equal(list[299].tags[1], "u")?
+}
 
-test "sorting strings longer than the inline size by compare leaves the original alone":
-	var words: List[String] = []
-	for i in 0..300:
+test "sorting strings longer than the inline size by compare leaves the original alone" {
+	var words List[String] = []
+	for i in 0..300 {
 		words.append(f"a string longer than the inline size {(i * 7919) % 1009}")
+	}
 
-	sorted := words.sorted(compare: fn(a: String, b: String) Int: a.compare(b))
-	for i in 1..sorted.length():
+	sorted := words.sorted(compare: fn(a String, b String) Int => a.compare(b))
+	for i in 1..sorted.length() {
 		expect_equal(sorted[i - 1].compare(sorted[i]) <= 0, true)?
-
+	}
 	expect_equal(words[0], "a string longer than the inline size 0")?
 	expect_equal(words[1], "a string longer than the inline size 856")?
 	expect_equal(sorted.length(), 300)?
+}

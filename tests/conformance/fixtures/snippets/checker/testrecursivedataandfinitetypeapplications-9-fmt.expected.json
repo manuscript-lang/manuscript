@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Entry:\n\tname: String\n\tnickname: String?\n\ntype Person:\n\tprimary: Entry?\n"
+    "fmt": "type Entry {\n\tname String\n\tnickname String?\n}\n\ntype Person {\n\tprimary Entry?\n}\n"
   }
 }

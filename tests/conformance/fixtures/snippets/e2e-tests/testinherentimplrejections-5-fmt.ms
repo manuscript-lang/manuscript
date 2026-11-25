@@ -1,8 +1,10 @@
 // conform: tags=formatter,interfaces,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=tests/e2e/inherent_methods_test.go:36 TestInherentImplRejections
-type B:
-    x: Int
+type B {
+	x Int
+}
 
-fn B.m[U](u: U) U:
-    return u
+fn B.m[U](u U) U {
+	return u
+}

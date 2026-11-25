@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Shape:\n\tDot\n\tLine\n\nfn use(value: Shape) Int:\n\treturn match value:\n\t\tDot: 0\n\t\tLine: 1\n"
+    "fmt": "enum Shape {\n\tDot\n\tLine\n}\n\nfn use(value Shape) Int {\n\treturn match value {\n\t\tDot => 0\n\t\tLine => 1\n\t}\n}\n"
   }
 }

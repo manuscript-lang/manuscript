@@ -9,19 +9,19 @@
       {
         "code": "MS3080",
         "phase": "type",
-        "message": "cannot infer the type of null; give it a target, e.g. `x: Int? := null`, or pass a value",
+        "message": "cannot infer the type of null; give it a target, e.g. `x Int? := null`, or pass a value",
         "position": {
           "file": "diag-none-into-interface.ms",
           "line": 5,
-          "column": 17,
-          "offset": 161
+          "column": 16,
+          "offset": 158
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-none-into-interface.ms:5:17: type: cannot infer the type of null; give it a target, e.g. `x: Int? := null`, or pass a value\n   |\n 5 |     r: Equal := null\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-none-into-interface.ms:5:16: type: cannot infer the type of null; give it a target, e.g. `x Int? := null`, or pass a value\n   |\n 5 |     r Equal := null\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

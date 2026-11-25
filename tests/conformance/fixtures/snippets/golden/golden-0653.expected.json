@@ -12,16 +12,16 @@
         "message": "expected Set[T], found Void (in the return value)",
         "position": {
           "file": "golden-0653.ms",
-          "line": 5,
-          "column": 63,
-          "offset": 152
+          "line": 7,
+          "column": 62,
+          "offset": 151
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0653.ms:5:63: type: expected Set[T], found Void (in the return value)\n   |\n 5 | fn keep[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)\n   |                                                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0653.ms:7:62: type: expected Set[T], found Void (in the return value)\n   |\n 7 | fn keep[T Hashable](values Set[T], value T) Set[T] => values.add(value)\n   |                                                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

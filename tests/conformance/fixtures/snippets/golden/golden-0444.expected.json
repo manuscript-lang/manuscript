@@ -7,21 +7,42 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "remove the ':' between 'incompatible' and its type; write incompatible Type",
         "position": {
           "file": "golden-0444.ms",
           "line": 4,
-          "column": 5,
-          "offset": 89
+          "column": 17,
+          "offset": 102
+        },
+        "end": {
+          "file": "golden-0444.ms",
+          "line": 4,
+          "column": 18,
+          "offset": 103
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0444.ms",
+            "line": 4,
+            "column": 17,
+            "offset": 102
+          },
+          "end": {
+            "file": "golden-0444.ms",
+            "line": 4,
+            "column": 18,
+            "offset": 103
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0444.ms:4:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 4 |     incompatible: fn(value: Int) Int = original\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0444.ms:4:17: parse: remove the ':' between 'incompatible' and its type; write incompatible Type\n   |\n 4 |     incompatible: fn(value: Int) Int = original\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

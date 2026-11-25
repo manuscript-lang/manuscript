@@ -1,19 +1,13 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn example(
-    value: Int = choose(
-        first: 1,
-        second: 2
-    )
-) Int:
-    text := f"# if value: return {value}"
-    next := choose(
-        first: value,
-        // Explain this argument.
-        second: 2
-    )
-    if (
-        next > 0
-        and value > 0
-    ): return next
-    return 0
+fn example(value Int = choose(first: 1, second: 2)) Int {
+	text := f"# if value: return {value}"
+	next := choose(
+		first: value,
+		// Explain this argument.
+		second: 2
+	)
+	if (next > 0 and value > 0) { return next }
+
+	return 0
+}

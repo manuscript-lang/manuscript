@@ -1,9 +1,10 @@
 // conform: tags=closures,diagnostics,mutation,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/contextual_generics_test.go:93 TestExpectedResultGenericInferenceRejects
-fn required(value: Int) Int: value
+fn required(value Int) Int => value
 
-fn first() Void:
-    var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
-    callback = required
-    callback()
+fn first() Void {
+	var callback fn(Int) Int = from_callback(() => fn(value Int = 4) => value)
+	callback = required
+	callback()
+}

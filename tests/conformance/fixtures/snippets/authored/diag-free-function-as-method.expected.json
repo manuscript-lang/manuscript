@@ -12,16 +12,16 @@
         "message": "unknown or ambiguous member label on P; label is a function here, not a method of P: call it as label(value) with the value as an argument, or declare it as a method with `fn P.label()`",
         "position": {
           "file": "diag-free-function-as-method.ms",
-          "line": 12,
+          "line": 14,
           "column": 13,
-          "offset": 219
+          "offset": 212
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-free-function-as-method.ms:12:13: resolution: unknown or ambiguous member label on P; label is a function here, not a method of P: call it as label(value) with the value as an argument, or declare it as a method with `fn P.label()`\n    |\n 12 |     print(p.label())\n    |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-free-function-as-method.ms:14:13: resolution: unknown or ambiguous member label on P; label is a function here, not a method of P: call it as label(value) with the value as an argument, or declare it as a method with `fn P.label()`\n    |\n 14 |     print(p.label())\n    |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

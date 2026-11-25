@@ -22,58 +22,70 @@ print(charset.get_or(""))                           // "utf-8"
 
 // A parsed media type with lower-cased `essence` and parameters keyed by lower-cased
 // name.
-export type MediaType:
+export type MediaType {
 	// Lower-cased `type/subtype`, such as `text/html`.
-	essence: String
+	essence String
 	// Parameters such as `charset` or `boundary`; quoted values are unquoted.
-	params: Map[String, String] = Map[String, String]()
+	params Map[String, String] = Map[String, String]()
+}
 
 // One header field. `name` keeps the sender's spelling; `value` has folding removed.
-export type HeaderField:
+export type HeaderField {
 	// Field name as written, without the colon.
-	name: String
+	name String
 	// Field value with leading and trailing space trimmed and folded lines joined by
 	// one space.
-	value: String
+	value String
+}
 
 // A parsed header block that can be looked up by name regardless of case.
-export type Headers:
+export type Headers {
 	// Fields in the order they appeared; repeated names stay separate entries.
-	fields: List[HeaderField] = List[HeaderField]()
+	fields List[HeaderField] = List[HeaderField]()
+}
 
 // Returns the first value for `name`, ignoring case, or null.
-fn Headers.get(name: String) String?:
+fn Headers.get(name String) String? {
 	wanted := name.lower()
-	for field in self.fields:
-		if field.name.lower() == wanted: return field.value.clone()
+	for field in self.fields {
+		if field.name.lower() == wanted { return field.value.clone() }
+	}
 	return null
+}
 
 // Returns every value for `name`, ignoring case, in order.
-fn Headers.get_all(name: String) List[String]:
+fn Headers.get_all(name String) List[String] {
 	wanted := name.lower()
 	var values = List[String]()
-	for field in self.fields:
-		if field.name.lower() == wanted: values.append(field.value.clone())
+	for field in self.fields {
+		if field.name.lower() == wanted {
+			values.append(field.value.clone())
+		}
+	}
 	return values
+}
 
 // Formats the block as `Name: value` lines, each ending in CRLF.
-fn Headers.to_string() String:
+fn Headers.to_string() String {
 	var out = ""
-	for field in self.fields:
+	for field in self.fields {
 		out += f"{field.name}: {field.value}\r\n"
+	}
 	return out
+}
 
 // One multipart part: its headers, the decoded `name` and `filename` from
 // Content-Disposition, and body bytes.
-export type Part:
+export type Part {
 	// Part body without the delimiter line breaks.
-	data: Bytes
+	data Bytes
 	// Part header fields; `Content-Disposition` and `Content-Type` live here.
-	headers: Headers = Headers()
+	headers Headers = Headers()
 	// Form field name from `Content-Disposition`, or empty text.
-	name: String = ""
+	name String = ""
 	// Uploaded file name from `Content-Disposition`, or empty text.
-	filename: String = ""
+	filename String = ""
+}
 
 // Extension table behind `media_type_for_extension`.
 TYPES := {
@@ -114,22 +126,25 @@ TYPES := {
 // Returns the media type for a file extension, with or without the leading dot and in
 // any case, or null when unknown. Text types include `charset=utf-8`, as in
 // `text/html; charset=utf-8`.
-export fn media_type_for_extension(extension: String) String?:
+export fn media_type_for_extension(extension String) String? {
 	key := extension.lower().cut_prefix(".") or extension.lower()
 	return TYPES.get(key)
+}
 
 // Returns the first extension, with its dot, registered for a media type (parameters
 // ignored), or null.
-export fn extension_for_media_type(media_type: String) String?:
+export fn extension_for_media_type(media_type String) String? {
 	wanted := media_type.split(";")[0].trim().lower()
-	for entry in TYPES.entries():
-		if entry.value.split(";")[0] == wanted: return f".{entry.key}"
+	for entry in TYPES.entries() {
+		if entry.value.split(";")[0] == wanted { return f".{entry.key}" }
+	}
 	return null
+}
 
 // Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are
 // lower-cased. A missing slash, an empty part, a parameter without `=`, or an
 // unterminated quote returns `EBADMSG`.
-export fn parse_media_type(text: String) MediaType!:
+export fn parse_media_type(text String) MediaType! {
 	pieces := split_params(text)
 	essence := pieces[0].trim().lower()
 	parts := essence.split("/")
@@ -138,121 +153,134 @@ export fn parse_media_type(text: String) MediaType!:
 		or parts[0].is_empty()
 		or parts[1].is_empty()
 		or essence.contains(" ")
-	):
+	) {
 		return error(Error("MIME: invalid media type", kind: "EBADMSG"))
+	}
 
 	var params = Map[String, String]()
 
-	for i in 1..pieces.length():
+	for i in 1..pieces.length() {
 		piece := pieces[i].trim()
-		if piece.is_empty(): continue
+		if piece.is_empty() { continue }
 
 		at := piece.index_of("=")
-		if at == null: return error(Error("MIME: invalid media type", kind: "EBADMSG"))
+		if at == null { return error(Error("MIME: invalid media type", kind: "EBADMSG")) }
 
 		name := piece.view(0, at).trim().lower()
 		raw := piece.view((at) + 1, piece.length()).trim()
-		if name.is_empty(): return error(
-			Error("MIME: invalid media type", kind: "EBADMSG")
-		)
+		if name.is_empty() {
+			return error(Error("MIME: invalid media type", kind: "EBADMSG"))
+		}
 
 		value := unquote(raw)
-		if value == null: return error(
-			Error("MIME: invalid media type", kind: "EBADMSG")
-		)
+		if value == null {
+			return error(Error("MIME: invalid media type", kind: "EBADMSG"))
+		}
 
 		params.add(name, value)
+	}
 
 	return ok(MediaType(essence: essence, params: params))
+}
 
 // Formats a media type as `essence; name=value`, quoting values that are not simple
 // tokens.
-export fn format_media_type(media_type: MediaType) String:
+export fn format_media_type(media_type MediaType) String {
 	var out = media_type.essence.clone()
-	for entry in media_type.params.entries():
+	for entry in media_type.params.entries() {
 		out = f"{out}; {entry.key}={quote_value(entry.value)}"
+	}
 	return out
+}
 
 // Splits on `;` outside double quotes.
-fn split_params(text: String) List[String]:
+fn split_params(text String) List[String] {
 	var pieces = List[String]()
 	var current = ""
 	var quoted = false
 	var escaped = false
 
-	for c in text.chars():
-		if escaped:
+	for c in text.chars() {
+		if escaped {
 			current += c
 			escaped = false
-		else if quoted and c == "\\":
+		} else if quoted and c == "\\" {
 			current += c
 			escaped = true
-		else if c == "\"":
+		} else if c == "\"" {
 			current += c
 			quoted = not quoted
-		else if c == ";" and not quoted:
+		} else if c == ";" and not quoted {
 			pieces.append(current)
 			current = ""
-		else:
+		} else {
 			current += c
+		}
+	}
 
 	pieces.append(current)
 	return pieces
+}
 
 // Returns the unquoted value, or null unless an unescaped quote closes it at the very
 // end.
-fn unquote(raw: String) String?:
-	if not raw.starts_with("\""): return raw.clone()
+fn unquote(raw String) String? {
+	if not raw.starts_with("\"") { return raw.clone() }
 
 	var out = ""
 	var escaped = false
 	var closed = false
 
-	for c in raw.view(1, raw.length()).chars():
-		if closed: return null
+	for c in raw.view(1, raw.length()).chars() {
+		if closed { return null }
 
-		if escaped:
+		if escaped {
 			out += c
 			escaped = false
-		else if c == "\\":
+		} else if c == "\\" {
 			escaped = true
-		else if c == "\"":
+		} else if c == "\"" {
 			closed = true
-		else:
+		} else {
 			out += c
+		}
+	}
 
-	if not closed: return null
+	if not closed { return null }
 
 	return out
+}
 
-fn is_token(value: String) Bool:
-	if value.is_empty(): return false
+fn is_token(value String) Bool {
+	if value.is_empty() { return false }
 	return not value.contains_any(" \t\"(),/:;<=>?@[\\]{}")
+}
 
 // Line breaks cannot appear in a header value, so they are written as `%0D` and `%0A`,
 // as browsers do for form field and file names. Without this a name carrying a line
 // break would inject header lines into the part.
-fn quote_value(value: String) String:
+fn quote_value(value String) String {
 	safe := value.replace("\r", "%0D").replace("\n", "%0A")
-	if is_token(safe): return safe
+	if is_token(safe) { return safe }
 
 	escaped := safe.replace("\\", "\\\\").replace("\"", "\\\"")
 	return f"\"{escaped}\""
+}
 
 // Parses a header block (up to the first blank line). Continuation lines starting with
 // space or tab join the previous value with one space. A line without a colon, or a
 // fold before any field, returns `EBADMSG`.
-export fn parse_headers(text: String) Headers!:
+export fn parse_headers(text String) Headers! {
 	var fields = List[HeaderField]()
 
-	for raw in text.lines():
+	for raw in text.lines() {
 		line := raw.trim_end_chars("\r")
-		if line.is_empty(): break
+		if line.is_empty() { break }
 
-		if line.starts_with(" ") or line.starts_with("\t"):
-			if fields.is_empty(): return error(
-				Error("MIME: invalid header", kind: "EBADMSG")
-			)
+		if line.starts_with(" ") or line.starts_with("\t") {
+			if fields.is_empty() {
+				return error(Error("MIME: invalid header", kind: "EBADMSG"))
+			}
 
 			last := fields.length() - 1
 			fields[last] = HeaderField(
@@ -260,11 +288,12 @@ export fn parse_headers(text: String) Headers!:
 				value: f"{fields[last].value} {line.trim()}",
 			)
 			continue
+		}
 
 		at := line.index_of(":")
-		if (at == null) or (at) == 0: return error(
-			Error("MIME: invalid header", kind: "EBADMSG")
-		)
+		if (at == null) or (at) == 0 {
+			return error(Error("MIME: invalid header", kind: "EBADMSG"))
+		}
 
 		fields.append(
 			HeaderField(
@@ -272,55 +301,63 @@ export fn parse_headers(text: String) Headers!:
 				value: line.view((at) + 1, line.length()).trim(),
 			)
 		)
+	}
 
 	return ok(Headers(fields: fields))
+}
 
 // Returns the boundary parameter of a `multipart/*` Content-Type value, or null.
-export fn multipart_boundary(content_type: String) String?:
+export fn multipart_boundary(content_type String) String? {
 	parsed := parse_media_type(content_type)
-	if not parsed.is_ok(): return null
+	if not parsed.is_ok() { return null }
 
 	media := parsed.get()
-	if not media.essence.starts_with("multipart/"): return null
+	if not media.essence.starts_with(
+		"multipart/"
+	) { return null }
 
 	return media.params.get("boundary")
+}
 
 // Builds one part from the bytes after a delimiter line's boundary: optional SP/HT, a
 // CRLF, headers, a blank line and the body.
-fn make_part(section: Bytes) Part!:
+fn make_part(section Bytes) Part! {
 	crlf := "\r\n".to_bytes()
 
 	// RFC 2046 permits transport-added SP/HT before this delimiter line's CRLF.
 	var padding = 0
 
-	while padding < section.length():
+	while padding < section.length() {
 		byte := section.get(padding)
-		if byte != 32 and byte != 9: break
+		if byte != 32 and byte != 9 { break }
 
 		padding += 1
+	}
 
 	framed := section.slice(padding, section.length())?
 
 	// The next delimiter right after this one's line: a part with no headers and no
 	// body.
-	if framed.is_empty(): return ok(Part(data: "".to_bytes()))
-	if not framed.starts_with(crlf): return error(
-		Error("MIME: invalid multipart body", kind: "EBADMSG")
-	)
+	if framed.is_empty() { return ok(Part(data: "".to_bytes())) }
+	if not framed.starts_with(
+		crlf
+	) { return error(Error("MIME: invalid multipart body", kind: "EBADMSG")) }
 
 	inner := framed.slice(2, framed.length())?
-	blank := if inner.starts_with(crlf): 0 else: inner.index_of(
-		"\r\n\r\n".to_bytes()
-	) or (-1)
+	blank := if inner.starts_with(crlf) {
+		0
+	} else {
+		inner.index_of("\r\n\r\n".to_bytes()) or (-1)
+	}
 
 	// Without a blank line the section is only headers (RFC 2046 makes the blank line
 	// and body optional): the last header line's break is the delimiter's own.
-	header_end := if blank < 0: inner.length() else: blank
-	data_start := if blank < 0: inner.length() else if blank == 0: 2 else: blank + 4
+	header_end := if blank < 0 { inner.length() } else { blank }
+	data_start := if blank < 0 { inner.length() } else if blank == 0 { 2 } else { blank + 4 }
 	header_text := inner.decode_utf8_range(0, header_end)
-	if header_text == null: return error(
-		Error("MIME: invalid multipart body", kind: "EBADMSG")
-	)
+	if header_text == null {
+		return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
+	}
 
 	headers := parse_headers(header_text)?
 	var part = Part(
@@ -331,134 +368,155 @@ fn make_part(section: Bytes) Part!:
 	)
 	disposition := part.headers.get("Content-Disposition")
 
-	if disposition != null:
+	if disposition != null {
 		media := parse_media_type(
 			f"x/x{disposition.view(disposition.index_of(";") or disposition.length(), disposition.length())}"
 		)
 
-		if media.is_ok():
+		if media.is_ok() {
 			part.name = media.get().params.get_or("name", "")
 			part.filename = media.get().params.get_or("filename", "")
+		}
+	}
 
 	return ok(part)
+}
 
 /*
 Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
 closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
 A part may be only headers, or empty. A body without a closing delimiter returns `EBADMSG`.
 */
-export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
-	if boundary.is_empty(): return error(
-		Error("MIME: invalid multipart body", kind: "EBADMSG")
-	)
+export fn parse_multipart(body Bytes, boundary String) List[Part]! {
+	if boundary.is_empty() {
+		return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
+	}
 
 	crlf := "\r\n".to_bytes()
 	sections := crlf.concat(body).split(f"\r\n--{boundary}".to_bytes())
 	var parts = List[Part]()
 
-	for i in 1..sections.length():
+	for i in 1..sections.length() {
 		section := sections[i]
-		if section.starts_with("--".to_bytes()): return ok(parts)
+		if section.starts_with(
+			"--".to_bytes()
+		) { return ok(parts) }
 
 		part := make_part(section)?
 		parts.append(part)
+	}
 
 	return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
+}
 
 // Cuts a byte stream at delimiter lines, buffering one part at a time. Confirmed bytes
 // go into `pending`; only a delimiter-overlap suffix stays in `buffer` between chunks.
 // `in_part` is false until the first delimiter has passed; `done` after the closing delimiter.
-type MultipartParts:
-	delimiter: Bytes
-	buffer: Bytes
-	pending: BytesBuilder
-	pending_size: Int
-	in_part: Bool
-	done: Bool
-	max_part_bytes: Int?
+type MultipartParts {
+	delimiter, buffer Bytes
+	pending BytesBuilder
+	pending_size Int
+	in_part, done Bool
+	max_part_bytes Int?
+}
 
-fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
-	if self.done: return ok()
+fn var MultipartParts.step(move value Bytes, var out List[Part]) Void! {
+	if self.done { return ok() }
 
 	self.buffer = self.buffer.concat(value)
 
-	while true:
+	while true {
 		if (
 			self.in_part
 			and self.pending_size == 0
 			and self.buffer.length() >= 2
 			and self.buffer.starts_with("--".to_bytes())
-		):
+		) {
 			self.done = true
 			self.buffer = "".to_bytes()
 			break
+		}
 
-		if self.in_part and self.buffer.length() < 2: break
+		if self.in_part and self.buffer.length() < 2 { break }
 
 		at := self.buffer.index_of(self.delimiter)
 
-		if at == null:
-			if not self.in_part:
+		if at == null {
+			if not self.in_part {
 				// Preamble text is ignored; keep only a tail that could start the
 				// delimiter.
 				keep := self.delimiter.length() - 1
 				size := self.buffer.length()
-				if size > keep: self.buffer = self.buffer.slice(size - keep, size)?
+				if size > keep {
+					self.buffer = self.buffer.slice(size - keep, size)?
+				}
 				break
+			}
 
 			limit := self.max_part_bytes
-			if limit != null:
+			if limit != null {
 				if (
 					self.pending_size + self.buffer.length() - self.delimiter.length() > limit
-				):
+				) {
 					return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
+				}
+			}
 
 			// Only the trailing delimiter-length minus one bytes can match a future
 			// chunk.
 			stop := self.buffer.length() - self.delimiter.length() + 1
 
-			if stop > 0:
+			if stop > 0 {
 				self.pending.append_bytes(self.buffer.view(0, stop))
 				self.pending_size += stop
 				self.buffer = self.buffer.slice(stop, self.buffer.length())?
+			}
 
 			break
+		}
 
 		end := at
 
-		if self.in_part:
+		if self.in_part {
 			limit := self.max_part_bytes
-			if limit != null:
-				if self.pending_size + end > limit: return error(
-					Error("MIME: limit exceeded", kind: "EOVERFLOW")
-				)
+			if limit != null {
+				if self.pending_size + end > limit {
+					return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
+				}
+			}
 
-			if self.pending_size == 0:
+			if self.pending_size == 0 {
 				out.append(make_part(self.buffer.view(0, end))?)
-			else:
+			} else {
 				self.pending.append_bytes(self.buffer.view(0, end))
 
 				section := self.pending.drain()
 				part := make_part(section)
 
-				if part.is_error():
+				if part.is_error() {
 					// A caller may read again after a failed step; preserve its
 					// held bytes.
 					self.pending.append_bytes(section.view(0, self.pending_size))
 					return error(part.err().clone())
+				}
 
 				self.pending_size = 0
 				out.append(part.get())
+			}
+		}
 
 		self.buffer = self.buffer.slice(
 			end + self.delimiter.length(),
 			self.buffer.length(),
 		)?
 		self.in_part = true
+	}
+}
 
-fn var MultipartParts.finish(var out: List[Part]) Void!:
-	if self.done: return ok()
+fn var MultipartParts.finish(var out List[Part]) Void! {
+	if self.done { return ok() }
 	return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
+}
 
 /*
 Reads the parts of a multipart body from a byte stream, one at a time, for uploads too big to hold in memory.
@@ -467,10 +525,10 @@ bounds one part's headers and body and fails the read with `EOVERFLOW`. A body t
 delimiter fails with `EBADMSG`. Closing the result closes `body`.
 */
 export fn multipart_parts(
-	move body: ReadStream[Bytes],
-	boundary: String,
-	max_part_bytes: Int?,
-) ReadStream[Part]:
+	move body ReadStream[Bytes],
+	boundary String,
+	max_part_bytes Int?,
+) ReadStream[Part] {
 	return through[Bytes, Part](
 		body,
 		MultipartParts(
@@ -483,37 +541,41 @@ export fn multipart_parts(
 			done: false,
 		),
 	)
+}
 
 // Encodes parts as a multipart body closed with the final delimiter. Each part's
 // headers are written as given, then a blank line and the data.
-export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
+export fn encode_multipart(parts List[Part], boundary String) Bytes {
 	var out = BytesBuilder()
 
-	for part in parts:
+	for part in parts {
 		out.append_bytes(f"--{boundary}\r\n{part.headers.to_string()}\r\n".to_bytes())
 		out.append_bytes(part.data)
 		out.append_bytes("\r\n".to_bytes())
+	}
 
 	out.append_bytes(f"--{boundary}--\r\n".to_bytes())
 	return out.build()
+}
 
 // Builds a form-data part for a field; pass `filename` to mark an upload.
 export fn form_part(
-	name: String,
-	move data: Bytes,
-	filename: String = "",
-	content_type: String = "",
-) Part:
+	name String,
+	move data Bytes,
+	filename,
+	content_type String = "",
+) Part {
 	var disposition = f"form-data; name={quote_value(name)}"
-	if not filename.is_empty(): disposition = f"{disposition}; filename={quote_value(filename)}"
+	if not filename.is_empty() { disposition = f"{disposition}; filename={quote_value(filename)}" }
 
 	var fields = [HeaderField(name: "Content-Disposition", value: disposition)]
-	if not content_type.is_empty(): fields.append(
-		HeaderField(name: "Content-Type", value: content_type.clone())
-	)
+	if not content_type.is_empty() {
+		fields.append(HeaderField(name: "Content-Type", value: content_type.clone()))
+	}
 	return Part(
 		headers: Headers(fields: fields),
 		name: name.clone(),
 		filename: filename.clone(),
 		data: data,
 	)
+}

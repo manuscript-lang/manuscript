@@ -15,20 +15,24 @@ Save as `stop.ms`. `watch_signals` turns signals into a stream of numbers. The p
 ```manuscript
 import watch_signals from "@std/os/process.ms"
 
-type Worker:
-    name: String
+type Worker {
+    name String
+}
 
-fn move Worker.close() Void!:
+fn move Worker.close() Void! {
     print(f"{self.name} stopped")
     return ok()
+}
 
-fn main() Void!:
+fn main() Void! {
     var signals = watch_signals([2, 15])?
     _worker := Worker(name: "worker")
     print("ready")
+
     _signal := signals.next()?
     print("stopping")
     return ok()
+}
 ```
 
 ```sh

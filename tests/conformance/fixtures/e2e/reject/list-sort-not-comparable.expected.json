@@ -12,16 +12,16 @@
         "message": "missing argument compare: fn(Plain, Plain) Int in call to items.sort; add 'compare: <fn(Plain, Plain) Int>'",
         "position": {
           "file": "list-sort-not-comparable.ms",
-          "line": 8,
+          "line": 9,
           "column": 11,
-          "offset": 147
+          "offset": 150
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/list-sort-not-comparable.ms:8:11: type: missing argument compare: fn(Plain, Plain) Int in call to items.sort; add 'compare: <fn(Plain, Plain) Int>'\n   |\n 8 |     items.sort()\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/list-sort-not-comparable.ms:9:11: type: missing argument compare: fn(Plain, Plain) Int in call to items.sort; add 'compare: <fn(Plain, Plain) Int>'\n   |\n 9 |     items.sort()\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

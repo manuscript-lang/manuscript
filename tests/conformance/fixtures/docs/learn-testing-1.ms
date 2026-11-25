@@ -3,11 +3,14 @@
 // conform: origin=documentation/learn/testing.md:13
 import expect_equal from "@std/test/test.ms"
 
-fn add(a: Int, b: Int) Int:
-    return a + b
+fn add(a Int, b Int) Int {
+	return a + b
+}
 
-test "addition":
-    expect_equal(add(1, 2), 3)?
+test "addition" {
+	expect_equal(add(1, 2), 3)?
+}
 
-test "zero is unchanged":
-    expect_equal(add(0, 7), 7)?
+test "zero is unchanged" {
+	expect_equal(add(0, 7), 7)?
+}

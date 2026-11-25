@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[T]:\n\tvalue: T\n\ntype Nested:\n\tvalue: Box[Box[Int]]\n"
+    "fmt": "type Box[T] {\n\tvalue T\n}\n\ntype Nested {\n\tvalue Box[Box[Int]]\n}\n"
   }
 }

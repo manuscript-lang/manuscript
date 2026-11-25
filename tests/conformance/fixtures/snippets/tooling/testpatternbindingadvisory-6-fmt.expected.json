@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Failure[T]:\n\tNotFound\n\tDenied(reason: T)\n\nfn use[T](value: Result[Int, Failure[T]]) Int:\n\tmatch value:\n\t\terror(_): return 1\n\t\tok(inner): return inner\n"
+    "fmt": "enum Failure[T] {\n\tNotFound\n\tDenied(reason T)\n}\n\nfn use[T](value Result[Int, Failure[T]]) Int {\n\tmatch value {\n\t\terror(_) => return 1\n\t\tok(inner) => return inner\n\t}\n}\n"
   }
 }

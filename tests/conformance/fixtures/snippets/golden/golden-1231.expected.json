@@ -12,9 +12,9 @@
         "message": "local binding empty is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "golden-1231.ms",
-          "line": 6,
+          "line": 8,
           "column": 5,
-          "offset": 155
+          "offset": 158
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "golden-1231.ms",
-          "line": 7,
+          "line": 9,
           "column": 5,
-          "offset": 183
+          "offset": 182
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1231.ms:6:5: type: local binding empty is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 6 |     empty: Int? := absent()\n   |     ^\n<DIR>/golden-1231.ms:7:5: type: local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 7 |     callback: fn(Int) String := transform(fn item: item.to_string())\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1231.ms:8:5: type: local binding empty is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 8 |     empty Int? := absent()\n   |     ^\n<DIR>/golden-1231.ms:9:5: type: local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 9 |     callback fn(Int) String := transform(item => item.to_string())\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

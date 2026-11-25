@@ -13,16 +13,20 @@ Save as `watch_test.ms` and run `ms test watch_test.ms`. `watch` returns a strea
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import temporary, watch, write_file from "@std/os/fs.ms"
-import seconds from "@std/time.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    temporary, watch, write_file from "@std/os/fs.ms",
+    expect_equal from "@std/test/test.ms",
+    seconds from "@std/time.ms",
+)
 
-test "a new file is reported":
+test "a new file is reported" {
     dir := temporary("watch-")?
     var events = watch(dir.path())?
     write_file(f"{dir.path()}/note.txt", "hello").wait()?
+
     event := events.next(timeout: seconds(10))?
     expect_equal(event.get().path.ends_with("note.txt"), true)?
+}
 ```
 
 ```text
@@ -41,19 +45,27 @@ Pass `recursive: true` to watch a whole tree. Pass `WatchOptions(interval: ...)`
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import arguments from "@std/os/env.ms"
-import read_file, watch from "@std/os/fs.ms"
+import (
+    arguments from "@std/os/env.ms",
+    read_file, watch from "@std/os/fs.ms",
+)
 
-fn main() Void!:
+fn main() Void! {
     path := arguments().get_or(0, "config.json")
     var events = watch(path)?
-    for event in events:
+
+    for event in events {
         read := read_file(event.path).wait()
-        if read.is_error() and read.err().kind == "ENOENT":
+        if read.is_error() and read.err().kind == "ENOENT" {
             continue
+        }
+
         text := read?
         print(f"{event.path} changed, {text.length()} bytes")
+    }
+
     return ok()
+}
 ```
 
 ```sh

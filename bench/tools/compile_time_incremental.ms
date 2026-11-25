@@ -18,18 +18,17 @@ import (
 	write_text from "./lib.ms",
 )
 
-type Edit:
-	label: String
-	file: String
-	from: String
-	to: String
+type Edit {
+	label, file, from, to String
 	// Appended to the file after the replacement.
-	tail: String = ""
+	tail String = ""
+}
 
-fn header(p: Int, f: Int, k: Int) String:
-	return f"export fn w_{p}_{f}_{k}(x: Int) Int:\n    var acc = x\n"
+fn header(p, f, k Int) String {
+	return f"export fn w_{p}_{f}_{k}(x Int) Int:\n    var acc = x\n"
+}
 
-fn edits() List[Edit]:
+fn edits() List[Edit] {
 	leaf := "src/pkg20/f10.ms"
 	shared := "src/pkg0/f0.ms"
 	return [
@@ -59,7 +58,7 @@ fn edits() List[Edit]:
 			leaf.clone(),
 			header(20, 10, 0),
 			header(20, 10, 0) + "    acc += extra_fn(acc)\n",
-			"\nexport fn extra_fn(x: Int) Int:\n    return x + 1\n",
+			"\nexport fn extra_fn(x Int) Int:\n    return x + 1\n",
 		),
 		Edit(
 			"edit a shared module",
@@ -68,8 +67,9 @@ fn edits() List[Edit]:
 			header(0, 0, 0) + "    acc += 1\n",
 		),
 	]
+}
 
-fn build(dir: String, profile: String, output: String) Result[Float, Error]:
+fn build(dir, profile, output String) Result[Float, Error] {
 	start := now_ns()
 	void must(
 		"build",
@@ -87,48 +87,56 @@ fn build(dir: String, profile: String, output: String) Result[Float, Error]:
 		),
 	)?
 	return ok((now_ns() - start).to_float() / 1000000000.0)
+}
 
-fn measure(dir: String, profile: String, output: String) Result[Void, Error]:
+fn measure(dir, profile, output String) Result[Void, Error] {
 	void remove(f"{dir}/.ms-cache", recursive: true)
 
 	cold := build(dir, profile, output)?
 	print(f"{profile} cold {fixed(cold, 2)} s")
 
-	for e in edits():
+	for e in edits() {
 		path := f"{dir}/{e.file}"
 		original := read_text(path)
 
-		if e.from != "":
-			if not original.contains(e.from): return error(
-				Error(f"{e.label}: pattern not found in {e.file}")
-			)
+		if e.from != "" {
+			if not original.contains(
+				e.from
+			) { return error(Error(f"{e.label}: pattern not found in {e.file}")) }
 
 			write_text(path, original.replace(e.from, e.to) + e.tail)
+		}
 
 		seconds := build(dir, profile, output)
 		write_text(path, original)
 		print(f"{profile} {e.label}: {fixed(seconds?, 2)} s")
+	}
 
 	return ok()
+}
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
 	var dims = [40, 25, 10]
 
-	for i in 0..3:
-		if args.length() > i:
+	for i in 0..3 {
+		if args.length() > i {
 			v := args[i].parse_int() or 0
-			if v < 1: return usage("packages, files and fns must be positive integers")
+			if v < 1 { return usage("packages, files and fns must be positive integers") }
 
 			dims[i] = v
+		}
+	}
 
 	dir := temporary("incremental-").get().path()
 	generate(dir, dims[0], dims[1], dims[2])
 
 	root := f"{dir}/ms"
 	out := f"{dir}/program"
-	if measure(root, "Debug", out).is_error(): return 1
+	if measure(root, "Debug", out).is_error() { return 1 }
 
-	if env("SKIP_LLVM", "") == "":
-		if measure(root, "Release", out).is_error(): return 1
+	if env("SKIP_LLVM", "") == "" {
+		if measure(root, "Release", out).is_error() { return 1 }
+	}
 	return 0
+}

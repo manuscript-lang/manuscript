@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn helper(left: Int, right: Int) Int:\n\treturn left + right\n\nexport fn defaults(\n\tfirst: Int = -3,\n\tsecond: Int = helper(left: first, right: 2),\n\ttext: String = \"literal, )\",\n\tcallback: fn(Int) Int = (\n\t\tfn(value: Int) Int:\n\t\t\treturn value + 1\n\t)\n) Int:\n\treturn callback(second)\n"
+    "fmt": "fn helper(left, right Int) Int {\n\treturn left + right\n}\n\nexport fn defaults(\n\tfirst Int = -3,\n\tsecond Int = helper(left: first, right: 2),\n\ttext String = \"literal, )\",\n\tcallback fn(Int) Int = (\n\t\tfn(value Int) Int {\n\t\t\treturn value + 1\n\t\t}\n\t)\n) Int {\n\treturn callback(second)\n}\n"
   }
 }

@@ -29,13 +29,14 @@ import (
 	expect_true from "@std/test/test.ms",
 )
 
-fn big_word(value: UInt64) BigInt:
+fn big_word(value UInt64) BigInt {
 	return parse_big_int(value.to_string(), 10).get()
+}
 
-test "carry and borrow operate on unsigned words and chain across limbs":
-	largest: UInt64 := 18446744073709551615
-	zero: UInt64 := 0
-	one: UInt64 := 1
+test "carry and borrow operate on unsigned words and chain across limbs" {
+	largest UInt64 := 18446744073709551615
+	zero UInt64 := 0
+	one UInt64 := 1
 	low := add_with_carry(largest, one)
 	expect_equal(low.sum, zero)?
 	expect_true(low.carry)?
@@ -55,20 +56,21 @@ test "carry and borrow operate on unsigned words and chain across limbs":
 	expect_equal(add_with_carry(largest, zero, true).sum, zero)?
 	expect_true(subtract_with_borrow(zero, largest, true).borrow)?
 	expect_equal(subtract_with_borrow(zero, largest, true).difference, zero)?
+}
 
-test "word arithmetic matches exact BigInt references at all width boundaries":
-	values: List[UInt64] := [
+test "word arithmetic matches exact BigInt references at all width boundaries" {
+	values List[UInt64] := [
 		0, 1, 4294967295, 4294967296, 9223372036854775808, 18446744073709551615
 	]
 	radix := big_int_of_int(1).shift_left(64)?
 
-	for left in values:
-		for right in values:
+	for left in values {
+		for right in values {
 			a := big_word(left)
 			b := big_word(right)
 
-			for flag in [false, true]:
-				extra := big_int_of_int(if flag: 1 else: 0)
+			for flag in [false, true] {
+				extra := big_int_of_int(if flag { 1 } else { 0 })
 				sum := add_with_carry(left, right, flag)
 				exact_sum := a + b + extra
 				expect_equal(big_word(sum.sum), exact_sum % radix)?
@@ -76,33 +78,38 @@ test "word arithmetic matches exact BigInt references at all width boundaries":
 
 				difference := subtract_with_borrow(left, right, flag)
 				exact_difference := a - b - extra
-				wrapped := if exact_difference.sign() < 0: exact_difference + radix else: exact_difference.clone()
+				wrapped := if exact_difference.sign() < 0 { exact_difference + radix } else { exact_difference.clone() }
 				expect_equal(big_word(difference.difference), wrapped)?
 				expect_equal(difference.borrow, exact_difference.sign() < 0)?
+			}
 
 			product := multiply_wide(left, right)
 			expect_equal(big_word(product.high) * radix + big_word(product.low), a * b)?
 
-			for divisor in values:
-				if divisor != 0:
+			for divisor in values {
+				if divisor != 0 {
 					actual := remainder_wide(left, right, divisor)?
 					expect_equal(big_word(actual), (a * radix + b) % big_word(divisor))?
+				}
+			}
 
-			if left != 0:
+			if left != 0 {
 				division := divide_wide(product.high, product.low, left)?
 				expect_equal(division.quotient, right)?
 				expect_equal(division.remainder, 0)?
+			}
+		}
+	}
+}
 
-test "wide division distinguishes invalid divisor and quotient overflow":
-	largest: UInt64 := 18446744073709551615
+test "wide division distinguishes invalid divisor and quotient overflow" {
+	largest UInt64 := 18446744073709551615
 	division := divide_wide(2, largest, 3)?
 	expect_equal(division.quotient, largest)?
 	expect_equal(division.remainder, 2)?
 
-	invalid: WordDivision! := error(Error("number: invalid input", kind: "EINVAL"))
-	overflow: WordDivision! := error(
-		Error("number: value out of range", kind: "ERANGE")
-	)
+	invalid WordDivision! := error(Error("number: invalid input", kind: "EINVAL"))
+	overflow WordDivision! := error(Error("number: value out of range", kind: "ERANGE"))
 	expect_equal(divide_wide(0, 0, 0), invalid)?
 	expect_equal(divide_wide(largest, largest, 0), invalid)?
 	expect_equal(divide_wide(3, 0, 3), overflow)?
@@ -110,10 +117,11 @@ test "wide division distinguishes invalid divisor and quotient overflow":
 	expect_equal((remainder_wide(3, 5, 3)?), 2)?
 	expect_equal((remainder_wide(largest, largest, largest)?), 0)?
 
-	invalid_remainder: UInt64! := error(Error("number: invalid input", kind: "EINVAL"))
+	invalid_remainder UInt64! := error(Error("number: invalid input", kind: "EINVAL"))
 	expect_equal(remainder_wide(largest, largest, 0), invalid_remainder)?
+}
 
-test "binary float decomposition round trips normals subnormals and signed zero":
+test "binary float decomposition round trips normals subnormals and signed zero" {
 	for value in [
 		0.0,
 		-0.0,
@@ -126,32 +134,37 @@ test "binary float decomposition round trips normals subnormals and signed zero"
 		1e-300,
 		1e300,
 		max_float,
-	]:
+	] {
 		parts := frexp(value)
 		rebuilt := ldexp(parts.fraction, parts.exponent)
 		expect_equal(rebuilt, value)?
 		expect_equal(sign_bit(rebuilt), sign_bit(value))?
 
-		if value != 0.0:
+		if value != 0.0 {
 			expect_true(parts.fraction.abs() >= 0.5)?
 			expect_true(parts.fraction.abs() < 1.0)?
-		else:
+		} else {
 			expect_equal(parts.exponent, 0)?
+		}
+	}
 
 	expect_equal(frexp(min_float).fraction, 0.5)?
 	expect_equal(frexp(min_float).exponent, -1073)?
 	expect_equal(frexp(max_float).exponent, 1024)?
 
-	for value in [infinity, -infinity, nan]:
+	for value in [infinity, -infinity, nan] {
 		parts := frexp(value)
 		expect_equal(parts.exponent, 0)?
 
-		if value.is_nan():
+		if value.is_nan() {
 			expect_true(parts.fraction.is_nan())?
-		else:
+		} else {
 			expect_equal(parts.fraction, value)?
+		}
+	}
+}
 
-test "ldexp handles full Int exponents and IEEE boundary rounding":
+test "ldexp handles full Int exponents and IEEE boundary rounding" {
 	expect_equal(ldexp(0.5, 4), 8.0)?
 	expect_equal(ldexp(0.5, -1073), min_float)?
 	expect_equal(ldexp(0.5, -1074), 0.0)?
@@ -161,13 +174,15 @@ test "ldexp handles full Int exponents and IEEE boundary rounding":
 	expect_equal(ldexp(1.0, min_int), 0.0)?
 	expect_true(sign_bit(ldexp(-1.0, min_int)))?
 
-	for exponent in [min_int, max_int]:
+	for exponent in [min_int, max_int] {
 		expect_true(sign_bit(ldexp(-0.0, exponent)))?
 		expect_equal(ldexp(infinity, exponent), infinity)?
 		expect_equal(ldexp(-infinity, exponent), -infinity)?
 		expect_true(ldexp(nan, exponent).is_nan())?
+	}
+}
 
-test "float integer and fractional parts retain signs and special values":
+test "float integer and fractional parts retain signs and special values" {
 	ordinary := modf(-2.75)
 	expect_equal(ordinary.integer, -2.0)?
 	expect_equal(ordinary.fraction, -0.75)?
@@ -185,8 +200,9 @@ test "float integer and fractional parts retain signs and special values":
 	tiny := modf(-min_float)
 	expect_true(sign_bit(tiny.integer))?
 	expect_equal(tiny.fraction, -min_float)?
+}
 
-test "IEEE remainder uses nearest-even quotient without changing truncating remainder":
+test "IEEE remainder uses nearest-even quotient without changing truncating remainder" {
 	expect_equal(remainder(5.0, 3.0), 2.0)?
 	expect_equal(ieee_remainder(5.0, 3.0), -1.0)?
 	expect_equal(ieee_remainder(5.0, 2.0), 1.0)?
@@ -201,8 +217,9 @@ test "IEEE remainder uses nearest-even quotient without changing truncating rema
 	expect_true(ieee_remainder(1.0, 0.0).is_nan())?
 	expect_true(ieee_remainder(nan, 1.0).is_nan())?
 	expect_true(ieee_remainder(1.0, nan).is_nan())?
+}
 
-test "modular inverse distinguishes absence invalid modulus and the unit modulus":
+test "modular inverse distinguishes absence invalid modulus and the unit modulus" {
 	(
 		big_int_of_int(271).inverse_mod(big_int_of_int(383))
 		| expect_ok?
@@ -216,22 +233,24 @@ test "modular inverse distinguishes absence invalid modulus and the unit modulus
 	)
 	expect_true((big_int_of_int(6).inverse_mod(big_int_of_int(9))?) == null)?
 	expect_true((big_int_of_int(0).inverse_mod(big_int_of_int(2))?) == null)?
-	for number in [-5, 0, 5]:
+	for number in [-5, 0, 5] {
 		(
 			big_int_of_int(number).inverse_mod(big_int_of_int(1))
 			| expect_ok?
 			| expect_some?
 			| expect_equal(big_int_of_int(0))?
 		)
+	}
 
-	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(big_int_of_int(2).inverse_mod(big_int_of_int(0)), invalid)?
 	expect_equal(big_int_of_int(2).inverse_mod(big_int_of_int(-7)), invalid)?
+}
 
-test "modular inverse scales to 4096 bits and retains canonical residues":
+test "modular inverse scales to 4096 bits and retains canonical residues" {
 	one := big_int_of_int(1)
 
-	for width in [64, 256, 1024, 4096]:
+	for width in [64, 256, 1024, 4096] {
 		modulus := one.shift_left(width)?
 		base := modulus - one
 		inverse := (base.inverse_mod(modulus)?) | expect_some?
@@ -243,3 +262,5 @@ test "modular inverse scales to 4096 bits and retains canonical residues":
 			| expect_some?
 			| expect_equal(one)?
 		)
+	}
+}

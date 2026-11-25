@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn values[T](r: List[T!]) Void: return\n\nfn first() Void: values([f()])\n"
+    "fmt": "fn values[T](r List[T!]) Void => return\n\nfn first() Void => values([f()])\n"
   }
 }

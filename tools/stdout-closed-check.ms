@@ -15,11 +15,12 @@ import (
 // `ms doc` with piped output. On Linux and macOS it ignores SIGPIPE, as a program under a shell with `trap '' PIPE` does,
 // so the closed pipe fails the write instead of killing it; Windows has no signal and
 // fails the write anyway.
-fn start(ms: String) Result[Subprocess, Error]:
-	if host() == "windows": return spawn(ms, ["doc"])
-	return spawn("sh", ["-c", "trap '' PIPE; exec \"$0\" doc", ms])
+fn start(ms String) Result[Subprocess, Error] {
+	if host() == "windows" { return spawn(ms, ["doc"]) }
+	return spawn("sh", ["-c", "trap '' PIPE; exec \"$0\" doc", ms.clone()])
+}
 
-fn main() Void!:
+fn main() Void! {
 	ms := tool_ms(working_directory().get().clone())
 	child := start(ms)?
 	var stdout = child.stdout()
@@ -28,8 +29,10 @@ fn main() Void!:
 
 	status := child.wait(timeout: seconds(60))?
 
-	if status == 0:
+	if status == 0 {
 		print("ms doc exited 0 after its standard output was closed")
 		return error(Error("a write failure on standard output was not reported"))
+	}
 
 	return ok(void)
+}

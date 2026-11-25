@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Void:\n\twhile true: break\n\tfor x in values: consume(x)\n"
+    "fmt": "fn f() Void {\n\twhile true { break }\n\tfor x in values { consume(x) }\n}\n"
   }
 }

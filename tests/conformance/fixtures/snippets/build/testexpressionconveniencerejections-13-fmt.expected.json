@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn p() Int!:\n\treturn ok(1)\n\nfn f(x: Int?) Void!:\n\tmatch x:\n\t\tn:\n\t\t\tp()?\n\t\t\treturn ok()\n\t\tnull: return ok()\n"
+    "fmt": "fn p() Int! {\n\treturn ok(1)\n}\n\nfn f(x Int?) Void! {\n\tmatch x {\n\t\tn => {\n\t\t\tp()?\n\t\t\treturn ok()\n\t\t}\n\t\tnull => return ok()\n\t}\n}\n"
   }
 }

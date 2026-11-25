@@ -14,14 +14,16 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn echo(request: HttpRequest) HttpResponse:
+fn echo(request HttpRequest) HttpResponse {
 	return text(201, f"{request.path}:{(request.body.decode_utf8() or "")}")
+}
 
-fn exchange_echo(var exchange: HttpExchange) Void!:
+fn exchange_echo(var exchange HttpExchange) Void! {
 	body := read_body(exchange, 8)?
 	return reply(exchange, text(200, f"{body.length()}"))
+}
 
-test "buffered adapts a request-to-response handler":
+test "buffered adapts a request-to-response handler" {
 	server := serve("127.0.0.1:0", buffered(echo))?
 	client := http_client()?
 	var response = client.request(
@@ -33,11 +35,13 @@ test "buffered adapts a request-to-response handler":
 	expect_equal(response.metadata.status, 201)?
 
 	var text = ""
-	for chunk in response.body:
+	for chunk in response.body {
 		text += chunk.decode_utf8() or ""
+	}
 	expect_equal(text, "/x:abc")?
+}
 
-test "read_body bounds the body by its limit":
+test "read_body bounds the body by its limit" {
 	server := serve("127.0.0.1:0", exchange_echo)?
 	client := http_client()?
 	small := client.request(
@@ -55,17 +59,21 @@ test "read_body bounds the body by its limit":
 		"123456789",
 	)?
 	expect_equal(large.metadata.status, 500)?
+}
 
-fn bare(request: HttpRequest) HttpResponse:
+fn bare(request HttpRequest) HttpResponse {
 	return HttpResponse(status: 200, body: "bare".to_bytes())
+}
 
-test "serve, the client and a response take their defaults":
+test "serve, the client and a response take their defaults" {
 	server := serve("127.0.0.1:0", buffered(bare))?
 	client := http_client()?
 	var response = client.request(HttpMethod.Get, f"http://{server.address()}/")?
 	expect_equal(response.metadata.status, 200)?
 
 	var got = ""
-	for chunk in response.body:
+	for chunk in response.body {
 		got += chunk.decode_utf8() or ""
+	}
 	expect_equal(got, "bare")?
+}

@@ -3,35 +3,44 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c54
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-fn rep(text: String, count: Int) String:
+fn rep(text String, count Int) String {
 	return text.repeat(count)
+}
 
-fn line(cmd: String, pat: String, subj: String = "", repl: String? = null) String:
-	var fields = [cmd, pat, subj]
+fn line(cmd, pat String, subj String = "", repl String? = null) String {
+	var fields = [cmd.clone(), pat.clone(), subj.clone()]
 	r := repl
-	if r != null:
+	if r != null {
 		fields.append(r)
+	}
 	return fields.join("\t") + "\n"
+}
 
-fn M(pat: String, subj: String) String:
+fn M(pat, subj String) String {
 	return line("match", pat, subj)
+}
 
-fn T(pat: String, subj: String) String:
+fn T(pat, subj String) String {
 	return line("test", pat, subj)
+}
 
-fn F(pat: String, subj: String) String:
+fn F(pat, subj String) String {
 	return line("full", pat, subj)
+}
 
-fn A(pat: String, subj: String) String:
+fn A(pat, subj String) String {
 	return line("find-all", pat, subj)
+}
 
-fn R(pat: String, subj: String, repl: String) String:
+fn R(pat, subj, repl String) String {
 	return line("replace", pat, subj, repl)
+}
 
-fn S(pat: String, subj: String) String:
+fn S(pat, subj String) String {
 	return line("split", pat, subj)
+}
 
-export fn gen_c54() Void:
+export fn gen_c54() Void {
 	var cs = Cases(build_oracle("c54-regex-engine"))
 	cs.push(
 		"literals",
@@ -469,8 +478,9 @@ export fn gen_c54() Void:
 	)
 
 	var numbers = List[String]()
-	for i in 0..200:
+	for i in 0..200 {
 		numbers.append(f"{i}")
+	}
 	cs.push(
 		"long-input",
 		M("(a|b)*c", rep("ab", 500) + "c") + A("ab", rep("ab", 300)) + A(
@@ -587,9 +597,10 @@ export fn gen_c54() Void:
 	var tests = ""
 	var k = 0
 
-	while k < batch.length():
+	while k < batch.length() {
 		tests += T(batch[k].clone(), batch[k + 1].clone())
 		k += 2
+	}
 
 	cs.push("test-batch", tests)
 
@@ -618,3 +629,4 @@ export fn gen_c54() Void:
 		),
 	]
 	write_cases("c54-regex-engine", examples, examples.concat(cs.list))
+}

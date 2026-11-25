@@ -1,2 +1,2 @@
-  src/shapes.ms:18:5: Total with `xs.sum()` or `xs.map(...).sum()` instead of a loop that adds
+  src/shapes.ms:21:5: Total with `xs.sum()` or `xs.map(...).sum()` instead of a loop that adds
 lint failed; run ms lint ms.toml for details (or ms verify ms.toml --json for every step)

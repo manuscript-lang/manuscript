@@ -31,13 +31,13 @@
           "file": "golden-0141.ms",
           "line": 5,
           "column": 14,
-          "offset": 109
+          "offset": 110
         },
         "end": {
           "file": "golden-0141.ms",
           "line": 5,
           "column": 15,
-          "offset": 110
+          "offset": 111
         }
       }
     ],

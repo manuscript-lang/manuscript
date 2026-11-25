@@ -17,24 +17,28 @@ import (
 	Duration, monotonic, nanoseconds, sleep from "@std/time.ms",
 )
 
-fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
-	return promise(fn: input.next()).with(
-		options: PromiseOptions(timeout: timeout)
+fn within(var input ReadStream[Bytes], timeout Duration) Bytes?! {
+	return promise(() => input.next()).with(
+		options: PromiseOptions(timeout: timeout.clone())
 	).wait()
+}
 
-fn send(var conn: Connection, text: String) Void!:
+fn send(var conn Connection, text String) Void! {
 	conn.output.write(text.to_bytes())?
 	return conn.output.flush()
+}
 
-fn handle(request: HttpRequest) HttpResponse:
-	if request.path == "/slow":
+fn handle(request HttpRequest) HttpResponse {
+	if request.path == "/slow" {
 		void sleep(nanoseconds(3000000000)).wait()
+	}
 	return HttpResponse(200, f"ok {request.path}\n".to_bytes())
+}
 
-fn fetch(address: String, path: String) String:
+fn fetch(address String, path String) String {
 	began := monotonic()
 
-	if var conn = connect(address).wait():
+	if var conn = connect(address).wait() {
 		connected := monotonic().difference(began).to_milliseconds()
 		_sent := send(
 			conn,
@@ -43,29 +47,34 @@ fn fetch(address: String, path: String) String:
 		var text = ""
 		sent_at := monotonic().difference(began).to_milliseconds()
 
-		while true:
+		while true {
 			read := within(conn.input, nanoseconds(5000000000))
 
-			if read.is_error():
+			if read.is_error() {
 				// A flake on a slow runner must say why the reply never arrived.
 				text = f"{text}[read failed: {read.err().kind} {read.err().message}]"
 				break
+			}
 
 			data := read.get()
 
-			if data != null:
+			if data != null {
 				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
+			}
 
 			break
+		}
 
 		text = f"{text}\n[timing: connect {connected} ms, sent {sent_at} ms, ended {monotonic().difference(began).to_milliseconds()} ms]"
 		void conn.close()
 		return text
+	}
 
 	return "connect failed"
+}
 
-fn run(label: String, grace_ms: Int) Bool:
+fn run(label String, grace_ms Int) Bool {
 	options := HttpServerOptions(
 		timeout: nanoseconds(200000000),
 		grace: nanoseconds(grace_ms * 1000000),
@@ -75,7 +84,7 @@ fn run(label: String, grace_ms: Int) Bool:
 		address: "127.0.0.1:0",
 		handler: buffered(handle),
 		options: options,
-	):
+	) {
 		var server = acquired
 		start := monotonic()
 		slow := fetch(server.address(), "/slow")
@@ -84,18 +93,23 @@ fn run(label: String, grace_ms: Int) Bool:
 		_slow := stdout().write(
 			f"{label} slow: {slow.starts_with("HTTP/1.1 504")} prompt: {elapsed_ms < 2000}\n"
 		)
-		if not slow.starts_with("HTTP/1.1 504"):
+		if not slow.starts_with("HTTP/1.1 504") {
 			_seen := stderr().write(f"{label} slow answer: {slow}\n")
+		}
 
 		_fast := stdout().write(
 			f"{label} fast: {fast.starts_with("HTTP/1.1 200 OK")}\n"
 		)
 		void server.close()
 		return true
+	}
 
 	return false
+}
 
-export fn main() Int:
-	if run("no grace", 0):
-		if run("grace", 500): return 0
+export fn main() Int {
+	if run("no grace", 0) {
+		if run("grace", 500) { return 0 }
+	}
 	return 1
+}

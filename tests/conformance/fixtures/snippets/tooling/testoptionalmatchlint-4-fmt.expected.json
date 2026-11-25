@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use(value: Int!) Int:\n\treturn match value:\n\t\tok(n): n\n\t\terror(_): 0\n"
+    "fmt": "fn use(value Int!) Int {\n\treturn match value {\n\t\tok(n) => n\n\t\terror(_) => 0\n\t}\n}\n"
   }
 }

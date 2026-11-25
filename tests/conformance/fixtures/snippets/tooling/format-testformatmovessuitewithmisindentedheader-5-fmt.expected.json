@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Int:\n\tif a:\n\t\treturn 1\n\telse if foo(a):\n\t\treturn 2\n\n\treturn 3\n"
+    "fmt": "fn f() Int {\n\tif a {\n\t\treturn 1\n\t} else if foo(a) {\n\t\treturn 2\n\t}\n\n\treturn 3\n}\n"
   }
 }

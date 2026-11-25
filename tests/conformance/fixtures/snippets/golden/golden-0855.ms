@@ -1,4 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Void:
-    while true:
+fn f() Void {
+    while true {
+    }
+}

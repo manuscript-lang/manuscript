@@ -2,6 +2,6 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/inference_hints_test.go:73 TestReturnOnlyTypeParameterExplicitSpecialization
 
-fn fail[T](message: String) T!Error: error(Error(message))
+fn fail[T](message String) T!Error => error(Error(message))
 
-fn first() Int!Error: fail[Int]("empty")
+fn first() Int!Error => fail[Int]("empty")

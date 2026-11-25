@@ -1,3 +1,4 @@
-fn main() Int:
-	x: Int := "no"
+fn main() Int {
+	x Int := "no"
 	return 0
+}

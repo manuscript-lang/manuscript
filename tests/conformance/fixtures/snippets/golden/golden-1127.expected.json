@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T:', or import it from a module",
+        "message": "unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1127.ms",
           "line": 4,
           "column": 8,
-          "offset": 72
+          "offset": 70
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding foo; declare it with 'foo := ...' before use, define 'fn foo(...) T:', or import it from a module",
+        "message": "unknown binding foo; declare it with 'foo := ...' before use, define 'fn foo(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1127.ms",
           "line": 6,
-          "column": 13,
-          "offset": 104
+          "column": 15,
+          "offset": 96
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1127.ms:4:8: resolution: unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T:', or import it from a module\n   |\n 4 |     if a:\n   |        ^\n<DIR>/golden-1127.ms:6:13: resolution: unknown binding foo; declare it with 'foo := ...' before use, define 'fn foo(...) T:', or import it from a module\n   |\n 6 |     else if foo(\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1127.ms:4:8: resolution: unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T { ... }', or import it from a module\n   |\n 4 |     if a {\n   |        ^\n<DIR>/golden-1127.ms:6:15: resolution: unknown binding foo; declare it with 'foo := ...' before use, define 'fn foo(...) T { ... }', or import it from a module\n   |\n 6 |     } else if foo(a) {\n   |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

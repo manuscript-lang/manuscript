@@ -1,9 +1,11 @@
 // conform: tags=formatter,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:33 TestDiagnosticFixes
-type Int:
-    x: Int
+type Int {
+	x Int
+}
 
-fn f() Int:
-    t := Int(x: 2)
-    return 0
+fn f() Int {
+	t := Int(x: 2)
+	return 0
+}

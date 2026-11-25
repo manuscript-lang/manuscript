@@ -2,28 +2,34 @@
 // expect-release: allocs=16 alloc_bytes=64640 list_copies=1 list_copy_bytes=8008
 // Clones of dead lists and a map over a dead list: Release already moves them, Debug
 // keeps one list copy. Reuse of consumed buffers must not raise either.
-fn fill(n: Int) List[Int]:
+fn fill(n Int) List[Int] {
 	var xs = List[Int]()
-	for i in 0..n:
+	for i in 0..n {
 		xs.append(i)
+	}
 	return xs
+}
 
-fn doubled(xs: List[Int]) List[Int]:
-	return xs.map(fn x: x * 2)
+fn doubled(xs List[Int]) List[Int] {
+	return xs.map(x => x * 2)
+}
 
-fn sorted_copy(xs: List[Int]) List[Int]:
+fn sorted_copy(xs List[Int]) List[Int] {
 	var out = xs.clone()
 	out.sort()
 	return out
+}
 
-fn rebuild(var xs: List[Int]) List[Int]:
+fn rebuild(var xs List[Int]) List[Int] {
 	xs.append(1)
 	return xs.clone()
+}
 
-export fn main() Int:
+export fn main() Int {
 	a := fill(1000)
 	b := doubled(a)
 	c := sorted_copy(b)
 	var d = c.clone()
 	e := rebuild(d)
 	return e.length() - 1001
+}

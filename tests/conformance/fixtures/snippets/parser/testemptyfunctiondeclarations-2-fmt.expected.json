@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type List[T]: ...\n\nfn List[T].map[U](transform: fn(T) U) List[U]: ...\n\nfn List[T].length() Int: ...\n"
+    "fmt": "type List[T] { ... }\n\nfn List[T].map[U](transform fn(T) U) List[U] { ... }\n\nfn List[T].length() Int { ... }\n"
   }
 }

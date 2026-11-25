@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-fn main() Void:
+fn main() Void {
 	var xs = [1, 2]
 	each := xs.for_each
-	each(fn var n: n += 1)
+	each((var n) => n += 1)
+}

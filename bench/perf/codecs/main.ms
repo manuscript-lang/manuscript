@@ -7,24 +7,25 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
 	length := args[0].parse_int() or panic("called Optional.get() on null")
 	count := args[1].parse_int() or panic("called Optional.get() on null")
 	rounds := args[2].parse_int() or panic("called Optional.get() on null")
 	var bytes = BytesBuilder()
-	for i in 0..length: bytes.append(
-		(i % 256).to_uint8() or panic("called Optional.get() on null")
-	)
+	for i in 0..length {
+		bytes.append((i % 256).to_uint8() or panic("called Optional.get() on null"))
+	}
 
 	expected := bytes.build()
 	encoded := base64_encode(expected)
 	var json = ""
 	json += "["
 
-	for i in 0..count:
-		if i > 0: json += ","
+	for i in 0..count {
+		if i > 0 { json += "," }
 		json += f"\"{encoded}\""
+	}
 
 	json += "]"
 
@@ -32,18 +33,21 @@ fn main() Int:
 	var checksum = 0
 	start := monotonic()
 
-	for i in 0..rounds:
+	for i in 0..rounds {
 		result := parse[List[Bytes]](text)
-		if result.is_error(): return 2
+		if result.is_error() { return 2 }
 
 		values := result.get()
-		if values.length() != count: return 3
+		if values.length() != count { return 3 }
 
-		for value in values:
-			if value != expected: return 4
+		for value in values {
+			if value != expected { return 4 }
 
 			checksum += value.length()
+		}
+	}
 
 	elapsed := monotonic().difference(start).to_nanoseconds()
 	print(f"{length} {count} {rounds} {checksum} {elapsed}")
 	return 0
+}

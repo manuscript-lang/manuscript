@@ -5,32 +5,37 @@ import (
 	expect_equal, expect_false, fail from "@std/test/test.ms",
 )
 
-enum Shape:
-	Circle(radius: Float)
+enum Shape {
+	Circle(radius Float)
+}
 
-type Point:
-	x: Int
-	y: Int
+type Point {
+	x Int
+	y Int
+}
 
-fn roll(i: Int) Int!Error: ok(i)
+fn roll(i Int) Int!Error => ok(i)
 
-fn count(values: List[String]) Int: values.length()
+fn count(values List[String]) Int => values.length()
 
-fn update[K: Hashable, V: Clonable](var values: Map[K, V], key: K, value: V) Map[K, V]:
+fn update[K Hashable, V Clonable](var values Map[K, V], key K, value V) Map[K, V] {
 	values.add(key, value)
 	return values.clone()
+}
 
-test "issue 187 programs need no collection imports":
+test "issue 187 programs need no collection imports" {
 	shapes := [Shape.Circle(1.0)]
 	expect_false(shapes.length() != 1 or count(["/var", "log"]) != 2)?
 
-	var rolls: List[Int] = []
+	var rolls List[Int] = []
 
-	for i in 0..5:
-		if n := roll(i):
+	for i in 0..5 {
+		if n := roll(i) {
 			rolls.append(n)
-		else:
+		} else {
 			return fail("roll")
+		}
+	}
 
 	expect_equal(rolls.length(), 5)?
 
@@ -38,10 +43,11 @@ test "issue 187 programs need no collection imports":
 	points.add(Point(1, 2), 7)
 	expect_equal(points[Point(1, 2)], 7)?
 
-	nested: List[Map[String, List[Int]]] := [{}, {"a": []}]
+	nested List[Map[String, List[Int]]] := [{}, {"a": []}]
 	expect_equal(nested[1]["a"].length(), 0)?
+}
 
-test "map add retains clones and insertion order":
+test "map add retains clones and insertion order" {
 	var values = {"a": 1, "b": 2}
 	copy := values.clone()
 	values.add("a", 3)
@@ -63,8 +69,9 @@ test "map add retains clones and insertion order":
 	payload.append(2)
 	expect_equal(nested[1], [1])?
 	expect_equal(payload, [1, 2])?
+}
 
-test "map add retains optional wrapping and generic bound calls":
+test "map add retains optional wrapping and generic bound calls" {
 	var values = Map[Int?, Int?]()
 	values.add(1, 2)
 	values.add(value: 3, key: 1)
@@ -80,17 +87,18 @@ test "map add retains optional wrapping and generic bound calls":
 			or panic("called Optional.get() on null")
 		) != 9
 	)?
+}
 
-test "map add captures receivers and arguments in written order":
+test "map add captures receivers and arguments in written order" {
 	var original = Map[Int, Int]()
 	var visits = 0
 	original.add(
-		match present(1):
-			_value:
+		match present(1) {
+			_value => {
 				visits = 1
 				1
-			null: 0
-		,
+			} null => 0
+		},
 		2,
 	)
 	expect_false(original[1] != 2 or visits != 1)?
@@ -98,30 +106,34 @@ test "map add captures receivers and arguments in written order":
 	var key = 3
 	original.add(
 		key,
-		match present(1):
-			_value:
+		match present(1) {
+			_value => {
 				key = 4
 				5
-			null: 0
+			} null => 0
+		}
 	)
 	expect_false(original[3] != 5 or original.contains(4))?
 
 	var order = 0
 	original.add(
-		value: match present(1):
-			_value:
+		value: match present(1) {
+			_value => {
 				order = 1
 				7
-			null: 0
-		,
-		key: match present(1):
-			_value:
+			} null => 0
+		},
+		key: match present(1) {
+			_value => {
 				expect_equal(order, 1)?
 				order = 2
 				6
-			null: 0
+			} null => 0
+		}
 	)
 	expect_false(order != 2 or original[6] != 7)?
+}
 
-fn present[T](value: T) T?:
+fn present[T](value T) T? {
 	return value
+}

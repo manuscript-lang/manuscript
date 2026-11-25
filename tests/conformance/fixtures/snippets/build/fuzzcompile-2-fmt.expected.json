@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[T]:\n\tvalue: T\n\nfn f() Box[Int]:\n\treturn Box(value: 1)\n"
+    "fmt": "type Box[T] {\n\tvalue T\n}\n\nfn f() Box[Int] {\n\treturn Box(value: 1)\n}\n"
   }
 }

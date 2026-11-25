@@ -19,28 +19,28 @@
         "omitted": 0,
         "children": [
           {
-            "label": "parse_total  [fn] src/shapes.ms:17",
+            "label": "parse_total  [fn] src/shapes.ms:20",
             "kind": "fn",
             "reference": "src/shapes.ms#fn#parse_total",
             "file": "src/shapes.ms",
-            "line": 17,
+            "line": 20,
             "omitted": 0,
             "children": [
               {
-                "label": "area  [fn] src/shapes.ms:8",
+                "label": "area  [fn] src/shapes.ms:9",
                 "kind": "fn",
                 "reference": "src/shapes.ms#fn#area",
                 "file": "src/shapes.ms",
-                "line": 8,
+                "line": 9,
                 "omitted": 0,
                 "children": []
               },
               {
-                "label": "read_number  [fn] src/shapes.ms:11",
+                "label": "read_number  [fn] src/shapes.ms:13",
                 "kind": "fn",
                 "reference": "src/shapes.ms#fn#read_number",
                 "file": "src/shapes.ms",
-                "line": 11,
+                "line": 13,
                 "omitted": 0,
                 "children": [
                   {
@@ -113,36 +113,36 @@
         ]
       },
       {
-        "label": "main total  [test] src/main.ms:12",
+        "label": "main total  [test] src/main.ms:13",
         "kind": "test",
         "reference": "src/main.ms#test#main total",
         "file": "src/main.ms",
-        "line": 12,
+        "line": 13,
         "omitted": 0,
         "children": [
           {
-            "label": "parse_total  [fn] src/shapes.ms:17",
+            "label": "parse_total  [fn] src/shapes.ms:20",
             "kind": "fn",
             "reference": "src/shapes.ms#fn#parse_total",
             "file": "src/shapes.ms",
-            "line": 17,
+            "line": 20,
             "omitted": 0,
             "children": [
               {
-                "label": "area  [fn] src/shapes.ms:8",
+                "label": "area  [fn] src/shapes.ms:9",
                 "kind": "fn",
                 "reference": "src/shapes.ms#fn#area",
                 "file": "src/shapes.ms",
-                "line": 8,
+                "line": 9,
                 "omitted": 0,
                 "children": []
               },
               {
-                "label": "read_number  [fn] src/shapes.ms:11",
+                "label": "read_number  [fn] src/shapes.ms:13",
                 "kind": "fn",
                 "reference": "src/shapes.ms#fn#read_number",
                 "file": "src/shapes.ms",
-                "line": 11,
+                "line": 13,
                 "omitted": 0,
                 "children": [
                   {

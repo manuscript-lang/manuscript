@@ -1,9 +1,10 @@
 // conform: tags=diagnostics,closures,generics,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-fn broken(amount: Int) Missing: 1
+fn broken(amount Int) Missing => 1
 
-fn apply[T, U](callback: fn(T) U) Void: return
+fn apply[T, U](callback fn(T) U) Void => return
 
-fn exercise() Void:
-    apply(broken)
+fn exercise() Void {
+	apply(broken)
+}

@@ -1,8 +1,10 @@
 // conform: tags=formatter,generics,parser,records,sets,tier-core
 // conform: phase=parse
 // conform: origin=pkg/compiler/prelude_test.go:78 TestCollectionPreludeAndShadowing
-type Set[T]:
-    value: T
+type Set[T] {
+	value T
+}
 
-fn f(values: Set[Int]) Void:
-    values.add(1)
+fn f(values Set[Int]) Void {
+	values.add(1)
+}

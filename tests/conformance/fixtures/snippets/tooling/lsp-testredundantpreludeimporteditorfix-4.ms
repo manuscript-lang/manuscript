@@ -2,8 +2,8 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/lsp/prelude_imports_test.go:46 TestRedundantPreludeImportEditorFix
 import (
-    List,  // keep
-    ListEntry,
+	List,  // keep
+	ListEntry,
 ) from "@std/collections/collections.ms"
 
-fn count() Int: List[Int]().length() + List[Int]().length()
+fn count() Int => List[Int]().length() + List[Int]().length()

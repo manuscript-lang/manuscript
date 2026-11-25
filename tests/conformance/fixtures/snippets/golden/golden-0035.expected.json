@@ -7,14 +7,20 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 7; use 4 or 8",
+        "message": "expected a module declaration or import, found name 'Usage'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
-          "line": 4,
-          "column": 8,
-          "offset": 102
+          "line": 3,
+          "column": 1,
+          "offset": 53
+        },
+        "end": {
+          "file": "golden-0035.ms",
+          "line": 3,
+          "column": 6,
+          "offset": 58
         }
       },
       {
@@ -25,57 +31,115 @@
           "file": "golden-0035.ms",
           "line": 6,
           "column": 1,
-          "offset": 121
+          "offset": 120
         },
         "end": {
           "file": "golden-0035.ms",
           "line": 6,
           "column": 11,
-          "offset": 131
+          "offset": 130
         }
       },
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+        "message": "unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon",
         "position": {
           "file": "golden-0035.ms",
-          "line": 9,
-          "column": 3,
-          "offset": 203
+          "line": 16,
+          "column": 56,
+          "offset": 638
+        },
+        "end": {
+          "file": "golden-0035.ms",
+          "line": 16,
+          "column": 57,
+          "offset": 639
         }
       },
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
+        "position": {
+          "file": "golden-0035.ms",
+          "line": 31,
+          "column": 1,
+          "offset": 1517
+        },
+        "end": {
+          "file": "golden-0035.ms",
+          "line": 31,
+          "column": 2,
+          "offset": 1518
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found name 'Options'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
           "line": 33,
-          "column": 3,
-          "offset": 1529
+          "column": 1,
+          "offset": 1520
+        },
+        "end": {
+          "file": "golden-0035.ms",
+          "line": 33,
+          "column": 8,
+          "offset": 1527
         }
       },
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+        "message": "unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon",
         "position": {
           "file": "golden-0035.ms",
-          "line": 37,
-          "column": 3,
-          "offset": 1616
+          "line": 40,
+          "column": 19,
+          "offset": 1695
+        },
+        "end": {
+          "file": "golden-0035.ms",
+          "line": 40,
+          "column": 20,
+          "offset": 1696
         }
       },
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
         "position": {
           "file": "golden-0035.ms",
           "line": 41,
-          "column": 3,
-          "offset": 1784
+          "column": 1,
+          "offset": 1775
+        },
+        "end": {
+          "file": "golden-0035.ms",
+          "line": 41,
+          "column": 2,
+          "offset": 1776
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a module declaration or import, found name 'Start'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
+        "position": {
+          "file": "golden-0035.ms",
+          "line": 43,
+          "column": 1,
+          "offset": 1778
+        },
+        "end": {
+          "file": "golden-0035.ms",
+          "line": 43,
+          "column": 6,
+          "offset": 1783
         }
       },
       {
@@ -84,32 +148,32 @@
         "message": "expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
-          "line": 45,
+          "line": 49,
           "column": 1,
-          "offset": 1851
+          "offset": 1862
         },
         "end": {
           "file": "golden-0035.ms",
-          "line": 45,
+          "line": 49,
           "column": 5,
-          "offset": 1855
+          "offset": 1866
         }
       },
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found name 'Long'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected ':=', found name 'that'",
         "position": {
           "file": "golden-0035.ms",
-          "line": 46,
-          "column": 1,
-          "offset": 1900
+          "line": 50,
+          "column": 14,
+          "offset": 1924
         },
         "end": {
           "file": "golden-0035.ms",
-          "line": 46,
-          "column": 5,
-          "offset": 1904
+          "line": 50,
+          "column": 18,
+          "offset": 1928
         }
       },
       {
@@ -118,15 +182,15 @@
         "message": "unexpected source character '\\''; text uses double quotes, e.g. \"text\"",
         "position": {
           "file": "golden-0035.ms",
-          "line": 47,
+          "line": 51,
           "column": 5,
-          "offset": 1960
+          "offset": 1971
         },
         "end": {
           "file": "golden-0035.ms",
-          "line": 47,
+          "line": 51,
           "column": 6,
-          "offset": 1961
+          "offset": 1972
         }
       },
       {
@@ -135,15 +199,15 @@
         "message": "expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
-          "line": 48,
+          "line": 52,
           "column": 1,
-          "offset": 2029
+          "offset": 2040
         },
         "end": {
           "file": "golden-0035.ms",
-          "line": 48,
+          "line": 52,
           "column": 4,
-          "offset": 2032
+          "offset": 2043
         }
       },
       {
@@ -152,15 +216,15 @@
         "message": "expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
-          "line": 49,
+          "line": 53,
           "column": 1,
-          "offset": 2100
+          "offset": 2111
         },
         "end": {
           "file": "golden-0035.ms",
-          "line": 49,
+          "line": 53,
           "column": 21,
-          "offset": 2120
+          "offset": 2131
         }
       },
       {
@@ -169,22 +233,22 @@
         "message": "expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
-          "line": 50,
+          "line": 54,
           "column": 1,
-          "offset": 2167
+          "offset": 2178
         },
         "end": {
           "file": "golden-0035.ms",
-          "line": 50,
+          "line": 54,
           "column": 4,
-          "offset": 2170
+          "offset": 2181
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0035.ms:4:8: parse: indentation must be a multiple of four spaces, found 7; use 4 or 8\n   |\n 4 |        ms help [command]\n   |        ^\n<DIR>/golden-0035.ms:6:1: parse: expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | Manuscript checks, builds, and runs .ms source and ms.toml projects.\n   | ^^^^^^^^^^\n<DIR>/golden-0035.ms:9:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n   |\n 9 |   check          Parse and type-check without executing\n   |   ^\n<DIR>/golden-0035.ms:33:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 33 |   -h, --help  Show help\n    |   ^\n<DIR>/golden-0035.ms:37:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 37 |   --build-type <Debug|Release|RelWithDebInfo|MinSizeRel>\n    |   ^\n<DIR>/golden-0035.ms:41:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 41 |   ms init hello\n    |   ^\n<DIR>/golden-0035.ms:45:1: parse: expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 45 | Bare ms prints this help and exits successfully.\n    | ^^^^\n<DIR>/golden-0035.ms:46:1: parse: expected a module declaration or import, found name 'Long'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 46 | Long options that take values also accept --flag=value.\n    | ^^^^\n<DIR>/golden-0035.ms:47:5: parse: unexpected source character '\\''; text uses double quotes, e.g. \"text\"\n    |\n 47 | Run 'ms help <command>' or 'ms <command> --help' for usage and examples.\n    |     ^\n<DIR>/golden-0035.ms:48:1: parse: expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 48 | The Go toolchain is embedded and cannot be replaced by external tools.\n    | ^^^\n<DIR>/golden-0035.ms:49:1: parse: expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 49 | MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains\n    | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/golden-0035.ms:50:1: parse: expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 50 | and standalone run/test/debug/profile artifacts.\n    | ^^^\n12 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0035.ms:3:1: parse: expected a module declaration or import, found name 'Usage'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 | Usage ms <command> [arguments] [options]\n   | ^^^^^\n<DIR>/golden-0035.ms:6:1: parse: expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | Manuscript checks, builds, and runs .ms source and ms.toml projects.\n   | ^^^^^^^^^^\n<DIR>/golden-0035.ms:16:56: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 16 |   verify         Run check, fmt --check, lint, and test; one result\n    |                                                        ^\n<DIR>/golden-0035.ms:31:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 31 | }\n    | ^\n<DIR>/golden-0035.ms:33:1: parse: expected a module declaration or import, found name 'Options'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 33 | Options {\n    | ^^^^^^^\n<DIR>/golden-0035.ms:40:19: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 40 |   Default: Release; profile and profiled tests default to RelWithDebInfo; debug always uses Debug\n    |                   ^\n<DIR>/golden-0035.ms:41:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 41 | }\n    | ^\n<DIR>/golden-0035.ms:43:1: parse: expected a module declaration or import, found name 'Start'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 43 | Start with {\n    | ^^^^^\n<DIR>/golden-0035.ms:49:1: parse: expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 49 | Bare ms prints this help and exits successfully.\n    | ^^^^\n<DIR>/golden-0035.ms:50:14: parse: expected ':=', found name 'that'\n    |\n 50 | Long options that take values also accept --flag=value.\n    |              ^^^^\n<DIR>/golden-0035.ms:51:5: parse: unexpected source character '\\''; text uses double quotes, e.g. \"text\"\n    |\n 51 | Run 'ms help <command>' or 'ms <command> --help' for usage and examples.\n    |     ^\n<DIR>/golden-0035.ms:52:1: parse: expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 52 | The Go toolchain is embedded and cannot be replaced by external tools.\n    | ^^^\n<DIR>/golden-0035.ms:53:1: parse: expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 53 | MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains\n    | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/golden-0035.ms:54:1: parse: expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 54 | and standalone run/test/debug/profile artifacts.\n    | ^^^\n14 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -2,31 +2,37 @@
 // conform: phase=run
 import stdout from "@std/io/io.ms"
 
-type Point:
-    x: Int
-    y: Int
+type Point {
+	x Int
+	y Int
+}
 
-type Box[T: Clonable]:
-    items: List[T]
+type Box[T Clonable] {
+	items List[T]
+}
 
-fn Point.with_x(x: Int) Self:
-    return Point(x: x, y: self.y)
+fn Point.with_x(x Int) Self {
+	return Point(x: x, y: self.y)
+}
 
-fn Box[T].added(item: T) Self:
-    var xs = self.items.clone()
-    xs.append(item.clone())
+fn Box[T].added(item T) Self {
+	var xs = self.items.clone()
+	xs.append(item.clone())
 
-    b: Self := Box[T](items: xs)
-    return b
+	b Self := Box[T](items: xs)
+	return b
+}
 
-fn Box[T].pair(other: Self) List[Self]:
-    return [self.clone(), other.clone()]
+fn Box[T].pair(other Self) List[Self] {
+	return [self.clone(), other.clone()]
+}
 
-fn main() Void:
-    p := Point(x: 1, y: 2).with_x(5)
-    b := Box[Int](items: [1]).added(2)
-    void stdout().write(
-        p.x.to_string() + " " + b.items.length().to_string() + " " + b.pair(
-            b
-        ).length().to_string() + "\n"
-    )
+fn main() Void {
+	p := Point(x: 1, y: 2).with_x(5)
+	b := Box[Int](items: [1]).added(2)
+	void stdout().write(
+		p.x.to_string() + " " + b.items.length().to_string() + " " + b.pair(
+			b
+		).length().to_string() + "\n"
+	)
+}

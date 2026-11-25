@@ -1,7 +1,8 @@
 // conform: tags=diagnostics,tier-core,try-result
 // conform: phase=check
 // conform: origin=pkg/tooling/result_lint_test.go:22 TestDiscardedResultLint
-fn consume(value: Int!) Void: void
+fn consume(value Int!) Void => void
 
-fn caller() Void:
-    consume(operation())
+fn caller() Void {
+	consume(operation())
+}

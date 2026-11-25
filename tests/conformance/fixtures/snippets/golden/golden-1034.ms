@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn example(value: String) Bool
+fn example(value String) Bool

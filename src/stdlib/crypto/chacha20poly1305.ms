@@ -16,23 +16,27 @@ Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same
 Returns EINVAL for a wrong key or nonce length, a `counter` outside 0 through 2^32 - 1, or data that needs more blocks than the 32-bit counter has left.
 Never reuse a key and nonce pair.
 */
-export fn chacha20(key: Bytes, nonce: Bytes, counter: Int, data: Bytes) Bytes!:
-	if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295:
+export fn chacha20(key, nonce Bytes, counter Int, data Bytes) Bytes! {
+	if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295 {
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
-	if not fits_counter(counter, data.length()):
+	}
+	if not fits_counter(counter, data.length()) {
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
+	}
 
 	return ok(xor_stream(key, counter, nonce, data))
+}
 
-fn limbs_load(data: Bytes, at: Int, shift: Int) Int:
+fn limbs_load(data Bytes, at, shift Int) Int {
 	return shift_right_unsigned(le32(data, at), shift)
+}
 
 // Computes the Poly1305 one-time authenticator (RFC 8439) of `data` with a 32-byte
 // one-time key and returns 16 bytes; a key of any other length returns EINVAL. Use each
 // key for one message only. Prefer `chacha20poly1305_seal` unless you are implementing
 // a protocol that needs the bare authenticator.
-export fn poly1305(key: Bytes, data: Bytes) Bytes!:
-	if key.length() != 32: return error(Error("crypto: invalid input", kind: "EINVAL"))
+export fn poly1305(key, data Bytes) Bytes! {
+	if key.length() != 32 { return error(Error("crypto: invalid input", kind: "EINVAL")) }
 
 	mask := 67108863
 	r0 := bit_and(le32(key, 0), 67108863)
@@ -51,21 +55,25 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 	var h4 = 0
 	var position = 0
 
-	while position < data.length():
+	while position < data.length() {
 		var chunk = BytesBuilder()
 		var hibit = 16777216
 		remaining := data.length() - position
 
-		if remaining >= 16:
-			for offset in 0..16:
+		if remaining >= 16 {
+			for offset in 0..16 {
 				chunk.append(data.get(position + offset))
-		else:
+			}
+		} else {
 			hibit = 0
-			for offset in 0..remaining:
+			for offset in 0..remaining {
 				chunk.append(data.get(position + offset))
+			}
 			chunk.append(1)
-			for offset in remaining + 1..16:
+			for offset in remaining + 1..16 {
 				chunk.append(0)
+			}
+		}
 
 		m := chunk.build()
 		h0 += bit_and(le32(m, 0), mask)
@@ -98,6 +106,7 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 		h0 = bit_and(h0, mask)
 		h1 += carry
 		position += 16
+	}
 
 	var carry = shift_right_unsigned(h1, 26)
 	h1 = bit_and(h1, mask)
@@ -172,31 +181,39 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 	f3 += shift_right_unsigned(f2, 32)
 
 	var out = BytesBuilder()
-	for word in [f0, f1, f2, f3]:
-		for offset in 0..4:
+	for word in [f0, f1, f2, f3] {
+		for offset in 0..4 {
 			out.append(
 				bit_and(
 					shift_right_unsigned(word, 8 * offset),
 					255,
 				).to_uint8() or 0
 			)
+		}
+	}
 	return ok(out.build())
+}
 
-fn pad16(var out: BytesBuilder, length: Int) Void:
-	for index in length % 16..16:
-		if length % 16 != 0:
+fn pad16(var out BytesBuilder, length Int) Void {
+	for index in length % 16..16 {
+		if length % 16 != 0 {
 			out.append(0)
+		}
+	}
+}
 
-fn put_le64(var out: BytesBuilder, value: Int) Void:
-	for offset in 0..8:
+fn put_le64(var out BytesBuilder, value Int) Void {
+	for offset in 0..8 {
 		out.append(
 			bit_and(
 				shift_right_unsigned(value, 8 * offset),
 				255,
 			).to_uint8() or 0
 		)
+	}
+}
 
-fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) Bytes!:
+fn tag_for(key, nonce, associated_data, ciphertext Bytes) Bytes! {
 	one_time := block(key, 0, nonce)
 	var mac = BytesBuilder()
 	mac.append_bytes(associated_data)
@@ -206,19 +223,16 @@ fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) 
 	put_le64(mac, associated_data.length())
 	put_le64(mac, ciphertext.length())
 	return poly1305(one_time.slice(0, 32).clone().get_or(Bytes([])), mac.build())
+}
 
 // Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning
 // the ciphertext followed by a 16-byte tag.
 // `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns EINVAL. The caller
 // supplies a nonce that is never reused with the key.
-export fn chacha20poly1305_seal(
-	key: Bytes,
-	nonce: Bytes,
-	plaintext: Bytes,
-	associated_data: Bytes,
-) Bytes!:
-	if not check_key_nonce(key, nonce) or not fits_counter(1, plaintext.length()):
+export fn chacha20poly1305_seal(key, nonce, plaintext, associated_data Bytes) Bytes! {
+	if not check_key_nonce(key, nonce) or not fits_counter(1, plaintext.length()) {
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
+	}
 
 	ciphertext := xor_stream(key, 1, nonce, plaintext)
 	tag := tag_for(key, nonce, associated_data, ciphertext)?
@@ -226,33 +240,32 @@ export fn chacha20poly1305_seal(
 	out.append_bytes(ciphertext)
 	out.append_bytes(tag)
 	return ok(out.build())
+}
 
 // Authenticates and decrypts a value produced by `chacha20poly1305_seal`. A wrong key,
 // nonce or associated data, or an altered ciphertext, returns EAUTH. A key or nonce of
 // the wrong length, or `sealed` input shorter than the 16-byte tag, returns EINVAL.
-export fn chacha20poly1305_open(
-	key: Bytes,
-	nonce: Bytes,
-	sealed: Bytes,
-	associated_data: Bytes,
-) Bytes!:
+export fn chacha20poly1305_open(key, nonce, sealed, associated_data Bytes) Bytes! {
 	if (
 		not check_key_nonce(key, nonce)
 		or sealed.length() < 16
 		or not fits_counter(1, sealed.length() - 16)
-	):
+	) {
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
+	}
 
 	split := sealed.length() - 16
 	ciphertext := sealed.slice(0, split).clone().get_or(Bytes([]))
 	tag := sealed.slice(split, sealed.length()).clone().get_or(Bytes([]))
 	expected := tag_for(key, nonce, associated_data, ciphertext)?
-	if not constant_time_equal(expected, tag):
+	if not constant_time_equal(expected, tag) {
 		return error(Error("crypto: authentication failed", kind: "EAUTH"))
+	}
 
 	return ok(xor_stream(key, 1, nonce, ciphertext))
+}
 
-fn rotl32(value: Int, count: Int) Int:
+fn rotl32(value, count Int) Int {
 	return bit_and(
 		bit_or(
 			shift_left(value, count),
@@ -260,14 +273,17 @@ fn rotl32(value: Int, count: Int) Int:
 		),
 		4294967295,
 	)
+}
 
-fn le32(data: Bytes, at: Int) Int:
+fn le32(data Bytes, at Int) Int {
 	var value = 0
-	for offset in 0..4:
+	for offset in 0..4 {
 		value = bit_or(value, shift_left(data.get(at + offset).to_int(), 8 * offset))
+	}
 	return value
+}
 
-fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Void:
+fn quarter(var state List[Int], a, b, c, d Int) Void {
 	var va = state[a]
 	var vb = state[b]
 	var vc = state[c]
@@ -284,23 +300,27 @@ fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Void:
 	state.set(b, vb)
 	state.set(c, vc)
 	state.set(d, vd)
+}
 
 // The 16-word ChaCha20 input state (RFC 8439): constants, the key, the 32-bit counter
 // and the 12-byte nonce.
-fn initial_state(key: Bytes, counter: Int, nonce: Bytes) List[Int]:
+fn initial_state(key Bytes, counter Int, nonce Bytes) List[Int] {
 	var initial = [1634760805, 857760878, 2036477234, 1797285236]
-	for index in 0..8:
+	for index in 0..8 {
 		initial.append(le32(key, index * 4))
+	}
 	initial.append(counter)
-	for index in 0..3:
+	for index in 0..3 {
 		initial.append(le32(nonce, index * 4))
+	}
 	return initial
+}
 
 // Runs the 20 ChaCha rounds over `initial` and returns the 16 keystream words.
-fn keystream(initial: List[Int]) List[Int]:
+fn keystream(initial List[Int]) List[Int] {
 	var state = initial.clone()
 
-	for round in 0..10:
+	for round in 0..10 {
 		quarter(state, 0, 4, 8, 12)
 		quarter(state, 1, 5, 9, 13)
 		quarter(state, 2, 6, 10, 14)
@@ -309,46 +329,54 @@ fn keystream(initial: List[Int]) List[Int]:
 		quarter(state, 1, 6, 11, 12)
 		quarter(state, 2, 7, 8, 13)
 		quarter(state, 3, 4, 9, 14)
+	}
 
-	for index in 0..16:
+	for index in 0..16 {
 		state.set(index, bit_and(state[index] + initial[index], 4294967295))
+	}
 	return state
+}
 
 // One 64-byte ChaCha20 keystream block for a 32-byte key, 32-bit counter and 12-byte
 // nonce.
-fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
+fn block(key Bytes, counter Int, nonce Bytes) Bytes {
 	words := keystream(initial_state(key, counter, nonce))
 	var out = BytesBuilder()
-	for word in words:
-		for offset in 0..4:
+	for word in words {
+		for offset in 0..4 {
 			out.append(
 				bit_and(
 					shift_right_unsigned(word, 8 * offset),
 					255,
 				).to_uint8() or 0
 			)
+		}
+	}
 	return out.build()
+}
 
-fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
+fn check_key_nonce(key, nonce Bytes) Bool {
 	return key.length() == 32 and nonce.length() == 12
+}
 
 // Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439
 // counters are 32 bits).
-fn fits_counter(counter: Int, length: Int) Bool:
+fn fits_counter(counter, length Int) Bool {
 	return (length + 63) / 64 <= 4294967296 - counter
+}
 
-fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
+fn xor_stream(key Bytes, counter Int, nonce, data Bytes) Bytes {
 	var out = BytesBuilder()
 	var state = initial_state(key, counter, nonce)
 	var position = 0
 	var index = counter
 
-	while position < data.length():
+	while position < data.length() {
 		state.set(12, index)
 
-		for word in keystream(state):
-			for offset in 0..4:
-				if position < data.length():
+		for word in keystream(state) {
+			for offset in 0..4 {
+				if position < data.length() {
 					pad := bit_and(shift_right_unsigned(word, 8 * offset), 255)
 					out.append(
 						bit_xor(
@@ -357,7 +385,12 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 						).to_uint8() or 0
 					)
 					position += 1
+				}
+			}
+		}
 
 		index += 1
+	}
 
 	return out.build()
+}

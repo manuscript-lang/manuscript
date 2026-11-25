@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Void:\n\tsend(\n\t\tpayload: incoming_request_payload\n\t\t.normalize_whitespace()\n\t\t.remove_legacy_separators()\n\t\t.trim_whitespace()\n\t)\n"
+    "fmt": "fn work() Void {\n\tsend(\n\t\tpayload: incoming_request_payload\n\t\t.normalize_whitespace()\n\t\t.remove_legacy_separators()\n\t\t.trim_whitespace()\n\t)\n}\n"
   }
 }

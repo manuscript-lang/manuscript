@@ -1,12 +1,14 @@
 // conform: tags=control-flow,diagnostics,interfaces,records,strings,tier-core
 // conform: phase=check
 // conform: origin=pkg/checker/interface_hints_test.go:51 TestInterfaceHintCorrectionsAndReceiverScope
-interface Named:
-    fn name() String
+interface Named {
+	fn name() String
+}
 
-type E:
-    text: String
+type E {
+	text String
+}
 
-fn E.name() String: self.text.clone()
+fn E.name() String => self.text.clone()
 
-fn named_value() Named: E("bad input")
+fn named_value() Named => E("bad input")

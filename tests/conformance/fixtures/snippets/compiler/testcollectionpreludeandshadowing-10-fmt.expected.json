@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Map[K, V]:\n\tvalue: V\n\nfn f(m: Map[String, Int]) Void:\n\tm.add(\"a\", 1)\n"
+    "fmt": "type Map[K, V] {\n\tvalue V\n}\n\nfn f(m Map[String, Int]) Void {\n\tm.add(\"a\", 1)\n}\n"
   }
 }

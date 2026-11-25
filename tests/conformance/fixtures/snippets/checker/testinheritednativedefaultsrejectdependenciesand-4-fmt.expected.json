@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(value: Bytes = \"\".to_bytes()) Bytes: ...\n"
+    "fmt": "fn f(value Bytes = \"\".to_bytes()) Bytes { ... }\n"
   }
 }

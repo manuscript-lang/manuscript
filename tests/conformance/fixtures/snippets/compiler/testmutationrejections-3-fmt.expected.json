@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(value: Val) Void:\n\tvalue.missing = 1\n"
+    "fmt": "fn f(value Val) Void {\n\tvalue.missing = 1\n}\n"
   }
 }

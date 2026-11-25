@@ -137,16 +137,6 @@ const uint8_t *msrt_list_at(const MsList *v, const MsTypeDesc *d, int64_t index,
   return default_value; /* NULL after a posted fault */
 }
 
-void msrt_list_get(const MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *default_value,
-                   uint8_t *out) {
-  const uint8_t *element = msrt_list_at(v, d, index, default_value);
-  if (element == NULL) {
-    __builtin_memset(out, 0, d->size); /* a fault was posted: the caller leaves, and a zero slot drops */
-    return;
-  }
-  ms_slot_copy(d, element, out);
-}
-
 static int64_t load_i64(const uint8_t *slot) {
   int64_t value = 0;
   __builtin_memcpy(&value, slot, sizeof value);

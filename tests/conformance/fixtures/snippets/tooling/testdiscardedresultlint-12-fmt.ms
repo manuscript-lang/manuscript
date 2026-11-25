@@ -1,8 +1,9 @@
 // conform: tags=formatter,parser,tier-core,try-result
 // conform: phase=parse
 // conform: origin=pkg/tooling/result_lint_test.go:26 TestDiscardedResultLint
-fn operation() Void!: ok()
+fn operation() Void! => ok()
 
-fn caller() Int!:
-    operation()?
-    return ok(1)
+fn caller() Int! {
+	operation()?
+	return ok(1)
+}

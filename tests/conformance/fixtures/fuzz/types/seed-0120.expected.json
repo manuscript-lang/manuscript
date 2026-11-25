@@ -12,16 +12,16 @@
         "message": "expected Bool, found Int (in an if condition)",
         "position": {
           "file": "seed-0120.ms",
-          "line": 14,
+          "line": 15,
           "column": 8,
-          "offset": 423
+          "offset": 414
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0120.ms:14:8: type: expected Bool, found Int (in an if condition)\n    |\n 14 |     if 1:\n    |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0120.ms:15:8: type: expected Bool, found Int (in an if condition)\n    |\n 15 |     if 1 {\n    |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

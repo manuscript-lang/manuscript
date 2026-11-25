@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrong[W](values: Map[String, Int], transform: fn(String, Int) W) Void:\n\tmapped := values.map_keys(transform)\n"
+    "fmt": "fn wrong[W](values Map[String, Int], transform fn(String, Int) W) Void {\n\tmapped := values.map_keys(transform)\n}\n"
   }
 }

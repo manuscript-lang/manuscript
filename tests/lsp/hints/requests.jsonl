@@ -1,6 +1,6 @@
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"$ROOT_URI","capabilities":{}}}
-{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"type Point:\n\tx: Int\n\nfn main() Void:\n\tp := Point(x: 1)\n\tcount: Int := 3\n\tname := \"a\"\n\tprint(p.x + count)\n\tprint(name)\n"}}}
-{"jsonrpc":"2.0","id":2,"method":"textDocument/inlayHint","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"range":{"start":{"line":0,"character":0},"end":{"line":10,"character":0}}}}
-{"jsonrpc":"2.0","id":3,"method":"textDocument/typeDefinition","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":7,"character":7}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"type Point {\n\tx Int\n}\n\nfn main() Void {\n\tp := Point(x: 1)\n\tcount Int := 3\n\tname := \"a\"\n\tprint(p.x + count)\n\tprint(name)\n}\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/inlayHint","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"range":{"start":{"line":0,"character":0},"end":{"line":12,"character":0}}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/typeDefinition","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":8,"character":7}}}
 {"jsonrpc":"2.0","id":4,"method":"shutdown"}
 {"jsonrpc":"2.0","method":"exit"}

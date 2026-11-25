@@ -3,17 +3,20 @@
 // conform: origin=m.add(w.clone(), m.get_or(w, 0) + 1) borrows w and copies the key only when it is absent
 import stdout from "@std/io/io.ms"
 
-fn tally(words: List[String]) Map[String, Int]:
-    var m = Map[String, Int]()
+fn tally(words List[String]) Map[String, Int] {
+	var m = Map[String, Int]()
 
-    for i in 0..words.length():
-        w := words.get(i)
-        m.add(w.clone(), m.get_or(w, 0) + 1)
+	for i in 0..words.length() {
+		w := words[i]
+		m.add(w.clone(), m.get_or(w, 0) + 1)
+	}
 
-    return m
+	return m
+}
 
-fn main() Void:
-    m := tally(["a", "b", "a", "c", "a", "b"])
-    void stdout().write(
-        f"{m.length()} {m.get_or("a", 0)} {m.get_or("b", 0)} {m.get_or("c", 0)}\n"
-    )
+fn main() Void {
+	m := tally(["a", "b", "a", "c", "a", "b"])
+	void stdout().write(
+		f"{m.length()} {m.get_or("a", 0)} {m.get_or("b", 0)} {m.get_or("c", 0)}\n"
+	)
+}

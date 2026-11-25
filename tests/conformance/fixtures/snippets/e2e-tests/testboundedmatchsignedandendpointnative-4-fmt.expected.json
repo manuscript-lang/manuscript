@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn main() Int:\n\tshapes := [Shape.Circle(2)]\n\tif area(shapes.get(2, Shape.Tri(7))) != 7: return 1\n\n\treturn 0\n"
+    "fmt": "export fn main() Int {\n\tshapes := [Shape.Circle(2)]\n\tif area(shapes.get(2, Shape.Tri(7))) != 7 { return 1 }\n\n\treturn 0\n}\n"
   }
 }

@@ -3,56 +3,71 @@
 // conform: origin=tests/e2e/testdata/accept/inherent-methods.ms
 import panic from "@std/core.ms"
 
-interface Show:
-    fn show() String
+interface Show {
+	fn show() String
+}
 
-type Counter:
-    value: Int
+type Counter {
+	value Int
+}
 
-type Box[T: Clonable]:
-    item: T
+type Box[T Clonable] {
+	item T
+}
 
-enum Shape:
-    Circle(r: Int)
-    Square(s: Int)
+enum Shape {
+	Circle(r Int)
+	Square(s Int)
+}
 
-fn Counter.double() Int:
-    return self.value * 2
+fn Counter.double() Int {
+	return self.value * 2
+}
 
-fn Counter.bump(by: Int = 1) Counter:
-    return Counter(value: self.value + by)
+fn Counter.bump(by Int = 1) Counter {
+	return Counter(value: self.value + by)
+}
 
-fn Counter.depth(n: Int) Int:
-    if n == 0:
-        return self.value
+fn Counter.depth(n Int) Int {
+	if n == 0 {
+		return self.value
+	}
+	return self.depth(n: n - 1) + 1
+}
 
-    return self.depth(n: n - 1) + 1
+fn Counter.overflow() Int {
+	return self.value * self.value
+}
 
-fn Counter.overflow() Int:
-    return self.value * self.value
+fn Counter.show() String {
+	return "counter"
+}
 
-fn Counter.show() String:
-    return "counter"
+fn Box[T].get() T {
+	return self.item.clone()
+}
 
-fn Box[T].get() T:
-    return self.item.clone()
+fn Shape.area() Int {
+	match self {
+		Circle(r) => return r * r * 3
+		Square(s) => return s * s
+	}
+}
 
-fn Shape.area() Int:
-    match self:
-        Circle(r): return r * r * 3
-        Square(s): return s * s
+fn check(ok Bool, name String) Void {
+	if not ok {
+		return panic(message: name)
+	}
+}
 
-fn check(ok: Bool, name: String) Void:
-    if not ok:
-        return panic(message: name)
-
-test "inherent methods":
-    counter := Counter(value: 4)
-    check(ok: counter.double() == 8, name: "double")
-    check(ok: counter.bump().value == 5, name: "default argument")
-    check(ok: counter.bump(by: 3).value == 7, name: "explicit argument")
-    check(ok: counter.depth(n: 5) == 9, name: "recursion")
-    check(ok: counter.show() == "counter", name: "contract beside inherent")
-    check(ok: Box(item: 7).get() == 7, name: "generic receiver")
-    check(ok: Shape.Square(s: 3).area() == 9, name: "alternative receiver")
-    check(ok: Circle(r: 2).area() == 12, name: "unqualified case")
+test "inherent methods" {
+	counter := Counter(value: 4)
+	check(ok: counter.double() == 8, name: "double")
+	check(ok: counter.bump().value == 5, name: "default argument")
+	check(ok: counter.bump(by: 3).value == 7, name: "explicit argument")
+	check(ok: counter.depth(n: 5) == 9, name: "recursion")
+	check(ok: counter.show() == "counter", name: "contract beside inherent")
+	check(ok: Box(item: 7).get() == 7, name: "generic receiver")
+	check(ok: Shape.Square(s: 3).area() == 9, name: "alternative receiver")
+	check(ok: Circle(r: 2).area() == 12, name: "unqualified case")
+}

@@ -1,6 +1,7 @@
 // conform: tags=formatter,parser,tier-core,try-result
 // conform: phase=parse
 // conform: origin=pkg/compiler/result_argument_inference_test.go:47 TestResultArgumentInference
-fn first() Int:
-    r: Int! := f()
-    return h(r)
+fn first() Int {
+	r Int! := f()
+	return h(r)
+}

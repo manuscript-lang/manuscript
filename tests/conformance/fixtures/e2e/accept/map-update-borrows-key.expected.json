@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "map-update-borrows-key.ms::a key stays usable after update, new or existing",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "map-update-borrows-key.ms::distinct long keys each get their own copy",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 2,
+        "selected": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN map-update-borrows-key.ms::a key stays usable after update, new or existing\nPASS map-update-borrows-key.ms::a key stays usable after update, new or existing\nRUN map-update-borrows-key.ms::distinct long keys each get their own copy\nPASS map-update-borrows-key.ms::distinct long keys each get their own copy\n2 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

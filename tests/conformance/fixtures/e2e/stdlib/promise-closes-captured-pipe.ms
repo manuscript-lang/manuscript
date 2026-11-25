@@ -7,22 +7,26 @@ import (
 	Pipe, pipe from "@std/io/io.ms",
 )
 
-fn drain(input: Pipe[Int]) Void!:
-	while true:
+fn drain(input Pipe[Int]) Void! {
+	while true {
 		item := input.receive()
-		if item.is_error(): break
+		if item.is_error() { break }
 
 		raw := item.get()
 
-		if raw != null:
+		if raw != null {
 			print(f"got {raw}")
-		else:
+		} else {
 			break
+		}
+	}
+}
 
-fn start(move input: Pipe[Int]) Promise[Void]:
-	return promise(fn: drain(input))
+fn start(move input Pipe[Int]) Promise[Void] {
+	return promise(() => drain(input))
+}
 
-export fn main() Int:
+export fn main() Int {
 	queue := pipe[Int](4)
 	var writer = queue.writer()
 	task := start(queue)
@@ -30,3 +34,4 @@ export fn main() Int:
 	void writer.close()
 	void task.wait()
 	return 0
+}

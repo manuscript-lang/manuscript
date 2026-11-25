@@ -1,2 +1,3 @@
-export fn answer() Int:
+export fn answer() Int {
 	return 42
+}

@@ -14,13 +14,13 @@
           "file": "testredundantpreludeimportdiagnosticsandfixes-11.ms",
           "line": 6,
           "column": 5,
-          "offset": 228
+          "offset": 222
         },
         "end": {
           "file": "testredundantpreludeimportdiagnosticsandfixes-11.ms",
           "line": 6,
           "column": 9,
-          "offset": 232
+          "offset": 226
         },
         "fix": {
           "position": {
@@ -33,9 +33,9 @@
             "file": "testredundantpreludeimportdiagnosticsandfixes-11.ms",
             "line": 7,
             "column": 41,
-            "offset": 274
+            "offset": 268
           },
-          "replacement": "\n    // keep me\n    "
+          "replacement": "\n\t// keep me\n\t"
         }
       }
     ],

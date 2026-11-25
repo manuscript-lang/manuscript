@@ -15,51 +15,52 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn source(count: Int, mode: String) String:
-	header := "type Counter:\n    value: Int\n\nfn Counter.next() Counter: Counter(self.value + 1)\n\n"
-	if mode == "native-chain":
+fn source(count Int, mode String) String {
+	header := "type Counter:\n    value Int\n\nfn Counter.next() Counter: Counter(self.value + 1)\n\n"
+	if mode == "native-chain" {
 		return (
 			"export fn main() Int:\n    result := [0]"
 			+ ".map(fn v: v + 1)".repeat(count)
 			+ "\n    print(result[0])\n    return 0\n"
 		)
-	if mode == "source-chain":
+	}
+	if mode == "source-chain" {
 		return (
 			header
 			+ "export fn main() Int:\n    result := Counter(0)"
 			+ ".next()".repeat(count)
 			+ "\n    print(result.value)\n    return 0\n"
 		)
+	}
 
 	var text = header + "export fn main() Int:\n    step0 := Counter(0)\n"
-	for i in 0..count:
+	for i in 0..count {
 		text += f"    step{i + 1} := step{i}.next()\n"
+	}
 	return text + f"    print(step{count}.value)\n    return 0\n"
+}
 
-fn measure(
-	before: String,
-	after: String,
-	directory: String,
-	rounds: Int,
-	filter: String,
-) Void!:
+fn measure(before, after, directory String, rounds Int, filter String) Void! {
 	ensure_directory(directory)
 	ensure_directory(f"{directory}/inputs")
 
 	var files = List[String]()
 
-	for count in [0, 1, 4, 8, 10, 12, 14, 16, 18]:
-		for mode in ["source-chain", "source-flat", "native-chain"]:
+	for count in [0, 1, 4, 8, 10, 12, 14, 16, 18] {
+		for mode in ["source-chain", "source-flat", "native-chain"] {
 			file := f"{directory}/inputs/{mode}-{count}.ms"
 			write_text(file, source(count, mode))
 			files.append(file.clone())
+		}
+	}
 
 	for file in [
 		"examples/hello/ms.toml", "tools/conform.ms", "bench/perf/stdlib/ms.toml"
-	]:
+	] {
 		files.append(absolute(file.clone()))
-	if filter != "": files = files.filter(fn file: file.ends_with(f"/{filter}"))
-	if files.is_empty(): return invalid("no matching inputs")
+	}
+	if filter != "" { files = files.filter(file => file.ends_with(f"/{filter}")) }
+	if files.is_empty() { return invalid("no matching inputs") }
 
 	write_text(
 		f"{directory}/binaries.txt",
@@ -69,14 +70,14 @@ fn measure(
 	var rows = "round\tlabel\tinput\twall_ns\tmax_resident_bytes\tinput_sha256\tuser_ns\tsystem_ns\n"
 	var expected = Map[String, String]()
 
-	for round in 0..rounds + 1:
-		order := if round % 2 == 0: ["before", "after"] else: ["after", "before"]
+	for round in 0..rounds + 1 {
+		order := if round % 2 == 0 { ["before", "after"] } else { ["after", "before"] }
 
-		for i in 0..files.length():
+		for i in 0..files.length() {
 			file := files[(i + round * 7) % files.length()]
 
-			for label in order:
-				binary := if label == "before": before.clone() else: after.clone()
+			for label in order {
+				binary := if label == "before" { before.clone() } else { after.clone() }
 				command := [
 					"60",
 					"taskset",
@@ -96,32 +97,39 @@ fn measure(
 				write_text(f"{prefix}.stdout", ran.stdout)
 				write_text(f"{prefix}.stderr", ran.stderr)
 				write_text(f"{prefix}.status", f"{ran.code}\n")
-				if not ran.ok or ran.code != 0: return invalid(
-					f"check failed: {file}: {ran.stderr}"
-				)
+				if not ran.ok or ran.code != 0 {
+					return invalid(f"check failed: {file}: {ran.stderr}")
+				}
 
 				previous := expected.get(file)
 
-				if previous != null:
-					if previous != ran.stdout: return invalid(
-						f"checker output changed: {file}"
-					)
-				else:
+				if previous != null {
+					if previous != ran.stdout {
+						return invalid(f"checker output changed: {file}")
+					}
+				} else {
 					expected.add(file.clone(), ran.stdout.clone())
+				}
 
 				rows += f"{round}\t{label}\t{file}\t{elapsed}\t{ran.max_resident_bytes}\t{file_sha256(file)}\t{measured.user_ns}\t{measured.system_ns}\n"
 				write_text(f"{directory}/samples.tsv", rows)
 				print(f"{round} {label} {file} {elapsed} ns")
+			}
+		}
+	}
+}
 
-export fn main() Void!:
+export fn main() Void! {
 	args := arguments()
-	if args.length() < 4 or args.length() > 5:
+	if args.length() < 4 or args.length() > 5 {
 		return invalid("expected BEFORE AFTER OUTPUT ROUNDS [FILTER]")
+	}
 
 	measure(
 		absolute(args[0].clone()),
 		absolute(args[1].clone()),
 		absolute(args[2].clone()),
 		args[3].parse_int() or panic("called Optional.get() on null"),
-		if args.length() == 5: args[4].clone() else: "",
+		if args.length() == 5 { args[4].clone() } else { "" },
 	)?
+}

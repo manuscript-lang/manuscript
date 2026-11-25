@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[Hashable]:\n\tv: Hashable\n"
+    "fmt": "type Box[Hashable] {\n\tv Hashable\n}\n"
   }
 }

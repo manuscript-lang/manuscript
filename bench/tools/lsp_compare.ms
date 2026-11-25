@@ -12,122 +12,154 @@ import (
 	absolute, fail, invalid, median, options, sample, write_text from "./lib.ms",
 )
 
-type Case:
-	mode: String
-	count: Int
-	shape: String
+type Case {
+	mode String
+	count Int
+	shape String
+}
 
-fn add(cases: List[Case], mode: String, count: Int, shape: String) List[Case]:
+fn add(cases List[Case], mode String, count Int, shape String) List[Case] {
 	var out = cases.clone()
 	out.append(Case(mode.clone(), count, shape.clone()))
 	return out
+}
 
-fn hover_cases() List[Case]:
+fn hover_cases() List[Case] {
 	var cases = List[Case]()
-	for mode in ["hover", "hover-first", "hover-blank", "hover-name"]:
-		for count in [1, 100, 1000, 4000]:
+	for mode in ["hover", "hover-first", "hover-blank", "hover-name"] {
+		for count in [1, 100, 1000, 4000] {
 			cases = add(cases, mode, count, "ascii")
-	for shape in ["unicode", "crlf", "long"]:
+		}
+	}
+	for shape in ["unicode", "crlf", "long"] {
 		cases = add(cases, "hover", 1000, shape)
-	for mode in ["index", "symbols", "semantic", "references", "completion", "format"]:
-		for count in [1, 100, 1000]:
+	}
+	for mode in ["index", "symbols", "semantic", "references", "completion", "format"] {
+		for count in [1, 100, 1000] {
 			cases = add(cases, mode, count, "ascii")
+		}
+	}
 
-	for count in [1, 100, 1000, 4000]:
+	for count in [1, 100, 1000, 4000] {
 		cases = add(cases, "references", count, "references")
 		cases = add(cases, "references-first", count, "ascii")
+	}
 
 	return add(cases, "references-first", 1, "tail")
+}
 
-fn outline_cases() List[Case]:
+fn outline_cases() List[Case] {
 	var cases = List[Case]()
-	for count in [1, 16, 128, 1000]:
-		for size in [0, 1024, 100000]:
+	for count in [1, 16, 128, 1000] {
+		for size in [0, 1024, 100000] {
 			cases = add(cases, "symbols", count, f"spaces-{size}")
-	for count in [1, 1000]:
-		for shape in ["spaces-1000000", "spaces-crlf-100000", "tail"]:
+		}
+	}
+	for count in [1, 1000] {
+		for shape in ["spaces-1000000", "spaces-crlf-100000", "tail"] {
 			cases = add(cases, "symbols", count, shape)
-	for count in [1, 100, 1000]:
-		for shape in ["unicode", "crlf"]:
+		}
+	}
+	for count in [1, 100, 1000] {
+		for shape in ["unicode", "crlf"] {
 			cases = add(cases, "symbols", count, shape)
+		}
+	}
 	for mode in [
 		"hover", "hover-name", "hover-blank", "index", "symbols", "semantic",
 		"references", "completion", "format"
-	]:
-		for count in [1, 100, 1000]:
+	] {
+		for count in [1, 100, 1000] {
 			cases = add(cases, mode, count, "ascii")
+		}
+	}
 	return cases
+}
 
-fn semantic_cases() List[Case]:
+fn semantic_cases() List[Case] {
 	var cases = List[Case]()
-	for count in [1, 8, 32, 128, 512, 2048, 8192]:
-		for shape in ["list-flat", "list-lines"]:
+	for count in [1, 8, 32, 128, 512, 2048, 8192] {
+		for shape in ["list-flat", "list-lines"] {
 			cases = add(cases, "semantic", count, shape)
-	for count in [1, 128, 2048]:
-		for shape in ["list-unicode", "list-crlf", "list-unicode-crlf"]:
+		}
+	}
+	for count in [1, 128, 2048] {
+		for shape in ["list-unicode", "list-crlf", "list-unicode-crlf"] {
 			cases = add(cases, "semantic", count, shape)
-	for count in [1, 100, 1000]:
+		}
+	}
+	for count in [1, 100, 1000] {
 		cases = add(cases, "semantic", count, "ascii")
-	for count in [1, 1000]:
-		for shape in ["unicode", "crlf", "unfinished", "unfinished-crlf"]:
+	}
+	for count in [1, 1000] {
+		for shape in ["unicode", "crlf", "unfinished", "unfinished-crlf"] {
 			cases = add(cases, "semantic", count, shape)
+		}
+	}
 	cases = add(cases, "semantic", 1000, "long")
 	cases = add(cases, "semantic", 1, "tail")
 	for mode in [
 		"hover", "hover-name", "hover-blank", "index", "symbols", "references",
 		"completion", "format"
-	]:
-		for count in [1, 100, 1000]:
+	] {
+		for count in [1, 100, 1000] {
 			cases = add(cases, mode, count, "ascii")
-	for count in [1, 32, 512, 8192]:
-		for shape in ["list-flat", "list-lines"]:
+		}
+	}
+	for count in [1, 32, 512, 8192] {
+		for shape in ["list-flat", "list-lines"] {
 			cases = add(cases, "format", count, shape)
+		}
+	}
 	return cases
+}
 
-type Run:
-	elapsed: Int
-	checksum: Int
-	size: Int
-	rss: Int
+type Run {
+	elapsed, checksum, size, rss Int
+}
 
-fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
+fn run_harness(binary String, c Case, rounds Int, cpu String) Run! {
 	var program = binary.clone()
 	var args = [c.mode.clone(), f"{c.count}", f"{rounds}", c.shape.clone()]
 
-	if cpu != "":
+	if cpu != "" {
 		args = ["--cpu-list", cpu.clone(), binary.clone()].concat(args)
 		program = "taskset"
+	}
 
 	out := sample(program, args)?
 	fields := out.trim().split(",")
-	if fields.length() != 8: return invalid(f"malformed harness row: {out.trim()}")
+	if fields.length() != 8 { return invalid(f"malformed harness row: {out.trim()}") }
 	if (
 		fields[0] != c.mode
 		or fields[1] != f"{c.count}"
 		or fields[2] != f"{rounds}"
 		or fields[3] != c.shape
-	):
+	) {
 		return invalid(f"harness row does not echo its arguments: {out.trim()}")
+	}
 
 	var n = List[Int]()
 
-	for i in 4..8:
+	for i in 4..8 {
 		v := fields[i].parse_int()
-		if v == null: return invalid(f"not an integer: {fields[i]}")
+		if v == null { return invalid(f"not an integer: {fields[i]}") }
 
 		n.append(v)
+	}
 
 	return ok(Run(n[0], n[1], n[2], n[3]))
+}
 
 fn compare(
-	suite: String,
-	before: String,
-	after: String,
-	out: String,
-	samples: Int,
-	cpu: String,
-) Result[Void, Error]:
-	cases := if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
+	suite,
+	before,
+	after,
+	out String,
+	samples Int,
+	cpu String,
+) Result[Void, Error] {
+	cases := if suite == "hover" { hover_cases() } else { if suite == "outline" { outline_cases() } else { semantic_cases() } }
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())
 	paths.add("after", after.clone())
@@ -136,41 +168,53 @@ fn compare(
 		"mode,count,shape,sample,binary,rounds,elapsed_ns,checksum_per_query,source_bytes,peak_rss_kib,cpu"
 	]
 
-	for c in cases:
+	for c in cases {
 		var rounds = Map[String, Int]()
 		var expected = Run(0, -1, -1, 0)
 		var seen = false
 
-		for name in ["before", "after"]:
+		for name in ["before", "after"] {
 			first := run_harness(paths.get_or(name, ""), c, 1, cpu)?
 
-			if not seen:
+			if not seen {
 				expected = Run(0, first.checksum, first.size, 0)
 				seen = true
+			}
 
-			if first.checksum != expected.checksum or first.size != expected.size:
+			if first.checksum != expected.checksum or first.size != expected.size {
 				return invalid(
 					f"{c.mode} {c.count} {c.shape}: before and after disagree"
 				)
+			}
 
 			want := (30000000 + first.elapsed - 1) / first.elapsed
 			rounds.add(
 				name.clone(),
-				if want < 1: 1 else: (
-					if want > 100000: 100000 else: want
-				),
+				if want < 1 {
+					1
+				} else {
+					(if want > 100000 { 100000 } else { want })
+				}
 			)
+		}
 
 		var observed = Map[String, List[Float]]()
 		observed.add("before", List[Float]())
 		observed.add("after", List[Float]())
 
-		for s in 0..samples:
-			for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
+		for s in 0..samples {
+			for name in (
+				if s % 2 == 0 {
+					["before", "after"]
+				} else {
+					["after", "before"]
+				}
+			) {
 				r := rounds.get_or(name, 1)
 				got := run_harness(paths.get_or(name, ""), c, r, cpu)?
-				if got.checksum != expected.checksum or got.size != expected.size:
+				if got.checksum != expected.checksum or got.size != expected.size {
 					return invalid(f"{c.mode} {c.count} {c.shape}: output changed")
+				}
 
 				var list = observed.get_or(name, [])
 				list.append(got.elapsed.to_float() / r.to_float())
@@ -178,6 +222,8 @@ fn compare(
 				rows.append(
 					f"{c.mode},{c.count},{c.shape},{s},{name},{r},{got.elapsed},{got.checksum},{got.size},{got.rss},{cpu}"
 				)
+			}
+		}
 
 		old := median(observed.get_or("before", []))
 		new := median(observed.get_or("after", []))
@@ -188,28 +234,31 @@ fn compare(
 			)
 			.get()
 		)
+	}
 
 	write_text(out, rows.join("\n") + "\n")
 	return ok()
+}
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
-	if args.length() < 3 or not ["hover", "outline", "semantic"].contains(args[0]):
+	if args.length() < 3 or not ["hover", "outline", "semantic"].contains(args[0]) {
 		return fail(
 			"usage: lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE [--samples N] [--cpu N]"
 		)
+	}
 
 	parsed := options(
 		args.slice(3, args.length()).get_or([]),
 		["out", "samples", "cpu"],
 		["out"],
 	)
-	if parsed.is_error(): return fail(parsed.err().message)
+	if parsed.is_error() { return fail(parsed.err().message) }
 
 	opts := parsed.get_or(Map[String, String]())
-	default_samples := if args[0] == "hover": 9 else: 10
+	default_samples := if args[0] == "hover" { 9 } else { 10 }
 	samples := opts.get_or("samples", f"{default_samples}").parse_int() or 0
-	if samples < 5: return fail("--samples must be at least 5")
+	if samples < 5 { return fail("--samples must be at least 5") }
 
 	result := compare(
 		args[0],
@@ -219,6 +268,7 @@ fn main() Int:
 		samples,
 		opts.get_or("cpu", ""),
 	)
-	if result.is_error(): return fail(result.err().message)
+	if result.is_error() { return fail(result.err().message) }
 
 	return 0
+}

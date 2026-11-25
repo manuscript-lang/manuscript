@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface DatagramSocket:\n\tfn address() String\n\tfn close() Void\n\tfn receive(max_bytes: Int?, timeout: Duration?) Datagram!\n\tfn send(data: String, address: String, timeout: Duration?) Void!\n\tfn send_bytes(data: Bytes, address: String, timeout: Duration?) Void!\n"
+    "fmt": "interface DatagramSocket {\n\tfn address() String\n\tfn close() Void\n\tfn receive(max_bytes Int?, timeout Duration?) Datagram!\n\tfn send(data, address String, timeout Duration?) Void!\n\tfn send_bytes(data Bytes, address String, timeout Duration?) Void!\n}\n"
   }
 }

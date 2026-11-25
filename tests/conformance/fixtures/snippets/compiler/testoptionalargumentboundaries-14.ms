@@ -1,7 +1,8 @@
 // conform: tags=closures,diagnostics,optional,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/optional_test.go:37 TestOptionalArgumentBoundaries
-fn f(value: Int) Int: return value
+fn f(value Int) Int => return value
 
-fn call() Void:
-    callback: fn(Int?) Int := f
+fn call() Void {
+	callback fn(Int?) Int := f
+}

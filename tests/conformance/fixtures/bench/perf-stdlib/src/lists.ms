@@ -1,81 +1,91 @@
-import bench, ints, Point from "./harness.ms"
+import Point, bench, ints from "./harness.ms"
 
-export fn bench_list() Void:
-    data := ints(100000)
+export fn bench_list() Void {
+	data := ints(100000)
 
-    bench(
-        "list.append",
-        200000,
-        fn() Int:
-            var xs: List[Int] = []
-            for i in 0..200000:
-                xs.append(i)
-            return xs.length()
-    )
+	bench(
+		"list.append",
+		200000,
+		fn() Int {
+			var xs List[Int] = []
+			for i in 0..200000 {
+				xs.append(i)
+			} return xs.length()
+		}
+	)
 
-    bench(
-        "list.at",
-        200000,
-        fn() Int:
-            var n = 0
-            for i in 0..200000:
-                n += data.get_or(i % 100000, 0)
-            return n
-    )
+	bench(
+		"list.at",
+		200000,
+		fn() Int {
+			var n = 0
+			for i in 0..200000 {
+				n += data.get_or(i % 100000, 0)
+			} return n
+		}
+	)
 
-    bench(
-        "list.for_in",
-        100000,
-        fn() Int:
-            var n = data.sum()
-            return n
-    )
+	bench(
+		"list.for_in",
+		100000,
+		fn() Int {
+			var n = data.sum()
+			return n
+		}
+	)
 
-    bench(
-        "list.map",
-        100000,
-        fn() Int:
-            return data.map(fn(x: Int) Int: x * 2).length()
-    )
-    bench(
-        "list.filter",
-        100000,
-        fn() Int:
-            return data.filter(fn(x: Int) Bool: x % 2 == 0).length()
-    )
-    bench(
-        "list.fold",
-        100000,
-        fn() Int:
-            return data.fold(0, fn(acc: Int, x: Int) Int: acc + x)
-    )
-    bench(
-        "list.sorted",
-        100000,
-        fn() Int:
-            return (data.sorted(fn(left: Int, right: Int) Int: left - right).length())
-    )
+	bench(
+		"list.map",
+		100000,
+		fn() Int {
+			return data.map(fn(x Int) Int => x * 2).length()
+		}
+	)
+	bench(
+		"list.filter",
+		100000,
+		fn() Int {
+			return data.filter(fn(x Int) Bool => x % 2 == 0).length()
+		}
+	)
+	bench(
+		"list.fold",
+		100000,
+		fn() Int {
+			return data.fold(0, fn(acc Int, x Int) Int => acc + x)
+		}
+	)
+	bench(
+		"list.sorted",
+		100000,
+		fn() Int {
+			return (data.sorted(fn(left Int, right Int) Int => left - right).length())
+		}
+	)
 
-    bench(
-        "list.contains",
-        100,
-        fn() Int:
-            var n = 0
-            for i in 0..100:
-                if data.contains(-1): n += 1
-            return n
-    )
+	bench(
+		"list.contains",
+		100,
+		fn() Int {
+			var n = 0
+			for i in 0..100 {
+				if data.contains(-1) { n += 1 } } return n
+		}
+	)
 
-    bench("list.distinct", 100000, fn() Int: return data.distinct().length())
-    bench(
-        "list.concat_reverse", 100000,
-        fn() Int: return data.concat(data).reversed().length()
-    )
+	bench("list.distinct", 100000, fn() Int => return data.distinct().length())
+	bench(
+		"list.concat_reverse",
+		100000,
+		fn() Int => return data.concat(data).reversed().length()
+	)
 
-    bench(
-        "list.records_map",
-        100000,
-        fn() Int:
-            points := data.map(fn(x: Int) Point: Point(x, x + 1))
-            return points.fold(0, fn(acc: Int, p: Point) Int: acc + p.y)
-    )
+	bench(
+		"list.records_map",
+		100000,
+		fn() Int {
+			points := data.map(fn(x Int) Point => Point(x, x + 1))
+			return points.fold(0, fn(acc Int, p Point) Int => acc + p.y)
+		}
+	)
+}

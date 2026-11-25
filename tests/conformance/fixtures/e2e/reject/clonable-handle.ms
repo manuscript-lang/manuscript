@@ -2,11 +2,14 @@
 // conform: phase=check
 import FileHandle from "@std/os/fs.ms"
 
-fn twice[T: Clonable](value: T) List[T]:
+fn twice[T Clonable](value T) List[T] {
 	return [value.clone(), value]
+}
 
-fn keep(handle: FileHandle) Int:
+fn keep(handle FileHandle) Int {
 	return twice(handle).length()
+}
 
-export fn main() Int:
+export fn main() Int {
 	return 0
+}

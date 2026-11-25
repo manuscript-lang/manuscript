@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Request:\n\tcallback: fn() Int\n\nfn f(text: String) Request!:\n\treturn parse[Request](text)\n"
+    "fmt": "type Request {\n\tcallback fn() Int\n}\n\nfn f(text String) Request! {\n\treturn parse[Request](text)\n}\n"
   }
 }

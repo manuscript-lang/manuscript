@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export interface Read[T: Equal]:\n\tfn get() T\n\ntype Box[T]:\n\tvalue: T\n\nfn Box[T: Equal].get() T:\n\treturn self.value\n"
+    "fmt": "export interface Read[T Equal] {\n\tfn get() T\n}\n\ntype Box[T] {\n\tvalue T\n}\n\nfn Box[T Equal].get() T {\n\treturn self.value\n}\n"
   }
 }

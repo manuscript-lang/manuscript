@@ -1,10 +1,12 @@
 // conform: tags=closures,formatter,mutation,parser,strings,tier-core
 // conform: phase=parse
 // conform: origin=documentation/core-language/functions/function-values-and-closures.md:52
-fn make_headline() fn() String:
-    var subject = "Weekly update"
-    headline := fn:
-        return subject.clone()
-    subject = "Launch announcement"
-    return headline
+fn make_headline() fn() String {
+	var subject = "Weekly update"
+	headline := () => {
+		return subject.clone()
+	}
+	subject = "Launch announcement"
+	return headline
+}
 // make_headline()() returns "Weekly update".

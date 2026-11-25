@@ -1,5 +1,6 @@
 // conform: tags=formatter,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:188 TestFormatExpressionLayouts
-fn work() Void:
-    _values := {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 0: 0}
+fn work() Void {
+	_values := {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 0: 0}
+}

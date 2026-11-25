@@ -12,9 +12,9 @@
         "message": "recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle",
         "position": {
           "file": "testrecursivedataandfinitetypeapplications-19.ms",
-          "line": 8,
+          "line": 9,
           "column": 5,
-          "offset": 226
+          "offset": 223
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "testrecursivedataandfinitetypeapplications-19.ms",
           "line": 5,
           "column": 5,
-          "offset": 196
+          "offset": 194
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testrecursivedataandfinitetypeapplications-19.ms:8:5: type: recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle\n   |\n 8 |     a: A[U]\n   |     ^\n<DIR>/testrecursivedataandfinitetypeapplications-19.ms:5:5: type: recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle\n   |\n 5 |     b: B[List[T]]\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testrecursivedataandfinitetypeapplications-19.ms:9:5: type: recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle\n   |\n 9 |     a A[U]\n   |     ^\n<DIR>/testrecursivedataandfinitetypeapplications-19.ms:5:5: type: recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle\n   |\n 5 |     b B[List[T]]\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -13,15 +13,15 @@
         "position": {
           "file": "testprojectcheckdiscoveryandreporting-6.ms",
           "line": 4,
-          "column": 25,
-          "offset": 182
+          "column": 27,
+          "offset": 184
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testprojectcheckdiscoveryandreporting-6.ms:4:25: type: expected Int, found String (in the return value)\n   |\n 4 | fn broken() Int: return \"bad\"\n   |                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testprojectcheckdiscoveryandreporting-6.ms:4:27: type: expected Int, found String (in the return value)\n   |\n 4 | fn broken() Int => return \"bad\"\n   |                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

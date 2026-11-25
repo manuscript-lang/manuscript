@@ -1,15 +1,18 @@
 // conform: tags=control-flow,diagnostics,interfaces,records,strings,tier-core
 // conform: phase=check
 // conform: origin=pkg/tooling/lsp/bound_recovery_test.go:9 TestInvalidBoundsKeepEditorRecovery
-interface Named:
-    fn name() String
+interface Named {
+	fn name() String
+}
 
-type Box[Named: Named]:
-    cause: Named
+type Box[Named Named] {
+	cause Named
+}
 
-fn Box[Named].name() String: self.cause.name()
+fn Box[Named].name() String => self.cause.name()
 
-type Neighbor:
-    value: Int
+type Neighbor {
+	value Int
+}
 
-fn read(item: Neighbor) Int: item.value
+fn read(item Neighbor) Int => item.value

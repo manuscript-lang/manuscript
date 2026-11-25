@@ -6,7 +6,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "empty Base64 accepts default and explicit alphabets":
+test "empty Base64 accepts default and explicit alphabets" {
 	empty := Bytes([])
 	expect_equal(base64_encode(empty), "")?
 	expect_equal(base64_encode(empty, false), "")?
@@ -15,8 +15,9 @@ test "empty Base64 accepts default and explicit alphabets":
 	view := Bytes([251, 255, 0]).slice(1, 1)?
 	expect_equal(base64_encode(view), "")?
 	expect_equal(base64_encode(view, true), "")?
+}
 
-test "Base64 after empty retains alphabets and padding tails":
+test "Base64 after empty retains alphabets and padding tails" {
 	expect_equal(base64_encode(Bytes([])), "")?
 	expect_equal(base64_encode(Bytes([251])), "+w==")?
 	expect_equal(base64_encode(Bytes([251, 255])), "+/8=")?
@@ -24,11 +25,13 @@ test "Base64 after empty retains alphabets and padding tails":
 	expect_equal(base64_encode(Bytes([251]), true), "-w==")?
 	expect_equal(base64_encode(Bytes([251, 255]), true), "-_8=")?
 	expect_equal(base64_encode(Bytes([251, 255, 0]), true), "-_8A")?
+}
 
-test "Base64 encodes every byte and empty views":
+test "Base64 encodes every byte and empty views" {
 	var out = BytesBuilder()
-	for n in 0..256:
+	for n in 0..256 {
 		out.append(n.to_uint8() or 0)
+	}
 
 	data := out.build()
 	expect_equal(
@@ -44,34 +47,45 @@ test "Base64 encodes every byte and empty views":
 	expect_equal(base64_encode(empty), "")?
 	expect_equal(base64_decode(base64_encode(data))?, data)?
 	expect_equal(base64_decode(base64_encode(data, true), true)?, data)?
+}
 
-fn padded_input(length: Int) Bytes:
+fn padded_input(length Int) Bytes {
 	var out = BytesBuilder()
 	out.append(42)
 
-	for i in 0..length:
-		byte := if i % 3 == 0: 251 else: (if i % 3 == 1: 255 else: 0)
+	for i in 0..length {
+		byte := if i % 3 == 0 { 251 } else { (if i % 3 == 1 { 255 } else { 0 }) }
 		out.append(byte.to_uint8() or 0)
+	}
 
 	out.append(42)
 	return out.build().slice(1, length + 1).get_or(Bytes([]))
+}
 
-test "Base64 preserves tails across small and batch boundaries":
+test "Base64 preserves tails across small and batch boundaries" {
 	for length in [
 		31, 32, 33, 34, 35, 12285, 12286, 12287, 12288, 12289, 12290, 12291, 24573,
 		24574, 24575, 24576, 24577, 24578, 24579
-	]:
+	] {
 		data := padded_input(length)
 		expect_equal(data.length(), length)?
 
-		tail := if length % 3 == 1: "+w==" else: (if length % 3 == 2: "+/8=" else: "")
-		url_tail := if length % 3 == 1: "-w==" else: (
-			if length % 3 == 2: "-_8=" else: ""
-		)
+		tail := if length % 3 == 1 {
+			"+w=="
+		} else {
+			(if length % 3 == 2 { "+/8=" } else { "" })
+		}
+		url_tail := if length % 3 == 1 {
+			"-w=="
+		} else {
+			(if length % 3 == 2 { "-_8=" } else { "" })
+		}
 		expect_equal(base64_encode(data), ("+/8A".repeat(length / 3)) + tail)?
 		expect_equal(base64_encode(data, true), ("-_8A".repeat(length / 3)) + url_tail)?
+	}
+}
 
-test "Base64 padding and alphabets preserve nested views":
+test "Base64 padding and alphabets preserve nested views" {
 	storage := Bytes([9, 7, 251, 255, 0, 7, 9])
 	outer := storage.view(1, 6)
 	data := outer.view(1, 4)
@@ -80,9 +94,11 @@ test "Base64 padding and alphabets preserve nested views":
 	raw := ["", "+w", "+/8", "+/8A"]
 	url_raw := ["", "-w", "-_8", "-_8A"]
 
-	for length in 0..4:
+	for length in 0..4 {
 		part := data.view(0, length)
 		expect_equal(base64_encode(part), standard[length])?
 		expect_equal(base64_encode(part, true), url[length])?
 		expect_equal(base64_encode(part, padded: false), raw[length])?
 		expect_equal(base64_encode(part, true, false), url_raw[length])?
+	}
+}

@@ -11,42 +11,48 @@ import (
 // every level of a new directory (Windows), so the queue is sized for it. Tells the
 // test the watch is registered, reads events until `last` shows up, tells the test
 // again, then waits for more inside the native watcher.
-fn follow(root: String, last: String, seen: WriteStream[Int]) Void!:
+fn follow(root String, last String, move seen WriteStream[Int]) Void! {
 	var events = watch(root, recursive: true, options: WatchOptions(max_events: 4096))?
 	var out = seen
 	out.write(0)?
 
-	while true:
+	while true {
 		event := events.next()?
 		found := event
 
-		if found != null:
-			if found.path == last:
+		if found != null {
+			if found.path == last {
 				out.write(1)?
-		else:
+			}
+		} else {
 			break
+		}
+	}
+}
 
 // A cancelled read inside the native watcher must leave the watcher to the stream that
 // owns it. The frame of `WatchSource.next` held the source it took out of the stream,
 // refilled after `pending.pop()`, and unwinding dropped that copy too, so the watcher
 // (and its map of watch descriptors) was freed twice.
-test "cancelling a recursive watch after a burst of events releases the watcher once":
+test "cancelling a recursive watch after a burst of events releases the watcher once" {
 	temp := temporary("ms-watch-cancel-") | expect_ok?
 	path := temp.path()
 	var ready = pipe[Int](4)
 	var reader = ready.reader()
 	switch := cancel_switch()
 	last := f"{path}/d19"
-	work := promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
+	work := promise(() => follow(path.clone(), last.clone(), ready.writer())).with(
 		options: PromiseOptions(cancel: switch.signal())
 	)
 	_registered := reader.next()?
 	var i = 0
 
-	while i < 20:
+	while i < 20 {
 		create_directory(f"{path}/d{i}/e/f", recursive: true)?
 		i += 1
+	}
 
 	_arrived := reader.next()?
 	switch.cancel()
 	expect_true(work.wait().is_error())?
+}

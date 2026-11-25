@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Queue from \"@std/collections/queue.ms\"\n\nfn main() Void:\n\tvar _bounded = Queue[Int](capacity: 4)\n\tvar _unbounded = Queue[Int]()\n"
+    "fmt": "import Queue from \"@std/collections/queue.ms\"\n\nfn main() Void {\n\tvar _bounded = Queue[Int](capacity: 4)\n\tvar _unbounded = Queue[Int]()\n}\n"
   }
 }

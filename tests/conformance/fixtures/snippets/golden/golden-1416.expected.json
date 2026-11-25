@@ -12,15 +12,15 @@
         "message": "module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"",
         "position": {
           "file": "golden-1416.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
+          "line": 5,
+          "column": 5,
+          "offset": 101
         },
         "end": {
           "file": "golden-1416.ms",
-          "line": 3,
-          "column": 17,
-          "offset": 69
+          "line": 5,
+          "column": 14,
+          "offset": 110
         }
       },
       {
@@ -29,9 +29,9 @@
         "message": "unknown argument data; parameters of write: value",
         "position": {
           "file": "golden-1416.ms",
-          "line": 8,
+          "line": 9,
           "column": 20,
-          "offset": 235
+          "offset": 206
         }
       },
       {
@@ -40,9 +40,9 @@
         "message": "missing argument value: String in call to write; add 'value: <String>'",
         "position": {
           "file": "golden-1416.ms",
-          "line": 8,
+          "line": 9,
           "column": 14,
-          "offset": 229
+          "offset": 200
         }
       },
       {
@@ -51,9 +51,9 @@
         "message": "unknown binding arguments; add: import arguments from \"@std/os/env.ms\"",
         "position": {
           "file": "golden-1416.ms",
-          "line": 11,
+          "line": 13,
           "column": 13,
-          "offset": 302
+          "offset": 273
         },
         "fix": {
           "position": {
@@ -77,9 +77,9 @@
         "message": "cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead",
         "position": {
           "file": "golden-1416.ms",
-          "line": 22,
+          "line": 28,
           "column": 48,
-          "offset": 589
+          "offset": 524
         }
       },
       {
@@ -88,16 +88,16 @@
         "message": "this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose",
         "position": {
           "file": "golden-1416.ms",
-          "line": 29,
+          "line": 39,
           "column": 5,
-          "offset": 699
+          "offset": 632
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1416.ms:3:8: resolution: module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"\n   |\n 3 | import arguments from \"@std/os/process.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1416.ms:8:20: type: unknown argument data; parameters of write: value\n   |\n 8 |     stdout().write(data: f\"{text}\\n\")?\n   |                    ^\n<DIR>/golden-1416.ms:8:14: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 8 |     stdout().write(data: f\"{text}\\n\")?\n   |              ^\n<DIR>/golden-1416.ms:11:13: resolution: unknown binding arguments; add: import arguments from \"@std/os/env.ms\"\n    |\n 11 |     args := arguments()\n    |             ^\n<DIR>/golden-1416.ms:22:48: type: cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead\n    |\n 22 |             written := stderr().write(f\"{cause.message()}\\n\")\n    |                                                ^\n<DIR>/golden-1416.ms:29:5: type: this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose\n    |\n 29 |     write_line(\"unselected\")\n    |     ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1416.ms:5:5: resolution: module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"\n   |\n 5 |     arguments from \"@std/os/process.ms\",\n   |     ^^^^^^^^^\n<DIR>/golden-1416.ms:9:20: type: unknown argument data; parameters of write: value\n   |\n 9 |     stdout().write(data: f\"{text}\\n\")?\n   |                    ^\n<DIR>/golden-1416.ms:9:14: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 9 |     stdout().write(data: f\"{text}\\n\")?\n   |              ^\n<DIR>/golden-1416.ms:13:13: resolution: unknown binding arguments; add: import arguments from \"@std/os/env.ms\"\n    |\n 13 |     args := arguments()\n    |             ^\n<DIR>/golden-1416.ms:28:48: type: cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead\n    |\n 28 |             written := stderr().write(f\"{cause.message()}\\n\")\n    |                                                ^\n<DIR>/golden-1416.ms:39:5: type: this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose\n    |\n 39 |     write_line(\"unselected\")\n    |     ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

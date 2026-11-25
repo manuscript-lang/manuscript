@@ -1,8 +1,9 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=documentation/core-language/types/contracts.md:127
-fn use_increment(operation: Increment) Int:
-    return operation.apply(1)
+fn use_increment(operation Increment) Int {
+	return operation.apply(1)
+}
 
 offset := Offset(2)
 view := Increment(offset)

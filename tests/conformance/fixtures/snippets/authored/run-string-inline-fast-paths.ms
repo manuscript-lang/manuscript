@@ -3,15 +3,17 @@
 // conform: origin=retire-ms-rt-hot
 // parse_int, a one-byte contains and scalar_at give the same answers for inline, heap,
 // ASCII and non-ASCII text on every backend.
-fn show(text: String) Void:
+fn show(text String) Void {
 	v := text.parse_int()
 
-	if v != null:
+	if v != null {
 		print(f"{v}")
-	else:
+	} else {
 		print("none")
+	}
+}
 
-export fn main() Int:
+export fn main() Int {
 	show("0")
 	show("42")
 	show("-7")
@@ -38,10 +40,11 @@ export fn main() Int:
 	print("é!".contains("!"))
 	print("".contains("x"))
 
-	for ch in ["=", "#", "é", "ab", "", "y;"]:
+	for ch in ["=", "#", "é", "ab", "", "y;"] {
 		print(a.contains(ch))
 		print("#.SE".contains(ch))
 		print(b.contains(ch))
+	}
 
 	c := "héllo"
 	d := "hello"
@@ -55,3 +58,4 @@ export fn main() Int:
 	print(c.scalar_at(3, -1))
 	print(b.scalar_at(3, -1))
 	return 0
+}

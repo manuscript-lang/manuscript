@@ -3,26 +3,33 @@
 // conform: origin=tests/e2e/testdata/accept/loop-match.ms
 import expect_equal from "@std/test/test.ms"
 
-enum State:
-    Ready
-    Waiting
+enum State {
+	Ready
+	Waiting
+}
 
-fn loop(state: State) Int:
-    var count = 0
+fn loop(state State) Int {
+	var count = 0
 
-    for value in [1, 2, 3]:
-        count += 1
+	for value in [1, 2, 3] {
+		count += 1
 
-        match state:
-            Ready:
-                break
-            Waiting:
-                continue
+		match state {
+			Ready => {
+				break
+			}
+			Waiting => {
+				continue
+			}
+		}
 
-        count += 100
+		count += 100
+	}
 
-    return count
+	return count
+}
 
-test "match controls nearest source loop":
-    expect_equal(loop(State.Ready), 1)?
-    expect_equal(loop(State.Waiting), 3)?
+test "match controls nearest source loop" {
+	expect_equal(loop(State.Ready), 1)?
+	expect_equal(loop(State.Waiting), 3)?
+}

@@ -142,11 +142,57 @@ MsStmt *parse_destructure(Parser *p, MsPattern *pat, MsName hidden) {
   return s;
 }
 
+/* Whether `name Type := value` starts here: a name, a type start that cannot continue an expression, and a
+ * `:=` on the same line outside any brackets. */
+static bool typed_binding_ahead(const Parser *p) {
+  MsToken second_token = parse_ahead(p, 1);
+  MsTok second = (MsTok)second_token.kind;
+  /* `name (fn() Int)? := value`: a parenthesized type is set apart from its name; a call touches it. */
+  bool spaced_paren = second == MS_T_LParen && second_token.lo != parse_peek(p).hi;
+  if (second != MS_T_Name && second != MS_T_Fn && !spaced_paren) {
+    return false;
+  }
+  size_t depth = 0;
+  for (size_t i = p->at + 1; i < p->ntokens; i++) {
+    switch (p->tokens[i].kind) {
+    case MS_T_LParen:
+    case MS_T_LBracket:
+    case MS_T_LBrace:
+      depth++;
+      break;
+    case MS_T_RParen:
+    case MS_T_RBracket:
+    case MS_T_RBrace:
+      if (depth == 0) {
+        return false;
+      }
+      depth--;
+      break;
+    case MS_T_ColonAssign:
+    case MS_T_Assign: /* `x Int = 1` is reported as a binding that needs ':=' */
+      return depth == 0;
+    case MS_T_Newline:
+    case MS_T_Eof:
+    case MS_T_Colon:
+      if (depth == 0) {
+        return false;
+      }
+      break;
+    default:
+      break;
+    }
+  }
+  return false;
+}
+
 bool parse_binding_ahead(const Parser *p) {
   switch (parse_kind(p)) {
   case MS_T_Name:
   case MS_T_Underscore:
-    return parse_ahead(p, 1).kind == MS_T_ColonAssign || parse_ahead(p, 1).kind == MS_T_Colon;
+    if (parse_ahead(p, 1).kind == MS_T_ColonAssign || parse_ahead(p, 1).kind == MS_T_Colon) {
+      return true;
+    }
+    return typed_binding_ahead(p);
   case MS_T_LBracket:
   case MS_T_LBrace: {
     size_t depth = 0;
@@ -179,8 +225,15 @@ bool parse_binding_ahead(const Parser *p) {
   }
 }
 
-/* A binding: `var pattern [: Type] = value` after `var`, or an immutable `name := value`,
- * `name: Type := value`, or `pattern := value`. */
+/* The type of a named binding, written after the name: `var count Int = 0`, `limit Int := 5`. */
+MS_NODISCARD static bool binding_type(Parser *p, MsPattern **pat, MsTypeRef **ty) {
+  MsToken name = parse_previous(p);
+  (void)pat;
+  return parse_name_type(p, name, ty);
+}
+
+/* A binding: `var pattern [Type] = value` after `var`, or an immutable `name := value`,
+ * `name Type := value`, or `pattern := value`. */
 MS_NODISCARD bool parse_binding(Parser *p, bool is_mutable, const MsPos *group, MsPos pos, MsStmt **out) {
   MsPattern *pat = NULL;
   if (!parse_pattern(p, &pat))
@@ -188,8 +241,8 @@ MS_NODISCARD bool parse_binding(Parser *p, bool is_mutable, const MsPos *group, 
   MsTypeRef *ty = NULL;
   bool named = pat->kind == MS_P_NAME;
   if (is_mutable) {
-    if (named && parse_take(p, MS_T_Colon)) {
-      if (!parse_typ(p, &ty))
+    if (named && parse_kind(p) != MS_T_ColonAssign && parse_kind(p) != MS_T_Assign) {
+      if (!binding_type(p, &pat, &ty))
         return false;
     }
     if (parse_kind(p) == MS_T_ColonAssign) {
@@ -202,8 +255,8 @@ MS_NODISCARD bool parse_binding(Parser *p, bool is_mutable, const MsPos *group, 
     if (!parse_need(p, MS_T_Assign))
       return false;
   } else {
-    if (named && parse_take(p, MS_T_Colon)) {
-      if (!parse_typ(p, &ty))
+    if (named && parse_kind(p) != MS_T_ColonAssign) {
+      if (!binding_type(p, &pat, &ty))
         return false;
     }
     if (!parse_need_immutable_bind(p))
@@ -286,7 +339,7 @@ MS_NODISCARD static bool group_entry(Parser *p, MsToken keyword, const char *kw,
     return false;
   }
   /* A block lambda value ends at its dedent, which also ends the line. */
-  return parse_previous(p).kind == MS_T_Dedent || parse_need(p, MS_T_Newline);
+  return parse_previous(p).kind == MS_T_BlockClose || parse_need(p, MS_T_Newline);
 }
 
 /* The `( ... )` after a consumed `var`. The lexer ends each line of the group with a newline. */

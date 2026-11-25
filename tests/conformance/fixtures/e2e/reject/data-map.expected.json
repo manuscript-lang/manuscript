@@ -12,16 +12,16 @@
         "message": "Map[Int, String] does not satisfy Data; it is a Set or a Map whose key is not a String, which has no portable form; send a List, a Map[String, T], or a JsonValue object",
         "position": {
           "file": "data-map.ms",
-          "line": 10,
+          "line": 11,
           "column": 12,
-          "offset": 197
+          "offset": 199
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/data-map.ms:10:12: type: Map[Int, String] does not satisfy Data; it is a Set or a Map whose key is not a String, which has no portable form; send a List, a Map[String, T], or a JsonValue object\n    |\n 10 |     return need(scores)\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/data-map.ms:11:12: type: Map[Int, String] does not satisfy Data; it is a Set or a Map whose key is not a String, which has no portable form; send a List, a Map[String, T], or a JsonValue object\n    |\n 11 |     return need(scores)\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

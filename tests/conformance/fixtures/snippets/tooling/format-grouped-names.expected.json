@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Rect {\n\twidth, height Int\n\tlabel String = \"r\"\n\tx, y Float = 0.5\n\t// a comment keeps its neighbours apart\n\tleft, right Int\n}\n\nenum Shape {\n\tBox(width, height Int)\n\tDot\n}\n\nfn area(width, height Int, scale Float, shift Float = 1.0) Int => width\n\nfn apply(first, second Int, f fn(Int, Int) Int) Int => f(first, second)\n"
+  }
+}

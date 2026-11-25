@@ -21,16 +21,18 @@ Implemented in the first PR (parse, help, `execute`), 2026-10-26, checked agains
 One recursive record, `Command`, is both leaf and group. A leaf is built with the generic function `command[T](name:, run:, flags:, args:)`: `run` receives the options record `T`, and no conversion code is written. The parser stores every supplied flag and argument as a JSON literal under its name (dashes become underscores) and decodes `T` with `json.parse[T]`, the existing compiler-backed generic that builds records from text. A field with no matching value, or of the wrong type, fails the run with `CliError.InvalidSchema`; flags without a field (such as inherited persistent flags) are ignored. This is pure Manuscript: no Rust, no syntax change.
 
 ```manuscript
-type ServeOptions:
-    port: Int
-    mode: String
-    root: String
-    verbose: Bool
+type ServeOptions {
+    port Int
+    mode String
+    root String
+    verbose Bool
+}
 
-fn serve(options: ServeOptions) Result[Int, Error]:
+fn serve(options ServeOptions) Result[Int, Error] {
     ...
+}
 
-fn main() Int:
+fn main() Int {
     serve_command := command[ServeOptions](
         name: "serve",
         about: "Run the server",
@@ -43,6 +45,7 @@ fn main() Int:
     )
     flags := [Flag("verbose", FlagKind.Bool, "v", persistent: true)]
     return Command(name: "tool", flags: flags, children: [serve_command]).execute(arguments())
+}
 ```
 
 Ceremony choices: `Flag` fields are positional-friendly (`name, kind = String, short, default, help`); `Arg(name, help, required, rest)`; the tree is one expression; handlers are plain functions of `T`.

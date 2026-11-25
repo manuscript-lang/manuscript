@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "// File introduction.\nfn example() Int:\n\tfirst := 1\n\n\t// A deliberate new step.\n\tsecond := first + 1\n\tif second > 2:\n\t\trun(second)\n\t\t// A comment inside the branch.\n\n\t// A comment on the next step.\n\treturn second\n"
+    "fmt": "// File introduction.\nfn example() Int {\n\tfirst := 1\n\n\t// A deliberate new step.\n\tsecond := first + 1\n\tif second > 2 {\n\t\trun(second)\n\t\t// A comment inside the branch.\n\t}\n\n\t// A comment on the next step.\n\treturn second\n}\n"
   }
 }

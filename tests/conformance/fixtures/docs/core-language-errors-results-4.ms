@@ -2,5 +2,6 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/errors/results.md:75
 
-fn successful_price(outcome: Result[Decimal, Error]) Decimal?:
-    return outcome.to_optional()
+fn successful_price(outcome Result[Decimal, Error]) Decimal? {
+	return outcome.to_optional()
+}

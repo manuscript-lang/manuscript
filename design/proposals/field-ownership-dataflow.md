@@ -19,13 +19,15 @@ Steps 1 to 3 implemented, 2026-10-30 (#1991 harness, #1997 per-place liveness an
 Verified on `083edc8e` with `ms check`:
 
 ```manuscript
-type Big:
-    name: String
-    items: List[Int]
+type Big {
+    name String
+    items List[Int]
+}
 
-fn take(b: Big) List[Int]:
+fn take(b Big) List[Int] {
     xs := b.items
     return xs
+}
 ```
 
 - Rejected: `cannot move `xs` out: it only borrows its value (a borrow); use `xs.clone()` to get an owned copy`. `xs := b.items` is a shared borrow even though `b` is owned and dead afterwards.
@@ -118,20 +120,24 @@ MIR already flattens records to leaves with `rec.get`, `move.out` and `drop.if` 
 ### Examples (after the stage)
 
 ```manuscript
-type Big:
-    name: String
-    items: List[Int]
+type Big {
+    name String
+    items List[Int]
+}
 
-fn take(b: Big) List[Int]:      // accepted: moves b.items; b.name is dropped at return
+fn take(b Big) List[Int] {  // accepted: moves b.items; b.name is dropped at return
     return b.items
+}
 
-fn both(b: Big) Int:
-    xs := b.items            // moves items
-    return xs.length() + b.name.length()   // accepted: name is still init
+fn both(b Big) Int {
+    xs := b.items  // moves items
+    return xs.length() + b.name.length()  // accepted: name is still init
+}
 
-fn bad(b: Big) Int:
+fn bad(b Big) Int {
     xs := b.items
-    return b.items.length()     // rejected: use of moved field `b.items`
+    return b.items.length()  // rejected: use of moved field `b.items`
+}
 ```
 
 Branches: `if c: xs := b.items` leaves `b.items` **maybe**; any later read of `b.items` or of `b` is rejected, and scope exit drops `items` under a flag.

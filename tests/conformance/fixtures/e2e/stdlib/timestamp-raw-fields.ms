@@ -8,25 +8,28 @@ import (
 // Raw field values reach the arithmetic because Timestamp's fields are public; each
 // result matches exact wide arithmetic (computed outside Manuscript) or is ERANGE,
 // shown as E.
-fn show(r: Timestamp!) String:
-	if r.is_error(): return "E"
+fn show(r Timestamp!) String {
+	if r.is_error() { return "E" }
 
 	t := r.get()
 	return f"{t.seconds}.{t.nanos}"
+}
 
-fn show_diff(r: Duration!) String:
-	if r.is_error(): return "E"
+fn show_diff(r Duration!) String {
+	if r.is_error() { return "E" }
 	return f"{r.get().nanos}"
+}
 
-test "timestamp checks its fields":
+test "timestamp checks its fields" {
 	expect_equal(timestamp(0, 1000000000).is_error(), true)?
 	expect_equal(timestamp(0, -1).is_error(), true)?
 	expect_equal(timestamp(-62135596801, 0).is_error(), true)?
 	expect_equal(timestamp(253402300800, 0).is_error(), true)?
 	expect_equal(show(timestamp(1720109109, 0)), "1720109109.0")?
 	expect_equal(show(timestamp(-62135596800, 999999999)), "-62135596800.999999999")?
+}
 
-test "shift matches wide arithmetic for raw fields":
+test "shift matches wide arithmetic for raw fields" {
 	rows := [
 		-9223372036854775807 - 1,
 		-9223372036854775807 - 1,
@@ -836,15 +839,17 @@ test "shift matches wide arithmetic for raw fields":
 	var i = 0
 	var at = 0
 
-	while at < rows.length():
+	while at < rows.length() {
 		t := Timestamp(seconds: rows[at], nanos: rows[at + 1])
 		expect_equal(show(t.shift(Duration(nanos: rows[at + 2]))), expected[i])?
 		at += 3
 		i += 1
+	}
 
 	expect_equal(i, expected.length())?
+}
 
-test "difference and compare match wide arithmetic for raw fields":
+test "difference and compare match wide arithmetic for raw fields" {
 	rows := [
 		-9223372036854775807 - 1,
 		-9223372036854775807 - 1,
@@ -2757,11 +2762,13 @@ test "difference and compare match wide arithmetic for raw fields":
 	var i = 0
 	var at = 0
 
-	while at < rows.length():
+	while at < rows.length() {
 		a := Timestamp(seconds: rows[at], nanos: rows[at + 1])
 		b := Timestamp(seconds: rows[at + 2], nanos: rows[at + 3])
 		expect_equal(f"{show_diff(a.difference(b))}/{a.compare(b)}", expected[i])?
 		at += 4
 		i += 1
+	}
 
 	expect_equal(i, expected.length())?
+}

@@ -2,13 +2,15 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn bump() Int:
+fn bump() Int {
 	return 1000
+}
 
-fn pick(i: Int) Int!:
+fn pick(i Int) Int! {
 	return ok(i)
+}
 
-fn pairs() Map[Int, List[Int]]:
+fn pairs() Map[Int, List[Int]] {
 	return {
 		0: [0, bump() + 0],
 		1: [1, bump() + 1],
@@ -311,8 +313,9 @@ fn pairs() Map[Int, List[Int]]:
 		298: [298, bump() + 298],
 		299: [299, bump() + 299]
 	}
+}
 
-fn tried() Map[Int, Int]!:
+fn tried() Map[Int, Int]! {
 	m := {
 		0: pick(0)?,
 		1: pick(1)?,
@@ -616,8 +619,9 @@ fn tried() Map[Int, Int]!:
 		299: pick(299)?
 	}
 	return ok(m)
+}
 
-test "a long map literal keeps the last of repeated keys and every other entry":
+test "a long map literal keeps the last of repeated keys and every other entry" {
 	m := {
 		"k0": 0,
 		"k1": 1,
@@ -925,19 +929,22 @@ test "a long map literal keeps the last of repeated keys and every other entry":
 	expect_equal(m["k69"], 299)?
 	expect_equal(m["k70"], 70)?
 	expect_equal(m["k229"], 229)?
+}
 
-test "a long map literal of list values calls its entries in order":
+test "a long map literal of list values calls its entries in order" {
 	m := pairs()
 	expect_equal(m.length(), 300)?
 	expect_equal(m[0], [0, 1000])?
 	expect_equal(m[299], [299, 1299])?
+}
 
-test "a long map literal holding try entries is built one entry at a time":
+test "a long map literal holding try entries is built one entry at a time" {
 	m := tried()?
 	expect_equal(m.length(), 300)?
 	expect_equal(m[150], 150)?
+}
 
-test "a literal of constants covers every key and value kind":
+test "a literal of constants covers every key and value kind" {
 	ints := {
 		- 10: "v0",
 		-9: "v1",
@@ -1025,3 +1032,4 @@ test "a literal of constants covers every key and value kind":
 	grown[100] = "new"
 	expect_equal(grown.length(), 21)?
 	expect_equal(ints.length(), 20)?
+}

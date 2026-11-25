@@ -7,35 +7,44 @@ import (
 
 // A temporary that owns a resource, followed by a `try` in a later argument of the same
 // call, is moved into the consumed parameter rather than copied.
-interface Gate:
-	var fn put(value: Int) Void!
+interface Gate {
+	var fn put(value Int) Void!
 	move fn close() Void!
+}
 
-type Door:
-	unused: Bool = false
+type Door {
+	unused Bool = false
+}
 
-fn var Door.put(value: Int) Void!:
+fn var Door.put(value Int) Void! {
 	return ok()
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
 	return ok()
+}
 
-type Holder:
-	gate: Gate
+type Holder {
+	gate Gate
+}
 
-fn move Holder.close() Void!:
+fn move Holder.close() Void! {
 	return self.gate.close()
+}
 
-fn make() Holder!:
+fn make() Holder! {
 	return ok(Holder(Door()))
+}
 
-fn both(first: Holder, second: Holder) Int!:
+fn both(move first Holder, move second Holder) Int! {
 	var a = first
 	var b = second
 	a.gate.put(1)?
 	b.gate.put(2)?
 	return ok(2)
+}
 
-test "a held temporary is consumed by the call":
+test "a held temporary is consumed by the call" {
 	count := both(Holder(Door()), make()?)?
 	expect_equal(count, 2)?
+}

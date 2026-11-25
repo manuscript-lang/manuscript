@@ -1,8 +1,9 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=documentation/core-language/functions/declarations-and-calls.md:31
-fn reduce(amount: Int, deduction: Int) Int:
-    return amount - deduction
+fn reduce(amount Int, deduction Int) Int {
+	return amount - deduction
+}
 
 remaining := reduce(10, 3)
 explicit_remaining := reduce(amount: 10, deduction: 3)

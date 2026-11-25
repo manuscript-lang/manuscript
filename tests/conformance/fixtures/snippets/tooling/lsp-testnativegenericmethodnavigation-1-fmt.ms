@@ -1,10 +1,12 @@
 // conform: tags=formatter,interpolation,parser,strings,testing,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/lsp/navigation_test.go:86 TestNativeGenericMethodNavigation
-fn label(value: Int) String:
-    return f"{value}"
+fn label(value Int) String {
+	return f"{value}"
+}
 
-test "methods":
-    _labels := [1].map(transform: label)
-    _convert := [2].map[String]
-    _text := " hello ".trim()
+test "methods" {
+	_labels := [1].map(transform: label)
+	_convert := [2].map[String]
+	_text := " hello ".trim()
+}

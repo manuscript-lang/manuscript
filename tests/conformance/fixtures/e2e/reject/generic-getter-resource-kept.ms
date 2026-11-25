@@ -1,20 +1,26 @@
 // conform: tags=generics,diagnostics,scope-cleanup,tier-core
 // conform: phase=check
-type Res:
-	name: String
+type Res {
+	name String
+}
 
-fn move Res.close() Void!:
+fn move Res.close() Void! {
 	return ok(void)
+}
 
-type Cell[T]:
-	v: T
+type Cell[T] {
+	v T
+}
 
-fn Cell[T].get() T:
+fn Cell[T].get() T {
 	return self.v
+}
 
-fn keep(move r: Res) Int:
+fn keep(move r Res) Int {
 	return r.name.length()
+}
 
-fn main() Int:
+fn main() Int {
 	cell := Cell(v: Res(name: "x"))
 	return keep(cell.get())
+}

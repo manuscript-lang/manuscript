@@ -10,21 +10,25 @@ import (
 	milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
-fn immediate(id: Int) Void:
+fn immediate(id Int) Void {
 	complete[Int](id, ok(1))
+}
 
-fn delayed(id: Int) Void:
+fn delayed(id Int) Void {
 	void sleep(milliseconds(5000)).wait()
 	complete[Int](id, ok(1))
+}
 
-test "wait_first prefers an already completed input over unstarted deferred work":
+test "wait_first prefers an already completed input over unstarted deferred work" {
 	pending := deferred[Int](immediate)
-	ready := promise(fn: ok(2))
-	while not ready.done():
+	ready := promise(() => ok(2))
+	while not ready.done() {
 		void sleep(milliseconds(1)).wait()
+	}
 	expect_equal((wait_first([pending, ready])?), 2)?
+}
 
-test "wait_first propagates a deferred promise construction limit":
+test "wait_first propagates a deferred promise construction limit" {
 	pending := deferred[Int](delayed).with(
 		options: PromiseOptions(timeout: milliseconds(20))
 	)
@@ -32,3 +36,4 @@ test "wait_first propagates a deferred promise construction limit":
 	reason := wait_first([pending]) | expect_error?
 	expect_equal(reason.kind, "ETIMEDOUT")?
 	expect_true(monotonic().difference(start).to_milliseconds() < 2000)?
+}

@@ -2,60 +2,72 @@ import stdin from "@std/io/io.ms"
 import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
-fn parse_num(s: String) Int?:
-    if s.length() < 1 or s.length() > 6 or not s.scalar_values().all(fn c: c >= 48 and c <= 57): return none
+fn parse_num(s String) Int? {
+    if s.length() < 1 or s.length() > 6 or not s.scalar_values().all(fn c: c >= 48 and c <= 57) { return none }
     return s.parse_int().get()
+}
 
-fn lcs(a: String, b: String) Int:
+fn lcs(a String, b String) Int {
     y := b.scalar_values()
     var prev = [0].repeated(y.length() + 1)
-    for ch in a.scalar_values():
+    for ch in a.scalar_values() {
         var cur = [0]
-        for j in 0..y.length(): cur.append(if ch == y[j]: prev[j] + 1 else: prev[j + 1].max(cur[j]))
+        for j in 0..y.length() { cur.append(if ch == y[j]: prev[j] + 1 else: prev[j + 1].max(cur[j])) }
         prev = cur
+    }
     return prev[y.length()]
+}
 
-fn edit(a: String, b: String) Int:
+fn edit(a String, b String) Int {
     x := a.scalar_values()
     y := b.scalar_values()
     var prev = (0..y.length() + 1)
-    for i in 1..x.length() + 1:
+    for i in 1..x.length() + 1 {
         var cur = [i]
-        for j in 1..y.length() + 1: cur.append((prev[j] + 1).min(cur[j - 1] + 1).min(prev[j - 1] + (if x[i - 1] == y[j - 1]: 0 else: 1)))
+        for j in 1..y.length() + 1 { cur.append((prev[j] + 1).min(cur[j - 1] + 1).min(prev[j - 1] + (if x[i - 1] == y[j - 1]: 0 else: 1))) }
         prev = cur
+    }
     return prev[y.length()]
+}
 
-fn knap(t: List[String]) String:
-    if t.length() < 2: return "error: bad command"
+fn knap(t List[String]) String {
+    if t.length() < 2 { return "error: bad command" }
     cap := parse_num(t[1])
-    if not cap.is_some(): return "error: bad command"
+    if not cap.is_some() { return "error: bad command" }
     var best = [0].repeated(cap.get() + 1)
-    for item in t.slice(2, t.length()).get():
+    for item in t.slice(2, t.length()).get() {
         p := item.split(":")
-        if p.length() != 2 or not parse_num(p[0]).is_some() or not parse_num(p[1]).is_some() or p[0].parse_int().get() < 1: return "error: bad command"
+        if p.length() != 2 or not parse_num(p[0]).is_some() or not parse_num(p[1]).is_some() or p[0].parse_int().get() < 1 { return "error: bad command" }
         w := p[0].parse_int().get()
         v := p[1].parse_int().get()
-        for c in (w..cap.get() + 1).reversed(): best[c] = best[c].max(best[c - w] + v)
+        for c in (w..cap.get() + 1).reversed() { best[c] = best[c].max(best[c - w] + v) }
+    }
     return f"{best[cap.get()]}"
+}
 
-fn coins(t: List[String]) String:
-    if t.length() < 3: return "error: bad command"
+fn coins(t List[String]) String {
+    if t.length() < 3 { return "error: bad command" }
     amount := parse_num(t[1])
     cs := t.slice(2, t.length()).get().map(fn s: parse_num(s).get_or(0))
-    if not amount.is_some() or cs.any(fn c: c < 1): return "error: bad command"
+    if not amount.is_some() or cs.any(fn c: c < 1) { return "error: bad command" }
     inf := 1000000000
     var best = [0]
-    for a in 1..amount.get() + 1: best.append(cs.filter(fn c: c <= a).map(fn c: best[a - c] + 1).fold(inf, fn m, x: m.min(x)))
+    for a in 1..amount.get() + 1 { best.append(cs.filter(fn c: c <= a).map(fn c: best[a - c] + 1).fold(inf, fn m, x: m.min(x))) }
     return if best[amount.get()] >= inf: "impossible" else: f"{best[amount.get()]}"
+}
 
-fn solve_line(line: String) String:
+fn solve_line(line String) String {
     t := line.split(" ")
-    if t[0] == "lcs" or t[0] == "edit":
-        if t.length() != 3 or t[1].is_empty() or t[2].is_empty(): return "error: bad command"
+    if t[0] == "lcs" or t[0] == "edit" {
+        if t.length() != 3 or t[1].is_empty() or t[2].is_empty() { return "error: bad command" }
         return f"{if t[0] == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
-    if t[0] == "knap": return knap(t)
+    }
+    if t[0] == "knap" { return knap(t) }
     return if t[0] == "coins": coins(t) else: "error: bad command"
+}
 
-fn main() Void:
-    if ls := stdin() | lines | collect(none):
-        for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(solve_line(l))
+fn main() Void {
+    if ls := stdin() | lines | collect(none) {
+        for l in ls.filter(fn l: not l.replace(" ", "").is_empty()) { print(solve_line(l)) }
+    }
+}

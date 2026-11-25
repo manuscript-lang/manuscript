@@ -9,25 +9,25 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)",
+        "message": "'if let' was removed; write 'if value := optional { ... }' (or 'if var value = optional { ... }' for a mutable binding)",
         "position": {
           "file": "if-let-case-pattern.ms",
-          "line": 8,
+          "line": 9,
           "column": 8,
-          "offset": 141
+          "offset": 143
         },
         "end": {
           "file": "if-let-case-pattern.ms",
-          "line": 8,
+          "line": 9,
           "column": 11,
-          "offset": 144
+          "offset": 146
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/if-let-case-pattern.ms:8:8: parse: 'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)\n   |\n 8 |     if let Circle(radius) = shape: return radius\n   |        ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/if-let-case-pattern.ms:9:8: parse: 'if let' was removed; write 'if value := optional { ... }' (or 'if var value = optional { ... }' for a mutable binding)\n   |\n 9 |     if let Circle(radius) = shape { return radius }\n   |        ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

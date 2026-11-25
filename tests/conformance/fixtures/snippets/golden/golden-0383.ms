@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f(first: Int = 1, value: Int? = null) Int: ...
+fn f(first Int = 1, value Int? = null) Int { ... }

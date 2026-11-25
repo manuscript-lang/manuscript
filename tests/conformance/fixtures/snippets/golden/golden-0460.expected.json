@@ -12,16 +12,16 @@
         "message": "expected HashAlgorithm, found String (in argument 'algorithm' of choose)",
         "position": {
           "file": "golden-0460.ms",
-          "line": 7,
+          "line": 10,
           "column": 12,
-          "offset": 184
+          "offset": 183
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0460.ms:7:12: type: expected HashAlgorithm, found String (in argument 'algorithm' of choose)\n   |\n 7 |     choose(\"sha256\")\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0460.ms:10:12: type: expected HashAlgorithm, found String (in argument 'algorithm' of choose)\n    |\n 10 |     choose(\"sha256\")\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -7,21 +7,21 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 1; use 0 or 4",
+        "message": "unterminated delimiter '(' opened at line 4:8; add the matching ')' before the end of the file",
         "position": {
           "file": "golden-1222.ms",
-          "line": 3,
+          "line": 5,
           "column": 2,
-          "offset": 54
+          "offset": 92
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1222.ms:3:2: parse: indentation must be a multiple of four spaces, found 1; use 0 or 4\n   |\n 3 |  from \"@std/time.ms\"\n   |  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1222.ms:5:2: parse: unterminated delimiter '(' opened at line 4:8; add the matching ')' before the end of the file\n   |\n 5 | }\n   |  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

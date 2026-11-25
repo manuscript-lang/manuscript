@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn divide(value: Int = 1 / \"\".length()) Int:\n\treturn value\n\nexport fn main() Int:\n\treturn divide()\n"
+    "fmt": "fn divide(value Int = 1 / \"\".length()) Int {\n\treturn value\n}\n\nexport fn main() Int {\n\treturn divide()\n}\n"
   }
 }

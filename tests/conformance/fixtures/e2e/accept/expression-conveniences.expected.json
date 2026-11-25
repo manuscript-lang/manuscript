@@ -3,92 +3,95 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "expression-conveniences.ms::indexing and generic applications coexist",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "expression-conveniences.ms::empty list constructors have fresh typed storage",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "expression-conveniences.ms::string concatenation and scalar ordering",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "expression-conveniences.ms::match expressions preserve returns and cleanup",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "expression-conveniences.ms::indexes read elements and get supplies defaults",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "expression-conveniences.ms::match blocks produce their final value",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "expression-conveniences.ms::contextual values infer from later arms",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "expression-conveniences.ms::expression exits preserve caller boundaries and evaluation order",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "expression-conveniences.ms::match in a loop header exits its lexical enclosing loop",
-          "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "expression-conveniences.ms::indexing preserves zero and nested optionals",
-          "status": "passed"
-        },
-        {
-          "index": 10,
-          "name": "expression-conveniences.ms::match evaluates its input once and only the selected arm",
-          "status": "passed"
-        },
-        {
-          "index": 11,
-          "name": "expression-conveniences.ms::match composes with inferred callbacks and map literals",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 12,
-        "selected": 12,
-        "passed": 12,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN expression-conveniences.ms::indexing and generic applications coexist\nPASS expression-conveniences.ms::indexing and generic applications coexist\nRUN expression-conveniences.ms::empty list constructors have fresh typed storage\nPASS expression-conveniences.ms::empty list constructors have fresh typed storage\nRUN expression-conveniences.ms::string concatenation and scalar ordering\nPASS expression-conveniences.ms::string concatenation and scalar ordering\nRUN expression-conveniences.ms::match expressions preserve returns and cleanup\nPASS expression-conveniences.ms::match expressions preserve returns and cleanup\nRUN expression-conveniences.ms::indexes read elements and get supplies defaults\nPASS expression-conveniences.ms::indexes read elements and get supplies defaults\nRUN expression-conveniences.ms::match blocks produce their final value\nPASS expression-conveniences.ms::match blocks produce their final value\nRUN expression-conveniences.ms::contextual values infer from later arms\nPASS expression-conveniences.ms::contextual values infer from later arms\nRUN expression-conveniences.ms::expression exits preserve caller boundaries and evaluation order\nPASS expression-conveniences.ms::expression exits preserve caller boundaries and evaluation order\nRUN expression-conveniences.ms::match in a loop header exits its lexical enclosing loop\nPASS expression-conveniences.ms::match in a loop header exits its lexical enclosing loop\nRUN expression-conveniences.ms::indexing preserves zero and nested optionals\nPASS expression-conveniences.ms::indexing preserves zero and nested optionals\nRUN expression-conveniences.ms::match evaluates its input once and only the selected arm\nPASS expression-conveniences.ms::match evaluates its input once and only the selected arm\nRUN expression-conveniences.ms::match composes with inferred callbacks and map literals\nPASS expression-conveniences.ms::match composes with inferred callbacks and map literals\n12 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS2001",
+          "phase": "resolution",
+          "message": "unknown binding optional; declare it with 'optional := ...' before use, define 'fn optional(...) T { ... }', or import it from a module",
+          "position": {
+            "file": "expression-conveniences.ms",
+            "line": 235,
+            "column": 6,
+            "offset": 5007
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "callee is not a function (it has type T?); only functions and methods can be called, so remove the (...) or call a function instead",
+          "position": {
+            "file": "expression-conveniences.ms",
+            "line": 231,
+            "column": 22,
+            "offset": 4954
+          }
+        },
+        {
+          "code": "MS3001",
+          "phase": "type",
+          "message": "expected Int?, found Void (in the initializer of 'optional')",
+          "position": {
+            "file": "expression-conveniences.ms",
+            "line": 235,
+            "column": 75,
+            "offset": 5076
+          }
+        },
+        {
+          "code": "MS2001",
+          "phase": "resolution",
+          "message": "unknown binding result; declare it with 'result := ...' before use, define 'fn result(...) T { ... }', or import it from a module",
+          "position": {
+            "file": "expression-conveniences.ms",
+            "line": 372,
+            "column": 6,
+            "offset": 7547
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "callee is not a function (it has type Int); only functions and methods can be called, so remove the (...) or call a function instead",
+          "position": {
+            "file": "expression-conveniences.ms",
+            "line": 362,
+            "column": 15,
+            "offset": 7409
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -99,11 +102,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

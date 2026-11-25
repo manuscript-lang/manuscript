@@ -13,26 +13,32 @@ Save as `retry.ms`. `retry` calls the operation with the attempt number until it
 
 <!-- manuscript-example: {"mode":"run","stdout":"attempt 1\nattempt 2\nattempt 3\nsucceeded after 3 attempts\n"} -->
 ```manuscript
-import RetryPolicy, retry from "@std/concurrency/resilience.ms"
-import milliseconds from "@std/time.ms"
+import (
+    RetryPolicy, retry from "@std/concurrency/resilience.ms",
+    milliseconds from "@std/time.ms",
+)
 
-fn flaky(attempt: Int) Int!:
+fn flaky(attempt Int) Int! {
     print(f"attempt {attempt}")
-    if attempt < 3:
+    if attempt < 3 {
         return error(Error("temporarily unavailable", kind: "EAGAIN"))
-    return ok(attempt)
+    }
 
-fn main() Void!:
+    return ok(attempt)
+}
+
+fn main() Void! {
     policy := RetryPolicy(attempts: 5, delay: milliseconds(10), jitter: false)
     attempts := retry(policy, flaky)?
     print(f"succeeded after {attempts} attempts")
+}
 ```
 
 ```sh
 ms run retry.ms
 ```
 
-- Only retry errors that can go away. Pass a function such as `fn e: e.kind == "EAGAIN"` as the third argument to retry those and return the rest at once.
+- Only retry errors that can go away. Pass a function such as `e => e.kind == "EAGAIN"` as the third argument to retry those and return the rest at once.
 - Keep `jitter` on in services, so many callers that failed together do not retry together.
 - Waiting uses `sleep`, so cancelling the task ends the wait.
 
@@ -42,17 +48,25 @@ Save as `breaker.ms`. After `threshold` failures in a row the circuit opens, and
 
 <!-- manuscript-example: {"mode":"run","stdout":"failed: down\nfailed: down\nopen: call skipped\n"} -->
 ```manuscript
-import CircuitBreaker, CircuitError from "@std/concurrency/resilience.ms"
-import seconds from "@std/time.ms"
+import (
+    CircuitBreaker, CircuitError from "@std/concurrency/resilience.ms",
+    seconds from "@std/time.ms",
+)
 
-fn down() Int!:
+fn down() Int! {
     return error(Error("down", kind: "ECONNREFUSED"))
+}
 
-fn main() Void:
+fn main() Void {
     var breaker = CircuitBreaker(threshold: 2, cooldown: seconds(30))
-    for round in 0..3:
+
+    for round in 0..3 {
         result := breaker.call(down)
-        match result.err():
-            Failed(cause): print(f"failed: {cause.message}")
-            Open: print("open: call skipped")
+
+        match result.err() {
+            Failed(cause) => print(f"failed: {cause.message}")
+            Open => print("open: call skipped")
+        }
+    }
+}
 ```

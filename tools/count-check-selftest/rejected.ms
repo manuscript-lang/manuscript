@@ -1,2 +1,3 @@
-export fn main() Int:
+export fn main() Int {
 	return "wrong return type"
+}

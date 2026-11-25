@@ -1,13 +1,15 @@
 // conform: tags=diagnostics,mutation,strings,tier-core
 // conform: phase=check
 // conform: origin=design/proposals/reference-ownership.md
-type User:
-    name: String
+type User {
+	name String
+}
 
-fn display(u: User, anonymous: Bool) String:
-    if anonymous: return "anonymous"
+fn display(u User, anonymous Bool) String {
+	if anonymous { return "anonymous" }
+	return u.name
+}
 
-    return u.name
-
-fn keep(u: User) List[String]:
-    return [display(u, false)]
+fn keep(u User) List[String] {
+	return [display(u, false)]
+}

@@ -14,46 +14,46 @@ import (
 	bash, env, must_read, nonblank_lines, norm, read_text from "./lib/text.ms",
 )
 
-type LogRow:
-	phase: String
-	ok: Bool
-	codes: String = ""
-	msg: String = ""
-	fixed: String = ""
+type LogRow {
+	phase String
+	ok Bool
+	codes, msg, fixed String = ""
+}
 
-type Detail:
-	built: Bool
-	passed: Int
-	total: Int
-	failed: List[String]
-	builds: Int
-	first_build_ok: Bool
-	checks: Int
-	code_tokens: Int?
-	error: String?
+type Detail {
+	built Bool
+	passed, total Int
+	failed List[String]
+	builds Int
+	first_build_ok Bool
+	checks Int
+	code_tokens Int?
+	error String?
+}
 
-fn main() Void:
+fn main() Void {
 	args := arguments()
 	cases := parse[List[Case]](must_read(args[0])).get_or([])
 	build := args[1].clone()
 	run := args[2].clone()
 	timeout := args[3].parse_int() or 5
-	suffix := if args.length() > 4: args[4].clone() else: ""
+	suffix := if args.length() > 4 { args[4].clone() } else { "" }
 	app := env("MSBENCH_APP", "/app")
 	out_dir := env("MSBENCH_VERIFIER", "/logs/verifier")
 	create_directory(out_dir, recursive: true).get()
 
 	var rows = List[LogRow]()
-	for line in nonblank_lines(read_text(f"{app}/.bench/log.jsonl")):
+	for line in nonblank_lines(read_text(f"{app}/.bench/log.jsonl")) {
 		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
+	}
 
-	builds := rows.filter(fn r: r.phase == "build")
-	var tokens: Int? = null
-	if suffix != "": tokens = count_workspace(app, suffix)
+	builds := rows.filter(r => r.phase == "build")
+	var tokens Int? = null
+	if suffix != "" { tokens = count_workspace(app, suffix) }
 
 	var first_ok = false
 	first := builds.first()
-	if first != null: first_ok = first.ok
+	if first != null { first_ok = first.ok }
 
 	var detail = Detail(
 		built: false,
@@ -63,28 +63,32 @@ fn main() Void:
 		code_tokens: tokens,
 		builds: builds.length(),
 		first_build_ok: first_ok,
-		checks: rows.count(fn r: (r.phase == "check")),
+		checks: rows.count(r => (r.phase == "check")),
 		error: null,
 	)
 	built := bash(build, app, 600, "")
 
-	if built.code == 0:
+	if built.code == 0 {
 		detail.built = true
 
-		for c in cases:
+		for c in cases {
 			ran := bash(run, app, timeout, c.stdin)
 
-			if ran.code == 0 and norm(ran.out) == norm(c.stdout):
+			if ran.code == 0 and norm(ran.out) == norm(c.stdout) {
 				detail.passed += 1
-			else:
+			} else {
 				detail.failed.append(c.name.clone())
-	else:
+			}
+		}
+	} else {
 		detail.error = built.err.slice(
-			if built.err.length() > 500: built.err.length() - 500 else: 0,
+			if built.err.length() > 500 { built.err.length() - 500 } else { 0 },
 			built.err.length(),
 		)
+	}
 
 	write_file(f"{out_dir}/detail.json", stringify(detail).get_or(""), replace: true).wait().get()
 
-	reward := if detail.built and detail.passed == detail.total: "1" else: "0"
+	reward := if detail.built and detail.passed == detail.total { "1" } else { "0" }
 	write_file(f"{out_dir}/reward.txt", reward, replace: true).wait().get()
+}

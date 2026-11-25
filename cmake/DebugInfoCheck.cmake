@@ -3,19 +3,22 @@
 # -DTOOL_DIR=<llvm tools> -P cmake/DebugInfoCheck.cmake`. Uses lldb when found, otherwise gdb; with neither the test fails.
 cmake_minimum_required(VERSION 3.25)
 file(MAKE_DIRECTORY "${WORK}")
-file(WRITE "${WORK}/probe.ms" "fn work(a: Int, b: Int) Int:
+file(WRITE "${WORK}/probe.ms" "fn work(a Int, b Int) Int {
     var t = 0
-    for i in 0..a:
+    for i in 0..a {
         t += i * b + a
         t += i % 7
         t += i * i - b
-        if t > 1000000: t = t / 3
+        if t > 1000000 { t = t / 3 }
+    }
     return t
+}
 
-fn main() Int:
+fn main() Int {
     c := work(40, 5)
     print(f\"{c}\")
     return 0
+}
 ")
 if(WIN32)
   set(separator ";")
@@ -48,7 +51,7 @@ else()
 endif()
 execute_process(COMMAND "${DEBUGGER}" ${commands} WORKING_DIRECTORY "${WORK}" RESULT_VARIABLE status
   OUTPUT_VARIABLE out ERROR_VARIABLE err TIMEOUT 120)
-foreach(expected "a = 40" "b = 5" "probe.ms:11")
+foreach(expected "a = 40" "b = 5" "probe.ms:13")
   string(FIND "${out}${err}" "${expected}" at)
   if(at LESS 0)
     message(FATAL_ERROR "${debugger_name} did not show '${expected}' stopped in work:\n${out}${err}")

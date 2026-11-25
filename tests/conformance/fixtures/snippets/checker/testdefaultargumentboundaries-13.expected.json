@@ -12,16 +12,16 @@
         "message": "missing argument 1: Int in call to copy; pass it positionally, without a label",
         "position": {
           "file": "testdefaultargumentboundaries-13.ms",
-          "line": 12,
+          "line": 14,
           "column": 12,
-          "offset": 291
+          "offset": 284
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdefaultargumentboundaries-13.ms:12:12: type: missing argument 1: Int in call to copy; pass it positionally, without a label\n    |\n 12 |     return copy()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdefaultargumentboundaries-13.ms:14:12: type: missing argument 1: Int in call to copy; pass it positionally, without a label\n    |\n 14 |     return copy()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

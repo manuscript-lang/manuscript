@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn read(values: List[Int]) Int:\n\tfirst := values.first()\n\tif first != null: return first + 1\n\n\treturn 0\n"
+    "fmt": "fn read(values List[Int]) Int {\n\tfirst := values.first()\n\tif first != null { return first + 1 }\n\n\treturn 0\n}\n"
   }
 }

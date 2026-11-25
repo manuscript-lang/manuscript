@@ -14,20 +14,20 @@
           "file": "golden-1223.ms",
           "line": 4,
           "column": 5,
-          "offset": 134
+          "offset": 129
         },
         "fix": {
           "position": {
             "file": "golden-1223.ms",
             "line": 3,
-            "column": 27,
-            "offset": 79
+            "column": 26,
+            "offset": 78
           },
           "end": {
             "file": "golden-1223.ms",
             "line": 3,
-            "column": 27,
-            "offset": 79
+            "column": 26,
+            "offset": 78
           },
           "replacement": "var "
         }

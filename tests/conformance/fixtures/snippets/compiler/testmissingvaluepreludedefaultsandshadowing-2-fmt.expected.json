@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Other:\n\tMissing(value: Int)\n\nfn other() Other: Other.Missing(1)\n\nfn standard() Error: Error(\"location\", kind: \"ENOENT\")\n\nfn read(value: Other) Int:\n\tmatch value:\n\t\tMissing(found): return found\n"
+    "fmt": "enum Other {\n\tMissing(value Int)\n}\n\nfn other() Other => Other.Missing(1)\n\nfn standard() Error => Error(\"location\", kind: \"ENOENT\")\n\nfn read(value Other) Int {\n\tmatch value {\n\t\tMissing(found) => return found\n\t}\n}\n"
   }
 }

@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 139,
     "stdout": "",
-    "stderr": "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead\n  at task-stack-overflow.ms:7 in forever\n  ... previous frame repeated <COUNT> more times\n"
+    "stderr": "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead\n  at task-stack-overflow.ms:8 in forever\n  ... previous frame repeated <COUNT> more times\n"
   }
 }

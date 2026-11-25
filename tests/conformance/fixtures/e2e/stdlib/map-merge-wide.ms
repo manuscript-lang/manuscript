@@ -5,35 +5,39 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-type WideKey:
-	a: Int
-	b: Int
-	c: Int
-	d: Int
-	e: Int
-	f: Int
-	g: Int
-	h: Int
-	i: Int
-	j: Int
+type WideKey {
+	a Int
+	b Int
+	c Int
+	d Int
+	e Int
+	f Int
+	g Int
+	h Int
+	i Int
+	j Int
+}
 
-type WideValue:
-	first: String
-	second: String
-	third: String
-	fourth: String
-	fifth: String
+type WideValue {
+	first String
+	second String
+	third String
+	fourth String
+	fifth String
+}
 
-fn key(i: Int) WideKey: WideKey(i, i, i, i, i, i, i, i, i, i)
+fn key(i Int) WideKey => WideKey(i, i, i, i, i, i, i, i, i, i)
 
-fn value(i: Int) WideValue:
+fn value(i Int) WideValue {
 	text := "a long independently owned runtime value " + i.to_string()
 	return WideValue(text.clone(), text.clone(), text.clone(), text.clone(), text)
+}
 
-fn merged_wide() Map[WideKey, WideValue]:
+fn merged_wide() Map[WideKey, WideValue] {
 	var source = Map[WideKey, WideValue]()
-	for i in 0..8:
+	for i in 0..8 {
 		source.add(key(i), value(i))
+	}
 	source.remove(key(3))
 	source.remove(key(6))
 
@@ -46,12 +50,13 @@ fn merged_wide() Map[WideKey, WideValue]:
 	empty := Map[WideKey, WideValue]()
 	target.merge(empty)
 	return target
+}
 
-test "wide Map merge preserves order and owns values after the source drops":
+test "wide Map merge preserves order and owns values after the source drops" {
 	merged := merged_wide()
-	expect_equal(merged.keys().map(fn k: k.a), [2, -1, 0, 1, 4, 5, 7])?
+	expect_equal(merged.keys().map(k => k.a), [2, -1, 0, 1, 4, 5, 7])?
 
-	for i in [2, -1, 0, 1, 4, 5, 7]:
+	for i in [2, -1, 0, 1, 4, 5, 7] {
 		found := merged.get(key(i)) or panic("called Optional.get() on null")
 		text := "a long independently owned runtime value " + i.to_string()
 		expect_equal(found.first, text)?
@@ -59,10 +64,12 @@ test "wide Map merge preserves order and owns values after the source drops":
 		expect_equal(found.third, text)?
 		expect_equal(found.fourth, text)?
 		expect_equal(found.fifth, text)?
+	}
+}
 
-test "primitive Map merge preserves overwrite and empty-source behavior":
-	var target: Map[Int, Int] = {2: 99, -1: -1}
-	source: Map[Int, Int] := {0: 0, 1: 1, 2: 2}
+test "primitive Map merge preserves overwrite and empty-source behavior" {
+	var target Map[Int, Int] = {2: 99, -1: -1}
+	source Map[Int, Int] := {0: 0, 1: 1, 2: 2}
 	target.merge(source.clone())
 
 	empty := Map[Int, Int]()
@@ -70,3 +77,4 @@ test "primitive Map merge preserves overwrite and empty-source behavior":
 	expect_equal(target.keys(), [2, -1, 0, 1])?
 	expect_equal(target.values(), [2, -1, 0, 1])?
 	expect_equal(source.keys(), [0, 1, 2])?
+}

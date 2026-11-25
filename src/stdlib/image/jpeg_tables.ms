@@ -77,9 +77,11 @@ export jpeg_dct_matrix := [
 ]
 
 // Clamps `value` to 0 through `high`.
-export fn jpeg_clamp(value: Int, high: Int) Int:
-	return if value < 0: 0 else: (if value > high: high else: value)
+export fn jpeg_clamp(value, high Int) Int {
+	return if value < 0 { 0 } else { (if value > high { high } else { value }) }
+}
 
 // Returns `count` zero integers.
-export fn jpeg_zeros(count: Int) List[Int]:
+export fn jpeg_zeros(count Int) List[Int] {
 	return [0].repeated(count)
+}

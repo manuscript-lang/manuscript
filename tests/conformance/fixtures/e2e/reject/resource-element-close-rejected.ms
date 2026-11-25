@@ -4,15 +4,18 @@
 // receiver taken from an index is rejected whatever the list is bound to.
 import Closeable from "@std/core.ms"
 
-type Item:
-    label: String
+type Item {
+	label String
+}
 
-fn move Item.close() Void!: ok()
+fn move Item.close() Void! => ok()
 
-fn close_first(members: List[Item]) Void!:
-    members[0].close()?
-    return ok()
+fn close_first(members List[Item]) Void! {
+	members[0].close()?
+	return ok()
+}
 
-fn main() Void!:
-    close_first([Item("a")])?
-    return ok()
+fn main() Void! {
+	close_first([Item("a")])?
+	return ok()
+}

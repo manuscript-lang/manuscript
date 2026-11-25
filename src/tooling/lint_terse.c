@@ -80,19 +80,6 @@ static bool is_collection(const TerseScan *scan, const MsExpr *e) {
          terse_type_is(scan, e->id, MS_BUILTIN_Map) || terse_type_is(scan, e->id, MS_BUILTIN_Set);
 }
 
-static bool is_scalar_builtin(MsBuiltin builtin) {
-  return (builtin >= MS_BUILTIN_Int && builtin <= MS_BUILTIN_UInt64) ||
-         (builtin >= MS_BUILTIN_Float && builtin <= MS_BUILTIN_Float64) || builtin == MS_BUILTIN_Bool;
-}
-
-/* A list whose elements copy (`Int`, `Float`, `Bool`): `xs[i]` can stand where `xs.get(i)` does. */
-static bool is_copy_list(const TerseScan *scan, const MsExpr *e) {
-  const MsTyTable *types = &scan->program->types;
-  const MsTy ty = ms_facts_type(&scan->module->facts, e->id);
-  return ty != MS_TY_NONE && ms_ty_is(types, ty, MS_BUILTIN_List) && ms_ty_arg_count(types, ty) > 0 &&
-         is_scalar_builtin(ms_ty_builtin(types, ms_ty_args(types, ty)[0]));
-}
-
 /* `callee.name` as a member call: its receiver, or NULL. */
 static const MsExpr *member_call(const TerseScan *scan, const MsExpr *e, const char *method, size_t arguments) {
   if (e->kind != MS_E_CALL || e->u.call.callee->kind != MS_E_MEMBER || e->u.call.args.len != arguments ||
@@ -135,35 +122,6 @@ void terse_emptiness(const TerseScan *scan, const MsExpr *e, bool condition) {
   ms_strbuild_append_text(&text, ".is_empty()");
   terse_report(scan, "MSL118", text_of("Use is_empty() instead of comparing length() with 0"), e->pos,
                ms_expr_start(e).offset, right->end.offset, terse_keep(scan, &text));
-}
-
-/* `xs.get(i)` on a list held in a name or field is `xs[i]`. */
-static void list_get(const TerseScan *scan, const MsExpr *e) {
-  const MsExpr *left = member_call(scan, e, "get", 1);
-  if (left == NULL) {
-    return;
-  }
-  const MsExpr *callee = e->u.call.callee;
-  const MsArg *arg = &e->u.call.args.ptr[0];
-  if (arg->has_name || (left->kind != MS_E_NAME && left->kind != MS_E_MEMBER) || !is_copy_list(scan, left)) {
-    return;
-  }
-  MsSpan index = {0};
-  const size_t name_at = callee->pos.offset;
-  if (name_at == 0 || !terse_expr_text(scan, arg->value, &index)) {
-    return;
-  }
-  const size_t dot = name_at - 1;
-  /* `xs\n    .get(i)` would become `xs\n    [i]`, an indented line that opens no block. */
-  if (dot >= scan->module->source.len || scan->module->source.ptr[dot] != '.' || left->end.offset != dot) {
-    return;
-  }
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append_byte(&text, '[');
-  ms_strbuild_append(&text, index);
-  ms_strbuild_append_byte(&text, ']');
-  terse_report(scan, "MSL119", text_of("Index the list with xs[i] instead of xs.get(i)"), e->pos, dot, e->end.offset,
-               terse_keep(scan, &text));
 }
 
 /* `m.get(k).get_or(d)` on a map is `m.get_or(k, d)`. */
@@ -277,7 +235,7 @@ static void printed_result(const TerseScan *scan, const MsExpr *e) {
   }
   terse_note(scan, "MSL131",
              text_of("`print` of a Result shows the `ok(...)` wrapper; write `call()?` in a function that returns a "
-                     "Result, or `if value := call():` to read the success"),
+                     "Result, or `if value := call() { ... }` to read the success"),
              e->pos);
 }
 
@@ -416,5 +374,4 @@ void terse_expr(const TerseScan *scan, const MsExpr *e) {
   slice_fallback(scan, e);
   printed_void(scan, e);
   bytes_to_string(scan, e);
-  list_get(scan, e);
 }

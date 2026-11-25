@@ -7,20 +7,26 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
         "position": {
           "file": "golden-1388.ms",
-          "line": 3,
-          "column": 5,
-          "offset": 54
+          "line": 4,
+          "column": 1,
+          "offset": 77
+        },
+        "end": {
+          "file": "golden-1388.ms",
+          "line": 4,
+          "column": 2,
+          "offset": 78
         }
       },
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters",
+        "message": "'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int { ... }' with the result type after the parameters",
         "position": {
           "file": "golden-1388.ms",
           "line": 8,
@@ -52,7 +58,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected ':', found name 'int'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body",
+        "message": "expected '{', found name 'int'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'",
         "position": {
           "file": "golden-1388.ms",
           "line": 11,
@@ -70,7 +76,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1388.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 3 |     needRefresh       bool\n   |     ^\n<DIR>/golden-1388.ms:8:1: parse: 'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters\n   |\n 8 | func (s *commonState) WaitForInput() { s.inputReaders.Wait() }\n   | ^^^^\n<DIR>/golden-1388.ms:11:15: parse: expected ':', found name 'int'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body\n    |\n 11 | type TabStyle int\n    |               ^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1388.ms:4:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 4 | }\n   | ^\n<DIR>/golden-1388.ms:8:1: parse: 'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int { ... }' with the result type after the parameters\n   |\n 8 | func (s *commonState) WaitForInput() { s.inputReaders.Wait() }\n   | ^^^^\n<DIR>/golden-1388.ms:11:15: parse: expected '{', found name 'int'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'\n    |\n 11 | type TabStyle int\n    |               ^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

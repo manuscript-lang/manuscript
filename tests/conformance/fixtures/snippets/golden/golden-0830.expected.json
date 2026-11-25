@@ -9,12 +9,12 @@
       {
         "code": "MS3070",
         "phase": "type",
-        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else",
+        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_ => ...' arm; to bind or compare computed values use if/else",
         "position": {
           "file": "golden-0830.ms",
-          "line": 15,
+          "line": 21,
           "column": 13,
-          "offset": 333
+          "offset": 310
         }
       },
       {
@@ -23,49 +23,49 @@
         "message": "a literal arm has no payload to bind",
         "position": {
           "file": "golden-0830.ms",
-          "line": 15,
+          "line": 21,
           "column": 13,
-          "offset": 333
+          "offset": 310
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding number; declare it with 'number := ...' before use, define 'fn number(...) T:', or import it from a module",
+        "message": "unknown binding number; declare it with 'number := ...' before use, define 'fn number(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-0830.ms",
-          "line": 16,
+          "line": 22,
           "column": 25,
-          "offset": 365
+          "offset": 334
         }
       },
       {
         "code": "MS3070",
         "phase": "type",
-        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else",
+        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_ => ...' arm; to bind or compare computed values use if/else",
         "position": {
           "file": "golden-0830.ms",
-          "line": 18,
-          "column": 13,
-          "offset": 417
+          "line": 24,
+          "column": 15,
+          "offset": 367
         }
       },
       {
         "code": "MS3050",
         "phase": "type",
-        "message": "non-exhaustive match on Int; add a final '_:' arm",
+        "message": "non-exhaustive match on Int; add a final '_ => ...' arm",
         "position": {
           "file": "golden-0830.ms",
-          "line": 14,
+          "line": 20,
           "column": 9,
-          "offset": 312
+          "offset": 297
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0830.ms:15:13: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 15 |             number:\n    |             ^\n<DIR>/golden-0830.ms:15:13: type: a literal arm has no payload to bind\n    |\n 15 |             number:\n    |             ^\n<DIR>/golden-0830.ms:16:25: resolution: unknown binding number; declare it with 'number := ...' before use, define 'fn number(...) T:', or import it from a module\n    |\n 16 |                 value = number\n    |                         ^\n<DIR>/golden-0830.ms:18:13: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 18 |             null: 0\n    |             ^\n<DIR>/golden-0830.ms:14:9: type: non-exhaustive match on Int; add a final '_:' arm\n    |\n 14 |         match 2:\n    |         ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0830.ms:21:13: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_ => ...' arm; to bind or compare computed values use if/else\n    |\n 21 |             number => {\n    |             ^\n<DIR>/golden-0830.ms:21:13: type: a literal arm has no payload to bind\n    |\n 21 |             number => {\n    |             ^\n<DIR>/golden-0830.ms:22:25: resolution: unknown binding number; declare it with 'number := ...' before use, define 'fn number(...) T { ... }', or import it from a module\n    |\n 22 |                 value = number\n    |                         ^\n<DIR>/golden-0830.ms:24:15: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_ => ...' arm; to bind or compare computed values use if/else\n    |\n 24 |             } null => 0\n    |               ^\n<DIR>/golden-0830.ms:20:9: type: non-exhaustive match on Int; add a final '_ => ...' arm\n    |\n 20 |         match 2 {\n    |         ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

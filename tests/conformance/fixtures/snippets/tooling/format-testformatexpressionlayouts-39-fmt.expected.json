@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Void:\n\tsend(condition: active and allowed and remaining > 0, payload: \"data\")\n"
+    "fmt": "fn work() Void {\n\tsend(condition: active and allowed and remaining > 0, payload: \"data\")\n}\n"
   }
 }

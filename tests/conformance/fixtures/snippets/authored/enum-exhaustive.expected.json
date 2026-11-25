@@ -9,19 +9,19 @@
       {
         "code": "MS3050",
         "phase": "type",
-        "message": "non-exhaustive match; missing cases: Failure, or add a final '_:' arm; add the arms 'Failure:'",
+        "message": "non-exhaustive match; missing cases: Failure, or add a final '_ => ...' arm; add the arms 'Failure => ...'",
         "position": {
           "file": "enum-exhaustive.ms",
-          "line": 8,
+          "line": 9,
           "column": 12,
-          "offset": 176
+          "offset": 169
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/enum-exhaustive.ms:8:12: type: non-exhaustive match; missing cases: Failure, or add a final '_:' arm; add the arms 'Failure:'\n   |\n 8 |     return match outcome:\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/enum-exhaustive.ms:9:12: type: non-exhaustive match; missing cases: Failure, or add a final '_ => ...' arm; add the arms 'Failure => ...'\n   |\n 9 |     return match outcome {\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

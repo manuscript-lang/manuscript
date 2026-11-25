@@ -29,8 +29,9 @@ Rejected today: `?.` needs an Optional receiver. `?.` also never exits while `?`
 - Access: `x?` adds none of its own; a `var fn` call or change through `x?` on a place changes the optional in place when `x` is `var`, and is rejected like any change to that binding otherwise (`place`/`is_place` in the ownership walker, `mutation::optional_try` and `alias_payload_addr` in lowering).
 
 ```manuscript
-fn city(p: Person?) String?:
-    return p?.address?.city           // same text; now exits with none instead of chaining
+fn city(p Person?) String? {
+    return p?.address?.city  // same text; now exits with none instead of chaining
+}
 ```
 
 ## Components touched

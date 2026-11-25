@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
-          "column": 30,
-          "offset": 245
+          "column": 29,
+          "offset": 244
         },
         "fix": {
           "position": {
@@ -39,8 +39,8 @@
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
-          "column": 48,
-          "offset": 263
+          "column": 46,
+          "offset": 261
         },
         "fix": {
           "position": {
@@ -65,8 +65,8 @@
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
-          "column": 57,
-          "offset": 272
+          "column": 55,
+          "offset": 270
         },
         "fix": {
           "position": {
@@ -88,7 +88,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:30: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                              ^\n<DIR>/core-language-errors-faults-1.ms:6:48: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                ^\n<DIR>/core-language-errors-faults-1.ms:6:57: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:29: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price Decimal, percent Decimal) Decimal {\n   |                             ^\n<DIR>/core-language-errors-faults-1.ms:6:46: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price Decimal, percent Decimal) Decimal {\n   |                                              ^\n<DIR>/core-language-errors-faults-1.ms:6:55: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn discount_validated(price Decimal, percent Decimal) Decimal {\n   |                                                       ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -218,7 +218,7 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     }
     return;
   }
-  if (expr->kind == MS_E_MATCH) { /* `if c: a else: b` hands on whichever arm it picks */
+  if (expr->kind == MS_E_MATCH) { /* `if c { a } else { b }` hands on whichever arm it picks */
     for (uint32_t at = 0; at < expr->u.match.arms.len; at++) {
       if (expr->u.match.arms.ptr[at]->from_if && expr->u.match.arms.ptr[at]->value != NULL) {
         mark_move(pass, expr->u.match.arms.ptr[at]->value);
@@ -375,7 +375,7 @@ static bool binds_assigned_local(const Uses *pass, const MsExpr *expr) {
 
 static bool last_use_outside_loops(const Uses *pass, MsParams params, MsStmts body, const MsStmt *loop, const MsExpr *iter);
 
-/* Whether `if r := o:` gives the payload of `o` to `r`: always for a resource or a parameter, and for another local only when `o` is
+/* Whether `if r := o { ... }` gives the payload of `o` to `r`: always for a resource or a parameter, and for another local only when `o` is
  * not read again, so a later read of `o` still finds its payload. */
 static bool hands_payload_on(const Uses *pass, const MsStmt *stmt) {
   const MsExpr *cond = stmt->u.branch.cond;
@@ -411,7 +411,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
              !stmt->u.branch.is_mutable &&
              owns_place(pass, stmt->u.branch.cond) && hands_payload_on(pass, stmt)) {
-    mark_move(pass, stmt->u.branch.cond); /* `if r := o:` hands the payload of a resource `o` to `r` */
+    mark_move(pass, stmt->u.branch.cond); /* `if r := o { ... }` hands the payload of a resource `o` to `r` */
   }
 }
 
@@ -660,7 +660,7 @@ static bool last_use_outside_loops(const Uses *pass, MsParams params, MsStmts bo
   return reads.last == ms_expr_start(iter).offset && !enclosing.inside;
 }
 
-/* `for item in items:` over a local list of resources whose body moves `item` on: the loop owns the elements, so each
+/* `for item in items { ... }` over a local list of resources whose body moves `item` on: the loop owns the elements, so each
  * one is closed in its round unless the body moves it away. */
 static void consume_loops(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;

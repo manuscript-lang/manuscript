@@ -12,16 +12,16 @@
         "message": "expected fn(Int?) Int, found fn(Int) Int (in the initializer of 'callback')",
         "position": {
           "file": "golden-0634.ms",
-          "line": 5,
-          "column": 31,
-          "offset": 134
+          "line": 6,
+          "column": 30,
+          "offset": 133
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0634.ms:5:31: type: expected fn(Int?) Int, found fn(Int) Int (in the initializer of 'callback')\n   |\n 5 |     callback: fn(Int?) Int := f\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0634.ms:6:30: type: expected fn(Int?) Int, found fn(Int) Int (in the initializer of 'callback')\n   |\n 6 |     callback fn(Int?) Int := f\n   |                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn affine(n: Int) Int!Cause:\n\tif n < 0:\n\t\treturn error(\n\t\t\tCause(\n\t\t\t\tmatch n:\n\t\t\t\t\tvalue:\n\t\t\t\t\t\treturn ok(9223372036854775807)\n\t\t\t\t\tnull: \"negative\"\n\t\t\t)\n\t\t)\n\treturn ok(n + 1)\n"
+    "fmt": "fn affine(n Int) Int!Cause {\n\tif n < 0 {\n\t\treturn error(\n\t\t\tCause(\n\t\t\t\tmatch n {\n\t\t\t\t\tvalue => {\n\t\t\t\t\t\treturn ok(9223372036854775807)\n\t\t\t\t\t} null => \"negative\"\n\t\t\t\t}\n\t\t\t)\n\t\t)\n\t}\n\treturn ok(n + 1)\n}\n"
   }
 }

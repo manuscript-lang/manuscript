@@ -11,39 +11,60 @@ import (
 // the list
 // buffer: each fault runs in a promise and the leak sweep fails the fixture on any block left
 // at exit.
-type Marker:
-	label: String
+type Marker {
+	label String
+}
 
-fn move Marker.close() Void!: error(Error("marker closed"))
+fn move Marker.close() Void! => error(Error("marker closed"))
 
-fn list_under_fault(move label: String) Void:
+fn list_under_fault(move label String) Void {
 	markers := [Marker(label)]
 	panic("body fault")
 	void markers.length()
+}
 
-fn list_at_scope_end(move label: String) Void:
+fn list_at_scope_end(move label String) Void {
 	markers := [Marker(label.clone()), Marker(label)]
 	void markers.length()
+}
 
-fn captured_list(move label: String) fn() Int:
+fn captured_list(move label String) fn() Int {
 	markers := [Marker(label)]
 	size := markers.length()
-	return fn: markers.length() + size
+	return () => markers.length() + size
+}
 
-fn drop_captured_list(move label: String) Void:
+fn drop_captured_list(move label String) Void {
 	action := captured_list(label)
 	void action()
+}
 
-fn faults(work: fn() Void) Bool:
-	return promise(fn: ok(work()), options: PromiseOptions(placement: Placement.Here)).wait().is_error()
+fn faults(work fn() Void) Bool {
+	return promise(() => ok(work()), options: PromiseOptions(placement: Placement.Here)).wait().is_error()
+}
 
-test "a list whose element close faults during a pending fault is released":
-	expect_true(faults(fn: list_under_fault("a marker label that needs a heap block")))?
-
-test "a list whose element close faults at scope end is released":
-	expect_true(faults(fn: list_at_scope_end("a marker label that needs a heap block")))?
-
-test "a closure capturing a list whose element close faults releases the list":
+test "a list whose element close faults during a pending fault is released" {
 	expect_true(
-		faults(fn: drop_captured_list("a marker label that needs a heap block"))
+		faults(() => list_under_fault("a marker label that needs a heap block"))
 	)?
+}
+
+test "a list whose element close faults at scope end is released" {
+	expect_true(
+		faults(
+			() => list_at_scope_end(
+				"a marker label that needs a heap block"
+			)
+		)
+	)?
+}
+
+test "a closure capturing a list whose element close faults releases the list" {
+	expect_true(
+		faults(
+			() => drop_captured_list(
+				"a marker label that needs a heap block"
+			)
+		)
+	)?
+}

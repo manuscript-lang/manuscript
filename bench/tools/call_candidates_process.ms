@@ -6,14 +6,14 @@ import (
 	Ran, capture, invalid from "./lib.ms",
 )
 
-export type Timed:
-	result: Ran
-	user_ns: Float
-	system_ns: Float
+export type Timed {
+	result Ran
+	user_ns, system_ns Float
 	// Executable followed by one exact argument per line.
-	command: String
+	command String
+}
 
-export fn timed(program: String, arguments: List[String]) Timed!:
+export fn timed(program String, arguments List[String]) Timed! {
 	command := [
 		"-c",
 		"export LC_ALL=C; TIMEFORMAT='CALL_CPU %U %S'; time \"$@\"",
@@ -23,8 +23,8 @@ export fn timed(program: String, arguments: List[String]) Timed!:
 	ran := capture("bash", command)
 	stderr := ran.stderr.clone()
 
-	for line in stderr.split("\n"):
-		if not line.starts_with("CALL_CPU "): continue
+	for line in stderr.split("\n") {
+		if not line.starts_with("CALL_CPU ") { continue }
 
 		parts := line.split(" ")
 		return ok(
@@ -41,5 +41,7 @@ export fn timed(program: String, arguments: List[String]) Timed!:
 				"bash\n" + command.join("\n") + "\n",
 			)
 		)
+	}
 
 	return invalid("child CPU timer did not report its result")
+}

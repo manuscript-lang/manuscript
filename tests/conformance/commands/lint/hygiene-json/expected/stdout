@@ -26,28 +26,6 @@
         },
         "replacement": ""
       }
-    },
-    {
-      "code": "MSL001",
-      "severity": "warning",
-      "message": "Remove trailing whitespace",
-      "position": {
-        "file": "main.ms",
-        "line": 3,
-        "column": 16,
-        "offset": 54
-      }
-    },
-    {
-      "code": "MSL002",
-      "severity": "warning",
-      "message": "End the file with a newline",
-      "position": {
-        "file": "main.ms",
-        "line": 4,
-        "column": 13,
-        "offset": 70
-      }
     }
   ]
 }

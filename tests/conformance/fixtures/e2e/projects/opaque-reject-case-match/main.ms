@@ -4,7 +4,9 @@ import (
 	Approved, Mode, approve, safe from "./gate.ms",
 )
 
-export fn main() Int:
-	match safe():
-		Safe: return 0
-		_: return 1
+export fn main() Int {
+	match safe() {
+		Safe => return 0
+		_ => return 1
+	}
+}

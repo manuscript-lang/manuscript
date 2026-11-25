@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Grow[T]:\n\tnext: fn() Grow[List[T]]\n\nexport fn main() Int: return 0\n"
+    "fmt": "type Grow[T] {\n\tnext fn() Grow[List[T]]\n}\n\nexport fn main() Int => return 0\n"
   }
 }

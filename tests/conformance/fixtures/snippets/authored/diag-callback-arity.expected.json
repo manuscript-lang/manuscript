@@ -12,16 +12,16 @@
         "message": "callback parameter count does not match its context; the context expects 1 parameter, found 2, so write exactly the parameters its context declares",
         "position": {
           "file": "diag-callback-arity.ms",
-          "line": 7,
+          "line": 8,
           "column": 17,
-          "offset": 156
+          "offset": 152
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-callback-arity.ms:7:17: type: callback parameter count does not match its context; the context expects 1 parameter, found 2, so write exactly the parameters its context declares\n   |\n 7 |     print(apply(fn a, b: a + b, 1))\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-callback-arity.ms:8:17: type: callback parameter count does not match its context; the context expects 1 parameter, found 2, so write exactly the parameters its context declares\n   |\n 8 |     print(apply((a, b) => a + b, 1))\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

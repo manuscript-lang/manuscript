@@ -14,4 +14,4 @@ Start with source files and bindings. Use the grammar page as a reference.
 | [Numbers and booleans](numbers-and-booleans.md) | Use numeric literals, explicit conversions, checked arithmetic, and durations. |
 | [Strings and bytes](text-and-bytes.md) | Interpolate text, encode UTF-8, and distinguish character boundaries. |
 | [Expressions and operators](expressions.md) | Apply precedence, operand types, and evaluation order. |
-| [Source grammar](grammar.md) | Check the exact accepted tokens, declarations, suites, and patterns. |
+| [Source grammar](grammar.md) | Check the exact accepted tokens, declarations, blocks, and patterns. |

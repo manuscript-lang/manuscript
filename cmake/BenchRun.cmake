@@ -3,17 +3,21 @@
 cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
-file(WRITE "${WORK}/sum_bench.ms" "type Input:
-    count: Int
+file(WRITE "${WORK}/sum_bench.ms" "type Input {
+    count Int
+}
 
-fn make_fixture() Input:
+fn make_fixture() Input {
     return Input(count: 1000)
+}
 
-bench \"sum_to_1000\" per 1000:
+bench \"sum_to_1000\" per 1000 {
     var total = 0
-    for i in 0..fixture.count:
+    for i in 0..fixture.count {
         total += i
+    }
     total
+}
 ")
 if(WIN32)
   set(separator ";")

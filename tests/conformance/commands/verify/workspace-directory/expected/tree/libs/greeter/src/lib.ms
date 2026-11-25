@@ -1,1 +1,1 @@
-export fn greeting(name: String) String: f"Hello, {name}"
+export fn greeting(name String) String => f"Hello, {name}"

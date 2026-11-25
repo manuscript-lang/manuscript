@@ -11,26 +11,28 @@ import (
 	milliseconds from "@std/time.ms",
 )
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse {
 	return HttpResponse(200, "ok\n".to_bytes())
+}
 
 // True when the server closed the connection within two seconds of the half-close.
-fn ends_promptly(address: String, partial: String) Bool!:
+fn ends_promptly(address String, partial String) Bool! {
 	var conn = connect(address).wait()?
 	conn.output.write(partial.to_bytes())?
 	conn.output.flush()?
 	conn.output.end()?
 
 	next := conn.input.next(timeout: milliseconds(2000))
-	if closed := next: return ok(closed == null)
+	if closed := next { return ok(closed == null) }
 
 	return ok(false)
+}
 
-test "a half-closed partial request ends the connection":
+test "a half-closed partial request ends the connection" {
 	server := serve(address: "127.0.0.1:0", handler: buffered(handle)) | expect_ok?
 	var round = 0
 
-	while round < 40:
+	while round < 40 {
 		ended := (
 			ends_promptly(
 				server.address(),
@@ -39,5 +41,7 @@ test "a half-closed partial request ends the connection":
 		)
 		void expect_true(ended)?
 		round += 1
+	}
 
 	return ok()
+}

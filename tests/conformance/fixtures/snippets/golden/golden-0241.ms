@@ -1,35 +1,41 @@
 // conform: tags=diagnostics
 // conform: phase=check
 // A described record.
-export type Counter:
+export type Counter {
     // Current count in items.
     // May start at zero.
-    count: Int = 0
+    count Int = 0
     // Detached description.
 
-    undocumented: Int = 1
+    undocumented Int = 1
+}
 
-export enum Outcome:
+export enum Outcome {
     // A completed count.
-    Ready(value: Int)
+    Ready(value Int)
     // Work is pending.
     Pending
     // Work failed with source context.
     Failed(
         // Original failure diagnostic.
-        message: String
+        message String
     )
+}
 
-export interface Countable:
+export interface Countable {
     // Reads the count without mutation.
     fn count() Int
+}
 
-impl Countable for Counter:
+impl Countable for Counter {
     // Returns the stored count.
-    fn count() Int:
+    fn count() Int {
         return self.count
+    }
+}
 
 // Private declarations stay private.
-type Hidden:
+type Hidden {
     // Hidden member documentation.
     value: Int
+}

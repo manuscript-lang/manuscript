@@ -12,9 +12,9 @@
         "message": "duplicate operation f; rename or remove one of them",
         "position": {
           "file": "duplicate-receiver-method.ms",
-          "line": 9,
+          "line": 11,
           "column": 6,
-          "offset": 106
+          "offset": 111
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "ambiguous member f on T; more than one method provides it",
         "position": {
           "file": "duplicate-receiver-method.ms",
-          "line": 13,
+          "line": 16,
           "column": 16,
-          "offset": 154
+          "offset": 163
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/duplicate-receiver-method.ms:9:6: type: duplicate operation f; rename or remove one of them\n   |\n 9 | fn T.f() Int:\n   |      ^\n<DIR>/duplicate-receiver-method.ms:13:16: resolution: ambiguous member f on T; more than one method provides it\n    |\n 13 |     print(T(1).f())\n    |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/duplicate-receiver-method.ms:11:6: type: duplicate operation f; rename or remove one of them\n    |\n 11 | fn T.f() Int {\n    |      ^\n<DIR>/duplicate-receiver-method.ms:16:16: resolution: ambiguous member f on T; more than one method provides it\n    |\n 16 |     print(T(1).f())\n    |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -2,26 +2,32 @@
 // conform: phase=test
 import expect_equal, expect_true from "@std/test/test.ms"
 
-type Order:
-	status: String
-	items: List[String]
+type Order {
+	status String
+	items List[String]
+}
 
-fn count_placed(orders: Map[String, Order]) Int:
+fn count_placed(orders Map[String, Order]) Int {
 	var n = 0
-	for e in orders.entries():
-		if e.value.status == "placed":
+	for e in orders.entries() {
+		if e.value.status == "placed" {
 			n += e.value.items.length()
+		}
+	}
 	return n
+}
 
-fn ship(var orders: Map[String, Order], id: String) Bool:
-	if var o = orders[id]?:
+fn ship(var orders Map[String, Order], id String) Bool {
+	if var o = orders[id]? {
 		o.status = "shipped"
 		o.items.append("label")
 		return true
+	}
 
 	return false
+}
 
-test "a for loop walks a map's entries, values and keys in insertion order":
+test "a for loop walks a map's entries, values and keys in insertion order" {
 	var m = Map[String, Int]()
 	m.add(key: "b", value: 2)
 	m.add(key: "a", value: 1)
@@ -29,30 +35,37 @@ test "a for loop walks a map's entries, values and keys in insertion order":
 	m.remove("a")
 
 	var seen = List[String]()
-	for e in m.entries():
+	for e in m.entries() {
 		seen.append(f"{e.key}={e.value}")
-	for e in m:
+	}
+	for e in m {
 		seen.append(e.key.clone())
-	for v in m.values():
+	}
+	for v in m.values() {
 		seen.append(f"{v}")
+	}
 
-	for k in m.keys():
-		if k == "c": break
+	for k in m.keys() {
+		if k == "c" { break }
 
 		seen.append(k.clone())
+	}
 
 	expect_equal(seen, ["b=2", "c=3", "b", "c", "2", "3", "b"])?
+}
 
-test "a walk over a map the body changes still sees a snapshot":
+test "a walk over a map the body changes still sees a snapshot" {
 	var m = Map[String, Int]()
 	m.add(key: "x", value: 1)
 	m.add(key: "y", value: 2)
-	for e in m.entries():
+	for e in m.entries() {
 		m.add(key: f"{e.key}{e.key}", value: e.value * 10)
+	}
 	expect_equal(m.length(), 4)?
 	expect_equal(m.get_or(key: "yy", fallback: 0), 20)?
+}
 
-test "walks borrow record values and sets without copying them":
+test "walks borrow record values and sets without copying them" {
 	var orders = Map[String, Order]()
 	orders.add(key: "o1", value: Order(status: "placed", items: ["a", "b"]))
 	orders.add(key: "o2", value: Order(status: "shipped", items: ["c"]))
@@ -64,13 +77,15 @@ test "walks borrow record values and sets without copying them":
 	s.add(9)
 
 	var total = 0
-	for x in s:
+	for x in s {
 		total += x
+	}
 
-	for x in s.values():
-		if x == 4: continue
+	for x in s.values() {
+		if x == 4 { continue }
 
 		total += x
+	}
 
 	expect_equal(total, 22)?
 
@@ -79,20 +94,24 @@ test "walks borrow record values and sets without copying them":
 	flags.add(key: false, value: "no")
 
 	var words = List[String]()
-	for e in flags.entries():
+	for e in flags.entries() {
 		words.append(f"{e.key}:{e.value}")
+	}
 	expect_equal(words, ["true:yes", "false:no"])?
+}
 
-test "if var changes a map entry in place":
+test "if var changes a map entry in place" {
 	var counts = Map[String, Int]()
 	counts.add(key: "a", value: 1)
 
-	if var n = counts["a"]?:
+	if var n = counts["a"]? {
 		n += 4
 		n *= 2
+	}
 
-	if var n = counts["missing"]?:
+	if var n = counts["missing"]? {
 		n += 1
+	}
 	expect_equal(counts.get_or(key: "a", fallback: 0), 10)?
 	expect_equal(counts.length(), 1)?
 
@@ -104,3 +123,4 @@ test "if var changes a map entry in place":
 	o := orders["o1"]
 	expect_equal(o.status, "shipped")?
 	expect_equal(o.items, ["a", "label"])?
+}

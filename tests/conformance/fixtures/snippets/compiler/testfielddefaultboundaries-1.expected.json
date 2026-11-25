@@ -13,15 +13,15 @@
         "position": {
           "file": "testfielddefaultboundaries-1.ms",
           "line": 5,
-          "column": 18,
-          "offset": 187
+          "column": 17,
+          "offset": 184
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testfielddefaultboundaries-1.ms:5:18: type: expected Int, found Bool\n   |\n 5 |     count: Int = true\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testfielddefaultboundaries-1.ms:5:17: type: expected Int, found Bool\n   |\n 5 |     count Int = true\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

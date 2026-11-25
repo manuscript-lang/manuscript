@@ -43,245 +43,285 @@ large image (a compressed PNG of zeros, for example).
 */
 
 // The channels stored for each pixel.
-export enum ColorMode:
+export enum ColorMode {
 	Gray  // One luminance byte per pixel, 0 black to 255 white.
 	GrayAlpha  // Two bytes per pixel: luminance, then alpha (0 transparent to 255 opaque).
 	Rgb  // Three bytes per pixel: red, green, blue, each 0 to 255.
 	Rgba  // Red, green, blue, then alpha (not premultiplied).
+}
 
 // The file formats `decode_image` recognizes and `encode_image` writes.
-export enum ImageFormat:
+export enum ImageFormat {
 	Jpeg  // JPEG: baseline and progressive decode (grayscale, YCbCr, CMYK/YCCK), baseline encode.
 	Png  // PNG: every color type and bit depth, Adam7 interlacing; 16-bit samples keep their high byte.
 	Ppm  // Netpbm binary P5 (gray) and P6 (RGB); decode scales any maxval up to 65535 to 8 bits, encode writes 8-bit.
 	Bmp  // Windows bitmap: 1, 4, 8, 24 and 32-bit uncompressed decode; 24-bit (or 32-bit with alpha) encode.
+}
 
 // A width-by-height raster. Build one with `new_image`, `decode_image`, or the
 // transforms below. Example:
 // `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
-export type Image:
+export type Image {
 	// Columns, at least 1.
-	width: Int
+	width Int
 	// Rows, at least 1.
-	height: Int
+	height Int
 	// The channel layout of `pixels`.
-	mode: ColorMode
+	mode ColorMode
 	// `width * height * channels` bytes, row-major.
-	pixels: List[UInt8]
+	pixels List[UInt8]
+}
 
 // Returns the number of byte channels per pixel.
-fn Image.channel_count() Int:
+fn Image.channel_count() Int {
 	return color_channels(self.mode)
+}
 
 // Returns the pixel at `(x, y)` as RGBA, or null outside the image. Gray modes repeat
 // the luminance in red, green and blue, and modes without alpha report 255.
-fn Image.pixel(x: Int, y: Int) Rgba?:
-	if x < 0 or y < 0 or x >= self.width or y >= self.height: return null
+fn Image.pixel(x, y Int) Rgba? {
+	if x < 0 or y < 0 or x >= self.width or y >= self.height { return null }
 
 	n := color_channels(self.mode)
 	at := (y * self.width + x) * n
 	p := self.pixels
 
-	match self.mode:
-		Gray: return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
-		GrayAlpha: return Rgba(
+	match self.mode {
+		Gray => return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
+		GrayAlpha => return Rgba(
 			p[at].to_int(),
 			p[at].to_int(),
 			p[at].to_int(),
 			p[at + 1].to_int(),
 		)
-		Rgb: return Rgba(p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(), 255)
-		Rgba: return Rgba(
+		Rgb => return Rgba(p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(), 255)
+		Rgba => return Rgba(
 			p[at].to_int(),
 			p[at + 1].to_int(),
 			p[at + 2].to_int(),
 			p[at + 3].to_int(),
 		)
+	}
+}
 
 // Writes `color` at `(x, y)`, converting to the image's mode (gray modes store Rec. 601
 // luma of the color). Returns false, and changes nothing, outside the image.
-fn var Image.set_pixel(x: Int, y: Int, color: Rgba) Bool:
-	if x < 0 or y < 0 or x >= self.width or y >= self.height: return false
+fn var Image.set_pixel(x, y Int, color Rgba) Bool {
+	if x < 0 or y < 0 or x >= self.width or y >= self.height { return false }
 
 	n := color_channels(self.mode)
 	at := (y * self.width + x) * n
 	luma := (color.red * 299 + color.green * 587 + color.blue * 114) / 1000
 
-	match self.mode:
-		Gray:
+	match self.mode {
+		Gray => {
 			self.pixels[at] = byte(luma)
-		GrayAlpha:
+		}
+		GrayAlpha => {
 			self.pixels[at] = byte(luma)
 			self.pixels[at + 1] = byte(color.alpha)
-		Rgb:
+		}
+		Rgb => {
 			self.pixels[at] = byte(color.red)
 			self.pixels[at + 1] = byte(color.green)
 			self.pixels[at + 2] = byte(color.blue)
-		Rgba:
+		}
+		Rgba => {
 			self.pixels[at] = byte(color.red)
 			self.pixels[at + 1] = byte(color.green)
 			self.pixels[at + 2] = byte(color.blue)
 			self.pixels[at + 3] = byte(color.alpha)
+		}
+	}
 
 	return true
+}
 
 // Returns a copy of the pixels inside `area`. An `area` that is empty, has a negative
 // corner or leaves the image returns ERANGE.
-fn Image.crop(area: Rect) Image!:
-	if area.width < 1 or area.height < 1 or area.x < 0 or area.y < 0:
+fn Image.crop(area Rect) Image! {
+	if area.width < 1 or area.height < 1 or area.x < 0 or area.y < 0 {
 		return error(Error("image: crop area is empty or negative", kind: "ERANGE"))
-	if area.x > self.width - area.width or area.y > self.height - area.height:
+	}
+	if area.x > self.width - area.width or area.y > self.height - area.height {
 		return error(Error("image: crop area leaves the image", kind: "ERANGE"))
+	}
 
 	n := color_channels(self.mode)
 	var out = List[UInt8](reserve: area.width * area.height * n)
 
-	for row in 0..area.height:
+	for row in 0..area.height {
 		start := ((area.y + row) * self.width + area.x) * n
-		for i in 0..area.width * n:
+		for i in 0..area.width * n {
 			out.append(self.pixels[start + i])
+		}
+	}
 
 	return ok(Image(area.width, area.height, self.mode, out))
+}
 
 // Returns the image mirrored left to right.
-fn Image.flip_horizontal() Image:
+fn Image.flip_horizontal() Image {
 	n := color_channels(self.mode)
 	var out = List[UInt8](reserve: self.pixels.length())
 
-	for y in 0..self.height:
-		for x in 0..self.width:
+	for y in 0..self.height {
+		for x in 0..self.width {
 			at := (y * self.width + self.width - 1 - x) * n
-			for c in 0..n:
+			for c in 0..n {
 				out.append(self.pixels[at + c])
+			}
+		}
+	}
 
 	return Image(self.width, self.height, self.mode, out)
+}
 
 // Returns the image mirrored top to bottom.
-fn Image.flip_vertical() Image:
+fn Image.flip_vertical() Image {
 	n := color_channels(self.mode)
 	row := self.width * n
 	var out = List[UInt8](reserve: self.pixels.length())
 
-	for y in 0..self.height:
+	for y in 0..self.height {
 		start := (self.height - 1 - y) * row
-		for i in 0..row:
+		for i in 0..row {
 			out.append(self.pixels[start + i])
+		}
+	}
 
 	return Image(self.width, self.height, self.mode, out)
+}
 
 // Returns the image rotated a quarter turn clockwise; the result is `height` wide and
 // `width` tall.
-fn Image.rotate90() Image:
+fn Image.rotate90() Image {
 	n := color_channels(self.mode)
 	var out = List[UInt8](reserve: self.pixels.length())
 
-	for y in 0..self.width:
-		for x in 0..self.height:
+	for y in 0..self.width {
+		for x in 0..self.height {
 			at := ((self.height - 1 - x) * self.width + y) * n
-			for c in 0..n:
+			for c in 0..n {
 				out.append(self.pixels[at + c])
+			}
+		}
+	}
 
 	return Image(self.height, self.width, self.mode, out)
+}
 
 // Returns the image rotated a half turn.
-fn Image.rotate180() Image:
+fn Image.rotate180() Image {
 	n := color_channels(self.mode)
-	if not rotation_shape(self, n): return self.flip_horizontal().flip_vertical()
+	if not rotation_shape(self, n) { return self.flip_horizontal().flip_vertical() }
 
 	var out = List[UInt8](reserve: self.pixels.length())
 
-	for y in 0..self.height:
-		for x in 0..self.width:
+	for y in 0..self.height {
+		for x in 0..self.width {
 			at := ((self.height - 1 - y) * self.width + self.width - 1 - x) * n
-			for c in 0..n:
+			for c in 0..n {
 				out.append(self.pixels[at + c])
+			}
+		}
+	}
 
 	return Image(self.width, self.height, self.mode, out)
+}
 
 // Returns the image rotated three quarter turns clockwise, which is one quarter turn
 // counter-clockwise; the result is `height` wide and `width` tall.
-fn Image.rotate270() Image:
+fn Image.rotate270() Image {
 	n := color_channels(self.mode)
-	if not rotation_shape(self, n): return (
-		self
-		.rotate90()
-		.flip_horizontal()
-		.flip_vertical()
-	)
+	if not rotation_shape(self, n) {
+		return self.rotate90().flip_horizontal().flip_vertical()
+	}
 
 	var out = List[UInt8](reserve: self.pixels.length())
 
-	for y in 0..self.width:
-		for x in 0..self.height:
+	for y in 0..self.width {
+		for x in 0..self.height {
 			at := (x * self.width + self.width - 1 - y) * n
-			for c in 0..n:
+			for c in 0..n {
 				out.append(self.pixels[at + c])
+			}
+		}
+	}
 
 	return Image(self.height, self.width, self.mode, out)
+}
 
 // Returns the image converted to `target`. Gray from color uses Rec. 601 luma, gray
 // expands by repeating its value into red, green and blue, and missing alpha becomes
 // opaque. Dropping alpha keeps the stored color and does not composite it.
-fn Image.convert(target: ColorMode) Image:
-	if target == self.mode: return Image(
-		self.width,
-		self.height,
-		self.mode,
-		self.pixels.clone(),
-	)
+fn Image.convert(target ColorMode) Image {
+	if target == self.mode {
+		return Image(self.width, self.height, self.mode, self.pixels.clone())
+	}
 
 	count := self.width * self.height
 	m := color_channels(target)
 	var out = List[UInt8](reserve: count * m)
 
-	for i in 0..count:
+	for i in 0..count {
 		c := self.pixel(i % self.width, i / self.width) or Rgba(0, 0, 0, 255)
 		luma := (c.red * 299 + c.green * 587 + c.blue * 114) / 1000
 
-		match target:
-			Gray:
+		match target {
+			Gray => {
 				out.append(byte(luma))
-			GrayAlpha:
+			}
+			GrayAlpha => {
 				out.append(byte(luma))
 				out.append(byte(c.alpha))
-			Rgb:
+			}
+			Rgb => {
 				out.append(byte(c.red))
 				out.append(byte(c.green))
 				out.append(byte(c.blue))
-			Rgba:
+			}
+			Rgba => {
 				out.append(byte(c.red))
 				out.append(byte(c.green))
 				out.append(byte(c.blue))
 				out.append(byte(c.alpha))
+			}
+		}
+	}
 
 	return Image(self.width, self.height, target, out)
+}
 
 // Scales to `width` by `height` with `method` and returns a new image. A non-positive
 // size returns EINVAL, as `new_image` does, and a pixel count past `max_pixels` or the
 // 2^30 hard ceiling returns EOVERFLOW.
 fn Image.resize(
-	width: Int,
-	height: Int,
-	method: Resampling = Resampling.Bilinear,
-	max_pixels: Int? = null,
-) Image!:
-	if width < 1 or height < 1:
+	width,
+	height Int,
+	method Resampling = Resampling.Bilinear,
+	max_pixels Int? = null,
+) Image! {
+	if width < 1 or height < 1 {
 		return error(Error("image: dimensions must be positive", kind: "EINVAL"))
+	}
 
 	count := pixel_count(width, height, max_pixels)?
 	n := color_channels(self.mode)
 	var out = List[UInt8](reserve: count * n)
 
-	for y in 0..height:
-		for x in 0..width:
-			match method:
-				Nearest:
+	for y in 0..height {
+		for x in 0..width {
+			match method {
+				Nearest => {
 					sx := x * self.width / width
 					sy := y * self.height / height
 					at := (sy * self.width + sx) * n
-					for c in 0..n:
+					for c in 0..n {
 						out.append(self.pixels[at + c])
-				Bilinear:
+					}
+				}
+				Bilinear => {
 					// Sample centers, in 1/256ths, clamped to the source.
 					fx := max_of(0, ((2 * x + 1) * self.width * 128) / width - 128)
 					fy := max_of(0, ((2 * y + 1) * self.height * 128) / height - 128)
@@ -289,10 +329,10 @@ fn Image.resize(
 					y0 := min_of(fy / 256, self.height - 1)
 					x1 := min_of(x0 + 1, self.width - 1)
 					y1 := min_of(y0 + 1, self.height - 1)
-					wx := if x0 == x1: 0 else: fx % 256
-					wy := if y0 == y1: 0 else: fy % 256
+					wx := if x0 == x1 { 0 } else { fx % 256 }
+					wy := if y0 == y1 { 0 } else { fy % 256 }
 
-					for c in 0..n:
+					for c in 0..n {
 						a := self.pixels[(y0 * self.width + x0) * n + c].to_int()
 						b := self.pixels[(y0 * self.width + x1) * n + c].to_int()
 						d := self.pixels[(y1 * self.width + x0) * n + c].to_int()
@@ -308,167 +348,188 @@ fn Image.resize(
 								) / 65536
 							)
 						)
+					}
+				}
+			}
+		}
+	}
 
 	return ok(Image(width, height, self.mode, out))
+}
 
 // Reports whether `image` has consistent dimensions for a rotation. Public fields allow
 // malformed images, so the check divides instead of multiplying unchecked sizes.
-fn rotation_shape(image: Image, channels: Int) Bool:
-	if image.width < 1 or image.height < 1: return false
-	if image.pixels.length() % channels != 0: return false
+fn rotation_shape(image Image, channels Int) Bool {
+	if image.width < 1 or image.height < 1 { return false }
+	if image.pixels.length() % channels != 0 { return false }
 
 	pixels := image.pixels.length() / channels
 	return pixels % image.height == 0 and pixels / image.height == image.width
+}
 
 // One RGBA sample, each channel 0 to 255.
-export type Rgba:
+export type Rgba {
 	// Red level, 0 to 255; writes clamp.
-	red: Int
+	red Int
 	// Green level, 0 to 255; writes clamp.
-	green: Int
+	green Int
 	// Blue level, 0 to 255; writes clamp.
-	blue: Int
+	blue Int
 	// Opacity, 0 transparent to 255 opaque (the default).
-	alpha: Int = 255
+	alpha Int = 255
+}
 
 // Chroma resolution of an encoded JPEG.
-export enum Chroma:
+export enum Chroma {
 	Full  // 4:4:4, no subsampling.
 	Quarter  // 4:2:0, chroma at half width and height (smaller files).
+}
 
 // Settings for `encode_jpeg`.
-export type JpegOptions:
+export type JpegOptions {
 	// 1 (smallest file) to 100 (best quality); outside that range `encode_jpeg` returns
 	// EINVAL.
-	quality: Int = 85
+	quality Int = 85
 	// Chroma resolution for color images; gray images ignore it.
-	chroma: Chroma = Chroma.Quarter
+	chroma Chroma = Chroma.Quarter
 	// MCUs (minimum coded units, the blocks the encoder processes together) between
 	// restart markers, 0 through 65535, or 0 for null. Markers let readers recover from
 	// damage.
-	restart_interval: Int = 0
+	restart_interval Int = 0
+}
 
 // A rectangle in pixels: top-left corner and size.
-export type Rect:
+export type Rect {
 	// Column of the left edge, counted from 0.
-	x: Int
+	x Int
 	// Row of the top edge, counted from 0.
-	y: Int
+	y Int
 	// Columns covered; at least 1.
-	width: Int
+	width Int
 	// Rows covered; at least 1.
-	height: Int
+	height Int
+}
 
 // How `resize` samples the source.
-export enum Resampling:
+export enum Resampling {
 	Nearest  // Fastest; keeps hard edges.
 	Bilinear  // Weighted average of the four nearest pixels.
+}
 
 // Number of byte channels in `mode`.
-export fn color_channels(mode: ColorMode) Int:
-	match mode:
-		Gray: return 1
-		GrayAlpha: return 2
-		Rgb: return 3
-		Rgba: return 4
+export fn color_channels(mode ColorMode) Int {
+	match mode {
+		Gray => return 1
+		GrayAlpha => return 2
+		Rgb => return 3
+		Rgba => return 4
+	}
+}
 
 // Creates an opaque black image: alpha modes are fully opaque. A non-positive size
 // returns EINVAL, and a pixel count past `max_pixels` or the 2^30 hard ceiling returns
 // EOVERFLOW.
-export fn new_image(
-	width: Int,
-	height: Int,
-	mode: ColorMode,
-	max_pixels: Int? = null,
-) Image!:
-	if width < 1 or height < 1: return error(
-		Error("image: dimensions must be positive", kind: "EINVAL")
-	)
+export fn new_image(width, height Int, mode ColorMode, max_pixels Int? = null) Image! {
+	if width < 1 or height < 1 {
+		return error(Error("image: dimensions must be positive", kind: "EINVAL"))
+	}
 
 	count := pixel_count(width, height, max_pixels)?
 	n := color_channels(mode)
 	var pixels = zeroed(count * n)
-	if mode == ColorMode.GrayAlpha or mode == ColorMode.Rgba:
-		for i in 0..count:
+	if mode == ColorMode.GrayAlpha or mode == ColorMode.Rgba {
+		for i in 0..count {
 			pixels[i * n + n - 1] = byte(255)
+		}
+	}
 	return ok(Image(width, height, mode, pixels))
+}
 
 // ---- format detection ----
 
 // Names the format of `data` from its leading bytes, or null when it is not JPEG, PNG,
 // BMP or binary PPM/PGM (P5 or P6).
-export fn detect_image_format(data: Bytes) ImageFormat?:
-	if data.length() >= 2:
+export fn detect_image_format(data Bytes) ImageFormat? {
+	if data.length() >= 2 {
 		a := data.get(0).to_int()
 		b := data.get(1).to_int()
-		if a == 255 and b == 216: return ImageFormat.Jpeg
-		if a == 137 and b == 80: return ImageFormat.Png
-		if a == 66 and b == 77: return ImageFormat.Bmp
-		if a == 80 and (b == 53 or b == 54): return ImageFormat.Ppm
+		if a == 255 and b == 216 { return ImageFormat.Jpeg }
+		if a == 137 and b == 80 { return ImageFormat.Png }
+		if a == 66 and b == 77 { return ImageFormat.Bmp }
+		if a == 80 and (b == 53 or b == 54) { return ImageFormat.Ppm }
+	}
 
 	return null
+}
 
-fn color_mode(channels: Int) ColorMode:
-	if channels == 1: return ColorMode.Gray
-	if channels == 2: return ColorMode.GrayAlpha
-	if channels == 3: return ColorMode.Rgb
+fn color_mode(channels Int) ColorMode {
+	if channels == 1 { return ColorMode.Gray }
+	if channels == 2 { return ColorMode.GrayAlpha }
+	if channels == 3 { return ColorMode.Rgb }
 
 	return ColorMode.Rgba
+}
 
-fn image_of(move raster: Raster) Image:
+fn image_of(move raster Raster) Image {
 	return Image(
 		raster.width,
 		raster.height,
 		color_mode(raster.channels),
 		raster.pixels,
 	)
+}
 
 // Decodes any supported format, detected from the leading bytes with
 // `detect_image_format`; an unrecognized format returns ENOTSUP. `max_pixels` rejects
 // larger images with EOVERFLOW before any allocation.
-export fn decode_image(data: Bytes, max_pixels: Int? = null) Image!:
+export fn decode_image(data Bytes, max_pixels Int? = null) Image! {
 	format := detect_image_format(data)
 	f := format
 
-	if f != null:
-		match f:
-			Jpeg: return decode_jpeg(data, max_pixels).map(image_of)
-			Png: return decode_png(data, max_pixels).map(image_of)
-			Ppm: return decode_ppm(data, max_pixels).map(image_of)
-			Bmp: return decode_bmp(data, max_pixels).map(image_of)
+	if f != null {
+		match f {
+			Jpeg => return decode_jpeg(data, max_pixels).map(image_of)
+			Png => return decode_png(data, max_pixels).map(image_of)
+			Ppm => return decode_ppm(data, max_pixels).map(image_of)
+			Bmp => return decode_bmp(data, max_pixels).map(image_of)
+		}
+	}
 
 	return error(unsupported("unrecognized image format"))
+}
 
 // Encodes `image` as `format`. JPEG uses the default `JpegOptions`; call `encode_jpeg`
 // to set quality or chroma. JPEG and PPM cannot store alpha and return EINVAL for
 // `GrayAlpha` and `Rgba` images; convert them first.
-export fn encode_image(image: Image, format: ImageFormat) Bytes!:
-	match format:
-		Jpeg: return encode_jpeg(image, JpegOptions())
-		Png: return encode_png(
+export fn encode_image(image Image, format ImageFormat) Bytes! {
+	match format {
+		Jpeg => return encode_jpeg(image, JpegOptions())
+		Png => return encode_png(
 			image.width,
 			image.height,
 			color_channels(image.mode),
 			image.pixels,
 		)
-		Ppm: return encode_ppm(
+		Ppm => return encode_ppm(
 			image.width,
 			image.height,
 			color_channels(image.mode),
 			image.pixels,
 		)
-		Bmp: return encode_bmp(
+		Bmp => return encode_bmp(
 			image.width,
 			image.height,
 			color_channels(image.mode),
 			image.pixels,
 		)
+	}
+}
 
 // Encodes baseline JPEG: gray stays gray, and Rgb uses YCbCr with the chosen chroma
 // resolution. Alpha images, a `quality` outside 1 through 100, and a
 // `restart_interval` outside 0 through 65535 return EINVAL; convert or composite alpha
 // images first. A width or height above 65535 returns EOVERFLOW.
-export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!:
+export fn encode_jpeg(image Image, options JpegOptions = JpegOptions()) Bytes! {
 	return jpeg_encode(
 		image.width,
 		image.height,
@@ -478,3 +539,4 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 		options.chroma == Chroma.Quarter,
 		options.restart_interval,
 	)
+}

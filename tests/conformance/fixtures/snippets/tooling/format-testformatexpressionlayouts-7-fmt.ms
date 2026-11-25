@@ -2,8 +2,9 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/format/format_layout_test.go:90 TestFormatExpressionLayouts
 fn work(
-    balance: Int = initial_account_balance
-    + pending_deposit_total * applicable_exchange_rate
-    - pending_withdrawal_total
-) Int:
-    return balance
+	balance Int = initial_account_balance
+	+ pending_deposit_total * applicable_exchange_rate
+	- pending_withdrawal_total
+) Int {
+	return balance
+}

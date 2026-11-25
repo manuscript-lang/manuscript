@@ -1,14 +1,19 @@
-export type Point:
-	x: Int
+export type Point {
+	x Int
+}
 
-export enum Mode:
+export enum Mode {
 	Off
 	On
+}
 
-export fn shifted() Int:
+export fn shifted() Int {
 	return Point(10).x + 1
+}
 
-export fn flip() Int:
-	match Mode.Off:
-		Mode.Off: return 2
-		_: return 0
+export fn flip() Int {
+	match Mode.Off {
+		Mode.Off => return 2
+		_ => return 0
+	}
+}

@@ -11,15 +11,17 @@ Save this module as `pricing.ms`. It exports a type and the operation callers ne
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-export type Item:
-    price: Int
-    quantity: Int
+export type Item {
+    price, quantity Int
+}
 
-export fn total(items: List[Item]) Int:
+export fn total(items List[Item]) Int {
     var result = 0
-    for item in items:
+    for item in items {
         result += item.price * item.quantity
+    }
     return result
+}
 ```
 
 Save the caller as `main.ms` in the same directory:
@@ -28,8 +30,9 @@ Save the caller as `main.ms` in the same directory:
 ```manuscript
 import Item, total from "./pricing.ms"
 
-fn main() Void:
+fn main() Void {
     print(total([Item(12, 3), Item(5, 2)]))
+}
 ```
 
 Run `ms run main.ms`:

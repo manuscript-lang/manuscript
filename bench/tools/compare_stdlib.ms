@@ -25,18 +25,19 @@ import (
 )
 
 // One document as `{case: operations}` and `{case: median ns/op}`.
-export type Sample:
-	operations: Map[String, Int]
-	medians: Map[String, Float]
+export type Sample {
+	operations Map[String, Int]
+	medians Map[String, Float]
+}
 
-export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
+export fn parse_sample(output String, expected Map[String, Int]?) Sample! {
 	cases := read_cases(output)?
 	var operations = Map[String, Int]()
 	var medians = Map[String, Float]()
 
-	for c in cases:
+	for c in cases {
 		stats := (
-			c.stats
+			c.stats.clone()
 			or Stats(
 				operations: 0,
 				iterations: null,
@@ -50,34 +51,45 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 		)
 		operations.add(c.name.clone(), stats.operations)
 		medians.add(c.name.clone(), stats.median_ns)
+	}
 
 	want := expected
-	if want != null:
-		if want != operations: return invalid("cases or operation counts changed")
+	if want != null {
+		if want != operations { return invalid("cases or operation counts changed") }
+	}
 	return ok(Sample(operations, medians))
+}
 
-fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Error]:
+fn run(opts Map[String, String], repeats, samples Int) Result[String, Error] {
 	filter := opts.get_or("filter", "")
 	var binaries = Map[String, String]()
 	var raw = Map[String, List[String]]()
 	var values = Map[String, Map[String, List[Float]]]()
 
-	for name in ["before", "after"]:
+	for name in ["before", "after"] {
 		binaries.add(name.clone(), absolute(opts.get_or(name, "")))
 		raw.add(name.clone(), List[String]())
 		values.add(name.clone(), Map[String, List[Float]]())
+	}
 
-	var expected: Map[String, Int]? = null
+	var expected Map[String, Int]? = null
 	var names = List[String]()
 
-	for i in 0..repeats:
-		for version in (if i % 2 == 0: ["before", "after"] else: ["after", "before"]):
+	for i in 0..repeats {
+		for version in (
+			if i % 2 == 0 {
+				["before", "after"]
+			} else {
+				["after", "before"]
+			}
+		) {
 			output := stdlib_bench(binaries.get_or(version, ""), samples, filter)?
 			parsed := parse_sample(output, expected)?
 
-			if expected == null:
+			if expected == null {
 				expected = parsed.operations.clone()
 				names = parsed.operations.keys().clone()
+			}
 
 			var kept = raw.get_or(version, [])
 			kept.append(output.trim() + "\n")
@@ -85,12 +97,15 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
 			var per = values.get_or(version, Map[String, List[Float]]())
 
-			for entry in parsed.medians.entries():
+			for entry in parsed.medians.entries() {
 				var list = per.get_or(entry.key, [])
 				list.append(entry.value)
 				per.add(entry.key.clone(), list)
+			}
 
 			values.add(version.clone(), per)
+		}
+	}
 
 	want := expected or Map[String, Int]()
 	labels := case_labels(names)
@@ -101,7 +116,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 	]
 	var summary = Map[String, JsonValue]()
 
-	for name in names:
+	for name in names {
 		before := median(
 			values.get_or("before", Map[String, List[Float]]()).get_or(
 				name,
@@ -114,8 +129,8 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 				[],
 			)
 		)
-		var ratio: Float? = null
-		if before != 0.0: ratio = after / before
+		var ratio Float? = null
+		if before != 0.0 { ratio = after / before }
 
 		label := labels.get_or(name, name)
 		ops := want.get_or(name, 0)
@@ -123,28 +138,40 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		entry.add("ops", jint(ops))
 		entry.add("before", jfloat(before))
 		entry.add("after", jfloat(after))
-		entry.add("ratio", if ratio != null: jfloat(ratio or 0.0) else: JsonValue.Null)
+		entry.add(
+			"ratio",
+			if ratio != null {
+				jfloat(ratio or 0.0)
+			} else {
+				JsonValue.Null
+			}
+		)
 		summary.add(label.clone(), jobject(entry))
 
 		var shown = "—"
 		r := ratio
-		if r != null: shown = r.to_fixed(3) + "x"
+		if r != null {
+			shown = r.to_fixed(3) + "x"
+		}
 		table.append(
 			f"| {label} | {ops} | {before.to_precision(4)} | {after.to_precision(4)} | {shown} |"
 		)
+	}
 
 	out := opts.get_or("output", "")
 	ensure_directory(out)
-	for version in ["before", "after"]:
+	for version in ["before", "after"] {
 		write_text(f"{out}/stdlib-{version}.jsonl", raw.get_or(version, []).join(""))
+	}
 
 	var shas = Map[String, JsonValue]()
 
-	for version in ["before", "after"]:
+	for version in ["before", "after"] {
 		var binary = Map[String, JsonValue]()
 		binary.add("path", jstr(binaries.get_or(version, "")))
 		binary.add("sha256", jstr(file_sha256(binaries.get_or(version, ""))))
 		shas.add(version.clone(), jobject(binary))
+	}
 
 	var environment = Map[String, JsonValue]()
 	environment.add("platform", jstr(platform()))
@@ -157,18 +184,20 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 	rendered := table.join("\n") + "\n"
 	write_text(f"{out}/results.md", rendered)
 	return ok(rendered)
+}
 
-fn main() Int:
+fn main() Int {
 	parsed := options(
 		arguments(),
 		["before", "after", "output", "repeats", "samples", "filter"],
 		["before", "after", "output"],
 	)
-	if parsed.is_error(): return fail(parsed.err().message)
+	if parsed.is_error() { return fail(parsed.err().message) }
 
 	opts := parsed.get_or(Map[String, String]())
 	repeats := opts.get_or("repeats", "5").parse_int() or 0
 	samples := opts.get_or("samples", "5").parse_int() or 0
-	if repeats < 1 or samples < 1: return fail("repeats and samples must be positive")
+	if repeats < 1 or samples < 1 { return fail("repeats and samples must be positive") }
 
 	return finish(run(opts, repeats, samples))
+}

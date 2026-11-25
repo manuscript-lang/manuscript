@@ -13,10 +13,10 @@
           "index": 0,
           "name": "testtestsruninprojectdirectory-2.ms::fixture next to the manifest",
           "status": "failed",
-          "failure": "fixture not found\n  at testtestsruninprojectdirectory-2.ms:13:13",
+          "failure": "fixture not found\n  at testtestsruninprojectdirectory-2.ms:17:13",
           "position": {
             "file": "testtestsruninprojectdirectory-2.ms",
-            "line": 13,
+            "line": 17,
             "column": 13,
             "offset": 0
           }
@@ -32,7 +32,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testtestsruninprojectdirectory-2.ms::fixture next to the manifest\nFAIL testtestsruninprojectdirectory-2.ms::fixture next to the manifest: fixture not found\n  at testtestsruninprojectdirectory-2.ms:13:13\n1 tests, 1 failed\n",
+      "stdout": "RUN testtestsruninprojectdirectory-2.ms::fixture next to the manifest\nFAIL testtestsruninprojectdirectory-2.ms::fixture next to the manifest: fixture not found\n  at testtestsruninprojectdirectory-2.ms:17:13\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

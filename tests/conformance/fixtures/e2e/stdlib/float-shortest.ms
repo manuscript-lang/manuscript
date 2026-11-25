@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "Float shortest strings keep notation boundaries and special values":
+test "Float shortest strings keep notation boundaries and special values" {
 	expect_equal((1.0 / 3.0).to_string(), "0.3333333333333333")?
 	expect_equal(1e-6.to_string(), "0.000001")?
 	expect_equal(1e-7.to_string(), "1e-7")?
@@ -15,3 +15,4 @@ test "Float shortest strings keep notation boundaries and special values":
 	expect_equal(infinity.to_string(), "Infinity")?
 	expect_equal((-infinity).to_string(), "-Infinity")?
 	expect_equal(nan.to_string(), "NaN")?
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "\nfn crash(cause: Error) Int:\n\treturn 1 / \"\".length()\n\nexport fn main() Int:\n\tvalue: Int!Error := error(Error(\"expected failure\"))\n\treturn value.get_or_else(crash)\n"
+    "fmt": "\nfn crash(cause Error) Int {\n\treturn 1 / \"\".length()\n}\n\nexport fn main() Int {\n\tvalue Int!Error := error(Error(\"expected failure\"))\n\treturn value.get_or_else(crash)\n}\n"
   }
 }

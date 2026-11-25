@@ -1,10 +1,14 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type T:
-    a: Int
+type T {
+    a Int
+}
 
-impl T:
-    fn f(self) Int:
+impl T {
+    fn f(self) Int {
         return 1
+    }
+}
 
-fn main() Void!:
+fn main() Void! {
+}

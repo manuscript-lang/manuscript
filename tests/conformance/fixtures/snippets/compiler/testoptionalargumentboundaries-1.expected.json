@@ -13,15 +13,15 @@
         "position": {
           "file": "testoptionalargumentboundaries-1.ms",
           "line": 6,
-          "column": 19,
-          "offset": 205
+          "column": 21,
+          "offset": 208
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testoptionalargumentboundaries-1.ms:6:19: type: expected Int?, found String (in argument 'value' of f)\n   |\n 6 | fn call() Void: f(\"wrong\")\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testoptionalargumentboundaries-1.ms:6:21: type: expected Int?, found String (in argument 'value' of f)\n   |\n 6 | fn call() Void => f(\"wrong\")\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

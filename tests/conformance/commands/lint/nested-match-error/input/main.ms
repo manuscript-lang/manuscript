@@ -1,13 +1,21 @@
-fn pick(a: Int?, b: Int?) Int:
-	match a:
-		x:
-			match b:
-				y:
+fn pick(a, b Int?) Int {
+	match a {
+		x => {
+			match b {
+				y => {
 					return x + y
-				null:
+				}
+				null => {
 					return x
-		null:
+				}
+			}
+		}
+		null => {
 			return 0
+		}
+	}
+}
 
-fn main() Void:
+fn main() Void {
 	print(f"{pick(1, 2)}")
+}

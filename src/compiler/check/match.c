@@ -270,7 +270,7 @@ static void check_literal_arm(Body *body, ArmState *state, const MsArm *arm) {
       MsStrBuild out = ms_strbuild_new();
       ms_strbuild_append_text(&out, "a match on ");
       ms_ty_show(&out, program->names, types, state->scrutinee);
-      ms_strbuild_append_text(&out, " takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or "
+      ms_strbuild_append_text(&out, " takes literal arms such as 1, \"text\" or true, and a final '_ => ...' arm; to bind or "
                                     "compare computed values use if/else");
       arm_report(body, arm, MS_CHECK_TYPE, out);
     }
@@ -328,7 +328,7 @@ static void check_contract_arm(Body *body, ArmState *state, const MsArm *arm) {
     arm_message(body, arm, MS_CHECK_TYPE, "contract pattern requires a concrete type or enum; name an implementing type like Circle, or use '_'");
   }
   if (arm->bare || arm->bindings.len != 1) {
-    arm_message(body, arm, MS_CHECK_TYPE, "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'");
+    arm_message(body, arm, MS_CHECK_TYPE, "concrete type pattern requires exactly one receiver binding; write 'Type(name) => ...' or 'Type(_) => ...'");
   }
 }
 
@@ -498,13 +498,13 @@ static void check_exhaustive(Body *body, const MsExpr *expr, MsTy scrutinee) {
       ms_strbuild_append_text(&arms, field == 0 ? "(" : ", ");
       ms_strbuild_append(&arms, ms_names_span(program->names, kase->fields.ptr[field].name));
     }
-    ms_strbuild_append_text(&arms, kase->fields.len != 0 ? "):'" : ":'");
+    ms_strbuild_append_text(&arms, kase->fields.len != 0 ? ") => ...'" : " => ...'");
   }
   if (names.len != 0) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "non-exhaustive match; missing cases: ");
     ms_suggest_list(&text, &names, 12);
-    ms_strbuild_append_text(&text, ", or add a final '_:' arm; add the arms ");
+    ms_strbuild_append_text(&text, ", or add a final '_ => ...' arm; add the arms ");
     ms_strbuild_append(&text, ms_strbuild_span(&arms));
     ms_strbuild_append_text(&text, names.len > 12 ? ", ..." : "");
     ms_check_report(program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
@@ -547,7 +547,7 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append_text(&text, "non-exhaustive match on ");
       ms_ty_show(&text, body->program->names, types, scrutinee);
-      ms_strbuild_append_text(&text, "; add a final '_:' arm");
+      ms_strbuild_append_text(&text, "; add a final '_ => ...' arm");
       ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     }
   }

@@ -21,14 +21,16 @@ Proposal, 2026-11-23, written from issue #5404 (Chinmay, 2026-11-21: "nullabilit
 **`T?` means "a `T`, or `null`". There is one empty value and no layer to peel.**
 
 ```manuscript
-fn first_or_null(xs: List[Int?]) Int?:
+fn first_or_null(xs List[Int?]) Int? {
     return xs.first() or null
+}
 
-fn main() Void:
-    a: Int? := 3
-    b: Int? := null
+fn main() Void {
+    a Int? := 3
+    b Int? := null
     print(a != null)
     print(b == null)
+}
 ```
 
 - Collapse: `T??` is `T?` wherever it arises, written or by generic instantiation (`fn first[T](xs: List[T]) T?` with `T = Int?` returns `Int?`). A written `T??` gets a diagnostic with a fix to `T?`.

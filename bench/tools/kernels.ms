@@ -21,21 +21,24 @@ import (
 	sample from "./lib.ms",
 )
 
-fn build_c(source: String, out: String, flags: List[String]) Result[Void, Error]:
+fn build_c(source, out String, flags List[String]) Result[Void, Error] {
 	var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
 	args = args.concat([source.clone(), "-o", out.clone()])
 	void must(f"cc {source}", capture(env("CC", "cc"), args))?
+}
 
-fn run(suite: String, n: Int, work: String) Result[String, Error]:
+fn run(suite String, n Int, work String) Result[String, Error] {
 	here := f"bench/perf/{suite}"
-	for dir in ["go", "ms", "rust"]:
+	for dir in ["go", "ms", "rust"] {
 		copy(
 			f"{here}/{dir}",
 			f"{work}/{dir}",
 			CopyOptions(recursive: true, replace: true),
 		)?
-	for dir in ["rust-checked", "c", "c-ms"]:
+	}
+	for dir in ["rust-checked", "c", "c-ms"] {
 		create_directory(f"{work}/{dir}")?
+	}
 	build_go(f"{work}/go", f"{work}/go/bench")?
 	build_rust(f"{work}/rust/main.rs", f"{work}/rust/bench", [])?
 	build_rust(
@@ -47,12 +50,12 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 
 	var versions = base_versions()
 
-	if suite == "kernels":
+	if suite == "kernels" {
 		build_c(f"{here}/c/plain.c", f"{work}/c/bench", [])?
 		build_c(f"{here}/c/ms.c", f"{work}/c-ms/bench", [])?
 		versions = versions.concat(c_versions())
 
-		if env("ABLATE", "0") == "1":
+		if env("ABLATE", "0") == "1" {
 			flags := [
 				["c-ms-no-poll", "-DMS_NO_POLL"],
 				["c-ms-no-overflow", "-DMS_NO_OVERFLOW"],
@@ -62,40 +65,51 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 				],
 			]
 
-			for entry in flags:
+			for entry in flags {
 				create_directory(f"{work}/{entry[0]}")?
 				build_c(
 					f"{here}/c/ms.c",
 					f"{work}/{entry[0]}/bench",
 					entry[1].split(" "),
 				)?
+			}
 
 			versions = versions.concat(ablations())
+		}
+	}
 
 	var raw = List[String]()
 
-	for i in 0..n:
+	for i in 0..n {
 		// Rotate the order each round so no version always runs first.
-		for v in rotate(versions, i):
+		for v in rotate(versions, i) {
 			out := sample(f"{work}/{v}/bench", [])?
-			for line in out.split("\n"):
-				if line != "": raw.append(f"{v} {line}")
+			for line in out.split("\n") {
+				if line != "" { raw.append(f"{v} {line}") }
+			}
 			raw.append(f"{v} # end")
+		}
+	}
 
 	return summarize(raw, suite, n, versions)
+}
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
-	if args.is_empty() or (args[0] != "kernels" and args[0] != "competence"):
+	if args.is_empty() or (args[0] != "kernels" and args[0] != "competence") {
 		return fail("usage: kernels.ms -- <kernels|competence> [repeats]")
+	}
 
 	var n = 5
 
-	if args.length() > 1:
-		if parsed := repeats(args[1]):
+	if args.length() > 1 {
+		if parsed := repeats(args[1]) {
 			n = parsed
-		else:
+		} else {
 			return fail("repeats must be a positive integer")
+		}
+	}
 
 	tmp := temporary(f"{args[0]}-").get()
 	return finish(run(args[0], n, tmp.path()))
+}

@@ -13,13 +13,13 @@
         "position": {
           "file": "golden-1179.ms",
           "line": 4,
-          "column": 15,
+          "column": 14,
           "offset": 85
         },
         "end": {
           "file": "golden-1179.ms",
           "line": 4,
-          "column": 15,
+          "column": 14,
           "offset": 85
         }
       }
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1179.ms:4:15: parse: expected an expression, found end of line; write a value, name, call, or literal here\n   |\n 4 |     values := \n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1179.ms:4:14: parse: expected an expression, found end of line; write a value, name, call, or literal here\n   |\n 4 |     values = \n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

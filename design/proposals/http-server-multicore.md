@@ -57,10 +57,11 @@ The acceptor's isolate also serves (worker 0 is itself); with `cores: 1` nothing
 import HttpServer, HttpServerOptions, serve_cores from "@std/net/http.ms"
 
 // Named top-level, capture-free: runs once in each serving isolate and returns that isolate's handler.
-fn init(config: AppConfig) fn(HttpExchange) Result[Unit, HttpError]:
-    hits: Shared[Int] := share(0)    // per isolate
+fn init(config AppConfig) fn(HttpExchange) Result[Unit, HttpError] {
+    hits Shared[Int] := share(0)    // per isolate
     ...
     return buffered(handler)
+}
 
 started := serve_cores("127.0.0.1:8080", init, AppConfig(greeting: "hi"))
 ```

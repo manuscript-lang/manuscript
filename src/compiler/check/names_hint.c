@@ -205,7 +205,7 @@ static void lookup_hint(MsCheckProgram *program, uint32_t module, MsName name, c
     ms_strbuild_append(&hint->near_edit, near_name);
     hint->near = true;
   } else {
-    ms_strbuild_printf(&hint->text, "; declare it with '%.*s := ...' before use, define 'fn %.*s(...) T:', or import it from a module",
+    ms_strbuild_printf(&hint->text, "; declare it with '%.*s := ...' before use, define 'fn %.*s(...) T { ... }', or import it from a module",
                        (int)text.len, (const char *)text.ptr, (int)text.len, (const char *)text.ptr);
   }
   span_list_free(&candidates);

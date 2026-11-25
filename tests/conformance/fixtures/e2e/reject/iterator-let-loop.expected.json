@@ -31,7 +31,7 @@
           "file": "iterator-let-loop.ms",
           "line": 6,
           "column": 15,
-          "offset": 134
+          "offset": 135
         },
         "fix": {
           "position": {

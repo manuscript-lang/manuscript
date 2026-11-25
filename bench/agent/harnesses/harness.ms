@@ -11,58 +11,62 @@ import (
 	run_in from "../lib/text.ms",
 )
 
-export type Usage:
+export type Usage {
 	// Uncached input tokens.
-	tokens_in: Int = 0
+	tokens_in Int = 0
 	// Cache reads (and writes, where the harness reports them together).
-	tokens_cached: Int = 0
-	tokens_out: Int = 0
-	turns: Int = 0
-	cost_usd: Float = 0.0
+	tokens_cached, tokens_out, turns Int = 0
+	cost_usd Float = 0.0
 	// `harness`, `estimated` or `null`.
-	cost_source: String = "none"
+	cost_source String = "none"
+}
 
 // What one agent run produced.
-export type AgentRun:
-	usage: Usage
-	wall_s: Float
-	exit_code: Int
-	timed_out: Bool
+export type AgentRun {
+	usage Usage
+	wall_s Float
+	exit_code Int
+	timed_out Bool
+}
 
-export interface Harness:
+export interface Harness {
 	fn name() String
 	// The argv that runs the agent non-interactively in `workspace` and exits when
 	// done.
-	fn command(prompt: String, workspace: String, model: String?) List[String]
+	fn command(prompt, workspace String, model String?) List[String]
 	// Extracts usage from the harness's raw standard output.
-	fn parse(transcript: String) Usage
+	fn parse(transcript String) Usage
+}
 
 // The JSON event on each line of `transcript` that parses.
-export fn events(transcript: String) List[JsonValue]:
+export fn events(transcript String) List[JsonValue] {
 	var out = List[JsonValue]()
 
-	for line in transcript.split("\n"):
+	for line in transcript.split("\n") {
 		event := parse(line).to_optional()
-		if event != null: out.append(event)
+		if event != null { out.append(event.clone()) }
+	}
 
 	return out
+}
 
-export fn int_at(doc: JsonValue, key: String) Int:
+export fn int_at(doc JsonValue, key String) Int {
 	value := doc.get(key)
-	if value != null: return value.as_int() or 0
+	if value != null { return value.as_int() or 0 }
 
 	return 0
+}
 
 // Runs the agent in `workspace`, saves its output to `transcript` and returns the
 // measured run.
 export fn run_agent(
-	h: Harness,
-	prompt: String,
-	workspace: String,
-	timeout_s: Int,
-	transcript: String,
-	model: String?,
-) AgentRun:
+	h Harness,
+	prompt,
+	workspace String,
+	timeout_s Int,
+	transcript String,
+	model String?,
+) AgentRun {
 	argv := h.command(prompt, workspace, model)
 	wrapper := ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)
 	ran := run_in("bash", wrapper, timeout_s, "")
@@ -70,7 +74,7 @@ export fn run_agent(
 
 	var usage = h.parse(ran.out)
 
-	if usage.cost_source == "none" and (usage.tokens_in > 0 or usage.tokens_out > 0):
+	if usage.cost_source == "none" and (usage.tokens_in > 0 or usage.tokens_out > 0) {
 		usage.cost_usd = cost_from_tokens(
 			usage.tokens_in,
 			usage.tokens_cached,
@@ -78,6 +82,7 @@ export fn run_agent(
 			model or "default",
 		)
 		usage.cost_source = "estimated"
+	}
 
 	return AgentRun(
 		usage,
@@ -85,3 +90,4 @@ export fn run_agent(
 		ran.code,
 		ran.code == 124 and ran.err == "timeout",
 	)
+}

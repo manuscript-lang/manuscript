@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import erase from \"./helper.ms\"\n\nfn invalid(r: Result[Int, Cause[Int]]) Int!: erase(r)\n"
+    "fmt": "import erase from \"./helper.ms\"\n\nfn invalid(r Result[Int, Cause[Int]]) Int! => erase(r)\n"
   }
 }

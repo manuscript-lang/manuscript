@@ -16,54 +16,63 @@ import (
 )
 
 // Prints `message` and a newline to standard error.
-export fn note(message: String) Void:
+export fn note(message String) Void {
 	stderr().write(f"{message}\n").get()
+}
 
 // Reports `message` on standard error and returns the status a driver passes back from
 // `main`.
-export fn fail(message: String) Int:
+export fn fail(message String) Int {
 	note(message)
 	return 1
+}
 
 // `linux`, `macos` or `windows`.
-export fn host() String:
+export fn host() String {
 	family := os()
-	if family == Os.Macos: return "macos"
-	if family == Os.Windows: return "windows"
+	if family == Os.Macos { return "macos" }
+	if family == Os.Windows { return "windows" }
 
 	return "linux"
+}
 
 // The value of environment variable `name`, or `fallback`.
-export fn env(name: String, fallback: String) String:
+export fn env(name, fallback String) String {
 	all := environment().get_or(Map[String, String]())
 	value := all.get(name)
-	if value != null: return value.clone()
+	if value != null { return value.clone() }
 
 	return fallback.clone()
+}
 
 // Nanoseconds since an arbitrary fixed origin on the monotonic clock.
-export fn now_ns() Int:
+export fn now_ns() Int {
 	return monotonic().tick
+}
 
 // Output of a finished program; `ok` is false when it could not start.
-export type Ran:
-	ok: Bool
-	code: Int
-	stdout: String
-	stderr: String
+export type Ran {
+	ok Bool
+	code Int
+	stdout, stderr String
 	// The child's peak resident set in bytes, 0 when it did not start or the host
 	// cannot say.
-	max_resident_bytes: Int = 0
+	max_resident_bytes Int = 0
+}
 
 // Runs `program` without a shell, optionally in directory `cwd`, and captures both
 // streams as text.
 export fn capture(
-	program: String,
-	arguments: List[String],
-	input: String = "",
-	cwd: String? = null,
-) Ran:
-	if out := run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
+	program String,
+	arguments List[String],
+	input String = "",
+	cwd String? = null,
+) Ran {
+	if out := run(
+		program,
+		arguments,
+		RunOptions(input: input.to_bytes(), cwd: cwd.clone()),
+	).wait() {
 		return Ran(
 			true,
 			out.exit_code,
@@ -71,119 +80,149 @@ export fn capture(
 			out.stderr.decode_utf8() or "",
 			out.max_resident_bytes,
 		)
+	}
 	return Ran(false, 125, "", f"cannot start {program}\n")
+}
 
 // Runs `program` and returns its stdout, or fails the driver by returning an empty
 // string when it does not exit zero.
-export fn output_of(program: String, arguments: List[String]) String:
+export fn output_of(program String, arguments List[String]) String {
 	ran := capture(program, arguments)
-	if ran.ok and ran.code == 0: return ran.stdout.clone()
+	if ran.ok and ran.code == 0 { return ran.stdout.clone() }
 
 	return ""
+}
 
 // Median of a nonempty list of numbers; the mean of the middle pair for an even count.
-export fn median(values: List[Float]) Float:
+export fn median(values List[Float]) Float {
 	sorted := values.sorted()
 	n := sorted.length()
-	if n % 2 == 1: return sorted[n / 2]
+	if n % 2 == 1 { return sorted[n / 2] }
 
 	return (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+}
 
 // Median absolute deviation.
-export fn mad(values: List[Float]) Float:
+export fn mad(values List[Float]) Float {
 	m := median(values)
-	return median(values.map(fn v: if v > m: v - m else: m - v))
+	return median(values.map(v => if v > m { v - m } else { m - v }))
+}
 
-export fn minimum(values: List[Float]) Float:
-	return values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
+export fn minimum(values List[Float]) Float {
+	return values.fold(values[0], fn(a, v Float) Float => if v < a { v } else { a })
+}
 
-export fn maximum(values: List[Float]) Float:
-	return values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
+export fn maximum(values List[Float]) Float {
+	return values.fold(values[0], fn(a, v Float) Float => if v > a { v } else { a })
+}
 
 // Rotates `items` left by `by` positions.
-export fn rotate[T: Clonable](items: List[T], by: Int) List[T]:
+export fn rotate[T Clonable](items List[T], by Int) List[T] {
 	n := items.length()
 	var out = List[T](reserve: n)
-	for i in 0..n:
+	for i in 0..n {
 		out.append(items[(i + by) % n].clone())
+	}
 	return out
+}
 
 // The SHA-256 of the file at `path` as lowercase hex.
-export fn file_sha256(path: String) String:
+export fn file_sha256(path String) String {
 	return hex_encode(sha256(read_file(path).wait().get()))
+}
 
 // Reads a UTF-8 text file.
-export fn read_text(path: String) String:
+export fn read_text(path String) String {
 	return read_file(path).wait().get().decode_utf8() or ""
+}
 
 // Fails with `text`.
-export fn invalid[T](text: String) T!:
-	return error(Error(text))
+export fn invalid[T](text String) T! {
+	return error(Error(text.clone()))
+}
 
 // `text` unless it is longer than `width`; padded on the left to `width` columns.
-export fn right(text: String, width: Int) String:
+export fn right(text String, width Int) String {
 	return text.pad_start(width, " ")
+}
 
-export fn left(text: String, width: Int) String:
+export fn left(text String, width Int) String {
 	return text.pad_end(width, " ")
+}
 
 // `value` with a comma between each group of three digits.
-export fn grouped(value: Int) String:
-	digits := f"{if value < 0: -value else: value}"
+export fn grouped(value Int) String {
+	digits := f"{if value < 0 { -value } else { value }}"
 	var out = ""
 	n := digits.length()
 
-	for i in 0..n:
-		if i > 0 and (n - i) % 3 == 0: out += ","
+	for i in 0..n {
+		if i > 0 and (n - i) % 3 == 0 { out += "," }
 		out += digits.slice(i, i + 1)
+	}
 
-	return if value < 0: "-" + out else: out
+	return if value < 0 { "-" + out } else { out }
+}
 
 // `value` to `digits` decimal places, with grouped thousands.
-export fn fixed(value: Float, digits: Int) String:
+export fn fixed(value Float, digits Int) String {
 	text := value.to_fixed(digits)
 	parts := text.split(".")
 	whole := parts[0].parse_int() or 0
-	head := if text.starts_with("-") and whole == 0: "-0" else: grouped(whole)
-	if parts.length() == 1: return head
+	head := if text.starts_with(
+		"-"
+	) and whole == 0 { "-0" } else { grouped(whole) }
+	if parts.length() == 1 { return head }
 
 	return f"{head}.{parts[1]}"
+}
 
 // Parses a positive repeat count.
-export fn repeats(text: String) Int!:
+export fn repeats(text String) Int! {
 	n := text.parse_int()
-	if n != null:
-		if n > 0: return ok(n)
+	if n != null {
+		if n > 0 { return ok(n) }
+	}
 	return invalid("repeats must be a positive integer")
+}
 
 // The absolute form of `path`, relative to the working directory.
-export fn absolute(path: String) String:
-	if is_absolute(path): return path.clone()
-	return join([working_directory().get_or("."), path])
+export fn absolute(path String) String {
+	if is_absolute(path) { return path.clone() }
+	return join([working_directory().get_or("."), path.clone().clone().clone().clone()])
+}
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so
 // tasks may run children in different directories.
-export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
+export fn run_in(dir, program String, arguments List[String]) Ran {
 	return capture(program, arguments, cwd: dir.clone())
+}
 
 // Fails with the program's stderr unless `ran` exited zero.
-export fn must(what: String, ran: Ran) String!:
-	if ran.ok and ran.code == 0: return ok(ran.stdout.clone())
+export fn must(what String, ran Ran) String! {
+	if ran.ok and ran.code == 0 { return ok(ran.stdout.clone()) }
 	return invalid(f"{what} failed ({ran.code}): {ran.stderr}")
+}
 
 // The `ms` binary: $MS, else .artifacts/build/release/src/cli/ms, as an absolute path.
-export fn ms_binary() String:
+export fn ms_binary() String {
 	return absolute(env("MS", ".artifacts/build/release/src/cli/ms"))
+}
 
 // Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is
 // fine; pass an absolute path).
-export fn build_ms(dir: String, out: String) Void!:
+export fn build_ms(dir, out String) Void! {
 	_stale := remove(f"{dir}/ms.lock")
-	ran := run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
+	ran := run_in(
+		dir,
+		ms_binary(),
+		["build", "ms.toml", "-o", out.clone().clone().clone().clone()],
+	)
 	void must(f"ms build {dir}", ran)?
+}
 
 // Builds the Go module in `dir` as a static binary.
-export fn build_go(dir: String, out: String) Void!:
+export fn build_go(dir, out String) Void! {
 	set_environment("CGO_ENABLED", "0").get()
 
 	go := env("GO", "go")
@@ -191,140 +230,173 @@ export fn build_go(dir: String, out: String) Void!:
 		dir,
 		go,
 		[
-			"build", "-buildvcs=false", "-trimpath", "-ldflags=-s -w -buildid=", "-o",
-			out, "."
+			"build",
+			"-buildvcs=false",
+			"-trimpath",
+			"-ldflags=-s -w -buildid=",
+			"-o",
+			out.clone().clone().clone().clone(),
+			".",
 		],
 	)
 	void must(f"go build {dir}", ran)?
+}
 
 // Compiles one Rust source at the usual release settings plus `flags`.
-export fn build_rust(source: String, out: String, flags: List[String]) Void!:
+export fn build_rust(source, out String, flags List[String]) Void! {
 	var args = ["--edition", "2021", "-C", "opt-level=3", "-C", "codegen-units=1"]
 	args = args.concat(flags)
 	args = args.concat(["-o", out.clone(), source.clone()])
 	void must(f"rustc {source}", capture(env("RUSTC", "rustc"), args))?
+}
 
 // Runs `exe` with `input` on standard input and returns its standard output.
-export fn sample(exe: String, arguments: List[String], input: String = "") String!:
+export fn sample(exe String, arguments List[String], input String = "") String! {
 	return must(exe, capture(exe, arguments, input))
+}
 
 // Prints the text of `result` to standard output and returns 0, or reports its error
 // and returns 1.
-export fn finish(result: String!) Int:
-	if text := result:
+export fn finish(result String!) Int {
+	if text := result {
 		print(text)
 		return 0
+	}
 
 	return fail(result.err().message.clone())
+}
 
 // Parses `--name value` pairs. A name outside `known` or a missing value is an error;
 // `required` names must be present.
-export fn options(
-	args: List[String],
-	known: List[String],
-	required: List[String],
-) Map[String, String]!:
+export fn options(args, known, required List[String]) Map[String, String]! {
 	var found = Map[String, String]()
 	var i = 0
 
-	while i < args.length():
+	while i < args.length() {
 		flag := args[i]
 		if (
 			not flag.starts_with("--")
 			or not known.contains(flag.slice(2, flag.length()))
-		):
+		) {
 			return invalid(f"unknown argument: {flag}")
-		if i + 1 >= args.length(): return invalid(f"{flag} needs a value")
+		}
+		if i + 1 >= args.length() { return invalid(f"{flag} needs a value") }
 
 		found.add(flag.slice(2, flag.length()), args[i + 1].clone())
 		i += 2
+	}
 
-	for name in required:
-		if not found.contains(name): return invalid(f"--{name} is required")
+	for name in required {
+		if not found.contains(
+			name
+		) { return invalid(f"--{name} is required") }
+	}
 	return ok(found)
+}
 
 // Every ordering of `items`, in lexicographic order of position.
-export fn permutations[T: Clonable](items: List[T]) List[List[T]]:
-	if items.length() <= 1: return [items.clone()]
+export fn permutations[T Clonable](items List[T]) List[List[T]] {
+	if items.length() <= 1 { return [items.clone()] }
 
 	var out = List[List[T]]()
 
-	for i in 0..items.length():
+	for i in 0..items.length() {
 		var rest = List[T]()
-		for j in 0..items.length():
-			if j != i: rest.append(items[j].clone())
+		for j in 0..items.length() {
+			if j != i {
+				rest.append(items[j].clone())
+			}
+		}
 
-		for tail in permutations(rest):
+		for tail in permutations(rest) {
 			var order = [items[i].clone()]
 			order = order.concat(tail)
 			out.append(order)
+		}
+	}
 
 	return out
+}
 
 // Creates `path` and its parents; an existing directory is fine.
-export fn ensure_directory(path: String) Void:
+export fn ensure_directory(path String) Void {
 	create_directory(path, recursive: true).get()
+}
 
 // Writes `text` to `path`.
-export fn write_text(path: String, text: String) Void:
+export fn write_text(path, text String) Void {
 	write_file(path, text, replace: true).wait().get()
+}
 
 // Whether `path` exists.
-export fn exists(path: String) Bool:
+export fn exists(path String) Bool {
 	return access(path, 0).is_ok()
+}
 
 // Reports a usage error and returns status 2.
-export fn usage(message: String) Int:
+export fn usage(message String) Int {
 	note(message)
 	return 2
+}
 
 // `.exe` on Windows, else empty.
-export fn exe() String:
-	if host() == "windows": return ".exe"
+export fn exe() String {
+	if host() == "windows" { return ".exe" }
 	return ""
+}
 
 // A short platform description such as `linux-amd64`.
-export fn platform() String:
+export fn platform() String {
 	info := system_info()
 	return f"{info.os}-{info.architecture}"
+}
 
 // All of standard input as text.
-export fn read_stdin() String:
+export fn read_stdin() String {
 	return read_all(stdin(), null).get().decode_utf8() or ""
+}
 
 // Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
-export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:
+export fn stdlib_bench(ms String, samples Int, filter String) String! {
 	var args = ["bench", "ms.toml", "--json", "--samples", f"{samples}"]
-	if filter != "": args = args.concat(["--filter", filter.clone()])
+	if filter != "" { args = args.concat(["--filter", filter.clone()]) }
 	return must("ms bench", run_in("bench/perf/stdlib", ms, args))
+}
 
 // Workaround for #2167 (Map fields in stringify). JSON construction helpers; a record
 // holding a Map is not Data, so reports are built as JsonValue objects.
-export fn jstr(text: String) JsonValue:
-	return JsonValue.StringValue(text)
+export fn jstr(text String) JsonValue {
+	return JsonValue.StringValue(text.clone())
+}
 
-export fn jint(n: Int) JsonValue:
+export fn jint(n Int) JsonValue {
 	return JsonValue.NumberValue(f"{n}")
+}
 
-export fn jfloat(x: Float) JsonValue:
+export fn jfloat(x Float) JsonValue {
 	return JsonValue.NumberValue(f"{x}")
+}
 
-export fn jbool(b: Bool) JsonValue:
+export fn jbool(b Bool) JsonValue {
 	return JsonValue.BoolValue(b)
+}
 
-export fn jobject(members: Map[String, JsonValue]) JsonValue:
-	return JsonValue.ObjectValue(members)
+export fn jobject(members Map[String, JsonValue]) JsonValue {
+	return JsonValue.ObjectValue(members.clone())
+}
 
-export fn jlist(items: List[JsonValue]) JsonValue:
-	return JsonValue.ArrayValue(items)
+export fn jlist(items List[JsonValue]) JsonValue {
+	return JsonValue.ArrayValue(items.clone())
+}
 
 // `value` as indented JSON followed by a newline.
-export fn dump(value: JsonValue) String:
+export fn dump(value JsonValue) String {
 	return stringify(value, StringifyOptions(indent: 2)).get_or("") + "\n"
+}
 
 // Runs `program` in `dir` with the parent's streams and returns its exit status (125
 // when it cannot start).
-export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:
+export fn run_inherit(dir, program String, arguments List[String]) Int {
 	var code = 125
 
 	if child := spawn(
@@ -334,31 +406,35 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 			stdin: Stdio.Null,
 			stdout: Stdio.Inherit,
 			stderr: Stdio.Inherit,
-			cwd: dir,
+			cwd: dir.clone(),
 		),
-	):
+	) {
 		code = child.wait().get_or(125)
-		if code < 0 or code > 125: code = 125
-	else:
+		if code < 0 or code > 125 { code = 125 }
+	} else {
 		note(f"cannot start {program}")
+	}
 
 	return code
+}
 
 // The result of `peak_run`: the child's peak resident set in KiB and its captured
 // output.
-export type RssRun:
-	kib: Int
-	ran: Ran
+export type RssRun {
+	kib Int
+	ran Ran
+}
 
 // Runs `program arguments` and returns the child's peak resident set in KiB. The
 // child's output is captured in `ran`.
-export fn peak_run(program: String, arguments: List[String], input: String = "") RssRun!:
+export fn peak_run(program String, arguments List[String], input String = "") RssRun! {
 	ran := capture(program, arguments, input)
-	if not ran.ok or ran.code != 0: return invalid(
-		f"{program} failed ({ran.code}): {ran.stderr}"
-	)
-	if ran.max_resident_bytes <= 0: return invalid(
-		"the host reported no peak resident set"
-	)
+	if not ran.ok or ran.code != 0 {
+		return invalid(f"{program} failed ({ran.code}): {ran.stderr}")
+	}
+	if ran.max_resident_bytes <= 0 {
+		return invalid("the host reported no peak resident set")
+	}
 
 	return ok(RssRun(ran.max_resident_bytes / 1024, ran))
+}

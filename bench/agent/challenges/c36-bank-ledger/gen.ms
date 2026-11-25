@@ -7,20 +7,21 @@ import (
 
 FEE := 5
 
-fn digits(t: String) Bool: (
+fn digits(t String) Bool => (
 	not t.is_empty()
-	and t.chars().all(fn c: "0123456789".contains(c))
+	and t.chars().all(c => "0123456789".contains(c))
 )
 
-fn arity(c: String) Int:
-	if c == "open" or c == "deposit" or c == "withdraw": return 3
-	if c == "transfer": return 4
-	if c == "freeze" or c == "unfreeze": return 2
-	if c == "report": return 1
+fn arity(c String) Int {
+	if c == "open" or c == "deposit" or c == "withdraw" { return 3 }
+	if c == "transfer" { return 4 }
+	if c == "freeze" or c == "unfreeze" { return 2 }
+	if c == "report" { return 1 }
 
 	return 0
+}
 
-fn solve(s: String) String:
+fn solve(s String) String {
 	var out = List[String]()
 	var fees = 0
 	var bal = Map[String, Int]()
@@ -30,37 +31,42 @@ fn solve(s: String) String:
 	var frozen = Set[String]()
 	var names = List[String]()
 
-	for line in s.split("\n"):
+	for line in s.split("\n") {
 		t := words(line)
-		if t.is_empty(): continue
+		if t.is_empty() { continue }
 
 		c := t[0].clone()
 
-		if arity(c) == 0 or t.length() != arity(c):
+		if arity(c) == 0 or t.length() != arity(c) {
 			out.append("error: bad command")
 			continue
+		}
 
-		if c == "report":
+		if c == "report" {
 			var tb = 0
 
-			for k in names.sorted():
+			for k in names.sorted() {
 				b := bal.get_or(k, 0)
 				tb += b
 				out.append(
-					f"{k} balance={b} limit={lim.get_or(k, 0)} ops={ops.get_or(k, 0)} rejected={rej.get_or(k, 0)} frozen={if frozen.contains(k): "yes" else: "no"}"
+					f"{k} balance={b} limit={lim.get_or(k, 0)} ops={ops.get_or(k, 0)} rejected={rej.get_or(k, 0)} frozen={if frozen.contains(k) { "yes" } else { "no" }}"
 				)
+			}
 
 			out.append(f"total balance={tb} fees={fees}")
 			continue
+		}
 
-		if c == "open":
-			if not digits(t[2]):
+		if c == "open" {
+			if not digits(t[2]) {
 				out.append("error: invalid limit")
 				continue
+			}
 
-			if bal.contains(t[1]):
+			if bal.contains(t[1]) {
 				out.append(f"error: account exists {t[1]}")
 				continue
+			}
 
 			names.append(t[1].clone())
 			bal[t[1].clone()] = 0
@@ -69,136 +75,160 @@ fn solve(s: String) String:
 			rej[t[1].clone()] = 0
 			out.append("ok")
 			continue
+		}
 
-		if c == "freeze" or c == "unfreeze":
-			if not bal.contains(t[1]):
+		if c == "freeze" or c == "unfreeze" {
+			if not bal.contains(t[1]) {
 				out.append(f"error: unknown account {t[1]}")
 				continue
+			}
 
-			if c == "freeze":
+			if c == "freeze" {
 				frozen.add(t[1].clone())
-			else:
+			} else {
 				frozen.remove(t[1].clone())
+			}
 
 			out.append("ok")
 			continue
+		}
 
-		ids := if c == "transfer": t.slice(1, 3).get_or([]) else: t.slice(
-			1,
-			2,
-		).get_or([])
+		ids := if c == "transfer" {
+			t.slice(1, 3).get_or([])
+		} else {
+			t.slice(1, 2).get_or([])
+		}
 		amount := t[t.length() - 1].clone()
 		var unknown = ""
-		for i in ids:
-			if unknown == "" and not bal.contains(i): unknown = i.clone()
+		for i in ids {
+			if unknown == "" and not bal.contains(
+				i
+			) { unknown = i.clone() }
+		}
 
-		if unknown != "":
+		if unknown != "" {
 			out.append(f"error: unknown account {unknown}")
 			continue
+		}
 
-		if c == "transfer" and ids[0] == ids[1]:
+		if c == "transfer" and ids[0] == ids[1] {
 			rej[ids[0].clone()] = rej.get_or(ids[0], 0) + 1
 			out.append("error: same account")
 			continue
+		}
 
-		if not (digits(amount) and (amount.parse_int() or 0) > 0):
+		if not (digits(amount) and (amount.parse_int() or 0) > 0) {
 			rej[ids[0].clone()] = rej.get_or(ids[0], 0) + 1
 			out.append("error: invalid amount")
 			continue
+		}
 
 		var fz = ""
-		for i in ids:
-			if fz == "" and frozen.contains(i): fz = i.clone()
+		for i in ids {
+			if fz == "" and frozen.contains(i) { fz = i.clone() }
+		}
 
-		if fz != "":
+		if fz != "" {
 			rej[fz.clone()] = rej.get_or(fz, 0) + 1
 			out.append(f"error: account frozen {fz}")
 			continue
+		}
 
 		n := amount.parse_int() or 0
 		var fee = 0
 		from := ids[0].clone()
 
-		if c == "deposit":
+		if c == "deposit" {
 			bal[from.clone()] = bal.get_or(from, 0) + n
 			ops[from.clone()] = ops.get_or(from, 0) + 1
 			out.append(f"ok {bal.get_or(from, 0)}")
 			continue
+		}
 
 		var new = bal.get_or(from, 0) - n
 
-		if bal.get_or(from, 0) >= 0 and new < 0:
+		if bal.get_or(from, 0) >= 0 and new < 0 {
 			new -= FEE
 			fee = FEE
+		}
 
-		if new < 0 - lim.get_or(from, 0):
+		if new < 0 - lim.get_or(from, 0) {
 			rej[from.clone()] = rej.get_or(from, 0) + 1
 			out.append(f"error: overdraft limit exceeded {from}")
 			continue
+		}
 
 		bal[from.clone()] = new
 		ops[from.clone()] = ops.get_or(from, 0) + 1
 		fees += fee
 
-		sfx := if fee > 0: f" fee={fee}" else: ""
+		sfx := if fee > 0 { f" fee={fee}" } else { "" }
 
-		if c == "withdraw":
+		if c == "withdraw" {
 			out.append(f"ok {new}{sfx}")
-		else:
+		} else {
 			to := ids[1].clone()
 			bal[to.clone()] = bal.get_or(to, 0) + n
 			ops[to.clone()] = ops.get_or(to, 0) + 1
 			out.append(f"ok {new} {bal.get_or(to, 0)}{sfx}")
+		}
+	}
 
-	return out.map(fn o: o + "\n").join("")
+	return out.map(o => o + "\n").join("")
+}
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name, s String) GenCase => make_case(name, s, solve(s))
 
-fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
+fn rand_script(var rnd Random, n Int, ids List[String]) String {
 	var lines = List[String]()
 
-	for i in ids:
+	for i in ids {
 		limit := ["0", "0", "10", "50", "200"][rnd.below(5)]
 		lines.append(f"open {i} {limit}")
+	}
 
-	for _k in 0..n:
+	for _k in 0..n {
 		r := rnd.random()
 		a := rnd.choice(ids)
 		b := rnd.choice(ids)
 		var amt = ""
 
-		if rnd.random() < 0.15:
+		if rnd.random() < 0.15 {
 			amt = rnd.choice(
 				[
 					"1", "5", "7", "20", "40", "100", "250", "0", "x", "007", "-3",
 					"2.5"
 				]
 			)
-		else:
+		} else {
 			v := rnd.randint(1, 120)
 			amt = f"{[f"{v}"][rnd.below(1)]}"
+		}
 
-		if r < 0.25:
+		if r < 0.25 {
 			lines.append(f"deposit {a} {amt}")
-		else if r < 0.5:
+		} else if r < 0.5 {
 			lines.append(f"withdraw {a} {amt}")
-		else if r < 0.8:
+		} else if r < 0.8 {
 			lines.append(f"transfer {a} {b} {amt}")
-		else if r < 0.82:
+		} else if r < 0.82 {
 			lines.append(f"freeze {a}")
-		else if r < 0.9:
+		} else if r < 0.9 {
 			lines.append(f"unfreeze {a}")
-		else if r < 0.92:
+		} else if r < 0.92 {
 			lines.append(f"deposit zz {amt}")
-		else if r < 0.95:
+		} else if r < 0.95 {
 			lines.append("report")
-		else:
+		} else {
 			lines.append(rnd.choice(["bogus 1", "deposit a", "report now", "open q"]))
+		}
+	}
 
 	lines.append("report")
 	return lines.join("\n") + "\n"
+}
 
-export fn gen_c36() Void:
+export fn gen_c36() Void {
 	var rnd = seeded(36)
 	examples := [
 		mk(
@@ -208,7 +238,7 @@ export fn gen_c36() Void:
 	]
 	small := rand_script(rnd, 60, ["a", "b", "c"])
 	var accounts = List[String]()
-	for i in 0..12: accounts.append(f"acct{i}")
+	for i in 0..12 { accounts.append(f"acct{i}") }
 
 	large := rand_script(rnd, 1500, accounts)
 	hidden := examples.concat(
@@ -255,3 +285,4 @@ export fn gen_c36() Void:
 		]
 	)
 	write_cases("c36-bank-ledger", examples, hidden)
+}

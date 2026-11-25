@@ -4,12 +4,13 @@ import (
 	Harness, Usage, events, int_at from "./harness.ms",
 )
 
-export type ClaudeCode:
-	placeholder: Bool = true
+export type ClaudeCode {
+	placeholder Bool = true
+}
 
-fn ClaudeCode.name() String: "claude_code"
+fn ClaudeCode.name() String => "claude_code"
 
-fn ClaudeCode.command(prompt: String, workspace: String, model: String?) List[String]:
+fn ClaudeCode.command(prompt, workspace String, model String?) List[String] {
 	var cmd = [
 		"claude",
 		"-p",
@@ -21,12 +22,13 @@ fn ClaudeCode.command(prompt: String, workspace: String, model: String?) List[St
 		"--no-session-persistence",
 	]
 	m := model
-	if m != null: cmd = cmd.concat(["--model", m.clone()])
+	if m != null { cmd = cmd.concat(["--model", m.clone()]) }
 	return cmd
+}
 
-fn ClaudeCode.parse(transcript: String) Usage:
-	for ev in events(transcript).reversed():
-		if ((ev.get("type") or JsonValue.Null).as_string() or "") != "result": continue
+fn ClaudeCode.parse(transcript String) Usage {
+	for ev in events(transcript).reversed() {
+		if ((ev.get("type") or JsonValue.Null).as_string() or "") != "result" { continue }
 
 		u := ev.get("usage") or JsonValue.Null
 		return Usage(
@@ -40,5 +42,7 @@ fn ClaudeCode.parse(transcript: String) Usage:
 			(ev.get("total_cost_usd") or JsonValue.Null).as_float() or 0.0,
 			"harness",
 		)
+	}
 
 	return Usage()
+}

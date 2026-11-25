@@ -2,6 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/result_tail_test.go:63 TestTailResultIdentityKeepsErrorWidening
 
-fn tail(value: Int!Error) Int!:
-    output := value.clone()?
-    return ok(output)
+fn tail(value Int!Error) Int! {
+	output := value.clone()?
+	return ok(output)
+}

@@ -1,4 +1,6 @@
-fn g() Int:
-    if text:{steps}}:
+fn g() Int {
+    if text:{steps}} {
         return 1
+    }
     return 0
+}

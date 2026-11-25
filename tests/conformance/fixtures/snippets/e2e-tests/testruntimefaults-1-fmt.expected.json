@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\ntest \"fault\":\n\tmissing: Int? := null\n\t_impossible := missing or panic(\"called Optional.get() on null\")\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\ntest \"fault\" {\n\tmissing Int? := null\n\t_impossible := missing or panic(\"called Optional.get() on null\")\n}\n"
   }
 }

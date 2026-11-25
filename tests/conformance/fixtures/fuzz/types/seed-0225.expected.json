@@ -12,22 +12,22 @@
         "message": "operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)",
         "position": {
           "file": "seed-0225.ms",
-          "line": 34,
+          "line": 37,
           "column": 16,
-          "offset": 853
+          "offset": 797
         },
         "fix": {
           "position": {
             "file": "seed-0225.ms",
-            "line": 34,
+            "line": 37,
             "column": 18,
-            "offset": 855
+            "offset": 799
           },
           "end": {
             "file": "seed-0225.ms",
-            "line": 34,
+            "line": 37,
             "column": 19,
-            "offset": 856
+            "offset": 800
           },
           "replacement": "2.0"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0225.ms:34:16: type: operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)\n    |\n 34 |     bad := 1.5 + 2\n    |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0225.ms:37:16: type: operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)\n    |\n 37 |     bad := 1.5 + 2\n    |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

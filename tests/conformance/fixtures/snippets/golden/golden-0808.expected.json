@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected ':', found '%'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body",
+        "message": "expected '{', found '%'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'",
         "position": {
           "file": "golden-0808.ms",
           "line": 3,
@@ -29,22 +29,22 @@
         "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0808.ms",
-          "line": 5,
+          "line": 6,
           "column": 1,
-          "offset": 80
+          "offset": 83
         },
         "end": {
           "file": "golden-0808.ms",
-          "line": 5,
+          "line": 6,
           "column": 5,
-          "offset": 84
+          "offset": 87
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0808.ms:3:9: parse: expected ':', found '%'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body\n   |\n 3 | type Key%d:\n   |         ^\n<DIR>/golden-0808.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Tag for Key%d:\n   | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0808.ms:3:9: parse: expected '{', found '%'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'\n   |\n 3 | type Key%d {\n   |         ^\n<DIR>/golden-0808.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Tag for Key%d {\n   | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

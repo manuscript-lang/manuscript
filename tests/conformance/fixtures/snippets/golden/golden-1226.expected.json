@@ -12,15 +12,15 @@
         "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1226.ms",
-          "line": 8,
+          "line": 10,
           "column": 1,
-          "offset": 167
+          "offset": 172
         },
         "end": {
           "file": "golden-1226.ms",
-          "line": 8,
+          "line": 10,
           "column": 5,
-          "offset": 171
+          "offset": 176
         }
       },
       {
@@ -29,22 +29,22 @@
         "message": "expected a name, found '|'",
         "position": {
           "file": "golden-1226.ms",
-          "line": 10,
+          "line": 13,
           "column": 13,
-          "offset": 217
+          "offset": 226
         },
         "end": {
           "file": "golden-1226.ms",
-          "line": 10,
+          "line": 13,
           "column": 14,
-          "offset": 218
+          "offset": 227
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1226.ms:8:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 8 | impl TestHooks for State:\n   | ^^^^\n<DIR>/golden-1226.ms:10:13: parse: expected a name, found '|'\n    |\n 10 |     fixture.|\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1226.ms:10:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 10 | impl TestHooks for State {\n    | ^^^^\n<DIR>/golden-1226.ms:13:13: parse: expected a name, found '|'\n    |\n 13 |     fixture.|\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -12,16 +12,16 @@
         "message": "ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready",
         "position": {
           "file": "golden-1339.ms",
-          "line": 9,
-          "column": 23,
-          "offset": 162
+          "line": 13,
+          "column": 25,
+          "offset": 158
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1339.ms:9:23: resolution: ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready\n   |\n 9 |         ready: return Ready\n   |                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1339.ms:13:25: resolution: ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready\n    |\n 13 |         ready => return Ready\n    |                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

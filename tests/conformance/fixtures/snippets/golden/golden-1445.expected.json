@@ -12,16 +12,16 @@
         "message": "local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "golden-1445.ms",
-          "line": 6,
+          "line": 8,
           "column": 5,
-          "offset": 116
+          "offset": 114
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1445.ms:6:5: type: local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 6 |     impossible := sum(value: 9223372036854775807)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1445.ms:8:5: type: local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 8 |     impossible := sum(value: 9223372036854775807)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

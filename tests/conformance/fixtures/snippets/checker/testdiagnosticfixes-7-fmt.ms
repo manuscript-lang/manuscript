@@ -1,12 +1,15 @@
 // conform: tags=control-flow,formatter,interfaces,numbers,parser,records,sets,tier-core
 // conform: phase=parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:27 TestDiagnosticFixes
-type K:
-    v: Float
+type K {
+	v Float
+}
 
-fn K.equals(other: K) Bool:
-    return true
+fn K.equals(other K) Bool {
+	return true
+}
 
-fn f() Int:
-    s := Set[K]()
-    return 0
+fn f() Int {
+	s := Set[K]()
+	return 0
+}

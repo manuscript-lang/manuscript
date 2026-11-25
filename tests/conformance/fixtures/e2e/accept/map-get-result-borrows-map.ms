@@ -5,16 +5,19 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn find(m: Map[String, List[Int]], key: String) List[Int]?:
+fn find(m Map[String, List[Int]], key String) List[Int]? {
 	return m.get(key)
+}
 
-test "a function returning Map.get reads the entry in place":
-	m: Map[String, List[Int]] := {"a": [1, 2]}
+test "a function returning Map.get reads the entry in place" {
+	m Map[String, List[Int]] := {"a": [1, 2]}
 	expect_equal((find(m, "a") or panic("called Optional.get() on null")).length(), 2)?
 	expect_equal(find(m, "z") == null, true)?
+}
 
-test "a clone of the result owns its copy":
-	var m: Map[String, List[Int]] = {"a": [1]}
+test "a clone of the result owns its copy" {
+	var m Map[String, List[Int]] = {"a": [1]}
 	found := find(m, "a").clone()
 	m.add("b", [2])
 	expect_equal(found != null, true)?
+}

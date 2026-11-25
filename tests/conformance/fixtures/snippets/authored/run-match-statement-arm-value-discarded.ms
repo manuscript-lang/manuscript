@@ -1,29 +1,42 @@
 // conform: tags=match,tier-core
 // conform: phase=run
-// A match used as a statement may end an arm in a call that returns a value; the value is dropped.
-enum Step:
-    Show(text: String)
-    Count(n: Int)
-    Check(n: Int)
+// A match used as a statement may end an arm in a call that returns a value; the value
+// is dropped.
+enum Step {
+	Show(text String)
+	Count(n Int)
+	Check(n Int)
+}
 
-fn double(n: Int) Int:
-    return n * 2
+fn double(n Int) Int {
+	return n * 2
+}
 
-fn checked(n: Int) Int!:
-    return ok(n + 1)
+fn checked(n Int) Int! {
+	return ok(n + 1)
+}
 
-fn run(step: Step) Void!:
-    match step:
-        Show(text):
-            print(text)
-        Count(n):
-            double(n)
-        Check(n):
-            checked(n)?
-    return ok()
+fn run(step Step) Void! {
+	match step {
+		Show(text) => {
+			print(text)
+		}
+		Count(n) => {
+			double(n)
+		}
+		Check(n) => {
+			checked(n)?
+		}
+	}
 
-export fn main() Int:
-    for step in [Step.Show("shown"), Step.Count(2), Step.Check(3)]:
-        r := run(step)
-        print(f"{r.is_ok()}")
-    return 0
+	return ok()
+}
+
+export fn main() Int {
+	for step in [Step.Show("shown"), Step.Count(2), Step.Check(3)] {
+		r := run(step)
+		print(f"{r.is_ok()}")
+	}
+
+	return 0
+}

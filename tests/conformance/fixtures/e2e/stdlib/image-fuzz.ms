@@ -18,75 +18,86 @@ import (
 
 // Deterministic generator (Numerical Recipes LCG); the fuzz is reproducible from the
 // seed.
-type Rng:
-	state: Int
+type Rng {
+	state Int
+}
 
-fn var Rng.next(limit: Int) Int:
+fn var Rng.next(limit Int) Int {
 	self.state = (self.state * 1103515245 + 12345) % 2147483648
 	return (self.state / 65536) % limit
+}
 
 // One random mutation of `data`: byte flips, truncation, extreme field values, or a
 // spliced range.
-fn mutate(data: Bytes, var rng: Rng) Bytes:
+fn mutate(data Bytes, var rng Rng) Bytes {
 	n := data.length()
-	if n == 0: return data.clone()
+	if n == 0 { return data.clone() }
 
 	kind := rng.next(6)
 	var values = data.values()
 
-	if kind == 0:
-		for _flip in 0..1 + rng.next(4):
+	if kind == 0 {
+		for _flip in 0..1 + rng.next(4) {
 			values[rng.next(n)] = rng.next(256).to_uint8() or 0
-	else if kind == 1:
+		}
+	} else if kind == 1 {
 		return data.slice(0, rng.next(n)).clone().get_or(Bytes([]))
-	else if kind == 2:
+	} else if kind == 2 {
 		at := rng.next(n)
 		extremes := [0, 255, 127, 128, 1]
-		for i in 0..4:
-			if at + i < n: values[at + i] = extremes[rng.next(5)].to_uint8() or 0
-	else if kind == 3:
+		for i in 0..4 {
+			if at + i < n { values[at + i] = extremes[rng.next(5)].to_uint8() or 0 }
+		}
+	} else if kind == 3 {
 		// Drop a range.
 		from := rng.next(n)
 		to := min_int(n, from + 1 + rng.next(16))
 		var kept = List[UInt8]()
-		for i in 0..n:
-			if i < from or i >= to: kept.append(values[i])
+		for i in 0..n {
+			if i < from or i >= to { kept.append(values[i]) }
+		}
 		return Bytes(kept)
-	else if kind == 4:
+	} else if kind == 4 {
 		// Duplicate a range.
 		from := rng.next(n)
 		to := min_int(n, from + 1 + rng.next(16))
 		var grown = List[UInt8]()
 
-		for i in 0..n:
+		for i in 0..n {
 			grown.append(values[i])
-			if i == to - 1:
-				for j in from..to:
+			if i == to - 1 {
+				for j in from..to {
 					grown.append(values[j])
+				}
+			}
+		}
 
 		return Bytes(grown)
-	else:
+	} else {
 		// Header fields are the likeliest to be dangerous: hit the first 40 bytes.
 		values[rng.next(min_int(n, 40))] = rng.next(256).to_uint8() or 0
+	}
 
 	return Bytes(values)
+}
 
-fn be32_at(values: List[UInt8], at: Int) Int:
+fn be32_at(values List[UInt8], at Int) Int {
 	return (
 		values[at].to_int() * 16777216
 		+ values[at + 1].to_int() * 65536
 		+ values[at + 2].to_int() * 256
 		+ values[at + 3].to_int()
 	)
+}
 
 // Rewrites every PNG chunk checksum so mutations reach the decoder past the CRC gate.
-fn fix_png_crcs(data: Bytes) Bytes:
+fn fix_png_crcs(data Bytes) Bytes {
 	var values = data.values()
 	var at = 8
 
-	while at + 12 <= values.length():
+	while at + 12 <= values.length() {
 		length := be32_at(values, at)
-		if length > values.length() - at - 12: break
+		if length > values.length() - at - 12 { break }
 
 		crc := crc32(data.slice(at + 4, at + 8 + length).clone().get_or(Bytes([]))).to_int()
 		post := at + 8 + length
@@ -95,18 +106,23 @@ fn fix_png_crcs(data: Bytes) Bytes:
 		values[post + 2] = (crc / 256 % 256).to_uint8() or 0
 		values[post + 3] = (crc % 256).to_uint8() or 0
 		at = post + 4
+	}
 
 	return Bytes(values)
+}
 
-fn min_int(a: Int, b: Int) Int:
-	return if a < b: a else: b
+fn min_int(a Int, b Int) Int {
+	return if a < b { a } else { b }
+}
 
-fn seeds() List[Bytes]:
+fn seeds() List[Bytes] {
 	var out = List[Bytes]()
-	for v in vectors():
+	for v in vectors() {
 		out.append(hex_decode(v.png, null).get())
-	for v in jpeg_vectors():
+	}
+	for v in jpeg_vectors() {
 		out.append(hex_decode(v.jpeg, null).get())
+	}
 
 	var img = new_image(5, 4, ColorMode.Rgba).get()
 	img.set_pixel(1, 1, Rgba(9, 8, 7, 6))
@@ -124,39 +140,45 @@ fn seeds() List[Bytes]:
 		).get()
 	)
 	return out
+}
 
-test "decoders never fault on mutated input":
+test "decoders never fault on mutated input" {
 	var rng = Rng(20261109)
 	corpus := seeds()
 	var rejected = 0
 	var accepted = 0
 
-	for round in 0..300:
-		for index in 0..corpus.length():
+	for round in 0..300 {
+		for index in 0..corpus.length() {
 			var mutated = mutate(corpus[index], rng)
-			if mutated.starts_with(Bytes([137, 80, 78, 71])): mutated = fix_png_crcs(
-				mutated
-			)
+			if mutated.starts_with(
+				Bytes([137, 80, 78, 71])
+			) { mutated = fix_png_crcs(mutated) }
 
 			// The decoder must return a value, whatever the bytes. A fault aborts this
 			// test.
 			result := decode_image(mutated, max_pixels: 4000000)
 
-			if result.is_ok():
+			if result.is_ok() {
 				accepted += 1
-			else:
+			} else {
 				rejected += 1
+			}
+		}
+	}
 
 	expect_equal(accepted + rejected, 300 * corpus.length())?
 	print(f"fuzz: {accepted} accepted, {rejected} rejected")
+}
 
-fn expect_error(data: Bytes, kind: String) Void!:
+fn expect_error(data Bytes, kind String) Void! {
 	result := decode_image(data)
-	if result.is_ok(): return fail(f"expected {kind}, decoded an image")
+	if result.is_ok() { return fail(f"expected {kind}, decoded an image") }
 
 	expect_equal(result.err().kind, kind)?
+}
 
-test "hostile headers fail before allocating":
+test "hostile headers fail before allocating" {
 	// PPM claiming 2^40 pixels with no raster.
 	expect_error("P6\n1048576 1048576\n255\n".to_bytes(), "EOVERFLOW")?
 	expect_error("P6\n99999999999999999999 1\n255\n".to_bytes(), "EOVERFLOW")?
@@ -180,7 +202,7 @@ test "hostile headers fail before allocating":
 		null,
 	).get()
 	result := decode_image(jpeg)
-	if result.is_ok(): fail("hostile JPEG decoded")?
+	if result.is_ok() { fail("hostile JPEG decoded")? }
 
 	// BMP with a gigapixel header and no pixel data.
 	bmp := hex_decode(
@@ -188,4 +210,5 @@ test "hostile headers fail before allocating":
 		null,
 	).get()
 	bmp_result := decode_image(bmp)
-	if bmp_result.is_ok(): fail("hostile BMP decoded")?
+	if bmp_result.is_ok() { fail("hostile BMP decoded")? }
+}

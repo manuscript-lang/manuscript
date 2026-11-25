@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0380.ms:3:1: type: reachable fallthrough in function returning T?; end every path with 'return <T?>' (or make the last branch return)\n   |\n 3 | fn f[T](value: T? = null) T?: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0380.ms:3:1: type: reachable fallthrough in function returning T?; end every path with 'return <T?>' (or make the last branch return)\n   |\n 3 | fn f[T](value T? = null) T? { ... }\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

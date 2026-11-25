@@ -9,25 +9,25 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a name, found ')'",
+        "message": "parameter 'a' has no type; every parameter is written name Type, e.g. a Int",
         "position": {
           "file": "golden-0983.ms",
           "line": 3,
-          "column": 14,
-          "offset": 66
+          "column": 11,
+          "offset": 63
         },
         "end": {
           "file": "golden-0983.ms",
           "line": 3,
-          "column": 15,
-          "offset": 67
+          "column": 12,
+          "offset": 64
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0983.ms:3:14: parse: expected a name, found ')'\n   |\n 3 | fn broken(a: ) Int:\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0983.ms:3:11: parse: parameter 'a' has no type; every parameter is written name Type, e.g. a Int\n   |\n 3 | fn broken(a ) Int {\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

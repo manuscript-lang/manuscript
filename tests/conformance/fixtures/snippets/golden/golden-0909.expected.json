@@ -13,21 +13,21 @@
         "position": {
           "file": "golden-0909.ms",
           "line": 3,
-          "column": 17,
-          "offset": 69
+          "column": 16,
+          "offset": 68
         },
         "end": {
           "file": "golden-0909.ms",
           "line": 3,
-          "column": 18,
-          "offset": 70
+          "column": 17,
+          "offset": 69
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0909.ms:3:17: parse: expected ')', found ':'; close the parenthesis, separating items with commas\n   |\n 3 | fn f(value: fn(x: Int = 1) Int) Void:\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0909.ms:3:16: parse: expected ')', found ':'; close the parenthesis, separating items with commas\n   |\n 3 | fn f(value fn(x: Int = 1) Int) Void {\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

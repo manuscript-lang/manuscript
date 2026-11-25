@@ -303,7 +303,7 @@ static void stmt_assign(Body *body, const MsStmt *stmt) {
   (void)body_expect(body, stmt->u.assign.value, target, (MsSpan){0});
 }
 
-/* The payload an `if x := expr:` binding takes from the tested value. */
+/* The payload an `if x := expr { ... }` binding takes from the tested value. */
 static MsTy payload_type(const Body *body, MsTy tested) {
   const MsTyTable *types = &body->program->types;
   const bool wraps = ms_ty_is(types, tested, MS_BUILTIN_Optional) || ms_ty_is(types, tested, MS_BUILTIN_Result);
@@ -665,7 +665,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     if (declared == MS_TY_NONE && decl->u.konst.value->kind == MS_E_LIST && decl->u.konst.value->u.list.len == 0 &&
         body_reports(body)) {
       ms_check_report(body->program, body->module, decl->u.konst.value->pos, MS_CHECK_TYPE,
-                      ms_string_from_span(ms_span_of_text("cannot infer list element type; add an annotation, e.g. xs: List[Int] := []")));
+                      ms_string_from_span(ms_span_of_text("cannot infer list element type; add an annotation, e.g. xs List[Int] := []")));
     }
     body_report_decimal_literals(body, decl->u.konst.value);
     break;

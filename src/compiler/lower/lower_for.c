@@ -372,7 +372,7 @@ static uint32_t drop_close_for(Lower *cx, MirTy ty) {
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
 
-/* `for item in source:` for a source that is not a list: the iterator lives in a slot the loop owns, and each
+/* `for item in source { ... }` for a source that is not a list: the iterator lives in a slot the loop owns, and each
  * round calls the type's `next` on the slot; a `none` ends the loop. The item borrows from the result of `next`,
  * which the round owns. */
 static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) {

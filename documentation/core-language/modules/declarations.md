@@ -50,11 +50,12 @@ A module-level `:=` names a value usable throughout the module; add `export` to 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export MAX_ITEMS := 100
-NAMES: List[String] := ["Ada", "Grace"]
+NAMES List[String] := ["Ada", "Grace"]
 LIMIT := MAX_ITEMS * 2
 
-fn is_full(count: Int) Bool:
+fn is_full(count Int) Bool {
     return count >= LIMIT
+}
 ```
 
 The type comes from the annotation or initializer. The initializer is a constant expression: literals, constant `f` text, operators, list and map literals, payloadless cases (`null`, `State.Ready`), and other constants. Calls, constructors, functions, and `match` are not allowed. Self-dependent constants are rejected.
@@ -67,8 +68,9 @@ A constant has no storage or initialization order; each use evaluates the initia
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-export type CustomerId:
-    value: String
+export type CustomerId {
+    value String
+}
 ```
 
 `src/main.ms` imports it:
@@ -86,12 +88,14 @@ An exported function, data type, or contract cannot expose an internal nominal t
 
 <!-- manuscript-example: {"mode":"error","contains":"PrivateToken"} -->
 ```manuscript
-type PrivateToken:
-    value: String
+type PrivateToken {
+    value String
+}
 
 // Rejected: callers cannot name the internal result type.
-export fn issue() PrivateToken:
+export fn issue() PrivateToken {
     return PrivateToken("token")
+}
 ```
 
 Exporting a type exposes every field and its constructor; an enum, every case and payload; an `interface`, every operation. `export opaque type` hides fields and `export opaque enum` hides enum cases outside the declaring file; selective per-field visibility is unsupported ([public data surfaces](../types/named-types.md#public-data-surfaces)).

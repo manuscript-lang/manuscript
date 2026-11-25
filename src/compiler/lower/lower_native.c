@@ -744,10 +744,6 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
     *out = fn_value_operation(fn, operation, args, argc, ret);
     return *out != MIR_NONE;
   }
-  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
-    *out = fn_list_get(fn, args[0], args[1], ret);
-    return true;
-  }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_set") && argc == 3 &&
       fn_list_set(fn, place, slot, args, out)) {
     return true;

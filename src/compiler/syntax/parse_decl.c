@@ -19,25 +19,29 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
   if (token.kind == MS_T_Type && parse_take(p, MS_T_Assign)) {
     return parse_alias_declaration(p, token, name, tps, out);
   }
-  if (!parse_need(p, MS_T_Colon))
+  if (!parse_need(p, MS_T_BlockOpen))
     return false;
+  parse_newlines(p);
   bool no_members = (token.kind == MS_T_Interface || token.kind == MS_T_Type) && parse_take(p, MS_T_Ellipsis);
   if (no_members) {
+    parse_newlines(p);
+    if (!parse_need(p, MS_T_BlockClose))
+      return false;
     return parse_empty_declaration(p, token, name, tps, out);
   }
   if (!parse_declaration_body_start(p, token))
     return false;
   /* Only one of fields, cases and methods is ever collected for a given declaration kind. */
   size_t m = parse_mark(p);
-  while (parse_kind(p) != MS_T_Dedent) {
+  while (parse_kind(p) != MS_T_BlockClose) {
     parse_newlines(p);
-    if (parse_kind(p) == MS_T_Dedent) {
+    if (parse_kind(p) == MS_T_BlockClose) {
       break;
     }
     if (!parse_declaration_member(p, token, name, tps))
       return false;
   }
-  if (!parse_need(p, MS_T_Dedent))
+  if (!parse_need(p, MS_T_BlockClose))
     return false;
   uint32_t count = 0;
   void **items = parse_finish(p, m, &count, sizeof(void *), _Alignof(void *));
@@ -47,7 +51,7 @@ MS_NODISCARD static bool type_declaration(Parser *p, MsToken token, MsDecl **out
 /* The type parameters that stand for the receiver's own arguments in `fn Type[T: Bound].m()`. */
 MS_NODISCARD static bool receiver_arguments(Parser *p, MsTypeParams *bounds, MsTypeRefs *args) {
   bool bounded = parse_kind(p) == MS_T_LBracket && parse_ahead(p, 1).kind == MS_T_Name &&
-                 parse_ahead(p, 2).kind == MS_T_Colon;
+                 (parse_ahead(p, 2).kind == MS_T_Name || parse_ahead(p, 2).kind == MS_T_Colon);
   if (!bounded) {
     return !parse_take(p, MS_T_LBracket) || parse_type_args(p, args);
   }
@@ -107,8 +111,8 @@ MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) 
   if (parse_kind(p) == MS_T_Var && parse_ahead(p, 1).kind == MS_T_Name) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text("'fn var' marks a method that changes its receiver, as in 'fn var "
-                               "Counter.add(n: Int) Void:'; a free function takes 'var' on the parameter "
-                               "instead: 'fn add(var counter: Counter, n: Int) Void:'"));
+                               "Counter.add(n Int) Void { ... }'; a free function takes 'var' on the parameter "
+                               "instead: 'fn add(var counter Counter, n Int) Void { ... }'"));
     return false;
   }
   MsToken name = {0};
@@ -153,7 +157,7 @@ MS_NODISCARD static bool extern_type_declaration(Parser *p, MsToken token, MsDec
   MsTypeParams tps = {0};
   if (!parse_type_params(p, &tps))
     return false;
-  if (parse_kind(p) == MS_T_Colon) {
+  if (parse_kind(p) == MS_T_BlockOpen) {
     p->at = keyword;
     if (!type_declaration(p, parse_peek(p), out))
       return false;
@@ -188,8 +192,8 @@ MS_NODISCARD static bool extern_fn_declaration(Parser *p, MsToken token, MsDecl 
   bool result_moves = false;
   if (!parse_result_type(p, &result, &result_moves))
     return false;
-  if (parse_kind(p) == MS_T_Colon) {
-    parse_fail(p, parse_peek(p), ms_span_of_text("an extern fn has no body; remove the ':'"));
+  if (parse_kind(p) == MS_T_BlockOpen) {
+    parse_fail(p, parse_peek(p), ms_span_of_text("an extern fn has no body; remove the braces"));
     return false;
   }
   if (!parse_end(p))
@@ -211,10 +215,8 @@ MS_NODISCARD static bool constant_declaration(Parser *p, MsToken token, MsDecl *
   if (!parse_need_token(p, MS_T_Name, &name))
     return false;
   MsTypeRef *ty = NULL;
-  if (parse_take(p, MS_T_Colon)) {
-    if (!parse_typ(p, &ty))
-      return false;
-  }
+  if (parse_kind(p) != MS_T_ColonAssign && !parse_name_type(p, name, &ty))
+    return false;
   if (!parse_need_immutable_bind(p))
     return false;
   MsPos init_pos = {0};
@@ -279,11 +281,11 @@ static void report_foreign_declaration(Parser *p, MsToken token, MsSpan message,
 }
 
 static void report_misplaced_opaque(Parser *p, MsToken token) {
-  MsSpan advice = ms_span_of_text("'opaque' applies only to a type or enum; write 'opaque type Name:' or "
-                                  "'opaque enum Name:', optionally after 'export'");
+  MsSpan advice = ms_span_of_text("'opaque' applies only to a type or enum; write 'opaque type Name { ... }' or "
+                                  "'opaque enum Name { ... }', optionally after 'export'");
   if (parse_ahead(p, 1).kind == MS_T_Export) {
     const char *kw = parse_ahead(p, 2).kind == MS_T_Enum ? "enum" : "type";
-    advice = parse_fmt(p, "write 'export opaque %s Name:', with export first", kw);
+    advice = parse_fmt(p, "write 'export opaque %s Name { ... }', with export first", kw);
   }
   parse_fail(p, token, parse_fmt(p, "misplaced 'opaque'; %S", advice));
 }
@@ -339,9 +341,6 @@ MS_NODISCARD bool parse_declaration(Parser *p, MsDecl **out) {
     return next_kind == MS_T_Type ? extern_type_declaration(p, token, out)
                                   : extern_fn_declaration(p, token, out);
   }
-  if (k == MS_T_Name && (next_kind == MS_T_ColonAssign || next_kind == MS_T_Colon)) {
-    return constant_declaration(p, token, out);
-  }
   if (k == MS_T_Test) {
     return test_declaration(p, token, false, out);
   }
@@ -354,6 +353,9 @@ MS_NODISCARD bool parse_declaration(Parser *p, MsDecl **out) {
   if (k == MS_T_Name && parse_text_is(p, token, "opaque") &&
       (next_kind == MS_T_Type || next_kind == MS_T_Enum)) {
     return opaque_declaration(p, token, out);
+  }
+  if (k == MS_T_Name && parse_binding_ahead(p)) {
+    return constant_declaration(p, token, out);
   }
   report_bad_declaration(p, token);
   return false;

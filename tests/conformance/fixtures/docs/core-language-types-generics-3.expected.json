@@ -12,9 +12,9 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-generics-3.ms",
-          "line": 13,
+          "line": 16,
           "column": 8,
-          "offset": 297
+          "offset": 292
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-generics-3.ms",
-          "line": 14,
+          "line": 17,
           "column": 10,
-          "offset": 318
+          "offset": 313
         }
       },
       {
@@ -34,16 +34,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-generics-3.ms",
-          "line": 15,
+          "line": 18,
           "column": 13,
-          "offset": 347
+          "offset": 342
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-generics-3.ms:13:8: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 13 | box := Box[Int](1)\n    |        ^\n<DIR>/core-language-types-generics-3.ms:14:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 14 | exact := identity[Int](1)\n    |          ^\n<DIR>/core-language-types-generics-3.ms:15:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 15 | inferred := identity(1)\n    |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-generics-3.ms:16:8: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 16 | box := Box[Int](1)\n    |        ^\n<DIR>/core-language-types-generics-3.ms:17:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 17 | exact := identity[Int](1)\n    |          ^\n<DIR>/core-language-types-generics-3.ms:18:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 18 | inferred := identity(1)\n    |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

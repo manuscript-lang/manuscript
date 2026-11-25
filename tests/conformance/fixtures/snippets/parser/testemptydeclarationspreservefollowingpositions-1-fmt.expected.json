@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Empty: ...\n\nfn empty() Void: ...\n\nfn kept() Int:\n\treturn 3\n"
+    "fmt": "type Empty { ... }\n\nfn empty() Void { ... }\n\nfn kept() Int {\n\treturn 3\n}\n"
   }
 }

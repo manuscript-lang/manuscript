@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 1; use 0 or 4",
+        "message": "expected a module declaration or import, found '='; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0904.ms",
           "line": 3,
           "column": 2,
           "offset": 54
+        },
+        "end": {
+          "file": "golden-0904.ms",
+          "line": 3,
+          "column": 3,
+          "offset": 55
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0904.ms:3:2: parse: indentation must be a multiple of four spaces, found 1; use 0 or 4\n   |\n 3 |  = read_hex4()\n   |  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0904.ms:3:2: parse: expected a module declaration or import, found '='; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 3 |  = read_hex4()\n   |  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

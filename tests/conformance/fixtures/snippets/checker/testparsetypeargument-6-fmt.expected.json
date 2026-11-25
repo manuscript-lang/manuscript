@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f[T](text: String) T!:\n\treturn parse[T](text)\n"
+    "fmt": "fn f[T](text String) T! {\n\treturn parse[T](text)\n}\n"
   }
 }

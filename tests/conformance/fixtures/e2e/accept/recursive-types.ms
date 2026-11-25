@@ -5,47 +5,57 @@ import (
 	expect_equal, expect_false, fail from "@std/test/test.ms",
 )
 
-enum Expr:
-	Num(value: Int)
-	Add(left: Expr, right: Expr)
-	Neg(inner: Expr)
+enum Expr {
+	Num(value Int)
+	Add(left Expr, right Expr)
+	Neg(inner Expr)
+}
 
-fn evaluate(expr: Expr) Int:
-	match expr:
-		Num(value): return value
-		Add(left, right): return evaluate(left) + evaluate(right)
-		Neg(inner): return -evaluate(inner)
+fn evaluate(expr Expr) Int {
+	match expr {
+		Num(value) => return value
+		Add(left, right) => return evaluate(left) + evaluate(right)
+		Neg(inner) => return -evaluate(inner)
+	}
+}
 
-enum Tree[T]:
-	Leaf(value: T)
-	Branch(left: Tree[T], right: Tree[T])
+enum Tree[T] {
+	Leaf(value T)
+	Branch(left Tree[T], right Tree[T])
+}
 
-enum Forest:
+enum Forest {
 	Empty
-	More(tree: MutualTree)
+	More(tree MutualTree)
+}
 
-type MutualTree:
-	value: Int
-	rest: Forest
+type MutualTree {
+	value Int
+	rest Forest
+}
 
-type Node:
-	value: Int
-	next: Node?
+type Node {
+	value Int
+	next Node?
+}
 
-type DefaultNode:
-	value: Int
-	next: DefaultNode?
+type DefaultNode {
+	value Int
+	next DefaultNode?
+}
 
-type Link:
-	value: Int
-	next: Link?
+type Link {
+	value Int
+	next Link?
+}
 
-fn Link.equals(other: Link) Bool:
+fn Link.equals(other Link) Bool {
 	return self.value == other.value
+}
 
-fn Link.hash() Int: return self.value
+fn Link.hash() Int => return self.value
 
-test "recursive alternatives construct match compare and clone":
+test "recursive alternatives construct match compare and clone" {
 	expr := Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
 	(evaluate(expr.clone()) != 5 or expr != expr.clone()) | expect_false?
 
@@ -61,12 +71,15 @@ test "recursive alternatives construct match compare and clone":
 
 	forest := Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
-	match forest:
-		More(first):
+	match forest {
+		More(first) => {
 			((first.value != 3 or first.rest != Forest.Empty) | expect_false?)
-		Empty: return fail("lost mutual tree")
+		}
+		Empty => return fail("lost mutual tree")
+	}
+}
 
-test "recursive records clone into independent storage":
+test "recursive records clone into independent storage" {
 	child := Node(value: 2, next: null)
 	root := Node(value: 1, next: child.clone())
 	var alias = root.clone()
@@ -89,8 +102,9 @@ test "recursive records clone into independent storage":
 	)
 	copy.next = null
 	(root.next == null) | expect_false?
+}
 
-test "recursive structural equality checks nested and unequal fields":
+test "recursive structural equality checks nested and unequal fields" {
 	var left = Node(value: 1, next: null)
 	var right = Node(value: 1, next: null)
 	left.next = left.clone()
@@ -114,8 +128,9 @@ test "recursive structural equality checks nested and unequal fields":
 	b := Node(value: 1, next: a.clone())
 	a.next = b
 	(right == a) | expect_false?
+}
 
-test "recursive domain hashing uses explicit implementations":
+test "recursive domain hashing uses explicit implementations" {
 	var left = Link(value: 7, next: null)
 	var right = Link(value: 7, next: null)
 	left.next = left.clone()
@@ -147,8 +162,9 @@ test "recursive domain hashing uses explicit implementations":
 			) != 10
 		) | expect_false?
 	)
+}
 
-test "recursive defaults construct independent complete objects":
+test "recursive defaults construct independent complete objects" {
 	var first = DefaultNode(value: 1)
 	second := DefaultNode(value: 2)
 	first.next = first.clone()
@@ -161,28 +177,35 @@ test "recursive defaults construct independent complete objects":
 			).value != 1
 		) | expect_false?
 	)
+}
 
-type Entry:
-	name: String
-	nickname: String?
+type Entry {
+	name String
+	nickname String?
+}
 
-type Person:
-	primary: Entry?
+type Person {
+	primary Entry?
+}
 
-enum NestedOptional:
-	Value(value: Int??)
+enum NestedOptional {
+	Value(value Int??)
+}
 
-type NestedResult:
-	value: Int!Error!Error
+type NestedResult {
+	value Int!Error!Error
+}
 
-type Box[T]:
-	value: T
+type Box[T] {
+	value T
+}
 
-type Pair[T, U]:
-	first: T
-	second: U
+type Pair[T, U] {
+	first T
+	second U
+}
 
-test "finite nested generic composition constructs and extracts values":
+test "finite nested generic composition constructs and extracts values" {
 	person := Person(Entry(name: "Ada", nickname: "A"))
 	(
 		(
@@ -194,30 +217,35 @@ test "finite nested generic composition constructs and extracts values":
 		) | expect_equal("A")?
 	)
 
-	four: Int? := 4
-	nested_four: Int?? := four
+	four Int? := 4
+	nested_four Int?? := four
 	optional := NestedOptional.Value(nested_four)
 
-	match optional:
-		Value(value):
+	match optional {
+		Value(value) => {
 			expect_equal(value or panic("called Optional.get() on null"), 4)?
+		}
+	}
 
 	result := NestedResult(ok(ok(5)))
 
-	inner := match result.value:
-		ok(inner): inner.clone()
-		error(_): return fail("unexpected outer result error")
+	inner := match result.value {
+		ok(inner) => inner.clone()
+		error(_) => return fail("unexpected outer result error")
+	}
 
-	match inner:
-		ok(value):
+	match inner {
+		ok(value) => {
 			expect_equal(value, 5)?
-		error(_): return fail("unexpected inner result error")
+		}
+		error(_) => return fail("unexpected inner result error")
+	}
 
 	box := Box(Box(6))
 	box.value.value | expect_equal(6)?
 
-	inner_text: String? := "nested"
-	pair: Pair[Int?, String??] := Pair(first: 7, second: inner_text)
+	inner_text String? := "nested"
+	pair Pair[Int?, String??] := Pair(first: 7, second: inner_text)
 	(
 		(
 			(pair.first or panic("called Optional.get() on null")) != 7
@@ -227,3 +255,4 @@ test "finite nested generic composition constructs and extracts values":
 			) != "nested"
 		) | expect_false?
 	)
+}

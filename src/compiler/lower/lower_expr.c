@@ -662,9 +662,9 @@ static bool is_null_literal(const LowerFn *fn, const MsExpr *expr) {
   return expr->kind == MS_E_NAME && ms_span_is_text(ms_names_span(fn->cx->program->names, expr->u.sym), "null");
 }
 
-static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
+static MirValue lower_binary(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (expr->op == MS_B_OR && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
-    return fn_lower_or_null(fn, expr);
+    return fn_lower_or_null(fn, expr, want);
   }
   if (expr->op == MS_B_AND || expr->op == MS_B_OR) {
     return fn_lower_logical(fn, expr);
@@ -730,7 +730,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       fn->taking_member = want == LW_MOVE ? expr : NULL;
       return lower_member(fn, expr);
     case MS_E_MAP: return fn_map_literal(fn, expr);
-    case MS_E_BINARY: return lower_binary(fn, expr);
+    case MS_E_BINARY: return lower_binary(fn, expr, want);
     case MS_E_CALL: {
       const MirValue view = want == LW_BORROW ? fn_map_get_view(fn, expr) : MIR_NONE;
       return view != MIR_NONE ? view : fn_call(fn, expr, want);

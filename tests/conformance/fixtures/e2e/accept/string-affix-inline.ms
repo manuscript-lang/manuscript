@@ -2,13 +2,14 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn both(text: String, part: String) Int:
+fn both(text String, part String) Int {
 	var r = 0
-	if text.starts_with(part): r += 1
-	if text.ends_with(part): r += 2
+	if text.starts_with(part) { r += 1 }
+	if text.ends_with(part) { r += 2 }
 	return r
+}
 
-test "empty, one to three byte and longer affixes":
+test "empty, one to three byte and longer affixes" {
 	expect_equal(both("", ""), 3)?
 	expect_equal(both("a", ""), 3)?
 	expect_equal(both("", "a"), 0)?
@@ -20,8 +21,9 @@ test "empty, one to three byte and longer affixes":
 	expect_equal(both("abc", "abc"), 3)?
 	expect_equal(both("abc", "abcd"), 0)?
 	expect_equal(both("aXc", "abc"), 0)?
+}
 
-test "affixes of four to sixteen bytes, inline and heap":
+test "affixes of four to sixteen bytes, inline and heap" {
 	t16 := "abcdefghijklmnop"
 	t17 := "abcdefghijklmnopq"
 	long := "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -42,17 +44,20 @@ test "affixes of four to sixteen bytes, inline and heap":
 	expect_equal(both(long, "z0123456789"), 2)?
 	expect_equal(both(long, "abcdefghijklmnopZ"), 0)?
 	expect_equal(both(long, long), 3)?
+}
 
-test "differences in the middle of an overlapped read":
+test "differences in the middle of an overlapped read" {
 	expect_equal(both("abcdefgh", "abcXefgh"), 0)?
 	expect_equal(both("abcdefghijk", "abcdefXhijk"), 0)?
 	expect_equal(both("xxabcdefghijk", "abcdefXhijk"), 0)?
 	expect_equal(both("abcdefghijkxx", "abcdefghijk"), 1)?
 	expect_equal(both("xxabcdefghijk", "abcdefghijk"), 2)?
+}
 
-test "multibyte text compares bytes":
+test "multibyte text compares bytes" {
 	expect_equal(both("héllo wörld", "hé"), 1)?
 	expect_equal(both("héllo wörld", "rld"), 2)?
 	expect_equal(both("héllo wörld", "h"), 1)?
 	expect_equal(both("日本語のテキスト", "日本"), 1)?
 	expect_equal(both("日本語のテキスト", "スト"), 2)?
+}

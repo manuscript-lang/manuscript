@@ -1,10 +1,12 @@
 // conform: tags=formatter,optional,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=tests/e2e/recursive_types_test.go:13 TestRecursiveTypesRejectUnsafeConstructionAndHashing
-type Node:
-    next: Node?
+type Node {
+	next Node?
+}
 
-export fn main() Int:
-    node := Node(null)
-    node.next = node
-    return node.hash()
+export fn main() Int {
+	node := Node(null)
+	node.next = node
+	return node.hash()
+}

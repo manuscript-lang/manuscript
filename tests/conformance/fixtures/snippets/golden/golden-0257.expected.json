@@ -12,22 +12,22 @@
         "message": "unknown argument amunt; did you mean 'amount'?",
         "position": {
           "file": "golden-0257.ms",
-          "line": 6,
+          "line": 8,
           "column": 14,
-          "offset": 119
+          "offset": 117
         },
         "fix": {
           "position": {
             "file": "golden-0257.ms",
-            "line": 6,
+            "line": 8,
             "column": 14,
-            "offset": 119
+            "offset": 117
           },
           "end": {
             "file": "golden-0257.ms",
-            "line": 6,
+            "line": 8,
             "column": 19,
-            "offset": 124
+            "offset": 122
           },
           "replacement": "amount"
         }
@@ -38,16 +38,16 @@
         "message": "missing argument amount: Int in call to g; add 'amount: <Int>'",
         "position": {
           "file": "golden-0257.ms",
-          "line": 6,
+          "line": 8,
           "column": 12,
-          "offset": 117
+          "offset": 115
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0257.ms:6:14: type: unknown argument amunt; did you mean 'amount'?\n   |\n 6 |     return g(amunt: 1)\n   |              ^\n<DIR>/golden-0257.ms:6:12: type: missing argument amount: Int in call to g; add 'amount: <Int>'\n   |\n 6 |     return g(amunt: 1)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0257.ms:8:14: type: unknown argument amunt; did you mean 'amount'?\n   |\n 8 |     return g(amunt: 1)\n   |              ^\n<DIR>/golden-0257.ms:8:12: type: missing argument amount: Int in call to g; add 'amount: <Int>'\n   |\n 8 |     return g(amunt: 1)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

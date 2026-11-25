@@ -13,26 +13,34 @@ Save as `echo.ms`. The handler calls `upgrade` to turn the request into a `WebSo
 
 <!-- manuscript-example: {"mode":"run","stdout":"hello\n"} -->
 ```manuscript
-import HttpExchange, upgrade from "@std/net/http.ms"
-import serve, web_socket from "@std/net/net.ms"
-import WebSocketKind, WebSocketMessage from "@std/net/websocket.ms"
+import (
+    HttpExchange, upgrade from "@std/net/http.ms",
+    serve, web_socket from "@std/net/net.ms",
+    WebSocketKind, WebSocketMessage from "@std/net/websocket.ms",
+)
 
-fn echo(var exchange: HttpExchange) Void!:
+fn echo(var exchange HttpExchange) Void! {
     var socket = upgrade(exchange)?
     message := socket.input.next()?
-    if message == null: return ok()
+    if message == null { return ok() }
+
     echoed := message.get()
     socket.output.write(echoed)?
     socket.close()?
+}
 
-fn main() Void!:
+fn main() Void! {
     var server = serve("127.0.0.1:0", echo)?
     var client = web_socket(f"ws://{server.address()}/")?
-    client.output.write(WebSocketMessage(data: "hello".to_bytes(), kind: WebSocketKind.Text))?
+    client.output.write(
+        WebSocketMessage(data: "hello".to_bytes(), kind: WebSocketKind.Text)
+    )?
+
     reply := client.input.next()?
     print(reply.get().data.decode_utf8() or "")
     client.close()?
     server.close()?
+}
 ```
 
 - `input.next()` returns `null` when the peer closes normally, so a loop over `socket.input` ends by itself.
@@ -47,27 +55,36 @@ Destructure the response to take its body: a stream is a resource and cannot be 
 
 <!-- manuscript-example: {"mode":"run","stdout":"tick: 1\ntick: 2\n"} -->
 ```manuscript
-import HttpExchange, HttpMethod, headers from "@std/net/http.ms"
-import http_client, serve from "@std/net/net.ms"
-import sse_events from "@std/net/sse.ms"
+import (
+    HttpExchange, HttpMethod, headers from "@std/net/http.ms",
+    http_client, serve from "@std/net/net.ms",
+    sse_events from "@std/net/sse.ms",
+)
 
-fn ticker(var exchange: HttpExchange) Void!:
+fn ticker(var exchange HttpExchange) Void! {
     var sent = headers()
     sent.append("Content-Type", "text/event-stream")?
     exchange.send_headers(200, sent)?
     exchange.write("event: tick\ndata: 1\n\n")?
     exchange.write("event: tick\ndata: 2\n\n")?
+}
 
-fn main() Void!:
+fn main() Void! {
     var server = serve("127.0.0.1:0", ticker)?
     client := http_client()?
-    response := client.request(HttpMethod.Get, f"http://{server.address()}/", headers())?
+    response := client.request(
+        HttpMethod.Get,
+        f"http://{server.address()}/",
+        headers(),
+    )?
     {body: payload} := response
     var events = sse_events(payload)
-    for event in events:
+    for event in events {
         print(f"{event.event}: {event.data}")
+    }
     events.close()?
     server.close()?
+}
 ```
 
 - A stream that ends in the middle of an event fails with `EBADMSG`, and the unfinished event is never delivered.

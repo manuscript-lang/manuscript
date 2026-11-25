@@ -1,11 +1,14 @@
 // conform: tags=control-flow,diagnostics,generics,interfaces,records,strings,tier-core
 // conform: phase=check
 // conform: origin=tests/e2e/testdata/projects/error_boundaries/domain.ms
-export type DomainFailure:
-    code: Int
+export type DomainFailure {
+	code Int
+}
 
-export type BoxFailure[T]:
-    cause: T
+export type BoxFailure[T] {
+	cause T
+}
 
-export fn box_error[T](box: BoxFailure[T], describe: fn(T) String) Error:
-    return Error(f"box: {describe(box.cause)}")
+export fn box_error[T](box BoxFailure[T], describe fn(T) String) Error {
+	return Error(f"box: {describe(box.cause)}")
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type State:\n\tcount: Int\n\nfn increment(var state: State) Int:\n\tstate.count += 1\n\treturn state.count\n\ntype Options:\n\tstate: State\n\tcount: Int = increment(state)\n\nfn construct(state: State) Options:\n\treturn Options(state: state)\n"
+    "fmt": "type State {\n\tcount Int\n}\n\nfn increment(var state State) Int {\n\tstate.count += 1\n\treturn state.count\n}\n\ntype Options {\n\tstate State\n\tcount Int = increment(state)\n}\n\nfn construct(state State) Options {\n\treturn Options(state: state)\n}\n"
   }
 }

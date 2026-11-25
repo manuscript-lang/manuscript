@@ -28,7 +28,7 @@ DATA := "bench/perf/json/data"
 
 // The small-message document, built as a value because a JSON literal needs every quote
 // and brace escaped.
-fn small() String:
+fn small() String {
 	var params = Map[String, JsonValue]()
 	params.add("name", jstr("worker-7"))
 	params.add("args", jlist([jstr("--fast"), jstr("--verbose")]))
@@ -49,42 +49,48 @@ fn small() String:
 	doc.add("tags", jlist([jstr("a"), jstr("b"), jstr("c")]))
 	doc.add("user", jobject(user))
 	return stringify(jobject(doc)).get_or("") + "\n"
+}
 
-fn fetch_corpora() Void!:
+fn fetch_corpora() Void! {
 	_dir := create_directory(DATA, recursive: true)
 
-	for f in ["twitter", "canada", "citm_catalog"]:
-		if exists(f"{DATA}/{f}.json"): continue
+	for f in ["twitter", "canada", "citm_catalog"] {
+		if exists(f"{DATA}/{f}.json") { continue }
 
 		url := f"https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
 		void must(
 			f"curl {f}",
 			capture("curl", ["-sSfL", "-o", f"{DATA}/{f}.json", url]),
 		)?
+	}
 
 	// Small messages: the shape worker threads and RPC exchange.
-	if not exists(f"{DATA}/small.json"): write_text(f"{DATA}/small.json", small())
+	if not exists(f"{DATA}/small.json") { write_text(f"{DATA}/small.json", small()) }
+}
 
-type Rate:
-	nanos: Int
-	bytes: Int
+type Rate {
+	nanos, bytes Int
+}
 
 // Maps `<doc>\t<op>\t<ns>\t<bytes>` lines to rates.
-fn load(text: String) Map[String, Rate]:
+fn load(text String) Map[String, Rate] {
 	var rows = Map[String, Rate]()
 
-	for line in text.split("\n"):
+	for line in text.split("\n") {
 		f := line.split("\t")
-		if f.length() != 4: continue
+		if f.length() != 4 { continue }
 
 		rows.add(f"{f[0]}\t{f[1]}", Rate(f[2].parse_int() or 1, f[3].parse_int() or 0))
+	}
 
 	return rows
+}
 
-fn mbps(r: Rate) Float:
+fn mbps(r Rate) Float {
 	return r.bytes.to_float() / r.nanos.to_float() * 1000.0
+}
 
-fn run(names: List[String]) Result[String, Error]:
+fn run(names List[String]) Result[String, Error] {
 	fetch_corpora()?
 
 	node := must("node", capture("node", ["bench/perf/json/node.js"].concat(names)))?
@@ -116,8 +122,8 @@ fn run(names: List[String]) Result[String, Error]:
 		) + right("ms MB/s", 10) + right("ms/node", 9) + right("ms/serde", 10),
 	]
 
-	for key in n.keys():
-		if not (m.contains(key) and r.contains(key)): continue
+	for key in n.keys() {
+		if not (m.contains(key) and r.contains(key)) { continue }
 
 		f := key.split("\t")
 		nr := n.get_or(key, Rate(1, 0))
@@ -138,11 +144,14 @@ fn run(names: List[String]) Result[String, Error]:
 				9,
 			) + "x"
 		)
+	}
 
 	return ok(rows.join("\n"))
+}
 
-fn main() Int:
+fn main() Int {
 	names := env("NAMES", "small twitter canada citm_catalog records").split(
 		" "
-	).filter(fn s: (s != ""))
+	).filter(s => (s != ""))
 	return finish(run(names))
+}

@@ -9,26 +9,32 @@ SEED := (
 	+ "actor ann\ntoday 2024-03-10\ncreate \"Fix login bug\" priority=high points=5 labels=Bug,auth due=2024-03-01 assignee=bob\ncreate \"Add dark mode\" points=3 labels=ui due=2024-04-01\ncreate \"Refactor database layer\" priority=low points=13 labels=tech,db assignee=Carl\nactor dave\ncreate \"Write docs\" assignee=bob labels=docs due=2024-03-10\ncreate \"Crash on save\" priority=critical points=2 labels=bug,ui assignee=carl due=2024-02-20\ncreate \"Upgrade deps\" priority=medium labels=tech\nmove 1 doing\nmove 5 doing\nactor eve\nmove 4 doing\ncomment 1 reproduced on staging\ncomment 3 needs design review\n"
 )
 
-fn strip_nl(text: String) String:
+fn strip_nl(text String) String {
 	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
-	while start < end and chars[start] == "\n":
+	while start < end and chars[start] == "\n" {
 		start += 1
-	while end > start and chars[end - 1] == "\n":
+	}
+	while end > start and chars[end - 1] == "\n" {
 		end -= 1
+	}
 	return chars.slice(start, end).get_or([]).join("") + "\n"
+}
 
-fn seeded(extra: String) String:
+fn seeded(extra String) String {
 	return SEED + strip_nl(extra)
+}
 
-fn add(var cs: Cases, name: String, script: String) Void:
+fn add(var cs Cases, name, script String) Void {
 	cs.push(name, strip_nl(script))
+}
 
-fn adds(var cs: Cases, name: String, extra: String) Void:
+fn adds(var cs Cases, name, extra String) Void {
 	cs.push(name, seeded(extra))
+}
 
-export fn gen_c60() Void:
+export fn gen_c60() Void {
 	var cs = Cases(build_oracle("c60-issue-tracker"))
 	add(cs, "wf-basic", WF + "create a\nshow 1\n")
 	add(
@@ -281,3 +287,4 @@ export fn gen_c60() Void:
 		),
 	]
 	write_cases("c60-issue-tracker", examples, cs.list)
+}

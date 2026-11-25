@@ -9,25 +9,36 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "argument labels use a colon; write a: value",
+        "message": "mismatched closing delimiter '}'; the '(' opened at line 4:19 needs ')'",
         "position": {
           "file": "golden-0866.ms",
-          "line": 5,
-          "column": 11,
-          "offset": 98
+          "line": 4,
+          "column": 21,
+          "offset": 90
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
+        "position": {
+          "file": "golden-0866.ms",
+          "line": 7,
+          "column": 1,
+          "offset": 112
         },
         "end": {
           "file": "golden-0866.ms",
-          "line": 5,
-          "column": 12,
-          "offset": 99
+          "line": 7,
+          "column": 2,
+          "offset": 113
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0866.ms:5:11: parse: argument labels use a colon; write a: value\n   |\n 5 |         a = 1\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0866.ms:4:21: parse: mismatched closing delimiter '}'; the '(' opened at line 4:19 needs ')'\n   |\n 4 |     if true { let ( }\n   |                     ^\n<DIR>/golden-0866.ms:7:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 7 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

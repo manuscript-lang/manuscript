@@ -12,28 +12,28 @@
         "message": "a call does not write `var`: the callee's parameter declares that it changes the argument; write the argument plainly",
         "position": {
           "file": "var-at-call-site.ms",
-          "line": 9,
+          "line": 10,
           "column": 14,
-          "offset": 233
+          "offset": 235
         },
         "end": {
           "file": "var-at-call-site.ms",
-          "line": 9,
+          "line": 10,
           "column": 18,
-          "offset": 237
+          "offset": 239
         },
         "fix": {
           "position": {
             "file": "var-at-call-site.ms",
-            "line": 9,
+            "line": 10,
             "column": 14,
-            "offset": 233
+            "offset": 235
           },
           "end": {
             "file": "var-at-call-site.ms",
-            "line": 9,
+            "line": 10,
             "column": 18,
-            "offset": 237
+            "offset": 239
           },
           "replacement": ""
         }
@@ -42,7 +42,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/var-at-call-site.ms:9:14: parse: a call does not write `var`: the callee's parameter declares that it changes the argument; write the argument plainly\n   |\n 9 |     push_one(var values)\n   |              ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/var-at-call-site.ms:10:14: parse: a call does not write `var`: the callee's parameter declares that it changes the argument; write the argument plainly\n    |\n 10 |     push_one(var values)\n    |              ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

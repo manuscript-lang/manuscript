@@ -27,23 +27,26 @@ import (
 	expect_true from "@std/test/test.ms",
 )
 
-type Items:
-	items: List[Int?]
+type Items {
+	items List[Int?]
+}
 
-type Payload:
-	count: Int
-	ok: Bool
-	nested: Items
-	level: Int
-	msg: String
-	time: Int
+type Payload {
+	count Int
+	ok Bool
+	nested Items
+	level Int
+	msg String
+	time Int
+}
 
 // The text a test's file sink received so far.
-fn written(path: String) String?!:
+fn written(path String) String?! {
 	data := read_file(path).wait()?
 	return ok(data.decode_utf8())
+}
 
-test "logger writes typed escaped records and protects metadata":
+test "logger writes typed escaped records and protects metadata" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	var logger = create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
@@ -54,8 +57,9 @@ test "logger writes typed escaped records and protects metadata":
 	expect_equal((written(path)?), expected)?
 	logger.flush()?
 	logger.close()?
+}
 
-test "non-object values are written under data":
+test "non-object values are written under data" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
@@ -65,8 +69,9 @@ test "non-object values are written under data":
 
 	expected := "{\"level\":30,\"msg\":\"n\",\"data\":7}\n{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]}\n"
 	expect_equal((written(path)?), expected)?
+}
 
-test "levels filter methods and function values":
+test "levels filter methods and function values" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
@@ -99,16 +104,19 @@ test "levels filter methods and function values":
 	logger.fatal("filtered")?
 	expect_equal((written(path)?), before)?
 
-	invalid: Void! := error(Error("logging: invalid input", kind: "EINVAL"))
+	invalid Void! := error(Error("logging: invalid input", kind: "EINVAL"))
 	expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)?
+}
 
-type Service:
-	service: String
+type Service {
+	service String
+}
 
-type Request:
-	request: Int
+type Request {
+	request Int
+}
 
-test "child bindings snapshot values and merge without mutating inputs":
+test "child bindings snapshot values and merge without mutating inputs" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
@@ -122,8 +130,9 @@ test "child bindings snapshot values and merge without mutating inputs":
 
 	expected := "{\"level\":30,\"msg\":\"child\",\"context\":{\"service\":\"api\",\"request\":7},\"data\":{\"service\":\"worker\"}}\n{\"level\":60,\"msg\":\"parent\",\"context\":{\"service\":\"api\"}}\n"
 	expect_equal((written(path)?), expected)?
+}
 
-test "limits and unencodable values reject before writing":
+test "limits and unencodable values reject before writing" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	line := "{\"level\":30,\"msg\":\"x\"}\n"
@@ -135,7 +144,7 @@ test "limits and unencodable values reject before writing":
 	expect_equal((written(path)?), line)?
 
 	before := written(path)?
-	limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(logger.info("xx"), limited)?
 
 	zero := create(
@@ -158,11 +167,12 @@ test "limits and unencodable values reject before writing":
 
 	unlimited := create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
 	bad := JsonValue.NumberValue("NaN")
-	invalid_data: Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid_data Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	expect_equal(unlimited.info("bad", bad), invalid_data)?
 	expect_equal((written(path)?), before)?
+}
 
-test "file transport appends and flushes with scoped cleanup":
+test "file transport appends and flushes with scoped cleanup" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/events.ndjson"
 	var logger = create(file_transport(path)?, LoggerOptions(timestamp: false))?
@@ -185,40 +195,49 @@ test "file transport appends and flushes with scoped cleanup":
 	refused := expect_error(file_transport(missing))?
 	expect_equal(refused.kind, "ENOENT")?
 	expect_equal(refused.message, f"filesystem: file or directory not found: {missing}")?
+}
 
-test "stdout transport accepts records and leaves stdout open":
+test "stdout transport accepts records and leaves stdout open" {
 	logger := create(stdout_transport(), LoggerOptions(timestamp: false))?
 	logger.info("stdout log")?
 	logger.flush()?
+}
 
-type CaptureTransport:
-	path: String
-	suffix: String
+type CaptureTransport {
+	path String
+	suffix String
+}
 
-fn CaptureTransport.write(move data: String) Void!:
+fn CaptureTransport.write(move data String) Void! {
 	return self.write_bytes(data.to_bytes())
+}
 
-fn CaptureTransport.write_bytes(move data: Bytes) Void!:
-	if read_file(f"{self.path}{self.suffix}").wait().is_ok(): return error(
-		Error("logging: resource is closed", kind: "EBADF")
-	)
+fn CaptureTransport.write_bytes(move data Bytes) Void! {
+	if read_file(f"{self.path}{self.suffix}").wait().is_ok() {
+		return error(Error("logging: resource is closed", kind: "EBADF"))
+	}
 
-	match append_file(self.path, data).wait():
-		ok(_): return ok()
-		error(cause): return error(cause)
+	match append_file(self.path, data).wait() {
+		ok(_) => return ok()
+		error(cause) => return error(cause)
+	}
+}
 
-fn CaptureTransport.flush() Void!:
-	if read_file(f"{self.path}{self.suffix}").wait().is_ok(): return error(
-		Error("logging: resource is closed", kind: "EBADF")
-	)
+fn CaptureTransport.flush() Void! {
+	if read_file(f"{self.path}{self.suffix}").wait().is_ok() {
+		return error(Error("logging: resource is closed", kind: "EBADF"))
+	}
+}
 
-fn CaptureTransport.duplicate() Transport!:
+fn CaptureTransport.duplicate() Transport! {
 	return ok(CaptureTransport(self.path.clone(), f"{self.suffix}.child"))
+}
 
-fn move CaptureTransport.close() Void:
+fn move CaptureTransport.close() Void {
 	_marked := write_file(f"{self.path}{self.suffix}", "closed", true).wait()
+}
 
-test "source transports receive complete records and close through their contract":
+test "source transports receive complete records and close through their contract" {
 	temporary := temporary("manuscript-log-transport-") | expect_ok?
 	path := f"{temporary.path()}/records.ndjson"
 	var logger = create(
@@ -233,32 +252,36 @@ test "source transports receive complete records and close through their contrac
 	)?
 	logger.close()?
 	expect_true(read_file(f"{path}.closed").wait().is_ok())?
+}
 
-fn log_from_child(logger: Logger) Void!:
+fn log_from_child(logger Logger) Void! {
 	child := logger.child("worker")?
 	return child.info("from child")
+}
 
-fn log_in_scope(path: String) Void!:
+fn log_in_scope(path String) Void! {
 	logger := create(
 		CaptureTransport(path.clone(), ".closed"),
 		LoggerOptions(timestamp: false),
 	)?
 	log_from_child(logger)?
 	return logger.info("parent after child")
+}
 
-test "a logger scope closes its transport and a dropped child closes only its own":
+test "a logger scope closes its transport and a dropped child closes only its own" {
 	temporary := temporary("manuscript-log-scope-") | expect_ok?
 	path := f"{temporary.path()}/records.ndjson"
 	expect_ok(log_in_scope(path.clone()))?
 	expect_true(read_file(f"{path}.closed").wait().is_ok())?
 	expect_true(read_file(f"{path}.closed.child").wait().is_ok())?
+}
 
-test "unencodable fields are rejected and fields keep their shape under data":
+test "unencodable fields are rejected and fields keep their shape under data" {
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
 	logger := create(handle_transport(file), LoggerOptions(timestamp: false))?
-	invalid: Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	nan := JsonValue.NumberValue("NaN")
 	expect_equal(logger.info("m", nan), invalid)?
 	expect_false(logger.child(nan).is_ok())?
@@ -268,19 +291,22 @@ test "unencodable fields are rejected and fields keep their shape under data":
 
 	expected := "{\"level\":30,\"msg\":\"m\",\"data\":{\"service\":\"a\"}}\n{\"level\":30,\"msg\":\"m\",\"data\":[1]}\n"
 	expect_equal((written(path)?), expected)?
+}
 
-fn chatter(logger: Logger, name: String) Void!:
-	for n in 0..3:
+fn chatter(logger Logger, name String) Void! {
+	for n in 0..3 {
 		logger.info("m", name)?
+	}
+}
 
-test "loggers on several threads never interleave a record":
+test "loggers on several threads never interleave a record" {
 	directory := temporary("manuscript-log-threads-")?
 	path := f"{directory.path()}/out.ndjson"
 	logger := create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
 	first := logger.child("a")?
 	second := logger.child("b")?
-	a := promise(fn: chatter(first, "a"))
-	b := promise(fn: chatter(second, "b"))
+	a := promise(() => chatter(first, "a"))
+	b := promise(() => chatter(second, "b"))
 	a.wait() | expect_ok?
 	b.wait() | expect_ok?
 	logger.flush()?
@@ -288,34 +314,44 @@ test "loggers on several threads never interleave a record":
 	text := (written(path)?) or ""
 	expect_equal(text.split("\n").length(), 7)?
 
-	for line in text.split("\n"):
-		if line != "":
+	for line in text.split("\n") {
+		if line != "" {
 			expect_true(line.starts_with("{\"level\":30,\"msg\":\"m\",\"context\":"))?
 			expect_true(line.ends_with("}"))?
+		}
+	}
+}
 
 // A transport that appends every record to a file.
-type Memory:
-	path: String
+type Memory {
+	path String
+}
 
-fn Memory.write(move data: String) Void!:
+fn Memory.write(move data String) Void! {
 	return append_file(self.path, data).wait()
+}
 
-fn Memory.write_bytes(move data: Bytes) Void!:
+fn Memory.write_bytes(move data Bytes) Void! {
 	return self.write(data.decode_utf8() or "")
+}
 
-fn Memory.flush() Void!:
+fn Memory.flush() Void! {
 	return ok()
+}
 
-fn Memory.duplicate() Transport!:
+fn Memory.duplicate() Transport! {
 	return ok(Memory(self.path.clone()))
+}
 
-fn move Memory.close() Void:
+fn move Memory.close() Void {
 	return
+}
 
-fn recorded(path: String) String:
+fn recorded(path String) String {
 	return written(path).get_or(null) or ""
+}
 
-test "messages are escaped and fields keep their shape under data":
+test "messages are escaped and fields keep their shape under data" {
 	out_dir := temporary("manuscript-log-memory-")?
 	out := f"{out_dir.path()}/records"
 	logger := create(Memory(out.clone()), LoggerOptions(timestamp: false))?
@@ -327,8 +363,9 @@ test "messages are escaped and fields keep their shape under data":
 
 	expected := "{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001é\"}\n{\"level\":30,\"msg\":\"m\",\"data\":{\"items\":[null,1]}}\n{\"level\":30,\"msg\":\"m\",\"data\":\"text\"}\n{\"level\":30,\"msg\":\"m\",\"data\":null}\n{\"level\":30,\"msg\":\"m\",\"data\":{}}\n"
 	expect_equal(recorded(out.clone()), expected)?
+}
 
-test "child context merges per child and the newer value wins":
+test "child context merges per child and the newer value wins" {
 	out_dir := temporary("manuscript-log-memory-")?
 	out := f"{out_dir.path()}/records"
 	root := create(Memory(out.clone()), LoggerOptions(timestamp: false))?
@@ -344,8 +381,9 @@ test "child context merges per child and the newer value wins":
 
 	expected := "{\"level\":30,\"msg\":\"root\"}\n{\"level\":30,\"msg\":\"api\",\"context\":{\"service\":\"api\"}}\n{\"level\":30,\"msg\":\"both\",\"context\":{\"service\":\"api\",\"request\":7},\"data\":{\"request\":9}}\n{\"level\":30,\"msg\":\"renamed\",\"context\":{\"service\":\"worker\",\"request\":7}}\n{\"level\":30,\"msg\":\"replaced\",\"context\":3}\n"
 	expect_equal(recorded(out.clone()), expected)?
+}
 
-test "the time field is a millisecond count and the size limit counts the newline":
+test "the time field is a millisecond count and the size limit counts the newline" {
 	out_dir := temporary("manuscript-log-memory-")?
 	out := f"{out_dir.path()}/records"
 	stamped := create(Memory(out.clone()))?
@@ -371,18 +409,19 @@ test "the time field is a millisecond count and the size limit counts the newlin
 			max_bytes: plain.to_bytes().length() - 1,
 		),
 	)?
-	limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(tight.info("ab"), limited)?
 	expect_equal(recorded(quiet.clone()), plain)?
+}
 
-test "rotating transport moves a full file aside and keeps a bounded number of generations":
+test "rotating transport moves a full file aside and keeps a bounded number of generations" {
 	directory := temporary("manuscript-rotate-")?
 	path := f"{directory.path()}/app.log"
 	var logger = create(
 		rotating_file_transport(path.clone(), 80, 2)?,
 		LoggerOptions(timestamp: false),
 	)?
-	for index in 0..12: logger.info(f"record number {index}")?
+	for index in 0..12 { logger.info(f"record number {index}")? }
 	logger.flush()?
 
 	current := (written(path)?) or ""
@@ -393,9 +432,11 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
 	expect_true(read_file(f"{path}.3").wait().is_error())?
 	expect_true(current.contains("record number 11"))?
 	logger.close()?
+}
 
-test "rotating transport rejects invalid sizes":
+test "rotating transport rejects invalid sizes" {
 	directory := temporary("manuscript-rotate-")?
 	path := f"{directory.path()}/app.log"
 	expect_true(rotating_file_transport(path.clone(), 0, 1).is_error())?
 	expect_true(rotating_file_transport(path.clone(), 10, -1).is_error())?
+}

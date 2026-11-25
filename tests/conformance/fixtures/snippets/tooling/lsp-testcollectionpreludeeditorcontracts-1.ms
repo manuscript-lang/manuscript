@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,lists,maps,sets,strings,tier-core
 // conform: phase=check
 // conform: origin=pkg/tooling/lsp/completion_test.go:316 TestCollectionPreludeEditorContracts
-fn use(values: List[Int], var entries: Map[String, Int], unique: Set[Int]) Void:
-    entries.add("a", 1)
+fn use(values List[Int], var entries Map[String, Int], unique Set[Int]) Void {
+	entries.add("a", 1)
+}

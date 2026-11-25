@@ -13,15 +13,15 @@
         "position": {
           "file": "testconversionsandqueriesrejectinvalidcontracts-1.ms",
           "line": 6,
-          "column": 41,
-          "offset": 280
+          "column": 42,
+          "offset": 282
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testconversionsandqueriesrejectinvalidcontracts-1.ms:6:41: type: a nullable has no method `ok_or_else`; write `if x != null:` and use `x`\n   |\n 6 | fn wrong(value: Int?) Int!String: value.ok_or_else(cause)\n   |                                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testconversionsandqueriesrejectinvalidcontracts-1.ms:6:42: type: a nullable has no method `ok_or_else`; write `if x != null:` and use `x`\n   |\n 6 | fn wrong(value Int?) Int!String => value.ok_or_else(cause)\n   |                                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

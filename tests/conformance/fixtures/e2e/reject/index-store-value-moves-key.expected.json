@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "`k` is moved here but used again at 10:7; a value has one owner, so move it only at its last use, or pass `k.clone()` if the original is still needed",
+        "message": "`k` is moved here but used again at 11:7; a value has one owner, so move it only at its last use, or pass `k.clone()` if the original is still needed",
         "position": {
           "file": "index-store-value-moves-key.ms",
-          "line": 10,
+          "line": 11,
           "column": 17,
-          "offset": 190
+          "offset": 191
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/index-store-value-moves-key.ms:10:17: type: `k` is moved here but used again at 10:7; a value has one owner, so move it only at its last use, or pass `k.clone()` if the original is still needed\n    |\n 10 |     m[k] = Pair(k, 1).n\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/index-store-value-moves-key.ms:11:17: type: `k` is moved here but used again at 11:7; a value has one owner, so move it only at its last use, or pass `k.clone()` if the original is still needed\n    |\n 11 |     m[k] = Pair(k, 1).n\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -20,7 +20,7 @@ import (
 	expect_equal, expect_false, expect_not_equal, expect_true from "@std/test/test.ms",
 )
 
-test "CLI test roots have empty arguments and host metadata agrees":
+test "CLI test roots have empty arguments and host metadata agrees" {
 	expect_false(not arguments().is_empty())?
 
 	info := system_info()
@@ -44,16 +44,18 @@ test "CLI test roots have empty arguments and host metadata agrees":
 	expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")?
 	expect_not_equal(os(), Os.Other)?
 	expect_not_equal(dev_null().length(), 0)?
+}
 
-test "process environment reflects live changes":
+test "process environment reflects live changes" {
 	name := "MANUSCRIPT_STDLIB_CONFORMANCE"
 	before := (environment()?).get(name)
 	set_environment(name, "stdlib")?
 	expect_equal((environment()?).get(name), "stdlib")?
 	set_environment(name, before)?
+}
 
-test "subprocess validation returns expected domain errors":
-	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
+test "subprocess validation returns expected domain errors" {
+	invalid CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)?
 
 	missing := run(
@@ -66,8 +68,9 @@ test "subprocess validation returns expected domain errors":
 		missing.err().message,
 		"process: not found: manuscript-nonexistent-command-stdlib",
 	)?
+}
 
-test "subprocess streams that are not piped are closed":
+test "subprocess streams that are not piped are closed" {
 	child := spawn(
 		"sh",
 		["-c", "cat; echo done >&2"],
@@ -84,8 +87,9 @@ test "subprocess streams that are not piped are closed":
 
 	var input = child.stdin()
 	expect_false(input.write("x".to_bytes()).is_ok())?
+}
 
-test "managed subprocess streams incrementally and cleans up on scope exit":
+test "managed subprocess streams incrementally and cleans up on scope exit" {
 	child := spawn("cat", [])?
 	var input = child.stdin()
 	input.write("ping\n".to_bytes())?
@@ -97,9 +101,10 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
 	input.close()?
 	expect_equal((child.wait()?), 0)?
 	expect_false((output.next()?) != null)?
+}
 
-test "run and spawn pass the environment to the child":
-	var env: Map[String, String] = Map[String, String]()
+test "run and spawn pass the environment to the child" {
+	var env Map[String, String] = Map[String, String]()
 	env.add("MS_CHILD_VALUE", "from-parent")
 
 	output := run(
@@ -119,3 +124,4 @@ test "run and spawn pass the environment to the child":
 	var errors = child.stderr()
 	text := errors.next()?
 	expect_equal(text or "".to_bytes(), "from-parent".to_bytes())?
+}

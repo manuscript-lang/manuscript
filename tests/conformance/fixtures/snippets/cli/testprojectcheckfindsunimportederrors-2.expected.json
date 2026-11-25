@@ -14,7 +14,7 @@
           "file": "testprojectcheckfindsunimportederrors-2.ms",
           "line": 5,
           "column": 12,
-          "offset": 194
+          "offset": 192
         }
       },
       {
@@ -23,22 +23,22 @@
         "message": "expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"",
         "position": {
           "file": "testprojectcheckfindsunimportederrors-2.ms",
-          "line": 8,
+          "line": 9,
           "column": 12,
-          "offset": 232
+          "offset": 230
         },
         "fix": {
           "position": {
             "file": "testprojectcheckfindsunimportederrors-2.ms",
-            "line": 8,
+            "line": 9,
             "column": 12,
-            "offset": 232
+            "offset": 230
           },
           "end": {
             "file": "testprojectcheckfindsunimportederrors-2.ms",
-            "line": 8,
+            "line": 9,
             "column": 13,
-            "offset": 233
+            "offset": 231
           },
           "replacement": "\"1\""
         }
@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testprojectcheckfindsunimportederrors-2.ms:5:12: type: expected Int, found String (in the return value)\n   |\n 5 |     return \"wrong\"\n   |            ^\n<DIR>/testprojectcheckfindsunimportederrors-2.ms:8:12: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 8 |     return 1\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testprojectcheckfindsunimportederrors-2.ms:5:12: type: expected Int, found String (in the return value)\n   |\n 5 |     return \"wrong\"\n   |            ^\n<DIR>/testprojectcheckfindsunimportederrors-2.ms:9:12: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 9 |     return 1\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

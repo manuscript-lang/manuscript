@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'def' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters",
+        "message": "'def' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int { ... }' with the result type after the parameters",
         "position": {
           "file": "foreign-def.ms",
           "line": 4,

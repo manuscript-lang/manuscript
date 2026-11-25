@@ -23,9 +23,9 @@
         "message": "the result of `pass(..)` is a borrow of its arguments, so `?` cannot move its error out; write `pass(..).clone()?` to relay a copy, or take it from an owner",
         "position": {
           "file": "try-borrowed-result-needs-clone.ms",
-          "line": 13,
+          "line": 15,
           "column": 13,
-          "offset": 434
+          "offset": 438
         }
       },
       {
@@ -34,16 +34,16 @@
         "message": "`alias` is a borrow, so `?` cannot move its error out; write `alias.clone()?` to relay a copy, or take it from an owner",
         "position": {
           "file": "try-borrowed-result-needs-clone.ms",
-          "line": 22,
+          "line": 26,
           "column": 13,
-          "offset": 633
+          "offset": 641
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/try-borrowed-result-needs-clone.ms:6:13: type: `value` is a borrow, so `?` cannot move its error out; write `value.clone()?` to relay a copy, or take it from an owner\n   |\n 6 |     text := value?\n   |             ^\n<DIR>/try-borrowed-result-needs-clone.ms:13:13: type: the result of `pass(..)` is a borrow of its arguments, so `?` cannot move its error out; write `pass(..).clone()?` to relay a copy, or take it from an owner\n    |\n 13 |     text := pass(value)?\n    |             ^\n<DIR>/try-borrowed-result-needs-clone.ms:22:13: type: `alias` is a borrow, so `?` cannot move its error out; write `alias.clone()?` to relay a copy, or take it from an owner\n    |\n 22 |     text := alias?\n    |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/try-borrowed-result-needs-clone.ms:6:13: type: `value` is a borrow, so `?` cannot move its error out; write `value.clone()?` to relay a copy, or take it from an owner\n   |\n 6 |     text := value?\n   |             ^\n<DIR>/try-borrowed-result-needs-clone.ms:15:13: type: the result of `pass(..)` is a borrow of its arguments, so `?` cannot move its error out; write `pass(..).clone()?` to relay a copy, or take it from an owner\n    |\n 15 |     text := pass(value)?\n    |             ^\n<DIR>/try-borrowed-result-needs-clone.ms:26:13: type: `alias` is a borrow, so `?` cannot move its error out; write `alias.clone()?` to relay a copy, or take it from an owner\n    |\n 26 |     text := alias?\n    |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

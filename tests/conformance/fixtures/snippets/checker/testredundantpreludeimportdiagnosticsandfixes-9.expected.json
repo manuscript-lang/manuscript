@@ -14,13 +14,13 @@
           "file": "testredundantpreludeimportdiagnosticsandfixes-9.ms",
           "line": 5,
           "column": 5,
-          "offset": 213
+          "offset": 210
         },
         "end": {
           "file": "testredundantpreludeimportdiagnosticsandfixes-9.ms",
           "line": 5,
           "column": 10,
-          "offset": 218
+          "offset": 215
         }
       },
       {
@@ -31,28 +31,28 @@
           "file": "testredundantpreludeimportdiagnosticsandfixes-9.ms",
           "line": 6,
           "column": 5,
-          "offset": 236
+          "offset": 230
         },
         "end": {
           "file": "testredundantpreludeimportdiagnosticsandfixes-9.ms",
           "line": 6,
           "column": 9,
-          "offset": 240
+          "offset": 234
         },
         "fix": {
           "position": {
             "file": "testredundantpreludeimportdiagnosticsandfixes-9.ms",
             "line": 5,
             "column": 10,
-            "offset": 218
+            "offset": 215
           },
           "end": {
             "file": "testredundantpreludeimportdiagnosticsandfixes-9.ms",
             "line": 6,
             "column": 9,
-            "offset": 240
+            "offset": 234
           },
-          "replacement": "  // factory\n    "
+          "replacement": "  // factory\n\t"
         }
       }
     ],

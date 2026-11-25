@@ -12,16 +12,16 @@
         "message": "recursive generic applications must preserve their parameters in Grow.value; keep the same type arguments in the same positions along a recursive cycle",
         "position": {
           "file": "testrecursivedataandfinitetypeapplications-7.ms",
-          "line": 8,
+          "line": 9,
           "column": 5,
-          "offset": 232
+          "offset": 229
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testrecursivedataandfinitetypeapplications-7.ms:8:5: type: recursive generic applications must preserve their parameters in Grow.value; keep the same type arguments in the same positions along a recursive cycle\n   |\n 8 |     value: Phantom[Grow[List[T]]]\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testrecursivedataandfinitetypeapplications-7.ms:9:5: type: recursive generic applications must preserve their parameters in Grow.value; keep the same type arguments in the same positions along a recursive cycle\n   |\n 9 |     value Phantom[Grow[List[T]]]\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

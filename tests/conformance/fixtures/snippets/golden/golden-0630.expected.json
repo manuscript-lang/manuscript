@@ -12,9 +12,9 @@
         "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
         "position": {
           "file": "golden-0630.ms",
-          "line": 4,
-          "column": 29,
-          "offset": 124
+          "line": 5,
+          "column": 31,
+          "offset": 127
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "expected Int, found String (in argument 'second' of f)",
         "position": {
           "file": "golden-0630.ms",
-          "line": 4,
-          "column": 37,
-          "offset": 132
+          "line": 5,
+          "column": 39,
+          "offset": 135
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0630.ms:4:29: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n   |\n 4 | fn call() Void: f(first: 4, second: \"wrong\")\n   |                             ^\n<DIR>/golden-0630.ms:4:37: type: expected Int, found String (in argument 'second' of f)\n   |\n 4 | fn call() Void: f(first: 4, second: \"wrong\")\n   |                                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0630.ms:5:31: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n   |\n 5 | fn call() Void => f(first: 4, second: \"wrong\")\n   |                               ^\n<DIR>/golden-0630.ms:5:39: type: expected Int, found String (in argument 'second' of f)\n   |\n 5 | fn call() Void => f(first: 4, second: \"wrong\")\n   |                                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

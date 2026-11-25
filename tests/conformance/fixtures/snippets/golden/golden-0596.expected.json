@@ -7,21 +7,42 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "remove the ':' between 'value' and its type; write value Type",
         "position": {
           "file": "golden-0596.ms",
           "line": 3,
-          "column": 5,
-          "offset": 57
+          "column": 21,
+          "offset": 73
+        },
+        "end": {
+          "file": "golden-0596.ms",
+          "line": 3,
+          "column": 22,
+          "offset": 74
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0596.ms",
+            "line": 3,
+            "column": 21,
+            "offset": 73
+          },
+          "end": {
+            "file": "golden-0596.ms",
+            "line": 3,
+            "column": 22,
+            "offset": 74
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0596.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 3 |     read := fn(value: Shape = shapes.get(0)) Shape: value\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0596.ms:3:21: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 3 |     read := fn(value: Shape = shapes.get(0)) Shape => value\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

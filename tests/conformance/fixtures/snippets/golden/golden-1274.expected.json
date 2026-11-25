@@ -29,16 +29,16 @@
         "message": "match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else",
         "position": {
           "file": "golden-1274.ms",
-          "line": 5,
+          "line": 6,
           "column": 5,
-          "offset": 133
+          "offset": 131
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1274.ms:3:8: resolution: module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonOptions, JsonValue, StringifyOptions, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/data/json.ms\"'\n   |\n 3 | import JsonError from \"@std/data/json.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1274.ms:5:5: type: match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else\n   |\n 5 |     match cause:\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1274.ms:3:8: resolution: module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonOptions, JsonValue, StringifyOptions, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/data/json.ms\"'\n   |\n 3 | import JsonError from \"@std/data/json.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1274.ms:6:5: type: match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else\n   |\n 6 |     match cause {\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

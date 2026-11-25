@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(socket: Connection) Void:\n\tsocket.clone()\n"
+    "fmt": "fn f(socket Connection) Void {\n\tsocket.clone()\n}\n"
   }
 }

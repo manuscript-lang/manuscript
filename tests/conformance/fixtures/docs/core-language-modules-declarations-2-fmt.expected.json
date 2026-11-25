@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "LOW := 1\nHIGH: Int := LOW + 9\n"
+    "fmt": "LOW := 1\nHIGH Int := LOW + 9\n"
   }
 }

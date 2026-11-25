@@ -1,2 +1,3 @@
-fn helper() Int:
+fn helper() Int {
 	return 1
+}

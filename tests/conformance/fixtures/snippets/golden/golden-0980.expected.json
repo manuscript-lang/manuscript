@@ -9,19 +9,83 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "unterminated delimiter '(' opened at line 17:10; add the matching ')' before the end of the file",
+        "message": "remove the ':' between 'value' and its type; write value Type",
         "position": {
           "file": "golden-0980.ms",
-          "line": 20,
+          "line": 8,
+          "column": 6,
+          "offset": 116
+        },
+        "end": {
+          "file": "golden-0980.ms",
+          "line": 8,
+          "column": 7,
+          "offset": 117
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0980.ms",
+            "line": 8,
+            "column": 6,
+            "offset": 116
+          },
+          "end": {
+            "file": "golden-0980.ms",
+            "line": 8,
+            "column": 7,
+            "offset": 117
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'left' and its type; write left Type",
+        "position": {
+          "file": "golden-0980.ms",
+          "line": 15,
+          "column": 5,
+          "offset": 174
+        },
+        "end": {
+          "file": "golden-0980.ms",
+          "line": 15,
+          "column": 6,
+          "offset": 175
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0980.ms",
+            "line": 15,
+            "column": 5,
+            "offset": 174
+          },
+          "end": {
+            "file": "golden-0980.ms",
+            "line": 15,
+            "column": 6,
+            "offset": 175
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unterminated delimiter '(' opened at line 20:10; add the matching ')' before the end of the file",
+        "position": {
+          "file": "golden-0980.ms",
+          "line": 24,
           "column": 1,
-          "offset": 258
+          "offset": 270
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0980.ms:20:1: parse: unterminated delimiter '(' opened at line 17:10; add the matching ')' before the end of the file\n    |\n 20 | \n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0980.ms:8:6: parse: remove the ':' between 'value' and its type; write value Type\n   |\n 8 | value: String,\n   |      ^\n<DIR>/golden-0980.ms:15:5: parse: remove the ':' between 'left' and its type; write left Type\n    |\n 15 | left: Int,\n    |     ^\n<DIR>/golden-0980.ms:24:1: parse: unterminated delimiter '(' opened at line 20:10; add the matching ')' before the end of the file\n    |\n 24 | \n    | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

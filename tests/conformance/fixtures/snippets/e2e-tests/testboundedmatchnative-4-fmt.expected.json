@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn fail() Int:\n\treturn 1 / \"\".length()\n\nexport fn main() Int:\n\tshapes := [Shape.Circle(2)]\n\treturn area(shapes.get(fail() * 0))\n"
+    "fmt": "fn fail() Int {\n\treturn 1 / \"\".length()\n}\n\nexport fn main() Int {\n\tshapes := [Shape.Circle(2)]\n\treturn area(shapes.get(fail() * 0))\n}\n"
   }
 }

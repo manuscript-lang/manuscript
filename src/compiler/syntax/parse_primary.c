@@ -149,7 +149,7 @@ MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out) {
         parse_fail(
             p, parse_peek(p),
             ms_span_of_text(
-                "'?\?' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v:' or "
+                "'?\?' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v { ... }' or "
                 "give it a default with 'v.get_or(default)', or bind a Result to a name before the next '?'"));
         return false;
       }
@@ -163,22 +163,11 @@ MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out) {
   return true;
 }
 
-/* Rejects an argument written with `=` (a label or an arrow closure) or with `var`. */
+/* Rejects an argument written with `=` (a label) or with `var`. */
 MS_NODISCARD static bool argument_is_plain(Parser *p) {
   if (parse_kind(p) == MS_T_Name && parse_ahead(p, 1).kind == MS_T_Assign) {
     MsToken eq = parse_ahead(p, 1);
     MsSpan n = parse_text(p, parse_peek(p));
-    MsToken gt = parse_ahead(p, 2);
-    if (gt.kind == MS_T_Gt && gt.pos.offset == eq.end.offset) {
-      /* `x => x * 2`: a closure written with an arrow. */
-      MsToken nm = parse_peek(p);
-      MsSpan message = parse_fmt(p,
-                                 "there is no '=>' closure; write fn %S: body, with the parameter after fn "
-                                 "and a colon before the body",
-                                 n);
-      parse_fail_fix_range(p, nm, gt, message, parse_fmt(p, "fn %S:", n));
-      return false;
-    }
     parse_fail(p, eq, parse_fmt(p, "argument labels use a colon; write %S: value", n));
     return false;
   }
@@ -200,8 +189,8 @@ MS_NODISCARD static bool argument_is_not_arrow(Parser *p, const MsExpr *value) {
     MsSpan n = ms_names_span(p->names, value->u.sym);
     parse_fail(p, parse_peek(p),
                parse_fmt(p,
-                         "arrow closures are not supported; write 'fn %S: %S + 1', or 'fn(%S: Int) Int: %S "
-                         "+ 1' with explicit types",
+                         "there is no '->' closure; write '%S => %S + 1', or 'fn(%S Int) Int => %S + 1' with "
+                         "explicit types",
                          n, n, n, n));
     return false;
   }
@@ -367,24 +356,59 @@ MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef
   if (parse_kind(p) == MS_T_Arrow) {
     parse_fail_fix(p, parse_peek(p),
                    ms_span_of_text("result types follow the parameter list without an arrow; remove '->', "
-                                   "e.g. fn (x: Int) Int: x + 1"),
+                                   "e.g. fn (x Int) Int => x + 1"),
                    ms_span_of_text(""));
     return false;
   }
-  if (parse_kind(p) != MS_T_Colon) {
+  if (parse_kind(p) != MS_T_BlockOpen && parse_kind(p) != MS_T_FatArrow) {
     return parse_move_type(p, result, moves);
   }
   return true;
 }
 
-MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, MsExpr **out) {
+/* How the parameters of a lambda are written. */
+typedef enum { LAMBDA_FN_PARENS, LAMBDA_FN_BARE, LAMBDA_ARROW } LambdaForm;
+
+MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, LambdaForm form, MsExpr **out) {
   MsTypeRef *result = NULL;
   bool result_moves = false;
   MsParams params = {0};
   StmtList destructured = {0};
-  bool ok = parse_kind(p) == MS_T_LParen ? lambda_signature(p, &params, &result, &result_moves)
-                                         : bare_lambda_parameters(p, &params, &destructured);
+  bool ok = true;
+  if (form == LAMBDA_ARROW) {
+    /* `x => e`, `(a, b) => e`, `() => e`: the parameters have no `fn` and no types. */
+    if (parse_take(p, MS_T_LParen)) {
+      ok = bare_lambda_parameters(p, &params, &destructured) && parse_need(p, MS_T_RParen);
+    } else {
+      ok = bare_lambda_parameters(p, &params, &destructured);
+    }
+  } else if (form == LAMBDA_FN_PARENS) {
+    ok = lambda_signature(p, &params, &result, &result_moves);
+  } else {
+    ok = bare_lambda_parameters(p, &params, &destructured);
+  }
   MsStmts body = {0};
+  if (ok && form != LAMBDA_ARROW) {
+    bool untyped = result == NULL;
+    for (uint32_t i = 0; i < params.len; i++) {
+      untyped = untyped && params.ptr[i]->ty == NULL;
+    }
+    if (untyped && parse_kind(p) == MS_T_FatArrow) {
+      parse_fail(p, parse_peek(p),
+                 ms_span_of_text("a closure without parameter types is written without 'fn': "
+                                 "x => x + 1, (a, b) => a + b or () => 1"));
+      return false;
+    }
+    if ((untyped && params.len != 0) || form == LAMBDA_FN_BARE) {
+      const bool one_line = parse_kind(p) == MS_T_Colon && parse_ahead(p, 1).kind != MS_T_Newline;
+      parse_fail(p, parse_peek(p),
+                 ms_span_of_text(one_line ? "a one-line closure is written without 'fn': x => x + 1, (a, b) => "
+                                            "a + b or () => 1"
+                                          : "a closure without parameter types is written without 'fn': "
+                                            "x => { ... }, (a, b) => { ... } or () => { ... }"));
+      return false;
+    }
+  }
   ok = ok && parse_statement_suite(p, true, false, &body);
   size_t ndestructured = destructured.len;
   if (ok && ndestructured != 0) {
@@ -410,8 +434,7 @@ MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, MsExpr **out) {
 /* What to say about a token that cannot start an expression; `before` is the token ahead of it. */
 static const char *expression_hint(MsToken t, MsTok before) {
   if (t.kind == MS_T_Else) {
-    return "'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', "
-           "directly after the if body";
+    return "'else' continues an 'if' block: write it on the line of the closing '}' as '} else {'";
   }
   if (t.kind == MS_T_Gt && before == MS_T_Lt) {
     return "'<>' is not an operator; write '!=' for inequality";
@@ -455,7 +478,7 @@ MS_NODISCARD static bool grouped_expression(Parser *p, MsToken t, MsExpr **out) 
     return false;
   if (parse_kind(p) == MS_T_Comma) {
     parse_fail(p, parse_peek(p),
-               ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair:' and named fields, "
+               ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair { ... }' and named fields, "
                                "or use a List when the items share one type"));
     return false;
   }
@@ -497,9 +520,31 @@ MS_NODISCARD static bool simple_primary(Parser *p, MsToken t, MsExpr **out) {
   }
 }
 
+/* After a `(`: whether its matching `)` is followed by `=>`, which makes the group a parameter list. */
+static bool paren_closure_ahead(const Parser *p) {
+  size_t depth = 1;
+  for (size_t i = p->at; i < p->ntokens; i++) {
+    MsTok k = (MsTok)p->tokens[i].kind;
+    if (k == MS_T_LParen || k == MS_T_LBracket || k == MS_T_LBrace) {
+      depth++;
+    } else if (k == MS_T_RParen || k == MS_T_RBracket || k == MS_T_RBrace) {
+      if (--depth == 0) {
+        return i + 1 < p->ntokens && p->tokens[i + 1].kind == MS_T_FatArrow;
+      }
+    } else if (k == MS_T_Newline || k == MS_T_Eof) {
+      return false;
+    }
+  }
+  return false;
+}
+
 MS_NODISCARD static bool primary_operand(Parser *p, MsToken t, MsExpr **out) {
   switch (t.kind) {
   case MS_T_LParen:
+    if (paren_closure_ahead(p)) {
+      p->at--;
+      return lambda_expression(p, t, LAMBDA_ARROW, out);
+    }
     return grouped_expression(p, t, out);
   case MS_T_LBracket:
     return list_literal(p, t, out);
@@ -508,7 +553,7 @@ MS_NODISCARD static bool primary_operand(Parser *p, MsToken t, MsExpr **out) {
   case MS_T_LBrace:
     return map_literal(p, t, out);
   case MS_T_Fn:
-    return lambda_expression(p, t, out);
+    return lambda_expression(p, t, parse_kind(p) == MS_T_LParen ? LAMBDA_FN_PARENS : LAMBDA_FN_BARE, out);
   case MS_T_If:
     return parse_if_expression(p, t, out);
   default:
@@ -519,6 +564,13 @@ MS_NODISCARD static bool primary_operand(Parser *p, MsToken t, MsExpr **out) {
 
 MS_NODISCARD bool parse_primary(Parser *p, MsExpr **out) {
   MsToken t = parse_peek(p);
+  if ((t.kind == MS_T_Name || (t.kind == MS_T_Var && parse_ahead(p, 1).kind == MS_T_Name)) &&
+      parse_ahead(p, t.kind == MS_T_Var ? 2 : 1).kind == MS_T_FatArrow) {
+    MsExpr *closure = NULL;
+    if (!lambda_expression(p, t, LAMBDA_ARROW, &closure))
+      return false;
+    return parse_postfix(p, closure, out);
+  }
   p->at++;
   MsExpr *e = NULL;
   if (!simple_primary(p, t, &e))

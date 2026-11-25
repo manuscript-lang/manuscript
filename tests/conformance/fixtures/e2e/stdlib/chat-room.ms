@@ -21,32 +21,40 @@ import (
 // What a handler tells the room. A join carries the write end of the member's own
 // websocket output (shared with `forward`), moved through the room's pipe, so the owner
 // can push to it later.
-enum Command:
-	Join(out: WriteStream[WebSocketMessage])
-	Say(text: String)
+enum Command {
+	Join(out WriteStream[WebSocketMessage])
+	Say(text String)
+}
 
-fn room_owner(var inbox: ReadStream[Command]) Void!:
-	var members: List[WriteStream[WebSocketMessage]] = []
+fn room_owner(var inbox ReadStream[Command]) Void! {
+	var members List[WriteStream[WebSocketMessage]] = []
 
-	for command in inbox:
-		match command:
-			Command.Join(out):
+	for command in inbox {
+		match command {
+			Command.Join(out) => {
 				members.append(out)
-			Command.Say(text):
+			}
+			Command.Say(text) => {
 				var i = 0
 
-				while i < members.length():
+				while i < members.length() {
 					if members[i].write(
 						WebSocketMessage(
 							text.to_bytes(),
 							WebSocketKind.Text,
 						)
-					).is_error():
+					).is_error() {
 						members.remove(i)
-					else:
+					} else {
 						i += 1
+					}
+				}
+			}
+		}
+	}
+}
 
-fn tls_options() TlsOptions:
+fn tls_options() TlsOptions {
 	return TlsOptions(
 		server_name: "",
 		roots_pem: "",
@@ -55,14 +63,15 @@ fn tls_options() TlsOptions:
 		alpn: [],
 		require_client_certificate: false,
 	)
+}
 
-test "a room owner pushes each line to every connected websocket":
+test "a room owner pushes each line to every connected websocket" {
 	var room = pipe[Command](capacity: 16)
 	var inbox = room.reader()
 	var gate = room.writer()
-	owner := promise(fn: room_owner(inbox))
+	owner := promise(() => room_owner(inbox))
 
-	handler := fn(var exchange: HttpExchange) Void!:
+	handler := fn(var exchange HttpExchange) Void! {
 		socket := exchange.upgrade(
 			allowed_origins: [],
 			subprotocols: [],
@@ -72,18 +81,22 @@ test "a room owner pushes each line to every connected websocket":
 		var cmds = room.writer()
 		cmds.write(Command.Join(forward(output)))?
 
-		while true:
+		while true {
 			message := input.next()?
 			m := message
 
-			if m != null:
+			if m != null {
 				text := m.data.decode_utf8()
-				if text != null:
+				if text != null {
 					cmds.write(Command.Say(text))?
-			else:
+				}
+			} else {
 				break
+			}
+		}
 
 		return ok()
+	}
 
 	server := serve(
 		address: "127.0.0.1:0",
@@ -134,10 +147,12 @@ test "a room owner pushes each line to every connected websocket":
 	gate.close()?
 	server.close()?
 	owner.wait()?
+}
 
-fn heard(var socket: WebSocket) String!:
+fn heard(var socket WebSocket) String! {
 	message := (
 		(within(socket.input, 3.seconds())?)
 		or panic("called Optional.get() on null")
 	)
 	return ok(message.data.decode_utf8() or "")
+}

@@ -20,27 +20,30 @@ import (
 
 REQUESTS := 10000
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse {
 	return HttpResponse(
 		status: 200,
 		headers: headers(),
 		body: "{\"ok\":true,\"items\":[1,2,3,4,5,6,7,8,9,10]}".to_bytes(),
 	)
+}
 
-fn client(address: String, request: String) Int!:
+fn client(address, request String) Int! {
 	var connection = connect(address, timeout: seconds(5)).wait()?
 	var answered = 0
 
-	for i in 0..REQUESTS:
+	for i in 0..REQUESTS {
 		connection.output.write(request.to_bytes())?
 		connection.output.flush()?
 
 		reply := connection.input.next()?
-		if (reply or Bytes([])).length() > 0: answered += 1
+		if (reply or Bytes([])).length() > 0 { answered += 1 }
+	}
 
 	return ok(answered)
+}
 
-fn drive(own_path: String, request: String) Int!:
+fn drive(own_path, request String) Int! {
 	server := serve(
 		address: "127.0.0.1:0",
 		handler: buffered(handle),
@@ -52,22 +55,26 @@ fn drive(own_path: String, request: String) Int!:
 		RunOptions(timeout: seconds(600)),
 	).wait()?
 	return ok((out.stdout.decode_utf8() or "").trim().parse_int() or 0)
+}
 
 // The guard's exit status: 0 when every request was answered. `request` is the whole
 // request text, sent on each pass.
-export fn guard(request: String) Int:
+export fn guard(request String) Int {
 	args := arguments()
 
-	if args.length() == 3 and args[0] == "client":
+	if args.length() == 3 and args[0] == "client" {
 		print(client(args[1].clone(), args[2].clone()).get_or(0))
 		return 0
+	}
 
-	if args.length() == 0 or args.length() > 2:
+	if args.length() == 0 or args.length() > 2 {
 		print("usage: main <own path>")
 		return 1
+	}
 
 	answered := drive(args[0].clone(), request).get_or(0)
 	print(answered)
-	if answered != REQUESTS: return 1
+	if answered != REQUESTS { return 1 }
 
 	return 0
+}

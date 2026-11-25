@@ -12,9 +12,9 @@
         "message": "unknown argument value; parameters of Error: details, kind, message",
         "position": {
           "file": "golden-0151.ms",
-          "line": 6,
+          "line": 8,
           "column": 18,
-          "offset": 137
+          "offset": 134
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "missing argument message: String in call to Error; add 'message: <String>'",
         "position": {
           "file": "golden-0151.ms",
-          "line": 6,
+          "line": 8,
           "column": 12,
-          "offset": 131
+          "offset": 128
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0151.ms:6:18: type: unknown argument value; parameters of Error: details, kind, message\n   |\n 6 |     return Error(value: value)\n   |                  ^\n<DIR>/golden-0151.ms:6:12: type: missing argument message: String in call to Error; add 'message: <String>'\n   |\n 6 |     return Error(value: value)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0151.ms:8:18: type: unknown argument value; parameters of Error: details, kind, message\n   |\n 8 |     return Error(value: value)\n   |                  ^\n<DIR>/golden-0151.ms:8:12: type: missing argument message: String in call to Error; add 'message: <String>'\n   |\n 8 |     return Error(value: value)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -7,29 +7,36 @@ import (
 
 extern type Native
 
-extern fn native_call(value: Int) Int
+extern fn native_call(value Int) Int
 
-export type Box[T: Equal & Hashable = Int]:
-	value: T
+export type Box[T Equal & Hashable = Int] {
+	value T
+}
 
-enum State:
+enum State {
 	Ready
-	Data(value: Int)
+	Data(value Int)
+}
 
-interface Reader:
+interface Reader {
 	fn text() String
+}
 
-type Document:
-	value: String
+type Document {
+	value String
+}
 
-fn Document.text() String:
+fn Document.text() String {
 	return self.value
+}
 
-fn var Document.replace(value: String) Void:
+fn var Document.replace(value String) Void {
 	self.value = value
+}
 
-export fn identity[T](value: T) T:
+export fn identity[T](value T) T {
 	return value
+}
 
 MASK := 0xFF_FF
 FLAGS := 0b1010_0101
@@ -37,20 +44,20 @@ COUNT := 1_000_000
 RATIO := 3.141_592e-2
 PRICE := 1_000.50_25E+2d
 
-fn syntax(var items: List[Int], doc: Document, state: State) Int:
+fn syntax(var items List[Int], doc Document, state State) Int {
 	from := 1
 	as := from
 	borrowed := doc.value
 	var exclusive = items[0]
 	[first, second] := [1, 2]
 	{value: label} := doc
-	callback := fn value: value + 1
-	typed: fn(Int) Int := fn(value: Int) Int: value * 2
+	callback := value => value + 1
+	typed fn(Int) Int := fn(value Int) Int => value * 2
 	specialized := identity[List[Int]](items)
 	mapping := {"count": COUNT, "ratio": RATIO}
 	plain := "Literal {braces}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
 	message := f"\{escaped\} {mapping.get("count")} {f"{callback(1)}"} \u{41}"
-	selected := if true and not false or as == 0: first else: second
+	selected := if true and not false or as == 0 { first } else { second }
 	var total = 0
 	total += 1
 	total -= 2
@@ -58,20 +65,25 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 	total /= 4
 	total %= 5
 
-	for item in 0..10:
-		if item != selected:
+	for item in 0..10 {
+		if item != selected {
 			continue
-		else if item >= 2:
+		} else if item >= 2 {
 			break
-		else:
+		} else {
 			total = item
+		}
+	}
 
-	while total <= 10:
+	while total <= 10 {
 		total += 1
-	if value := items.first():
+	}
+	if value := items.first() {
 		total = value
-	if var value = items[0]?:
+	}
+	if var value = items[0]? {
 		value += 1
+	}
 
 	var resource = acquire()
 	resource.read()
@@ -81,18 +93,21 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 	guard.value = total
 	guard.close()
 
-	result := match state:
-		Ready: 0
-		Data(value): value
-		_: -1
+	result := match state {
+		Ready => 0
+		Data(value) => value
+		_ => - 1
+	}
 
 	parsed := "42" | parse? | normalize
 	return result + parsed
+}
 
-test "fixture and unit":
+test "fixture and unit" {
 	fixture.setup()
 
 	empty := void
 	check(empty)
+}
 
-fn runtime_bound() Void: ...
+fn runtime_bound() Void { ... }

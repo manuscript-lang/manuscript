@@ -9,11 +9,12 @@ A postfix `expression?` unwraps `ok`; on `error` it returns that error from the 
 
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}","given":[]} -->
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+fn discounted_label(price, percent Decimal) Result[String, DiscountError] {
     value := discount(price, percent)?
     return ok(f"Discounted price: {value}")
+}
 ```
 
 ## `?` on Results and Optionals
@@ -34,14 +35,16 @@ On `ok`, `value` holds the `Decimal`. On `error`, the function returns that erro
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn prepare() Void!: ok()
+fn prepare() Void! => ok()
 
-fn ready_label() String!:
+fn ready_label() String! {
     prepare()?
     return ok("ready")
+}
 
-test "prepare before returning a label":
+test "prepare before returning a label" {
     expect_equal(ready_label()?, "ready")?
+}
 ```
 
 ```text
@@ -56,12 +59,13 @@ Omitting `?` discards the Result, which the checker rejects. To ignore it delibe
 
 ## Propagation in a pipe flow
 
-A trailing `?` on a pipe step in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `value := discount(...)?` then `label(value)`:
+A trailing `?` on a pipe step in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value Decimal) String`, this equals `value := discount(...)?` then `label(value)`:
 
-<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    reason: String\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    return ok(price)\n\nfn label(value: Decimal) String:\n    return value.to_string()","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError {\n    reason String\n}\n\nfn discount(price Decimal, percent Decimal) Result[Decimal, DiscountError] {\n    return ok(price)\n}\n\nfn label(value Decimal) String {\n    return value.to_string()\n}","given":[]} -->
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+fn discounted_label(price, percent Decimal) Result[String, DiscountError] {
     return ok(discount(price, percent)? | label)
+}
 ```
 
 ## Error compatibility

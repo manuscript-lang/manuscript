@@ -1,5 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-import compress, CompressionFormat, CompressionError from "@std/compress.ms"
-import Bytes from "@std/bytes.ms"
-fn forward[T](item: T) T: item
+import (
+	Bytes from "@std/bytes.ms",
+	CompressionError, CompressionFormat, compress from "@std/compress.ms",
+)
+
+fn forward[T](item T) T => item

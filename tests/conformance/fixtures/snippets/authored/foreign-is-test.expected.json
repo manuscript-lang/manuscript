@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected end of inline statement, found name 'is'; an inline body holds one simple statement; for more statements or an `else`, put the body on indented lines and start `else:` on its own line at the `if`'s indentation; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which alternative a value is",
+        "message": "expected end of expression, found name 'is'; '=>' takes one expression; for more statements, write the body in braces; there is no 'is' operator: write '==' to compare values, or 'match value { ... }' to test which alternative a value is",
         "position": {
           "file": "foreign-is-test.ms",
           "line": 4,
-          "column": 22,
-          "offset": 137
+          "column": 23,
+          "offset": 138
         },
         "end": {
           "file": "foreign-is-test.ms",
           "line": 4,
-          "column": 24,
-          "offset": 139
+          "column": 25,
+          "offset": 140
         }
       }
     ],

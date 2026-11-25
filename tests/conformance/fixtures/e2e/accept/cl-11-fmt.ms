@@ -3,11 +3,13 @@
 // conform: origin=tests/e2e/testdata/accept/cl-11.ms
 import expect_equal from "@std/test/test.ms"
 
-type Tree[T]:
-    value: T
-    children: List[Tree[T]]
+type Tree[T] {
+	value T
+	children List[Tree[T]]
+}
 
-test "recursive immutable collection":
-    leaf := Tree[Int](1, [])
-    root := Tree[Int](2, [leaf])
-    expect_equal(root.value, 2)?
+test "recursive immutable collection" {
+	leaf := Tree[Int](1, [])
+	root := Tree[Int](2, [leaf])
+	expect_equal(root.value, 2)?
+}

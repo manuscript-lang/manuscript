@@ -14,14 +14,31 @@
           "file": "plain-text-brace-escape.ms",
           "line": 4,
           "column": 12,
-          "offset": 87
+          "offset": 88
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
+        "position": {
+          "file": "plain-text-brace-escape.ms",
+          "line": 5,
+          "column": 1,
+          "offset": 96
+        },
+        "end": {
+          "file": "plain-text-brace-escape.ms",
+          "line": 5,
+          "column": 2,
+          "offset": 97
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/plain-text-brace-escape.ms:4:12: parse: braces are plain characters in \"...\" text, so write { and } without a backslash; only f\"...\" text interpolates and escapes them\n   |\n 4 |     print(\"\\{ \\}\")\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/plain-text-brace-escape.ms:4:12: parse: braces are plain characters in \"...\" text, so write { and } without a backslash; only f\"...\" text interpolates and escapes them\n   |\n 4 |     print(\"\\{ \\}\")\n   |            ^\n<DIR>/plain-text-brace-escape.ms:5:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 5 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

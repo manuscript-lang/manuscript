@@ -1,5 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f() Int:
-    x := 
+fn f() Int {
+    x = 
     return 1
+}
