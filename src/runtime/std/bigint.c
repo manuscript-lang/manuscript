@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "base/alloc.h"
+#include "base/hash.h"
 #include "base/strbuild.h"
 #include "runtime/core/fault.h"
 #include "runtime/std/bigint.h"
@@ -265,6 +266,14 @@ int64_t msstd_bigint_compare(const MsBigCell *a, const MsBigCell *other) {
 
 uint8_t msstd_bigint_equal(const MsBigCell *a, const MsBigCell *other) {
   return ms_big_cmp(&a->value, &other->value) == 0;
+}
+
+uint64_t ms_bigint_hash(const MsBigCell *a) {
+  size_t length = 0;
+  uint8_t *const digits = ms_big_digits_new(&a->value, 16, &length);
+  const uint64_t hash = ms_hash_combine(ms_hash_int((uint64_t)(ms_big_sign(&a->value) + 1)), ms_hash_span(ms_span_of(digits, length)));
+  ms_free(digits);
+  return hash;
 }
 
 int64_t msstd_bigint_sign(const MsBigCell *a) {
