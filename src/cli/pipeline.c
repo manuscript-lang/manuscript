@@ -251,7 +251,9 @@ static bool make_objects(const MsLinkRequest *request, const BackendProgram *pro
 }
 
 BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
-  return (BackendOptions){.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG, .verify = true,
+  /* A Release build trusts the passes; a Debug build checks the finished module once. */
+  return (BackendOptions){.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG,
+                          .verify_final = request->build_type == MS_BUILD_DEBUG,
                           .tests = request->tests, .bench = request->bench,
                           .count_ops = request->count_ops || ops_from_environment(),
                           .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),

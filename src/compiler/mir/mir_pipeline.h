@@ -16,6 +16,7 @@
 
 typedef struct MirPipelineOptions {
   bool verify;       /* verify after every pass */
+  bool verify_final; /* verify once, after the last pass that changes the module */
   bool count_ops;    /* profile builds */
   bool checks;       /* keep list bounds checks */
 } MirPipelineOptions;

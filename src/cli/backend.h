@@ -9,7 +9,8 @@
 typedef struct BackendOptions {
   bool optimize; /* run the MIR optimiser; only `ms emit` leaves it off, to show the MIR before it */
   bool compact;  /* the MIR optimiser inlines only small callees (Debug: a smaller module compiles faster) */
-  bool verify;   /* verify the module after the pipeline's passes */
+  bool verify;   /* verify the module after every pass of the pipeline */
+  bool verify_final; /* verify it once, when the passes are done (cheaper than `verify`) */
   bool tests;    /* start at the test entry (ms_lower_tests) instead of `main` */
   bool bench;    /* with `tests`: the program's `bench` blocks run as the tests (ms_lower_benches) */
   bool count_ops; /* each block counts its operations (`ms bench --ops`) */
