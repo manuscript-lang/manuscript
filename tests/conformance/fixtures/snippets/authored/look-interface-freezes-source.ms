@@ -22,3 +22,4 @@ fn main() Void {
 	b.names.append("z")
 	print(s)
 }
+// expect-error: MS3000 22:5 cannot change `b.names` while `s` borrows it (binding of a part of it, at 21:5); finish using `s` before this, or give `s` its own value by ending its initializer with `.clone()`

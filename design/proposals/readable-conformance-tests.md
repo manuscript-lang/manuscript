@@ -2,7 +2,7 @@
 
 * Status: **Proposed** (2026-11-25, checked against `a3691f89`)
 * Authors: [chinmaymk](https://github.com/chinmaymk)
-* Implementation: not yet implemented
+* Implementation: stage 1 (check fixtures of `e2e/reject` and `snippets/authored`)
 * Direction: Chinmay, 2026-11-25: "one suite we test to assert correctness, one suite for perf, one suite for agent-bench"; tests are "littered with .json files so reading code and figuring what it does is crazy hard".
 
 ## Summary
@@ -28,15 +28,16 @@ A check fixture's JSON holds the diagnostics, then the same diagnostics again as
 
 ## Proposed solution
 
-One file per test; the expectation sits under the program as comments:
+One file per test; the expectation sits after the program as comments, so the line numbers in them are the editor's (lines added above the program would shift every position and every `at 7:5` inside a message):
 
 ```
 // conform: phase=check tags=ownership
-// expect-error: MS3000 9:9 cannot change `xs` while `ys` borrows it
 export fn main() Int {
 	var xs = ["hello"]
 	ys := xs
 	...
+}
+// expect-error: MS3000 9:9 cannot change `xs` while `ys` borrows it
 ```
 
 A run test states its output the same way (`// expect-stdout:` lines, or, better, a `test` block with `expect_equal`). `--record` writes these lines and refuses a differing second observation, as it does today. The rendered terminal text is derived from the diagnostics, so it is not stored; a handful of CLI fixtures, chosen in stage 2, keep a stored rendering to pin the layout.

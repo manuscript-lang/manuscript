@@ -7,3 +7,4 @@ fn main() Void {
 		print(item)
 	}
 }
+// expect-error: MS3000 6:16 an if binding requires an Optional or Result, found Int; use 'if' for a Bool condition or 'match' for other alternatives

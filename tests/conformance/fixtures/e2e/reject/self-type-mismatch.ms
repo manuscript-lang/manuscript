@@ -23,3 +23,4 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS3001 22:19 expected Key, found Other (in argument 'other' of key.equals)

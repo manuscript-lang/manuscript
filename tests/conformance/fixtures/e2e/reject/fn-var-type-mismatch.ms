@@ -11,3 +11,4 @@ export fn main() Int {
 	read fn(List[Int]) Int := append_one
 	return read([1]) - 2
 }
+// expect-error: MS3001 11:31 expected fn(List[Int]) Int, found fn(var List[Int]) Int (in the initializer of 'read')

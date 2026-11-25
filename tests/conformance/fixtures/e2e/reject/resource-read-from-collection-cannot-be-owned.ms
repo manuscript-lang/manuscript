@@ -51,3 +51,5 @@ fn copied(names List[String]) List[String] {
 	out.append(names[0])
 	return out
 }
+// expect-error: MS3000 25:20 `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place
+// expect-error: MS3000 51:16 `names[0]` belongs to `names`, so a new owner would get a hidden copy; write `names[0].clone()` to copy it

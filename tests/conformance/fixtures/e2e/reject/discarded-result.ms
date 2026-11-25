@@ -9,3 +9,4 @@ export fn main() Int {
 	parse("1")
 	return 0
 }
+// expect-error: MS3000 9:5 this statement discards Result[Int, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose

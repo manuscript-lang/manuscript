@@ -22,3 +22,4 @@ fn main() Void {
 	fill(views)
 	print(views.length())
 }
+// expect-error: MS3000 17:11 this stores a value that looks at `inner` (bound at 16:5) in a place that is used after `inner` ends; declare the owner before the place that holds the view, or store `.clone()` of the part you need

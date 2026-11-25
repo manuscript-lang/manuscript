@@ -13,3 +13,4 @@ fn wrap(xs List[Int]) Box {
 fn main() Void {
 	print(wrap([1, 2]).items.length())
 }
+// expect-error: MS3000 10:16 `xs` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `xs.clone()`

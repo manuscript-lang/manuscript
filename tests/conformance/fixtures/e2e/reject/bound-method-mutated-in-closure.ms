@@ -20,3 +20,5 @@ export fn main() Int {
 
 	return 0
 }
+// expect-error: MS3000 14:13 cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding
+// expect-error: MS3000 12:9 cannot change `values` while `any_of` borrows it (method value, at 9:22); finish using `any_of` before this, or build `any_of` from a clone: bind `.clone()` of the captured value first and capture that binding

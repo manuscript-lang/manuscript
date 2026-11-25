@@ -14,3 +14,4 @@ fn total[T Number](values List[T]) T {
 fn main() Void {
 	print(total(["a"]))
 }
+// expect-error: MS3000 15:11 String is not a member of the type set Number; its members are Int, Float

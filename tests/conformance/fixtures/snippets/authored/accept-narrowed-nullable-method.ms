@@ -9,3 +9,4 @@ fn bump(xs List[Int]?) Int {
 export fn main() Int {
 	return bump([1, 2])
 }
+// expect-exit: 0

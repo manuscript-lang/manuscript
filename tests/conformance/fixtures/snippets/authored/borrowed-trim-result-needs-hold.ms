@@ -18,3 +18,6 @@ fn of_piece(text String) String {
 fn main() Void {
 	print(direct(" a "))
 }
+// expect-error: MS3000 5:1 the result is a part of `text`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`
+// expect-error: MS3000 9:1 the result is a part of `values`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`
+// expect-error: MS3000 13:1 the result is a part of `text`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`

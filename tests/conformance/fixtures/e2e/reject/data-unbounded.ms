@@ -9,3 +9,4 @@ fn show[T](value T) String {
 export fn main() Int {
 	return show(1).length()
 }
+// expect-error: MS3000 6:12 T does not satisfy Data; it is a type parameter with no Data bound; add `T: Data` to the type parameter

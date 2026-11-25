@@ -10,3 +10,4 @@ fn describe[E Named](item E) String => item.name()
 fn main() Void {
 	_message := describe("missing")
 }
+// expect-error: MS3000 11:17 String does not satisfy Named; pass a type that already implements it

@@ -10,3 +10,4 @@ fn value(outcome Outcome) Int {
 		Success(number) => number
 	}
 }
+// expect-error: MS3050 9:12 non-exhaustive match; missing cases: Failure, or add a final '_ => ...' arm; add the arms 'Failure => ...'

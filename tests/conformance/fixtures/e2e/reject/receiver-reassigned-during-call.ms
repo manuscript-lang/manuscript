@@ -27,3 +27,4 @@ export fn main() Int {
 		}
 	)
 }
+// expect-error: MS3000 21:21 argument `this value` of `subtract` is moved or changed in place but overlaps the receiver `receiver`; a moved or changed value cannot also be read or changed through another operand, so pass distinct variables or clone one first

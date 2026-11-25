@@ -22,3 +22,4 @@ fn send(report Report) Int {
 export fn main() Int {
 	return 0
 }
+// expect-error: MS3000 19:12 Report does not satisfy Data; field log is FileHandle, opaque; return a plain value from the module that declares it

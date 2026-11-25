@@ -8,3 +8,4 @@ fn pick(hold name String?) &String {
 fn main() Void {
 	print(pick("a"))
 }
+// expect-error: MS3000 5:12 `name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`

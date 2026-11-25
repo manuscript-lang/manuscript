@@ -8,3 +8,4 @@ export fn main() Int {
 	xs.append(5)
 	return ys.length()
 }
+// expect-error: MS3000 8:5 cannot change `xs` while `ys` borrows it (binding of a part of it, at 7:5); finish using `ys` before this, or give `ys` its own value by ending its initializer with `.clone()`

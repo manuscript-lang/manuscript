@@ -13,3 +13,4 @@ fn keep(handle FileHandle) Int {
 export fn main() Int {
 	return 0
 }
+// expect-error: MS3000 10:12 FileHandle does not satisfy Clonable; it is or holds a Closeable resource, which has one owner and closes once, so it cannot be cloned; move it, or use it in place

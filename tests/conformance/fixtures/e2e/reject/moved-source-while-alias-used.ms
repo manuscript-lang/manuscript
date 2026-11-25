@@ -14,3 +14,4 @@ export fn main() Int {
 	print(view)
 	return count
 }
+// expect-error: MS3000 13:18 cannot move `source` while `view` borrows it (binding of a part of it, at 12:5); finish using `view` before this, or give `view` its own value by ending its initializer with `.clone()`

@@ -10,3 +10,4 @@ fn pick(m Map[Int, fn() String], s String) String {
 export fn main() Int {
 	return pick({7: () => "a"}, "b").length()
 }
+// expect-exit: 0
