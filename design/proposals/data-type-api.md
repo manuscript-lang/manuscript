@@ -98,7 +98,7 @@ impl JsonValue {
 | formatter, LSP | unchanged (no new syntax) | existing |
 | `documentation/core-language/types/collections.md`, `basics/text-and-bytes.md`, `errors/results.md`, `types/optionals.md` | rules | `make docs-check`, `make book-check` |
 | `design/wiki/language/index.md`, `stdlib-design.md` | indexing and `or_else` entries updated | reference check |
-| `bench/agent/challenges/*/solutions/ms/main.ms.ref`, `tests/conformance` | `replace` migration | `make conform`, workloads run |
+| `bench/agent/challenges/*/solutions/ms/main.ms.ref`, `tests` | `replace` migration | `make conform`, workloads run |
 
 ## Alternatives
 

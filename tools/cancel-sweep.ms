@@ -13,7 +13,7 @@
 // five runs are not hits. A cancel that ends the process (status 143) prints no counts
 // and is not swept, but one killed by a signal is a hit. Arguments name the files to
 // sweep, relative to the repository root (default:
-// tests/conformance/fixtures/e2e/stdlib). SWEEP_MAX_PARKS bounds the parks tried per
+// tests/lang/stdlib). SWEEP_MAX_PARKS bounds the parks tried per
 // test (default 64). Usage: ms run tools/cancel-sweep.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
@@ -217,11 +217,8 @@ fn main() Int {
 	var files = arguments().map(f => f.clone())
 
 	if files.is_empty() {
-		for f in glob(
-			"tests/conformance/fixtures/e2e/stdlib",
-			GlobOptions(patterns: ["*.ms"]),
-		).get_or([]) {
-			path := f"tests/conformance/fixtures/e2e/stdlib/{f.path}"
+		for f in glob("tests/lang/stdlib", GlobOptions(patterns: ["*.ms"])).get_or([]) {
+			path := f"tests/lang/stdlib/{f.path}"
 			if has_tests(read_file(path.clone()).wait().get().decode_utf8() or "") {
 				files.append(path.clone())
 			}

@@ -8,5 +8,5 @@ Already better than Python, so unchanged: `min`/`max` return an optional, `Map.u
 
 `List.take_while`/`drop_while` were added as methods beside `take`/`drop`. Not done: `fs.read_lines(path)`, because whole-file reads are promise-based and a line-list wrapper needs its own decision.
 
-Evidence: [python-shapes fixture](../../../tests/conformance/fixtures/e2e/stdlib/python-shapes.ms); proposal in the project files, `design/proposals/python-stdlib-shapes-2026-11-17.md`.
-Verify: `ms test tests/conformance/fixtures/e2e/stdlib/python-shapes.ms`.
+Evidence: [python-shapes fixture](../../../tests/lang/stdlib/python-shapes.ms); proposal in the project files, `design/proposals/python-stdlib-shapes-2026-11-17.md`.
+Verify: `ms test tests/lang/stdlib/python-shapes.ms`.

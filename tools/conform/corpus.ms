@@ -19,6 +19,22 @@ import (
 	inline_lines from "./expect.ms",
 )
 
+// The directories of `tests/` that hold fixtures; the rest of `tests/` (lsp, docs,
+// checks, commands) are other kinds of test.
+FIXTURE_DIRS List[String] := ["lang", "diagnostics", "format"]
+
+// Glob patterns for files named `name` anywhere below the fixture directories.
+export fn within(name String) List[String] {
+	return FIXTURE_DIRS.map(dir => f"{dir}/**/{name}")
+}
+
+// Glob patterns for the sources and project markers below the fixture directories.
+fn fixture_files() List[String] {
+	var patterns = within("*.ms")
+	patterns.extend(within("conform.meta"))
+	return patterns
+}
+
 // A recorded fixture: a single .ms file (with an optional support/ directory beside it)
 // or a project directory.
 export type Fixture {
@@ -157,7 +173,9 @@ export fn read_text(path String) String {
 // a fixture.
 export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 	var found = List[Fixture]()
-	projects := glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]).map(
+	projects := glob(root, GlobOptions(patterns: within("conform.meta"))).get_or(
+		[]
+	).map(
 		entry => entry.path.slice(
 			0,
 			entry.path.length() - "conform.meta".length(),
@@ -165,9 +183,7 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 	)
 	var candidates = List[String]()
 
-	for entry in glob(root, GlobOptions(patterns: ["**/*.ms", "**/conform.meta"])).get_or(
-		[]
-	) {
+	for entry in glob(root, GlobOptions(patterns: fixture_files())).get_or([]) {
 		if entry.path.contains(
 			"/support/"
 		) or entry.path.starts_with("support/") { continue }
@@ -302,7 +318,9 @@ export fn render_meta(meta Meta) String {
 // outside
 // `support/` directories and outside project directories, or a project directory.
 export fn candidate_ids(root String) List[String] {
-	projects := glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]).map(
+	projects := glob(root, GlobOptions(patterns: within("conform.meta"))).get_or(
+		[]
+	).map(
 		entry => entry.path.slice(
 			0,
 			entry.path.length() - "conform.meta".length(),
@@ -310,9 +328,7 @@ export fn candidate_ids(root String) List[String] {
 	)
 	var ids = List[String]()
 
-	for entry in glob(root, GlobOptions(patterns: ["**/*.ms", "**/conform.meta"])).get_or(
-		[]
-	) {
+	for entry in glob(root, GlobOptions(patterns: fixture_files())).get_or([]) {
 		if entry.path.contains(
 			"/support/"
 		) or entry.path.starts_with(

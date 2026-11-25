@@ -273,7 +273,7 @@ fn main() Int {
 	show_diff := environment().get_or(Map[String, String]()).get("CONFORM_DIFF") != null
 	var chosen = List[Fixture]()
 
-	for fx in fixtures(f"{root}/tests/conformance/fixtures", phase, filters) {
+	for fx in fixtures(f"{root}/tests", phase, filters) {
 		if phase != "parse" and fx.tags.contains("aliasing") { continue }
 
 		chosen.append(fx.clone())

@@ -8,4 +8,4 @@ The aliased set of known closures is needed (`ic_known_aliased`): after `promise
 
 Apply when: a library function wraps a caller's closure in its own (`() => f(entry())`) on a hot path; do not restructure the library to avoid the wrapper.
 Evidence: [pass](../../../src/compiler/opt/opt_inline_capture.c), [numbers](../../../bench/perf/async-primitives/README.md).
-Verify: `tools/checks/ownership-counts/promise_wrapper_closure.ms` (one allocation per promise).
+Verify: `tests/checks/ownership-counts/promise_wrapper_closure.ms` (one allocation per promise).

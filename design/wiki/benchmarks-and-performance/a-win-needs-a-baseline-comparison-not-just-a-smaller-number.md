@@ -22,7 +22,7 @@ guard bypassed search setup; a scalar-only one-byte miss still paid about 1 ns
 until its empty suffix bypassed vector search too. Include hits at the prefix boundary,
 nonzero starts, empty inputs and exact-end starts alongside long misses. The
 [byte-search report](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/bytes-index/README.md) retains the rejected
-candidate and all distributions; [called tests](../../../tests/conformance/fixtures/e2e/stdlib/bytes-index-search.ms)
+candidate and all distributions; [called tests](../../../tests/lang/stdlib/bytes-index-search.ms)
 pin offsets and high-bit bytes. Opaque Rust benchmark wrappers add tiny-call
 overhead, so their nanosecond comparisons alone do not establish language parity.
 

@@ -11,5 +11,5 @@ Shapes with their own sizes (2026-11-15): `release_loopfree` builds a long loop-
 
 A ratio near the bound on one platform is a real superlinear cost, not noise: `release_loopfree` read 20.1x on Windows (bound 19.1) because the MIR verifier's `dropped_in` was a `BTreeSet` cloned and extended per block edge, so 6400 statements spent 9 of 13 s verifying (callgrind: `verify_module_with` grew 4.2x for 2x the input). Per-block state in a pass is an `OwnerSet` (persistent, `union_with` shares subtrees), never a `BTreeSet`; the shape now reads 7.5x.
 
-Evidence: [tools/scaling-check.ms](../../../tools/scaling-check.ms), [containers.ms](../../../tools/checks/scaling/containers.ms), [proposal](../../proposals/scaling-gate.md).
+Evidence: [tools/scaling-check.ms](../../../tools/scaling-check.ms), [containers.ms](../../../tests/checks/scaling/containers.ms), [proposal](../../proposals/scaling-gate.md).
 Verify: `make scaling-check`; add a shape to `generate` or a phase to `containers.ms` for new unbounded input.

@@ -5,5 +5,5 @@
 Decision: `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponential` return `String`. Their only failures were a negative budget or a digit count outside 0..100, always a literal in the caller, so every table printed `.get()`. A short target or empty padding returns the text unchanged, there is no byte budget. `String.repeat(count)` follows the same rule (Chinmay, 2026-11-16): a count of zero or below gives empty text and an oversized result faults like `concat`; it no longer takes `max_bytes` or returns `Result`, output beyond the string limit faults like `concat`, and a digit count out of range faults.
 
 Apply when: giving a native a `Result` whose error comes only from a constant argument, or adding a sized-number codec.
-Evidence: [text-padding fixture](../../../tests/conformance/fixtures/e2e/stdlib/text-padding.ms), [binary fixture](../../../tests/conformance/fixtures/e2e/stdlib/binary.ms), `bytes.read_int32_le` and `bytes.append_int32_le` in `bench/perf/stdlib/binary_bench.ms`.
-Verify: `ms test tests/conformance/fixtures/e2e/stdlib/binary.ms tests/conformance/fixtures/e2e/stdlib/text-padding.ms`; `make stdlib-bench BENCHFILTER=bytes.`.
+Evidence: [text-padding fixture](../../../tests/lang/stdlib/text-padding.ms), [binary fixture](../../../tests/lang/stdlib/binary.ms), `bytes.read_int32_le` and `bytes.append_int32_le` in `bench/perf/stdlib/binary_bench.ms`.
+Verify: `ms test tests/lang/stdlib/binary.ms tests/lang/stdlib/text-padding.ms`; `make stdlib-bench BENCHFILTER=bytes.`.

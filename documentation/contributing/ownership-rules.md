@@ -40,7 +40,7 @@ The ownership layer (`src/compiler/own`) enforces the memory model (owner decisi
 
 ## Rejection corpus
 
-The ownership fixtures in `tests/conformance/fixtures/` (`e2e/reject` for rejections, `e2e/accept` for clean programs) pin each rule. Index by rule:
+The ownership fixtures in `tests/` (`e2e/reject` for rejections, `e2e/accept` for clean programs) pin each rule. Index by rule:
 
 | Rule | Programs |
 | --- | --- |
