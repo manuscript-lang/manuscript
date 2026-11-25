@@ -9,9 +9,6 @@
  * tested, and every check runs with the byte clear); the exit `X` ends in `resume`, which leaves it set. Each such edge
  * goes straight to the target the byte selects, so the hot path never loads it. A parameter of `C` that a target uses
  * becomes a parameter of that target, which has no other predecessor. Cold exits repeat, one per threaded edge. */
-#include <stdlib.h>
-#include <string.h>
-#define MS_DIAG(c) (getenv("MS_DIAG") != NULL && strchr(getenv("MS_DIAG"), (c)) != NULL)
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/opt/opt_pass.h"
 #include "compiler/opt/opt_util.h"
@@ -320,9 +317,6 @@ static bool thread_func(Ut *t) {
 }
 
 bool opt_unwind_thread(MirModule *m) {
-  if (MS_DIAG('T')) {
-    return false;
-  }
   Ut t = {.m = m, .resume = MS_NAME_EMPTY};
   if (!ms_names_find(&m->names, ms_span_of_text("msrt_unwinding_resume"), &t.resume)) {
     return false;

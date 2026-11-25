@@ -2,9 +2,6 @@
  * classification, instruction constructors and cancellation points. Everything is built in the module's
  * arena. */
 #include "compiler/mir/mir_pass.h"
-#include <stdlib.h>
-#include <string.h>
-#define MS_DIAG(c) (getenv("MS_DIAG") != NULL && strchr(getenv("MS_DIAG"), (c)) != NULL)
 
 uint32_t mir_extern_get(MirModule *module, MsSpan name, const MirTy *params, uint32_t nparams, MirTy ret,
                         bool leaf, MirRole role) {
@@ -137,7 +134,7 @@ MirFunc mir_func_stand_in(MirModule *module, const MirFunc *func) {
 /* ---- cancellation points ---- */
 
 static bool leaf_extern(const MirModule *module, uint32_t external) {
-  return module->externs.ptr[external].noreturn || (module->externs.ptr[external].leaf && !MS_DIAG('L'));
+  return module->externs.ptr[external].noreturn || module->externs.ptr[external].leaf;
 }
 
 /* Whether `inst` reaches a cancellation point by itself, not through a callee. */
