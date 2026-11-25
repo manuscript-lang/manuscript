@@ -36,6 +36,32 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
   return mir_add_func(cx->module, &func);
 }
 
+/* The finished body of the closure reserved in `slot`: it replaces the reservation. */
+static void closure_install(Lower *cx, uint32_t slot, MirFunc built) {
+  built.linkage = ML_INTERNAL;
+  built.kind = MFK_CLOSURE;
+  mir_func_release(&cx->module->funcs.ptr[slot]);
+  cx->module->funcs.ptr[slot] = built;
+}
+
+/* A built body keeps what the reservation recorded about its captures. */
+static void closure_keep_captures(MirFunc *built, const MirFunc *reserved) {
+  built->captures = reserved->captures;
+  built->ncaptures = reserved->ncaptures;
+  built->scoped = reserved->scoped;
+  built->keeps_scoped = reserved->keeps_scoped;
+  built->capture_closers = reserved->capture_closers;
+  built->ncapture_closers = reserved->ncapture_closers;
+}
+
+/* Records on the reservation how the closure holds its receiver: borrowed (scoped) or owned with its closers. */
+static void closure_hold(Lower *cx, uint32_t slot, bool borrowed, MirCaptureCloser *closer, uint32_t nclosers) {
+  MirFunc *reserved = &cx->module->funcs.ptr[slot];
+  reserved->scoped = borrowed;
+  reserved->capture_closers = nclosers != 0 ? closer : NULL;
+  reserved->ncapture_closers = nclosers;
+}
+
 /* Whether an escaping closure takes the capture itself: a local the maker owns, or a parameter it was given.
  * A `var` lives in a slot the maker keeps, and a borrowed parameter is not the maker's to give away. */
 static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
@@ -385,10 +411,7 @@ uint32_t lower_forwarding_closure(Lower *cx, MirTy fn_ty, uint32_t callee) {
   if (!mir_b_into_func(&b, &built)) {
     return MIR_NONE;
   }
-  built.linkage = ML_INTERNAL;
-  built.kind = MFK_CLOSURE;
-  mir_func_release(&cx->module->funcs.ptr[slot]);
-  cx->module->funcs.ptr[slot] = built;
+  closure_install(cx, slot, built);
   return slot;
 }
 
@@ -434,10 +457,7 @@ static uint32_t lower_defaulting_closure(Lower *cx, MirTy fn_ty, uint32_t callee
   if (fn.failed || !mir_b_into_func(&fn.b, &built)) {
     return MIR_NONE;
   }
-  built.linkage = ML_INTERNAL;
-  built.kind = MFK_CLOSURE;
-  mir_func_release(&cx->module->funcs.ptr[slot]);
-  cx->module->funcs.ptr[slot] = built;
+  closure_install(cx, slot, built);
   return slot;
 }
 
@@ -467,10 +487,7 @@ static uint32_t lower_native_closure(Lower *cx, MirTy fn_ty, MsSymbolId id) {
   if (fn.failed || !mir_b_into_func(&fn.b, &built)) {
     return MIR_NONE;
   }
-  built.linkage = ML_INTERNAL;
-  built.kind = MFK_CLOSURE;
-  mir_func_release(&cx->module->funcs.ptr[slot]);
-  cx->module->funcs.ptr[slot] = built;
+  closure_install(cx, slot, built);
   return slot;
 }
 
@@ -630,9 +647,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = changes ? MIR_PTR : receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
-  cx->module->funcs.ptr[slot].scoped = borrowed;
-  cx->module->funcs.ptr[slot].capture_closers = nclosers != 0 ? closer : NULL;
-  cx->module->funcs.ptr[slot].ncapture_closers = nclosers;
+  closure_hold(cx, slot, borrowed, closer, nclosers);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   LowerFn body = {.cx = cx, .facts = fn->facts, .module_index = fn->module_index, .file = fn->file, .subst = fn->subst,
                   .ret = reserved.ret};
@@ -682,16 +697,8 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
     (void)fn_fail(fn, "a bound method could not be built");
     return MIR_NONE;
   }
-  built.linkage = ML_INTERNAL;
-  built.kind = MFK_CLOSURE;
-  built.captures = reserved.captures;
-  built.ncaptures = reserved.ncaptures;
-  built.scoped = reserved.scoped;
-  built.keeps_scoped = reserved.keeps_scoped;
-  built.capture_closers = reserved.capture_closers;
-  built.ncapture_closers = reserved.ncapture_closers;
-  mir_func_release(&cx->module->funcs.ptr[slot]);
-  cx->module->funcs.ptr[slot] = built;
+  closure_keep_captures(&built, &reserved);
+  closure_install(cx, slot, built);
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
   return fn_emit(fn, MOP_ClosureNew, &receiver, 1, imm, fn_ty);
 }
@@ -720,9 +727,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
-  cx->module->funcs.ptr[slot].scoped = borrowed;
-  cx->module->funcs.ptr[slot].capture_closers = nclosers != 0 ? closer : NULL;
-  cx->module->funcs.ptr[slot].ncapture_closers = nclosers;
+  closure_hold(cx, slot, borrowed, closer, nclosers);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   MirBuilder b;
   mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
@@ -742,16 +747,8 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
     (void)fn_fail(fn, "a bound operation could not be built");
     return MIR_NONE;
   }
-  built.linkage = ML_INTERNAL;
-  built.kind = MFK_CLOSURE;
-  built.captures = reserved.captures;
-  built.ncaptures = reserved.ncaptures;
-  built.scoped = reserved.scoped;
-  built.keeps_scoped = reserved.keeps_scoped;
-  built.capture_closers = reserved.capture_closers;
-  built.ncapture_closers = reserved.ncapture_closers;
-  mir_func_release(&cx->module->funcs.ptr[slot]);
-  cx->module->funcs.ptr[slot] = built;
+  closure_keep_captures(&built, &reserved);
+  closure_install(cx, slot, built);
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
   return fn_emit(fn, MOP_ClosureNew, &receiver, 1, imm, fn_ty);
 }
@@ -834,9 +831,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
-  cx->module->funcs.ptr[slot].scoped = borrowed;
-  cx->module->funcs.ptr[slot].capture_closers = nclosers != 0 ? closer : NULL;
-  cx->module->funcs.ptr[slot].ncapture_closers = nclosers;
+  closure_hold(cx, slot, borrowed, closer, nclosers);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   MirBuilder b;
   mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
@@ -861,16 +856,8 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
     (void)fn_fail(fn, "a bound method could not be built");
     return MIR_NONE;
   }
-  built.linkage = ML_INTERNAL;
-  built.kind = MFK_CLOSURE;
-  built.captures = reserved.captures;
-  built.ncaptures = reserved.ncaptures;
-  built.scoped = reserved.scoped;
-  built.keeps_scoped = reserved.keeps_scoped;
-  built.capture_closers = reserved.capture_closers;
-  built.ncapture_closers = reserved.ncapture_closers;
-  mir_func_release(&cx->module->funcs.ptr[slot]);
-  cx->module->funcs.ptr[slot] = built;
+  closure_keep_captures(&built, &reserved);
+  closure_install(cx, slot, built);
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
   return fn_emit(fn, MOP_ClosureNew, &receiver, 1, imm, fn_ty);
 }
