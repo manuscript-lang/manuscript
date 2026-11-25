@@ -10,6 +10,7 @@ import (
 	msstd_process_groups,
 	msstd_process_info,
 	msstd_process_initialize_groups,
+	msstd_process_kill,
 	msstd_process_replace,
 	msstd_process_resource_usage,
 	msstd_process_send_signal,
@@ -19,8 +20,9 @@ import (
 	msstd_process_signal_close,
 	msstd_process_signal_next,
 	msstd_process_subprocess_close,
-	msstd_process_subprocess_kill,
 	msstd_process_subprocess_max_resident,
+	msstd_process_subprocess_pid,
+	msstd_process_subprocess_signal,
 	msstd_process_subprocess_stream_id,
 	msstd_process_subprocess_terminate,
 	msstd_process_subprocess_wait,
@@ -172,15 +174,57 @@ fn Subprocess.max_resident_bytes() Int {
 	return msstd_process_subprocess_max_resident(self.native)
 }
 
+// The operating system id of the child, which `kill` and `send_signal` accept.
+fn Subprocess.pid() Int {
+	return msstd_process_subprocess_pid(self.native)
+}
+
 // Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it
 // kills the direct process. Does not wait.
 fn Subprocess.terminate() Void {
 	return msstd_process_subprocess_terminate(self.native)
 }
 
-// Sends SIGKILL to the child's process group. Does not wait.
-fn Subprocess.kill() Void {
-	return msstd_process_subprocess_kill(self.native)
+// Sends `signal` to the child's process group, or its job object on Windows, and does
+// not wait. The default `Signal.Kill` ends the child at once. Once the child has
+// exited it does nothing. A signal the host has no equivalent for returns ENOTSUP;
+// see `Signal` for what each one does on each platform.
+fn Subprocess.kill(signal Signal = Signal.Kill) Void! {
+	return msstd_process_subprocess_signal(self.native, signal_code(signal))
+}
+
+/*
+A signal to send to a process with `kill` or `Subprocess.kill`. The names are portable;
+each maps to the host's own signal number, which differs between systems.
+
+Linux and macOS deliver the matching POSIX signal. Windows has no signals, so it uses
+the closest equivalent, or returns ENOTSUP where there is none:
+
+| Signal | Linux and macOS | Windows |
+| --- | --- | --- |
+| `Hangup` | SIGHUP | ENOTSUP |
+| `Interrupt` | SIGINT | ends the process (Ctrl-Break cannot be aimed at one process, so there is no gentler form) |
+| `Quit` | SIGQUIT | ENOTSUP |
+| `Terminate` | SIGTERM | ends the process (TerminateProcess) |
+| `Kill` | SIGKILL | ends the process (TerminateProcess) |
+| `Stop` | SIGSTOP | suspends the process |
+| `Continue` | SIGCONT | resumes the process |
+| `User1` | SIGUSR1 | ENOTSUP |
+| `User2` | SIGUSR2 | ENOTSUP |
+
+`Subprocess.kill` sends to the child's whole process group (POSIX) or job object (Windows)
+for the signals that end it. Windows suspends and resumes only the child itself.
+*/
+export enum Signal {
+	Hangup  // The controlling terminal closed; programs often reload their configuration.
+	Interrupt  // The user's interrupt request, as Ctrl-C sends.
+	Quit  // A request to quit, which may leave a core dump on Unix.
+	Terminate  // A polite request to end, which the process may handle or ignore.
+	Kill  // Ends the process at once; it cannot be handled or ignored.
+	Stop  // Pauses the process until `Continue`; it cannot be handled or ignored.
+	Continue  // Resumes a process paused by `Stop`.
+	User1  // The first signal whose meaning the receiving program defines.
+	User2  // The second signal whose meaning the receiving program defines.
 }
 
 // Identity and invocation details for the current process.
@@ -428,6 +472,17 @@ export fn send_signal(pid, signal Int) Void! {
 	return msstd_process_send_signal(pid, signal)
 }
 
+// Sends `signal` to process `pid` and does not wait. The default `Signal.Kill` ends the
+// process. A positive `pid` names one process; on Linux and macOS a negative one names
+// the process group `-pid`. A pid outside the signed 32-bit range returns EINVAL, a pid
+// that names no process returns ENOENT, a lack of permission returns EACCES, and a
+// signal the host has no equivalent for returns ENOTSUP (see `Signal`). Use
+// `send_signal` for a raw signal number, or signal 0 to test that a process exists.
+// ms: effect std.process.signal
+export fn kill(pid Int, signal Signal = Signal.Kill) Void! {
+	return msstd_process_kill(pid, signal_code(signal))
+}
+
 // Returns the numeric ids of the supplementary groups of the process.
 // Windows returns ENOTSUP.
 // ms: effect std.process.read
@@ -477,4 +532,18 @@ export fn get_priority(pid Int) Int! {
 // ms: effect std.process.write
 export fn set_priority(pid, priority Int) Void! {
 	return msstd_system_set_priority(pid, priority)
+}
+
+// The portable number the natives take for `signal`.
+fn signal_code(signal Signal) Int {
+	if signal == Signal.Hangup { return 0 }
+	if signal == Signal.Interrupt { return 1 }
+	if signal == Signal.Quit { return 2 }
+	if signal == Signal.Terminate { return 3 }
+	if signal == Signal.Kill { return 4 }
+	if signal == Signal.Stop { return 5 }
+	if signal == Signal.Continue { return 6 }
+	if signal == Signal.User1 { return 7 }
+
+	return 8
 }

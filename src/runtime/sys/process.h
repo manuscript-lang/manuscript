@@ -60,6 +60,28 @@ typedef struct MsSysGroup MsSysGroup;
 
 /* The group of the child `pid`; `process_handle` is libuv's uv_process_t.process_handle (Windows; ignored elsewhere). */
 MS_RETURNS_NONNULL MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle);
+/* The portable signals a process can be sent. The values are the ordinals of `Signal` in @std/os/process.ms. */
+typedef enum MsSysKill {
+  MS_SYS_KILL_HANGUP,
+  MS_SYS_KILL_INTERRUPT,
+  MS_SYS_KILL_QUIT,
+  MS_SYS_KILL_TERMINATE,
+  MS_SYS_KILL_KILL,
+  MS_SYS_KILL_STOP,
+  MS_SYS_KILL_CONTINUE,
+  MS_SYS_KILL_USER1,
+  MS_SYS_KILL_USER2,
+  MS_SYS_KILL_COUNT
+} MsSysKill;
+
+/* Sends `signal` to process `pid` (a negative POSIX pid names a process group). POSIX delivers the host's signal;
+ * Windows ends the process for Kill, Terminate and Interrupt, and suspends or resumes it for Stop and Continue.
+ * Returns 0, UV_ESRCH for no such process, UV_ENOTSUP for a signal the host has no equivalent for, or another libuv
+ * status. */
+MS_NODISCARD int ms_sys_kill_send(int64_t pid, MsSysKill signal);
+/* The same for the process the group leads: its whole group (POSIX) or job object (Windows) for the signals that end
+ * it, the leader alone for Stop and Continue on Windows. */
+MS_NODISCARD MS_NONNULL int ms_sys_group_kill_send(MsSysGroup *group, MsSysKill signal);
 /* Asks the group to end (SIGTERM, or SIGKILL when `force` or the signal fails; Windows has no graceful signal). */
 MS_NONNULL void ms_sys_group_signal(MsSysGroup *group, bool force);
 /* Kills whatever remains, also after the leader was reaped (its pid is the group id). */

@@ -57,25 +57,50 @@ static MsString text_of(const char *text) { return ms_string_from_span(ms_span_o
 
 /* ---- signals sent ---- */
 
-uint8_t msstd_process_send_signal(int64_t pid, int64_t signal, MsString *err) {
-  if (pid < INT32_MIN || pid > INT32_MAX || signal < 0 || signal > MAX_SIGNAL) {
-    return invalid(err);
-  }
-  /* A process cannot signal itself on Windows (`kill` ends it), so SIGINT and SIGTERM sent to its own id are delivered
-   * as the stop request and to the observers, as POSIX delivers them. */
-  if (ms_sys_signal_self_by_raise() && pid == (int64_t)uv_os_getpid() &&
-      (signal == SIGNAL_INTERRUPT || signal == SIGNAL_TERMINATE)) {
-    ms_io_stop_raise((int)signal);
-    ms_sys_signal_raise((int)signal);
-    return succeed(err);
-  }
-  const int code = uv_kill((int)pid, (int)signal);
+uint8_t msstd_process_finish_kill(int code, MsString *err) {
   if (code == UV_ESRCH) {
     MsFail fail = ms_fail_new();
     ms_fail_status(&fail, MS_STATUS_NOT_FOUND); /* the same NotFound on every platform */
     return ms_fail_finish(&fail, err);
   }
   return code != 0 ? fail_host(code, "kill", err) : succeed(err);
+}
+
+static bool in_pid_range(int64_t pid) { return pid >= INT32_MIN && pid <= INT32_MAX; }
+
+/* A process cannot signal itself on Windows (`kill` ends it), so SIGINT and SIGTERM sent to its own id are delivered
+ * as the stop request and to the observers, as POSIX delivers them. */
+static bool deliver_to_self(int64_t pid, int signal) {
+  if (!ms_sys_signal_self_by_raise() || pid != (int64_t)uv_os_getpid() ||
+      (signal != SIGNAL_INTERRUPT && signal != SIGNAL_TERMINATE)) {
+    return false;
+  }
+  ms_io_stop_raise(signal);
+  ms_sys_signal_raise(signal);
+  return true;
+}
+
+uint8_t msstd_process_send_signal(int64_t pid, int64_t signal, MsString *err) {
+  if (!in_pid_range(pid) || signal < 0 || signal > MAX_SIGNAL) {
+    return invalid(err);
+  }
+  if (deliver_to_self(pid, (int)signal)) {
+    return succeed(err);
+  }
+  return msstd_process_finish_kill(uv_kill((int)pid, (int)signal), err);
+}
+
+uint8_t msstd_process_kill(int64_t pid, int64_t signal, MsString *err) {
+  if (!in_pid_range(pid) || signal < 0 || signal >= MS_SYS_KILL_COUNT) {
+    return invalid(err);
+  }
+  const int own = signal == MS_SYS_KILL_INTERRUPT   ? SIGNAL_INTERRUPT
+                  : signal == MS_SYS_KILL_TERMINATE ? SIGNAL_TERMINATE
+                                                    : 0;
+  if (own != 0 && deliver_to_self(pid, own)) {
+    return succeed(err);
+  }
+  return msstd_process_finish_kill(ms_sys_kill_send(pid, (MsSysKill)signal), err);
 }
 
 /* ---- identity ---- */
