@@ -1,5 +1,5 @@
 /* Owns the syntax-only lint of lint.h: the rules that need a parse and no type checking, over a source file or the
- * code fences of a Markdown file. Port of the nested-match check of crates/ms-repo-check. */
+ * code fences of a Markdown file. */
 #include "base/strbuild.h"
 #include "base/message.h"
 #include "compiler/syntax/parse.h"

@@ -21,13 +21,13 @@
 {"jsonrpc":"2.0","id":22,"result":{"contents":{"kind":"markdown","value":"```manuscript\ntype Pt\n```"},"range":{"start":{"line":20,"character":3},"end":{"line":20,"character":5}}}}
 {"jsonrpc":"2.0","id":23,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":0,"character":5},"end":{"line":0,"character":7}}}]}
 {"jsonrpc":"2.0","id":24,"result":{"contents":{"kind":"markdown","value":"```manuscript\ninterface Clonable\n```\n\nA type whose values can be duplicated. Plain data is Clonable; resource handles,\nnatives without a `clone` of their own (a `Regex`, a `Pipe`), function values, and\nany record, alternative or collection holding one of those are not. There is nothing\nto implement: the bound `T: Clonable` makes `value.clone()` available on a type\nparameter."},"range":{"start":{"line":32,"character":9},"end":{"line":32,"character":17}}}}
-{"jsonrpc":"2.0","id":25,"result":[{"uri":"manuscript-stdlib:///core.ms","range":{"start":{"line":397,"character":17},"end":{"line":397,"character":25}}}]}
+{"jsonrpc":"2.0","id":25,"result":[{"uri":"manuscript-stdlib:///core.ms","range":{"start":{"line":@LINE:core.ms|export interface Clonable@,"character":17},"end":{"line":@LINE:core.ms|export interface Clonable@,"character":25}}}]}
 {"jsonrpc":"2.0","id":26,"result":{"contents":{"kind":"markdown","value":"```manuscript\nT T\n```"},"range":{"start":{"line":32,"character":7},"end":{"line":32,"character":8}}}}
 {"jsonrpc":"2.0","id":27,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":28,"character":9},"end":{"line":28,"character":10}}}]}
 {"jsonrpc":"2.0","id":28,"result":{"contents":{"kind":"markdown","value":"```manuscript\nenum Kind\n```"},"range":{"start":{"line":9,"character":5},"end":{"line":9,"character":9}}}}
 {"jsonrpc":"2.0","id":29,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":9,"character":5},"end":{"line":9,"character":9}}}]}
 {"jsonrpc":"2.0","id":30,"result":{"contents":{"kind":"markdown","value":"```manuscript\ninterface Clonable\n```\n\nA type whose values can be duplicated. Plain data is Clonable; resource handles,\nnatives without a `clone` of their own (a `Regex`, a `Pipe`), function values, and\nany record, alternative or collection holding one of those are not. There is nothing\nto implement: the bound `T: Clonable` makes `value.clone()` available on a type\nparameter."},"range":{"start":{"line":32,"character":9},"end":{"line":32,"character":17}}}}
-{"jsonrpc":"2.0","id":31,"result":[{"uri":"manuscript-stdlib:///core.ms","range":{"start":{"line":397,"character":17},"end":{"line":397,"character":25}}}]}
+{"jsonrpc":"2.0","id":31,"result":[{"uri":"manuscript-stdlib:///core.ms","range":{"start":{"line":@LINE:core.ms|export interface Clonable@,"character":17},"end":{"line":@LINE:core.ms|export interface Clonable@,"character":25}}}]}
 {"jsonrpc":"2.0","id":32,"result":null}
 {"jsonrpc":"2.0","id":33,"result":null}
 {"jsonrpc":"2.0","id":34,"result":{"contents":{"kind":"markdown","value":"```manuscript\ninterface Shape\n```"},"range":{"start":{"line":5,"character":10},"end":{"line":5,"character":15}}}}

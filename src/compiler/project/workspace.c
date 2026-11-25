@@ -1,4 +1,4 @@
-/* compiler/project/workspace.c: port of crates/ms-driver/src/project/workspace.rs. */
+/* compiler/project/workspace.c: workspaces: the members a root `ms.toml` names. */
 #include "compiler/project/workspace.h"
 
 #include <errno.h>
@@ -174,7 +174,8 @@ static bool read_member(MsArena *arena, MsSpan root, MsSpan dir, const Workspace
   return true;
 }
 
-bool ms_workspace_read(MsArena *arena, const MsManifest *root_project, MsWorkspace *out, MsProjectError *error) {
+/* Expands and checks the members of a parsed workspace root. */
+static bool ms_workspace_read(MsArena *arena, const MsManifest *root_project, MsWorkspace *out, MsProjectError *error) {
   *out = (MsWorkspace){.root = root_project->root};
   MsSpanList dirs = {0};
   /* The root's own project, when it has one, is a member. */

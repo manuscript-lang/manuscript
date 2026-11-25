@@ -11,7 +11,8 @@
 
 #define GUID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-void ms_ws_accept_key(MsSpan challenge, MsStrBuild *out) {
+/* `Sec-WebSocket-Accept` for a challenge key. */
+static void ms_ws_accept_key(MsSpan challenge, MsStrBuild *out) {
   MsBytes input = ms_bytes_from_span(challenge);
   const MsSpan guid = ms_span_of_text(GUID);
   __builtin_memcpy(ms_list_extend(&input, 1, guid.len), guid.ptr, guid.len);
@@ -44,7 +45,8 @@ bool ms_ws_generate_key(MsStrBuild *out) {
   return ok;
 }
 
-bool ms_ws_valid_challenge_key(MsSpan text) {
+/* Whether `text` is the base64 text of exactly 16 bytes. */
+static bool ms_ws_valid_challenge_key(MsSpan text) {
   /* 16 bytes are 22 base64 digits and "=="; the unused trailing bits may be set (standard base64). */
   if (text.len != 24 || text.ptr[22] != '=' || text.ptr[23] != '=') {
     return false;
@@ -129,7 +131,9 @@ static bool line_has_token(MsSpan line, const char *value) {
   }
 }
 
-bool ms_ws_token_list_contains(const MsHeaders *fields, const char *name, const char *value) {
+/* Whether a comma-separated field holds `value` as a token, ignoring ASCII case; a malformed element skips
+ * the rest of that line. */
+static bool ms_ws_token_list_contains(const MsHeaders *fields, const char *name, const char *value) {
   MsList lines = {0};
   if (!ms_headers_values(fields, ms_span_of_text(name), &lines)) {
     return false;
@@ -271,7 +275,9 @@ static bool bare_origin(MsSpan origin, MsSpan *scheme, MsSpan *authority) {
   return authority->len > 0 && ms_http_valid_authority(*authority);
 }
 
-bool ms_ws_origin_allowed(const MsHeaders *fields, MsSpan host, bool tls, const MsSpan *allowed,
+/* The origin policy: a missing or empty Origin is accepted; otherwise it must be a bare http or https origin
+ * that equals an allowed entry, or (with none allowed) has the request's scheme and host. */
+static bool ms_ws_origin_allowed(const MsHeaders *fields, MsSpan host, bool tls, const MsSpan *allowed,
                           size_t count) {
   MsSpan origin = {0};
   if (!ms_headers_first(fields, ms_span_of_text("Origin"), &origin) || origin.len == 0) {

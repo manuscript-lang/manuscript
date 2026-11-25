@@ -14,6 +14,7 @@
 #include "runtime/std/encoding.h"
 #include "runtime/std/json.h"
 #include "runtime/std/shape_json.h"
+#include "runtime/std/shape_slot.h"
 
 /* Deeper documents than this do not fit: the walk is recursive. */
 enum { MAX_DEPTH = 2048 };
@@ -116,8 +117,14 @@ static const MsTypeDesc *desc_of(const Decode *state, uint32_t shape_index) {
   }
 }
 
+/* Drops the value built at `slot`. A descriptor reads its own layout, so an embedded value is gathered into it first;
+ * its owned handles are the same bytes, so dropping the copy drops the value. */
 static void drop_slot(const Decode *state, uint32_t shape_index, uint8_t *slot) {
-  ms_slot_drop(desc_of(state, shape_index), slot);
+  const MsShape *shape = ms_shape_at(state->table, shape_index);
+  MsOwnSlot own;
+  const uint8_t *value = ms_own_gather(&own, state->table, shape, slot);
+  ms_slot_drop(desc_of(state, shape_index), (uint8_t *)(uintptr_t)value);
+  ms_own_done(&own);
 }
 
 /* ---- scalars ---- */
@@ -534,7 +541,14 @@ static bool decode(Decode *state, uint32_t shape_index, uint32_t id, uint8_t *sl
   }
   const MsShapeHook *hook = ms_shape_hook(state->table, shape_index);
   if ((shape->flags & MS_SHAPE_JSON_FORM) != 0 && hook != NULL && hook->json_decode != NULL) {
-    return hook->json_decode(state->doc, id, slot) == 0 || misfit(state, id, shape);
+    MsOwnSlot own;
+    uint8_t *built = (uint8_t *)(uintptr_t)ms_own_gather(&own, state->table, shape, NULL);
+    const bool ok = hook->json_decode(state->doc, id, (shape->flags & MS_SHAPE_EMBEDDED) != 0 ? built : slot) == 0;
+    if (ok && (shape->flags & MS_SHAPE_EMBEDDED) != 0) {
+      ms_own_scatter(state->table, shape, built, slot);
+    }
+    ms_own_done(&own);
+    return ok || misfit(state, id, shape);
   }
   if ((shape->flags & MS_SHAPE_JSON_TREE) != 0 && hook != NULL && hook->tree_ctor != NULL && hook->desc != NULL) {
     /* The untyped tree is read as it is, wherever it sits; it fits any node. The constructor writes the slot. */

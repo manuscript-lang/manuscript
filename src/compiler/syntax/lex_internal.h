@@ -39,6 +39,8 @@ typedef struct Scanner {
   size_t boundary_origin;
   uint32_t base_offset, base_line; /* where a slice of a larger file starts */
   bool virtual_paren;
+  bool tolerant;     /* skip a line that fails to lex, restoring the delimiters it found: only the delimiter state matters */
+  bool open_at_end;  /* the input ended inside an unterminated delimiter or multi-line text */
   MsDiag *diag;
 } Scanner;
 
@@ -85,13 +87,10 @@ bool lex_skip_blank_line(Scanner *s, bool *skipped);
 MS_NODISCARD bool lex_skip_block_comment(Scanner *s);
 MS_NODISCARD bool lex_skip_comment(Scanner *s);
 bool lex_starts_with(const Scanner *s, size_t i, const char *lit);
-MsToken *lex_token_at(const Scanner *s, size_t i);
 size_t lex_token_count(const Scanner *s);
 bool lex_trailing_semicolon(const Scanner *s);
 bool lex_fail_text(Scanner *s, const char *message);
 bool lex_fail_at_text(Scanner *s, MsPos pos, const char *message);
-bool lex_fail_range(Scanner *s, MsPos start, MsSpan message);
-bool lex_is_binary_digit(uint8_t byte);
 bool lex_scan_line_tokens(Scanner *s);
 bool lex_statement_level(const Scanner *s);
 uint8_t lex_open_char(uint8_t delimiter);

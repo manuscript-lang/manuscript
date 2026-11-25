@@ -41,15 +41,7 @@ typedef struct Th {
   const uint32_t *uses;
   uint32_t *inside;      /* scratch per value */
   const uint32_t *npreds;
-  const MirBlock *idom;
 } Th;
-
-static bool dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
-  while (b != a && idom[b] != b && idom[b] != MIR_NONE) {
-    b = idom[b];
-  }
-  return b == a;
-}
 
 static const MirInst *def_inst(const Th *t, MirValue v) {
   if (v >= t->nvalues || t->owner[v] == MIR_NONE) {
@@ -349,6 +341,7 @@ static bool sweep(MirModule *m, MirFunc *f, uint32_t *budget) {
   const uint32_t reachable = mir_rpo(&arena, f, &order);
   const MirPreds preds = mir_preds(&arena, f);
   MirBlock *idom = mir_dominators(&arena, f, order, reachable, &preds);
+  const MirDomTree dom = mir_dom_tree(&arena, f, order, reachable, idom);
   const uint32_t nvalues = (uint32_t)f->values.len;
   MirBlock *owner = MS_ARENA_NEW_ARRAY(&arena, MirBlock, (size_t)nvalues + 1);
   uint32_t *pos = MS_ARENA_NEW_ARRAY(&arena, uint32_t, (size_t)nvalues + 1);
@@ -378,7 +371,7 @@ static bool sweep(MirModule *m, MirFunc *f, uint32_t *budget) {
   }
   const uint32_t *uses = mir_use_counts(&arena, f);
   Th t = {.m = m, .f = f, .owner = owner, .pos = pos, .nvalues = nvalues, .uses = uses, .inside = inside,
-      .npreds = npreds, .idom = idom};
+      .npreds = npreds};
   bool changed = false;
   bool *touched = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)nblocks + 1);
   __builtin_memset(touched, 0, sizeof(bool) * ((size_t)nblocks + 1));
@@ -389,7 +382,7 @@ static bool sweep(MirModule *m, MirFunc *f, uint32_t *budget) {
     const MirTerm *qt = &f->blocks.ptr[order[q]].term;
     for (uint32_t k = 0; k < mir_term_ntargets(qt); k++) {
       const MirBlock target = mir_term_target_const(qt, k)->block;
-      header[target] = header[target] || dominates(idom, target, order[q]);
+      header[target] = header[target] || target == order[q] || mir_tree_dominates(&dom, target, order[q]);
     }
   }
   for (uint32_t i = 0; i < reachable; i++) {

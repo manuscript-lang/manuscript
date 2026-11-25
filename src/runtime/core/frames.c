@@ -354,7 +354,7 @@ void ms_frames_walk_chain(uintptr_t fp, MsStackWindow window, MsFrameVisit visit
 }
 
 /* How far above a frame's stack pointer its saved record is looked for: a frame with thousands of live locals is far larger than a page.
- * Only a fault walks the stack, so the scan may be long. */
+ * Only a fault walks the stack, so the scan may be long. A workaround for Windows code having no unwind data: delete it with #7011. */
 enum { SCAN_BYTES = 1 << 20 };
 
 uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintptr_t high,
@@ -396,7 +396,7 @@ uintptr_t ms_frames_scan_record(uintptr_t sp, uintptr_t fp, uintptr_t low, uintp
 
 /* ---- source frames ---- */
 
-void ms_frames_collector_init(MsFrameCollector *collector, MsFrameList *list, size_t steps) {
+static void ms_frames_collector_init(MsFrameCollector *collector, MsFrameList *list, size_t steps) {
   *collector = (MsFrameCollector){.tables = ms_frames_tables(), .list = list, .steps = steps, .innermost = true};
 }
 
@@ -470,7 +470,8 @@ static bool add_scoped_frames(MsFrameCollector *collector, const MsFuncEntry *fu
   }
 }
 
-bool ms_frames_collector_add(uintptr_t return_address, void *context) {
+/* An MsFrameVisit over a collector; false once the list is full or the budget is spent. */
+static bool ms_frames_collector_add(uintptr_t return_address, void *context) {
   MsFrameCollector *const collector = context;
   const MsTables *const tables = collector->tables;
   if (tables == NULL) {
@@ -532,7 +533,10 @@ static void visit_native(uintptr_t anchor, MsFrameVisit visit, void *context) {
   }
 }
 
-void ms_frames_visit(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameVisit visit, void *context) {
+/* Visits the return addresses of the frames above the caller of the function `anchor` (the one that starts the
+ * walk, whose frame pointer is `fp`). Linux and macOS follow the frame-pointer chain from `fp`; Windows ignores
+ * `fp` and starts from native unwind data, finding `anchor` on the stack. */
+static void ms_frames_visit(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameVisit visit, void *context) {
   if (ms_sys_frame_pointer_chain()) {
     ms_frames_walk_chain(fp, window, visit, context);
     return;

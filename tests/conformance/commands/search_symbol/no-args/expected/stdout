@@ -13,7 +13,7 @@ collections  List, ListEntry, Map +11
 deque        Deque
 itertools    Run, accumulate +7
 queue        HeapEntry, PriorityQueue +1
-sorted       SortedEntry, SortedMap +2
+sorted       SortedEntry, SortedItem +3
 promise      Cancel, Placement, Promise +12
 resilience   CircuitBreaker +7
 core         Clonable, Closeable +15

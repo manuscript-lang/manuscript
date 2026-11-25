@@ -251,7 +251,9 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
   const uint8_t *value = ms_shape_resolve(shape, slot);
   if ((shape->flags & MS_SHAPE_TEXT_FORM) != 0 && hook != NULL && hook->to_text != NULL) {
     MsString piece = ms_string_empty();
-    hook->to_text(slot, &piece);
+    MsOwnSlot own;
+    hook->to_text(ms_own_gather(&own, text->table, shape, slot), &piece);
+    ms_own_done(&own);
     append_owned(text, &piece);
     return;
   }

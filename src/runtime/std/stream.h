@@ -36,8 +36,6 @@ typedef struct MsStream {
 
 typedef enum MsStreamAccess { MS_STREAM_ANY, MS_STREAM_READ, MS_STREAM_WRITE } MsStreamAccess;
 
-/* A stream over `fd`, which it closes when `owned`; `name` is copied. */
-MsStream *ms_stream_new(uv_file fd, bool owned, MsSpan name);
 /* A stream over a file opened with the libuv `flags` (UV_FS_O_*). */
 MsStream *ms_stream_file(uv_file fd, int flags, MsSpan name);
 /* A second stream over the file's descriptor, closed on its own (the descriptor closes with the last); it shares the
@@ -59,7 +57,6 @@ bool ms_stream_admit(const MsStream *stream, MsStreamAccess access, MsFail *fail
 /* One read or write of up to `length` bytes at the current position, waiting for the descriptor first when it can be
  * waited on. `*count` is what was transferred. */
 bool ms_stream_read_raw(const MsStream *stream, uint8_t *buffer, size_t length, size_t *count, MsFail *fail);
-bool ms_stream_write_raw(const MsStream *stream, const uint8_t *data, size_t length, size_t *count, MsFail *fail);
 
 /* One read of up to `max` bytes (a default chunk without one): `*out` is a new buffer; `*eof` when nothing was left. */
 bool ms_stream_read(MsStream *stream, bool has_max, int64_t max, MsBytes *out, bool *eof, MsFail *fail);

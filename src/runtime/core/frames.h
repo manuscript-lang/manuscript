@@ -19,7 +19,7 @@
 
 #include "base/safe.h"
 
-/* The layout is the ABI the compiler emits (crates/ms-rt-abi `FuncEntry`, `LineEntry`, `ScopeEntry`, `Tables`). */
+/* The layout is the ABI the compiler emits. */
 typedef struct MsFuncEntry {
   uintptr_t address;
   uint32_t size;
@@ -141,14 +141,6 @@ typedef struct MsFrameCollector {
   size_t native; /* addresses outside the tables passed so far */
 } MsFrameCollector;
 
-void ms_frames_collector_init(MsFrameCollector *collector, MsFrameList *list, size_t steps) MS_NONNULL;
-/* An MsFrameVisit over a collector; false once the list is full or the budget is spent. */
-bool ms_frames_collector_add(uintptr_t return_address, void *collector);
-
-/* Visits the return addresses of the frames above the caller of the function `anchor` (the one that starts the
- * walk, whose frame pointer is `fp`). Linux and macOS follow the frame-pointer chain from `fp`; Windows ignores
- * `fp` and starts from native unwind data, finding `anchor` on the stack. */
-void ms_frames_visit(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameVisit visit, void *context);
 /* Walks from `fp` and collects the source frames into `list`, which must be zeroed. */
 void ms_frames_collect(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameList *list) MS_NONNULL;
 /* Collects the source frames of the return addresses `addresses` into `list`, which must be zeroed. */

@@ -43,7 +43,7 @@ void lint_text_chomp(char *line) {
   }
 }
 
-bool lint_is_identifier_char(char value) {
+static bool lint_is_identifier_char(char value) {
   return (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') ||
          (value >= '0' && value <= '9') || value == '_';
 }

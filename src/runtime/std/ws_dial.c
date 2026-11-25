@@ -69,7 +69,7 @@ static bool parse_field(MsSpan line, MsHeaders *fields) {
   return ms_header_valid_value(value) && ms_headers_append(fields, name, value) == MS_STATUS_OK;
 }
 
-MsResponseHead ms_ws_parse_response_head(MsSpan buf, size_t limit, uint16_t *status, MsHeaders **fields,
+static MsResponseHead ms_ws_parse_response_head(MsSpan buf, size_t limit, uint16_t *status, MsHeaders **fields,
                                          size_t *used) {
   MsSpan rest = buf;
   MsSpan line;

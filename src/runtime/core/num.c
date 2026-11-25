@@ -1,4 +1,4 @@
-/* Number primitives with no runtime state. Ported from crates/ms-rt/src/num.rs. */
+/* Number primitives with no runtime state. */
 #include "abi/status.h"
 #include "base/chars.h"
 #include "base/float_parse.h"

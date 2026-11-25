@@ -1,5 +1,5 @@
 /* Owns `ms init` (init_command.h): the files of a new project, library or workspace, written into a directory that
- * holds none of them. Port of crates/ms-cli/src/init.rs. */
+ * holds none of them. */
 #include "cli/init_command.h"
 
 #include <stdio.h>
@@ -34,12 +34,8 @@ typedef struct InitOptions {
   bool library, workspace;
 } InitOptions;
 
-static void print_span(FILE *stream, MsSpan text) {
-  (void)fwrite(text.ptr, 1, text.len, stream);
-}
-
 static int usage(MsArena *arena, const char *message) {
-  print_span(stderr, ms_message_format(arena, "%s\n", message));
+  ms_span_write(stderr, ms_message_format(arena, "%s\n", message));
   return STATUS_USAGE;
 }
 
@@ -52,7 +48,7 @@ static int parse_arguments(MsArena *arena, int argc, char **argv, InitOptions *o
     } else if (ms_span_is_text(arg, "--workspace") && !options->workspace && !options->library) {
       options->workspace = true;
     } else if ((arg.len > 0 && arg.ptr[0] == '-') || given) {
-      print_span(stderr, ms_message_format(arena,
+      ms_span_write(stderr, ms_message_format(arena,
                                            "unexpected init argument: %S; ms init takes --lib or --workspace (not "
                                            "both) and at most one directory, e.g. ms init --lib greeter\n",
                                            arg));
@@ -234,7 +230,7 @@ static void print_next(MsArena *arena, const InitOptions *options, MsSpan direct
   } else {
     next = ms_message_format(arena, "ms run %S -- first second", manifest_path);
   }
-  print_span(stdout, ms_message_format(arena, "Created project in %S\nNext: %S\n", directory, next));
+  ms_span_write(stdout, ms_message_format(arena, "Created project in %S\nNext: %S\n", directory, next));
 }
 
 int ms_init_command(int argc, char **argv) {
@@ -248,7 +244,7 @@ int ms_init_command(int argc, char **argv) {
     const size_t count = plan(&arena, &options, absolute, files);
     for (size_t i = 0; i < count && status == 0; i++) {
       if (ms_path_kind(joined(&arena, absolute, ms_span_of_text(files[i].name))) != MS_PATH_MISSING) {
-        print_span(stderr, ms_message_format(&arena,
+        ms_span_write(stderr, ms_message_format(&arena,
                                              "ms init: %S already exists; run it in an empty directory or remove "
                                              "the file first\n",
                                              joined(&arena, directory, ms_span_of_text(files[i].name))));
@@ -256,7 +252,7 @@ int ms_init_command(int argc, char **argv) {
       }
     }
     if (status == 0 && !write_files(&arena, absolute, files, count)) {
-      print_span(stderr, ms_message_format(&arena, "ms init: cannot create project in %S; check that the directory is writable\n", directory));
+      ms_span_write(stderr, ms_message_format(&arena, "ms init: cannot create project in %S; check that the directory is writable\n", directory));
       status = STATUS_FAILED;
     } else if (status == 0) {
       print_next(&arena, &options, directory);

@@ -1,7 +1,7 @@
 /* unwind.h: the per-task state a fault, a cancellation or a guard acts on.
  *
  *  - the header block generated code reads and writes inline: recursion limit, cancel flag, shield depths and the
- *    `unwinding` byte (offsets are ABI: crates/ms-rt-abi/src/lib.rs `ISOLATE_HDR_*`);
+ *    `unwinding` byte;
  *  - the pending report: a fault is posted (ms_fault_post) and the frames return with the `unwinding` byte set, the
  *    way a delivered cancel leaves them; each call site tests the byte and leaves by its exit;
  *  - guards: ms_guard_call runs code and tells how it ended (returned, posted a fault, or was cancelled);

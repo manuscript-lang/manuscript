@@ -12,11 +12,9 @@ typedef struct Reader {
 } Reader;
 
 bool manifest_fail_at(Reader *r, MsPos at, MsSpan message);
-bool manifest_fail_text(Reader *r, MsPos at, const char *message);
 /* `format` with %a and %b replaced by the two spans, in the arena. */
 MsSpan manifest_formatted(Reader *r, const char *format, MsSpan a, MsSpan b);
 bool manifest_valid_alias(MsSpan key);
-bool manifest_text_value(Reader *r, const TomlEntry *entry, MsSpan *value);
 const TomlEntry *manifest_find_entry(const Reader *r, const char *table, MsSpan key);
 
 /* ---- manifest_packages.c: [dependencies], [effects], [workspace] and the project keys that belong to them ---- */

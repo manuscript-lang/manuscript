@@ -1,4 +1,4 @@
-/* Owns review.h: port of crates/ms-tooling/src/review.rs. */
+/* Owns review.h. */
 #include "tooling/review.h"
 
 #include "base/sort.h"

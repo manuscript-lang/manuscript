@@ -1,6 +1,5 @@
 /* lsp/lsp_input.h: the language server's input read on its own thread, so a `$/cancelRequest` is seen while an earlier
- * request is still being answered and consecutive `textDocument/didChange` messages can be told apart from other work.
- * Port of crates/ms-lsp/src/transport.rs. */
+ * request is still being answered and consecutive `textDocument/didChange` messages can be told apart from other work. */
 #ifndef MS_CLI_LSP_INPUT_H
 #define MS_CLI_LSP_INPUT_H
 

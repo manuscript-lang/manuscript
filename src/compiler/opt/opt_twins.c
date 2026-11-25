@@ -55,7 +55,7 @@ typedef struct Twins {
   const MirBlock *owner; /* per value: the block defining it, MIR_NONE for the entry's parameters */
   const uint32_t *pos;   /* per value: parameter index, or parameters + instruction index */
   uint32_t nvalues;
-  const MirBlock *idom;
+  const MirDomTree *dom;
   const uint32_t *uses;
   uint32_t *inside; /* scratch per value */
   const uint32_t *npreds;
@@ -63,11 +63,8 @@ typedef struct Twins {
   uint32_t nplans;
 } Twins;
 
-static bool dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
-  while (b != a && idom[b] != b && idom[b] != MIR_NONE) {
-    b = idom[b];
-  }
-  return b == a;
+static bool dominates(const Twins *t, MirBlock a, MirBlock b) {
+  return a == b || mir_tree_dominates(t->dom, a, b);
 }
 
 static MirBlock tw_owner(const Twins *t, MirValue v) {
@@ -102,7 +99,7 @@ static bool tw_const(const Twins *t, MirValue v) {
 static bool tw_reaches(const Twins *t, MirValue v, const MirBlock *preds, uint32_t n) {
   const MirBlock def = tw_owner(t, v);
   for (uint32_t i = 0; i < n; i++) {
-    if (t->idom[preds[i]] == MIR_NONE || (def != MIR_NONE && !dominates(t->idom, def, preds[i]))) {
+    if (t->dom->idom[preds[i]] == MIR_NONE || (def != MIR_NONE && !dominates(t, def, preds[i]))) {
       return false;
     }
   }
@@ -227,7 +224,7 @@ static int plan_pair(Twins *t, MirBlock x, MirBlock y, MirBlock xpred, MirBlock 
       return -1;
     }
     if (a->block == b->block) {
-      if (dominates(t->idom, a->block, x) || dominates(t->idom, a->block, y)) {
+      if (dominates(t, a->block, x) || dominates(t, a->block, y)) {
         return -1;
       }
       continue;
@@ -484,6 +481,7 @@ static bool sweep(MirModule *m, MirFunc *f) {
   const uint32_t reachable = mir_rpo(&arena, f, &order);
   const MirPreds preds = mir_preds(&arena, f);
   MirBlock *idom = mir_dominators(&arena, f, order, reachable, &preds);
+  const MirDomTree dom = mir_dom_tree(&arena, f, order, reachable, idom);
   const uint32_t nvalues = (uint32_t)f->values.len;
   MirBlock *owner = MS_ARENA_NEW_ARRAY(&arena, MirBlock, (size_t)nvalues + 1);
   uint32_t *pos = MS_ARENA_NEW_ARRAY(&arena, uint32_t, (size_t)nvalues + 1);
@@ -517,7 +515,7 @@ static bool sweep(MirModule *m, MirFunc *f) {
   bool *dirty = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)nblocks + 1);
   __builtin_memset(dirty, 0, sizeof(bool) * ((size_t)nblocks + 1));
   Twins *t = MS_ARENA_NEW(&arena, Twins);
-  *t = (Twins){.m = m, .f = f, .arena = &arena, .owner = owner, .pos = pos, .nvalues = nvalues, .idom = idom,
+  *t = (Twins){.m = m, .f = f, .arena = &arena, .owner = owner, .pos = pos, .nvalues = nvalues, .dom = &dom,
          .uses = uses, .inside = inside, .npreds = npreds};
   bool changed = false;
   for (uint32_t i = 0; i < reachable; i++) {

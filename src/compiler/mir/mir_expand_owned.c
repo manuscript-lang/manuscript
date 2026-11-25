@@ -25,7 +25,9 @@ static bool func_has_shorthand(const MirFunc *func) {
   return false;
 }
 
-bool mir_expand_owned_needed(const MirModule *module) {
+/* The ownership shorthands (`alt.own`, `alt.unbox`, `alt.release`, `type.release`, `opt.unbox`, `opt.unwrap`)
+ * as plain reads, drops and frees; run after the last pass that reads them. */
+static bool mir_expand_owned_needed(const MirModule *module) {
   for (size_t index = 0; index < module->funcs.len; index++) {
     if (func_has_shorthand(&module->funcs.ptr[index])) {
       return true;

@@ -57,8 +57,6 @@ MS_NODISCARD uint8_t ms_ws_session_send(MsWsSession *session, MsSpan data, bool 
 MS_NODISCARD uint8_t ms_ws_session_ping(MsWsSession *session, MsSpan data, MsString *err);
 /* A close frame (normal closure) within about 100 ms, then the transport. Idempotent. */
 void ms_ws_session_close(MsWsSession *session);
-/* Like close with a status code and a reason (cut to 123 bytes). */
-void ms_ws_session_close_with(MsWsSession *session, uint16_t code, MsSpan reason);
 /* The next message; pings are answered and pongs dropped. */
 MS_NODISCARD uint8_t ms_ws_session_receive(MsWsSession *session, int64_t timeout_ns, MsWsMessage *out,
                                            MsString *err);

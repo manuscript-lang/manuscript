@@ -1,6 +1,6 @@
 /* Driver: `ms check <targets> [--json [--with-text [--each]]]` and `ms lint <targets> [--json] [--fix]
  * [--deny-warnings]`; lint is check followed by the lint rules over each input that checks. Loads the module graph of each input, checks it
- * and reports the diagnostics as terminal text or as the JSON document of crates/ms-cli. Several targets, a
+ * and reports the diagnostics as terminal text or as the versioned JSON document. Several targets, a
  * directory without ms.toml and --each check each input on its own; --fix applies fixes and --watch reruns after each
  * saved change. Status 0 is accepted, 1 a diagnostic, 2 a usage error. */
 #include "cli/check_command.h"
@@ -48,10 +48,6 @@ typedef struct Analysis {
   bool no_inputs;
   MsSpanList watched; /* the files and directories a rerun depends on */
 } Analysis;
-
-static void print_span(FILE *stream, MsSpan text) {
-  (void)fwrite(text.ptr, 1, text.len, stream);
-}
 
 static bool is_option(const char *argument, const char *name) {
   return ms_span_is_text(ms_span_of_text(argument), name);
@@ -423,7 +419,7 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
     free_analysis(&analysis);
   }
   ms_strbuild_append_text(&result, "\n  ]\n}\n");
-  print_span(stdout, ms_strbuild_span(&result));
+  ms_span_write(stdout, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
   return 0;
 }
@@ -458,10 +454,10 @@ static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList
   MsStrBuild document = ms_strbuild_new();
   const int result = render(&analysis, options, options->targets.ptr, options->targets.len, &out, &err, &document);
   if (options->json) {
-    print_span(stdout, ms_strbuild_span(&document));
+    ms_span_write(stdout, ms_strbuild_span(&document));
   } else {
-    print_span(stdout, ms_strbuild_span(&out));
-    print_span(stderr, ms_strbuild_span(&err));
+    ms_span_write(stdout, ms_strbuild_span(&out));
+    ms_span_write(stderr, ms_strbuild_span(&err));
   }
   if (run.fixes > 0) {
     (void)fprintf(stderr, "ms: applied %zu %s in %zu %s\n", run.fixes, run.fixes == 1 ? "fix" : "fixes",

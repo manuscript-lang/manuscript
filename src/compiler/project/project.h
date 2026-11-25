@@ -1,5 +1,4 @@
-/* compiler/project/project.h: file names to the module graph the checker reads. Port of crates/ms-driver
- * (`project` and `load`).
+/* compiler/project/project.h: file names to the module graph the checker reads.
  *
  * Paths are UTF-8 spans with `/` separators, cleaned as Go's path/filepath does (base/path.h). Everything a
  * call returns lives in the arena the caller passes, so one arena holds a whole load. A failure is a
@@ -90,6 +89,7 @@ typedef struct MsGraphModule {
   MsSpan name;   /* logical path: relative to the project root */
   MsSpan path;   /* canonical file */
   MsSpan source; /* the text as read */
+  bool missing;  /* the file an import names does not exist: an editor keeps checking with an empty stand-in */
   MsSpan std_name; /* `math/math.ms` when this file is the checkout copy of that bundled module (`src/stdlib/math/math.ms`); else empty */
   MsModule syntax;
   const int32_t *targets;

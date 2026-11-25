@@ -1,4 +1,4 @@
-/* cli/inspect_command.c: `ms inspect`. Port of `inspect_command` in crates/ms-cli/src/engine/tooling.rs. */
+/* cli/inspect_command.c: `ms inspect`. */
 #include "cli/files.h"
 #include "cli/inspect_command.h"
 

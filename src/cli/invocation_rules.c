@@ -1,5 +1,4 @@
-/* Owns invocation_rules.h. Port of `default_project_target`, `resolve_input`, `expand_workspace` and `validate` in
- * crates/ms-cli (lib.rs, util.rs, invocation.rs), for build, run and test. */
+/* Owns invocation_rules.h. */
 #include "cli/invocation_rules.h"
 
 #include <stdint.h>

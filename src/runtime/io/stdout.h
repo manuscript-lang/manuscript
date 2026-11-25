@@ -8,8 +8,6 @@
 #include "base/list.h"
 #include "base/string.h"
 
-/* Appends `data` to the running task's capture, or to standard output. */
-void ms_stdout_write(MsSpan data);
 /* Writes what is buffered. The scheduler calls it before it blocks, and the process before it ends. */
 void ms_stdout_flush(void);
 /* Writes what is buffered and frees the buffer (the end of the run); a later write buffers anew. */

@@ -2,7 +2,8 @@
 #include "base/message.h"
 #include "compiler/project/attach_internal.h"
 
-bool ms_package_pattern_covers(MsSpan allowed, MsSpan declared) {
+/* Whether the effect pattern `declared` is inside what the pattern `allowed` permits. */
+static bool ms_package_pattern_covers(MsSpan allowed, MsSpan declared) {
   if (ms_span_is_text(allowed, "*") || ms_span_equal(allowed, declared)) {
     return true;
   }
@@ -19,7 +20,8 @@ bool ms_package_pattern_covers(MsSpan allowed, MsSpan declared) {
   return false;
 }
 
-bool ms_package_uncovered(const MsSpan *allowed, size_t nallowed, const MsSpan *declared, size_t ndeclared,
+/* An effect in `declared` that no pattern in `allowed` covers; false when all are covered. */
+static bool ms_package_uncovered(const MsSpan *allowed, size_t nallowed, const MsSpan *declared, size_t ndeclared,
                           MsSpan *missing) {
   for (size_t i = 0; i < ndeclared; i++) {
     bool covered = false;

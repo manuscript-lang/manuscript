@@ -1,5 +1,7 @@
-/* Owns diff.h: port of crates/ms-tooling/src/diff.rs. */
+/* Owns diff.h. */
 #include "tooling/diff.h"
+
+#include "base/chars.h"
 
 static MsSpan text(const char *literal) {
   return ms_span_of_text(literal);
@@ -55,16 +57,6 @@ static bool starts(MsSpan line, const char *prefix) {
 
 static MsSpan rest(MsSpan line, size_t from) {
   return ms_span_of(line.ptr + from, line.len - from);
-}
-
-static MsSpan trim(MsSpan s) {
-  while (s.len > 0 && (s.ptr[0] == ' ' || s.ptr[0] == '\t' || s.ptr[0] == '\r' || s.ptr[0] == '\n')) {
-    s = rest(s, 1);
-  }
-  while (s.len > 0 && (s.ptr[s.len - 1] == ' ' || s.ptr[s.len - 1] == '\t' || s.ptr[s.len - 1] == '\r' || s.ptr[s.len - 1] == '\n')) {
-    s.len--;
-  }
-  return s;
 }
 
 /* ---- paths ---- */
@@ -136,7 +128,7 @@ static bool diff_path(MsArena *arena, MsSpan field, const char *prefix, bool git
     }
   }
   if (!git) {
-    path = trim(path);
+    path = ms_span_trim(path);
   }
   if (ms_span_is_text(path, "/dev/null")) {
     *out = (MsSpan){0};
@@ -394,7 +386,7 @@ bool ms_diff_parse(MsArena *arena, MsSpan input, MsDiffFiles *files, MsSpan *err
     }
     i++;
   }
-  if (files->len == 0 && trim(source).len > 0) {
+  if (files->len == 0 && ms_span_trim(source).len > 0) {
     *error = text("input is not a unified diff; pipe in git diff --no-renames");
     return false;
   }

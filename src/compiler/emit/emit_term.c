@@ -51,7 +51,7 @@ const MirTarget *emit_edge(const MirTerm *term, uint32_t index) {
 
 /* Whether edge `index` goes to a block an earlier edge of `term` reaches. A phi needs one predecessor per
  * incoming value, so such an edge goes through a block of its own (`t<block>_<index>`) that branches on. */
-bool emit_edge_repeats(const MirTerm *term, uint32_t index) {
+static bool emit_edge_repeats(const MirTerm *term, uint32_t index) {
   for (uint32_t earlier = 0; earlier < index; earlier++) {
     if (emit_edge(term, earlier)->block == emit_edge(term, index)->block) {
       return true;

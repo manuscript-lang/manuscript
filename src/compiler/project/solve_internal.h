@@ -63,9 +63,6 @@ typedef struct Solver {
 int span_compare(MsSpan a, MsSpan b);
 /* Whether `name` is one of `count` spans. */
 bool span_in_list(const MsSpan *names, size_t count, MsSpan name);
-/* The id of the copy a choice names. */
-MsSpan choice_id(Solver *s, const Choice *choice);
-bool group_equal(const Group *a, const Group *b);
 const Download *find_download(const Solver *s, MsSpan url, MsSpan reference);
 bool solver_fail(Solver *s, MsSpan message);
 

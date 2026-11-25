@@ -1,5 +1,4 @@
-/* compiler/project/manifest.c: ms.toml validation, port of crates/ms-driver/src/project/manifest.rs for the
- * tables [project], [aliases] and [embed]. The TOML syntax errors are this reader's own wording. */
+/* compiler/project/manifest.c: ms.toml validation, The TOML syntax errors are this reader's own wording. */
 #include "compiler/project/manifest.h"
 #include "compiler/project/manifest_internal.h"
 
@@ -16,7 +15,7 @@ bool manifest_fail_at(Reader *r, MsPos at, MsSpan message) {
   return false;
 }
 
-bool manifest_fail_text(Reader *r, MsPos at, const char *message) {
+static bool manifest_fail_text(Reader *r, MsPos at, const char *message) {
   return manifest_fail_at(r, at, ms_arena_copy(r->arena, ms_span_of_text(message)));
 }
 
@@ -59,7 +58,7 @@ static bool has_control(MsSpan text) {
 }
 
 /* The string value of `entry`, or the error naming the shape the key wants. */
-bool manifest_text_value(Reader *r, const TomlEntry *entry, MsSpan *value) {
+static bool manifest_text_value(Reader *r, const TomlEntry *entry, MsSpan *value) {
   if (!entry->is_string) {
     MsSpan shown = entry->text;
     while (shown.len > 0 && shown.ptr[0] == '"') {

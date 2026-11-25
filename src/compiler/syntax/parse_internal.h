@@ -22,7 +22,7 @@ MS_LIST_DEFINE(OffsetList, offset_list, MsOffsetRange)
 
 /* What a speculative parse restores when it fails: the shared scratch stacks and the parser flags that the
  * abandoned frames had changed. Node ids and queued statements are deliberately not restored, so a
- * backtrack consumes ids exactly as the Rust parser does. */
+ * backtrack consumes ids exactly. */
 typedef struct Checkpoint {
   size_t scratch, bytes;
   size_t depth;
@@ -180,7 +180,6 @@ MS_NODISCARD bool parse_binding(Parser *p, bool is_mutable, const MsPos *group, 
 MS_NODISCARD bool parse_binding_group(Parser *p, MsToken keyword, MsStmts *out);
 MS_NODISCARD bool parse_statements(Parser *p, bool allow_value);
 MsTypeRefs parse_copy_types(Parser *p, MsTypeRefs types);
-MsExpr *parse_clone_chain(Parser *p, const MsExpr *e);
 MsExpr *parse_index_set(Parser *p, MsPos pos, MsExpr *left, MsExpr *index, MsExpr *value, bool reread);
 MS_NODISCARD bool parse_assign_target(Parser *p, MsToken start, MsExpr *e, MsStmt *st);
 bool parse_compound_assignment(const Parser *p);
@@ -196,12 +195,8 @@ MS_NODISCARD bool parse_expression(Parser *p, int min, MsExpr **out);
 MS_NODISCARD bool parse_if_expression(Parser *p, MsToken t, MsExpr **out);
 MS_NODISCARD bool parse_match_arms(Parser *p, MsToken header, MsExpr *m);
 
-/* parse_text.c */
-MsSpan parse_dedent(Parser *p, MsSpan content, size_t indent);
 MS_NODISCARD bool parse_text_parts_of(Parser *p, MsToken token, TextParts *out);
 
-/* parse_primary.c */
-MS_NODISCARD bool parse_bracket(Parser *p, MsExpr *left, MsExpr **out);
 MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out);
 MS_NODISCARD bool parse_call_arguments(Parser *p, Args *out);
 MS_NODISCARD bool parse_primary(Parser *p, MsExpr **out);

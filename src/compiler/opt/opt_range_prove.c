@@ -29,7 +29,7 @@ typedef struct RgProof {
 
 static bool rg_goal_eq(RgGoal a, RgGoal b) { return a.is_len == b.is_len && a.v == b.v; }
 
-bool rg_same_value(const RgFa *fa, MirValue a, MirValue b) {
+static bool rg_same_value(const RgFa *fa, MirValue a, MirValue b) {
   return a == b || (fa->lenof[a] != MIR_NONE && fa->lenof[b] == fa->lenof[a]);
 }
 

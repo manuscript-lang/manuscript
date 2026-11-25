@@ -1,7 +1,7 @@
 /* Owns the statement rules of the terse family: a default then an override (MSL121), a counter written as a while
  * (MSL122), an index loop (MSL123), loops that append or add (MSL124, MSL125), a binding returned on the next line
  * (MSL126) and a final return the function already makes (MSL128); and the entry point that runs every terse rule
- * over a module. Port of crates/ms-tooling/src/lint/terse.rs. */
+ * over a module. */
 #include <stdlib.h>
 
 #include "base/message.h"
@@ -240,7 +240,7 @@ static bool is_void_type(const TerseScan *scan, const MsTypeRef *type) {
 
 /* A final `return ok(unit)` in a `Void!` function, or `return` in a `Void` one: the end of the body already
  * returns it. */
-void terse_trailing_return(TerseScan *scan, const MsFunc *func) {
+static void terse_trailing_return(TerseScan *scan, const MsFunc *func) {
   const MsTypeRef *result_type = func->result;
   if (result_type == NULL || result_type->kind != MS_TYPE_NAMED) {
     return;
@@ -586,7 +586,8 @@ static void append_all(const TerseScan *scan, const MsStmt *s) {
   }
 }
 
-void terse_block(TerseScan *scan, MsStmts body) {
+/* The rules over a statement list and a function, in lint_terse_stmts.c. */
+static void terse_block(TerseScan *scan, MsStmts body) {
   for (size_t at = 0; at < body.len; at++) {
     default_then_reassign(scan, body, at);
     temp_return(scan, body, at);

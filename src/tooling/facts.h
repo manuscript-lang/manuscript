@@ -1,5 +1,5 @@
 /* tooling/facts.h: the review fact model: what the checker established about each callable and type, never text.
- * Port of crates/ms-tooling/src/facts.rs and collect.rs. It is built once from an inspection and the checked program,
+ * It is built once from an inspection and the checked program,
  * read by the diagram views and by `ms review`, and lives in the arena it was built in.
  *
  * Ownership: all text and arrays are arena allocated; the program and the inspection need not outlive the model. */
@@ -10,7 +10,7 @@
 #include "tooling/avec.h"
 #include "tooling/inspect.h"
 
-/* One line of a view: a label and what hangs under it. Port of tree.rs. `kind` is a flow step kind (call, native,
+/* One line of a view: a label and what hangs under it. `kind` is a flow step kind (call, native,
  * try, scope, spawn, branch, loop, match, arm, exit, closure) or a view node kind. */
 typedef struct MsViewNode MsViewNode;
 MS_AVEC(MsViewNodes, ms_view_nodes, MsViewNode *)

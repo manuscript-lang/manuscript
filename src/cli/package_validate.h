@@ -1,5 +1,4 @@
-/* cli/package_validate.h: what a downloaded package must be before it enters the cache. Port of
- * `reject_unportable` and `validate` of crates/ms-cli/src/fetch.rs. */
+/* cli/package_validate.h: what a downloaded package must be before it enters the cache. */
 #ifndef MS_CLI_PACKAGE_VALIDATE_H
 #define MS_CLI_PACKAGE_VALIDATE_H
 

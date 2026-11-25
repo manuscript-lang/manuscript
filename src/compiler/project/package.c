@@ -1,4 +1,4 @@
-/* compiler/project/package.c: port of crates/ms-driver/src/project/packages.rs (specs, and below it the lock). */
+/* compiler/project/package.c: package specs and the lock file. */
 #include "compiler/project/package.h"
 
 #include "base/message.h"

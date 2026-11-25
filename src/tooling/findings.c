@@ -63,7 +63,7 @@ bool finding_is_package_file(MsSpan file) {
   return ms_span_starts_with(file, ms_span_of_text("@")) && !ms_span_starts_with(file, ms_span_of_text("@std/"));
 }
 
-/* The excerpt under a diagnostic: the file is read again from `root`, as the Rust CLI does. */
+/* The excerpt under a diagnostic: the file is read again from `root`. */
 static void finding_excerpt(MsStrBuild *out, MsSpan root, const Finding *finding) {
   MsStrBuild path = ms_strbuild_new();
   ms_path_append_joined(&path, finding_is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);

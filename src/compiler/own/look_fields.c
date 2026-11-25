@@ -3,19 +3,28 @@
 
 #include "compiler/check/properties.h"
 
-bool ms_own_look_field(const MsCheckProgram *program, const MsCall *call, uint32_t index) {
+/* The declaration of the record type a constructor call builds, found through the type's definition: scanning the
+ * module's declarations for it made every constructor argument cost the size of the module. */
+static const MsDecl *constructed_decl(const MsCheckProgram *program, const MsCall *call) {
   if (call->callee.kind != MS_REF_TYPE || call->callee.decl.module >= program->modules.len) {
-    return false;
+    return NULL;
   }
-  const MsModule *tree = program->modules.ptr[call->callee.decl.module].tree;
-  for (uint32_t at = 0; at < tree->ndecls; at++) {
-    const MsDecl *decl = tree->decls[at];
-    if (decl->kind == MS_D_TYPE && decl->id == call->callee.decl.node) {
-      return index < decl->u.type.fields.len && decl->u.type.fields.ptr[index]->ty != NULL &&
-             decl->u.type.fields.ptr[index]->ty->is_ref;
-    }
+  const MsTyRow *row = ms_ty_row(&program->types, ms_ty_result(&program->types, call->callee_ty));
+  if (row->kind != MS_TY_TYPE || row->def == 0) {
+    return NULL;
   }
-  return false;
+  const MsSymbol *symbol = &program->symbols.ptr[ms_defs_get(&program->defs, row->def)->symbol];
+  const MsDecl *decl = symbol->decl;
+  return decl != NULL && decl->kind == MS_D_TYPE && symbol->module == call->callee.decl.module &&
+                 decl->id == call->callee.decl.node
+             ? decl
+             : NULL;
+}
+
+bool ms_own_look_field(const MsCheckProgram *program, const MsCall *call, uint32_t index) {
+  const MsDecl *decl = constructed_decl(program, call);
+  return decl != NULL && index < decl->u.type.fields.len && decl->u.type.fields.ptr[index]->ty != NULL &&
+         decl->u.type.fields.ptr[index]->ty->is_ref;
 }
 
 bool ms_own_look_record(const MsCheckProgram *program, MsTy ty) {

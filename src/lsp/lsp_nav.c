@@ -453,7 +453,7 @@ static void workspace_places(LspAnalysis *analysis, const LspDocList *docs, cons
     if (!mentions) continue;
     LspDoc entry = {.path = ms_string_from_span(paths.ptr[i])};
     LspAnalysis other;
-    lsp_analyze(docs, &entry, &other);
+    lsp_analyze_scan(docs, &entry, &other);
     for (size_t e = 0; other.resolved && e < other.index.len; e++) {
       const MsOccurrence *candidate = &other.index.ptr[e];
       if (!ms_span_equal(candidate->key, selected->key) || (!include && candidate->declaration)) continue;
@@ -689,7 +689,7 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
       if (!mentions) continue;
       LspDoc entry_doc = {.path = ms_string_from_span(paths.ptr[i])};
       LspAnalysis other;
-      lsp_analyze(docs, &entry_doc, &other);
+      lsp_analyze_scan(docs, &entry_doc, &other);
       bool affected = false;
       for (size_t e = 0; other.resolved && e < other.index.len; e++) {
         const MsOccurrence *candidate = &other.index.ptr[e];

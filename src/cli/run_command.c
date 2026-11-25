@@ -1,5 +1,5 @@
 /* Owns `ms run` (run_command.h): builds a temporary executable and runs it, with the program's own standard streams
- * or, with --json, captured into one document. Port of crates/ms-cli/src/engine/run.rs. Not yet ported: --watch. */
+ * or, with --json, captured into one document. Not yet ported: --watch. */
 #include "cli/files.h"
 #include "cli/run_command.h"
 
@@ -25,10 +25,6 @@ typedef struct RunContext {
   MsSpan source_root;
 } RunContext;
 
-static void print_span(FILE *stream, MsSpan text) {
-  (void)fwrite(text.ptr, 1, text.len, stream);
-}
-
 /* The head of the document: format, source root, status and the captured output. */
 static void begin_document(MsStrBuild *out, const RunContext *context, int status, MsSpan stdout_text, MsSpan stderr_text) {
   ms_strbuild_append_text(out, "{\n  \"format\": 1,\n  \"source_root\": ");
@@ -51,7 +47,7 @@ static int print_compile_failure(const RunContext *context, const MsCheckedInput
     ms_json_diag(&out, checked->findings.ptr[i].file, checked->findings.ptr[i].phase, &checked->findings.ptr[i].diag);
   }
   ms_strbuild_append_text(&out, checked->findings.len == 0 ? "]\n}\n" : "\n  ]\n}\n");
-  print_span(stdout, ms_strbuild_span(&out));
+  ms_span_write(stdout, ms_strbuild_span(&out));
   ms_strbuild_free(&out);
   return STATUS_FAILED;
 }
@@ -59,7 +55,7 @@ static int print_compile_failure(const RunContext *context, const MsCheckedInput
 /* A failure of the run itself (building the executable, starting it): code MSN001 at the input's first byte. */
 static int report_error(const RunContext *context, const char *phase, MsSpan message) {
   if (!context->invocation->json) {
-    print_span(stderr, ms_message_format(context->arena, "%S\n", message));
+    ms_span_write(stderr, ms_message_format(context->arena, "%S\n", message));
     return STATUS_FAILED;
   }
   MsStrBuild out = ms_strbuild_new();
@@ -71,7 +67,7 @@ static int report_error(const RunContext *context, const char *phase, MsSpan mes
   ms_strbuild_append_text(&out, ",\n      \"position\": ");
   ms_json_position(&out, context->invocation->filename, (MsPos){.line = 1, .column = 1}, 3);
   ms_strbuild_append_text(&out, "\n    }\n  ]\n}\n");
-  print_span(stdout, ms_strbuild_span(&out));
+  ms_span_write(stdout, ms_strbuild_span(&out));
   ms_strbuild_free(&out);
   return STATUS_FAILED;
 }
@@ -123,7 +119,7 @@ static int execute(const RunContext *context, MsSpan executable, MsSpan director
     begin_document(&out, context, status, ms_cli_read_text(context->arena, out_path), ms_cli_read_text(context->arena, err_path));
     append_fault(&out, context->arena, record_path);
     ms_strbuild_append_text(&out, ",\n  \"diagnostics\": []\n}\n");
-    print_span(stdout, ms_strbuild_span(&out));
+    ms_span_write(stdout, ms_strbuild_span(&out));
     ms_strbuild_free(&out);
   }
   ms_strbuild_free(&why);
@@ -201,7 +197,7 @@ static bool watch_once(const MsInvocation *invocation, MsSpanList *watched, cons
         (void)report_error(&context, "build", error);
       } else {
         built = true;
-        print_span(stderr, ms_message_format(&arena, "ms: %s run in %z ms\n", reason, (size_t)(watch_now_ms() - started)));
+        ms_span_write(stderr, ms_message_format(&arena, "ms: %s run in %z ms\n", reason, (size_t)(watch_now_ms() - started)));
       }
       if (built) {
         MsSpanList argv = {0};
@@ -218,12 +214,12 @@ static bool watch_once(const MsInvocation *invocation, MsSpanList *watched, cons
         int status = 0;
         (void)fflush(stdout);
         if (!ms_process_run(&spec, &status, &why)) {
-          print_span(stderr, ms_message_format(&arena, "%S\n", ms_strbuild_span(&why)));
+          ms_span_write(stderr, ms_message_format(&arena, "%S\n", ms_strbuild_span(&why)));
         } else if (run.changed) {
           watch_settle(watched, &signature);
           *changed = true;
         } else {
-          print_span(stderr, ms_message_format(&arena, "ms: exited with status %z; waiting for changes\n", (size_t)status));
+          ms_span_write(stderr, ms_message_format(&arena, "ms: exited with status %z; waiting for changes\n", (size_t)status));
         }
         ms_strbuild_free(&why);
         ms_strbuild_free(&signature);
@@ -248,7 +244,7 @@ static int watch_run(const MsInvocation *invocation) {
     bool changed = false;
     const bool built = watch_once(invocation, &watched, reason, &changed);
     if (!built) {
-      print_span(stderr, ms_span_of_text("ms: waiting for changes\n"));
+      ms_span_write(stderr, ms_span_of_text("ms: waiting for changes\n"));
     }
     if (!changed) {
       watch_wait(&watched, started);

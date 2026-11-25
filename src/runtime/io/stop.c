@@ -31,7 +31,10 @@ typedef struct MsStopState {
 
 static MsStopState state;
 
-int ms_io_stop_request_of(int signal_number) {
+/* The stop request a signal number stands for: MS_STOP_INTERRUPT for SIGINT (and Ctrl-Break on Windows),
+ * MS_STOP_TERMINATE for every other watched signal (SIGTERM; console close, logoff and shutdown reach Windows
+ * programs as SIGHUP). */
+static int ms_io_stop_request_of(int signal_number) {
   return ms_io_platform_is_interrupt(signal_number) ? MS_STOP_INTERRUPT : MS_STOP_TERMINATE;
 }
 

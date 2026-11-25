@@ -200,7 +200,8 @@ void ms_ip_text(const MsIp *ip, MsStrBuild *out) {
   text_groups(groups, best_at + best_len, 8, out);
 }
 
-void ms_ip_mask(MsIp *ip, unsigned bits) {
+/* Keeps the first `bits` bits. */
+static void ms_ip_mask(MsIp *ip, unsigned bits) {
   const unsigned size = ip->v6 ? 16 : 4;
   for (unsigned i = 0; i < size; i++) {
     const unsigned keep = bits >= 8 * (i + 1) ? 8 : bits > 8 * i ? bits - 8 * i : 0;

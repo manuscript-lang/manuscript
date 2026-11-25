@@ -43,6 +43,10 @@ bool ms_lex_at(MsArena *arena, MsSpan source, uint32_t base_offset, uint32_t bas
  * declaration; one resets the delimiter depth. The result has `nlines` entries from `arena`. */
 bool *ms_lex_continuations(MsArena *arena, MsSpan source, const bool *roots, size_t nroots, size_t *nlines);
 
+/* Whether `source` ends inside an unterminated delimiter or multi-line text. A line that fails to lex is ignored
+ * whole, so a lexical error in the middle does not hide what the lines after it close. */
+bool ms_lex_ends_open(MsArena *arena, MsSpan source);
+
 /* Lexes one validated interpolation (`source` is its text between the braces) with a virtual parenthesis
  * around it. `origin` is its offset in the normalised source scanned by the outer lexer. */
 bool ms_lex_interpolation(MsArena *arena, MsSpan source, size_t origin, const MsBounds *bounds,
@@ -53,8 +57,5 @@ size_t ms_bounds_interp_end(const MsBounds *bounds, size_t start);
 
 /* Position after advancing from `from` to `to` through normalised text, restoring CR bytes. */
 MsPos ms_bounds_restore_offset(const MsBounds *bounds, MsPos from, MsPos to);
-
-/* Appends `scalar` quoted the way Rust's `{:?}` does for a char. */
-void ms_quote_rune(MsStrBuild *out, uint32_t scalar);
 
 #endif

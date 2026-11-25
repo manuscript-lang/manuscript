@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 
+#include "base/chars.h"
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
@@ -226,18 +227,6 @@ static int compare_offset(const void *left, const void *right) {
   return a == b ? 0 : (a < b ? -1 : 1);
 }
 
-static MsSpan trim(MsSpan text) {
-  while (text.len > 0 && (text.ptr[0] == ' ' || text.ptr[0] == '\t' || text.ptr[0] == '\r' || text.ptr[0] == '\n')) {
-    text.ptr++;
-    text.len--;
-  }
-  while (text.len > 0 && (text.ptr[text.len - 1] == ' ' || text.ptr[text.len - 1] == '\t' || text.ptr[text.len - 1] == '\r' ||
-                          text.ptr[text.len - 1] == '\n')) {
-    text.len--;
-  }
-  return text;
-}
-
 /* The text after the last ` from ` of a statement, trimmed; empty when it has none. */
 static MsSpan import_path(MsSpan statement) {
   MsSpan path = {0};
@@ -247,7 +236,7 @@ static MsSpan import_path(MsSpan statement) {
     rest = ms_span_of(rest.ptr + at + 6, rest.len - at - 6);
     path = rest;
   }
-  return trim(path);
+  return ms_span_trim(path);
 }
 
 /* For each import statement of the module, the last line it occupies, indexed by its first line; SIZE_MAX elsewhere. */
@@ -368,7 +357,7 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
   bool have_last = false;
   size_t last = 0;
   while (index < line_count) {
-    const MsSpan trimmed = trim(ms_span_of(source.ptr + starts[index], starts[index + 1] - starts[index]));
+    const MsSpan trimmed = ms_span_trim(ms_span_of(source.ptr + starts[index], starts[index + 1] - starts[index]));
     if (ends != NULL && ends[index] != (size_t)-1 && ends[index] < line_count) {
       last = ends[index];
       have_last = true;
@@ -388,7 +377,7 @@ void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statemen
     size_t offset = 0, comments = 0, header = 0;
     for (size_t i = 0; i < line_count; i++) {
       const MsSpan row = ms_span_of(source.ptr + starts[i], starts[i + 1] - starts[i]);
-      const MsSpan bare = trim(row);
+      const MsSpan bare = ms_span_trim(row);
       size_t lead = 0;
       while (lead < row.len && (row.ptr[lead] == ' ' || row.ptr[lead] == '\t')) lead++;
       if (ms_span_starts_with(ms_span_of(row.ptr + lead, row.len - lead), ms_span_of_text("//"))) {
@@ -418,7 +407,7 @@ static bool unresolved_name(MsSpan message, MsSpan *name, bool *types_only) {
     MsSpan rest = ms_span_of(message.ptr + prefix.len, message.len - prefix.len);
     size_t stop = 0;
     while (stop < rest.len && rest.ptr[stop] != ';') stop++;
-    rest = trim(ms_span_of(rest.ptr, stop));
+    rest = ms_span_trim(ms_span_of(rest.ptr, stop));
     if (rest.len == 0) return false;
     for (size_t k = 0; k < rest.len; k++) {
       const uint8_t b = rest.ptr[k];
@@ -507,7 +496,7 @@ static void add_imports(Actions *actions, LspAnalysis *analysis, const MsModule 
     project_imports(actions, analysis->arena, name, types_only, &statements);
     /* The checker's own fix names the standard module that exports it. */
     if (finding->diag.has_fix && ms_span_starts_with(finding->diag.replacement, ms_span_of_text("import "))) {
-      MsSpan statement = trim(finding->diag.replacement);
+      MsSpan statement = ms_span_trim(finding->diag.replacement);
       ms_span_list_push(&statements, statement);
     }
     for (size_t k = 0; k < statements.len; k++) {

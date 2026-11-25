@@ -40,8 +40,6 @@ bool ms_http_url_same_origin(const MsHttpUrl *a, const MsHttpUrl *b);
 /* How a response with `status` redirects a request of `method`: 301-303 give GET (HEAD stays HEAD) and drop
  * the body, 307/308 repeat the request and keep it. False for any other status. */
 bool ms_http_redirect_method(uint16_t status, MsSpan method, MsString *next, bool *keep_body);
-/* `sub` is `parent` or a subdomain of it; an IP literal matches only itself. */
-bool ms_http_domain_or_subdomain(MsSpan sub, MsSpan parent);
 /* The fields of the request that follows a redirect: those of `hop` less the credentials that must not leave
  * the origin and, when the body is dropped, the fields that describe it. `first` is the request's first URL.
  */

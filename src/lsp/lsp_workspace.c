@@ -143,7 +143,7 @@ void lsp_workspace_symbols(const LspDocList *docs, const MsSpan *roots, size_t r
     if (!mentions) continue;
     LspDoc entry = {.path = ms_string_from_span(paths.ptr[i])};
     LspAnalysis analysis;
-    lsp_analyze(docs, &entry, &analysis);
+    lsp_analyze_scan(docs, &entry, &analysis);
     const MsCheckProgram *program = &analysis.checked.program;
     for (size_t e = 0; analysis.resolved && e < analysis.index.len; e++) {
       const MsOccurrence *occurrence = &analysis.index.ptr[e];

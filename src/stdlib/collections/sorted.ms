@@ -17,6 +17,14 @@ export type SortedRef[K Comparable, V] {
 	value &V
 }
 
+// One key or value of a sorted collection, viewed in place: it borrows the collection
+// and copies nothing.
+export type SortedItem[T] {
+	// The key, value or member this item views; it belongs to the collection that
+	// returned it and is not copied.
+	value &T
+}
+
 /*
 A map kept in ascending key order, so lookups by position (`first`, `last`, `floor`, `ceiling`, `range`) are as cheap as lookups by key.
 Keys use their `Comparable` order; keys that compare equal are the same key. Replacing a key's value keeps the original key.
@@ -314,15 +322,15 @@ fn hold SortedMap[K, V].range(low, high K) List[SortedRef[K, V]] {
 }
 
 // Returns the keys in ascending order as views of this map: the list is new, the keys
-// are not copied.
-fn hold SortedMap[K, V].keys() List[&K] {
-	var out List[&K] = []
+// are not copied. Read each key as `item.value`.
+fn hold SortedMap[K, V].keys() List[SortedItem[K]] {
+	var out List[SortedItem[K]] = []
 
 	for c in 0..self.key_chunks.length() {
 		var at = 0
 
 		while at < self.key_chunks[c].length() {
-			out.append(self.key_chunks[c][at])
+			out.append(SortedItem(self.key_chunks[c][at]))
 			at += 1
 		}
 	}
@@ -331,15 +339,15 @@ fn hold SortedMap[K, V].keys() List[&K] {
 }
 
 // Returns the values in ascending key order as views of this map: the list is new, the
-// values are not copied.
-fn hold SortedMap[K, V].values() List[&V] {
-	var out List[&V] = []
+// values are not copied. Read each value as `item.value`.
+fn hold SortedMap[K, V].values() List[SortedItem[V]] {
+	var out List[SortedItem[V]] = []
 
 	for c in 0..self.value_chunks.length() {
 		var at = 0
 
 		while at < self.value_chunks[c].length() {
-			out.append(self.value_chunks[c][at])
+			out.append(SortedItem(self.value_chunks[c][at]))
 			at += 1
 		}
 	}
@@ -458,18 +466,19 @@ fn hold SortedSet[T].floor(value T) &T? {
 }
 
 // Returns the members with `low` <= member < `high`, in ascending order, as views of
-// this set.
-fn hold SortedSet[T].range(low, high T) List[&T] {
-	var out List[&T] = []
+// this set. Read each member as `item.value`.
+fn hold SortedSet[T].range(low, high T) List[SortedItem[T]] {
+	var out List[SortedItem[T]] = []
 	var found = self.members.range(low, high)
 	for entry in found {
-		out.append(entry.key)
+		out.append(SortedItem(entry.key))
 	}
 	return out
 }
 
-// Returns the members in ascending order as views of this set.
-fn hold SortedSet[T].values() List[&T] {
+// Returns the members in ascending order as views of this set. Read each member as
+// `item.value`.
+fn hold SortedSet[T].values() List[SortedItem[T]] {
 	return self.members.keys()
 }
 

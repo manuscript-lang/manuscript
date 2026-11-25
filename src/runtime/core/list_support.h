@@ -10,9 +10,6 @@
 /* Raises the fault "list size overflow". */
 void msrt_post_list_overflow(void);
 
-/* count * size of a slot, faulting on overflow. */
-bool msrt_list_buffer_bytes(size_t count, size_t slot_size, size_t *bytes);
-
 /* a + b, faulting on overflow. */
 bool msrt_list_checked_add(size_t a, size_t b, size_t *sum);
 
@@ -29,9 +26,6 @@ MsList msrt_list_with_slots(const MsTypeDesc *d, size_t count, size_t capacity);
 
 /* "List.splice: <what> must be between 0 and <high>, found <found>". */
 void msrt_post_splice(const char *what, int64_t found, size_t high);
-
-/* "<operation>: start/end must satisfy 0 <= start <= end <= <length>; found start S and end E". */
-void msrt_post_bounds(const char *operation, size_t length, int64_t start, int64_t end);
 
 /* Faults unless 0 <= start <= end <= length. */
 bool msrt_check_bounds(const char *operation, size_t length, int64_t start, int64_t end);

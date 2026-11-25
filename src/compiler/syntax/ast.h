@@ -1,4 +1,4 @@
-/* The untyped syntax tree. Mirrors crates/ms-syntax/src/ast.rs: the same shapes, positions and
+/* The untyped syntax tree. Node shapes, positions and
  * node ids (dense per module, allocated in the same order). Nodes live in the parse arena and are
  * referenced by pointer; lists are (pointer, length) pairs of node pointers. */
 #ifndef MS_SYNTAX_AST_H

@@ -184,7 +184,8 @@ static void walk(Lower *cx, MirTy ty) {
   }
 }
 
-void lower_shape_hooks(Lower *cx, MirTy ty) {
+/* Builds the text and JSON hooks of the types a shape of `ty` describes that declare their own `to_string` or `to_json`. */
+static void lower_shape_hooks(Lower *cx, MirTy ty) {
   walk(cx, ty);
 }
 

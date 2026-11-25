@@ -40,6 +40,7 @@ static void end_line(Scanner *s, size_t line_start) {
 }
 
 static bool fail_unterminated_delimiter(Scanner *s) {
+  s->open_at_end = true;
   uint8_t open = lex_open_char(s->delimiters.ptr[s->delimiters.len - 1]);
   MsPos opener = s->opened.ptr[s->opened.len - 1];
   MsSpan message = ms_message_format(
@@ -56,6 +57,40 @@ static bool finish_input(Scanner *s) {
   }
   lex_emit_layout(s, MS_T_Eof);
   return true;
+}
+
+/* The delimiter stacks at the start of a line, kept so a line that fails to lex can be dropped whole. */
+typedef struct Snapshot {
+  uint8_t *delimiters;
+  MsPos *opened;
+  size_t *groups;
+  size_t ndelimiters, nopened, ngroups;
+} Snapshot;
+
+static Snapshot snapshot_take(Scanner *s) {
+  Snapshot copy = {.ndelimiters = s->delimiters.len, .nopened = s->opened.len, .ngroups = s->groups.len};
+  copy.delimiters = MS_ARENA_NEW_ARRAY(s->arena, uint8_t, copy.ndelimiters + 1);
+  copy.opened = MS_ARENA_NEW_ARRAY(s->arena, MsPos, copy.nopened + 1);
+  copy.groups = MS_ARENA_NEW_ARRAY(s->arena, size_t, copy.ngroups + 1);
+  __builtin_memcpy(copy.delimiters, s->delimiters.ptr, copy.ndelimiters * sizeof(uint8_t));
+  __builtin_memcpy(copy.opened, s->opened.ptr, copy.nopened * sizeof(MsPos));
+  __builtin_memcpy(copy.groups, s->groups.ptr, copy.ngroups * sizeof(size_t));
+  return copy;
+}
+
+static void snapshot_restore(Scanner *s, const Snapshot *copy) {
+  s->delimiters.len = 0;
+  s->opened.len = 0;
+  s->groups.len = 0;
+  for (size_t at = 0; at < copy->ndelimiters; at++) {
+    byte_list_push(&s->delimiters, copy->delimiters[at]);
+  }
+  for (size_t at = 0; at < copy->nopened; at++) {
+    pos_list_push(&s->opened, copy->opened[at]);
+  }
+  for (size_t at = 0; at < copy->ngroups; at++) {
+    size_list_push(&s->groups, copy->groups[at]);
+  }
 }
 
 /* Scans the whole source. Returns false with the diagnostic in s->diag on the first error. */
@@ -76,8 +111,15 @@ MS_NODISCARD static bool run(Scanner *s) {
       continue;
     }
     size_t line_start = lex_token_count(s);
+    Snapshot before = s->tolerant ? snapshot_take(s) : (Snapshot){0};
     if (!lex_scan_line_tokens(s) || !close_virtual_paren(s)) {
-      return false;
+      if (!s->tolerant || s->open_at_end) {
+        return false;
+      }
+      snapshot_restore(s, &before); /* a line with a lexical error counts as no line: its delimiters are unknown */
+      while (s->offset < s->n && s->src[s->offset] != '\n') {
+        lex_advance(s);
+      }
     }
     end_line(s, line_start);
     if (s->offset < s->n) {
@@ -237,6 +279,17 @@ bool ms_lex_at(MsArena *arena, MsSpan source, uint32_t base_offset, uint32_t bas
   }
   lex_scanner_free(&s);
   return ok;
+}
+
+bool ms_lex_ends_open(MsArena *arena, MsSpan source) {
+  MsDiag ignored = {0};
+  Scanner s;
+  lex_scanner_init(&s, arena, source, NULL, &ignored);
+  s.tolerant = true;
+  (void)run(&s);
+  const bool open = s.open_at_end;
+  lex_scanner_free(&s);
+  return open;
 }
 
 bool ms_lex_interpolation(MsArena *arena, MsSpan source, size_t origin, const MsBounds *bounds,

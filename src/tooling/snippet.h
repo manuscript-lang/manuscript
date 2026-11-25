@@ -1,5 +1,5 @@
 /* tooling/snippet.h: the source excerpt printed under a terminal diagnostic: the offending line with a caret
- * underline beneath its span, as crates/ms-cli/src/snippet.rs prints it. */
+ * underline beneath its span prints it. */
 #ifndef MS_CLI_SNIPPET_H
 #define MS_CLI_SNIPPET_H
 

@@ -1,6 +1,5 @@
 /* Owns the expression rules of the terse family: longer spellings of shorter forms that mean the same thing
- * (MSL118 to MSL120, MSL127, MSL129 to MSL132, MSL134, MSL135). The statement rules are in lint_terse_stmts.c. Port
- * of crates/ms-tooling/src/lint/terse.rs. */
+ * (MSL118 to MSL120, MSL127, MSL129 to MSL132, MSL134, MSL135). The statement rules are in lint_terse_stmts.c. */
 #include "tooling/lint_terse.h"
 
 #include "base/message.h"
@@ -67,7 +66,8 @@ MsSpan terse_keep(const TerseScan *scan, MsStrBuild *text) {
   return kept;
 }
 
-bool terse_is_path(const MsExpr *e) {
+/* Whether the written `e` is a `name` path or a field path over names. */
+static bool terse_is_path(const MsExpr *e) {
   return e->kind == MS_E_NAME || (e->kind == MS_E_MEMBER && terse_is_path(e->u.member.left));
 }
 
@@ -96,7 +96,7 @@ static const MsExpr *length_of(const TerseScan *scan, const MsExpr *e) {
 }
 
 /* `x.length() == 0` and, in a condition, `x.length() != 0` / `> 0`. */
-void terse_emptiness(const TerseScan *scan, const MsExpr *e, bool condition) {
+static void terse_emptiness(const TerseScan *scan, const MsExpr *e, bool condition) {
   if (e->kind != MS_E_BINARY) {
     return;
   }

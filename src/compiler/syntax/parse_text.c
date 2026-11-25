@@ -42,7 +42,7 @@ static void multiline_body(MsSpan body, MsSpan *content, size_t *indent, size_t 
 }
 
 /* Removes up to `indent` leading blanks from every line of `content`. */
-MsSpan parse_dedent(Parser *p, MsSpan content, size_t indent) {
+static MsSpan parse_dedent(Parser *p, MsSpan content, size_t indent) {
   size_t bm = p->bytes->len;
   size_t i = 0;
   bool line_begin = true;

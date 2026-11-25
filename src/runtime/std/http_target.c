@@ -35,7 +35,8 @@ static int hex_value(uint8_t b) {
   return b >= 'A' && b <= 'F' ? b - 'A' + 10 : -1;
 }
 
-bool ms_http_unescape(MsSpan raw, MsString *out) {
+/* Percent-decodes `raw` into *out (owned); false when an escape is malformed. */
+static bool ms_http_unescape(MsSpan raw, MsString *out) {
   MsStrBuild text = ms_strbuild_new();
   for (size_t i = 0; i < raw.len;) {
     if (raw.ptr[i] != '%') {
@@ -82,7 +83,8 @@ static void clean_segment(SpanList *stack, MsSpan seg, bool rooted) {
   }
 }
 
-MsString ms_http_clean_path(MsSpan path) {
+/* Go's path.Clean keeping the trailing slash of the input (except for the root). */
+static MsString ms_http_clean_path(MsSpan path) {
   const bool rooted = path.len > 0 && path.ptr[0] == '/';
   SpanList stack = {0};
   size_t start = 0;

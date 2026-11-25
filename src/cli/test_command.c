@@ -1,6 +1,5 @@
 /* Owns `ms test` (test_command.h): reads and validates the arguments, checks each input with its test files, builds
- * the test executable, plans which tests run and prints their results. Port of crates/ms-cli/src/engine/testing.rs
- * for tests. Not yet ported: --watch, `--match`/`--exclude` (they need a regular-expression engine the
+ * the test executable, plans which tests run and prints their results. Not yet ported: --watch, `--match`/`--exclude` (they need a regular-expression engine the
  * driver does not have), several test files in one executable, fault records and benches. */
 #include "cli/test_command.h"
 

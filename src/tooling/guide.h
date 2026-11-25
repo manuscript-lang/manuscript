@@ -1,5 +1,5 @@
 /* tooling/guide.h: documentation of the bundled standard library: a snapshot of every importable module read from the
- * embedded sources, and the bounded pages and search `ms search_symbol` prints from it. Port of crates/ms-tooling/src/guide.
+ * embedded sources, and the bounded pages and search `ms search_symbol` prints from it.
  * Texts live in the arena. */
 #ifndef MS_TOOLING_GUIDE_H
 #define MS_TOOLING_GUIDE_H

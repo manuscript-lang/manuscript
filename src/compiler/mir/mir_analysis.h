@@ -20,10 +20,6 @@ MS_NODISCARD MS_NONNULL bool mir_result_mode(const MirModule *module, const MirF
  * room for that many entries. */
 void mir_arg_modes(const MirModule *module, const MirFunc *func, const MirInst *inst, MirMode *out);
 
-/* The arguments a `call.ind` (from the closure's type) or `call.method` (from the interface method) passes
- * owned, as a bit set (see mir_owns). */
-uint64_t mir_indirect_owned(const MirModule *module, const MirFunc *func, const MirInst *inst);
-
 /* Whether the owned result of `inst` points into its operands (an interface view, a call to a view returner,
  * a borrowing variant). Passes that move drops treat it as a borrow. */
 bool mir_result_views(const MirModule *module, const MirFunc *func, const MirInst *inst);
@@ -77,6 +73,29 @@ uint32_t mir_rpo(MsArena *arena, const MirFunc *func, MirBlock **order);
  * mir_rpo's result of `count` blocks. */
 MirBlock *mir_dominators(MsArena *arena, const MirFunc *func, const MirBlock *order, uint32_t count,
                          const MirPreds *preds);
+
+/* Whether block `a` dominates block `b` under `idom` (an unreachable block is dominated only by itself). One
+ * query walks the tree; use `mir_dom_tree` when a pass asks many. */
+bool mir_dominates(const MirBlock *idom, MirBlock a, MirBlock b);
+
+/* The dominator tree as preorder intervals: `a` dominates `b` when `b`'s number lies in `a`'s interval, so a query
+ * costs two compares however deep the tree is. Walking `idom` from `b` up to `a` made each query as long as the tree
+ * is deep, and a long function (a dominator chain per statement) quadratic. */
+typedef struct MirDomTree {
+  const MirBlock *idom;
+  const uint32_t *pre;  /* preorder number of a reachable block */
+  const uint32_t *size; /* blocks in the subtree */
+} MirDomTree;
+
+/* The interval form of `idom` (from mir_dominators over `order`, mir_rpo's `reachable` blocks). */
+MirDomTree mir_dom_tree(MsArena *arena, const MirFunc *func, const MirBlock *order, uint32_t reachable,
+                        const MirBlock *idom);
+
+/* Whether `a` dominates `b`; a reachable block dominates itself, an unreachable one nothing. */
+static inline bool mir_tree_dominates(const MirDomTree *tree, MirBlock a, MirBlock b) {
+  return tree->idom[a] != MIR_NONE && tree->idom[b] != MIR_NONE && tree->pre[b] >= tree->pre[a] &&
+         tree->pre[b] - tree->pre[a] < tree->size[a];
+}
 
 /* The number of instructions in `func`, excluding terminators. */
 uint32_t mir_inst_count(const MirFunc *func);

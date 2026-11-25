@@ -163,7 +163,8 @@ bool *opt_inline_cyclic(MsArena *arena, const OptInlineGraph *g) {
   return out;
 }
 
-bool *opt_blocks_in_loops(MsArena *arena, const MirFunc *f) {
+/* Per block: whether it lies on a cycle of the control-flow graph. */
+static bool *opt_blocks_in_loops(MsArena *arena, const MirFunc *f) {
   OptInlineGraph g = {.n = (uint32_t)f->blocks.len};
   g.off = MS_ARENA_NEW_ARRAY_UNINIT(arena, uint32_t, (size_t)g.n + 1);
   uint32_t total = 0;

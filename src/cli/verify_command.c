@@ -1,6 +1,5 @@
 /* Driver: `ms verify` (see verify_command.h). Each step (check, fmt --check, lint, test) is this program run on the
- * target with `--json`; verify embeds each result in one document or summarizes them as text. Port of
- * crates/ms-cli/src/verify.rs. Status 0 is every step passed or skipped, 1 a failed step, 2 a usage error. */
+ * target with `--json`; verify embeds each result in one document or summarizes them as text. Status 0 is every step passed or skipped, 1 a failed step, 2 a usage error. */
 #include "cli/verify_command.h"
 
 #include <stdio.h>
@@ -189,10 +188,6 @@ static MsSpan number_member(const MsJson *object, const char *key) {
   return member != NULL && member->kind == MS_JSON_NUMBER ? member->text : ms_span_of_text("0");
 }
 
-static void print_span(MsSpan text) {
-  (void)fwrite(text.ptr, 1, text.len, stderr);
-}
-
 /* One printed finding, capped at the limit with a "... N more" line. */
 typedef struct Printer {
   size_t printed, total;
@@ -201,7 +196,7 @@ typedef struct Printer {
 static void print_finding(Printer *printer, const MsStrBuild *line) {
   if (printer->total < FINDING_LIMIT) {
     (void)fputs("  ", stderr);
-    print_span(ms_strbuild_span(line));
+    ms_span_write(stderr, ms_strbuild_span(line));
     (void)fputc('\n', stderr);
   }
   printer->total++;

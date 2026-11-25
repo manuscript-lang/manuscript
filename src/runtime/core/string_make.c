@@ -12,7 +12,8 @@
 
 /* ---- shared constructors ---- */
 
-void msrt_string_limit_fault(void) {
+/* Raises the fault "string: limit exceeded". */
+static void msrt_string_limit_fault(void) {
   ms_fault_text(MS_FAULT_KIND_FAULT, "string: limit exceeded");
 }
 
@@ -20,7 +21,8 @@ void msrt_string_limit_post(void) {
   ms_fault_post_text(MS_FAULT_KIND_FAULT, "string: limit exceeded");
 }
 
-size_t msrt_string_total(size_t a, size_t b) {
+/* a + b, raising the fault past the string limit (for callers compiled code reaches; natives use the _post forms). */
+static size_t msrt_string_total(size_t a, size_t b) {
   size_t total = 0;
   if (!ms_size_add(a, b, &total) || total > MSRT_STRING_LIMIT) {
     msrt_string_limit_fault();
@@ -28,7 +30,8 @@ size_t msrt_string_total(size_t a, size_t b) {
   return total;
 }
 
-bool msrt_string_total_post(size_t a, size_t b, size_t *out) {
+/* a + b into *out, posting the limit fault and returning false past the string limit. */
+static bool msrt_string_total_post(size_t a, size_t b, size_t *out) {
   if (!ms_size_add(a, b, out) || *out > MSRT_STRING_LIMIT) {
     msrt_string_limit_post();
     return false;
@@ -205,7 +208,7 @@ static bool any_within(const MsString *string, const MsSpan *parts, size_t count
 
 /* `a` and then the parts, where the caller gives `a` up: an owned `a` grows in place, reallocating a
  * logarithmic number of times over a loop. Otherwise it is a join and `a` is released. */
-MsString msrt_string_append_parts(const MsString *a, const MsSpan *parts, size_t count) {
+static MsString msrt_string_append_parts(const MsString *a, const MsSpan *parts, size_t count) {
   const MsString first = *a;
   const size_t length = ms_string_length(&first);
   if (!msrt_string_owns(&first) || length == 0 || any_within(&first, parts, count)) {

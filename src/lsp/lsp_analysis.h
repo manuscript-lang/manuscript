@@ -51,6 +51,11 @@ const MsInspection *lsp_inspection(const LspAnalysis *analysis, bool standard);
 /* Checks `doc` as the entry of its own graph, with every open document's text in place of disk. The latest result is kept
  * until an open document's text changes, so successive requests share one check. */
 void lsp_analyze(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out);
+
+/* The analysis of another file while the caller still reads an earlier one: a cached analysis when there is one, else an
+ * analysis of its own that does not enter the cache. Entering it could evict, and free, the analysis the caller holds.
+ * End with lsp_analysis_release. */
+void lsp_analyze_scan(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out);
 /* The same with `count` files of `changed` taking the place of the open documents' text (or of disk). */
 void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
                          LspAnalysis *out);

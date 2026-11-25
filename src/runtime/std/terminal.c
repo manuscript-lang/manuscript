@@ -31,7 +31,8 @@ enum {
 static _Atomic(MsTerminal *) active_terminal = NULL;
 static atomic_flag exit_hook_registered = ATOMIC_FLAG_INIT;
 
-MsTerminal *ms_terminal_active(void) { return atomic_load(&active_terminal); }
+/* The raw terminal holding the host terminal, or NULL. */
+static MsTerminal *ms_terminal_active(void) { return atomic_load(&active_terminal); }
 
 /* ---- the host terminal ---- */
 

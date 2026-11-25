@@ -26,6 +26,7 @@ static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *
     const uint32_t added = ms_check_add_module(program, file, &module->syntax);
     program->modules.ptr[added].targets = module->targets;
     program->modules.ptr[added].source = module->source;
+    program->modules.ptr[added].missing = module->missing;
     if (module->std_name.len != 0) {
       MsStrBuild id = ms_strbuild_new();
       ms_strbuild_append_text(&id, "@std/");

@@ -185,6 +185,25 @@ static uint32_t *inline_counts(ShapeBuild *build, const MirTypeDef *def) {
   return counts;
 }
 
+/* Marks `copy` (a rebased copy of the shape of `ty`) as embedded and gives it the table of where each of its `n` leaves lies
+ * (`abs`, from `abs[0]`) and where its own layout puts it, so the runtime can hand a hook the value in its own layout. */
+static void embed_leaves(ShapeBuild *build, MirTy ty, MsShape *copy, const uint32_t *abs, size_t n) {
+  const MsSpan leaves = mir_leaves(build->layouts, ty);
+  if (leaves.len != n) {
+    return;
+  }
+  uint32_t *own = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, n + 1);
+  (void)mir_mem_layout(leaves, own);
+  copy->flags |= MS_SHAPE_EMBEDDED;
+  copy->value = (uint32_t)build->members.len;
+  member_list_push(&build->members, (MsShapeMember){.name = MS_SHAPE_NONE, .shape = MS_SHAPE_NONE, .count = (uint32_t)n});
+  for (size_t leaf = 0; leaf < n; leaf++) {
+    member_list_push(&build->members, (MsShapeMember){.name = MS_SHAPE_NONE, .shape = MS_SHAPE_NONE,
+                                                      .offset = abs[leaf] - abs[0], .tag = own[leaf],
+                                                      .count = mir_leaf_size((MirLeaf)leaves.ptr[leaf])});
+  }
+}
+
 static uint32_t embed_record(ShapeBuild *build, uint32_t shape_index, const uint32_t *abs, size_t n) {
   const MsShape shape = build->shapes.ptr[shape_index];
   const MirTyData *data = mir_ty_data(build->module, build->types.ptr[shape_index]);
@@ -199,6 +218,7 @@ static uint32_t embed_record(ShapeBuild *build, uint32_t shape_index, const uint
   MsShape copy = shape;
   copy.first = (uint32_t)build->members.len;
   push_fields(build, def, shape.first, offsets, kids);
+  embed_leaves(build, build->types.ptr[shape_index], &copy, abs, n);
   return push_copy(build, shape_index, copy);
 }
 
@@ -321,6 +341,7 @@ static uint32_t embed_alternative(ShapeBuild *build, uint32_t shape_index, const
   }
   MsShape copy = shape;
   copy.first = first;
+  embed_leaves(build, ty, &copy, abs, n);
   return push_copy(build, shape_index, copy);
 }
 

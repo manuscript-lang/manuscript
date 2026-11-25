@@ -1,5 +1,4 @@
-/* Owns the lint entry point of lint.h: runs each rule group and orders what they found. Port of lint_modules in
- * crates/ms-tooling/src/lint/mod.rs. */
+/* Owns the lint entry point of lint.h: runs each rule group and orders what they found. */
 #include "tooling/lint.h"
 
 #include "base/sort.h"

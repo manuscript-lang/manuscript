@@ -21,7 +21,8 @@ static void stream_drop(MsObj *object) {
   ms_free(stream);
 }
 
-MsStream *ms_stream_new(uv_file fd, bool owned, MsSpan name) {
+/* A stream over `fd`, which it closes when `owned`; `name` is copied. */
+static MsStream *ms_stream_new(uv_file fd, bool owned, MsSpan name) {
   MsStream *stream = ms_alloc_zeroed(sizeof *stream);
   stream->header.drop = stream_drop;
   stream->fd = fd;
@@ -189,7 +190,7 @@ bool ms_stream_read_raw(const MsStream *stream, uint8_t *buffer, size_t length, 
   return transfer(stream, &job, "read", count, fail);
 }
 
-bool ms_stream_write_raw(const MsStream *stream, const uint8_t *data, size_t length, size_t *count, MsFail *fail) {
+static bool ms_stream_write_raw(const MsStream *stream, const uint8_t *data, size_t length, size_t *count, MsFail *fail) {
   RawJob job = {.data = data, .length = length, .write = true};
   return transfer(stream, &job, "write", count, fail);
 }

@@ -26,8 +26,6 @@ MS_NODISCARD bool ms_ip_parse(MsSpan text, MsIp *out);
 void ms_ip_normalize(MsIp *ip);
 /* RFC 5952 text; an IPv4-mapped address prints as ::ffff:a.b.c.d. */
 void ms_ip_text(const MsIp *ip, MsStrBuild *out);
-/* Keeps the first `bits` bits. */
-void ms_ip_mask(MsIp *ip, unsigned bits);
 
 /* `addr/bits` with the address masked; the bits are decimal without a leading zero. */
 MS_NODISCARD bool ms_cidr_parse(MsSpan text, MsCidr *out);

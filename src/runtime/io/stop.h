@@ -16,11 +16,6 @@ enum {
   MS_STOP_TERMINATE = 15, /* SIGTERM: terminate, console close, logoff, shutdown */
 };
 
-/* The stop request a signal number stands for: MS_STOP_INTERRUPT for SIGINT (and Ctrl-Break on Windows),
- * MS_STOP_TERMINATE for every other watched signal (SIGTERM; console close, logoff and shutdown reach Windows
- * programs as SIGHUP). */
-int ms_io_stop_request_of(int signal_number);
-
 /* A stop request arrived; `signal` is MS_STOP_INTERRUPT or MS_STOP_TERMINATE. */
 typedef void (*MsStopFn)(int signal);
 /* The grace period armed by ms_io_stop_arm ran out. It ends the process. */

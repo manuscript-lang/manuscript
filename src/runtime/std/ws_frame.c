@@ -98,7 +98,8 @@ size_t ms_ws_mask_bytes(const uint8_t key[4], size_t pos, uint8_t *data, size_t 
   return (pos + length) & 3;
 }
 
-bool ms_ws_new_mask_key(uint8_t key[4]) {
+/* A fresh masking key from the operating system; false when it has none. */
+static bool ms_ws_new_mask_key(uint8_t key[4]) {
   MsBytes bytes = {0};
   MsString err = ms_string_empty();
   const bool ok = msstd_random_os_bytes(4, &bytes, &err) == MS_STATUS_OK && bytes.len == 4;
@@ -110,7 +111,8 @@ bool ms_ws_new_mask_key(uint8_t key[4]) {
   return ok;
 }
 
-void ms_ws_encode_frame(MsBytes *out, uint8_t opcode, bool fin, bool rsv1, MsSpan payload,
+/* Appends one frame; a masked frame (`key` not null) carries the payload XORed with the key. */
+static void ms_ws_encode_frame(MsBytes *out, uint8_t opcode, bool fin, bool rsv1, MsSpan payload,
                         const uint8_t *key) {
   const uint8_t b0 = (uint8_t)((opcode & 0x0f) | (fin ? 0x80 : 0) | (rsv1 ? 0x40 : 0));
   const uint8_t mask_bit = key != NULL ? 0x80 : 0;

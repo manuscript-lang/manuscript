@@ -264,7 +264,10 @@ static int encode_here(Encode *state, uint32_t shape_index, const uint8_t *slot,
   const uint8_t *value = ms_shape_resolve(shape, slot);
   const MsShapeHook *hook = ms_shape_hook(state->table, shape_index);
   if ((shape->flags & MS_SHAPE_JSON_FORM) != 0 && hook != NULL && hook->json_encode != NULL) {
-    return hook->json_encode(slot, state->writer) == 0 ? WRITTEN : no_form(state);
+    MsOwnSlot own;
+    const uint8_t status = hook->json_encode(ms_own_gather(&own, state->table, shape, slot), state->writer);
+    ms_own_done(&own);
+    return status == 0 ? WRITTEN : no_form(state);
   }
   if ((shape->flags & MS_SHAPE_JSON_TREE) != 0 && shape->kind == MS_SHAPE_ALTERNATIVE) {
     return encode_tree(state, shape, value, depth);

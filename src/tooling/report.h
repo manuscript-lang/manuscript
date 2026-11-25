@@ -1,5 +1,4 @@
-/* tooling/report.h: the review report, fixed templates filled with checker facts. Port of the project half of
- * crates/ms-tooling/src/report.rs. */
+/* tooling/report.h: the review report, fixed templates filled with checker facts. */
 #ifndef MS_TOOLING_REPORT_H
 #define MS_TOOLING_REPORT_H
 

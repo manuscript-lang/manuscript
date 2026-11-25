@@ -1,5 +1,5 @@
 /* Owns editor recovery parsing: retains the declarations of a file that parse independently and reports
- * the diagnostics of those that do not. Port of crates/ms-syntax/src/partial.rs. */
+ * the diagnostics of those that do not. */
 #include "base/sort.h"
 #include "compiler/syntax/partial_internal.h"
 
@@ -48,14 +48,10 @@ static void split_lines(Split *split) {
   }
 }
 
-/* Whether lexing `prefix` fails with an unterminated delimiter or multi-line text. */
+/* Whether lexing `prefix` ends inside an unterminated delimiter or multi-line text. */
 static bool prefix_unterminated(MsSpan prefix) {
   MsArena scratch = ms_arena_new();
-  MsLexed lexed;
-  MsDiag diag = {0};
-  bool failed = !ms_lex(&scratch, prefix, &lexed, &diag);
-  bool open = failed && (ms_span_starts_with(diag.message, ms_span_of_text("unterminated delimiter")) ||
-                         ms_span_starts_with(diag.message, ms_span_of_text("unterminated multi-line text")));
+  bool open = ms_lex_ends_open(&scratch, prefix);
   ms_arena_free(&scratch);
   return open;
 }

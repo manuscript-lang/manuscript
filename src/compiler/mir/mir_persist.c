@@ -34,7 +34,7 @@ static PNode *ps_new(MsArena *a, const PNode *like) {
   return n;
 }
 
-bool owner_contains(const OwnerSet *s, uint32_t v) {
+static bool owner_contains(const OwnerSet *s, uint32_t v) {
   if ((uint64_t)v >= ps_capacity(s->height)) {
     return false;
   }

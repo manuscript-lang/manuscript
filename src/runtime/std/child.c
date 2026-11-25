@@ -30,7 +30,8 @@ void ms_child_disarm(MsChild *child, uint64_t token) {
   (void)ms_token_free(token);
 }
 
-void ms_child_wake(MsChild *child) {
+/* Wakes the waiting task, if any (any thread). */
+static void ms_child_wake(MsChild *child) {
   ms_child_lock(child);
   if (child->token != 0) {
     ms_token_post_remote(child->token, 1);
