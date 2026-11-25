@@ -305,6 +305,11 @@ static void type_parameter_sites(Builder *b, uint32_t module, ParamSites *out) {
       scope_declare_all(b, &scope, out, decl->u.type.type_params);
       collect_type_params(b, decl->u.type.type_params);
       param_sites(b, decl->u.type.fields);
+      {
+        /* A field default (`members SortedMap[T, Bool] = SortedMap[T, Bool]()`) writes types in its expression. */
+        const MsVisitor visitor = {.ctx = b, .stmt = body_types_stmt, .expr = body_types_expr};
+        ms_walk_decl(&visitor, decl);
+      }
       break;
     case MS_D_ENUM:
       scope_declare_all(b, &scope, out, decl->u.enumeration.type_params);
