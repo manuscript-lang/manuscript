@@ -99,3 +99,4 @@ Perf benchmarks, profiling.
 - [A list of plain records is tagged like a list of scalars](a-list-of-plain-records-is-tagged-like-a-list-of-scalars.md): `graph` -4.0% instructions; swapping heap entries no longer rewrites the list header.
 - [A split loop walks the text and makes no list](a-split-loop-walks-the-text-and-makes-no-list.md): `for piece in text.split(sep)` reads pieces by byte offset; grep -21%, report -19%, treegrep -21% wall time.
 - [A parameter starts from what every caller passes](a-parameter-starts-from-what-every-caller-passes.md): `workers` -31.7% instructions (equal to checked Rust), `graph` -2.3%; range seeded per callee, bounds handed to LLVM as assumes.
+- [A file read runs inline when every other task is stalled](a-file-read-runs-inline-when-the-other-tasks-are-stalled.md): `pargroup` 41-50 ms to 17-21 ms (Rust 28-33); the pool hand-off was 6 futex, 1.5 epoll and 1.5 eventfd writes per file.
