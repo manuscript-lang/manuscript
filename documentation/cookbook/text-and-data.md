@@ -25,11 +25,7 @@ fn show(number Int) Result[Void, Error] {
 
 fn main() Int {
     number := arguments().get_or(0, "42").parse_int()
-    if value := number {
-        if show(value).is_ok() {
-            return 0
-        }
-    }
+    if number != null and show(number).is_ok() { return 0 }
     return 1
 }
 ```
@@ -42,7 +38,7 @@ ms run number.ms -- 42
 42
 ```
 
-Use `get_or(default)` for a default, or `if v := x` with a failure path ([Optional values](../core-language/types/optionals.md)).
+Use `x or default` for a default, or compare with `null` and take a failure path ([Optional values](../core-language/types/optionals.md)).
 
 ## Parse JSON
 

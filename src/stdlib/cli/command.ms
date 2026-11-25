@@ -14,22 +14,25 @@ Parsing reads only the `List[String]` you give it; pass `arguments()` from `@std
 import Arg, Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import arguments from "@std/os/env.ms"
 
-type Greeting:
+type Greeting {
     name String
     shout Bool
+}
 
-fn greet(options Greeting) Int!:
+fn greet(options Greeting) Int! {
     return ok(0)
+}
 
-fn main() Int:
+fn main() Int {
     greeting := command[Greeting](
         name: "greet",
         about: "Print a greeting",
         flags: [Flag("shout", FlagKind.Bool, "s", help: "Uppercase the greeting")],
         args: [Arg("name", help: "Who to greet")],
-        run: fn options: greet(options)
+        run: options => greet(options)
     )
     return Command(name: "tool", children: [greeting]).execute(arguments())
+}
 ```
 */
 import (

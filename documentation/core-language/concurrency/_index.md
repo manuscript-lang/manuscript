@@ -5,7 +5,7 @@ weight = 8
 
 # Concurrent tasks
 
-`promise(fn: ...)` starts concurrent work on a thread the runtime picks and returns a `Promise[T]`; `wait()` takes its result. Any function can wait, including functions that return a value directly, so there is no `async` or `await`.
+`promise(() => ...)` starts concurrent work on a thread the runtime picks and returns a `Promise[T]`; `wait()` takes its result. Any function can wait, including functions that return a value directly, so there is no `async` or `await`.
 
 Values that arrive over time travel on [streams](streams.md), which are pulled lazily: `ReadStream.next()` asks its source for one item and waits when needed. An in-memory `pipe` connects promises.
 
@@ -32,9 +32,9 @@ The test passes with the results in input order: `[9, 16]`. The two operations m
 
 ## Starting, waiting and sharing
 
-1. A `Promise[T]` represents an operation with one result. `wait()` gives `T!` and takes the result once. `promise(fn: ...)` starts work eagerly; stream reads may defer work until the wait.
+1. A `Promise[T]` represents an operation with one result. `wait()` gives `T!` and takes the result once. `promise(() => ...)` starts work eagerly; stream reads may defer work until the wait.
 2. A task pauses at a wait, including waits inside called functions. Other promises on the same scheduler thread run when it yields; promises on other threads can run at the same time.
-3. `promise(fn: ...)` runs on a thread the runtime picks and stays there once it starts.
+3. `promise(() => ...)` runs on a thread the runtime picks and stays there once it starts.
    A promise nobody has started yet runs inside the task that waits for it, so a promise per call costs about a function call until another thread has idle time to take it. A CPU-heavy promise delays the promises sharing its thread until it waits.
    A promise may borrow what it captures, so the values it reads must outlive it (rule 4). A promise that a function returns owns its captures instead.
 4. Work you start ends before the values it uses. Dropping a promise cancels it and waits for it to end.

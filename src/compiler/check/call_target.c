@@ -77,7 +77,7 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
   }
   target->sig = symbol->ty;
   const MsSpan written = ms_names_span(body->program->names, symbol->name);
-  target->constructor = symbol->module >= body->program->user_modules &&
+  target->constructor = !ms_check_is_user_module(body->program, symbol->module) &&
                         (ms_span_is_text(written, "ok") || ms_span_is_text(written, "error") ||
                          ms_span_is_text(written, "some"));
   copy_vars(target, body->program->symbol_vars.ptr + symbol->var_at, symbol->var_count);

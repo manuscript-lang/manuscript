@@ -22,7 +22,7 @@ fn add_gift(var cart Cart) Void {
     cart.items.append("gift card")
 }
 
-fn archive(cart Cart, var history List[Cart]) Void {
+fn archive(move cart Cart, var history List[Cart]) Void {
     history.append(cart)
 }
 
@@ -56,7 +56,7 @@ Sam has 4 items; archived: 3
 
 Leave out the `.clone()`:
 
-<!-- manuscript-example: {"mode":"error","contains":"moved here but used again","context":"type Cart {\n    owner String\n    items List[String]\n}\n\nfn archive(cart Cart, var history List[Cart]) Void {\n    history.append(cart)\n}","given":["cart Cart","var history List[Cart]"]} -->
+<!-- manuscript-example: {"mode":"error","contains":"moved here but used again","context":"type Cart {\n    owner String\n    items List[String]\n}\n\nfn archive(move cart Cart, var history List[Cart]) Void {\n    history.append(cart)\n}","given":["cart Cart","var history List[Cart]"]} -->
 ```manuscript
     archive(cart, history)
     print(cart.owner)

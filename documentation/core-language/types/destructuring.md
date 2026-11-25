@@ -28,10 +28,10 @@ Positions bind left to right. A `List[T]` binds each position as `T`, and its le
 
 ## Type bindings
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    email String\n}","given":["customer Customer"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer {\n    name String\n    email String\n}","given":["customer Customer","other Customer"]} -->
 ```manuscript
 {name, email} := customer
-{name: customer_name, email: customer_email} := customer
+{name: customer_name, email: customer_email} := other
 ```
 
 Shorthand binds a field to a local of the same name; `field: local` renames it. A pattern may select a subset of fields, and each must exist on the statically known type. A `Map` has no named fields and takes no field patterns.

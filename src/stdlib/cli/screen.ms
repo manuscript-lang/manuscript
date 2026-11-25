@@ -16,10 +16,11 @@ them show no half-drawn frame.
 import new_screen from "@std/cli/screen.ms"
 import raw_mode from "@std/cli/terminal.ms"
 
-fn main() Void!:
+fn main() Void! {
     raw := raw_mode()?
     var screen = new_screen()
     screen.draw(raw, ["> hello", "status: ready"], 0, 7)?
+}
 ```
 */
 import RawTerminal, terminal_size from "@std/cli/terminal.ms"

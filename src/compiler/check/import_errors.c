@@ -274,7 +274,7 @@ bool ms_check_is_prelude_declaration(MsSpan file, MsSpan name) {
 }
 
 bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol) {
-  return ms_check_is_prelude_declaration(ms_names_span(program->names, program->modules.ptr[symbol->module].file),
+  return ms_check_is_prelude_declaration(ms_names_span(program->names, program->modules.ptr[symbol->module].id),
                                          ms_names_span(program->names, symbol->name));
 }
 
@@ -308,7 +308,7 @@ static bool import_target(const ImportView *view, uint32_t index, uint32_t *targ
   if (ms_check_std_path(view->path, &written)) {
     const MsName file = ms_names_intern(view->program->names, view->path);
     for (uint32_t at = 0; at < view->program->modules.len; at++) {
-      if (view->program->modules.ptr[at].file == file) {
+      if (view->program->modules.ptr[at].id == file) {
         *target = at;
         return true;
       }

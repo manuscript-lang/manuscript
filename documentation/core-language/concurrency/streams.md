@@ -109,7 +109,7 @@ Save as `pipe_test.ms` and run `ms test pipe_test.ms`:
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import (
-    promise from "@std/concurrency/promise.ms",
+    Promise, promise from "@std/concurrency/promise.ms",
     WriteStream, pipe from "@std/io/io.ms",
     expect_equal from "@std/test/test.ms",
 )
@@ -120,12 +120,17 @@ fn send_numbers(var out WriteStream[Int]) Void! {
     }
 }
 
+fn start_producer(move out WriteStream[Int]) Promise[Void] {
+    return promise(() => send_numbers(out))
+}
+
 test "sum values from a producer" {
     var p = pipe[Int](capacity: 64)
-    var out = p.writer()
-    producer := promise(() => send_numbers(out))
+    var input = p.reader()
+    producer := start_producer(p.writer())
+    p.close()?
     var total = 0
-    for n in p.reader() {
+    for n in input {
         total += n
     }
     producer.wait()?

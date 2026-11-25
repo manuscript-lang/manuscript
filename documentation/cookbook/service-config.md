@@ -37,15 +37,15 @@ fn from_file(path String) Settings! {
 
 fn apply_environment(var settings Settings) Void! {
     env := environment()?
-    if value := env.get("PORT") {
+    port := env.get("PORT")
+    if port != null {
         settings.port = ok_or(
-            value.parse_int(),
+            port.parse_int(),
             Error("PORT is not a number", kind: "EINVAL"),
         )?
     }
-    if value := env.get("LOG_LEVEL") {
-        settings.level = value.clone()
-    }
+    level := env.get("LOG_LEVEL")
+    if level != null { settings.level = level.clone() }
     return ok()
 }
 

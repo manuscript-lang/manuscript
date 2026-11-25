@@ -57,6 +57,12 @@ add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIX
 file(WRITE ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms "fn main() Void {\n    return\n}\n")
 add_test(NAME std_full COMMAND ms check ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms --std)
 
+# A standard-library file opened from a checkout is the bundled module, not a second copy of it: no type is declared
+# twice, and the file follows the library's rules (reserved natives, prelude methods) rather than a program's.
+set(MS_STD_DIR ${CMAKE_SOURCE_DIR}/src/stdlib)
+add_test(NAME std_checkout COMMAND ms check ${MS_STD_DIR}/math/math.ms ${MS_STD_DIR}/core/core.ms ${MS_STD_DIR}/os/fs.ms
+  ${MS_STD_DIR}/internal/net.ms ${MS_STD_DIR}/time.ms ${MS_STD_DIR}/bytes.ms)
+
 # `ms add`, `ms install` and `ms remove` against a local git repository.
 add_test(NAME package_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/package
   -P ${CMAKE_SOURCE_DIR}/cmake/PackageRun.cmake)
@@ -85,6 +91,14 @@ endif()
 # The same on every platform with a pipe whose reader closes: the child exits nonzero (a write error, or SIGPIPE).
 add_test(NAME stdout_closed COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/stdout-closed-check.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_tests_properties(stdout_closed PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
+
+# The embedded-example check (docs-check) accepts a current example and rejects one in a removed syntax.
+add_test(NAME example_check_accepts_current COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/example-check.ms -- tests/checks/examples/current.md
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_test(NAME example_check_rejects_stale COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/example-check.ms -- tests/checks/examples/stale.md
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+set_tests_properties(example_check_accepts_current example_check_rejects_stale PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
+set_tests_properties(example_check_rejects_stale PROPERTIES WILL_FAIL TRUE)
 
 # Replays recorded language-server sessions (tests/lsp/<case>) over standard input and output.
 file(GLOB MS_LSP_CASES LIST_DIRECTORIES true ${CMAKE_SOURCE_DIR}/tests/lsp/*)

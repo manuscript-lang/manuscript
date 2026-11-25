@@ -26,6 +26,13 @@ static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *
     const uint32_t added = ms_check_add_module(program, file, &module->syntax);
     program->modules.ptr[added].targets = module->targets;
     program->modules.ptr[added].source = module->source;
+    if (module->std_name.len != 0) {
+      MsStrBuild id = ms_strbuild_new();
+      ms_strbuild_append_text(&id, "@std/");
+      ms_strbuild_append(&id, module->std_name);
+      program->modules.ptr[added].id = ms_names_intern(names, ms_strbuild_span(&id));
+      ms_strbuild_free(&id);
+    }
   }
   program->user_modules = (uint32_t)program->modules.len;
   program->check_std = true; /* an error in the bundled standard library fails every build that loads it */
@@ -37,16 +44,25 @@ static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *
     ms_check_bind_imports(program, index);
   }
   /* The standard modules may import each other, so each pass runs over all of them before the next. */
-  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
-    ms_check_type_variables(program, index);
+  for (uint32_t index = 0; index < program->modules.len; index++) {
+    if (!ms_check_is_user_module(program, index)) {
+      ms_check_type_variables(program, index);
+    }
   }
-  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
-    ms_check_signatures(program, index);
+  for (uint32_t index = 0; index < program->modules.len; index++) {
+    if (!ms_check_is_user_module(program, index)) {
+      ms_check_signatures(program, index);
+    }
   }
-  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
-    ms_check_methods(program, index);
+  for (uint32_t index = 0; index < program->modules.len; index++) {
+    if (!ms_check_is_user_module(program, index)) {
+      ms_check_methods(program, index);
+    }
   }
   for (uint32_t index = 0; index < program->user_modules; index++) {
+    if (!ms_check_is_user_module(program, index)) {
+      continue;
+    }
     program->stage = MS_STAGE_IMPORTS;
     ms_check_report_imports(program, index, graph->modules[index].source);
     program->stage = MS_STAGE_DECLARATIONS;
@@ -81,6 +97,9 @@ static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *
   ms_check_finite_functions(program);
   program->stage = MS_STAGE_WALK;
   for (uint32_t index = 0; index < program->user_modules; index++) {
+    if (!ms_check_is_user_module(program, index)) {
+      continue;
+    }
     const MsModule *tree = program->modules.ptr[index].tree;
     for (uint32_t at = 0; at < tree->ndecls; at++) {
       ms_check_fallthrough(program, index, tree->decls[at]);

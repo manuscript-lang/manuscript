@@ -69,7 +69,7 @@ type Box[T] {
     value T
 }
 
-fn identity[T](value T) T {
+fn identity[T](move value T) T {
     return value
 }
 
@@ -131,7 +131,7 @@ The expected result (return type, annotation, field, argument, or callback) fill
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-fn fail[T](message String) Result[T, Error] => error(Error(message))
+fn fail[T](move message String) Result[T, Error] => error(Error(message))
 
 fn first() Result[Int, Error] => fail("empty")  // T = Int
 failed Result[Int, Error] := fail("empty")
@@ -143,13 +143,13 @@ Empty lists, `null`, and similar expressions give no evidence of their own; once
 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
-fn count[T](values List[T]) Int {
+fn zero[T]() Int {
     return 0
 }
 
-known := count[Int]([])
-// Rejected: the empty list does not determine T.
-unknown := count([])
+known := zero[Int]()
+// Rejected: nothing determines T.
+unknown := zero()
 ```
 
 Generic constructors infer from fields or payloads, or from an expected application: `box Box[Int] := Box(value: 1)`. The result must be one complete application.

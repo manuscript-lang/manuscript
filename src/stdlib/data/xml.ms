@@ -24,8 +24,8 @@ prefix as written (`svg:rect`); namespaces are not resolved.
 ```manuscript
 import parse from "@std/data/xml.ms"
 doc := parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")?
-item := doc.find("item").get()
-print(item.attribute("id").get_or("")) // "1"
+item := ok_or(doc.find("item"), Error("no item", kind: "ENOENT"))?
+print(item.attribute("id") or "")   // "1"
 print(item.text())                  // "Hi & bye"
 ```
 */
