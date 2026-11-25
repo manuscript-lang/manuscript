@@ -179,9 +179,16 @@ type Tree {
 	index String
 }
 
-fn var Tree.put(path, body String) Void {
-	if not self.files.contains(path) { self.order.append(path.clone()) }
-	self.files[path.clone()] = body.clone()
+// Adds a page, taking the two collections it changes rather than the whole tree so a
+// caller can walk another part of the tree meanwhile.
+fn put_page(
+	var files Map[String, String],
+	var order List[String],
+	path,
+	body String,
+) Void {
+	if not files.contains(path) { order.append(path.clone()) }
+	files[path.clone()] = body.clone()
 }
 
 fn var Tree.link(parent, line String) Void {
@@ -219,7 +226,9 @@ fn site_tree(modules List[Module]) Tree {
 		source := source_of(module.path.clone(), source_path.clone())
 		old := old_stem(module.path.clone())
 		aliases := if old != path { f"aliases = [\"/standard-library/reference/{old}/\"]\n" } else { "" }
-		tree.put(
+		put_page(
+			tree.files,
+			tree.order,
 			f"{base}/{source_path}.md",
 			f"+++\ntitle = {quote(title.clone())}\nslug = {quote(last_part(path.clone()))}\nedit_source = {quote(source)}\n{aliases}+++\n\n{render(module.clone(), true)}",
 		)
@@ -244,13 +253,15 @@ fn site_tree(modules List[Module]) Tree {
 		tree.link(parent.clone(), f"- [{title}]({title}.md)\n")
 	}
 
-	for directory in tree.directory_order.clone() {
-		tree.put(
+	for directory in tree.directory_order {
+		put_page(
+			tree.files,
+			tree.order,
 			f"{base}/{directory}/_index.md",
 			tree.directories.get_or(directory, "").clone(),
 		)
 	}
-	tree.put(f"{base}/_index.md", tree.index.clone())
+	put_page(tree.files, tree.order, f"{base}/_index.md", tree.index.clone())
 	return tree
 }
 
