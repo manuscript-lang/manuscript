@@ -57,19 +57,11 @@ static MsSpan setting(const char *name, MsSpan fallback, MsString *storage) {
   return fallback;
 }
 
-/* The shared LLVM library to optimize and generate code with in-process, or empty for the opt and llc child processes.
- * `MS_LLVM` names a library (a library that does not load is an error) or `none` for the child processes. Unset, the
- * library installed beside ms (a build tree: the one `make build` fetched, MS_BUILD_LLVM) is used when it loads, and the
- * child processes otherwise. */
+/* The shared LLVM library ms optimizes and generates code with: `MS_LLVM` names one, otherwise the one installed beside
+ * ms (a build tree: the one `make build` fetched, MS_BUILD_LLVM). */
 static MsSpan choose_llvm(MsSpan installed, MsString *storage) {
   const MsSpan named = setting("MS_LLVM", ms_span_of_text(""), storage);
-  if (ms_span_is_text(named, "none")) {
-    return ms_span_of_text("");
-  }
-  if (named.len != 0) {
-    return named;
-  }
-  return installed.len != 0 && ms_file_is_regular(installed) && llvm_usable(installed) ? installed : ms_span_of_text("");
+  return named.len != 0 ? named : installed;
 }
 
 /* `MS_COUNT_OPS` set to anything but 0 counts operations in every build. */
@@ -198,23 +190,21 @@ static void unit_limits(BackendOptions *backend) {
 
 /* The objects of the program's modules, compiled at once: module `unit` goes to `objects[unit]`. */
 static bool make_objects(const MsLinkRequest *request, const BackendProgram *program, const MsStrBuild *irs,
-                         uint32_t units, MsSpan directory, MsSpan opt, MsSpan llc, MsSpan llvm,
+                         uint32_t units, MsSpan llvm,
                          const MsStrBuild *objects, MsSpan *error) {
   const bool debug = request->build_type == MS_BUILD_DEBUG;
-  if (llvm.len != 0) {
-    MsStrBuild load_why = ms_strbuild_new();
-    const bool loaded = llvm_load(llvm, &load_why);
-    if (!loaded) {
-      (void)fail(error, "", ms_strbuild_span(&load_why));
-    }
-    ms_strbuild_free(&load_why);
-    if (!loaded) {
-      return false;
-    }
+  MsStrBuild load_why = ms_strbuild_new();
+  const bool loaded = llvm_load(llvm, &load_why);
+  if (!loaded) {
+    (void)fail(error, "cannot load the LLVM library (MS_LLVM names it): ", ms_strbuild_span(&load_why));
+  }
+  ms_strbuild_free(&load_why);
+  if (!loaded) {
+    return false;
   }
   UnitJob jobs[EMIT_MAX_UNITS];
   for (uint32_t unit = 0; unit < units; unit++) {
-    jobs[unit] = (UnitJob){.options = {.opt = opt, .llc = llc, .llvm = llvm, .directory = directory, .speed = true,
+    jobs[unit] = (UnitJob){.options = {.llvm = llvm, .speed = true,
                                       .debug = debug, .vectorize = !debug, .module = &program->module,
                                       .tables = &program->tables, .unit = unit, .units = units},
                            .ir = ms_strbuild_span(&irs[unit]), .object = ms_strbuild_span(&objects[unit]),
@@ -277,31 +267,25 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, ir, &units, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
-  MsString opt_storage, llc_storage, lld_storage, files_storage, runtime_storage;
-  MsStrBuild opt_installed = ms_strbuild_new(), llc_installed = ms_strbuild_new(), lld_installed = ms_strbuild_new();
+  MsString lld_storage, files_storage, runtime_storage;
+  MsStrBuild lld_installed = ms_strbuild_new();
   MsStrBuild files_installed = ms_strbuild_new(), runtime_installed = ms_strbuild_new();
   MsString scratch = ms_string_empty();
   /* Installed beside its files, ms uses those; a build tree keeps the paths it was built with and PATH. */
   MsStrBuild root = ms_strbuild_new();
   const bool installed = ms_install_root(&root);
   const MsSpan root_span = ms_strbuild_span(&root);
-  MsSpan opt_fallback = ms_span_of_text("opt"), llc_fallback = ms_span_of_text("llc"), lld_fallback = ms_span_of_text("lld");
+  MsSpan lld_fallback = ms_span_of_text("lld");
   MsSpan files_fallback = ms_span_of_text(MS_BUILD_FILES);
   MsSpan runtime_fallback = ms_span_of_text(request->static_libc ? MS_BUILD_RUNTIME_STATIC : MS_BUILD_RUNTIME);
   if (installed) {
-    ms_install_tool(root_span, "opt", &opt_installed);
-    ms_install_tool(root_span, "llc", &llc_installed);
     ms_install_tool(root_span, "lld", &lld_installed);
     ms_path_append_joined(&files_installed, root_span, ms_span_of_text("files"));
     (void)ms_install_runtime(root_span, request->static_libc, &runtime_installed);
-    opt_fallback = ms_strbuild_span(&opt_installed);
-    llc_fallback = ms_strbuild_span(&llc_installed);
     lld_fallback = ms_strbuild_span(&lld_installed);
     files_fallback = ms_strbuild_span(&files_installed);
     runtime_fallback = ms_strbuild_span(&runtime_installed);
   }
-  const MsSpan opt = setting("MS_OPT", opt_fallback, &opt_storage);
-  const MsSpan llc = setting("MS_LLC", llc_fallback, &llc_storage);
   MsString llvm_storage;
   MsStrBuild llvm_installed = ms_strbuild_new();
   if (installed) {
@@ -335,10 +319,10 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
     ok = ms_file_write(ms_strbuild_span(&object[0]), ms_strbuild_span(&program.object)) ||
          fail(error, "cannot write the object file", ms_span_of(NULL, 0));
   } else if (ok) {
-    ok = make_objects(request, &program, ir, units, ms_string_span(&scratch), opt, llc, llvm, object, error);
+    ok = make_objects(request, &program, ir, units, llvm, object, error);
   }
   if (ok) {
-    const LinkOptions link = {.lld = lld, .llc = llc, .llvm = llvm, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
+    const LinkOptions link = {.lld = lld, .llvm = llvm, .files = files, .strip = request->build_type == MS_BUILD_MINSIZEREL,
                               .musl = request->static_libc};
     const LinkRequest job = {.object = ms_strbuild_span(&object[0]), .inputs = inputs, .input_count = count,
                              .output = request->output};
@@ -358,14 +342,10 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   ms_strbuild_free(&runtime_installed);
   ms_strbuild_free(&files_installed);
   ms_strbuild_free(&lld_installed);
-  ms_strbuild_free(&llc_installed);
-  ms_strbuild_free(&opt_installed);
   ms_string_release(&files_storage);
   ms_string_release(&lld_storage);
-  ms_string_release(&llc_storage);
   ms_string_release(&llvm_storage);
   ms_strbuild_free(&llvm_installed);
-  ms_string_release(&opt_storage);
   ms_backend_program_free(&program);
   ms_strbuild_free(&why);
   for (uint32_t unit = 0; unit < units; unit++) {

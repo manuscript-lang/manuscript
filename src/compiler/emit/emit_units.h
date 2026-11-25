@@ -1,4 +1,4 @@
-/* compiler/emit/emit_units.h: cutting a module into several LLVM modules, so `opt` and `llc` can run on each at once. */
+/* compiler/emit/emit_units.h: cutting a module into several LLVM modules, so LLVM can optimize and generate each at once. */
 #ifndef MS_COMPILER_EMIT_EMIT_UNITS_H
 #define MS_COMPILER_EMIT_EMIT_UNITS_H
 

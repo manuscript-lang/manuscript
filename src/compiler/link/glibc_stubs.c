@@ -120,28 +120,20 @@ static bool write_sources(const StubFiles *files, const GlibcExportList *all, Ms
   return ok;
 }
 
-/* The stub's object from its IR: through the loaded LLVM library when the build has one, otherwise with `llc`. */
+/* The stub's object from its IR, through the loaded LLVM library. */
 static bool make_object(const LinkOptions *options, const StubFiles *files, MsStrBuild *why) {
-  if (options->llvm.len != 0) {
-    MsBytes ir = {0};
-    if (!ms_file_read(ms_string_span(&files->source), &ir)) {
-      ms_strbuild_append_text(why, "cannot read the glibc stub source");
-      return false;
-    }
-    const LlvmSettings settings = {.library = options->llvm, .triple = ms_span_of_text(STUB_TRIPLE), .codegen_level = 2};
-    LlvmBuffer object = {0};
-    const bool ok = llvm_compile(&settings, ms_bytes_span(&ir), &object, why) &&
-                    ms_file_write(ms_string_span(&files->object), ms_span_of((const uint8_t *)object.data, object.size));
-    llvm_buffer_free(&object);
-    ms_bytes_free(&ir);
-    return ok;
+  MsBytes ir = {0};
+  if (!ms_file_read(ms_string_span(&files->source), &ir)) {
+    ms_strbuild_append_text(why, "cannot read the glibc stub source");
+    return false;
   }
-  MsSpan llc[] = {options->llc, ms_span_of_text("-filetype=obj"), ms_span_of_text("-relocation-model=pic"),
-                  ms_span_of_text("-mtriple=" STUB_TRIPLE), ms_string_span(&files->source), ms_span_of_text("-o"),
-                  ms_string_span(&files->object)};
-  MsProcessSpec llc_spec = {.argv = llc, .argc = MS_COUNT_OF(llc), .directory = ms_span_of(NULL, 0),
-                            .log_path = ms_string_span(&files->log)};
-  return ms_process_run_logged(ms_span_of_text("llc (glibc stubs)"), &llc_spec, why);
+  const LlvmSettings settings = {.library = options->llvm, .triple = ms_span_of_text(STUB_TRIPLE), .codegen_level = 2};
+  LlvmBuffer object = {0};
+  const bool ok = llvm_compile(&settings, ms_bytes_span(&ir), &object, why) &&
+                  ms_file_write(ms_string_span(&files->object), ms_span_of((const uint8_t *)object.data, object.size));
+  llvm_buffer_free(&object);
+  ms_bytes_free(&ir);
+  return ok;
 }
 
 static bool compile_and_link(const LinkOptions *options, const StubFiles *files, MsSpan soname, MsStrBuild *why) {

@@ -6,6 +6,7 @@
 #include <limits.h>
 
 #include "base/alloc.h"
+#include "base/file.h"
 #include "runtime/core/task.h"
 #include "runtime/io/pool.h"
 #include "runtime/io/stdout.h"
@@ -77,9 +78,7 @@ bool ms_stream_close(MsStream *stream, MsFail *fail) {
     }
     ms_free(file);
   }
-  uv_fs_t request;
-  const int code = uv_fs_close(NULL, &request, stream->fd, NULL);
-  uv_fs_req_cleanup(&request);
+  const int code = ms_file_close_fd(stream->fd);
   if (code != 0) {
     ms_fail_uv_text(fail, code, "close", ms_string_span(&stream->name));
     return false;

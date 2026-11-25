@@ -32,10 +32,11 @@ static int open_file(MsSpan path, int flags, int mode) {
   return fd;
 }
 
-static void close_file(int fd) {
+int ms_file_close_fd(int fd) {
   uv_fs_t request;
-  (void)uv_fs_close(NULL, &request, fd, NULL);
+  const int code = uv_fs_close(NULL, &request, fd, NULL);
   uv_fs_req_cleanup(&request);
+  return code;
 }
 
 bool ms_file_read(MsSpan path, MsBytes *out) {
@@ -53,7 +54,7 @@ bool ms_file_read(MsSpan path, MsBytes *out) {
     uv_fs_req_cleanup(&request);
     bytes.len -= READ_CHUNK - (count > 0 ? (size_t)count : 0);
   } while (count > 0);
-  close_file(fd);
+  (void)ms_file_close_fd(fd);
   if (count < 0) {
     ms_bytes_free(&bytes);
     return false;
@@ -78,7 +79,7 @@ bool ms_file_write(MsSpan path, MsSpan data) {
     ok = count > 0;
     written += ok ? (size_t)count : 0;
   }
-  close_file(fd);
+  (void)ms_file_close_fd(fd);
   return ok;
 }
 

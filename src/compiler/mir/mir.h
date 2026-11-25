@@ -112,6 +112,21 @@ typedef struct MirOpInfo {
 
 extern const MirOpInfo mir_op_info[MOP_COUNT];
 
+/* Whether `op` is a check whose fault leaves through a site of its own: the lowering follows it with a
+ * `fault.site` instruction. */
+static inline bool mir_op_has_fault_site(MirOp op) {
+  switch (op) {
+  case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
+  case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk:
+  case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
+  case MOP_NarrowChk:
+  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListAddr: case MOP_OptUnwrap:
+    return true;
+  default:
+    return false;
+  }
+}
+
 static inline bool mir_op_is_call(MirOp op) {
   return op == MOP_Call || op == MOP_CallInd || op == MOP_CallRt || op == MOP_CallMethod;
 }

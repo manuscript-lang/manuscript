@@ -31,7 +31,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 endif()
 
-# A build whose opt cannot start fails with a message naming the tool and its setting, not a crash (#6843).
+# A build whose LLVM library cannot load fails with a message naming the setting, not a crash (#6843).
 add_test(NAME missing_tool COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/missing-tool
   -DPROGRAM=${CMAKE_SOURCE_DIR}/tools/repo-check.ms -P ${CMAKE_SOURCE_DIR}/cmake/MissingToolRun.cmake)
 
@@ -77,6 +77,9 @@ add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWO
 # `ms bench` end to end: a real bench block is built and run, and the report's shape is checked.
 add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/bench
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
+
+# `ms build` does not verify the module, `ms emit` does after every pass: the map calls that lower to inline probes verify.
+add_test(NAME mir_verify COMMAND ms emit --opt ${CMAKE_SOURCE_DIR}/tests/checks/mir-verify/map-calls.ms -o ${CMAKE_BINARY_DIR}/src/cli/map-calls.mir)
 
 # `ms search_symbol` over many files searches every one.
 add_test(NAME search_many COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/search-many

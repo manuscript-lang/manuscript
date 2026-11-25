@@ -36,9 +36,6 @@ MS_NODISCARD MS_NONNULL bool llvm_bitcode_from_ir(MsSpan library, MsSpan ir, Llv
 /* Loads the library at `path` (once); on failure `why` holds the reason. Call it before compiling from several threads. */
 MS_NODISCARD MS_NONNULL bool llvm_load(MsSpan path, MsStrBuild *why);
 
-/* Whether the library at `path` loads and has the C API ms uses; the library stays loaded for llvm_compile. */
-MS_NODISCARD bool llvm_usable(MsSpan path);
-
 void llvm_buffer_free(LlvmBuffer *buffer);
 
 #endif

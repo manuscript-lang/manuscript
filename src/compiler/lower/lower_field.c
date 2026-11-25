@@ -1,5 +1,6 @@
 /* compiler/lower/lower_field.c: a field of an owning local taken out and stored back for a native that changes it in place. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_layout.h"
 #include "compiler/mir/mir_analysis.h"
 
 /* A field of an owning local or parameter, taken without a copy for a native that changes it in place: `record` is the
@@ -85,6 +86,8 @@ static bool word_leaves(const MirModule *module, MirTy ty, uint32_t depth) {
     return true;
   case MK_OBJ:
     return data->obj_class != MIR_OBJ_VALUE; /* a handle is a word, a collection is words */
+  case MK_OPT:
+    return mir_ty_opt_boxed(module, data->elem); /* a boxed optional is its block's pointer, null when absent */
   case MK_TYPE: {
     const MirTypeDef *def = &module->type_defs.ptr[data->id];
     for (uint32_t index = 0; index < def->nfields; index++) {

@@ -136,25 +136,11 @@ void fn_unwind_site_forgetting(LowerFn *fn, MirValue result, const LowerTaken *f
   fn->site_index = made_at;
 }
 
-/* Whether `op` is a check whose fault leaves through a site of its own: the instruction right after it. */
-static bool has_fault_site(MirOp op) {
-  switch (op) {
-  case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk:
-  case MOP_UAddChk: case MOP_USubChk: case MOP_UMulChk:
-  case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
-  case MOP_NarrowChk:
-  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListAddr: case MOP_OptUnwrap:
-    return true;
-  default:
-    return false;
-  }
-}
-
 /* After a checked instruction: the fault the check posts leaves by an exit that closes what is owned here, as a
  * call's does. The test is constant false on the normal path: only the check's cold path reaches `leave`. */
 void fn_fault_site(LowerFn *fn, MirValue result) {
   const MirInst *made = fn_just_made(fn, result);
-  if (made == NULL || !has_fault_site((MirOp)made->op) || fn->terminated || fn->failed) {
+  if (made == NULL || !mir_op_has_fault_site((MirOp)made->op) || fn->terminated || fn->failed) {
     return;
   }
   const MirValue site = mir_b_emit(&fn->b, MOP_FaultSite, &result, 1, (MirImm){0}, MIR_BOOL);

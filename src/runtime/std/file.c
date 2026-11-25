@@ -56,13 +56,6 @@ static bool flags_of_mode(MsSpan mode, int *flags) {
   return false;
 }
 
-static int open_path_fd(const char *path, int flags, int mode) {
-  uv_fs_t request;
-  const int fd = uv_fs_open(NULL, &request, path, flags, mode, NULL);
-  uv_fs_req_cleanup(&request);
-  return fd;
-}
-
 /* Opens the job's path with the flags and permissions in `number` and `second_number`. A named pipe opened for reading
  * would block in open until a writer arrives, so it is opened without waiting; reads wait for data. */
 static void open_job(void *data) {
@@ -75,7 +68,7 @@ static void open_job(void *data) {
   uv_stat_t info;
   const bool reading = (flags & (UV_FS_O_WRONLY | UV_FS_O_RDWR)) == 0;
   const bool is_fifo = reading && ms_fs_stat_path(path.ptr, true, &info) == 0 && (info.st_mode & 0170000u) == 0010000u;
-  const int fd = open_path_fd(path.ptr, is_fifo ? flags | UV_FS_O_NONBLOCK : flags, (int)job->second_number);
+  const int fd = ms_fs_open(path.ptr, is_fifo ? flags | UV_FS_O_NONBLOCK : flags, (int)job->second_number);
   ms_os_text_free(&path);
   if (fd < 0) {
     ms_fs_job_fail(job, fd, "open", job->path);

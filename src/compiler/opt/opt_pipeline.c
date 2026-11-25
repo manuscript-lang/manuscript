@@ -129,6 +129,7 @@ static const Step early_steps[] = {
     {"probe", opt_probe},
     {"inline", opt_inline},
     {"splitview", opt_splitview},
+    {"unwind sites", opt_unwind_sites}, /* again: an inlined call that never parked leaves its test dead */
     {"unwind thread", opt_unwind_thread},
     {"strfuse", strfuse_step},
     {"loopslot", opt_loopslot},

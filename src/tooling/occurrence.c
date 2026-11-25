@@ -167,7 +167,7 @@ static MsSpan method_key(Builder *b, const MsMethodEntry *entry) {
       for (uint32_t at = 0; at < tree->ndecls; at++) {
         const MsDecl *decl = tree->decls[at];
         MsName declared = 0;
-        if (decl->kind != MS_D_INTERFACE || decl->synthetic || !ms_check_declared_name(decl, &declared)) {
+        if (decl->kind != MS_D_INTERFACE || decl->synthetic || !ms_decl_name(decl, &declared)) {
           continue;
         }
         const MsSymbolId *found = ms_scope_get(&program->modules.ptr[module].scope, declared);
@@ -214,7 +214,7 @@ static MsTy written_type(const Builder *b, uint32_t module, const MsParam *param
 
 static MsSymbolId declared_symbol(const Builder *b, uint32_t module, const MsDecl *decl) {
   MsName name = 0;
-  if (!ms_check_declared_name(decl, &name)) {
+  if (!ms_decl_name(decl, &name)) {
     return 0;
   }
   const MsSymbolId *found = ms_scope_get(&b->program->modules.ptr[module].scope, name);

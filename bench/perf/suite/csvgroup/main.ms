@@ -34,7 +34,8 @@ fn main() Void {
 		} else if col == 5 {
 			cents := qty * price
 			old := regions.get_or(region, Total(0, 0))
-			regions[region.clone()] = Total(old.rows + 1, old.cents + cents)
+			next := Total(old.rows + 1, old.cents + cents)
+			regions[region.clone()] = next
 			products[product.clone()] = products.get_or(product, 0) + cents
 			if cell.contains(",") { quoted += 1 }
 			rows += 1

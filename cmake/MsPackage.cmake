@@ -42,7 +42,7 @@ foreach(variant runtime runtime-static)
   file(WRITE "${lib}/${variant}/archives" "${order}")
 endforeach()
 
-# The pinned lld and llc (it makes the glibc stubs), per cmake/toolchain/lld.lock, and the shared LLVM library ms optimizes and
+# The pinned lld, per cmake/toolchain/lld.lock, and the shared LLVM library ms optimizes and
 # generates code with in-process, per cmake/toolchain/llvm-lib.lock.
 file(STRINGS "${SOURCE_DIR}/cmake/toolchain/lld.lock" lock)
 foreach(line IN LISTS lock)
@@ -56,7 +56,7 @@ foreach(line IN LISTS lock)
 endforeach()
 set(cache "${BINARY_DIR}/llvm-bundle")
 file(MAKE_DIRECTORY "${cache}")
-foreach(bundle lld llvm-tools)
+foreach(bundle lld)
   set(asset "${bundle}-${version}-${os}-${arch}.tar.gz")
   if(NOT DEFINED digest_of_${asset})
     message(FATAL_ERROR "cmake/toolchain/lld.lock has no ${asset}")
@@ -73,7 +73,6 @@ set(suffix "")
 if(os STREQUAL "windows")
   set(suffix ".exe")
 endif()
-file(COPY "${cache}/llvm-tools-${os}-${arch}/bin/llc${suffix}" DESTINATION "${lib}/bin")
 file(COPY "${cache}/lld-${os}-${arch}/bin/lld${suffix}" DESTINATION "${lib}/bin")
 
 file(STRINGS "${SOURCE_DIR}/cmake/toolchain/llvm-lib.lock" lib_lock)

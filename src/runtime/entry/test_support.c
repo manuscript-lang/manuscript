@@ -9,6 +9,7 @@
 
 #include "abi/fault.h"
 #include "base/alloc.h"
+#include "base/file.h"
 #include "base/desc.h"
 #include "runtime/core/fault_kept.h"
 #include "runtime/core/record.h"
@@ -90,9 +91,7 @@ void msrt_test_record(const MsString *path, const MsString *text) {
   if (write_whole(file, ms_string_span(text))) {
     ring_bell();
   }
-  uv_fs_t closing;
-  (void)uv_fs_close(NULL, &closing, file, NULL);
-  uv_fs_req_cleanup(&closing);
+  (void)ms_file_close_fd(file);
 }
 
 void msrt_test_failure(const MsString *message, const MsMap *details) {

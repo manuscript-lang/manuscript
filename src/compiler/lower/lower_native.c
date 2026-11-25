@@ -321,7 +321,7 @@ static bool update_in_line(LowerFn *fn, MsName name, const MirValue *wanted, uin
   }
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, 4);
   for (uint32_t at = 0; at < 4; at++) {
-    params[at] = (MirParam){MIR_PTR, MM_BORROW};
+    params[at] = (MirParam){mir_b_ty(&fn->b, wanted[at]), MM_BORROW}; /* the key is passed as the value it is, as `runtime_extern` declares it */
   }
   const MirExtern def = {.name = mir_name(fn->cx->module, probe_text), .params = params, .nparams = 4, .ret = MIR_PTR,
                          .role = (uint8_t)role};

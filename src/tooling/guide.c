@@ -330,15 +330,8 @@ static void receiver_declaration(Guide *g, StdFile *file, MsStrBuild *out, MsSpa
 
 static bool declared_name(const Guide *g, const MsDecl *decl, MsSpan *name) {
   MsName n = 0;
-  switch ((MsDeclKind)decl->kind) {
-  case MS_D_FN: n = decl->u.fn.name; break;
-  case MS_D_CONST: n = decl->u.konst.name; break;
-  case MS_D_TYPE: n = decl->u.type.name; break;
-  case MS_D_ENUM: n = decl->u.enumeration.name; break;
-  case MS_D_ALIAS: n = decl->u.alias.name; break;
-  case MS_D_INTERFACE: n = decl->u.iface.name; break;
-  case MS_D_IMPL:
-  case MS_D_TEST: return false;
+  if (!ms_decl_name(decl, &n)) {
+    return false;
   }
   *name = name_text(g, n);
   return true;

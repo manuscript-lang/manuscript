@@ -17,6 +17,9 @@ int32_t ms_stdout_error(void);
 
 /* ms-sig: msrt_io_write_stdout(s: *const StrVal) */
 void msrt_io_write_stdout(const MsString *text);
+/* `print`: the text and its ending as one write, with no joined copy. */
+/* ms-sig: msrt_io_write_stdout_end(s: *const StrVal, end: *const StrVal) */
+void msrt_io_write_stdout_end(const MsString *text, const MsString *end);
 /* ms-sig: msrt_io_write_stderr(s: *const StrVal) */
 void msrt_io_write_stderr(const MsString *text);
 /* ms-sig: msrt_io_write_bytes_stdout(v: *const VecVal) */

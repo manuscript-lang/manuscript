@@ -449,7 +449,7 @@ static void callable_ownership(Builder *b, MsClassifier *classes, MsFact *fact, 
 
 static MsTy symbol_type(const MsCheckProgram *program, uint32_t module, const MsDecl *decl) {
   MsName name = 0;
-  if (!ms_check_declared_name(decl, &name)) {
+  if (!ms_decl_name(decl, &name)) {
     return MS_TY_NONE;
   }
   const MsSymbolId *found = ms_scope_get(&program->modules.ptr[module].scope, name);
@@ -596,7 +596,7 @@ static void resolve_type_refs(Builder *b) {
     for (uint32_t d = 0; d < info->tree->ndecls; d++) {
       const MsDecl *decl = info->tree->decls[d];
       MsName declared = 0;
-      if (!ms_check_declared_name(decl, &declared)) {
+      if (!ms_decl_name(decl, &declared)) {
         continue;
       }
       const MsSymbolId *found = ms_scope_get(&info->scope, declared);

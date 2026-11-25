@@ -3,6 +3,7 @@
  * returns the error of a failed `e` from the function and otherwise is the ok payload. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_layout.h"
 
 enum { OK_CASE = 0, ERR_CASE = 1 };
 
@@ -149,6 +150,38 @@ static MirValue try_optional(LowerFn *fn, const MsExpr *expr, MirValue value) {
   return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
 }
 
+/* `place?.change()` where `place` is a field that lies in its record and holds a boxed optional (a recursive record's
+ * child): the payload is the heap block itself, so the method changes it where it lies. Nothing is taken, unboxed,
+ * freed or allocated again, and nothing is put back. False (with nothing emitted) for any other optional. */
+static bool try_boxed_payload(LowerFn *fn, const MsExpr *expr, const MsExpr *place, MirValue home, VarSlot *out) {
+  const MirTy opt_ty = fn_type(fn, ms_facts_type(fn->facts, place->id));
+  const MirTyData *opt = mir_ty_data(fn->cx->module, opt_ty);
+  const MirTyData *ret = mir_ty_data(fn->cx->module, fn->ret);
+  if (opt->kind != MK_OPT || !mir_ty_opt_boxed(fn->cx->module, opt->elem) || home == MIR_NONE ||
+      (ret->kind != MK_OPT && fn->ret != MIR_VOID && !fn->decl_void)) {
+    return false;
+  }
+  mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+  const MirValue held = mir_b_emit(&fn->b, MOP_Load, &home, 1, (MirImm){.tag = MI_TY, .a = opt_ty}, opt_ty);
+  const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &held, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, none_block);
+  MirValue absent = ret->kind == MK_OPT ? mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret) : fn_default_result(fn);
+  if (absent != MIR_NONE) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &absent, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(fn, 0);
+  mir_b_ret(&fn->b, absent);
+  mir_b_switch_to(&fn->b, some_block);
+  const MirValue slot = mir_b_emit(&fn->b, MOP_OptAddr, &held, 1, (MirImm){0}, MIR_PTR);
+  *out = (VarSlot){place, slot, opt->elem, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+  return true;
+}
+
 /* `place?.change()`: the optional `place` holds is taken; absent, the function returns as `?` does (the
  * optional put back); present, its payload moves into a slot the method changes, and `fn_var_slots_back`
  * wraps it and stores it into `place` again. */
@@ -172,6 +205,8 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
     home = mir_b_emit(&fn->b, MOP_PtrField, &payload, 1, (MirImm){.tag = MI_FIELD, .a = owner->id, .b = field->index}, MIR_PTR);
     const MirTy element = fn_type(fn, ms_facts_type(fn->facts, place->id));
     taken = mir_b_emit(&fn->b, MOP_Take, &home, 1, (MirImm){.tag = MI_TY, .a = element}, element);
+  } else if (fn_field_address(fn, place, &home) && try_boxed_payload(fn, expr, place, home, out)) {
+    return out->slot;
   } else if (fn_list_element_addr(fn, place, &home)) { /* an optional element: taken out of its place in the list, put back there */
     if (home == MIR_NONE) {
       return MIR_NONE;

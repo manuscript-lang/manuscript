@@ -16,7 +16,7 @@ weight = 1
     -> compiler/own      (moves, borrows, mutation and drop facts)
     -> compiler/lower    (checked HIR and ownership facts to MIR, native standard calls)
     -> compiler/mir, opt (representation, ownership elaboration, optimizer, verifier)
-    -> compiler/emit     (MIR to LLVM IR text; the pinned opt and llc make the object file)
+    -> compiler/emit     (MIR to LLVM IR text; the loaded LLVM library makes the object file)
     -> compiler/link     (pinned lld, the C library stubs, the runtime archive) -> executable
 ```
 

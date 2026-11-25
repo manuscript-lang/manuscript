@@ -45,10 +45,17 @@ static void note_failure(void) {
   clearerr(stdout);
 }
 
-static void write_out(MsSpan bytes) {
-  if (bytes.len > 0 && fwrite(bytes.ptr, 1, bytes.len, stdout) != bytes.len) {
+static MsSpin out_lock = MS_SPIN_INIT;
+
+/* `bytes` then `tail` with nothing between them from another thread. */
+static void write_out(MsSpan bytes, MsSpan tail) {
+  ms_spin_lock(&out_lock);
+  const bool bad = (bytes.len > 0 && fwrite(bytes.ptr, 1, bytes.len, stdout) != bytes.len) ||
+                   (tail.len > 0 && fwrite(tail.ptr, 1, tail.len, stdout) != tail.len);
+  if (bad) {
     note_failure();
   }
+  ms_spin_unlock(&out_lock);
 }
 
 int32_t ms_stdout_error(void) { return atomic_load_explicit(&first_error, memory_order_relaxed); }
@@ -71,13 +78,14 @@ void ms_stdout_release(void) {
 }
 
 /* Appends to capture `id`; false when it has ended (the output then goes to standard output). */
-static bool capture_append(uint64_t id, MsSpan data) {
+static bool capture_append(uint64_t id, MsSpan data, MsSpan tail) {
   bool found = false;
   ms_spin_lock(&captures.lock);
   for (size_t i = 0; i < captures.list.len && !found; i++) {
     Capture *capture = &captures.list.ptr[i];
     if (capture->id == id) {
       buffer_append(&capture->text, data);
+      buffer_append(&capture->text, tail);
       found = true;
     }
   }
@@ -86,22 +94,26 @@ static bool capture_append(uint64_t id, MsSpan data) {
 }
 
 /* Appends `data` to the running task's capture, or to standard output. */
-static void ms_stdout_write(MsSpan data) {
+static void ms_stdout_write(MsSpan data, MsSpan tail) {
   const uint64_t capture = ms_task_capture();
-  if (capture != 0 && capture_append(capture, data)) {
+  if (capture != 0 && capture_append(capture, data, tail)) {
     return;
   }
-  write_out(data);
+  write_out(data, tail);
 }
 
-void msrt_io_write_stdout(const MsString *text) { ms_stdout_write(ms_string_span(text)); }
+void msrt_io_write_stdout(const MsString *text) { ms_stdout_write(ms_string_span(text), (MsSpan){0}); }
+
+void msrt_io_write_stdout_end(const MsString *text, const MsString *end) {
+  ms_stdout_write(ms_string_span(text), ms_string_span(end));
+}
 
 void msrt_io_write_stderr(const MsString *text) {
   ms_stdout_flush();
   ms_sys_stderr_write(ms_string_span(text));
 }
 
-void msrt_io_write_bytes_stdout(const MsList *bytes) { ms_stdout_write(ms_span_of(bytes->ptr, bytes->len)); }
+void msrt_io_write_bytes_stdout(const MsList *bytes) { ms_stdout_write(ms_span_of(bytes->ptr, bytes->len), (MsSpan){0}); }
 
 void msrt_io_write_bytes_stderr(const MsList *bytes) {
   ms_stdout_flush();
