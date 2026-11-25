@@ -1,4 +1,4 @@
-// conform: tags=borrow,look,interface
+// conform: tags=types,interfaces
 // conform: phase=check
 interface Source {
 	hold fn items() &List[String]
