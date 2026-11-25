@@ -116,6 +116,11 @@ typedef struct { uint32_t offset, kind, target; int64_t addend; } cl_reloc;
   X(void, cl_fn_begin, (cl_fn *f, cl_func func)) \
   /* The source place of the instructions that follow: module file index, line and column of a DWARF row. */ \
   X(void, cl_srcloc, (cl_fn *f, uint32_t file, uint32_t line, uint32_t column)) \
+  /* Names `value` for the debugger: it is shown as `name`, of a base type called `type_name` of `size` bytes and \
+     DWARF base-type `encoding` (for example `DW_ATE_signed`), a parameter when `param` is not 0. The value is \
+     described where the code keeps it, so it must stay live in the code that follows. At most one name per value. */ \
+  X(void, cl_var, (cl_fn *f, cl_val value, const char *name, const char *type_name, uint32_t size, \
+                   uint32_t encoding, int32_t param)) \
   X(cl_val, cl_func_addr, (cl_fn *f, cl_func func)) \
   /* The address of a data object (a symbol value). */ \
   X(cl_val, cl_data_addr, (cl_fn *f, cl_data data)) \
@@ -208,6 +213,7 @@ extern cl_api cl_fns;
 #define cl_fn_error cl_fns.fn_cl_fn_error
 #define cl_fn_begin cl_fns.fn_cl_fn_begin
 #define cl_srcloc cl_fns.fn_cl_srcloc
+#define cl_var cl_fns.fn_cl_var
 #define cl_func_addr cl_fns.fn_cl_func_addr
 #define cl_data_addr cl_fns.fn_cl_data_addr
 #define cl_call cl_fns.fn_cl_call

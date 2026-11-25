@@ -3,9 +3,12 @@
 
 #include "base/alloc.h"
 #include "base/fatal.h"
+#include "compiler/emit/emit_debug.h"
 #include "compiler/emit/emit_func.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
+
+#include <string.h>
 
 /* ---- values and edges ---- */
 
@@ -326,6 +329,34 @@ static void enter_function(ClCx *cx) {
   }
 }
 
+/* Names each by-value scalar parameter that has a source name for the debugger, as emit_debug_params does. */
+static void name_params(ClCx *cx) {
+  const MirFunc *func = cx->func;
+  for (size_t at = 0; at < func->names.len; at++) {
+    const MirNamedValue *named = &func->names.ptr[at];
+    uint32_t arg = 0;
+    for (uint32_t param = 0; param < func->nparams && arg == 0; param++) {
+      arg = func->blocks.ptr[0].params.ptr[param].value == named->value ? param + 1 : 0;
+    }
+    const MirTy ty = arg == 0 ? MIR_NONE : func->params[arg - 1].ty;
+    if (arg == 0 || !named->param || named->scope != 0 || clx_is_indirect(cx, ty) || clx_leaves(cx, ty).len != 1) {
+      continue;
+    }
+    const char *type_name = NULL;
+    uint32_t bits = 0;
+    uint32_t encoding = 0;
+    if (!emit_debug_scalar(cx->module, ty, &type_name, &bits, &encoding)) {
+      continue;
+    }
+    const MsSpan name = ms_names_span(&cx->module->names, named->name);
+    char *text = ms_alloc(name.len + 1);
+    memcpy(text, name.ptr, name.len);
+    text[name.len] = 0;
+    cl_var(cx->fb, clx_get(cx, named->value, 0), text, type_name, bits / 8, encoding, 1);
+    ms_free(text);
+  }
+}
+
 bool clx_lower_function(ClCx *cx) {
   const MirFunc *func = cx->func;
   if (!types_ok(cx)) {
@@ -348,6 +379,9 @@ bool clx_lower_function(ClCx *cx) {
   clx_frame_areas(cx);
   cl_fn_begin(cx->fb, cx->mod->funcs[cx->index]);
   enter_function(cx);
+  if (cx->places) {
+    name_params(cx);
+  }
   for (uint32_t at = 1; at < reachable; at++) {
     cx->blocks[order[at]] = cl_block_new(cx->fb);
     add_block_params(cx, order[at]);

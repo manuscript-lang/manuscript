@@ -219,6 +219,11 @@ bool clx_emit_module(const MirModule *module, const MirData *data, const MirGlue
     cx.func = func;
     mod.funcs[index] = cl_declare_func(mod.cl, clx_c_name(&text, ms_names_span(&module->names, func->name)),
                                           function_sig(&cx, func), exported ? CL_EXPORT : CL_LOCAL);
+    if (options->places) {
+      /* A debugger finds `work`, not the symbol `work.1`. */
+      const MsSpan shown = ms_names_span(&module->names, func->display != MS_NAME_EMPTY ? func->display : func->name);
+      cl_func_name(mod.cl, mod.funcs[index], clx_c_name(&text, shown));
+    }
   }
   clx_define_data(&mod);
   if (options->places) {
