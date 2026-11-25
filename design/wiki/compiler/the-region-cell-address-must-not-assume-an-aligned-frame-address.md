@@ -1,0 +1,5 @@
+# The region cell address must not assume an aligned frame address
+
+Generated code finds the running task's cell (header pointer, recursion limit) by masking `llvm.frameaddress` with the region size. LLVM assumes a frame address is 16-aligned, so it folded `(x & -region) + (region - 16)` into `x | 0xffffff0`. On Windows x64 a leaf function's frame pointer can be only 8-aligned (`rbp = rsp` after two pushes), so the fold produced the limit word's address and the function read the cancel flag through the limit as if it were the header pointer. The read landed in the uncommitted part of the stack and faulted (access violation, several map, list and bitset fixtures, windows-amd64 only; Linux and macOS never see a misaligned frame address).
+
+The frame address now passes through an empty `asm` before the mask (`emit_unwinding_address`, `stack_check`), so the compiler keeps the explicit mask. Do not derive a cell address from a compiler-known-aligned value; no test keys on the shape, the fixtures that crashed are the regression.

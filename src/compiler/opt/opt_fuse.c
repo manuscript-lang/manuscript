@@ -70,6 +70,10 @@ static bool is_op(const MirInst *i, MirOp op) {
   return i->op == op;
 }
 
+static bool is_list_get(const MirInst *i) {
+  return i->op == MOP_ListGet || i->op == MOP_ListGetNn || i->op == MOP_ListGetU;
+}
+
 static const MirInst *def_inst(const Ctx *c, MirValue v) {
   const Def d = c->defs[v];
   return d.index == MIR_NONE ? NULL : &c->f->blocks.ptr[d.block].insts.ptr[d.index];
@@ -180,8 +184,7 @@ static bool reader_uses(const Ctx *c, MirBlock r, MirValue counter, MirValue lis
     const MirBlockData *blk = &c->f->blocks.ptr[b];
     for (uint32_t i = 0; i < blk->insts.len; i++) {
       const MirInst *inst = &blk->insts.ptr[i];
-      if ((inst->op == MOP_ListGet || inst->op == MOP_ListGetNn || inst->op == MOP_ListGetU) &&
-          inst->args[0] == list) {
+      if (is_list_get(inst) && inst->args[0] == list) {
         if (inst->args[1] != counter) {
           return false;
         }
@@ -469,8 +472,7 @@ static void mark_dead(const MirFunc *f, const Ctx *c, const Fusion *fu, bool *co
       const bool made = is_op(inst, MOP_Slot) && inst->res == fu->slot;
       const bool initial = is_op(inst, MOP_Put) && inst->args[0] == fu->slot && !mir_bits_test(&c->loop, b);
       const bool read = mir_bits_test(&c->body, b) &&
-                        (((inst->op == MOP_ListGet || inst->op == MOP_ListGetNn || inst->op == MOP_ListGetU) &&
-                          inst->args[0] == fu->list) ||
+                        ((is_list_get(inst) && inst->args[0] == fu->list) ||
                          (is_op(inst, MOP_IAdd) && inst->args[0] == counter));
       dead[b][i] = dead[b][i] || made || initial || read || (is_op(inst, MOP_Drop) && inst->args[0] == fu->list);
       if (initial) {
@@ -480,6 +482,52 @@ static void mark_dead(const MirFunc *f, const Ctx *c, const Fusion *fu, bool *co
       }
     }
   }
+}
+
+/* Each edge back to the reader stores the next values and returns to the builder. */
+static void rewire_back_edges(MirModule *m, MirFunc *f, const Ctx *c, const Fusion *fu, const MirValue *slots,
+                              MirBlock cont, MirLoc loc) {
+  const uint32_t nblocks = (uint32_t)f->blocks.len;
+  for (uint32_t b = 0; b < nblocks; b++) {
+    if (!mir_bits_test(&c->body, b)) {
+      continue;
+    }
+    for (uint32_t t = 0; t < mir_term_ntargets(&f->blocks.ptr[b].term); t++) {
+      if (mir_term_target(&f->blocks.ptr[b].term, t)->block != fu->reader) {
+        continue;
+      }
+      const MirTarget old = *mir_term_target(&f->blocks.ptr[b].term, t);
+      const MirBlock edge = mir_new_block(f);
+      for (uint32_t k = 0; k < fu->nacc; k++) {
+        const MirValue args[2] = {slots[k], old.args[k + 1]};
+        const MirInst put = make_inst(m, MOP_Put, args, 2, mir_imm_none(), MIR_NONE, loc);
+        mir_block_insert(&f->blocks.ptr[edge], (uint32_t)f->blocks.ptr[edge].insts.len, &put);
+      }
+      opt_term_set_br(&f->blocks.ptr[edge].term, (MirTarget){cont, NULL, 0});
+      f->blocks.ptr[edge].term_loc = loc;
+      MirTarget *target = mir_term_target(&f->blocks.ptr[b].term, t);
+      *target = (MirTarget){edge, NULL, 0};
+    }
+  }
+}
+
+/* The old entry block now only leaves the loop: it reads the accumulators and goes to the exit. */
+static void leave_by_exit(MirModule *m, MirFunc *f, const Fusion *fu, const MirValue *slots, MirLoc loc) {
+  MirBlockData *entry = &f->blocks.ptr[fu->entry];
+  MirTarget exit_target = opt_target_clone(m, &f->blocks.ptr[fu->reader].term.b);
+  for (uint32_t k = 0; k < fu->nacc; k++) {
+    const MirValue loaded = mir_new_value(f, fu->acc_ty[k]);
+    const MirInst load = make_inst(m, MOP_Load, &slots[k], 1, ty_imm(fu->acc_ty[k]), loaded, loc);
+    mir_block_insert(entry, (uint32_t)entry->insts.len, &load);
+    /* The exit block reads the parameters of R directly; everything past the loop sees this load. */
+    mir_func_replace_uses(f, fu->acc[k], loaded);
+    for (uint32_t a = 0; a < exit_target.nargs; a++) {
+      if (exit_target.args[a] == fu->acc[k]) {
+        exit_target.args[a] = loaded;
+      }
+    }
+  }
+  opt_term_set_br(&entry->term, exit_target);
 }
 
 static void apply(MirModule *m, MirFunc *f, MsArena *arena, const Ctx *c, const Fusion *fu) {
@@ -529,8 +577,7 @@ static void apply(MirModule *m, MirFunc *f, MsArena *arena, const Ctx *c, const 
     const MirBlockData *blk = &f->blocks.ptr[b];
     for (uint32_t i = 0; i < blk->insts.len; i++) {
       const MirInst *inst = &blk->insts.ptr[i];
-      if ((inst->op == MOP_ListGet || inst->op == MOP_ListGetNn || inst->op == MOP_ListGetU) &&
-          inst->args[0] == fu->list) {
+      if (is_list_get(inst) && inst->args[0] == fu->list) {
         mir_func_replace_uses(f, inst->res, element);
       }
     }
@@ -566,46 +613,8 @@ static void apply(MirModule *m, MirFunc *f, MsArena *arena, const Ctx *c, const 
     replace_in(f, &c->body, fu->acc[k], loaded);
   }
 
-  /* Each edge back to the reader stores the next values and returns to the builder. */
-  const uint32_t nblocks = (uint32_t)f->blocks.len;
-  for (uint32_t b = 0; b < nblocks; b++) {
-    if (!mir_bits_test(&c->body, b)) {
-      continue;
-    }
-    for (uint32_t t = 0; t < mir_term_ntargets(&f->blocks.ptr[b].term); t++) {
-      if (mir_term_target(&f->blocks.ptr[b].term, t)->block != fu->reader) {
-        continue;
-      }
-      const MirTarget old = *mir_term_target(&f->blocks.ptr[b].term, t);
-      const MirBlock edge = mir_new_block(f);
-      for (uint32_t k = 0; k < fu->nacc; k++) {
-        const MirValue args[2] = {slots[k], old.args[k + 1]};
-        const MirInst put = make_inst(m, MOP_Put, args, 2, mir_imm_none(), MIR_NONE, loc);
-        mir_block_insert(&f->blocks.ptr[edge], (uint32_t)f->blocks.ptr[edge].insts.len, &put);
-      }
-      opt_term_set_br(&f->blocks.ptr[edge].term, (MirTarget){cont, NULL, 0});
-      f->blocks.ptr[edge].term_loc = loc;
-      MirTarget *target = mir_term_target(&f->blocks.ptr[b].term, t);
-      *target = (MirTarget){edge, NULL, 0};
-    }
-  }
-
-  /* The old entry block now only leaves the loop: it reads the accumulators and goes to the exit. */
-  MirBlockData *entry = &f->blocks.ptr[fu->entry];
-  MirTarget exit_target = opt_target_clone(m, &f->blocks.ptr[fu->reader].term.b);
-  for (uint32_t k = 0; k < fu->nacc; k++) {
-    const MirValue loaded = mir_new_value(f, fu->acc_ty[k]);
-    const MirInst load = make_inst(m, MOP_Load, &slots[k], 1, ty_imm(fu->acc_ty[k]), loaded, loc);
-    mir_block_insert(entry, (uint32_t)entry->insts.len, &load);
-    /* The exit block reads the parameters of R directly; everything past the loop sees this load. */
-    mir_func_replace_uses(f, fu->acc[k], loaded);
-    for (uint32_t a = 0; a < exit_target.nargs; a++) {
-      if (exit_target.args[a] == fu->acc[k]) {
-        exit_target.args[a] = loaded;
-      }
-    }
-  }
-  opt_term_set_br(&entry->term, exit_target);
+  rewire_back_edges(m, f, c, fu, slots, cont, loc);
+  leave_by_exit(m, f, fu, slots, loc);
 
   /* The slots are made at function entry. */
   for (uint32_t k = 0; k < fu->nacc; k++) {

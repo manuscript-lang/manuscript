@@ -1,0 +1,5 @@
+# Small string primitives are straight-line code, so stdlib stays in Manuscript
+
+Verified (2026-11-25): `report` (1 M lines, two `pad_start`/`pad_end` per line, written in `.ms`) cost 2,225 M instructions. A native `pad` got 1,674 M, but the rule is Manuscript first, so the cost was fixed where it lay, in the general primitives the `.ms` calls: `padding_for` returns `padding.repeat(missing)` for one-byte padding; `msrt_string_concat` joins two inline strings that still fit as two 128-bit words (no variable-length copy); `msrt_string_repeat` of one byte builds the inline words by broadcast; `ms_utf8_count` of at most 15 bytes counts from the two overlapping-load words (`ms_hash_words`) instead of a byte tail. `report` 2,225 M to 1,672 M (-25%), the same as the native, and every program that joins, repeats or counts short strings gains.
+
+Apply when: a stdlib method in `.ms` is slow, read the callgrind self cost of the runtime calls under it; a short string (at most 15 bytes) should cost a few dozen instructions in any primitive, with no libc `memcpy`/`memset` call of variable length.

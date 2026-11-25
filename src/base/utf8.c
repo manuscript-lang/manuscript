@@ -1,5 +1,6 @@
 /* base/utf8.c: UTF-8 decoding, counting and offsets. An invalid byte decodes as U+FFFD with width 1. */
 #include "base/utf8.h"
+#include "base/hash.h"
 
 static inline bool cont(const uint8_t *s, size_t n, size_t i, uint8_t lo, uint8_t hi, uint32_t *bits) {
   if (i >= n || s[i] < lo || s[i] > hi) {
@@ -60,6 +61,12 @@ size_t ms_utf8_count(const uint8_t *s, size_t n) {
   /* A String is valid UTF-8, so a scalar starts at every byte that is not a continuation byte
    * (10xxxxxx); counting those needs no validation pass. */
   const uint64_t low = UINT64_C(0x0101010101010101);
+  if (n <= 15) { /* a short text is two words from overlapping loads; zero padding is no continuation byte */
+    uint64_t first, second;
+    ms_hash_words(s, n, &first, &second);
+    return n - (size_t)__builtin_popcountll((first >> 7) & ~(first >> 6) & low) -
+           (size_t)__builtin_popcountll((second >> 7) & ~(second >> 6) & low);
+  }
   size_t continuation = 0, i = 0;
   for (; i + 8 <= n; i += 8) {
     uint64_t w = ms_load64(s + i);
