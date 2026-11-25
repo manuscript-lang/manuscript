@@ -735,7 +735,7 @@ fn Map[T Hashable, U].for_each(operation fn(T, var U) Void) Void {
 fn Map[T, U].contains(key T) Bool { ... }
 
 // Returns the value stored for an equal key, or `null` when the key is absent.
-fn Map[T, U].get(key T) U? { ... }
+fn hold Map[T, U].get(key T) &U? { ... }
 
 // Returns the number of entries.
 fn Map[T, U].length() Int { ... }

@@ -577,26 +577,7 @@ static bool external_function_is_fresh(const MsCheckProgram *program, const MsCa
  * answers a value of its own. */
 static bool native_result_borrows(const MsCheckProgram *program, MsTy receiver, MsSpan operation, uint32_t args) {
   const MsTyTable *types = &program->types;
-  const bool text = ms_ty_is(types, receiver, MS_BUILTIN_String);
-  const bool bytes = ms_ty_is(types, receiver, MS_BUILTIN_Bytes);
   const bool list = ms_ty_is(types, receiver, MS_BUILTIN_List);
-  const bool map = ms_ty_is(types, receiver, MS_BUILTIN_Map);
-  const bool payload = ms_ty_is(types, receiver, MS_BUILTIN_Optional) || ms_ty_is(types, receiver, MS_BUILTIN_Result);
-  if (ms_span_is_text(operation, "get")) {
-    return (args == 1 && map) || (args == 0 && payload);
-  }
-  if (ms_span_is_text(operation, "view")) {
-    return args == 2 && (text || bytes);
-  }
-  if (ms_span_is_text(operation, "view_bytes")) {
-    return args == 0 && text;
-  }
-  if (ms_span_is_text(operation, "split")) {
-    return (args == 1 || args == 2) && text;
-  }
-  if (ms_span_is_text(operation, "lines") || ms_span_is_text(operation, "chars")) {
-    return args == 0 && text;
-  }
   if (ms_span_is_text(operation, "slice") && args == 2 && list && ms_ty_arg_count(types, receiver) == 1) {
     const MsTy elem = ms_ty_args(types, receiver)[0]; /* only elements that own nothing */
     return ms_ty_is(types, elem, MS_BUILTIN_Int) || ms_ty_is(types, elem, MS_BUILTIN_Float) || ms_ty_is(types, elem, MS_BUILTIN_Bool);
