@@ -22,5 +22,7 @@ bool opt_simplify_branches(MirModule *m, MirFunc *f);
 bool opt_simplify_cse(MirModule *m, MirFunc *f);
 bool opt_simplify_map_probes(MirModule *m, MirFunc *f);
 bool opt_simplify_fuse_contains(MirModule *m, MirFunc *f);
+/* Whether `i` is a runtime lookup that returns the address of a map entry. */
+bool opt_simplify_is_map_probe(const MirModule *m, const MirInst *i);
 
 #endif
