@@ -99,6 +99,9 @@ typedef struct LowerFn {
    * that hands the call on needs the owner. */
   struct { MirValue plain, owner; } viewed[8];
   uint32_t nviewed;
+  /* Results of natives declared `@borrows` (`List.slice`): an ordinary Result whose payload views an argument. */
+  MirValue native_views[8];
+  uint32_t nnative_views;
   bool keeps_scoped; /* this function keeps the closures it is given (the flag of its MIR function) */
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
@@ -288,6 +291,9 @@ bool fn_return_view(LowerFn *fn, const MsExpr *expr, MirValue *out);
 /* Whether `value` is the owned result of the instruction just emitted, held by the innermost scope. */
 /* Whether `value` is the result of the instruction just emitted and a borrowed view of something that owns it. */
 bool fn_is_borrowed_view(LowerFn *fn, MirValue value);
+/* Whether `value` is the Result of a `@borrows` native: its payload views an argument, so a consumer that takes
+ * ownership of it must copy it. */
+bool fn_is_native_view(const LowerFn *fn, MirValue value);
 bool fn_fresh_owner(LowerFn *fn, MirValue value);
 /* Whether `value` is a result the caller owns: `fn_fresh_owner` for a type with heap parts, and for a flat one (a
  * resource record of integers) not a view of an element or field that its collection or record still owns. */
