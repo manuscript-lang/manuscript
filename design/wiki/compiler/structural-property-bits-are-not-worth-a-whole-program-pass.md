@@ -6,6 +6,6 @@ Verified: audit item 25 proposed computing Equal, Hashable, Clonable and Data on
 
 Rejected: a per-program `Vec<PropertyBits>`. Kept: `contracts::Property` replaces contract-name strings; the memo is per query. Revisit only with a measurement showing property queries dominate a large program's check time, and key any table by file visibility.
 
-Apply when: changing `implements`, `satisfies`, or the structural property walk in `crates/ms-check/src/contracts.rs`.
+Apply when: changing `implements`, `satisfies`, or the structural property walk in `src/compiler/check/properties.c` and `implements.c`.
 Evidence: property walk.
-Verify: `cargo test -p ms-check`.
+Verify: `ctest --preset ci` and `make conform`.
