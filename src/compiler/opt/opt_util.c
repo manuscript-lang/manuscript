@@ -1,5 +1,6 @@
 /* Helpers shared by the optimiser's passes. */
 #include "compiler/opt/opt_util.h"
+#include "base/parallel.h"
 
 /* Removes the instructions flagged in `dead[block][index]` from every block. */
 void opt_sweep_dead(MirFunc *f, bool *const *dead, MsArena *arena) {
@@ -201,4 +202,40 @@ void *opt_grow(MsArena *a, void *arr, uint32_t n, uint32_t *cap, size_t elem) {
   }
   *cap = ncap;
   return p;
+}
+
+/* Functions per thread below which a thread is not worth starting. */
+enum { EACH_GRAIN = 64 };
+
+typedef struct EachJobs {
+  MirModule *m;
+  OptFuncPass pass;
+  MsArena *arenas;
+  bool *changed;
+} EachJobs;
+
+static void each_job(void *context, size_t index, uint32_t worker) {
+  EachJobs *jobs = context;
+  MirModule view = *jobs->m;
+  view.arena = jobs->arenas[worker];
+  jobs->changed[index] = jobs->pass(&view, &jobs->m->funcs.ptr[index]);
+  jobs->arenas[worker] = view.arena;
+}
+
+bool opt_each_func(MirModule *m, OptFuncPass pass) {
+  const size_t count = m->funcs.len;
+  const uint32_t threads = ms_parallel_threads(count, EACH_GRAIN);
+  MsArena scratch = ms_arena_new();
+  EachJobs jobs = {.m = m, .pass = pass, .arenas = MS_ARENA_NEW_ARRAY(&scratch, MsArena, threads),
+                   .changed = MS_ARENA_NEW_ARRAY(&scratch, bool, count + 1)};
+  ms_parallel_for(threads, count, each_job, &jobs);
+  bool changed = false;
+  for (uint32_t worker = 0; worker < threads; worker++) {
+    ms_arena_adopt(&m->arena, &jobs.arenas[worker]);
+  }
+  for (size_t index = 0; index < count; index++) {
+    changed = changed || jobs.changed[index];
+  }
+  ms_arena_free(&scratch);
+  return changed;
 }

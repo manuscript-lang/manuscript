@@ -73,4 +73,13 @@ MirInst opt_inst_make(MirModule *m, MirOp op, const MirValue *args, uint32_t nar
 /* A copy of `f` that shares nothing mutable with it: operand arrays and targets are copied too. */
 void opt_func_deep_clone(MirModule *m, const MirFunc *f, MirFunc *out);
 
+/* A pass over one function that reads the module and the function and writes only the function (and the module arena
+ * for the arrays it allocates); returns whether it changed the function. */
+typedef bool (*OptFuncPass)(MirModule *m, MirFunc *f);
+
+/* Runs `pass` on every function, on all cores, and returns whether any changed. A worker gets a view of the module whose
+ * arena is its own, and the module adopts the arenas afterwards, so no two workers write the same memory. A pass that
+ * reads another function's body does not qualify: it would read it while that function is rewritten. */
+bool opt_each_func(MirModule *m, OptFuncPass pass);
+
 #endif
