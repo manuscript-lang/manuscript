@@ -536,7 +536,7 @@ void ms_own_closers(MsCheckProgram *program) {
     const MsModule *tree = program->modules.ptr[module].tree;
     for (uint32_t index = 0; index < tree->ndecls; index++) {
       const MsDecl *decl = tree->decls[index];
-      if (decl->kind == MS_D_FN) {
+      if (decl->kind == MS_D_FN && !decl->u.fn.deferred) {
         callable(&pass, decl->id, NULL, decl->u.fn.params, decl->u.fn.body);
       }
       if (decl->kind == MS_D_TEST) {
@@ -544,7 +544,9 @@ void ms_own_closers(MsCheckProgram *program) {
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
-        callable(&pass, method->id, method, method->func.params, method->func.body);
+        if (!method->func.deferred) {
+          callable(&pass, method->id, method, method->func.params, method->func.body);
+        }
       }
     }
     ms_sort((uint8_t *)(void *)pass.facts->closers.ptr, pass.facts->closers.len, sizeof(MsCloser), compare, NULL);

@@ -66,13 +66,17 @@ static void collect(Escapes *pass, uint32_t module) {
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     const MsDecl *decl = tree->decls[index];
     if (decl->kind == MS_D_FN) {
-      callable_list_push(list, (Callable){decl->u.fn.params, decl->u.fn.body, decl->id, 0});
+      if (!decl->u.fn.deferred) {
+        callable_list_push(list, (Callable){decl->u.fn.params, decl->u.fn.body, decl->id, 0});
+      }
     } else if (decl->kind == MS_D_TEST) {
       callable_list_push(list, (Callable){(MsParams){0}, decl->u.test.body, decl->id, 0});
     } else if (decl->kind == MS_D_IMPL) {
       for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
-        callable_list_push(list, (Callable){method->func.params, method->func.body, method->id, 1});
+        if (!method->func.deferred) {
+          callable_list_push(list, (Callable){method->func.params, method->func.body, method->id, 1});
+        }
       }
     }
   }
