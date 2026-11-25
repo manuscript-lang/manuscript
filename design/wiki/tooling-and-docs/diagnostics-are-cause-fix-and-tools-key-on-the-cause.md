@@ -17,14 +17,14 @@ then check the parsed operator and formatter idempotence.
 
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../../../documentation/developer-tooling/source/diagnostics.md), code classification, checker hints, recovery.
-Verify: run `cargo nextest run -p ms-syntax -p ms-check -p ms-lsp -p ms-cli` and `make conform` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.
+Verify: run `ctest --preset ci` and `make conform` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.
 
 Project import hints must recognize every current exported declaration spelling,
 including `export enum` and generic enums. Keep the header fast path and parsed
 recovery path aligned, with enum-shaped text/comment lookalikes excluded by lexer
 positions; test the machine-applicable import fix as well as name collection.
 
-A `fix` must be tested by applying it. `corpus_fixes_resolve_their_diagnostics_without_breaking_syntax` (ms-cli `check_fix`) runs `ms check --fix` over one corpus fixture per kind of fix (about 2 s; all 263 took 11 s and pushed linux-amd64 over the 600 s budget) and requires the fixed diagnostic gone and no new syntax error. It found `var fn` inserted three bytes before the method name (wrong for `fn Type.name`, so the position is now recorded by the parser) and `:` appended to a header that already had an inline body. Errors that only appear after a fix are usually unmasked, not caused by it; judge only syntax and the fixed diagnostic.
+A `fix` must be tested by applying it. a corpus-fix test (`src/cli/check_fix.c`, run by `ctest`) runs `ms check --fix` over one corpus fixture per kind of fix (about 2 s; all 263 took 11 s and pushed linux-amd64 over the 600 s budget) and requires the fixed diagnostic gone and no new syntax error. It found `var fn` inserted three bytes before the method name (wrong for `fn Type.name`, so the position is now recorded by the parser) and `:` appended to a header that already had an inline body. Errors that only appear after a fix are usually unmasked, not caused by it; judge only syntax and the fixed diagnostic.
 
 Lesson (agent-mistake bash, 2026-11-18): probing about 100 realistic wrong programs found the misleading cases are mostly where the checker reports a *symptom* of a habit from another language. Each now names the cause: a bare field name inside a method says `self.name` (and fixes it); `error("text")` says wrap it in `Error(...)` (and fixes it); `x => x * 2` is rewritten to `x => x * 2`; `promise(fn: 1)` says the entry must return a Result instead of reporting a generic-inference conflict; a braced block's fix now removes the spaces before `:` and the stray closing `}`; an import from a nonexistent module names the module that really exports the imported name unless the spelling guess exports it. A diagnostic that already explains a failed callback must also suppress the follow-on "cannot infer" and `<invalid>` mismatch lines, or the agent chases the noise.
 
