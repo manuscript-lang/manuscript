@@ -1175,3 +1175,7 @@ Same machine, min of 5, `ms` before and after the change (`export_all` removed):
 ## 2026-11-25: `extend` checks room inline and copies plain elements with one memcpy
 
 `msrt_list_extend` called `ms_list_reserve` and `msrt_list_copy_range` (which tests the element descriptor again) even when the list had room. It now tests the room inline and copies plain elements with one `memcpy`. `lz` (520k extends of about 6 elements in `make_input`): 688.1M to 667.8M instructions (-3.0%); other suite programs unchanged.
+
+## 2026-11-25: a file read runs inline when every other task is stalled
+
+`pargroup` (2000 files, `map_concurrent` over 4 workers) sent each `read_file` through libuv's pool, since a worker had more than one task, although the others were parked on remote waits: strace counted 12466 futex, 3003 epoll_pwait and 3016 write calls (Rust: one futex), and four workers (50 ms) were slower than `MS_THREADS=1` (39 ms). `ms_fs_run` now runs the job inline when `ms_task_others_stalled()`, the test `pool_alone()` already uses. Same machine, min of 9: `pargroup` 41-50 ms to 17-21 ms (Rust 28-33 ms); callgrind 367.3M to 357.6M; `treegrep` unchanged.
