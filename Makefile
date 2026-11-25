@@ -4,6 +4,8 @@ VSCODE_CLI ?= code
 MS ?= $(CURDIR)/.artifacts/build/ci/src/cli/ms
 BENCHREPEATS ?= 5
 BENCHFILTER ?=
+GROUP ?= all
+SAMPLES ?= 5
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 
 # Formatting, nested matches (.ms and Markdown fences), release pins, workflow triggers and the license inventory
@@ -19,7 +21,7 @@ licenses-check: repo-check
 # Each of these runs tools/<name>.ms with the built ms; the tool's header comment says what it checks.
 TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check memcpy-check removed-check
 
-.PHONY: build conform conform-release verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
+.PHONY: build conform conform-release verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check perf perf-list perf-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
 
 # Configures and builds the `ci` preset (src/README.md); `ms` lands in $(MS).
 build:
@@ -106,6 +108,17 @@ bench-check: build
 	@for t in bench/tools/*.ms bench/agent/*.ms; do "$(MS)" check $$t || exit 1; done
 	@for t in bench/agent/challenges/*/start/ms/src/main.ms; do "$(MS)" check $$t || exit 1; done
 	@for t in bench/tools/*_test.ms; do "$(MS)" test $$t || exit 1; done
+	@"$(MS)" run bench/tools/perf.ms -- check
+
+# The performance suite (bench/perf/groups.txt): `make perf GROUP=<group|time|count> SAMPLES=5` runs a group, `perf-list` names them.
+perf: build
+	MS="$(abspath $(MS))" "$(MS)" run bench/tools/perf.ms -- run $(GROUP) $(SAMPLES)
+
+perf-list: build
+	"$(MS)" run bench/tools/perf.ms -- list
+
+perf-check: build
+	"$(MS)" run bench/tools/perf.ms -- check
 
 # Runs the bench blocks of bench/perf/stdlib; BENCHREPEATS is the sample count per case.
 stdlib-bench: build

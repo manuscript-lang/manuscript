@@ -4,6 +4,7 @@
 
 Perf benchmarks, profiling.
 
+- [There is one perf suite, indexed by `groups.txt`](there-is-one-perf-suite-indexed-by-groups-txt.md): `make perf-list`, `make perf GROUP=<name>`, and a check that no benchmark sits outside the index.
 - [Binary search moves one select per step, and a captured comparator still gets the generated sort](binary-search-and-captured-comparators-must-not-branch-or-call.md): `binary_search` 270 to 31 ms per 2M searches (Rust 90); sorts by a capturing comparator 148 to 35 ms.
 - [A lone task runs file calls in place](a-lone-task-runs-file-calls-in-place.md): `treegrep` over 2000 small files 100 to 40 ms; the pool hand-off cost about 50 us per read.
 - [Eager arena commit made a program's first large allocations slow](eager-arena-commit-made-the-first-large-allocations-slow.md): a first run of a map block took 1.8 ms and the second 0.22 ms; `map_put_get_8k` 92 to 33 ns per op (Rust 33).
