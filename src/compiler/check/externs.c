@@ -148,7 +148,7 @@ void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty) {
       ms_strbuild_append(&text, param_name);
       ms_strbuild_append_text(&text, " cannot be var; a native borrows its arguments");
       report(body, param->pos, text);
-    } else if (param->def != NULL) {
+    } else if (param->def != NULL && !ms_ty_is(types, ty, MS_BUILTIN_Optional)) { /* an Optional's own default is implicit: its type is what fails */
       ms_strbuild_append_text(&text, "extern parameter ");
       ms_strbuild_append(&text, param_name);
       ms_strbuild_append_text(&text, " cannot have a default; the native symbol takes every argument");
