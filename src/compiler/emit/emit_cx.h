@@ -189,6 +189,13 @@ void emit_load_value(EmitCx *cx, MirValue value, const char *base);
 /* The next instruction (its result `next`) may move the payload the following move writes straight back: hold that move
  * until the next instruction has run, and write neither when it does (emit_wide.c). */
 void emit_wide_defer_for(EmitCx *cx, MirValue next);
+void emit_alt_payload_run(EmitCx *cx, const MirInst *inst, uint32_t *first, uint32_t *end, uint32_t *operand,
+                          uint32_t *source);
+/* After the cells are pooled: a held value that only becomes the payload of the `alt.new` after it is built where the
+ * payload goes, so the move into the result is not written. */
+void emit_wide_alias(EmitCx *cx);
+/* The `getelementptr` of each such value's place in its cell, at the top of the function. */
+void emit_wide_alias_cells(EmitCx *cx);
 bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, uint32_t from, uint32_t count);
 /* After an instruction is written: the loads of the leaves it read from cells, to go before it. */
 void emit_wide_loads(EmitCx *cx);
@@ -198,6 +205,8 @@ bool emit_wide_return(EmitCx *cx, MirValue value);
 bool emit_wide_held(const EmitCx *cx, MirValue value);
 bool emit_wide_result(EmitCx *cx, MirValue value, char *out, size_t capacity);
 bool emit_wide_address(const EmitCx *cx, MirValue value, char *out, size_t capacity);
+/* Whether two held values lie in one pooled cell, wherever in it: writing one can overwrite the other. */
+bool emit_wide_shares_cell(const EmitCx *cx, MirValue first, MirValue second);
 bool emit_wide_same_cell(const EmitCx *cx, MirValue first, MirValue second);
 
 

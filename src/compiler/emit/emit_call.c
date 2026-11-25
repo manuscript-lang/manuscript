@@ -322,6 +322,7 @@ void emit_frame_slots(EmitCx *cx) {
       ms_strbuild_printf(cx->out, "  call void asm sideeffect \"\", \"r,~{memory}\"(ptr %%cell%u)\n", cell);
     }
   }
+  emit_wide_alias_cells(cx);
   if (result_area != 0) {
     ms_strbuild_printf(cx->out, "  %%R = alloca [%u x i8], align 8\n", result_area);
   }

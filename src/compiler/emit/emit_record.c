@@ -94,7 +94,7 @@ static bool held_record_new(EmitCx *cx, const MirInst *inst) {
     if (emit_wide_address(cx, inst->args[arg], from, sizeof from)) {
       (void)packed_bytes(cx, inst->args[arg], offsets[at], &aligned);
       /* A field that shares the result's cell would be overwritten by the stores before it is copied. */
-      aligned = aligned && !emit_wide_same_cell(cx, inst->args[arg], inst->res);
+      aligned = aligned && !emit_wide_shares_cell(cx, inst->args[arg], inst->res);
     }
     ok = aligned;
     at += (uint32_t)emit_value_leaves(cx, inst->args[arg]).len;
@@ -135,7 +135,8 @@ static bool held_record_set(EmitCx *cx, const MirInst *inst, uint32_t start, uin
     return false;
   }
   if (!emit_wide_same_cell(cx, inst->args[0], inst->res)) {
-    ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", to, from,
+    ms_strbuild_printf(cx->out, "  call void @llvm.%s.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n",
+                       emit_wide_shares_cell(cx, inst->args[0], inst->res) ? "memmove" : "memcpy", to, from,
                        emit_slot_bytes(cx, value_type(cx, inst->res)));
   }
   MsSpan leaves = emit_value_leaves(cx, inst->res);
