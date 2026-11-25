@@ -594,6 +594,7 @@ bool ms_borrows_describe_returned(Borrows *pass, const MsExpr *value, MsStrBuild
     return true;
   }
   if (!pass->ref_result && value->kind == MS_E_CALL && value->u.call.callee->kind == MS_E_MEMBER &&
+      (ms_ty_is(&pass->program->types, ty, MS_BUILTIN_Bytes) || ms_ty_is(&pass->program->types, ty, MS_BUILTIN_String)) &&
       ms_own_declared_ref_result(pass->program, &ms_facts_call(pass->facts, value->id)->callee) && borrows_temporary(pass, value)) {
     ms_strbuild_append_text(text, "`");
     ms_own_expr_text(text, names, value);
