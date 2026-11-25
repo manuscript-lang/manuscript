@@ -55,6 +55,22 @@ jobs:
       # The pinned shared LLVM library: ms compiles programs through it in this process. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
+      - name: Probe repeated repo-check
+        run: |
+          ms=$(find .artifacts/build/ci -maxdepth 3 -name ms -type f | head -1); ms=$PWD/$ms
+          ulimit -c unlimited || true
+          mkdir -p .artifacts/cores; sudo sysctl -w kernel.core_pattern="$PWD/.artifacts/cores/core.%p" || true
+          which gdb lldb-18 lldb valgrind || true
+          for mode in cranelift llvm; do
+            if [ $mode = llvm ]; then export MS_CRANELIFT=off; fi
+            fails=0
+            for i in $(seq 1 150); do
+              GIT=/usr/bin/git MS=$ms "$ms" run tools/repo-check.ms > .artifacts/probe.out 2>&1; rc=$?
+              if [ $rc -ne 0 ]; then fails=$((fails+1)); echo "== $mode run $i exit $rc"; tail -5 .artifacts/probe.out; fi
+            done
+            echo "== $mode: $fails failures of 150"
+          done
+          ls -la .artifacts/cores || true
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target lint
