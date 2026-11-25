@@ -1,15 +1,10 @@
 // conform: tags=ownership,tier-core
 // conform: phase=check
-// `ok(x)` and `x or default` take what they are given: a borrowed parameter needs `.clone()` or `move`.
-fn wrap(hold name String) &String! {
-	return ok(name)
-}
-
+// `x or default` takes what it is given: a borrowed parameter needs `.clone()` or `move`. (`ok(x)` of a `&T!` result wraps a view.)
 fn pick(hold name String?) &String {
 	return name or "none"
 }
 
 fn main() Void {
 	print(pick("a"))
-	print(wrap("b").get())
 }
