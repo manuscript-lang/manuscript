@@ -116,8 +116,33 @@ static void view_stmt(void *ctx, const MsStmt *stmt) {
   }
 }
 
+/* A look moved into a local (`out.append(Ref(part, 0))`): the local looks at what the look does. */
+static void view_kept_looks(Pass *pass, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  if (fact == NULL || callee->kind != MS_E_MEMBER || callee->u.member.left->kind != MS_E_NAME) {
+    return;
+  }
+  const MsRef *receiver = ms_facts_ref(pass->facts, callee->u.member.left->id);
+  if (receiver == NULL || receiver->kind != MS_REF_LOCAL) {
+    return;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    const MsExpr *value = call->u.call.args.ptr[index].value;
+    for (uint32_t at = 0; at < fact->arg_count; at++) {
+      if (fact->args[at].source == MS_ARG_WRITTEN && fact->args[at].node.node == value->id &&
+          (fact->args[at].flags & MS_PARAM_MOVE) != 0 && ms_own_look_record(pass->program, ms_facts_type(pass->facts, value->id))) {
+        add_view(pass, receiver->local, value);
+      }
+    }
+  }
+}
+
 static void view_expr(void *ctx, const MsExpr *expr) {
   Pass *pass = ctx;
+  if (expr->kind == MS_E_CALL) {
+    view_kept_looks(pass, expr);
+  }
   for (uint32_t arm = 0; expr->kind == MS_E_MATCH && arm < expr->u.match.arms.len; arm++) {
     const MsArm *one = expr->u.match.arms.ptr[arm];
     const MsRef *bound = ms_facts_ref(pass->facts, one->id);
@@ -140,15 +165,17 @@ static Reach classify_place(Pass *pass, const MsExpr *expr) {
     return NEUTRAL; /* a constant or a case such as `none` owns nothing */
   }
   if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+    Reach joined = NEUTRAL;
+    bool viewed = false;
     for (uint32_t index = 0; index < pass->view_count; index++) {
       if (pass->views[index].local == ref->local && pass->depth < 8) {
         pass->depth++;
-        const Reach borrow = classify(pass, pass->views[index].source);
+        joined = join(joined, classify(pass, pass->views[index].source));
         pass->depth--;
-        return borrow;
+        viewed = true;
       }
     }
-    return OWNED;
+    return viewed ? joined : OWNED;
   }
   const int position = position_of(pass, root);
   return position < 0 ? OWNED : (Reach){.mask = UINT32_C(1) << position, .owned = false};
@@ -454,6 +481,13 @@ static void report_declared(Pass *pass, uint32_t module, MsPos pos, const MsFunc
     return;
   }
   if ((declared & MS_RESULT_BORROWED) != 0 && used == 0 && !reached.all.owned) {
+    return;
+  }
+  if ((declared & MS_RESULT_BORROWED) != 0 && reached.all.owned && (used & holds) != 0) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "a `&` result must be a part of a `hold` argument, but this body also puts a value it owns "
+                                   "into the result; clone the part of the argument or keep only parts of the held argument");
+    ms_check_report(pass->program, module, pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     return;
   }
   if ((declared & MS_RESULT_BORROWED) != 0 && (used & holds) == 0) {

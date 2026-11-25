@@ -91,7 +91,7 @@ endif()
 add_test(NAME stdout_closed COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/stdout-closed-check.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_tests_properties(stdout_closed PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 
-# Every identifier of core stdlib modules asked through `ms lsp`: no jump lands on the wrong text, and hover stays available.
+# Every identifier of every stdlib module asked through `ms lsp`: no jump lands on the wrong text, and hover stays available.
 add_test(NAME lsp_sweep COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/lsp-sweep.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_tests_properties(lsp_sweep PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 

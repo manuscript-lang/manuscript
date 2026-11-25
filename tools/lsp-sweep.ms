@@ -1,3 +1,4 @@
+// ms: allow_effect std.env.read
 // ms: allow_effect std.fs.read
 // ms: allow_effect std.process.run
 
@@ -5,34 +6,31 @@
 // `ms lsp`, asks for the definition and hover of every identifier in code, and fails when
 //   - a definition lands on text that is not the identifier asked about (a jump to the wrong place), or
 //   - more identifiers than the ceiling below have no hover (navigation stopped working in some construct).
-// The modules cover the prelude, generics, borrowed signatures, extern declarations and
-// grouped declarations. MS names the ms to run (default
-// .artifacts/build/ci/src/cli/ms). Usage: ms run tools/lsp-sweep.ms
+// Every standard-library module is swept unless arguments name the modules (paths below
+// src/stdlib). MS names the ms to run (default .artifacts/build/ci/src/cli/ms).
+// Usage: ms run tools/lsp-sweep.ms [-- bytes.ms os/path.ms]
 import (
 	Bytes from "@std/bytes.ms",
 	JsonValue, parse from "@std/data/json.ms",
-	working_directory from "@std/os/env.ms",
-	read_file from "@std/os/fs.ms",
+	arguments, working_directory from "@std/os/env.ms",
+	GlobOptions, glob, read_file from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	seconds from "@std/time.ms",
 
 	tool_ms from "./lib.ms",
 )
 
-// Modules swept: the path below `src/stdlib` and the name the language server knows it
-// by.
-fn modules() List[String] {
-	return [
-		"bytes.ms", "collections/collections.ms", "core/core.ms", "core/string.ms",
-		"os/path.ms", "io/io.ms"
-	]
+// Identifiers with no hover that the sweep tolerates: the type argument of a call in a
+// field default (`items List[T] = List[T]()`), and the `values:` label of the `Bytes`
+// constructor, which has no declared parameters. Lower this as navigation improves;
+// raise it never.
+fn ceiling() Int {
+	return 3
 }
 
-// Identifiers with no hover that the sweep tolerates: written primitive types, which
-// have no declaration to describe, and names inside text interpolation. Lower this as
-// navigation improves; raise it never.
-fn ceiling_percent() Int {
-	return 4
+// How many identifiers without hover the sweep names.
+fn shown_limit() Int {
+	return 1000
 }
 
 // Words that are not names: keywords, literals and the primitive types.
@@ -43,9 +41,10 @@ fn skipped() List[String] {
 		"break", "continue", "defer", "move", "hold", "and", "or", "not", "true",
 		"false", "null", "void", "test", "bench", "const", "as", "is", "self", "Self",
 		"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64",
-		"Float", "Float32", "Bool", "String", "Void", "Never", "Bytes", "Error", "ok",
-		"error", "some", "default", "ms", "std", "throws", "spawn", "try", "catch",
-		"yield", "await", "async", "unsafe", "pub", "static", "impl", "where", "ref"
+		"Float", "Float32", "Float64", "Bool", "String", "Void", "Never", "Bytes",
+		"Error", "ok", "error", "some", "default", "ms", "_", "std", "throws", "spawn",
+		"try", "catch", "yield", "await", "async", "unsafe", "pub", "static", "impl",
+		"where", "ref"
 	]
 }
 
@@ -71,10 +70,19 @@ fn probes_of(module, text String) List[Probe] {
 	skipped := skipped()
 	var found = List[Probe]()
 	var in_block = false
+	var in_text = false
 	var line_number = 0
 
 	for line in text.split("\n") {
 		line_number += 1
+
+		// A text literal over several lines (`"""`) holds words, not names.
+		quotes := line.split("\"\"\"").length() - 1
+
+		if in_text or quotes > 0 {
+			if quotes % 2 == 1 { in_text = not in_text }
+			continue
+		}
 
 		bytes := line.to_bytes()
 		count := bytes.length()
@@ -113,7 +121,12 @@ fn probes_of(module, text String) List[Probe] {
 				while at < count and is_word_byte(bytes.get(at)) { at += 1 }
 
 				word := line.slice(start, at)
-				if not skipped.contains(word) {
+				is_prefix := (
+					(word == "f" or word == "r")
+					and at < count
+					and bytes.get(at) == 34
+				)
+				if not skipped.contains(word) and not is_prefix {
 					found.append(
 						Probe(
 							module: module.clone(),
@@ -214,7 +227,11 @@ fn line_of(root, uri String, at Int, var sources Map[String, List[String]]) Stri
 			bytes := read_file(path).wait()
 
 			if bytes.is_ok() {
-				lines.extend((bytes.get().decode_utf8() or "").split("\n"))
+				lines.extend(
+					(bytes.get().decode_utf8() or "").split(
+						"\n"
+					).map(line => line.clone())
+				)
 				break
 			}
 		}
@@ -228,20 +245,29 @@ fn line_of(root, uri String, at Int, var sources Map[String, List[String]]) Stri
 	return found[at].clone()
 }
 
+fn modules(root String) List[String] {
+	named := arguments().map(argument => argument.clone())
+	if not named.is_empty() { return named }
+
+	files := glob(f"{root}/src/stdlib", GlobOptions(patterns: ["**/*.ms"])).get_or([])
+	return files.map(file => file.path.clone())
+}
+
 fn main() Int {
 	root := working_directory().get().clone()
+	swept := modules(root.clone())
 	ms := tool_ms(root.clone())
 	var sources = Map[String, List[String]]()
 	var probes = List[Probe]()
 
-	for module in modules() {
+	for module in swept {
 		text := (
 			read_file(
 				f"{root}/src/stdlib/{module}"
 			).wait().get().decode_utf8()
 			or ""
 		).clone()
-		lines := text.split("\n")
+		lines := text.split("\n").map(line => line.clone())
 		sources.add(module.clone(), lines.clone())
 		probes.extend(probes_of(module, text))
 	}
@@ -254,7 +280,7 @@ fn main() Int {
 			+ "\",\"capabilities\":{}}}"
 		)
 	)
-	for module in modules() {
+	for module in swept {
 		parts.append(
 			frame(
 				"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\""
@@ -276,7 +302,7 @@ fn main() Int {
 	finished := run(
 		ms,
 		["lsp"],
-		RunOptions(input: parts.join("").to_bytes(), timeout: seconds(600)),
+		RunOptions(input: parts.join("").to_bytes(), timeout: seconds(3000)),
 	).wait()
 
 	if not finished.is_ok() {
@@ -328,7 +354,7 @@ fn main() Int {
 					if spelled != probe.word {
 						wrong += 1
 
-						if shown < 20 {
+						if shown < 60 {
 							shown += 1
 							print(
 								f"WRONG {probe.module}:{probe.line + 1}:{probe.column + 1} {probe.word} jumps to {name}:{at_line + 1}:{from + 1}"
@@ -346,14 +372,20 @@ fn main() Int {
 			if result != null { has_hover = not result.is_null() }
 		}
 
-		if not has_hover { missing += 1 }
+		if not has_hover {
+			missing += 1
+			if missing <= shown_limit() {
+				print(
+					f"NO HOVER {probe.module}:{probe.line + 1}:{probe.column + 1} {probe.word}"
+				)
+			}
+		}
 	}
 
-	percent := missing * 100 / (if asked == 0 { 1 } else { asked })
 	print(
-		f"lsp-sweep: {asked} identifiers, {wrong} wrong jumps, {missing} without hover ({percent}%, ceiling {ceiling_percent()}%)"
+		f"lsp-sweep: {asked} identifiers, {wrong} wrong jumps, {missing} without hover (ceiling {ceiling()})"
 	)
-	if wrong > 0 or percent > ceiling_percent() { return 1 }
+	if wrong > 0 or missing > ceiling() { return 1 }
 
 	return 0
 }
