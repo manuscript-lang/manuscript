@@ -65,6 +65,11 @@ ms_library(ms_emit compiler/emit
     emit_task.c emit_debug.c emit_tables.c emit_units.c emit_hints.c emit_copies.c emit_dead.c emit_wide.c
   LINK ms_mir ms_base)
 
+ms_library(ms_emit_cl compiler/emit_cl
+  SOURCES
+    cranelift_inproc.c cl_leaf.c cl_mem.c cl_scalar.c cl_checked.c cl_call.c cl_branch.c cl_record.c cl_data.c cl_option.c cl_list.c cl_string.c cl_closure.c cl_iface.c cl_tables.c cl_func.c cl_module.c
+  LINK ms_emit ms_mir ms_base)
+
 # One linker per OS family.
 if(WIN32)
   set(link_os link_windows.c)
@@ -76,7 +81,7 @@ endif()
 ms_library(ms_link compiler/link
   SOURCES
     link.c link_job.c object.c llvm_inproc.c asm_scan.c asm_tables.c ${link_os}
-  LINK ms_emit ms_base)
+  LINK ms_emit ms_emit_cl ms_base)
 
 ms_library(ms_check compiler/check
   SOURCES
@@ -99,8 +104,8 @@ ms_library(ms_opt compiler/opt
   SOURCES
     opt_appendfast.c opt_bytesfast.c opt_bytetake.c opt_copyelim.c opt_copyelim_local.c opt_copyelim_move.c
     opt_copyelim_unbox.c opt_exit_drops.c opt_fieldload.c opt_ifconv.c opt_twins.c opt_thread.c opt_inline.c opt_inline_args.c opt_inline_capture.c opt_inline_closure.c
-    opt_fuse.c opt_inline_dead.c opt_lastuse.c opt_lastuse_region.c opt_loopslot.c opt_optparam.c opt_pipeline.c opt_probe.c
-    opt_range.c opt_range_eval.c opt_range_len.c opt_range_prove.c opt_range_refine.c opt_reserve.c opt_simplify.c
+    opt_fuse.c opt_inline_dead.c opt_lastuse.c opt_lastuse_region.c opt_optparam.c opt_pipeline.c opt_probe.c
+    opt_range.c opt_range_eval.c opt_range_len.c opt_range_prove.c opt_range_refine.c opt_simplify.c
     opt_simplify_cfg.c opt_simplify_dead.c opt_simplify_fold.c opt_simplify_mutate.c opt_simplify_phis.c opt_simplify_probes.c
     opt_sortgen.c opt_sortgen_drift.c opt_sortgen_emit.c opt_sortgen_merge.c opt_splitview.c opt_strfast.c opt_strfuse.c opt_unwind_sites.c opt_unwind_thread.c opt_util.c
     opt_viewfast.c

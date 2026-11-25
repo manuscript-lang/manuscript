@@ -1159,3 +1159,15 @@ Per request the Manuscript server did 24.2k instructions, 27.5 allocations and 1
 | Syscalls per request | 2.4 (+0.3 poll/futex) | about 2.0 |
 
 Throughput on the shared 4-CPU VM (±25% run to run, so not a result): 1 CPU medians 61k before, 54k–72k after; 2 CPUs 167k–218k before, 170k–202k after (two scheduler threads keep the loop path). Kernel time per request depends on the request rate, so the instruction count is the measure; at 14.3k instructions the server is still 2.1x hyper's 6.7k. Not done: the 4.4k instructions of the per-request peer-hangup watcher task (a promise-based replacement cost more than the task, 14.9k, and was dropped; the tasks thread plans a lighter fd waiter), the multi-thread edge path, kqueue and Windows.
+
+## 2026-11-25: wordfreq loops over the text directly
+
+`wordfreq` called `data.lower().fields_by(...)`, which builds a list of every word (112 MB, 55k page faults on the 22 MB input) before the loop reads it once; Rust's `split` is lazy. The Manuscript version now walks `chars()` and counts a `view` of each word, as the Rust loop reads slices of the text. Output is byte-identical. Min of 9, same machine: ms 302 to 254 ms, Rust 196 ms (ms / Rust 1.54x to 1.30x). Callgrind instructions rise 2330M to 2460M (+5.6%, a view per word); the saved time is allocation and page faults. `fields_by` itself still returns a list: its 1300-line MIR with four push sites is out of reach of list fusion, so a lazy form is the stdlib follow-up.
+
+## 2026-11-25: functions stay internal in release builds
+
+Same machine, min of 5, `ms` before and after the change (`export_all` removed): `sim` 202 to 143 ms (Rust 156 in the same run; the `heat` stencil alone 89 to 43 ms against Rust 40), `jsonsum` 200 to 160 ms, `jsonrt` 1159 to 1091 ms, `pargroup` 59 to 48 ms. Callgrind instructions: `sim` 1945M to 886M (-54%), `hashing` -3.4%, `interp` -2.6%, `dispatch` -2.6%, `lz` -1.8%, `csvgroup`, `exprparse`, `graph`, `logstats` and `objgraph` within 0.1%.
+
+## 2026-11-25: `extend` checks room inline and copies plain elements with one memcpy
+
+`msrt_list_extend` called `ms_list_reserve` and `msrt_list_copy_range` (which tests the element descriptor again) even when the list had room. It now tests the room inline and copies plain elements with one `memcpy`. `lz` (520k extends of about 6 elements in `make_input`): 688.1M to 667.8M instructions (-3.0%); other suite programs unchanged.

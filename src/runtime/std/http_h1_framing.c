@@ -57,19 +57,6 @@ static bool find_group(const MsHeaders *fields, const char *name, size_t *group)
   return false;
 }
 
-bool ms_h1_has_token(const MsHeaders *fields, const char *name, const char *token) {
-  size_t group = 0;
-  if (!find_group(fields, name, &group)) {
-    return false;
-  }
-  for (size_t v = 0; v < ms_headers_group_size(fields, group); v++) {
-    if (value_has_token(ms_headers_group_value(fields, group, v), token)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 typedef struct ConnectionFlags {
   bool close;
   bool keep_alive;

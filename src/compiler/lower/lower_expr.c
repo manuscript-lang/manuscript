@@ -780,6 +780,10 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
       fn_closing_take(fn, ms_facts_ref(fn->facts, expr->id), value, &taken)) {
     return taken;
   }
+  if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_native_view(fn, value) &&
+      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+    return fn_implicit_clone(fn, value, true); /* the new owner copies what the native only views */
+  }
   if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_borrowed_view(fn, value) &&
       mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
     const MirValue owned = fn_take_from_temporary(fn, expr, value);

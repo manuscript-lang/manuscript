@@ -313,6 +313,9 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   if (mir_needs_drop(fn->cx->module, ret)) {
     fn_own(fn, fn_scope(fn), result);
   }
+  if (sig->borrows && fn->nnative_views < MS_COUNT_OF(fn->native_views)) {
+    fn->native_views[fn->nnative_views++] = result;
+  }
   *out = result;
   return true;
 }

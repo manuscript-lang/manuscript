@@ -60,10 +60,11 @@ typedef struct LuTermCtx {
 } LuTermCtx;
 
 typedef struct LuFamily {
-  MirValue *v; /* members, in discovery order */
-  uint32_t n;
+  MsArena *arena; /* where the arrays live; they grow as members are found */
+  MirValue *v;    /* members, in discovery order */
+  uint32_t n, vcap;
   MirValue *work;
-  uint32_t nwork;
+  uint32_t nwork, wcap;
 } LuFamily;
 
 typedef struct LuPlace {
