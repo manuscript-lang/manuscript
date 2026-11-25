@@ -343,7 +343,23 @@ bool *cpe_new_flags(MsArena *arena, const MirFunc *f) {
 
 /* ---- the pass ---- */
 
+/* Whether the function holds an instruction of `op`. */
+bool cpe_has_op(const MirFunc *f, MirOp op) {
+  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
+    const MirInstList *insts = &f->blocks.ptr[bi].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      if (insts->ptr[i].op == op) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool opt_copyelim_func(MirModule *m, MirFunc *f) {
+  if (!cpe_has_op(f, MOP_Clone)) { /* every rewrite below starts at a clone */
+    return false;
+  }
   MsArena arena = ms_arena_new();
   bool changed = cpe_alias_stable(&arena, m, f);
   changed |= cpe_move_dead_sources(&arena, m, f);
