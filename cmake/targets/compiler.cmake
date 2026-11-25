@@ -39,15 +39,23 @@ ms_library(ms_syntax compiler/syntax
 set(std_embedded ${MS_GEN}/std_embedded.c)
 file(GLOB_RECURSE std_files CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/stdlib/*.ms)
 add_custom_command(
-  OUTPUT ${std_embedded}
+  OUTPUT ${std_embedded} ${std_embedded}.list
   COMMAND ${CMAKE_COMMAND} -DSTDLIB_DIR=${CMAKE_SOURCE_DIR}/src/stdlib -DOUTPUT=${std_embedded}
           -P ${CMAKE_SOURCE_DIR}/cmake/EmbedStdlib.cmake
   DEPENDS ${std_files} ${CMAKE_SOURCE_DIR}/cmake/EmbedStdlib.cmake
   COMMENT "Embedding src/stdlib/*.ms")
+# Where each bundled function body sits, found by the real parser and checked against a whole parse (lazy parsing).
+ms_executable(std_index_gen compiler/syntax SOURCES std_index_gen.c LINK ms_syntax ms_base)
+set(std_bodies ${MS_GEN}/std_bodies.c)
+add_custom_command(
+  OUTPUT ${std_bodies}
+  COMMAND std_index_gen ${CMAKE_SOURCE_DIR}/src/stdlib ${std_embedded}.list ${std_bodies}
+  DEPENDS std_index_gen ${std_embedded}.list
+  COMMENT "Indexing bundled function bodies")
 ms_library(ms_project compiler/project
   SOURCES
     discover.c edit.c embed.c files.c lock.c load.c manifest.c manifest_packages.c project.c package.c resolve.c
-    attach.c attach_effects.c semver.c solve.c solve_choose.c toml.c workspace.c ${std_embedded}
+    attach.c attach_effects.c semver.c solve.c solve_choose.c toml.c workspace.c ${std_embedded} ${std_bodies}
   LINK ms_syntax ms_base)
 
 ms_library(ms_emit compiler/emit

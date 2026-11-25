@@ -27,6 +27,16 @@ typedef struct MsChunk {
 bool ms_parse_chunk(MsArena *arena, MsNames *names, MsSpan source, MsChunk chunk, MsModule *module,
                     MsDiag *diag);
 
+/* Parses a file as `ms_parse` does, skipping the function bodies `lazy` lists (sorted by `start`): each is left
+ * unparsed on its function (`MsFunc.lazy`, `deferred`), its node ids reserved. `lazy` may be NULL. When `log` is
+ * not NULL it receives every function body of the file that can be skipped, from `arena`, sorted by `start`. */
+bool ms_parse_bodies(MsArena *arena, MsNames *names, MsSpan source, const MsBodyRange *lazy, size_t nlazy,
+                     MsBodyRange **log, size_t *nlog, MsModule *module, MsDiag *diag);
+
+/* Parses the body `range` of the file `source` (the whole original text), numbering its nodes as the whole-file
+ * parse did. False and *diag filled when it does not parse or does not use exactly its reserved ids. */
+bool ms_parse_body(MsArena *arena, MsNames *names, MsSpan source, MsBodyRange range, MsStmts *out, MsDiag *diag);
+
 /* Parses `source` retaining every declaration that parses on its own (or after blanking invalid statements). True when the
  * whole file parses; otherwise `module` holds what was kept and `diags` the problems of the rest, from `arena`. */
 bool ms_parse_partial(MsArena *arena, MsNames *names, MsSpan source, MsModule *module, MsDiag **diags,

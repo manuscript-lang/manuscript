@@ -34,6 +34,10 @@ MS_NODISCARD bool parse_method_signature(Parser *p, MsToken name, bool generics,
   m->func.params = params;
   m->func.result = result;
   m->func.body = stmts;
+  if (body && p->has_skipped) {
+    m->func.lazy = p->skipped;
+    m->func.deferred = true;
+  }
   m->mutating = mutating;
   *out = m;
   return true;

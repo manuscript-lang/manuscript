@@ -19,6 +19,7 @@ enum { RANGE_LEVEL = 5 };
 
 MS_LIST_DEFINE(ScratchList, scratch_list, uint8_t)
 MS_LIST_DEFINE(OffsetList, offset_list, MsOffsetRange)
+MS_LIST_DEFINE(BodyList, body_list, MsBodyRange)
 
 /* What a speculative parse restores when it fails: the shared scratch stacks and the parser flags that the
  * abandoned frames had changed. Node ids and queued statements are deliberately not restored, so a
@@ -50,6 +51,11 @@ typedef struct Parser {
   uint64_t *type_brackets;
   ScratchList *scratch, *bytes; /* shared with nested parsers */
   OffsetList *redundant_error;   /* see MsModule.redundant_error */
+  const MsBodyRange *lazy; /* function bodies to skip, sorted by start; see ms_parse_bodies */
+  size_t nlazy, lazy_at;
+  bool has_skipped;        /* the last function suite was skipped; `skipped` is its range */
+  MsBodyRange skipped;
+  BodyList *log;           /* every skippable function body seen, or NULL */
   MsDiag *diag;
 } Parser;
 

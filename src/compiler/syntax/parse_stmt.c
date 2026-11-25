@@ -645,7 +645,44 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bo
   return true;
 }
 
+/* End offset of the last token before the cursor that is not a layout token. */
+static uint32_t last_token_end(const Parser *p) {
+  size_t at = p->at;
+  while (at > 0 && p->tokens[at - 1].hi == p->tokens[at - 1].lo) {
+    at--;
+  }
+  return at == 0 ? 0 : p->tokens[at - 1].end.offset;
+}
+
+/* Skips the body ms_parse_bodies was told to leave out: the source holds `{` and `}` where it stood. The node ids
+ * it used are reserved, so the nodes after it are numbered as in a whole parse. */
+MS_NODISCARD static bool skip_body(Parser *p, MsStmts *out) {
+  const MsBodyRange range = p->lazy[p->lazy_at++];
+  p->at++;
+  while (parse_kind(p) != MS_T_BlockClose && parse_kind(p) != MS_T_Eof) {
+    p->at++;
+  }
+  if (!parse_need(p, MS_T_BlockClose) || (range.arrow && !parse_end(p))) {
+    return false;
+  }
+  p->next_id = range.end_id;
+  p->skipped = range;
+  p->has_skipped = true;
+  *out = (MsStmts){0};
+  return true;
+}
+
+/* A function or method body: `{ ... }` and `=> expression` are the ones a lazy parse can leave out. */
 MS_NODISCARD bool parse_statement_suite(Parser *p, bool is_expression, bool fn_body, MsStmts *out) {
+  const MsToken open = parse_peek(p);
+  const MsBodyRange before = {.start = open.pos.offset, .line = open.pos.line - 1, .first_id = p->next_id,
+                              .arrow = open.kind == MS_T_FatArrow};
+  if (fn_body) {
+    p->has_skipped = false;
+    if (p->lazy_at < p->nlazy && p->lazy[p->lazy_at].start == before.start) {
+      return skip_body(p, out);
+    }
+  }
   if (!parse_enter(p))
     return false;
   bool outer = p->inline_statement, outer_return = p->inline_return, outer_lambda = p->block_lambda;
@@ -657,5 +694,11 @@ MS_NODISCARD bool parse_statement_suite(Parser *p, bool is_expression, bool fn_b
   p->block_lambda = outer_lambda;
   p->depth--;
   *out = r;
+  if (fn_body && p->log != NULL && r.len > 0) {
+    MsBodyRange range = before;
+    range.end = last_token_end(p);
+    range.end_id = p->next_id;
+    body_list_push(p->log, range);
+  }
   return true;
 }
