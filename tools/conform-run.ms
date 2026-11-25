@@ -29,6 +29,7 @@ import (
 	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",
 
+	proven from "./conform/batch.ms",
 	Fixture, fixtures, read_text, text_of from "./conform/corpus.ms",
 	number, observe, same, text_value from "./conform/observe.ms",
 	tool_ms from "./lib.ms",
@@ -37,8 +38,14 @@ import (
 // Observes each fixture of `chunk`: one `ok` or `FAIL <id>` line apiece.
 fn sweep(ms, build_type String, chunk List[Fixture], detail Bool) List[String] {
 	var lines = List[String]()
+	cleared := proven(ms, chunk, build_type)
 
 	for fx in chunk {
+		if cleared.contains(fx.id) {
+			lines.append("ok")
+			continue
+		}
+
 		observed := observe(ms, fx, build_type)
 
 		if same(fx.expected, observed) {
