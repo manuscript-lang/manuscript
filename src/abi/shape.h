@@ -63,6 +63,8 @@ enum {
   MS_SHAPE_JSON_FORM =
       1u << 3, /* the shape's hooks supply its JSON form (a JsonEncode, Url, Timestamp, ...) */
   MS_SHAPE_NAME_ONLY = 1u << 6, /* RECORD and ALTERNATIVE: an `opaque` type, whose text is its type name only */
+  MS_SHAPE_EMBEDDED = 1u << 7, /* RECORD and ALTERNATIVE: a copy for a value inside a flattened image whose leaves lie elsewhere
+                                  than in its own layout; `value` is a header member whose `count` leaves follow it (see below) */
   MS_SHAPE_HEAP_PAYLOAD = 1u << 5, /* OPTIONAL with NULLABLE: the slot points to a heap block holding the payload */
   MS_SHAPE_JSON_TREE = 1u << 4 /* ALTERNATIVE: the untyped JSON value (null, bool, number, string, array, object cases),
                                   written as its own document */
@@ -158,6 +160,16 @@ static inline const char *ms_shape_text(const MsShapeTable *table, uint32_t offs
 
 static inline const MsShapeHook *ms_shape_hook(const MsShapeTable *table, uint32_t index) {
   return table->hooks == NULL ? NULL : &table->hooks[index];
+}
+
+/* A hook or descriptor reads a value in its own layout. For an EMBEDDED shape, `ms_shape_members` after the header member
+ * `value` list the leaves: `offset` is where the leaf lies from the value's base (signed), `tag` where its own layout puts
+ * it, `count` its size in bytes. The runtime gathers the leaves into a buffer of `size` bytes before a hook reads them
+ * and scatters them back after a hook writes. */
+static inline const MsShapeMember *ms_shape_leaves(const MsShapeTable *table, const MsShape *shape, uint32_t *count) {
+  const MsShapeMember *header = ms_shape_member(table, shape->value);
+  *count = header->count;
+  return header + 1;
 }
 
 /* Where a member's value lies from `base`. The offset is signed: a value inside a flattened image sits where its leaves do,
