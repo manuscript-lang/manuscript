@@ -36,27 +36,3 @@ bool ms_place_overlaps(const MsPlace *a, const MsPlace *b) {
   }
   return true;
 }
-
-static void show_step(MsStrBuild *out, const MsNames *names, const MsStep *step) {
-  switch (step->kind) {
-  case MS_STEP_FIELD:
-    ms_strbuild_append_text(out, ".");
-    ms_strbuild_append(out, ms_names_span(names, step->name));
-    return;
-  case MS_STEP_ELEMENT:
-    ms_strbuild_append_text(out, "[..]");
-    return;
-  case MS_STEP_INDEX:
-    ms_strbuild_append_text(out, "[");
-    ms_strbuild_append_u64(out, step->index);
-    ms_strbuild_append_text(out, "]");
-    return;
-  }
-}
-
-void ms_place_show(MsStrBuild *out, const MsNames *names, const MsPlace *place, MsSpan root_name) {
-  ms_strbuild_append(out, root_name);
-  for (uint32_t index = 0; index < place->count; index++) {
-    show_step(out, names, &place->steps[index]);
-  }
-}

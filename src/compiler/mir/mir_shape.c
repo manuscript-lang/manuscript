@@ -25,12 +25,6 @@ uint32_t mir_leaf_size(MirLeaf leaf) {
   }
 }
 
-const char *mir_leaf_name(MirLeaf leaf) {
-  static const char *const names[MIR_LEAF_COUNT] = {"i64", "f64", "i8",  "n8",  "n16",
-                                                    "n32", "u8",  "u16", "u32", "f32"};
-  return leaf < MIR_LEAF_COUNT ? names[leaf] : "?";
-}
-
 MirMemLayout mir_mem_layout(MsSpan leaves, uint32_t *offsets) {
   uint64_t offset = 0;
   uint32_t align = 1;

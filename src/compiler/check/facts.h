@@ -185,7 +185,6 @@ static inline MsUse ms_facts_use(const MsFacts *facts, MsNode node) {
 /* The call, conversion or constant recorded for `node`, or NULL. */
 const MsCall *ms_facts_call(const MsFacts *facts, MsNode node);
 const MsConversion *ms_facts_conversion(const MsFacts *facts, MsNode node);
-const MsConstant *ms_facts_constant(const MsFacts *facts, MsNode node);
 /* The closer of the binding site `node`, or NULL when its type is not closed at scope end. */
 const MsCloser *ms_facts_closer(const MsFacts *facts, MsNode node);
 

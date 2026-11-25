@@ -279,8 +279,3 @@ bool link_finish(const ObjectOptions *options, MsSpan object, ObjectCode *code, 
   link_discard(code);
   return ok;
 }
-
-bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, MsStrBuild *why) {
-  ObjectCode code;
-  return link_generate(options, ir, object, &code, why) && link_finish(options, object, &code, why);
-}

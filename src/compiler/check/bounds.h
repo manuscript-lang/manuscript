@@ -8,10 +8,6 @@
 
 #include "compiler/check/properties.h"
 
-/* Whether `arg` meets every bound of `variable`. When one fails and `why` is not NULL, it receives the first
- * failure's diagnostic text (owned by the caller). */
-MS_NODISCARD bool ms_check_bounds_hold(MsCheckProgram *program, MsTy variable, MsTy arg, MsString *why);
-
 /* The same, reading the bounds with each `vars[i]` replaced by `args[i]` (`count` entries). */
 MS_NODISCARD bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg, const MsTy *vars,
                                             const MsTy *args, size_t count, const char *alternative,

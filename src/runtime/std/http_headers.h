@@ -33,15 +33,11 @@ void ms_headers_add(MsHeaders *headers, MsSpan name, MsSpan value);
 /* Replaces every value of `name` with one, adding the name when absent. */
 void ms_headers_set(MsHeaders *headers, MsSpan name, MsSpan value);
 bool ms_headers_remove(MsHeaders *headers, MsSpan name);
-bool ms_headers_is_empty(const MsHeaders *headers);
 
 /* The first value of `name`; false when there is none. */
 bool ms_headers_first(const MsHeaders *headers, MsSpan name, MsSpan *out);
 /* Every value of `name` in order; false (and *out untouched) when the name is absent. */
 bool ms_headers_values(const MsHeaders *headers, MsSpan name, MsList *out /* owned MsBytes elements */);
-/* The values of `name` as text: false when absent; MS_STATUS_INVALID_DATA, with nothing in *out, when one is
- * not UTF-8. */
-uint8_t ms_headers_text(const MsHeaders *headers, MsSpan name, bool *found, MsList *out /* MsString */);
 /* Frees a list of MsBytes elements or of MsString elements. */
 void ms_bytes_list_free(MsList *list);
 
@@ -57,8 +53,6 @@ typedef struct MsHeaderField {
   MsSpan value;
 } MsHeaderField;
 MsHeaders *ms_headers_from_received(const MsHeaderField *fields, size_t count);
-/* Orders the groups by case-folded name (stable). */
-void ms_headers_sort(MsHeaders *headers);
 /* Whether every value is UTF-8. */
 bool ms_headers_is_text(const MsHeaders *headers);
 

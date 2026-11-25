@@ -670,7 +670,3 @@ const MsString *ms_http_response_protocol(const MsHttpResponse *response) {
 const MsHeaders *ms_http_response_headers(const MsHttpResponse *response) {
   return response->headers;
 }
-
-const MsString *ms_http_response_url(const MsHttpResponse *response) {
-  return &response->url;
-}

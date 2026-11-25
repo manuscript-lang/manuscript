@@ -20,11 +20,7 @@ static inline bool mh_has(const MirHash *map, uint64_t key) {
 }
 /* Adds or replaces; whether `key` was new. */
 bool mh_put(MsArena *arena, MirHash *map, uint64_t key, uint64_t value);
-bool mh_del(MirHash *map, uint64_t key);
-MirHash mh_clone(MsArena *arena, const MirHash *map);
 /* The keys in ascending order: `map->n` of them, in the arena. */
 uint64_t *mh_keys(MsArena *arena, const MirHash *map);
-/* Whether both hold the same keys. */
-bool mh_equal_sets(const MirHash *x, const MirHash *y);
 
 #endif

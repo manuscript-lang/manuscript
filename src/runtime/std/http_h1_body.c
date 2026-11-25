@@ -32,36 +32,6 @@ bool ms_h1_body_is_done(const MsH1Body *body) {
   return body->state == MS_H1_S_DONE;
 }
 
-bool ms_h1_body_raw_room(const MsH1Body *body, uint64_t *room) {
-  switch (body->state) {
-  case MS_H1_S_LENGTH:
-  case MS_H1_S_DATA:
-    *room = body->left;
-    return true;
-  case MS_H1_S_UNTIL_CLOSE:
-    *room = UINT64_MAX;
-    return true;
-  default:
-    return false;
-  }
-}
-
-bool ms_h1_body_is_fixed_length(const MsH1Body *body) {
-  return body->state == MS_H1_S_LENGTH;
-}
-
-MsH1Progress ms_h1_body_took_raw(MsH1Body *body, size_t n) {
-  if (body->state != MS_H1_S_LENGTH && body->state != MS_H1_S_DATA) {
-    return MS_H1_MORE;
-  }
-  body->left -= n;
-  if (body->left != 0) {
-    return MS_H1_MORE;
-  }
-  body->state = body->state == MS_H1_S_LENGTH ? MS_H1_S_DONE : MS_H1_S_DATA_END;
-  return body->state == MS_H1_S_DONE ? MS_H1_DONE : MS_H1_MORE;
-}
-
 bool ms_h1_body_finish_on_eof(const MsH1Body *body) {
   return body->state == MS_H1_S_UNTIL_CLOSE || body->state == MS_H1_S_DONE;
 }

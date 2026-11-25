@@ -78,20 +78,6 @@ void ms_shield_exit(void) {
   }
 }
 
-void ms_stop_shield_enter(void) {
-  MsUnwind *const unwind = running();
-  atomic_fetch_add(&unwind->hdr.stop_shield, 1);
-  refresh_flag(unwind);
-}
-
-void ms_stop_shield_exit(void) {
-  MsUnwind *const unwind = running();
-  if (atomic_load_explicit(&unwind->hdr.stop_shield, memory_order_relaxed) > 0) {
-    atomic_fetch_sub(&unwind->hdr.stop_shield, 1); /* sequentially consistent, as in shield_lower */
-  }
-  refresh_flag(unwind);
-}
-
 bool ms_shielded(void) { return atomic_load_explicit(&running()->hdr.shield, memory_order_relaxed) > 0; }
 
 void ms_cancel_deliver(void) {

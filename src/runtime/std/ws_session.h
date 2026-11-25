@@ -62,9 +62,5 @@ void ms_ws_session_close_with(MsWsSession *session, uint16_t code, MsSpan reason
 /* The next message; pings are answered and pongs dropped. */
 MS_NODISCARD uint8_t ms_ws_session_receive(MsWsSession *session, int64_t timeout_ns, MsWsMessage *out,
                                            MsString *err);
-/* Sends close `code`, waits for the peer's close frame (messages before it are dropped) for at most
- * `timeout_ns`, and closes the transport. */
-MS_NODISCARD uint8_t ms_ws_session_close_handshake(MsWsSession *session, uint16_t code, MsSpan reason,
-                                                   int64_t timeout_ns, MsString *err);
 
 #endif

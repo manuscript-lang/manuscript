@@ -25,10 +25,6 @@ void ms_facts_add_conversion(MsFacts *facts, const MsConversion *conversion) {
   ms_conversion_list_push(&facts->conversions, *conversion);
 }
 
-void ms_facts_add_constant(MsFacts *facts, const MsConstant *constant) {
-  ms_constant_list_push(&facts->constants, *constant);
-}
-
 static int64_t by_node(uint32_t left, uint32_t right) {
   return left < right ? -1 : left > right;
 }
@@ -86,10 +82,6 @@ const MsCall *ms_facts_call(const MsFacts *facts, MsNode node) {
 
 const MsConversion *ms_facts_conversion(const MsFacts *facts, MsNode node) {
   FIND_BY_NODE(&facts->conversions, node);
-}
-
-const MsConstant *ms_facts_constant(const MsFacts *facts, MsNode node) {
-  FIND_BY_NODE(&facts->constants, node);
 }
 
 const MsCloser *ms_facts_closer(const MsFacts *facts, MsNode node) {

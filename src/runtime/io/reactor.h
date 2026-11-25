@@ -103,10 +103,6 @@ typedef struct MsIoAddress {
  * then reads it and releases it with ms_io_addresses_free, whatever the result. Nothing is allocated when this
  * returns false. */
 MS_NODISCARD MS_NONNULL bool ms_io_resolve(const char *host, const char *service, uint64_t id, MsIoAddresses **out);
-/* How many addresses a completed resolution found; 0 after an error. */
-MS_NONNULL size_t ms_io_addresses_count(const MsIoAddresses *addresses);
-/* Copies the address at `index` into `*out`; false past the end. */
-MS_NODISCARD MS_NONNULL bool ms_io_addresses_at(const MsIoAddresses *addresses, size_t index, MsIoAddress *out);
 MS_NONNULL void ms_io_addresses_free(MsIoAddresses *addresses);
 
 /* Takes the oldest queued completion into `*event`; false when there is none. */
@@ -117,11 +113,6 @@ MS_NODISCARD MS_NONNULL bool ms_io_completion(MsIoEvent *event);
  * completions queue for ms_io_completion. */
 typedef void (*MsIoCompletionSink)(uint64_t id, int32_t result, uint32_t kind);
 void ms_io_set_completion_sink(MsIoCompletionSink sink);
-
-/* Gives up on a resolution the caller will not wait for before its completion was collected. libuv is asked to
- * cancel it and the record is released once it ends, so the caller must not use `addresses` afterwards and must not
- * call ms_io_addresses_free. After the completion has been collected, use ms_io_addresses_free instead. */
-MS_NONNULL void ms_io_addresses_abandon(MsIoAddresses *addresses);
 
 /* Windows: watching waitable kernel objects (a child process). A task waiting on one for reading wakes once it is
  * signalled. Elsewhere they report false and do nothing. */

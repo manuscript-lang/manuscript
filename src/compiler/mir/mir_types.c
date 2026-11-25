@@ -13,16 +13,6 @@ const MirOpInfo mir_op_info[MOP_COUNT] = {
 #undef MIR_OP
 };
 
-bool mir_op_from_name(MsSpan name, MirOp *out) {
-  for (size_t index = 0; index < MOP_COUNT; index++) {
-    if (ms_span_is_text(name, mir_op_info[index].name)) {
-      *out = (MirOp)index;
-      return true;
-    }
-  }
-  return false;
-}
-
 enum { KEY_HEADER_BYTES = 28, KEY_INLINE_ARGS = 16 };
 
 static void put32(uint8_t *at, uint32_t value) {

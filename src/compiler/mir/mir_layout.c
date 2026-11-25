@@ -238,35 +238,6 @@ static void leaf_flags(MirLayouts *layouts, MirTy ty, bool pointers, MirLeafList
   layouts->depth--;
 }
 
-static const bool *marks_of(MirLayouts *layouts, MirTy ty, bool pointers) {
-  static const bool none[1] = {false};
-  if (ty >= layouts->module->types.kinds.len) {
-    layouts->failed = true;
-    return none;
-  }
-  const bool **cache = pointers ? layouts->pointer_marks : layouts->bool_marks;
-  if (cache[ty] != NULL) {
-    return cache[ty];
-  }
-  MirLeafList flags = {0};
-  leaf_flags(layouts, ty, pointers, &flags);
-  bool *kept = MS_ARENA_NEW_ARRAY(&layouts->arena, bool, flags.len + 1);
-  for (size_t index = 0; index < flags.len; index++) {
-    kept[index] = flags.ptr[index] != 0;
-  }
-  mir_leaf_list_free(&flags);
-  cache[ty] = kept;
-  return kept;
-}
-
-const bool *mir_pointer_leaves(MirLayouts *layouts, MirTy ty) {
-  return marks_of(layouts, ty, true);
-}
-
-const bool *mir_bool_leaves(MirLayouts *layouts, MirTy ty) {
-  return marks_of(layouts, ty, false);
-}
-
 bool mir_rt_direct(const MirModule *module, MirLayouts *layouts, MirTy ty) {
   const MirTyData *data = mir_ty_data(module, ty);
   switch ((MirTyKind)data->kind) {

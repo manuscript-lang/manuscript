@@ -41,12 +41,3 @@ void *ms_on_stop_v1(StopFn function, void *argument) {
   }
   return NULL;
 }
-
-void ms_on_stop_remove_v1(void *hook) {
-  for (size_t i = 0; i < STOP_HOOKS_MAX; i++) {
-    if (hook == &stop_hooks[i]) {
-      atomic_store_explicit(&stop_hooks[i].function, NULL, memory_order_release);
-      return;
-    }
-  }
-}

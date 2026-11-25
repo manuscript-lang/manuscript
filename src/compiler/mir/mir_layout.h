@@ -62,9 +62,6 @@ enum {
 /* Size and alignment of a leaf in memory. */
 uint32_t mir_leaf_size(MirLeaf leaf);
 
-/* The lower-case name used in dumps (`i64`, `n8`, ...). */
-const char *mir_leaf_name(MirLeaf leaf);
-
 /* A sequence of leaves is a span of bytes (each byte one MirLeaf). */
 static inline MsSpan mir_leaf_span(const MirLeaf *leaves, size_t count) {
   return ms_span_of(leaves, count);
@@ -209,10 +206,6 @@ MS_NODISCARD MS_NONNULL bool mir_boxed_block_size(MirLayouts *layouts, MirTy ty,
 
 /* The object layout of function `func` (header only when it is not a closure). */
 MirClosureLayout mir_closure_layout(MirLayouts *layouts, const MirFunc *func);
-
-/* One flag per leaf of `ty`: a pointer (nullable included), or a boolean. */
-const bool *mir_pointer_leaves(MirLayouts *layouts, MirTy ty);
-const bool *mir_bool_leaves(MirLayouts *layouts, MirTy ty);
 
 /* Whether `inner?` is a nullable pointer. */
 bool mir_opt_is_nullable(MirLayouts *layouts, MirTy inner);

@@ -12,12 +12,6 @@
 /* The concatenation of `count` parts, copied into the arena. */
 MsSpan ms_message_join(MsArena *arena, const MsSpan *parts, size_t count);
 
-/* The decimal text of `value`, copied into the arena. */
-MsSpan ms_message_number(MsArena *arena, uint64_t value);
-
-/* The one byte `byte`, copied into the arena. */
-MsSpan ms_message_byte(MsArena *arena, uint8_t byte);
-
 /* The text of the builder, copied into the arena. */
 MsSpan ms_message_from_builder(MsArena *arena, const MsStrBuild *builder);
 

@@ -62,9 +62,6 @@ typedef struct MsUnwind {
 /* Holds back every cancel from the running task until the matching exit. */
 void ms_shield_enter(void);
 void ms_shield_exit(void);
-/* Holds back stop requests (SIGINT, SIGTERM) only; a cancel aimed at the task itself still applies. */
-void ms_stop_shield_enter(void);
-void ms_stop_shield_exit(void);
 /* Whether the running task is inside a shield. */
 bool ms_shielded(void);
 /* Records a cancel aimed at the running task (1) or forgets it (0), and refreshes the cancel flag. */
