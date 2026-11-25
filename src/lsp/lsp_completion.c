@@ -491,6 +491,8 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
   if (!imports) checked_items(&c, docs, doc, &marked, &analysis);
   if (!imports && c.items.len > 1) qsort(c.items.ptr, c.items.len, sizeof(Item), lsp_completion_compare_item);
   ms_strbuild_append_byte(out, '[');
+  /* Every item replaces the same text: its range is found once, not once per item. */
+  const LspRange replaced = {lsp_position(source, c.start), lsp_position(source, c.end)};
   for (size_t i = 0; i < c.items.len; i++) {
     const Item *item = &c.items.ptr[i];
     if (i > 0) ms_strbuild_append_byte(out, ',');
@@ -502,8 +504,7 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     lsp_json_string(out, ms_string_span(&item->label));
     ms_strbuild_printf(out, ",\"insertTextFormat\":%d,\"textEdit\":{\"range\":", item->format);
     ms_strbuild_printf(out, "{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}}",
-                       lsp_position(source, c.start).line, lsp_position(source, c.start).character, lsp_position(source, c.end).line,
-                       lsp_position(source, c.end).character);
+                       replaced.start.line, replaced.start.character, replaced.end.line, replaced.end.character);
     ms_strbuild_append_text(out, ",\"newText\":");
     lsp_json_string(out, ms_string_span(&item->insert));
     ms_strbuild_append_byte(out, '}');

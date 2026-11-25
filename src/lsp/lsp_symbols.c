@@ -16,6 +16,7 @@ enum { KIND_FUNCTION = 12, KIND_CONSTANT = 14, KIND_CLASS = 5, KIND_ENUM = 10, K
 typedef struct Outline {
   const MsCheckProgram *program;
   MsSpan source;
+  LspLines lines; /* the lines of `source`: positions by binary search */
 } Outline;
 
 static void write_range(MsStrBuild *out, LspPosition start, LspPosition end) {
@@ -27,9 +28,9 @@ static void write_range(MsStrBuild *out, LspPosition start, LspPosition end) {
 static void selection(const Outline *outline, MsStrBuild *out, size_t offset, MsSpan name) {
   size_t at;
   if (lsp_header(outline->source, offset, name, &at)) {
-    write_range(out, lsp_position(outline->source, at), lsp_position(outline->source, at + name.len));
+    write_range(out, lsp_lines_position(&outline->lines, at), lsp_lines_position(&outline->lines, at + name.len));
   } else {
-    const LspPosition position = lsp_position(outline->source, offset);
+    const LspPosition position = lsp_lines_position(&outline->lines, offset);
     write_range(out, position, position);
   }
 }
@@ -60,7 +61,7 @@ static void write_method(const Outline *outline, MsStrBuild *out, bool *first, c
   ms_strbuild_append_text(out, "{\"name\":");
   lsp_json_string(out, name);
   ms_strbuild_printf(out, ",\"detail\":\"\",\"kind\":%d,\"range\":", KIND_METHOD);
-  write_range(out, lsp_position(outline->source, offset), lsp_position(outline->source, end > offset ? end : offset));
+  write_range(out, lsp_lines_position(&outline->lines, offset), lsp_lines_position(&outline->lines, end > offset ? end : offset));
   ms_strbuild_append_text(out, ",\"selectionRange\":");
   selection(outline, out, offset, name);
   ms_strbuild_append_byte(out, '}');
@@ -133,7 +134,7 @@ static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t 
   ms_strbuild_append_text(out, ",\"detail\":");
   lsp_json_string(out, ms_strbuild_span(&detail));
   ms_strbuild_printf(out, ",\"kind\":%d,\"range\":", kind);
-  write_range(out, lsp_position(outline->source, decl->pos.offset), lsp_position(outline->source, end));
+  write_range(out, lsp_lines_position(&outline->lines, decl->pos.offset), lsp_lines_position(&outline->lines, end));
   ms_strbuild_append_text(out, ",\"selectionRange\":");
   selection(outline, out, decl->pos.offset, selection_name);
   MsStrBuild children = ms_strbuild_new();
@@ -152,7 +153,7 @@ static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t 
       ms_strbuild_printf(&children, ",\"kind\":%d,\"range\":", KIND_FIELD);
       size_t at = field->pos.offset;
       (void)lsp_header(outline->source, field->pos.offset, field_name, &at);
-      write_range(&children, lsp_position(outline->source, at), lsp_position(outline->source, line_end));
+      write_range(&children, lsp_lines_position(&outline->lines, at), lsp_lines_position(&outline->lines, line_end));
       ms_strbuild_append_text(&children, ",\"selectionRange\":");
       selection(outline, &children, field->pos.offset, field_name);
       ms_strbuild_append_byte(&children, '}');
@@ -194,7 +195,8 @@ void lsp_document_symbols(const LspDocList *docs, const LspDoc *doc, MsStrBuild 
   const MsCheckProgram *program = &analysis.checked.program;
   for (uint32_t m = 0; analysis.resolved && m < program->user_modules; m++) {
     if (!ms_span_equal(analysis.paths[m], ms_string_span(&doc->path))) continue;
-    const Outline outline = {program, program->modules.ptr[m].source};
+    Outline outline = {.program = program, .source = program->modules.ptr[m].source};
+    lsp_lines_init(&outline.lines, outline.source);
     const MsModule *tree = program->modules.ptr[m].tree;
     bool first = true;
     for (uint32_t i = 0; i < tree->ndecls; i++) {
@@ -207,6 +209,7 @@ void lsp_document_symbols(const LspDocList *docs, const LspDoc *doc, MsStrBuild 
       first = false;
       write_declaration(&outline, out, m, decl, end);
     }
+    lsp_lines_free(&outline.lines);
   }
   ms_strbuild_append_byte(out, ']');
   lsp_analysis_release(&analysis);

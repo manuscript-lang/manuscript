@@ -54,6 +54,19 @@ void lsp_json_range(MsStrBuild *out, LspRange range);
 
 /* The position of a byte offset, clamped into the source. */
 LspPosition lsp_position(MsSpan source, size_t offset);
+
+/* The start offset of every line of a source, so that a pass asking for many positions finds each by binary search
+ * instead of counting newlines from the top: `lsp_position` costs the offset, which made a pass over every token of a
+ * file quadratic. */
+typedef struct LspLines {
+  MsSpan source;
+  size_t *starts; /* owned; starts[0] is 0 */
+  size_t count;
+} LspLines;
+void lsp_lines_init(LspLines *lines, MsSpan source);
+void lsp_lines_free(LspLines *lines);
+/* The same answer as `lsp_position(lines->source, offset)`. */
+LspPosition lsp_lines_position(const LspLines *lines, size_t offset);
 /* The byte offset of a position. With `clamp`, a character past the end of a line or a line past the end of the document
  * clamps (a change range); otherwise it is refused, as is a position that splits a surrogate pair. */
 bool lsp_offset(MsSpan source, LspPosition position, bool clamp, size_t *offset);
