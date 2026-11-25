@@ -391,7 +391,11 @@ static MsTy infer_case_owner(Body *body, const MsExpr *expr, MsTy owner, MsTy ex
       ms_ty_row(types, expected)->def == ms_ty_row(types, owner)->def && !ms_ty_is_invalid(types, expected)) {
     return expected;
   }
-  body_report_uninferred_case(body, expr, owner);
+  if (body->defer_uninferred) {
+    body->uninferred++;
+  } else {
+    body_report_uninferred_case(body, expr, owner);
+  }
   return MS_TY_NONE;
 }
 
@@ -563,6 +567,17 @@ void body_report_empty_literal(Body *body, const MsExpr *expr) {
                                                            : "cannot infer map key and value types; add an annotation, e.g. m Map[String, Int] := {}")));
 }
 
+static MsTy list_entry(Body *body, const MsExpr *list, uint32_t index, MsTy element, bool defer) {
+  MsStrBuild context = ms_strbuild_new();
+  ms_strbuild_printf(&context, "entry %zu of the literal, whose entries share one type", (size_t)index + 1);
+  const bool was = body->defer_uninferred;
+  body->defer_uninferred = defer;
+  const MsTy item = body_expect(body, list->u.list.ptr[index], element, ms_strbuild_span(&context));
+  body->defer_uninferred = was;
+  ms_strbuild_free(&context);
+  return item;
+}
+
 static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy element = expected_arg(body, expected, MS_BUILTIN_List, 0);
   if (element != MS_TY_NONE && body_has_foreign_variable(body, element)) {
@@ -572,11 +587,21 @@ static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
     element = none_widened(body, expr->u.list.ptr, expr->u.list.len);
   }
   bool unknown = false;
+  /* An entry whose type only its siblings can fix (`[Opt.None, Opt.Has(1)]`) waits for them. */
+  uint32_t waiting[32] = {0};
+  uint32_t waits = 0;
   for (uint32_t index = 0; index < expr->u.list.len; index++) {
-    MsStrBuild context = ms_strbuild_new();
-    ms_strbuild_printf(&context, "entry %zu of the literal, whose entries share one type", (size_t)index + 1);
-    const MsTy item = body_expect(body, expr->u.list.ptr[index], element, ms_strbuild_span(&context));
-    ms_strbuild_free(&context);
+    const uint32_t before = body->uninferred;
+    const MsTy item = list_entry(body, expr, index, element, element == MS_TY_NONE && waits < 32);
+    if (item == MS_TY_NONE && body->uninferred != before && waits < 32) {
+      waiting[waits++] = index;
+      continue;
+    }
+    unknown = unknown || item == MS_TY_NONE;
+    element = element == MS_TY_NONE ? item : element;
+  }
+  for (uint32_t at = 0; at < waits; at++) {
+    const MsTy item = list_entry(body, expr, waiting[at], element, false);
     unknown = unknown || item == MS_TY_NONE;
     element = element == MS_TY_NONE ? item : element;
   }

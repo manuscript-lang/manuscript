@@ -6,5 +6,5 @@ Measured 2026-11-07: two producers into a middle stage into a consumer, 1M value
 
 The fast path wakes writers waiting on capacity exactly as `msrt_pipe_read` does. `msrt_pipe_try` and a queued `msrt_pipe_write` pass `msrt_task_yield` every 256th operation per thread and then fault with `msrt_cancelled` if the task's cancel flag is set (a yield alone only expires the timer; the flag is acted on by the callee, and the fast path has no other check), so a consumer or producer that always finds work still meets timers, limits and cancellation (#2961; before this a timed-out consumer spun forever and the program never exited). Fixture: the timeout test in `tests/conformance/fixtures/e2e/stdlib/pipe.ms`.
 
-Apply when: changing `crates/ms-rt/src/pipe.rs` or `PipeSource`.
+Apply when: changing `src/runtime/core/pipe.c` or `PipeSource`.
 Verify: `bench` loop from the PR (producers, one stage, one consumer) and `tests/conformance/fixtures/e2e/stdlib/pipe.ms`.

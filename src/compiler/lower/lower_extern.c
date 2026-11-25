@@ -139,13 +139,13 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     payload_ty = mir_ty_data(fn->cx->module, ok_ty)->elem;
   }
   const bool has_out = payload_ty != MIR_VOID;
-  bool by_shape_sig = false;
+  bool by_shape = false;
   for (uint32_t at = 0; at < sig->count; at++) {
-    by_shape_sig = by_shape_sig || sig->kinds[at] == NS_SHAPE;
+    by_shape = by_shape || sig->kinds[at] == NS_SHAPE;
   }
   /* A native that fills a value by shape still takes its out address when the value is `Void`: it gets a scratch slot. */
   const uint32_t err_params = has_err ? 1u : 0u;
-  const bool scratch_out = !has_out && by_shape_sig && sig->count > err_params &&
+  const bool scratch_out = !has_out && by_shape && sig->count > err_params &&
                            sig->kinds[sig->count - err_params - 1] == NS_ADDR_MUT;
   const uint32_t tail = err_params + (has_out || scratch_out ? 1u : 0u);
   if (sig->count < tail) {
@@ -162,10 +162,6 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   uint32_t shape_at = NS_MAX_PARAMS;
   MirTy shape_ty = payload_ty;
   bool shape_from_operand = false;
-  bool by_shape = false;
-  for (uint32_t at = 0; at < sig->count; at++) {
-    by_shape = by_shape || sig->kinds[at] == NS_SHAPE;
-  }
   for (uint32_t at = 0; at < sig->count - tail; at++) {
     const uint8_t kind = sig->kinds[at];
     if (count + 4 > NS_MAX_PARAMS) {
@@ -215,10 +211,6 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
       const MirValue store[2] = {slot, operand};
       (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
       wanted[count++] = slot;
-    } else if (kind == NS_ELEM_DESC || kind == NS_KEY_DESC || kind == NS_VAL_DESC) {
-      if (!fn_descriptor_argument(fn, kind, args, nargs, &wanted[count++])) {
-        return false;
-      }
     } else if (kind == NS_VALUE_DESC && tree_ctor != MIR_NONE) {
       wanted[count++] = fn_emit(fn, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = payload_ty}, MIR_PTR);
     } else if (kind == NS_TREE_CTOR && tree_ctor != MIR_NONE) {

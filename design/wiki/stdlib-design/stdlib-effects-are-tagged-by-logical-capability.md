@@ -8,5 +8,5 @@ Rule: tag an exported function with the `std.` capability a caller would be surp
 
 Apply when: adding or changing an exported stdlib function that reaches the host, or a new capability. Audit method: for each module list exported functions with no tag that reach host externs through the call graph (`ms inspect` calls and entities), then judge each by what it does, not by the extern name.
 
-Evidence: `crates/ms-tooling/tests/stdlib_effects.txt` lists every declared tag and `stdlib_effects.rs` fails on drift and on names outside the vocabulary; [proposal](../../proposals/function-effects.md).
-Verify: `cargo test -p ms-tooling --test it stdlib_effects`; regenerate with `UPDATE_SNAPSHOTS=1` after a reviewed change.
+Evidence: the `// ms: allow_effect` comments in `src/stdlib/*.ms` are the list; `ms lint` fails on names outside the vocabulary (`src/tooling/lint_effects.c`); [proposal](../../proposals/function-effects.md).
+Verify: `ctest --preset ci` and `ms lint` on a helper that reaches the host.

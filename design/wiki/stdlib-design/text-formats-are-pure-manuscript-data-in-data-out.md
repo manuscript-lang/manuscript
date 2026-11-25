@@ -2,7 +2,7 @@
 
 # Text formats and templates are pure Manuscript over JsonValue
 
-Decision (2026-11-02): templates (`@std/text/template.ms`), XML, PEM, MIME/multipart and mail parsing are written in `.ms` with no Rust parser and no new crate (PR #2258 was closed for adding `leon`/`miette` and a Rust parser). Templates read `JsonValue` data (`to_data` converts any `Data` value) and cannot call functions; there is no reflection. Capability matters, not Go's API: no `text/scanner` (belongs with the bufio-style `Scanner`), no gob.
+Decision (2026-11-02): templates (`@std/text/template.ms`), XML, PEM, MIME/multipart and mail parsing are written in `.ms` with no native parser and no new C library (PR #2258 was closed for adding `leon`/`miette` and a Rust parser). Templates read `JsonValue` data (`to_data` converts any `Data` value) and cannot call functions; there is no reflection. Capability matters, not Go's API: no `text/scanner` (belongs with the bufio-style `Scanner`), no gob.
 
 Verified: `String.split(sep)` has no piece limit (the old cap truncated rather than keeping a remainder, and was removed in #4415), `List.get_or(i, default)` takes a default, a `{`/`}` inside a string literal must be written `\{`/`\}`, `test` is a keyword and cannot name a binding, and an exported record may not expose a private type (an opaque `Template` needs exported opaque node types with documented fields).
 

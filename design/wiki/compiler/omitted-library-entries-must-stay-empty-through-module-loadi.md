@@ -7,4 +7,4 @@ Verified: executable manifests require an entry; libraries omit the key, and an 
 
 Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
 Evidence: manifest parsing, library regressions, graph loading, [library contracts](../../../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies).
-Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails (`cargo nextest run -p ms-driver`).
+Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails (`ctest --preset ci`, the project tests).
