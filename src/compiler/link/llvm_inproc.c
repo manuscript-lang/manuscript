@@ -17,6 +17,8 @@ typedef void *Ref;
   X(void, LLVMContextDispose, (Ref))                                                                                 \
   X(Ref, LLVMCreateMemoryBufferWithMemoryRangeCopy, (const char *, size_t, const char *))                            \
   X(int, LLVMParseIRInContext, (Ref, Ref, Ref *, char **))                                                           \
+  X(int, LLVMParseBitcodeInContext2, (Ref, Ref, Ref *))                                                              \
+  X(Ref, LLVMWriteBitcodeToMemoryBuffer, (Ref))                                                                      \
   X(unsigned, LLVMGetNamedMetadataNumOperands, (Ref, const char *))                                                  \
   X(void, LLVMDisposeModule, (Ref))                                                                                  \
   X(void, LLVMDisposeMessage, (char *))                                                                              \
@@ -156,6 +158,49 @@ static void apply_options(const LlvmSettings *settings) {
   atomic_flag_clear_explicit(&lock, memory_order_release);
 }
 
+/* LLVM bitcode starts with the bytes 'B' 'C' 0xC0 0xDE; IR text never does. */
+static bool is_bitcode(MsSpan input) {
+  return input.len >= 4 && input.ptr[0] == 'B' && input.ptr[1] == 'C' && input.ptr[2] == 0xC0 && input.ptr[3] == 0xDE;
+}
+
+/* Reads a module from IR text or bitcode. The buffer is consumed by the text parser and disposed here for bitcode. */
+static bool parse_module(Ref context, MsSpan input, Ref *module, MsStrBuild *why) {
+  Ref buffer = api.LLVMCreateMemoryBufferWithMemoryRangeCopy((const char *)input.ptr, input.len, "program");
+  if (is_bitcode(input)) {
+    const int failed = api.LLVMParseBitcodeInContext2(context, buffer, module);
+    api.LLVMDisposeMemoryBuffer(buffer);
+    return !failed || message_failure(NULL, "cannot read the bitcode", why);
+  }
+  char *message = NULL;
+  if (api.LLVMParseIRInContext(context, buffer, module, &message)) {
+    return message_failure(message, "cannot parse the IR", why);
+  }
+  /* LLVM strips the debug info of a module whose metadata is invalid, without a word; the fault tables then lose their
+   * lines. A module that names a compile unit must still have it after the parse. */
+  size_t unit_at = 0;
+  if (ms_span_find(input, ms_span_of_text("!llvm.dbg.cu"), &unit_at) &&
+      api.LLVMGetNamedMetadataNumOperands(*module, "llvm.dbg.cu") == 0) {
+    return message_failure(NULL, "the IR's debug info is invalid and LLVM dropped it (run opt on the IR to see why)", why);
+  }
+  return true;
+}
+
+bool llvm_bitcode_from_ir(MsSpan library, MsSpan ir, LlvmBuffer *out, MsStrBuild *why) {
+  if (!load(library, why)) {
+    return false;
+  }
+  Ref context = api.LLVMContextCreate();
+  Ref module = NULL;
+  const bool ok = parse_module(context, ir, &module, why);
+  if (ok) {
+    Ref buffer = api.LLVMWriteBitcodeToMemoryBuffer(module);
+    *out = (LlvmBuffer){.data = api.LLVMGetBufferStart(buffer), .size = api.LLVMGetBufferSize(buffer), .handle = buffer};
+    api.LLVMDisposeModule(module);
+  }
+  api.LLVMContextDispose(context);
+  return ok;
+}
+
 bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsStrBuild *why) {
   if (!load(settings->library, why)) {
     return false;
@@ -173,18 +218,7 @@ bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsSt
   Ref module = NULL;
   Ref machine = NULL;
   if (ok) {
-    Ref buffer = api.LLVMCreateMemoryBufferWithMemoryRangeCopy((const char *)ir.ptr, ir.len, "program");
-    message = NULL;
-    if (api.LLVMParseIRInContext(context, buffer, &module, &message)) {
-      ok = message_failure(message, "cannot parse the IR", why);
-    }
-  }
-  /* LLVM strips the debug info of a module whose metadata is invalid, without a word; the fault tables then lose their
-   * lines. A module that names a compile unit must still have it after the parse. */
-  size_t unit_at = 0;
-  if (ok && ms_span_find(ir, ms_span_of_text("!llvm.dbg.cu"), &unit_at) &&
-      api.LLVMGetNamedMetadataNumOperands(module, "llvm.dbg.cu") == 0) {
-    ok = message_failure(NULL, "the IR's debug info is invalid and LLVM dropped it (run opt on the IR to see why)", why);
+    ok = parse_module(context, ir, &module, why);
   }
   if (ok) {
     machine = api.LLVMCreateTargetMachine(target, triple_text, TARGET_CPU, "", settings->codegen_level,
