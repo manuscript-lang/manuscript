@@ -57,10 +57,9 @@ fn RetryPolicy.wait_after(attempt Int) Duration {
 /*
 Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
 `operation` receives the attempt number, starting at 1. `retryable` defaults to retrying every error.
-`E` must be `Clonable`, because `retryable` borrows the error and `retry` then returns it.
 Waiting uses `sleep`, so cancelling the task ends the wait. The operation always runs once, so a policy with fewer than one attempt still runs it once.
 */
-export fn retry[T, E Clonable](
+export fn retry[T, E](
 	policy RetryPolicy,
 	operation fn(Int) T!E,
 	retryable(fn(E) Bool)? = null
@@ -227,9 +226,7 @@ fn CircuitBreaker.is_open() Bool {
 // Runs `operation` unless the circuit is open, and records the outcome. An open
 // circuit returns `CircuitError.Open` without calling it; a failed call returns
 // `CircuitError.Failed` with the error.
-fn var CircuitBreaker.call[T Clonable, E Clonable](
-	operation fn() T!E
-) T!CircuitError[E] {
+fn var CircuitBreaker.call[T, E Clonable](operation fn() T!E) T!CircuitError[E] {
 	if self.is_open() { return error(CircuitError.Open) }
 
 	result := operation()
@@ -237,7 +234,7 @@ fn var CircuitBreaker.call[T Clonable, E Clonable](
 	if value := result {
 		self.failures = 0
 		self.opened = null
-		return ok(value.clone())
+		return ok(value)
 	}
 
 	self.failures += 1
