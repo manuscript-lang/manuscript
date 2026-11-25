@@ -192,7 +192,7 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
   uint32_t *order = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)map.nobjects + 1);
   uint32_t norder = 0;
   for (uint32_t object = 0; object < map.nobjects; object++) {
-    if (map.shareable[object] && bytes[object] != 0) {
+    if (map.shareable[object] && !map.promotable[object] && bytes[object] != 0) {
       uint32_t at = norder++;
       while (at > 0 && bytes[order[at - 1]] < bytes[object]) { /* insertion, biggest first, stable */
         order[at] = order[at - 1];

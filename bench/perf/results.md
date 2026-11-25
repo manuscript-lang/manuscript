@@ -1171,3 +1171,7 @@ Same machine, min of 5, `ms` before and after the change (`export_all` removed):
 ## 2026-11-25: `extend` checks room inline and copies plain elements with one memcpy
 
 `msrt_list_extend` called `ms_list_reserve` and `msrt_list_copy_range` (which tests the element descriptor again) even when the list had room. It now tests the room inline and copies plain elements with one `memcpy`. `lz` (520k extends of about 6 elements in `make_input`): 688.1M to 667.8M instructions (-3.0%); other suite programs unchanged.
+
+## 2026-11-25: a slot that is only loaded and stored gets its own alloca
+
+Slots that are never live together shared one frame alloca; one of them passed to a call made the alloca escape, so LLVM could not keep the others in registers (in `lz`, the output list's header was stored on every `push`). Slots used only by loads, stores and copies now get their own. Callgrind instructions, same machine, all 23 programs against the parent: `concat` -1.7%, `wordfreq` -1.7%, `lz` 668.0M to 659.5M (-1.3%), `pargroup` -1.2%, `exprparse` -0.4%, `objgraph` -0.3%, `dedupe` -0.2%, `strings` -0.2%; `grep` +0.45% and `report` +0.41% (one more constant stored per loop pass, a register choice); the rest within 0.1%.

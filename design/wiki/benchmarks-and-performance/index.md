@@ -97,3 +97,4 @@ Perf benchmarks, profiling.
 - [A check made unchecked must not leave its fault exit behind](a-check-made-unchecked-leaves-no-fault-exit.md): dead fault exits were 20% of optimized IR; release build of 500 functions 4.1 to 3.8 s, 267 to 246 MB.
 - [A list of plain records is tagged like a list of scalars](a-list-of-plain-records-is-tagged-like-a-list-of-scalars.md): `graph` -4.0% instructions; swapping heap entries no longer rewrites the list header.
 - [Lazy `split`, `lines` and `fields_by` are look records written in `.ms`](lazy-text-iterators-are-look-records-in-ms.md): `for` reads one borrowed piece at a time, `.collect()` builds a list; replaced the `source_split` lowering at parity, wordfreq -15%.
+- [A slot that is only loaded and stored gets its own alloca](a-slot-only-loaded-and-stored-gets-its-own-alloca.md): a shared cell escaped through one call and kept every list header in memory; `lz` -1.3%, `wordfreq` -1.7%.
