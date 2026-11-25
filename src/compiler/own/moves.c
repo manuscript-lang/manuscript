@@ -37,6 +37,7 @@ typedef struct Moves {
   MsBindingList borrowed; /* binding sites of names bound to a view of another value */
   MsBindingList owners;   /* binding sites of locals that hold a value of their own: made by a call or literal, or a `var` */
   MsBindingList outer;  /* what the lambdas around the current expression capture: only borrowed inside them */
+  bool ref_result;      /* the callable answers a `&` result: `ok(part)` wraps the part without taking it */
   uint32_t taken;       /* the parameters of the body being checked that its callers' arguments move into, by index */
   uint32_t depth;       /* lambdas open around the current expression */
   bool instance;        /* checking one instance of a generic body: only a type variable that became a resource is reported */
@@ -513,7 +514,8 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(pass->facts, expr->id) : NULL;
   for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
     if (call->args[index].source != MS_ARG_WRITTEN || (!call->constructor && (call->args[index].flags & MS_PARAM_MOVE) == 0) ||
-        ms_own_look_field(pass->program, call, index) || ms_own_look_carrier(pass->program, call, index)) {
+        ms_own_look_field(pass->program, call, index) || ms_own_look_carrier(pass->program, call, index) ||
+        (pass->ref_result && call->callee.kind == MS_REF_CASE)) {
       continue;
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
@@ -772,6 +774,7 @@ static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN:
     pass->taken = ms_own_taken_mask(pass->program, pass->module, decl->id);
+    pass->ref_result = ms_own_result_is_borrowed(pass->program, pass->module, decl->id);
     check_body(pass, arena, decl->u.fn.body, decl->u.fn.params);
     return;
   case MS_D_TEST:
@@ -781,6 +784,7 @@ static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
     for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
       const MsFunc *func = &decl->u.impl.methods.ptr[index]->func;
       pass->taken = ms_own_taken_mask(pass->program, pass->module, decl->u.impl.methods.ptr[index]->id);
+      pass->ref_result = ms_own_result_is_borrowed(pass->program, pass->module, decl->u.impl.methods.ptr[index]->id);
       check_body(pass, arena, func->body, func->params);
     }
     return;

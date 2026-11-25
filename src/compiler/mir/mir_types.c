@@ -230,6 +230,14 @@ static bool needs_drop_in(const MirModule *module, MirTy type, MirTyList *seen) 
 }
 
 bool mir_needs_drop(const MirModule *module, MirTy type) {
+  /* Most queries are a scalar or a heap kind: answer them without the declaration walk's bookkeeping. */
+  const MirTyData *data = mir_ty_data(module, type);
+  while (data->kind == MK_OPT) {
+    data = mir_ty_data(module, data->elem);
+  }
+  if (data->kind != MK_TYPE && data->kind != MK_ALT) {
+    return needs_drop_in(module, type, NULL);
+  }
   MirTyList seen = {0};
   const bool result = needs_drop_in(module, type, &seen);
   mir_tylist_free(&seen);
