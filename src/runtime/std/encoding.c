@@ -1,8 +1,9 @@
-/* @std/data/encoding natives: RFC 4648 Base64 and Base32 (padded or not, both alphabets), hexadecimal and
- * ASCII85. Every decoder is strict: no whitespace, canonical length, zero trailing bits, padding only at the
- * end. An optional byte budget `has_max`/`max` is checked in this order: a negative one is InvalidInput, then
- * the text's shape (InvalidData), then the decoded size against the budget (LimitExceeded), then the symbols.
- * Results are written through `out`: empty unless the call succeeds. */
+/* RFC 4648 Base64 (padded or not, both alphabets): the natives behind @std/data/encoding, and the Base64 the
+ * runtime itself uses (the WebSocket handshake, JSON bytes, PEM). Hexadecimal, Base32 and ASCII85 are
+ * Manuscript (src/stdlib/data/encoding.ms). The decoder is strict: no whitespace, canonical length, zero
+ * trailing bits, padding only at the end. An optional byte budget `has_max`/`max` is checked in this order: a
+ * negative one is InvalidInput, then the text's shape (InvalidData), then the decoded size against the budget
+ * (LimitExceeded), then the symbols. Results are written through `out`: empty unless the call succeeds. */
 #include <string.h>
 
 #include "abi/status.h"
@@ -14,9 +15,6 @@
 
 static const char base64_symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char base64_url_symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-static const char base32_symbols[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-static const char base32_hex_symbols[] = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
-static const char hex_digits[] = "0123456789abcdef";
 
 /* The shape of a Base-2^bits alphabet: `bits` per symbol, `group` symbols per padded block. */
 typedef struct Alphabet {
@@ -27,9 +25,6 @@ typedef struct Alphabet {
 
 static Alphabet base64_alphabet(bool url_safe) {
   return (Alphabet){url_safe ? base64_url_symbols : base64_symbols, 6, 4};
-}
-static Alphabet base32_alphabet(bool hex) {
-  return (Alphabet){hex ? base32_hex_symbols : base32_symbols, 5, 8};
 }
 
 enum { NOT_A_SYMBOL = 0xFF };
@@ -229,198 +224,10 @@ uint8_t msstd_encoding_base64_decode_unpadded(const MsString *text, uint8_t url_
   return decode_into(in, in.len, alphabet, out);
 }
 
-uint8_t msstd_encoding_base32_decode(const MsString *text, uint8_t hex_alphabet, uint8_t padded,
-                                     uint8_t has_max, int64_t max, MsBytes *out) {
-  *(out) = (MsBytes){0};
-  size_t budget = 0;
-  if (!budget_of(has_max, max, &budget)) {
-    return MS_STATUS_INVALID_INPUT;
-  }
-  const MsSpan in = text_in(text);
-  const Alphabet alphabet = base32_alphabet(hex_alphabet);
-  const size_t padding = trailing_padding(in);
-  const size_t count = in.len - padding;
-  // Padding belongs only to padded text and completes its last block; a last block of 1, 3 or 6 symbols holds
-  // no bytes.
-  const size_t tail = count % alphabet.group;
-  const bool tail_ok = tail == 0 || tail == 2 || tail == 4 || tail == 5 || tail == 7;
-  if ((padding > 0 && !padded) || (padded && in.len % alphabet.group != 0) || !tail_ok ||
-      (padded && padding != (alphabet.group - tail) % alphabet.group)) {
-    return MS_STATUS_INVALID_DATA;
-  }
-  if (decoded_length(count, alphabet) > budget) {
-    // An `=` before the padding is bad data whatever the budget.
-    return memchr(in.ptr, '=', count) != NULL ? MS_STATUS_INVALID_DATA : MS_STATUS_LIMIT_EXCEEDED;
-  }
-  return decode_into(in, count, alphabet, out);
-}
-
 void msstd_encoding_base64_encode(const MsBytes *data, uint8_t url_safe, MsString *out) {
   *out = encode_symbols(data, base64_alphabet(url_safe), true);
 }
 
 void msstd_encoding_base64_encode_unpadded(const MsBytes *data, uint8_t url_safe, MsString *out) {
   *out = encode_symbols(data, base64_alphabet(url_safe), false);
-}
-
-void msstd_encoding_base32_encode(const MsBytes *data, uint8_t hex_alphabet, uint8_t padded, MsString *out) {
-  *out = encode_symbols(data, base32_alphabet(hex_alphabet), padded);
-}
-
-/* ---- hexadecimal
- * ------------------------------------------------------------------------------------------------- */
-
-void msstd_encoding_hex_encode(const MsBytes *data, MsString *out) {
-  Text text;
-  uint8_t *digits = text_begin(&text, data->len * 2);
-  const uint8_t *in = data->ptr;
-  for (size_t i = 0; i < data->len; i++) {
-    digits[2 * i] = (uint8_t)hex_digits[in[i] >> 4];
-    digits[2 * i + 1] = (uint8_t)hex_digits[in[i] & 15];
-  }
-  *out = text_finish(&text);
-}
-
-/* The budget is checked before the length's parity and the digits. */
-uint8_t msstd_encoding_hex_decode(const MsString *text, uint8_t has_max, int64_t max, MsBytes *out) {
-  *(out) = (MsBytes){0};
-  size_t budget = 0;
-  if (!budget_of(has_max, max, &budget)) {
-    return MS_STATUS_INVALID_INPUT;
-  }
-  const MsSpan in = text_in(text);
-  if (in.len / 2 > budget) {
-    return MS_STATUS_LIMIT_EXCEEDED;
-  }
-  if (in.len % 2 != 0) {
-    return MS_STATUS_INVALID_DATA;
-  }
-  uint8_t *bytes = bytes_begin(out, in.len / 2);
-  for (size_t i = 0; i < in.len / 2; i++) {
-    const int high = ms_hex_value(in.ptr[2 * i]);
-    const int low = ms_hex_value(in.ptr[2 * i + 1]);
-    if (high < 0 || low < 0) {
-      bytes_discard(out);
-      return MS_STATUS_INVALID_DATA;
-    }
-    bytes[i] = (uint8_t)(high << 4 | low);
-  }
-  return MS_STATUS_OK;
-}
-
-/* ---- ASCII85
- * ----------------------------------------------------------------------------------------------------- */
-
-/* Unframed, Go's alphabet: `z` stands for a zero group and a partial final group of n bytes keeps n + 1
- * digits. */
-enum { ASCII85_BASE = 85, ASCII85_FIRST = '!', ASCII85_LAST = 'u', ASCII85_GROUP = 5 };
-
-void msstd_encoding_ascii85_encode(const MsBytes *data, MsString *out) {
-  // The widest result: five digits per four bytes, rounded up.
-  const size_t widest = (data->len + 3) / 4 * ASCII85_GROUP;
-  uint8_t *digits = ms_alloc(widest + 1);
-  size_t written = 0;
-  for (size_t at = 0; at < data->len; at += 4) {
-    const size_t count = data->len - at < 4 ? data->len - at : 4;
-    uint8_t word[4] = {0};
-    memcpy(word, (const uint8_t *)data->ptr + at, count);
-    uint32_t value = (uint32_t)word[0] << 24 | (uint32_t)word[1] << 16 | (uint32_t)word[2] << 8 | word[3];
-    if (count == 4 && value == 0) {
-      digits[written++] = 'z';
-      continue;
-    }
-    uint8_t group[ASCII85_GROUP];
-    for (size_t i = ASCII85_GROUP; i-- > 0;) {
-      group[i] = (uint8_t)(ASCII85_FIRST + value % ASCII85_BASE);
-      value /= ASCII85_BASE;
-    }
-    memcpy(digits + written, group, count + 1);
-    written += count + 1;
-  }
-  *out = ms_string_from_span(ms_span_of(digits, written));
-  ms_free(digits);
-}
-
-/* The decoded bytes so far, growing as groups complete. */
-typedef struct Collected {
-  uint8_t *bytes;
-  size_t length, capacity;
-} Collected;
-
-/* Appends `count` bytes of `value` (most significant first); false when the total would pass `budget`. */
-static bool collect(Collected *collected, uint32_t value, size_t count, size_t budget) {
-  if (count > budget - collected->length) {
-    return false;
-  }
-  if (collected->capacity - collected->length < count) {
-    collected->capacity = collected->capacity == 0 ? 64 : collected->capacity * 2;
-    collected->bytes = ms_realloc(collected->bytes, collected->capacity);
-  }
-  for (size_t i = 0; i < count; i++) {
-    collected->bytes[collected->length++] = (uint8_t)(value >> (24 - 8 * i));
-  }
-  return true;
-}
-
-static uint8_t collect_status(Collected *collected, uint32_t value, size_t count, size_t budget) {
-  return collect(collected, value, count, budget) ? MS_STATUS_OK : MS_STATUS_LIMIT_EXCEEDED;
-}
-
-/* The status of appending the first `count` bytes of a group worth `word`: a group past 2^32 - 1 is bad data.
- */
-static uint8_t group_status(Collected *collected, uint64_t word, size_t count, size_t budget) {
-  if (word > UINT32_MAX) {
-    return MS_STATUS_INVALID_DATA;
-  }
-  return collect_status(collected, (uint32_t)word, count, budget);
-}
-
-/* ASCII controls and space between digits are ignored. */
-uint8_t msstd_encoding_ascii85_decode(const MsString *text, uint8_t has_max, int64_t max, MsBytes *out) {
-  *(out) = (MsBytes){0};
-  size_t budget = 0;
-  if (!budget_of(has_max, max, &budget)) {
-    return MS_STATUS_INVALID_INPUT;
-  }
-  const MsSpan in = text_in(text);
-  Collected collected = {0};
-  uint64_t word = 0;
-  size_t digits = 0;
-  uint8_t status = MS_STATUS_OK;
-  for (size_t i = 0; i < in.len && status == MS_STATUS_OK; i++) {
-    const uint8_t byte = in.ptr[i];
-    if (byte <= ' ') {
-      continue;
-    }
-    if (byte == 'z') {
-      status = digits != 0 ? MS_STATUS_INVALID_DATA : collect_status(&collected, 0, 4, budget);
-    } else if (byte < ASCII85_FIRST || byte > ASCII85_LAST) {
-      status = MS_STATUS_INVALID_DATA;
-    } else {
-      word = word * ASCII85_BASE + (uint64_t)(byte - ASCII85_FIRST);
-      digits++;
-    }
-    if (digits == ASCII85_GROUP && status == MS_STATUS_OK) {
-      status = group_status(&collected, word, 4, budget);
-      word = 0;
-      digits = 0;
-    }
-  }
-  if (status == MS_STATUS_OK && digits == 1) {
-    status = MS_STATUS_INVALID_DATA;
-  }
-  if (status == MS_STATUS_OK && digits > 1) {
-    // Pad the partial group with the highest digit; the bytes kept are its first digits - 1.
-    for (size_t i = digits; i < ASCII85_GROUP; i++) {
-      word = word * ASCII85_BASE + (ASCII85_BASE - 1);
-    }
-    status = group_status(&collected, word, digits - 1, budget);
-  }
-  if (status != MS_STATUS_OK || collected.length == 0) {
-    ms_free(collected.bytes);
-    return status;
-  }
-  out->ptr = ms_realloc(collected.bytes, collected.length);
-  out->len = out->cap = collected.length;
-  return MS_STATUS_OK;
 }
