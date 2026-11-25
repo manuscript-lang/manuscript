@@ -836,3 +836,15 @@ MsNativeGet ms_own_native_get(const MsCheckProgram *program, const MsFacts *fact
              ? MS_NATIVE_GET_PAYLOAD
              : MS_NATIVE_GET_NONE;
 }
+
+bool ms_own_written_ok_is_ref(const MsCheckProgram *program, const MsTypeRef *result) {
+  if (result == NULL || result->kind != MS_TYPE_NAMED || result->args.len < 1) {
+    return false;
+  }
+  const MsTypeRef *ok = result->args.ptr[0];
+  while (ok->kind == MS_TYPE_NAMED && !ok->is_ref && ok->args.len == 1 &&
+         ms_span_is_text(ms_names_span(program->names, ok->name), "Optional")) {
+    ok = ok->args.ptr[0];
+  }
+  return ok->is_ref;
+}

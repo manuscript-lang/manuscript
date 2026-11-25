@@ -1,6 +1,7 @@
 /* compiler/lower/lower_types.c: checked types to MIR types. A type with variables is first rewritten by the
  * substitution of the instance being lowered, so MIR never sees a variable. */
 #include "compiler/lower/lower_internal.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/check/methods.h"
 #include "compiler/natives/native_sigs.h"
 
@@ -162,7 +163,7 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
                                   mir_needs_drop(cx->module, methods[index].ret);
     /* `&T!` is the borrowing variant of its Result, as in a function: the signature alone decides. */
     const MsTypeRef *written = declared != NULL ? declared->func.result : NULL;
-    if (written != NULL && written->args.len >= 1 && written->args.ptr[0]->is_ref) {
+    if (ms_own_written_ok_is_ref(cx->program, written)) {
       const MirTy variant = lower_result_view(cx, &subst, ms_ty_result(&cx->program->types, fn));
       if (variant != methods[index].ret) {
         methods[index].ret = variant;
@@ -294,8 +295,8 @@ MirTy lower_result_view(Lower *cx, const LowerSubst *subst, MsTy ty) {
     return plain;
   }
   const MirAltDef base = cx->module->alts.ptr[data->id];
-  if (base.cases[0].nfields == 0 || mir_ty_data(cx->module, base.cases[0].fields[0].ty)->kind == MK_OPT) {
-    return plain; /* an Optional payload is its own view */
+  if (base.cases[0].nfields == 0) {
+    return plain;
   }
   const uint32_t id = mir_add_alt(cx->module, base.name);
   MirAltDef *alt = &cx->module->alts.ptr[id];
