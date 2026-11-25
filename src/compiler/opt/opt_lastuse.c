@@ -21,7 +21,6 @@
 
 static void *lu_regrow(MsArena *a, void *old, uint32_t oldn, uint32_t newcap, size_t elem) {
   void *p = ms_arena_alloc_zeroed(a, elem * ((size_t)newcap + 1), 16);
-  __builtin_memset(p, 0, elem * ((size_t)newcap + 1));
   if (oldn > 0) {
     __builtin_memcpy(p, old, elem * oldn);
   }
@@ -295,11 +294,27 @@ static bool lu_is_scalar(const MirModule *m, MirTy t) {
 
 bool lu_in_family(const LuCtx *x, MirValue w) { return x->fam_gen[w] == x->gen; }
 
+/* `old` (`n` values used) with room for one more, doubling when full; the new space is not cleared. */
+static MirValue *lu_grow(MsArena *a, MirValue *old, uint32_t n, uint32_t *cap) {
+  if (n < *cap) {
+    return old;
+  }
+  const uint32_t next = *cap ? *cap * 2 : 16;
+  MirValue *p = MS_ARENA_NEW_ARRAY_UNINIT(a, MirValue, next);
+  if (n > 0) {
+    __builtin_memcpy(p, old, sizeof(MirValue) * n);
+  }
+  *cap = next;
+  return p;
+}
+
 static void lu_add(LuCtx *x, LuFamily *fam, MirValue r) {
   if (x->fam_gen[r] == x->gen) {
     return;
   }
   x->fam_gen[r] = x->gen;
+  fam->v = lu_grow(fam->arena, fam->v, fam->n, &fam->vcap);
+  fam->work = lu_grow(fam->arena, fam->work, fam->nwork, &fam->wcap);
   fam->v[fam->n++] = r;
   fam->work[fam->nwork++] = r;
 }
@@ -335,9 +350,7 @@ static void lu_family_call(LuCtx *x, LuFamily *fam, const MirInst *i) {
 void lu_family(LuCtx *x, MsArena *ca, LuFamily *fam, MirValue v, uint32_t param_of) {
   const MirModule *m = x->m;
   const MirFunc *f = x->f;
-  fam->v = MS_ARENA_NEW_ARRAY(ca, MirValue, f->values.len);
-  fam->work = MS_ARENA_NEW_ARRAY(ca, MirValue, f->values.len);
-  fam->n = fam->nwork = 0;
+  *fam = (LuFamily){.arena = ca};
   lu_add(x, fam, v);
   if (param_of != MIR_NONE) {
     const MirBlockData *pb = &f->blocks.ptr[param_of];
