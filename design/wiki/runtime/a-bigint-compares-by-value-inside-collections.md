@@ -1,0 +1,3 @@
+# A BigInt compares by value inside a list, a map or an optional
+
+A BigInt is one shared handle word. Its type descriptor had no equality, so `[a] == [b]`, map and optional equality compared handles and two equal numbers held in separate objects were unequal; `==` on a bare BigInt (a native call) and on a record field (a direct call) were right, which hid it. Descriptor glue now exists for the value object class (`mir_desc_glue.c`), and the shape walk (`shape_equal.c`) compares a `MS_SHAPE_BIGINT` through `msstd_bigint_equal` and hashes its sign and digits (`ms_bigint_hash`), as it does for `MS_SHAPE_DECIMAL`. BigInt is still not `Hashable`, so no map key reaches the hash. Fixture: `bigint-equal-inside-collections`.
