@@ -88,7 +88,7 @@ void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out);
 void msrt_string_chars(const MsString *s, MsList *out);
 /* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @borrows @domain=string @end */
 void msrt_string_lines(const MsString *s, MsList *out);
-/* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @domain=string @end */
+/* ms-sig: msrt_string_fields(s: *const StrVal, out: *mut VecVal) @borrows @domain=string @end */
 void msrt_string_fields(const MsString *s, MsList *out);
 /* ms-sig: msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_scalar_values(const MsString *s, MsList *out);
