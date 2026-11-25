@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a `&` result must be a part of a `hold` argument, but this body also puts a value it owns into the result; clone the part of the argument or keep only parts of the held argument",
+        "position": {
+          "file": "look-list-mixed-owner.ms",
+          "line": 8,
+          "column": 1,
+          "offset": 95
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/look-list-mixed-owner.ms:8:1: type: a `&` result must be a part of a `hold` argument, but this body also puts a value it owns into the result; clone the part of the argument or keep only parts of the held argument\n   |\n 8 | fn mix(hold names List[String]) List[Ref] {\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

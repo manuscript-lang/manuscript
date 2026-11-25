@@ -312,6 +312,9 @@ static void note_keep(Borrows *pass, const MsExpr *kept) {
   if (!ms_class_owns_memory(pass->facts, pass->classes, kept)) {
     return; /* a scalar is copied out of the result, so nothing is kept */
   }
+  if (ms_own_look_record(pass->program, ms_facts_type(pass->facts, kept->id))) {
+    return; /* a look holds a view, not the part itself: its holder is tied to the sources instead */
+  }
   const MsExpr *call = kept_call(kept);
   Keep keep = {.kept = call};
   if (call != NULL && origin_of_arg(pass, call, &keep.source) && !rooted_at_self(pass, keep.source.place)) {

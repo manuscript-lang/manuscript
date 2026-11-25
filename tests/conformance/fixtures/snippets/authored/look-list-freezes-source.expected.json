@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `names` while `out` borrows it (binding of a part of it, at 18:5); finish using `out` before this, or give `out` its own value by ending its initializer with `.clone()`",
+        "position": {
+          "file": "look-list-freezes-source.ms",
+          "line": 19,
+          "column": 5,
+          "offset": 304
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/look-list-freezes-source.ms:19:5: type: cannot change `names` while `out` borrows it (binding of a part of it, at 18:5); finish using `out` before this, or give `out` its own value by ending its initializer with `.clone()`\n    |\n 19 |     names.append(\"c\")\n    |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
