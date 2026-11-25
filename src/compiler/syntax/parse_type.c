@@ -149,9 +149,9 @@ MS_NODISCARD static bool type_suffix(Parser *p, MsTypeRef *t, MsTypeRef **out) {
 
 /* Takes a contextual `move` marker: the word `move` followed by a token of one of the `next`
  * kinds, so a name `move` still reads as a name. */
-bool parse_take_move(Parser *p, const MsTok *nexts, size_t n) {
+static bool take_word(Parser *p, const char *word, const MsTok *nexts, size_t n) {
   MsToken t = parse_peek(p);
-  if (t.kind == MS_T_Name && parse_text_is(p, t, "move")) {
+  if (t.kind == MS_T_Name && parse_text_is(p, t, word)) {
     MsTok k = (MsTok)parse_ahead(p, 1).kind;
     for (size_t i = 0; i < n; i++) {
       if (nexts[i] == k) {
@@ -161,6 +161,15 @@ bool parse_take_move(Parser *p, const MsTok *nexts, size_t n) {
     }
   }
   return false;
+}
+
+bool parse_take_move(Parser *p, const MsTok *nexts, size_t n) {
+  return take_word(p, "move", nexts, n);
+}
+
+/* `hold` is a mode only when a parameter name or type follows, so `hold[T](...)` and `hold(x)` still name a function. */
+bool parse_take_hold(Parser *p, const MsTok *nexts, size_t n) {
+  return take_word(p, "hold", nexts, n);
 }
 
 /* `fn(T, var U) R`, after `first`, the `fn` token. */
@@ -182,11 +191,19 @@ MS_NODISCARD static bool fn_type(Parser *p, MsToken first, MsTypeRef **out) {
                                    "callee changes it in place), not both"));
         return false;
       }
+      bool holding = parse_take_hold(p, (const MsTok[]){MS_T_Name, MS_T_Fn}, 2);
+      if (holding && moving) {
+        parse_fail(p, parse_previous(p),
+                   ms_span_of_text("a parameter is either `move` (the callee takes it) or `hold` (the result "
+                                   "keeps using it), not both"));
+        return false;
+      }
       MsTypeRef *ty = NULL;
       if (!parse_typ(p, &ty))
         return false;
-      parse_push_ptr(
-          p, parse_mk_param(p, ty->pos, parse_numbered_name(p, "_", count), ty, NULL, is_mutable, moving));
+      MsParam *fp = parse_mk_param(p, ty->pos, parse_numbered_name(p, "_", count), ty, NULL, is_mutable, moving);
+      fp->holding = holding;
+      parse_push_ptr(p, fp);
       count++;
       if (!parse_take(p, MS_T_Comma)) {
         break;
@@ -404,6 +421,13 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
                                "changes it in place), not both"));
     return false;
   }
+  bool holding = parse_take_hold(p, (const MsTok[]){MS_T_Name}, 1);
+  if (holding && moving) {
+    parse_fail(p, parse_previous(p),
+               ms_span_of_text("a parameter is either `move` (the callee takes it) or `hold` (the result keeps "
+                               "using it), not both"));
+    return false;
+  }
   MsToken name = {0};
   if (!parse_member_name(p, &name))
     return false;
@@ -464,12 +488,14 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
     }
     MsParam *earlier = parse_mk_param(p, names[i].pos, parse_sym(p, names[i]), own_ty, own_def, is_mutable, moving);
     earlier->implied_default = own_implied;
+    earlier->holding = holding;
     parse_push_ptr(p, earlier);
   }
   p->at = end;
   name = last;
   MsParam *param = parse_mk_param(p, name.pos, parse_sym(p, name), ty, def, is_mutable, moving);
   param->implied_default = implied;
+  param->holding = holding;
   parse_push_ptr(p, param);
   return true;
 }
