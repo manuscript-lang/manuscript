@@ -92,6 +92,13 @@ void ms_check_unsatisfied_message(MsCheckProgram *program, MsTy ty, MsTy bound, 
   ms_strbuild_free(&prefix);
 }
 
+void ms_check_push_bound(MsTyVariable *variable, MsTy resolved, const MsTypeRef *written) {
+  if (written != NULL && written->args.len > 0 && written->args.ptr[0]->is_ref && variable->bounds.len < 32) {
+    variable->lends |= UINT32_C(1) << variable->bounds.len;
+  }
+  ms_ty_list_push(&variable->bounds, resolved);
+}
+
 bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg, const MsTy *vars, const MsTy *args,
                                size_t count, const char *alternative, MsString *why) {
   const MsTyVariable *record = ms_ty_variable(&program->types, variable);
@@ -100,12 +107,18 @@ bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg,
   }
   for (size_t at = 0; at < record->bounds.len; at++) {
     const MsTy wanted = ms_ty_subst(&program->types, record->bounds.ptr[at], vars, args, count);
-    if (ms_check_implements(program, arg, wanted)) {
+    const bool lends = at < 32 && (record->lends & (UINT32_C(1) << at)) != 0;
+    if (ms_check_implements(program, arg, wanted) && (!lends || ms_check_lends(program, arg, wanted))) {
       continue;
     }
     if (why != NULL) {
       MsStrBuild text = ms_strbuild_new();
-      ms_check_unsatisfied_message(program, arg, wanted, alternative, &text);
+      if (lends && ms_check_implements(program, arg, wanted)) {
+        show(program, &text, arg);
+        ms_strbuild_append_text(&text, " does not satisfy this bound: it is written with `&`, so the operations must return a `&` result, as `fn var next() &T?` does");
+      } else {
+        ms_check_unsatisfied_message(program, arg, wanted, alternative, &text);
+      }
       *why = ms_strbuild_finish(&text);
     }
     return false;

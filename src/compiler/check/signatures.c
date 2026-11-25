@@ -4,6 +4,7 @@
  * field types, each enum its cases, each interface its operations, and each function its function type.
  * Signatures resolve in declaration order; a reference to a type declared later needs nothing but that type's
  * variables, which the earlier pass made. Unknown names are reported for the program's own modules. */
+#include "compiler/check/bounds.h"
 #include "compiler/check/resolve_internal.h"
 
 static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
@@ -15,10 +16,11 @@ static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
     MsTyVariable *variable =
         ms_ty_variable(&program->types, program->symbol_vars.ptr[symbol->var_at + index]);
     variable->bounds.len = 0; /* the settling rounds resolve a variable's bounds again */
+    variable->lends = 0;
     for (uint32_t bound = 0; bound < params.ptr[index]->bounds.len; bound++) {
       const MsTy resolved = resolver_bound(resolver, params.ptr[index]->bounds.ptr[bound]);
       if (resolved != MS_TY_NONE) {
-        ms_ty_list_push(&variable->bounds, resolved);
+        ms_check_push_bound(variable, resolved, params.ptr[index]->bounds.ptr[bound]);
       }
     }
     if (params.ptr[index]->def == NULL) {
@@ -117,7 +119,7 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
       for (uint32_t bound = 0; bound < param->bounds.len; bound++) {
         const MsTy resolved = resolver_bound(resolver, param->bounds.ptr[bound]);
         if (resolved != MS_TY_NONE) {
-          ms_ty_list_push(&record->bounds, resolved);
+          ms_check_push_bound(record, resolved, param->bounds.ptr[bound]);
         }
       }
       if (param->def != NULL) {

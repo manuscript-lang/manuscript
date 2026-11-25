@@ -10,6 +10,7 @@
 
 #include "base/alloc.h"
 #include "base/sort.h"
+#include "compiler/check/bounds.h"
 #include "compiler/check/resolve_internal.h"
 
 MS_MAP_DEFINE(MsNameHeads, ms_name_heads, uint64_t, uint32_t, ms_hash_u64_key, ms_equal_u64_key)
@@ -222,11 +223,12 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
                       ms_ty_subst(&program->types, declared->bounds.ptr[at],
                                   program->symbol_vars.ptr + symbol->var_at, shown.ptr, params.len));
     }
+    record->lends = declared->lends;
     for (uint32_t written = 0; written < decl->u.impl.bounds.len; written++) {
       const MsTypeParam *param = decl->u.impl.bounds.ptr[written];
       for (uint32_t bound = 0; param->name == params.ptr[index]->name && bound < param->bounds.len; bound++) {
         context->resolver.allow_type_set = true;
-        ms_ty_list_push(&record->bounds, resolver_type(&context->resolver, param->bounds.ptr[bound]));
+        ms_check_push_bound(record, resolver_type(&context->resolver, param->bounds.ptr[bound]), param->bounds.ptr[bound]);
         context->resolver.allow_type_set = false;
       }
     }
@@ -355,7 +357,7 @@ static void enter_own_variables(Context *context, const MsMethod *method, MsTyLi
     MsTyVariable *record = ms_ty_variable(&program->types, own->ptr[index]);
     for (uint32_t bound = 0; bound < param->bounds.len; bound++) {
       context->resolver.allow_type_set = true;
-      ms_ty_list_push(&record->bounds, resolver_type(&context->resolver, param->bounds.ptr[bound]));
+      ms_check_push_bound(record, resolver_type(&context->resolver, param->bounds.ptr[bound]), param->bounds.ptr[bound]);
       context->resolver.allow_type_set = false;
     }
     if (param->def != NULL) {

@@ -270,6 +270,34 @@ static bool operation_met(MsCheckProgram *program, MsTy receiver, MsTy contract,
   return met;
 }
 
+bool ms_check_lends(MsCheckProgram *program, MsTy receiver, MsTy contract) {
+  if (ms_ty_kind(&program->types, receiver) == MS_TY_VARIABLE) {
+    const MsTyVariable *variable = ms_ty_variable(&program->types, receiver);
+    for (size_t at = 0; at < variable->bounds.len && at < 32; at++) {
+      if (variable->bounds.ptr[at] == contract && (variable->lends & (UINT32_C(1) << at)) != 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+  const MsDef *def = contract_def(program, contract);
+  bool lends = def != NULL;
+  for (size_t index = 0; def != NULL && lends && index < def->operations.len; index++) {
+    MsMethodMatchList own = {0};
+    own_methods(program, receiver, def->operations.ptr[index].name, &own);
+    lends = own.len > 0;
+    for (size_t at = 0; at < own.len && lends; at++) {
+      const MsMethod *source = own.ptr[at].entry->source;
+      const MsTypeRef *result = source != NULL ? source->func.result : NULL;
+      /* `&T?` is an optional of a borrow: the `&` sits on the payload */
+      lends = result != NULL && (result->is_ref || (result->kind == MS_TYPE_NAMED && result->args.len == 1 &&
+                                                    result->args.ptr[0]->is_ref));
+    }
+    ms_method_match_list_free(&own);
+  }
+  return lends;
+}
+
 bool ms_check_shape_gap(MsCheckProgram *program, MsTy receiver, MsTy contract, MsStrBuild *why) {
   const MsTyKind kind = ms_ty_kind(&program->types, receiver);
   const MsDef *def = contract_def(program, contract);

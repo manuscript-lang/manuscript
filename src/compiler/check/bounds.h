@@ -8,6 +8,10 @@
 
 #include "compiler/check/properties.h"
 
+/* Appends `resolved`, written as `written`, to the bounds of `variable`, noting a `&` argument (`Iterator[&T]`): the
+ * type bound to it must lend, and a record holding it is a look. */
+void ms_check_push_bound(MsTyVariable *variable, MsTy resolved, const MsTypeRef *written);
+
 /* The same, reading the bounds with each `vars[i]` replaced by `args[i]` (`count` entries). */
 MS_NODISCARD bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg, const MsTy *vars,
                                             const MsTy *args, size_t count, const char *alternative,

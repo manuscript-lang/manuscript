@@ -441,6 +441,9 @@ static bool look_record_within(const MsCheckProgram *program, MsTy ty, int depth
     }
   }
   const MsTyRow *row = ms_ty_row(&program->types, ty);
+  if (row->kind == MS_TY_VARIABLE) {
+    return program->types.variables.ptr[row->def].lends != 0; /* bound `Iterator[&T]`: what it yields is a view */
+  }
   if (row->kind != MS_TY_TYPE || row->def == 0) {
     return false;
   }

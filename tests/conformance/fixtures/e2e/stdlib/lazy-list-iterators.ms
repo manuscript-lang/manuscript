@@ -18,3 +18,10 @@ test "mapped items can be strings" {
 	words := ["a", "bb", "ccc"]
 	expect_equal(words.iter().seq().map(w => w.length()).collect(), [1, 2, 3])?
 }
+
+test "a filter yields borrowed items and clones nothing" {
+	words := ["a", "bb", "ccc", "dd"]
+	expect_equal(words.iter().seq().filter(w => w.length() > 1).count(), 3)?
+	total := words.iter().seq().filter(w => w.length() > 1).map(w => w.length()).fold(0, (sum, n) => sum + n)
+	expect_equal(total, 7)?
+}

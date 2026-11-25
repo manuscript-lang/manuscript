@@ -80,6 +80,10 @@ MS_NODISCARD bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actu
  * type set, a built-in comparable, or supplies every operation by its own methods. */
 MS_NODISCARD bool ms_check_implements(MsCheckProgram *program, MsTy receiver, MsTy contract);
 
+/* Whether every operation of `contract` that `receiver` implements returns a `&` result: what a bound written
+ * `Iterator[&T]` asks of its argument, so a lazy adapter can hand out the items of its source. */
+MS_NODISCARD bool ms_check_lends(MsCheckProgram *program, MsTy receiver, MsTy contract);
+
 /* Whether `receiver`'s own methods supply every operation of `contract`. When one is missing or differs, appends
  * why (the first such operation) to `why` and returns false; returns false appending nothing when shape does not
  * apply (a variable receiver, a contract with no operations). */

@@ -119,6 +119,7 @@ MS_LIST_DEFINE(MsTyRowList, ms_ty_row_list, MsTyRow)
 /* A type variable's bounds and default, filled in after the variable exists. */
 typedef struct MsTyVariable {
   MsTyList bounds; /* owned */
+  uint32_t lends;  /* bit i: bound i is written with a `&` argument (`Iterator[&T]`), so a type meeting it lends its items */
   MsTy default_ty; /* MS_TY_NONE when it has none */
 } MsTyVariable;
 

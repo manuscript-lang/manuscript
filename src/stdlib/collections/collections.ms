@@ -1216,6 +1216,20 @@ fn var Mapped[I Iterator[T], T, U].next() U? {
 	return self.transform(item)
 }
 
+// An iterator over the items of a borrowing `source` for which `keep` is true; each is
+// the source's own borrow.
+type Filtered[I Iterator[&T], T] {
+	source I
+	keep fn(T) Bool
+}
+
+fn var Filtered[I Iterator[&T], T].next() &T? {
+	for item in self.source {
+		if self.keep(item) { return item }
+	}
+	return null
+}
+
 // Wraps an iterator with the chain methods: `map`, `fold`, `count`, `collect`.
 type Seq[I Iterator[T], T] {
 	source I
@@ -1258,4 +1272,10 @@ fn move Seq[I Iterator[T], T Clonable].collect() List[T] {
 	}
 
 	return out
+}
+
+// Yields the items of a borrowing source for which `keep` is true, as borrows of the
+// source's own items.
+fn move Seq[I Iterator[&T], T].filter(keep fn(T) Bool) Seq[Filtered[I, T], T] {
+	return Seq[Filtered[I, T], T](Filtered[I, T](self.source, keep))
 }
