@@ -122,7 +122,7 @@ static bool receiver_reported(const MsCheckProgram *program, uint32_t module, co
 static MsSymbolId receiver_symbol(Context *context, const MsDecl *decl, bool *primitive) {
   const MsCheckProgram *program = context->program;
   const MsTypeRef *receiver = decl->u.impl.receiver;
-  const bool standard = context->module >= program->user_modules;
+  const bool standard = ms_check_is_std(program, context->module);
   const MsSymbolId *own = ms_scope_get(&program->modules.ptr[context->module].scope, receiver->name);
   const MsSymbolId *imported = ms_scope_get(&program->modules.ptr[context->module].imports, receiver->name);
   MsSymbolId id = own != NULL ? *own : 0;
@@ -342,7 +342,7 @@ static void enter_own_variables(Context *context, const MsMethod *method, MsTyLi
         break;
       }
     }
-    if (context->module < program->user_modules && ms_check_intrinsic_type_param(program, param->name)) {
+    if (!ms_check_is_std(program, context->module) && ms_check_intrinsic_type_param(program, param->name)) {
       ms_check_report_type_param(program, context->module, param);
     }
     const MsTy variable = ms_ty_variable_new(&program->types, param->name, ms_check_unique_id(program, "var"));

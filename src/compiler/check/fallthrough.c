@@ -174,7 +174,7 @@ static void check_function(MsCheckProgram *program, uint32_t module, const MsFun
 }
 
 void ms_check_fallthrough(MsCheckProgram *program, uint32_t module, const MsDecl *decl) {
-  if (module >= program->user_modules) {
+  if (ms_check_is_std(program, module)) {
     return;
   }
   if (decl->kind == MS_D_FN) {
@@ -184,7 +184,7 @@ void ms_check_fallthrough(MsCheckProgram *program, uint32_t module, const MsDecl
   const MsSymbolId *receiver = decl->kind == MS_D_IMPL && decl->u.impl.receiver != NULL
                                    ? ms_scope_get(&program->modules.ptr[module].scope, decl->u.impl.receiver->name)
                                    : NULL;
-  const bool methods = decl->kind == MS_D_IMPL && (receiver != NULL || module >= program->user_modules);
+  const bool methods = decl->kind == MS_D_IMPL && (receiver != NULL || ms_check_is_std(program, module));
   for (uint32_t index = 0; methods && index < decl->u.impl.methods.len; index++) {
     const MsMethod *method = decl->u.impl.methods.ptr[index];
     check_function(program, module, &method->func, method->pos);

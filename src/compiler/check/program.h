@@ -60,6 +60,7 @@ typedef struct MsModuleInfo {
   const int32_t *targets; /* borrowed from the graph: module index of each local import; NULL for std */
   MsFacts facts;
   MsSpan source; /* the text the tree was parsed from; borrowed */
+  bool bundled;  /* the module stands for a bundled standard module (`@std/...`), loaded from the bundle or given by an editor */
 } MsModuleInfo;
 
 MS_LIST_DEFINE(MsModuleList, ms_module_list, MsModuleInfo)
@@ -215,6 +216,12 @@ void ms_check_load_std(MsCheckProgram *program);
 
 /* Whether `path` names a bundled module (`@std/<name>`); *name is what follows the prefix. */
 bool ms_check_std_path(MsSpan path, MsSpan *name);
+
+/* Whether `module` is part of the standard library: a bundled module, or an editor's copy of one. It has the library's
+ * privileges (prelude names, native declarations, intrinsic receivers) that project code lacks. */
+static inline bool ms_check_is_std(const MsCheckProgram *program, uint32_t module) {
+  return module >= program->user_modules || program->modules.ptr[module].bundled;
+}
 
 /* Explains the imports of `module` that name nothing usable, and the redundant prelude imports. */
 /* Rejects declarations whose recursive generic applications change their type arguments. */

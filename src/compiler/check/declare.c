@@ -45,7 +45,9 @@ void ms_check_program_free(MsCheckProgram *program) {
 }
 
 uint32_t ms_check_add_module(MsCheckProgram *program, MsName file, const MsModule *tree) {
-  ms_module_list_push(&program->modules, (MsModuleInfo){.file = file, .tree = tree});
+  MsSpan unused = {0};
+  ms_module_list_push(&program->modules, (MsModuleInfo){.file = file, .tree = tree,
+                                                          .bundled = ms_check_std_path(ms_names_span(program->names, file), &unused)});
   return (uint32_t)program->modules.len - 1;
 }
 
@@ -262,10 +264,10 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
     if (!ms_check_declared_name(decl, &name)) {
       continue;
     }
-    if (module < program->user_modules && is_prelude_constructor(program, name)) {
+    if (!ms_check_is_std(program, module) && is_prelude_constructor(program, name)) {
       report_constructor_reuse(program, module, decl, name);
     }
-    if (module < program->user_modules && is_prelude_name(program, name)) {
+    if (!ms_check_is_std(program, module) && is_prelude_name(program, name)) {
       report_prelude_reuse(program, module, decl, name);
       continue;
     }
@@ -274,7 +276,7 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
       report_duplicate(program, module, decl, name);
       continue;
     }
-    if (module < program->user_modules && decl->kind == MS_D_TYPE && decl->u.type.external &&
+    if (!ms_check_is_std(program, module) && decl->kind == MS_D_TYPE && decl->u.type.external &&
         decl->u.type.type_params.len != 0) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append_text(&text, "extern type ");

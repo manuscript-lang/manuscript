@@ -132,7 +132,7 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
   const NumberKind kind = number_kind(number_text(body, expr));
   if (kind == NUMBER_DECIMAL) {
     const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));
-    if (decimal != NULL && decimal->module >= body->program->user_modules) {
+    if (decimal != NULL && ms_check_is_std(body->program, decimal->module)) {
       return decimal->ty;
     }
     report_missing_decimal(body, expr);
@@ -163,7 +163,7 @@ void body_report_decimal_literals(Body *body, const MsExpr *expr) {
   case MS_E_NUMBER:
     if (number_kind(number_text(body, expr)) == NUMBER_DECIMAL) {
       const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));
-      if (decimal == NULL || decimal->module < body->program->user_modules) {
+      if (decimal == NULL || !ms_check_is_std(body->program, decimal->module)) {
         report_missing_decimal(body, expr);
       }
     }

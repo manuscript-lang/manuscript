@@ -38,6 +38,8 @@ typedef struct Loader {
   MsSpanList loaded;  /* canonical path of modules[i] */
   GraphDiagList diagnostics;
   bool recover; /* MsLoadOptions.recover */
+  MsSpan entry_name;      /* MsLoadOptions.entry_name */
+  MsSpan entry_canonical; /* the entry file's canonical path, once resolved */
 } Loader;
 
 static MsPos start_position(void) {
@@ -59,6 +61,7 @@ static MsGraphDiag failure_diag(const Failure *failure, MsSpan file, MsPos pos) 
 /* The name diagnostics and metadata use for a canonical file: its path from the project root, or `@package/path` for a
  * fetched package. */
 static MsSpan logical_name(Loader *loader, MsSpan canonical) {
+  if (loader->entry_name.len != 0 && ms_span_equal(canonical, loader->entry_canonical)) return loader->entry_name;
   const MsPackage *package = ms_manifest_package_of(loader->manifest, canonical);
   MsStrBuild relative = ms_strbuild_new();
   if (!ms_path_relative(&relative, package == NULL ? loader->root : package->root, canonical)) {
@@ -520,6 +523,7 @@ static void load_graph(Loader *loader, MsSpan filename, MsSpan target, bool is_m
       fail_error(loader->arena, filename, &error, out);
       return;
     }
+    loader->entry_canonical = entry;
     if (!visit(loader, entry, &index, &failure)) {
       ms_span_list_free(&extras);
       fail_load(loader, out, failure_diag(&failure, filename, start_position()));
@@ -559,7 +563,8 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
                    .overlay = options == NULL ? NULL : options->overlay,
                    .manifest = governed ? &manifest : NULL,
                    .root = governed ? manifest.root : root,
-                   .recover = options != NULL && options->recover};
+                   .recover = options != NULL && options->recover,
+                   .entry_name = options == NULL ? (MsSpan){0} : options->entry_name};
   out->source_root = loader.root;
   const bool is_manifest = ms_span_is_text(ms_path_file_name(absolute), "ms.toml");
   if (is_manifest) {

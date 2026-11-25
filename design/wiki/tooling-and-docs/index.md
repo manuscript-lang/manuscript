@@ -28,6 +28,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Shared editor analysis must preserve selected roots and overlays](shared-editor-analysis-must-preserve-selected-roots-and-over.md): resolve the nearest manifest before sharing analysis.
 - [Signature labels follow checked callees](signature-labels-follow-checked-callees.md): use checked callee spans and retain grouped receiver boundaries inside interpolation.
 - [Source freshness does not establish published freshness](source-freshness-does-not-establish-published-freshness.md): after the concurrency simplification, source declarations and generated Markdown were current while the checked-in website still exposed ret…
+- [The editor checks a standard file as the module it is](editor-checks-a-standard-file-as-the-module-it-is.md): library privileges follow the `@std/` name, so bodies in `core`/`collections` navigate.
 - [Standard declarations are source that tools must navigate](standard-declarations-are-source-that-tools-must-navigate.md): the user asked to keep standard type definitions in Manuscript so editor tooling can use them.
 - [Standard-library prose has the same owner as declarations](standard-library-prose-has-the-same-owner-as-declarations.md): the user requires `.ms` standard-library sources to own all library documentation.
 - [Teach a runnable path before formal reference](teach-a-runnable-path-before-formal-reference.md): public documentation should focus on Manuscript and what readers can build.
