@@ -33,6 +33,6 @@ fn cap(move b Big) fn() Int {
 export fn main() Int {
 	w := wrap(id(mk(8)))
 	p := pass(mk(8))
-	f := cap(p)
+	f := cap(p.clone())
 	return f() + w.inner.items.length() - 16
 }
