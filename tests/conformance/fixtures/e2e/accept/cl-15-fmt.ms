@@ -14,7 +14,7 @@ fn increment(value Int) Int {
 	return value + 1
 }
 
-fn preserve_key[K Hashable](value K) K {
+fn preserve_key[K Hashable](hold value K) &K {
 	return value
 }
 

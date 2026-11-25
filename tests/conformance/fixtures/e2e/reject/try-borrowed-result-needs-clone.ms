@@ -7,7 +7,7 @@ fn relay(value String!String) String!String {
 	return ok(text + "x")
 }
 
-fn pass(value String!String) String!String {
+fn pass(hold value String!String) &String!String {
 	return value
 }
 

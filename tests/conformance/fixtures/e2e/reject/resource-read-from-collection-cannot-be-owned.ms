@@ -17,11 +17,11 @@ type Holder {
 	handle Handle
 }
 
-fn returned(handles List[Handle], i Int) Handle? {
+fn returned(hold handles List[Handle], i Int) &Handle? {
 	return handles[i]
 }
 
-fn from_map(handles Map[Int, Handle], key Int) Handle? {
+fn from_map(hold handles Map[Int, Handle], key Int) &Handle? {
 	return handles.get(key)
 }
 

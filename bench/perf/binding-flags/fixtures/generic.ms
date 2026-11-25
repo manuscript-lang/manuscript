@@ -8,11 +8,11 @@ enum Choice[T] {
 	Value(value T)
 }
 
-fn first[A, B](p Pair[A, B]) A {
+fn first[A, B](hold p Pair[A, B]) & A {
 	return p.first
 }
 
-fn optional[T](value T) T? {
+fn optional[T](hold value T) & T? {
 	return value
 }
 

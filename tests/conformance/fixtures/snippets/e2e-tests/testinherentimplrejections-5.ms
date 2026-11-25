@@ -5,6 +5,6 @@ type B {
 	x Int
 }
 
-fn B.m[U](u U) U {
+fn B.m[U](u U) &U {
 	return u
 }

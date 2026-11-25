@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn recurse[T](value T, count Int) T {
+fn recurse[T](hold value T, count Int) &T {
 	if count == 0 {
 		return value
 	}

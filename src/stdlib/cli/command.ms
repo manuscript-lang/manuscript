@@ -243,7 +243,7 @@ fn Command.help(path List[String] = []) String? {
 }
 
 // Returns the child named `word`, or null; the result reads the child in place.
-fn Command.child(word String) Command? {
+fn hold Command.child(word String) & Command? {
 	for candidate in self.children {
 		if candidate.name == word { return candidate }
 	}
@@ -266,7 +266,7 @@ export enum Parsed {
 }
 
 // The command reached by following `path` from `from` on, or null for an unknown word.
-fn node_at(node Command, path List[String], from Int) Command? {
+fn node_at(hold node Command, path List[String], from Int) Command? {
 	if from >= path.length() { return node }
 
 	next := node.child(path[from])

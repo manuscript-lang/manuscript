@@ -17,7 +17,7 @@ fn wrap[T](value T) Box[T] {
 	return Box[T](v: value, n: 1)
 }
 
-fn unwrap[T](b Box[T]) T {
+fn unwrap[T](hold b Box[T]) &T {
 	return b.v
 }
 

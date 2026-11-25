@@ -103,13 +103,13 @@ fn var Deque[T].pop_back() T? {
 }
 
 // Returns the first value without removing it, or `null` when empty.
-fn Deque[T].front() T? {
+fn hold Deque[T].front() & T? {
 	if self.size == 0 { return null }
 	return self.slots[self.start]
 }
 
 // Returns the last value without removing it, or `null` when empty.
-fn Deque[T].back() T? {
+fn hold Deque[T].back() & T? {
 	if self.size == 0 { return null }
 	return self.slots[self.slot_of(self.size - 1)]
 }
@@ -177,7 +177,7 @@ fn Deque[T].length() Int {
 
 // Returns the value at `index` counted from the front, or `null` when out of range;
 // negative indexes count from the back, as `xs[i]` does.
-fn Deque[T].get(index Int) T? {
+fn hold Deque[T].get(index Int) & T? {
 	at := if index < 0 { index + self.size } else { index }
 	if at < 0 or at >= self.size { return null }
 

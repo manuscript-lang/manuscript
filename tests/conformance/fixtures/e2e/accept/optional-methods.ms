@@ -15,7 +15,7 @@ fn fallback(var counter Counter) Int {
 	return 42
 }
 
-fn value_or[T](fallback T, value T?) T {
+fn value_or[T](hold fallback T, hold value T?) &T {
 	inner := value
 	if inner != null { return inner }
 

@@ -94,7 +94,7 @@ export enum JsonValue {
 
 // Returns the object member for `key`, or `null` for an absent key or a value that
 // is not an object. The result borrows from the receiver.
-fn JsonValue.get(key String) JsonValue? {
+fn hold JsonValue.get(key String) & JsonValue? {
 	match self {
 		ObjectValue(values) => return values.get(key)
 		_ => return null
@@ -106,14 +106,14 @@ Returns the value reached by reading each object member of `keys` in turn, or `n
 member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
 from the receiver.
 */
-fn JsonValue.get_in(keys List[String]) JsonValue? {
+fn hold JsonValue.get_in(keys List[String]) & JsonValue? {
 	return member_path(self, keys, 0)
 }
 
 // Returns the array element at `index`, counting a negative index from the end. An
 // index out of range, or a value that is not an array, returns `null`. The result
 // borrows from the receiver.
-fn JsonValue.get_index(index Int) JsonValue? {
+fn hold JsonValue.get_index(index Int) & JsonValue? {
 	match self {
 		ArrayValue(values) => {
 			if index >= values.length() or index < 0 - values.length() { return null }
@@ -329,7 +329,7 @@ export fn stringify[T Data](
 }
 
 // The member of `value` at `keys[from:]`, read one object level at a time.
-fn member_path(value JsonValue, keys List[String], from Int) JsonValue? {
+fn member_path(hold value JsonValue, keys List[String], from Int) JsonValue? {
 	if from >= keys.length() { return null }
 	if from == keys.length() - 1 {
 		return value.get(keys[from])

@@ -3,13 +3,13 @@
 // conform: origin=tests/e2e/testdata/accept/inference-call-order.ms
 import expect_equal from "@std/test/test.ms"
 
-fn identity[T](value T) T => value
+fn identity[T](hold value T) &T => value
 
-fn first[T](left T, right T) T => left
+fn first[T](hold left T, right T) &T => left
 
 fn optional[T](move value T?, fallback T) T => value or fallback
 
-fn describe[T](value T, cause Error) String => cause.message
+fn describe[T](value T, hold cause Error) &String => cause.message
 
 type Events {
 	values List[Int]

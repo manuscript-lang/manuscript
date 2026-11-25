@@ -9,7 +9,7 @@ fn first[T](move left T, right T) T => left
 
 fn optional[T](fallback T, move value T?) T => value or fallback
 
-fn describe[T](value T, cause Error) String => cause.message
+fn describe[T](value T, hold cause Error) &String => cause.message
 
 type Events {
 	values List[Int]

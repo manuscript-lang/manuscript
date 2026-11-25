@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn identity[T](value T) T => return value
+fn identity[T](hold value T) &T => return value
 
 fn bounded_sum() Int {
 	var sum = 0
@@ -195,6 +195,6 @@ test "bounded multiplication keeps its operator and operand effects" {
 	visits | expect_equal([1])?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

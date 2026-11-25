@@ -5,7 +5,7 @@
 // call.
 fn subtract(amount Int, deduction Int) Int => amount - deduction
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }
 

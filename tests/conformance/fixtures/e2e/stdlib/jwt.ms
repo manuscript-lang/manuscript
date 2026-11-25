@@ -26,7 +26,7 @@ type Session {
 	iss String
 }
 
-fn failure[T](result T!) Error! {
+fn failure[T](hold result T!) Error! {
 	match result {
 		ok(_) => return error(Error("accepted"))
 		error(cause) => return ok(cause)

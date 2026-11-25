@@ -15,7 +15,7 @@ import (
 	fail
 ) from "@std/test/test.ms"
 
-fn identity[T](value T) T {
+fn identity[T](hold value T) &T {
 	return value
 }
 

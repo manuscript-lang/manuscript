@@ -238,6 +238,12 @@ MS_NODISCARD static bool typ_inner(Parser *p, MsTypeRef **out) {
   }
   MsTypeRef *t;
   bool is_ref = parse_take(p, MS_T_Amp);
+  if (is_ref && parse_kind(p) == MS_T_Fn) {
+    parse_fail(p, parse_peek(p),
+               ms_span_of_text("a function value is not written `&fn`; write `fn(...) T`, and take a function you return "
+                               "or store as `move`"));
+    return false;
+  }
   if (parse_take(p, MS_T_LParen)) {
     if (!parse_typ(p, &t))
       return false;

@@ -13,7 +13,7 @@ type Pair[A, B] {
 	b B
 }
 
-fn id[T](x T) T => x
+fn id[T](hold x T) &T => x
 
 fn name(s Shape) String {
 	match s {

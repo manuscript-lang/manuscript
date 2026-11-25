@@ -19,11 +19,11 @@ fn bump(var counter Counter) Int {
 	return 9
 }
 
-fn map_result[T, E, U](value T!E, transform fn(T) U) U!E {
+fn map_result[T, E, U](hold value T!E, transform fn(T) U) &U!E {
 	return value.map(transform)
 }
 
-fn chain_result[T, E, U](value T!E, transform fn(T) U!E) U!E {
+fn chain_result[T, E, U](hold value T!E, transform fn(T) U!E) &U!E {
 	return value.and_then(transform)
 }
 

@@ -6,7 +6,7 @@ fn first(amount Int) Int => amount + 1
 
 fn second(value Int) Int => value + 2
 
-fn choose[T](left T, right T) T => left
+fn choose[T](hold left T, right T) &T => left
 
 type Pair[T] {
 	left T

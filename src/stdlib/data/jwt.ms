@@ -343,7 +343,7 @@ fn check_claims(claims JsonValue, check JwtCheck) Void! {
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is
 // malformed.
-fn numeric_date(claim JsonValue, name String) String! {
+fn numeric_date(hold claim JsonValue, name String) String! {
 	match claim {
 		NumberValue(text) => return ok(text)
 		_ => void

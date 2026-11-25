@@ -7,7 +7,7 @@ type Point {
 	x Int
 }
 
-fn ident[T](x T) T {
+fn ident[T](hold x T) &T {
 	return x
 }
 
@@ -16,7 +16,7 @@ fn pick[T](first Bool, move left T, move right T) T {
 	return chosen
 }
 
-fn keep[T](value T) T {
+fn keep[T](hold value T) &T {
 	copy := value
 	return copy
 }

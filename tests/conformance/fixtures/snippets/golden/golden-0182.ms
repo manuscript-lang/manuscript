@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn identity[T](value T) T {
+fn identity[T](hold value T) &T {
 	return value
 }
 

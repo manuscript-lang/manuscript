@@ -11,7 +11,7 @@ type Lang {
 	context List[String]
 }
 
-fn identity[T](result T!) T! => result
+fn identity[T](hold result T!) &T! => result
 
 fn unreadable(path String) String {
 	read := read_file(path).wait()

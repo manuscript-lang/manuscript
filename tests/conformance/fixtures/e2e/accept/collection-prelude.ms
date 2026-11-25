@@ -134,6 +134,6 @@ test "map add captures receivers and arguments in written order" {
 	expect_false(order != 2 or original[6] != 7)?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

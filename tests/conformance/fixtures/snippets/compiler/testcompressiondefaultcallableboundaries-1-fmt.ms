@@ -6,4 +6,4 @@ import (
 	CompressionFormat, compress from "@std/io/archive.ms",
 )
 
-fn forward[T](item T) T => item
+fn forward[T](hold item T) &T => item

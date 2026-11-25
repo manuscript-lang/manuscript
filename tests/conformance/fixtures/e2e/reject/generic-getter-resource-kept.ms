@@ -12,7 +12,7 @@ type Cell[T] {
 	v T
 }
 
-fn Cell[T].get() T {
+fn hold Cell[T].get() &T {
 	return self.v
 }
 

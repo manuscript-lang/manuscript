@@ -4,9 +4,9 @@ import expect_equal, expect_false from "@std/test/test.ms"
 
 fn subtract(amount Int, deduction Int) Int => amount - deduction
 
-fn first[T](left T, right T) T => left
+fn first[T](hold left T, right T) &T => left
 
-fn pick[T](items List[T], keep fn(T) Bool) T? {
+fn pick[T](hold items List[T], keep fn(T) Bool) &T? {
 	for item in items {
 		if keep(item) { return item }
 	}
@@ -199,6 +199,6 @@ test "a mutable callable value is called in place" {
 	expect_equal(result, 13)?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

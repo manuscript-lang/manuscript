@@ -64,6 +64,6 @@ test "pending captures grow beyond the small buffer" {
 	if counter.value != 1 { return panic("copy changed the original") }
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

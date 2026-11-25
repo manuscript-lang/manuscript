@@ -12,7 +12,7 @@ export type List[T] {
 
 // Returns an element, or `default` when the index is out of range; negative indexes are
 // relative to the end.
-fn List[T].get_or(index Int, default T?) T {
+fn hold List[T].get_or(index Int, default T?) & T {
 	count := self.length()
 	position := index
 	if index < 0 { position = count + index }
@@ -25,13 +25,13 @@ fn List[T].get_or(index Int, default T?) T {
 }
 
 // Returns the first element, or `null` when the list is empty.
-fn List[T].first() T? {
+fn hold List[T].first() & T? {
 	if self.is_empty() { return null }
 	return self[0]
 }
 
 // Returns the last element, or `null` when the list is empty.
-fn List[T].last() T? {
+fn hold List[T].last() & T? {
 	if self.is_empty() { return null }
 	return self[-1]
 }

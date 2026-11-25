@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Same[V Equal] {\n\tfn same(other V) Bool\n}\n\ninterface Read[V] {\n\tfn get() V\n}\n\ntype Box[T] {\n\tvalue T\n}\n\nfn Box[T Equal].same(other T) Bool {\n\treturn self.value == other\n}\n\nfn Box[T].get() T {\n\treturn self.value\n}\n\nfn read[T](value Box[T]) T {\n\treturn value.get()\n}\n"
+    "fmt": "interface Same[V Equal] {\n\tfn same(other V) Bool\n}\n\ninterface Read[V] {\n\tfn get() V\n}\n\ntype Box[T] {\n\tvalue T\n}\n\nfn Box[T Equal].same(other T) Bool {\n\treturn self.value == other\n}\n\nfn hold Box[T].get() & T {\n\treturn self.value\n}\n\nfn read[T](hold value Box[T]) & T {\n\treturn value.get()\n}\n"
   }
 }

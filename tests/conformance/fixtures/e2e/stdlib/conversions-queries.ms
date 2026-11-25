@@ -27,7 +27,7 @@ fn require_lazy[T, E](create fn() E, move value T?) T!E {
 	return error(create())
 }
 
-fn success_only[T, E](value T!E) T? {
+fn success_only[T, E](hold value T!E) &T? {
 	if item := value { return item }
 	return null
 }

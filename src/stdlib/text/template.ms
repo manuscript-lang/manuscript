@@ -441,7 +441,7 @@ type ExprParser {
 	at, line Int
 }
 
-fn ExprParser.peek() Tok {
+fn hold ExprParser.peek() & Tok {
 	return self.toks.get_or(self.at, Tok(kind: "end", text: ""))
 }
 
@@ -1326,7 +1326,7 @@ fn to_text(value JsonValue) String {
 	return stringify(value: value).get_or("")
 }
 
-fn number_text(value JsonValue) String? {
+fn number_text(hold value JsonValue) & String? {
 	match value {
 		NumberValue(text) => return text
 		_ => return null

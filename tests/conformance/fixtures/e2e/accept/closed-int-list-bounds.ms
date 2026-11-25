@@ -239,6 +239,6 @@ test "constant length keeps its local valid through partial polling chunks" {
 	literal_length_sum() | expect_equal(963)?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

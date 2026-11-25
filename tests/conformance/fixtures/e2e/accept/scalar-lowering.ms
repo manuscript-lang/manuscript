@@ -221,6 +221,6 @@ test "cleanup remains owned by its source callable" {
 	expect_false(closed(f"{dir}/loop3"))?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

@@ -10,11 +10,11 @@ fn keep_rows(xs List[Int]) Page {
 	return Page(xs.slice(0, 2).get())
 }
 
-fn kept_keys(m Map[String, Int]) List[String] {
+fn kept_keys(hold m Map[String, Int]) &List[String] {
 	return m.keys()
 }
 
-fn kept_values(m Map[String, Int]) List[Int] {
+fn kept_values(hold m Map[String, Int]) &List[Int] {
 	return m.values()
 }
 

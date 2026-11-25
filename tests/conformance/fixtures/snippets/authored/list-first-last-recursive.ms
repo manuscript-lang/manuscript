@@ -36,7 +36,7 @@ test "first of a temporary list of recursive nodes" {
 	expect_equal(value_of(chain().last()), 3)?
 }
 
-fn node_at(xs List[Node], i Int) Node? {
+fn node_at(hold xs List[Node], i Int) &Node? {
 	return xs[i]
 }
 

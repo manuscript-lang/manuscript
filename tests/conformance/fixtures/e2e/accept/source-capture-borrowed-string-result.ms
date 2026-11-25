@@ -17,9 +17,9 @@ fn move TextOwner.close() Void! {
 	self.text = "closed"
 }
 
-fn TextOwner.read() String => self.text
+fn hold TextOwner.read() &String => self.text
 
-fn TextOwner.read_default(_tag Int = 0) String => self.text
+fn hold TextOwner.read_default(_tag Int = 0) &String => self.text
 
 fn owner(id Int, log String) TextOwner {
 	return TextOwner(f"payload-{id}", log.clone(), id)

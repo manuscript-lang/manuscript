@@ -1,6 +1,6 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-fn find(m Map[String, List[Int]], key String) List[Int]? {
+fn find(hold m Map[String, List[Int]], hold key String) &List[Int]? {
 	return m.get(key)
 }
 

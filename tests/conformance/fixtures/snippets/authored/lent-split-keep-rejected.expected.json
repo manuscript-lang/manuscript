@@ -25,7 +25,7 @@
           "file": "lent-split-keep-rejected.ms",
           "line": 14,
           "column": 17,
-          "offset": 329
+          "offset": 335
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "lent-split-keep-rejected.ms",
           "line": 18,
           "column": 17,
-          "offset": 395
+          "offset": 407
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "lent-split-keep-rejected.ms",
           "line": 24,
           "column": 5,
-          "offset": 490
+          "offset": 502
         }
       }
     ],

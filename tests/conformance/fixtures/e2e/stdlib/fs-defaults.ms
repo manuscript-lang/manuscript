@@ -59,7 +59,7 @@ fn text(path String) String! {
 	)
 }
 
-fn argument(var log List[String], mark String, path String) String {
+fn argument(var log List[String], mark String, hold path String) &String {
 	log.append(mark.clone())
 	return path
 }

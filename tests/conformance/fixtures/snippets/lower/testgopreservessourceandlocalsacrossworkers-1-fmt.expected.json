@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn step0[T](value T) T => return value\n"
+    "fmt": "fn step0[T](hold value T) & T => return value\n"
   }
 }

@@ -2,11 +2,11 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn row[T](rows List[List[T]], at Int) List[T] {
+fn row[T](hold rows List[List[T]], at Int) &List[T] {
 	return rows[at]
 }
 
-fn first_row(rows List[List[Int]]) List[Int] {
+fn first_row(hold rows List[List[Int]]) &List[Int] {
 	return rows[0]
 }
 
@@ -14,7 +14,7 @@ type Grid {
 	rows List[List[Int]]
 }
 
-fn Grid.first() List[Int] {
+fn hold Grid.first() &List[Int] {
 	return self.rows[0]
 }
 

@@ -9,4 +9,4 @@ import (
 	Duration from "@std/time.ms",
 )
 
-fn forward[T](item T) T => item
+fn forward[T](hold item T) &T => item

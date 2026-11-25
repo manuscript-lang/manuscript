@@ -11,11 +11,11 @@ type Team {
 	members List[Person]
 }
 
-fn first_tag(p Person) String {
+fn first_tag(hold p Person) &String {
 	return p.tags[0]
 }
 
-fn deep(t Team) String {
+fn deep(hold t Team) &String {
 	return first_tag(t.members[0])
 }
 

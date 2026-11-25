@@ -27,7 +27,7 @@ fn first(values List[Int]) Int! => ok_or(
 
 fn unique[T Hashable & Clonable](values List[T]) Set[T] => values.to_set()
 
-fn explain(cause Error) String {
+fn explain(hold cause Error) &String {
 	return cause.message
 }
 

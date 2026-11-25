@@ -43,7 +43,7 @@ fn Counter.show() String {
 	return "counter"
 }
 
-fn Box[T].get() T {
+fn hold Box[T].get() &T {
 	return self.item
 }
 

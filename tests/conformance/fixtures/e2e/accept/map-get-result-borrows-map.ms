@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn find(m Map[String, List[Int]], key String) List[Int]? {
+fn find(hold m Map[String, List[Int]], hold key String) &List[Int]? {
 	return m.get(key)
 }
 

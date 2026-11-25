@@ -10,11 +10,11 @@ fn keep(line String) Row {
 	return Row(line.split(" "))
 }
 
-fn first_chars(text String) List[String] {
+fn first_chars(hold text String) &List[String] {
 	return text.chars()
 }
 
-fn kept_lines(text String) List[String] {
+fn kept_lines(hold text String) &List[String] {
 	return text.lines()
 }
 

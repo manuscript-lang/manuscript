@@ -80,6 +80,6 @@ test "field assignment keeps sibling field writes made while evaluating the valu
 	expect_equal(cell.s, "changed")?
 }
 
-fn present[T](value T) T? {
+fn present[T](hold value T) &T? {
 	return value
 }

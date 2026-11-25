@@ -15,7 +15,7 @@ type Box[T] {
 	value T
 }
 
-fn Box[T].get() T {
+fn hold Box[T].get() &T {
 	return self.value
 }
 
@@ -44,7 +44,7 @@ fn identity(value Int) Int {
 	return value
 }
 
-fn read[T](box Box[T]) T {
+fn read[T](hold box Box[T]) &T {
 	return box.get()
 }
 

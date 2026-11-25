@@ -9,7 +9,7 @@ import (
 
 fn number(value Int?) Int => value or (-1)
 
-fn present[T](value T?) T? => value
+fn present[T](hold value T?) &T? => value
 
 fn nested(value Int??) Bool => value == null
 
@@ -23,7 +23,7 @@ fn success(value Int!Error?) Int {
 	return (value or panic("called Optional.get() on null")).get_or(-1)
 }
 
-fn context[T](fallback T, value T?) T {
+fn context[T](hold fallback T, hold value T?) &T {
 	inner := value
 	if inner != null { return inner }
 

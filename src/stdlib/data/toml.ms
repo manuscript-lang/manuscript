@@ -94,7 +94,7 @@ fn new_table(var reader Reader, explicit, dotted Bool) Int {
 	return reader.tables.length() - 1
 }
 
-fn flags(reader Reader, id Int) Table {
+fn flags(hold reader Reader, id Int) & Table {
 	return reader.tables[id]
 }
 
@@ -102,7 +102,7 @@ fn store_flags(var reader Reader, id Int, move flags Table) Void {
 	reader.tables.set(id, flags)
 }
 
-fn lookup(reader Reader, id Int, key String) Node? {
+fn lookup(hold reader Reader, id Int, hold key String) & Node? {
 	return reader.entries[id].get(key)
 }
 

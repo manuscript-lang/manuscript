@@ -6,7 +6,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn supplied(var log List[String], data Bytes) Bytes {
+fn supplied(var log List[String], hold data Bytes) &Bytes {
 	log.append("data")
 	return data
 }

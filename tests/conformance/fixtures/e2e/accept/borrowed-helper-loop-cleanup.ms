@@ -15,7 +15,7 @@ fn move Door.close() Void! {
 	append_file(self.log, f"{self.id},").wait()?
 }
 
-fn first[T](rows List[List[T]]) List[T] {
+fn first[T](hold rows List[List[T]]) &List[T] {
 	return rows[0]
 }
 

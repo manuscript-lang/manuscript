@@ -14,7 +14,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 25,
           "column": 20,
-          "offset": 594
+          "offset": 606
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 51,
           "column": 16,
-          "offset": 1250
+          "offset": 1262
         }
       }
     ],

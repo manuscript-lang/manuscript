@@ -10,6 +10,6 @@ type Pair[A, B] {
 	right B
 }
 
-fn Pair[Int, B].get() B {
+fn hold Pair[Int, B].get() &B {
 	return self.right
 }

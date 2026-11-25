@@ -12,7 +12,7 @@ fn step(var counter Counter, value Int) Int {
 	return value
 }
 
-fn identity[T](value T) T {
+fn identity[T](hold value T) &T {
 	return value
 }
 

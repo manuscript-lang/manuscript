@@ -12,7 +12,7 @@ fn move Marker.close() Void! {
 	print("closed")
 }
 
-fn Marker.finish(flag Bool) Marker? {
+fn hold Marker.finish(flag Bool) &Marker? {
 	if flag { return null }
 	return self
 }

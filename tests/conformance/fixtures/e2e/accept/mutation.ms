@@ -23,7 +23,7 @@ fn replace[T](var box Box[T], value T) Void {
 	box.value = value
 }
 
-fn receiver(var log List[Int], value Val) Val {
+fn receiver(var log List[Int], hold value Val) &Val {
 	log.append(1)
 	return value
 }

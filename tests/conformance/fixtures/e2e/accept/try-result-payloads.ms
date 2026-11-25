@@ -44,7 +44,7 @@ test "try retains aliases and error views" {
 	exact.err().detail | expect_equal("before")?
 }
 
-fn visit[T, E](result T!E, var visits List[Int]) T!E {
+fn visit[T, E](hold result T!E, var visits List[Int]) &T!E {
 	visits.append(1)
 	return result
 }

@@ -375,6 +375,10 @@ static void report_declared(Pass *pass, uint32_t module, MsPos pos, bool receive
     ms_strbuild_append_text(&text, is_self ? "self" : "");
     if (!is_self) {
       const uint32_t index = position - (pass->method ? 1u : 0u);
+      if (index >= params.len) {
+        ms_strbuild_free(&text);
+        return;
+      }
       ms_strbuild_append(&text, ms_names_span(pass->program->names, params.ptr[index]->name));
     }
     ms_strbuild_append_text(&text, "`, so the signature must say `hold` for it; write `hold` before it, or return a `.clone()`");
@@ -619,6 +623,45 @@ static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *
   return sig == NULL || !sig->borrows; /* a runtime native that says `@borrows` is a view too */
 }
 
+/* The method or interface operation a callee ref declares, or NULL for a function. */
+static const MsMethod *find_method(const MsCheckProgram *program, const MsRef *ref) {
+  const MsMethodEntry *entry = ms_check_method_at(program, ref->decl.module, ref->decl.node);
+  if (entry != NULL) {
+    return entry->source;
+  }
+  const MsModule *tree = program->modules.ptr[ref->decl.module].tree;
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
+    const MsDecl *decl = tree->decls[index];
+    for (uint32_t at = 0; decl->kind == MS_D_INTERFACE && at < decl->u.iface.methods.len; at++) {
+      if (decl->u.iface.methods.ptr[at]->id == ref->decl.node) {
+        return decl->u.iface.methods.ptr[at];
+      }
+    }
+  }
+  return NULL;
+}
+
+/* A callee whose signature writes `hold` or `&` says which arguments its result keeps using; nothing else is consulted. */
+static bool declared_borrow(const MsCheckProgram *program, const MsCall *call, const MsFunc *declared, uint32_t position,
+                            bool *answer) {
+  const MsMethod *method = find_method(program, &call->callee);
+  const bool receiver = method != NULL;
+  const bool receiver_holds = method != NULL && method->holding;
+  bool any = receiver_holds;
+  bool holds = receiver_holds && position == 0;
+  for (uint32_t index = 0; index < declared->params.len; index++) {
+    if (declared->params.ptr[index]->holding) {
+      any = true;
+      holds = holds || position == index + (receiver ? 1u : 0u);
+    }
+  }
+  const MsTypeRef *result = declared->result;
+  if (has_ref(result)) {
+    any = true;
+  }
+  *answer = holds;
+  return any;
+}
 bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint32_t position) {
   const MsRefKind kind = call->callee.kind;
   if (kind == MS_REF_OPERATION) {
@@ -630,6 +673,10 @@ bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint
   const MsFunc *declared = ms_own_find_func(program, &call->callee);
   if (declared != NULL && declared->result_moves) {
     return false; /* the declaration says the result is new memory, whatever the arguments */
+  }
+  bool written = false;
+  if (declared != NULL && declared_borrow(program, call, declared, position, &written)) {
+    return written;
   }
   if (kind == MS_REF_NATIVE) {
     return !native_result_is_fresh(program, call);

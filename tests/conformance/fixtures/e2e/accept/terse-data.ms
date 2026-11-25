@@ -7,7 +7,7 @@ import (
 
 fn subtract(amount Int, deduction Int = 1) Int => amount - deduction
 
-fn first[T](left T, right T) T => left
+fn first[T](hold left T, right T) &T => left
 
 fn size(values Map[String, Int]) Int => values.length()
 

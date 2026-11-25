@@ -36,7 +36,7 @@ fn generic_then[T, U](transform fn(T) U?, value T?) U? {
 	return transform(value)
 }
 
-fn identity[T](value T) T => value
+fn identity[T](hold value T) &T => value
 
 fn checked(value Resource?) Int! {
 	if value != null { return error(Error("expected failure")) }

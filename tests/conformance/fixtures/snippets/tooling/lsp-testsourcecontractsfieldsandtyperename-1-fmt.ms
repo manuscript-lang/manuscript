@@ -9,7 +9,7 @@ type Box {
 	label String
 }
 
-fn Box.read() String {
+fn hold Box.read() &String {
 	return self.label
 }
 
