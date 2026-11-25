@@ -94,7 +94,7 @@ test "a killed worker is replaced and the open document is replayed" {
 	input.write(
 		frame(
 			at(
-				"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"@URI@\",\"languageId\":\"manuscript\",\"version\":1,\"text\":\"fn answer() Int:\\n\\treturn 1\\n\"}}}",
+				"{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"@URI@\",\"languageId\":\"manuscript\",\"version\":1,\"text\":\"fn answer() Int {\\n\\treturn 1\\n}\\n\"}}}",
 				uri,
 			)
 		)
