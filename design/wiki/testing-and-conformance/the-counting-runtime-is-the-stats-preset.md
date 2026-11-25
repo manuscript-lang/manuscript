@@ -6,6 +6,7 @@ Verified (2026-11-23): leak, cancel and count gates run against `cmake --preset 
 
 - A count that is not zero for `fn main() Int: return 0` is a runtime bug: process-lifetime tables (the capture table, retired pipe cells, the idle registry, the watcher thread) are released by the stats exit path, and a thread with no scheduler must not create one (`ms_token_free`).
 - A leak the corpus shows is a compiler or native ownership bug, not counter noise; the sweep currently reports 0 leaking programs.
+- `MS_ALLOC_LIBC=1` (stats runtime only) takes blocks from libc `malloc` instead of mimalloc, so valgrind sees a use after free, a double free or a read of uninitialized memory that mimalloc's pages hide. Build the program with `ms build`, then `MS_ALLOC_LIBC=1 valgrind -q <program>`. A program that stays on the main task runs clean; switching task stacks still floods valgrind (see the poisoned-slots page). The live-block count alone misses a stale read: a record that kept a pointer to a freed list printed an empty string and counted zero leaks (#6979).
 - Counters live behind `#ifdef MS_STATS`; normal presets compile them away.
 
 Apply when: adding process-global runtime state (free it in the stats exit path) or a runtime thread.

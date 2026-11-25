@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "this stores a value that looks at `inner` (bound at 19:9) in a place that is used after `inner` ends; declare the owner before the place that holds the view, or store `.clone()` of the part you need",
+        "position": {
+          "file": "look-assigned-outside-owner-block.ms",
+          "line": 20,
+          "column": 9,
+          "offset": 342
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/look-assigned-outside-owner-block.ms:20:9: type: this stores a value that looks at `inner` (bound at 19:9) in a place that is used after `inner` ends; declare the owner before the place that holds the view, or store `.clone()` of the part you need\n    |\n 20 |         held = View(inner)\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
