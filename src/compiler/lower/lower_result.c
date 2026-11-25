@@ -87,9 +87,13 @@ bool fn_return_view(LowerFn *fn, const MsExpr *expr, MirValue *out) {
     *out = owner;
     return true;
   }
-  (void)fn_fail(fn, "a `&` Result result either returns a held Result whole on every path, or builds it with `ok(part)` and `error(e)`");
+  /* A Result an argument holds, handed on whole: both cases view what it keeps, so nothing is copied. */
+  if (handed != MIR_NONE && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, handed))->kind == MK_ALT) {
+    *out = fn_emit(fn, MOP_AltBorrow, &handed, 1, (MirImm){0}, fn->ret);
+    return true;
+  }
   *out = MIR_NONE;
-  return true;
+  return !fn->failed;
 }
 
 MirValue fn_view_owner(const LowerFn *fn, MirValue value) {
@@ -242,10 +246,12 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
   const bool drops = mir_needs_drop(fn->cx->module, err_ty);
   const bool owned = drops && fn_fresh_owner(fn, value);
   MirValue err = mir_b_emit(&fn->b, owned ? MOP_AltTake : MOP_AltGet, &value, 1, err_imm, err_ty);
-  if (drops && !owned) {
+  /* A `&T!` function hands a borrowed error on as a borrow (case 2); any other relay of one copies it. */
+  const bool borrows_out = drops && !owned && leaves == NULL && fn_returns_view(fn);
+  if (drops && !owned && !borrows_out) {
     err = fn_implicit_clone(fn, err, false); /* a Result something else owns (a borrowed parameter) keeps its error: the relay copies it */
   }
-  const MirValue failed = build_case(fn, ret_alt, ERR_CASE, err, ret);
+  const MirValue failed = build_case(fn, ret_alt, borrows_out ? ERR_CASE + 1 : ERR_CASE, err, ret);
   const MirImm none = {0};
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &failed, 1, none, MIR_NONE);
   if (leaves != NULL) {

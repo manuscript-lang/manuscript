@@ -419,7 +419,10 @@ static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *ca
   }
   const uint32_t index = fn_operation_index(fn, fn_call_callee(expr), call->callee.index);
   const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = index};
-  return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
+  const MirIfaceDef *iface = &fn->cx->module->ifaces.ptr[data->id];
+  const MirTy declared = index < iface->nmethods ? iface->methods[index].ret : ret;
+  const MirValue result = fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, declared);
+  return declared == ret ? result : fn_view_as_plain(fn, result, ret); /* a `&T!` operation answers the borrowing variant */
 }
 
 /* `Case(payload...)`: an alternative's case built from its payload. */

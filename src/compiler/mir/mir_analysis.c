@@ -22,6 +22,7 @@ static bool result_is_borrow(const MirModule *module, const MirFunc *func, const
     return inst->imm.tag == MI_INT && inst->imm.i == 1;
   case MOP_IfaceNew: /* a view of a value its binding keeps */
     return inst->imm.tag == MI_VTABLE && inst->imm.b != 0;
+  case MOP_AltBorrow:
   case MOP_AltView: {
     const MirTyData *data = mir_ty_data(module, mir_value_ty(func, inst->res));
     return !(data->kind == MK_ALT && module->alts.ptr[data->id].borrowed != 0);
@@ -180,7 +181,7 @@ bool mir_result_views(const MirModule *module, const MirFunc *func, const MirIns
       return true;
     }
     break;
-  case MOP_AltView: case MOP_CallInd: case MOP_CallMethod:
+  case MOP_AltView: case MOP_AltBorrow: case MOP_CallInd: case MOP_CallMethod:
     break;
   default:
     return false;

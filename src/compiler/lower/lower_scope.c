@@ -266,6 +266,9 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
 }
 
 bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
+  if (fn_view_owner(fn, value) != MIR_NONE) {
+    return true; /* a call's borrowing variant, read as the plain Result */
+  }
   const MirInst *last = fn_just_made(fn, value);
   MirMode mode = MM_MOVE;
   return last != NULL && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_BORROW;

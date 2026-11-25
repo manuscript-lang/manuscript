@@ -167,8 +167,52 @@ static void alt_tag(EmitCx *cx, const MirInst *inst) {
   ms_strbuild_printf(cx->out, "  %%v%u = load i64, ptr %s\n", inst->res, base);
 }
 
-/* `alt.plain`: the same leaves under the plain alternative type. */
+/* `alt.plain` and `alt.borrow`: the same payload leaves under the other alternative type. A borrowing variant of a
+ * Result has a borrowed `error` as case 2, so the tag is rewritten: `alt.plain` folds case 2 into case 1 (tag != 0),
+ * `alt.borrow` moves case 1 to case 2 (tag * 2). */
+static void alt_retag(EmitCx *cx, const MirInst *inst, bool to_variant) {
+  const uint32_t count = (uint32_t)emit_value_leaves(cx, inst->res).len;
+  const char *from = emit_leaf_type(emit_value_leaves(cx, inst->args[0]).ptr[0]);
+  const char *to = emit_leaf_type(emit_value_leaves(cx, inst->res).ptr[0]);
+  const uint32_t wide = cx->next++;
+  const uint32_t moved = cx->next++;
+  const uint32_t flag = cx->next++;
+  ms_strbuild_printf(cx->out, "  %%t%u = ", wide);
+  if (from[1] == '6') {
+    ms_strbuild_printf(cx->out, "add i64 0, ");
+  } else {
+    ms_strbuild_printf(cx->out, "zext %s ", from);
+  }
+  emit_name(cx->out, inst->args[0], 0);
+  ms_strbuild_append_text(cx->out, from[1] == '6' ? "\n" : " to i64\n");
+  if (to_variant) {
+    ms_strbuild_printf(cx->out, "  %%t%u = shl i64 %%t%u, 1\n", moved, wide);
+  } else {
+    ms_strbuild_printf(cx->out, "  %%t%u = icmp ne i64 %%t%u, 0\n  %%t%u = zext i1 %%t%u to i64\n", flag, wide, moved, flag);
+  }
+  ms_strbuild_append_text(cx->out, "  ");
+  emit_name(cx->out, inst->res, 0);
+  if (to[1] == '6') {
+    ms_strbuild_printf(cx->out, " = add i64 0, %%t%u\n", moved);
+  } else {
+    ms_strbuild_printf(cx->out, " = trunc i64 %%t%u to %s\n", moved, to);
+  }
+  if (count > 1 && emit_wide_move_leaves(cx, inst->res, 1, inst->args[0], 1, count - 1)) {
+    return;
+  }
+  for (uint32_t leaf = 1; leaf < count; leaf++) {
+    emit_copy_leaf(cx, inst->res, leaf, inst->args[0], leaf);
+  }
+}
+
+/* `alt.plain` of an alternative with no borrowed `error` case keeps its tag. */
 static void alt_plain(EmitCx *cx, const MirInst *inst) {
+  const MirTyData *from = mir_ty_data(cx->module, value_type(cx, inst->args[0]));
+  const MirTyData *to = mir_ty_data(cx->module, value_type(cx, inst->res));
+  if (from->kind == MK_ALT && to->kind == MK_ALT && cx->module->alts.ptr[from->id].ncases != cx->module->alts.ptr[to->id].ncases) {
+    alt_retag(cx, inst, false);
+    return;
+  }
   uint32_t count = (uint32_t)emit_value_leaves(cx, inst->res).len;
   if (emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], 0, count)) {
     return;
@@ -274,6 +318,9 @@ bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool 
     return true;
   case MOP_AltPlain:
     alt_plain(cx, inst);
+    return true;
+  case MOP_AltBorrow:
+    alt_retag(cx, inst, true);
     return true;
   case MOP_OptNone:
     opt_none(cx, inst);

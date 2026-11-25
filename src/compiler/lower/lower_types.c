@@ -160,6 +160,15 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
     methods[index].ret = lower_type(cx, &subst, ms_ty_result(&cx->program->types, fn));
     methods[index].ret_borrowed = declared != NULL && declared->func.result != NULL && declared->func.result->is_ref &&
                                   mir_needs_drop(cx->module, methods[index].ret);
+    /* `&T!` is the borrowing variant of its Result, as in a function: the signature alone decides. */
+    const MsTypeRef *written = declared != NULL ? declared->func.result : NULL;
+    if (written != NULL && written->args.len >= 1 && written->args.ptr[0]->is_ref) {
+      const MirTy variant = lower_result_view(cx, &subst, ms_ty_result(&cx->program->types, fn));
+      if (variant != methods[index].ret) {
+        methods[index].ret = variant;
+        methods[index].ret_borrowed = false;
+      }
+    }
   }
   /* The last slot is the text of the payload (`to_string`, `f"{value}"`), which every interface has. */
   const size_t text = def->operations.len;
@@ -271,8 +280,8 @@ static MirTy lower_by_kind(Lower *cx, MsTy ty) {
   return MIR_VOID;
 }
 
-/* The borrowing variant of a Result type: the same cases under the same name, with `ok` borrowed. Releasing one frees
- * only the error, and `alt.plain` reads it as the ordinary Result. */
+/* The borrowing variant of a Result type: the cases of the Result and a borrowed `error`, under the same name, with
+ * `ok` borrowed. Releasing one frees only an owned error, and `alt.plain` reads it as the ordinary Result. */
 MirTy lower_result_view(Lower *cx, const LowerSubst *subst, MsTy ty) {
   const MsTy concrete = apply_subst(cx, subst, ty);
   const uint32_t *known = lower_ty_map_get(&cx->views, concrete);
@@ -291,7 +300,16 @@ MirTy lower_result_view(Lower *cx, const LowerSubst *subst, MsTy ty) {
   const uint32_t id = mir_add_alt(cx->module, base.name);
   MirAltDef *alt = &cx->module->alts.ptr[id];
   *alt = base;
-  alt->borrowed = 1; /* case 0, `ok`, borrows its payload */
+  /* Case 2 is `error` again, borrowed: a Result an argument holds is handed on whole by `alt.borrow`, error included,
+   * and releasing the variant frees only an error built fresh (case 1). */
+  MirCaseDef *cases = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirCaseDef, (size_t)base.ncases + 1);
+  for (uint32_t at = 0; at < base.ncases; at++) {
+    cases[at] = base.cases[at];
+  }
+  cases[base.ncases] = base.cases[1];
+  alt->cases = cases;
+  alt->ncases = base.ncases + 1;
+  alt->borrowed = 0x5; /* cases 0 (`ok`) and 2 borrow their payload */
   const MirTy result = mir_ty_alt(cx->module, id);
   lower_ty_map_put(&cx->views, concrete, result);
   return result;
