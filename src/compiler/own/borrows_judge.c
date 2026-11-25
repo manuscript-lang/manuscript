@@ -257,6 +257,7 @@ void ms_borrows_judge(Borrows *pass) {
   borrow_list_clear(&pass->borrows);
   change_list_clear(&pass->changes);
   use_list_clear(&pass->uses);
+  use_list_clear(&pass->view_vars);
   range_list_clear(&pass->ranges);
   exit_list_clear(&pass->exits);
   lambda_list_clear(&pass->kept);

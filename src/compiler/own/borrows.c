@@ -257,6 +257,22 @@ static void note_kept_captures(Borrows *pass, const MsStmt *stmt) {
 
 static void note_keep(Borrows *pass, const MsExpr *kept);
 
+/* Whether `value` is a call of a declared function or method that answers a view. */
+static bool declared_view_call(const Borrows *pass, const MsExpr *value) {
+  const MsCall *called = value != NULL && value->kind == MS_E_CALL ? ms_facts_call(pass->facts, value->id) : NULL;
+  return called != NULL && (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
+         ms_own_result_is_borrowed(pass->program, called->callee.decl.module, called->callee.decl.node);
+}
+
+static bool holds_view(const Borrows *pass, uint32_t binding) {
+  for (size_t index = 0; index < pass->view_vars.len; index++) {
+    if (pass->view_vars.ptr[index].binding == binding) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void note_bind(Borrows *pass, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   const MsExpr *value = stmt->u.bind.value;
@@ -275,6 +291,9 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   if (pattern == NULL || pattern->kind != MS_P_NAME || value == NULL || !origin_of_arg(pass, value, &source) ||
       !local_of(pass->facts, pattern->id, &binding)) {
     return;
+  }
+  if (stmt->u.bind.is_mutable && declared_view_call(pass, value)) {
+    use_list_push(&pass->view_vars, (Use){.binding = binding}); /* the `var` holds the view; nothing is kept */
   }
   /* A resource field bound by name leaves its record (the next statement refills it): that is a take, not a borrow. */
   if (value->kind == MS_E_MEMBER && ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, value->id))) {
@@ -642,6 +661,10 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   } else if (stmt->kind == MS_S_ASSIGN) {
     note_change(pass, stmt->u.assign.target, true, false);
     uint32_t root = 0;
+    if (!stmt->u.assign.member_target && !stmt->u.assign.has_compound && declared_view_call(pass, stmt->u.assign.value) &&
+        local_of(pass->facts, stmt->id, &root) && !holds_view(pass, root)) {
+      note_keep(pass, stmt->u.assign.value); /* an owning `var` would keep the view: clone it */
+    }
     if (!stmt->u.assign.member_target && local_of(pass->facts, stmt->id, &root)) {
       const uint32_t length = (uint32_t)ms_names_span(pass->program->names, stmt->u.assign.name).len;
       change_list_push(&pass->changes, (Change){.root = root, .pos = stmt->pos, .end = stmt->pos.offset + length,
@@ -738,6 +761,7 @@ void ms_own_borrows(MsCheckProgram *program) {
     borrow_list_free(&pass.borrows);
     change_list_free(&pass.changes);
     use_list_free(&pass.uses);
+    use_list_free(&pass.view_vars);
     range_list_free(&pass.ranges);
     exit_list_free(&pass.exits);
     lambda_list_free(&pass.kept);

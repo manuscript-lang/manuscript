@@ -36,7 +36,7 @@ test "an over-budget line fails the read after the lines before it" {
 		step := input.next()
 
 		if step.is_error() {
-			failure = step.err()
+			failure = step.err().clone()
 			break
 		}
 

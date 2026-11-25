@@ -188,7 +188,14 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   bool borrow = !stmt->u.bind.is_mutable && !of_temporary &&
                 (kind == MS_E_NAME || kind == MS_E_MEMBER || ms_expr_index(stmt->u.bind.value, &index_container, &index_key)) &&
                 ms_facts_use(fn->facts, stmt->u.bind.value->id) != MS_USE_MOVE;
-  const bool from_call = !stmt->u.bind.is_mutable && kind == MS_E_CALL;
+  /* A `var` bound to a declared function's view result holds the view: it owns nothing, so a later assignment only
+   * replaces the reference. */
+  const MsCall *called = kind == MS_E_CALL ? ms_facts_call(fn->facts, stmt->u.bind.value->id) : NULL;
+  const bool view_var = stmt->u.bind.is_mutable && called != NULL &&
+                        (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
+                        ms_own_result_is_borrowed(fn->cx->program, called->callee.decl.module, called->callee.decl.node) &&
+                        !call_reads_temporary(fn->facts, stmt->u.bind.value);
+  const bool from_call = (!stmt->u.bind.is_mutable || view_var) && kind == MS_E_CALL;
   /* A function bound to a name may take the type that lets its omittable parameters be left out. */
   const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
   const MirTy saved_hint = fn->hint;
@@ -225,6 +232,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     }
   }
   fn->hint = saved_hint;
+  if (view_var && borrow && value != MIR_NONE) { /* the view of a place that outlives the statement: the `var` holds just the reference */
+    mir_b_def_var(&fn->b, fn_local(fn, ms_facts_ref(fn->facts, pattern->id)->local, mir_b_ty(&fn->b, value)), value);
+    return !fn->failed;
+  }
   if (value == MIR_NONE) {
     return false;
   }
@@ -595,7 +606,14 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     mir_b_def_var(&fn->b, var, advanced);
     return !fn->failed;
   }
-  const MirValue value = take_value(fn, stmt->u.assign.value);
+  /* A `var` that holds a view takes the next view the same way: the old reference just ends. */
+  const MsExpr *stored = stmt->u.assign.value;
+  const MsCall *called = stored != NULL && stored->kind == MS_E_CALL ? ms_facts_call(fn->facts, stored->id) : NULL;
+  const bool view_store = !var_owns(fn, var) && called != NULL &&
+                          (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
+                          ms_own_result_is_borrowed(fn->cx->program, called->callee.decl.module, called->callee.decl.node) &&
+                          !call_reads_temporary(fn->facts, stored);
+  const MirValue value = view_store ? fn_expr(fn, stored, LW_BORROW) : take_value(fn, stored);
   fn->refilling_var = 0;
   if (value == MIR_NONE) {
     return false;

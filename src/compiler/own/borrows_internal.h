@@ -86,6 +86,7 @@ typedef struct Borrows {
   BorrowList borrows;
   ChangeList changes;
   UseList uses;
+  UseList view_vars; /* the `var`s that hold a view: a later store replaces the reference */
   RangeList ranges;
   ExitList exits;
   LambdaList kept; /* closures handed to a function the runtime keeps them in (a started promise) */
