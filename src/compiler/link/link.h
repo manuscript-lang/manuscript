@@ -14,7 +14,7 @@ typedef struct LinkOptions {
   MsSpan llvm;  /* the shared LLVM library, already loaded, that makes the glibc stubs in this process */
   MsSpan files; /* the directory with the startup files, runtime libraries and the glibc export table */
   bool strip;   /* drop the symbol table */
-  bool quick;   /* a Debug build: skip the size optimizations and the thread pool, which cost more than they save */
+  bool quick;   /* a Debug build: skip the linker's size optimizations (Linux; no measurable change on Windows or macOS) */
   bool musl;    /* static musl instead of the glibc 2.28 stubs; the inputs must be the musl runtime */
 } LinkOptions;
 
