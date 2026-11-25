@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/return-view-of-temporary.ms:9:49: type: `line.slice(..).trim(..)` borrows a temporary value that is gone when this function returns; return `.clone()` of it\n   |\n 9 |             return line.slice(3, line.length()).trim()\n   |                                                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/return-view-of-temporary.ms:9:49: type: `line.slice(..).trim(..)` borrows a temporary value that is gone when this function returns; return `.clone()` of it\n   |\n 9 |             return line.slice(3, line.length()).trim()\n   |                                                 ^\n1 error; fix them and re-run\n"
     }
   }
 }
