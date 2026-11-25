@@ -104,10 +104,16 @@ static bool types_ok(EmitCx *cx) {
 
 void emit_assume_range(EmitCx *cx, MirValue value, int64_t lo, int64_t hi) {
   uint32_t number = cx->next++;
-  ms_strbuild_printf(cx->out,
-                     "  %%as%ua = icmp sge i64 %%v%u, %lld\n  %%as%ub = icmp sle i64 %%v%u, %lld\n"
-                     "  %%as%uc = and i1 %%as%ua, %%as%ub\n  call void @llvm.assume(i1 %%as%uc)\n",
-                     number, value, (long long)lo, number, value, (long long)hi, number, number, number, number);
+  if (lo != INT64_MIN && hi != INT64_MAX) {
+    ms_strbuild_printf(cx->out,
+                       "  %%as%ua = icmp sge i64 %%v%u, %lld\n  %%as%ub = icmp sle i64 %%v%u, %lld\n"
+                       "  %%as%uc = and i1 %%as%ua, %%as%ub\n  call void @llvm.assume(i1 %%as%uc)\n",
+                       number, value, (long long)lo, number, value, (long long)hi, number, number, number, number);
+    return;
+  }
+  /* One bound is unknown: assume the other alone. */
+  ms_strbuild_printf(cx->out, "  %%as%ua = icmp %s i64 %%v%u, %lld\n  call void @llvm.assume(i1 %%as%ua)\n", number,
+                     lo != INT64_MIN ? "sge" : "sle", value, (long long)(lo != INT64_MIN ? lo : hi), number);
 }
 
 void emit_entry_assume(EmitCx *cx, MirValue value, uint32_t slot) {

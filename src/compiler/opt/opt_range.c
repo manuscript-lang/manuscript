@@ -549,7 +549,10 @@ static bool rg_record_facts(RgFa *fa, MirModule *m, MirFunc *f) {
     if (f->values.ptr[v] != MIR_INT || !fa->has_base[v] || fa->param_blk[v] == 0xFFFFFFFFu) {
       continue;
     }
-    const RgItv x = fa->base[v];
+    /* A bound at the widening limit is where the analysis gave up, not a fact. */
+    RgItv x = fa->base[v];
+    x.lo = x.lo <= -RG_WIDEN_LIMIT ? INT64_MIN : x.lo;
+    x.hi = x.hi >= RG_WIDEN_LIMIT ? INT64_MAX : x.hi;
     if (x.lo != INT64_MIN || x.hi != INT64_MAX) {
       facts[n++] = (MirFact){v, x.lo, x.hi};
     }
@@ -579,7 +582,7 @@ bool opt_range_func(MirModule *m, MirFunc *f) {
   if (changed) {
     rg_apply_edits(m, f, &edits);
   }
-  if (solved) {
+  if (solved && f->entry != NULL) { /* seeding is what folds a guard LLVM would have used */
     changed = rg_record_facts(&fa, m, f) || changed;
   }
   rg_fa_free(&fa);
